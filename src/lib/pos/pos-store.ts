@@ -1,0 +1,220 @@
+import type {
+  Customer,
+  Employee,
+  ExtraTableGrant,
+  ExtraTableGrantScope,
+  FloorSection,
+  GiftCard,
+  GiftCardStatus,
+  InventoryItem,
+  KitchenTicket,
+  MenuCategory,
+  MenuItem,
+  ModifierGroup,
+  Order,
+  PaymentMethod,
+  PosView,
+  Reservation,
+  RestaurantSettings,
+  SectionAccess,
+  SectionPolicy,
+  SettlementConfig,
+  SettlementPeriod,
+  Table,
+  VenueEntityId,
+  WaitlistEntry,
+  Vendor,
+} from "./types";
+import type { GiftImportPreview } from "./gift-import";
+
+export interface AuditEntry {
+  id: string;
+  at: number;
+  employeeId: string;
+  employeeName: string;
+  action: string;
+  detail: string;
+}
+
+export interface ShiftState {
+  id: string;
+  openedAt: number;
+  openingFloatCents: number;
+  cashSalesCents: number;
+  cardSalesCents: number;
+  giftSalesCents: number;
+  compsCents: number;
+  voidsCents: number;
+  tipsCashCents: number;
+  tipsCardCents: number;
+  orderCount: number;
+  guestCount: number;
+  closedAt?: number;
+  closingCashCents?: number;
+}
+
+export type ActionResult<T = object> = {
+  ok: boolean;
+  error?: string;
+  access?: SectionAccess;
+} & T;
+
+export interface PosStore {
+  settings: RestaurantSettings;
+  employees: Employee[];
+  currentEmployeeId: string | null;
+  categories: MenuCategory[];
+  menuItems: MenuItem[];
+  modifierGroups: ModifierGroup[];
+  tables: Table[];
+  orders: Order[];
+  tickets: KitchenTicket[];
+  waitlist: WaitlistEntry[];
+  reservations: Reservation[];
+  customers: Customer[];
+  giftCards: GiftCard[];
+  inventory: InventoryItem[];
+  vendors: Vendor[];
+  settlementConfig: SettlementConfig;
+  settlementPeriods: SettlementPeriod[];
+  auditLog: AuditEntry[];
+  shift: ShiftState;
+  view: PosView;
+  activeOrderId: string | null;
+  activeTableId: string | null;
+  selectedCategoryId: string | null;
+  selectedLineId: string | null;
+  activeSeat: number | null;
+  clock: number;
+  floorSections: FloorSection[];
+  extraTableGrants: ExtraTableGrant[];
+  sectionOverrides: Record<string, string[]>;
+  activeEntityId: VenueEntityId;
+
+  login: (pin: string) => ActionResult;
+  logout: () => void;
+  verifyManagerPin: (pin: string) => boolean;
+  clockToggle: (employeeId: string) => void;
+  tick: () => void;
+  setView: (v: PosView) => void;
+  setCategory: (id: string | null) => void;
+  setSelectedLine: (id: string | null) => void;
+  setActiveSeat: (n: number | null) => void;
+  setActiveOrder: (id: string | null) => ActionResult;
+  getCurrentEmployee: () => Employee | null;
+  getActiveOrder: () => Order | undefined;
+  audit: (action: string, detail: string) => void;
+  updateSettings: (patch: Partial<RestaurantSettings>) => void;
+  tableAccess: (
+    tableId: string,
+    action?: "view" | "order" | "seat",
+  ) => SectionAccess;
+  selectTable: (tableId: string) => ActionResult<{ access?: SectionAccess }>;
+  seatTable: (tableId: string, guestCount: number) => ActionResult;
+  markClean: (tableId: string) => void;
+  clearTable: (tableId: string) => void;
+  transferTable: (fromId: string, toId: string) => ActionResult;
+  mergeTables: (primaryId: string, childId: string) => ActionResult;
+  unmergeTable: (tableId: string) => ActionResult;
+  openBarTab: (name: string, guestCount?: number) => string;
+  openTakeout: (name: string) => string;
+  addItem: (
+    menuItemId: string,
+    opts?: {
+      quantity?: number;
+      modifiers?: Order["lines"][number]["modifiers"];
+      note?: string;
+      seat?: number;
+    },
+  ) => ActionResult;
+  updateLineQty: (lineId: string, delta: number) => void;
+  setLineNote: (lineId: string, note: string) => void;
+  setLineSeat: (lineId: string, seat: number) => void;
+  voidLine: (lineId: string, reason: string) => void;
+  compLine: (lineId: string, reason: string) => void;
+  holdLine: (lineId: string, held: boolean) => void;
+  sendOrder: (opts?: object) => ActionResult;
+  fireCourse: (course: string) => void;
+  applyDiscount: (opts: {
+    percent?: number;
+    cents?: number;
+    reason?: string;
+    promoCode?: string;
+  }) => void;
+  setOrderNote: (note: string) => void;
+  printCheck: () => void;
+  takePayment: (opts: {
+    method: PaymentMethod;
+    amountCents: number;
+    tipCents?: number;
+    tenderedCents?: number;
+    last4?: string;
+    giftCardCode?: string;
+    houseAccountId?: string;
+  }) => ActionResult<{ changeCents?: number }>;
+  closeOrderIfPaid: () => void;
+  bumpTicket: (ticketId: string) => void;
+  recallTicket: (ticketId: string) => void;
+  startTicket: (ticketId: string) => void;
+  addWaitlist: (entry: Partial<WaitlistEntry>) => void;
+  updateWaitlistStatus: (
+    id: string,
+    status: WaitlistEntry["status"],
+  ) => void;
+  seatFromWaitlist: (waitId: string, tableId: string) => ActionResult;
+  addReservation: (entry: Partial<Reservation>) => void;
+  updateReservationStatus: (
+    id: string,
+    status: Reservation["status"],
+  ) => void;
+  addCustomer: (c: Partial<Customer>) => void;
+  issueGiftCard: (opts: {
+    amountCents: number;
+    code?: string;
+    issuedToName?: string;
+  }) => ActionResult<{ card?: GiftCard; code?: string }>;
+  reloadGiftCard: (code: string, amountCents: number) => ActionResult;
+  setGiftCardStatus: (code: string, status: GiftCardStatus) => ActionResult;
+  importGiftCards: (
+    preview: GiftImportPreview,
+    opts: { overwrite?: boolean },
+  ) => ActionResult<{ imported?: number; skipped?: number }>;
+  adjustLoyalty: (customerId: string, deltaPoints: number) => void;
+  setCustomerTier: (customerId: string, tier: string) => void;
+  setCustomerMarketingOptIn: (customerId: string, optIn: boolean) => void;
+  toggleItemAvailable: (id: string) => void;
+  receiveInventory: (id: string, qty: number) => void;
+  updateInventory: (id: string, patch: Partial<InventoryItem>) => void;
+  updateTableLayout: (id: string, patch: Partial<Table>) => void;
+  addFloorTable: (partial?: Partial<Table>) => string;
+  removeFloorTable: (id: string) => ActionResult;
+  openShift: (floatCents: number) => void;
+  closeShift: (closingCashCents: number) => ActionResult;
+  updateSettlementConfig: (patch: Partial<SettlementConfig>) => void;
+  getOpenPeriodPreview: () => SettlementPeriod | null;
+  closeSettlementPeriod: () => ActionResult<{ period?: SettlementPeriod }>;
+  markSettlementPaid: (periodId: string) => void;
+  reassignServer: (tableId: string, serverId: string) => void;
+  assignEmployeeSections: (employeeId: string, sectionIds: string[]) => void;
+  upsertFloorSection: (section: Partial<FloorSection> & { id?: string }) => void;
+  removeFloorSection: (id: string) => ActionResult;
+  updateSectionPolicy: (patch: Partial<SectionPolicy>) => void;
+  grantExtraTable: (opts: {
+    employeeId: string;
+    tableId: string;
+    scope: ExtraTableGrantScope;
+    reason?: string;
+  }) => ActionResult<{ grant?: ExtraTableGrant }>;
+  revokeExtraTable: (id: string) => void;
+  overrideSectionTable: (employeeId: string, tableId: string) => ActionResult;
+  applyEntity: (entityId: VenueEntityId) => ActionResult;
+  resetDemo: () => void;
+}
+
+export type PosStorePersist = {
+  persist: {
+    rehydrate: () => void | Promise<void>;
+    hasHydrated: () => boolean;
+    onFinishHydration: (fn: () => void) => () => void;
+  };
+};

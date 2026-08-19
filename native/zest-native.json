@@ -1,0 +1,6 @@
+{
+  "url": "http://10.0.2.2:8080/apps",
+  "station": "",
+  "cleartext": true,
+  "_comment": "Default Android shell opens Zest Store (/apps). Override url to your host + /apps. For a single station APK use origin only + station field."
+}

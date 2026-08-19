@@ -1,0 +1,114 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+
+@theme {
+  --color-bg: #0a0c0b;
+  --color-surface: #121614;
+  --color-surface-2: #1a201c;
+  --color-surface-3: #242c27;
+  --color-foreground: #eef5f0;
+  --color-muted-foreground: #8a968e;
+  --color-border: #2a332e;
+  --color-border-strong: #3d4a42;
+
+  /* Zest citrus accent */
+  --color-primary: #c8f542;
+  --color-primary-foreground: #0f1608;
+
+  --color-secondary: #1a201c;
+  --color-secondary-foreground: #eef5f0;
+
+  --color-ring: #c8f542;
+
+  --color-success: #3d9a6a;
+  --color-success-foreground: #ecfdf5;
+  --color-warn: #e5a320;
+  --color-warn-foreground: #fffbeb;
+  --color-danger: #e05c5c;
+  --color-danger-foreground: #fef2f2;
+  --color-info: #5b9fd4;
+  --color-info-foreground: #eff6ff;
+
+  --color-table-available: #1a201c;
+  --color-table-seated: #1a3330;
+  --color-table-ordering: #3a3520;
+  --color-table-ordered: #1e3328;
+  --color-table-check: #3a2a1e;
+  --color-table-paid: #2a2438;
+  --color-table-dirty: #3a2222;
+
+  --color-sec-1: #3d9a6a;
+  --color-sec-2: #5b9fd4;
+  --color-sec-3: #e5a320;
+  --color-sec-4: #c8f542;
+  --color-sec-5: #e05c5c;
+  --color-sec-6: #a78bfa;
+
+  --font-sans: "Segoe UI", system-ui, -apple-system, sans-serif;
+  --font-mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+
+  --radius-sm: 0.375rem;
+  --radius-md: 0.5rem;
+  --radius-lg: 0.75rem;
+  --radius-xl: 1rem;
+  --radius-2xl: 1.25rem;
+}
+
+@layer base {
+  * {
+    border-color: var(--color-border);
+  }
+
+  html,
+  body,
+  #root {
+    height: 100%;
+  }
+
+  body {
+    margin: 0;
+    background: var(--color-bg);
+    color: var(--color-foreground);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+
+  button:not(:disabled),
+  [role="button"]:not(:disabled) {
+    cursor: pointer;
+  }
+
+  .tabular {
+    font-variant-numeric: tabular-nums;
+  }
+}
+
+@layer utilities {
+  .safe-top {
+    padding-top: env(safe-area-inset-top, 0px);
+  }
+  .safe-bottom {
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+}
+
+
+/* Android tablet / large touch KDS */
+@layer base {
+  button,
+  [role="button"],
+  a,
+  input,
+  select,
+  textarea {
+    touch-action: manipulation;
+  }
+}
+
+@media (min-width: 1200px) and (pointer: coarse) {
+  /* 27" Android touch: slightly roomier controls */
+  .kds-large-touch button {
+    min-height: 2.75rem;
+  }
+}

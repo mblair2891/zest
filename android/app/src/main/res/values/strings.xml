@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Zest</string>
+    <string name="title_activity_main">Zest</string>
+    <string name="package_name">app.zest.pos</string>
+    <string name="custom_url_scheme">app.zest.pos</string>
+</resources>
