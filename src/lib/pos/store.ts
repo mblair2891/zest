@@ -1573,11 +1573,16 @@ const usePosStoreRaw = create()(persist((set, get) => ({
 	},
 	loadProspectDemo: (entityId: VenueEntityId) => {
 		const slice = demoPosSlice(entityId);
+		const prev = get().currentEmployeeId;
 		const owner =
 			slice.employees.find((e) => e.role === "owner") ?? slice.employees[0];
+		const keep =
+			slice.employees.find((e) => e.id === prev) ??
+			owner ??
+			slice.employees[0];
 		set({
 			...slice,
-			currentEmployeeId: null,
+			currentEmployeeId: keep?.id ?? null,
 			shift: emptyShift(),
 			clock: Date.now(),
 			auditLog: [

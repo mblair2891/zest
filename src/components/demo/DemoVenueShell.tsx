@@ -33,13 +33,24 @@ export function DemoVenueShell({
     };
   }, [type]);
 
+  const posEmpId = usePosStore((s) => s.currentEmployeeId);
+  const posEmpCount = usePosStore((s) => s.employees.length);
+
   useEffect(() => {
     if (!entered) return;
     const s = usePosStore.getState();
-    if (s.currentEmployeeId) return;
-    const owner = s.employees.find((e) => e.role === "owner" && e.active) ?? s.employees[0];
-    if (owner) s.loginAs(owner.id);
-  }, [entered]);
+    const current = s.employees.find((e) => e.id === s.currentEmployeeId);
+    if (current) return;
+    const want = useDemoDeviceStore.getState().employeeId;
+    const emp =
+      (want ? s.employees.find((e) => e.id === want) : undefined) ??
+      s.employees.find((e) => e.role === "owner" && e.active) ??
+      s.employees[0];
+    if (emp) {
+      s.loginAs(emp.id);
+      useDemoDeviceStore.getState().setEmployeeId(emp.id);
+    }
+  }, [entered, posEmpId, posEmpCount]);
 
   if (!entered) {
     return <DemoEnterGate type={type} />;
@@ -65,7 +76,7 @@ export function DemoVenueShell({
           />
         </div>
       </div>
-      <div className="pointer-events-none absolute right-3 top-[calc(var(--grok-banner-h,0px)+3.25rem)] z-50 sm:hidden">
+      <div className="pointer-events-none absolute right-3 top-[calc(var(--grok-banner-h,0px)+3.25rem)] z-50 md:hidden">
         <div className="pointer-events-auto">
           <DemoDeviceSwitcher />
         </div>

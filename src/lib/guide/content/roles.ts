@@ -144,10 +144,11 @@ export const ROLE_GUIDE_TOPICS: GuideTopic[] = [
       ),
       steps(
         "PIN in. Home is that role’s dashboard.",
+        "The first time in that role, take the live walkthrough (or skip / replay later).",
         "Nav only lists views you can open. Settings writes are owner/manager.",
         "On The Laundry, PIN 9999 owner, 1111 server, 5555 kitchen, 6666 Steam operator, 7777 Diamond operator.",
       ),
-      related("role-owner", "role-server", "role-vendor", "location-settings", "type-food-hall"),
+      related("role-walkthroughs", "whats-new-on-login", "role-owner", "role-server", "role-vendor", "location-settings"),
     ],
   }),
   topic({

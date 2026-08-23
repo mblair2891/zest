@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
-import { useNavigate } from "@tanstack/react-router";
+import { useNavigate, useRouterState } from "@tanstack/react-router";
 import { toast, Toaster } from "sonner";
 import { Button } from "@/components/ui/button";
 import { isProspectDemo } from "@/lib/demo/session";
@@ -10,6 +10,8 @@ import { navigateTourRoute } from "@/lib/demo/tour-navigate";
 import type { TourStep } from "@/lib/demo/tour-scripts";
 import { useTourStore } from "@/lib/demo/tour-store";
 import { usePosStore } from "@/lib/pos/store";
+import { useOnboardingStore } from "@/lib/onboarding/store";
+import { useOnboardingContext } from "@/lib/onboarding/context";
 import { cn } from "@/lib/utils";
 
 type Rect = { top: number; left: number; width: number; height: number };
@@ -40,6 +42,14 @@ function applyStepSideEffects(step: TourStep) {
       /* POS not mounted */
     }
   }
+  if (step.platformSurface && typeof window !== "undefined") {
+    window.dispatchEvent(
+      new CustomEvent("summex:platform-surface", { detail: step.platformSurface }),
+    );
+  }
+  if (step.kioskPane && typeof window !== "undefined") {
+    window.dispatchEvent(new CustomEvent("summex:kiosk-pane", { detail: step.kioskPane }));
+  }
   if (!step.action || step.action === "none") return;
   if (!isProspectDemo()) return;
   runDemoStepAction(step.action);
@@ -58,10 +68,24 @@ export function DemoTourHost() {
   const exit = useTourStore((s) => s.exit);
   const applyScripts = useTourStore((s) => s.applyScripts);
 
-  const leaveTour = useCallback(() => {
-    exit();
-    void navigate({ to: "/demo" });
-  }, [exit, navigate]);
+  const pathname = useRouterState({ select: (s) => s.location.pathname });
+  const { userKey } = useOnboardingContext(pathname);
+  const markWalkthroughComplete = useOnboardingStore((s) => s.markWalkthroughComplete);
+
+  const leaveTour = useCallback(
+    (opts?: { complete?: boolean }) => {
+      const t = useTourStore.getState().tour;
+      const isWalk = t?.kind === "walkthrough";
+      if (isWalk && opts?.complete !== false && t) {
+        const key = t.id.replace(/^walkthrough:/, "");
+        if (key) markWalkthroughComplete(userKey, key);
+      }
+      exit();
+      if (isWalk) return;
+      void navigate({ to: "/demo" });
+    },
+    [exit, navigate, markWalkthroughComplete, userKey],
+  );
 
   const running = Boolean(tour);
   const step = tour?.steps[stepIndex];
@@ -177,7 +201,7 @@ export function DemoTourHost() {
     if (!running || !playing || !step) return;
     const wait = Math.max(step.waitMs ?? 700, estimateSpeechMs(script) + 600);
     const t = window.setTimeout(() => {
-      if (stepIndex >= total - 1) leaveTour();
+      if (stepIndex >= total - 1) leaveTour({ complete: true });
       else next();
     }, wait);
     return () => window.clearTimeout(t);
@@ -188,7 +212,7 @@ export function DemoTourHost() {
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") {
         e.preventDefault();
-        leaveTour();
+        leaveTour({ complete: false });
       }
     };
     window.addEventListener("keydown", onKey);
@@ -223,7 +247,7 @@ export function DemoTourHost() {
       <aside
         className="pointer-events-auto fixed bottom-4 left-1/2 z-[80] w-[min(42rem,calc(100vw-1.5rem))] -translate-x-1/2 rounded-2xl border border-white/15 bg-slate-950/95 p-4 text-white shadow-2xl backdrop-blur"
         role="dialog"
-        aria-label="Guided demo narrator"
+        aria-label={tour.kind === "walkthrough" ? "Role walkthrough" : "Guided demo narrator"}
       >
         <div className="flex items-start justify-between gap-3">
           <div>
@@ -237,9 +261,9 @@ export function DemoTourHost() {
             size="sm"
             variant="ghost"
             className="text-white/70 hover:bg-white/10 hover:text-white"
-            onClick={leaveTour}
+            onClick={() => leaveTour({ complete: true })}
           >
-            Exit
+            {tour.kind === "walkthrough" ? "Skip tour" : "Exit"}
           </Button>
         </div>
         <p className="mt-2 text-sm leading-relaxed text-white/80">{script}</p>
@@ -258,7 +282,7 @@ export function DemoTourHost() {
             size="sm"
             className="bg-amber-300 text-slate-950 hover:bg-amber-200"
             onClick={() => {
-              if (stepIndex >= total - 1) leaveTour();
+              if (stepIndex >= total - 1) leaveTour({ complete: true });
               else next();
             }}
           >
@@ -296,6 +320,17 @@ export function DemoTourHost() {
           >
             Voice {speechOn ? "on" : "off"}
           </Button>
+          {tour.kind === "walkthrough" && (
+            <Button
+              type="button"
+              size="sm"
+              variant="ghost"
+              className="text-white/70 hover:bg-white/10 hover:text-white"
+              onClick={() => leaveTour({ complete: false })}
+            >
+              Replay later
+            </Button>
+          )}
         </div>
       </aside>
     </>

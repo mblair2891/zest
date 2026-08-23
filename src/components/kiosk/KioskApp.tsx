@@ -20,6 +20,7 @@ import { cn } from "@/lib/utils";
 import { getDemoType, isProspectDemo, parseDemoType } from "@/lib/demo/session";
 import { useDemoDeviceStore } from "@/lib/demo/device-session";
 import { DemoDeviceSwitcher } from "@/components/demo/DemoDeviceSwitcher";
+import { LoginOnboardingHost } from "@/components/onboarding/LoginOnboardingHost";
 import { useDemoLiveSync } from "@/lib/demo/live-sync";
 
 type Pane = "home" | "order" | "waitlist" | "checkin" | "book";
@@ -87,6 +88,23 @@ export function KioskApp() {
   }, []);
 
   useEffect(() => {
+    const onPane = (e: Event) => {
+      const next = (e as CustomEvent).detail as Pane;
+      if (
+        next === "home" ||
+        next === "order" ||
+        next === "waitlist" ||
+        next === "checkin" ||
+        next === "book"
+      ) {
+        setPane(next);
+      }
+    };
+    window.addEventListener("summex:kiosk-pane", onPane);
+    return () => window.removeEventListener("summex:kiosk-pane", onPane);
+  }, []);
+
+  useEffect(() => {
     if (!ready) return;
     void refresh();
     const t = window.setInterval(() => void refresh(), 45_000);
@@ -122,6 +140,7 @@ export function KioskApp() {
       data-demo="kiosk-home"
       className="flex min-h-[100dvh] flex-col bg-bg pt-[var(--grok-banner-h,0px)] text-foreground"
     >
+      {isProspectDemo() && demoEntered ? <LoginOnboardingHost /> : null}
       <header className="flex items-center justify-between border-b border-border bg-surface px-4 py-4 sm:px-6">
         <div className="flex items-center gap-3">
           <SummexMark className="h-9 w-9 text-foreground" />
@@ -149,18 +168,21 @@ export function KioskApp() {
             onClick={() => setPane("order")}
             icon={ClipboardList}
             label="Order"
+            demo="kiosk-order"
           />
           <KioskTab
             active={pane === "checkin" || pane === "book"}
             onClick={() => setPane("checkin")}
             icon={DoorOpen}
             label="Check in"
+            demo="kiosk-checkin"
           />
           <KioskTab
             active={pane === "waitlist" || pane === "home"}
             onClick={() => setPane(waitOn ? "waitlist" : "home")}
             icon={Users}
             label="Waitlist"
+            demo="kiosk-waitlist"
           />
         </nav>
       )}
@@ -216,15 +238,18 @@ function KioskTab({
   onClick,
   icon: Icon,
   label,
+  demo,
 }: {
   active: boolean;
   onClick: () => void;
   icon: typeof Users;
   label: string;
+  demo?: string;
 }) {
   return (
     <button
       type="button"
+      data-demo={demo}
       onClick={onClick}
       className={cn(
         "flex min-h-16 items-center justify-center gap-2 bg-surface text-base font-semibold",

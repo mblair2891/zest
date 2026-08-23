@@ -84,6 +84,8 @@ import { InventoryAiView } from "./InventoryAiView";
 import { DrinkAiView } from "./DrinkAiView";
 import { MarketingHubView } from "./MarketingHubView";
 import { GuideTriggerButton } from "@/components/guide/OperatorsGuide";
+import { ReplayWorkflowButton } from "@/components/onboarding/ReplayWorkflowButton";
+import { LoginOnboardingHost } from "@/components/onboarding/LoginOnboardingHost";
 import { venueById } from "@/lib/pos/entities";
 import { useManualStore } from "@/lib/pos/manual-store";
 import {
@@ -297,9 +299,14 @@ export function AppShell() {
         ? homeViewForEmployee(emp)
         : homeViewForRole(role);
 
+  const shellPad = isProspectDemo()
+    ? "pt-[calc(var(--grok-banner-h,0px)+3.25rem)]"
+    : "pt-[var(--grok-banner-h,0px)]";
+
   if (kdsMode) {
     return (
-      <div className="flex h-[100dvh] flex-col bg-bg pt-[var(--grok-banner-h,0px)] text-foreground">
+      <div className={cn("flex h-[100dvh] flex-col bg-bg text-foreground", shellPad)}>
+        <LoginOnboardingHost />
         <header className="flex h-14 shrink-0 items-center gap-2 border-b border-border bg-surface px-3">
           <p className="text-sm font-semibold">
             {demoDevice === "kds_bar" ? "Bar KDS" : "Kitchen KDS"}
@@ -320,8 +327,9 @@ export function AppShell() {
   }
 
   return (
-    <div className="flex h-[100dvh] flex-col bg-bg pt-[var(--grok-banner-h,0px)] text-foreground">
-      <header className="flex h-14 shrink-0 items-center gap-2 overflow-hidden border-b border-border bg-surface px-2 safe-top sm:gap-3 sm:px-3">
+    <div className={cn("flex h-[100dvh] flex-col bg-bg text-foreground", shellPad)}>
+      <LoginOnboardingHost />
+      <header className="flex h-14 shrink-0 items-center gap-2 overflow-x-auto border-b border-border bg-surface px-2 safe-top sm:gap-3 sm:px-3">
         <div className="flex min-w-0 items-center gap-2">
           <SummexMark className="h-8 w-8" />
           <div className="min-w-0">
@@ -364,7 +372,7 @@ export function AppShell() {
           {/* Package preview is desktop-only so Help stays visible on phones */}
 
           {isProspectDemo() && demoEntered && (
-            <DemoDeviceSwitcher className="hidden sm:flex" />
+            <DemoDeviceSwitcher className="hidden md:flex" />
           )}
           {emp && (
             <div className="hidden text-right md:block">
@@ -383,6 +391,7 @@ export function AppShell() {
 
           <NotificationBell />
           <NetworkChip />
+          <ReplayWorkflowButton className="hidden md:inline-flex" />
           <GuideTriggerButton topicId="intro" />
           <Link
             to="/"

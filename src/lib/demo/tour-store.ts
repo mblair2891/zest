@@ -23,6 +23,8 @@ type TourState = {
 };
 
 function demoTypeForTour(id: string, def: TourDefinition): string | null {
+  if (def.kind === "walkthrough") return null;
+  if (id.startsWith("walkthrough:")) return null;
   if (id.startsWith("type:")) return id.slice(5);
   if (id === "full") return "food_hall";
   for (const step of def.steps) {
@@ -88,9 +90,11 @@ export const useTourStore = create<TourState>((set, get) => ({
   },
 
   exit: () => {
+    const leaving = get().tour;
     cancelSpeech();
     set({ tour: null, playing: false, index: 0, error: null });
     if (typeof window === "undefined") return;
+    if (leaving?.kind === "walkthrough") return;
     const path = window.location.pathname;
     const keepVenue = /^\/demo\/(?!tour)[^/]+/.test(path);
     if (!keepVenue) exitDemoSession();

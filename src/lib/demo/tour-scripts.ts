@@ -1,6 +1,7 @@
 import type { VenueEntityId, PosView } from "@/lib/pos/types";
 import type { DemoStep } from "./scripts";
 import { DEMO_CATALOG } from "./catalog";
+import { WALKTHROUGH_TOURS } from "@/lib/onboarding/walkthrough-scripts";
 
 export type TourRoute =
   | { to: "/demo" }
@@ -20,6 +21,8 @@ export type TourStep = {
   view?: PosView;
   action?: DemoStep["action"];
   waitMs?: number;
+  platformSurface?: "console" | "pipeline" | "demos";
+  kioskPane?: "home" | "order" | "waitlist" | "checkin";
 };
 
 export type TourDefinition = {
@@ -27,6 +30,8 @@ export type TourDefinition = {
   title: string;
   subtitle: string;
   steps: TourStep[];
+  /** Demo catalog tours leave to /demo. Role walkthroughs stay put. */
+  kind?: "demo" | "walkthrough";
 };
 
 const T = (ms = 0): number => ms;
@@ -499,9 +504,9 @@ export const TOURS: Record<string, TourDefinition> = {
 };
 
 export function getTour(id: string): TourDefinition | null {
-  return TOURS[id] ?? null;
+  return TOURS[id] ?? WALKTHROUGH_TOURS[id] ?? null;
 }
 
 export function listTourIds(): string[] {
-  return Object.keys(TOURS);
+  return [...Object.keys(TOURS), ...Object.keys(WALKTHROUGH_TOURS)];
 }

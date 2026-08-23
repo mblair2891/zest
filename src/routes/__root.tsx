@@ -3,6 +3,7 @@ import { AuthProvider } from "@/lib/auth/provider";
 import { CreatedWithGrokBanner } from "@/components/created-with-grok-banner";
 import { DemoTourHost } from "@/components/demo/DemoTourHost";
 import { GuideHost } from "@/components/guide/GuideHost";
+
 import appCss from "../styles.css?url";
 
 const APP_NAME = "Summex";

@@ -2,6 +2,8 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { Link, useNavigate } from "@tanstack/react-router";
 import { LogOut, ArrowLeft, BookOpen } from "lucide-react";
 import { GuideTriggerButton } from "@/components/guide/OperatorsGuide";
+import { ReplayWorkflowButton } from "@/components/onboarding/ReplayWorkflowButton";
+import { LoginOnboardingHost } from "@/components/onboarding/LoginOnboardingHost";
 import { Button } from "@/components/ui/button";
 import { SummexBrandBlock, SummexMark } from "@/components/brand/SummexMark";
 import { Badge } from "@/components/ui/badge";
@@ -85,6 +87,17 @@ export function PlatformApp() {
     userPickedSurface.current = true;
     setSurface(next);
   };
+
+  useEffect(() => {
+    const onSurface = (e: Event) => {
+      const next = (e as CustomEvent).detail;
+      if (next === "console" || next === "pipeline" || next === "demos") {
+        setSurface(next);
+      }
+    };
+    window.addEventListener("summex:platform-surface", onSurface);
+    return () => window.removeEventListener("summex:platform-surface", onSurface);
+  }, []);
 
   useEffect(() => {
     const done = () => setReady(true);
@@ -301,6 +314,7 @@ export function PlatformApp() {
 
   return (
     <div className="flex h-[100dvh] flex-col bg-bg pt-[var(--grok-banner-h,0px)] text-foreground">
+      <LoginOnboardingHost />
       <header className="flex h-14 shrink-0 items-center gap-3 border-b border-border bg-surface px-3">
         <SummexMark className="h-8 w-8" />
         <div className="min-w-0 flex-1">
@@ -323,6 +337,7 @@ export function PlatformApp() {
             <Button
               size="sm"
               variant={surface === "console" ? "default" : "outline"}
+              data-demo="platform-console-nav"
               onClick={() => pickSurface("console")}
             >
               Console
@@ -330,6 +345,7 @@ export function PlatformApp() {
             <Button
               size="sm"
               variant={surface === "pipeline" ? "default" : "outline"}
+              data-demo="platform-pipeline-nav"
               onClick={() => pickSurface("pipeline")}
             >
               Pipeline
@@ -344,6 +360,7 @@ export function PlatformApp() {
             </Button>
           </>
         )}
+        <ReplayWorkflowButton className="hidden md:inline-flex" />
         <GuideTriggerButton topicId="platform-admin" />
         <Link
           to="/whitepaper"
@@ -363,7 +380,13 @@ export function PlatformApp() {
             Load The Laundry
           </Button>
         )}
-        <Button size="sm" variant="outline" onClick={openPos} disabled={!loc}>
+        <Button
+          size="sm"
+          variant="outline"
+          data-demo="platform-open-pos"
+          onClick={openPos}
+          disabled={!loc}
+        >
           Open POS
         </Button>
         <Button
@@ -386,7 +409,16 @@ export function PlatformApp() {
       {tenants && (
         <PlatformTenantsBar tenants={tenants} onChanged={() => void hydrateFromServer()} />
       )}
-      <main className="min-h-0 flex-1 overflow-hidden">
+      <main
+        className="min-h-0 flex-1 overflow-hidden"
+        data-demo={
+          surface === "pipeline"
+            ? "platform-pipeline"
+            : surface === "demos"
+              ? "platform-demos"
+              : "platform-console"
+        }
+      >
         {surface === "pipeline" && tenants ? (
           <ProspectPipelineView />
         ) : surface === "demos" ? (

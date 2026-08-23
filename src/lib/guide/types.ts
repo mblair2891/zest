@@ -1,8 +1,8 @@
 import type { PosView } from "@/lib/pos/types";
 
 /** Bump when shipping a docs/features batch so What’s New can watermark. */
-export const GUIDE_VERSION = "2026.09.02";
-export const GUIDE_EDITION = "Operators Guide · August 2026";
+export const GUIDE_VERSION = "2026.09.03";
+export const GUIDE_EDITION = "Operators Guide · September 2026";
 export const GUIDE_TITLE = "Operators Guide";
 
 /**
@@ -91,13 +91,32 @@ export interface GuideTopic {
   blocks: GuideBlock[];
 }
 
+/** Product surfaces a What’s New row can apply to. */
+export type WhatsNewSurface =
+  | "floor"
+  | "kds"
+  | "kiosk"
+  | "reports"
+  | "settings"
+  | "platform";
+
+export type WhatsNewAudience = "all" | "tenant" | "demo" | "platform";
+
 export interface GuideUpdate {
   id: string;
   /** ISO date YYYY-MM-DD */
   date: string;
   title: string;
   summary: string;
+  /** Longer body for the login popup; falls back to summary. */
+  body?: string;
   roles: GuideAudience;
+  /** Restrict to location modes. Omit or `"all"` = every establishment. */
+  entityTypes?: import("@/lib/pos/types").VenueEntityId[] | "all";
+  surfaces?: WhatsNewSurface[] | "all";
+  minAppVersion?: string;
+  /** Platform-only notes never reach location staff. */
+  audience?: WhatsNewAudience;
   topicId?: string;
   tags?: string[];
 }

@@ -1,8 +1,13 @@
 import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
-import type { EmployeeRole } from "@/lib/pos/types";
+import type { EmployeeRole, VenueEntityId } from "@/lib/pos/types";
 import { employeeToGuideRoles } from "./roles";
-import { latestUpdateId, updatesForRoles } from "./updates";
+import {
+  hasUnseenUpdates,
+  latestMatchingUpdateId,
+  updatesForContext,
+  type WhatsNewContext,
+} from "./updates";
 import type { GuideRole, GuideUpdate } from "./types";
 
 export type GuideUserKey = string;
@@ -18,6 +23,8 @@ interface GuideState {
   silencedAfterByRole: Partial<Record<EmployeeRole, string>>;
   silencedAfterByGuideRole: Partial<Record<GuideRole, string>>;
   silencedAfterAnon: string | null;
+  /** `${userKey}:${role}` → last seen update id when they chose silence. */
+  silencedAfterByUser: Record<string, string>;
 
   completedByUser: Record<GuideUserKey, string[]>;
   lastTopicByUser: Record<GuideUserKey, string>;
@@ -35,13 +42,25 @@ interface GuideState {
 
   notifyLogin: () => void;
   dismissWhatsNew: (opts: {
+    userKey?: string;
     role?: EmployeeRole | null;
     guideRoles?: GuideRole[];
     silenceUntilNext: boolean;
+    lastSeenId?: string;
   }) => void;
   openWhatsNew: () => void;
-  shouldShowWhatsNew: (roles: GuideRole[] | "all") => boolean;
+  shouldShowWhatsNew: (
+    roles: GuideRole[] | "all",
+    opts?: {
+      userKey?: string;
+      employeeRole?: EmployeeRole | null;
+      entityType?: VenueEntityId | null;
+      includePlatform?: boolean;
+      isDemo?: boolean;
+    },
+  ) => boolean;
   updatesFor: (roles: GuideRole[] | "all", limit?: number) => GuideUpdate[];
+  updatesForCtx: (ctx: WhatsNewContext, limit?: number) => GuideUpdate[];
 
   markComplete: (userKey: GuideUserKey, topicId: string) => void;
   markIncomplete: (userKey: GuideUserKey, topicId: string) => void;
@@ -68,6 +87,7 @@ export const useGuideStore = create<GuideState>()(
       silencedAfterByRole: {},
       silencedAfterByGuideRole: {},
       silencedAfterAnon: null,
+      silencedAfterByUser: {},
       completedByUser: {},
       lastTopicByUser: {},
       dismissedThisSession: false,
@@ -96,34 +116,78 @@ export const useGuideStore = create<GuideState>()(
           forceWhatsNew: false,
         }),
 
-      dismissWhatsNew: ({ role, guideRoles, silenceUntilNext }) => {
-        const mark = latestUpdateId();
+      dismissWhatsNew: ({
+        userKey,
+        role,
+        guideRoles,
+        silenceUntilNext,
+        lastSeenId,
+      }) => {
+        const mark =
+          lastSeenId ??
+          latestMatchingUpdateId({
+            roles: guideRoles && guideRoles.length ? guideRoles : "all",
+          });
         const nextEmp = { ...get().silencedAfterByRole };
         const nextGuide = { ...get().silencedAfterByGuideRole };
+        const nextUser = { ...get().silencedAfterByUser };
         let silencedAfterAnon = get().silencedAfterAnon;
         if (silenceUntilNext) {
           if (role) nextEmp[role] = mark;
           for (const r of guideRoles ?? []) nextGuide[r] = mark;
-          if (!role && (!guideRoles || guideRoles.length === 0)) {
+          if (userKey) {
+            nextUser[userKey] = mark;
+            if (role) nextUser[`${userKey}:${role}`] = mark;
+          }
+          if (!userKey && !role && (!guideRoles || guideRoles.length === 0)) {
             silencedAfterAnon = mark;
           }
         }
         set({
           silencedAfterByRole: nextEmp,
           silencedAfterByGuideRole: nextGuide,
+          silencedAfterByUser: nextUser,
           silencedAfterAnon,
           dismissedThisSession: true,
           forceWhatsNew: false,
         });
       },
 
-      openWhatsNew: () => {
-        /* What’s New is not surfaced in the Operators Guide. */
+      openWhatsNew: () =>
+        set({
+          forceWhatsNew: true,
+          dismissedThisSession: false,
+          guideOpen: false,
+          manualOpen: false,
+        }),
+
+      shouldShowWhatsNew: (roles, opts) => {
+        const s = get();
+        if (s.forceWhatsNew) return true;
+        if (s.dismissedThisSession) return false;
+        const userKey = opts?.userKey;
+        const empRole = opts?.employeeRole;
+        const byUser = s.silencedAfterByUser ?? {};
+        const watermark =
+          (userKey && empRole && byUser[`${userKey}:${empRole}`]) ||
+          (userKey && byUser[userKey]) ||
+          (empRole && s.silencedAfterByRole[empRole]) ||
+          (Array.isArray(roles)
+            ? roles.map((r) => s.silencedAfterByGuideRole[r]).find(Boolean)
+            : undefined) ||
+          s.silencedAfterAnon ||
+          null;
+        return hasUnseenUpdates(roles, watermark ?? null, {
+          entityType: opts?.entityType,
+          includePlatform: opts?.includePlatform,
+          isDemo: opts?.isDemo,
+        });
       },
 
-      shouldShowWhatsNew: () => false,
+      updatesFor: (roles, limit = 10) =>
+        updatesForContext({ roles }, limit),
 
-      updatesFor: (roles, limit = 10) => updatesForRoles(roles, limit),
+      updatesForCtx: (ctx, limit = 10) => updatesForContext(ctx, limit),
 
       markComplete: (userKey, topicId) =>
         set({
@@ -178,6 +242,7 @@ export const useGuideStore = create<GuideState>()(
         silencedAfterByRole: s.silencedAfterByRole,
         silencedAfterByGuideRole: s.silencedAfterByGuideRole,
         silencedAfterAnon: s.silencedAfterAnon,
+        silencedAfterByUser: s.silencedAfterByUser,
         completedByUser: s.completedByUser,
         lastTopicByUser: s.lastTopicByUser,
       }),

@@ -13,7 +13,9 @@ a CMS.
 |---|---|
 | `src/lib/guide/content/*.ts` | Topics, grouped by chapter |
 | `src/lib/guide/catalog.ts` | Chapter list + assembled `GUIDE_TOPICS` |
-| `src/lib/guide/updates.ts` | Release-note data (not shown in the guide) |
+| `src/lib/whats-new/entries.ts` | Login “Latest updates” feed (roles, entityTypes, surfaces) |
+| `src/lib/guide/updates.ts` | Filter + watermark helpers for that feed |
+| `src/lib/onboarding/walkthrough-scripts.ts` | Per-role live-UI walkthroughs |
 | `src/lib/guide/types.ts` | `GUIDE_VERSION`, roles, block types |
 | `src/lib/guide/store.ts` | Overlay open state, progress, silence prefs |
 | `src/components/guide/OperatorsGuide.tsx` | Overlay + `/guide` page |
@@ -25,6 +27,9 @@ a CMS.
 | `/guide?topic=laundry-test-venue` | DEV_DEMO TEST host (The Laundry) |
 
 Bump `GUIDE_VERSION` in `types.ts` when you ship a batch of topics.
+Add a What’s New row in `src/lib/whats-new/entries.ts` (newest first) so the
+login popup can show it. Keep role walkthrough steps in
+`src/lib/onboarding/walkthrough-scripts.ts` accurate when the job path changes.
 
 ## Add a topic
 
@@ -101,6 +106,29 @@ Platform-admin topics use `visibility: "platform"` (and/or the **Platform**
 chapter). They render only when the viewer is signed in as `platform_admin`.
 
 Public **Exit** on `/guide` returns to `/`. Demo/tour **Exit** returns to `/demo`.
+
+## What’s new on login
+
+After auth + role/location resolve (tenant PIN or demo enter), a **Latest
+updates** popup lists ~10 matching entries. Filter: `roles`, `entityTypes`,
+`surfaces` (floor | kds | kiosk | reports | settings | platform), optional
+`audience` (`platform` never reaches location staff). Close, or **Silence
+until the next update** (watermark per user/role). Empty feed: no popup.
+
+In-app: `/guide?topic=whats-new-on-login`.
+
+## Role walkthroughs
+
+After updates (or immediately if none), offer a **position walkthrough** on
+the live UI (same tour engine as demos: spotlight + narrator). Auto-offer
+once per role until completed; **Skip tour** marks complete; **Replay later**
+does not. Replay from Guide or **Replay workflow** in the header. Demo role
+or device switch offers that job’s tour if not completed.
+
+Scripts: owner, manager, server, host stand, bartender, kitchen, cashier,
+vendor operator, accountant, kiosk, KDS kitchen/bar, platform admin.
+
+In-app: `/guide?topic=role-walkthroughs`.
 
 ## Demo login & device switcher
 

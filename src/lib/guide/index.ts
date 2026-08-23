@@ -28,6 +28,7 @@ export { searchTopics, chaptersWithMatches } from "./search";
 export {
   GUIDE_UPDATES,
   updatesForRoles,
+  updatesForContext,
   latestUpdateId,
   hasUnseenUpdates,
 } from "./updates";

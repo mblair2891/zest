@@ -57,15 +57,93 @@ export const GETTING_STARTED_TOPICS: GuideTopic[] = [
         "Use Overview, By type, Features, and Roles to move around. Role chips still filter who the topic is for.",
         "Read Why it matters, follow the numbered steps, then Related topics.",
         "Tap Mark complete. Continue where you left off returns you here on the next open.",
+        "Replay workflow starts the live-UI walkthrough for your access level. Latest updates reopens the login list.",
       ),
       callout(
         "Learn links",
         "Key screens (onboarding, settlement, payments, floor, KDS) have a Learn control that opens this guide on the matching topic.",
       ),
       tip(
-        "When a feature ships, add a topic under src/lib/guide/content/. See docs/operators-guide.md.",
+        "When a feature ships, add a topic under src/lib/guide/content/ and a What’s New row in src/lib/whats-new/entries.ts. See docs/operators-guide.md.",
       ),
-      related("intro", "navigation", "troubleshooting"),
+      related("intro", "whats-new-on-login", "role-walkthroughs", "navigation", "troubleshooting"),
+    ],
+  }),
+  topic({
+    id: "whats-new-on-login",
+    chapterId: "getting-started",
+    title: "What’s new on login",
+    summary: "Latest updates after sign-in, scoped to your role and location type.",
+    roles: "all",
+    keywords: ["whats new", "updates", "login", "popup", "silence", "changelog"],
+    blocks: [
+      why(
+        "Staff should see what changed for their job — not a dump of SaaS pipeline notes — without hunting a changelog.",
+      ),
+      p(
+        "After a successful login (tenant PIN or demo enter), Summex shows Latest updates: about the last ten entries that match your access level and this location’s establishment type. Platform Admin may see platform-scoped notes. Location staff never see pure pipeline-admin rows.",
+      ),
+      steps(
+        "Sign in. Land on your role dashboard.",
+        "Read Latest updates. Close to continue.",
+        "Optional: check Silence until the next update. The list stays hidden until a newer matching entry ships.",
+        "Reopen any time from Guide → Latest updates.",
+      ),
+      ul(
+        "Empty feed: no popup. Login is never blocked.",
+        "Silence is stored per account (and role when a PIN is active).",
+        "Demo sessions use the same popup, filtered for that demo role.",
+      ),
+      tip(
+        "When you ship a feature, add a What’s New entry (id, date, title, body, roles, entityTypes, surfaces) so the next login can show it.",
+      ),
+      related("role-walkthroughs", "using-guide", "login"),
+    ],
+  }),
+  topic({
+    id: "role-walkthroughs",
+    chapterId: "getting-started",
+    title: "Role walkthroughs",
+    summary: "A short live-UI tour of the job after login. Replay from Guide.",
+    roles: "all",
+    keywords: [
+      "walkthrough",
+      "tour",
+      "training",
+      "workflow",
+      "replay",
+      "server",
+      "kitchen",
+      "kds",
+      "kiosk",
+    ],
+    blocks: [
+      why(
+        "A new server should see sections → order → send → pay on the real floor, not a slide deck.",
+      ),
+      p(
+        "After Latest updates (or immediately if there are none), Summex offers a walkthrough for your access level. Steps spotlight live screens with a narrator. Next, Back, Skip tour, or Replay later. Voiceover uses the same engine as guided demos.",
+      ),
+      ul(
+        "Owner / manager — Home, settings pack, staff, floor, reports, settlement.",
+        "Server — sections, seat, order, send, Quantum Payments.",
+        "Host stand — waitlist, reservations, seating.",
+        "Bartender / kitchen — rail, bump, tabs. Cashier — counter and pay.",
+        "Vendor operator — own menu, tickets, settlement share (multi-operator houses).",
+        "Accountant — reports, ledger, settlement.",
+        "Kiosk and KDS device modes — guest glass or dedicated pit/well.",
+        "Platform Admin — Console, Pipeline, Demos. Not a restaurant PIN.",
+      ),
+      steps(
+        "First login to a role auto-offers the walkthrough.",
+        "Start walkthrough, or Skip tour (won’t auto-offer again), or Replay later.",
+        "Replay from Guide, Replay workflow in the header, or this topic.",
+        "In a demo, switch role or device. That job’s walkthrough is offered if you have not finished it in this session.",
+      ),
+      tip(
+        "Walkthroughs stay on the current house. They do not dump you back on the public demo list when you finish.",
+      ),
+      related("whats-new-on-login", "roles-dashboards", "using-guide", "prospect-demos"),
     ],
   }),
   topic({
@@ -86,7 +164,8 @@ export const GETTING_STARTED_TOPICS: GuideTopic[] = [
         "From the marketing site, tap Sign in. Use the work email you were invited with — not a demo room.",
         "After auth, Summex picks organization and location. There is no per-tenant subdomain.",
         "On a location, enter your 4-digit staff PIN. The header shows your name and access level. Only tools for that role appear.",
-        "Walk a product demo from /demo without signing in. Demos never open the control plane.",
+        "Latest updates (if any) then a walkthrough of that job appear. Dismiss either without signing out.",
+        "Walk a product demo from /demo without a tenant login. Demos never open the control plane.",
       ),
       warn(
         "Signing out of POS does not clock you out of Labor. Product demos are not a tenant login.",
@@ -95,7 +174,7 @@ export const GETTING_STARTED_TOPICS: GuideTopic[] = [
         "New house",
         "Start at Get pricing. You receive a quote, accept, then a guided setup creates the org. Public demos stay separate.",
       ),
-      related("empty-start", "navigation", "invites-roles", "prospect-intake"),
+      related("empty-start", "whats-new-on-login", "role-walkthroughs", "navigation", "invites-roles"),
     ],
   }),
   topic({

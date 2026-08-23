@@ -7,6 +7,7 @@ import {
   ExternalLink,
   Printer,
   Search,
+  Sparkles,
   X,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -36,6 +37,7 @@ import type { EmployeeRole, PosView } from "@/lib/pos/types";
 import { cn } from "@/lib/utils";
 import { useGuideAudience } from "@/lib/guide/use-guide-audience";
 import { GuideBlocks, CompleteCheck } from "./GuideBlocks";
+import { ReplayWorkflowButton } from "@/components/onboarding/ReplayWorkflowButton";
 
 function roleLabel(role: GuideRole) {
   return GUIDE_ROLE_LABEL[role];
@@ -56,6 +58,7 @@ export function OperatorsGuide({
 }) {
   const storeFocus = useGuideStore((s) => s.focusTopicId);
   const setFocus = useGuideStore((s) => s.setFocusTopic);
+  const openWhatsNew = useGuideStore((s) => s.openWhatsNew);
   const rememberTopic = useGuideStore((s) => s.rememberTopic);
   const toggleComplete = useGuideStore((s) => s.toggleComplete);
   const isComplete = useGuideStore((s) => s.isComplete);
@@ -285,6 +288,22 @@ export function OperatorsGuide({
                 </span>
               </button>
             )}
+            <div className="flex flex-wrap gap-1.5">
+              <ReplayWorkflowButton variant="secondary" />
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                className="h-9 gap-1.5"
+                onClick={() => {
+                  onClose?.();
+                  openWhatsNew();
+                }}
+              >
+                <Sparkles className="h-4 w-4" />
+                Latest updates
+              </Button>
+            </div>
           </div>
           <nav className="min-h-0 flex-1 overflow-y-auto p-2">
             {grouped.map(({ chapter, topics }) => (
@@ -351,6 +370,11 @@ export function OperatorsGuide({
                       <ExternalLink className="mr-1.5 h-3.5 w-3.5" />
                       Open in app
                     </Button>
+                  )}
+                  {(active.id === "role-walkthroughs" ||
+                    active.id === "whats-new-on-login" ||
+                    active.id.startsWith("role-")) && (
+                    <ReplayWorkflowButton variant="secondary" label="Replay workflow" />
                   )}
                   <Button
                     size="sm"
