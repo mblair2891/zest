@@ -12,6 +12,7 @@ import {
 } from "@/lib/pos/section-control";
 import { staffTitle } from "@/lib/pos/rbac";
 import { GrantTableDialog } from "./GrantTableDialog";
+import { SetupAssistButton } from "@/components/assist/SetupAssistDialog";
 
 export function EmployeesView() {
   const employees = usePosStore((s) => s.employees);
@@ -61,6 +62,7 @@ export function EmployeesView() {
     <div className="h-full overflow-y-auto p-3">
       <div className="mb-4 flex flex-wrap items-center gap-2">
         <h2 className="text-sm font-semibold">Staff, clock & sections</h2>
+        <SetupAssistButton domain="staff" />
         <Badge variant="secondary" className="tabular">
           {employees.filter((e) => e.clockedIn).length} on clock
         </Badge>

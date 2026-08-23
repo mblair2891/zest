@@ -1,6 +1,8 @@
 import type {
+  Course,
   Customer,
   Employee,
+  EmployeeRole,
   ExtraTableGrant,
   ExtraTableGrantScope,
   FloorSection,
@@ -23,6 +25,7 @@ import type {
   SettlementConfig,
   SettlementPeriod,
   Table,
+  TicketStation,
   VenueEntityId,
   WaitlistEntry,
   Vendor,
@@ -186,6 +189,37 @@ export interface PosStore {
   setCustomerTier: (customerId: string, tier: string) => void;
   setCustomerMarketingOptIn: (customerId: string, optIn: boolean) => void;
   toggleItemAvailable: (id: string) => void;
+  createCategory: (input: {
+    name: string;
+    station?: TicketStation;
+  }) => { id: string };
+  createMenuItem: (input: {
+    name: string;
+    description?: string;
+    priceCents: number;
+    categoryId: string;
+    station?: TicketStation;
+    vendorId?: string;
+    course?: Course;
+    modifierGroupIds?: string[];
+  }) => { id: string };
+  createModifierGroup: (input: {
+    name: string;
+    required?: boolean;
+    min?: number;
+    max?: number;
+    options: { name: string; priceCents: number }[];
+  }) => { id: string };
+  createVendor: (input: {
+    name: string;
+    shortName?: string;
+    stationType?: "bar" | "kitchen" | "both";
+  }) => { id: string };
+  createEmployee: (input: {
+    name: string;
+    role: EmployeeRole;
+    pin?: string;
+  }) => { id: string; pin: string };
   receiveInventory: (id: string, qty: number) => void;
   updateInventory: (id: string, patch: Partial<InventoryItem>) => void;
   updateTableLayout: (id: string, patch: Partial<Table>) => void;

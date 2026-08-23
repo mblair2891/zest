@@ -5,6 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { usePosStore } from "@/lib/pos/store";
 import { vendorSubtotalOnOrder } from "@/lib/pos/settlement";
 import { formatCurrency, formatDateTime } from "@/lib/utils";
+import { SetupAssistButton } from "@/components/assist/SetupAssistDialog";
 
 export function VendorPortalView() {
   const vendors = usePosStore((s) => s.vendors);
@@ -55,6 +56,7 @@ export function VendorPortalView() {
           <Store className="h-4 w-4 text-primary" />
           <h2 className="text-sm font-semibold">Vendor portal</h2>
           <Badge variant="info">Self-serve stall owner view</Badge>
+          <SetupAssistButton domain="operator" label="Add operator" />
         </div>
         <div className="mt-2 flex flex-wrap gap-1">
           {vendors.map((v) => (

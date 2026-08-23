@@ -180,4 +180,48 @@ export const GETTING_STARTED_TOPICS: GuideTopic[] = [
       related("login", "prospect-intake", "onboarding-wizard", "create-org"),
     ],
   }),
+  topic({
+    id: "setup-by-voice",
+    chapterId: "getting-started",
+    title: "Set up your location by talking to Summex",
+    summary:
+      "Type or speak a paragraph. Assist extracts fields, asks a few follow-ups, then you confirm. Forms still work.",
+    roles: ["owner_manager", "host_operator", "platform_admin"],
+    keywords: [
+      "describe with ai",
+      "voice",
+      "assist",
+      "setup",
+      "menu item",
+      "ribeye",
+      "talk",
+    ],
+    openView: "menu",
+    blocks: [
+      why(
+        "Location setup is faster as a short conversation than as ten empty forms. Assist is a parallel path — every field remains editable by hand.",
+      ),
+      steps(
+        "Open Menu, Floor editor, Staff, Vendors, Settlement, or Settings.",
+        "Tap Describe with AI (or Add by voice or text).",
+        "Type a paragraph or tap the mic: e.g. “Ribeye, 14oz USDA choice, grilled, mashed potatoes and seasonal veg, fifteen dollars.”",
+        "If cash discount is on, answer whether $15 is the printed/card price or the cash price. Printed/card is what the menu stores.",
+        "On a host venue, say which operator owns the item if it is unclear.",
+        "Preview the structured card. Edit anything. Confirm — Summex writes the real record.",
+      ),
+      ul(
+        "Menu items, categories, modifier groups.",
+        "Floor sections and table ranges (“section A by the window, tables 1–6 seats 4”).",
+        "Operators / vendors (bar vs kitchen).",
+        "Station routing, staff (name, email, role), location name, cash discount in plain language.",
+      ),
+      tip(
+        "If no AI key is configured, Guided setup still parses the paragraph and asks the same follow-ups. Guest cards remain Quantum Payments.",
+      ),
+      warn(
+        "Assist never invents tax rates or legal claims. You confirm every draft before it saves.",
+      ),
+      related("cash-discount", "menu-modifiers", "floor-tables", "invites-roles"),
+    ],
+  }),
 ];

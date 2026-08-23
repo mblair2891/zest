@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { usePosStore } from "@/lib/pos/store";
 import { formatCurrency } from "@/lib/utils";
 import { isHappyHour, printedItemPriceCents } from "@/lib/pos/calculations";
+import { SetupAssistButton } from "@/components/assist/SetupAssistDialog";
 
 export function MenuAdminView() {
   const categories = usePosStore((s) => s.categories);
@@ -17,6 +18,9 @@ export function MenuAdminView() {
       <div className="mb-4 flex flex-wrap items-center gap-2">
         <h2 className="text-sm font-semibold">Menu & 86 board</h2>
         {happy && <Badge variant="success">Happy hour active</Badge>}
+        <SetupAssistButton domain="menu_item" label="Describe with AI" />
+        <SetupAssistButton domain="category" label="Add category" />
+        <SetupAssistButton domain="modifier" label="Add modifiers" />
         <p className="w-full text-xs text-muted-foreground">
           Toggle availability to 86 items. Stock-tracked items auto-disable at
           zero.

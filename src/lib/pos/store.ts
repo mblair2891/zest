@@ -1128,6 +1128,127 @@ const usePosStoreRaw = create()(persist((set, get) => ({
 			available: !m.available
 		} : m) });
 	},
+	createCategory: ({ name, station }) => {
+		const id = uid("cat");
+		const colors = ["#2C4A6E", "#1F7A4C", "#9A6700", "#A61B1B", "#5C5C5C"];
+		set({
+			categories: [
+				...get().categories,
+				{
+					id,
+					name: name.trim() || "Category",
+					sort: get().categories.length,
+					color: colors[get().categories.length % colors.length]!,
+					station: station ?? "kitchen",
+				},
+			],
+		});
+		get().audit("menu", `Category ${name}`);
+		return { id };
+	},
+	createMenuItem: (input) => {
+		const id = uid("itm");
+		const vendor = input.vendorId
+			? get().vendors.find((v) => v.id === input.vendorId)
+			: undefined;
+		set({
+			menuItems: [
+				...get().menuItems,
+				{
+					id,
+					name: input.name.trim() || "Item",
+					categoryId: input.categoryId,
+					priceCents: Math.max(0, Math.round(input.priceCents)),
+					course: input.course ?? "entree",
+					station: input.station ?? "kitchen",
+					description: input.description,
+					modifierGroupIds: input.modifierGroupIds ?? [],
+					available: true,
+					vendorId: input.vendorId,
+					online: true,
+				},
+			],
+		});
+		get().audit("menu", `${input.name}${vendor ? ` · ${vendor.shortName}` : ""}`);
+		return { id };
+	},
+	createModifierGroup: (input) => {
+		const id = uid("modg");
+		set({
+			modifierGroups: [
+				...get().modifierGroups,
+				{
+					id,
+					name: input.name.trim() || "Modifiers",
+					required: Boolean(input.required),
+					min: input.min ?? (input.required ? 1 : 0),
+					max: input.max ?? Math.max(1, input.options.length),
+					options: input.options.map((o, i) => ({
+						id: uid("opt") + i,
+						name: o.name,
+						priceCents: o.priceCents,
+					})),
+				},
+			],
+		});
+		get().audit("menu", `Modifiers ${input.name}`);
+		return { id };
+	},
+	createVendor: (input) => {
+		const id = uid("vnd");
+		const colors = ["#2C4A6E", "#1F7A4C", "#9A6700", "#A61B1B"];
+		const short = (input.shortName || input.name).slice(0, 12);
+		set({
+			vendors: [
+				...get().vendors,
+				{
+					id,
+					name: input.name.trim() || "Operator",
+					shortName: short,
+					locationId: get().tenantLocationId || "loc",
+					color: colors[get().vendors.length % colors.length]!,
+					cuisine: "",
+					active: true,
+					bankLast4: "0000",
+					bankLabel: "Payout placeholder",
+					stationLabel: input.stationType === "bar" ? "Bar" : "Kitchen",
+					stationType: input.stationType ?? "kitchen",
+				},
+			],
+		});
+		get().audit("vendor", input.name);
+		return { id };
+	},
+	createEmployee: (input) => {
+		const used = new Set(get().employees.map((e) => e.pin));
+		let pin = (input.pin || "").replace(/\D/g, "").slice(0, 4);
+		if (pin.length < 4 || used.has(pin)) {
+			do {
+				pin = String(1000 + Math.floor(Math.random() * 9000));
+			} while (used.has(pin));
+		}
+		const id = uid("emp");
+		const colors = ["#2C4A6E", "#1F7A4C", "#9A6700", "#5C5C5C"];
+		set({
+			employees: [
+				...get().employees,
+				{
+					id,
+					name: input.name.trim() || "Staff",
+					pin,
+					role: input.role,
+					color: colors[get().employees.length % colors.length]!,
+					clockedIn: false,
+					tipsEarned: 0,
+					salesTotal: 0,
+					active: true,
+					homeSectionIds: [],
+				},
+			],
+		});
+		get().audit("staff", `${input.name} · ${input.role}`);
+		return { id, pin };
+	},
 	receiveInventory: (id, qty) => {
 		set({ inventory: get().inventory.map((i) => i.id === id ? {
 			...i,

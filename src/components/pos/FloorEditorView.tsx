@@ -5,6 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { usePosStore } from "@/lib/pos/store";
 import { cn, uid } from "@/lib/utils";
+import { SetupAssistButton } from "@/components/assist/SetupAssistDialog";
 import {
   SECTION_SWATCHES,
   sectionColorForTable,
@@ -79,6 +80,7 @@ export function FloorEditorView() {
       <div className="flex flex-wrap items-center gap-2 border-b border-border px-3 py-2">
         <h2 className="text-sm font-semibold">Floor plan editor</h2>
         <Badge variant="secondary">Drag tables · color-coded sections</Badge>
+        <SetupAssistButton domain="floor" label="Add by voice or text" />
         <div className="ml-auto flex gap-2">
           <Button
             size="sm"

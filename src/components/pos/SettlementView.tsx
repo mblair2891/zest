@@ -7,6 +7,7 @@ import type { SettlementPeriodType, HostCutType } from "@/lib/pos/types";
 import { formatCurrency, formatDateTime } from "@/lib/utils";
 import { CHARGEBACK_FEE_CENTS, PAYMENTS_BRAND } from "@/lib/platform/brand";
 import { GuideLearnLink } from "@/components/guide/GuideLearnLink";
+import { SetupAssistButton } from "@/components/assist/SetupAssistDialog";
 
 export function SettlementView() {
   const config = usePosStore((s) => s.settlementConfig);
@@ -45,7 +46,8 @@ export function SettlementView() {
           <h2 className="text-sm font-semibold">
             Host settlement · {config.hostName}
           </h2>
-          <div className="flex flex-wrap gap-3">
+          <div className="flex flex-wrap items-center gap-3">
+            <SetupAssistButton domain="operator" label="Add operator" />
             <GuideLearnLink topicId="settlement">Learn: settlement</GuideLearnLink>
             <GuideLearnLink topicId="chargebacks">Learn: chargebacks</GuideLearnLink>
           </div>

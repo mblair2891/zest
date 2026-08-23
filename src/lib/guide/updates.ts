@@ -7,6 +7,16 @@ import { GUIDE_VERSION, type GuideRole, type GuideUpdate } from "./types";
  */
 export const GUIDE_UPDATES: GuideUpdate[] = [
   {
+    id: "upd_2026_08_25_setup_assist",
+    date: "2026-08-25",
+    title: "Talk your location into Summex",
+    summary:
+      "Describe with AI on menu, floor, staff, operators, routing, and cash discount. Type or speak; confirm the preview before it saves.",
+    roles: ["owner_manager", "host_operator"],
+    topicId: "setup-by-voice",
+    tags: ["ai", "setup", "voice"],
+  },
+  {
     id: "upd_2026_08_24_cash_discount",
     date: "2026-08-24",
     title: "Cash discount with round-up prices",

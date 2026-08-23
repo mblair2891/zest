@@ -15,6 +15,7 @@ import {
   type FabricPolicy,
 } from "@/lib/pos/network-store";
 import { formatCurrency, formatTime } from "@/lib/utils";
+import { SetupAssistButton } from "@/components/assist/SetupAssistDialog";
 import { GuideLearnLink } from "@/components/guide/GuideLearnLink";
 import {
   CASH_ROUND_INCREMENTS,
@@ -71,7 +72,12 @@ export function SettingsView() {
 
   return (
     <div className="h-full overflow-y-auto p-3">
-      <h2 className="mb-4 text-sm font-semibold">Restaurant & platform settings</h2>
+      <div className="mb-4 flex flex-wrap items-center gap-2">
+        <h2 className="text-sm font-semibold">Restaurant & platform settings</h2>
+        <SetupAssistButton domain="location" />
+        <SetupAssistButton domain="cash_discount" label="Describe cash discount" />
+        <SetupAssistButton domain="station" label="Routing" />
+      </div>
 
       <div className="mb-6 grid max-w-2xl gap-4">
         <label className="block text-sm">
