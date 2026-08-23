@@ -93,6 +93,41 @@ export function runDemoStepAction(action: DemoStep["action"]): void {
     case "settle_preview":
       usePosStore.getState().setView("settlement");
       break;
+    case "waitlist_join": {
+      const s = usePosStore.getState();
+      s.updateSettings?.({ waitlistEnabled: true, kioskMode: "combined" });
+      s.addWaitlist({
+        name: "Jordan Guest",
+        partySize: 2,
+        phone: "5550101",
+        quotedMinutes: 25,
+        status: "waiting",
+      });
+      s.setView("waitlist");
+      break;
+    }
+    case "waitlist_ready": {
+      const w = usePosStore
+        .getState()
+        .waitlist.find((x) => x.status === "waiting");
+      if (w) usePosStore.getState().updateWaitlistStatus(w.id, "notified");
+      usePosStore.getState().setView("waitlist");
+      break;
+    }
+    case "reservation_seed": {
+      usePosStore.getState().addReservation({
+        name: "Blair",
+        partySize: 2,
+        phone: "5550100",
+        at: Date.now() + 3600000,
+        time: Date.now() + 3600000,
+        checkInCode: "K7M2",
+        status: "booked",
+        tableSuggestion: "12",
+      });
+      usePosStore.getState().setView("waitlist");
+      break;
+    }
     default:
       break;
   }

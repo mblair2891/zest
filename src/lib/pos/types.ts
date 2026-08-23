@@ -181,6 +181,10 @@ export interface RestaurantSettings {
   cashRoundIncrement?: CashRoundIncrement;
   /** Always round up to the increment (never nearest). */
   cashRoundMode?: CashRoundMode;
+  kioskMode?: "order" | "checkin" | "combined";
+  waitlistEnabled?: boolean;
+  waitlistReason?: string;
+  smsFrom?: string;
 }
 
 export interface Employee {
@@ -376,10 +380,11 @@ export interface WaitlistEntry {
   partySize: number;
   phone?: string;
   quotedMinutes: number;
-  status: "waiting" | "notified" | "seated" | "cancelled" | "no_show";
+  status: "waiting" | "notified" | "seated" | "cancelled" | "no_show" | "removed";
   createdAt: number;
   notifiedAt?: number;
   notes?: string;
+  optOutToken?: string;
 }
 
 export interface Reservation {
@@ -391,9 +396,11 @@ export interface Reservation {
   at?: number;
   time?: number;
   tableId?: string;
-  status: "booked" | "confirmed" | "seated" | "cancelled" | "no_show";
+  status: "booked" | "confirmed" | "seated" | "cancelled" | "no_show" | "checked_in";
   notes?: string;
   createdAt: number;
+  checkInCode?: string;
+  tableSuggestion?: string;
 }
 
 export interface Customer {

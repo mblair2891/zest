@@ -17,6 +17,7 @@ export const POST_LOGIN_STATIC = [
   "/whitepaper",
   "/kiosk",
   "/online",
+  "/reserve",
   "/demo",
   "/demo/tour/full",
 ] as const;

@@ -971,9 +971,9 @@ const usePosStoreRaw = create()(persist((set, get) => ({
 	addWaitlist: (entry) => {
 		set({ waitlist: [{
 			...entry,
-			id: uid("wl"),
-			createdAt: Date.now(),
-			status: "waiting"
+			id: entry.id || uid("wl"),
+			createdAt: entry.createdAt || Date.now(),
+			status: entry.status || "waiting"
 		}, ...get().waitlist] });
 	},
 	updateWaitlistStatus: (id, status) => {
@@ -994,9 +994,9 @@ const usePosStoreRaw = create()(persist((set, get) => ({
 	addReservation: (entry) => {
 		set({ reservations: [{
 			...entry,
-			id: uid("res"),
-			status: "booked",
-			createdAt: Date.now()
+			id: entry.id || uid("res"),
+			status: entry.status || "booked",
+			createdAt: entry.createdAt || Date.now()
 		}, ...get().reservations] });
 	},
 	updateReservationStatus: (id, status) => {

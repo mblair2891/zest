@@ -18,6 +18,7 @@ import { formatCurrency, formatTime } from "@/lib/utils";
 import { isDevDemoClient } from "@/lib/saas/flags";
 import { SetupAssistButton } from "@/components/assist/SetupAssistDialog";
 import { GuideLearnLink } from "@/components/guide/GuideLearnLink";
+import { saveFrontSettingsFn } from "@/lib/front/api";
 import {
   CASH_ROUND_INCREMENTS,
   cashPriceCents,
@@ -58,7 +59,24 @@ function PolicyCheck({
 
 export function SettingsView() {
   const settings = usePosStore((s) => s.settings);
+  const locId = usePosStore((s) => s.tenantLocationId) || "loc_kiosk";
   const updateSettings = usePosStore((s) => s.updateSettings);
+  const saveFront = (patch: Parameters<typeof updateSettings>[0]) => {
+    updateSettings(patch);
+    void saveFrontSettingsFn({
+      data: {
+        locationId: locId,
+        kioskMode: (patch.kioskMode ?? settings.kioskMode) as
+          | "order"
+          | "checkin"
+          | "combined"
+          | undefined,
+        waitlistEnabled:
+          patch.waitlistEnabled ?? settings.waitlistEnabled,
+        smsFrom: patch.smsFrom ?? settings.smsFrom,
+      },
+    }).catch(() => undefined);
+  };
   const updateSectionPolicy = usePosStore((s) => s.updateSectionPolicy);
   const resetDemo = usePosStore((s) => s.resetDemo);
   const loadLaundryTestVenue = usePosStore((s) => s.loadLaundryTestVenue);
@@ -194,6 +212,44 @@ export function SettingsView() {
           />
           Multi-tenant food hall mode
         </label>
+        <label className="flex items-center gap-2 text-sm">
+          <input
+            type="checkbox"
+            checked={!!settings.waitlistEnabled}
+            onChange={(e) =>
+              saveFront({ waitlistEnabled: e.target.checked })
+            }
+            className="h-4 w-4 rounded border-border"
+          />
+          Waitlist enabled at kiosk
+        </label>
+        <label className="block text-sm">
+          <span className="mb-1 block text-muted-foreground">Kiosk mode</span>
+          <select
+            className="h-9 w-full max-w-xs rounded-md border border-border bg-bg px-2 text-sm"
+            value={settings.kioskMode ?? "combined"}
+            onChange={(e) =>
+              saveFront({
+                kioskMode: e.target.value as "order" | "checkin" | "combined",
+              })
+            }
+          >
+            <option value="order">Order kiosk</option>
+            <option value="checkin">Waitlist + reservation check-in</option>
+            <option value="combined">Combined (Order | Check in | Waitlist)</option>
+          </select>
+        </label>
+        <label className="block text-sm">
+          <span className="mb-1 block text-muted-foreground">SMS from (optional)</span>
+          <Input
+            value={settings.smsFrom ?? ""}
+            onChange={(e) => saveFront({ smsFrom: e.target.value })}
+            placeholder="+1…"
+          />
+        </label>
+        <p className="text-xs text-muted-foreground">
+          Guest kiosk: /kiosk — Twilio keys optional; sandbox logs messages on Host stand.
+        </p>
 
         <div className="rounded-2xl border border-border bg-surface p-4">
           <div className="flex flex-wrap items-center justify-between gap-2">

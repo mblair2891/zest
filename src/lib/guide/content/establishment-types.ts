@@ -32,12 +32,15 @@ export const ESTABLISHMENT_TYPE_TOPICS: GuideTopic[] = [
         "Payments",
         "Quantum Payments is the only guest card. Cash and first-party gift sit beside it. There is no processor picker.",
       ),
+      p(
+        "When the dining room is full, turn Waitlist on. The kiosk shows a wait range and takes the guest’s phone. Reservation check-in is last name + code.",
+      ),
       cta(
         "/demo/restaurant/tour",
         "Open restaurant guided demo",
-        "Seat, course, pay — in a room that is not a live tenant.",
+        "Seat, course, pay — then waitlist and check-in.",
       ),
-      related("type-food-hall", "sections", "host-capture", "prospect-demos"),
+      related("type-food-hall", "feature-waitlist", "feature-kiosk", "prospect-demos"),
     ],
   }),
   topic({
@@ -119,8 +122,11 @@ export const ESTABLISHMENT_TYPE_TOPICS: GuideTopic[] = [
         "Payments",
         "Quantum Payments is the only guest card. Tabs are not a second processor.",
       ),
+      p(
+        "A lounge waitlist is the same kiosk flow. Tabs are not a substitute for a quoted wait when the room is full.",
+      ),
       cta("/demo/bar_lounge/tour", "Open bar & lounge guided demo"),
-      related("type-restaurant", "type-cafe", "prospect-demos"),
+      related("type-restaurant", "feature-waitlist", "prospect-demos"),
     ],
   }),
   topic({
@@ -147,6 +153,9 @@ export const ESTABLISHMENT_TYPE_TOPICS: GuideTopic[] = [
         "Take Quantum Payments at the register and close.",
       ),
       callout("Payments", "One card at the counter. Quantum Payments only."),
+      p(
+        "QSR kiosks usually stay on Order. Enable Combined only if you also take names for a make-line wait.",
+      ),
       cta("/demo/qsr/tour", "Open QSR guided demo"),
       related("type-cafe", "type-ghost-kitchen", "prospect-demos"),
     ],

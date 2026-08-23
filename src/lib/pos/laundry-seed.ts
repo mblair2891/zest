@@ -46,6 +46,8 @@ export const LAUNDRY_SETTINGS: RestaurantSettings = {
   cashDiscountPercent: 5,
   cashRoundIncrement: 0.25,
   cashRoundMode: "up",
+  waitlistEnabled: true,
+  kioskMode: "combined",
 };
 
 export const LAUNDRY_VENDORS: Vendor[] = [

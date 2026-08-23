@@ -35,6 +35,8 @@ export function starterSettings(venueName: string): RestaurantSettings {
     multiTenantHallMode: false,
     onlineOrderingEnabled: true,
     qrOrderingEnabled: true,
+    waitlistEnabled: true,
+    kioskMode: "combined",
     sectionPolicy: { ...DEFAULT_SECTION_POLICY },
     ...DEFAULT_CASH_DISCOUNT,
   };

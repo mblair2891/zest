@@ -26,6 +26,7 @@ import { Route as OnlineRouteImport } from './routes/online'
 import { Route as PipelineRouteImport } from './routes/pipeline'
 import { Route as PlatformRouteImport } from './routes/platform'
 import { Route as PricingRouteImport } from './routes/pricing'
+import { Route as ReserveRouteImport } from './routes/reserve'
 import { Route as SignupRouteImport } from './routes/signup'
 import { Route as WhitepaperRouteImport } from './routes/whitepaper'
 import { Route as ApiHealthRouteImport } from './routes/api/health'
@@ -44,6 +45,7 @@ import { Route as ApiBillingWebhookRouteImport } from './routes/api/billing/webh
 import { Route as AppVenueTypeRouteImport } from './routes/app.venue.$type'
 import { Route as DemoTypeTourRouteImport } from './routes/demo.$type.tour'
 import { Route as DemoTourFullRouteImport } from './routes/demo.tour.full'
+import { Route as WaitlistOptOutTokenRouteImport } from './routes/waitlist.opt-out.$token'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -128,6 +130,11 @@ const PlatformRoute = PlatformRouteImport.update({
 const PricingRoute = PricingRouteImport.update({
   id: '/pricing',
   path: '/pricing',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ReserveRoute = ReserveRouteImport.update({
+  id: '/reserve',
+  path: '/reserve',
   getParentRoute: () => rootRouteImport,
 } as any)
 const SignupRoute = SignupRouteImport.update({
@@ -220,6 +227,11 @@ const DemoTourFullRoute = DemoTourFullRouteImport.update({
   path: '/tour/full',
   getParentRoute: () => DemoRoute,
 } as any)
+const WaitlistOptOutTokenRoute = WaitlistOptOutTokenRouteImport.update({
+  id: '/waitlist/opt-out/$token',
+  path: '/waitlist/opt-out/$token',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -239,6 +251,7 @@ export interface FileRoutesByFullPath {
   '/pipeline': typeof PipelineRoute
   '/platform': typeof PlatformRoute
   '/pricing': typeof PricingRoute
+  '/reserve': typeof ReserveRoute
   '/signup': typeof SignupRoute
   '/whitepaper': typeof WhitepaperRoute
   '/api/health': typeof ApiHealthRoute
@@ -257,6 +270,7 @@ export interface FileRoutesByFullPath {
   '/app/venue/$type': typeof AppVenueTypeRoute
   '/demo/$type/tour': typeof DemoTypeTourRoute
   '/demo/tour/full': typeof DemoTourFullRoute
+  '/waitlist/opt-out/$token': typeof WaitlistOptOutTokenRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -276,6 +290,7 @@ export interface FileRoutesByTo {
   '/pipeline': typeof PipelineRoute
   '/platform': typeof PlatformRoute
   '/pricing': typeof PricingRoute
+  '/reserve': typeof ReserveRoute
   '/signup': typeof SignupRoute
   '/whitepaper': typeof WhitepaperRoute
   '/api/health': typeof ApiHealthRoute
@@ -294,6 +309,7 @@ export interface FileRoutesByTo {
   '/app/venue/$type': typeof AppVenueTypeRoute
   '/demo/$type/tour': typeof DemoTypeTourRoute
   '/demo/tour/full': typeof DemoTourFullRoute
+  '/waitlist/opt-out/$token': typeof WaitlistOptOutTokenRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -314,6 +330,7 @@ export interface FileRoutesById {
   '/pipeline': typeof PipelineRoute
   '/platform': typeof PlatformRoute
   '/pricing': typeof PricingRoute
+  '/reserve': typeof ReserveRoute
   '/signup': typeof SignupRoute
   '/whitepaper': typeof WhitepaperRoute
   '/api/health': typeof ApiHealthRoute
@@ -332,6 +349,7 @@ export interface FileRoutesById {
   '/app/venue/$type': typeof AppVenueTypeRoute
   '/demo/$type/tour': typeof DemoTypeTourRoute
   '/demo/tour/full': typeof DemoTourFullRoute
+  '/waitlist/opt-out/$token': typeof WaitlistOptOutTokenRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -353,6 +371,7 @@ export interface FileRouteTypes {
     | '/pipeline'
     | '/platform'
     | '/pricing'
+    | '/reserve'
     | '/signup'
     | '/whitepaper'
     | '/api/health'
@@ -371,6 +390,7 @@ export interface FileRouteTypes {
     | '/app/venue/$type'
     | '/demo/$type/tour'
     | '/demo/tour/full'
+    | '/waitlist/opt-out/$token'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -390,6 +410,7 @@ export interface FileRouteTypes {
     | '/pipeline'
     | '/platform'
     | '/pricing'
+    | '/reserve'
     | '/signup'
     | '/whitepaper'
     | '/api/health'
@@ -408,6 +429,7 @@ export interface FileRouteTypes {
     | '/app/venue/$type'
     | '/demo/$type/tour'
     | '/demo/tour/full'
+    | '/waitlist/opt-out/$token'
   id:
     | '__root__'
     | '/'
@@ -427,6 +449,7 @@ export interface FileRouteTypes {
     | '/pipeline'
     | '/platform'
     | '/pricing'
+    | '/reserve'
     | '/signup'
     | '/whitepaper'
     | '/api/health'
@@ -445,6 +468,7 @@ export interface FileRouteTypes {
     | '/app/venue/$type'
     | '/demo/$type/tour'
     | '/demo/tour/full'
+    | '/waitlist/opt-out/$token'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -465,6 +489,7 @@ export interface RootRouteChildren {
   PipelineRoute: typeof PipelineRoute
   PlatformRoute: typeof PlatformRoute
   PricingRoute: typeof PricingRoute
+  ReserveRoute: typeof ReserveRoute
   SignupRoute: typeof SignupRoute
   WhitepaperRoute: typeof WhitepaperRoute
   ApiHealthRoute: typeof ApiHealthRoute
@@ -478,6 +503,7 @@ export interface RootRouteChildren {
   VenueTypeRoute: typeof VenueTypeRoute
   ApiAuthSplatRoute: typeof ApiAuthSplatRoute
   ApiBillingWebhookRoute: typeof ApiBillingWebhookRoute
+  WaitlistOptOutTokenRoute: typeof WaitlistOptOutTokenRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -599,6 +625,13 @@ declare module '@tanstack/react-router' {
       path: '/pricing'
       fullPath: '/pricing'
       preLoaderRoute: typeof PricingRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/reserve': {
+      id: '/reserve'
+      path: '/reserve'
+      fullPath: '/reserve'
+      preLoaderRoute: typeof ReserveRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/signup': {
@@ -727,6 +760,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DemoTourFullRouteImport
       parentRoute: typeof DemoRoute
     }
+    '/waitlist/opt-out/$token': {
+      id: '/waitlist/opt-out/$token'
+      path: '/waitlist/opt-out/$token'
+      fullPath: '/waitlist/opt-out/$token'
+      preLoaderRoute: typeof WaitlistOptOutTokenRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -792,6 +832,7 @@ const rootRouteChildren: RootRouteChildren = {
   PipelineRoute: PipelineRoute,
   PlatformRoute: PlatformRoute,
   PricingRoute: PricingRoute,
+  ReserveRoute: ReserveRoute,
   SignupRoute: SignupRoute,
   WhitepaperRoute: WhitepaperRoute,
   ApiHealthRoute: ApiHealthRoute,
@@ -805,6 +846,7 @@ const rootRouteChildren: RootRouteChildren = {
   VenueTypeRoute: VenueTypeRoute,
   ApiAuthSplatRoute: ApiAuthSplatRoute,
   ApiBillingWebhookRoute: ApiBillingWebhookRoute,
+  WaitlistOptOutTokenRoute: WaitlistOptOutTokenRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

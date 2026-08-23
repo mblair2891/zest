@@ -3,7 +3,11 @@ import { persist, createJSONStorage } from "zustand/middleware";
 import { uid } from "@/lib/utils";
 import type { Employee, EmployeeRole, KitchenTicket } from "./types";
 
-export type PosNoticeKind = "ticket_bumped" | "ticket_recalled";
+export type PosNoticeKind =
+  | "ticket_bumped"
+  | "ticket_recalled"
+  | "guest_checked_in"
+  | "waitlist_update";
 
 export interface PosNotice {
   id: string;
@@ -12,12 +16,12 @@ export interface PosNotice {
   body: string;
   createdAt: number;
   read: boolean;
-  ticketId: string;
-  orderId: string;
-  tableLabel: string;
-  station: KitchenTicket["station"];
-  serverName: string;
-  itemSummary: string;
+  ticketId?: string;
+  orderId?: string;
+  tableLabel?: string;
+  station?: KitchenTicket["station"];
+  serverName?: string;
+  itemSummary?: string;
 }
 
 interface NotifyState {
@@ -28,6 +32,12 @@ interface NotifyState {
   foodUpUntil: Record<string, number>;
 
   pushFromTicket: (ticket: KitchenTicket, kind: PosNoticeKind) => PosNotice;
+  pushNotice: (input: {
+    kind: PosNoticeKind;
+    title: string;
+    body: string;
+    tableLabel?: string;
+  }) => PosNotice;
   markRead: (id: string) => void;
   markAllRead: () => void;
   clearNotice: (id: string) => void;
@@ -53,6 +63,9 @@ export function noticeVisibleTo(
   if (!emp) return false;
   const role: EmployeeRole = emp.role;
   if (role === "owner" || role === "manager" || role === "host") return true;
+  if (n.kind === "guest_checked_in" || n.kind === "waitlist_update") {
+    return role === "server";
+  }
   if (role === "server") return true;
   if (role === "bartender") return n.station === "bar" || n.kind === "ticket_bumped";
   if (role === "kitchen") return n.station === "kitchen";
@@ -74,6 +87,22 @@ export const useNotifyStore = create<NotifyState>()(
       soundEnabled: true,
       desktopEnabled: false,
       foodUpUntil: {},
+
+      pushNotice: (input) => {
+        const notice: PosNotice = {
+          id: uid("nt"),
+          kind: input.kind,
+          title: input.title,
+          body: input.body,
+          createdAt: Date.now(),
+          read: false,
+          tableLabel: input.tableLabel,
+        };
+        set({
+          notices: [notice, ...get().notices].slice(0, MAX_NOTICES),
+        });
+        return notice;
+      },
 
       pushFromTicket: (ticket, kind) => {
         const itemSummary = summarizeItems(ticket);

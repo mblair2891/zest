@@ -7,6 +7,7 @@ import { PAYMENT_TOPICS } from "./content/payments";
 import { CASH_GIFT_TOPICS } from "./content/cash-gifts";
 import { DEVICE_TOPICS } from "./content/devices";
 import { ROLE_GUIDE_TOPICS } from "./content/roles";
+import { KIOSK_WAITLIST_TOPICS } from "./content/kiosk-waitlist";
 import { TROUBLESHOOTING_TOPICS } from "./content/troubleshooting";
 import { topicMatchesRoles } from "./roles";
 import type {
@@ -67,16 +68,22 @@ export const GUIDE_CHAPTERS: GuideChapter[] = [
     order: 8,
   },
   {
+    id: "kiosk",
+    title: "Kiosk & host stand",
+    summary: "Guest kiosk, waitlist, reservation check-in.",
+    order: 9,
+  },
+  {
     id: "roles",
     title: "Role guides",
     summary: "Platform admin, owner, server, kitchen/bar, vendor.",
-    order: 9,
+    order: 10,
   },
   {
     id: "troubleshooting",
     title: "Troubleshooting",
     summary: "Common errors, contacts, audit, glossary.",
-    order: 10,
+    order: 11,
   },
 ];
 
@@ -101,6 +108,7 @@ export const GUIDE_NAV_TABS: GuideNavTab[] = [
       "payments",
       "cash-gifts",
       "devices",
+      "kiosk",
       "troubleshooting",
     ],
   },
@@ -120,6 +128,7 @@ export const GUIDE_TOPICS: GuideTopic[] = [
   ...PAYMENT_TOPICS,
   ...CASH_GIFT_TOPICS,
   ...DEVICE_TOPICS,
+  ...KIOSK_WAITLIST_TOPICS,
   ...ROLE_GUIDE_TOPICS,
   ...TROUBLESHOOTING_TOPICS,
 ];

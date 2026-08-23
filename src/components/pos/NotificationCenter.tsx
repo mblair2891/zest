@@ -22,6 +22,9 @@ const FOH_ROLES = new Set([
 ]);
 
 function shouldToast(notice: PosNotice, role: string, view: string): boolean {
+  if (notice.kind === "guest_checked_in" || notice.kind === "waitlist_update") {
+    return FOH_ROLES.has(role);
+  }
   if (notice.kind === "ticket_bumped") {
     // KDS operator already sees the bump they just made
     if (

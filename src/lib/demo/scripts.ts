@@ -22,6 +22,9 @@ export type DemoStep = {
     | "open_tab"
     | "counter_open"
     | "settle_preview"
+    | "waitlist_join"
+    | "waitlist_ready"
+    | "reservation_seed"
     | "none";
 };
 
@@ -101,6 +104,36 @@ export const TYPE_SCRIPTS: Record<VenueEntityId, DemoScript> = {
         target: "order",
         autoMs: AUTO,
         action: "pay",
+      },
+      {
+        id: "r7",
+        title: "Waitlist",
+        body: "When the room is full, the kiosk shows a range — not a fake exact minute. Guests add themselves and get a sandbox text.",
+        kind: "pos",
+        view: "waitlist",
+        target: "waitlist",
+        autoMs: AUTO,
+        action: "waitlist_join",
+      },
+      {
+        id: "r8",
+        title: "Table ready",
+        body: "Host marks ready. The guest is texted. They can remove themselves from the same thread.",
+        kind: "pos",
+        view: "waitlist",
+        target: "waitlist",
+        autoMs: AUTO,
+        action: "waitlist_ready",
+      },
+      {
+        id: "r9",
+        title: "Reservation check-in",
+        body: "A booked party uses last name + code at the kiosk. Staff see Guest checked in.",
+        kind: "pos",
+        view: "waitlist",
+        target: "waitlist",
+        autoMs: AUTO,
+        action: "reservation_seed",
       },
     ],
   },
@@ -619,6 +652,16 @@ export const FULL_TOUR_SCRIPT: DemoScript = {
       kind: "narrative",
       autoMs: 7000,
       action: "none",
+    },
+    {
+      id: "f12",
+      title: "Kiosk, waitlist, check-in",
+      body: "The guest kiosk can take an order, join a waitlist, or check in a reservation with a code. Wait times are ranges. Texts are sandbox unless Twilio is set.",
+      kind: "pos",
+      view: "waitlist",
+      target: "waitlist",
+      autoMs: 7000,
+      action: "waitlist_join",
     },
   ],
 };
