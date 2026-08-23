@@ -14,12 +14,14 @@ export function employeeToGuideRoles(
       out.push("host_operator");
     }
   }
-  if (role === "server" || role === "host" || role === "busser") {
+  if (role === "server" || role === "host" || role === "busser" || role === "cashier") {
     out.push("server");
   }
   if (role === "bartender" || role === "kitchen") {
     out.push("kitchen_bar");
   }
+  if (role === "vendor_operator") out.push("vendor_operator");
+  if (role === "accountant") out.push("owner_manager");
   return out;
 }
 
@@ -36,7 +38,12 @@ export function saasRoleToGuideRoles(
   if (saasRole === "vendor" || saasRole === "operator") {
     return ["vendor_operator"];
   }
-  if (saasRole === "staff") return ["owner_manager"];
+  if (saasRole === "accountant") return ["owner_manager"];
+  if (saasRole === "staff" || saasRole === "server" || saasRole === "cashier") {
+    return ["server"];
+  }
+  if (saasRole === "bartender" || saasRole === "kitchen") return ["kitchen_bar"];
+  if (saasRole === "host") return ["server"];
   return [];
 }
 

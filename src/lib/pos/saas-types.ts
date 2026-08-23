@@ -52,10 +52,14 @@ export interface SaasMembership {
     | "cashier"
     | "staff"
     | "vendor"
+    | "server"
+    | "host"
+    | "bartender"
+    | "kitchen"
+    | "accountant"
     | "platform_admin"
     | "admin"
     | "ops"
-    | "accountant"
     | "support";
 }
 

@@ -12,6 +12,15 @@ export type LocationSetup = {
   devices: { pos: number; kds: number; handhelds: number };
   settlement: { periodType: string; hostCutPercent: number };
   hostBrandName: string;
+  timezone?: string;
+  hoursNote?: string;
+  tipPooling?: boolean;
+  tabAutoCloseMinutes?: number;
+  ticketPrefix?: string;
+  kioskMode?: string;
+  waitlistEnabled?: boolean;
+  reservationCheckIn?: boolean;
+  waitlistReason?: string;
 };
 
 export const EMPTY_LOCATION_SETUP: LocationSetup = {
@@ -22,6 +31,15 @@ export const EMPTY_LOCATION_SETUP: LocationSetup = {
   devices: { pos: 0, kds: 0, handhelds: 0 },
   settlement: { periodType: "weekly", hostCutPercent: 0 },
   hostBrandName: "",
+  timezone: "America/Los_Angeles",
+  hoursNote: "",
+  tipPooling: false,
+  tabAutoCloseMinutes: 0,
+  ticketPrefix: "",
+  kioskMode: "combined",
+  waitlistEnabled: false,
+  reservationCheckIn: true,
+  waitlistReason: "",
 };
 export type MembershipRole =
   | "owner"
@@ -29,6 +47,11 @@ export type MembershipRole =
   | "cashier"
   | "staff"
   | "vendor"
+  | "server"
+  | "host"
+  | "bartender"
+  | "kitchen"
+  | "accountant"
   | "platform_admin";
 export type MembershipStatus = "active" | "invited" | "revoked";
 export type PlanSlug =
@@ -48,6 +71,11 @@ export const MEMBERSHIP_ROLES: MembershipRole[] = [
   "cashier",
   "staff",
   "vendor",
+  "server",
+  "host",
+  "bartender",
+  "kitchen",
+  "accountant",
   "platform_admin",
 ];
 

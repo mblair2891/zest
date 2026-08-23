@@ -5,7 +5,11 @@ export type EmployeeRole =
   | "bartender"
   | "host"
   | "kitchen"
-  | "busser";
+  | "busser"
+  | "cashier"
+  | "vendor_operator"
+  | "accountant"
+  | "kiosk";
 
 export type VenueEntityId =
   | "restaurant"
@@ -185,6 +189,12 @@ export interface RestaurantSettings {
   waitlistEnabled?: boolean;
   waitlistReason?: string;
   smsFrom?: string;
+  timezone?: string;
+  hoursNote?: string;
+  tipPooling?: boolean;
+  tabAutoCloseMinutes?: number;
+  ticketPrefix?: string;
+  reservationCheckIn?: boolean;
 }
 
 export interface Employee {
@@ -208,6 +218,8 @@ export interface Employee {
   homeView?: PosView;
   /** Extra modules beyond the mapped RBAC role */
   extraViews?: PosView[];
+  /** Multi-operator host: this person is scoped to one operator. */
+  operatorId?: string;
 }
 
 export interface MenuCategory {

@@ -109,7 +109,7 @@ const NAV: {
   label: string;
   icon: React.ComponentType<{ className?: string }>;
 }[] = [
-  { id: "hq", label: "HQ", icon: Building2 },
+  { id: "hq", label: "Home", icon: Building2 },
   { id: "truck_pod", label: "Truck pod", icon: Truck },
   { id: "package", label: "Full pack", icon: Boxes },
   { id: "features", label: "All features", icon: Layers },

@@ -14,9 +14,12 @@ export function VendorPortalView() {
   const menuItems = usePosStore((s) => s.menuItems);
   const periods = usePosStore((s) => s.settlementPeriods);
   const toggleItem = usePosStore((s) => s.toggleItemAvailable);
-  const [vendorId, setVendorId] = useState(vendors[0]?.id ?? "");
+  const emp = usePosStore((s) => s.employees.find((e) => e.id === s.currentEmployeeId));
+  const lockedId = emp?.role === "vendor_operator" ? emp.operatorId : undefined;
+  const [vendorId, setVendorId] = useState(lockedId || vendors[0]?.id || "");
 
-  const vendor = vendors.find((v) => v.id === vendorId) ?? vendors[0];
+  const vendor =
+    vendors.find((v) => v.id === (lockedId || vendorId)) ?? vendors[0];
 
   const stats = useMemo(() => {
     if (!vendor) return null;
@@ -59,12 +62,12 @@ export function VendorPortalView() {
           <SetupAssistButton domain="operator" label="Add operator" />
         </div>
         <div className="mt-2 flex flex-wrap gap-1">
-          {vendors.map((v) => (
+          {(lockedId ? vendors.filter((v) => v.id === lockedId) : vendors).map((v) => (
             <Button
               key={v.id}
               size="sm"
               variant={v.id === vendor.id ? "default" : "outline"}
-              onClick={() => setVendorId(v.id)}
+              onClick={() => !lockedId && setVendorId(v.id)}
             >
               <span
                 className="mr-1.5 h-2 w-2 rounded-full"

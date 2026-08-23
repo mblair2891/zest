@@ -63,6 +63,22 @@ or `useGuideStore.getState().openGuide("my-topic")`.
 
 Bookmarkable URL: `/guide?topic=my-topic`.
 
+## Roles, dashboards, location settings
+
+PIN roles: owner, manager, server, host stand, bartender, kitchen/expo,
+busser, cashier, vendor_operator, accountant, kiosk. Platform Admin is SaaS
+only — not a floor PIN.
+
+Home (`hq`) is a **role dashboard**. Nav hides views the role cannot open.
+Vendor operators are scoped to `operatorId` (tickets, portal, settlement share).
+
+Location Settings (owner/manager) shows packs for the venue type: profile, tax,
+payments, cash discount, devices, staff, notifications, hours, plus type packs
+(sections, bar tabs, counter/expo, host operators, kiosk/waitlist). Live writes
+go through `saveLocationSettingsFn` (membership owner/manager/platform_admin).
+
+In-app: `/guide?topic=roles-dashboards` and `/guide?topic=location-settings`.
+
 ## Public vs Platform
 
 The public `/guide` is operations: floor, menu, routing, Quantum Payments,

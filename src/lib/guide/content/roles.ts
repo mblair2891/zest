@@ -121,4 +121,61 @@ export const ROLE_GUIDE_TOPICS: GuideTopic[] = [
       related("type-food-hall", "host-capture", "chargebacks", "prospect-demos"),
     ],
   }),
+  topic({
+    id: "roles-dashboards",
+    chapterId: "roles",
+    title: "Roles & dashboards",
+    summary: "Each access level lands on a job dashboard. Nav hides what you cannot use.",
+    roles: "all",
+    keywords: ["role", "dashboard", "access", "PIN", "permissions", "cashier", "accountant"],
+    blocks: [
+      why(
+        "One generic home screen trains nobody. After PIN, you see the work for that job — and only the actions you are allowed.",
+      ),
+      ul(
+        "Owner / manager — sales snapshot, waitlist, staff on, shortcuts to settings, menu, floor, reports.",
+        "Server — my sections, open checks, quick order.",
+        "Host stand — waitlist, reservations, seating.",
+        "Kitchen / expo — KDS-first. Bartender — bar KDS and tabs.",
+        "Cashier — counter queue and pay.",
+        "Vendor operator — own tickets, 86, settlement share (host venues only).",
+        "Accountant — reports and ledger.",
+        "Platform Admin — control plane after Sign in, not a restaurant PIN.",
+      ),
+      steps(
+        "PIN in. Home is that role’s dashboard.",
+        "Nav only lists views you can open. Settings writes are owner/manager.",
+        "On The Laundry, PIN 9999 owner, 1111 server, 5555 kitchen, 6666 Steam operator, 7777 Diamond operator.",
+      ),
+      related("role-owner", "role-server", "role-vendor", "location-settings", "type-food-hall"),
+    ],
+  }),
+  topic({
+    id: "location-settings",
+    chapterId: "roles",
+    title: "Location settings by type",
+    summary: "Owner and manager configure only the packs that apply to this house.",
+    roles: ["owner_manager", "host_operator"],
+    keywords: ["settings", "location", "hours", "cash discount", "kiosk", "settlement"],
+    openView: "settings",
+    blocks: [
+      why(
+        "A café does not need a dining-room map pack. A host hall does. The type badge on Settings is the pack you are editing.",
+      ),
+      ul(
+        "Every house: profile, tax, Quantum Payments tenders, cash discount, devices, staff, notifications, hours.",
+        "Full-service: sections and floor control.",
+        "Bar: tab auto-close.",
+        "Counter / QSR / café / ghost: ticket prefix and expo.",
+        "Host + multi-operator: operators, settlement, host cut — guest cards stay Quantum Payments.",
+        "Kiosk / waitlist types: kiosk mode, waitlist, reservation check-in.",
+      ),
+      steps(
+        "PIN as owner or manager. Open Home → Location settings.",
+        "Confirm the type badge (restaurant, host hall, bar, QSR…).",
+        "Save each pack. Live tenants persist on the location. Demo rooms stay local.",
+      ),
+      related("roles-dashboards", "cash-discount", "feature-kiosk", "type-food-hall"),
+    ],
+  }),
 ];

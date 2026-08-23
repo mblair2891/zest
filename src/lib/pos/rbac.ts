@@ -6,30 +6,42 @@ export const ROLE_LABEL: Record<EmployeeRole, string> = {
   manager: "Manager",
   server: "Server",
   bartender: "Bartender",
-  host: "Host",
-  kitchen: "Kitchen",
+  host: "Host stand",
+  kitchen: "Kitchen / expo",
   busser: "Busser",
+  cashier: "Cashier",
+  vendor_operator: "Vendor operator",
+  accountant: "Accountant",
+  kiosk: "Kiosk",
 };
 
 export const ROLE_BLURB: Record<EmployeeRole, string> = {
-  owner: "Full platform & site control",
-  manager: "Site ops, labor, money & reports",
-  server: "Floor, orders & guests",
-  bartender: "Bar KDS, tabs & drink assist",
-  host: "Waitlist, reservations & seating",
-  kitchen: "Expo / kitchen display",
-  busser: "Table turns & cleanliness",
+  owner: "Full location control, settings, staff, settlement",
+  manager: "Ops, floor, most settings — not org delete/billing",
+  server: "Assigned sections, checks, pay — no settings",
+  bartender: "Bar tickets, tabs, drink 86",
+  host: "Waitlist, reservations, seating",
+  kitchen: "KDS, bump, item 86",
+  busser: "Table turns",
+  cashier: "Counter queue and pay",
+  vendor_operator: "Own menu, tickets, settlement share",
+  accountant: "Reports and ledger, limited ops",
+  kiosk: "Device identity — guest kiosk",
 };
 
-/** Default landing screen after login */
+/** Default landing screen after PIN — role dashboard lives on hq */
 export const ROLE_HOME: Record<EmployeeRole, PosView> = {
   owner: "hq",
   manager: "hq",
-  server: "floor",
-  bartender: "bar",
-  host: "waitlist",
-  kitchen: "kitchen",
-  busser: "floor",
+  server: "hq",
+  bartender: "hq",
+  host: "hq",
+  kitchen: "hq",
+  busser: "hq",
+  cashier: "hq",
+  vendor_operator: "hq",
+  accountant: "hq",
+  kiosk: "waitlist",
 };
 
 /**
@@ -77,29 +89,16 @@ const ROLE_VIEWS: Record<EmployeeRole, PosView[] | "all"> = {
     "truck_pod",
     "package",
     "features",
-    // no saas (platform console)
   ],
-  server: [
-    "floor",
-    "order",
-    "takeout",
-    "hall",
-    "waitlist",
-    "customers",
-    "drink_ai",
-    "online",
-  ],
-  bartender: [
-    "bar",
-    "order",
-    "takeout",
-    "drink_ai",
-    "customers",
-    "inventory", // 86 board awareness
-  ],
-  host: ["waitlist", "floor", "customers", "online"],
-  kitchen: ["kitchen", "recipes", "checklists", "inventory"],
-  busser: ["floor"],
+  server: ["hq", "floor", "order", "takeout", "hall", "waitlist", "customers", "drink_ai", "online"],
+  bartender: ["hq", "bar", "order", "takeout", "drink_ai", "customers", "inventory"],
+  host: ["hq", "waitlist", "floor", "customers", "online"],
+  kitchen: ["hq", "kitchen", "recipes", "checklists", "inventory"],
+  busser: ["hq", "floor"],
+  cashier: ["hq", "order", "takeout", "cash", "online"],
+  vendor_operator: ["hq", "vendor_portal", "kitchen", "bar", "menu", "settlement", "reports"],
+  accountant: ["hq", "reports", "ledger", "settlement", "cash"],
+  kiosk: ["waitlist", "order"],
 };
 
 export function canAccessView(role: EmployeeRole, view: PosView): boolean {
@@ -148,9 +147,12 @@ export function pickRoleRepresentatives<
     "owner",
     "manager",
     "server",
-    "bartender",
     "host",
+    "bartender",
     "kitchen",
+    "cashier",
+    "vendor_operator",
+    "accountant",
     "busser",
   ];
   const out: T[] = [];

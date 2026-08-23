@@ -18,6 +18,7 @@ export interface EntityStaffSpec {
   color: string;
   homeView?: PosView;
   extraViews?: PosView[];
+  operatorId?: string;
   homeSectionIds?: string[];
   tipsEarned?: number;
   salesTotal?: number;
@@ -138,7 +139,6 @@ export const VENUE_ENTITIES: VenueEntity[] = [
         title: "Hall owner",
         blurb: "Hall, settlement, vendors & packages",
         color: C.lime,
-        homeView: "hall",
       },
       {
         id: "fh_mgr",
@@ -148,17 +148,15 @@ export const VENUE_ENTITIES: VenueEntity[] = [
         title: "Hall manager",
         blurb: "Floor, labor, vendor ops",
         color: C.slate,
-        homeView: "hall",
       },
       {
         id: "fh_vendor",
         name: "Priya Shah",
         pin: "1111",
-        role: "server",
+        role: "vendor_operator",
         title: "Vendor operator",
         blurb: "Stall menu, tickets & portal",
         color: C.orange,
-        homeView: "vendor_portal",
         extraViews: ["vendor_portal", "hall", "settlement"],
       },
       {
@@ -175,11 +173,10 @@ export const VENUE_ENTITIES: VenueEntity[] = [
         id: "fh_cash",
         name: "Devon Walsh",
         pin: "3333",
-        role: "server",
+        role: "cashier",
         title: "Hall cashier",
         blurb: "Shared checkout & runners",
         color: C.sky,
-        homeView: "order",
         extraViews: ["hall"],
       },
       {
@@ -232,11 +229,10 @@ export const VENUE_ENTITIES: VenueEntity[] = [
         id: "tp_truck",
         name: "Ray Cole",
         pin: "1111",
-        role: "server",
+        role: "vendor_operator",
         title: "Truck owner",
         blurb: "Window orders & sales",
         color: C.orange,
-        homeView: "order",
         extraViews: ["truck_pod"],
       },
       {
@@ -689,6 +685,7 @@ export function employeesForVenue(id: VenueEntityId): Employee[] {
     title: s.title,
     homeView: s.homeView,
     extraViews: s.extraViews,
+    operatorId: s.operatorId,
   }));
 }
 

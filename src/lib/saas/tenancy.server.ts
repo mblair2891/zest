@@ -131,6 +131,15 @@ function parseSetup(raw: unknown): LocationSetup {
       hostCutPercent: Number(settlement.hostCutPercent) || 0,
     },
     hostBrandName: typeof o.hostBrandName === "string" ? o.hostBrandName : "",
+    timezone: typeof o.timezone === "string" ? o.timezone : "America/Los_Angeles",
+    hoursNote: typeof o.hoursNote === "string" ? o.hoursNote : "",
+    tipPooling: Boolean(o.tipPooling),
+    tabAutoCloseMinutes: Number(o.tabAutoCloseMinutes) || 0,
+    ticketPrefix: typeof o.ticketPrefix === "string" ? o.ticketPrefix : "",
+    kioskMode: typeof o.kioskMode === "string" ? o.kioskMode : "combined",
+    waitlistEnabled: Boolean(o.waitlistEnabled),
+    reservationCheckIn: o.reservationCheckIn !== false,
+    waitlistReason: typeof o.waitlistReason === "string" ? o.waitlistReason : "",
   };
 }
 
@@ -535,6 +544,31 @@ export async function createLocationForOrg(
   `;
   const rows = await sql<LocRow>`select * from locations where id = ${id}`;
   return mapLoc(rows[0]!);
+}
+
+export async function updateLocationSetupForUser(
+  userId: string,
+  input: { orgId: string; locationId: string; setup: LocationSetup },
+): Promise<LocationRecord> {
+  await requireMembership(userId, input.orgId, ["owner", "manager", "platform_admin"], input.locationId);
+  const sql = await getSql();
+  const rows = await sql<LocRow>`
+    select * from locations
+    where id = ${input.locationId} and org_id = ${input.orgId} and coalesce(is_demo, false) = false
+    limit 1
+  `;
+  const loc = rows[0];
+  if (!loc) throw new ForbiddenError("Location not found");
+  const next = parseSetup({ ...parseSetup(loc.setup), ...input.setup });
+  await sql`
+    update locations
+    set setup = ${JSON.stringify(next)}::jsonb,
+        host_brand_name = ${next.hostBrandName || loc.host_brand_name},
+        timezone = ${next.timezone || loc.timezone}
+    where id = ${input.locationId}
+  `;
+  const after = await sql<LocRow>`select * from locations where id = ${input.locationId} limit 1`;
+  return mapLoc(after[0]!);
 }
 
 export async function listLocationsForOrg(userId: string, orgId: string): Promise<LocationRecord[]> {

@@ -65,6 +65,22 @@ export const FULL_TOUR: TourDefinition = {
       action: "seat",
     },
     {
+      id: "f-roles",
+      title: "Access levels",
+      script:
+        "Owner Home is the house snapshot and settings. Server Home is my sections. Kitchen is the KDS. Steam and Diamond operators only see their stall. PIN on this demo: 9999 owner, 1111 server, 5555 kitchen, 6666 Steam, 7777 Diamond.",
+      selector: "[data-demo='home']",
+      view: "hq",
+    },
+    {
+      id: "f-settings",
+      title: "Location settings pack",
+      script:
+        "Owner and manager open Location settings. The badge says host plus multi-operator, so you get operators, settlement, kiosk, and cash discount — not a generic café form.",
+      selector: "[data-demo='settings']",
+      view: "settings",
+    },
+    {
       id: "f-menu",
       title: "Menu keeps the operator",
       script:
@@ -205,6 +221,22 @@ function typeTour(type: VenueEntityId): TourDefinition {
           selector: "[data-demo='floor']",
           view: "floor",
           action: "seat",
+        },
+        {
+          id: "l-roles",
+          title: "Who is signed in",
+          script:
+            "Owner Home is the snapshot. Server is sections. Kitchen is Diamond’s rail. Steam operator PIN 6666 only sees Steam. Diamond 7777 only sees Diamond.",
+          selector: "[data-demo='home']",
+          view: "hq",
+        },
+        {
+          id: "l-settings",
+          title: "Host settings pack",
+          script:
+            "Owner opens Location settings. The badge is host plus multi-operator: operators, settlement, kiosk, cash discount.",
+          selector: "[data-demo='settings']",
+          view: "settings",
         },
         {
           id: "l-drink",

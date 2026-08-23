@@ -7,6 +7,17 @@ import {
   SECTION_ENFORCE_ROLES,
 } from "@/lib/pos/section-control";
 import { ROLE_LABEL } from "@/lib/pos/rbac";
+import { canEmployee } from "@/lib/access/permissions";
+import {
+  SETTINGS_PACK_LABEL,
+  VENUE_TYPE_LABEL,
+  settingsPacksForVenue,
+  type SettingsPackId,
+} from "@/lib/access/entity-roles";
+import { saveLocationSettingsFn } from "@/lib/access/api";
+import { isProspectDemo } from "@/lib/demo/session";
+import { useSaasStore } from "@/lib/pos/saas-store";
+import type { VenueEntityId } from "@/lib/pos/types";
 import {
   useNetworkStore,
   worksWithoutInternet,
@@ -57,10 +68,59 @@ function PolicyCheck({
   );
 }
 
+function Pack({
+  id,
+  packs,
+  children,
+}: {
+  id: SettingsPackId;
+  packs: SettingsPackId[];
+  children: React.ReactNode;
+}) {
+  if (!packs.includes(id)) return null;
+  return (
+    <section className="mb-6 max-w-2xl rounded-2xl border border-border bg-surface p-4">
+      <p className="mb-3 text-sm font-medium">{SETTINGS_PACK_LABEL[id]}</p>
+      {children}
+    </section>
+  );
+}
+
 export function SettingsView() {
   const settings = usePosStore((s) => s.settings);
   const locId = usePosStore((s) => s.tenantLocationId) || "loc_kiosk";
+  const entityId = usePosStore((s) => s.activeEntityId) as VenueEntityId | undefined;
+  const emp = usePosStore((s) => s.employees.find((e) => e.id === s.currentEmployeeId));
+  const orgId = useSaasStore((s) => s.org.id);
+  const write = canEmployee(emp, "settings:write");
+  const packs = settingsPacksForVenue(entityId);
   const updateSettings = usePosStore((s) => s.updateSettings);
+  const persist = () => {
+    if (!write || isProspectDemo() || !orgId) return;
+    void saveLocationSettingsFn({
+      data: {
+        orgId,
+        locationId: locId,
+        setup: {
+          hostBrandName: settings.name,
+          timezone: settings.timezone,
+          hoursNote: settings.hoursNote,
+          tipPooling: settings.tipPooling,
+          tabAutoCloseMinutes: settings.tabAutoCloseMinutes,
+          ticketPrefix: settings.ticketPrefix,
+          kioskMode: settings.kioskMode,
+          waitlistEnabled: settings.waitlistEnabled,
+          reservationCheckIn: settings.reservationCheckIn,
+          waitlistReason: settings.waitlistReason,
+          devices: { pos: 0, kds: 0, handhelds: 0 },
+          settlement: {
+            periodType: "weekly",
+            hostCutPercent: 0,
+          },
+        },
+      },
+    }).catch(() => undefined);
+  };
   const saveFront = (patch: Parameters<typeof updateSettings>[0]) => {
     updateSettings(patch);
     void saveFrontSettingsFn({
@@ -90,16 +150,36 @@ export function SettingsView() {
     updateSectionPolicy({ enforceForRoles: next });
   };
 
+  if (!canEmployee(emp, "settings:read") && !write) {
+    return (
+      <div className="grid h-full place-items-center p-6 text-sm text-muted-foreground">
+        Location settings are for owner and manager.
+      </div>
+    );
+  }
+
+  const typeLabel = entityId ? VENUE_TYPE_LABEL[entityId] : "Location";
+
   return (
-    <div className="h-full overflow-y-auto p-3">
+    <div className="h-full overflow-y-auto p-3" data-demo="settings">
       <div className="mb-4 flex flex-wrap items-center gap-2">
-        <h2 className="text-sm font-semibold">Restaurant & platform settings</h2>
+        <h2 className="text-sm font-semibold">Location settings</h2>
+        <span className="rounded-full bg-surface-2 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+          {typeLabel}
+        </span>
         <SetupAssistButton domain="location" />
         <SetupAssistButton domain="cash_discount" label="Describe cash discount" />
         <SetupAssistButton domain="station" label="Routing" />
+        {write && !isProspectDemo() && (
+          <Button size="sm" variant="outline" onClick={persist}>
+            Save to location
+          </Button>
+        )}
       </div>
+      <fieldset disabled={!write} className="min-w-0 border-0 p-0">
 
-      <div className="mb-6 grid max-w-2xl gap-4">
+      <Pack id="profile" packs={packs}>
+      <div className="grid gap-4">
         <label className="block text-sm">
           <span className="mb-1 block text-muted-foreground">Name</span>
           <Input
@@ -250,8 +330,26 @@ export function SettingsView() {
         <p className="text-xs text-muted-foreground">
           Guest kiosk: /kiosk — Twilio keys optional; sandbox logs messages on Host stand.
         </p>
+        <label className="block text-sm">
+          <span className="mb-1 block text-muted-foreground">Hours</span>
+          <Input
+            value={settings.hoursNote ?? ""}
+            onChange={(e) => updateSettings({ hoursNote: e.target.value })}
+            placeholder="Tue–Sat 17:00–23:00"
+          />
+        </label>
+        <label className="block text-sm">
+          <span className="mb-1 block text-muted-foreground">Timezone</span>
+          <Input
+            value={settings.timezone ?? "America/Los_Angeles"}
+            onChange={(e) => updateSettings({ timezone: e.target.value })}
+          />
+        </label>
+      </div>
+      </Pack>
 
-        <div className="rounded-2xl border border-border bg-surface p-4">
+        <Pack id="cash_discount" packs={packs}>
+        <div>
           <div className="flex flex-wrap items-center justify-between gap-2">
             <p className="text-sm font-medium">Cash discount</p>
             <GuideLearnLink topicId="cash-discount" compact>
@@ -332,9 +430,9 @@ export function SettingsView() {
             </p>
           )}
         </div>
-      </div>
+        </Pack>
 
-      <div className="mb-6 max-w-2xl rounded-2xl border border-border bg-surface p-4">
+      <Pack id="sections" packs={packs}>
         <p className="text-sm font-medium">Section control</p>
         <p className="mb-3 mt-1 text-xs text-muted-foreground">
           Limit who can seat and enter orders outside their assigned section.
@@ -416,9 +514,45 @@ export function SettingsView() {
         >
           Assign sections on Staff
         </Button>
-      </div>
+      </Pack>
 
+      <Pack id="bar_tabs" packs={packs}>
+        <label className="block text-sm">
+          <span className="mb-1 block text-muted-foreground">Tab auto-close (minutes, 0 = off)</span>
+          <Input
+            inputMode="numeric"
+            value={String(settings.tabAutoCloseMinutes ?? 0)}
+            onChange={(e) =>
+              updateSettings({ tabAutoCloseMinutes: parseInt(e.target.value, 10) || 0 })
+            }
+          />
+        </label>
+      </Pack>
+
+      <Pack id="counter_expo" packs={packs}>
+        <label className="block text-sm">
+          <span className="mb-1 block text-muted-foreground">Ticket prefix</span>
+          <Input
+            value={settings.ticketPrefix ?? ""}
+            onChange={(e) => updateSettings({ ticketPrefix: e.target.value.slice(0, 8) })}
+            placeholder="Q-"
+          />
+        </label>
+      </Pack>
+
+      <Pack id="host_operators" packs={packs}>
+        <p className="text-xs text-muted-foreground">
+          Operators, station ownership, period close, and host cut live on Settle.
+          Guest cards stay Quantum Payments under the host brand.
+        </p>
+        <Button size="sm" variant="outline" className="mt-3" onClick={() => setView("settlement")}>
+          Open settlement
+        </Button>
+      </Pack>
+
+      <Pack id="devices" packs={packs}>
       <NetworkSettingsPanel />
+      </Pack>
 
       <div className="mb-6 rounded-2xl border border-border bg-surface p-4">
         <p className="mb-2 text-sm font-medium">Modules</p>
@@ -469,6 +603,8 @@ export function SettingsView() {
           Open guest online ordering →
         </a>
       </div>
+
+      </fieldset>
 
       {isDevDemoClient() && (
         <div className="rounded-2xl border border-danger/30 bg-danger/5 p-4">

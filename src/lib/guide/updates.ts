@@ -7,6 +7,16 @@ import { GUIDE_VERSION, type GuideRole, type GuideUpdate } from "./types";
  */
 export const GUIDE_UPDATES: GuideUpdate[] = [
   {
+    id: "upd_2026_08_31_access",
+    date: "2026-08-31",
+    title: "Role dashboards and location settings packs",
+    summary:
+      "Each PIN lands on a job dashboard. Location settings show only the packs for that establishment type.",
+    roles: "all",
+    topicId: "roles-dashboards",
+    tags: ["roles", "settings", "access"],
+  },
+  {
     id: "upd_2026_08_30_public_site",
     date: "2026-08-30",
     title: "Public site is sales, guide, and demos",

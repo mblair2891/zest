@@ -28,6 +28,10 @@ export const ESTABLISHMENT_TYPE_TOPICS: GuideTopic[] = [
         "Send — kitchen sees plates, bar sees drinks.",
         "Print and take Quantum Payments once. Close the table.",
       ),
+      ul(
+        "Access: owner, manager, server, host stand, bartender, kitchen, busser, cashier, accountant.",
+        "Dashboards: server sees sections; host sees waitlist; kitchen is KDS-first.",
+      ),
       callout(
         "Payments",
         "Quantum Payments is the only guest card. Cash and first-party gift sit beside it. There is no processor picker.",
@@ -79,6 +83,10 @@ export const ESTABLISHMENT_TYPE_TOPICS: GuideTopic[] = [
         "Pay once with Quantum Payments under the host brand.",
         "On Settle, merchandise, card fees, and the host cut allocate per operator.",
         "If a dispute is filed — only then — a $35 fee splits by merchandise share on that check.",
+      ),
+      ul(
+        "Access includes vendor_operator (Steam Distillery, Diamond House BBQ) plus host, cashier, and accountant.",
+        "Vendor dashboards are scoped to that operator’s tickets and settlement share.",
       ),
       callout(
         "The Laundry (prospect demo)",

@@ -62,12 +62,14 @@ export function noticeVisibleTo(
 ): boolean {
   if (!emp) return false;
   const role: EmployeeRole = emp.role;
-  if (role === "owner" || role === "manager" || role === "host") return true;
+  if (role === "owner" || role === "manager" || role === "host" || role === "accountant") return true;
   if (n.kind === "guest_checked_in" || n.kind === "waitlist_update") {
-    return role === "server";
+    return role === "server" || role === "cashier";
   }
-  if (role === "server") return true;
-  if (role === "bartender") return n.station === "bar" || n.kind === "ticket_bumped";
+  if (role === "server" || role === "cashier") return true;
+  if (role === "bartender" || role === "vendor_operator") {
+    return n.station === "bar" || n.kind === "ticket_bumped";
+  }
   if (role === "kitchen") return n.station === "kitchen";
   if (role === "busser") return n.kind === "ticket_bumped";
   return n.serverName === emp.name;

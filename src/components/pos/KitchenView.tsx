@@ -31,21 +31,24 @@ export function KitchenView({ station }: Props) {
   const startTicket = usePosStore((s) => s.startTicket);
   const [showBumped, setShowBumped] = useState(false);
   const [filter, setFilter] = useState<TicketStatus | "all">("all");
-  const [vendorFilter, setVendorFilter] = useState<string | null>(null);
+  const emp = usePosStore((s) => s.employees.find((e) => e.id === s.currentEmployeeId));
+  const lockedVendor = emp?.role === "vendor_operator" ? emp.operatorId ?? null : null;
+  const [vendorFilter, setVendorFilter] = useState<string | null>(lockedVendor);
 
   const list = useMemo(() => {
     let t = tickets.filter((x) => x.station === station);
     if (!showBumped) t = t.filter((x) => x.status !== "bumped");
     if (filter !== "all") t = t.filter((x) => x.status === filter);
-    if (vendorFilter) t = t.filter((x) => x.vendorId === vendorFilter);
+    const vf = lockedVendor || vendorFilter;
+    if (vf) t = t.filter((x) => x.vendorId === vf);
     return t.sort((a, b) => a.createdAt - b.createdAt);
-  }, [tickets, station, showBumped, filter, vendorFilter]);
+  }, [tickets, station, showBumped, filter, vendorFilter, lockedVendor]);
 
   const active = tickets.filter(
     (t) =>
       t.station === station &&
       t.status !== "bumped" &&
-      (!vendorFilter || t.vendorId === vendorFilter),
+      (!(lockedVendor || vendorFilter) || t.vendorId === (lockedVendor || vendorFilter)),
   ).length;
 
   return (
@@ -61,21 +64,23 @@ export function KitchenView({ station }: Props) {
           {active} active
         </Badge>
         <div className="flex flex-wrap gap-1">
-          <Button
-            size="sm"
-            variant={vendorFilter === null ? "default" : "outline"}
-            onClick={() => setVendorFilter(null)}
-          >
-            All operators
-          </Button>
+          {!lockedVendor && (
+            <Button
+              size="sm"
+              variant={vendorFilter === null ? "default" : "outline"}
+              onClick={() => setVendorFilter(null)}
+            >
+              All operators
+            </Button>
+          )}
           {vendors
-            .filter((v) => v.active)
+            .filter((v) => v.active && (!lockedVendor || v.id === lockedVendor))
             .map((v) => (
               <Button
                 key={v.id}
                 size="sm"
-                variant={vendorFilter === v.id ? "default" : "outline"}
-                onClick={() => setVendorFilter(v.id)}
+                variant={(lockedVendor || vendorFilter) === v.id ? "default" : "outline"}
+                onClick={() => !lockedVendor && setVendorFilter(v.id)}
               >
                 {v.shortName}
               </Button>
