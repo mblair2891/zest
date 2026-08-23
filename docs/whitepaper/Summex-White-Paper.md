@@ -205,6 +205,23 @@ Typical first-week work is configuration, not a six-month integration. Assist (�
 
 ---
 
+## 12. Appendix — illustrative host model (The Laundry)
+
+**This is an example, not a customer case study.** In DEV_DEMO the product can load a labeled TEST venue with this shape so ledger and settlement are exercisable. Production empty-start (`DEV_DEMO=0`) does not seed it.
+
+| Role | Name |
+|---|---|
+| Host brand (guest-facing) | **The Laundry** |
+| Organization (test) | The Laundry Group |
+| Operator A — bar | **Steam Distillery** (drinks, bar station) |
+| Operator B — kitchen | **Diamond House BBQ** (food, kitchen station) |
+
+The guest pays **one check** branded The Laundry, captured on Quantum Payments. A Highball ($12) is Steam Distillery; a Brisket plate ($18) is Diamond House BBQ. Kitchen sees food tickets; bar sees drink tickets. Period settlement and the system ledger allocate merchandise to each operator. A mixed $65 food / $35 drink check that is disputed posts a $35 fee as $22.75 / $12.25.
+
+Cash discount in the test seed is **5%, round up to $0.25** (printed $12.00 card → $11.50 cash).
+
+---
+
 © Quantum Reach · Summex · summex.app  
 Authors of the product: Michael Blair & Andy Baida  
 This document describes current product behavior and explicitly marked roadmap. It is not a rate sheet, a bank offering, or a compliance certificate.

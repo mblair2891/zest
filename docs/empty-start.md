@@ -32,3 +32,16 @@ The plaintext initial password lives only in the server-side bootstrap (`src/lib
 Until you create a location, POS has no menus, tables, vendors, or tickets.
 
 See also `docs/quantum-payments-multi-operator.md` for host capture and the $35 dispute split.
+
+## Demo / TEST venue (DEV_DEMO only)
+
+When `DEV_DEMO=1` / `VITE_DEV_DEMO=1`, you can reload **The Laundry** — a labeled TEST host for ledger and multi-operator rehearsal:
+
+| Role | Name |
+|---|---|
+| Organization | The Laundry Group (TEST) |
+| Host brand (guest check) | **The Laundry** |
+| Operator A — bar | **Steam Distillery** |
+| Operator B — kitchen | **Diamond House BBQ** |
+
+Load from platform login (**Load The Laundry (TEST)**), Settings (**Load The Laundry test venue**), or the venue picker. Guest cards still run through Quantum Payments under The Laundry. **`DEV_DEMO=0` never seeds this dataset** and hides the load controls. Admin bootstrap is unchanged.

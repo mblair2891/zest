@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { SummexBrandBlock, SummexMark } from "@/components/brand/SummexMark";
 import { Badge } from "@/components/ui/badge";
 import { useSaasStore } from "@/lib/pos/saas-store";
+import { usePosStore } from "@/lib/pos/store";
 import { SaasConsoleView } from "./SaasConsoleView";
 import { isDevDemoClient } from "@/lib/saas/flags";
 import { useCurrentUserState } from "@/lib/auth/use-current-user";
@@ -230,6 +231,22 @@ export function PlatformApp() {
               <p className="text-center text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
                 DEV_DEMO quick login · not a production identity
               </p>
+              <button
+                type="button"
+                onClick={() => {
+                  usePosStore.getState().loadLaundryTestVenue();
+                  loginPlatform("Laundry Host", "owner");
+                  window.location.href = "/venue/food_hall";
+                }}
+                className="flex w-full min-h-14 items-start gap-3 rounded-2xl border border-primary/40 bg-primary/10 px-4 py-3.5 text-left"
+              >
+                <span>
+                  <span className="block text-sm font-semibold">Load The Laundry (TEST)</span>
+                  <span className="mt-1 block text-[11px] text-muted-foreground">
+                    Host brand The Laundry · Steam Distillery (bar) · Diamond House BBQ (kitchen)
+                  </span>
+                </span>
+              </button>
               {(
                 [
                   {
@@ -354,6 +371,18 @@ export function PlatformApp() {
         >
           White paper
         </Link>
+        {demo && (
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => {
+              usePosStore.getState().loadLaundryTestVenue();
+              window.location.href = "/venue/food_hall";
+            }}
+          >
+            Load The Laundry
+          </Button>
+        )}
         <Button size="sm" variant="outline" onClick={openPos} disabled={!loc}>
           Open POS
         </Button>

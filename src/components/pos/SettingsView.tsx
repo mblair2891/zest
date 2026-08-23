@@ -15,6 +15,7 @@ import {
   type FabricPolicy,
 } from "@/lib/pos/network-store";
 import { formatCurrency, formatTime } from "@/lib/utils";
+import { isDevDemoClient } from "@/lib/saas/flags";
 import { SetupAssistButton } from "@/components/assist/SetupAssistDialog";
 import { GuideLearnLink } from "@/components/guide/GuideLearnLink";
 import {
@@ -60,6 +61,7 @@ export function SettingsView() {
   const updateSettings = usePosStore((s) => s.updateSettings);
   const updateSectionPolicy = usePosStore((s) => s.updateSectionPolicy);
   const resetDemo = usePosStore((s) => s.resetDemo);
+  const loadLaundryTestVenue = usePosStore((s) => s.loadLaundryTestVenue);
   const setView = usePosStore((s) => s.setView);
   const policy = policyOf(settings.sectionPolicy);
 
@@ -412,16 +414,29 @@ export function SettingsView() {
         </a>
       </div>
 
-      <div className="rounded-2xl border border-danger/30 bg-danger/5 p-4">
-        <p className="mb-2 text-sm font-medium">Demo data</p>
-        <p className="mb-3 text-xs text-muted-foreground">
-          Reset clears POS floor/orders (v2 store). Platform tenants & online
-          orders use a separate store — clear site data for a full wipe.
-        </p>
-        <Button variant="destructive" onClick={() => resetDemo()}>
-          Reset POS demo
-        </Button>
-      </div>
+      {isDevDemoClient() && (
+        <div className="rounded-2xl border border-danger/30 bg-danger/5 p-4">
+          <p className="mb-2 text-sm font-medium">Demo data · TEST venue</p>
+          <p className="mb-3 text-xs text-muted-foreground">
+            Reload The Laundry (host) with Steam Distillery (bar) and Diamond House
+            BBQ (kitchen). Hidden when DEV_DEMO=0. Production empty-start never
+            seeds this dataset.
+          </p>
+          <div className="mb-3">
+            <GuideLearnLink topicId="laundry-test-venue" compact>
+              Learn
+            </GuideLearnLink>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <Button variant="outline" onClick={() => loadLaundryTestVenue()}>
+              Load The Laundry test venue
+            </Button>
+            <Button variant="destructive" onClick={() => resetDemo()}>
+              Reset POS demo
+            </Button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

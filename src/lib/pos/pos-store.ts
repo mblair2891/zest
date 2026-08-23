@@ -252,6 +252,8 @@ export interface PosStore {
   revokeExtraTable: (id: string) => void;
   overrideSectionTable: (employeeId: string, tableId: string) => ActionResult;
   applyEntity: (entityId: VenueEntityId) => ActionResult;
+  /** DEV_DEMO only. Reloads The Laundry host + Steam Distillery + Diamond House BBQ. */
+  loadLaundryTestVenue: () => ActionResult;
   openTenantLocation: (opts: {
     entityId: VenueEntityId;
     venueName: string;

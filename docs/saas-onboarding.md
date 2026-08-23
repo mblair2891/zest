@@ -39,4 +39,4 @@ Use invented names such as **Host Venue**, **Operator A**, **Operator B**. Do no
 3. Settlement: merchandise shares, host cut, tax/tip policy as configured.
 4. File a **dispute** on that closed check. $35 fee splits by merchandise % (see `docs/quantum-payments-multi-operator.md`). Mark won or lost — fee stays.
 
-No demo org, no Seaport, no PIN chips unless `DEV_DEMO=1` (leave off on Vercel).
+No demo org, no The Laundry TEST venue, no PIN chips unless `DEV_DEMO=1` (leave off on Vercel).

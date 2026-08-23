@@ -22,7 +22,7 @@ import { useGuideStore } from "@/lib/guide/store";
 import {
   ALL_ENTITIES,
   SAAS_ENTITY,
-  VENUE_ENTITIES,
+  venuesForPicker,
   isVenueEntityId,
   venueById,
   type VenueEntity,
@@ -58,7 +58,7 @@ export function EntityPicker() {
         </div>
 
         <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-          {VENUE_ENTITIES.map((ent) => {
+          {venuesForPicker().map((ent) => {
             const Icon = ICONS[ent.id] ?? UtensilsCrossed;
             return (
               <Link

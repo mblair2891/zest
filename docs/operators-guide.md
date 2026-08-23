@@ -21,6 +21,8 @@ a CMS.
 | `src/routes/guide.tsx` | `/guide?topic=chargebacks` |
 | `docs/whitepaper/` | Shareable white paper (MD + print HTML) |
 | `/whitepaper` | Live white paper (prints to PDF) |
+| `docs/quantum-payments-ledger.md` | Ledger sign convention + The Laundry worked example |
+| `/guide?topic=laundry-test-venue` | DEV_DEMO TEST host (The Laundry) |
 
 Bump `GUIDE_VERSION` in `types.ts` when you ship a batch of topics.
 

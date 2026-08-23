@@ -33,17 +33,18 @@ Writes are **idempotent**: each row has `idempotencyKey`. A retry with the same 
 | `chargeback_fee` | operator | − | $35 fee share (merchandise % on that check) |
 | `refund` / `adjustment` | — | — | Reserved |
 
-## Example — $100 merchandise, 65% food / 35% drink
+## Example — The Laundry check ($100 merchandise, 65% / 35%)
 
-Operator A (food) $65. Operator B (bar) $35. Guest pays **$100 card** on Quantum Payments (tax omitted for the illustration).
+Illustrative TEST venue (DEV_DEMO only): host brand **The Laundry**.  
+**Diamond House BBQ** (kitchen) $65 food. **Steam Distillery** (bar) $35 drinks. Guest pays **$100 card** on Quantum Payments under The Laundry (tax omitted).
 
 ### On capture / close
 
 | type | party | operator | amount |
 |---|---|---|---|
-| capture | host | — | +$100.00 |
-| allocation | operator | A | +$65.00 |
-| allocation | operator | B | +$35.00 |
+| capture | host | The Laundry | +$100.00 |
+| allocation | operator | Diamond House BBQ | +$65.00 |
+| allocation | operator | Steam Distillery | +$35.00 |
 
 ### Chargeback filed ($35 fee)
 
@@ -51,9 +52,9 @@ Fee splits 65/35 → **$22.75** / **$12.25**. Filing posts the fee; won/lost doe
 
 | type | party | operator | amount |
 |---|---|---|---|
-| chargeback | host | — | −$100.00 (disputed capture impact) |
-| chargeback_fee | operator | A | −$22.75 |
-| chargeback_fee | operator | B | −$12.25 |
+| chargeback | host | The Laundry | −$100.00 (disputed capture impact) |
+| chargeback_fee | operator | Diamond House BBQ | −$22.75 |
+| chargeback_fee | operator | Steam Distillery | −$12.25 |
 
 ### Period close (illustration)
 

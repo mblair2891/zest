@@ -29,6 +29,8 @@ import {
 	mergeLedger,
 } from "./ledger";
 import { useOpsStore } from "./ops-store";
+import { isDevDemoClient } from "@/lib/saas/flags";
+import { laundryPosSlice } from "./laundry-seed";
 import {
   DEFAULT_FLOOR_SECTIONS,
   DEFAULT_SECTION_POLICY,
@@ -1524,7 +1526,41 @@ const usePosStoreRaw = create()(persist((set, get) => ({
 		});
 		return { ok: true };
 	},
+	loadLaundryTestVenue: () => {
+		if (!isDevDemoClient()) {
+			return { ok: false, error: "The Laundry test seed is demo-only (DEV_DEMO=1)" };
+		}
+		const slice = laundryPosSlice();
+		set({
+			...slice,
+			shift: emptyShift(),
+			clock: Date.now(),
+			auditLog: [
+				{
+					id: uid("aud"),
+					at: Date.now(),
+					employeeId: "system",
+					employeeName: "System",
+					action: "seed",
+					detail: "Loaded The Laundry TEST venue",
+				},
+			],
+			giftCards: [],
+			customers: [],
+			inventory: [],
+		});
+		try {
+			useSaasStore.getState().applyLaundryTestOrg();
+			useSaasStore.getState().setActiveLocation(slice.tenantLocationId);
+		} catch {
+			/* ignore */
+		}
+		return { ok: true };
+	},
 	applyEntity: (entityId: VenueEntityId) => {
+		if (isDevDemoClient() && entityId === "food_hall") {
+			return get().loadLaundryTestVenue();
+		}
 		const ent = venueById(entityId);
 		if (!ent) return { ok: false, error: "Unknown venue" };
 		const staff = employeesForVenue(entityId);
@@ -1615,6 +1651,11 @@ const usePosStoreRaw = create()(persist((set, get) => ({
 	resetDemo: () => {
 		const keepEmp = get().currentEmployeeId;
 		const keepEntity = get().activeEntityId || "restaurant";
+		if (isDevDemoClient() && keepEntity === "food_hall") {
+			const res = get().loadLaundryTestVenue();
+			if (keepEmp) set({ currentEmployeeId: keepEmp });
+			return res;
+		}
 		set({
 			...initialState(),
 			activeEntityId: keepEntity,

@@ -20,6 +20,11 @@ import {
   PACKAGE_BY_ID,
 } from "./packages";
 import { isDevDemoClient } from "@/lib/saas/flags";
+import {
+  LAUNDRY_LOCATION_ID,
+  LAUNDRY_LOCATION_NAME,
+  LAUNDRY_ORG_NAME,
+} from "./laundry-seed";
 
 const PLATFORM: PlatformCompany = {
   name: "Summex",
@@ -36,13 +41,13 @@ const PLATFORM: PlatformCompany = {
 function seedOrg(): SaasOrganization {
   return {
     id: "org_demo",
-    name: "Seaport Collective",
-    legalName: "Seaport Collective Markets LLC",
+    name: LAUNDRY_ORG_NAME,
+    legalName: `${LAUNDRY_ORG_NAME} (TEST)`,
     plan: "growth",
     seats: 25,
     locationsIncluded: 5,
     merchantsIncluded: 40,
-    billingEmail: "ops@seaport.example",
+    billingEmail: "ops@laundry.test",
     status: "active",
     createdAt: Date.now() - 86400000 * 90,
   };
@@ -68,14 +73,14 @@ function seedMembers(): SaasMembership[] {
       id: "mem_2",
       orgId: "org_demo",
       name: "Sam Okonkwo",
-      email: "sam@seaport.example",
+      email: "sam@laundry.test",
       role: "ops",
     },
     {
       id: "mem_3",
       orgId: "org_demo",
       name: "Jordan Lee",
-      email: "jordan@seaport.example",
+      email: "jordan@laundry.test",
       role: "accountant",
     },
     {
@@ -91,12 +96,12 @@ function seedMembers(): SaasMembership[] {
 function seedLocations(): SaasLocation[] {
   return [
     {
-      id: "loc_hall",
+      id: LAUNDRY_LOCATION_ID,
       orgId: "org_demo",
-      name: "Summex Market Hall",
-      code: "ZS-HALL",
+      name: LAUNDRY_LOCATION_NAME,
+      code: "LAUNDRY",
       mode: "food_hall",
-      address: "42 Pier Avenue, Seaport",
+      address: `TEST · ${LAUNDRY_ORG_NAME}`,
       timezone: "America/Los_Angeles",
       open: true,
       enabledPackages: defaultPackagesForMode("food_hall"),
@@ -185,6 +190,30 @@ function seedLocations(): SaasLocation[] {
 
 function seedMerchants(): PodMerchant[] {
   return [
+    {
+      id: "m_steam",
+      orgId: "org_demo",
+      name: "Steam Distillery",
+      cuisine: "Cocktails & beer",
+      contactName: "Steam Distillery (TEST)",
+      phone: "(555) 010-0101",
+      bankLast4: "0000",
+      w9OnFile: true,
+      active: true,
+      permitNumber: "TEST-STEAM",
+    },
+    {
+      id: "m_diamond",
+      orgId: "org_demo",
+      name: "Diamond House BBQ",
+      cuisine: "Barbecue",
+      contactName: "Diamond House BBQ (TEST)",
+      phone: "(555) 010-0102",
+      bankLast4: "0000",
+      w9OnFile: true,
+      active: true,
+      permitNumber: "TEST-DIAMOND",
+    },
     {
       id: "m_forge",
       orgId: "org_demo",
@@ -459,6 +488,8 @@ interface SaasState {
   platformAdminRole: SaasMembership["role"] | "";
 
   setActiveLocation: (id: string) => void;
+  /** DEV_DEMO only. Relabels org + loc_hall as The Laundry TEST host. */
+  applyLaundryTestOrg: () => void;
   loginPlatform: (name?: string, role?: SaasMembership["role"]) => void;
   logoutPlatform: () => void;
   liveMode: boolean;
@@ -500,13 +531,46 @@ export const useSaasStore = create<SaasState>()(
       devices: isDevDemoClient() ? seedDevices() : [],
       invoices: [],
       onboarding: isDevDemoClient() ? seedOnboarding() : emptyOnboarding(),
-      activeLocationId: isDevDemoClient() ? "loc_pod" : "",
+      activeLocationId: isDevDemoClient() ? LAUNDRY_LOCATION_ID : "",
       platformAuthed: false,
       platformAdminName: "",
       platformAdminRole: "",
       liveMode: false,
 
       setActiveLocation: (id) => set({ activeLocationId: id }),
+
+      applyLaundryTestOrg: () => {
+        if (!isDevDemoClient()) return;
+        const currentLocs = get().locations;
+        const locations = (currentLocs.length ? currentLocs : seedLocations()).map((l) =>
+          l.id === LAUNDRY_LOCATION_ID
+            ? {
+                ...l,
+                name: LAUNDRY_LOCATION_NAME,
+                code: "LAUNDRY",
+                address: `TEST · ${LAUNDRY_ORG_NAME}`,
+                mode: "food_hall" as const,
+              }
+            : l,
+        );
+        if (!locations.some((l) => l.id === LAUNDRY_LOCATION_ID)) {
+          locations.unshift(seedLocations()[0]!);
+        }
+        const existing = get().merchants;
+        const extra = seedMerchants().filter(
+          (m) => m.id === "m_steam" || m.id === "m_diamond",
+        );
+        const merchants = [
+          ...extra.filter((m) => !existing.some((e) => e.id === m.id)),
+          ...existing,
+        ];
+        set({
+          org: seedOrg(),
+          locations,
+          merchants,
+          activeLocationId: LAUNDRY_LOCATION_ID,
+        });
+      },
 
       loginPlatform: (name, role) =>
         set({
@@ -799,7 +863,40 @@ export const useSaasStore = create<SaasState>()(
         if (!isDevDemoClient() && p?.org?.id === "org_demo") {
           return current;
         }
-        return { ...current, ...(p ?? {}) };
+        const merged = { ...current, ...(p ?? {}) };
+        if (!isDevDemoClient()) return merged;
+        const locations = (merged.locations?.length
+          ? merged.locations
+          : seedLocations()
+        ).map((l) =>
+          l.id === LAUNDRY_LOCATION_ID
+            ? {
+                ...l,
+                name: LAUNDRY_LOCATION_NAME,
+                code: "LAUNDRY",
+                address: `TEST · ${LAUNDRY_ORG_NAME}`,
+              }
+            : l,
+        );
+        const merchants = [
+          ...(merged.merchants?.length ? merged.merchants : seedMerchants()),
+        ];
+        const extras = seedMerchants().filter(
+          (m) => m.id === "m_steam" || m.id === "m_diamond",
+        );
+        for (const m of extras) {
+          if (!merchants.some((e) => e.id === m.id)) merchants.unshift(m);
+        }
+        return {
+          ...merged,
+          org:
+            !merged.org?.id || merged.org.id === "org_demo"
+              ? seedOrg()
+              : merged.org,
+          locations,
+          merchants,
+          activeLocationId: merged.activeLocationId || LAUNDRY_LOCATION_ID,
+        };
       },
     },
   ),

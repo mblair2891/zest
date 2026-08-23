@@ -148,7 +148,7 @@ export const PAYMENT_TOPICS: GuideTopic[] = [
       warn(
         "This is a first-party sandbox ledger. It is not QuickBooks and not a live ACH rail. See the Summex white paper for the commercial description.",
       ),
-      related("settlement", "chargebacks", "quantum-payments", "white-paper"),
+      related("settlement", "chargebacks", "quantum-payments", "white-paper", "laundry-test-venue"),
     ],
   }),
   topic({
@@ -170,7 +170,7 @@ export const PAYMENT_TOPICS: GuideTopic[] = [
         "Use Print / PDF in the toolbar.",
         "Treat Roadmap items as not shipped — live ACH is not claimed.",
       ),
-      related("system-ledger", "quantum-payments", "settlement", "cash-discount"),
+      related("system-ledger", "quantum-payments", "settlement", "cash-discount", "laundry-test-venue"),
     ],
   }),
   topic({
@@ -199,7 +199,7 @@ export const PAYMENT_TOPICS: GuideTopic[] = [
       ),
       ul(
         "One operator’s merchandise on the check → that operator pays $35.",
-        "Mixed check, e.g. Operator A food $65 + Operator B drink $35 → $22.75 / $12.25.",
+        "Mixed check, e.g. Diamond House BBQ food $65 + Steam Distillery drinks $35 → $22.75 / $12.25.",
         "No dispute filed → $0. Never a standing fee.",
         "Deducted from the electronic payout on the period.",
       ),
@@ -216,7 +216,7 @@ export const PAYMENT_TOPICS: GuideTopic[] = [
       warn(
         "Do not void the original check to “undo” a dispute. Use this panel so the ledger stays auditable.",
       ),
-      related("settlement", "host-capture", "quantum-payments", "audit"),
+      related("settlement", "host-capture", "quantum-payments", "audit", "laundry-test-venue"),
     ],
   }),
 ];

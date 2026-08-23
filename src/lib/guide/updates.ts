@@ -7,6 +7,16 @@ import { GUIDE_VERSION, type GuideRole, type GuideUpdate } from "./types";
  */
 export const GUIDE_UPDATES: GuideUpdate[] = [
   {
+    id: "upd_2026_08_26_laundry",
+    date: "2026-08-26",
+    title: "The Laundry TEST venue",
+    summary:
+      "Demo-only host: The Laundry with Steam Distillery (bar) and Diamond House BBQ (kitchen). One guest check, ledger allocations, $35 dispute split.",
+    roles: ["owner_manager", "host_operator", "platform_admin", "vendor_operator"],
+    topicId: "laundry-test-venue",
+    tags: ["demo", "ledger", "multi-operator"],
+  },
+  {
     id: "upd_2026_08_26_ledger_wp",
     date: "2026-08-26",
     title: "White paper and system ledger",

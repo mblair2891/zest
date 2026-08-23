@@ -32,7 +32,7 @@ export const GETTING_STARTED_TOPICS: GuideTopic[] = [
         "Use Guide or “?” in the header on POS and on the platform. It is also on login and empty states.",
         "Filter chapters by role, or leave All for cross-training.",
         "Mark a topic complete. Continue where you left off resumes the last unfinished article.",
-        "Examples in this guide use generic names: Host Venue, Operator A, Operator B — never a live customer.",
+        "Examples in this guide use generic names: Host Venue, Operator A, Operator B — never a live customer. The Laundry TEST venue exists only in DEV_DEMO.",
       ),
       tip(
         "Press Esc to close the overlay. Press / to jump to search. Open /guide for a bookmarkable, print-friendly page.",
@@ -175,9 +175,58 @@ export const GETTING_STARTED_TOPICS: GuideTopic[] = [
         "Open POS for that location. Menu, tables, and tickets stay empty until you add them in onboarding or in POS settings.",
       ),
       warn(
-        "There is no demo-tenant switch on the live path. Do not paste a real customer name into the first org.",
+        "There is no demo-tenant switch on the live path. Do not paste a real customer name into the first org. The Laundry TEST venue (Steam Distillery + Diamond House BBQ) loads only when DEV_DEMO=1.",
       ),
-      related("login", "prospect-intake", "onboarding-wizard", "create-org"),
+      related("login", "prospect-intake", "onboarding-wizard", "create-org", "laundry-test-venue"),
+    ],
+  }),
+  topic({
+    id: "laundry-test-venue",
+    chapterId: "getting-started",
+    title: "The Laundry test venue (demo)",
+    summary:
+      "DEV_DEMO only. Host brand The Laundry with Steam Distillery (bar) and Diamond House BBQ (kitchen) on one guest check.",
+    roles: ["platform_admin", "owner_manager", "host_operator", "vendor_operator"],
+    keywords: [
+      "laundry",
+      "the laundry",
+      "steam distillery",
+      "diamond house",
+      "bbq",
+      "demo",
+      "test venue",
+      "dev_demo",
+      "seed",
+    ],
+    openView: "floor",
+    blocks: [
+      why(
+        "Ledger, host capture, and multi-operator settlement need a labeled dataset you can reload. Production empty-start must stay empty — so this seed is gated on DEV_DEMO.",
+      ),
+      p(
+        "The Laundry is the guest-facing host brand. Steam Distillery is bar-only (drinks, bar tickets). Diamond House BBQ is kitchen / dining (food, kitchen tickets). The guest pays one check branded The Laundry via Quantum Payments. Line items carry the operator id for routing, settlement, and ledger allocations.",
+      ),
+      callout(
+        "TEST venue — not a customer",
+        "This is a hypothetical host model for rehearsal. It is not a case study. Admin bootstrap (Admin / password + forced change) is unchanged.",
+      ),
+      steps(
+        "Confirm demo mode: VITE_DEV_DEMO=1 (and DEV_DEMO=1 on the server). With DEV_DEMO=0 the seed never loads and the Load button is hidden.",
+        "From platform login tap Load The Laundry (TEST), from Settings tap Load The Laundry test venue, or pick The Laundry (TEST) on the venue picker.",
+        "PIN as Host owner 9999, Floor manager 0000, Server 1111, Steam bartender 3333, or Diamond pit 5555.",
+        "Seat a dining table. Add food (Diamond House BBQ — e.g. Brisket) and a drink (Steam Distillery — e.g. House Highball) on the same check.",
+        "Pay card. Receipt and capture brand are The Laundry. Open Ledger: capture on host, allocations to Steam Distillery and Diamond House BBQ.",
+        "On Settle, file a dispute on that closed card check. The $35 fee splits by merchandise share (example: $65 food / $35 drinks → $22.75 / $12.25).",
+      ),
+      ul(
+        "Cash discount in the seed: 5% off, round up to $0.25 (printed $12.00 card → $11.50 cash).",
+        "Bar merchandise settles to Steam Distillery; food merchandise to Diamond House BBQ.",
+        "White paper appendix uses the same names, labeled as an example.",
+      ),
+      warn(
+        "DEV_DEMO=0 never seeds The Laundry. Do not treat this org as a production tenant.",
+      ),
+      related("empty-start", "system-ledger", "white-paper", "host-capture", "chargebacks"),
     ],
   }),
   topic({
