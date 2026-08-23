@@ -49,6 +49,7 @@ const ROLE_VIEWS: Record<EmployeeRole, PosView[] | "all"> = {
     "online",
     "hall",
     "settlement",
+    "ledger",
     "vendor_portal",
     "integrations",
     "reports",

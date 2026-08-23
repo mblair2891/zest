@@ -21,6 +21,13 @@ import {
 } from "./seed";
 import { computeTotals, isHappyHour, lineUnitTotal } from "./calculations";
 import { allocateChargebackFee, buildPeriodSettlement, CHARGEBACK_FEE_CENTS } from "./settlement";
+import {
+	entriesForChargeback,
+	entriesForOrderAllocations,
+	entriesForPayment,
+	entriesForPeriodClose,
+	mergeLedger,
+} from "./ledger";
 import { useOpsStore } from "./ops-store";
 import {
   DEFAULT_FLOOR_SECTIONS,
@@ -91,6 +98,7 @@ function initialState() {
 		settlementConfig: { ...SETTLEMENT_CONFIG },
 		settlementPeriods: [],
 		chargebacks: [],
+		ledgerEntries: [],
 		auditLog: [],
 		shift: emptyShift(),
 		view: "floor",
@@ -215,6 +223,10 @@ const usePosStoreRaw = create()(persist((set, get) => ({
 	getActiveOrder: () => {
 		const id = get().activeOrderId;
 		return get().orders.find((o) => o.id === id);
+	},
+	postLedger: (entries) => {
+		if (!entries.length) return;
+		set({ ledgerEntries: mergeLedger(get().ledgerEntries ?? [], entries) });
 	},
 	audit: (action, detail) => {
 		const emp = get().getCurrentEmployee();
@@ -884,11 +896,30 @@ const usePosStoreRaw = create()(persist((set, get) => ({
 			...t,
 			status: tableStatusFromOrder(updated)
 		} : t);
+		const ids = {
+			orgId: get().tenantLocationId ? `org:${get().tenantLocationId}` : "org_local",
+			locationId: get().tenantLocationId || get().settlementConfig.locationId || "loc_local",
+		};
+		let led = entriesForPayment({
+			ids,
+			order: updated,
+			payment,
+			settings: get().settings,
+		});
+		if (updated.status === "closed") {
+			led = led.concat(entriesForOrderAllocations({
+				ids,
+				order: updated,
+				vendors: get().vendors,
+				settings: get().settings,
+			}));
+		}
 		set({
 			orders: get().orders.map((o) => o.id === order.id ? updated : o),
 			shift,
 			employees,
-			tables
+			tables,
+			ledgerEntries: mergeLedger(get().ledgerEntries ?? [], led),
 		});
 		if (updated.status === "closed") try {
 			useOpsStore.getState().recordTicketClosed(order.serverId, Date.now());
@@ -1355,7 +1386,17 @@ const usePosStoreRaw = create()(persist((set, get) => ({
 			filedAt: Date.now(),
 			allocations
 		};
-		set({ chargebacks: [cb, ...(get().chargebacks ?? [])] });
+		const ids = {
+			orgId: get().tenantLocationId ? `org:${get().tenantLocationId}` : "org_local",
+			locationId: get().tenantLocationId || get().settlementConfig.locationId || "loc_local",
+		};
+		set({
+			chargebacks: [cb, ...(get().chargebacks ?? [])],
+			ledgerEntries: mergeLedger(
+				get().ledgerEntries ?? [],
+				entriesForChargeback({ ids, chargeback: cb }),
+			),
+		});
 		get().audit("chargeback", `Filed $${(CHARGEBACK_FEE_CENTS / 100).toFixed(0)} dispute fee on #${order.number}`);
 		return { ok: true, chargeback: cb };
 	},
@@ -1376,12 +1417,20 @@ const usePosStoreRaw = create()(persist((set, get) => ({
 			ok: false,
 			error: "Nothing to close"
 		};
+		const ids = {
+			orgId: get().tenantLocationId ? `org:${get().tenantLocationId}` : "org_local",
+			locationId: get().tenantLocationId || get().settlementConfig.locationId || "loc_local",
+		};
 		set({
 			settlementPeriods: [preview, ...get().settlementPeriods],
 			settlementConfig: {
 				...get().settlementConfig,
 				currentPeriodStart: Date.now()
-			}
+			},
+			ledgerEntries: mergeLedger(
+				get().ledgerEntries ?? [],
+				entriesForPeriodClose({ ids, period: preview }),
+			),
 		});
 		get().audit("settlement", `Closed period ${preview.id}`);
 		return {
@@ -1597,6 +1646,7 @@ const usePosStoreRaw = create()(persist((set, get) => ({
 		settlementConfig: s.settlementConfig,
 		settlementPeriods: s.settlementPeriods,
 		chargebacks: s.chargebacks,
+		ledgerEntries: s.ledgerEntries ?? [],
 		auditLog: s.auditLog,
 		shift: s.shift,
 		view: s.view,

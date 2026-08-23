@@ -19,6 +19,8 @@ a CMS.
 | `src/components/guide/OperatorsGuide.tsx` | Overlay + `/guide` page |
 | `src/components/guide/GuideLearnLink.tsx` | Contextual “Learn” control |
 | `src/routes/guide.tsx` | `/guide?topic=chargebacks` |
+| `docs/whitepaper/` | Shareable white paper (MD + print HTML) |
+| `/whitepaper` | Live white paper (prints to PDF) |
 
 Bump `GUIDE_VERSION` in `types.ts` when you ship a batch of topics.
 

@@ -10,6 +10,7 @@ const NAV = [
   { to: "/pricing" as const, label: "Pricing" },
   { to: "/get-pricing" as const, label: "Quote" },
   { to: "/guide" as const, label: "Guide" },
+  { to: "/whitepaper" as const, label: "White paper" },
 ];
 
 export function LandingFrame({ children }: { children: ReactNode }) {
@@ -98,6 +99,9 @@ export function LandingFrame({ children }: { children: ReactNode }) {
             <Link to="/pricing" className="hover:text-champagne">
               Pricing
             </Link>
+            <Link to="/whitepaper" className="hover:text-champagne">
+              White paper
+            </Link>
           </div>
           <p className="text-xs text-muted-foreground">
             Powered by {POWERED_BY}
@@ -116,7 +120,8 @@ export type LandingHref =
   | "/guide"
   | "/pricing"
   | "/platform"
-  | "/features";
+  | "/features"
+  | "/whitepaper";
 
 export function LandingCta({
   to,

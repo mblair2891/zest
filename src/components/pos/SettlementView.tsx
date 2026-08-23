@@ -10,6 +10,7 @@ import { GuideLearnLink } from "@/components/guide/GuideLearnLink";
 import { SetupAssistButton } from "@/components/assist/SetupAssistDialog";
 
 export function SettlementView() {
+  const setView = usePosStore((s) => s.setView);
   const config = usePosStore((s) => s.settlementConfig);
   const vendors = usePosStore((s) => s.vendors);
   const periods = usePosStore((s) => s.settlementPeriods);
@@ -48,6 +49,9 @@ export function SettlementView() {
           </h2>
           <div className="flex flex-wrap items-center gap-3">
             <SetupAssistButton domain="operator" label="Add operator" />
+            <Button size="sm" variant="outline" onClick={() => setView("ledger")}>
+              Ledger
+            </Button>
             <GuideLearnLink topicId="settlement">Learn: settlement</GuideLearnLink>
             <GuideLearnLink topicId="chargebacks">Learn: chargebacks</GuideLearnLink>
           </div>

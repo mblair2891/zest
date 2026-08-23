@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Summex White Paper — Quantum Reach</title>
+<style>
+  @page { size: Letter; margin: 0.85in 0.8in 1in; }
+  :root {
+    --ink: #0a0a0a;
+    --ivory: #f7f6f3;
+    --muted: #5c5c5c;
+    --line: #e8e6e1;
+    --champagne: #c4b8a5;
+  }
+  * { box-sizing: border-box; }
+  html { font-size: 11.5pt; }
+  body {
+    margin: 0;
+    background: var(--ivory);
+    color: var(--ink);
+    font-family: "Inter", "Helvetica Neue", Helvetica, Arial, sans-serif;
+    line-height: 1.55;
+    letter-spacing: -0.011em;
+  }
+  .sheet { max-width: 42rem; margin: 0 auto; padding: 2.5rem 1.5rem 4rem; }
+  header.hero { padding-bottom: 1.75rem; border-bottom: 1px solid var(--champagne); margin-bottom: 2rem; }
+  .kicker {
+    font-size: 0.7rem;
+    letter-spacing: 0.32em;
+    text-transform: uppercase;
+    color: #7a7164;
+    margin: 0 0 0.75rem;
+  }
+  h1 {
+    font-family: "Cormorant Garamond", Georgia, serif;
+    font-size: 2.6rem;
+    font-weight: 500;
+    letter-spacing: -0.02em;
+    line-height: 1;
+    margin: 0 0 0.4rem;
+  }
+  .sub {
+    font-family: "Cormorant Garamond", Georgia, serif;
+    font-style: italic;
+    font-size: 1.25rem;
+    color: #6e675c;
+    margin: 0 0 1rem;
+  }
+  .meta { font-size: 0.85rem; color: var(--muted); }
+  h2 {
+    font-family: "Cormorant Garamond", Georgia, serif;
+    font-size: 1.55rem;
+    font-weight: 500;
+    margin: 2.2rem 0 0.7rem;
+    padding-top: 0.4rem;
+    border-top: 1px solid var(--line);
+    page-break-after: avoid;
+  }
+  h3 { font-size: 1rem; margin: 1.3rem 0 0.4rem; page-break-after: avoid; }
+  p { margin: 0 0 0.85rem; }
+  ul, ol { margin: 0 0 1rem; padding-left: 1.2rem; }
+  li { margin-bottom: 0.35rem; }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.9rem;
+    margin: 0.6rem 0 1.2rem;
+  }
+  th, td {
+    border-bottom: 1px solid var(--line);
+    text-align: left;
+    padding: 0.4rem 0.5rem 0.4rem 0;
+    vertical-align: top;
+  }
+  th { font-size: 0.72rem; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); font-weight: 600; }
+  .note {
+    border-left: 2px solid var(--champagne);
+    padding: 0.4rem 0 0.4rem 0.85rem;
+    color: var(--muted);
+    font-size: 0.92rem;
+    margin: 0 0 1rem;
+  }
+  footer.doc {
+    margin-top: 3rem;
+    padding-top: 1rem;
+    border-top: 1px solid var(--champagne);
+    font-size: 0.8rem;
+    color: var(--muted);
+  }
+  .print-bar {
+    position: sticky; top: 0; z-index: 2;
+    display: flex; justify-content: flex-end; gap: 0.5rem;
+    padding: 0.6rem 1.5rem;
+    background: var(--ivory);
+    border-bottom: 1px solid var(--line);
+  }
+  .print-bar a, .print-bar button {
+    font: inherit; font-size: 0.75rem; letter-spacing: 0.12em; text-transform: uppercase;
+    background: var(--ink); color: var(--ivory); border: 0; padding: 0.55rem 0.9rem; cursor: pointer;
+    text-decoration: none;
+  }
+  .print-bar a.ghost { background: transparent; color: var(--ink); border: 1px solid var(--champagne); }
+  @media print {
+    .print-bar { display: none; }
+    body { background: #fff; }
+    .sheet { padding: 0; max-width: none; }
+    a { color: inherit; text-decoration: none; }
+  }
+</style>
+</head>
+<body>
+  <div class="print-bar">
+    <a class="ghost" href="/">Summex</a>
+    <button type="button" onclick="window.print()">Print / PDF</button>
+  </div>
+  <article class="sheet">
+    <header class="hero">
+      <p class="kicker">White paper · August 2026</p>
+      <h1>Summex</h1>
+      <p class="sub">Hospitality operations and money movement. Powered by Quantum Reach.</p>
+      <p class="meta">summex.app · Guest cards: Quantum Payments only</p>
+    </header>
+
+    <h2>1. Executive summary</h2>
+    <p>Summex is a hospitality operating system for restaurants, bars, and <strong>host venues</strong> where more than one operator can appear on a single guest check. It is powered by <strong>Quantum Reach</strong>. Guest-facing cards run exclusively through <strong>Quantum Payments</strong>.</p>
+    <p>The product combines service (floor, sections, kitchen and bar routing), SaaS (intake, snapshot quote, contract, guided onboarding), and money movement (one host capture, internal operator allocations, period settlement, a first-party system ledger).</p>
+    <p>The guest pays once, under the host name. Operators are paid from merchandise share on a period ledger — not from a second terminal at the table.</p>
+    <p class="note">This paper describes how the system works today. Items that are not built are marked <strong>Roadmap</strong>. No processor rates are guaranteed. No bank partners are named. No compliance seals are claimed.</p>
+
+    <h2>2. The problem</h2>
+    <p>Hospitality software still treats a dining room like a retail checkout, and a food hall like several unrelated shops.</p>
+    <ul>
+      <li><strong>Fragmented POS.</strong> Floor, kitchen, and bar live in different tools. Managers close the night in a spreadsheet.</li>
+      <li><strong>Host + operator venues.</strong> The guest is asked to pay twice. Tips, comps, and disputes cannot be split cleanly.</li>
+      <li><strong>Multiple payment brands.</strong> Stall operators bring their own processors. The house loses the receipt and any fair cut.</li>
+      <li><strong>Settlement after the fact.</strong> A $35 dispute fee, when it exists, is not allocated by who actually sold the food.</li>
+    </ul>
+    <p>Summex’s answer is one system for service and money movement.</p>
+
+    <h2>3. Platform overview</h2>
+    <p>Summex is a single application. Merchants sign in at summex.app. Organization and location are chosen after authentication. Software billing is separate from guest card processing. Gift cards stay first-party. Integrations never offer Stripe, Square, or similar as a POS processor.</p>
+    <table>
+      <thead><tr><th>Layer</th><th>Role</th></tr></thead>
+      <tbody>
+        <tr><td>Control plane</td><td>Organizations, locations, packages, invites, pipeline</td></tr>
+        <tr><td>POS</td><td>Floor, order, tenders, cash, guests, first-party gift</td></tr>
+        <tr><td>KDS</td><td>Kitchen and bar tickets, bump, operator filters</td></tr>
+        <tr><td>Settlement</td><td>Period close, host cut, operator payouts (ledger, not live ACH)</td></tr>
+        <tr><td>System ledger</td><td>Append-only money events for the location</td></tr>
+        <tr><td>Operators Guide</td><td>In-product manual, searchable, role-aware</td></tr>
+      </tbody>
+    </table>
+
+    <h2>4. Operating models</h2>
+    <h3>Single-operator</h3>
+    <p>One brand owns the location. Cards still run on Quantum Payments. The ledger still records captures, tips, cash, voids, and (if filed) disputes.</p>
+    <h3>Host + multiple operators</h3>
+    <p><strong>Host Venue</strong> owns the floor, the guest-facing brand, and the card MID. <strong>Operator A</strong> and <strong>Operator B</strong> own lines, tickets, and period payouts. They are not card processors. The guest sees one check and one charge.</p>
+
+    <h2>5. Guest experience</h2>
+    <ul>
+      <li>One check, even when food and drink belong to different operators.</li>
+      <li>One guest-facing brand (the location / host name).</li>
+      <li>One card capture on Quantum Payments.</li>
+      <li>Printed menu prices stay clean (e.g. $15.00). Cash discount, if posted, is computed — not a second ugly menu.</li>
+    </ul>
+    <p>The guest does not see operator splits, host cut, or ledger rows.</p>
+
+    <h2>6. Quantum Payments — host capture and internal split</h2>
+    <p>Card tender is a <strong>single capture</strong> on the host MID. Operators never receive a guest PAN and never onboard as processors inside Summex.</p>
+    <p>After capture, Summex records a host capture, then allocations to operators by merchandise share (pre-tax product; voids/comps excluded). Tax and service remain with the host unless configured otherwise. Tips default to the house unless pooled.</p>
+    <p>This is <strong>not</strong> a live processor split-payout. It is a product-owned ledger. Electronic payout rows address an operator’s account placeholder. <strong>Live ACH is not claimed.</strong> Marking a period paid records that money was sent outside Summex.</p>
+    <p class="note"><strong>Roadmap:</strong> connecting a live bank rail. Payout last4 in the product is a stub for operations rehearsal.</p>
+
+    <h2>7. Cash discount model</h2>
+    <p>Printed / card price is the source of truth. When cash discount is enabled: <code>cashRaw = printed × (1 − percent/100)</code>, then round <strong>up</strong> to the increment ($0.25, $0.50, $0.75, or $1.00). Exact multiples stay.</p>
+    <table>
+      <thead><tr><th>Printed / card</th><th>Raw 5%</th><th>Cash (round up $0.25)</th></tr></thead>
+      <tbody>
+        <tr><td>$15.00</td><td>$14.25</td><td>$14.25</td></tr>
+        <tr><td>$12.00</td><td>$11.40</td><td>$11.50</td></tr>
+        <tr><td>$7.00</td><td>$6.65</td><td>$6.75</td></tr>
+      </tbody>
+    </table>
+    <p>Quantum Payments still captures the printed amount. The house is responsible for local cash-discount posting rules.</p>
+
+    <h2>8. Fees and disputes</h2>
+    <p>Software fees are quoted in intake — not card-processing rates. Card fee % on settlement is a house-configured estimate on the period ledger, not a guaranteed Quantum Payments schedule.</p>
+    <p>Quantum Payments charges <strong>$35.00</strong> only when a real dispute is filed on a closed check with a card capture. Mixed merchandise (e.g. $65 food / $35 drink) splits the fee 65/35 → $22.75 / $12.25. No dispute → $0. Won or lost does not reverse the $35.</p>
+
+    <h2>9. Security, roles, and audit</h2>
+    <p>PIN access level controls POS tools. Account membership controls the control plane. Platform Admin is not a restaurant owner. The system ledger is append-only with idempotent writes. This paper does <strong>not</strong> claim PCI DSS, SOC, or other seals. Summex does not store full PAN on guest profiles.</p>
+
+    <h2>10. Implementation path</h2>
+    <ol>
+      <li>Intake — describe the operation. Snapshot quote.</li>
+      <li>Accept — merchant accepts the quote.</li>
+      <li>Contract signed — Platform Admin records the commercial step.</li>
+      <li>Onboarding wizard — org, locations, operators, floor, menu, devices, invites, settlement, go-live.</li>
+      <li>Live — Open POS. Enable cash discount if the house posts one.</li>
+    </ol>
+    <p class="note"><strong>Roadmap (not in this build):</strong> live ACH/payout rails, QuickBooks sync, PCI audit letter, guaranteed processor rates.</p>
+
+    <h2>11. Glossary</h2>
+    <table>
+      <tbody>
+        <tr><td>Host Venue</td><td>Guest-facing brand and card MID owner on a multi-operator floor</td></tr>
+        <tr><td>Operator</td><td>Stall or kitchen brand; not a card processor</td></tr>
+        <tr><td>Host capture</td><td>One Quantum Payments charge on the host MID</td></tr>
+        <tr><td>Printed / card price</td><td>Menu source of truth; what Quantum Payments captures</td></tr>
+        <tr><td>Cash price</td><td>Printed × (1 − %), rounded up to the increment</td></tr>
+        <tr><td>System ledger</td><td>Append-only money events</td></tr>
+        <tr><td>Chargeback fee</td><td>$35 on file, split by merchandise %; not reversed on won/lost</td></tr>
+        <tr><td>Roadmap</td><td>Described, not shipped</td></tr>
+      </tbody>
+    </table>
+
+    <footer class="doc">
+      <p>© Quantum Reach · Summex · summex.app<br />
+      Michael Blair &amp; Andy Baida<br />
+      This document describes current product behavior and explicitly marked roadmap. It is not a rate sheet, a bank offering, or a compliance certificate.</p>
+    </footer>
+  </article>
+</body>
+</html>

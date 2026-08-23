@@ -348,6 +348,12 @@ export function PlatformApp() {
           </Button>
         )}
         <GuideTriggerButton topicId="platform-admin" />
+        <Link
+          to="/whitepaper"
+          className="hidden text-xs text-muted-foreground underline-offset-2 hover:underline sm:inline"
+        >
+          White paper
+        </Link>
         <Button size="sm" variant="outline" onClick={openPos} disabled={!loc}>
           Open POS
         </Button>

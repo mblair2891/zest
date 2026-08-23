@@ -114,7 +114,63 @@ export const PAYMENT_TOPICS: GuideTopic[] = [
         "Sandbox / ledger",
         "Payout account last4 is a stub so you can rehearse ops. Connecting a live bank rail is out of scope for this guide. The math on the period is still the production contract.",
       ),
-      related("host-capture", "chargebacks", "cash-handling", "single-vs-multi"),
+      related("host-capture", "chargebacks", "system-ledger", "cash-handling", "single-vs-multi"),
+    ],
+  }),
+  topic({
+    id: "system-ledger",
+    chapterId: "payments",
+    title: "Understanding the ledger",
+    summary:
+      "Append-only money events: capture, allocation, fees, payout, chargeback. Sandbox book — not live ACH.",
+    roles: ["owner_manager", "host_operator", "vendor_operator", "platform_admin"],
+    keywords: ["ledger", "allocation", "capture", "payout", "book", "csv"],
+    openView: "ledger",
+    blocks: [
+      why(
+        "Settlement math is only useful if you can see the events that produced it. The system ledger is the house book for Quantum Payments — one guest capture, then operator allocations, then period fees and payouts.",
+      ),
+      p(
+        "Each row has a type, a party (host or operator), a signed amount, and an idempotency key. Positive amounts increase that party’s claim; negative amounts decrease it. Retries do not double-post.",
+      ),
+      ul(
+        "Card pay → capture on the host (Quantum Payments).",
+        "Cash pay → capture plus an optional cash_discount_adjustment when discount is on.",
+        "Check close → allocation to each operator by merchandise share.",
+        "Period close → processor_fee, host_fee, sandbox payout (not live bank).",
+        "File dispute → chargeback impact on host plus $35 chargeback_fee split by merchandise %.",
+      ),
+      steps(
+        "Open Ledger from the menu or from Settle.",
+        "Filter by type, operator, or date. Export CSV for your accountant.",
+        "Won/lost on a dispute does not add a reversing $35 — filing already posted the fee.",
+      ),
+      warn(
+        "This is a first-party sandbox ledger. It is not QuickBooks and not a live ACH rail. See the Summex white paper for the commercial description.",
+      ),
+      related("settlement", "chargebacks", "quantum-payments", "white-paper"),
+    ],
+  }),
+  topic({
+    id: "white-paper",
+    chapterId: "payments",
+    title: "White paper",
+    summary: "Shareable description of Summex, Quantum Payments, cash discount, and the ledger.",
+    roles: "all",
+    keywords: ["white paper", "pdf", "processor", "partner", "quantum reach"],
+    blocks: [
+      why(
+        "Processors, prospects, and partners need one document that does not invent rates, banks, or seals.",
+      ),
+      p(
+        "Open /whitepaper (also linked from the marketing footer). Print from the browser for a PDF. The markdown source lives with the product docs.",
+      ),
+      steps(
+        "Open White paper from the site footer or this topic.",
+        "Use Print / PDF in the toolbar.",
+        "Treat Roadmap items as not shipped — live ACH is not claimed.",
+      ),
+      related("system-ledger", "quantum-payments", "settlement", "cash-discount"),
     ],
   }),
   topic({

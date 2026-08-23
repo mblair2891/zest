@@ -67,7 +67,12 @@ export function MarketingShell({ children }: { children: ReactNode }) {
       <footer className="border-t border-border">
         <div className="mx-auto flex max-w-5xl flex-wrap items-center justify-between gap-3 px-4 py-8 text-xs text-muted-foreground">
           <p>{PRODUCT_TAGLINE} · summex.app</p>
-          <p>By Michael Blair & Andy Baida</p>
+          <p className="flex flex-wrap gap-4">
+            <Link to="/whitepaper" className="hover:text-foreground">
+              White paper
+            </Link>
+            <span>By Michael Blair & Andy Baida</span>
+          </p>
         </div>
       </footer>
     </div>

@@ -164,7 +164,7 @@ export const SUMMEX_PACKAGES: SummexPackage[] = [
     tagline: "Single guest pay, period payouts, host cut, cash split reports",
     priceMonthly: 199,
     modes: ["food_hall", "truck_pod", "all"],
-    views: ["settlement", "hq", "payouts"],
+    views: ["settlement", "hq", "payouts", "ledger"],
   },
   {
     id: "vendor_portal",

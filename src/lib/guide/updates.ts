@@ -7,6 +7,16 @@ import { GUIDE_VERSION, type GuideRole, type GuideUpdate } from "./types";
  */
 export const GUIDE_UPDATES: GuideUpdate[] = [
   {
+    id: "upd_2026_08_26_ledger_wp",
+    date: "2026-08-26",
+    title: "White paper and system ledger",
+    summary:
+      "Shareable Summex white paper. Append-only Quantum Payments ledger: capture, allocations, $35 dispute fee, CSV export.",
+    roles: ["owner_manager", "host_operator", "platform_admin"],
+    topicId: "system-ledger",
+    tags: ["ledger", "payments"],
+  },
+  {
     id: "upd_2026_08_25_setup_assist",
     date: "2026-08-25",
     title: "Talk your location into Summex",

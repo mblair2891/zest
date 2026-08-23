@@ -83,6 +83,7 @@ export interface PosStore {
   settlementConfig: SettlementConfig;
   settlementPeriods: SettlementPeriod[];
   chargebacks: Chargeback[];
+  ledgerEntries: import("./ledger").LedgerEntry[];
   auditLog: AuditEntry[];
   shift: ShiftState;
   view: PosView;
@@ -232,6 +233,7 @@ export interface PosStore {
   closeSettlementPeriod: () => ActionResult<{ period?: SettlementPeriod }>;
   markSettlementPaid: (periodId: string) => void;
   fileChargeback: (orderId: string) => ActionResult<{ chargeback?: Chargeback }>;
+  postLedger: (entries: import("./ledger").LedgerEntry[]) => void;
   resolveChargeback: (
     id: string,
     outcome: ChargebackStatus,

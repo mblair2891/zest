@@ -21,6 +21,7 @@ import {
   Map as MapIcon,
   Boxes,
   Landmark,
+  ScrollText,
   Plug,
   Store,
   Layers,
@@ -69,6 +70,7 @@ import { TakeoutView } from "./TakeoutView";
 import { FloorEditorView } from "./FloorEditorView";
 import { FullPackageView } from "./FullPackageView";
 import { SettlementView } from "./SettlementView";
+import { LedgerView } from "./LedgerView";
 import { IntegrationsHubView } from "./IntegrationsHubView";
 import { VendorPortalView } from "./VendorPortalView";
 import { FeatureMatrixView } from "./FeatureMatrixView";
@@ -120,6 +122,7 @@ const NAV: {
   { id: "takeout", label: "Takeout", icon: ShoppingBag },
   { id: "hall", label: "Hall", icon: MapIcon },
   { id: "settlement", label: "Settle", icon: Landmark },
+  { id: "ledger", label: "Ledger", icon: ScrollText },
   { id: "vendor_portal", label: "Vendors", icon: Store },
   { id: "integrations", label: "Integrations", icon: Plug },
   { id: "reports", label: "Reports", icon: BarChart3 },
@@ -443,6 +446,7 @@ export function AppShell() {
           {safeView === "package" && <FullPackageView />}
           {safeView === "features" && <FeatureMatrixView />}
           {safeView === "settlement" && <SettlementView />}
+          {safeView === "ledger" && <LedgerView />}
           {safeView === "vendor_portal" && <VendorPortalView />}
           {safeView === "integrations" && <IntegrationsHubView />}
           {safeView === "floor" && <FloorView />}
