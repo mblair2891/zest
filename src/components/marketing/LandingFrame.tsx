@@ -58,7 +58,7 @@ export function LandingFrame({ children }: { children: ReactNode }) {
                   to="/get-pricing"
                   className="inline-flex h-10 items-center rounded-sm bg-primary px-4 text-xs font-semibold tracking-widest text-primary-foreground uppercase"
                 >
-                  Request a quote
+                  Get pricing
                 </Link>
               </>
             )}
@@ -84,13 +84,16 @@ export function LandingFrame({ children }: { children: ReactNode }) {
           </div>
           <div className="flex flex-wrap gap-x-6 gap-y-2 text-xs text-muted-foreground">
             <Link to="/get-pricing" className="hover:text-champagne">
-              Quote
+              Get pricing
             </Link>
             <Link to="/login" className="hover:text-champagne">
               Sign in
             </Link>
             <Link to="/guide" className="hover:text-champagne">
               Operators Guide
+            </Link>
+            <Link to="/platform" className="hover:text-champagne">
+              Platform
             </Link>
             <Link to="/pricing" className="hover:text-champagne">
               Pricing
@@ -106,13 +109,22 @@ export function LandingFrame({ children }: { children: ReactNode }) {
   );
 }
 
+export type LandingHref =
+  | "/get-pricing"
+  | "/login"
+  | "/signup"
+  | "/guide"
+  | "/pricing"
+  | "/platform"
+  | "/features";
+
 export function LandingCta({
   to,
   children,
   tone = "solid",
   className,
 }: {
-  to: "/get-pricing" | "/login" | "/signup" | "/guide";
+  to: LandingHref;
   children: ReactNode;
   tone?: "solid" | "ghost";
   className?: string;

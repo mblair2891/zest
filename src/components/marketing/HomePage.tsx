@@ -4,71 +4,174 @@ import {
   CookingPot,
   CreditCard,
   Landmark,
+  ShieldCheck,
   UtensilsCrossed,
 } from "lucide-react";
+import { Link } from "@tanstack/react-router";
 import { SummexMark } from "@/components/brand/SummexMark";
 import { PAYMENTS_BRAND, POWERED_BY, PRODUCT_NAME } from "@/lib/platform/brand";
 import { LandingCta, LandingFrame } from "./LandingFrame";
 
-const FEATURES = [
+const PAINS = [
   {
-    icon: UtensilsCrossed,
-    title: "Service",
-    body: "The floor, the check, the turn. Tables, sections, and tenders conducted from one station — without theatre.",
+    title: "A POS that is only a cash register",
+    body: "Floor, kitchen, and bar live in different tools. The guest feels the seams. Managers close the night in a spreadsheet.",
   },
+  {
+    title: "Bar and kitchen as two businesses at one table",
+    body: "The guest is asked to pay twice. Tips, comps, and disputes cannot be split cleanly. The host has no ledger — only arguments.",
+  },
+  {
+    title: "A second card brand at the check",
+    body: "Stall operators bring their own processors. The house loses the guest relationship, the receipt, and any fair cut.",
+  },
+  {
+    title: "Software that was built for retail checkout",
+    body: "No sections, no KDS routing, no period settlement. A scanner and a SKU list will not run a dining room — or a hall.",
+  },
+];
+
+const WHYS = [
   {
     icon: Building2,
-    title: "Multi-operator host",
-    body: "One guest-facing house. Several operators on a single check. The host holds the brand; the stalls keep their lines.",
+    title: "One platform for every house you run",
+    body: "Restaurants, bars, cafés, host venues, and multi-operator locations sign into the same Summex. Organization and location are chosen after login — not as a maze of subdomains.",
   },
   {
-    icon: CookingPot,
-    title: "Routing",
-    body: "Kitchen and bar receive what is theirs. Tickets follow station and operator — never a shared pile of hope.",
+    icon: UtensilsCrossed,
+    title: "One check, even when operators differ",
+    body: "Food from one operator, drinks from another, still a single guest bill. Lines stay tagged. Kitchen and bar still see only their tickets. The guest never runs two cards.",
   },
   {
     icon: CreditCard,
-    title: "Quantum Payments",
-    body: "Guest cards run through Quantum Payments alone. There is no processor picker. Software billing is a separate matter.",
+    title: `${PAYMENTS_BRAND} is the only guest card`,
+    body: "The guest is charged once, under the host brand. There is no Stripe, Square, or processor picker in the product. Software billing is separate. Gift cards stay on the first-party Summex ledger.",
   },
   {
     icon: Landmark,
-    title: "Settlement",
-    body: "Period close: merchandise, fees, host cut, cash due. Disputes, when filed, carry a $35 fee split by merchandise share.",
+    title: "Settlement that matches the check",
+    body: "Period close allocates merchandise, card fees, optional host cut, and cash due. When a dispute is filed — only then — a $35 fee splits by merchandise share on that check.",
+  },
+  {
+    icon: CookingPot,
+    title: "Floor, sections, kitchen, and bar",
+    body: "Color-coded sections, manager grants, comps and voids with PIN rules. Tickets route by station and operator. Bump notifies the floor. Built for service, not a counter SKU list.",
   },
   {
     icon: BookOpen,
-    title: "Operators Guide",
-    body: "The house manual lives in the product. Searchable, role-aware, always at hand — not a PDF in a drawer.",
+    title: "Live in weeks, not a months-long IT project",
+    body: "Describe the operation. Summex snapshots a quote, you accept, contract is marked signed, and a guided wizard creates org, locations, operators, packages, and invites. The Operators Guide is in the product from day one.",
   },
 ];
+
+const AUDIENCES = [
+  {
+    title: "Independent restaurants & bars",
+    body: "Table or counter service, kitchen and bar routing, staff PINs, cash, gift, and a floor that knows its sections. Start on the included POS core; add labor, guests, and marketing when the house needs them.",
+  },
+  {
+    title: "Host venues with multiple operators",
+    body: "A bar and a kitchen, or a hall of stalls, under one guest-facing brand. One Quantum Payments capture. Operators paid from their share on the period — not from a second card terminal at the table.",
+  },
+  {
+    title: "Groups adding locations",
+    body: "One application, many sites. Packages per location, invites by role, a control plane for the portfolio. You do not stitch five vendors every time you open a room.",
+  },
+];
+
+const MONEY = [
+  {
+    step: "01",
+    title: "Guest pays the host",
+    body: `One check, host brand on the receipt, captured through ${PAYMENTS_BRAND}. Cash and first-party gift sit beside the card — never a second processor.`,
+  },
+  {
+    step: "02",
+    title: "Lines keep their operator",
+    body: "Kitchen, bar, and stalls are tagged on the item. Tickets still route apart. The guest does not see the split; the house does.",
+  },
+  {
+    step: "03",
+    title: "Operators are paid on the period",
+    body: "Close the period. Summex mints a ledger: merchandise share, fees, host cut, cash due, and any $35 dispute fee. Payouts are addressed on that ledger — not claimed as live bank rails.",
+  },
+];
+
+const PACKAGES = [
+  {
+    name: "Starter",
+    price: "Included trial",
+    note: "POS core, kitchen & bar KDS, menu, and cash. Enough to run a counter or a first dining room.",
+  },
+  {
+    name: "Full service",
+    price: "Quoted per location",
+    note: "Host stand, labor, inventory, guests, and marketing — the paid packages a full room actually uses.",
+  },
+  {
+    name: "Host / hall",
+    price: "Quoted per location",
+    note: "Multi-operator checks, settlement, vendor portal. For houses where more than one brand shares a guest.",
+  },
+];
+
+const TRUST = [
+  {
+    icon: ShieldCheck,
+    title: POWERED_BY,
+    body: "Summex is powered by Quantum Reach. Guest cards run only through Quantum Payments. Access is role-based; the control plane is not mixed into the floor.",
+  },
+  {
+    icon: BookOpen,
+    title: "Operators Guide included",
+    body: "Searchable, role-aware, in the product. Floor, settlement, payments, and onboarding — without a binder or a second login.",
+  },
+  {
+    icon: CreditCard,
+    title: "Honest about money movement",
+    body: "We will not invent bank partners. Settlement is a product ledger you can run today. Live ACH is not claimed on this page.",
+  },
+];
+
+function Kicker({ children }: { children: string }) {
+  return (
+    <p className="mkt-kicker font-display text-xs text-champagne uppercase">
+      {children}
+    </p>
+  );
+}
 
 export function HomePage() {
   return (
     <LandingFrame>
       <main>
-        <section className="relative mx-auto max-w-6xl px-4 pb-24 pt-16 sm:px-6 sm:pb-32 sm:pt-24">
+        <section className="relative mx-auto max-w-6xl px-4 pb-20 pt-16 sm:px-6 sm:pb-28 sm:pt-24">
           <div className="mkt-fade flex flex-col items-start">
             <SummexMark className="h-11 w-11 text-ivory" />
-            <p className="mkt-kicker mt-8 font-display text-xs font-medium text-champagne uppercase">
-              {PRODUCT_NAME}
-            </p>
-            <h1 className="mt-5 max-w-3xl font-display text-5xl font-medium leading-[0.95] tracking-tight text-ivory text-balance sm:text-7xl">
-              Service, composed.
+            <Kicker>{PRODUCT_NAME}</Kicker>
+            <h1 className="mt-5 max-w-3xl font-display text-4xl font-medium leading-[0.98] tracking-tight text-ivory text-balance sm:text-6xl lg:text-7xl">
+              One guest check. Every operator paid.
             </h1>
-            <p className="mt-6 font-display text-xl italic tracking-wide text-champagne sm:text-2xl">
+            <p className="mt-5 font-display text-xl italic tracking-wide text-champagne sm:text-2xl">
               Powered by {POWERED_BY}
             </p>
-            <p className="mt-8 max-w-xl text-base leading-relaxed text-muted-foreground text-pretty sm:text-lg">
-              The hospitality operating system for houses that expect the floor to
-              feel inevitable. One application. One guest charge. Absolute command
-              of service, routing, and settlement.
+            <p className="mt-7 max-w-2xl text-base leading-relaxed text-muted-foreground text-pretty sm:text-lg">
+              Summex is the hospitality operating system for restaurants, bars,
+              and host venues. Floor, kitchen, bar, and settlement in one product.
+              The guest pays once through {PAYMENTS_BRAND}. Operators receive
+              their share on the period — not from a second terminal at the table.
             </p>
-            <div className="mkt-fade mkt-d2 mt-10 flex flex-wrap gap-3">
-              <LandingCta to="/get-pricing">Request a quote</LandingCta>
+            <div className="mkt-fade mkt-d2 mt-10 flex flex-wrap items-center gap-3">
+              <LandingCta to="/get-pricing">Get pricing</LandingCta>
               <LandingCta to="/login" tone="ghost">
-                Merchant login
+                Sign in
               </LandingCta>
+              <Link
+                to="/guide"
+                className="inline-flex h-12 items-center px-2 text-xs font-semibold tracking-widest text-champagne uppercase transition-colors hover:text-ivory"
+              >
+                Operators Guide
+              </Link>
             </div>
           </div>
         </section>
@@ -76,45 +179,51 @@ export function HomePage() {
         <div className="mkt-rule" />
 
         <section className="mx-auto max-w-6xl px-4 py-20 sm:px-6 sm:py-28">
-          <div className="mkt-fade grid gap-12 lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)] lg:gap-20">
-            <p className="mkt-kicker font-display text-xs text-champagne uppercase">
-              Manifesto
-            </p>
-            <div className="space-y-6">
-              <p className="font-display text-3xl font-medium leading-snug text-ivory text-balance sm:text-4xl">
-                We do not decorate the floor with software. We give the house a
-                single instrument.
-              </p>
-              <p className="max-w-2xl text-base leading-relaxed text-muted-foreground text-pretty">
-                Service, kitchen, bar, and the ledger — conducted, not cobbled.
-                The guest meets one brand. Operators settle in private, on the
-                period, through {PAYMENTS_BRAND}. Nothing else is offered at the
-                check.
+          <div className="grid gap-12 lg:grid-cols-[minmax(0,0.85fr)_minmax(0,1.15fr)] lg:gap-16">
+            <div>
+              <Kicker>The problem</Kicker>
+              <h2 className="mt-4 font-display text-3xl font-medium text-ivory text-balance sm:text-4xl">
+                Most houses are running a stack. Guests can tell.
+              </h2>
+              <p className="mt-5 max-w-md text-sm leading-relaxed text-muted-foreground text-pretty sm:text-base">
+                Summex is one system for service and money movement — so you stop
+                paying a POS, a KDS, a hall splitter, and a second card brand to
+                disagree with each other.
               </p>
             </div>
+            <ul className="grid gap-px bg-border sm:grid-cols-2">
+              {PAINS.map((p) => (
+                <li key={p.title} className="bg-ink px-6 py-7 sm:px-7">
+                  <h3 className="font-display text-lg font-medium text-ivory">
+                    {p.title}
+                  </h3>
+                  <p className="mt-3 text-sm leading-relaxed text-muted-foreground text-pretty">
+                    {p.body}
+                  </p>
+                </li>
+              ))}
+            </ul>
           </div>
         </section>
 
         <div className="mkt-rule" />
 
         <section className="mx-auto max-w-6xl px-4 py-20 sm:px-6 sm:py-28">
-          <div className="mb-14 flex flex-col gap-3 sm:mb-16">
-            <p className="mkt-kicker font-display text-xs text-champagne uppercase">
-              The house
-            </p>
-            <h2 className="max-w-2xl font-display text-3xl font-medium text-ivory text-balance sm:text-4xl">
-              Six disciplines. One product.
+          <div className="mb-14 max-w-2xl">
+            <Kicker>Why Summex</Kicker>
+            <h2 className="mt-4 font-display text-3xl font-medium text-ivory text-balance sm:text-4xl">
+              Built for how a real house actually takes money.
             </h2>
           </div>
           <ul className="grid gap-px bg-border sm:grid-cols-2 lg:grid-cols-3">
-            {FEATURES.map((f) => (
-              <li key={f.title} className="bg-ink px-6 py-8 sm:px-8 sm:py-10">
-                <f.icon className="h-4 w-4 text-champagne" strokeWidth={1.25} />
+            {WHYS.map((w) => (
+              <li key={w.title} className="bg-ink px-6 py-8 sm:px-8 sm:py-10">
+                <w.icon className="h-4 w-4 text-champagne" strokeWidth={1.25} />
                 <h3 className="mt-5 font-display text-xl font-medium text-ivory">
-                  {f.title}
+                  {w.title}
                 </h3>
                 <p className="mt-3 text-sm leading-relaxed text-muted-foreground text-pretty">
-                  {f.body}
+                  {w.body}
                 </p>
               </li>
             ))}
@@ -124,54 +233,137 @@ export function HomePage() {
         <div className="mkt-rule" />
 
         <section className="mx-auto max-w-6xl px-4 py-20 sm:px-6 sm:py-28">
-          <div className="grid gap-12 lg:grid-cols-2 lg:items-center lg:gap-20">
-            <div>
-              <p className="mkt-kicker font-display text-xs text-champagne uppercase">
-                {PAYMENTS_BRAND}
-              </p>
-              <h2 className="mt-4 font-display text-3xl font-medium leading-snug text-ivory text-balance sm:text-4xl">
-                One guest charge. The house holds the rest.
+          <Kicker>Who it is for</Kicker>
+          <h2 className="mt-4 max-w-2xl font-display text-3xl font-medium text-ivory text-balance sm:text-4xl">
+            If more than one brand can appear on a guest’s night, you are the
+            customer.
+          </h2>
+          <ul className="mt-14 grid gap-10 md:grid-cols-3 md:gap-8">
+            {AUDIENCES.map((a) => (
+              <li key={a.title}>
+                <h3 className="font-display text-xl font-medium text-ivory">
+                  {a.title}
+                </h3>
+                <p className="mt-3 text-sm leading-relaxed text-muted-foreground text-pretty">
+                  {a.body}
+                </p>
+              </li>
+            ))}
+          </ul>
+        </section>
+
+        <div className="mkt-rule" />
+
+        <section className="mx-auto max-w-6xl px-4 py-20 sm:px-6 sm:py-28">
+          <Kicker>How money works</Kicker>
+          <h2 className="mt-4 max-w-2xl font-display text-3xl font-medium text-ivory text-balance sm:text-4xl">
+            Guest pays the host. Operators are paid from the ledger.
+          </h2>
+          <ol className="mt-14 grid gap-px bg-border lg:grid-cols-3">
+            {MONEY.map((m) => (
+              <li key={m.step} className="bg-ink px-6 py-8 sm:px-8 sm:py-10">
+                <p className="font-display text-sm tracking-widest text-champagne">
+                  {m.step}
+                </p>
+                <h3 className="mt-4 font-display text-xl font-medium text-ivory">
+                  {m.title}
+                </h3>
+                <p className="mt-3 text-sm leading-relaxed text-muted-foreground text-pretty">
+                  {m.body}
+                </p>
+              </li>
+            ))}
+          </ol>
+          <p className="mt-8 max-w-2xl text-xs leading-relaxed text-muted-foreground">
+            {PAYMENTS_BRAND} is guest-facing only. Software invoices are separate.
+            Period payouts are a Summex ledger (export-ready). We do not claim a
+            live bank partner on this page.
+          </p>
+        </section>
+
+        <div className="mkt-rule" />
+
+        <section className="mx-auto max-w-6xl px-4 py-20 sm:px-6 sm:py-28">
+          <div className="flex flex-col gap-6 sm:flex-row sm:items-end sm:justify-between">
+            <div className="max-w-xl">
+              <Kicker>Path to value</Kicker>
+              <h2 className="mt-4 font-display text-3xl font-medium text-ivory text-balance sm:text-4xl">
+                Start on core. Pay for the house you actually run.
               </h2>
-            </div>
-            <div className="space-y-5 text-sm leading-relaxed text-muted-foreground sm:text-base">
-              <p className="text-pretty">
-                The guest pays once, under the host name, on {PAYMENTS_BRAND}.
-                Line items remain tagged to each operator. There is no second
-                card brand at the table, and no processor marketplace in the
-                product.
-              </p>
-              <p className="text-pretty">
-                Settlement is a period ledger: merchandise share, card fees,
-                optional host cut, cash due. When a dispute is filed — only then —
-                a $35 fee is split by merchandise on that check. Won or lost does
-                not reverse it.
-              </p>
-              <p>
-                <LandingCta to="/guide" tone="ghost" className="min-w-0">
-                  Read the guide
-                </LandingCta>
+              <p className="mt-4 text-sm leading-relaxed text-muted-foreground text-pretty">
+                POS core and KDS ship on the starter trial. Full-service and host
+                features live on paid packages — quoted from your operation, not a
+                public rate card that pretends every room is the same.
               </p>
             </div>
+            <LandingCta to="/get-pricing">Start intake</LandingCta>
           </div>
+          <ul className="mt-14 grid gap-px bg-border md:grid-cols-3">
+            {PACKAGES.map((p) => (
+              <li key={p.name} className="bg-ink px-6 py-8 sm:px-8">
+                <p className="text-xs tracking-widest text-champagne uppercase">
+                  {p.name}
+                </p>
+                <p className="mt-3 font-display text-2xl font-medium text-ivory">
+                  {p.price}
+                </p>
+                <p className="mt-3 text-sm leading-relaxed text-muted-foreground text-pretty">
+                  {p.note}
+                </p>
+              </li>
+            ))}
+          </ul>
+          <p className="mt-8">
+            <Link
+              to="/pricing"
+              className="text-xs font-semibold tracking-widest text-champagne uppercase hover:text-ivory"
+            >
+              See package outline
+            </Link>
+          </p>
+        </section>
+
+        <div className="mkt-rule" />
+
+        <section className="mx-auto max-w-6xl px-4 py-20 sm:px-6 sm:py-28">
+          <Kicker>Trust</Kicker>
+          <h2 className="mt-4 max-w-2xl font-display text-3xl font-medium text-ivory text-balance sm:text-4xl">
+            No invented customers. No invented banks.
+          </h2>
+          <ul className="mt-14 grid gap-10 md:grid-cols-3">
+            {TRUST.map((t) => (
+              <li key={t.title}>
+                <t.icon className="h-4 w-4 text-champagne" strokeWidth={1.25} />
+                <h3 className="mt-4 font-display text-xl font-medium text-ivory">
+                  {t.title}
+                </h3>
+                <p className="mt-3 text-sm leading-relaxed text-muted-foreground text-pretty">
+                  {t.body}
+                </p>
+              </li>
+            ))}
+          </ul>
         </section>
 
         <div className="mkt-rule" />
 
         <section className="mx-auto max-w-6xl px-4 py-24 text-center sm:px-6 sm:py-32">
-          <p className="mkt-kicker font-display text-xs text-champagne uppercase">
-            Begin
-          </p>
+          <Kicker>Begin</Kicker>
           <h2 className="mx-auto mt-5 max-w-2xl font-display text-4xl font-medium text-ivory text-balance sm:text-5xl">
-            The next house we compose could be yours.
+            Describe the operation. We will price the house you have.
           </h2>
-          <p className="mx-auto mt-5 max-w-md text-sm leading-relaxed text-muted-foreground text-pretty">
-            Describe the operation. We will return a snapshot quote — packages,
-            seats, and locations as they stand today.
+          <p className="mx-auto mt-5 max-w-lg text-sm leading-relaxed text-muted-foreground text-pretty">
+            Intake takes minutes. You get a snapshot quote, then a contract step
+            and a guided setup — org, locations, operators, packages. Not a
+            six-month integration.
           </p>
           <div className="mt-10 flex flex-wrap justify-center gap-3">
-            <LandingCta to="/get-pricing">Request a quote</LandingCta>
+            <LandingCta to="/get-pricing">Get pricing</LandingCta>
             <LandingCta to="/signup" tone="ghost">
               Create an account
+            </LandingCta>
+            <LandingCta to="/platform" tone="ghost">
+              Platform
             </LandingCta>
           </div>
         </section>
