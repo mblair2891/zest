@@ -22,6 +22,7 @@ import {
 } from "@/lib/saas/api";
 import { ProspectPipelineView } from "@/components/saas/ProspectPipelineView";
 import { prospectResumePath } from "@/lib/saas/prospect-resume";
+import { sanitizeNextPath } from "@/lib/auth/safe-next-path";
 import { saveTenantPosContext } from "@/lib/saas/pos-context";
 import { appHref } from "@/lib/platform/hosts";
 import type { SaasLocation, SaasMembership, SaasOrganization } from "@/lib/pos/saas-types";
@@ -239,7 +240,9 @@ export function PlatformApp() {
   if (user && needsOnboarding) {
     void listMyProspectsFn()
       .then((rows) => {
-        window.location.replace(prospectResumePath(rows));
+        const path =
+          sanitizeNextPath(prospectResumePath(rows)) ?? "/get-pricing";
+        window.location.replace(path);
       })
       .catch(() => {
         window.location.replace("/get-pricing");

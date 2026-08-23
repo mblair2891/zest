@@ -40,10 +40,18 @@ export const clearMustChangePassword = createServerFn({ method: "POST" })
   });
 
 export const ensureAdminExists = createServerFn({ method: "POST" }).handler(
-  async () => {
-    const { ensurePlatformAdmin } = await import("./bootstrap-admin.server");
-    await ensurePlatformAdmin();
-    return { ok: true as const };
+  async (): Promise<{ ok: true } | { ok: false; error: string }> => {
+    try {
+      const { ensurePlatformAdmin } = await import("./bootstrap-admin.server");
+      await ensurePlatformAdmin();
+      return { ok: true };
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "Could not prepare sign-in";
+      return {
+        ok: false,
+        error: msg === "Database not ready" ? "Database not ready" : "Could not prepare sign-in. Try again.",
+      };
+    }
   },
 );
 

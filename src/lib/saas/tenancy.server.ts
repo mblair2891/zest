@@ -177,6 +177,10 @@ export async function loadUser(userId: string): Promise<UserRow | null> {
 
 export async function isPlatformAdmin(userId: string): Promise<boolean> {
   const sql = await getSql();
+  const flagged = await sql<{ n: number }>`
+    select 1 as n from platform_admin where user_id = ${userId} limit 1
+  `;
+  if (flagged[0]) return true;
   const rows = await sql<{ n: number }>`
     select 1 as n from memberships
     where user_id = ${userId} and role = 'platform_admin' and status = 'active'

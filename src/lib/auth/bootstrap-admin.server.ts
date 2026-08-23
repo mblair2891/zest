@@ -19,21 +19,39 @@ const LEGACY_ADMIN_EMAIL = "admin@zest.local";
 const INITIAL_PASSWORD = "password";
 
 const globalRef = globalThis as typeof globalThis & {
-  __zestPlatformAdminBoot__?: Promise<void>;
+  __summexPlatformAdminBoot__?: Promise<void>;
 };
 
+function dbNotReady(err: unknown): Error {
+  const msg = err instanceof Error ? err.message : String(err);
+  if (
+    /relation .* does not exist/i.test(msg) ||
+    /does not exist/i.test(msg) ||
+    /ECONNREFUSED|ENOTFOUND|connection refused|timeout/i.test(msg)
+  ) {
+    return new Error("Database not ready");
+  }
+  return err instanceof Error ? err : new Error(msg);
+}
+
 export async function ensurePlatformAdmin(): Promise<void> {
-  globalRef.__zestPlatformAdminBoot__ ??= (async () => {
+  globalRef.__summexPlatformAdminBoot__ ??= (async () => {
     const sql = await getSql();
+    try {
+      await sql`select 1 as n from "user" limit 1`;
+    } catch (err) {
+      throw dbNotReady(err);
+    }
+
     const existing = await sql<{ id: string }>`
       select id from "user"
       where email = ${PLATFORM_ADMIN_EMAIL} or email = ${LEGACY_ADMIN_EMAIL}
       limit 1
     `;
     let userId = existing[0]?.id;
+    const now = new Date().toISOString();
     if (!userId) {
       userId = randomUUID();
-      const now = new Date().toISOString();
       const hashed = await hashPassword(INITIAL_PASSWORD);
       await sql`
         insert into "user" (id, name, email, "emailVerified", image, "createdAt", "updatedAt")
@@ -62,15 +80,56 @@ export async function ensurePlatformAdmin(): Promise<void> {
           ${now}
         )
       `;
+    } else {
+      const accounts = await sql<{ id: string; password: string | null }>`
+        select id, password from "account"
+        where "userId" = ${userId} and "providerId" = ${"credential"}
+        limit 1
+      `;
+      if (!accounts[0]) {
+        const hashed = await hashPassword(INITIAL_PASSWORD);
+        await sql`
+          insert into "account" (
+            id, "accountId", "providerId", "userId", password,
+            "createdAt", "updatedAt"
+          )
+          values (
+            ${randomUUID()},
+            ${userId},
+            ${"credential"},
+            ${userId},
+            ${hashed},
+            ${now},
+            ${now}
+          )
+        `;
+      }
     }
-    await sql`
-      insert into platform_admin (user_id, must_change_password)
-      values (${userId}, ${true})
-      on conflict (user_id) do nothing
+
+    try {
+      await sql`
+        insert into platform_admin (user_id, must_change_password)
+        values (${userId}, ${true})
+        on conflict (user_id) do nothing
+      `;
+    } catch (err) {
+      throw dbNotReady(err);
+    }
+
+    const mem = await sql<{ id: string }>`
+      select id from memberships
+      where user_id = ${userId} and role = ${"platform_admin"} and status = ${"active"}
+      limit 1
     `;
+    if (!mem[0]) {
+      await sql`
+        insert into memberships (id, user_id, org_id, role, status)
+        values (${randomUUID()}, ${userId}, ${null}, ${"platform_admin"}, ${"active"})
+      `;
+    }
   })().catch((err) => {
-    globalRef.__zestPlatformAdminBoot__ = undefined;
-    throw err;
+    globalRef.__summexPlatformAdminBoot__ = undefined;
+    throw dbNotReady(err);
   });
-  return globalRef.__zestPlatformAdminBoot__;
+  return globalRef.__summexPlatformAdminBoot__;
 }

@@ -1,43 +1,34 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { Button } from "@/components/ui/button";
 import { SummexBrandBlock } from "@/components/brand/SummexMark";
 import { Input } from "@/components/ui/input";
 import { authClient } from "@/lib/auth/client";
-import { useCurrentUserState } from "@/lib/auth/use-current-user";
-import { RedirectToSignIn } from "@/lib/auth/gates";
 import { clearMustChangePassword } from "@/lib/auth/platform-admin";
+import { SessionGate } from "@/components/pos/SessionGate";
 
 export const Route = createFileRoute("/change-password")({
   ssr: false,
-  component: ChangePassword,
+  component: ChangePasswordPage,
 });
 
 const FORBIDDEN = "password";
 
-function ChangePassword() {
+function ChangePasswordPage() {
+  return (
+    <SessionGate>
+      <ChangePasswordForm />
+    </SessionGate>
+  );
+}
+
+function ChangePasswordForm() {
   const navigate = useNavigate();
-  const { user, isPending } = useCurrentUserState();
   const [current, setCurrent] = useState("");
   const [next, setNext] = useState("");
   const [confirm, setConfirm] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
-
-  useEffect(() => {
-    if (!isPending && !user) {
-      /* RedirectToSignIn rendered below */
-    }
-  }, [isPending, user]);
-
-  if (isPending) {
-    return (
-      <div className="flex min-h-[100dvh] items-center justify-center bg-bg pt-[var(--grok-banner-h,0px)] text-muted-foreground">
-        Loading…
-      </div>
-    );
-  }
-  if (!user) return <RedirectToSignIn />;
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -70,7 +61,7 @@ function ChangePassword() {
         return;
       }
       await clearMustChangePassword();
-      navigate({ to: "/platform" });
+      await navigate({ to: "/dashboard" });
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not change password");
     } finally {

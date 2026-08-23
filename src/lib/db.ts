@@ -44,9 +44,20 @@ export interface Sql {
  */
 const globalRef = globalThis as typeof globalThis & {
   __pgSqlPromise__?: Promise<Sql>;
+  __pgPool__?: import("pg").Pool;
+  __neonMigrateChain__?: Promise<void>;
   __pgliteInstance__?: Promise<import("@electric-sql/pglite").PGlite>;
   __pgliteMigrateChain__?: Promise<void>;
 };
+
+function migrationFiles(): [string, string][] {
+  const migrations = import.meta.glob("/migrations/*.sql", {
+    query: "?raw",
+    import: "default",
+    eager: true,
+  }) as Record<string, string>;
+  return Object.entries(migrations).sort(([a], [b]) => a.localeCompare(b));
+}
 
 /**
  * Result-type parity: Postgres sends every value as text plus a type OID — the
@@ -83,6 +94,45 @@ function toSql(run: Run): Sql {
   return sql;
 }
 
+async function applyNeonMigrations(pool: import("pg").Pool): Promise<void> {
+  const pass = (globalRef.__neonMigrateChain__ ?? Promise.resolve())
+    .catch(() => undefined)
+    .then(async () => {
+      const client = await pool.connect();
+      try {
+        await client.query(
+          "CREATE TABLE IF NOT EXISTS _migrations (name TEXT PRIMARY KEY, applied_at TIMESTAMPTZ NOT NULL DEFAULT now())",
+        );
+        const applied = new Set(
+          (await client.query("SELECT name FROM _migrations")).rows.map(
+            (r: { name: string }) => r.name,
+          ),
+        );
+        for (const [path, text] of migrationFiles()) {
+          const name = path.split("/").pop() as string;
+          if (applied.has(name)) continue;
+          try {
+            await client.query("BEGIN");
+            await client.query(text);
+            await client.query("INSERT INTO _migrations (name) VALUES ($1)", [name]);
+            await client.query("COMMIT");
+          } catch (err) {
+            try {
+              await client.query("ROLLBACK");
+            } catch {
+              /* connection may already be aborted */
+            }
+            throw err;
+          }
+        }
+      } finally {
+        client.release();
+      }
+    });
+  globalRef.__neonMigrateChain__ = pass;
+  await pass;
+}
+
 function createNeonSql(): Promise<Sql> {
   globalRef.__pgSqlPromise__ ??= (async () => {
     // Regular Postgres driver: node-postgres (`pg`) — works directly with Neon's
@@ -92,6 +142,13 @@ function createNeonSql(): Promise<Sql> {
     types.setTypeParser(OID_DATE, identity);
     types.setTypeParser(OID_INTERVAL, identity);
     const pool = new Pool({ connectionString: databaseUrl });
+    globalRef.__pgPool__ = pool;
+    try {
+      await applyNeonMigrations(pool);
+    } catch (err) {
+      console.error("[db] Neon migrations failed:", err);
+      throw err;
+    }
     return toSql(async <T>(text: string, params: unknown[]) => {
       const res = await pool.query(text, params);
       return res.rows as T[];
@@ -133,18 +190,11 @@ async function createPgliteSql(): Promise<Sql> {
   // reload after adding a migration file applies it live — with passes
   // serialized on a global chain so concurrent callers never double-apply.
   const migrate = async (): Promise<void> => {
-    const migrations = import.meta.glob("/migrations/*.sql", {
-      query: "?raw",
-      import: "default",
-      eager: true,
-    }) as Record<string, string>;
     const doneRows = await pg.query<{ name: string }>(
       "select name from _migrations",
     );
     const done = new Set(doneRows.rows.map((r) => r.name));
-    for (const [path, text] of Object.entries(migrations).sort(([a], [b]) =>
-      a.localeCompare(b),
-    )) {
+    for (const [path, text] of migrationFiles()) {
       const name = path.split("/").pop() as string;
       if (done.has(name)) continue;
       // Apply + record atomically (parity with scripts/migrate.mjs) so a failed
@@ -221,7 +271,7 @@ export async function getPglite(): Promise<import("@electric-sql/pglite").PGlite
  */
 export function ensureDbReady(): Promise<void> {
   const boot = async () => {
-    if (dbSource === "pglite") await getSql();
+    await getSql();
     try {
       const { ensurePlatformAdmin } = await import("@/lib/auth/bootstrap-admin.server");
       await ensurePlatformAdmin();

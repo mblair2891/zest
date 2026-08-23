@@ -41,7 +41,7 @@ export function SessionGate({ children }: { children: ReactNode }) {
   }, [user?.id]);
 
   if (isPending) return <Loading />;
-  if (!user) return <RedirectToSignIn />;
+  if (!user) return <RedirectToSignIn to="/login" />;
   if (mustChange === null) return <Loading />;
   if (mustChange && pathname !== "/change-password") {
     return <Navigate to="/change-password" />;

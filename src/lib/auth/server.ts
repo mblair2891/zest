@@ -89,7 +89,7 @@ export const authConfigured =
 // it derives the origin per-request from the (proxied) host, validated against the
 // preview allowlist, which makes the OAuth `redirect_uri` the concrete preview URL
 // the broker's preview client accepts.
-const explicitBaseURL = env("BETTER_AUTH_URL");
+const explicitBaseURL = env("BETTER_AUTH_URL") ?? env("APP_URL");
 // Explicit `string[]` (not a readonly tuple) — Better Auth's DynamicBaseURLConfig
 // requires a mutable `allowedHosts: string[]`.
 const previewAllowedHosts: string[] = [...PREVIEW_ALLOWED_HOSTS];
@@ -101,27 +101,74 @@ const LOCAL_DEV_ORIGINS: string[] = [
   "http://127.0.0.1:8080",
   "http://[::1]:8080",
 ];
+const PRODUCTION_HOSTS: string[] = [
+  "summex.app",
+  "www.summex.app",
+  "app.summex.app",
+  "api.summex.app",
+  "sites.summex.app",
+  "*.summex.app",
+  "*.vercel.app",
+];
+const allowedHosts: string[] = [
+  ...previewAllowedHosts,
+  "localhost",
+  "127.0.0.1",
+  "[::1]",
+  ...PRODUCTION_HOSTS,
+];
 const baseURL = explicitBaseURL ?? {
-  // Include loopback hosts so dynamic baseURL resolves for local email/password
-  // (not only the preview wildcard).
-  allowedHosts: [...previewAllowedHosts, "localhost", "127.0.0.1", "[::1]"],
+  // Include loopback + production hosts so dynamic baseURL resolves for
+  // email/password on www.summex.app (not only the preview wildcard).
+  allowedHosts,
   // `auto` → trust both http:// and https:// expansions of allowedHosts
   // (preview is https; local dev is http).
   protocol: "auto" as const,
-  fallback: "http://localhost:8080",
+  fallback: "https://www.summex.app",
 };
 
+function originVariants(url: string | undefined): string[] {
+  if (!url) return [];
+  try {
+    const u = new URL(url.includes("://") ? url : `https://${url}`);
+    const host = u.hostname.toLowerCase();
+    const out = [`https://${host}`, `http://${host}`];
+    if (host.startsWith("www.")) out.push(`https://${host.slice(4)}`, `http://${host.slice(4)}`);
+    else if (host === "summex.app") out.push("https://www.summex.app", "http://www.summex.app");
+    return out;
+  } catch {
+    return [];
+  }
+}
+
+const STATIC_TRUSTED_ORIGINS: string[] = [
+  ...LOCAL_DEV_ORIGINS,
+  ...previewAllowedHosts,
+  ...previewAllowedHosts.flatMap((host) => [`https://${host}`, `http://${host}`]),
+  ...PRODUCTION_HOSTS.flatMap((host) =>
+    host.startsWith("*.") ? [host, `https://${host}`, `http://${host}`] : [`https://${host}`, `http://${host}`],
+  ),
+  ...originVariants(explicitBaseURL),
+  ...originVariants(env("APP_URL")),
+  ...originVariants(env("VITE_PUBLIC_HOSTNAME")),
+];
+
 // Origins Better Auth accepts on credentialed POSTs (sign-up/sign-in, etc.).
-// Missing entries here surface as FORBIDDEN "Invalid origin".
-const trustedOrigins: string[] = explicitBaseURL
-  ? [explicitBaseURL, ...LOCAL_DEV_ORIGINS]
-  : [
-      // Host wildcards (matched against Origin's host)
-      ...previewAllowedHosts,
-      // Full-origin wildcards (matched against Origin)
-      ...previewAllowedHosts.flatMap((host) => [`https://${host}`, `http://${host}`]),
-      ...LOCAL_DEV_ORIGINS,
-    ];
+// Missing entries here surface as FORBIDDEN "Invalid origin" / "Invalid callbackURL".
+const trustedOrigins = async (request?: Request): Promise<string[]> => {
+  const extra: string[] = [];
+  if (request) {
+    const host = (
+      request.headers.get("x-forwarded-host") ??
+      request.headers.get("host") ??
+      ""
+    )
+      .split(":")[0]
+      ?.toLowerCase();
+    if (host) extra.push(`https://${host}`, `http://${host}`);
+  }
+  return [...new Set([...STATIC_TRUSTED_ORIGINS, ...extra].filter(Boolean))];
+};
 
 const databaseUrl = env("DATABASE_URL");
 

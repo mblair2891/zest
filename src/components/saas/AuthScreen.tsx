@@ -1,6 +1,9 @@
 import { useState, type ReactNode } from "react";
-import { Link } from "@tanstack/react-router";
+import { Link, useNavigate } from "@tanstack/react-router";
 import { authClient } from "@/lib/auth/client";
+import { getPlatformFlags } from "@/lib/auth/platform-admin";
+import { DEFAULT_POST_LOGIN, sanitizeNextPath } from "@/lib/auth/safe-next-path";
+import type { VenueEntityId } from "@/lib/pos/types";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { SummexBrandBlock } from "@/components/brand/SummexMark";
@@ -10,17 +13,102 @@ export function AuthScreen({
   defaultEmail,
   lockEmail,
   onAuthed,
+  disabled,
+  prepError,
 }: {
   mode: "signin" | "signup";
   defaultEmail?: string;
   lockEmail?: boolean;
   onAuthed?: () => void;
+  disabled?: boolean;
+  prepError?: string | null;
 }) {
+  const navigate = useNavigate();
   const [email, setEmail] = useState(defaultEmail ?? "");
   const [password, setPassword] = useState("");
   const [name, setName] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+
+  const goAfterAuth = async () => {
+    let mustChange = false;
+    try {
+      const flags = await getPlatformFlags();
+      mustChange = flags.mustChangePassword;
+    } catch {
+      /* session may still be settling; SessionGate retries */
+    }
+    if (mustChange) {
+      await navigate({ to: "/change-password" });
+      return;
+    }
+    const raw = new URLSearchParams(window.location.search).get("next");
+    const next = sanitizeNextPath(raw)?.split("?")[0] ?? null;
+    if (!next || next === "/platform" || next === DEFAULT_POST_LOGIN) {
+      await navigate({ to: "/dashboard" });
+      return;
+    }
+    if (next === "/change-password") {
+      await navigate({ to: "/change-password" });
+      return;
+    }
+    if (next === "/onboarding") {
+      await navigate({ to: "/onboarding" });
+      return;
+    }
+    if (next === "/pipeline") {
+      await navigate({ to: "/pipeline" });
+      return;
+    }
+    if (next === "/get-pricing") {
+      await navigate({ to: "/get-pricing" });
+      return;
+    }
+    if (next === "/guide") {
+      await navigate({ to: "/guide" });
+      return;
+    }
+    if (next === "/apps") {
+      await navigate({ to: "/apps" });
+      return;
+    }
+    if (next === "/app") {
+      await navigate({ to: "/app" });
+      return;
+    }
+    const quote = next.match(/^\/quote\/([^/]+)$/);
+    if (quote?.[1]) {
+      await navigate({ to: "/quote/$token", params: { token: quote[1] } });
+      return;
+    }
+    const setup = next.match(/^\/setup\/([^/]+)$/);
+    if (setup?.[1]) {
+      await navigate({ to: "/setup/$token", params: { token: setup[1] } });
+      return;
+    }
+    const invite = next.match(/^\/invite\/([^/]+)$/);
+    if (invite?.[1]) {
+      await navigate({ to: "/invite/$token", params: { token: invite[1] } });
+      return;
+    }
+    const venue = next.match(/^\/venue\/([^/]+)$/);
+    if (venue?.[1]) {
+      await navigate({
+        to: "/venue/$type",
+        params: { type: venue[1] as VenueEntityId },
+      });
+      return;
+    }
+    const appVenue = next.match(/^\/app\/venue\/([^/]+)$/);
+    if (appVenue?.[1]) {
+      await navigate({
+        to: "/app/venue/$type",
+        params: { type: appVenue[1] as VenueEntityId },
+      });
+      return;
+    }
+    await navigate({ to: "/dashboard" });
+  };
 
   const submit = async () => {
     setError(null);
@@ -55,12 +143,7 @@ export function AuthScreen({
         if (!ok) throw new Error(lastErr ?? "Sign in failed");
       }
       onAuthed?.();
-      if (!onAuthed) {
-        const next = new URLSearchParams(window.location.search).get("next");
-        const dest =
-          next && next.startsWith("/") && !next.startsWith("//") ? next : "/dashboard";
-        window.location.href = dest;
-      }
+      if (!onAuthed) await goAfterAuth();
     } catch (e) {
       setError(e instanceof Error ? e.message : "Auth failed");
     } finally {
@@ -101,12 +184,12 @@ export function AuthScreen({
           onChange={(e) => setPassword(e.target.value)}
           autoComplete={mode === "signup" ? "new-password" : "current-password"}
         />
-        {error && (
+        {(error || prepError) && (
           <p className="text-sm text-danger" role="alert">
-            {error}
+            {error ?? prepError}
           </p>
         )}
-        <Button className="w-full" disabled={busy} type="submit">
+        <Button className="w-full" disabled={busy || disabled} type="submit">
           {busy
             ? "Please wait…"
             : mode === "signup"

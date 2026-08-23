@@ -6,6 +6,7 @@ import type { SessionContext } from "@/lib/saas/types";
 import { LocationPicker } from "@/components/saas/LocationPicker";
 import { PlatformApp } from "@/components/pos/PlatformApp";
 import { prospectResumePath } from "@/lib/saas/prospect-resume";
+import { sanitizeNextPath } from "@/lib/auth/safe-next-path";
 import { SessionGate } from "@/components/pos/SessionGate";
 
 export const Route = createFileRoute("/dashboard")({
@@ -75,7 +76,7 @@ function DashboardInner() {
   if (session.orgs.length === 0 && !session.isPlatformAdmin) {
     void listMyProspectsFn()
       .then((rows) => {
-        const path = prospectResumePath(rows);
+        const path = sanitizeNextPath(prospectResumePath(rows)) ?? "/get-pricing";
         window.location.replace(path);
       })
       .catch(() => {
