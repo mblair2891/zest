@@ -339,6 +339,45 @@ function ProspectAdminDetail({
         </div>
       </div>
 
+      {(detail.interviewFreeText || detail.interviewMessages.length > 0) && (
+        <div className="rounded-2xl border border-border p-4">
+          <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+            Interview
+            {detail.interviewSource ? ` · ${detail.interviewSource}` : ""}
+            {detail.interviewStatus !== "none" ? ` · ${detail.interviewStatus}` : ""}
+          </p>
+          {detail.interviewFreeText && (
+            <p className="mt-2 whitespace-pre-wrap text-sm">{detail.interviewFreeText}</p>
+          )}
+          {detail.interviewMessages.length > 0 && (
+            <ol className="mt-3 space-y-2 text-sm">
+              {detail.interviewMessages.map((m, i) => (
+                <li key={`${m.at}-${i}`}>
+                  <span className="text-[10px] font-semibold uppercase text-muted-foreground">
+                    {m.role}
+                  </span>
+                  <p className="whitespace-pre-wrap">{m.text.replace(/\[q:[^\]]+\]\s*/g, "")}</p>
+                </li>
+              ))}
+            </ol>
+          )}
+          {detail.interviewRecommendation && (
+            <div className="mt-3 text-sm">
+              <p className="font-medium">
+                {detail.interviewRecommendation.operatingModel.replaceAll("_", " ")} ·{" "}
+                {detail.interviewRecommendation.venueTypes.join(", ")}
+              </p>
+              <p className="text-muted-foreground">{detail.interviewRecommendation.summary}</p>
+              <ul className="mt-1 list-disc pl-4 text-xs text-muted-foreground">
+                {detail.interviewRecommendation.rationale.map((r) => (
+                  <li key={r}>{r}</li>
+                ))}
+              </ul>
+            </div>
+          )}
+        </div>
+      )}
+
       {detail.quote && (
         <div className="rounded-2xl border border-border p-4">
           <QuoteSummary quote={{ ...detail.quote, lineItems: items }} status={detail.status} compact />

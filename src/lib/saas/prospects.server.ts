@@ -8,6 +8,8 @@ import {
   emptyIntakeAnswers,
 } from "./pricing";
 import { payloadFromAnswers } from "./onboarding-defaults";
+import { parseMessages, parseRecommendation } from "./interview";
+import type { InterviewSource, InterviewStatus } from "./prospect-types";
 import type {
   IntakeAnswers,
   OnboardingPayload,
@@ -48,6 +50,11 @@ type ProspectRow = {
   public_token: string;
   created_at: unknown;
   updated_at: unknown;
+  interview_free_text?: string | null;
+  interview_messages?: unknown;
+  interview_recommendation?: unknown;
+  interview_source?: string | null;
+  interview_status?: string | null;
 };
 
 type RunRow = {
@@ -247,6 +254,18 @@ function mapProspect(r: ProspectRow): ProspectRecord {
     publicToken: r.public_token,
     createdAt: asIso(r.created_at),
     updatedAt: asIso(r.updated_at),
+    interviewFreeText: r.interview_free_text ?? "",
+    interviewMessages: parseMessages(r.interview_messages),
+    interviewRecommendation: parseRecommendation(r.interview_recommendation),
+    interviewSource:
+      r.interview_source === "ai" || r.interview_source === "heuristic"
+        ? (r.interview_source as InterviewSource)
+        : null,
+    interviewStatus: ((): InterviewStatus => {
+      const s = r.interview_status;
+      if (s === "in_progress" || s === "accepted" || s === "skipped") return s;
+      return "none";
+    })(),
   };
 }
 

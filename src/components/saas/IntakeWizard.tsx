@@ -10,10 +10,11 @@ import {
   getProspectFn,
 } from "@/lib/saas/api";
 import { emptyIntakeAnswers } from "@/lib/saas/pricing";
-import type { IntakeAnswers, GmvBand } from "@/lib/saas/prospect-types";
+import type { IntakeAnswers, GmvBand, InterviewMessage, InterviewRecommendation } from "@/lib/saas/prospect-types";
 import { MODULE_LABELS } from "@/lib/saas/prospect-types";
 import { readProspectToken, writeProspectToken } from "@/lib/saas/prospect-token";
 import type { LocationMode } from "@/lib/pos/saas-types";
+import { InterviewPanel } from "./InterviewPanel";
 
 const LABELS = [
   "Company",
@@ -33,6 +34,11 @@ export function IntakeWizard({ initialToken }: { initialToken?: string }) {
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [booting, setBooting] = useState(true);
+  const [phase, setPhase] = useState<"interview" | "form">("interview");
+  const [prefilled, setPrefilled] = useState(false);
+  const [interviewText, setInterviewText] = useState("");
+  const [interviewMessages, setInterviewMessages] = useState<InterviewMessage[]>([]);
+  const [interviewRec, setInterviewRec] = useState<InterviewRecommendation | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -45,6 +51,13 @@ export function IntakeWizard({ initialToken }: { initialToken?: string }) {
             if (cancelled) return;
             setToken(p.publicToken);
             setAnswers(p.answers);
+            setInterviewText(p.interviewFreeText);
+            setInterviewMessages(p.interviewMessages);
+            setInterviewRec(p.interviewRecommendation);
+            if (p.interviewStatus === "accepted" || p.interviewStatus === "skipped") {
+              setPhase("form");
+              setPrefilled(p.interviewStatus === "accepted");
+            }
             writeProspectToken(p.publicToken);
             if (typeof window !== "undefined") {
               const url = new URL(window.location.href);
@@ -142,12 +155,39 @@ export function IntakeWizard({ initialToken }: { initialToken?: string }) {
     );
   }
 
+  if (phase === "interview") {
+    return (
+      <InterviewPanel
+        token={token}
+        initialEmail={answers.company.billingEmail}
+        initialFreeText={interviewText}
+        initialMessages={interviewMessages}
+        initialRec={interviewRec}
+        onSkip={() => {
+          setPhase("form");
+          setPrefilled(false);
+        }}
+        onAccepted={(next) => {
+          setAnswers(next);
+          setPrefilled(true);
+          setPhase("form");
+        }}
+      />
+    );
+  }
+
   const c = answers.company;
   const p = answers.portfolio;
   const o = answers.operating;
   const v = answers.volume;
 
   return (
+    <>
+      {prefilled && (
+        <p className="mb-4 rounded-xl border border-primary/30 bg-primary/10 px-3 py-2 text-sm">
+          Pre-filled from the interview. Change anything — this form is what the quote uses.
+        </p>
+      )}
     <WizardChrome
       title={
         [
@@ -580,5 +620,6 @@ export function IntakeWizard({ initialToken }: { initialToken?: string }) {
         </div>
       )}
     </WizardChrome>
+    </>
   );
 }

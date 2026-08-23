@@ -114,6 +114,51 @@ export type IntakeAnswers = {
   timeline: IntakeTimeline;
 };
 
+export type InterviewStatus = "none" | "in_progress" | "accepted" | "skipped";
+export type InterviewSource = "ai" | "heuristic";
+
+export type InterviewMessage = {
+  role: "user" | "assistant";
+  text: string;
+  at: string;
+};
+
+export type InterviewQuestion = {
+  id: string;
+  prompt: string;
+  hint?: string;
+};
+
+export type InterviewRecommendation = {
+  summary: string;
+  operatingModel: "host_multi_operator" | "single_operator";
+  venueTypes: LocationMode[];
+  modules: Array<keyof IntakeModules>;
+  estimates: {
+    locations: number;
+    operators: number;
+    seats: number;
+    devices: number;
+  };
+  rationale: string[];
+  pricingHints: {
+    suggestedPlan: PlanSlug;
+    notes: string;
+  };
+};
+
+export type InterviewTurnResult =
+  | {
+      type: "questions";
+      questions: InterviewQuestion[];
+      source: InterviewSource;
+    }
+  | {
+      type: "recommendation";
+      recommendation: InterviewRecommendation;
+      source: InterviewSource;
+    };
+
 export type QuoteLineKind =
   | "plan"
   | "package"
@@ -246,6 +291,11 @@ export type ProspectRecord = {
   publicToken: string;
   createdAt: string;
   updatedAt: string;
+  interviewFreeText: string;
+  interviewMessages: InterviewMessage[];
+  interviewRecommendation: InterviewRecommendation | null;
+  interviewSource: InterviewSource | null;
+  interviewStatus: InterviewStatus;
 };
 
 export type OnboardingRunRecord = {

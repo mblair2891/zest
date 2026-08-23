@@ -33,6 +33,8 @@ There is **no DEV skip of the contract** by default.
 
 Public route: `/get-pricing` (resume with `?t=<public_token>`).
 
+Starts with an optional **AI / guided interview** (see [`docs/saas-ai-intake.md`](saas-ai-intake.md)), then the structured form (source of truth for the quote).
+
 Collects company, portfolio shape, operating model, modules, volume, payments acknowledgement, timeline. Answers persist on `prospects.answers`. “Generate quote” runs the pricing engine and stores a **snapshot** on `prospects.quote` so later catalog/rule edits do not rewrite history.
 
 Prospect UI: `/quote/$token` — view, recalculate (while quoted), accept (requires sign-in).

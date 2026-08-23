@@ -20,8 +20,9 @@ function GetPricingPage() {
         </p>
         <h1 className="mt-2 text-3xl font-black tracking-tighter">Get pricing</h1>
         <p className="mt-2 max-w-xl text-sm text-muted-foreground">
-          Tell us how you operate. We snapshot a quote from the current package catalog
-          and rules — later catalog changes will not rewrite this proposal.
+          Describe the operation, answer a few follow-ups, then confirm the structured
+          form. We snapshot a quote from the current catalog — later package changes
+          will not rewrite this proposal.
         </p>
         <div className="mt-8">
           <IntakeWizard initialToken={t} />

@@ -262,6 +262,66 @@ export const getProspectFn = createServerFn({ method: "POST" })
     });
   });
 
+export const interviewTurnFn = createServerFn({ method: "POST" })
+  .middleware([optionalAuthMiddleware])
+  .validator((d: {
+    token: string;
+    freeText: string;
+    replies?: Array<{ id: string; answer: string }>;
+  }) => ({
+    token: String(d.token ?? ""),
+    freeText: String(d.freeText ?? ""),
+    replies: Array.isArray(d.replies)
+      ? d.replies.map((r) => ({
+          id: String(r?.id ?? ""),
+          answer: String(r?.answer ?? ""),
+        }))
+      : [],
+  }))
+  .handler(async ({ context, data }) => {
+    const { rateLimit } = await import("./rate-limit.server");
+    if (rateLimit(`interview:${context.userId ?? data.token.slice(0, 8)}`, 20, 60_000)) {
+      throw new Error("Too many interview turns — wait a minute");
+    }
+    const { runInterviewTurn } = await import("./interview.server");
+    return runInterviewTurn({
+      userId: context.userId,
+      token: data.token,
+      freeText: data.freeText,
+      replies: data.replies,
+    });
+  });
+
+export const finishInterviewFn = createServerFn({ method: "POST" })
+  .middleware([optionalAuthMiddleware])
+  .validator((d: {
+    token: string;
+    status: "accepted" | "skipped";
+    recommendation?: unknown;
+    email?: string;
+  }) => ({
+    token: String(d.token ?? ""),
+    status: d.status === "skipped" ? ("skipped" as const) : ("accepted" as const),
+    recommendation: d.recommendation,
+    email: d.email ? String(d.email) : undefined,
+  }))
+  .handler(async ({ context, data }) => {
+    const { finishInterview } = await import("./interview.server");
+    return finishInterview({
+      userId: context.userId,
+      token: data.token,
+      status: data.status,
+      recommendation: data.recommendation,
+      email: data.email,
+    });
+  });
+
+export const interviewAiStatusFn = createServerFn({ method: "GET" })
+  .handler(async () => {
+    const { interviewUsesAi } = await import("./interview.server");
+    return { ai: interviewUsesAi() };
+  });
+
 export const saveIntakeFn = createServerFn({ method: "POST" })
   .middleware([optionalAuthMiddleware])
   .validator((d: { token: string; answers: unknown }) => ({
