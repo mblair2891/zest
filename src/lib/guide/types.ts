@@ -1,0 +1,91 @@
+import type { PosView } from "@/lib/pos/types";
+
+/** Bump when shipping a docs/features batch so What’s New can watermark. */
+export const GUIDE_VERSION = "2026.08.23";
+export const GUIDE_EDITION = "Operators Guide · August 2026";
+export const GUIDE_TITLE = "Operators Guide";
+
+/**
+ * Audience tabs in the guide. Distinct from POS PIN roles:
+ * host_operator = food-hall / pod host (not the FOH host stand).
+ */
+export type GuideRole =
+  | "platform_admin"
+  | "owner_manager"
+  | "server"
+  | "kitchen_bar"
+  | "host_operator"
+  | "vendor_operator";
+
+export const GUIDE_ROLES: GuideRole[] = [
+  "platform_admin",
+  "owner_manager",
+  "server",
+  "kitchen_bar",
+  "host_operator",
+  "vendor_operator",
+];
+
+export const GUIDE_ROLE_LABEL: Record<GuideRole, string> = {
+  platform_admin: "Platform Admin",
+  owner_manager: "Owner / Manager",
+  server: "Server",
+  kitchen_bar: "Kitchen / Bar",
+  host_operator: "Host (multi-operator)",
+  vendor_operator: "Vendor / Operator",
+};
+
+export const GUIDE_ROLE_BLURB: Record<GuideRole, string> = {
+  platform_admin: "Tenants, pipeline, support actions",
+  owner_manager: "Site ops, money, staff, settings",
+  server: "Floor, checks, guests",
+  kitchen_bar: "Tickets, bump, routing",
+  host_operator: "Hall/pod host: operators, settlement, capture",
+  vendor_operator: "Stall or kitchen brand on a host floor",
+};
+
+export type GuideAudience = GuideRole[] | "all";
+
+export type GuideBlock =
+  | { type: "why"; text: string }
+  | { type: "p"; text: string }
+  | { type: "tip"; text: string }
+  | { type: "warn"; text: string }
+  | { type: "callout"; title: string; text: string }
+  | { type: "screenshot"; caption: string; alt: string }
+  | { type: "ul"; items: string[] }
+  | { type: "ol"; items: string[] }
+  | { type: "steps"; items: string[] }
+  | { type: "related"; topicIds: string[] };
+
+export interface GuideChapter {
+  id: string;
+  title: string;
+  summary: string;
+  order: number;
+}
+
+export interface GuideTopic {
+  id: string;
+  chapterId: string;
+  title: string;
+  summary: string;
+  roles: GuideAudience;
+  /** Optional jump into a live POS view when the current PIN allows it. */
+  openView?: PosView;
+  keywords?: string[];
+  blocks: GuideBlock[];
+}
+
+export interface GuideUpdate {
+  id: string;
+  /** ISO date YYYY-MM-DD */
+  date: string;
+  title: string;
+  summary: string;
+  roles: GuideAudience;
+  topicId?: string;
+  tags?: string[];
+}
+
+export type GuideRoleFilter = GuideRole | "all" | "mine";

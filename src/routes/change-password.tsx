@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { Button } from "@/components/ui/button";
 import { SummexBrandBlock } from "@/components/brand/SummexMark";
 import { Input } from "@/components/ui/input";
@@ -131,6 +131,11 @@ function ChangePassword() {
             {busy ? "Saving…" : "Save password"}
           </Button>
         </form>
+        <p className="mt-6 text-center text-sm text-muted-foreground">
+          <Link to="/guide" search={{ topic: "login" }} className="underline-offset-2 hover:underline">
+            Why this step? Open Operators Guide
+          </Link>
+        </p>
       </div>
     </div>
   );

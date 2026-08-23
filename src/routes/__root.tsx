@@ -1,6 +1,7 @@
 import { createRootRoute, HeadContent, Outlet, Scripts } from "@tanstack/react-router";
 import { AuthProvider } from "@/lib/auth/provider";
 import { CreatedWithGrokBanner } from "@/components/created-with-grok-banner";
+import { GuideHost } from "@/components/guide/GuideHost";
 import appCss from "../styles.css?url";
 
 const APP_NAME = "Summex";
@@ -39,6 +40,7 @@ export const Route = createRootRoute({
       <body>
         <CreatedWithGrokBanner />
         <AuthProvider>
+          <GuideHost />
           <Outlet />
         </AuthProvider>
         <Scripts />

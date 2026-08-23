@@ -189,6 +189,7 @@ export function IntakeWizard({ initialToken }: { initialToken?: string }) {
         </p>
       )}
     <WizardChrome
+      learnTopicId={step === 3 ? "single-vs-multi" : step === 6 ? "quantum-payments" : "prospect-intake"}
       title={
         [
           "Company",

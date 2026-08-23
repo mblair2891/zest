@@ -131,6 +131,12 @@ export function AuthScreen({
       )}
 
       <p className="text-center text-sm text-muted-foreground">
+        <Link to="/guide" className="text-link underline-offset-2 hover:underline">
+          Operators Guide
+        </Link>
+      </p>
+
+      <p className="text-center text-sm text-muted-foreground">
         {mode === "signup" ? (
           <>
             Already have an account?{" "}

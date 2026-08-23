@@ -5,6 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { usePosStore } from "@/lib/pos/store";
 import type { TicketStation, TicketStatus } from "@/lib/pos/types";
 import { cn } from "@/lib/utils";
+import { GuideLearnLink } from "@/components/guide/GuideLearnLink";
 
 interface Props {
   station: TicketStation;
@@ -53,6 +54,9 @@ export function KitchenView({ station }: Props) {
         <h2 className="text-sm font-semibold capitalize">
           {station === "bar" ? "Bar display" : "Kitchen display"}
         </h2>
+        <GuideLearnLink topicId="kds" compact>
+          Learn
+        </GuideLearnLink>
         <Badge variant="info" className="tabular">
           {active} active
         </Badge>

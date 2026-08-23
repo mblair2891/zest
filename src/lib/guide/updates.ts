@@ -1,0 +1,153 @@
+import { topicMatchesRoles } from "./roles";
+import { GUIDE_VERSION, type GuideRole, type GuideUpdate } from "./types";
+
+/**
+ * Newest first. Keep ~10 entries so the login popup stays useful.
+ * Add a row when a feature ships so What’s New can surface it.
+ */
+export const GUIDE_UPDATES: GuideUpdate[] = [
+  {
+    id: "upd_2026_08_23_operators_guide",
+    date: "2026-08-23",
+    title: "Operators Guide",
+    summary:
+      "Searchable in-app guide with role tabs, progress, What’s New, and Learn links from settlement, onboarding, payments, floor, and KDS.",
+    roles: "all",
+    topicId: "using-guide",
+    tags: ["guide", "training"],
+  },
+  {
+    id: "upd_2026_08_23_visual",
+    date: "2026-08-23",
+    title: "Premium Summex visual system",
+    summary:
+      "Cream paper, ink type, Inter, black actions. SUMMEX wordmark. No lime brand color.",
+    roles: "all",
+    topicId: "intro",
+    tags: ["design"],
+  },
+  {
+    id: "upd_2026_08_13_quantum_pay",
+    date: "2026-08-13",
+    title: "Quantum Payments is the only processor",
+    summary:
+      "Guest cards run only through Quantum Payments. Integrations no longer offer Stripe, Square, or other card processors.",
+    roles: ["owner_manager", "host_operator", "vendor_operator", "platform_admin"],
+    topicId: "quantum-payments",
+    tags: ["payments"],
+  },
+  {
+    id: "upd_2026_08_13_chargeback",
+    date: "2026-08-13",
+    title: "$35 dispute fee, split by merchandise",
+    summary:
+      "A $35 fee is charged only when a dispute is filed. Split by each operator’s share of merchandise on that check. Won/lost does not reverse it.",
+    roles: ["owner_manager", "host_operator", "vendor_operator", "platform_admin"],
+    topicId: "chargebacks",
+    tags: ["chargeback", "settlement"],
+  },
+  {
+    id: "upd_2026_08_13_empty",
+    date: "2026-08-13",
+    title: "Empty start & Admin bootstrap",
+    summary:
+      "No demo tenant. Sign in as Admin, change the password, then run intake → onboarding. Examples: Host Venue / Operator A / Operator B.",
+    roles: ["platform_admin", "owner_manager"],
+    topicId: "empty-start",
+    tags: ["admin", "onboarding"],
+  },
+  {
+    id: "upd_2026_08_13_saas",
+    date: "2026-08-13",
+    title: "Prospect intake → onboarding",
+    summary:
+      "Interview and form, snapshot quote, accept, contract signed, then a wizard that creates org, locations, operators, packages, and invites.",
+    roles: ["platform_admin", "owner_manager", "host_operator"],
+    topicId: "prospect-intake",
+    tags: ["saas", "intake"],
+  },
+  {
+    id: "upd_2026_08_13_gift",
+    date: "2026-08-13",
+    title: "First-party gift cards + import",
+    summary:
+      "Issue, reload, freeze, and void on the Summex ledger. One-way CSV import from Square, Toast, Clover, or Shopify — then those systems are done.",
+    roles: ["owner_manager", "server"],
+    topicId: "gift-cards",
+    tags: ["gift"],
+  },
+  {
+    id: "upd_2026_08_13_wifi",
+    date: "2026-08-13",
+    title: "Wi‑Fi-first house network",
+    summary:
+      "Staff stay on the house SSID. If the internet dies, Wi‑Fi still runs floor, KDS, and cash. Card captures queue until Quantum Payments is reachable.",
+    roles: "all",
+    topicId: "wifi-offline",
+    tags: ["wifi", "offline"],
+  },
+  {
+    id: "upd_2026_08_13_bump",
+    date: "2026-08-13",
+    title: "Kitchen bump notifications",
+    summary:
+      "When kitchen or bar bumps a ticket, the floor gets a toast, chime, and inbox alert. Tables pulse with an Up badge for 90 seconds.",
+    roles: ["owner_manager", "server", "kitchen_bar"],
+    topicId: "kds",
+    tags: ["kitchen", "alerts"],
+  },
+  {
+    id: "upd_2026_08_13_sections",
+    date: "2026-08-13",
+    title: "Color-coded section assignments",
+    summary:
+      "Assign Dining, Booth, and Bar. Servers cannot seat or order outside their section unless a manager grants a table for the shift or that seating.",
+    roles: ["owner_manager", "server"],
+    topicId: "sections",
+    tags: ["floor", "sections"],
+  },
+];
+
+export function updateVisibleToRoles(
+  update: GuideUpdate,
+  roles: GuideRole[] | "all",
+): boolean {
+  return topicMatchesRoles(update.roles, roles);
+}
+
+export function updatesForRoles(
+  roles: GuideRole[] | "all",
+  limit = 10,
+): GuideUpdate[] {
+  return GUIDE_UPDATES.filter((u) => updateVisibleToRoles(u, roles)).slice(
+    0,
+    limit,
+  );
+}
+
+export function latestUpdateId(): string {
+  return GUIDE_UPDATES[0]?.id ?? GUIDE_VERSION;
+}
+
+export function isNewerThan(
+  updateId: string,
+  watermarkId: string | null,
+): boolean {
+  if (!watermarkId) return true;
+  const ids = GUIDE_UPDATES.map((u) => u.id);
+  const a = ids.indexOf(updateId);
+  const b = ids.indexOf(watermarkId);
+  if (a < 0) return true;
+  if (b < 0) return true;
+  return a < b;
+}
+
+export function hasUnseenUpdates(
+  roles: GuideRole[] | "all",
+  silencedAfterUpdateId: string | null,
+): boolean {
+  const forRole = updatesForRoles(roles, 20);
+  if (forRole.length === 0) return false;
+  if (!silencedAfterUpdateId) return true;
+  return forRole.some((u) => isNewerThan(u.id, silencedAfterUpdateId));
+}

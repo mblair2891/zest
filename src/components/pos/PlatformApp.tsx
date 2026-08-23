@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { Link } from "@tanstack/react-router";
-import { LogOut, Rocket, ArrowLeft } from "lucide-react";
+import { LogOut, Rocket, ArrowLeft, BookOpen } from "lucide-react";
+import { GuideTriggerButton } from "@/components/guide/OperatorsGuide";
 import { Button } from "@/components/ui/button";
 import { SummexBrandBlock, SummexMark } from "@/components/brand/SummexMark";
 import { Badge } from "@/components/ui/badge";
@@ -196,6 +197,19 @@ export function PlatformApp() {
             </p>
           </div>
 
+          <Link
+            to="/guide"
+            className="mb-3 flex w-full items-start gap-3 rounded-2xl border border-border bg-surface px-4 py-3.5 text-left transition hover:border-primary/50"
+          >
+            <BookOpen className="mt-0.5 h-5 w-5 shrink-0 text-primary" />
+            <span>
+              <span className="block text-sm font-semibold">Operators Guide</span>
+              <span className="mt-1 block text-[11px] text-muted-foreground">
+                Intake, onboarding, host capture, and the $35 dispute fee.
+              </span>
+            </span>
+          </Link>
+
           <div className="space-y-2">
             <Link
               to="/login"
@@ -333,6 +347,7 @@ export function PlatformApp() {
             {surface === "pipeline" ? "Console" : "Pipeline"}
           </Button>
         )}
+        <GuideTriggerButton topicId="platform-admin" />
         <Button size="sm" variant="outline" onClick={openPos} disabled={!loc}>
           Open POS
         </Button>

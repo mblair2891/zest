@@ -11,6 +11,7 @@ import {
 import type { LocationMode } from "@/lib/pos/saas-types";
 import { appHref } from "@/lib/platform/hosts";
 import { saveTenantPosContext } from "@/lib/saas/pos-context";
+import { GuideLearnLink } from "@/components/guide/GuideLearnLink";
 
 export function OnboardingWizard({
   defaultName,
@@ -126,6 +127,7 @@ export function OnboardingWizard({
 
   return (
     <div className="mx-auto w-full max-w-lg space-y-6">
+      <GuideLearnLink topicId="create-org">Learn: first organization</GuideLearnLink>
       <div className="flex gap-1">
         {[1, 2, 3, 4].map((n) => (
           <div

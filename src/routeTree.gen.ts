@@ -17,6 +17,7 @@ import { Route as ChangePasswordRouteImport } from './routes/change-password'
 import { Route as DashboardRouteImport } from './routes/dashboard'
 import { Route as FeaturesRouteImport } from './routes/features'
 import { Route as GetPricingRouteImport } from './routes/get-pricing'
+import { Route as GuideRouteImport } from './routes/guide'
 import { Route as KioskRouteImport } from './routes/kiosk'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as OnboardingRouteImport } from './routes/onboarding'
@@ -77,6 +78,11 @@ const FeaturesRoute = FeaturesRouteImport.update({
 const GetPricingRoute = GetPricingRouteImport.update({
   id: '/get-pricing',
   path: '/get-pricing',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const GuideRoute = GuideRouteImport.update({
+  id: '/guide',
+  path: '/guide',
   getParentRoute: () => rootRouteImport,
 } as any)
 const KioskRoute = KioskRouteImport.update({
@@ -194,6 +200,7 @@ export interface FileRoutesByFullPath {
   '/dashboard': typeof DashboardRoute
   '/features': typeof FeaturesRoute
   '/get-pricing': typeof GetPricingRoute
+  '/guide': typeof GuideRoute
   '/kiosk': typeof KioskRoute
   '/login': typeof LoginRoute
   '/onboarding': typeof OnboardingRoute
@@ -225,6 +232,7 @@ export interface FileRoutesByTo {
   '/dashboard': typeof DashboardRoute
   '/features': typeof FeaturesRoute
   '/get-pricing': typeof GetPricingRoute
+  '/guide': typeof GuideRoute
   '/kiosk': typeof KioskRoute
   '/login': typeof LoginRoute
   '/onboarding': typeof OnboardingRoute
@@ -257,6 +265,7 @@ export interface FileRoutesById {
   '/dashboard': typeof DashboardRoute
   '/features': typeof FeaturesRoute
   '/get-pricing': typeof GetPricingRoute
+  '/guide': typeof GuideRoute
   '/kiosk': typeof KioskRoute
   '/login': typeof LoginRoute
   '/onboarding': typeof OnboardingRoute
@@ -290,6 +299,7 @@ export interface FileRouteTypes {
     | '/dashboard'
     | '/features'
     | '/get-pricing'
+    | '/guide'
     | '/kiosk'
     | '/login'
     | '/onboarding'
@@ -321,6 +331,7 @@ export interface FileRouteTypes {
     | '/dashboard'
     | '/features'
     | '/get-pricing'
+    | '/guide'
     | '/kiosk'
     | '/login'
     | '/onboarding'
@@ -352,6 +363,7 @@ export interface FileRouteTypes {
     | '/dashboard'
     | '/features'
     | '/get-pricing'
+    | '/guide'
     | '/kiosk'
     | '/login'
     | '/onboarding'
@@ -384,6 +396,7 @@ export interface RootRouteChildren {
   DashboardRoute: typeof DashboardRoute
   FeaturesRoute: typeof FeaturesRoute
   GetPricingRoute: typeof GetPricingRoute
+  GuideRoute: typeof GuideRoute
   KioskRoute: typeof KioskRoute
   LoginRoute: typeof LoginRoute
   OnboardingRoute: typeof OnboardingRoute
@@ -461,6 +474,13 @@ declare module '@tanstack/react-router' {
       path: '/get-pricing'
       fullPath: '/get-pricing'
       preLoaderRoute: typeof GetPricingRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/guide': {
+      id: '/guide'
+      path: '/guide'
+      fullPath: '/guide'
+      preLoaderRoute: typeof GuideRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/kiosk': {
@@ -642,6 +662,7 @@ const rootRouteChildren: RootRouteChildren = {
   DashboardRoute: DashboardRoute,
   FeaturesRoute: FeaturesRoute,
   GetPricingRoute: GetPricingRoute,
+  GuideRoute: GuideRoute,
   KioskRoute: KioskRoute,
   LoginRoute: LoginRoute,
   OnboardingRoute: OnboardingRoute,

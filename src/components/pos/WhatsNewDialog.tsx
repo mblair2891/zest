@@ -11,10 +11,10 @@ import {
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { usePosStore } from "@/lib/pos/store";
-import { useManualStore } from "@/lib/pos/manual-store";
-import { ROLE_LABEL } from "@/lib/pos/rbac";
-import type { EmployeeRole } from "@/lib/pos/types";
-import { MANUAL_VERSION } from "@/lib/pos/manual-content";
+import { useGuideStore } from "@/lib/guide/store";
+import { useGuideAudience } from "@/lib/guide/use-guide-audience";
+import { GUIDE_ROLE_LABEL, GUIDE_VERSION } from "@/lib/guide/types";
+import { employeeToGuideRoles } from "@/lib/guide/roles";
 
 /**
  * Post-login “What’s New” — last ~10 updates filtered to this access level.
@@ -23,43 +23,56 @@ import { MANUAL_VERSION } from "@/lib/pos/manual-content";
 export function WhatsNewDialog() {
   const employees = usePosStore((s) => s.employees);
   const currentEmployeeId = usePosStore((s) => s.currentEmployeeId);
+  const venue = usePosStore((s) => s.activeEntityId);
   const emp = employees.find((e) => e.id === currentEmployeeId) ?? null;
-  const role: EmployeeRole | null = emp?.role ?? null;
+  const { roles: sessionRoles } = useGuideAudience();
+  const roles = emp
+    ? employeeToGuideRoles(emp.role, venue)
+    : sessionRoles;
 
-  const shouldShow = useManualStore((s) => s.shouldShowWhatsNew);
-  const updatesFor = useManualStore((s) => s.updatesFor);
-  const dismiss = useManualStore((s) => s.dismissWhatsNew);
-  const openManual = useManualStore((s) => s.openManual);
-  const forceWhatsNew = useManualStore((s) => s.forceWhatsNew);
-  const dismissedThisSession = useManualStore((s) => s.dismissedThisSession);
+  const shouldShow = useGuideStore((s) => s.shouldShowWhatsNew);
+  const updatesFor = useGuideStore((s) => s.updatesFor);
+  const dismiss = useGuideStore((s) => s.dismissWhatsNew);
+  const openGuide = useGuideStore((s) => s.openGuide);
+  const forceWhatsNew = useGuideStore((s) => s.forceWhatsNew);
+  const dismissedThisSession = useGuideStore((s) => s.dismissedThisSession);
 
   const [silence, setSilence] = useState(false);
   const [open, setOpen] = useState(false);
 
+  const audience = roles.length ? roles : ("all" as const);
   const updates = useMemo(
-    () => (role ? updatesFor(role, 10) : []),
-    [role, updatesFor, forceWhatsNew, dismissedThisSession],
+    () => updatesFor(audience, 10),
+    [audience, updatesFor, forceWhatsNew, dismissedThisSession],
   );
 
   useEffect(() => {
-    if (!role) {
+    if (!emp && sessionRoles.length === 0) {
       setOpen(false);
       return;
     }
-    // Small delay so the shell paints first
     const t = window.setTimeout(() => {
-      setOpen(shouldShow(role) && updates.length > 0);
+      setOpen(shouldShow(audience) && updates.length > 0);
     }, 350);
     return () => window.clearTimeout(t);
-  }, [role, shouldShow, updates.length, forceWhatsNew, dismissedThisSession]);
+  }, [emp, sessionRoles.length, shouldShow, updates.length, forceWhatsNew, dismissedThisSession, audience]);
 
-  if (!role) return null;
+  if (!emp && sessionRoles.length === 0) return null;
 
-  const onClose = (alsoOpenManual?: string) => {
-    dismiss({ role, silenceUntilNext: silence });
+  const label =
+    roles.length > 0
+      ? roles.map((r) => GUIDE_ROLE_LABEL[r]).join(" · ")
+      : "all roles";
+
+  const onClose = (alsoOpen?: string) => {
+    dismiss({
+      role: emp?.role,
+      guideRoles: roles,
+      silenceUntilNext: silence,
+    });
     setOpen(false);
     setSilence(false);
-    if (alsoOpenManual) openManual(alsoOpenManual);
+    if (alsoOpen) openGuide(alsoOpen);
   };
 
   return (
@@ -75,17 +88,15 @@ export function WhatsNewDialog() {
       >
         <DialogHeader>
           <div className="mb-1 flex items-center gap-2">
-            <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary text-primary-foreground">
+            <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary text-primary-foreground">
               <Sparkles className="h-4 w-4" />
             </span>
             <div>
               <DialogTitle>What’s new in Summex</DialogTitle>
               <DialogDescription>
                 For{" "}
-                <span className="font-semibold text-primary">
-                  {ROLE_LABEL[role]}
-                </span>{" "}
-                · last {updates.length} updates · manual v{MANUAL_VERSION}
+                <span className="font-semibold text-foreground">{label}</span> ·
+                last {updates.length} updates · guide v{GUIDE_VERSION}
               </DialogDescription>
             </div>
           </div>
@@ -114,13 +125,13 @@ export function WhatsNewDialog() {
               <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
                 {u.summary}
               </p>
-              {u.manualSectionId && (
+              {u.topicId && (
                 <button
                   type="button"
-                  className="mt-1.5 text-xs font-medium text-primary underline-offset-2 hover:underline"
-                  onClick={() => onClose(u.manualSectionId)}
+                  className="mt-1.5 text-xs font-medium text-link underline-offset-2 hover:underline"
+                  onClick={() => onClose(u.topicId)}
                 >
-                  Read in manual
+                  Read in guide
                 </button>
               )}
             </li>
@@ -152,7 +163,7 @@ export function WhatsNewDialog() {
             onClick={() => onClose("intro")}
           >
             <BookOpen className="mr-1.5 h-4 w-4" />
-            Open full manual
+            Open Operators Guide
           </Button>
           <Button className="w-full sm:w-auto" onClick={() => onClose()}>
             Got it

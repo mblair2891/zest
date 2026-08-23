@@ -9,8 +9,7 @@ import {
   pickRoleRepresentatives,
 } from "@/lib/pos/rbac";
 import { cn } from "@/lib/utils";
-import { useManualStore } from "@/lib/pos/manual-store";
-import { UserManualOverlay } from "./UserManualView";
+import { useGuideStore } from "@/lib/guide/store";
 import { isDevDemoClient } from "@/lib/saas/flags";
 import { SummexBrandBlock } from "@/components/brand/SummexMark";
 
@@ -20,7 +19,7 @@ export function LoginScreen() {
   const login = usePosStore((s) => s.login);
   const employees = usePosStore((s) => s.employees);
   const settings = usePosStore((s) => s.settings);
-  const openManual = useManualStore((s) => s.openManual);
+  const openGuide = useGuideStore((s) => s.openGuide);
   const demo = isDevDemoClient();
 
   const roleLogins = useMemo(
@@ -80,20 +79,20 @@ export function LoginScreen() {
 
         <button
           type="button"
-          onClick={() => openManual("intro")}
+          onClick={() => openGuide("intro")}
           className="mb-3 flex w-full items-start gap-3 rounded-2xl border border-primary/40 bg-primary/10 px-4 py-3.5 text-left transition hover:border-primary hover:bg-primary/15"
         >
           <BookOpen className="mt-0.5 h-5 w-5 shrink-0 text-primary" />
           <span>
             <span className="block text-sm font-semibold text-foreground">
-              User manual
+              Operators Guide
             </span>
             <span className="mt-0.5 inline-flex rounded-md bg-primary/20 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-primary">
-              Interactive guide · always current
+              Searchable · role-aware
             </span>
             <span className="mt-1 block text-[11px] leading-snug text-muted-foreground">
-              Search every station, role playbooks, and what's new. After
-              login, updates for your access level pop up automatically.
+              Login, floor, payments, settlement, and chargebacks — without
+              leaving Summex.
             </span>
           </span>
         </button>
@@ -212,7 +211,6 @@ export function LoginScreen() {
           </div>
         )}
       </div>
-      <UserManualOverlay />
     </div>
   );
 }

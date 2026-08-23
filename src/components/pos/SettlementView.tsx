@@ -6,6 +6,7 @@ import { usePosStore } from "@/lib/pos/store";
 import type { SettlementPeriodType, HostCutType } from "@/lib/pos/types";
 import { formatCurrency, formatDateTime } from "@/lib/utils";
 import { CHARGEBACK_FEE_CENTS, PAYMENTS_BRAND } from "@/lib/platform/brand";
+import { GuideLearnLink } from "@/components/guide/GuideLearnLink";
 
 export function SettlementView() {
   const config = usePosStore((s) => s.settlementConfig);
@@ -40,9 +41,15 @@ export function SettlementView() {
   return (
     <div className="flex h-full flex-col">
       <div className="border-b border-border px-3 py-2">
-        <h2 className="text-sm font-semibold">
-          Host settlement · {config.hostName}
-        </h2>
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <h2 className="text-sm font-semibold">
+            Host settlement · {config.hostName}
+          </h2>
+          <div className="flex flex-wrap gap-3">
+            <GuideLearnLink topicId="settlement">Learn: settlement</GuideLearnLink>
+            <GuideLearnLink topicId="chargebacks">Learn: chargebacks</GuideLearnLink>
+          </div>
+        </div>
         <p className="text-xs text-muted-foreground">
           One host brand ({config.hostName}), multiple operators. Guest pays
           once via {PAYMENTS_BRAND}. Period payouts are addressed to each
@@ -566,7 +573,12 @@ function ChargebackSection({
   );
   return (
     <section className="rounded-2xl border border-border bg-surface p-4">
-      <h3 className="text-sm font-semibold">{PAYMENTS_BRAND} disputes</h3>
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <h3 className="text-sm font-semibold">{PAYMENTS_BRAND} disputes</h3>
+        <GuideLearnLink topicId="chargebacks" compact>
+          Why $35?
+        </GuideLearnLink>
+      </div>
       <p className="mt-1 text-xs text-muted-foreground">
         ${CHARGEBACK_FEE_CENTS / 100} fee only when a dispute is filed. Split by
         merchandise share on that check. Applies whether you win or lose.

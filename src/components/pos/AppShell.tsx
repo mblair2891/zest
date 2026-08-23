@@ -77,8 +77,8 @@ import { LaborOpsView } from "./LaborOpsView";
 import { InventoryAiView } from "./InventoryAiView";
 import { DrinkAiView } from "./DrinkAiView";
 import { MarketingHubView } from "./MarketingHubView";
-import { UserManualOverlay } from "./UserManualView";
 import { WhatsNewDialog } from "./WhatsNewDialog";
+import { GuideTriggerButton } from "@/components/guide/OperatorsGuide";
 import { venueById } from "@/lib/pos/entities";
 import { useManualStore } from "@/lib/pos/manual-store";
 import {
@@ -343,16 +343,7 @@ export function AppShell() {
 
           <NotificationBell />
           <NetworkChip />
-          <Button
-            size="sm"
-            className="h-9 gap-1.5 bg-primary px-3 font-semibold text-primary-foreground shadow-md shadow-primary/20 hover:bg-primary/90"
-            onClick={() => openManual("intro")}
-            aria-label="Open user manual"
-          >
-            <BookOpen className="h-4 w-4" />
-            <span className="hidden sm:inline">Help / Manual</span>
-            <span className="sm:hidden">Help</span>
-          </Button>
+          <GuideTriggerButton topicId="intro" />
           <Button
             size="icon"
             variant="outline"
@@ -438,7 +429,7 @@ export function AppShell() {
               className="flex w-full items-center gap-3 rounded-xl bg-primary/15 px-2 py-2.5 text-left text-sm font-semibold text-primary transition hover:bg-primary/25 lg:px-3"
             >
               <BookOpen className="h-4 w-4 shrink-0" />
-              <span>User manual</span>
+              <span>Guide</span>
             </button>
           </div>
         </nav>
@@ -508,11 +499,10 @@ export function AppShell() {
           className="flex min-w-[4.25rem] flex-1 flex-col items-center gap-0.5 rounded-lg px-1 py-1.5 text-[10px] font-semibold text-primary"
         >
           <BookOpen className="h-5 w-5" />
-          Help
+          Guide
         </button>
       </nav>
 
-      <UserManualOverlay />
       <WhatsNewDialog />
       <TicketBumpWatcher />
       <NetworkWatcher />

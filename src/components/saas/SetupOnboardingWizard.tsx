@@ -129,6 +129,13 @@ export function SetupOnboardingWizard({ token }: { token: string }) {
 
   return (
     <WizardChrome
+      learnTopicId={
+        step === 3
+          ? "single-vs-multi"
+          : step === 8
+            ? "settlement"
+            : "onboarding-wizard"
+      }
       title={
         [
           "Confirm the organization",

@@ -15,6 +15,7 @@ import {
   savePricingRulesFn,
 } from "@/lib/saas/api";
 import { statusLabel } from "@/lib/saas/pricing";
+import { GuideLearnLink } from "@/components/guide/GuideLearnLink";
 import type {
   ProspectDetail,
   ProspectListItem,
@@ -76,6 +77,9 @@ export function ProspectPipelineView() {
     <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
       <div className="flex flex-wrap items-center gap-2 border-b border-border px-4 py-3">
         <h2 className="mr-2 text-sm font-semibold">Subscriber pipeline</h2>
+        <GuideLearnLink topicId="prospect-intake" compact>
+          Learn
+        </GuideLearnLink>
         {(["all", ...PROSPECT_STATUSES] as const).map((s) => (
           <Button
             key={s}

@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import { Button } from "@/components/ui/button";
+import { GuideLearnLink } from "@/components/guide/GuideLearnLink";
 
 export function WizardChrome({
   title,
@@ -13,6 +14,7 @@ export function WizardChrome({
   onNext,
   nextLabel,
   nextDisabled,
+  learnTopicId,
   children,
 }: {
   title: string;
@@ -26,6 +28,7 @@ export function WizardChrome({
   onNext?: () => void;
   nextLabel?: string;
   nextDisabled?: boolean;
+  learnTopicId?: string;
   children: ReactNode;
 }) {
   return (
@@ -38,6 +41,13 @@ export function WizardChrome({
         <h2 className="mt-1 text-2xl font-semibold tracking-tight">{title}</h2>
         {subtitle && (
           <p className="mt-1.5 text-sm leading-relaxed text-muted-foreground">{subtitle}</p>
+        )}
+        {learnTopicId && (
+          <p className="mt-2">
+            <GuideLearnLink topicId={learnTopicId}>
+              Learn in Operators Guide
+            </GuideLearnLink>
+          </p>
         )}
       </div>
       <div className="flex gap-1">

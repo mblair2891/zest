@@ -33,6 +33,7 @@ import {
   swatchCss,
 } from "@/lib/pos/section-control";
 import { SectionAccessDialog } from "./GrantTableDialog";
+import { GuideLearnLink } from "@/components/guide/GuideLearnLink";
 
 const STATUS_META: Record<
   TableStatus,
@@ -287,6 +288,9 @@ export function FloorView() {
         <h2 className="mr-2 text-sm font-semibold">
           Floor · {saasLoc?.code ?? loc?.code ?? settings.name}
         </h2>
+        <GuideLearnLink topicId="floor-tables" compact>
+          Learn
+        </GuideLearnLink>
         <div className="flex flex-wrap gap-1">
           <Button
             size="sm"

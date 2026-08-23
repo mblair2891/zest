@@ -15,6 +15,7 @@ import { useMarketingStore } from "@/lib/pos/marketing-store";
 import { computeTotals, tipSuggestions } from "@/lib/pos/calculations";
 import { cn, formatCurrency } from "@/lib/utils";
 import type { PaymentMethod } from "@/lib/pos/types";
+import { GuideLearnLink } from "@/components/guide/GuideLearnLink";
 
 interface Props {
   open: boolean;
@@ -156,10 +157,15 @@ export function PaymentDialog({ open, onOpenChange }: Props) {
     >
       <DialogContent className="max-w-md">
         <DialogHeader>
-          <DialogTitle>
-            {done
-              ? "Payment complete"
-              : `Pay check #${order.number}`}
+          <DialogTitle className="flex items-center justify-between gap-2 pr-6">
+            <span>
+              {done
+                ? "Payment complete"
+                : `Pay check #${order.number}`}
+            </span>
+            <GuideLearnLink topicId="quantum-payments" compact>
+              Quantum Payments
+            </GuideLearnLink>
           </DialogTitle>
         </DialogHeader>
 

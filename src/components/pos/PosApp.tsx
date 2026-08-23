@@ -238,6 +238,9 @@ function PosAppInner({ entityId }: { entityId?: string }) {
         <Link to="/login" className="text-sm text-muted-foreground underline">
           Sign in
         </Link>
+        <Link to="/guide" className="text-sm text-muted-foreground underline">
+          Operators Guide
+        </Link>
       </div>
     );
   }
@@ -281,6 +284,12 @@ function PosAppInner({ entityId }: { entityId?: string }) {
             >
               Platform
             </Link>
+            <Link
+              to="/guide"
+              className="block text-sm text-muted-foreground underline"
+            >
+              Operators Guide
+            </Link>
           </div>
         </div>
       </div>
@@ -299,6 +308,12 @@ function PosAppInner({ entityId }: { entityId?: string }) {
           className="rounded-2xl bg-primary px-5 py-3 text-sm font-semibold text-primary-foreground"
         >
           Open platform
+        </Link>
+        <Link
+          to="/guide"
+          className="text-sm text-muted-foreground underline underline-offset-2"
+        >
+          Operators Guide
         </Link>
       </div>
     );

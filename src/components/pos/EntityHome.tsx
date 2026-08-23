@@ -18,8 +18,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { usePosStore } from "@/lib/pos/store";
 import { cn } from "@/lib/utils";
-import { useManualStore } from "@/lib/pos/manual-store";
-import { UserManualOverlay } from "./UserManualView";
+import { useGuideStore } from "@/lib/guide/store";
 import {
   ALL_ENTITIES,
   SAAS_ENTITY,
@@ -46,7 +45,7 @@ const ICONS: Record<string, React.ComponentType<{ className?: string }>> = {
 };
 
 export function EntityPicker() {
-  const openManual = useManualStore((s) => s.openManual);
+  const openGuide = useGuideStore((s) => s.openGuide);
 
   return (
     <div className="flex min-h-[100dvh] flex-col bg-bg pt-[var(--grok-banner-h,0px)]">
@@ -102,11 +101,11 @@ export function EntityPicker() {
         <div className="mt-6 flex flex-wrap justify-center gap-3 text-xs">
           <button
             type="button"
-            onClick={() => openManual("intro")}
+            onClick={() => openGuide("intro")}
             className="inline-flex items-center gap-1.5 text-muted-foreground underline-offset-2 hover:text-foreground hover:underline"
           >
             <BookOpen className="h-3.5 w-3.5" />
-            User manual
+            Operators Guide
           </button>
           <Link
             to="/apps"
@@ -117,7 +116,6 @@ export function EntityPicker() {
           </Link>
         </div>
       </div>
-      <UserManualOverlay />
     </div>
   );
 }
@@ -132,7 +130,7 @@ export function EntityLogin({ entityId }: { entityId: VenueEntityId }) {
   const demo = isDevDemoClient();
   const employees = usePosStore((s) => s.employees);
   const activeEntityId = usePosStore((s) => s.activeEntityId);
-  const openManual = useManualStore((s) => s.openManual);
+  const openGuide = useGuideStore((s) => s.openGuide);
   const entity = venueById(entityId);
 
   useEffect(() => {
@@ -299,13 +297,12 @@ export function EntityLogin({ entityId }: { entityId: VenueEntityId }) {
 
         <button
           type="button"
-          onClick={() => openManual("intro")}
+          onClick={() => openGuide("intro")}
           className="mt-8 text-center text-xs text-muted-foreground underline-offset-2 hover:underline"
         >
-          User manual
+          Operators Guide
         </button>
       </div>
-      <UserManualOverlay />
     </div>
   );
 }
