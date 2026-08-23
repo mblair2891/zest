@@ -1,12 +1,12 @@
 import { useEffect, useState } from "react";
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useCurrentUserState } from "@/lib/auth/use-current-user";
 import { getSessionContextFn, listMyProspectsFn, setActiveContextFn } from "@/lib/saas/api";
 import type { SessionContext } from "@/lib/saas/types";
 import { LocationPicker } from "@/components/saas/LocationPicker";
 import { PlatformApp } from "@/components/pos/PlatformApp";
 import { prospectResumePath } from "@/lib/saas/prospect-resume";
-import { sanitizeNextPath } from "@/lib/auth/safe-next-path";
+import { navigateToSanitizedPath } from "@/lib/auth/post-login-navigate";
 import { SessionGate } from "@/components/pos/SessionGate";
 
 export const Route = createFileRoute("/dashboard")({
@@ -24,9 +24,9 @@ function DashboardPage() {
 
 function DashboardInner() {
   const { user, isPending } = useCurrentUserState();
+  const navigate = useNavigate();
   const [session, setSession] = useState<SessionContext | null>(null);
   const [error, setError] = useState<string | null>(null);
-
   const load = () => {
     void getSessionContextFn()
       .then(setSession)
@@ -47,6 +47,20 @@ function DashboardInner() {
       }).then(() => load());
     }
   }, [session]);
+
+  useEffect(() => {
+    if (!session) return;
+    if (session.orgs.length === 0 && !session.isPlatformAdmin) {
+      void listMyProspectsFn()
+        .then((rows) =>
+          navigateToSanitizedPath(
+            navigate,
+            prospectResumePath(rows) || "/get-pricing",
+          ),
+        )
+        .catch(() => navigate({ to: "/get-pricing" }));
+    }
+  }, [session, navigate]);
 
   if (isPending) {
     return (
@@ -74,14 +88,6 @@ function DashboardInner() {
   }
 
   if (session.orgs.length === 0 && !session.isPlatformAdmin) {
-    void listMyProspectsFn()
-      .then((rows) => {
-        const path = sanitizeNextPath(prospectResumePath(rows)) ?? "/get-pricing";
-        window.location.replace(path);
-      })
-      .catch(() => {
-        window.location.replace("/get-pricing");
-      });
     return (
       <div className="grid min-h-[100dvh] place-items-center bg-bg text-sm text-muted-foreground">
         Opening your application…

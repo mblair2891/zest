@@ -14,7 +14,16 @@ import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 import pg from "pg";
 
-const databaseUrl = process.env.DATABASE_URL;
+function readEnv(key) {
+  const value = process.env[key];
+  return typeof value === "string" && value.trim() ? value.trim() : undefined;
+}
+
+const databaseUrl =
+  readEnv("DATABASE_URL") ||
+  readEnv("POSTGRES_URL") ||
+  readEnv("POSTGRES_PRISMA_URL") ||
+  readEnv("NEON_DATABASE_URL");
 if (!databaseUrl) {
   console.log(
     "[migrate] DATABASE_URL not set — skipping (the PGLite fallback migrates itself).",

@@ -1,7 +1,6 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link, Navigate } from "@tanstack/react-router";
 import { useCurrentUserState } from "@/lib/auth/use-current-user";
 import { SetupOnboardingWizard } from "@/components/saas/SetupOnboardingWizard";
-import { Link } from "@tanstack/react-router";
 
 export const Route = createFileRoute("/setup/$token")({
   component: SetupPage,
@@ -18,15 +17,7 @@ function SetupPage() {
     );
   }
   if (!user) {
-    const next = encodeURIComponent(`/setup/${token}`);
-    if (typeof window !== "undefined") {
-      window.location.replace(`/login?next=${next}`);
-    }
-    return (
-      <div className="grid min-h-[100dvh] place-items-center bg-bg text-sm text-muted-foreground">
-        Redirecting to sign in…
-      </div>
-    );
+    return <Navigate to="/login" search={{ next: `/setup/${token}` }} />;
   }
   return (
     <div className="min-h-[100dvh] bg-bg pt-[var(--grok-banner-h,0px)]">

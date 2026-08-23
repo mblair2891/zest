@@ -1,6 +1,6 @@
 /**
  * Post-login destinations that exist in the TanStack route tree.
- * Unknown or off-site `?next=` values are dropped (never window.location'd).
+ * Unknown or off-site `?next=` values are dropped (never navigated to).
  */
 export const POST_LOGIN_STATIC = [
   "/dashboard",

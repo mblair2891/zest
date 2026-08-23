@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { dbSource, getSql } from "@/lib/db";
+import { getDbSource, getSql } from "@/lib/db";
 
 export const Route = createFileRoute("/api/health")({
   server: {
@@ -18,7 +18,7 @@ export const Route = createFileRoute("/api/health")({
         return Response.json({
           ok: db === "ok",
           db,
-          source: dbSource,
+          source: getDbSource(),
           surface: "api",
           host,
           hosts: {

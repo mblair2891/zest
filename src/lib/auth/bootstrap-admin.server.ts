@@ -25,8 +25,10 @@ const globalRef = globalThis as typeof globalThis & {
 function dbNotReady(err: unknown): Error {
   const msg = err instanceof Error ? err.message : String(err);
   if (
+    /database not ready/i.test(msg) ||
     /relation .* does not exist/i.test(msg) ||
     /does not exist/i.test(msg) ||
+    /ENOENT|pglite/i.test(msg) ||
     /ECONNREFUSED|ENOTFOUND|connection refused|timeout/i.test(msg)
   ) {
     return new Error("Database not ready");

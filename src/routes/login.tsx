@@ -2,8 +2,14 @@ import { useEffect, useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { AuthScreen, AuthShell } from "@/components/saas/AuthScreen";
 import { ensureAdminExists } from "@/lib/auth/platform-admin";
+import { sanitizeNextPath } from "@/lib/auth/safe-next-path";
 
 export const Route = createFileRoute("/login")({
+  validateSearch: (s: Record<string, unknown>): { next?: string } => {
+    const next =
+      typeof s.next === "string" ? sanitizeNextPath(s.next) ?? undefined : undefined;
+    return next ? { next } : {};
+  },
   component: LoginPage,
 });
 
@@ -40,7 +46,7 @@ function LoginPage() {
     >
       <AuthScreen
         mode="signin"
-        disabled={!ready && !prepError}
+        disabled={!ready || Boolean(prepError)}
         prepError={prepError}
       />
       <p className="mt-8 text-center text-sm text-muted-foreground">

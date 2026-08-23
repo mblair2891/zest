@@ -47,9 +47,13 @@ export const ensureAdminExists = createServerFn({ method: "POST" }).handler(
       return { ok: true };
     } catch (err) {
       const msg = err instanceof Error ? err.message : "Could not prepare sign-in";
+      const dbDown =
+        /database not ready|enoent|pglite|relation .* does not exist|econnrefused|enotfound|timeout/i.test(
+          msg,
+        );
       return {
         ok: false,
-        error: msg === "Database not ready" ? "Database not ready" : "Could not prepare sign-in. Try again.",
+        error: dbDown ? "Database not ready" : "Could not prepare sign-in. Try again.",
       };
     }
   },

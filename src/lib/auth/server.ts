@@ -35,6 +35,7 @@ import { getCookie } from "@tanstack/react-start/server";
 import { randomBytes } from "node:crypto";
 import { Pool } from "pg";
 import { ensureDbReady, getPglite } from "../db";
+import { getDatabaseUrl } from "../database-url";
 import { emailAndPasswordEnabled } from "./email-password";
 import { GROK_PROVIDERS } from "./providers";
 import { pgliteDialect } from "./pglite-dialect";
@@ -170,7 +171,7 @@ const trustedOrigins = async (request?: Request): Promise<string[]> => {
   return [...new Set([...STATIC_TRUSTED_ORIGINS, ...extra].filter(Boolean))];
 };
 
-const databaseUrl = env("DATABASE_URL");
+const databaseUrl = getDatabaseUrl();
 
 // Static broker OAuth endpoints (skip OIDC discovery on every sign-in / callback).
 // Discovery would cost an extra network hop to the broker before the popup can

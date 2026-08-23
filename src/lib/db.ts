@@ -1,20 +1,27 @@
+import { getDatabaseUrl, isServerlessRuntime } from "./database-url";
+
+export { getDatabaseUrl, isServerlessRuntime };
+
 /** Which database backend is active. */
 export type DbSource = "neon" | "pglite";
 
-// An empty/whitespace DATABASE_URL (an easy misconfig in deploy UIs) must mean
-// "unset" — otherwise production would silently run on the PGLite fallback.
-const rawDatabaseUrl =
-  typeof process !== "undefined" ? process.env.DATABASE_URL : undefined;
-const databaseUrl =
-  rawDatabaseUrl && rawDatabaseUrl.trim() ? rawDatabaseUrl : undefined;
-
 /**
- * Active backend: real **Neon** when `DATABASE_URL` is set (deployed / configured
+ * Active backend: real **Neon** when a Postgres URL is set (deployed / configured
  * sandbox), otherwise a local embedded **PGLite** (Postgres compiled to WASM) so
  * the app has a working database even with nothing configured — the live preview
  * included. Swap in Neon later by just setting `DATABASE_URL`; no code changes.
+ *
+ * Resolved at call time (not module load) so Vite cannot inline an empty
+ * `process.env.DATABASE_URL` from the compile environment.
  */
-export const dbSource: DbSource = databaseUrl ? "neon" : "pglite";
+export function getDbSource(): DbSource {
+  if (getDatabaseUrl()) return "neon";
+  if (isServerlessRuntime()) return "neon";
+  return "pglite";
+}
+
+/** @deprecated Prefer `getDbSource()` — this snapshot is taken at module load. */
+export const dbSource: DbSource = getDbSource();
 
 /**
  * Minimal shared SQL surface, satisfied by both Neon and PGLite. Both the
@@ -141,7 +148,9 @@ function createNeonSql(): Promise<Sql> {
     types.setTypeParser(OID_INT8, Number);
     types.setTypeParser(OID_DATE, identity);
     types.setTypeParser(OID_INTERVAL, identity);
-    const pool = new Pool({ connectionString: databaseUrl });
+    const url = getDatabaseUrl();
+    if (!url) throw new Error("Database not ready");
+    const pool = new Pool({ connectionString: url });
     globalRef.__pgPool__ = pool;
     try {
       await applyNeonMigrations(pool);
@@ -226,7 +235,11 @@ async function createSql(): Promise<Sql> {
         "or a server route loader, never from client code.",
     );
   }
-  return dbSource === "neon" ? createNeonSql() : createPgliteSql();
+  if (getDatabaseUrl()) return createNeonSql();
+  if (isServerlessRuntime()) {
+    throw new Error("Database not ready");
+  }
+  return createPgliteSql();
 }
 
 /**
@@ -250,7 +263,7 @@ export function getSql(): Promise<Sql> {
  * Kysely dialect). Throws when `DATABASE_URL` is set (that path uses Neon).
  */
 export async function getPglite(): Promise<import("@electric-sql/pglite").PGlite> {
-  if (dbSource !== "pglite") {
+  if (getDatabaseUrl() || isServerlessRuntime()) {
     throw new Error("getPglite() is only available on the PGLite fallback (no DATABASE_URL)");
   }
   await getSql();
@@ -291,6 +304,7 @@ if (typeof window === "undefined") {
   globalBoot.__pgBootstrapPromise__ ??= ensureDbReady().catch((err) => {
     globalBoot.__pgBootstrapPromise__ = undefined;
     console.error("[db] bootstrap failed:", err);
-    throw err;
+    // Do not rethrow — a missing Neon URL on Vercel must not crash module
+    // init. Login surfaces "Database not ready" via ensureAdminExists().
   });
 }

@@ -2,11 +2,28 @@ import { useState, type ReactNode } from "react";
 import { Link, useNavigate } from "@tanstack/react-router";
 import { authClient } from "@/lib/auth/client";
 import { getPlatformFlags } from "@/lib/auth/platform-admin";
-import { DEFAULT_POST_LOGIN, sanitizeNextPath } from "@/lib/auth/safe-next-path";
-import type { VenueEntityId } from "@/lib/pos/types";
+import { navigateAfterPasswordSignIn } from "@/lib/auth/post-login-navigate";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { SummexBrandBlock } from "@/components/brand/SummexMark";
+
+function mapAuthError(message: string): string {
+  if (
+    /invalid path|invalid origin|invalid callback|invalid redirect/i.test(
+      message,
+    )
+  ) {
+    return "Sign-in could not complete. Refresh and try again.";
+  }
+  if (
+    /database not ready|enoent|pglite|relation .* does not exist|econnrefused|enotfound/i.test(
+      message,
+    )
+  ) {
+    return "Database not ready";
+  }
+  return message;
+}
 
 export function AuthScreen({
   mode,
@@ -30,84 +47,24 @@ export function AuthScreen({
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
-  const goAfterAuth = async () => {
+  const goAfterAuth = async (signedInAsAdmin: boolean) => {
     let mustChange = false;
+    let flagsFailed = false;
     try {
       const flags = await getPlatformFlags();
       mustChange = flags.mustChangePassword;
     } catch {
-      /* session may still be settling; SessionGate retries */
+      flagsFailed = true;
     }
-    if (mustChange) {
-      await navigate({ to: "/change-password" });
-      return;
-    }
-    const raw = new URLSearchParams(window.location.search).get("next");
-    const next = sanitizeNextPath(raw)?.split("?")[0] ?? null;
-    if (!next || next === "/platform" || next === DEFAULT_POST_LOGIN) {
+    const nextRaw = new URLSearchParams(window.location.search).get("next");
+    try {
+      await navigateAfterPasswordSignIn(navigate, {
+        mustChangePassword: mustChange || (signedInAsAdmin && flagsFailed),
+        nextRaw,
+      });
+    } catch {
       await navigate({ to: "/dashboard" });
-      return;
     }
-    if (next === "/change-password") {
-      await navigate({ to: "/change-password" });
-      return;
-    }
-    if (next === "/onboarding") {
-      await navigate({ to: "/onboarding" });
-      return;
-    }
-    if (next === "/pipeline") {
-      await navigate({ to: "/pipeline" });
-      return;
-    }
-    if (next === "/get-pricing") {
-      await navigate({ to: "/get-pricing" });
-      return;
-    }
-    if (next === "/guide") {
-      await navigate({ to: "/guide" });
-      return;
-    }
-    if (next === "/apps") {
-      await navigate({ to: "/apps" });
-      return;
-    }
-    if (next === "/app") {
-      await navigate({ to: "/app" });
-      return;
-    }
-    const quote = next.match(/^\/quote\/([^/]+)$/);
-    if (quote?.[1]) {
-      await navigate({ to: "/quote/$token", params: { token: quote[1] } });
-      return;
-    }
-    const setup = next.match(/^\/setup\/([^/]+)$/);
-    if (setup?.[1]) {
-      await navigate({ to: "/setup/$token", params: { token: setup[1] } });
-      return;
-    }
-    const invite = next.match(/^\/invite\/([^/]+)$/);
-    if (invite?.[1]) {
-      await navigate({ to: "/invite/$token", params: { token: invite[1] } });
-      return;
-    }
-    const venue = next.match(/^\/venue\/([^/]+)$/);
-    if (venue?.[1]) {
-      await navigate({
-        to: "/venue/$type",
-        params: { type: venue[1] as VenueEntityId },
-      });
-      return;
-    }
-    const appVenue = next.match(/^\/app\/venue\/([^/]+)$/);
-    if (appVenue?.[1]) {
-      await navigate({
-        to: "/app/venue/$type",
-        params: { type: appVenue[1] as VenueEntityId },
-      });
-      return;
-    }
-    await navigate({ to: "/dashboard" });
   };
 
   const submit = async () => {
@@ -143,9 +100,16 @@ export function AuthScreen({
         if (!ok) throw new Error(lastErr ?? "Sign in failed");
       }
       onAuthed?.();
-      if (!onAuthed) await goAfterAuth();
+      if (!onAuthed) {
+        const raw = email.trim().toLowerCase();
+        const signedInAsAdmin =
+          mode === "signin" &&
+          (raw === "admin" || raw === "admin@summex.local");
+        await goAfterAuth(signedInAsAdmin);
+      }
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Auth failed");
+      const msg = e instanceof Error ? e.message : "Auth failed";
+      setError(mapAuthError(msg));
     } finally {
       setBusy(false);
     }

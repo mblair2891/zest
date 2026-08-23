@@ -1,7 +1,13 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { AuthScreen, AuthShell } from "@/components/saas/AuthScreen";
+import { sanitizeNextPath } from "@/lib/auth/safe-next-path";
 
 export const Route = createFileRoute("/signup")({
+  validateSearch: (s: Record<string, unknown>): { next?: string } => {
+    const next =
+      typeof s.next === "string" ? sanitizeNextPath(s.next) ?? undefined : undefined;
+    return next ? { next } : {};
+  },
   component: SignupPage,
 });
 

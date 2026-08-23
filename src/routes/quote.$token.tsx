@@ -64,7 +64,10 @@ function QuotePage() {
 
   const accept = async () => {
     if (!user) {
-      window.location.href = `/signup?next=${encodeURIComponent(`/quote/${token}`)}`;
+      void navigate({
+        to: "/signup",
+        search: { next: `/quote/${token}` },
+      });
       return;
     }
     setBusy(true);

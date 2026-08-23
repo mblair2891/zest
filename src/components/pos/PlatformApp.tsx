@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import { Link } from "@tanstack/react-router";
+import { Link, useNavigate } from "@tanstack/react-router";
 import { LogOut, ArrowLeft, BookOpen } from "lucide-react";
 import { GuideTriggerButton } from "@/components/guide/OperatorsGuide";
 import { Button } from "@/components/ui/button";
@@ -22,18 +22,41 @@ import {
 } from "@/lib/saas/api";
 import { ProspectPipelineView } from "@/components/saas/ProspectPipelineView";
 import { prospectResumePath } from "@/lib/saas/prospect-resume";
-import { sanitizeNextPath } from "@/lib/auth/safe-next-path";
+import { navigateToSanitizedPath } from "@/lib/auth/post-login-navigate";
 import { saveTenantPosContext } from "@/lib/saas/pos-context";
 import { appHref } from "@/lib/platform/hosts";
 import type { SaasLocation, SaasMembership, SaasOrganization } from "@/lib/pos/saas-types";
 import { defaultPackagesForMode } from "@/lib/pos/packages";
 import type { PackageId } from "@/lib/pos/packages";
 
+function OnboardingResume({
+  navigate,
+}: {
+  navigate: ReturnType<typeof useNavigate>;
+}) {
+  useEffect(() => {
+    void listMyProspectsFn()
+      .then((rows) =>
+        navigateToSanitizedPath(
+          navigate,
+          prospectResumePath(rows) || "/get-pricing",
+        ),
+      )
+      .catch(() => navigate({ to: "/get-pricing" }));
+  }, [navigate]);
+  return (
+    <div className="grid min-h-[100dvh] place-items-center bg-bg text-sm text-muted-foreground">
+      Opening your application…
+    </div>
+  );
+}
+
 /**
  * Fully separate SaaS / multi-tenant platform surface at `/platform`.
  * Production path: Better Auth (username/email + password) + server tenancy.
  */
 export function PlatformApp() {
+  const navigate = useNavigate();
   const [ready, setReady] = useState(false);
   const [bootError, setBootError] = useState<string | null>(null);
   const [needsOnboarding, setNeedsOnboarding] = useState(false);
@@ -238,20 +261,7 @@ export function PlatformApp() {
   }
 
   if (user && needsOnboarding) {
-    void listMyProspectsFn()
-      .then((rows) => {
-        const path =
-          sanitizeNextPath(prospectResumePath(rows)) ?? "/get-pricing";
-        window.location.replace(path);
-      })
-      .catch(() => {
-        window.location.replace("/get-pricing");
-      });
-    return (
-      <div className="grid min-h-[100dvh] place-items-center bg-bg text-sm text-muted-foreground">
-        Opening your application…
-      </div>
-    );
+    return <OnboardingResume navigate={navigate} />;
   }
 
   const openPos = () => {
