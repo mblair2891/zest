@@ -149,6 +149,9 @@ export interface SectionAccess {
     | "no_sections";
 }
 
+export type CashRoundIncrement = 0.25 | 0.5 | 0.75 | 1;
+export type CashRoundMode = "up";
+
 export interface RestaurantSettings {
   name: string;
   address: string;
@@ -170,6 +173,13 @@ export interface RestaurantSettings {
   onlineOrderingEnabled?: boolean;
   qrOrderingEnabled?: boolean;
   sectionPolicy?: SectionPolicy;
+  /** Cash discount vs printed/card menu price. Default off. */
+  cashDiscountEnabled?: boolean;
+  /** e.g. 5 for 5% */
+  cashDiscountPercent?: number;
+  cashRoundIncrement?: CashRoundIncrement;
+  /** Always round up to the increment (never nearest). */
+  cashRoundMode?: CashRoundMode;
 }
 
 export interface Employee {

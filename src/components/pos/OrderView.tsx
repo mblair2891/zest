@@ -23,10 +23,14 @@ import {
 import { usePosStore } from "@/lib/pos/store";
 import type { MenuItem } from "@/lib/pos/types";
 import {
+  computeDualTotals,
   computeTotals,
   isHappyHour,
-  lineTotal,
+  lineCashCents,
+  linePrintedCents,
+  printedItemPriceCents,
 } from "@/lib/pos/calculations";
+import { cashPolicyFromSettings } from "@/lib/pos/cash-discount";
 import { cn, formatCurrency } from "@/lib/utils";
 import { ModifierDialog } from "./ModifierDialog";
 import { PaymentDialog } from "./PaymentDialog";
@@ -75,7 +79,9 @@ export function OrderView() {
 
   const happy = isHappyHour(settings);
   const table = tables.find((t) => t.id === order?.tableId);
-  const totals = order ? computeTotals(order, settings) : null;
+  const dual = order ? computeDualTotals(order, settings) : null;
+  const totals = dual?.card ?? null;
+  const cashPolicy = cashPolicyFromSettings(settings);
   const orderAccess = table ? tableAccess(table.id, "order") : { ok: true };
   const orderLocked = !orderAccess.ok || !!orderAccess.viewOnly;
 
@@ -272,8 +278,15 @@ export function OrderView() {
                         {line.comped ? " · COMP" : ""}
                       </span>
                     </span>
-                    <span className="shrink-0 tabular text-sm">
-                      {formatCurrency(lineTotal(line))}
+                    <span className="shrink-0 text-right tabular text-sm">
+                      <span className="block">
+                        {formatCurrency(linePrintedCents(line))}
+                      </span>
+                      {cashPolicy && (
+                        <span className="block text-[10px] font-normal text-muted-foreground">
+                          Cash {formatCurrency(lineCashCents(line, cashPolicy))}
+                        </span>
+                      )}
                     </span>
                   </div>
                 </button>
@@ -311,11 +324,19 @@ export function OrderView() {
               </div>
             )}
             <div className="flex justify-between text-base font-semibold">
-              <span>Total</span>
+              <span>{dual?.enabled ? "Card" : "Total"}</span>
               <span className="tabular">
                 {formatCurrency(totals.totalCents)}
               </span>
             </div>
+            {dual?.enabled && (
+              <div className="flex justify-between text-sm font-semibold text-foreground">
+                <span>Cash</span>
+                <span className="tabular">
+                  {formatCurrency(dual.cash.totalCents)}
+                </span>
+              </div>
+            )}
             {totals.balanceCents < totals.totalCents && (
               <div className="flex justify-between text-muted-foreground">
                 <span>Balance</span>
@@ -411,6 +432,9 @@ export function OrderView() {
             Pay{" "}
             {totals
               ? formatCurrency(totals.balanceCents || totals.totalCents)
+              : ""}
+            {dual?.enabled
+              ? ` · cash ${formatCurrency(dual.cash.balanceCents || dual.cash.totalCents)}`
               : ""}
           </Button>
         </div>
@@ -512,10 +536,11 @@ export function OrderView() {
             )}
             {items.map((item) => {
               const vendor = vendors.find((v) => v.id === item.vendorId);
-              const price =
+              const printed =
                 happy && item.happyHourPriceCents != null
                   ? item.happyHourPriceCents
                   : item.priceCents;
+              const dualPrice = printedItemPriceCents(printed, settings);
               return (
                 <button
                   key={item.id}
@@ -535,8 +560,13 @@ export function OrderView() {
                       {vendor?.shortName ?? "—"}
                       {!item.available ? " · 86" : ""}
                     </span>
-                    <span className="tabular text-sm font-semibold">
-                      {formatCurrency(price)}
+                    <span className="text-right tabular text-sm font-semibold">
+                      <span className="block">{formatCurrency(dualPrice.card)}</span>
+                      {dualPrice.enabled && (
+                        <span className="block text-[10px] font-normal text-muted-foreground">
+                          Cash {formatCurrency(dualPrice.cash)}
+                        </span>
+                      )}
                     </span>
                   </span>
                 </button>

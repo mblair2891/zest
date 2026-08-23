@@ -40,7 +40,10 @@ function nextOrderNumber(orders) {
 }
 function tableStatusFromOrder(order) {
 	if (!order || order.status !== "open") return "available";
-	if (order.payments.length > 0 && computeTotals(order, SETTINGS).balanceCents <= 0) return "paid";
+	const settings = usePosStore.getState().settings ?? SETTINGS;
+	const cardBal = computeTotals(order, settings, { tender: "card" }).balanceCents;
+	const cashBal = computeTotals(order, settings, { tender: "cash" }).balanceCents;
+	if (order.payments.length > 0 && (cardBal <= 0 || cashBal <= 0)) return "paid";
 	if (order.checkPrintedAt) return "check";
 	const sent = order.lines.some((l) => l.sent && !l.voided);
 	const unsent = order.lines.some((l) => !l.sent && !l.voided);
@@ -847,7 +850,9 @@ const usePosStoreRaw = create()(persist((set, get) => ({
 			...order,
 			payments
 		};
-		const totals = computeTotals(updated, get().settings);
+		const totals = computeTotals(updated, get().settings, {
+			tender: method === "cash" ? "cash" : "card",
+		});
 		const shift = { ...get().shift };
 		if (method === "cash") shift.cashSalesCents += amountCents;
 		if (method === "card" || method === "room_charge") shift.cardSalesCents += amountCents;
@@ -897,7 +902,12 @@ const usePosStoreRaw = create()(persist((set, get) => ({
 	closeOrderIfPaid: () => {
 		const order = get().getActiveOrder();
 		if (!order) return;
-		if (computeTotals(order, get().settings).balanceCents <= 0 && order.status === "open") set({ orders: get().orders.map((o) => o.id === order.id ? {
+		if (computeTotals(order, get().settings, {
+			tender: order.payments.some((p) => p.method === "cash") &&
+				!order.payments.some((p) => p.method === "card" || p.method === "room_charge")
+				? "cash"
+				: "card",
+		}).balanceCents <= 0 && order.status === "open") set({ orders: get().orders.map((o) => o.id === order.id ? {
 			...o,
 			status: "closed",
 			closedAt: Date.now()
@@ -1200,6 +1210,7 @@ const usePosStoreRaw = create()(persist((set, get) => ({
 			Date.now(),
 			get().getCurrentEmployee()?.name ?? "System",
 			get().chargebacks ?? [],
+			get().settings,
 		);
 	},
 	fileChargeback: (orderId) => {

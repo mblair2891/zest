@@ -8,37 +8,47 @@ import type {
   Vendor,
   VendorPeriodRow,
 } from "./types";
-import { lineTotal, computeTotals } from "./calculations";
+import { lineTotal, computeTotals, policyForTender } from "./calculations";
 import { SETTINGS } from "./seed";
 import { CHARGEBACK_FEE_CENTS } from "@/lib/platform/brand";
+import type { RestaurantSettings } from "./types";
+import type { CashDiscountPolicy } from "./cash-discount";
 
 export { CHARGEBACK_FEE_CENTS };
 
 /** Pre-tax sales for a vendor on one order (active, non-comp lines). */
-export function vendorSubtotalOnOrder(order: Order, vendorId: string): number {
+export function vendorSubtotalOnOrder(
+  order: Order,
+  vendorId: string,
+  policy: CashDiscountPolicy | null = null,
+): number {
   return order.lines
     .filter((l) => !l.voided && !l.comped && l.vendorId === vendorId)
-    .reduce((s, l) => s + lineTotal(l), 0);
+    .reduce((s, l) => s + lineTotal(l, policy), 0);
 }
 
 export function orderVendorSubtotals(
   order: Order,
   vendorIds: string[],
+  policy: CashDiscountPolicy | null = null,
 ): Map<string, number> {
   const map = new Map<string, number>();
   for (const id of vendorIds) map.set(id, 0);
   for (const line of order.lines) {
     if (line.voided || line.comped) continue;
     const vid = line.vendorId ?? "unknown";
-    map.set(vid, (map.get(vid) ?? 0) + lineTotal(line));
+    map.set(vid, (map.get(vid) ?? 0) + lineTotal(line, policy));
   }
   return map;
 }
 
-export function orderMerchandiseSubtotal(order: Order): number {
+export function orderMerchandiseSubtotal(
+  order: Order,
+  policy: CashDiscountPolicy | null = null,
+): number {
   return order.lines
     .filter((l) => !l.voided && !l.comped)
-    .reduce((s, l) => s + lineTotal(l), 0);
+    .reduce((s, l) => s + lineTotal(l, policy), 0);
 }
 
 /**
@@ -49,6 +59,7 @@ export function allocatePaymentToVendors(
   order: Order,
   payment: Pick<Payment, "method" | "amountCents">,
   vendorIds: string[],
+  settings: RestaurantSettings = SETTINGS,
 ): { vendorId: string; amountCents: number; method: "card" | "cash" | "other" }[] {
   const method: "card" | "cash" | "other" =
     payment.method === "card" || payment.method === "room_charge"
@@ -57,17 +68,18 @@ export function allocatePaymentToVendors(
         ? "cash"
         : "other";
 
-  const merch = orderMerchandiseSubtotal(order);
+  const policy = policyForTender(settings, payment.method);
+  const merch = orderMerchandiseSubtotal(order, policy);
   if (merch <= 0 || payment.amountCents <= 0) return [];
 
   // Only the merchandise share of this tender is vendor-attributable
-  const totals = computeTotals(order, SETTINGS);
+  const totals = computeTotals(order, settings, { tender: payment.method });
   const checkTotal = Math.max(1, totals.totalCents);
   const merchShareOfTender = Math.round(
     payment.amountCents * (merch / checkTotal),
   );
 
-  const subs = orderVendorSubtotals(order, vendorIds);
+  const subs = orderVendorSubtotals(order, vendorIds, policy);
   const result: {
     vendorId: string;
     amountCents: number;
@@ -101,6 +113,7 @@ export function aggregateVendorSales(
   vendors: Vendor[],
   periodStart: number,
   periodEnd: number,
+  settings: RestaurantSettings = SETTINGS,
 ): VendorLedgerAgg[] {
   const byId = new Map<string, VendorLedgerAgg>();
   for (const v of vendors) {
@@ -119,11 +132,17 @@ export function aggregateVendorSales(
     const closedAt = order.closedAt ?? order.createdAt;
     if (closedAt < periodStart || closedAt > periodEnd) continue;
 
-    const merchandise = orderMerchandiseSubtotal(order);
+    const cashPol = policyForTender(settings, "cash");
+    const printedPol = null;
+    const paidCash = order.payments.some((p) => p.method === "cash");
+    const merchPolicy = paidCash && !order.payments.some((p) => p.method === "card" || p.method === "room_charge")
+      ? cashPol
+      : printedPol;
+    const merchandise = orderMerchandiseSubtotal(order, merchPolicy);
     if (merchandise <= 0) continue;
 
     const vendorIds = vendors.map((v) => v.id);
-    const subs = orderVendorSubtotals(order, vendorIds);
+    const subs = orderVendorSubtotals(order, vendorIds, merchPolicy);
     const vendorsOnOrder = [...subs.entries()].filter(([, s]) => s > 0);
     for (const [vid] of vendorsOnOrder) {
       const row = byId.get(vid);
@@ -137,7 +156,7 @@ export function aggregateVendorSales(
 
     for (const pay of order.payments) {
       if (pay.method === "comp") continue;
-      const parts = allocatePaymentToVendors(order, pay, vendorIds);
+      const parts = allocatePaymentToVendors(order, pay, vendorIds, settings);
       for (const p of parts) {
         const row = byId.get(p.vendorId);
         if (!row) continue;
@@ -205,8 +224,9 @@ export function buildPeriodSettlement(
   periodEnd: number,
   closedBy: string,
   chargebacks: Chargeback[] = [],
+  settings: RestaurantSettings = SETTINGS,
 ): SettlementPeriod {
-  const aggs = aggregateVendorSales(orders, vendors, periodStart, periodEnd);
+  const aggs = aggregateVendorSales(orders, vendors, periodStart, periodEnd, settings);
   const feePct = config.cardFeePercent / 100;
   const hostPct = config.hostCutEnabled ? config.hostCutPercent / 100 : 0;
   const cbByVendor = new Map<string, number>();

@@ -10,6 +10,7 @@ import type {
   Vendor,
 } from "./types";
 import { DEFAULT_FLOOR_SECTIONS, DEFAULT_SECTION_POLICY } from "./section-control";
+import { DEFAULT_CASH_DISCOUNT } from "./cash-discount";
 import type { VenueEntityId } from "./types";
 
 export type TenantMenuMode = "empty" | "categories" | "csv_later" | "starter";
@@ -35,6 +36,7 @@ export function starterSettings(venueName: string): RestaurantSettings {
     onlineOrderingEnabled: true,
     qrOrderingEnabled: true,
     sectionPolicy: { ...DEFAULT_SECTION_POLICY },
+    ...DEFAULT_CASH_DISCOUNT,
   };
 }
 

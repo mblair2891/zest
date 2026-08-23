@@ -14,6 +14,7 @@ import type {
   SettlementConfig,
 } from "./types";
 import { DEFAULT_SECTION_POLICY } from "./section-control";
+import { DEFAULT_CASH_DISCOUNT } from "./cash-discount";
 
 export const SETTINGS: RestaurantSettings = {
   name: "Summex",
@@ -35,6 +36,7 @@ export const SETTINGS: RestaurantSettings = {
   onlineOrderingEnabled: true,
   qrOrderingEnabled: true,
   sectionPolicy: { ...DEFAULT_SECTION_POLICY },
+  ...DEFAULT_CASH_DISCOUNT,
 };
 
 export const EMPLOYEES: Employee[] = [

@@ -7,6 +7,16 @@ import { GUIDE_VERSION, type GuideRole, type GuideUpdate } from "./types";
  */
 export const GUIDE_UPDATES: GuideUpdate[] = [
   {
+    id: "upd_2026_08_24_cash_discount",
+    date: "2026-08-24",
+    title: "Cash discount with round-up prices",
+    summary:
+      "Keep $12.00 on the menu. Enable 5% cash, round up to $0.25 — card stays $12, cash is $11.50. No penny counting.",
+    roles: ["owner_manager", "server", "host_operator"],
+    topicId: "cash-discount",
+    tags: ["cash", "pricing"],
+  },
+  {
     id: "upd_2026_08_23_operators_guide",
     date: "2026-08-23",
     title: "Operators Guide",

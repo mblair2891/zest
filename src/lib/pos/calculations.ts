@@ -1,4 +1,9 @@
-import type { Order, OrderLine, RestaurantSettings } from "./types";
+import type { Order, OrderLine, PaymentMethod, RestaurantSettings } from "./types";
+import {
+  cashPolicyFromSettings,
+  cashPriceCents,
+  type CashDiscountPolicy,
+} from "./cash-discount";
 
 export interface OrderTotals {
   subtotalCents: number;
@@ -18,15 +23,46 @@ export function lineUnitTotal(line: OrderLine): number {
   return line.unitPriceCents + mods;
 }
 
-export function lineTotal(line: OrderLine): number {
+/** Printed / card merchandise for a line (source of truth). */
+export function linePrintedCents(line: OrderLine): number {
   if (line.voided || line.comped) return 0;
   return lineUnitTotal(line) * line.quantity - line.discountCents;
+}
+
+/** Cash merchandise after discount + round-up; printed if policy off. */
+export function lineCashCents(
+  line: OrderLine,
+  policy: CashDiscountPolicy | null,
+): number {
+  if (line.voided || line.comped) return 0;
+  if (!policy) return linePrintedCents(line);
+  const unitCash = cashPriceCents(lineUnitTotal(line), policy);
+  return Math.max(0, unitCash * line.quantity - line.discountCents);
+}
+
+export function lineTotal(
+  line: OrderLine,
+  policy: CashDiscountPolicy | null = null,
+): number {
+  return policy ? lineCashCents(line, policy) : linePrintedCents(line);
+}
+
+export type TenderLens = PaymentMethod | "card" | "cash";
+
+export function policyForTender(
+  settings: RestaurantSettings,
+  tender?: TenderLens,
+): CashDiscountPolicy | null {
+  if (tender !== "cash") return null;
+  return cashPolicyFromSettings(settings);
 }
 
 export function computeTotals(
   order: Order,
   settings: RestaurantSettings,
+  opts?: { tender?: TenderLens },
 ): OrderTotals {
+  const policy = policyForTender(settings, opts?.tender);
   const activeLines = order.lines.filter((l) => !l.voided);
   const itemCount = activeLines.reduce((s, l) => s + l.quantity, 0);
 
@@ -34,7 +70,7 @@ export function computeTotals(
   let taxableCents = 0;
   for (const line of activeLines) {
     if (line.comped) continue;
-    const t = lineTotal(line);
+    const t = lineTotal(line, policy);
     subtotalCents += t;
     if (!line.taxExempt) taxableCents += t;
   }
@@ -68,9 +104,10 @@ export function computeTotals(
     0,
   );
   const totalCents = afterDiscount + taxCents + serviceChargeCents;
-  const balanceCents = Math.max(0, totalCents + tipCents - paidCents);
-  // balance for remaining on check (without tip yet)
-  const remainingOnCheck = Math.max(0, totalCents - order.payments.reduce((s, p) => s + p.amountCents, 0));
+  const remainingOnCheck = Math.max(
+    0,
+    totalCents - order.payments.reduce((s, p) => s + p.amountCents, 0),
+  );
 
   return {
     subtotalCents,
@@ -86,6 +123,18 @@ export function computeTotals(
   };
 }
 
+export function computeDualTotals(
+  order: Order,
+  settings: RestaurantSettings,
+): { card: OrderTotals; cash: OrderTotals; enabled: boolean } {
+  const enabled = Boolean(cashPolicyFromSettings(settings));
+  return {
+    card: computeTotals(order, settings, { tender: "card" }),
+    cash: computeTotals(order, settings, { tender: "cash" }),
+    enabled,
+  };
+}
+
 export function isHappyHour(settings: RestaurantSettings, now = new Date()): boolean {
   if (!settings.happyHourEnabled) return false;
   const day = now.getDay();
@@ -96,4 +145,16 @@ export function isHappyHour(settings: RestaurantSettings, now = new Date()): boo
 
 export function tipSuggestions(balanceCents: number): number[] {
   return [0.15, 0.18, 0.2, 0.25].map((r) => Math.round(balanceCents * r));
+}
+
+export function printedItemPriceCents(
+  printedCents: number,
+  settings: RestaurantSettings,
+): { card: number; cash: number; enabled: boolean } {
+  const policy = cashPolicyFromSettings(settings);
+  return {
+    card: printedCents,
+    cash: policy ? cashPriceCents(printedCents, policy) : printedCents,
+    enabled: Boolean(policy),
+  };
 }

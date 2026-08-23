@@ -3,7 +3,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { usePosStore } from "@/lib/pos/store";
 import { formatCurrency } from "@/lib/utils";
-import { isHappyHour } from "@/lib/pos/calculations";
+import { isHappyHour, printedItemPriceCents } from "@/lib/pos/calculations";
 
 export function MenuAdminView() {
   const categories = usePosStore((s) => s.categories);
@@ -57,6 +57,14 @@ export function MenuAdminView() {
                       <p className="truncate text-sm font-medium">{item.name}</p>
                       <p className="text-xs tabular text-muted-foreground">
                         {formatCurrency(item.priceCents)}
+                        {printedItemPriceCents(item.priceCents, settings).enabled && (
+                          <span className="ml-2">
+                            cash{" "}
+                            {formatCurrency(
+                              printedItemPriceCents(item.priceCents, settings).cash,
+                            )}
+                          </span>
+                        )}
                         {item.happyHourPriceCents != null && (
                           <span className="ml-2 text-success">
                             HH {formatCurrency(item.happyHourPriceCents)}

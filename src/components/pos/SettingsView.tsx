@@ -14,7 +14,14 @@ import {
   OUTBOX_KIND_LABEL,
   type FabricPolicy,
 } from "@/lib/pos/network-store";
-import { formatTime } from "@/lib/utils";
+import { formatCurrency, formatTime } from "@/lib/utils";
+import { GuideLearnLink } from "@/components/guide/GuideLearnLink";
+import {
+  CASH_ROUND_INCREMENTS,
+  cashPriceCents,
+  cashPolicyFromSettings,
+  type CashRoundIncrement,
+} from "@/lib/pos/cash-discount";
 
 function PolicyCheck({
   checked,
@@ -179,6 +186,88 @@ export function SettingsView() {
           />
           Multi-tenant food hall mode
         </label>
+
+        <div className="rounded-2xl border border-border bg-surface p-4">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <p className="text-sm font-medium">Cash discount</p>
+            <GuideLearnLink topicId="cash-discount" compact>
+              Learn
+            </GuideLearnLink>
+          </div>
+          <p className="mt-1 text-xs text-muted-foreground">
+            Printed / card prices stay clean. Cash is discounted then rounded{" "}
+            <span className="font-medium text-foreground">up</span> to the
+            increment — no pennies. This location is responsible for local
+            cash-discount rules.
+          </p>
+          <label className="mt-3 flex items-center gap-2 text-sm">
+            <input
+              type="checkbox"
+              checked={!!settings.cashDiscountEnabled}
+              onChange={(e) =>
+                updateSettings({ cashDiscountEnabled: e.target.checked })
+              }
+              className="h-4 w-4 rounded border-border"
+            />
+            Offer a cash discount
+          </label>
+          <div className="mt-3 grid grid-cols-2 gap-3">
+            <label className="block text-sm">
+              <span className="mb-1 block text-muted-foreground">
+                Discount (%)
+              </span>
+              <Input
+                inputMode="decimal"
+                disabled={!settings.cashDiscountEnabled}
+                value={String(settings.cashDiscountPercent ?? 5)}
+                onChange={(e) =>
+                  updateSettings({
+                    cashDiscountPercent: Math.max(
+                      0,
+                      parseFloat(e.target.value) || 0,
+                    ),
+                  })
+                }
+              />
+            </label>
+            <label className="block text-sm">
+              <span className="mb-1 block text-muted-foreground">
+                Round up to
+              </span>
+              <select
+                className="flex h-11 w-full rounded-lg border border-border bg-surface px-3 text-sm"
+                disabled={!settings.cashDiscountEnabled}
+                value={String(settings.cashRoundIncrement ?? 0.25)}
+                onChange={(e) =>
+                  updateSettings({
+                    cashRoundIncrement: Number(
+                      e.target.value,
+                    ) as CashRoundIncrement,
+                  })
+                }
+              >
+                {CASH_ROUND_INCREMENTS.map((n) => (
+                  <option key={n} value={n}>
+                    ${n.toFixed(2)}
+                  </option>
+                ))}
+              </select>
+            </label>
+          </div>
+          {settings.cashDiscountEnabled && (
+            <p className="mt-3 text-xs text-muted-foreground">
+              Example: $12.00 card →{" "}
+              <span className="tabular text-foreground">
+                {formatCurrency(
+                  cashPolicyFromSettings(settings)
+                    ? cashPriceCents(1200, cashPolicyFromSettings(settings)!)
+                    : 1200,
+                )}
+              </span>{" "}
+              cash.
+            </p>
+          )}
+        </div>
       </div>
 
       <div className="mb-6 max-w-2xl rounded-2xl border border-border bg-surface p-4">

@@ -12,7 +12,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { usePosStore } from "@/lib/pos/store";
 import { useNetworkStore } from "@/lib/pos/network-store";
 import { useMarketingStore } from "@/lib/pos/marketing-store";
-import { computeTotals, tipSuggestions } from "@/lib/pos/calculations";
+import { computeDualTotals, tipSuggestions } from "@/lib/pos/calculations";
 import { cn, formatCurrency } from "@/lib/utils";
 import type { PaymentMethod } from "@/lib/pos/types";
 import { GuideLearnLink } from "@/components/guide/GuideLearnLink";
@@ -31,13 +31,16 @@ export function PaymentDialog({ open, onOpenChange }: Props) {
   const clearTable = usePosStore((s) => s.clearTable);
   const setView = usePosStore((s) => s.setView);
 
-  const totals = useMemo(
-    () => (order ? computeTotals(order, settings) : null),
+  const [method, setMethod] = useState<PaymentMethod>("card");
+  const dual = useMemo(
+    () => (order ? computeDualTotals(order, settings) : null),
     [order, settings],
   );
-
-  const balance = totals?.balanceCents ?? 0;
-  const [method, setMethod] = useState<PaymentMethod>("card");
+  const totals = dual?.card ?? null;
+  const cashOn = Boolean(dual?.enabled && method === "cash");
+  const balance = cashOn
+    ? (dual?.cash.balanceCents ?? 0)
+    : (totals?.balanceCents ?? 0);
   const [amount, setAmount] = useState("");
   const [tip, setTip] = useState(0);
   const [tendered, setTendered] = useState("");
@@ -141,7 +144,7 @@ export function PaymentDialog({ open, onOpenChange }: Props) {
     setView("floor");
   };
 
-  if (!order || !totals) return null;
+  if (!order || !totals || !dual) return null;
 
   return (
     <Dialog
@@ -163,8 +166,11 @@ export function PaymentDialog({ open, onOpenChange }: Props) {
                 ? "Payment complete"
                 : `Pay check #${order.number}`}
             </span>
-            <GuideLearnLink topicId="quantum-payments" compact>
-              Quantum Payments
+            <GuideLearnLink
+              topicId={method === "cash" ? "cash-discount" : "quantum-payments"}
+              compact
+            >
+              {method === "cash" ? "Cash discount" : "Quantum Payments"}
             </GuideLearnLink>
           </DialogTitle>
         </DialogHeader>
@@ -186,8 +192,22 @@ export function PaymentDialog({ open, onOpenChange }: Props) {
               Charged as{" "}
               {order.payments[order.payments.length - 1]?.chargeBrand ||
                 settings.name}{" "}
-              via Quantum Payments. Tip recorded: {formatCurrency(tip)}
+              {order.payments[order.payments.length - 1]?.method === "card"
+                ? "via Quantum Payments"
+                : order.payments[order.payments.length - 1]?.method === "cash"
+                  ? "cash"
+                  : ""}
+              . Tip recorded: {formatCurrency(tip)}
             </p>
+            {dual.enabled && (
+              <p className="text-xs text-muted-foreground">
+                Card {formatCurrency(dual.card.totalCents)} · Cash{" "}
+                {formatCurrency(dual.cash.totalCents)}
+                {order.payments.some((p) => p.method === "cash")
+                  ? " · Cash discount applied"
+                  : ""}
+              </p>
+            )}
             <Button className="w-full" size="lg" onClick={finish}>
               Done
             </Button>
@@ -215,14 +235,21 @@ export function PaymentDialog({ open, onOpenChange }: Props) {
             )}
             <div className="rounded-xl border border-border bg-bg p-4 text-center">
               <p className="text-xs uppercase tracking-wide text-muted-foreground">
-                Balance due · {settings.name}
+                {cashOn ? "Cash due" : "Card due"} · {settings.name}
               </p>
               <p className="text-3xl font-semibold tabular">
                 {formatCurrency(balance)}
               </p>
+              {dual.enabled && (
+                <p className="mt-1 text-xs text-muted-foreground">
+                  Card {formatCurrency(dual.card.totalCents)} · Cash{" "}
+                  {formatCurrency(dual.cash.totalCents)}
+                </p>
+              )}
               <p className="mt-1 text-[11px] text-muted-foreground">
-                Guest charge brand is the host. Card runs on Quantum Payments
-                only — not Stripe or Square.
+                {cashOn
+                  ? "Cash price is the printed amount, discounted and rounded up."
+                  : "Guest charge brand is the host. Card runs on Quantum Payments only."}
               </p>
             </div>
 

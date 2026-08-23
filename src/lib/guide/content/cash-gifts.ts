@@ -3,6 +3,50 @@ import type { GuideTopic } from "../types";
 
 export const CASH_GIFT_TOPICS: GuideTopic[] = [
   topic({
+    id: "cash-discount",
+    chapterId: "cash-gifts",
+    title: "Cash discount & rounding",
+    summary:
+      "Pretty menu prices stay on the card; cash is discounted and rounded up so staff never count pennies.",
+    roles: ["owner_manager", "server", "host_operator"],
+    keywords: [
+      "cash discount",
+      "round up",
+      "0.25",
+      "pretty price",
+      "cash price",
+      "card price",
+    ],
+    openView: "settings",
+    blocks: [
+      why(
+        "A straight 5% off $12 is $11.40 — ugly on a menu and slow in the drawer. Summex keeps the printed / Quantum Payments price clean and computes a cash price that always lands on a coin increment.",
+      ),
+      p(
+        "Menu items store the card amount as source of truth (e.g. $15.00). When the location enables a cash discount, cash tenders use per-line cash prices: discount the printed amount, then round UP to the next $0.25, $0.50, $0.75, or $1.00. If the result is already on the increment, it stays.",
+      ),
+      ul(
+        "$15.00 at 5%, increment $0.25 → cash $14.25 (already on a quarter).",
+        "$12.00 at 5%, increment $0.25 → $11.40 rounds up to $11.50.",
+        "$7.00 at 5%, increment $0.25 → $6.65 rounds up to $6.75.",
+      ),
+      steps(
+        "Settings → Cash discount. Turn on Offer a cash discount.",
+        "Set the percent (typical 5) and Round up to ($0.25 default).",
+        "Menu tiles and the check show Card and Cash. Quantum Payments still captures the printed/card total.",
+        "Pay → Cash uses the cash total. Pay → Card uses the printed total.",
+        "Receipts and the paid screen show both amounts, plus “Cash discount applied” when cash was taken.",
+      ),
+      warn(
+        "The house is responsible for local cash-discount rules. Summex does not change legal copy per state — confirm posting and signage with your counsel.",
+      ),
+      p(
+        "On a host venue, cash prices are the merchandise amounts used when allocating a cash tender to Operator A / Operator B. Card tenders still split on printed merchandise. Period settlement follows the tender that actually hit the check.",
+      ),
+      related("tenders-tips", "cash-handling", "quantum-payments", "settlement"),
+    ],
+  }),
+  topic({
     id: "cash-handling",
     chapterId: "cash-gifts",
     title: "Cash handling & drawer reports",
@@ -24,7 +68,7 @@ export const CASH_GIFT_TOPICS: GuideTopic[] = [
       tip(
         "House Wi-Fi still records cash if the internet is down. You are not blocked from closing a cash table during an ISP outage.",
       ),
-      related("tenders-tips", "settlement", "wifi-offline", "reports"),
+      related("tenders-tips", "cash-discount", "settlement", "wifi-offline", "reports"),
     ],
   }),
   topic({

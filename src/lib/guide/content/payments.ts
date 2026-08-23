@@ -64,7 +64,7 @@ export const PAYMENT_TOPICS: GuideTopic[] = [
       tip(
         "Tips on card follow the house rule (house vs pool with operators) at settlement — they are not a second capture.",
       ),
-      related("quantum-payments", "cash-handling", "gift-cards", "host-capture"),
+      related("quantum-payments", "cash-discount", "cash-handling", "gift-cards", "host-capture"),
     ],
   }),
   topic({
