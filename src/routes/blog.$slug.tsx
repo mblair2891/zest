@@ -28,7 +28,7 @@ function BlogPostPage() {
           Journal
         </Link>
         <p className="mt-6 text-xs text-muted-foreground">{post.date}</p>
-        <h1 className="mt-2 text-3xl font-black tracking-tighter">{post.title}</h1>
+        <h1 className="mt-2 text-3xl font-semibold tracking-tight">{post.title}</h1>
         <p className="mt-3 text-sm text-muted-foreground">{post.dek}</p>
         <div className="mt-8 space-y-4 text-sm leading-relaxed text-foreground">
           {post.body.map((para) => (

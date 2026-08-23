@@ -27,7 +27,7 @@ function PricingPage() {
   return (
     <MarketingShell>
       <main className="mx-auto max-w-5xl px-4 py-16">
-        <h1 className="text-3xl font-black tracking-tighter">Pricing</h1>
+        <h1 className="text-3xl font-semibold tracking-tight">Pricing</h1>
         <p className="mt-2 max-w-lg text-sm text-muted-foreground">
           Software fees for Summex. Guest card processing is Quantum Payments — billed
           separately, never through a POS processor picker.
@@ -39,7 +39,7 @@ function PricingPage() {
               className="rounded-2xl border border-border bg-surface p-5"
             >
               <p className="text-sm font-semibold">{p.name}</p>
-              <p className="mt-2 text-2xl font-black tracking-tight">{p.price}</p>
+              <p className="mt-2 text-2xl font-semibold tracking-tight">{p.price}</p>
               <p className="mt-2 text-sm text-muted-foreground">{p.note}</p>
             </li>
           ))}

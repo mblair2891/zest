@@ -6,32 +6,30 @@
       name="viewport"
       content="width=device-width, initial-scale=1, viewport-fit=cover"
     />
-    <meta name="theme-color" content="#0a0c0b" />
+    <meta name="theme-color" content="#F7F6F3" />
     <title>Summex</title>
     <style>
       html,
       body {
         height: 100%;
         margin: 0;
-        background: #0a0c0b;
-        color: #eef5f0;
-        font-family: system-ui, sans-serif;
+        background: #F7F6F3;
+        color: #0A0A0A;
+        font-family: Inter, Helvetica Neue, system-ui, sans-serif;
         display: grid;
         place-items: center;
         text-align: center;
         padding: 1.5rem;
       }
-      .z {
-        width: 4rem;
-        height: 4rem;
-        border-radius: 1rem;
-        background: #c8f542;
-        color: #0f1608;
-        font-weight: 900;
-        font-size: 1.75rem;
-        display: grid;
-        place-items: center;
+      .mark {
+        width: 3rem;
+        height: 3rem;
         margin: 0 auto 1rem;
+      }
+      .word {
+        letter-spacing: 0.28em;
+        font-weight: 600;
+        font-size: 0.85rem;
       }
       p {
         opacity: 0.75;
@@ -43,9 +41,13 @@
   </head>
   <body>
     <div>
-      <div class="z">Z</div>
+      <svg class="mark" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <rect x="4" y="4" width="24" height="24" rx="2" stroke="#0A0A0A" stroke-width="1.5"/>
+        <path d="M11 11h10v3.25H15.75v1.5H21v3.25H11v-3.25h5.25v-1.5H11z" fill="#0A0A0A"/>
+      </svg>
+      <p class="word">SUMMEX</p>
       <p>
-        Summex native shell. When configured, this WebView loads your live POS URL
+        Powered by Quantum Reach. Native shell loads the live POS URL
         (see <code>native/summex-native.json</code>).
       </p>
     </div>

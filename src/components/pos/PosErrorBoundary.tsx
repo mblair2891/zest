@@ -1,5 +1,6 @@
 import { Component, type ErrorInfo, type ReactNode } from "react";
 import { Button } from "@/components/ui/button";
+import { SummexMark } from "@/components/brand/SummexMark";
 
 interface Props {
   children: ReactNode;
@@ -41,9 +42,7 @@ export class PosErrorBoundary extends Component<Props, State> {
     if (this.state.error) {
       return (
         <div className="flex min-h-[100dvh] flex-col items-center justify-center gap-4 bg-bg px-6 pt-[var(--grok-banner-h,0px)] text-center">
-          <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-primary text-xl font-black text-primary-foreground">
-            Z
-          </div>
+          <SummexMark className="h-10 w-10" />
           <h1 className="text-xl font-semibold text-foreground">
             Summex hit a snag
           </h1>

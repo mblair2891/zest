@@ -3,14 +3,13 @@ import { Navigate, useRouterState } from "@tanstack/react-router";
 import { useCurrentUserState } from "@/lib/auth/use-current-user";
 import { RedirectToSignIn } from "@/lib/auth/gates";
 import { getPlatformFlags } from "@/lib/auth/platform-admin";
+import { SummexMark } from "@/components/brand/SummexMark";
 
 function Loading() {
   return (
     <div className="flex min-h-[100dvh] items-center justify-center bg-bg pt-[var(--grok-banner-h,0px)] text-muted-foreground">
       <div className="text-center">
-        <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-2xl bg-primary text-lg font-black text-primary-foreground">
-          Z
-        </div>
+        <SummexMark className="mx-auto mb-3 h-10 w-10" />
         <p className="text-sm">Loading Summex…</p>
       </div>
     </div>

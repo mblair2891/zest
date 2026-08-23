@@ -12,6 +12,7 @@ import { cn } from "@/lib/utils";
 import { useManualStore } from "@/lib/pos/manual-store";
 import { UserManualOverlay } from "./UserManualView";
 import { isDevDemoClient } from "@/lib/saas/flags";
+import { SummexBrandBlock } from "@/components/brand/SummexMark";
 
 export function LoginScreen() {
   const [pin, setPin] = useState("");
@@ -50,20 +51,12 @@ export function LoginScreen() {
     <div className="flex min-h-[100dvh] flex-col bg-bg pt-[var(--grok-banner-h,0px)]">
       <div className="mx-auto flex w-full max-w-lg flex-1 flex-col justify-center px-4 py-8">
         <div className="mb-8 text-center">
-          <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-primary text-2xl font-black tracking-tighter text-primary-foreground shadow-lg shadow-primary/25">
-            Z
-          </div>
-          <h1 className="text-3xl font-black tracking-tighter text-foreground">
+          <SummexBrandBlock className="mb-6" />
+          <h1 className="text-xl font-semibold tracking-tight text-foreground">
             {settings.name}
           </h1>
-          <p className="mt-1.5 text-sm font-medium text-primary">
-            Service, sharp.
-          </p>
           <p className="mt-1 text-sm text-muted-foreground">
-            Restaurant / hall POS — staff PIN
-          </p>
-          <p className="mt-3 text-[11px] tracking-wide text-muted-foreground">
-            By Michael Blair & Andy Baida
+            Staff PIN
           </p>
         </div>
 

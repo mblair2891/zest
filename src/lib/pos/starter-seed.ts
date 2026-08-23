@@ -44,7 +44,7 @@ export function starterOwner(name: string): Employee {
     name: name.trim() || "Owner",
     pin: "0000",
     role: "owner",
-    color: "#c8f542",
+    color: "#2C4A6E",
     clockedIn: true,
     clockInAt: Date.now(),
     tipsEarned: 0,
@@ -55,7 +55,7 @@ export function starterOwner(name: string): Employee {
 }
 
 export const STARTER_CATEGORIES: MenuCategory[] = [
-  { id: "cat_starters", name: "Starters", sort: 0, color: "#c8f542", station: "kitchen" },
+  { id: "cat_starters", name: "Starters", sort: 0, color: "#2C4A6E", station: "kitchen" },
   { id: "cat_mains", name: "Mains", sort: 1, color: "#5b9fd4", station: "kitchen" },
   { id: "cat_sides", name: "Sides", sort: 2, color: "#94a3b8", station: "kitchen" },
   { id: "cat_drinks", name: "Drinks", sort: 3, color: "#e5a320", station: "bar" },

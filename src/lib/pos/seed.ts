@@ -43,7 +43,7 @@ export const EMPLOYEES: Employee[] = [
     name: "Morgan Blair",
     pin: "9999",
     role: "owner",
-    color: "#c8f542",
+    color: "#2C4A6E",
     clockedIn: true,
     clockInAt: Date.now() - 1000 * 60 * 240,
     tipsEarned: 0,

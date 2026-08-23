@@ -6,7 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 
 const THEME: Record<string, { bg: string; accent: string; card: string }> = {
-  citrus: { bg: "#0a0c0b", accent: "#c8f542", card: "#121614" },
+  citrus: { bg: "#F7F6F3", accent: "#1A1A1A", card: "#FFFFFF" },
   noir: { bg: "#09090b", accent: "#e4e4e7", card: "#18181b" },
   ocean: { bg: "#0b1220", accent: "#38bdf8", card: "#111827" },
   ember: { bg: "#140c08", accent: "#e5a320", card: "#1c1410" },

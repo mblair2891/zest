@@ -54,7 +54,7 @@ export interface SaasEntity {
 export type EntityDef = VenueEntity | SaasEntity;
 
 const C = {
-  lime: "#c8f542",
+  lime: "#2C4A6E",
   slate: "#94a3b8",
   sky: "#7dd3fc",
   mint: "#86efac",

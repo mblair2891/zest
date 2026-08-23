@@ -10,6 +10,7 @@ import {
   Shield,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { SummexMark } from "@/components/brand/SummexMark";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import {
@@ -203,9 +204,7 @@ export function AppStoreView() {
     <div className="min-h-[100dvh] bg-bg pt-[var(--grok-banner-h,0px)] text-foreground">
       <header className="sticky top-[var(--grok-banner-h,0px)] z-10 border-b border-border bg-bg/95 px-4 py-3 backdrop-blur">
         <div className="mx-auto flex max-w-5xl items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-primary text-sm font-black text-primary-foreground">
-            Z
-          </div>
+          <SummexMark className="h-8 w-8" />
           <div className="min-w-0 flex-1">
             <h1 className="text-lg font-bold tracking-tight">Summex Store</h1>
             <p className="text-[11px] text-muted-foreground">

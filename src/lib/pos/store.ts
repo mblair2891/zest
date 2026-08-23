@@ -1377,7 +1377,7 @@ const usePosStoreRaw = create()(persist((set, get) => ({
 			name: name.trim() || "Owner",
 			pin: "0000",
 			role: "owner" as const,
-			color: "#c8f542",
+			color: "#2C4A6E",
 			clockedIn: true,
 			clockInAt: Date.now(),
 			tipsEarned: 0,

@@ -37,7 +37,7 @@ function SetupPage() {
         <p className="mt-6 text-xs font-semibold uppercase tracking-[0.2em] text-primary">
           Stage B
         </p>
-        <h1 className="mt-2 text-3xl font-black tracking-tighter">Onboarding</h1>
+        <h1 className="mt-2 text-3xl font-semibold tracking-tight">Onboarding</h1>
         <p className="mt-2 mb-8 max-w-xl text-sm text-muted-foreground">
           Contract is signed. We will create the organization, locations, and operators from
           these answers. POS stays empty until you add a menu.

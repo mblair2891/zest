@@ -1,5 +1,6 @@
 import { useEffect, useMemo } from "react";
 import { Link } from "@tanstack/react-router";
+import { SummexMark } from "@/components/brand/SummexMark";
 import {
   BarChart3,
   ClipboardList,
@@ -285,9 +286,7 @@ export function AppShell() {
     <div className="flex h-[100dvh] flex-col bg-bg pt-[var(--grok-banner-h,0px)] text-foreground">
       <header className="flex h-14 shrink-0 items-center gap-2 overflow-hidden border-b border-border bg-surface px-2 safe-top sm:gap-3 sm:px-3">
         <div className="flex min-w-0 items-center gap-2">
-          <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary text-sm font-black tracking-tighter text-primary-foreground">
-            Z
-          </div>
+          <SummexMark className="h-8 w-8" />
           <div className="min-w-0">
             <p className="truncate text-sm font-semibold leading-tight">
               {settings.name}

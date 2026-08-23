@@ -10,7 +10,7 @@ function BlogIndex() {
   return (
     <MarketingShell>
       <main className="mx-auto max-w-3xl px-4 py-16">
-        <h1 className="text-3xl font-black tracking-tighter">Journal</h1>
+        <h1 className="text-3xl font-semibold tracking-tight">Journal</h1>
         <ul className="mt-10 space-y-6">
           {BLOG_POSTS.map((p) => (
             <li key={p.slug}>

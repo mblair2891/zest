@@ -30,6 +30,7 @@ import {
 } from "@/lib/pos/entities";
 import type { VenueEntityId } from "@/lib/pos/types";
 import { isDevDemoClient } from "@/lib/saas/flags";
+import { SummexBrandBlock } from "@/components/brand/SummexMark";
 import { useCurrentUserState } from "@/lib/auth/use-current-user";
 
 const ICONS: Record<string, React.ComponentType<{ className?: string }>> = {
@@ -51,20 +52,9 @@ export function EntityPicker() {
     <div className="flex min-h-[100dvh] flex-col bg-bg pt-[var(--grok-banner-h,0px)]">
       <div className="mx-auto flex w-full max-w-3xl flex-1 flex-col px-4 py-8">
         <div className="mb-8 text-center">
-          <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-primary text-2xl font-black tracking-tighter text-primary-foreground shadow-lg shadow-primary/25">
-            Z
-          </div>
-          <h1 className="text-3xl font-black tracking-tighter text-foreground">
-            Summex
-          </h1>
-          <p className="mt-1.5 text-sm font-medium text-primary">
-            Service, sharp.
-          </p>
-          <p className="mt-2 text-sm text-muted-foreground">
+          <SummexBrandBlock className="mb-6" />
+          <p className="text-sm text-muted-foreground">
             Choose a venue type — then sign in as that team.
-          </p>
-          <p className="mt-3 text-[11px] tracking-wide text-muted-foreground">
-            By Michael Blair & Andy Baida
           </p>
         </div>
 
@@ -193,10 +183,10 @@ export function EntityLogin({ entityId }: { entityId: VenueEntityId }) {
           <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-primary text-primary-foreground shadow-lg shadow-primary/25">
             <Icon className="h-7 w-7" />
           </div>
-          <h1 className="text-3xl font-black tracking-tighter text-foreground">
+          <h1 className="text-2xl font-semibold tracking-tight text-foreground">
             {entity.venueName}
           </h1>
-          <p className="mt-1.5 text-sm font-medium text-primary">
+          <p className="mt-1.5 text-sm font-medium text-muted-foreground">
             {entity.name}
           </p>
           <p className="mt-1 text-sm text-muted-foreground">{entity.blurb}</p>

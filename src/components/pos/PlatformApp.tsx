@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import { Link } from "@tanstack/react-router";
 import { LogOut, Rocket, ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { SummexBrandBlock, SummexMark } from "@/components/brand/SummexMark";
 import { Badge } from "@/components/ui/badge";
 import { useSaasStore } from "@/lib/pos/saas-store";
 import { SaasConsoleView } from "./SaasConsoleView";
@@ -185,15 +186,10 @@ export function PlatformApp() {
       <div className="flex min-h-[100dvh] flex-col bg-bg pt-[var(--grok-banner-h,0px)]">
         <div className="mx-auto flex w-full max-w-lg flex-1 flex-col justify-center px-4 py-10">
           <div className="mb-8 text-center">
-            <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-primary text-2xl font-black text-primary-foreground shadow-lg shadow-primary/25">
-              Z
-            </div>
-            <h1 className="text-3xl font-black tracking-tighter">
-              Summex Platform
+            <SummexBrandBlock className="mb-6" />
+            <h1 className="text-2xl font-semibold tracking-tight">
+              Control plane
             </h1>
-            <p className="mt-1.5 text-sm font-medium text-primary">
-              SaaS control plane
-            </p>
             <p className="mt-2 text-sm text-muted-foreground">
               Multi-tenant orgs, locations, packages, devices & billing — separate
               from restaurant POS.
@@ -312,9 +308,7 @@ export function PlatformApp() {
   return (
     <div className="flex h-[100dvh] flex-col bg-bg pt-[var(--grok-banner-h,0px)] text-foreground">
       <header className="flex h-14 shrink-0 items-center gap-3 border-b border-border bg-surface px-3">
-        <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary text-sm font-black text-primary-foreground">
-          Z
-        </div>
+        <SummexMark className="h-8 w-8" />
         <div className="min-w-0 flex-1">
           <p className="truncate text-sm font-semibold leading-tight">
             {platform.name} Platform

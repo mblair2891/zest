@@ -288,7 +288,7 @@ export function PaymentDialog({ open, onOpenChange }: Props) {
                     }
                   />
                   <p className="text-xs text-muted-foreground">
-                    Zest Payments capture under {settings.name}. Guest sees
+                    Quantum Payments capture under {settings.name}. Guest sees
                     the host brand, not individual operators.
                   </p>
                 </TabsContent>

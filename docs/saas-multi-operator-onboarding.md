@@ -4,7 +4,7 @@ This path is entirely in the SaaS UI. The app starts empty — there is no demo 
 
 Placeholder names below are **documentation only**. Use any names you want in the product.
 
-Guest charges always run under the **host brand** through **Zest Payments**. Operators are merchants on the check, not card processors.
+Guest charges always run under the **host brand** through **Quantum Payments**. Operators are merchants on the check, not card processors.
 
 ---
 
@@ -26,7 +26,7 @@ Guest charges always run under the **host brand** through **Zest Payments**. Ope
 
 7. Under **2. Location & host brand**:
    - Location name: `Host Venue`
-   - Host brand: `Host Venue` (guest-facing name on checks and Zest Payments)
+   - Host brand: `Host Venue` (guest-facing name on checks and Quantum Payments)
    - Operating model: **Host + multiple operators**
    - Venue type: Restaurant (or any type)
 8. Click **Create location**.
@@ -68,7 +68,7 @@ Ready when badges show: host brand set · 2 operators · items routed.
     - Kitchen display (`Kitchen` nav) → Operator B plate
 21. Click **Pay**. Card tender:
     - Brand is **Host Venue**
-    - Processor is **Zest Payments** (not Stripe/Square)
+    - Processor is **Quantum Payments** (not Stripe/Square)
 22. Complete the payment.
 
 ### 6. Settlement
@@ -89,7 +89,7 @@ Ready when badges show: host brand set · 2 operators · items routed.
 | Organization | Host setup → Create organization | Tenant container |
 | Location | Create location | POS site |
 | Operating model | Host + multiple operators | One guest check, multi-merchant settlement |
-| Host brand | Host brand name | Name on checks, receipts, Zest Payments |
+| Host brand | Host brand name | Name on checks, receipts, Quantum Payments |
 | Operator | Name + payout last-4 + station | Merchant on the check; payout destination placeholder |
 | Routing | Station type + owned categories/items | Tickets to bar, kitchen, or both |
 | POS | `/pos/{locationId}` | Floor / order / KDS / pay / settle |

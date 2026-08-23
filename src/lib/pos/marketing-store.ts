@@ -144,7 +144,7 @@ function seedWebsites(): LocationWebsite[] {
       seoTitle: "Summex Market Hall | Food hall on the pier",
       seoDescription:
         "Multi-vendor food hall with single-check checkout, live music, and Summex Rewards.",
-      primaryColor: "#c8f542",
+      primaryColor: "#1A1A1A",
       socialLinks: [
         { provider: "instagram", url: "https://instagram.com/summexmarkethall" },
         { provider: "facebook", url: "https://facebook.com/summexmarkethall" },
@@ -396,7 +396,7 @@ export const useMarketingStore = create<MarketingState>()(
                 hoursText: "",
                 seoTitle: "",
                 seoDescription: "",
-                primaryColor: "#c8f542",
+                primaryColor: "#1A1A1A",
                 socialLinks: [],
                 galleryLabels: [],
                 updatedAt: Date.now(),

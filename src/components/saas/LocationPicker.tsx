@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
+import { SummexBrandBlock } from "@/components/brand/SummexMark";
 import { appHref } from "@/lib/platform/hosts";
 import { setActiveContextFn } from "@/lib/saas/api";
 import type { SessionContext } from "@/lib/saas/types";
@@ -35,10 +36,8 @@ export function LocationPicker({
   return (
     <div className="mx-auto w-full max-w-lg space-y-4 px-4 py-10">
       <div className="text-center">
-        <div className="mx-auto mb-4 grid h-14 w-14 place-items-center rounded-2xl bg-primary text-xl font-black text-primary-foreground">
-          Z
-        </div>
-        <h1 className="text-2xl font-black tracking-tighter">Choose a location</h1>
+        <SummexBrandBlock className="mb-6" />
+        <h1 className="text-2xl font-semibold tracking-tight">Choose a location</h1>
         <p className="mt-2 text-sm text-muted-foreground">
           You are signed in as {session.user.email ?? session.user.name}. The POS
           application is shared — this pick is your tenant context for the session.

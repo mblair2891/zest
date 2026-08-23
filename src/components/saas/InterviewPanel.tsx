@@ -127,7 +127,7 @@ export function InterviewPanel({
         <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-primary">
           Stage A · Interview
         </p>
-        <h2 className="mt-1 text-2xl font-black tracking-tighter">Describe the operation</h2>
+        <h2 className="mt-1 text-2xl font-semibold tracking-tight">Describe the operation</h2>
         <p className="mt-1.5 text-sm leading-relaxed text-muted-foreground">
           In your own words: locations, bar vs kitchen, host vs single operator, volume,
           what you need. We will ask a few follow-ups, then recommend a setup you can

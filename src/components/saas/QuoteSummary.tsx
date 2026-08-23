@@ -21,7 +21,7 @@ export function QuoteSummary({
           <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
             Pricing proposal
           </p>
-          <p className="mt-1 text-3xl font-black tracking-tighter tabular">
+          <p className="mt-1 text-3xl font-semibold tracking-tight tabular">
             {formatCurrency(quote.monthlyCents)}
             <span className="ml-1 text-base font-medium text-muted-foreground">/ mo</span>
           </p>

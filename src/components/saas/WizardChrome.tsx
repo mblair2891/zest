@@ -35,7 +35,7 @@ export function WizardChrome({
           Step {step} of {total}
           {labels?.[step - 1] ? ` · ${labels[step - 1]}` : ""}
         </p>
-        <h2 className="mt-1 text-2xl font-black tracking-tighter">{title}</h2>
+        <h2 className="mt-1 text-2xl font-semibold tracking-tight">{title}</h2>
         {subtitle && (
           <p className="mt-1.5 text-sm leading-relaxed text-muted-foreground">{subtitle}</p>
         )}

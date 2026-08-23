@@ -1,57 +1,59 @@
 @import "tailwindcss";
 @import "tw-animate-css";
+@import url("https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,400;0,14..32,500;0,14..32,600;0,14..32,700;1,14..32,400&display=swap");
 
 @theme {
-  --color-bg: #0a0c0b;
-  --color-surface: #121614;
-  --color-surface-2: #1a201c;
-  --color-surface-3: #242c27;
-  --color-foreground: #eef5f0;
-  --color-muted-foreground: #8a968e;
-  --color-border: #2a332e;
-  --color-border-strong: #3d4a42;
+  --color-bg: #f7f6f3;
+  --color-surface: #ffffff;
+  --color-surface-2: #efede8;
+  --color-surface-3: #e8e6e1;
+  --color-foreground: #0a0a0a;
+  --color-muted-foreground: #5c5c5c;
+  --color-border: #e8e6e1;
+  --color-border-strong: #d4d1c9;
 
-  /* Summex citrus accent */
-  --color-primary: #c8f542;
-  --color-primary-foreground: #0f1608;
+  --color-primary: #1a1a1a;
+  --color-primary-foreground: #f7f6f3;
+  --color-primary-hover: #333333;
 
-  --color-secondary: #1a201c;
-  --color-secondary-foreground: #eef5f0;
+  --color-secondary: #efede8;
+  --color-secondary-foreground: #0a0a0a;
 
-  --color-ring: #c8f542;
+  --color-link: #2c4a6e;
+  --color-ring: #2c4a6e;
 
-  --color-success: #3d9a6a;
-  --color-success-foreground: #ecfdf5;
-  --color-warn: #e5a320;
-  --color-warn-foreground: #fffbeb;
-  --color-danger: #e05c5c;
-  --color-danger-foreground: #fef2f2;
-  --color-info: #5b9fd4;
-  --color-info-foreground: #eff6ff;
+  --color-success: #1f7a4c;
+  --color-success-foreground: #f7f6f3;
+  --color-warn: #9a6700;
+  --color-warn-foreground: #f7f6f3;
+  --color-danger: #a61b1b;
+  --color-danger-foreground: #f7f6f3;
+  --color-info: #2c4a6e;
+  --color-info-foreground: #f7f6f3;
 
-  --color-table-available: #1a201c;
-  --color-table-seated: #1a3330;
-  --color-table-ordering: #3a3520;
-  --color-table-ordered: #1e3328;
-  --color-table-check: #3a2a1e;
-  --color-table-paid: #2a2438;
-  --color-table-dirty: #3a2222;
+  --color-table-available: #ffffff;
+  --color-table-seated: #e8eee9;
+  --color-table-ordering: #f3eee4;
+  --color-table-ordered: #e6efe9;
+  --color-table-check: #f4ece6;
+  --color-table-paid: #eceaf1;
+  --color-table-dirty: #f3e8e8;
 
-  --color-sec-1: #3d9a6a;
-  --color-sec-2: #5b9fd4;
-  --color-sec-3: #e5a320;
-  --color-sec-4: #c8f542;
-  --color-sec-5: #e05c5c;
-  --color-sec-6: #a78bfa;
+  --color-sec-1: #1f7a4c;
+  --color-sec-2: #2c4a6e;
+  --color-sec-3: #9a6700;
+  --color-sec-4: #5c5c5c;
+  --color-sec-5: #a61b1b;
+  --color-sec-6: #4a5568;
 
-  --font-sans: "Segoe UI", system-ui, -apple-system, sans-serif;
+  --font-sans: "Inter", "Helvetica Neue", Helvetica, Arial, sans-serif;
   --font-mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
 
-  --radius-sm: 0.375rem;
-  --radius-md: 0.5rem;
-  --radius-lg: 0.75rem;
-  --radius-xl: 1rem;
-  --radius-2xl: 1.25rem;
+  --radius-sm: 0.25rem;
+  --radius-md: 0.375rem;
+  --radius-lg: 0.5rem;
+  --radius-xl: 0.75rem;
+  --radius-2xl: 0.75rem;
 }
 
 @layer base {
@@ -70,6 +72,8 @@
     background: var(--color-bg);
     color: var(--color-foreground);
     font-family: var(--font-sans);
+    font-feature-settings: "cv11", "ss01";
+    letter-spacing: -0.011em;
     -webkit-font-smoothing: antialiased;
     text-rendering: optimizeLegibility;
   }
@@ -79,7 +83,12 @@
     cursor: pointer;
   }
 
+  a {
+    color: inherit;
+  }
+
   .tabular {
+    font-family: var(--font-mono);
     font-variant-numeric: tabular-nums;
   }
 }
@@ -93,8 +102,6 @@
   }
 }
 
-
-/* Android tablet / large touch KDS */
 @layer base {
   button,
   [role="button"],
@@ -107,8 +114,13 @@
 }
 
 @media (min-width: 1200px) and (pointer: coarse) {
-  /* 27" Android touch: slightly roomier controls */
   .kds-large-touch button {
     min-height: 2.75rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    transition-duration: 0.01ms !important;
   }
 }

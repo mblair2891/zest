@@ -18,7 +18,7 @@ function FeaturesPage() {
   return (
     <MarketingShell>
       <main className="mx-auto max-w-5xl px-4 py-16">
-        <h1 className="text-3xl font-black tracking-tighter">Product</h1>
+        <h1 className="text-3xl font-semibold tracking-tight">Product</h1>
         <p className="mt-2 max-w-lg text-sm text-muted-foreground">
           The application at app.summex.app is shared. Features unlock from the
           plan on the organization, then the packages on the location.

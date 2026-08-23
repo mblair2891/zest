@@ -18,7 +18,7 @@ function GetPricingPage() {
         <p className="text-xs font-semibold uppercase tracking-[0.2em] text-primary">
           Stage A
         </p>
-        <h1 className="mt-2 text-3xl font-black tracking-tighter">Get pricing</h1>
+        <h1 className="mt-2 text-3xl font-semibold tracking-tight">Get pricing</h1>
         <p className="mt-2 max-w-xl text-sm text-muted-foreground">
           Describe the operation, answer a few follow-ups, then confirm the structured
           form. We snapshot a quote from the current catalog — later package changes

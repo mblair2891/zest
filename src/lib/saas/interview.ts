@@ -450,7 +450,7 @@ export function parseMessages(raw: unknown): InterviewMessage[] {
 }
 
 export function interviewSystemPrompt(): string {
-  return `You are interviewing a hospitality operator for Summex (Zest) SaaS pricing.
+  return `You are interviewing a hospitality operator for Summex SaaS pricing.
 Summex is multi-tenant restaurant software: restaurants, bars, cafes, QSR, food halls, truck pods, ghost kitchens, catering.
 Guest card processing is ALWAYS Quantum Payments (host MID when multi-operator). Never recommend Stripe, Square, or Adyen.
 Gift cards are first-party (our ledger), not an external vendor.

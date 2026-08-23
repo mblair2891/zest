@@ -165,7 +165,7 @@ export interface RestaurantSettings {
   managerPin: string;
   serviceChargeLabel: string;
   multiTenantHallMode?: boolean;
-  /** Host + multiple operators: one guest check, Zest Payments under host brand */
+  /** Host + multiple operators: one guest check, Quantum Payments under host brand */
   hostMultiOperator?: boolean;
   onlineOrderingEnabled?: boolean;
   qrOrderingEnabled?: boolean;

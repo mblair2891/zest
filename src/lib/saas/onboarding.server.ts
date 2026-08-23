@@ -373,7 +373,7 @@ export async function operatorsAsVendors(locationId: string) {
     select id, legal_name, dba, payout_bank_last4, station_types
     from operators where location_id = ${locationId} order by created_at
   `;
-  const palette = ["#c8f542", "#5b9fd4", "#e5a320", "#e05c5c", "#a78bfa", "#3d9a6a"];
+  const palette = ["#2C4A6E", "#5C5C5C", "#1F7A4C", "#9A6700", "#A61B1B", "#4A5568"];
   return rows.map((r, i) => {
     const name = r.dba || r.legal_name;
     const stations = Array.isArray(r.station_types) ? r.station_types : [];

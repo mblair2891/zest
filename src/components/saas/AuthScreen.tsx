@@ -3,6 +3,7 @@ import { Link } from "@tanstack/react-router";
 import { GROK_PROVIDERS, authClient, authEnabled, signIn } from "@/lib/auth/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { SummexBrandBlock } from "@/components/brand/SummexMark";
 
 export function AuthScreen({
   mode,
@@ -133,14 +134,14 @@ export function AuthScreen({
         {mode === "signup" ? (
           <>
             Already have an account?{" "}
-            <Link to="/login" className="text-primary underline-offset-2 hover:underline">
+            <Link to="/login" className="text-link underline-offset-2 hover:underline">
               Sign in
             </Link>
           </>
         ) : (
           <>
             New operator?{" "}
-            <Link to="/signup" className="text-primary underline-offset-2 hover:underline">
+            <Link to="/signup" className="text-link underline-offset-2 hover:underline">
               Create an account
             </Link>
           </>
@@ -163,10 +164,8 @@ export function AuthShell({
     <div className="flex min-h-[100dvh] flex-col bg-bg pt-[var(--grok-banner-h,0px)]">
       <div className="mx-auto flex w-full max-w-lg flex-1 flex-col justify-center px-4 py-10">
         <div className="mb-8 text-center">
-          <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-primary text-2xl font-black text-primary-foreground shadow-lg shadow-primary/25">
-            Z
-          </div>
-          <h1 className="text-3xl font-black tracking-tighter">{title}</h1>
+          <SummexBrandBlock className="mb-6" />
+          <h1 className="text-2xl font-semibold tracking-tight">{title}</h1>
           <p className="mt-2 text-sm text-muted-foreground">{subtitle}</p>
         </div>
         {children}

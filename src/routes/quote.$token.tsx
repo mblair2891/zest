@@ -97,7 +97,7 @@ function QuotePage() {
         <p className="text-xs font-semibold uppercase tracking-[0.2em] text-primary">
           Proposal
         </p>
-        <h1 className="mt-2 text-3xl font-black tracking-tighter">
+        <h1 className="mt-2 text-3xl font-semibold tracking-tight">
           {detail.answers.company.legalName || "Your quote"}
         </h1>
         <p className="mt-2 text-sm text-muted-foreground">

@@ -26,6 +26,7 @@ import {
   saveTenantPosContext,
 } from "@/lib/saas/pos-context";
 import { Link } from "@tanstack/react-router";
+import { SummexBrandBlock, SummexMark } from "@/components/brand/SummexMark";
 
 const STORES = [
   usePosStore,
@@ -210,9 +211,7 @@ function PosAppInner({ entityId }: { entityId?: string }) {
     return (
       <div className="flex min-h-[100dvh] items-center justify-center bg-bg pt-[var(--grok-banner-h,0px)] text-muted-foreground">
         <div className="text-center">
-          <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-2xl bg-primary text-lg font-black text-primary-foreground">
-            Z
-          </div>
+          <SummexMark className="mx-auto mb-3 h-10 w-10" />
           <p className="text-sm">Loading Summex…</p>
         </div>
       </div>
@@ -258,10 +257,8 @@ function PosAppInner({ entityId }: { entityId?: string }) {
     return (
       <div className="flex min-h-[100dvh] flex-col bg-bg pt-[var(--grok-banner-h,0px)]">
         <div className="mx-auto flex w-full max-w-lg flex-1 flex-col justify-center px-4 py-10 text-center">
-          <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-primary text-2xl font-black text-primary-foreground">
-            Z
-          </div>
-          <h1 className="text-3xl font-black tracking-tighter">Summex</h1>
+          <SummexBrandBlock className="mb-6" />
+          <h1 className="text-xl font-semibold tracking-tight">Sign in</h1>
           <p className="mt-2 text-sm text-muted-foreground">
             Sign in to create an organization or open the control plane.
           </p>
@@ -322,9 +319,7 @@ export function PosApp({ entityId }: { entityId?: string }) {
     return (
       <div className="flex min-h-[100dvh] items-center justify-center bg-bg pt-[var(--grok-banner-h,0px)] text-muted-foreground">
         <div className="text-center">
-          <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-2xl bg-primary text-lg font-black text-primary-foreground">
-            Z
-          </div>
+          <SummexMark className="mx-auto mb-3 h-10 w-10" />
           <p className="text-sm">Loading Summex…</p>
         </div>
       </div>

@@ -1,6 +1,8 @@
 import type { ReactNode } from "react";
 import { Link } from "@tanstack/react-router";
 import { useCurrentUserState } from "@/lib/auth/use-current-user";
+import { SummexLockup } from "@/components/brand/SummexMark";
+import { PRODUCT_TAGLINE } from "@/lib/platform/brand";
 
 const NAV = [
   { to: "/features" as const, label: "Product" },
@@ -16,11 +18,8 @@ export function MarketingShell({ children }: { children: ReactNode }) {
     <div className="min-h-[100dvh] bg-bg pt-[var(--grok-banner-h,0px)] text-foreground">
       <header className="border-b border-border bg-bg/90 backdrop-blur-sm">
         <div className="mx-auto flex h-16 max-w-5xl items-center gap-6 px-4">
-          <Link to="/" className="flex items-center gap-2">
-            <span className="grid h-8 w-8 place-items-center rounded-lg bg-primary text-sm font-black text-primary-foreground">
-              Z
-            </span>
-            <span className="text-sm font-semibold tracking-tight">Summex</span>
+          <Link to="/" className="flex items-center">
+            <SummexLockup size="sm" subline={false} />
           </Link>
           <nav className="hidden items-center gap-5 text-sm text-muted-foreground sm:flex">
             {NAV.map((n) => (
@@ -66,7 +65,7 @@ export function MarketingShell({ children }: { children: ReactNode }) {
       {children}
       <footer className="border-t border-border">
         <div className="mx-auto flex max-w-5xl flex-wrap items-center justify-between gap-3 px-4 py-8 text-xs text-muted-foreground">
-          <p>Summex, powered by Quantum Reach · summex.app · app.summex.app</p>
+          <p>{PRODUCT_TAGLINE} · summex.app</p>
           <p>By Michael Blair & Andy Baida</p>
         </div>
       </footer>
