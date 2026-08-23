@@ -1,4 +1,4 @@
-# Zest test fleet playbook — 2× Galaxy tablet + 27″ Android touch
+# Summex test fleet playbook — 2× Galaxy tablet + 27″ Android touch
 
 ## Your devices
 
@@ -15,7 +15,7 @@ Optional 4th browser on a laptop: **Owner** `9999` or **Platform** at `/platform
 ## One-time setup (each device)
 
 1. Same Wi‑Fi as each other (not guest-isolated if you can avoid it).
-2. Chrome (recommended) → open your Zest URL (e.g. production host or preview).
+2. Chrome (recommended) → open your Summex URL (e.g. production host or preview).
 3. **Add to Home screen** (Chrome menu → Install app / Add to Home screen) so it feels like a POS, not a browser tab.
 4. Display settings:
    - **Tablets:** landscape, brightness high, sleep = 30 min or Never while charging.

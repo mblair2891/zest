@@ -415,7 +415,7 @@ export interface GiftCard {
 
 export type GiftCardStatus = "active" | "frozen" | "void" | "zeroed";
 export type GiftCardSource =
-  | "zest"
+  | "summex"
   | "import_square"
   | "import_toast"
   | "import_clover"

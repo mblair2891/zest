@@ -1,17 +1,19 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { auth } from "@/lib/auth/server";
-import { ensurePlatformAdmin } from "@/lib/auth/bootstrap-admin.server";
+import { clientKey, rateLimit } from "@/lib/saas/rate-limit.server";
 
 async function handle({ request }: { request: Request }) {
-  await ensurePlatformAdmin();
+  if (rateLimit(clientKey(request, "auth"), 40, 60_000)) {
+    return new Response("Too many requests", { status: 429 });
+  }
   return auth.handler(request);
 }
 
 export const Route = createFileRoute("/api/auth/$")({
   server: {
     handlers: {
-      GET: handle,
-      POST: handle,
+      GET: ({ request }) => handle({ request }),
+      POST: ({ request }) => handle({ request }),
     },
   },
 });

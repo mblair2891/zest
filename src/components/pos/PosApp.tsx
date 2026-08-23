@@ -13,10 +13,19 @@ import { useNetworkStore } from "@/lib/pos/network-store";
 import { EntityLogin, EntityPicker } from "./EntityHome";
 import { AppShell } from "./AppShell";
 import { PosErrorBoundary } from "./PosErrorBoundary";
-import { SessionGate } from "./SessionGate";
 import { initNativeShell } from "@/lib/native-shell";
 import { isVenueEntityId } from "@/lib/pos/entities";
 import type { VenueEntityId } from "@/lib/pos/types";
+import { isDevDemoClient } from "@/lib/saas/flags";
+import { useCurrentUserState } from "@/lib/auth/use-current-user";
+import { getPosBootstrapFn } from "@/lib/saas/api";
+import { tablesFromCount, type TenantMenuMode } from "@/lib/pos/starter-seed";
+import { EMPTY_LOCATION_SETUP } from "@/lib/saas/types";
+import {
+  readTenantPosContext,
+  saveTenantPosContext,
+} from "@/lib/saas/pos-context";
+import { Link } from "@tanstack/react-router";
 
 const STORES = [
   usePosStore,
@@ -32,19 +41,16 @@ const STORES = [
   useNetworkStore,
 ] as const;
 
-function PosAppInner({
-  entityId,
-  saasLocationId,
-}: {
-  entityId?: string;
-  saasLocationId?: string;
-}) {
+function PosAppInner({ entityId }: { entityId?: string }) {
   const [ready, setReady] = useState(false);
+  const [tenantGate, setTenantGate] = useState<"idle" | "ok" | "denied">("idle");
+  const [gateMsg, setGateMsg] = useState<string | null>(null);
   const currentEmployeeId = usePosStore((s) => s.currentEmployeeId);
   const activeEntityId = usePosStore((s) => s.activeEntityId);
-  const activeSaasLocationId = usePosStore((s) => s.activeSaasLocationId);
   const applyEntity = usePosStore((s) => s.applyEntity);
-  const applySaasLocation = usePosStore((s) => s.applySaasLocation);
+  const openTenantLocation = usePosStore((s) => s.openTenantLocation);
+  const { user, isPending } = useCurrentUserState();
+  const demo = isDevDemoClient();
 
   useEffect(() => {
     let cancelled = false;
@@ -77,21 +83,127 @@ function PosAppInner({
 
   useEffect(() => {
     if (!ready) return;
-    if (saasLocationId && activeSaasLocationId !== saasLocationId) {
-      applySaasLocation(saasLocationId);
+    if (demo) {
+      if (entityId && isVenueEntityId(entityId) && activeEntityId !== entityId) {
+        applyEntity(entityId as VenueEntityId);
+      }
+      setTenantGate("ok");
       return;
     }
-    if (entityId && isVenueEntityId(entityId) && activeEntityId !== entityId) {
-      applyEntity(entityId as VenueEntityId);
+    if (isPending) return;
+    const locParam =
+      typeof window !== "undefined"
+        ? new URLSearchParams(window.location.search).get("loc")
+        : null;
+    const ctx = readTenantPosContext();
+    const locationId = locParam || ctx?.locationId;
+    if (entityId && isVenueEntityId(entityId) && locationId) {
+      void getPosBootstrapFn({ data: { locationId } })
+        .then((access) => {
+          saveTenantPosContext({
+            orgId: access.org.id,
+            locationId: access.location.id,
+            venueType: access.location.venueType,
+            locationName: access.location.name,
+            orgName: access.org.name,
+            ownerName: user?.displayName || "Owner",
+          });
+          const setup = access.location.setup ?? EMPTY_LOCATION_SETUP;
+          const rawMode = setup.menuMode;
+          const menuMode: TenantMenuMode =
+            rawMode === "categories" || rawMode === "csv_later" || rawMode === "empty"
+              ? rawMode
+              : "empty";
+          const sectionNames = Array.isArray(setup.sectionNames)
+            ? setup.sectionNames.filter((x): x is string => typeof x === "string")
+            : [];
+          const tableCount = Number(setup.tableCount) || 0;
+          const floorLater = Boolean(setup.floorLater);
+          const tables =
+            floorLater || tableCount <= 0 ? [] : tablesFromCount(tableCount, sectionNames);
+          const settlementRaw =
+            setup.settlement && typeof setup.settlement === "object"
+              ? (setup.settlement as Record<string, unknown>)
+              : {};
+          openTenantLocation({
+            entityId: entityId as VenueEntityId,
+            venueName: access.location.name,
+            ownerName: user?.displayName || "Owner",
+            locationId: access.location.id,
+            menuMode,
+            vendors: access.operators,
+            tables,
+            hallMode: access.location.operatingModel === "host_operators",
+            address: access.location.address,
+            settlement: {
+              periodType:
+                settlementRaw.periodType === "daily" ||
+                settlementRaw.periodType === "biweekly" ||
+                settlementRaw.periodType === "monthly"
+                  ? settlementRaw.periodType
+                  : "weekly",
+              hostCutEnabled: Number(settlementRaw.hostCutPercent) > 0,
+              hostCutPercent: Number(settlementRaw.hostCutPercent) || 0,
+              hostName: access.location.hostBrandName || access.location.name,
+            },
+          });
+          try {
+            useSaasStore.getState().setActiveLocation(access.location.id);
+            const loc = useSaasStore
+              .getState()
+              .locations.find((l) => l.id === access.location.id);
+            if (!loc) {
+              useSaasStore.getState().hydrateTenant({
+                org: {
+                  ...useSaasStore.getState().org,
+                  id: access.org.id,
+                  name: access.org.name,
+                  status: access.org.status === "suspended" ? "cancelled" : "active",
+                },
+                members: useSaasStore.getState().members,
+                locations: [
+                  {
+                    id: access.location.id,
+                    orgId: access.org.id,
+                    name: access.location.name,
+                    code: access.location.id.slice(-6).toUpperCase(),
+                    mode: access.location.venueType,
+                    address: "",
+                    timezone: access.location.timezone,
+                    open: true,
+                    enabledPackages: access.location.enabledPackages,
+                  },
+                ],
+                adminName: user?.displayName || "Owner",
+                adminRole: access.role,
+              });
+            }
+          } catch {
+            /* ignore */
+          }
+          setTenantGate("ok");
+        })
+        .catch((e) => {
+          setGateMsg(e instanceof Error ? e.message : "No access to this location");
+          setTenantGate("denied");
+        });
+      return;
     }
+    if (entityId && isVenueEntityId(entityId) && !locationId) {
+      setGateMsg("Open POS from the platform for a location you belong to.");
+      setTenantGate("denied");
+      return;
+    }
+    setTenantGate("ok");
   }, [
     ready,
+    demo,
+    isPending,
     entityId,
-    saasLocationId,
     activeEntityId,
-    activeSaasLocationId,
     applyEntity,
-    applySaasLocation,
+    openTenantLocation,
+    user,
   ]);
 
   if (!ready) {
@@ -101,17 +213,34 @@ function PosAppInner({
           <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-2xl bg-primary text-lg font-black text-primary-foreground">
             Z
           </div>
-          <p className="text-sm">Loading Zest…</p>
+          <p className="text-sm">Loading Summex…</p>
         </div>
       </div>
     );
   }
 
-  if (saasLocationId) {
-    if (currentEmployeeId && activeSaasLocationId === saasLocationId) {
-      return <AppShell />;
-    }
-    return <EntityLogin saasLocationId={saasLocationId} />;
+  if (!demo && tenantGate === "idle") {
+    return (
+      <div className="flex min-h-[100dvh] items-center justify-center bg-bg pt-[var(--grok-banner-h,0px)] text-muted-foreground">
+        Checking access…
+      </div>
+    );
+  }
+
+  if (!demo && tenantGate === "denied") {
+    return (
+      <div className="flex min-h-[100dvh] flex-col items-center justify-center gap-3 bg-bg px-4 pt-[var(--grok-banner-h,0px)] text-center">
+        <p className="text-sm text-muted-foreground">
+          {gateMsg ?? "You do not have access to this venue."}
+        </p>
+        <Link to="/platform" className="text-sm font-medium text-primary underline">
+          Go to platform
+        </Link>
+        <Link to="/login" className="text-sm text-muted-foreground underline">
+          Sign in
+        </Link>
+      </div>
+    );
   }
 
   if (entityId && isVenueEntityId(entityId)) {
@@ -125,16 +254,63 @@ function PosAppInner({
     return <AppShell />;
   }
 
+  if (!demo && !user) {
+    return (
+      <div className="flex min-h-[100dvh] flex-col bg-bg pt-[var(--grok-banner-h,0px)]">
+        <div className="mx-auto flex w-full max-w-lg flex-1 flex-col justify-center px-4 py-10 text-center">
+          <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-primary text-2xl font-black text-primary-foreground">
+            Z
+          </div>
+          <h1 className="text-3xl font-black tracking-tighter">Summex</h1>
+          <p className="mt-2 text-sm text-muted-foreground">
+            Sign in to create an organization or open the control plane.
+          </p>
+          <div className="mt-6 space-y-2">
+            <Link
+              to="/login"
+              className="flex h-12 items-center justify-center rounded-2xl bg-primary text-sm font-semibold text-primary-foreground"
+            >
+              Sign in
+            </Link>
+            <Link
+              to="/signup"
+              className="flex h-12 items-center justify-center rounded-2xl border border-border bg-surface text-sm font-semibold"
+            >
+              Create an account
+            </Link>
+            <Link
+              to="/platform"
+              className="block text-sm text-muted-foreground underline"
+            >
+              Platform
+            </Link>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (!demo && user) {
+    return (
+      <div className="flex min-h-[100dvh] flex-col items-center justify-center gap-3 bg-bg px-4 pt-[var(--grok-banner-h,0px)] text-center">
+        <p className="text-sm text-muted-foreground">
+          Signed in as {user.displayName ?? user.primaryEmail}. Open the control
+          plane to manage locations and launch POS.
+        </p>
+        <Link
+          to="/platform"
+          className="rounded-2xl bg-primary px-5 py-3 text-sm font-semibold text-primary-foreground"
+        >
+          Open platform
+        </Link>
+      </div>
+    );
+  }
+
   return <EntityPicker />;
 }
 
-export function PosApp({
-  entityId,
-  saasLocationId,
-}: {
-  entityId?: string;
-  saasLocationId?: string;
-}) {
+export function PosApp({ entityId }: { entityId?: string }) {
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
@@ -149,7 +325,7 @@ export function PosApp({
           <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-2xl bg-primary text-lg font-black text-primary-foreground">
             Z
           </div>
-          <p className="text-sm">Loading Zest…</p>
+          <p className="text-sm">Loading Summex…</p>
         </div>
       </div>
     );
@@ -157,9 +333,7 @@ export function PosApp({
 
   return (
     <PosErrorBoundary>
-      <SessionGate>
-        <PosAppInner entityId={entityId} saasLocationId={saasLocationId} />
-      </SessionGate>
+      <PosAppInner entityId={entityId} />
     </PosErrorBoundary>
   );
 }

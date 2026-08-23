@@ -1,6 +1,6 @@
 import {
   PACKAGE_BY_ID,
-  ZEST_PACKAGES,
+  SUMMEX_PACKAGES,
   packageForView,
   type PackageId,
 } from "./packages";
@@ -39,7 +39,7 @@ export function previewLabel(mode: PackagePreviewMode): string {
 export const PREVIEW_OPTIONS: { id: PackagePreviewMode; label: string }[] = [
   { id: "location", label: "Location packages (live)" },
   { id: "all", label: "All packages (dev)" },
-  ...ZEST_PACKAGES.filter((p) => p.id !== "saas_console").map((p) => ({
+  ...SUMMEX_PACKAGES.filter((p) => p.id !== "saas_console").map((p) => ({
     id: p.id as PackagePreviewMode,
     label: `Only: ${p.shortName}`,
   })),

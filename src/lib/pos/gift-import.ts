@@ -238,7 +238,7 @@ export function previewGiftImport(
         line,
         code,
         severity: "warn",
-        message: "Already in Zest (skipped unless overwrite)",
+        message: "Already in Summex (skipped unless overwrite)",
       });
     }
     const original = dollarsToCents(cell(rawRow, map, "original_balance"));

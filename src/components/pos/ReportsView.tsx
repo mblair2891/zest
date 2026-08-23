@@ -7,12 +7,16 @@ import {
   Tooltip,
   XAxis,
   YAxis,
-  Cell,
 } from "recharts";
 import { Badge } from "@/components/ui/badge";
 import { usePosStore } from "@/lib/pos/store";
 import { computeTotals } from "@/lib/pos/calculations";
 import { formatCurrency } from "@/lib/utils";
+
+function formatSalesTooltip(value: unknown) {
+  const n = typeof value === "number" ? value : Number(value ?? 0);
+  return [`$${Number.isFinite(n) ? n.toFixed(2) : "0.00"}`, "Sales"];
+}
 
 export function ReportsView() {
   const orders = usePosStore((s) => s.orders);
@@ -158,13 +162,9 @@ export function ReportsView() {
                     border: "1px solid #2a2f3a",
                     borderRadius: 12,
                   }}
-                  formatter={(v: number) => [`$${v.toFixed(2)}`, "Sales"]}
+                  formatter={formatSalesTooltip}
                 />
-                <Bar dataKey="sales" radius={[6, 6, 0, 0]}>
-                  {stats.hourData.map((_, i) => (
-                    <Cell key={i} fill="#9aa3b2" />
-                  ))}
-                </Bar>
+                <Bar dataKey="sales" fill="#9aa3b2" radius={[6, 6, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
           </div>
@@ -194,7 +194,7 @@ export function ReportsView() {
                       border: "1px solid #2a2f3a",
                       borderRadius: 12,
                     }}
-                    formatter={(v: number) => [`$${v.toFixed(2)}`, "Sales"]}
+                    formatter={formatSalesTooltip}
                   />
                   <Bar dataKey="sales" fill="#5b8fd4" radius={[0, 6, 6, 0]} />
                 </BarChart>

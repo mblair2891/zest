@@ -267,6 +267,22 @@ export function FloorView() {
 
   return (
     <div className="flex h-full flex-col">
+      {tables.length === 0 && (
+        <div className="mx-3 mt-3 rounded-2xl border border-dashed border-border bg-surface p-5 text-center">
+          <p className="text-sm font-semibold">Floor not set up yet</p>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Add tables in the floor editor, or use takeout until the room is drawn.
+          </p>
+          <div className="mt-3 flex justify-center gap-2">
+            <Button size="sm" onClick={() => setView("floor_editor")}>
+              Floor editor
+            </Button>
+            <Button size="sm" variant="outline" onClick={() => setView("takeout")}>
+              Takeout
+            </Button>
+          </div>
+        </div>
+      )}
       <div className="flex flex-wrap items-center gap-2 border-b border-border px-3 py-2">
         <h2 className="mr-2 text-sm font-semibold">
           Floor · {saasLoc?.code ?? loc?.code ?? settings.name}

@@ -15,9 +15,9 @@ await page.goto("http://127.0.0.1:8080/", {
   timeout: 60000,
 });
 await page.evaluate(() => {
-  localStorage.removeItem("zest-pos-v5");
-  localStorage.removeItem("zest-saas-v6");
-  localStorage.removeItem("zest-saas-v7");
+  localStorage.removeItem("summex-pos-v5");
+  localStorage.removeItem("summex-saas-v6");
+  localStorage.removeItem("summex-saas-v7");
 });
 await page.reload({ waitUntil: "networkidle" });
 await page.waitForTimeout(1200);

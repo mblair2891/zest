@@ -17,7 +17,7 @@ export const useDevPreviewStore = create<DevPreviewState>()(
       setPackagePreview: (packagePreview) => set({ packagePreview }),
     }),
     {
-      name: "zest-dev-preview-v1",
+      name: "summex-dev-preview-v1",
       storage: createJSONStorage(() => localStorage),
       skipHydration: true,
     },

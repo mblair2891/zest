@@ -3,13 +3,13 @@ import { readFileSync, existsSync } from "node:fs";
 import { resolve } from "node:path";
 
 /**
- * Zest native shell — defaults to App Store (/apps).
+ * Summex native shell — defaults to App Store (/apps).
  */
 
 type NativeFile = { url?: string; station?: string; cleartext?: boolean };
 
 function loadNativeFile(): NativeFile {
-  const p = resolve("native/zest-native.json");
+  const p = resolve("native/summex-native.json");
   if (!existsSync(p)) return {};
   try {
     return JSON.parse(readFileSync(p, "utf8")) as NativeFile;
@@ -20,12 +20,12 @@ function loadNativeFile(): NativeFile {
 
 const file = loadNativeFile();
 let baseUrl = (
-  process.env.ZEST_NATIVE_URL ||
+  process.env.SUMMEX_NATIVE_URL ||
   file.url ||
   "http://10.0.2.2:8080/apps"
 ).replace(/\/$/, "");
 
-const station = (process.env.ZEST_STATION || file.station || "").trim();
+const station = (process.env.SUMMEX_STATION || file.station || "").trim();
 
 // If station set, open POS with station query (not the store)
 let serverUrl = baseUrl;
@@ -41,13 +41,13 @@ if (station) {
 }
 
 const cleartext =
-  process.env.ZEST_CLEARTEXT === "1" ||
+  process.env.SUMMEX_CLEARTEXT === "1" ||
   file.cleartext === true ||
   serverUrl.startsWith("http://");
 
 const config: CapacitorConfig = {
-  appId: "app.zest.pos",
-  appName: "Zest",
+  appId: "app.summex.pos",
+  appName: "Summex",
   webDir: "native/www",
   backgroundColor: "#0a0c0b",
   server: {

@@ -1,7 +1,5 @@
-import { createFileRoute } from "@tanstack/react-router";
-import { PlatformApp } from "@/components/pos/PlatformApp";
+import { createFileRoute, Navigate } from "@tanstack/react-router";
 
 export const Route = createFileRoute("/platform")({
-  ssr: false,
-  component: PlatformApp,
+  component: () => <Navigate to="/dashboard" />,
 });

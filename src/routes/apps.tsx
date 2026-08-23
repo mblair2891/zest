@@ -12,7 +12,7 @@ function AppsPage() {
   if (!mounted) {
     return (
       <div className="flex min-h-[100dvh] items-center justify-center bg-bg text-muted-foreground">
-        Loading Zest Store…
+        Loading Summex Store…
       </div>
     );
   }

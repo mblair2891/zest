@@ -1,102 +1,107 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
-import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Field, NativeSelect, ToggleChip, WizardChrome } from "./WizardChrome";
+import { VENUE_ENTITIES } from "@/lib/pos/entities";
 import {
-  LOCATION_TYPE_OPTIONS,
-  type IntakeAnswers,
-  type LocationTypeCount,
-  emptyAnswers,
-} from "@/lib/saas/prospect-types";
-import type { LocationMode, OperatingModel } from "@/lib/pos/saas-types";
-import {
-  createProspect,
-  getProspectByToken,
-  saveProspectAnswers,
-  submitProspectQuote,
-} from "@/lib/saas/prospect-fns";
-import { QuoteCard } from "./QuoteCard";
+  issueQuoteFn,
+  saveIntakeFn,
+  startProspectFn,
+  getProspectFn,
+} from "@/lib/saas/api";
+import { emptyIntakeAnswers } from "@/lib/saas/pricing";
+import type { IntakeAnswers, GmvBand } from "@/lib/saas/prospect-types";
+import { MODULE_LABELS } from "@/lib/saas/prospect-types";
+import { readProspectToken, writeProspectToken } from "@/lib/saas/prospect-token";
+import type { LocationMode } from "@/lib/pos/saas-types";
 
-const STEPS = [
+const LABELS = [
   "Company",
   "Portfolio",
-  "Operating model",
+  "Ops model",
   "Modules",
   "Volume",
   "Payments",
-  "Review",
-] as const;
-
-const TOKEN_KEY = "zest-prospect-token";
+  "Timeline",
+];
 
 export function IntakeWizard({ initialToken }: { initialToken?: string }) {
   const navigate = useNavigate();
-  const [step, setStep] = useState(0);
-  const [answers, setAnswers] = useState<IntakeAnswers>(emptyAnswers());
+  const [step, setStep] = useState(1);
   const [token, setToken] = useState(initialToken ?? "");
+  const [answers, setAnswers] = useState<IntakeAnswers>(emptyIntakeAnswers);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
-  const [quoteReady, setQuoteReady] = useState(false);
-  const [quote, setQuote] = useState<
-    Awaited<ReturnType<typeof submitProspectQuote>> extends infer R
-      ? R extends { quote: infer Q }
-        ? Q
-        : never
-      : never
-  >(null);
+  const [booting, setBooting] = useState(true);
 
   useEffect(() => {
-    const t =
-      initialToken ||
-      (typeof window !== "undefined"
-        ? window.localStorage.getItem(TOKEN_KEY)
-        : null);
-    if (!t) return;
-    void getProspectByToken({ data: t }).then((rec) => {
-      if (!rec) return;
-      setToken(rec.publicToken);
-      setAnswers(rec.answers);
-      if (rec.quote) {
-        setQuote(rec.quote);
-        setQuoteReady(true);
+    let cancelled = false;
+    const boot = async () => {
+      try {
+        const existing = initialToken || readProspectToken();
+        if (existing) {
+          try {
+            const p = await getProspectFn({ data: { token: existing } });
+            if (cancelled) return;
+            setToken(p.publicToken);
+            setAnswers(p.answers);
+            writeProspectToken(p.publicToken);
+            if (typeof window !== "undefined") {
+              const url = new URL(window.location.href);
+              url.searchParams.set("t", p.publicToken);
+              window.history.replaceState({}, "", url.toString());
+            }
+            if (p.status !== "prospect") {
+              void navigate({
+                to: "/quote/$token",
+                params: { token: p.publicToken },
+              });
+              return;
+            }
+            return;
+          } catch {
+            /* start a new intake */
+          }
+        }
+        const p = await startProspectFn();
+        if (cancelled) return;
+        setToken(p.publicToken);
+        setAnswers(p.answers);
+        writeProspectToken(p.publicToken);
+        if (typeof window !== "undefined") {
+          const url = new URL(window.location.href);
+          url.searchParams.set("t", p.publicToken);
+          window.history.replaceState({}, "", url.toString());
+        }
+      } catch (e) {
+        if (!cancelled) setError(e instanceof Error ? e.message : "Could not start intake");
+      } finally {
+        if (!cancelled) setBooting(false);
       }
-      if (rec.status === "quoted" || rec.status === "accepted") {
-        navigate({
-          to: "/pricing/$token",
-          params: { token: rec.publicToken },
-        });
-      }
-    });
+    };
+    void boot();
+    return () => {
+      cancelled = true;
+    };
   }, [initialToken, navigate]);
 
-  const patch = (partial: Partial<IntakeAnswers>) =>
-    setAnswers((a) => ({ ...a, ...partial }));
-  const patchCo = (partial: Partial<IntakeAnswers["company"]>) =>
-    setAnswers((a) => ({ ...a, company: { ...a.company, ...partial } }));
-  const patchCh = (partial: Partial<IntakeAnswers["channels"]>) =>
-    setAnswers((a) => ({ ...a, channels: { ...a.channels, ...partial } }));
-
-  const persist = async () => {
-    let t = token;
-    if (!t) {
-      const rec = await createProspect();
-      t = rec.publicToken;
-      setToken(t);
-      window.localStorage.setItem(TOKEN_KEY, t);
-      navigate({ to: "/pricing/$token", params: { token: t } });
-    }
-    await saveProspectAnswers({ data: { token: t, answers } });
-    return t;
+  const persist = async (next: IntakeAnswers) => {
+    if (!token) return;
+    await saveIntakeFn({ data: { token, answers: next } });
   };
 
-  const next = async () => {
+  const patch = (fn: (a: IntakeAnswers) => IntakeAnswers) => {
+    setAnswers((prev) => fn(prev));
+  };
+
+  const go = async (n: number) => {
     setError(null);
     setBusy(true);
     try {
-      await persist();
-      setStep((s) => Math.min(STEPS.length - 1, s + 1));
+      await persist(answers);
+      setStep(n);
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Save failed");
+      setError(e instanceof Error ? e.message : "Could not save");
     } finally {
       setBusy(false);
     }
@@ -104,15 +109,26 @@ export function IntakeWizard({ initialToken }: { initialToken?: string }) {
 
   const submit = async () => {
     setError(null);
+    if (!answers.payments.zestPaymentsAck) {
+      setError("Please acknowledge Summex Payments as the only guest card processor.");
+      return;
+    }
+    if (answers.company.legalName.trim().length < 2) {
+      setError("Legal name is required.");
+      setStep(1);
+      return;
+    }
+    if (!answers.company.billingEmail.includes("@")) {
+      setError("Billing email is required.");
+      setStep(1);
+      return;
+    }
     setBusy(true);
     try {
-      const t = await persist();
-      const rec = await submitProspectQuote({ data: t });
-      setQuote(rec?.quote ?? null);
-      setQuoteReady(true);
-      if (rec) {
-        navigate({ to: "/pricing/$token", params: { token: rec.publicToken } });
-      }
+      await persist(answers);
+      const quoted = await issueQuoteFn({ data: { token } });
+      writeProspectToken(quoted.publicToken);
+      await navigate({ to: "/quote/$token", params: { token: quoted.publicToken } });
     } catch (e) {
       setError(e instanceof Error ? e.message : "Could not generate quote");
     } finally {
@@ -120,395 +136,449 @@ export function IntakeWizard({ initialToken }: { initialToken?: string }) {
     }
   };
 
-  const setTypeCount = (mode: LocationMode, count: number) => {
-    const rest = answers.locationTypes.filter((t) => t.mode !== mode);
-    const nextTypes: LocationTypeCount[] =
-      count > 0 ? [...rest, { mode, count }] : rest;
-    const total = nextTypes.reduce((s, t) => s + t.count, 0);
-    patch({ locationTypes: nextTypes, locationsNow: total || answers.locationsNow });
-  };
+  if (booting) {
+    return (
+      <p className="py-16 text-center text-sm text-muted-foreground">Opening intake…</p>
+    );
+  }
+
+  const c = answers.company;
+  const p = answers.portfolio;
+  const o = answers.operating;
+  const v = answers.volume;
 
   return (
-    <div className="mx-auto max-w-2xl space-y-4 pb-12">
-      <ol className="flex flex-wrap gap-1">
-        {STEPS.map((label, i) => (
-          <li key={label}>
-            <button
-              type="button"
-              onClick={() => setStep(i)}
-              className={`rounded-full px-2.5 py-1 text-[11px] ${
-                i === step
-                  ? "bg-primary text-primary-foreground"
-                  : "border border-border text-muted-foreground"
-              }`}
-            >
-              {i + 1}. {label}
-            </button>
-          </li>
-        ))}
-      </ol>
-
-      {error && (
-        <p className="rounded-xl border border-danger/40 bg-danger/10 px-3 py-2 text-sm text-danger">
-          {error}
-        </p>
-      )}
-
-      {step === 0 && (
-        <Section title="Company">
+    <WizardChrome
+      title={
+        [
+          "Company",
+          "Portfolio shape",
+          "How each location operates",
+          "Channels & modules",
+          "Volume drivers",
+          "Payments",
+          "Timeline & notes",
+        ][step - 1] ?? "Intake"
+      }
+      subtitle={
+        [
+          "Legal entity we will quote. Guest-facing brand can differ.",
+          "How many sites now, and what they are.",
+          "Single operator vs host with vendors under one guest check.",
+          "Software modules that change the quote. Gift cards stay first-party.",
+          "Used for seat packs, device packs, and volume band.",
+          "Guest cards run through Summex Payments only — including host MID.",
+          "Target go-live and anything a human should know before quoting.",
+        ][step - 1]
+      }
+      step={step}
+      total={7}
+      labels={LABELS}
+      error={error}
+      busy={busy}
+      onBack={step > 1 ? () => void go(step - 1) : undefined}
+      onNext={step < 7 ? () => void go(step + 1) : () => void submit()}
+      nextLabel={step < 7 ? "Continue" : "Generate quote"}
+    >
+      {step === 1 && (
+        <div className="grid gap-3 sm:grid-cols-2">
           <Field label="Legal name">
             <Input
-              value={answers.company.legalName}
-              onChange={(e) => patchCo({ legalName: e.target.value })}
+              value={c.legalName}
+              onChange={(e) =>
+                patch((a) => ({ ...a, company: { ...a.company, legalName: e.target.value } }))
+              }
+              placeholder="Acme Hospitality LLC"
             />
           </Field>
           <Field label="DBA / guest-facing brand">
             <Input
-              value={answers.company.dba}
-              onChange={(e) => patchCo({ dba: e.target.value })}
+              value={c.dba}
+              onChange={(e) =>
+                patch((a) => ({ ...a, company: { ...a.company, dba: e.target.value } }))
+              }
+              placeholder="Optional"
             />
           </Field>
           <Field label="Billing email">
             <Input
               type="email"
-              value={answers.company.billingEmail}
-              onChange={(e) => patchCo({ billingEmail: e.target.value })}
+              value={c.billingEmail}
+              onChange={(e) =>
+                patch((a) => ({
+                  ...a,
+                  company: { ...a.company, billingEmail: e.target.value },
+                }))
+              }
             />
           </Field>
           <Field label="Phone">
             <Input
-              value={answers.company.phone}
-              onChange={(e) => patchCo({ phone: e.target.value })}
+              value={c.phone}
+              onChange={(e) =>
+                patch((a) => ({ ...a, company: { ...a.company, phone: e.target.value } }))
+              }
             />
           </Field>
-          <Field label="HQ address">
+          <div className="sm:col-span-2">
+            <Field label="HQ address">
+              <Input
+                value={c.hqAddress}
+                onChange={(e) =>
+                  patch((a) => ({
+                    ...a,
+                    company: { ...a.company, hqAddress: e.target.value },
+                  }))
+                }
+              />
+            </Field>
+          </div>
+          <Field label="Tax ID" hint="Optional at this stage">
             <Input
-              value={answers.company.hqAddress}
-              onChange={(e) => patchCo({ hqAddress: e.target.value })}
+              value={c.taxId}
+              onChange={(e) =>
+                patch((a) => ({ ...a, company: { ...a.company, taxId: e.target.value } }))
+              }
             />
           </Field>
-          <Field label="Tax ID (optional)">
-            <Input
-              value={answers.company.taxId}
-              onChange={(e) => patchCo({ taxId: e.target.value })}
-            />
-          </Field>
-        </Section>
+        </div>
       )}
 
-      {step === 1 && (
-        <Section title="Portfolio">
-          <div className="grid gap-2 sm:grid-cols-2">
+      {step === 2 && (
+        <div className="space-y-4">
+          <div className="grid gap-3 sm:grid-cols-2">
             <Field label="Locations now">
               <Input
                 type="number"
                 min={1}
-                value={answers.locationsNow}
+                value={p.locationsNow}
                 onChange={(e) =>
-                  patch({ locationsNow: Number(e.target.value) || 1 })
+                  patch((a) => ({
+                    ...a,
+                    portfolio: {
+                      ...a.portfolio,
+                      locationsNow: Number(e.target.value) || 0,
+                    },
+                  }))
                 }
               />
             </Field>
             <Field label="Locations in 12 months">
               <Input
                 type="number"
-                min={1}
-                value={answers.locations12mo}
+                min={0}
+                value={p.locations12mo}
                 onChange={(e) =>
-                  patch({ locations12mo: Number(e.target.value) || 1 })
+                  patch((a) => ({
+                    ...a,
+                    portfolio: {
+                      ...a.portfolio,
+                      locations12mo: Number(e.target.value) || 0,
+                    },
+                  }))
                 }
               />
             </Field>
           </div>
-          <p className="text-xs text-muted-foreground">Counts by type</p>
-          <ul className="space-y-2">
-            {LOCATION_TYPE_OPTIONS.map((opt) => {
-              const cur =
-                answers.locationTypes.find((t) => t.mode === opt.id)?.count ?? 0;
-              return (
-                <li
-                  key={opt.id}
-                  className="flex items-center justify-between gap-2 rounded-xl border border-border px-3 py-2 text-sm"
-                >
-                  <span>{opt.label}</span>
-                  <Input
-                    className="w-20"
-                    type="number"
-                    min={0}
-                    value={cur}
-                    onChange={(e) =>
-                      setTypeCount(opt.id, Number(e.target.value) || 0)
-                    }
-                  />
-                </li>
-              );
-            })}
-          </ul>
-        </Section>
-      )}
-
-      {step === 2 && (
-        <Section title="Operating model">
-          <div className="flex flex-wrap gap-2">
-            {(
-              [
-                ["single_operator", "Single operator"],
-                ["host_multi_operator", "Host + multiple operators"],
-              ] as const
-            ).map(([id, label]) => (
-              <Button
-                key={id}
-                type="button"
-                size="sm"
-                variant={answers.operatingModel === id ? "default" : "outline"}
-                onClick={() => patch({ operatingModel: id as OperatingModel })}
+          <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+            Count by venue type
+          </p>
+          <div className="grid gap-2 sm:grid-cols-2">
+            {VENUE_ENTITIES.map((ent) => (
+              <div
+                key={ent.id}
+                className="flex items-center justify-between gap-3 rounded-2xl border border-border bg-surface px-3 py-2"
               >
-                {label}
-              </Button>
-            ))}
-          </div>
-          {answers.operatingModel === "host_multi_operator" && (
-            <>
-              <Field label="Estimated operators per location">
+                <span>
+                  <span className="block text-sm font-medium">{ent.name}</span>
+                  <span className="text-[11px] text-muted-foreground">{ent.tagline}</span>
+                </span>
                 <Input
                   type="number"
-                  min={1}
-                  value={answers.operatorsPerLocation}
-                  onChange={(e) =>
-                    patch({ operatorsPerLocation: Number(e.target.value) || 1 })
-                  }
+                  min={0}
+                  className="h-10 w-20"
+                  value={p.typeCounts[ent.id as LocationMode] ?? 0}
+                  onChange={(e) => {
+                    const n = Math.max(0, Number(e.target.value) || 0);
+                    patch((a) => ({
+                      ...a,
+                      portfolio: {
+                        ...a.portfolio,
+                        typeCounts: { ...a.portfolio.typeCounts, [ent.id]: n },
+                      },
+                    }));
+                  }}
                 />
-              </Field>
-              <Toggle
-                label="Guest pays one host check; operators settle later"
-                on={answers.oneHostCheck}
-                set={(v) => patch({ oneHostCheck: v })}
-              />
-            </>
-          )}
-          <Toggle
-            label="Bar and kitchen are split operations"
-            on={answers.barKitchenSplit}
-            set={(v) => patch({ barKitchenSplit: v })}
-          />
-        </Section>
+              </div>
+            ))}
+          </div>
+        </div>
       )}
 
       {step === 3 && (
-        <Section title="Channels & modules">
-          {(
-            [
-              ["floor", "Table service / floor / sections"],
-              ["counter", "Counter / QSR"],
-              ["kiosk", "Kiosk"],
-              ["online", "Online / order-ahead"],
-              ["kds", "Kitchen / bar display"],
-              ["inventory", "Inventory / purchasing"],
-              ["labor", "Labor / scheduling / tip pooling"],
-              ["giftCards", "First-party gift cards"],
-              ["crm", "CRM / guests"],
-              ["marketing", "Marketing"],
-              ["vendorPortal", "Vendor portal (host locations)"],
-              ["multiLocationReporting", "Multi-location reporting"],
-            ] as const
-          ).map(([key, label]) => (
-            <Toggle
-              key={key}
-              label={label}
-              on={answers.channels[key]}
-              set={(v) => patchCh({ [key]: v })}
-            />
-          ))}
-        </Section>
+        <div className="space-y-3">
+          <div className="grid gap-2">
+            {(
+              [
+                ["single", "Single operator", "One team runs the location"],
+                [
+                  "host_operators",
+                  "Host + operators",
+                  "Hall / pod host with vendors. Guest can pay one check.",
+                ],
+                ["mixed", "Mixed portfolio", "Some locations host, some single-operator"],
+              ] as const
+            ).map(([id, label, hint]) => (
+              <ToggleChip
+                key={id}
+                on={o.model === id}
+                label={label}
+                hint={hint}
+                onClick={() =>
+                  patch((a) => ({ ...a, operating: { ...a.operating, model: id } }))
+                }
+              />
+            ))}
+          </div>
+          {o.model !== "single" && (
+            <>
+              <Field label="Estimated operators per host location">
+                <Input
+                  type="number"
+                  min={1}
+                  value={o.operatorsPerLocation}
+                  onChange={(e) =>
+                    patch((a) => ({
+                      ...a,
+                      operating: {
+                        ...a.operating,
+                        operatorsPerLocation: Number(e.target.value) || 1,
+                      },
+                    }))
+                  }
+                />
+              </Field>
+              <ToggleChip
+                on={o.guestPaysHostCheck}
+                label="Guest pays one host check"
+                hint="Split settlement to operators (host MID)"
+                onClick={() =>
+                  patch((a) => ({
+                    ...a,
+                    operating: {
+                      ...a.operating,
+                      guestPaysHostCheck: !a.operating.guestPaysHostCheck,
+                    },
+                  }))
+                }
+              />
+            </>
+          )}
+          <ToggleChip
+            on={o.barKitchenSplit}
+            label="Bar and kitchen are split ops"
+            hint="Separate station teams / KDS rails"
+            onClick={() =>
+              patch((a) => ({
+                ...a,
+                operating: { ...a.operating, barKitchenSplit: !a.operating.barKitchenSplit },
+              }))
+            }
+          />
+        </div>
       )}
 
       {step === 4 && (
-        <Section title="Volume">
-          <Field label="Est. monthly checks">
-            <Input
-              type="number"
-              min={0}
-              value={answers.monthlyChecks}
-              onChange={(e) =>
-                patch({ monthlyChecks: Number(e.target.value) || 0 })
+        <div className="grid gap-2 sm:grid-cols-2">
+          {MODULE_LABELS.map((m) => (
+            <ToggleChip
+              key={m.id}
+              on={answers.modules[m.id]}
+              label={m.label}
+              hint={m.hint}
+              onClick={() =>
+                patch((a) => ({
+                  ...a,
+                  modules: { ...a.modules, [m.id]: !a.modules[m.id] },
+                }))
               }
             />
-          </Field>
-          <Field label="Monthly GMV band">
-            <select
-              className="mt-1 flex h-11 w-full rounded-lg border border-border bg-surface px-3 text-sm"
-              value={answers.gmvBand}
-              onChange={(e) =>
-                patch({
-                  gmvBand: e.target.value as IntakeAnswers["gmvBand"],
-                })
-              }
-            >
-              <option value="under_50k">Under $50k</option>
-              <option value="50_150k">$50k–$150k</option>
-              <option value="150_500k">$150k–$500k</option>
-              <option value="500k_plus">$500k+</option>
-            </select>
-          </Field>
-          <Field label="Peak concurrent devices">
-            <Input
-              type="number"
-              min={1}
-              value={answers.peakDevices}
-              onChange={(e) =>
-                patch({ peakDevices: Number(e.target.value) || 1 })
-              }
-            />
-          </Field>
-          <Field label="Staff seats (FOH + BOH logins)">
-            <Input
-              type="number"
-              min={1}
-              value={answers.staffSeats}
-              onChange={(e) =>
-                patch({ staffSeats: Number(e.target.value) || 1 })
-              }
-            />
-          </Field>
-        </Section>
+          ))}
+        </div>
       )}
 
       {step === 5 && (
-        <Section title="Payments">
-          <Toggle
-            label="I understand guest cards run on Zest Payments only (host MID for multi-operator)"
-            on={answers.zestPaymentsAck}
-            set={(v) => patch({ zestPaymentsAck: v })}
+        <div className="space-y-3">
+          <div className="grid gap-2 sm:grid-cols-2">
+            <ToggleChip
+              on={v.volumeKind === "gmv"}
+              label="Monthly GMV band"
+              onClick={() => patch((a) => ({ ...a, volume: { ...a.volume, volumeKind: "gmv" } }))}
+            />
+            <ToggleChip
+              on={v.volumeKind === "checks"}
+              label="Monthly check volume"
+              onClick={() =>
+                patch((a) => ({ ...a, volume: { ...a.volume, volumeKind: "checks" } }))
+              }
+            />
+          </div>
+          {v.volumeKind === "gmv" ? (
+            <Field label="GMV band">
+              <NativeSelect
+                value={v.gmvBand}
+                onChange={(val) =>
+                  patch((a) => ({ ...a, volume: { ...a.volume, gmvBand: val as GmvBand } }))
+                }
+              >
+                <option value="under_50k">Under $50k / mo</option>
+                <option value="50_150k">$50–150k / mo</option>
+                <option value="150_400k">$150–400k / mo</option>
+                <option value="400k_plus">$400k+ / mo</option>
+              </NativeSelect>
+            </Field>
+          ) : (
+            <Field label="Est. monthly checks">
+              <Input
+                type="number"
+                min={0}
+                value={v.monthlyChecks}
+                onChange={(e) =>
+                  patch((a) => ({
+                    ...a,
+                    volume: { ...a.volume, monthlyChecks: Number(e.target.value) || 0 },
+                  }))
+                }
+              />
+            </Field>
+          )}
+          <div className="grid gap-3 sm:grid-cols-2">
+            <Field label="Peak concurrent devices" hint="POS, KDS, handhelds">
+              <Input
+                type="number"
+                min={1}
+                value={v.peakDevices}
+                onChange={(e) =>
+                  patch((a) => ({
+                    ...a,
+                    volume: { ...a.volume, peakDevices: Number(e.target.value) || 1 },
+                  }))
+                }
+              />
+            </Field>
+            <Field label="Staff seats" hint="Managers + servers + BOH logins">
+              <Input
+                type="number"
+                min={1}
+                value={v.staffSeats}
+                onChange={(e) =>
+                  patch((a) => ({
+                    ...a,
+                    volume: { ...a.volume, staffSeats: Number(e.target.value) || 1 },
+                  }))
+                }
+              />
+            </Field>
+          </div>
+        </div>
+      )}
+
+      {step === 6 && (
+        <div className="space-y-3">
+          <ToggleChip
+            on={answers.payments.zestPaymentsAck}
+            label="Guest cards process on Summex Payments only"
+            hint="Required. Multi-operator locations use the host MID. Gift cards stay first-party."
+            onClick={() =>
+              patch((a) => ({
+                ...a,
+                payments: {
+                  ...a.payments,
+                  zestPaymentsAck: !a.payments.zestPaymentsAck,
+                },
+              }))
+            }
           />
-          <Toggle
+          <ToggleChip
+            on={answers.payments.tips}
             label="Tips"
-            on={answers.tips}
-            set={(v) => patch({ tips: v })}
+            onClick={() =>
+              patch((a) => ({
+                ...a,
+                payments: { ...a.payments, tips: !a.payments.tips },
+              }))
+            }
           />
-          <Toggle
+          <ToggleChip
+            on={answers.payments.splitTenders}
             label="Split tenders"
-            on={answers.splitTenders}
-            set={(v) => patch({ splitTenders: v })}
+            onClick={() =>
+              patch((a) => ({
+                ...a,
+                payments: { ...a.payments, splitTenders: !a.payments.splitTenders },
+              }))
+            }
           />
-          <Toggle
+          <ToggleChip
+            on={answers.payments.roomCharge}
             label="Room charge"
-            on={answers.roomCharge}
-            set={(v) => patch({ roomCharge: v })}
+            onClick={() =>
+              patch((a) => ({
+                ...a,
+                payments: { ...a.payments, roomCharge: !a.payments.roomCharge },
+              }))
+            }
           />
-          <Field label="Operator payout frequency (informational)">
-            <select
-              className="mt-1 flex h-11 w-full rounded-lg border border-border bg-surface px-3 text-sm"
-              value={answers.operatorPayoutFrequency}
-              onChange={(e) =>
-                patch({
-                  operatorPayoutFrequency: e.target
-                    .value as IntakeAnswers["operatorPayoutFrequency"],
-                })
+          <Field label="Operator payout frequency" hint="Informational for the quote">
+            <NativeSelect
+              value={answers.payments.payoutFrequency}
+              onChange={(val) =>
+                patch((a) => ({
+                  ...a,
+                  payments: {
+                    ...a.payments,
+                    payoutFrequency: val as IntakeAnswers["payments"]["payoutFrequency"],
+                  },
+                }))
               }
             >
               <option value="daily">Daily</option>
               <option value="weekly">Weekly</option>
               <option value="biweekly">Biweekly</option>
-            </select>
+            </NativeSelect>
           </Field>
-        </Section>
+        </div>
       )}
 
-      {step === 6 && (
-        <Section title="Timeline & review">
+      {step === 7 && (
+        <div className="space-y-3">
           <Field label="Target go-live">
             <Input
               type="date"
-              value={answers.goLiveDate}
-              onChange={(e) => patch({ goLiveDate: e.target.value })}
+              value={answers.timeline.goLiveDate}
+              onChange={(e) =>
+                patch((a) => ({
+                  ...a,
+                  timeline: { ...a.timeline, goLiveDate: e.target.value },
+                }))
+              }
             />
           </Field>
           <Field label="Notes">
             <textarea
-              className="mt-1 min-h-24 w-full rounded-lg border border-border bg-surface px-3 py-2 text-sm"
-              value={answers.notes}
-              onChange={(e) => patch({ notes: e.target.value })}
+              value={answers.timeline.notes}
+              onChange={(e) =>
+                patch((a) => ({
+                  ...a,
+                  timeline: { ...a.timeline, notes: e.target.value },
+                }))
+              }
+              className="min-h-28 w-full rounded-lg border border-border bg-surface px-3 py-2 text-sm"
+              placeholder="Anything we should price around or flag for onboarding."
             />
           </Field>
-          <p className="text-sm text-muted-foreground">
-            {answers.company.legalName || "Company"} ·{" "}
-            {answers.locationsNow} location(s) · {answers.operatingModel.replaceAll("_", " ")}
-          </p>
-          {quoteReady && quote && <QuoteCard quote={quote} />}
-        </Section>
+        </div>
       )}
-
-      <div className="flex justify-between gap-2">
-        <Button
-          type="button"
-          variant="outline"
-          disabled={step === 0 || busy}
-          onClick={() => setStep((s) => s - 1)}
-        >
-          Back
-        </Button>
-        {step < STEPS.length - 1 ? (
-          <Button type="button" disabled={busy} onClick={() => void next()}>
-            {busy ? "Saving…" : "Continue"}
-          </Button>
-        ) : (
-          <Button type="button" disabled={busy} onClick={() => void submit()}>
-            {busy ? "Generating…" : "Generate quote"}
-          </Button>
-        )}
-      </div>
-    </div>
-  );
-}
-
-function Section({
-  title,
-  children,
-}: {
-  title: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <section className="space-y-3 rounded-2xl border border-border bg-surface p-4">
-      <h2 className="text-sm font-semibold">{title}</h2>
-      {children}
-    </section>
-  );
-}
-
-function Field({
-  label,
-  children,
-}: {
-  label: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <label className="block text-xs text-muted-foreground">
-      {label}
-      <div className="mt-1">{children}</div>
-    </label>
-  );
-}
-
-function Toggle({
-  label,
-  on,
-  set,
-}: {
-  label: string;
-  on: boolean;
-  set: (v: boolean) => void;
-}) {
-  return (
-    <label className="flex min-h-11 items-center gap-2 text-sm">
-      <input
-        type="checkbox"
-        className="h-4 w-4"
-        checked={on}
-        onChange={(e) => set(e.target.checked)}
-      />
-      {label}
-    </label>
+    </WizardChrome>
   );
 }

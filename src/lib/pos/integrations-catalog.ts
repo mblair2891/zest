@@ -34,7 +34,7 @@ export interface IntegrationDef {
   bidirectional: boolean;
   monthlyFeeCents: number;
   popular?: boolean;
-  /** Built into Zest — cannot disconnect or swap for another card processor */
+  /** Built into Summex — cannot disconnect or swap for another card processor */
   platformOwned?: boolean;
 }
 
@@ -67,7 +67,7 @@ export const RETIRED_PAYMENT_PROVIDERS = [
   "toast_pay",
 ] as const;
 
-export const ZEST_PAYMENTS_ID = "zest_payments";
+export const SUMMEX_PAYMENTS_ID = "summex_payments";
 
 function d(
   id: string,
@@ -94,13 +94,13 @@ function d(
 }
 
 export const INTEGRATION_CATALOG: IntegrationDef[] = [
-  // Payments — Zest is the only processor
+  // Payments — Summex is the only processor
   d(
-    ZEST_PAYMENTS_ID,
-    "Zest Payments",
-    "Zest",
+    SUMMEX_PAYMENTS_ID,
+    "Summex Payments",
+    "Summex",
     "payments",
-    "Card-present, online, kiosk, and tap-to-pay. Every location processes through Zest — there is no Stripe, Square, or Clover to connect.",
+    "Card-present, online, kiosk, and tap-to-pay. Every location processes through Summex — there is no Stripe, Square, or Clover to connect.",
     [
       "Card present + tap",
       "Online checkout",
@@ -113,28 +113,28 @@ export const INTEGRATION_CATALOG: IntegrationDef[] = [
   ),
   d(
     "plaid",
-    "Zest bank link",
-    "Zest Payments",
+    "Summex bank link",
+    "Summex Payments",
     "payments",
-    "Verify the house deposit account. Used only as Zest payout rails — not a separate processor.",
+    "Verify the house deposit account. Used only as Summex payout rails — not a separate processor.",
     ["Account verify", "Balance", "Identity"],
     { bidirectional: false, platformOwned: true },
   ),
   d(
     "dwolla",
-    "Zest ACH payouts",
-    "Zest Payments",
+    "Summex ACH payouts",
+    "Summex Payments",
     "payments",
-    "ACH credits to vendor bank accounts when a settlement period closes. Internal to Zest Payments.",
+    "ACH credits to vendor bank accounts when a settlement period closes. Internal to Summex Payments.",
     ["ACH credit", "Mass pay", "Transfers"],
     { authType: "api_key", platformOwned: true },
   ),
   d(
     "tipalti",
-    "Zest tax forms",
-    "Zest Payments",
+    "Summex tax forms",
+    "Summex Payments",
     "payments",
-    "W-9 / W-8 collection for hall vendors. Runs inside Zest payouts.",
+    "W-9 / W-8 collection for hall vendors. Runs inside Summex payouts.",
     ["W-9/W-8", "1099", "Vendor tax"],
     { authType: "api_key", platformOwned: true },
   ),
@@ -171,7 +171,7 @@ export const INTEGRATION_CATALOG: IntegrationDef[] = [
 
   // Reservations
   d("opentable", "OpenTable", "OpenTable", "reservations", "Reservation book and covers into the host stand.", ["Book", "Covers", "No-shows"], { popular: true }),
-  d("resy", "Resy", "Resy", "reservations", "Reservation sync and deposit holds via Zest Payments.", ["Book", "Deposits"]),
+  d("resy", "Resy", "Resy", "reservations", "Reservation sync and deposit holds via Summex Payments.", ["Book", "Deposits"]),
   d("tock", "Tock", "Tock", "reservations", "Ticketed experiences and prepaid covers.", ["Tickets", "Deposits"]),
   d("yelp_waitlist", "Yelp Waitlist", "Yelp", "reservations", "Waitlist widget into the host stand.", ["Waitlist", "SMS"]),
   d("sevenrooms", "SevenRooms", "SevenRooms", "reservations", "CRM-led reservations and auto-tags.", ["CRM", "Book"]),
@@ -185,7 +185,7 @@ export const INTEGRATION_CATALOG: IntegrationDef[] = [
   d("birdeye", "Birdeye", "Birdeye", "marketing", "Review aggregation and reputation.", ["Reviews"]),
 
   // Loyalty
-  d("punchh", "Punchh", "PAR", "loyalty", "Enterprise loyalty bridge — balances stay in Zest when using native gift.", ["Points", "Offers"]),
+  d("punchh", "Punchh", "PAR", "loyalty", "Enterprise loyalty bridge — balances stay in Summex when using native gift.", ["Points", "Offers"]),
   d("thanx", "Thanx", "Thanx", "loyalty", "Campaign loyalty partner for groups that already use Thanx.", ["Offers"]),
   d("paytronix", "Paytronix", "Paytronix", "loyalty", "Legacy loyalty import / coexistence.", ["Points"]),
 
@@ -219,18 +219,18 @@ export const INTEGRATION_CATALOG: IntegrationDef[] = [
   d("cloudbeds", "Cloudbeds", "Cloudbeds", "hotel", "Inn / boutique hotel room charge.", ["Folio"]),
 
   // Compliance
-  d("state_tax", "Zest sales tax", "Zest", "compliance", "Rate tables and filing export. Avalara-class engine, branded as Zest.", ["Rates", "Nexus"], { authType: "partner", platformOwned: true }),
-  d("haccp_log", "HACCP logs", "Zest", "compliance", "Walk-in temps and cooling logs.", ["Temps"], { authType: "partner", platformOwned: true }),
+  d("state_tax", "Summex sales tax", "Summex", "compliance", "Rate tables and filing export. Avalara-class engine, branded as Summex.", ["Rates", "Nexus"], { authType: "partner", platformOwned: true }),
+  d("haccp_log", "HACCP logs", "Summex", "compliance", "Walk-in temps and cooling logs.", ["Temps"], { authType: "partner", platformOwned: true }),
 
   // Devtools
-  d("webhook_out", "Outbound webhooks", "Zest", "devtools", "Push order, payment, bump, and settlement events.", ["Webhooks"], { authType: "webhook", popular: true, platformOwned: true }),
-  d("public_api", "Zest REST API", "Zest", "devtools", "Partner keys for custom apps and vendor portals.", ["REST", "Keys"], { authType: "api_key", platformOwned: true }),
-  d("zapier", "Zapier", "Zapier", "devtools", "No-code automations from Zest events.", ["Zaps"], { authType: "oauth", bidirectional: false }),
-  d("make", "Make", "Make", "devtools", "Scenario automations from Zest webhooks.", ["Scenarios"], { authType: "api_key", bidirectional: false }),
+  d("webhook_out", "Outbound webhooks", "Summex", "devtools", "Push order, payment, bump, and settlement events.", ["Webhooks"], { authType: "webhook", popular: true, platformOwned: true }),
+  d("public_api", "Summex REST API", "Summex", "devtools", "Partner keys for custom apps and vendor portals.", ["REST", "Keys"], { authType: "api_key", platformOwned: true }),
+  d("zapier", "Zapier", "Zapier", "devtools", "No-code automations from Summex events.", ["Zaps"], { authType: "oauth", bidirectional: false }),
+  d("make", "Make", "Make", "devtools", "Scenario automations from Summex webhooks.", ["Scenarios"], { authType: "api_key", bidirectional: false }),
 ];
 
 export const CATEGORY_LABELS: Record<IntegrationCategory, string> = {
-  payments: "Zest Payments",
+  payments: "Summex Payments",
   delivery: "Delivery & marketplaces",
   accounting: "Accounting & AP",
   payroll: "Payroll",
@@ -248,17 +248,35 @@ export const CATEGORY_LABELS: Record<IntegrationCategory, string> = {
   devtools: "API & automation",
 };
 
-/** Built-in processor only — Zest Payments is always on. */
+/** Default connected set for a convincing demo */
 export function defaultConnections(): ConnectedIntegration[] {
   const now = Date.now();
-  const ids = [ZEST_PAYMENTS_ID];
+  const ids = [
+    SUMMEX_PAYMENTS_ID,
+    "plaid",
+    "dwolla",
+    "doordash",
+    "ubereats",
+    "quickbooks",
+    "adp",
+    "seven_shifts",
+    "opentable",
+    "klaviyo",
+    "twilio",
+    "state_tax",
+    "deliverect",
+    "webhook_out",
+    "public_api",
+    "star_micronics",
+    "epson",
+  ];
   return ids.map((defId) => ({
     defId,
     status: "connected" as const,
-    connectedAt: now,
-    lastSyncAt: now,
+    connectedAt: now - 86400000 * 14,
+    lastSyncAt: now - 3600000,
     config: {},
-    eventsSynced: 0,
+    eventsSynced: 100 + Math.floor(Math.random() * 9000),
   }));
 }
 
@@ -267,10 +285,10 @@ export function migrateConnections(
 ): ConnectedIntegration[] {
   const retired = new Set<string>(RETIRED_PAYMENT_PROVIDERS);
   const next = connections.filter((c) => !retired.has(c.defId));
-  if (!next.some((c) => c.defId === ZEST_PAYMENTS_ID)) {
+  if (!next.some((c) => c.defId === SUMMEX_PAYMENTS_ID)) {
     const now = Date.now();
     next.unshift({
-      defId: ZEST_PAYMENTS_ID,
+      defId: SUMMEX_PAYMENTS_ID,
       status: "connected",
       connectedAt: now,
       lastSyncAt: now,

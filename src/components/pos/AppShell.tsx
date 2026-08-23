@@ -52,6 +52,7 @@ import {
   previewLabel,
 } from "@/lib/pos/package-access";
 import { cn, formatTime } from "@/lib/utils";
+import { isDevDemoClient } from "@/lib/saas/flags";
 import { FloorView } from "./FloorView";
 import { OrderView } from "./OrderView";
 import { KitchenView } from "./KitchenView";
@@ -77,7 +78,7 @@ import { DrinkAiView } from "./DrinkAiView";
 import { MarketingHubView } from "./MarketingHubView";
 import { UserManualOverlay } from "./UserManualView";
 import { WhatsNewDialog } from "./WhatsNewDialog";
-import { venueById, posAllowsView } from "@/lib/pos/entities";
+import { venueById } from "@/lib/pos/entities";
 import { useManualStore } from "@/lib/pos/manual-store";
 import {
   NotificationBell,
@@ -176,28 +177,23 @@ export function AppShell() {
   );
   const saasLocations = useSaasStore((s) => s.locations);
   const saasActiveId = useSaasStore((s) => s.activeLocationId);
-  const activeSaasLocationId = usePosStore((s) => s.activeSaasLocationId);
   const packagePreview = useDevPreviewStore((s) => s.packagePreview);
   const setPackagePreview = useDevPreviewStore((s) => s.setPackagePreview);
 
   const packageLocationId =
-    activeSaasLocationId ||
-    saasActiveId ||
-    venue?.locationId ||
-    saasLocations[0]?.id ||
-    "";
+    saasActiveId || venue?.locationId || saasLocations[0]?.id || "";
   const enabledPackages =
     saasLocations.find((l) => l.id === packageLocationId)?.enabledPackages ??
     [];
 
   const pkgOk = (v: PosView) =>
-    allowsView(v, enabledPackages, packagePreview);
+    allowsView(v, enabledPackages, isDevDemoClient() ? packagePreview : "location");
 
-  const hostMulti = Boolean(
-    settings.hostMultiOperator || settings.multiTenantHallMode,
-  );
-  const viewOk = (v: PosView) =>
-    posAllowsView(activeEntityId, v, { hostMultiOperator: hostMulti });
+  const viewOk = (v: PosView) => {
+    const ent = venueById(activeEntityId);
+    if (!ent) return true;
+    return !ent.hiddenViews.includes(v);
+  };
 
   const navItems = useMemo(
     () =>
@@ -208,7 +204,7 @@ export function AppShell() {
           pkgOk(n.id),
       ),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [emp?.id, role, activeEntityId, packageLocationId, packagePreview, enabledPackages.join(","), hostMulti],
+    [emp?.id, role, activeEntityId, packageLocationId, packagePreview, enabledPackages.join(",")],
   );
 
   const mobileItems = useMemo(() => {
@@ -306,6 +302,7 @@ export function AppShell() {
 
         <div className="ml-auto flex min-w-0 shrink items-center gap-1 sm:gap-2">
           {/* Dev: package preview lens */}
+          {isDevDemoClient() && (
           <label className="hidden min-w-0 flex-col items-stretch sm:flex">
             <span className="text-[9px] font-semibold uppercase tracking-wide text-muted-foreground">
               Package preview
@@ -327,6 +324,7 @@ export function AppShell() {
               ))}
             </select>
           </label>
+          )}
           {/* Package preview is desktop-only so Help stays visible on phones */}
 
           {emp && (

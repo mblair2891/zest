@@ -127,7 +127,7 @@ function OnlineOrderingPage() {
           <div className="min-w-0">
             <h1 className="text-lg font-semibold">Order online</h1>
             <p className="truncate text-xs text-muted-foreground">
-              {loc?.name ?? "Zest"} · ahead · pickup · curbside · delivery
+              {loc?.name ?? "Summex"} · ahead · pickup · curbside · delivery
             </p>
           </div>
           <div className="flex shrink-0 gap-3 text-xs">

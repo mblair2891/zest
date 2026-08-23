@@ -1,4 +1,4 @@
-/** Zest hardware policy + certified device catalog (with vendor sources) */
+/** Summex hardware policy + certified device catalog (with vendor sources) */
 
 export type HardwareAcquireMode = "byod" | "buy" | "finance" | "subscribe";
 
@@ -36,7 +36,7 @@ export interface HardwareKit {
 }
 
 export const HARDWARE_POLICY = {
-  title: "Zest Hardware Policy",
+  title: "Summex Hardware Policy",
   version: "1.0",
   summary:
     "BYOD-first software. Certified payments & printers. Optional buy, 24–36 mo partner finance, or device subscription — never a mystery 48-month ISO trap.",
@@ -46,7 +46,7 @@ export const HARDWARE_POLICY = {
     "Internet is only the uplink. If the ISP dies, house WiFi still carries POS, KDS, printers, and handhelds to the hub.",
     "Card-present payments use certified Stripe Terminal (or successor) only — not random NFC dongles.",
     "Receipt/kitchen printers: Star Micronics or Epson network models on the certified list.",
-    "Four acquire paths: BYOD · Buy kit · Partner finance (24–36 mo, $1 buyout target) · Device subscription (Zest-owned fleet).",
+    "Four acquire paths: BYOD · Buy kit · Partner finance (24–36 mo, $1 buyout target) · Device subscription (Summex-owned fleet).",
     "Hardware contracts are separate from software SaaS and from card processing rates.",
     "No long ‘free terminal’ deals that bury cost in opaque processing without a written comparison.",
     "Food halls: vendors BYOD handhelds; host may buy/subscribe shared KDS, network, and settlement station.",
@@ -57,28 +57,28 @@ export const HARDWARE_POLICY = {
       id: "byod" as HardwareAcquireMode,
       name: "Bring your own (BYOD)",
       customerPays: "Devices they already own",
-      zestRole: "Certify OS/browser; enroll in Devices",
+      summexRole: "Certify OS/browser; enroll in Devices",
       when: "Default for software, halls vendors, pods",
     },
     {
       id: "buy" as HardwareAcquireMode,
-      name: "Buy Zest Ready Kit",
+      name: "Buy Summex Ready Kit",
       customerPays: "Invoice once (kit COGS + margin)",
-      zestRole: "Ship pre-imaged certified gear",
+      summexRole: "Ship pre-imaged certified gear",
       when: "Stable restaurants/hall hosts with cash",
     },
     {
       id: "finance" as HardwareAcquireMode,
       name: "Partner finance",
       customerPays: "24–36 monthly payments; target $1 buyout",
-      zestRole: "Originate; lessor funds & underwrites",
+      summexRole: "Originate; lessor funds & underwrites",
       when: "Want kit without CapEx; pass credit check",
     },
     {
       id: "subscribe" as HardwareAcquireMode,
       name: "Device subscription",
       customerPays: "$/device/mo; swap on failure",
-      zestRole: "Own fleet, RMA, refresh ~36 mo",
+      summexRole: "Own fleet, RMA, refresh ~36 mo",
       when: "Always-on KDS/counters; managed sites",
     },
   ],
@@ -87,7 +87,7 @@ export const HARDWARE_POLICY = {
     "Disclose total of payments vs buy price on every quote.",
     "Personal guarantee and ETF stated on finance docs (partner paper).",
     "Hardware paper survives software cancel only if finance is with third party — say so upfront.",
-    "Zest does not book leases on balance sheet in v1; partner lessor does.",
+    "Summex does not book leases on balance sheet in v1; partner lessor does.",
   ],
   supportMatrix: [
     { item: "iPad / Android tablet POS", support: "BYOD supported (see min OS)" },
@@ -180,21 +180,21 @@ export const HARDWARE_SKUS: HardwareSku[] = [
   },
   {
     id: "sku_stripe_m2",
-    name: "Zest Reader handheld",
+    name: "Summex Reader handheld",
     category: "payments",
     role: "Mobile / Bluetooth card reader",
     listPriceUsd: 59,
     subscribeMonthlyUsd: 12,
     byodOk: false,
     required: true,
-    notes: "Chip, tap, swipe. White-label reader issued with Zest Payments.",
+    notes: "Chip, tap, swipe. White-label reader issued with Summex Payments.",
     sources: [
-      { label: "Zest Payments hardware", url: "https://zest.example/hardware" },
+      { label: "Summex Payments hardware", url: "https://summex.example/hardware" },
     ],
   },
   {
     id: "sku_stripe_s700",
-    name: "Zest Reader counter",
+    name: "Summex Reader counter",
     category: "payments",
     role: "Smart countertop / handheld reader",
     listPriceUsd: 299,
@@ -203,12 +203,12 @@ export const HARDWARE_SKUS: HardwareSku[] = [
     required: true,
     notes: "Tap/chip/swipe on house Wi‑Fi. Primary counter reader.",
     sources: [
-      { label: "Zest Payments hardware", url: "https://zest.example/hardware" },
+      { label: "Summex Payments hardware", url: "https://summex.example/hardware" },
     ],
   },
   {
     id: "sku_stripe_s710",
-    name: "Zest Reader cellular",
+    name: "Summex Reader cellular",
     category: "payments",
     role: "Cellular-capable smart reader",
     listPriceUsd: 299,
@@ -216,7 +216,7 @@ export const HARDWARE_SKUS: HardwareSku[] = [
     byodOk: false,
     notes: "For pods / pop-ups where Wi‑Fi is weak.",
     sources: [
-      { label: "Zest Payments hardware", url: "https://zest.example/hardware" },
+      { label: "Summex Payments hardware", url: "https://summex.example/hardware" },
     ],
   },
   {

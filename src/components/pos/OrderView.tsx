@@ -499,6 +499,17 @@ export function OrderView() {
 
         <div className="min-h-0 flex-1 overflow-y-auto p-2">
           <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 xl:grid-cols-4">
+            {menuItems.length === 0 && (
+              <div className="rounded-2xl border border-dashed border-border bg-surface p-5 text-center">
+                <p className="text-sm font-semibold">No menu yet</p>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  Open Menu to add categories and items. Nothing was seeded.
+                </p>
+                <Button size="sm" className="mt-3" onClick={() => setView("menu")}>
+                  Go to menu
+                </Button>
+              </div>
+            )}
             {items.map((item) => {
               const vendor = vendors.find((v) => v.id === item.vendorId);
               const price =

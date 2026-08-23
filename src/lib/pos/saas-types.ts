@@ -1,4 +1,4 @@
-/** SaaS + truck pod domain for Zest platform */
+/** SaaS + truck pod domain for Summex platform */
 
 export type LocationMode =
   | "restaurant"
@@ -10,15 +10,13 @@ export type LocationMode =
   | "cafe"
   | "qsr";
 
-/** How a location sells and settles — independent of venue type. */
-export type OperatingModel = "single_operator" | "host_multi_operator";
-
-/** Where an operator's tickets land. "both" follows each item/category station. */
-export type OperatorStationType = "bar" | "kitchen" | "both";
-
-export type LocationCreatedBy = "seed" | "ui";
-
-export type OrgPlan = "starter" | "growth" | "enterprise";
+export type OrgPlan =
+  | "starter"
+  | "growth"
+  | "enterprise"
+  | "full_service"
+  | "food_hall"
+  | "platform_internal";
 
 export interface PlatformCompany {
   name: string;
@@ -48,7 +46,17 @@ export interface SaasMembership {
   orgId: string;
   name: string;
   email: string;
-  role: "owner" | "admin" | "ops" | "accountant" | "support";
+  role:
+    | "owner"
+    | "manager"
+    | "cashier"
+    | "staff"
+    | "vendor"
+    | "platform_admin"
+    | "admin"
+    | "ops"
+    | "accountant"
+    | "support";
 }
 
 export interface SaasLocation {
@@ -65,52 +73,6 @@ export interface SaasLocation {
   /** For pods: max simultaneous pads occupied */
   padCapacity?: number;
   powerAmpsTotal?: number;
-  /**
-   * Guest-facing brand printed on checks and card statements.
-   * For host + multiple operators this is the HOST, never an operator name.
-   */
-  hostBrandName?: string;
-  operatingModel?: OperatingModel;
-  /** "ui" = created in the SaaS console. */
-  createdBy?: LocationCreatedBy;
-}
-
-export interface LocationOperator {
-  id: string;
-  orgId: string;
-  locationId: string;
-  name: string;
-  shortName: string;
-  /** Placeholder payout destination (no live ACH). */
-  payoutAccountLabel: string;
-  payoutLast4: string;
-  stationType: OperatorStationType;
-  ownedCategoryIds: string[];
-  ownedItemIds: string[];
-  color: string;
-  active: boolean;
-}
-
-export interface LocationMenuCategory {
-  id: string;
-  locationId: string;
-  name: string;
-  sort: number;
-  color: string;
-  station: "bar" | "kitchen";
-}
-
-export interface LocationMenuItem {
-  id: string;
-  locationId: string;
-  categoryId: string;
-  name: string;
-  priceCents: number;
-  description?: string;
-  course: "drink" | "appetizer" | "entree" | "dessert" | "side" | "other";
-  /** Defaults to the category station when omitted */
-  station?: "bar" | "kitchen";
-  available: boolean;
 }
 
 export interface TruckPad {

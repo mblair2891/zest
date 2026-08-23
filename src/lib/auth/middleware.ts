@@ -44,3 +44,21 @@ export const authMiddleware = createMiddleware({ type: "function" })
     const userId = await requireUserId(context.bearerToken);
     return next({ context: { userId } });
   });
+
+/**
+ * Same bearer/cookie resolution as `authMiddleware`, but signed-out callers get
+ * `userId: null` instead of 401. Use for public intake that *may* attach to a
+ * session when one exists.
+ */
+export const optionalAuthMiddleware = createMiddleware({ type: "function" })
+  .client(async ({ next }) => {
+    const { getBearerToken } = await import("./client");
+    return next({ sendContext: { bearerToken: getBearerToken() ?? undefined } });
+  })
+  .server(async ({ next, context }) => {
+    const { getSessionUser } = await import("./verify.server");
+    const user = await getSessionUser(context.bearerToken);
+    return next({
+      context: { userId: user?.id ?? null, email: user?.email ?? null },
+    });
+  });

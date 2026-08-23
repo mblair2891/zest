@@ -10,22 +10,43 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as AppRouteImport } from './routes/app'
 import { Route as AppsRouteImport } from './routes/apps'
+import { Route as BlogRouteImport } from './routes/blog'
 import { Route as ChangePasswordRouteImport } from './routes/change-password'
+import { Route as DashboardRouteImport } from './routes/dashboard'
+import { Route as FeaturesRouteImport } from './routes/features'
+import { Route as GetPricingRouteImport } from './routes/get-pricing'
 import { Route as KioskRouteImport } from './routes/kiosk'
 import { Route as LoginRouteImport } from './routes/login'
+import { Route as OnboardingRouteImport } from './routes/onboarding'
 import { Route as OnlineRouteImport } from './routes/online'
+import { Route as PipelineRouteImport } from './routes/pipeline'
 import { Route as PlatformRouteImport } from './routes/platform'
+import { Route as PricingRouteImport } from './routes/pricing'
+import { Route as SignupRouteImport } from './routes/signup'
+import { Route as ApiHealthRouteImport } from './routes/api/health'
+import { Route as BlogSlugRouteImport } from './routes/blog.$slug'
+import { Route as InviteTokenRouteImport } from './routes/invite.$token'
 import { Route as OrderOrderIdRouteImport } from './routes/order.$orderId'
-import { Route as PosLocationIdRouteImport } from './routes/pos.$locationId'
+import { Route as QuoteTokenRouteImport } from './routes/quote.$token'
+import { Route as SetupTokenRouteImport } from './routes/setup.$token'
 import { Route as SiteSlugRouteImport } from './routes/site.$slug'
+import { Route as SitesSlugRouteImport } from './routes/sites.$slug'
 import { Route as TableLabelRouteImport } from './routes/table.$label'
 import { Route as VenueTypeRouteImport } from './routes/venue.$type'
 import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
+import { Route as ApiBillingWebhookRouteImport } from './routes/api/billing/webhook'
+import { Route as AppVenueTypeRouteImport } from './routes/app.venue.$type'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AppRoute = AppRouteImport.update({
+  id: '/app',
+  path: '/app',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AppsRoute = AppsRouteImport.update({
@@ -33,9 +54,29 @@ const AppsRoute = AppsRouteImport.update({
   path: '/apps',
   getParentRoute: () => rootRouteImport,
 } as any)
+const BlogRoute = BlogRouteImport.update({
+  id: '/blog',
+  path: '/blog',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ChangePasswordRoute = ChangePasswordRouteImport.update({
   id: '/change-password',
   path: '/change-password',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DashboardRoute = DashboardRouteImport.update({
+  id: '/dashboard',
+  path: '/dashboard',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const FeaturesRoute = FeaturesRouteImport.update({
+  id: '/features',
+  path: '/features',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const GetPricingRoute = GetPricingRouteImport.update({
+  id: '/get-pricing',
+  path: '/get-pricing',
   getParentRoute: () => rootRouteImport,
 } as any)
 const KioskRoute = KioskRouteImport.update({
@@ -48,9 +89,19 @@ const LoginRoute = LoginRouteImport.update({
   path: '/login',
   getParentRoute: () => rootRouteImport,
 } as any)
+const OnboardingRoute = OnboardingRouteImport.update({
+  id: '/onboarding',
+  path: '/onboarding',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const OnlineRoute = OnlineRouteImport.update({
   id: '/online',
   path: '/online',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PipelineRoute = PipelineRouteImport.update({
+  id: '/pipeline',
+  path: '/pipeline',
   getParentRoute: () => rootRouteImport,
 } as any)
 const PlatformRoute = PlatformRouteImport.update({
@@ -58,19 +109,54 @@ const PlatformRoute = PlatformRouteImport.update({
   path: '/platform',
   getParentRoute: () => rootRouteImport,
 } as any)
+const PricingRoute = PricingRouteImport.update({
+  id: '/pricing',
+  path: '/pricing',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SignupRoute = SignupRouteImport.update({
+  id: '/signup',
+  path: '/signup',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiHealthRoute = ApiHealthRouteImport.update({
+  id: '/api/health',
+  path: '/api/health',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const BlogSlugRoute = BlogSlugRouteImport.update({
+  id: '/$slug',
+  path: '/$slug',
+  getParentRoute: () => BlogRoute,
+} as any)
+const InviteTokenRoute = InviteTokenRouteImport.update({
+  id: '/invite/$token',
+  path: '/invite/$token',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const OrderOrderIdRoute = OrderOrderIdRouteImport.update({
   id: '/order/$orderId',
   path: '/order/$orderId',
   getParentRoute: () => rootRouteImport,
 } as any)
-const PosLocationIdRoute = PosLocationIdRouteImport.update({
-  id: '/pos/$locationId',
-  path: '/pos/$locationId',
+const QuoteTokenRoute = QuoteTokenRouteImport.update({
+  id: '/quote/$token',
+  path: '/quote/$token',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SetupTokenRoute = SetupTokenRouteImport.update({
+  id: '/setup/$token',
+  path: '/setup/$token',
   getParentRoute: () => rootRouteImport,
 } as any)
 const SiteSlugRoute = SiteSlugRouteImport.update({
   id: '/site/$slug',
   path: '/site/$slug',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SitesSlugRoute = SitesSlugRouteImport.update({
+  id: '/sites/$slug',
+  path: '/sites/$slug',
   getParentRoute: () => rootRouteImport,
 } as any)
 const TableLabelRoute = TableLabelRouteImport.update({
@@ -88,115 +174,235 @@ const ApiAuthSplatRoute = ApiAuthSplatRouteImport.update({
   path: '/api/auth/$',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiBillingWebhookRoute = ApiBillingWebhookRouteImport.update({
+  id: '/api/billing/webhook',
+  path: '/api/billing/webhook',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AppVenueTypeRoute = AppVenueTypeRouteImport.update({
+  id: '/venue/$type',
+  path: '/venue/$type',
+  getParentRoute: () => AppRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/app': typeof AppRouteWithChildren
   '/apps': typeof AppsRoute
+  '/blog': typeof BlogRouteWithChildren
   '/change-password': typeof ChangePasswordRoute
+  '/dashboard': typeof DashboardRoute
+  '/features': typeof FeaturesRoute
+  '/get-pricing': typeof GetPricingRoute
   '/kiosk': typeof KioskRoute
   '/login': typeof LoginRoute
+  '/onboarding': typeof OnboardingRoute
   '/online': typeof OnlineRoute
+  '/pipeline': typeof PipelineRoute
   '/platform': typeof PlatformRoute
+  '/pricing': typeof PricingRoute
+  '/signup': typeof SignupRoute
+  '/api/health': typeof ApiHealthRoute
+  '/blog/$slug': typeof BlogSlugRoute
+  '/invite/$token': typeof InviteTokenRoute
   '/order/$orderId': typeof OrderOrderIdRoute
-  '/pos/$locationId': typeof PosLocationIdRoute
+  '/quote/$token': typeof QuoteTokenRoute
+  '/setup/$token': typeof SetupTokenRoute
   '/site/$slug': typeof SiteSlugRoute
+  '/sites/$slug': typeof SitesSlugRoute
   '/table/$label': typeof TableLabelRoute
   '/venue/$type': typeof VenueTypeRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
+  '/api/billing/webhook': typeof ApiBillingWebhookRoute
+  '/app/venue/$type': typeof AppVenueTypeRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/app': typeof AppRouteWithChildren
   '/apps': typeof AppsRoute
+  '/blog': typeof BlogRouteWithChildren
   '/change-password': typeof ChangePasswordRoute
+  '/dashboard': typeof DashboardRoute
+  '/features': typeof FeaturesRoute
+  '/get-pricing': typeof GetPricingRoute
   '/kiosk': typeof KioskRoute
   '/login': typeof LoginRoute
+  '/onboarding': typeof OnboardingRoute
   '/online': typeof OnlineRoute
+  '/pipeline': typeof PipelineRoute
   '/platform': typeof PlatformRoute
+  '/pricing': typeof PricingRoute
+  '/signup': typeof SignupRoute
+  '/api/health': typeof ApiHealthRoute
+  '/blog/$slug': typeof BlogSlugRoute
+  '/invite/$token': typeof InviteTokenRoute
   '/order/$orderId': typeof OrderOrderIdRoute
-  '/pos/$locationId': typeof PosLocationIdRoute
+  '/quote/$token': typeof QuoteTokenRoute
+  '/setup/$token': typeof SetupTokenRoute
   '/site/$slug': typeof SiteSlugRoute
+  '/sites/$slug': typeof SitesSlugRoute
   '/table/$label': typeof TableLabelRoute
   '/venue/$type': typeof VenueTypeRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
+  '/api/billing/webhook': typeof ApiBillingWebhookRoute
+  '/app/venue/$type': typeof AppVenueTypeRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/app': typeof AppRouteWithChildren
   '/apps': typeof AppsRoute
+  '/blog': typeof BlogRouteWithChildren
   '/change-password': typeof ChangePasswordRoute
+  '/dashboard': typeof DashboardRoute
+  '/features': typeof FeaturesRoute
+  '/get-pricing': typeof GetPricingRoute
   '/kiosk': typeof KioskRoute
   '/login': typeof LoginRoute
+  '/onboarding': typeof OnboardingRoute
   '/online': typeof OnlineRoute
+  '/pipeline': typeof PipelineRoute
   '/platform': typeof PlatformRoute
+  '/pricing': typeof PricingRoute
+  '/signup': typeof SignupRoute
+  '/api/health': typeof ApiHealthRoute
+  '/blog/$slug': typeof BlogSlugRoute
+  '/invite/$token': typeof InviteTokenRoute
   '/order/$orderId': typeof OrderOrderIdRoute
-  '/pos/$locationId': typeof PosLocationIdRoute
+  '/quote/$token': typeof QuoteTokenRoute
+  '/setup/$token': typeof SetupTokenRoute
   '/site/$slug': typeof SiteSlugRoute
+  '/sites/$slug': typeof SitesSlugRoute
   '/table/$label': typeof TableLabelRoute
   '/venue/$type': typeof VenueTypeRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
+  '/api/billing/webhook': typeof ApiBillingWebhookRoute
+  '/app/venue/$type': typeof AppVenueTypeRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/app'
     | '/apps'
+    | '/blog'
     | '/change-password'
+    | '/dashboard'
+    | '/features'
+    | '/get-pricing'
     | '/kiosk'
     | '/login'
+    | '/onboarding'
     | '/online'
+    | '/pipeline'
     | '/platform'
+    | '/pricing'
+    | '/signup'
+    | '/api/health'
+    | '/blog/$slug'
+    | '/invite/$token'
     | '/order/$orderId'
-    | '/pos/$locationId'
+    | '/quote/$token'
+    | '/setup/$token'
     | '/site/$slug'
+    | '/sites/$slug'
     | '/table/$label'
     | '/venue/$type'
     | '/api/auth/$'
+    | '/api/billing/webhook'
+    | '/app/venue/$type'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/app'
     | '/apps'
+    | '/blog'
     | '/change-password'
+    | '/dashboard'
+    | '/features'
+    | '/get-pricing'
     | '/kiosk'
     | '/login'
+    | '/onboarding'
     | '/online'
+    | '/pipeline'
     | '/platform'
+    | '/pricing'
+    | '/signup'
+    | '/api/health'
+    | '/blog/$slug'
+    | '/invite/$token'
     | '/order/$orderId'
-    | '/pos/$locationId'
+    | '/quote/$token'
+    | '/setup/$token'
     | '/site/$slug'
+    | '/sites/$slug'
     | '/table/$label'
     | '/venue/$type'
     | '/api/auth/$'
+    | '/api/billing/webhook'
+    | '/app/venue/$type'
   id:
     | '__root__'
     | '/'
+    | '/app'
     | '/apps'
+    | '/blog'
     | '/change-password'
+    | '/dashboard'
+    | '/features'
+    | '/get-pricing'
     | '/kiosk'
     | '/login'
+    | '/onboarding'
     | '/online'
+    | '/pipeline'
     | '/platform'
+    | '/pricing'
+    | '/signup'
+    | '/api/health'
+    | '/blog/$slug'
+    | '/invite/$token'
     | '/order/$orderId'
-    | '/pos/$locationId'
+    | '/quote/$token'
+    | '/setup/$token'
     | '/site/$slug'
+    | '/sites/$slug'
     | '/table/$label'
     | '/venue/$type'
     | '/api/auth/$'
+    | '/api/billing/webhook'
+    | '/app/venue/$type'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  AppRoute: typeof AppRouteWithChildren
   AppsRoute: typeof AppsRoute
+  BlogRoute: typeof BlogRouteWithChildren
   ChangePasswordRoute: typeof ChangePasswordRoute
+  DashboardRoute: typeof DashboardRoute
+  FeaturesRoute: typeof FeaturesRoute
+  GetPricingRoute: typeof GetPricingRoute
   KioskRoute: typeof KioskRoute
   LoginRoute: typeof LoginRoute
+  OnboardingRoute: typeof OnboardingRoute
   OnlineRoute: typeof OnlineRoute
+  PipelineRoute: typeof PipelineRoute
   PlatformRoute: typeof PlatformRoute
+  PricingRoute: typeof PricingRoute
+  SignupRoute: typeof SignupRoute
+  ApiHealthRoute: typeof ApiHealthRoute
+  InviteTokenRoute: typeof InviteTokenRoute
   OrderOrderIdRoute: typeof OrderOrderIdRoute
-  PosLocationIdRoute: typeof PosLocationIdRoute
+  QuoteTokenRoute: typeof QuoteTokenRoute
+  SetupTokenRoute: typeof SetupTokenRoute
   SiteSlugRoute: typeof SiteSlugRoute
+  SitesSlugRoute: typeof SitesSlugRoute
   TableLabelRoute: typeof TableLabelRoute
   VenueTypeRoute: typeof VenueTypeRoute
   ApiAuthSplatRoute: typeof ApiAuthSplatRoute
+  ApiBillingWebhookRoute: typeof ApiBillingWebhookRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -208,6 +414,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/app': {
+      id: '/app'
+      path: '/app'
+      fullPath: '/app'
+      preLoaderRoute: typeof AppRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/apps': {
       id: '/apps'
       path: '/apps'
@@ -215,11 +428,39 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/blog': {
+      id: '/blog'
+      path: '/blog'
+      fullPath: '/blog'
+      preLoaderRoute: typeof BlogRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/change-password': {
       id: '/change-password'
       path: '/change-password'
       fullPath: '/change-password'
       preLoaderRoute: typeof ChangePasswordRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/dashboard': {
+      id: '/dashboard'
+      path: '/dashboard'
+      fullPath: '/dashboard'
+      preLoaderRoute: typeof DashboardRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/features': {
+      id: '/features'
+      path: '/features'
+      fullPath: '/features'
+      preLoaderRoute: typeof FeaturesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/get-pricing': {
+      id: '/get-pricing'
+      path: '/get-pricing'
+      fullPath: '/get-pricing'
+      preLoaderRoute: typeof GetPricingRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/kiosk': {
@@ -236,11 +477,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof LoginRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/onboarding': {
+      id: '/onboarding'
+      path: '/onboarding'
+      fullPath: '/onboarding'
+      preLoaderRoute: typeof OnboardingRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/online': {
       id: '/online'
       path: '/online'
       fullPath: '/online'
       preLoaderRoute: typeof OnlineRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/pipeline': {
+      id: '/pipeline'
+      path: '/pipeline'
+      fullPath: '/pipeline'
+      preLoaderRoute: typeof PipelineRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/platform': {
@@ -250,6 +505,41 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof PlatformRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/pricing': {
+      id: '/pricing'
+      path: '/pricing'
+      fullPath: '/pricing'
+      preLoaderRoute: typeof PricingRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/signup': {
+      id: '/signup'
+      path: '/signup'
+      fullPath: '/signup'
+      preLoaderRoute: typeof SignupRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/health': {
+      id: '/api/health'
+      path: '/api/health'
+      fullPath: '/api/health'
+      preLoaderRoute: typeof ApiHealthRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/blog/$slug': {
+      id: '/blog/$slug'
+      path: '/$slug'
+      fullPath: '/blog/$slug'
+      preLoaderRoute: typeof BlogSlugRouteImport
+      parentRoute: typeof BlogRoute
+    }
+    '/invite/$token': {
+      id: '/invite/$token'
+      path: '/invite/$token'
+      fullPath: '/invite/$token'
+      preLoaderRoute: typeof InviteTokenRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/order/$orderId': {
       id: '/order/$orderId'
       path: '/order/$orderId'
@@ -257,11 +547,18 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof OrderOrderIdRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/pos/$locationId': {
-      id: '/pos/$locationId'
-      path: '/pos/$locationId'
-      fullPath: '/pos/$locationId'
-      preLoaderRoute: typeof PosLocationIdRouteImport
+    '/quote/$token': {
+      id: '/quote/$token'
+      path: '/quote/$token'
+      fullPath: '/quote/$token'
+      preLoaderRoute: typeof QuoteTokenRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/setup/$token': {
+      id: '/setup/$token'
+      path: '/setup/$token'
+      fullPath: '/setup/$token'
+      preLoaderRoute: typeof SetupTokenRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/site/$slug': {
@@ -269,6 +566,13 @@ declare module '@tanstack/react-router' {
       path: '/site/$slug'
       fullPath: '/site/$slug'
       preLoaderRoute: typeof SiteSlugRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/sites/$slug': {
+      id: '/sites/$slug'
+      path: '/sites/$slug'
+      fullPath: '/sites/$slug'
+      preLoaderRoute: typeof SitesSlugRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/table/$label': {
@@ -292,23 +596,71 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiAuthSplatRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/billing/webhook': {
+      id: '/api/billing/webhook'
+      path: '/api/billing/webhook'
+      fullPath: '/api/billing/webhook'
+      preLoaderRoute: typeof ApiBillingWebhookRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/app/venue/$type': {
+      id: '/app/venue/$type'
+      path: '/venue/$type'
+      fullPath: '/app/venue/$type'
+      preLoaderRoute: typeof AppVenueTypeRouteImport
+      parentRoute: typeof AppRoute
+    }
   }
 }
 
+interface AppRouteChildren {
+  AppVenueTypeRoute: typeof AppVenueTypeRoute
+}
+
+const AppRouteChildren: AppRouteChildren = {
+  AppVenueTypeRoute: AppVenueTypeRoute,
+}
+
+const AppRouteWithChildren = AppRoute._addFileChildren(AppRouteChildren)
+
+interface BlogRouteChildren {
+  BlogSlugRoute: typeof BlogSlugRoute
+}
+
+const BlogRouteChildren: BlogRouteChildren = {
+  BlogSlugRoute: BlogSlugRoute,
+}
+
+const BlogRouteWithChildren = BlogRoute._addFileChildren(BlogRouteChildren)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  AppRoute: AppRouteWithChildren,
   AppsRoute: AppsRoute,
+  BlogRoute: BlogRouteWithChildren,
   ChangePasswordRoute: ChangePasswordRoute,
+  DashboardRoute: DashboardRoute,
+  FeaturesRoute: FeaturesRoute,
+  GetPricingRoute: GetPricingRoute,
   KioskRoute: KioskRoute,
   LoginRoute: LoginRoute,
+  OnboardingRoute: OnboardingRoute,
   OnlineRoute: OnlineRoute,
+  PipelineRoute: PipelineRoute,
   PlatformRoute: PlatformRoute,
+  PricingRoute: PricingRoute,
+  SignupRoute: SignupRoute,
+  ApiHealthRoute: ApiHealthRoute,
+  InviteTokenRoute: InviteTokenRoute,
   OrderOrderIdRoute: OrderOrderIdRoute,
-  PosLocationIdRoute: PosLocationIdRoute,
+  QuoteTokenRoute: QuoteTokenRoute,
+  SetupTokenRoute: SetupTokenRoute,
   SiteSlugRoute: SiteSlugRoute,
+  SitesSlugRoute: SitesSlugRoute,
   TableLabelRoute: TableLabelRoute,
   VenueTypeRoute: VenueTypeRoute,
   ApiAuthSplatRoute: ApiAuthSplatRoute,
+  ApiBillingWebhookRoute: ApiBillingWebhookRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

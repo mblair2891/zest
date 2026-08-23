@@ -1,35 +1,56 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Link } from "@tanstack/react-router";
-import { LogOut } from "lucide-react";
+import { LogOut, Rocket, ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useSaasStore } from "@/lib/pos/saas-store";
 import { SaasConsoleView } from "./SaasConsoleView";
-import { SessionGate } from "./SessionGate";
-import { useCurrentUser } from "@/lib/auth/use-current-user";
+import { isDevDemoClient } from "@/lib/saas/flags";
+import { useCurrentUserState } from "@/lib/auth/use-current-user";
 import { signOut } from "@/lib/auth/client";
+import {
+  entitlementsFn,
+  getSessionContextFn,
+  listLocationsFn,
+  listMembersFn,
+  listMyProspectsFn,
+  listTenantsFn,
+  setActiveContextFn,
+} from "@/lib/saas/api";
+import { ProspectPipelineView } from "@/components/saas/ProspectPipelineView";
+import { prospectResumePath } from "@/lib/saas/prospect-resume";
+import { saveTenantPosContext } from "@/lib/saas/pos-context";
+import { appHref } from "@/lib/platform/hosts";
+import type { SaasLocation, SaasMembership, SaasOrganization } from "@/lib/pos/saas-types";
+import { defaultPackagesForMode } from "@/lib/pos/packages";
+import type { PackageId } from "@/lib/pos/packages";
 
 /**
  * Fully separate SaaS / multi-tenant platform surface at `/platform`.
- * Not mixed into restaurant POS navigation.
+ * Production path: Better Auth + server tenancy.
+ * DEV_DEMO=1 keeps the local quick-login console for fleet tests.
  */
 export function PlatformApp() {
-  return (
-    <SessionGate>
-      <PlatformAppInner />
-    </SessionGate>
-  );
-}
-
-function PlatformAppInner() {
   const [ready, setReady] = useState(false);
-  const user = useCurrentUser();
+  const [bootError, setBootError] = useState<string | null>(null);
+  const [needsOnboarding, setNeedsOnboarding] = useState(false);
+  const [tenants, setTenants] = useState<
+    Awaited<ReturnType<typeof listTenantsFn>> | null
+  >(null);
+  const platformAuthed = useSaasStore((s) => s.platformAuthed);
+  const platformAdminName = useSaasStore((s) => s.platformAdminName);
+  const platformAdminRole = useSaasStore((s) => s.platformAdminRole);
+  const loginPlatform = useSaasStore((s) => s.loginPlatform);
+  const logoutPlatform = useSaasStore((s) => s.logoutPlatform);
+  const hydrateTenant = useSaasStore((s) => s.hydrateTenant);
   const platform = useSaasStore((s) => s.platform);
   const org = useSaasStore((s) => s.org);
-  const orgs = useSaasStore((s) => s.orgs);
-  const activeLocationId = useSaasStore((s) => s.activeLocationId);
-  const locations = useSaasStore((s) => s.locations);
-  const activeLoc = locations.find((l) => l.id === activeLocationId);
+  const loc = useSaasStore(
+    (s) => s.locations.find((l) => l.id === s.activeLocationId) ?? s.locations[0],
+  );
+  const { user, isPending } = useCurrentUserState();
+  const demo = isDevDemoClient();
+  const [surface, setSurface] = useState<"console" | "pipeline">("console");
 
   useEffect(() => {
     const done = () => setReady(true);
@@ -43,13 +64,250 @@ function PlatformAppInner() {
     };
   }, []);
 
-  if (!ready) {
+  const hydrateFromServer = useCallback(async () => {
+    setBootError(null);
+    const ctx = await getSessionContextFn();
+    const orgList = ctx.orgs.filter((o) => o.status === "active" || ctx.isPlatformAdmin);
+    if (ctx.isPlatformAdmin) {
+      try {
+        const list = await listTenantsFn();
+        setTenants(list);
+        if (list.length === 0) setSurface("pipeline");
+      } catch {
+        setTenants([]);
+        setSurface("pipeline");
+      }
+    } else {
+      setTenants(null);
+    }
+    const current = orgList[0];
+    if (!current) {
+      setNeedsOnboarding(!ctx.isPlatformAdmin);
+      if (ctx.isPlatformAdmin) {
+        hydrateTenant({
+          org: {
+            id: "platform",
+            name: "Summex Platform",
+            legalName: "Summex Platform",
+            plan: "platform_internal",
+            seats: 9999,
+            locationsIncluded: 999,
+            merchantsIncluded: 999,
+            billingEmail: ctx.user.email ?? "",
+            status: "active",
+            createdAt: Date.now(),
+          },
+          members: [],
+          locations: [],
+          adminName: ctx.user.name ?? ctx.user.email ?? "Platform admin",
+          adminRole: "platform_admin",
+        });
+      }
+      return;
+    }
+    setNeedsOnboarding(false);
+    const [members, locations, ent] = await Promise.all([
+      listMembersFn({ data: { orgId: current.id } }),
+      listLocationsFn({ data: { orgId: current.id } }),
+      entitlementsFn({ data: { orgId: current.id } }),
+    ]);
+    const saasOrg: SaasOrganization = {
+      id: current.id,
+      name: current.name,
+      legalName: current.name,
+      plan: (current.planId ?? "starter") as SaasOrganization["plan"],
+      seats: ent.maxSeats,
+      locationsIncluded: ent.maxLocations,
+      merchantsIncluded: 40,
+      billingEmail: ctx.user.email ?? "",
+      status:
+        current.status === "suspended"
+          ? "cancelled"
+          : current.planStatus === "trialing"
+            ? "trial"
+            : current.planStatus === "past_due"
+              ? "past_due"
+              : current.planStatus === "canceled"
+                ? "cancelled"
+                : "active",
+      createdAt: Date.parse(current.createdAt) || Date.now(),
+    };
+    const saasMembers: SaasMembership[] = members.map((m) => ({
+      id: m.id,
+      orgId: m.orgId ?? current.id,
+      name: m.name ?? m.email ?? "Member",
+      email: m.email ?? "",
+      role: m.role,
+    }));
+    const saasLocs: SaasLocation[] = locations.map((l) => ({
+      id: l.id,
+      orgId: l.orgId,
+      name: l.name,
+      code: l.id.slice(-6).toUpperCase(),
+      mode: l.venueType,
+      address: "",
+      timezone: l.timezone,
+      open: l.status === "active",
+      enabledPackages:
+        l.enabledPackages.length > 0
+          ? l.enabledPackages
+          : (ent.features as PackageId[]).length
+            ? (ent.features as PackageId[])
+            : defaultPackagesForMode(l.venueType),
+    }));
+    hydrateTenant({
+      org: saasOrg,
+      members: saasMembers,
+      locations: saasLocs,
+      adminName: ctx.user.name ?? ctx.user.email ?? "Owner",
+      adminRole: ctx.isPlatformAdmin ? "platform_admin" : current.role,
+    });
+  }, [hydrateTenant]);
+
+  useEffect(() => {
+    if (!ready || isPending) return;
+    if (!user) return;
+    void hydrateFromServer().catch((e) => {
+      setBootError(e instanceof Error ? e.message : "Could not load workspace");
+    });
+  }, [ready, isPending, user, hydrateFromServer]);
+
+  if (!ready || isPending) {
     return (
       <div className="flex min-h-[100dvh] items-center justify-center bg-bg pt-[var(--grok-banner-h,0px)] text-muted-foreground">
-        Loading Zest Platform…
+        Loading Summex Platform…
       </div>
     );
   }
+
+  if (!user && !platformAuthed) {
+    return (
+      <div className="flex min-h-[100dvh] flex-col bg-bg pt-[var(--grok-banner-h,0px)]">
+        <div className="mx-auto flex w-full max-w-lg flex-1 flex-col justify-center px-4 py-10">
+          <div className="mb-8 text-center">
+            <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-primary text-2xl font-black text-primary-foreground shadow-lg shadow-primary/25">
+              Z
+            </div>
+            <h1 className="text-3xl font-black tracking-tighter">
+              Summex Platform
+            </h1>
+            <p className="mt-1.5 text-sm font-medium text-primary">
+              SaaS control plane
+            </p>
+            <p className="mt-2 text-sm text-muted-foreground">
+              Multi-tenant orgs, locations, packages, devices & billing — separate
+              from restaurant POS.
+            </p>
+          </div>
+
+          <div className="space-y-2">
+            <Link
+              to="/login"
+              className="flex w-full min-h-14 items-center justify-center rounded-2xl bg-primary px-4 py-3.5 text-sm font-semibold text-primary-foreground"
+            >
+              Sign in
+            </Link>
+            <Link
+              to="/signup"
+              className="flex w-full min-h-14 items-center justify-center rounded-2xl border border-border bg-surface px-4 py-3.5 text-sm font-semibold"
+            >
+              Create an account
+            </Link>
+          </div>
+
+          {demo && (
+            <div className="mt-8 space-y-2">
+              <p className="text-center text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+                DEV_DEMO quick login · not a production identity
+              </p>
+              {(
+                [
+                  {
+                    name: "Morgan Blair",
+                    role: "owner" as const,
+                    blurb: "Org, billing & every location",
+                  },
+                  {
+                    name: "Alex Rivera",
+                    role: "manager" as const,
+                    blurb: "Users, packages & devices",
+                  },
+                  {
+                    name: "Sam Okonkwo",
+                    role: "staff" as const,
+                    blurb: "Locations, pods & onboarding",
+                  },
+                ] as const
+              ).map((s) => (
+                <button
+                  key={s.role}
+                  type="button"
+                  onClick={() => loginPlatform(s.name, s.role)}
+                  className="flex w-full min-h-14 items-start gap-3 rounded-2xl border border-border bg-surface px-4 py-3.5 text-left transition hover:border-primary/50"
+                >
+                  <Rocket className="mt-0.5 h-5 w-5 shrink-0 text-primary" />
+                  <span>
+                    <span className="block text-sm font-semibold">{s.name}</span>
+                    <span className="mt-0.5 inline-flex rounded-md bg-primary/15 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-primary">
+                      {s.role}
+                    </span>
+                    <span className="mt-1 block text-[11px] text-muted-foreground">
+                      {s.blurb}
+                    </span>
+                  </span>
+                </button>
+              ))}
+            </div>
+          )}
+
+          <Link
+            to="/"
+            className="mt-8 flex items-center justify-center gap-2 text-sm text-muted-foreground underline-offset-2 hover:text-foreground hover:underline"
+          >
+            <ArrowLeft className="h-4 w-4" />
+            Home
+          </Link>
+        </div>
+      </div>
+    );
+  }
+
+  if (user && needsOnboarding) {
+    void listMyProspectsFn()
+      .then((rows) => {
+        window.location.replace(prospectResumePath(rows));
+      })
+      .catch(() => {
+        window.location.replace("/get-pricing");
+      });
+    return (
+      <div className="grid min-h-[100dvh] place-items-center bg-bg text-sm text-muted-foreground">
+        Opening your application…
+      </div>
+    );
+  }
+
+  const openPos = () => {
+    if (!loc) {
+      window.location.href = "/";
+      return;
+    }
+    saveTenantPosContext({
+      orgId: org.id,
+      locationId: loc.id,
+      venueType: loc.mode,
+      locationName: loc.name,
+      orgName: org.name,
+      ownerName: platformAdminName || user?.displayName || "Owner",
+    });
+    void setActiveContextFn({
+      data: { orgId: org.id, locationId: loc.id },
+    }).finally(() => {
+      window.location.href = appHref(
+        `/venue/${loc.mode}?loc=${encodeURIComponent(loc.id)}`,
+      );
+    });
+  };
 
   return (
     <div className="flex h-[100dvh] flex-col bg-bg pt-[var(--grok-banner-h,0px)] text-foreground">
@@ -62,42 +320,114 @@ function PlatformAppInner() {
             {platform.name} Platform
           </p>
           <p className="truncate text-[11px] text-muted-foreground">
-            SaaS · {org.id ? `${org.name} · ${org.plan} plan` : "no organization"}{" "}
-            · {orgs.length} org{orgs.length === 1 ? "" : "s"}
+            SaaS · {org.name} · {org.plan} plan
           </p>
         </div>
-        <Badge variant="info">Platform admin</Badge>
+        <Badge variant="info">Platform</Badge>
         <div className="hidden text-right sm:block">
-          <p className="text-sm font-medium leading-tight">
-            {user?.displayName ?? "Admin"}
+          <p className="text-sm font-medium leading-tight">{platformAdminName}</p>
+          <p className="text-[11px] capitalize text-primary">
+            {platformAdminRole || "SaaS"} access
           </p>
-          <p className="text-[11px] text-primary">Control plane</p>
         </div>
-        {activeLoc ? (
-          <Link to="/pos/$locationId" params={{ locationId: activeLoc.id }}>
-            <Button size="sm" variant="outline">
-              Open POS
-            </Button>
-          </Link>
-        ) : (
-          <Link to="/">
-            <Button size="sm" variant="outline">
-              Home
-            </Button>
-          </Link>
+        {tenants && (
+          <Button
+            size="sm"
+            variant={surface === "pipeline" ? "default" : "outline"}
+            onClick={() => setSurface(surface === "pipeline" ? "console" : "pipeline")}
+          >
+            {surface === "pipeline" ? "Console" : "Pipeline"}
+          </Button>
         )}
+        <Button size="sm" variant="outline" onClick={openPos} disabled={!loc}>
+          Open POS
+        </Button>
         <Button
           size="icon"
           variant="ghost"
-          aria-label="Sign out"
-          onClick={() => void signOut("/login")}
+          aria-label="Sign out of platform"
+          onClick={() => {
+            logoutPlatform();
+            if (user) void signOut("/login");
+          }}
         >
           <LogOut className="h-4 w-4" />
         </Button>
       </header>
+      {bootError && (
+        <p className="border-b border-danger/40 bg-danger/10 px-3 py-2 text-sm text-danger">
+          {bootError}
+        </p>
+      )}
+      {tenants && (
+        <PlatformTenantsBar tenants={tenants} onChanged={() => void hydrateFromServer()} />
+      )}
       <main className="min-h-0 flex-1 overflow-hidden">
-        <SaasConsoleView />
+        {surface === "pipeline" && tenants ? <ProspectPipelineView /> : <SaasConsoleView />}
       </main>
+    </div>
+  );
+}
+
+function PlatformTenantsBar({
+  tenants,
+  onChanged,
+}: {
+  tenants: Awaited<ReturnType<typeof listTenantsFn>>;
+  onChanged: () => void;
+}) {
+  return (
+    <div className="border-b border-border bg-surface-2 px-3 py-2">
+      <p className="mb-1 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+        Platform admin · tenants
+      </p>
+      <ul className="flex max-h-28 flex-wrap gap-2 overflow-y-auto">
+        {tenants.map((t) => (
+          <li
+            key={t.id}
+            className="flex items-center gap-2 rounded-xl border border-border bg-surface px-2 py-1 text-xs"
+          >
+            <span className="font-medium">{t.name}</span>
+            <span className="text-muted-foreground">
+              {t.planId ?? "—"} · {t.status}
+            </span>
+            <Button
+              size="sm"
+              variant="outline"
+              className="h-7 px-2 text-[11px]"
+              onClick={() => {
+                void import("@/lib/saas/api").then(({ setTenantPlanFn }) =>
+                  setTenantPlanFn({
+                    data: { orgId: t.id, planId: t.planId === "starter" ? "full_service" : "starter" },
+                  }).then(onChanged),
+                );
+              }}
+            >
+              Cycle plan
+            </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              className="h-7 px-2 text-[11px]"
+              onClick={() => {
+                void import("@/lib/saas/api").then(({ setOrgStatusFn }) =>
+                  setOrgStatusFn({
+                    data: {
+                      orgId: t.id,
+                      status: t.status === "suspended" ? "active" : "suspended",
+                    },
+                  }).then(onChanged),
+                );
+              }}
+            >
+              {t.status === "suspended" ? "Activate" : "Suspend"}
+            </Button>
+          </li>
+        ))}
+        {tenants.length === 0 && (
+          <li className="text-xs text-muted-foreground">No tenants yet</li>
+        )}
+      </ul>
     </div>
   );
 }

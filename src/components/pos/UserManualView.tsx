@@ -159,14 +159,14 @@ export function UserManualOverlay() {
       className="fixed inset-0 z-[60] flex flex-col bg-bg pt-[var(--grok-banner-h,0px)] text-foreground"
       role="dialog"
       aria-modal="true"
-      aria-label="Zest user manual"
+      aria-label="Summex user manual"
     >
       <header className="flex h-14 shrink-0 items-center gap-2 border-b border-border bg-surface px-3 sm:px-4">
         <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary text-sm font-black text-primary-foreground">
           <BookOpen className="h-4 w-4" />
         </div>
         <div className="min-w-0 flex-1">
-          <p className="truncate text-sm font-semibold">Zest user manual</p>
+          <p className="truncate text-sm font-semibold">Summex user manual</p>
           <p className="truncate text-[11px] text-muted-foreground">
             {MANUAL_EDITION} · v{MANUAL_VERSION} · signed in as{" "}
             <span className="font-medium text-primary">{roleLabel(role)}</span>
@@ -315,7 +315,7 @@ export function UserManualOverlay() {
               )}
 
               <footer className="border-t border-border pt-4 text-[11px] text-muted-foreground">
-                Zest Hospitality OS · Interactive manual · Update chapters when
+                Summex Hospitality OS · Interactive manual · Update chapters when
                 features ship so staff always have current docs.
               </footer>
             </article>

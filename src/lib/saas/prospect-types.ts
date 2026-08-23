@@ -1,371 +1,303 @@
-import type { LocationMode, OperatingModel, OperatorStationType } from "@/lib/pos/saas-types";
+import type { LocationMode } from "@/lib/pos/saas-types";
 import type { PackageId } from "@/lib/pos/packages";
+import type { MembershipRole, PlanSlug } from "./types";
 
-export type ProspectStatus =
-  | "prospect"
-  | "quoted"
-  | "accepted"
-  | "contracted"
-  | "onboarding"
-  | "live"
-  | "churned"
-  | "rejected";
-
-export const STATUS_ORDER: ProspectStatus[] = [
+export const PROSPECT_STATUSES = [
   "prospect",
   "quoted",
   "accepted",
   "contracted",
   "onboarding",
   "live",
-];
+  "churned",
+  "rejected",
+] as const;
 
-export const LOCATION_TYPE_OPTIONS: { id: LocationMode; label: string }[] = [
-  { id: "restaurant", label: "Full-service restaurant" },
-  { id: "bar_lounge", label: "Bar / lounge" },
-  { id: "food_hall", label: "Food hall / host + operators" },
-  { id: "truck_pod", label: "Truck pod" },
-  { id: "ghost_kitchen", label: "Ghost kitchen" },
-  { id: "cafe", label: "Café" },
-  { id: "qsr", label: "QSR" },
-  { id: "catering", label: "Catering" },
-];
+export type ProspectStatus = (typeof PROSPECT_STATUSES)[number];
 
-export interface CompanyIntake {
+export const GMV_BANDS = ["under_50k", "50_150k", "150_400k", "400k_plus"] as const;
+export type GmvBand = (typeof GMV_BANDS)[number];
+
+export const PAYOUT_FREQUENCIES = ["daily", "weekly", "biweekly"] as const;
+export type PayoutFrequency = (typeof PAYOUT_FREQUENCIES)[number];
+
+export const OPERATING_MODELS = ["single", "host_operators", "mixed"] as const;
+export type OperatingModel = (typeof OPERATING_MODELS)[number];
+
+export const LOCATION_OPERATING_MODELS = ["single", "host_operators"] as const;
+export type LocationOperatingModel = (typeof LOCATION_OPERATING_MODELS)[number];
+
+export const MENU_MODES = ["empty", "categories", "csv_later"] as const;
+export type MenuMode = (typeof MENU_MODES)[number];
+
+export const ONBOARDING_STEP_IDS = [
+  "org",
+  "locations",
+  "operators",
+  "floor",
+  "menu",
+  "devices",
+  "invites",
+  "settlement",
+  "checklist",
+] as const;
+export type OnboardingStepId = (typeof ONBOARDING_STEP_IDS)[number];
+
+export const STATION_TYPES = ["bar", "kitchen", "both"] as const;
+export type StationType = (typeof STATION_TYPES)[number];
+
+export type IntakeCompany = {
   legalName: string;
   dba: string;
   billingEmail: string;
   phone: string;
   hqAddress: string;
   taxId: string;
-}
+};
 
-export interface LocationTypeCount {
-  mode: LocationMode;
-  count: number;
-}
-
-export interface IntakeAnswers {
-  company: CompanyIntake;
+export type IntakePortfolio = {
   locationsNow: number;
   locations12mo: number;
-  locationTypes: LocationTypeCount[];
-  operatingModel: OperatingModel;
+  typeCounts: Partial<Record<LocationMode, number>>;
+};
+
+export type IntakeOperating = {
+  model: OperatingModel;
   operatorsPerLocation: number;
-  oneHostCheck: boolean;
+  guestPaysHostCheck: boolean;
   barKitchenSplit: boolean;
-  channels: {
-    floor: boolean;
-    counter: boolean;
-    kiosk: boolean;
-    online: boolean;
-    kds: boolean;
-    inventory: boolean;
-    labor: boolean;
-    giftCards: boolean;
-    crm: boolean;
-    marketing: boolean;
-    vendorPortal: boolean;
-    multiLocationReporting: boolean;
-  };
+};
+
+export type IntakeModules = {
+  tableService: boolean;
+  counterQsr: boolean;
+  kiosk: boolean;
+  online: boolean;
+  kds: boolean;
+  inventory: boolean;
+  labor: boolean;
+  giftCards: boolean;
+  crm: boolean;
+  marketing: boolean;
+  vendorPortal: boolean;
+  multiLocationReporting: boolean;
+};
+
+export type IntakeVolume = {
+  volumeKind: "checks" | "gmv";
   monthlyChecks: number;
-  gmvBand: "under_50k" | "50_150k" | "150_500k" | "500k_plus";
+  gmvBand: GmvBand;
   peakDevices: number;
   staffSeats: number;
+};
+
+export type IntakePayments = {
   zestPaymentsAck: boolean;
   tips: boolean;
   splitTenders: boolean;
   roomCharge: boolean;
-  operatorPayoutFrequency: "daily" | "weekly" | "biweekly";
+  payoutFrequency: PayoutFrequency;
+};
+
+export type IntakeTimeline = {
   goLiveDate: string;
   notes: string;
-}
+};
+
+export type IntakeAnswers = {
+  company: IntakeCompany;
+  portfolio: IntakePortfolio;
+  operating: IntakeOperating;
+  modules: IntakeModules;
+  volume: IntakeVolume;
+  payments: IntakePayments;
+  timeline: IntakeTimeline;
+};
 
 export type QuoteLineKind =
+  | "plan"
+  | "package"
   | "location"
-  | "module"
   | "operator"
-  | "seats"
-  | "devices"
+  | "seat_pack"
+  | "device_pack"
+  | "gmv_scale"
   | "onboarding"
   | "custom";
 
-export interface QuoteLine {
+export type QuoteLineItem = {
   id: string;
   kind: QuoteLineKind;
   label: string;
-  quantity: number;
+  qty: number;
   unitCents: number;
-  amountCents: number;
+  totalCents: number;
   packageId?: PackageId;
-  recurring: "monthly" | "one_time";
-}
+  note?: string;
+  oneTime?: boolean;
+};
 
-export interface QuoteSnapshot {
-  issuedAt: number;
-  currency: "USD";
-  lines: QuoteLine[];
+export type QuoteSnapshot = {
+  version: 1;
+  rulesVersion: number;
+  generatedAt: string;
+  planSlug: PlanSlug;
+  maxLocations: number;
+  maxSeats: number;
+  lineItems: QuoteLineItem[];
   monthlyCents: number;
   annualCents: number;
-  oneTimeCents: number;
-  assumptions: string;
-  packageIds: PackageId[];
-  rulesVersion: string;
-}
-
-export interface PricingRules {
-  version: string;
-  locationMonthlyCents: Record<LocationMode, number>;
-  operatorMonthlyCents: number;
-  includedSeats: number;
-  seatPackSize: number;
-  seatPackCents: number;
-  includedDevices: number;
-  devicePackSize: number;
-  devicePackCents: number;
   onboardingFeeCents: number;
-  annualDiscount: number;
-}
+  assumptions: string[];
+  packages: PackageId[];
+};
 
-export interface OnboardingLocationDraft {
+export type PricingRules = {
+  planMonthlyCents: Partial<Record<PlanSlug, number>>;
+  perLocationFeeCents: number;
+  perOperatorFeeCents: number;
+  seatPackSize: number;
+  seatPackFeeCents: number;
+  devicePackSize: number;
+  devicePackFeeCents: number;
+  annualDiscountPercent: number;
+  onboardingFeeCents: Partial<Record<PlanSlug, number>>;
+  gmvScaleCents: Partial<Record<GmvBand, number>>;
+  basePlanByLocationType: Partial<Record<LocationMode, PlanSlug>>;
+};
+
+export type OperatorDraft = {
+  legalName: string;
+  dba: string;
+  contactEmail: string;
+  contactPhone: string;
+  stationTypes: StationType[];
+  payoutBankLast4: string;
+  payoutRoutingToken: string;
+};
+
+export type OnboardingLocationDraft = {
+  clientId: string;
+  serverId?: string;
   name: string;
   address: string;
   timezone: string;
-  mode: LocationMode;
+  venueType: LocationMode;
   hostBrandName: string;
-  operatingModel: OperatingModel;
-  operators: {
-    name: string;
-    legalName: string;
-    contact: string;
-    stationType: OperatorStationType;
-    payoutAccountLabel: string;
-    payoutLast4: string;
-  }[];
+  operatingModel: LocationOperatingModel;
+  operators: OperatorDraft[];
   tableCount: number;
   sectionNames: string;
-  menuStart: "empty" | "template_categories";
-}
-
-export interface OnboardingPayload {
-  orgName: string;
-  legalName: string;
-  billingEmail: string;
-  locations: OnboardingLocationDraft[];
+  floorLater: boolean;
+  menuMode: MenuMode;
   devices: { pos: number; kds: number; handhelds: number };
-  invites: { email: string; name: string; role: "owner" | "manager" | "staff" | "vendor" }[];
-  settlementPeriod: "daily" | "weekly" | "biweekly" | "monthly";
-  hostCutPercent: number;
-  acknowledgements: {
-    training: boolean;
-    hardware: boolean;
-    zestPayments: boolean;
+};
+
+export type OnboardingInviteDraft = {
+  email: string;
+  role: Exclude<MembershipRole, "platform_admin">;
+};
+
+export type OnboardingPayload = {
+  org: IntakeCompany;
+  locations: OnboardingLocationDraft[];
+  invites: OnboardingInviteDraft[];
+  settlement: {
+    periodType: "daily" | "weekly" | "biweekly" | "monthly";
+    hostCutPercent: number;
   };
-}
+  checklist: {
+    trainingAck: boolean;
+    hardwareAck: boolean;
+    paymentsAck: boolean;
+  };
+};
 
-export interface OnboardingSteps {
-  org: boolean;
-  locations: boolean;
-  operators: boolean;
-  floor: boolean;
-  menu: boolean;
-  devices: boolean;
-  invites: boolean;
-  settlement: boolean;
-  checklist: boolean;
-}
+export type OnboardingStepState = {
+  done: boolean;
+  completedAt?: string;
+};
 
-export interface AuditEvent {
+export type OperatorRecord = {
   id: string;
-  prospectId: string | null;
-  actor: string;
-  action: string;
-  detail: string;
-  createdAt: number;
-}
+  orgId: string;
+  locationId: string | null;
+  legalName: string;
+  dba: string | null;
+  contactEmail: string | null;
+  contactPhone: string | null;
+  stationTypes: StationType[];
+  payoutBankLast4: string | null;
+  payoutRoutingToken: string | null;
+};
 
-export interface ProspectRecord {
+export type ProspectRecord = {
   id: string;
-  publicToken: string;
   status: ProspectStatus;
-  billingEmail: string;
-  company: CompanyIntake;
+  ownerUserId: string | null;
+  email: string | null;
   answers: IntakeAnswers;
   quote: QuoteSnapshot | null;
-  quoteIssuedAt: number | null;
-  acceptedAt: number | null;
-  contractedAt: number | null;
-  contractSignedBy: string;
-  orgId: string;
-  createdAt: number;
-  updatedAt: number;
-  onboarding: {
-    id: string;
-    steps: OnboardingSteps;
-    payload: OnboardingPayload;
-  } | null;
-}
+  quoteIssuedAt: string | null;
+  acceptedAt: string | null;
+  contractedAt: string | null;
+  contractSignedBy: string | null;
+  orgId: string | null;
+  publicToken: string;
+  createdAt: string;
+  updatedAt: string;
+};
 
-export function emptyCompany(): CompanyIntake {
-  return {
-    legalName: "",
-    dba: "",
-    billingEmail: "",
-    phone: "",
-    hqAddress: "",
-    taxId: "",
+export type OnboardingRunRecord = {
+  id: string;
+  prospectId: string;
+  orgId: string | null;
+  status: "in_progress" | "complete";
+  steps: Partial<Record<OnboardingStepId, OnboardingStepState>>;
+  payload: OnboardingPayload;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type ProspectDetail = ProspectRecord & {
+  onboarding: OnboardingRunRecord | null;
+  orgName: string | null;
+  operators: OperatorRecord[];
+  liveChecklist: {
+    hasOrg: boolean;
+    hasLocation: boolean;
+    hasOwner: boolean;
+    hasPlan: boolean;
+    hasOperatorIfNeeded: boolean;
+    ready: boolean;
   };
-}
+};
 
-export function emptyChannels(): IntakeAnswers["channels"] {
-  return {
-    floor: true,
-    counter: false,
-    kiosk: false,
-    online: false,
-    kds: true,
-    inventory: false,
-    labor: false,
-    giftCards: false,
-    crm: false,
-    marketing: false,
-    vendorPortal: false,
-    multiLocationReporting: false,
-  };
-}
+export type ProspectListItem = {
+  id: string;
+  status: ProspectStatus;
+  email: string | null;
+  legalName: string;
+  dba: string;
+  orgId: string | null;
+  orgName: string | null;
+  monthlyCents: number | null;
+  publicToken: string;
+  createdAt: string;
+  updatedAt: string;
+};
 
-export function emptyAnswers(): IntakeAnswers {
-  return {
-    company: emptyCompany(),
-    locationsNow: 1,
-    locations12mo: 1,
-    locationTypes: [{ mode: "restaurant", count: 1 }],
-    operatingModel: "single_operator",
-    operatorsPerLocation: 0,
-    oneHostCheck: true,
-    barKitchenSplit: false,
-    channels: emptyChannels(),
-    monthlyChecks: 2000,
-    gmvBand: "50_150k",
-    peakDevices: 4,
-    staffSeats: 12,
-    zestPaymentsAck: false,
-    tips: true,
-    splitTenders: false,
-    roomCharge: false,
-    operatorPayoutFrequency: "weekly",
-    goLiveDate: "",
-    notes: "",
-  };
-}
-
-export function emptyOnboardingSteps(): OnboardingSteps {
-  return {
-    org: false,
-    locations: false,
-    operators: false,
-    floor: false,
-    menu: false,
-    devices: false,
-    invites: false,
-    settlement: false,
-    checklist: false,
-  };
-}
-
-export function emptyOnboardingPayload(answers?: IntakeAnswers): OnboardingPayload {
-  const co = answers?.company ?? emptyCompany();
-  const types = answers?.locationTypes?.length
-    ? answers.locationTypes
-    : [{ mode: "restaurant" as const, count: 1 }];
-  const locations: OnboardingLocationDraft[] = [];
-  for (const t of types) {
-    const n = Math.max(1, Math.min(8, t.count || 1));
-    for (let i = 0; i < n; i++) {
-      const host =
-        answers?.operatingModel === "host_multi_operator" || t.mode === "food_hall";
-      locations.push({
-        name: co.dba
-          ? `${co.dba}${n > 1 ? ` ${i + 1}` : ""}`
-          : "",
-        address: co.hqAddress,
-        timezone: "America/Los_Angeles",
-        mode: t.mode,
-        hostBrandName: co.dba || co.legalName,
-        operatingModel: host ? "host_multi_operator" : "single_operator",
-        operators:
-          host
-            ? [
-                {
-                  name: "",
-                  legalName: "",
-                  contact: "",
-                  stationType: "bar",
-                  payoutAccountLabel: "",
-                  payoutLast4: "",
-                },
-                {
-                  name: "",
-                  legalName: "",
-                  contact: "",
-                  stationType: "kitchen",
-                  payoutAccountLabel: "",
-                  payoutLast4: "",
-                },
-              ]
-            : [],
-        tableCount: 0,
-        sectionNames: "",
-        menuStart: "empty",
-      });
-    }
-  }
-  return {
-    orgName: co.dba || co.legalName,
-    legalName: co.legalName,
-    billingEmail: co.billingEmail,
-    locations,
-    devices: { pos: 1, kds: 1, handhelds: 0 },
-    invites: [
-      {
-        email: co.billingEmail,
-        name: co.legalName || "Owner",
-        role: "owner",
-      },
-    ],
-    settlementPeriod: answers?.operatorPayoutFrequency === "daily" ? "daily" : "weekly",
-    hostCutPercent: 5,
-    acknowledgements: {
-      training: false,
-      hardware: false,
-      zestPayments: false,
-    },
-  };
-}
-
-export function liveReady(payload: OnboardingPayload, steps: OnboardingSteps): boolean {
-  const hasOrg = Boolean(payload.orgName.trim()) && steps.org;
-  const hasLoc =
-    payload.locations.some((l) => l.name.trim()) && steps.locations;
-  const hasOwner = payload.invites.some(
-    (i) => i.role === "owner" && i.email.trim(),
-  );
-  const multi = payload.locations.some(
-    (l) => l.operatingModel === "host_multi_operator",
-  );
-  const opsOk =
-    !multi ||
-    payload.locations.every(
-      (l) =>
-        l.operatingModel !== "host_multi_operator" ||
-        l.operators.filter((o) => o.name.trim()).length >= 1,
-    );
-  return Boolean(
-    hasOrg &&
-      hasLoc &&
-      hasOwner &&
-      opsOk &&
-      steps.checklist &&
-      payload.acknowledgements.zestPayments,
-  );
-}
+export const MODULE_LABELS: { id: keyof IntakeModules; label: string; hint: string }[] = [
+  { id: "tableService", label: "Table service", hint: "Floor plans, sections, host stand" },
+  { id: "counterQsr", label: "Counter / QSR", hint: "Quick service order rail" },
+  { id: "kiosk", label: "Kiosk", hint: "On-premise self-order" },
+  { id: "online", label: "Online / order-ahead", hint: "Web ordering board" },
+  { id: "kds", label: "Kitchen / bar display", hint: "Expo rails, bump, recall" },
+  { id: "inventory", label: "Inventory / purchasing", hint: "On-hand, par, recipes" },
+  { id: "labor", label: "Labor / scheduling / tips", hint: "Schedules, tip pooling, closeout" },
+  { id: "giftCards", label: "Gift cards (first-party)", hint: "On our ledger — not an external vendor" },
+  { id: "crm", label: "CRM / guests", hint: "Profiles, loyalty" },
+  { id: "marketing", label: "Marketing", hint: "Campaigns, social, location sites" },
+  { id: "vendorPortal", label: "Vendor portal", hint: "For host + operator locations" },
+  { id: "multiLocationReporting", label: "Multi-location reporting", hint: "Roll-up across the portfolio" },
+];

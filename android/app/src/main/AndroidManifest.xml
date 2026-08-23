@@ -25,19 +25,19 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
 
-            <!-- zest://station/kitchen etc. -->
+            <!-- summex://station/kitchen etc. -->
             <intent-filter>
                 <action android:name="android.intent.action.VIEW" />
                 <category android:name="android.intent.category.DEFAULT" />
                 <category android:name="android.intent.category.BROWSABLE" />
-                <data android:scheme="zest" android:host="station" />
+                <data android:scheme="summex" android:host="station" />
             </intent-filter>
 
             <intent-filter>
                 <action android:name="android.intent.action.VIEW" />
                 <category android:name="android.intent.category.DEFAULT" />
                 <category android:name="android.intent.category.BROWSABLE" />
-                <data android:scheme="https" android:host="zest.app" android:pathPrefix="/station" />
+                <data android:scheme="https" android:host="summex.app" android:pathPrefix="/station" />
             </intent-filter>
 
         </activity>

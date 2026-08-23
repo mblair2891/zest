@@ -42,11 +42,11 @@ export const MANUAL_EDITION = "Interactive · August 2026";
  */
 export const PRODUCT_UPDATES: ProductUpdate[] = [
   {
-    id: "upd_2026_08_13_zest_pay",
+    id: "upd_2026_08_13_summex_pay",
     date: "2026-08-13",
-    title: "Zest Payments is the only processor",
+    title: "Summex Payments is the only processor",
     summary:
-      "Integrations no longer offers Stripe, Square, or other card processors. Every check runs through Zest Payments. Deposits, rates, terminals, and disputes live on that panel. Delivery and accounting partners stay.",
+      "Integrations no longer offers Stripe, Square, or other card processors. Every check runs through Summex Payments. Deposits, rates, terminals, and disputes live on that panel. Delivery and accounting partners stay.",
     roles: ["owner", "manager"],
     manualSectionId: "hq-integrations",
     tags: ["payments", "integrations"],
@@ -56,7 +56,7 @@ export const PRODUCT_UPDATES: ProductUpdate[] = [
     date: "2026-08-13",
     title: "First-party gift cards + import",
     summary:
-      "Gift balances live only in Zest. Issue, reload, freeze, and void from Guests. Import CSV from Square, Toast, Clover, Shopify, or a generic file — one-way, then those systems are not used again.",
+      "Gift balances live only in Summex. Issue, reload, freeze, and void from Guests. Import CSV from Square, Toast, Clover, Shopify, or a generic file — one-way, then those systems are not used again.",
     roles: ["owner", "manager", "server", "bartender"],
     manualSectionId: "menu-guests",
     tags: ["gift", "import"],
@@ -106,7 +106,7 @@ export const PRODUCT_UPDATES: ProductUpdate[] = [
     date: "2026-08-11",
     title: "In-app user manual & What’s New",
     summary:
-      "Searchable interactive manual lives inside Zest. After each login you’ll see recent updates for your access level, with an option to silence until the next release.",
+      "Searchable interactive manual lives inside Summex. After each login you’ll see recent updates for your access level, with an option to silence until the next release.",
     roles: "all",
     manualSectionId: "manual-help",
     tags: ["help", "training"],
@@ -134,9 +134,9 @@ export const PRODUCT_UPDATES: ProductUpdate[] = [
   {
     id: "upd_2026_08_10_android",
     date: "2026-08-10",
-    title: "Native Android shell & Zest Store",
+    title: "Native Android shell & Summex Store",
     summary:
-      "Capacitor Android app plus Play-style station hub at Zest Store — Floor, Kitchen KDS, Bar, Manager profiles for tablets and Galaxy devices.",
+      "Capacitor Android app plus Play-style station hub at Summex Store — Floor, Kitchen KDS, Bar, Manager profiles for tablets and Galaxy devices.",
     roles: ["owner", "manager"],
     manualSectionId: "devices",
     tags: ["android", "hardware"],
@@ -226,13 +226,13 @@ export const PRODUCT_UPDATES: ProductUpdate[] = [
 export const MANUAL_SECTIONS: ManualSection[] = [
   {
     id: "intro",
-    title: "Welcome to Zest",
-    summary: "What Zest is and how this interactive manual works.",
+    title: "Welcome to Summex",
+    summary: "What Summex is and how this interactive manual works.",
     audience: "all",
     blocks: [
       {
         type: "p",
-        text: "Zest is a hospitality operating system for restaurants, multi-vendor food halls, and truck pods. It combines front-of-house POS, kitchen display, labor, settlement, inventory intelligence, guest ordering, marketing sites, and a SaaS platform for multi-site operators.",
+        text: "Summex is a hospitality operating system for restaurants, multi-vendor food halls, and truck pods. It combines front-of-house POS, kitchen display, labor, settlement, inventory intelligence, guest ordering, marketing sites, and a SaaS platform for multi-site operators.",
       },
       {
         type: "p",
@@ -284,7 +284,7 @@ export const MANUAL_SECTIONS: ManualSection[] = [
       {
         type: "steps",
         items: [
-          "Open Zest on the terminal, tablet, or browser.",
+          "Open Summex on the terminal, tablet, or browser.",
           "Enter your 4-digit staff PIN, or use Quick login by access level.",
           "Confirm your name and access level in the header.",
           "Use only the menu items shown — unauthorized tools are hidden.",
@@ -321,7 +321,7 @@ export const MANUAL_SECTIONS: ManualSection[] = [
       },
       {
         type: "tip",
-        text: "If a deep link tries to open a blocked view, Zest returns you to your role home screen.",
+        text: "If a deep link tries to open a blocked view, Summex returns you to your role home screen.",
       },
     ],
   },
@@ -566,7 +566,7 @@ export const MANUAL_SECTIONS: ManualSection[] = [
     blocks: [
       {
         type: "p",
-        text: "Menu admin maintains categories, items, modifiers, and channels. Guests store profiles, notes/allergies, and loyalty. Gift cards are a first-party Zest ledger — issue, reload, freeze, void, and import from Square/Toast/Clover. Redeem never calls an outside gift network.",
+        text: "Menu admin maintains categories, items, modifiers, and channels. Guests store profiles, notes/allergies, and loyalty. Gift cards are a first-party Summex ledger — issue, reload, freeze, void, and import from Square/Toast/Clover. Redeem never calls an outside gift network.",
       },
     ],
   },
@@ -605,7 +605,7 @@ export const MANUAL_SECTIONS: ManualSection[] = [
     blocks: [
       {
         type: "p",
-        text: "HQ is the multi-module ops home. Card processing is always Zest Payments — you do not connect Stripe or Square. Integrations covers delivery, accounting, payroll, marketing, and hardware. Vendor portal is for stall operators inside a hall.",
+        text: "HQ is the multi-module ops home. Card processing is always Summex Payments — you do not connect Stripe or Square. Integrations covers delivery, accounting, payroll, marketing, and hardware. Vendor portal is for stall operators inside a hall.",
       },
     ],
   },
@@ -630,7 +630,7 @@ export const MANUAL_SECTIONS: ManualSection[] = [
     blocks: [
       {
         type: "p",
-        text: "Commercial packages (POS Core, KDS, Online, Labor, Settlement, Marketing, etc.) toggle per location in Zest Platform. The header Package preview lens simulates a single package for demos without changing real licensing.",
+        text: "Commercial packages (POS Core, KDS, Online, Labor, Settlement, Marketing, etc.) toggle per location in Summex Platform. The header Package preview lens simulates a single package for demos without changing real licensing.",
       },
       {
         type: "steps",
@@ -644,17 +644,17 @@ export const MANUAL_SECTIONS: ManualSection[] = [
   },
   {
     id: "devices",
-    title: "Devices, Android & Zest Store",
+    title: "Devices, Android & Summex Store",
     summary: "BYOD vs lease, Capacitor app, station profiles.",
     audience: ["owner", "manager"],
     blocks: [
       {
         type: "p",
-        text: "Hardware policy covers BYOD phones/tablets, leased 27″ Android stations, and Galaxy test fleet guidance. The native Android shell loads Zest; Zest Store installs station profiles (Floor, Kitchen, Bar, Manager).",
+        text: "Hardware policy covers BYOD phones/tablets, leased 27″ Android stations, and Galaxy test fleet guidance. The native Android shell loads Summex; Summex Store installs station profiles (Floor, Kitchen, Bar, Manager).",
       },
       {
         type: "tip",
-        text: "Open Zest Store from the login screen (App store · stations) without signing into POS.",
+        text: "Open Summex Store from the login screen (App store · stations) without signing into POS.",
       },
     ],
   },
@@ -701,11 +701,11 @@ export const MANUAL_SECTIONS: ManualSection[] = [
     blocks: [
       {
         type: "p",
-        text: "Classic POS runs a private Ethernet plant: switch, hubs, a CAT6 drop at every station, isolated from the office LAN. That wiring is expensive, slow to change, and still fails when a cable or switch dies. Zest is WiFi-first.",
+        text: "Classic POS runs a private Ethernet plant: switch, hubs, a CAT6 drop at every station, isolated from the office LAN. That wiring is expensive, slow to change, and still fails when a cable or switch dies. Summex is WiFi-first.",
       },
       {
         type: "p",
-        text: "One business access point (or a small mesh) publishes a staff SSID (default Zest-House) and a guest SSID that never sees POS traffic. Handhelds, KDS, printers, and card readers join the staff SSID. One station is the house hub — it holds the live checks. Satellites talk to the hub over WiFi, not the cloud.",
+        text: "One business access point (or a small mesh) publishes a staff SSID (default Summex-House) and a guest SSID that never sees POS traffic. Handhelds, KDS, printers, and card readers join the staff SSID. One station is the house hub — it holds the live checks. Satellites talk to the hub over WiFi, not the cloud.",
       },
       {
         type: "p",
@@ -757,7 +757,7 @@ export const MANUAL_SECTIONS: ManualSection[] = [
   {
     id: "glossary",
     title: "Glossary",
-    summary: "Key Zest terms.",
+    summary: "Key Summex terms.",
     audience: "all",
     blocks: [
       {

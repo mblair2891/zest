@@ -1,4 +1,4 @@
-/** Zest App Store — station apps for tablets / KDS / platform */
+/** Summex App Store — station apps for tablets / KDS / platform */
 
 export type StoreAppId =
   | "floor"
@@ -59,10 +59,10 @@ export const STORE_CATEGORIES: { id: StoreCategory | "all"; label: string }[] =
     { id: "guest", label: "Guest" },
   ];
 
-export const ZEST_STORE_APPS: StoreApp[] = [
+export const SUMMEX_STORE_APPS: StoreApp[] = [
   {
     id: "floor",
-    name: "Zest Floor",
+    name: "Summex Floor",
     shortName: "Floor",
     tagline: "Tables, seating & service",
     description:
@@ -83,7 +83,7 @@ export const ZEST_STORE_APPS: StoreApp[] = [
   },
   {
     id: "order",
-    name: "Zest Order",
+    name: "Summex Order",
     shortName: "Order",
     tagline: "Handheld ordering",
     description:
@@ -103,7 +103,7 @@ export const ZEST_STORE_APPS: StoreApp[] = [
   },
   {
     id: "kitchen",
-    name: "Zest Kitchen",
+    name: "Summex Kitchen",
     shortName: "Kitchen",
     tagline: "Expo KDS for 27″ & tablets",
     description:
@@ -124,7 +124,7 @@ export const ZEST_STORE_APPS: StoreApp[] = [
   },
   {
     id: "bar",
-    name: "Zest Bar",
+    name: "Summex Bar",
     shortName: "Bar",
     tagline: "Bar KDS & tabs",
     description:
@@ -143,7 +143,7 @@ export const ZEST_STORE_APPS: StoreApp[] = [
   },
   {
     id: "host",
-    name: "Zest Host",
+    name: "Summex Host",
     shortName: "Host",
     tagline: "Waitlist & reservations",
     description:
@@ -162,7 +162,7 @@ export const ZEST_STORE_APPS: StoreApp[] = [
   },
   {
     id: "manager",
-    name: "Zest Manager",
+    name: "Summex Manager",
     shortName: "Manager",
     tagline: "HQ, labor, cash & reports",
     description:
@@ -182,7 +182,7 @@ export const ZEST_STORE_APPS: StoreApp[] = [
   },
   {
     id: "owner",
-    name: "Zest Owner",
+    name: "Summex Owner",
     shortName: "Owner",
     tagline: "Full site power tools",
     description:
@@ -201,7 +201,7 @@ export const ZEST_STORE_APPS: StoreApp[] = [
   },
   {
     id: "settlement",
-    name: "Zest Settlement",
+    name: "Summex Settlement",
     shortName: "Settle",
     tagline: "Multi-vendor payouts",
     description:
@@ -221,7 +221,7 @@ export const ZEST_STORE_APPS: StoreApp[] = [
   },
   {
     id: "labor",
-    name: "Zest Labor",
+    name: "Summex Labor",
     shortName: "Labor",
     tagline: "Clock, red-flag, payroll export",
     description:
@@ -240,7 +240,7 @@ export const ZEST_STORE_APPS: StoreApp[] = [
   },
   {
     id: "drink_ai",
-    name: "Zest Drink AI",
+    name: "Summex Drink AI",
     shortName: "Drink AI",
     tagline: "Cocktail coach",
     description:
@@ -260,7 +260,7 @@ export const ZEST_STORE_APPS: StoreApp[] = [
   },
   {
     id: "platform",
-    name: "Zest Platform",
+    name: "Summex Platform",
     shortName: "Platform",
     tagline: "SaaS control plane",
     description:
@@ -280,7 +280,7 @@ export const ZEST_STORE_APPS: StoreApp[] = [
   },
   {
     id: "marketing",
-    name: "Zest Marketing",
+    name: "Summex Marketing",
     shortName: "Marketing",
     tagline: "Social, Google, posts & campaigns",
     description:
@@ -301,7 +301,7 @@ export const ZEST_STORE_APPS: StoreApp[] = [
   },
   {
     id: "website",
-    name: "Zest Sites",
+    name: "Summex Sites",
     shortName: "Website",
     tagline: "Per-location websites",
     description:
@@ -321,7 +321,7 @@ export const ZEST_STORE_APPS: StoreApp[] = [
   },
   {
     id: "loyalty",
-    name: "Zest Rewards",
+    name: "Summex Rewards",
     shortName: "Rewards",
     tagline: "Loyalty & gift cards",
     description:
@@ -342,7 +342,7 @@ export const ZEST_STORE_APPS: StoreApp[] = [
   },
   {
     id: "online",
-    name: "Zest Online",
+    name: "Summex Online",
     shortName: "Online",
     tagline: "Guest web ordering",
     description: "Customer-facing online menu and checkout board.",
@@ -358,7 +358,7 @@ export const ZEST_STORE_APPS: StoreApp[] = [
   },
   {
     id: "kiosk",
-    name: "Zest Kiosk",
+    name: "Summex Kiosk",
     shortName: "Kiosk",
     tagline: "Self-serve ordering",
     description: "Counter kiosk experience for QSR-style ordering.",
@@ -375,5 +375,5 @@ export const ZEST_STORE_APPS: StoreApp[] = [
 ];
 
 export function getStoreApp(id: string) {
-  return ZEST_STORE_APPS.find((a) => a.id === id);
+  return SUMMEX_STORE_APPS.find((a) => a.id === id);
 }

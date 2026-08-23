@@ -73,6 +73,30 @@ export function PaymentDialog({ open, onOpenChange }: Props) {
       setError(res.error ?? "Payment failed");
       return;
     }
+    if (method === "card") {
+      const ctx = (() => {
+        try {
+          return JSON.parse(sessionStorage.getItem("summex-tenant-pos") || "null") as {
+            orgId?: string;
+            locationId?: string;
+          } | null;
+        } catch {
+          return null;
+        }
+      })();
+      if (ctx?.orgId) {
+        void import("@/lib/saas/api").then(({ recordCardPaymentFn }) =>
+          recordCardPaymentFn({
+            data: {
+              orgId: ctx.orgId!,
+              locationId: ctx.locationId,
+              amountCents: Math.min(amountCents, balance) + tip,
+              last4: last4 || "4242",
+            },
+          }).catch(() => undefined),
+        );
+      }
+    }
     if (method === "gift_card") {
       useMarketingStore.getState().logGiftTxn({
         giftCardId: giftCode,

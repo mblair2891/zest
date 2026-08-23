@@ -42,7 +42,7 @@ export function PublicLocationSite({ slug }: { slug: string }) {
           This location website is draft or unknown.
         </p>
         <Link to="/apps">
-          <Button size="sm">Zest Store</Button>
+          <Button size="sm">Summex Store</Button>
         </Link>
       </div>
     );
@@ -63,7 +63,7 @@ export function PublicLocationSite({ slug }: { slug: string }) {
         <div className="mx-auto flex max-w-4xl items-center justify-between gap-3">
           <div>
             <p className="text-xs uppercase tracking-widest opacity-70">
-              Powered by Zest
+              Powered by Summex
             </p>
             <h1 className="text-xl font-bold">{loc?.name ?? site.seoTitle}</h1>
           </div>
@@ -195,7 +195,7 @@ export function PublicLocationSite({ slug }: { slug: string }) {
       <footer className="border-t px-4 py-6 text-center text-xs opacity-50"
         style={{ borderColor: `${theme.accent}22` }}
       >
-        {site.seoTitle} · Website by Zest · Michael Blair & Andy Baida
+        {site.seoTitle} · Website by Summex · Michael Blair & Andy Baida
       </footer>
     </div>
   );

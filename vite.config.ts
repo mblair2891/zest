@@ -42,6 +42,44 @@ function pgliteBootstrapPlugin(): Plugin {
  * and returns the 302 / completion HTML. Deployed apps do not use the popup
  * (full-page OAuth redirect), so `apply: "serve"` is enough.
  */
+/**
+ * Production hosts (app.summex.app, api.summex.app, sites.summex.app) are the same
+ * Vite app. Rewrite the path so local `Host: app.localhost:8080` hits `/app`.
+ */
+function summexHostRewritePlugin(): Plugin {
+  return {
+    name: "summex-host-rewrite",
+    apply: "serve",
+    configureServer(server) {
+      server.middlewares.use((req, _res, next) => {
+        const host = String(
+          req.headers["x-forwarded-host"] ?? req.headers.host ?? "",
+        )
+          .split(":")[0]
+          .toLowerCase();
+        const raw = req.url ?? "/";
+        const q = raw.includes("?") ? raw.slice(raw.indexOf("?")) : "";
+        const path = raw.split("?")[0] || "/";
+        const skip =
+          path.startsWith("/api") ||
+          path.startsWith("/__") ||
+          path.startsWith("/auth") ||
+          path.includes(".");
+        if (skip) {
+          next();
+          return;
+        }
+        if (host.startsWith("app.") && !path.startsWith("/app")) {
+          req.url = (path === "/" ? "/app" : `/app${path}`) + q;
+        } else if (host.startsWith("sites.") && !path.startsWith("/sites") && !path.startsWith("/site")) {
+          req.url = (path === "/" ? "/sites" : `/sites${path}`) + q;
+        }
+        next();
+      });
+    },
+  };
+}
+
 function authPopupPlugin(): Plugin {
   return {
     name: "app-builder:auth-popup",
@@ -137,6 +175,7 @@ export default defineConfig(({ command }) => ({
   resolve: { tsconfigPaths: true },
   plugins: [
     pgliteBootstrapPlugin(),
+    summexHostRewritePlugin(),
     // Before tanstackStart so /auth/popup never falls through to the SPA.
     authPopupPlugin(),
     // PWA head + ?install=1 tutorial page; runs before Start/Nitro.

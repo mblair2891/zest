@@ -79,7 +79,7 @@ export function WhatsNewDialog() {
               <Sparkles className="h-4 w-4" />
             </span>
             <div>
-              <DialogTitle>What’s new in Zest</DialogTitle>
+              <DialogTitle>What’s new in Summex</DialogTitle>
               <DialogDescription>
                 For{" "}
                 <span className="font-semibold text-primary">

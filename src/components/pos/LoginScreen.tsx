@@ -11,6 +11,7 @@ import {
 import { cn } from "@/lib/utils";
 import { useManualStore } from "@/lib/pos/manual-store";
 import { UserManualOverlay } from "./UserManualView";
+import { isDevDemoClient } from "@/lib/saas/flags";
 
 export function LoginScreen() {
   const [pin, setPin] = useState("");
@@ -19,6 +20,7 @@ export function LoginScreen() {
   const employees = usePosStore((s) => s.employees);
   const settings = usePosStore((s) => s.settings);
   const openManual = useManualStore((s) => s.openManual);
+  const demo = isDevDemoClient();
 
   const roleLogins = useMemo(
     () => pickRoleRepresentatives(employees),
@@ -72,7 +74,7 @@ export function LoginScreen() {
           <LayoutGrid className="mt-0.5 h-5 w-5 shrink-0 text-primary" />
           <span>
             <span className="block text-sm font-semibold text-foreground">
-              Zest Store
+              Summex Store
             </span>
             <span className="mt-0.5 inline-flex rounded-md bg-surface-2 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
               App store · stations
@@ -111,10 +113,10 @@ export function LoginScreen() {
           <Rocket className="mt-0.5 h-5 w-5 shrink-0 text-primary" />
           <span>
             <span className="block text-sm font-semibold text-foreground">
-              Zest Platform (SaaS)
+              Summex Platform (SaaS)
             </span>
             <span className="mt-0.5 inline-flex rounded-md bg-primary/20 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-primary">
-              Sign in → /platform
+              {demo ? "Dev quick login → /platform" : "Control plane"}
             </span>
             <span className="mt-1 block text-[11px] leading-snug text-muted-foreground">
               Multi-tenant control plane: orgs, locations, packages, devices,
@@ -175,7 +177,7 @@ export function LoginScreen() {
           )}
         </div>
 
-        {roleLogins.length > 0 && (
+        {demo && roleLogins.length > 0 && (
           <div className="mt-10">
             <p className="mb-1 text-center text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
               Quick login by access level (POS)

@@ -225,7 +225,7 @@ export function CustomersView() {
       </div>
 
       <div className="mb-2 flex flex-wrap items-center gap-2">
-        <h3 className="text-sm font-medium">Zest gift ledger</h3>
+        <h3 className="text-sm font-medium">Summex gift ledger</h3>
         <Badge variant="secondary">First-party · no external network</Badge>
         <span className="ml-auto text-xs text-muted-foreground">
           Outstanding {formatCurrency(outstanding)}
@@ -244,7 +244,7 @@ export function CustomersView() {
             <p className="text-xs text-muted-foreground">
               {g.status || (g.active ? "active" : "disabled")}
               {g.issuedToName ? ` · ${g.issuedToName}` : ""}
-              {g.source && g.source !== "zest"
+              {g.source && g.source !== "summex"
                 ? ` · ${g.source.replace("import_", "")}`
                 : ""}
             </p>
@@ -379,10 +379,10 @@ export function CustomersView() {
       <Dialog open={giftOpen} onOpenChange={setGiftOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Issue / reload · Zest ledger</DialogTitle>
+            <DialogTitle>Issue / reload · Summex ledger</DialogTitle>
           </DialogHeader>
           <p className="text-xs text-muted-foreground">
-            Tender is taken on the check. The balance lives only in Zest — not
+            Tender is taken on the check. The balance lives only in Summex — not
             Square, Toast, or a gift network.
           </p>
           <p className="text-xs font-medium">Issue new</p>
@@ -461,10 +461,10 @@ export function CustomersView() {
       <Dialog open={importOpen} onOpenChange={setImportOpen}>
         <DialogContent className="max-w-lg">
           <DialogHeader>
-            <DialogTitle>Import gift cards into Zest</DialogTitle>
+            <DialogTitle>Import gift cards into Summex</DialogTitle>
           </DialogHeader>
           <p className="text-xs text-muted-foreground">
-            One-way migration. After import, balances live only in Zest.
+            One-way migration. After import, balances live only in Summex.
           </p>
           <div className="grid grid-cols-2 gap-2">
             {IMPORT_PROVIDERS.map((p) => (
@@ -497,7 +497,7 @@ export function CustomersView() {
                 const url = URL.createObjectURL(blob);
                 const a = document.createElement("a");
                 a.href = url;
-                a.download = `zest-gift-import-${provider}.csv`;
+                a.download = `summex-gift-import-${provider}.csv`;
                 a.click();
                 URL.revokeObjectURL(url);
               }}
@@ -559,7 +559,7 @@ export function CustomersView() {
                 <Badge variant="success">{preview.summary.valid} valid</Badge>
                 {preview.summary.alreadyInSystem > 0 && (
                   <Badge variant="warn">
-                    {preview.summary.alreadyInSystem} already in Zest
+                    {preview.summary.alreadyInSystem} already in Summex
                   </Badge>
                 )}
               </div>
@@ -608,13 +608,13 @@ export function CustomersView() {
                   note: `${res.imported ?? 0} from ${provider}`,
                 });
                 setMsg(
-                  `Imported ${res.imported ?? 0} cards into the Zest ledger`,
+                  `Imported ${res.imported ?? 0} cards into the Summex ledger`,
                 );
                 setImportOpen(false);
                 setPreview(null);
               }}
             >
-              Import into Zest
+              Import into Summex
             </Button>
           </DialogFooter>
         </DialogContent>

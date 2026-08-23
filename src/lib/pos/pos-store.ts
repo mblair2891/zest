@@ -90,8 +90,6 @@ export interface PosStore {
   extraTableGrants: ExtraTableGrant[];
   sectionOverrides: Record<string, string[]>;
   activeEntityId: VenueEntityId;
-  /** When set, POS is running a SaaS-created location (not a demo venue type). */
-  activeSaasLocationId: string | null;
 
   login: (pin: string) => ActionResult;
   logout: () => void;
@@ -210,7 +208,21 @@ export interface PosStore {
   revokeExtraTable: (id: string) => void;
   overrideSectionTable: (employeeId: string, tableId: string) => ActionResult;
   applyEntity: (entityId: VenueEntityId) => ActionResult;
-  applySaasLocation: (locationId: string) => ActionResult;
+  openTenantLocation: (opts: {
+    entityId: VenueEntityId;
+    venueName: string;
+    ownerName: string;
+    locationId: string;
+    menuMode?: import("./starter-seed").TenantMenuMode;
+    vendors?: import("./types").Vendor[];
+    tables?: import("./types").Table[];
+    floorSections?: import("./types").FloorSection[];
+    settlement?: Partial<import("./types").SettlementConfig>;
+    address?: string;
+    hallMode?: boolean;
+  }) => ActionResult;
+  tenantLocationId?: string | null;
+  loginAsOwner: (name: string) => ActionResult;
   resetDemo: () => void;
 }
 

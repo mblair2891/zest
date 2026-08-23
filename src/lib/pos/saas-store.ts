@@ -4,13 +4,7 @@ import { uid } from "@/lib/utils";
 import type {
   DeviceEnrollment,
   LeaseInvoice,
-  LocationCreatedBy,
-  LocationMenuCategory,
-  LocationMenuItem,
-  LocationOperator,
   OnboardingStep,
-  OperatingModel,
-  OperatorStationType,
   PadAssignment,
   PlatformCompany,
   PodMerchant,
@@ -23,46 +17,424 @@ import {
   type PackageId,
   defaultPackagesForMode,
   packageForView,
-  packagesForLocation,
   PACKAGE_BY_ID,
 } from "./packages";
-import {
-  codeFromName,
-  hostLocationStatus,
-  nextOperatorColor,
-  starterCatalogDraft,
-} from "./host-location";
-import type { OnboardingPayload } from "@/lib/saas/prospect-types";
+import { isDevDemoClient } from "@/lib/saas/flags";
 
 const PLATFORM: PlatformCompany = {
-  name: "Zest",
-  legalName: "Zest Platform LLC",
-  proprietors: [],
+  name: "Summex",
+  legalName: "Summex Platform LLC",
+  proprietors: [
+    { name: "Michael Blair", role: "Co-founder & Proprietor" },
+    { name: "Andy Baida", role: "Co-founder & Proprietor" },
+  ],
   tagline: "Service, sharp. — restaurants, halls & truck pods under one canopy.",
-  supportEmail: "support@zest.app",
-  version: "1.0.0",
+  supportEmail: "support@summex.app",
+  version: "1.0.0-demo",
 };
 
-const EMPTY_ORG: SaasOrganization = {
-  id: "",
-  name: "No organization yet",
-  legalName: "",
-  plan: "starter",
-  seats: 10,
-  locationsIncluded: 1,
-  merchantsIncluded: 5,
-  billingEmail: "",
-  status: "trial",
-  createdAt: 0,
-};
+function seedOrg(): SaasOrganization {
+  return {
+    id: "org_demo",
+    name: "Seaport Collective",
+    legalName: "Seaport Collective Markets LLC",
+    plan: "growth",
+    seats: 25,
+    locationsIncluded: 5,
+    merchantsIncluded: 40,
+    billingEmail: "ops@seaport.example",
+    status: "active",
+    createdAt: Date.now() - 86400000 * 90,
+  };
+}
+
+function seedMembers(): SaasMembership[] {
+  return [
+    {
+      id: "mem_1",
+      orgId: "org_demo",
+      name: "Morgan Blair",
+      email: "morgan@summex.app",
+      role: "owner",
+    },
+    {
+      id: "mem_admin",
+      orgId: "org_demo",
+      name: "Alex Rivera",
+      email: "alex@summex.app",
+      role: "admin",
+    },
+    {
+      id: "mem_2",
+      orgId: "org_demo",
+      name: "Sam Okonkwo",
+      email: "sam@seaport.example",
+      role: "ops",
+    },
+    {
+      id: "mem_3",
+      orgId: "org_demo",
+      name: "Jordan Lee",
+      email: "jordan@seaport.example",
+      role: "accountant",
+    },
+    {
+      id: "mem_sup",
+      orgId: "org_demo",
+      name: "Riley Chen",
+      email: "riley@summex.app",
+      role: "support",
+    },
+  ];
+}
+
+function seedLocations(): SaasLocation[] {
+  return [
+    {
+      id: "loc_hall",
+      orgId: "org_demo",
+      name: "Summex Market Hall",
+      code: "ZS-HALL",
+      mode: "food_hall",
+      address: "42 Pier Avenue, Seaport",
+      timezone: "America/Los_Angeles",
+      open: true,
+      enabledPackages: defaultPackagesForMode("food_hall"),
+    },
+    {
+      id: "loc_pod",
+      orgId: "org_demo",
+      name: "Westside Truck Pod",
+      code: "ZS-POD",
+      mode: "truck_pod",
+      address: "880 Lot B, Industrial District",
+      timezone: "America/Los_Angeles",
+      open: true,
+      padCapacity: 12,
+      powerAmpsTotal: 600,
+      enabledPackages: defaultPackagesForMode("truck_pod"),
+    },
+    {
+      id: "loc_rest",
+      orgId: "org_demo",
+      name: "Forge Bistro",
+      code: "ZS-BISTRO",
+      mode: "restaurant",
+      address: "12 Oak Street",
+      timezone: "America/Los_Angeles",
+      open: true,
+      enabledPackages: defaultPackagesForMode("restaurant"),
+    },
+    {
+      id: "loc_ghost",
+      orgId: "org_demo",
+      name: "Forge Cloud Kitchen",
+      code: "ZS-CLOUD",
+      mode: "ghost_kitchen",
+      address: "200 Commissary Way",
+      timezone: "America/Los_Angeles",
+      open: true,
+      enabledPackages: defaultPackagesForMode("ghost_kitchen"),
+    },
+    {
+      id: "loc_cater",
+      orgId: "org_demo",
+      name: "Summex Occasions",
+      code: "ZS-EVT",
+      mode: "catering",
+      address: "42 Pier Avenue",
+      timezone: "America/Los_Angeles",
+      open: true,
+      enabledPackages: defaultPackagesForMode("catering"),
+    },
+    {
+      id: "loc_bar",
+      orgId: "org_demo",
+      name: "Pier Room",
+      code: "ZS-LOUNGE",
+      mode: "bar_lounge",
+      address: "42 Pier Avenue",
+      timezone: "America/Los_Angeles",
+      open: true,
+      enabledPackages: defaultPackagesForMode("bar_lounge"),
+    },
+    {
+      id: "loc_cafe",
+      orgId: "org_demo",
+      name: "Dockside Café",
+      code: "ZS-CAFE",
+      mode: "cafe",
+      address: "8 Wharf Walk",
+      timezone: "America/Los_Angeles",
+      open: true,
+      enabledPackages: defaultPackagesForMode("cafe"),
+    },
+    {
+      id: "loc_qsr",
+      orgId: "org_demo",
+      name: "Salty Window",
+      code: "ZS-QSR",
+      mode: "qsr",
+      address: "14 Harbor Drive",
+      timezone: "America/Los_Angeles",
+      open: true,
+      enabledPackages: defaultPackagesForMode("qsr"),
+    },
+  ];
+}
+
+function seedMerchants(): PodMerchant[] {
+  return [
+    {
+      id: "m_forge",
+      orgId: "org_demo",
+      name: "Forge Kitchen Co",
+      cuisine: "New American",
+      contactName: "Chris Forge",
+      phone: "(555) 100-2001",
+      bankLast4: "4821",
+      w9OnFile: true,
+      active: true,
+      permitNumber: "MH-2201",
+    },
+    {
+      id: "m_noodle",
+      orgId: "org_demo",
+      name: "Pier Noodle Co",
+      cuisine: "Ramen",
+      contactName: "Mina Park",
+      phone: "(555) 100-2002",
+      bankLast4: "9912",
+      w9OnFile: true,
+      active: true,
+      permitNumber: "MH-2202",
+    },
+    {
+      id: "m_taco",
+      orgId: "org_demo",
+      name: "Salty Taco",
+      cuisine: "Mexican",
+      contactName: "Diego Ruiz",
+      phone: "(555) 100-2003",
+      bankLast4: "3340",
+      w9OnFile: true,
+      active: true,
+    },
+    {
+      id: "m_gelato",
+      orgId: "org_demo",
+      name: "Dockside Gelato",
+      cuisine: "Dessert",
+      contactName: "Elena Rossi",
+      phone: "(555) 100-2004",
+      bankLast4: "7788",
+      w9OnFile: false,
+      active: true,
+    },
+    {
+      id: "m_bbq",
+      orgId: "org_demo",
+      name: "Smoke Stack BBQ",
+      cuisine: "BBQ",
+      contactName: "Ray Cole",
+      phone: "(555) 100-3001",
+      bankLast4: "5510",
+      w9OnFile: true,
+      active: true,
+      permitNumber: "POD-441",
+    },
+    {
+      id: "m_bao",
+      orgId: "org_demo",
+      name: "Bao Wow",
+      cuisine: "Asian street",
+      contactName: "Lin Wei",
+      phone: "(555) 100-3002",
+      bankLast4: "6621",
+      w9OnFile: true,
+      active: true,
+      permitNumber: "POD-442",
+    },
+    {
+      id: "m_vegan",
+      orgId: "org_demo",
+      name: "Green Grid",
+      cuisine: "Vegan",
+      contactName: "Avery Moss",
+      phone: "(555) 100-3003",
+      bankLast4: "7732",
+      w9OnFile: true,
+      active: true,
+      permitNumber: "POD-443",
+    },
+    {
+      id: "m_coffee",
+      orgId: "org_demo",
+      name: "Lot Roast",
+      cuisine: "Coffee & pastry",
+      contactName: "Pat Nguyen",
+      phone: "(555) 100-3004",
+      bankLast4: "8843",
+      w9OnFile: true,
+      active: true,
+      permitNumber: "POD-444",
+    },
+  ];
+}
+
+function seedPads(): TruckPad[] {
+  const loc = "loc_pod";
+  const pads: TruckPad[] = [];
+  const labels = ["A1", "A2", "A3", "A4", "B1", "B2", "B3", "B4", "C1", "C2", "C3", "C4"];
+  const occ = [
+    { merchantId: "m_bbq", merchantName: "Smoke Stack BBQ" },
+    { merchantId: "m_bao", merchantName: "Bao Wow" },
+    { merchantId: "m_vegan", merchantName: "Green Grid" },
+    { merchantId: "m_coffee", merchantName: "Lot Roast" },
+  ];
+  labels.forEach((label, i) => {
+    const col = i % 4;
+    const row = Math.floor(i / 4);
+    const o = occ[i];
+    pads.push({
+      id: `pad_${label}`,
+      locationId: loc,
+      label,
+      x: 12 + col * 22,
+      y: 15 + row * 28,
+      amps: i % 3 === 0 ? 50 : 30,
+      status: o ? "occupied" : i === 7 ? "reserved" : i === 11 ? "maintenance" : "vacant",
+      merchantId: o?.merchantId,
+      merchantName: o?.merchantName,
+      leaseStart: o ? Date.now() - 86400000 * 14 : undefined,
+      leaseEnd: o ? Date.now() + 86400000 * 76 : undefined,
+      monthlyRentCents: 120000 + (i % 3) * 15000,
+      powerFeeCents: i % 3 === 0 ? 35000 : 20000,
+      gmvPercent: 5,
+    });
+  });
+  return pads;
+}
+
+function seedSchedule(): PadAssignment[] {
+  return [
+    {
+      id: "as_1",
+      padId: "pad_A1",
+      merchantId: "m_bbq",
+      merchantName: "Smoke Stack BBQ",
+      dayOfWeek: -1,
+      startDate: "2026-07-01",
+    },
+    {
+      id: "as_2",
+      padId: "pad_A2",
+      merchantId: "m_bao",
+      merchantName: "Bao Wow",
+      dayOfWeek: -1,
+      startDate: "2026-07-01",
+    },
+    {
+      id: "as_3",
+      padId: "pad_A3",
+      merchantId: "m_vegan",
+      merchantName: "Green Grid",
+      dayOfWeek: 5,
+      startDate: "2026-08-01",
+      notes: "Fri–Sun peak",
+    },
+    {
+      id: "as_4",
+      padId: "pad_A4",
+      merchantId: "m_coffee",
+      merchantName: "Lot Roast",
+      dayOfWeek: -1,
+      startDate: "2026-06-15",
+    },
+  ];
+}
+
+function seedDevices(): DeviceEnrollment[] {
+  return [
+    {
+      id: "dev_galaxy_a",
+      locationId: "loc_hall",
+      name: "Galaxy tablet A — Floor / Server",
+      type: "handheld",
+      status: "online",
+      lastSeenAt: Date.now() - 15000,
+      serial: "SAM-TAB-A-001",
+    },
+    {
+      id: "dev_galaxy_b",
+      locationId: "loc_hall",
+      name: "Galaxy tablet B — Bar / Manager",
+      type: "pos",
+      status: "online",
+      lastSeenAt: Date.now() - 20000,
+      serial: "SAM-TAB-B-002",
+    },
+    {
+      id: "dev_android_27",
+      locationId: "loc_hall",
+      name: '27" Android touch — Kitchen KDS',
+      type: "kds",
+      status: "online",
+      lastSeenAt: Date.now() - 10000,
+      serial: "AND-KDS-27-001",
+    },
+    {
+      id: "dev_3",
+      locationId: "loc_pod",
+      name: "Lot kiosk 1",
+      type: "kiosk",
+      status: "online",
+      lastSeenAt: Date.now() - 60000,
+      serial: "ZS-KIO-3001",
+    },
+    {
+      id: "dev_5",
+      locationId: "loc_hall",
+      name: "Receipt printer bar (planned)",
+      type: "printer",
+      status: "offline",
+      lastSeenAt: Date.now() - 86400000,
+      serial: "ZS-PR-5001",
+    },
+  ];
+}
+
+function emptyOrg(): SaasOrganization {
+  return {
+    id: "",
+    name: "Your organization",
+    legalName: "",
+    plan: "starter",
+    seats: 8,
+    locationsIncluded: 1,
+    merchantsIncluded: 5,
+    billingEmail: "",
+    status: "trial",
+    createdAt: Date.now(),
+  };
+}
 
 function emptyOnboarding(): OnboardingStep[] {
   return [
     { id: "ob_1", title: "Create organization", done: false },
     { id: "ob_2", title: "Add first location", done: false },
     { id: "ob_3", title: "Invite team members", done: false },
-    { id: "ob_4", title: "Onboard merchants / operators", done: false },
-    { id: "ob_5", title: "Configure settlement & host cut", done: false },
+    { id: "ob_4", title: "Open POS", done: false },
+  ];
+}
+
+function seedOnboarding(): OnboardingStep[] {
+  return [
+    { id: "ob_1", title: "Create organization", done: true },
+    { id: "ob_2", title: "Add first location", done: true },
+    { id: "ob_3", title: "Invite team members", done: true },
+    { id: "ob_4", title: "Onboard merchants / trucks", done: true },
+    { id: "ob_5", title: "Configure settlement & host cut", done: true },
     { id: "ob_6", title: "Enroll devices", done: false },
     { id: "ob_7", title: "Connect integrations", done: false },
     { id: "ob_8", title: "Run first period close", done: false },
@@ -72,14 +444,9 @@ function emptyOnboarding(): OnboardingStep[] {
 interface SaasState {
   platform: PlatformCompany;
   org: SaasOrganization;
-  orgs: SaasOrganization[];
-  activeOrgId: string;
   members: SaasMembership[];
   locations: SaasLocation[];
   merchants: PodMerchant[];
-  operators: LocationOperator[];
-  locationCategories: LocationMenuCategory[];
-  locationItems: LocationMenuItem[];
   pads: TruckPad[];
   schedule: PadAssignment[];
   devices: DeviceEnrollment[];
@@ -92,9 +459,16 @@ interface SaasState {
   platformAdminRole: SaasMembership["role"] | "";
 
   setActiveLocation: (id: string) => void;
-  setActiveOrg: (id: string) => void;
   loginPlatform: (name?: string, role?: SaasMembership["role"]) => void;
   logoutPlatform: () => void;
+  liveMode: boolean;
+  hydrateTenant: (payload: {
+    org: SaasOrganization;
+    members: SaasMembership[];
+    locations: SaasLocation[];
+    adminName: string;
+    adminRole: SaasMembership["role"] | "";
+  }) => void;
   toggleLocationOpen: (id: string) => void;
   assignPad: (padId: string, merchantId: string) => void;
   clearPad: (padId: string) => void;
@@ -111,131 +485,28 @@ interface SaasState {
   locationAllowsView: (locationId: string, view: string) => boolean;
   todayLineup: () => { pad: TruckPad; merchant?: PodMerchant }[];
   ampsUsed: (locationId: string) => number;
-
-  createOrganization: (input: {
-    name: string;
-    legalName?: string;
-    billingEmail?: string;
-    plan?: SaasOrganization["plan"];
-  }) => { ok: true; orgId: string } | { ok: false; error: string };
-  createLocation: (input: {
-    orgId?: string;
-    name: string;
-    code?: string;
-    address?: string;
-    timezone?: string;
-    mode: SaasLocation["mode"];
-    operatingModel: OperatingModel;
-    hostBrandName?: string;
-  }) => { ok: true; locationId: string } | { ok: false; error: string };
-  updateLocation: (
-    locationId: string,
-    patch: Partial<
-      Pick<
-        SaasLocation,
-        | "name"
-        | "code"
-        | "address"
-        | "timezone"
-        | "hostBrandName"
-        | "operatingModel"
-        | "open"
-        | "mode"
-      >
-    >,
-  ) => { ok: boolean; error?: string };
-  addOperator: (input: {
-    locationId: string;
-    name: string;
-    shortName?: string;
-    payoutAccountLabel: string;
-    payoutLast4: string;
-    stationType: OperatorStationType;
-  }) => { ok: true; operatorId: string } | { ok: false; error: string };
-  updateOperator: (
-    operatorId: string,
-    patch: Partial<
-      Pick<
-        LocationOperator,
-        | "name"
-        | "shortName"
-        | "payoutAccountLabel"
-        | "payoutLast4"
-        | "stationType"
-        | "ownedCategoryIds"
-        | "ownedItemIds"
-        | "active"
-      >
-    >,
-  ) => { ok: boolean; error?: string };
-  removeOperator: (operatorId: string) => void;
-  addLocationCategory: (input: {
-    locationId: string;
-    name: string;
-    station: "bar" | "kitchen";
-    color?: string;
-  }) => { ok: true; categoryId: string } | { ok: false; error: string };
-  addLocationItem: (input: {
-    locationId: string;
-    categoryId: string;
-    name: string;
-    priceCents: number;
-    course?: LocationMenuItem["course"];
-    station?: "bar" | "kitchen";
-  }) => { ok: true; itemId: string } | { ok: false; error: string };
-  removeLocationCategory: (categoryId: string) => void;
-  removeLocationItem: (itemId: string) => void;
-  setOperatorRouting: (input: {
-    operatorId: string;
-    stationType: OperatorStationType;
-    ownedCategoryIds: string[];
-    ownedItemIds?: string[];
-  }) => { ok: boolean; error?: string };
-  generateStarterCatalog: (
-    locationId: string,
-  ) => { ok: true; categoryIds: string[] } | { ok: false; error: string };
-  hostStatusFor: (locationId: string) => ReturnType<typeof hostLocationStatus>;
-  applyOnboarding: (
-    payload: OnboardingPayload,
-    packageIds?: string[],
-  ) => { ok: true; orgId: string; locationIds: string[] } | { ok: false; error: string };
 }
 
 export const useSaasStore = create<SaasState>()(
   persist(
     (set, get) => ({
       platform: PLATFORM,
-      org: EMPTY_ORG,
-      orgs: [],
-      activeOrgId: "",
-      members: [],
-      locations: [],
-      merchants: [],
-      operators: [],
-      locationCategories: [],
-      locationItems: [],
-      pads: [],
-      schedule: [],
-      devices: [],
+      org: isDevDemoClient() ? seedOrg() : emptyOrg(),
+      members: isDevDemoClient() ? seedMembers() : [],
+      locations: isDevDemoClient() ? seedLocations() : [],
+      merchants: isDevDemoClient() ? seedMerchants() : [],
+      pads: isDevDemoClient() ? seedPads() : [],
+      schedule: isDevDemoClient() ? seedSchedule() : [],
+      devices: isDevDemoClient() ? seedDevices() : [],
       invoices: [],
-      onboarding: emptyOnboarding(),
-      activeLocationId: "",
+      onboarding: isDevDemoClient() ? seedOnboarding() : emptyOnboarding(),
+      activeLocationId: isDevDemoClient() ? "loc_pod" : "",
       platformAuthed: false,
       platformAdminName: "",
       platformAdminRole: "",
+      liveMode: false,
 
       setActiveLocation: (id) => set({ activeLocationId: id }),
-
-      setActiveOrg: (id) => {
-        const found = get().orgs.find((o) => o.id === id);
-        if (!found) return;
-        const locs = get().locations.filter((l) => l.orgId === id);
-        set({
-          activeOrgId: id,
-          org: found,
-          activeLocationId: locs[0]?.id ?? get().activeLocationId,
-        });
-      },
 
       loginPlatform: (name, role) =>
         set({
@@ -249,6 +520,37 @@ export const useSaasStore = create<SaasState>()(
           platformAuthed: false,
           platformAdminName: "",
           platformAdminRole: "",
+        }),
+
+      hydrateTenant: (payload) =>
+        set({
+          liveMode: true,
+          platformAuthed: true,
+          org: payload.org,
+          members: payload.members,
+          locations: payload.locations,
+          activeLocationId: payload.locations[0]?.id ?? "",
+          platformAdminName: payload.adminName,
+          platformAdminRole: payload.adminRole,
+          onboarding: [
+            { id: "ob_1", title: "Create organization", done: true },
+            {
+              id: "ob_2",
+              title: "Add first location",
+              done: payload.locations.length > 0,
+            },
+            {
+              id: "ob_3",
+              title: "Invite team members",
+              done: payload.members.length > 1,
+            },
+            { id: "ob_4", title: "Open POS", done: false },
+          ],
+          merchants: [],
+          pads: [],
+          schedule: [],
+          devices: [],
+          invoices: [],
         }),
 
       toggleLocationOpen: (id) => {
@@ -419,427 +721,6 @@ export const useSaasStore = create<SaasState>()(
         });
       },
 
-      createOrganization: (input) => {
-        const name = input.name.trim();
-        if (!name) return { ok: false, error: "Organization name is required" };
-        const plan = input.plan ?? "growth";
-        const seats = plan === "starter" ? 10 : plan === "growth" ? 25 : 100;
-        const o: SaasOrganization = {
-          id: uid("org"),
-          name,
-          legalName: (input.legalName ?? name).trim() || name,
-          plan,
-          seats,
-          locationsIncluded: plan === "starter" ? 1 : plan === "growth" ? 5 : 50,
-          merchantsIncluded:
-            plan === "starter" ? 5 : plan === "growth" ? 40 : 500,
-          billingEmail: (input.billingEmail ?? "").trim(),
-          status: "trial",
-          trialEndsAt: Date.now() + 86400000 * 14,
-          createdAt: Date.now(),
-        };
-        const member: SaasMembership = {
-          id: uid("mem"),
-          orgId: o.id,
-          name: get().platformAdminName || "Owner",
-          email: o.billingEmail || "owner@org.local",
-          role: "owner",
-        };
-        set({
-          orgs: [...get().orgs, o],
-          org: o,
-          activeOrgId: o.id,
-          members: [...get().members, member],
-        });
-        return { ok: true, orgId: o.id };
-      },
-
-      createLocation: (input) => {
-        const name = input.name.trim();
-        if (!name) return { ok: false, error: "Location name is required" };
-        const orgId = input.orgId ?? get().activeOrgId ?? get().org.id;
-        if (!orgId) return { ok: false, error: "Create an organization first" };
-        const org = get().orgs.find((o) => o.id === orgId) ?? get().org;
-        if (!org.id) return { ok: false, error: "Create an organization first" };
-        const existingForOrg = get().locations.filter((l) => l.orgId === org.id);
-        if (existingForOrg.length >= org.locationsIncluded) {
-          return {
-            ok: false,
-            error: `Plan includes ${org.locationsIncluded} location(s). Upgrade to add more.`,
-          };
-        }
-        const operatingModel = input.operatingModel;
-        const hostBrandName =
-          (input.hostBrandName ?? (operatingModel === "host_multi_operator" ? name : name)).trim() ||
-          name;
-        if (operatingModel === "host_multi_operator" && !hostBrandName) {
-          return { ok: false, error: "Host brand name is required" };
-        }
-        const loc: SaasLocation = {
-          id: uid("loc"),
-          orgId: org.id,
-          name,
-          code: (input.code ?? "").trim() || codeFromName(name),
-          mode: input.mode,
-          address: (input.address ?? "").trim(),
-          timezone: input.timezone || "America/Los_Angeles",
-          open: true,
-          enabledPackages: packagesForLocation(input.mode, operatingModel),
-          operatingModel,
-          hostBrandName,
-          createdBy: "ui",
-        };
-        set({
-          locations: [...get().locations, loc],
-          activeLocationId: loc.id,
-        });
-        return { ok: true, locationId: loc.id };
-      },
-
-      updateLocation: (locationId, patch) => {
-        const loc = get().locations.find((l) => l.id === locationId);
-        if (!loc) return { ok: false, error: "Location not found" };
-        set({
-          locations: get().locations.map((l) => {
-            if (l.id !== locationId) return l;
-            const updated = { ...l, ...patch };
-            if (patch.operatingModel || patch.mode) {
-              updated.enabledPackages = packagesForLocation(
-                updated.mode,
-                updated.operatingModel,
-              );
-            }
-            return updated;
-          }),
-        });
-        return { ok: true };
-      },
-
-      addOperator: (input) => {
-        const loc = get().locations.find((l) => l.id === input.locationId);
-        if (!loc) return { ok: false, error: "Location not found" };
-        const name = input.name.trim();
-        if (!name) return { ok: false, error: "Operator name is required" };
-        const last4 = input.payoutLast4.replace(/\D/g, "").slice(-4);
-        if (last4.length !== 4) {
-          return { ok: false, error: "Payout account needs a 4-digit placeholder" };
-        }
-        const label = input.payoutAccountLabel.trim() || `${name} payout`;
-        const count = get().operators.filter(
-          (o) => o.locationId === loc.id,
-        ).length;
-        const op: LocationOperator = {
-          id: uid("op"),
-          orgId: loc.orgId,
-          locationId: loc.id,
-          name,
-          shortName: (input.shortName ?? name).trim() || name,
-          payoutAccountLabel: label,
-          payoutLast4: last4,
-          stationType: input.stationType,
-          ownedCategoryIds: [],
-          ownedItemIds: [],
-          color: nextOperatorColor(count),
-          active: true,
-        };
-        set({ operators: [...get().operators, op] });
-        return { ok: true, operatorId: op.id };
-      },
-
-      updateOperator: (operatorId, patch) => {
-        if (!get().operators.some((o) => o.id === operatorId)) {
-          return { ok: false, error: "Operator not found" };
-        }
-        set({
-          operators: get().operators.map((o) =>
-            o.id === operatorId ? { ...o, ...patch } : o,
-          ),
-        });
-        return { ok: true };
-      },
-
-      removeOperator: (operatorId) => {
-        set({
-          operators: get().operators.filter((o) => o.id !== operatorId),
-        });
-      },
-
-      addLocationCategory: (input) => {
-        const name = input.name.trim();
-        if (!name) return { ok: false, error: "Category name is required" };
-        const loc = get().locations.find((l) => l.id === input.locationId);
-        if (!loc) return { ok: false, error: "Location not found" };
-        const sort =
-          get().locationCategories.filter((c) => c.locationId === loc.id)
-            .length + 1;
-        const cat: LocationMenuCategory = {
-          id: uid("lcat"),
-          locationId: loc.id,
-          name,
-          sort,
-          color: input.color || (input.station === "bar" ? "#f87171" : "#94a3b8"),
-          station: input.station,
-        };
-        set({ locationCategories: [...get().locationCategories, cat] });
-        return { ok: true, categoryId: cat.id };
-      },
-
-      addLocationItem: (input) => {
-        const name = input.name.trim();
-        if (!name) return { ok: false, error: "Item name is required" };
-        const cat = get().locationCategories.find(
-          (c) => c.id === input.categoryId,
-        );
-        if (!cat) return { ok: false, error: "Category not found" };
-        const item: LocationMenuItem = {
-          id: uid("lit"),
-          locationId: input.locationId,
-          categoryId: cat.id,
-          name,
-          priceCents: Math.max(0, Math.round(input.priceCents)),
-          course:
-            input.course ??
-            (cat.station === "bar" ? "drink" : "entree"),
-          station: input.station ?? cat.station,
-          available: true,
-        };
-        set({ locationItems: [...get().locationItems, item] });
-        return { ok: true, itemId: item.id };
-      },
-
-      removeLocationCategory: (categoryId) => {
-        set({
-          locationCategories: get().locationCategories.filter(
-            (c) => c.id !== categoryId,
-          ),
-          locationItems: get().locationItems.filter(
-            (i) => i.categoryId !== categoryId,
-          ),
-          operators: get().operators.map((o) => ({
-            ...o,
-            ownedCategoryIds: o.ownedCategoryIds.filter((id) => id !== categoryId),
-          })),
-        });
-      },
-
-      removeLocationItem: (itemId) => {
-        set({
-          locationItems: get().locationItems.filter((i) => i.id !== itemId),
-          operators: get().operators.map((o) => ({
-            ...o,
-            ownedItemIds: o.ownedItemIds.filter((id) => id !== itemId),
-          })),
-        });
-      },
-
-      setOperatorRouting: (input) => {
-        const op = get().operators.find((o) => o.id === input.operatorId);
-        if (!op) return { ok: false, error: "Operator not found" };
-        set({
-          operators: get().operators.map((o) =>
-            o.id === input.operatorId
-              ? {
-                  ...o,
-                  stationType: input.stationType,
-                  ownedCategoryIds: input.ownedCategoryIds,
-                  ownedItemIds: input.ownedItemIds ?? o.ownedItemIds,
-                }
-              : o,
-          ),
-        });
-        return { ok: true };
-      },
-
-      generateStarterCatalog: (locationId) => {
-        const loc = get().locations.find((l) => l.id === locationId);
-        if (!loc) return { ok: false, error: "Location not found" };
-        const ops = get().operators.filter(
-          (o) => o.locationId === locationId && o.active,
-        );
-        if (ops.length < 2) {
-          return { ok: false, error: "Add two operators before generating a catalog" };
-        }
-        const draft = starterCatalogDraft();
-        const cats: LocationMenuCategory[] = draft.categories.map((c, i) => ({
-          ...c,
-          id: uid("lcat"),
-          locationId,
-        }));
-        const items: LocationMenuItem[] = cats.flatMap((cat, i) =>
-          (draft.items[i] ?? []).map((it) => ({
-            ...it,
-            id: uid("lit"),
-            locationId,
-            categoryId: cat.id,
-          })),
-        );
-        const barOp = ops.find((o) => o.stationType === "bar") ?? ops[0]!;
-        const kitOp =
-          ops.find((o) => o.id !== barOp.id && o.stationType === "kitchen") ??
-          ops.find((o) => o.id !== barOp.id) ??
-          ops[1]!;
-        const barCat = cats.find((c) => c.station === "bar");
-        const kitCat = cats.find((c) => c.station === "kitchen");
-        set({
-          locationCategories: [
-            ...get().locationCategories.filter((c) => c.locationId !== locationId),
-            ...cats,
-          ],
-          locationItems: [
-            ...get().locationItems.filter((i) => i.locationId !== locationId),
-            ...items,
-          ],
-          operators: get().operators.map((o) => {
-            if (o.id === barOp.id) {
-              return {
-                ...o,
-                stationType: o.stationType === "both" ? "both" : "bar",
-                ownedCategoryIds: barCat ? [barCat.id] : [],
-                ownedItemIds: [],
-              };
-            }
-            if (o.id === kitOp.id) {
-              return {
-                ...o,
-                stationType: o.stationType === "both" ? "both" : "kitchen",
-                ownedCategoryIds: kitCat ? [kitCat.id] : [],
-                ownedItemIds: [],
-              };
-            }
-            return o;
-          }),
-        });
-        return { ok: true, categoryIds: cats.map((c) => c.id) };
-      },
-
-      hostStatusFor: (locationId) => {
-        const loc = get().locations.find((l) => l.id === locationId);
-        return hostLocationStatus(
-          loc,
-          get().operators.filter((o) => o.locationId === locationId),
-          get().locationCategories.filter((c) => c.locationId === locationId),
-          get().locationItems.filter((i) => i.locationId === locationId),
-        );
-      },
-
-      applyOnboarding: (payload, packageIds) => {
-        const orgName = payload.orgName.trim();
-        if (!orgName) return { ok: false, error: "Organization name is required" };
-        const locDrafts = payload.locations.filter((l) => l.name.trim());
-        if (locDrafts.length === 0) {
-          return { ok: false, error: "Add at least one location" };
-        }
-        const owner = payload.invites.find(
-          (i) => i.role === "owner" && i.email.trim(),
-        );
-        if (!owner) return { ok: false, error: "Add an owner invite" };
-        const locN = locDrafts.length;
-        const org: SaasOrganization = {
-          id: uid("org"),
-          name: orgName,
-          legalName: payload.legalName.trim() || orgName,
-          plan: locN > 5 ? "enterprise" : locN > 1 ? "growth" : "starter",
-          seats: Math.max(25, payload.invites.length + 10),
-          locationsIncluded: Math.max(locN, 50),
-          merchantsIncluded: 500,
-          billingEmail: payload.billingEmail.trim(),
-          status: "active",
-          createdAt: Date.now(),
-        };
-        const members: SaasMembership[] = payload.invites
-          .filter((i) => i.email.trim())
-          .map((i) => ({
-            id: uid("mem"),
-            orgId: org.id,
-            name: i.name.trim() || i.email,
-            email: i.email.trim(),
-            role:
-              i.role === "owner"
-                ? "owner"
-                : i.role === "manager"
-                  ? "admin"
-                  : "ops",
-          }));
-        const locations: SaasLocation[] = [];
-        const operators: LocationOperator[] = [];
-        const cats: LocationMenuCategory[] = [];
-        for (const d of locDrafts) {
-          const loc: SaasLocation = {
-            id: uid("loc"),
-            orgId: org.id,
-            name: d.name.trim(),
-            code: codeFromName(d.name),
-            mode: d.mode,
-            address: d.address.trim(),
-            timezone: d.timezone || "America/Los_Angeles",
-            open: true,
-            enabledPackages: packageIds?.length
-              ? (packageIds as PackageId[])
-              : packagesForLocation(d.mode, d.operatingModel),
-            operatingModel: d.operatingModel,
-            hostBrandName: d.hostBrandName.trim() || d.name.trim(),
-            createdBy: "ui",
-          };
-          locations.push(loc);
-          d.operators
-            .filter((o) => o.name.trim())
-            .forEach((o, idx) => {
-              const last4 = o.payoutLast4.replace(/\D/g, "").slice(-4) || "0000";
-              operators.push({
-                id: uid("op"),
-                orgId: org.id,
-                locationId: loc.id,
-                name: o.name.trim(),
-                shortName: o.name.trim(),
-                payoutAccountLabel:
-                  o.payoutAccountLabel.trim() || `${o.name.trim()} payout`,
-                payoutLast4: last4,
-                stationType: o.stationType,
-                ownedCategoryIds: [],
-                ownedItemIds: [],
-                color: nextOperatorColor(idx),
-                active: true,
-              });
-            });
-          if (d.menuStart === "template_categories") {
-            cats.push(
-              {
-                id: uid("lcat"),
-                locationId: loc.id,
-                name: "Drinks",
-                sort: 1,
-                color: "#f87171",
-                station: "bar",
-              },
-              {
-                id: uid("lcat"),
-                locationId: loc.id,
-                name: "Kitchen",
-                sort: 2,
-                color: "#94a3b8",
-                station: "kitchen",
-              },
-            );
-          }
-        }
-        const first = locations[0]!;
-        set({
-          orgs: [...get().orgs, org],
-          org,
-          activeOrgId: org.id,
-          members: [...get().members, ...members],
-          locations: [...get().locations, ...locations],
-          operators: [...get().operators, ...operators],
-          locationCategories: [...get().locationCategories, ...cats],
-          activeLocationId: first.id,
-        });
-        return {
-          ok: true,
-          orgId: org.id,
-          locationIds: locations.map((l) => l.id),
-        };
-      },
-
       toggleLocationPackage: (locationId, packageId) => {
         const pkg = PACKAGE_BY_ID[packageId];
         set({
@@ -910,38 +791,15 @@ export const useSaasStore = create<SaasState>()(
           .reduce((s, p) => s + p.amps, 0),
     }),
     {
-      name: "zest-saas-v8-empty",
+      name: "summex-saas-v8",
       storage: createJSONStorage(() => localStorage),
       skipHydration: true,
       merge: (persisted, current) => {
-        const p = (persisted ?? {}) as Partial<SaasState>;
-        const orgs =
-          p.orgs && p.orgs.length > 0
-            ? p.orgs
-            : p.org
-              ? [p.org]
-              : current.orgs;
-        const activeOrgId = p.activeOrgId || p.org?.id || current.activeOrgId;
-        const org =
-          orgs.find((o) => o.id === activeOrgId) || orgs[0] || current.org;
-        const locations = (p.locations ?? current.locations).map((l) => ({
-          ...l,
-          createdBy: l.createdBy ?? "seed",
-          operatingModel: l.operatingModel ?? "single_operator",
-          hostBrandName: l.hostBrandName ?? l.name,
-        }));
-        return {
-          ...current,
-          ...p,
-          orgs,
-          org,
-          activeOrgId: org.id,
-          locations,
-          operators: p.operators ?? current.operators ?? [],
-          locationCategories:
-            p.locationCategories ?? current.locationCategories ?? [],
-          locationItems: p.locationItems ?? current.locationItems ?? [],
-        };
+        const p = persisted as Partial<SaasState> | undefined;
+        if (!isDevDemoClient() && p?.org?.id === "org_demo") {
+          return current;
+        }
+        return { ...current, ...(p ?? {}) };
       },
     },
   ),

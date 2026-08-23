@@ -159,7 +159,7 @@ export const useNotifyStore = create<NotifyState>()(
       },
     }),
     {
-      name: "zest-notify-v1",
+      name: "summex-notify-v1",
       storage: createJSONStorage(() => localStorage),
       skipHydration: true,
       partialize: (s) => ({

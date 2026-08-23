@@ -14,7 +14,7 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import {
   STORE_CATEGORIES,
-  ZEST_STORE_APPS,
+  SUMMEX_STORE_APPS,
   type StoreApp,
   type StoreCategory,
   type StoreAppId,
@@ -22,7 +22,7 @@ import {
 import { isNativeApp } from "@/lib/native-shell";
 import { cn } from "@/lib/utils";
 
-const INSTALLED_KEY = "zest-appstore-installed-v1";
+const INSTALLED_KEY = "summex-appstore-installed-v1";
 
 function loadInstalled(): StoreAppId[] {
   try {
@@ -54,7 +54,7 @@ export function AppStoreView() {
 
   const filtered = useMemo(() => {
     const qq = q.trim().toLowerCase();
-    return ZEST_STORE_APPS.filter((a) => {
+    return SUMMEX_STORE_APPS.filter((a) => {
       if (cat !== "all" && a.category !== cat) return false;
       if (!qq) return true;
       return (
@@ -65,8 +65,8 @@ export function AppStoreView() {
     });
   }, [q, cat]);
 
-  const featured = ZEST_STORE_APPS.filter((a) => a.featured);
-  const myApps = ZEST_STORE_APPS.filter((a) => installed.includes(a.id));
+  const featured = SUMMEX_STORE_APPS.filter((a) => a.featured);
+  const myApps = SUMMEX_STORE_APPS.filter((a) => installed.includes(a.id));
 
   const install = (app: StoreApp) => {
     setInstalling(app.id);
@@ -92,7 +92,7 @@ export function AppStoreView() {
   if (!ready) {
     return (
       <div className="flex min-h-[100dvh] items-center justify-center bg-bg text-muted-foreground">
-        Loading Zest Store…
+        Loading Summex Store…
       </div>
     );
   }
@@ -119,7 +119,7 @@ export function AppStoreView() {
               </h1>
               <p className="text-sm text-primary">{selected.tagline}</p>
               <p className="mt-1 text-xs text-muted-foreground">
-                Zest · {selected.roleHint ?? "Staff"} · {selected.age}
+                Summex · {selected.roleHint ?? "Staff"} · {selected.age}
               </p>
               <div className="mt-3 flex flex-wrap gap-2">
                 {on ? (
@@ -189,7 +189,7 @@ export function AppStoreView() {
             )}
             <div className="flex items-start gap-2 rounded-xl border border-border bg-surface p-3 text-xs text-muted-foreground">
               <Shield className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
-              Station apps open inside Zest. No separate Play downloads required
+              Station apps open inside Summex. No separate Play downloads required
               for web modules — the Android shell hosts this store + all
               stations.
             </div>
@@ -207,7 +207,7 @@ export function AppStoreView() {
             Z
           </div>
           <div className="min-w-0 flex-1">
-            <h1 className="text-lg font-bold tracking-tight">Zest Store</h1>
+            <h1 className="text-lg font-bold tracking-tight">Summex Store</h1>
             <p className="text-[11px] text-muted-foreground">
               {native ? "Android app · " : ""}
               Station apps for your devices · Blair & Baida
@@ -374,19 +374,19 @@ export function AppStoreView() {
             <div>
               <p className="font-semibold">One Android shell · many station apps</p>
               <p className="mt-1 text-xs text-muted-foreground">
-                Install Zest from this store experience on each Galaxy tablet or
+                Install Summex from this store experience on each Galaxy tablet or
                 the 27″ display, then open Kitchen / Floor / Bar as needed. SaaS
                 admins use{" "}
                 <Link to="/platform" className="text-primary underline">
-                  Zest Platform
+                  Summex Platform
                 </Link>
                 .
               </p>
               <p className="mt-2 text-[11px] text-muted-foreground">
-                Sideload APK: <code className="text-foreground">artifacts/zest-pos-debug.apk</code>
+                Sideload APK: <code className="text-foreground">artifacts/summex-pos-debug.apk</code>
                 {" · "}
                 Future: publish the same shell to Google Play as{" "}
-                <code className="text-foreground">app.zest.pos</code>.
+                <code className="text-foreground">app.summex.pos</code>.
               </p>
             </div>
           </div>

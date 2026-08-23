@@ -16,7 +16,7 @@ await page.goto("http://127.0.0.1:8080/", {
 });
 await page.evaluate(() => {
   for (const k of Object.keys(localStorage)) {
-    if (k.startsWith("zest-")) localStorage.removeItem(k);
+    if (k.startsWith("summex-") || k.startsWith("zest-")) localStorage.removeItem(k);
   }
 });
 await page.reload({ waitUntil: "networkidle" });
@@ -58,7 +58,7 @@ await page.screenshot({ path: "/workspace/screenshots/fix-restaurant.png" });
 
 const bad = [];
 if (/Hall settlement/i.test(body)) bad.push("hall settlement on restaurant");
-if (/Zest Market Hall/i.test(body)) bad.push("market hall name");
+if (/Summex Market Hall/i.test(body)) bad.push("market hall name");
 if (!/Floor/i.test(body)) bad.push("no Floor");
 if ((await page.getByRole("button", { name: /^Hall$/i }).count()) > 0)
   bad.push("Hall nav visible");

@@ -11,7 +11,7 @@ const errors = [];
 page.on("pageerror", (e) => errors.push(String(e)));
 
 await page.goto("http://127.0.0.1:8080/", { waitUntil: "networkidle", timeout: 60000 });
-await page.evaluate(() => localStorage.removeItem("zest-notify-v1"));
+await page.evaluate(() => localStorage.removeItem("summex-notify-v1"));
 await page.reload({ waitUntil: "networkidle" });
 await page.waitForTimeout(1200);
 

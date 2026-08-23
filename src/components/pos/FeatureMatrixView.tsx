@@ -57,8 +57,8 @@ const MATRIX: { domain: string; items: string[] }[] = [
       "Refunds (manager)",
       "Gift cards",
       "Room charge (PMS)",
-      "Zest Payments (only processor)",
-      "ACH vendor payouts (inside Zest)",
+      "Summex Payments (only processor)",
+      "ACH vendor payouts (inside Summex)",
       "Period settlement engine",
       "Host cut rules",
       "Cash distribution report",
@@ -90,7 +90,7 @@ const MATRIX: { domain: string; items: string[] }[] = [
   {
     domain: "SaaS platform",
     items: [
-      "Zest brand identity",
+      "Summex brand identity",
       "Organization & plans",
       "Team memberships",
       "Location modes",
@@ -190,7 +190,7 @@ const MATRIX: { domain: string; items: string[] }[] = [
   {
     domain: "Integrations (80+)",
     items: [
-      "Zest Payments (built-in)",
+      "Summex Payments (built-in)",
       "Delivery marketplaces",
       "Accounting / ERP",
       "Payroll & HR",

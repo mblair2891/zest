@@ -1,10 +1,10 @@
-## Default: Zest Store
+## Default: Summex Store
 
 The Android shell opens **`/apps`** — an app-store style hub to install/open Floor, Kitchen, Bar, Platform, etc.
 
-# Zest Android (Capacitor)
+# Summex Android (Capacitor)
 
-Native **Android shell** around the Zest web POS — one product, installable APK for Galaxy tablets and the 27″ KDS.
+Native **Android shell** around the Summex web POS — one product, installable APK for Galaxy tablets and the 27″ KDS.
 
 ## Requirements (build machine)
 
@@ -15,7 +15,7 @@ Native **Android shell** around the Zest web POS — one product, installable AP
 
 ## Configure target URL
 
-Edit `native/zest-native.json`:
+Edit `native/summex-native.json`:
 
 ```json
 {
@@ -27,7 +27,7 @@ Edit `native/zest-native.json`:
 
 | Field | Meaning |
 |---|---|
-| `url` | Live Zest origin (LAN IP while developing, HTTPS in prod) |
+| `url` | Live Summex origin (LAN IP while developing, HTTPS in prod) |
 | `station` | Optional: `kitchen`, `bar`, `floor`, `order`… |
 | `cleartext` | `true` if using `http://` |
 
@@ -67,7 +67,7 @@ MainActivity enables `FLAG_KEEP_SCREEN_ON` so the 27″ does not sleep mid-servi
 
 - Create upload keystore
 - `cd android && ./gradlew bundleRelease`
-- Play Console listing for `app.zest.pos`
+- Play Console listing for `app.summex.pos`
 
 ## Not in this shell yet
 

@@ -1,0 +1,1102 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>Summex Hospitality OS — Complete User Manual</title>
+<style>
+  @page {
+    size: Letter;
+    margin: 0.75in 0.7in 0.85in 0.7in;
+    @bottom-center {
+      content: "Summex User Manual  ·  " counter(page);
+      font-size: 9pt;
+      color: #666;
+    }
+  }
+  :root {
+    --ink: #12141a;
+    --muted: #5a6170;
+    --line: #d8dde6;
+    --accent: #6b8f00;
+    --accent-bg: #f3f8e0;
+    --surface: #f6f7f9;
+    --owner: #6b8f00;
+    --manager: #2563eb;
+    --server: #0891b2;
+    --bartender: #dc2626;
+    --host: #7c3aed;
+    --kitchen: #ca8a04;
+    --busser: #4f46e5;
+  }
+  * { box-sizing: border-box; }
+  html { font-size: 11pt; }
+  body {
+    font-family: "Segoe UI", system-ui, -apple-system, sans-serif;
+    color: var(--ink);
+    line-height: 1.45;
+    margin: 0;
+    padding: 0;
+  }
+  h1, h2, h3, h4 { page-break-after: avoid; break-after: avoid; }
+  h1 {
+    font-size: 1.75rem;
+    letter-spacing: -0.03em;
+    margin: 0 0 0.4em;
+    color: var(--ink);
+  }
+  h2 {
+    font-size: 1.35rem;
+    letter-spacing: -0.02em;
+    margin: 1.6em 0 0.5em;
+    padding-bottom: 0.25em;
+    border-bottom: 2px solid var(--accent);
+    color: var(--ink);
+  }
+  h3 {
+    font-size: 1.1rem;
+    margin: 1.2em 0 0.4em;
+    color: #1a1d24;
+  }
+  h4 {
+    font-size: 1rem;
+    margin: 1em 0 0.3em;
+    color: #2a3040;
+  }
+  p { margin: 0.4em 0 0.7em; }
+  ul, ol { margin: 0.3em 0 0.8em; padding-left: 1.3em; }
+  li { margin: 0.2em 0; }
+  a { color: var(--accent); text-decoration: none; }
+  a:hover { text-decoration: underline; }
+  .cover {
+    page-break-after: always;
+    min-height: 9.5in;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    padding: 1.5in 0.5in;
+  }
+  .cover-mark {
+    width: 72px; height: 72px;
+    background: #c8f542;
+    color: #0f1608;
+    border-radius: 18px;
+    display: flex; align-items: center; justify-content: center;
+    font-weight: 900; font-size: 2rem; letter-spacing: -0.05em;
+    margin-bottom: 1.2em;
+  }
+  .cover h1 { font-size: 2.6rem; margin-bottom: 0.15em; }
+  .tagline { font-size: 1.2rem; color: var(--accent); font-weight: 600; margin-bottom: 1.5em; }
+  .cover-meta { color: var(--muted); font-size: 0.95rem; }
+  .cover-meta strong { color: var(--ink); }
+  .section { page-break-before: always; }
+  .section:first-of-type { page-break-before: auto; }
+  .toc { page-break-after: always; }
+  .toc ol { list-style: none; padding: 0; }
+  .toc > ol > li { margin: 0.55em 0; }
+  .toc a { color: var(--ink); font-weight: 600; }
+  .toc .sub { margin: 0.25em 0 0.25em 1.1em; font-weight: 400; color: var(--muted); font-size: 0.95rem; }
+  .toc .sub a { color: var(--muted); font-weight: 500; }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 0.6em 0 1em;
+    font-size: 0.92rem;
+  }
+  th, td {
+    border: 1px solid var(--line);
+    padding: 0.4em 0.55em;
+    text-align: left;
+    vertical-align: top;
+  }
+  th { background: var(--surface); font-weight: 600; }
+  tr { page-break-inside: avoid; }
+  .note, .tip, .warn {
+    border-radius: 8px;
+    padding: 0.65em 0.85em;
+    margin: 0.7em 0 1em;
+    page-break-inside: avoid;
+  }
+  .note { background: var(--surface); border-left: 4px solid #94a3b8; }
+  .tip { background: var(--accent-bg); border-left: 4px solid var(--accent); }
+  .warn { background: #fff7ed; border-left: 4px solid #ea580c; }
+  .badge {
+    display: inline-block;
+    font-size: 0.72rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    padding: 0.15em 0.45em;
+    border-radius: 4px;
+    margin-right: 0.25em;
+  }
+  .b-owner { background: #e8f5b8; color: #3d5200; }
+  .b-manager { background: #dbeafe; color: #1e40af; }
+  .b-server { background: #cffafe; color: #155e75; }
+  .b-bartender { background: #fee2e2; color: #991b1b; }
+  .b-host { background: #ede9fe; color: #5b21b6; }
+  .b-kitchen { background: #fef3c7; color: #92400e; }
+  .b-busser { background: #e0e7ff; color: #3730a3; }
+  .roles { margin: 0.4em 0 0.8em; }
+  code, .pin {
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 0.9em;
+    background: var(--surface);
+    padding: 0.1em 0.35em;
+    border-radius: 4px;
+  }
+  .steps { counter-reset: step; list-style: none; padding-left: 0; }
+  .steps li {
+    counter-increment: step;
+    position: relative;
+    padding-left: 2em;
+    margin: 0.45em 0;
+  }
+  .steps li::before {
+    content: counter(step);
+    position: absolute; left: 0; top: 0;
+    width: 1.45em; height: 1.45em;
+    border-radius: 999px;
+    background: var(--accent);
+    color: #0f1608;
+    font-weight: 700; font-size: 0.8rem;
+    display: flex; align-items: center; justify-content: center;
+    line-height: 1.45em; text-align: center;
+  }
+  .feature-head { margin-top: 1.4em; }
+  footer.manual-end {
+    margin-top: 2em;
+    padding-top: 1em;
+    border-top: 1px solid var(--line);
+    color: var(--muted);
+    font-size: 0.9rem;
+  }
+</style>
+</head>
+<body>
+
+<!-- ===================== COVER ===================== -->
+<section class="cover">
+  <div class="cover-mark">Z</div>
+  <h1>Summex</h1>
+  <p class="tagline">Service, sharp. — Complete User Manual</p>
+  <p style="max-width: 28em; color: var(--muted);">
+    In-depth guide to the Summex hospitality operating system for restaurants,
+    food halls, and truck pods — covering every station, every access level,
+    and every major workflow.
+  </p>
+  <div class="cover-meta" style="margin-top: 2.5em;">
+    <p><strong>Product</strong> · Summex Hospitality OS</p>
+    <p><strong>Proprietors</strong> · Michael Blair & Andy Baida</p>
+    <p><strong>Edition</strong> · 1.0 Demo Manual · August 2026</p>
+    <p><strong>Audience</strong> · Owners, managers, floor staff, bar, kitchen, host, busser</p>
+  </div>
+  <p class="cover-meta" style="margin-top: 2em; font-size: 0.85rem;">
+    Card payment processing in this demo is simulated. All other workflows described
+    below are interactive in the product unless noted.
+  </p>
+</section>
+
+<!-- ===================== TOC ===================== -->
+<section class="toc">
+  <h1 id="toc">Table of contents</h1>
+  <p style="color: var(--muted);">Click any item to jump to that section.</p>
+  <ol>
+    <li><a href="#ch1">1. Introduction & product overview</a>
+      <div class="sub"><a href="#ch1-1">1.1 What Summex is</a></div>
+      <div class="sub"><a href="#ch1-2">1.2 Core concepts</a></div>
+      <div class="sub"><a href="#ch1-3">1.3 How to use this manual</a></div>
+    </li>
+    <li><a href="#ch2">2. Getting started</a>
+      <div class="sub"><a href="#ch2-1">2.1 Sign-in & PIN pad</a></div>
+      <div class="sub"><a href="#ch2-2">2.2 Quick login by access level</a></div>
+      <div class="sub"><a href="#ch2-3">2.3 Demo PINs</a></div>
+      <div class="sub"><a href="#ch2-4">2.4 Shell layout (header, nav, mobile)</a></div>
+      <div class="sub"><a href="#ch2-5">2.5 Sign out</a></div>
+    </li>
+    <li><a href="#ch3">3. Access levels (roles)</a>
+      <div class="sub"><a href="#ch3-matrix">3.1 Permission matrix</a></div>
+      <div class="sub"><a href="#ch3-owner">3.2 Owner</a></div>
+      <div class="sub"><a href="#ch3-manager">3.3 Manager</a></div>
+      <div class="sub"><a href="#ch3-server">3.4 Server</a></div>
+      <div class="sub"><a href="#ch3-bartender">3.5 Bartender</a></div>
+      <div class="sub"><a href="#ch3-host">3.6 Host</a></div>
+      <div class="sub"><a href="#ch3-kitchen">3.7 Kitchen</a></div>
+      <div class="sub"><a href="#ch3-busser">3.8 Busser</a></div>
+    </li>
+    <li><a href="#ch4">4. Floor & tables</a></li>
+    <li><a href="#ch5">5. Ordering & checks</a></li>
+    <li><a href="#ch6">6. Kitchen & bar displays (KDS)</a></li>
+    <li><a href="#ch7">7. Host stand (waitlist & reservations)</a></li>
+    <li><a href="#ch8">8. Takeout, online & hall cart</a></li>
+    <li><a href="#ch9">9. Payments, cash & tips</a></li>
+    <li><a href="#ch10">10. Multi-vendor settlement</a></li>
+    <li><a href="#ch11">11. Labor, clock & payroll rules</a></li>
+    <li><a href="#ch12">12. Inventory, recipes & AI stock</a></li>
+    <li><a href="#ch13">13. Drink AI (bartender assist)</a></li>
+    <li><a href="#ch14">14. Menu, guests & staff admin</a></li>
+    <li><a href="#ch15">15. Reports & cash drawer</a></li>
+    <li><a href="#ch16">16. HQ, integrations & vendor portal</a></li>
+    <li><a href="#ch17">17. Truck pod operations</a></li>
+    <li><a href="#ch18">18. SaaS console (platform)</a></li>
+    <li><a href="#ch19">19. Settings, floor editor & advanced modules</a></li>
+    <li><a href="#ch20">20. Workflows by access level</a></li>
+    <li><a href="#ch21">21. Troubleshooting & FAQ</a></li>
+    <li><a href="#ch22">22. Glossary</a></li>
+  </ol>
+</section>
+
+<!-- ===================== 1 ===================== -->
+<section class="section" id="ch1">
+  <h1>1. Introduction & product overview</h1>
+
+  <h2 id="ch1-1">1.1 What Summex is</h2>
+  <p>
+    <strong>Summex</strong> is a hospitality operating system for bars, restaurants,
+    multi-vendor food halls, and food truck pods. It combines front-of-house POS,
+    kitchen display routing, labor timekeeping, multi-merchant settlement,
+    inventory intelligence, guest ordering surfaces, and a SaaS-style HQ for
+    operators who run multiple sites or vendors under one roof.
+  </p>
+  <p>
+    The product tagline is <em>Service, sharp.</em> The platform is built by
+    <strong>Michael Blair</strong> and <strong>Andy Baida</strong>.
+  </p>
+
+  <h2 id="ch1-2">1.2 Core concepts</h2>
+  <table>
+    <thead><tr><th>Concept</th><th>Meaning in Summex</th></tr></thead>
+    <tbody>
+      <tr><td><strong>Location / building</strong></td><td>A physical site (restaurant, hall, or truck pod). Settlement and pads are location-scoped.</td></tr>
+      <tr><td><strong>Vendor / merchant</strong></td><td>A food or beverage operator inside a hall or pod. Menu items and KDS tickets carry a vendor id.</td></tr>
+      <tr><td><strong>Check / order</strong></td><td>A guest bill. In a hall, one check can hold lines from many vendors; the guest still pays once.</td></tr>
+      <tr><td><strong>Ticket</strong></td><td>A kitchen/bar fire group sent from a check, routed by station and vendor.</td></tr>
+      <tr><td><strong>Access level (role)</strong></td><td>Determines which screens appear after login (Owner, Manager, Server, etc.).</td></tr>
+      <tr><td><strong>Host cut</strong></td><td>Building operator share of vendor sales, configured in settlement settings.</td></tr>
+      <tr><td><strong>Red-flag clock-out</strong></td><td>Clock-out outside the minutes window after last closed ticket → supervisor review.</td></tr>
+      <tr><td><strong>Pad</strong></td><td>A truck parking/power slip in truck-pod mode.</td></tr>
+    </tbody>
+  </table>
+
+  <h2 id="ch1-3">1.3 How to use this manual</h2>
+  <ul>
+    <li>Use the <a href="#toc">table of contents</a> to jump by feature.</li>
+    <li>Each major feature lists <strong>who can use it</strong> with color badges.</li>
+    <li>Chapter 20 is a day-in-the-life guide per access level.</li>
+    <li>Where the demo simulates money movement (cards, ACH), the manual says so explicitly.</li>
+  </ul>
+</section>
+
+<!-- ===================== 2 ===================== -->
+<section class="section" id="ch2">
+  <h1>2. Getting started</h1>
+
+  <h2 id="ch2-1">2.1 Sign-in & PIN pad</h2>
+  <p class="roles">
+    <span class="badge b-owner">Owner</span>
+    <span class="badge b-manager">Manager</span>
+    <span class="badge b-server">Server</span>
+    <span class="badge b-bartender">Bartender</span>
+    <span class="badge b-host">Host</span>
+    <span class="badge b-kitchen">Kitchen</span>
+    <span class="badge b-busser">Busser</span>
+  </p>
+  <p>
+    The login screen shows the Summex mark, PIN dots, and a numeric pad. Enter your
+    4-digit staff PIN. On success you land on the <strong>home screen for your role</strong>
+    (for example, servers land on Floor; kitchen on Kitchen KDS).
+  </p>
+  <ol class="steps">
+    <li>Open Summex on the terminal, tablet, or browser preview.</li>
+    <li>Enter your PIN (demo PINs listed below) or use a Quick login chip.</li>
+    <li>Confirm your name and access level in the top-right header.</li>
+    <li>Use only the menu items shown — unauthorized tools are hidden.</li>
+  </ol>
+
+  <h2 id="ch2-2">2.2 Quick login by access level</h2>
+  <p>
+    Below the PIN pad, <strong>Quick login by access level</strong> shows one
+    representative employee for each role. Each chip displays:
+  </p>
+  <ul>
+    <li>Employee name</li>
+    <li>Access level badge (Owner, Manager, Server, …)</li>
+    <li>Short description of what that level can do</li>
+  </ul>
+  <div class="tip">
+    <strong>Tip:</strong> Use these chips when training or demos so you can switch
+    personas without memorizing every PIN.
+  </div>
+
+  <h2 id="ch2-3">2.3 Demo PINs</h2>
+  <table>
+    <thead><tr><th>Name</th><th>PIN</th><th>Access level</th><th>Home screen</th></tr></thead>
+    <tbody>
+      <tr><td>Morgan Blair</td><td><span class="pin">9999</span></td><td>Owner</td><td>HQ</td></tr>
+      <tr><td>Alex Rivera</td><td><span class="pin">0000</span></td><td>Manager</td><td>HQ</td></tr>
+      <tr><td>Jordan Lee</td><td><span class="pin">1111</span></td><td>Server</td><td>Floor</td></tr>
+      <tr><td>Sam Okonkwo</td><td><span class="pin">2222</span></td><td>Server</td><td>Floor</td></tr>
+      <tr><td>Casey Brooks</td><td><span class="pin">3333</span></td><td>Bartender</td><td>Bar</td></tr>
+      <tr><td>Riley Chen</td><td><span class="pin">4444</span></td><td>Host</td><td>Host / Waitlist</td></tr>
+      <tr><td>Morgan Diaz</td><td><span class="pin">5555</span></td><td>Kitchen</td><td>Kitchen</td></tr>
+      <tr><td>Taylor Kim</td><td><span class="pin">6666</span></td><td>Server</td><td>Floor</td></tr>
+      <tr><td>Jamie Cruz</td><td><span class="pin">7777</span></td><td>Busser</td><td>Floor</td></tr>
+    </tbody>
+  </table>
+  <p>Manager override PIN for voids/comps in demos is typically the manager PIN <span class="pin">0000</span>.</p>
+
+  <h2 id="ch2-4">2.4 Shell layout</h2>
+  <ul>
+    <li><strong>Header</strong> — brand, clock, location code, open check counts, signed-in name + access level, sign out.</li>
+    <li><strong>Left nav (desktop)</strong> — only items allowed for your role; section title shows e.g. “Server menu”.</li>
+    <li><strong>Main canvas</strong> — active module.</li>
+    <li><strong>Bottom dock (phone)</strong> — top shortcuts for your role + More when applicable.</li>
+  </ul>
+
+  <h2 id="ch2-5">2.5 Sign out</h2>
+  <p>Tap the logout icon in the header. Returns to the PIN screen. Does not automatically clock you out of labor; use Labor time clock for that.</p>
+</section>
+
+<!-- ===================== 3 ===================== -->
+<section class="section" id="ch3">
+  <h1>3. Access levels (roles)</h1>
+  <p>
+    Access is enforced in the navigation: if a role cannot use a feature, the
+    menu entry is omitted. If something tries to open a blocked view, Summex
+    returns the user to their role home screen.
+  </p>
+
+  <h2 id="ch3-matrix">3.1 Permission matrix (high level)</h2>
+  <table>
+    <thead>
+      <tr>
+        <th>Area</th>
+        <th>Owner</th><th>Mgr</th><th>Server</th><th>Bar</th><th>Host</th><th>Kit</th><th>Bus</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr><td>SaaS console</td><td>✓</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td></tr>
+      <tr><td>HQ / settlement / integrations</td><td>✓</td><td>✓</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td></tr>
+      <tr><td>Floor plan</td><td>✓</td><td>✓</td><td>✓</td><td>—</td><td>✓</td><td>—</td><td>✓</td></tr>
+      <tr><td>Order / pay</td><td>✓</td><td>✓</td><td>✓</td><td>✓</td><td>—</td><td>—</td><td>—</td></tr>
+      <tr><td>Kitchen KDS</td><td>✓</td><td>✓</td><td>—</td><td>—</td><td>—</td><td>✓</td><td>—</td></tr>
+      <tr><td>Bar KDS</td><td>✓</td><td>✓</td><td>—</td><td>✓</td><td>—</td><td>—</td><td>—</td></tr>
+      <tr><td>Host / waitlist</td><td>✓</td><td>✓</td><td>✓</td><td>—</td><td>✓</td><td>—</td><td>—</td></tr>
+      <tr><td>Labor & payroll rules</td><td>✓</td><td>✓</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td></tr>
+      <tr><td>AI inventory / suppliers</td><td>✓</td><td>✓</td><td>—</td><td>—</td><td>—</td><td>✓</td><td>—</td></tr>
+      <tr><td>Drink AI</td><td>✓</td><td>✓</td><td>✓</td><td>✓</td><td>—</td><td>—</td><td>—</td></tr>
+      <tr><td>Menu / settings / cash</td><td>✓</td><td>✓</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td></tr>
+    </tbody>
+  </table>
+
+  <h2 id="ch3-owner">3.2 Owner</h2>
+  <p class="roles"><span class="badge b-owner">Owner</span></p>
+  <p><strong>Purpose:</strong> Full control of the site and platform demo surfaces including SaaS.</p>
+  <p><strong>Home:</strong> HQ. <strong>Typical tools:</strong> SaaS, HQ, truck pod, settlement, integrations, labor, AI stock, all FOH/BOH modules, settings.</p>
+  <p><strong>When to use:</strong> Configuration, multi-vendor payouts, supplier strategy, viewing every report, training all roles.</p>
+
+  <h2 id="ch3-manager">3.3 Manager</h2>
+  <p class="roles"><span class="badge b-manager">Manager</span></p>
+  <p><strong>Purpose:</strong> Run the building day-to-day without platform SaaS billing controls.</p>
+  <p><strong>Home:</strong> HQ. Includes settlement, labor rules, inventory AI, cash, menu, staff, promotions, purchasing, floor editor, etc. No SaaS console.</p>
+  <p><strong>When to use:</strong> Open/close, comps/voids approval, period close, payroll readiness, 86 items, coaching floor.</p>
+
+  <h2 id="ch3-server">3.4 Server</h2>
+  <p class="roles"><span class="badge b-server">Server</span></p>
+  <p><strong>Purpose:</strong> Table service and check ownership.</p>
+  <p><strong>Home:</strong> Floor. Tools: Floor, Order, Takeout, Hall cart, Host (limited), Guests, Drink AI, Online orders board.</p>
+  <p><strong>When to use:</strong> Seat (if permitted by workflow), build checks, fire kitchen, print/pay, multi-vendor hall ordering.</p>
+
+  <h2 id="ch3-bartender">3.5 Bartender</h2>
+  <p class="roles"><span class="badge b-bartender">Bartender</span></p>
+  <p><strong>Purpose:</strong> Bar production and bar tabs.</p>
+  <p><strong>Home:</strong> Bar KDS. Tools: Bar, Order, Takeout, Drink AI, Guests, Stock (awareness / 86).</p>
+  <p><strong>When to use:</strong> Bump drink tickets, open tabs, recommend cocktails with Drink AI, 86 bottles.</p>
+
+  <h2 id="ch3-host">3.6 Host</h2>
+  <p class="roles"><span class="badge b-host">Host</span></p>
+  <p><strong>Purpose:</strong> Door and seating flow.</p>
+  <p><strong>Home:</strong> Host stand. Tools: Waitlist/reservations, Floor (seat/turn), Guests, Online.</p>
+  <p><strong>When to use:</strong> Quote waits, notify parties, seat tables, manage reservations.</p>
+
+  <h2 id="ch3-kitchen">3.7 Kitchen</h2>
+  <p class="roles"><span class="badge b-kitchen">Kitchen</span></p>
+  <p><strong>Purpose:</strong> Expo and line production.</p>
+  <p><strong>Home:</strong> Kitchen KDS. Tools: Kitchen, Recipes, Checklists, Stock.</p>
+  <p><strong>When to use:</strong> Start/bump tickets, follow recipes/plate cost, open-close checklists, watch low stock.</p>
+
+  <h2 id="ch3-busser">3.8 Busser</h2>
+  <p class="roles"><span class="badge b-busser">Busser</span></p>
+  <p><strong>Purpose:</strong> Table turns only.</p>
+  <p><strong>Home:</strong> Floor. Tools: Floor (mark dirty tables clean).</p>
+  <p><strong>When to use:</strong> After paid tables show dirty, tap to clear for the next party.</p>
+</section>
+
+<!-- ===================== 4 ===================== -->
+<section class="section" id="ch4">
+  <h1>4. Floor & tables</h1>
+  <p class="roles">
+    <span class="badge b-owner">Owner</span>
+    <span class="badge b-manager">Manager</span>
+    <span class="badge b-server">Server</span>
+    <span class="badge b-host">Host</span>
+    <span class="badge b-busser">Busser</span>
+  </p>
+
+  <h3>4.1 Floor map</h3>
+  <p>
+    The Floor view shows tables by section with status colors (available, seated,
+    ordering, ordered, check printed, paid, dirty, reserved). Section filters
+    narrow the map. Live counts summarize the room.
+  </p>
+
+  <h3>4.2 Seat a party</h3>
+  <ol class="steps">
+    <li>Tap an <strong>available</strong> table.</li>
+    <li>Enter guest count; confirm.</li>
+    <li>Summex opens a dine-in check assigned to the signed-in server and jumps to Order.</li>
+  </ol>
+
+  <h3>4.3 Open an existing check</h3>
+  <p>Tap any occupied table to reopen its order in the Order screen.</p>
+
+  <h3>4.4 Dirty → available (busser / host / server)</h3>
+  <p>After payment, tables become <strong>paid</strong> then can be cleared to <strong>dirty</strong>. Tap a dirty table to mark it clean (available).</p>
+
+  <h3>4.5 Merge tables</h3>
+  <p class="roles"><span class="badge b-owner">Owner</span><span class="badge b-manager">Manager</span><span class="badge b-server">Server</span></p>
+  <ol class="steps">
+    <li>Enable merge mode on the floor toolbar.</li>
+    <li>Tap the primary table (keeps the check).</li>
+    <li>Tap the secondary table to merge in.</li>
+    <li>Lines and guest counts combine; child table is linked under the primary.</li>
+  </ol>
+  <p>Use unmerge when the party splits or the combine was a mistake.</p>
+
+  <h3>4.6 Transfer check between tables</h3>
+  <ol class="steps">
+    <li>Enable transfer mode.</li>
+    <li>Tap the table that owns the open check.</li>
+    <li>Tap an available destination table.</li>
+  </ol>
+
+  <h3>4.7 Bar tabs from floor</h3>
+  <p>Open a named bar tab when the guest is not seated at a dining table. The check type becomes bar tab and appears in takeout/tab lists.</p>
+
+  <h3>4.8 Floor plan editor</h3>
+  <p class="roles"><span class="badge b-owner">Owner</span><span class="badge b-manager">Manager</span></p>
+  <p>
+    Drag tables, edit labels, seats, section, and shape (round / rect / bar).
+    Add dining or bar seats. Remove tables that have no open check.
+    Layout changes are saved in the demo store for this browser.
+  </p>
+</section>
+
+<!-- ===================== 5 ===================== -->
+<section class="section" id="ch5">
+  <h1>5. Ordering & checks</h1>
+  <p class="roles">
+    <span class="badge b-owner">Owner</span>
+    <span class="badge b-manager">Manager</span>
+    <span class="badge b-server">Server</span>
+    <span class="badge b-bartender">Bartender</span>
+  </p>
+
+  <h3>5.1 Order screen layout</h3>
+  <ul>
+    <li>Left / main: category tabs and menu grid (filterable by vendor in hall mode).</li>
+    <li>Check rail: lines with seat, modifiers, send state, voids/comps.</li>
+    <li>Totals: subtotal, tax, auto-gratuity when party size qualifies, balance.</li>
+  </ul>
+
+  <h3>5.2 Add items</h3>
+  <ol class="steps">
+    <li>Select category (or All).</li>
+    <li>Optional: set active seat number for seat-based ordering.</li>
+    <li>Tap a menu item. If modifiers are required, complete the modifier dialog.</li>
+    <li>Item appears unsent on the check.</li>
+  </ol>
+  <div class="note">
+    <strong>Happy hour:</strong> When enabled in settings and within the configured window,
+    items with happy-hour prices ring at the discounted amount automatically.
+  </div>
+
+  <h3>5.3 Multi-vendor (food hall) lines</h3>
+  <p>
+    Each menu item can belong to a vendor (kitchen, bar, noodle stall, etc.).
+    Lines show vendor short names. Sending routes tickets to the correct vendor KDS.
+    Payment remains a single guest transaction (see Chapter 10).
+  </p>
+
+  <h3>5.4 Send / fire</h3>
+  <ul>
+    <li><strong>Send</strong> — fires unsent lines that are not held; creates kitchen/bar tickets grouped by station, vendor, and course.</li>
+    <li><strong>Hold</strong> — keep a course until you fire it.</li>
+    <li><strong>Fire course</strong> — release held items for a course.</li>
+  </ul>
+
+  <h3>5.5 Void, comp, notes, seats</h3>
+  <p>
+    Select a line to void (manager PIN when required), comp, adjust quantity (unsent),
+    add notes, or reassign seat. Voids and comps write to the shift audit and sales
+    adjustments.
+  </p>
+
+  <h3>5.6 Discounts & check notes</h3>
+  <p>Apply percent or fixed discounts with a reason / promo code. Check-level notes print context for the team.</p>
+
+  <h3>5.7 Print check & pay</h3>
+  <ol class="steps">
+    <li>Print check — marks table status “check” for the floor map.</li>
+    <li>Pay — opens payment dialog (card, cash, gift, etc.).</li>
+    <li>When balance hits zero, check closes; table moves toward paid/dirty.</li>
+  </ol>
+  <p>
+    Closing a check records the server’s <strong>last closed ticket time</strong>,
+    which Labor uses for red-flag clock-out logic (Chapter 11).
+  </p>
+</section>
+
+<!-- ===================== 6 ===================== -->
+<section class="section" id="ch6">
+  <h1>6. Kitchen & bar displays (KDS)</h1>
+
+  <h3>6.1 Kitchen</h3>
+  <p class="roles">
+    <span class="badge b-owner">Owner</span>
+    <span class="badge b-manager">Manager</span>
+    <span class="badge b-kitchen">Kitchen</span>
+  </p>
+  <p>
+    Tickets list table/tab, server, items, modifiers, notes, course, and timer.
+    Vendor labels appear when hall routing is active so expo can see which stall owns the plate.
+  </p>
+  <ul>
+    <li><strong>Start</strong> — mark in progress.</li>
+    <li><strong>Bump</strong> — complete / clear from active rail.</li>
+    <li><strong>Recall</strong> — bring a bumped ticket back.</li>
+  </ul>
+
+  <h3>6.2 Bar</h3>
+  <p class="roles">
+    <span class="badge b-owner">Owner</span>
+    <span class="badge b-manager">Manager</span>
+    <span class="badge b-bartender">Bartender</span>
+  </p>
+  <p>Same KDS behaviors filtered to the bar station. Pair with Order and Drink AI for full bar workflow.</p>
+</section>
+
+<!-- ===================== 7 ===================== -->
+<section class="section" id="ch7">
+  <h1>7. Host stand (waitlist & reservations)</h1>
+  <p class="roles">
+    <span class="badge b-owner">Owner</span>
+    <span class="badge b-manager">Manager</span>
+    <span class="badge b-host">Host</span>
+    <span class="badge b-server">Server</span>
+  </p>
+
+  <h3>7.1 Waitlist</h3>
+  <ol class="steps">
+    <li>Add guest name, party size, phone, quoted minutes.</li>
+    <li><strong>Notify</strong> — marks notified (SMS is simulated in demo integrations).</li>
+    <li><strong>Seat</strong> — assigns next free table and opens service flow.</li>
+    <li><strong>Cancel</strong> — remove no-shows or walkaways.</li>
+  </ol>
+
+  <h3>7.2 Reservations</h3>
+  <p>
+    Book name, party, phone, and time. Statuses: booked/confirmed, seated, cancelled.
+    Seat from the reservation row when the table is ready.
+  </p>
+</section>
+
+<!-- ===================== 8 ===================== -->
+<section class="section" id="ch8">
+  <h1>8. Takeout, online & hall cart</h1>
+
+  <h3>8.1 Takeout & tabs (in POS)</h3>
+  <p class="roles">
+    <span class="badge b-owner">Owner</span>
+    <span class="badge b-manager">Manager</span>
+    <span class="badge b-server">Server</span>
+    <span class="badge b-bartender">Bartender</span>
+  </p>
+  <p>Create named takeout orders or bar tabs, then build items on the Order screen and fire to KDS.</p>
+
+  <h3>8.2 Online orders board</h3>
+  <p class="roles">
+    <span class="badge b-owner">Owner</span>
+    <span class="badge b-manager">Manager</span>
+    <span class="badge b-server">Server</span>
+    <span class="badge b-host">Host</span>
+  </p>
+  <p>
+    Lists web/QR/kiosk/marketplace-style orders with status transitions
+    (placed → accepted → preparing → ready → completed). Guest-facing
+    <code>/online</code> and <code>/kiosk</code> routes place demo orders into this queue.
+  </p>
+
+  <h3>8.3 Hall multi-stall cart</h3>
+  <p>
+    Guest or cashier builds a cart across vendors. One pay path; fulfillment still
+    splits by vendor on KDS and settlement.
+  </p>
+</section>
+
+<!-- ===================== 9 ===================== -->
+<section class="section" id="ch9">
+  <h1>9. Payments, cash & tips</h1>
+  <p class="roles">
+    <span class="badge b-owner">Owner</span>
+    <span class="badge b-manager">Manager</span>
+    <span class="badge b-server">Server</span>
+    <span class="badge b-bartender">Bartender</span>
+  </p>
+
+  <h3>9.1 Payment methods (demo)</h3>
+  <table>
+    <thead><tr><th>Method</th><th>Behavior</th></tr></thead>
+    <tbody>
+      <tr><td>Card</td><td>Simulated authorization; optional last4; tips supported. <em>No live processor.</em></td></tr>
+      <tr><td>Cash</td><td>Tender + change calculator; tips can be cash.</td></tr>
+      <tr><td>Gift card</td><td>Code lookup against demo balances.</td></tr>
+      <tr><td>Other / house</td><td>Demo paths for room charge / house account style tenders.</td></tr>
+    </tbody>
+  </table>
+
+  <h3>9.2 Tip suggestions</h3>
+  <p>Payment dialog offers percentage-based tip chips on remaining balance.</p>
+
+  <h3>9.3 Partial payments</h3>
+  <p>Apply multiple tenders until balance is zero. Table status updates as money posts.</p>
+
+  <h3>9.4 Cash drawer / shift</h3>
+  <p class="roles"><span class="badge b-owner">Owner</span><span class="badge b-manager">Manager</span></p>
+  <p>
+    Cash view tracks opening float, cash/card/gift sales, comps, voids, tips,
+    and expected vs counted close. Audit log lists sensitive actions.
+  </p>
+</section>
+
+<!-- ===================== 10 ===================== -->
+<section class="section" id="ch10">
+  <h1>10. Multi-vendor settlement</h1>
+  <p class="roles">
+    <span class="badge b-owner">Owner</span>
+    <span class="badge b-manager">Manager</span>
+  </p>
+
+  <h3>10.1 The model (important)</h3>
+  <p>
+    A <strong>location is a building</strong>. Inside it, several food/beverage
+    vendors fulfill items. Guests may order across vendors on one table visit.
+    The server enters one check; items route to each vendor’s production.
+    The guest pays <strong>once</strong> (card or cash). Summex does <em>not</em>
+    rely on Stripe Connect-style per-item routing to decide who is paid.
+  </p>
+  <p>Instead, at period end the platform calculates each vendor’s due amount.</p>
+
+  <h3>10.2 Configuration</h3>
+  <ul>
+    <li>Period type: daily, weekly, biweekly, monthly, or custom days.</li>
+    <li>Card fee percent deducted from card-attributed product sales.</li>
+    <li>Host cut on/off; percent of gross or fixed per vendor.</li>
+    <li>Tax remitter: host vs vendor (policy flag for reporting).</li>
+    <li>Current period start timestamp.</li>
+  </ul>
+
+  <h3>10.3 Live preview</h3>
+  <p>
+    Settlement view shows open-period totals per vendor: gross, card vs cash
+    attribution, fees, host cut split, electronic payout, and cash due.
+  </p>
+
+  <h3>10.4 Close period</h3>
+  <ol class="steps">
+    <li>Review live preview and cash distribution report.</li>
+    <li>Close period — freezes a settlement snapshot.</li>
+    <li>Mark paid when e-payouts / cash envelopes are complete (demo status).</li>
+  </ol>
+  <div class="warn">
+    <strong>Demo note:</strong> ACH payout initiation is simulated. The ledger math
+    and reports are real in-app logic.
+  </div>
+
+  <h3>10.5 Vendor portal</h3>
+  <p>
+    Vendors can inspect their sales, 86 their items, and view the last settlement
+    row without seeing other merchants’ full bank details.
+  </p>
+</section>
+
+<!-- ===================== 11 ===================== -->
+<section class="section" id="ch11">
+  <h1>11. Labor, clock & payroll rules</h1>
+  <p class="roles">
+    <span class="badge b-owner">Owner</span>
+    <span class="badge b-manager">Manager</span>
+  </p>
+  <p>Module: <strong>Labor</strong>. Staff time flags also appear under Staff for simple in/out, but Labor owns compliance rules.</p>
+
+  <h3>11.1 Published shifts & clock-in window</h3>
+  <p>
+    Settings define how many minutes <strong>before</strong> and <strong>after</strong>
+    scheduled start a punch is allowed. Outside the window, clock-in is blocked
+    unless a manager forces override (demo messaging).
+  </p>
+
+  <h3>11.2 Red-flag clock-out</h3>
+  <p>
+    Settings define <strong>clock-out red-flag minutes</strong> measured from the
+    employee’s <strong>last closed ticket/check</strong>.
+  </p>
+  <ul>
+    <li>Clock-out <em>within</em> the window → timecard <strong>auto-approved</strong>.</li>
+    <li>Clock-out <em>outside</em> the window (or no tickets) → <strong>pending review</strong>, supervisor alert.</li>
+  </ul>
+  <p>Use the Labor simulators (“ticket 5m ago” / “45m ago”) to train the two paths.</p>
+
+  <h3>11.3 Supervisor queue</h3>
+  <p>Approve as-is or correct punches (demo correction trims dangling time). Alerts resolve when handled.</p>
+
+  <h3>11.4 Daily closeout</h3>
+  <p>
+    Configured time (e.g. 04:00). Running closeout forces any still-open clocks to
+    pending review so the day can end cleanly.
+  </p>
+
+  <h3>11.5 Payroll</h3>
+  <ul>
+    <li><strong>Auto-export</strong> — only if every finished punch is approved / auto-approved / corrected.</li>
+    <li><strong>Manual</strong> — hold period for offline payroll processing.</li>
+  </ul>
+  <p>Export payload is a demo JSON for processors like ADP (no live transmission).</p>
+
+  <h3>11.6 Staff screen</h3>
+  <p>Simple roster with tips/sales counters and quick clock toggle (does not replace Labor rules UI).</p>
+</section>
+
+<!-- ===================== 12 ===================== -->
+<section class="section" id="ch12">
+  <h1>12. Inventory, recipes & AI stock</h1>
+
+  <h3>12.1 Classic stock screen</h3>
+  <p class="roles">
+    <span class="badge b-owner">Owner</span>
+    <span class="badge b-manager">Manager</span>
+    <span class="badge b-bartender">Bartender</span>
+    <span class="badge b-kitchen">Kitchen</span>
+  </p>
+  <p>On-hand adjustments, receive quantities, par awareness for POS inventory items.</p>
+
+  <h3>12.2 Recipes / plate cost</h3>
+  <p class="roles"><span class="badge b-owner">Owner</span><span class="badge b-manager">Manager</span><span class="badge b-kitchen">Kitchen</span></p>
+  <p>Link menu items to ingredient lines for costing and theoretical use.</p>
+
+  <h3>12.3 AI inventory audits</h3>
+  <p class="roles"><span class="badge b-owner">Owner</span><span class="badge b-manager">Manager</span></p>
+  <p>
+    Example: bar receives <strong>4 bottles of vodka</strong>. Through the week,
+    cocktail recipes consume ml pours. The AI multiplies <em>sales × recipe</em>
+    to estimate theoretical use, expected on-hand, variance vs count, and par status.
+  </p>
+  <ol class="steps">
+    <li>Open <strong>AI stock</strong>.</li>
+    <li>Run daily, weekly, or monthly audit.</li>
+    <li>Review variance notes (spillage, over-pour, receiving errors).</li>
+    <li>Adjust par / reorder points; receive stock when product arrives.</li>
+  </ol>
+  <p>Works the same for food recipes (patties, buns, wings, etc.).</p>
+
+  <h3>12.4 Suppliers</h3>
+  <p>
+    Connect demo suppliers (e.g. broadline foodservice, spirits distributors).
+    Draft POs for items below par; submit to move status to submitted (simulated EDI).
+  </p>
+</section>
+
+<!-- ===================== 13 ===================== -->
+<section class="section" id="ch13">
+  <h1>13. Drink AI (bartender assist)</h1>
+  <p class="roles">
+    <span class="badge b-owner">Owner</span>
+    <span class="badge b-manager">Manager</span>
+    <span class="badge b-server">Server</span>
+    <span class="badge b-bartender">Bartender</span>
+  </p>
+  <p>Guided questionnaire when a guest is unsure what to order:</p>
+  <ol class="steps">
+    <li>Spirit preference (vodka, rum, gin, whiskey, tequila, surprise, none).</li>
+    <li>Profile (sweet & fruity, savory, sour/citrus, bitter, creamy, spicy, light).</li>
+    <li>Strength (session / standard / strong).</li>
+    <li>Review top suggestions with ingredients, build, glass, confidence, pairing notes.</li>
+    <li>Optional: add a mapped menu item to the open check.</li>
+  </ol>
+  <div class="tip">
+    <strong>Food pairing:</strong> If the active check already has food (burger, wings, …),
+    suggestions boost drinks that pair well with those dishes.
+  </div>
+</section>
+
+<!-- ===================== 14 ===================== -->
+<section class="section" id="ch14">
+  <h1>14. Menu, guests & staff admin</h1>
+
+  <h3>14.1 Menu admin</h3>
+  <p class="roles"><span class="badge b-owner">Owner</span><span class="badge b-manager">Manager</span></p>
+  <p>Browse categories and items; toggle availability (86). Hall items remain vendor-tagged.</p>
+
+  <h3>14.2 Guests / CRM lite</h3>
+  <p class="roles">
+    <span class="badge b-owner">Owner</span>
+    <span class="badge b-manager">Manager</span>
+    <span class="badge b-server">Server</span>
+    <span class="badge b-bartender">Bartender</span>
+    <span class="badge b-host">Host</span>
+  </p>
+  <p>Guest profiles, loyalty points, visit counts, notes/allergies, gift card list.</p>
+
+  <h3>14.3 Staff list</h3>
+  <p class="roles"><span class="badge b-owner">Owner</span><span class="badge b-manager">Manager</span></p>
+  <p>Roster, roles, PINs (demo), clock badges, tips and sales tallies.</p>
+</section>
+
+<!-- ===================== 15 ===================== -->
+<section class="section" id="ch15">
+  <h1>15. Reports & cash drawer</h1>
+  <p class="roles"><span class="badge b-owner">Owner</span><span class="badge b-manager">Manager</span></p>
+
+  <h3>15.1 Reports</h3>
+  <p>
+    Shift and sales snapshots: tender mix, top items, employee sales, open vs closed
+    checks. Use together with settlement for vendor-level truth.
+  </p>
+
+  <h3>15.2 Cash</h3>
+  <p>Open shift with float; close with counted cash; compare to expected; review audit trail.</p>
+</section>
+
+<!-- ===================== 16 ===================== -->
+<section class="section" id="ch16">
+  <h1>16. HQ, integrations & vendor portal</h1>
+
+  <h3>16.1 HQ command center</h3>
+  <p class="roles"><span class="badge b-owner">Owner</span><span class="badge b-manager">Manager</span></p>
+  <p>
+    Multi-location switcher, live sales tiles, open online order counts, hall
+    settlement preview for the week, shortcuts into advanced modules (schedule,
+    promos, catering, purchasing, delivery, campaigns, checklists, full package).
+  </p>
+
+  <h3>16.2 Integrations hub</h3>
+  <p>
+    Marketplace of payment, delivery, accounting, payroll, marketing, and hardware
+    partners. Connect / disconnect, sync, view activity log. Connections are
+    productized UI with simulated partner sessions — not live OAuth production keys.
+  </p>
+
+  <h3>16.3 Vendor portal</h3>
+  <p>Merchant self-serve: sales slices, 86 board, last payout snapshot.</p>
+</section>
+
+<!-- ===================== 17 ===================== -->
+<section class="section" id="ch17">
+  <h1>17. Truck pod operations</h1>
+  <p class="roles"><span class="badge b-owner">Owner</span><span class="badge b-manager">Manager</span></p>
+
+  <h3>17.1 Pad map</h3>
+  <p>
+    Visual lot with pads (A1…C4). Statuses: vacant, occupied, reserved, maintenance.
+    Assign trucks, clear pads, set maintenance.
+  </p>
+
+  <h3>17.2 Economics</h3>
+  <ul>
+    <li>Monthly pad rent</li>
+    <li>Power fee by amperage (30A / 50A / …)</li>
+    <li>Optional % of GMV</li>
+  </ul>
+  <p>Generate period lease invoices; mark paid. Guest multi-truck ordering can still use hall-style single pay + settlement.</p>
+
+  <h3>17.3 Lineup & power board</h3>
+  <p>See who’s on the lot today; monitor total amps vs service capacity.</p>
+</section>
+
+<!-- ===================== 18 ===================== -->
+<section class="section" id="ch18">
+  <h1>18. SaaS console (platform)</h1>
+  <p class="roles"><span class="badge b-owner">Owner</span></p>
+  <p>
+    Platform identity (Summex; proprietors Michael Blair & Andy Baida), customer
+    organization, plans (Starter / Growth / Enterprise), team memberships,
+    location modes (restaurant, food hall, truck pod, ghost kitchen, catering),
+    device enrollment, onboarding checklist, usage tiles.
+  </p>
+  <div class="note">
+    Subscription charges are illustrative. Guest card processing remains simulated.
+  </div>
+</section>
+
+<!-- ===================== 19 ===================== -->
+<section class="section" id="ch19">
+  <h1>19. Settings, floor editor & advanced modules</h1>
+  <p class="roles"><span class="badge b-owner">Owner</span><span class="badge b-manager">Manager</span></p>
+
+  <h3>19.1 Settings</h3>
+  <ul>
+    <li>Restaurant name, address, phone, tax rate</li>
+    <li>Auto-gratuity percent and party size threshold</li>
+    <li>Happy hour windows</li>
+    <li>Receipt footer, manager PIN</li>
+    <li>Hall mode / online ordering flags</li>
+    <li>Links into schedule, recipes, and other modules</li>
+    <li>Reset demo data</li>
+  </ul>
+
+  <h3>19.2 Advanced modules (from HQ)</h3>
+  <table>
+    <thead><tr><th>Module</th><th>Function</th></tr></thead>
+    <tbody>
+      <tr><td>Schedule</td><td>Draft/publish labor shifts by employee and location.</td></tr>
+      <tr><td>Promos</td><td>Percent/fixed/BOGO style promotions by channel.</td></tr>
+      <tr><td>Catering</td><td>Event-style orders and deposits (demo).</td></tr>
+      <tr><td>Recipes</td><td>Plate cost and ingredient links.</td></tr>
+      <tr><td>Purchasing</td><td>Purchase orders receive flow.</td></tr>
+      <tr><td>Delivery</td><td>Dispatch board for drivers / couriers (demo).</td></tr>
+      <tr><td>Campaigns</td><td>CRM outreach drafts.</td></tr>
+      <tr><td>Checklists</td><td>Open/close task lists for FOH/BOH.</td></tr>
+      <tr><td>Full package / features</td><td>Enterprise feature matrix and pack center.</td></tr>
+      <tr><td>Payouts</td><td>Tenant payout list tied to hall economics.</td></tr>
+    </tbody>
+  </table>
+</section>
+
+<!-- ===================== 20 ===================== -->
+<section class="section" id="ch20">
+  <h1>20. Workflows by access level</h1>
+
+  <h2>20.1 Owner — open a multi-vendor day</h2>
+  <ol class="steps">
+    <li>Quick login as Owner (or PIN 9999).</li>
+    <li>HQ: confirm locations open; glance online queue.</li>
+    <li>Settlement: verify period settings and host cut.</li>
+    <li>Labor: confirm clock windows and red-flag minutes.</li>
+    <li>AI stock: run yesterday’s audit if week-end.</li>
+    <li>Integrations: confirm payroll/SMS partners connected (demo).</li>
+  </ol>
+
+  <h2>20.2 Manager — service + close</h2>
+  <ol class="steps">
+    <li>Login Manager → HQ.</li>
+    <li>Cash: open shift float.</li>
+    <li>Coach floor; approve voids/comps with manager PIN.</li>
+    <li>Labor: resolve red flags before payroll.</li>
+    <li>Settlement: close period; distribute cash report; mark e-payouts paid.</li>
+    <li>Cash: close drawer; review audit.</li>
+  </ol>
+
+  <h2>20.3 Server — table from seat to pay</h2>
+  <ol class="steps">
+    <li>Login Server → Floor.</li>
+    <li>Seat table → add items from multiple vendors if hall → send.</li>
+    <li>Optional Drink AI for beverage upsell.</li>
+    <li>Print check → pay card/cash → thank guest.</li>
+    <li>When done for night, Manager uses Labor for clock-out rules.</li>
+  </ol>
+
+  <h2>20.4 Bartender — rail service</h2>
+  <ol class="steps">
+    <li>Login Bartender → Bar KDS.</li>
+    <li>Bump tickets; open tabs via Order/Takeout.</li>
+    <li>Use Drink AI for undecided guests.</li>
+    <li>86 items on Menu/Stock when bottles die.</li>
+  </ol>
+
+  <h2>20.5 Host — door</h2>
+  <ol class="steps">
+    <li>Login Host → Waitlist.</li>
+    <li>Add walk-ins with quotes; notify; seat to floor.</li>
+    <li>Manage reservations as parties arrive.</li>
+  </ol>
+
+  <h2>20.6 Kitchen — line</h2>
+  <ol class="steps">
+    <li>Login Kitchen → Kitchen KDS.</li>
+    <li>Start and bump tickets; watch vendor labels in hall mode.</li>
+    <li>Consult recipes; tick checklists on open/close.</li>
+  </ol>
+
+  <h2>20.7 Busser — turns</h2>
+  <ol class="steps">
+    <li>Login Busser → Floor.</li>
+    <li>Find dirty tables; mark clean for host/server seating.</li>
+  </ol>
+</section>
+
+<!-- ===================== 21 ===================== -->
+<section class="section" id="ch21">
+  <h1>21. Troubleshooting & FAQ</h1>
+
+  <h3>I don’t see HQ / SaaS / Settle</h3>
+  <p>Your access level hides those tools. Sign out and login as Manager or Owner.</p>
+
+  <h3>“Summex hit a snag” / React error</h3>
+  <p>
+    Use <strong>Reset demo data & reload</strong> on the error screen, or clear
+    site data for the Summex URL. This drops corrupted local demo state.
+  </p>
+
+  <h3>Card payment failed / no deposit</h3>
+  <p>Card rails are simulated. The UI records a successful demo tender but does not move real money.</p>
+
+  <h3>Clock-in denied</h3>
+  <p>You are outside the early/late window relative to the published shift. A manager must adjust rules or force clock-in policy.</p>
+
+  <h3>Clock-out red flagged</h3>
+  <p>You clocked out later than N minutes after your last closed check. Supervisor approves or corrects in Labor.</p>
+
+  <h3>Vendor didn’t get a ticket</h3>
+  <p>Confirm the menu item has the correct vendor id and that you pressed Send. Check that vendor’s KDS filter.</p>
+
+  <h3>Settlement looks wrong</h3>
+  <p>
+    Attribution is by merchandise share, not tax. Host cut and card fees apply per
+    configuration. Close period only after the service day is complete.
+  </p>
+
+  <h3>AI inventory variance</h3>
+  <p>Check recipe pour sizes, unrecorded comps/spillage, and whether receiving was logged.</p>
+</section>
+
+<!-- ===================== 22 ===================== -->
+<section class="section" id="ch22">
+  <h1>22. Glossary</h1>
+  <table>
+    <thead><tr><th>Term</th><th>Definition</th></tr></thead>
+    <tbody>
+      <tr><td>86</td><td>Mark an item unavailable.</td></tr>
+      <tr><td>Auto-grat</td><td>Automatic service charge for large parties.</td></tr>
+      <tr><td>Bump</td><td>Clear a KDS ticket as completed.</td></tr>
+      <tr><td>Check</td><td>Guest bill / order.</td></tr>
+      <tr><td>Comp</td><td>Zero-price a line with reason (manager controlled).</td></tr>
+      <tr><td>Host cut</td><td>Building operator share of vendor sales.</td></tr>
+      <tr><td>KDS</td><td>Kitchen Display System.</td></tr>
+      <tr><td>Pad</td><td>Truck pod parking and power slip.</td></tr>
+      <tr><td>Par</td><td>Target on-hand inventory level.</td></tr>
+      <tr><td>Red flag</td><td>Timecard requiring supervisor review.</td></tr>
+      <tr><td>Send / fire</td><td>Transmit items to production.</td></tr>
+      <tr><td>Settlement period</td><td>Window for vendor payout calculation.</td></tr>
+      <tr><td>Void</td><td>Remove a line from sales after it was entered.</td></tr>
+    </tbody>
+  </table>
+
+  <footer class="manual-end">
+    <p><strong>Summex Hospitality OS — User Manual 1.0</strong></p>
+    <p>© 2026 Blair & Baida / Summex Platform. Prepared for operators and staff training.</p>
+    <p>Proprietors: Michael Blair · Andy Baida · Tagline: Service, sharp.</p>
+    <p><a href="#toc">↑ Back to table of contents</a></p>
+  </footer>
+</section>
+
+</body>
+</html>

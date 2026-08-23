@@ -23,6 +23,16 @@ export function MenuAdminView() {
         </p>
       </div>
 
+      {categories.length === 0 && menuItems.length === 0 && (
+        <div className="rounded-2xl border border-dashed border-border bg-surface p-6 text-center">
+          <p className="text-sm font-semibold">Menu is empty</p>
+          <p className="mt-1 text-sm text-muted-foreground">
+            This location was onboarded without demo items. Add categories here, or
+            import a CSV later from settings.
+          </p>
+        </div>
+      )}
+
       {categories
         .slice()
         .sort((a, b) => a.sort - b.sort)

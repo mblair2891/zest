@@ -18,7 +18,7 @@ export class PosErrorBoundary extends Component<Props, State> {
   }
 
   componentDidCatch(error: Error, info: ErrorInfo) {
-    console.error("[Zest] render error", error, info.componentStack);
+    console.error("[Summex] render error", error, info.componentStack);
   }
 
   private clearAndReload = () => {
@@ -26,7 +26,7 @@ export class PosErrorBoundary extends Component<Props, State> {
       const keys: string[] = [];
       for (let i = 0; i < localStorage.length; i++) {
         const k = localStorage.key(i);
-        if (k && (k.startsWith("zest-") || k.startsWith("blair") || k.startsWith("harbor"))) {
+        if (k && (k.startsWith("summex-") || k.startsWith("zest-") || k.startsWith("blair") || k.startsWith("harbor"))) {
           keys.push(k);
         }
       }
@@ -45,7 +45,7 @@ export class PosErrorBoundary extends Component<Props, State> {
             Z
           </div>
           <h1 className="text-xl font-semibold text-foreground">
-            Zest hit a snag
+            Summex hit a snag
           </h1>
           <p className="max-w-md text-sm text-muted-foreground">
             Something went wrong loading the console. Clearing local demo data

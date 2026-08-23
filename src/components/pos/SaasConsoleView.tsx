@@ -1,9 +1,10 @@
 import { useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { useSaasStore } from "@/lib/pos/saas-store";
 import {
-  ZEST_PACKAGES,
+  SUMMEX_PACKAGES,
   formatPackagePrice,
   packageMonthlyTotal,
   type PackageCategory,
@@ -16,13 +17,18 @@ import {
   HARDWARE_SKUS,
 } from "@/lib/pos/hardware-catalog";
 import { formatCurrency, formatTime } from "@/lib/utils";
-import { venueById } from "@/lib/pos/entities";
-import { HostOnboardingView } from "./HostOnboardingView";
+import { venueById, VENUE_ENTITIES } from "@/lib/pos/entities";
+import {
+  billingStatusFn,
+  createLocationFn,
+  inviteMemberFn,
+  startCheckoutFn,
+  startPortalFn,
+} from "@/lib/saas/api";
 
 type Tab =
   | "overview"
   | "locations"
-  | "host"
   | "team"
   | "devices"
   | "hardware"
@@ -50,7 +56,6 @@ const CAT_LABEL: Record<PackageCategory, string> = {
 
 const TABS: { id: Tab; label: string }[] = [
   { id: "overview", label: "Overview" },
-  { id: "host", label: "Host setup" },
   { id: "locations", label: "Locations" },
   { id: "team", label: "Team" },
   { id: "devices", label: "Devices" },
@@ -60,10 +65,8 @@ const TABS: { id: Tab; label: string }[] = [
 ];
 
 export function SaasConsoleView() {
-  const [tab, setTab] = useState<Tab>("host");
+  const [tab, setTab] = useState<Tab>("overview");
   const org = useSaasStore((s) => s.org);
-  const orgs = useSaasStore((s) => s.orgs);
-  const setActiveOrg = useSaasStore((s) => s.setActiveOrg);
   const members = useSaasStore((s) => s.members);
   const locations = useSaasStore((s) => s.locations);
   const devices = useSaasStore((s) => s.devices);
@@ -79,11 +82,40 @@ export function SaasConsoleView() {
   const markInvoicePaid = useSaasStore((s) => s.markInvoicePaid);
   const platformAdminRole = useSaasStore((s) => s.platformAdminRole);
 
-  const orgLocations = locations.filter((l) => l.orgId === org.id);
   const loc =
-    orgLocations.find((l) => l.id === activeLocationId) ?? orgLocations[0];
+    locations.find((l) => l.id === activeLocationId) ?? locations[0];
   const locTotal = loc ? packageMonthlyTotal(loc.enabledPackages as PackageId[]) : 0;
-  const orgMembers = members.filter((m) => m.orgId === org.id);
+  const liveMode = useSaasStore((s) => s.liveMode);
+  const [inviteEmail, setInviteEmail] = useState("");
+  const [inviteNote, setInviteNote] = useState<string | null>(null);
+  const [newLocName, setNewLocName] = useState("");
+  const [newLocType, setNewLocType] = useState<LocationMode>("restaurant");
+  const [billMsg, setBillMsg] = useState<string | null>(null);
+
+  const sendInvite = async () => {
+    setInviteNote(null);
+    try {
+      const inv = await inviteMemberFn({
+        data: { orgId: org.id, email: inviteEmail, role: "manager" },
+      });
+      setInviteNote(inv.inviteUrl ?? `Invite sent to ${inv.email}`);
+      setInviteEmail("");
+    } catch (e) {
+      setInviteNote(e instanceof Error ? e.message : "Invite failed");
+    }
+  };
+
+  const addLocation = async () => {
+    try {
+      await createLocationFn({
+        data: { orgId: org.id, name: newLocName, venueType: newLocType },
+      });
+      setNewLocName("");
+      window.location.reload();
+    } catch (e) {
+      setInviteNote(e instanceof Error ? e.message : "Could not create location");
+    }
+  };
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
@@ -101,45 +133,26 @@ export function SaasConsoleView() {
       </div>
 
       <div className="min-h-0 flex-1 overflow-y-auto p-4">
-        {tab === "host" && <HostOnboardingView />}
-
         {tab === "overview" && (
           <div className="mx-auto grid max-w-4xl gap-3 sm:grid-cols-2">
             <div className="rounded-2xl border border-border bg-surface p-4">
               <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
                 Organization
               </p>
-              <p className="mt-1 text-lg font-semibold">
-                {org.id ? org.name : "No organization yet"}
-              </p>
-              <p className="text-sm text-muted-foreground">
-                {org.id
-                  ? org.legalName
-                  : "Create one on Host setup — this control plane starts empty."}
-              </p>
+              <p className="mt-1 text-lg font-semibold">{org.name}</p>
+              <p className="text-sm text-muted-foreground">{org.legalName}</p>
               <p className="mt-2 text-sm capitalize">
-                {org.id
-                  ? `${org.plan} · ${org.seats} seats · ${orgLocations.length} locations`
-                  : "0 organizations"}
+                {org.plan} · {org.seats} seats · {locations.length} locations
               </p>
-              <p className="mt-1 text-[11px] text-muted-foreground">
-                Signed in as platform admin
+              <p className="mt-1 text-[11px] capitalize text-muted-foreground">
+                Signed in as {platformAdminRole || "owner"}
               </p>
-              <Button
-                className="mt-3"
-                size="sm"
-                onClick={() => setTab("host")}
-              >
-                Onboard host + operators
-              </Button>
             </div>
             <div className="rounded-2xl border border-border bg-surface p-4">
               <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
                 Active location
               </p>
-              <p className="mt-1 text-lg font-semibold">
-                {loc?.name ?? "No location"}
-              </p>
+              <p className="mt-1 text-lg font-semibold">{loc?.name}</p>
               <p className="text-sm text-muted-foreground">
                 {loc ? MODE_LABEL[loc.mode] : "—"} · {loc?.code}
               </p>
@@ -151,27 +164,8 @@ export function SaasConsoleView() {
               <p className="mb-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">
                 Locations
               </p>
-              {orgs.length > 1 && (
-                <div className="mb-3 flex flex-wrap gap-2">
-                  {orgs.map((o) => (
-                    <Button
-                      key={o.id}
-                      size="sm"
-                      variant={o.id === org.id ? "default" : "outline"}
-                      onClick={() => setActiveOrg(o.id)}
-                    >
-                      {o.name}
-                    </Button>
-                  ))}
-                </div>
-              )}
               <ul className="grid gap-2 sm:grid-cols-2">
-                {orgLocations.length === 0 && (
-                  <li className="text-sm text-muted-foreground sm:col-span-2">
-                    No locations. Use Host setup to create one.
-                  </li>
-                )}
-                {orgLocations.map((l) => (
+                {locations.map((l) => (
                   <li key={l.id}>
                     <button
                       type="button"
@@ -195,22 +189,10 @@ export function SaasConsoleView() {
           </div>
         )}
 
-        {tab === "locations" && !loc && (
-          <div className="mx-auto max-w-xl rounded-2xl border border-dashed border-border bg-surface p-6 text-center">
-            <p className="font-medium">No locations</p>
-            <p className="mt-1 text-sm text-muted-foreground">
-              Create an organization and location on Host setup.
-            </p>
-            <Button className="mt-4" size="sm" onClick={() => setTab("host")}>
-              Host setup
-            </Button>
-          </div>
-        )}
-
         {tab === "locations" && loc && (
           <div className="mx-auto max-w-4xl space-y-4">
             <div className="flex flex-wrap gap-2">
-              {orgLocations.map((l) => (
+              {locations.map((l) => (
                 <Button
                   key={l.id}
                   size="sm"
@@ -221,6 +203,30 @@ export function SaasConsoleView() {
                 </Button>
               ))}
             </div>
+            {liveMode && (
+              <div className="rounded-2xl border border-border bg-surface p-4 space-y-2">
+                <p className="text-sm font-medium">Add location</p>
+                <Input
+                  placeholder="Location name"
+                  value={newLocName}
+                  onChange={(e) => setNewLocName(e.target.value)}
+                />
+                <select
+                  className="h-11 w-full rounded-lg border border-border bg-surface px-3 text-sm"
+                  value={newLocType}
+                  onChange={(e) => setNewLocType(e.target.value as LocationMode)}
+                >
+                  {VENUE_ENTITIES.map((v) => (
+                    <option key={v.id} value={v.id}>
+                      {v.name}
+                    </option>
+                  ))}
+                </select>
+                <Button size="sm" onClick={() => void addLocation()}>
+                  Create location
+                </Button>
+              </div>
+            )}
             <div className="rounded-2xl border border-border bg-surface p-4">
               <div className="flex flex-wrap items-start justify-between gap-2">
                 <div>
@@ -235,27 +241,19 @@ export function SaasConsoleView() {
                     </p>
                   )}
                 </div>
-                <div className="flex flex-wrap gap-2">
-                  {(loc.operatingModel === "host_multi_operator" ||
-                    loc.createdBy === "ui") && (
-                    <a href={`/pos/${loc.id}`}>
-                      <Button size="sm">Open POS</Button>
-                    </a>
-                  )}
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() => toggleLocationOpen(loc.id)}
-                  >
-                    {loc.open ? "Mark closed" : "Mark open"}
-                  </Button>
-                </div>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => toggleLocationOpen(loc.id)}
+                >
+                  {loc.open ? "Mark closed" : "Mark open"}
+                </Button>
               </div>
               <p className="mt-4 text-xs font-medium uppercase tracking-wide text-muted-foreground">
                 Packages
               </p>
               <ul className="mt-2 grid gap-2 sm:grid-cols-2">
-                {ZEST_PACKAGES.filter((p) => p.id !== "saas_console").map(
+                {SUMMEX_PACKAGES.filter((p) => p.id !== "saas_console").map(
                   (p) => {
                     const on = loc.enabledPackages.includes(p.id);
                     return (
@@ -286,8 +284,25 @@ export function SaasConsoleView() {
         )}
 
         {tab === "team" && (
-          <div className="mx-auto max-w-2xl space-y-2">
-            {orgMembers.map((m) => (
+          <div className="mx-auto max-w-2xl space-y-3">
+            {liveMode && (
+              <div className="rounded-2xl border border-border bg-surface p-4 space-y-2">
+                <p className="text-sm font-medium">Invite a teammate</p>
+                <Input
+                  type="email"
+                  placeholder="email@example.com"
+                  value={inviteEmail}
+                  onChange={(e) => setInviteEmail(e.target.value)}
+                />
+                <Button size="sm" onClick={() => void sendInvite()}>
+                  Generate invite link
+                </Button>
+                {inviteNote && (
+                  <p className="break-all text-xs text-muted-foreground">{inviteNote}</p>
+                )}
+              </div>
+            )}
+            {members.map((m) => (
               <div
                 key={m.id}
                 className="flex items-center justify-between rounded-2xl border border-border bg-surface px-4 py-3"
@@ -385,21 +400,65 @@ export function SaasConsoleView() {
             <div className="rounded-2xl border border-border bg-surface p-4">
               <p className="text-sm font-medium">Plan</p>
               <div className="mt-2 flex flex-wrap gap-2">
-                {(["starter", "growth", "enterprise"] as OrgPlan[]).map((p) => (
+                {(liveMode
+                  ? (["starter", "full_service", "food_hall"] as OrgPlan[])
+                  : (["starter", "growth", "enterprise"] as OrgPlan[])
+                ).map((p) => (
                   <Button
                     key={p}
                     size="sm"
                     variant={org.plan === p ? "default" : "outline"}
-                    onClick={() => updatePlan(p)}
+                    onClick={() => {
+                      if (!liveMode) {
+                        updatePlan(p);
+                        return;
+                      }
+                      void startCheckoutFn({
+                        data: { orgId: org.id, planId: p },
+                      }).then((r) => {
+                        if (r.url) window.location.href = r.url;
+                        else setBillMsg(r.message);
+                      });
+                    }}
                     className="capitalize"
                   >
-                    {p}
+                    {p.replace("_", " ")}
                   </Button>
                 ))}
               </div>
               <p className="mt-3 text-xs text-muted-foreground">
                 {org.billingEmail} · {org.status}
               </p>
+              {liveMode && (
+                <div className="mt-3 flex flex-wrap gap-2">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => {
+                      void billingStatusFn().then((s) =>
+                        setBillMsg(`Billing provider: ${s.provider}`),
+                      );
+                    }}
+                  >
+                    Billing provider
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => {
+                      void startPortalFn({ data: { orgId: org.id } }).then((r) => {
+                        if (r.url) window.location.href = r.url;
+                        else setBillMsg(r.message);
+                      });
+                    }}
+                  >
+                    Customer portal
+                  </Button>
+                </div>
+              )}
+              {billMsg && (
+                <p className="mt-2 text-xs text-muted-foreground">{billMsg}</p>
+              )}
               <Button
                 className="mt-4"
                 size="sm"

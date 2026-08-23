@@ -1,4 +1,4 @@
-/** Zest commercial packages — catalog + helpers */
+/** Summex commercial packages — catalog + helpers */
 
 export type PackageCategory =
   | "core"
@@ -28,7 +28,7 @@ export type PackageId =
   | "location_website"
   | "saas_console";
 
-export interface ZestPackage {
+export interface SummexPackage {
   id: PackageId;
   name: string;
   shortName: string;
@@ -54,10 +54,10 @@ export interface ZestPackage {
   views: string[];
 }
 
-export const ZEST_PACKAGES: ZestPackage[] = [
+export const SUMMEX_PACKAGES: SummexPackage[] = [
   {
     id: "pos_core",
-    name: "Zest POS Core",
+    name: "Summex POS Core",
     shortName: "POS Core",
     category: "core",
     tagline: "Floor, order, takeout, payments UI, multi-vendor lines",
@@ -256,11 +256,11 @@ export const ZEST_PACKAGES: ZestPackage[] = [
   },
 ];
 
-export const PACKAGE_BY_ID: Record<PackageId, ZestPackage> = Object.fromEntries(
-  ZEST_PACKAGES.map((p) => [p.id, p]),
-) as Record<PackageId, ZestPackage>;
+export const PACKAGE_BY_ID: Record<PackageId, SummexPackage> = Object.fromEntries(
+  SUMMEX_PACKAGES.map((p) => [p.id, p]),
+) as Record<PackageId, SummexPackage>;
 
-export function formatPackagePrice(p: ZestPackage): string {
+export function formatPackagePrice(p: SummexPackage): string {
   if (p.priceMonthly === 0) return "Included";
   return `$${p.priceMonthly}/mo`;
 }
@@ -414,7 +414,7 @@ export function packageMonthlyTotal(enabled: PackageId[]): number {
 
 /** Map POS view → required package (if any). Missing = always allowed. */
 export function packageForView(view: string): PackageId | null {
-  for (const p of ZEST_PACKAGES) {
+  for (const p of SUMMEX_PACKAGES) {
     if (p.views.includes(view)) return p.id;
   }
   return null;

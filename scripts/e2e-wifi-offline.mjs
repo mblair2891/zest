@@ -16,7 +16,7 @@ await page.goto("http://127.0.0.1:8080/venue/restaurant", {
 });
 await page.evaluate(() => {
   for (const k of Object.keys(localStorage)) {
-    if (k.startsWith("zest-")) localStorage.removeItem(k);
+    if (k.startsWith("summex-") || k.startsWith("zest-")) localStorage.removeItem(k);
   }
 });
 await page.reload({ waitUntil: "networkidle" });
@@ -50,7 +50,7 @@ await page.screenshot({ path: "/workspace/screenshots/wifi-offline.png" });
 await page.getByRole("button", { name: /House network/i }).click();
 await page.waitForTimeout(400);
 const sheet = await page.locator("body").innerText();
-if (!/Still works|Waits for internet|Zest-House/i.test(sheet)) {
+if (!/Still works|Waits for internet|Summex-House/i.test(sheet)) {
   console.log("FAIL sheet missing", sheet.slice(0, 500));
   await browser.close();
   process.exit(4);

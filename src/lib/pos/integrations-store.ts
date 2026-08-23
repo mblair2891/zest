@@ -3,7 +3,7 @@ import { persist, createJSONStorage } from "zustand/middleware";
 import { uid } from "@/lib/utils";
 import {
   INTEGRATION_CATALOG,
-  ZEST_PAYMENTS_ID,
+  SUMMEX_PAYMENTS_ID,
   defaultConnections,
   migrateConnections,
   type ConnectedIntegration,
@@ -47,9 +47,38 @@ export const useIntegrationsStore = create<IntegrationsState>()(
   persist(
     (set, get) => ({
       connections: defaultConnections(),
-      logs: [],
-      webhookUrl: "",
-      apiKeys: [],
+      logs: [
+        {
+          id: uid("log"),
+          at: Date.now() - 60000,
+          defId: SUMMEX_PAYMENTS_ID,
+          level: "success",
+          message: "Summex Payments settled 42 card captures · next-day deposit queued",
+        },
+        {
+          id: uid("log"),
+          at: Date.now() - 120000,
+          defId: "doordash",
+          level: "info",
+          message: "Pulled 3 marketplace orders",
+        },
+        {
+          id: uid("log"),
+          at: Date.now() - 300000,
+          defId: "quickbooks",
+          level: "success",
+          message: "Posted daily sales journal",
+        },
+      ],
+      webhookUrl: "https://hooks.example.com/summex/pos",
+      apiKeys: [
+        {
+          id: "key_demo",
+          name: "Demo partner key",
+          prefix: "summex_live_****demo",
+          createdAt: Date.now() - 86400000 * 30,
+        },
+      ],
 
       catalog: () => INTEGRATION_CATALOG,
 
@@ -90,7 +119,7 @@ export const useIntegrationsStore = create<IntegrationsState>()(
           get().log(
             defId,
             "warn",
-            `${def.name} is built into Zest and cannot be disconnected`,
+            `${def.name} is built into Summex and cannot be disconnected`,
           );
           return;
         }
@@ -166,7 +195,7 @@ export const useIntegrationsStore = create<IntegrationsState>()(
       setWebhookUrl: (url) => set({ webhookUrl: url }),
 
       createApiKey: (name) => {
-        const secret = `zest_live_${Math.random().toString(36).slice(2, 10)}`;
+        const secret = `summex_live_${Math.random().toString(36).slice(2, 10)}`;
         set({
           apiKeys: [
             {
@@ -233,7 +262,7 @@ export const useIntegrationsStore = create<IntegrationsState>()(
       },
     }),
     {
-      name: "zest-integrations-v5-empty",
+      name: "summex-integrations-v4",
       storage: createJSONStorage(() => localStorage),
       skipHydration: true,
       merge: (persisted, current) => {

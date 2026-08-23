@@ -15,7 +15,7 @@ page.on("console", (m) => {
 
 await page.goto("http://127.0.0.1:8080/", { waitUntil: "networkidle", timeout: 60000 });
 await page.evaluate(() => {
-  localStorage.removeItem("zest-manual-prefs-v1");
+  localStorage.removeItem("summex-manual-prefs-v1");
 });
 await page.reload({ waitUntil: "networkidle" });
 await page.waitForTimeout(1500);
@@ -37,7 +37,7 @@ if (hasDialog) {
   await page.getByRole("button", { name: /Open full manual/i }).click();
   await page.waitForTimeout(900);
 }
-const manual = page.getByLabel("Zest user manual");
+const manual = page.getByLabel("Summex user manual");
 const manualOpen = await manual.isVisible().catch(() => false);
 const manualText = manualOpen ? await manual.innerText() : "";
 await page.screenshot({ path: "/workspace/screenshots/user-manual.png" });

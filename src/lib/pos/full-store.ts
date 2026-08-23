@@ -132,7 +132,7 @@ interface FullState {
 
 function bootstrap() {
   return {
-    phasesCompleted: [] as PackagePhase[],
+    phasesCompleted: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10] as PackagePhase[],
     trainingMode: false,
     lastPhaseAt: Date.now(),
     permissions: seed.PERMISSIONS.map((p) => ({ ...p })),
@@ -498,7 +498,7 @@ export const useFullStore = create<FullState>()(
             a.id === id
               ? {
                   ...a,
-                  prefix: `zest_live_${Math.random().toString(36).slice(2, 6)}`,
+                  prefix: `summex_live_${Math.random().toString(36).slice(2, 6)}`,
                   createdAt: Date.now(),
                 }
               : a,
@@ -582,7 +582,7 @@ export const useFullStore = create<FullState>()(
       },
     }),
     {
-      name: "zest-full-v2-empty",
+      name: "summex-full-package-v1",
       storage: createJSONStorage(() => localStorage),
       skipHydration: true,
     },

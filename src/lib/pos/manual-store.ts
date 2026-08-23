@@ -100,7 +100,7 @@ export const useManualStore = create<ManualState>()(
       updatesFor: (role, limit = 10) => updatesForRole(role, limit),
     }),
     {
-      name: "zest-manual-prefs-v1",
+      name: "summex-manual-prefs-v1",
       storage: createJSONStorage(() => localStorage),
       skipHydration: true,
       partialize: (s) => ({

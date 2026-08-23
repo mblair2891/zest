@@ -20,7 +20,7 @@ import { useIntegrationsStore } from "@/lib/pos/integrations-store";
 import {
   CATEGORY_LABELS,
   INTEGRATION_CATALOG,
-  ZEST_PAYMENTS_ID,
+  SUMMEX_PAYMENTS_ID,
   type IntegrationCategory,
 } from "@/lib/pos/integrations-catalog";
 import { cn, formatCurrency, formatDateTime, formatTime } from "@/lib/utils";
@@ -49,7 +49,7 @@ const CATS: (IntegrationCategory | "all" | "connected")[] = [
 export function IntegrationsHubView() {
   const [q, setQ] = useState("");
   const [cat, setCat] = useState<(typeof CATS)[number]>("all");
-  const [selected, setSelected] = useState<string | null>(ZEST_PAYMENTS_ID);
+  const [selected, setSelected] = useState<string | null>(SUMMEX_PAYMENTS_ID);
   const [flash, setFlash] = useState<string | null>(null);
   const [newKeyName, setNewKeyName] = useState("Partner app");
   const [revealedKey, setRevealedKey] = useState<string | null>(null);
@@ -105,7 +105,7 @@ export function IntegrationsHubView() {
         </div>
         <p className="mt-1 text-xs text-muted-foreground">
           Card processing is{" "}
-          <span className="font-medium text-foreground">Zest Payments</span> —
+          <span className="font-medium text-foreground">Summex Payments</span> —
           not a partner you pick. This list is delivery, accounting, labor,
           hardware, and APIs.
         </p>
@@ -200,12 +200,12 @@ export function IntegrationsHubView() {
         <div className="min-h-0 flex-1 overflow-y-auto p-3">
           {def && (
             <div className="mx-auto max-w-3xl space-y-4">
-              {def.id === ZEST_PAYMENTS_ID && <ZestPaymentsPanel />}
+              {def.id === SUMMEX_PAYMENTS_ID && <SummexPaymentsPanel />}
 
               <div className="rounded-2xl border border-border bg-surface p-4">
                 <div className="flex flex-wrap items-start gap-3">
                   <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-surface-2">
-                    {def.id === ZEST_PAYMENTS_ID ? (
+                    {def.id === SUMMEX_PAYMENTS_ID ? (
                       <CreditCard className="h-5 w-5 text-primary" />
                     ) : (
                       <Plug className="h-5 w-5 text-primary" />
@@ -216,7 +216,7 @@ export function IntegrationsHubView() {
                     <p className="text-sm text-muted-foreground">
                       {def.vendor}
                       {def.platformOwned
-                        ? " · built into Zest"
+                        ? " · built into Summex"
                         : ` · Auth: ${def.authType}${def.bidirectional ? " · bi-directional" : " · outbound"}`}
                     </p>
                     <p className="mt-2 text-sm">{def.description}</p>
@@ -427,16 +427,16 @@ export function IntegrationsHubView() {
   );
 }
 
-function ZestPaymentsPanel() {
+function SummexPaymentsPanel() {
   return (
     <div className="rounded-2xl border border-primary/30 bg-primary/5 p-4">
       <div className="mb-3 flex flex-wrap items-center gap-2">
         <ShieldCheck className="h-4 w-4 text-primary" />
-        <h3 className="text-sm font-semibold">Zest Payments · live</h3>
+        <h3 className="text-sm font-semibold">Summex Payments · live</h3>
         <Badge variant="success">This location</Badge>
       </div>
       <p className="mb-3 text-xs text-muted-foreground">
-        Guests pay Zest. Vendors get period payouts minus card fees and the
+        Guests pay Summex. Vendors get period payouts minus card fees and the
         host cut. You do not connect Square, Stripe, or another processor.
       </p>
       <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
@@ -457,7 +457,7 @@ function ZestPaymentsPanel() {
           <p className="flex items-center gap-1.5 text-[10px] uppercase tracking-wide text-muted-foreground">
             <CreditCard className="h-3 w-3" /> Terminals
           </p>
-          <p className="text-sm font-semibold">2 Zest readers online</p>
+          <p className="text-sm font-semibold">2 Summex readers online</p>
           <p className="text-[11px] text-muted-foreground">
             Counter + handheld · Wi‑Fi
           </p>
