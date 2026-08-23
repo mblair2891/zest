@@ -1,6 +1,5 @@
 /**
  * Compatibility shim. Guide content lives in src/lib/guide/.
- * What’s New and a few POS imports still read these names.
  */
 export {
   GUIDE_VERSION as MANUAL_VERSION,

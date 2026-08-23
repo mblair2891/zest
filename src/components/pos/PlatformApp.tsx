@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { Link } from "@tanstack/react-router";
-import { LogOut, Rocket, ArrowLeft, BookOpen } from "lucide-react";
+import { LogOut, ArrowLeft, BookOpen } from "lucide-react";
 import { GuideTriggerButton } from "@/components/guide/OperatorsGuide";
 import { Button } from "@/components/ui/button";
 import { SummexBrandBlock, SummexMark } from "@/components/brand/SummexMark";
@@ -30,8 +30,7 @@ import type { PackageId } from "@/lib/pos/packages";
 
 /**
  * Fully separate SaaS / multi-tenant platform surface at `/platform`.
- * Production path: Better Auth + server tenancy.
- * DEV_DEMO=1 keeps the local quick-login console for fleet tests.
+ * Production path: Better Auth (username/email + password) + server tenancy.
  */
 export function PlatformApp() {
   const [ready, setReady] = useState(false);
@@ -43,7 +42,6 @@ export function PlatformApp() {
   const platformAuthed = useSaasStore((s) => s.platformAuthed);
   const platformAdminName = useSaasStore((s) => s.platformAdminName);
   const platformAdminRole = useSaasStore((s) => s.platformAdminRole);
-  const loginPlatform = useSaasStore((s) => s.loginPlatform);
   const logoutPlatform = useSaasStore((s) => s.logoutPlatform);
   const hydrateTenant = useSaasStore((s) => s.hydrateTenant);
   const platform = useSaasStore((s) => s.platform);
@@ -225,67 +223,6 @@ export function PlatformApp() {
               Create an account
             </Link>
           </div>
-
-          {demo && (
-            <div className="mt-8 space-y-2">
-              <p className="text-center text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
-                DEV_DEMO quick login · not a production identity
-              </p>
-              <button
-                type="button"
-                onClick={() => {
-                  usePosStore.getState().loadLaundryTestVenue();
-                  loginPlatform("Laundry Host", "owner");
-                  window.location.href = "/venue/food_hall";
-                }}
-                className="flex w-full min-h-14 items-start gap-3 rounded-2xl border border-primary/40 bg-primary/10 px-4 py-3.5 text-left"
-              >
-                <span>
-                  <span className="block text-sm font-semibold">Load The Laundry (TEST)</span>
-                  <span className="mt-1 block text-[11px] text-muted-foreground">
-                    Host brand The Laundry · Steam Distillery (bar) · Diamond House BBQ (kitchen)
-                  </span>
-                </span>
-              </button>
-              {(
-                [
-                  {
-                    name: "Morgan Blair",
-                    role: "owner" as const,
-                    blurb: "Org, billing & every location",
-                  },
-                  {
-                    name: "Alex Rivera",
-                    role: "manager" as const,
-                    blurb: "Users, packages & devices",
-                  },
-                  {
-                    name: "Sam Okonkwo",
-                    role: "staff" as const,
-                    blurb: "Locations, pods & onboarding",
-                  },
-                ] as const
-              ).map((s) => (
-                <button
-                  key={s.role}
-                  type="button"
-                  onClick={() => loginPlatform(s.name, s.role)}
-                  className="flex w-full min-h-14 items-start gap-3 rounded-2xl border border-border bg-surface px-4 py-3.5 text-left transition hover:border-primary/50"
-                >
-                  <Rocket className="mt-0.5 h-5 w-5 shrink-0 text-primary" />
-                  <span>
-                    <span className="block text-sm font-semibold">{s.name}</span>
-                    <span className="mt-0.5 inline-flex rounded-md bg-primary/15 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-primary">
-                      {s.role}
-                    </span>
-                    <span className="mt-1 block text-[11px] text-muted-foreground">
-                      {s.blurb}
-                    </span>
-                  </span>
-                </button>
-              ))}
-            </div>
-          )}
 
           <Link
             to="/"

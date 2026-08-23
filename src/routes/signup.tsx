@@ -9,7 +9,7 @@ function SignupPage() {
   return (
     <AuthShell
       title="Create your Summex account"
-      subtitle="Start a new organization after you sign up. No demo identity — this is the production path."
+      subtitle="Use your email and a password."
     >
       <AuthScreen mode="signup" />
       <p className="mt-8 text-center text-sm text-muted-foreground">

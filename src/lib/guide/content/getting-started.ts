@@ -43,13 +43,13 @@ export const GETTING_STARTED_TOPICS: GuideTopic[] = [
   topic({
     id: "using-guide",
     chapterId: "getting-started",
-    title: "Using this guide & What’s New",
-    summary: "Search, role tabs, progress, deep links, and release notes.",
+    title: "Using this guide",
+    summary: "Search, role tabs, progress, and deep links.",
     roles: "all",
-    keywords: ["help", "manual", "whats new", "search", "progress", "learn"],
+    keywords: ["help", "manual", "search", "progress", "learn"],
     blocks: [
       why(
-        "A living guide only works if staff can find a topic in seconds and see what changed since last week.",
+        "A living guide only works if staff can find a topic in seconds.",
       ),
       steps(
         "Open Guide from the header, the left nav, the phone dock, login, or /guide.",
@@ -57,14 +57,13 @@ export const GETTING_STARTED_TOPICS: GuideTopic[] = [
         "Pick a role tab to hide topics that do not apply. All shows everything for cross-training.",
         "Read Why it matters, follow the numbered steps, then Related topics.",
         "Tap Mark complete. Continue where you left off returns you here on the next open.",
-        "What’s New lists the last ~10 release notes for your role. Silence until the next update if you prefer.",
       ),
       callout(
         "Learn links",
         "Key screens (onboarding, settlement, payments, floor, KDS) have a Learn control that opens this guide on the matching topic.",
       ),
       tip(
-        "When a feature ships, add a topic under src/lib/guide/content/ and a What’s New row. See docs/operators-guide.md.",
+        "When a feature ships, add a topic under src/lib/guide/content/. See docs/operators-guide.md.",
       ),
       related("intro", "navigation", "troubleshooting"),
     ],

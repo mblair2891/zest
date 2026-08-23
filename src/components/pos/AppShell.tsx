@@ -79,7 +79,6 @@ import { LaborOpsView } from "./LaborOpsView";
 import { InventoryAiView } from "./InventoryAiView";
 import { DrinkAiView } from "./DrinkAiView";
 import { MarketingHubView } from "./MarketingHubView";
-import { WhatsNewDialog } from "./WhatsNewDialog";
 import { GuideTriggerButton } from "@/components/guide/OperatorsGuide";
 import { venueById } from "@/lib/pos/entities";
 import { useManualStore } from "@/lib/pos/manual-store";
@@ -166,7 +165,6 @@ export function AppShell() {
   const activeEntityId = usePosStore((s) => s.activeEntityId);
   const venue = venueById(activeEntityId);
   const openManual = useManualStore((s) => s.openManual);
-  const openWhatsNew = useManualStore((s) => s.openWhatsNew);
   const settings = usePosStore((s) => s.settings);
   const tickets = usePosStore((s) => s.tickets);
   const clock = usePosStore((s) => s.clock);
@@ -347,16 +345,6 @@ export function AppShell() {
           <NotificationBell />
           <NetworkChip />
           <GuideTriggerButton topicId="intro" />
-          <Button
-            size="icon"
-            variant="outline"
-            className="hidden h-9 w-9 border-primary/40 text-primary sm:inline-flex"
-            onClick={() => openWhatsNew()}
-            aria-label="What is new"
-            title="What is new"
-          >
-            <Sparkles className="h-4 w-4" />
-          </Button>
           <Link
             to="/"
             title="Change venue"
@@ -507,7 +495,6 @@ export function AppShell() {
         </button>
       </nav>
 
-      <WhatsNewDialog />
       <TicketBumpWatcher />
       <NetworkWatcher />
     </div>

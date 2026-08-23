@@ -13,7 +13,7 @@ a CMS.
 |---|---|
 | `src/lib/guide/content/*.ts` | Topics, grouped by chapter |
 | `src/lib/guide/catalog.ts` | Chapter list + assembled `GUIDE_TOPICS` |
-| `src/lib/guide/updates.ts` | What’s New (newest first, keep ~10) |
+| `src/lib/guide/updates.ts` | Release-note data (not shown in the guide) |
 | `src/lib/guide/types.ts` | `GUIDE_VERSION`, roles, block types |
 | `src/lib/guide/store.ts` | Overlay open state, progress, silence prefs |
 | `src/components/guide/OperatorsGuide.tsx` | Overlay + `/guide` page |
@@ -53,10 +53,7 @@ from `src/lib/guide/content/helpers.ts`.
 
 Every topic should include **Why it matters**, **Steps**, and **Related topics**.
 
-3. Add a What’s New row at the **top** of `GUIDE_UPDATES` if staff should see it
-   after login. Set `topicId` to the new id. Trim the list to about 10.
-
-4. From a screen, deep-link with:
+3. From a screen, deep-link with:
 
 ```tsx
 <GuideLearnLink topicId="my-topic">Learn</GuideLearnLink>

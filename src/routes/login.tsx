@@ -14,7 +14,7 @@ function LoginPage() {
   return (
     <AuthShell
       title="Sign in to Summex"
-      subtitle="Platform Admin is username Admin. Merchants use their work email. After you authenticate we pick organization and location."
+      subtitle="Use your username or email and password."
     >
       <AuthScreen mode="signin" />
       <p className="mt-8 text-center text-sm text-muted-foreground">

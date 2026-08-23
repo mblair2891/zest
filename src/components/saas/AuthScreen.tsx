@@ -1,6 +1,6 @@
 import { useState, type ReactNode } from "react";
 import { Link } from "@tanstack/react-router";
-import { GROK_PROVIDERS, authClient, authEnabled, signIn } from "@/lib/auth/client";
+import { authClient } from "@/lib/auth/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { SummexBrandBlock } from "@/components/brand/SummexMark";
@@ -37,11 +37,8 @@ export function AuthScreen({
         const raw = email.trim();
         const isAdmin =
           raw.toLowerCase() === "admin" ||
-          raw.toLowerCase() === "admin@summex.local" ||
-          raw.toLowerCase() === "admin@zest.local";
-        const candidates = isAdmin
-          ? ["admin@summex.local", "admin@zest.local"]
-          : [raw];
+          raw.toLowerCase() === "admin@summex.local";
+        const candidates = isAdmin ? ["admin@summex.local"] : [raw];
         let lastErr: string | null = null;
         let ok = false;
         for (const loginEmail of candidates) {
@@ -73,7 +70,13 @@ export function AuthScreen({
 
   return (
     <div className="mx-auto w-full max-w-sm space-y-4">
-      <div className="space-y-2">
+      <form
+        className="space-y-2"
+        onSubmit={(e) => {
+          e.preventDefault();
+          void submit();
+        }}
+      >
         {mode === "signup" && (
           <Input
             placeholder="Your name"
@@ -83,12 +86,13 @@ export function AuthScreen({
           />
         )}
         <Input
-          type="email"
-          placeholder={mode === "signin" ? "Admin or work email" : "Work email"}
+          type="text"
+          inputMode="email"
+          placeholder={mode === "signin" ? "Username or email" : "Email"}
           value={email}
           disabled={lockEmail}
           onChange={(e) => setEmail(e.target.value)}
-          autoComplete="email"
+          autoComplete={mode === "signin" ? "username" : "email"}
         />
         <Input
           type="password"
@@ -102,33 +106,14 @@ export function AuthScreen({
             {error}
           </p>
         )}
-        <Button className="w-full" disabled={busy} onClick={() => void submit()}>
+        <Button className="w-full" disabled={busy} type="submit">
           {busy
             ? "Please wait…"
             : mode === "signup"
               ? "Create account"
               : "Sign in"}
         </Button>
-      </div>
-
-      {authEnabled && GROK_PROVIDERS.length > 0 && !lockEmail && (
-        <div className="space-y-2">
-          <p className="text-center text-[11px] uppercase tracking-wide text-muted-foreground">
-            Or continue with
-          </p>
-          {GROK_PROVIDERS.map((p) => (
-            <Button
-              key={p.providerId}
-              type="button"
-              variant="outline"
-              className="w-full"
-              onClick={() => void signIn(p.providerId, { callbackURL: "/dashboard" })}
-            >
-              Continue with {p.label}
-            </Button>
-          ))}
-        </div>
-      )}
+      </form>
 
       <p className="text-center text-sm text-muted-foreground">
         <Link to="/guide" className="text-link underline-offset-2 hover:underline">

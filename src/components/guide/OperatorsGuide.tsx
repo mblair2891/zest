@@ -7,7 +7,6 @@ import {
   ExternalLink,
   Printer,
   Search,
-  Sparkles,
   X,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -51,13 +50,11 @@ export function OperatorsGuide({
 }) {
   const storeFocus = useGuideStore((s) => s.focusTopicId);
   const setFocus = useGuideStore((s) => s.setFocusTopic);
-  const openWhatsNew = useGuideStore((s) => s.openWhatsNew);
   const rememberTopic = useGuideStore((s) => s.rememberTopic);
   const toggleComplete = useGuideStore((s) => s.toggleComplete);
   const isComplete = useGuideStore((s) => s.isComplete);
   const continueTopicId = useGuideStore((s) => s.continueTopicId);
   const completedCount = useGuideStore((s) => s.completedCount);
-  const updatesFor = useGuideStore((s) => s.updatesFor);
 
   const { roles: sessionRoles, userKey, hasSessionRole } = useGuideAudience();
   const employees = usePosStore((s) => s.employees);
@@ -109,7 +106,6 @@ export function OperatorsGuide({
   const continueId = continueTopicId(userKey);
   const continueTopic = continueId ? topicById(continueId) : undefined;
   const progress = completedCount(userKey);
-  const roleUpdates = updatesFor(sessionRoles.length ? sessionRoles : "all", 8);
 
   const openTopic = (id: string) => {
     setFocus(id);
@@ -147,20 +143,6 @@ export function OperatorsGuide({
       <p className="hidden text-[11px] text-muted-foreground sm:block">
         {progress} marked complete
       </p>
-      {variant === "overlay" && (
-        <Button
-          size="sm"
-          variant="secondary"
-          className="hidden sm:inline-flex"
-          onClick={() => {
-            onClose?.();
-            openWhatsNew();
-          }}
-        >
-          <Sparkles className="mr-1.5 h-3.5 w-3.5" />
-          What’s new
-        </Button>
-      )}
       <Button
         size="icon"
         variant="ghost"
@@ -332,31 +314,6 @@ export function OperatorsGuide({
               </div>
 
               <GuideBlocks blocks={active.blocks} onOpenTopic={openTopic} />
-
-              {active.id === "intro" && roleUpdates.length > 0 && (
-                <section className="guide-no-print mt-6 rounded-xl border border-border bg-surface p-4">
-                  <h2 className="mb-2 flex items-center gap-2 text-sm font-semibold">
-                    <Sparkles className="h-4 w-4" />
-                    What’s new
-                    {hasSessionRole ? ` · ${sessionRoles.map(roleLabel).join(", ")}` : ""}
-                  </h2>
-                  <ul className="space-y-2">
-                    {roleUpdates.map((u) => (
-                      <li key={u.id}>
-                        <button
-                          type="button"
-                          className="w-full rounded-lg border border-border bg-bg px-3 py-2.5 text-left hover:border-primary/40"
-                          onClick={() => u.topicId && openTopic(u.topicId)}
-                        >
-                          <p className="text-[11px] text-muted-foreground">{u.date}</p>
-                          <p className="text-sm font-medium">{u.title}</p>
-                          <p className="mt-0.5 text-xs text-muted-foreground">{u.summary}</p>
-                        </button>
-                      </li>
-                    ))}
-                  </ul>
-                </section>
-              )}
 
               <footer className="border-t border-border pt-4 text-[11px] text-muted-foreground">
                 Summex, powered by Quantum Reach · {GUIDE_TITLE} · Guest cards via

@@ -71,7 +71,7 @@ See `.env.example`. Highlights:
 | `STRIPE_SECRET_KEY` + price ids | SaaS subscription billing (software). Optional — sandbox provider if missing |
 | `SUMMEX_PAYMENTS_MODE` | `sandbox` (default) or `live` merchant facade |
 
-Sign-in methods: **email/password**, plus Google and X when broker credentials are injected.
+Sign-in methods: **username or email + password** only. Social / OAuth (Google, X) is disabled.
 
 ## Architecture
 

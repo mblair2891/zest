@@ -2,11 +2,7 @@ import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
 import type { EmployeeRole } from "@/lib/pos/types";
 import { employeeToGuideRoles } from "./roles";
-import {
-  hasUnseenUpdates,
-  latestUpdateId,
-  updatesForRoles,
-} from "./updates";
+import { latestUpdateId, updatesForRoles } from "./updates";
 import type { GuideRole, GuideUpdate } from "./types";
 
 export type GuideUserKey = string;
@@ -121,24 +117,11 @@ export const useGuideStore = create<GuideState>()(
         });
       },
 
-      openWhatsNew: () =>
-        set({
-          forceWhatsNew: true,
-          dismissedThisSession: false,
-        }),
-
-      shouldShowWhatsNew: (roles) => {
-        const s = get();
-        if (s.forceWhatsNew) return true;
-        if (s.dismissedThisSession) return false;
-        let mark: string | null = s.silencedAfterAnon;
-        if (roles !== "all") {
-          for (const r of roles) {
-            mark = s.silencedAfterByGuideRole[r] ?? mark;
-          }
-        }
-        return hasUnseenUpdates(roles, mark ?? null);
+      openWhatsNew: () => {
+        /* What’s New is not surfaced in the Operators Guide. */
       },
+
+      shouldShowWhatsNew: () => false,
 
       updatesFor: (roles, limit = 10) => updatesForRoles(roles, limit),
 

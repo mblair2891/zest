@@ -58,8 +58,8 @@ Suspended orgs cannot open POS APIs (`assertLocationAccess` fails closed).
 
 Production identity is Better Auth:
 
-- Email + password (this app's DB)
-- Google and X via the Grok auth broker (when broker credentials are present)
+- Username or email + password (this app's DB)
+- No Google, X, or other social sign-in
 
 PIN login is a **station lock** for floor staff after a location is opened. It is not the production identity path.
 
