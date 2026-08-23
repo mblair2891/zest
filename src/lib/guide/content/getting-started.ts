@@ -228,7 +228,7 @@ export const GETTING_STARTED_TOPICS: GuideTopic[] = [
       cta(
         "/demo/food_hall/tour",
         "Open The Laundry guided demo",
-        "Share /demo/food_hall with a prospect. Platform → Demos to copy the link.",
+        "Live UI with voiceover. Share /demo/food_hall with a prospect. Platform → Demos to copy the link or start the tour.",
       ),
       related("type-food-hall", "empty-start", "system-ledger", "host-capture", "chargebacks"),
     ],

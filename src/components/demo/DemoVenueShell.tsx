@@ -1,26 +1,27 @@
-import { useLayoutEffect, useState } from "react";
+import { useLayoutEffect } from "react";
+import { toast } from "sonner";
 import { PosApp } from "@/components/pos/PosApp";
 import { demoEntry } from "@/lib/demo/catalog";
-import { scriptFor } from "@/lib/demo/scripts";
 import { enterDemoSession, exitDemoSession } from "@/lib/demo/session";
+import { startTour, useTourStore } from "@/lib/demo/tour-store";
 import type { VenueEntityId } from "@/lib/pos/types";
-import { DemoBanner, DemoPlayer } from "./DemoPlayer";
+import { DemoBanner } from "./DemoPlayer";
 
 export function DemoVenueShell({
   type,
-  startTour = false,
   hideTourCta = false,
 }: {
   type: VenueEntityId;
-  startTour?: boolean;
   hideTourCta?: boolean;
 }) {
-  const [tour, setTour] = useState(startTour);
   const entry = demoEntry(type);
+  const running = useTourStore((s) => Boolean(s.tour));
 
   useLayoutEffect(() => {
     enterDemoSession(type);
-    return () => exitDemoSession();
+    return () => {
+      if (!useTourStore.getState().tour) exitDemoSession();
+    };
   }, [type]);
 
   return (
@@ -30,19 +31,20 @@ export function DemoVenueShell({
           <DemoBanner
             label={entry?.hostName ?? type}
             onStartTour={
-              hideTourCta || tour ? undefined : () => setTour(true)
+              hideTourCta || running
+                ? undefined
+                : () => {
+                    const id = `type:${type}`;
+                    if (!startTour(id)) {
+                      console.error("[summex] Tour failed to start", id);
+                      toast.error("Tour not available");
+                    }
+                  }
             }
           />
         </div>
       </div>
       <PosApp entityId={type} />
-      {tour && (
-        <DemoPlayer
-          script={scriptFor(type)}
-          autoPlay={startTour}
-          onExit={() => setTour(false)}
-        />
-      )}
     </div>
   );
 }

@@ -31,6 +31,7 @@ import { Route as SignupRouteImport } from './routes/signup'
 import { Route as WhitepaperRouteImport } from './routes/whitepaper'
 import { Route as ApiHealthRouteImport } from './routes/api/health'
 import { Route as BlogSlugRouteImport } from './routes/blog.$slug'
+import { Route as DemoIndexRouteImport } from './routes/demo.index'
 import { Route as DemoTypeRouteImport } from './routes/demo.$type'
 import { Route as InviteTokenRouteImport } from './routes/invite.$token'
 import { Route as OrderOrderIdRouteImport } from './routes/order.$orderId'
@@ -157,6 +158,11 @@ const BlogSlugRoute = BlogSlugRouteImport.update({
   path: '/$slug',
   getParentRoute: () => BlogRoute,
 } as any)
+const DemoIndexRoute = DemoIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => DemoRoute,
+} as any)
 const DemoTypeRoute = DemoTypeRouteImport.update({
   id: '/$type',
   path: '/$type',
@@ -265,6 +271,7 @@ export interface FileRoutesByFullPath {
   '/sites/$slug': typeof SitesSlugRoute
   '/table/$label': typeof TableLabelRoute
   '/venue/$type': typeof VenueTypeRoute
+  '/demo/': typeof DemoIndexRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/billing/webhook': typeof ApiBillingWebhookRoute
   '/app/venue/$type': typeof AppVenueTypeRoute
@@ -279,7 +286,6 @@ export interface FileRoutesByTo {
   '/blog': typeof BlogRouteWithChildren
   '/change-password': typeof ChangePasswordRoute
   '/dashboard': typeof DashboardRoute
-  '/demo': typeof DemoRouteWithChildren
   '/features': typeof FeaturesRoute
   '/get-pricing': typeof GetPricingRoute
   '/guide': typeof GuideRoute
@@ -304,6 +310,7 @@ export interface FileRoutesByTo {
   '/sites/$slug': typeof SitesSlugRoute
   '/table/$label': typeof TableLabelRoute
   '/venue/$type': typeof VenueTypeRoute
+  '/demo': typeof DemoIndexRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/billing/webhook': typeof ApiBillingWebhookRoute
   '/app/venue/$type': typeof AppVenueTypeRoute
@@ -344,6 +351,7 @@ export interface FileRoutesById {
   '/sites/$slug': typeof SitesSlugRoute
   '/table/$label': typeof TableLabelRoute
   '/venue/$type': typeof VenueTypeRoute
+  '/demo/': typeof DemoIndexRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/billing/webhook': typeof ApiBillingWebhookRoute
   '/app/venue/$type': typeof AppVenueTypeRoute
@@ -385,6 +393,7 @@ export interface FileRouteTypes {
     | '/sites/$slug'
     | '/table/$label'
     | '/venue/$type'
+    | '/demo/'
     | '/api/auth/$'
     | '/api/billing/webhook'
     | '/app/venue/$type'
@@ -399,7 +408,6 @@ export interface FileRouteTypes {
     | '/blog'
     | '/change-password'
     | '/dashboard'
-    | '/demo'
     | '/features'
     | '/get-pricing'
     | '/guide'
@@ -424,6 +432,7 @@ export interface FileRouteTypes {
     | '/sites/$slug'
     | '/table/$label'
     | '/venue/$type'
+    | '/demo'
     | '/api/auth/$'
     | '/api/billing/webhook'
     | '/app/venue/$type'
@@ -463,6 +472,7 @@ export interface FileRouteTypes {
     | '/sites/$slug'
     | '/table/$label'
     | '/venue/$type'
+    | '/demo/'
     | '/api/auth/$'
     | '/api/billing/webhook'
     | '/app/venue/$type'
@@ -662,6 +672,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof BlogSlugRouteImport
       parentRoute: typeof BlogRoute
     }
+    '/demo/': {
+      id: '/demo/'
+      path: '/'
+      fullPath: '/demo/'
+      preLoaderRoute: typeof DemoIndexRouteImport
+      parentRoute: typeof DemoRoute
+    }
     '/demo/$type': {
       id: '/demo/$type'
       path: '/$type'
@@ -804,11 +821,13 @@ const DemoTypeRouteWithChildren = DemoTypeRoute._addFileChildren(
 
 interface DemoRouteChildren {
   DemoTypeRoute: typeof DemoTypeRouteWithChildren
+  DemoIndexRoute: typeof DemoIndexRoute
   DemoTourFullRoute: typeof DemoTourFullRoute
 }
 
 const DemoRouteChildren: DemoRouteChildren = {
   DemoTypeRoute: DemoTypeRouteWithChildren,
+  DemoIndexRoute: DemoIndexRoute,
   DemoTourFullRoute: DemoTourFullRoute,
 }
 
@@ -851,3 +870,12 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { createStart } from '@tanstack/react-start'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+  }
+}

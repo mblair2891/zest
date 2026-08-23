@@ -82,7 +82,7 @@ export const ESTABLISHMENT_TYPE_TOPICS: GuideTopic[] = [
       ),
       callout(
         "The Laundry (prospect demo)",
-        "Steam Distillery is bar-only. Diamond House BBQ is kitchen. The guest never pays Steam or Diamond House directly. This is a labeled demo house, not a live tenant.",
+        "Steam Distillery is bar-only. Diamond House BBQ is kitchen. The guest never pays Steam or Diamond House directly. This is a labeled demo house, not a live tenant. Start guided demo on Platform → Demos (or /demo/food_hall/tour) to walk it with voiceover on the live floor.",
       ),
       warn(
         "Do not mix this demo into Tenants or statistics. Platform → Demos is the control surface. Reset demos never deletes live orgs.",

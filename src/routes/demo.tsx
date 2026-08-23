@@ -1,10 +1,10 @@
-import { createFileRoute } from "@tanstack/react-router";
-import { DemoCatalogPage } from "@/components/demo/DemoCatalogPage";
+import { createFileRoute, Outlet } from "@tanstack/react-router";
 
 export const Route = createFileRoute("/demo")({
   ssr: false,
-  head: () => ({
-    meta: [{ title: "Prospect demos · Summex" }],
-  }),
-  component: DemoCatalogPage,
+  component: DemoLayout,
 });
+
+function DemoLayout() {
+  return <Outlet />;
+}

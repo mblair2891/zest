@@ -196,8 +196,8 @@ export const SAAS_TOPICS: GuideTopic[] = [
   topic({
     id: "prospect-demos",
     chapterId: "saas",
-    title: "Prospect demos & guided tours",
-    summary: "Which share link to send, guided vs auto-play, and how demos stay out of tenants.",
+    title: "Guided demos & voiceover tours",
+    summary: "Live-UI tours with narration, voiceover, share links, and demo isolation from tenants.",
     roles: ["platform_admin", "owner_manager", "host_operator"],
     keywords: [
       "demo",
@@ -207,28 +207,37 @@ export const SAAS_TOPICS: GuideTopic[] = [
       "the laundry",
       "guided",
       "auto-play",
+      "voiceover",
+      "narration",
+      "spotlight",
     ],
     blocks: [
       why(
-        "A prospect should walk a type of house — not your live tenants. Demo rooms are tagged, excluded from statistics, and reset without touching production orgs.",
+        "A prospect should walk the real product — exact screens, demo-seeded venues — not a slideshow. Demo rooms are tagged, excluded from statistics, and reset without touching production orgs.",
       ),
       p(
-        "From Platform → Demos, copy a share link. The prospect does not need Admin. They land in that room with a Start guided demo control. Full product tour covers the major surfaces in one sitting.",
+        "From Platform → Demos, Start guided demo or Full product tour begins a live tour: spotlight on the real UI, narrator card, and voiceover. The prospect does not need Admin. Copy a share link if they should start without you.",
       ),
       ul(
         "Per type: https://www.summex.app/demo/{type} — restaurant, food_hall (The Laundry), bar_lounge, qsr, cafe, truck_pod, ghost_kitchen, catering.",
         "The Laundry guided path: /demo/food_hall/tour — Steam Distillery + Diamond House BBQ, one guest check, Quantum Payments, settlement split.",
-        "Full tour: https://www.summex.app/demo/tour/full",
+        "Full product tour: https://www.summex.app/demo/tour/full — catalog, The Laundry, floor, menu, routing, pay, settlement, cash discount, kiosk, Operators Guide, back to Demos.",
       ),
       steps(
-        "Guided — the prospect taps Next. Back, Skip, and Exit stay available.",
-        "Auto-play — Play on the narrator card. Timed advances; Pause to hold a screen.",
+        "Platform → Demos → Full product tour, or Start guided demo on a type card. Buttons call startTour — if a tour id is unknown you see “Tour not available”.",
+        "Guided — you tap Next. Back, Play, Pause, Voice, and Exit stay on the narrator card. Esc also exits.",
+        "Play — auto-play advances on speech length. Pause stops voiceover and the timer. Resume from the current step.",
+        "Voiceover reads each step (browser speech; optional server TTS when a key is configured). Voice off keeps the card, no audio.",
         "Reset all demos (platform admin only) deletes demo-tagged orgs and this browser’s demo persist keys. Live tenants are untouched.",
+      ),
+      callout(
+        "Live UI, demo data only",
+        "The tour opens real routes (/demo/…, /kiosk, /guide) and highlights live components. Safe actions (seat, add item, send, sandbox pay) run only while a demo session is active. They never mutate live tenants.",
       ),
       warn(
         "Never send a tenant dashboard or Admin login as a demo. If Tenants is empty, that is correct — demos do not count.",
       ),
-      related("platform-admin", "single-vs-multi", "prospect-intake"),
+      related("platform-admin", "single-vs-multi", "prospect-intake", "type-food-hall", "feature-kiosk"),
     ],
   }),
 ];

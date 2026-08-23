@@ -185,6 +185,7 @@ export function OperatorsGuide({
 
   return (
     <div
+      data-demo="guide-root"
       className={cn(
         "guide-print-root flex flex-col bg-bg text-foreground",
         variant === "overlay"

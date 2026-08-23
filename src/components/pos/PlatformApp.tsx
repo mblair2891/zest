@@ -337,6 +337,7 @@ export function PlatformApp() {
             <Button
               size="sm"
               variant={surface === "demos" ? "default" : "outline"}
+              data-demo="platform-demos-nav"
               onClick={() => pickSurface("demos")}
             >
               Demos

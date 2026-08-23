@@ -1,4 +1,5 @@
 import { usePosStore } from "@/lib/pos/store";
+import { isProspectDemo } from "./session";
 import type { DemoStep } from "./scripts";
 
 function pickItem(station: "kitchen" | "bar"): string | null {
@@ -27,6 +28,8 @@ function ensureOpenCheck(): void {
 }
 
 export function runDemoStepAction(action: DemoStep["action"]): void {
+  if (!action || action === "none") return;
+  if (!isProspectDemo()) return;
   const s = usePosStore.getState();
   switch (action) {
     case "seat": {

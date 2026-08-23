@@ -1,10 +1,21 @@
 import { useEffect, useState } from "react";
 import { Link } from "@tanstack/react-router";
 import { Copy, Play, RotateCcw } from "lucide-react";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { listDemosFn, resetDemosFn, seedDemosFn } from "@/lib/demo/api";
 import { DEMO_CATALOG, demoShareUrl } from "@/lib/demo/catalog";
 import { clearAllDemoPersist } from "@/lib/demo/session";
+import { startTour } from "@/lib/demo/tour-store";
+
+function beginTour(id: string, autoPlay = false) {
+  const ok = startTour(id, { autoPlay });
+  if (!ok) {
+    console.error("[summex] Tour failed to start", id);
+    toast.error("Tour not available");
+  }
+  return ok;
+}
 
 export function PlatformDemosView() {
   const [copied, setCopied] = useState<string | null>(null);
@@ -52,24 +63,30 @@ export function PlatformDemosView() {
         </h1>
         <p className="mt-2 max-w-2xl text-sm text-muted-foreground">
           Demo data is excluded from tenants and statistics. Share a type link;
-          the prospect never sees live operators or billing.
+          the prospect never sees live operators or billing. Guided demo runs
+          on the live product with voiceover.
         </p>
 
-        <div className="mt-6 rounded-2xl border border-border bg-surface p-4">
+        <div
+          data-demo="full-tour-card"
+          className="mt-6 rounded-2xl border border-border bg-surface p-4"
+        >
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div>
               <p className="text-sm font-semibold">Full product tour</p>
               <p className="mt-1 text-xs text-muted-foreground">
-                Major surfaces in sequence. Skips modules that are not present.
+                Live UI walkthrough with narration. Skips modules that are not present.
               </p>
             </div>
             <div className="flex flex-wrap gap-2">
-              <Link to="/demo/tour/full">
-                <Button size="sm">
-                  <Play className="mr-1 h-3.5 w-3.5" />
-                  Full product tour
-                </Button>
-              </Link>
+              <Button
+                type="button"
+                size="sm"
+                onClick={() => beginTour("full")}
+              >
+                <Play className="mr-1 h-3.5 w-3.5" />
+                Full product tour
+              </Button>
               <Button
                 type="button"
                 size="sm"
@@ -95,14 +112,18 @@ export function PlatformDemosView() {
               <p className="mt-1 text-base font-semibold">{d.hostName}</p>
               <p className="mt-1 text-sm text-muted-foreground">{d.blurb}</p>
               <div className="mt-3 flex flex-wrap gap-2">
-                <Link to="/demo/$type" params={{ type: d.type }}>
-                  <Button size="sm" variant="outline">
+                <Button asChild size="sm" variant="outline">
+                  <Link to="/demo/$type" params={{ type: d.type }}>
                     Open
-                  </Button>
-                </Link>
-                <Link to="/demo/$type/tour" params={{ type: d.type }}>
-                  <Button size="sm">Start guided demo</Button>
-                </Link>
+                  </Link>
+                </Button>
+                <Button
+                  type="button"
+                  size="sm"
+                  onClick={() => beginTour(`type:${d.type}`)}
+                >
+                  Start guided demo
+                </Button>
                 <Button
                   type="button"
                   size="sm"

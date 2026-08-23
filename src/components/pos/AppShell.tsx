@@ -398,7 +398,7 @@ export function AppShell() {
               <button
                 key={id}
                 type="button"
-                data-demo={id}
+                data-demo-nav={id}
                 onClick={() => setView(id)}
                 className={cn(
                   "flex items-center gap-3 rounded-xl px-2 py-2.5 text-left text-sm transition-colors lg:px-3",
@@ -429,7 +429,7 @@ export function AppShell() {
           </div>
         </nav>
 
-        <main className="min-h-0 min-w-0 flex-1 overflow-hidden">
+        <main className="min-h-0 min-w-0 flex-1 overflow-hidden" data-demo={safeView}>
           {safeView === "truck_pod" && <TruckPodView />}
           {safeView === "labor" && <LaborOpsView />}
           {safeView === "inventory_ai" && <InventoryAiView />}

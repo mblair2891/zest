@@ -25,7 +25,7 @@ export const KIOSK_WAITLIST_TOPICS: GuideTopic[] = [
       ),
       callout(
         "Demo",
-        "Reservation check-in sample: last name Blair, code K7M2. Waitlist texts log on Host stand when Twilio is not set.",
+        "The full product tour visits this kiosk on the live UI with voiceover. Reservation check-in sample: last name Blair, code K7M2. Waitlist texts log on Host stand when Twilio is not set.",
       ),
       cta("/kiosk", "Open guest kiosk"),
       related("feature-waitlist", "feature-reservation-checkin", "type-restaurant", "type-qsr"),

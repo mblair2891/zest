@@ -93,6 +93,28 @@ resumes the last unfinished topic.
 - Chargebacks: **$35** when a dispute is **filed**; split by merchandise % on
   that check; won/lost does not reverse the fee.
 
+## Guided demos & voiceover tours
+
+Prospect tours run on the **live product UI** (real routes, demo-seeded venues,
+spotlight on live components) — not a slideshow.
+
+| Control | What it does |
+|---|---|
+| Platform → Demos → **Full product tour** | `startTour("full")` |
+| Platform → Demos → **Start guided demo** | `startTour("type:{typeId}")` |
+| `/demo/tour/full` | Shareable full tour (auto-play) |
+| `/demo/{type}/tour` | Shareable per-type tour (auto-play) |
+
+Narration: handwritten fallbacks in `src/lib/demo/tour-scripts.ts`. When
+`XAI_API_KEY` (or `OPENAI_API_KEY`) is set, `getTourNarrationFn` writes
+sales-ready scripts and caches per tour id. Voiceover is the browser Speech
+API (`speechSynthesis`); Pause / Exit cancel speech.
+
+Safe POS actions (seat, add, send, sandbox pay) run only while
+`isProspectDemo()` is true. Unknown tour ids toast **Tour not available**.
+
+In-app topic: `/guide?topic=prospect-demos`.
+
 ## Print
 
 The overlay and `/guide` page hide chrome under `@media print`. Use the printer

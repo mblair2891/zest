@@ -7,6 +7,16 @@ import { GUIDE_VERSION, type GuideRole, type GuideUpdate } from "./types";
  */
 export const GUIDE_UPDATES: GuideUpdate[] = [
   {
+    id: "upd_2026_08_29_voiceover_tours",
+    date: "2026-08-29",
+    title: "Guided demos & voiceover tours",
+    summary:
+      "Start guided demo and Full product tour run on the live UI with spotlight, AI scripts, and voiceover. Exit stops speech.",
+    roles: ["platform_admin", "owner_manager", "host_operator"],
+    topicId: "prospect-demos",
+    tags: ["demo", "tour", "voiceover", "saas"],
+  },
+  {
     id: "upd_2026_08_27_demos",
     date: "2026-08-27",
     title: "Prospect demos & guided tours",

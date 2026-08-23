@@ -106,7 +106,10 @@ export function KioskApp() {
   const house = usePosStore.getState().settings.name || "Summex";
 
   return (
-    <div className="flex min-h-[100dvh] flex-col bg-bg pt-[var(--grok-banner-h,0px)] text-foreground">
+    <div
+      data-demo="kiosk-home"
+      className="flex min-h-[100dvh] flex-col bg-bg pt-[var(--grok-banner-h,0px)] text-foreground"
+    >
       <header className="flex items-center justify-between border-b border-border bg-surface px-4 py-4 sm:px-6">
         <div className="flex items-center gap-3">
           <SummexMark className="h-9 w-9 text-foreground" />
