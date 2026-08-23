@@ -11,6 +11,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
+import { VoiceTextarea } from "@/components/ui/voice-textarea";
 import { useMarketingStore, SOCIAL_LABEL } from "@/lib/pos/marketing-store";
 import { useSaasStore } from "@/lib/pos/saas-store";
 import { usePosStore } from "@/lib/pos/store";
@@ -241,11 +242,12 @@ export function MarketingHubView() {
           <div className="space-y-4">
             <div className="rounded-2xl border border-border bg-surface p-4">
               <h3 className="mb-2 text-sm font-semibold">Compose</h3>
-              <textarea
-                className="min-h-[100px] w-full rounded-xl border border-border bg-bg px-3 py-2 text-sm"
+              <VoiceTextarea
+                className="min-h-[100px] bg-bg"
                 placeholder="Write a post for social + Google…"
                 value={postBody}
-                onChange={(e) => setPostBody(e.target.value)}
+                onChange={setPostBody}
+                rows={4}
               />
               <div className="mt-2 flex flex-wrap gap-1">
                 {PROVIDERS.slice(0, 5).map((p) => {
@@ -553,13 +555,16 @@ export function MarketingHubView() {
               </label>
               <label className="text-xs sm:col-span-2">
                 About
-                <textarea
-                  className="mt-1 min-h-[80px] w-full rounded-xl border border-border bg-bg px-3 py-2 text-sm"
-                  value={site.about}
-                  onChange={(e) =>
-                    updateWebsite(activeLocationId, { about: e.target.value })
-                  }
-                />
+                <div className="mt-1">
+                  <VoiceTextarea
+                    className="min-h-[80px] bg-bg"
+                    value={site.about}
+                    onChange={(about) =>
+                      updateWebsite(activeLocationId, { about })
+                    }
+                    rows={4}
+                  />
+                </div>
               </label>
               <label className="text-xs">
                 Hours

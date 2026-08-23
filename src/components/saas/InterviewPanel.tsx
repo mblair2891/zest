@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { VoiceTextarea } from "@/components/ui/voice-textarea";
 import { Badge } from "@/components/ui/badge";
 import { Field, ToggleChip } from "./WizardChrome";
 import {
@@ -150,11 +151,11 @@ export function InterviewPanel({
       </Field>
 
       <Field label="Describe your operation in your own words">
-        <textarea
+        <VoiceTextarea
           value={freeText}
-          onChange={(e) => setFreeText(e.target.value)}
+          onChange={setFreeText}
           rows={7}
-          className="min-h-36 w-full rounded-lg border border-border bg-surface px-3 py-2 text-sm"
+          className="min-h-36"
           placeholder="We run a hall with a bar program and two kitchens. Guests pay one check. We need floor, KDS, and operator payouts…"
         />
         <span className="mt-1 block text-[11px] text-muted-foreground">
@@ -179,9 +180,12 @@ export function InterviewPanel({
         <div className="space-y-3">
           {questions.map((q) => (
             <Field key={q.id} label={q.prompt} hint={q.hint}>
-              <Input
+              <VoiceTextarea
                 value={replies[q.id] ?? ""}
-                onChange={(e) => setReplies((r) => ({ ...r, [q.id]: e.target.value }))}
+                onChange={(text) => setReplies((r) => ({ ...r, [q.id]: text }))}
+                rows={3}
+                className="min-h-24"
+                placeholder="Speak or type your answer"
               />
             </Field>
           ))}

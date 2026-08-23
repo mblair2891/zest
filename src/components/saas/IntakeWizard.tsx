@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import { Input } from "@/components/ui/input";
+import { VoiceTextarea } from "@/components/ui/voice-textarea";
 import { Field, NativeSelect, ToggleChip, WizardChrome } from "./WizardChrome";
 import { VENUE_ENTITIES } from "@/lib/pos/entities";
 import {
@@ -606,15 +607,15 @@ export function IntakeWizard({ initialToken }: { initialToken?: string }) {
             />
           </Field>
           <Field label="Notes">
-            <textarea
+            <VoiceTextarea
               value={answers.timeline.notes}
-              onChange={(e) =>
+              onChange={(notes) =>
                 patch((a) => ({
                   ...a,
-                  timeline: { ...a.timeline, notes: e.target.value },
+                  timeline: { ...a.timeline, notes },
                 }))
               }
-              className="min-h-28 w-full rounded-lg border border-border bg-surface px-3 py-2 text-sm"
+              rows={4}
               placeholder="Anything we should price around or flag for onboarding."
             />
           </Field>
