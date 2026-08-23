@@ -114,7 +114,7 @@ export function LoginScreen() {
               Zest Platform (SaaS)
             </span>
             <span className="mt-0.5 inline-flex rounded-md bg-primary/20 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-primary">
-              Dev quick login → /platform
+              Sign in → /platform
             </span>
             <span className="mt-1 block text-[11px] leading-snug text-muted-foreground">
               Multi-tenant control plane: orgs, locations, packages, devices,

@@ -37,11 +37,12 @@ export function SettlementView() {
     <div className="flex h-full flex-col">
       <div className="border-b border-border px-3 py-2">
         <h2 className="text-sm font-semibold">
-          Building settlement · {config.locationName}
+          Host settlement · {config.hostName}
         </h2>
         <p className="text-xs text-muted-foreground">
-          One building, multiple vendors. Guest pays once. You control period
-          payouts — not a payment network routing money per item.
+          One host brand ({config.hostName}), multiple operators. Guest pays
+          once via Zest Payments. Period payouts are addressed to each
+          operator’s account placeholder — not live ACH.
         </p>
       </div>
 
@@ -225,7 +226,7 @@ export function SettlementView() {
         {/* Vendors in building */}
         <section className="rounded-2xl border border-border bg-surface p-4">
           <h3 className="mb-2 text-sm font-semibold">
-            Vendors in this building ({vendors.filter((v) => v.active).length})
+            Operators at this host ({vendors.filter((v) => v.active).length})
           </h3>
           <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
             {vendors.map((v) => (
@@ -241,7 +242,8 @@ export function SettlementView() {
                   {v.name}
                 </p>
                 <p className="text-xs text-muted-foreground">
-                  {v.cuisine} · KDS: {v.stationLabel} · bank ••{v.bankLast4}
+                  {v.cuisine ? `${v.cuisine} · ` : ""}
+                  KDS: {v.stationLabel} · {v.bankLabel} ••{v.bankLast4}
                 </p>
               </div>
             ))}
@@ -434,6 +436,7 @@ function SettlementTable({
     cashDueCents: number;
     orderCount: number;
     bankLast4: string;
+    payoutAccountLabel?: string;
   }[];
 }) {
   return (
@@ -449,7 +452,7 @@ function SettlementTable({
             <th className="px-2 py-1.5">Host cut</th>
             <th className="px-2 py-1.5">E-payout</th>
             <th className="px-2 py-1.5">Cash due</th>
-            <th className="px-2 py-1.5">Bank</th>
+            <th className="px-2 py-1.5">Payout account</th>
           </tr>
         </thead>
         <tbody className="divide-y divide-border/60">
@@ -483,7 +486,9 @@ function SettlementTable({
                 {formatCurrency(r.cashDueCents)}
               </td>
               <td className="px-2 py-2 text-muted-foreground">
-                ••{r.bankLast4}
+                {(r.payoutAccountLabel
+                  ? `${r.payoutAccountLabel} · `
+                  : "") + `••${r.bankLast4}`}
               </td>
             </tr>
           ))}

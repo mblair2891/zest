@@ -62,7 +62,7 @@ export function KitchenView({ station }: Props) {
             variant={vendorFilter === null ? "default" : "outline"}
             onClick={() => setVendorFilter(null)}
           >
-            All stalls
+            All operators
           </Button>
           {vendors
             .filter((v) => v.active)

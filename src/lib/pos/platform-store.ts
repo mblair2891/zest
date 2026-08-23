@@ -219,8 +219,8 @@ function initial() {
       locationIds: [...t.locationIds],
     })),
     locations: LOCATIONS.map((l) => ({ ...l })),
-    activeLocationId: "loc_hh",
-    activeTenantId: "ten_hh",
+    activeLocationId: "",
+    activeTenantId: "",
     recipes: RECIPES.map((r) => ({
       ...r,
       lines: r.lines.map((l) => ({ ...l })),
@@ -888,7 +888,7 @@ export const usePlatformStore = create<PlatformState>()(
       },
     }),
     {
-      name: "zest-platform-v3",
+      name: "zest-platform-v4-empty",
       storage: createJSONStorage(() => localStorage),
       skipHydration: true,
       partialize: (s) => ({

@@ -395,6 +395,19 @@ export function defaultPackagesForMode(
   return [...base, "online_kiosk", "labor", "inventory", "integrations", "marketing_suite", "location_website"];
 }
 
+export function packagesForLocation(
+  mode: Parameters<typeof defaultPackagesForMode>[0],
+  operatingModel?: "single_operator" | "host_multi_operator",
+): PackageId[] {
+  const pkgs = new Set<PackageId>(defaultPackagesForMode(mode));
+  if (operatingModel === "host_multi_operator") {
+    pkgs.add("kds");
+    pkgs.add("hall_settlement");
+    pkgs.add("vendor_portal");
+  }
+  return Array.from(pkgs);
+}
+
 export function packageMonthlyTotal(enabled: PackageId[]): number {
   return enabled.reduce((s, id) => s + (PACKAGE_BY_ID[id]?.priceMonthly ?? 0), 0);
 }

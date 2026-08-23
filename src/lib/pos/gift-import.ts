@@ -271,14 +271,14 @@ export function previewGiftImport(
 export function giftImportTemplate(providerId: ImportProviderId): string {
   switch (providerId) {
     case "square":
-      return "gan,balance,state,customer,email\nSQ111222333,75.00,ACTIVE,Elena Martinez,elena@example.com\n";
+      return "gan,balance,state,customer,email\nSQ111222333,75.00,ACTIVE,Guest A,guest.a@example.com\n";
     case "toast":
-      return "card_number,balance,original_balance,status,recipient,email\nTOAST-1001,50.00,50.00,ACTIVE,Priya Patel,priya@example.com\n";
+      return "card_number,balance,original_balance,status,recipient,email\nTOAST-1001,50.00,50.00,ACTIVE,Guest B,guest.b@example.com\n";
     case "clover":
-      return "card_id,balance_cents,status,customer_name\nCLV-998877,7500,active,Sam Okonkwo\n";
+      return "card_id,balance_cents,status,customer_name\nCLV-998877,7500,active,Guest C\n";
     case "shopify":
-      return "code,balance,enabled,customer,note\nSHOP-GIFT-1,100.00,true,Casey Brooks,Welcome\n";
+      return "code,balance,enabled,customer,note\nSHOP-GIFT-1,100.00,true,Guest D,Welcome\n";
     default:
-      return "code,balance,original_balance,status,name,email,notes\nLEGACY-A1,60.00,60.00,active,Morgan Blair,morgan@example.com,Migrated\n";
+      return "code,balance,original_balance,status,name,email,notes\nLEGACY-A1,60.00,60.00,active,Guest E,guest.e@example.com,Migrated\n";
   }
 }

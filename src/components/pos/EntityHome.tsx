@@ -17,16 +17,14 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { usePosStore } from "@/lib/pos/store";
+import { useSaasStore } from "@/lib/pos/saas-store";
 import { cn } from "@/lib/utils";
 import { useManualStore } from "@/lib/pos/manual-store";
 import { UserManualOverlay } from "./UserManualView";
 import {
-  ALL_ENTITIES,
   SAAS_ENTITY,
-  VENUE_ENTITIES,
   isVenueEntityId,
   venueById,
-  type VenueEntity,
 } from "@/lib/pos/entities";
 import type { VenueEntityId } from "@/lib/pos/types";
 
@@ -44,6 +42,9 @@ const ICONS: Record<string, React.ComponentType<{ className?: string }>> = {
 
 export function EntityPicker() {
   const openManual = useManualStore((s) => s.openManual);
+  const locations = useSaasStore((s) => s.locations);
+  const orgs = useSaasStore((s) => s.orgs);
+  const hostLocations = locations.filter((l) => Boolean(l.id));
 
   return (
     <div className="flex min-h-[100dvh] flex-col bg-bg pt-[var(--grok-banner-h,0px)]">
@@ -59,38 +60,54 @@ export function EntityPicker() {
             Service, sharp.
           </p>
           <p className="mt-2 text-sm text-muted-foreground">
-            Choose a venue type — then sign in as that team.
-          </p>
-          <p className="mt-3 text-[11px] tracking-wide text-muted-foreground">
-            By Michael Blair & Andy Baida
+            Fresh system — no demo tenants. Onboard a location in SaaS, then
+            open POS.
           </p>
         </div>
 
-        <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-          {VENUE_ENTITIES.map((ent) => {
-            const Icon = ICONS[ent.id] ?? UtensilsCrossed;
-            return (
-              <Link
-                key={ent.id}
-                to="/venue/$type"
-                params={{ type: ent.id }}
-                className="flex min-h-14 items-start gap-3 rounded-2xl border border-border bg-surface px-4 py-3.5 text-left transition hover:border-primary/60 hover:bg-surface-2"
-              >
-                <Icon className="mt-0.5 h-5 w-5 shrink-0 text-primary" />
-                <span className="min-w-0">
-                  <span className="block text-sm font-semibold text-foreground">
-                    {ent.name}
+        {hostLocations.length > 0 ? (
+          <div className="mb-4">
+            <p className="mb-2 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+              Your locations
+            </p>
+            <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+              {hostLocations.map((l) => (
+                <Link
+                  key={l.id}
+                  to="/pos/$locationId"
+                  params={{ locationId: l.id }}
+                  className="flex min-h-14 items-start gap-3 rounded-2xl border border-primary/40 bg-primary/10 px-4 py-3.5 text-left transition hover:border-primary"
+                >
+                  <Store className="mt-0.5 h-5 w-5 shrink-0 text-primary" />
+                  <span className="min-w-0">
+                    <span className="block text-sm font-semibold text-foreground">
+                      {l.hostBrandName || l.name}
+                    </span>
+                    <span className="mt-0.5 block text-[11px] leading-snug text-muted-foreground">
+                      {l.operatingModel === "host_multi_operator"
+                        ? "Host + operators · open POS"
+                        : "Open POS"}
+                    </span>
                   </span>
-                  <span className="mt-0.5 block text-[11px] leading-snug text-muted-foreground">
-                    {ent.tagline}
-                  </span>
-                </span>
-              </Link>
-            );
-          })}
+                </Link>
+              ))}
+            </div>
+          </div>
+        ) : (
+          <div className="mb-4 rounded-2xl border border-dashed border-border bg-surface px-4 py-8 text-center">
+            <p className="text-sm font-medium">No locations yet</p>
+            <p className="mt-1 text-sm text-muted-foreground">
+              {orgs.length === 0
+                ? "Create an organization and a location in the SaaS control plane."
+                : "Add a location in SaaS to open POS."}
+            </p>
+          </div>
+        )}
+
+        <div className="grid grid-cols-1 gap-2">
           <Link
             to="/platform"
-            className="flex min-h-14 items-start gap-3 rounded-2xl border border-primary/50 bg-primary/10 px-4 py-3.5 text-left transition hover:border-primary sm:col-span-2"
+            className="flex min-h-14 items-start gap-3 rounded-2xl border border-primary/50 bg-primary/10 px-4 py-3.5 text-left transition hover:border-primary"
           >
             <Rocket className="mt-0.5 h-5 w-5 shrink-0 text-primary" />
             <span>
@@ -101,7 +118,7 @@ export function EntityPicker() {
                 Control plane
               </span>
               <span className="mt-1 block text-[11px] leading-snug text-muted-foreground">
-                {SAAS_ENTITY.blurb}
+                Create org, location, operators, then open POS.
               </span>
             </span>
           </Link>
@@ -130,34 +147,82 @@ export function EntityPicker() {
   );
 }
 
-export function EntityLogin({ entityId }: { entityId: VenueEntityId }) {
+export function EntityLogin({
+  entityId,
+  saasLocationId,
+}: {
+  entityId?: VenueEntityId;
+  saasLocationId?: string;
+}) {
   const [pin, setPin] = useState("");
   const [error, setError] = useState<string | null>(null);
   const login = usePosStore((s) => s.login);
   const applyEntity = usePosStore((s) => s.applyEntity);
+  const applySaasLocation = usePosStore((s) => s.applySaasLocation);
   const employees = usePosStore((s) => s.employees);
   const activeEntityId = usePosStore((s) => s.activeEntityId);
+  const activeSaasLocationId = usePosStore((s) => s.activeSaasLocationId);
   const openManual = useManualStore((s) => s.openManual);
-  const entity = venueById(entityId);
+  const locations = useSaasStore((s) => s.locations);
+  const entity = entityId ? venueById(entityId) : undefined;
+  const saasLoc = saasLocationId
+    ? locations.find((l) => l.id === saasLocationId)
+    : undefined;
 
   useEffect(() => {
-    if (isVenueEntityId(entityId) && activeEntityId !== entityId) {
+    if (saasLocationId && activeSaasLocationId !== saasLocationId) {
+      applySaasLocation(saasLocationId);
+      return;
+    }
+    if (entityId && isVenueEntityId(entityId) && activeEntityId !== entityId) {
       applyEntity(entityId);
     }
-  }, [entityId, activeEntityId, applyEntity]);
+  }, [
+    entityId,
+    saasLocationId,
+    activeEntityId,
+    activeSaasLocationId,
+    applyEntity,
+    applySaasLocation,
+  ]);
 
-  if (!entity) {
+  if (!entity && !saasLoc) {
     return (
-      <div className="flex min-h-[100dvh] items-center justify-center bg-bg pt-[var(--grok-banner-h,0px)]">
-        <Link to="/" className="text-sm text-muted-foreground underline">
-          Unknown venue — back
+      <div className="flex min-h-[100dvh] flex-col items-center justify-center gap-3 bg-bg pt-[var(--grok-banner-h,0px)]">
+        <p className="text-sm text-muted-foreground">No location here yet.</p>
+        <Link to="/platform" className="text-sm text-primary underline">
+          Onboard in SaaS
         </Link>
       </div>
     );
   }
 
   const staff = employees.filter((e) => e.active);
-  const Icon = ICONS[entity.id] ?? UtensilsCrossed;
+
+  if (staff.length === 0 && !saasLoc) {
+    return (
+      <div className="flex min-h-[100dvh] flex-col items-center justify-center gap-3 bg-bg px-4 pt-[var(--grok-banner-h,0px)] text-center">
+        <p className="text-sm font-medium">This venue type has no location yet</p>
+        <p className="max-w-sm text-sm text-muted-foreground">
+          Create an organization and location in the SaaS control plane. POS
+          staff are generated when you onboard — there is no demo roster.
+        </p>
+        <Link to="/platform">
+          <Button>Open SaaS</Button>
+        </Link>
+      </div>
+    );
+  }
+  const Icon = ICONS[entity?.id ?? "food_hall"] ?? UtensilsCrossed;
+  const title = saasLoc
+    ? saasLoc.hostBrandName || saasLoc.name
+    : entity!.venueName;
+  const subtitle = saasLoc
+    ? "Host + multiple operators"
+    : entity!.name;
+  const blurb = saasLoc
+    ? "One guest check. Tickets route to each operator. Pay once via Zest Payments."
+    : entity!.blurb;
 
   const press = (d: string) => {
     setError(null);
@@ -189,12 +254,12 @@ export function EntityLogin({ entityId }: { entityId: VenueEntityId }) {
             <Icon className="h-7 w-7" />
           </div>
           <h1 className="text-3xl font-black tracking-tighter text-foreground">
-            {entity.venueName}
+            {title}
           </h1>
           <p className="mt-1.5 text-sm font-medium text-primary">
-            {entity.name}
+            {subtitle}
           </p>
-          <p className="mt-1 text-sm text-muted-foreground">{entity.blurb}</p>
+          <p className="mt-1 text-sm text-muted-foreground">{blurb}</p>
         </div>
 
         <div className="mb-6 flex justify-center gap-2">
@@ -254,11 +319,11 @@ export function EntityLogin({ entityId }: { entityId: VenueEntityId }) {
 
         <div className="mt-10">
           <p className="mb-3 text-center text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
-            Quick login · {entity.shortName} staff
+            Location staff
           </p>
           <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
             {staff.map((e) => {
-              const spec = entity.staff.find((s) => s.id === e.id);
+              const spec = entity?.staff.find((s) => s.id === e.id);
               return (
                 <button
                   key={e.id}
@@ -282,7 +347,7 @@ export function EntityLogin({ entityId }: { entityId: VenueEntityId }) {
                       {e.title || spec?.title}
                     </span>
                     <span className="mt-1 block text-[11px] leading-snug text-muted-foreground">
-                      {spec?.blurb}
+                      {spec?.blurb ?? `PIN ${e.pin}`}
                     </span>
                   </span>
                 </button>
@@ -304,8 +369,6 @@ export function EntityLogin({ entityId }: { entityId: VenueEntityId }) {
   );
 }
 
-export function entityMeta(id: VenueEntityId): VenueEntity | undefined {
+export function entityMeta(id: VenueEntityId) {
   return venueById(id);
 }
-
-export const ENTITY_COUNT = ALL_ENTITIES.length;

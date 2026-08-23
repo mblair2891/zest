@@ -17,10 +17,12 @@ import {
 } from "@/lib/pos/hardware-catalog";
 import { formatCurrency, formatTime } from "@/lib/utils";
 import { venueById } from "@/lib/pos/entities";
+import { HostOnboardingView } from "./HostOnboardingView";
 
 type Tab =
   | "overview"
   | "locations"
+  | "host"
   | "team"
   | "devices"
   | "hardware"
@@ -48,6 +50,7 @@ const CAT_LABEL: Record<PackageCategory, string> = {
 
 const TABS: { id: Tab; label: string }[] = [
   { id: "overview", label: "Overview" },
+  { id: "host", label: "Host setup" },
   { id: "locations", label: "Locations" },
   { id: "team", label: "Team" },
   { id: "devices", label: "Devices" },
@@ -57,8 +60,10 @@ const TABS: { id: Tab; label: string }[] = [
 ];
 
 export function SaasConsoleView() {
-  const [tab, setTab] = useState<Tab>("overview");
+  const [tab, setTab] = useState<Tab>("host");
   const org = useSaasStore((s) => s.org);
+  const orgs = useSaasStore((s) => s.orgs);
+  const setActiveOrg = useSaasStore((s) => s.setActiveOrg);
   const members = useSaasStore((s) => s.members);
   const locations = useSaasStore((s) => s.locations);
   const devices = useSaasStore((s) => s.devices);
@@ -74,9 +79,11 @@ export function SaasConsoleView() {
   const markInvoicePaid = useSaasStore((s) => s.markInvoicePaid);
   const platformAdminRole = useSaasStore((s) => s.platformAdminRole);
 
+  const orgLocations = locations.filter((l) => l.orgId === org.id);
   const loc =
-    locations.find((l) => l.id === activeLocationId) ?? locations[0];
+    orgLocations.find((l) => l.id === activeLocationId) ?? orgLocations[0];
   const locTotal = loc ? packageMonthlyTotal(loc.enabledPackages as PackageId[]) : 0;
+  const orgMembers = members.filter((m) => m.orgId === org.id);
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
@@ -94,26 +101,45 @@ export function SaasConsoleView() {
       </div>
 
       <div className="min-h-0 flex-1 overflow-y-auto p-4">
+        {tab === "host" && <HostOnboardingView />}
+
         {tab === "overview" && (
           <div className="mx-auto grid max-w-4xl gap-3 sm:grid-cols-2">
             <div className="rounded-2xl border border-border bg-surface p-4">
               <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
                 Organization
               </p>
-              <p className="mt-1 text-lg font-semibold">{org.name}</p>
-              <p className="text-sm text-muted-foreground">{org.legalName}</p>
+              <p className="mt-1 text-lg font-semibold">
+                {org.id ? org.name : "No organization yet"}
+              </p>
+              <p className="text-sm text-muted-foreground">
+                {org.id
+                  ? org.legalName
+                  : "Create one on Host setup — this control plane starts empty."}
+              </p>
               <p className="mt-2 text-sm capitalize">
-                {org.plan} · {org.seats} seats · {locations.length} locations
+                {org.id
+                  ? `${org.plan} · ${org.seats} seats · ${orgLocations.length} locations`
+                  : "0 organizations"}
               </p>
-              <p className="mt-1 text-[11px] capitalize text-muted-foreground">
-                Signed in as {platformAdminRole || "owner"}
+              <p className="mt-1 text-[11px] text-muted-foreground">
+                Signed in as platform admin
               </p>
+              <Button
+                className="mt-3"
+                size="sm"
+                onClick={() => setTab("host")}
+              >
+                Onboard host + operators
+              </Button>
             </div>
             <div className="rounded-2xl border border-border bg-surface p-4">
               <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
                 Active location
               </p>
-              <p className="mt-1 text-lg font-semibold">{loc?.name}</p>
+              <p className="mt-1 text-lg font-semibold">
+                {loc?.name ?? "No location"}
+              </p>
               <p className="text-sm text-muted-foreground">
                 {loc ? MODE_LABEL[loc.mode] : "—"} · {loc?.code}
               </p>
@@ -125,8 +151,27 @@ export function SaasConsoleView() {
               <p className="mb-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">
                 Locations
               </p>
+              {orgs.length > 1 && (
+                <div className="mb-3 flex flex-wrap gap-2">
+                  {orgs.map((o) => (
+                    <Button
+                      key={o.id}
+                      size="sm"
+                      variant={o.id === org.id ? "default" : "outline"}
+                      onClick={() => setActiveOrg(o.id)}
+                    >
+                      {o.name}
+                    </Button>
+                  ))}
+                </div>
+              )}
               <ul className="grid gap-2 sm:grid-cols-2">
-                {locations.map((l) => (
+                {orgLocations.length === 0 && (
+                  <li className="text-sm text-muted-foreground sm:col-span-2">
+                    No locations. Use Host setup to create one.
+                  </li>
+                )}
+                {orgLocations.map((l) => (
                   <li key={l.id}>
                     <button
                       type="button"
@@ -150,10 +195,22 @@ export function SaasConsoleView() {
           </div>
         )}
 
+        {tab === "locations" && !loc && (
+          <div className="mx-auto max-w-xl rounded-2xl border border-dashed border-border bg-surface p-6 text-center">
+            <p className="font-medium">No locations</p>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Create an organization and location on Host setup.
+            </p>
+            <Button className="mt-4" size="sm" onClick={() => setTab("host")}>
+              Host setup
+            </Button>
+          </div>
+        )}
+
         {tab === "locations" && loc && (
           <div className="mx-auto max-w-4xl space-y-4">
             <div className="flex flex-wrap gap-2">
-              {locations.map((l) => (
+              {orgLocations.map((l) => (
                 <Button
                   key={l.id}
                   size="sm"
@@ -178,13 +235,21 @@ export function SaasConsoleView() {
                     </p>
                   )}
                 </div>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={() => toggleLocationOpen(loc.id)}
-                >
-                  {loc.open ? "Mark closed" : "Mark open"}
-                </Button>
+                <div className="flex flex-wrap gap-2">
+                  {(loc.operatingModel === "host_multi_operator" ||
+                    loc.createdBy === "ui") && (
+                    <a href={`/pos/${loc.id}`}>
+                      <Button size="sm">Open POS</Button>
+                    </a>
+                  )}
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => toggleLocationOpen(loc.id)}
+                  >
+                    {loc.open ? "Mark closed" : "Mark open"}
+                  </Button>
+                </div>
               </div>
               <p className="mt-4 text-xs font-medium uppercase tracking-wide text-muted-foreground">
                 Packages
@@ -222,7 +287,7 @@ export function SaasConsoleView() {
 
         {tab === "team" && (
           <div className="mx-auto max-w-2xl space-y-2">
-            {members.map((m) => (
+            {orgMembers.map((m) => (
               <div
                 key={m.id}
                 className="flex items-center justify-between rounded-2xl border border-border bg-surface px-4 py-3"

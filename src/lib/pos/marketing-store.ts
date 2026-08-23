@@ -31,211 +31,19 @@ const DEFAULT_LOYALTY: LoyaltyProgram = {
 };
 
 function seedConnections(): SocialConnection[] {
-  const now = Date.now();
-  return [
-    {
-      id: "sc_ig",
-      locationId: "loc_hall",
-      provider: "instagram",
-      accountName: "@zestmarkethall",
-      status: "connected",
-      connectedAt: now - 86400000 * 40,
-      followers: 12400,
-      lastSyncAt: now - 3600000,
-      scopes: ["publish", "insights"],
-    },
-    {
-      id: "sc_fb",
-      locationId: "loc_hall",
-      provider: "facebook",
-      accountName: "Zest Market Hall",
-      status: "connected",
-      connectedAt: now - 86400000 * 40,
-      followers: 8900,
-      lastSyncAt: now - 7200000,
-      scopes: ["pages_manage_posts", "pages_read_engagement"],
-    },
-    {
-      id: "sc_gmb",
-      locationId: "loc_hall",
-      provider: "google_business",
-      accountName: "Zest Market Hall · Google Business",
-      status: "connected",
-      connectedAt: now - 86400000 * 20,
-      followers: 2100,
-      lastSyncAt: now - 1800000,
-      scopes: ["business.manage", "posts", "reviews"],
-    },
-    {
-      id: "sc_x",
-      locationId: "loc_rest",
-      provider: "x",
-      accountName: "@forgebistro",
-      status: "disconnected",
-      scopes: ["tweet.write"],
-    },
-    {
-      id: "sc_tt",
-      locationId: "loc_pod",
-      provider: "tiktok",
-      accountName: "@westsidepod",
-      status: "pending",
-      scopes: ["video.publish"],
-    },
-  ];
+  return [];
 }
 
 function seedPosts(): MarketingPost[] {
-  const now = Date.now();
-  return [
-    {
-      id: "mp1",
-      locationId: "loc_hall",
-      body: "Happy hour 4–6 · $2 off craft pours + bao bites. See you on the patio 🍋",
-      mediaLabel: "Patio golden hour.jpg",
-      providers: ["instagram", "facebook", "google_business"],
-      status: "published",
-      publishedAt: now - 86400000 * 2,
-      campaignTag: "Happy hour",
-      createdAt: now - 86400000 * 3,
-    },
-    {
-      id: "mp2",
-      locationId: "loc_hall",
-      body: "Weekend lineup: Smoke Stack BBQ, Bao Wow, Green Grid. Live DJ Sat 7pm.",
-      providers: ["instagram", "facebook"],
-      status: "scheduled",
-      scheduledAt: now + 86400000,
-      campaignTag: "Weekend",
-      createdAt: now - 3600000,
-    },
-    {
-      id: "mp3",
-      locationId: "loc_rest",
-      body: "Chef's tasting Friday — 5 courses, wine pairings available. Book now.",
-      providers: ["instagram", "google_business"],
-      status: "draft",
-      createdAt: now - 600000,
-    },
-  ];
+  return [];
 }
 
 function seedWebsites(): LocationWebsite[] {
-  const now = Date.now();
-  return [
-    {
-      locationId: "loc_hall",
-      slug: "zest-market-hall",
-      published: true,
-      theme: "citrus",
-      tagline: "Five kitchens. One check. Zero hassle.",
-      about:
-        "Zest Market Hall brings independent food & beverage vendors under one roof — order across stalls, pay once, and hang on the pier patio.",
-      heroTitle: "Eat the hall",
-      ctaLabel: "Order online",
-      ctaHref: "/online",
-      showMenu: true,
-      showHours: true,
-      showOrderOnline: true,
-      showLoyalty: true,
-      showGiftCards: true,
-      showEvents: true,
-      hoursText: "Sun–Thu 11a–10p · Fri–Sat 11a–12a",
-      seoTitle: "Zest Market Hall | Food hall on the pier",
-      seoDescription:
-        "Multi-vendor food hall with single-check checkout, live music, and Zest Rewards.",
-      primaryColor: "#c8f542",
-      socialLinks: [
-        { provider: "instagram", url: "https://instagram.com/zestmarkethall" },
-        { provider: "facebook", url: "https://facebook.com/zestmarkethall" },
-      ],
-      galleryLabels: ["Patio", "Bao counter", "Bar rail", "Night market"],
-      updatedAt: now,
-    },
-    {
-      locationId: "loc_rest",
-      slug: "forge-bistro",
-      published: true,
-      theme: "ember",
-      tagline: "Fire, seasonality, neighborhood tables.",
-      about:
-        "Forge Bistro is a full-service neighborhood restaurant — wood-fired plates, craft cocktails, and Zest Rewards at the door.",
-      heroTitle: "Tonight at Forge",
-      ctaLabel: "Reserve a table",
-      ctaHref: "/?station=waitlist",
-      showMenu: true,
-      showHours: true,
-      showOrderOnline: true,
-      showLoyalty: true,
-      showGiftCards: true,
-      showEvents: false,
-      hoursText: "Tue–Sun 5p–10p · Closed Mon",
-      seoTitle: "Forge Bistro",
-      seoDescription: "Neighborhood bistro with wood-fired cooking.",
-      primaryColor: "#e5a320",
-      socialLinks: [{ provider: "instagram", url: "https://instagram.com/forgebistro" }],
-      galleryLabels: ["Dining room", "Open kitchen"],
-      updatedAt: now,
-    },
-    {
-      locationId: "loc_pod",
-      slug: "westside-truck-pod",
-      published: false,
-      theme: "noir",
-      tagline: "Rotating trucks. Real power. Good vibes.",
-      about: "Westside Truck Pod — pad map, power, and tonight's lineup.",
-      heroTitle: "Tonight's trucks",
-      ctaLabel: "See lineup",
-      ctaHref: "/?station=truck_pod",
-      showMenu: false,
-      showHours: true,
-      showOrderOnline: true,
-      showLoyalty: false,
-      showGiftCards: true,
-      showEvents: true,
-      hoursText: "Daily 11a–9p",
-      seoTitle: "Westside Truck Pod",
-      seoDescription: "Food truck pod with rotating vendors.",
-      primaryColor: "#5b9fd4",
-      socialLinks: [],
-      galleryLabels: ["Lot at dusk"],
-      updatedAt: now,
-    },
-  ];
+  return [];
 }
 
 function seedCampaigns(): EmailSmsCampaign[] {
-  return [
-    {
-      id: "em1",
-      name: "Win-back 30 days",
-      channel: "email",
-      segment: "Lapsed 30d",
-      status: "draft",
-      audienceSize: 420,
-      body: "We miss you — here's 100 bonus Zest Rewards points this week.",
-    },
-    {
-      id: "em2",
-      name: "Gift card push",
-      channel: "sms",
-      segment: "Gold+ tier",
-      status: "scheduled",
-      audienceSize: 88,
-      body: "Gold members: buy $50 gift card, get $10 bonus loaded today.",
-      scheduledAt: Date.now() + 86400000 * 2,
-    },
-    {
-      id: "em3",
-      name: "Weekend SMS blast",
-      channel: "sms",
-      segment: "Opt-in SMS",
-      status: "sent",
-      audienceSize: 1204,
-      body: "Sat DJ + patio fire pits. Open late.",
-      sentAt: Date.now() - 86400000 * 5,
-    },
-  ];
+  return [];
 }
 
 interface MarketingState {
@@ -279,7 +87,7 @@ export const useMarketingStore = create<MarketingState>()(
       websites: seedWebsites(),
       campaigns: seedCampaigns(),
       giftTxns: [],
-      activeLocationId: "loc_hall",
+      activeLocationId: "",
 
       setActiveLocation: (id) => set({ activeLocationId: id }),
 
@@ -454,7 +262,7 @@ export const useMarketingStore = create<MarketingState>()(
         ),
     }),
     {
-      name: "zest-marketing-v1",
+      name: "zest-marketing-v2-empty",
       storage: createJSONStorage(() => localStorage),
       skipHydration: true,
     },

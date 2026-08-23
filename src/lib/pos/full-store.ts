@@ -132,7 +132,7 @@ interface FullState {
 
 function bootstrap() {
   return {
-    phasesCompleted: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10] as PackagePhase[],
+    phasesCompleted: [] as PackagePhase[],
     trainingMode: false,
     lastPhaseAt: Date.now(),
     permissions: seed.PERMISSIONS.map((p) => ({ ...p })),
@@ -582,7 +582,7 @@ export const useFullStore = create<FullState>()(
       },
     }),
     {
-      name: "zest-full-package-v1",
+      name: "zest-full-v2-empty",
       storage: createJSONStorage(() => localStorage),
       skipHydration: true,
     },

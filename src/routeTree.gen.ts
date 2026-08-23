@@ -11,13 +11,17 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AppsRouteImport } from './routes/apps'
+import { Route as ChangePasswordRouteImport } from './routes/change-password'
 import { Route as KioskRouteImport } from './routes/kiosk'
+import { Route as LoginRouteImport } from './routes/login'
 import { Route as OnlineRouteImport } from './routes/online'
 import { Route as PlatformRouteImport } from './routes/platform'
 import { Route as OrderOrderIdRouteImport } from './routes/order.$orderId'
+import { Route as PosLocationIdRouteImport } from './routes/pos.$locationId'
 import { Route as SiteSlugRouteImport } from './routes/site.$slug'
 import { Route as TableLabelRouteImport } from './routes/table.$label'
 import { Route as VenueTypeRouteImport } from './routes/venue.$type'
+import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -29,9 +33,19 @@ const AppsRoute = AppsRouteImport.update({
   path: '/apps',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ChangePasswordRoute = ChangePasswordRouteImport.update({
+  id: '/change-password',
+  path: '/change-password',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const KioskRoute = KioskRouteImport.update({
   id: '/kiosk',
   path: '/kiosk',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const LoginRoute = LoginRouteImport.update({
+  id: '/login',
+  path: '/login',
   getParentRoute: () => rootRouteImport,
 } as any)
 const OnlineRoute = OnlineRouteImport.update({
@@ -49,6 +63,11 @@ const OrderOrderIdRoute = OrderOrderIdRouteImport.update({
   path: '/order/$orderId',
   getParentRoute: () => rootRouteImport,
 } as any)
+const PosLocationIdRoute = PosLocationIdRouteImport.update({
+  id: '/pos/$locationId',
+  path: '/pos/$locationId',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const SiteSlugRoute = SiteSlugRouteImport.update({
   id: '/site/$slug',
   path: '/site/$slug',
@@ -64,87 +83,120 @@ const VenueTypeRoute = VenueTypeRouteImport.update({
   path: '/venue/$type',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiAuthSplatRoute = ApiAuthSplatRouteImport.update({
+  id: '/api/auth/$',
+  path: '/api/auth/$',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/apps': typeof AppsRoute
+  '/change-password': typeof ChangePasswordRoute
   '/kiosk': typeof KioskRoute
+  '/login': typeof LoginRoute
   '/online': typeof OnlineRoute
   '/platform': typeof PlatformRoute
   '/order/$orderId': typeof OrderOrderIdRoute
+  '/pos/$locationId': typeof PosLocationIdRoute
   '/site/$slug': typeof SiteSlugRoute
   '/table/$label': typeof TableLabelRoute
   '/venue/$type': typeof VenueTypeRoute
+  '/api/auth/$': typeof ApiAuthSplatRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/apps': typeof AppsRoute
+  '/change-password': typeof ChangePasswordRoute
   '/kiosk': typeof KioskRoute
+  '/login': typeof LoginRoute
   '/online': typeof OnlineRoute
   '/platform': typeof PlatformRoute
   '/order/$orderId': typeof OrderOrderIdRoute
+  '/pos/$locationId': typeof PosLocationIdRoute
   '/site/$slug': typeof SiteSlugRoute
   '/table/$label': typeof TableLabelRoute
   '/venue/$type': typeof VenueTypeRoute
+  '/api/auth/$': typeof ApiAuthSplatRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/apps': typeof AppsRoute
+  '/change-password': typeof ChangePasswordRoute
   '/kiosk': typeof KioskRoute
+  '/login': typeof LoginRoute
   '/online': typeof OnlineRoute
   '/platform': typeof PlatformRoute
   '/order/$orderId': typeof OrderOrderIdRoute
+  '/pos/$locationId': typeof PosLocationIdRoute
   '/site/$slug': typeof SiteSlugRoute
   '/table/$label': typeof TableLabelRoute
   '/venue/$type': typeof VenueTypeRoute
+  '/api/auth/$': typeof ApiAuthSplatRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
     | '/apps'
+    | '/change-password'
     | '/kiosk'
+    | '/login'
     | '/online'
     | '/platform'
     | '/order/$orderId'
+    | '/pos/$locationId'
     | '/site/$slug'
     | '/table/$label'
     | '/venue/$type'
+    | '/api/auth/$'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
     | '/apps'
+    | '/change-password'
     | '/kiosk'
+    | '/login'
     | '/online'
     | '/platform'
     | '/order/$orderId'
+    | '/pos/$locationId'
     | '/site/$slug'
     | '/table/$label'
     | '/venue/$type'
+    | '/api/auth/$'
   id:
     | '__root__'
     | '/'
     | '/apps'
+    | '/change-password'
     | '/kiosk'
+    | '/login'
     | '/online'
     | '/platform'
     | '/order/$orderId'
+    | '/pos/$locationId'
     | '/site/$slug'
     | '/table/$label'
     | '/venue/$type'
+    | '/api/auth/$'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AppsRoute: typeof AppsRoute
+  ChangePasswordRoute: typeof ChangePasswordRoute
   KioskRoute: typeof KioskRoute
+  LoginRoute: typeof LoginRoute
   OnlineRoute: typeof OnlineRoute
   PlatformRoute: typeof PlatformRoute
   OrderOrderIdRoute: typeof OrderOrderIdRoute
+  PosLocationIdRoute: typeof PosLocationIdRoute
   SiteSlugRoute: typeof SiteSlugRoute
   TableLabelRoute: typeof TableLabelRoute
   VenueTypeRoute: typeof VenueTypeRoute
+  ApiAuthSplatRoute: typeof ApiAuthSplatRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -163,11 +215,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/change-password': {
+      id: '/change-password'
+      path: '/change-password'
+      fullPath: '/change-password'
+      preLoaderRoute: typeof ChangePasswordRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/kiosk': {
       id: '/kiosk'
       path: '/kiosk'
       fullPath: '/kiosk'
       preLoaderRoute: typeof KioskRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/login': {
+      id: '/login'
+      path: '/login'
+      fullPath: '/login'
+      preLoaderRoute: typeof LoginRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/online': {
@@ -191,6 +257,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof OrderOrderIdRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/pos/$locationId': {
+      id: '/pos/$locationId'
+      path: '/pos/$locationId'
+      fullPath: '/pos/$locationId'
+      preLoaderRoute: typeof PosLocationIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/site/$slug': {
       id: '/site/$slug'
       path: '/site/$slug'
@@ -212,19 +285,30 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof VenueTypeRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/auth/$': {
+      id: '/api/auth/$'
+      path: '/api/auth/$'
+      fullPath: '/api/auth/$'
+      preLoaderRoute: typeof ApiAuthSplatRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AppsRoute: AppsRoute,
+  ChangePasswordRoute: ChangePasswordRoute,
   KioskRoute: KioskRoute,
+  LoginRoute: LoginRoute,
   OnlineRoute: OnlineRoute,
   PlatformRoute: PlatformRoute,
   OrderOrderIdRoute: OrderOrderIdRoute,
+  PosLocationIdRoute: PosLocationIdRoute,
   SiteSlugRoute: SiteSlugRoute,
   TableLabelRoute: TableLabelRoute,
   VenueTypeRoute: VenueTypeRoute,
+  ApiAuthSplatRoute: ApiAuthSplatRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

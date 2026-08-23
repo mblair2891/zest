@@ -165,6 +165,8 @@ export interface RestaurantSettings {
   managerPin: string;
   serviceChargeLabel: string;
   multiTenantHallMode?: boolean;
+  /** Host + multiple operators: one guest check, Zest Payments under host brand */
+  hostMultiOperator?: boolean;
   onlineOrderingEnabled?: boolean;
   qrOrderingEnabled?: boolean;
   sectionPolicy?: SectionPolicy;
@@ -301,6 +303,10 @@ export interface Payment {
   houseAccountId?: string;
   at: number;
   employeeId: string;
+  /** Guest card processor — always Zest Payments for card tenders */
+  processor?: "zest_payments";
+  /** Guest-facing brand on the charge (host, never an operator) */
+  chargeBrand?: string;
 }
 
 export interface Order {
@@ -438,6 +444,8 @@ export interface Vendor {
   bankLast4: string;
   bankLabel: string;
   stationLabel: string;
+  /** Ticket routing: bar, kitchen, or both (item/category station). */
+  stationType?: "bar" | "kitchen" | "both";
 }
 
 export type SettlementPeriodType =
@@ -482,6 +490,7 @@ export interface VendorPeriodRow {
   totalVendorDueCents: number;
   orderCount: number;
   bankLast4: string;
+  payoutAccountLabel?: string;
 }
 
 export interface SettlementPeriod {

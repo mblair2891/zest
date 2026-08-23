@@ -248,35 +248,17 @@ export const CATEGORY_LABELS: Record<IntegrationCategory, string> = {
   devtools: "API & automation",
 };
 
-/** Default connected set for a convincing demo */
+/** Built-in processor only — Zest Payments is always on. */
 export function defaultConnections(): ConnectedIntegration[] {
   const now = Date.now();
-  const ids = [
-    ZEST_PAYMENTS_ID,
-    "plaid",
-    "dwolla",
-    "doordash",
-    "ubereats",
-    "quickbooks",
-    "adp",
-    "seven_shifts",
-    "opentable",
-    "klaviyo",
-    "twilio",
-    "state_tax",
-    "deliverect",
-    "webhook_out",
-    "public_api",
-    "star_micronics",
-    "epson",
-  ];
+  const ids = [ZEST_PAYMENTS_ID];
   return ids.map((defId) => ({
     defId,
     status: "connected" as const,
-    connectedAt: now - 86400000 * 14,
-    lastSyncAt: now - 3600000,
+    connectedAt: now,
+    lastSyncAt: now,
     config: {},
-    eventsSynced: 100 + Math.floor(Math.random() * 9000),
+    eventsSynced: 0,
   }));
 }
 

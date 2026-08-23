@@ -41,28 +41,7 @@ export const OUTBOX_KIND_LABEL: Record<OutboxKind, string> = {
 };
 
 function seedPeers(now: number): LanPeer[] {
-  return [
-    { id: "peer_hub", name: "Counter 1 · hub", kind: "pos", lastSeenAt: now },
-    {
-      id: "peer_hh",
-      name: "Handheld · Jordan",
-      kind: "handheld",
-      lastSeenAt: now - 8_000,
-    },
-    { id: "peer_kds", name: "Kitchen KDS", kind: "kds", lastSeenAt: now - 3_000 },
-    {
-      id: "peer_print",
-      name: "Bar printer",
-      kind: "printer",
-      lastSeenAt: now - 12_000,
-    },
-    {
-      id: "peer_term",
-      name: "Stripe reader",
-      kind: "terminal",
-      lastSeenAt: now - 5_000,
-    },
-  ];
+  return [];
 }
 
 interface NetworkState {
@@ -176,7 +155,7 @@ export const useNetworkStore = create<NetworkState>()(
       },
     }),
     {
-      name: "zest-net-v1",
+      name: "zest-net-v2-empty",
       storage: createJSONStorage(() => localStorage),
       skipHydration: true,
       partialize: (s) => ({

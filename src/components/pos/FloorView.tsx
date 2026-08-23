@@ -21,6 +21,7 @@ import { Input } from "@/components/ui/input";
 import { usePosStore } from "@/lib/pos/store";
 import { useNotifyStore } from "@/lib/pos/notify-store";
 import { usePlatformStore } from "@/lib/pos/platform-store";
+import { useSaasStore } from "@/lib/pos/saas-store";
 import type { Table, TableStatus } from "@/lib/pos/types";
 import { cn, formatCurrency, formatTime } from "@/lib/utils";
 import { computeTotals } from "@/lib/pos/calculations";
@@ -104,6 +105,10 @@ export function FloorView() {
   const floorSections = usePosStore((s) => s.floorSections);
   const extraTableGrants = usePosStore((s) => s.extraTableGrants);
   const loc = usePlatformStore((s) => s.locations.find((l) => l.id === s.activeLocationId) ?? s.locations[0] ?? null);
+  const saasLoc = useSaasStore((s) => {
+    const id = s.activeLocationId;
+    return s.locations.find((l) => l.id === id) ?? null;
+  });
   const foodUpUntil = useNotifyStore((s) => s.foodUpUntil);
   const clock = usePosStore((s) => s.clock);
 
@@ -247,11 +252,24 @@ export function FloorView() {
     setSeatTarget(null);
   };
 
+  if (tables.length === 0) {
+    return (
+      <div className="flex h-full flex-col items-center justify-center gap-3 p-8 text-center">
+        <p className="text-lg font-medium">No floor plan</p>
+        <p className="max-w-sm text-sm text-muted-foreground">
+          This location has no tables yet. Onboard a host location in SaaS or
+          add tables in the floor editor.
+        </p>
+        <Button onClick={() => setView("takeout")}>Takeout / pickup</Button>
+      </div>
+    );
+  }
+
   return (
     <div className="flex h-full flex-col">
       <div className="flex flex-wrap items-center gap-2 border-b border-border px-3 py-2">
         <h2 className="mr-2 text-sm font-semibold">
-          Floor · {loc?.code ?? "ZS-PIER"}
+          Floor · {saasLoc?.code ?? loc?.code ?? settings.name}
         </h2>
         <div className="flex flex-wrap gap-1">
           <Button

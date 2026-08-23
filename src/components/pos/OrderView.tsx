@@ -430,7 +430,7 @@ export function OrderView() {
               variant={vendorFilter === null ? "default" : "outline"}
               onClick={() => pickVendor(null)}
             >
-              All vendors
+              All operators
             </Button>
             {vendors
               .filter((v) => v.active)

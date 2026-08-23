@@ -47,38 +47,9 @@ export const useIntegrationsStore = create<IntegrationsState>()(
   persist(
     (set, get) => ({
       connections: defaultConnections(),
-      logs: [
-        {
-          id: uid("log"),
-          at: Date.now() - 60000,
-          defId: ZEST_PAYMENTS_ID,
-          level: "success",
-          message: "Zest Payments settled 42 card captures · next-day deposit queued",
-        },
-        {
-          id: uid("log"),
-          at: Date.now() - 120000,
-          defId: "doordash",
-          level: "info",
-          message: "Pulled 3 marketplace orders",
-        },
-        {
-          id: uid("log"),
-          at: Date.now() - 300000,
-          defId: "quickbooks",
-          level: "success",
-          message: "Posted daily sales journal",
-        },
-      ],
-      webhookUrl: "https://hooks.example.com/zest/pos",
-      apiKeys: [
-        {
-          id: "key_demo",
-          name: "Demo partner key",
-          prefix: "zest_live_****demo",
-          createdAt: Date.now() - 86400000 * 30,
-        },
-      ],
+      logs: [],
+      webhookUrl: "",
+      apiKeys: [],
 
       catalog: () => INTEGRATION_CATALOG,
 
@@ -262,7 +233,7 @@ export const useIntegrationsStore = create<IntegrationsState>()(
       },
     }),
     {
-      name: "zest-integrations-v4",
+      name: "zest-integrations-v5-empty",
       storage: createJSONStorage(() => localStorage),
       skipHydration: true,
       merge: (persisted, current) => {

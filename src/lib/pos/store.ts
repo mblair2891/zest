@@ -31,6 +31,7 @@ import {
 } from "./section-control";
 import { employeesForVenue, venueById } from "./entities";
 import { useSaasStore } from "./saas-store";
+import { compileHostLocationPos, stationForOperatorItem } from "./host-location";
 import type { VenueEntityId } from "./types";
 import type { PosStore, PosStorePersist } from "./pos-store";
 
@@ -98,7 +99,8 @@ function initialState() {
 		floorSections: DEFAULT_FLOOR_SECTIONS.map((s) => ({ ...s })),
 		extraTableGrants: EXTRA_TABLE_GRANTS.map((g) => ({ ...g })),
 		sectionOverrides: {},
-		activeEntityId: "restaurant"
+		activeEntityId: "restaurant",
+		activeSaasLocationId: null
 	};
 }
 
@@ -535,6 +537,7 @@ const usePosStoreRaw = create()(persist((set, get) => ({
 		const settings = get().settings;
 		const unit = isHappyHour(settings, /* @__PURE__ */ new Date()) && item.happyHourPriceCents != null ? item.happyHourPriceCents : item.priceCents;
 		const vendor = item.vendorId ? get().vendors.find((v) => v.id === item.vendorId) : void 0;
+		const station = stationForOperatorItem(item.station, vendor);
 		const line = {
 			id: uid("ln"),
 			menuItemId: item.id,
@@ -547,7 +550,7 @@ const usePosStoreRaw = create()(persist((set, get) => ({
 			note: opts.note,
 			seat: opts.seat ?? get().activeSeat ?? void 0,
 			course: item.course,
-			station: item.station,
+			station,
 			sent: false,
 			held: false,
 			voided: false,
@@ -834,7 +837,13 @@ const usePosStoreRaw = create()(persist((set, get) => ({
 			giftCardCode,
 			houseAccountId,
 			createdAt: Date.now(),
-			employeeId: emp.id
+			at: Date.now(),
+			employeeId: emp.id,
+			processor:
+				method === "card" || method === "room_charge"
+					? "zest_payments"
+					: void 0,
+			chargeBrand: get().settings.name
 		};
 		const payments = [...order.payments, payment];
 		let updated = {
@@ -1299,6 +1308,7 @@ const usePosStoreRaw = create()(persist((set, get) => ({
 		const staff = employeesForVenue(entityId);
 		set({
 			activeEntityId: entityId,
+			activeSaasLocationId: null,
 			employees: staff,
 			currentEmployeeId: null,
 			activeOrderId: null,
@@ -1310,7 +1320,8 @@ const usePosStoreRaw = create()(persist((set, get) => ({
 				...get().settings,
 				name: ent.venueName,
 				address: ent.address,
-				multiTenantHallMode: entityId === "food_hall"
+				multiTenantHallMode: entityId === "food_hall",
+				hostMultiOperator: entityId === "food_hall"
 			}
 		});
 		try {
@@ -1320,18 +1331,75 @@ const usePosStoreRaw = create()(persist((set, get) => ({
 		}
 		return { ok: true };
 	},
+	applySaasLocation: (locationId) => {
+		const saas = useSaasStore.getState();
+		const location = saas.locations.find((l) => l.id === locationId);
+		if (!location) return { ok: false, error: "Location not found" };
+		const compiled = compileHostLocationPos({
+			location,
+			operators: saas.operators.filter((o) => o.locationId === locationId),
+			categories: saas.locationCategories.filter((c) => c.locationId === locationId),
+			items: saas.locationItems.filter((i) => i.locationId === locationId),
+		});
+		const same = get().activeSaasLocationId === locationId;
+		try {
+			saas.setActiveLocation(locationId);
+			if (saas.activeOrgId !== location.orgId) saas.setActiveOrg(location.orgId);
+		} catch {
+			/* ignore */
+		}
+		set({
+			activeEntityId: compiled.entityId,
+			activeSaasLocationId: locationId,
+			employees: compiled.employees,
+			categories: compiled.categories,
+			menuItems: compiled.menuItems,
+			vendors: compiled.vendors,
+			settings: compiled.settings,
+			settlementConfig: same
+				? {
+						...compiled.settlementConfig,
+						currentPeriodStart: get().settlementConfig.currentPeriodStart,
+						cardFeePercent: get().settlementConfig.cardFeePercent,
+						hostCutEnabled: get().settlementConfig.hostCutEnabled,
+						hostCutType: get().settlementConfig.hostCutType,
+						hostCutPercent: get().settlementConfig.hostCutPercent,
+						hostCutFixedCents: get().settlementConfig.hostCutFixedCents,
+					}
+				: compiled.settlementConfig,
+			currentEmployeeId: same ? get().currentEmployeeId : null,
+			activeOrderId: same ? get().activeOrderId : null,
+			activeTableId: same ? get().activeTableId : null,
+			orders: same ? get().orders : [],
+			tickets: same ? get().tickets : [],
+			tables: same ? get().tables : compiled.tables,
+			settlementPeriods: same ? get().settlementPeriods : [],
+			view: same ? get().view : "floor",
+			selectedCategoryId: compiled.categories[0]?.id ?? null,
+			waitlist: same ? get().waitlist : [],
+			reservations: same ? get().reservations : [],
+		});
+		return { ok: true };
+	},
 	resetDemo: () => {
 		const keepEmp = get().currentEmployeeId;
 		const keepEntity = get().activeEntityId || "restaurant";
+		const keepSaas = get().activeSaasLocationId;
+		if (keepSaas) {
+			get().applySaasLocation(keepSaas);
+			if (keepEmp) set({ currentEmployeeId: keepEmp });
+			return;
+		}
 		set({
 			...initialState(),
 			activeEntityId: keepEntity,
+			activeSaasLocationId: null,
 			employees: employeesForVenue(keepEntity),
 			currentEmployeeId: keepEmp
 		});
 	}
 }), {
-	name: "zest-pos-v5",
+	name: "zest-pos-v8-empty",
 	storage: createJSONStorage(() => localStorage),
 	skipHydration: true,
 	partialize: (s) => ({
@@ -1360,24 +1428,27 @@ const usePosStoreRaw = create()(persist((set, get) => ({
 		selectedCategoryId: s.selectedCategoryId,
 		floorSections: s.floorSections,
 		extraTableGrants: s.extraTableGrants,
-		activeEntityId: s.activeEntityId
+		activeEntityId: s.activeEntityId,
+		activeSaasLocationId: s.activeSaasLocationId
 	}),
 	merge: (persisted, current) => {
 		const p = persisted || {};
 		const entityId = p.activeEntityId || current.activeEntityId || "restaurant";
+		const saasLocId = p.activeSaasLocationId || current.activeSaasLocationId || null;
 		const fromPersist = p.employees || [];
 		const tagged =
 			fromPersist.length > 0 &&
 			fromPersist.some((e) => e.entityId === entityId);
-		const employees = (tagged ? fromPersist : employeesForVenue(entityId)).map((e) => ({
+		const employees = (tagged || saasLocId ? fromPersist : employeesForVenue(entityId)).map((e) => ({
 			...e,
 			homeSectionIds: e.homeSectionIds ?? defaultHomeSectionsForRole(e.role, e.id)
 		}));
-		const ent = venueById(entityId);
+		const ent = saasLocId ? null : venueById(entityId);
 		return {
 			...current,
 			...p,
 			activeEntityId: entityId,
+			activeSaasLocationId: saasLocId,
 			employees,
 			settings: {
 				...current.settings,
@@ -1387,9 +1458,10 @@ const usePosStoreRaw = create()(persist((set, get) => ({
 					? {
 							name: ent.venueName,
 							address: ent.address,
-							multiTenantHallMode: entityId === "food_hall"
+							multiTenantHallMode: entityId === "food_hall",
+							hostMultiOperator: entityId === "food_hall"
 						}
-					: { multiTenantHallMode: false })
+					: {})
 			},
 			floorSections: (p.floorSections && p.floorSections.length) ? p.floorSections : current.floorSections,
 			extraTableGrants: p.extraTableGrants || current.extraTableGrants || [],

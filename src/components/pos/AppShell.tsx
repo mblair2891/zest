@@ -77,7 +77,7 @@ import { DrinkAiView } from "./DrinkAiView";
 import { MarketingHubView } from "./MarketingHubView";
 import { UserManualOverlay } from "./UserManualView";
 import { WhatsNewDialog } from "./WhatsNewDialog";
-import { venueById, entityAllowsView } from "@/lib/pos/entities";
+import { venueById, posAllowsView } from "@/lib/pos/entities";
 import { useManualStore } from "@/lib/pos/manual-store";
 import {
   NotificationBell,
@@ -176,11 +176,16 @@ export function AppShell() {
   );
   const saasLocations = useSaasStore((s) => s.locations);
   const saasActiveId = useSaasStore((s) => s.activeLocationId);
+  const activeSaasLocationId = usePosStore((s) => s.activeSaasLocationId);
   const packagePreview = useDevPreviewStore((s) => s.packagePreview);
   const setPackagePreview = useDevPreviewStore((s) => s.setPackagePreview);
 
   const packageLocationId =
-    venue?.locationId || saasActiveId || saasLocations[0]?.id || "loc_hall";
+    activeSaasLocationId ||
+    saasActiveId ||
+    venue?.locationId ||
+    saasLocations[0]?.id ||
+    "";
   const enabledPackages =
     saasLocations.find((l) => l.id === packageLocationId)?.enabledPackages ??
     [];
@@ -188,16 +193,22 @@ export function AppShell() {
   const pkgOk = (v: PosView) =>
     allowsView(v, enabledPackages, packagePreview);
 
+  const hostMulti = Boolean(
+    settings.hostMultiOperator || settings.multiTenantHallMode,
+  );
+  const viewOk = (v: PosView) =>
+    posAllowsView(activeEntityId, v, { hostMultiOperator: hostMulti });
+
   const navItems = useMemo(
     () =>
       NAV.filter(
         (n) =>
-          entityAllowsView(activeEntityId, n.id) &&
+          viewOk(n.id) &&
           (emp ? canAccessViewForEmployee(emp, n.id) : false) &&
           pkgOk(n.id),
       ),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [emp?.id, role, activeEntityId, packageLocationId, packagePreview, enabledPackages.join(",")],
+    [emp?.id, role, activeEntityId, packageLocationId, packagePreview, enabledPackages.join(","), hostMulti],
   );
 
   const mobileItems = useMemo(() => {
@@ -211,11 +222,11 @@ export function AppShell() {
   useEffect(() => {
     const roleOk = emp ? canAccessViewForEmployee(emp, view) : false;
     const packagesOk = pkgOk(view);
-    const entityOk = entityAllowsView(activeEntityId, view);
+    const entityOk = viewOk(view);
     if (!roleOk || !packagesOk || !entityOk) {
       const home = emp ? homeViewForEmployee(emp) : homeViewForRole(role);
       if (
-        entityAllowsView(activeEntityId, home) &&
+        viewOk(home) &&
         pkgOk(home) &&
         (emp ? canAccessViewForEmployee(emp, home) : canAccessView(role, home))
       ) {
@@ -223,7 +234,7 @@ export function AppShell() {
       } else {
         const first = NAV.find(
           (n) =>
-            entityAllowsView(activeEntityId, n.id) &&
+            viewOk(n.id) &&
             canAccessView(role, n.id) &&
             pkgOk(n.id),
         );
@@ -266,7 +277,7 @@ export function AppShell() {
   ).length;
 
   const safeView =
-    entityAllowsView(activeEntityId, view) &&
+    viewOk(view) &&
     canAccessView(role, view) &&
     pkgOk(view)
       ? view

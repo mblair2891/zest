@@ -203,6 +203,7 @@ export function buildPeriodSettlement(
       totalVendorDueCents: cardPayoutCents + cashDueCents,
       orderCount: a.orderCount,
       bankLast4: vendor.bankLast4,
+      payoutAccountLabel: vendor.bankLabel,
     };
   });
 

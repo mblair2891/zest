@@ -13,6 +13,7 @@ import { useNetworkStore } from "@/lib/pos/network-store";
 import { EntityLogin, EntityPicker } from "./EntityHome";
 import { AppShell } from "./AppShell";
 import { PosErrorBoundary } from "./PosErrorBoundary";
+import { SessionGate } from "./SessionGate";
 import { initNativeShell } from "@/lib/native-shell";
 import { isVenueEntityId } from "@/lib/pos/entities";
 import type { VenueEntityId } from "@/lib/pos/types";
@@ -31,11 +32,19 @@ const STORES = [
   useNetworkStore,
 ] as const;
 
-function PosAppInner({ entityId }: { entityId?: string }) {
+function PosAppInner({
+  entityId,
+  saasLocationId,
+}: {
+  entityId?: string;
+  saasLocationId?: string;
+}) {
   const [ready, setReady] = useState(false);
   const currentEmployeeId = usePosStore((s) => s.currentEmployeeId);
   const activeEntityId = usePosStore((s) => s.activeEntityId);
+  const activeSaasLocationId = usePosStore((s) => s.activeSaasLocationId);
   const applyEntity = usePosStore((s) => s.applyEntity);
+  const applySaasLocation = usePosStore((s) => s.applySaasLocation);
 
   useEffect(() => {
     let cancelled = false;
@@ -68,10 +77,22 @@ function PosAppInner({ entityId }: { entityId?: string }) {
 
   useEffect(() => {
     if (!ready) return;
+    if (saasLocationId && activeSaasLocationId !== saasLocationId) {
+      applySaasLocation(saasLocationId);
+      return;
+    }
     if (entityId && isVenueEntityId(entityId) && activeEntityId !== entityId) {
       applyEntity(entityId as VenueEntityId);
     }
-  }, [ready, entityId, activeEntityId, applyEntity]);
+  }, [
+    ready,
+    entityId,
+    saasLocationId,
+    activeEntityId,
+    activeSaasLocationId,
+    applyEntity,
+    applySaasLocation,
+  ]);
 
   if (!ready) {
     return (
@@ -84,6 +105,13 @@ function PosAppInner({ entityId }: { entityId?: string }) {
         </div>
       </div>
     );
+  }
+
+  if (saasLocationId) {
+    if (currentEmployeeId && activeSaasLocationId === saasLocationId) {
+      return <AppShell />;
+    }
+    return <EntityLogin saasLocationId={saasLocationId} />;
   }
 
   if (entityId && isVenueEntityId(entityId)) {
@@ -100,7 +128,13 @@ function PosAppInner({ entityId }: { entityId?: string }) {
   return <EntityPicker />;
 }
 
-export function PosApp({ entityId }: { entityId?: string }) {
+export function PosApp({
+  entityId,
+  saasLocationId,
+}: {
+  entityId?: string;
+  saasLocationId?: string;
+}) {
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
@@ -123,7 +157,9 @@ export function PosApp({ entityId }: { entityId?: string }) {
 
   return (
     <PosErrorBoundary>
-      <PosAppInner entityId={entityId} />
+      <SessionGate>
+        <PosAppInner entityId={entityId} saasLocationId={saasLocationId} />
+      </SessionGate>
     </PosErrorBoundary>
   );
 }

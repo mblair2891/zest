@@ -133,7 +133,9 @@ export function PaymentDialog({ open, onOpenChange }: Props) {
       <DialogContent className="max-w-md">
         <DialogHeader>
           <DialogTitle>
-            {done ? "Payment complete" : `Pay check #${order.number}`}
+            {done
+              ? "Payment complete"
+              : `Pay check #${order.number}`}
           </DialogTitle>
         </DialogHeader>
 
@@ -151,7 +153,10 @@ export function PaymentDialog({ open, onOpenChange }: Props) {
               </p>
             )}
             <p className="text-sm text-muted-foreground">
-              Tip recorded: {formatCurrency(tip)}
+              Charged as{" "}
+              {order.payments[order.payments.length - 1]?.chargeBrand ||
+                settings.name}{" "}
+              via Zest Payments. Tip recorded: {formatCurrency(tip)}
             </p>
             <Button className="w-full" size="lg" onClick={finish}>
               Done
@@ -180,10 +185,14 @@ export function PaymentDialog({ open, onOpenChange }: Props) {
             )}
             <div className="rounded-xl border border-border bg-bg p-4 text-center">
               <p className="text-xs uppercase tracking-wide text-muted-foreground">
-                Balance due
+                Balance due · {settings.name}
               </p>
               <p className="text-3xl font-semibold tabular">
                 {formatCurrency(balance)}
+              </p>
+              <p className="mt-1 text-[11px] text-muted-foreground">
+                Guest charge brand is the host. Card runs on Zest Payments
+                only — not Stripe or Square.
               </p>
             </div>
 
@@ -255,7 +264,8 @@ export function PaymentDialog({ open, onOpenChange }: Props) {
                     }
                   />
                   <p className="text-xs text-muted-foreground">
-                    Simulated card capture — no real charge.
+                    Zest Payments capture under {settings.name}. Guest sees
+                    the host brand, not individual operators.
                   </p>
                 </TabsContent>
 
