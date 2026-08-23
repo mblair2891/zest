@@ -63,11 +63,23 @@ or `useGuideStore.getState().openGuide("my-topic")`.
 
 Bookmarkable URL: `/guide?topic=my-topic`.
 
+## Public vs Platform
+
+The public `/guide` is operations: floor, menu, routing, Quantum Payments,
+settlement concepts, kiosk/waitlist, cash discount, establishment types.
+It does **not** include SaaS platform-admin topics (pipeline, bootstrap Admin,
+reset-all-demos, tenant underwriting).
+
+Platform-admin topics use `visibility: "platform"` (and/or the **Platform**
+chapter). They render only when the viewer is signed in as `platform_admin`.
+
+Public **Exit** on `/guide` returns to `/`. Demo/tour **Exit** returns to `/demo`.
+
 ## Roles
 
 | Tab | Who |
 |---|---|
-| Platform Admin | Control plane, pipeline, tenants |
+| Platform Admin | Control plane, pipeline, tenants — **signed-in admin only** |
 | Owner / Manager | Site ops, money, staff |
 | Server | Floor, checks, guests (includes FOH host stand & busser) |
 | Kitchen / Bar | Tickets, bump, routing |
@@ -77,7 +89,8 @@ Bookmarkable URL: `/guide?topic=my-topic`.
 Session mapping: POS PIN `owner`/`manager` → Owner/Manager (plus Host on
 `food_hall` / `truck_pod`). `server`/`host`/`busser` → Server.
 `kitchen`/`bartender` → Kitchen/Bar. Platform Admin email or `platform_admin`
-SaaS role → Platform Admin. If nothing maps, the guide shows **All**.
+SaaS role → Platform Admin. Signed-out public guide shows **All** public
+topics — never Platform Admin.
 
 ## Progress
 
@@ -100,10 +113,11 @@ spotlight on live components) — not a slideshow.
 
 | Control | What it does |
 |---|---|
-| Platform → Demos → **Full product tour** | `startTour("full")` |
-| Platform → Demos → **Start guided demo** | `startTour("type:{typeId}")` |
+| Public **Demos** → **Full product tour** | `startTour("full")` |
+| Public **Demos** → **Guided demo** | `startTour("type:{typeId}")` |
 | `/demo/tour/full` | Shareable full tour (auto-play) |
 | `/demo/{type}/tour` | Shareable per-type tour (auto-play) |
+| Tour **Exit** / Esc / Finish | Returns to `/demo` — not dashboard |
 
 Narration: handwritten fallbacks in `src/lib/demo/tour-scripts.ts`. When
 `XAI_API_KEY` (or `OPENAI_API_KEY`) is set, `getTourNarrationFn` writes

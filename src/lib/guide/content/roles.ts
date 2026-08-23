@@ -4,9 +4,10 @@ import type { GuideTopic } from "../types";
 export const ROLE_GUIDE_TOPICS: GuideTopic[] = [
   topic({
     id: "role-platform-admin",
-    chapterId: "roles",
+    chapterId: "platform",
     title: "Platform Admin",
     summary: "Tenants, pipeline, demos, and support — not a restaurant PIN.",
+    visibility: "platform",
     roles: ["platform_admin"],
     keywords: ["admin", "pipeline", "tenants", "demos", "control plane"],
     blocks: [

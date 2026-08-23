@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import { toast, Toaster } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -57,6 +57,11 @@ export function DemoTourHost() {
   const play = useTourStore((s) => s.play);
   const exit = useTourStore((s) => s.exit);
   const applyScripts = useTourStore((s) => s.applyScripts);
+
+  const leaveTour = useCallback(() => {
+    exit();
+    void navigate({ to: "/demo" });
+  }, [exit, navigate]);
 
   const running = Boolean(tour);
   const step = tour?.steps[stepIndex];
@@ -171,21 +176,24 @@ export function DemoTourHost() {
   useEffect(() => {
     if (!running || !playing || !step) return;
     const wait = Math.max(step.waitMs ?? 700, estimateSpeechMs(script) + 600);
-    const t = window.setTimeout(() => next(), wait);
+    const t = window.setTimeout(() => {
+      if (stepIndex >= total - 1) leaveTour();
+      else next();
+    }, wait);
     return () => window.clearTimeout(t);
-  }, [running, playing, stepKey, script, next, step]);
+  }, [running, playing, stepKey, script, next, step, stepIndex, total, leaveTour]);
 
   useEffect(() => {
     if (!running) return;
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") {
         e.preventDefault();
-        exit();
+        leaveTour();
       }
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [running, exit]);
+  }, [running, leaveTour]);
 
   useEffect(() => {
     return () => cancelSpeech();
@@ -229,7 +237,7 @@ export function DemoTourHost() {
             size="sm"
             variant="ghost"
             className="text-white/70 hover:bg-white/10 hover:text-white"
-            onClick={exit}
+            onClick={leaveTour}
           >
             Exit
           </Button>
@@ -249,7 +257,10 @@ export function DemoTourHost() {
             type="button"
             size="sm"
             className="bg-amber-300 text-slate-950 hover:bg-amber-200"
-            onClick={next}
+            onClick={() => {
+              if (stepIndex >= total - 1) leaveTour();
+              else next();
+            }}
           >
             {stepIndex >= total - 1 ? "Finish" : "Next"}
           </Button>

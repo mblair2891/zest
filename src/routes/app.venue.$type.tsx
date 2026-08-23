@@ -1,5 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { PosApp } from "@/components/pos/PosApp";
+import { SessionGate } from "@/components/pos/SessionGate";
 
 export const Route = createFileRoute("/app/venue/$type")({
   ssr: false,
@@ -8,5 +9,9 @@ export const Route = createFileRoute("/app/venue/$type")({
 
 function AppVenuePage() {
   const { type } = Route.useParams();
-  return <PosApp entityId={type} />;
+  return (
+    <SessionGate>
+      <PosApp entityId={type} />
+    </SessionGate>
+  );
 }

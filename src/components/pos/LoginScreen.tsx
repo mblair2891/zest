@@ -11,6 +11,7 @@ import {
 import { cn } from "@/lib/utils";
 import { useGuideStore } from "@/lib/guide/store";
 import { isDevDemoClient } from "@/lib/saas/flags";
+import { isProspectDemo } from "@/lib/demo/session";
 import { SummexBrandBlock } from "@/components/brand/SummexMark";
 
 export function LoginScreen() {
@@ -97,18 +98,18 @@ export function LoginScreen() {
           </span>
         </button>
 
-        {/* SaaS platform entry — completely separate product surface */}
+        {/* Control plane is signed-in only. Demo rooms return to the public demo list. */}
         <Link
-          to="/platform"
+          to={isProspectDemo() ? "/demo" : "/dashboard"}
           className="mb-8 flex w-full items-start gap-3 rounded-2xl border border-primary/50 bg-primary/10 px-4 py-3.5 text-left transition hover:border-primary hover:bg-primary/15"
         >
           <Rocket className="mt-0.5 h-5 w-5 shrink-0 text-primary" />
           <span>
             <span className="block text-sm font-semibold text-foreground">
-              Summex Platform (SaaS)
+              {isProspectDemo() ? "All demos" : "Control plane"}
             </span>
             <span className="mt-0.5 inline-flex rounded-md bg-primary/20 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-primary">
-              {demo ? "Dev quick login → /platform" : "Control plane"}
+              {isProspectDemo() ? "Prospect demo" : "Control plane"}
             </span>
             <span className="mt-1 block text-[11px] leading-snug text-muted-foreground">
               Multi-tenant control plane: orgs, locations, packages, devices,

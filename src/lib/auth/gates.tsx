@@ -1,7 +1,8 @@
 import type { ReactNode } from "react";
-import { Navigate } from "@tanstack/react-router";
+import { Navigate, useRouterState } from "@tanstack/react-router";
 import { authEnabled, signOut } from "./client";
 import { useCurrentUser, useCurrentUserState } from "./use-current-user";
+import { sanitizeNextPath } from "./safe-next-path";
 
 /**
  * Auth state components — plain wrappers around `useCurrentUserState()`.
@@ -40,8 +41,22 @@ export function SignedOut({ children }: { children: ReactNode }) {
  * Guard routes by waiting out `isPending` first (see `use-current-user`), then
  * render this.
  */
-export function RedirectToSignIn({ to = SIGN_IN_PATH }: { to?: "/login" }) {
-  return <Navigate to={to} />;
+export function RedirectToSignIn({
+  to = SIGN_IN_PATH,
+  next,
+}: {
+  to?: "/login";
+  next?: string | null;
+}) {
+  const pathname = useRouterState({ select: (s) => s.location.pathname });
+  const raw = next ?? pathname;
+  const skip =
+    !raw ||
+    raw === to ||
+    raw.startsWith("/login") ||
+    raw.startsWith("/signup");
+  const safe = skip ? null : sanitizeNextPath(raw);
+  return <Navigate to={to} search={safe ? { next: safe } : {}} replace />;
 }
 
 /**

@@ -7,11 +7,21 @@ import { GUIDE_VERSION, type GuideRole, type GuideUpdate } from "./types";
  */
 export const GUIDE_UPDATES: GuideUpdate[] = [
   {
+    id: "upd_2026_08_30_public_site",
+    date: "2026-08-30",
+    title: "Public site is sales, guide, and demos",
+    summary:
+      "The marketing home has no dashboard. Sign in to reach the control plane. Public Operators Guide covers the house — not SaaS admin.",
+    roles: "all",
+    topicId: "login",
+    tags: ["public", "guide", "demos"],
+  },
+  {
     id: "upd_2026_08_29_voiceover_tours",
     date: "2026-08-29",
     title: "Guided demos & voiceover tours",
     summary:
-      "Start guided demo and Full product tour run on the live UI with spotlight, AI scripts, and voiceover. Exit stops speech.",
+      "Public Demos run live-UI tours with voiceover. Exit returns to the demo list. Control plane stays behind Sign in.",
     roles: ["platform_admin", "owner_manager", "host_operator"],
     topicId: "prospect-demos",
     tags: ["demo", "tour", "voiceover", "saas"],
@@ -171,15 +181,31 @@ export const GUIDE_UPDATES: GuideUpdate[] = [
 export function updateVisibleToRoles(
   update: GuideUpdate,
   roles: GuideRole[] | "all",
+  opts?: { includePlatform?: boolean },
 ): boolean {
+  const includePlatform =
+    opts?.includePlatform ??
+    (Array.isArray(roles) && roles.includes("platform_admin"));
+  if (
+    !includePlatform &&
+    update.roles !== "all" &&
+    update.roles.length > 0 &&
+    update.roles.every((r) => r === "platform_admin")
+  ) {
+    return false;
+  }
+  if (roles === "all" || roles.length === 0) {
+    return update.roles === "all" || !update.roles.every((r) => r === "platform_admin");
+  }
   return topicMatchesRoles(update.roles, roles);
 }
 
 export function updatesForRoles(
   roles: GuideRole[] | "all",
   limit = 10,
+  opts?: { includePlatform?: boolean },
 ): GuideUpdate[] {
-  return GUIDE_UPDATES.filter((u) => updateVisibleToRoles(u, roles)).slice(
+  return GUIDE_UPDATES.filter((u) => updateVisibleToRoles(u, roles, opts)).slice(
     0,
     limit,
   );

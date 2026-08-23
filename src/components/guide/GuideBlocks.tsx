@@ -9,19 +9,26 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { GuideBlock } from "@/lib/guide/types";
-import { topicById } from "@/lib/guide/catalog";
+import { topicById, topicVisible } from "@/lib/guide/catalog";
 
 export function GuideBlocks({
   blocks,
   onOpenTopic,
+  includePlatform = false,
 }: {
   blocks: GuideBlock[];
   onOpenTopic: (id: string) => void;
+  includePlatform?: boolean;
 }) {
   return (
     <div className="space-y-4">
       {blocks.map((b, i) => (
-        <GuideBlockView key={i} block={b} onOpenTopic={onOpenTopic} />
+        <GuideBlockView
+          key={i}
+          block={b}
+          onOpenTopic={onOpenTopic}
+          includePlatform={includePlatform}
+        />
       ))}
     </div>
   );
@@ -30,9 +37,11 @@ export function GuideBlocks({
 function GuideBlockView({
   block,
   onOpenTopic,
+  includePlatform,
 }: {
   block: GuideBlock;
   onOpenTopic: (id: string) => void;
+  includePlatform: boolean;
 }) {
   if (block.type === "why") {
     return (
@@ -142,7 +151,8 @@ function GuideBlockView({
   if (block.type === "related") {
     const topics = block.topicIds
       .map((id) => topicById(id))
-      .filter((t): t is NonNullable<typeof t> => Boolean(t));
+      .filter((t): t is NonNullable<typeof t> => Boolean(t))
+      .filter((t) => topicVisible(t, "all", { includePlatform }));
     if (topics.length === 0) return null;
     return (
       <div className="border-t border-border pt-4">

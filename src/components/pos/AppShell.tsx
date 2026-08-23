@@ -358,7 +358,7 @@ export function AppShell() {
               <Building2 className="h-4 w-4" />
             </Button>
           </Link>
-          <Link to="/platform" title="Open SaaS platform" className="hidden sm:block">
+          <Link to="/dashboard" title="Open control plane" className="hidden sm:block">
             <Button size="icon" variant="ghost" aria-label="SaaS platform">
               <Rocket className="h-4 w-4" />
             </Button>

@@ -1,7 +1,7 @@
 import type { PosView } from "@/lib/pos/types";
 
 /** Bump when shipping a docs/features batch so What’s New can watermark. */
-export const GUIDE_VERSION = "2026.08.29";
+export const GUIDE_VERSION = "2026.08.30";
 export const GUIDE_EDITION = "Operators Guide · August 2026";
 export const GUIDE_TITLE = "Operators Guide";
 
@@ -59,7 +59,10 @@ export type GuideBlock =
   | { type: "cta"; href: string; label: string; text?: string }
   | { type: "related"; topicIds: string[] };
 
-export type GuideNavId = "overview" | "types" | "features" | "roles";
+export type GuideNavId = "overview" | "types" | "features" | "roles" | "platform";
+
+/** Platform-admin topics never appear on the public /guide. */
+export type GuideVisibility = "public" | "platform";
 
 export type GuideNavTab = {
   id: GuideNavId;
@@ -80,6 +83,8 @@ export interface GuideTopic {
   title: string;
   summary: string;
   roles: GuideAudience;
+  /** Default public. `platform` is hidden unless the viewer is platform_admin. */
+  visibility?: GuideVisibility;
   /** Optional jump into a live POS view when the current PIN allows it. */
   openView?: PosView;
   keywords?: string[];

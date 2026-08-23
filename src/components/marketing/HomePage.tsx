@@ -5,6 +5,7 @@ import {
   CreditCard,
   Landmark,
   ShieldCheck,
+  Users,
   UtensilsCrossed,
 } from "lucide-react";
 import { Link } from "@tanstack/react-router";
@@ -61,6 +62,11 @@ const WHYS = [
     icon: BookOpen,
     title: "Live in weeks, not a months-long IT project",
     body: "Describe the operation. Summex snapshots a quote, you accept, contract is marked signed, and a guided wizard creates org, locations, operators, packages, and invites. The Operators Guide is in the product from day one.",
+  },
+  {
+    icon: Users,
+    title: "Kiosk, waitlist, and reservation check-in",
+    body: "Guests order, join a wait, or check in with a last name and short code. Staff keep the host stand. The kiosk is for the guest — not a second login to the house.",
   },
 ];
 
@@ -171,6 +177,12 @@ export function HomePage() {
                 className="inline-flex h-12 items-center px-2 text-xs font-semibold tracking-widest text-champagne uppercase transition-colors hover:text-ivory"
               >
                 Operators Guide
+              </Link>
+              <Link
+                to="/demo"
+                className="inline-flex h-12 items-center px-2 text-xs font-semibold tracking-widest text-champagne uppercase transition-colors hover:text-ivory"
+              >
+                Product demos
               </Link>
             </div>
           </div>
@@ -362,8 +374,8 @@ export function HomePage() {
             <LandingCta to="/signup" tone="ghost">
               Create an account
             </LandingCta>
-            <LandingCta to="/platform" tone="ghost">
-              Platform
+            <LandingCta to="/demo" tone="ghost">
+              Product demos
             </LandingCta>
           </div>
         </section>

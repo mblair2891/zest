@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { AppStoreView } from "@/components/pos/AppStoreView";
+import { SessionGate } from "@/components/pos/SessionGate";
 import { initNativeShell } from "@/lib/native-shell";
 
 function AppsPage() {
@@ -16,7 +17,11 @@ function AppsPage() {
       </div>
     );
   }
-  return <AppStoreView />;
+  return (
+    <SessionGate>
+      <AppStoreView />
+    </SessionGate>
+  );
 }
 
 export const Route = createFileRoute("/apps")({

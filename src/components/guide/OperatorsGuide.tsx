@@ -77,6 +77,7 @@ export function OperatorsGuide({
   const [filter, setFilter] = useState<GuideRoleFilter>(
     hasSessionRole ? "mine" : "all",
   );
+  const isPlatformAdmin = sessionRoles.includes("platform_admin");
 
   useEffect(() => {
     if (hasSessionRole) setFilter((f) => (f === "all" ? "mine" : f));
@@ -90,8 +91,19 @@ export function OperatorsGuide({
 
   const searching = query.trim().length > 0;
   const groupedAll = useMemo(
-    () => chaptersWithMatches(query, activeRoles),
-    [query, activeRoles],
+    () =>
+      chaptersWithMatches(query, activeRoles, {
+        includePlatform: isPlatformAdmin,
+      }),
+    [query, activeRoles, isPlatformAdmin],
+  );
+  const navTabs = useMemo(
+    () => GUIDE_NAV_TABS.filter((t) => t.id !== "platform" || isPlatformAdmin),
+    [isPlatformAdmin],
+  );
+  const roleChips = useMemo(
+    () => GUIDE_ROLES.filter((r) => r !== "platform_admin" || isPlatformAdmin),
+    [isPlatformAdmin],
   );
   const grouped = useMemo(() => {
     if (searching) return groupedAll;
@@ -177,7 +189,7 @@ export function OperatorsGuide({
           to="/"
           className="text-xs font-medium text-muted-foreground underline-offset-2 hover:text-foreground hover:underline"
         >
-          Home
+          Exit
         </Link>
       )}
     </header>
@@ -213,15 +225,19 @@ export function OperatorsGuide({
               />
             </div>
             <div className="-mx-1 flex gap-1 overflow-x-auto px-1 pb-0.5">
-              {GUIDE_NAV_TABS.map((tab) => (
+              {navTabs.map((tab) => (
                 <FilterChip
                   key={tab.id}
                   active={!searching && navTab === tab.id}
                   onClick={() => {
                     setQuery("");
                     setNavTab(tab.id);
-                    const first = GUIDE_TOPICS.find((t) =>
-                      tab.chapterIds.includes(t.chapterId),
+                    const first = GUIDE_TOPICS.find(
+                      (t) =>
+                        tab.chapterIds.includes(t.chapterId) &&
+                        topicVisible(t, activeRoles, {
+                          includePlatform: isPlatformAdmin,
+                        }),
                     );
                     if (first) openTopic(first.id);
                   }}
@@ -245,7 +261,7 @@ export function OperatorsGuide({
                   My role
                 </FilterChip>
               )}
-              {GUIDE_ROLES.map((r) => (
+              {roleChips.map((r) => (
                 <FilterChip
                   key={r}
                   active={filter === r}
@@ -347,7 +363,11 @@ export function OperatorsGuide({
                 </div>
               </div>
 
-              <GuideBlocks blocks={active.blocks} onOpenTopic={openTopic} />
+              <GuideBlocks
+                blocks={active.blocks}
+                onOpenTopic={openTopic}
+                includePlatform={isPlatformAdmin}
+              />
 
               <footer className="border-t border-border pt-4 text-[11px] text-muted-foreground">
                 Summex, powered by Quantum Reach · {GUIDE_TITLE} · Guest cards via

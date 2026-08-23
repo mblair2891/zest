@@ -241,10 +241,7 @@ function PosAppInner({ entityId }: { entityId?: string }) {
         <p className="text-sm text-muted-foreground">
           {gateMsg ?? "You do not have access to this venue."}
         </p>
-        <Link to="/platform" className="text-sm font-medium text-primary underline">
-          Go to platform
-        </Link>
-        <Link to="/login" className="text-sm text-muted-foreground underline">
+        <Link to="/login" className="text-sm font-medium text-primary underline">
           Sign in
         </Link>
         <Link to="/guide" className="text-sm text-muted-foreground underline">
@@ -288,16 +285,16 @@ function PosAppInner({ entityId }: { entityId?: string }) {
               Create an account
             </Link>
             <Link
-              to="/platform"
-              className="block text-sm text-muted-foreground underline"
-            >
-              Platform
-            </Link>
-            <Link
               to="/guide"
               className="block text-sm text-muted-foreground underline"
             >
               Operators Guide
+            </Link>
+            <Link
+              to="/"
+              className="block text-sm text-muted-foreground underline"
+            >
+              Home
             </Link>
           </div>
         </div>
@@ -313,10 +310,10 @@ function PosAppInner({ entityId }: { entityId?: string }) {
           plane to manage locations and launch POS.
         </p>
         <Link
-          to="/platform"
+          to="/dashboard"
           className="rounded-2xl bg-primary px-5 py-3 text-sm font-semibold text-primary-foreground"
         >
-          Open platform
+          Open control plane
         </Link>
         <Link
           to="/guide"

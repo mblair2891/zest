@@ -76,7 +76,7 @@ export const GUIDE_CHAPTERS: GuideChapter[] = [
   {
     id: "roles",
     title: "Role guides",
-    summary: "Platform admin, owner, server, kitchen/bar, vendor.",
+    summary: "Owner, server, kitchen/bar, vendor, host.",
     order: 10,
   },
   {
@@ -84,6 +84,12 @@ export const GUIDE_CHAPTERS: GuideChapter[] = [
     title: "Troubleshooting",
     summary: "Common errors, contacts, audit, glossary.",
     order: 11,
+  },
+  {
+    id: "platform",
+    title: "Platform (admin)",
+    summary: "Tenants, pipeline, bootstrap, demo rooms.",
+    order: 12,
   },
 ];
 
@@ -116,6 +122,11 @@ export const GUIDE_NAV_TABS: GuideNavTab[] = [
     id: "roles",
     label: "Roles",
     chapterIds: ["roles"],
+  },
+  {
+    id: "platform",
+    label: "Platform",
+    chapterIds: ["platform"],
   },
 ];
 
@@ -153,10 +164,30 @@ export function topicsForChapter(
   );
 }
 
+export function topicIsPlatformOnly(topic: GuideTopic): boolean {
+  if (topic.visibility === "platform") return true;
+  if (topic.chapterId === "platform") return true;
+  if (
+    topic.roles !== "all" &&
+    topic.roles.length > 0 &&
+    topic.roles.every((r) => r === "platform_admin")
+  ) {
+    return true;
+  }
+  return false;
+}
+
 export function topicVisible(
   topic: GuideTopic,
   roles: GuideRole[] | "all",
+  opts?: { includePlatform?: boolean },
 ): boolean {
+  const includePlatform =
+    opts?.includePlatform ??
+    (Array.isArray(roles) && roles.includes("platform_admin"));
+  if (topicIsPlatformOnly(topic) && !includePlatform) return false;
+  if (roles === "all") return true;
+  if (roles.length === 0) return true;
   return topicMatchesRoles(topic.roles, roles);
 }
 

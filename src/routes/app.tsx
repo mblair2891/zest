@@ -1,5 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { PosApp } from "@/components/pos/PosApp";
+import { SessionGate } from "@/components/pos/SessionGate";
 
 /** Shared POS application (app.summex.app). Tenant is already in session context. */
 export const Route = createFileRoute("/app")({
@@ -8,5 +9,9 @@ export const Route = createFileRoute("/app")({
 });
 
 function AppHome() {
-  return <PosApp />;
+  return (
+    <SessionGate>
+      <PosApp />
+    </SessionGate>
+  );
 }

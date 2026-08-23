@@ -376,8 +376,8 @@ export function AppStoreView() {
                 Install Summex from this store experience on each Galaxy tablet or
                 the 27″ display, then open Kitchen / Floor / Bar as needed. SaaS
                 admins use{" "}
-                <Link to="/platform" className="text-primary underline">
-                  Summex Platform
+                <Link to="/dashboard" className="text-primary underline">
+                  control plane
                 </Link>
                 .
               </p>

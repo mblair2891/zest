@@ -41,8 +41,9 @@ export function DemoCatalogPage() {
         </h1>
         <p className="mt-5 max-w-2xl text-sm leading-relaxed text-muted-foreground sm:text-base">
           Each establishment type has its own demo house. Demo data is never mixed
-          into live tenants, billing, or statistics. Quantum Payments is the only
-          guest card in these rooms. Guided demo narrates the live product.
+          into live tenants, billing, or statistics. These rooms do not sign you
+          into the control plane. Quantum Payments is the only guest card.
+          Guided demo narrates the live product.
         </p>
 
         <div

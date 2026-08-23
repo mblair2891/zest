@@ -90,7 +90,7 @@ export const ESTABLISHMENT_TYPE_TOPICS: GuideTopic[] = [
       cta(
         "/demo/food_hall/tour",
         "Open The Laundry guided demo",
-        "One check, two operators, Quantum Payments, settlement split.",
+        "Public /demo/food_hall. Exit returns to the demo list — not the control plane.",
       ),
       related("host-capture", "chargebacks", "system-ledger", "prospect-demos", "type-restaurant"),
     ],

@@ -22,6 +22,7 @@ export {
   topicById,
   relatedTopics,
   topicVisible,
+  topicIsPlatformOnly,
 } from "./catalog";
 export { searchTopics, chaptersWithMatches } from "./search";
 export {

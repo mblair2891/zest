@@ -80,7 +80,7 @@ export function EntityPicker() {
             );
           })}
           <Link
-            to="/platform"
+            to="/dashboard"
             className="flex min-h-14 items-start gap-3 rounded-2xl border border-primary/50 bg-primary/10 px-4 py-3.5 text-left transition hover:border-primary sm:col-span-2"
           >
             <Rocket className="mt-0.5 h-5 w-5 shrink-0 text-primary" />

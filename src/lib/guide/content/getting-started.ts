@@ -71,32 +71,31 @@ export const GETTING_STARTED_TOPICS: GuideTopic[] = [
   topic({
     id: "login",
     chapterId: "getting-started",
-    title: "Login & forced password change",
-    summary: "Platform Admin bootstrap, merchant sign-in, and staff PIN.",
+    title: "Sign in & staff PIN",
+    summary: "Merchant account login, then a 4-digit PIN on the floor.",
     roles: "all",
-    keywords: ["login", "admin", "password", "pin", "sign in", "bootstrap"],
+    keywords: ["login", "password", "pin", "sign in", "staff"],
     blocks: [
       why(
-        "The live system starts empty. The only seeded identity is Platform Admin — and that password must be changed before anything else is available.",
+        "The public site is sales, guide, and demos. The house — floor, money, staff — opens only after you sign in with a work account.",
       ),
       p(
-        "There are two sign-in layers. Account login (email or username Admin) authenticates the person to the SaaS control plane. Staff PIN authenticates a station user inside an already-opened location.",
+        "There are two layers. Account login (email) authenticates the person. Staff PIN authenticates a station user inside an already-opened location.",
       ),
       steps(
-        "Open Sign in. Platform Admin may enter username Admin (or admin@summex.local) and the initial password.",
-        "On first success you are forced to set a new password (8+ characters). The initial password cannot be reused.",
-        "You land on the control plane. There are no organizations until you run intake → onboarding or create one.",
-        "Merchants sign in with their work email. After auth, Summex picks organization and location — never a per-tenant subdomain.",
+        "From the marketing site, tap Sign in. Use the work email you were invited with — not a demo room.",
+        "After auth, Summex picks organization and location. There is no per-tenant subdomain.",
         "On a location, enter your 4-digit staff PIN. The header shows your name and access level. Only tools for that role appear.",
+        "Walk a product demo from /demo without signing in. Demos never open the control plane.",
       ),
       warn(
-        "The initial Admin password exists only for bootstrap. Change it immediately on any shared preview. Signing out of POS does not clock you out of Labor.",
+        "Signing out of POS does not clock you out of Labor. Product demos are not a tenant login.",
       ),
       callout(
-        "Empty start",
-        "No demo restaurant, menu, or staff roster is created for you. Use Host Venue / Operator A / Operator B when you build the first site.",
+        "New house",
+        "Start at Get pricing. You receive a quote, accept, then a guided setup creates the org. Public demos stay separate.",
       ),
-      related("empty-start", "navigation", "invites-roles", "platform-admin"),
+      related("empty-start", "navigation", "invites-roles", "prospect-intake"),
     ],
   }),
   topic({
@@ -111,11 +110,11 @@ export const GETTING_STARTED_TOPICS: GuideTopic[] = [
         "Summex is one application with two working surfaces. Mixing them up is the most common new-user stall.",
       ),
       ul(
-        "Marketing (summex.app) — product, pricing, Get pricing, journal.",
-        "Account — /login, /signup, /change-password.",
-        "Control plane (/platform) — orgs, locations, packages, invites, prospect pipeline, tenants.",
-        "POS (app host / venue) — floor, order, KDS, cash, settlement, guests, after a location is open.",
-        "Operators Guide — overlay everywhere, or /guide as a full page.",
+        "Marketing (summex.app) — product, pricing, Get pricing, Operators Guide, product demos.",
+        "Account — /login, /signup. Sign-in is required before any control plane or POS location.",
+        "POS — floor, order, KDS, cash, settlement, guests, after a location is open from a signed-in session.",
+        "Operators Guide — public page at /guide (operations). Overlay inside the signed-in product.",
+        "Product demos — /demo/{type}. Isolated rooms. They never become a tenant session.",
       ),
       shot(
         "POS header: wordmark, clock, location, Guide, platform rocket, sign out.",
@@ -124,7 +123,7 @@ export const GETTING_STARTED_TOPICS: GuideTopic[] = [
       steps(
         "On desktop, the left nav is role-filtered. On a phone, the bottom dock shows the top shortcuts plus Guide.",
         "Package preview (when enabled) further hides modules so you can train as if a package were off.",
-        "The rocket opens the SaaS platform without mixing billing into the POS menu.",
+        "After you sign in, the control plane holds orgs, locations, and packages — it is not on the public home page.",
         "Change venue from the building icon; it signs the PIN session out of that location.",
       ),
       related("login", "venue-types", "invites-roles", "using-guide"),
@@ -167,14 +166,14 @@ export const GETTING_STARTED_TOPICS: GuideTopic[] = [
         "A live Summex has no seed tenants. If you expect a demo restaurant, you are looking at the production path — which is correct.",
       ),
       steps(
-        "Sign in as Admin and complete the forced password change.",
-        "The platform has zero live organizations. Console may be empty. Demos are separate and do not count as tenants. Open Get pricing or Pipeline for prospects.",
-        "Intake → quote → merchant accepts → Admin marks contract signed → onboarding wizard.",
-        "Onboarding creates the org, location(s), operators, packages, and invites. Use Host Venue / Operator A / Operator B.",
-        "Open POS for that location. Menu, tables, and tickets stay empty until you add them in onboarding or in POS settings.",
+        "Open Get pricing on the public site. Describe the house. Submit for a snapshot quote.",
+        "Accept the quote. When the contract is marked signed, the onboarding wizard unlocks.",
+        "Onboarding creates the org, location(s), operators, packages, and invites. Use Host Venue / Operator A / Operator B — not a live customer name.",
+        "Sign in with the invited work email. Open POS for that location.",
+        "Menu, tables, and tickets stay empty until you add them in onboarding or in POS settings.",
       ),
       warn(
-        "Live tenants stay empty until onboarding. Prospect rooms live under Platform → Demos and /demo/{type}. They never appear in tenant statistics.",
+        "Live tenants stay empty until onboarding. Public /demo rooms are labeled demos and never appear in tenant statistics.",
       ),
       related("login", "prospect-intake", "onboarding-wizard", "create-org", "type-food-hall", "prospect-demos"),
     ],
@@ -184,7 +183,8 @@ export const GETTING_STARTED_TOPICS: GuideTopic[] = [
     chapterId: "getting-started",
     title: "The Laundry test venue (demo)",
     summary:
-      "DEV_DEMO only. Host brand The Laundry with Steam Distillery (bar) and Diamond House BBQ (kitchen) on one guest check.",
+      "Internal DEV_DEMO seed. Host brand The Laundry with Steam Distillery (bar) and Diamond House BBQ (kitchen).",
+    visibility: "platform",
     roles: ["platform_admin", "owner_manager", "host_operator", "vendor_operator"],
     keywords: [
       "laundry",

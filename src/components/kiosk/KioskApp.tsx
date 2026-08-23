@@ -119,7 +119,7 @@ export function KioskApp() {
           </div>
         </div>
         <Link
-          to="/"
+          to="/login"
           className="text-xs text-muted-foreground underline-offset-2 hover:underline"
         >
           Staff

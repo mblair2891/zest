@@ -11,7 +11,8 @@ const ITEMS = [
   ["Halls & pods", "One guest pay, settlement, pad maps."],
   ["Staff", "Owner, manager, cashier — org-wide or per location."],
   ["Quantum Payments", "The only merchant processor in the product."],
-  ["Control plane", "Orgs, locations, packages, invites at summex.app/dashboard."],
+  ["Kiosk & waitlist", "Guest order, waitlist, and reservation check-in on a large-touch surface."],
+  ["Onboarding", "Get pricing → quote → contract → guided setup. Sign in after you have a house."],
 ];
 
 function FeaturesPage() {

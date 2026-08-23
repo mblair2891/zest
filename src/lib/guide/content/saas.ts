@@ -170,9 +170,10 @@ export const SAAS_TOPICS: GuideTopic[] = [
   }),
   topic({
     id: "platform-admin",
-    chapterId: "roles",
+    chapterId: "platform",
     title: "Platform admin: tenants & support",
     summary: "Pipeline, tenant status, and support actions on an empty or live fleet.",
+    visibility: "platform",
     roles: ["platform_admin"],
     keywords: ["admin", "tenants", "pipeline", "support", "status", "saas"],
     blocks: [
@@ -196,9 +197,9 @@ export const SAAS_TOPICS: GuideTopic[] = [
   topic({
     id: "prospect-demos",
     chapterId: "saas",
-    title: "Guided demos & voiceover tours",
-    summary: "Live-UI tours with narration, voiceover, share links, and demo isolation from tenants.",
-    roles: ["platform_admin", "owner_manager", "host_operator"],
+    title: "Product demos & voiceover tours",
+    summary: "Public live-UI tours with narration and voiceover. Demo rooms never open the control plane.",
+    roles: "all",
     keywords: [
       "demo",
       "tour",
@@ -213,31 +214,76 @@ export const SAAS_TOPICS: GuideTopic[] = [
     ],
     blocks: [
       why(
-        "A prospect should walk the real product — exact screens, demo-seeded venues — not a slideshow. Demo rooms are tagged, excluded from statistics, and reset without touching production orgs.",
+        "A prospect should walk the real product — exact screens, demo-seeded venues — not a slideshow. Demo rooms are tagged and excluded from live tenants, billing, and statistics.",
       ),
       p(
-        "From Platform → Demos, Start guided demo or Full product tour begins a live tour: spotlight on the real UI, narrator card, and voiceover. The prospect does not need Admin. Copy a share link if they should start without you.",
+        "Open Product demos from the public site. Start guided demo or Full product tour: spotlight on the live UI, narrator card, and voiceover. You do not sign in. Exit returns to the demo list — never the control plane.",
       ),
       ul(
-        "Per type: https://www.summex.app/demo/{type} — restaurant, food_hall (The Laundry), bar_lounge, qsr, cafe, truck_pod, ghost_kitchen, catering.",
-        "The Laundry guided path: /demo/food_hall/tour — Steam Distillery + Diamond House BBQ, one guest check, Quantum Payments, settlement split.",
-        "Full product tour: https://www.summex.app/demo/tour/full — catalog, The Laundry, floor, menu, routing, pay, settlement, cash discount, kiosk, Operators Guide, back to Demos.",
+        "Per type: /demo/{type} — restaurant, food_hall (The Laundry), bar_lounge, qsr, cafe, truck_pod, ghost_kitchen, catering.",
+        "The Laundry: /demo/food_hall/tour — Steam Distillery + Diamond House BBQ, one guest check, Quantum Payments, settlement split.",
+        "Full product tour: /demo/tour/full — catalog, The Laundry, floor, menu, routing, pay, settlement, cash discount, kiosk, Operators Guide, back to Demos.",
       ),
       steps(
-        "Platform → Demos → Full product tour, or Start guided demo on a type card. Buttons call startTour — if a tour id is unknown you see “Tour not available”.",
-        "Guided — you tap Next. Back, Play, Pause, Voice, and Exit stay on the narrator card. Esc also exits.",
-        "Play — auto-play advances on speech length. Pause stops voiceover and the timer. Resume from the current step.",
-        "Voiceover reads each step (browser speech; optional server TTS when a key is configured). Voice off keeps the card, no audio.",
-        "Reset all demos (platform admin only) deletes demo-tagged orgs and this browser’s demo persist keys. Live tenants are untouched.",
+        "From the landing page open Demos, or go to /demo.",
+        "Start full tour, or Guided demo on a type card. Unknown tour ids show “Tour not available”.",
+        "Guided — tap Next. Back, Play, Pause, Voice, and Exit stay on the narrator. Esc also exits.",
+        "Play auto-advances on speech length. Pause stops voiceover. Exit returns to the public demo index.",
       ),
       callout(
         "Live UI, demo data only",
-        "The tour opens real routes (/demo/…, /kiosk, /guide) and highlights live components. Safe actions (seat, add item, send, sandbox pay) run only while a demo session is active. They never mutate live tenants.",
+        "Tours open real demo routes. They never grant SaaS admin, pipeline, or tenant access.",
       ),
       warn(
-        "Never send a tenant dashboard or Admin login as a demo. If Tenants is empty, that is correct — demos do not count.",
+        "Do not treat a demo room as a live login. Sign in from the marketing Sign in control when you have a real house.",
       ),
-      related("platform-admin", "single-vs-multi", "prospect-intake", "type-food-hall", "feature-kiosk"),
+      related("single-vs-multi", "prospect-intake", "type-food-hall", "feature-kiosk"),
+    ],
+  }),
+  topic({
+    id: "platform-demos-admin",
+    chapterId: "platform",
+    title: "Demo rooms (platform)",
+    summary: "Share links, reset demo-tagged orgs, keep demos out of tenant stats.",
+    visibility: "platform",
+    roles: ["platform_admin"],
+    keywords: ["demo", "reset", "pipeline", "tenants", "share"],
+    blocks: [
+      why(
+        "Platform Demos is the admin catalog. Prospects use /demo without this session.",
+      ),
+      steps(
+        "Sign in. Open Demos on the control plane.",
+        "Copy a type share link or start a guided tour from here.",
+        "Reset all demos deletes demo-tagged orgs only. Live tenants are untouched.",
+      ),
+      warn(
+        "Never send Admin login as a demo. If Tenants is empty, that is correct — demos do not count.",
+      ),
+      related("platform-admin", "prospect-demos", "empty-start"),
+    ],
+  }),
+  topic({
+    id: "admin-bootstrap",
+    chapterId: "platform",
+    title: "Admin bootstrap & forced password",
+    summary: "The only seeded identity. Change the password before anything else.",
+    visibility: "platform",
+    roles: ["platform_admin"],
+    keywords: ["bootstrap", "admin", "password", "forced"],
+    blocks: [
+      why(
+        "A fresh Summex has no tenants. Platform Admin is the bootstrap identity — not a restaurant PIN and not a demo login.",
+      ),
+      steps(
+        "Sign in with username Admin (or admin@summex.local) and the initial password.",
+        "On first success you must set a new password (8+ characters). The initial password cannot be reused.",
+        "You land on the control plane. Pipeline, Console, and Demos are signed-in surfaces only.",
+      ),
+      warn(
+        "The initial Admin password exists only for bootstrap. Change it immediately. Do not publish it on the marketing site.",
+      ),
+      related("platform-admin", "empty-start", "login"),
     ],
   }),
 ];

@@ -94,8 +94,8 @@ export function LandingFrame({ children }: { children: ReactNode }) {
             <Link to="/guide" className="hover:text-champagne">
               Operators Guide
             </Link>
-            <Link to="/platform" className="hover:text-champagne">
-              Platform
+            <Link to="/demo" className="hover:text-champagne">
+              Demos
             </Link>
             <Link to="/pricing" className="hover:text-champagne">
               Pricing
@@ -120,7 +120,7 @@ export type LandingHref =
   | "/signup"
   | "/guide"
   | "/pricing"
-  | "/platform"
+  | "/demo"
   | "/features"
   | "/whitepaper";
 
