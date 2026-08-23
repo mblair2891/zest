@@ -63,3 +63,22 @@ export const changePasswordInput = z.object({
   currentPassword: z.string().min(1),
   newPassword: z.string().min(8),
 });
+
+/**
+ * Change the signed-in platform admin password without revoking the current
+ * session. Clears `must_change_password` in the same request.
+ */
+export const changePlatformAdminPassword = createServerFn({ method: "POST" })
+  .middleware([authMiddleware])
+  .validator((d: { currentPassword: string; newPassword: string }) =>
+    changePasswordInput.parse({
+      currentPassword: String(d.currentPassword ?? ""),
+      newPassword: String(d.newPassword ?? ""),
+    }),
+  )
+  .handler(async ({ context, data }): Promise<{ ok: true }> => {
+    const { changePlatformAdminPasswordForUser } = await import(
+      "./change-password.server"
+    );
+    return changePlatformAdminPasswordForUser(context.userId, data);
+  });

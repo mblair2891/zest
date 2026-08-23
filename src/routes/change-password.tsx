@@ -3,9 +3,21 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { Button } from "@/components/ui/button";
 import { SummexBrandBlock } from "@/components/brand/SummexMark";
 import { Input } from "@/components/ui/input";
-import { authClient } from "@/lib/auth/client";
-import { clearMustChangePassword } from "@/lib/auth/platform-admin";
+import { changePlatformAdminPassword } from "@/lib/auth/platform-admin";
 import { SessionGate } from "@/components/pos/SessionGate";
+
+function errorMessage(err: unknown): string {
+  if (err instanceof Error && err.message) return err.message;
+  if (typeof err === "string" && err.trim()) return err;
+  if (err && typeof err === "object") {
+    const o = err as { message?: unknown; data?: { message?: unknown } };
+    if (typeof o.message === "string" && o.message.trim()) return o.message;
+    if (typeof o.data?.message === "string" && o.data.message.trim()) {
+      return o.data.message;
+    }
+  }
+  return "Could not change password";
+}
 
 export const Route = createFileRoute("/change-password")({
   ssr: false,
@@ -51,19 +63,12 @@ function ChangePasswordForm() {
     }
     setBusy(true);
     try {
-      const { error: err } = await authClient.changePassword({
-        currentPassword: current,
-        newPassword: next,
-        revokeOtherSessions: true,
+      await changePlatformAdminPassword({
+        data: { currentPassword: current, newPassword: next },
       });
-      if (err) {
-        setError(err.message ?? "Could not change password");
-        return;
-      }
-      await clearMustChangePassword();
       await navigate({ to: "/dashboard" });
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Could not change password");
+      setError(errorMessage(err));
     } finally {
       setBusy(false);
     }
