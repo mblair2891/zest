@@ -30,6 +30,7 @@ type OrgRow = {
   phone?: string | null;
   hq_address?: string | null;
   tax_id?: string | null;
+  is_demo?: boolean;
 };
 
 type MemRow = {
@@ -238,6 +239,9 @@ export async function requireMembership(
   const orgs = await sql<OrgRow>`select * from organizations where id = ${orgId} limit 1`;
   const org = orgs[0];
   if (!org) throw new ForbiddenError("Organization not found");
+  if (org.is_demo) {
+    throw new ForbiddenError("Demo venues are isolated from tenants");
+  }
 
   if (await isPlatformAdmin(userId)) {
     return {
@@ -311,6 +315,7 @@ export async function getSessionContext(userId: string): Promise<SessionContext>
     join memberships m on m.org_id = o.id and m.user_id = ${userId} and m.status = 'active'
     left join org_subscriptions s on s.org_id = o.id
     left join plans p on p.id = s.plan_id
+    where coalesce(o.is_demo, false) = false
     order by o.created_at desc
   `;
 
@@ -330,6 +335,8 @@ export async function getSessionContext(userId: string): Promise<SessionContext>
     join organizations o on o.id = l.org_id
     join memberships m on m.org_id = l.org_id and m.user_id = ${userId} and m.status = 'active'
     where o.status = 'active'
+      and coalesce(o.is_demo, false) = false
+      and coalesce(l.is_demo, false) = false
       and (m.location_id is null or m.location_id = l.id)
     order by o.name, l.name
   `;
@@ -496,7 +503,8 @@ export async function createLocationForOrg(
     limit 1
   `;
   const count = await sql<{ n: number }>`
-    select count(*)::int as n from locations where org_id = ${input.orgId}
+    select count(*)::int as n from locations
+    where org_id = ${input.orgId} and coalesce(is_demo, false) = false
   `;
   const maxLoc = sub[0]?.max_locations_override ?? sub[0]?.max_locations ?? 1;
   if (!input.skipLimit && (count[0]?.n ?? 0) >= maxLoc) {
@@ -533,7 +541,9 @@ export async function listLocationsForOrg(userId: string, orgId: string): Promis
   await requireActiveOrg(userId, orgId);
   const sql = await getSql();
   const rows = await sql<LocRow>`
-    select * from locations where org_id = ${orgId} order by created_at asc
+    select * from locations
+    where org_id = ${orgId} and coalesce(is_demo, false) = false
+    order by created_at asc
   `;
   return rows.map(mapLoc);
 }
@@ -711,9 +721,11 @@ export async function listTenants(userId: string) {
     OrgRow & { plan_id: string | null; plan_status: string | null; loc_count: number }
   >`
     select o.*, s.plan_id, s.status as plan_status,
-           (select count(*)::int from locations l where l.org_id = o.id) as loc_count
+           (select count(*)::int from locations l
+            where l.org_id = o.id and coalesce(l.is_demo, false) = false) as loc_count
     from organizations o
     left join org_subscriptions s on s.org_id = o.id
+    where coalesce(o.is_demo, false) = false
     order by o.created_at desc
   `;
   return rows.map((r) => ({

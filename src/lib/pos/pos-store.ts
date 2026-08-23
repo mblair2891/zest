@@ -254,6 +254,8 @@ export interface PosStore {
   applyEntity: (entityId: VenueEntityId) => ActionResult;
   /** DEV_DEMO only. Reloads The Laundry host + Steam Distillery + Diamond House BBQ. */
   loadLaundryTestVenue: () => ActionResult;
+  /** Isolated prospect demo (separate persist keys). Never writes tenant POS. */
+  loadProspectDemo: (entityId: VenueEntityId) => ActionResult;
   openTenantLocation: (opts: {
     entityId: VenueEntityId;
     venueName: string;

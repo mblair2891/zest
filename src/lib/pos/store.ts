@@ -31,6 +31,8 @@ import {
 import { useOpsStore } from "./ops-store";
 import { isDevDemoClient } from "@/lib/saas/flags";
 import { laundryPosSlice } from "./laundry-seed";
+import { demoPersistStorage } from "@/lib/demo/session";
+import { demoPosSlice, demoSaasOrg } from "@/lib/demo/pos-payloads";
 import {
   DEFAULT_FLOOR_SECTIONS,
   DEFAULT_SECTION_POLICY,
@@ -1557,6 +1559,53 @@ const usePosStoreRaw = create()(persist((set, get) => ({
 		}
 		return { ok: true };
 	},
+	loadProspectDemo: (entityId: VenueEntityId) => {
+		const slice = demoPosSlice(entityId);
+		const owner =
+			slice.employees.find((e) => e.role === "owner") ?? slice.employees[0];
+		set({
+			...slice,
+			currentEmployeeId: owner?.id ?? null,
+			shift: emptyShift(),
+			clock: Date.now(),
+			auditLog: [
+				{
+					id: uid("aud"),
+					at: Date.now(),
+					employeeId: "system",
+					employeeName: "System",
+					action: "seed",
+					detail: `Prospect demo · ${entityId}`,
+				},
+			],
+			giftCards: [],
+			customers: [],
+			inventory: [],
+		});
+		try {
+			const { org, location } = demoSaasOrg(entityId);
+			useSaasStore.getState().hydrateTenant({
+				org,
+				members: [
+					{
+						id: "mem_demo_host",
+						orgId: org.id,
+						name: owner?.name ?? "Demo host",
+						email: "",
+						role: "owner",
+					},
+				],
+				locations: [location],
+				adminName: owner?.name ?? "Demo host",
+				adminRole: "owner",
+			});
+			useSaasStore.setState({ liveMode: false, platformAuthed: false });
+			useSaasStore.getState().setActiveLocation(slice.tenantLocationId);
+		} catch {
+			/* ignore */
+		}
+		return { ok: true };
+	},
 	applyEntity: (entityId: VenueEntityId) => {
 		if (isDevDemoClient() && entityId === "food_hall") {
 			return get().loadLaundryTestVenue();
@@ -1665,7 +1714,7 @@ const usePosStoreRaw = create()(persist((set, get) => ({
 	}
 }), {
 	name: "summex-pos-v7",
-	storage: createJSONStorage(() => localStorage),
+	storage: createJSONStorage(() => demoPersistStorage()),
 	skipHydration: true,
 	partialize: (s) => ({
 		tenantLocationId: s.tenantLocationId,

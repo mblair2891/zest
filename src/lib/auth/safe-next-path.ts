@@ -17,6 +17,8 @@ export const POST_LOGIN_STATIC = [
   "/whitepaper",
   "/kiosk",
   "/online",
+  "/demo",
+  "/demo/tour/full",
 ] as const;
 
 export type PostLoginStatic = (typeof POST_LOGIN_STATIC)[number];
@@ -59,6 +61,10 @@ export function sanitizeNextPath(raw: string | null | undefined): string | null 
   if (venue?.[1] && VENUE_TYPE.test(venue[1])) return pathOnly;
   const appVenue = pathOnly.match(/^\/app\/venue\/([^/]+)$/);
   if (appVenue?.[1] && VENUE_TYPE.test(appVenue[1])) return pathOnly;
+  const demo = pathOnly.match(/^\/demo\/([^/]+)$/);
+  if (demo?.[1] && (VENUE_TYPE.test(demo[1]) || demo[1] === "tour")) return pathOnly;
+  const demoTour = pathOnly.match(/^\/demo\/([^/]+)\/tour$/);
+  if (demoTour?.[1] && VENUE_TYPE.test(demoTour[1])) return pathOnly;
 
   return null;
 }

@@ -20,6 +20,7 @@ import {
   PACKAGE_BY_ID,
 } from "./packages";
 import { isDevDemoClient } from "@/lib/saas/flags";
+import { demoPersistStorage } from "@/lib/demo/session";
 import {
   LAUNDRY_LOCATION_ID,
   LAUNDRY_LOCATION_NAME,
@@ -856,7 +857,7 @@ export const useSaasStore = create<SaasState>()(
     }),
     {
       name: "summex-saas-v8",
-      storage: createJSONStorage(() => localStorage),
+      storage: createJSONStorage(() => demoPersistStorage()),
       skipHydration: true,
       merge: (persisted, current) => {
         const p = persisted as Partial<SaasState> | undefined;

@@ -193,4 +193,42 @@ export const SAAS_TOPICS: GuideTopic[] = [
       related("login", "quote-contract", "troubleshooting", "audit"),
     ],
   }),
+  topic({
+    id: "prospect-demos",
+    chapterId: "saas",
+    title: "Prospect demos & guided tours",
+    summary: "Which share link to send, guided vs auto-play, and how demos stay out of tenants.",
+    roles: ["platform_admin", "owner_manager", "host_operator"],
+    keywords: [
+      "demo",
+      "tour",
+      "share",
+      "prospect",
+      "the laundry",
+      "guided",
+      "auto-play",
+    ],
+    blocks: [
+      why(
+        "A prospect should walk a type of house — not your live tenants. Demo rooms are tagged, excluded from statistics, and reset without touching production orgs.",
+      ),
+      p(
+        "From Platform → Demos, copy a share link. The prospect does not need Admin. They land in that room with a Start guided demo control. Full product tour covers the major surfaces in one sitting.",
+      ),
+      ul(
+        "Per type: https://www.summex.app/demo/{type} — restaurant, food_hall (The Laundry), bar_lounge, qsr, cafe, truck_pod, ghost_kitchen, catering.",
+        "The Laundry guided path: /demo/food_hall/tour — Steam Distillery + Diamond House BBQ, one guest check, Quantum Payments, settlement split.",
+        "Full tour: https://www.summex.app/demo/tour/full",
+      ),
+      steps(
+        "Guided — the prospect taps Next. Back, Skip, and Exit stay available.",
+        "Auto-play — Play on the narrator card. Timed advances; Pause to hold a screen.",
+        "Reset all demos (platform admin only) deletes demo-tagged orgs and this browser’s demo persist keys. Live tenants are untouched.",
+      ),
+      warn(
+        "Never send a tenant dashboard or Admin login as a demo. If Tenants is empty, that is correct — demos do not count.",
+      ),
+      related("platform-admin", "single-vs-multi", "prospect-intake"),
+    ],
+  }),
 ];

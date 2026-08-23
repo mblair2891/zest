@@ -17,6 +17,7 @@ import { initNativeShell } from "@/lib/native-shell";
 import { isVenueEntityId } from "@/lib/pos/entities";
 import type { VenueEntityId } from "@/lib/pos/types";
 import { isDevDemoClient } from "@/lib/saas/flags";
+import { getDemoType, isProspectDemo } from "@/lib/demo/session";
 import { useCurrentUserState } from "@/lib/auth/use-current-user";
 import { getPosBootstrapFn } from "@/lib/saas/api";
 import { tablesFromCount, type TenantMenuMode } from "@/lib/pos/starter-seed";
@@ -84,6 +85,14 @@ function PosAppInner({ entityId }: { entityId?: string }) {
 
   useEffect(() => {
     if (!ready) return;
+    if (isProspectDemo()) {
+      const t = getDemoType();
+      if (t && isVenueEntityId(t)) {
+        usePosStore.getState().loadProspectDemo(t);
+      }
+      setTenantGate("ok");
+      return;
+    }
     if (demo) {
       if (entityId && isVenueEntityId(entityId) && activeEntityId !== entityId) {
         applyEntity(entityId as VenueEntityId);
@@ -218,7 +227,7 @@ function PosAppInner({ entityId }: { entityId?: string }) {
     );
   }
 
-  if (!demo && tenantGate === "idle") {
+  if (!demo && !isProspectDemo() && tenantGate === "idle") {
     return (
       <div className="flex min-h-[100dvh] items-center justify-center bg-bg pt-[var(--grok-banner-h,0px)] text-muted-foreground">
         Checking access…

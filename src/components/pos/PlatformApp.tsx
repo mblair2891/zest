@@ -21,6 +21,7 @@ import {
   setActiveContextFn,
 } from "@/lib/saas/api";
 import { ProspectPipelineView } from "@/components/saas/ProspectPipelineView";
+import { PlatformDemosView } from "@/components/demo/PlatformDemosView";
 import { prospectResumePath } from "@/lib/saas/prospect-resume";
 import { navigateToSanitizedPath } from "@/lib/auth/post-login-navigate";
 import { saveTenantPosContext } from "@/lib/saas/pos-context";
@@ -75,7 +76,9 @@ export function PlatformApp() {
   );
   const { user, isPending } = useCurrentUserState();
   const demo = isDevDemoClient();
-  const [surface, setSurface] = useState<"console" | "pipeline">("console");
+  const [surface, setSurface] = useState<"console" | "pipeline" | "demos">(
+    "console",
+  );
 
   useEffect(() => {
     const done = () => setReady(true);
@@ -306,13 +309,29 @@ export function PlatformApp() {
           </p>
         </div>
         {tenants && (
-          <Button
-            size="sm"
-            variant={surface === "pipeline" ? "default" : "outline"}
-            onClick={() => setSurface(surface === "pipeline" ? "console" : "pipeline")}
-          >
-            {surface === "pipeline" ? "Console" : "Pipeline"}
-          </Button>
+          <>
+            <Button
+              size="sm"
+              variant={surface === "console" ? "default" : "outline"}
+              onClick={() => setSurface("console")}
+            >
+              Console
+            </Button>
+            <Button
+              size="sm"
+              variant={surface === "pipeline" ? "default" : "outline"}
+              onClick={() => setSurface("pipeline")}
+            >
+              Pipeline
+            </Button>
+            <Button
+              size="sm"
+              variant={surface === "demos" ? "default" : "outline"}
+              onClick={() => setSurface("demos")}
+            >
+              Demos
+            </Button>
+          </>
         )}
         <GuideTriggerButton topicId="platform-admin" />
         <Link
@@ -357,7 +376,13 @@ export function PlatformApp() {
         <PlatformTenantsBar tenants={tenants} onChanged={() => void hydrateFromServer()} />
       )}
       <main className="min-h-0 flex-1 overflow-hidden">
-        {surface === "pipeline" && tenants ? <ProspectPipelineView /> : <SaasConsoleView />}
+        {surface === "pipeline" && tenants ? (
+          <ProspectPipelineView />
+        ) : surface === "demos" ? (
+          <PlatformDemosView />
+        ) : (
+          <SaasConsoleView />
+        )}
       </main>
     </div>
   );

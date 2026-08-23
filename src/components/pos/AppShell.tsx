@@ -55,6 +55,7 @@ import {
 } from "@/lib/pos/package-access";
 import { cn, formatTime } from "@/lib/utils";
 import { isDevDemoClient } from "@/lib/saas/flags";
+import { isProspectDemo } from "@/lib/demo/session";
 import { FloorView } from "./FloorView";
 import { OrderView } from "./OrderView";
 import { KitchenView } from "./KitchenView";
@@ -189,7 +190,9 @@ export function AppShell() {
     [];
 
   const pkgOk = (v: PosView) =>
-    allowsView(v, enabledPackages, isDevDemoClient() ? packagePreview : "location");
+    isProspectDemo()
+      ? true
+      : allowsView(v, enabledPackages, isDevDemoClient() ? packagePreview : "location");
 
   const viewOk = (v: PosView) => {
     const ent = venueById(activeEntityId);
@@ -395,6 +398,7 @@ export function AppShell() {
               <button
                 key={id}
                 type="button"
+                data-demo={id}
                 onClick={() => setView(id)}
                 className={cn(
                   "flex items-center gap-3 rounded-xl px-2 py-2.5 text-left text-sm transition-colors lg:px-3",

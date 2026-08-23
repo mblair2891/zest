@@ -15,6 +15,7 @@ import { Route as AppsRouteImport } from './routes/apps'
 import { Route as BlogRouteImport } from './routes/blog'
 import { Route as ChangePasswordRouteImport } from './routes/change-password'
 import { Route as DashboardRouteImport } from './routes/dashboard'
+import { Route as DemoRouteImport } from './routes/demo'
 import { Route as FeaturesRouteImport } from './routes/features'
 import { Route as GetPricingRouteImport } from './routes/get-pricing'
 import { Route as GuideRouteImport } from './routes/guide'
@@ -29,6 +30,7 @@ import { Route as SignupRouteImport } from './routes/signup'
 import { Route as WhitepaperRouteImport } from './routes/whitepaper'
 import { Route as ApiHealthRouteImport } from './routes/api/health'
 import { Route as BlogSlugRouteImport } from './routes/blog.$slug'
+import { Route as DemoTypeRouteImport } from './routes/demo.$type'
 import { Route as InviteTokenRouteImport } from './routes/invite.$token'
 import { Route as OrderOrderIdRouteImport } from './routes/order.$orderId'
 import { Route as QuoteTokenRouteImport } from './routes/quote.$token'
@@ -40,6 +42,8 @@ import { Route as VenueTypeRouteImport } from './routes/venue.$type'
 import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
 import { Route as ApiBillingWebhookRouteImport } from './routes/api/billing/webhook'
 import { Route as AppVenueTypeRouteImport } from './routes/app.venue.$type'
+import { Route as DemoTypeTourRouteImport } from './routes/demo.$type.tour'
+import { Route as DemoTourFullRouteImport } from './routes/demo.tour.full'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -69,6 +73,11 @@ const ChangePasswordRoute = ChangePasswordRouteImport.update({
 const DashboardRoute = DashboardRouteImport.update({
   id: '/dashboard',
   path: '/dashboard',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DemoRoute = DemoRouteImport.update({
+  id: '/demo',
+  path: '/demo',
   getParentRoute: () => rootRouteImport,
 } as any)
 const FeaturesRoute = FeaturesRouteImport.update({
@@ -141,6 +150,11 @@ const BlogSlugRoute = BlogSlugRouteImport.update({
   path: '/$slug',
   getParentRoute: () => BlogRoute,
 } as any)
+const DemoTypeRoute = DemoTypeRouteImport.update({
+  id: '/$type',
+  path: '/$type',
+  getParentRoute: () => DemoRoute,
+} as any)
 const InviteTokenRoute = InviteTokenRouteImport.update({
   id: '/invite/$token',
   path: '/invite/$token',
@@ -196,6 +210,16 @@ const AppVenueTypeRoute = AppVenueTypeRouteImport.update({
   path: '/venue/$type',
   getParentRoute: () => AppRoute,
 } as any)
+const DemoTypeTourRoute = DemoTypeTourRouteImport.update({
+  id: '/tour',
+  path: '/tour',
+  getParentRoute: () => DemoTypeRoute,
+} as any)
+const DemoTourFullRoute = DemoTourFullRouteImport.update({
+  id: '/tour/full',
+  path: '/tour/full',
+  getParentRoute: () => DemoRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -204,6 +228,7 @@ export interface FileRoutesByFullPath {
   '/blog': typeof BlogRouteWithChildren
   '/change-password': typeof ChangePasswordRoute
   '/dashboard': typeof DashboardRoute
+  '/demo': typeof DemoRouteWithChildren
   '/features': typeof FeaturesRoute
   '/get-pricing': typeof GetPricingRoute
   '/guide': typeof GuideRoute
@@ -218,6 +243,7 @@ export interface FileRoutesByFullPath {
   '/whitepaper': typeof WhitepaperRoute
   '/api/health': typeof ApiHealthRoute
   '/blog/$slug': typeof BlogSlugRoute
+  '/demo/$type': typeof DemoTypeRouteWithChildren
   '/invite/$token': typeof InviteTokenRoute
   '/order/$orderId': typeof OrderOrderIdRoute
   '/quote/$token': typeof QuoteTokenRoute
@@ -229,6 +255,8 @@ export interface FileRoutesByFullPath {
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/billing/webhook': typeof ApiBillingWebhookRoute
   '/app/venue/$type': typeof AppVenueTypeRoute
+  '/demo/$type/tour': typeof DemoTypeTourRoute
+  '/demo/tour/full': typeof DemoTourFullRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -237,6 +265,7 @@ export interface FileRoutesByTo {
   '/blog': typeof BlogRouteWithChildren
   '/change-password': typeof ChangePasswordRoute
   '/dashboard': typeof DashboardRoute
+  '/demo': typeof DemoRouteWithChildren
   '/features': typeof FeaturesRoute
   '/get-pricing': typeof GetPricingRoute
   '/guide': typeof GuideRoute
@@ -251,6 +280,7 @@ export interface FileRoutesByTo {
   '/whitepaper': typeof WhitepaperRoute
   '/api/health': typeof ApiHealthRoute
   '/blog/$slug': typeof BlogSlugRoute
+  '/demo/$type': typeof DemoTypeRouteWithChildren
   '/invite/$token': typeof InviteTokenRoute
   '/order/$orderId': typeof OrderOrderIdRoute
   '/quote/$token': typeof QuoteTokenRoute
@@ -262,6 +292,8 @@ export interface FileRoutesByTo {
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/billing/webhook': typeof ApiBillingWebhookRoute
   '/app/venue/$type': typeof AppVenueTypeRoute
+  '/demo/$type/tour': typeof DemoTypeTourRoute
+  '/demo/tour/full': typeof DemoTourFullRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -271,6 +303,7 @@ export interface FileRoutesById {
   '/blog': typeof BlogRouteWithChildren
   '/change-password': typeof ChangePasswordRoute
   '/dashboard': typeof DashboardRoute
+  '/demo': typeof DemoRouteWithChildren
   '/features': typeof FeaturesRoute
   '/get-pricing': typeof GetPricingRoute
   '/guide': typeof GuideRoute
@@ -285,6 +318,7 @@ export interface FileRoutesById {
   '/whitepaper': typeof WhitepaperRoute
   '/api/health': typeof ApiHealthRoute
   '/blog/$slug': typeof BlogSlugRoute
+  '/demo/$type': typeof DemoTypeRouteWithChildren
   '/invite/$token': typeof InviteTokenRoute
   '/order/$orderId': typeof OrderOrderIdRoute
   '/quote/$token': typeof QuoteTokenRoute
@@ -296,6 +330,8 @@ export interface FileRoutesById {
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/billing/webhook': typeof ApiBillingWebhookRoute
   '/app/venue/$type': typeof AppVenueTypeRoute
+  '/demo/$type/tour': typeof DemoTypeTourRoute
+  '/demo/tour/full': typeof DemoTourFullRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -306,6 +342,7 @@ export interface FileRouteTypes {
     | '/blog'
     | '/change-password'
     | '/dashboard'
+    | '/demo'
     | '/features'
     | '/get-pricing'
     | '/guide'
@@ -320,6 +357,7 @@ export interface FileRouteTypes {
     | '/whitepaper'
     | '/api/health'
     | '/blog/$slug'
+    | '/demo/$type'
     | '/invite/$token'
     | '/order/$orderId'
     | '/quote/$token'
@@ -331,6 +369,8 @@ export interface FileRouteTypes {
     | '/api/auth/$'
     | '/api/billing/webhook'
     | '/app/venue/$type'
+    | '/demo/$type/tour'
+    | '/demo/tour/full'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -339,6 +379,7 @@ export interface FileRouteTypes {
     | '/blog'
     | '/change-password'
     | '/dashboard'
+    | '/demo'
     | '/features'
     | '/get-pricing'
     | '/guide'
@@ -353,6 +394,7 @@ export interface FileRouteTypes {
     | '/whitepaper'
     | '/api/health'
     | '/blog/$slug'
+    | '/demo/$type'
     | '/invite/$token'
     | '/order/$orderId'
     | '/quote/$token'
@@ -364,6 +406,8 @@ export interface FileRouteTypes {
     | '/api/auth/$'
     | '/api/billing/webhook'
     | '/app/venue/$type'
+    | '/demo/$type/tour'
+    | '/demo/tour/full'
   id:
     | '__root__'
     | '/'
@@ -372,6 +416,7 @@ export interface FileRouteTypes {
     | '/blog'
     | '/change-password'
     | '/dashboard'
+    | '/demo'
     | '/features'
     | '/get-pricing'
     | '/guide'
@@ -386,6 +431,7 @@ export interface FileRouteTypes {
     | '/whitepaper'
     | '/api/health'
     | '/blog/$slug'
+    | '/demo/$type'
     | '/invite/$token'
     | '/order/$orderId'
     | '/quote/$token'
@@ -397,6 +443,8 @@ export interface FileRouteTypes {
     | '/api/auth/$'
     | '/api/billing/webhook'
     | '/app/venue/$type'
+    | '/demo/$type/tour'
+    | '/demo/tour/full'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -406,6 +454,7 @@ export interface RootRouteChildren {
   BlogRoute: typeof BlogRouteWithChildren
   ChangePasswordRoute: typeof ChangePasswordRoute
   DashboardRoute: typeof DashboardRoute
+  DemoRoute: typeof DemoRouteWithChildren
   FeaturesRoute: typeof FeaturesRoute
   GetPricingRoute: typeof GetPricingRoute
   GuideRoute: typeof GuideRoute
@@ -473,6 +522,13 @@ declare module '@tanstack/react-router' {
       path: '/dashboard'
       fullPath: '/dashboard'
       preLoaderRoute: typeof DashboardRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/demo': {
+      id: '/demo'
+      path: '/demo'
+      fullPath: '/demo'
+      preLoaderRoute: typeof DemoRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/features': {
@@ -573,6 +629,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof BlogSlugRouteImport
       parentRoute: typeof BlogRoute
     }
+    '/demo/$type': {
+      id: '/demo/$type'
+      path: '/$type'
+      fullPath: '/demo/$type'
+      preLoaderRoute: typeof DemoTypeRouteImport
+      parentRoute: typeof DemoRoute
+    }
     '/invite/$token': {
       id: '/invite/$token'
       path: '/invite/$token'
@@ -650,6 +713,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppVenueTypeRouteImport
       parentRoute: typeof AppRoute
     }
+    '/demo/$type/tour': {
+      id: '/demo/$type/tour'
+      path: '/tour'
+      fullPath: '/demo/$type/tour'
+      preLoaderRoute: typeof DemoTypeTourRouteImport
+      parentRoute: typeof DemoTypeRoute
+    }
+    '/demo/tour/full': {
+      id: '/demo/tour/full'
+      path: '/tour/full'
+      fullPath: '/demo/tour/full'
+      preLoaderRoute: typeof DemoTourFullRouteImport
+      parentRoute: typeof DemoRoute
+    }
   }
 }
 
@@ -673,6 +750,30 @@ const BlogRouteChildren: BlogRouteChildren = {
 
 const BlogRouteWithChildren = BlogRoute._addFileChildren(BlogRouteChildren)
 
+interface DemoTypeRouteChildren {
+  DemoTypeTourRoute: typeof DemoTypeTourRoute
+}
+
+const DemoTypeRouteChildren: DemoTypeRouteChildren = {
+  DemoTypeTourRoute: DemoTypeTourRoute,
+}
+
+const DemoTypeRouteWithChildren = DemoTypeRoute._addFileChildren(
+  DemoTypeRouteChildren,
+)
+
+interface DemoRouteChildren {
+  DemoTypeRoute: typeof DemoTypeRouteWithChildren
+  DemoTourFullRoute: typeof DemoTourFullRoute
+}
+
+const DemoRouteChildren: DemoRouteChildren = {
+  DemoTypeRoute: DemoTypeRouteWithChildren,
+  DemoTourFullRoute: DemoTourFullRoute,
+}
+
+const DemoRouteWithChildren = DemoRoute._addFileChildren(DemoRouteChildren)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AppRoute: AppRouteWithChildren,
@@ -680,6 +781,7 @@ const rootRouteChildren: RootRouteChildren = {
   BlogRoute: BlogRouteWithChildren,
   ChangePasswordRoute: ChangePasswordRoute,
   DashboardRoute: DashboardRoute,
+  DemoRoute: DemoRouteWithChildren,
   FeaturesRoute: FeaturesRoute,
   GetPricingRoute: GetPricingRoute,
   GuideRoute: GuideRoute,
@@ -707,12 +809,3 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { createStart } from '@tanstack/react-start'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-  }
-}

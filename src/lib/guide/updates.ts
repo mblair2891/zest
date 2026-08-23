@@ -7,6 +7,16 @@ import { GUIDE_VERSION, type GuideRole, type GuideUpdate } from "./types";
  */
 export const GUIDE_UPDATES: GuideUpdate[] = [
   {
+    id: "upd_2026_08_27_demos",
+    date: "2026-08-27",
+    title: "Prospect demos & guided tours",
+    summary:
+      "Share a type link or the full product tour. Demo rooms stay out of tenants, billing, and statistics.",
+    roles: ["platform_admin", "owner_manager", "host_operator"],
+    topicId: "prospect-demos",
+    tags: ["demo", "tour", "saas"],
+  },
+  {
     id: "upd_2026_08_26_laundry",
     date: "2026-08-26",
     title: "The Laundry TEST venue",
