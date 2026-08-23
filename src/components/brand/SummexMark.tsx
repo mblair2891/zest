@@ -8,20 +8,22 @@ export function SummexMark({
   className?: string;
   inverse?: boolean;
 }) {
-  const stroke = inverse ? "var(--color-primary-foreground)" : "var(--color-foreground)";
-  const fill = stroke;
   return (
     <svg
       xmlns="http://www.w3.org/2000/svg"
       viewBox="0 0 32 32"
       fill="none"
-      className={cn("shrink-0", className)}
+      className={cn(
+        "shrink-0 text-foreground",
+        inverse && "text-primary-foreground",
+        className,
+      )}
       aria-hidden
     >
-      <rect x="4" y="4" width="24" height="24" rx="2" stroke={stroke} strokeWidth="1.5" />
+      <rect x="4" y="4" width="24" height="24" rx="2" stroke="currentColor" strokeWidth="1.5" />
       <path
         d="M11 11h10v3.25H15.75v1.5H21v3.25H11v-3.25h5.25v-1.5H11z"
-        fill={fill}
+        fill="currentColor"
       />
     </svg>
   );

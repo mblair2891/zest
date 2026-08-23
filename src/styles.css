@@ -1,6 +1,6 @@
 @import "tailwindcss";
 @import "tw-animate-css";
-@import url("https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,400;0,14..32,500;0,14..32,600;0,14..32,700;1,14..32,400&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;1,400;1,500&family=Inter:ital,opsz,wght@0,14..32,400;0,14..32,500;0,14..32,600;0,14..32,700;1,14..32,400&display=swap");
 
 @theme {
   --color-bg: #f7f6f3;
@@ -47,7 +47,13 @@
   --color-sec-6: #4a5568;
 
   --font-sans: "Inter", "Helvetica Neue", Helvetica, Arial, sans-serif;
+  --font-display: "Cormorant Garamond", "Times New Roman", Times, serif;
   --font-mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+
+  --color-ink: #0a0a0a;
+  --color-ink-2: #121110;
+  --color-ivory: #f7f6f3;
+  --color-champagne: #c4b8a5;
 
   --radius-sm: 0.25rem;
   --radius-md: 0.375rem;
@@ -119,9 +125,110 @@
   }
 }
 
+/* Public marketing landing — scoped so POS keeps the cream product chrome. */
+.mkt {
+  --color-bg: #0a0a0a;
+  --color-surface: #141312;
+  --color-surface-2: #1c1b19;
+  --color-surface-3: #242320;
+  --color-foreground: #f7f6f3;
+  --color-muted-foreground: #9a9488;
+  --color-border: rgb(196 184 165 / 0.18);
+  --color-border-strong: rgb(196 184 165 / 0.32);
+  --color-primary: #f7f6f3;
+  --color-primary-foreground: #0a0a0a;
+  --color-primary-hover: #e8e4dc;
+  --color-secondary: #1c1b19;
+  --color-secondary-foreground: #f7f6f3;
+  --color-link: #c4b8a5;
+  --color-ring: #c4b8a5;
+  color: var(--color-foreground);
+  background-color: var(--color-bg);
+  font-feature-settings: "liga", "kern";
+}
+
+.mkt ::selection {
+  background: rgb(196 184 165 / 0.28);
+  color: var(--color-ivory);
+}
+
+.mkt-ambient {
+  background-color: var(--color-ink);
+  background-image:
+    radial-gradient(ellipse 80% 55% at 50% -18%, rgb(196 184 165 / 0.1), transparent 58%),
+    radial-gradient(ellipse 45% 35% at 100% 90%, rgb(196 184 165 / 0.05), transparent 52%),
+    radial-gradient(ellipse 30% 25% at 0% 70%, rgb(196 184 165 / 0.04), transparent 50%);
+}
+
+.mkt-sheen {
+  pointer-events: none;
+  background: radial-gradient(
+    ellipse 70% 40% at 50% 0%,
+    rgb(196 184 165 / 0.07),
+    transparent 70%
+  );
+  animation: mkt-breathe 14s ease-in-out infinite;
+}
+
+.mkt-rule {
+  height: 1px;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgb(196 184 165 / 0.45),
+    transparent
+  );
+}
+
+.mkt-kicker {
+  letter-spacing: 0.32em;
+}
+
+.mkt-fade {
+  animation: mkt-rise 1s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.mkt-d1 {
+  animation-delay: 0.12s;
+}
+.mkt-d2 {
+  animation-delay: 0.24s;
+}
+.mkt-d3 {
+  animation-delay: 0.36s;
+}
+.mkt-d4 {
+  animation-delay: 0.48s;
+}
+
+@keyframes mkt-rise {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes mkt-breathe {
+  0%,
+  100% {
+    opacity: 0.55;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   * {
     transition-duration: 0.01ms !important;
+  }
+  .mkt-fade,
+  .mkt-sheen {
+    animation: none !important;
   }
 }
 
