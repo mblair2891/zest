@@ -170,7 +170,7 @@ export function LoginScreen() {
           )}
         </div>
 
-        {demo && roleLogins.length > 0 && (
+        {demo && !isProspectDemo() && roleLogins.length > 0 && (
           <div className="mt-10">
             <p className="mb-1 text-center text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
               Quick login by access level (POS)

@@ -7,6 +7,16 @@ import { GUIDE_VERSION, type GuideRole, type GuideUpdate } from "./types";
  */
 export const GUIDE_UPDATES: GuideUpdate[] = [
   {
+    id: "upd_2026_09_02_demo_switcher",
+    date: "2026-09-02",
+    title: "Demo login & device switcher",
+    summary:
+      "One demo login, then switch owner/server/kitchen, kiosk, or KDS on the same isolated house.",
+    roles: "all",
+    topicId: "prospect-demos",
+    tags: ["demo", "kiosk", "kds"],
+  },
+  {
     id: "upd_2026_09_01_reports_ai",
     date: "2026-09-01",
     title: "Reports suite and AI insights",

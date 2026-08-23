@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Link } from "@tanstack/react-router";
+import { Link, Navigate } from "@tanstack/react-router";
 import { ClipboardList, DoorOpen, Users } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -17,6 +17,10 @@ import type { FrontSettings, KioskMode, WaitEstimate } from "@/lib/front/types";
 import { WAITLIST_REASON_LABEL } from "@/lib/front/types";
 import { useNotifyStore } from "@/lib/pos/notify-store";
 import { cn } from "@/lib/utils";
+import { getDemoType, isProspectDemo, parseDemoType } from "@/lib/demo/session";
+import { useDemoDeviceStore } from "@/lib/demo/device-session";
+import { DemoDeviceSwitcher } from "@/components/demo/DemoDeviceSwitcher";
+import { useDemoLiveSync } from "@/lib/demo/live-sync";
 
 type Pane = "home" | "order" | "waitlist" | "checkin" | "book";
 
@@ -38,6 +42,9 @@ function kioskSignals() {
 }
 
 export function KioskApp() {
+  useDemoLiveSync();
+  const demoEntered = useDemoDeviceStore((s) => s.entered);
+  const demoType = getDemoType();
   const [ready, setReady] = useState(false);
   const [pane, setPane] = useState<Pane>("home");
   const [settings, setSettings] = useState<FrontSettings | null>(null);
@@ -95,6 +102,11 @@ export function KioskApp() {
     else if (mode === "checkin") setPane("home");
   }, [settings?.kioskMode]);
 
+  const demoVenue = parseDemoType(demoType ?? undefined);
+  if (isProspectDemo() && !demoEntered && demoVenue) {
+    return <Navigate to="/demo/$type" params={{ type: demoVenue }} />;
+  }
+
   if (!ready) {
     return (
       <div className="flex min-h-[100dvh] items-center justify-center bg-bg text-muted-foreground">
@@ -118,12 +130,16 @@ export function KioskApp() {
             <p className="text-xs text-muted-foreground">Guest kiosk</p>
           </div>
         </div>
-        <Link
-          to="/login"
-          className="text-xs text-muted-foreground underline-offset-2 hover:underline"
-        >
-          Staff
-        </Link>
+        {isProspectDemo() && demoEntered ? (
+          <DemoDeviceSwitcher />
+        ) : (
+          <Link
+            to="/login"
+            className="text-xs text-muted-foreground underline-offset-2 hover:underline"
+          >
+            Staff
+          </Link>
+        )}
       </header>
 
       {mode === "combined" && (
@@ -334,12 +350,21 @@ function OrderPane() {
           className="mb-2 h-14 w-full text-base"
           disabled={!cart.length}
           onClick={() => {
+            const lines = cart.map((l) => ({ ...l }));
             const res = place({
               guestName: "Kiosk guest",
               type: "takeout",
               channel: "kiosk",
             });
-            if (res.ok) setDone("Order placed — pickup when ready");
+            if (isProspectDemo()) {
+              const pos = usePosStore.getState();
+              pos.openTakeout("Kiosk guest");
+              for (const line of lines) {
+                for (let n = 0; n < line.qty; n += 1) pos.addItem(line.menuItemId);
+              }
+              pos.sendOrder();
+            }
+            if (res.ok || isProspectDemo()) setDone("Order placed — pickup when ready");
           }}
         >
           Pay & send to kitchen
@@ -393,15 +418,29 @@ function WaitlistPane({
           partySize: Number(party) || 2,
           ...kioskSignals(),
         },
+      }).catch(() => null);
+      const quoted = r?.entry.quotedMinutes ?? estimate?.minutes ?? 15;
+      usePosStore.getState().addWaitlist({
+        name,
+        partySize: Number(party) || 2,
+        phone,
+        quotedMinutes: quoted,
+        status: "waiting",
       });
       useNotifyStore.getState().pushNotice({
         kind: "waitlist_update",
         title: "Waitlist",
-        body: `${r.entry.name} · ${r.entry.partySize} joined the waitlist`,
+        body: `${name} · ${party} joined the waitlist`,
       });
-      setMsg(
-        `You're on the list. ${r.estimateLabel}. A text was ${r.provider === "sandbox" ? "logged (sandbox)" : "sent"} with a remove link.`,
-      );
+      if (r) {
+        setMsg(
+          `You're on the list. ${r.estimateLabel}. A text was ${r.provider === "sandbox" ? "logged (sandbox)" : "sent"} with a remove link.`,
+        );
+      } else if (isProspectDemo()) {
+        setMsg("You're on the list (demo). Staff see you on Host stand.");
+      } else {
+        setMsg("Could not join");
+      }
       window.setTimeout(onDone, 3200);
     } catch (e) {
       setMsg(e instanceof Error ? e.message : "Could not join");

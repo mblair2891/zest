@@ -89,7 +89,7 @@ export function DemoCatalogPage() {
               <div className="mt-5 flex flex-wrap gap-2">
                 <Button asChild size="sm" variant="outline">
                   <Link to="/demo/$type" params={{ type: d.type }}>
-                    Open
+                    Enter demo
                   </Link>
                 </Button>
                 <Button

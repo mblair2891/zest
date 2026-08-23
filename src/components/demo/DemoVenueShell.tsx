@@ -1,11 +1,15 @@
-import { useLayoutEffect } from "react";
+import { useEffect, useLayoutEffect } from "react";
 import { toast } from "sonner";
 import { PosApp } from "@/components/pos/PosApp";
 import { demoEntry } from "@/lib/demo/catalog";
 import { enterDemoSession, exitDemoSession } from "@/lib/demo/session";
 import { startTour, useTourStore } from "@/lib/demo/tour-store";
+import { useDemoDeviceStore } from "@/lib/demo/device-session";
+import { usePosStore } from "@/lib/pos/store";
 import type { VenueEntityId } from "@/lib/pos/types";
 import { DemoBanner } from "./DemoPlayer";
+import { DemoEnterGate } from "./DemoEnterGate";
+import { DemoDeviceSwitcher } from "./DemoDeviceSwitcher";
 
 export function DemoVenueShell({
   type,
@@ -16,13 +20,30 @@ export function DemoVenueShell({
 }) {
   const entry = demoEntry(type);
   const running = useTourStore((s) => Boolean(s.tour));
+  const entered = useDemoDeviceStore((s) => s.entered);
 
   useLayoutEffect(() => {
     enterDemoSession(type);
+    const s = usePosStore.getState();
+    if (s.activeEntityId !== type || s.employees.length === 0) {
+      s.loadProspectDemo(type);
+    }
     return () => {
       if (!useTourStore.getState().tour) exitDemoSession();
     };
   }, [type]);
+
+  useEffect(() => {
+    if (!entered) return;
+    const s = usePosStore.getState();
+    if (s.currentEmployeeId) return;
+    const owner = s.employees.find((e) => e.role === "owner" && e.active) ?? s.employees[0];
+    if (owner) s.loginAs(owner.id);
+  }, [entered]);
+
+  if (!entered) {
+    return <DemoEnterGate type={type} />;
+  }
 
   return (
     <div className="relative">
@@ -42,6 +63,11 @@ export function DemoVenueShell({
                   }
             }
           />
+        </div>
+      </div>
+      <div className="pointer-events-none absolute right-3 top-[calc(var(--grok-banner-h,0px)+3.25rem)] z-50 sm:hidden">
+        <div className="pointer-events-auto">
+          <DemoDeviceSwitcher />
         </div>
       </div>
       <PosApp entityId={type} />

@@ -88,7 +88,10 @@ function PosAppInner({ entityId }: { entityId?: string }) {
     if (isProspectDemo()) {
       const t = getDemoType();
       if (t && isVenueEntityId(t)) {
-        usePosStore.getState().loadProspectDemo(t);
+        const s = usePosStore.getState();
+        if (s.activeEntityId !== t || s.employees.length === 0) {
+          s.loadProspectDemo(t);
+        }
       }
       setTenantGate("ok");
       return;

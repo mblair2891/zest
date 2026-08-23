@@ -68,9 +68,17 @@ export const FULL_TOUR: TourDefinition = {
       id: "f-roles",
       title: "Access levels",
       script:
-        "Owner Home is the house snapshot and settings. Server Home is my sections. Kitchen is the KDS. Steam and Diamond operators only see their stall. PIN on this demo: 9999 owner, 1111 server, 5555 kitchen, 6666 Steam, 7777 Diamond.",
-      selector: "[data-demo='home']",
+        "One demo login. The yellow Demo mode control switches access level or device. Owner Home is the snapshot. Server is sections. Kitchen KDS is the pit. Steam and Diamond operators only see their stall.",
+      selector: "[data-demo='device-switcher']",
       view: "hq",
+    },
+    {
+      id: "f-kds",
+      title: "Kitchen KDS",
+      script:
+        "Switch the dropdown to Device · KDS Kitchen. Tickets from the floor and kiosk land here. Bump tells the floor the plate is up. Switch back to Server / floor to keep selling.",
+      selector: "[data-demo='kitchen']",
+      view: "kitchen",
     },
     {
       id: "f-settings",

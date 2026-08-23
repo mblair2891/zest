@@ -102,6 +102,18 @@ chapter). They render only when the viewer is signed in as `platform_admin`.
 
 Public **Exit** on `/guide` returns to `/`. Demo/tour **Exit** returns to `/demo`.
 
+## Demo login & device switcher
+
+Prospect rooms use **one** demo login (`Continue as demo operator`, or
+`demo` / `demo` — listed on Platform → Demos, not the marketing home). After
+enter, **Demo mode — switch role or device** picks access level (owner,
+manager, server, host stand, bartender, kitchen, cashier, vendor operator,
+accountant) or device (Floor POS, Kiosk, KDS Kitchen, KDS Bar).
+
+The session is `is_demo` only. Real tenants still use memberships and PINs.
+Floor, kiosk, and KDS share the same demo persist so tickets, waitlist, and
+pays stay in sync.
+
 ## Roles
 
 | Tab | Who |

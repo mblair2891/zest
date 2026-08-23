@@ -63,8 +63,9 @@ export function PlatformDemosView() {
         </h1>
         <p className="mt-2 max-w-2xl text-sm text-muted-foreground">
           Demo data is excluded from tenants and statistics. Share a type link;
-          the prospect never sees live operators or billing. Guided demo runs
-          on the live product with voiceover.
+          the prospect never sees live operators or billing. One demo login,
+          then switch role or device (kiosk / KDS). Optional shared login:
+          username demo / password demo — do not put this on the marketing home.
         </p>
 
         <div
@@ -114,7 +115,7 @@ export function PlatformDemosView() {
               <div className="mt-3 flex flex-wrap gap-2">
                 <Button asChild size="sm" variant="outline">
                   <Link to="/demo/$type" params={{ type: d.type }}>
-                    Open
+                    Enter demo
                   </Link>
                 </Button>
                 <Button

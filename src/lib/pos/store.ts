@@ -153,6 +153,18 @@ const usePosStoreRaw = create()(persist((set, get) => ({
 		get().audit("login", `${emp.name} (${emp.role})`);
 		return { ok: true };
 	},
+	loginAs: (employeeId) => {
+		const emp = get().employees.find((e) => e.id === employeeId && e.active);
+		if (!emp) return { ok: false, error: "Unknown employee" };
+		set({
+			currentEmployeeId: emp.id,
+			view: homeViewForEmployee(emp),
+			activeOrderId: null,
+			activeTableId: null,
+		});
+		get().audit("login", `${emp.name} (${emp.role}) · switch`);
+		return { ok: true };
+	},
 	logout: () => {
 		const emp = get().getCurrentEmployee();
 		if (emp) get().audit("logout", emp.name);
@@ -1565,7 +1577,7 @@ const usePosStoreRaw = create()(persist((set, get) => ({
 			slice.employees.find((e) => e.role === "owner") ?? slice.employees[0];
 		set({
 			...slice,
-			currentEmployeeId: owner?.id ?? null,
+			currentEmployeeId: null,
 			shift: emptyShift(),
 			clock: Date.now(),
 			auditLog: [

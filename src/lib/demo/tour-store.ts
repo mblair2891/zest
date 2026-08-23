@@ -2,6 +2,7 @@ import { create } from "zustand";
 import { getTour, type TourDefinition, type TourStep } from "./tour-scripts";
 import { cancelSpeech } from "./speech";
 import { enterDemoSession, exitDemoSession } from "./session";
+import { enterDemoOperator } from "./device-session";
 
 type StartOpts = { autoPlay?: boolean };
 
@@ -46,7 +47,10 @@ export const useTourStore = create<TourState>((set, get) => ({
     }
     cancelSpeech();
     const typeParam = demoTypeForTour(id, def);
-    if (typeParam) enterDemoSession(typeParam);
+    if (typeParam) {
+      enterDemoSession(typeParam);
+      enterDemoOperator();
+    }
     set({
       tour: def,
       index: 0,

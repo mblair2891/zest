@@ -99,6 +99,7 @@ export interface PosStore {
   activeEntityId: VenueEntityId;
 
   login: (pin: string) => ActionResult;
+  loginAs: (employeeId: string) => ActionResult;
   logout: () => void;
   verifyManagerPin: (pin: string) => boolean;
   clockToggle: (employeeId: string) => void;

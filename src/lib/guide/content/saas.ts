@@ -217,18 +217,19 @@ export const SAAS_TOPICS: GuideTopic[] = [
         "A prospect should walk the real product — exact screens, demo-seeded venues — not a slideshow. Demo rooms are tagged and excluded from live tenants, billing, and statistics.",
       ),
       p(
-        "Open Product demos from the public site. Start guided demo or Full product tour: spotlight on the live UI, narrator card, and voiceover. You do not sign in. Exit returns to the demo list — never the control plane.",
+        "Open Product demos from the public site. Enter demo with one login (Continue as demo operator, or demo / demo). Then switch access level, kiosk, or KDS. Guided tours still narrate the live UI. Exit returns to the demo list — never the control plane.",
       ),
       ul(
         "Per type: /demo/{type} — restaurant, food_hall (The Laundry), bar_lounge, qsr, cafe, truck_pod, ghost_kitchen, catering.",
-        "The Laundry: /demo/food_hall/tour — Steam Distillery + Diamond House BBQ, one guest check, Quantum Payments, settlement split.",
-        "Full product tour: /demo/tour/full — catalog, The Laundry, floor, menu, routing, pay, settlement, cash discount, kiosk, Operators Guide, back to Demos.",
+        "The Laundry: /demo/food_hall — Steam Distillery + Diamond House BBQ, one guest check, Quantum Payments, settlement split.",
+        "Full product tour: /demo/tour/full.",
+        "Switcher: Owner, Manager, Server, Host stand, Bartender, Kitchen, Cashier, Vendor (Steam / Diamond), Accountant, plus Floor POS, Kiosk, KDS Kitchen, KDS Bar.",
       ),
       steps(
-        "From the landing page open Demos, or go to /demo.",
-        "Start full tour, or Guided demo on a type card. Unknown tour ids show “Tour not available”.",
-        "Guided — tap Next. Back, Play, Pause, Voice, and Exit stay on the narrator. Esc also exits.",
-        "Play auto-advances on speech length. Pause stops voiceover. Exit returns to the public demo index.",
+        "From the landing page open Demos, or go to /demo. Tap Enter demo.",
+        "Continue as demo operator (or username demo / password demo). Shared creds are listed on Platform → Demos only, not the marketing home.",
+        "Use Demo mode — switch role or device. Floor POS, Kitchen KDS, Bar KDS, and Kiosk share the same demo location.",
+        "Start a guided tour from the banner if you want voiceover. Exit returns to the public demo index.",
       ),
       callout(
         "Live UI, demo data only",
@@ -237,7 +238,7 @@ export const SAAS_TOPICS: GuideTopic[] = [
       warn(
         "Do not treat a demo room as a live login. Sign in from the marketing Sign in control when you have a real house.",
       ),
-      related("single-vs-multi", "prospect-intake", "type-food-hall", "feature-kiosk"),
+      related("single-vs-multi", "prospect-intake", "type-food-hall", "feature-kiosk", "roles-dashboards"),
     ],
   }),
   topic({

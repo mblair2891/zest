@@ -56,6 +56,9 @@ import {
 import { cn, formatTime } from "@/lib/utils";
 import { isDevDemoClient } from "@/lib/saas/flags";
 import { isProspectDemo } from "@/lib/demo/session";
+import { DemoDeviceSwitcher } from "@/components/demo/DemoDeviceSwitcher";
+import { useDemoDeviceStore } from "@/lib/demo/device-session";
+import { useDemoLiveSync } from "@/lib/demo/live-sync";
 import { FloorView } from "./FloorView";
 import { OrderView } from "./OrderView";
 import { KitchenView } from "./KitchenView";
@@ -156,6 +159,13 @@ const MOBILE_PRIORITY: PosView[] = [
 ];
 
 export function AppShell() {
+  useDemoLiveSync();
+  const demoDevice = useDemoDeviceStore((s) => s.device);
+  const demoEntered = useDemoDeviceStore((s) => s.entered);
+  const kdsMode =
+    isProspectDemo() &&
+    demoEntered &&
+    (demoDevice === "kds_kitchen" || demoDevice === "kds_bar");
   const view = usePosStore((s) => s.view);
   const setView = usePosStore((s) => s.setView);
   const logout = usePosStore((s) => s.logout);
@@ -277,14 +287,37 @@ export function AppShell() {
     (o) => !["completed", "cancelled"].includes(o.status),
   ).length;
 
-  const safeView =
-    viewOk(view) &&
-    canAccessView(role, view) &&
-    pkgOk(view)
+  const safeView = kdsMode
+    ? demoDevice === "kds_bar"
+      ? "bar"
+      : "kitchen"
+    : viewOk(view) && canAccessView(role, view) && pkgOk(view)
       ? view
       : emp
         ? homeViewForEmployee(emp)
         : homeViewForRole(role);
+
+  if (kdsMode) {
+    return (
+      <div className="flex h-[100dvh] flex-col bg-bg pt-[var(--grok-banner-h,0px)] text-foreground">
+        <header className="flex h-14 shrink-0 items-center gap-2 border-b border-border bg-surface px-3">
+          <p className="text-sm font-semibold">
+            {demoDevice === "kds_bar" ? "Bar KDS" : "Kitchen KDS"}
+          </p>
+          <span className="text-xs text-muted-foreground">{settings.name}</span>
+          <div className="ml-auto">
+            <DemoDeviceSwitcher />
+          </div>
+        </header>
+        <div
+          className="min-h-0 flex-1"
+          data-demo={demoDevice === "kds_bar" ? "bar" : "kitchen"}
+        >
+          <KitchenView station={demoDevice === "kds_bar" ? "bar" : "kitchen"} />
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex h-[100dvh] flex-col bg-bg pt-[var(--grok-banner-h,0px)] text-foreground">
@@ -330,6 +363,9 @@ export function AppShell() {
           )}
           {/* Package preview is desktop-only so Help stays visible on phones */}
 
+          {isProspectDemo() && demoEntered && (
+            <DemoDeviceSwitcher className="hidden sm:flex" />
+          )}
           {emp && (
             <div className="hidden text-right md:block">
               <p className="text-sm font-medium leading-tight">{emp.name}</p>
@@ -358,11 +394,13 @@ export function AppShell() {
               <Building2 className="h-4 w-4" />
             </Button>
           </Link>
-          <Link to="/dashboard" title="Open control plane" className="hidden sm:block">
-            <Button size="icon" variant="ghost" aria-label="SaaS platform">
-              <Rocket className="h-4 w-4" />
-            </Button>
-          </Link>
+          {!isProspectDemo() && (
+            <Link to="/dashboard" title="Open control plane" className="hidden sm:block">
+              <Button size="icon" variant="ghost" aria-label="SaaS platform">
+                <Rocket className="h-4 w-4" />
+              </Button>
+            </Link>
+          )}
           <Button
             size="icon"
             variant="ghost"
