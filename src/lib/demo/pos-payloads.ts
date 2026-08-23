@@ -250,6 +250,16 @@ export function demoPosSlice(type: VenueEntityId) {
     waitlist: [],
     reservations: [],
     vendors: [vendor],
+    inventory: menu.items.slice(0, 4).map((it, i) => ({
+      id: `inv_demo_${type}_${i}`,
+      name: `${it.name} cost`,
+      unit: "ea",
+      onHand: 12,
+      par: 16,
+      costCents: Math.round(it.priceCents * 0.32),
+      linkedMenuItemIds: [it.id],
+      lowStock: false,
+    })),
     settlementConfig: {
       ...starterSettlement(entry.hostName),
       locationId: locId,

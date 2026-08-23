@@ -79,6 +79,17 @@ go through `saveLocationSettingsFn` (membership owner/manager/platform_admin).
 
 In-app: `/guide?topic=roles-dashboards` and `/guide?topic=location-settings`.
 
+## Reports & AI insights
+
+Location Reports (PIN owner/manager/accountant; vendor own slice; server “my”
+sales). Catalog is entity-type aware. AI Insights runs
+`analyzeLocationPerformance` on a metrics payload from this location — never
+invented inventory. No key → Guided insights, same JSON. Apply navigates; it
+does not auto-change prices.
+
+Public guide: `/guide?topic=reports` and `/guide?topic=ai-insights`. No
+platform-admin portfolio metrics.
+
 ## Public vs Platform
 
 The public `/guide` is operations: floor, menu, routing, Quantum Payments,

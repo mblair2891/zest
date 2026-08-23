@@ -151,6 +151,22 @@ export const FULL_TOUR: TourDefinition = {
       action: "settle_preview",
     },
     {
+      id: "f-reports",
+      title: "Reports",
+      script:
+        "Reports is the house recap: sales, tenders, ticket times, waitlist, and operator mix. Export CSV. Vendor operators only see their slice.",
+      selector: "[data-demo='reports']",
+      view: "reports",
+    },
+    {
+      id: "f-ai",
+      title: "AI insights",
+      script:
+        "Run analysis. Insights use live metrics — voids, ticket times, waitlist, mix, and cost when inventory is linked. Apply jumps to the setting. It does not change prices by itself.",
+      selector: "[data-demo='ai-insights']",
+      view: "reports",
+    },
+    {
       id: "f-cash",
       title: "Cash discount",
       script:
@@ -296,6 +312,14 @@ function typeTour(type: VenueEntityId): TourDefinition {
           view: "settlement",
           action: "settle_preview",
         },
+        {
+          id: "l-reports",
+          title: "Reports & AI",
+          script:
+            "Open Reports, then AI insights. Run analysis on The Laundry. You should see mix between Steam and Diamond and a sample recommendation — not invented inventory counts.",
+          selector: "[data-demo='ai-insights']",
+          view: "reports",
+        },
       ],
     };
   }
@@ -338,6 +362,14 @@ function typeTour(type: VenueEntityId): TourDefinition {
           view: "order",
           action: "pay",
         },
+        {
+          id: `${type}-reports`,
+          title: "Reports & AI",
+          script:
+            "Reports for this house: sales, tenders, ticket times. Run AI insights — recommendations stay on this location, not a platform portfolio.",
+          selector: "[data-demo='reports']",
+          view: "reports",
+        },
       ],
     };
   }
@@ -379,6 +411,13 @@ function typeTour(type: VenueEntityId): TourDefinition {
           selector: "[data-demo='order']",
           view: "order",
           action: "pay",
+        },
+        {
+          id: "b-reports",
+          title: "Reports",
+          script: "Bar reports: tenders, ticket times, mix. AI insights stay on this lounge — not a platform rollup.",
+          selector: "[data-demo='reports']",
+          view: "reports",
         },
       ],
     };
@@ -429,6 +468,14 @@ function typeTour(type: VenueEntityId): TourDefinition {
         selector: "[data-demo='waitlist']",
         view: "waitlist",
         action: "waitlist_join",
+      },
+      {
+        id: `${type}-reports`,
+        title: "Reports & AI",
+        script:
+          "Reports recap the house. Run AI insights for this range. Recommendations jump to a screen — they do not rewrite prices alone.",
+        selector: "[data-demo='reports']",
+        view: "reports",
       },
     ],
   };

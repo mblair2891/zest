@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import {
   Bar,
   BarChart,
@@ -9,284 +9,578 @@ import {
   YAxis,
 } from "recharts";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { usePosStore } from "@/lib/pos/store";
-import { computeTotals } from "@/lib/pos/calculations";
 import { formatCurrency } from "@/lib/utils";
+import { canEmployee } from "@/lib/access/permissions";
+import { REPORT_GROUP_LABEL, reportsFor } from "@/lib/reports/catalog";
+import { csvFromRows } from "@/lib/reports/metrics";
+import { metricsFromPosStore } from "@/lib/reports/from-store";
+import { analyzeLocationPerformanceFn } from "@/lib/reports/api";
+import { isProspectDemo } from "@/lib/demo/session";
+import { speak } from "@/lib/demo/speech";
+import type { LocationInsights, RangeKey, ReportId } from "@/lib/reports/types";
+import type { PosView, VenueEntityId } from "@/lib/pos/types";
+import { cn } from "@/lib/utils";
 
 function formatSalesTooltip(value: unknown) {
   const n = typeof value === "number" ? value : Number(value ?? 0);
   return [`$${Number.isFinite(n) ? n.toFixed(2) : "0.00"}`, "Sales"];
 }
 
+function downloadCsv(name: string, csv: string) {
+  const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = name;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
 export function ReportsView() {
-  const orders = usePosStore((s) => s.orders);
-  const settings = usePosStore((s) => s.settings);
-  const employees = usePosStore((s) => s.employees);
-  const shift = usePosStore((s) => s.shift);
-  const menuItems = usePosStore((s) => s.menuItems);
-  const categories = usePosStore((s) => s.categories);
+  const emp = usePosStore((s) => s.employees.find((e) => e.id === s.currentEmployeeId));
+  const venue = usePosStore((s) => s.activeEntityId) as VenueEntityId;
+  const vendors = usePosStore((s) => s.vendors);
+  const setView = usePosStore((s) => s.setView);
+  const [tab, setTab] = useState<"reports" | "ai">("reports");
+  const [range, setRange] = useState<RangeKey>("shift");
+  const [operatorId, setOperatorId] = useState<string>(emp?.operatorId ?? "");
+  const [reportId, setReportId] = useState<ReportId>("sales-summary");
+  const [insights, setInsights] = useState<LocationInsights | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
 
-  const stats = useMemo(() => {
-    const closed = orders.filter((o) => o.status === "closed");
-    const open = orders.filter((o) => o.status === "open");
-    let sales = 0;
-    let tax = 0;
-    let tips = 0;
-    let guests = 0;
-    const byHour: Record<number, number> = {};
-    const byItem: Record<string, { name: string; qty: number; sales: number }> =
-      {};
-    const byCat: Record<string, number> = {};
-    const byServer: Record<string, { name: string; sales: number; tips: number }> =
-      {};
+  const list = reportsFor(venue, emp?.role);
+  const active = list.find((r) => r.id === reportId) ?? list[0];
+  const metrics = useMemo(
+    () =>
+      metricsFromPosStore({
+        range,
+        operatorId: emp?.role === "vendor_operator" ? emp.operatorId : operatorId || null,
+        serverId: emp?.role === "server" ? emp.id : null,
+      }),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [range, operatorId, emp?.id, emp?.role, emp?.operatorId, venue],
+  );
 
-    for (const o of orders) {
-      const t = computeTotals(o, settings);
-      if (o.status === "voided") continue;
-      const paid = o.payments.reduce((s, p) => s + p.amountCents, 0);
-      sales += paid || (o.status === "open" ? 0 : t.totalCents);
-      tax += t.taxCents;
-      tips += t.tipCents;
-      guests += o.guestCount;
-
-      const hour = new Date(o.createdAt).getHours();
-      byHour[hour] = (byHour[hour] ?? 0) + (paid || t.subtotalCents);
-
-      if (!byServer[o.serverId]) {
-        byServer[o.serverId] = { name: o.serverName, sales: 0, tips: 0 };
-      }
-      byServer[o.serverId]!.sales += paid || t.subtotalCents;
-      byServer[o.serverId]!.tips += t.tipCents;
-
-      for (const line of o.lines) {
-        if (line.voided || line.comped) continue;
-        const key = line.menuItemId;
-        if (!byItem[key]) {
-          byItem[key] = { name: line.name, qty: 0, sales: 0 };
-        }
-        byItem[key]!.qty += line.quantity;
-        byItem[key]!.sales +=
-          (line.unitPriceCents +
-            line.modifiers.reduce((s, m) => s + m.priceCents, 0)) *
-          line.quantity;
-        const mi = menuItems.find((m) => m.id === line.menuItemId);
-        const cat = categories.find((c) => c.id === mi?.categoryId)?.name ?? "Other";
-        byCat[cat] =
-          (byCat[cat] ?? 0) +
-          (line.unitPriceCents +
-            line.modifiers.reduce((s, m) => s + m.priceCents, 0)) *
-            line.quantity;
-      }
-    }
-
-    const hourData = Array.from({ length: 14 }, (_, i) => {
-      const h = i + 10;
-      return {
-        hour: `${h > 12 ? h - 12 : h}${h >= 12 ? "p" : "a"}`,
-        sales: (byHour[h] ?? 0) / 100,
-      };
-    });
-
-    const topItems = Object.values(byItem)
-      .sort((a, b) => b.sales - a.sales)
-      .slice(0, 8);
-
-    const catData = Object.entries(byCat).map(([name, v]) => ({
-      name,
-      sales: v / 100,
-    }));
-
-    const serverData = Object.values(byServer).sort(
-      (a, b) => b.sales - a.sales,
+  if (!canEmployee(emp, "reports:read")) {
+    return (
+      <div className="grid h-full place-items-center p-6 text-sm text-muted-foreground">
+        Reports are not on this access level.
+      </div>
     );
+  }
 
-    return {
-      closed: closed.length,
-      open: open.length,
-      sales,
-      tax,
-      tips,
-      guests,
-      avgCheck: closed.length ? sales / closed.length : 0,
-      hourData,
-      topItems,
-      catData,
-      serverData,
-      net:
-        shift.cashSalesCents +
-        shift.cardSalesCents +
-        shift.giftSalesCents,
-    };
-  }, [orders, settings, menuItems, categories, shift]);
+  const runAi = async () => {
+    setBusy(true);
+    setErr(null);
+    try {
+      const res = await analyzeLocationPerformanceFn({
+        data: { metrics, isDemo: isProspectDemo() || metrics.isDemo },
+      });
+      setInsights(res);
+      setTab("ai");
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : "Could not run insights");
+    } finally {
+      setBusy(false);
+    }
+  };
 
-  const card = (label: string, value: string, sub?: string) => (
+  const csvForActive = () => {
+    if (!active) return;
+    if (active.id === "sales-items") {
+      downloadCsv(
+        "items.csv",
+        csvFromRows(
+          ["item", "qty", "sales"],
+          metrics.sales.byItem.map((i) => [i.name, i.qty, (i.cents / 100).toFixed(2)]),
+        ),
+      );
+      return;
+    }
+    if (active.id === "staff-servers") {
+      downloadCsv(
+        "servers.csv",
+        csvFromRows(
+          ["server", "checks", "sales", "tips"],
+          metrics.staff.byServer.map((s) => [
+            s.name,
+            s.checks,
+            (s.salesCents / 100).toFixed(2),
+            (s.tipsCents / 100).toFixed(2),
+          ]),
+        ),
+      );
+      return;
+    }
+    downloadCsv(
+      "sales-summary.csv",
+      csvFromRows(
+        ["metric", "value"],
+        [
+          ["net", (metrics.sales.netCents / 100).toFixed(2)],
+          ["closed", metrics.sales.closedChecks],
+          ["covers", metrics.sales.covers],
+          ["avg_check", (metrics.sales.avgCheckCents / 100).toFixed(2)],
+        ],
+      ),
+    );
+  };
+
+  const groups = Array.from(new Set(list.map((r) => r.group)));
+
+  return (
+    <div className="flex h-full flex-col" data-demo="reports">
+      <div className="flex flex-wrap items-center gap-2 border-b border-border px-3 py-2">
+        <h2 className="text-sm font-semibold">Reports</h2>
+        <div className="flex gap-1">
+          <Button size="sm" variant={tab === "reports" ? "default" : "outline"} onClick={() => setTab("reports")}>
+            Catalog
+          </Button>
+          <Button
+            size="sm"
+            variant={tab === "ai" ? "default" : "outline"}
+            data-demo="ai-insights"
+            onClick={() => setTab("ai")}
+          >
+            AI insights
+          </Button>
+        </div>
+        <select
+          className="h-8 rounded-md border border-border bg-bg px-2 text-xs"
+          value={range}
+          onChange={(e) => setRange(e.target.value as RangeKey)}
+        >
+          <option value="shift">This shift</option>
+          <option value="today">Today</option>
+          <option value="7d">7 days</option>
+          <option value="30d">30 days</option>
+        </select>
+        {emp?.role !== "vendor_operator" && vendors.length > 1 && (
+          <select
+            className="h-8 rounded-md border border-border bg-bg px-2 text-xs"
+            value={operatorId}
+            onChange={(e) => setOperatorId(e.target.value)}
+          >
+            <option value="">All operators</option>
+            {vendors.map((v) => (
+              <option key={v.id} value={v.id}>
+                {v.shortName}
+              </option>
+            ))}
+          </select>
+        )}
+        <Button size="sm" variant="outline" onClick={csvForActive}>
+          CSV
+        </Button>
+        {emp?.role === "server" && (
+          <Badge variant="secondary">My sales only</Badge>
+        )}
+        {emp?.role === "vendor_operator" && (
+          <Badge variant="secondary">Own operator slice</Badge>
+        )}
+      </div>
+
+      {tab === "ai" ? (
+        <div className="min-h-0 flex-1 overflow-y-auto p-3" data-demo="ai-insights">
+          <div className="mb-3 flex flex-wrap items-center gap-2">
+            <Button size="sm" disabled={busy} onClick={() => void runAi()}>
+              {busy ? "Reviewing…" : "Run analysis"}
+            </Button>
+            {insights && (
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => void speak(insights.summary)}
+              >
+                Read summary
+              </Button>
+            )}
+            {insights && (
+              <Badge variant={insights.source === "ai" ? "info" : "secondary"}>
+                {insights.source === "ai" ? "AI review" : "Guided insights"}
+              </Badge>
+            )}
+          </div>
+          {err && <p className="mb-3 text-sm text-danger">{err}</p>}
+          {!insights && (
+            <p className="text-sm text-muted-foreground">
+              Run analysis on this range. Uses live location metrics. Cost
+              recommendations only when inventory/recipe cost exists — gaps are
+              labeled, never invented.
+            </p>
+          )}
+          {insights && (
+            <div className="space-y-4">
+              <div className="rounded-2xl border border-border bg-surface p-4">
+                <p className="text-xs uppercase tracking-wide text-muted-foreground">
+                  Health {insights.healthScore}
+                </p>
+                <p className="mt-2 text-sm leading-relaxed">{insights.summary}</p>
+              </div>
+              <div className="grid gap-3 lg:grid-cols-2">
+                {insights.findings.map((f, i) => (
+                  <div key={i} className="rounded-2xl border border-border bg-surface p-4">
+                    <div className="flex items-center gap-2">
+                      <Badge
+                        variant={
+                          f.severity === "urgent"
+                            ? "danger"
+                            : f.severity === "watch"
+                              ? "warn"
+                              : "secondary"
+                        }
+                      >
+                        {f.severity}
+                      </Badge>
+                      <p className="text-sm font-medium">{f.area}</p>
+                    </div>
+                    <p className="mt-2 text-sm">{f.observation}</p>
+                    <p className="mt-1 text-xs text-muted-foreground">{f.evidence}</p>
+                  </div>
+                ))}
+              </div>
+              {insights.costVsOrdering.length > 0 && (
+                <div className="rounded-2xl border border-border bg-surface p-4">
+                  <p className="mb-2 text-sm font-medium">Cost vs ordering</p>
+                  <ul className="space-y-3">
+                    {insights.costVsOrdering.map((c, i) => (
+                      <li key={i} className="text-sm">
+                        <p className="font-medium">{c.itemOrCategory}</p>
+                        <p className="text-xs text-muted-foreground">
+                          {c.salesTrend} · {c.costSignal}
+                        </p>
+                        <p className="mt-1">{c.issue}</p>
+                        <p className="text-xs text-muted-foreground">{c.recommendation}</p>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+              <div className="rounded-2xl border border-border bg-surface p-4">
+                <p className="mb-2 text-sm font-medium">Recommendations</p>
+                <ul className="space-y-3">
+                  {insights.recommendations.map((r, i) => (
+                    <li key={i} className="flex flex-wrap items-start justify-between gap-2">
+                      <div>
+                        <p className="text-sm font-medium">
+                          {r.priority.toUpperCase()} · {r.action}
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          {r.expectedImpact} · {r.ownerRole}
+                        </p>
+                      </div>
+                      {r.applyView && (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => setView(r.applyView as PosView)}
+                        >
+                          Apply
+                        </Button>
+                      )}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+              {insights.dataGaps.length > 0 && (
+                <p className="text-xs text-muted-foreground">
+                  Data gaps: {insights.dataGaps.join(" · ")}
+                </p>
+              )}
+            </div>
+          )}
+        </div>
+      ) : (
+        <div className="flex min-h-0 flex-1">
+          <nav className="hidden w-52 shrink-0 overflow-y-auto border-r border-border p-2 lg:block">
+            {groups.map((g) => (
+              <div key={g} className="mb-3">
+                <p className="px-2 pb-1 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+                  {REPORT_GROUP_LABEL[g]}
+                </p>
+                {list
+                  .filter((r) => r.group === g)
+                  .map((r) => (
+                    <button
+                      key={r.id}
+                      type="button"
+                      onClick={() => setReportId(r.id)}
+                      className={cn(
+                        "mb-0.5 w-full rounded-lg px-2 py-1.5 text-left text-xs",
+                        active?.id === r.id
+                          ? "bg-primary/15 font-medium text-primary"
+                          : "text-muted-foreground hover:bg-surface-2",
+                      )}
+                    >
+                      {r.title}
+                    </button>
+                  ))}
+              </div>
+            ))}
+          </nav>
+          <div className="min-h-0 min-w-0 flex-1 overflow-y-auto p-3">
+            <p className="text-sm font-medium">{active?.title}</p>
+            <p className="mb-3 text-xs text-muted-foreground">{active?.summary}</p>
+            <ReportBody id={active?.id ?? "sales-summary"} m={metrics} />
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function ReportBody({ id, m }: { id: ReportId; m: ReturnType<typeof metricsFromPosStore> }) {
+  if (id === "sales-summary") {
+    return (
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+        <Card label="Net sales" value={formatCurrency(m.sales.netCents)} sub={`${m.sales.closedChecks} closed`} />
+        <Card label="Covers" value={String(m.sales.covers)} />
+        <Card label="Avg check" value={formatCurrency(m.sales.avgCheckCents)} />
+        <Card label="Open checks" value={String(m.sales.openChecks)} />
+      </div>
+    );
+  }
+  if (id === "sales-daypart") {
+    const data = m.sales.byHour
+      .filter((h) => h.hour >= 10 && h.hour <= 23)
+      .map((h) => ({ hour: `${h.hour}`, sales: h.cents / 100 }));
+    return (
+      <>
+        <Chart data={data} x="hour" />
+        <ul className="mt-3 space-y-1 text-sm">
+          {m.sales.byDaypart.map((d) => (
+            <li key={d.part} className="flex justify-between">
+              <span>{d.part}</span>
+              <span className="tabular">
+                {formatCurrency(d.cents)} · {d.checks} checks
+              </span>
+            </li>
+          ))}
+        </ul>
+      </>
+    );
+  }
+  if (id === "sales-items") {
+    return (
+      <div className="grid gap-3 lg:grid-cols-2">
+        <Chart
+          data={m.sales.byCategory.map((c) => ({ name: c.name, sales: c.cents / 100 }))}
+          x="name"
+          layout="vertical"
+        />
+        <ul className="space-y-2 text-sm">
+          {m.sales.byItem.map((i) => (
+            <li key={i.id} className="flex justify-between">
+              <span>
+                {i.name} <span className="text-xs text-muted-foreground">×{i.qty}</span>
+              </span>
+              <span className="tabular">{formatCurrency(i.cents)}</span>
+            </li>
+          ))}
+        </ul>
+      </div>
+    );
+  }
+  if (id === "sales-channel") {
+    return (
+      <ul className="space-y-2 text-sm">
+        {m.sales.byChannel.map((c) => (
+          <li key={c.channel} className="flex justify-between">
+            <span className="capitalize">{c.channel.replace("_", " ")}</span>
+            <span className="tabular">
+              {formatCurrency(c.cents)} · {c.checks}
+            </span>
+          </li>
+        ))}
+      </ul>
+    );
+  }
+  if (id === "payments-tenders") {
+    return (
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+        <Card label="Card · Quantum Payments" value={formatCurrency(m.payments.cardCents)} />
+        <Card label="Cash" value={formatCurrency(m.payments.cashCents)} />
+        <Card label="Gift" value={formatCurrency(m.payments.giftCents)} />
+        <Card label="Tips" value={formatCurrency(m.payments.tipsCents)} />
+      </div>
+    );
+  }
+  if (id === "payments-cash-discount") {
+    return (
+      <Card
+        label="Cash discount cost"
+        value={formatCurrency(m.payments.cashDiscountCostCents)}
+        sub="Printed/card minus cash after round-up. Not a second processor."
+      />
+    );
+  }
+  if (id === "payments-voids") {
+    return (
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-3">
+        <Card label="Voids" value={formatCurrency(m.payments.voidsCents)} />
+        <Card label="Comps" value={formatCurrency(m.payments.compsCents)} />
+        <Card label="Refunds" value={formatCurrency(m.payments.refundsCents)} />
+      </div>
+    );
+  }
+  if (id === "payments-chargebacks") {
+    return (
+      <Card
+        label="Filed disputes"
+        value={String(m.payments.chargebacks.count)}
+        sub={`$35 fee total ${formatCurrency(m.payments.chargebacks.feeCents)} — splits by merchandise on multi-op.`}
+      />
+    );
+  }
+  if (id === "staff-servers") {
+    return (
+      <ul className="space-y-2 text-sm">
+        {m.staff.byServer.map((s) => (
+          <li key={s.id} className="flex justify-between">
+            <span>{s.name}</span>
+            <span className="tabular">
+              {formatCurrency(s.salesCents)} · tips {formatCurrency(s.tipsCents)} · {s.checks}
+            </span>
+          </li>
+        ))}
+      </ul>
+    );
+  }
+  if (id === "staff-aging") {
+    return (
+      <ul className="space-y-2 text-sm">
+        {m.staff.agingOpen.length === 0 && (
+          <li className="text-muted-foreground">No open checks.</li>
+        )}
+        {m.staff.agingOpen.map((a) => (
+          <li key={a.id} className="flex justify-between">
+            <span>
+              #{a.number} · {a.serverName}
+            </span>
+            <span className="tabular">{a.minutes} min</span>
+          </li>
+        ))}
+      </ul>
+    );
+  }
+  if (id === "kitchen-tickets") {
+    return (
+      <div className="space-y-3">
+        <div className="grid grid-cols-2 gap-3">
+          <Card label="Kitchen avg" value={`${Math.round(m.tickets.kitchenAvgSec / 60)} min`} sub={`${m.tickets.kitchenOpen} open`} />
+          <Card label="Bar avg" value={`${Math.round(m.tickets.barAvgSec / 60)} min`} sub={`${m.tickets.barOpen} open`} />
+        </div>
+        <p className="text-sm font-medium">86 board</p>
+        <ul className="text-sm text-muted-foreground">
+          {m.tickets.eightySix.length === 0 && <li>Nothing 86'd.</li>}
+          {m.tickets.eightySix.map((x) => (
+            <li key={x.name}>
+              {x.name} · {x.station}
+            </li>
+          ))}
+        </ul>
+      </div>
+    );
+  }
+  if (id === "close-eod") {
+    return (
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+        <Card label="Card" value={formatCurrency(m.payments.cardCents)} />
+        <Card label="Cash expected" value={formatCurrency(m.payments.cashCents)} sub="Counted cash is entered on Cash if tracked." />
+        <Card label="Tips" value={formatCurrency(m.payments.tipsCents)} />
+        <Card label="Closed checks" value={String(m.sales.closedChecks)} />
+      </div>
+    );
+  }
+  if (id === "guest-waitlist") {
+    return (
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-3">
+        <Card label="Waiting" value={String(m.guest.waitlistWaiting)} />
+        <Card label="Quoted avg" value={`${m.guest.waitlistQuotedAvg} min`} />
+        <Card label="Seated" value={String(m.guest.waitlistSeated)} />
+        <Card label="No-shows" value={String(m.guest.noShows)} />
+        <Card label="Reservations" value={String(m.guest.reservations)} />
+        <Card label="Checked in" value={String(m.guest.checkedIn)} />
+      </div>
+    );
+  }
+  if (id === "guest-kiosk") {
+    return <Card label="Kiosk checks" value={String(m.guest.kioskOrders)} />;
+  }
+  if (id === "multi-op-sales") {
+    return (
+      <ul className="space-y-2 text-sm">
+        {m.multiOp.byOperator.map((o) => (
+          <li key={o.id} className="flex justify-between">
+            <span>{o.name}</span>
+            <span className="tabular">
+              {formatCurrency(o.cents)} · {o.tickets} tickets
+            </span>
+          </li>
+        ))}
+      </ul>
+    );
+  }
+  if (id === "multi-op-settlement") {
+    return (
+      <Card
+        label="Host cut (last period)"
+        value={formatCurrency(m.multiOp.hostCutCents)}
+        sub={`${m.multiOp.periodCount} period(s) on the ledger. Open Settle for allocations.`}
+      />
+    );
+  }
+  return null;
+}
+
+function Card({ label, value, sub }: { label: string; value: string; sub?: string }) {
+  return (
     <div className="rounded-2xl border border-border bg-surface p-4">
-      <p className="text-xs uppercase tracking-wide text-muted-foreground">
-        {label}
-      </p>
-      <p className="mt-1 text-2xl font-semibold tabular tracking-tight">
-        {value}
-      </p>
+      <p className="text-xs uppercase tracking-wide text-muted-foreground">{label}</p>
+      <p className="mt-1 text-2xl font-semibold tabular">{value}</p>
       {sub && <p className="mt-1 text-xs text-muted-foreground">{sub}</p>}
     </div>
   );
+}
 
+function Chart({
+  data,
+  x,
+  layout,
+}: {
+  data: Array<Record<string, string | number>>;
+  x: string;
+  layout?: "vertical";
+}) {
+  if (!data.length) {
+    return <p className="text-sm text-muted-foreground">No rows in this range.</p>;
+  }
   return (
-    <div className="h-full overflow-y-auto p-3">
-      <div className="mb-4 flex flex-wrap items-center gap-2">
-        <h2 className="text-sm font-semibold">Sales & labor</h2>
-        <Badge variant="secondary">
-          Shift open {new Date(shift.openedAt).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}
-        </Badge>
-      </div>
-
-      <div className="mb-4 grid grid-cols-2 gap-3 lg:grid-cols-4">
-        {card("Net sales", formatCurrency(stats.net || stats.sales), `${stats.closed} closed · ${stats.open} open`)}
-        {card("Tips", formatCurrency(stats.tips + shift.tipsCardCents + shift.tipsCashCents))}
-        {card("Guests", String(stats.guests || shift.guestCount))}
-        {card("Avg check", formatCurrency(stats.avgCheck))}
-      </div>
-
-      <div className="mb-4 grid gap-3 lg:grid-cols-2">
-        <div className="rounded-2xl border border-border bg-surface p-4">
-          <p className="mb-3 text-sm font-medium">Sales by hour</p>
-          <div className="h-56">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={stats.hourData}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#2a2f3a" />
-                <XAxis dataKey="hour" tick={{ fill: "#8b929e", fontSize: 11 }} />
-                <YAxis tick={{ fill: "#8b929e", fontSize: 11 }} />
-                <Tooltip
-                  contentStyle={{
-                    background: "#14161b",
-                    border: "1px solid #2a2f3a",
-                    borderRadius: 12,
-                  }}
-                  formatter={formatSalesTooltip}
-                />
-                <Bar dataKey="sales" fill="#9aa3b2" radius={[6, 6, 0, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
-        </div>
-
-        <div className="rounded-2xl border border-border bg-surface p-4">
-          <p className="mb-3 text-sm font-medium">Category mix</p>
-          <div className="h-56">
-            {stats.catData.length === 0 ? (
-              <p className="flex h-full items-center justify-center text-sm text-muted-foreground">
-                Ring sales to populate
-              </p>
-            ) : (
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={stats.catData} layout="vertical">
-                  <CartesianGrid strokeDasharray="3 3" stroke="#2a2f3a" />
-                  <XAxis type="number" tick={{ fill: "#8b929e", fontSize: 11 }} />
-                  <YAxis
-                    type="category"
-                    dataKey="name"
-                    width={90}
-                    tick={{ fill: "#8b929e", fontSize: 11 }}
-                  />
-                  <Tooltip
-                    contentStyle={{
-                      background: "#14161b",
-                      border: "1px solid #2a2f3a",
-                      borderRadius: 12,
-                    }}
-                    formatter={formatSalesTooltip}
-                  />
-                  <Bar dataKey="sales" fill="#5b8fd4" radius={[0, 6, 6, 0]} />
-                </BarChart>
-              </ResponsiveContainer>
-            )}
-          </div>
-        </div>
-      </div>
-
-      <div className="grid gap-3 lg:grid-cols-2">
-        <div className="rounded-2xl border border-border bg-surface p-4">
-          <p className="mb-3 text-sm font-medium">Top items</p>
-          <ul className="space-y-2">
-            {stats.topItems.length === 0 && (
-              <li className="text-sm text-muted-foreground">No item sales yet</li>
-            )}
-            {stats.topItems.map((item, i) => (
-              <li
-                key={item.name}
-                className="flex items-center justify-between text-sm"
-              >
-                <span>
-                  <span className="mr-2 tabular text-muted-foreground">
-                    {i + 1}.
-                  </span>
-                  {item.name}
-                  <span className="ml-2 text-xs text-muted-foreground">
-                    ×{item.qty}
-                  </span>
-                </span>
-                <span className="tabular font-medium">
-                  {formatCurrency(item.sales)}
-                </span>
-              </li>
-            ))}
-          </ul>
-        </div>
-
-        <div className="rounded-2xl border border-border bg-surface p-4">
-          <p className="mb-3 text-sm font-medium">Server performance</p>
-          <ul className="space-y-2">
-            {stats.serverData.length === 0 &&
-              employees
-                .filter((e) => e.role === "server" || e.role === "bartender")
-                .map((e) => (
-                  <li
-                    key={e.id}
-                    className="flex justify-between text-sm text-muted-foreground"
-                  >
-                    <span>{e.name}</span>
-                    <span className="tabular">
-                      {formatCurrency(e.salesTotal)} sales
-                    </span>
-                  </li>
-                ))}
-            {stats.serverData.map((s) => (
-              <li key={s.name} className="flex justify-between text-sm">
-                <span>{s.name}</span>
-                <span className="tabular">
-                  {formatCurrency(s.sales)} · tips {formatCurrency(s.tips)}
-                </span>
-              </li>
-            ))}
-          </ul>
-          <div className="mt-4 grid grid-cols-2 gap-2 border-t border-border pt-3 text-xs text-muted-foreground">
-            <div>
-              Cash{" "}
-              <span className="block text-base font-medium tabular text-foreground">
-                {formatCurrency(shift.cashSalesCents)}
-              </span>
-            </div>
-            <div>
-              Card{" "}
-              <span className="block text-base font-medium tabular text-foreground">
-                {formatCurrency(shift.cardSalesCents)}
-              </span>
-            </div>
-            <div>
-              Comps{" "}
-              <span className="block text-base font-medium tabular text-foreground">
-                {formatCurrency(shift.compsCents)}
-              </span>
-            </div>
-            <div>
-              Voids{" "}
-              <span className="block text-base font-medium tabular text-foreground">
-                {formatCurrency(shift.voidsCents)}
-              </span>
-            </div>
-          </div>
-        </div>
-      </div>
+    <div className="h-56 rounded-2xl border border-border bg-surface p-3">
+      <ResponsiveContainer width="100%" height="100%">
+        <BarChart data={data} layout={layout}>
+          <CartesianGrid strokeDasharray="3 3" stroke="#2a2f3a" />
+          {layout === "vertical" ? (
+            <>
+              <XAxis type="number" tick={{ fill: "#8b929e", fontSize: 11 }} />
+              <YAxis type="category" dataKey={x} width={90} tick={{ fill: "#8b929e", fontSize: 11 }} />
+            </>
+          ) : (
+            <>
+              <XAxis dataKey={x} tick={{ fill: "#8b929e", fontSize: 11 }} />
+              <YAxis tick={{ fill: "#8b929e", fontSize: 11 }} />
+            </>
+          )}
+          <Tooltip
+            contentStyle={{ background: "#14161b", border: "1px solid #2a2f3a", borderRadius: 12 }}
+            formatter={formatSalesTooltip}
+          />
+          <Bar dataKey="sales" fill="#9aa3b2" radius={[6, 6, 0, 0]} />
+        </BarChart>
+      </ResponsiveContainer>
     </div>
   );
 }

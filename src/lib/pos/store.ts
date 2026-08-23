@@ -1549,7 +1549,7 @@ const usePosStoreRaw = create()(persist((set, get) => ({
 			],
 			giftCards: [],
 			customers: [],
-			inventory: [],
+			inventory: "inventory" in slice && Array.isArray(slice.inventory) ? slice.inventory : [],
 		});
 		try {
 			useSaasStore.getState().applyLaundryTestOrg();
@@ -1580,7 +1580,7 @@ const usePosStoreRaw = create()(persist((set, get) => ({
 			],
 			giftCards: [],
 			customers: [],
-			inventory: [],
+			inventory: "inventory" in slice && Array.isArray(slice.inventory) ? slice.inventory : [],
 		});
 		try {
 			const { org, location } = demoSaasOrg(entityId);

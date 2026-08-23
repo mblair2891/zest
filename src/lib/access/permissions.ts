@@ -40,10 +40,10 @@ const ALL: Permission[] = [
 const ROLE_PERMS: Record<EmployeeRole, Permission[] | "all"> = {
   owner: "all",
   manager: ALL.filter((p) => p !== "demo:admin"),
-  server: ["orders:create", "payments:take", "floor:write"],
-  host: ["waitlist:manage", "floor:write"],
-  bartender: ["orders:create", "tickets:bump", "item:86", "payments:take"],
-  kitchen: ["tickets:bump", "item:86"],
+  server: ["orders:create", "payments:take", "floor:write", "reports:read"],
+  host: ["waitlist:manage", "floor:write", "reports:read"],
+  bartender: ["orders:create", "tickets:bump", "item:86", "payments:take", "reports:read"],
+  kitchen: ["tickets:bump", "item:86", "reports:read"],
   busser: ["floor:write"],
   cashier: ["orders:create", "payments:take"],
   vendor_operator: [

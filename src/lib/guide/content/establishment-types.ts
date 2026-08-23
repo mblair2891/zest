@@ -31,6 +31,7 @@ export const ESTABLISHMENT_TYPE_TOPICS: GuideTopic[] = [
       ul(
         "Access: owner, manager, server, host stand, bartender, kitchen, busser, cashier, accountant.",
         "Dashboards: server sees sections; host sees waitlist; kitchen is KDS-first.",
+        "Reports & AI insights are on this location — not a SaaS portfolio.",
       ),
       callout(
         "Payments",

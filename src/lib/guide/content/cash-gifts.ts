@@ -1,4 +1,4 @@
-import { p, related, steps, tip, topic, ul, warn, why } from "./helpers";
+import { callout, p, related, steps, tip, topic, ul, warn, why } from "./helpers";
 import type { GuideTopic } from "../types";
 
 export const CASH_GIFT_TOPICS: GuideTopic[] = [
@@ -127,21 +127,59 @@ export const CASH_GIFT_TOPICS: GuideTopic[] = [
   topic({
     id: "reports",
     chapterId: "cash-gifts",
-    title: "Reports",
-    summary: "Sales, tender, server, and daypart recap.",
-    roles: ["owner_manager"],
-    keywords: ["reports", "sales", "daypart", "tender"],
+    title: "Reports catalog",
+    summary: "Sales, payments, staff, kitchen, close, guest, and multi-operator — filtered by type and role.",
+    roles: ["owner_manager", "vendor_operator"],
+    keywords: ["reports", "sales", "daypart", "tender", "csv", "ai"],
     openView: "reports",
     blocks: [
       why(
         "Settlement answers “what does each operator take home?” Reports answer “how did the house do today?”",
       ),
-      steps(
-        "Open Reports. Filter daypart, server, tender, and category.",
-        "Reconcile cash with the Cash view before you trust a short.",
-        "On a host venue, still use Settle for operator payouts — Reports is not a substitute for period close.",
+      ul(
+        "Sales: summary, hour/daypart, item mix, channel.",
+        "Payments: tender mix (Quantum Payments card), cash discount cost, voids/comps, $35 chargeback splits.",
+        "Staff: by server (your own if you are a server), aging checks.",
+        "Kitchen/bar: ticket times and 86s.",
+        "Close: end of day; cash expected vs counted if tracked.",
+        "Guest: waitlist, reservations, kiosk — hidden when the type does not use them.",
+        "Host venues: sales by operator, settlement/ledger.",
       ),
-      related("cash-handling", "settlement", "audit"),
+      steps(
+        "Open Reports (or Home → Reports & AI). Pick a range: shift, today, 7d, 30d.",
+        "Vendor operators only see their stall. Servers see their own sales/tips.",
+        "Export CSV for the active report.",
+        "On a host venue, still use Settle for period close — Reports is the recap, not the payout.",
+      ),
+      related("ai-insights", "cash-handling", "settlement", "roles-dashboards"),
+    ],
+  }),
+  topic({
+    id: "ai-insights",
+    chapterId: "cash-gifts",
+    title: "AI insights & recommendations",
+    summary: "Holistic review of sales, speed, guest flow, tenders, mix, and cost vs ordering.",
+    roles: ["owner_manager", "vendor_operator"],
+    keywords: ["ai", "insights", "recommendations", "food cost", "performance"],
+    openView: "reports",
+    blocks: [
+      why(
+        "A night can look busy and still be unhealthy — voids, slow tickets, a waitlist that was quoted too short, or a mover with no cost data.",
+      ),
+      steps(
+        "Reports → AI insights → Run analysis for the selected range.",
+        "Read findings (info / watch / urgent) and cost vs ordering. Gaps are labeled — inventory counts are never invented.",
+        "Apply on a recommendation jumps to the setting or report. It does not change prices by itself.",
+        "Read summary speaks the recap if you want voiceover.",
+      ),
+      callout(
+        "With or without a key",
+        "When an AI key is set, the model writes the same JSON from your metrics. Without a key you get Guided insights — same shape, rule-based.",
+      ),
+      warn(
+        "Public Operators Guide never includes platform-admin portfolio metrics. This is location operations only.",
+      ),
+      related("reports", "location-settings", "type-food-hall", "roles-dashboards"),
     ],
   }),
 ];

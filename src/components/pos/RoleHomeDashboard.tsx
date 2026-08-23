@@ -114,6 +114,7 @@ export function RoleHomeDashboard() {
               {canEmployee(emp, "settings:write") && (
                 <Jump id="settings" label="Location settings" icon={Settings} />
               )}
+              <Jump id="reports" label="Reports & AI" icon={BarChart3} />
               {hostMulti && <Jump id="settlement" label="Settlement" icon={Landmark} />}
             </div>
           </>

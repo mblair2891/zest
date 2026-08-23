@@ -7,6 +7,16 @@ import { GUIDE_VERSION, type GuideRole, type GuideUpdate } from "./types";
  */
 export const GUIDE_UPDATES: GuideUpdate[] = [
   {
+    id: "upd_2026_09_01_reports_ai",
+    date: "2026-09-01",
+    title: "Reports suite and AI insights",
+    summary:
+      "Full operational reports by type and role, plus AI (or guided) recommendations on cost vs ordering and performance.",
+    roles: ["owner_manager", "vendor_operator"],
+    topicId: "ai-insights",
+    tags: ["reports", "ai"],
+  },
+  {
     id: "upd_2026_08_31_access",
     date: "2026-08-31",
     title: "Role dashboards and location settings packs",
