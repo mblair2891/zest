@@ -40,6 +40,10 @@ export function related(...topicIds: string[]): GuideBlock {
   return { type: "related", topicIds };
 }
 
+export function cta(href: string, label: string, text?: string): GuideBlock {
+  return { type: "cta", href, label, text };
+}
+
 export function topic(t: GuideTopic): GuideTopic {
   return t;
 }

@@ -23,8 +23,14 @@ import {
   type GuideRole,
   type GuideRoleFilter,
 } from "@/lib/guide/types";
-import { GUIDE_TOPICS, topicById, topicVisible } from "@/lib/guide/catalog";
+import {
+  GUIDE_NAV_TABS,
+  GUIDE_TOPICS,
+  topicById,
+  topicVisible,
+} from "@/lib/guide/catalog";
 import { chaptersWithMatches } from "@/lib/guide/search";
+import type { GuideNavId } from "@/lib/guide/types";
 import { canAccessView } from "@/lib/pos/rbac";
 import type { EmployeeRole, PosView } from "@/lib/pos/types";
 import { cn } from "@/lib/utils";
@@ -66,6 +72,7 @@ export function OperatorsGuide({
   const [query, setQuery] = useState("");
   const innerSearch = useRef<HTMLInputElement>(null);
   const inputRef = searchRef ?? innerSearch;
+  const [navTab, setNavTab] = useState<GuideNavId>("overview");
 
   const [filter, setFilter] = useState<GuideRoleFilter>(
     hasSessionRole ? "mine" : "all",
@@ -81,15 +88,21 @@ export function OperatorsGuide({
     return [filter];
   }, [filter, sessionRoles]);
 
-  const grouped = useMemo(
+  const searching = query.trim().length > 0;
+  const groupedAll = useMemo(
     () => chaptersWithMatches(query, activeRoles),
     [query, activeRoles],
   );
+  const grouped = useMemo(() => {
+    if (searching) return groupedAll;
+    const tab = GUIDE_NAV_TABS.find((t) => t.id === navTab) ?? GUIDE_NAV_TABS[0]!;
+    return groupedAll.filter((g) => tab.chapterIds.includes(g.chapter.id));
+  }, [groupedAll, navTab, searching]);
 
   const requested = topicId ?? storeFocus;
   const visibleIds = grouped.flatMap((g) => g.topics.map((t) => t.id));
   const activeId =
-    requested && (visibleIds.includes(requested) || topicById(requested))
+    requested && visibleIds.includes(requested)
       ? requested
       : (visibleIds[0] ?? GUIDE_TOPICS[0]!.id);
   const active = topicById(activeId) ?? grouped[0]?.topics[0];
@@ -99,8 +112,10 @@ export function OperatorsGuide({
     rememberTopic(userKey, active.id);
     if (variant === "overlay") setFocus(active.id);
     onTopicChange?.(active.id);
+    const tab = GUIDE_NAV_TABS.find((t) => t.chapterIds.includes(active.chapterId));
+    if (tab && !searching) setNavTab(tab.id);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [active?.id, userKey, variant]);
+  }, [active?.id, userKey, variant, searching]);
 
   const done = active ? isComplete(userKey, active.id) : false;
   const continueId = continueTopicId(userKey);
@@ -197,11 +212,29 @@ export function OperatorsGuide({
               />
             </div>
             <div className="-mx-1 flex gap-1 overflow-x-auto px-1 pb-0.5">
+              {GUIDE_NAV_TABS.map((tab) => (
+                <FilterChip
+                  key={tab.id}
+                  active={!searching && navTab === tab.id}
+                  onClick={() => {
+                    setQuery("");
+                    setNavTab(tab.id);
+                    const first = GUIDE_TOPICS.find((t) =>
+                      tab.chapterIds.includes(t.chapterId),
+                    );
+                    if (first) openTopic(first.id);
+                  }}
+                >
+                  {tab.label}
+                </FilterChip>
+              ))}
+            </div>
+            <div className="-mx-1 flex gap-1 overflow-x-auto px-1 pb-0.5">
               <FilterChip
                 active={filter === "all"}
                 onClick={() => setFilter("all")}
               >
-                All
+                All roles
               </FilterChip>
               {hasSessionRole && (
                 <FilterChip

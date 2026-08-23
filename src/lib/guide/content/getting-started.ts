@@ -1,4 +1,4 @@
-import { callout, p, related, shot, steps, tip, topic, ul, warn, why } from "./helpers";
+import { callout, cta, p, related, shot, steps, tip, topic, ul, warn, why } from "./helpers";
 import type { GuideTopic } from "../types";
 
 export const GETTING_STARTED_TOPICS: GuideTopic[] = [
@@ -30,7 +30,7 @@ export const GETTING_STARTED_TOPICS: GuideTopic[] = [
       ),
       ul(
         "Use Guide or “?” in the header on POS and on the platform. It is also on login and empty states.",
-        "Filter chapters by role, or leave All for cross-training.",
+        "Tabs: Overview · By type · Features · Roles. Search still matches the whole guide.",
         "Mark a topic complete. Continue where you left off resumes the last unfinished article.",
         "Examples in this guide use generic names: Host Venue, Operator A, Operator B — never a live customer. The Laundry TEST venue exists only in DEV_DEMO.",
       ),
@@ -54,7 +54,7 @@ export const GETTING_STARTED_TOPICS: GuideTopic[] = [
       steps(
         "Open Guide from the header, the left nav, the phone dock, login, or /guide.",
         "Type in Search to match titles, summaries, and body text (try “chargeback” or “multi-operator”).",
-        "Pick a role tab to hide topics that do not apply. All shows everything for cross-training.",
+        "Use Overview, By type, Features, and Roles to move around. Role chips still filter who the topic is for.",
         "Read Why it matters, follow the numbered steps, then Related topics.",
         "Tap Mark complete. Continue where you left off returns you here on the next open.",
       ),
@@ -118,7 +118,7 @@ export const GETTING_STARTED_TOPICS: GuideTopic[] = [
         "Operators Guide — overlay everywhere, or /guide as a full page.",
       ),
       shot(
-        "POS header: wordmark, clock, location, Guide, What’s New, platform rocket, sign out.",
+        "POS header: wordmark, clock, location, Guide, platform rocket, sign out.",
         "Top bar of the POS with a prominent Guide button.",
       ),
       steps(
@@ -152,7 +152,7 @@ export const GETTING_STARTED_TOPICS: GuideTopic[] = [
       p(
         "The control plane also exists as its own surface (not a venue). You do not “log into SaaS as a restaurant.” You sign in, then open a location.",
       ),
-      related("single-vs-multi", "empty-start", "create-org", "host-capture"),
+      related("type-restaurant", "type-food-hall", "type-bar-lounge", "empty-start"),
     ],
   }),
   topic({
@@ -168,15 +168,15 @@ export const GETTING_STARTED_TOPICS: GuideTopic[] = [
       ),
       steps(
         "Sign in as Admin and complete the forced password change.",
-        "The platform has zero organizations. Open Get pricing (prospect intake) or, as Admin, use the pipeline.",
+        "The platform has zero live organizations. Console may be empty. Demos are separate and do not count as tenants. Open Get pricing or Pipeline for prospects.",
         "Intake → quote → merchant accepts → Admin marks contract signed → onboarding wizard.",
         "Onboarding creates the org, location(s), operators, packages, and invites. Use Host Venue / Operator A / Operator B.",
         "Open POS for that location. Menu, tables, and tickets stay empty until you add them in onboarding or in POS settings.",
       ),
       warn(
-        "There is no demo-tenant switch on the live path. Do not paste a real customer name into the first org. The Laundry TEST venue (Steam Distillery + Diamond House BBQ) loads only when DEV_DEMO=1.",
+        "Live tenants stay empty until onboarding. Prospect rooms live under Platform → Demos and /demo/{type}. They never appear in tenant statistics.",
       ),
-      related("login", "prospect-intake", "onboarding-wizard", "create-org", "laundry-test-venue"),
+      related("login", "prospect-intake", "onboarding-wizard", "create-org", "type-food-hall", "prospect-demos"),
     ],
   }),
   topic({
@@ -203,7 +203,7 @@ export const GETTING_STARTED_TOPICS: GuideTopic[] = [
         "Ledger, host capture, and multi-operator settlement need a labeled dataset you can reload. Production empty-start must stay empty — so this seed is gated on DEV_DEMO.",
       ),
       p(
-        "The Laundry is the guest-facing host brand. Steam Distillery is bar-only (drinks, bar tickets). Diamond House BBQ is kitchen / dining (food, kitchen tickets). The guest pays one check branded The Laundry via Quantum Payments. Line items carry the operator id for routing, settlement, and ledger allocations.",
+        "The Laundry is the guest-facing host brand. Steam Distillery is bar-only (drinks, bar tickets). Diamond House BBQ is kitchen / dining (food, kitchen tickets). The guest pays one check branded The Laundry via Quantum Payments. Line items carry the operator id for routing, settlement, and ledger allocations. Send prospects /demo/food_hall — not Admin.",
       ),
       callout(
         "TEST venue — not a customer",
@@ -223,9 +223,14 @@ export const GETTING_STARTED_TOPICS: GuideTopic[] = [
         "White paper appendix uses the same names, labeled as an example.",
       ),
       warn(
-        "DEV_DEMO=0 never seeds The Laundry. Do not treat this org as a production tenant.",
+        "The Laundry prospect demo is isolated (is_demo). It does not appear in Tenants or statistics. Do not treat it as a production org.",
       ),
-      related("empty-start", "system-ledger", "white-paper", "host-capture", "chargebacks"),
+      cta(
+        "/demo/food_hall/tour",
+        "Open The Laundry guided demo",
+        "Share /demo/food_hall with a prospect. Platform → Demos to copy the link.",
+      ),
+      related("type-food-hall", "empty-start", "system-ledger", "host-capture", "chargebacks"),
     ],
   }),
   topic({

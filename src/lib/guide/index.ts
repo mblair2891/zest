@@ -12,8 +12,17 @@ export {
   type GuideTopic,
   type GuideUpdate,
   type GuideRoleFilter,
+  type GuideNavId,
+  type GuideNavTab,
 } from "./types";
-export { GUIDE_CHAPTERS, GUIDE_TOPICS, topicById, relatedTopics, topicVisible } from "./catalog";
+export {
+  GUIDE_CHAPTERS,
+  GUIDE_NAV_TABS,
+  GUIDE_TOPICS,
+  topicById,
+  relatedTopics,
+  topicVisible,
+} from "./catalog";
 export { searchTopics, chaptersWithMatches } from "./search";
 export {
   GUIDE_UPDATES,

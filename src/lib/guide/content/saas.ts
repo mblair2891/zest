@@ -170,7 +170,7 @@ export const SAAS_TOPICS: GuideTopic[] = [
   }),
   topic({
     id: "platform-admin",
-    chapterId: "saas",
+    chapterId: "roles",
     title: "Platform admin: tenants & support",
     summary: "Pipeline, tenant status, and support actions on an empty or live fleet.",
     roles: ["platform_admin"],

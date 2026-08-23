@@ -1,7 +1,7 @@
 import type { PosView } from "@/lib/pos/types";
 
 /** Bump when shipping a docs/features batch so What’s New can watermark. */
-export const GUIDE_VERSION = "2026.08.27";
+export const GUIDE_VERSION = "2026.08.28";
 export const GUIDE_EDITION = "Operators Guide · August 2026";
 export const GUIDE_TITLE = "Operators Guide";
 
@@ -56,7 +56,16 @@ export type GuideBlock =
   | { type: "ul"; items: string[] }
   | { type: "ol"; items: string[] }
   | { type: "steps"; items: string[] }
+  | { type: "cta"; href: string; label: string; text?: string }
   | { type: "related"; topicIds: string[] };
+
+export type GuideNavId = "overview" | "types" | "features" | "roles";
+
+export type GuideNavTab = {
+  id: GuideNavId;
+  label: string;
+  chapterIds: string[];
+};
 
 export interface GuideChapter {
   id: string;

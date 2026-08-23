@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Link, useNavigate } from "@tanstack/react-router";
 import { LogOut, ArrowLeft, BookOpen } from "lucide-react";
 import { GuideTriggerButton } from "@/components/guide/OperatorsGuide";
@@ -79,6 +79,12 @@ export function PlatformApp() {
   const [surface, setSurface] = useState<"console" | "pipeline" | "demos">(
     "console",
   );
+  const [adminNav, setAdminNav] = useState(false);
+  const userPickedSurface = useRef(false);
+  const pickSurface = (next: "console" | "pipeline" | "demos") => {
+    userPickedSurface.current = true;
+    setSurface(next);
+  };
 
   useEffect(() => {
     const done = () => setReady(true);
@@ -97,15 +103,19 @@ export function PlatformApp() {
     const ctx = await getSessionContextFn();
     const orgList = ctx.orgs.filter((o) => o.status === "active" || ctx.isPlatformAdmin);
     if (ctx.isPlatformAdmin) {
+      setAdminNav(true);
       try {
         const list = await listTenantsFn();
         setTenants(list);
-        if (list.length === 0) setSurface("pipeline");
+        if (!userPickedSurface.current && list.length === 0) {
+          setSurface("pipeline");
+        }
       } catch {
         setTenants([]);
-        setSurface("pipeline");
+        if (!userPickedSurface.current) setSurface("pipeline");
       }
     } else {
+      setAdminNav(false);
       setTenants(null);
     }
     const current = orgList[0];
@@ -308,26 +318,26 @@ export function PlatformApp() {
             {platformAdminRole || "SaaS"} access
           </p>
         </div>
-        {tenants && (
+        {adminNav && (
           <>
             <Button
               size="sm"
               variant={surface === "console" ? "default" : "outline"}
-              onClick={() => setSurface("console")}
+              onClick={() => pickSurface("console")}
             >
               Console
             </Button>
             <Button
               size="sm"
               variant={surface === "pipeline" ? "default" : "outline"}
-              onClick={() => setSurface("pipeline")}
+              onClick={() => pickSurface("pipeline")}
             >
               Pipeline
             </Button>
             <Button
               size="sm"
               variant={surface === "demos" ? "default" : "outline"}
-              onClick={() => setSurface("demos")}
+              onClick={() => pickSurface("demos")}
             >
               Demos
             </Button>

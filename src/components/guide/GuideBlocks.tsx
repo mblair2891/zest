@@ -2,6 +2,7 @@ import {
   AlertTriangle,
   Camera,
   CheckCircle2,
+  ExternalLink,
   Lightbulb,
   ListOrdered,
   PanelRight,
@@ -120,6 +121,22 @@ function GuideBlockView({
           ))}
         </ListTag>
       </div>
+    );
+  }
+  if (block.type === "cta") {
+    return (
+      <a
+        href={block.href}
+        className="flex items-start gap-2 rounded-xl border border-border bg-surface px-3 py-2.5 text-sm text-foreground hover:border-primary/40"
+      >
+        <ExternalLink className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
+        <span>
+          <span className="font-semibold">{block.label}</span>
+          {block.text ? (
+            <span className="mt-0.5 block text-muted-foreground">{block.text}</span>
+          ) : null}
+        </span>
+      </a>
     );
   }
   if (block.type === "related") {
