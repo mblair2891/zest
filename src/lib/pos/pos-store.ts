@@ -18,6 +18,8 @@ import type {
   RestaurantSettings,
   SectionAccess,
   SectionPolicy,
+  Chargeback,
+  ChargebackStatus,
   SettlementConfig,
   SettlementPeriod,
   Table,
@@ -77,6 +79,7 @@ export interface PosStore {
   vendors: Vendor[];
   settlementConfig: SettlementConfig;
   settlementPeriods: SettlementPeriod[];
+  chargebacks: Chargeback[];
   auditLog: AuditEntry[];
   shift: ShiftState;
   view: PosView;
@@ -194,6 +197,11 @@ export interface PosStore {
   getOpenPeriodPreview: () => SettlementPeriod | null;
   closeSettlementPeriod: () => ActionResult<{ period?: SettlementPeriod }>;
   markSettlementPaid: (periodId: string) => void;
+  fileChargeback: (orderId: string) => ActionResult<{ chargeback?: Chargeback }>;
+  resolveChargeback: (
+    id: string,
+    outcome: ChargebackStatus,
+  ) => ActionResult;
   reassignServer: (tableId: string, serverId: string) => void;
   assignEmployeeSections: (employeeId: string, sectionIds: string[]) => void;
   upsertFloorSection: (section: Partial<FloorSection> & { id?: string }) => void;

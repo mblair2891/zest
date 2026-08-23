@@ -220,8 +220,16 @@ export async function getPglite(): Promise<import("@electric-sql/pglite").PGlite
  * module kick it off immediately (see bottom of file).
  */
 export function ensureDbReady(): Promise<void> {
-  if (dbSource !== "pglite") return Promise.resolve();
-  return getSql().then(() => undefined);
+  const boot = async () => {
+    if (dbSource === "pglite") await getSql();
+    try {
+      const { ensurePlatformAdmin } = await import("@/lib/auth/bootstrap-admin.server");
+      await ensurePlatformAdmin();
+    } catch (err) {
+      console.error("[db] platform admin bootstrap skipped:", err);
+    }
+  };
+  return boot();
 }
 
 // Server-only eager start: kick PGLite bootstrap as soon as this module loads in
@@ -229,10 +237,10 @@ export function ensureDbReady(): Promise<void> {
 const globalBoot = globalThis as typeof globalThis & {
   __pgBootstrapPromise__?: Promise<void>;
 };
-if (typeof window === "undefined" && dbSource === "pglite") {
+if (typeof window === "undefined") {
   globalBoot.__pgBootstrapPromise__ ??= ensureDbReady().catch((err) => {
     globalBoot.__pgBootstrapPromise__ = undefined;
-    console.error("[db] PGLite bootstrap failed:", err);
+    console.error("[db] bootstrap failed:", err);
     throw err;
   });
 }

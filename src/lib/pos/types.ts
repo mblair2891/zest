@@ -303,8 +303,8 @@ export interface Payment {
   houseAccountId?: string;
   at: number;
   employeeId: string;
-  /** Guest card processor — always Zest Payments for card tenders */
-  processor?: "zest_payments";
+  /** Guest card processor — always Quantum Payments for card tenders */
+  processor?: "quantum_payments" | "zest_payments";
   /** Guest-facing brand on the charge (host, never an operator) */
   chargeBrand?: string;
 }
@@ -491,6 +491,30 @@ export interface VendorPeriodRow {
   orderCount: number;
   bankLast4: string;
   payoutAccountLabel?: string;
+  /** $35 Quantum Payments dispute fee share (only when a chargeback was filed). */
+  chargebackFeeCents: number;
+}
+
+export type ChargebackStatus = "filed" | "won" | "lost";
+
+export interface ChargebackAllocation {
+  vendorId: string;
+  vendorName: string;
+  merchCents: number;
+  shareBps: number;
+  feeCents: number;
+}
+
+export interface Chargeback {
+  id: string;
+  orderId: string;
+  orderNumber: number;
+  amountCents: number;
+  feeCents: number;
+  status: ChargebackStatus;
+  filedAt: number;
+  resolvedAt?: number;
+  allocations: ChargebackAllocation[];
 }
 
 export interface SettlementPeriod {
@@ -506,6 +530,7 @@ export interface SettlementPeriod {
   hostName: string;
   hostCutTotalCents: number;
   cardFeesTotalCents: number;
+  chargebackFeesTotalCents: number;
   rows: VendorPeriodRow[];
   status: "open" | "closed" | "paid";
 }

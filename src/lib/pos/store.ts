@@ -20,7 +20,7 @@ import {
   EXTRA_TABLE_GRANTS,
 } from "./seed";
 import { computeTotals, isHappyHour, lineUnitTotal } from "./calculations";
-import { buildPeriodSettlement } from "./settlement";
+import { allocateChargebackFee, buildPeriodSettlement, CHARGEBACK_FEE_CENTS } from "./settlement";
 import { useOpsStore } from "./ops-store";
 import {
   DEFAULT_FLOOR_SECTIONS,
@@ -87,6 +87,7 @@ function initialState() {
 		vendors: VENDORS.map((v) => ({ ...v })),
 		settlementConfig: { ...SETTLEMENT_CONFIG },
 		settlementPeriods: [],
+		chargebacks: [],
 		auditLog: [],
 		shift: emptyShift(),
 		view: "floor",
@@ -835,8 +836,11 @@ const usePosStoreRaw = create()(persist((set, get) => ({
 			last4,
 			giftCardCode,
 			houseAccountId,
+			at: Date.now(),
 			createdAt: Date.now(),
-			employeeId: emp.id
+			employeeId: emp.id,
+			processor: method === "card" || method === "room_charge" ? "quantum_payments" : void 0,
+			chargeBrand: get().settlementConfig.hostName || get().settings.name
 		};
 		const payments = [...order.payments, payment];
 		let updated = {
@@ -1188,7 +1192,51 @@ const usePosStoreRaw = create()(persist((set, get) => ({
 	},
 	getOpenPeriodPreview: () => {
 		const cfg = get().settlementConfig;
-		return buildPeriodSettlement(cfg, get().vendors, get().orders, cfg.currentPeriodStart, Date.now(), get().getCurrentEmployee()?.name ?? "System");
+		return buildPeriodSettlement(
+			cfg,
+			get().vendors,
+			get().orders,
+			cfg.currentPeriodStart,
+			Date.now(),
+			get().getCurrentEmployee()?.name ?? "System",
+			get().chargebacks ?? [],
+		);
+	},
+	fileChargeback: (orderId) => {
+		const order = get().orders.find((o) => o.id === orderId);
+		if (!order) return { ok: false, error: "Order not found" };
+		if (order.status !== "closed") return { ok: false, error: "File a dispute only on a closed check" };
+		const hasCard = order.payments.some((p) => p.method === "card" || p.method === "room_charge");
+		if (!hasCard) return { ok: false, error: "No Quantum Payments card capture on this check" };
+		if ((get().chargebacks ?? []).some((c) => c.orderId === orderId)) {
+			return { ok: false, error: "A dispute is already filed on this check" };
+		}
+		const allocations = allocateChargebackFee(order, get().vendors);
+		if (!allocations.length) return { ok: false, error: "No operator merchandise on this check" };
+		const cb = {
+			id: uid("cb"),
+			orderId: order.id,
+			orderNumber: order.number,
+			amountCents: order.payments.filter((p) => p.method === "card" || p.method === "room_charge").reduce((s, p) => s + p.amountCents, 0),
+			feeCents: CHARGEBACK_FEE_CENTS,
+			status: "filed",
+			filedAt: Date.now(),
+			allocations
+		};
+		set({ chargebacks: [cb, ...(get().chargebacks ?? [])] });
+		get().audit("chargeback", `Filed $${(CHARGEBACK_FEE_CENTS / 100).toFixed(0)} dispute fee on #${order.number}`);
+		return { ok: true, chargeback: cb };
+	},
+	resolveChargeback: (id, outcome) => {
+		const hit = (get().chargebacks ?? []).find((c) => c.id === id);
+		if (!hit) return { ok: false, error: "Dispute not found" };
+		set({
+			chargebacks: get().chargebacks.map((c) =>
+				c.id === id ? { ...c, status: outcome, resolvedAt: Date.now() } : c,
+			),
+		});
+		get().audit("chargeback", `Dispute ${id} ${outcome} — $35 fee still allocated`);
+		return { ok: true };
 	},
 	closeSettlementPeriod: () => {
 		const preview = get().getOpenPeriodPreview();
@@ -1372,6 +1420,7 @@ const usePosStoreRaw = create()(persist((set, get) => ({
 		set({
 			...slice,
 			auditLog: [],
+			chargebacks: [],
 			shift: emptyShift(),
 			clock: Date.now(),
 		});
@@ -1393,7 +1442,7 @@ const usePosStoreRaw = create()(persist((set, get) => ({
 		});
 	}
 }), {
-	name: "summex-pos-v6",
+	name: "summex-pos-v7",
 	storage: createJSONStorage(() => localStorage),
 	skipHydration: true,
 	partialize: (s) => ({
@@ -1415,6 +1464,7 @@ const usePosStoreRaw = create()(persist((set, get) => ({
 		vendors: s.vendors,
 		settlementConfig: s.settlementConfig,
 		settlementPeriods: s.settlementPeriods,
+		chargebacks: s.chargebacks,
 		auditLog: s.auditLog,
 		shift: s.shift,
 		view: s.view,
@@ -1456,6 +1506,7 @@ const usePosStoreRaw = create()(persist((set, get) => ({
 			},
 			floorSections: (p.floorSections && p.floorSections.length) ? p.floorSections : current.floorSections,
 			extraTableGrants: p.extraTableGrants || current.extraTableGrants || [],
+			chargebacks: p.chargebacks || current.chargebacks || [],
 			sectionOverrides: {},
 			giftCards: (p.giftCards || current.giftCards || []).map((g) => ({
 				...g,

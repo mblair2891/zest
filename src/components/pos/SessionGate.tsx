@@ -11,7 +11,7 @@ function Loading() {
         <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-2xl bg-primary text-lg font-black text-primary-foreground">
           Z
         </div>
-        <p className="text-sm">Loading Zest…</p>
+        <p className="text-sm">Loading Summex…</p>
       </div>
     </div>
   );

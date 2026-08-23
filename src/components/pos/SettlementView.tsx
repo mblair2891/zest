@@ -5,6 +5,7 @@ import { Input } from "@/components/ui/input";
 import { usePosStore } from "@/lib/pos/store";
 import type { SettlementPeriodType, HostCutType } from "@/lib/pos/types";
 import { formatCurrency, formatDateTime } from "@/lib/utils";
+import { CHARGEBACK_FEE_CENTS, PAYMENTS_BRAND } from "@/lib/platform/brand";
 
 export function SettlementView() {
   const config = usePosStore((s) => s.settlementConfig);
@@ -14,6 +15,9 @@ export function SettlementView() {
   const closePeriod = usePosStore((s) => s.closeSettlementPeriod);
   const markPaid = usePosStore((s) => s.markSettlementPaid);
   const preview = usePosStore((s) => s.getOpenPeriodPreview);
+  const chargebacks = usePosStore((s) => s.chargebacks ?? []);
+  const fileChargeback = usePosStore((s) => s.fileChargeback);
+  const resolveChargeback = usePosStore((s) => s.resolveChargeback);
   const [flash, setFlash] = useState<string | null>(null);
 
   const orders = usePosStore((s) => s.orders);
@@ -41,7 +45,7 @@ export function SettlementView() {
         </h2>
         <p className="text-xs text-muted-foreground">
           One host brand ({config.hostName}), multiple operators. Guest pays
-          once via Zest Payments. Period payouts are addressed to each
+          once via {PAYMENTS_BRAND}. Period payouts are addressed to each
           operator’s account placeholder — not live ACH.
         </p>
       </div>
@@ -217,6 +221,14 @@ export function SettlementView() {
             </label>
           </div>
           <p className="mt-3 text-xs text-muted-foreground">
+            Policy: merchandise shares go to operators; tax remitted by{" "}
+            {config.taxRemittedBy === "vendor" ? "each operator" : "the host"};
+            tips {config.tipPoolWithVendors ? "pool with operators" : "stay with the house"}
+            . Card processing fee is a % of card merchandise. A {PAYMENTS_BRAND}{" "}
+            dispute adds a ${CHARGEBACK_FEE_CENTS / 100} fee split by merchandise
+            share — only when a dispute is filed, win or lose.
+          </p>
+          <p className="mt-2 text-xs text-muted-foreground">
             Current open period started{" "}
             {formatDateTime(config.currentPeriodStart)}. Close when your period
             ends — payouts are calculated then.
@@ -277,6 +289,10 @@ export function SettlementView() {
                   value={formatCurrency(live.hostCutTotalCents)}
                 />
                 <Stat
+                  label="Chargeback fees"
+                  value={formatCurrency(live.chargebackFeesTotalCents ?? 0)}
+                />
+                <Stat
                   label="E-payouts total"
                   value={formatCurrency(
                     live.rows.reduce(
@@ -334,6 +350,19 @@ export function SettlementView() {
           )}
         </section>
 
+        <ChargebackSection
+          orders={orders}
+          chargebacks={chargebacks}
+          onFile={(id) => {
+            const res = fileChargeback(id);
+            setFlash(res.ok ? "Dispute filed. $35 fee split by merchandise share." : (res.error ?? "Failed"));
+          }}
+          onResolve={(id, outcome) => {
+            const res = resolveChargeback(id, outcome);
+            setFlash(res.ok ? `Dispute ${outcome}. $35 fee still allocated.` : (res.error ?? "Failed"));
+          }}
+        />
+
         {/* Closed periods */}
         <section className="rounded-2xl border border-border bg-surface p-4">
           <h3 className="mb-3 text-sm font-semibold">Closed periods</h3>
@@ -381,7 +410,8 @@ export function SettlementView() {
                 <SettlementTable rows={p.rows} />
                 <p className="mt-2 text-xs text-muted-foreground">
                   Host ({p.hostName}): {formatCurrency(p.hostCutTotalCents)} ·
-                  Card fees: {formatCurrency(p.cardFeesTotalCents)} · Fee rate{" "}
+                  Card fees: {formatCurrency(p.cardFeesTotalCents)} · Chargebacks:{" "}
+                  {formatCurrency(p.chargebackFeesTotalCents ?? 0)} · Fee rate{" "}
                   {p.cardFeePercent}%
                 </p>
               </div>
@@ -395,13 +425,19 @@ export function SettlementView() {
             <li>Guest sits; server rings items from any vendor on one check.</li>
             <li>Send routes each item to that vendor’s KDS / prep line.</li>
             <li>
-              Guest pays once (card or cash). Card is a single charge to their
-              card — platform captures funds.
+              Guest pays once (card or cash). Card is a single {PAYMENTS_BRAND}{" "}
+              capture under the host brand — never an operator MID.
             </li>
             <li>
-              At period end you close settlement: each vendor’s product sales −
-              their share of card fees − host cut = electronic payout; cash
-              report shows cash to hand each vendor.
+              At period end you close settlement: each operator’s merchandise −
+              card fee share − host cut − any $35 dispute fees = electronic
+              payout; cash report shows cash to hand each operator.
+            </li>
+            <li>
+              A dispute files a ${CHARGEBACK_FEE_CENTS / 100} fee split by each
+              operator’s % of merchandise on that check (e.g. $65 food / $35
+              drink → 65% / 35% of $35). One operator on the check takes the
+              full $35. No fee if no dispute. Win or lose, the fee stays.
             </li>
           </ol>
         </section>
@@ -432,6 +468,7 @@ function SettlementTable({
     cashSalesCents: number;
     cardFeesCents: number;
     hostCutCents: number;
+    chargebackFeeCents?: number;
     cardPayoutCents: number;
     cashDueCents: number;
     orderCount: number;
@@ -450,6 +487,7 @@ function SettlementTable({
             <th className="px-2 py-1.5">Cash</th>
             <th className="px-2 py-1.5">CC fees</th>
             <th className="px-2 py-1.5">Host cut</th>
+            <th className="px-2 py-1.5">CB $35</th>
             <th className="px-2 py-1.5">E-payout</th>
             <th className="px-2 py-1.5">Cash due</th>
             <th className="px-2 py-1.5">Payout account</th>
@@ -479,6 +517,9 @@ function SettlementTable({
               <td className="px-2 py-2 tabular">
                 {formatCurrency(r.hostCutCents)}
               </td>
+              <td className="px-2 py-2 tabular">
+                {formatCurrency(r.chargebackFeeCents ?? 0)}
+              </td>
               <td className="px-2 py-2 tabular font-semibold">
                 {formatCurrency(r.cardPayoutCents)}
               </td>
@@ -495,5 +536,90 @@ function SettlementTable({
         </tbody>
       </table>
     </div>
+  );
+}
+
+function ChargebackSection({
+  orders,
+  chargebacks,
+  onFile,
+  onResolve,
+}: {
+  orders: { id: string; number: number; status: string; payments: { method: string }[] }[];
+  chargebacks: {
+    id: string;
+    orderId: string;
+    orderNumber: number;
+    feeCents: number;
+    status: string;
+    allocations: { vendorName: string; merchCents: number; feeCents: number; shareBps: number }[];
+  }[];
+  onFile: (orderId: string) => void;
+  onResolve: (id: string, outcome: "won" | "lost") => void;
+}) {
+  const filedIds = new Set(chargebacks.map((c) => c.orderId));
+  const eligible = orders.filter(
+    (o) =>
+      o.status === "closed" &&
+      o.payments.some((p) => p.method === "card" || p.method === "room_charge") &&
+      !filedIds.has(o.id),
+  );
+  return (
+    <section className="rounded-2xl border border-border bg-surface p-4">
+      <h3 className="text-sm font-semibold">{PAYMENTS_BRAND} disputes</h3>
+      <p className="mt-1 text-xs text-muted-foreground">
+        ${CHARGEBACK_FEE_CENTS / 100} fee only when a dispute is filed. Split by
+        merchandise share on that check. Applies whether you win or lose.
+      </p>
+      {eligible.length > 0 && (
+        <ul className="mt-3 space-y-2">
+          {eligible.slice(0, 8).map((o) => (
+            <li
+              key={o.id}
+              className="flex items-center justify-between gap-2 rounded-xl border border-border px-3 py-2 text-sm"
+            >
+              <span>Closed check #{o.number}</span>
+              <Button size="sm" variant="outline" onClick={() => onFile(o.id)}>
+                File dispute
+              </Button>
+            </li>
+          ))}
+        </ul>
+      )}
+      {chargebacks.length === 0 && eligible.length === 0 && (
+        <p className="mt-2 text-sm text-muted-foreground">No disputes on file.</p>
+      )}
+      {chargebacks.map((c) => (
+        <div key={c.id} className="mt-3 rounded-xl border border-border bg-bg p-3 text-sm">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="font-medium">
+              #{c.orderNumber} · {formatCurrency(c.feeCents)} fee
+            </span>
+            <Badge variant={c.status === "filed" ? "warn" : "secondary"}>{c.status}</Badge>
+          </div>
+          <ul className="mt-2 space-y-1 text-xs">
+            {c.allocations.map((a) => (
+              <li key={a.vendorName} className="flex justify-between">
+                <span>
+                  {a.vendorName} ({(a.shareBps / 100).toFixed(1)}% of merchandise{" "}
+                  {formatCurrency(a.merchCents)})
+                </span>
+                <span className="tabular">{formatCurrency(a.feeCents)}</span>
+              </li>
+            ))}
+          </ul>
+          {c.status === "filed" && (
+            <div className="mt-2 flex gap-2">
+              <Button size="sm" variant="outline" onClick={() => onResolve(c.id, "won")}>
+                Mark won
+              </Button>
+              <Button size="sm" variant="outline" onClick={() => onResolve(c.id, "lost")}>
+                Mark lost
+              </Button>
+            </div>
+          )}
+        </div>
+      ))}
+    </section>
   );
 }

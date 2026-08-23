@@ -10,7 +10,7 @@ const ITEMS = [
   ["Kitchen & bar", "Expo rails, bump, vendor-routed tickets."],
   ["Halls & pods", "One guest pay, settlement, pad maps."],
   ["Staff", "Owner, manager, cashier — org-wide or per location."],
-  ["Summex Payments", "The only merchant processor in the product."],
+  ["Quantum Payments", "The only merchant processor in the product."],
   ["Control plane", "Orgs, locations, packages, invites at summex.app/dashboard."],
 ];
 

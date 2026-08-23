@@ -1,6 +1,8 @@
-# Fresh Zest (empty start)
+# Fresh Summex (empty start)
 
 This app ships with **no tenant data**. There are no demo restaurants, orgs, menus, floors, or staff rosters.
+
+**Summex, powered by Quantum Reach.** Guest cards: **Quantum Payments** only.
 
 ## Platform admin bootstrap
 
@@ -24,9 +26,9 @@ The plaintext initial password lives only in the server-side bootstrap (`src/lib
 2. Sign in as `Admin` / `password`.
 3. Set a new password (8+ characters, not `password`).
 4. You land on **SaaS / platform**. There are **no organizations**.
-5. **Host setup**: create an organization → location (optionally Host + multiple operators) → operators → menu routing.
-6. **Open POS** for that location. House staff PINs are generated for the location you created (Owner `9999`, Manager `0000`, Floor Server `1111`, Kitchen `2222`, Bar `3333`).
+5. Run intake → quote → contract → onboarding (see `docs/saas-onboarding.md`). Use generic names such as Host Venue / Operator A / Operator B.
+6. **Open POS** for that location. POS is empty until you add a menu.
 
 Until you create a location, POS has no menus, tables, vendors, or tickets.
 
-See also `docs/saas-multi-operator-onboarding.md` for the host + operators click path.
+See also `docs/quantum-payments-multi-operator.md` for host capture and the $35 dispute split.

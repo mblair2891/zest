@@ -97,10 +97,10 @@ export const INTEGRATION_CATALOG: IntegrationDef[] = [
   // Payments — Summex is the only processor
   d(
     SUMMEX_PAYMENTS_ID,
-    "Summex Payments",
-    "Summex",
+    "Quantum Payments",
+    "Quantum Reach",
     "payments",
-    "Card-present, online, kiosk, and tap-to-pay. Every location processes through Summex — there is no Stripe, Square, or Clover to connect.",
+    "Card-present, online, kiosk, and tap-to-pay. Every location processes through Quantum Payments — there is no Stripe, Square, or Clover to connect.",
     [
       "Card present + tap",
       "Online checkout",
@@ -113,8 +113,8 @@ export const INTEGRATION_CATALOG: IntegrationDef[] = [
   ),
   d(
     "plaid",
-    "Summex bank link",
-    "Summex Payments",
+    "Quantum bank link",
+    "Quantum Payments",
     "payments",
     "Verify the house deposit account. Used only as Summex payout rails — not a separate processor.",
     ["Account verify", "Balance", "Identity"],
@@ -122,8 +122,8 @@ export const INTEGRATION_CATALOG: IntegrationDef[] = [
   ),
   d(
     "dwolla",
-    "Summex ACH payouts",
-    "Summex Payments",
+    "Quantum ACH payouts",
+    "Quantum Payments",
     "payments",
     "ACH credits to vendor bank accounts when a settlement period closes. Internal to Summex Payments.",
     ["ACH credit", "Mass pay", "Transfers"],
@@ -131,8 +131,8 @@ export const INTEGRATION_CATALOG: IntegrationDef[] = [
   ),
   d(
     "tipalti",
-    "Summex tax forms",
-    "Summex Payments",
+    "Quantum tax forms",
+    "Quantum Payments",
     "payments",
     "W-9 / W-8 collection for hall vendors. Runs inside Summex payouts.",
     ["W-9/W-8", "1099", "Vendor tax"],

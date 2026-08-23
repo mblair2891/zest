@@ -534,7 +534,7 @@ export async function issueQuote(opts: {
   const prospect = mapProspect(row);
   await assertCanAccessProspect({ userId: opts.userId, prospect, token: opts.token, write: true });
   if (!prospect.answers.payments.zestPaymentsAck) {
-    throw new Error("Acknowledge Summex Payments as the only guest card processor to continue");
+    throw new Error("Acknowledge Quantum Payments as the only guest card processor to continue");
   }
   if (!prospect.answers.company.legalName.trim() || !prospect.answers.company.billingEmail.includes("@")) {
     throw new Error("Company legal name and billing email are required");

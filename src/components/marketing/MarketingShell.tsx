@@ -66,7 +66,7 @@ export function MarketingShell({ children }: { children: ReactNode }) {
       {children}
       <footer className="border-t border-border">
         <div className="mx-auto flex max-w-5xl flex-wrap items-center justify-between gap-3 px-4 py-8 text-xs text-muted-foreground">
-          <p>Summex · Service, sharp. · summex.app · app.summex.app · api.summex.app</p>
+          <p>Summex, powered by Quantum Reach · summex.app · app.summex.app</p>
           <p>By Michael Blair & Andy Baida</p>
         </div>
       </footer>

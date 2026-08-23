@@ -4,6 +4,7 @@ import { useCurrentUserState } from "@/lib/auth/use-current-user";
 import { RedirectToSignIn } from "@/lib/auth/gates";
 import { getSessionContextFn } from "@/lib/saas/api";
 import { ProspectPipelineView } from "@/components/saas/ProspectPipelineView";
+import { SessionGate } from "@/components/pos/SessionGate";
 
 export const Route = createFileRoute("/pipeline")({
   ssr: false,
@@ -50,6 +51,7 @@ function PipelinePage() {
   }
 
   return (
+    <SessionGate>
     <div className="flex h-[100dvh] flex-col bg-bg pt-[var(--grok-banner-h,0px)]">
       <header className="flex h-14 items-center gap-3 border-b border-border px-4">
         <Link to="/dashboard" className="text-sm text-muted-foreground hover:text-foreground">
@@ -61,5 +63,6 @@ function PipelinePage() {
         <ProspectPipelineView />
       </main>
     </div>
+    </SessionGate>
   );
 }

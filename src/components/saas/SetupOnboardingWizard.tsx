@@ -609,7 +609,7 @@ export function SetupOnboardingWizard({ token }: { token: string }) {
           />
           <ToggleChip
             on={payload.checklist.paymentsAck}
-            label="Summex Payments is the only guest card processor"
+            label="Quantum Payments is the only guest card processor"
             onClick={() =>
               patch((p) => ({
                 ...p,

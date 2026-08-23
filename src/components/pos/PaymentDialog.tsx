@@ -180,7 +180,7 @@ export function PaymentDialog({ open, onOpenChange }: Props) {
               Charged as{" "}
               {order.payments[order.payments.length - 1]?.chargeBrand ||
                 settings.name}{" "}
-              via Zest Payments. Tip recorded: {formatCurrency(tip)}
+              via Quantum Payments. Tip recorded: {formatCurrency(tip)}
             </p>
             <Button className="w-full" size="lg" onClick={finish}>
               Done
@@ -215,7 +215,7 @@ export function PaymentDialog({ open, onOpenChange }: Props) {
                 {formatCurrency(balance)}
               </p>
               <p className="mt-1 text-[11px] text-muted-foreground">
-                Guest charge brand is the host. Card runs on Zest Payments
+                Guest charge brand is the host. Card runs on Quantum Payments
                 only — not Stripe or Square.
               </p>
             </div>

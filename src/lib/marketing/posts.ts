@@ -23,7 +23,7 @@ export const BLOG_POSTS: BlogPost[] = [
     date: "2026-08-04",
     dek: "Merchant processing is first-party. Software billing is a separate product.",
     body: [
-      "Integrations never offer Stripe or Square as a POS processor. Checks capture through Summex Payments. Gift cards stay on our ledger.",
+      "Integrations never offer Stripe or Square as a POS processor. Checks capture through Quantum Payments. Gift cards stay on our ledger.",
       "Stripe Billing may still collect Summex software fees. Those are subscriptions for the product — not guest card present volume.",
     ],
   },

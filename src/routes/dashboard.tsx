@@ -1,12 +1,12 @@
 import { useEffect, useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { useCurrentUserState } from "@/lib/auth/use-current-user";
-import { RedirectToSignIn } from "@/lib/auth/gates";
 import { getSessionContextFn, listMyProspectsFn, setActiveContextFn } from "@/lib/saas/api";
 import type { SessionContext } from "@/lib/saas/types";
 import { LocationPicker } from "@/components/saas/LocationPicker";
 import { PlatformApp } from "@/components/pos/PlatformApp";
 import { prospectResumePath } from "@/lib/saas/prospect-resume";
+import { SessionGate } from "@/components/pos/SessionGate";
 
 export const Route = createFileRoute("/dashboard")({
   ssr: false,
@@ -14,6 +14,14 @@ export const Route = createFileRoute("/dashboard")({
 });
 
 function DashboardPage() {
+  return (
+    <SessionGate>
+      <DashboardInner />
+    </SessionGate>
+  );
+}
+
+function DashboardInner() {
   const { user, isPending } = useCurrentUserState();
   const [session, setSession] = useState<SessionContext | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -46,7 +54,7 @@ function DashboardPage() {
       </div>
     );
   }
-  if (!user) return <RedirectToSignIn />;
+  if (!user) return null;
 
   if (error) {
     return (

@@ -101,7 +101,7 @@ function QuotePage() {
           {detail.answers.company.legalName || "Your quote"}
         </h1>
         <p className="mt-2 text-sm text-muted-foreground">
-          Snapshot of software fees. Guest processing is Summex Payments, billed
+          Snapshot of software fees. Guest processing is Quantum Payments, billed
           separately. Gift cards stay first-party.
         </p>
 

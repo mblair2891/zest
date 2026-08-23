@@ -131,7 +131,7 @@ export function InterviewPanel({
         <p className="mt-1.5 text-sm leading-relaxed text-muted-foreground">
           In your own words: locations, bar vs kitchen, host vs single operator, volume,
           what you need. We will ask a few follow-ups, then recommend a setup you can
-          edit. Guest cards are always Summex Payments.
+          edit. Guest cards are always Quantum Payments.
         </p>
         {ai !== null && (
           <Badge className="mt-2" variant={ai ? "info" : "secondary"}>

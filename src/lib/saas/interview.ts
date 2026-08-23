@@ -425,8 +425,8 @@ export function heuristicRecommendation(corpus: string, freeText: string): Inter
     pricingHints: {
       suggestedPlan,
       notes: host
-        ? "Guest cards still run on Summex Payments with a host MID. Gift cards stay first-party."
-        : "Guest cards run on Summex Payments only. Gift cards stay first-party.",
+        ? "Guest cards still run on Quantum Payments with a host MID. Gift cards stay first-party."
+        : "Guest cards run on Quantum Payments only. Gift cards stay first-party.",
     },
   };
 }
@@ -452,7 +452,7 @@ export function parseMessages(raw: unknown): InterviewMessage[] {
 export function interviewSystemPrompt(): string {
   return `You are interviewing a hospitality operator for Summex (Zest) SaaS pricing.
 Summex is multi-tenant restaurant software: restaurants, bars, cafes, QSR, food halls, truck pods, ghost kitchens, catering.
-Guest card processing is ALWAYS Summex Payments (host MID when multi-operator). Never recommend Stripe, Square, or Adyen.
+Guest card processing is ALWAYS Quantum Payments (host MID when multi-operator). Never recommend Stripe, Square, or Adyen.
 Gift cards are first-party (our ledger), not an external vendor.
 
 Only recommend catalog options:

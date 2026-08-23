@@ -3,15 +3,17 @@
  * Server-only — never import from client code.
  *
  * Username shown in the login form: Admin
- * Email stored in Better Auth: admin@zest.local
+ * Email stored in Better Auth: admin@summex.local
  * Initial password is hashed with Better Auth's hasher before insert.
  */
 import { randomUUID } from "node:crypto";
 import { hashPassword } from "better-auth/crypto";
 import { getSql } from "@/lib/db";
+import { PLATFORM_ADMIN_EMAIL as ADMIN_EMAIL, PLATFORM_ADMIN_USERNAME } from "@/lib/platform/brand";
 
-export const PLATFORM_ADMIN_EMAIL = "admin@zest.local";
-export const PLATFORM_ADMIN_NAME = "Admin";
+export const PLATFORM_ADMIN_EMAIL = ADMIN_EMAIL;
+export const PLATFORM_ADMIN_NAME = PLATFORM_ADMIN_USERNAME;
+const LEGACY_ADMIN_EMAIL = "admin@zest.local";
 
 /** Initial bootstrap password. Server-only. Never ship in a client bundle. */
 const INITIAL_PASSWORD = "password";
@@ -24,7 +26,9 @@ export async function ensurePlatformAdmin(): Promise<void> {
   globalRef.__zestPlatformAdminBoot__ ??= (async () => {
     const sql = await getSql();
     const existing = await sql<{ id: string }>`
-      select id from "user" where email = ${PLATFORM_ADMIN_EMAIL} limit 1
+      select id from "user"
+      where email = ${PLATFORM_ADMIN_EMAIL} or email = ${LEGACY_ADMIN_EMAIL}
+      limit 1
     `;
     let userId = existing[0]?.id;
     if (!userId) {

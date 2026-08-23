@@ -1,4 +1,6 @@
 import type {
+  Chargeback,
+  ChargebackAllocation,
   Order,
   Payment,
   SettlementConfig,
@@ -8,6 +10,9 @@ import type {
 } from "./types";
 import { lineTotal, computeTotals } from "./calculations";
 import { SETTINGS } from "./seed";
+import { CHARGEBACK_FEE_CENTS } from "@/lib/platform/brand";
+
+export { CHARGEBACK_FEE_CENTS };
 
 /** Pre-tax sales for a vendor on one order (active, non-comp lines). */
 export function vendorSubtotalOnOrder(order: Order, vendorId: string): number {
@@ -146,6 +151,52 @@ export function aggregateVendorSales(
   return [...byId.values()];
 }
 
+/**
+ * $35 Quantum Payments dispute fee, split by merchandise share on that check.
+ * Single-operator check → full $35. No fee unless a dispute is filed.
+ * Fee applies whether the dispute is later won or lost.
+ */
+export function allocateChargebackFee(
+  order: Order,
+  vendors: Vendor[],
+  feeCents = CHARGEBACK_FEE_CENTS,
+): ChargebackAllocation[] {
+  const vendorIds = vendors.map((v) => v.id);
+  const subs = orderVendorSubtotals(order, vendorIds);
+  const entries = [...subs.entries()].filter(([, merch]) => merch > 0);
+  const total = entries.reduce((s, [, m]) => s + m, 0);
+  if (entries.length === 0 || total <= 0 || feeCents <= 0) return [];
+  if (entries.length === 1) {
+    const [vendorId, merchCents] = entries[0]!;
+    const vendor = vendors.find((v) => v.id === vendorId);
+    return [
+      {
+        vendorId,
+        vendorName: vendor?.name ?? vendorId,
+        merchCents,
+        shareBps: 10000,
+        feeCents,
+      },
+    ];
+  }
+  let allocated = 0;
+  return entries.map(([vendorId, merchCents], i) => {
+    const isLast = i === entries.length - 1;
+    const fee = isLast
+      ? feeCents - allocated
+      : Math.round((feeCents * merchCents) / total);
+    allocated += fee;
+    const vendor = vendors.find((v) => v.id === vendorId);
+    return {
+      vendorId,
+      vendorName: vendor?.name ?? vendorId,
+      merchCents,
+      shareBps: Math.round((merchCents / total) * 10000),
+      feeCents: Math.max(0, fee),
+    };
+  });
+}
+
 export function buildPeriodSettlement(
   config: SettlementConfig,
   vendors: Vendor[],
@@ -153,10 +204,18 @@ export function buildPeriodSettlement(
   periodStart: number,
   periodEnd: number,
   closedBy: string,
+  chargebacks: Chargeback[] = [],
 ): SettlementPeriod {
   const aggs = aggregateVendorSales(orders, vendors, periodStart, periodEnd);
   const feePct = config.cardFeePercent / 100;
   const hostPct = config.hostCutEnabled ? config.hostCutPercent / 100 : 0;
+  const cbByVendor = new Map<string, number>();
+  for (const cb of chargebacks) {
+    if (cb.filedAt < periodStart || cb.filedAt > periodEnd) continue;
+    for (const a of cb.allocations) {
+      cbByVendor.set(a.vendorId, (cbByVendor.get(a.vendorId) ?? 0) + a.feeCents);
+    }
+  }
 
   const rows: VendorPeriodRow[] = aggs.map((a) => {
     const vendor = vendors.find((v) => v.id === a.vendorId)!;
@@ -180,9 +239,10 @@ export function buildPeriodSettlement(
         : hostCutCents;
     const hostFromCash = Math.max(0, hostCutCents - hostFromCard);
 
+    const chargebackFeeCents = cbByVendor.get(a.vendorId) ?? 0;
     const cardPayoutCents = Math.max(
       0,
-      a.cardSalesCents - cardFeesCents - hostFromCard,
+      a.cardSalesCents - cardFeesCents - hostFromCard - chargebackFeeCents,
     );
     const cashDueCents = Math.max(0, a.cashSalesCents - hostFromCash);
 
@@ -204,11 +264,13 @@ export function buildPeriodSettlement(
       orderCount: a.orderCount,
       bankLast4: vendor.bankLast4,
       payoutAccountLabel: vendor.bankLabel,
+      chargebackFeeCents,
     };
   });
 
   const hostTotal = rows.reduce((s, r) => s + r.hostCutCents, 0);
   const feesTotal = rows.reduce((s, r) => s + r.cardFeesCents, 0);
+  const cbTotal = rows.reduce((s, r) => s + r.chargebackFeeCents, 0);
 
   return {
     id: `sp_${periodStart}_${periodEnd}`,
@@ -223,6 +285,7 @@ export function buildPeriodSettlement(
     hostName: config.hostName,
     hostCutTotalCents: hostTotal,
     cardFeesTotalCents: feesTotal,
+    chargebackFeesTotalCents: cbTotal,
     rows,
     status: "closed",
   };

@@ -123,7 +123,7 @@ export function IntakeWizard({ initialToken }: { initialToken?: string }) {
   const submit = async () => {
     setError(null);
     if (!answers.payments.zestPaymentsAck) {
-      setError("Please acknowledge Summex Payments as the only guest card processor.");
+      setError("Please acknowledge Quantum Payments as the only guest card processor.");
       return;
     }
     if (answers.company.legalName.trim().length < 2) {
@@ -207,7 +207,7 @@ export function IntakeWizard({ initialToken }: { initialToken?: string }) {
           "Single operator vs host with vendors under one guest check.",
           "Software modules that change the quote. Gift cards stay first-party.",
           "Used for seat packs, device packs, and volume band.",
-          "Guest cards run through Summex Payments only — including host MID.",
+          "Guest cards run through Quantum Payments only — including host MID.",
           "Target go-live and anything a human should know before quoting.",
         ][step - 1]
       }
@@ -527,7 +527,7 @@ export function IntakeWizard({ initialToken }: { initialToken?: string }) {
         <div className="space-y-3">
           <ToggleChip
             on={answers.payments.zestPaymentsAck}
-            label="Guest cards process on Summex Payments only"
+            label="Guest cards process on Quantum Payments only"
             hint="Required. Multi-operator locations use the host MID. Gift cards stay first-party."
             onClick={() =>
               patch((a) => ({

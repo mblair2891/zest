@@ -11,8 +11,8 @@ const PILLARS = [
     body: "Organizations, locations, memberships, and sessions live in one database. Every query is scoped by the active tenant context.",
   },
   {
-    title: "Summex Payments",
-    body: "Guest cards run through Summex Payments only. Software billing is separate. Gift cards stay on our ledger.",
+    title: "Quantum Payments",
+    body: "Guest cards run through Quantum Payments only. Software billing is separate. Gift cards stay on our ledger.",
   },
 ];
 
@@ -28,9 +28,9 @@ export function HomePage() {
             Service, sharp.
           </h1>
           <p className="mt-4 max-w-xl text-base leading-relaxed text-muted-foreground sm:text-lg">
-            From Latin summus — highest, greatest, supreme. Log in at
-            summex.app, work the floor on app.summex.app — one shared
-            application for every location you run.
+            Summex, powered by Quantum Reach. Log in at summex.app, work the
+            floor on app.summex.app — one shared application for every location
+            you run. Guest cards: Quantum Payments only.
           </p>
           <div className="mt-8 flex flex-wrap gap-3">
             <Link

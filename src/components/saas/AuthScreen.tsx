@@ -33,11 +33,28 @@ export function AuthScreen({
         });
         if (err) throw new Error(err.message ?? "Sign up failed");
       } else {
-        const { error: err } = await authClient.signIn.email({
-          email: email.trim(),
-          password,
-        });
-        if (err) throw new Error(err.message ?? "Sign in failed");
+        const raw = email.trim();
+        const isAdmin =
+          raw.toLowerCase() === "admin" ||
+          raw.toLowerCase() === "admin@summex.local" ||
+          raw.toLowerCase() === "admin@zest.local";
+        const candidates = isAdmin
+          ? ["admin@summex.local", "admin@zest.local"]
+          : [raw];
+        let lastErr: string | null = null;
+        let ok = false;
+        for (const loginEmail of candidates) {
+          const { error: err } = await authClient.signIn.email({
+            email: loginEmail,
+            password,
+          });
+          if (!err) {
+            ok = true;
+            break;
+          }
+          lastErr = err.message ?? "Sign in failed";
+        }
+        if (!ok) throw new Error(lastErr ?? "Sign in failed");
       }
       onAuthed?.();
       if (!onAuthed) {
@@ -66,7 +83,7 @@ export function AuthScreen({
         )}
         <Input
           type="email"
-          placeholder="Work email"
+          placeholder={mode === "signin" ? "Admin or work email" : "Work email"}
           value={email}
           disabled={lockEmail}
           onChange={(e) => setEmail(e.target.value)}

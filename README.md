@@ -10,16 +10,16 @@ Built by Michael Blair & Andy Baida.
 
 ## Fresh start
 
-Production onboarding starts **empty** — no demo tenants, menus, or staff, and no hardcoded customer names. Software quotes come from the public intake wizard.
+Production onboarding starts **empty** — no demo tenants, menus, or staff, and no hardcoded customer names.
+
+Bootstrap identity (first run): username **Admin**, password **password**. You **must** change it on first login. See [`docs/empty-start.md`](docs/empty-start.md).
 
 - Prospect: `/get-pricing` → `/quote/$token` → accept
 - Admin: Dashboard → Pipeline (or `/pipeline`) → mark contract signed
 - After contract: `/setup/$token` creates org, locations, operators
 - POS opens without a seeded menu
 
-Full flow: [`docs/saas-intake-onboarding.md`](docs/saas-intake-onboarding.md).
-
-Bootstrap a platform admin with `BOOTSTRAP_ADMIN_EMAIL` (or `npm run bootstrap:admin` against Postgres). Change that password immediately.
+UI path: [`docs/saas-onboarding.md`](docs/saas-onboarding.md). Money rules: [`docs/quantum-payments-multi-operator.md`](docs/quantum-payments-multi-operator.md).
 
 ## What this is
 
@@ -28,7 +28,8 @@ Bootstrap a platform admin with `BOOTSTRAP_ADMIN_EMAIL` (or `npm run bootstrap:a
 - **Application** (`app.summex.app` / `/app`) — shared POS. Tenant is chosen after login, never as a subdomain.
 - **API** (`api.summex.app` / `/api`).
 - **Gift cards** — first-party ledger (import / freeze / void stay in-app).
-- **Guest cards** — Summex Payments only (host MID for multi-operator locations).
+- **Guest cards** — Quantum Payments only (host MID for multi-operator locations).
+- **Brand** — Summex, powered by Quantum Reach.
 
 ## Requirements
 
