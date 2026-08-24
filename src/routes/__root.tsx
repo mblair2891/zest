@@ -16,7 +16,7 @@ export const Route = createRootRoute({
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1, viewport-fit=cover" },
       { title: APP_NAME },
-      { name: "description", content: "Summex, powered by Quantum Reach. Hospitality OS for restaurants, food halls & truck pods. Guest cards via Quantum Payments." },
+      { name: "description", content: "Summex is the sum of excellence in hospitality operations — unifying floor, staff, and settlement. Powered by Quantum Reach. Guest cards via Quantum Payments." },
       { name: "apple-mobile-web-app-title", content: APP_NAME },
       { name: "theme-color", content: "#F7F6F3" },
       ...(ogImage

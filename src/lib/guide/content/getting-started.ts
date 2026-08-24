@@ -14,7 +14,7 @@ export const GETTING_STARTED_TOPICS: GuideTopic[] = [
         "Anyone on a shift should be able to learn the product without leaving it. This Operators Guide is the in-app source of truth — not a PDF you have to hunt down.",
       ),
       p(
-        "Summex, powered by Quantum Reach, is the hospitality operating system for a single restaurant or a host venue with several operators (food hall, truck pod, ghost kitchen). Front of house, kitchen/bar displays, labor, guests, settlement, and the SaaS control plane live in one product.",
+        "Summex is the sum of excellence in hospitality operations — unifying floor, staff, and settlement. Powered by Quantum Reach. Guest cards via Quantum Payments. It is the OS for a single restaurant or bar, a multi-operator host venue, or a multi-unit and franchise-style group.",
       ),
       p(
         "Guest cards always run through Quantum Payments. Gift cards stay on the first-party Summex ledger. Software billing is separate from card processing.",

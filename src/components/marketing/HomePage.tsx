@@ -10,7 +10,7 @@ import {
 } from "lucide-react";
 import { Link } from "@tanstack/react-router";
 import { SummexMark } from "@/components/brand/SummexMark";
-import { PAYMENTS_BRAND, POWERED_BY, PRODUCT_NAME } from "@/lib/platform/brand";
+import { PAYMENTS_BRAND, POWERED_BY, PRODUCT_DEFINITION, PRODUCT_NAME } from "@/lib/platform/brand";
 import { LandingCta, LandingFrame } from "./LandingFrame";
 
 const PAINS = [
@@ -35,8 +35,8 @@ const PAINS = [
 const WHYS = [
   {
     icon: Building2,
-    title: "One platform for every house you run",
-    body: "Restaurants, bars, cafés, host venues, and multi-operator locations sign into the same Summex. Organization and location are chosen after login — not as a maze of subdomains.",
+    title: "One OS for every house you run",
+    body: "A single dining room, a host venue with operators, or a group of locations — the same Summex. Organization and site are chosen after login, not as a maze of subdomains.",
   },
   {
     icon: UtensilsCrossed,
@@ -72,15 +72,15 @@ const WHYS = [
 
 const AUDIENCES = [
   {
-    title: "Independent restaurants & bars",
+    title: "Single-unit restaurants & bars",
     body: "Table or counter service, kitchen and bar routing, staff PINs, cash, gift, and a floor that knows its sections. Start on the included POS core; add labor, guests, and marketing when the house needs them.",
   },
   {
-    title: "Host venues with multiple operators",
+    title: "Multi-operator host venues",
     body: "A bar and a kitchen, or a hall of stalls, under one guest-facing brand. One Quantum Payments capture. Operators paid from their share on the period — not from a second card terminal at the table.",
   },
   {
-    title: "Groups adding locations",
+    title: "Multi-unit & franchise-style operations",
     body: "One application, many sites. Packages per location, invites by role, a control plane for the portfolio. You do not stitch five vendors every time you open a room.",
   },
 ];
@@ -155,17 +155,16 @@ export function HomePage() {
           <div className="mkt-fade flex flex-col items-start">
             <SummexMark className="h-11 w-11 text-ivory" />
             <Kicker>{PRODUCT_NAME}</Kicker>
-            <h1 className="mt-5 max-w-3xl font-display text-4xl font-medium leading-[0.98] tracking-tight text-ivory text-balance sm:text-6xl lg:text-7xl">
-              One guest check. Every operator paid.
+            <h1 className="mt-5 max-w-4xl font-display text-4xl font-medium leading-[0.98] tracking-tight text-ivory text-balance sm:text-6xl lg:text-7xl">
+              The hospitality OS for the house you run — and the ones after it.
             </h1>
             <p className="mt-5 font-display text-xl italic tracking-wide text-champagne sm:text-2xl">
               Powered by {POWERED_BY}
             </p>
             <p className="mt-7 max-w-2xl text-base leading-relaxed text-muted-foreground text-pretty sm:text-lg">
-              Summex is the hospitality operating system for restaurants, bars,
-              and host venues. Floor, kitchen, bar, and settlement in one product.
-              The guest pays once through {PAYMENTS_BRAND}. Operators receive
-              their share on the period — not from a second terminal at the table.
+              {PRODUCT_DEFINITION} One product for a single restaurant or bar, a
+              multi-operator host venue, or a multi-unit and franchise-style
+              group.
             </p>
             <div className="mkt-fade mkt-d2 mt-10 flex flex-wrap items-center gap-3">
               <LandingCta to="/demo">Demo sites</LandingCta>
@@ -244,8 +243,7 @@ export function HomePage() {
         <section className="mx-auto max-w-6xl px-4 py-20 sm:px-6 sm:py-28">
           <Kicker>Who it is for</Kicker>
           <h2 className="mt-4 max-w-2xl font-display text-3xl font-medium text-ivory text-balance sm:text-4xl">
-            If more than one brand can appear on a guest’s night, you are the
-            customer.
+            One dining room. A hall of operators. A group of houses.
           </h2>
           <ul className="mt-14 grid gap-10 md:grid-cols-3 md:gap-8">
             {AUDIENCES.map((a) => (
@@ -264,10 +262,15 @@ export function HomePage() {
         <div className="mkt-rule" />
 
         <section className="mx-auto max-w-6xl px-4 py-20 sm:px-6 sm:py-28">
-          <Kicker>How money works</Kicker>
+          <Kicker>Multi-operator houses</Kicker>
           <h2 className="mt-4 max-w-2xl font-display text-3xl font-medium text-ivory text-balance sm:text-4xl">
-            Guest pays the host. Operators are paid from the ledger.
+            One guest check. Every operator paid.
           </h2>
+          <p className="mt-4 max-w-2xl text-sm leading-relaxed text-muted-foreground text-pretty sm:text-base">
+            When more than one brand feeds the same table, the guest still pays
+            once through {PAYMENTS_BRAND} under the host. Operators are paid from
+            the period ledger — not from a second terminal.
+          </p>
           <ol className="mt-14 grid gap-px bg-border lg:grid-cols-3">
             {MONEY.map((m) => (
               <li key={m.step} className="bg-ink px-6 py-8 sm:px-8 sm:py-10">
