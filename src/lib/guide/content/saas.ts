@@ -245,6 +245,7 @@ export const SAAS_TOPICS: GuideTopic[] = [
         "Sign in as Admin (after the forced password change).",
         "Pipeline lists prospects by status. Open one to quote, mark contract signed, or reject.",
         "Console lists organizations. Open a tenant to inspect locations, packages, and members.",
+        "Settings is sectioned: General, Security, CRM, Onboarding, Plans, Payments & gifts, Communications, Flags, Compliance, Team, Danger zone. Save per section. No JSON editors.",
         "Support actions: resend an invite, open POS as that location context, review audit-style prospect events.",
         "Never seed a named customer. If you need a sandbox site, call it Host Venue.",
       ),
@@ -252,7 +253,7 @@ export const SAAS_TOPICS: GuideTopic[] = [
         "Who to contact",
         "Merchants contact their owner/manager first, then platform support@summex.app. Card disputes go through Quantum Payments (see Chargebacks) — not a second processor.",
       ),
-      related("login", "quote-contract", "troubleshooting", "audit"),
+      related("login", "quote-contract", "troubleshooting", "audit", "platform-settings"),
     ],
   }),
   topic({

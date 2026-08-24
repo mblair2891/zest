@@ -156,12 +156,18 @@ lifecycle. Start onboarding after contract; Go live requires a real org and
 location. Tenants lists live orgs only. Software invoices are not Quantum
 Payments.
 
-In-app: `/guide?topic=platform-crm`.
+Settings (platform_admin): General, Security & auth, CRM & pipeline, Onboarding,
+Plans & billing, Payments & gift defaults, Communications, Feature flags,
+Data & compliance, Team, Danger zone. Each section is a form with Save — no
+JSON editors. Edit plans (price, seats, modules) and gift defaults from
+dropdowns. Stripe/SMS/email show Connected or Not configured from the
+environment. `/guide?topic=platform-settings`.
 
-Factory reset (Settings → Danger zone): type RESET, Admin password. Wipes all
-tenant/CRM data and reseeds Admin with the initial password and forced change.
-No demo seeds. Disable with `FACTORY_RESET_ENABLED=false`. Production stays
-off unless that env is `true`. `/guide?topic=factory-reset`.
+Factory reset (Settings → Danger zone): type RESET, Admin password. Only if
+Security → Factory reset enabled is on. Wipes all tenant/CRM data and reseeds
+Admin with the initial password and forced change. No demo seeds. Disable in
+Security or with `FACTORY_RESET_ENABLED=false`. Production stays off unless
+that env is `true`. `/guide?topic=factory-reset`.
 
 ## Testing a location (SaaS only)
 

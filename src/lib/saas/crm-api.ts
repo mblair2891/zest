@@ -309,8 +309,8 @@ export const factoryResetStatusFn = createServerFn({ method: "GET" })
     if (!(await isPlatformAdmin(context.userId))) {
       return { enabled: false, reason: "Platform admin only." };
     }
-    const { factoryResetStatus } = await import("./factory-reset.server");
-    return factoryResetStatus();
+    const { factoryResetStatusForAdmin } = await import("./factory-reset.server");
+    return factoryResetStatusForAdmin();
   });
 
 export const factoryResetFn = createServerFn({ method: "POST" })

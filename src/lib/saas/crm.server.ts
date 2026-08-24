@@ -346,9 +346,19 @@ export async function createLead(
   const sql = await getSql();
   const id = newId("acct");
   const source = input.source && ACCOUNT_SOURCES.includes(input.source) ? input.source : "inbound";
+  let ownerId = input.ownerUserId ?? userId;
+  if (input.ownerUserId === undefined) {
+    try {
+      const { loadCrmSettings } = await import("./platform-settings.server");
+      const crm = await loadCrmSettings();
+      if (crm.defaultDealOwnerUserId) ownerId = crm.defaultDealOwnerUserId;
+    } catch {
+      /* defaults */
+    }
+  }
   await sql`
     insert into crm_accounts (id, name, stage, owner_user_id, source, notes)
-    values (${id}, ${name}, ${"lead"}, ${input.ownerUserId ?? userId}, ${source}, ${input.notes ?? null})
+    values (${id}, ${name}, ${"lead"}, ${ownerId}, ${source}, ${input.notes ?? null})
   `;
   if (input.email || input.phone) {
     await sql`
@@ -389,6 +399,23 @@ export async function patchAccount(
   if (!cur[0]) throw new Error("Account not found");
   const name = patch.name?.trim() || cur[0].name;
   const stage = patch.stage && ACCOUNT_STAGES.includes(patch.stage) ? patch.stage : asStage(cur[0].stage);
+  if (patch.stage === "qualified") {
+    try {
+      const { loadCrmSettings } = await import("./platform-settings.server");
+      const crm = await loadCrmSettings();
+      if (crm.requireNextActivityWhenQualified) {
+        const open = await sql<{ n: number }>`
+          select count(*)::int as n from crm_activities
+          where account_id = ${accountId} and done_at is null and due_at is not null
+        `;
+        if (!Number(open[0]?.n)) {
+          throw new Error("Qualified requires a next activity with a due date. Log a follow-up first.");
+        }
+      }
+    } catch (err) {
+      if (err instanceof Error && /Qualified requires/.test(err.message)) throw err;
+    }
+  }
   const source = patch.source && ACCOUNT_SOURCES.includes(patch.source) ? patch.source : asSource(cur[0].source);
   const tags = patch.tags ? JSON.stringify(patch.tags.slice(0, 24)) : JSON.stringify(tagsOf(cur[0].tags));
   const owner = patch.ownerUserId === undefined ? cur[0].owner_user_id : patch.ownerUserId;

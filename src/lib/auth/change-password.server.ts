@@ -15,8 +15,15 @@ export async function changePlatformAdminPasswordForUser(
   const current = input.currentPassword;
   const next = input.newPassword;
   if (!current) throw new Error("Current password is required.");
-  if (next.length < 8) {
-    throw new Error("New password must be at least 8 characters.");
+  let minLen = 8;
+  try {
+    const { getMinPasswordLength } = await import("@/lib/saas/platform-settings.server");
+    minLen = await getMinPasswordLength();
+  } catch {
+    minLen = 8;
+  }
+  if (next.length < minLen) {
+    throw new Error(`New password must be at least ${minLen} characters.`);
   }
   if (next.toLowerCase() === BOOTSTRAP_PASSWORD) {
     throw new Error(

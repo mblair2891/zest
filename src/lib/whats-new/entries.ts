@@ -9,6 +9,19 @@ import type { GuideUpdate } from "@/lib/guide/types";
  */
 export const WHATS_NEW_ENTRIES: GuideUpdate[] = [
   {
+    id: "upd_2026_09_16_platform_settings",
+    date: "2026-09-16",
+    title: "Platform Settings: sectioned forms, no JSON",
+    summary:
+      "Settings is a real control plane: general, security, CRM, plans, gift defaults, flags, team, and danger zone. Operators never edit pricing JSON.",
+    body: "Open Platform → Settings. Save each section independently. Edit a plan’s monthly price and modules on the plan card. Set gift issuer mode and residual from dropdowns. Factory reset stays in Danger zone and follows the Security toggle.",
+    roles: ["platform_admin"],
+    surfaces: ["platform"],
+    audience: "platform",
+    topicId: "platform-settings",
+    tags: ["settings", "plans", "billing", "gifts", "admin"],
+  },
+  {
     id: "upd_2026_09_15_factory_reset",
     date: "2026-09-15",
     title: "Factory reset in Platform Settings",

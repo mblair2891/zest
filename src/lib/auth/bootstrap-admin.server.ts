@@ -129,6 +129,15 @@ export async function ensurePlatformAdmin(): Promise<void> {
         values (${randomUUID()}, ${userId}, ${null}, ${"platform_admin"}, ${"active"})
       `;
     }
+    try {
+      await sql`
+        insert into platform_team (user_id, role, status)
+        values (${userId}, ${"admin"}, ${"active"})
+        on conflict (user_id) do nothing
+      `;
+    } catch {
+      /* 0017 may not have applied yet */
+    }
   })().catch((err) => {
     globalRef.__summexPlatformAdminBoot__ = undefined;
     throw dbNotReady(err);
@@ -171,11 +180,29 @@ export async function reseedPlatformAdminBootstrap(): Promise<{ userId: string }
       )
     `;
   }
+  let mustChange = true;
+  try {
+    const { getRequireAdminPasswordChange } = await import(
+      "@/lib/saas/platform-settings.server"
+    );
+    mustChange = await getRequireAdminPasswordChange();
+  } catch {
+    mustChange = true;
+  }
   await sql`
     insert into platform_admin (user_id, must_change_password)
-    values (${userId}, ${true})
-    on conflict (user_id) do update set must_change_password = ${true}
+    values (${userId}, ${mustChange})
+    on conflict (user_id) do update set must_change_password = ${mustChange}
   `;
+  try {
+    await sql`
+      insert into platform_team (user_id, role, status)
+      values (${userId}, ${"admin"}, ${"active"})
+      on conflict (user_id) do nothing
+    `;
+  } catch {
+    /* 0017 may not have applied yet */
+  }
   const mem = await sql<{ id: string }>`
     select id from memberships
     where user_id = ${userId} and role = ${"platform_admin"} and status = ${"active"}

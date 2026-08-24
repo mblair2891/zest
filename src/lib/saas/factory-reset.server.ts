@@ -63,6 +63,23 @@ export function factoryResetStatus(): { enabled: boolean; reason?: string } {
   return { enabled: true };
 }
 
+export async function factoryResetStatusForAdmin(): Promise<{ enabled: boolean; reason?: string }> {
+  const gate = factoryResetStatus();
+  if (!gate.enabled) return gate;
+  try {
+    const { isFactoryResetAllowedBySettings } = await import("./platform-settings.server");
+    if (!(await isFactoryResetAllowedBySettings())) {
+      return {
+        enabled: false,
+        reason: "Factory reset is turned off in Security & auth.",
+      };
+    }
+  } catch {
+    /* settings table may not exist yet */
+  }
+  return gate;
+}
+
 function normalizePhrase(raw: string): string {
   return raw.trim().toUpperCase().replace(/\s+/g, " ");
 }
@@ -82,7 +99,7 @@ export async function factoryReset(opts: {
   confirmPhrase: string;
   password: string;
 }): Promise<{ ok: true }> {
-  const gate = factoryResetStatus();
+  const gate = await factoryResetStatusForAdmin();
   if (!gate.enabled) throw new Error(gate.reason || "Factory reset is disabled");
   if (!(await isPlatformAdmin(opts.userId))) {
     throw new ForbiddenError("Only platform admin can factory reset");

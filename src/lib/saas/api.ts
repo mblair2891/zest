@@ -434,9 +434,8 @@ export const loadPricingRulesFn = createServerFn({ method: "GET" })
 export const savePricingRulesFn = createServerFn({ method: "POST" })
   .middleware([authMiddleware])
   .validator((d: { rules: unknown }) => ({ rules: d.rules }))
-  .handler(async ({ context, data }) => {
-    const { savePricingRules } = await import("./prospects.server");
-    return savePricingRules(context.userId, data.rules);
+  .handler(async () => {
+    throw new Error("Pricing is edited in Platform → Settings → Plans & billing. Free-form JSON is not accepted.");
   });
 
 export const listProspectAuditFn = createServerFn({ method: "POST" })

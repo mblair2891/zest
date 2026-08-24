@@ -324,12 +324,17 @@ export async function loadPricingRules(): Promise<{
   version: number;
   rules: PricingRules;
 }> {
-  const sql = await getSql();
-  const rows = await sql<{ version: number; rules: unknown }>`
-    select version, rules from pricing_rules where id = 'default' limit 1
-  `;
-  if (!rows[0]) return { version: 1, rules: parsePricingRules(null) };
-  return { version: Number(rows[0].version) || 1, rules: parsePricingRules(rows[0].rules) };
+  try {
+    const { pricingRulesFromStore } = await import("./platform-settings.server");
+    return await pricingRulesFromStore();
+  } catch {
+    const sql = await getSql();
+    const rows = await sql<{ version: number; rules: unknown }>`
+      select version, rules from pricing_rules where id = 'default' limit 1
+    `;
+    if (!rows[0]) return { version: 1, rules: parsePricingRules(null) };
+    return { version: Number(rows[0].version) || 1, rules: parsePricingRules(rows[0].rules) };
+  }
 }
 
 export async function savePricingRules(

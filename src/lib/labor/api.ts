@@ -2,7 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { authMiddleware } from "@/lib/auth/middleware";
 import { HOST_SCOPE, canEditSchedule, canViewPayroll, canViewSchedule } from "@/lib/access/entity-grants";
 import { parseGrantMatrix } from "@/lib/access/entity-grants";
-import { hashPin, isFourDigitPin } from "@/lib/pos/pin";
+import { hashPin } from "@/lib/pos/pin";
 
 function loc(raw: unknown): string {
   const s = String(raw ?? "").trim();
@@ -166,11 +166,20 @@ export const setStaffPinFn = createServerFn({ method: "POST" })
     orgId: String(d.orgId ?? "").trim(),
     locationId: loc(d.locationId),
     staffId: String(d.staffId ?? "").trim().slice(0, 80),
-    pin: String(d.pin ?? "").replace(/\D/g, "").slice(0, 4),
+    pin: String(d.pin ?? "").replace(/\D/g, "").slice(0, 8),
     operatorId: d.operatorId ? String(d.operatorId).trim() : null,
   }))
   .handler(async ({ context, data }) => {
-    if (!isFourDigitPin(data.pin)) throw new Error("PIN must be 4 digits");
+    let pinLen = 4;
+    try {
+      const { getPinLength } = await import("@/lib/saas/platform-settings.server");
+      pinLen = await getPinLength();
+    } catch {
+      pinLen = 4;
+    }
+    if (!new RegExp(`^\\d{${pinLen}}$`).test(data.pin)) {
+      throw new Error(`PIN must be ${pinLen} digits`);
+    }
     const { loadEntityWriteContext } = await import("@/lib/access/assert-entity.server");
     const { ForbiddenError } = await import("@/lib/saas/tenancy.server");
     const ctx = await loadEntityWriteContext(context.userId, data.orgId, data.locationId);

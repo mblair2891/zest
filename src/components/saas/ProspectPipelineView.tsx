@@ -10,9 +10,7 @@ import {
   getProspectFn,
   listAllProspectsFn,
   listProspectAuditFn,
-  loadPricingRulesFn,
   markContractSignedFn,
-  savePricingRulesFn,
 } from "@/lib/saas/api";
 import { statusLabel } from "@/lib/saas/pricing";
 import { GuideLearnLink } from "@/components/guide/GuideLearnLink";
@@ -41,8 +39,6 @@ export function ProspectPipelineView() {
   const [filter, setFilter] = useState<ProspectStatus | "all">("all");
   const [openId, setOpenId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [rulesText, setRulesText] = useState<string | null>(null);
-  const [rulesOpen, setRulesOpen] = useState(false);
   const [mode, setMode] = useState<"list" | "board">("board");
 
   const load = () => {
@@ -97,51 +93,7 @@ export function ProspectPipelineView() {
             {s === "all" ? "All" : statusLabel(s)} {counts[s] ?? 0}
           </Button>
         ))}
-        <Button
-          size="sm"
-          variant="outline"
-          className="ml-auto"
-          onClick={() => {
-            setRulesOpen((v) => !v);
-            if (rulesText == null) {
-              void loadPricingRulesFn().then((r) =>
-                setRulesText(JSON.stringify(r.rules, null, 2)),
-              );
-            }
-          }}
-        >
-          Pricing rules
-        </Button>
       </div>
-
-      {rulesOpen && (
-        <div className="border-b border-border bg-surface p-4">
-          <p className="mb-2 text-xs text-muted-foreground">
-            Admin-editable JSON. Saved as a new rules version; existing quotes stay snapshotted.
-          </p>
-          <textarea
-            className="min-h-48 w-full rounded-lg border border-border bg-bg p-3 font-mono text-xs"
-            value={rulesText ?? ""}
-            onChange={(e) => setRulesText(e.target.value)}
-          />
-          <Button
-            size="sm"
-            className="mt-2"
-            onClick={() => {
-              try {
-                const parsed = JSON.parse(rulesText ?? "{}");
-                void savePricingRulesFn({ data: { rules: parsed } }).then(() =>
-                  setRulesOpen(false),
-                );
-              } catch {
-                setError("Rules JSON is invalid");
-              }
-            }}
-          >
-            Save rules
-          </Button>
-        </div>
-      )}
 
       {shown.length === 0 ? (
         <div className="grid flex-1 place-items-center p-8 text-center">
