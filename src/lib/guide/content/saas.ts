@@ -17,8 +17,8 @@ export const SAAS_TOPICS: GuideTopic[] = [
         "Open Get pricing. Describe the operation in the interview (or skip to the form).",
         "Answer follow-ups. The assistant (or a local heuristic if no AI key is set) proposes a recommendation card.",
         "Confirm or edit the structured form: company, portfolio, ops model, modules, volume, payments, timeline.",
-        "Submit. Summex snapshots a quote from the current catalog. Later catalog changes do not rewrite this proposal.",
-        "You receive a public quote link. Status becomes quoted.",
+        "Submit. That creates a CRM lead and a quote request — not a sent proposal yet.",
+        "You land on a request-received page. Platform builds the quote from Plans & billing, then sends email.",
       ),
       callout(
         "Status machine",
@@ -43,10 +43,10 @@ export const SAAS_TOPICS: GuideTopic[] = [
         "Commercial agreement is a human step. The product records it; it does not e-sign the paper for you.",
       ),
       steps(
-        "Share the quote link. The merchant reviews packages, seats, and location count.",
-        "Merchant taps Accept. Status becomes accepted. This is not yet a live tenant.",
-        "Platform Admin opens Pipeline, finds the prospect, and marks Contract signed.",
-        "Status becomes contracted. The onboarding wizard unlocks on the setup link.",
+        "Get pricing creates a request. Pipeline opens the quote builder: plan, location count, add-ons, setup fee.",
+        "Save draft, then Send quote. That emails the prospect and sets status Sent. Print/PDF is on the quote link.",
+        "Merchant taps Accept on the link, or Admin marks accepted. Status becomes accepted. Not a live tenant yet.",
+        "Platform Admin marks Contract signed. Status becomes contracted. The onboarding wizard unlocks.",
         "Do not create the org by hand unless you are skipping the commercial path for an internal site.",
       ),
       warn(

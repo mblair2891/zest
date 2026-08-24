@@ -186,7 +186,7 @@ export const PLATFORM_CRM_TOPICS: GuideTopic[] = [
         "Security & auth — password length, session idle, PIN length/lockout, first-login change, factory-reset toggle.",
         "CRM & pipeline — lead source chips, ordered stages, default owner, Qualified follow-up rule.",
         "Onboarding — checklist template, network warn-only, default plan, auto-invite.",
-        "Plans & billing — name, code, active, monthly price, locations, seats, module checkboxes, trial/grace/suspend. Stripe is Connected or Not configured.",
+        "Plans & billing — name, code, active, monthly price per location, locations, seats, module checkboxes, setup fee, trial/grace/suspend. This catalog drives the quote builder. Stripe is Connected or Not configured.",
         "Payments & gift defaults — Quantum Payments sandbox/live, chargeback fee, issuer mode, term, residual, house retains, legal disclaimer.",
         "Communications — SMS/email status, waitlist and invite templates with {{tokens}}.",
         "Feature flags — global defaults for new orgs. Per-plan overrides stay under Plans.",

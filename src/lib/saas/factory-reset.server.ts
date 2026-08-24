@@ -23,6 +23,7 @@ const WIPE_TABLES = [
   "location_shifts",
   "location_staff",
   "message_log",
+  "email_outbox",
   "waitlist_entries",
   "reservations",
   "front_settings",

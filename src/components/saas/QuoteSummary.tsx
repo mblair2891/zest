@@ -26,9 +26,13 @@ export function QuoteSummary({
             <span className="ml-1 text-base font-medium text-muted-foreground">/ mo</span>
           </p>
           <p className="mt-1 text-sm text-muted-foreground">
-            {planLabel(quote.planSlug)} · annual prepaid {formatCurrency(quote.annualCents)}
+            {quote.planName || planLabel(quote.planSlug)}
+            {quote.locationCount ? ` · ${quote.locationCount} loc` : ""}
+            {quote.trialDays ? ` · ${quote.trialDays}-day trial` : ""}
+            {" · "}
+            annual {formatCurrency(quote.annualCents)}
             {quote.onboardingFeeCents > 0
-              ? ` · onboarding ${formatCurrency(quote.onboardingFeeCents)}`
+              ? ` · setup ${formatCurrency(quote.onboardingFeeCents)}`
               : ""}
           </p>
         </div>

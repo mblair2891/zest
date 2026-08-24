@@ -80,6 +80,8 @@ export const SUSPEND_TARGETS = ["pos", "back_office"] as const;
 export type SuspendTarget = (typeof SUSPEND_TARGETS)[number];
 
 export const MODULE_FLAG_KEYS = [
+  "floor",
+  "multiOp",
   "crm",
   "waitlist",
   "reservations",
@@ -93,6 +95,8 @@ export const MODULE_FLAG_KEYS = [
 export type ModuleFlagKey = (typeof MODULE_FLAG_KEYS)[number];
 
 export const MODULE_FLAG_LABEL: Record<ModuleFlagKey, string> = {
+  floor: "Floor / POS",
+  multiOp: "Multi-op host",
   crm: "CRM",
   waitlist: "Waitlist",
   reservations: "Reservations",
@@ -103,6 +107,18 @@ export const MODULE_FLAG_LABEL: Record<ModuleFlagKey, string> = {
   giftCards: "Gift cards",
   offline: "Offline mode",
 };
+
+export const QUOTE_EMAIL_TOKENS = [
+  "{{companyName}}",
+  "{{planName}}",
+  "{{monthly}}",
+  "{{setup}}",
+  "{{locationCount}}",
+  "{{quoteUrl}}",
+  "{{supportEmail}}",
+  "{{platformName}}",
+  "{{fromName}}",
+] as const;
 
 export const INVITE_TOKENS = [
   "{{ownerName}}",
@@ -198,6 +214,8 @@ export const onboardingSettingsSchema = z.object({
 export type OnboardingSettings = z.infer<typeof onboardingSettingsSchema>;
 
 export const moduleFlagsSchema = z.object({
+  floor: z.boolean().default(true),
+  multiOp: z.boolean().default(false),
   crm: z.boolean().default(true),
   waitlist: z.boolean().default(true),
   reservations: z.boolean().default(true),
@@ -292,6 +310,7 @@ export const paymentsSettingsSchema = z.object({
 export type PaymentsSettings = z.infer<typeof paymentsSettingsSchema>;
 
 export const communicationsSettingsSchema = z.object({
+  fromName: str(80, 1).default(PRODUCT_NAME),
   waitlistConfirmTemplate: str(2000).default(
     "Hi {{guestName}}, you're on the waitlist at {{locationName}} for {{partySize}}. We'll text when your table is ready.",
   ),
@@ -301,6 +320,22 @@ export const communicationsSettingsSchema = z.object({
   inviteEmailSubject: str(200).default("You're invited to {{platformName}} — {{orgName}}"),
   inviteEmailBody: str(4000).default(
     "Hi {{ownerName}},\n\n{{platformName}} is ready for {{orgName}}. Open {{inviteUrl}} to set your password and go live.\n\nQuestions: {{supportEmail}}",
+  ),
+  quoteRequestSubject: str(200).default("We received your {{platformName}} pricing request"),
+  quoteRequestBody: str(4000).default(
+    "Hi {{companyName}},\n\nThanks for requesting pricing from {{platformName}}. We'll send a proposal to this inbox shortly.\n\nQuestions: {{supportEmail}}\n\n— {{fromName}}",
+  ),
+  quoteSentSubject: str(200).default("Your {{platformName}} proposal for {{companyName}}"),
+  quoteSentBody: str(4000).default(
+    "Hi {{companyName}},\n\nHere is your {{platformName}} proposal.\n\nPlan: {{planName}}\nLocations: {{locationCount}}\nMonthly: {{monthly}}\nSetup: {{setup}}\n\nReview and accept: {{quoteUrl}}\n\nQuestions: {{supportEmail}}\n\n— {{fromName}}",
+  ),
+  quoteAcceptedSubject: str(200).default("You accepted the {{platformName}} proposal"),
+  quoteAcceptedBody: str(4000).default(
+    "Hi {{companyName}},\n\nYou accepted the {{planName}} proposal ({{monthly}} / mo, setup {{setup}}). Next we prepare the contract and onboarding.\n\n{{quoteUrl}}\n\nQuestions: {{supportEmail}}\n\n— {{fromName}}",
+  ),
+  quoteInternalSubject: str(200).default("New quote request: {{companyName}}"),
+  quoteInternalBody: str(4000).default(
+    "A pricing request landed for {{companyName}}.\n\nOpen Pipeline to build and send the quote:\n{{quoteUrl}}\n",
   ),
 });
 export type CommunicationsSettings = z.infer<typeof communicationsSettingsSchema>;
@@ -335,6 +370,17 @@ export type SettingsMeta = {
   currentUserId: string;
 };
 
+export type EmailOutboxRow = {
+  id: string;
+  to: string;
+  subject: string;
+  kind: string;
+  status: string;
+  provider: string | null;
+  prospectId: string | null;
+  createdAt: string;
+};
+
 export type SettingsBundle = {
   general: GeneralSettings;
   security: SecuritySettings;
@@ -348,6 +394,7 @@ export type SettingsBundle = {
   plans: PlanEditorRow[];
   team: PlatformTeamMember[];
   meta: SettingsMeta;
+  emailOutbox: EmailOutboxRow[];
 };
 
 export const DEFAULT_GENERAL = generalSettingsSchema.parse({});
@@ -358,6 +405,8 @@ export const DEFAULT_BILLING = billingSettingsSchema.parse({});
 export const DEFAULT_PAYMENTS = paymentsSettingsSchema.parse({});
 export const DEFAULT_COMMUNICATIONS = communicationsSettingsSchema.parse({});
 export const DEFAULT_FLAGS = featureFlagSettingsSchema.parse({
+  floor: true,
+  multiOp: false,
   crm: true,
   waitlist: true,
   reservations: true,
@@ -411,13 +460,17 @@ export function packagesFromModules(
     if ((keep as Set<string>).has(p)) s.add(p as PackageId);
   }
   if (modules.crm || modules.giftCards) s.add("guests_crm");
-  if (modules.waitlist || modules.reservations) s.add("host_stand");
+  if (modules.waitlist || modules.reservations || modules.multiOp) s.add("host_stand");
   if (modules.qrOrder || modules.kiosk) s.add("online_kiosk");
   if (modules.aiInsights) {
     s.add("drink_ai");
     s.add("ai_inventory");
   }
   if (modules.voice) s.add("advanced_ops");
+  if (modules.multiOp) {
+    s.add("hall_settlement");
+    s.add("vendor_portal");
+  }
   return [...s];
 }
 
@@ -425,6 +478,8 @@ export function modulesFromFeatures(features: unknown): ModuleFlags {
   const list = Array.isArray(features) ? features.map(String) : [];
   const has = (id: string) => list.includes(id);
   return featureFlagSettingsSchema.parse({
+    floor: true,
+    multiOp: has("hall_settlement") || has("vendor_portal"),
     crm: has("guests_crm"),
     waitlist: has("host_stand"),
     reservations: has("host_stand"),

@@ -343,16 +343,80 @@ export const issueQuoteFn = createServerFn({ method: "POST" })
   .middleware([optionalAuthMiddleware])
   .validator((d: { token: string }) => ({ token: String(d.token ?? "") }))
   .handler(async ({ context, data }) => {
-    const { issueQuote } = await import("./prospects.server");
-    return issueQuote({ userId: context.userId, token: data.token });
+    const { submitQuoteRequest } = await import("./prospects.server");
+    return submitQuoteRequest({ userId: context.userId, token: data.token });
+  });
+
+export const submitQuoteRequestFn = createServerFn({ method: "POST" })
+  .middleware([optionalAuthMiddleware])
+  .validator((d: { token: string }) => ({ token: String(d.token ?? "") }))
+  .handler(async ({ context, data }) => {
+    const { submitQuoteRequest } = await import("./prospects.server");
+    return submitQuoteRequest({ userId: context.userId, token: data.token });
   });
 
 export const acceptQuoteFn = createServerFn({ method: "POST" })
-  .middleware([authMiddleware])
+  .middleware([optionalAuthMiddleware])
   .validator((d: { token: string }) => ({ token: String(d.token ?? "") }))
   .handler(async ({ context, data }) => {
     const { acceptQuote } = await import("./prospects.server");
     return acceptQuote({ userId: context.userId, token: data.token });
+  });
+
+export const listQuoteCatalogFn = createServerFn({ method: "GET" })
+  .middleware([authMiddleware])
+  .handler(async ({ context }) => {
+    const { listQuoteCatalog } = await import("./prospects.server");
+    return listQuoteCatalog(context.userId);
+  });
+
+export const saveQuoteDraftFn = createServerFn({ method: "POST" })
+  .middleware([authMiddleware])
+  .validator((d: {
+    prospectId: string;
+    planSlug: string;
+    locationCount: number;
+    setupFeeCents: number;
+    addOns: unknown;
+  }) => ({
+    prospectId: String(d.prospectId ?? ""),
+    planSlug: String(d.planSlug ?? ""),
+    locationCount: Number(d.locationCount) || 1,
+    setupFeeCents: Math.max(0, Math.round(Number(d.setupFeeCents) || 0)),
+    addOns: Array.isArray(d.addOns) ? d.addOns : [],
+  }))
+  .handler(async ({ context, data }) => {
+    const { saveQuoteDraft } = await import("./prospects.server");
+    return saveQuoteDraft({
+      userId: context.userId,
+      prospectId: data.prospectId,
+      input: {
+        planSlug: data.planSlug,
+        locationCount: data.locationCount,
+        setupFeeCents: data.setupFeeCents,
+        addOns: data.addOns,
+      },
+    });
+  });
+
+export const sendQuoteFn = createServerFn({ method: "POST" })
+  .middleware([authMiddleware])
+  .validator((d: { prospectId: string }) => ({
+    prospectId: String(d.prospectId ?? ""),
+  }))
+  .handler(async ({ context, data }) => {
+    const { sendQuote } = await import("./prospects.server");
+    return sendQuote({ userId: context.userId, prospectId: data.prospectId });
+  });
+
+export const adminMarkQuoteAcceptedFn = createServerFn({ method: "POST" })
+  .middleware([authMiddleware])
+  .validator((d: { prospectId: string }) => ({
+    prospectId: String(d.prospectId ?? ""),
+  }))
+  .handler(async ({ context, data }) => {
+    const { adminMarkQuoteAccepted } = await import("./prospects.server");
+    return adminMarkQuoteAccepted({ userId: context.userId, prospectId: data.prospectId });
   });
 
 export const claimProspectFn = createServerFn({ method: "POST" })

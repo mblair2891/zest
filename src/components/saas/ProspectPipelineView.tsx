@@ -3,22 +3,20 @@ import { Link } from "@tanstack/react-router";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { QuoteSummary } from "./QuoteSummary";
 import {
-  adminPatchQuoteFn,
   adminSetProspectStatusFn,
   getProspectFn,
   listAllProspectsFn,
   listProspectAuditFn,
   markContractSignedFn,
 } from "@/lib/saas/api";
+import { QuoteBuilder } from "./QuoteBuilder";
 import { statusLabel } from "@/lib/saas/pricing";
 import { GuideLearnLink } from "@/components/guide/GuideLearnLink";
 import type {
   ProspectDetail,
   ProspectListItem,
   ProspectStatus,
-  QuoteLineItem,
 } from "@/lib/saas/prospect-types";
 import { PROSPECT_STATUSES } from "@/lib/saas/prospect-types";
 import { formatCurrency } from "@/lib/utils";
@@ -193,16 +191,12 @@ function ProspectAdminDetail({
 }) {
   const [detail, setDetail] = useState<ProspectDetail | null>(null);
   const [audit, setAudit] = useState<Awaited<ReturnType<typeof listProspectAuditFn>>>([]);
-  const [items, setItems] = useState<QuoteLineItem[]>([]);
   const [note, setNote] = useState("");
   const [forceTo, setForceTo] = useState<ProspectStatus>("quoted");
   const [msg, setMsg] = useState<string | null>(null);
 
   const refresh = () => {
-    void getProspectFn({ data: { prospectId } }).then((d) => {
-      setDetail(d);
-      setItems(d.quote?.lineItems ?? []);
-    });
+    void getProspectFn({ data: { prospectId } }).then(setDetail);
     void listProspectAuditFn({ data: { prospectId } }).then(setAudit);
   };
 
@@ -377,76 +371,7 @@ function ProspectAdminDetail({
         </div>
       )}
 
-      {detail.quote && (
-        <div className="rounded-2xl border border-border p-4">
-          <QuoteSummary quote={{ ...detail.quote, lineItems: items }} status={detail.status} compact />
-          <div className="mt-3 space-y-2">
-            {items.map((line, i) => (
-              <div key={line.id} className="grid grid-cols-[1fr_72px_100px] gap-2">
-                <Input
-                  value={line.label}
-                  onChange={(e) => {
-                    const next = items.slice();
-                    next[i] = { ...line, label: e.target.value };
-                    setItems(next);
-                  }}
-                />
-                <Input
-                  type="number"
-                  value={line.qty}
-                  onChange={(e) => {
-                    const next = items.slice();
-                    next[i] = { ...line, qty: Number(e.target.value) || 0 };
-                    setItems(next);
-                  }}
-                />
-                <Input
-                  type="number"
-                  value={line.unitCents}
-                  onChange={(e) => {
-                    const next = items.slice();
-                    next[i] = { ...line, unitCents: Number(e.target.value) || 0 };
-                    setItems(next);
-                  }}
-                />
-              </div>
-            ))}
-            <div className="flex gap-2">
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={() =>
-                  setItems([
-                    ...items,
-                    {
-                      id: `custom_${Date.now()}`,
-                      kind: "custom",
-                      label: "Custom line",
-                      qty: 1,
-                      unitCents: 0,
-                      totalCents: 0,
-                    },
-                  ])
-                }
-              >
-                Add line
-              </Button>
-              <Button
-                size="sm"
-                onClick={() =>
-                  void run(() =>
-                    adminPatchQuoteFn({
-                      data: { prospectId: detail.id, lineItems: items, reissue: true },
-                    }),
-                  )
-                }
-              >
-                Save & re-issue quote
-              </Button>
-            </div>
-          </div>
-        </div>
-      )}
+      <QuoteBuilder detail={detail} onChanged={() => { refresh(); onChanged(); }} />
 
       <div>
         <p className="mb-1 text-xs font-medium uppercase tracking-wide text-muted-foreground">

@@ -29,6 +29,7 @@ import {
   GIFT_ISSUER_MODES,
   GIFT_RESIDUAL_MODES,
   INVITE_TOKENS,
+  QUOTE_EMAIL_TOKENS,
   MODULE_FLAG_KEYS,
   MODULE_FLAG_LABEL,
   NETWORK_READY_MODES,
@@ -57,6 +58,7 @@ import {
   type SecuritySettings,
   type SettingsBundle,
   type SettingsSectionId,
+  type EmailOutboxRow,
 } from "@/lib/saas/platform-settings";
 import { signOut } from "@/lib/auth/client";
 import { cn } from "@/lib/utils";
@@ -301,6 +303,7 @@ export function SettingsWorkspace() {
               initial={bundle.communications}
               sms={bundle.meta.smsConfigured}
               email={bundle.meta.emailConfigured}
+              outbox={bundle.emailOutbox ?? []}
               saving={saving}
               onSave={async (value) => {
                 setSaving(true);
@@ -754,7 +757,7 @@ function BillingSection({
             <Input value={plan.name} onChange={(e) => setPlan(plan.id, { name: e.target.value })} />
           </Field>
           <div className="grid gap-3 sm:grid-cols-2">
-            <Field label="Monthly price">
+            <Field label="Monthly price per location">
               <Input
                 inputMode="decimal"
                 value={formatMoneyCents(plan.monthlyCents)}
@@ -1039,12 +1042,14 @@ function CommunicationsSection({
   initial,
   sms,
   email,
+  outbox,
   saving,
   onSave,
 }: {
   initial: CommunicationsSettings;
   sms: boolean;
   email: boolean;
+  outbox: EmailOutboxRow[];
   saving: boolean;
   onSave: (v: CommunicationsSettings) => Promise<void>;
 }) {
@@ -1053,7 +1058,7 @@ function CommunicationsSection({
   return (
     <SectionCard
       title="Communications"
-      description="SMS and email status come from the environment. Templates are edited as text, with helper tokens."
+      description="SMS and email status come from the environment. Templates are edited as text, with helper tokens. Without an API key, quote mail is logged to the outbox."
       saving={saving}
       onSave={() => onSave(v)}
     >
@@ -1065,6 +1070,9 @@ function CommunicationsSection({
           Email <StatusPill ok={email} okLabel="Configured" offLabel="Not configured" />
         </div>
       </div>
+      <Field label="From name" hint="Display name on quote emails. Address stays in the environment.">
+        <Input value={v.fromName} onChange={(e) => setV({ ...v, fromName: e.target.value })} />
+      </Field>
       <Field label="Waitlist confirm template">
         <TokenChips
           tokens={WAITLIST_TOKENS}
@@ -1111,6 +1119,62 @@ function CommunicationsSection({
           onChange={(e) => setV({ ...v, inviteEmailBody: e.target.value })}
         />
       </Field>
+      <p className="pt-2 text-sm font-medium">Quote emails</p>
+      <p className="text-xs text-muted-foreground">
+        Tokens: company, plan, monthly, setup, locations, quote link, support, from name.
+      </p>
+      {(
+        [
+          ["quoteRequestSubject", "quoteRequestBody", "Quote request received (prospect)"],
+          ["quoteSentSubject", "quoteSentBody", "Quote sent (prospect)"],
+          ["quoteAcceptedSubject", "quoteAcceptedBody", "Quote accepted (prospect)"],
+          ["quoteInternalSubject", "quoteInternalBody", "New quote request (internal)"],
+        ] as const
+      ).map(([subj, body, label]) => (
+        <div key={subj} className="space-y-2">
+          <Field label={`${label} — subject`}>
+            <TokenChips
+              tokens={QUOTE_EMAIL_TOKENS}
+              onInsert={(t) => setV({ ...v, [subj]: `${v[subj]} ${t}` })}
+            />
+            <Input
+              className="mt-2"
+              value={v[subj]}
+              onChange={(e) => setV({ ...v, [subj]: e.target.value })}
+            />
+          </Field>
+          <Field label="Body">
+            <textarea
+              className="min-h-24 w-full rounded-lg border border-border bg-bg p-3 text-sm"
+              value={v[body]}
+              onChange={(e) => setV({ ...v, [body]: e.target.value })}
+            />
+          </Field>
+        </div>
+      ))}
+      <div>
+        <p className="text-sm font-medium">Email outbox</p>
+        <p className="mt-0.5 text-xs text-muted-foreground">
+          {email
+            ? "Provider connected. Failed rows still land here."
+            : "No API key — quote mail is logged only (not delivered)."}
+        </p>
+        <ul className="mt-2 max-h-56 space-y-1 overflow-y-auto text-xs">
+          {outbox.length === 0 && (
+            <li className="text-muted-foreground">No messages yet.</li>
+          )}
+          {outbox.map((row) => (
+            <li key={row.id} className="rounded-lg border border-border px-2 py-1.5">
+              <span className="font-medium">{row.status}</span>
+              {" · "}
+              {row.kind}
+              {" · "}
+              {row.to}
+              <span className="mt-0.5 block text-muted-foreground">{row.subject}</span>
+            </li>
+          ))}
+        </ul>
+      </div>
     </SectionCard>
   );
 }

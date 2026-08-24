@@ -175,9 +175,14 @@ There are **no demo tenants**. Marketing **Request demo** is Get pricing /
 intake. `/demo` URLs redirect there. Platform Admin never seeds The Laundry,
 Steam Distillery, Diamond House BBQ, or PIN 0000 rooms.
 
-To test: complete SaaS onboarding (intake → quote → contract if required →
-wizard → org + location). Invite the owner. Open POS. Floor PIN is for **real**
-staff on that location.
+To test: complete SaaS onboarding (intake request → Admin sends quote from
+Pipeline using Plans & billing → accept → contract if required → wizard → org
++ location). Invite the owner. Open POS. Floor PIN is for **real** staff on
+that location.
+
+Quotes never use a JSON editor. Emails (request / sent / accepted) go through
+Resend when a key is set; otherwise they appear in Settings → Communications
+outbox as logged only.
 
 In-app: `/guide?topic=empty-start` and `/guide?topic=prospect-demos`.
 

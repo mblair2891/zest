@@ -309,7 +309,9 @@ async function loadMeta(userId: string): Promise<SettingsMeta> {
     marketingUrlFromEnv: readServerEnv("MARKETING_URL")?.trim() || "",
     stripeConnected: Boolean(readServerEnv("STRIPE_SECRET_KEY")?.trim()),
     smsConfigured: envConfigured(["TWILIO_ACCOUNT_SID", "TWILIO_AUTH_TOKEN", "TWILIO_FROM_NUMBER"]),
-    emailConfigured: Boolean(readServerEnv("RESEND_API_KEY")?.trim()),
+    emailConfigured: Boolean(
+      readServerEnv("RESEND_API_KEY")?.trim() || readServerEnv("EMAIL_API_KEY")?.trim(),
+    ),
     factoryResetEnvEnabled: !envOff,
     factoryResetEnvReason: envOff
       ? "Factory reset is disabled by environment (FACTORY_RESET_ENABLED)."
@@ -364,6 +366,7 @@ export async function loadSettingsBundle(userId: string): Promise<SettingsBundle
     plans,
     team,
     meta,
+    emailOutbox,
   ] = await Promise.all([
     loadGeneral(),
     loadSecurity(),
@@ -377,6 +380,7 @@ export async function loadSettingsBundle(userId: string): Promise<SettingsBundle
     loadPlanRows(),
     loadTeam(userId),
     loadMeta(userId),
+    import("./email.server").then((m) => m.listEmailOutbox(30)),
   ]);
   return {
     general,
@@ -391,6 +395,7 @@ export async function loadSettingsBundle(userId: string): Promise<SettingsBundle
     plans,
     team,
     meta,
+    emailOutbox,
   };
 }
 

@@ -9,6 +9,19 @@ import type { GuideUpdate } from "@/lib/guide/types";
  */
 export const WHATS_NEW_ENTRIES: GuideUpdate[] = [
   {
+    id: "upd_2026_09_17_quote_email",
+    date: "2026-09-17",
+    title: "Structured quotes and quote email",
+    summary:
+      "Get pricing opens a request. Pipeline builds the quote from Plans (plan, locations, add-ons, setup) and emails it. No JSON pricing.",
+    body: "Save draft, then Send quote. The prospect gets a link to review, print, and accept. Without an email API key, messages land in Settings → Communications outbox.",
+    roles: ["platform_admin"],
+    surfaces: ["platform"],
+    audience: "platform",
+    topicId: "quote-contract",
+    tags: ["quote", "email", "pipeline", "plans"],
+  },
+  {
     id: "upd_2026_09_16_platform_settings",
     date: "2026-09-16",
     title: "Platform Settings: sectioned forms, no JSON",

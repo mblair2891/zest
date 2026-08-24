@@ -2,14 +2,10 @@ import { useEffect, useState } from "react";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { MarketingShell } from "@/components/marketing/MarketingShell";
 import { QuoteSummary } from "@/components/saas/QuoteSummary";
+import { QuotePrintView } from "@/components/saas/QuotePrintView";
 import { Button } from "@/components/ui/button";
 import { useCurrentUserState } from "@/lib/auth/use-current-user";
-import {
-  acceptQuoteFn,
-  claimProspectFn,
-  getProspectFn,
-  issueQuoteFn,
-} from "@/lib/saas/api";
+import { acceptQuoteFn, claimProspectFn, getProspectFn } from "@/lib/saas/api";
 import type { ProspectDetail } from "@/lib/saas/prospect-types";
 import { writeProspectToken } from "@/lib/saas/prospect-token";
 
@@ -24,6 +20,7 @@ function QuotePage() {
   const [detail, setDetail] = useState<ProspectDetail | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [printing, setPrinting] = useState(false);
 
   const load = () => {
     void getProspectFn({ data: { token } })
@@ -45,7 +42,7 @@ function QuotePage() {
     }
   }, [user, detail?.id]);
 
-  if (error) {
+  if (error && !detail) {
     return (
       <MarketingShell>
         <main className="mx-auto max-w-xl px-4 py-16 text-sm text-danger">{error}</main>
@@ -62,14 +59,10 @@ function QuotePage() {
     );
   }
 
+  const sent = detail.status !== "prospect" && Boolean(detail.quote) && !detail.quote?.draft;
+  const canAccept = detail.status === "quoted" && sent;
+
   const accept = async () => {
-    if (!user) {
-      void navigate({
-        to: "/signup",
-        search: { next: `/quote/${token}` },
-      });
-      return;
-    }
     setBusy(true);
     setError(null);
     try {
@@ -82,79 +75,92 @@ function QuotePage() {
     }
   };
 
-  const regen = async () => {
-    setBusy(true);
-    try {
-      await issueQuoteFn({ data: { token } });
-      load();
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "Could not refresh quote");
-    } finally {
-      setBusy(false);
-    }
+  const printQuote = () => {
+    setPrinting(true);
+    window.setTimeout(() => {
+      window.print();
+      window.setTimeout(() => setPrinting(false), 300);
+    }, 50);
   };
 
   return (
     <MarketingShell>
-      <main className="mx-auto max-w-3xl px-4 py-12">
-        <p className="text-xs font-semibold uppercase tracking-[0.2em] text-primary">
-          Proposal
-        </p>
-        <h1 className="mt-2 text-3xl font-semibold tracking-tight">
-          {detail.answers.company.legalName || "Your quote"}
-        </h1>
-        <p className="mt-2 text-sm text-muted-foreground">
-          Snapshot of software fees. Guest processing is Quantum Payments, billed
-          separately. Gift cards stay first-party.
-        </p>
-
-        {detail.quote ? (
-          <div className="mt-8">
-            <QuoteSummary quote={detail.quote} status={detail.status} />
-          </div>
-        ) : (
-          <p className="mt-8 text-sm text-muted-foreground">No quote yet.</p>
-        )}
-
-        {error && (
-          <p className="mt-4 text-sm text-danger" role="alert">
-            {error}
+      <style>{`@media print { header, footer, .no-print { display: none !important; } body { background: #fff; } }`}</style>
+      {printing && sent ? (
+        <QuotePrintView detail={detail} />
+      ) : (
+        <main className="mx-auto max-w-3xl px-4 py-12">
+          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-primary">
+            Proposal
           </p>
-        )}
-
-        <div className="mt-8 flex flex-wrap gap-2">
-          {detail.status === "quoted" && (
-            <Button disabled={busy || isPending} onClick={() => void accept()}>
-              {user ? "Accept quote" : "Sign in to accept"}
-            </Button>
-          )}
-          {(detail.status === "prospect" || detail.status === "quoted") && (
-            <Button variant="outline" disabled={busy} onClick={() => void regen()}>
-              Recalculate
-            </Button>
-          )}
-          <Link
-            to="/get-pricing"
-            search={{ t: token }}
-            className="inline-flex h-10 items-center rounded-lg border border-border px-4 text-sm"
-          >
-            Edit answers
-          </Link>
-          {detail.status === "accepted" && (
-            <p className="w-full text-sm text-muted-foreground">
-              Accepted. A platform admin will mark the contract signed. Onboarding
-              unlocks after that.
+          <h1 className="mt-2 text-3xl font-semibold tracking-tight">
+            {detail.answers.company.legalName || "Your quote"}
+          </h1>
+          {!sent ? (
+            <p className="mt-3 max-w-xl text-sm text-muted-foreground">
+              We received your pricing request
+              {detail.answers.company.billingEmail
+                ? ` for ${detail.answers.company.billingEmail}`
+                : ""}
+              . Summex will send a proposal to that inbox. This page updates when it is sent.
+            </p>
+          ) : (
+            <p className="mt-2 text-sm text-muted-foreground">
+              Snapshot of software fees. Guest processing is Quantum Payments, billed
+              separately. Gift cards stay first-party.
             </p>
           )}
-          {(detail.status === "contracted" ||
-            detail.status === "onboarding" ||
-            detail.status === "live") && (
-            <Button onClick={() => void navigate({ to: "/setup/$token", params: { token } })}>
-              Continue onboarding
-            </Button>
+
+          {sent && detail.quote ? (
+            <div className="mt-8">
+              <QuoteSummary quote={detail.quote} status={detail.status} />
+            </div>
+          ) : (
+            <div className="mt-8 rounded-2xl border border-border bg-surface p-6 text-sm text-muted-foreground">
+              Status: request received. A platform admin is preparing the quote from live plans.
+            </div>
           )}
-        </div>
-      </main>
+
+          {error && (
+            <p className="mt-4 text-sm text-danger" role="alert">
+              {error}
+            </p>
+          )}
+
+          <div className="no-print mt-8 flex flex-wrap gap-2">
+            {canAccept && (
+              <Button disabled={busy || isPending} onClick={() => void accept()}>
+                Accept quote
+              </Button>
+            )}
+            {sent && (
+              <Button variant="outline" onClick={printQuote}>
+                Print / PDF
+              </Button>
+            )}
+            <Link
+              to="/get-pricing"
+              search={{ t: token }}
+              className="inline-flex h-10 items-center rounded-lg border border-border px-4 text-sm"
+            >
+              Edit answers
+            </Link>
+            {detail.status === "accepted" && (
+              <p className="w-full text-sm text-muted-foreground">
+                Accepted. A platform admin will mark the contract signed. Onboarding
+                unlocks after that.
+              </p>
+            )}
+            {(detail.status === "contracted" ||
+              detail.status === "onboarding" ||
+              detail.status === "live") && (
+              <Button onClick={() => void navigate({ to: "/setup/$token", params: { token } })}>
+                Continue onboarding
+              </Button>
+            )}
+          </div>
+        </main>
+      )}
     </MarketingShell>
   );
 }

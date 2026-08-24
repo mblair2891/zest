@@ -5,7 +5,7 @@ import { VoiceTextarea } from "@/components/ui/voice-textarea";
 import { Field, NativeSelect, ToggleChip, WizardChrome } from "./WizardChrome";
 import { VENUE_ENTITIES } from "@/lib/pos/entities";
 import {
-  issueQuoteFn,
+  submitQuoteRequestFn,
   saveIntakeFn,
   startProspectFn,
   getProspectFn,
@@ -140,7 +140,7 @@ export function IntakeWizard({ initialToken }: { initialToken?: string }) {
     setBusy(true);
     try {
       await persist(answers);
-      const quoted = await issueQuoteFn({ data: { token } });
+      const quoted = await submitQuoteRequestFn({ data: { token } });
       writeProspectToken(quoted.publicToken);
       await navigate({ to: "/quote/$token", params: { token: quoted.publicToken } });
     } catch (e) {
@@ -220,7 +220,7 @@ export function IntakeWizard({ initialToken }: { initialToken?: string }) {
       busy={busy}
       onBack={step > 1 ? () => void go(step - 1) : undefined}
       onNext={step < 7 ? () => void go(step + 1) : () => void submit()}
-      nextLabel={step < 7 ? "Continue" : "Generate quote"}
+      nextLabel={step < 7 ? "Continue" : "Request pricing"}
     >
       {step === 1 && (
         <div className="grid gap-3 sm:grid-cols-2">

@@ -525,8 +525,8 @@ export function gmvLabel(band: GmvBand): string {
 
 export function statusLabel(status: string): string {
   const map: Record<string, string> = {
-    prospect: "Prospect",
-    quoted: "Quoted",
+    prospect: "Request",
+    quoted: "Sent",
     accepted: "Accepted",
     contracted: "Contracted",
     onboarding: "Onboarding",

@@ -1,12 +1,14 @@
 import { getSql } from "@/lib/db";
 import { inviteToken, newId } from "./ids";
 import {
-  generateQuote,
   parseIntakeAnswers,
   parsePricingRules,
   retotalQuote,
   emptyIntakeAnswers,
+  recommendedPlan,
+  locationCount,
 } from "./pricing";
+import { buildStructuredQuote, quoteDraftInputSchema } from "./quote-builder";
 import { payloadFromAnswers } from "./onboarding-defaults";
 import { parseMessages, parseRecommendation } from "./interview";
 import type { InterviewSource, InterviewStatus } from "./prospect-types";
@@ -554,7 +556,39 @@ export async function saveProspectAnswers(opts: {
   return mapProspect(next!);
 }
 
-export async function issueQuote(opts: {
+async function suggestedQuote(prospect: ProspectRecord) {
+  const { loadPlanRows, loadBillingSettings } = await import("./platform-settings.server");
+  const { version, rules } = await loadPricingRules();
+  const plans = await loadPlanRows();
+  const billing = await loadBillingSettings();
+  const slug = recommendedPlan(prospect.answers, rules);
+  const plan =
+    plans.find((p) => p.slug === slug && p.active) ??
+    plans.find((p) => p.active) ??
+    plans[0];
+  if (!plan) throw new Error("No software plans are configured");
+  const locs = locationCount(prospect.answers);
+  return buildStructuredQuote({
+    plan: {
+      slug: plan.slug,
+      name: plan.name,
+      active: plan.active,
+      monthlyCents: plan.monthlyCents,
+      onboardingFeeCents: plan.onboardingFeeCents,
+      maxLocations: plan.maxLocations,
+      maxSeats: plan.maxSeats,
+      modules: plan.modules,
+    },
+    locationCount: locs,
+    setupFeeCents: plan.onboardingFeeCents,
+    addOns: [],
+    trialDays: billing.trialDays,
+    rulesVersion: version,
+    draft: true,
+  });
+}
+
+export async function submitQuoteRequest(opts: {
   userId: string | null;
   token: string;
 }): Promise<ProspectRecord> {
@@ -568,33 +602,165 @@ export async function issueQuote(opts: {
   if (!prospect.answers.company.legalName.trim() || !prospect.answers.company.billingEmail.includes("@")) {
     throw new Error("Company legal name and billing email are required");
   }
-  const { version, rules } = await loadPricingRules();
-  const quote = generateQuote(prospect.answers, rules, { rulesVersion: version });
-  let status: ProspectStatus = prospect.status;
-  if (status === "prospect" || status === "quoted") status = "quoted";
-  if (status === "accepted") status = "quoted";
+  const firstRequest = prospect.status === "prospect" && !prospect.quote;
+  const quote = prospect.quote ?? (await suggestedQuote(prospect));
   const sql = await getSql();
   await sql`
     update prospects
-    set quote = ${JSON.stringify(quote)}::jsonb,
-        quote_issued_at = now(),
-        accepted_at = case when ${status} = 'quoted' then null else accepted_at end,
-        status = ${status},
+    set quote = ${JSON.stringify({ ...quote, draft: true, sentAt: null })}::jsonb,
         updated_at = now()
     where id = ${prospect.id}
   `;
   await writeAudit({
     actorUserId: opts.userId,
-    action: "quote_issued",
+    action: "quote_requested",
+    payload: { prospectId: prospect.id },
+    orgId: prospect.orgId,
+  });
+  const next = mapProspect((await getRow(prospect.id))!);
+  await syncCrm(next);
+  if (firstRequest) {
+    try {
+      const mail = await import("./quote-emails.server");
+      await mail.emailQuoteRequestReceived(next);
+      await mail.emailNewQuoteRequestInternal(next);
+    } catch (err) {
+      console.warn("[quote-request-email]", err);
+    }
+  }
+  return next;
+}
+
+/** @deprecated Intake uses submitQuoteRequest. Kept as a draft rebuild for admins. */
+export async function issueQuote(opts: {
+  userId: string | null;
+  token: string;
+}): Promise<ProspectRecord> {
+  return submitQuoteRequest(opts);
+}
+
+export async function saveQuoteDraft(opts: {
+  userId: string;
+  prospectId: string;
+  input: unknown;
+}): Promise<ProspectRecord> {
+  if (!(await isPlatformAdmin(opts.userId))) throw new ForbiddenError();
+  const row = await getRow(opts.prospectId);
+  if (!row) throw new Error("Prospect not found");
+  const prospect = mapProspect(row);
+  if (["live", "churned", "rejected"].includes(prospect.status)) {
+    throw new Error("Quote is frozen");
+  }
+  const parsed = quoteDraftInputSchema.parse(opts.input);
+  const { loadPlanRows, loadBillingSettings } = await import("./platform-settings.server");
+  const plans = await loadPlanRows();
+  const billing = await loadBillingSettings();
+  const plan = plans.find((p) => p.slug === parsed.planSlug);
+  if (!plan) throw new Error("Unknown plan");
+  if (!plan.active && prospect.quote?.planSlug !== plan.slug) {
+    throw new Error("That plan is not active");
+  }
+  const quote = buildStructuredQuote({
+    plan: {
+      slug: plan.slug,
+      name: plan.name,
+      active: plan.active,
+      monthlyCents: plan.monthlyCents,
+      onboardingFeeCents: plan.onboardingFeeCents,
+      maxLocations: plan.maxLocations,
+      maxSeats: plan.maxSeats,
+      modules: plan.modules,
+    },
+    locationCount: parsed.locationCount,
+    setupFeeCents: parsed.setupFeeCents,
+    addOns: parsed.addOns,
+    trialDays: billing.trialDays,
+    rulesVersion: billing.rulesVersion,
+    draft: prospect.status !== "quoted",
+    sentAt: prospect.status === "quoted" ? prospect.quote?.sentAt ?? new Date().toISOString() : null,
+  });
+  const sql = await getSql();
+  await sql`
+    update prospects
+    set quote = ${JSON.stringify(quote)}::jsonb, updated_at = now()
+    where id = ${prospect.id}
+  `;
+  await writeAudit({
+    actorUserId: opts.userId,
+    action: "quote_draft_saved",
     payload: { prospectId: prospect.id, monthlyCents: quote.monthlyCents, plan: quote.planSlug },
     orgId: prospect.orgId,
   });
-  const next = await getRow(prospect.id);
-  return mapProspect(next!);
+  const next = mapProspect((await getRow(prospect.id))!);
+  await syncCrm(next);
+  return next;
+}
+
+export async function sendQuote(opts: {
+  userId: string;
+  prospectId: string;
+}): Promise<ProspectRecord> {
+  if (!(await isPlatformAdmin(opts.userId))) throw new ForbiddenError();
+  const row = await getRow(opts.prospectId);
+  if (!row) throw new Error("Prospect not found");
+  let prospect = mapProspect(row);
+  if (["live", "churned", "rejected", "contracted", "onboarding"].includes(prospect.status)) {
+    throw new Error("Quote cannot be sent from this status");
+  }
+  if (!prospect.quote) {
+    prospect = await saveQuoteDraft({
+      userId: opts.userId,
+      prospectId: opts.prospectId,
+      input: {
+        planSlug: "starter",
+        locationCount: locationCount(prospect.answers),
+        setupFeeCents: 0,
+        addOns: [],
+      },
+    });
+  }
+  if (!prospect.quote) throw new Error("Save a draft quote first");
+  const now = new Date().toISOString();
+  const quote = { ...prospect.quote, draft: false, sentAt: now, generatedAt: now };
+  const sql = await getSql();
+  await sql`
+    update prospects
+    set quote = ${JSON.stringify(quote)}::jsonb,
+        quote_issued_at = now(),
+        accepted_at = null,
+        status = ${"quoted"},
+        updated_at = now()
+    where id = ${prospect.id}
+  `;
+  await writeAudit({
+    actorUserId: opts.userId,
+    action: "quote_sent",
+    payload: { prospectId: prospect.id, monthlyCents: quote.monthlyCents, plan: quote.planSlug },
+    orgId: prospect.orgId,
+  });
+  const next = mapProspect((await getRow(prospect.id))!);
+  await syncCrm(next);
+  try {
+    const mail = await import("./quote-emails.server");
+    await mail.emailQuoteSent(next, quote);
+  } catch (err) {
+    console.warn("[quote-sent-email]", err);
+  }
+  return next;
+}
+
+export async function listQuoteCatalog(userId: string) {
+  if (!(await isPlatformAdmin(userId))) throw new ForbiddenError();
+  const { loadPlanRows, loadBillingSettings } = await import("./platform-settings.server");
+  const [plans, billing] = await Promise.all([loadPlanRows(), loadBillingSettings()]);
+  return {
+    plans: plans.filter((p) => p.active),
+    trialDays: billing.trialDays,
+  };
 }
 
 export async function acceptQuote(opts: {
-  userId: string;
+  userId: string | null;
   token: string;
 }): Promise<ProspectRecord> {
   const row = await getRowByToken(opts.token.trim());
@@ -602,14 +768,15 @@ export async function acceptQuote(opts: {
   const prospect = mapProspect(row);
   await assertCanAccessProspect({ userId: opts.userId, prospect, token: opts.token, write: true });
   if (prospect.status !== "quoted") {
-    throw new Error("Quote must be in quoted status to accept");
+    throw new Error("This proposal has not been sent yet");
   }
-  if (!prospect.quote) throw new Error("No quote on file");
-  await claimProspect(opts.userId, opts.token);
+  if (!prospect.quote || prospect.quote.draft) throw new Error("No sent quote on file");
+  if (opts.userId) await claimProspect(opts.userId, opts.token);
+  const owner = opts.userId ?? prospect.ownerUserId;
   const sql = await getSql();
   await sql`
     update prospects
-    set status = 'accepted', accepted_at = now(), owner_user_id = ${opts.userId}, updated_at = now()
+    set status = 'accepted', accepted_at = now(), owner_user_id = ${owner}, updated_at = now()
     where id = ${prospect.id}
   `;
   await writeAudit({
@@ -618,8 +785,27 @@ export async function acceptQuote(opts: {
     payload: { prospectId: prospect.id },
     orgId: prospect.orgId,
   });
-  const next = await getRow(prospect.id);
-  return mapProspect(next!);
+  const next = mapProspect((await getRow(prospect.id))!);
+  await syncCrm(next);
+  try {
+    const mail = await import("./quote-emails.server");
+    await mail.emailQuoteAccepted(next);
+  } catch (err) {
+    console.warn("[quote-accepted-email]", err);
+  }
+  return next;
+}
+
+export async function adminMarkQuoteAccepted(opts: {
+  userId: string;
+  prospectId: string;
+}): Promise<ProspectRecord> {
+  if (!(await isPlatformAdmin(opts.userId))) throw new ForbiddenError();
+  const row = await getRow(opts.prospectId);
+  if (!row) throw new Error("Prospect not found");
+  const prospect = mapProspect(row);
+  if (prospect.status !== "quoted") throw new Error("Send the quote before marking it accepted");
+  return acceptQuote({ userId: opts.userId, token: prospect.publicToken });
 }
 
 export async function markContractSigned(opts: {
@@ -860,7 +1046,18 @@ export async function getProspectDetail(opts: {
         `
       )[0]?.name ?? null
     : null;
-  return { ...prospect, onboarding, orgName, operators, liveChecklist };
+  const admin = opts.userId ? await isPlatformAdmin(opts.userId) : false;
+  const hideDraft =
+    !admin &&
+    (prospect.status === "prospect" || Boolean(prospect.quote?.draft));
+  return {
+    ...prospect,
+    quote: hideDraft ? null : prospect.quote,
+    onboarding,
+    orgName,
+    operators,
+    liveChecklist,
+  };
 }
 
 export async function evaluateLiveChecklist(

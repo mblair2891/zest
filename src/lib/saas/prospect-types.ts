@@ -196,13 +196,27 @@ export type QuoteLineItem = {
   oneTime?: boolean;
 };
 
+export type QuoteAddOn = {
+  id: string;
+  name: string;
+  amountCents: number;
+  oneTime: boolean;
+};
+
 export type QuoteSnapshot = {
   version: 1;
   rulesVersion: number;
   generatedAt: string;
   planSlug: PlanSlug;
+  planName?: string;
   maxLocations: number;
   maxSeats: number;
+  locationCount?: number;
+  setupFeeCents?: number;
+  addOns?: QuoteAddOn[];
+  trialDays?: number;
+  draft?: boolean;
+  sentAt?: string | null;
   lineItems: QuoteLineItem[];
   monthlyCents: number;
   annualCents: number;
