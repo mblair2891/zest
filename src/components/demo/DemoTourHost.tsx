@@ -82,7 +82,6 @@ export function DemoTourHost() {
       }
       exit();
       if (isWalk) return;
-      void navigate({ to: "/demo" });
     },
     [exit, navigate, markWalkthroughComplete, userKey],
   );

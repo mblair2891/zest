@@ -18,13 +18,8 @@ export function isProspectDemo(): boolean {
   return Boolean(getDemoType());
 }
 
-export function enterDemoSession(type: string): void {
-  if (typeof window === "undefined") return;
-  try {
-    sessionStorage.setItem(DEMO_SESSION_KEY, type);
-  } catch {
-    /* ignore */
-  }
+export function enterDemoSession(_type: string): void {
+  /* Prospect demo tenants are retired. */
 }
 
 export function exitDemoSession(): void {
@@ -34,6 +29,12 @@ export function exitDemoSession(): void {
   } catch {
     /* ignore */
   }
+}
+
+/** Drop leftover prospect-demo session and persist keys. Safe to call anytime. */
+export function retireDemoSessions(): void {
+  exitDemoSession();
+  clearAllDemoPersist();
 }
 
 export function clearAllDemoPersist(): void {

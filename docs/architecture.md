@@ -63,7 +63,7 @@ Production identity is Better Auth:
 
 PIN login is a **station lock** for floor staff after a location is opened. It is not the production identity path.
 
-Quick-login chips and the **The Laundry** TEST host (Steam Distillery + Diamond House BBQ) load **only** when `DEV_DEMO=1` / `VITE_DEV_DEMO=1`. Production empty-start never seeds that venue.
+There are no seeded demo tenants. Locations exist only after SaaS onboarding.
 
 ## Packages & entitlements
 

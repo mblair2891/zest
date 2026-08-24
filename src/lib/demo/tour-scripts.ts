@@ -659,9 +659,10 @@ export const TOURS: Record<string, TourDefinition> = {
 };
 
 export function getTour(id: string): TourDefinition | null {
-  return TOURS[id] ?? WALKTHROUGH_TOURS[id] ?? null;
+  if (id.startsWith("walkthrough:")) return WALKTHROUGH_TOURS[id] ?? null;
+  return WALKTHROUGH_TOURS[id] ?? null;
 }
 
 export function listTourIds(): string[] {
-  return [...Object.keys(TOURS), ...Object.keys(WALKTHROUGH_TOURS)];
+  return Object.keys(WALKTHROUGH_TOURS);
 }

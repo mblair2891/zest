@@ -1,32 +1,18 @@
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { Link } from "@tanstack/react-router";
 import { Delete, Rocket, LayoutGrid, BookOpen } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { usePosStore } from "@/lib/pos/store";
-import {
-  ROLE_BLURB,
-  ROLE_LABEL,
-  pickRoleRepresentatives,
-} from "@/lib/pos/rbac";
 import { cn } from "@/lib/utils";
 import { useGuideStore } from "@/lib/guide/store";
-import { isDevDemoClient } from "@/lib/saas/flags";
-import { isProspectDemo } from "@/lib/demo/session";
 import { SummexBrandBlock } from "@/components/brand/SummexMark";
 
 export function LoginScreen() {
   const [pin, setPin] = useState("");
   const [error, setError] = useState<string | null>(null);
   const login = usePosStore((s) => s.login);
-  const employees = usePosStore((s) => s.employees);
   const settings = usePosStore((s) => s.settings);
   const openGuide = useGuideStore((s) => s.openGuide);
-  const demo = isDevDemoClient();
-
-  const roleLogins = useMemo(
-    () => pickRoleRepresentatives(employees),
-    [employees],
-  );
 
   const press = (d: string) => {
     setError(null);
@@ -100,16 +86,16 @@ export function LoginScreen() {
 
         {/* Control plane is signed-in only. Demo rooms return to the public demo list. */}
         <Link
-          to={isProspectDemo() ? "/demo" : "/dashboard"}
+          to="/dashboard"
           className="mb-8 flex w-full items-start gap-3 rounded-2xl border border-primary/50 bg-primary/10 px-4 py-3.5 text-left transition hover:border-primary hover:bg-primary/15"
         >
           <Rocket className="mt-0.5 h-5 w-5 shrink-0 text-primary" />
           <span>
             <span className="block text-sm font-semibold text-foreground">
-              {isProspectDemo() ? "All demos" : "Control plane"}
+              Control plane
             </span>
             <span className="mt-0.5 inline-flex rounded-md bg-primary/20 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-primary">
-              {isProspectDemo() ? "Prospect demo" : "Control plane"}
+              Control plane
             </span>
             <span className="mt-1 block text-[11px] leading-snug text-muted-foreground">
               Multi-tenant control plane: orgs, locations, packages, devices,
@@ -169,48 +155,6 @@ export function LoginScreen() {
             },
           )}
         </div>
-
-        {demo && !isProspectDemo() && roleLogins.length > 0 && (
-          <div className="mt-10">
-            <p className="mb-1 text-center text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
-              Quick login by access level (POS)
-            </p>
-            <p className="mb-3 text-center text-[11px] text-muted-foreground">
-              Each role opens only that station’s tools. Use package preview in
-              the header after login.
-            </p>
-            <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-              {roleLogins.map((e) => (
-                <button
-                  key={e.id}
-                  type="button"
-                  onClick={() => {
-                    setPin("");
-                    setError(null);
-                    login(e.pin);
-                  }}
-                  className="flex items-start gap-3 rounded-2xl border border-border bg-surface px-3 py-3 text-left transition hover:border-primary/60 hover:bg-surface-2"
-                >
-                  <span
-                    className="mt-1 h-2.5 w-2.5 shrink-0 rounded-full"
-                    style={{ background: e.color }}
-                  />
-                  <span className="min-w-0 flex-1">
-                    <span className="block text-sm font-semibold text-foreground">
-                      {e.name}
-                    </span>
-                    <span className="mt-0.5 inline-flex items-center rounded-md bg-primary/15 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-primary">
-                      {ROLE_LABEL[e.role]}
-                    </span>
-                    <span className="mt-1 block text-[11px] leading-snug text-muted-foreground">
-                      {ROLE_BLURB[e.role]}
-                    </span>
-                  </span>
-                </button>
-              ))}
-            </div>
-          </div>
-        )}
       </div>
     </div>
   );

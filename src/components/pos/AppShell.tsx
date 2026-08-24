@@ -194,7 +194,7 @@ export function AppShell() {
   const leaveDemo = () => {
     logout();
     useDemoDeviceStore.getState().leave();
-    void navigate({ to: "/demo" });
+    void navigate({ to: "/get-pricing" });
   };
   const switchDemoUser = () => {
     logout();
@@ -453,8 +453,8 @@ export function AppShell() {
           <ReplayWorkflowButton className="hidden md:inline-flex" />
           <GuideTriggerButton topicId="intro" />
           <Link
-            to={isProspectDemo() ? "/demo" : "/"}
-            title={isProspectDemo() ? "Exit demo" : "Change venue"}
+            to="/"
+            title="Change venue"
             onClick={() => {
               if (isProspectDemo()) {
                 logout();

@@ -66,7 +66,7 @@ See `.env.example`. Highlights:
 | `DATABASE_URL` | Neon/Postgres. Unset → PGLite |
 | `APP_URL` / `BETTER_AUTH_URL` | Public origin |
 | `BETTER_AUTH_SECRET` | Session signing |
-| `DEV_DEMO` / `VITE_DEV_DEMO` | `1` enables quick-login + **The Laundry** TEST host (Steam Distillery + Diamond House BBQ). **Use `0` for production empty-start.** |
+| `DEV_DEMO` / `VITE_DEV_DEMO` | Leave `0`. Demo tenants are not seeded. Test by onboarding a real location. |
 | `BOOTSTRAP_ADMIN_EMAIL` | First matching signup becomes `platform_admin` if none exists |
 | `STRIPE_SECRET_KEY` + price ids | SaaS subscription billing (software). Optional — sandbox provider if missing |
 | `SUMMEX_PAYMENTS_MODE` | `sandbox` (default) or `live` merchant facade |

@@ -9,7 +9,7 @@ const NAV = [
   { to: "/features" as const, label: "Product" },
   { to: "/pricing" as const, label: "Pricing" },
   { to: "/get-pricing" as const, label: "Quote" },
-  { to: "/demo" as const, label: "Demo sites" },
+  { to: "/get-pricing" as const, label: "Request demo" },
   { to: "/guide" as const, label: "Guide" },
   { to: "/whitepaper" as const, label: "White paper" },
 ];
@@ -94,8 +94,8 @@ export function LandingFrame({ children }: { children: ReactNode }) {
             <Link to="/guide" className="hover:text-champagne">
               Operators Guide
             </Link>
-            <Link to="/demo" className="hover:text-champagne">
-              Demos
+            <Link to="/get-pricing" className="hover:text-champagne">
+              Request demo
             </Link>
             <Link to="/pricing" className="hover:text-champagne">
               Pricing

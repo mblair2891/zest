@@ -8,9 +8,9 @@ import { Button } from "@/components/ui/button";
 import { SummexBrandBlock, SummexMark } from "@/components/brand/SummexMark";
 import { Badge } from "@/components/ui/badge";
 import { useSaasStore } from "@/lib/pos/saas-store";
-import { usePosStore } from "@/lib/pos/store";
+
 import { SaasConsoleView } from "./SaasConsoleView";
-import { isDevDemoClient } from "@/lib/saas/flags";
+
 import { useCurrentUserState } from "@/lib/auth/use-current-user";
 import { signOut } from "@/lib/auth/client";
 import {
@@ -23,7 +23,7 @@ import {
   setActiveContextFn,
 } from "@/lib/saas/api";
 import { ProspectPipelineView } from "@/components/saas/ProspectPipelineView";
-import { PlatformDemosView } from "@/components/demo/PlatformDemosView";
+
 import { prospectResumePath } from "@/lib/saas/prospect-resume";
 import { navigateToSanitizedPath } from "@/lib/auth/post-login-navigate";
 import { saveTenantPosContext } from "@/lib/saas/pos-context";
@@ -77,13 +77,10 @@ export function PlatformApp() {
     (s) => s.locations.find((l) => l.id === s.activeLocationId) ?? s.locations[0],
   );
   const { user, isPending } = useCurrentUserState();
-  const demo = isDevDemoClient();
-  const [surface, setSurface] = useState<"console" | "pipeline" | "demos">(
-    "console",
-  );
+  const [surface, setSurface] = useState<"console" | "pipeline">("console");
   const [adminNav, setAdminNav] = useState(false);
   const userPickedSurface = useRef(false);
-  const pickSurface = (next: "console" | "pipeline" | "demos") => {
+  const pickSurface = (next: "console" | "pipeline") => {
     userPickedSurface.current = true;
     setSurface(next);
   };
@@ -91,7 +88,7 @@ export function PlatformApp() {
   useEffect(() => {
     const onSurface = (e: Event) => {
       const next = (e as CustomEvent).detail;
-      if (next === "console" || next === "pipeline" || next === "demos") {
+      if (next === "console" || next === "pipeline") {
         setSurface(next);
       }
     };
@@ -350,14 +347,6 @@ export function PlatformApp() {
             >
               Pipeline
             </Button>
-            <Button
-              size="sm"
-              variant={surface === "demos" ? "default" : "outline"}
-              data-demo="platform-demos-nav"
-              onClick={() => pickSurface("demos")}
-            >
-              Demos
-            </Button>
           </>
         )}
         <ReplayWorkflowButton className="hidden md:inline-flex" />
@@ -368,18 +357,6 @@ export function PlatformApp() {
         >
           White paper
         </Link>
-        {demo && (
-          <Button
-            size="sm"
-            variant="outline"
-            onClick={() => {
-              usePosStore.getState().loadLaundryTestVenue();
-              window.location.href = "/venue/food_hall";
-            }}
-          >
-            Load The Laundry
-          </Button>
-        )}
         <Button
           size="sm"
           variant="outline"
@@ -412,17 +389,11 @@ export function PlatformApp() {
       <main
         className="min-h-0 flex-1 overflow-hidden"
         data-demo={
-          surface === "pipeline"
-            ? "platform-pipeline"
-            : surface === "demos"
-              ? "platform-demos"
-              : "platform-console"
+          surface === "pipeline" ? "platform-pipeline" : "platform-console"
         }
       >
         {surface === "pipeline" && tenants ? (
           <ProspectPipelineView />
-        ) : surface === "demos" ? (
-          <PlatformDemosView />
         ) : (
           <SaasConsoleView />
         )}

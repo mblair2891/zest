@@ -8,7 +8,6 @@ import { formatCurrency } from "@/lib/utils";
 import { parseQrMode, QR_MODE_LABEL } from "@/lib/pos/qr-table";
 import { isEmptyTable } from "@/lib/pos/floor-status";
 import { computeTotals } from "@/lib/pos/calculations";
-import { enterDemoSession, parseDemoType } from "@/lib/demo/session";
 import type { MenuItem, Table } from "@/lib/pos/types";
 
 type CartLine = { menuItemId: string; name: string; unitPriceCents: number; qty: number };
@@ -42,18 +41,10 @@ export function GuestTablePage({
   const qrMode = parseQrMode(settings.qrMode);
 
   useEffect(() => {
-    const demo = parseDemoType(demoHint);
-    if (demo) enterDemoSession(demo);
     let finished = false;
     const done = () => {
       if (finished) return;
       finished = true;
-      if (demo) {
-        const s = usePosStore.getState();
-        if (s.activeEntityId !== demo || s.tables.length === 0) {
-          s.loadProspectDemo(demo);
-        }
-      }
       setReady(true);
     };
     const u1 = usePosStore.persist.onFinishHydration(done);
@@ -64,7 +55,7 @@ export function GuestTablePage({
       u1();
       window.clearTimeout(t);
     };
-  }, [demoHint]);
+  }, []);
 
   const table: Table | null = useMemo(() => {
     if (token) {

@@ -32,7 +32,7 @@ export const GETTING_STARTED_TOPICS: GuideTopic[] = [
         "Use Guide or “?” in the header on POS and on the platform. It is also on login and empty states.",
         "Tabs: Overview · By type · Features · Roles. Search still matches the whole guide.",
         "Mark a topic complete. Continue where you left off resumes the last unfinished article.",
-        "Examples in this guide use generic names: Host Venue, Operator A, Operator B — never a live customer. The Laundry TEST venue exists only in DEV_DEMO.",
+        "Examples in this guide use generic names: Host Venue, Operator A, Operator B — never a live customer and never a seeded demo tenant.",
       ),
       tip(
         "Press Esc to close the overlay. Press / to jump to search. Open /guide for a bookmarkable, print-friendly page.",
@@ -164,7 +164,7 @@ export const GETTING_STARTED_TOPICS: GuideTopic[] = [
         "Back office: Sign in with work email and password. Open location settings, the host permission matrix, scheduling admin, payroll reports, menu management.",
         "Floor: on the assigned device, enter your 4-digit PIN. Fast Switch user returns to the keypad without changing the device assignment.",
         "Steam Distillery PIN 6666 is the entity manager on The Laundry. Steam bartender 3333 is floor-only. Diamond 7777 cannot edit Steam menu or Steam schedules.",
-        "Opening Settings from a floor PIN prompts back-office re-auth (password, or demo manager PIN 0000).",
+        "Opening Settings from a floor PIN prompts back-office re-auth (password).",
         "Kiosk guest flows stay PIN-free. Platform Admin is password only — never a restaurant PIN.",
       ),
       warn(
@@ -172,7 +172,7 @@ export const GETTING_STARTED_TOPICS: GuideTopic[] = [
       ),
       callout(
         "New house",
-        "Start at Get pricing. You receive a quote, accept, then a guided setup creates the org. Public demos stay separate.",
+        "Start at Get pricing. You receive a quote, accept, then a guided setup creates the org. There is no fake POS tenant.",
       ),
       related("empty-start", "whats-new-on-login", "role-walkthroughs", "navigation", "invites-roles"),
     ],
@@ -189,11 +189,10 @@ export const GETTING_STARTED_TOPICS: GuideTopic[] = [
         "Summex is one application with two working surfaces. Mixing them up is the most common new-user stall.",
       ),
       ul(
-        "Marketing (summex.app) — product, pricing, Get pricing, Operators Guide, product demos.",
+        "Marketing (summex.app) — product, pricing, Get pricing / Request demo, Operators Guide.",
         "Account — /login, /signup. Sign-in is required before any control plane or POS location.",
         "POS — floor, order, KDS, cash, settlement, guests, after a location is open from a signed-in session.",
         "Operators Guide — public page at /guide (operations). Overlay inside the signed-in product.",
-        "Product demos — /demo/{type}. Isolated rooms. They never become a tenant session.",
       ),
       shot(
         "POS header: wordmark, clock, location, Guide, platform rocket, sign out.",
@@ -252,7 +251,7 @@ export const GETTING_STARTED_TOPICS: GuideTopic[] = [
         "Menu, tables, and tickets stay empty until you add them in onboarding or in POS settings.",
       ),
       warn(
-        "Live tenants stay empty until onboarding. Public /demo rooms are labeled demos and never appear in tenant statistics.",
+        "Live tenants stay empty until onboarding. There are no demo-seeded restaurants.",
       ),
       related("login", "prospect-intake", "onboarding-wizard", "network-readiness", "access-urls", "create-org", "type-food-hall", "prospect-demos"),
     ],
@@ -260,9 +259,9 @@ export const GETTING_STARTED_TOPICS: GuideTopic[] = [
   topic({
     id: "laundry-test-venue",
     chapterId: "getting-started",
-    title: "The Laundry test venue (demo)",
+    title: "Test a host + operators location",
     summary:
-      "Internal DEV_DEMO seed. Host brand The Laundry with Steam Distillery (bar) and Diamond House BBQ (kitchen).",
+      "Onboard a real multi-operator house through SaaS. No seeded demo tenant.",
     visibility: "platform",
     roles: ["platform_admin", "owner_manager", "host_operator", "vendor_operator"],
     keywords: [
@@ -270,47 +269,31 @@ export const GETTING_STARTED_TOPICS: GuideTopic[] = [
       "the laundry",
       "steam distillery",
       "diamond house",
-      "bbq",
-      "demo",
       "test venue",
-      "dev_demo",
-      "seed",
+      "onboarding",
+      "multi-operator",
     ],
-    openView: "floor",
+    openView: "hall",
     blocks: [
       why(
-        "Ledger, host capture, and multi-operator settlement need a labeled dataset you can reload. Production empty-start must stay empty — so this seed is gated on DEV_DEMO.",
+        "Host capture and operator settlement are exercised on a location you onboard — not on a fake POS seed.",
       ),
       p(
-        "The Laundry is the guest-facing host brand. Steam Distillery is bar-only (drinks, bar tickets). Diamond House BBQ is kitchen / dining (food, kitchen tickets). The guest pays one check branded The Laundry via Quantum Payments. Line items carry the operator id for routing, settlement, and ledger allocations. Send prospects /demo/food_hall — not Admin.",
-      ),
-      callout(
-        "TEST venue — not a customer",
-        "This is a hypothetical host model for rehearsal. It is not a case study. Admin bootstrap (Admin / password + forced change) is unchanged.",
+        "Guide examples still use Host Venue / Operator A / Operator B (or the laundry/bar/kitchen story as illustration). Those names are not tenants. Create a food-hall style location in the onboarding wizard with two operators to rehearse the same split.",
       ),
       steps(
-        "Confirm demo mode: VITE_DEV_DEMO=1 (and DEV_DEMO=1 on the server). With DEV_DEMO=0 the seed never loads and the Load button is hidden.",
-        "From platform login tap Load The Laundry (TEST), from Settings tap Load The Laundry test venue, or pick The Laundry (TEST) on the venue picker.",
-        "Demo sites PIN is 0000 for every staff action (login and clock in/out). Login opens Owner / Manager. Switch View for Hostess, Server, Kitchen, Bar, Expo, Busser, Steam, Diamond. Live tenant PINs stay unique per person.",
-        "Steam (6666): edit Steam items; Diamond items badge “Diamond House BBQ — view only.”",
-        "Diamond (7777): view Steam menu read-only; cannot change Steam settings.",
-        "Host: Entity permissions matrix + assign Tablet A → Steam bar KDS, Tablet B → Diamond floor POS. Demo mode can simulate those assignments.",
-        "Seat a dining table. Add food (Diamond House BBQ — e.g. Brisket) and a drink (Steam Distillery — e.g. House Highball) on the same check.",
-        "Pay card. Receipt and capture brand are The Laundry. Open Ledger: capture on host, allocations to Steam Distillery and Diamond House BBQ.",
-        "On Settle, file a dispute on that closed card check. The $35 fee splits by merchandise share (example: $65 food / $35 drinks → $22.75 / $12.25).",
-      ),
-      ul(
-        "Cash discount in the seed: 5% off, round up to $0.25 (printed $12.00 card → $11.50 cash).",
-        "Bar merchandise settles to Steam Distillery; food merchandise to Diamond House BBQ.",
-        "White paper appendix uses the same names, labeled as an example.",
+        "Get pricing → describe a host + two operators.",
+        "Complete onboarding so the location is a real org row (is_demo is false).",
+        "Invite the owner. Open POS. Add menu for each operator, seat, pay once on Quantum Payments.",
+        "Ledger shows host capture and allocations per operator. Settle the period.",
       ),
       warn(
-        "The Laundry prospect demo is isolated (is_demo). It does not appear in Tenants or statistics. Do not treat it as a production org.",
+        "There is no Load The Laundry control and no PIN 0000 tenant. Empty tenants on a fresh Admin login is correct.",
       ),
       cta(
-        "/demo/food_hall/tour",
-        "Open The Laundry guided demo",
-        "Live UI with voiceover. Share /demo/food_hall with a prospect. Platform → Demos to copy the link or start the tour.",
+        "/get-pricing",
+        "Start onboarding",
+        "Intake creates the first real location. Request demo on marketing is this same path.",
       ),
       related("type-food-hall", "empty-start", "system-ledger", "host-capture", "chargebacks"),
     ],

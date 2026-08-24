@@ -167,7 +167,7 @@ export function HomePage() {
               group.
             </p>
             <div className="mkt-fade mkt-d2 mt-10 flex flex-wrap items-center gap-3">
-              <LandingCta to="/demo">Demo sites</LandingCta>
+              <LandingCta to="/get-pricing">Request demo</LandingCta>
               <LandingCta to="/get-pricing" tone="ghost">
                 Get pricing
               </LandingCta>
@@ -374,8 +374,8 @@ export function HomePage() {
             <LandingCta to="/signup" tone="ghost">
               Create an account
             </LandingCta>
-            <LandingCta to="/demo" tone="ghost">
-              Demo sites
+            <LandingCta to="/get-pricing" tone="ghost">
+              Request demo
             </LandingCta>
           </div>
         </section>

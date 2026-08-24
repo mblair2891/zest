@@ -258,8 +258,8 @@ export const SAAS_TOPICS: GuideTopic[] = [
   topic({
     id: "prospect-demos",
     chapterId: "saas",
-    title: "Demo sites",
-    summary: "Public PIN 0000 demos by entity type. Owner default, View switcher, live floor path. Never the control plane.",
+    title: "Request a demo / test a location",
+    summary: "Sales CTA is Get pricing. Testing a house means SaaS onboarding — no fake POS tenants.",
     roles: "all",
     keywords: [
       "demo",
@@ -275,33 +275,28 @@ export const SAAS_TOPICS: GuideTopic[] = [
     ],
     blocks: [
       why(
-        "A prospect should walk the real product — exact screens, demo-seeded venues — not a slideshow. Demo rooms are tagged and excluded from live tenants, billing, and statistics.",
+        "A live Summex has no fake restaurants. Prospects request a demo through intake. Operators test by onboarding a real location.",
       ),
       p(
-        "Marketing home → Demo sites. Pick an entity type. You land on the same floor PIN pad used in production — not a fake “enter demo” skip. PIN 0000 logs into that demo venue as Owner / Manager. Clock in and clock out are separate tabs on that PIN pad and also accept 0000.",
+        "Marketing home → Request demo (or Get pricing) opens the intake wizard — not a PIN pad and not a seeded venue. /demo URLs redirect there.",
       ),
       ul(
-        "Per type: /demo/{type} — restaurant, food_hall (The Laundry), bar_lounge, qsr, cafe, truck_pod, ghost_kitchen, catering.",
-        "The Laundry: /demo/food_hall — Steam Distillery drinks, Diamond House BBQ food, one guest check, Quantum Payments.",
-        "View menu (no re-login): Owner / Manager, Host stand, Server (each server on The Laundry), Expo, Kitchen KDS, Bar KDS, Bartender, Cashier / Counter, Busser, Vendor operator (Steam / Diamond), Kiosk.",
-        "One shared house. Host stand seats a section and can assign a server → that server sees it on Mine. Release / Accept transfers the open check. Server send → Kitchen/Bar tickets. Ready → Server/Expo notice. Pay → Busser sees closed · needs bus. Clean → empty.",
-        "Gift cards: sell at the bar (Steam liability), redeem food at Diamond (Steam → Diamond remit). Settings show house residual vs operator split.",
+        "No PIN 0000 tenant. Floor PIN exists only after a location is onboarded and staff are invited.",
+        "Platform Admin signs in with username/email and password. Tenants list is empty until onboarding creates an org.",
+        "Test path: intake → quote → contract if required → onboarding wizard → org + location (+ operators if multi-op) → owner invite → Open POS.",
       ),
       steps(
-        "Open Demo sites from the public site (or /demo). Tap an entity type.",
-        "On the production PIN pad, leave Login selected and enter 0000. You land on Owner / Manager.",
-        "Use View to switch Host stand. Seat a table in a section and assign a server. Switch Server — the table is sat on Mine.",
-        "Server A: Release table. Switch the second Server and Accept.",
-        "Build and send the check. Switch Kitchen KDS (and Bar KDS on The Laundry). Ready, then Expo/Server mark delivered.",
-        "Pay with Quantum Payments sandbox, cash, or a first-party gift card. Switch Busser. Mark cleaned.",
-        "Exit returns to Demo sites or marketing home, never the platform dashboard.",
+        "From the public site, Request demo or Get pricing.",
+        "Complete intake. Accept the snapshot quote.",
+        "Finish the onboarding wizard so the first location is a real tenant.",
+        "Sign in. Open POS for that location. Staff use unique floor PINs — never a universal demo code.",
       ),
       callout(
-        "Live UI, demo data only",
-        "Tours open real demo routes. They never grant SaaS admin, pipeline, or tenant access.",
+        "Role walkthroughs",
+        "After a real location exists, optional in-product walkthroughs can spotlight the live UI. They never seed a demo org.",
       ),
       warn(
-        "Do not treat a demo room as a live login. Sign in from the marketing Sign in control when you have a real house.",
+        "Do not look for The Laundry, Steam Distillery, or Diamond House BBQ as seeded tenants. Those names are examples in the guide only.",
       ),
       related("single-vs-multi", "prospect-intake", "type-food-hall", "feature-kiosk", "roles-dashboards"),
     ],
@@ -309,22 +304,22 @@ export const SAAS_TOPICS: GuideTopic[] = [
   topic({
     id: "platform-demos-admin",
     chapterId: "platform",
-    title: "Demo rooms (platform)",
-    summary: "Share links, reset demo-tagged orgs, keep demos out of tenant stats.",
+    title: "No demo tenants (platform)",
+    summary: "Control plane never seeds is_demo orgs. Test by onboarding a location.",
     visibility: "platform",
     roles: ["platform_admin"],
     keywords: ["demo", "reset", "pipeline", "tenants", "share"],
     blocks: [
       why(
-        "Platform Demos is the admin catalog. Prospects use /demo without this session.",
+        "Platform Admin manages live tenants and the prospect pipeline. Fake POS rooms are not a product surface.",
       ),
       steps(
-        "Sign in. Open Demos on the control plane.",
-        "Copy a type share link or start a guided tour from here.",
-        "Reset all demos deletes demo-tagged orgs only. Live tenants are untouched.",
+        "Sign in as Admin (password). Tenants is empty until someone completes onboarding.",
+        "Use Pipeline for intake → quote → contract → setup.",
+        "When a location is live, Open POS. Floor PIN is for that location’s staff.",
       ),
       warn(
-        "Never send Admin login as a demo. If Tenants is empty, that is correct — demos do not count.",
+        "Never send Admin login as a prospect demo. Empty tenants is correct.",
       ),
       related("platform-admin", "prospect-demos", "empty-start"),
     ],
@@ -344,7 +339,7 @@ export const SAAS_TOPICS: GuideTopic[] = [
       steps(
         "Sign in with username Admin (or admin@summex.local) and the initial password.",
         "On first success you must set a new password (8+ characters). The initial password cannot be reused.",
-        "You land on the control plane. Pipeline, Console, and Demos are signed-in surfaces only.",
+        "You land on the control plane. Pipeline and Console are signed-in surfaces only.",
       ),
       warn(
         "The initial Admin password exists only for bootstrap. Change it immediately. Do not publish it on the marketing site.",

@@ -9,6 +9,18 @@ import type { GuideUpdate } from "@/lib/guide/types";
  */
 export const WHATS_NEW_ENTRIES: GuideUpdate[] = [
   {
+    id: "upd_2026_09_13_no_demo_tenants",
+    date: "2026-09-13",
+    title: "No demo tenants — onboard a real location to test",
+    summary:
+      "Fake POS venues and PIN 0000 rooms are gone. Request demo is Get pricing. Platform Admin starts with zero tenants.",
+    body: "Marketing Request demo opens intake. /demo URLs redirect there. Admin login shows an empty tenant list until SaaS onboarding creates an org and location. Floor PIN is only for staff on that location.",
+    roles: "all",
+    surfaces: ["platform", "settings"],
+    topicId: "empty-start",
+    tags: ["onboarding", "saas", "empty-start"],
+  },
+  {
     id: "upd_2026_09_12_gift_pin_floor",
     date: "2026-09-12",
     title: "Demo PIN pad, Host stand / Server, release/accept, gift issuers",

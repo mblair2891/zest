@@ -84,10 +84,8 @@ export async function navigateToSanitizedPath(
       await navigate({ to: "/online" });
       return;
     case "/demo":
-      await navigate({ to: "/demo" });
-      return;
     case "/demo/tour/full":
-      await navigate({ to: "/demo/tour/full" });
+      await navigate({ to: "/get-pricing" });
       return;
     default:
       break;
@@ -114,21 +112,9 @@ export async function navigateToSanitizedPath(
     await navigate({ to: "/venue/$type", params: { type: venueType } });
     return;
   }
-  const demoType = path.match(/^\/demo\/([^/]+)$/);
-  if (demoType?.[1] && demoType[1] !== "tour") {
-    const vt = asVenueType(demoType[1]);
-    if (vt) {
-      await navigate({ to: "/demo/$type", params: { type: vt } });
-      return;
-    }
-  }
-  const demoTour = path.match(/^\/demo\/([^/]+)\/tour$/);
-  if (demoTour?.[1]) {
-    const vt = asVenueType(demoTour[1]);
-    if (vt) {
-      await navigate({ to: "/demo/$type/tour", params: { type: vt } });
-      return;
-    }
+  if (path.startsWith("/demo")) {
+    await navigate({ to: "/get-pricing" });
+    return;
   }
   const appVenue = path.match(/^\/app\/venue\/([^/]+)$/);
   const appVenueType = appVenue?.[1] ? asVenueType(appVenue[1]) : null;

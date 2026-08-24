@@ -170,6 +170,5 @@ export function isOnboardingSurface(pathname: string): boolean {
   if (/^\/kiosk(\/|$)/.test(pathname)) return true;
   if (/^\/venue\//.test(pathname)) return true;
   if (/^\/app(\/|$)/.test(pathname)) return true;
-  if (/^\/demo\/(?!tour)[^/]+/.test(pathname)) return true;
   return false;
 }

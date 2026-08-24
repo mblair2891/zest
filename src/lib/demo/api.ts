@@ -17,10 +17,11 @@ export const seedDemosFn = createServerFn({ method: "POST" })
   .handler(async ({ context }) => {
     const { isPlatformAdmin } = await import("@/lib/saas/tenancy.server");
     if (!(await isPlatformAdmin(context.userId))) {
-      throw new Error("Only platform admin can seed demos");
+      throw new Error("Only platform admin can purge leftover demo tenants");
     }
-    const { seedDemoVenues } = await import("./seed.server");
-    return seedDemoVenues();
+    const { purgeDemoTenants } = await import("./seed.server");
+    await purgeDemoTenants();
+    return [];
   });
 
 export const resetDemosFn = createServerFn({ method: "POST" })

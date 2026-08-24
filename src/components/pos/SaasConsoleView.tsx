@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Link } from "@tanstack/react-router";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -164,6 +165,23 @@ export function SaasConsoleView() {
               <p className="mb-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">
                 Locations
               </p>
+              {locations.length === 0 && (
+                <div className="rounded-xl border border-dashed border-border bg-bg px-4 py-6 text-center">
+                  <p className="text-sm font-medium">No locations yet — start onboarding</p>
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    Locations are created through SaaS intake and the onboarding
+                    wizard. There are no demo tenants.
+                  </p>
+                  <div className="mt-3 flex flex-wrap justify-center gap-2">
+                    <Button asChild size="sm">
+                      <Link to="/get-pricing">Start onboarding</Link>
+                    </Button>
+                    <Button asChild size="sm" variant="outline">
+                      <Link to="/onboarding">Onboarding</Link>
+                    </Button>
+                  </div>
+                </div>
+              )}
               <ul className="grid gap-2 sm:grid-cols-2">
                 {locations.map((l) => (
                   <li key={l.id}>
@@ -185,6 +203,24 @@ export function SaasConsoleView() {
                   </li>
                 ))}
               </ul>
+            </div>
+          </div>
+        )}
+
+        {tab === "locations" && !loc && (
+          <div className="mx-auto max-w-lg rounded-2xl border border-dashed border-border bg-surface p-6 text-center">
+            <p className="text-sm font-semibold">No locations yet — start onboarding</p>
+            <p className="mt-2 text-sm text-muted-foreground">
+              Complete SaaS onboarding to create the first real location. Demo
+              venues are not seeded.
+            </p>
+            <div className="mt-4 flex flex-wrap justify-center gap-2">
+              <Button asChild>
+                <Link to="/get-pricing">Start onboarding</Link>
+              </Button>
+              <Button asChild variant="outline">
+                <Link to="/onboarding">Open wizard</Link>
+              </Button>
             </div>
           </div>
         )}

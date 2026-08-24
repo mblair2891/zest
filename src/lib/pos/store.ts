@@ -2294,94 +2294,12 @@ const usePosStoreRaw = create()(persist((set, get) => ({
 		return { ok: true };
 	},
 	loadLaundryTestVenue: () => {
-		if (!isDevDemoClient()) {
-			return { ok: false, error: "The Laundry test seed is demo-only (DEV_DEMO=1)" };
-		}
-		const slice = laundryPosSlice();
-		set({
-			...slice,
-			shift: emptyShift(),
-			clock: Date.now(),
-			auditLog: [
-				{
-					id: uid("aud"),
-					at: Date.now(),
-					employeeId: "system",
-					employeeName: "System",
-					action: "seed",
-					detail: "Loaded The Laundry TEST venue",
-				},
-			],
-			giftCards: [],
-			giftTransfers: [],
-			customers: [],
-			inventory: "inventory" in slice && Array.isArray(slice.inventory) ? slice.inventory : [],
-		});
-		try {
-			useSaasStore.getState().applyLaundryTestOrg();
-			useSaasStore.getState().setActiveLocation(slice.tenantLocationId);
-		} catch {
-			/* ignore */
-		}
-		return { ok: true };
+		return { ok: false, error: "Demo tenants are retired. Onboard a location through SaaS." };
 	},
-	loadProspectDemo: (entityId: VenueEntityId) => {
-		const slice = demoPosSlice(entityId);
-		const prev = get().currentEmployeeId;
-		const owner =
-			slice.employees.find((e) => e.role === "owner") ?? slice.employees[0];
-		const keep =
-			slice.employees.find((e) => e.id === prev) ??
-			owner ??
-			slice.employees[0];
-		set({
-			...slice,
-			currentEmployeeId: null,
-			shift: emptyShift(),
-			clock: Date.now(),
-			auditLog: [
-				{
-					id: uid("aud"),
-					at: Date.now(),
-					employeeId: "system",
-					employeeName: "System",
-					action: "seed",
-					detail: `Prospect demo · ${entityId}`,
-				},
-			],
-			giftCards: [],
-			giftTransfers: [],
-			customers: [],
-			inventory: "inventory" in slice && Array.isArray(slice.inventory) ? slice.inventory : [],
-		});
-		try {
-			const { org, location } = demoSaasOrg(entityId);
-			useSaasStore.getState().hydrateTenant({
-				org,
-				members: [
-					{
-						id: "mem_demo_host",
-						orgId: org.id,
-						name: owner?.name ?? "Demo host",
-						email: "",
-						role: "owner",
-					},
-				],
-				locations: [location],
-				adminName: owner?.name ?? "Demo host",
-				adminRole: "owner",
-			});
-			useSaasStore.setState({ liveMode: false, platformAuthed: false });
-			useSaasStore.getState().setActiveLocation(slice.tenantLocationId);
-		} catch {
-			/* ignore */
-		}
-		return { ok: true };
+	loadProspectDemo: (_entityId: VenueEntityId) => {
+		return { ok: false, error: "Demo tenants are retired. Onboard a location through SaaS." };
 	},
 	applyEntity: (entityId: VenueEntityId) => {
-		if (isDevDemoClient() && entityId === "food_hall") {
-			return get().loadLaundryTestVenue();
-		}
 		const ent = venueById(entityId);
 		if (!ent) return { ok: false, error: "Unknown venue" };
 		const staff = employeesForVenue(entityId);
@@ -2504,11 +2422,6 @@ const usePosStoreRaw = create()(persist((set, get) => ({
 	resetDemo: () => {
 		const keepEmp = get().currentEmployeeId;
 		const keepEntity = get().activeEntityId || "restaurant";
-		if (isDevDemoClient() && keepEntity === "food_hall") {
-			const res = get().loadLaundryTestVenue();
-			if (keepEmp) set({ currentEmployeeId: keepEmp });
-			return res;
-		}
 		set({
 			...initialState(),
 			activeEntityId: keepEntity,

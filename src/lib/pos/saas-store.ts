@@ -19,7 +19,6 @@ import {
   packageForView,
   PACKAGE_BY_ID,
 } from "./packages";
-import { isDevDemoClient } from "@/lib/saas/flags";
 import { demoPersistStorage } from "@/lib/demo/session";
 import {
   LAUNDRY_LOCATION_ID,
@@ -529,16 +528,16 @@ export const useSaasStore = create<SaasState>()(
   persist(
     (set, get) => ({
       platform: PLATFORM,
-      org: isDevDemoClient() ? seedOrg() : emptyOrg(),
-      members: isDevDemoClient() ? seedMembers() : [],
-      locations: isDevDemoClient() ? seedLocations() : [],
-      merchants: isDevDemoClient() ? seedMerchants() : [],
-      pads: isDevDemoClient() ? seedPads() : [],
-      schedule: isDevDemoClient() ? seedSchedule() : [],
-      devices: isDevDemoClient() ? seedDevices() : [],
+      org: emptyOrg(),
+      members: [],
+      locations: [],
+      merchants: [],
+      pads: [],
+      schedule: [],
+      devices: [],
       invoices: [],
-      onboarding: isDevDemoClient() ? seedOnboarding() : emptyOnboarding(),
-      activeLocationId: isDevDemoClient() ? LAUNDRY_LOCATION_ID : "",
+      onboarding: emptyOnboarding(),
+      activeLocationId: "",
       platformAuthed: false,
       platformAdminName: "",
       platformAdminRole: "",
@@ -546,38 +545,7 @@ export const useSaasStore = create<SaasState>()(
 
       setActiveLocation: (id) => set({ activeLocationId: id }),
 
-      applyLaundryTestOrg: () => {
-        if (!isDevDemoClient()) return;
-        const currentLocs = get().locations;
-        const locations = (currentLocs.length ? currentLocs : seedLocations()).map((l) =>
-          l.id === LAUNDRY_LOCATION_ID
-            ? {
-                ...l,
-                name: LAUNDRY_LOCATION_NAME,
-                code: "LAUNDRY",
-                address: `TEST · ${LAUNDRY_ORG_NAME}`,
-                mode: "food_hall" as const,
-              }
-            : l,
-        );
-        if (!locations.some((l) => l.id === LAUNDRY_LOCATION_ID)) {
-          locations.unshift(seedLocations()[0]!);
-        }
-        const existing = get().merchants;
-        const extra = seedMerchants().filter(
-          (m) => m.id === "m_steam" || m.id === "m_diamond",
-        );
-        const merchants = [
-          ...extra.filter((m) => !existing.some((e) => e.id === m.id)),
-          ...existing,
-        ];
-        set({
-          org: seedOrg(),
-          locations,
-          merchants,
-          activeLocationId: LAUNDRY_LOCATION_ID,
-        });
-      },
+      applyLaundryTestOrg: () => {},
 
       loginPlatform: (name, role) =>
         set({
@@ -867,42 +835,23 @@ export const useSaasStore = create<SaasState>()(
       skipHydration: true,
       merge: (persisted, current) => {
         const p = persisted as Partial<SaasState> | undefined;
-        if (!isDevDemoClient() && p?.org?.id === "org_demo") {
+        if (p?.org?.id === "org_demo" || p?.org?.id?.startsWith("org_demo")) {
           return current;
         }
         const merged = { ...current, ...(p ?? {}) };
-        if (!isDevDemoClient()) return merged;
-        const locations = (merged.locations?.length
-          ? merged.locations
-          : seedLocations()
-        ).map((l) =>
-          l.id === LAUNDRY_LOCATION_ID
-            ? {
-                ...l,
-                name: LAUNDRY_LOCATION_NAME,
-                code: "LAUNDRY",
-                address: `TEST · ${LAUNDRY_ORG_NAME}`,
-              }
-            : l,
+        const locations = (merged.locations ?? []).filter(
+          (l) => l.id !== LAUNDRY_LOCATION_ID && !String(l.id).startsWith("loc_demo_"),
         );
-        const merchants = [
-          ...(merged.merchants?.length ? merged.merchants : seedMerchants()),
-        ];
-        const extras = seedMerchants().filter(
-          (m) => m.id === "m_steam" || m.id === "m_diamond",
-        );
-        for (const m of extras) {
-          if (!merchants.some((e) => e.id === m.id)) merchants.unshift(m);
-        }
         return {
           ...merged,
-          org:
-            !merged.org?.id || merged.org.id === "org_demo"
-              ? seedOrg()
-              : merged.org,
           locations,
-          merchants,
-          activeLocationId: merged.activeLocationId || LAUNDRY_LOCATION_ID,
+          merchants: (merged.merchants ?? []).filter(
+            (m) => m.id !== "m_steam" && m.id !== "m_diamond",
+          ),
+          activeLocationId:
+            locations.some((l) => l.id === merged.activeLocationId)
+              ? merged.activeLocationId
+              : locations[0]?.id ?? "",
         };
       },
     },

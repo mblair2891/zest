@@ -164,7 +164,7 @@ export function EntityLogin({ entityId }: { entityId: VenueEntityId }) {
   if (!entity) {
     return (
       <div className="flex min-h-[100dvh] items-center justify-center bg-bg pt-[var(--grok-banner-h,0px)]">
-        <Link to={prospect ? "/demo" : "/"} className="text-sm text-muted-foreground underline">
+        <Link to={prospect ? "/login" : "/"} className="text-sm text-muted-foreground underline">
           Unknown venue — back
         </Link>
       </div>
@@ -222,7 +222,7 @@ export function EntityLogin({ entityId }: { entityId: VenueEntityId }) {
         data-demo={prospect ? "demo-pin-gate" : undefined}
       >
         <Link
-          to={prospect ? "/demo" : "/"}
+          to={prospect ? "/login" : "/"}
           className="mb-6 inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground"
         >
           <ArrowLeft className="h-4 w-4" />
@@ -324,8 +324,8 @@ export function EntityLogin({ entityId }: { entityId: VenueEntityId }) {
 
         {prospect && (
           <div className="mt-6 flex flex-col gap-2 text-center text-xs text-muted-foreground">
-            <Link to="/demo" className="underline-offset-2 hover:underline">
-              All demo sites
+            <Link to="/get-pricing" className="underline-offset-2 hover:underline">
+              Start onboarding
             </Link>
             <Link to="/" className="underline-offset-2 hover:underline">
               Marketing home

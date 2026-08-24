@@ -11,14 +11,14 @@ import { useManualStore } from "@/lib/pos/manual-store";
 import { useNotifyStore } from "@/lib/pos/notify-store";
 import { useNetworkStore } from "@/lib/pos/network-store";
 import { useOpsLearnStore } from "@/lib/ops-ai/learn-store";
-import { EntityLogin, EntityPicker } from "./EntityHome";
+import { EntityLogin } from "./EntityHome";
 import { AppShell } from "./AppShell";
 import { PosErrorBoundary } from "./PosErrorBoundary";
 import { initNativeShell } from "@/lib/native-shell";
 import { isVenueEntityId } from "@/lib/pos/entities";
 import type { VenueEntityId } from "@/lib/pos/types";
-import { isDevDemoClient } from "@/lib/saas/flags";
-import { getDemoType, isProspectDemo } from "@/lib/demo/session";
+import { retireDemoSessions } from "@/lib/demo/session";
+import { useDemoDeviceStore } from "@/lib/demo/device-session";
 import { useCurrentUserState } from "@/lib/auth/use-current-user";
 import { getPosBootstrapFn } from "@/lib/saas/api";
 import { tablesFromCount, type TenantMenuMode } from "@/lib/pos/starter-seed";
@@ -54,10 +54,8 @@ function PosAppInner({ entityId }: { entityId?: string }) {
   const [gateMsg, setGateMsg] = useState<string | null>(null);
   const currentEmployeeId = usePosStore((s) => s.currentEmployeeId);
   const activeEntityId = usePosStore((s) => s.activeEntityId);
-  const applyEntity = usePosStore((s) => s.applyEntity);
   const openTenantLocation = usePosStore((s) => s.openTenantLocation);
   const { user, isPending } = useCurrentUserState();
-  const demo = isDevDemoClient();
 
   useEffect(() => {
     let cancelled = false;
@@ -90,23 +88,11 @@ function PosAppInner({ entityId }: { entityId?: string }) {
 
   useEffect(() => {
     if (!ready) return;
-    if (isProspectDemo()) {
-      const t = getDemoType();
-      if (t && isVenueEntityId(t)) {
-        const s = usePosStore.getState();
-        if (s.activeEntityId !== t || s.employees.length === 0) {
-          s.loadProspectDemo(t);
-        }
-      }
-      setTenantGate("ok");
-      return;
-    }
-    if (demo) {
-      if (entityId && isVenueEntityId(entityId) && activeEntityId !== entityId) {
-        applyEntity(entityId as VenueEntityId);
-      }
-      setTenantGate("ok");
-      return;
+    retireDemoSessions();
+    try {
+      useDemoDeviceStore.getState().leave();
+    } catch {
+      /* ignore */
     }
     if (isPending) return;
     const locParam =
@@ -222,14 +208,16 @@ function PosAppInner({ entityId }: { entityId?: string }) {
       setTenantGate("denied");
       return;
     }
+    if (!locationId) {
+      setGateMsg("No locations yet — start onboarding from the control plane.");
+      setTenantGate("denied");
+      return;
+    }
     setTenantGate("ok");
   }, [
     ready,
-    demo,
     isPending,
     entityId,
-    activeEntityId,
-    applyEntity,
     openTenantLocation,
     user,
   ]);
@@ -245,7 +233,7 @@ function PosAppInner({ entityId }: { entityId?: string }) {
     );
   }
 
-  if (!demo && !isProspectDemo() && tenantGate === "idle") {
+  if (tenantGate === "idle") {
     return (
       <div className="flex min-h-[100dvh] items-center justify-center bg-bg pt-[var(--grok-banner-h,0px)] text-muted-foreground">
         Checking access…
@@ -253,7 +241,7 @@ function PosAppInner({ entityId }: { entityId?: string }) {
     );
   }
 
-  if (!demo && tenantGate === "denied") {
+  if (tenantGate === "denied") {
     return (
       <div className="flex min-h-[100dvh] flex-col items-center justify-center gap-3 bg-bg px-4 pt-[var(--grok-banner-h,0px)] text-center">
         <p className="text-sm text-muted-foreground">
@@ -261,6 +249,9 @@ function PosAppInner({ entityId }: { entityId?: string }) {
         </p>
         <Link to="/login" className="text-sm font-medium text-primary underline">
           Sign in
+        </Link>
+        <Link to="/get-pricing" className="text-sm font-medium text-primary underline">
+          Start onboarding
         </Link>
         <Link to="/guide" className="text-sm text-muted-foreground underline">
           Operators Guide
@@ -276,11 +267,7 @@ function PosAppInner({ entityId }: { entityId?: string }) {
     return <EntityLogin entityId={entityId as VenueEntityId} />;
   }
 
-  if (currentEmployeeId) {
-    return <AppShell />;
-  }
-
-  if (!demo && !user) {
+  if (!user) {
     return (
       <div className="flex min-h-[100dvh] flex-col bg-bg pt-[var(--grok-banner-h,0px)]">
         <div className="mx-auto flex w-full max-w-lg flex-1 flex-col justify-center px-4 py-10 text-center">
@@ -320,7 +307,7 @@ function PosAppInner({ entityId }: { entityId?: string }) {
     );
   }
 
-  if (!demo && user) {
+  if (user) {
     return (
       <div className="flex min-h-[100dvh] flex-col items-center justify-center gap-3 bg-bg px-4 pt-[var(--grok-banner-h,0px)] text-center">
         <p className="text-sm text-muted-foreground">
@@ -334,6 +321,12 @@ function PosAppInner({ entityId }: { entityId?: string }) {
           Open control plane
         </Link>
         <Link
+          to="/get-pricing"
+          className="text-sm font-medium text-primary underline"
+        >
+          No locations yet — start onboarding
+        </Link>
+        <Link
           to="/guide"
           className="text-sm text-muted-foreground underline underline-offset-2"
         >
@@ -343,7 +336,14 @@ function PosAppInner({ entityId }: { entityId?: string }) {
     );
   }
 
-  return <EntityPicker />;
+  return (
+    <div className="flex min-h-[100dvh] flex-col items-center justify-center gap-3 bg-bg px-4 pt-[var(--grok-banner-h,0px)] text-center">
+      <p className="text-sm text-muted-foreground">Sign in to open POS.</p>
+      <Link to="/login" className="text-sm font-medium text-primary underline">
+        Sign in
+      </Link>
+    </div>
+  );
 }
 
 export function PosApp({ entityId }: { entityId?: string }) {

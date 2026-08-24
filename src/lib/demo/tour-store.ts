@@ -1,8 +1,7 @@
 import { create } from "zustand";
 import { getTour, type TourDefinition, type TourStep } from "./tour-scripts";
 import { cancelSpeech } from "./speech";
-import { enterDemoSession, exitDemoSession } from "./session";
-import { enterDemoOperator } from "./device-session";
+import { exitDemoSession } from "./session";
 
 type StartOpts = { autoPlay?: boolean };
 
@@ -22,17 +21,6 @@ type TourState = {
   setError: (msg: string | null) => void;
 };
 
-function demoTypeForTour(id: string, def: TourDefinition): string | null {
-  if (def.kind === "walkthrough") return null;
-  if (id.startsWith("walkthrough:")) return null;
-  if (id.startsWith("type:")) return id.slice(5);
-  if (id === "full") return "food_hall";
-  for (const step of def.steps) {
-    if (step.route && step.route.to === "/demo/$type") return step.route.params.type;
-  }
-  return null;
-}
-
 export const useTourStore = create<TourState>((set, get) => ({
   tour: null,
   index: 0,
@@ -48,10 +36,10 @@ export const useTourStore = create<TourState>((set, get) => ({
       return false;
     }
     cancelSpeech();
-    const typeParam = demoTypeForTour(id, def);
-    if (typeParam) {
-      enterDemoSession(typeParam);
-      enterDemoOperator();
+    if (def.kind !== "walkthrough") {
+      console.error("[summex] Catalog demo tours are retired:", id);
+      set({ error: "Tour not available", tour: null, playing: false });
+      return false;
     }
     set({
       tour: def,

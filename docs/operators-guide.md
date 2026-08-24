@@ -24,7 +24,7 @@ a CMS.
 | `docs/whitepaper/` | Shareable white paper (MD + print HTML) |
 | `/whitepaper` | Live white paper (prints to PDF) |
 | `docs/quantum-payments-ledger.md` | Ledger sign convention + The Laundry worked example |
-| `/guide?topic=laundry-test-venue` | DEV_DEMO TEST host (The Laundry) |
+| `/guide?topic=laundry-test-venue` | Test a host + operators location via SaaS onboarding |
 
 Bump `GUIDE_VERSION` in `types.ts` when you ship a batch of topics.
 Add a What’s New row in `src/lib/whats-new/entries.ts` (newest first) so the
@@ -121,7 +121,7 @@ reset-all-demos, tenant underwriting).
 Platform-admin topics use `visibility: "platform"` (and/or the **Platform**
 chapter). They render only when the viewer is signed in as `platform_admin`.
 
-Public **Exit** on `/guide` returns to `/`. Demo/tour **Exit** returns to `/demo`.
+Public **Exit** on `/guide` returns to `/`. Role walkthrough **Exit** stays on the live location.
 
 ## What’s new on login
 
@@ -146,26 +146,17 @@ vendor operator, accountant, kiosk, KDS kitchen/bar, platform admin.
 
 In-app: `/guide?topic=role-walkthroughs`.
 
-## Demo login & device switcher
+## Testing a location (SaaS only)
 
-Marketing home → **Demo sites** → entity type. The next screen is the **same
-floor PIN pad** as production (not a skip-auth button). PIN **0000** logs into
-that demo venue as **Owner / Manager**. Clock in and clock out are separate
-tabs on the PIN pad and also accept 0000.
+There are **no demo tenants**. Marketing **Request demo** is Get pricing /
+intake. `/demo` URLs redirect there. Platform Admin never seeds The Laundry,
+Steam Distillery, Diamond House BBQ, or PIN 0000 rooms.
 
-After login, **View** switches Host stand, Server (each server on The Laundry),
-Expo, Kitchen KDS, Bar KDS, Bartender, Cashier, Busser, vendor operator, and
-optional Kiosk — live shared state, no second PIN.
+To test: complete SaaS onboarding (intake → quote → contract if required →
+wizard → org + location). Invite the owner. Open POS. Floor PIN is for **real**
+staff on that location.
 
-Host stand seats a section and can assign a server. Server A **Release table**
-puts the open check in the offer pool; Server B **Accept** takes ownership
-(audit: who, when). Gift cards: bar sale → Steam liability; redeem food at
-Diamond → Steam remits to Diamond. Settings show house residual vs operator
-split. Exit returns to Demo sites or marketing home.
-
-The session is `is_demo` only. Real tenants still use memberships and PINs.
-Floor, kiosk, and KDS share the same demo persist so tickets, waitlist, and
-pays stay in sync.
+In-app: `/guide?topic=empty-start` and `/guide?topic=prospect-demos`.
 
 ## Roles
 
@@ -198,28 +189,14 @@ resumes the last unfinished topic.
 - Chargebacks: **$35** when a dispute is **filed**; split by merchandise % on
   that check; won/lost does not reverse the fee.
 
-## Guided demos & voiceover tours
+## Role walkthroughs
 
-Prospect tours run on the **live product UI** (real routes, demo-seeded venues,
-spotlight on live components) — not a slideshow.
+Optional walkthroughs run on a **real onboarded location** (spotlight on live
+UI). Catalog demo tours that required seeded tenants are retired.
 
-| Control | What it does |
-|---|---|
-| Public **Demos** → **Full product tour** | `startTour("full")` |
-| Public **Demos** → **Guided demo** | `startTour("type:{typeId}")` |
-| `/demo/tour/full` | Shareable full tour (auto-play) |
-| `/demo/{type}/tour` | Shareable per-type tour (auto-play) |
-| Tour **Exit** / Esc / Finish | Returns to `/demo` — not dashboard |
+Unknown tour ids toast **Tour not available**.
 
-Narration: handwritten fallbacks in `src/lib/demo/tour-scripts.ts`. When
-`XAI_API_KEY` (or `OPENAI_API_KEY`) is set, `getTourNarrationFn` writes
-sales-ready scripts and caches per tour id. Voiceover is the browser Speech
-API (`speechSynthesis`); Pause / Exit cancel speech.
-
-Safe POS actions (seat, add, send, sandbox pay) run only while
-`isProspectDemo()` is true. Unknown tour ids toast **Tour not available**.
-
-In-app topic: `/guide?topic=prospect-demos`.
+In-app topic: `/guide?topic=role-walkthroughs`.
 
 ## Print
 
