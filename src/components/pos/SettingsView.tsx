@@ -16,6 +16,11 @@ import {
   settingsPacksForVenue,
   type SettingsPackId,
 } from "@/lib/access/entity-roles";
+import {
+  VOICE_ROLE_KEYS,
+  VOICE_ROLE_LABEL,
+  parseVoiceByRole,
+} from "@/lib/voice/roles";
 import { HostOperatorsSettings } from "./HostOperatorsSettings";
 import { DeviceAssignmentPanel } from "./DeviceAssignmentPanel";
 import { EntityPermissionsMatrix } from "./EntityPermissionsMatrix";
@@ -120,6 +125,7 @@ export function SettingsView() {
           waitlistEnabled: settings.waitlistEnabled,
           reservationCheckIn: settings.reservationCheckIn,
           waitlistReason: settings.waitlistReason,
+          voiceControlEnabledByRole: settings.voiceControlEnabledByRole,
           devices: { pos: 0, kds: 0, handhelds: 0 },
           settlement: {
             periodType: "weekly",
@@ -614,6 +620,36 @@ export function SettingsView() {
           <EntityPermissionsMatrix write={write} />
           <DeviceAssignmentPanel write={write} />
         </div>
+        </div>
+      </Pack>
+
+      <Pack id="voice" packs={packs}>
+        <div data-demo="voice-settings">
+          <p className="mb-2 text-xs text-muted-foreground">
+            Optional mic on working devices after PIN. Host sets the policy. Entity
+            managers cannot turn on more than the host allows. Kiosk guests stay off.
+            Voice cannot change payouts, the permission matrix, or platform admin.
+          </p>
+          <ul className="space-y-2">
+            {VOICE_ROLE_KEYS.map((role) => {
+              const map = parseVoiceByRole(settings.voiceControlEnabledByRole);
+              return (
+                <li key={role} className="flex items-center justify-between gap-2 text-sm">
+                  <span>{VOICE_ROLE_LABEL[role]}</span>
+                  <input
+                    type="checkbox"
+                    className="h-4 w-4 rounded border-border"
+                    checked={map[role]}
+                    disabled={!write || role === "kiosk"}
+                    onChange={(e) => {
+                      const next = { ...map, [role]: role === "kiosk" ? false : e.target.checked };
+                      updateSettings({ voiceControlEnabledByRole: next });
+                    }}
+                  />
+                </li>
+              );
+            })}
+          </ul>
         </div>
       </Pack>
 

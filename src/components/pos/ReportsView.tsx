@@ -16,6 +16,7 @@ import { canEmployee } from "@/lib/access/permissions";
 import { HOST_SCOPE, canViewPayroll, canViewSalesReports } from "@/lib/access/entity-grants";
 import { useOpsStore } from "@/lib/pos/ops-store";
 import { buildPayrollRows } from "@/lib/labor/payroll";
+import { useOpsLearnStore } from "@/lib/ops-ai/learn-store";
 import { REPORT_GROUP_LABEL, reportsFor } from "@/lib/reports/catalog";
 import { csvFromRows } from "@/lib/reports/metrics";
 import { metricsFromPosStore } from "@/lib/reports/from-store";
@@ -27,6 +28,29 @@ import { speak } from "@/lib/demo/speech";
 import type { LocationInsights, RangeKey, ReportId } from "@/lib/reports/types";
 import type { PosView, VenueEntityId } from "@/lib/pos/types";
 import { cn } from "@/lib/utils";
+
+function annotateInsights(ins: LocationInsights): LocationInsights {
+  const events = useOpsLearnStore.getState().events;
+  const labor = events.filter((e) => e.recType === "labor_high");
+  const accepts = labor.filter((e) => e.action === "accept").length;
+  const dismisses = labor.filter((e) => e.action === "dismiss").length;
+  if (!accepts && !dismisses) return ins;
+  return {
+    ...ins,
+    recommendations: ins.recommendations.map((r) => {
+      const laborish = /labor|server|staff/i.test(r.action);
+      if (!laborish) return r;
+      return {
+        ...r,
+        basedOnPastDecisions: accepts > 0,
+        pastOutcome:
+          accepts > dismisses
+            ? `You accepted similar labor tips ${accepts} time(s).`
+            : `You dismissed similar labor tips ${dismisses} time(s).`,
+      };
+    }),
+  };
+}
 
 function formatSalesTooltip(value: unknown) {
   const n = typeof value === "number" ? value : Number(value ?? 0);
@@ -84,17 +108,17 @@ export function ReportsView() {
     setErr(null);
     try {
       if (!useNetworkStore.getState().wanOnline()) {
-        setInsights(guidedInsights(metrics));
+        setInsights(annotateInsights(guidedInsights(metrics)));
         setTab("ai");
         return;
       }
       const res = await analyzeLocationPerformanceFn({
         data: { metrics, isDemo: isProspectDemo() || metrics.isDemo },
       });
-      setInsights(res);
+      setInsights(annotateInsights(res));
       setTab("ai");
     } catch (e) {
-      setInsights(guidedInsights(metrics));
+      setInsights(annotateInsights(guidedInsights(metrics)));
       setTab("ai");
       setErr(e instanceof Error ? e.message : "Cloud AI unavailable — showing guided insights");
     } finally {
@@ -298,6 +322,8 @@ export function ReportsView() {
                         </p>
                         <p className="text-xs text-muted-foreground">
                           {r.expectedImpact} · {r.ownerRole}
+                          {r.basedOnPastDecisions ? " · Based on your past decisions" : ""}
+                          {r.pastOutcome ? ` · ${r.pastOutcome}` : ""}
                         </p>
                       </div>
                       {r.applyView && (

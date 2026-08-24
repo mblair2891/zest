@@ -83,7 +83,8 @@ export type SettingsPackId =
   | "bar_tabs"
   | "counter_expo"
   | "host_operators"
-  | "kiosk_front";
+  | "kiosk_front"
+  | "voice";
 
 const UNIVERSAL: SettingsPackId[] = [
   "profile",
@@ -94,6 +95,7 @@ const UNIVERSAL: SettingsPackId[] = [
   "staff",
   "notifications",
   "hours",
+  "voice",
 ];
 
 export const SETTINGS_PACKS_BY_VENUE: Record<VenueEntityId, SettingsPackId[]> = {
@@ -121,6 +123,7 @@ export const SETTINGS_PACK_LABEL: Record<SettingsPackId, string> = {
   counter_expo: "Counter & expo",
   host_operators: "Operators, permissions & devices",
   kiosk_front: "Kiosk, waitlist, check-in",
+  voice: "Voice control",
 };
 
 /** Subscriber is the host location; guest operators are onboarded onto it. */

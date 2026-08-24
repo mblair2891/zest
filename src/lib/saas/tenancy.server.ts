@@ -155,6 +155,10 @@ function parseSetup(raw: unknown): LocationSetup {
       : [],
     entityPermissions: parseGrantMatrix(o.entityPermissions),
     locationDevices: parseLocationDevices(o.locationDevices),
+    voiceControlEnabledByRole:
+      o.voiceControlEnabledByRole && typeof o.voiceControlEnabledByRole === "object"
+        ? (o.voiceControlEnabledByRole as Record<string, boolean>)
+        : undefined,
   };
 }
 

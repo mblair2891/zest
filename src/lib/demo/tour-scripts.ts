@@ -293,6 +293,24 @@ function typeTour(type: VenueEntityId): TourDefinition {
           view: "schedule",
         },
         {
+          id: "l-voice",
+          title: "Voice 86",
+          script:
+            "The mic is on for servers and kitchen. Say eighty-six brisket. Destructive commands confirm on screen. Voice cannot change payouts or the host matrix.",
+          selector: "[data-demo='voice-mic']",
+          view: "hq",
+          action: "voice_86",
+        },
+        {
+          id: "l-ai",
+          title: "Accept a labor tip",
+          script:
+            "AI ops watches labor versus sales. Accept records your decision so the next similar night ranks this tip higher. Dismiss twice and it steps back. It will not clock anyone out.",
+          selector: "[data-demo='ai-ops']",
+          view: "hq",
+          action: "accept_labor_rec",
+        },
+        {
           id: "l-matrix",
           title: "Entity permissions",
           script:

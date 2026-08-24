@@ -9,6 +9,19 @@ import type { GuideUpdate } from "@/lib/guide/types";
  */
 export const WHATS_NEW_ENTRIES: GuideUpdate[] = [
   {
+    id: "upd_2026_09_08_voice_ai",
+    date: "2026-09-08",
+    title: "Voice by role and AI that learns your calls",
+    summary:
+      "Tap the mic for role-gated floor commands. AI ops on Home learns from accept, dismiss, and snooze — never clocks anyone out.",
+    body: "Host settings turn the mic on per access level (kiosk stays off). Say 86 brisket and confirm. On Home, accept or dismiss a labor tip twice and watch the preference change. Demo learning stays in the demo.",
+    roles: ["owner_manager", "host_operator", "vendor_operator"],
+    entityTypes: ["food_hall", "truck_pod", "ghost_kitchen", "restaurant"],
+    surfaces: ["settings", "kds"],
+    topicId: "voice-control",
+    tags: ["voice", "ai", "labor", "86"],
+  },
+  {
     id: "upd_2026_09_07_pin_schedule",
     date: "2026-09-07",
     title: "Floor PIN login, entity schedules, payroll reports",

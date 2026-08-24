@@ -27,6 +27,7 @@ export type LocationSetup = {
   entityPermissions?: import("@/lib/access/entity-grants").EntityGrantRow[];
   /** Location device registry with entity + function assignment. */
   locationDevices?: import("@/lib/pos/location-devices").LocationDevice[];
+  voiceControlEnabledByRole?: Partial<Record<string, boolean>>;
 };
 
 export const EMPTY_LOCATION_SETUP: LocationSetup = {

@@ -94,6 +94,7 @@ import {
 } from "./NotificationCenter";
 import { NetworkBanner, NetworkChip, NetworkWatcher } from "./NetworkStatus";
 import { BackOfficeUnlock } from "./BackOfficeUnlock";
+import { VoiceCommandButton } from "./VoiceCommandButton";
 import { isFloorRole } from "@/lib/pos/pin";
 import {
   HqView,
@@ -341,6 +342,7 @@ export function AppShell() {
           </p>
           <span className="text-xs text-muted-foreground">{settings.name}</span>
           <div className="ml-auto flex items-center gap-2">
+            <VoiceCommandButton />
             <DemoDeviceSwitcher />
             <Button size="sm" variant="outline" onClick={() => logout()}>
               Switch user
@@ -429,6 +431,7 @@ export function AppShell() {
             </div>
           )}
 
+          <VoiceCommandButton />
           <NotificationBell />
           <NetworkChip />
           <ReplayWorkflowButton className="hidden md:inline-flex" />

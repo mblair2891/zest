@@ -26,6 +26,9 @@ export type DemoStep = {
     | "waitlist_ready"
     | "reservation_seed"
     | "offline_cash"
+    | "voice_86"
+    | "accept_labor_rec"
+    | "dismiss_labor_rec"
     | "none";
 };
 

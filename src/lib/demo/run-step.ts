@@ -2,6 +2,9 @@ import { usePosStore } from "@/lib/pos/store";
 import { useNetworkStore } from "@/lib/pos/network-store";
 import { isProspectDemo } from "./session";
 import type { DemoStep } from "./scripts";
+import { applyVoiceTranscript } from "@/components/pos/VoiceCommandButton";
+import { buildShiftRecommendations } from "@/lib/ops-ai/engine";
+import { recordDecision } from "@/lib/ops-ai/learn-store";
 
 function pickItem(station: "kitchen" | "bar"): string | null {
   const items = usePosStore.getState().menuItems.filter(
@@ -152,6 +155,31 @@ export function runDemoStepAction(action: DemoStep["action"]): void {
         tableSuggestion: "12",
       });
       usePosStore.getState().setView("waitlist");
+      break;
+    }
+    case "voice_86": {
+      const item =
+        usePosStore.getState().menuItems.find((m) => m.available && m.station === "kitchen") ??
+        usePosStore.getState().menuItems.find((m) => m.available);
+      if (item) applyVoiceTranscript(`86 ${item.name}`);
+      usePosStore.getState().setView("menu");
+      break;
+    }
+    case "accept_labor_rec":
+    case "dismiss_labor_rec": {
+      const pack = buildShiftRecommendations({});
+      const labor = pack.recs.find((r) => r.type === "labor_high") ?? pack.recs[0];
+      if (labor) {
+        recordDecision({
+          locationId: usePosStore.getState().tenantLocationId || "demo",
+          recId: labor.id,
+          recType: labor.type,
+          action: action === "accept_labor_rec" ? "accept" : "dismiss",
+          features: pack.features,
+          userId: usePosStore.getState().currentEmployeeId || "demo",
+        });
+      }
+      usePosStore.getState().setView("hq");
       break;
     }
     default:

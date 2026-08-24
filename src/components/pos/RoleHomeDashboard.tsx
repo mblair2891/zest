@@ -20,6 +20,7 @@ import type { EmployeeRole, PosView, VenueEntityId } from "@/lib/pos/types";
 import { ROLE_LABEL, canAccessViewForEmployee } from "@/lib/pos/rbac";
 import { canEmployee } from "@/lib/access/permissions";
 import { VENUE_TYPE_LABEL } from "@/lib/access/entity-roles";
+import { AiOpsCard } from "./AiOpsCard";
 
 function Jump({
   id,
@@ -106,6 +107,7 @@ export function RoleHomeDashboard() {
               <Stat label="Waitlist" value={String(waiting.length)} />
               <Stat label="Staff on" value={String(onClock)} />
             </div>
+            <AiOpsCard />
             <div className="flex flex-wrap gap-2">
               <Jump id="floor" label="Floor" icon={LayoutGrid} />
               <Jump id="order" label="Order" icon={ClipboardList} />
@@ -214,6 +216,7 @@ export function RoleHomeDashboard() {
 
         {role === "vendor_operator" && (
           <>
+            <AiOpsCard />
             <div className="grid grid-cols-2 gap-3 lg:grid-cols-3">
               <Stat label="Open tickets" value={String(myTickets.length)} />
               <Stat

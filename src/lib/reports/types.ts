@@ -136,6 +136,8 @@ export type InsightRecommendation = {
   expectedImpact: string;
   ownerRole: EmployeeRole | "owner" | "manager";
   applyView?: string;
+  basedOnPastDecisions?: boolean;
+  pastOutcome?: string;
 };
 
 export type LocationInsights = {

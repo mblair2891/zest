@@ -199,6 +199,8 @@ export interface RestaurantSettings {
   hostMayEditEntitySchedules?: boolean;
   /** Kitchen/bar bump requires the station PIN again. Default false. */
   requirePinToBump?: boolean;
+  /** Host policy: which access levels may use the mic. */
+  voiceControlEnabledByRole?: Partial<Record<EmployeeRole, boolean>>;
 }
 
 export interface Employee {

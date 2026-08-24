@@ -2072,6 +2072,9 @@ const usePosStoreRaw = create()(persist((set, get) => ({
 				...current.settings,
 				...p.settings,
 				sectionPolicy: { ...DEFAULT_SECTION_POLICY, ...(p.settings && p.settings.sectionPolicy) },
+				voiceControlEnabledByRole: {
+					...(p.settings && p.settings.voiceControlEnabledByRole),
+				},
 				...(ent
 					? {
 							name: ent.venueName,
