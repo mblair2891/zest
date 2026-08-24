@@ -18,6 +18,7 @@ import type {
 import { EMPTY_LOCATION_SETUP, MEMBERSHIP_ROLES, PLAN_SLUGS, VENUE_TYPES } from "./types";
 import { parseGrantMatrix } from "@/lib/access/entity-grants";
 import { parseLocationDevices } from "@/lib/pos/location-devices";
+import { parseNetworkChecklist, parseNetworkReadyStatus } from "./network-readiness";
 
 type OrgRow = {
   id: string;
@@ -159,6 +160,12 @@ function parseSetup(raw: unknown): LocationSetup {
       o.voiceControlEnabledByRole && typeof o.voiceControlEnabledByRole === "object"
         ? (o.voiceControlEnabledByRole as Record<string, boolean>)
         : undefined,
+    networkReadyStatus: parseNetworkReadyStatus(o.networkReadyStatus),
+    networkCheckedAt: typeof o.networkCheckedAt === "string" ? o.networkCheckedAt : undefined,
+    networkNotes: typeof o.networkNotes === "string" ? o.networkNotes : undefined,
+    networkChecklist: o.networkChecklist
+      ? parseNetworkChecklist(o.networkChecklist)
+      : undefined,
   };
 }
 

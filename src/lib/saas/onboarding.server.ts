@@ -111,13 +111,32 @@ export async function applyOnboardingStep(opts: {
     await applyOperators(opts.userId, detail.id, payload);
   } else if (opts.step === "floor" || opts.step === "menu" || opts.step === "devices" || opts.step === "settlement") {
     await applyLocationSetup(opts.userId, detail.id, payload);
+  } else if (opts.step === "network") {
+    /* Warn-only. Always persist whatever status the subscriber recorded (including skipped/fail). */
+    await applyLocationSetup(opts.userId, detail.id, payload);
   } else if (opts.step === "invites") {
     await applyInvites(opts.userId, detail.id, payload);
   } else if (opts.step === "checklist") {
-    /* stored on payload; promotion happens below */
+    /* stored on payload; promotion happens below — network status never blocks live */
+    if (!run.steps.network?.done) {
+      for (const loc of payload.locations) {
+        if (!loc.networkReadyStatus) {
+          loc.networkReadyStatus = "skipped";
+          loc.networkCheckedAt = new Date().toISOString();
+          loc.networkNotes = loc.networkNotes || "Skipped at go-live";
+        }
+      }
+      await applyLocationSetup(opts.userId, detail.id, payload);
+    }
   }
 
-  const steps = { ...run.steps, [opts.step]: { done: true, completedAt: new Date().toISOString() } };
+  const steps = {
+    ...run.steps,
+    ...(opts.step === "checklist" && !run.steps.network?.done
+      ? { network: { done: true, completedAt: new Date().toISOString() } }
+      : {}),
+    [opts.step]: { done: true, completedAt: new Date().toISOString() },
+  };
   const refreshed = await getProspectDetail({ userId: opts.userId, token: opts.token });
   const orgId = refreshed.orgId;
   await sql`
@@ -281,6 +300,10 @@ function locationSetup(
     devices: loc.devices,
     settlement: payload.settlement,
     hostBrandName: loc.hostBrandName,
+    networkReadyStatus: loc.networkReadyStatus,
+    networkCheckedAt: loc.networkCheckedAt,
+    networkNotes: loc.networkNotes,
+    networkChecklist: loc.networkChecklist,
   };
 }
 

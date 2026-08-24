@@ -12,7 +12,7 @@ import {
   swatchCss,
 } from "@/lib/pos/section-control";
 import type { TableKind } from "@/lib/pos/types";
-import { tableGuestPath } from "@/lib/pos/qr-table";
+import { tableGuestUrl } from "@/lib/pos/qr-table";
 import { getDemoType } from "@/lib/demo/session";
 import { GuideLearnLink } from "@/components/guide/GuideLearnLink";
 import { QrMark } from "./QrMark";
@@ -471,11 +471,7 @@ export function FloorEditorView() {
                 {showQr && (
                   <div className="mt-2 text-center">
                     <QrMark
-                      value={
-                        typeof window === "undefined"
-                          ? tableGuestPath(selectedTable, { demoType })
-                          : `${window.location.origin}${tableGuestPath(selectedTable, { demoType })}`
-                      }
+                      value={tableGuestUrl(selectedTable, { demoType })}
                       size={140}
                     />
                   </div>

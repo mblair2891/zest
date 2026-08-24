@@ -323,7 +323,9 @@ function ProspectAdminDetail({
             <ul className="space-y-1 text-sm">
               {Object.entries(detail.onboarding.steps).map(([id, s]) => (
                 <li key={id} className="flex justify-between">
-                  <span className="capitalize">{id}</span>
+                  <span className="capitalize">
+                    {id === "network" ? "Network (warn only)" : id}
+                  </span>
                   <Badge variant={s.done ? "success" : "secondary"}>
                     {s.done ? "Done" : "Open"}
                   </Badge>

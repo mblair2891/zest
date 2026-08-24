@@ -41,6 +41,8 @@ import { isDevDemoClient } from "@/lib/saas/flags";
 import { SetupAssistButton } from "@/components/assist/SetupAssistDialog";
 import { GuideLearnLink } from "@/components/guide/GuideLearnLink";
 import { FloorQrSettings } from "./FloorQrSettings";
+import { NetworkReadinessPanel } from "@/components/saas/NetworkReadinessPanel";
+import { AccessPointsCard } from "./AccessPointsCard";
 import { saveFrontSettingsFn } from "@/lib/front/api";
 import {
   CASH_ROUND_INCREMENTS,
@@ -127,6 +129,12 @@ export function SettingsView() {
           reservationCheckIn: settings.reservationCheckIn,
           waitlistReason: settings.waitlistReason,
           voiceControlEnabledByRole: settings.voiceControlEnabledByRole,
+          networkReadyStatus: settings.networkReadyStatus,
+          networkCheckedAt: settings.networkCheckedAt
+            ? new Date(settings.networkCheckedAt).toISOString()
+            : undefined,
+          networkNotes: settings.networkNotes,
+          networkChecklist: settings.networkChecklist,
           devices: { pos: 0, kds: 0, handhelds: 0 },
           settlement: {
             periodType: "weekly",
@@ -762,6 +770,42 @@ export function SettingsView() {
 }
 
 function NetworkSettingsPanel() {
+  const settings = usePosStore((s) => s.settings);
+  const updateSettings = usePosStore((s) => s.updateSettings);
+  const emp = usePosStore((s) => s.employees.find((e) => e.id === s.currentEmployeeId));
+  const write = canEmployee(emp, "settings:write");
+  const locId = usePosStore((s) => s.tenantLocationId) || "loc_kiosk";
+  const orgId = useSaasStore((s) => s.org.id);
+  const entityId = usePosStore((s) => s.activeEntityId);
+  const saveNetwork = (n: {
+    networkReadyStatus?: typeof settings.networkReadyStatus;
+    networkCheckedAt?: string;
+    networkNotes?: string;
+    networkChecklist?: typeof settings.networkChecklist;
+  }) => {
+    updateSettings({
+      networkReadyStatus: n.networkReadyStatus,
+      networkCheckedAt: n.networkCheckedAt ? Date.parse(n.networkCheckedAt) : settings.networkCheckedAt,
+      networkNotes: n.networkNotes,
+      networkChecklist: n.networkChecklist,
+    });
+    if (!write || isProspectDemo() || !orgId) return;
+    void saveLocationSettingsFn({
+      data: {
+        orgId,
+        locationId: locId,
+        setup: {
+          hostBrandName: settings.name,
+          devices: { pos: 0, kds: 0, handhelds: 0 },
+          settlement: { periodType: "weekly", hostCutPercent: 0 },
+          networkReadyStatus: n.networkReadyStatus,
+          networkCheckedAt: n.networkCheckedAt,
+          networkNotes: n.networkNotes,
+          networkChecklist: n.networkChecklist,
+        },
+      },
+    }).catch(() => undefined);
+  };
   const policy = useNetworkStore((s) => s.policy);
   const setPolicy = useNetworkStore((s) => s.setPolicy);
   const role = useNetworkStore((s) => s.deviceRole);
@@ -920,6 +964,26 @@ function NetworkSettingsPanel() {
           </ul>
         </div>
       )}
+      <div className="mt-4 border-t border-border pt-4">
+        <NetworkReadinessPanel
+          write={write}
+          value={{
+            networkReadyStatus: settings.networkReadyStatus,
+            networkCheckedAt: settings.networkCheckedAt
+              ? new Date(settings.networkCheckedAt).toISOString()
+              : undefined,
+            networkNotes: settings.networkNotes,
+            networkChecklist: settings.networkChecklist,
+          }}
+          onChange={saveNetwork}
+        />
+      </div>
+      <div className="mt-4 border-t border-border pt-4">
+        <AccessPointsCard
+          venueType={entityId}
+          locationId={locId}
+        />
+      </div>
     </div>
   );
 }

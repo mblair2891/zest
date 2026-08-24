@@ -28,6 +28,10 @@ import type {
 } from "./prospect-types";
 import { ONBOARDING_STEP_IDS, PROSPECT_STATUSES } from "./prospect-types";
 import {
+  parseNetworkChecklist,
+  parseNetworkReadyStatus,
+} from "./network-readiness";
+import {
   ForbiddenError,
   isPlatformAdmin,
   loadUser,
@@ -188,6 +192,10 @@ export function parseOnboardingPayload(raw: unknown): OnboardingPayload {
           kds: Math.max(0, Math.floor(num(devices.kds, 0))),
           handhelds: Math.max(0, Math.floor(num(devices.handhelds, 0))),
         },
+        networkReadyStatus: parseNetworkReadyStatus(l.networkReadyStatus),
+        networkCheckedAt: str(l.networkCheckedAt) || undefined,
+        networkNotes: str(l.networkNotes),
+        networkChecklist: parseNetworkChecklist(l.networkChecklist),
       };
     }),
     invites: invitesRaw

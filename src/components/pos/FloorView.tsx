@@ -38,7 +38,7 @@ import {
   tableFlash,
   type FloorPipelineStatus,
 } from "@/lib/pos/floor-status";
-import { QR_MODE_LABEL, parseQrMode, tableGuestPath } from "@/lib/pos/qr-table";
+import { QR_MODE_LABEL, parseQrMode, tableGuestUrl } from "@/lib/pos/qr-table";
 import { getDemoType } from "@/lib/demo/session";
 import { cn, formatCurrency, formatTime } from "@/lib/utils";
 import { computeTotals } from "@/lib/pos/calculations";
@@ -842,8 +842,6 @@ function TableDetailBody({
   const empty = isEmptyTable(table.status);
   const dirty = st === "closed_not_cleaned";
   const flashing = tableFlash(table, floorCfg, clock || Date.now());
-  const guestPath = tableGuestPath(table, { demoType });
-  const payPath = tableGuestPath(table, { pay: true, demoType });
   const enabled = FLOOR_PIPELINE.filter((s) => floorCfg.enabled[s] !== false);
 
   return (
@@ -917,15 +915,17 @@ function TableDetailBody({
           <p className="mb-2 text-xs text-muted-foreground">
             {QR_MODE_LABEL[qrMode]}
           </p>
-          <QrMark value={typeof window === "undefined" ? guestPath : `${window.location.origin}${guestPath}`} />
+          <QrMark value={tableGuestUrl(table, { demoType })} />
           <div className="mt-2 flex flex-col gap-1.5">
-            <a href={guestPath} className="text-sm underline">
+            <a href={tableGuestUrl(table, { demoType })} className="text-sm underline">
               Open guest menu
             </a>
-            <a href={payPath} className="text-sm underline">
+            <a href={tableGuestUrl(table, { pay: true, demoType })} className="text-sm underline">
               Open pay QR
             </a>
-            <p className="break-all text-[11px] text-muted-foreground">{guestPath}</p>
+            <p className="break-all text-[11px] text-muted-foreground">
+              {tableGuestUrl(table, { demoType })}
+            </p>
           </div>
         </div>
       )}

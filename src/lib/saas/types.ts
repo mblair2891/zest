@@ -28,6 +28,10 @@ export type LocationSetup = {
   /** Location device registry with entity + function assignment. */
   locationDevices?: import("@/lib/pos/location-devices").LocationDevice[];
   voiceControlEnabledByRole?: Partial<Record<string, boolean>>;
+  networkReadyStatus?: import("./network-readiness").NetworkReadyStatus;
+  networkCheckedAt?: string;
+  networkNotes?: string;
+  networkChecklist?: import("./network-readiness").NetworkChecklist;
 };
 
 export const EMPTY_LOCATION_SETUP: LocationSetup = {

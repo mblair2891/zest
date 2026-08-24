@@ -214,6 +214,10 @@ export interface RestaurantSettings {
   voiceControlEnabledByRole?: Partial<Record<EmployeeRole, boolean>>;
   floorStatusConfig?: import("./floor-status").FloorStatusConfig;
   qrMode?: QrMode;
+  networkReadyStatus?: import("@/lib/saas/network-readiness").NetworkReadyStatus;
+  networkCheckedAt?: number;
+  networkNotes?: string;
+  networkChecklist?: import("@/lib/saas/network-readiness").NetworkChecklist;
 }
 
 export interface Employee {

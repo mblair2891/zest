@@ -1,3 +1,5 @@
+import { absoluteGuestHref } from "@/lib/platform/hosts";
+
 export type QrMode = "full" | "hybrid" | "pay_only";
 
 export const QR_MODE_LABEL: Record<QrMode, string> = {
@@ -49,4 +51,11 @@ export function tableGuestPath(
 export function absolutePath(path: string): string {
   if (typeof window === "undefined") return path;
   return `${window.location.origin}${path}`;
+}
+
+export function tableGuestUrl(
+  table: { label: string; qrToken?: string },
+  opts?: { pay?: boolean; demoType?: string | null },
+): string {
+  return absoluteGuestHref(tableGuestPath(table, opts));
 }

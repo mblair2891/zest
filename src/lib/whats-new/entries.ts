@@ -9,6 +9,18 @@ import type { GuideUpdate } from "@/lib/guide/types";
  */
 export const WHATS_NEW_ENTRIES: GuideUpdate[] = [
   {
+    id: "upd_2026_09_10_network_hosts",
+    date: "2026-09-10",
+    title: "Network readiness is warn-only; www vs app vs sites",
+    summary:
+      "Onboarding checks venue Wi‑Fi without blocking go-live. Staff bookmarks the app host; guests use the sites host for table QR.",
+    body: "Network readiness probes health and a staff Wi‑Fi checklist. Fail or skip is recorded on the location — POS, demo, and login stay up. Re-run from Settings. Production uses www for login, app for POS/KDS/kiosk, sites for table QR and online.",
+    roles: ["owner_manager", "host_operator", "platform_admin"],
+    surfaces: ["settings", "platform"],
+    topicId: "network-readiness",
+    tags: ["network", "wifi", "onboarding", "hosts", "qr"],
+  },
+  {
     id: "upd_2026_09_09_floor_qr",
     date: "2026-09-09",
     title: "Drag-and-drop floor, status flash, table QR pay",

@@ -238,6 +238,14 @@ export const FULL_TOUR: TourDefinition = {
       selector: "[data-demo='guide-root']",
     },
     {
+      id: "f-network",
+      title: "Network readiness",
+      script:
+        "Onboarding includes a network check. It is warn only — finish even if it fails. Staff use the app host. Table QR uses the sites host.",
+      selector: "[data-demo='network-readiness']",
+      view: "settings",
+    },
+    {
       id: "f-back",
       title: "Back to demos",
       script:
@@ -314,6 +322,22 @@ function typeTour(type: VenueEntityId): TourDefinition {
           script:
             "The Laundry is the subscriber host. Host settings hold tax, cash discount, Quantum Payments, payouts, the entity permission matrix, and device assignment. Steam and Diamond never edit that pack.",
           selector: "[data-demo='settings']",
+          view: "settings",
+        },
+        {
+          id: "l-network",
+          title: "Network check",
+          script:
+            "Run the network probe here anytime. Warn or fail does not lock the floor. Skip is recorded on the location.",
+          selector: "[data-demo='network-readiness']",
+          view: "settings",
+        },
+        {
+          id: "l-urls",
+          title: "Staff and guest URLs",
+          script:
+            "POS and kiosk on the app host. Table QR and online on the sites host. Login stays on www.",
+          selector: "[data-demo='access-points']",
           view: "settings",
         },
         {
@@ -571,6 +595,14 @@ function typeTour(type: VenueEntityId): TourDefinition {
           "Hybrid by default: staff seats, guests add follow-ups, pay QR closes with Quantum Payments.",
         selector: "[data-demo='table-detail']",
         view: "floor",
+      },
+      {
+        id: `${type}-network`,
+        title: "Network readiness",
+        script:
+          "Settings holds the warn-only network check and the www / app / sites bookmarks. It never locks the floor.",
+        selector: "[data-demo='network-readiness']",
+        view: "settings",
       },
       {
         id: `${type}-order`,

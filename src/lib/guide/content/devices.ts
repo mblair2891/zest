@@ -40,7 +40,7 @@ export const DEVICE_TOPICS: GuideTopic[] = [
       tip(
         "Owner / manager: watch Failed to sync. Server / cashier: cash is the offline tender. Kitchen: bump locally. Host: waitlist SMS is pending send.",
       ),
-      related("printers-kds", "quantum-payments", "troubleshooting", "kds", "cash-handling"),
+      related("printers-kds", "quantum-payments", "troubleshooting", "kds", "cash-handling", "network-readiness"),
     ],
   }),
   topic({

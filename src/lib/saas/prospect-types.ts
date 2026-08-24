@@ -39,9 +39,23 @@ export const ONBOARDING_STEP_IDS = [
   "devices",
   "invites",
   "settlement",
+  "network",
   "checklist",
 ] as const;
 export type OnboardingStepId = (typeof ONBOARDING_STEP_IDS)[number];
+
+export const ONBOARDING_STEP_LABEL: Record<OnboardingStepId, string> = {
+  org: "Organization",
+  locations: "Locations",
+  operators: "Operators",
+  floor: "Floor",
+  menu: "Menu",
+  devices: "Devices",
+  invites: "Team",
+  settlement: "Settlement",
+  network: "Network",
+  checklist: "Go-live",
+};
 
 export const STATION_TYPES = ["bar", "kitchen", "both"] as const;
 export type StationType = (typeof STATION_TYPES)[number];
@@ -236,6 +250,10 @@ export type OnboardingLocationDraft = {
   floorLater: boolean;
   menuMode: MenuMode;
   devices: { pos: number; kds: number; handhelds: number };
+  networkReadyStatus?: import("./network-readiness").NetworkReadyStatus;
+  networkCheckedAt?: string;
+  networkNotes?: string;
+  networkChecklist?: import("./network-readiness").NetworkChecklist;
 };
 
 export type OnboardingInviteDraft = {

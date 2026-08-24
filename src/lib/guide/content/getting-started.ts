@@ -24,7 +24,7 @@ export const GETTING_STARTED_TOPICS: GuideTopic[] = [
         "Operators Guide with table of contents on the left and an article pane on the right.",
       ),
       steps(
-        "Tap Guide or “?” in the header (POS, platform, login, empty states) — or open /guide.",
+        "Tap Guide or “?” in the header (POS, platform, login, empty states) — or open /guide on the marketing host.",
         "Search, pick a role tab, and open a topic. Follow Why it matters, then the numbered steps.",
         "Mark complete as you go. Continue where you left off resumes the last unfinished topic.",
       ),
@@ -254,7 +254,7 @@ export const GETTING_STARTED_TOPICS: GuideTopic[] = [
       warn(
         "Live tenants stay empty until onboarding. Public /demo rooms are labeled demos and never appear in tenant statistics.",
       ),
-      related("login", "prospect-intake", "onboarding-wizard", "create-org", "type-food-hall", "prospect-demos"),
+      related("login", "prospect-intake", "onboarding-wizard", "network-readiness", "access-urls", "create-org", "type-food-hall", "prospect-demos"),
     ],
   }),
   topic({

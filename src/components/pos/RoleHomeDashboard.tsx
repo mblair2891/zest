@@ -21,6 +21,7 @@ import { ROLE_LABEL, canAccessViewForEmployee } from "@/lib/pos/rbac";
 import { canEmployee } from "@/lib/access/permissions";
 import { VENUE_TYPE_LABEL } from "@/lib/access/entity-roles";
 import { AiOpsCard } from "./AiOpsCard";
+import { AccessPointsCard } from "./AccessPointsCard";
 
 function Jump({
   id,
@@ -118,6 +119,9 @@ export function RoleHomeDashboard() {
               )}
               <Jump id="reports" label="Reports & AI" icon={BarChart3} />
               {hostMulti && <Jump id="settlement" label="Settlement" icon={Landmark} />}
+            </div>
+            <div className="rounded-2xl border border-border bg-surface p-4">
+              <AccessPointsCard venueType={entityId} />
             </div>
             {hostMulti && vendors.length > 0 && (
               <div className="rounded-2xl border border-border bg-surface p-4" data-demo="host-entities">

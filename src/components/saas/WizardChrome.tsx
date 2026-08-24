@@ -15,6 +15,7 @@ export function WizardChrome({
   nextLabel,
   nextDisabled,
   learnTopicId,
+  footerExtra,
   children,
 }: {
   title: string;
@@ -29,6 +30,7 @@ export function WizardChrome({
   nextLabel?: string;
   nextDisabled?: boolean;
   learnTopicId?: string;
+  footerExtra?: ReactNode;
   children: ReactNode;
 }) {
   return (
@@ -64,12 +66,13 @@ export function WizardChrome({
           {error}
         </p>
       )}
-      <div className="flex gap-2">
+      <div className="flex flex-wrap gap-2">
         {onBack && (
           <Button type="button" variant="outline" className="flex-1" onClick={onBack} disabled={busy}>
             Back
           </Button>
         )}
+        {footerExtra}
         {onNext && (
           <Button
             type="button"

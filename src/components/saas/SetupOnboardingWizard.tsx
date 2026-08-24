@@ -18,6 +18,8 @@ import type {
 import { ONBOARDING_STEP_IDS } from "@/lib/saas/prospect-types";
 import { VENUE_ENTITIES } from "@/lib/pos/entities";
 import { appHref } from "@/lib/platform/hosts";
+import { NetworkReadinessPanel } from "./NetworkReadinessPanel";
+import { AccessPointsCard } from "@/components/pos/AccessPointsCard";
 import { saveTenantPosContext } from "@/lib/saas/pos-context";
 import { setActiveContextFn } from "@/lib/saas/api";
 import type { LocationMode } from "@/lib/pos/saas-types";
@@ -31,6 +33,7 @@ const LABELS = [
   "Devices",
   "Team",
   "Settlement",
+  "Network",
   "Go-live",
 ];
 
@@ -113,13 +116,29 @@ export function SetupOnboardingWizard({ token }: { token: string }) {
 
   const next = async () => {
     try {
-      const d = await apply(stepId);
-      if (step < 9) setStep(step + 1);
-      else if (d.status === "live") {
-        /* stay on last step */
+      let body = payload;
+      if (stepId === "network") {
+        body = {
+          ...payload,
+          locations: payload.locations.map((l) => ({
+            ...l,
+            networkReadyStatus: l.networkReadyStatus ?? "skipped",
+            networkCheckedAt: l.networkCheckedAt ?? new Date().toISOString(),
+          })),
+        };
+        setPayload(body);
       }
-    } catch {
-      /* shown */
+      setError(null);
+      setBusy(true);
+      await saveOnboardingFn({ data: { token, payload: body } });
+      const d = await applyOnboardingStepFn({ data: { token, step: stepId, payload: body } });
+      setDetail(d);
+      setPayload(d.onboarding?.payload ?? body);
+      if (step < 10) setStep(step + 1);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Step failed");
+    } finally {
+      setBusy(false);
     }
   };
 
@@ -134,7 +153,9 @@ export function SetupOnboardingWizard({ token }: { token: string }) {
           ? "single-vs-multi"
           : step === 8
             ? "settlement"
-            : "onboarding-wizard"
+            : step === 9
+              ? "network-readiness"
+              : "onboarding-wizard"
       }
       title={
         [
@@ -146,18 +167,29 @@ export function SetupOnboardingWizard({ token }: { token: string }) {
           "Devices",
           "People to invite",
           "Settlement",
+          "Network readiness",
           "Go-live checklist",
         ][step - 1] ?? "Onboarding"
       }
-      subtitle="Each step writes real org data. POS stays empty until you add a menu."
+      subtitle="Each step writes real org data. POS stays empty until you add a menu. Network check is warn-only."
       step={step}
-      total={9}
+      total={10}
       labels={LABELS}
       error={error}
       busy={busy}
       onBack={step > 1 ? () => setStep(step - 1) : undefined}
       onNext={() => void next()}
-      nextLabel={step < 9 ? "Save & continue" : "Complete setup"}
+      nextLabel={
+        step === 9
+          ? loc?.networkReadyStatus === "fail" || loc?.networkReadyStatus === "warn"
+            ? "Continue anyway"
+            : loc?.networkReadyStatus === "pass"
+              ? "Save & continue"
+              : "Skip for now"
+          : step < 10
+            ? "Save & continue"
+            : "Complete setup"
+      }
     >
       {step === 1 && (
         <div className="grid gap-3 sm:grid-cols-2">
@@ -592,7 +624,30 @@ export function SetupOnboardingWizard({ token }: { token: string }) {
         </div>
       )}
 
-      {step === 9 && (
+      {step === 9 && loc && (
+        <div className="space-y-6">
+          <NetworkReadinessPanel
+            value={{
+              networkReadyStatus: loc.networkReadyStatus,
+              networkCheckedAt: loc.networkCheckedAt,
+              networkNotes: loc.networkNotes,
+              networkChecklist: loc.networkChecklist,
+            }}
+            onChange={(n) =>
+              patch((p) => ({
+                ...p,
+                locations: p.locations.map((l) => ({ ...l, ...n })),
+              }))
+            }
+          />
+          <AccessPointsCard
+            venueType={loc.venueType}
+            locationId={loc.serverId}
+          />
+        </div>
+      )}
+
+      {step === 10 && (
         <div className="space-y-3">
           <ToggleChip
             on={payload.checklist.trainingAck}

@@ -91,7 +91,63 @@ export function currentHostname(): string {
 
 export function currentOrigin(): string {
   if (typeof window !== "undefined") return window.location.origin;
-  return "http://127.0.0.1:8080";
+  return fallbackOrigin();
+}
+
+function envAppUrl(): string {
+  const vite =
+    typeof import.meta !== "undefined"
+      ? (import.meta.env as Record<string, string | undefined>).VITE_APP_URL
+      : undefined;
+  const node =
+    typeof process !== "undefined"
+      ? process.env.APP_URL || process.env.BETTER_AUTH_URL
+      : undefined;
+  return (vite || node || "").replace(/\/$/, "");
+}
+
+function fallbackOrigin(): string {
+  return envAppUrl() || "http://127.0.0.1:8080";
+}
+
+function protocol(): string {
+  if (typeof window !== "undefined") return window.location.protocol;
+  return fallbackOrigin().startsWith("https") ? "https:" : "http:";
+}
+
+/** True when we should keep a single origin (dev, preview, or unset split DNS). */
+export function useSingleOrigin(): boolean {
+  if (typeof window === "undefined") {
+    const url = fallbackOrigin();
+    try {
+      return isSingleOriginHost(new URL(url).hostname);
+    } catch {
+      return true;
+    }
+  }
+  return isSingleOriginHost(window.location.hostname);
+}
+
+export function originForSurface(surface: SummexSurface): string {
+  if (useSingleOrigin()) {
+    return typeof window !== "undefined" ? window.location.origin : fallbackOrigin();
+  }
+  const cfg = configuredHosts();
+  const host =
+    surface === "app"
+      ? cfg.app
+      : surface === "api"
+        ? cfg.api
+        : surface === "sites"
+          ? cfg.sites
+          : cfg.marketing;
+  return `${protocol()}//${host}`;
+}
+
+function withOrigin(origin: string, path: string): string {
+  const p = path.startsWith("/") ? path : `/${path}`;
+  if (!origin) return p;
+  return `${origin}${p === "/" ? "" : p}`;
 }
 
 /** Path inside the application surface (`/venue/...` not `/app/venue/...`). */
@@ -129,12 +185,123 @@ export function apiHref(path = "/health"): string {
 
 export function sitesHref(path = "/"): string {
   const p = path.startsWith("/") ? path : `/${path}`;
-  if (typeof window === "undefined") return `/sites${p === "/" ? "" : p}`;
-  const host = window.location.hostname;
+  if (useSingleOrigin()) {
+    if (typeof window === "undefined") {
+      return p.startsWith("/sites") || p.startsWith("/t/") || p.startsWith("/table/")
+        ? p
+        : `/sites${p === "/" ? "" : p}`;
+    }
+    const host = window.location.hostname;
+    if (surfaceFromHost(host) === "sites") return p;
+    if (p.startsWith("/sites") || p.startsWith("/t/") || p === "/t" || p.startsWith("/table/")) {
+      return p;
+    }
+    return p.startsWith("/sites") ? p : `/sites${p === "/" ? "" : p}`;
+  }
+  const origin = originForSurface("sites");
+  const host = typeof window !== "undefined" ? window.location.hostname : "";
   if (surfaceFromHost(host) === "sites") return p;
-  if (isSingleOriginHost(host)) return p.startsWith("/sites") ? p : `/sites${p === "/" ? "" : p}`;
-  const proto = window.location.protocol;
-  return `${proto}//${configuredHosts().sites}${p === "/" ? "" : p}`;
+  return withOrigin(origin, p);
+}
+
+/** Absolute staff URL (POS, KDS, kiosk). Prefers app host when split DNS is on. */
+export function absoluteAppHref(path = "/"): string {
+  const p = path.startsWith("/") ? path : `/${path}`;
+  if (useSingleOrigin()) {
+    const origin = typeof window !== "undefined" ? window.location.origin : fallbackOrigin();
+    const local = appHref(p);
+    if (local.startsWith("http")) return local;
+    return withOrigin(origin, local);
+  }
+  const href = appHref(p);
+  if (href.startsWith("http")) return href;
+  return withOrigin(originForSurface("app"), href);
+}
+
+/** Absolute guest URL (table QR, online, location sites). Prefers sites host when split DNS is on. */
+export function absoluteGuestHref(path = "/"): string {
+  const p = path.startsWith("/") ? path : `/${path}`;
+  if (useSingleOrigin()) {
+    const origin = typeof window !== "undefined" ? window.location.origin : fallbackOrigin();
+    return withOrigin(origin, p);
+  }
+  const href = sitesHref(p);
+  if (href.startsWith("http")) return href;
+  return withOrigin(originForSurface("sites"), href);
+}
+
+/** Absolute marketing / login / dashboard URL. */
+export function absoluteMarketingHref(path = "/"): string {
+  const p = path.startsWith("/") ? path : `/${path}`;
+  if (useSingleOrigin()) {
+    const origin = typeof window !== "undefined" ? window.location.origin : fallbackOrigin();
+    return withOrigin(origin, p);
+  }
+  const href = marketingHref(p);
+  if (href.startsWith("http")) return href;
+  return withOrigin(originForSurface("marketing"), href);
+}
+
+export type AccessPoint = {
+  id: string;
+  label: string;
+  hint: string;
+  href: string;
+  surface: SummexSurface;
+};
+
+export function staffGuestAccessPoints(opts?: {
+  venueType?: string;
+  locationId?: string;
+  tablePath?: string;
+}): AccessPoint[] {
+  const venue = opts?.venueType || "restaurant";
+  const locQ = opts?.locationId ? `?loc=${encodeURIComponent(opts.locationId)}` : "";
+  const table = opts?.tablePath || "/t/demo";
+  return [
+    {
+      id: "marketing",
+      label: "www · marketing & login",
+      hint: "Public site, Sign in, dashboard, onboarding",
+      href: absoluteMarketingHref("/login"),
+      surface: "marketing",
+    },
+    {
+      id: "pos",
+      label: "app · POS",
+      hint: "Floor, order, host stand",
+      href: absoluteAppHref(`/venue/${venue}${locQ}`),
+      surface: "app",
+    },
+    {
+      id: "kds",
+      label: "app · KDS",
+      hint: "Kitchen rail on the same app host",
+      href: absoluteAppHref(`/venue/${venue}${locQ ? `${locQ}&` : "?"}station=kitchen`),
+      surface: "app",
+    },
+    {
+      id: "kiosk",
+      label: "app · kiosk",
+      hint: "Guest kiosk device — still the app host",
+      href: absoluteAppHref(`/kiosk${locQ}`),
+      surface: "app",
+    },
+    {
+      id: "qr",
+      label: "sites · table QR",
+      hint: "Guest order / pay from the table sticker",
+      href: absoluteGuestHref(table),
+      surface: "sites",
+    },
+    {
+      id: "online",
+      label: "sites · online menu",
+      hint: "Order-ahead and location pages",
+      href: absoluteGuestHref("/online"),
+      surface: "sites",
+    },
+  ];
 }
 
 export const MARKETING_PATHS = [

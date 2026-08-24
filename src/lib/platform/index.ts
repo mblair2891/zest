@@ -10,7 +10,14 @@ export {
   marketingHref,
   apiHref,
   sitesHref,
+  absoluteAppHref,
+  absoluteGuestHref,
+  absoluteMarketingHref,
+  originForSurface,
+  useSingleOrigin,
+  staffGuestAccessPoints,
   currentHostname,
   currentOrigin,
 } from "./hosts";
+export type { AccessPoint } from "./hosts";
 export type { ActiveTenantContext, WorkspaceLocation } from "./tenant-types";

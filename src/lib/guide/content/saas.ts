@@ -59,7 +59,7 @@ export const SAAS_TOPICS: GuideTopic[] = [
     id: "onboarding-wizard",
     chapterId: "saas",
     title: "Onboarding wizard",
-    summary: "Post-contract setup: org, locations, operators, floor, menu, team, settlement, go-live.",
+    summary: "Post-contract setup: org, locations, operators, floor, menu, team, settlement, network (warn-only), go-live.",
     roles: ["platform_admin", "owner_manager", "host_operator"],
     keywords: ["onboarding", "setup", "wizard", "go-live", "contracted"],
     openView: "settings",
@@ -77,12 +77,13 @@ export const SAAS_TOPICS: GuideTopic[] = [
         "Devices — how many POS / KDS stations you expect (Wi-Fi first).",
         "Team — invite emails and roles.",
         "Settlement — host cut, tax remittance, tip pooling. Guest cards are Quantum Payments.",
+        "Network — probe health, staff Wi‑Fi checklist. Warn or fail never blocks finish. Skip is allowed and recorded.",
         "Go-live — apply remaining steps. Status becomes live. Open POS.",
       ),
       tip(
-        "You can save and return. Each step writes real rows (org, location, members) — not a mock.",
+        "You can save and return. Each step writes real rows (org, location, members) — not a mock. Network readiness is advisory.",
       ),
-      related("create-org", "single-vs-multi", "settlement", "empty-start"),
+      related("create-org", "single-vs-multi", "settlement", "network-readiness", "access-urls", "empty-start"),
     ],
   }),
   topic({
@@ -166,6 +167,66 @@ export const SAAS_TOPICS: GuideTopic[] = [
         "FOH “Host” on the waitlist is not the same as Host Venue (multi-operator). The guide tab Host (multi-operator) is the hall/pod operator.",
       ),
       related("login", "sections", "platform-admin", "create-org"),
+    ],
+  }),
+  topic({
+    id: "network-readiness",
+    chapterId: "saas",
+    title: "Network readiness (warn only)",
+    summary: "Onboarding probes health and a Wi‑Fi checklist. Fail or skip never blocks go-live.",
+    roles: ["platform_admin", "owner_manager", "host_operator"],
+    keywords: ["network", "wifi", "readiness", "health", "warn only", "skip", "onboarding"],
+    openView: "settings",
+    blocks: [
+      why(
+        "A house that opens on guest Wi‑Fi will look “down” on POS while phones browse fine. The check is a warning, not a gate.",
+      ),
+      ul(
+        "Probe hits Summex health. Pass, warn (slow or partial), or fail (unreachable).",
+        "Checklist: staff Wi‑Fi, no guest-only isolation for POS, tablet count, printer on the same LAN, cash vs card when the internet is down.",
+        "Warn or fail shows recommendations. Continue anyway is always allowed. Skip for now records skipped.",
+        "Saved on the location: status, checked-at, notes. Re-run from Location settings anytime.",
+        "POS, demo, and login are never disabled by this result.",
+      ),
+      steps(
+        "In onboarding, open Network readiness after Settlement.",
+        "Run network check on a staff tablet. Tick the house checklist.",
+        "If it fails, join staff SSID and retry — or Continue anyway / Skip for now.",
+        "Go-live still completes. Re-run from Settings → House network before first service.",
+      ),
+      warn(
+        "This is advisory. A red fail does not stop Complete setup. Cards still need an uplink; cash and KDS do not.",
+      ),
+      related("onboarding-wizard", "wifi-offline", "access-urls", "printers-kds"),
+    ],
+  }),
+  topic({
+    id: "access-urls",
+    chapterId: "saas",
+    title: "www, app, and sites hosts",
+    summary: "Bookmark marketing vs POS vs guest QR. Single-origin fallback in preview.",
+    roles: "all",
+    keywords: ["url", "host", "www", "app.summex", "sites", "qr", "bookmark", "kiosk"],
+    blocks: [
+      why(
+        "Staff and guests should not share one bookmark. The floor lives on the app host. Table stickers live on the sites host. Login lives on www.",
+      ),
+      ul(
+        "www / marketing host — public site, Sign in, dashboard, onboarding.",
+        "app host — POS, KDS, kiosk device. Deep links prefer this when configured.",
+        "sites host — table QR, online menu, location pages. Guest links prefer this when configured.",
+        "api host — health and HTTP API.",
+        "Dev and live preview: one origin. Paths stand in for hosts. Production uses VITE_MARKETING_HOST, VITE_APP_HOST, VITE_SITES_HOST, VITE_API_HOST plus APP_URL.",
+      ),
+      steps(
+        "Owner Home and Settings list the live URLs for this location. Copy POS, KDS, kiosk, and table QR.",
+        "Print table QR from Floor. The code points at the sites host in production.",
+        "Kiosk devices open the app host /kiosk — not the marketing homepage.",
+      ),
+      tip(
+        "If a tablet opens the marketing site, it is on the wrong bookmark. Use the app host for stations.",
+      ),
+      related("network-readiness", "table-qr", "feature-kiosk", "onboarding-wizard", "wifi-offline"),
     ],
   }),
   topic({

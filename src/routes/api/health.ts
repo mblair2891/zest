@@ -1,5 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { getDbSource, getSql } from "@/lib/db";
+import { configuredHosts } from "@/lib/platform/hosts";
 
 export const Route = createFileRoute("/api/health")({
   server: {
@@ -21,12 +22,7 @@ export const Route = createFileRoute("/api/health")({
           source: getDbSource(),
           surface: "api",
           host,
-          hosts: {
-            marketing: "summex.app",
-            app: "app.summex.app",
-            api: "api.summex.app",
-            sites: "sites.summex.app",
-          },
+          hosts: configuredHosts(),
           demo: process.env.DEV_DEMO === "1" || process.env.VITE_DEV_DEMO === "1",
           ...(detail ? { detail } : {}),
         });

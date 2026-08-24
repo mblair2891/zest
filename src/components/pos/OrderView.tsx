@@ -36,7 +36,7 @@ import { ModifierDialog } from "./ModifierDialog";
 import { PaymentDialog } from "./PaymentDialog";
 import { ManagerPinDialog } from "./ManagerPinDialog";
 import { QrMark } from "./QrMark";
-import { tableGuestPath } from "@/lib/pos/qr-table";
+import { tableGuestUrl } from "@/lib/pos/qr-table";
 import { getDemoType } from "@/lib/demo/session";
 
 export function OrderView() {
@@ -660,12 +660,12 @@ export function OrderView() {
                 with the ticket; the QR is bound to table {table.label}.
               </p>
               <QrMark
-                value={`${typeof window === "undefined" ? "" : window.location.origin}${tableGuestPath(table, { pay: true, demoType: getDemoType() })}`}
+                value={tableGuestUrl(table, { pay: true, demoType: getDemoType() })}
                 caption={`Table ${table.label} · pay`}
               />
               <a
                 className="block text-sm underline"
-                href={tableGuestPath(table, {
+                href={tableGuestUrl(table, {
                   pay: true,
                   demoType: getDemoType(),
                 })}
