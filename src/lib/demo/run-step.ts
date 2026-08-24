@@ -16,7 +16,8 @@ function pickItem(station: "kitchen" | "bar"): string | null {
 function ensureOpenCheck(): void {
   const s = usePosStore.getState();
   if (s.getActiveOrder?.()) return;
-  const table = s.tables.find((t) => t.status === "available") ?? s.tables[0];
+  const table =
+    s.tables.find((t) => t.status === "available" || t.status === "empty") ?? s.tables[0];
   if (table) {
     const seated = s.seatTable(table.id, 2);
     if (seated && "ok" in seated && seated.ok === false) {
@@ -37,7 +38,9 @@ export function runDemoStepAction(action: DemoStep["action"]): void {
   const s = usePosStore.getState();
   switch (action) {
     case "seat": {
-      const table = s.tables.find((t) => t.status === "available") ?? s.tables[0];
+      const table =
+        s.tables.find((t) => t.status === "available" || t.status === "empty") ??
+        s.tables[0];
       if (table) s.seatTable(table.id, 2);
       break;
     }

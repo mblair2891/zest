@@ -8,7 +8,9 @@ export type PosNoticeKind =
   | "ticket_recalled"
   | "guest_checked_in"
   | "waitlist_update"
-  | "sla_alert";
+  | "sla_alert"
+  | "ticket_ready"
+  | "table_needs_bus";
 
 export interface PosNotice {
   id: string;
@@ -64,7 +66,10 @@ export function noticeVisibleTo(
   if (!emp) return false;
   const role: EmployeeRole = emp.role;
   if (role === "owner" || role === "manager" || role === "host" || role === "accountant") return true;
-  if (n.kind === "sla_alert") {
+  if (n.kind === "sla_alert" || n.kind === "table_needs_bus") {
+    return role === "server" || role === "busser" || role === "cashier";
+  }
+  if (n.kind === "ticket_ready") {
     return role === "server" || role === "busser" || role === "cashier";
   }
   if (n.kind === "guest_checked_in" || n.kind === "waitlist_update") {
@@ -131,6 +136,23 @@ export const useNotifyStore = create<NotifyState>()(
                 serverName: ticket.serverName,
                 itemSummary,
               }
+            : kind === "ticket_ready"
+              ? {
+                  id: uid("nt"),
+                  kind,
+                  title: `Ready · ${ticket.tableLabel}`,
+                  body: `${stationLabel} marked #${ticket.orderNumber} ready for expo / server${
+                    itemSummary ? ` — ${itemSummary}` : ""
+                  }`,
+                  createdAt: Date.now(),
+                  read: false,
+                  ticketId: ticket.id,
+                  orderId: ticket.orderId,
+                  tableLabel: ticket.tableLabel,
+                  station: ticket.station,
+                  serverName: ticket.serverName,
+                  itemSummary,
+                }
             : {
                 id: uid("nt"),
                 kind,
@@ -148,9 +170,9 @@ export const useNotifyStore = create<NotifyState>()(
 
         const key = normalizeTableKey(ticket.tableLabel);
         const foodUpUntil = { ...get().foodUpUntil };
-        if (kind === "ticket_bumped") {
+        if (kind === "ticket_bumped" || kind === "ticket_ready") {
           foodUpUntil[key] = Date.now() + FOOD_UP_MS;
-        } else {
+        } else if (kind === "ticket_recalled") {
           delete foodUpUntil[key];
         }
 

@@ -9,7 +9,7 @@ const NAV = [
   { to: "/features" as const, label: "Product" },
   { to: "/pricing" as const, label: "Pricing" },
   { to: "/get-pricing" as const, label: "Quote" },
-  { to: "/demo" as const, label: "Demos" },
+  { to: "/demo" as const, label: "Demo sites" },
   { to: "/guide" as const, label: "Guide" },
   { to: "/whitepaper" as const, label: "White paper" },
 ];

@@ -51,6 +51,7 @@ export const LAUNDRY_SETTINGS: RestaurantSettings = {
   waitlistEnabled: true,
   kioskMode: "combined",
   qrMode: "hybrid",
+  expoEnabled: true,
   floorStatusConfig: {
     enabled: {
       empty: true,
@@ -355,6 +356,20 @@ export const LAUNDRY_EMPLOYEES: Employee[] = [
     active: true,
     homeSectionIds: ["sec_laundry_dining"],
     title: "Host stand",
+  },
+  {
+    id: "emp_laundry_bus",
+    name: "Busser",
+    pin: "0000",
+    role: "busser",
+    color: "#57534E",
+    clockedIn: true,
+    clockInAt: Date.now(),
+    tipsEarned: 0,
+    salesTotal: 0,
+    active: true,
+    homeSectionIds: ["sec_laundry_dining"],
+    title: "Busser",
   },
   {
     id: "emp_laundry_cash",

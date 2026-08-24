@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Link } from "@tanstack/react-router";
+import { Link, useNavigate } from "@tanstack/react-router";
 import { SummexMark } from "@/components/brand/SummexMark";
 import {
   BarChart3,
@@ -177,6 +177,7 @@ const BACK_OFFICE_VIEWS: PosView[] = [
 
 export function AppShell() {
   useDemoLiveSync();
+  const navigate = useNavigate();
   const demoDevice = useDemoDeviceStore((s) => s.device);
   const demoEntered = useDemoDeviceStore((s) => s.entered);
   const sessionKind = usePosStore((s) => s.sessionKind);
@@ -186,10 +187,19 @@ export function AppShell() {
   const kdsMode =
     isProspectDemo() &&
     demoEntered &&
-    (demoDevice === "kds_kitchen" || demoDevice === "kds_bar");
+    (demoDevice === "kds_kitchen" || demoDevice === "kds_bar" || demoDevice === "expo");
   const view = usePosStore((s) => s.view);
   const setView = usePosStore((s) => s.setView);
   const logout = usePosStore((s) => s.logout);
+  const leaveDemo = () => {
+    logout();
+    useDemoDeviceStore.getState().leave();
+    void navigate({ to: "/demo" });
+  };
+  const switchDemoUser = () => {
+    logout();
+    useDemoDeviceStore.getState().leave();
+  };
   const employees = usePosStore((s) => s.employees);
   const currentEmployeeId = usePosStore((s) => s.currentEmployeeId);
   const emp = employees.find((e) => e.id === currentEmployeeId) ?? null;
@@ -322,7 +332,9 @@ export function AppShell() {
   const safeView = kdsMode
     ? demoDevice === "kds_bar"
       ? "bar"
-      : "kitchen"
+      : demoDevice === "expo"
+        ? "kitchen"
+        : "kitchen"
     : viewOk(view) && canAccessView(role, view) && pkgOk(view)
       ? view
       : emp
@@ -339,22 +351,25 @@ export function AppShell() {
         <LoginOnboardingHost />
         <header className="flex h-14 shrink-0 items-center gap-2 border-b border-border bg-surface px-3">
           <p className="text-sm font-semibold">
-            {demoDevice === "kds_bar" ? "Bar KDS" : "Kitchen KDS"}
+            {demoDevice === "kds_bar" ? "Bar KDS" : demoDevice === "expo" ? "Expo" : "Kitchen KDS"}
           </p>
           <span className="text-xs text-muted-foreground">{settings.name}</span>
           <div className="ml-auto flex items-center gap-2">
             <VoiceCommandButton />
             <DemoDeviceSwitcher />
-            <Button size="sm" variant="outline" onClick={() => logout()}>
-              Switch user
+            <Button size="sm" variant="outline" onClick={isProspectDemo() ? switchDemoUser : () => logout()}>
+              {isProspectDemo() ? "PIN / time clock" : "Switch user"}
             </Button>
           </div>
         </header>
         <div
           className="min-h-0 flex-1"
-          data-demo={demoDevice === "kds_bar" ? "bar" : "kitchen"}
+          data-demo={demoDevice === "kds_bar" ? "bar" : demoDevice === "expo" ? "expo" : "kitchen"}
         >
-          <KitchenView station={demoDevice === "kds_bar" ? "bar" : "kitchen"} />
+          <KitchenView
+            station={demoDevice === "kds_bar" ? "bar" : "kitchen"}
+            expo={demoDevice === "expo"}
+          />
         </div>
       </div>
     );
@@ -438,9 +453,14 @@ export function AppShell() {
           <ReplayWorkflowButton className="hidden md:inline-flex" />
           <GuideTriggerButton topicId="intro" />
           <Link
-            to="/"
-            title="Change venue"
-            onClick={() => logout()}
+            to={isProspectDemo() ? "/demo" : "/"}
+            title={isProspectDemo() ? "Exit demo" : "Change venue"}
+            onClick={() => {
+              if (isProspectDemo()) {
+                logout();
+                useDemoDeviceStore.getState().leave();
+              } else logout();
+            }}
             className="hidden sm:block"
           >
             <Button size="icon" variant="ghost" aria-label="Change venue">
@@ -457,17 +477,17 @@ export function AppShell() {
           <Button
             size="sm"
             variant="outline"
-            onClick={() => logout()}
+            onClick={isProspectDemo() ? switchDemoUser : () => logout()}
             aria-label="Switch user"
             data-demo="switch-user"
           >
-            Switch user
+            {isProspectDemo() ? "PIN" : "Switch user"}
           </Button>
           <Button
             size="icon"
             variant="ghost"
-            onClick={() => logout()}
-            aria-label="Sign out"
+            onClick={isProspectDemo() ? leaveDemo : () => logout()}
+            aria-label={isProspectDemo() ? "Exit demo" : "Sign out"}
           >
             <LogOut className="h-4 w-4" />
           </Button>

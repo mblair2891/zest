@@ -168,7 +168,10 @@ export function HomePage() {
               their share on the period — not from a second terminal at the table.
             </p>
             <div className="mkt-fade mkt-d2 mt-10 flex flex-wrap items-center gap-3">
-              <LandingCta to="/get-pricing">Get pricing</LandingCta>
+              <LandingCta to="/demo">Demo sites</LandingCta>
+              <LandingCta to="/get-pricing" tone="ghost">
+                Get pricing
+              </LandingCta>
               <LandingCta to="/login" tone="ghost">
                 Sign in
               </LandingCta>
@@ -177,12 +180,6 @@ export function HomePage() {
                 className="inline-flex h-12 items-center px-2 text-xs font-semibold tracking-widest text-champagne uppercase transition-colors hover:text-ivory"
               >
                 Operators Guide
-              </Link>
-              <Link
-                to="/demo"
-                className="inline-flex h-12 items-center px-2 text-xs font-semibold tracking-widest text-champagne uppercase transition-colors hover:text-ivory"
-              >
-                Product demos
               </Link>
             </div>
           </div>
@@ -375,7 +372,7 @@ export function HomePage() {
               Create an account
             </LandingCta>
             <LandingCta to="/demo" tone="ghost">
-              Product demos
+              Demo sites
             </LandingCta>
           </div>
         </section>

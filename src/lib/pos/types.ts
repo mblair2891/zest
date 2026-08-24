@@ -214,6 +214,8 @@ export interface RestaurantSettings {
   voiceControlEnabledByRole?: Partial<Record<EmployeeRole, boolean>>;
   floorStatusConfig?: import("./floor-status").FloorStatusConfig;
   qrMode?: QrMode;
+  /** When true, Expo is a distinct station between kitchen ready and floor delivery. */
+  expoEnabled?: boolean;
   networkReadyStatus?: import("@/lib/saas/network-readiness").NetworkReadyStatus;
   networkCheckedAt?: number;
   networkNotes?: string;

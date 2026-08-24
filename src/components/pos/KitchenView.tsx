@@ -10,9 +10,13 @@ import { HOST_SCOPE, canViewTickets } from "@/lib/access/entity-grants";
 import { stationForDeviceFunction } from "@/lib/pos/location-devices";
 import { PinKeypad } from "./PinKeypad";
 import { findStaffByPin } from "@/lib/pos/pin";
+import { isProspectDemo } from "@/lib/demo/session";
+import { isDemoStaffPin } from "@/lib/demo/pin";
 
 interface Props {
   station: TicketStation;
+  /** Expo rail: ready tickets and mark delivered (bump). */
+  expo?: boolean;
 }
 
 function elapsedColor(sec: number): string {
@@ -27,12 +31,13 @@ function fmtElapsed(sec: number): string {
   return `${m}:${s.toString().padStart(2, "0")}`;
 }
 
-export function KitchenView({ station }: Props) {
+export function KitchenView({ station, expo }: Props) {
   const tickets = usePosStore((s) => s.tickets);
   const vendors = usePosStore((s) => s.vendors);
   const bumpTicket = usePosStore((s) => s.bumpTicket);
   const recallTicket = usePosStore((s) => s.recallTicket);
   const startTicket = usePosStore((s) => s.startTicket);
+  const readyTicket = usePosStore((s) => s.readyTicket);
   const [showBumped, setShowBumped] = useState(false);
   const [filter, setFilter] = useState<TicketStatus | "all">("all");
   const [bumpPinFor, setBumpPinFor] = useState<string | null>(null);
@@ -65,7 +70,8 @@ export function KitchenView({ station }: Props) {
   const list = useMemo(() => {
     const st = assignedStation || station;
     let t = tickets.filter((x) => x.station === st);
-    if (!showBumped) t = t.filter((x) => x.status !== "bumped");
+    if (expo) t = t.filter((x) => x.status === "ready" || (showBumped && x.status === "bumped"));
+    else if (!showBumped) t = t.filter((x) => x.status !== "bumped");
     if (filter !== "all") t = t.filter((x) => x.status === filter);
     if (vendorFilter) t = t.filter((x) => x.vendorId === vendorFilter);
     else if (lockedVendor && visibleVendorIds.length <= 1)
@@ -83,6 +89,7 @@ export function KitchenView({ station }: Props) {
     assignedStation,
     visibleVendorIds,
     vendors.length,
+    expo,
   ]);
 
   const active = tickets.filter(
@@ -96,7 +103,7 @@ export function KitchenView({ station }: Props) {
     <div className="kds-large-touch relative flex h-full flex-col">
       <div className="flex flex-wrap items-center gap-2 border-b border-border px-3 py-2">
         <h2 className="text-sm font-semibold capitalize">
-          {station === "bar" ? "Bar display" : "Kitchen display"}
+          {expo ? "Expo" : station === "bar" ? "Bar display" : "Kitchen display"}
         </h2>
         <GuideLearnLink topicId="kds" compact>
           Learn
@@ -248,7 +255,7 @@ export function KitchenView({ station }: Props) {
                   ))}
                 </ul>
                 <footer className="flex gap-1.5 border-t border-border p-2">
-                  {t.status === "new" && (
+                  {t.status === "new" && !expo && (
                     <Button
                       className="flex-1"
                       size="sm"
@@ -259,12 +266,22 @@ export function KitchenView({ station }: Props) {
                       Start
                     </Button>
                   )}
+                  {(t.status === "new" || t.status === "in_progress") && !expo && (
+                    <Button
+                      className="flex-1"
+                      size="sm"
+                      variant="outline"
+                      onClick={() => readyTicket(t.id)}
+                    >
+                      Ready
+                    </Button>
+                  )}
                   {t.status !== "bumped" && (
                     <Button
                       className="flex-1"
                       size="sm"
                       onClick={() => {
-                        if (settings.requirePinToBump) {
+                        if (settings.requirePinToBump && !isProspectDemo()) {
                           setBumpPinFor(t.id);
                           setBumpPinError(null);
                           return;
@@ -273,7 +290,7 @@ export function KitchenView({ station }: Props) {
                       }}
                     >
                       <Check className="h-3.5 w-3.5" />
-                      Bump
+                      {expo || t.status === "ready" ? "Delivered" : "Bump"}
                     </Button>
                   )}
                   {t.status === "bumped" && (
@@ -302,7 +319,9 @@ export function KitchenView({ station }: Props) {
               error={bumpPinError}
               onClearError={() => setBumpPinError(null)}
               onComplete={(pin) => {
-                const match = findStaffByPin(employees, pin, locId, lockedVendor);
+                const match =
+                  findStaffByPin(employees, pin, locId, lockedVendor) ||
+                  (isDemoStaffPin(pin) ? emp : null);
                 if (!match) {
                   setBumpPinError("Invalid PIN");
                   return;

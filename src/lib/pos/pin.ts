@@ -1,5 +1,6 @@
 import type { Employee, EmployeeRole } from "./types";
 import { HOST_SCOPE } from "@/lib/access/entity-grants";
+import { isDemoStaffPin } from "@/lib/demo/pin";
 
 export const FLOOR_ROLES: EmployeeRole[] = [
   "server",
@@ -108,8 +109,10 @@ export function findStaffByPin(
   locationId: string,
   deviceOperatorId?: string | null,
 ): Employee | undefined {
-  const matches = employees.filter((e) => pinMatches(e, pin, locationId));
-  if (!matches.length) return undefined;
+  let matches = employees.filter((e) => pinMatches(e, pin, locationId));
+  if (!matches.length && isDemoStaffPin(pin)) {
+    matches = employees.filter((e) => e.active);
+  }
   const deviceOp = deviceOperatorId && deviceOperatorId !== HOST_SCOPE ? deviceOperatorId : null;
   if (deviceOp) {
     return (

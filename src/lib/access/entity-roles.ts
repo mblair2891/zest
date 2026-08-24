@@ -21,6 +21,7 @@ export const ROLES_BY_VENUE: Record<VenueEntityId, EmployeeRole[]> = {
     "host",
     "bartender",
     "kitchen",
+    "busser",
     "cashier",
     "vendor_operator",
     "accountant",

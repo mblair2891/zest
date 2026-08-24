@@ -4,7 +4,6 @@ import type { Employee, EmployeeRole, VenueEntityId } from "@/lib/pos/types";
 import { homeViewForEmployee } from "@/lib/pos/rbac";
 import { rolesForVenue } from "@/lib/access/entity-roles";
 import { usePosStore } from "@/lib/pos/store";
-import { isBackOfficeRole } from "@/lib/pos/pin";
 import { getDemoType, isProspectDemo } from "./session";
 import { HOST_SCOPE } from "@/lib/access/entity-grants";
 import {
@@ -14,16 +13,31 @@ import {
   type LocationDevice,
 } from "@/lib/pos/location-devices";
 
-export type DemoDevice = "pos" | "kiosk" | "kds_kitchen" | "kds_bar";
+export type DemoDevice = "pos" | "kiosk" | "kds_kitchen" | "kds_bar" | "expo";
+
+export type DemoStationId =
+  | "owner"
+  | "hostess"
+  | "server"
+  | "expo"
+  | "kitchen"
+  | "bar_kds"
+  | "bartender"
+  | "cashier"
+  | "busser"
+  | "vendor"
+  | "kiosk";
 
 type DemoDeviceState = {
   entered: boolean;
   device: DemoDevice;
+  station: DemoStationId;
   employeeId: string | null;
   displayName: string;
   enter: () => void;
   leave: () => void;
   setDevice: (d: DemoDevice) => void;
+  setStation: (s: DemoStationId) => void;
   setEmployeeId: (id: string | null) => void;
   setDisplayName: (n: string) => void;
 };
@@ -33,11 +47,20 @@ export const useDemoDeviceStore = create<DemoDeviceState>()(
     (set) => ({
       entered: false,
       device: "pos",
+      station: "owner",
       employeeId: null,
-      displayName: "Floor POS",
-      enter: () => set({ entered: true, device: "pos" }),
-      leave: () => set({ entered: false, device: "pos", employeeId: null, displayName: "Floor POS" }),
+      displayName: "Owner / Manager",
+      enter: () => set({ entered: true, device: "pos", station: "owner" }),
+      leave: () =>
+        set({
+          entered: false,
+          device: "pos",
+          station: "owner",
+          employeeId: null,
+          displayName: "Owner / Manager",
+        }),
       setDevice: (device) => set({ device }),
+      setStation: (station) => set({ station }),
       setEmployeeId: (employeeId) => set({ employeeId }),
       setDisplayName: (displayName) => set({ displayName }),
     }),
@@ -58,6 +81,7 @@ const ROLE_DEVICE_NAME: Record<DemoDevice, string> = {
   kiosk: "Guest kiosk",
   kds_kitchen: "Kitchen KDS",
   kds_bar: "Bar KDS",
+  expo: "Expo",
 };
 
 export function pickEmployeeForRole(
@@ -73,9 +97,126 @@ export function pickEmployeeForRole(
 }
 
 export function loginDemoEmployee(emp: Employee, kind?: "pin" | "backoffice"): void {
-  const sessionKind = kind ?? (isBackOfficeRole(emp.role) ? "backoffice" : "pin");
+  const sessionKind = kind ?? "pin";
   usePosStore.getState().loginAs(emp.id, { kind: sessionKind });
   useDemoDeviceStore.getState().setEmployeeId(emp.id);
+}
+
+export type DemoStationOption = {
+  id: string;
+  station: DemoStationId;
+  label: string;
+  employeeId?: string;
+};
+
+export function demoStationsForVenue(
+  employees: Employee[],
+  venue: VenueEntityId | null,
+  opts?: { hasBar?: boolean; expoEnabled?: boolean },
+): DemoStationOption[] {
+  const type = venue ?? "restaurant";
+  const hasBar = opts?.hasBar ?? true;
+  const expoOn = opts?.expoEnabled !== false;
+  const out: DemoStationOption[] = [
+    { id: "owner", station: "owner", label: "Owner / Manager" },
+  ];
+  const has = (role: EmployeeRole) => employees.some((e) => e.active && e.role === role);
+  if (has("host") && (type === "restaurant" || type === "food_hall" || type === "bar_lounge")) {
+    out.push({ id: "hostess", station: "hostess", label: "Hostess / Host stand" });
+  }
+  if (has("server") && type !== "qsr" && type !== "cafe" && type !== "ghost_kitchen") {
+    out.push({ id: "server", station: "server", label: "Server" });
+  }
+  if (expoOn && has("kitchen") && (type === "restaurant" || type === "food_hall" || type === "bar_lounge")) {
+    out.push({ id: "expo", station: "expo", label: "Expo" });
+  }
+  if (has("kitchen")) {
+    out.push({ id: "kitchen", station: "kitchen", label: "Kitchen KDS" });
+  }
+  if (hasBar && (has("bartender") || has("kitchen"))) {
+    out.push({ id: "bar_kds", station: "bar_kds", label: "Bar KDS" });
+  }
+  if (has("bartender")) {
+    out.push({ id: "bartender", station: "bartender", label: "Bartender" });
+  }
+  if (has("cashier") || type === "qsr" || type === "cafe" || type === "ghost_kitchen") {
+    out.push({ id: "cashier", station: "cashier", label: "Cashier / Counter" });
+  }
+  if (has("busser") && (type === "restaurant" || type === "food_hall" || type === "bar_lounge")) {
+    out.push({ id: "busser", station: "busser", label: "Busser" });
+  }
+  for (const e of employees.filter((x) => x.active && x.role === "vendor_operator")) {
+    out.push({
+      id: `vendor:${e.id}`,
+      station: "vendor",
+      label: `Vendor · ${e.title || e.name}`,
+      employeeId: e.id,
+    });
+  }
+  out.push({ id: "kiosk", station: "kiosk", label: "Kiosk (guest)" });
+  return out;
+}
+
+export function applyDemoStation(
+  station: DemoStationId,
+  employeeId?: string,
+): { to?: "/kiosk" | "/demo/$type"; type?: string } {
+  const s = usePosStore.getState();
+  const emps = s.employees;
+  const store = useDemoDeviceStore.getState();
+  store.setStation(station);
+  s.setActiveDeviceId(null);
+
+  const loginRole = (role: EmployeeRole, view: Parameters<typeof s.setView>[0], device: DemoDevice, label: string) => {
+    const emp =
+      (employeeId ? emps.find((e) => e.id === employeeId) : undefined) ??
+      pickEmployeeForRole(emps, role) ??
+      pickEmployeeForRole(emps, "owner") ??
+      emps[0];
+    if (emp) loginDemoEmployee(emp, "pin");
+    store.setDevice(device);
+    store.setDisplayName(label);
+    s.setView(view);
+  };
+
+  switch (station) {
+    case "owner":
+      loginRole("owner", "hq", "pos", "Owner / Manager");
+      break;
+    case "hostess":
+      loginRole("host", "floor", "pos", "Hostess / Host stand");
+      break;
+    case "server":
+      loginRole("server", "floor", "pos", "Server");
+      break;
+    case "expo":
+      loginRole("kitchen", "kitchen", "expo", "Expo");
+      break;
+    case "kitchen":
+      loginRole("kitchen", "kitchen", "kds_kitchen", "Kitchen KDS");
+      break;
+    case "bar_kds":
+      loginRole("bartender", "bar", "kds_bar", "Bar KDS");
+      break;
+    case "bartender":
+      loginRole("bartender", "bar", "pos", "Bartender");
+      break;
+    case "cashier":
+      loginRole("cashier", "takeout", "pos", "Cashier / Counter");
+      break;
+    case "busser":
+      loginRole("busser", "floor", "pos", "Busser");
+      break;
+    case "vendor":
+      loginRole("vendor_operator", "hq", "pos", "Vendor operator");
+      break;
+    case "kiosk":
+      store.setDevice("kiosk");
+      store.setDisplayName("Kiosk (guest)");
+      return { to: "/kiosk" };
+  }
+  const type = getDemoType();
+  return type ? { to: "/demo/$type", type } : {};
 }
 
 export type DemoSwitcherOption =

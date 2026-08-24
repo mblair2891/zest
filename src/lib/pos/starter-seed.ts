@@ -37,6 +37,7 @@ export function starterSettings(venueName: string): RestaurantSettings {
     onlineOrderingEnabled: true,
     qrOrderingEnabled: true,
     qrMode: "hybrid",
+    expoEnabled: true,
     floorStatusConfig: {
       ...DEFAULT_FLOOR_STATUS_CONFIG,
       colors: { ...DEFAULT_FLOOR_STATUS_CONFIG.colors },

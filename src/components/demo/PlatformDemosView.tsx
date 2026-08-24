@@ -62,10 +62,10 @@ export function PlatformDemosView() {
           Prospect rooms
         </h1>
         <p className="mt-2 max-w-2xl text-sm text-muted-foreground">
-          Demo data is excluded from tenants and statistics. Share a type link;
-          the prospect never sees live operators or billing. One demo login,
-          then switch role or device (kiosk / KDS). Optional shared login:
-          username demo / password demo — do not put this on the marketing home.
+          Demo data is excluded from tenants and statistics. Public Demo sites
+          use PIN 0000 (login and clock). View switches Hostess, Server, KDS,
+          Expo, Busser, and operators on one house. Prospects never see live
+          operators or billing.
         </p>
 
         <div

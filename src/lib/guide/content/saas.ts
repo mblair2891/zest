@@ -258,8 +258,8 @@ export const SAAS_TOPICS: GuideTopic[] = [
   topic({
     id: "prospect-demos",
     chapterId: "saas",
-    title: "Product demos & voiceover tours",
-    summary: "Public live-UI tours with narration and voiceover. Demo rooms never open the control plane.",
+    title: "Demo sites",
+    summary: "Public PIN 0000 demos by entity type. Owner default, View switcher, live floor path. Never the control plane.",
     roles: "all",
     keywords: [
       "demo",
@@ -278,19 +278,21 @@ export const SAAS_TOPICS: GuideTopic[] = [
         "A prospect should walk the real product — exact screens, demo-seeded venues — not a slideshow. Demo rooms are tagged and excluded from live tenants, billing, and statistics.",
       ),
       p(
-        "Open Product demos from the public site. Enter demo with one login (Continue as demo operator, or demo / demo). Then switch access level, kiosk, or KDS. Guided tours still narrate the live UI. Exit returns to the demo list — never the control plane.",
+        "Marketing home → Demo sites. Pick an entity type. The next screen is a staff PIN / time clock — not a back-office password. PIN 0000 is universal for every demo staff action. Login opens Owner / Manager. Clock in and clock out stay separate and also accept 0000.",
       ),
       ul(
         "Per type: /demo/{type} — restaurant, food_hall (The Laundry), bar_lounge, qsr, cafe, truck_pod, ghost_kitchen, catering.",
-        "The Laundry: /demo/food_hall — Steam Distillery + Diamond House BBQ, one guest check, Quantum Payments, settlement split.",
-        "Full product tour: /demo/tour/full.",
-        "Switcher: Owner, Manager, Server, Host stand, Bartender, Kitchen, Cashier, Vendor (Steam / Diamond), Accountant, plus Floor POS, Kiosk, KDS Kitchen, KDS Bar.",
+        "The Laundry: /demo/food_hall — Steam Distillery drinks, Diamond House BBQ food, one guest check, Quantum Payments.",
+        "View menu (no re-login): Owner/Manager, Hostess/Host stand, Server, Expo, Kitchen KDS, Bar KDS, Bartender, Cashier/Counter, Busser, Vendor (Steam / Diamond), Kiosk.",
+        "One shared house. Hostess seats → Server sees sat. Server send → Kitchen/Bar tickets. Ready → Server/Expo notice. Pay → Busser sees closed · needs bus. Clean → empty.",
       ),
       steps(
-        "From the landing page open Demos, or go to /demo. Tap Enter demo.",
-        "Continue as demo operator (or username demo / password demo). Shared creds are listed on Platform → Demos only, not the marketing home.",
-        "Use Demo mode — switch role or device. Floor POS, Kitchen KDS, Bar KDS, and Kiosk share the same demo location.",
-        "Start a guided tour from the banner if you want voiceover. Exit returns to the public demo index.",
+        "Open Demo sites from the public site (or /demo). Tap an entity type.",
+        "On the PIN pad, leave Login selected and enter 0000. You land on Owner / Manager.",
+        "Use View to switch Hostess. Seat a table. Switch Server — the table is sat.",
+        "Build and send the check. Switch Kitchen KDS (and Bar KDS on The Laundry). Ready, then Expo/Server mark delivered.",
+        "Pay with Quantum Payments sandbox or cash. Switch Busser. Mark cleaned.",
+        "Exit returns to Demo sites, never the platform dashboard.",
       ),
       callout(
         "Live UI, demo data only",

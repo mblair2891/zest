@@ -9,6 +9,19 @@ import type { GuideUpdate } from "@/lib/guide/types";
  */
 export const WHATS_NEW_ENTRIES: GuideUpdate[] = [
   {
+    id: "upd_2026_09_11_demo_pin",
+    date: "2026-09-11",
+    title: "Demo sites: PIN 0000, View switcher, live floor path",
+    summary:
+      "Public Demo sites open a PIN pad, not a password. 0000 logs in as Owner. View switches Hostess → Server → KDS → Expo → pay → Busser on one house.",
+    body: "Marketing home → Demo sites → entity type → PIN 0000. Clock in/out is a separate action, still 0000. The View menu does not re-login. Demo PIN never works on live tenants. Exit returns to Demo sites, not the control plane.",
+    roles: "all",
+    surfaces: ["floor", "kiosk"],
+    audience: "demo",
+    topicId: "prospect-demos",
+    tags: ["demo", "pin", "0000", "hostess", "kds"],
+  },
+  {
     id: "upd_2026_09_10_network_hosts",
     date: "2026-09-10",
     title: "Network readiness is warn-only; www vs app vs sites",

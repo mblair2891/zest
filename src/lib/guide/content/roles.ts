@@ -231,7 +231,7 @@ export const ROLE_GUIDE_TOPICS: GuideTopic[] = [
         "Kiosk guests never enter a PIN. Marketing pages never show staff PINs. Platform Admin cannot use a restaurant PIN.",
       ),
       steps(
-        "On The Laundry demo keypad: 1111 server, 5555 kitchen, 6666 Steam entity manager, 7777 Diamond, 0000 host manager.",
+        "On Demo sites, PIN 0000 is universal. Login is Owner / Manager. Use View to become Hostess, Server, Kitchen, Bar, Expo, Busser, Steam, or Diamond without a second PIN.",
         "Tap Switch user to PIN in the next person without reassigning the tablet.",
         "Open Settings from a floor PIN — you are asked for back-office password (demo: manager PIN 0000).",
       ),

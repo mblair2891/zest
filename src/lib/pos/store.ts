@@ -81,6 +81,7 @@ import {
 } from "./floor-status";
 import { makeTableQrToken, parseQrMode } from "./qr-table";
 import { useNotifyStore } from "./notify-store";
+import { isDemoStaffPin } from "@/lib/demo/pin";
 
 function nextOrderNumber(orders) {
 	return orders.reduce((m, o) => Math.max(m, o.number), 100) + 1;
@@ -206,7 +207,11 @@ const usePosStoreRaw = create()(persist((set, get) => ({
 		const loc = get().tenantLocationId || get().activeEntityId || "loc";
 		const device = (get().locationDevices ?? []).find((d) => d.id === get().activeDeviceId);
 		const deviceOp = device?.assignment?.operatorId ?? null;
-		const emp = findStaffByPin(get().employees, pin, loc, deviceOp);
+		let emp = isDemoStaffPin(pin)
+			? (get().employees.find((e) => e.active && e.role === "owner")
+				?? get().employees.find((e) => e.active && e.role === "manager")
+				?? findStaffByPin(get().employees, pin, loc, deviceOp))
+			: findStaffByPin(get().employees, pin, loc, deviceOp);
 		if (!emp) {
 			return {
 				ok: false,
@@ -216,13 +221,15 @@ const usePosStoreRaw = create()(persist((set, get) => ({
 			};
 		}
 		const hashed = hashPin(pin, loc);
-		const employees = get().employees.map((e) =>
-			e.id === emp.id && !e.pinHash ? { ...e, pinHash: hashed, pin: "" } : e,
-		);
+		const employees = isDemoStaffPin(pin)
+			? get().employees
+			: get().employees.map((e) =>
+				e.id === emp.id && !e.pinHash ? { ...e, pinHash: hashed, pin: "" } : e,
+			);
 		set({
 			employees,
 			currentEmployeeId: emp.id,
-			view: homeViewForEmployee(emp),
+			view: isDemoStaffPin(pin) ? "hq" : homeViewForEmployee(emp),
 			activeOrderId: null,
 			activeTableId: null,
 			sessionKind: "pin",
@@ -1105,6 +1112,15 @@ const usePosStoreRaw = create()(persist((set, get) => ({
 					status: "closed_not_cleaned",
 					statusSince: Date.now(),
 				} : t);
+				try {
+					const tb = get().tables.find((x) => x.id === order.tableId);
+					useNotifyStore.getState().pushNotice({
+						kind: "table_needs_bus",
+						title: `Bus · Table ${tb?.label ?? ""}`,
+						body: "Check closed — table needs clean",
+						tableLabel: tb?.label,
+					});
+				} catch { /* optional */ }
 			}
 		} else if (order.tableId) tables = tables.map((t) => t.orderId === order.id ? {
 			...t,
@@ -1197,6 +1213,33 @@ const usePosStoreRaw = create()(persist((set, get) => ({
 			...t,
 			status: "in_progress"
 		} : t) });
+	},
+	readyTicket: (ticketId) => {
+		const ticket = get().tickets.find((t) => t.id === ticketId);
+		const tickets = get().tickets.map((t) => t.id === ticketId ? {
+			...t,
+			status: "ready",
+		} : t);
+		set({ tickets });
+		if (ticket?.orderId) {
+			const order = get().orders.find((o) => o.id === ticket.orderId);
+			if (order?.tableId) {
+				const st = deriveTableStatus(order, tickets, floorCfg());
+				set({
+					tables: get().tables.map((tb) => tb.id === order.tableId ? stampStatus(tb, st) : tb),
+				});
+			}
+		}
+		try {
+			if (ticket) {
+				useNotifyStore.getState().pushNotice({
+					kind: "ticket_ready",
+					title: `Ready · ${ticket.tableLabel}`,
+					body: `${ticket.station === "bar" ? "Bar" : "Kitchen"} marked #${ticket.orderNumber} ready for expo / server`,
+					tableLabel: ticket.tableLabel,
+				});
+			}
+		} catch { /* optional */ }
 	},
 	addWaitlist: (entry) => {
 		const id = entry.id || uid("wl");

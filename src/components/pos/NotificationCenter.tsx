@@ -25,6 +25,9 @@ function shouldToast(notice: PosNotice, role: string, view: string): boolean {
   if (notice.kind === "guest_checked_in" || notice.kind === "waitlist_update") {
     return FOH_ROLES.has(role);
   }
+  if (notice.kind === "ticket_ready" || notice.kind === "table_needs_bus") {
+    return FOH_ROLES.has(role);
+  }
   if (notice.kind === "ticket_bumped") {
     // KDS operator already sees the bump they just made
     if (
@@ -62,6 +65,16 @@ export function TicketBumpWatcher() {
     for (const t of tickets as KitchenTicket[]) {
       const was = prev.current.get(t.id);
       if (!was) continue;
+      if (was !== "ready" && t.status === "ready") {
+        const notice = pushFromTicket(t, "ticket_ready");
+        if (shouldToast(notice, emp?.role ?? "", view)) {
+          toast.success(notice.title, {
+            description: notice.body,
+            duration: 8000,
+          });
+          if (soundEnabled) playBumpChime();
+        }
+      }
       if (was !== "bumped" && t.status === "bumped") {
         const notice = pushFromTicket(t, "ticket_bumped");
         if (shouldToast(notice, emp?.role ?? "", view)) {

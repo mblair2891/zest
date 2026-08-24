@@ -871,6 +871,11 @@ function TableDetailBody({
         {!empty && table.orderId && (
           <Button onClick={onOpenCheck}>Open check</Button>
         )}
+        {(st === "ordered_food" || st === "food_delivered" || st === "ordered_drinks") && (
+          <Button variant="outline" onClick={() => onStatus("food_delivered")}>
+            Mark delivered
+          </Button>
+        )}
         {dirty && (
           <Button variant="outline" onClick={onClean}>
             Mark cleaned

@@ -54,7 +54,7 @@ export const FULL_TOUR: TourDefinition = {
       id: "f-open",
       title: "The Laundry",
       script:
-        "We open The Laundry — a host venue. Steam Distillery pours, Diamond House BBQ cooks. The guest still sees one house.",
+        "Demo sites. PIN 0000. Login is Owner. Steam Distillery pours, Diamond House BBQ cooks. One house.",
       route: { to: "/demo/$type", params: { type: "food_hall" } },
       selector: "[data-demo='floor']",
       view: "floor",
@@ -64,7 +64,7 @@ export const FULL_TOUR: TourDefinition = {
       id: "f-floor",
       title: "Floor and sections",
       script:
-        "Tables live in sections. The host seats. The server owns the check. This is the real floor map, not a mock.",
+        "Use View to switch Hostess, then seat. Switch Server — the table is already sat. Same live floor.",
       selector: "[data-demo='floor']",
       view: "floor",
       action: "seat",

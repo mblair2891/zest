@@ -6,6 +6,9 @@ import { LandingFrame } from "@/components/marketing/LandingFrame";
 import { Button } from "@/components/ui/button";
 import { DEMO_CATALOG, demoShareUrl } from "@/lib/demo/catalog";
 import { startTour } from "@/lib/demo/tour-store";
+import { DEMO_STAFF_PIN } from "@/lib/demo/pin";
+import { enterDemoSession } from "@/lib/demo/session";
+import { enterDemoOperator, useDemoDeviceStore } from "@/lib/demo/device-session";
 
 function beginTour(id: string, autoPlay = false) {
   const ok = startTour(id, { autoPlay });
@@ -34,16 +37,17 @@ export function DemoCatalogPage() {
     <LandingFrame>
       <main className="mx-auto max-w-6xl px-4 py-16 sm:px-6 sm:py-24">
         <p className="mkt-kicker font-display text-xs text-champagne uppercase">
-          Prospect demos
+          Demo sites
         </p>
         <h1 className="mt-4 max-w-3xl font-display text-4xl font-medium tracking-tight text-ivory sm:text-5xl">
-          Isolated rooms. Share a type. Walk the floor.
+          Pick an establishment. PIN {DEMO_STAFF_PIN}. Walk every station.
         </h1>
         <p className="mt-5 max-w-2xl text-sm leading-relaxed text-muted-foreground sm:text-base">
-          Each establishment type has its own demo house. Demo data is never mixed
-          into live tenants, billing, or statistics. These rooms do not sign you
-          into the control plane. Quantum Payments is the only guest card.
-          Guided demo narrates the live product.
+          Public demos only — not live tenants, not the control plane. One PIN
+          for every staff action. Login opens Owner / Manager. The View menu
+          switches Hostess, Server, Kitchen, Bar, Expo, Busser, and operators
+          on the same house. Clock in/out is a separate action, still {DEMO_STAFF_PIN}.
+          Guest cards are Quantum Payments.
         </p>
 
         <div
@@ -54,9 +58,8 @@ export function DemoCatalogPage() {
             Full product tour
           </p>
           <p className="mt-2 max-w-xl text-sm text-muted-foreground">
-            Live UI: demos vs tenants, The Laundry, floor, menu, routing, host
-            check, Quantum Payments, settlement, cash discount, kiosk, Operators
-            Guide.
+            Narrated walk of The Laundry: hostess seats, server orders, Steam
+            bar and Diamond kitchen, pay once, busser turns the table.
           </p>
           <div className="mt-4 flex flex-wrap gap-2">
             <Button type="button" onClick={() => beginTour("full")}>
@@ -85,20 +88,40 @@ export function DemoCatalogPage() {
               <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
                 {d.blurb}
               </p>
-              <p className="mt-3 text-xs text-muted-foreground">{d.tourFocus}</p>
+              <p className="mt-3 text-xs text-muted-foreground">
+                PIN {DEMO_STAFF_PIN} · {d.tourFocus}
+              </p>
               <div className="mt-5 flex flex-wrap gap-2">
-                <Button asChild size="sm" variant="outline">
+                <Button asChild size="sm">
                   <Link to="/demo/$type" params={{ type: d.type }}>
-                    Enter demo
+                    Enter · PIN {DEMO_STAFF_PIN}
                   </Link>
                 </Button>
                 <Button
                   type="button"
                   size="sm"
+                  variant="outline"
                   onClick={() => beginTour(`type:${d.type}`)}
                 >
                   <Play className="mr-1 h-3.5 w-3.5" />
                   Guided demo
+                </Button>
+                <Button
+                  asChild
+                  size="sm"
+                  variant="ghost"
+                >
+                  <Link
+                    to="/kiosk"
+                    onClick={() => {
+                      enterDemoSession(d.type);
+                      enterDemoOperator();
+                      useDemoDeviceStore.getState().setDevice("kiosk");
+                      useDemoDeviceStore.getState().setStation("kiosk");
+                    }}
+                  >
+                    Kiosk
+                  </Link>
                 </Button>
                 <Button
                   type="button"
@@ -113,6 +136,9 @@ export function DemoCatalogPage() {
             </li>
           ))}
         </ul>
+        <p className="mt-10 text-center text-xs text-muted-foreground">
+          Exit any demo site returns here — never the platform dashboard.
+        </p>
       </main>
     </LandingFrame>
   );

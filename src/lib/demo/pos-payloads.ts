@@ -239,6 +239,7 @@ export function demoPosSlice(type: VenueEntityId) {
   settings.cashRoundIncrement = 0.25;
   settings.cashRoundMode = "up";
   settings.qrMode = "hybrid";
+  settings.expoEnabled = type === "restaurant" || type === "bar_lounge";
   settings.floorStatusConfig = {
     ...DEFAULT_FLOOR_STATUS_CONFIG,
     flashMinutes: { ...DEMO_FLASH_MINUTES },
