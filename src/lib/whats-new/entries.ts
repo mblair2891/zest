@@ -9,6 +9,18 @@ import type { GuideUpdate } from "@/lib/guide/types";
  */
 export const WHATS_NEW_ENTRIES: GuideUpdate[] = [
   {
+    id: "upd_2026_09_04_offline",
+    date: "2026-09-04",
+    title: "Offline mode: cash and tickets without internet",
+    summary:
+      "If the uplink drops, floor, KDS, cash, and waitlist still run on this device. Card needs a connection. Changes sync once when internet returns.",
+    body: "Use Simulate internet outage on the Wi‑Fi chip. Cash closes locally. SMS is pending send. Failed syncs show to the manager. Same behavior in a prospect demo.",
+    roles: "all",
+    surfaces: ["floor", "kds", "kiosk", "settings"],
+    topicId: "wifi-offline",
+    tags: ["offline", "wifi", "payments", "kds"],
+  },
+  {
     id: "upd_2026_09_03_login_onboarding",
     date: "2026-09-03",
     title: "Latest updates on login & role walkthroughs",

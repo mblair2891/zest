@@ -34,6 +34,14 @@ import { laundryPosSlice } from "./laundry-seed";
 import { demoPersistStorage } from "@/lib/demo/session";
 import { demoPosSlice, demoSaasOrg } from "@/lib/demo/pos-payloads";
 import {
+  cardRequiresConnection,
+  noteCashPayment,
+  noteOrderSent,
+  noteTicketBump,
+  noteTableSeat,
+  noteWaitlistAdd,
+} from "@/lib/offline/enqueue-pos";
+import {
   DEFAULT_FLOOR_SECTIONS,
   DEFAULT_SECTION_POLICY,
   canAccessTable,
@@ -330,6 +338,7 @@ const usePosStoreRaw = create()(persist((set, get) => ({
 			}
 		});
 		get().audit("seat", `Table ${table.label} · ${guestCount} guests`);
+		noteTableSeat({ tableId, guestCount });
 		return { ok: true };
 	},
 	markClean: (tableId) => {
@@ -761,6 +770,11 @@ const usePosStoreRaw = create()(persist((set, get) => ({
 			} : t) : get().tables
 		});
 		get().audit("send", `Order #${order.number} · ${toSend.length} items`);
+		noteOrderSent({
+			orderId: order.id,
+			orderNumber: order.number,
+			ticketIds: newTickets.map((t) => t.id),
+		});
 	},
 	fireCourse: (course) => {
 		const order = get().getActiveOrder();
@@ -823,6 +837,9 @@ const usePosStoreRaw = create()(persist((set, get) => ({
 			ok: false,
 			error: "Order closed"
 		};
+		if ((method === "card" || method === "room_charge") && cardRequiresConnection()) {
+			return { ok: false, error: "Card requires connection" };
+		}
 		let changeCents = 0;
 		if (method === "cash") {
 			const tendered = tenderedCents ?? amountCents + tipCents;
@@ -941,6 +958,14 @@ const usePosStoreRaw = create()(persist((set, get) => ({
 			useOpsStore.getState().recordTicketClosed(order.serverId, Date.now());
 		} catch {}
 		get().audit("payment", `#${order.number} ${method} $${(amountCents / 100).toFixed(2)}`);
+		if (method === "cash") {
+			noteCashPayment({
+				orderId: order.id,
+				orderNumber: order.number,
+				amountCents: amountCents + tipCents,
+				paymentId: payment.id,
+			});
+		}
 		return {
 			ok: true,
 			changeCents
@@ -961,11 +986,13 @@ const usePosStoreRaw = create()(persist((set, get) => ({
 		} : o) });
 	},
 	bumpTicket: (ticketId) => {
+		const ticket = get().tickets.find((t) => t.id === ticketId);
 		set({ tickets: get().tickets.map((t) => t.id === ticketId ? {
 			...t,
 			status: "bumped",
 			bumpedAt: Date.now()
 		} : t) });
+		noteTicketBump({ ticketId, orderNumber: ticket?.orderNumber });
 	},
 	recallTicket: (ticketId) => {
 		set({ tickets: get().tickets.map((t) => t.id === ticketId ? {
@@ -981,12 +1008,22 @@ const usePosStoreRaw = create()(persist((set, get) => ({
 		} : t) });
 	},
 	addWaitlist: (entry) => {
+		const id = entry.id || uid("wl");
+		const smsPending = Boolean(entry.phone) && cardRequiresConnection();
 		set({ waitlist: [{
 			...entry,
-			id: entry.id || uid("wl"),
+			id,
 			createdAt: entry.createdAt || Date.now(),
-			status: entry.status || "waiting"
+			status: entry.status || "waiting",
+			smsStatus: entry.smsStatus || (smsPending ? "pending" : entry.phone ? "sent" : "none"),
 		}, ...get().waitlist] });
+		noteWaitlistAdd({
+			id,
+			name: entry.name,
+			phone: entry.phone,
+			partySize: entry.partySize,
+			smsPending,
+		});
 	},
 	updateWaitlistStatus: (id, status) => {
 		set({ waitlist: get().waitlist.map((w) => w.id === id ? {

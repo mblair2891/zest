@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { CreditCard, Banknote, Gift, Percent } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -27,11 +27,10 @@ export function PaymentDialog({ open, onOpenChange }: Props) {
   const settings = usePosStore((s) => s.settings);
   const takePayment = usePosStore((s) => s.takePayment);
   const wanOnline = useNetworkStore((s) => s.wanOnline());
-  const enqueue = useNetworkStore((s) => s.enqueue);
   const clearTable = usePosStore((s) => s.clearTable);
   const setView = usePosStore((s) => s.setView);
 
-  const [method, setMethod] = useState<PaymentMethod>("card");
+  const [method, setMethod] = useState<PaymentMethod>(wanOnline ? "card" : "cash");
   const dual = useMemo(
     () => (order ? computeDualTotals(order, settings) : null),
     [order, settings],
@@ -56,11 +55,19 @@ export function PaymentDialog({ open, onOpenChange }: Props) {
 
   const tips = tipSuggestions(balance);
 
+  useEffect(() => {
+    if (!wanOnline && method === "card") setMethod("cash");
+  }, [wanOnline, method]);
+
   const cashPresets = [balance, balance + tip].filter(Boolean);
   const quickCash = [5, 10, 20, 50, 100].map((d) => d * 100);
 
   const pay = () => {
     setError(null);
+    if ((method === "card" || method === "room_charge") && !wanOnline) {
+      setError("Card requires connection");
+      return;
+    }
     const res = takePayment({
       method,
       amountCents: Math.min(amountCents, balance),
@@ -77,7 +84,7 @@ export function PaymentDialog({ open, onOpenChange }: Props) {
       setError(res.error ?? "Payment failed");
       return;
     }
-    if (method === "card") {
+    if (method === "card" && wanOnline) {
       const ctx = (() => {
         try {
           return JSON.parse(sessionStorage.getItem("summex-tenant-pos") || "null") as {
@@ -110,12 +117,8 @@ export function PaymentDialog({ open, onOpenChange }: Props) {
       });
     }
     if (method === "card" && !useNetworkStore.getState().wanOnline()) {
-      enqueue({
-        kind: "card_capture",
-        label: `Check #${order?.number ?? ""}`,
-        detail: `****${last4 || "4242"} · stored on house hub`,
-        amountCents: Math.min(amountCents, balance) + tip,
-      });
+      setError("Card requires connection");
+      return;
     }
     if (res.changeCents != null && res.changeCents > 0) {
       setChange(res.changeCents);
@@ -228,9 +231,8 @@ export function PaymentDialog({ open, onOpenChange }: Props) {
           <div className="space-y-4">
             {!wanOnline && (
               <p className="rounded-xl border border-warn/40 bg-warn/15 px-3 py-2 text-xs text-foreground">
-                Internet is out. Cash and local gift still settle now. Card
-                is stored on the house hub and captures when WiFi reaches
-                the processor again.
+                Card requires connection. Cash, tab hold, comps, and local gift
+                still close on this device. Card will not queue a second capture.
               </p>
             )}
             <div className="rounded-xl border border-border bg-bg p-4 text-center">
@@ -258,7 +260,7 @@ export function PaymentDialog({ open, onOpenChange }: Props) {
               onValueChange={(v) => setMethod(v as PaymentMethod)}
             >
               <TabsList className="grid w-full grid-cols-4">
-                <TabsTrigger value="card">
+                <TabsTrigger value="card" disabled={!wanOnline} title={!wanOnline ? "Card requires connection" : undefined}>
                   <CreditCard className="h-3.5 w-3.5" />
                 </TabsTrigger>
                 <TabsTrigger value="cash">

@@ -652,7 +652,9 @@ function NetworkSettingsPanel() {
   const pending = useNetworkStore((s) => s.pendingCount());
   const outbox = useNetworkStore((s) => s.outbox);
   const lastSyncAt = useNetworkStore((s) => s.lastSyncAt);
-  const flush = useNetworkStore((s) => s.flushOutbox);
+  const flush = useNetworkStore((s) => s.flushOutboxNow);
+  const dead = useNetworkStore((s) => s.deadCount());
+  const syncing = useNetworkStore((s) => s.syncing);
 
   return (
     <div className="mb-6 max-w-2xl rounded-2xl border border-border bg-surface p-4">
@@ -668,7 +670,8 @@ function NetworkSettingsPanel() {
         <strong>
           {wan ? "Internet up" : lan ? "WiFi up · no internet" : "No WiFi"}
         </strong>
-        {pending > 0 ? ` · ${pending} cloud items queued` : ""}
+        {pending > 0 ? ` · ${pending} items queued` : ""}
+        {dead > 0 ? ` · ${dead} failed to sync` : ""}
         {lastSyncAt ? ` · last sync ${formatTime(lastSyncAt)}` : ""}
       </p>
       <div className="mb-3 grid gap-3 sm:grid-cols-2">
@@ -724,7 +727,7 @@ function NetworkSettingsPanel() {
           checked={simulateWan}
           onChange={setSimulateWan}
           label="Simulate internet outage"
-          hint="House WiFi stays up. Card captures queue until you turn this off."
+          hint="House Wi‑Fi stays up. Cash still closes. Card requires connection. Outbox syncs when you turn this off."
         />
         <PolicyCheck
           checked={simulateLan}
@@ -762,8 +765,8 @@ function NetworkSettingsPanel() {
               Cloud queue
             </p>
             {wan && pending > 0 && (
-              <Button size="sm" variant="outline" onClick={() => flush()}>
-                Sync now
+              <Button size="sm" variant="outline" onClick={() => void flush()} disabled={syncing}>
+                {syncing ? "Syncing…" : "Sync now"}
               </Button>
             )}
           </div>
@@ -774,9 +777,15 @@ function NetworkSettingsPanel() {
                   {OUTBOX_KIND_LABEL[o.kind]} · {o.label}
                 </span>
                 <span
-                  className={o.status === "queued" ? "text-warn" : "text-success"}
+                  className={
+                    o.status === "queued" || o.status === "syncing"
+                      ? "text-warn"
+                      : o.status === "dead"
+                        ? "text-danger"
+                        : "text-success"
+                  }
                 >
-                  {o.status}
+                  {o.status}{o.status === "dead" && o.lastError ? ` · ${o.lastError}` : ""}
                 </span>
               </li>
             ))}

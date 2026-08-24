@@ -397,6 +397,8 @@ export interface WaitlistEntry {
   notifiedAt?: number;
   notes?: string;
   optOutToken?: string;
+  /** SMS is deferred while internet is down. */
+  smsStatus?: "none" | "pending" | "sent";
 }
 
 export interface Reservation {

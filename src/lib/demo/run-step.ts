@@ -1,4 +1,5 @@
 import { usePosStore } from "@/lib/pos/store";
+import { useNetworkStore } from "@/lib/pos/network-store";
 import { isProspectDemo } from "./session";
 import type { DemoStep } from "./scripts";
 
@@ -59,7 +60,29 @@ export function runDemoStepAction(action: DemoStep["action"]): void {
       ensureOpenCheck();
       usePosStore.getState().sendOrder();
       break;
+    case "offline_cash": {
+      useNetworkStore.getState().setSimulateWanDown(true);
+      ensureOpenCheck();
+      {
+        const id = pickItem("kitchen");
+        if (id) usePosStore.getState().addItem(id);
+      }
+      usePosStore.getState().sendOrder();
+      const order = usePosStore.getState().getActiveOrder?.();
+      const cents = Math.max(
+        100,
+        (order?.lines ?? []).reduce((sum, l) => sum + Number(l.quantity ?? 1) * Number(l.unitPriceCents ?? 0), 0) || 1800,
+      );
+      usePosStore.getState().takePayment({
+        method: "cash",
+        amountCents: cents,
+        tipCents: 0,
+        tenderedCents: cents,
+      });
+      break;
+    }
     case "pay": {
+      useNetworkStore.getState().setSimulateWanDown(false);
       ensureOpenCheck();
       const order = usePosStore.getState().getActiveOrder?.();
       const lines = order?.lines ?? [];

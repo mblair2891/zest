@@ -72,7 +72,8 @@ export const ROLE_GUIDE_TOPICS: GuideTopic[] = [
       steps(
         "PIN in. Your home screen is usually Floor or Order.",
         "Seat (or open a counter check). Add items. Send.",
-        "Take Quantum Payments. Do not open a second check for another operator on a host floor.",
+        "Take Quantum Payments when online. If the uplink is down, cash still closes; card requires connection.",
+        "Do not open a second check for another operator on a host floor.",
       ),
       p(
         "On a host + multi-operator floor, food and drinks still live on one guest check. You are not splitting cards by stall.",
@@ -93,7 +94,7 @@ export const ROLE_GUIDE_TOPICS: GuideTopic[] = [
       ),
       steps(
         "PIN into Kitchen or Bar. You see only your station’s tickets.",
-        "Start, bump, or recall. Do not take payment from the KDS.",
+        "Start, bump, or recall. Bump still works offline on this station. Do not take payment from the KDS.",
         "On a host floor, bar tickets belong to the bar operator; kitchen tickets to the kitchen operator.",
       ),
       related("type-food-hall", "type-bar-lounge", "type-restaurant"),

@@ -17,6 +17,8 @@ import { REPORT_GROUP_LABEL, reportsFor } from "@/lib/reports/catalog";
 import { csvFromRows } from "@/lib/reports/metrics";
 import { metricsFromPosStore } from "@/lib/reports/from-store";
 import { analyzeLocationPerformanceFn } from "@/lib/reports/api";
+import { guidedInsights } from "@/lib/reports/rules";
+import { useNetworkStore } from "@/lib/pos/network-store";
 import { isProspectDemo } from "@/lib/demo/session";
 import { speak } from "@/lib/demo/speech";
 import type { LocationInsights, RangeKey, ReportId } from "@/lib/reports/types";
@@ -48,6 +50,7 @@ export function ReportsView() {
   const [operatorId, setOperatorId] = useState<string>(emp?.operatorId ?? "");
   const [reportId, setReportId] = useState<ReportId>("sales-summary");
   const [insights, setInsights] = useState<LocationInsights | null>(null);
+  const wan = useNetworkStore((s) => s.browserOnline && s.healthOk && !s.simulateWanDown);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
 
@@ -76,13 +79,20 @@ export function ReportsView() {
     setBusy(true);
     setErr(null);
     try {
+      if (!useNetworkStore.getState().wanOnline()) {
+        setInsights(guidedInsights(metrics));
+        setTab("ai");
+        return;
+      }
       const res = await analyzeLocationPerformanceFn({
         data: { metrics, isDemo: isProspectDemo() || metrics.isDemo },
       });
       setInsights(res);
       setTab("ai");
     } catch (e) {
-      setErr(e instanceof Error ? e.message : "Could not run insights");
+      setInsights(guidedInsights(metrics));
+      setTab("ai");
+      setErr(e instanceof Error ? e.message : "Cloud AI unavailable — showing guided insights");
     } finally {
       setBusy(false);
     }
@@ -189,6 +199,9 @@ export function ReportsView() {
             <Button size="sm" disabled={busy} onClick={() => void runAi()}>
               {busy ? "Reviewing…" : "Run analysis"}
             </Button>
+            {!wan && (
+              <Badge variant="secondary">Offline · guided insights only</Badge>
+            )}
             {insights && (
               <Button
                 size="sm"

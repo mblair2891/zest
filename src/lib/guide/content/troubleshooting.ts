@@ -16,7 +16,7 @@ export const TROUBLESHOOTING_TOPICS: GuideTopic[] = [
       ul(
         "Can’t see a menu item? Wrong PIN access level or package preview is filtering it.",
         "Kitchen never got an ahead order? Fire mode is on_arrival — guest must check in or staff must mark arrived / fire now.",
-        "Internet died? House Wi‑Fi still runs the floor. Tap the Wi‑Fi chip — card captures queue until the ISP is back.",
+        "Internet died? House Wi‑Fi still runs the floor. Tap the Wi‑Fi chip. Cash still closes. Card requires connection. Outbox syncs when the uplink is back.",
         "Card pay queued? That is Quantum Payments waiting on uplink, not a second processor “failing.”",
         "Can’t seat a table? Section lock. Ask a manager for a grant.",
         "Empty POS, no menu? You are on a live empty start. Add items or finish onboarding.",

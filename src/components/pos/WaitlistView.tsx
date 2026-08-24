@@ -17,6 +17,7 @@ import {
 import { WAITLIST_REASON_LABEL, type WaitlistReason } from "@/lib/front/types";
 import { useNotifyStore } from "@/lib/pos/notify-store";
 import { GuideLearnLink } from "@/components/guide/GuideLearnLink";
+import { useNetworkStore } from "@/lib/pos/network-store";
 
 export function WaitlistView() {
   const waitlistLocal = usePosStore((s) => s.waitlist);
@@ -101,6 +102,19 @@ export function WaitlistView() {
   const addGuest = () => {
     if (!name.trim()) return;
     const partySize = parseInt(party, 10) || 2;
+    const offline = !useNetworkStore.getState().wanOnline();
+    if (offline) {
+      addWaitlist({
+        name: name.trim(),
+        partySize,
+        phone: phone || undefined,
+        quotedMinutes: parseInt(quote, 10) || 15,
+        smsStatus: phone.trim() ? "pending" : "none",
+      });
+      setName("");
+      setPhone("");
+      return;
+    }
     if (phone.trim()) {
       void joinWaitlistFn({
         data: {
@@ -293,6 +307,11 @@ export function WaitlistView() {
                       <span className="text-muted-foreground">
                         · {w.partySize} guests
                       </span>
+                      {w.smsStatus === "pending" && (
+                        <Badge variant="secondary" className="ml-2 text-[10px]">
+                          SMS pending send
+                        </Badge>
+                      )}
                     </p>
                     <p className="text-xs text-muted-foreground">
                       Quoted {w.quotedMinutes}m · waited {waitMin}m

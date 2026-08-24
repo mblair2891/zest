@@ -146,10 +146,19 @@ export const FULL_TOUR: TourDefinition = {
       action: "bump_bar",
     },
     {
+      id: "f-offline",
+      title: "Offline cash",
+      script:
+        "Simulate internet outage from the Wi‑Fi chip. Floor, KDS, and cash still run on the house SSID. Card requires a connection. Cash closes now and the ledger queues once — no double capture when the uplink returns.",
+      selector: "[data-demo='network-chip']",
+      view: "order",
+      action: "offline_cash",
+    },
+    {
       id: "f-pay",
       title: "Quantum Payments",
       script:
-        "One capture under The Laundry. Quantum Payments is the only guest card. There is no Stripe or Square picker on this floor.",
+        "Turn the outage off. One capture under The Laundry. Quantum Payments is the only guest card. There is no Stripe or Square picker on this floor.",
       selector: "[data-demo='order']",
       view: "order",
       action: "pay",

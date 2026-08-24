@@ -21,7 +21,9 @@ import { getDemoType, isProspectDemo, parseDemoType } from "@/lib/demo/session";
 import { useDemoDeviceStore } from "@/lib/demo/device-session";
 import { DemoDeviceSwitcher } from "@/components/demo/DemoDeviceSwitcher";
 import { LoginOnboardingHost } from "@/components/onboarding/LoginOnboardingHost";
+import { NetworkBanner, NetworkWatcher } from "@/components/pos/NetworkStatus";
 import { useDemoLiveSync } from "@/lib/demo/live-sync";
+import { useNetworkStore } from "@/lib/pos/network-store";
 
 type Pane = "home" | "order" | "waitlist" | "checkin" | "book";
 
@@ -141,6 +143,8 @@ export function KioskApp() {
       className="flex min-h-[100dvh] flex-col bg-bg pt-[var(--grok-banner-h,0px)] text-foreground"
     >
       {isProspectDemo() && demoEntered ? <LoginOnboardingHost /> : null}
+      <NetworkWatcher />
+      <NetworkBanner />
       <header className="flex items-center justify-between border-b border-border bg-surface px-4 py-4 sm:px-6">
         <div className="flex items-center gap-3">
           <SummexMark className="h-9 w-9 text-foreground" />
@@ -435,15 +439,17 @@ function WaitlistPane({
     setBusy(true);
     setMsg(null);
     try {
-      const r = await joinWaitlistFn({
-        data: {
-          locationId: loc,
-          name,
-          phone,
-          partySize: Number(party) || 2,
-          ...kioskSignals(),
-        },
-      }).catch(() => null);
+      const r = useNetworkStore.getState().wanOnline()
+        ? await joinWaitlistFn({
+            data: {
+              locationId: loc,
+              name,
+              phone,
+              partySize: Number(party) || 2,
+              ...kioskSignals(),
+            },
+          }).catch(() => null)
+        : null;
       const quoted = r?.entry.quotedMinutes ?? estimate?.minutes ?? 15;
       usePosStore.getState().addWaitlist({
         name,
@@ -451,6 +457,7 @@ function WaitlistPane({
         phone,
         quotedMinutes: quoted,
         status: "waiting",
+        smsStatus: r ? "sent" : "pending",
       });
       useNotifyStore.getState().pushNotice({
         kind: "waitlist_update",
@@ -461,10 +468,10 @@ function WaitlistPane({
         setMsg(
           `You're on the list. ${r.estimateLabel}. A text was ${r.provider === "sandbox" ? "logged (sandbox)" : "sent"} with a remove link.`,
         );
-      } else if (isProspectDemo()) {
-        setMsg("You're on the list (demo). Staff see you on Host stand.");
       } else {
-        setMsg("Could not join");
+        setMsg(
+          "You're on the list. SMS is pending send until internet returns. Staff see you on Host stand.",
+        );
       }
       window.setTimeout(onDone, 3200);
     } catch (e) {

@@ -25,6 +25,7 @@ export type DemoStep = {
     | "waitlist_join"
     | "waitlist_ready"
     | "reservation_seed"
+    | "offline_cash"
     | "none";
 };
 

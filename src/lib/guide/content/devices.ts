@@ -5,38 +5,42 @@ export const DEVICE_TOPICS: GuideTopic[] = [
   topic({
     id: "wifi-offline",
     chapterId: "devices",
-    title: "Wi‑Fi-first & offline outbox",
-    summary: "House SSID keeps the floor alive; the cloud queue waits for the ISP.",
+    title: "Offline mode",
+    summary: "What still runs when internet is down, what waits, and how sync works.",
     roles: "all",
     keywords: ["wifi", "offline", "outbox", "network", "ssid", "internet", "queue"],
     openView: "settings",
     blocks: [
       why(
-        "A dead ISP should not kill dinner. Summex is Wi‑Fi-first: stations talk to a house hub on the staff SSID, not to the cloud, for live checks.",
+        "A dead ISP should not kill dinner. Summex is Wi‑Fi-first: stations talk on the staff SSID. Core service stays on the device even when the uplink is gone.",
       ),
       p(
-        "One business access point (or a small mesh) publishes a staff SSID (default Summex-House) and a guest SSID that never sees POS traffic. Handhelds, KDS, printers, and readers join staff. One station is the house hub and holds live checks.",
+        "The header banner says Offline — changes will sync when back online, or Syncing… when the outbox is flushing. No internet is not the same as no house hub: the Wi‑Fi chip distinguishes a missed API heartbeat from a down access point.",
       ),
       ul(
-        "Works offline through house Wi‑Fi: tables, orders, KDS bump, cash, comps, local gift, clock-in.",
-        "Queues until internet: card capture (Quantum Payments), marketplace orders, cloud gift/loyalty, email/SMS, SaaS billing.",
-        "If the AP itself dies, this terminal still has its local checks. Other stations cannot see each other until Wi‑Fi is back.",
+        "Works offline (cached location): menu, modifiers, tables/sections, staff switcher, open checks, KDS tickets on this station.",
+        "Allow: create/edit orders, send to kitchen/bar (local queue), bump tickets, seat cached tables, cash tender, waitlist add (SMS pending send).",
+        "Needs internet: Quantum Payments card auth, SMS/email send, cloud reporting AI, SaaS admin and billing.",
+        "Card: blocked with “Card requires connection.” Offer cash or hold the tab. Cash never drops a closed check and never double-captures on sync.",
+        "Same-device floor + KDS is always consistent. Cross-device while internet is down is best-effort on LAN (BroadcastChannel + persist). Each device can work on its cache and merge by id when the cloud is back. Server wins on settings.",
       ),
       steps(
-        "Put the AP where dining and kitchen both hear it. Wi‑Fi 6/6E if you can.",
-        "Name a staff SSID and a guest SSID. Isolate guest. Never put POS on guest.",
-        "Designate the drawer / counter tablet as the house hub (Settings → House network).",
-        "Join every station to the staff SSID. Ethernet is optional, never required.",
-        "Tap the Wi‑Fi chip in the header to see peers, the outbox, and to simulate an outage.",
+        "Tap the Wi‑Fi chip (or Settings → House network). Check Simulate internet outage to train.",
+        "Seat, send a ticket, bump on KDS. Take cash. Card stays disabled.",
+        "Turn the outage off. Banner says Syncing… Outbox items apply once (client mutation ids). Failed rows show to the manager as Failed to sync.",
+        "Prospect demos use the same path on demo data only.",
       ),
       shot(
-        "Header Wi‑Fi chip open — peers, queued card captures, simulate outage.",
-        "Network sheet showing house hub, staff SSID, and cloud queue.",
+        "Header Wi‑Fi chip — Simulate internet outage, outbox, failed sync list.",
+        "Network sheet with house SSID, queued cash ledger, and dead-letter rows.",
+      ),
+      warn(
+        "Cache is scoped to this location. Do not expect another tenant’s menu after you leave. PIN switch keeps the house; leaving the location drops the snapshot.",
       ),
       tip(
-        "A second AP (or a cheap mesh node) is the spare part most houses need — not a closet of switches.",
+        "Owner / manager: watch Failed to sync. Server / cashier: cash is the offline tender. Kitchen: bump locally. Host: waitlist SMS is pending send.",
       ),
-      related("printers-kds", "quantum-payments", "troubleshooting", "kds"),
+      related("printers-kds", "quantum-payments", "troubleshooting", "kds", "cash-handling"),
     ],
   }),
   topic({

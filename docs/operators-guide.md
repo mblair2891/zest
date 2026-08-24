@@ -84,6 +84,17 @@ go through `saveLocationSettingsFn` (membership owner/manager/platform_admin).
 
 In-app: `/guide?topic=roles-dashboards` and `/guide?topic=location-settings`.
 
+## Offline mode
+
+Wi‑Fi-first. If internet drops, the active location still runs from cache:
+orders, KDS bump, cash, seating, waitlist (SMS pending). Card is blocked
+(“Card requires connection”). Outbox (IndexedDB) flushes idempotently on
+reconnect — cash never double-captures. Server wins settings; open orders
+merge by id. Failed rows surface to the manager.
+
+In-app: `/guide?topic=wifi-offline`. Demo: Wi‑Fi chip → Simulate internet
+outage → cash order.
+
 ## Reports & AI insights
 
 Location Reports (PIN owner/manager/accountant; vendor own slice; server “my”

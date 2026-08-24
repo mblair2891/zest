@@ -72,6 +72,14 @@ const OWNER: TourDefinition = w(
       view: "settlement",
     },
     {
+      id: "ow-offline",
+      title: "Offline",
+      script:
+        "If internet drops, this house still seats, sends, bumps, and takes cash. Card needs a connection. The Wi‑Fi chip shows the outbox. Failed syncs are yours to clear.",
+      selector: "[data-demo='network-chip']",
+      view: "hq",
+    },
+    {
       id: "ow-done",
       title: "Replay any time",
       script:
@@ -199,6 +207,14 @@ const SERVER: TourDefinition = w(
         "When the pit bumps, you get a toast and the table pulses Up. Run the food. You do not bump tickets from the floor.",
       selector: "[data-demo='floor']",
       view: "floor",
+    },
+    {
+      id: "sv-offline",
+      title: "If the internet dies",
+      script:
+        "Keep selling. Cash and send still work. Card shows Card requires connection. Do not open a second check.",
+      selector: "[data-demo='network-chip']",
+      view: "order",
     },
     {
       id: "sv-done",
@@ -357,6 +373,14 @@ const KITCHEN: TourDefinition = w(
       title: "86",
       script:
         "86 lives on the item, not a sticky note. Servers see it on the next add. Ask a manager if you cannot 86.",
+      selector: "[data-demo='kitchen']",
+      view: "kitchen",
+    },
+    {
+      id: "kt-offline",
+      title: "Offline pit",
+      script:
+        "Tickets already on this station still bump when internet is down. New sends from the floor land if you are on the same device or LAN. Cloud reports wait.",
       selector: "[data-demo='kitchen']",
       view: "kitchen",
     },
