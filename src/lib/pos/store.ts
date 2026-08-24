@@ -70,23 +70,57 @@ import {
   type LocationDevice,
 } from "./location-devices";
 import { laundryLocationDevices } from "./laundry-seed";
+import {
+  DEFAULT_FLOOR_STATUS_CONFIG,
+  deriveTableStatus,
+  FLOOR_STATUS_LABEL,
+  isEmptyTable,
+  normalizeTableStatus,
+  parseFloorStatusConfig,
+  tableFlash,
+} from "./floor-status";
+import { makeTableQrToken, parseQrMode } from "./qr-table";
+import { useNotifyStore } from "./notify-store";
 
 function nextOrderNumber(orders) {
 	return orders.reduce((m, o) => Math.max(m, o.number), 100) + 1;
 }
+function floorCfg() {
+	return parseFloorStatusConfig(usePosStore.getState().settings?.floorStatusConfig ?? DEFAULT_FLOOR_STATUS_CONFIG);
+}
+function ensureGuestCashier(get, set) {
+	if (get().employees.some((e) => e.id === "guest_qr")) return;
+	set({
+		employees: [
+			...get().employees,
+			{
+				id: "guest_qr",
+				name: "Guest QR",
+				pin: "",
+				role: "cashier",
+				color: "#5C5C5C",
+				clockedIn: false,
+				tipsEarned: 0,
+				salesTotal: 0,
+				active: true,
+			},
+		],
+	});
+}
 function tableStatusFromOrder(order) {
-	if (!order || order.status !== "open") return "available";
+	if (!order) return "empty";
+	if (order.status !== "open") return "closed_not_cleaned";
 	const settings = usePosStore.getState().settings ?? SETTINGS;
 	const cardBal = computeTotals(order, settings, { tender: "card" }).balanceCents;
 	const cashBal = computeTotals(order, settings, { tender: "cash" }).balanceCents;
-	if (order.payments.length > 0 && (cardBal <= 0 || cashBal <= 0)) return "paid";
-	if (order.checkPrintedAt) return "check";
-	const sent = order.lines.some((l) => l.sent && !l.voided);
-	const unsent = order.lines.some((l) => !l.sent && !l.voided);
-	if (sent && unsent) return "ordering";
-	if (sent) return "ordered";
-	if (order.lines.length > 0) return "ordering";
-	return "seated";
+	if (order.payments.length > 0 && (cardBal <= 0 || cashBal <= 0)) return "closed_not_cleaned";
+	const tickets = usePosStore.getState().tickets ?? [];
+	return deriveTableStatus(order, tickets, floorCfg());
+}
+function stampStatus(t, status) {
+	const next = normalizeTableStatus(status);
+	if (normalizeTableStatus(t.status) === next) return t;
+	return { ...t, status: next, statusSince: Date.now(), flashNotified: false };
 }
 function emptyShift() {
 	return {
@@ -291,8 +325,26 @@ const usePosStoreRaw = create()(persist((set, get) => ({
 	},
 	tick: () => {
 		const now = Date.now();
+		const cfg = floorCfg();
+		const tables = get().tables.map((t) => {
+			if (t.flashNotified) return t;
+			if (!tableFlash(t, cfg, now)) return t;
+			try {
+				const st = normalizeTableStatus(t.status);
+				useNotifyStore.getState().pushNotice({
+					kind: "sla_alert",
+					title: `SLA · Table ${t.label}`,
+					body: `${st === "reserved" ? "Reserved" : FLOOR_STATUS_LABEL[st]} over the flash threshold`,
+					tableLabel: t.label,
+				});
+			} catch {
+				/* notify optional */
+			}
+			return { ...t, flashNotified: true };
+		});
 		set({
 			clock: now,
+			tables,
 			tickets: get().tickets.map((t) => t.status === "bumped" ? t : {
 				...t,
 				elapsedSec: Math.floor((now - t.createdAt) / 1e3)
@@ -427,7 +479,7 @@ const usePosStoreRaw = create()(persist((set, get) => ({
 		const emp = get().getCurrentEmployee();
 		if (!emp) return { ok: false, error: "Not signed in" };
 		const table = get().tables.find((t) => t.id === tableId);
-		if (!table || table.status !== "available") return { ok: false, error: "Table not available" };
+		if (!table || !isEmptyTable(table.status)) return { ok: false, error: "Table not available" };
 		const access = checkTableAccess(get, table, "seat");
 		if (!access.ok) return { ok: false, error: access.reason, access };
 		const order = {
@@ -451,7 +503,8 @@ const usePosStoreRaw = create()(persist((set, get) => ({
 			orders: [...get().orders, order],
 			tables: get().tables.map((t) => t.id === tableId ? {
 				...t,
-				status: "seated",
+				status: "sat_no_order",
+				statusSince: Date.now(),
 				orderId: order.id,
 				serverId: emp.id,
 				guestCount,
@@ -472,7 +525,8 @@ const usePosStoreRaw = create()(persist((set, get) => ({
 	markClean: (tableId) => {
 		set({ tables: get().tables.map((t) => t.id === tableId ? {
 			...t,
-			status: "available",
+			status: "empty",
+			statusSince: Date.now(),
 			orderId: void 0,
 			serverId: void 0,
 			guestCount: void 0,
@@ -486,7 +540,8 @@ const usePosStoreRaw = create()(persist((set, get) => ({
 			tables: get().tables.map((t) => {
 				if (t.id === tableId || childIds.includes(t.id)) return {
 					...t,
-					status: "dirty",
+					status: "closed_not_cleaned",
+					statusSince: Date.now(),
 					orderId: void 0,
 					serverId: void 0,
 					guestCount: void 0,
@@ -505,7 +560,7 @@ const usePosStoreRaw = create()(persist((set, get) => ({
 			ok: false,
 			error: "Source has no check"
 		};
-		if (!to || to.status !== "available") return {
+		if (!to || !isEmptyTable(to.status)) return {
 			ok: false,
 			error: "Target not available"
 		};
@@ -516,7 +571,8 @@ const usePosStoreRaw = create()(persist((set, get) => ({
 			tables: get().tables.map((t) => {
 				if (t.id === fromId) return {
 					...t,
-					status: "dirty",
+					status: "closed_not_cleaned",
+					statusSince: Date.now(),
 					orderId: void 0,
 					serverId: void 0,
 					guestCount: void 0,
@@ -619,7 +675,8 @@ const usePosStoreRaw = create()(persist((set, get) => ({
 				if (children.includes(t.id)) return {
 					...t,
 					mergedIntoId: void 0,
-					status: "available",
+					status: "empty",
+					statusSince: Date.now(),
 					orderId: void 0
 				};
 				return t;
@@ -696,7 +753,7 @@ const usePosStoreRaw = create()(persist((set, get) => ({
 			ok: false,
 			error: "Item unavailable"
 		};
-		if (order.tableId) {
+		if (order.tableId && get().currentEmployeeId !== "guest_qr") {
 			const table = get().tables.find((t) => t.id === order.tableId);
 			if (table) {
 				const access = checkTableAccess(get, table, "order");
@@ -734,10 +791,7 @@ const usePosStoreRaw = create()(persist((set, get) => ({
 		set({
 			orders: get().orders.map((o) => o.id === order.id ? updated : o),
 			selectedLineId: line.id,
-			tables: order.tableId ? get().tables.map((t) => t.id === order.tableId ? {
-				...t,
-				status: tableStatusFromOrder(updated)
-			} : t) : get().tables,
+			tables: order.tableId ? get().tables.map((t) => t.id === order.tableId ? stampStatus(t, tableStatusFromOrder(updated)) : t) : get().tables,
 			menuItems: item.trackStock && item.stock != null ? get().menuItems.map((m) => m.id === item.id ? {
 				...m,
 				stock: Math.max(0, (m.stock ?? 0) - line.quantity)
@@ -892,10 +946,7 @@ const usePosStoreRaw = create()(persist((set, get) => ({
 		set({
 			orders: get().orders.map((o) => o.id === order.id ? updated : o),
 			tickets: [...newTickets, ...get().tickets],
-			tables: order.tableId ? get().tables.map((t) => t.id === order.tableId ? {
-				...t,
-				status: tableStatusFromOrder(updated)
-			} : t) : get().tables
+			tables: order.tableId ? get().tables.map((t) => t.id === order.tableId ? stampStatus(t, tableStatusFromOrder(updated)) : t) : get().tables
 		});
 		get().audit("send", `Order #${order.number} · ${toSend.length} items`);
 		noteOrderSent({
@@ -950,7 +1001,8 @@ const usePosStoreRaw = create()(persist((set, get) => ({
 			orders: get().orders.map((o) => o.id === order.id ? updated : o),
 			tables: order.tableId ? get().tables.map((t) => t.id === order.tableId ? {
 				...t,
-				status: "check"
+				status: "food_completed",
+				statusSince: Date.now(),
 			} : t) : get().tables
 		});
 	},
@@ -1050,7 +1102,8 @@ const usePosStoreRaw = create()(persist((set, get) => ({
 				const childIds = order.mergedTableIds ?? [];
 				tables = tables.map((t) => t.id === order.tableId || childIds.includes(t.id) ? {
 					...t,
-					status: "paid"
+					status: "closed_not_cleaned",
+					statusSince: Date.now(),
 				} : t);
 			}
 		} else if (order.tableId) tables = tables.map((t) => t.orderId === order.id ? {
@@ -1115,11 +1168,21 @@ const usePosStoreRaw = create()(persist((set, get) => ({
 	},
 	bumpTicket: (ticketId) => {
 		const ticket = get().tickets.find((t) => t.id === ticketId);
-		set({ tickets: get().tickets.map((t) => t.id === ticketId ? {
+		const tickets = get().tickets.map((t) => t.id === ticketId ? {
 			...t,
 			status: "bumped",
 			bumpedAt: Date.now()
-		} : t) });
+		} : t);
+		set({ tickets });
+		if (ticket?.orderId) {
+			const order = get().orders.find((o) => o.id === ticket.orderId);
+			if (order?.tableId) {
+				const st = deriveTableStatus(order, tickets, floorCfg());
+				set({
+					tables: get().tables.map((tb) => tb.id === order.tableId ? stampStatus(tb, st) : tb),
+				});
+			}
+		}
 		noteTicketBump({ ticketId, orderNumber: ticket?.orderNumber });
 	},
 	recallTicket: (ticketId) => {
@@ -1557,9 +1620,118 @@ const usePosStoreRaw = create()(persist((set, get) => ({
 			w: partial.w ?? 12,
 			h: partial.h ?? 12,
 			shape: partial.shape ?? "round",
-			status: "available"
+			kind: partial.kind ?? (partial.shape === "bar" ? "barstool" : partial.shape === "booth" ? "booth" : "table"),
+			status: "empty",
+			statusSince: Date.now(),
+			qrToken: makeTableQrToken(id, partial.label ?? String(n)),
 		}] });
 		return id;
+	},
+	setTableStatus: (tableId, status) => {
+		const emp = get().getCurrentEmployee();
+		const cfg = floorCfg();
+		if (emp && !cfg.changeRoles.includes(emp.role) && emp.role !== "owner") return { ok: false, error: "Not allowed to change table status" };
+		const next = normalizeTableStatus(status);
+		if (next === "empty") {
+			get().markClean(tableId);
+			return { ok: true };
+		}
+		set({
+			tables: get().tables.map((t) => t.id === tableId ? { ...t, status: next, statusSince: Date.now() } : t),
+		});
+		get().audit("floor", `Table status ${next}`);
+		return { ok: true };
+	},
+	guestOpenTable: (tableId) => {
+		const mode = parseQrMode(get().settings.qrMode);
+		const table = get().tables.find((t) => t.id === tableId);
+		if (!table) return { ok: false, error: "Unknown table" };
+		if (mode === "pay_only") return { ok: false, error: "This table QR is pay only — ask staff to order" };
+		if (table.orderId) {
+			set({ activeOrderId: table.orderId, activeTableId: tableId });
+			return { ok: true };
+		}
+		if (mode === "hybrid" && isEmptyTable(table.status)) {
+			return { ok: false, error: "Ask staff to seat you first, then add follow-ups here" };
+		}
+		const order = {
+			id: uid("ord"),
+			number: nextOrderNumber(get().orders),
+			type: "dine_in",
+			tableId,
+			guestCount: table.seats || 2,
+			serverId: "guest_qr",
+			serverName: "Guest QR",
+			lines: [],
+			payments: [],
+			status: "open",
+			discountPercent: 0,
+			discountCents: 0,
+			autoGratApplied: false,
+			serviceChargeCents: 0,
+			createdAt: Date.now(),
+		};
+		set({
+			orders: [...get().orders, order],
+			tables: get().tables.map((t) => t.id === tableId ? {
+				...t,
+				status: "sat_no_order",
+				statusSince: Date.now(),
+				orderId: order.id,
+				guestCount: order.guestCount,
+				seatedAt: Date.now(),
+			} : t),
+			activeOrderId: order.id,
+			activeTableId: tableId,
+		});
+		return { ok: true };
+	},
+	guestAddToTable: (tableId, menuItemId) => {
+		ensureGuestCashier(get, set);
+		const prev = get().currentEmployeeId;
+		set({ currentEmployeeId: "guest_qr" });
+		const opened = get().guestOpenTable(tableId);
+		if (!opened.ok) {
+			set({ currentEmployeeId: prev });
+			return opened;
+		}
+		const res = get().addItem(menuItemId);
+		set({ currentEmployeeId: prev });
+		return res;
+	},
+	guestSendOrder: (tableId) => {
+		const table = get().tables.find((t) => t.id === tableId);
+		if (!table?.orderId) return { ok: false, error: "No open check" };
+		set({ activeOrderId: table.orderId, activeTableId: tableId });
+		get().sendOrder();
+		return { ok: true };
+	},
+	rotateTableQr: (tableId) => {
+		const table = get().tables.find((t) => t.id === tableId);
+		if (!table) return { ok: false, error: "Not found" };
+		const token = makeTableQrToken(`${tableId}${Date.now()}`, table.label);
+		set({
+			tables: get().tables.map((t) => t.id === tableId ? { ...t, qrToken: token } : t),
+		});
+		return { ok: true, token };
+	},
+	guestPayOrder: (orderId) => {
+		const order = get().orders.find((o) => o.id === orderId);
+		if (!order) return { ok: false, error: "Check not found" };
+		if (order.status !== "open") return { ok: false, error: "Check already closed" };
+		const totals = computeTotals(order, get().settings, { tender: "card" });
+		if (totals.balanceCents <= 0) return { ok: false, error: "Already paid" };
+		const prev = get().currentEmployeeId;
+		ensureGuestCashier(get, set);
+		set({ currentEmployeeId: "guest_qr", activeOrderId: orderId });
+		const res = get().takePayment({
+			method: "card",
+			amountCents: totals.balanceCents,
+			tipCents: 0,
+			last4: "4242",
+		});
+		set({ currentEmployeeId: prev });
+		return res;
 	},
 	removeFloorTable: (id) => {
 		const t = get().tables.find((x) => x.id === id);
@@ -2072,6 +2244,10 @@ const usePosStoreRaw = create()(persist((set, get) => ({
 				...current.settings,
 				...p.settings,
 				sectionPolicy: { ...DEFAULT_SECTION_POLICY, ...(p.settings && p.settings.sectionPolicy) },
+				floorStatusConfig: parseFloorStatusConfig(
+					(p.settings && p.settings.floorStatusConfig) ?? current.settings?.floorStatusConfig,
+				),
+				qrMode: parseQrMode((p.settings && p.settings.qrMode) ?? current.settings?.qrMode),
 				voiceControlEnabledByRole: {
 					...(p.settings && p.settings.voiceControlEnabledByRole),
 				},
@@ -2083,6 +2259,13 @@ const usePosStoreRaw = create()(persist((set, get) => ({
 						}
 					: { multiTenantHallMode: false })
 			},
+			tables: (p.tables || current.tables || []).map((t) => ({
+				...t,
+				status: normalizeTableStatus(t.status),
+				statusSince: t.statusSince || t.seatedAt || Date.now(),
+				qrToken: t.qrToken || makeTableQrToken(t.id, t.label),
+				kind: t.kind || (t.shape === "bar" ? "barstool" : "table"),
+			})),
 			floorSections: (p.floorSections && p.floorSections.length) ? p.floorSections : current.floorSections,
 			extraTableGrants: p.extraTableGrants || current.extraTableGrants || [],
 			chargebacks: p.chargebacks || current.chargebacks || [],

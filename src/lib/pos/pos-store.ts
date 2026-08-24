@@ -25,6 +25,7 @@ import type {
   SettlementConfig,
   SettlementPeriod,
   Table,
+  TableStatus,
   TicketStation,
   Vendor,
   VenueEntityId,
@@ -125,6 +126,12 @@ export interface PosStore {
   selectTable: (tableId: string) => ActionResult<{ access?: SectionAccess }>;
   seatTable: (tableId: string, guestCount: number) => ActionResult;
   markClean: (tableId: string) => void;
+  setTableStatus: (tableId: string, status: TableStatus) => ActionResult;
+  guestOpenTable: (tableId: string) => ActionResult;
+  guestAddToTable: (tableId: string, menuItemId: string) => ActionResult;
+  guestSendOrder: (tableId: string) => ActionResult;
+  guestPayOrder: (orderId: string) => ActionResult;
+  rotateTableQr: (tableId: string) => ActionResult<{ token?: string }>;
   clearTable: (tableId: string) => void;
   transferTable: (fromId: string, toId: string) => ActionResult;
   mergeTables: (primaryId: string, childId: string) => ActionResult;

@@ -19,14 +19,14 @@ export const ESTABLISHMENT_TYPE_TOPICS: GuideTopic[] = [
       ),
       ul(
         "Stations: host stand, dining sections, optional bar, kitchen / expo.",
-        "Floor: color-coded sections. Host seats; servers keep the check.",
+        "Floor: drag-and-drop layout, color-coded statuses, optional SLA flash. Host seats; servers keep the check.",
         "Typical nav: Floor, Order, Kitchen, Bar, Cash, Menu.",
       ),
       steps(
-        "Seat a table from the floor map.",
-        "Add food and drinks on one check.",
+        "Seat a table from the floor map (or draw the room in Floor editor).",
+        "Add food and drinks on one check. Status colors move as you send.",
         "Send — kitchen sees plates, bar sees drinks.",
-        "Print and take Quantum Payments once. Close the table.",
+        "Print a check with pay QR, or take Quantum Payments once. Closed tables need bus, then empty.",
       ),
       ul(
         "Access: owner, manager, server, host stand, bartender, kitchen, busser, cashier, accountant.",
@@ -45,7 +45,7 @@ export const ESTABLISHMENT_TYPE_TOPICS: GuideTopic[] = [
         "Open restaurant guided demo",
         "Seat, course, pay — then waitlist and check-in.",
       ),
-      related("type-food-hall", "feature-waitlist", "feature-kiosk", "prospect-demos"),
+      related("type-food-hall", "floor-editor", "floor-status", "table-qr", "feature-waitlist", "feature-kiosk", "prospect-demos"),
     ],
   }),
   topic({
@@ -75,7 +75,7 @@ export const ESTABLISHMENT_TYPE_TOPICS: GuideTopic[] = [
         "Host brand — guest-facing name on the receipt (example: The Laundry).",
         "Bar operator — drinks and bar tickets (example: Steam Distillery).",
         "Kitchen operator — food and kitchen tickets (example: Diamond House BBQ).",
-        "Stations: host stand / floor, bar KDS, kitchen KDS, shared cash.",
+        "Stations: host stand / floor (color-coded map + table QR), bar KDS, kitchen KDS, shared cash.",
       ),
       steps(
         "Seat under the host. Do not open a second check for the other operator.",

@@ -24,14 +24,25 @@ export type VenueEntityId =
 export type EntityId = VenueEntityId | "saas";
 
 export type TableStatus =
+  | "empty"
+  | "sat_no_order"
+  | "ordered_drinks"
+  | "ordered_food"
+  | "food_delivered"
+  | "food_completed"
+  | "closed_not_cleaned"
+  | "reserved"
   | "available"
   | "seated"
   | "ordering"
   | "ordered"
   | "check"
   | "paid"
-  | "dirty"
-  | "reserved";
+  | "dirty";
+
+export type TableKind = "table" | "booth" | "barstool" | "other";
+
+export type QrMode = "full" | "hybrid" | "pay_only";
 
 export type OrderType =
   | "dine_in"
@@ -201,6 +212,8 @@ export interface RestaurantSettings {
   requirePinToBump?: boolean;
   /** Host policy: which access levels may use the mic. */
   voiceControlEnabledByRole?: Partial<Record<EmployeeRole, boolean>>;
+  floorStatusConfig?: import("./floor-status").FloorStatusConfig;
+  qrMode?: QrMode;
 }
 
 export interface Employee {
@@ -292,12 +305,17 @@ export interface Table {
   y: number;
   w: number;
   h: number;
-  shape: "rect" | "round" | "bar";
+  shape: "rect" | "round" | "bar" | "booth" | "other";
+  kind?: TableKind;
   status: TableStatus;
   orderId?: string;
   serverId?: string;
   guestCount?: number;
   seatedAt?: number;
+  statusSince?: number;
+  qrToken?: string;
+  /** Set when an SLA flash notice has already been pushed for this status. */
+  flashNotified?: boolean;
   locationId?: string;
   mergedIntoId?: string;
   mergedChildIds?: string[];

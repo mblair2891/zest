@@ -71,7 +71,7 @@ export const ROLE_GUIDE_TOPICS: GuideTopic[] = [
       ),
       steps(
         "PIN in. Your home screen is usually Floor or Order.",
-        "Seat (or open a counter check). Add items. Send.",
+        "Seat (or open a counter check). Tap a table to change status or preview QR. Add items. Send.",
         "Take Quantum Payments when online. If the uplink is down, cash still closes; card requires connection.",
         "Do not open a second check for another operator on a host floor.",
       ),

@@ -70,6 +70,22 @@ export const FULL_TOUR: TourDefinition = {
       action: "seat",
     },
     {
+      id: "f-editor",
+      title: "Floor editor",
+      script:
+        "Owner and host stand drag tables, booths, and barstools. Resize from the corner. The live floor is this layout, not a list.",
+      selector: "[data-demo='floor-editor']",
+      view: "floor_editor",
+    },
+    {
+      id: "f-status",
+      title: "Status and flash",
+      script:
+        "Empty, sat, drinks, food, delivered, unpaid, needs bus. Colors are host-mapped. Sit too long and the table flashes.",
+      selector: "[data-demo='floor']",
+      view: "floor",
+    },
+    {
       id: "f-roles",
       title: "Access levels",
       script:
@@ -259,6 +275,30 @@ function typeTour(type: VenueEntityId): TourDefinition {
           selector: "[data-demo='floor']",
           view: "floor",
           action: "seat",
+        },
+        {
+          id: "l-editor",
+          title: "Draw the room",
+          script:
+            "Host owner drags tables on The Laundry floor. Dining and Bar are rooms. Tokens stay on the host, not Steam or Diamond House.",
+          selector: "[data-demo='floor-editor']",
+          view: "floor_editor",
+        },
+        {
+          id: "l-flash",
+          title: "Status flash",
+          script:
+            "Sat with no order flashes in seconds on this demo. Closed and dirty flashes too. A status change clears it.",
+          selector: "[data-demo='floor']",
+          view: "floor",
+        },
+        {
+          id: "l-qr",
+          title: "Table QR",
+          script:
+            "Hybrid QR: staff starts the check. Guests add follow-ups. Pay is Quantum Payments once under The Laundry, Steam and Diamond lines still tagged.",
+          selector: "[data-demo='table-detail']",
+          view: "floor",
         },
         {
           id: "l-roles",
@@ -507,6 +547,30 @@ function typeTour(type: VenueEntityId): TourDefinition {
         selector: "[data-demo='floor']",
         view: "floor",
         action: "seat",
+      },
+      {
+        id: `${type}-editor`,
+        title: "Floor editor",
+        script:
+          "Drag tables and booths. The live map is this layout. Each seat has a table QR.",
+        selector: "[data-demo='floor-editor']",
+        view: "floor_editor",
+      },
+      {
+        id: `${type}-flash`,
+        title: "Colors and flash",
+        script:
+          "Status colors move as you send. Wait a few seconds on sat with no order and the table pulses.",
+        selector: "[data-demo='floor']",
+        view: "floor",
+      },
+      {
+        id: `${type}-qr`,
+        title: "Table QR pay",
+        script:
+          "Hybrid by default: staff seats, guests add follow-ups, pay QR closes with Quantum Payments.",
+        selector: "[data-demo='table-detail']",
+        view: "floor",
       },
       {
         id: `${type}-order`,

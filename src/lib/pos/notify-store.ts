@@ -7,7 +7,8 @@ export type PosNoticeKind =
   | "ticket_bumped"
   | "ticket_recalled"
   | "guest_checked_in"
-  | "waitlist_update";
+  | "waitlist_update"
+  | "sla_alert";
 
 export interface PosNotice {
   id: string;
@@ -63,6 +64,9 @@ export function noticeVisibleTo(
   if (!emp) return false;
   const role: EmployeeRole = emp.role;
   if (role === "owner" || role === "manager" || role === "host" || role === "accountant") return true;
+  if (n.kind === "sla_alert") {
+    return role === "server" || role === "busser" || role === "cashier";
+  }
   if (n.kind === "guest_checked_in" || n.kind === "waitlist_update") {
     return role === "server" || role === "cashier";
   }

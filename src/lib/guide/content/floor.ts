@@ -1,4 +1,4 @@
-import { callout, p, related, shot, steps, tip, topic, ul, warn, why } from "./helpers";
+import { callout, ol, p, related, shot, steps, tip, topic, ul, warn, why } from "./helpers";
 import type { GuideTopic } from "../types";
 
 export const FLOOR_TOPICS: GuideTopic[] = [
@@ -15,7 +15,7 @@ export const FLOOR_TOPICS: GuideTopic[] = [
         "The floor map is the live picture of the room. If table state is wrong, kitchen, payment, and turns all drift.",
       ),
       p(
-        "Each table shows a status: open, seated, ordering, fired, check, paid, reserved, or dirty. A color bar is the section (Dining, Booth, Bar, or custom).",
+        "Each table is colored by dining status: empty, sat with no order, drinks fired, food fired, food delivered, dining unpaid, or closed and needs bus. A color bar on the top edge is the section (Dining, Booth, Bar, or a custom room). When a status sits past its flash minutes, the table pulses.",
       ),
       shot(
         "Floor map with section color bars and an Up badge on a table whose food was just bumped.",
@@ -25,9 +25,9 @@ export const FLOOR_TOPICS: GuideTopic[] = [
         "Open Floor. Filter All, Mine (your sections), or a named section.",
         "Tap an open table. Enter party size and confirm the server if prompted.",
         "Jump to Order to build items, or stay on Floor to watch status.",
-        "After pay, the table goes paid → dirty. Busser or server marks it clean for the next turn.",
+        "After pay, the table goes closed · needs bus. Busser or server marks it cleaned and it returns to empty.",
       ),
-      related("sections", "checks-comps", "counter-vs-table", "kds"),
+      related("floor-status", "floor-editor", "table-qr", "sections", "checks-comps", "counter-vs-table", "kds"),
     ],
   }),
   topic({
@@ -53,7 +53,7 @@ export const FLOOR_TOPICS: GuideTopic[] = [
         "Open Staff. Tap section chips on a person (Dining / Booth / Bar).",
         "Use Grant to give one overflow table (shift or seating).",
         "Open Settings → Section control for lock rules.",
-        "Recolor or rename sections in the Floor editor.",
+        "Recolor or rename rooms in the Floor editor. Drag tables; use the corner handle to resize.",
       ),
       tip(
         "The floor paints a color bar on every table so the room is readable at a glance — including for a host walking the floor.",
@@ -125,11 +125,119 @@ export const FLOOR_TOPICS: GuideTopic[] = [
       ),
       steps(
         "Open Host / Waitlist. Add a walk-in with party size and quoted wait.",
-        "When a table in the right section is open, Seat onto that table.",
+        "When a table in the right section is empty on the color-coded floor, seat onto that table.",
+        "Tap a table to change status, preview QR, or jump to the check. Server PIN sessions can update status and open the order.",
         "The assigned server (or the section default) owns the check from there.",
         "Respect section locks — a manager grant is required to seat across sections.",
       ),
-      related("floor-tables", "sections", "invites-roles"),
+      related("floor-tables", "floor-status", "table-qr", "sections", "invites-roles"),
+    ],
+  }),
+  topic({
+    id: "floor-editor",
+    chapterId: "floor",
+    title: "Floorplan editor",
+    summary: "Drag-and-drop rooms, tables, booths, and barstools. The live floor uses the same layout.",
+    roles: ["owner_manager", "host_operator"],
+    keywords: ["floor editor", "drag", "resize", "booth", "barstool", "layout", "room"],
+    openView: "floor_editor",
+    blocks: [
+      why(
+        "The runtime floor is the saved layout — not a list. If the map is wrong, hosts seat the wrong room and QR tokens sit on the wrong sticker.",
+      ),
+      ul(
+        "Owner, manager, and host stand draw the room.",
+        "Place table, booth, barstool, or other. Drag to move. Corner handle resizes.",
+        "Properties: label, seats, room/section, shape, kind. Each seat gets a stable table QR token.",
+        "Rooms are sections. Multi-room houses switch rooms in the editor and on the live floor.",
+        "Layout saves per location as you edit. Rotate a token if a sticker is compromised.",
+      ),
+      steps(
+        "Open Floor → Floor editor (or Floor editor in nav).",
+        "Add a table, booth, or barstool. Drag it onto the canvas. Resize from the corner.",
+        "Set label, seats, and room. Show QR and copy the guest link.",
+        "Return to Floor. The live map uses this layout and the status colors from Settings.",
+      ),
+      tip(
+        "On The Laundry demo, Dining and Bar are two rooms on one host floor. Tokens stay bound to The Laundry, not Steam or Diamond House.",
+      ),
+      related("floor-tables", "floor-status", "table-qr", "sections"),
+    ],
+  }),
+  topic({
+    id: "floor-status",
+    chapterId: "floor",
+    title: "Table statuses, colors & flash",
+    summary: "Pipeline from empty to cleaned, host-mapped colors, SLA flash.",
+    roles: ["owner_manager", "server", "host_operator"],
+    keywords: ["status", "flash", "SLA", "color", "sat", "bus", "cleaned"],
+    openView: "settings",
+    blocks: [
+      why(
+        "Color is how a host reads the room from the stand. Flash is how a table that sat too long gets attention without a radio call.",
+      ),
+      ol(
+        "Empty",
+        "Sat · no order",
+        "Drinks fired",
+        "Food fired",
+        "Food delivered",
+        "Dining · unpaid",
+        "Closed · needs bus — cleaned returns to empty",
+      ),
+      p(
+        "Host settings choose which steps are on, the color per status, flash minutes (0/blank = off), who may tap a status (server, host, manager), and who may seat (host stand, manager, or both).",
+      ),
+      ul(
+        "Auto: first drink send → drinks fired; food send → food fired; kitchen bump → delivered then dining unpaid; pay complete → closed · needs bus.",
+        "Manual: tap a table on Floor and pick a status. Busser typically marks cleaned.",
+        "When minutes are exceeded the table pulses and a staff notice fires. A status change clears the flash.",
+      ),
+      steps(
+        "Settings → Floor statuses, flash & QR.",
+        "Turn steps on or off. Map colors. Set flash minutes (demo houses use seconds so you can watch it).",
+        "Seat a table and wait past the sat · no order threshold to see the pulse.",
+      ),
+      callout(
+        "Demo",
+        "The Laundry and restaurant demos flash sat · no order in about 9 seconds and closed · needs bus in about 7 seconds so a tour can show SLA without waiting ten minutes.",
+      ),
+      related("floor-tables", "floor-editor", "table-qr", "host-stand"),
+    ],
+  }),
+  topic({
+    id: "table-qr",
+    chapterId: "floor",
+    title: "QR order & pay",
+    summary: "Full, hybrid, or pay-only table QR. Guest pays with Quantum Payments on the host check.",
+    roles: ["owner_manager", "server", "host_operator"],
+    keywords: ["QR", "table QR", "pay QR", "hybrid", "full QR", "token"],
+    openView: "settings",
+    blocks: [
+      why(
+        "The sticker on the table is a deep link to that seat at this location. Guests add to the open host check. Capture is always Quantum Payments under the host brand.",
+      ),
+      ul(
+        "A · Full QR — menu, order, and pay at the table.",
+        "B · Hybrid — staff seats and starts the check; guests add follow-up food and drinks on the open check.",
+        "C · Pay QR only — staff orders; the guest pays via table QR or the printed check QR.",
+        "Links: /t/{token} (stable) or /table/{label}. Pay: add ?pay=1. Demo links add ?demo={type} and only hydrate that demo house.",
+      ),
+      steps(
+        "Pick the QR mode in Settings → Floor statuses, flash & QR.",
+        "Print or copy the table QR from Floor (tap a table) or Floor editor.",
+        "On Order, Check prints a pay QR for the open ticket.",
+        "Guest scan adds to that table’s check when the mode allows. Hybrid will not open an empty table.",
+        "Pay is Quantum Payments on the host check. Multi-operator lines keep Steam vs Diamond tags; the card is still one host capture.",
+      ),
+      warn(
+        "Tokens are location-scoped. Rotate a token if a sticker walks. Demo QR never writes a live tenant.",
+      ),
+      callout(
+        "How to try it",
+        "On The Laundry demo, seat table 1, open its table QR, add a Steam drink, send, then open pay QR and close with Quantum Payments.",
+      ),
+      related("floor-tables", "floor-status", "quantum-payments", "host-capture", "type-food-hall"),
     ],
   }),
 ];

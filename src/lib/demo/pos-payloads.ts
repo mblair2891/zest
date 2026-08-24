@@ -21,6 +21,11 @@ import type {
   VenueEntityId,
 } from "@/lib/pos/types";
 import { DEMO_CATALOG, demoLocationId, demoOrgId } from "./catalog";
+import {
+  DEFAULT_FLOOR_STATUS_CONFIG,
+  DEMO_FLASH_MINUTES,
+} from "@/lib/pos/floor-status";
+import { makeTableQrToken } from "@/lib/pos/qr-table";
 
 function allPackageIds(): PackageId[] {
   return SUMMEX_PACKAGES.map((p) => p.id);
@@ -179,12 +184,20 @@ function demoTables(type: VenueEntityId, locationId: string): Table[] {
         w: 16,
         h: 10,
         shape: "rect",
-        status: "available",
+        status: "empty",
+        kind: "other",
+        qrToken: makeTableQrToken("t_counter", "C1"),
         locationId,
       },
     ];
   }
-  return starterTables().map((t) => ({ ...t, locationId }));
+  return starterTables().map((t) => ({
+    ...t,
+    locationId,
+    kind: t.shape === "bar" ? "barstool" : t.shape === "booth" ? "booth" : "table",
+    qrToken: makeTableQrToken(t.id, t.label),
+    status: "empty" as const,
+  }));
 }
 
 function demoSections(type: VenueEntityId): FloorSection[] {
@@ -225,6 +238,11 @@ export function demoPosSlice(type: VenueEntityId) {
   settings.cashDiscountPercent = 5;
   settings.cashRoundIncrement = 0.25;
   settings.cashRoundMode = "up";
+  settings.qrMode = "hybrid";
+  settings.floorStatusConfig = {
+    ...DEFAULT_FLOOR_STATUS_CONFIG,
+    flashMinutes: { ...DEMO_FLASH_MINUTES },
+  };
   const vendor: Vendor = {
     ...starterVendor(),
     id: `vnd_demo_${type}`,

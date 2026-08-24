@@ -35,6 +35,9 @@ import { cn, formatCurrency } from "@/lib/utils";
 import { ModifierDialog } from "./ModifierDialog";
 import { PaymentDialog } from "./PaymentDialog";
 import { ManagerPinDialog } from "./ManagerPinDialog";
+import { QrMark } from "./QrMark";
+import { tableGuestPath } from "@/lib/pos/qr-table";
+import { getDemoType } from "@/lib/demo/session";
 
 export function OrderView() {
   const activeOrderId = usePosStore((s) => s.activeOrderId);
@@ -76,6 +79,7 @@ export function OrderView() {
   const [noteDraft, setNoteDraft] = useState("");
   const [search, setSearch] = useState("");
   const [vendorFilter, setVendorFilter] = useState<string | null>(null);
+  const [payQrOpen, setPayQrOpen] = useState(false);
 
   const happy = isHappyHour(settings);
   const table = tables.find((t) => t.id === order?.tableId);
@@ -412,7 +416,13 @@ export function OrderView() {
             <StickyNote className="h-4 w-4" />
             Note
           </Button>
-          <Button variant="outline" onClick={() => printCheck()}>
+          <Button
+            variant="outline"
+            onClick={() => {
+              printCheck();
+              if (table) setPayQrOpen(true);
+            }}
+          >
             <Printer className="h-4 w-4" />
             Check
           </Button>
@@ -635,6 +645,41 @@ export function OrderView() {
             >
               Save
             </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      <Dialog open={payQrOpen} onOpenChange={setPayQrOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Pay QR on the check</DialogTitle>
+          </DialogHeader>
+          {table ? (
+            <div className="space-y-3 text-center">
+              <p className="text-sm text-muted-foreground">
+                Guest scans to pay this table with Quantum Payments. Print sits
+                with the ticket; the QR is bound to table {table.label}.
+              </p>
+              <QrMark
+                value={`${typeof window === "undefined" ? "" : window.location.origin}${tableGuestPath(table, { pay: true, demoType: getDemoType() })}`}
+                caption={`Table ${table.label} · pay`}
+              />
+              <a
+                className="block text-sm underline"
+                href={tableGuestPath(table, {
+                  pay: true,
+                  demoType: getDemoType(),
+                })}
+              >
+                Open pay sandbox
+              </a>
+            </div>
+          ) : (
+            <p className="text-sm text-muted-foreground">
+              No table on this check — pay at the register.
+            </p>
+          )}
+          <DialogFooter>
+            <Button onClick={() => setPayQrOpen(false)}>Done</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

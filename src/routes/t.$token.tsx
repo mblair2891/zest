@@ -1,20 +1,20 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { GuestTablePage } from "@/components/pos/GuestTablePage";
 
-export const Route = createFileRoute("/table/$label")({
+export const Route = createFileRoute("/t/$token")({
   ssr: false,
-  component: TableQrOrderPage,
+  component: TokenTablePage,
 });
 
-function TableQrOrderPage() {
-  const { label } = Route.useParams();
+function TokenTablePage() {
+  const { token } = Route.useParams();
   const search =
     typeof window === "undefined"
       ? {}
       : Object.fromEntries(new URLSearchParams(window.location.search));
   return (
     <GuestTablePage
-      label={label}
+      token={token}
       payOnly={search.pay === "1"}
       demoHint={typeof search.demo === "string" ? search.demo : undefined}
     />

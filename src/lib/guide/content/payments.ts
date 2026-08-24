@@ -34,7 +34,7 @@ export const PAYMENT_TOPICS: GuideTopic[] = [
       warn(
         "Do not connect a second processor “just for events.” It is not available, and it would break host capture on a multi-operator check.",
       ),
-      related("tenders-tips", "host-capture", "chargebacks", "wifi-offline"),
+      related("tenders-tips", "host-capture", "table-qr", "chargebacks", "wifi-offline"),
     ],
   }),
   topic({

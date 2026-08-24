@@ -7,6 +7,8 @@ import {
   Combine,
   Split,
   Lock,
+  QrCode,
+  Pencil,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -22,7 +24,22 @@ import { usePosStore } from "@/lib/pos/store";
 import { useNotifyStore } from "@/lib/pos/notify-store";
 import { usePlatformStore } from "@/lib/pos/platform-store";
 import { useSaasStore } from "@/lib/pos/saas-store";
-import type { Table, TableStatus } from "@/lib/pos/types";
+import type { Table } from "@/lib/pos/types";
+import {
+  FLOOR_PIPELINE,
+  FLOOR_STATUS_LABEL,
+  canChangeTableStatus,
+  canEditFloorplan,
+  canSeatTable,
+  contrastInk,
+  isEmptyTable,
+  normalizeTableStatus,
+  parseFloorStatusConfig,
+  tableFlash,
+  type FloorPipelineStatus,
+} from "@/lib/pos/floor-status";
+import { QR_MODE_LABEL, parseQrMode, tableGuestPath } from "@/lib/pos/qr-table";
+import { getDemoType } from "@/lib/demo/session";
 import { cn, formatCurrency, formatTime } from "@/lib/utils";
 import { computeTotals } from "@/lib/pos/calculations";
 import {
@@ -34,58 +51,14 @@ import {
 } from "@/lib/pos/section-control";
 import { SectionAccessDialog } from "./GrantTableDialog";
 import { GuideLearnLink } from "@/components/guide/GuideLearnLink";
+import { QrMark } from "./QrMark";
+import { canAccessView } from "@/lib/pos/rbac";
 
-const STATUS_META: Record<
-  TableStatus,
-  {
-    label: string;
-    className: string;
-    badge:
-      | "secondary"
-      | "info"
-      | "warn"
-      | "success"
-      | "danger"
-      | "default";
-  }
-> = {
-  available: {
-    label: "Open",
-    className: "bg-table-available border-border",
-    badge: "secondary",
-  },
-  seated: {
-    label: "Seated",
-    className: "bg-table-seated border-info/40",
-    badge: "info",
-  },
-  ordering: {
-    label: "Ordering",
-    className: "bg-table-ordering border-warn/40",
-    badge: "warn",
-  },
-  ordered: {
-    label: "Fired",
-    className: "bg-table-ordered border-success/40",
-    badge: "success",
-  },
-  check: {
-    label: "Check",
-    className: "bg-table-check border-warn/50",
-    badge: "warn",
-  },
-  paid: {
-    label: "Paid",
-    className: "bg-table-paid border-border-strong",
-    badge: "default",
-  },
-  reserved: { label: "Reserved", className: "border-info/40 bg-info/10", badge: "info" },
-  dirty: {
-    label: "Dirty",
-    className: "bg-table-dirty border-danger/40",
-    badge: "danger",
-  },
-};
+function pipelineLabel(status: string): string {
+  const n = normalizeTableStatus(status);
+  if (n === "reserved") return "Reserved";
+  return FLOOR_STATUS_LABEL[n];
+}
 
 export function FloorView() {
   const tables = usePosStore((s) => s.tables);
@@ -95,12 +68,12 @@ export function FloorView() {
   const selectTable = usePosStore((s) => s.selectTable);
   const seatTable = usePosStore((s) => s.seatTable);
   const markClean = usePosStore((s) => s.markClean);
-  const clearTable = usePosStore((s) => s.clearTable);
   const transferTable = usePosStore((s) => s.transferTable);
   const mergeTables = usePosStore((s) => s.mergeTables);
   const unmergeTable = usePosStore((s) => s.unmergeTable);
   const openBarTab = usePosStore((s) => s.openBarTab);
   const setView = usePosStore((s) => s.setView);
+  const setTableStatus = usePosStore((s) => s.setTableStatus);
   const tableAccess = usePosStore((s) => s.tableAccess);
   const currentEmployeeId = usePosStore((s) => s.currentEmployeeId);
   const floorSections = usePosStore((s) => s.floorSections);
@@ -116,6 +89,13 @@ export function FloorView() {
   const emp = employees.find((e) => e.id === currentEmployeeId) ?? null;
   const policy = policyOf(settings.sectionPolicy);
   const locked = emp ? roleIsLocked(emp.role, policy) : false;
+  const floorCfg = parseFloorStatusConfig(settings.floorStatusConfig);
+  const qrMode = parseQrMode(settings.qrMode);
+  const demoType = getDemoType();
+  const canStatus = canChangeTableStatus(emp?.role, floorCfg);
+  const canSeat = canSeatTable(emp?.role, floorCfg);
+  const canEdit = canEditFloorplan(emp?.role) && canAccessView(emp?.role ?? "server", "floor_editor");
+  const isHostStand = emp?.role === "host";
 
   const [seatOpen, setSeatOpen] = useState(false);
   const [seatTarget, setSeatTarget] = useState<Table | null>(null);
@@ -129,6 +109,12 @@ export function FloorView() {
   const [section, setSection] = useState<string>("All");
   const [blockTable, setBlockTable] = useState<Table | null>(null);
   const [blockReason, setBlockReason] = useState("");
+  const [detail, setDetail] = useState<Table | null>(null);
+  const [qrOpen, setQrOpen] = useState(false);
+
+  const detailLive = detail
+    ? (tables.find((t) => t.id === detail.id) ?? detail)
+    : null;
 
   const sectionTabs = useMemo(() => {
     const defined = [...floorSections].sort((a, b) => a.sort - b.sort);
@@ -168,8 +154,10 @@ export function FloorView() {
 
   const counts = useMemo(() => {
     const c: Record<string, number> = {};
-    for (const t of tables.filter((x) => !x.mergedIntoId))
-      c[t.status] = (c[t.status] ?? 0) + 1;
+    for (const t of tables.filter((x) => !x.mergedIntoId)) {
+      const st = normalizeTableStatus(t.status);
+      c[st] = (c[st] ?? 0) + 1;
+    }
     return c;
   }, [tables]);
 
@@ -216,33 +204,16 @@ export function FloorView() {
       setTransferMode(false);
       return;
     }
-    if (t.status === "available") {
-      const access = tableAccess(t.id, "seat");
-      if (!access.ok) {
-        showBlocked(t, access.reason ?? "Outside your section");
-        return;
-      }
-      setSeatTarget(t);
-      setGuests(Math.min(t.seats, 2));
-      setSeatOpen(true);
-      return;
-    }
-    if (t.status === "dirty") {
-      markClean(t.id);
-      return;
-    }
-    if (t.status === "paid") {
-      clearTable(t.id);
-      return;
-    }
-    const res = selectTable(t.id);
-    if (!res.ok) {
-      showBlocked(t, res.error ?? "Outside your section");
-    }
+    setDetail(t);
   };
 
   const confirmSeat = () => {
     if (!seatTarget) return;
+    if (!canSeat) {
+      setSeatOpen(false);
+      showBlocked(seatTarget, "Seating is limited to the host stand / manager");
+      return;
+    }
     const res = seatTable(seatTarget.id, guests);
     if (!res.ok) {
       setSeatOpen(false);
@@ -251,6 +222,7 @@ export function FloorView() {
     }
     setSeatOpen(false);
     setSeatTarget(null);
+    setDetail(null);
   };
 
   if (tables.length === 0) {
@@ -258,32 +230,20 @@ export function FloorView() {
       <div className="flex h-full flex-col items-center justify-center gap-3 p-8 text-center">
         <p className="text-lg font-medium">No floor plan</p>
         <p className="max-w-sm text-sm text-muted-foreground">
-          This location has no tables yet. Onboard a host location in SaaS or
-          add tables in the floor editor.
+          This location has no tables yet. Draw rooms in the floor editor, or use takeout until the room is drawn.
         </p>
-        <Button onClick={() => setView("takeout")}>Takeout / pickup</Button>
+        {canEdit && (
+          <Button onClick={() => setView("floor_editor")}>Floor editor</Button>
+        )}
+        <Button variant="outline" onClick={() => setView("takeout")}>
+          Takeout / pickup
+        </Button>
       </div>
     );
   }
 
   return (
-    <div className="flex h-full flex-col">
-      {tables.length === 0 && (
-        <div className="mx-3 mt-3 rounded-2xl border border-dashed border-border bg-surface p-5 text-center">
-          <p className="text-sm font-semibold">Floor not set up yet</p>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Add tables in the floor editor, or use takeout until the room is drawn.
-          </p>
-          <div className="mt-3 flex justify-center gap-2">
-            <Button size="sm" onClick={() => setView("floor_editor")}>
-              Floor editor
-            </Button>
-            <Button size="sm" variant="outline" onClick={() => setView("takeout")}>
-              Takeout
-            </Button>
-          </div>
-        </div>
-      )}
+    <div className="flex h-full flex-col" data-demo="floor">
       <div className="flex flex-wrap items-center gap-2 border-b border-border px-3 py-2">
         <h2 className="mr-2 text-sm font-semibold">
           Floor · {saasLoc?.code ?? loc?.code ?? settings.name}
@@ -325,19 +285,17 @@ export function FloorView() {
           ))}
         </div>
         <div className="ml-auto flex flex-wrap gap-1.5">
-          {(
-            [
-              "available",
-              "seated",
-              "ordering",
-              "ordered",
-              "check",
-              "paid",
-              "dirty",
-            ] as TableStatus[]
-          ).map((st) => (
-            <Badge key={st} variant={STATUS_META[st].badge} className="tabular">
-              {STATUS_META[st].label} {counts[st] ?? 0}
+          {FLOOR_PIPELINE.filter((st) => floorCfg.enabled[st] !== false).map((st) => (
+            <Badge
+              key={st}
+              variant="secondary"
+              className="tabular"
+              style={{
+                background: floorCfg.colors[st],
+                color: contrastInk(floorCfg.colors[st]),
+              }}
+            >
+              {FLOOR_STATUS_LABEL[st]} {counts[st] ?? 0}
             </Badge>
           ))}
         </div>
@@ -347,14 +305,19 @@ export function FloorView() {
         <div className="relative min-h-[280px] flex-1 overflow-auto p-3">
           <div className="relative mx-auto aspect-[4/3] w-full max-w-4xl rounded-2xl border border-border bg-surface">
             <div className="pointer-events-none absolute inset-x-4 top-3 flex justify-between text-[10px] uppercase tracking-wider text-muted-foreground">
-              <span>Dining room</span>
+              <span>{section === "All" || section === "Mine" ? "Dining room" : section}</span>
               <span>Bar →</span>
             </div>
             {visible.map((t) => {
               const order = orders.find((o) => o.id === t.orderId);
               const totals = order ? computeTotals(order, settings) : null;
               const server = employees.find((e) => e.id === t.serverId);
-              const meta = STATUS_META[t.status];
+              const st = normalizeTableStatus(t.status);
+              const fill =
+                st === "reserved"
+                  ? "#e8e6e1"
+                  : floorCfg.colors[st] ?? "#ffffff";
+              const ink = contrastInk(fill);
               const merged =
                 (t.mergedChildIds?.length ?? 0) > 0
                   ? `+${t.mergedChildIds!.length}`
@@ -363,6 +326,7 @@ export function FloorView() {
                 (foodUpUntil[t.label.replace(/^T/i, "").trim().toLowerCase()] ??
                   0) > clock ||
                 (foodUpUntil[t.label.trim().toLowerCase()] ?? 0) > clock;
+              const flashing = tableFlash(t, floorCfg, clock || Date.now());
               const secColor = sectionColorForTable(t, floorSections);
               const orderAcc = tableAccess(t.id, "order");
               const seatAcc = tableAccess(t.id, "seat");
@@ -373,6 +337,7 @@ export function FloorView() {
                 !seatAcc.ok;
               const grant =
                 emp && activeGrantForTable(extraTableGrants, emp.id, t.id);
+              const kind = t.kind ?? (t.shape === "bar" ? "barstool" : t.shape === "booth" ? "booth" : "table");
               return (
                 <button
                   key={t.id}
@@ -383,18 +348,22 @@ export function FloorView() {
                     top: `${t.y}%`,
                     width: `${t.w}%`,
                     height: `${t.h}%`,
+                    background: fill,
+                    color: ink,
                     boxShadow: `inset 0 3px 0 0 ${secColor}`,
                   }}
                   className={cn(
-                    "absolute flex flex-col items-center justify-center border-2 p-1 text-center transition hover:brightness-110 active:scale-[0.98]",
-                    t.shape === "round" || t.shape === "bar"
+                    "absolute flex flex-col items-center justify-center border-2 border-black/10 p-1 text-center transition hover:brightness-110 active:scale-[0.98]",
+                    t.shape === "round" || t.shape === "bar" || kind === "barstool"
                       ? "rounded-full"
-                      : "rounded-xl",
-                    meta.className,
+                      : kind === "booth"
+                        ? "rounded-2xl"
+                        : "rounded-xl",
                     (transferFrom === t.id || mergePrimary === t.id) &&
                       "ring-2 ring-primary",
                     (t.mergedChildIds?.length ?? 0) > 0 && "border-info/60",
                     foodUp && "ring-2 ring-primary animate-pulse",
+                    flashing && "table-sla-flash",
                     outOfSection && "opacity-55",
                   )}
                 >
@@ -407,15 +376,20 @@ export function FloorView() {
                       Up
                     </span>
                   )}
+                  {flashing && (
+                    <span className="mt-0.5 rounded bg-danger px-1 text-[9px] font-bold uppercase tracking-wide text-danger-foreground">
+                      SLA
+                    </span>
+                  )}
                   {grant && (
                     <span className="mt-0.5 rounded bg-info px-1 text-[9px] font-bold uppercase tracking-wide text-info-foreground">
                       Grant
                     </span>
                   )}
-                  {outOfSection && t.status === "available" && (
+                  {outOfSection && isEmptyTable(t.status) && (
                     <Lock className="mt-0.5 h-3 w-3 text-muted-foreground" />
                   )}
-                  <span className="mt-0.5 text-[10px] text-muted-foreground">
+                  <span className="mt-0.5 text-[10px] opacity-80">
                     {t.seats} top
                   </span>
                   {totals && (
@@ -444,13 +418,23 @@ export function FloorView() {
                   ? "Tap destination table"
                   : "Tap table with a check to move"
                 : locked
-                  ? "Color bar = section · locked tables need a grant"
-                  : "Seat · bus · transfer · merge/split · floor editor"}
+                  ? "Color fill = status · top bar = section · locked tables need a grant"
+                  : "Tap a table for check, status, or QR · flashing = SLA"}
           </p>
         </div>
 
         <aside className="w-full shrink-0 border-t border-border bg-surface lg:w-72 lg:border-l lg:border-t-0">
           <div className="space-y-3 p-3">
+            {isHostStand && (
+              <Button
+                className="w-full"
+                size="lg"
+                onClick={() => setView("waitlist")}
+              >
+                <Users className="h-4 w-4" />
+                Waitlist / host stand
+              </Button>
+            )}
             <Button
               className="w-full"
               size="lg"
@@ -514,14 +498,25 @@ export function FloorView() {
               <Split className="h-4 w-4" />
               Unmerge
             </Button>
-            <Button
-              className="w-full"
-              variant="outline"
-              size="sm"
-              onClick={() => setView("floor_editor")}
-            >
-              Floor editor
-            </Button>
+            {canEdit && (
+              <Button
+                className="w-full"
+                variant="outline"
+                size="sm"
+                data-demo="floor-editor-open"
+                onClick={() => setView("floor_editor")}
+              >
+                <Pencil className="h-3.5 w-3.5" />
+                Floor editor
+              </Button>
+            )}
+
+            <div className="rounded-xl border border-border bg-bg p-3">
+              <p className="mb-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                QR · {qrMode === "full" ? "Full" : qrMode === "hybrid" ? "Hybrid" : "Pay only"}
+              </p>
+              <p className="text-[11px] text-muted-foreground">{QR_MODE_LABEL[qrMode]}</p>
+            </div>
 
             <div className="rounded-xl border border-border bg-bg p-3">
               <p className="mb-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">
@@ -577,6 +572,7 @@ export function FloorView() {
                     if (!o) return null;
                     const tot = computeTotals(o, settings);
                     const color = sectionColorForTable(t, floorSections);
+                    const flashing = tableFlash(t, floorCfg, clock || Date.now());
                     return (
                       <button
                         key={t.id}
@@ -591,6 +587,11 @@ export function FloorView() {
                               style={{ background: color }}
                             />
                             T{t.label}
+                            {flashing && (
+                              <span className="text-[10px] font-bold uppercase text-danger">
+                                SLA
+                              </span>
+                            )}
                           </span>
                           {(t.mergedChildIds?.length ?? 0) > 0 && (
                             <span className="ml-1 text-[10px] text-info">
@@ -598,7 +599,7 @@ export function FloorView() {
                             </span>
                           )}
                           <span className="mt-0.5 block text-[11px] text-muted-foreground">
-                            {t.guestCount} guests ·{" "}
+                            {pipelineLabel(t.status)} · {t.guestCount} guests ·{" "}
                             {t.seatedAt ? formatTime(t.seatedAt) : "—"}
                           </span>
                         </span>
@@ -628,6 +629,81 @@ export function FloorView() {
           </div>
         </aside>
       </div>
+
+      <Dialog
+        open={!!detailLive}
+        onOpenChange={(o) => {
+          if (!o) {
+            setDetail(null);
+            setQrOpen(false);
+          }
+        }}
+      >
+        <DialogContent className="max-h-[90dvh] overflow-y-auto">
+          {detailLive && (
+            <>
+              <DialogHeader>
+                <DialogTitle>
+                  Table {detailLive.label}
+                  <span className="ml-2 text-sm font-normal text-muted-foreground">
+                    {detailLive.section} · {detailLive.kind ?? "table"} · {detailLive.seats} top
+                  </span>
+                </DialogTitle>
+              </DialogHeader>
+              <TableDetailBody
+                table={detailLive}
+                order={orders.find((o) => o.id === detailLive.orderId)}
+                settingsName={settings.name}
+                totals={
+                  detailLive.orderId
+                    ? (() => {
+                        const o = orders.find((x) => x.id === detailLive.orderId);
+                        return o ? computeTotals(o, settings) : null;
+                      })()
+                    : null
+                }
+                floorCfg={floorCfg}
+                canStatus={canStatus}
+                canSeat={canSeat}
+                qrMode={qrMode}
+                demoType={demoType}
+                qrOpen={qrOpen}
+                clock={clock}
+                onSeat={() => {
+                  const access = tableAccess(detailLive.id, "seat");
+                  if (!access.ok) {
+                    showBlocked(detailLive, access.reason ?? "Outside your section");
+                    return;
+                  }
+                  setSeatTarget(detailLive);
+                  setGuests(Math.min(detailLive.seats, 2));
+                  setSeatOpen(true);
+                }}
+                onOpenCheck={() => {
+                  const res = selectTable(detailLive.id);
+                  if (!res.ok) {
+                    showBlocked(detailLive, res.error ?? "Outside your section");
+                    return;
+                  }
+                  setDetail(null);
+                }}
+                onClean={() => {
+                  markClean(detailLive.id);
+                  setDetail(null);
+                }}
+                onStatus={(st) => {
+                  const res = setTableStatus(detailLive.id, st);
+                  if (!res.ok) alert(res.error);
+                }}
+                onToggleQr={() => setQrOpen((v) => !v)}
+                onWaitlist={
+                  isHostStand ? () => { setDetail(null); setView("waitlist"); } : undefined
+                }
+              />
+            </>
+          )}
+        </DialogContent>
+      </Dialog>
 
       <Dialog open={seatOpen} onOpenChange={setSeatOpen}>
         <DialogContent>
@@ -713,7 +789,7 @@ export function FloorView() {
           if (!o) setBlockTable(null);
         }}
         onResolved={(t) => {
-          if (t.status === "available") {
+          if (isEmptyTable(t.status)) {
             setSeatTarget(t);
             setGuests(Math.min(t.seats, 2));
             setSeatOpen(true);
@@ -722,6 +798,137 @@ export function FloorView() {
           }
         }}
       />
+    </div>
+  );
+}
+
+function TableDetailBody({
+  table,
+  order,
+  totals,
+  floorCfg,
+  canStatus,
+  canSeat,
+  qrMode,
+  demoType,
+  qrOpen,
+  clock,
+  onSeat,
+  onOpenCheck,
+  onClean,
+  onStatus,
+  onToggleQr,
+  onWaitlist,
+}: {
+  table: Table;
+  order: { number: number; status: string } | undefined;
+  totals: ReturnType<typeof computeTotals> | null;
+  settingsName: string;
+  floorCfg: ReturnType<typeof parseFloorStatusConfig>;
+  canStatus: boolean;
+  canSeat: boolean;
+  qrMode: ReturnType<typeof parseQrMode>;
+  demoType: string | null;
+  qrOpen: boolean;
+  clock: number;
+  onSeat: () => void;
+  onOpenCheck: () => void;
+  onClean: () => void;
+  onStatus: (st: FloorPipelineStatus) => void;
+  onToggleQr: () => void;
+  onWaitlist?: () => void;
+}) {
+  const st = normalizeTableStatus(table.status);
+  const empty = isEmptyTable(table.status);
+  const dirty = st === "closed_not_cleaned";
+  const flashing = tableFlash(table, floorCfg, clock || Date.now());
+  const guestPath = tableGuestPath(table, { demoType });
+  const payPath = tableGuestPath(table, { pay: true, demoType });
+  const enabled = FLOOR_PIPELINE.filter((s) => floorCfg.enabled[s] !== false);
+
+  return (
+    <div className="space-y-3" data-demo="table-detail">
+      <div className="flex items-center justify-between gap-2 rounded-xl border border-border bg-bg px-3 py-2">
+        <span className="text-sm font-medium">{pipelineLabel(table.status)}</span>
+        {flashing && (
+          <Badge variant="danger" className="uppercase">
+            SLA flash
+          </Badge>
+        )}
+      </div>
+      {order && totals && (
+        <p className="text-sm text-muted-foreground">
+          Check #{order.number}
+          {order.status !== "open" ? " · closed" : ""} ·{" "}
+          {formatCurrency(totals.balanceCents || totals.totalCents)}
+        </p>
+      )}
+      <div className="flex flex-wrap gap-2">
+        {empty && canSeat && (
+          <Button onClick={onSeat}>
+            <Users className="h-4 w-4" />
+            Seat
+          </Button>
+        )}
+        {!empty && table.orderId && (
+          <Button onClick={onOpenCheck}>Open check</Button>
+        )}
+        {dirty && (
+          <Button variant="outline" onClick={onClean}>
+            Mark cleaned
+          </Button>
+        )}
+        {onWaitlist && (
+          <Button variant="outline" onClick={onWaitlist}>
+            Waitlist
+          </Button>
+        )}
+        <Button variant="outline" onClick={onToggleQr}>
+          <QrCode className="h-4 w-4" />
+          {qrOpen ? "Hide QR" : "Table QR"}
+        </Button>
+      </div>
+      {canStatus && (
+        <div>
+          <p className="mb-1.5 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+            Set status
+          </p>
+          <div className="flex flex-wrap gap-1.5">
+            {enabled.map((s) => (
+              <Button
+                key={s}
+                size="sm"
+                variant={st === s ? "default" : "outline"}
+                onClick={() => onStatus(s)}
+                style={
+                  st === s
+                    ? undefined
+                    : { borderColor: floorCfg.colors[s], background: floorCfg.colors[s], color: contrastInk(floorCfg.colors[s]) }
+                }
+              >
+                {FLOOR_STATUS_LABEL[s]}
+              </Button>
+            ))}
+          </div>
+        </div>
+      )}
+      {qrOpen && (
+        <div className="rounded-xl border border-border bg-bg p-3 text-center" data-demo="table-qr">
+          <p className="mb-2 text-xs text-muted-foreground">
+            {QR_MODE_LABEL[qrMode]}
+          </p>
+          <QrMark value={typeof window === "undefined" ? guestPath : `${window.location.origin}${guestPath}`} />
+          <div className="mt-2 flex flex-col gap-1.5">
+            <a href={guestPath} className="text-sm underline">
+              Open guest menu
+            </a>
+            <a href={payPath} className="text-sm underline">
+              Open pay QR
+            </a>
+            <p className="break-all text-[11px] text-muted-foreground">{guestPath}</p>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

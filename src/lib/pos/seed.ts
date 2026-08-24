@@ -35,6 +35,7 @@ export const SETTINGS: RestaurantSettings = {
   multiTenantHallMode: false,
   onlineOrderingEnabled: true,
   qrOrderingEnabled: true,
+  qrMode: "hybrid",
   sectionPolicy: { ...DEFAULT_SECTION_POLICY },
   ...DEFAULT_CASH_DISCOUNT,
 };

@@ -40,6 +40,7 @@ import { formatCurrency, formatTime } from "@/lib/utils";
 import { isDevDemoClient } from "@/lib/saas/flags";
 import { SetupAssistButton } from "@/components/assist/SetupAssistDialog";
 import { GuideLearnLink } from "@/components/guide/GuideLearnLink";
+import { FloorQrSettings } from "./FloorQrSettings";
 import { saveFrontSettingsFn } from "@/lib/front/api";
 import {
   CASH_ROUND_INCREMENTS,
@@ -561,6 +562,10 @@ export function SettingsView() {
         >
           Assign sections on Staff
         </Button>
+      </Pack>
+
+      <Pack id="floor_qr" packs={packs}>
+        <FloorQrSettings write={write} />
       </Pack>
 
       <Pack id="bar_tabs" packs={packs}>

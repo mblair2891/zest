@@ -99,7 +99,23 @@
   }
 }
 
+@keyframes table-sla-pulse {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 color-mix(in srgb, var(--color-danger) 55%, transparent);
+  }
+  50% {
+    box-shadow: 0 0 0 6px color-mix(in srgb, var(--color-danger) 0%, transparent);
+  }
+}
+
 @layer utilities {
+  .table-sla-flash {
+    animation: table-sla-pulse 1.1s ease-in-out infinite;
+    outline: 2px solid var(--color-danger);
+    outline-offset: 2px;
+  }
+
   .safe-top {
     padding-top: env(safe-area-inset-top, 0px);
   }

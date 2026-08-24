@@ -92,7 +92,7 @@ const ROLE_VIEWS: Record<EmployeeRole, PosView[] | "all"> = {
   ],
   server: ["hq", "floor", "order", "takeout", "hall", "waitlist", "customers", "drink_ai", "online", "reports", "schedule", "labor"],
   bartender: ["hq", "bar", "order", "takeout", "drink_ai", "customers", "inventory", "reports", "schedule", "labor"],
-  host: ["hq", "waitlist", "floor", "customers", "online", "reports", "schedule", "labor"],
+  host: ["hq", "waitlist", "floor", "floor_editor", "customers", "online", "reports", "schedule", "labor"],
   kitchen: ["hq", "kitchen", "recipes", "checklists", "inventory", "reports", "schedule", "labor"],
   busser: ["hq", "floor", "schedule"],
   cashier: ["hq", "order", "takeout", "cash", "online", "schedule", "labor"],

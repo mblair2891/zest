@@ -84,7 +84,8 @@ export type SettingsPackId =
   | "counter_expo"
   | "host_operators"
   | "kiosk_front"
-  | "voice";
+  | "voice"
+  | "floor_qr";
 
 const UNIVERSAL: SettingsPackId[] = [
   "profile",
@@ -99,12 +100,12 @@ const UNIVERSAL: SettingsPackId[] = [
 ];
 
 export const SETTINGS_PACKS_BY_VENUE: Record<VenueEntityId, SettingsPackId[]> = {
-  restaurant: [...UNIVERSAL, "sections", "kiosk_front"],
-  food_hall: [...UNIVERSAL, "sections", "host_operators", "kiosk_front"],
+  restaurant: [...UNIVERSAL, "sections", "floor_qr", "kiosk_front"],
+  food_hall: [...UNIVERSAL, "sections", "floor_qr", "host_operators", "kiosk_front"],
   truck_pod: [...UNIVERSAL, "host_operators", "counter_expo", "kiosk_front"],
   ghost_kitchen: [...UNIVERSAL, "counter_expo"],
   catering: [...UNIVERSAL, "counter_expo"],
-  bar_lounge: [...UNIVERSAL, "sections", "bar_tabs", "kiosk_front"],
+  bar_lounge: [...UNIVERSAL, "sections", "bar_tabs", "floor_qr", "kiosk_front"],
   cafe: [...UNIVERSAL, "counter_expo", "kiosk_front"],
   qsr: [...UNIVERSAL, "counter_expo", "kiosk_front"],
 };
@@ -124,6 +125,7 @@ export const SETTINGS_PACK_LABEL: Record<SettingsPackId, string> = {
   host_operators: "Operators, permissions & devices",
   kiosk_front: "Kiosk, waitlist, check-in",
   voice: "Voice control",
+  floor_qr: "Floor statuses, flash & QR",
 };
 
 /** Subscriber is the host location; guest operators are onboarded onto it. */

@@ -40,7 +40,7 @@ export const GUIDE_CHAPTERS: GuideChapter[] = [
   {
     id: "floor",
     title: "Floor & service",
-    summary: "Tables, sections, checks, counter vs table.",
+    summary: "Floorplan, statuses & flash, QR order/pay, checks, host stand.",
     order: 4,
   },
   {

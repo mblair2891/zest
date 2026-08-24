@@ -122,6 +122,7 @@ const NAV: {
   { id: "package", label: "Full pack", icon: Boxes },
   { id: "features", label: "All features", icon: Layers },
   { id: "floor", label: "Floor", icon: LayoutGrid },
+  { id: "floor_editor", label: "Floor editor", icon: MapIcon },
   { id: "order", label: "Order", icon: ClipboardList },
   { id: "kitchen", label: "Kitchen", icon: CookingPot },
   { id: "bar", label: "Bar", icon: Wine },

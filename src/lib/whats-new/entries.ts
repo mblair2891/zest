@@ -9,6 +9,19 @@ import type { GuideUpdate } from "@/lib/guide/types";
  */
 export const WHATS_NEW_ENTRIES: GuideUpdate[] = [
   {
+    id: "upd_2026_09_09_floor_qr",
+    date: "2026-09-09",
+    title: "Drag-and-drop floor, status flash, table QR pay",
+    summary:
+      "Draw the room, color tables by dining status, flash SLAs, and let guests order or pay from a table QR.",
+    body: "Owner/manager/host stand open Floor editor: drag, resize, booths and barstools. Settings maps the empty → sat → drinks → food → delivered → unpaid → needs-bus pipeline, colors, and flash minutes. QR mode is Full, Hybrid, or Pay only. Guest pay is Quantum Payments on the host check — Steam and Diamond lines stay tagged. Demo flash is seconds, not minutes.",
+    roles: ["owner_manager", "server", "host_operator"],
+    entityTypes: ["restaurant", "food_hall", "bar_lounge"],
+    surfaces: ["floor", "settings"],
+    topicId: "floor-editor",
+    tags: ["floor", "qr", "status", "flash"],
+  },
+  {
     id: "upd_2026_09_08_voice_ai",
     date: "2026-09-08",
     title: "Voice by role and AI that learns your calls",

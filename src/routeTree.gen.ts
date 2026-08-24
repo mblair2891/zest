@@ -39,6 +39,7 @@ import { Route as QuoteTokenRouteImport } from './routes/quote.$token'
 import { Route as SetupTokenRouteImport } from './routes/setup.$token'
 import { Route as SiteSlugRouteImport } from './routes/site.$slug'
 import { Route as SitesSlugRouteImport } from './routes/sites.$slug'
+import { Route as TTokenRouteImport } from './routes/t.$token'
 import { Route as TableLabelRouteImport } from './routes/table.$label'
 import { Route as VenueTypeRouteImport } from './routes/venue.$type'
 import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
@@ -198,6 +199,11 @@ const SitesSlugRoute = SitesSlugRouteImport.update({
   path: '/sites/$slug',
   getParentRoute: () => rootRouteImport,
 } as any)
+const TTokenRoute = TTokenRouteImport.update({
+  id: '/t/$token',
+  path: '/t/$token',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const TableLabelRoute = TableLabelRouteImport.update({
   id: '/table/$label',
   path: '/table/$label',
@@ -269,6 +275,7 @@ export interface FileRoutesByFullPath {
   '/setup/$token': typeof SetupTokenRoute
   '/site/$slug': typeof SiteSlugRoute
   '/sites/$slug': typeof SitesSlugRoute
+  '/t/$token': typeof TTokenRoute
   '/table/$label': typeof TableLabelRoute
   '/venue/$type': typeof VenueTypeRoute
   '/demo/': typeof DemoIndexRoute
@@ -308,6 +315,7 @@ export interface FileRoutesByTo {
   '/setup/$token': typeof SetupTokenRoute
   '/site/$slug': typeof SiteSlugRoute
   '/sites/$slug': typeof SitesSlugRoute
+  '/t/$token': typeof TTokenRoute
   '/table/$label': typeof TableLabelRoute
   '/venue/$type': typeof VenueTypeRoute
   '/demo': typeof DemoIndexRoute
@@ -349,6 +357,7 @@ export interface FileRoutesById {
   '/setup/$token': typeof SetupTokenRoute
   '/site/$slug': typeof SiteSlugRoute
   '/sites/$slug': typeof SitesSlugRoute
+  '/t/$token': typeof TTokenRoute
   '/table/$label': typeof TableLabelRoute
   '/venue/$type': typeof VenueTypeRoute
   '/demo/': typeof DemoIndexRoute
@@ -391,6 +400,7 @@ export interface FileRouteTypes {
     | '/setup/$token'
     | '/site/$slug'
     | '/sites/$slug'
+    | '/t/$token'
     | '/table/$label'
     | '/venue/$type'
     | '/demo/'
@@ -430,6 +440,7 @@ export interface FileRouteTypes {
     | '/setup/$token'
     | '/site/$slug'
     | '/sites/$slug'
+    | '/t/$token'
     | '/table/$label'
     | '/venue/$type'
     | '/demo'
@@ -470,6 +481,7 @@ export interface FileRouteTypes {
     | '/setup/$token'
     | '/site/$slug'
     | '/sites/$slug'
+    | '/t/$token'
     | '/table/$label'
     | '/venue/$type'
     | '/demo/'
@@ -509,6 +521,7 @@ export interface RootRouteChildren {
   SetupTokenRoute: typeof SetupTokenRoute
   SiteSlugRoute: typeof SiteSlugRoute
   SitesSlugRoute: typeof SitesSlugRoute
+  TTokenRoute: typeof TTokenRoute
   TableLabelRoute: typeof TableLabelRoute
   VenueTypeRoute: typeof VenueTypeRoute
   ApiAuthSplatRoute: typeof ApiAuthSplatRoute
@@ -728,6 +741,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof SitesSlugRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/t/$token': {
+      id: '/t/$token'
+      path: '/t/$token'
+      fullPath: '/t/$token'
+      preLoaderRoute: typeof TTokenRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/table/$label': {
       id: '/table/$label'
       path: '/table/$label'
@@ -861,6 +881,7 @@ const rootRouteChildren: RootRouteChildren = {
   SetupTokenRoute: SetupTokenRoute,
   SiteSlugRoute: SiteSlugRoute,
   SitesSlugRoute: SitesSlugRoute,
+  TTokenRoute: TTokenRoute,
   TableLabelRoute: TableLabelRoute,
   VenueTypeRoute: VenueTypeRoute,
   ApiAuthSplatRoute: ApiAuthSplatRoute,

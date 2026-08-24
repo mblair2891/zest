@@ -10,6 +10,7 @@ import type {
   Vendor,
 } from "./types";
 import { DEFAULT_FLOOR_SECTIONS, DEFAULT_SECTION_POLICY } from "./section-control";
+import { DEFAULT_FLOOR_STATUS_CONFIG } from "./floor-status";
 import { DEFAULT_CASH_DISCOUNT } from "./cash-discount";
 import type { VenueEntityId } from "./types";
 
@@ -35,6 +36,14 @@ export function starterSettings(venueName: string): RestaurantSettings {
     multiTenantHallMode: false,
     onlineOrderingEnabled: true,
     qrOrderingEnabled: true,
+    qrMode: "hybrid",
+    floorStatusConfig: {
+      ...DEFAULT_FLOOR_STATUS_CONFIG,
+      colors: { ...DEFAULT_FLOOR_STATUS_CONFIG.colors },
+      flashMinutes: { ...DEFAULT_FLOOR_STATUS_CONFIG.flashMinutes },
+      enabled: { ...DEFAULT_FLOOR_STATUS_CONFIG.enabled },
+      changeRoles: [...DEFAULT_FLOOR_STATUS_CONFIG.changeRoles],
+    },
     waitlistEnabled: true,
     kioskMode: "combined",
     sectionPolicy: { ...DEFAULT_SECTION_POLICY },

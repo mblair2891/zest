@@ -19,7 +19,7 @@ export const DEMO_CATALOG: DemoCatalogEntry[] = [
     shortName: "Restaurant",
     hostName: "The Dining Room",
     blurb: "Sections, a host stand, kitchen and bar on one check.",
-    tourFocus: "Seat a table, course the check, pay once through Quantum Payments.",
+    tourFocus: "Draw the floor, watch status colors and SLA flash, seat, then pay from table QR.",
     sharePath: "/demo/restaurant",
     tourPath: "/demo/restaurant/tour",
   },

@@ -50,6 +50,38 @@ export const LAUNDRY_SETTINGS: RestaurantSettings = {
   cashRoundMode: "up",
   waitlistEnabled: true,
   kioskMode: "combined",
+  qrMode: "hybrid",
+  floorStatusConfig: {
+    enabled: {
+      empty: true,
+      sat_no_order: true,
+      ordered_drinks: true,
+      ordered_food: true,
+      food_delivered: true,
+      food_completed: true,
+      closed_not_cleaned: true,
+    },
+    colors: {
+      empty: "#ffffff",
+      sat_no_order: "#dbeafe",
+      ordered_drinks: "#fef3c7",
+      ordered_food: "#d1fae5",
+      food_delivered: "#ccfbf1",
+      food_completed: "#ede9fe",
+      closed_not_cleaned: "#fee2e2",
+    },
+    flashMinutes: {
+      empty: null,
+      sat_no_order: 0.15,
+      ordered_drinks: 0.4,
+      ordered_food: 0.5,
+      food_delivered: 0.5,
+      food_completed: 0.4,
+      closed_not_cleaned: 0.12,
+    },
+    changeRoles: ["owner", "manager", "host", "server", "busser"],
+    seatingRole: "host_or_manager",
+  },
 };
 
 export const LAUNDRY_VENDORS: Vendor[] = [
@@ -97,7 +129,9 @@ export const LAUNDRY_TABLES: Table[] = [
     w: 14,
     h: 14,
     shape: "round" as const,
-    status: "available" as const,
+    kind: "table" as const,
+    status: "empty" as const,
+    qrToken: `tlaundry${n}`,
     locationId: LAUNDRY_LOCATION_ID,
   })),
   ...[1, 2, 3, 4].map((n, i) => ({
@@ -110,7 +144,9 @@ export const LAUNDRY_TABLES: Table[] = [
     w: 10,
     h: 10,
     shape: "bar" as const,
-    status: "available" as const,
+    kind: "barstool" as const,
+    status: "empty" as const,
+    qrToken: `tlaundryb${n}`,
     locationId: LAUNDRY_LOCATION_ID,
   })),
 ];
