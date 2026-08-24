@@ -216,6 +216,16 @@ export interface RestaurantSettings {
   qrMode?: QrMode;
   /** When true, Expo is a distinct station between kitchen ready and floor delivery. */
   expoEnabled?: boolean;
+  /** When true, gift cards may carry a term. Off by default — many states prohibit expiry. */
+  giftTermAllowed?: boolean;
+  /** Term length in days when giftTermAllowed. */
+  giftTermDays?: number | null;
+  /** Operator-issued residual split to the other party, in basis points (5000 = 50/50). */
+  giftOperatorBreakageSplitBps?: number;
+  /** House may issue cards that the house retains at term end. */
+  giftHouseIssuerEnabled?: boolean;
+  /** Host stand / hostess default issuer (vendor id or "host"). */
+  giftHostessDefaultIssuerId?: string;
   networkReadyStatus?: import("@/lib/saas/network-readiness").NetworkReadyStatus;
   networkCheckedAt?: number;
   networkNotes?: string;
@@ -318,6 +328,10 @@ export interface Table {
   serverId?: string;
   guestCount?: number;
   seatedAt?: number;
+  /** Open check offered to the floor; ownership pending accept. */
+  releasedAt?: number;
+  releasedById?: string;
+  releasedByName?: string;
   statusSince?: number;
   qrToken?: string;
   /** Set when an SLA flash notice has already been pushed for this status. */
@@ -475,6 +489,27 @@ export interface GiftCard {
   issuedToEmail?: string;
   issuedAt?: number;
   notes?: string;
+  issuerKind?: "house" | "operator";
+  issuerId?: string;
+  issuerName?: string;
+  soldByEmployeeId?: string;
+  soldByOperatorId?: string;
+  expiresAt?: number;
+  breakageProcessedAt?: number;
+}
+
+export type GiftTransferReason = "redeem" | "breakage" | "issue_remit";
+
+export interface GiftTransfer {
+  id: string;
+  at: number;
+  giftCardId: string;
+  amountCents: number;
+  fromId: string;
+  fromName: string;
+  toId: string;
+  toName: string;
+  reason: GiftTransferReason;
 }
 
 export type GiftCardStatus = "active" | "frozen" | "void" | "zeroed";

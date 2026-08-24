@@ -20,6 +20,12 @@ import {
   type GiftImportPreview,
 } from "@/lib/pos/gift-import";
 import { formatCurrency, formatDateTime } from "@/lib/utils";
+import {
+  defaultGiftIssuer,
+  liabilityByIssuer,
+  listGiftIssuers,
+} from "@/lib/pos/gift-issuer";
+import { GuideLearnLink } from "@/components/guide/GuideLearnLink";
 
 export function CustomersView() {
   const customers = usePosStore((s) => s.customers);
@@ -34,6 +40,14 @@ export function CustomersView() {
   const loyalty = useMarketingStore((s) => s.loyalty);
   const logGiftTxn = useMarketingStore((s) => s.logGiftTxn);
   const giftTxns = useMarketingStore((s) => s.giftTxns);
+  const emp = usePosStore((s) => s.employees.find((e) => e.id === s.currentEmployeeId) ?? null);
+  const settings = usePosStore((s) => s.settings);
+  const vendors = usePosStore((s) => s.vendors);
+  const giftTransfers = usePosStore((s) => s.giftTransfers ?? []);
+  const issuers = listGiftIssuers(settings, vendors);
+  const defaultIssuer = defaultGiftIssuer(emp, settings, vendors);
+  const [issuerId, setIssuerId] = useState(defaultIssuer.id);
+  const [giftTender, setGiftTender] = useState<"cash" | "card">("card");
 
   const [open, setOpen] = useState(false);
   const [giftOpen, setGiftOpen] = useState(false);
@@ -63,8 +77,9 @@ export function CustomersView() {
   );
 
   const outstanding = giftCards
-    .filter((g) => g.active && g.status !== "void")
+    .filter((g) => g.active && g.status !== "void" && !g.breakageProcessedAt)
     .reduce((s, g) => s + g.balanceCents, 0);
+  const liability = liabilityByIssuer(giftCards, settings, vendors);
 
   const tierOf = (pts: number) => {
     const sorted = [...loyalty.tiers].sort((a, b) => b.minPoints - a.minPoints);
@@ -81,6 +96,9 @@ export function CustomersView() {
           value={q}
           onChange={(e) => setQ(e.target.value)}
         />
+        <GuideLearnLink topicId="gift-cards" compact>
+          Learn
+        </GuideLearnLink>
         <Button size="sm" variant="outline" onClick={() => setGiftOpen(true)}>
           <Gift className="h-3.5 w-3.5" />
           Issue / reload
@@ -231,6 +249,32 @@ export function CustomersView() {
           Outstanding {formatCurrency(outstanding)}
         </span>
       </div>
+      {liability.length > 0 && (
+        <div className="mb-4 overflow-x-auto rounded-xl border border-border" data-demo="gift-liability">
+          <table className="w-full text-left text-xs">
+            <thead className="bg-surface-2 text-muted-foreground">
+              <tr>
+                <th className="px-3 py-2 font-medium">Issuer</th>
+                <th className="px-3 py-2 font-medium">Kind</th>
+                <th className="px-3 py-2 font-medium">Outstanding</th>
+                <th className="px-3 py-2 font-medium">Issued</th>
+                <th className="px-3 py-2 font-medium">Redeemed</th>
+              </tr>
+            </thead>
+            <tbody>
+              {liability.map((row) => (
+                <tr key={row.issuerId} className="border-t border-border">
+                  <td className="px-3 py-2">{row.issuerName}</td>
+                  <td className="px-3 py-2 capitalize">{row.kind}</td>
+                  <td className="px-3 py-2 tabular">{formatCurrency(row.outstandingCents)}</td>
+                  <td className="px-3 py-2 tabular">{formatCurrency(row.issuedCents)}</td>
+                  <td className="px-3 py-2 tabular">{formatCurrency(row.redeemedCents)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
       <div className="mb-4 grid gap-2 sm:grid-cols-3">
         {giftCards.map((g) => (
           <div
@@ -243,6 +287,7 @@ export function CustomersView() {
             </p>
             <p className="text-xs text-muted-foreground">
               {g.status || (g.active ? "active" : "disabled")}
+              {g.issuerName ? ` · issuer ${g.issuerName}` : ""}
               {g.issuedToName ? ` · ${g.issuedToName}` : ""}
               {g.source && g.source !== "summex"
                 ? ` · ${g.source.replace("import_", "")}`
@@ -311,6 +356,24 @@ export function CustomersView() {
           </div>
         ))}
       </div>
+
+      {giftTransfers.length > 0 && (
+        <>
+          <h3 className="mb-2 text-sm font-medium">Issuer settlement</h3>
+          <div className="mb-4 space-y-1 text-xs text-muted-foreground">
+            {giftTransfers.slice(0, 8).map((t) => (
+              <div key={t.id} className="flex justify-between border-b border-border/50 py-1">
+                <span>
+                  {t.reason} · {t.fromName} → {t.toName}
+                </span>
+                <span className="tabular text-foreground">
+                  {formatCurrency(t.amountCents)}
+                </span>
+              </div>
+            ))}
+          </div>
+        </>
+      )}
 
       {giftTxns.length > 0 && (
         <>
@@ -382,8 +445,10 @@ export function CustomersView() {
             <DialogTitle>Issue / reload · Summex ledger</DialogTitle>
           </DialogHeader>
           <p className="text-xs text-muted-foreground">
-            Tender is taken on the check. The balance lives only in Summex — not
-            Square, Toast, or a gift network.
+            Cash or card collected at the drawer is not seller merchandise. It
+            increases the issuer’s gift liability. Default issuer follows the
+            selling point (bar → operator, host stand → configured entity, house
+            SKU → house).
           </p>
           <p className="text-xs font-medium">Issue new</p>
           <Input
@@ -396,6 +461,32 @@ export function CustomersView() {
             value={giftTo}
             onChange={(e) => setGiftTo(e.target.value)}
           />
+          <label className="block text-xs text-muted-foreground">
+            Issuer
+            <select
+              className="mt-1 flex h-10 w-full rounded-md border border-border bg-bg px-3 text-sm text-foreground"
+              value={issuerId}
+              onChange={(e) => setIssuerId(e.target.value)}
+            >
+              {issuers.map((i) => (
+                <option key={i.id} value={i.id}>
+                  {i.name} ({i.kind})
+                  {i.id === defaultIssuer.id ? " · selling point" : ""}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="block text-xs text-muted-foreground">
+            Tender collected
+            <select
+              className="mt-1 flex h-10 w-full rounded-md border border-border bg-bg px-3 text-sm text-foreground"
+              value={giftTender}
+              onChange={(e) => setGiftTender(e.target.value as "cash" | "card")}
+            >
+              <option value="card">Card (Quantum Payments)</option>
+              <option value="cash">Cash (drawer holds; remit to issuer)</option>
+            </select>
+          </label>
           <Button
             onClick={() => {
               const dollars = parseFloat(giftAmt);
@@ -406,6 +497,8 @@ export function CustomersView() {
               const res = issueGiftCard({
                 amountCents: Math.round(dollars * 100),
                 issuedToName: giftTo || undefined,
+                issuerId,
+                tender: giftTender,
               });
               if (res.ok && res.code) {
                 logGiftTxn({

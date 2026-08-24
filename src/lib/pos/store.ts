@@ -23,6 +23,10 @@ import { computeTotals, isHappyHour, lineUnitTotal } from "./calculations";
 import { allocateChargebackFee, buildPeriodSettlement, CHARGEBACK_FEE_CENTS } from "./settlement";
 import {
 	entriesForChargeback,
+	entriesForGiftBreakage,
+	entriesForGiftIssue,
+	entriesForGiftRedeem,
+	entriesForGiftRemit,
 	entriesForOrderAllocations,
 	entriesForPayment,
 	entriesForPeriodClose,
@@ -82,6 +86,16 @@ import {
 import { makeTableQrToken, parseQrMode } from "./qr-table";
 import { useNotifyStore } from "./notify-store";
 import { isDemoStaffPin } from "@/lib/demo/pin";
+import {
+	defaultGiftIssuer,
+	fulfillingIssuer,
+	giftBreakageHouseShareCents,
+	giftExpiresAt,
+	houseIssuer,
+	HOUSE_ISSUER_ID,
+	isGiftExpired,
+	resolveGiftIssuer,
+} from "./gift-issuer";
 
 function nextOrderNumber(orders) {
 	return orders.reduce((m, o) => Math.max(m, o.number), 100) + 1;
@@ -157,6 +171,7 @@ function initialState() {
 		reservations: RESERVATIONS.map((r) => ({ ...r })),
 		customers: CUSTOMERS.map((c) => ({ ...c })),
 		giftCards: GIFT_CARDS.map((g) => ({ ...g })),
+		giftTransfers: [],
 		inventory: INVENTORY.map((i) => ({ ...i })),
 		vendors: VENDORS.map((v) => ({ ...v })),
 		settlementConfig: { ...SETTLEMENT_CONFIG },
@@ -482,21 +497,26 @@ const usePosStoreRaw = create()(persist((set, get) => ({
 		});
 		return { ok: true, access };
 	},
-	seatTable: (tableId, guestCount) => {
+	seatTable: (tableId, guestCount, opts) => {
 		const emp = get().getCurrentEmployee();
 		if (!emp) return { ok: false, error: "Not signed in" };
 		const table = get().tables.find((t) => t.id === tableId);
 		if (!table || !isEmptyTable(table.status)) return { ok: false, error: "Table not available" };
 		const access = checkTableAccess(get, table, "seat");
 		if (!access.ok) return { ok: false, error: access.reason, access };
+		const canAssign = emp.role === "owner" || emp.role === "manager" || emp.role === "host";
+		const assigned = opts?.serverId && canAssign
+			? get().employees.find((e) => e.id === opts.serverId && e.active)
+			: null;
+		const owner = assigned ?? emp;
 		const order = {
 			id: uid("ord"),
 			number: nextOrderNumber(get().orders),
 			type: "dine_in",
 			tableId,
 			guestCount,
-			serverId: emp.id,
-			serverName: emp.name,
+			serverId: owner.id,
+			serverName: owner.name,
 			lines: [],
 			payments: [],
 			status: "open",
@@ -513,20 +533,117 @@ const usePosStoreRaw = create()(persist((set, get) => ({
 				status: "sat_no_order",
 				statusSince: Date.now(),
 				orderId: order.id,
-				serverId: emp.id,
+				serverId: owner.id,
 				guestCount,
-				seatedAt: Date.now()
+				seatedAt: Date.now(),
+				releasedAt: void 0,
+				releasedById: void 0,
+				releasedByName: void 0,
 			} : t),
 			activeOrderId: order.id,
 			activeTableId: tableId,
-			view: "order",
+			view: emp.role === "host" ? "floor" : "order",
 			shift: {
 				...get().shift,
 				guestCount: get().shift.guestCount + guestCount
 			}
 		});
-		get().audit("seat", `Table ${table.label} · ${guestCount} guests`);
+		get().audit(
+			"seat",
+			`Table ${table.label} · ${guestCount} guests · ${owner.name}${assigned ? " (host assigned)" : ""}`,
+		);
 		noteTableSeat({ tableId, guestCount });
+		return { ok: true };
+	},
+	releaseTable: (tableId) => {
+		const emp = get().getCurrentEmployee();
+		if (!emp) return { ok: false, error: "Not signed in" };
+		const table = get().tables.find((t) => t.id === tableId);
+		if (!table) return { ok: false, error: "Not found" };
+		if (!table.orderId) return { ok: false, error: "No open check" };
+		const order = get().orders.find((o) => o.id === table.orderId);
+		if (!order || order.status !== "open") return { ok: false, error: "No open check" };
+		const isMgr = emp.role === "owner" || emp.role === "manager" || emp.role === "host";
+		if (!isMgr && table.serverId && table.serverId !== emp.id && order.serverId !== emp.id) {
+			return { ok: false, error: "Only the assigned server can release" };
+		}
+		set({
+			tables: get().tables.map((t) => t.id === tableId ? {
+				...t,
+				serverId: void 0,
+				releasedAt: Date.now(),
+				releasedById: emp.id,
+				releasedByName: emp.name,
+			} : t),
+			orders: get().orders.map((o) => o.id === order.id ? {
+				...o,
+				serverId: void 0,
+				serverName: "Released",
+			} : o),
+		});
+		get().audit("table_release", `Table ${table.label} released by ${emp.name}`);
+		return { ok: true };
+	},
+	acceptTable: (tableId) => {
+		const emp = get().getCurrentEmployee();
+		if (!emp) return { ok: false, error: "Not signed in" };
+		const canTake =
+			emp.role === "server" ||
+			emp.role === "bartender" ||
+			emp.role === "owner" ||
+			emp.role === "manager" ||
+			emp.role === "host";
+		if (!canTake) return { ok: false, error: "Only floor staff can accept a table" };
+		const table = get().tables.find((t) => t.id === tableId);
+		if (!table?.releasedAt) return { ok: false, error: "Table is not in the offer pool" };
+		if (!table.orderId) return { ok: false, error: "No open check" };
+		const releasedBy = table.releasedByName ?? "unknown";
+		set({
+			tables: get().tables.map((t) => t.id === tableId ? {
+				...t,
+				serverId: emp.id,
+				releasedAt: void 0,
+				releasedById: void 0,
+				releasedByName: void 0,
+			} : t),
+			orders: get().orders.map((o) => o.id === table.orderId ? {
+				...o,
+				serverId: emp.id,
+				serverName: emp.name,
+			} : o),
+		});
+		get().audit(
+			"table_accept",
+			`Table ${table.label} accepted by ${emp.name} (released by ${releasedBy})`,
+		);
+		return { ok: true };
+	},
+	reassignTable: (tableId, serverId) => {
+		const emp = get().getCurrentEmployee();
+		if (!emp || (emp.role !== "owner" && emp.role !== "manager" && emp.role !== "host")) {
+			return { ok: false, error: "Manager or host can reassign" };
+		}
+		const target = get().employees.find((e) => e.id === serverId && e.active);
+		if (!target) return { ok: false, error: "Staff not found" };
+		const table = get().tables.find((t) => t.id === tableId);
+		if (!table) return { ok: false, error: "Not found" };
+		set({
+			tables: get().tables.map((t) => t.id === tableId ? {
+				...t,
+				serverId: target.id,
+				releasedAt: void 0,
+				releasedById: void 0,
+				releasedByName: void 0,
+			} : t),
+			orders: table.orderId
+				? get().orders.map((o) => o.id === table.orderId ? {
+					...o,
+					serverId: target.id,
+					serverName: target.name,
+				} : o)
+				: get().orders,
+		});
+		get().audit("table_reassign", `Table ${table.label} → ${target.name} by ${emp.name}`);
 		return { ok: true };
 	},
 	markClean: (tableId) => {
@@ -537,7 +654,10 @@ const usePosStoreRaw = create()(persist((set, get) => ({
 			orderId: void 0,
 			serverId: void 0,
 			guestCount: void 0,
-			seatedAt: void 0
+			seatedAt: void 0,
+			releasedAt: void 0,
+			releasedById: void 0,
+			releasedByName: void 0,
 		} : t) });
 	},
 	clearTable: (tableId) => {
@@ -1036,6 +1156,8 @@ const usePosStoreRaw = create()(persist((set, get) => ({
 			};
 			changeCents = tendered - amountCents - tipCents;
 		}
+		let giftRedeemLed = [];
+		let giftRedeemTransfers = [];
 		if (method === "gift_card") {
 			if (!giftCardCode) return {
 				ok: false,
@@ -1060,6 +1182,47 @@ const usePosStoreRaw = create()(persist((set, get) => ({
 				balanceCents: nextBal,
 				status: nextBal === 0 ? "zeroed" : g.status || "active"
 			} : g) });
+			const issuer = resolveGiftIssuer(gc.issuerId, get().settings, get().vendors);
+			const fulfiller = fulfillingIssuer(emp, get().settings, get().vendors);
+			giftRedeemLed = entriesForGiftRedeem({
+				ids: {
+					orgId: get().tenantLocationId ? `org:${get().tenantLocationId}` : "org_local",
+					locationId: get().tenantLocationId || get().settlementConfig.locationId || "loc_local",
+				},
+				cardId: gc.id,
+				code: gc.code,
+				amountCents: need,
+				issuerId: issuer.id,
+				issuerKind: issuer.kind,
+				orderId: order.id,
+			});
+			if (issuer.id !== fulfiller.id) {
+				const trId = uid("gtr");
+				giftRedeemTransfers = [{
+					id: trId,
+					at: Date.now(),
+					giftCardId: gc.id,
+					amountCents: need,
+					fromId: issuer.id,
+					fromName: issuer.name,
+					toId: fulfiller.id,
+					toName: fulfiller.name,
+					reason: "redeem",
+				}];
+				giftRedeemLed = giftRedeemLed.concat(entriesForGiftRemit({
+					ids: {
+						orgId: get().tenantLocationId ? `org:${get().tenantLocationId}` : "org_local",
+						locationId: get().tenantLocationId || get().settlementConfig.locationId || "loc_local",
+					},
+					transferId: trId,
+					amountCents: need,
+					fromId: issuer.id,
+					fromKind: issuer.kind,
+					toId: fulfiller.id,
+					toKind: fulfiller.kind,
+					reason: "redeem",
+				}));
+			}
 		}
 		const payment = {
 			id: uid("pay"),
@@ -1144,12 +1307,16 @@ const usePosStoreRaw = create()(persist((set, get) => ({
 				settings: get().settings,
 			}));
 		}
+		led = led.concat(giftRedeemLed);
 		set({
 			orders: get().orders.map((o) => o.id === order.id ? updated : o),
 			shift,
 			employees,
 			tables,
 			ledgerEntries: mergeLedger(get().ledgerEntries ?? [], led),
+			giftTransfers: giftRedeemTransfers.length
+				? [...(get().giftTransfers ?? []), ...giftRedeemTransfers]
+				: get().giftTransfers ?? [],
 		});
 		if (updated.status === "closed") try {
 			useOpsStore.getState().recordTicketClosed(order.serverId, Date.now());
@@ -1299,17 +1466,24 @@ const usePosStoreRaw = create()(persist((set, get) => ({
 			marketingOptIn: true
 		}, ...get().customers] });
 	},
-	issueGiftCard: ({ amountCents, code, issuedToName }) => {
+	issueGiftCard: ({ amountCents, code, issuedToName, issuerId, tender }) => {
 		if (amountCents <= 0) return {
 			ok: false,
 			error: "Amount required"
 		};
-		const c = (code || "").trim().toUpperCase() || `ZEST-${Math.random().toString(36).slice(2, 6).toUpperCase()}-${Math.floor(Math.random() * 9e3 + 1e3)}`;
+		const emp = get().getCurrentEmployee();
+		const settings = get().settings;
+		const vendors = get().vendors;
+		const issuer = issuerId
+			? resolveGiftIssuer(issuerId, settings, vendors)
+			: defaultGiftIssuer(emp, settings, vendors);
+		const c = (code || "").trim().toUpperCase() || `SUMMEX-${Math.random().toString(36).slice(2, 6).toUpperCase()}-${Math.floor(Math.random() * 9e3 + 1e3)}`;
 		if (get().giftCards.some((g) => g.code === c)) return {
 			ok: false,
 			error: "Code already exists"
 		};
-		set({ giftCards: [{
+		const now = Date.now();
+		const card = {
 			id: uid("gc"),
 			code: c,
 			balanceCents: amountCents,
@@ -1317,13 +1491,142 @@ const usePosStoreRaw = create()(persist((set, get) => ({
 			active: true,
 			status: "active",
 			source: "summex",
-			issuedAt: Date.now(),
-			issuedToName
-		}, ...get().giftCards] });
+			issuedAt: now,
+			issuedToName,
+			issuerKind: issuer.kind,
+			issuerId: issuer.id,
+			issuerName: issuer.name,
+			soldByEmployeeId: emp?.id,
+			soldByOperatorId: emp?.operatorId,
+			expiresAt: giftExpiresAt(now, settings),
+		};
+		const ids = {
+			orgId: get().tenantLocationId ? `org:${get().tenantLocationId}` : "org_local",
+			locationId: get().tenantLocationId || get().settlementConfig.locationId || "loc_local",
+		};
+		let led = entriesForGiftIssue({
+			ids,
+			cardId: card.id,
+			code: c,
+			amountCents,
+			issuerId: issuer.id,
+			issuerKind: issuer.kind,
+			now,
+		});
+		const transfers = [...(get().giftTransfers ?? [])];
+		const sellerId = emp?.operatorId || HOUSE_ISSUER_ID;
+		if (sellerId !== issuer.id) {
+			const seller = resolveGiftIssuer(sellerId, settings, vendors);
+			const trId = uid("gtr");
+			transfers.push({
+				id: trId,
+				at: now,
+				giftCardId: card.id,
+				amountCents,
+				fromId: seller.id,
+				fromName: seller.name,
+				toId: issuer.id,
+				toName: issuer.name,
+				reason: "issue_remit",
+			});
+			led = led.concat(entriesForGiftRemit({
+				ids,
+				transferId: trId,
+				amountCents,
+				fromId: seller.id,
+				fromKind: seller.kind,
+				toId: issuer.id,
+				toKind: issuer.kind,
+				reason: "issue_remit",
+				now,
+			}));
+		}
+		set({
+			giftCards: [card, ...get().giftCards],
+			giftTransfers: transfers,
+			ledgerEntries: mergeLedger(get().ledgerEntries ?? [], led),
+		});
+		get().audit(
+			"gift_issue",
+			`${c} · issuer ${issuer.name} · ${tender ?? "card"} $${(amountCents / 100).toFixed(2)} (liability, not merch)`,
+		);
 		return {
 			ok: true,
+			card,
 			code: c
 		};
+	},
+	processGiftBreakage: () => {
+		const settings = get().settings;
+		const vendors = get().vendors;
+		const now = Date.now();
+		const house = houseIssuer(settings);
+		const ids = {
+			orgId: get().tenantLocationId ? `org:${get().tenantLocationId}` : "org_local",
+			locationId: get().tenantLocationId || get().settlementConfig.locationId || "loc_local",
+		};
+		let processed = 0;
+		let cards = get().giftCards;
+		const transfers = [...(get().giftTransfers ?? [])];
+		let led = [];
+		for (const c of cards) {
+			if (c.status === "void" || c.breakageProcessedAt) continue;
+			if (!isGiftExpired(c, now)) continue;
+			const remaining = Math.max(0, c.balanceCents);
+			if (remaining <= 0) continue;
+			const issuer = resolveGiftIssuer(c.issuerId, settings, vendors);
+			const houseShare = giftBreakageHouseShareCents(remaining, issuer.kind, settings);
+			cards = cards.map((g) => g.id === c.id ? {
+				...g,
+				balanceCents: 0,
+				status: "zeroed",
+				breakageProcessedAt: now,
+			} : g);
+			led = led.concat(entriesForGiftBreakage({
+				ids,
+				cardId: c.id,
+				amountCents: remaining,
+				issuerId: issuer.id,
+				issuerKind: issuer.kind,
+				now,
+			}));
+			if (houseShare > 0 && issuer.id !== house.id) {
+				const trId = uid("gtr");
+				transfers.push({
+					id: trId,
+					at: now,
+					giftCardId: c.id,
+					amountCents: houseShare,
+					fromId: issuer.id,
+					fromName: issuer.name,
+					toId: house.id,
+					toName: house.name,
+					reason: "breakage",
+				});
+				led = led.concat(entriesForGiftRemit({
+					ids,
+					transferId: trId,
+					amountCents: houseShare,
+					fromId: issuer.id,
+					fromKind: issuer.kind,
+					toId: house.id,
+					toKind: "house",
+					reason: "breakage",
+					now,
+				}));
+			}
+			processed += 1;
+			get().audit(
+				"gift_breakage",
+				`${c.code} · ${issuer.name} residual $${(remaining / 100).toFixed(2)}${issuer.kind === "house" ? " retained by house" : ` · house share $${(houseShare / 100).toFixed(2)}`}`,
+			);
+		}
+		set({
+			giftCards: cards,
+			giftTransfers: transfers,
+			ledgerEntries: mergeLedger(get().ledgerEntries ?? [], led),
+		});
+		return { ok: true, processed };
 	},
 	reloadGiftCard: (code, amountCents) => {
 		const gc = get().giftCards.find((g) => g.code.toUpperCase() === code.toUpperCase() && g.active);
@@ -1406,6 +1709,9 @@ const usePosStoreRaw = create()(persist((set, get) => ({
 				issuedToEmail: row.issuedToEmail,
 				issuedAt: Date.now(),
 				notes: row.notes || `Imported from ${preview.provider}`,
+				issuerKind: "house",
+				issuerId: HOUSE_ISSUER_ID,
+				issuerName: get().settings.name || "House",
 			});
 			existing.add(code);
 			imported += 1;
@@ -2007,6 +2313,7 @@ const usePosStoreRaw = create()(persist((set, get) => ({
 				},
 			],
 			giftCards: [],
+			giftTransfers: [],
 			customers: [],
 			inventory: "inventory" in slice && Array.isArray(slice.inventory) ? slice.inventory : [],
 		});
@@ -2029,7 +2336,7 @@ const usePosStoreRaw = create()(persist((set, get) => ({
 			slice.employees[0];
 		set({
 			...slice,
-			currentEmployeeId: keep?.id ?? null,
+			currentEmployeeId: null,
 			shift: emptyShift(),
 			clock: Date.now(),
 			auditLog: [
@@ -2043,6 +2350,7 @@ const usePosStoreRaw = create()(persist((set, get) => ({
 				},
 			],
 			giftCards: [],
+			giftTransfers: [],
 			customers: [],
 			inventory: "inventory" in slice && Array.isArray(slice.inventory) ? slice.inventory : [],
 		});
@@ -2227,6 +2535,7 @@ const usePosStoreRaw = create()(persist((set, get) => ({
 		reservations: s.reservations,
 		customers: s.customers,
 		giftCards: s.giftCards,
+		giftTransfers: s.giftTransfers ?? [],
 		inventory: s.inventory,
 		vendors: s.vendors,
 		settlementConfig: s.settlementConfig,
@@ -2294,6 +2603,19 @@ const usePosStoreRaw = create()(persist((set, get) => ({
 				voiceControlEnabledByRole: {
 					...(p.settings && p.settings.voiceControlEnabledByRole),
 				},
+				giftTermAllowed: (p.settings && p.settings.giftTermAllowed) ?? current.settings?.giftTermAllowed ?? false,
+				giftTermDays: (p.settings && p.settings.giftTermDays) ?? current.settings?.giftTermDays ?? 730,
+				giftOperatorBreakageSplitBps:
+					(p.settings && p.settings.giftOperatorBreakageSplitBps) ??
+					current.settings?.giftOperatorBreakageSplitBps ??
+					5000,
+				giftHouseIssuerEnabled:
+					(p.settings && p.settings.giftHouseIssuerEnabled) ??
+					current.settings?.giftHouseIssuerEnabled ??
+					true,
+				giftHostessDefaultIssuerId:
+					(p.settings && p.settings.giftHostessDefaultIssuerId) ??
+					current.settings?.giftHostessDefaultIssuerId,
 				...(ent
 					? {
 							name: ent.venueName,
@@ -2318,7 +2640,10 @@ const usePosStoreRaw = create()(persist((set, get) => ({
 				source: g.source || "summex",
 				status: g.status || (g.active === false ? "void" : g.balanceCents === 0 ? "zeroed" : "active"),
 				originalBalanceCents: g.originalBalanceCents ?? g.balanceCents,
+				issuerKind: g.issuerKind || "house",
+				issuerId: g.issuerId || HOUSE_ISSUER_ID,
 			})),
+			giftTransfers: p.giftTransfers || current.giftTransfers || [],
 		};
 	}
 }));

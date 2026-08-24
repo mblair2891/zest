@@ -82,7 +82,8 @@ operators get **operator ops** only (staff, clock, 86, view-only settlement).
 Payout destinations and settlement rules live under **Host settings**.
 
 Location Settings (owner/manager) shows packs for the venue type: profile, tax,
-payments, cash discount, devices, staff, notifications, hours, plus type packs
+payments, cash discount, gift cards (issuer, term disclaimer, residual split),
+devices, staff, notifications, hours, plus type packs
 (sections, bar tabs, counter/expo, host operators, kiosk/waitlist). Live writes
 go through `saveLocationSettingsFn` (membership owner/manager/platform_admin).
 
@@ -147,11 +148,20 @@ In-app: `/guide?topic=role-walkthroughs`.
 
 ## Demo login & device switcher
 
-Prospect rooms use **one** demo login (`Continue as demo operator`, or
-`demo` / `demo` — listed on Platform → Demos, not the marketing home). After
-enter, **Demo mode — switch role or device** picks access level (owner,
-manager, server, host stand, bartender, kitchen, cashier, vendor operator,
-accountant) or device (Floor POS, Kiosk, KDS Kitchen, KDS Bar).
+Marketing home → **Demo sites** → entity type. The next screen is the **same
+floor PIN pad** as production (not a skip-auth button). PIN **0000** logs into
+that demo venue as **Owner / Manager**. Clock in and clock out are separate
+tabs on the PIN pad and also accept 0000.
+
+After login, **View** switches Host stand, Server (each server on The Laundry),
+Expo, Kitchen KDS, Bar KDS, Bartender, Cashier, Busser, vendor operator, and
+optional Kiosk — live shared state, no second PIN.
+
+Host stand seats a section and can assign a server. Server A **Release table**
+puts the open check in the offer pool; Server B **Accept** takes ownership
+(audit: who, when). Gift cards: bar sale → Steam liability; redeem food at
+Diamond → Steam remits to Diamond. Settings show house residual vs operator
+split. Exit returns to Demo sites or marketing home.
 
 The session is `is_demo` only. Real tenants still use memberships and PINs.
 Floor, kiosk, and KDS share the same demo persist so tickets, waitlist, and

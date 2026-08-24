@@ -43,11 +43,12 @@ export function DemoCatalogPage() {
           Pick an establishment. PIN {DEMO_STAFF_PIN}. Walk every station.
         </h1>
         <p className="mt-5 max-w-2xl text-sm leading-relaxed text-muted-foreground sm:text-base">
-          Public demos only — not live tenants, not the control plane. One PIN
-          for every staff action. Login opens Owner / Manager. The View menu
-          switches Hostess, Server, Kitchen, Bar, Expo, Busser, and operators
-          on the same house. Clock in/out is a separate action, still {DEMO_STAFF_PIN}.
-          Guest cards are Quantum Payments.
+          Public demos only — not live tenants, not the control plane. You get
+          the same floor PIN pad as production. PIN {DEMO_STAFF_PIN} opens Owner /
+          Manager. The View menu switches Host stand, Server, Kitchen, Bar, Expo,
+          Busser, and operators on the same house. Clock in/out is a separate
+          tab on that PIN pad, still {DEMO_STAFF_PIN}. Guest cards are Quantum
+          Payments. Gift liability follows the issuer, not the selling drawer.
         </p>
 
         <div

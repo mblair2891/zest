@@ -8,6 +8,7 @@ import type {
   FloorSection,
   GiftCard,
   GiftCardStatus,
+  GiftTransfer,
   InventoryItem,
   KitchenTicket,
   MenuCategory,
@@ -79,6 +80,7 @@ export interface PosStore {
   reservations: Reservation[];
   customers: Customer[];
   giftCards: GiftCard[];
+  giftTransfers: GiftTransfer[];
   inventory: InventoryItem[];
   vendors: Vendor[];
   settlementConfig: SettlementConfig;
@@ -124,7 +126,14 @@ export interface PosStore {
     action?: "view" | "order" | "seat",
   ) => SectionAccess;
   selectTable: (tableId: string) => ActionResult<{ access?: SectionAccess }>;
-  seatTable: (tableId: string, guestCount: number) => ActionResult;
+  seatTable: (
+    tableId: string,
+    guestCount: number,
+    opts?: { serverId?: string },
+  ) => ActionResult;
+  releaseTable: (tableId: string) => ActionResult;
+  acceptTable: (tableId: string) => ActionResult;
+  reassignTable: (tableId: string, serverId: string) => ActionResult;
   markClean: (tableId: string) => void;
   setTableStatus: (tableId: string, status: TableStatus) => ActionResult;
   guestOpenTable: (tableId: string) => ActionResult;
@@ -193,7 +202,10 @@ export interface PosStore {
     amountCents: number;
     code?: string;
     issuedToName?: string;
+    issuerId?: string;
+    tender?: "cash" | "card";
   }) => ActionResult<{ card?: GiftCard; code?: string }>;
+  processGiftBreakage: () => ActionResult<{ processed?: number }>;
   reloadGiftCard: (code: string, amountCents: number) => ActionResult;
   setGiftCardStatus: (code: string, status: GiftCardStatus) => ActionResult;
   importGiftCards: (

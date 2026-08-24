@@ -9,6 +9,19 @@ import type { GuideUpdate } from "@/lib/guide/types";
  */
 export const WHATS_NEW_ENTRIES: GuideUpdate[] = [
   {
+    id: "upd_2026_09_12_gift_pin_floor",
+    date: "2026-09-12",
+    title: "Demo PIN pad, Host stand / Server, release/accept, gift issuers",
+    summary:
+      "Demo sites open the real floor PIN pad (0000). Host stand and Server views, section assignment, release/accept transfers, and first-party gift liability by issuer.",
+    body: "Demo sites → entity → production PIN pad → 0000 as Owner. View includes Host stand and each Server. Host seats a section and can assign a server. Release puts the open check in the offer pool; Accept transfers ownership with an audit. Gift sale books issuer liability (bar → Steam, host stand → configured entity, house SKU → house), not seller merch. Redeem at another operator remits issuer → fulfiller. Operator residual splits; house-issued remaining balance stays with the house. Settings show the term disclaimer (off by default).",
+    roles: "all",
+    surfaces: ["floor", "settings"],
+    audience: "demo",
+    topicId: "prospect-demos",
+    tags: ["demo", "pin", "host stand", "release", "gift", "issuer"],
+  },
+  {
     id: "upd_2026_09_11_demo_pin",
     date: "2026-09-11",
     title: "Demo sites: PIN 0000, View switcher, live floor path",

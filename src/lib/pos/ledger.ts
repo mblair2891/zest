@@ -31,6 +31,10 @@ export const LEDGER_TYPES = [
   "chargeback",
   "chargeback_fee",
   "cash_discount_adjustment",
+  "gift_issue",
+  "gift_redeem",
+  "gift_remit",
+  "gift_breakage",
   "adjustment",
 ] as const;
 
@@ -132,6 +136,25 @@ export function entriesForPayment(opts: {
         },
       }),
     );
+  } else if (method === "gift_card") {
+    // Gift tender is not a processor capture. Liability is gift_redeem;
+    // merchandise allocation still posts when the check closes.
+    if (payment.tipCents > 0) {
+      out.push(
+        row(ids, {
+          id: `led_${payId}_tip`,
+          idempotencyKey: `pay:${payId}:tip`,
+          at,
+          type: "tip",
+          amountCents: Math.abs(payment.tipCents),
+          orderId: order.id,
+          paymentId: payId,
+          party: "host",
+          meta: { method, pooled: false, orderNumber: order.number },
+        }),
+      );
+    }
+    return out;
   } else if (method === "cash") {
     const policy = cashPolicyFromSettings(settings);
     let printedMerch = 0;
@@ -408,5 +431,120 @@ export function ledgerToCsv(entries: LedgerEntry[]): string {
       .join(","),
   );
   return [header.join(","), ...lines].join("\n");
+}
+
+export function entriesForGiftIssue(opts: {
+  ids: LedgerIds;
+  cardId: string;
+  code: string;
+  amountCents: number;
+  issuerId: string;
+  issuerKind: "house" | "operator";
+  now?: number;
+}): LedgerEntry[] {
+  const at = opts.now ?? Date.now();
+  const party = opts.issuerKind === "house" ? "host" : "operator";
+  return [
+    row(opts.ids, {
+      id: `led_gc_iss_${opts.cardId}`,
+      idempotencyKey: `gift:${opts.cardId}:issue`,
+      at,
+      type: "gift_issue",
+      amountCents: Math.abs(opts.amountCents),
+      operatorId: opts.issuerKind === "operator" ? opts.issuerId : undefined,
+      party,
+      meta: { code: opts.code, issuerId: opts.issuerId, liability: true },
+    }),
+  ];
+}
+
+export function entriesForGiftRedeem(opts: {
+  ids: LedgerIds;
+  cardId: string;
+  code: string;
+  amountCents: number;
+  issuerId: string;
+  issuerKind: "house" | "operator";
+  paymentId?: string;
+  orderId?: string;
+  now?: number;
+}): LedgerEntry[] {
+  const at = opts.now ?? Date.now();
+  const party = opts.issuerKind === "house" ? "host" : "operator";
+  return [
+    row(opts.ids, {
+      id: `led_gc_rd_${opts.cardId}_${at}`,
+      idempotencyKey: `gift:${opts.cardId}:redeem:${opts.paymentId ?? at}`,
+      at,
+      type: "gift_redeem",
+      amountCents: -Math.abs(opts.amountCents),
+      operatorId: opts.issuerKind === "operator" ? opts.issuerId : undefined,
+      party,
+      paymentId: opts.paymentId,
+      orderId: opts.orderId,
+      meta: { code: opts.code, issuerId: opts.issuerId },
+    }),
+  ];
+}
+
+/** In-system settlement between issuer and another party (redeem or residual split). */
+export function entriesForGiftRemit(opts: {
+  ids: LedgerIds;
+  transferId: string;
+  amountCents: number;
+  fromId: string;
+  fromKind: "house" | "operator";
+  toId: string;
+  toKind: "house" | "operator";
+  reason: string;
+  now?: number;
+}): LedgerEntry[] {
+  const at = opts.now ?? Date.now();
+  const amt = Math.abs(opts.amountCents);
+  return [
+    row(opts.ids, {
+      id: `led_gc_rm_${opts.transferId}_from`,
+      idempotencyKey: `gift:${opts.transferId}:remit:from`,
+      at,
+      type: "gift_remit",
+      amountCents: -amt,
+      operatorId: opts.fromKind === "operator" ? opts.fromId : undefined,
+      party: opts.fromKind === "house" ? "host" : "operator",
+      meta: { toId: opts.toId, reason: opts.reason },
+    }),
+    row(opts.ids, {
+      id: `led_gc_rm_${opts.transferId}_to`,
+      idempotencyKey: `gift:${opts.transferId}:remit:to`,
+      at,
+      type: "gift_remit",
+      amountCents: amt,
+      operatorId: opts.toKind === "operator" ? opts.toId : undefined,
+      party: opts.toKind === "house" ? "host" : "operator",
+      meta: { fromId: opts.fromId, reason: opts.reason },
+    }),
+  ];
+}
+
+export function entriesForGiftBreakage(opts: {
+  ids: LedgerIds;
+  cardId: string;
+  amountCents: number;
+  issuerId: string;
+  issuerKind: "house" | "operator";
+  now?: number;
+}): LedgerEntry[] {
+  const at = opts.now ?? Date.now();
+  return [
+    row(opts.ids, {
+      id: `led_gc_brk_${opts.cardId}`,
+      idempotencyKey: `gift:${opts.cardId}:breakage`,
+      at,
+      type: "gift_breakage",
+      amountCents: -Math.abs(opts.amountCents),
+      operatorId: opts.issuerKind === "operator" ? opts.issuerId : undefined,
+      party: opts.issuerKind === "house" ? "host" : "operator",
+      meta: { issuerId: opts.issuerId, residual: true },
+    }),
+  ];
 }
 

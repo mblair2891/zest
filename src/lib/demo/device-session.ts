@@ -122,10 +122,18 @@ export function demoStationsForVenue(
   ];
   const has = (role: EmployeeRole) => employees.some((e) => e.active && e.role === role);
   if (has("host") && (type === "restaurant" || type === "food_hall" || type === "bar_lounge")) {
-    out.push({ id: "hostess", station: "hostess", label: "Hostess / Host stand" });
+    out.push({ id: "hostess", station: "hostess", label: "Host stand" });
   }
   if (has("server") && type !== "qsr" && type !== "cafe" && type !== "ghost_kitchen") {
-    out.push({ id: "server", station: "server", label: "Server" });
+    const servers = employees.filter((e) => e.active && e.role === "server");
+    for (const e of servers) {
+      out.push({
+        id: servers.length > 1 ? `server:${e.id}` : "server",
+        station: "server",
+        label: servers.length > 1 ? `Server · ${e.name}` : "Server",
+        employeeId: e.id,
+      });
+    }
   }
   if (expoOn && has("kitchen") && (type === "restaurant" || type === "food_hall" || type === "bar_lounge")) {
     out.push({ id: "expo", station: "expo", label: "Expo" });

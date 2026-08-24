@@ -10,6 +10,7 @@ import { GuideLearnLink } from "@/components/guide/GuideLearnLink";
 import { SetupAssistButton } from "@/components/assist/SetupAssistDialog";
 import { canEmployee } from "@/lib/access/permissions";
 import { OperatorOpsView } from "./OperatorOpsView";
+import { liabilityByIssuer } from "@/lib/pos/gift-issuer";
 
 export function SettlementView() {
   const setView = usePosStore((s) => s.setView);
@@ -257,6 +258,8 @@ export function SettlementView() {
           </p>
           </fieldset>
         </section>
+
+        <GiftIssuerSettlement />
 
         {/* Vendors in building */}
         <section className="rounded-2xl border border-border bg-surface p-4">
@@ -561,6 +564,94 @@ function SettlementTable({
         </tbody>
       </table>
     </div>
+  );
+}
+
+function GiftIssuerSettlement() {
+  const giftCards = usePosStore((s) => s.giftCards);
+  const giftTransfers = usePosStore((s) => s.giftTransfers ?? []);
+  const settings = usePosStore((s) => s.settings);
+  const vendors = usePosStore((s) => s.vendors);
+  const processGiftBreakage = usePosStore((s) => s.processGiftBreakage);
+  const emp = usePosStore((s) => s.employees.find((e) => e.id === s.currentEmployeeId));
+  const write = canEmployee(emp, "settlement:write");
+  const rows = liabilityByIssuer(giftCards, settings, vendors);
+  const [note, setNote] = useState<string | null>(null);
+  return (
+    <section className="rounded-2xl border border-border bg-surface p-4" data-demo="gift-settlement">
+      <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+        <h3 className="text-sm font-semibold">Gift liability by issuer</h3>
+        <GuideLearnLink topicId="gift-cards" compact>
+          Learn
+        </GuideLearnLink>
+      </div>
+      <p className="mb-3 text-xs text-muted-foreground">
+        Issue is liability of the issuer, never seller merchandise. Redeem: fulfiller
+        merch + issuer → fulfiller remit (no-op if same entity). Operator residual
+        splits {Math.round((settings.giftOperatorBreakageSplitBps ?? 5000) / 100)}% to
+        the other party; house-issued remaining balance stays with the house.
+      </p>
+      {rows.length === 0 ? (
+        <p className="text-xs text-muted-foreground">No outstanding gift cards.</p>
+      ) : (
+        <div className="overflow-x-auto">
+          <table className="w-full text-left text-xs">
+            <thead className="text-muted-foreground">
+              <tr>
+                <th className="py-1 font-medium">Issuer</th>
+                <th className="py-1 font-medium">Kind</th>
+                <th className="py-1 font-medium">Outstanding</th>
+                <th className="py-1 font-medium">Redeemed</th>
+                <th className="py-1 font-medium">Breakage</th>
+              </tr>
+            </thead>
+            <tbody>
+              {rows.map((r) => (
+                <tr key={r.issuerId} className="border-t border-border">
+                  <td className="py-1.5">{r.issuerName}</td>
+                  <td className="py-1.5 capitalize">{r.kind}</td>
+                  <td className="py-1.5 tabular">{formatCurrency(r.outstandingCents)}</td>
+                  <td className="py-1.5 tabular">{formatCurrency(r.redeemedCents)}</td>
+                  <td className="py-1.5 tabular">{formatCurrency(r.breakageCents)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+      {giftTransfers.length > 0 && (
+        <div className="mt-3 space-y-1 text-xs">
+          <p className="font-medium">In-system remits</p>
+          {giftTransfers.slice(0, 12).map((t) => (
+            <div key={t.id} className="flex justify-between text-muted-foreground">
+              <span>
+                {t.reason} · {t.fromName} → {t.toName}
+              </span>
+              <span className="tabular text-foreground">{formatCurrency(t.amountCents)}</span>
+            </div>
+          ))}
+        </div>
+      )}
+      {write && (
+        <div className="mt-3">
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => {
+              const res = processGiftBreakage();
+              setNote(
+                res.ok
+                  ? `Processed ${res.processed ?? 0} expired card${(res.processed ?? 0) === 1 ? "" : "s"}`
+                  : res.error ?? "Failed",
+              );
+            }}
+          >
+            Process expired residual
+          </Button>
+          {note && <p className="mt-2 text-xs text-muted-foreground">{note}</p>}
+        </div>
+      )}
+    </section>
   );
 }
 

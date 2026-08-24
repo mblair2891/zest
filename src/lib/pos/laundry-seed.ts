@@ -52,6 +52,11 @@ export const LAUNDRY_SETTINGS: RestaurantSettings = {
   kioskMode: "combined",
   qrMode: "hybrid",
   expoEnabled: true,
+  giftTermAllowed: false,
+  giftTermDays: 730,
+  giftOperatorBreakageSplitBps: 5000,
+  giftHouseIssuerEnabled: true,
+  giftHostessDefaultIssuerId: LAUNDRY_DIAMOND_ID,
   floorStatusConfig: {
     enabled: {
       empty: true,
@@ -311,6 +316,20 @@ export const LAUNDRY_EMPLOYEES: Employee[] = [
     active: true,
     homeSectionIds: ["sec_laundry_dining"],
     title: "Server",
+  },
+  {
+    id: "emp_laundry_srv2",
+    name: "Server two",
+    pin: "1122",
+    role: "server",
+    color: "#0F766E",
+    clockedIn: true,
+    clockInAt: Date.now(),
+    tipsEarned: 0,
+    salesTotal: 0,
+    active: true,
+    homeSectionIds: ["sec_laundry_dining"],
+    title: "Server · dining",
   },
   {
     id: "emp_laundry_bar",

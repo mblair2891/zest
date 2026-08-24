@@ -9,6 +9,8 @@ import {
   Lock,
   QrCode,
   Pencil,
+  Handshake,
+  UserCheck,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -67,6 +69,9 @@ export function FloorView() {
   const settings = usePosStore((s) => s.settings);
   const selectTable = usePosStore((s) => s.selectTable);
   const seatTable = usePosStore((s) => s.seatTable);
+  const releaseTable = usePosStore((s) => s.releaseTable);
+  const acceptTable = usePosStore((s) => s.acceptTable);
+  const reassignTable = usePosStore((s) => s.reassignTable);
   const markClean = usePosStore((s) => s.markClean);
   const transferTable = usePosStore((s) => s.transferTable);
   const mergeTables = usePosStore((s) => s.mergeTables);
@@ -106,7 +111,9 @@ export function FloorView() {
   const [mergePrimary, setMergePrimary] = useState<string | null>(null);
   const [tabName, setTabName] = useState("");
   const [tabOpen, setTabOpen] = useState(false);
-  const [section, setSection] = useState<string>("All");
+  const [section, setSection] = useState<string>("__init");
+  const [seatServerId, setSeatServerId] = useState<string>("");
+  const [reassignId, setReassignId] = useState<string>("");
   const [blockTable, setBlockTable] = useState<Table | null>(null);
   const [blockReason, setBlockReason] = useState("");
   const [detail, setDetail] = useState<Table | null>(null);
@@ -133,14 +140,22 @@ export function FloorView() {
     return defined;
   }, [floorSections, tables]);
 
-  const showMine = locked && (emp?.homeSectionIds?.length ?? 0) > 0;
+  const showMine =
+    (emp?.role === "server" || locked) && (emp?.homeSectionIds?.length ?? 0) > 0;
+  const effectiveSection = section === "__init" ? (showMine ? "Mine" : "All") : section;
+  const floorServers = employees.filter(
+    (e) => e.active && (e.role === "server" || e.role === "bartender"),
+  );
+  const canAssignServer = emp?.role === "owner" || emp?.role === "manager" || emp?.role === "host";
+  const canForceReassign = emp?.role === "owner" || emp?.role === "manager";
+  const releasedPool = tables.filter((t) => t.releasedAt && !t.mergedIntoId);
 
   const visible = tables.filter((t) => {
     if (t.mergedIntoId) return false;
-    if (section !== "All" && section !== "Mine") {
-      if (t.section !== section) return false;
+    if (effectiveSection !== "All" && effectiveSection !== "Mine") {
+      if (t.section !== effectiveSection) return false;
     }
-    if (section === "Mine" && emp) {
+    if (effectiveSection === "Mine" && emp) {
       const acc = tableAccess(t.id, "order");
       if (!(acc.ok && !acc.viewOnly) && acc.code !== "grant") return false;
     }
@@ -214,7 +229,11 @@ export function FloorView() {
       showBlocked(seatTarget, "Seating is limited to the host stand / manager");
       return;
     }
-    const res = seatTable(seatTarget.id, guests);
+    const res = seatTable(
+      seatTarget.id,
+      guests,
+      seatServerId && canAssignServer ? { serverId: seatServerId } : undefined,
+    );
     if (!res.ok) {
       setSeatOpen(false);
       showBlocked(seatTarget, res.error ?? "Cannot seat");
@@ -254,7 +273,7 @@ export function FloorView() {
         <div className="flex flex-wrap gap-1">
           <Button
             size="sm"
-            variant={section === "All" ? "default" : "outline"}
+            variant={effectiveSection === "All" ? "default" : "outline"}
             onClick={() => setSection("All")}
           >
             All
@@ -262,7 +281,7 @@ export function FloorView() {
           {showMine && (
             <Button
               size="sm"
-              variant={section === "Mine" ? "default" : "outline"}
+              variant={effectiveSection === "Mine" ? "default" : "outline"}
               onClick={() => setSection("Mine")}
             >
               Mine
@@ -272,7 +291,7 @@ export function FloorView() {
             <Button
               key={s.id}
               size="sm"
-              variant={section === s.name ? "default" : "outline"}
+              variant={effectiveSection === s.name ? "default" : "outline"}
               onClick={() => setSection(s.name)}
               className="gap-1.5"
             >
@@ -301,11 +320,34 @@ export function FloorView() {
         </div>
       </div>
 
+      {releasedPool.length > 0 && (
+        <div
+          className="flex flex-wrap items-center gap-2 border-b border-amber-700/30 bg-amber-50 px-3 py-2"
+          data-demo="released-pool"
+        >
+          <span className="text-[11px] font-semibold uppercase tracking-wide text-amber-900">
+            Released / unassigned
+          </span>
+          {releasedPool.map((t) => (
+            <Button
+              key={t.id}
+              size="sm"
+              variant="outline"
+              className="h-7 text-[11px]"
+              onClick={() => setDetail(t)}
+            >
+              Table {t.label}
+              {t.releasedByName ? ` · ${t.releasedByName}` : ""}
+            </Button>
+          ))}
+        </div>
+      )}
+
       <div className="flex min-h-0 flex-1 flex-col lg:flex-row">
         <div className="relative min-h-[280px] flex-1 overflow-auto p-3">
           <div className="relative mx-auto aspect-[4/3] w-full max-w-4xl rounded-2xl border border-border bg-surface">
             <div className="pointer-events-none absolute inset-x-4 top-3 flex justify-between text-[10px] uppercase tracking-wider text-muted-foreground">
-              <span>{section === "All" || section === "Mine" ? "Dining room" : section}</span>
+              <span>{effectiveSection === "All" || effectiveSection === "Mine" ? "Dining room" : effectiveSection}</span>
               <span>Bar →</span>
             </div>
             {visible.map((t) => {
@@ -384,6 +426,11 @@ export function FloorView() {
                   {grant && (
                     <span className="mt-0.5 rounded bg-info px-1 text-[9px] font-bold uppercase tracking-wide text-info-foreground">
                       Grant
+                    </span>
+                  )}
+                  {t.releasedAt && (
+                    <span className="mt-0.5 rounded bg-amber-600 px-1 text-[9px] font-bold uppercase tracking-wide text-white">
+                      Open
                     </span>
                   )}
                   {outOfSection && isEmptyTable(t.status) && (
@@ -677,6 +724,12 @@ export function FloorView() {
                   }
                   setSeatTarget(detailLive);
                   setGuests(Math.min(detailLive.seats, 2));
+                  const sec = floorSections.find((s) => s.name === detailLive.section);
+                  const preferred =
+                    floorServers.find(
+                      (e) => sec && (e.homeSectionIds ?? []).includes(sec.id),
+                    ) ?? floorServers[0];
+                  setSeatServerId(preferred?.id ?? "");
                   setSeatOpen(true);
                 }}
                 onOpenCheck={() => {
@@ -699,6 +752,38 @@ export function FloorView() {
                 onWaitlist={
                   isHostStand ? () => { setDetail(null); setView("waitlist"); } : undefined
                 }
+                onRelease={() => {
+                  const res = releaseTable(detailLive.id);
+                  if (!res.ok) alert(res.error);
+                }}
+                onAccept={() => {
+                  const res = acceptTable(detailLive.id);
+                  if (!res.ok) alert(res.error);
+                }}
+                canRelease={
+                  !!detailLive.orderId &&
+                  !detailLive.releasedAt &&
+                  (emp?.role === "server" ||
+                    emp?.role === "bartender" ||
+                    emp?.role === "owner" ||
+                    emp?.role === "manager" ||
+                    emp?.role === "host") &&
+                  (canForceReassign ||
+                    emp?.role === "host" ||
+                    detailLive.serverId === emp?.id)
+                }
+                canAccept={!!detailLive.releasedAt && (emp?.role === "server" || emp?.role === "bartender" || canAssignServer)}
+                releasedByName={detailLive.releasedByName}
+                serverName={employees.find((e) => e.id === detailLive.serverId)?.name}
+                reassignOptions={canForceReassign ? floorServers : []}
+                reassignId={reassignId}
+                onReassignId={setReassignId}
+                onReassign={() => {
+                  if (!reassignId) return;
+                  const res = reassignTable(detailLive.id, reassignId);
+                  if (!res.ok) alert(res.error);
+                  else setReassignId("");
+                }}
               />
             </>
           )}
@@ -739,6 +824,29 @@ export function FloorView() {
                 ))}
               </div>
             </div>
+            {canAssignServer && floorServers.length > 0 && (
+              <label className="block text-sm text-muted-foreground">
+                Assign server
+                <select
+                  className="mt-1 flex h-10 w-full rounded-md border border-border bg-bg px-3 text-sm text-foreground"
+                  value={seatServerId}
+                  onChange={(e) => setSeatServerId(e.target.value)}
+                >
+                  <option value="">Me ({emp?.name})</option>
+                  {floorServers.map((s) => (
+                    <option key={s.id} value={s.id}>
+                      {s.name}
+                      {s.homeSectionIds?.length
+                        ? ` · ${floorSections
+                            .filter((sec) => s.homeSectionIds!.includes(sec.id))
+                            .map((sec) => sec.name)
+                            .join(", ")}`
+                        : ""}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            )}
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setSeatOpen(false)}>
@@ -819,6 +927,16 @@ function TableDetailBody({
   onStatus,
   onToggleQr,
   onWaitlist,
+  onRelease,
+  onAccept,
+  canRelease,
+  canAccept,
+  releasedByName,
+  serverName,
+  reassignOptions,
+  reassignId,
+  onReassignId,
+  onReassign,
 }: {
   table: Table;
   order: { number: number; status: string } | undefined;
@@ -837,6 +955,16 @@ function TableDetailBody({
   onStatus: (st: FloorPipelineStatus) => void;
   onToggleQr: () => void;
   onWaitlist?: () => void;
+  onRelease?: () => void;
+  onAccept?: () => void;
+  canRelease?: boolean;
+  canAccept?: boolean;
+  releasedByName?: string;
+  serverName?: string;
+  reassignOptions?: { id: string; name: string }[];
+  reassignId?: string;
+  onReassignId?: (id: string) => void;
+  onReassign?: () => void;
 }) {
   const st = normalizeTableStatus(table.status);
   const empty = isEmptyTable(table.status);
@@ -859,6 +987,12 @@ function TableDetailBody({
           Check #{order.number}
           {order.status !== "open" ? " · closed" : ""} ·{" "}
           {formatCurrency(totals.balanceCents || totals.totalCents)}
+          {serverName ? ` · ${serverName}` : table.releasedAt ? " · unassigned" : ""}
+        </p>
+      )}
+      {table.releasedAt && (
+        <p className="rounded-lg border border-amber-700/30 bg-amber-50 px-3 py-2 text-xs text-amber-950">
+          Released by {releasedByName ?? "staff"} — in the offer pool until a server accepts.
         </p>
       )}
       <div className="flex flex-wrap gap-2">
@@ -886,11 +1020,45 @@ function TableDetailBody({
             Waitlist
           </Button>
         )}
+        {canRelease && onRelease && (
+          <Button variant="outline" onClick={onRelease} data-demo="release-table">
+            <Handshake className="h-4 w-4" />
+            Release table
+          </Button>
+        )}
+        {canAccept && onAccept && (
+          <Button onClick={onAccept} data-demo="accept-table">
+            <UserCheck className="h-4 w-4" />
+            Accept table
+          </Button>
+        )}
         <Button variant="outline" onClick={onToggleQr}>
           <QrCode className="h-4 w-4" />
           {qrOpen ? "Hide QR" : "Table QR"}
         </Button>
       </div>
+      {reassignOptions && reassignOptions.length > 0 && table.orderId && (
+        <div className="flex flex-wrap items-end gap-2">
+          <label className="block min-w-[10rem] flex-1 text-xs text-muted-foreground">
+            Force reassign
+            <select
+              className="mt-1 flex h-9 w-full rounded-md border border-border bg-bg px-2 text-sm text-foreground"
+              value={reassignId ?? ""}
+              onChange={(e) => onReassignId?.(e.target.value)}
+            >
+              <option value="">Choose server</option>
+              {reassignOptions.map((s) => (
+                <option key={s.id} value={s.id}>
+                  {s.name}
+                </option>
+              ))}
+            </select>
+          </label>
+          <Button size="sm" variant="outline" disabled={!reassignId} onClick={onReassign}>
+            Reassign
+          </Button>
+        </div>
+      )}
       {canStatus && (
         <div>
           <p className="mb-1.5 text-xs font-medium uppercase tracking-wide text-muted-foreground">

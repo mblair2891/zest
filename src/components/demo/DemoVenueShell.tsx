@@ -8,7 +8,6 @@ import { useDemoDeviceStore } from "@/lib/demo/device-session";
 import { usePosStore } from "@/lib/pos/store";
 import type { VenueEntityId } from "@/lib/pos/types";
 import { DemoBanner } from "./DemoPlayer";
-import { DemoEnterGate } from "./DemoEnterGate";
 import { DemoDeviceSwitcher } from "./DemoDeviceSwitcher";
 
 export function DemoVenueShell({
@@ -27,6 +26,9 @@ export function DemoVenueShell({
     const s = usePosStore.getState();
     if (s.activeEntityId !== type || s.employees.length === 0) {
       s.loadProspectDemo(type);
+    }
+    if (!useDemoDeviceStore.getState().entered) {
+      s.logout();
     }
     return () => {
       if (!useTourStore.getState().tour) exitDemoSession();
@@ -52,35 +54,35 @@ export function DemoVenueShell({
     }
   }, [entered, posEmpId, posEmpCount]);
 
-  if (!entered) {
-    return <DemoEnterGate type={type} />;
-  }
-
   return (
     <div className="relative">
-      <div className="pointer-events-none absolute inset-x-0 top-[var(--grok-banner-h,0px)] z-50">
-        <div className="pointer-events-auto">
-          <DemoBanner
-            label={entry?.hostName ?? type}
-            onStartTour={
-              hideTourCta || running
-                ? undefined
-                : () => {
-                    const id = `type:${type}`;
-                    if (!startTour(id)) {
-                      console.error("[summex] Tour failed to start", id);
-                      toast.error("Tour not available");
-                    }
-                  }
-            }
-          />
-        </div>
-      </div>
-      <div className="pointer-events-none absolute right-3 top-[calc(var(--grok-banner-h,0px)+3.25rem)] z-50 md:hidden">
-        <div className="pointer-events-auto">
-          <DemoDeviceSwitcher />
-        </div>
-      </div>
+      {entered && (
+        <>
+          <div className="pointer-events-none absolute inset-x-0 top-[var(--grok-banner-h,0px)] z-50">
+            <div className="pointer-events-auto">
+              <DemoBanner
+                label={entry?.hostName ?? type}
+                onStartTour={
+                  hideTourCta || running
+                    ? undefined
+                    : () => {
+                        const id = `type:${type}`;
+                        if (!startTour(id)) {
+                          console.error("[summex] Tour failed to start", id);
+                          toast.error("Tour not available");
+                        }
+                      }
+                }
+              />
+            </div>
+          </div>
+          <div className="pointer-events-none absolute right-3 top-[calc(var(--grok-banner-h,0px)+3.25rem)] z-50 md:hidden">
+            <div className="pointer-events-auto">
+              <DemoDeviceSwitcher />
+            </div>
+          </div>
+        </>
+      )}
       <PosApp entityId={type} />
     </div>
   );

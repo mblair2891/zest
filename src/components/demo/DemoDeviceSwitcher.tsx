@@ -36,8 +36,8 @@ export function DemoDeviceSwitcher({ className }: { className?: string }) {
   if (!isProspectDemo() || !entered) return null;
 
   const current =
-    station === "vendor" && employeeId
-      ? `vendor:${employeeId}`
+    employeeId && options.some((o) => o.id === `${station}:${employeeId}`)
+      ? `${station}:${employeeId}`
       : station;
 
   const go = (value: string) => {

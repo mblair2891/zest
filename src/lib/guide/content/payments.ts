@@ -53,7 +53,7 @@ export const PAYMENT_TOPICS: GuideTopic[] = [
         "On the check, tap Pay. Choose card (Quantum Payments), cash, or gift card.",
         "Card: amount (defaults to balance), tip suggestions, last4 for the sandbox receipt. Capture is one host MID.",
         "Cash: enter tendered; change due is calculated. Cash view tracks the drawer.",
-        "Gift: enter the first-party code. Redeem never calls an outside gift network.",
+        "Gift: enter the first-party code. Redeem never calls an outside gift network. The fulfilling operator gets the merchandise; issuer liability decreases; issuer remits to the fulfiller if they differ.",
         "To split tenders, pay less than the balance, then take the next tender on the same check.",
         "House / other exist for room charge style paths — still not a second card processor.",
       ),

@@ -38,6 +38,10 @@ export const SETTINGS: RestaurantSettings = {
   qrMode: "hybrid",
   sectionPolicy: { ...DEFAULT_SECTION_POLICY },
   ...DEFAULT_CASH_DISCOUNT,
+  giftTermAllowed: false,
+  giftTermDays: 730,
+  giftOperatorBreakageSplitBps: 5000,
+  giftHouseIssuerEnabled: true,
 };
 
 export const EMPLOYEES: Employee[] = [

@@ -40,6 +40,7 @@ import { formatCurrency, formatTime } from "@/lib/utils";
 import { isDevDemoClient } from "@/lib/saas/flags";
 import { SetupAssistButton } from "@/components/assist/SetupAssistDialog";
 import { GuideLearnLink } from "@/components/guide/GuideLearnLink";
+import { HOUSE_ISSUER_ID, listGiftIssuers } from "@/lib/pos/gift-issuer";
 import { FloorQrSettings } from "./FloorQrSettings";
 import { NetworkReadinessPanel } from "@/components/saas/NetworkReadinessPanel";
 import { AccessPointsCard } from "./AccessPointsCard";
@@ -97,6 +98,127 @@ function Pack({
       <p className="mb-3 text-sm font-medium">{SETTINGS_PACK_LABEL[id]}</p>
       {children}
     </section>
+  );
+}
+
+function GiftCardSettingsPack({
+  packs,
+  write,
+}: {
+  packs: SettingsPackId[];
+  write: boolean;
+}) {
+  const settings = usePosStore((s) => s.settings);
+  const vendors = usePosStore((s) => s.vendors);
+  const updateSettings = usePosStore((s) => s.updateSettings);
+  const issuers = listGiftIssuers(settings, vendors);
+  return (
+    <Pack id="gift_cards" packs={packs}>
+      <div data-demo="gift-policy">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <p className="text-sm font-medium">Gift cards · issuer & residual</p>
+          <GuideLearnLink topicId="gift-cards" compact>
+            Learn
+          </GuideLearnLink>
+        </div>
+        <p className="mt-1 text-xs text-muted-foreground">
+          Sale books issuer gift liability — not operating sales of the drawer that
+          collected cash. Redeem at any allowed operator; the fulfiller gets the
+          merchandise sale and the issuer remits in settlement.
+        </p>
+        <fieldset disabled={!write} className="mt-3 space-y-3">
+          <label className="flex items-start gap-2 text-sm">
+            <input
+              type="checkbox"
+              className="mt-0.5 h-4 w-4 rounded border-border"
+              checked={settings.giftHouseIssuerEnabled !== false}
+              onChange={(e) =>
+                updateSettings({ giftHouseIssuerEnabled: e.target.checked })
+              }
+            />
+            <span>
+              House issuer (optional)
+              <span className="mt-0.5 block text-xs text-muted-foreground">
+                House-issued cards stay with the house at term end. No third legal
+                company is required.
+              </span>
+            </span>
+          </label>
+          <label className="block text-sm">
+            <span className="mb-1 block text-muted-foreground">
+              Host stand default issuer
+            </span>
+            <select
+              className="flex h-10 w-full rounded-lg border border-border bg-surface px-3 text-sm"
+              value={settings.giftHostessDefaultIssuerId || HOUSE_ISSUER_ID}
+              onChange={(e) =>
+                updateSettings({ giftHostessDefaultIssuerId: e.target.value })
+              }
+            >
+              {issuers.map((i) => (
+                <option key={i.id} value={i.id}>
+                  {i.name} ({i.kind})
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="flex items-start gap-2 text-sm">
+            <input
+              type="checkbox"
+              className="mt-0.5 h-4 w-4 rounded border-border"
+              checked={settings.giftTermAllowed === true}
+              onChange={(e) =>
+                updateSettings({ giftTermAllowed: e.target.checked })
+              }
+            />
+            <span>
+              Allow a term / expiry on new cards
+              <span className="mt-0.5 block text-xs text-muted-foreground">
+                Off by default. Many states prohibit gift-card expiry — confirm
+                with counsel before turning this on. This setting is not legal
+                advice.
+              </span>
+            </span>
+          </label>
+          {settings.giftTermAllowed && (
+            <label className="block text-sm">
+              <span className="mb-1 block text-muted-foreground">Term (days)</span>
+              <Input
+                type="number"
+                value={String(settings.giftTermDays ?? 730)}
+                onChange={(e) =>
+                  updateSettings({
+                    giftTermDays: Math.max(1, parseInt(e.target.value, 10) || 730),
+                  })
+                }
+              />
+            </label>
+          )}
+          <label className="block text-sm">
+            <span className="mb-1 block text-muted-foreground">
+              Operator-issued residual split to the other party (%)
+            </span>
+            <Input
+              type="number"
+              value={String(Math.round((settings.giftOperatorBreakageSplitBps ?? 5000) / 100))}
+              onChange={(e) =>
+                updateSettings({
+                  giftOperatorBreakageSplitBps: Math.min(
+                    10000,
+                    Math.max(0, Math.round((parseFloat(e.target.value) || 0) * 100)),
+                  ),
+                })
+              }
+            />
+            <span className="mt-1 block text-xs text-muted-foreground">
+              At term end, operator-issued remaining balance splits (default 50/50)
+              via in-system settlement. House-issued remaining balance is retained
+              by the house.
+            </span>
+          </label>
+        </fieldset>
+      </div>
+    </Pack>
   );
 }
 
@@ -487,6 +609,8 @@ export function SettingsView() {
           )}
         </div>
         </Pack>
+
+      <GiftCardSettingsPack packs={packs} write={write} />
 
       <Pack id="sections" packs={packs}>
         <p className="text-sm font-medium">Section control</p>

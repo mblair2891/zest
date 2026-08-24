@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link } from "@tanstack/react-router";
 import {
   ArrowLeft,
@@ -19,6 +19,12 @@ import { usePosStore } from "@/lib/pos/store";
 import { PinKeypad } from "./PinKeypad";
 import { isBackOfficeRole } from "@/lib/pos/pin";
 import { isProspectDemo } from "@/lib/demo/session";
+import { DEMO_STAFF_PIN, isDemoStaffPin } from "@/lib/demo/pin";
+import {
+  enterDemoOperator,
+  useDemoDeviceStore,
+} from "@/lib/demo/device-session";
+import { cn } from "@/lib/utils";
 import { useGuideStore } from "@/lib/guide/store";
 import {
   ALL_ENTITIES,
@@ -121,18 +127,29 @@ export function EntityPicker() {
   );
 }
 
+type GateMode = "login" | "clock_in" | "clock_out";
+
 export function EntityLogin({ entityId }: { entityId: VenueEntityId }) {
   const [error, setError] = useState<string | null>(null);
+  const [msg, setMsg] = useState<string | null>(null);
+  const [mode, setMode] = useState<GateMode>("login");
   const login = usePosStore((s) => s.login);
   const loginAs = usePosStore((s) => s.loginAs);
   const loginAsOwner = usePosStore((s) => s.loginAsOwner);
   const applyEntity = usePosStore((s) => s.applyEntity);
+  const clockToggle = usePosStore((s) => s.clockToggle);
   const { user } = useCurrentUserState();
   const demo = isDevDemoClient();
+  const prospect = isProspectDemo();
   const employees = usePosStore((s) => s.employees);
   const activeEntityId = usePosStore((s) => s.activeEntityId);
   const openGuide = useGuideStore((s) => s.openGuide);
   const entity = venueById(entityId);
+  const clockStaff = useMemo(
+    () => employees.filter((e) => e.active && e.role !== "kiosk"),
+    [employees],
+  );
+  const [staffId, setStaffId] = useState<string>("");
 
   useEffect(() => {
     if (isVenueEntityId(entityId) && activeEntityId !== entityId) {
@@ -140,10 +157,14 @@ export function EntityLogin({ entityId }: { entityId: VenueEntityId }) {
     }
   }, [entityId, activeEntityId, applyEntity]);
 
+  useEffect(() => {
+    if (!staffId && clockStaff[0]) setStaffId(clockStaff[0].id);
+  }, [clockStaff, staffId]);
+
   if (!entity) {
     return (
       <div className="flex min-h-[100dvh] items-center justify-center bg-bg pt-[var(--grok-banner-h,0px)]">
-        <Link to="/" className="text-sm text-muted-foreground underline">
+        <Link to={prospect ? "/demo" : "/"} className="text-sm text-muted-foreground underline">
           Unknown venue — back
         </Link>
       </div>
@@ -154,19 +175,58 @@ export function EntityLogin({ entityId }: { entityId: VenueEntityId }) {
   const Icon = ICONS[entity.id] ?? UtensilsCrossed;
 
   const submitPin = (next: string) => {
+    setError(null);
+    setMsg(null);
+    if (prospect && mode !== "login") {
+      if (!isDemoStaffPin(next) && next !== DEMO_STAFF_PIN) {
+        setError(`Demo PIN is ${DEMO_STAFF_PIN}`);
+        return;
+      }
+      const emp = clockStaff.find((e) => e.id === staffId) ?? clockStaff[0];
+      if (!emp) {
+        setError("No staff on this demo house");
+        return;
+      }
+      const shouldIn = mode === "clock_in";
+      if (shouldIn === !!emp.clockedIn) {
+        setMsg(`${emp.name} is already ${emp.clockedIn ? "clocked in" : "clocked out"}`);
+        return;
+      }
+      clockToggle(emp.id);
+      setMsg(`${emp.name} ${shouldIn ? "clocked in" : "clocked out"}`);
+      return;
+    }
     const res = login(next);
-    if (!res.ok) setError(res.error ?? "Invalid PIN");
+    if (!res.ok) {
+      setError(res.error ?? "Invalid PIN");
+      return;
+    }
+    if (!prospect) return;
+    enterDemoOperator();
+    const emp = usePosStore.getState().getCurrentEmployee();
+    if (emp && !emp.clockedIn) clockToggle(emp.id);
+    if (isDemoStaffPin(next) || emp?.role === "owner" || emp?.role === "manager") {
+      useDemoDeviceStore.getState().setStation("owner");
+      useDemoDeviceStore.getState().setDisplayName("Owner / Manager");
+      if (emp) useDemoDeviceStore.getState().setEmployeeId(emp.id);
+      usePosStore.getState().setView("hq");
+    } else if (emp) {
+      useDemoDeviceStore.getState().setEmployeeId(emp.id);
+    }
   };
 
   return (
     <div className="flex min-h-[100dvh] flex-col bg-bg pt-[var(--grok-banner-h,0px)]">
-      <div className="mx-auto flex w-full max-w-lg flex-1 flex-col justify-center px-4 py-8">
+      <div
+        className="mx-auto flex w-full max-w-lg flex-1 flex-col justify-center px-4 py-8"
+        data-demo={prospect ? "demo-pin-gate" : undefined}
+      >
         <Link
-          to="/"
+          to={prospect ? "/demo" : "/"}
           className="mb-6 inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground"
         >
           <ArrowLeft className="h-4 w-4" />
-          All venues
+          {prospect ? "All demo sites" : "All venues"}
         </Link>
 
         <div className="mb-8 text-center">
@@ -181,15 +241,78 @@ export function EntityLogin({ entityId }: { entityId: VenueEntityId }) {
           </p>
           <p className="mt-1 text-sm text-muted-foreground">{entity.blurb}</p>
           <p className="mt-3 text-sm font-medium">Floor login · 4-digit PIN</p>
+          {prospect && (
+            <p className="mt-2 text-sm text-muted-foreground">
+              Demo PIN is <strong>{DEMO_STAFF_PIN}</strong>. Login opens Owner / Manager.
+              Clock in and clock out stay separate.
+            </p>
+          )}
         </div>
 
+        {prospect && (
+          <div className="mb-5 grid grid-cols-3 gap-1 rounded-xl border border-border p-1">
+            {(
+              [
+                ["login", "Login"],
+                ["clock_in", "Clock in"],
+                ["clock_out", "Clock out"],
+              ] as const
+            ).map(([id, label]) => (
+              <button
+                key={id}
+                type="button"
+                onClick={() => {
+                  setMode(id);
+                  setError(null);
+                  setMsg(null);
+                }}
+                className={cn(
+                  "rounded-lg px-2 py-2 text-xs font-semibold",
+                  mode === id ? "bg-primary text-primary-foreground" : "text-muted-foreground",
+                )}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+        )}
+
+        {prospect && mode !== "login" && (
+          <label className="mb-4 block text-xs text-muted-foreground">
+            Staff
+            <select
+              className="mt-1 h-10 w-full rounded-lg border border-border bg-bg px-3 text-sm text-foreground"
+              value={staffId}
+              onChange={(e) => setStaffId(e.target.value)}
+            >
+              {clockStaff.map((e) => (
+                <option key={e.id} value={e.id}>
+                  {e.title || e.name} · {e.role}
+                  {e.clockedIn ? " · in" : " · out"}
+                </option>
+              ))}
+            </select>
+          </label>
+        )}
+
         <PinKeypad
-          hint="Servers, kitchen, bar, host stand, cashiers"
+          title={prospect && mode !== "login" ? "Confirm with PIN" : undefined}
+          hint={
+            prospect
+              ? `Universal demo PIN ${DEMO_STAFF_PIN}`
+              : "Servers, kitchen, bar, host stand, cashiers"
+          }
           error={error}
           onComplete={submitPin}
           onClearError={() => setError(null)}
         />
+        {msg && (
+          <p className="mt-3 text-center text-sm text-success" role="status">
+            {msg}
+          </p>
+        )}
 
+        {!prospect && (
         <p className="mt-6 text-center text-xs text-muted-foreground">
           <Link to="/login" className="text-primary underline">
             Back office
@@ -197,6 +320,18 @@ export function EntityLogin({ entityId }: { entityId: VenueEntityId }) {
           {" — "}
           email and password for owners, managers, accountants, and entity managers.
         </p>
+        )}
+
+        {prospect && (
+          <div className="mt-6 flex flex-col gap-2 text-center text-xs text-muted-foreground">
+            <Link to="/demo" className="underline-offset-2 hover:underline">
+              All demo sites
+            </Link>
+            <Link to="/" className="underline-offset-2 hover:underline">
+              Marketing home
+            </Link>
+          </div>
+        )}
 
         {user && !demo && (
           <Button
@@ -207,14 +342,7 @@ export function EntityLogin({ entityId }: { entityId: VenueEntityId }) {
           </Button>
         )}
 
-        {demo && isProspectDemo() && entityId === "food_hall" && (
-          <p className="mt-4 text-center text-[11px] text-muted-foreground">
-            Demo floor PINs: Server 1111 · Kitchen 5555 · Steam 6666 · Diamond 7777. Host
-            manager PIN 0000 unlocks back office.
-          </p>
-        )}
-
-        {demo && (
+        {demo && !prospect && (
         <div className="mt-10">
           <p className="mb-3 text-center text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
             Quick login · {entity.shortName} staff
