@@ -9,6 +9,19 @@ import type { GuideUpdate } from "@/lib/guide/types";
  */
 export const WHATS_NEW_ENTRIES: GuideUpdate[] = [
   {
+    id: "upd_2026_09_15_factory_reset",
+    date: "2026-09-15",
+    title: "Factory reset in Platform Settings",
+    summary:
+      "Admin can wipe all tenant and CRM data from Settings → Danger zone. Admin/password remains with a forced password change. No demo seeds.",
+    body: "Type RESET, confirm, re-enter the Admin password. Orgs, locations, pipeline, and CRM go. Sign in again as Admin with the initial password and set a new one.",
+    roles: ["platform_admin"],
+    surfaces: ["platform"],
+    audience: "platform",
+    topicId: "factory-reset",
+    tags: ["factory reset", "settings", "admin"],
+  },
+  {
     id: "upd_2026_09_14_saas_crm",
     date: "2026-09-14",
     title: "Platform CRM: accounts, pipeline, tenants, billing, support",

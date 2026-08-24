@@ -135,3 +135,58 @@ export async function ensurePlatformAdmin(): Promise<void> {
   });
   return globalRef.__summexPlatformAdminBoot__;
 }
+
+/** After a factory wipe: ensure Admin exists, password is the bootstrap secret, must-change is on. */
+export async function reseedPlatformAdminBootstrap(): Promise<{ userId: string }> {
+  globalRef.__summexPlatformAdminBoot__ = undefined;
+  await ensurePlatformAdmin();
+  const sql = await getSql();
+  const existing = await sql<{ id: string }>`
+    select id from "user"
+    where email = ${PLATFORM_ADMIN_EMAIL} or email = ${LEGACY_ADMIN_EMAIL}
+    limit 1
+  `;
+  const userId = existing[0]?.id;
+  if (!userId) throw new Error("Admin bootstrap failed");
+  const hashed = await hashPassword(INITIAL_PASSWORD);
+  const now = new Date().toISOString();
+  const accounts = await sql<{ id: string }>`
+    select id from "account"
+    where "userId" = ${userId} and "providerId" = ${"credential"}
+    limit 1
+  `;
+  if (accounts[0]) {
+    await sql`
+      update "account"
+      set password = ${hashed}, "updatedAt" = ${now}
+      where id = ${accounts[0].id}
+    `;
+  } else {
+    await sql`
+      insert into "account" (
+        id, "accountId", "providerId", "userId", password, "createdAt", "updatedAt"
+      )
+      values (
+        ${randomUUID()}, ${userId}, ${"credential"}, ${userId}, ${hashed}, ${now}, ${now}
+      )
+    `;
+  }
+  await sql`
+    insert into platform_admin (user_id, must_change_password)
+    values (${userId}, ${true})
+    on conflict (user_id) do update set must_change_password = ${true}
+  `;
+  const mem = await sql<{ id: string }>`
+    select id from memberships
+    where user_id = ${userId} and role = ${"platform_admin"} and status = ${"active"}
+      and org_id is null
+    limit 1
+  `;
+  if (!mem[0]) {
+    await sql`
+      insert into memberships (id, user_id, org_id, role, status)
+      values (${randomUUID()}, ${userId}, ${null}, ${"platform_admin"}, ${"active"})
+    `;
+  }
+  return { userId };
+}

@@ -158,6 +158,11 @@ Payments.
 
 In-app: `/guide?topic=platform-crm`.
 
+Factory reset (Settings → Danger zone): type RESET, Admin password. Wipes all
+tenant/CRM data and reseeds Admin with the initial password and forced change.
+No demo seeds. Disable with `FACTORY_RESET_ENABLED=false`. Production stays
+off unless that env is `true`. `/guide?topic=factory-reset`.
+
 ## Testing a location (SaaS only)
 
 There are **no demo tenants**. Marketing **Request demo** is Get pricing /

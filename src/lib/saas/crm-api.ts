@@ -302,6 +302,32 @@ export const saasReportFn = createServerFn({ method: "GET" })
     return saasReport(context.userId);
   });
 
+export const factoryResetStatusFn = createServerFn({ method: "GET" })
+  .middleware([authMiddleware])
+  .handler(async ({ context }) => {
+    const { isPlatformAdmin } = await import("./tenancy.server");
+    if (!(await isPlatformAdmin(context.userId))) {
+      return { enabled: false, reason: "Platform admin only." };
+    }
+    const { factoryResetStatus } = await import("./factory-reset.server");
+    return factoryResetStatus();
+  });
+
+export const factoryResetFn = createServerFn({ method: "POST" })
+  .middleware([authMiddleware])
+  .validator((d: { confirmPhrase: string; password: string }) => ({
+    confirmPhrase: String(d.confirmPhrase ?? ""),
+    password: String(d.password ?? ""),
+  }))
+  .handler(async ({ context, data }) => {
+    const { factoryReset } = await import("./factory-reset.server");
+    return factoryReset({
+      userId: context.userId,
+      confirmPhrase: data.confirmPhrase,
+      password: data.password,
+    });
+  });
+
 export const listSaasPlansFn = createServerFn({ method: "GET" })
   .middleware([authMiddleware])
   .handler(async ({ context }) => {

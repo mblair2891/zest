@@ -130,4 +130,34 @@ export const PLATFORM_CRM_TOPICS: GuideTopic[] = [
       related("platform-crm", "saas-lifecycle", "platform-tenants"),
     ],
   }),
+  topic({
+    id: "factory-reset",
+    chapterId: "platform",
+    title: "Factory reset",
+    summary: "Wipe all business data. Keep Admin bootstrap with forced password change.",
+    visibility: "platform",
+    roles: ["platform_admin"],
+    keywords: ["factory reset", "wipe", "danger zone", "bootstrap", "testing"],
+    blocks: [
+      why(
+        "Build and test cycles accumulate junk orgs. Factory reset returns the store to first-run: only the platform Admin login.",
+      ),
+      steps(
+        "Platform → Settings → Danger zone.",
+        "Read the warning. Check the box. Type RESET. Re-enter the Admin password.",
+        "On success you are signed out. Sign in as Admin with the initial password.",
+        "You must set a new password (8+ characters; not the bootstrap password).",
+      ),
+      ul(
+        "Deletes orgs, locations, operators, CRM, prospects, tickets, invoices, ledger, devices, and non-admin users.",
+        "Does not seed demo venues or The Laundry.",
+        "Plans and software pricing catalog stay.",
+        "Server-only. Floor PIN and location owners cannot run it.",
+      ),
+      warn(
+        "Irreversible. Testing-only. Set FACTORY_RESET_ENABLED=false to disable. Production is off unless that env is true.",
+      ),
+      related("admin-bootstrap", "empty-start", "platform-tenants"),
+    ],
+  }),
 ];

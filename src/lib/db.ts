@@ -257,6 +257,49 @@ export function getSql(): Promise<Sql> {
   return sqlPromise;
 }
 
+/** Run `fn` on one connection inside BEGIN/COMMIT (ROLLBACK on throw). */
+export async function withDbTransaction<T>(fn: (sql: Sql) => Promise<T>): Promise<T> {
+  await getSql();
+  if (getDatabaseUrl()) {
+    const pool = globalRef.__pgPool__;
+    if (!pool) throw new Error("Database not ready");
+    const client = await pool.connect();
+    const sql = toSql(async (text, params) => {
+      const res = await client.query(text, params);
+      return res.rows as never;
+    });
+    try {
+      await client.query("BEGIN");
+      const result = await fn(sql);
+      await client.query("COMMIT");
+      return result;
+    } catch (err) {
+      try {
+        await client.query("ROLLBACK");
+      } catch {
+        /* aborted */
+      }
+      throw err;
+    } finally {
+      client.release();
+    }
+  }
+  const sql = await getSql();
+  await sql.query("BEGIN");
+  try {
+    const result = await fn(sql);
+    await sql.query("COMMIT");
+    return result;
+  } catch (err) {
+    try {
+      await sql.query("ROLLBACK");
+    } catch {
+      /* aborted */
+    }
+    throw err;
+  }
+}
+
 /**
  * The shared PGLite instance (preview only), with `migrations/*.sql` applied.
  * Lets Better Auth persist to the SAME embedded DB as app data in preview (via a
