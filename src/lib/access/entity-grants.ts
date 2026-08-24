@@ -9,7 +9,10 @@ export type EntityGrantKey =
   | "view_tickets"
   | "view_sales_reports"
   | "view_settlement"
-  | "manage_devices";
+  | "manage_devices"
+  | "view_schedule"
+  | "edit_schedule"
+  | "view_payroll";
 
 export const ENTITY_GRANT_KEYS: EntityGrantKey[] = [
   "view_menu",
@@ -18,6 +21,9 @@ export const ENTITY_GRANT_KEYS: EntityGrantKey[] = [
   "view_sales_reports",
   "view_settlement",
   "manage_devices",
+  "view_schedule",
+  "edit_schedule",
+  "view_payroll",
 ];
 
 export const ENTITY_GRANT_LABEL: Record<EntityGrantKey, string> = {
@@ -27,6 +33,9 @@ export const ENTITY_GRANT_LABEL: Record<EntityGrantKey, string> = {
   view_sales_reports: "View sales reports",
   view_settlement: "View settlement",
   manage_devices: "Manage devices",
+  view_schedule: "View schedule",
+  edit_schedule: "Edit schedule",
+  view_payroll: "View payroll",
 };
 
 export type EntityGrantFlags = Record<EntityGrantKey, boolean>;
@@ -39,6 +48,7 @@ export type EntityGrantRow = {
 /** Peer defaults: see menus, never edit others; tickets/reports/settlement own-only; devices host-only. */
 export function defaultGrantFlags(subjectId: string, targetId: string): EntityGrantFlags {
   if (subjectId === HOST_SCOPE) {
+    const own = subjectId === targetId;
     return {
       view_menu: true,
       edit_menu: true,
@@ -46,6 +56,9 @@ export function defaultGrantFlags(subjectId: string, targetId: string): EntityGr
       view_sales_reports: true,
       view_settlement: true,
       manage_devices: true,
+      view_schedule: true,
+      edit_schedule: own,
+      view_payroll: true,
     };
   }
   if (subjectId === targetId) {
@@ -56,6 +69,9 @@ export function defaultGrantFlags(subjectId: string, targetId: string): EntityGr
       view_sales_reports: true,
       view_settlement: true,
       manage_devices: false,
+      view_schedule: true,
+      edit_schedule: true,
+      view_payroll: true,
     };
   }
   return {
@@ -65,6 +81,9 @@ export function defaultGrantFlags(subjectId: string, targetId: string): EntityGr
     view_sales_reports: false,
     view_settlement: false,
     manage_devices: false,
+    view_schedule: false,
+    edit_schedule: false,
+    view_payroll: false,
   };
 }
 
@@ -231,4 +250,45 @@ export function operatorScopeIds(
 ): string[] {
   const ids = vendors.map((v) => v.id);
   return includeHost ? [HOST_SCOPE, ...ids] : ids;
+}
+
+export function canViewSchedule(
+  emp: Pick<Employee, "role" | "operatorId"> | null | undefined,
+  matrix: EntityGrantRow[] | null | undefined,
+  targetOperatorId?: string | null,
+): boolean {
+  if (isHostPrivileged(emp)) return true;
+  const subject = subjectIdForEmployee(emp);
+  const target = resourceOperatorId(targetOperatorId);
+  if (subject === target) return true;
+  return canEntityGrant(matrix, subject, target, "view_schedule");
+}
+
+export function canEditSchedule(
+  emp: Pick<Employee, "role" | "operatorId"> | null | undefined,
+  matrix: EntityGrantRow[] | null | undefined,
+  targetOperatorId?: string | null,
+  hostMayEditEntitySchedules = false,
+): boolean {
+  if (isHostPrivileged(emp)) {
+    const target = resourceOperatorId(targetOperatorId);
+    if (target === HOST_SCOPE) return true;
+    return hostMayEditEntitySchedules || canEntityGrant(matrix, HOST_SCOPE, target, "edit_schedule");
+  }
+  const subject = subjectIdForEmployee(emp);
+  const target = resourceOperatorId(targetOperatorId);
+  if (subject === target) return true;
+  return canEntityGrant(matrix, subject, target, "edit_schedule");
+}
+
+export function canViewPayroll(
+  emp: Pick<Employee, "role" | "operatorId"> | null | undefined,
+  matrix: EntityGrantRow[] | null | undefined,
+  targetOperatorId?: string | null,
+): boolean {
+  if (isHostPrivileged(emp)) return true;
+  const subject = subjectIdForEmployee(emp);
+  const target = resourceOperatorId(targetOperatorId);
+  if (subject === target) return true;
+  return canEntityGrant(matrix, subject, target, "view_payroll");
 }

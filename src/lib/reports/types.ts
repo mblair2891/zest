@@ -10,6 +10,7 @@ export type ReportId =
   | "payments-voids"
   | "payments-chargebacks"
   | "staff-servers"
+  | "staff-payroll"
   | "staff-aging"
   | "kitchen-tickets"
   | "close-eod"

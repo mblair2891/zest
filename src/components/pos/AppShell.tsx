@@ -1,4 +1,4 @@
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link } from "@tanstack/react-router";
 import { SummexMark } from "@/components/brand/SummexMark";
 import {
@@ -93,6 +93,8 @@ import {
   TicketBumpWatcher,
 } from "./NotificationCenter";
 import { NetworkBanner, NetworkChip, NetworkWatcher } from "./NetworkStatus";
+import { BackOfficeUnlock } from "./BackOfficeUnlock";
+import { isFloorRole } from "@/lib/pos/pin";
 import {
   HqView,
   OnlineOrdersView,
@@ -134,6 +136,7 @@ const NAV: {
   { id: "inventory", label: "Stock", icon: Package },
   { id: "menu", label: "Menu", icon: BookOpen },
   { id: "labor", label: "Labor", icon: Clock3 },
+  { id: "schedule", label: "Schedule", icon: Clock },
   { id: "inventory_ai", label: "AI stock", icon: Brain },
   { id: "drink_ai", label: "Drink AI", icon: Sparkles },
   { id: "employees", label: "Staff", icon: Clock },
@@ -160,10 +163,24 @@ const MOBILE_PRIORITY: PosView[] = [
   "cash",
 ];
 
+const BACK_OFFICE_VIEWS: PosView[] = [
+  "settings",
+  "settlement",
+  "payouts",
+  "employees",
+  "features",
+  "package",
+  "integrations",
+];
+
 export function AppShell() {
   useDemoLiveSync();
   const demoDevice = useDemoDeviceStore((s) => s.device);
   const demoEntered = useDemoDeviceStore((s) => s.entered);
+  const sessionKind = usePosStore((s) => s.sessionKind);
+  const backOfficeUnlocked = usePosStore((s) => s.backOfficeUnlocked);
+  const [unlockOpen, setUnlockOpen] = useState(false);
+  const [pendingView, setPendingView] = useState<PosView | null>(null);
   const kdsMode =
     isProspectDemo() &&
     demoEntered &&
@@ -210,6 +227,17 @@ export function AppShell() {
     const ent = venueById(activeEntityId);
     if (!ent) return true;
     return !ent.hiddenViews.includes(v);
+  };
+
+  const floorLocked =
+    sessionKind === "pin" && !backOfficeUnlocked && isFloorRole(role);
+  const requestView = (id: PosView) => {
+    if (BACK_OFFICE_VIEWS.includes(id) && sessionKind === "pin" && !backOfficeUnlocked) {
+      setPendingView(id);
+      setUnlockOpen(true);
+      return;
+    }
+    setView(id);
   };
 
   const navItems = useMemo(
@@ -312,8 +340,11 @@ export function AppShell() {
             {demoDevice === "kds_bar" ? "Bar KDS" : "Kitchen KDS"}
           </p>
           <span className="text-xs text-muted-foreground">{settings.name}</span>
-          <div className="ml-auto">
+          <div className="ml-auto flex items-center gap-2">
             <DemoDeviceSwitcher />
+            <Button size="sm" variant="outline" onClick={() => logout()}>
+              Switch user
+            </Button>
           </div>
         </header>
         <div
@@ -329,6 +360,14 @@ export function AppShell() {
   return (
     <div className={cn("flex h-[100dvh] flex-col bg-bg text-foreground", shellPad)}>
       <LoginOnboardingHost />
+      <BackOfficeUnlock
+        open={unlockOpen}
+        onOpenChange={setUnlockOpen}
+        onUnlocked={() => {
+          if (pendingView) setView(pendingView);
+          setPendingView(null);
+        }}
+      />
       <header className="flex h-14 shrink-0 items-center gap-2 overflow-x-auto border-b border-border bg-surface px-2 safe-top sm:gap-3 sm:px-3">
         <div className="flex min-w-0 items-center gap-2">
           <SummexMark className="h-8 w-8" />
@@ -380,6 +419,7 @@ export function AppShell() {
               <p className="text-[11px] text-muted-foreground">
                 <span className="font-semibold uppercase tracking-wide text-primary">
                   {staffTitle(emp)}
+                  {floorLocked ? " · floor PIN" : sessionKind === "backoffice" ? " · back office" : ""}
                 </span>
                 <span className="text-muted-foreground">
                   {" "}
@@ -410,6 +450,15 @@ export function AppShell() {
               </Button>
             </Link>
           )}
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => logout()}
+            aria-label="Switch user"
+            data-demo="switch-user"
+          >
+            Switch user
+          </Button>
           <Button
             size="icon"
             variant="ghost"
@@ -446,7 +495,7 @@ export function AppShell() {
                 key={id}
                 type="button"
                 data-demo-nav={id}
-                onClick={() => setView(id)}
+                onClick={() => requestView(id)}
                 className={cn(
                   "flex items-center gap-3 rounded-xl px-2 py-2.5 text-left text-sm transition-colors lg:px-3",
                   safeView === id
@@ -525,7 +574,7 @@ export function AppShell() {
             <button
               key={item.id}
               type="button"
-              onClick={() => setView(item.id)}
+              onClick={() => requestView(item.id)}
               className={cn(
                 "flex min-w-[4.25rem] flex-1 flex-col items-center gap-0.5 rounded-lg px-1 py-1.5 text-[10px]",
                 safeView === item.id ? "text-primary" : "text-muted-foreground",

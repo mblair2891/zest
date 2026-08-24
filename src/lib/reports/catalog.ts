@@ -67,6 +67,13 @@ export const REPORT_CATALOG: ReportDef[] = [
     roles: ["owner", "manager", "accountant", "server"],
   },
   {
+    id: "staff-payroll",
+    group: "staff",
+    title: "Payroll hours",
+    summary: "Hours, OT flag, tips and sales — entity-scoped.",
+    roles: ["owner", "manager", "accountant", "vendor_operator"],
+  },
+  {
     id: "staff-aging",
     group: "staff",
     title: "Open / aging checks",

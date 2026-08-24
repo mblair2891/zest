@@ -14,8 +14,11 @@ import type {
   SupervisorAlert,
   Supplier,
   SupplierOrder,
+  ScheduledShift,
   TimePunch,
 } from "./ops-types";
+import { HOST_SCOPE } from "@/lib/access/entity-grants";
+import { startOfWeek, addDays, sameDay } from "@/lib/labor/week";
 
 const DEFAULT_LABOR: LaborSettings = {
   clockInEarlyMinutes: 15,
@@ -515,14 +518,10 @@ interface OpsState {
   supplierOrders: SupplierOrder[];
   /** last ticket closed timestamp by employeeId */
   lastTicketByEmployee: Record<string, number>;
-  /** demo scheduled shifts for today window checks */
-  todayShifts: {
-    id: string;
-    employeeId: string;
-    start: number;
-    end: number;
-    published: boolean;
-  }[];
+  /** Published + draft shifts (week view). */
+  shifts: ScheduledShift[];
+  /** demo scheduled shifts for today window checks (alias of today's rows) */
+  todayShifts: ScheduledShift[];
 
   updateLabor: (patch: Partial<LaborSettings>) => void;
   recordTicketClosed: (employeeId: string, at?: number) => void;
@@ -560,6 +559,10 @@ interface OpsState {
   createReorderDraft: (supplierId: string) => SupplierOrder | null;
   submitSupplierOrder: (id: string) => void;
   seedTodayShifts: (employeeIds: string[]) => void;
+  seedWeekShifts: (staff: { id: string; operatorId?: string }[]) => void;
+  upsertShift: (input: Omit<ScheduledShift, "id"> & { id?: string }) => ScheduledShift;
+  removeShift: (id: string) => void;
+  publishWeek: (weekStart: number, operatorId?: string | null) => void;
 }
 
 function startOfDay(d = new Date()) {
@@ -586,6 +589,7 @@ export const useOpsStore = create<OpsState>()(
       suppliers: seedSuppliers(),
       supplierOrders: [],
       lastTicketByEmployee: {},
+      shifts: [],
       todayShifts: [],
 
       updateLabor: (patch) =>
@@ -601,19 +605,80 @@ export const useOpsStore = create<OpsState>()(
       },
 
       seedTodayShifts: (employeeIds) => {
-        const sod = startOfDay();
-        const shifts = employeeIds.map((id, i) => {
-          const start = sod + (11 + (i % 4)) * 3600000;
-          const end = start + 8 * 3600000;
-          return {
-            id: `ts_${id}`,
-            employeeId: id,
-            start,
-            end,
-            published: true,
-          };
+        get().seedWeekShifts(employeeIds.map((id) => ({ id })));
+      },
+
+      seedWeekShifts: (staff) => {
+        if (!staff.length) return;
+        const week = startOfWeek();
+        const existing = get().shifts;
+        if (existing.length > 0) {
+          set({ todayShifts: existing.filter((s) => sameDay(s.start, Date.now())) });
+          return;
+        }
+        const shifts: ScheduledShift[] = [];
+        staff.forEach((st, i) => {
+          for (const day of [1, 2, 3, 4, 5]) {
+            const sod = addDays(week, day);
+            const start = sod + (10 + (i % 3)) * 3600000;
+            const end = start + 8 * 3600000;
+            shifts.push({
+              id: `ts_${st.id}_${day}`,
+              employeeId: st.id,
+              operatorId: st.operatorId || HOST_SCOPE,
+              start,
+              end,
+              published: true,
+            });
+          }
         });
-        set({ todayShifts: shifts });
+        set({
+          shifts,
+          todayShifts: shifts.filter((s) => sameDay(s.start, Date.now())),
+        });
+      },
+
+      upsertShift: (input) => {
+        const id = input.id || uid("ts");
+        const next: ScheduledShift = {
+          id,
+          employeeId: input.employeeId,
+          operatorId: input.operatorId || HOST_SCOPE,
+          start: input.start,
+          end: input.end,
+          published: Boolean(input.published),
+          role: input.role,
+          locationId: input.locationId,
+        };
+        const shifts = get().shifts.some((s) => s.id === id)
+          ? get().shifts.map((s) => (s.id === id ? next : s))
+          : [...get().shifts, next];
+        set({
+          shifts,
+          todayShifts: shifts.filter((s) => sameDay(s.start, Date.now())),
+        });
+        return next;
+      },
+
+      removeShift: (id) => {
+        const shifts = get().shifts.filter((s) => s.id !== id);
+        set({
+          shifts,
+          todayShifts: shifts.filter((s) => sameDay(s.start, Date.now())),
+        });
+      },
+
+      publishWeek: (weekStart, operatorId) => {
+        const weekEnd = addDays(weekStart, 7);
+        const shifts = get().shifts.map((s) => {
+          if (s.start < weekStart || s.start >= weekEnd) return s;
+          if (operatorId && s.operatorId !== operatorId) return s;
+          return { ...s, published: true };
+        });
+        set({
+          shifts,
+          todayShifts: shifts.filter((s) => sameDay(s.start, Date.now())),
+        });
       },
 
       clockIn: (employeeId, employeeName, opts) => {
@@ -624,17 +689,23 @@ export const useOpsStore = create<OpsState>()(
 
         const labor = get().labor;
         const now = Date.now();
-        let shift = get().todayShifts.find((s) => s.employeeId === employeeId);
-        if (!shift && get().todayShifts.length === 0) {
-          // auto seed a shift window around now for demo
+        let shift =
+          get().shifts.find(
+            (s) => s.employeeId === employeeId && sameDay(s.start, now) && s.published,
+          ) ?? get().todayShifts.find((s) => s.employeeId === employeeId);
+        if (!shift && get().shifts.length === 0 && get().todayShifts.length === 0) {
           shift = {
             id: uid("ts"),
             employeeId,
+            operatorId: HOST_SCOPE,
             start: now - 5 * 60000,
             end: now + 8 * 3600000,
             published: true,
           };
-          set({ todayShifts: [...get().todayShifts, shift] });
+          set({
+            shifts: [...get().shifts, shift],
+            todayShifts: [...get().todayShifts, shift],
+          });
         }
 
         if (labor.requirePublishedShiftToClockIn && !opts?.force) {
@@ -667,6 +738,7 @@ export const useOpsStore = create<OpsState>()(
           shiftId: shift?.id,
           scheduledStart: shift?.start,
           scheduledEnd: shift?.end,
+          operatorId: shift?.operatorId,
           clockInAt: now,
           status: "open",
           redFlag: false,

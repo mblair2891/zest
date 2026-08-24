@@ -9,6 +9,19 @@ import type { GuideUpdate } from "@/lib/guide/types";
  */
 export const WHATS_NEW_ENTRIES: GuideUpdate[] = [
   {
+    id: "upd_2026_09_07_pin_schedule",
+    date: "2026-09-07",
+    title: "Floor PIN login, entity schedules, payroll reports",
+    summary:
+      "Working staff use a 4-digit PIN on shared devices. Back office stays email and password. Each entity schedules and pays its own people.",
+    body: "On The Laundry, PIN 1111 is a server on the floor. Switch user to 5555 for kitchen. Steam 6666 is the entity manager for Steam’s week and payroll. Diamond cannot edit Steam’s schedule. Host 0000 / password unlocks settings.",
+    roles: ["owner_manager", "host_operator", "vendor_operator"],
+    entityTypes: ["food_hall", "truck_pod", "ghost_kitchen", "restaurant"],
+    surfaces: ["settings", "kds"],
+    topicId: "floor-pin-login",
+    tags: ["pin", "schedule", "payroll", "login"],
+  },
+  {
     id: "upd_2026_09_06_entity_logins",
     date: "2026-09-06",
     title: "Entity logins, permission matrix, device assignment",

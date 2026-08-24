@@ -33,6 +33,17 @@ export interface LaborSettings {
   requirePublishedShiftToClockIn: boolean;
 }
 
+export interface ScheduledShift {
+  id: string;
+  employeeId: string;
+  operatorId: string;
+  start: number;
+  end: number;
+  published: boolean;
+  role?: string;
+  locationId?: string;
+}
+
 export interface TimePunch {
   id: string;
   employeeId: string;
@@ -52,6 +63,7 @@ export interface TimePunch {
   notes?: string;
   regularMinutes?: number;
   otMinutes?: number;
+  operatorId?: string;
 }
 
 export interface SupervisorAlert {

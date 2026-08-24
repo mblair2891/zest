@@ -158,7 +158,7 @@ export function OperatorOpsView({
                 <span>
                   {s.name}{" "}
                   <span className="text-muted-foreground">
-                    · {ROLE_LABEL[s.role]} · PIN {s.pin}
+                    · {ROLE_LABEL[s.role]} · {s.pinHash || s.pin ? "PIN set" : "No PIN"}
                   </span>
                 </span>
                 <Button size="sm" variant={s.clockedIn ? "default" : "outline"} onClick={() => clockToggle(s.id)}>

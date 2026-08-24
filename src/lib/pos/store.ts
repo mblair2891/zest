@@ -54,9 +54,17 @@ import { starterPosSlice } from "./starter-seed";
 import type { VenueEntityId } from "./types";
 import type { PosStore, PosStorePersist } from "./pos-store";
 import {
+  HOST_SCOPE,
   canEditMenu,
   upsertGrant,
 } from "@/lib/access/entity-grants";
+import {
+  findStaffByPin,
+  hashPin,
+  isBackOfficeRole,
+  isFourDigitPin,
+  withHashedPin,
+} from "./pin";
 import {
   makeClaimCode,
   type LocationDevice,
@@ -137,6 +145,8 @@ function initialState() {
 		entityPermissions: [],
 		locationDevices: [],
 		activeDeviceId: null,
+		sessionKind: "pin",
+		backOfficeUnlocked: false,
 	};
 }
 
@@ -159,30 +169,47 @@ function checkTableAccess(get, table, action) {
 const usePosStoreRaw = create()(persist((set, get) => ({
 	...initialState(),
 	login: (pin) => {
-		const emp = get().employees.find((e) => e.pin === pin && e.active);
-		if (!emp) return {
-			ok: false,
-			error: "Invalid PIN"
-		};
+		const loc = get().tenantLocationId || get().activeEntityId || "loc";
+		const device = (get().locationDevices ?? []).find((d) => d.id === get().activeDeviceId);
+		const deviceOp = device?.assignment?.operatorId ?? null;
+		const emp = findStaffByPin(get().employees, pin, loc, deviceOp);
+		if (!emp) {
+			return {
+				ok: false,
+				error: deviceOp && deviceOp !== HOST_SCOPE
+					? "PIN not valid on this assigned device"
+					: "Invalid PIN",
+			};
+		}
+		const hashed = hashPin(pin, loc);
+		const employees = get().employees.map((e) =>
+			e.id === emp.id && !e.pinHash ? { ...e, pinHash: hashed, pin: "" } : e,
+		);
 		set({
+			employees,
 			currentEmployeeId: emp.id,
 			view: homeViewForEmployee(emp),
 			activeOrderId: null,
-			activeTableId: null
+			activeTableId: null,
+			sessionKind: "pin",
+			backOfficeUnlocked: false,
 		});
-		get().audit("login", `${emp.name} (${emp.role})`);
+		get().audit("login", `${emp.name} (${emp.role}) · floor PIN`);
 		return { ok: true };
 	},
-	loginAs: (employeeId) => {
+	loginAs: (employeeId, opts) => {
 		const emp = get().employees.find((e) => e.id === employeeId && e.active);
 		if (!emp) return { ok: false, error: "Unknown employee" };
+		const kind = opts?.kind ?? (isBackOfficeRole(emp.role) ? "backoffice" : "pin");
 		set({
 			currentEmployeeId: emp.id,
 			view: homeViewForEmployee(emp),
 			activeOrderId: null,
 			activeTableId: null,
+			sessionKind: kind,
+			backOfficeUnlocked: kind === "backoffice",
 		});
-		get().audit("login", `${emp.name} (${emp.role}) · switch`);
+		get().audit("login", `${emp.name} (${emp.role}) · ${kind}`);
 		return { ok: true };
 	},
 	logout: () => {
@@ -191,9 +218,50 @@ const usePosStoreRaw = create()(persist((set, get) => ({
 		set({
 			currentEmployeeId: null,
 			view: "floor",
-			activeOrderId: null
+			activeOrderId: null,
+			sessionKind: "pin",
+			backOfficeUnlocked: false,
 		});
 	},
+	setStaffPin: (employeeId, pin) => {
+		const actor = get().getCurrentEmployee();
+		if (!actor) return { ok: false, error: "Sign in first" };
+		if (actor.role !== "owner" && actor.role !== "manager" && actor.role !== "vendor_operator") {
+			return { ok: false, error: "Only back office can set PINs" };
+		}
+		if (!isFourDigitPin(pin)) return { ok: false, error: "PIN must be 4 digits" };
+		const target = get().employees.find((e) => e.id === employeeId);
+		if (!target) return { ok: false, error: "Unknown employee" };
+		if (actor.role === "vendor_operator" && target.operatorId !== actor.operatorId) {
+			return { ok: false, error: "You can only set PINs for your entity" };
+		}
+		const loc = get().tenantLocationId || get().activeEntityId || "loc";
+		const used = get().employees.some(
+			(e) => e.id !== employeeId && (e.pin === pin || e.pinHash === hashPin(pin, loc)),
+		);
+		if (used) return { ok: false, error: "PIN already in use at this location" };
+		set({
+			employees: get().employees.map((e) =>
+				e.id === employeeId ? withHashedPin(e, pin, loc) : e,
+			),
+		});
+		get().audit("staff", `PIN set for ${target.name}`);
+		return { ok: true };
+	},
+	unlockBackOffice: (secret) => {
+		const loc = get().tenantLocationId || get().activeEntityId || "loc";
+		if (get().verifyManagerPin(secret)) {
+			set({ backOfficeUnlocked: true, sessionKind: "backoffice" });
+			return { ok: true };
+		}
+		const emp = findStaffByPin(get().employees, secret, loc, null);
+		if (emp && (emp.role === "owner" || emp.role === "manager")) {
+			set({ backOfficeUnlocked: true, sessionKind: "backoffice" });
+			return { ok: true };
+		}
+		return { ok: false, error: "Password or manager PIN required" };
+	},
+	lockBackOffice: () => set({ backOfficeUnlocked: false, sessionKind: "pin" }),
 	verifyManagerPin: (pin) => {
 		if (pin === get().settings.managerPin) return true;
 		return get().employees.some((e) => e.pin === pin && e.active && (e.role === "manager" || e.role === "owner"));
@@ -1434,13 +1502,15 @@ const usePosStoreRaw = create()(persist((set, get) => ({
 		}
 		const id = uid("emp");
 		const colors = ["#2C4A6E", "#1F7A4C", "#9A6700", "#5C5C5C"];
+		const loc = get().tenantLocationId || get().activeEntityId || "loc";
 		set({
 			employees: [
 				...get().employees,
 				{
 					id,
 					name: input.name.trim() || "Staff",
-					pin,
+					pin: "",
+					pinHash: hashPin(pin, loc),
 					role: input.role,
 					color: colors[get().employees.length % colors.length]!,
 					clockedIn: false,
@@ -1841,6 +1911,8 @@ const usePosStoreRaw = create()(persist((set, get) => ({
 			view: "floor",
 			activeOrderId: null,
 			activeTableId: null,
+			sessionKind: "backoffice",
+			backOfficeUnlocked: true,
 		});
 		return { ok: true };
 	},
@@ -1958,6 +2030,8 @@ const usePosStoreRaw = create()(persist((set, get) => ({
 		entityPermissions: s.entityPermissions ?? [],
 		locationDevices: s.locationDevices ?? [],
 		activeDeviceId: s.activeDeviceId ?? null,
+		sessionKind: s.sessionKind ?? "pin",
+		backOfficeUnlocked: s.backOfficeUnlocked ?? false,
 	}),
 	merge: (persisted, current) => {
 		const p = persisted || {};
@@ -1966,10 +2040,17 @@ const usePosStoreRaw = create()(persist((set, get) => ({
 		const tagged =
 			fromPersist.length > 0 &&
 			fromPersist.some((e) => e.entityId === entityId);
-		const employees = (tagged ? fromPersist : employeesForVenue(entityId)).map((e) => ({
-			...e,
-			homeSectionIds: e.homeSectionIds ?? defaultHomeSectionsForRole(e.role, e.id)
-		}));
+		const locKey = p.tenantLocationId || entityId || "loc";
+		const employees = (tagged ? fromPersist : employeesForVenue(entityId)).map((e) => {
+			const hashed =
+				e.pinHash || (e.pin && /^\d{4}$/.test(e.pin) ? hashPin(e.pin, locKey) : e.pinHash);
+			return {
+				...e,
+				pinHash: hashed,
+				pin: e.pinHash ? "" : e.pin,
+				homeSectionIds: e.homeSectionIds ?? defaultHomeSectionsForRole(e.role, e.id),
+			};
+		});
 		const ent = venueById(entityId);
 		const locationDevices =
 			(p.locationDevices && p.locationDevices.length)
@@ -1982,6 +2063,8 @@ const usePosStoreRaw = create()(persist((set, get) => ({
 			...p,
 			activeEntityId: entityId,
 			entityPermissions: p.entityPermissions ?? current.entityPermissions ?? [],
+			sessionKind: p.sessionKind ?? current.sessionKind ?? "pin",
+			backOfficeUnlocked: p.backOfficeUnlocked ?? false,
 			locationDevices,
 			activeDeviceId: p.activeDeviceId ?? null,
 			employees,

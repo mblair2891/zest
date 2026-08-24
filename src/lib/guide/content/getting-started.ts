@@ -150,7 +150,7 @@ export const GETTING_STARTED_TOPICS: GuideTopic[] = [
     id: "login",
     chapterId: "getting-started",
     title: "Sign in & staff PIN",
-    summary: "Merchant account login, then a 4-digit PIN on the floor.",
+    summary: "Back office is email + password. Floor stations use a 4-digit PIN.",
     roles: "all",
     keywords: ["login", "password", "pin", "sign in", "staff"],
     blocks: [
@@ -158,14 +158,14 @@ export const GETTING_STARTED_TOPICS: GuideTopic[] = [
         "The public site is sales, guide, and demos. The house — floor, money, staff — opens only after you sign in with a work account.",
       ),
       p(
-        "There are two layers. Account login (email) authenticates the person. Staff PIN authenticates a station user inside an already-opened location.",
+        "Two login modes. Back office (owners, managers, accountants, entity managers) uses email and password at Sign in. Working staff on a shared tablet, KDS, or host stand use a 4-digit PIN. PINs are hashed, scoped to the location (and entity on a host floor), and never appear on the marketing site.",
       ),
       steps(
-        "From the marketing site, tap Sign in. Use the work email you were invited with — not a demo room.",
-        "After auth, Summex picks organization and location. There is no per-tenant subdomain.",
-        "On a location, enter your 4-digit staff PIN. The header shows your name and access level. Only tools for that role appear.",
-        "Latest updates (if any) then a walkthrough of that job appear. Dismiss either without signing out.",
-        "Walk a product demo from /demo without a tenant login. Demos never open the control plane.",
+        "Back office: Sign in with work email and password. Open location settings, the host permission matrix, scheduling admin, payroll reports, menu management.",
+        "Floor: on the assigned device, enter your 4-digit PIN. Fast Switch user returns to the keypad without changing the device assignment.",
+        "Steam Distillery PIN 6666 is the entity manager on The Laundry. Steam bartender 3333 is floor-only. Diamond 7777 cannot edit Steam menu or Steam schedules.",
+        "Opening Settings from a floor PIN prompts back-office re-auth (password, or demo manager PIN 0000).",
+        "Kiosk guest flows stay PIN-free. Platform Admin is password only — never a restaurant PIN.",
       ),
       warn(
         "Signing out of POS does not clock you out of Labor. Product demos are not a tenant login.",
@@ -291,7 +291,7 @@ export const GETTING_STARTED_TOPICS: GuideTopic[] = [
       steps(
         "Confirm demo mode: VITE_DEV_DEMO=1 (and DEV_DEMO=1 on the server). With DEV_DEMO=0 the seed never loads and the Load button is hidden.",
         "From platform login tap Load The Laundry (TEST), from Settings tap Load The Laundry test venue, or pick The Laundry (TEST) on the venue picker.",
-        "PIN as Host owner 9999, Floor manager 0000, Server 1111, Steam bartender 3333, Diamond pit 5555, Steam operator 6666, Diamond operator 7777.",
+        "Floor PIN keypad: Host owner 9999, manager 0000, Server 1111, Steam bartender 3333, Diamond pit 5555, Steam operator 6666, Diamond operator 7777. Back office remains email/password (demo manager PIN 0000 unlocks settings from the floor).",
         "Steam (6666): edit Steam items; Diamond items badge “Diamond House BBQ — view only.”",
         "Diamond (7777): view Steam menu read-only; cannot change Steam settings.",
         "Host: Entity permissions matrix + assign Tablet A → Steam bar KDS, Tablet B → Diamond floor POS. Demo mode can simulate those assignments.",

@@ -195,12 +195,18 @@ export interface RestaurantSettings {
   tabAutoCloseMinutes?: number;
   ticketPrefix?: string;
   reservationCheckIn?: boolean;
+  /** Host may edit guest-entity schedules. Default false — oversight is view-only. */
+  hostMayEditEntitySchedules?: boolean;
+  /** Kitchen/bar bump requires the station PIN again. Default false. */
+  requirePinToBump?: boolean;
 }
 
 export interface Employee {
   id: string;
   name: string;
   pin: string;
+  /** SHA-256 of location-scoped PIN. Login prefers this; `pin` is legacy/demo only. */
+  pinHash?: string;
   role: EmployeeRole;
   color: string;
   clockedIn: boolean;

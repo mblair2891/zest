@@ -13,7 +13,9 @@ import { Button } from "@/components/ui/button";
 import { usePosStore } from "@/lib/pos/store";
 import { formatCurrency } from "@/lib/utils";
 import { canEmployee } from "@/lib/access/permissions";
-import { canViewSalesReports } from "@/lib/access/entity-grants";
+import { HOST_SCOPE, canViewPayroll, canViewSalesReports } from "@/lib/access/entity-grants";
+import { useOpsStore } from "@/lib/pos/ops-store";
+import { buildPayrollRows } from "@/lib/labor/payroll";
 import { REPORT_GROUP_LABEL, reportsFor } from "@/lib/reports/catalog";
 import { csvFromRows } from "@/lib/reports/metrics";
 import { metricsFromPosStore } from "@/lib/reports/from-store";
@@ -461,6 +463,9 @@ function ReportBody({ id, m }: { id: ReportId; m: ReturnType<typeof metricsFromP
       />
     );
   }
+  if (id === "staff-payroll") {
+    return <PayrollReportSlice />;
+  }
   if (id === "staff-servers") {
     return (
       <ul className="space-y-2 text-sm">
@@ -560,6 +565,43 @@ function ReportBody({ id, m }: { id: ReportId; m: ReturnType<typeof metricsFromP
     );
   }
   return null;
+}
+
+function PayrollReportSlice() {
+  const punches = useOpsStore((s) => s.punches);
+  const employees = usePosStore((s) => s.employees);
+  const vendors = usePosStore((s) => s.vendors);
+  const settings = usePosStore((s) => s.settings);
+  const emp = usePosStore((s) => s.employees.find((e) => e.id === s.currentEmployeeId));
+  const grants = usePosStore((s) => s.entityPermissions);
+  const lock = emp?.role === "vendor_operator" ? emp.operatorId : null;
+  const rows = buildPayrollRows({
+    punches,
+    employees: employees.filter(
+      (e) => !lock || (e.operatorId || HOST_SCOPE) === lock,
+    ),
+    operatorName: (id) =>
+      id === HOST_SCOPE ? settings.name || "Host" : vendors.find((v) => v.id === id)?.shortName ?? id,
+    operatorId: lock,
+  }).filter((r) => canViewPayroll(emp, grants, r.operatorId));
+  return (
+    <ul className="space-y-2 text-sm">
+      {rows.map((r) => (
+        <li key={r.employeeId} className="flex justify-between gap-2">
+          <span>
+            {r.name}{" "}
+            <span className="text-xs text-muted-foreground">{r.operatorName}</span>
+          </span>
+          <span className="tabular">
+            {r.regularHours.toFixed(1)}h
+            {r.otFlag ? ` · OT ${r.otHours.toFixed(1)}` : ""} · tips{" "}
+            {formatCurrency(r.tipsCents)}
+          </span>
+        </li>
+      ))}
+      {rows.length === 0 && <li className="text-muted-foreground">No punches in this entity yet.</li>}
+    </ul>
+  );
 }
 
 function Card({ label, value, sub }: { label: string; value: string; sub?: string }) {

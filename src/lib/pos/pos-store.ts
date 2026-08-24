@@ -99,8 +99,13 @@ export interface PosStore {
   activeEntityId: VenueEntityId;
 
   login: (pin: string) => ActionResult;
-  loginAs: (employeeId: string) => ActionResult;
+  loginAs: (employeeId: string, opts?: { kind?: "pin" | "backoffice" }) => ActionResult;
   logout: () => void;
+  sessionKind: "pin" | "backoffice";
+  backOfficeUnlocked: boolean;
+  setStaffPin: (employeeId: string, pin: string) => ActionResult;
+  unlockBackOffice: (secret: string) => ActionResult;
+  lockBackOffice: () => void;
   verifyManagerPin: (pin: string) => boolean;
   clockToggle: (employeeId: string) => void;
   tick: () => void;

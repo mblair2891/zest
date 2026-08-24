@@ -277,6 +277,22 @@ function typeTour(type: VenueEntityId): TourDefinition {
           view: "settings",
         },
         {
+          id: "l-pin",
+          title: "Floor PIN",
+          script:
+            "Working staff use a 4-digit PIN on this tablet. Back office is email and password. Switch user to hand the device to the next person without changing the assignment.",
+          selector: "[data-demo='switch-user']",
+          view: "hq",
+        },
+        {
+          id: "l-sched",
+          title: "Entity schedule",
+          script:
+            "Steam schedules Steam. Diamond schedules Diamond. Host sees every week and cannot edit a guest entity unless that setting is on.",
+          selector: "[data-demo='schedule']",
+          view: "schedule",
+        },
+        {
           id: "l-matrix",
           title: "Entity permissions",
           script:

@@ -210,7 +210,58 @@ export const ROLE_GUIDE_TOPICS: GuideTopic[] = [
       warn(
         "Payout / settlement bank / payment routing never lives on the guest operator. The host collects the destination at onboard and can change it later.",
       ),
-      related("location-settings", "role-vendor", "type-food-hall", "settlement", "device-assignment"),
+      related("location-settings", "role-vendor", "type-food-hall", "settlement", "device-assignment", "floor-pin-login", "entity-schedule-payroll"),
+    ],
+  }),
+  topic({
+    id: "floor-pin-login",
+    chapterId: "roles",
+    title: "Floor PIN vs back office password",
+    summary: "Working staff use a 4-digit PIN on the device. Admin work uses email and password.",
+    roles: "all",
+    keywords: ["pin", "password", "floor", "kds", "switch user", "back office"],
+    blocks: [
+      why(
+        "A shared tablet is not a laptop. Servers should not type a password between tables. Owners should not run payroll from a four-digit code.",
+      ),
+      ul(
+        "Back office: Sign in with username/email and password. Platform Admin, owners, managers, accountants, entity managers for settings, matrix, full reports, schedule admin, payroll, menu management.",
+        "Floor PIN: 4-digit keypad on POS, KDS, host stand. Servers, hosts, bartenders, kitchen, cashiers, expo. Fast Switch user. PIN hashed, scoped to location and entity.",
+        "Assigned device still requires the matching entity’s PIN (Steam KDS rejects a Diamond PIN).",
+        "Kiosk guests never enter a PIN. Marketing pages never show staff PINs. Platform Admin cannot use a restaurant PIN.",
+      ),
+      steps(
+        "On The Laundry demo keypad: 1111 server, 5555 kitchen, 6666 Steam entity manager, 7777 Diamond, 0000 host manager.",
+        "Tap Switch user to PIN in the next person without reassigning the tablet.",
+        "Open Settings from a floor PIN — you are asked for back-office password (demo: manager PIN 0000).",
+      ),
+      related("login", "entity-schedule-payroll", "host-operator-settings", "device-assignment"),
+    ],
+  }),
+  topic({
+    id: "entity-schedule-payroll",
+    chapterId: "roles",
+    title: "Entity schedule & payroll",
+    summary: "Each entity schedules and pays its own staff. Host has oversight; edits to guest schedules stay off unless you turn them on.",
+    roles: ["owner_manager", "host_operator", "vendor_operator"],
+    keywords: ["schedule", "payroll", "shifts", "overtime", "tips", "steam", "diamond"],
+    openView: "schedule",
+    blocks: [
+      why(
+        "Steam Distillery does not write Diamond House BBQ’s week. Diamond does not see Steam payroll unless the host grants view_payroll.",
+      ),
+      ul(
+        "Week view, draft shifts, publish. Floor PIN users see My shifts only.",
+        "Payroll report: hours, OT flag, tips, sales, CSV — scoped to the entity.",
+        "Host: oversight of every entity. Edit a guest entity’s schedule only if Host may edit guest-entity schedules is on (default off).",
+        "Single-operator houses use the same screens under the location owner/manager.",
+      ),
+      steps(
+        "Back office as host or Steam manager. Open Schedule. Add a Steam shift. Publish week.",
+        "Open Labor → Payroll. Steam hours only when you are the Steam manager. CSV exports that slice.",
+        "PIN as Diamond (7777): you cannot add Steam shifts. Menu still badges Steam items view-only.",
+      ),
+      related("floor-pin-login", "host-operator-settings", "role-vendor", "laundry-test-venue"),
     ],
   }),
 ];

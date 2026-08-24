@@ -597,6 +597,20 @@ export function SettingsView() {
           </Button>
         </div>
         <div className="mt-4 space-y-4">
+          <label className="flex items-start gap-2 text-sm">
+            <input
+              type="checkbox"
+              className="mt-0.5 h-4 w-4 rounded border-border"
+              checked={Boolean(settings.hostMayEditEntitySchedules)}
+              onChange={(e) => updateSettings({ hostMayEditEntitySchedules: e.target.checked })}
+            />
+            <span>
+              Host may edit guest-entity schedules
+              <span className="mt-0.5 block text-xs text-muted-foreground">
+                Off by default. Host still sees every entity’s week as oversight.
+              </span>
+            </span>
+          </label>
           <EntityPermissionsMatrix write={write} />
           <DeviceAssignmentPanel write={write} />
         </div>
@@ -605,6 +619,20 @@ export function SettingsView() {
 
       <Pack id="devices" packs={packs}>
       <NetworkSettingsPanel />
+      <label className="mt-3 flex items-start gap-2 text-sm">
+        <input
+          type="checkbox"
+          className="mt-0.5 h-4 w-4 rounded border-border"
+          checked={Boolean(settings.requirePinToBump)}
+          onChange={(e) => updateSettings({ requirePinToBump: e.target.checked })}
+        />
+        <span>
+          Require PIN to bump KDS tickets
+          <span className="mt-0.5 block text-xs text-muted-foreground">
+            Station still uses floor PIN login. Optional second PIN at bump.
+          </span>
+        </span>
+      </label>
       {!packs.includes("host_operators") && (
         <div className="mt-4">
           <DeviceAssignmentPanel write={write} />

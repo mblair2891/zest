@@ -4,6 +4,7 @@ import type { Employee, EmployeeRole, VenueEntityId } from "@/lib/pos/types";
 import { homeViewForEmployee } from "@/lib/pos/rbac";
 import { rolesForVenue } from "@/lib/access/entity-roles";
 import { usePosStore } from "@/lib/pos/store";
+import { isBackOfficeRole } from "@/lib/pos/pin";
 import { getDemoType, isProspectDemo } from "./session";
 import { HOST_SCOPE } from "@/lib/access/entity-grants";
 import {
@@ -71,8 +72,9 @@ export function pickEmployeeForRole(
   return active.find((e) => e.role === role);
 }
 
-export function loginDemoEmployee(emp: Employee): void {
-  usePosStore.getState().loginAs(emp.id);
+export function loginDemoEmployee(emp: Employee, kind?: "pin" | "backoffice"): void {
+  const sessionKind = kind ?? (isBackOfficeRole(emp.role) ? "backoffice" : "pin");
+  usePosStore.getState().loginAs(emp.id, { kind: sessionKind });
   useDemoDeviceStore.getState().setEmployeeId(emp.id);
 }
 
@@ -230,7 +232,7 @@ export function applyDemoAssignment(
   else if (fn === "bar_kds") store.setDevice("kds_bar");
   else store.setDevice("pos");
   const staff = pickStaffForAssignment(s.employees, device.assignment);
-  if (staff) loginDemoEmployee(staff);
+  if (staff) loginDemoEmployee(staff, "pin");
   s.setView(view);
   const type = getDemoType();
   return type ? { to: "/demo/$type", type } : {};

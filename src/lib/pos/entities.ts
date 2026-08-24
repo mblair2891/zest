@@ -7,6 +7,7 @@ import type {
 import { EMPLOYEES } from "./seed";
 import { ROLE_LABEL } from "./rbac";
 import { isDevDemoClient } from "@/lib/saas/flags";
+import { hashPin } from "./pin";
 
 export interface EntityStaffSpec {
   id: string;
@@ -686,7 +687,11 @@ export function employeesForVenue(id: VenueEntityId): Employee[] {
     homeView: s.homeView,
     extraViews: s.extraViews,
     operatorId: s.operatorId,
-  }));
+  })).map((e) =>
+    e.pin && /^\d{4}$/.test(e.pin)
+      ? { ...e, pinHash: hashPin(e.pin, ent.locationId || id), pin: "" }
+      : e,
+  );
 }
 
 export type EntityIdName = EntityId;

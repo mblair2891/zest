@@ -13,6 +13,11 @@ import {
 import { staffTitle } from "@/lib/pos/rbac";
 import { GrantTableDialog } from "./GrantTableDialog";
 import { SetupAssistButton } from "@/components/assist/SetupAssistDialog";
+import { Input } from "@/components/ui/input";
+import { isFourDigitPin } from "@/lib/pos/pin";
+import { setStaffPinFn } from "@/lib/labor/api";
+import { isProspectDemo } from "@/lib/demo/session";
+import { useSaasStore } from "@/lib/pos/saas-store";
 
 export function EmployeesView() {
   const employees = usePosStore((s) => s.employees);
@@ -31,6 +36,10 @@ export function EmployeesView() {
     ? employees.filter((e) => e.operatorId === operatorScope || e.id === current?.id)
     : employees;
   const manage = canManageSections(current?.role) && !operatorScope;
+  const canPin =
+    current?.role === "owner" ||
+    current?.role === "manager" ||
+    current?.role === "vendor_operator";
   const policy = policyOf(settings.sectionPolicy);
   const [grantFor, setGrantFor] = useState<string | null>(null);
 
@@ -143,9 +152,10 @@ export function EmployeesView() {
                       )}
                     </p>
                     <p className="text-xs text-muted-foreground">
-                      {staffTitle(e)} · PIN {e.pin}
+                      {staffTitle(e)} · {e.pinHash || e.pin ? "PIN set" : "No PIN"}
                       {locked && " · section-limited"}
                     </p>
+                    {canPin && <ResetPinRow employeeId={e.id} />}
                   </div>
                   <Badge variant={e.clockedIn ? "success" : "secondary"}>
                     {e.clockedIn ? "In" : "Out"}
@@ -262,6 +272,47 @@ export function EmployeesView() {
         }}
         defaultEmployeeId={grantFor ?? undefined}
       />
+    </div>
+  );
+}
+
+function ResetPinRow({ employeeId }: { employeeId: string }) {
+  const setStaffPin = usePosStore((s) => s.setStaffPin);
+  const locId = usePosStore((s) => s.tenantLocationId) || "";
+  const orgId = useSaasStore((s) => s.org.id);
+  const [pin, setPin] = useState("");
+  const [note, setNote] = useState<string | null>(null);
+  return (
+    <div className="mt-2 flex gap-1">
+      <Input
+        className="h-8"
+        inputMode="numeric"
+        placeholder="New 4-digit PIN"
+        value={pin}
+        onChange={(e) => setPin(e.target.value.replace(/\D/g, "").slice(0, 4))}
+      />
+      <Button
+        size="sm"
+        variant="outline"
+        disabled={!isFourDigitPin(pin)}
+        onClick={() => {
+          const res = setStaffPin(employeeId, pin);
+          if (!res.ok) {
+            setNote(res.error ?? "Could not set PIN");
+            return;
+          }
+          setNote("PIN saved (shown once).");
+          if (!isProspectDemo() && orgId && locId) {
+            void setStaffPinFn({
+              data: { orgId, locationId: locId, staffId: employeeId, pin },
+            }).catch(() => undefined);
+          }
+          setPin("");
+        }}
+      >
+        Set PIN
+      </Button>
+      {note && <span className="self-center text-[10px] text-muted-foreground">{note}</span>}
     </div>
   );
 }

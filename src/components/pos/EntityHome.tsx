@@ -6,7 +6,6 @@ import {
   Coffee,
   ConciergeBell,
   CookingPot,
-  Delete,
   LayoutGrid,
   Rocket,
   ShoppingBag,
@@ -17,7 +16,9 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { usePosStore } from "@/lib/pos/store";
-import { cn } from "@/lib/utils";
+import { PinKeypad } from "./PinKeypad";
+import { isBackOfficeRole } from "@/lib/pos/pin";
+import { isProspectDemo } from "@/lib/demo/session";
 import { useGuideStore } from "@/lib/guide/store";
 import {
   ALL_ENTITIES,
@@ -121,9 +122,9 @@ export function EntityPicker() {
 }
 
 export function EntityLogin({ entityId }: { entityId: VenueEntityId }) {
-  const [pin, setPin] = useState("");
   const [error, setError] = useState<string | null>(null);
   const login = usePosStore((s) => s.login);
+  const loginAs = usePosStore((s) => s.loginAs);
   const loginAsOwner = usePosStore((s) => s.loginAsOwner);
   const applyEntity = usePosStore((s) => s.applyEntity);
   const { user } = useCurrentUserState();
@@ -152,18 +153,9 @@ export function EntityLogin({ entityId }: { entityId: VenueEntityId }) {
   const staff = employees.filter((e) => e.active);
   const Icon = ICONS[entity.id] ?? UtensilsCrossed;
 
-  const press = (d: string) => {
-    setError(null);
-    if (pin.length >= 6) return;
-    const next = pin + d;
-    setPin(next);
-    if (next.length >= 4) {
-      const res = login(next);
-      if (!res.ok) {
-        setError(res.error ?? "Invalid PIN");
-        setTimeout(() => setPin(""), 200);
-      }
-    }
+  const submitPin = (next: string) => {
+    const res = login(next);
+    if (!res.ok) setError(res.error ?? "Invalid PIN");
   };
 
   return (
@@ -188,62 +180,23 @@ export function EntityLogin({ entityId }: { entityId: VenueEntityId }) {
             {entity.name}
           </p>
           <p className="mt-1 text-sm text-muted-foreground">{entity.blurb}</p>
+          <p className="mt-3 text-sm font-medium">Floor login · 4-digit PIN</p>
         </div>
 
-        <div className="mb-6 flex justify-center gap-2">
-          {Array.from({ length: 4 }).map((_, i) => (
-            <div
-              key={i}
-              className={cn(
-                "h-3 w-3 rounded-full border border-border-strong transition-colors",
-                i < pin.length ? "bg-primary border-primary" : "bg-transparent",
-              )}
-            />
-          ))}
-        </div>
+        <PinKeypad
+          hint="Servers, kitchen, bar, host stand, cashiers"
+          error={error}
+          onComplete={submitPin}
+          onClearError={() => setError(null)}
+        />
 
-        {error && (
-          <p className="mb-4 text-center text-sm text-danger" role="alert">
-            {error}
-          </p>
-        )}
-
-        <div className="mx-auto grid w-full max-w-xs grid-cols-3 gap-3">
-          {["1", "2", "3", "4", "5", "6", "7", "8", "9", "", "0", "del"].map(
-            (key) => {
-              if (key === "") return <div key="empty" />;
-              if (key === "del") {
-                return (
-                  <Button
-                    key="del"
-                    type="button"
-                    variant="ghost"
-                    size="xl"
-                    className="h-16 text-lg"
-                    onClick={() => {
-                      setError(null);
-                      setPin((p) => p.slice(0, -1));
-                    }}
-                  >
-                    <Delete className="h-5 w-5" />
-                  </Button>
-                );
-              }
-              return (
-                <Button
-                  key={key}
-                  type="button"
-                  variant="secondary"
-                  size="xl"
-                  className="h-16 text-xl font-semibold tabular"
-                  onClick={() => press(key)}
-                >
-                  {key}
-                </Button>
-              );
-            },
-          )}
-        </div>
+        <p className="mt-6 text-center text-xs text-muted-foreground">
+          <Link to="/login" className="text-primary underline">
+            Back office
+          </Link>
+          {" — "}
+          email and password for owners, managers, accountants, and entity managers.
+        </p>
 
         {user && !demo && (
           <Button
@@ -252,6 +205,13 @@ export function EntityLogin({ entityId }: { entityId: VenueEntityId }) {
           >
             Continue as owner
           </Button>
+        )}
+
+        {demo && isProspectDemo() && entityId === "food_hall" && (
+          <p className="mt-4 text-center text-[11px] text-muted-foreground">
+            Demo floor PINs: Server 1111 · Kitchen 5555 · Steam 6666 · Diamond 7777. Host
+            manager PIN 0000 unlocks back office.
+          </p>
         )}
 
         {demo && (
@@ -267,9 +227,8 @@ export function EntityLogin({ entityId }: { entityId: VenueEntityId }) {
                   key={e.id}
                   type="button"
                   onClick={() => {
-                    setPin("");
                     setError(null);
-                    login(e.pin);
+                    loginAs(e.id, { kind: isBackOfficeRole(e.role) ? "backoffice" : "pin" });
                   }}
                   className="flex min-h-14 items-start gap-3 rounded-2xl border border-border bg-surface px-3 py-3 text-left transition hover:border-primary/60 hover:bg-surface-2"
                 >

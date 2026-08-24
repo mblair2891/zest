@@ -8,6 +8,8 @@ import { cn } from "@/lib/utils";
 import { GuideLearnLink } from "@/components/guide/GuideLearnLink";
 import { HOST_SCOPE, canViewTickets } from "@/lib/access/entity-grants";
 import { stationForDeviceFunction } from "@/lib/pos/location-devices";
+import { PinKeypad } from "./PinKeypad";
+import { findStaffByPin } from "@/lib/pos/pin";
 
 interface Props {
   station: TicketStation;
@@ -33,6 +35,11 @@ export function KitchenView({ station }: Props) {
   const startTicket = usePosStore((s) => s.startTicket);
   const [showBumped, setShowBumped] = useState(false);
   const [filter, setFilter] = useState<TicketStatus | "all">("all");
+  const [bumpPinFor, setBumpPinFor] = useState<string | null>(null);
+  const [bumpPinError, setBumpPinError] = useState<string | null>(null);
+  const settings = usePosStore((s) => s.settings);
+  const employees = usePosStore((s) => s.employees);
+  const locId = usePosStore((s) => s.tenantLocationId) || "";
   const emp = usePosStore((s) => s.employees.find((e) => e.id === s.currentEmployeeId));
   const grants = usePosStore((s) => s.entityPermissions);
   const devices = usePosStore((s) => s.locationDevices ?? []);
@@ -86,7 +93,7 @@ export function KitchenView({ station }: Props) {
   ).length;
 
   return (
-    <div className="kds-large-touch flex h-full flex-col">
+    <div className="kds-large-touch relative flex h-full flex-col">
       <div className="flex flex-wrap items-center gap-2 border-b border-border px-3 py-2">
         <h2 className="text-sm font-semibold capitalize">
           {station === "bar" ? "Bar display" : "Kitchen display"}
@@ -256,7 +263,14 @@ export function KitchenView({ station }: Props) {
                     <Button
                       className="flex-1"
                       size="sm"
-                      onClick={() => bumpTicket(t.id)}
+                      onClick={() => {
+                        if (settings.requirePinToBump) {
+                          setBumpPinFor(t.id);
+                          setBumpPinError(null);
+                          return;
+                        }
+                        bumpTicket(t.id);
+                      }}
                     >
                       <Check className="h-3.5 w-3.5" />
                       Bump
@@ -276,6 +290,34 @@ export function KitchenView({ station }: Props) {
                 </footer>
               </article>
             ))}
+          </div>
+        </div>
+      )}
+      {bumpPinFor && (
+        <div className="absolute inset-0 z-20 grid place-items-center bg-bg/90 p-4">
+          <div className="w-full max-w-sm rounded-2xl border border-border bg-surface p-4">
+            <PinKeypad
+              title="Confirm bump"
+              hint="Enter this station’s 4-digit PIN"
+              error={bumpPinError}
+              onClearError={() => setBumpPinError(null)}
+              onComplete={(pin) => {
+                const match = findStaffByPin(employees, pin, locId, lockedVendor);
+                if (!match) {
+                  setBumpPinError("Invalid PIN");
+                  return;
+                }
+                bumpTicket(bumpPinFor);
+                setBumpPinFor(null);
+              }}
+            />
+            <Button
+              className="mt-3 w-full"
+              variant="outline"
+              onClick={() => setBumpPinFor(null)}
+            >
+              Cancel
+            </Button>
           </div>
         </div>
       )}

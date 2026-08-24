@@ -225,8 +225,10 @@ export function RoleHomeDashboard() {
             <div className="flex flex-wrap gap-2">
               <Jump id="vendor_portal" label="Operator ops" icon={Store} />
               <Jump id="menu" label="Menu" icon={ClipboardList} />
+              <Jump id="schedule" label="Schedule" icon={ClipboardList} />
               <Jump id={myVendor?.stationType === "bar" ? "bar" : "kitchen"} label="My tickets" icon={CookingPot} />
               <Jump id="reports" label="My reports" icon={BarChart3} />
+              <Jump id="labor" label="Payroll" icon={BarChart3} />
             </div>
             <p className="text-xs text-muted-foreground">
               Full control of {myVendor?.name ?? "your"} menu, tickets, and reports. Peer menus

@@ -49,6 +49,9 @@ function LoginPage() {
         disabled={!ready || Boolean(prepError)}
         prepError={prepError}
       />
+      <p className="mt-4 text-center text-xs text-muted-foreground">
+        Floor staff use a 4-digit PIN on the station — not this page.
+      </p>
       <p className="mt-8 text-center text-sm text-muted-foreground">
         <Link to="/" className="underline-offset-2 hover:underline">
           Back

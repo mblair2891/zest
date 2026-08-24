@@ -11,10 +11,14 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { useOpsStore } from "@/lib/pos/ops-store";
 import { usePosStore } from "@/lib/pos/store";
-import { formatDateTime, formatTime } from "@/lib/utils";
+import { formatCurrency, formatDateTime, formatTime } from "@/lib/utils";
 import type { PayrollMode, PayPeriodType } from "@/lib/pos/ops-types";
+import { HOST_SCOPE, canViewPayroll, isHostPrivileged } from "@/lib/access/entity-grants";
+import { isFloorRole } from "@/lib/pos/pin";
+import { buildPayrollRows, payrollCsv } from "@/lib/labor/payroll";
+import { EntityScheduleView } from "./EntityScheduleView";
 
-type Tab = "clock" | "timecards" | "alerts" | "settings" | "payroll";
+type Tab = "clock" | "myshifts" | "timecards" | "alerts" | "settings" | "payroll";
 
 export function LaborOpsView() {
   const [tab, setTab] = useState<Tab>("clock");
@@ -36,22 +40,31 @@ export function LaborOpsView() {
   const runDailyCloseout = useOpsStore((s) => s.runDailyCloseout);
   const runPayroll = useOpsStore((s) => s.runPayroll);
   const updateLabor = useOpsStore((s) => s.updateLabor);
-  const seedTodayShifts = useOpsStore((s) => s.seedTodayShifts);
+  const seedWeekShifts = useOpsStore((s) => s.seedWeekShifts);
   const recordTicketClosed = useOpsStore((s) => s.recordTicketClosed);
   const todayShifts = useOpsStore((s) => s.todayShifts);
+  const shifts = useOpsStore((s) => s.shifts);
+  const grants = usePosStore((s) => s.entityPermissions);
+  const vendors = usePosStore((s) => s.vendors);
+  const sessionKind = usePosStore((s) => s.sessionKind);
+  const settings = usePosStore((s) => s.settings);
   const seeded = useRef(false);
+  const floor = sessionKind === "pin" && isFloorRole(current?.role);
+  const [opFilter, setOpFilter] = useState(
+    isHostPrivileged(current) ? "" : current?.operatorId || HOST_SCOPE,
+  );
 
   useEffect(() => {
     if (seeded.current) return;
-    if (todayShifts.length > 0) {
+    if (shifts.length > 0) {
       seeded.current = true;
       return;
     }
-    const ids = employees.filter((e) => e.active).map((e) => e.id);
-    if (ids.length === 0) return;
+    const staff = employees.filter((e) => e.active).map((e) => ({ id: e.id, operatorId: e.operatorId }));
+    if (staff.length === 0) return;
     seeded.current = true;
-    seedTodayShifts(ids);
-  }, [employees, todayShifts.length, seedTodayShifts]);
+    seedWeekShifts(staff);
+  }, [employees, shifts.length, seedWeekShifts]);
 
   const supervisorName = current?.name ?? "Supervisor";
 
@@ -97,8 +110,23 @@ export function LaborOpsView() {
         </div>
         <p className="mt-1 text-xs text-muted-foreground">
           Clock-in window · red-flag clock-out from last closed ticket · daily
-          closeout · payroll export when all shifts approved
+          closeout · payroll export when all shifts approved. Entity-scoped.
         </p>
+        {!floor && isHostPrivileged(current) && vendors.length > 0 && (
+          <select
+            className="mt-2 h-8 rounded-md border border-border bg-bg px-2 text-xs"
+            value={opFilter}
+            onChange={(e) => setOpFilter(e.target.value)}
+          >
+            <option value="">All entities</option>
+            <option value={HOST_SCOPE}>{settings.name || "Host"}</option>
+            {vendors.map((v) => (
+              <option key={v.id} value={v.id}>
+                {v.shortName}
+              </option>
+            ))}
+          </select>
+        )}
         {flash && (
           <p className="mt-1 text-xs text-primary" role="status">
             {flash}
@@ -106,13 +134,18 @@ export function LaborOpsView() {
         )}
         <div className="mt-2 flex gap-1 overflow-x-auto">
           {(
-            [
-              ["clock", "Time clock"],
-              ["timecards", "Timecards"],
-              ["alerts", "Supervisor"],
-              ["settings", "Rules"],
-              ["payroll", "Payroll"],
-            ] as const
+            (
+              floor
+                ? ([["clock", "Time clock"], ["myshifts", "My shifts"]] as const)
+                : ([
+                    ["clock", "Time clock"],
+                    ["myshifts", "Schedule"],
+                    ["timecards", "Timecards"],
+                    ["alerts", "Supervisor"],
+                    ["settings", "Rules"],
+                    ["payroll", "Payroll"],
+                  ] as const)
+            )
           ).map(([id, label]) => (
             <Button
               key={id}
@@ -128,6 +161,7 @@ export function LaborOpsView() {
       </div>
 
       <div className="min-h-0 flex-1 overflow-y-auto p-3">
+        {tab === "myshifts" && <EntityScheduleView />}
         {tab === "clock" && (
           <div className="space-y-3">
             <div className="rounded-2xl border border-border bg-surface p-3 text-xs text-muted-foreground">
@@ -178,7 +212,13 @@ export function LaborOpsView() {
             </div>
             <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
               {employees
-                .filter((e) => e.active)
+                .filter((e) => {
+                  if (!e.active) return false;
+                  if (floor) return e.id === current?.id;
+                  const op = e.operatorId || HOST_SCOPE;
+                  if (opFilter && op !== opFilter) return false;
+                  return true;
+                })
                 .map((e) => {
                   const open = punches.find(
                     (p) => p.employeeId === e.id && p.status === "open",
@@ -423,7 +463,21 @@ export function LaborOpsView() {
         )}
 
         {tab === "payroll" && (
-          <div className="space-y-3">
+          <div className="space-y-3" data-demo="payroll">
+            <PayrollTable
+              punches={punches}
+              employees={employees.filter((e) => {
+                const op = e.operatorId || HOST_SCOPE;
+                if (opFilter && op !== opFilter) return false;
+                return canViewPayroll(current, grants, op);
+              })}
+              operatorName={(id) =>
+                id === HOST_SCOPE
+                  ? settings.name || "Host"
+                  : vendors.find((v) => v.id === id)?.shortName ?? id
+              }
+              operatorId={opFilter || (isHostPrivileged(current) ? null : current?.operatorId)}
+            />
             <div className="rounded-2xl border border-border bg-surface p-4">
               <div className="mb-2 flex items-center gap-2 text-sm font-semibold">
                 <FileSpreadsheet className="h-4 w-4" />
@@ -471,6 +525,66 @@ export function LaborOpsView() {
           </div>
         )}
       </div>
+    </div>
+  );
+}
+
+function PayrollTable({
+  punches,
+  employees,
+  operatorName,
+  operatorId,
+}: {
+  punches: Parameters<typeof buildPayrollRows>[0]["punches"];
+  employees: Parameters<typeof buildPayrollRows>[0]["employees"];
+  operatorName: (id: string) => string;
+  operatorId?: string | null;
+}) {
+  const rows = buildPayrollRows({ punches, employees, operatorName, operatorId });
+  const download = () => {
+    const blob = new Blob([payrollCsv(rows)], { type: "text/csv" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "payroll.csv";
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+  return (
+    <div className="rounded-2xl border border-border bg-surface p-4">
+      <div className="mb-2 flex items-center justify-between gap-2">
+        <p className="text-sm font-semibold">Hours, OT, tips & sales</p>
+        <Button size="sm" variant="outline" onClick={download}>
+          CSV
+        </Button>
+      </div>
+      <table className="w-full text-left text-xs">
+        <thead>
+          <tr className="text-muted-foreground">
+            <th className="py-1">Staff</th>
+            <th>Entity</th>
+            <th>Reg h</th>
+            <th>OT</th>
+            <th>Tips</th>
+            <th>Sales</th>
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((r) => (
+            <tr key={r.employeeId} className="border-t border-border">
+              <td className="py-1">{r.name}</td>
+              <td>{r.operatorName}</td>
+              <td className="tabular">{r.regularHours.toFixed(2)}</td>
+              <td className="tabular">
+                {r.otHours.toFixed(2)}
+                {r.otFlag ? " · OT" : ""}
+              </td>
+              <td className="tabular">{formatCurrency(r.tipsCents)}</td>
+              <td className="tabular">{formatCurrency(r.salesCents)}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
     </div>
   );
 }

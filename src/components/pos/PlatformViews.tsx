@@ -25,6 +25,7 @@ import { formatCurrency, formatDateTime, formatTime } from "@/lib/utils";
 import { venueById } from "@/lib/pos/entities";
 import type { PosView } from "@/lib/pos/types";
 import { RoleHomeDashboard } from "./RoleHomeDashboard";
+import { EntityScheduleView } from "./EntityScheduleView";
 
 function Shell({
   title,
@@ -456,80 +457,7 @@ export function PayoutsView() {
 }
 
 export function ScheduleView() {
-  const schedule = usePlatformStore((s) => s.schedule);
-  const employees = usePosStore((s) => s.employees);
-  const activeLocationId = usePlatformStore((s) => s.activeLocationId);
-  const publish = usePlatformStore((s) => s.publishSchedule);
-  const remove = usePlatformStore((s) => s.removeShift);
-  const addShift = usePlatformStore((s) => s.addShift);
-
-  const list = schedule
-    .filter((s) => s.locationId === activeLocationId)
-    .sort((a, b) => a.start - b.start);
-
-  return (
-    <Shell
-      title="Labor schedule"
-      actions={
-        <>
-          <Button
-            size="sm"
-            variant="outline"
-            onClick={() => {
-              const emp = employees.find((e) => e.role === "server");
-              if (!emp) return;
-              const start = new Date();
-              start.setHours(17, 0, 0, 0);
-              const end = new Date();
-              end.setHours(23, 0, 0, 0);
-              addShift({
-                employeeId: emp.id,
-                locationId: activeLocationId,
-                role: emp.role,
-                start: start.getTime(),
-                end: end.getTime(),
-                published: false,
-              });
-            }}
-          >
-            <Plus className="h-3.5 w-3.5" /> Add shift
-          </Button>
-          <Button size="sm" onClick={() => publish(activeLocationId)}>
-            Publish all
-          </Button>
-        </>
-      }
-    >
-      <div className="space-y-2">
-        {list.map((s) => {
-          const emp = employees.find((e) => e.id === s.employeeId);
-          return (
-            <div
-              key={s.id}
-              className="flex flex-wrap items-center gap-3 rounded-xl border border-border bg-surface px-3 py-2"
-            >
-              <span
-                className="h-2.5 w-2.5 rounded-full"
-                style={{ background: emp?.color ?? "#888" }}
-              />
-              <span className="min-w-0 flex-1 text-sm">
-                <span className="font-medium">{emp?.name ?? s.employeeId}</span>
-                <span className="ml-2 text-xs capitalize text-muted-foreground">
-                  {s.role} · {formatTime(s.start)}–{formatTime(s.end)}
-                </span>
-              </span>
-              <Badge variant={s.published ? "success" : "warn"}>
-                {s.published ? "Published" : "Draft"}
-              </Badge>
-              <Button size="sm" variant="ghost" onClick={() => remove(s.id)}>
-                Remove
-              </Button>
-            </div>
-          );
-        })}
-      </div>
-    </Shell>
-  );
+  return <EntityScheduleView />;
 }
 
 export function PromosView() {
