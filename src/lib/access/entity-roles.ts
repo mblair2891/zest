@@ -119,9 +119,14 @@ export const SETTINGS_PACK_LABEL: Record<SettingsPackId, string> = {
   sections: "Sections & floor",
   bar_tabs: "Bar stations & tabs",
   counter_expo: "Counter & expo",
-  host_operators: "Operators & settlement",
+  host_operators: "Operators, payouts & settlement",
   kiosk_front: "Kiosk, waitlist, check-in",
 };
+
+/** Subscriber is the host location; guest operators are onboarded onto it. */
+export function isHostMultiVenue(type: VenueEntityId | null | undefined): boolean {
+  return type === "food_hall" || type === "truck_pod" || type === "ghost_kitchen";
+}
 
 export function settingsPacksForVenue(
   type: VenueEntityId | null | undefined,

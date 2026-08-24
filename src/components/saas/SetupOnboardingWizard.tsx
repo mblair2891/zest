@@ -432,7 +432,7 @@ export function SetupOnboardingWizard({ token }: { token: string }) {
                         <option value="kitchen">Kitchen</option>
                       </NativeSelect>
                     </Field>
-                    <Field label="Bank last 4" hint="Placeholder — not live ACH">
+                    <Field label="Bank last 4" hint="Host collects this. Guest operators cannot edit payouts.">
                       <Input
                         value={op.payoutBankLast4}
                         maxLength={4}

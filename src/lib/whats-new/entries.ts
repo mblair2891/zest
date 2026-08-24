@@ -9,6 +9,19 @@ import type { GuideUpdate } from "@/lib/guide/types";
  */
 export const WHATS_NEW_ENTRIES: GuideUpdate[] = [
   {
+    id: "upd_2026_09_05_host_settings",
+    date: "2026-09-05",
+    title: "Host owns settings and payouts",
+    summary:
+      "The subscriber is the host location. Guest operators get operator ops (staff, clock, 86) — not tax, cash discount, or payout routing.",
+    body: "On The Laundry, owner settings show Host settings and Operators. Steam Distillery and Diamond House PINs open Operator ops only. Payout destinations are host-managed.",
+    roles: ["owner_manager", "host_operator", "vendor_operator"],
+    entityTypes: ["food_hall", "truck_pod", "ghost_kitchen"],
+    surfaces: ["settings"],
+    topicId: "host-operator-settings",
+    tags: ["settings", "host", "payouts", "operators"],
+  },
+  {
     id: "upd_2026_09_04_offline",
     date: "2026-09-04",
     title: "Offline mode: cash and tickets without internet",

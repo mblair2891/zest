@@ -1207,6 +1207,11 @@ const usePosStoreRaw = create()(persist((set, get) => ({
 		} : c) });
 	},
 	toggleItemAvailable: (id) => {
+		const emp = get().getCurrentEmployee();
+		if (emp?.role === "vendor_operator") {
+			const item = get().menuItems.find((m) => m.id === id);
+			if (!item || item.vendorId !== emp.operatorId) return;
+		}
 		set({ menuItems: get().menuItems.map((m) => m.id === id ? {
 			...m,
 			available: !m.available
@@ -1279,9 +1284,12 @@ const usePosStoreRaw = create()(persist((set, get) => ({
 		return { id };
 	},
 	createVendor: (input) => {
+		const emp = get().getCurrentEmployee();
+		if (emp?.role === "vendor_operator") return { id: "" };
 		const id = uid("vnd");
 		const colors = ["#2C4A6E", "#1F7A4C", "#9A6700", "#A61B1B"];
 		const short = (input.shortName || input.name).slice(0, 12);
+		const stationType = input.stationType ?? "kitchen";
 		set({
 			vendors: [
 				...get().vendors,
@@ -1291,19 +1299,45 @@ const usePosStoreRaw = create()(persist((set, get) => ({
 					shortName: short,
 					locationId: get().tenantLocationId || "loc",
 					color: colors[get().vendors.length % colors.length]!,
-					cuisine: "",
+					cuisine: input.cuisine ?? "",
 					active: true,
-					bankLast4: "0000",
-					bankLabel: "Payout placeholder",
-					stationLabel: input.stationType === "bar" ? "Bar" : "Kitchen",
-					stationType: input.stationType ?? "kitchen",
+					bankLast4: (input.bankLast4 || "0000").replace(/\D/g, "").slice(-4).padStart(4, "0"),
+					bankLabel: input.bankLabel || "Host-managed payout",
+					stationLabel: stationType === "bar" ? "Bar" : stationType === "both" ? "Bar + kitchen" : "Kitchen",
+					stationType,
 				},
 			],
 		});
 		get().audit("vendor", input.name);
 		return { id };
 	},
+	updateVendor: (id, patch) => {
+		const emp = get().getCurrentEmployee();
+		if (emp?.role === "vendor_operator") return;
+		set({
+			vendors: get().vendors.map((v) => {
+				if (v.id !== id) return v;
+				const next = { ...v, ...patch };
+				if (patch.stationType && !patch.stationLabel) {
+					next.stationLabel =
+						patch.stationType === "bar" ? "Bar" : patch.stationType === "both" ? "Bar + kitchen" : "Kitchen";
+				}
+				if (patch.bankLast4) {
+					next.bankLast4 = String(patch.bankLast4).replace(/\D/g, "").slice(-4).padStart(4, "0");
+				}
+				return next;
+			}),
+		});
+	},
 	createEmployee: (input) => {
+		const actor = get().getCurrentEmployee();
+		if (actor?.role === "vendor_operator") {
+			input = {
+				...input,
+				operatorId: actor.operatorId,
+				role: input.role === "bartender" || input.role === "kitchen" ? input.role : "kitchen",
+			};
+		}
 		const used = new Set(get().employees.map((e) => e.pin));
 		let pin = (input.pin || "").replace(/\D/g, "").slice(0, 4);
 		if (pin.length < 4 || used.has(pin)) {
@@ -1327,6 +1361,8 @@ const usePosStoreRaw = create()(persist((set, get) => ({
 					salesTotal: 0,
 					active: true,
 					homeSectionIds: [],
+					operatorId: input.operatorId,
+					title: input.title,
 				},
 			],
 		});
@@ -1400,6 +1436,8 @@ const usePosStoreRaw = create()(persist((set, get) => ({
 		get().audit("shift_close", `Counted $${(closingCashCents / 100).toFixed(2)}`);
 	},
 	updateSettlementConfig: (patch) => {
+		const emp = get().getCurrentEmployee();
+		if (emp?.role === "vendor_operator") return;
 		set({ settlementConfig: {
 			...get().settlementConfig,
 			...patch

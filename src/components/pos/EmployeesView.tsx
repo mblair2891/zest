@@ -25,7 +25,12 @@ export function EmployeesView() {
   const revokeExtraTable = usePosStore((s) => s.revokeExtraTable);
   const settings = usePosStore((s) => s.settings);
   const current = employees.find((e) => e.id === currentId) ?? null;
-  const manage = canManageSections(current?.role);
+  const operatorScope =
+    current?.role === "vendor_operator" ? current.operatorId ?? null : null;
+  const visibleEmployees = operatorScope
+    ? employees.filter((e) => e.operatorId === operatorScope || e.id === current?.id)
+    : employees;
+  const manage = canManageSections(current?.role) && !operatorScope;
   const policy = policyOf(settings.sectionPolicy);
   const [grantFor, setGrantFor] = useState<string | null>(null);
 
@@ -35,7 +40,7 @@ export function EmployeesView() {
         .sort((a, b) => a.sort - b.sort)
         .map((sec) => ({
           sec,
-          staff: employees.filter(
+          staff: visibleEmployees.filter(
             (e) =>
               e.active && (e.homeSectionIds ?? []).includes(sec.id),
           ),
@@ -45,7 +50,7 @@ export function EmployeesView() {
               t.section.toLowerCase() === sec.name.toLowerCase(),
           ).length,
         })),
-    [floorSections, employees, tables],
+    [floorSections, visibleEmployees, tables],
   );
 
   const toggleSection = (employeeId: string, sectionId: string) => {
@@ -61,10 +66,12 @@ export function EmployeesView() {
   return (
     <div className="h-full overflow-y-auto p-3">
       <div className="mb-4 flex flex-wrap items-center gap-2">
-        <h2 className="text-sm font-semibold">Staff, clock & sections</h2>
+        <h2 className="text-sm font-semibold">
+          {operatorScope ? "Operator staff & time clock" : "Staff, clock & sections"}
+        </h2>
         <SetupAssistButton domain="staff" />
         <Badge variant="secondary" className="tabular">
-          {employees.filter((e) => e.clockedIn).length} on clock
+          {visibleEmployees.filter((e) => e.clockedIn).length} on clock
         </Badge>
         {manage && (
           <Button
@@ -111,7 +118,7 @@ export function EmployeesView() {
       </p>
 
       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-        {employees
+        {visibleEmployees
           .filter((e) => e.active)
           .map((e) => {
             const grants = extraTableGrants.filter((g) => g.employeeId === e.id);

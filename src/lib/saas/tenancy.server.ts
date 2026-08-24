@@ -140,6 +140,16 @@ function parseSetup(raw: unknown): LocationSetup {
     waitlistEnabled: Boolean(o.waitlistEnabled),
     reservationCheckIn: o.reservationCheckIn !== false,
     waitlistReason: typeof o.waitlistReason === "string" ? o.waitlistReason : "",
+    operatorPayouts: Array.isArray(o.operatorPayouts)
+      ? o.operatorPayouts
+          .filter((x): x is Record<string, unknown> => !!x && typeof x === "object")
+          .map((p) => ({
+            id: String(p.id ?? ""),
+            bankLast4: String(p.bankLast4 ?? "").replace(/\D/g, "").slice(-4).padStart(4, "0"),
+            bankLabel: String(p.bankLabel ?? "").slice(0, 80),
+          }))
+          .filter((p) => p.id)
+      : [],
   };
 }
 

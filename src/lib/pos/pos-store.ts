@@ -26,9 +26,9 @@ import type {
   SettlementPeriod,
   Table,
   TicketStation,
+  Vendor,
   VenueEntityId,
   WaitlistEntry,
-  Vendor,
 } from "./types";
 import type { GiftImportPreview } from "./gift-import";
 
@@ -216,11 +216,20 @@ export interface PosStore {
     name: string;
     shortName?: string;
     stationType?: "bar" | "kitchen" | "both";
+    cuisine?: string;
+    bankLast4?: string;
+    bankLabel?: string;
   }) => { id: string };
+  updateVendor: (
+    id: string,
+    patch: Partial<Pick<Vendor, "name" | "shortName" | "stationType" | "stationLabel" | "cuisine" | "bankLast4" | "bankLabel" | "active">>,
+  ) => void;
   createEmployee: (input: {
     name: string;
     role: EmployeeRole;
     pin?: string;
+    operatorId?: string;
+    title?: string;
   }) => { id: string; pin: string };
   receiveInventory: (id: string, qty: number) => void;
   updateInventory: (id: string, patch: Partial<InventoryItem>) => void;

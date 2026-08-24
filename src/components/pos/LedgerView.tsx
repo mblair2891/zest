@@ -10,8 +10,10 @@ import { GuideLearnLink } from "@/components/guide/GuideLearnLink";
 export function LedgerView() {
   const entries = usePosStore((s) => s.ledgerEntries ?? []);
   const vendors = usePosStore((s) => s.vendors);
+  const emp = usePosStore((s) => s.employees.find((e) => e.id === s.currentEmployeeId));
+  const lockedOp = emp?.role === "vendor_operator" ? emp.operatorId ?? null : null;
   const [type, setType] = useState<LedgerEntryType | "all">("all");
-  const [operatorId, setOperatorId] = useState<string>("all");
+  const [operatorId, setOperatorId] = useState<string>(lockedOp || "all");
   const [from, setFrom] = useState("");
   const [to, setTo] = useState("");
 
@@ -21,13 +23,14 @@ export function LedgerView() {
     return entries
       .filter((e) => {
         if (type !== "all" && e.type !== type) return false;
-        if (operatorId !== "all" && e.operatorId !== operatorId) return false;
+        const opFilter = lockedOp || operatorId;
+        if (opFilter !== "all" && e.operatorId !== opFilter) return false;
         if (e.at < fromTs || e.at > toTs) return false;
         return true;
       })
       .slice()
       .sort((a, b) => b.at - a.at);
-  }, [entries, type, operatorId, from, to]);
+  }, [entries, type, operatorId, from, to, lockedOp]);
 
   const exportCsv = () => {
     const blob = new Blob([ledgerToCsv(filtered)], { type: "text/csv;charset=utf-8" });
@@ -73,7 +76,8 @@ export function LedgerView() {
           </select>
           <select
             className="h-9 rounded-lg border border-border bg-surface px-2 text-xs"
-            value={operatorId}
+            value={lockedOp || operatorId}
+            disabled={Boolean(lockedOp)}
             onChange={(e) => setOperatorId(e.target.value)}
           >
             <option value="all">All operators</option>

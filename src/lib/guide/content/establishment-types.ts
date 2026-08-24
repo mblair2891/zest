@@ -87,7 +87,7 @@ export const ESTABLISHMENT_TYPE_TOPICS: GuideTopic[] = [
       ),
       ul(
         "Access includes vendor_operator (Steam Distillery, Diamond House BBQ) plus host, cashier, and accountant.",
-        "Vendor dashboards are scoped to that operator’s tickets and settlement share.",
+        "Vendor dashboards are operator ops: tickets, 86, staff. Host settings hold payouts and tax.",
       ),
       callout(
         "The Laundry (prospect demo)",

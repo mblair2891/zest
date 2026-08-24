@@ -21,6 +21,8 @@ export type LocationSetup = {
   waitlistEnabled?: boolean;
   reservationCheckIn?: boolean;
   waitlistReason?: string;
+  /** Host-managed operator payout destinations. Guest operators cannot edit. */
+  operatorPayouts?: { id: string; bankLast4: string; bankLabel: string }[];
 };
 
 export const EMPTY_LOCATION_SETUP: LocationSetup = {
@@ -40,6 +42,7 @@ export const EMPTY_LOCATION_SETUP: LocationSetup = {
   waitlistEnabled: false,
   reservationCheckIn: true,
   waitlistReason: "",
+  operatorPayouts: [],
 };
 export type MembershipRole =
   | "owner"

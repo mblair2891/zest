@@ -96,7 +96,7 @@ const ROLE_VIEWS: Record<EmployeeRole, PosView[] | "all"> = {
   kitchen: ["hq", "kitchen", "recipes", "checklists", "inventory", "reports"],
   busser: ["hq", "floor"],
   cashier: ["hq", "order", "takeout", "cash", "online"],
-  vendor_operator: ["hq", "vendor_portal", "kitchen", "bar", "menu", "settlement", "reports"],
+  vendor_operator: ["hq", "vendor_portal", "kitchen", "bar", "employees", "labor", "reports", "ledger"],
   accountant: ["hq", "reports", "ledger", "settlement", "cash"],
   kiosk: ["waitlist", "order"],
 };

@@ -77,6 +77,10 @@ only — not a floor PIN.
 Home (`hq`) is a **role dashboard**. Nav hides views the role cannot open.
 Vendor operators are scoped to `operatorId` (tickets, portal, settlement share).
 
+On **host + multi-operator** houses the subscriber is the host. Guest
+operators get **operator ops** only (staff, clock, 86, view-only settlement).
+Payout destinations and settlement rules live under **Host settings**.
+
 Location Settings (owner/manager) shows packs for the venue type: profile, tax,
 payments, cash discount, devices, staff, notifications, hours, plus type packs
 (sections, bar tabs, counter/expo, host operators, kiosk/waitlist). Live writes

@@ -8,7 +8,12 @@ import { SetupAssistButton } from "@/components/assist/SetupAssistDialog";
 
 export function MenuAdminView() {
   const categories = usePosStore((s) => s.categories);
-  const menuItems = usePosStore((s) => s.menuItems);
+  const menuItemsAll = usePosStore((s) => s.menuItems);
+  const emp = usePosStore((s) => s.employees.find((e) => e.id === s.currentEmployeeId));
+  const operatorId = emp?.role === "vendor_operator" ? emp.operatorId : undefined;
+  const menuItems = operatorId
+    ? menuItemsAll.filter((m) => m.vendorId === operatorId)
+    : menuItemsAll;
   const settings = usePosStore((s) => s.settings);
   const toggleItemAvailable = usePosStore((s) => s.toggleItemAvailable);
   const happy = isHappyHour(settings);
@@ -16,11 +21,17 @@ export function MenuAdminView() {
   return (
     <div className="h-full overflow-y-auto p-3">
       <div className="mb-4 flex flex-wrap items-center gap-2">
-        <h2 className="text-sm font-semibold">Menu & 86 board</h2>
+        <h2 className="text-sm font-semibold">
+          {operatorId ? "Your items · 86" : "Menu & 86 board"}
+        </h2>
         {happy && <Badge variant="success">Happy hour active</Badge>}
-        <SetupAssistButton domain="menu_item" label="Describe with AI" />
-        <SetupAssistButton domain="category" label="Add category" />
-        <SetupAssistButton domain="modifier" label="Add modifiers" />
+        {!operatorId && (
+          <>
+            <SetupAssistButton domain="menu_item" label="Describe with AI" />
+            <SetupAssistButton domain="category" label="Add category" />
+            <SetupAssistButton domain="modifier" label="Add modifiers" />
+          </>
+        )}
         <p className="w-full text-xs text-muted-foreground">
           Toggle availability to 86 items. Stock-tracked items auto-disable at
           zero.

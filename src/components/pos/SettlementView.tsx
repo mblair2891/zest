@@ -8,6 +8,8 @@ import { formatCurrency, formatDateTime } from "@/lib/utils";
 import { CHARGEBACK_FEE_CENTS, PAYMENTS_BRAND } from "@/lib/platform/brand";
 import { GuideLearnLink } from "@/components/guide/GuideLearnLink";
 import { SetupAssistButton } from "@/components/assist/SetupAssistDialog";
+import { canEmployee } from "@/lib/access/permissions";
+import { OperatorOpsView } from "./OperatorOpsView";
 
 export function SettlementView() {
   const setView = usePosStore((s) => s.setView);
@@ -21,7 +23,13 @@ export function SettlementView() {
   const chargebacks = usePosStore((s) => s.chargebacks ?? []);
   const fileChargeback = usePosStore((s) => s.fileChargeback);
   const resolveChargeback = usePosStore((s) => s.resolveChargeback);
+  const emp = usePosStore((s) => s.employees.find((e) => e.id === s.currentEmployeeId));
+  const write = canEmployee(emp, "settlement:write");
   const [flash, setFlash] = useState<string | null>(null);
+
+  if (emp?.role === "vendor_operator") {
+    return <OperatorOpsView />;
+  }
 
   const orders = usePosStore((s) => s.orders);
   const live = useMemo(
@@ -45,10 +53,10 @@ export function SettlementView() {
       <div className="border-b border-border px-3 py-2">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <h2 className="text-sm font-semibold">
-            Host settlement · {config.hostName}
+            Host payouts & settlement · {config.hostName}
           </h2>
           <div className="flex flex-wrap items-center gap-3">
-            <SetupAssistButton domain="operator" label="Add operator" />
+            {write && <SetupAssistButton domain="operator" label="Add operator" />}
             <Button size="sm" variant="outline" onClick={() => setView("ledger")}>
               Ledger
             </Button>
@@ -57,9 +65,9 @@ export function SettlementView() {
           </div>
         </div>
         <p className="text-xs text-muted-foreground">
-          One host brand ({config.hostName}), multiple operators. Guest pays
-          once via {PAYMENTS_BRAND}. Period payouts are addressed to each
-          operator’s account placeholder — not live ACH.
+          Subscriber host owns Quantum Payments MID, split rules, and payout
+          destinations. Guest pays once via {PAYMENTS_BRAND}. Operators see a
+          report slice only — they cannot edit banks or host cut.
         </p>
       </div>
 
@@ -70,9 +78,10 @@ export function SettlementView() {
           </p>
         )}
 
-        {/* Platform settings */}
-        <section className="rounded-2xl border border-border bg-surface p-4">
-          <h3 className="mb-3 text-sm font-semibold">Platform settings</h3>
+        {/* Host commercial settings */}
+        <section className="rounded-2xl border border-border bg-surface p-4" data-demo="host-payouts">
+          <h3 className="mb-3 text-sm font-semibold">Host payouts & rules</h3>
+          <fieldset disabled={!write} className="min-w-0 border-0 p-0">
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
             <label className="block text-xs text-muted-foreground">
               Building / location name
@@ -246,6 +255,7 @@ export function SettlementView() {
             {formatDateTime(config.currentPeriodStart)}. Close when your period
             ends — payouts are calculated then.
           </p>
+          </fieldset>
         </section>
 
         {/* Vendors in building */}
@@ -268,7 +278,7 @@ export function SettlementView() {
                 </p>
                 <p className="text-xs text-muted-foreground">
                   {v.cuisine ? `${v.cuisine} · ` : ""}
-                  KDS: {v.stationLabel} · {v.bankLabel} ••{v.bankLast4}
+                  KDS: {v.stationLabel} · Host-managed {v.bankLabel} ••{v.bankLast4}
                 </p>
               </div>
             ))}
@@ -280,9 +290,11 @@ export function SettlementView() {
           <div className="mb-3 flex flex-wrap items-center gap-2">
             <h3 className="text-sm font-semibold">Open period (live)</h3>
             <Badge variant="info">Not closed yet</Badge>
+            {write && (
             <Button className="ml-auto" size="sm" onClick={onClose}>
               Close period & generate payouts
             </Button>
+            )}
           </div>
           {live && (
             <>
@@ -410,7 +422,7 @@ export function SettlementView() {
                   <span className="text-xs text-muted-foreground">
                     by {p.closedBy}
                   </span>
-                  {p.status === "closed" && (
+                  {p.status === "closed" && write && (
                     <Button
                       size="sm"
                       className="ml-auto"

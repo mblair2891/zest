@@ -128,7 +128,7 @@ const NAV: {
   { id: "hall", label: "Hall", icon: MapIcon },
   { id: "settlement", label: "Settle", icon: Landmark },
   { id: "ledger", label: "Ledger", icon: ScrollText },
-  { id: "vendor_portal", label: "Vendors", icon: Store },
+  { id: "vendor_portal", label: "Operator ops", icon: Store },
   { id: "integrations", label: "Integrations", icon: Plug },
   { id: "reports", label: "Reports", icon: BarChart3 },
   { id: "inventory", label: "Stock", icon: Package },

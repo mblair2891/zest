@@ -1,4 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
+import { optionalAuthMiddleware } from "@/lib/auth/middleware";
 import {
   DEFAULT_FRONT_SETTINGS,
   WAITLIST_REASONS,
@@ -156,6 +157,7 @@ export const listFrontBoardFn = createServerFn({ method: "POST" })
   });
 
 export const saveFrontSettingsFn = createServerFn({ method: "POST" })
+  .middleware([optionalAuthMiddleware])
   .validator((d: {
     locationId: string;
     kioskMode?: KioskMode;
@@ -169,7 +171,20 @@ export const saveFrontSettingsFn = createServerFn({ method: "POST" })
     waitlistReason: d.waitlistReason,
     smsFrom: d.smsFrom,
   }))
-  .handler(async ({ data }) => {
+  .handler(async ({ context, data }) => {
+    if (context.userId) {
+      const { assertHostLocationWrite } = await import("@/lib/access/assert-host.server");
+      try {
+        await assertHostLocationWrite(context.userId, data.locationId);
+      } catch (e) {
+        const msg = e instanceof Error ? e.message : "";
+        if (msg === "Location not found") {
+          /* prospect demo / local kiosk row */
+        } else {
+          throw e;
+        }
+      }
+    }
     const { saveFrontSettings } = await import("./store.server");
     const patch: Partial<FrontSettings> = {};
     if (data.kioskMode) patch.kioskMode = data.kioskMode;

@@ -1,4 +1,4 @@
-import { callout, p, related, steps, tip, topic, ul, why } from "./helpers";
+import { callout, p, related, steps, tip, topic, ul, warn, why } from "./helpers";
 import type { GuideTopic } from "../types";
 
 export const ROLE_GUIDE_TOPICS: GuideTopic[] = [
@@ -113,7 +113,8 @@ export const ROLE_GUIDE_TOPICS: GuideTopic[] = [
       ),
       ul(
         "Your tickets route to your station only.",
-        "Settlement shows merchandise share, fees, and any host cut.",
+        "Operator ops: your staff, time clock, and 86 board.",
+        "View-only settlement slice. Payout destinations are host-managed — you cannot edit banks, tax, or host branding.",
         "A $35 dispute fee, when filed, splits by merchandise on that check.",
       ),
       p(
@@ -139,7 +140,7 @@ export const ROLE_GUIDE_TOPICS: GuideTopic[] = [
         "Host stand — waitlist, reservations, seating.",
         "Kitchen / expo — KDS-first. Bartender — bar KDS and tabs.",
         "Cashier — counter queue and pay.",
-        "Vendor operator — own tickets, 86, settlement share (host venues only).",
+        "Vendor operator — operator ops (staff, 86, reports). Not host settings or payouts.",
         "Accountant — reports and ledger.",
         "Platform Admin — control plane after Sign in, not a restaurant PIN.",
       ),
@@ -169,7 +170,7 @@ export const ROLE_GUIDE_TOPICS: GuideTopic[] = [
         "Full-service: sections and floor control.",
         "Bar: tab auto-close.",
         "Counter / QSR / café / ghost: ticket prefix and expo.",
-        "Host + multi-operator: operators, settlement, host cut — guest cards stay Quantum Payments.",
+        "Host + multi-operator: Host settings (tax, cash discount, Quantum Payments, payouts) vs Operators (ops only). Guest operators never edit host MID or payout routing.",
         "Kiosk / waitlist types: kiosk mode, waitlist, reservation check-in.",
       ),
       steps(
@@ -177,7 +178,34 @@ export const ROLE_GUIDE_TOPICS: GuideTopic[] = [
         "Confirm the type badge (restaurant, host hall, bar, QSR…).",
         "Save each pack. Live tenants persist on the location. Demo rooms stay local.",
       ),
-      related("roles-dashboards", "cash-discount", "feature-kiosk", "type-food-hall"),
+      related("roles-dashboards", "host-operator-settings", "cash-discount", "feature-kiosk", "type-food-hall"),
+    ],
+  }),
+  topic({
+    id: "host-operator-settings",
+    chapterId: "roles",
+    title: "Host vs guest operator settings",
+    summary: "The subscriber host owns location and payouts. Guest operators get a narrow ops area.",
+    roles: ["owner_manager", "host_operator", "vendor_operator"],
+    keywords: ["host", "operator", "payouts", "settings", "subscriber", "stall"],
+    openView: "settings",
+    blocks: [
+      why(
+        "The SaaS customer is the host location. Guest brands that cook or pour there are onboarded onto that host — they are not separate subscribers with their own tax, MID, or payout routing.",
+      ),
+      ul(
+        "Host (owner/manager): profile, tax, cash discount, Quantum Payments location config, floor, kiosk/waitlist, packages, onboard/suspend operators, payout destinations, settlement rules, host cut, chargeback policy.",
+        "Guest operator: own staff, time clock, 86 their items, view settlement reports and ledger slice. No payout edits, no location tax, no onboarding other operators, no subscriber billing, no deleting the location.",
+      ),
+      steps(
+        "PIN as host owner. Host settings → Operators to onboard a stall (name, station, payout last 4).",
+        "Open Payouts & settlement. Split rules and banks are host-only.",
+        "Switch to Steam Distillery (PIN 6666 on The Laundry). You land on Operator ops — not Host settings.",
+      ),
+      warn(
+        "Payout / settlement bank / payment routing never lives on the guest operator. The host collects the destination at onboard and can change it later.",
+      ),
+      related("location-settings", "role-vendor", "type-food-hall", "settlement"),
     ],
   }),
 ];

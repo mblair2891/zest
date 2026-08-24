@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { usePosStore } from "@/lib/pos/store";
@@ -11,9 +12,12 @@ import { canEmployee } from "@/lib/access/permissions";
 import {
   SETTINGS_PACK_LABEL,
   VENUE_TYPE_LABEL,
+  isHostMultiVenue,
   settingsPacksForVenue,
   type SettingsPackId,
 } from "@/lib/access/entity-roles";
+import { HostOperatorsSettings } from "./HostOperatorsSettings";
+import { OperatorOpsView } from "./OperatorOpsView";
 import { saveLocationSettingsFn } from "@/lib/access/api";
 import { isProspectDemo } from "@/lib/demo/session";
 import { useSaasStore } from "@/lib/pos/saas-store";
@@ -93,6 +97,8 @@ export function SettingsView() {
   const emp = usePosStore((s) => s.employees.find((e) => e.id === s.currentEmployeeId));
   const orgId = useSaasStore((s) => s.org.id);
   const write = canEmployee(emp, "settings:write");
+  const hostMulti = isHostMultiVenue(entityId);
+  const [hostTab, setHostTab] = useState<"host" | "operators">("host");
   const packs = settingsPacksForVenue(entityId);
   const updateSettings = usePosStore((s) => s.updateSettings);
   const persist = () => {
@@ -150,10 +156,18 @@ export function SettingsView() {
     updateSectionPolicy({ enforceForRoles: next });
   };
 
+  if (emp?.role === "vendor_operator") {
+    return (
+      <div className="h-full overflow-hidden">
+        <OperatorOpsView />
+      </div>
+    );
+  }
+
   if (!canEmployee(emp, "settings:read") && !write) {
     return (
       <div className="grid h-full place-items-center p-6 text-sm text-muted-foreground">
-        Location settings are for owner and manager.
+        Location settings are for the host owner and manager.
       </div>
     );
   }
@@ -163,10 +177,17 @@ export function SettingsView() {
   return (
     <div className="h-full overflow-y-auto p-3" data-demo="settings">
       <div className="mb-4 flex flex-wrap items-center gap-2">
-        <h2 className="text-sm font-semibold">Location settings</h2>
+        <h2 className="text-sm font-semibold">
+          {hostMulti ? "Host settings" : "Location settings"}
+        </h2>
         <span className="rounded-full bg-surface-2 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
           {typeLabel}
         </span>
+        {hostMulti && (
+          <span className="text-xs text-muted-foreground">
+            Subscriber host owns location and payouts. Guest operators get ops only.
+          </span>
+        )}
         <SetupAssistButton domain="location" />
         <SetupAssistButton domain="cash_discount" label="Describe cash discount" />
         <SetupAssistButton domain="station" label="Routing" />
@@ -176,6 +197,24 @@ export function SettingsView() {
           </Button>
         )}
       </div>
+      {hostMulti && (
+        <div className="mb-4 flex gap-1">
+          <Button size="sm" variant={hostTab === "host" ? "default" : "outline"} onClick={() => setHostTab("host")}>
+            Host settings
+          </Button>
+          <Button
+            size="sm"
+            variant={hostTab === "operators" ? "default" : "outline"}
+            onClick={() => setHostTab("operators")}
+          >
+            Operators
+          </Button>
+        </div>
+      )}
+
+      {hostMulti && hostTab === "operators" ? (
+        <HostOperatorsSettings write={write} />
+      ) : (
       <fieldset disabled={!write} className="min-w-0 border-0 p-0">
 
       <Pack id="profile" packs={packs}>
@@ -541,13 +580,21 @@ export function SettingsView() {
       </Pack>
 
       <Pack id="host_operators" packs={packs}>
+        <div data-demo="host-operators">
         <p className="text-xs text-muted-foreground">
-          Operators, station ownership, period close, and host cut live on Settle.
-          Guest cards stay Quantum Payments under the host brand.
+          The subscriber host configures settlement, host cut, and payout destinations.
+          Guest operators cannot edit these. Open Payouts & settlement, or the Operators tab
+          to onboard a stall.
         </p>
-        <Button size="sm" variant="outline" className="mt-3" onClick={() => setView("settlement")}>
-          Open settlement
-        </Button>
+        <div className="mt-3 flex flex-wrap gap-2">
+          <Button size="sm" variant="outline" onClick={() => setView("settlement")}>
+            Payouts & settlement
+          </Button>
+          <Button size="sm" variant="outline" onClick={() => setHostTab("operators")}>
+            Operators
+          </Button>
+        </div>
+        </div>
       </Pack>
 
       <Pack id="devices" packs={packs}>
@@ -563,7 +610,7 @@ export function SettingsView() {
               ["package", "Full package"],
               ["settlement", "Vendor settlement"],
               ["features", "All features matrix"],
-              ["vendor_portal", "Vendor portal"],
+              ["vendor_portal", "Operator ops"],
               ["integrations", "Integrations"],
               ["customers", "Guests & gift cards"],
               ["online", "Online orders"],
@@ -605,6 +652,7 @@ export function SettingsView() {
       </div>
 
       </fieldset>
+      )}
 
       {isDevDemoClient() && (
         <div className="rounded-2xl border border-danger/30 bg-danger/5 p-4">

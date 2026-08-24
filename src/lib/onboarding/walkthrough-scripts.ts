@@ -27,7 +27,7 @@ const OWNER: TourDefinition = w(
       id: "ow-settings",
       title: "Location settings",
       script:
-        "Settings packs match this establishment type. A café does not get a hall settlement pack. Confirm tax, Quantum Payments, cash discount, and hours here.",
+        "On a hall, this is Host settings — tax, Quantum Payments, cash discount, payout destinations. Guest operators never open this pack.",
       selector: "[data-demo='settings']",
       view: "settings",
     },
@@ -67,7 +67,7 @@ const OWNER: TourDefinition = w(
       id: "ow-settle",
       title: "Settlement",
       script:
-        "On a host floor, period close allocates merchandise, fees, and the host cut. Guest cards stay Quantum Payments. A $35 dispute fee splits by merchandise.",
+        "On a host floor, you own payouts and period close. Guest operators see a report slice only. Guest cards stay Quantum Payments. A $35 dispute fee splits by merchandise.",
       selector: "[data-demo='settlement']",
       view: "settlement",
     },
@@ -452,7 +452,7 @@ const CASHIER: TourDefinition = w(
 const VENDOR: TourDefinition = w(
   "walkthrough:vendor_operator",
   "Vendor operator workflow",
-  "Your stall — menu, tickets, settlement.",
+  "Operator ops — not host settings.",
   [
     {
       id: "vo-home",
@@ -463,12 +463,12 @@ const VENDOR: TourDefinition = w(
       view: "hq",
     },
     {
-      id: "vo-menu",
-      title: "Your menu",
+      id: "vo-ops",
+      title: "Operator ops",
       script:
-        "Items keep your operator when they hit the guest check. The server still sends one ticket under the host.",
-      selector: "[data-demo='menu']",
-      view: "menu",
+        "Staff, time clock, and 86. You do not get host tax, cash discount, or payout routing. The host collected your payout destination at onboard.",
+      selector: "[data-demo='operator-ops']",
+      view: "vendor_portal",
     },
     {
       id: "vo-tickets",
@@ -479,19 +479,12 @@ const VENDOR: TourDefinition = w(
       view: "kitchen",
     },
     {
-      id: "vo-portal",
-      title: "Operator portal",
-      script: "Hours, 86, and your slice of the period. The host still captures the guest.",
-      selector: "[data-demo='vendor_portal']",
-      view: "vendor_portal",
-    },
-    {
-      id: "vo-settle",
-      title: "Settlement share",
+      id: "vo-slice",
+      title: "Your settlement slice",
       script:
-        "Merchandise, fees, host cut. A $35 dispute fee, when filed, splits by your share of that check. Won or lost does not reverse it.",
-      selector: "[data-demo='settlement']",
-      view: "settlement",
+        "Merchandise, fees, host cut — view only. A $35 dispute fee, when filed, splits by your share. You cannot mark payouts sent or edit the host MID.",
+      selector: "[data-demo='operator-ops']",
+      view: "vendor_portal",
     },
     {
       id: "vo-reports",

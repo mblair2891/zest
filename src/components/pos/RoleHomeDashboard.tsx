@@ -205,11 +205,13 @@ export function RoleHomeDashboard() {
               <Stat label="Operator" value={myVendor?.name ?? "Unassigned"} />
             </div>
             <div className="flex flex-wrap gap-2">
-              <Jump id="vendor_portal" label="My stall" icon={Store} />
+              <Jump id="vendor_portal" label="Operator ops" icon={Store} />
               <Jump id={myVendor?.stationType === "bar" ? "bar" : "kitchen"} label="My tickets" icon={CookingPot} />
-              <Jump id="settlement" label="Settlement share" icon={Landmark} />
-              <Jump id="menu" label="Availability" icon={ClipboardList} />
+              <Jump id="reports" label="My reports" icon={BarChart3} />
             </div>
+            <p className="text-xs text-muted-foreground">
+              Payouts, tax, and host branding are set by the subscriber host — not this stall.
+            </p>
           </>
         )}
 

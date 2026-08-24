@@ -89,7 +89,7 @@ export const FULL_TOUR: TourDefinition = {
       id: "f-settings",
       title: "Location settings pack",
       script:
-        "Owner and manager open Location settings. The badge says host plus multi-operator, so you get operators, settlement, kiosk, and cash discount — not a generic café form.",
+        "Owner opens Host settings. Payouts and tax stay here. Guest operators open Operator ops — not this screen.",
       selector: "[data-demo='settings']",
       view: "settings",
     },
@@ -270,9 +270,9 @@ function typeTour(type: VenueEntityId): TourDefinition {
         },
         {
           id: "l-settings",
-          title: "Host settings pack",
+          title: "Host settings vs operator ops",
           script:
-            "Owner opens Location settings. The badge is host plus multi-operator: operators, settlement, kiosk, cash discount.",
+            "The Laundry is the subscriber host. Host settings hold tax, cash discount, Quantum Payments, and payout destinations. Steam and Diamond never see that pack — they get operator ops: staff, clock, and 86.",
           selector: "[data-demo='settings']",
           view: "settings",
         },
