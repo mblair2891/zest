@@ -261,6 +261,30 @@ export interface PosStore {
   }) => ActionResult<{ grant?: ExtraTableGrant }>;
   revokeExtraTable: (id: string) => void;
   overrideSectionTable: (employeeId: string, tableId: string) => ActionResult;
+  entityPermissions: import("@/lib/access/entity-grants").EntityGrantRow[];
+  locationDevices: import("./location-devices").LocationDevice[];
+  activeDeviceId: string | null;
+  setEntityGrant: (
+    subjectOperatorId: string,
+    targetOperatorId: string,
+    patch: Partial<import("@/lib/access/entity-grants").EntityGrantFlags>,
+  ) => void;
+  setLocationDeviceAssignment: (
+    id: string,
+    assignment: import("./location-devices").DeviceAssignment,
+  ) => void;
+  enrollLocationDevice: (input: {
+    label: string;
+    type: import("./location-devices").LocationDeviceType;
+    assignment: import("./location-devices").DeviceAssignment;
+    serial?: string;
+  }) => { id: string; claimCode: string };
+  setActiveDeviceId: (id: string | null) => void;
+  updateMenuItem: (
+    id: string,
+    patch: Partial<Pick<MenuItem, "name" | "priceCents" | "description" | "available" | "vendorId" | "categoryId" | "station">>,
+  ) => void;
+  deleteMenuItem: (id: string) => void;
   applyEntity: (entityId: VenueEntityId) => ActionResult;
   /** DEV_DEMO only. Reloads The Laundry host + Steam Distillery + Diamond House BBQ. */
   loadLaundryTestVenue: () => ActionResult;
@@ -278,6 +302,9 @@ export interface PosStore {
     settlement?: Partial<import("./types").SettlementConfig>;
     address?: string;
     hallMode?: boolean;
+    staff?: { role: EmployeeRole; operatorId?: string | null; name: string };
+    entityPermissions?: import("@/lib/access/entity-grants").EntityGrantRow[];
+    locationDevices?: import("./location-devices").LocationDevice[];
   }) => ActionResult;
   tenantLocationId?: string | null;
   loginAsOwner: (name: string) => ActionResult;

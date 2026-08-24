@@ -24,7 +24,7 @@ export const ROLE_BLURB: Record<EmployeeRole, string> = {
   kitchen: "KDS, bump, item 86",
   busser: "Table turns",
   cashier: "Counter queue and pay",
-  vendor_operator: "Own menu, tickets, settlement share",
+  vendor_operator: "Own menu, tickets, reports — peer menus view-only unless host grants",
   accountant: "Reports and ledger, limited ops",
   kiosk: "Device identity — guest kiosk",
 };
@@ -96,7 +96,17 @@ const ROLE_VIEWS: Record<EmployeeRole, PosView[] | "all"> = {
   kitchen: ["hq", "kitchen", "recipes", "checklists", "inventory", "reports"],
   busser: ["hq", "floor"],
   cashier: ["hq", "order", "takeout", "cash", "online"],
-  vendor_operator: ["hq", "vendor_portal", "kitchen", "bar", "employees", "labor", "reports", "ledger"],
+  vendor_operator: [
+    "hq",
+    "vendor_portal",
+    "kitchen",
+    "bar",
+    "menu",
+    "employees",
+    "labor",
+    "reports",
+    "ledger",
+  ],
   accountant: ["hq", "reports", "ledger", "settlement", "cash"],
   kiosk: ["waitlist", "order"],
 };

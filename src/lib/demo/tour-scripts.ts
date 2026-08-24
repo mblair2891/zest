@@ -264,7 +264,7 @@ function typeTour(type: VenueEntityId): TourDefinition {
           id: "l-roles",
           title: "Who is signed in",
           script:
-            "Owner Home is the snapshot. Server is sections. Kitchen is Diamond’s rail. Steam operator PIN 6666 only sees Steam. Diamond 7777 only sees Diamond.",
+            "Owner Home is the host snapshot plus the entity list. Steam operator PIN 6666 edits Steam and sees Diamond menus view-only. Diamond 7777 cannot change Steam settings.",
           selector: "[data-demo='home']",
           view: "hq",
         },
@@ -272,8 +272,24 @@ function typeTour(type: VenueEntityId): TourDefinition {
           id: "l-settings",
           title: "Host settings vs operator ops",
           script:
-            "The Laundry is the subscriber host. Host settings hold tax, cash discount, Quantum Payments, and payout destinations. Steam and Diamond never see that pack — they get operator ops: staff, clock, and 86.",
+            "The Laundry is the subscriber host. Host settings hold tax, cash discount, Quantum Payments, payouts, the entity permission matrix, and device assignment. Steam and Diamond never edit that pack.",
           selector: "[data-demo='settings']",
+          view: "settings",
+        },
+        {
+          id: "l-matrix",
+          title: "Entity permissions",
+          script:
+            "Subject times target. View menu is on for peers. Edit menu is off. Tickets, reports, and settlement stay own-only unless you grant them. Devices stay host-only.",
+          selector: "[data-demo='entity-permissions']",
+          view: "settings",
+        },
+        {
+          id: "l-devices",
+          title: "Assign a tablet",
+          script:
+            "Tablet A is Steam Distillery bar KDS. Tablet B is Diamond House floor POS. Tablet C is the host kiosk. Reassign without new hardware. Tickets still tag the owning entity.",
+          selector: "[data-demo='device-assign']",
           view: "settings",
         },
         {

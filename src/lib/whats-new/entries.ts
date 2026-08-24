@@ -9,6 +9,19 @@ import type { GuideUpdate } from "@/lib/guide/types";
  */
 export const WHATS_NEW_ENTRIES: GuideUpdate[] = [
   {
+    id: "upd_2026_09_06_entity_logins",
+    date: "2026-09-06",
+    title: "Entity logins, permission matrix, device assignment",
+    summary:
+      "Steam and Diamond staff log in to their own entity. The host grants what they may see. Any tablet can be assigned to any stall and function.",
+    body: "On The Laundry, PIN 6666 is Steam Distillery (edit Steam, view Diamond read-only). 7777 is Diamond House BBQ. Host 9999 opens the permission matrix and device assignment — Tablet A → Steam bar KDS, Tablet B → Diamond floor POS.",
+    roles: ["owner_manager", "host_operator", "vendor_operator"],
+    entityTypes: ["food_hall", "truck_pod", "ghost_kitchen"],
+    surfaces: ["settings", "kds"],
+    topicId: "host-operator-settings",
+    tags: ["entities", "permissions", "devices", "host"],
+  },
+  {
     id: "upd_2026_09_05_host_settings",
     date: "2026-09-05",
     title: "Host owns settings and payouts",

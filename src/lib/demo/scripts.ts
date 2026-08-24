@@ -141,7 +141,7 @@ export const TYPE_SCRIPTS: Record<VenueEntityId, DemoScript> = {
   food_hall: {
     id: "food_hall",
     title: "The Laundry · host check",
-    subtitle: "Steam Distillery + Diamond House BBQ, one guest.",
+    subtitle: "Steam Distillery + Diamond House BBQ, entity logins, one guest.",
     type: "food_hall",
     steps: [
       {

@@ -13,6 +13,8 @@ import type {
   Vendor,
 } from "./types";
 import { DEFAULT_SECTION_POLICY } from "./section-control";
+import { HOST_SCOPE } from "@/lib/access/entity-grants";
+import type { LocationDevice } from "./location-devices";
 
 export const LAUNDRY_ORG_NAME = "The Laundry Group";
 /** Matches demo SaaS location id (`loc_hall`) so POS + control plane stay aligned. */
@@ -400,6 +402,78 @@ export function laundrySettlement(): SettlementConfig {
   };
 }
 
+export function laundryLocationDevices(): LocationDevice[] {
+  const now = Date.now();
+  return [
+    {
+      id: "dev_tab_a",
+      locationId: LAUNDRY_LOCATION_ID,
+      label: "Tablet A",
+      type: "kds",
+      status: "online",
+      lastSeenAt: now - 12_000,
+      serial: "TAB-A-STEAM",
+      claimCode: "STMKDS",
+      assignment: { operatorId: LAUNDRY_STEAM_ID, function: "bar_kds" },
+    },
+    {
+      id: "dev_tab_b",
+      locationId: LAUNDRY_LOCATION_ID,
+      label: "Tablet B",
+      type: "tablet_pos",
+      status: "online",
+      lastSeenAt: now - 8_000,
+      serial: "TAB-B-DIA",
+      claimCode: "DIAPOS",
+      assignment: { operatorId: LAUNDRY_DIAMOND_ID, function: "floor_pos" },
+    },
+    {
+      id: "dev_tab_c",
+      locationId: LAUNDRY_LOCATION_ID,
+      label: "Tablet C",
+      type: "kiosk",
+      status: "online",
+      lastSeenAt: now - 20_000,
+      serial: "TAB-C-HOST",
+      claimCode: "HOSTKO",
+      assignment: { operatorId: HOST_SCOPE, function: "kiosk" },
+    },
+    {
+      id: "dev_kds_27",
+      locationId: LAUNDRY_LOCATION_ID,
+      label: '27" kitchen display',
+      type: "kds",
+      status: "online",
+      lastSeenAt: now - 5_000,
+      serial: "AND-KDS-27",
+      claimCode: "DIAKDS",
+      assignment: { operatorId: LAUNDRY_DIAMOND_ID, function: "kitchen_kds" },
+    },
+    {
+      id: "dev_host_stand",
+      locationId: LAUNDRY_LOCATION_ID,
+      label: "Host stand",
+      type: "host_stand",
+      status: "online",
+      lastSeenAt: now - 30_000,
+      serial: "HOST-01",
+      claimCode: "HOSTST",
+      assignment: { operatorId: HOST_SCOPE, function: "host_stand" },
+    },
+    {
+      id: "dev_printer_bar",
+      locationId: LAUNDRY_LOCATION_ID,
+      label: "Bar chit printer",
+      type: "printer",
+      status: "offline",
+      lastSeenAt: now - 86_400_000,
+      serial: "PR-BAR-01",
+      claimCode: "BARPRT",
+      assignment: { operatorId: LAUNDRY_STEAM_ID, function: "bar_pos" },
+    },
+  ];
+}
+
 export function laundryPosSlice() {
   return {
     tenantLocationId: LAUNDRY_LOCATION_ID,
@@ -449,6 +523,9 @@ export function laundryPosSlice() {
     activeOrderId: null as string | null,
     activeTableId: null as string | null,
     selectedCategoryId: LAUNDRY_CATEGORIES[0]!.id,
+    entityPermissions: [],
+    locationDevices: laundryLocationDevices(),
+    activeDeviceId: null as string | null,
     selectedLineId: null as string | null,
   };
 }

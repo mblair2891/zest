@@ -53,6 +53,15 @@ import { useSaasStore } from "./saas-store";
 import { starterPosSlice } from "./starter-seed";
 import type { VenueEntityId } from "./types";
 import type { PosStore, PosStorePersist } from "./pos-store";
+import {
+  canEditMenu,
+  upsertGrant,
+} from "@/lib/access/entity-grants";
+import {
+  makeClaimCode,
+  type LocationDevice,
+} from "./location-devices";
+import { laundryLocationDevices } from "./laundry-seed";
 
 function nextOrderNumber(orders) {
 	return orders.reduce((m, o) => Math.max(m, o.number), 100) + 1;
@@ -124,7 +133,10 @@ function initialState() {
 		extraTableGrants: EXTRA_TABLE_GRANTS.map((g) => ({ ...g })),
 		sectionOverrides: {},
 		activeEntityId: "restaurant",
-		tenantLocationId: null
+		tenantLocationId: null,
+		entityPermissions: [],
+		locationDevices: [],
+		activeDeviceId: null,
 	};
 }
 
@@ -263,10 +275,58 @@ const usePosStoreRaw = create()(persist((set, get) => ({
 			detail
 		}, ...get().auditLog].slice(0, 200) });
 	},
-	updateSettings: (patch) => set({ settings: {
-		...get().settings,
-		...patch
-	} }),
+	updateSettings: (patch) => {
+		const emp = get().getCurrentEmployee();
+		if (emp?.role === "vendor_operator") return;
+		set({ settings: {
+			...get().settings,
+			...patch
+		} });
+	},
+	setEntityGrant: (subjectOperatorId, targetOperatorId, patch) => {
+		const emp = get().getCurrentEmployee();
+		if (emp?.role === "vendor_operator") return;
+		set({
+			entityPermissions: upsertGrant(
+				get().entityPermissions ?? [],
+				subjectOperatorId,
+				targetOperatorId,
+				patch,
+			),
+		});
+		get().audit("permissions", `${subjectOperatorId} → ${targetOperatorId}`);
+	},
+	setLocationDeviceAssignment: (id, assignment) => {
+		const emp = get().getCurrentEmployee();
+		if (emp?.role === "vendor_operator") return;
+		set({
+			locationDevices: (get().locationDevices ?? []).map((d) =>
+				d.id === id ? { ...d, assignment, lastSeenAt: Date.now() } : d,
+			),
+		});
+		get().audit("device", `Reassign ${id} → ${assignment.operatorId} ${assignment.function}`);
+	},
+	enrollLocationDevice: (input) => {
+		const emp = get().getCurrentEmployee();
+		if (emp?.role === "vendor_operator") return { id: "", claimCode: "" };
+		const id = uid("dev");
+		const claimCode = makeClaimCode();
+		const device: LocationDevice = {
+			id,
+			locationId: get().tenantLocationId || "",
+			label: input.label.trim() || "Device",
+			type: input.type,
+			status: "pending",
+			lastSeenAt: Date.now(),
+			serial: input.serial,
+			claimCode,
+			assignment: input.assignment,
+		};
+		set({ locationDevices: [device, ...(get().locationDevices ?? [])] });
+		get().audit("device", `Enroll ${device.label}`);
+		return { id, claimCode };
+	},
+	setActiveDeviceId: (id) => set({ activeDeviceId: id }),
 	tableAccess: (tableId, action = "order") => {
 		const table = get().tables.find((t) => t.id === tableId);
 		if (!table) return { ok: false, reason: "Table not found", code: "blocked_order" };
@@ -1208,16 +1268,17 @@ const usePosStoreRaw = create()(persist((set, get) => ({
 	},
 	toggleItemAvailable: (id) => {
 		const emp = get().getCurrentEmployee();
-		if (emp?.role === "vendor_operator") {
-			const item = get().menuItems.find((m) => m.id === id);
-			if (!item || item.vendorId !== emp.operatorId) return;
-		}
+		const item = get().menuItems.find((m) => m.id === id);
+		if (!item) return;
+		if (!canEditMenu(emp, get().entityPermissions, item.vendorId)) return;
 		set({ menuItems: get().menuItems.map((m) => m.id === id ? {
 			...m,
 			available: !m.available
 		} : m) });
 	},
 	createCategory: ({ name, station }) => {
+		const emp = get().getCurrentEmployee();
+		if (emp?.role === "vendor_operator") return { id: "" };
 		const id = uid("cat");
 		const colors = ["#2C4A6E", "#1F7A4C", "#9A6700", "#A61B1B", "#5C5C5C"];
 		set({
@@ -1236,9 +1297,13 @@ const usePosStoreRaw = create()(persist((set, get) => ({
 		return { id };
 	},
 	createMenuItem: (input) => {
+		const emp = get().getCurrentEmployee();
+		let vendorId = input.vendorId;
+		if (emp?.role === "vendor_operator") vendorId = emp.operatorId;
+		if (!canEditMenu(emp, get().entityPermissions, vendorId)) return { id: "" };
 		const id = uid("itm");
-		const vendor = input.vendorId
-			? get().vendors.find((v) => v.id === input.vendorId)
+		const vendor = vendorId
+			? get().vendors.find((v) => v.id === vendorId)
 			: undefined;
 		set({
 			menuItems: [
@@ -1253,13 +1318,35 @@ const usePosStoreRaw = create()(persist((set, get) => ({
 					description: input.description,
 					modifierGroupIds: input.modifierGroupIds ?? [],
 					available: true,
-					vendorId: input.vendorId,
+					vendorId,
 					online: true,
 				},
 			],
 		});
 		get().audit("menu", `${input.name}${vendor ? ` · ${vendor.shortName}` : ""}`);
 		return { id };
+	},
+	updateMenuItem: (id, patch) => {
+		const emp = get().getCurrentEmployee();
+		const item = get().menuItems.find((m) => m.id === id);
+		if (!item) return;
+		const target = patch.vendorId ?? item.vendorId;
+		if (!canEditMenu(emp, get().entityPermissions, item.vendorId)) return;
+		if (patch.vendorId && !canEditMenu(emp, get().entityPermissions, target)) return;
+		if (emp?.role === "vendor_operator") {
+			patch = { ...patch, vendorId: emp.operatorId };
+		}
+		set({
+			menuItems: get().menuItems.map((m) => (m.id === id ? { ...m, ...patch } : m)),
+		});
+	},
+	deleteMenuItem: (id) => {
+		const emp = get().getCurrentEmployee();
+		const item = get().menuItems.find((m) => m.id === id);
+		if (!item) return;
+		if (!canEditMenu(emp, get().entityPermissions, item.vendorId)) return;
+		set({ menuItems: get().menuItems.filter((m) => m.id !== id) });
+		get().audit("menu", `Removed ${item.name}`);
 	},
 	createModifierGroup: (input) => {
 		const id = uid("modg");
@@ -1759,35 +1846,65 @@ const usePosStoreRaw = create()(persist((set, get) => ({
 	},
 	openTenantLocation: (opts) => {
 		const { entityId, venueName, ownerName, locationId } = opts;
-		if (get().tenantLocationId === locationId && get().activeEntityId === entityId) {
+		const staff = opts.staff;
+		const already = get().tenantLocationId === locationId && get().activeEntityId === entityId;
+		if (already && (!staff || staff.role === "owner")) {
 			return get().loginAsOwner(ownerName);
 		}
-		const slice = starterPosSlice({
-			entityId,
-			venueName,
-			ownerName,
-			locationId,
-			menuMode: opts.menuMode,
-			vendors: opts.vendors,
-			tables: opts.tables,
-			floorSections: opts.floorSections,
-			settlement: opts.settlement,
-			address: opts.address,
-			hallMode: opts.hallMode,
-		});
-		set({
-			...slice,
-			auditLog: [],
-			chargebacks: [],
-			shift: emptyShift(),
-			clock: Date.now(),
-		});
+		if (!already) {
+			const slice = starterPosSlice({
+				entityId,
+				venueName,
+				ownerName,
+				locationId,
+				menuMode: opts.menuMode,
+				vendors: opts.vendors,
+				tables: opts.tables,
+				floorSections: opts.floorSections,
+				settlement: opts.settlement,
+				address: opts.address,
+				hallMode: opts.hallMode,
+			});
+			set({
+				...slice,
+				entityPermissions: opts.entityPermissions ?? [],
+				locationDevices: opts.locationDevices ?? [],
+				activeDeviceId: null,
+				auditLog: [],
+				chargebacks: [],
+				shift: emptyShift(),
+				clock: Date.now(),
+			});
+		} else if (opts.entityPermissions || opts.locationDevices) {
+			set({
+				entityPermissions: opts.entityPermissions ?? get().entityPermissions,
+				locationDevices: opts.locationDevices ?? get().locationDevices,
+			});
+		}
 		try {
 			useSaasStore.getState().setActiveLocation(locationId);
 		} catch {
 			/* ignore */
 		}
-		return { ok: true };
+		if (staff && staff.role !== "owner") {
+			const existing = get().employees.find(
+				(e) =>
+					e.role === staff.role &&
+					(staff.operatorId ? e.operatorId === staff.operatorId : !e.operatorId) &&
+					e.active,
+			);
+			if (existing) {
+				return get().loginAs(existing.id);
+			}
+			const created = get().createEmployee({
+				name: staff.name || staff.role,
+				role: staff.role,
+				operatorId: staff.operatorId || undefined,
+				title: staff.role === "vendor_operator" ? "Vendor operator" : undefined,
+			});
+			return get().loginAs(created.id);
+		}
+		return get().loginAsOwner(ownerName);
 	},
 	resetDemo: () => {
 		const keepEmp = get().currentEmployeeId;
@@ -1837,7 +1954,10 @@ const usePosStoreRaw = create()(persist((set, get) => ({
 		selectedCategoryId: s.selectedCategoryId,
 		floorSections: s.floorSections,
 		extraTableGrants: s.extraTableGrants,
-		activeEntityId: s.activeEntityId
+		activeEntityId: s.activeEntityId,
+		entityPermissions: s.entityPermissions ?? [],
+		locationDevices: s.locationDevices ?? [],
+		activeDeviceId: s.activeDeviceId ?? null,
 	}),
 	merge: (persisted, current) => {
 		const p = persisted || {};
@@ -1851,10 +1971,19 @@ const usePosStoreRaw = create()(persist((set, get) => ({
 			homeSectionIds: e.homeSectionIds ?? defaultHomeSectionsForRole(e.role, e.id)
 		}));
 		const ent = venueById(entityId);
+		const locationDevices =
+			(p.locationDevices && p.locationDevices.length)
+				? p.locationDevices
+				: entityId === "food_hall"
+					? laundryLocationDevices()
+					: current.locationDevices ?? [];
 		return {
 			...current,
 			...p,
 			activeEntityId: entityId,
+			entityPermissions: p.entityPermissions ?? current.entityPermissions ?? [],
+			locationDevices,
+			activeDeviceId: p.activeDeviceId ?? null,
 			employees,
 			settings: {
 				...current.settings,

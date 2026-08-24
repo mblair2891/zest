@@ -5,6 +5,13 @@ import { homeViewForEmployee } from "@/lib/pos/rbac";
 import { rolesForVenue } from "@/lib/access/entity-roles";
 import { usePosStore } from "@/lib/pos/store";
 import { getDemoType, isProspectDemo } from "./session";
+import { HOST_SCOPE } from "@/lib/access/entity-grants";
+import {
+  DEVICE_FUNCTION_LABEL,
+  pickStaffForAssignment,
+  viewForDeviceFunction,
+  type LocationDevice,
+} from "@/lib/pos/location-devices";
 
 export type DemoDevice = "pos" | "kiosk" | "kds_kitchen" | "kds_bar";
 
@@ -71,12 +78,15 @@ export function loginDemoEmployee(emp: Employee): void {
 
 export type DemoSwitcherOption =
   | { kind: "role"; key: string; label: string; employeeId: string; role: EmployeeRole }
-  | { kind: "device"; key: DemoDevice; label: string };
+  | { kind: "device"; key: DemoDevice; label: string }
+  | { kind: "assignment"; key: string; label: string; deviceId: string };
 
 export function demoSwitcherOptions(
   employees: Employee[],
   venue: VenueEntityId | null,
   hasBar: boolean,
+  devices: LocationDevice[] = [],
+  operatorName?: (id: string) => string,
 ): DemoSwitcherOption[] {
   const allowed = new Set(rolesForVenue(venue));
   const out: DemoSwitcherOption[] = [];
@@ -108,6 +118,17 @@ export function demoSwitcherOptions(
         role,
       });
     }
+  }
+  const nameOf =
+    operatorName ??
+    ((id: string) => (id === HOST_SCOPE ? "Host" : id));
+  for (const d of devices) {
+    out.push({
+      kind: "assignment",
+      key: `assign:${d.id}`,
+      label: `Assigned · ${d.label} · ${nameOf(d.assignment.operatorId)} · ${DEVICE_FUNCTION_LABEL[d.assignment.function]}`,
+      deviceId: d.id,
+    });
   }
   out.push({ kind: "device", key: "pos", label: "Device · Floor POS" });
   out.push({ kind: "device", key: "kiosk", label: "Device · Kiosk" });
@@ -149,6 +170,7 @@ export function applyDemoDevice(
   const store = useDemoDeviceStore.getState();
   store.setDevice(device);
   store.setDisplayName(ROLE_DEVICE_NAME[device]);
+  s.setActiveDeviceId(null);
   if (device === "kiosk") {
     return { to: "/kiosk" };
   }
@@ -180,8 +202,36 @@ export function applyDemoRole(employeeId: string): { to?: "/demo/$type"; type?: 
   if (!emp) return {};
   useDemoDeviceStore.getState().setDevice("pos");
   useDemoDeviceStore.getState().setDisplayName("Floor POS");
+  s.setActiveDeviceId(null);
   loginDemoEmployee(emp);
   s.setView(homeViewForEmployee(emp));
+  const type = getDemoType();
+  return type ? { to: "/demo/$type", type } : {};
+}
+
+export function applyDemoAssignment(
+  deviceId: string,
+): { to?: "/kiosk" | "/demo/$type"; type?: string } {
+  const s = usePosStore.getState();
+  const device = (s.locationDevices ?? []).find((d) => d.id === deviceId);
+  if (!device) return {};
+  s.setActiveDeviceId(device.id);
+  const fn = device.assignment.function;
+  const view = viewForDeviceFunction(fn);
+  const store = useDemoDeviceStore.getState();
+  store.setDisplayName(
+    `${device.label} · ${DEVICE_FUNCTION_LABEL[fn]}`,
+  );
+  if (fn === "kiosk" || view === "kiosk") {
+    store.setDevice("kiosk");
+    return { to: "/kiosk" };
+  }
+  if (fn === "kitchen_kds" || fn === "expo") store.setDevice("kds_kitchen");
+  else if (fn === "bar_kds") store.setDevice("kds_bar");
+  else store.setDevice("pos");
+  const staff = pickStaffForAssignment(s.employees, device.assignment);
+  if (staff) loginDemoEmployee(staff);
+  s.setView(view);
   const type = getDemoType();
   return type ? { to: "/demo/$type", type } : {};
 }

@@ -22,6 +22,9 @@ import { useCurrentUserState } from "@/lib/auth/use-current-user";
 import { getPosBootstrapFn } from "@/lib/saas/api";
 import { tablesFromCount, type TenantMenuMode } from "@/lib/pos/starter-seed";
 import { EMPTY_LOCATION_SETUP } from "@/lib/saas/types";
+import { membershipToEmployeeRole } from "@/lib/access/membership-map";
+import { parseGrantMatrix } from "@/lib/access/entity-grants";
+import { parseLocationDevices } from "@/lib/pos/location-devices";
 import {
   readTenantPosContext,
   saveTenantPosContext,
@@ -138,6 +141,7 @@ function PosAppInner({ entityId }: { entityId?: string }) {
             setup.settlement && typeof setup.settlement === "object"
               ? (setup.settlement as Record<string, unknown>)
               : {};
+          const staffRole = membershipToEmployeeRole(access.role);
           openTenantLocation({
             entityId: entityId as VenueEntityId,
             venueName: access.location.name,
@@ -148,6 +152,15 @@ function PosAppInner({ entityId }: { entityId?: string }) {
             tables,
             hallMode: access.location.operatingModel === "host_operators",
             address: access.location.address,
+            entityPermissions: parseGrantMatrix(setup.entityPermissions),
+            locationDevices: parseLocationDevices(setup.locationDevices),
+            staff: staffRole
+              ? {
+                  role: staffRole,
+                  operatorId: access.operatorId ?? null,
+                  name: user?.displayName || "Staff",
+                }
+              : undefined,
             settlement: {
               periodType:
                 settlementRaw.periodType === "daily" ||

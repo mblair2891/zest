@@ -63,10 +63,11 @@ export const listLocationsFn = createServerFn({ method: "POST" })
 
 export const inviteMemberFn = createServerFn({ method: "POST" })
   .middleware([authMiddleware])
-  .validator((d: { orgId: string; email: string; role: string }) => ({
+  .validator((d: { orgId: string; email: string; role: string; operatorId?: string | null }) => ({
     orgId: String(d.orgId ?? ""),
     email: String(d.email ?? "").trim(),
     role: String(d.role ?? "staff"),
+    operatorId: d.operatorId ? String(d.operatorId).trim().slice(0, 80) : null,
   }))
   .handler(async ({ context, data }) => {
     const { rateLimit } = await import("./rate-limit.server");
@@ -78,6 +79,7 @@ export const inviteMemberFn = createServerFn({ method: "POST" })
       orgId: data.orgId,
       email: data.email,
       role: parseRole(data.role) as MembershipRole,
+      operatorId: data.operatorId,
     });
   });
 

@@ -6,6 +6,8 @@ import { usePosStore } from "@/lib/pos/store";
 import type { TicketStation, TicketStatus } from "@/lib/pos/types";
 import { cn } from "@/lib/utils";
 import { GuideLearnLink } from "@/components/guide/GuideLearnLink";
+import { HOST_SCOPE, canViewTickets } from "@/lib/access/entity-grants";
+import { stationForDeviceFunction } from "@/lib/pos/location-devices";
 
 interface Props {
   station: TicketStation;
@@ -32,17 +34,49 @@ export function KitchenView({ station }: Props) {
   const [showBumped, setShowBumped] = useState(false);
   const [filter, setFilter] = useState<TicketStatus | "all">("all");
   const emp = usePosStore((s) => s.employees.find((e) => e.id === s.currentEmployeeId));
-  const lockedVendor = emp?.role === "vendor_operator" ? emp.operatorId ?? null : null;
+  const grants = usePosStore((s) => s.entityPermissions);
+  const devices = usePosStore((s) => s.locationDevices ?? []);
+  const activeDeviceId = usePosStore((s) => s.activeDeviceId);
+  const device = devices.find((d) => d.id === activeDeviceId);
+  const assignedOp =
+    device?.assignment.operatorId && device.assignment.operatorId !== HOST_SCOPE
+      ? device.assignment.operatorId
+      : null;
+  const assignedStation = device ? stationForDeviceFunction(device.assignment.function) : null;
+  const roleOp = emp?.operatorId ?? null;
+  const hostWide = emp?.role === "owner" || emp?.role === "manager";
+  const lockedVendor = assignedOp || (!hostWide && roleOp ? roleOp : null);
   const [vendorFilter, setVendorFilter] = useState<string | null>(lockedVendor);
 
+  const visibleVendorIds = vendors
+    .filter(
+      (v) =>
+        v.active &&
+        (!lockedVendor || v.id === lockedVendor || canViewTickets(emp, grants, v.id)),
+    )
+    .map((v) => v.id);
   const list = useMemo(() => {
-    let t = tickets.filter((x) => x.station === station);
+    const st = assignedStation || station;
+    let t = tickets.filter((x) => x.station === st);
     if (!showBumped) t = t.filter((x) => x.status !== "bumped");
     if (filter !== "all") t = t.filter((x) => x.status === filter);
-    const vf = lockedVendor || vendorFilter;
-    if (vf) t = t.filter((x) => x.vendorId === vf);
+    if (vendorFilter) t = t.filter((x) => x.vendorId === vendorFilter);
+    else if (lockedVendor && visibleVendorIds.length <= 1)
+      t = t.filter((x) => x.vendorId === lockedVendor);
+    else if (visibleVendorIds.length && visibleVendorIds.length < vendors.length)
+      t = t.filter((x) => x.vendorId && visibleVendorIds.includes(x.vendorId));
     return t.sort((a, b) => a.createdAt - b.createdAt);
-  }, [tickets, station, showBumped, filter, vendorFilter, lockedVendor]);
+  }, [
+    tickets,
+    station,
+    showBumped,
+    filter,
+    vendorFilter,
+    lockedVendor,
+    assignedStation,
+    visibleVendorIds,
+    vendors.length,
+  ]);
 
   const active = tickets.filter(
     (t) =>
@@ -64,7 +98,8 @@ export function KitchenView({ station }: Props) {
           {active} active
         </Badge>
         <div className="flex flex-wrap gap-1">
-          {!lockedVendor && (
+          {(!lockedVendor ||
+            vendors.some((v) => v.id !== lockedVendor && canViewTickets(emp, grants, v.id))) && (
             <Button
               size="sm"
               variant={vendorFilter === null ? "default" : "outline"}
@@ -74,13 +109,24 @@ export function KitchenView({ station }: Props) {
             </Button>
           )}
           {vendors
-            .filter((v) => v.active && (!lockedVendor || v.id === lockedVendor))
+            .filter((v) => {
+              if (!v.active) return false;
+              if (!lockedVendor) return true;
+              if (v.id === lockedVendor) return true;
+              return canViewTickets(emp, grants, v.id);
+            })
             .map((v) => (
               <Button
                 key={v.id}
                 size="sm"
                 variant={(lockedVendor || vendorFilter) === v.id ? "default" : "outline"}
-                onClick={() => !lockedVendor && setVendorFilter(v.id)}
+                onClick={() => {
+                  if (v.id === lockedVendor) {
+                    setVendorFilter(v.id);
+                    return;
+                  }
+                  if (!lockedVendor || canViewTickets(emp, grants, v.id)) setVendorFilter(v.id);
+                }}
               >
                 {v.shortName}
               </Button>

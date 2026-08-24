@@ -17,6 +17,8 @@ import {
   type SettingsPackId,
 } from "@/lib/access/entity-roles";
 import { HostOperatorsSettings } from "./HostOperatorsSettings";
+import { DeviceAssignmentPanel } from "./DeviceAssignmentPanel";
+import { EntityPermissionsMatrix } from "./EntityPermissionsMatrix";
 import { OperatorOpsView } from "./OperatorOpsView";
 import { saveLocationSettingsFn } from "@/lib/access/api";
 import { isProspectDemo } from "@/lib/demo/session";
@@ -582,9 +584,9 @@ export function SettingsView() {
       <Pack id="host_operators" packs={packs}>
         <div data-demo="host-operators">
         <p className="text-xs text-muted-foreground">
-          The subscriber host configures settlement, host cut, and payout destinations.
-          Guest operators cannot edit these. Open Payouts & settlement, or the Operators tab
-          to onboard a stall.
+          The subscriber host configures settlement, host cut, payout destinations,
+          the entity permission matrix, and device assignment. Guest operators cannot
+          edit these. Open Payouts & settlement, or the Operators tab to onboard a stall.
         </p>
         <div className="mt-3 flex flex-wrap gap-2">
           <Button size="sm" variant="outline" onClick={() => setView("settlement")}>
@@ -594,11 +596,20 @@ export function SettingsView() {
             Operators
           </Button>
         </div>
+        <div className="mt-4 space-y-4">
+          <EntityPermissionsMatrix write={write} />
+          <DeviceAssignmentPanel write={write} />
+        </div>
         </div>
       </Pack>
 
       <Pack id="devices" packs={packs}>
       <NetworkSettingsPanel />
+      {!packs.includes("host_operators") && (
+        <div className="mt-4">
+          <DeviceAssignmentPanel write={write} />
+        </div>
+      )}
       </Pack>
 
       <div className="mb-6 rounded-2xl border border-border bg-surface p-4">

@@ -65,7 +65,38 @@ export const DEVICE_TOPICS: GuideTopic[] = [
       warn(
         "There is no separate “KDS appliance OS” in this product. A browser or the Android shell on the staff SSID is the device.",
       ),
-      related("wifi-offline", "kds", "navigation"),
+      related("wifi-offline", "kds", "navigation", "host-operator-settings"),
+    ],
+  }),
+  topic({
+    id: "device-assignment",
+    chapterId: "devices",
+    title: "Assign devices to any entity",
+    summary: "Tablets, KDS, kiosks, and printers are location assets. Host assigns each to an entity and a function.",
+    roles: ["owner_manager", "host_operator", "vendor_operator", "kitchen_bar"],
+    keywords: ["device", "tablet", "kds", "kiosk", "assignment", "claim code", "steam", "diamond"],
+    openView: "settings",
+    blocks: [
+      why(
+        "Hardware is not branded to a stall. The host location owns the registry. Any tablet can run Steam POS this week and Diamond KDS next week.",
+      ),
+      ul(
+        "Type: tablet POS, KDS, kiosk, printer, host stand, other.",
+        "Assignment: operator (host or a guest entity) + function (floor POS, bar POS, kitchen KDS, bar KDS, expo, kiosk, host stand, cashier).",
+        "On pair: the session picks up the assignment — menu scope, ticket routing, KDS station, permissions.",
+        "KDS only shows tickets for that station and entity unless the host grants a broader view_tickets.",
+        "Demo: Demo mode lists assigned devices. Production: claim code or this admin list.",
+      ),
+      steps(
+        "Host settings → Operators → Device assignment (or Devices pack).",
+        "Pick the entity (Steam Distillery, Diamond House BBQ, or host) and the function.",
+        "On The Laundry demo: Tablet A is Steam bar KDS, Tablet B is Diamond floor POS, Tablet C is host kiosk, 27\" is Diamond kitchen KDS.",
+        "Reassign without replacing hardware. Ticket lines still carry the owning entity.",
+      ),
+      warn(
+        "A Diamond KDS does not show Steam tickets unless the host grants Diamond view_tickets on Steam.",
+      ),
+      related("host-operator-settings", "printers-kds", "role-vendor", "laundry-test-venue"),
     ],
   }),
 ];

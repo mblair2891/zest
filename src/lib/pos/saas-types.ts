@@ -144,10 +144,32 @@ export interface DeviceEnrollment {
   id: string;
   locationId: string;
   name: string;
-  type: "pos" | "kds" | "kiosk" | "printer" | "terminal" | "handheld";
+  type:
+    | "tablet_pos"
+    | "kds"
+    | "kiosk"
+    | "printer"
+    | "host_stand"
+    | "other"
+    | "pos"
+    | "handheld"
+    | "terminal";
   status: "online" | "offline" | "pending";
   lastSeenAt: number;
   serial: string;
+  claimCode?: string;
+  assignment?: {
+    operatorId: string;
+    function:
+      | "floor_pos"
+      | "bar_pos"
+      | "kitchen_kds"
+      | "bar_kds"
+      | "expo"
+      | "kiosk"
+      | "host_stand"
+      | "cashier";
+  };
 }
 
 export interface OnboardingStep {

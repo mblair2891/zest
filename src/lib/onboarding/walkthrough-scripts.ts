@@ -458,7 +458,7 @@ const VENDOR: TourDefinition = w(
       id: "vo-home",
       title: "Your stall",
       script:
-        "This dashboard is scoped to your operator. You do not see another stall’s tickets, 86, or settlement share.",
+        "This dashboard is your entity. Edit your menu and tickets. Peer menus are view-only unless the host grants edit. You never change another stall’s settings.",
       selector: "[data-demo='home']",
       view: "hq",
     },
@@ -466,7 +466,7 @@ const VENDOR: TourDefinition = w(
       id: "vo-ops",
       title: "Operator ops",
       script:
-        "Staff, time clock, and 86. You do not get host tax, cash discount, or payout routing. The host collected your payout destination at onboard.",
+        "Staff, time clock, and 86. Open Menu for your items — foreign rows badge as view only. You do not get host tax, cash discount, or payout routing.",
       selector: "[data-demo='operator-ops']",
       view: "vendor_portal",
     },

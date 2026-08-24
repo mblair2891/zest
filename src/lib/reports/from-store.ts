@@ -3,6 +3,7 @@ import { usePosStore } from "@/lib/pos/store";
 import type { VenueEntityId } from "@/lib/pos/types";
 import { buildLocationMetrics } from "./metrics";
 import type { LocationMetrics, RangeKey } from "./types";
+import { canViewSalesReports, isHostPrivileged } from "@/lib/access/entity-grants";
 
 export function metricsFromPosStore(opts: {
   range: RangeKey;
@@ -12,7 +13,17 @@ export function metricsFromPosStore(opts: {
   const s = usePosStore.getState();
   const venue = (s.activeEntityId || "restaurant") as VenueEntityId;
   const emp = s.employees.find((e) => e.id === s.currentEmployeeId);
-  const lockOp = emp?.role === "vendor_operator" ? emp.operatorId ?? null : opts.operatorId ?? null;
+  const grants = s.entityPermissions;
+  let lockOp: string | null = opts.operatorId ?? null;
+  if (emp?.role === "vendor_operator") {
+    const want = opts.operatorId || emp.operatorId || null;
+    lockOp =
+      want && canViewSalesReports(emp, grants, want) ? want : emp.operatorId ?? null;
+  } else if (!isHostPrivileged(emp) && emp?.operatorId) {
+    lockOp = canViewSalesReports(emp, grants, opts.operatorId)
+      ? opts.operatorId ?? emp.operatorId
+      : emp.operatorId;
+  }
   const lockSrv = emp?.role === "server" ? emp.id : opts.serverId ?? null;
   return buildLocationMetrics({
     locationId: s.tenantLocationId || `demo:${venue}`,

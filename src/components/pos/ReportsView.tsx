@@ -13,6 +13,7 @@ import { Button } from "@/components/ui/button";
 import { usePosStore } from "@/lib/pos/store";
 import { formatCurrency } from "@/lib/utils";
 import { canEmployee } from "@/lib/access/permissions";
+import { canViewSalesReports } from "@/lib/access/entity-grants";
 import { REPORT_GROUP_LABEL, reportsFor } from "@/lib/reports/catalog";
 import { csvFromRows } from "@/lib/reports/metrics";
 import { metricsFromPosStore } from "@/lib/reports/from-store";
@@ -44,6 +45,7 @@ export function ReportsView() {
   const emp = usePosStore((s) => s.employees.find((e) => e.id === s.currentEmployeeId));
   const venue = usePosStore((s) => s.activeEntityId) as VenueEntityId;
   const vendors = usePosStore((s) => s.vendors);
+  const grants = usePosStore((s) => s.entityPermissions);
   const setView = usePosStore((s) => s.setView);
   const [tab, setTab] = useState<"reports" | "ai">("reports");
   const [range, setRange] = useState<RangeKey>("shift");
@@ -168,14 +170,25 @@ export function ReportsView() {
           <option value="7d">7 days</option>
           <option value="30d">30 days</option>
         </select>
-        {emp?.role !== "vendor_operator" && vendors.length > 1 && (
+        {vendors.length > 1 &&
+          (emp?.role !== "vendor_operator" ||
+            vendors.some(
+              (v) => v.id !== emp.operatorId && canViewSalesReports(emp, grants, v.id),
+            )) && (
           <select
             className="h-8 rounded-md border border-border bg-bg px-2 text-xs"
             value={operatorId}
             onChange={(e) => setOperatorId(e.target.value)}
           >
-            <option value="">All operators</option>
-            {vendors.map((v) => (
+            {emp?.role !== "vendor_operator" && <option value="">All operators</option>}
+            {vendors
+              .filter(
+                (v) =>
+                  emp?.role !== "vendor_operator" ||
+                  v.id === emp.operatorId ||
+                  canViewSalesReports(emp, grants, v.id),
+              )
+              .map((v) => (
               <option key={v.id} value={v.id}>
                 {v.shortName}
               </option>

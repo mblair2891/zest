@@ -117,6 +117,24 @@ export function RoleHomeDashboard() {
               <Jump id="reports" label="Reports & AI" icon={BarChart3} />
               {hostMulti && <Jump id="settlement" label="Settlement" icon={Landmark} />}
             </div>
+            {hostMulti && vendors.length > 0 && (
+              <div className="rounded-2xl border border-border bg-surface p-4" data-demo="host-entities">
+                <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                  Operators at this host
+                </p>
+                <ul className="space-y-1 text-sm">
+                  {vendors.map((v) => (
+                    <li key={v.id} className="flex items-center justify-between gap-2">
+                      <span>
+                        <span className="mr-2 inline-block h-2 w-2 rounded-full" style={{ background: v.color }} />
+                        {v.name}
+                      </span>
+                      <span className="text-xs text-muted-foreground">{v.stationLabel}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
           </>
         )}
 
@@ -206,11 +224,13 @@ export function RoleHomeDashboard() {
             </div>
             <div className="flex flex-wrap gap-2">
               <Jump id="vendor_portal" label="Operator ops" icon={Store} />
+              <Jump id="menu" label="Menu" icon={ClipboardList} />
               <Jump id={myVendor?.stationType === "bar" ? "bar" : "kitchen"} label="My tickets" icon={CookingPot} />
               <Jump id="reports" label="My reports" icon={BarChart3} />
             </div>
             <p className="text-xs text-muted-foreground">
-              Payouts, tax, and host branding are set by the subscriber host — not this stall.
+              Full control of {myVendor?.name ?? "your"} menu, tickets, and reports. Peer menus
+              are view-only unless the host grants edit. Payouts stay host-managed.
             </p>
           </>
         )}

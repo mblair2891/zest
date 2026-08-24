@@ -23,6 +23,10 @@ export type LocationSetup = {
   waitlistReason?: string;
   /** Host-managed operator payout destinations. Guest operators cannot edit. */
   operatorPayouts?: { id: string; bankLast4: string; bankLabel: string }[];
+  /** Host-controlled subject × target grants. Empty = product defaults. */
+  entityPermissions?: import("@/lib/access/entity-grants").EntityGrantRow[];
+  /** Location device registry with entity + function assignment. */
+  locationDevices?: import("@/lib/pos/location-devices").LocationDevice[];
 };
 
 export const EMPTY_LOCATION_SETUP: LocationSetup = {
@@ -43,6 +47,8 @@ export const EMPTY_LOCATION_SETUP: LocationSetup = {
   reservationCheckIn: true,
   waitlistReason: "",
   operatorPayouts: [],
+  entityPermissions: [],
+  locationDevices: [],
 };
 export type MembershipRole =
   | "owner"
@@ -124,6 +130,8 @@ export type MembershipRecord = {
   status: MembershipStatus;
   email?: string | null;
   name?: string | null;
+  /** Guest entity this membership is scoped to (host when null). */
+  operatorId?: string | null;
 };
 
 export type LocationRecord = {
@@ -150,6 +158,7 @@ export type InviteRecord = {
   expiresAt: string;
   acceptedAt: string | null;
   inviteUrl?: string;
+  operatorId?: string | null;
 };
 
 export type PlanRecord = {
@@ -195,6 +204,7 @@ export type SessionContext = {
     name: string;
     venueType: LocationMode;
     role: MembershipRole;
+    operatorId?: string | null;
   }>;
   active: ActiveContextRecord | null;
 };

@@ -119,7 +119,7 @@ export const SETTINGS_PACK_LABEL: Record<SettingsPackId, string> = {
   sections: "Sections & floor",
   bar_tabs: "Bar stations & tabs",
   counter_expo: "Counter & expo",
-  host_operators: "Operators, payouts & settlement",
+  host_operators: "Operators, permissions & devices",
   kiosk_front: "Kiosk, waitlist, check-in",
 };
 

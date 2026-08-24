@@ -8,6 +8,8 @@ import type { Vendor } from "@/lib/pos/types";
 import { saveOperatorPayoutFn } from "@/lib/access/api";
 import { isProspectDemo } from "@/lib/demo/session";
 import { useSaasStore } from "@/lib/pos/saas-store";
+import { EntityPermissionsMatrix } from "./EntityPermissionsMatrix";
+import { DeviceAssignmentPanel } from "./DeviceAssignmentPanel";
 
 export function HostOperatorsSettings({ write }: { write: boolean }) {
   const vendors = usePosStore((s) => s.vendors);
@@ -58,10 +60,13 @@ export function HostOperatorsSettings({ write }: { write: boolean }) {
   return (
     <div className="space-y-4" data-demo="host-operators">
       <p className="text-xs text-muted-foreground">
-        You are the subscriber host. Guest operators (stalls, kitchens, bars) get operator ops
-        only — not location tax, cash discount, packages, or payout routing. Collect their payout
-        destination here; they cannot change it.
+        You are the subscriber host. Guest operators get their own staff logins, menus, tickets,
+        and reports. Cross-entity view/edit is only what you grant. Devices are house assets —
+        assign any tablet to any entity and function.
       </p>
+
+      <EntityPermissionsMatrix write={write} />
+      <DeviceAssignmentPanel write={write} />
 
       <section className="rounded-2xl border border-border bg-surface p-4" data-demo="host-payouts">
         <h3 className="mb-3 text-sm font-semibold">Payout destinations (host-managed)</h3>

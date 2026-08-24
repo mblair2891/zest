@@ -16,6 +16,8 @@ import type {
   SubscriptionStatus,
 } from "./types";
 import { EMPTY_LOCATION_SETUP, MEMBERSHIP_ROLES, PLAN_SLUGS, VENUE_TYPES } from "./types";
+import { parseGrantMatrix } from "@/lib/access/entity-grants";
+import { parseLocationDevices } from "@/lib/pos/location-devices";
 
 type OrgRow = {
   id: string;
@@ -40,6 +42,7 @@ type MemRow = {
   location_id?: string | null;
   role: string;
   status: string;
+  operator_id?: string | null;
 };
 
 type LocRow = {
@@ -150,6 +153,8 @@ function parseSetup(raw: unknown): LocationSetup {
           }))
           .filter((p) => p.id)
       : [],
+    entityPermissions: parseGrantMatrix(o.entityPermissions),
+    locationDevices: parseLocationDevices(o.locationDevices),
   };
 }
 
@@ -253,6 +258,7 @@ export async function requireMembership(
   org: OrgRecord;
   isPlatformAdmin: boolean;
   locationId: string | null;
+  operatorId: string | null;
 }> {
   const sql = await getSql();
   const orgs = await sql<OrgRow>`select * from organizations where id = ${orgId} limit 1`;
@@ -268,6 +274,7 @@ export async function requireMembership(
       org: mapOrg(org),
       isPlatformAdmin: true,
       locationId: locationId ?? null,
+      operatorId: null,
     };
   }
 
@@ -291,6 +298,7 @@ export async function requireMembership(
     org: mapOrg(org),
     isPlatformAdmin: false,
     locationId: mem.location_id ?? locationId ?? null,
+    operatorId: mem.operator_id ?? null,
   };
 }
 
@@ -315,7 +323,7 @@ export async function getSessionContext(userId: string): Promise<SessionContext>
   const mems = await sql<
     MemRow & { org_name: string | null; org_status: string | null }
   >`
-    select m.id, m.user_id, m.org_id, m.location_id, m.role, m.status,
+    select m.id, m.user_id, m.org_id, m.location_id, m.role, m.status, m.operator_id,
            o.name as org_name, o.status as org_status
     from memberships m
     left join organizations o on o.id = m.org_id
@@ -378,6 +386,7 @@ export async function getSessionContext(userId: string): Promise<SessionContext>
       locationId: m.location_id ?? null,
       role: m.role as MembershipRole,
       status: m.status as MembershipRecord["status"],
+      operatorId: m.operator_id ?? null,
       orgName: m.org_name ?? undefined,
       orgStatus: (m.org_status as OrgStatus | null) ?? undefined,
     })),
@@ -389,14 +398,22 @@ export async function getSessionContext(userId: string): Promise<SessionContext>
       features: parsePackages(o.features),
     })),
     locations: dedupeLocations(
-      locRows.map((l) => ({
-        id: l.id,
-        orgId: l.org_id,
-        orgName: l.org_name,
-        name: l.name,
-        venueType: l.venue_type as LocationMode,
-        role: roleByOrg.get(l.org_id) ?? "staff",
-      })),
+      locRows.map((l) => {
+        const mem = mems.find(
+          (m) =>
+            m.org_id === l.org_id &&
+            (!m.location_id || m.location_id === l.id),
+        );
+        return {
+          id: l.id,
+          orgId: l.org_id,
+          orgName: l.org_name,
+          name: l.name,
+          venueType: l.venue_type as LocationMode,
+          role: roleByOrg.get(l.org_id) ?? "staff",
+          operatorId: mem?.operator_id ?? null,
+        };
+      }),
     ),
     active: activeRows[0]
       ? { orgId: activeRows[0].org_id, locationId: activeRows[0].location_id }
@@ -594,7 +611,7 @@ export async function listLocationsForOrg(userId: string, orgId: string): Promis
 
 export async function inviteMemberToOrg(
   userId: string,
-  input: { orgId: string; email: string; role: MembershipRole },
+  input: { orgId: string; email: string; role: MembershipRole; operatorId?: string | null },
 ): Promise<InviteRecord> {
   if (input.role === "platform_admin") throw new ForbiddenError("Cannot invite platform admins");
   await requireActiveOrg(userId, input.orgId, ["owner", "manager"]);
@@ -618,15 +635,16 @@ export async function inviteMemberToOrg(
   const token = inviteToken();
   const id = newId("inv");
   const expires = new Date(Date.now() + 7 * 86400000).toISOString();
+  const operatorId = input.operatorId?.trim() || null;
   await sql`
-    insert into invites (id, org_id, email, role, token, invited_by, expires_at)
-    values (${id}, ${input.orgId}, ${email}, ${input.role}, ${token}, ${userId}, ${expires})
+    insert into invites (id, org_id, email, role, token, invited_by, expires_at, operator_id)
+    values (${id}, ${input.orgId}, ${email}, ${input.role}, ${token}, ${userId}, ${expires}, ${operatorId})
   `;
   await writeAudit({
     orgId: input.orgId,
     actorUserId: userId,
     action: "member_invited",
-    payload: { email, role: input.role },
+    payload: { email, role: input.role, operatorId },
   });
   const origin = appPublicUrl();
   return {
@@ -686,6 +704,7 @@ export async function acceptInviteForUser(userId: string, token: string): Promis
     role: string;
     expires_at: unknown;
     accepted_at: unknown;
+    operator_id: string | null;
   }>`
     select * from invites where token = ${token} limit 1
   `;
@@ -697,6 +716,7 @@ export async function acceptInviteForUser(userId: string, token: string): Promis
   if (!email || email !== inv.email.toLowerCase()) {
     throw new ForbiddenError("Sign in with the invited email address");
   }
+  const operatorId = inv.operator_id ?? null;
   const existing = await sql<{ id: string }>`
     select id from memberships
     where user_id = ${userId} and org_id = ${inv.org_id}
@@ -704,13 +724,14 @@ export async function acceptInviteForUser(userId: string, token: string): Promis
   `;
   if (existing[0]) {
     await sql`
-      update memberships set status = 'active', role = ${inv.role}
+      update memberships
+      set status = 'active', role = ${inv.role}, operator_id = ${operatorId}
       where id = ${existing[0].id}
     `;
   } else {
     await sql`
-      insert into memberships (id, user_id, org_id, role, status)
-      values (${newId("mem")}, ${userId}, ${inv.org_id}, ${inv.role}, 'active')
+      insert into memberships (id, user_id, org_id, role, status, operator_id)
+      values (${newId("mem")}, ${userId}, ${inv.org_id}, ${inv.role}, 'active', ${operatorId})
     `;
   }
   await sql`update invites set accepted_at = now() where id = ${inv.id}`;
@@ -726,10 +747,11 @@ export async function listMembersForOrg(userId: string, orgId: string) {
     org_id: string | null;
     role: string;
     status: string;
+    operator_id: string | null;
     email: string | null;
     name: string | null;
   }>`
-    select m.id, m.user_id, m.org_id, m.role, m.status, u.email, u.name
+    select m.id, m.user_id, m.org_id, m.role, m.status, m.operator_id, u.email, u.name
     from memberships m
     join "user" u on u.id = m.user_id
     where m.org_id = ${orgId}
@@ -741,6 +763,7 @@ export async function listMembersForOrg(userId: string, orgId: string) {
     orgId: r.org_id,
     role: r.role as MembershipRole,
     status: r.status as MembershipRecord["status"],
+    operatorId: r.operator_id ?? null,
     email: r.email,
     name: r.name,
   }));
@@ -749,13 +772,26 @@ export async function listMembersForOrg(userId: string, orgId: string) {
 export async function assertLocationAccess(
   userId: string,
   locationId: string,
-): Promise<{ org: OrgRecord; location: LocationRecord; role: MembershipRole }> {
+): Promise<{
+  org: OrgRecord;
+  location: LocationRecord;
+  role: MembershipRole;
+  operatorId: string | null;
+}> {
   const sql = await getSql();
   const locs = await sql<LocRow>`select * from locations where id = ${locationId} limit 1`;
   const loc = locs[0];
   if (!loc) throw new ForbiddenError("Location not found");
-  const access = await requireActiveOrg(userId, loc.org_id);
-  return { org: access.org, location: mapLoc(loc), role: access.role };
+  const access = await requireMembership(userId, loc.org_id, undefined, locationId);
+  if (access.org.status === "suspended" && !access.isPlatformAdmin) {
+    throw new SuspendedError();
+  }
+  return {
+    org: access.org,
+    location: mapLoc(loc),
+    role: access.role,
+    operatorId: access.operatorId ?? null,
+  };
 }
 
 export async function listTenants(userId: string) {

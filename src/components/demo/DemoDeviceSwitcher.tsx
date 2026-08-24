@@ -2,6 +2,7 @@ import { useMemo } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import { usePosStore } from "@/lib/pos/store";
 import {
+  applyDemoAssignment,
   applyDemoDevice,
   applyDemoRole,
   demoSwitcherOptions,
@@ -12,6 +13,7 @@ import { getDemoType, isProspectDemo } from "@/lib/demo/session";
 import { venueById } from "@/lib/pos/entities";
 import type { VenueEntityId } from "@/lib/pos/types";
 import { cn } from "@/lib/utils";
+import { HOST_SCOPE } from "@/lib/access/entity-grants";
 
 export function DemoDeviceSwitcher({ className }: { className?: string }) {
   const navigate = useNavigate();
@@ -21,18 +23,33 @@ export function DemoDeviceSwitcher({ className }: { className?: string }) {
   const displayName = useDemoDeviceStore((s) => s.displayName);
   const employees = usePosStore((s) => s.employees);
   const entityId = usePosStore((s) => s.activeEntityId);
+  const devices = usePosStore((s) => s.locationDevices ?? []);
+  const vendors = usePosStore((s) => s.vendors);
+  const settings = usePosStore((s) => s.settings);
+  const activeDeviceId = usePosStore((s) => s.activeDeviceId);
   const venue = venueById(entityId);
   const hasBar = venue ? !venue.hiddenViews.includes("bar") : true;
 
   const options = useMemo(
-    () => demoSwitcherOptions(employees, entityId as VenueEntityId, hasBar),
-    [employees, entityId, hasBar],
+    () =>
+      demoSwitcherOptions(
+        employees,
+        entityId as VenueEntityId,
+        hasBar,
+        devices,
+        (id) =>
+          id === HOST_SCOPE
+            ? settings.name || "Host"
+            : vendors.find((v) => v.id === id)?.shortName ?? id,
+      ),
+    [employees, entityId, hasBar, devices, vendors, settings.name],
   );
 
   if (!isProspectDemo() || !entered) return null;
 
-  const current =
-    device !== "pos"
+  const current = activeDeviceId
+    ? `assign:${activeDeviceId}`
+    : device !== "pos"
       ? `device:${device}`
       : employeeId
         ? `role:${employeeId}`
@@ -41,6 +58,17 @@ export function DemoDeviceSwitcher({ className }: { className?: string }) {
   const go = (value: string) => {
     if (value.startsWith("role:")) {
       const r = applyDemoRole(value.slice(5));
+      if (r.to === "/demo/$type" && r.type) {
+        void navigate({ to: "/demo/$type", params: { type: r.type } });
+      }
+      return;
+    }
+    if (value.startsWith("assign:")) {
+      const r = applyDemoAssignment(value.slice(7));
+      if (r.to === "/kiosk") {
+        void navigate({ to: "/kiosk" });
+        return;
+      }
       if (r.to === "/demo/$type" && r.type) {
         void navigate({ to: "/demo/$type", params: { type: r.type } });
       }
@@ -66,13 +94,13 @@ export function DemoDeviceSwitcher({ className }: { className?: string }) {
       className={cn("flex min-w-0 flex-col items-stretch", className)}
     >
       <span className="text-[9px] font-semibold uppercase tracking-wide text-amber-800">
-        Demo mode — switch role or device
+        Demo mode — Host / Steam / Diamond / device
       </span>
       <select
         className="max-w-[16rem] truncate rounded-md border border-amber-700/40 bg-amber-50 px-2 py-1 text-[11px] text-foreground"
         value={current}
         onChange={(e) => go(e.target.value)}
-        aria-label="Demo mode — switch role or device"
+        aria-label="Demo mode — switch role or assigned device"
       >
         <optgroup label="Access levels">
           {options
@@ -83,7 +111,18 @@ export function DemoDeviceSwitcher({ className }: { className?: string }) {
               </option>
             ))}
         </optgroup>
-        <optgroup label="Devices">
+        {options.some((o) => o.kind === "assignment") && (
+          <optgroup label="Assigned devices">
+            {options
+              .filter((o) => o.kind === "assignment")
+              .map((o) => (
+                <option key={o.key} value={o.key}>
+                  {o.label}
+                </option>
+              ))}
+          </optgroup>
+        )}
+        <optgroup label="Generic devices">
           {options
             .filter((o) => o.kind === "device")
             .map((o) => (

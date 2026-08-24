@@ -123,6 +123,7 @@ export function OperatorOpsView({
             Payout destination is host-managed
             {vendor.bankLast4 ? ` · ${vendor.bankLabel} ••${vendor.bankLast4}` : ""}.
             You cannot edit bank details, tax, cash discount, or host branding.
+            Open Menu to edit your items; peer menus are view-only unless the host grants edit.
           </p>
         </div>
 

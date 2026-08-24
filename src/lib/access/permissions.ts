@@ -53,6 +53,7 @@ const ROLE_PERMS: Record<EmployeeRole, Permission[] | "all"> = {
     "reports:read",
     "ledger:read",
     "staff:invite",
+    "menu:write",
   ],
   accountant: ["reports:read", "settlement:read", "ledger:read", "settings:read"],
   kiosk: ["orders:create", "waitlist:manage"],

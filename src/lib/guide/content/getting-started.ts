@@ -291,7 +291,10 @@ export const GETTING_STARTED_TOPICS: GuideTopic[] = [
       steps(
         "Confirm demo mode: VITE_DEV_DEMO=1 (and DEV_DEMO=1 on the server). With DEV_DEMO=0 the seed never loads and the Load button is hidden.",
         "From platform login tap Load The Laundry (TEST), from Settings tap Load The Laundry test venue, or pick The Laundry (TEST) on the venue picker.",
-        "PIN as Host owner 9999, Floor manager 0000, Server 1111, Steam bartender 3333, or Diamond pit 5555.",
+        "PIN as Host owner 9999, Floor manager 0000, Server 1111, Steam bartender 3333, Diamond pit 5555, Steam operator 6666, Diamond operator 7777.",
+        "Steam (6666): edit Steam items; Diamond items badge “Diamond House BBQ — view only.”",
+        "Diamond (7777): view Steam menu read-only; cannot change Steam settings.",
+        "Host: Entity permissions matrix + assign Tablet A → Steam bar KDS, Tablet B → Diamond floor POS. Demo mode can simulate those assignments.",
         "Seat a dining table. Add food (Diamond House BBQ — e.g. Brisket) and a drink (Steam Distillery — e.g. House Highball) on the same check.",
         "Pay card. Receipt and capture brand are The Laundry. Open Ledger: capture on host, allocations to Steam Distillery and Diamond House BBQ.",
         "On Settle, file a dispute on that closed card check. The $35 fee splits by merchandise share (example: $65 food / $35 drinks → $22.75 / $12.25).",
