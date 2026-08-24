@@ -9,6 +9,19 @@ import type { GuideUpdate } from "@/lib/guide/types";
  */
 export const WHATS_NEW_ENTRIES: GuideUpdate[] = [
   {
+    id: "upd_2026_09_14_saas_crm",
+    date: "2026-09-14",
+    title: "Platform CRM: accounts, pipeline, tenants, billing, support",
+    summary:
+      "Control plane now has CRM, deal board, tenant directory, software invoices, tickets, and SaaS reports. Locations still only come from onboarding.",
+    body: "Add a lead or convert Get pricing intake. Start onboarding from the account when the contract is ready. Go live creates a real tenant under Tenants — never a demo seed. Software billing is separate from Quantum Payments.",
+    roles: ["platform_admin"],
+    surfaces: ["platform"],
+    audience: "platform",
+    topicId: "platform-crm",
+    tags: ["crm", "pipeline", "tenants", "billing"],
+  },
+  {
     id: "upd_2026_09_13_no_demo_tenants",
     date: "2026-09-13",
     title: "No demo tenants — onboard a real location to test",

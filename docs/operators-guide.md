@@ -146,6 +146,18 @@ vendor operator, accountant, kiosk, KDS kitchen/bar, platform admin.
 
 In-app: `/guide?topic=role-walkthroughs`.
 
+## Platform CRM (admin)
+
+Control plane nav: CRM · Pipeline · Tenants · Onboarding · Billing · Support ·
+Reports · Settings. Password only — no floor PIN.
+
+Add lead or convert Get pricing intake. Deals and prospect status share the
+lifecycle. Start onboarding after contract; Go live requires a real org and
+location. Tenants lists live orgs only. Software invoices are not Quantum
+Payments.
+
+In-app: `/guide?topic=platform-crm`.
+
 ## Testing a location (SaaS only)
 
 There are **no demo tenants**. Marketing **Request demo** is Get pricing /

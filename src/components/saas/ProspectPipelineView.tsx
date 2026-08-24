@@ -43,6 +43,7 @@ export function ProspectPipelineView() {
   const [error, setError] = useState<string | null>(null);
   const [rulesText, setRulesText] = useState<string | null>(null);
   const [rulesOpen, setRulesOpen] = useState(false);
+  const [mode, setMode] = useState<"list" | "board">("board");
 
   const load = () => {
     void listAllProspectsFn()
@@ -77,9 +78,15 @@ export function ProspectPipelineView() {
     <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
       <div className="flex flex-wrap items-center gap-2 border-b border-border px-4 py-3">
         <h2 className="mr-2 text-sm font-semibold">Subscriber pipeline</h2>
-        <GuideLearnLink topicId="prospect-intake" compact>
+        <GuideLearnLink topicId="saas-lifecycle" compact>
           Learn
         </GuideLearnLink>
+        <Button size="sm" variant={mode === "board" ? "default" : "outline"} onClick={() => setMode("board")}>
+          Board
+        </Button>
+        <Button size="sm" variant={mode === "list" ? "default" : "outline"} onClick={() => setMode("list")}>
+          List
+        </Button>
         {(["all", ...PROSPECT_STATUSES] as const).map((s) => (
           <Button
             key={s}
@@ -149,6 +156,40 @@ export function ProspectPipelineView() {
             >
               Open intake
             </Link>
+          </div>
+        </div>
+      ) : mode === "board" ? (
+        <div className="min-h-0 flex-1 overflow-x-auto p-3">
+          <div className="flex min-h-full gap-3">
+            {PROSPECT_STATUSES.map((st) => {
+              const col = shown.filter((r) => r.status === st);
+              return (
+                <div key={st} className="w-56 shrink-0 rounded-2xl border border-border bg-surface p-2">
+                  <p className="px-1 pb-2 text-xs font-semibold uppercase text-muted-foreground">
+                    {statusLabel(st)} {col.length}
+                  </p>
+                  <ul className="space-y-2">
+                    {col.map((r) => (
+                      <li key={r.id}>
+                        <button
+                          type="button"
+                          onClick={() => setOpenId(openId === r.id ? null : r.id)}
+                          className="w-full rounded-xl border border-border bg-bg px-2 py-2 text-left text-sm hover:border-primary/40"
+                        >
+                          <span className="block font-medium">{r.legalName || r.dba || "Untitled"}</span>
+                          <span className="text-xs tabular text-muted-foreground">
+                            {r.monthlyCents != null ? formatCurrency(r.monthlyCents) : "—"}
+                          </span>
+                        </button>
+                        {openId === r.id && (
+                          <ProspectAdminDetail prospectId={r.id} onChanged={load} />
+                        )}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              );
+            })}
           </div>
         </div>
       ) : (

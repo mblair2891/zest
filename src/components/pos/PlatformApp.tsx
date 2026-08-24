@@ -22,7 +22,11 @@ import {
   listTenantsFn,
   setActiveContextFn,
 } from "@/lib/saas/api";
-import { ProspectPipelineView } from "@/components/saas/ProspectPipelineView";
+import { PlatformControlPlane } from "@/components/platform/PlatformControlPlane";
+import {
+  parsePlatformSurface,
+  type PlatformSurface,
+} from "@/components/platform/surfaces";
 
 import { prospectResumePath } from "@/lib/saas/prospect-resume";
 import { navigateToSanitizedPath } from "@/lib/auth/post-login-navigate";
@@ -77,20 +81,23 @@ export function PlatformApp() {
     (s) => s.locations.find((l) => l.id === s.activeLocationId) ?? s.locations[0],
   );
   const { user, isPending } = useCurrentUserState();
-  const [surface, setSurface] = useState<"console" | "pipeline">("console");
+  const [surface, setSurface] = useState<PlatformSurface | "console">("crm");
   const [adminNav, setAdminNav] = useState(false);
   const userPickedSurface = useRef(false);
-  const pickSurface = (next: "console" | "pipeline") => {
+  const pickSurface = (next: PlatformSurface | "console") => {
     userPickedSurface.current = true;
     setSurface(next);
   };
 
   useEffect(() => {
     const onSurface = (e: Event) => {
-      const next = (e as CustomEvent).detail;
-      if (next === "console" || next === "pipeline") {
-        setSurface(next);
+      const raw = (e as CustomEvent).detail;
+      if (raw === "console") {
+        setSurface("tenants");
+        return;
       }
+      const next = parsePlatformSurface(raw);
+      if (next) setSurface(next);
     };
     window.addEventListener("summex:platform-surface", onSurface);
     return () => window.removeEventListener("summex:platform-surface", onSurface);
@@ -118,7 +125,7 @@ export function PlatformApp() {
         const list = await listTenantsFn();
         setTenants(list);
         if (!userPickedSurface.current && list.length === 0) {
-          setSurface("pipeline");
+          setSurface("crm");
         }
       } catch {
         setTenants([]);
@@ -330,24 +337,9 @@ export function PlatformApp() {
           </p>
         </div>
         {adminNav && (
-          <>
-            <Button
-              size="sm"
-              variant={surface === "console" ? "default" : "outline"}
-              data-demo="platform-console-nav"
-              onClick={() => pickSurface("console")}
-            >
-              Console
-            </Button>
-            <Button
-              size="sm"
-              variant={surface === "pipeline" ? "default" : "outline"}
-              data-demo="platform-pipeline-nav"
-              onClick={() => pickSurface("pipeline")}
-            >
-              Pipeline
-            </Button>
-          </>
+          <span className="hidden text-xs text-muted-foreground sm:inline">
+            CRM · pipeline · tenants
+          </span>
         )}
         <ReplayWorkflowButton className="hidden md:inline-flex" />
         <GuideTriggerButton topicId="platform-admin" />
@@ -383,84 +375,23 @@ export function PlatformApp() {
           {bootError}
         </p>
       )}
-      {tenants && (
-        <PlatformTenantsBar tenants={tenants} onChanged={() => void hydrateFromServer()} />
-      )}
       <main
         className="min-h-0 flex-1 overflow-hidden"
         data-demo={
-          surface === "pipeline" ? "platform-pipeline" : "platform-console"
+          adminNav
+            ? `platform-${surface}`
+            : "platform-console"
         }
       >
-        {surface === "pipeline" && tenants ? (
-          <ProspectPipelineView />
+        {adminNav && surface !== "console" ? (
+          <PlatformControlPlane
+            surface={surface}
+            onSurface={(s) => pickSurface(s)}
+          />
         ) : (
           <SaasConsoleView />
         )}
       </main>
-    </div>
-  );
-}
-
-function PlatformTenantsBar({
-  tenants,
-  onChanged,
-}: {
-  tenants: Awaited<ReturnType<typeof listTenantsFn>>;
-  onChanged: () => void;
-}) {
-  return (
-    <div className="border-b border-border bg-surface-2 px-3 py-2">
-      <p className="mb-1 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
-        Platform admin · tenants
-      </p>
-      <ul className="flex max-h-28 flex-wrap gap-2 overflow-y-auto">
-        {tenants.map((t) => (
-          <li
-            key={t.id}
-            className="flex items-center gap-2 rounded-xl border border-border bg-surface px-2 py-1 text-xs"
-          >
-            <span className="font-medium">{t.name}</span>
-            <span className="text-muted-foreground">
-              {t.planId ?? "—"} · {t.status}
-            </span>
-            <Button
-              size="sm"
-              variant="outline"
-              className="h-7 px-2 text-[11px]"
-              onClick={() => {
-                void import("@/lib/saas/api").then(({ setTenantPlanFn }) =>
-                  setTenantPlanFn({
-                    data: { orgId: t.id, planId: t.planId === "starter" ? "full_service" : "starter" },
-                  }).then(onChanged),
-                );
-              }}
-            >
-              Cycle plan
-            </Button>
-            <Button
-              size="sm"
-              variant="outline"
-              className="h-7 px-2 text-[11px]"
-              onClick={() => {
-                void import("@/lib/saas/api").then(({ setOrgStatusFn }) =>
-                  setOrgStatusFn({
-                    data: {
-                      orgId: t.id,
-                      status: t.status === "suspended" ? "active" : "suspended",
-                    },
-                  }).then(onChanged),
-                );
-              }}
-            >
-              {t.status === "suspended" ? "Activate" : "Suspend"}
-            </Button>
-          </li>
-        ))}
-        {tenants.length === 0 && (
-          <li className="text-xs text-muted-foreground">No tenants yet</li>
-        )}
-      </ul>
     </div>
   );
 }

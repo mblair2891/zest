@@ -391,12 +391,28 @@ export async function createProspect(opts: {
     payload: { prospectId: id },
   });
   const row = await getRow(id);
-  return mapProspect(row!);
+  const created = mapProspect(row!);
+  await syncCrm(created);
+  return created;
 }
 
 export async function getProspectByToken(token: string): Promise<ProspectRecord | null> {
   const row = await getRowByToken(token.trim());
   return row ? mapProspect(row) : null;
+}
+
+export async function getProspectById(id: string): Promise<ProspectRecord | null> {
+  const row = await getRow(id);
+  return row ? mapProspect(row) : null;
+}
+
+async function syncCrm(prospect: ProspectRecord) {
+  try {
+    const { ensureCrmFromProspect } = await import("./crm.server");
+    await ensureCrmFromProspect(prospect);
+  } catch {
+    /* CRM tables may not exist yet during migrate */
+  }
 }
 
 export async function assertCanAccessProspect(opts: {
@@ -639,7 +655,9 @@ export async function markContractSigned(opts: {
     orgId: prospect.orgId,
   });
   const next = await getRow(prospect.id);
-  return mapProspect(next!);
+  const mapped = mapProspect(next!);
+  await syncCrm(mapped);
+  return mapped;
 }
 
 export async function adminSetProspectStatus(opts: {
@@ -682,7 +700,9 @@ export async function adminSetProspectStatus(opts: {
     },
   });
   const next = await getRow(prospect.id);
-  return mapProspect(next!);
+  const mapped = mapProspect(next!);
+  await syncCrm(mapped);
+  return mapped;
 }
 
 export async function adminPatchQuote(opts: {
@@ -929,7 +949,9 @@ export async function maybePromoteLive(opts: {
     payload: { prospectId: detail.id, from: "onboarding", to: "live" },
   });
   const next = await getRow(detail.id);
-  return mapProspect(next!);
+  const mapped = mapProspect(next!);
+  await syncCrm(mapped);
+  return mapped;
 }
 
 export type { PlanSlug };

@@ -9,6 +9,7 @@ import { DEVICE_TOPICS } from "./content/devices";
 import { ROLE_GUIDE_TOPICS } from "./content/roles";
 import { KIOSK_WAITLIST_TOPICS } from "./content/kiosk-waitlist";
 import { TROUBLESHOOTING_TOPICS } from "./content/troubleshooting";
+import { PLATFORM_CRM_TOPICS } from "./content/platform-crm";
 import { topicMatchesRoles } from "./roles";
 import type {
   GuideAudience,
@@ -88,7 +89,7 @@ export const GUIDE_CHAPTERS: GuideChapter[] = [
   {
     id: "platform",
     title: "Platform (admin)",
-    summary: "Tenants, pipeline, bootstrap, demo rooms.",
+    summary: "CRM, pipeline, tenants, billing, support.",
     order: 12,
   },
 ];
@@ -142,6 +143,7 @@ export const GUIDE_TOPICS: GuideTopic[] = [
   ...KIOSK_WAITLIST_TOPICS,
   ...ROLE_GUIDE_TOPICS,
   ...TROUBLESHOOTING_TOPICS,
+  ...PLATFORM_CRM_TOPICS,
 ];
 
 const BY_ID = new Map(GUIDE_TOPICS.map((t) => [t.id, t]));
