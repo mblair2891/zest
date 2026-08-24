@@ -222,6 +222,57 @@ export function SetupOnboardingWizard({ token }: { token: string }) {
               onChange={(e) => patch((p) => ({ ...p, org: { ...p.org, phone: e.target.value } }))}
             />
           </Field>
+          <Field label="Owner contact">
+            <Input
+              value={payload.org.ownerContactName}
+              onChange={(e) =>
+                patch((p) => ({ ...p, org: { ...p.org, ownerContactName: e.target.value } }))
+              }
+            />
+          </Field>
+          <Field label="Billing contact">
+            <Input
+              value={payload.org.billingContactName}
+              onChange={(e) =>
+                patch((p) => ({ ...p, org: { ...p.org, billingContactName: e.target.value } }))
+              }
+            />
+          </Field>
+          <Field label="Ops contact">
+            <Input
+              value={payload.org.opsContactName}
+              onChange={(e) =>
+                patch((p) => ({ ...p, org: { ...p.org, opsContactName: e.target.value } }))
+              }
+            />
+          </Field>
+          <Field label="Ops email">
+            <Input
+              type="email"
+              value={payload.org.opsContactEmail}
+              onChange={(e) =>
+                patch((p) => ({ ...p, org: { ...p.org, opsContactEmail: e.target.value } }))
+              }
+            />
+          </Field>
+          <Field label="Currency">
+            <NativeSelect
+              value={payload.org.currency || "USD"}
+              onChange={(val) => patch((p) => ({ ...p, org: { ...p.org, currency: val } }))}
+            >
+              {["USD", "CAD", "GBP", "EUR", "AUD", "MXN"].map((c) => (
+                <option key={c} value={c}>
+                  {c}
+                </option>
+              ))}
+            </NativeSelect>
+          </Field>
+          <Field label="Tax ID">
+            <Input
+              value={payload.org.taxId}
+              onChange={(e) => patch((p) => ({ ...p, org: { ...p.org, taxId: e.target.value } }))}
+            />
+          </Field>
           <div className="sm:col-span-2">
             <Field label="HQ address">
               <Input
@@ -390,8 +441,14 @@ export function SetupOnboardingWizard({ token }: { token: string }) {
         <div className="space-y-4">
           {hostLocs.length === 0 && (
             <p className="text-sm text-muted-foreground">
-              No host + operator locations. Continue — you can add operators later if the
-              model changes.
+              Single-operator host. Tenant invites are for host + operator locations. Continue.
+            </p>
+          )}
+          {hostLocs.length > 0 && (
+            <p className="text-sm text-muted-foreground">
+              Optional tenant slots only. After this host is live, you invite each operator by
+              email/SMS from Operators / Tenants. They complete their own legal, stations, and
+              payout stubs. Not required to finish host onboarding.
             </p>
           )}
           {payload.locations.map((l, li) =>
@@ -685,12 +742,15 @@ export function SetupOnboardingWizard({ token }: { token: string }) {
             <CheckRow ok={live.hasOwner} label="Owner membership" />
             <CheckRow ok={live.hasPlan} label="Plan attached from accepted quote" />
             <CheckRow
-              ok={live.hasOperatorIfNeeded}
-              label="Operator records (if host model)"
+              ok
+              label="Tenant invites unlock after host is ready (multi-op)"
             />
           </ul>
           {detail.status === "live" && (
-            <p className="text-sm text-success">This company is live. POS opens with an empty menu.</p>
+            <p className="text-sm text-success">
+              Host is ready. Open POS. If this is a multi-operator house, invite tenants from
+              Operators / Tenants — they complete their own onboarding.
+            </p>
           )}
           {canOpenPos && loc && (
             <Button

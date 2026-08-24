@@ -108,6 +108,18 @@ export const MODULE_FLAG_LABEL: Record<ModuleFlagKey, string> = {
   offline: "Offline mode",
 };
 
+export const TENANT_EMAIL_TOKENS = [
+  "{{tenantName}}",
+  "{{hostBrand}}",
+  "{{inviteUrl}}",
+  "{{pocName}}",
+  "{{ownerName}}",
+  "{{expiryDays}}",
+  "{{supportEmail}}",
+  "{{platformName}}",
+  "{{fromName}}",
+] as const;
+
 export const QUOTE_EMAIL_TOKENS = [
   "{{companyName}}",
   "{{planName}}",
@@ -210,6 +222,7 @@ export const onboardingSettingsSchema = z.object({
   networkReadinessMode: z.enum(NETWORK_READY_MODES).default("warn_only"),
   defaultPlanSlug: z.enum(PLAN_SLUG_VALUES).default("starter"),
   autoEmailOwnerInviteOnGoLive: z.boolean().default(true),
+  tenantInviteExpiryDays: int(1, 90).default(14),
 });
 export type OnboardingSettings = z.infer<typeof onboardingSettingsSchema>;
 
@@ -336,6 +349,18 @@ export const communicationsSettingsSchema = z.object({
   quoteInternalSubject: str(200).default("New quote request: {{companyName}}"),
   quoteInternalBody: str(4000).default(
     "A pricing request landed for {{companyName}}.\n\nOpen Pipeline to build and send the quote:\n{{quoteUrl}}\n",
+  ),
+  hostReadySubject: str(200).default("Your {{platformName}} host account is ready — invite your operators"),
+  hostReadyBody: str(4000).default(
+    "Hi {{ownerName}},\n\n{{hostBrand}} is live on {{platformName}}. Invite each operator (tenant) from Operators / Tenants in Host settings. They complete their own details via email or SMS link.\n\nQuestions: {{supportEmail}}\n\n— {{fromName}}",
+  ),
+  tenantInviteSubject: str(200).default("You're invited to complete onboarding for {{tenantName}} at {{hostBrand}}"),
+  tenantInviteBody: str(4000).default(
+    "Hi {{pocName}},\n\n{{hostBrand}} invited you to finish onboarding for {{tenantName}} on {{platformName}}.\n\nOpen this link (expires in {{expiryDays}} days):\n{{inviteUrl}}\n\nQuestions: {{supportEmail}}\n\n— {{fromName}}",
+  ),
+  tenantCompleteSubject: str(200).default("{{tenantName}} completed onboarding at {{hostBrand}}"),
+  tenantCompleteBody: str(4000).default(
+    "{{tenantName}} finished self-serve onboarding at {{hostBrand}}. Review routing and payouts in Host settings.\n",
   ),
 });
 export type CommunicationsSettings = z.infer<typeof communicationsSettingsSchema>;

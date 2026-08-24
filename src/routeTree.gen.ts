@@ -41,6 +41,7 @@ import { Route as SiteSlugRouteImport } from './routes/site.$slug'
 import { Route as SitesSlugRouteImport } from './routes/sites.$slug'
 import { Route as TTokenRouteImport } from './routes/t.$token'
 import { Route as TableLabelRouteImport } from './routes/table.$label'
+import { Route as TenantTokenRouteImport } from './routes/tenant.$token'
 import { Route as VenueTypeRouteImport } from './routes/venue.$type'
 import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
 import { Route as ApiBillingWebhookRouteImport } from './routes/api/billing/webhook'
@@ -209,6 +210,11 @@ const TableLabelRoute = TableLabelRouteImport.update({
   path: '/table/$label',
   getParentRoute: () => rootRouteImport,
 } as any)
+const TenantTokenRoute = TenantTokenRouteImport.update({
+  id: '/tenant/$token',
+  path: '/tenant/$token',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const VenueTypeRoute = VenueTypeRouteImport.update({
   id: '/venue/$type',
   path: '/venue/$type',
@@ -277,6 +283,7 @@ export interface FileRoutesByFullPath {
   '/sites/$slug': typeof SitesSlugRoute
   '/t/$token': typeof TTokenRoute
   '/table/$label': typeof TableLabelRoute
+  '/tenant/$token': typeof TenantTokenRoute
   '/venue/$type': typeof VenueTypeRoute
   '/demo/': typeof DemoIndexRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
@@ -317,6 +324,7 @@ export interface FileRoutesByTo {
   '/sites/$slug': typeof SitesSlugRoute
   '/t/$token': typeof TTokenRoute
   '/table/$label': typeof TableLabelRoute
+  '/tenant/$token': typeof TenantTokenRoute
   '/venue/$type': typeof VenueTypeRoute
   '/demo': typeof DemoIndexRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
@@ -359,6 +367,7 @@ export interface FileRoutesById {
   '/sites/$slug': typeof SitesSlugRoute
   '/t/$token': typeof TTokenRoute
   '/table/$label': typeof TableLabelRoute
+  '/tenant/$token': typeof TenantTokenRoute
   '/venue/$type': typeof VenueTypeRoute
   '/demo/': typeof DemoIndexRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
@@ -402,6 +411,7 @@ export interface FileRouteTypes {
     | '/sites/$slug'
     | '/t/$token'
     | '/table/$label'
+    | '/tenant/$token'
     | '/venue/$type'
     | '/demo/'
     | '/api/auth/$'
@@ -442,6 +452,7 @@ export interface FileRouteTypes {
     | '/sites/$slug'
     | '/t/$token'
     | '/table/$label'
+    | '/tenant/$token'
     | '/venue/$type'
     | '/demo'
     | '/api/auth/$'
@@ -483,6 +494,7 @@ export interface FileRouteTypes {
     | '/sites/$slug'
     | '/t/$token'
     | '/table/$label'
+    | '/tenant/$token'
     | '/venue/$type'
     | '/demo/'
     | '/api/auth/$'
@@ -523,6 +535,7 @@ export interface RootRouteChildren {
   SitesSlugRoute: typeof SitesSlugRoute
   TTokenRoute: typeof TTokenRoute
   TableLabelRoute: typeof TableLabelRoute
+  TenantTokenRoute: typeof TenantTokenRoute
   VenueTypeRoute: typeof VenueTypeRoute
   ApiAuthSplatRoute: typeof ApiAuthSplatRoute
   ApiBillingWebhookRoute: typeof ApiBillingWebhookRoute
@@ -755,6 +768,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof TableLabelRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/tenant/$token': {
+      id: '/tenant/$token'
+      path: '/tenant/$token'
+      fullPath: '/tenant/$token'
+      preLoaderRoute: typeof TenantTokenRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/venue/$type': {
       id: '/venue/$type'
       path: '/venue/$type'
@@ -883,6 +903,7 @@ const rootRouteChildren: RootRouteChildren = {
   SitesSlugRoute: SitesSlugRoute,
   TTokenRoute: TTokenRoute,
   TableLabelRoute: TableLabelRoute,
+  TenantTokenRoute: TenantTokenRoute,
   VenueTypeRoute: VenueTypeRoute,
   ApiAuthSplatRoute: ApiAuthSplatRoute,
   ApiBillingWebhookRoute: ApiBillingWebhookRoute,

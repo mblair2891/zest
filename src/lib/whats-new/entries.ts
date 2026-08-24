@@ -9,6 +9,19 @@ import type { GuideUpdate } from "@/lib/guide/types";
  */
 export const WHATS_NEW_ENTRIES: GuideUpdate[] = [
   {
+    id: "upd_2026_09_18_host_tenant_onboard",
+    date: "2026-09-18",
+    title: "Host onboarding, then operator self-serve invites",
+    summary:
+      "SaaS finishes the host. Hosts invite bar/kitchen tenants by email or SMS. Operators complete their own details — no platform admin per stall.",
+    body: "After host_ready, open Settings → Operators / Tenants. Add a slot, send the link. The POC sets a password and submits legal, stations, and a payout stub. Host still owns routing and payouts.",
+    roles: ["platform_admin", "owner_manager", "host_operator"],
+    surfaces: ["platform", "settings"],
+    audience: "all",
+    topicId: "tenant-invites",
+    tags: ["onboarding", "host", "tenant", "invite"],
+  },
+  {
     id: "upd_2026_09_17_quote_email",
     date: "2026-09-17",
     title: "Structured quotes and quote email",

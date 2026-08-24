@@ -153,6 +153,11 @@ export function parseOnboardingPayload(raw: unknown): OnboardingPayload {
       phone: str(orgIn.phone),
       hqAddress: str(orgIn.hqAddress),
       taxId: str(orgIn.taxId),
+      ownerContactName: str(orgIn.ownerContactName),
+      billingContactName: str(orgIn.billingContactName),
+      opsContactName: str(orgIn.opsContactName),
+      opsContactEmail: str(orgIn.opsContactEmail).trim().toLowerCase(),
+      currency: str(orgIn.currency) || "USD",
     },
     locations: locationsRaw.map((loc, i) => {
       const l = loc && typeof loc === "object" ? (loc as Record<string, unknown>) : {};
@@ -1090,8 +1095,6 @@ export async function evaluateLiveChecklist(
     (
       await sql<OperatorRow>`select * from operators where org_id = ${orgId}`
     ).map(mapOperator);
-  const needsOps = locs.some((l) => l.operating_model === "host_operators");
-  const hasOperatorIfNeeded = needsOps ? ops.length >= 1 : true;
   const hasOrg = Boolean(org[0]);
   const hasLocation = locs.length >= 1;
   const hasOwner = (owners[0]?.n ?? 0) >= 1;
@@ -1101,8 +1104,8 @@ export async function evaluateLiveChecklist(
     hasLocation,
     hasOwner,
     hasPlan,
-    hasOperatorIfNeeded,
-    ready: hasOrg && hasLocation && hasOwner && hasPlan && hasOperatorIfNeeded,
+    hasOperatorIfNeeded: true,
+    ready: hasOrg && hasLocation && hasOwner && hasPlan,
   };
 }
 
@@ -1150,6 +1153,15 @@ export async function maybePromoteLive(opts: {
     action: "status_changed",
     payload: { prospectId: detail.id, from: "onboarding", to: "live" },
   });
+  if (detail.orgId) {
+    try {
+      const { markOrgHostReady, emailHostReady } = await import("./tenant-invite.server");
+      await markOrgHostReady(detail.orgId);
+      await emailHostReady(detail.orgId);
+    } catch (err) {
+      console.warn("[host-ready]", err);
+    }
+  }
   const next = await getRow(detail.id);
   const mapped = mapProspect(next!);
   await syncCrm(mapped);

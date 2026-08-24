@@ -32,7 +32,14 @@ export function payloadFromAnswers(answers: IntakeAnswers): OnboardingPayload {
       ? answers.payments.payoutFrequency
       : "weekly";
   return {
-    org: { ...answers.company },
+    org: {
+      ...answers.company,
+      ownerContactName: "",
+      billingContactName: "",
+      opsContactName: "",
+      opsContactEmail: answers.company.billingEmail,
+      currency: "USD",
+    },
     locations,
     invites: [],
     settlement: {

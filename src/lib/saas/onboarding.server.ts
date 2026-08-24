@@ -199,7 +199,13 @@ async function applyOrg(
           billing_email = ${payload.org.billingEmail || null},
           phone = ${payload.org.phone.trim() || null},
           hq_address = ${payload.org.hqAddress.trim() || null},
-          tax_id = ${payload.org.taxId.trim() || null}
+          tax_id = ${payload.org.taxId.trim() || null},
+          timezone = ${payload.locations[0]?.timezone || null},
+          currency = ${payload.org.currency || "USD"},
+          owner_contact_name = ${payload.org.ownerContactName || null},
+          billing_contact_name = ${payload.org.billingContactName || null},
+          ops_contact_name = ${payload.org.opsContactName || null},
+          ops_contact_email = ${payload.org.opsContactEmail || null}
       where id = ${existingOrgId}
     `;
     return;
@@ -222,6 +228,16 @@ async function applyOrg(
   });
   await sql`
     update prospects set org_id = ${created.org.id}, updated_at = now() where id = ${prospectId}
+  `;
+  await sql`
+    update organizations
+    set timezone = ${payload.locations[0]?.timezone || null},
+        currency = ${payload.org.currency || "USD"},
+        owner_contact_name = ${payload.org.ownerContactName || null},
+        billing_contact_name = ${payload.org.billingContactName || null},
+        ops_contact_name = ${payload.org.opsContactName || null},
+        ops_contact_email = ${payload.org.opsContactEmail || null}
+    where id = ${created.org.id}
   `;
 }
 
@@ -322,9 +338,13 @@ async function applyOperators(userId: string, prospectId: string, payload: Onboa
   for (const loc of payload.locations) {
     if (loc.operatingModel !== "host_operators") continue;
     if (!loc.serverId) continue;
-    const named = loc.operators.filter((o) => o.legalName.trim() || o.dba.trim());
-    if (named.length < 1) throw new Error(`Add at least one operator for ${loc.name}`);
-    await sql`delete from operators where location_id = ${loc.serverId}`;
+    const named = loc.operators.filter(
+      (o) => o.legalName.trim() || o.dba.trim() || o.contactEmail.trim(),
+    );
+    await sql`
+      delete from operators
+      where location_id = ${loc.serverId} and onboard_status = ${"draft"}
+    `;
     for (const op of named) {
       await insertOperator(orgId, loc.serverId, op);
     }
@@ -349,6 +369,15 @@ async function insertOperator(orgId: string, locationId: string, op: OperatorDra
       ${op.payoutBankLast4 || null},
       ${op.payoutRoutingToken.trim() || null}
     )
+  `;
+  const kind =
+    op.stationTypes[0] === "bar" ? "bar" : op.stationTypes[0] === "kitchen" ? "kitchen" : "other";
+  await sql`
+    update operators
+    set station_kind = ${kind},
+        poc_name = ${op.legalName.trim() || op.dba.trim() || null},
+        onboard_status = ${"draft"}
+    where id = ${id}
   `;
 }
 

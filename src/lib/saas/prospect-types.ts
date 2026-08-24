@@ -275,8 +275,16 @@ export type OnboardingInviteDraft = {
   role: Exclude<MembershipRole, "platform_admin">;
 };
 
+export type OnboardingOrg = IntakeCompany & {
+  ownerContactName: string;
+  billingContactName: string;
+  opsContactName: string;
+  opsContactEmail: string;
+  currency: string;
+};
+
 export type OnboardingPayload = {
-  org: IntakeCompany;
+  org: OnboardingOrg;
   locations: OnboardingLocationDraft[];
   invites: OnboardingInviteDraft[];
   settlement: {

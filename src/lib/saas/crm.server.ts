@@ -691,8 +691,14 @@ export async function getTenantDrillIn(userId: string, orgId: string): Promise<T
     order by name
   `;
   const members = await listMembersForOrg(userId, orgId);
-  const operators = await sql<{ id: string; dba: string | null; legal_name: string; location_id: string | null }>`
-    select id, dba, legal_name, location_id from operators where org_id = ${orgId}
+  const operators = await sql<{
+    id: string;
+    dba: string | null;
+    legal_name: string;
+    location_id: string | null;
+    onboard_status: string | null;
+  }>`
+    select id, dba, legal_name, location_id, onboard_status from operators where org_id = ${orgId}
   `;
   return {
     org,
@@ -712,6 +718,7 @@ export async function getTenantDrillIn(userId: string, orgId: string): Promise<T
       id: o.id,
       dba: o.dba || o.legal_name,
       locationId: o.location_id,
+      onboardStatus: o.onboard_status ?? "draft",
     })),
   };
 }

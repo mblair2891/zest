@@ -343,7 +343,7 @@ export function SettingsView() {
             variant={hostTab === "operators" ? "default" : "outline"}
             onClick={() => setHostTab("operators")}
           >
-            Operators
+            Operators / Tenants
           </Button>
         </div>
       )}
@@ -726,14 +726,14 @@ export function SettingsView() {
         <p className="text-xs text-muted-foreground">
           The subscriber host configures settlement, host cut, payout destinations,
           the entity permission matrix, and device assignment. Guest operators cannot
-          edit these. Open Payouts & settlement, or the Operators tab to onboard a stall.
+          edit these. Open Payouts & settlement, or Operators / Tenants to invite operators.
         </p>
         <div className="mt-3 flex flex-wrap gap-2">
           <Button size="sm" variant="outline" onClick={() => setView("settlement")}>
             Payouts & settlement
           </Button>
           <Button size="sm" variant="outline" onClick={() => setHostTab("operators")}>
-            Operators
+            Operators / Tenants
           </Button>
         </div>
         <div className="mt-4 space-y-4">

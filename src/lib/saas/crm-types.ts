@@ -166,7 +166,7 @@ export type TenantDrillIn = {
   org: TenantDirectoryRow;
   locations: { id: string; name: string; venueType: string; status: string }[];
   members: { id: string; name: string; email: string; role: string }[];
-  operators: { id: string; dba: string; locationId: string | null }[];
+  operators: { id: string; dba: string; locationId: string | null; onboardStatus?: string }[];
 };
 
 export type OnboardingWorkspaceRow = {

@@ -176,9 +176,15 @@ intake. `/demo` URLs redirect there. Platform Admin never seeds The Laundry,
 Steam Distillery, Diamond House BBQ, or PIN 0000 rooms.
 
 To test: complete SaaS onboarding (intake request → Admin sends quote from
-Pipeline using Plans & billing → accept → contract if required → wizard → org
-+ location). Invite the owner. Open POS. Floor PIN is for **real** staff on
-that location.
+Pipeline using Plans & billing → accept → contract if required → **host**
+wizard → org + location). Invite the owner. Open POS.
+
+**Two-stage onboarding:** SaaS finishes the **Host** (host_ready). The host then
+invites **operators/tenants** from Settings → Operators / Tenants by email or
+SMS. Each POC opens the link, sets a password, and completes their own details.
+The host still owns payouts and routing. No demo tenants.
+
+Floor PIN is for **real** staff on that location.
 
 Quotes never use a JSON editor. Emails (request / sent / accepted) go through
 Resend when a key is set; otherwise they appear in Settings → Communications

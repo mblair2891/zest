@@ -154,7 +154,10 @@ export function TenantWorkspace() {
               <p className="text-xs font-semibold uppercase text-muted-foreground">Operators</p>
               <ul className="mt-1 text-sm">
                 {detail.operators.map((o) => (
-                  <li key={o.id}>{o.dba}</li>
+                  <li key={o.id}>
+                    {o.dba}
+                    {o.onboardStatus ? ` · ${o.onboardStatus.replaceAll("_", " ")}` : ""}
+                  </li>
                 ))}
                 {detail.operators.length === 0 && (
                   <li className="text-muted-foreground">Single-operator or none</li>

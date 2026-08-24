@@ -17,6 +17,7 @@ const WIPE_TABLES = [
   "crm_contacts",
   "crm_accounts",
   "saas_invoices",
+  "operator_invites",
   "onboarding_runs",
   "operators",
   "prospects",

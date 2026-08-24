@@ -30,6 +30,7 @@ import {
   GIFT_RESIDUAL_MODES,
   INVITE_TOKENS,
   QUOTE_EMAIL_TOKENS,
+  TENANT_EMAIL_TOKENS,
   MODULE_FLAG_KEYS,
   MODULE_FLAG_LABEL,
   NETWORK_READY_MODES,
@@ -689,6 +690,14 @@ function OnboardingSection({
         checked={v.autoEmailOwnerInviteOnGoLive}
         onChange={(autoEmailOwnerInviteOnGoLive) => setV({ ...v, autoEmailOwnerInviteOnGoLive })}
       />
+      <Field label="Tenant invite expiry (days)" hint="Operator self-serve links expire after this many days. Default 14.">
+        <NumberField
+          value={v.tenantInviteExpiryDays}
+          min={1}
+          max={90}
+          onChange={(tenantInviteExpiryDays) => setV({ ...v, tenantInviteExpiryDays })}
+        />
+      </Field>
     </SectionCard>
   );
 }
@@ -1129,12 +1138,19 @@ function CommunicationsSection({
           ["quoteSentSubject", "quoteSentBody", "Quote sent (prospect)"],
           ["quoteAcceptedSubject", "quoteAcceptedBody", "Quote accepted (prospect)"],
           ["quoteInternalSubject", "quoteInternalBody", "New quote request (internal)"],
+          ["hostReadySubject", "hostReadyBody", "Host account ready (invite operators)"],
+          ["tenantInviteSubject", "tenantInviteBody", "Tenant invite"],
+          ["tenantCompleteSubject", "tenantCompleteBody", "Tenant completed (host notify)"],
         ] as const
       ).map(([subj, body, label]) => (
         <div key={subj} className="space-y-2">
           <Field label={`${label} — subject`}>
             <TokenChips
-              tokens={QUOTE_EMAIL_TOKENS}
+              tokens={
+                subj.startsWith("tenant") || subj.startsWith("hostReady")
+                  ? TENANT_EMAIL_TOKENS
+                  : QUOTE_EMAIL_TOKENS
+              }
               onInsert={(t) => setV({ ...v, [subj]: `${v[subj]} ${t}` })}
             />
             <Input
