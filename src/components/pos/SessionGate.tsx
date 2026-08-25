@@ -2,7 +2,11 @@ import { useEffect, useState, type ReactNode } from "react";
 import { Navigate, useRouterState } from "@tanstack/react-router";
 import { useCurrentUserState } from "@/lib/auth/use-current-user";
 import { RedirectToSignIn } from "@/lib/auth/gates";
-import { getPlatformFlags } from "@/lib/auth/platform-admin";
+import {
+  getPlatformFlags,
+  subscribeMustChangePasswordCleared,
+  wasMustChangePasswordCleared,
+} from "@/lib/auth/platform-admin";
 import { SummexMark } from "@/components/brand/SummexMark";
 
 function Loading() {
@@ -20,17 +24,32 @@ function Loading() {
 export function SessionGate({ children }: { children: ReactNode }) {
   const { user, isPending } = useCurrentUserState();
   const pathname = useRouterState({ select: (s) => s.location.pathname });
-  const [mustChange, setMustChange] = useState<boolean | null>(null);
+  const [mustChange, setMustChange] = useState<boolean | null>(() =>
+    wasMustChangePasswordCleared() ? false : null,
+  );
+
+  useEffect(() => {
+    return subscribeMustChangePasswordCleared(() => setMustChange(false));
+  }, []);
 
   useEffect(() => {
     if (!user) {
       setMustChange(null);
       return;
     }
+    if (wasMustChangePasswordCleared()) {
+      setMustChange(false);
+      return;
+    }
     let cancelled = false;
     void getPlatformFlags()
       .then((f) => {
-        if (!cancelled) setMustChange(f.mustChangePassword);
+        if (cancelled) return;
+        if (wasMustChangePasswordCleared()) {
+          setMustChange(false);
+          return;
+        }
+        setMustChange(f.mustChangePassword);
       })
       .catch(() => {
         if (!cancelled) setMustChange(false);
@@ -38,12 +57,12 @@ export function SessionGate({ children }: { children: ReactNode }) {
     return () => {
       cancelled = true;
     };
-  }, [user?.id]);
+  }, [user?.id, pathname]);
 
   if (isPending) return <Loading />;
   if (!user) return <RedirectToSignIn to="/login" />;
   if (mustChange === null) return <Loading />;
-  if (mustChange && pathname !== "/change-password") {
+  if (mustChange && pathname !== "/change-password" && !wasMustChangePasswordCleared()) {
     return <Navigate to="/change-password" />;
   }
   return <>{children}</>;

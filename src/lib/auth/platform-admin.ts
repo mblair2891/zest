@@ -7,6 +7,31 @@ export type PlatformFlags = {
   mustChangePassword: boolean;
 };
 
+/** Client-only: SessionGate reads this so a just-cleared flag cannot bounce back. */
+const MUST_CHANGE_CLEARED_EVENT = "summex:must-change-password-cleared";
+const MUST_CHANGE_CLEARED_KEY = "summex-must-change-cleared";
+const MUST_CHANGE_CLEARED_MS = 30_000;
+
+export function markMustChangePasswordCleared(): void {
+  if (typeof window === "undefined") return;
+  window.sessionStorage.setItem(MUST_CHANGE_CLEARED_KEY, String(Date.now()));
+  window.dispatchEvent(new Event(MUST_CHANGE_CLEARED_EVENT));
+}
+
+export function wasMustChangePasswordCleared(): boolean {
+  if (typeof window === "undefined") return false;
+  const raw = window.sessionStorage.getItem(MUST_CHANGE_CLEARED_KEY);
+  const at = Number(raw);
+  if (!Number.isFinite(at) || at <= 0) return false;
+  return Date.now() - at < MUST_CHANGE_CLEARED_MS;
+}
+
+export function subscribeMustChangePasswordCleared(fn: () => void): () => void {
+  if (typeof window === "undefined") return () => undefined;
+  window.addEventListener(MUST_CHANGE_CLEARED_EVENT, fn);
+  return () => window.removeEventListener(MUST_CHANGE_CLEARED_EVENT, fn);
+}
+
 export const getPlatformFlags = createServerFn({ method: "GET" })
   .middleware([authMiddleware])
   .handler(async ({ context }): Promise<PlatformFlags> => {

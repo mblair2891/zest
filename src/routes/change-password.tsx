@@ -3,7 +3,11 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { Button } from "@/components/ui/button";
 import { SummexBrandBlock } from "@/components/brand/SummexMark";
 import { Input } from "@/components/ui/input";
-import { changePlatformAdminPassword } from "@/lib/auth/platform-admin";
+import {
+  changePlatformAdminPassword,
+  getPlatformFlags,
+  markMustChangePasswordCleared,
+} from "@/lib/auth/platform-admin";
 import { SessionGate } from "@/components/pos/SessionGate";
 
 function errorMessage(err: unknown): string {
@@ -41,6 +45,7 @@ function ChangePasswordForm() {
   const [confirm, setConfirm] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [success, setSuccess] = useState<string | null>(null);
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -66,11 +71,13 @@ function ChangePasswordForm() {
       await changePlatformAdminPassword({
         data: { currentPassword: current, newPassword: next },
       });
-      await navigate({ to: "/dashboard" });
+      markMustChangePasswordCleared();
+      await getPlatformFlags().catch(() => undefined);
+      setSuccess("Password updated. Opening the control plane…");
+      await navigate({ to: "/dashboard", replace: true });
     } catch (err) {
-      setError(errorMessage(err));
-    } finally {
       setBusy(false);
+      setError(errorMessage(err));
     }
   };
 
@@ -123,8 +130,13 @@ function ChangePasswordForm() {
               {error}
             </p>
           )}
-          <Button type="submit" className="w-full" size="lg" disabled={busy}>
-            {busy ? "Saving…" : "Save password"}
+          {success && (
+            <p className="text-sm text-success" role="status">
+              {success}
+            </p>
+          )}
+          <Button type="submit" className="w-full" size="lg" disabled={busy || Boolean(success)}>
+            {success ? "Opening…" : busy ? "Saving…" : "Save password"}
           </Button>
         </form>
         <p className="mt-6 text-center text-sm text-muted-foreground">
