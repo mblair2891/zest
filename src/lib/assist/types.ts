@@ -48,6 +48,29 @@ export type AssistContext = {
   categories: Array<{ id: string; name: string; station: string }>;
   operators: Array<{ id: string; name: string; stationType?: string }>;
   sections: Array<{ id: string; name: string }>;
+  /** Guest operator login: lock drafts to this entity. */
+  scopedVendorId?: string;
+  scopedVendorName?: string;
+  existingModifiers?: Array<{ id: string; name: string; options: string[] }>;
+  seedItem?: {
+    id: string;
+    name: string;
+    description?: string;
+    priceCents: number;
+    categoryId: string;
+    station: string;
+    course: string;
+    vendorId?: string;
+    modifierGroupIds: string[];
+  };
+};
+
+export type SuggestedModifierGroup = {
+  name: string;
+  required: boolean;
+  min: number;
+  max: number;
+  options: Array<{ name: string; priceCents: number }>;
 };
 
 export type MenuItemDraft = {
@@ -63,6 +86,11 @@ export type MenuItemDraft = {
   vendorName?: string;
   modifierHint?: string;
   course: "appetizer" | "salad" | "entree" | "side" | "dessert" | "drink" | "other";
+  /** When set, Confirm updates this item instead of creating. */
+  itemId?: string;
+  modifierGroups?: SuggestedModifierGroup[];
+  omitPresets?: string[];
+  addPresets?: Array<{ name: string; priceCents: number }>;
 };
 
 export type CategoryDraft = {

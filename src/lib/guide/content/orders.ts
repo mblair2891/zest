@@ -7,8 +7,8 @@ export const ORDER_TOPICS: GuideTopic[] = [
     chapterId: "orders",
     title: "Menu, categories, modifiers",
     summary: "Build the item tree the floor and ODS will use.",
-    roles: ["owner_manager", "server", "kitchen_bar", "vendor_operator"],
-    keywords: ["menu", "category", "modifier", "86", "item"],
+    roles: ["owner_manager", "server", "kitchen_bar", "vendor_operator", "host_operator"],
+    keywords: ["menu", "category", "modifier", "86", "item", "assist", "ai", "omit", "voice"],
     openView: "menu",
     blocks: [
       why(
@@ -16,15 +16,16 @@ export const ORDER_TOPICS: GuideTopic[] = [
       ),
       steps(
         "Open Menu. Create categories (e.g. Starters, Mains, Bar).",
-        "Add items with price, station (kitchen / bar / expo), and course.",
-        "On a host venue, set the operator (Operator A, Operator B) on each item.",
-        "Attach modifier groups (temp, sides, no onion). Mark required groups so the server cannot send a bare steak.",
+        "Add or edit an item by hand, or tap Describe with AI / Assist. Type or speak a short description.",
+        "Assist suggests name, description, category, station, modifier groups, and common omit/add. Answer follow-ups only if asked (cash vs card price, operator on a host floor).",
+        "Preview the card. Accept, edit, or dismiss. Nothing writes until Confirm.",
+        "On a host venue, guest operators only create/edit their own entity. Host can still assign operator on new items.",
         "86 an item from Menu or the 86 board so it greys out on Order.",
       ),
       tip(
-        "Onboarding can leave the menu empty or import later. The floor will not have items until you add them — that is expected on a fresh site.",
+        "No AI key → category templates (burger, steak, pizza, salad, cocktail, …) still fill modifiers and omit/add. You confirm before save.",
       ),
-      related("kitchen-bar-routing", "multi-operator-orders", "onboarding-wizard"),
+      related("kitchen-bar-routing", "multi-operator-orders", "onboarding-wizard", "setup-by-voice"),
     ],
   }),
   topic({

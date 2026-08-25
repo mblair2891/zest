@@ -308,7 +308,7 @@ export interface PosStore {
   setActiveDeviceId: (id: string | null) => void;
   updateMenuItem: (
     id: string,
-    patch: Partial<Pick<MenuItem, "name" | "priceCents" | "description" | "available" | "vendorId" | "categoryId" | "station">>,
+    patch: Partial<Pick<MenuItem, "name" | "priceCents" | "description" | "available" | "vendorId" | "categoryId" | "station" | "course" | "modifierGroupIds">>,
   ) => void;
   deleteMenuItem: (id: string) => void;
   applyEntity: (entityId: VenueEntityId) => ActionResult;

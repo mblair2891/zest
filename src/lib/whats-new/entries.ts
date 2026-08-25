@@ -9,6 +9,19 @@ import type { GuideUpdate } from "@/lib/guide/types";
  */
 export const WHATS_NEW_ENTRIES: GuideUpdate[] = [
   {
+    id: "upd_2026_09_20_menu_assist",
+    date: "2026-09-20",
+    title: "AI menu assist: describe, preview, confirm",
+    summary:
+      "On add or edit, type or speak the plate. Assist suggests name, station, modifiers, and common omit/add. You preview and confirm — nothing saves until you accept. Guest operators stay on their entity.",
+    body: "Menu → Describe with AI, or Assist on an existing item. Follow-ups only when needed (cash vs card price). No API key uses category templates. Dismiss discards the draft.",
+    roles: ["owner_manager", "host_operator", "vendor_operator"],
+    surfaces: ["settings"],
+    audience: "all",
+    topicId: "menu-modifiers",
+    tags: ["menu", "ai", "assist", "modifiers"],
+  },
+  {
     id: "upd_2026_09_19_ods",
     date: "2026-09-19",
     title: "Order Display (ODS): Start, Bump, notify the server",

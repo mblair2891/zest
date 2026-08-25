@@ -25,13 +25,27 @@ import {
 } from "@/lib/assist/types";
 import { formatCurrency } from "@/lib/utils";
 import { cashPriceCents, cashPolicyFromSettings } from "@/lib/pos/cash-discount";
+import { saveMenuItemFn } from "@/lib/access/api";
+import { isProspectDemo } from "@/lib/demo/session";
+import { useSaasStore } from "@/lib/pos/saas-store";
 
-function useAssistContext(): AssistContext {
+function useAssistContext(opts?: {
+  lockedVendorId?: string;
+  itemId?: string;
+}): AssistContext {
   const settings = usePosStore((s) => s.settings);
   const categories = usePosStore((s) => s.categories);
   const vendors = usePosStore((s) => s.vendors);
   const sections = usePosStore((s) => s.floorSections);
   const locId = usePosStore((s) => s.tenantLocationId);
+  const modifierGroups = usePosStore((s) => s.modifierGroups);
+  const menuItems = usePosStore((s) => s.menuItems);
+  const seed = opts?.itemId
+    ? menuItems.find((m) => m.id === opts.itemId)
+    : undefined;
+  const locked = opts?.lockedVendorId
+    ? vendors.find((v) => v.id === opts.lockedVendorId)
+    : undefined;
   return useMemo(
     () => ({
       locationId: locId ?? undefined,
@@ -48,24 +62,48 @@ function useAssistContext(): AssistContext {
         station: c.station,
       })),
       operators: vendors
-        .filter((v) => v.active)
+        .filter((v) => v.active && (!opts?.lockedVendorId || v.id === opts.lockedVendorId))
         .map((v) => ({
           id: v.id,
           name: v.name,
           stationType: v.stationType,
         })),
       sections: sections.map((s) => ({ id: s.id, name: s.name })),
+      scopedVendorId: locked?.id,
+      scopedVendorName: locked?.name,
+      existingModifiers: modifierGroups.map((g) => ({
+        id: g.id,
+        name: g.name,
+        options: g.options.map((o) => o.name),
+      })),
+      seedItem: seed
+        ? {
+            id: seed.id,
+            name: seed.name,
+            description: seed.description,
+            priceCents: seed.priceCents,
+            categoryId: seed.categoryId,
+            station: seed.station,
+            course: seed.course,
+            vendorId: seed.vendorId,
+            modifierGroupIds: seed.modifierGroupIds,
+          }
+        : undefined,
     }),
-    [settings, categories, vendors, sections, locId],
+    [settings, categories, vendors, sections, locId, modifierGroups, seed, locked, opts?.lockedVendorId],
   );
 }
 
 export function SetupAssistButton({
   domain,
   label,
+  lockedVendorId,
+  itemId,
 }: {
   domain: AssistDomain;
   label?: string;
+  lockedVendorId?: string;
+  itemId?: string;
 }) {
   const [open, setOpen] = useState(false);
   return (
@@ -74,7 +112,13 @@ export function SetupAssistButton({
         <Sparkles className="h-3.5 w-3.5" />
         {label ?? "Describe with AI"}
       </Button>
-      <SetupAssistDialog domain={domain} open={open} onOpenChange={setOpen} />
+      <SetupAssistDialog
+        domain={domain}
+        open={open}
+        onOpenChange={setOpen}
+        lockedVendorId={lockedVendorId}
+        itemId={itemId}
+      />
     </>
   );
 }
@@ -83,12 +127,16 @@ export function SetupAssistDialog({
   domain,
   open,
   onOpenChange,
+  lockedVendorId,
+  itemId,
 }: {
   domain: AssistDomain;
   open: boolean;
   onOpenChange: (v: boolean) => void;
+  lockedVendorId?: string;
+  itemId?: string;
 }) {
-  const ctx = useAssistContext();
+  const ctx = useAssistContext({ lockedVendorId, itemId });
   const [ai, setAi] = useState<boolean | null>(null);
   const [text, setText] = useState("");
   const [messages, setMessages] = useState<AssistMessage[]>([]);
@@ -177,7 +225,30 @@ export function SetupAssistDialog({
 
   const confirm = () => {
     if (!draft) return;
-    const res = applyAssistDraft(draft);
+    const next =
+      draft.domain === "menu_item"
+        ? {
+            ...draft,
+            vendorId: lockedVendorId || draft.vendorId,
+            vendorName: ctx.scopedVendorName || draft.vendorName,
+            itemId: itemId || draft.itemId,
+          }
+        : draft;
+    const res = applyAssistDraft(next);
+    if (next.domain === "menu_item") {
+      const orgId = useSaasStore.getState().org.id;
+      const locId = usePosStore.getState().tenantLocationId || "";
+      if (!isProspectDemo() && orgId && locId) {
+        void saveMenuItemFn({
+          data: {
+            orgId,
+            locationId: locId,
+            action: next.itemId ? "update" : "create",
+            operatorId: next.vendorId || "",
+          },
+        }).catch(() => undefined);
+      }
+    }
     setFlash(res.detail);
     setTimeout(() => {
       reset();
@@ -196,17 +267,18 @@ export function SetupAssistDialog({
       <DialogContent className="w-[min(100vw-1.25rem,36rem)]" showClose>
         <DialogHeader>
           <DialogTitle className="flex flex-wrap items-center gap-2">
-            {ASSIST_DOMAIN_LABEL[domain]}
+            {itemId ? "Edit with AI" : ASSIST_DOMAIN_LABEL[domain]}
             {ai !== null && (
               <Badge variant={ai ? "info" : "secondary"}>
-                {ai ? "AI setup" : "Guided setup"}
+                {ai ? "AI" : "Templates"}
               </Badge>
             )}
           </DialogTitle>
         </DialogHeader>
         <p className="text-xs text-muted-foreground">
-          Type or speak a paragraph. Summex extracts fields, asks if something is
-          unclear, then you confirm. Guest cards stay Quantum Payments.
+          Type or speak a description. Summex suggests name, station, modifiers,
+          and common omit/add. Follow-ups only if needed. Preview, then Confirm
+          — nothing saves until you accept. Guest cards stay Quantum Payments.
         </p>
 
         {messages.length > 0 && (
@@ -228,7 +300,11 @@ export function SetupAssistDialog({
               value={text}
               onChange={setText}
               rows={4}
-              placeholder="Ribeye, 14oz USDA choice, grilled, mashed potatoes and seasonal veg, fifteen dollars"
+              placeholder={
+                itemId
+                  ? "Keep the plate. Add bacon, no onion, extra pickles."
+                  : "Ribeye, 14oz USDA choice, grilled, mashed potatoes and seasonal veg, fifteen dollars"
+              }
             />
             <Button disabled={busy} onClick={() => void submitNarrative()}>
               {busy ? "Reading…" : messages.length ? "Add this" : "Analyze"}
@@ -269,7 +345,16 @@ export function SetupAssistDialog({
                   setDraft(null);
                 }}
               >
-                Discard
+                Edit prompt
+              </Button>
+              <Button
+                variant="ghost"
+                onClick={() => {
+                  reset();
+                  onOpenChange(false);
+                }}
+              >
+                Dismiss
               </Button>
             </div>
           </div>
@@ -311,7 +396,7 @@ function DraftFields({
           hint={false}
         />
         <label className="text-xs text-muted-foreground">
-          Printed / card price (cents as dollars)
+          Printed / card price
           <Input
             className="mt-1"
             inputMode="decimal"
@@ -330,12 +415,116 @@ function DraftFields({
             {draft.priceBasis === "cash" ? " · mapped from cash quote" : ""}
           </p>
         )}
-        <Input
-          value={draft.categoryName}
-          onChange={(e) => onChange({ ...draft, categoryName: e.target.value })}
-        />
+        <div className="grid grid-cols-2 gap-2">
+          <label className="text-xs text-muted-foreground">
+            Category
+            <Input
+              className="mt-1"
+              value={draft.categoryName}
+              onChange={(e) => onChange({ ...draft, categoryName: e.target.value })}
+            />
+          </label>
+          <label className="text-xs text-muted-foreground">
+            Station
+            <select
+              className="mt-1 h-10 w-full rounded-xl border border-border bg-bg px-3 text-sm"
+              value={draft.station}
+              onChange={(e) =>
+                onChange({
+                  ...draft,
+                  station: e.target.value as typeof draft.station,
+                })
+              }
+            >
+              <option value="kitchen">Kitchen</option>
+              <option value="bar">Bar</option>
+              <option value="expo">Expo</option>
+              <option value="dessert">Dessert</option>
+            </select>
+          </label>
+        </div>
         {draft.vendorName && (
           <p className="text-xs text-muted-foreground">Operator: {draft.vendorName}</p>
+        )}
+        {(draft.modifierGroups?.length ?? 0) > 0 && (
+          <div className="space-y-1.5 rounded-xl border border-border bg-bg p-2">
+            <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+              Modifier groups
+            </p>
+            {draft.modifierGroups!.map((g, i) => (
+              <div key={`${g.name}-${i}`} className="flex items-start justify-between gap-2">
+                <p className="text-xs">
+                  <span className="font-medium">{g.name}</span>
+                  {g.required ? " · required" : ""}
+                  <span className="block text-muted-foreground">
+                    {g.options.map((o) => o.name).join(" · ")}
+                  </span>
+                </p>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  className="h-7 px-2 text-[11px]"
+                  onClick={() =>
+                    onChange({
+                      ...draft,
+                      modifierGroups: draft.modifierGroups!.filter((_, j) => j !== i),
+                    })
+                  }
+                >
+                  Remove
+                </Button>
+              </div>
+            ))}
+          </div>
+        )}
+        {(draft.omitPresets?.length ?? 0) > 0 && (
+          <div>
+            <p className="mb-1 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+              Common omits
+            </p>
+            <div className="flex flex-wrap gap-1">
+              {draft.omitPresets!.map((n, i) => (
+                <button
+                  key={`${n}-${i}`}
+                  type="button"
+                  className="rounded-full border border-border bg-surface px-2 py-0.5 text-[11px]"
+                  onClick={() =>
+                    onChange({
+                      ...draft,
+                      omitPresets: draft.omitPresets!.filter((_, j) => j !== i),
+                    })
+                  }
+                >
+                  {n} ×
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+        {(draft.addPresets?.length ?? 0) > 0 && (
+          <div>
+            <p className="mb-1 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+              Common adds
+            </p>
+            <div className="flex flex-wrap gap-1">
+              {draft.addPresets!.map((a, i) => (
+                <button
+                  key={`${a.name}-${i}`}
+                  type="button"
+                  className="rounded-full border border-border bg-surface px-2 py-0.5 text-[11px]"
+                  onClick={() =>
+                    onChange({
+                      ...draft,
+                      addPresets: draft.addPresets!.filter((_, j) => j !== i),
+                    })
+                  }
+                >
+                  {a.name}
+                  {a.priceCents ? ` ${formatCurrency(a.priceCents)}` : ""} ×
+                </button>
+              ))}
+            </div>
+          </div>
         )}
       </div>
     );

@@ -101,6 +101,16 @@ platform allows). Device assignment: **Kitchen ODS**, **Bar ODS**.
 
 In-app: `/guide?topic=kds`. Device labels: Settings → Device assignment.
 
+## Menu AI assist
+
+On **Menu** add/edit, **Describe with AI** or **Assist** (type or mic). Suggests
+name, description, category, station, modifier groups, and common omit/add.
+Follow-ups only when needed (cash vs card price; operator on a host floor when
+not locked). Preview, then **Confirm** — never auto-save. Dismiss discards.
+No API key → category templates. Multi-op: scoped to the operator’s entity.
+
+In-app: `/guide?topic=menu-modifiers`.
+
 ## Offline mode
 
 Wi‑Fi-first. If internet drops, the active location still runs from cache:

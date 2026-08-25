@@ -334,7 +334,7 @@ export const GETTING_STARTED_TOPICS: GuideTopic[] = [
         "Station routing, staff (name, email, role), location name, cash discount in plain language.",
       ),
       tip(
-        "If no AI key is configured, Guided setup still parses the paragraph and asks the same follow-ups. Guest cards remain Quantum Payments.",
+        "If no AI key is configured, menu assist uses category templates (burger, steak, cocktail, …) for modifiers and omit/add, then the same follow-ups. Guest cards remain Quantum Payments.",
       ),
       warn(
         "Assist never invents tax rates or legal claims. You confirm every draft before it saves.",

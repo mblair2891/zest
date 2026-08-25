@@ -7,6 +7,7 @@ import { usePosStore } from "@/lib/pos/store";
 import { formatCurrency } from "@/lib/utils";
 import { isHappyHour, printedItemPriceCents } from "@/lib/pos/calculations";
 import { SetupAssistButton } from "@/components/assist/SetupAssistDialog";
+import { GuideLearnLink } from "@/components/guide/GuideLearnLink";
 import { canEditMenu, canViewMenu, isHostPrivileged } from "@/lib/access/entity-grants";
 import { saveMenuItemFn } from "@/lib/access/api";
 import { isProspectDemo } from "@/lib/demo/session";
@@ -71,9 +72,18 @@ export function MenuAdminView() {
           {ownVendorId ? "Menu · your items and peer view" : "Menu & 86 board"}
         </h2>
         {happy && <Badge variant="success">Happy hour active</Badge>}
+        {canCreate && (
+          <SetupAssistButton
+            domain="menu_item"
+            label="Describe with AI"
+            lockedVendorId={ownVendorId}
+          />
+        )}
+        <GuideLearnLink topicId="menu-modifiers" compact>
+          Learn
+        </GuideLearnLink>
         {host && (
           <>
-            <SetupAssistButton domain="menu_item" label="Describe with AI" />
             <SetupAssistButton domain="category" label="Add category" />
             <SetupAssistButton domain="modifier" label="Add modifiers" />
           </>
@@ -238,6 +248,12 @@ export function MenuAdminView() {
                               <Check className="h-4 w-4" />
                             )}
                           </Button>
+                          <SetupAssistButton
+                            domain="menu_item"
+                            label="Assist"
+                            itemId={item.id}
+                            lockedVendorId={ownVendorId || item.vendorId}
+                          />
                           <Button
                             size="icon"
                             variant="outline"

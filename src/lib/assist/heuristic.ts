@@ -1,3 +1,4 @@
+import { applyMenuTemplate } from "./category-templates";
 import type {
   AssistContext,
   AssistDraft,
@@ -118,21 +119,24 @@ function rangeLabels(from: number, to: number): string[] {
 }
 
 function menuItem(text: string, ctx: AssistContext, messages: AssistMessage[]): AssistTurnResult {
-  const price = dollarsToCents(text);
-  const name = firstClause(text).replace(/\b(add|create|new item)\b/gi, "").trim() || "New item";
+  const seed = ctx.seedItem;
+  const price = dollarsToCents(text) ?? (seed && !/\$|\bdollars?\b/i.test(text) ? seed.priceCents : null);
+  const parsedName = firstClause(text).replace(/\b(add|create|new item|update|edit)\b/gi, "").trim();
+  const name = (seed?.name || parsedName || "New item").replace(/^\w/, (c) => c.toUpperCase());
   const rest = text.includes(",") ? text.slice(text.indexOf(",") + 1).trim() : "";
   const desc = rest
     .replace(/\b(fifteen|sixteen|seventeen|eighteen|nineteen|twenty|\d+)\s+dollars?\b/gi, "")
     .replace(/\$\s*\d+(?:\.\d{1,2})?/, "")
     .replace(/\s{2,}/g, " ")
     .trim();
-  const station = stationOf(text);
+  const station = stationOf(`${text} ${seed?.station ?? ""}`);
   const catMatch = ctx.categories.find((c) =>
     text.toLowerCase().includes(c.name.toLowerCase()),
-  );
-  const vendorMatch = ctx.operators.find((o) =>
-    text.toLowerCase().includes(o.name.toLowerCase()),
-  );
+  ) ?? ctx.categories.find((c) => c.id === seed?.categoryId);
+  const vendorMatch =
+    ctx.operators.find((o) => o.id === ctx.scopedVendorId) ||
+    ctx.operators.find((o) => o.id === seed?.vendorId) ||
+    ctx.operators.find((o) => text.toLowerCase().includes(o.name.toLowerCase()));
   const basisAns = (reply(messages, "price_basis") || text).toLowerCase();
   const vendorAns = reply(messages, "operator");
 
@@ -143,21 +147,36 @@ function menuItem(text: string, ctx: AssistContext, messages: AssistMessage[]): 
       prompt: "What is the price?",
       hint: "Printed/card menu price, e.g. $15",
     });
-  } else if (ctx.cashDiscountEnabled && !/\b(card|printed|cash|menu price)\b/i.test(basisAns)) {
+  } else if (
+    ctx.cashDiscountEnabled &&
+    !seed &&
+    !/\b(card|printed|cash|menu price)\b/i.test(basisAns)
+  ) {
     questions.push({
       id: "price_basis",
       prompt: `Is ${price / 100 === Math.round(price / 100) ? `$${price / 100}` : `$${(price / 100).toFixed(2)}`} the printed/card menu price or the cash price?`,
       hint: "Printed/card stays on the menu. Cash is computed from it.",
     });
   }
-  if (ctx.hostMultiOperator && !vendorMatch && !vendorAns) {
+  if (
+    ctx.hostMultiOperator &&
+    !ctx.scopedVendorId &&
+    !seed?.vendorId &&
+    !vendorMatch &&
+    !vendorAns
+  ) {
     questions.push({
       id: "operator",
       prompt: "Which operator owns this item?",
       hint: ctx.operators.map((o) => o.name).join(", ") || "Operator A / Operator B",
     });
   }
-  if (!catMatch && ctx.categories.length > 1 && !reply(messages, "category")) {
+  if (
+    !seed &&
+    !catMatch &&
+    ctx.categories.length > 1 &&
+    !reply(messages, "category")
+  ) {
     questions.push({
       id: "category",
       prompt: "Which category should this live in?",
@@ -168,7 +187,7 @@ function menuItem(text: string, ctx: AssistContext, messages: AssistMessage[]): 
     return { type: "questions", questions: questions.slice(0, 5), source: "guided" };
   }
 
-  const stated = dollarsToCents(reply(messages, "price") || text) ?? price ?? 0;
+  const stated = dollarsToCents(reply(messages, "price") || text) ?? price ?? seed?.priceCents ?? 0;
   const cashSaid = /\bcash\b/.test(basisAns) && !/\b(card|printed)\b/.test(basisAns);
   let priceCents = stated;
   if (cashSaid && ctx.cashDiscountEnabled && ctx.cashDiscountPercent > 0) {
@@ -180,24 +199,30 @@ function menuItem(text: string, ctx: AssistContext, messages: AssistMessage[]): 
     ctx.categories.find((c) => c.station === station)?.name ||
     ctx.categories[0]?.name ||
     (station === "bar" ? "Bar" : "Mains");
-  const opName = vendorAns || vendorMatch?.name;
-  const op = ctx.operators.find(
-    (o) => o.name.toLowerCase() === (opName ?? "").toLowerCase(),
-  );
+  const opName = ctx.scopedVendorName || vendorAns || vendorMatch?.name;
+  const op =
+    ctx.operators.find((o) => o.id === ctx.scopedVendorId) ||
+    ctx.operators.find(
+      (o) => o.name.toLowerCase() === (opName ?? "").toLowerCase(),
+    );
 
-  const draft: MenuItemDraft = {
-    domain: "menu_item",
-    name: name.replace(/^\w/, (c) => c.toUpperCase()),
-    description: desc,
-    priceCents,
-    priceBasis: cashSaid ? "cash" : "card",
-    categoryName: catName,
-    categoryId: catMatch?.id ?? ctx.categories.find((c) => c.name === catName)?.id,
-    station,
-    vendorId: op?.id,
-    vendorName: op?.name ?? opName,
-    course: courseOf(text),
-  };
+  const draft: MenuItemDraft = applyMenuTemplate(
+    {
+      domain: "menu_item",
+      name,
+      description: desc || seed?.description || "",
+      priceCents,
+      priceBasis: cashSaid ? "cash" : "card",
+      categoryName: catName,
+      categoryId: catMatch?.id ?? ctx.categories.find((c) => c.name === catName)?.id,
+      station: (seed?.station as MenuItemDraft["station"]) || station,
+      vendorId: ctx.scopedVendorId || op?.id || seed?.vendorId,
+      vendorName: op?.name ?? opName,
+      course: courseOf(`${text} ${seed?.course ?? ""}`),
+      itemId: seed?.id,
+    },
+    text,
+  );
   return { type: "draft", draft, source: "guided" };
 }
 

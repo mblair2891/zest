@@ -1,5 +1,5 @@
 import { usePosStore } from "@/lib/pos/store";
-import type { AssistDraft } from "./types";
+import type { AssistDraft, SuggestedModifierGroup } from "./types";
 import type { TicketStation } from "@/lib/pos/types";
 
 const STATIONS: TicketStation[] = ["kitchen", "bar", "expo", "dessert"];
@@ -8,10 +8,67 @@ function asStation(v: string): TicketStation {
   return STATIONS.includes(v as TicketStation) ? (v as TicketStation) : "kitchen";
 }
 
+function ensureModifierGroup(
+  group: SuggestedModifierGroup,
+  itemName: string,
+): string {
+  const store = usePosStore.getState();
+  const want = group.options.map((o) => o.name.toLowerCase());
+  const existing = store.modifierGroups.find((g) => {
+    if (g.name.toLowerCase() !== group.name.toLowerCase()) return false;
+    const have = new Set(g.options.map((o) => o.name.toLowerCase()));
+    return want.every((n) => have.has(n)) || want.length === 0;
+  });
+  if (existing) return existing.id;
+  const clash = store.modifierGroups.some(
+    (g) => g.name.toLowerCase() === group.name.toLowerCase(),
+  );
+  const { id } = store.createModifierGroup({
+    name: clash ? `${group.name} · ${itemName}` : group.name,
+    required: group.required,
+    min: group.min,
+    max: group.max,
+    options: group.options,
+  });
+  return id;
+}
+
+function groupsFromMenuDraft(draft: Extract<AssistDraft, { domain: "menu_item" }>): SuggestedModifierGroup[] {
+  const groups = [...(draft.modifierGroups ?? [])];
+  const omits = (draft.omitPresets ?? [])
+    .map((n) => n.trim())
+    .filter(Boolean)
+    .map((n) => (/^no\b/i.test(n) ? n : `No ${n}`));
+  if (omits.length) {
+    groups.push({
+      name: "Omit",
+      required: false,
+      min: 0,
+      max: omits.length,
+      options: omits.map((name) => ({ name, priceCents: 0 })),
+    });
+  }
+  const adds = (draft.addPresets ?? []).filter((a) => a.name.trim());
+  if (adds.length) {
+    groups.push({
+      name: "Add-ons",
+      required: false,
+      min: 0,
+      max: adds.length,
+      options: adds.map((a) => ({
+        name: a.name.trim(),
+        priceCents: Math.max(0, a.priceCents),
+      })),
+    });
+  }
+  return groups;
+}
+
 export function applyAssistDraft(draft: AssistDraft): { ok: true; detail: string } {
   const store = usePosStore.getState();
 
   if (draft.domain === "menu_item") {
+    const emp = store.getCurrentEmployee();
     let categoryId = draft.categoryId;
     if (!categoryId || !store.categories.some((c) => c.id === categoryId)) {
       const byName = store.categories.find(
@@ -19,20 +76,40 @@ export function applyAssistDraft(draft: AssistDraft): { ok: true; detail: string
       );
       if (byName) categoryId = byName.id;
       else {
-        categoryId = store.createCategory({
+        const created = store.createCategory({
           name: draft.categoryName || "Mains",
           station: asStation(draft.station),
         }).id;
+        categoryId = created || store.categories[0]?.id || "";
       }
     }
     let vendorId = draft.vendorId;
-    if (draft.vendorName && !vendorId) {
+    if (emp?.role === "vendor_operator") vendorId = emp.operatorId;
+    else if (draft.vendorName && !vendorId) {
       const v = store.vendors.find(
         (x) => x.name.toLowerCase() === draft.vendorName!.toLowerCase(),
       );
       vendorId = v?.id;
     }
-    store.createMenuItem({
+    const extraIds = groupsFromMenuDraft(draft).map((g) =>
+      ensureModifierGroup(g, draft.name),
+    );
+    const live = usePosStore.getState();
+    if (draft.itemId && live.menuItems.some((m) => m.id === draft.itemId)) {
+      const prev = live.menuItems.find((m) => m.id === draft.itemId)!;
+      live.updateMenuItem(draft.itemId, {
+        name: draft.name,
+        description: draft.description,
+        priceCents: draft.priceCents,
+        categoryId,
+        station: asStation(draft.station),
+        vendorId,
+        course: draft.course,
+        modifierGroupIds: [...new Set([...prev.modifierGroupIds, ...extraIds])],
+      });
+      return { ok: true, detail: `Updated ${draft.name}` };
+    }
+    live.createMenuItem({
       name: draft.name,
       description: draft.description,
       priceCents: draft.priceCents,
@@ -40,6 +117,7 @@ export function applyAssistDraft(draft: AssistDraft): { ok: true; detail: string
       station: asStation(draft.station),
       vendorId,
       course: draft.course,
+      modifierGroupIds: extraIds,
     });
     return { ok: true, detail: `Added ${draft.name}` };
   }

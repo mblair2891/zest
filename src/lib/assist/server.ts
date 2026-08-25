@@ -1,3 +1,4 @@
+import { applyMenuTemplate } from "./category-templates";
 import { heuristicAssistTurn } from "./heuristic";
 import type {
   AssistContext,
@@ -8,6 +9,8 @@ import type {
   AssistSource,
   AssistTurnResult,
   CashDiscountDraft,
+  MenuItemDraft,
+  SuggestedModifierGroup,
 } from "./types";
 import { ASSIST_DOMAINS } from "./types";
 
@@ -60,7 +63,7 @@ async function callModel(
     body: JSON.stringify({
       model: creds.model,
       temperature: 0.2,
-      max_tokens: 700,
+      max_tokens: 1100,
       messages,
     }),
   });
@@ -72,13 +75,26 @@ async function callModel(
 }
 
 function systemPrompt(domain: AssistDomain, ctx: AssistContext): string {
+  const seed = ctx.seedItem
+    ? `Editing existing item "${ctx.seedItem.name}" id=${ctx.seedItem.id} (keep identity; fill missing; refine modifiers).`
+    : "Creating a new item.";
+  const scoped = ctx.scopedVendorId
+    ? `Locked operator: ${ctx.scopedVendorName || ctx.scopedVendorId} — do not change entity.`
+    : "";
+  const mods = (ctx.existingModifiers ?? [])
+    .slice(0, 12)
+    .map((m) => m.name)
+    .join(", ");
   return `You are Summex setup assist (powered by Quantum Reach). Guest cards are Quantum Payments only.
 Domain: ${domain}
 Location: ${ctx.locationName || "this location"}
 Cash discount: ${ctx.cashDiscountEnabled ? `${ctx.cashDiscountPercent}% round-up ${ctx.cashRoundIncrement}` : "off"}
 Host multi-operator: ${ctx.hostMultiOperator ? "yes" : "no"}
+${seed}
+${scoped}
 Categories: ${ctx.categories.map((c) => c.name).join(", ") || "(none)"}
 Operators: ${ctx.operators.map((o) => o.name).join(", ") || "(none)"}
+Existing modifier groups: ${mods || "(none)"}
 Sections: ${ctx.sections.map((s) => s.name).join(", ") || "(none)"}
 
 Return ONLY JSON:
@@ -86,14 +102,15 @@ Return ONLY JSON:
 OR {"type":"draft","draft":{ "domain":"${domain}", ...fields }}
 
 Rules:
-- Max 5 follow-ups. Stop when you can draft. Never invent tax rates.
-- Menu item: priceCents is the PRINTED/CARD amount (cents). If cash discount is on and the user stated one price, ask whether it is printed/card or cash. If cash, convert to printed (priceCents) using percent.
-- Host multi-operator: if item operator is unclear, ask.
+- Max 3 follow-ups. Ask only when needed (missing price; cash vs card if cash discount is on and the price basis is unclear; operator on a host floor when not locked). Stop as soon as you can draft.
+- Never invent tax rates. Do not mention other processors.
+- Menu item draft fields: name, description, priceCents (PRINTED/CARD cents), priceBasis ("card"|"cash"), categoryName, station (kitchen|bar|expo|dessert), course (appetizer|salad|entree|side|dessert|drink|other), vendorId, vendorName, modifierGroups[{name,required,min,max,options[{name,priceCents}]}], omitPresets[string], addPresets[{name,priceCents}].
+- Suggest 1–3 modifier groups (temp, size, protein, dressing) plus common omit/add presets from the description. Omits are $0. Add-ons may have modest prices in cents.
+- Prefer existing modifier group names when they fit.
+- If cash discount is on and the user stated one price as cash, convert to printed priceCents.
 - Floor: expand "tables 1-6" into labels.
 - Cash discount increment is 0.25 | 0.5 | 0.75 | 1.
-- Staff role is owner|manager|server|bartender|host|kitchen|busser.
-- Station is kitchen|bar|expo|dessert.
-- Do not mention other processors.`;
+- Staff role is owner|manager|server|bartender|host|kitchen|busser.`;
 }
 
 function asString(v: unknown, fallback = ""): string {
@@ -105,40 +122,92 @@ function asNum(v: unknown, fallback = 0): number {
   return Number.isFinite(n) ? n : fallback;
 }
 
-function parseDraft(raw: unknown, domain: AssistDomain): AssistDraft | null {
+function parseModifierGroups(raw: unknown): SuggestedModifierGroup[] {
+  if (!Array.isArray(raw)) return [];
+  return raw
+    .map((x) => {
+      const r = x && typeof x === "object" ? (x as Record<string, unknown>) : {};
+      const name = asString(r.name).trim();
+      if (!name) return null;
+      const options = Array.isArray(r.options)
+        ? r.options
+            .map((opt) => {
+              const o = opt && typeof opt === "object" ? (opt as Record<string, unknown>) : {};
+              const n = asString(o.name).trim();
+              if (!n) return null;
+              return { name: n, priceCents: Math.max(0, Math.round(asNum(o.priceCents))) };
+            })
+            .filter((v): v is { name: string; priceCents: number } => Boolean(v))
+        : [];
+      if (!options.length) return null;
+      const required = Boolean(r.required);
+      return {
+        name,
+        required,
+        min: Math.max(0, Math.round(asNum(r.min, required ? 1 : 0))),
+        max: Math.max(1, Math.round(asNum(r.max, Math.max(1, options.length)))),
+        options,
+      } satisfies SuggestedModifierGroup;
+    })
+    .filter((g): g is SuggestedModifierGroup => Boolean(g))
+    .slice(0, 6);
+}
+
+function parseDraft(raw: unknown, domain: AssistDomain, ctx?: AssistContext): AssistDraft | null {
   if (!raw || typeof raw !== "object") return null;
   const o = raw as Record<string, unknown>;
   const d = (o.domain as string) || domain;
   if (d === "menu_item") {
-    const name = asString(o.name).trim();
+    const name = asString(o.name).trim() || asString(ctx?.seedItem?.name).trim();
     if (!name) return null;
-    const station = asString(o.station, "kitchen");
-    const course = asString(o.course, "entree");
-    return {
-      domain: "menu_item",
+    const station = asString(o.station, ctx?.seedItem?.station || "kitchen");
+    const course = asString(o.course, ctx?.seedItem?.course || "entree");
+    const omitPresets = Array.isArray(o.omitPresets)
+      ? o.omitPresets.map((x) => asString(x).trim()).filter(Boolean).slice(0, 10)
+      : [];
+    const addPresets = Array.isArray(o.addPresets)
+      ? o.addPresets
+          .map((x) => {
+            if (typeof x === "string") {
+              const n = x.trim();
+              return n ? { name: n, priceCents: 0 } : null;
+            }
+            const r = x && typeof x === "object" ? (x as Record<string, unknown>) : {};
+            const n = asString(r.name).trim();
+            if (!n) return null;
+            return { name: n, priceCents: Math.max(0, Math.round(asNum(r.priceCents))) };
+          })
+          .filter((v): v is { name: string; priceCents: number } => Boolean(v))
+          .slice(0, 10)
+      : [];
+    const vendorId =
+      ctx?.scopedVendorId || asString(o.vendorId) || ctx?.seedItem?.vendorId || undefined;
+    const st: "kitchen" | "bar" | "expo" | "dessert" =
+      station === "bar" || station === "expo" || station === "dessert" ? station : "kitchen";
+    const draft = {
+      domain: "menu_item" as const,
       name,
-      description: asString(o.description),
-      priceCents: Math.max(0, Math.round(asNum(o.priceCents))),
-      priceBasis: o.priceBasis === "cash" ? "cash" : "card",
+      description: asString(o.description) || asString(ctx?.seedItem?.description),
+      priceCents: Math.max(
+        0,
+        Math.round(asNum(o.priceCents, ctx?.seedItem?.priceCents ?? 0)),
+      ),
+      priceBasis: o.priceBasis === "cash" ? ("cash" as const) : ("card" as const),
       categoryName: asString(o.categoryName, "Mains"),
-      categoryId: asString(o.categoryId) || undefined,
-      station:
-        station === "bar" || station === "expo" || station === "dessert"
-          ? station
-          : "kitchen",
-      vendorId: asString(o.vendorId) || undefined,
-      vendorName: asString(o.vendorName) || undefined,
+      categoryId: asString(o.categoryId) || ctx?.seedItem?.categoryId || undefined,
+      station: st,
+      vendorId,
+      vendorName: ctx?.scopedVendorName || asString(o.vendorName) || undefined,
       modifierHint: asString(o.modifierHint) || undefined,
-      course:
-        course === "appetizer" ||
-        course === "salad" ||
-        course === "side" ||
-        course === "dessert" ||
-        course === "drink" ||
-        course === "other"
-          ? course
-          : "entree",
+      course: (["appetizer", "salad", "side", "dessert", "drink", "other"].includes(course)
+        ? course
+        : "entree") as MenuItemDraft["course"],
+      itemId: asString(o.itemId) || ctx?.seedItem?.id,
+      modifierGroups: parseModifierGroups(o.modifierGroups),
+      omitPresets,
+      addPresets,
     };
+    return applyMenuTemplate(draft, `${name} ${draft.description}`);
   }
   if (d === "category") {
     const name = asString(o.name).trim();
@@ -265,7 +334,12 @@ function parseDraft(raw: unknown, domain: AssistDomain): AssistDraft | null {
   return null;
 }
 
-function parseTurn(raw: unknown, domain: AssistDomain, source: AssistSource): AssistTurnResult | null {
+function parseTurn(
+  raw: unknown,
+  domain: AssistDomain,
+  source: AssistSource,
+  ctx?: AssistContext,
+): AssistTurnResult | null {
   if (!raw || typeof raw !== "object") return null;
   const o = raw as Record<string, unknown>;
   if (o.type === "questions" && Array.isArray(o.questions)) {
@@ -281,10 +355,10 @@ function parseTurn(raw: unknown, domain: AssistDomain, source: AssistSource): As
       if (asString(row.hint).trim()) item.hint = asString(row.hint).trim();
       questions.push(item);
     });
-    questions.splice(5);
+    questions.splice(3);
     if (questions.length) return { type: "questions", questions, source };
   }
-  const draft = parseDraft(o.draft ?? o, domain);
+  const draft = parseDraft(o.draft ?? o, domain, ctx);
   if (draft) return { type: "draft", draft, source };
   return null;
 }
@@ -312,7 +386,7 @@ export async function runAssistSetupTurn(opts: {
       })),
     ];
     const text = await callModel(chat);
-    const parsed = text ? parseTurn(extractJson(text), domain, "ai") : null;
+    const parsed = text ? parseTurn(extractJson(text), domain, "ai", opts.context) : null;
     if (parsed) {
       console.info("[assist]", domain, "ai", parsed.type);
       return parsed;
