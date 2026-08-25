@@ -51,10 +51,11 @@ export const ROLE_GUIDE_TOPICS: GuideTopic[] = [
         "Confirm the location mode (restaurant vs host + operators) matches how you actually serve.",
         "Add staff PINs and section assignments.",
         "Build enough menu to send a ticket. Do not wait for a demo seed.",
+        "Costs → Recipes: describe or upload a recipe, confirm, save. Price recs use those costs.",
         "Close the period on Settle. Guest cards are Quantum Payments.",
       ),
       tip("The Operators Guide overlay is in the header on every surface."),
-      related("login", "invites-roles", "host-capture", "type-restaurant"),
+      related("login", "invites-roles", "host-capture", "type-restaurant", "recipes-prep"),
     ],
   }),
   topic({
@@ -73,11 +74,12 @@ export const ROLE_GUIDE_TOPICS: GuideTopic[] = [
         "Seat (or open a counter check). Tap a table to change status or preview QR. Add items. Send.",
         "Take Quantum Payments when online. If the uplink is down, cash still closes; card requires connection.",
         "Do not open a second check for another operator on a host floor.",
+        "Recipe / ingredients on a menu tile or selected check line shows allergens and what’s in the plate — not full prep.",
       ),
       p(
         "On a host + multi-operator floor, food and drinks still live on one guest check. You are not splitting cards by stall.",
       ),
-      related("type-restaurant", "type-food-hall", "host-capture"),
+      related("type-restaurant", "type-food-hall", "host-capture", "recipes-prep"),
     ],
   }),
   topic({
@@ -95,8 +97,9 @@ export const ROLE_GUIDE_TOPICS: GuideTopic[] = [
         "PIN into Kitchen or Bar. You see only your station’s tickets.",
         "Start when you begin, Bump when ready. The originating server’s device toasts, chimes, and vibrates. Expo or floor marks Delivered. Bump still works offline. Do not take payment from the ODS.",
         "On a host floor, bar tickets belong to the bar operator; kitchen tickets to the kitchen operator.",
+        "Recipe on a ticket opens full prep steps, quantities, glassware, and garnish in large type.",
       ),
-      related("type-food-hall", "type-bar-lounge", "type-restaurant"),
+      related("type-food-hall", "type-bar-lounge", "type-restaurant", "recipes-prep"),
     ],
   }),
   topic({

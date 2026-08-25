@@ -1,5 +1,7 @@
 import type { Order } from "@/lib/pos/types";
 import type { CostSku, ItemRecipe } from "./types";
+import { recipeMenuIds } from "@/lib/recipes/normalize";
+import { suggestSku } from "@/lib/recipes/match-sku";
 
 export function salesQtyByMenuItem(
   orders: Order[],
@@ -42,13 +44,16 @@ export function theoreticalUse(opts: {
   const skuById = new Map(opts.skus.map((s) => [s.id, s]));
   for (const r of opts.recipes) {
     if (opts.entityId && r.entityId && r.entityId !== opts.entityId) continue;
-    const sold = opts.sales[r.menuItemId] ?? 0;
+    const sold = recipeMenuIds(r).reduce((n, id) => n + (opts.sales[id] ?? 0), 0);
     if (!sold) continue;
     const factor = 1 + Math.max(0, r.wasteFactor);
+    const yieldQty = r.yieldQty > 0 ? r.yieldQty : 1;
     for (const line of r.lines) {
-      const sku = skuById.get(line.skuId);
+      const sku =
+        (line.skuId ? skuById.get(line.skuId) : undefined) ??
+        suggestSku(line.name || "", opts.skus);
       if (!sku) continue;
-      const packs = toPackUnits(sku, line.qty, line.unit) * sold * factor;
+      const packs = toPackUnits(sku, line.qty, line.unit) * (sold / yieldQty) * factor;
       use[sku.id] = (use[sku.id] ?? 0) + packs;
     }
   }
@@ -63,10 +68,13 @@ export function recipeCostCents(
   const skuById = new Map(skus.map((s) => [s.id, s]));
   let cents = 0;
   const factor = 1 + Math.max(0, recipe.wasteFactor);
+  const yieldQty = recipe.yieldQty > 0 ? recipe.yieldQty : 1;
   for (const line of recipe.lines) {
-    const sku = skuById.get(line.skuId);
-    if (!sku) continue;
-    const packs = toPackUnits(sku, line.qty, line.unit);
+    const sku =
+      (line.skuId ? skuById.get(line.skuId) : undefined) ??
+      suggestSku(line.name || "", skus);
+    if (!sku || !sku.costCents) continue;
+    const packs = toPackUnits(sku, line.qty, line.unit) / yieldQty;
     cents += packs * sku.costCents * factor;
   }
   return Math.round(cents);

@@ -9,6 +9,19 @@ import type { GuideUpdate } from "@/lib/guide/types";
  */
 export const WHATS_NEW_ENTRIES: GuideUpdate[] = [
   {
+    id: "upd_2026_09_22_recipes",
+    date: "2026-09-22",
+    title: "Recipes: AI intake, floor prep, cost linkage",
+    summary:
+      "Describe or upload a recipe. Confirm to save. Servers see ingredients and allergens. Bar and kitchen see full prep. SKU costs feed margin and variance.",
+    body: "Costs → Recipes or Menu → Recipe. Type, voice, or photo. Map SKUs when the catalog matches. Recipe / ingredients on Order and ODS. Prices still change only when you Save on Menu.",
+    roles: ["owner_manager", "server", "kitchen_bar", "vendor_operator"],
+    surfaces: ["floor", "kds"],
+    audience: "all",
+    topicId: "recipes-prep",
+    tags: ["recipe", "prep", "allergen", "ai"],
+  },
+  {
     id: "upd_2026_09_21_costs",
     date: "2026-09-21",
     title: "Cost control: invoices, variance, POs, price recs",

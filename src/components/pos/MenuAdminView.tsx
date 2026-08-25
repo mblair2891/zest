@@ -13,6 +13,7 @@ import { saveMenuItemFn } from "@/lib/access/api";
 import { isProspectDemo } from "@/lib/demo/session";
 import { useSaasStore } from "@/lib/pos/saas-store";
 import { useCostStore } from "@/lib/costs/store";
+import { RecipeAssistButton } from "@/components/recipes/RecipeAssistDialog";
 
 export function MenuAdminView() {
   const categories = usePosStore((s) => s.categories);
@@ -272,6 +273,7 @@ export function MenuAdminView() {
                             itemId={item.id}
                             lockedVendorId={ownVendorId || item.vendorId}
                           />
+                          <RecipeAssistButton menuItemId={item.id} label="Recipe" />
                           <Button
                             size="icon"
                             variant="outline"

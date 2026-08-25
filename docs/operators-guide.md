@@ -130,6 +130,22 @@ price recs**. User-facing copy never accuses staff of theft.
 Permissions: invoice post, PO create/approve/receive, count, alert respond.
 In-app: `/guide?topic=cost-control`.
 
+## Recipes & prep
+
+Recipes link to menu items (entity-scoped). Lines: ingredient name + optional
+SKU, qty, unit. Prep steps, glassware, garnish, allergens, yield.
+
+Create: Describe recipe (type / voice / upload). Preview then Confirm.
+No key → templates + manual yield form.
+
+Floor: **Recipe / ingredients** on Order (tile or selected line) and ODS.
+Server = ingredients + allergens. Bartender/cook = quantities + steps (large type).
+
+Cost: theoretical plate cost from SKU unit costs; sales × recipe qty feeds
+variance. Price recs still require Menu Save.
+
+In-app: `/guide?topic=recipes-prep`.
+
 ## Offline mode
 
 Wi‑Fi-first. If internet drops, the active location still runs from cache:

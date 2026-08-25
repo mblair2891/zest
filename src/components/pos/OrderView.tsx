@@ -38,6 +38,7 @@ import { ManagerPinDialog } from "./ManagerPinDialog";
 import { QrMark } from "./QrMark";
 import { tableGuestUrl } from "@/lib/pos/qr-table";
 import { getDemoType } from "@/lib/demo/session";
+import { RecipeLookupButton } from "@/components/recipes/RecipeLookup";
 
 export function OrderView() {
   const activeOrderId = usePosStore((s) => s.activeOrderId);
@@ -352,6 +353,18 @@ export function OrderView() {
           </div>
         )}
 
+        {selectedLineId &&
+          order.lines.find((l) => l.id === selectedLineId)?.menuItemId && (
+            <div className="border-t border-border px-2 pt-2">
+              <RecipeLookupButton
+                menuItemId={
+                  order.lines.find((l) => l.id === selectedLineId)!.menuItemId
+                }
+                large
+              />
+            </div>
+          )}
+
         <div className="grid grid-cols-4 gap-1 border-t border-border p-2">
           <Button
             size="sm"
@@ -552,34 +565,38 @@ export function OrderView() {
                   : item.priceCents;
               const dualPrice = printedItemPriceCents(printed, settings);
               return (
-                <button
-                  key={item.id}
-                  type="button"
-                  disabled={!item.available}
-                  onClick={() => onMenuClick(item)}
-                  className={cn(
-                    "flex min-h-[5.5rem] flex-col rounded-2xl border border-border bg-surface p-3 text-left transition hover:border-border-strong active:scale-[0.98]",
-                    !item.available && "opacity-40",
-                  )}
-                >
-                  <span className="text-sm font-medium leading-snug">
-                    {item.name}
-                  </span>
-                  <span className="mt-auto flex items-end justify-between pt-2">
-                    <span className="text-[10px] text-muted-foreground">
-                      {vendor?.shortName ?? "—"}
-                      {!item.available ? " · 86" : ""}
+                <div key={item.id} className="relative">
+                  <button
+                    type="button"
+                    disabled={!item.available}
+                    onClick={() => onMenuClick(item)}
+                    className={cn(
+                      "flex min-h-[5.5rem] w-full flex-col rounded-2xl border border-border bg-surface p-3 text-left transition hover:border-border-strong active:scale-[0.98]",
+                      !item.available && "opacity-40",
+                    )}
+                  >
+                    <span className="text-sm font-medium leading-snug">
+                      {item.name}
                     </span>
-                    <span className="text-right tabular text-sm font-semibold">
-                      <span className="block">{formatCurrency(dualPrice.card)}</span>
-                      {dualPrice.enabled && (
-                        <span className="block text-[10px] font-normal text-muted-foreground">
-                          Cash {formatCurrency(dualPrice.cash)}
-                        </span>
-                      )}
+                    <span className="mt-auto flex items-end justify-between pt-2">
+                      <span className="text-[10px] text-muted-foreground">
+                        {vendor?.shortName ?? "—"}
+                        {!item.available ? " · 86" : ""}
+                      </span>
+                      <span className="text-right tabular text-sm font-semibold">
+                        <span className="block">{formatCurrency(dualPrice.card)}</span>
+                        {dualPrice.enabled && (
+                          <span className="block text-[10px] font-normal text-muted-foreground">
+                            Cash {formatCurrency(dualPrice.cash)}
+                          </span>
+                        )}
+                      </span>
                     </span>
-                  </span>
-                </button>
+                  </button>
+                  <div className="absolute right-1 top-1">
+                    <RecipeLookupButton menuItemId={item.id} icon />
+                  </div>
+                </div>
               );
             })}
           </div>

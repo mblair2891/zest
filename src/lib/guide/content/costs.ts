@@ -32,7 +32,34 @@ export const COST_TOPICS: GuideTopic[] = [
       warn(
         "Copy never says theft to the floor. Investigate pours, waste, events, or counts.",
       ),
-      related("cost-invoices", "cost-variance", "cost-ordering", "menu-modifiers"),
+      related("cost-invoices", "cost-variance", "cost-ordering", "menu-modifiers", "recipes-prep"),
+    ],
+  }),
+  topic({
+    id: "recipes-prep",
+    chapterId: "costs",
+    title: "Recipes, allergens, floor prep",
+    summary: "AI or templates create recipes. Servers see ingredients; bar/kitchen see full prep.",
+    roles: ["owner_manager", "server", "kitchen_bar", "vendor_operator"],
+    keywords: ["recipe", "prep", "allergen", "garnish", "voice", "upload"],
+    openView: "recipes",
+    blocks: [
+      why(
+        "The floor should not guess what’s in a plate. Prep lives with the item; cost lives with the SKU.",
+      ),
+      steps(
+        "Menu or Costs → Recipes → Describe recipe. Type, speak, or upload a card/PDF.",
+        "Preview ingredients, steps, allergens, glassware. Map SKUs when the catalog has a match. Confirm — never auto-save.",
+        "No API key: templates (margarita, burger, salad) plus the manual yield form still work.",
+        "Order: book icon on a tile, or Recipe / ingredients on a selected line. Server sees names + allergens. Bartender/cook sees quantities and steps in large type.",
+        "ODS tickets show the same Recipe control for the cook.",
+      ),
+      ul(
+        "One recipe can link to a menu item (and more ids). Entity-scoped for host vs operators.",
+        "Theoretical cost = ingredient qty × latest SKU cost. Feeds price recs (human Save on Menu).",
+        "Sales × recipe qty feeds variance when the costs module is on.",
+      ),
+      related("cost-control", "cost-variance", "role-server", "role-kitchen-bar", "menu-modifiers"),
     ],
   }),
   topic({

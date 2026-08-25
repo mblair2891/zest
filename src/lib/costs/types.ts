@@ -158,18 +158,51 @@ export interface CostLedgerEntry {
 }
 
 export interface RecipeLine {
-  skuId: string;
+  name: string;
+  skuId?: string;
   qty: number;
   unit: string;
 }
 
+export interface PrepStep {
+  text: string;
+  seconds?: number;
+}
+
 export interface ItemRecipe {
   id: string;
+  /** Primary menu item (also first of menuItemIds). */
   menuItemId: string;
+  menuItemIds: string[];
   name: string;
   entityId: string;
+  station?: "kitchen" | "bar" | "expo" | "dessert";
   wasteFactor: number;
+  yieldQty: number;
+  yieldUnit: string;
+  glassware?: string;
+  garnish?: string;
+  allergens: string[];
+  dietary: string[];
+  notes?: string;
+  steps: PrepStep[];
   lines: RecipeLine[];
+}
+
+export interface RecipeExtract {
+  name: string;
+  yieldQty: number;
+  yieldUnit: string;
+  glassware?: string;
+  garnish?: string;
+  station?: "kitchen" | "bar" | "expo" | "dessert";
+  allergens: string[];
+  dietary: string[];
+  notes?: string;
+  steps: PrepStep[];
+  lines: Array<{ name: string; qty: number; unit: string; skuHint?: string }>;
+  source: "ai" | "guided";
+  note?: string;
 }
 
 export interface InventoryCount {

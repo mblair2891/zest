@@ -18,7 +18,11 @@ export function buildPriceRecommendations(opts: {
   now: number;
 }): PriceRecommendation[] {
   const recs: PriceRecommendation[] = [];
-  const byMenu = new Map(opts.recipes.map((r) => [r.menuItemId, r]));
+  const byMenu = new Map<string, ItemRecipe>();
+  for (const r of opts.recipes) {
+    const ids = r.menuItemIds?.length ? r.menuItemIds : [r.menuItemId];
+    for (const id of ids) byMenu.set(id, r);
+  }
   for (const item of opts.menuItems) {
     if (!item.available) continue;
     const recipe = byMenu.get(item.id);
@@ -26,7 +30,9 @@ export function buildPriceRecommendations(opts: {
     const cost = recipeCostCents(recipe, opts.skus);
     if (cost <= 0 || item.priceCents <= 0) continue;
     const pct = (cost / item.priceCents) * 100;
-    const sku = opts.skus.find((s) => recipe.lines.some((l) => l.skuId === s.id));
+    const sku = opts.skus.find((s) =>
+      recipe.lines.some((l) => l.skuId === s.id),
+    );
     const cat = (sku?.category ?? "food") as CostCategory;
     const target =
       opts.settings.itemTargetCostPct[item.id] ??

@@ -30,6 +30,7 @@ import {
 } from "@/lib/costs/types";
 import { formatCurrency, formatDateTime } from "@/lib/utils";
 import { cn } from "@/lib/utils";
+import { RecipeAssistButton } from "@/components/recipes/RecipeAssistDialog";
 
 export type CostTab =
   | "board"
@@ -412,12 +413,18 @@ function RecipePanel() {
   const [unit, setUnit] = useState("ml");
   const [waste, setWaste] = useState("0.03");
   const item = menuItems.find((m) => m.id === menuItemId);
-  const existing = recipes.find((r) => r.menuItemId === menuItemId);
+  const existing = recipes.find(
+    (r) => (r.menuItemIds?.length ? r.menuItemIds : [r.menuItemId]).includes(menuItemId),
+  );
+  const visible = recipes.filter((r) => !scope || r.entityId === scope || r.entityId === HOST_SCOPE);
 
   return (
     <div className="grid gap-4 lg:grid-cols-2">
       <div className="space-y-2 rounded-2xl border border-border bg-surface p-4">
-        <p className="text-sm font-medium">Yield per sale</p>
+        <div className="flex flex-wrap items-center gap-2">
+          <p className="text-sm font-medium">Yield per sale</p>
+          <RecipeAssistButton menuItemId={menuItemId} label="Describe recipe" />
+        </div>
         <select
           className="h-10 w-full rounded-xl border border-border bg-bg px-3 text-sm"
           value={menuItemId}
@@ -452,17 +459,24 @@ function RecipePanel() {
         <Button
           onClick={() => {
             if (!item || !skuId) return;
+            const sku = skus.find((s) => s.id === skuId);
             const lines = [...(existing?.lines ?? [])];
             const hit = lines.find((l) => l.skuId === skuId);
             const q = parseFloat(qty) || 0;
             if (hit) hit.qty = q;
-            else lines.push({ skuId, qty: q, unit });
+            else lines.push({ name: sku?.name || skuId, skuId, qty: q, unit });
             upsert({
               id: existing?.id,
               menuItemId: item.id,
-              name: item.name,
+              menuItemIds: [item.id],
+              name: existing?.name || item.name,
               entityId: item.vendorId || HOST_SCOPE,
               wasteFactor: parseFloat(waste) || 0,
+              yieldQty: existing?.yieldQty ?? 1,
+              yieldUnit: existing?.yieldUnit ?? "portion",
+              allergens: existing?.allergens ?? [],
+              dietary: existing?.dietary ?? [],
+              steps: existing?.steps ?? [],
               lines,
             });
           }}
@@ -471,34 +485,45 @@ function RecipePanel() {
         </Button>
       </div>
       <div className="space-y-2">
-        {recipes.map((r) => {
+        {visible.map((r) => {
           const cost = recipeCostCents(r, skus);
-          const mi = menuItems.find((m) => m.id === r.menuItemId);
+          const mi = menuItems.find((m) =>
+            (r.menuItemIds?.length ? r.menuItemIds : [r.menuItemId]).includes(m.id),
+          );
           const pct =
             mi && mi.priceCents ? Math.round((cost / mi.priceCents) * 1000) / 10 : null;
           return (
             <div key={r.id} className="rounded-2xl border border-border bg-surface p-4 text-sm">
               <p className="font-medium">{r.name}</p>
               <p className="text-xs text-muted-foreground">
-                Plate {formatCurrency(cost)}
+                Plate {cost > 0 ? formatCurrency(cost) : "—"}
                 {mi ? ` · sell ${formatCurrency(mi.priceCents)}` : ""}
                 {pct != null ? ` · ${pct}% cost` : ""}
-                {` · waste ${(r.wasteFactor * 100).toFixed(0)}%`}
+                {` · ${r.yieldQty ?? 1} ${r.yieldUnit ?? "portion"}`}
+                {r.glassware ? ` · ${r.glassware}` : ""}
               </p>
               <ul className="mt-1 text-xs text-muted-foreground">
-                {r.lines.map((l) => (
-                  <li key={l.skuId}>
+                {(r.lines ?? []).map((l, i) => (
+                  <li key={`${l.name}-${i}`}>
                     {l.qty}
-                    {l.unit} {skus.find((s) => s.id === l.skuId)?.name ?? l.skuId}
+                    {l.unit} {l.name || skus.find((s) => s.id === l.skuId)?.name}
+                    {l.skuId ? "" : " · no SKU"}
                   </li>
                 ))}
               </ul>
+              {(r.steps?.length ?? 0) > 0 && (
+                <ol className="mt-2 list-decimal pl-4 text-xs text-muted-foreground">
+                  {r.steps.map((s, i) => (
+                    <li key={i}>{s.text}</li>
+                  ))}
+                </ol>
+              )}
             </div>
           );
         })}
-        {recipes.length === 0 && (
+        {visible.length === 0 && (
           <p className="text-sm text-muted-foreground">
-            Attach SKUs to a menu item (e.g. 45ml Tito’s per vodka highball).
+            Describe a cocktail or plate, or attach SKUs (e.g. 45ml Tito’s per highball).
           </p>
         )}
       </div>

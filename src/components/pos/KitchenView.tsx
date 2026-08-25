@@ -12,6 +12,7 @@ import { PinKeypad } from "./PinKeypad";
 import { findStaffByPin } from "@/lib/pos/pin";
 import { isProspectDemo } from "@/lib/demo/session";
 import { isDemoStaffPin } from "@/lib/demo/pin";
+import { RecipeLookupButton } from "@/components/recipes/RecipeLookup";
 
 interface Props {
   station: TicketStation;
@@ -33,6 +34,7 @@ function fmtElapsed(sec: number): string {
 
 export function KitchenView({ station, expo }: Props) {
   const tickets = usePosStore((s) => s.tickets);
+  const orders = usePosStore((s) => s.orders);
   const vendors = usePosStore((s) => s.vendors);
   const bumpTicket = usePosStore((s) => s.bumpTicket);
   const recallTicket = usePosStore((s) => s.recallTicket);
@@ -241,6 +243,16 @@ export function KitchenView({ station, expo }: Props) {
                     <li key={it.lineId} className="text-sm">
                       <span className="font-semibold tabular">{it.quantity}×</span>{" "}
                       {it.name}
+                      {(() => {
+                        const mid = orders
+                          .find((o) => o.id === t.orderId)
+                          ?.lines.find((l) => l.id === it.lineId)?.menuItemId;
+                        return mid ? (
+                          <span className="ml-1 inline-block align-middle">
+                            <RecipeLookupButton menuItemId={mid} />
+                          </span>
+                        ) : null;
+                      })()}
                       {it.modifiers.length > 0 && (
                         <span className="block text-xs text-muted-foreground">
                           {it.modifiers.join(", ")}

@@ -223,12 +223,9 @@ interface CostState {
   ) => void;
   postInvoice: (invoiceId: string) => { ok: boolean; error?: string };
   voidInvoice: (invoiceId: string) => void;
-  upsertRecipe: (input: {
-    id?: string;
-    menuItemId: string;
+  upsertRecipe: (input: Partial<ItemRecipe> & {
     name: string;
-    entityId?: string;
-    wasteFactor?: number;
+    menuItemId: string;
     lines: ItemRecipe["lines"];
   }) => string;
   runCount: (kind: CountKind, lines: Array<{ skuId: string; qty: number }>, note?: string) => void;
@@ -535,13 +532,33 @@ export const useCostStore = create<CostState>()(
       upsertRecipe: (input) => {
         const a = actor();
         const id = input.id ?? uid("rcp");
+        const menuItemIds = [
+          ...new Set(
+            [input.menuItemId, ...(input.menuItemIds ?? [])].filter(Boolean),
+          ),
+        ];
         const rec: ItemRecipe = {
           id,
           menuItemId: input.menuItemId,
-          name: input.name,
+          menuItemIds: menuItemIds.length ? menuItemIds : [input.menuItemId],
+          name: input.name.trim(),
           entityId: input.entityId || a.entity || HOST_SCOPE,
+          station: input.station,
           wasteFactor: input.wasteFactor ?? get().settings.defaultWasteFactor,
-          lines: input.lines,
+          yieldQty: input.yieldQty && input.yieldQty > 0 ? input.yieldQty : 1,
+          yieldUnit: input.yieldUnit || "portion",
+          glassware: input.glassware,
+          garnish: input.garnish,
+          allergens: input.allergens ?? [],
+          dietary: input.dietary ?? [],
+          notes: input.notes,
+          steps: input.steps ?? [],
+          lines: input.lines.map((l) => ({
+            name: (l.name || l.skuId || "Ingredient").trim(),
+            skuId: l.skuId || undefined,
+            qty: Number(l.qty) || 0,
+            unit: l.unit || "each",
+          })),
         };
         const exists = get().recipes.some((r) => r.id === id);
         set({
@@ -648,7 +665,9 @@ export const useCostStore = create<CostState>()(
             windowEnd: now,
             salesQty: Object.entries(sales).reduce((n, [mid, q]) => {
               const r = get().recipes.find(
-                (x) => x.menuItemId === mid && x.lines.some((l) => l.skuId === sku.id),
+                (x) =>
+                  (x.menuItemIds ?? [x.menuItemId]).includes(mid) &&
+                  x.lines.some((l) => l.skuId === sku.id || l.name),
               );
               return n + (r ? q : 0);
             }, 0),
@@ -1209,6 +1228,8 @@ export function heuristicExtract(text: string, fileName?: string): InvoiceExtrac
 
 export function recipePlateCost(menuItemId: string): number {
   const s = useCostStore.getState();
-  const r = s.recipes.find((x) => x.menuItemId === menuItemId);
+  const r = s.recipes.find((x) =>
+    (x.menuItemIds?.length ? x.menuItemIds : [x.menuItemId]).includes(menuItemId),
+  );
   return recipeCostCents(r, s.skus);
 }
