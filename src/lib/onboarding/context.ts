@@ -57,9 +57,9 @@ export function walkthroughLabel(key: WalkthroughKey): string {
     case "kiosk":
       return "Guest kiosk";
     case "kds_kitchen":
-      return "Kitchen KDS";
+      return "Kitchen ODS";
     case "kds_bar":
-      return "Bar KDS";
+      return "Bar ODS";
     case "platform_admin":
       return "Platform Admin";
     default:

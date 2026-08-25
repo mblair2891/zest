@@ -111,7 +111,7 @@ export const FLOOR_TOPICS: GuideTopic[] = [
       ),
       steps(
         "For counter: open Takeout, name the guest, build the check, take payment, send.",
-        "For table: never take a card on an unnamed counter ticket if the guest is seated — attach the table so KDS and the floor stay in sync.",
+        "For table: never take a card on an unnamed counter ticket if the guest is seated — attach the table so ODS and the floor stay in sync.",
         "Hall / pod guests can still pay once at a host stand even if they ordered at several stalls.",
       ),
       related("floor-tables", "multi-operator-orders", "tenders-tips"),

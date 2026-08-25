@@ -421,6 +421,7 @@ export interface KitchenTicket {
   orderNumber: number;
   tableLabel: string;
   serverName: string;
+  serverId?: string;
   station: TicketStation;
   vendorId?: string;
   vendorName?: string;
@@ -429,6 +430,7 @@ export interface KitchenTicket {
   createdAt: number;
   elapsedSec: number;
   bumpedAt?: number;
+  startedAt?: number;
   items: KitchenTicketItem[];
 }
 

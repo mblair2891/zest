@@ -156,7 +156,7 @@ export function InterviewPanel({
           onChange={setFreeText}
           rows={7}
           className="min-h-36"
-          placeholder="We run a hall with a bar program and two kitchens. Guests pay one check. We need floor, KDS, and operator payouts…"
+          placeholder="We run a hall with a bar program and two kitchens. Guests pay one check. We need floor, ODS, and operator payouts…"
         />
         <span className="mt-1 block text-[11px] text-muted-foreground">
           {freeText.trim().length}/40 minimum

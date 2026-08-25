@@ -9,7 +9,7 @@ const PLANS = [
   {
     name: "Starter",
     price: "$0 trial",
-    note: "1 location · core POS, KDS, reports, menu",
+    note: "1 location · core POS, ODS, reports, menu"
   },
   {
     name: "Full service",

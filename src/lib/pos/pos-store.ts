@@ -186,6 +186,7 @@ export interface PosStore {
   recallTicket: (ticketId: string) => void;
   startTicket: (ticketId: string) => void;
   readyTicket: (ticketId: string) => void;
+  deliverReadyTicketsForTable: (tableId: string) => void;
   addWaitlist: (entry: Partial<WaitlistEntry>) => void;
   updateWaitlistStatus: (
     id: string,

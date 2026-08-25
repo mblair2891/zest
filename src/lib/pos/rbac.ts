@@ -21,7 +21,7 @@ export const ROLE_BLURB: Record<EmployeeRole, string> = {
   server: "Assigned sections, checks, pay — no settings",
   bartender: "Bar tickets, tabs, drink 86",
   host: "Waitlist, reservations, seating",
-  kitchen: "KDS, bump, item 86",
+  kitchen: "ODS, Start/Bump, item 86",
   busser: "Table turns",
   cashier: "Counter queue and pay",
   vendor_operator: "Own menu, tickets, reports — peer menus view-only unless host grants",

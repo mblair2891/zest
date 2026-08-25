@@ -715,7 +715,7 @@ export const CHECKLISTS: ShiftChecklist[] = [
     items: [
       { id: "c1", text: "Count opening float $200", done: true, required: true },
       { id: "c2", text: "Check walk-in temps", done: true, required: true },
-      { id: "c3", text: "Power on KDS / printers", done: true, required: true },
+      { id: "c3", text: "Power on ODS / printers", done: true, required: true },
       { id: "c4", text: "Review 86 board", done: false, required: true },
       { id: "c5", text: "Brief staff on specials", done: false, required: false },
     ],

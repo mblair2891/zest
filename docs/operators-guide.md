@@ -89,10 +89,22 @@ go through `saveLocationSettingsFn` (membership owner/manager/platform_admin).
 
 In-app: `/guide?topic=roles-dashboards` and `/guide?topic=location-settings`.
 
+## Order Display (ODS)
+
+User-facing name is **Order Display / ODS** (not KDS). Internal ids (`kds`,
+`kitchen_kds`, `bar_kds`) stay. Tickets route by **station + operator/entity**.
+
+Flow: **Send** → display → **Start** (preparing) → **Bump** (ready). Expo or
+the originating server marks **Delivered** on the floor. The originating staff
+device is notified on each status change (toast, chime, vibrate where the
+platform allows). Device assignment: **Kitchen ODS**, **Bar ODS**.
+
+In-app: `/guide?topic=kds`. Device labels: Settings → Device assignment.
+
 ## Offline mode
 
 Wi‑Fi-first. If internet drops, the active location still runs from cache:
-orders, KDS bump, cash, seating, waitlist (SMS pending). Card is blocked
+orders, ODS bump, cash, seating, waitlist (SMS pending). Card is blocked
 (“Card requires connection”). Outbox (IndexedDB) flushes idempotently on
 reconnect — cash never double-captures. Server wins settings; open orders
 merge by id. Failed rows surface to the manager.
@@ -142,7 +154,7 @@ does not. Replay from Guide or **Replay workflow** in the header. Demo role
 or device switch offers that job’s tour if not completed.
 
 Scripts: owner, manager, server, host stand, bartender, kitchen, cashier,
-vendor operator, accountant, kiosk, KDS kitchen/bar, platform admin.
+vendor operator, accountant, kiosk, kitchen/bar ODS, platform admin.
 
 In-app: `/guide?topic=role-walkthroughs`.
 
@@ -199,7 +211,7 @@ In-app: `/guide?topic=empty-start` and `/guide?topic=prospect-demos`.
 | Platform Admin | Control plane, pipeline, tenants — **signed-in admin only** |
 | Owner / Manager | Site ops, money, staff |
 | Server | Floor, checks, guests (includes FOH host stand & busser) |
-| Kitchen / Bar | Tickets, bump, routing |
+| Kitchen / Bar | ODS tickets, Start/Bump, routing |
 | Host (multi-operator) | Hall/pod host — not the FOH host stand |
 | Vendor / Operator | Stall brand (Operator A / Operator B) |
 

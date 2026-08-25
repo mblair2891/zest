@@ -35,7 +35,7 @@ function seedPeers(now: number): LanPeer[] {
   return [
     { id: "peer_hub", name: "Counter 1 · hub", kind: "pos", lastSeenAt: now },
     { id: "peer_hh", name: "Handheld · floor", kind: "handheld", lastSeenAt: now - 8_000 },
-    { id: "peer_kds", name: "Kitchen KDS", kind: "kds", lastSeenAt: now - 3_000 },
+    { id: "peer_kds", name: "Kitchen ODS", kind: "kds", lastSeenAt: now - 3_000 },
     { id: "peer_print", name: "Bar printer", kind: "printer", lastSeenAt: now - 12_000 },
     { id: "peer_term", name: "Quantum reader", kind: "terminal", lastSeenAt: now - 5_000 },
   ];
@@ -350,7 +350,7 @@ export function worksWithoutInternet(): string[] {
     "Kitchen and bar tickets, bump, expo",
     "Cash, comps, house accounts, local gift cards",
     "Seat cached tables; waitlist queued locally (SMS pending)",
-    "Handhelds and KDS on the same device, and on-LAN tabs when Wi‑Fi is up",
+    "Handhelds and ODS on the same device, and on-LAN tabs when Wi‑Fi is up",
   ];
 }
 

@@ -204,7 +204,7 @@ export function sitesHref(path = "/"): string {
   return withOrigin(origin, p);
 }
 
-/** Absolute staff URL (POS, KDS, kiosk). Prefers app host when split DNS is on. */
+/** Absolute staff URL (POS, ODS, kiosk). Prefers app host when split DNS is on. */
 export function absoluteAppHref(path = "/"): string {
   const p = path.startsWith("/") ? path : `/${path}`;
   if (useSingleOrigin()) {
@@ -275,8 +275,8 @@ export function staffGuestAccessPoints(opts?: {
     },
     {
       id: "kds",
-      label: "app · KDS",
-      hint: "Kitchen rail on the same app host",
+      label: "app · ODS",
+      hint: "Kitchen / bar order display on the same app host",
       href: absoluteAppHref(`/venue/${venue}${locQ ? `${locQ}&` : "?"}station=kitchen`),
       surface: "app",
     },

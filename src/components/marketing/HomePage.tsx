@@ -28,7 +28,7 @@ const PAINS = [
   },
   {
     title: "Software that was built for retail checkout",
-    body: "No sections, no KDS routing, no period settlement. A scanner and a SKU list will not run a dining room — or a hall.",
+    body: "No sections, no ODS routing, no period settlement. A scanner and a SKU list will not run a dining room — or a hall.",
   },
 ];
 
@@ -107,7 +107,7 @@ const PACKAGES = [
   {
     name: "Starter",
     price: "Included trial",
-    note: "POS core, kitchen & bar KDS, menu, and cash. Enough to run a counter or a first dining room.",
+    note: "POS core, kitchen & bar ODS, menu, and cash. Enough to run a counter or a first dining room.",
   },
   {
     name: "Full service",
@@ -195,7 +195,7 @@ export function HomePage() {
               </h2>
               <p className="mt-5 max-w-md text-sm leading-relaxed text-muted-foreground text-pretty sm:text-base">
                 Summex is one system for service and money movement — so you stop
-                paying a POS, a KDS, a hall splitter, and a second card brand to
+                paying a POS, an ODS, a hall splitter, and a second card brand to
                 disagree with each other.
               </p>
             </div>
@@ -303,7 +303,7 @@ export function HomePage() {
                 Start on core. Pay for the house you actually run.
               </h2>
               <p className="mt-4 text-sm leading-relaxed text-muted-foreground text-pretty">
-                POS core and KDS ship on the starter trial. Full-service and host
+                POS core and ODS ship on the starter trial. Full-service and host
                 features live on paid packages — quoted from your operation, not a
                 public rate card that pretends every room is the same.
               </p>

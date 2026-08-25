@@ -30,7 +30,7 @@ export const ESTABLISHMENT_TYPE_TOPICS: GuideTopic[] = [
       ),
       ul(
         "Access: owner, manager, server, host stand, bartender, kitchen, busser, cashier, accountant.",
-        "Dashboards: server sees sections; host sees waitlist; kitchen is KDS-first.",
+        "Dashboards: server sees sections; host sees waitlist; kitchen is ODS-first.",
         "Reports & AI insights are on this location — not a SaaS portfolio.",
       ),
       callout(
@@ -75,7 +75,7 @@ export const ESTABLISHMENT_TYPE_TOPICS: GuideTopic[] = [
         "Host brand — guest-facing name on the receipt (example: The Laundry).",
         "Bar operator — drinks and bar tickets (example: Steam Distillery).",
         "Kitchen operator — food and kitchen tickets (example: Diamond House BBQ).",
-        "Stations: host stand / floor (color-coded map + table QR), bar KDS, kitchen KDS, shared cash.",
+        "Stations: host stand / floor (color-coded map + table QR), bar ODS, kitchen ODS, shared cash.",
       ),
       steps(
         "Seat under the host. Do not open a second check for the other operator.",
@@ -108,7 +108,7 @@ export const ESTABLISHMENT_TYPE_TOPICS: GuideTopic[] = [
     id: "type-bar-lounge",
     chapterId: "types",
     title: "Bar & lounge",
-    summary: "Tabs first, cocktail KDS, optional small plates.",
+    summary: "Tabs first, cocktail ODS, optional small plates.",
     roles: "all",
     keywords: ["bar", "lounge", "tab", "cocktails", "well"],
     openView: "bar",
@@ -119,7 +119,7 @@ export const ESTABLISHMENT_TYPE_TOPICS: GuideTopic[] = [
       ul(
         "Stations: bar / well, optional lounge tables, light kitchen for plates.",
         "Floor: bar rail plus lounge section if you have table service.",
-        "Order flow: open tab → build the round → send cocktail KDS → pay Quantum Payments.",
+        "Order flow: open tab → build the round → send cocktail ODS → pay Quantum Payments.",
       ),
       steps(
         "Open a named tab (or seat a lounge table).",
@@ -211,12 +211,12 @@ export const ESTABLISHMENT_TYPE_TOPICS: GuideTopic[] = [
       ul(
         "Stations: lot / pad map, truck window, truck kitchen.",
         "Floor: pads, not tables.",
-        "Order flow: window check → truck KDS → pay. Host capture is optional by agreement.",
+        "Order flow: window check → truck ODS → pay. Host capture is optional by agreement.",
       ),
       steps(
         "Open the lot map. Pads are the floor.",
         "Take a window order on the truck brand.",
-        "Kitchen tickets stay on the truck KDS.",
+        "Kitchen tickets stay on the truck ODS.",
         "When the host captures, Quantum Payments is still the only card.",
       ),
       callout(

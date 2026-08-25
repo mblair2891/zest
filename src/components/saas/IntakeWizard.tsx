@@ -419,7 +419,7 @@ export function IntakeWizard({ initialToken }: { initialToken?: string }) {
           <ToggleChip
             on={o.barKitchenSplit}
             label="Bar and kitchen are split ops"
-            hint="Separate station teams / KDS rails"
+            hint="Separate station teams / ODS rails"
             onClick={() =>
               patch((a) => ({
                 ...a,
@@ -495,7 +495,7 @@ export function IntakeWizard({ initialToken }: { initialToken?: string }) {
             </Field>
           )}
           <div className="grid gap-3 sm:grid-cols-2">
-            <Field label="Peak concurrent devices" hint="POS, KDS, handhelds">
+            <Field label="Peak concurrent devices" hint="POS, ODS, handhelds">
               <Input
                 type="number"
                 min={1}

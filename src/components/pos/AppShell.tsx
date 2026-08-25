@@ -124,8 +124,8 @@ const NAV: {
   { id: "floor", label: "Floor", icon: LayoutGrid },
   { id: "floor_editor", label: "Floor editor", icon: MapIcon },
   { id: "order", label: "Order", icon: ClipboardList },
-  { id: "kitchen", label: "Kitchen", icon: CookingPot },
-  { id: "bar", label: "Bar", icon: Wine },
+  { id: "kitchen", label: "Kitchen ODS", icon: CookingPot },
+  { id: "bar", label: "Bar ODS", icon: Wine },
   { id: "waitlist", label: "Host", icon: Users },
   { id: "online", label: "Online", icon: Globe },
   { id: "takeout", label: "Takeout", icon: ShoppingBag },
@@ -351,7 +351,7 @@ export function AppShell() {
         <LoginOnboardingHost />
         <header className="flex h-14 shrink-0 items-center gap-2 border-b border-border bg-surface px-3">
           <p className="text-sm font-semibold">
-            {demoDevice === "kds_bar" ? "Bar KDS" : demoDevice === "expo" ? "Expo" : "Kitchen KDS"}
+            {demoDevice === "kds_bar" ? "Bar ODS" : demoDevice === "expo" ? "Expo" : "Kitchen ODS"}
           </p>
           <span className="text-xs text-muted-foreground">{settings.name}</span>
           <div className="ml-auto flex items-center gap-2">

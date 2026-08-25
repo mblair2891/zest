@@ -109,7 +109,7 @@ export function FullPackageView() {
               <ol className="list-decimal space-y-2 pl-5 text-sm text-muted-foreground">
                 <li>
                   <strong className="text-foreground">Core POS</strong> — floor,
-                  order, KDS, payments, cash, reports
+                  order, ODS, payments, cash, reports
                 </li>
                 <li>
                   <strong className="text-foreground">Platform</strong> — HQ,

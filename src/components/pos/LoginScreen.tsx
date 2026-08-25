@@ -59,7 +59,7 @@ export function LoginScreen() {
               App store · stations
             </span>
             <span className="mt-1 block text-[11px] leading-snug text-muted-foreground">
-              Install Floor, Kitchen KDS, Bar, Manager & more — Play-style hub
+              Install Floor, Kitchen ODS, Bar, Manager & more — Play-style hub
             </span>
           </span>
         </Link>

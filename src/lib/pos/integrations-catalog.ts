@@ -208,9 +208,9 @@ export const INTEGRATION_CATALOG: IntegrationDef[] = [
   d("powerbi", "Power BI", "Microsoft", "analytics", "Sales and labor datasets.", ["Datasets"], { authType: "oauth", bidirectional: false }),
 
   // Hardware
-  d("star_micronics", "Star Micronics", "Star", "hardware", "Receipt and kitchen printers on house Wi‑Fi.", ["Receipt", "KDS print"], { authType: "partner", popular: true }),
+  d("star_micronics", "Star Micronics", "Star", "hardware", "Receipt and kitchen printers on house Wi‑Fi.", ["Receipt", "ODS print"], { authType: "partner", popular: true }),
   d("epson", "Epson TM", "Epson", "hardware", "TM-m30 / TM-T88 receipt printers.", ["Receipt"], { authType: "partner" }),
-  d("bixolon", "Bixolon", "Bixolon", "hardware", "Kitchen bump printers.", ["KDS print"], { authType: "partner" }),
+  d("bixolon", "Bixolon", "Bixolon", "hardware", "Kitchen bump printers.", ["ODS print"], { authType: "partner" }),
   d("elo", "Elo Touch", "Elo", "hardware", "Kiosk and counter touch hardware.", ["Kiosk"], { authType: "partner" }),
 
   // Hotel PMS

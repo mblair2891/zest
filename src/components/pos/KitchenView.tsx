@@ -103,7 +103,7 @@ export function KitchenView({ station, expo }: Props) {
     <div className="kds-large-touch relative flex h-full flex-col">
       <div className="flex flex-wrap items-center gap-2 border-b border-border px-3 py-2">
         <h2 className="text-sm font-semibold capitalize">
-          {expo ? "Expo" : station === "bar" ? "Bar display" : "Kitchen display"}
+          {expo ? "Expo" : station === "bar" ? "Bar order display" : "Kitchen order display"}
         </h2>
         <GuideLearnLink topicId="kds" compact>
           Learn
@@ -155,7 +155,7 @@ export function KitchenView({ station, expo }: Props) {
               onClick={() => setFilter(f)}
               className="capitalize"
             >
-              {f === "in_progress" ? "Working" : f}
+              {f === "in_progress" ? "Preparing" : f === "new" ? "Sent" : f}
             </Button>
           ))}
           <Button
@@ -172,7 +172,7 @@ export function KitchenView({ station, expo }: Props) {
         <div className="flex flex-1 flex-col items-center justify-center text-muted-foreground">
           <p className="text-lg font-medium">All clear</p>
           <p className="text-sm">
-            New tickets appear when servers send multi-vendor orders
+            Tickets appear when the floor sends. Start to prepare, Bump when ready.
           </p>
         </div>
       ) : (
@@ -226,7 +226,13 @@ export function KitchenView({ station, expo }: Props) {
                       }
                       className="mt-1 capitalize"
                     >
-                      {t.status.replace("_", " ")}
+                      {t.status === "in_progress"
+                        ? "Preparing"
+                        : t.status === "new"
+                          ? "Sent"
+                          : t.status === "bumped"
+                            ? "Delivered"
+                            : t.status.replace("_", " ")}
                     </Badge>
                   </div>
                 </header>
@@ -270,13 +276,20 @@ export function KitchenView({ station, expo }: Props) {
                     <Button
                       className="flex-1"
                       size="sm"
-                      variant="outline"
-                      onClick={() => readyTicket(t.id)}
+                      onClick={() => {
+                        if (settings.requirePinToBump && !isProspectDemo()) {
+                          setBumpPinFor(t.id);
+                          setBumpPinError(null);
+                          return;
+                        }
+                        readyTicket(t.id);
+                      }}
                     >
-                      Ready
+                      <Check className="h-3.5 w-3.5" />
+                      Bump
                     </Button>
                   )}
-                  {t.status !== "bumped" && (
+                  {(expo || t.status === "ready") && t.status !== "bumped" && (
                     <Button
                       className="flex-1"
                       size="sm"
@@ -290,7 +303,7 @@ export function KitchenView({ station, expo }: Props) {
                       }}
                     >
                       <Check className="h-3.5 w-3.5" />
-                      {expo || t.status === "ready" ? "Delivered" : "Bump"}
+                      Delivered
                     </Button>
                   )}
                   {t.status === "bumped" && (
@@ -314,8 +327,8 @@ export function KitchenView({ station, expo }: Props) {
         <div className="absolute inset-0 z-20 grid place-items-center bg-bg/90 p-4">
           <div className="w-full max-w-sm rounded-2xl border border-border bg-surface p-4">
             <PinKeypad
-              title="Confirm bump"
-              hint="Enter this station’s 4-digit PIN"
+              title={expo ? "Confirm delivered" : "Confirm bump"}
+              hint="Enter this station’s PIN"
               error={bumpPinError}
               onClearError={() => setBumpPinError(null)}
               onComplete={(pin) => {
@@ -326,7 +339,12 @@ export function KitchenView({ station, expo }: Props) {
                   setBumpPinError("Invalid PIN");
                   return;
                 }
-                bumpTicket(bumpPinFor);
+                const ticket = tickets.find((x) => x.id === bumpPinFor);
+                if (ticket && (ticket.status === "new" || ticket.status === "in_progress") && !expo) {
+                  readyTicket(bumpPinFor);
+                } else {
+                  bumpTicket(bumpPinFor);
+                }
                 setBumpPinFor(null);
               }}
             />

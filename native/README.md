@@ -4,7 +4,7 @@ The Android shell opens **`/apps`** — an app-store style hub to install/open F
 
 # Summex Android (Capacitor)
 
-Native **Android shell** around the Summex web POS — one product, installable APK for Galaxy tablets and the 27″ KDS.
+Native **Android shell** around the Summex web POS — one product, installable APK for Galaxy tablets and the 27″ ODS.
 
 ## Requirements (build machine)
 
@@ -57,9 +57,9 @@ Debug APK path (after assemble):
 1. Set `url` to a host the tablet can reach.
 2. `npm run android:sync && npm run android:apk` (or Open in Android Studio → Run).
 3. Install APK on Galaxy A / B / 27″.
-4. Login with role PINs; KDS build should land on Kitchen when `station=kitchen`.
+4. Login with role PINs; ODS build should land on Kitchen when `station=kitchen`.
 
-## Keep screen on (KDS)
+## Keep screen on (ODS)
 
 MainActivity enables `FLAG_KEEP_SCREEN_ON` so the 27″ does not sleep mid-service.
 

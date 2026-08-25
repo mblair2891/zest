@@ -92,7 +92,7 @@ Ready when badges show: host brand set · 2 operators · items routed.
 | Host brand | Host brand name | Name on checks, receipts, Quantum Payments |
 | Operator | Name + payout last-4 + station | Merchant on the check; payout destination placeholder |
 | Routing | Station type + owned categories/items | Tickets to bar, kitchen, or both |
-| POS | `/pos/{locationId}` | Floor / order / KDS / pay / settle |
+| POS | `/pos/{locationId}` | Floor / order / ODS / pay / settle |
 
 Create APIs live in the SaaS store (durable in the browser on preview): `createOrganization`, `createLocation`, `addOperator`, `setOperatorRouting`, `addLocationCategory`, `addLocationItem`, `generateStarterCatalog`, `applySaasLocation`.
 

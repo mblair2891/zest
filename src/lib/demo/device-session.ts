@@ -79,8 +79,8 @@ export function enterDemoOperator(): void {
 const ROLE_DEVICE_NAME: Record<DemoDevice, string> = {
   pos: "Floor POS",
   kiosk: "Guest kiosk",
-  kds_kitchen: "Kitchen KDS",
-  kds_bar: "Bar KDS",
+  kds_kitchen: "Kitchen ODS",
+  kds_bar: "Bar ODS",
   expo: "Expo",
 };
 
@@ -139,10 +139,10 @@ export function demoStationsForVenue(
     out.push({ id: "expo", station: "expo", label: "Expo" });
   }
   if (has("kitchen")) {
-    out.push({ id: "kitchen", station: "kitchen", label: "Kitchen KDS" });
+    out.push({ id: "kitchen", station: "kitchen", label: "Kitchen ODS" });
   }
   if (hasBar && (has("bartender") || has("kitchen"))) {
-    out.push({ id: "bar_kds", station: "bar_kds", label: "Bar KDS" });
+    out.push({ id: "bar_kds", station: "bar_kds", label: "Bar ODS" });
   }
   if (has("bartender")) {
     out.push({ id: "bartender", station: "bartender", label: "Bartender" });
@@ -201,10 +201,10 @@ export function applyDemoStation(
       loginRole("kitchen", "kitchen", "expo", "Expo");
       break;
     case "kitchen":
-      loginRole("kitchen", "kitchen", "kds_kitchen", "Kitchen KDS");
+      loginRole("kitchen", "kitchen", "kds_kitchen", "Kitchen ODS");
       break;
     case "bar_kds":
-      loginRole("bartender", "bar", "kds_bar", "Bar KDS");
+      loginRole("bartender", "bar", "kds_bar", "Bar ODS");
       break;
     case "bartender":
       loginRole("bartender", "bar", "pos", "Bartender");
@@ -283,8 +283,8 @@ export function demoSwitcherOptions(
   }
   out.push({ kind: "device", key: "pos", label: "Device · Floor POS" });
   out.push({ kind: "device", key: "kiosk", label: "Device · Kiosk" });
-  out.push({ kind: "device", key: "kds_kitchen", label: "Device · KDS Kitchen" });
-  if (hasBar) out.push({ kind: "device", key: "kds_bar", label: "Device · KDS Bar" });
+  out.push({ kind: "device", key: "kds_kitchen", label: "Device · Kitchen ODS" });
+  if (hasBar) out.push({ kind: "device", key: "kds_bar", label: "Device · Bar ODS" });
   return out;
 }
 

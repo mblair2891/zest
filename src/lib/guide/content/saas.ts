@@ -74,7 +74,7 @@ export const SAAS_TOPICS: GuideTopic[] = [
         "Operators — optional tenant slots only. Do not wait on operator legal packets. After host_ready, the host invites them.",
         "Floor — table count / sections (you can refine later in the floor editor).",
         "Menu — categories now, CSV later, or leave empty.",
-        "Devices — how many POS / KDS stations you expect (Wi-Fi first).",
+        "Devices — how many POS / ODS stations you expect (Wi-Fi first).",
         "Team — invite emails and roles.",
         "Settlement — host cut, tax remittance, tip pooling. Guest cards are Quantum Payments.",
         "Network — probe health, staff Wi‑Fi checklist. Warn or fail never blocks finish. Skip is allowed and recorded.",
@@ -125,7 +125,7 @@ export const SAAS_TOPICS: GuideTopic[] = [
         "Sign in and open the platform console.",
         "Create organization (display name + venue type).",
         "Create a location under that org. Pick restaurant, food hall, truck pod, etc.",
-        "Enable packages per location: POS core, KDS, online, labor, settlement, marketing, and so on.",
+        "Enable packages per location: POS core, ODS, online, labor, settlement, marketing, and so on.",
         "Invite owners/managers. They complete their own passwords.",
         "Open POS for that location. Header package preview can simulate a smaller license for training.",
       ),
@@ -144,7 +144,7 @@ export const SAAS_TOPICS: GuideTopic[] = [
     keywords: ["multi-operator", "host", "vendor", "food hall", "single operator", "operator a"],
     blocks: [
       why(
-        "This choice drives capture, KDS tagging, and settlement. Getting it wrong means operators cannot be paid correctly.",
+        "This choice drives capture, ODS tagging, and settlement. Getting it wrong means operators cannot be paid correctly.",
       ),
       ul(
         "Single-operator — one brand owns the location. Menu, kitchen, and payout are that brand. Still Quantum Payments.",
@@ -219,7 +219,7 @@ export const SAAS_TOPICS: GuideTopic[] = [
         "Go-live still completes. Re-run from Settings → House network before first service.",
       ),
       warn(
-        "This is advisory. A red fail does not stop Complete setup. Cards still need an uplink; cash and KDS do not.",
+        "This is advisory. A red fail does not stop Complete setup. Cards still need an uplink; cash and ODS do not.",
       ),
       related("onboarding-wizard", "wifi-offline", "access-urls", "printers-kds"),
     ],
@@ -237,13 +237,13 @@ export const SAAS_TOPICS: GuideTopic[] = [
       ),
       ul(
         "www / marketing host — public site, Sign in, dashboard, onboarding.",
-        "app host — POS, KDS, kiosk device. Deep links prefer this when configured.",
+        "app host — POS, ODS, kiosk device. Deep links prefer this when configured.",
         "sites host — table QR, online menu, location pages. Guest links prefer this when configured.",
         "api host — health and HTTP API.",
         "Dev and live preview: one origin. Paths stand in for hosts. Production uses VITE_MARKETING_HOST, VITE_APP_HOST, VITE_SITES_HOST, VITE_API_HOST plus APP_URL.",
       ),
       steps(
-        "Owner Home and Settings list the live URLs for this location. Copy POS, KDS, kiosk, and table QR.",
+        "Owner Home and Settings list the live URLs for this location. Copy POS, ODS, kiosk, and table QR.",
         "Print table QR from Floor. The code points at the sites host in production.",
         "Kiosk devices open the app host /kiosk — not the marketing homepage.",
       ),

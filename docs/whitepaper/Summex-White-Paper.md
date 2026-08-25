@@ -18,7 +18,7 @@ The product combines:
 - **SaaS** — prospect intake, snapshot quote, contract, guided onboarding.
 - **Money movement** — one host capture, internal operator allocations, period settlement, a first-party **system ledger**.
 
-It is built for houses that refuse to run a POS, a KDS, a hall splitter, and a second card brand as four separate arguments. The guest pays once, under the host name. Operators are paid from merchandise share on a period ledger — not from a second terminal at the table.
+It is built for houses that refuse to run a POS, an ODS, a hall splitter, and a second card brand as four separate arguments. The guest pays once, under the host name. Operators are paid from merchandise share on a period ledger — not from a second terminal at the table.
 
 This paper describes how the system works today. Items that are **not built** are marked **Roadmap**. No processor rates are guaranteed here. No bank partners are named. No compliance seals are claimed.
 
@@ -48,7 +48,7 @@ Summex is a **single application**. Merchants sign in at summex.app. Organizatio
 |---|---|
 | Control plane | Organizations, locations, packages, invites, prospect pipeline |
 | POS | Floor, order, tenders, cash, guests, first-party gift |
-| KDS | Kitchen and bar tickets, bump, operator filters |
+| ODS | Kitchen and bar tickets, Start/Bump, operator filters |
 | Settlement | Period close, host cut, card fee %, operator payouts (ledger, not live ACH) |
 | System ledger | Append-only money events for the location |
 | Operators Guide | In-product manual, searchable, role-aware |

@@ -79,6 +79,7 @@ export function FloorView() {
   const openBarTab = usePosStore((s) => s.openBarTab);
   const setView = usePosStore((s) => s.setView);
   const setTableStatus = usePosStore((s) => s.setTableStatus);
+  const deliverReadyTicketsForTable = usePosStore((s) => s.deliverReadyTicketsForTable);
   const tableAccess = usePosStore((s) => s.tableAccess);
   const currentEmployeeId = usePosStore((s) => s.currentEmployeeId);
   const floorSections = usePosStore((s) => s.floorSections);
@@ -747,6 +748,7 @@ export function FloorView() {
                 onStatus={(st) => {
                   const res = setTableStatus(detailLive.id, st);
                   if (!res.ok) alert(res.error);
+                  if (st === "food_delivered") deliverReadyTicketsForTable(detailLive.id);
                 }}
                 onToggleQr={() => setQrOpen((v) => !v)}
                 onWaitlist={

@@ -130,7 +130,7 @@ export function OperatorOpsView({
         <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
           <Tile label="Period gross (closed)" value={formatCurrency(stats.gross)} />
           <Tile label="Checks with your items" value={String(stats.checks)} />
-          <Tile label="Open KDS tickets" value={String(stats.openTickets)} />
+          <Tile label="Open ODS tickets" value={String(stats.openTickets)} />
           <Tile label="Staff on this stall" value={String(stats.staff.length)} />
         </div>
 

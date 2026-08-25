@@ -47,7 +47,7 @@ export const GUIDE_CHAPTERS: GuideChapter[] = [
   {
     id: "orders",
     title: "Orders & routing",
-    summary: "Menu, kitchen/bar, multi-operator checks, KDS.",
+    summary: "Menu, kitchen/bar, multi-operator checks, ODS.",
     order: 5,
   },
   {
@@ -65,7 +65,7 @@ export const GUIDE_CHAPTERS: GuideChapter[] = [
   {
     id: "devices",
     title: "Devices & offline",
-    summary: "Wi‑Fi-first house, outbox, printers, KDS.",
+    summary: "Wi‑Fi-first house, outbox, printers, ODS.",
     order: 8,
   },
   {

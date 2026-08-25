@@ -118,7 +118,7 @@ export const SETTINGS_PACK_LABEL: Record<SettingsPackId, string> = {
   tax: "Tax & service charge",
   payments: "Quantum Payments / tenders",
   cash_discount: "Cash discount",
-  devices: "Devices, printers, KDS",
+  devices: "Devices, printers, ODS",
   staff: "Staff & roles",
   notifications: "Notifications",
   hours: "Hours",

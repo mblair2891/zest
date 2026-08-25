@@ -9,6 +9,19 @@ import type { GuideUpdate } from "@/lib/guide/types";
  */
 export const WHATS_NEW_ENTRIES: GuideUpdate[] = [
   {
+    id: "upd_2026_09_19_ods",
+    date: "2026-09-19",
+    title: "Order Display (ODS): Start, Bump, notify the server",
+    summary:
+      "Kitchen and bar screens are Order Displays. Tickets route by station and operator. Start to prep, Bump when ready. The originating server’s device chimes and vibrates. Expo or floor marks delivered.",
+    body: "Send from the floor. The right ODS shows the ticket. Start → Preparing, Bump → Ready. Expo/server taps Delivered. Mute from the bell. Device assignment labels are Kitchen ODS and Bar ODS.",
+    roles: ["owner_manager", "server", "kitchen_bar", "host_operator", "vendor_operator"],
+    surfaces: ["floor", "kds"],
+    audience: "all",
+    topicId: "kds",
+    tags: ["ods", "kds", "bump", "kitchen"],
+  },
+  {
     id: "upd_2026_09_18_host_tenant_onboard",
     date: "2026-09-18",
     title: "Host onboarding, then operator self-serve invites",
@@ -103,7 +116,7 @@ export const WHATS_NEW_ENTRIES: GuideUpdate[] = [
     date: "2026-09-11",
     title: "Demo sites: PIN 0000, View switcher, live floor path",
     summary:
-      "Public Demo sites open a PIN pad, not a password. 0000 logs in as Owner. View switches Hostess → Server → KDS → Expo → pay → Busser on one house.",
+      "Public Demo sites open a PIN pad, not a password. 0000 logs in as Owner. View switches Hostess → Server → ODS → Expo → pay → Busser on one house.",
     body: "Marketing home → Demo sites → entity type → PIN 0000. Clock in/out is a separate action, still 0000. The View menu does not re-login. Demo PIN never works on live tenants. Exit returns to Demo sites, not the control plane.",
     roles: "all",
     surfaces: ["floor", "kiosk"],
@@ -117,7 +130,7 @@ export const WHATS_NEW_ENTRIES: GuideUpdate[] = [
     title: "Network readiness is warn-only; www vs app vs sites",
     summary:
       "Onboarding checks venue Wi‑Fi without blocking go-live. Staff bookmarks the app host; guests use the sites host for table QR.",
-    body: "Network readiness probes health and a staff Wi‑Fi checklist. Fail or skip is recorded on the location — POS, demo, and login stay up. Re-run from Settings. Production uses www for login, app for POS/KDS/kiosk, sites for table QR and online.",
+    body: "Network readiness probes health and a staff Wi‑Fi checklist. Fail or skip is recorded on the location — POS, demo, and login stay up. Re-run from Settings. Production uses www for login, app for POS/ODS/kiosk, sites for table QR and online.",
     roles: ["owner_manager", "host_operator", "platform_admin"],
     surfaces: ["settings", "platform"],
     topicId: "network-readiness",
@@ -168,7 +181,7 @@ export const WHATS_NEW_ENTRIES: GuideUpdate[] = [
     title: "Entity logins, permission matrix, device assignment",
     summary:
       "Steam and Diamond staff log in to their own entity. The host grants what they may see. Any tablet can be assigned to any stall and function.",
-    body: "On The Laundry, PIN 6666 is Steam Distillery (edit Steam, view Diamond read-only). 7777 is Diamond House BBQ. Host 9999 opens the permission matrix and device assignment — Tablet A → Steam bar KDS, Tablet B → Diamond floor POS.",
+    body: "On The Laundry, PIN 6666 is Steam Distillery (edit Steam, view Diamond read-only). 7777 is Diamond House BBQ. Host 9999 opens the permission matrix and device assignment — Tablet A → Steam bar ODS, Tablet B → Diamond floor POS.",
     roles: ["owner_manager", "host_operator", "vendor_operator"],
     entityTypes: ["food_hall", "truck_pod", "ghost_kitchen"],
     surfaces: ["settings", "kds"],
@@ -193,7 +206,7 @@ export const WHATS_NEW_ENTRIES: GuideUpdate[] = [
     date: "2026-09-04",
     title: "Offline mode: cash and tickets without internet",
     summary:
-      "If the uplink drops, floor, KDS, cash, and waitlist still run on this device. Card needs a connection. Changes sync once when internet returns.",
+      "If the uplink drops, floor, ODS, cash, and waitlist still run on this device. Card needs a connection. Changes sync once when internet returns.",
     body: "Use Simulate internet outage on the Wi‑Fi chip. Cash closes locally. SMS is pending send. Failed syncs show to the manager. Same behavior in a prospect demo.",
     roles: "all",
     surfaces: ["floor", "kds", "kiosk", "settings"],
@@ -217,7 +230,7 @@ export const WHATS_NEW_ENTRIES: GuideUpdate[] = [
     date: "2026-09-02",
     title: "Demo login & device switcher",
     summary:
-      "One demo login, then switch owner/server/kitchen, kiosk, or KDS on the same isolated house.",
+      "One demo login, then switch owner/server/kitchen, kiosk, or ODS on the same isolated house.",
     roles: "all",
     surfaces: ["floor", "kds", "kiosk"],
     audience: "demo",
@@ -330,7 +343,7 @@ export const WHATS_NEW_ENTRIES: GuideUpdate[] = [
     date: "2026-08-23",
     title: "Operators Guide",
     summary:
-      "Searchable in-app guide with role tabs, progress, What’s New on login, and Learn links from settlement, onboarding, payments, floor, and KDS.",
+      "Searchable in-app guide with role tabs, progress, What’s New on login, and Learn links from settlement, onboarding, payments, floor, and ODS.",
     roles: "all",
     topicId: "using-guide",
     tags: ["guide", "training"],
@@ -406,7 +419,7 @@ export const WHATS_NEW_ENTRIES: GuideUpdate[] = [
     date: "2026-08-13",
     title: "Wi‑Fi-first house network",
     summary:
-      "Staff stay on the house SSID. If the internet dies, Wi‑Fi still runs floor, KDS, and cash. Card captures queue until Quantum Payments is reachable.",
+      "Staff stay on the house SSID. If the internet dies, Wi‑Fi still runs floor, ODS, and cash. Card captures queue until Quantum Payments is reachable.",
     roles: "all",
     topicId: "wifi-offline",
     tags: ["wifi", "offline"],

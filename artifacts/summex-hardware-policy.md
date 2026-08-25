@@ -13,7 +13,7 @@ Proprietors: Michael Blair & Andy Baida · Product: Summex Hospitality OS
 | **BYOD** | Devices they already have | Yes | Default; hall vendors; truck pods |
 | **Buy kit** | One invoice | Yes day one | Stable sites with cash |
 | **Partner finance** | 24–36 mo payments → ~$1 buyout | Yes after term | Want kit without CapEx |
-| **Device subscription** | $/device/mo + swap SLA | Summex (fleet) | Always-on KDS / managed counters |
+| **Device subscription** | $/device/mo + swap SLA | Summex (fleet) | Always-on ODS / managed counters |
 
 ### Non‑negotiables
 1. Software runs in browser/PWA on **customer tablets/phones** by default.  
@@ -21,7 +21,7 @@ Proprietors: Michael Blair & Andy Baida · Product: Summex Hospitality OS
 3. Printers = **Star Micronics** or **Epson** models on the certified list.  
 4. Hardware contract **≠** software SaaS **≠** processing rate (quote separately).  
 5. No silent 48‑month ISO traps; finance only via **named partner**, terms disclosed.  
-6. Halls: **vendors BYOD**; host may equip shared KDS/network/settlement station.  
+6. Halls: **vendors BYOD**; host may equip shared ODS/network/settlement station.  
 7. Pods: **BYOD-first**; pad power/network is site infrastructure.
 
 ### Finance guardrails
@@ -35,7 +35,7 @@ Proprietors: Michael Blair & Andy Baida · Product: Summex Hospitality OS
 |---|---|---|---|
 | Counter Ready | $1,198 | $42 | $90 |
 | Handheld Service | $558 | $22 | $47 |
-| KDS Station | $539 | $18 | $46 |
+| ODS Station | $539 | $18 | $46 |
 | Hall Host Pack | $1,458 | $55 | $109 |
 
 ---

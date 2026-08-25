@@ -388,7 +388,7 @@ function seedDevices(): DeviceEnrollment[] {
     {
       id: "dev_galaxy_a",
       locationId: "loc_hall",
-      name: "Tablet A — Steam Distillery bar KDS",
+      name: "Tablet A — Steam Distillery bar ODS",
       type: "kds",
       status: "online",
       lastSeenAt: Date.now() - 15000,
@@ -410,7 +410,7 @@ function seedDevices(): DeviceEnrollment[] {
     {
       id: "dev_android_27",
       locationId: "loc_hall",
-      name: '27" Android — Diamond kitchen KDS',
+      name: '27" Android — Diamond kitchen ODS',
       type: "kds",
       status: "online",
       lastSeenAt: Date.now() - 10000,

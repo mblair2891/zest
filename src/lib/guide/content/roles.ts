@@ -45,7 +45,7 @@ export const ROLE_GUIDE_TOPICS: GuideTopic[] = [
       ul(
         "Open POS for the location. PIN as owner or manager.",
         "Staff, menu, floor, cash drawer, settlement.",
-        "Packages decide which modules appear. Core POS and KDS are the floor.",
+        "Packages decide which modules appear. Core POS and ODS are the floor.",
       ),
       steps(
         "Confirm the location mode (restaurant vs host + operators) matches how you actually serve.",
@@ -93,7 +93,7 @@ export const ROLE_GUIDE_TOPICS: GuideTopic[] = [
       ),
       steps(
         "PIN into Kitchen or Bar. You see only your station’s tickets.",
-        "Start, bump, or recall. Bump still works offline on this station. Do not take payment from the KDS.",
+        "Start when you begin, Bump when ready. The originating server’s device toasts, chimes, and vibrates. Expo or floor marks Delivered. Bump still works offline. Do not take payment from the ODS.",
         "On a host floor, bar tickets belong to the bar operator; kitchen tickets to the kitchen operator.",
       ),
       related("type-food-hall", "type-bar-lounge", "type-restaurant"),
@@ -112,7 +112,7 @@ export const ROLE_GUIDE_TOPICS: GuideTopic[] = [
       ),
       ul(
         "Your login is scoped to your entity (Steam Distillery, Diamond House BBQ, …) under the host location.",
-        "Full control of your menu, modifiers, 86, tickets/KDS, schedules, and your reports slice.",
+        "Full control of your menu, modifiers, 86, tickets/ODS, schedules, and your reports slice.",
         "Peer menus are view-only unless the host grants edit_menu. You cannot change another operator’s settings.",
         "Operator ops: your staff, time clock, and 86 board.",
         "View-only settlement slice. Payout destinations are host-managed — you cannot edit banks, tax, or host branding.",
@@ -139,7 +139,7 @@ export const ROLE_GUIDE_TOPICS: GuideTopic[] = [
         "Owner / manager — sales snapshot, waitlist, staff on, shortcuts to settings, menu, floor, reports.",
         "Server — my sections, open checks, quick order.",
         "Host stand — waitlist, reservations, seating.",
-        "Kitchen / expo — KDS-first. Bartender — bar KDS and tabs.",
+        "Kitchen / expo — ODS-first. Bartender — bar ODS and tabs.",
         "Cashier — counter queue and pay.",
         "Vendor operator — entity dashboard (own menu, tickets, reports). Peer menus view-only unless the host grants. Not host settings or payouts.",
         "Accountant — reports and ledger.",
@@ -196,13 +196,13 @@ export const ROLE_GUIDE_TOPICS: GuideTopic[] = [
       ),
       ul(
         "Host (owner/manager): profile, tax, cash discount, Quantum Payments location config, floor, kiosk/waitlist, packages, onboard/suspend operators, payout destinations, settlement rules, host cut, chargeback policy, entity permission matrix, all devices.",
-        "Guest operator login: own menu (create/edit/86), own tickets/KDS, own reports, own staff and time clock. Peer menus default view-only. Cannot edit another entity unless the host grants edit_menu.",
-        "Devices: house assets. Host assigns any tablet to any entity + function (Steam bar KDS, Diamond floor POS, host kiosk).",
+        "Guest operator login: own menu (create/edit/86), own tickets/ODS, own reports, own staff and time clock. Peer menus default view-only. Cannot edit another entity unless the host grants edit_menu.",
+        "Devices: house assets. Host assigns any tablet to any entity + function (Steam bar ODS, Diamond floor POS, host kiosk).",
       ),
       steps(
         "PIN as host owner. Host settings → Operators to onboard a stall (name, station, payout last 4).",
         "Open Entity permissions. Defaults: view_menu on, edit_menu off, tickets/reports/settlement own-only, devices host-only.",
-        "Open Device assignment. Point Tablet A at Steam bar KDS and Tablet B at Diamond floor POS — no new hardware.",
+        "Open Device assignment. Point Tablet A at Steam bar ODS and Tablet B at Diamond floor POS — no new hardware.",
         "Switch Demo mode to Steam Distillery. Edit a Steam item. Diamond items show “view only.”",
         "Switch to Diamond House BBQ. Steam menu is read-only. You cannot change Steam settings.",
       ),
@@ -225,8 +225,8 @@ export const ROLE_GUIDE_TOPICS: GuideTopic[] = [
       ),
       ul(
         "Back office: Sign in with username/email and password. Platform Admin, owners, managers, accountants, entity managers for settings, matrix, full reports, schedule admin, payroll, menu management.",
-        "Floor PIN: 4-digit keypad on POS, KDS, host stand. Servers, hosts, bartenders, kitchen, cashiers, expo. Fast Switch user. PIN hashed, scoped to location and entity.",
-        "Assigned device still requires the matching entity’s PIN (Steam KDS rejects a Diamond PIN).",
+        "Floor PIN: 4-digit keypad on POS, ODS, host stand. Servers, hosts, bartenders, kitchen, cashiers, expo. Fast Switch user. PIN hashed, scoped to location and entity.",
+        "Assigned device still requires the matching entity’s PIN (Steam ODS rejects a Diamond PIN).",
         "Kiosk guests never enter a PIN. Marketing pages never show staff PINs. Platform Admin cannot use a restaurant PIN.",
       ),
       steps(
@@ -267,7 +267,7 @@ export const ROLE_GUIDE_TOPICS: GuideTopic[] = [
     id: "voice-control",
     chapterId: "roles",
     title: "Voice control by access level",
-    summary: "Optional mic on POS, host stand, and KDS. Host turns each role on or off.",
+    summary: "Optional mic on POS, host stand, and ODS. Host turns each role on or off.",
     roles: "all",
     keywords: ["voice", "mic", "speech", "86", "command", "server"],
     openView: "settings",
@@ -287,7 +287,7 @@ export const ROLE_GUIDE_TOPICS: GuideTopic[] = [
       steps(
         "Host: Settings → Voice control. Leave server on, kiosk off.",
         "PIN as server. Tap the mic. Say “eighty-six brisket plate” and confirm.",
-        "PIN as kitchen on a KDS. “Bump ticket” bumps the oldest ticket on that rail.",
+        "PIN as kitchen on an ODS. “Bump ticket” marks the oldest ticket ready on that rail.",
       ),
       warn("Voice is a shortcut, not a second permission system. RBAC and entity grants still win."),
       related("ai-ops-learning", "floor-pin-login", "host-operator-settings", "role-vendor"),

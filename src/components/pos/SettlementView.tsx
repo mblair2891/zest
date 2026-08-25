@@ -281,7 +281,7 @@ export function SettlementView() {
                 </p>
                 <p className="text-xs text-muted-foreground">
                   {v.cuisine ? `${v.cuisine} · ` : ""}
-                  KDS: {v.stationLabel} · Host-managed {v.bankLabel} ••{v.bankLast4}
+                  ODS: {v.stationLabel} · Host-managed {v.bankLabel} ••{v.bankLast4}
                 </p>
               </div>
             ))}
@@ -451,7 +451,7 @@ export function SettlementView() {
           <p className="font-medium text-foreground">How it works</p>
           <ol className="mt-2 list-decimal space-y-1 pl-4">
             <li>Guest sits; server rings items from any vendor on one check.</li>
-            <li>Send routes each item to that vendor’s KDS / prep line.</li>
+            <li>Send routes each item to that vendor’s ODS / prep line.</li>
             <li>
               Guest pays once (card or cash). Card is a single {PAYMENTS_BRAND}{" "}
               capture under the host brand — never an operator MID.

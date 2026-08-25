@@ -114,7 +114,7 @@ export const HARDWARE: HardwareDevice[] = [
   },
   {
     id: "hw3",
-    name: "Kitchen KDS",
+    name: "Kitchen ODS",
     type: "kds",
     locationId: "loc_hh",
     status: "online",

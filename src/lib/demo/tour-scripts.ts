@@ -89,15 +89,15 @@ export const FULL_TOUR: TourDefinition = {
       id: "f-roles",
       title: "Access levels",
       script:
-        "One demo login. The yellow Demo mode control switches access level or device. Owner Home is the snapshot. Server is sections. Kitchen KDS is the pit. Steam and Diamond operators only see their stall.",
+        "One demo login. The yellow Demo mode control switches access level or device. Owner Home is the snapshot. Server is sections. Kitchen ODS is the pit. Steam and Diamond operators only see their stall.",
       selector: "[data-demo='device-switcher']",
       view: "hq",
     },
     {
       id: "f-kds",
-      title: "Kitchen KDS",
+      title: "Kitchen ODS",
       script:
-        "Switch the dropdown to Device · KDS Kitchen. Tickets from the floor and kiosk land here. Bump tells the floor the plate is up. Switch back to Server / floor to keep selling.",
+        "Switch the dropdown to Device · Kitchen ODS. Tickets from the floor and kiosk land here. Start to prepare, Bump when ready. The originating server’s device chimes and vibrates. Switch back to Server / floor to keep selling.",
       selector: "[data-demo='kitchen']",
       view: "kitchen",
     },
@@ -148,7 +148,7 @@ export const FULL_TOUR: TourDefinition = {
       id: "f-kitchen",
       title: "Kitchen rail",
       script:
-        "The pit only. Diamond House tickets. Bump tells the floor the plate is up.",
+        "The pit only. Diamond House tickets. Start, then Bump when ready — the originating server is notified.",
       selector: "[data-demo='kitchen']",
       view: "kitchen",
       action: "bump_kitchen",
@@ -165,7 +165,7 @@ export const FULL_TOUR: TourDefinition = {
       id: "f-offline",
       title: "Offline cash",
       script:
-        "Simulate internet outage from the Wi‑Fi chip. Floor, KDS, and cash still run on the house SSID. Card requires a connection. Cash closes now and the ledger queues once — no double capture when the uplink returns.",
+        "Simulate internet outage from the Wi‑Fi chip. Floor, ODS, and cash still run on the house SSID. Card requires a connection. Cash closes now and the ledger queues once — no double capture when the uplink returns.",
       selector: "[data-demo='network-chip']",
       view: "order",
       action: "offline_cash",
@@ -386,7 +386,7 @@ function typeTour(type: VenueEntityId): TourDefinition {
           id: "l-devices",
           title: "Assign a tablet",
           script:
-            "Tablet A is Steam Distillery bar KDS. Tablet B is Diamond House floor POS. Tablet C is the host kiosk. Reassign without new hardware. Tickets still tag the owning entity.",
+            "Tablet A is Steam Distillery bar ODS. Tablet B is Diamond House floor POS. Tablet C is the host kiosk. Reassign without new hardware. Tickets still tag the owning entity.",
           selector: "[data-demo='device-assign']",
           view: "settings",
         },
@@ -535,7 +535,7 @@ function typeTour(type: VenueEntityId): TourDefinition {
         {
           id: "b-send",
           title: "Send and bump",
-          script: "The cocktail KDS is the source of truth for the well.",
+          script: "The cocktail ODS is the source of truth for the well.",
           selector: "[data-demo='bar']",
           view: "bar",
           action: "send",

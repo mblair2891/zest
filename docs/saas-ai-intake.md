@@ -41,7 +41,7 @@ Platform admin: Dashboard → Pipeline → open a prospect → **Interview** (tr
 ## How to test on Vercel
 
 1. Incognito → `/get-pricing`.
-2. Paste a multi-operator bar + kitchen description (invented company, not a real customer), e.g. *“We host two kitchens and a bar under one roof. Guests pay one check. About 8 devices, 20 staff. Need floor, KDS, and operator payouts.”*
+2. Paste a multi-operator bar + kitchen description (invented company, not a real customer), e.g. *“We host two kitchens and a bar under one roof. Guests pay one check. About 8 devices, 20 staff. Need floor, ODS, and operator payouts.”*
 3. **Analyze**. Answer follow-ups if shown.
 4. See recommendation: host + operators, venue types, modules, estimates. Toggle anything, then **Accept**.
 5. Structured form is pre-filled (banner). Confirm host model, location count, modules. Complete company + Summex Payments ack → **Generate quote**.

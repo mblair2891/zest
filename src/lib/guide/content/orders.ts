@@ -6,7 +6,7 @@ export const ORDER_TOPICS: GuideTopic[] = [
     id: "menu-modifiers",
     chapterId: "orders",
     title: "Menu, categories, modifiers",
-    summary: "Build the item tree the floor and KDS will use.",
+    summary: "Build the item tree the floor and ODS will use.",
     roles: ["owner_manager", "server", "kitchen_bar", "vendor_operator"],
     keywords: ["menu", "category", "modifier", "86", "item"],
     openView: "menu",
@@ -46,9 +46,9 @@ export const ORDER_TOPICS: GuideTopic[] = [
         "Online / order-ahead uses fire rules (immediate, on arrival, delay).",
       ),
       steps(
-        "On Order, build the check, then Send. Do not expect KDS to see unsent lines.",
-        "Kitchen display shows food tickets; Bar display shows beverage tickets.",
-        "Expo can bump a whole table’s food when plated.",
+        "On Order, build the check, then Send. Do not expect ODS to see unsent lines.",
+        "Kitchen order display shows food tickets; Bar ODS shows beverage tickets. Host floors also split by operator.",
+        "Expo or the server marks Delivered when the table has the plate.",
       ),
       related("kds", "menu-modifiers", "multi-operator-orders"),
     ],
@@ -66,7 +66,7 @@ export const ORDER_TOPICS: GuideTopic[] = [
         "A hall guest should not run three cards. The host captures once; Operator A and Operator B still see their own tickets and period payouts.",
       ),
       p(
-        "Example: Host Venue. Guest orders tacos from Operator A and a cocktail from Operator B. One check, one Quantum Payments capture, two KDS tickets.",
+        "Example: Host Venue. Guest orders tacos from Operator A and a cocktail from Operator B. One check, one Quantum Payments capture, two ODS tickets.",
       ),
       steps(
         "Items carry the operator set on the menu. The hall cart can mix stalls on one check.",
@@ -87,25 +87,25 @@ export const ORDER_TOPICS: GuideTopic[] = [
   topic({
     id: "kds",
     chapterId: "orders",
-    title: "KDS tickets, bump, notifications",
-    summary: "Kitchen and bar displays: work, bump, recall, floor alerts.",
+    title: "Order display (ODS): Start, Bump, notify",
+    summary: "Station displays route by kitchen/bar and operator. Start to prepare, Bump when ready. Originating server is notified.",
     roles: ["owner_manager", "kitchen_bar", "server"],
-    keywords: ["kds", "bump", "recall", "ticket", "notification", "bar display"],
+    keywords: ["ods", "kds", "order display", "bump", "start", "recall", "ticket", "notification", "bar display"],
     openView: "kitchen",
     blocks: [
       why(
-        "Bump is the contract between kitchen and floor. If bump is skipped, tables never go Up and food dies in the window.",
+        "Bump is the contract between station and floor. If bump is skipped, tables never go Up and food dies in the window.",
       ),
       shot(
-        "Kitchen display with All operators / Operator A / Operator B filters and bump controls.",
-        "KDS ticket columns with bump and recall.",
+        "Kitchen order display with All operators / stall filters, Start, and Bump.",
+        "ODS ticket columns with Start and Bump.",
       ),
       steps(
-        "Open Kitchen or Bar. Filter All operators or a single stall on a host floor.",
-        "Start a ticket when you begin it (Working). Bump when it is in the window / handed off.",
-        "The floor gets a toast, chime, and inbox alert. The table pulses Up for 90 seconds.",
-        "Recall from the Recall queue if you bumped too early.",
-        "Mute sound or enable desktop alerts from the header bell.",
+        "Send from the floor. Tickets land on the kitchen or bar ODS for that station and operator.",
+        "Start when you begin prep (Preparing). Bump when the plate/drink is ready.",
+        "The originating server’s device toasts, chimes, and vibrates (where the platform allows). The table pulses Up.",
+        "Expo or the server marks Delivered on the floor. Recall if you bumped too early.",
+        "Mute sound from the header bell. Multi-op: filter All operators or a single stall.",
       ),
       tip(
         "Ahead and curbside tickets may wait until the guest is marked arrived — see Online fire rules if a ticket “never showed.”",

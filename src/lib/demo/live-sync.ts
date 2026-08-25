@@ -2,7 +2,7 @@ import { useEffect } from "react";
 import { usePosStore } from "@/lib/pos/store";
 import { isProspectDemo } from "./session";
 
-/** Other demo windows (KDS / kiosk) pick up floor sends via persist. */
+/** Other demo windows (ODS / kiosk) pick up floor sends via persist. */
 export function useDemoLiveSync(): void {
   useEffect(() => {
     if (!isProspectDemo()) return;

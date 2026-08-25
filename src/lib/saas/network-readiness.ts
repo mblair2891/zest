@@ -27,7 +27,7 @@ export const NETWORK_CHECKLIST_ITEMS: {
   {
     id: "venueWifi",
     label: "Venue staff Wi‑Fi is up",
-    hint: "POS, KDS, and printers join a staff SSID — not the public guest network.",
+    hint: "POS, ODS, and printers join a staff SSID — not the public guest network.",
   },
   {
     id: "notGuestIsolated",
@@ -37,7 +37,7 @@ export const NETWORK_CHECKLIST_ITEMS: {
   {
     id: "tabletCount",
     label: "Tablet / station count matches the floor",
-    hint: "Enough devices for POS, KDS, and host stand before first service.",
+    hint: "Enough devices for POS, ODS, and host stand before first service.",
   },
   {
     id: "printerLan",
@@ -47,7 +47,7 @@ export const NETWORK_CHECKLIST_ITEMS: {
   {
     id: "offlineExpectations",
     label: "Team knows cash vs card when the internet is down",
-    hint: "Cash still closes. Quantum Payments cards need an uplink. KDS and seating keep working on Wi‑Fi.",
+    hint: "Cash still closes. Quantum Payments cards need an uplink. ODS and seating keep working on Wi‑Fi.",
   },
 ];
 
@@ -127,7 +127,7 @@ export const NETWORK_STATUS_COPY: Record<
 export const NETWORK_FAIL_RECS = [
   "Join this tablet to the staff SSID, not guest Wi‑Fi.",
   "Confirm the access point is up and client isolation is off on the staff network.",
-  "If the ISP is down, cash and KDS still work on the house hub; cards wait for uplink.",
+  "If the ISP is down, cash and ODS still work on the house hub; cards wait for uplink.",
   "You can finish onboarding now and re-run this check from Settings anytime.",
 ];
 

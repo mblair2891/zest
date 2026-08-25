@@ -111,15 +111,23 @@ export function runDemoStepAction(action: DemoStep["action"]): void {
     case "bump_kitchen": {
       const t = usePosStore
         .getState()
-        .tickets.find((x) => x.station === "kitchen" && x.status !== "bumped");
-      if (t) usePosStore.getState().bumpTicket(t.id);
+        .tickets.find(
+          (x) =>
+            x.station === "kitchen" &&
+            (x.status === "new" || x.status === "in_progress"),
+        );
+      if (t) usePosStore.getState().readyTicket(t.id);
       break;
     }
     case "bump_bar": {
       const t = usePosStore
         .getState()
-        .tickets.find((x) => x.station === "bar" && x.status !== "bumped");
-      if (t) usePosStore.getState().bumpTicket(t.id);
+        .tickets.find(
+          (x) =>
+            x.station === "bar" &&
+            (x.status === "new" || x.status === "in_progress"),
+        );
+      if (t) usePosStore.getState().readyTicket(t.id);
       break;
     }
     case "settle_preview":

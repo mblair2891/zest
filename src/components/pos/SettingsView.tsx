@@ -797,7 +797,7 @@ export function SettingsView() {
           onChange={(e) => updateSettings({ requirePinToBump: e.target.checked })}
         />
         <span>
-          Require PIN to bump KDS tickets
+          Require PIN to bump ODS tickets
           <span className="mt-0.5 block text-xs text-muted-foreground">
             Station still uses floor PIN login. Optional second PIN at bump.
           </span>
@@ -943,7 +943,7 @@ function NetworkSettingsPanel() {
         Summex does not need a private Ethernet drop at every station. One
         business access point runs a staff SSID. Devices talk to the house
         hub over that WiFi. Internet is only the uplink — when the ISP dies,
-        the floor, KDS, and cash drawer keep going.
+        the floor, ODS, and cash drawer keep going.
       </p>
       <p className="mb-3 text-xs">
         Status:{" "}
@@ -977,7 +977,7 @@ function NetworkSettingsPanel() {
             }
           >
             <option value="hub">House hub (source of truth)</option>
-            <option value="satellite">Satellite (handheld / KDS)</option>
+            <option value="satellite">Satellite (handheld / ODS)</option>
           </select>
         </label>
         <label className="block text-sm">
@@ -1001,7 +1001,7 @@ function NetworkSettingsPanel() {
           checked={isolated}
           onChange={setIsolated}
           label="Keep guest WiFi off the POS network"
-          hint="Staff SSID only for terminals, KDS, printers, and card readers."
+          hint="Staff SSID only for terminals, ODS, printers, and card readers."
         />
         <PolicyCheck
           checked={simulateWan}

@@ -5,8 +5,8 @@
 | Device | Role in test | Login | After login open |
 |---|---|---|---|
 | **Galaxy tablet A** | Server / floor | Jordan Lee (Server) or PIN `1111` | Floor → seat & order |
-| **Galaxy tablet B** | Bar **or** Manager | Casey (`3333`) or Alex (`0000`) | Bar KDS **or** HQ |
-| **27″ Android touch** | Kitchen expo KDS | Morgan Diaz (Kitchen) `5555` | Kitchen (use link below) |
+| **Galaxy tablet B** | Bar **or** Manager | Casey (`3333`) or Alex (`0000`) | Bar ODS **or** HQ |
+| **27″ Android touch** | Kitchen expo ODS | Morgan Diaz (Kitchen) `5555` | Kitchen (use link below) |
 
 Optional 4th browser on a laptop: **Owner** `9999` or **Platform** at `/platform`.
 
@@ -29,8 +29,8 @@ After the app is loaded once, these help:
 | Station | Path |
 |---|---|
 | POS home | `/` |
-| Kitchen KDS (27″) | `/?station=kitchen` |
-| Bar KDS | `/?station=bar` |
+| Kitchen ODS (27″) | `/?station=kitchen` |
+| Bar ODS | `/?station=bar` |
 | Floor | `/?station=floor` |
 | Order | `/?station=order` |
 | Platform SaaS | `/platform` |
@@ -68,7 +68,7 @@ After the app is loaded once, these help:
 
 On any POS device, header **Package preview**:
 - `Location packages` = real entitlements  
-- `Only: KDS` / `Only: Drink AI` etc. = see that module’s menu through the current role  
+- `Only: ODS` / `Only: Drink AI` etc. = see that module’s menu through the current role  
 
 ---
 
@@ -78,7 +78,7 @@ On any POS device, header **Package preview**:
 |---|---|
 | Tap misses buttons | Use Chrome, not in-app Instagram/Facebook browser |
 | Keyboard covers PIN | Rotate landscape; scroll |
-| KDS text small on 27″ | Browser zoom 110–125% once, then Add to Home screen |
+| ODS text small on 27″ | Browser zoom 110–125% once, then Add to Home screen |
 | Sleep mid-service | Display → Sleep → 30 min / Never while plugged in |
 | Stale UI | Pull to refresh or close PWA and reopen |
 | Login loop / snag | Platform or POS → reset demo data / clear site storage |

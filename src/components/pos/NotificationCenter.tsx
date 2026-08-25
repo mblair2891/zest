@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { usePosStore } from "@/lib/pos/store";
 import {
+  hapticNotify,
   playBumpChime,
   useNotifyStore,
   type PosNotice,
@@ -21,21 +22,44 @@ const FOH_ROLES = new Set([
   "busser",
 ]);
 
-function shouldToast(notice: PosNotice, role: string, view: string): boolean {
+function isOdsView(view: string, station?: string): boolean {
+  return (
+    (view === "kitchen" && station === "kitchen") ||
+    (view === "bar" && station === "bar")
+  );
+}
+
+function isOriginator(
+  emp: { id: string; name: string } | null,
+  notice: PosNotice,
+): boolean {
+  if (!emp) return false;
+  if (notice.serverId && emp.id === notice.serverId) return true;
+  if (notice.serverName && emp.name === notice.serverName) return true;
+  return false;
+}
+
+function shouldToast(
+  notice: PosNotice,
+  emp: { id: string; name: string; role: string } | null,
+  view: string,
+): boolean {
+  const role = emp?.role ?? "";
+  const originator = isOriginator(emp, notice);
+  const onOds = isOdsView(view, notice.station);
+  if (onOds) return false;
+  if (originator) return true;
+  if (notice.kind === "ticket_sent" || notice.kind === "ticket_started") {
+    return false;
+  }
   if (notice.kind === "guest_checked_in" || notice.kind === "waitlist_update") {
     return FOH_ROLES.has(role);
   }
-  if (notice.kind === "ticket_ready" || notice.kind === "table_needs_bus") {
-    return FOH_ROLES.has(role);
-  }
-  if (notice.kind === "ticket_bumped") {
-    // KDS operator already sees the bump they just made
-    if (
-      (view === "kitchen" && notice.station === "kitchen") ||
-      (view === "bar" && notice.station === "bar")
-    ) {
-      return false;
-    }
+  if (
+    notice.kind === "ticket_ready" ||
+    notice.kind === "ticket_bumped" ||
+    notice.kind === "table_needs_bus"
+  ) {
     return FOH_ROLES.has(role);
   }
   return FOH_ROLES.has(role);
@@ -62,43 +86,49 @@ export function TicketBumpWatcher() {
       prev.current = next;
       return;
     }
-    for (const t of tickets as KitchenTicket[]) {
-      const was = prev.current.get(t.id);
-      if (!was) continue;
-      if (was !== "ready" && t.status === "ready") {
-        const notice = pushFromTicket(t, "ticket_ready");
-        if (shouldToast(notice, emp?.role ?? "", view)) {
-          toast.success(notice.title, {
-            description: notice.body,
-            duration: 8000,
-          });
-          if (soundEnabled) playBumpChime();
+    const empLite = emp
+      ? { id: emp.id, name: emp.name, role: emp.role }
+      : null;
+    const alert = (notice: PosNotice, haptic: boolean) => {
+      if (!shouldToast(notice, empLite, view)) return;
+      toast.success(notice.title, {
+        description: notice.body,
+        duration: 8000,
+      });
+      if (soundEnabled) playBumpChime();
+      if (haptic) hapticNotify();
+      if (
+        desktopEnabled &&
+        typeof Notification !== "undefined" &&
+        Notification.permission === "granted"
+      ) {
+        try {
+          new Notification(notice.title, { body: notice.body });
+        } catch {
+          /* ignore */
         }
       }
-      if (was !== "bumped" && t.status === "bumped") {
-        const notice = pushFromTicket(t, "ticket_bumped");
-        if (shouldToast(notice, emp?.role ?? "", view)) {
-          toast.success(notice.title, {
-            description: notice.body,
-            duration: 8000,
-          });
-          if (soundEnabled) playBumpChime();
-          if (
-            desktopEnabled &&
-            typeof Notification !== "undefined" &&
-            Notification.permission === "granted"
-          ) {
-            try {
-              new Notification(notice.title, { body: notice.body });
-            } catch {
-              /* ignore */
-            }
-          }
+    };
+    for (const t of tickets as KitchenTicket[]) {
+      const was = prev.current.get(t.id);
+      if (!was) {
+        if (t.status === "new") {
+          alert(pushFromTicket(t, "ticket_sent"), true);
         }
+        continue;
+      }
+      if (was !== "in_progress" && t.status === "in_progress") {
+        alert(pushFromTicket(t, "ticket_started"), true);
+      }
+      if (was !== "ready" && t.status === "ready") {
+        alert(pushFromTicket(t, "ticket_ready"), true);
+      }
+      if (was !== "bumped" && t.status === "bumped") {
+        alert(pushFromTicket(t, "ticket_bumped"), true);
       }
       if (was === "bumped" && t.status !== "bumped") {
         const notice = pushFromTicket(t, "ticket_recalled");
-        if (shouldToast(notice, emp?.role ?? "", view)) {
+        if (shouldToast(notice, empLite, view)) {
           toast(notice.title, { description: notice.body, duration: 5000 });
         }
       }
@@ -107,6 +137,8 @@ export function TicketBumpWatcher() {
   }, [
     tickets,
     pushFromTicket,
+    emp?.id,
+    emp?.name,
     emp?.role,
     view,
     soundEnabled,
@@ -233,7 +265,7 @@ export function NotificationBell() {
             <ul className="max-h-[min(22rem,50vh)] overflow-y-auto">
               {visible.length === 0 && (
                 <li className="px-3 py-8 text-center text-xs text-muted-foreground">
-                  No bumps yet. Kitchen bumping a ticket will ping the floor here.
+                  No ODS pings yet. Start and Bump notify the originating server here.
                 </li>
               )}
               {visible.map((n) => (

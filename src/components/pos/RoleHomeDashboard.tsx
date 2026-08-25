@@ -188,7 +188,7 @@ export function RoleHomeDashboard() {
               <Stat label="Kitchen tickets" value={String(kitchenOpen.length)} />
               <Stat label="Ready to bump" value={String(kitchenOpen.filter((t) => t.status === "ready").length)} />
             </div>
-            <Jump id="kitchen" label="Open KDS" icon={CookingPot} />
+            <Jump id="kitchen" label="Open ODS" icon={CookingPot} />
           </>
         )}
 
@@ -199,7 +199,7 @@ export function RoleHomeDashboard() {
               <Stat label="Open tabs" value={String(openChecks.filter((o) => o.type === "bar_tab").length)} />
             </div>
             <div className="flex flex-wrap gap-2">
-              <Jump id="bar" label="Bar KDS" icon={Wine} />
+              <Jump id="bar" label="Bar ODS" icon={Wine} />
               <Jump id="order" label="Service tickets" icon={ClipboardList} />
             </div>
           </>

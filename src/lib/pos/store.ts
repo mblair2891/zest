@@ -1042,6 +1042,7 @@ const usePosStoreRaw = create()(persist((set, get) => ({
 				orderNumber: order.number,
 				tableLabel: table?.label ?? order.tabName ?? order.type.replace("_", " "),
 				serverName: order.serverName,
+				serverId: order.serverId,
 				station: first.station,
 				vendorId: first.vendorId,
 				vendorName: vendor?.shortName ?? vendor?.name,
@@ -1378,7 +1379,8 @@ const usePosStoreRaw = create()(persist((set, get) => ({
 	startTicket: (ticketId) => {
 		set({ tickets: get().tickets.map((t) => t.id === ticketId ? {
 			...t,
-			status: "in_progress"
+			status: "in_progress",
+			startedAt: t.startedAt ?? Date.now(),
 		} : t) });
 	},
 	readyTicket: (ticketId) => {
@@ -1397,16 +1399,29 @@ const usePosStoreRaw = create()(persist((set, get) => ({
 				});
 			}
 		}
-		try {
-			if (ticket) {
-				useNotifyStore.getState().pushNotice({
-					kind: "ticket_ready",
-					title: `Ready · ${ticket.tableLabel}`,
-					body: `${ticket.station === "bar" ? "Bar" : "Kitchen"} marked #${ticket.orderNumber} ready for expo / server`,
-					tableLabel: ticket.tableLabel,
-				});
-			}
-		} catch { /* optional */ }
+	},
+	deliverReadyTicketsForTable: (tableId) => {
+		const order = get().orders.find((o) => o.tableId === tableId && o.status === "open")
+			?? get().orders.find((o) => o.tableId === tableId);
+		if (!order) return;
+		const now = Date.now();
+		const ready = get().tickets.filter((t) => t.orderId === order.id && t.status === "ready");
+		if (!ready.length) return;
+		const tickets = get().tickets.map((t) =>
+			t.orderId === order.id && t.status === "ready"
+				? { ...t, status: "bumped", bumpedAt: now }
+				: t,
+		);
+		set({ tickets });
+		if (order.tableId) {
+			const st = deriveTableStatus(order, tickets, floorCfg());
+			set({
+				tables: get().tables.map((tb) => tb.id === order.tableId ? stampStatus(tb, st) : tb),
+			});
+		}
+		for (const t of ready) {
+			noteTicketBump({ ticketId: t.id, orderNumber: t.orderNumber });
+		}
 	},
 	addWaitlist: (entry) => {
 		const id = entry.id || uid("wl");

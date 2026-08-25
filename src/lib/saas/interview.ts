@@ -259,7 +259,7 @@ const QUESTION_BANK: InterviewQuestion[] = [
   },
   {
     id: "channels",
-    prompt: "Which channels do you need: floor / table service, counter, KDS, online/order-ahead, kiosk?",
+    prompt: "Which channels do you need: floor / table service, counter, ODS, online/order-ahead, kiosk?",
   },
   {
     id: "volume",
@@ -267,7 +267,7 @@ const QUESTION_BANK: InterviewQuestion[] = [
   },
   {
     id: "scale",
-    prompt: "Peak concurrent devices (POS, KDS, handhelds) and roughly how many staff logins?",
+    prompt: "Peak concurrent devices (POS, ODS, handhelds) and roughly how many staff logins?",
   },
 ];
 
@@ -465,7 +465,7 @@ Ask 3–8 targeted follow-ups total across the whole interview. Prefer clarifyin
 - location / operator counts
 - one host check vs pay-per-vendor
 - bar vs food routing
-- channels (floor, KDS, online, kiosk)
+- channels (floor, ODS, online, kiosk)
 - volume, devices, staff seats
 Do not interrogate endlessly. When you have enough, return a recommendation.
 

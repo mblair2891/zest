@@ -61,7 +61,7 @@ export const GETTING_STARTED_TOPICS: GuideTopic[] = [
       ),
       callout(
         "Learn links",
-        "Key screens (onboarding, settlement, payments, floor, KDS) have a Learn control that opens this guide on the matching topic.",
+        "Key screens (onboarding, settlement, payments, floor, ODS) have a Learn control that opens this guide on the matching topic.",
       ),
       tip(
         "When a feature ships, add a topic under src/lib/guide/content/ and a What’s New row in src/lib/whats-new/entries.ts. See docs/operators-guide.md.",
@@ -131,7 +131,7 @@ export const GETTING_STARTED_TOPICS: GuideTopic[] = [
         "Bartender / kitchen — rail, bump, tabs. Cashier — counter and pay.",
         "Vendor operator — own menu, tickets, settlement share (multi-operator houses).",
         "Accountant — reports, ledger, settlement.",
-        "Kiosk and KDS device modes — guest glass or dedicated pit/well.",
+        "Kiosk and ODS device modes — guest glass or dedicated pit/well.",
         "Platform Admin — Console, Pipeline, Demos. Not a restaurant PIN.",
       ),
       steps(
@@ -158,7 +158,7 @@ export const GETTING_STARTED_TOPICS: GuideTopic[] = [
         "The public site is sales, guide, and demos. The house — floor, money, staff — opens only after you sign in with a work account.",
       ),
       p(
-        "Two login modes. Back office (owners, managers, accountants, entity managers) uses email and password at Sign in. Working staff on a shared tablet, KDS, or host stand use a 4-digit PIN. PINs are hashed, scoped to the location (and entity on a host floor), and never appear on the marketing site.",
+        "Two login modes. Back office (owners, managers, accountants, entity managers) uses email and password at Sign in. Working staff on a shared tablet, ODS, or host stand use a 4-digit PIN. PINs are hashed, scoped to the location (and entity on a host floor), and never appear on the marketing site.",
       ),
       steps(
         "Back office: Sign in with work email and password. Open location settings, the host permission matrix, scheduling admin, payroll reports, menu management.",
@@ -191,7 +191,7 @@ export const GETTING_STARTED_TOPICS: GuideTopic[] = [
       ul(
         "Marketing (summex.app) — product, pricing, Get pricing / Request demo, Operators Guide.",
         "Account — /login, /signup. Sign-in is required before any control plane or POS location.",
-        "POS — floor, order, KDS, cash, settlement, guests, after a location is open from a signed-in session.",
+        "POS — floor, order, ODS, cash, settlement, guests, after a location is open from a signed-in session.",
         "Operators Guide — public page at /guide (operations). Overlay inside the signed-in product.",
       ),
       shot(

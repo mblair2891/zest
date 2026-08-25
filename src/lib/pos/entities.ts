@@ -80,7 +80,7 @@ function restaurantStaff(): EntityStaffSpec[] {
     if (e.role === "manager") return "Floor, labor, money & reports";
     if (e.id === "emp_srv1") return "Dining section · orders & guests";
     if (e.id === "emp_srv2") return "Booth section · orders & guests";
-    if (e.role === "bartender") return "Bar KDS, tabs & drink assist";
+    if (e.role === "bartender") return "Bar ODS, tabs & drink assist";
     if (e.role === "host") return "Waitlist, reservations & seating";
     if (e.role === "kitchen") return "Expo / kitchen display";
     if (e.role === "busser") return "Table turns & cleanliness";
@@ -166,7 +166,7 @@ export const VENUE_ENTITIES: VenueEntity[] = [
         pin: "2222",
         role: "kitchen",
         title: "Vendor cook",
-        blurb: "Stall KDS / line",
+        blurb: "Stall ODS / line",
         color: C.gold,
         homeView: "kitchen",
       },
@@ -242,7 +242,7 @@ export const VENUE_ENTITIES: VenueEntity[] = [
         pin: "2222",
         role: "kitchen",
         title: "Truck cook",
-        blurb: "Truck KDS",
+        blurb: "Truck ODS",
         color: C.gold,
         homeView: "kitchen",
       },
@@ -289,7 +289,7 @@ export const VENUE_ENTITIES: VenueEntity[] = [
         pin: "1111",
         role: "kitchen",
         title: "Line cook",
-        blurb: "Make line / KDS",
+        blurb: "Make line / ODS",
         color: C.gold,
         homeView: "kitchen",
       },
@@ -404,7 +404,7 @@ export const VENUE_ENTITIES: VenueEntity[] = [
     venueName: "Pier Room",
     address: "42 Pier Avenue — lounge",
     tagline: "Tabs first, light kitchen",
-    blurb: "Bar-led service. Tabs, cocktail KDS, optional small plates.",
+    blurb: "Bar-led service. Tabs, cocktail ODS, optional small plates.",
     locationId: "loc_bar",
     mode: "bar_lounge",
     defaultView: "bar",
@@ -436,7 +436,7 @@ export const VENUE_ENTITIES: VenueEntity[] = [
         pin: "1111",
         role: "bartender",
         title: "Bartender",
-        blurb: "Well, tabs & KDS",
+        blurb: "Well, tabs & ODS",
         color: C.sky,
         homeView: "bar",
       },

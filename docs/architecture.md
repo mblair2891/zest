@@ -71,7 +71,7 @@ Commercial packages live in `src/lib/pos/packages.ts`. Server plans map to those
 
 | Plan slug | Default intent |
 |---|---|
-| `starter` | Core POS + KDS + reports + menu |
+| `starter` | Core POS + ODS + reports + menu |
 | `full_service` | Restaurant default package set |
 | `food_hall` | Hall / multi-vendor set |
 | `platform_internal` | All packages (Summex staff) |

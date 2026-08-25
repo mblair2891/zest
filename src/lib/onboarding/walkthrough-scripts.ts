@@ -300,7 +300,7 @@ const BARTENDER: TourDefinition = w(
       id: "bt-kds",
       title: "Bar rail",
       script:
-        "This is the cocktail KDS. Tickets tagged bar land here — not the pit. Start, bump, recall.",
+        "This is the cocktail ODS. Tickets tagged bar land here — not the pit. Start, Bump when ready, recall.",
       selector: "[data-demo='bar']",
       view: "bar",
     },
@@ -308,7 +308,7 @@ const BARTENDER: TourDefinition = w(
       id: "bt-bump",
       title: "Bump",
       script:
-        "Bump tells the floor the drink is up. On a host floor you only see your operator’s rail.",
+        "Bump marks the drink ready. The originating server’s device chimes and vibrates. On a host floor you only see your operator’s rail.",
       selector: "[data-demo='bar']",
       view: "bar",
       action: "bump_bar",
@@ -332,7 +332,7 @@ const BARTENDER: TourDefinition = w(
     {
       id: "bt-done",
       title: "Replay",
-      script: "Replay from Guide. Device · KDS Bar is the same rail on a dedicated screen.",
+      script: "Replay from Guide. Device · Bar ODS is the same rail on a dedicated screen.",
       selector: "[data-demo='bar']",
       view: "bar",
     },
@@ -363,7 +363,7 @@ const KITCHEN: TourDefinition = w(
       id: "kt-bump",
       title: "Bump",
       script:
-        "Bump tells the floor the plate is up. Toast, chime, table pulse. Do not bump someone else’s ticket.",
+        "Start when you fire. Bump when ready — the originating server’s device toasts, chimes, and vibrates. Expo or floor marks Delivered. Do not bump someone else’s ticket.",
       selector: "[data-demo='kitchen']",
       view: "kitchen",
       action: "bump_kitchen",
@@ -388,7 +388,7 @@ const KITCHEN: TourDefinition = w(
       id: "kt-done",
       title: "Device mode",
       script:
-        "Kitchen KDS as a device is this same rail full-screen. Replay from Guide whenever you train a new expo.",
+        "Kitchen ODS as a device is this same rail full-screen. Replay from Guide whenever you train a new expo.",
       selector: "[data-demo='kitchen']",
       view: "kitchen",
     },
@@ -595,7 +595,7 @@ const KIOSK: TourDefinition = w(
       id: "ki-switch",
       title: "Back to staff",
       script:
-        "Demo mode switches this device back to Floor POS, KDS, or a role. Live kiosks stay locked to guests.",
+        "Demo mode switches this device back to Floor POS, ODS, or a role. Live kiosks stay locked to guests.",
       selector: "[data-demo='device-switcher'], [data-demo='kiosk-home']",
     },
   ],
@@ -603,14 +603,14 @@ const KIOSK: TourDefinition = w(
 
 const KDS_KITCHEN: TourDefinition = w(
   "walkthrough:kds_kitchen",
-  "Kitchen KDS",
+  "Kitchen ODS",
   "Dedicated pit display.",
   [
     {
       id: "kd-rail",
-      title: "Kitchen KDS",
+      title: "Kitchen ODS",
       script:
-        "This device is the pit. Tickets from the floor and kiosk land here. You bump. You do not pay.",
+        "This device is the pit. Tickets from the floor and kiosk land here. Start, then Bump when ready. You do not pay.",
       selector: "[data-demo='kitchen']",
       view: "kitchen",
     },
@@ -624,7 +624,7 @@ const KDS_KITCHEN: TourDefinition = w(
     {
       id: "kd-bump",
       title: "Bump",
-      script: "Bump notifies the floor. Recall if you bumped too soon.",
+      script: "Bump marks ready and notifies the originating server (chime + vibrate). Expo or the floor marks Delivered. Recall if you bumped too soon.",
       selector: "[data-demo='kitchen']",
       view: "kitchen",
       action: "bump_kitchen",
@@ -632,7 +632,7 @@ const KDS_KITCHEN: TourDefinition = w(
     {
       id: "kd-scope",
       title: "Your station only",
-      script: "Bar tickets do not belong here. Switch Demo mode to KDS Bar to see the well.",
+      script: "Bar tickets do not belong here. Switch Demo mode to Bar ODS to see the well.",
       selector: "[data-demo='device-switcher'], [data-demo='kitchen']",
       view: "kitchen",
     },
@@ -648,12 +648,12 @@ const KDS_KITCHEN: TourDefinition = w(
 
 const KDS_BAR: TourDefinition = w(
   "walkthrough:kds_bar",
-  "Bar KDS",
+  "Bar ODS",
   "Dedicated well display.",
   [
     {
       id: "kb-rail",
-      title: "Bar KDS",
+      title: "Bar ODS",
       script: "This device is the well. Cocktail tickets only. Kitchen stays on the other screen.",
       selector: "[data-demo='bar']",
       view: "bar",
@@ -661,7 +661,7 @@ const KDS_BAR: TourDefinition = w(
     {
       id: "kb-bump",
       title: "Bump",
-      script: "Bump tells the floor the round is up.",
+      script: "Bump marks the round ready. The originating server’s device chimes and vibrates.",
       selector: "[data-demo='bar']",
       view: "bar",
       action: "bump_bar",
@@ -676,7 +676,7 @@ const KDS_BAR: TourDefinition = w(
     {
       id: "kb-switch",
       title: "Switch device",
-      script: "Demo mode returns you to Floor POS or Kitchen KDS. Live bar displays stay locked.",
+      script: "Demo mode returns you to Floor POS or Kitchen ODS. Live bar displays stay locked.",
       selector: "[data-demo='device-switcher'], [data-demo='bar']",
       view: "bar",
     },

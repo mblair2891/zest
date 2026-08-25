@@ -58,7 +58,7 @@ export const DEVICE_FUNCTIONS: DeviceFunction[] = [
 
 export const DEVICE_TYPE_LABEL: Record<LocationDeviceType, string> = {
   tablet_pos: "Tablet POS",
-  kds: "KDS display",
+  kds: "Order display",
   kiosk: "Kiosk",
   printer: "Printer",
   host_stand: "Host stand",
@@ -68,8 +68,8 @@ export const DEVICE_TYPE_LABEL: Record<LocationDeviceType, string> = {
 export const DEVICE_FUNCTION_LABEL: Record<DeviceFunction, string> = {
   floor_pos: "Floor POS",
   bar_pos: "Bar POS",
-  kitchen_kds: "Kitchen KDS",
-  bar_kds: "Bar KDS",
+  kitchen_kds: "Kitchen ODS",
+  bar_kds: "Bar ODS",
   expo: "Expo",
   kiosk: "Kiosk",
   host_stand: "Host stand",

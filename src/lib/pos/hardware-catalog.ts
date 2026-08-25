@@ -43,13 +43,13 @@ export const HARDWARE_POLICY = {
   principles: [
     "Software runs on customer-owned tablets/phones/desktops (BYOD) by default.",
     "Site fabric is WiFi-first: one business AP, staff SSID, isolated guest. No CAT6 to every station.",
-    "Internet is only the uplink. If the ISP dies, house WiFi still carries POS, KDS, printers, and handhelds to the hub.",
+    "Internet is only the uplink. If the ISP dies, house WiFi still carries POS, ODS, printers, and handhelds to the hub.",
     "Card-present payments use certified Stripe Terminal (or successor) only — not random NFC dongles.",
     "Receipt/kitchen printers: Star Micronics or Epson network models on the certified list.",
     "Four acquire paths: BYOD · Buy kit · Partner finance (24–36 mo, $1 buyout target) · Device subscription (Summex-owned fleet).",
     "Hardware contracts are separate from software SaaS and from card processing rates.",
     "No long ‘free terminal’ deals that bury cost in opaque processing without a written comparison.",
-    "Food halls: vendors BYOD handhelds; host may buy/subscribe shared KDS, network, and settlement station.",
+    "Food halls: vendors BYOD handhelds; host may buy/subscribe shared ODS, network, and settlement station.",
     "Truck pods: BYOD-first; pad power/network is site infrastructure, not per-truck 4-year paper.",
   ],
   modes: [
@@ -79,7 +79,7 @@ export const HARDWARE_POLICY = {
       name: "Device subscription",
       customerPays: "$/device/mo; swap on failure",
       summexRole: "Own fleet, RMA, refresh ~36 mo",
-      when: "Always-on KDS/counters; managed sites",
+      when: "Always-on ODS/counters; managed sites",
     },
   ],
   financeGuardrails: [
@@ -94,7 +94,7 @@ export const HARDWARE_POLICY = {
     { item: "Stripe Terminal readers", support: "Required for live card-present" },
     { item: "Star / Epson LAN printers", support: "Certified; others best-effort" },
     { item: "Cash drawer (printer-kick)", support: "Optional; APG/Star common" },
-    { item: "Consumer phone as sole KDS", support: "Not recommended (battery/brightness)" },
+    { item: "Consumer phone as sole ODS", support: "Not recommended (battery/brightness)" },
   ],
 } as const;
 
@@ -115,9 +115,9 @@ export const HARDWARE_SKUS: HardwareSku[] = [
   },
   {
     id: "sku_android_27_test",
-    name: '27" Android touchscreen display (your KDS)',
+    name: '27" Android touchscreen display (your ODS)',
     category: "compute",
-    role: "Kitchen expo KDS",
+    role: "Kitchen expo ODS",
     listPriceUsd: 0,
     byodOk: true,
     notes: "Large-format Android touch. Use Kitchen login + /?station=kitchen. Stay awake while plugged in; zoom 110% if tickets feel small.",
@@ -162,11 +162,11 @@ export const HARDWARE_SKUS: HardwareSku[] = [
     id: "sku_android_tab",
     name: "Android tablet 10\" (Samsung/Lenovo class)",
     category: "compute",
-    role: "Counter POS / KDS",
+    role: "Counter POS / ODS",
     listPriceUsd: 229,
     subscribeMonthlyUsd: 25,
     byodOk: true,
-    notes: "Chrome; Android 12+. Prefer Wi-Fi 6, 4GB+ RAM for KDS.",
+    notes: "Chrome; Android 12+. Prefer Wi-Fi 6, 4GB+ RAM for ODS.",
     sources: [
       {
         label: "Samsung Galaxy Tab",
@@ -263,7 +263,7 @@ export const HARDWARE_SKUS: HardwareSku[] = [
     listPriceUsd: 400,
     subscribeMonthlyUsd: 22,
     byodOk: true,
-    notes: "Use for expo backup when KDS is down; LAN.",
+    notes: "Use for expo backup when ODS is down; LAN.",
     sources: [
       {
         label: "Epson POS printers",
@@ -304,7 +304,7 @@ export const HARDWARE_SKUS: HardwareSku[] = [
     id: "sku_kds_display",
     name: "21–24\" commercial display + mount",
     category: "compute",
-    role: "Kitchen / bar KDS screen",
+    role: "Kitchen / bar ODS screen",
     listPriceUsd: 220,
     subscribeMonthlyUsd: 15,
     byodOk: true,
@@ -379,7 +379,7 @@ export const HARDWARE_KITS: HardwareKit[] = [
   },
   {
     id: "kit_kds",
-    name: "KDS Station Kit",
+    name: "ODS Station Kit",
     bestFor: "Kitchen or bar expo",
     skuIds: ["sku_android_tab", "sku_kds_display", "sku_stand"],
     buyTotalUsd: 229 + 220 + 90,

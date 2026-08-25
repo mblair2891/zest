@@ -68,10 +68,10 @@ export const SUMMEX_PACKAGES: SummexPackage[] = [
   },
   {
     id: "kds",
-    name: "Kitchen & Bar KDS",
-    shortName: "KDS",
+    name: "Order Display (ODS)",
+    shortName: "ODS",
     category: "core",
-    tagline: "Expo rails, bump/recall, vendor-routed tickets",
+    tagline: "Station displays, Start/Bump, vendor-routed tickets",
     priceMonthly: 0,
     modes: ["all"],
     views: ["kitchen", "bar"],

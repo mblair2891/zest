@@ -91,7 +91,7 @@ export const TROUBLESHOOTING_TOPICS: GuideTopic[] = [
         "Package — licensed module bundle on a location.",
         "PIN access level — which POS tools a station user may open.",
         "House hub — station that holds live checks; satellites reach it over Wi‑Fi.",
-        "Staff SSID — isolated Wi‑Fi for POS, KDS, printers, readers. Not guest.",
+        "Staff SSID — isolated Wi‑Fi for POS, ODS, printers, readers. Not guest.",
         "Outbox — cloud queue for card captures and messages while the ISP is down.",
         "Period — settlement window; close it to mint operator payouts.",
         "Chargeback fee — $35 on file, split by merchandise %; not reversed on won/lost.",

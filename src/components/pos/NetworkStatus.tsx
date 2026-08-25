@@ -206,7 +206,7 @@ export function NetworkBanner() {
       <span className="text-foreground">
         Offline — changes will sync when back online.
         {" "}
-        <strong>{ssid}</strong> still runs floor, KDS, and cash.
+        <strong>{ssid}</strong> still runs floor, ODS, and cash.
         {localOnly && !healthOk && browserOnline
           ? " Local app heartbeat missed (no house hub / API)."
           : " No internet uplink."}

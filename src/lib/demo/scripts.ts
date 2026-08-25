@@ -278,7 +278,7 @@ export const TYPE_SCRIPTS: Record<VenueEntityId, DemoScript> = {
       {
         id: "b4",
         title: "Send & bump",
-        body: "The cocktail KDS is the source of truth for the well.",
+        body: "The cocktail ODS is the source of truth for the well.",
         kind: "pos",
         view: "bar",
         target: "bar",
@@ -432,7 +432,7 @@ export const TYPE_SCRIPTS: Record<VenueEntityId, DemoScript> = {
       {
         id: "t3",
         title: "Kitchen in the truck",
-        body: "Tickets stay on the truck KDS. The lot host is not the cook.",
+        body: "Tickets stay on the truck ODS. The lot host is not the cook.",
         kind: "pos",
         view: "kitchen",
         target: "kitchen",
@@ -566,7 +566,7 @@ export const FULL_TOUR_SCRIPT: DemoScript = {
     {
       id: "f2",
       title: "Location types & packages",
-      body: "Restaurant, hall, bar, café, QSR, pod, ghost, catering. POS core and KDS ship on the starter path; host settlement and labor are packages you turn on per site.",
+      body: "Restaurant, hall, bar, café, QSR, pod, ghost, catering. POS core and ODS ship on the starter path; host settlement and labor are packages you turn on per site.",
       kind: "narrative",
       autoMs: 7000,
       action: "none",

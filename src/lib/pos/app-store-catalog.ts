@@ -1,4 +1,4 @@
-/** Summex App Store — station apps for tablets / KDS / platform */
+/** Summex App Store — station apps for tablets / ODS / platform */
 
 export type StoreAppId =
   | "floor"
@@ -87,7 +87,7 @@ export const SUMMEX_STORE_APPS: StoreApp[] = [
     shortName: "Order",
     tagline: "Handheld ordering",
     description:
-      "Fast order entry across multi-vendor menus, send to KDS, pay, and split checks.",
+      "Fast order entry across multi-vendor menus, send to ODS, pay, and split checks.",
     category: "front_of_house",
     href: "/?station=order",
     pinHint: "1111",
@@ -105,7 +105,7 @@ export const SUMMEX_STORE_APPS: StoreApp[] = [
     id: "kitchen",
     name: "Summex Kitchen",
     shortName: "Kitchen",
-    tagline: "Expo KDS for 27″ & tablets",
+    tagline: "Expo ODS for 27″ & tablets",
     description:
       "Kitchen display with bump/start, vendor routing, and keep-awake friendly layout for large Android touchscreens.",
     category: "production",
@@ -117,7 +117,7 @@ export const SUMMEX_STORE_APPS: StoreApp[] = [
     sizeLabel: "Web app",
     age: "Everyone",
     featured: true,
-    badge: "KDS",
+    badge: "ODS",
     iconFrom: "#e5a320",
     iconTo: "#b45309",
     emoji: "👨‍🍳",
@@ -126,7 +126,7 @@ export const SUMMEX_STORE_APPS: StoreApp[] = [
     id: "bar",
     name: "Summex Bar",
     shortName: "Bar",
-    tagline: "Bar KDS & tabs",
+    tagline: "Bar ODS & tabs",
     description:
       "Bar rail tickets, drink fire times, and quick access to Drink AI assist.",
     category: "production",

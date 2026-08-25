@@ -10,6 +10,8 @@ export type PosNoticeKind =
   | "waitlist_update"
   | "sla_alert"
   | "ticket_ready"
+  | "ticket_started"
+  | "ticket_sent"
   | "table_needs_bus";
 
 export interface PosNotice {
@@ -24,6 +26,7 @@ export interface PosNotice {
   tableLabel?: string;
   station?: KitchenTicket["station"];
   serverName?: string;
+  serverId?: string;
   itemSummary?: string;
 }
 
@@ -69,7 +72,9 @@ export function noticeVisibleTo(
   if (n.kind === "sla_alert" || n.kind === "table_needs_bus") {
     return role === "server" || role === "busser" || role === "cashier";
   }
-  if (n.kind === "ticket_ready") {
+  if (n.serverId && emp.id === n.serverId) return true;
+  if (n.serverName && emp.name === n.serverName) return true;
+  if (n.kind === "ticket_ready" || n.kind === "ticket_started" || n.kind === "ticket_sent") {
     return role === "server" || role === "busser" || role === "cashier";
   }
   if (n.kind === "guest_checked_in" || n.kind === "waitlist_update") {
@@ -89,6 +94,69 @@ function summarizeItems(t: KitchenTicket): string {
     .slice(0, 3)
     .map((i) => `${i.quantity}× ${i.name}`)
     .join(", ");
+}
+
+function noticeFromTicket(ticket: KitchenTicket, kind: PosNoticeKind): PosNotice {
+  const itemSummary = summarizeItems(ticket);
+  const stationLabel = ticket.station === "bar" ? "Bar ODS" : "Kitchen ODS";
+  const base = {
+    createdAt: Date.now(),
+    read: false as const,
+    ticketId: ticket.id,
+    orderId: ticket.orderId,
+    tableLabel: ticket.tableLabel,
+    station: ticket.station,
+    serverName: ticket.serverName,
+    serverId: ticket.serverId,
+    itemSummary,
+  };
+  if (kind === "ticket_sent") {
+    return {
+      id: uid("nt"),
+      kind,
+      title: `Sent · ${ticket.tableLabel}`,
+      body: `${stationLabel} received #${ticket.orderNumber}${itemSummary ? ` — ${itemSummary}` : ""}`,
+      ...base,
+    };
+  }
+  if (kind === "ticket_started") {
+    return {
+      id: uid("nt"),
+      kind,
+      title: `Preparing · ${ticket.tableLabel}`,
+      body: `${stationLabel} started #${ticket.orderNumber}${itemSummary ? ` — ${itemSummary}` : ""}`,
+      ...base,
+    };
+  }
+  if (kind === "ticket_ready") {
+    return {
+      id: uid("nt"),
+      kind,
+      title: `Ready · ${ticket.tableLabel}`,
+      body: `${stationLabel} bumped #${ticket.orderNumber} — ready for expo / floor${
+        itemSummary ? ` — ${itemSummary}` : ""
+      }`,
+      ...base,
+    };
+  }
+  if (kind === "ticket_bumped") {
+    return {
+      id: uid("nt"),
+      kind,
+      title: `Delivered · ${ticket.tableLabel}`,
+      body: `#${ticket.orderNumber} marked delivered${
+        ticket.serverName ? ` for ${ticket.serverName}` : ""
+      }${itemSummary ? ` — ${itemSummary}` : ""}`,
+      ...base,
+    };
+  }
+  return {
+    id: uid("nt"),
+    kind,
+    title: `Recalled · ${ticket.tableLabel}`,
+    body: `${stationLabel} recalled #${ticket.orderNumber} back to the rail.`,
+    ...base,
+  };
 }
 
 export const useNotifyStore = create<NotifyState>()(
@@ -116,58 +184,7 @@ export const useNotifyStore = create<NotifyState>()(
       },
 
       pushFromTicket: (ticket, kind) => {
-        const itemSummary = summarizeItems(ticket);
-        const stationLabel = ticket.station === "bar" ? "Bar" : "Kitchen";
-        const notice: PosNotice =
-          kind === "ticket_bumped"
-            ? {
-                id: uid("nt"),
-                kind,
-                title: `Food up · ${ticket.tableLabel}`,
-                body: `${stationLabel} bumped #${ticket.orderNumber}${
-                  ticket.serverName ? ` for ${ticket.serverName}` : ""
-                }${itemSummary ? ` — ${itemSummary}` : ""}`,
-                createdAt: Date.now(),
-                read: false,
-                ticketId: ticket.id,
-                orderId: ticket.orderId,
-                tableLabel: ticket.tableLabel,
-                station: ticket.station,
-                serverName: ticket.serverName,
-                itemSummary,
-              }
-            : kind === "ticket_ready"
-              ? {
-                  id: uid("nt"),
-                  kind,
-                  title: `Ready · ${ticket.tableLabel}`,
-                  body: `${stationLabel} marked #${ticket.orderNumber} ready for expo / server${
-                    itemSummary ? ` — ${itemSummary}` : ""
-                  }`,
-                  createdAt: Date.now(),
-                  read: false,
-                  ticketId: ticket.id,
-                  orderId: ticket.orderId,
-                  tableLabel: ticket.tableLabel,
-                  station: ticket.station,
-                  serverName: ticket.serverName,
-                  itemSummary,
-                }
-            : {
-                id: uid("nt"),
-                kind,
-                title: `Recalled · ${ticket.tableLabel}`,
-                body: `${stationLabel} recalled #${ticket.orderNumber} back to the rail.`,
-                createdAt: Date.now(),
-                read: false,
-                ticketId: ticket.id,
-                orderId: ticket.orderId,
-                tableLabel: ticket.tableLabel,
-                station: ticket.station,
-                serverName: ticket.serverName,
-                itemSummary,
-              };
-
+        const notice = noticeFromTicket(ticket, kind);
         const key = normalizeTableKey(ticket.tableLabel);
         const foodUpUntil = { ...get().foodUpUntil };
         if (kind === "ticket_bumped" || kind === "ticket_ready") {
@@ -228,6 +245,14 @@ export const useNotifyStore = create<NotifyState>()(
     },
   ),
 );
+
+export function hapticNotify(): void {
+  try {
+    navigator.vibrate?.([80, 40, 120]);
+  } catch {
+    /* not supported */
+  }
+}
 
 export function playBumpChime() {
   try {

@@ -613,7 +613,7 @@ export function SetupOnboardingWizard({ token }: { token: string }) {
             <div key={l.clientId} className="grid gap-3 rounded-2xl border border-border p-4 sm:grid-cols-3">
               <p className="sm:col-span-3 text-sm font-semibold">{l.name}</p>
               {(["pos", "kds", "handhelds"] as const).map((k) => (
-                <Field key={k} label={k.toUpperCase()}>
+                <Field key={k} label={k === "kds" ? "ODS" : k.toUpperCase()}>
                   <Input
                     type="number"
                     min={0}
