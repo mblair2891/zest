@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Ban, Check, Pencil, Trash2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -12,6 +12,7 @@ import { canEditMenu, canViewMenu, isHostPrivileged } from "@/lib/access/entity-
 import { saveMenuItemFn } from "@/lib/access/api";
 import { isProspectDemo } from "@/lib/demo/session";
 import { useSaasStore } from "@/lib/pos/saas-store";
+import { useCostStore } from "@/lib/costs/store";
 
 export function MenuAdminView() {
   const categories = usePosStore((s) => s.categories);
@@ -40,9 +41,20 @@ export function MenuAdminView() {
   const [editing, setEditing] = useState<string | null>(null);
   const [editName, setEditName] = useState("");
   const [editPrice, setEditPrice] = useState("");
+  const pendingPrice = useCostStore((s) => s.pendingPriceEdit);
+  const clearPendingPrice = useCostStore((s) => s.clearPendingPriceEdit);
 
   const vendorName = (id?: string) =>
     vendors.find((v) => v.id === id)?.name ?? settings.name ?? "Host";
+
+  useEffect(() => {
+    if (!pendingPrice) return;
+    const item = menuItemsAll.find((m) => m.id === pendingPrice.menuItemId);
+    if (!item) return;
+    setEditing(item.id);
+    setEditName(item.name);
+    setEditPrice((pendingPrice.suggestedPriceCents / 100).toFixed(2));
+  }, [pendingPrice, menuItemsAll]);
 
   const persistWrite = (operatorId: string, action: "create" | "update" | "delete" | "toggle") => {
     if (isProspectDemo() || !orgId || !locId) return;
@@ -91,6 +103,11 @@ export function MenuAdminView() {
         <p className="w-full text-xs text-muted-foreground">
           Edit only what you own unless the host grants edit. Foreign items show a view-only badge.
         </p>
+        {pendingPrice && (
+          <p className="w-full text-xs text-primary">
+            Cost rec prefilled {editName} at ${editPrice}. Save to confirm — prices never change automatically.
+          </p>
+        )}
       </div>
 
       {canCreate && (
@@ -192,6 +209,7 @@ export function MenuAdminView() {
                                   priceCents: Math.round(Number(editPrice) * 100) || item.priceCents,
                                 });
                                 persistWrite(item.vendorId || "", "update");
+                                if (pendingPrice?.menuItemId === item.id) clearPendingPrice();
                                 setEditing(null);
                               }}
                             >

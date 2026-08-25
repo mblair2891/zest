@@ -17,7 +17,10 @@ export type Permission =
   | "ledger:read"
   | "tickets:bump"
   | "item:86"
-  | "demo:admin";
+  | "demo:admin"
+  | "costs:invoice"
+  | "costs:po"
+  | "costs:receive";
 
 const ALL: Permission[] = [
   "settings:read",
@@ -35,6 +38,9 @@ const ALL: Permission[] = [
   "ledger:read",
   "tickets:bump",
   "item:86",
+  "costs:invoice",
+  "costs:po",
+  "costs:receive",
 ];
 
 const ROLE_PERMS: Record<EmployeeRole, Permission[] | "all"> = {
@@ -54,8 +60,18 @@ const ROLE_PERMS: Record<EmployeeRole, Permission[] | "all"> = {
     "ledger:read",
     "staff:invite",
     "menu:write",
+    "costs:invoice",
+    "costs:po",
+    "costs:receive",
   ],
-  accountant: ["reports:read", "settlement:read", "ledger:read", "settings:read"],
+  accountant: [
+    "reports:read",
+    "settlement:read",
+    "ledger:read",
+    "settings:read",
+    "costs:invoice",
+    "costs:po",
+  ],
   kiosk: ["orders:create", "waitlist:manage"],
 };
 

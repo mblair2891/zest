@@ -9,6 +9,19 @@ import type { GuideUpdate } from "@/lib/guide/types";
  */
 export const WHATS_NEW_ENTRIES: GuideUpdate[] = [
   {
+    id: "upd_2026_09_21_costs",
+    date: "2026-09-21",
+    title: "Cost control: invoices, variance, POs, price recs",
+    summary:
+      "Upload supplier invoices, map to SKUs, post receipts. Recipes drive theoretical use. Variance needs a manager response. PAR POs email/CSV. Price recs open Menu — never auto-change.",
+    body: "Costs and Cost intel. Closed loop: invoice → stock → sales theoretical → alert → response → order suggestions → price recs. Flags do not accuse. Guest operators stay on their entity.",
+    roles: ["owner_manager", "host_operator", "vendor_operator"],
+    surfaces: ["settings"],
+    audience: "all",
+    topicId: "cost-control",
+    tags: ["cost", "invoice", "variance", "po", "supplier"],
+  },
+  {
     id: "upd_2026_09_20_menu_assist",
     date: "2026-09-20",
     title: "AI menu assist: describe, preview, confirm",

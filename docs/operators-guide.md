@@ -111,6 +111,25 @@ No API key → category templates. Multi-op: scoped to the operator’s entity.
 
 In-app: `/guide?topic=menu-modifiers`.
 
+## Cost control, suppliers, ordering
+
+Closed loop: **invoice → stock → theoretical use → variance → response → PO →
+price recs**. User-facing copy never accuses staff of theft.
+
+- **Invoices:** upload image/PDF or paste. AI extract when keyed; else guided.
+  Map lines to SKU / category / entity. Post = receipt + GL. Vendor-SKU maps persist.
+- **Recipes:** units of each SKU per sale + optional waste factor.
+- **Exceptions:** required response codes (event, take-home, spillage, count
+  error, investigating, other) + note. Linked to AI ops learning log.
+- **Counts / waste** feed expected on-hand. Cash closeout / comps inform the
+  cost picture when punches and voids exist.
+- **POs:** PAR min/max, entity-scoped suppliers, email/CSV connector, API stub.
+  Approve over threshold. Partial receive. Price-change flags vs last PO.
+- **Price recs:** Accept opens Menu with suggested price; human Save only.
+
+Permissions: invoice post, PO create/approve/receive, count, alert respond.
+In-app: `/guide?topic=cost-control`.
+
 ## Offline mode
 
 Wi‑Fi-first. If internet drops, the active location still runs from cache:

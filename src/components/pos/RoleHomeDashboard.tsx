@@ -10,6 +10,7 @@ import {
   Wine,
   BarChart3,
   Store,
+  Package,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -22,6 +23,7 @@ import { canEmployee } from "@/lib/access/permissions";
 import { VENUE_TYPE_LABEL } from "@/lib/access/entity-roles";
 import { AiOpsCard } from "./AiOpsCard";
 import { AccessPointsCard } from "./AccessPointsCard";
+import { useCostStore } from "@/lib/costs/store";
 
 function Jump({
   id,
@@ -90,6 +92,7 @@ export function RoleHomeDashboard() {
   }, [periods, operatorId]);
 
   const typeLabel = entityId ? VENUE_TYPE_LABEL[entityId] : venue?.shortName ?? "House";
+  const openCostEx = useCostStore((s) => s.exceptions.filter((e) => e.status === "open").length);
 
   return (
     <div data-demo="home" className="flex h-full flex-col">
@@ -109,7 +112,20 @@ export function RoleHomeDashboard() {
               <Stat label="Staff on" value={String(onClock)} />
             </div>
             <AiOpsCard />
+            {openCostEx > 0 && (
+              <div className="rounded-2xl border border-warn/40 bg-surface p-4">
+                <p className="text-sm font-medium">Cost exceptions</p>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  {openCostEx} open variance item{openCostEx === 1 ? "" : "s"} — respond with a
+                  reason. Never silent-dismiss.
+                </p>
+                <div className="mt-2">
+                  <Jump id="inventory_ai" label="Open cost intel" icon={Package} />
+                </div>
+              </div>
+            )}
             <div className="flex flex-wrap gap-2">
+              <Jump id="inventory" label="Costs" icon={Package} />
               <Jump id="floor" label="Floor" icon={LayoutGrid} />
               <Jump id="order" label="Order" icon={ClipboardList} />
               <Jump id="menu" label="Menu" icon={ClipboardList} />

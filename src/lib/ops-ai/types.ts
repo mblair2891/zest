@@ -5,7 +5,9 @@ export type OpsRecType =
   | "kitchen_slow"
   | "waitlist_idle"
   | "voids_high"
-  | "mix_86";
+  | "mix_86"
+  | "cost_variance"
+  | "price_rec";
 export type OpsDecisionAction = "accept" | "dismiss" | "snooze";
 
 export type OpsFeatureSnapshot = {

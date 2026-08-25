@@ -26,6 +26,7 @@ import { venueById } from "@/lib/pos/entities";
 import type { PosView } from "@/lib/pos/types";
 import { RoleHomeDashboard } from "./RoleHomeDashboard";
 import { EntityScheduleView } from "./EntityScheduleView";
+import { CostWorkspace } from "./CostWorkspace";
 
 function Shell({
   title,
@@ -557,6 +558,10 @@ export function CateringView() {
 }
 
 export function RecipesView() {
+  return <CostWorkspace initialTab="recipes" />;
+}
+
+function RecipesViewLegacy() {
   const recipes = usePlatformStore((s) => s.recipes);
   const inventory = usePosStore((s) => s.inventory);
   const menuItems = usePosStore((s) => s.menuItems);
@@ -609,6 +614,10 @@ export function RecipesView() {
 }
 
 export function PurchasingView() {
+  return <CostWorkspace initialTab="invoices" />;
+}
+
+function PurchasingViewLegacy() {
   const pos = usePlatformStore((s) => s.purchaseOrders);
   const send = usePlatformStore((s) => s.sendPO);
   const receive = usePlatformStore((s) => s.receivePO);
