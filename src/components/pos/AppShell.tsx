@@ -59,6 +59,12 @@ import { isProspectDemo } from "@/lib/demo/session";
 import { DemoDeviceSwitcher } from "@/components/demo/DemoDeviceSwitcher";
 import { useDemoDeviceStore } from "@/lib/demo/device-session";
 import { useDemoLiveSync } from "@/lib/demo/live-sync";
+import { TrainingBanner } from "./TrainingBanner";
+import { ChangeDeviceButton, SplitScreenToggle, ChangeDeviceDialog } from "./ChangeDeviceDialog";
+import { DeviceModeView } from "./DeviceModeView";
+import { LifecycleWatcher } from "./LifecycleWatcher";
+import { useLifecycleStore } from "@/lib/lifecycle/store";
+import { SESSION_MODES } from "@/lib/lifecycle/types";
 import { FloorView } from "./FloorView";
 import { OrderView } from "./OrderView";
 import { KitchenView } from "./KitchenView";
@@ -184,6 +190,10 @@ export function AppShell() {
   const backOfficeUnlocked = usePosStore((s) => s.backOfficeUnlocked);
   const [unlockOpen, setUnlockOpen] = useState(false);
   const [pendingView, setPendingView] = useState<PosView | null>(null);
+  const splitEnabled = useLifecycleStore((s) => s.splitEnabled);
+  const paneA = useLifecycleStore((s) => s.paneA);
+  const paneB = useLifecycleStore((s) => s.paneB);
+  const [panePick, setPanePick] = useState<null | "a" | "b">(null);
   const kdsMode =
     isProspectDemo() &&
     demoEntered &&
@@ -349,6 +359,7 @@ export function AppShell() {
     return (
       <div className={cn("flex h-[100dvh] flex-col bg-bg text-foreground", shellPad)}>
         <LoginOnboardingHost />
+        <TrainingBanner />
         <header className="flex h-14 shrink-0 items-center gap-2 border-b border-border bg-surface px-3">
           <p className="text-sm font-semibold">
             {demoDevice === "kds_bar" ? "Bar ODS" : demoDevice === "expo" ? "Expo" : "Kitchen ODS"}
@@ -378,6 +389,8 @@ export function AppShell() {
   return (
     <div className={cn("flex h-[100dvh] flex-col bg-bg text-foreground", shellPad)}>
       <LoginOnboardingHost />
+      <LifecycleWatcher />
+      <TrainingBanner />
       <BackOfficeUnlock
         open={unlockOpen}
         onOpenChange={setUnlockOpen}
@@ -447,6 +460,8 @@ export function AppShell() {
             </div>
           )}
 
+          <ChangeDeviceButton />
+          <SplitScreenToggle />
           <VoiceCommandButton />
           <NotificationBell />
           <NetworkChip />
@@ -549,6 +564,44 @@ export function AppShell() {
           </div>
         </nav>
 
+        {splitEnabled && !kdsMode ? (
+          <div className="flex min-h-0 min-w-0 flex-1 overflow-hidden">
+            {(["a", "b"] as const).map((pane) => {
+              const mode = pane === "a" ? paneA : paneB;
+              const label = SESSION_MODES.find((m) => m.id === mode)?.label ?? mode;
+              return (
+                <div
+                  key={pane}
+                  className={cn(
+                    "flex min-h-0 min-w-0 flex-1 flex-col",
+                    pane === "a" && "border-r border-border",
+                  )}
+                >
+                  <div className="flex items-center justify-between gap-2 border-b border-border px-2 py-1">
+                    <span className="text-xs font-semibold">{label}</span>
+                    <button
+                      type="button"
+                      className="text-[11px] text-primary"
+                      onClick={() => setPanePick(pane)}
+                    >
+                      Change device
+                    </button>
+                  </div>
+                  <div className="min-h-0 flex-1 overflow-hidden">
+                    <DeviceModeView mode={mode} />
+                  </div>
+                </div>
+              );
+            })}
+            <ChangeDeviceDialog
+              open={panePick != null}
+              onOpenChange={(v) => {
+                if (!v) setPanePick(null);
+              }}
+              pane={panePick ?? "a"}
+            />
+          </div>
+        ) : (
         <main className="min-h-0 min-w-0 flex-1 overflow-hidden" data-demo={safeView}>
           {safeView === "truck_pod" && <TruckPodView />}
           {safeView === "labor" && <LaborOpsView />}
@@ -589,6 +642,7 @@ export function AppShell() {
           {safeView === "cash" && <CashView />}
           {safeView === "settings" && <SettingsView />}
         </main>
+        )}
       </div>
 
       <nav className="flex shrink-0 gap-0.5 overflow-x-auto border-t border-border bg-surface px-1 py-1 safe-bottom md:hidden">

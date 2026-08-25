@@ -12,6 +12,7 @@ import { useNotifyStore } from "@/lib/pos/notify-store";
 import { useNetworkStore } from "@/lib/pos/network-store";
 import { useOpsLearnStore } from "@/lib/ops-ai/learn-store";
 import { useCostStore } from "@/lib/costs/store";
+import { useLifecycleStore } from "@/lib/lifecycle/store";
 import { EntityLogin } from "./EntityHome";
 import { AppShell } from "./AppShell";
 import { PosErrorBoundary } from "./PosErrorBoundary";
@@ -48,6 +49,7 @@ const STORES = [
   useNetworkStore,
   useOpsLearnStore,
   useCostStore,
+  useLifecycleStore,
 ] as const;
 
 function PosAppInner({ entityId }: { entityId?: string }) {
@@ -163,6 +165,31 @@ function PosAppInner({ entityId }: { entityId?: string }) {
               hostName: access.location.hostBrandName || access.location.name,
             },
           });
+          try {
+            useLifecycleStore.getState().hydrateFromSetup({
+              lifecycleStatus:
+                access.location.lifecycleStatus || setup.lifecycleStatus || "training",
+              trainingTrackInventory: setup.trainingTrackInventory,
+              operatorLifecycle: setup.operatorLifecycle,
+              goLiveAt: setup.goLiveAt,
+              goLiveChoices: setup.goLiveChoices as
+                | import("@/lib/lifecycle/types").KeepEraseMap
+                | undefined,
+            });
+            usePosStore.getState().updateSettings?.({
+              lifecycleStatus:
+                (access.location.lifecycleStatus as
+                  | "training"
+                  | "live"
+                  | "scheduled_live"
+                  | "onboarding") ||
+                setup.lifecycleStatus ||
+                "training",
+              trainingTrackInventory: Boolean(setup.trainingTrackInventory),
+            });
+          } catch {
+            /* */
+          }
           try {
             useSaasStore.getState().setActiveLocation(access.location.id);
             const loc = useSaasStore

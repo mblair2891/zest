@@ -32,6 +32,11 @@ export type LocationSetup = {
   networkCheckedAt?: string;
   networkNotes?: string;
   networkChecklist?: import("./network-readiness").NetworkChecklist;
+  lifecycleStatus?: "onboarding" | "training" | "scheduled_live" | "live";
+  trainingTrackInventory?: boolean;
+  operatorLifecycle?: Record<string, string>;
+  goLiveAt?: string | null;
+  goLiveChoices?: Record<string, "keep" | "erase">;
 };
 
 export const EMPTY_LOCATION_SETUP: LocationSetup = {
@@ -152,6 +157,7 @@ export type LocationRecord = {
   hostBrandName?: string | null;
   operatingModel?: LocationOperatingModel;
   setup?: LocationSetup;
+  lifecycleStatus?: string;
 };
 
 export type InviteRecord = {

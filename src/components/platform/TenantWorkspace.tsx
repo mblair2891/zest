@@ -142,7 +142,7 @@ export function TenantWorkspace() {
               <ul className="mt-1 text-sm">
                 {detail.locations.map((l) => (
                   <li key={l.id}>
-                    {l.name} · {l.venueType}
+                    {l.name} · {l.venueType} · {l.lifecycleStatus ?? l.status}
                   </li>
                 ))}
                 {detail.locations.length === 0 && (

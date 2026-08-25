@@ -33,6 +33,7 @@ import {
 	mergeLedger,
 } from "./ledger";
 import { useOpsStore } from "./ops-store";
+import { captureIsSandbox } from "@/lib/lifecycle/store";
 import { isDevDemoClient } from "@/lib/saas/flags";
 import { laundryPosSlice } from "./laundry-seed";
 import { demoPersistStorage } from "@/lib/demo/session";
@@ -198,6 +199,18 @@ function initialState() {
 		sessionKind: "pin",
 		backOfficeUnlocked: false,
 	};
+}
+
+function optsSandbox(method, order, emp) {
+	if (method !== "card" && method !== "room_charge") return false;
+	try {
+		return captureIsSandbox({
+			operatorId: emp?.operatorId,
+			vendorIds: (order?.lines ?? []).map((l) => l.vendorId).filter(Boolean),
+		});
+	} catch {
+		return false;
+	}
 }
 
 function accessCtx(get) {
@@ -1239,7 +1252,8 @@ const usePosStoreRaw = create()(persist((set, get) => ({
 			createdAt: Date.now(),
 			employeeId: emp.id,
 			processor: method === "card" || method === "room_charge" ? "quantum_payments" : void 0,
-			chargeBrand: get().settlementConfig.hostName || get().settings.name
+			chargeBrand: get().settlementConfig.hostName || get().settings.name,
+			sandbox: optsSandbox(method, order, emp)
 		};
 		const payments = [...order.payments, payment];
 		let updated = {

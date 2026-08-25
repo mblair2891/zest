@@ -218,6 +218,10 @@ export interface RestaurantSettings {
   expoEnabled?: boolean;
   /** When true, gift cards may carry a term. Off by default — many states prohibit expiry. */
   giftTermAllowed?: boolean;
+  /** Location lifecycle: training uses sandbox cards. */
+  lifecycleStatus?: "onboarding" | "training" | "scheduled_live" | "live";
+  /** Practice orders move on-hand when true. */
+  trainingTrackInventory?: boolean;
   /** Term length in days when giftTermAllowed. */
   giftTermDays?: number | null;
   /** Operator-issued residual split to the other party, in basis points (5000 = 50/50). */
@@ -380,6 +384,8 @@ export interface Payment {
   processor?: "quantum_payments" | "zest_payments";
   /** Guest-facing brand on the charge (host, never an operator) */
   chargeBrand?: string;
+  /** True while location or operator is in Training — Quantum Payments sandbox */
+  sandbox?: boolean;
 }
 
 export interface Order {

@@ -16,6 +16,7 @@ import { computeDualTotals, tipSuggestions } from "@/lib/pos/calculations";
 import { cn, formatCurrency } from "@/lib/utils";
 import type { PaymentMethod } from "@/lib/pos/types";
 import { GuideLearnLink } from "@/components/guide/GuideLearnLink";
+import { captureIsSandbox } from "@/lib/lifecycle/store";
 
 interface Props {
   open: boolean;
@@ -59,6 +60,10 @@ export function PaymentDialog({ open, onOpenChange }: Props) {
     if (!wanOnline && method === "card") setMethod("cash");
   }, [wanOnline, method]);
 
+  const sandbox = captureIsSandbox({
+    operatorId: order?.lines.find((l) => l.vendorId)?.vendorId,
+    vendorIds: order?.lines.map((l) => l.vendorId).filter(Boolean) as string[],
+  });
   const cashPresets = [balance, balance + tip].filter(Boolean);
   const quickCash = [5, 10, 20, 50, 100].map((d) => d * 100);
 
@@ -84,7 +89,7 @@ export function PaymentDialog({ open, onOpenChange }: Props) {
       setError(res.error ?? "Payment failed");
       return;
     }
-    if (method === "card" && wanOnline) {
+    if (method === "card" && wanOnline && !sandbox) {
       const ctx = (() => {
         try {
           return JSON.parse(sessionStorage.getItem("summex-tenant-pos") || "null") as {
@@ -177,6 +182,11 @@ export function PaymentDialog({ open, onOpenChange }: Props) {
             </GuideLearnLink>
           </DialogTitle>
         </DialogHeader>
+        {sandbox && method === "card" && (
+          <p className="rounded-lg bg-warn/15 px-3 py-2 text-xs font-medium text-warn">
+            TRAINING — Quantum Payments sandbox. Not a live card capture.
+          </p>
+        )}
 
         {done ? (
           <div className="space-y-4 py-4 text-center">

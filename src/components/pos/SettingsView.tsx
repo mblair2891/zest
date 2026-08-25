@@ -43,6 +43,7 @@ import { HOUSE_ISSUER_ID, listGiftIssuers } from "@/lib/pos/gift-issuer";
 import { FloorQrSettings } from "./FloorQrSettings";
 import { NetworkReadinessPanel } from "@/components/saas/NetworkReadinessPanel";
 import { AccessPointsCard } from "./AccessPointsCard";
+import { LifecycleSettings } from "./LifecycleSettings";
 import { saveFrontSettingsFn } from "@/lib/front/api";
 import {
   CASH_ROUND_INCREMENTS,
@@ -312,6 +313,7 @@ export function SettingsView() {
 
   return (
     <div className="h-full overflow-y-auto p-3" data-demo="settings">
+      <LifecycleSettings />
       <div className="mb-4 flex flex-wrap items-center gap-2">
         <h2 className="text-sm font-semibold">
           {hostMulti ? "Host settings" : "Location settings"}

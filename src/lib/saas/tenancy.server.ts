@@ -59,6 +59,7 @@ type LocRow = {
   host_brand_name?: string | null;
   operating_model?: string | null;
   setup?: unknown;
+  lifecycle_status?: string | null;
 };
 
 type UserRow = { id: string; name: string | null; email: string | null };
@@ -166,6 +167,24 @@ function parseSetup(raw: unknown): LocationSetup {
     networkChecklist: o.networkChecklist
       ? parseNetworkChecklist(o.networkChecklist)
       : undefined,
+    lifecycleStatus:
+      o.lifecycleStatus === "onboarding" ||
+      o.lifecycleStatus === "training" ||
+      o.lifecycleStatus === "scheduled_live" ||
+      o.lifecycleStatus === "live"
+        ? o.lifecycleStatus
+        : undefined,
+    trainingTrackInventory:
+      "trainingTrackInventory" in o ? Boolean(o.trainingTrackInventory) : undefined,
+    operatorLifecycle:
+      o.operatorLifecycle && typeof o.operatorLifecycle === "object"
+        ? (o.operatorLifecycle as Record<string, string>)
+        : undefined,
+    goLiveAt: typeof o.goLiveAt === "string" ? o.goLiveAt : o.goLiveAt === null ? null : undefined,
+    goLiveChoices:
+      o.goLiveChoices && typeof o.goLiveChoices === "object"
+        ? (o.goLiveChoices as LocationSetup["goLiveChoices"])
+        : undefined,
   };
 }
 
@@ -200,6 +219,8 @@ function mapLoc(r: LocRow): LocationRecord {
     hostBrandName: r.host_brand_name ?? null,
     operatingModel: r.operating_model === "host_operators" ? "host_operators" : "single",
     setup: parseSetup(r.setup),
+    lifecycleStatus:
+      r.lifecycle_status || parseSetup(r.setup).lifecycleStatus || "live",
   };
 }
 
@@ -565,7 +586,11 @@ export async function createLocationForOrg(
   const id = newId("loc");
   const tz = input.timezone?.trim() || "America/Los_Angeles";
   const model = input.operatingModel === "host_operators" ? "host_operators" : "single";
-  const setup = JSON.stringify(input.setup ?? {});
+  const setupObj = {
+    ...(input.setup ?? {}),
+    lifecycleStatus: input.setup?.lifecycleStatus ?? "training",
+  };
+  const setup = JSON.stringify(setupObj);
   await sql`
     insert into locations (
       id, org_id, name, venue_type, timezone, status, enabled_packages,
@@ -580,6 +605,15 @@ export async function createLocationForOrg(
       ${setup}::jsonb
     )
   `;
+  try {
+    await sql`
+      update locations
+      set lifecycle_status = ${"training"}
+      where id = ${id}
+    `;
+  } catch {
+    /* column may not exist until migrate */
+  }
   const rows = await sql<LocRow>`select * from locations where id = ${id}`;
   return mapLoc(rows[0]!);
 }

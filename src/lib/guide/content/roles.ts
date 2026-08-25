@@ -55,7 +55,7 @@ export const ROLE_GUIDE_TOPICS: GuideTopic[] = [
         "Close the period on Settle. Guest cards are Quantum Payments.",
       ),
       tip("The Operators Guide overlay is in the header on every surface."),
-      related("login", "invites-roles", "host-capture", "type-restaurant", "recipes-prep"),
+      related("login", "invites-roles", "host-capture", "type-restaurant", "recipes-prep", "location-training"),
     ],
   }),
   topic({

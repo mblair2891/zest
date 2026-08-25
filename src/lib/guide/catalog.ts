@@ -11,6 +11,7 @@ import { KIOSK_WAITLIST_TOPICS } from "./content/kiosk-waitlist";
 import { TROUBLESHOOTING_TOPICS } from "./content/troubleshooting";
 import { PLATFORM_CRM_TOPICS } from "./content/platform-crm";
 import { COST_TOPICS } from "./content/costs";
+import { LIFECYCLE_TOPICS } from "./content/lifecycle";
 import { topicMatchesRoles } from "./roles";
 import type {
   GuideAudience,
@@ -141,6 +142,7 @@ export const GUIDE_NAV_TABS: GuideNavTab[] = [
 
 export const GUIDE_TOPICS: GuideTopic[] = [
   ...GETTING_STARTED_TOPICS,
+  ...LIFECYCLE_TOPICS,
   ...ESTABLISHMENT_TYPE_TOPICS,
   ...SAAS_TOPICS,
   ...FLOOR_TOPICS,

@@ -685,8 +685,14 @@ export async function getTenantDrillIn(userId: string, orgId: string): Promise<T
   const org = dir.find((t) => t.id === orgId);
   if (!org) throw new Error("Tenant not found");
   const sql = await getSql();
-  const locations = await sql<{ id: string; name: string; venue_type: string; status: string }>`
-    select id, name, venue_type, status from locations
+  const locations = await sql<{
+    id: string;
+    name: string;
+    venue_type: string;
+    status: string;
+    setup: unknown;
+  }>`
+    select id, name, venue_type, status, setup from locations
     where org_id = ${orgId} and coalesce(is_demo, false) = false
     order by name
   `;
@@ -702,12 +708,21 @@ export async function getTenantDrillIn(userId: string, orgId: string): Promise<T
   `;
   return {
     org,
-    locations: locations.map((l) => ({
-      id: l.id,
-      name: l.name,
-      venueType: l.venue_type,
-      status: l.status,
-    })),
+    locations: locations.map((l) => {
+      const setup =
+        l.setup && typeof l.setup === "object" ? (l.setup as Record<string, unknown>) : {};
+      const life = String(setup.lifecycleStatus ?? l.status ?? "live");
+      return {
+        id: l.id,
+        name: l.name,
+        venueType: l.venue_type,
+        status: l.status,
+        lifecycleStatus:
+          life === "training" || life === "scheduled_live" || life === "live" || life === "onboarding"
+            ? life
+            : undefined,
+      };
+    }),
     members: members.map((m) => ({
       id: m.id,
       name: m.name ?? "Member",

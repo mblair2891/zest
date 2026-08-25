@@ -146,6 +146,25 @@ variance. Price recs still require Menu Save.
 
 In-app: `/guide?topic=recipes-prep`.
 
+## Training, Change device, Go live
+
+Locations start in **Training** after onboard (not live cards). Banner on every
+device. Quantum Payments sandbox until that scope is **live**.
+
+- **Change device** (owner/manager): Server tablet, Host stand, Kitchen/Bar ODS,
+  Expo, Kiosk, Cashier, Busser.
+- **Split screen**: two panes, each with Change device.
+- **Track inventory in training**: optional; off = practice orders do not move on-hand.
+- **Tenant training**: host may be live while a new operator stays in training.
+- **Go live now**: Keep/Erase per category; type **GO LIVE NOW**. Always keep
+  menus, recipes, floor, staff, devices, SKU defs, suppliers, settings.
+- **Schedule go live**: date/time + same Keep/Erase; status `scheduled_live`
+  until the job fires (or Run scheduled job now).
+
+Platform Tenants: training | scheduled_live | live.
+
+In-app: `/guide?topic=location-training`.
+
 ## Offline mode
 
 Wi‑Fi-first. If internet drops, the active location still runs from cache:

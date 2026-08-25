@@ -9,6 +9,19 @@ import type { GuideUpdate } from "@/lib/guide/types";
  */
 export const WHATS_NEW_ENTRIES: GuideUpdate[] = [
   {
+    id: "upd_2026_09_23_training",
+    date: "2026-09-23",
+    title: "Training phase, Change device, split screen, Go live",
+    summary:
+      "New locations open in Training with sandbox cards. Managers Change device or split screen. Owner goes live now or on a schedule, choosing Keep or Erase for practice data.",
+    body: "Banner: TRAINING — practice mode. Inventory tracking in training is optional. A tenant operator can stay in training while the host is live. Type GO LIVE NOW. Menus and recipes always remain.",
+    roles: ["owner_manager", "host_operator", "platform_admin"],
+    surfaces: ["settings"],
+    audience: "all",
+    topicId: "location-training",
+    tags: ["training", "go-live", "device", "sandbox"],
+  },
+  {
     id: "upd_2026_09_22_recipes",
     date: "2026-09-22",
     title: "Recipes: AI intake, floor prep, cost linkage",

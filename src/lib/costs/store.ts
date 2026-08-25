@@ -619,6 +619,10 @@ export const useCostStore = create<CostState>()(
       },
 
       scanVariance: (windowDays = 7) => {
+        const life = usePosStore.getState().settings;
+        const training =
+          life.lifecycleStatus && life.lifecycleStatus !== "live";
+        if (training && !life.trainingTrackInventory) return [];
         const now = Date.now();
         const from = now - windowDays * 86400000;
         const pos = usePosStore.getState();
