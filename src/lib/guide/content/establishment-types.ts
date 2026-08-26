@@ -94,14 +94,14 @@ export const ESTABLISHMENT_TYPE_TOPICS: GuideTopic[] = [
         "Onboard a food-hall style location with two operators to rehearse bar vs kitchen on one guest check. Example names in this guide are not tenants.",
       ),
       warn(
-        "Do not expect a seeded The Laundry / Steam / Diamond org. Tenants appear only after SaaS onboarding.",
+        "Customer tenants appear after SaaS onboarding. The Laundry partner-demo is tagged is_partner_demo — not a public demo site.",
       ),
       cta(
         "/get-pricing",
         "Onboard a host + operators location",
         "Intake and the setup wizard create a real tenant. Request demo on marketing is the same path.",
       ),
-      related("host-capture", "chargebacks", "system-ledger", "prospect-demos", "type-restaurant"),
+      related("host-capture", "chargebacks", "system-ledger", "prospect-demos", "partner-demo", "type-restaurant"),
     ],
   }),
   topic({

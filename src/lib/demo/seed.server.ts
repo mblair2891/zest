@@ -19,7 +19,7 @@ export async function listDemoVenues(): Promise<DemoRecord[]> {
   return [];
 }
 
-/** Delete is_demo orgs/locations. Never touches platform_admin or live tenants. */
+/** Delete is_demo orgs/locations. Never touches platform_admin, live tenants, or partner-demo. */
 export async function purgeDemoTenants(): Promise<{ removed: number }> {
   const sql = await getSql();
   const before = await sql<{ n: number }>`
@@ -27,15 +27,21 @@ export async function purgeDemoTenants(): Promise<{ removed: number }> {
   `;
   await sql`
     delete from locations
-    where coalesce(is_demo, false) = true
-       or id like ${"loc_demo_%"}
-       or id = ${"loc_hall"}
+    where coalesce(is_partner_demo, false) = false
+      and (
+        coalesce(is_demo, false) = true
+        or id like ${"loc_demo_%"}
+        or id = ${"loc_hall"}
+      )
   `;
   await sql`
     delete from organizations
-    where coalesce(is_demo, false) = true
-       or id like ${"org_demo%"}
-       or slug like ${"demo-%"}
+    where coalesce(is_partner_demo, false) = false
+      and (
+        coalesce(is_demo, false) = true
+        or id like ${"org_demo%"}
+        or slug like ${"demo-%"}
+      )
   `;
   return { removed: Number(before[0]?.n ?? 0) };
 }

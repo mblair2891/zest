@@ -69,6 +69,12 @@ export const ensureAdminExists = createServerFn({ method: "POST" }).handler(
     try {
       const { ensurePlatformAdmin } = await import("./bootstrap-admin.server");
       await ensurePlatformAdmin();
+      try {
+        const { ensurePartnerDemoSeed } = await import("@/lib/demo/partner-seed.server");
+        await ensurePartnerDemoSeed();
+      } catch (err) {
+        console.error("[auth] partner demo seed skipped:", err);
+      }
       return { ok: true };
     } catch (err) {
       const msg = err instanceof Error ? err.message : "Could not prepare sign-in";

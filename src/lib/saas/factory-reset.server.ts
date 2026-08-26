@@ -142,6 +142,12 @@ export async function factoryReset(opts: {
   });
 
   await reseedPlatformAdminBootstrap();
+  try {
+    const { reseedPartnerDemo } = await import("@/lib/demo/partner-seed.server");
+    await reseedPartnerDemo();
+  } catch (err) {
+    console.error("[factory-reset] partner demo seed skipped:", err);
+  }
   const after = await getSql();
   await after.query(`delete from "session"`);
   return { ok: true };

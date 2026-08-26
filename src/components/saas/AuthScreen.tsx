@@ -80,10 +80,13 @@ export function AuthScreen({
         if (err) throw new Error(err.message ?? "Sign up failed");
       } else {
         const raw = email.trim();
-        const isAdmin =
-          raw.toLowerCase() === "admin" ||
-          raw.toLowerCase() === "admin@summex.local";
-        const candidates = isAdmin ? ["admin@summex.local"] : [raw];
+        const lower = raw.toLowerCase();
+        const isAdmin = lower === "admin" || lower === "admin@summex.local";
+        const candidates = isAdmin
+          ? ["admin@summex.local"]
+          : raw.includes("@")
+            ? [raw]
+            : [`${raw}@demo.summex.app`, raw];
         let lastErr: string | null = null;
         let ok = false;
         for (const loginEmail of candidates) {

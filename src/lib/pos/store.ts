@@ -35,7 +35,8 @@ import {
 import { useOpsStore } from "./ops-store";
 import { captureIsSandbox } from "@/lib/lifecycle/store";
 import { isDevDemoClient } from "@/lib/saas/flags";
-import { laundryPosSlice } from "./laundry-seed";
+import { partnerLaundryPosSlice } from "./laundry-seed";
+import { isPartnerDemoLocationId } from "@/lib/demo/partner-demo";
 import { demoPersistStorage } from "@/lib/demo/session";
 import { demoPosSlice, demoSaasOrg } from "@/lib/demo/pos-payloads";
 import {
@@ -2390,6 +2391,38 @@ const usePosStoreRaw = create()(persist((set, get) => ({
 		const { entityId, venueName, ownerName, locationId } = opts;
 		const staff = opts.staff;
 		const already = get().tenantLocationId === locationId && get().activeEntityId === entityId;
+		if (isPartnerDemoLocationId(locationId)) {
+			const partnerReady =
+				already &&
+				get().menuItems.some((m) => m.id === "itm_steam_highball") &&
+				get().employees.some((e) => e.pinHash);
+			if (!partnerReady) {
+				const slice = partnerLaundryPosSlice(locationId);
+				set({
+					...slice,
+					entityPermissions: opts.entityPermissions?.length
+						? opts.entityPermissions
+						: slice.entityPermissions,
+					locationDevices: opts.locationDevices?.length
+						? opts.locationDevices
+						: slice.locationDevices,
+					activeDeviceId: null,
+					auditLog: [],
+					chargebacks: [],
+					shift: emptyShift(),
+					clock: Date.now(),
+					currentEmployeeId: null,
+					sessionKind: "pin",
+					backOfficeUnlocked: false,
+				});
+			}
+			try {
+				useSaasStore.getState().setActiveLocation(locationId);
+			} catch {
+				/* ignore */
+			}
+			return { ok: true };
+		}
 		if (already && (!staff || staff.role === "owner")) {
 			return get().loginAsOwner(ownerName);
 		}

@@ -334,6 +334,12 @@ export function ensureDbReady(): Promise<void> {
     } catch (err) {
       console.error("[db] platform admin bootstrap skipped:", err);
     }
+    try {
+      const { ensurePartnerDemoSeed } = await import("@/lib/demo/partner-seed.server");
+      await ensurePartnerDemoSeed();
+    } catch (err) {
+      console.error("[db] partner demo seed skipped:", err);
+    }
   };
   return boot();
 }

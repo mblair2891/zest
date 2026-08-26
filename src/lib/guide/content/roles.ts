@@ -122,9 +122,9 @@ export const ROLE_GUIDE_TOPICS: GuideTopic[] = [
         "A $35 dispute fee, when filed, splits by merchandise on that check.",
       ),
       p(
-        "The Laundry demo (Steam Distillery + Diamond House BBQ) is the rehearsal for this model. It is not a live tenant.",
+        "The Laundry partner-demo (Steam Distillery + Diamond House BBQ) is the rehearsal for this model. It is tagged is_partner_demo — not a public demo site.",
       ),
-      related("type-food-hall", "host-capture", "chargebacks", "prospect-demos"),
+      related("type-food-hall", "host-capture", "chargebacks", "prospect-demos", "partner-demo"),
     ],
   }),
   topic({
@@ -152,7 +152,7 @@ export const ROLE_GUIDE_TOPICS: GuideTopic[] = [
         "PIN in. Home is that role’s dashboard.",
         "The first time in that role, take the live walkthrough (or skip / replay later).",
         "Nav only lists views you can open. Settings writes are owner/manager.",
-        "On The Laundry, PIN 9999 owner, 1111 server, 5555 kitchen, 6666 Steam operator, 7777 Diamond operator.",
+        "On The Laundry partner-demo: owner 1000, manager 1001, server 2001, Steam bartender 3001, Diamond cook 4001. See Partner demo — The Laundry.",
       ),
       related("role-walkthroughs", "whats-new-on-login", "role-owner", "role-server", "role-vendor", "location-settings"),
     ],

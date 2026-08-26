@@ -15,6 +15,11 @@ import type {
 import { DEFAULT_SECTION_POLICY } from "./section-control";
 import { HOST_SCOPE } from "@/lib/access/entity-grants";
 import type { LocationDevice } from "./location-devices";
+import { withHashedPin } from "./pin";
+import {
+  PARTNER_DEMO_LOCATION_ID,
+  PARTNER_DEMO_LOCATION_NAME,
+} from "@/lib/demo/partner-demo";
 
 export const LAUNDRY_ORG_NAME = "The Laundry Group";
 /** Matches demo SaaS location id (`loc_hall`) so POS + control plane stay aligned. */
@@ -37,7 +42,7 @@ export const LAUNDRY_SETTINGS: RestaurantSettings = {
   happyHourDays: [1, 2, 3, 4, 5],
   currency: "USD",
   receiptFooter: "The Laundry · TEST venue · Guest cards via Quantum Payments",
-  managerPin: "0000",
+  managerPin: "1001",
   serviceChargeLabel: "Auto-gratuity",
   multiTenantHallMode: true,
   hostMultiOperator: true,
@@ -274,11 +279,12 @@ export const LAUNDRY_MENU: MenuItem[] = [
   },
 ];
 
+/** Floor PIN roster. Hashed at slice time with the location id. Time clock is separate. */
 export const LAUNDRY_EMPLOYEES: Employee[] = [
   {
     id: "emp_laundry_owner",
-    name: "Laundry Host",
-    pin: "9999",
+    name: "Owner",
+    pin: "1000",
     role: "owner",
     color: "#2C4A6E",
     clockedIn: true,
@@ -287,12 +293,12 @@ export const LAUNDRY_EMPLOYEES: Employee[] = [
     salesTotal: 0,
     active: true,
     homeSectionIds: [],
-    title: "Host owner",
+    title: "Owner",
   },
   {
     id: "emp_laundry_mgr",
-    name: "Floor Manager",
-    pin: "0000",
+    name: "Manager",
+    pin: "1001",
     role: "manager",
     color: "#5C5C5C",
     clockedIn: true,
@@ -304,9 +310,23 @@ export const LAUNDRY_EMPLOYEES: Employee[] = [
     title: "Manager",
   },
   {
+    id: "emp_laundry_host",
+    name: "Host stand",
+    pin: "1100",
+    role: "host",
+    color: "#5B8DEF",
+    clockedIn: true,
+    clockInAt: Date.now(),
+    tipsEarned: 0,
+    salesTotal: 0,
+    active: true,
+    homeSectionIds: ["sec_laundry_dining"],
+    title: "Host stand",
+  },
+  {
     id: "emp_laundry_srv",
-    name: "Server",
-    pin: "1111",
+    name: "Server 1",
+    pin: "2001",
     role: "server",
     color: "#1F7A4C",
     clockedIn: true,
@@ -319,8 +339,8 @@ export const LAUNDRY_EMPLOYEES: Employee[] = [
   },
   {
     id: "emp_laundry_srv2",
-    name: "Server two",
-    pin: "1122",
+    name: "Server 2",
+    pin: "2002",
     role: "server",
     color: "#0F766E",
     clockedIn: true,
@@ -332,54 +352,24 @@ export const LAUNDRY_EMPLOYEES: Employee[] = [
     title: "Server · dining",
   },
   {
-    id: "emp_laundry_bar",
-    name: "Steam bartender",
-    pin: "3333",
-    role: "bartender",
-    color: "#2C4A6E",
-    clockedIn: true,
-    clockInAt: Date.now(),
-    tipsEarned: 0,
-    salesTotal: 0,
-    active: true,
-    homeSectionIds: ["sec_laundry_bar"],
-    title: "Bar · Steam Distillery",
-    operatorId: LAUNDRY_STEAM_ID,
-  },
-  {
-    id: "emp_laundry_kit",
-    name: "Diamond pit",
-    pin: "5555",
+    id: "emp_laundry_expo",
+    name: "Expo",
+    pin: "2100",
     role: "kitchen",
-    color: "#9A6700",
+    color: "#7C3AED",
     clockedIn: true,
     clockInAt: Date.now(),
     tipsEarned: 0,
     salesTotal: 0,
     active: true,
     homeSectionIds: [],
-    title: "Kitchen · Diamond House BBQ",
+    title: "Expo",
     homeView: "kitchen",
-    operatorId: LAUNDRY_DIAMOND_ID,
-  },
-  {
-    id: "emp_laundry_host",
-    name: "Host stand",
-    pin: "2222",
-    role: "host",
-    color: "#5B8DEF",
-    clockedIn: true,
-    clockInAt: Date.now(),
-    tipsEarned: 0,
-    salesTotal: 0,
-    active: true,
-    homeSectionIds: ["sec_laundry_dining"],
-    title: "Host stand",
   },
   {
     id: "emp_laundry_bus",
     name: "Busser",
-    pin: "0000",
+    pin: "2200",
     role: "busser",
     color: "#57534E",
     clockedIn: true,
@@ -392,8 +382,8 @@ export const LAUNDRY_EMPLOYEES: Employee[] = [
   },
   {
     id: "emp_laundry_cash",
-    name: "Counter",
-    pin: "4444",
+    name: "Cashier",
+    pin: "2300",
     role: "cashier",
     color: "#0F766E",
     clockedIn: true,
@@ -405,9 +395,9 @@ export const LAUNDRY_EMPLOYEES: Employee[] = [
     title: "Cashier",
   },
   {
-    id: "emp_laundry_steam_op",
-    name: "Steam operator",
-    pin: "6666",
+    id: "emp_laundry_steam_mgr",
+    name: "Bar manager",
+    pin: "3000",
     role: "vendor_operator",
     color: "#2C4A6E",
     clockedIn: true,
@@ -416,13 +406,29 @@ export const LAUNDRY_EMPLOYEES: Employee[] = [
     salesTotal: 0,
     active: true,
     homeSectionIds: ["sec_laundry_bar"],
-    title: "Steam Distillery",
+    title: "Bar manager · Steam Distillery",
+    homeView: "bar",
     operatorId: LAUNDRY_STEAM_ID,
   },
   {
-    id: "emp_laundry_diamond_op",
-    name: "Diamond operator",
-    pin: "7777",
+    id: "emp_laundry_bar",
+    name: "Bartender",
+    pin: "3001",
+    role: "bartender",
+    color: "#2C4A6E",
+    clockedIn: true,
+    clockInAt: Date.now(),
+    tipsEarned: 0,
+    salesTotal: 0,
+    active: true,
+    homeSectionIds: ["sec_laundry_bar"],
+    title: "Bartender · Steam Distillery",
+    operatorId: LAUNDRY_STEAM_ID,
+  },
+  {
+    id: "emp_laundry_diamond_mgr",
+    name: "Kitchen manager",
+    pin: "4000",
     role: "vendor_operator",
     color: "#9A6700",
     clockedIn: true,
@@ -431,13 +437,30 @@ export const LAUNDRY_EMPLOYEES: Employee[] = [
     salesTotal: 0,
     active: true,
     homeSectionIds: [],
-    title: "Diamond House BBQ",
+    title: "Kitchen manager · Diamond House BBQ",
+    homeView: "kitchen",
+    operatorId: LAUNDRY_DIAMOND_ID,
+  },
+  {
+    id: "emp_laundry_kit",
+    name: "Cook",
+    pin: "4001",
+    role: "kitchen",
+    color: "#9A6700",
+    clockedIn: true,
+    clockInAt: Date.now(),
+    tipsEarned: 0,
+    salesTotal: 0,
+    active: true,
+    homeSectionIds: [],
+    title: "Cook · Diamond House BBQ",
+    homeView: "kitchen",
     operatorId: LAUNDRY_DIAMOND_ID,
   },
   {
     id: "emp_laundry_acct",
-    name: "Back office",
-    pin: "8888",
+    name: "Accountant",
+    pin: "",
     role: "accountant",
     color: "#57534E",
     clockedIn: true,
@@ -450,13 +473,13 @@ export const LAUNDRY_EMPLOYEES: Employee[] = [
   },
 ];
 
-export function laundrySettlement(): SettlementConfig {
+export function laundrySettlement(locationId = LAUNDRY_LOCATION_ID): SettlementConfig {
   const d = new Date();
   d.setHours(0, 0, 0, 0);
   const day = d.getDay();
   d.setDate(d.getDate() - day);
   return {
-    locationId: LAUNDRY_LOCATION_ID,
+    locationId,
     locationName: LAUNDRY_LOCATION_NAME,
     periodType: "weekly",
     customPeriodDays: 7,
@@ -472,12 +495,12 @@ export function laundrySettlement(): SettlementConfig {
   };
 }
 
-export function laundryLocationDevices(): LocationDevice[] {
+export function laundryLocationDevices(locationId = LAUNDRY_LOCATION_ID): LocationDevice[] {
   const now = Date.now();
   return [
     {
       id: "dev_tab_a",
-      locationId: LAUNDRY_LOCATION_ID,
+      locationId,
       label: "Tablet A",
       type: "kds",
       status: "online",
@@ -488,7 +511,7 @@ export function laundryLocationDevices(): LocationDevice[] {
     },
     {
       id: "dev_tab_b",
-      locationId: LAUNDRY_LOCATION_ID,
+      locationId,
       label: "Tablet B",
       type: "tablet_pos",
       status: "online",
@@ -499,7 +522,7 @@ export function laundryLocationDevices(): LocationDevice[] {
     },
     {
       id: "dev_tab_c",
-      locationId: LAUNDRY_LOCATION_ID,
+      locationId,
       label: "Tablet C",
       type: "kiosk",
       status: "online",
@@ -510,7 +533,7 @@ export function laundryLocationDevices(): LocationDevice[] {
     },
     {
       id: "dev_kds_27",
-      locationId: LAUNDRY_LOCATION_ID,
+      locationId,
       label: '27" kitchen display',
       type: "kds",
       status: "online",
@@ -521,7 +544,7 @@ export function laundryLocationDevices(): LocationDevice[] {
     },
     {
       id: "dev_host_stand",
-      locationId: LAUNDRY_LOCATION_ID,
+      locationId,
       label: "Host stand",
       type: "host_stand",
       status: "online",
@@ -532,7 +555,7 @@ export function laundryLocationDevices(): LocationDevice[] {
     },
     {
       id: "dev_printer_bar",
-      locationId: LAUNDRY_LOCATION_ID,
+      locationId,
       label: "Bar chit printer",
       type: "printer",
       status: "offline",
@@ -544,21 +567,44 @@ export function laundryLocationDevices(): LocationDevice[] {
   ];
 }
 
-export function laundryPosSlice() {
+export function laundryPosSliceFor(locationId: string, opts?: { partner?: boolean }) {
+  const partner = Boolean(opts?.partner);
+  const settings: RestaurantSettings = {
+    ...LAUNDRY_SETTINGS,
+    name: partner ? PARTNER_DEMO_LOCATION_NAME : LAUNDRY_SETTINGS.name,
+    address: partner ? "The Laundry · partner demo" : LAUNDRY_SETTINGS.address,
+    receiptFooter: partner
+      ? "The Laundry · Guest cards via Quantum Payments"
+      : LAUNDRY_SETTINGS.receiptFooter,
+    managerPin: "1001",
+  };
   return {
-    tenantLocationId: LAUNDRY_LOCATION_ID,
-    settings: { ...LAUNDRY_SETTINGS },
-    employees: LAUNDRY_EMPLOYEES.map((e) => ({ ...e })),
+    tenantLocationId: locationId,
+    settings,
+    employees: LAUNDRY_EMPLOYEES.map((e) => {
+      const copy = {
+        ...e,
+        entityId: "food_hall" as const,
+        clockedIn: true,
+        clockInAt: Date.now(),
+      };
+      if (!copy.pin || !/^\d{4}$/.test(copy.pin)) return copy;
+      return withHashedPin(copy, copy.pin, locationId);
+    }),
     currentEmployeeId: null as string | null,
     categories: LAUNDRY_CATEGORIES.map((c) => ({ ...c })),
     menuItems: LAUNDRY_MENU.map((m) => ({ ...m })),
     modifierGroups: [],
-    tables: LAUNDRY_TABLES.map((t) => ({ ...t })),
+    tables: LAUNDRY_TABLES.map((t) => ({ ...t, locationId })),
     orders: [],
     tickets: [],
     waitlist: [],
     reservations: [],
-    vendors: LAUNDRY_VENDORS.map((v) => ({ ...v })),
+    vendors: LAUNDRY_VENDORS.map((v) => ({
+      ...v,
+      locationId,
+      bankLabel: partner ? `${v.name} payout` : v.bankLabel,
+    })),
     inventory: [
       {
         id: "inv_laundry_bourbon",
@@ -581,7 +627,7 @@ export function laundryPosSlice() {
         lowStock: true,
       },
     ],
-    settlementConfig: laundrySettlement(),
+    settlementConfig: laundrySettlement(locationId),
     settlementPeriods: [],
     chargebacks: [],
     ledgerEntries: [],
@@ -594,8 +640,17 @@ export function laundryPosSlice() {
     activeTableId: null as string | null,
     selectedCategoryId: LAUNDRY_CATEGORIES[0]!.id,
     entityPermissions: [],
-    locationDevices: laundryLocationDevices(),
+    locationDevices: laundryLocationDevices(locationId),
     activeDeviceId: null as string | null,
     selectedLineId: null as string | null,
   };
+}
+
+export function laundryPosSlice() {
+  return laundryPosSliceFor(LAUNDRY_LOCATION_ID);
+}
+
+/** Partner-demo POS payload — menus routed bar vs kitchen, hashed floor PINs. */
+export function partnerLaundryPosSlice(locationId = PARTNER_DEMO_LOCATION_ID) {
+  return laundryPosSliceFor(locationId, { partner: true });
 }

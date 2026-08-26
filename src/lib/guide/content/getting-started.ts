@@ -163,7 +163,7 @@ export const GETTING_STARTED_TOPICS: GuideTopic[] = [
       steps(
         "Back office: Sign in with work email and password. Open location settings, the host permission matrix, scheduling admin, payroll reports, menu management.",
         "Floor: on the assigned device, enter your 4-digit PIN. Fast Switch user returns to the keypad without changing the device assignment.",
-        "Steam Distillery PIN 6666 is the entity manager on The Laundry. Steam bartender 3333 is floor-only. Diamond 7777 cannot edit Steam menu or Steam schedules.",
+        "On the partner-demo house: Steam bar manager PIN 3000, bartender 3001. Diamond kitchen manager 4000, cook 4001. Server 1 is 2001. Time clock is a separate punch.",
         "Opening Settings from a floor PIN prompts back-office re-auth (password).",
         "Kiosk guest flows stay PIN-free. Platform Admin is password only — never a restaurant PIN.",
       ),
@@ -174,7 +174,7 @@ export const GETTING_STARTED_TOPICS: GuideTopic[] = [
         "New house",
         "Start at Get pricing. You receive a quote, accept, then a guided setup creates the org. There is no fake POS tenant.",
       ),
-      related("empty-start", "whats-new-on-login", "role-walkthroughs", "navigation", "invites-roles"),
+      related("empty-start", "whats-new-on-login", "role-walkthroughs", "navigation", "invites-roles", "partner-demo"),
     ],
   }),
   topic({
@@ -251,9 +251,51 @@ export const GETTING_STARTED_TOPICS: GuideTopic[] = [
         "Menu, tables, and tickets stay empty until you add them in onboarding or in POS settings.",
       ),
       warn(
-        "Live tenants stay empty until onboarding. There are no demo-seeded restaurants.",
+        "Live customer tenants stay empty until onboarding. There are no public demo sites on marketing.",
       ),
-      related("login", "prospect-intake", "onboarding-wizard", "network-readiness", "access-urls", "create-org", "type-food-hall", "prospect-demos"),
+      related("login", "prospect-intake", "onboarding-wizard", "network-readiness", "access-urls", "create-org", "type-food-hall", "prospect-demos", "partner-demo"),
+    ],
+  }),
+  topic({
+    id: "partner-demo",
+    chapterId: "getting-started",
+    title: "Partner demo — The Laundry",
+    summary:
+      "Tagged partner-demo house with Steam Distillery + Diamond House BBQ. Not a public demo site.",
+    visibility: "platform",
+    roles: ["platform_admin", "owner_manager", "host_operator", "vendor_operator"],
+    keywords: [
+      "partner demo",
+      "the laundry",
+      "steam distillery",
+      "diamond house",
+      "pin",
+      "partner",
+    ],
+    openView: "floor",
+    blocks: [
+      why(
+        "Partners need a ready multi-operator house: one guest check under The Laundry, drinks to the bar, food to the kitchen. It is tagged is_partner_demo — not a public demo tenant.",
+      ),
+      p(
+        "Credentials live in docs/partner-demo-logins.md. They are not printed on the marketing homepage. Must-change-password is off so partners can sign in immediately. Platform Admin is unchanged.",
+      ),
+      steps(
+        "Sign in as laundry.owner (or laundry.owner@demo.summex.app) with the shared partner password.",
+        "Open POS for The Laundry. Enter floor PIN 2001 (Server 1).",
+        "Order a Steam Distillery drink and a Diamond House BBQ plate on the same check.",
+        "Send. Bar ODS shows the drink. Kitchen ODS shows the food. Lines stay tagged to the operator.",
+      ),
+      ul(
+        "Host logins: owner, manager, host stand, accountant.",
+        "Steam Distillery: entity manager + bartender.",
+        "Diamond House BBQ: entity manager + kitchen.",
+        "Floor PINs are 4-digit and hashed. Time clock is a separate punch — not the PIN login.",
+      ),
+      warn(
+        "This is not Load The Laundry and not a public PIN-0000 demo. Factory reset reseeds it. Demo-tenant purge does not delete it.",
+      ),
+      related("laundry-test-venue", "type-food-hall", "kds", "roles-dashboards", "floor-pin-login"),
     ],
   }),
   topic({
@@ -261,7 +303,7 @@ export const GETTING_STARTED_TOPICS: GuideTopic[] = [
     chapterId: "getting-started",
     title: "Test a host + operators location",
     summary:
-      "Onboard a real multi-operator house through SaaS. No seeded demo tenant.",
+      "Onboard a real multi-operator house through SaaS, or use the tagged partner-demo.",
     visibility: "platform",
     roles: ["platform_admin", "owner_manager", "host_operator", "vendor_operator"],
     keywords: [
@@ -276,10 +318,10 @@ export const GETTING_STARTED_TOPICS: GuideTopic[] = [
     openView: "hall",
     blocks: [
       why(
-        "Host capture and operator settlement are exercised on a location you onboard — not on a fake POS seed.",
+        "Host capture and operator settlement are exercised on a real org row (is_demo is false) — either one you onboard, or the tagged partner-demo.",
       ),
       p(
-        "Guide examples still use Host Venue / Operator A / Operator B (or the laundry/bar/kitchen story as illustration). Those names are not tenants. Create a food-hall style location in the onboarding wizard with two operators to rehearse the same split.",
+        "Prospects still go through Get pricing. There is no public demo site. The Laundry partner-demo is for partners only; see Partner demo — The Laundry. Customer onboarding still uses Host Venue / Operator A / Operator B unless they bring their own names.",
       ),
       steps(
         "Get pricing → describe a host + two operators.",
@@ -288,14 +330,14 @@ export const GETTING_STARTED_TOPICS: GuideTopic[] = [
         "Ledger shows host capture and allocations per operator. Settle the period.",
       ),
       warn(
-        "There is no Load The Laundry control and no PIN 0000 tenant. Empty tenants on a fresh Admin login is correct.",
+        "There is no Load The Laundry control and no universal PIN 0000 tenant. Empty tenants on a fresh Admin login (aside from the tagged partner-demo) is correct.",
       ),
       cta(
         "/get-pricing",
         "Start onboarding",
         "Intake creates the first real location. Request demo on marketing is this same path.",
       ),
-      related("type-food-hall", "empty-start", "system-ledger", "host-capture", "chargebacks"),
+      related("partner-demo", "type-food-hall", "empty-start", "system-ledger", "host-capture", "chargebacks"),
     ],
   }),
   topic({

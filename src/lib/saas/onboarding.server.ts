@@ -421,20 +421,31 @@ export async function operatorsAsVendors(locationId: string) {
     dba: string | null;
     payout_bank_last4: string | null;
     station_types: unknown;
+    station_kind: string | null;
   }>`
-    select id, legal_name, dba, payout_bank_last4, station_types
+    select id, legal_name, dba, payout_bank_last4, station_types, station_kind
     from operators where location_id = ${locationId} order by created_at
   `;
   const palette = ["#2C4A6E", "#5C5C5C", "#1F7A4C", "#9A6700", "#A61B1B", "#4A5568"];
   return rows.map((r, i) => {
     const name = r.dba || r.legal_name;
     const stations = Array.isArray(r.station_types) ? r.station_types : [];
-    const stationLabel =
-      stations.includes("both")
-        ? "Bar + kitchen"
+    const kind = r.station_kind === "bar" || r.station_kind === "kitchen" ? r.station_kind : null;
+    const stationType: "bar" | "kitchen" | "both" | undefined =
+      kind ??
+      (stations.includes("both")
+        ? "both"
         : stations.includes("bar")
-          ? "Bar"
+          ? "bar"
           : stations.includes("kitchen")
+            ? "kitchen"
+            : undefined);
+    const stationLabel =
+      stationType === "both"
+        ? "Bar + kitchen"
+        : stationType === "bar"
+          ? "Bar"
+          : stationType === "kitchen"
             ? "Kitchen"
             : "Station";
     return {
@@ -448,6 +459,7 @@ export async function operatorsAsVendors(locationId: string) {
       bankLast4: r.payout_bank_last4 || "0000",
       bankLabel: "Payout stub",
       stationLabel,
+      stationType,
     };
   });
 }

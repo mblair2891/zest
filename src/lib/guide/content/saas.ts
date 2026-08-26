@@ -321,9 +321,9 @@ export const SAAS_TOPICS: GuideTopic[] = [
         "After a real location exists, optional in-product walkthroughs can spotlight the live UI. They never seed a demo org.",
       ),
       warn(
-        "Do not look for The Laundry, Steam Distillery, or Diamond House BBQ as seeded tenants. Those names are examples in the guide only.",
+        "Marketing home does not list The Laundry. The tagged partner-demo is not a public demo site — see Partner demo — The Laundry. Customer tenants are still created through intake.",
       ),
-      related("single-vs-multi", "prospect-intake", "type-food-hall", "feature-kiosk", "roles-dashboards"),
+      related("partner-demo", "single-vs-multi", "prospect-intake", "type-food-hall", "feature-kiosk", "roles-dashboards"),
     ],
   }),
   topic({
@@ -344,9 +344,9 @@ export const SAAS_TOPICS: GuideTopic[] = [
         "When a location is live, Open POS. Floor PIN is for that location’s staff.",
       ),
       warn(
-        "Never send Admin login as a prospect demo. Empty tenants is correct.",
+        "Never send Admin login as a prospect demo. Public demo tenants stay off. The Laundry partner-demo is tagged is_partner_demo and reseeds after factory reset.",
       ),
-      related("platform-admin", "prospect-demos", "empty-start"),
+      related("platform-admin", "prospect-demos", "empty-start", "partner-demo"),
     ],
   }),
   topic({

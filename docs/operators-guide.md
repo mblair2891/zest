@@ -24,6 +24,8 @@ a CMS.
 | `docs/whitepaper/` | Shareable white paper (MD + print HTML) |
 | `/whitepaper` | Live white paper (prints to PDF) |
 | `docs/quantum-payments-ledger.md` | Ledger sign convention + The Laundry worked example |
+| `docs/partner-demo-logins.md` | Partner-demo location + staff logins/PINs (not public, not marketing home) |
+| `/guide?topic=partner-demo` | Tagged partner-demo house (The Laundry) — not a public demo site |
 | `/guide?topic=laundry-test-venue` | Test a host + operators location via SaaS onboarding |
 
 Bump `GUIDE_VERSION` in `types.ts` when you ship a batch of topics.
@@ -241,24 +243,31 @@ environment. `/guide?topic=platform-settings`.
 
 Factory reset (Settings → Danger zone): type RESET, Admin password. Only if
 Security → Factory reset enabled is on. Wipes all tenant/CRM data and reseeds
-Admin with the initial password and forced change. No demo seeds. Disable in
+Admin with the initial password and forced change, then reseeds the tagged
+partner-demo (The Laundry). Never public `is_demo` tenants. Disable in
 Security or with `FACTORY_RESET_ENABLED=false`. Production stays off unless
 that env is `true`. `/guide?topic=factory-reset`.
 
-## Testing a location (SaaS only)
+## Testing a location (SaaS + partner-demo)
 
-There are **no demo tenants**. Marketing **Request demo** is Get pricing /
-intake. `/demo` URLs redirect there. Platform Admin never seeds The Laundry,
-Steam Distillery, Diamond House BBQ, or PIN 0000 rooms.
+There are **no public demo tenants**. Marketing **Request demo** is Get pricing
+/ intake. `/demo` URLs redirect there.
 
-To test: complete SaaS onboarding (intake request → Admin sends quote from
-Pipeline using Plans & billing → accept → contract if required → **host**
-wizard → org + location). Invite the owner. Open POS.
+A tagged **partner-demo** (`is_partner_demo`) location — The Laundry, with
+Steam Distillery (bar) and Diamond House BBQ (kitchen) — is seeded for
+partners. Credentials: `docs/partner-demo-logins.md`. Not on the marketing
+homepage. Platform Admin is unchanged.
+
+To test a customer house: complete SaaS onboarding (intake → quote → contract
+if required → **host** wizard → org + location). Invite the owner. Open POS.
+
+To test the partner house: sign in as `laundry.owner`, open The Laundry, PIN
+**2001** as Server 1, order a drink + a plate, confirm bar vs kitchen tickets.
 
 **Two-stage onboarding:** SaaS finishes the **Host** (host_ready). The host then
 invites **operators/tenants** from Settings → Operators / Tenants by email or
 SMS. Each POC opens the link, sets a password, and completes their own details.
-The host still owns payouts and routing. No demo tenants.
+The host still owns payouts and routing. No public demo tenants.
 
 Floor PIN is for **real** staff on that location.
 

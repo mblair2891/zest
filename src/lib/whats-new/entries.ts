@@ -9,6 +9,19 @@ import type { GuideUpdate } from "@/lib/guide/types";
  */
 export const WHATS_NEW_ENTRIES: GuideUpdate[] = [
   {
+    id: "upd_2026_09_26_partner_demo",
+    date: "2026-09-26",
+    title: "Partner demo: The Laundry",
+    summary:
+      "Tagged partner-demo location with Steam Distillery + Diamond House BBQ. Not a public demo site. Credentials in the partner login sheet — not on marketing.",
+    body: "Sign in as laundry.owner, open The Laundry, PIN 2001 as Server 1. Order a drink and a plate — bar vs kitchen tickets split. Factory reset reseeds it. Platform Admin is unchanged.",
+    roles: ["platform_admin", "owner_manager", "host_operator"],
+    surfaces: ["platform", "floor"],
+    audience: "platform",
+    topicId: "partner-demo",
+    tags: ["partner", "laundry", "pin"],
+  },
+  {
     id: "upd_2026_09_23_training",
     date: "2026-09-23",
     title: "Training phase, Change device, split screen, Go live",
