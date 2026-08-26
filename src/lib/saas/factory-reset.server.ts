@@ -10,6 +10,8 @@ import { ForbiddenError, isPlatformAdmin } from "./tenancy.server";
 
 /** App tables wiped on factory reset. Auth + plans + pricing catalog + migrations stay. */
 const WIPE_TABLES = [
+  "gift_ledger",
+  "gift_cards",
   "support_ticket_comments",
   "support_tickets",
   "crm_activities",

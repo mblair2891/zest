@@ -60,6 +60,20 @@ export const REPORT_CATALOG: ReportDef[] = [
     roles: ["owner", "manager", "accountant", "vendor_operator"],
   },
   {
+    id: "gift-liability",
+    group: "payments",
+    title: "Gift liability by issuer",
+    summary: "Outstanding issuer liability on the Summex ledger — not seller merch.",
+    roles: ["owner", "manager", "accountant", "vendor_operator"],
+  },
+  {
+    id: "gift-redemptions",
+    group: "payments",
+    title: "Gift redemptions",
+    summary: "Redeemed amounts and issuer → fulfiller remits.",
+    roles: ["owner", "manager", "accountant", "vendor_operator"],
+  },
+  {
     id: "staff-servers",
     group: "staff",
     title: "By server / section",

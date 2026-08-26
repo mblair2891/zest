@@ -22,10 +22,21 @@ import {
 import { formatCurrency, formatDateTime } from "@/lib/utils";
 import {
   defaultGiftIssuer,
+  HOUSE_ISSUER_ID,
   liabilityByIssuer,
   listGiftIssuers,
 } from "@/lib/pos/gift-issuer";
 import { GuideLearnLink } from "@/components/guide/GuideLearnLink";
+import {
+  hydrateGift,
+} from "@/lib/gift/sync";
+import {
+  importGiftCardsFn,
+  issueGiftCardFn,
+  reloadGiftCardFn,
+  setGiftStatusFn,
+} from "@/lib/gift/api";
+import { giftExpiresAt, resolveGiftIssuer } from "@/lib/pos/gift-issuer";
 
 export function CustomersView() {
   const customers = usePosStore((s) => s.customers);
@@ -43,6 +54,7 @@ export function CustomersView() {
   const emp = usePosStore((s) => s.employees.find((e) => e.id === s.currentEmployeeId) ?? null);
   const settings = usePosStore((s) => s.settings);
   const vendors = usePosStore((s) => s.vendors);
+  const locId = usePosStore((s) => s.tenantLocationId) || "";
   const giftTransfers = usePosStore((s) => s.giftTransfers ?? []);
   const issuers = listGiftIssuers(settings, vendors);
   const defaultIssuer = defaultGiftIssuer(emp, settings, vendors);
@@ -305,14 +317,25 @@ export function CustomersView() {
                   variant="outline"
                   className="h-7 text-[11px]"
                   onClick={() => {
-                    setGiftCardStatus(g.code, "frozen");
-                    logGiftTxn({
-                      giftCardId: g.code,
-                      type: "freeze",
-                      amountCents: 0,
-                      note: g.code,
-                    });
-                    setMsg(`Frozen ${g.code}`);
+                    void (async () => {
+                      if (locId) {
+                        const res = await setGiftStatusFn({
+                          data: { locationId: locId, cardId: g.id, status: "frozen" },
+                        });
+                        if (!res.ok) {
+                          setMsg(res.error ?? "Failed");
+                          return;
+                        }
+                        await hydrateGift(locId);
+                      } else setGiftCardStatus(g.code, "frozen");
+                      logGiftTxn({
+                        giftCardId: g.id,
+                        type: "freeze",
+                        amountCents: 0,
+                        note: g.code,
+                      });
+                      setMsg(`Frozen ${g.code}`);
+                    })();
                   }}
                 >
                   <Snowflake className="h-3 w-3" />
@@ -325,8 +348,19 @@ export function CustomersView() {
                   variant="outline"
                   className="h-7 text-[11px]"
                   onClick={() => {
-                    setGiftCardStatus(g.code, "active");
-                    setMsg(`Unfrozen ${g.code}`);
+                    void (async () => {
+                      if (locId) {
+                        const res = await setGiftStatusFn({
+                          data: { locationId: locId, cardId: g.id, status: "active" },
+                        });
+                        if (!res.ok) {
+                          setMsg(res.error ?? "Failed");
+                          return;
+                        }
+                        await hydrateGift(locId);
+                      } else setGiftCardStatus(g.code, "active");
+                      setMsg(`Unfrozen ${g.code}`);
+                    })();
                   }}
                 >
                   Unfreeze
@@ -338,14 +372,25 @@ export function CustomersView() {
                   variant="ghost"
                   className="h-7 text-[11px]"
                   onClick={() => {
-                    setGiftCardStatus(g.code, "void");
-                    logGiftTxn({
-                      giftCardId: g.code,
-                      type: "void",
-                      amountCents: 0,
-                      note: g.code,
-                    });
-                    setMsg(`Voided ${g.code}`);
+                    void (async () => {
+                      if (locId) {
+                        const res = await setGiftStatusFn({
+                          data: { locationId: locId, cardId: g.id, status: "void" },
+                        });
+                        if (!res.ok) {
+                          setMsg(res.error ?? "Failed");
+                          return;
+                        }
+                        await hydrateGift(locId);
+                      } else setGiftCardStatus(g.code, "void");
+                      logGiftTxn({
+                        giftCardId: g.id,
+                        type: "void",
+                        amountCents: 0,
+                        note: g.code,
+                      });
+                      setMsg(`Voided ${g.code}`);
+                    })();
                   }}
                 >
                   <Ban className="h-3 w-3" />
@@ -494,22 +539,60 @@ export function CustomersView() {
                 setMsg("Enter a valid amount");
                 return;
               }
-              const res = issueGiftCard({
-                amountCents: Math.round(dollars * 100),
-                issuedToName: giftTo || undefined,
-                issuerId,
-                tender: giftTender,
-              });
-              if (res.ok && res.code) {
-                logGiftTxn({
-                  giftCardId: res.code,
-                  type: "issue",
-                  amountCents: Math.round(dollars * 100),
-                  note: res.code,
+              const cents = Math.round(dollars * 100);
+              const issuer = resolveGiftIssuer(issuerId, settings, vendors);
+              void (async () => {
+                try {
+                if (locId) {
+                  const res = await issueGiftCardFn({
+                    data: {
+                      locationId: locId,
+                      amountCents: cents,
+                      issuerId: issuer.id,
+                      issuerKind: issuer.kind,
+                      issuerName: issuer.name,
+                      issuedToName: giftTo || undefined,
+                      tender: giftTender,
+                      soldByEmployeeId: emp?.id,
+                      soldByOperatorId: emp?.operatorId,
+                      expiresAt: giftExpiresAt(Date.now(), settings) ?? null,
+                    },
+                  });
+                  if (!res.ok) {
+                    setMsg(res.error ?? "Failed");
+                    return;
+                  }
+                  await hydrateGift(locId);
+                  logGiftTxn({
+                    giftCardId: res.card.id,
+                    type: "issue",
+                    amountCents: cents,
+                    note: res.plaintextCode,
+                  });
+                  setMsg(`Issued ${res.plaintextCode} for $${dollars.toFixed(2)} · issuer ${issuer.name} (liability, not merch)`);
+                  setGiftOpen(false);
+                  return;
+                }
+                const res = issueGiftCard({
+                  amountCents: cents,
+                  issuedToName: giftTo || undefined,
+                  issuerId,
+                  tender: giftTender,
                 });
-                setMsg(`Issued ${res.code} for $${dollars.toFixed(2)}`);
-                setGiftOpen(false);
-              } else setMsg(res.error ?? "Failed");
+                if (res.ok && res.code) {
+                  logGiftTxn({
+                    giftCardId: res.code,
+                    type: "issue",
+                    amountCents: cents,
+                    note: res.code,
+                  });
+                  setMsg(`Issued ${res.code} for $${dollars.toFixed(2)}`);
+                  setGiftOpen(false);
+                } else setMsg(res.error ?? "Failed");
+                } catch (e) {
+                  setMsg(e instanceof Error ? e.message : "Failed");
+                }
+              })();
             }}
           >
             <Plus className="h-3.5 w-3.5" />
@@ -530,20 +613,43 @@ export function CustomersView() {
             variant="secondary"
             onClick={() => {
               const dollars = parseFloat(reloadAmt);
-              const res = reloadGiftCard(
-                reloadCode,
-                Math.round(dollars * 100),
-              );
-              if (res.ok) {
-                logGiftTxn({
-                  giftCardId: reloadCode,
-                  type: "reload",
-                  amountCents: Math.round(dollars * 100),
-                  note: reloadCode,
-                });
-                setMsg(`Reloaded ${reloadCode}`);
-                setGiftOpen(false);
-              } else setMsg(res.error ?? "Failed");
+              const cents = Math.round(dollars * 100);
+              void (async () => {
+                try {
+                  if (locId) {
+                    const res = await reloadGiftCardFn({
+                      data: { locationId: locId, code: reloadCode, amountCents: cents },
+                    });
+                    if (!res.ok) {
+                      setMsg(res.error ?? "Failed");
+                      return;
+                    }
+                    await hydrateGift(locId);
+                    logGiftTxn({
+                      giftCardId: reloadCode,
+                      type: "reload",
+                      amountCents: cents,
+                      note: reloadCode,
+                    });
+                    setMsg(`Reloaded ${reloadCode}`);
+                    setGiftOpen(false);
+                    return;
+                  }
+                  const res = reloadGiftCard(reloadCode, cents);
+                  if (res.ok) {
+                    logGiftTxn({
+                      giftCardId: reloadCode,
+                      type: "reload",
+                      amountCents: cents,
+                      note: reloadCode,
+                    });
+                    setMsg(`Reloaded ${reloadCode}`);
+                    setGiftOpen(false);
+                  } else setMsg(res.error ?? "Failed");
+                } catch (e) {
+                  setMsg(e instanceof Error ? e.message : "Failed");
+                }
+              })();
             }}
           >
             Reload
@@ -689,22 +795,62 @@ export function CustomersView() {
               disabled={!preview || preview.summary.valid === 0}
               onClick={() => {
                 if (!preview) return;
-                const res = importGiftCards(preview, { overwrite });
-                if (!res.ok) {
-                  setMsg(res.error ?? "Import failed");
-                  return;
-                }
-                logGiftTxn({
-                  giftCardId: "import",
-                  type: "import",
-                  amountCents: preview.rows.reduce((s, r) => s + r.balanceCents, 0),
-                  note: `${res.imported ?? 0} from ${provider}`,
-                });
-                setMsg(
-                  `Imported ${res.imported ?? 0} cards into the Summex ledger`,
-                );
-                setImportOpen(false);
-                setPreview(null);
+                void (async () => {
+                  try {
+                    if (locId) {
+                      const res = await importGiftCardsFn({
+                        data: {
+                          locationId: locId,
+                          source: preview.provider,
+                          overwrite,
+                          issuerId: HOUSE_ISSUER_ID,
+                          issuerKind: "house",
+                          issuerName: settings.name || "House",
+                          rows: preview.rows.map((r) => ({
+                            code: r.code,
+                            balanceCents: r.balanceCents,
+                            originalBalanceCents: r.originalBalanceCents,
+                            status: r.status,
+                            issuedToName: r.issuedToName,
+                            issuedToEmail: r.issuedToEmail,
+                            notes: r.notes,
+                          })),
+                        },
+                      });
+                      if (!res.ok) {
+                        setMsg(res.error ?? "Import failed");
+                        return;
+                      }
+                      await hydrateGift(locId);
+                      logGiftTxn({
+                        giftCardId: "import",
+                        type: "import",
+                        amountCents: preview.rows.reduce((s, r) => s + r.balanceCents, 0),
+                        note: `${res.imported ?? 0} from ${provider}`,
+                      });
+                      setMsg(`Imported ${res.imported ?? 0} cards into the Summex ledger`);
+                      setImportOpen(false);
+                      setPreview(null);
+                      return;
+                    }
+                    const res = importGiftCards(preview, { overwrite });
+                    if (!res.ok) {
+                      setMsg(res.error ?? "Import failed");
+                      return;
+                    }
+                    logGiftTxn({
+                      giftCardId: "import",
+                      type: "import",
+                      amountCents: preview.rows.reduce((s, r) => s + r.balanceCents, 0),
+                      note: `${res.imported ?? 0} from ${provider}`,
+                    });
+                    setMsg(`Imported ${res.imported ?? 0} cards into the Summex ledger`);
+                    setImportOpen(false);
+                    setPreview(null);
+                  } catch (e) {
+                    setMsg(e instanceof Error ? e.message : "Import failed");
+                  }
+                })();
               }}
             >
               Import into Summex

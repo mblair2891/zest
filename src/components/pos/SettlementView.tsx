@@ -11,6 +11,8 @@ import { SetupAssistButton } from "@/components/assist/SetupAssistDialog";
 import { canEmployee } from "@/lib/access/permissions";
 import { OperatorOpsView } from "./OperatorOpsView";
 import { liabilityByIssuer } from "@/lib/pos/gift-issuer";
+import { processGiftTermFn } from "@/lib/gift/api";
+import { hydrateGift } from "@/lib/gift/sync";
 
 export function SettlementView() {
   const setView = usePosStore((s) => s.setView);
@@ -572,6 +574,7 @@ function GiftIssuerSettlement() {
   const giftTransfers = usePosStore((s) => s.giftTransfers ?? []);
   const settings = usePosStore((s) => s.settings);
   const vendors = usePosStore((s) => s.vendors);
+  const locId = usePosStore((s) => s.tenantLocationId) || "";
   const processGiftBreakage = usePosStore((s) => s.processGiftBreakage);
   const emp = usePosStore((s) => s.employees.find((e) => e.id === s.currentEmployeeId));
   const write = canEmployee(emp, "settlement:write");
@@ -638,12 +641,35 @@ function GiftIssuerSettlement() {
             size="sm"
             variant="outline"
             onClick={() => {
-              const res = processGiftBreakage();
-              setNote(
-                res.ok
-                  ? `Processed ${res.processed ?? 0} expired card${(res.processed ?? 0) === 1 ? "" : "s"}`
-                  : res.error ?? "Failed",
-              );
+              void (async () => {
+                if (locId) {
+                  try {
+                    const res = await processGiftTermFn({
+                      data: {
+                        locationId: locId,
+                        splitBps: settings.giftOperatorBreakageSplitBps ?? 5000,
+                      },
+                    });
+                    if (!res.ok) {
+                      setNote(res.error ?? "Failed");
+                      return;
+                    }
+                    await hydrateGift(locId);
+                    setNote(
+                      `Processed ${res.processed ?? 0} expired card${(res.processed ?? 0) === 1 ? "" : "s"}`,
+                    );
+                  } catch (e) {
+                    setNote(e instanceof Error ? e.message : "Failed");
+                  }
+                  return;
+                }
+                const res = processGiftBreakage();
+                setNote(
+                  res.ok
+                    ? `Processed ${res.processed ?? 0} expired card${(res.processed ?? 0) === 1 ? "" : "s"}`
+                    : res.error ?? "Failed",
+                );
+              })();
             }}
           >
             Process expired residual

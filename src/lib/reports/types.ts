@@ -9,6 +9,8 @@ export type ReportId =
   | "payments-cash-discount"
   | "payments-voids"
   | "payments-chargebacks"
+  | "gift-liability"
+  | "gift-redemptions"
   | "staff-servers"
   | "staff-payroll"
   | "staff-aging"

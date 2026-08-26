@@ -1199,7 +1199,7 @@ const usePosStoreRaw = create()(persist((set, get) => ({
 		if (order.tableId) floorSync("table", order.tableId);
 		printNow("receipt", order.id);
 	},
-	takePayment: ({ method, amountCents, tipCents = 0, tenderedCents, last4, giftCardCode, houseAccountId }) => {
+	takePayment: ({ method, amountCents, tipCents = 0, tenderedCents, last4, giftCardCode, houseAccountId, serverGift }) => {
 		const order = get().getActiveOrder();
 		const emp = get().getCurrentEmployee();
 		if (!order || !emp) return {
@@ -1224,7 +1224,7 @@ const usePosStoreRaw = create()(persist((set, get) => ({
 		}
 		let giftRedeemLed = [];
 		let giftRedeemTransfers = [];
-		if (method === "gift_card") {
+		if (method === "gift_card" && !serverGift) {
 			if (!giftCardCode) return {
 				ok: false,
 				error: "Enter gift card code"

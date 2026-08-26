@@ -28,6 +28,7 @@ import { speak } from "@/lib/demo/speech";
 import type { LocationInsights, RangeKey, ReportId } from "@/lib/reports/types";
 import type { PosView, VenueEntityId } from "@/lib/pos/types";
 import { cn } from "@/lib/utils";
+import { liabilityByIssuer } from "@/lib/pos/gift-issuer";
 
 function annotateInsights(ins: LocationInsights): LocationInsights {
   const events = useOpsLearnStore.getState().events;
@@ -134,6 +135,44 @@ export function ReportsView() {
         csvFromRows(
           ["item", "qty", "sales"],
           metrics.sales.byItem.map((i) => [i.name, i.qty, (i.cents / 100).toFixed(2)]),
+        ),
+      );
+      return;
+    }
+    if (active.id === "gift-liability" || active.id === "gift-redemptions") {
+      const cards = usePosStore.getState().giftCards;
+      const transfers = usePosStore.getState().giftTransfers ?? [];
+      const settings = usePosStore.getState().settings;
+      const vendors = usePosStore.getState().vendors;
+      const rows = liabilityByIssuer(cards, settings, vendors);
+      if (active.id === "gift-liability") {
+        downloadCsv(
+          "gift-liability.csv",
+          csvFromRows(
+            ["issuer", "kind", "outstanding", "issued", "redeemed", "breakage", "cards"],
+            rows.map((r) => [
+              r.issuerName,
+              r.kind,
+              (r.outstandingCents / 100).toFixed(2),
+              (r.issuedCents / 100).toFixed(2),
+              (r.redeemedCents / 100).toFixed(2),
+              (r.breakageCents / 100).toFixed(2),
+              r.cardCount,
+            ]),
+          ),
+        );
+        return;
+      }
+      downloadCsv(
+        "gift-redemptions.csv",
+        csvFromRows(
+          ["from", "to", "reason", "amount"],
+          transfers.map((t) => [
+            t.fromName,
+            t.toName,
+            t.reason,
+            (t.amountCents / 100).toFixed(2),
+          ]),
         ),
       );
       return;
@@ -489,6 +528,9 @@ function ReportBody({ id, m }: { id: ReportId; m: ReturnType<typeof metricsFromP
       />
     );
   }
+  if (id === "gift-liability" || id === "gift-redemptions") {
+    return <GiftLedgerReportSlice id={id} />;
+  }
   if (id === "staff-payroll") {
     return <PayrollReportSlice />;
   }
@@ -591,6 +633,68 @@ function ReportBody({ id, m }: { id: ReportId; m: ReturnType<typeof metricsFromP
     );
   }
   return null;
+}
+
+function GiftLedgerReportSlice({ id }: { id: "gift-liability" | "gift-redemptions" }) {
+  const giftCards = usePosStore((s) => s.giftCards);
+  const giftTransfers = usePosStore((s) => s.giftTransfers ?? []);
+  const settings = usePosStore((s) => s.settings);
+  const vendors = usePosStore((s) => s.vendors);
+  const rows = liabilityByIssuer(giftCards, settings, vendors);
+  const redeemed = rows.reduce((s, r) => s + r.redeemedCents, 0);
+  const outstanding = rows.reduce((s, r) => s + r.outstandingCents, 0);
+  if (id === "gift-liability") {
+    return (
+      <div className="space-y-3">
+        <div className="grid grid-cols-2 gap-3 lg:grid-cols-3">
+          <Card label="Outstanding liability" value={formatCurrency(outstanding)} sub="Issuer, not seller merch" />
+          <Card label="Redeemed" value={formatCurrency(redeemed)} />
+          <Card label="Issuers" value={String(rows.length)} />
+        </div>
+        {rows.length === 0 ? (
+          <p className="text-sm text-muted-foreground">No gift liability on this ledger.</p>
+        ) : (
+          <ul className="space-y-2 text-sm">
+            {rows.map((r) => (
+              <li key={r.issuerId} className="flex justify-between gap-2">
+                <span>
+                  {r.issuerName}{" "}
+                  <span className="text-xs text-muted-foreground">{r.kind}</span>
+                </span>
+                <span className="tabular">
+                  {formatCurrency(r.outstandingCents)} · {r.cardCount} cards
+                </span>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+    );
+  }
+  const remits = giftTransfers.filter((t) => t.reason === "redeem" || t.reason === "issue_remit");
+  return (
+    <div className="space-y-3">
+      <Card
+        label="Redeemed (liability down)"
+        value={formatCurrency(redeemed)}
+        sub="Fulfiller merch; issuer remits when different entity"
+      />
+      {remits.length === 0 ? (
+        <p className="text-sm text-muted-foreground">No cross-operator remits yet.</p>
+      ) : (
+        <ul className="space-y-2 text-sm">
+          {remits.slice(0, 40).map((t) => (
+            <li key={t.id} className="flex justify-between gap-2">
+              <span>
+                {t.reason} · {t.fromName} → {t.toName}
+              </span>
+              <span className="tabular">{formatCurrency(t.amountCents)}</span>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
 }
 
 function PayrollReportSlice() {

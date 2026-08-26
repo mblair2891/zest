@@ -41,6 +41,12 @@ export type LocationSetup = {
   paymentsMode?: "inherit" | "sandbox" | "live";
   /** Processor reader id for live card-present (Quantum terminal serial). */
   quantumReaderId?: string;
+  /** First-party gift policy (server ledger). */
+  giftHouseIssuerEnabled?: boolean;
+  giftHostessDefaultIssuerId?: string;
+  giftTermAllowed?: boolean;
+  giftTermDays?: number | null;
+  giftOperatorBreakageSplitBps?: number;
 };
 
 export const EMPTY_LOCATION_SETUP: LocationSetup = {

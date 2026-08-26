@@ -211,6 +211,11 @@ function PosAppInner({ entityId }: { entityId?: string }) {
                 setup.lifecycleStatus ||
                 "training",
               trainingTrackInventory: Boolean(setup.trainingTrackInventory),
+              giftHouseIssuerEnabled: setup.giftHouseIssuerEnabled,
+              giftHostessDefaultIssuerId: setup.giftHostessDefaultIssuerId,
+              giftTermAllowed: setup.giftTermAllowed,
+              giftTermDays: setup.giftTermDays,
+              giftOperatorBreakageSplitBps: setup.giftOperatorBreakageSplitBps,
             });
           } catch {
             /* */

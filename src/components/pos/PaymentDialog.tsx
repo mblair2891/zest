@@ -18,6 +18,8 @@ import type { PaymentMethod } from "@/lib/pos/types";
 import { GuideLearnLink } from "@/components/guide/GuideLearnLink";
 import { captureIsSandbox } from "@/lib/lifecycle/store";
 import { captureCardPresentFn, getPaymentsStatusFn } from "@/lib/payments/api";
+import { redeemGiftCardFn } from "@/lib/gift/api";
+import { fulfillingIssuer } from "@/lib/pos/gift-issuer";
 import type { PaymentsStatus } from "@/lib/payments/types";
 import { uid } from "@/lib/utils";
 import { readTenantPosContext } from "@/lib/saas/pos-context";
@@ -141,6 +143,43 @@ export function PaymentDialog({ open, onOpenChange }: Props) {
       }
       setBusy(false);
     }
+    let serverGift = false;
+    if (method === "gift_card") {
+      const loc =
+        usePosStore.getState().tenantLocationId ||
+        readTenantPosContext()?.locationId ||
+        "";
+      if (loc && wanOnline) {
+        const emp = usePosStore.getState().getCurrentEmployee?.();
+        const fulfiller = fulfillingIssuer(emp, settings, usePosStore.getState().vendors);
+        setBusy(true);
+        try {
+          const red = await redeemGiftCardFn({
+            data: {
+              locationId: loc,
+              code: giftCode,
+              amountCents: Math.min(amountCents, balance) + tip,
+              fulfillerId: fulfiller.id,
+              fulfillerKind: fulfiller.kind,
+              checkId: order?.id,
+            },
+          });
+          if (!red.ok) {
+            setError(red.error || "Gift card failed");
+            setBusy(false);
+            return;
+          }
+          serverGift = true;
+          const { hydrateGift } = await import("@/lib/gift/sync");
+          await hydrateGift(loc);
+        } catch (e) {
+          setError(e instanceof Error ? e.message : "Gift card failed");
+          setBusy(false);
+          return;
+        }
+        setBusy(false);
+      }
+    }
     const res = takePayment({
       method,
       amountCents: Math.min(amountCents, balance),
@@ -152,6 +191,7 @@ export function PaymentDialog({ open, onOpenChange }: Props) {
           : undefined,
       last4: cardLast4,
       giftCardCode: method === "gift_card" ? giftCode : undefined,
+      serverGift,
     });
     if (!res.ok) {
       setError(res.error ?? "Payment failed");

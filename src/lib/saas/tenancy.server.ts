@@ -193,6 +193,21 @@ function parseSetup(raw: unknown): LocationSetup {
         ? o.paymentsMode
         : "inherit",
     quantumReaderId: typeof o.quantumReaderId === "string" ? o.quantumReaderId.slice(0, 80) : undefined,
+    giftHouseIssuerEnabled:
+      "giftHouseIssuerEnabled" in o ? Boolean(o.giftHouseIssuerEnabled) : undefined,
+    giftHostessDefaultIssuerId:
+      typeof o.giftHostessDefaultIssuerId === "string"
+        ? o.giftHostessDefaultIssuerId.slice(0, 80)
+        : undefined,
+    giftTermAllowed: "giftTermAllowed" in o ? Boolean(o.giftTermAllowed) : undefined,
+    giftTermDays:
+      o.giftTermDays == null
+        ? undefined
+        : Math.max(1, Math.round(Number(o.giftTermDays) || 730)),
+    giftOperatorBreakageSplitBps:
+      o.giftOperatorBreakageSplitBps == null
+        ? undefined
+        : Math.min(10_000, Math.max(0, Math.round(Number(o.giftOperatorBreakageSplitBps) || 0))),
   };
 }
 

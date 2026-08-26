@@ -97,24 +97,28 @@ export const CASH_GIFT_TOPICS: GuideTopic[] = [
         "Gift liability belongs to the issuing operator or the house — not to the drawer that collected cash, and not to a leftover Toast/Square gift SKU. One ledger means freeze/void actually work.",
       ),
       p(
+        "Balances live on the Summex server — hashed codes, issuer, and ledger — not only on the drawer that sold the card. The POS cache is a view of that ledger. There is no third-party gift network as system of record.",
+      ),
+      p(
         "Default issuer follows the selling point: bar sale → that bar operator (Steam on The Laundry); host stand sale → the configured entity (Diamond by default on The Laundry); explicit house SKU → house. House issuer is optional location mode — you do not create a third legal company.",
       ),
       ul(
         "Sale (cash or card) increases issuer gift liability. It is never booked as the seller’s operating merchandise.",
         "The collecting drawer may hold cash; settlement tracks due-to-issuer remit when seller ≠ issuer.",
         "Guest redeems at any allowed operator. The fulfilling operator gets the merchandise sale. Issuer liability decreases. In-system settlement issuer → fulfiller (no-op if the same entity).",
+        "An operator cannot freeze, void, reload, or import another issuer’s cards. Redeem by code is location-wide so any allowed drawer can take the card.",
         "Optional term (e.g. 2 years) is off by default. Many states prohibit expiry — the location setting includes a legal disclaimer.",
-        "At term end, operator-issued remaining balance splits per host formula (default 50/50) via settlement. House-issued remaining balance is retained by the house.",
+        "At term end, host processes residual: operator-issued remaining balance splits per location formula (default 50/50). House-issued remaining balance is retained by the house.",
       ),
       steps(
         "Open Guests. Issue a card: amount, issuer (defaults to selling point), cash or card tender.",
-        "On The Laundry demo: switch to Bartender, issue $50 — liability is Steam. Switch to Diamond vendor, sell food, Pay → Gift, enter the code — Diamond merch, Steam → Diamond remit.",
-        "Settings → Gift cards: house issuer on/off, host-stand default issuer, term allowed (with disclaimer), operator residual split.",
-        "Settlement shows liability by issuer and in-system remits. Process expired residual when a term is in force.",
+        "On The Laundry: bartender issues $50 — liability is Steam. Diamond sells food, Pay → Gift, enter the code — Diamond merch, Steam → Diamond remit.",
+        "Settings → Gift cards: house issuer on/off, host-stand default issuer, term allowed (with disclaimer), operator residual split. Use the dropdowns — no JSON.",
+        "Reports → Gift liability / Gift redemptions, or Settle → liability by issuer. Host: Process expired residual when a term is in force.",
         "Freeze if lost. Void if issued in error. Import CSV is one-way from Square / Toast / Clover / Shopify / generic.",
       ),
       warn(
-        "Turning on a term does not make expiry legal. Confirm state law with counsel. Imported cards are not kept in sync with the old system.",
+        "Turning on a term does not make expiry legal. Confirm state law with counsel — expiry may be illegal in some states. Imported cards are not kept in sync with the old system.",
       ),
       related("tenders-tips", "settlement", "guests", "prospect-demos"),
     ],
@@ -164,6 +168,7 @@ export const CASH_GIFT_TOPICS: GuideTopic[] = [
         "Kitchen/bar: ticket times and 86s.",
         "Close: end of day; cash expected vs counted if tracked.",
         "Guest: waitlist, reservations, kiosk — hidden when the type does not use them.",
+        "Gift: liability by issuer and redemptions (server ledger).",
         "Host venues: sales by operator, settlement/ledger.",
       ),
       steps(

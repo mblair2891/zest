@@ -308,6 +308,12 @@ export async function hydrateFloor(locationId: string): Promise<void> {
   } catch {
     /* stay on cache */
   }
+  try {
+    const { hydrateGift } = await import("@/lib/gift/sync");
+    await hydrateGift(locationId);
+  } catch {
+    /* gift cache */
+  }
 }
 
 export async function persistAfterLocalMutation(kind: string, id?: string): Promise<void> {

@@ -105,14 +105,20 @@ function Pack({
 function GiftCardSettingsPack({
   packs,
   write,
+  persist,
 }: {
   packs: SettingsPackId[];
   write: boolean;
+  persist: () => void;
 }) {
   const settings = usePosStore((s) => s.settings);
   const vendors = usePosStore((s) => s.vendors);
   const updateSettings = usePosStore((s) => s.updateSettings);
   const issuers = listGiftIssuers(settings, vendors);
+  const save = (patch: Parameters<typeof updateSettings>[0]) => {
+    updateSettings(patch);
+    persist();
+  };
   return (
     <Pack id="gift_cards" packs={packs}>
       <div data-demo="gift-policy">
@@ -134,7 +140,7 @@ function GiftCardSettingsPack({
               className="mt-0.5 h-4 w-4 rounded border-border"
               checked={settings.giftHouseIssuerEnabled !== false}
               onChange={(e) =>
-                updateSettings({ giftHouseIssuerEnabled: e.target.checked })
+                save({ giftHouseIssuerEnabled: e.target.checked })
               }
             />
             <span>
@@ -153,7 +159,7 @@ function GiftCardSettingsPack({
               className="flex h-10 w-full rounded-lg border border-border bg-surface px-3 text-sm"
               value={settings.giftHostessDefaultIssuerId || HOUSE_ISSUER_ID}
               onChange={(e) =>
-                updateSettings({ giftHostessDefaultIssuerId: e.target.value })
+                save({ giftHostessDefaultIssuerId: e.target.value })
               }
             >
               {issuers.map((i) => (
@@ -169,7 +175,7 @@ function GiftCardSettingsPack({
               className="mt-0.5 h-4 w-4 rounded border-border"
               checked={settings.giftTermAllowed === true}
               onChange={(e) =>
-                updateSettings({ giftTermAllowed: e.target.checked })
+                save({ giftTermAllowed: e.target.checked })
               }
             />
             <span>
@@ -188,7 +194,7 @@ function GiftCardSettingsPack({
                 type="number"
                 value={String(settings.giftTermDays ?? 730)}
                 onChange={(e) =>
-                  updateSettings({
+                  save({
                     giftTermDays: Math.max(1, parseInt(e.target.value, 10) || 730),
                   })
                 }
@@ -203,7 +209,7 @@ function GiftCardSettingsPack({
               type="number"
               value={String(Math.round((settings.giftOperatorBreakageSplitBps ?? 5000) / 100))}
               onChange={(e) =>
-                updateSettings({
+                save({
                   giftOperatorBreakageSplitBps: Math.min(
                     10000,
                     Math.max(0, Math.round((parseFloat(e.target.value) || 0) * 100)),
@@ -236,28 +242,34 @@ export function SettingsView() {
   const updateSettings = usePosStore((s) => s.updateSettings);
   const persist = () => {
     if (!write || isProspectDemo() || !orgId) return;
+    const s = usePosStore.getState().settings;
     void saveLocationSettingsFn({
       data: {
         orgId,
         locationId: locId,
         setup: {
-          hostBrandName: settings.name,
-          timezone: settings.timezone,
-          hoursNote: settings.hoursNote,
-          tipPooling: settings.tipPooling,
-          tabAutoCloseMinutes: settings.tabAutoCloseMinutes,
-          ticketPrefix: settings.ticketPrefix,
-          kioskMode: settings.kioskMode,
-          waitlistEnabled: settings.waitlistEnabled,
-          reservationCheckIn: settings.reservationCheckIn,
-          waitlistReason: settings.waitlistReason,
-          voiceControlEnabledByRole: settings.voiceControlEnabledByRole,
-          networkReadyStatus: settings.networkReadyStatus,
-          networkCheckedAt: settings.networkCheckedAt
-            ? new Date(settings.networkCheckedAt).toISOString()
+          hostBrandName: s.name,
+          timezone: s.timezone,
+          hoursNote: s.hoursNote,
+          tipPooling: s.tipPooling,
+          tabAutoCloseMinutes: s.tabAutoCloseMinutes,
+          ticketPrefix: s.ticketPrefix,
+          kioskMode: s.kioskMode,
+          waitlistEnabled: s.waitlistEnabled,
+          reservationCheckIn: s.reservationCheckIn,
+          waitlistReason: s.waitlistReason,
+          voiceControlEnabledByRole: s.voiceControlEnabledByRole,
+          networkReadyStatus: s.networkReadyStatus,
+          networkCheckedAt: s.networkCheckedAt
+            ? new Date(s.networkCheckedAt).toISOString()
             : undefined,
-          networkNotes: settings.networkNotes,
-          networkChecklist: settings.networkChecklist,
+          networkNotes: s.networkNotes,
+          networkChecklist: s.networkChecklist,
+          giftHouseIssuerEnabled: s.giftHouseIssuerEnabled !== false,
+          giftHostessDefaultIssuerId: s.giftHostessDefaultIssuerId,
+          giftTermAllowed: s.giftTermAllowed === true,
+          giftTermDays: s.giftTermDays ?? 730,
+          giftOperatorBreakageSplitBps: s.giftOperatorBreakageSplitBps ?? 5000,
           devices: { pos: 0, kds: 0, handhelds: 0 },
           settlement: {
             periodType: "weekly",
@@ -611,7 +623,7 @@ export function SettingsView() {
         </div>
         </Pack>
 
-      <GiftCardSettingsPack packs={packs} write={write} />
+      <GiftCardSettingsPack packs={packs} write={write} persist={persist} />
 
       <Pack id="sections" packs={packs}>
         <p className="text-sm font-medium">Section control</p>

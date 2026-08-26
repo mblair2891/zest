@@ -180,6 +180,7 @@ export interface PosStore {
     last4?: string;
     giftCardCode?: string;
     houseAccountId?: string;
+    serverGift?: boolean;
   }) => ActionResult<{ changeCents?: number }>;
   closeOrderIfPaid: () => void;
   bumpTicket: (ticketId: string) => void;
