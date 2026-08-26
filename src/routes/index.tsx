@@ -1,22 +1,17 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { HomeErrorBoundary, HomeRouteError } from "@/components/marketing/HomeErrorBoundary";
 import { HomePage } from "@/components/marketing/HomePage";
-import { resolveSurface } from "@/lib/platform/hosts";
-import { PosApp } from "@/components/pos/PosApp";
-import { SessionGate } from "@/components/pos/SessionGate";
 
 export const Route = createFileRoute("/")({
-  ssr: false,
   component: IndexPage,
+  errorComponent: HomeRouteError,
 });
 
+/** Public sales landing on every host. POS lives at /app, /venue, /station — never here. */
 function IndexPage() {
-  const host = typeof window !== "undefined" ? window.location.hostname : "";
-  if (resolveSurface(host, "/") === "app") {
-    return (
-      <SessionGate>
-        <PosApp />
-      </SessionGate>
-    );
-  }
-  return <HomePage />;
+  return (
+    <HomeErrorBoundary>
+      <HomePage />
+    </HomeErrorBoundary>
+  );
 }

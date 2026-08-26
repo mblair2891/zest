@@ -71,13 +71,34 @@ export function isSingleOriginHost(hostname: string): boolean {
   );
 }
 
+/**
+ * www / apex marketing hosts. Never POS — even if VITE_APP_HOST is this host
+ * or app.summex.app is unset/unserved.
+ */
+export function isMarketingPublicHost(hostname: string): boolean {
+  const h = stripPort(hostname);
+  if (!h) return true;
+  if (h.startsWith("app.") || h.startsWith("api.") || h.startsWith("sites.")) return false;
+  const names = new Set<string>();
+  const add = (raw: string) => {
+    const x = stripPort(raw);
+    if (!x) return;
+    names.add(x);
+    if (!x.startsWith("www.")) names.add(`www.${x}`);
+  };
+  add(SUMMEX_HOSTS.marketing);
+  add(configuredHosts().marketing);
+  return names.has(h);
+}
+
 export function surfaceFromHost(hostname: string): SummexSurface | null {
   const h = stripPort(hostname);
+  if (isMarketingPublicHost(h)) return "marketing";
   const cfg = configuredHosts();
-  if (h === cfg.app || h.startsWith("app.")) return "app";
+  const app = explicitAppHost();
+  if (h.startsWith("app.") || (app && hostsEqual(h, app))) return "app";
   if (h === cfg.api || h.startsWith("api.")) return "api";
   if (h === cfg.sites || h.startsWith("sites.")) return "sites";
-  if (h === cfg.marketing || h === `www.${cfg.marketing}`) return "marketing";
   return null;
 }
 
@@ -85,12 +106,17 @@ export function surfaceFromPath(pathname: string): SummexSurface | null {
   if (pathname === "/api" || pathname.startsWith("/api/")) return "api";
   if (pathname === "/app" || pathname.startsWith("/app/")) return "app";
   if (pathname === "/sites" || pathname.startsWith("/sites/")) return "sites";
-  if (pathname.startsWith("/venue/") || pathname === "/kiosk") return "app";
+  if (pathname.startsWith("/venue/") || pathname === "/kiosk" || pathname === "/station" || pathname.startsWith("/station/"))
+    return "app";
   return null;
 }
 
 export function resolveSurface(hostname: string, pathname: string): SummexSurface {
-  return surfaceFromHost(hostname) ?? surfaceFromPath(pathname) ?? "marketing";
+  const fromPath = surfaceFromPath(pathname);
+  // Same-origin POS on www: /venue, /app, /kiosk stay app. Bare `/` never does.
+  if (fromPath === "app" || fromPath === "api" || fromPath === "sites") return fromPath;
+  if (isMarketingPublicHost(hostname)) return "marketing";
+  return surfaceFromHost(hostname) ?? fromPath ?? "marketing";
 }
 
 export function currentHostname(): string {

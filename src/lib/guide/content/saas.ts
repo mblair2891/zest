@@ -236,11 +236,11 @@ export const SAAS_TOPICS: GuideTopic[] = [
         "Staff and guests should not share one bookmark. The floor lives on the app host. Table stickers live on the sites host. Login lives on www.",
       ),
       ul(
-        "www / marketing host — public site, Sign in, dashboard, onboarding.",
-        "app host — POS, ODS, kiosk device. Deep links prefer this when configured.",
+        "www / marketing host — public site, Sign in, dashboard, onboarding. The `/` path is always the sales landing (hero, Sign in, Get pricing, Guide). It never mounts POS.",
+        "app host — POS, ODS, kiosk device. Deep links prefer this when that host is live and distinct. Until then, stations stay on this origin: /app, /venue/…, /station.",
         "sites host — table QR, online menu, location pages. Guest links prefer this when configured.",
         "api host — health and HTTP API.",
-        "Dev, preview, and www when VITE_APP_HOST is unset: one origin. Open POS stays on this host (/venue/… or /app). Split app.summex.app only when that host is configured and live.",
+        "Dev, preview, and www: one origin when VITE_APP_HOST is unset or app.summex.app is not served. Do not bookmark app.summex.app until it is live.",
       ),
       steps(
         "Owner Home and Settings list the live URLs for this location. Copy POS, ODS, kiosk, and table QR.",

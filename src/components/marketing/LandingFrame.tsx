@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { Link } from "@tanstack/react-router";
 import { useCurrentUserState } from "@/lib/auth/use-current-user";
 import { SummexMark, SummexWordmark } from "@/components/brand/SummexMark";
@@ -16,6 +16,9 @@ const NAV = [
 
 export function LandingFrame({ children }: { children: ReactNode }) {
   const { user, isPending } = useCurrentUserState();
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
+  const authReady = mounted && !isPending;
 
   return (
     <div className="mkt mkt-ambient relative min-h-[100dvh] overflow-x-hidden pt-[var(--grok-banner-h,0px)] text-foreground">
@@ -29,7 +32,7 @@ export function LandingFrame({ children }: { children: ReactNode }) {
           <nav className="ml-4 hidden items-center gap-6 text-xs tracking-widest text-muted-foreground uppercase sm:flex">
             {NAV.map((n) => (
               <Link
-                key={n.to}
+                key={`${n.to}:${n.label}`}
                 to={n.to}
                 className="transition-colors hover:text-champagne"
                 activeProps={{ className: "text-ivory" }}
@@ -39,7 +42,7 @@ export function LandingFrame({ children }: { children: ReactNode }) {
             ))}
           </nav>
           <div className="ml-auto flex items-center gap-2">
-            {isPending ? (
+            {!authReady ? (
               <div className="h-9 w-24 animate-pulse rounded-sm bg-surface-2" />
             ) : user ? (
               <Link
@@ -68,7 +71,7 @@ export function LandingFrame({ children }: { children: ReactNode }) {
         </div>
         <nav className="flex gap-4 overflow-x-auto border-t border-border px-4 py-3 text-xs tracking-widest text-muted-foreground uppercase sm:hidden">
           {NAV.map((n) => (
-            <Link key={n.to} to={n.to} className="shrink-0 hover:text-champagne">
+            <Link key={`${n.to}:${n.label}`} to={n.to} className="shrink-0 hover:text-champagne">
               {n.label}
             </Link>
           ))}

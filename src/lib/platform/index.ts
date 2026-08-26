@@ -5,6 +5,7 @@ export {
   resolveSurface,
   surfaceFromHost,
   surfaceFromPath,
+  isMarketingPublicHost,
   isSingleOriginHost,
   appHref,
   explicitAppHost,

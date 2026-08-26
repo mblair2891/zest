@@ -6,7 +6,7 @@ Summex is a multi-tenant hospitality SaaS: restaurants, food halls, truck pods, 
 
 | Host (production) | Path (local / preview) | Surface |
 |---|---|---|
-| summex.app | `/` | Marketing (home, pricing, features, blog) |
+| summex.app / www.summex.app | `/` | Marketing sales landing (hero, Sign in, Get pricing, Guide) — never POS |
 | summex.app/login | `/login` | Merchant login → dashboard |
 | summex.app/dashboard | `/dashboard` | Org + **location selector**, then control plane |
 | app.summex.app | `/app` | Shared POS / admin application |

@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { Link } from "@tanstack/react-router";
 import { useCurrentUserState } from "@/lib/auth/use-current-user";
 import { SummexLockup } from "@/components/brand/SummexMark";
@@ -14,6 +14,9 @@ const NAV = [
 
 export function MarketingShell({ children }: { children: ReactNode }) {
   const { user, isPending } = useCurrentUserState();
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
+  const authReady = mounted && !isPending;
 
   return (
     <div className="min-h-[100dvh] bg-bg pt-[var(--grok-banner-h,0px)] text-foreground">
@@ -35,7 +38,7 @@ export function MarketingShell({ children }: { children: ReactNode }) {
             ))}
           </nav>
           <div className="ml-auto flex items-center gap-2">
-            {isPending ? (
+            {!authReady ? (
               <div className="h-8 w-20 animate-pulse rounded-lg bg-surface-2" />
             ) : user ? (
               <Link
