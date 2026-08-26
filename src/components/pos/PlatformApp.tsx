@@ -20,7 +20,6 @@ import {
   listMembersFn,
   listMyProspectsFn,
   listTenantsFn,
-  setActiveContextFn,
 } from "@/lib/saas/api";
 import { PlatformControlPlane } from "@/components/platform/PlatformControlPlane";
 import {
@@ -30,8 +29,7 @@ import {
 
 import { prospectResumePath } from "@/lib/saas/prospect-resume";
 import { navigateToSanitizedPath } from "@/lib/auth/post-login-navigate";
-import { saveTenantPosContext } from "@/lib/saas/pos-context";
-import { appHref } from "@/lib/platform/hosts";
+import { openLocationPos } from "@/lib/saas/open-location";
 import type { SaasLocation, SaasMembership, SaasOrganization } from "@/lib/pos/saas-types";
 import { defaultPackagesForMode } from "@/lib/pos/packages";
 import type { PackageId } from "@/lib/pos/packages";
@@ -299,20 +297,13 @@ export function PlatformApp() {
       window.location.href = "/";
       return;
     }
-    saveTenantPosContext({
+    openLocationPos({
       orgId: org.id,
       locationId: loc.id,
       venueType: loc.mode,
       locationName: loc.name,
       orgName: org.name,
       ownerName: platformAdminName || user?.displayName || "Owner",
-    });
-    void setActiveContextFn({
-      data: { orgId: org.id, locationId: loc.id },
-    }).finally(() => {
-      window.location.href = appHref(
-        `/venue/${loc.mode}?loc=${encodeURIComponent(loc.id)}`,
-      );
     });
   };
 

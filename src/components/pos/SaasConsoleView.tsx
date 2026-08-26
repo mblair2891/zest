@@ -27,6 +27,7 @@ import {
   startPortalFn,
 } from "@/lib/saas/api";
 import { LocationDeviceRegistry } from "./LocationDeviceRegistry";
+import { openLocationPos } from "@/lib/saas/open-location";
 
 type Tab =
   | "overview"
@@ -82,6 +83,18 @@ export function SaasConsoleView() {
   const generateLeaseInvoices = useSaasStore((s) => s.generateLeaseInvoices);
   const markInvoicePaid = useSaasStore((s) => s.markInvoicePaid);
   const platformAdminRole = useSaasStore((s) => s.platformAdminRole);
+  const platformAdminName = useSaasStore((s) => s.platformAdminName);
+
+  const openLoc = (l: (typeof locations)[number]) => {
+    openLocationPos({
+      orgId: org.id,
+      locationId: l.id,
+      venueType: l.mode,
+      locationName: l.name,
+      orgName: org.name,
+      ownerName: platformAdminName || "Owner",
+    });
+  };
 
   const loc =
     locations.find((l) => l.id === activeLocationId) ?? locations[0];
@@ -184,22 +197,28 @@ export function SaasConsoleView() {
               )}
               <ul className="grid gap-2 sm:grid-cols-2">
                 {locations.map((l) => (
-                  <li key={l.id}>
+                  <li
+                    key={l.id}
+                    className="flex items-center justify-between gap-2 rounded-xl border border-border bg-bg px-3 py-2 text-sm"
+                  >
                     <button
                       type="button"
                       onClick={() => setActiveLocation(l.id)}
-                      className="flex w-full items-center justify-between rounded-xl border border-border bg-bg px-3 py-2 text-left text-sm hover:border-primary/50"
+                      className="min-w-0 flex-1 text-left hover:text-primary"
                     >
-                      <span>
-                        <span className="font-medium">{l.name}</span>
-                        <span className="mt-0.5 block text-[11px] text-muted-foreground">
-                          {MODE_LABEL[l.mode]} · {l.code}
-                        </span>
+                      <span className="font-medium">{l.name}</span>
+                      <span className="mt-0.5 block text-[11px] text-muted-foreground">
+                        {MODE_LABEL[l.mode]} · {l.code}
+                        {l.open ? " · serving" : " · closed"}
                       </span>
-                      <Badge variant={l.open ? "success" : "secondary"}>
-                        {l.open ? "Open" : "Closed"}
-                      </Badge>
                     </button>
+                    <Button
+                      size="sm"
+                      onClick={() => openLoc(l)}
+                      data-demo="overview-open-location"
+                    >
+                      Open
+                    </Button>
                   </li>
                 ))}
               </ul>
@@ -277,13 +296,18 @@ export function SaasConsoleView() {
                     </p>
                   )}
                 </div>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={() => toggleLocationOpen(loc.id)}
-                >
-                  {loc.open ? "Mark closed" : "Mark open"}
-                </Button>
+                <div className="flex flex-wrap gap-2">
+                  <Button size="sm" onClick={() => openLoc(loc)}>
+                    Open
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => toggleLocationOpen(loc.id)}
+                  >
+                    {loc.open ? "Mark closed" : "Mark open"}
+                  </Button>
+                </div>
               </div>
               <p className="mt-4 text-xs font-medium uppercase tracking-wide text-muted-foreground">
                 Packages
