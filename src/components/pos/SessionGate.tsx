@@ -8,6 +8,11 @@ import {
   wasMustChangePasswordCleared,
 } from "@/lib/auth/platform-admin";
 import { SummexMark } from "@/components/brand/SummexMark";
+import {
+  networkLooksOffline,
+  readLastSessionUser,
+  saveLastSessionUser,
+} from "@/lib/offline/last-session";
 
 function Loading() {
   return (
@@ -59,8 +64,16 @@ export function SessionGate({ children }: { children: ReactNode }) {
     };
   }, [user?.id, pathname]);
 
+  useEffect(() => {
+    if (user) saveLastSessionUser(user);
+  }, [user]);
+
   if (isPending) return <Loading />;
-  if (!user) return <RedirectToSignIn to="/login" />;
+  if (!user) {
+    const cached = networkLooksOffline() ? readLastSessionUser() : null;
+    if (!cached) return <RedirectToSignIn to="/login" />;
+    return <>{children}</>;
+  }
   if (mustChange === null) return <Loading />;
   if (mustChange && pathname !== "/change-password" && !wasMustChangePasswordCleared()) {
     return <Navigate to="/change-password" />;

@@ -1,6 +1,7 @@
 import { createRootRoute, HeadContent, Outlet, Scripts } from "@tanstack/react-router";
 import { AuthProvider } from "@/lib/auth/provider";
 import { CreatedWithGrokBanner } from "@/components/created-with-grok-banner";
+import { OfflineSwRegistrar } from "@/components/offline-sw";
 import { DemoTourHost } from "@/components/demo/DemoTourHost";
 import { GuideHost } from "@/components/guide/GuideHost";
 
@@ -41,6 +42,7 @@ export const Route = createRootRoute({
       </head>
       <body>
         <CreatedWithGrokBanner />
+        <OfflineSwRegistrar />
         <AuthProvider>
           <GuideHost />
           <DemoTourHost />

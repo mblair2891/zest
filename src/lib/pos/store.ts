@@ -44,6 +44,7 @@ import {
   noteCashPayment,
   noteOrderSent,
   noteTicketBump,
+  noteTicketStatus,
   noteTableSeat,
   noteWaitlistAdd,
 } from "@/lib/offline/enqueue-pos";
@@ -1397,6 +1398,7 @@ const usePosStoreRaw = create()(persist((set, get) => ({
 			status: "in_progress",
 			startedAt: t.startedAt ?? Date.now(),
 		} : t) });
+		try { noteTicketStatus({ ticketId, status: "in_progress" }); } catch { /* */ }
 	},
 	readyTicket: (ticketId) => {
 		const ticket = get().tickets.find((t) => t.id === ticketId);
@@ -1405,6 +1407,7 @@ const usePosStoreRaw = create()(persist((set, get) => ({
 			status: "ready",
 		} : t);
 		set({ tickets });
+		try { noteTicketStatus({ ticketId, status: "ready" }); } catch { /* */ }
 		if (ticket?.orderId) {
 			const order = get().orders.find((o) => o.id === ticket.orderId);
 			if (order?.tableId) {

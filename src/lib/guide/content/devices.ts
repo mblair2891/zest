@@ -25,17 +25,17 @@ export const DEVICE_TOPICS: GuideTopic[] = [
         "Same-device floor + ODS is always consistent. Cross-device while internet is down is best-effort on LAN (BroadcastChannel + persist). Each device can work on its cache and merge by id when the cloud is back. Server wins on settings.",
       ),
       steps(
-        "Tap the Wi‑Fi chip (or Settings → House network). Check Simulate internet outage to train.",
-        "Seat, send a ticket, Start and Bump on ODS. Take cash. Card stays disabled.",
-        "Turn the outage off. Banner says Syncing… Outbox items apply once (client mutation ids). Failed rows show to the manager as Failed to sync.",
-        "Prospect demos use the same path on demo data only.",
+        "Open the location once while online (menu, floor, and tickets cache; the service worker stores the app shell).",
+        "Install the PWA (Add to Home Screen). Later launches work with WAN down — banner: Offline.",
+        "Seat, send a ticket, Start and Bump on ODS. Take cash. Card shows Card requires connection.",
+        "When the uplink returns, banner says Syncing… Outbox applies orders and ticket status once. Failed rows show as Failed to sync.",
       ),
       shot(
         "Header Wi‑Fi chip — Simulate internet outage, outbox, failed sync list.",
         "Network sheet with house SSID, queued cash ledger, and dead-letter rows.",
       ),
       warn(
-        "Cache is scoped to this location. Do not expect another tenant’s menu after you leave. PIN switch keeps the house; leaving the location drops the snapshot.",
+        "Prime each device while online first: sign in, open the location, wait for the floor to load. Then Add to Home Screen. The installed PWA launches Offline with the last menu, floor, and tickets. Unprimed devices cannot start with WAN down. Cache is this location only.",
       ),
       tip(
         "Owner / manager: watch Failed to sync. Server / cashier: cash is the offline tender. Kitchen: bump locally. Host: waitlist SMS is pending send.",

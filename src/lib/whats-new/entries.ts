@@ -9,6 +9,19 @@ import type { GuideUpdate } from "@/lib/guide/types";
  */
 export const WHATS_NEW_ENTRIES: GuideUpdate[] = [
   {
+    id: "upd_2026_09_29_offline_pwa",
+    date: "2026-09-29",
+    title: "Offline-first PWA",
+    summary:
+      "Prime a device online once. The installed PWA launches Offline with last menu, floor, and tickets. Cash still closes. Card requires connection. Outbox syncs when WAN returns.",
+    body: "Service worker caches the app shell. Location snapshot (menu, tables, tickets) is stored on the device. Banner: Offline. Open the house once while connected before you need it with the internet down.",
+    roles: ["owner_manager", "server", "kitchen_bar", "host_operator"],
+    surfaces: ["floor", "kds"],
+    audience: "all",
+    topicId: "wifi-offline",
+    tags: ["offline", "pwa", "outbox", "cash"],
+  },
+  {
     id: "upd_2026_09_27_station_split",
     date: "2026-09-27",
     title: "This station + split-screen ODS",

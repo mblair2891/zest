@@ -24,6 +24,12 @@ export function noteCashPayment(opts: {
 }
 
 export function noteOrderSent(opts: { orderId: string; orderNumber: number | string; ticketIds: string[] }): void {
+  enqueueMutation(
+    "order_upsert",
+    `Order · #${opts.orderNumber}`,
+    "Check cached on this device; cloud copy on reconnect",
+    { orderId: opts.orderId, ticketIds: opts.ticketIds },
+  );
   enqueueMutation("ticket_upsert", `Tickets · #${opts.orderNumber}`, "Kitchen/bar queue is local; cloud copy on reconnect", {
     orderId: opts.orderId,
     ticketIds: opts.ticketIds,
@@ -34,6 +40,13 @@ export function noteTicketBump(opts: { ticketId: string; orderNumber?: number | 
   enqueueMutation("ticket_bump", `Bump · ${opts.ticketId.slice(-6)}`, "Station bump stored locally", {
     ticketId: opts.ticketId,
     orderNumber: opts.orderNumber,
+  });
+}
+
+export function noteTicketStatus(opts: { ticketId: string; status: string }): void {
+  enqueueMutation("ticket_upsert", `Ticket ${opts.status} · ${opts.ticketId.slice(-6)}`, "Status queued for sync", {
+    ticketId: opts.ticketId,
+    status: opts.status,
   });
 }
 

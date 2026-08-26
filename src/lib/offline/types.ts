@@ -33,6 +33,20 @@ export type OutboxItem = {
   nextAttemptAt?: number;
 };
 
+export type LocationSnapshotPayload = {
+  settings: unknown;
+  employees: unknown;
+  categories: unknown;
+  menuItems: unknown;
+  tables: unknown;
+  orders: unknown;
+  tickets: unknown;
+  vendors: unknown;
+  floorSections: unknown;
+  waitlist: unknown;
+  reservations?: unknown;
+};
+
 export type LocationSnapshot = {
   locationId: string;
   savedAt: number;
@@ -40,6 +54,9 @@ export type LocationSnapshot = {
   menuItemCount: number;
   tableCount: number;
   staffCount: number;
+  venueType?: string;
+  orgId?: string;
+  payload?: LocationSnapshotPayload;
 };
 
 export const OUTBOX_KIND_LABEL: Record<OutboxKind, string> = {

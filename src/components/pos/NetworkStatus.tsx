@@ -11,6 +11,7 @@ import {
 } from "@/lib/pos/network-store";
 import { formatTime } from "@/lib/utils";
 import { usePosStore } from "@/lib/pos/store";
+import { persistLocationSnapshot } from "@/lib/offline/location-snapshot";
 
 async function pingHealth(): Promise<boolean> {
   if (typeof navigator !== "undefined" && navigator.onLine === false) return false;
@@ -40,6 +41,8 @@ export function NetworkWatcher() {
   const tableN = usePosStore((s) => s.tables.length);
   const staffN = usePosStore((s) => s.employees.length);
   const locName = usePosStore((s) => s.settings.name);
+  const ticketN = usePosStore((s) => s.tickets.length);
+  const orderN = usePosStore((s) => s.orders.length);
 
   useEffect(() => {
     const u = useNetworkStore.persist.onFinishHydration(() => undefined);
@@ -66,6 +69,7 @@ export function NetworkWatcher() {
     const tick = async () => {
       if (simulateWan) {
         setHealthOk(false);
+        persistLocationSnapshot();
         return;
       }
       const ok = await pingHealth();
@@ -82,6 +86,9 @@ export function NetworkWatcher() {
           tableCount: tableN,
           staffCount: staffN,
         });
+        persistLocationSnapshot();
+      } else {
+        persistLocationSnapshot();
       }
       pingPeers();
     };
@@ -102,6 +109,8 @@ export function NetworkWatcher() {
     menuN,
     tableN,
     staffN,
+    ticketN,
+    orderN,
   ]);
 
   useEffect(() => {

@@ -33,6 +33,8 @@ import {
   readTenantPosContext,
   saveTenantPosContext,
 } from "@/lib/saas/pos-context";
+import { loadPrimedLocation, persistLocationSnapshot } from "@/lib/offline/location-snapshot";
+import { rememberLastPosPath } from "@/lib/offline/register-sw";
 import { Link } from "@tanstack/react-router";
 import { SummexBrandBlock, SummexMark } from "@/components/brand/SummexMark";
 
@@ -227,9 +229,28 @@ function PosAppInner({ entityId }: { entityId?: string }) {
             /* ignore */
           }
           setTenantGate("ok");
+          rememberLastPosPath();
+          persistLocationSnapshot();
         })
-        .catch((e) => {
-          setGateMsg(e instanceof Error ? e.message : "No access to this location");
+        .catch(async (e) => {
+          const primed = await loadPrimedLocation(locationId);
+          if (primed) {
+            setTenantGate("ok");
+            rememberLastPosPath();
+            persistLocationSnapshot();
+            return;
+          }
+          const pos = usePosStore.getState();
+          if (pos.tenantLocationId === locationId) {
+            setTenantGate("ok");
+            rememberLastPosPath();
+            return;
+          }
+          setGateMsg(
+            e instanceof Error
+              ? `${e.message}. Open this device once while online to prime offline use.`
+              : "Open this device once while online to prime offline use.",
+          );
           setTenantGate("denied");
         });
       return;
