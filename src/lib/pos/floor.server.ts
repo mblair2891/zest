@@ -594,16 +594,27 @@ async function upsertLines(
         seat = excluded.seat,
         course = excluded.course,
         station = excluded.station,
-        item_status = excluded.item_status,
-        sent = excluded.sent,
         held = excluded.held,
         voided = excluded.voided,
         comped = excluded.comped,
         discount_cents = excluded.discount_cents,
         tax_exempt = excluded.tax_exempt,
-        ticket_id = excluded.ticket_id,
+        ticket_id = coalesce(excluded.ticket_id, pos_check_items.ticket_id),
+        sent = pos_check_items.sent or excluded.sent,
+        item_status = case
+          when pos_check_items.item_status = ${"delivered"} then ${"delivered"}
+          when pos_check_items.item_status = ${"ready"}
+            and excluded.item_status = ${"delivered"} then ${"delivered"}
+          when pos_check_items.item_status = ${"ready"} then ${"ready"}
+          when pos_check_items.item_status = ${"started"}
+            and excluded.item_status in (${"ready"}, ${"delivered"}) then excluded.item_status
+          when pos_check_items.item_status = ${"started"} then ${"started"}
+          when pos_check_items.item_status = ${"sent"}
+            and excluded.item_status in (${"draft"}, ${"sent"}) then ${"sent"}
+          else excluded.item_status
+        end,
         updated_at_ms = excluded.updated_at_ms,
-        fired_at_ms = excluded.fired_at_ms
+        fired_at_ms = coalesce(pos_check_items.fired_at_ms, excluded.fired_at_ms)
       where pos_check_items.location_id = ${ctx.locationId}
         and pos_check_items.check_id = ${checkId}
     `;
@@ -648,11 +659,18 @@ async function upsertTicketRows(
         station = excluded.station,
         operator_id = excluded.operator_id,
         vendor_name = excluded.vendor_name,
-        status = excluded.status,
+        status = case
+          when pos_tickets.status = ${"bumped"} then ${"bumped"}
+          when excluded.status = ${"new"} then pos_tickets.status
+          when pos_tickets.status = ${"ready"} and excluded.status <> ${"bumped"} then ${"ready"}
+          when pos_tickets.status = ${"in_progress"} and excluded.status = ${"new"} then ${"in_progress"}
+          else excluded.status
+        end,
         course = excluded.course,
         items = excluded.items,
         started_at_ms = coalesce(pos_tickets.started_at_ms, excluded.started_at_ms),
-        bumped_at_ms = coalesce(excluded.bumped_at_ms, pos_tickets.bumped_at_ms)
+        ready_at_ms = coalesce(pos_tickets.ready_at_ms, excluded.ready_at_ms),
+        bumped_at_ms = coalesce(pos_tickets.bumped_at_ms, excluded.bumped_at_ms)
       where pos_tickets.location_id = ${ctx.locationId}
     `;
   }
@@ -793,8 +811,11 @@ export async function sendToStations(
         update pos_check_items set
           sent = true,
           held = false,
-          item_status = ${"sent"},
-          ticket_id = ${t.id},
+          item_status = case
+            when item_status in (${"started"}, ${"ready"}, ${"delivered"}) then item_status
+            else ${"sent"}
+          end,
+          ticket_id = coalesce(ticket_id, ${t.id}),
           fired_at_ms = coalesce(fired_at_ms, ${now}),
           updated_at_ms = ${now}
         where location_id = ${ctx.locationId}

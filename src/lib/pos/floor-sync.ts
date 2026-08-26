@@ -2,7 +2,7 @@ import { useEffect } from "react";
 import { uid } from "@/lib/utils";
 import { enqueueMutation, useNetworkStore } from "@/lib/pos/network-store";
 import { usePosStore } from "@/lib/pos/store";
-import type { KitchenTicket, Order, OrderLine, Payment, Table } from "@/lib/pos/types";
+import type { KitchenTicket, Order, OrderLine, Payment, Table, TicketStation } from "@/lib/pos/types";
 import type {
   FloorActor,
   FloorCheck,
@@ -16,6 +16,7 @@ import type {
 import {
   addCheckLinesFn,
   listOpenFloorFn,
+  listStationTicketsFn,
   odsBumpFn,
   odsReadyFn,
   odsRecallFn,
@@ -358,7 +359,9 @@ export async function persistAfterLocalMutation(kind: string, id?: string): Prom
   if (kind === "send") {
     const order = s.orders.find((o) => o.id === id) ?? s.getActiveOrder?.();
     if (!order) return;
-    const tickets = s.tickets.filter((t) => t.orderId === order.id);
+    const tickets = s.tickets.filter(
+      (t) => t.orderId === order.id && (t.status === "new" || !t.startedAt),
+    );
     const check = orderToFloorCheck(order, locationId, tickets);
     const table = order.tableId ? tablePayload(s.tables.find((t) => t.id === order.tableId)) : undefined;
     const floorTickets: FloorTicket[] = tickets.map((t) => ({
@@ -475,6 +478,50 @@ export async function persistAfterLocalMutation(kind: string, id?: string): Prom
       },
     );
   }
+}
+
+export function applyStationTickets(station: TicketStation, incoming: FloorTicket[]): void {
+  const s = usePosStore.getState();
+  const now = Date.now();
+  const mapped = incoming.map(floorTicketToKitchen);
+  const mappedIds = new Set(mapped.map((t) => t.id));
+  const others = s.tickets.filter((t) => t.station !== station);
+  const localOnly = s.tickets.filter(
+    (t) =>
+      t.station === station &&
+      !mappedIds.has(t.id) &&
+      now - (t.createdAt || 0) < LOCAL_GRACE_MS,
+  );
+  usePosStore.setState({ tickets: [...others, ...mapped, ...localOnly] });
+}
+
+export function useStationTicketPolling(
+  locationId: string | null | undefined,
+  station: TicketStation,
+  operatorId?: string | null,
+): void {
+  useEffect(() => {
+    if (!locationId) return;
+    let cancelled = false;
+    const pull = () => {
+      if (cancelled) return;
+      if (!useNetworkStore.getState().wanOnline()) return;
+      void listStationTicketsFn({
+        data: { locationId, station, operatorId: operatorId ?? null },
+      })
+        .then((res) => {
+          if (cancelled) return;
+          applyStationTickets(station, res.tickets);
+        })
+        .catch(() => undefined);
+    };
+    pull();
+    const t = window.setInterval(pull, POLL_MS);
+    return () => {
+      cancelled = true;
+      window.clearInterval(t);
+    };
+  }, [locationId, station, operatorId]);
 }
 
 export function useFloorPolling(locationId: string | null | undefined): void {

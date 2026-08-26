@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { useStationTicketPolling } from "@/lib/pos/floor-sync";
 import { Check, RotateCcw, Play } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -68,6 +69,7 @@ export function KitchenView({ station, expo, operatorId }: Props) {
     ? paneOp
     : assignedOp ?? (!hostWide && roleOp ? roleOp : null);
   const [vendorFilter, setVendorFilter] = useState<string | null>(lockedVendor);
+  useStationTicketPolling(locId || null, assignedStation || station, lockedVendor);
 
   const visibleVendorIds = vendors
     .filter(
