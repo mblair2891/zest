@@ -7,6 +7,8 @@ export {
   surfaceFromPath,
   isSingleOriginHost,
   appHref,
+  explicitAppHost,
+  appHostIsLiveAndDistinct,
   marketingHref,
   apiHref,
   sitesHref,

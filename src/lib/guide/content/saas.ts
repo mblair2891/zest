@@ -240,7 +240,7 @@ export const SAAS_TOPICS: GuideTopic[] = [
         "app host — POS, ODS, kiosk device. Deep links prefer this when configured.",
         "sites host — table QR, online menu, location pages. Guest links prefer this when configured.",
         "api host — health and HTTP API.",
-        "Dev and live preview: one origin. Paths stand in for hosts. Production uses VITE_MARKETING_HOST, VITE_APP_HOST, VITE_SITES_HOST, VITE_API_HOST plus APP_URL.",
+        "Dev, preview, and www when VITE_APP_HOST is unset: one origin. Open POS stays on this host (/venue/… or /app). Split app.summex.app only when that host is configured and live.",
       ),
       steps(
         "Owner Home and Settings list the live URLs for this location. Copy POS, ODS, kiosk, and table QR.",

@@ -25,20 +25,29 @@ export const SUMMEX_HOSTS = {
   sites: "sites.summex.app",
 } as const;
 
-function envHost(name: string, fallback: string): string {
+function readEnvHost(name: string): string {
   const vite =
     typeof import.meta !== "undefined"
       ? (import.meta.env as Record<string, string | undefined>)[name]
       : undefined;
   const node =
     typeof process !== "undefined" ? process.env[name] : undefined;
-  return (vite || node || fallback).replace(/^https?:\/\//, "").replace(/\/$/, "");
+  return (vite || node || "").replace(/^https?:\/\//, "").replace(/\/$/, "").trim();
+}
+
+function envHost(name: string, fallback: string): string {
+  return readEnvHost(name) || fallback;
+}
+
+/** App host only when VITE_APP_HOST is set. Empty means POS stays on this origin. */
+export function explicitAppHost(): string {
+  return readEnvHost("VITE_APP_HOST");
 }
 
 export function configuredHosts() {
   return {
     marketing: envHost("VITE_MARKETING_HOST", SUMMEX_HOSTS.marketing),
-    app: envHost("VITE_APP_HOST", SUMMEX_HOSTS.app),
+    app: explicitAppHost() || SUMMEX_HOSTS.app,
     api: envHost("VITE_API_HOST", SUMMEX_HOSTS.api),
     sites: envHost("VITE_SITES_HOST", SUMMEX_HOSTS.sites),
   };
@@ -115,17 +124,42 @@ function protocol(): string {
   return fallbackOrigin().startsWith("https") ? "https:" : "http:";
 }
 
-/** True when we should keep a single origin (dev, preview, or unset split DNS). */
+function hostsEqual(a: string, b: string): boolean {
+  const x = stripPort(a);
+  const y = stripPort(b);
+  return x === y || x === `www.${y}` || y === `www.${x}`;
+}
+
+/**
+ * Distinct live app host: VITE_APP_HOST is set and is not this deploy.
+ * Unset, preview, or www/marketing (this Vercel project) → POS stays here.
+ */
+export function appHostIsLiveAndDistinct(currentHostname?: string): boolean {
+  const app = explicitAppHost();
+  if (!app) return false;
+  const here =
+    currentHostname ||
+    (typeof window !== "undefined" ? window.location.hostname : "");
+  if (!here) return false;
+  if (isSingleOriginHost(here)) return false;
+  if (hostsEqual(app, here)) return false;
+  const marketing = configuredHosts().marketing;
+  if (hostsEqual(here, marketing)) return false;
+  return true;
+}
+
+/** True when we should keep a single origin (dev, preview, or unset/unserved app host). */
 export function useSingleOrigin(): boolean {
+  if (!explicitAppHost()) return true;
   if (typeof window === "undefined") {
     const url = fallbackOrigin();
     try {
-      return isSingleOriginHost(new URL(url).hostname);
+      return isSingleOriginHost(new URL(url).hostname) || !appHostIsLiveAndDistinct(new URL(url).hostname);
     } catch {
       return true;
     }
   }
-  return isSingleOriginHost(window.location.hostname);
+  return isSingleOriginHost(window.location.hostname) || !appHostIsLiveAndDistinct(window.location.hostname);
 }
 
 export function originForSurface(surface: SummexSurface): string {
@@ -150,17 +184,27 @@ function withOrigin(origin: string, path: string): string {
   return `${origin}${p === "/" ? "" : p}`;
 }
 
-/** Path inside the application surface (`/venue/...` not `/app/venue/...`). */
+function sameOriginPosPath(path: string): string {
+  const p = path.startsWith("/") ? path : `/${path}`;
+  if (p === "/") return "/app";
+  if (p.startsWith("/app") || p.startsWith("/venue/") || p.startsWith("/kiosk")) return p;
+  return `/app${p}`;
+}
+
+/** Path inside the application surface. Same origin unless VITE_APP_HOST is a live distinct host. */
 export function appHref(path = "/"): string {
   const p = path.startsWith("/") ? path : `/${path}`;
-  if (typeof window === "undefined") {
-    return p === "/" ? "/app" : `/app${p}`;
-  }
+  const local = sameOriginPosPath(p);
+  if (typeof window === "undefined") return local;
   const host = window.location.hostname;
-  if (surfaceFromHost(host) === "app") return p === "/" ? "/" : p;
-  if (isSingleOriginHost(host)) return p === "/" ? "/app" : `/app${p}`;
-  const proto = window.location.protocol;
-  return `${proto}//${configuredHosts().app}${p === "/" ? "" : p}`;
+  if (surfaceFromHost(host) === "app") {
+    if (p === "/") return "/";
+    if (p.startsWith("/venue/") || p.startsWith("/kiosk") || p.startsWith("/app")) return p;
+    return p;
+  }
+  if (!appHostIsLiveAndDistinct(host)) return local;
+  const app = explicitAppHost();
+  return `${protocol()}//${app}${p === "/" ? "" : p}`;
 }
 
 export function marketingHref(path = "/"): string {
