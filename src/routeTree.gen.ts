@@ -46,6 +46,7 @@ import { Route as TenantTokenRouteImport } from './routes/tenant.$token'
 import { Route as VenueTypeRouteImport } from './routes/venue.$type'
 import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
 import { Route as ApiBillingWebhookRouteImport } from './routes/api/billing/webhook'
+import { Route as ApiPaymentsWebhookRouteImport } from './routes/api/payments/webhook'
 import { Route as AppVenueTypeRouteImport } from './routes/app.venue.$type'
 import { Route as DemoTypeTourRouteImport } from './routes/demo.$type.tour'
 import { Route as DemoTourFullRouteImport } from './routes/demo.tour.full'
@@ -236,6 +237,11 @@ const ApiBillingWebhookRoute = ApiBillingWebhookRouteImport.update({
   path: '/api/billing/webhook',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPaymentsWebhookRoute = ApiPaymentsWebhookRouteImport.update({
+  id: '/api/payments/webhook',
+  path: '/api/payments/webhook',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AppVenueTypeRoute = AppVenueTypeRouteImport.update({
   id: '/venue/$type',
   path: '/venue/$type',
@@ -295,6 +301,7 @@ export interface FileRoutesByFullPath {
   '/demo/': typeof DemoIndexRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/billing/webhook': typeof ApiBillingWebhookRoute
+  '/api/payments/webhook': typeof ApiPaymentsWebhookRoute
   '/app/venue/$type': typeof AppVenueTypeRoute
   '/demo/$type/tour': typeof DemoTypeTourRoute
   '/demo/tour/full': typeof DemoTourFullRoute
@@ -337,6 +344,7 @@ export interface FileRoutesByTo {
   '/demo': typeof DemoIndexRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/billing/webhook': typeof ApiBillingWebhookRoute
+  '/api/payments/webhook': typeof ApiPaymentsWebhookRoute
   '/app/venue/$type': typeof AppVenueTypeRoute
   '/demo/$type/tour': typeof DemoTypeTourRoute
   '/demo/tour/full': typeof DemoTourFullRoute
@@ -381,6 +389,7 @@ export interface FileRoutesById {
   '/demo/': typeof DemoIndexRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/billing/webhook': typeof ApiBillingWebhookRoute
+  '/api/payments/webhook': typeof ApiPaymentsWebhookRoute
   '/app/venue/$type': typeof AppVenueTypeRoute
   '/demo/$type/tour': typeof DemoTypeTourRoute
   '/demo/tour/full': typeof DemoTourFullRoute
@@ -426,6 +435,7 @@ export interface FileRouteTypes {
     | '/demo/'
     | '/api/auth/$'
     | '/api/billing/webhook'
+    | '/api/payments/webhook'
     | '/app/venue/$type'
     | '/demo/$type/tour'
     | '/demo/tour/full'
@@ -468,6 +478,7 @@ export interface FileRouteTypes {
     | '/demo'
     | '/api/auth/$'
     | '/api/billing/webhook'
+    | '/api/payments/webhook'
     | '/app/venue/$type'
     | '/demo/$type/tour'
     | '/demo/tour/full'
@@ -511,6 +522,7 @@ export interface FileRouteTypes {
     | '/demo/'
     | '/api/auth/$'
     | '/api/billing/webhook'
+    | '/api/payments/webhook'
     | '/app/venue/$type'
     | '/demo/$type/tour'
     | '/demo/tour/full'
@@ -552,6 +564,7 @@ export interface RootRouteChildren {
   VenueTypeRoute: typeof VenueTypeRoute
   ApiAuthSplatRoute: typeof ApiAuthSplatRoute
   ApiBillingWebhookRoute: typeof ApiBillingWebhookRoute
+  ApiPaymentsWebhookRoute: typeof ApiPaymentsWebhookRoute
   WaitlistOptOutTokenRoute: typeof WaitlistOptOutTokenRoute
 }
 
@@ -816,6 +829,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiBillingWebhookRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/payments/webhook': {
+      id: '/api/payments/webhook'
+      path: '/api/payments/webhook'
+      fullPath: '/api/payments/webhook'
+      preLoaderRoute: typeof ApiPaymentsWebhookRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/app/venue/$type': {
       id: '/app/venue/$type'
       path: '/venue/$type'
@@ -928,6 +948,7 @@ const rootRouteChildren: RootRouteChildren = {
   VenueTypeRoute: VenueTypeRoute,
   ApiAuthSplatRoute: ApiAuthSplatRoute,
   ApiBillingWebhookRoute: ApiBillingWebhookRoute,
+  ApiPaymentsWebhookRoute: ApiPaymentsWebhookRoute,
   WaitlistOptOutTokenRoute: WaitlistOptOutTokenRoute,
 }
 export const routeTree = rootRouteImport
