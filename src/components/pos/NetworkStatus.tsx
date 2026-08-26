@@ -175,13 +175,14 @@ export function NetworkBanner() {
   const wan = useNetworkStore((s) => s.wanOnline());
   const lan = useNetworkStore((s) => s.lanOnline());
   const pending = useNetworkStore((s) => s.pendingCount());
+  const dead = useNetworkStore((s) => s.deadCount());
   const syncing = useNetworkStore((s) => s.syncing);
   const healthOk = useNetworkStore((s) => s.healthOk);
   const browserOnline = useNetworkStore((s) => s.browserOnline);
   const ssid = useNetworkStore((s) => s.houseSsid);
   const setView = usePosStore((s) => s.setView);
 
-  if (lan && wan && !syncing) return null;
+  if (lan && wan && !syncing && dead === 0) return null;
 
   if (syncing && wan) {
     return (
@@ -190,6 +191,26 @@ export function NetworkBanner() {
         className="border-b border-primary/30 bg-primary/10 px-3 py-1.5 text-center text-[11px] text-foreground"
       >
         Syncing… queued changes are applying once. Cash checks will not double-capture.
+      </div>
+    );
+  }
+
+  if (dead > 0) {
+    return (
+      <div
+        data-demo="network-banner"
+        className="border-b border-danger/40 bg-danger/15 px-3 py-1.5 text-center text-[11px] text-danger"
+      >
+        Sync failed — {dead} item{dead === 1 ? "" : "s"} need a manager. Open Network to retry
+        or clear. Cash on this station is still good.
+        {" "}
+        <button
+          type="button"
+          className="underline underline-offset-2"
+          onClick={() => setView("settings")}
+        >
+          Network
+        </button>
       </div>
     );
   }

@@ -410,6 +410,12 @@ export function PaymentDialog({ open, onOpenChange }: Props) {
                 )}
 
                 <TabsContent value="card" className="mt-0 space-y-2">
+                  {!wanOnline && (
+                    <p className="rounded-lg bg-warn/15 px-3 py-2 text-xs font-medium">
+                      Card requires connection. Take cash or keep the check open. Card is
+                      not queued.
+                    </p>
+                  )}
                   {(payStatus?.mode === "sandbox" || sandbox) && (
                     <Input
                       placeholder="Last 4 (sandbox receipt only)"

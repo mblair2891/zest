@@ -4,6 +4,19 @@ import { activeLocationId } from "./scope";
 import { readTenantPosContext } from "@/lib/saas/pos-context";
 import type { LocationSnapshot } from "./types";
 
+function packEmployees(raw: unknown): unknown {
+  if (!Array.isArray(raw)) return raw;
+  return raw.map((e) => {
+    if (!e || typeof e !== "object") return e;
+    const row = e as Record<string, unknown>;
+    return {
+      ...row,
+      pin: "",
+      pinHash: typeof row.pinHash === "string" ? row.pinHash : "",
+    };
+  });
+}
+
 export function captureLocationSnapshot(): LocationSnapshot | null {
   if (typeof window === "undefined") return null;
   const pos = usePosStore.getState();
@@ -21,7 +34,7 @@ export function captureLocationSnapshot(): LocationSnapshot | null {
     orgId: ctx?.orgId,
     payload: {
       settings: pos.settings,
-      employees: pos.employees,
+      employees: packEmployees(pos.employees),
       categories: pos.categories,
       menuItems: pos.menuItems,
       tables: pos.tables,
@@ -50,7 +63,7 @@ export function applyLocationSnapshot(snap: LocationSnapshot): boolean {
     const cur = usePosStore.getState();
     const patch: Record<string, unknown> = {
       tenantLocationId: snap.locationId,
-      currentEmployeeId: null,
+      currentEmployeeId: cur.currentEmployeeId,
     };
     if (p.settings && typeof p.settings === "object") patch.settings = p.settings;
     if (Array.isArray(p.employees)) patch.employees = p.employees;

@@ -10,6 +10,7 @@ import {
 import {
   idbClearLocation,
   idbGetOutbox,
+  idbGetSnapshot,
   idbMark,
   idbPutOutbox,
   idbPutSnapshot,
@@ -162,6 +163,7 @@ export const useNetworkStore = create<NetworkState>()(
         });
         void idbPutOutbox(row);
         if (get().lanOnline()) lanBroadcastOps();
+        if (get().wanOnline()) void get().flushOutboxNow();
         return clientMutationId;
       },
 
@@ -234,6 +236,22 @@ export const useNetworkStore = create<NetworkState>()(
                 void idbMark(o.clientMutationId, { status: "sent", lastError: undefined });
                 return { ...o, status: "sent" as const, lastError: undefined };
               }
+              if (
+                r.status === "rejected" &&
+                /sign in|membership|location is required|not a member/i.test(r.error || "")
+              ) {
+                void idbMark(o.clientMutationId, {
+                  status: "queued",
+                  lastError: r.error || "Sign in to sync",
+                  nextAttemptAt: now + 15_000,
+                });
+                return {
+                  ...o,
+                  status: "queued" as const,
+                  lastError: r.error || "Sign in to sync",
+                  nextAttemptAt: now + 15_000,
+                };
+              }
               if (r.status === "conflict") {
                 void idbMark(o.clientMutationId, {
                   status: "dead",
@@ -260,6 +278,16 @@ export const useNetworkStore = create<NetworkState>()(
               return { ...o, status, attempts, lastError: r.error, nextAttemptAt };
             });
             set({ outbox: next, lastSyncAt: Date.now(), syncing: false });
+            flushInFlight = null;
+            const still = get().outbox.filter(
+              (o) =>
+                o.status === "queued" &&
+                o.locationId === loc &&
+                (o.nextAttemptAt ?? 0) <= Date.now(),
+            ).length;
+            if (still > 0 && get().wanOnline()) {
+              return pending.length + (await get().flushOutboxNow());
+            }
             return pending.length;
           } catch (err) {
             const msg = err instanceof Error ? err.message : "sync failed";
@@ -296,13 +324,19 @@ export const useNetworkStore = create<NetworkState>()(
 
       rememberSnapshot: (snap) => {
         const locationId = activeLocationId();
-        void idbPutSnapshot({
-          locationId,
-          savedAt: Date.now(),
-          name: snap.name,
-          menuItemCount: snap.menuItemCount,
-          tableCount: snap.tableCount,
-          staffCount: snap.staffCount,
+        if (!locationId || locationId === "loc_local") return;
+        void idbGetSnapshot(locationId).then((prev) => {
+          void idbPutSnapshot({
+            locationId,
+            savedAt: Date.now(),
+            name: snap.name || prev?.name || "Location",
+            menuItemCount: snap.menuItemCount,
+            tableCount: snap.tableCount,
+            staffCount: snap.staffCount,
+            venueType: prev?.venueType,
+            orgId: prev?.orgId,
+            payload: prev?.payload,
+          });
         });
       },
 
@@ -369,14 +403,17 @@ export function enqueueMutation(
   label: string,
   detail: string,
   payload: Record<string, unknown> = {},
-  extra?: { amountCents?: number },
+  extra?: { amountCents?: number; clientMutationId?: string },
 ): string {
+  const fromPayload =
+    typeof payload.clientMutationId === "string" ? payload.clientMutationId : undefined;
   return useNetworkStore.getState().enqueue({
     kind,
     label,
     detail,
     payload,
     amountCents: extra?.amountCents,
+    clientMutationId: extra?.clientMutationId || fromPayload,
   });
 }
 

@@ -296,7 +296,7 @@ async function runOrQueue(
       /* queue — do not pretend other devices saw this yet */
     }
   }
-  enqueueMutation(kind, label, detail, body);
+  enqueueMutation(kind, label, detail, body, { clientMutationId });
 }
 
 export async function hydrateFloor(locationId: string): Promise<void> {
@@ -320,6 +320,12 @@ export async function persistAfterLocalMutation(kind: string, id?: string): Prom
   const s = usePosStore.getState();
   const locationId = s.tenantLocationId;
   if (!locationId) return;
+  try {
+    const { persistLocationSnapshot } = await import("@/lib/offline/location-snapshot");
+    persistLocationSnapshot();
+  } catch {
+    /* idb */
+  }
   const who = actor();
 
   if (kind === "lines" && id) {

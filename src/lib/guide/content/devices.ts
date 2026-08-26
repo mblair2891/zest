@@ -25,17 +25,17 @@ export const DEVICE_TOPICS: GuideTopic[] = [
         "Tickets are live across devices when online: every POS and ODS at the location shares the same open checks, sends, Start/Bump, table status, and cash payments (server wins on refresh). Offline, this station still runs from its cache and queues mutations; we do not pretend two tablets share a check with no internet.",
       ),
       steps(
-        "First install (internet required): sign in, Open POS, wait for the floor. Add to Home Screen from that station.",
+        "First install (internet required): sign in, Open POS, wait for the floor. Add to Home Screen from that station. Do this on each tablet.",
         "Thereafter cold start can be offline: power the tablet, tap the Summex icon — no typing a URL. PIN in. Banner: Offline.",
-        "Seat, send a ticket, Start and Bump. Take cash. Card shows Card requires connection.",
-        "When WAN returns, banner says Syncing… Outbox applies orders and ticket status once.",
+        "Seat, send a ticket, Start and Bump. Take cash. Card shows Card requires connection — not queued, never a fake Visa.",
+        "When WAN returns, banner says Syncing… Outbox applies each mutation once (clientMutationId). Sync failed stays until a manager retries.",
       ),
       shot(
         "Header Wi‑Fi chip — Simulate internet outage, outbox, failed sync list.",
         "Network sheet with house SSID, queued cash ledger, and dead-letter rows.",
       ),
       warn(
-        "First install requires internet. After that, cold start (power on, no WAN, tap the icon) opens the station PIN pad with cached menu, floor, PINs, and open checks. Unprimed devices cannot start offline.",
+        "First install requires internet. A house router with no WAN is not enough for a cold uncached device — that tablet has never stored the app shell or location pack. Open POS once while the uplink is up, wait for the floor, then Add to Home Screen. After that, power on with no internet: PIN in, cached menu/floor, cash tender. Card still needs a connection.",
       ),
       tip(
         "Owner / manager: watch Failed to sync. Server / cashier: cash is the offline tender. Kitchen: bump locally. Host: waitlist SMS is pending send.",

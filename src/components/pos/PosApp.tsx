@@ -49,6 +49,22 @@ import { Link } from "@tanstack/react-router";
 import { SummexBrandBlock, SummexMark } from "@/components/brand/SummexMark";
 import { hydrateFloor, useFloorPolling } from "@/lib/pos/floor-sync";
 
+function withTimeout<T>(p: Promise<T>, ms: number): Promise<T> {
+  return new Promise((resolve, reject) => {
+    const t = window.setTimeout(() => reject(new Error("timeout")), ms);
+    p.then(
+      (v) => {
+        window.clearTimeout(t);
+        resolve(v);
+      },
+      (e) => {
+        window.clearTimeout(t);
+        reject(e);
+      },
+    );
+  });
+}
+
 const STORES = [
   usePosStore,
   usePlatformStore,
@@ -130,7 +146,13 @@ function PosAppInner({ entityId }: { entityId?: string }) {
     }
     if (cancelled) return;
     if (entityId && isVenueEntityId(entityId) && locationId) {
-      void getPosBootstrapFn({ data: { locationId } })
+      const skipCloud =
+        (typeof navigator !== "undefined" && navigator.onLine === false) ||
+        !useNetworkStore.getState().wanOnline();
+      const boot = skipCloud
+        ? Promise.reject(new Error("offline"))
+        : withTimeout(getPosBootstrapFn({ data: { locationId } }), 4000);
+      void boot
         .then((access) => {
           saveTenantPosContext({
             orgId: access.org.id,

@@ -18,8 +18,9 @@ export function noteCashPayment(opts: {
       amountCents: opts.amountCents,
       orgId: tenantOrgId(),
       locationId: undefined,
+      clientMutationId: `cash:${opts.paymentId}`,
     },
-    { amountCents: opts.amountCents },
+    { amountCents: opts.amountCents, clientMutationId: `cash:${opts.paymentId}` },
   );
 }
 

@@ -1,13 +1,15 @@
 /* Summex offline-first PWA. Cache app shell + last navigations.
    Location menu/floor/tickets live in IndexedDB / POS persist (primed online). */
-const SHELL = "summex-shell-v1";
-const RUNTIME = "summex-runtime-v1";
+const SHELL = "summex-shell-v2";
+const RUNTIME = "summex-runtime-v2";
 
 const PRECACHE = [
   "/station",
   "/app",
   "/dashboard",
   "/login",
+  "/venue/food_hall",
+  "/venue/restaurant",
   "/favicon.svg",
   "/icon-180.png",
   "/icon-192.png",
@@ -73,9 +75,13 @@ async function cacheHtmlAssets(res) {
     if (!ct.includes("text/html")) return;
     const html = await res.clone().text();
     const found = new Set();
-    const re = /(?:src|href)="(\/[^"]+\.(?:js|css)[^"]*)"/g;
+    const re = /(?:src|href)="(\/[^"]+\.(?:js|css|mjs)[^"]*)"/g;
     let m;
     while ((m = re.exec(html))) found.add(m[1]);
+    const pre = /rel="modulepreload"[^>]*href="([^"]+)"/g;
+    while ((m = pre.exec(html))) found.add(m[1]);
+    const pre2 = /href="([^"]+)"[^>]*rel="modulepreload"/g;
+    while ((m = pre2.exec(html))) found.add(m[1]);
     const runtime = await caches.open(RUNTIME);
     await Promise.all([...found].map((u) => runtime.add(u).catch(() => undefined)));
   } catch {

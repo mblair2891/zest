@@ -18,6 +18,7 @@ import { Button } from "@/components/ui/button";
 import { usePosStore } from "@/lib/pos/store";
 import { PinKeypad } from "./PinKeypad";
 import { ThisStationButton, SplitScreenToggle } from "./ChangeDeviceDialog";
+import { NetworkBanner, NetworkWatcher } from "./NetworkStatus";
 import { useStationSessionStore } from "@/lib/pos/station-session";
 import { isBackOfficeRole } from "@/lib/pos/pin";
 import { isProspectDemo } from "@/lib/demo/session";
@@ -223,6 +224,8 @@ export function EntityLogin({ entityId }: { entityId: VenueEntityId }) {
 
   return (
     <div className="flex min-h-[100dvh] flex-col bg-bg pt-[var(--grok-banner-h,0px)]">
+      <NetworkWatcher />
+      <NetworkBanner />
       <div className="flex items-center justify-end gap-2 px-4 pt-3">
         <ThisStationButton />
         <SplitScreenToggle />

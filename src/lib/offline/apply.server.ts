@@ -18,6 +18,14 @@ export async function applyOfflineBatch(
       continue;
     }
     try {
+      if (!userId || userId === "demo-offline") {
+        results.push({
+          clientMutationId: item.clientMutationId,
+          status: "rejected",
+          error: "Sign in to sync",
+        });
+        continue;
+      }
       const { bindTenant } = await import("@/lib/saas/assert-tenant.server");
       await bindTenant(userId, { locationId: item.locationId });
       const existing = await sql<{ client_mutation_id: string; status: string }>`
