@@ -148,7 +148,9 @@ function PosAppInner({ entityId }: { entityId?: string }) {
             setup.settlement && typeof setup.settlement === "object"
               ? (setup.settlement as Record<string, unknown>)
               : {};
-          const staffRole = membershipToEmployeeRole(access.role);
+          const staffRole = access.openDemo
+            ? null
+            : membershipToEmployeeRole(access.role);
           openTenantLocation({
             entityId: entityId as VenueEntityId,
             venueName: access.location.name,

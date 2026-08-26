@@ -1,4 +1,3 @@
-import { appHref } from "@/lib/platform/hosts";
 import { saveTenantPosContext } from "@/lib/saas/pos-context";
 import { setActiveContextFn } from "@/lib/saas/api";
 import { useSaasStore } from "@/lib/pos/saas-store";
@@ -21,6 +20,12 @@ export function venuePathForLocation(mode: string | null | undefined): LocationM
   return "food_hall";
 }
 
+/** Same-origin POS URL. Never app.summex.app — that host is not served. */
+export function sameOriginVenueHref(venueType: string, locationId: string): string {
+  const venue = venuePathForLocation(venueType);
+  return `/venue/${venue}?loc=${encodeURIComponent(locationId)}`;
+}
+
 /** Same destination as header Open POS: set active location, then go to POS. */
 export function openLocationPos(opts: {
   orgId: string;
@@ -29,9 +34,14 @@ export function openLocationPos(opts: {
   locationName: string;
   orgName: string;
   ownerName?: string;
+  skipActiveContext?: boolean;
 }): void {
   const venueType = venuePathForLocation(opts.venueType);
-  useSaasStore.getState().setActiveLocation(opts.locationId);
+  try {
+    useSaasStore.getState().setActiveLocation(opts.locationId);
+  } catch {
+    /* store may not be hydrated on the marketing login path */
+  }
   saveTenantPosContext({
     orgId: opts.orgId,
     locationId: opts.locationId,
@@ -40,12 +50,17 @@ export function openLocationPos(opts: {
     orgName: opts.orgName,
     ownerName: opts.ownerName || "Owner",
   });
-  const href = appHref(
-    `/venue/${venueType}?loc=${encodeURIComponent(opts.locationId)}`,
-  );
+  const href = sameOriginVenueHref(venueType, opts.locationId);
+  const go = () => {
+    window.location.assign(href);
+  };
+  if (opts.skipActiveContext) {
+    go();
+    return;
+  }
   void setActiveContextFn({
     data: { orgId: opts.orgId, locationId: opts.locationId },
-  }).finally(() => {
-    window.location.href = href;
-  });
+  })
+    .catch(() => undefined)
+    .finally(go);
 }

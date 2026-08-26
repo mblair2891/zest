@@ -278,11 +278,11 @@ export const GETTING_STARTED_TOPICS: GuideTopic[] = [
         "Partners need a ready multi-operator house: one guest check under The Laundry, drinks to the bar, food to the kitchen. It is tagged is_partner_demo — not a public demo tenant.",
       ),
       p(
-        "Credentials live in docs/partner-demo-logins.md. They are not printed on the marketing homepage. Must-change-password is off so partners can sign in immediately. Platform Admin is unchanged.",
+        "Temporary walkthrough: www Login opens a location picker (The Laundry) with no platform password. POS stays on www. Floor PIN is still required. Disable after demo: DEMO_OPEN_LOCATIONS=0 and VITE_DEMO_OPEN_LOCATIONS=0. Password logins stay in docs/partner-demo-logins.md. Platform Admin is unchanged.",
       ),
       steps(
-        "Sign in as laundry.owner (or laundry.owner@demo.summex.app) with the shared partner password.",
-        "Open POS for The Laundry. Enter floor PIN 2001 (Server 1).",
+        "On www, tap Login. Choose The Laundry. POS opens at /venue/food_hall on this host — not app.summex.app.",
+        "Enter floor PIN 2001 (Server 1).",
         "Order a Steam Distillery drink and a Diamond House BBQ plate on the same check.",
         "Send. Bar ODS shows the drink. Kitchen ODS shows the food. Lines stay tagged to the operator.",
       ),

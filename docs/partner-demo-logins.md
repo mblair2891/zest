@@ -1,7 +1,19 @@
 # Partner demo — The Laundry
 
-Internal sales / partner login sheet. **Not a public demo site.** Do not put
-these credentials on the marketing homepage.
+Internal sales / partner login sheet. **Not a public demo site.**
+
+## Temporary open-location path (disable after demo)
+
+`DEMO_OPEN_LOCATIONS=1` / `VITE_DEMO_OPEN_LOCATIONS=1` (unset currently means ON).
+
+1. www.summex.app → **Login** (no homepage password).
+2. Location picker lists **The Laundry**.
+3. Open → same-origin POS: `/venue/food_hall?loc=loc_partner_laundry` on www.
+   Do **not** use app.summex.app.
+4. Floor **PIN pad** still appears for role switch.
+
+**After the demo:** set `DEMO_OPEN_LOCATIONS=0` and `VITE_DEMO_OPEN_LOCATIONS=0`,
+redeploy. `/login` returns to username + password (`PartnerDemo1!` below).
 
 Tagged in the database as `is_partner_demo` (not `is_demo`). Factory reset
 wipes business data, keeps Platform Admin, then reseeds this location.

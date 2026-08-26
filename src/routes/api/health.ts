@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { getDbSource, getSql } from "@/lib/db";
 import { configuredHosts } from "@/lib/platform/hosts";
+import { isDemoOpenLocationsServer } from "@/lib/saas/flags";
 
 export const Route = createFileRoute("/api/health")({
   server: {
@@ -24,6 +25,7 @@ export const Route = createFileRoute("/api/health")({
           host,
           hosts: configuredHosts(),
           demo: process.env.DEV_DEMO === "1" || process.env.VITE_DEV_DEMO === "1",
+          demoOpenLocations: isDemoOpenLocationsServer(),
           ...(detail ? { detail } : {}),
         });
       },

@@ -213,7 +213,14 @@ function withOrigin(origin: string, path: string): string {
 function sameOriginPosPath(path: string): string {
   const p = path.startsWith("/") ? path : `/${path}`;
   if (p === "/") return "/app";
-  if (p.startsWith("/app") || p.startsWith("/venue/") || p.startsWith("/kiosk")) return p;
+  if (
+    p.startsWith("/app") ||
+    p.startsWith("/venue/") ||
+    p.startsWith("/kiosk") ||
+    p === "/station" ||
+    p.startsWith("/station/")
+  )
+    return p;
   return `/app${p}`;
 }
 

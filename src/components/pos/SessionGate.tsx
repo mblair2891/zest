@@ -9,10 +9,10 @@ import {
 } from "@/lib/auth/platform-admin";
 import { SummexMark } from "@/components/brand/SummexMark";
 import {
-  networkLooksOffline,
   readLastSessionUser,
   saveLastSessionUser,
 } from "@/lib/offline/last-session";
+import { isDemoOpenLocationsClient } from "@/lib/saas/flags";
 
 function Loading() {
   return (
@@ -36,6 +36,13 @@ export function SessionGate({
 }) {
   const { user, isPending } = useCurrentUserState();
   const pathname = useRouterState({ select: (s) => s.location.pathname });
+  const skipPlatformPassword =
+    isDemoOpenLocationsClient() &&
+    (pathname.startsWith("/venue/") ||
+      pathname === "/app" ||
+      pathname.startsWith("/app/") ||
+      pathname === "/station" ||
+      pathname.startsWith("/station/"));
   const [mustChange, setMustChange] = useState<boolean | null>(() =>
     wasMustChangePasswordCleared() ? false : null,
   );
@@ -97,11 +104,13 @@ export function SessionGate({
 
   if (isPending && !waited) return <Loading />;
   if (!user) {
+    if (skipPlatformPassword) return <>{children}</>;
     const cached = readLastSessionUser();
     if (allowPrimedStation && !primed && !cached && !waited) return <Loading />;
     if (cached || primed) return <>{children}</>;
     return <RedirectToSignIn to="/login" />;
   }
+  if (skipPlatformPassword) return <>{children}</>;
   if (mustChange === null) return <Loading />;
   if (mustChange && pathname !== "/change-password" && !wasMustChangePasswordCleared()) {
     return <Navigate to="/change-password" />;

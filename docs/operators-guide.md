@@ -273,8 +273,14 @@ homepage. Platform Admin is unchanged.
 To test a customer house: complete SaaS onboarding (intake → quote → contract
 if required → **host** wizard → org + location). Invite the owner. Open POS.
 
-To test the partner house: sign in as `laundry.owner`, open The Laundry, PIN
-**2001** as Server 1, order a drink + a plate, confirm bar vs kitchen tickets.
+Temporary walkthrough (disable after demo): www → Login → The Laundry → POS
+on the same host (`/venue/food_hall?loc=loc_partner_laundry`). No platform
+password. Floor PIN still required. Set `DEMO_OPEN_LOCATIONS=0` and
+`VITE_DEMO_OPEN_LOCATIONS=0` after the session.
+
+To test the partner house with passwords: sign in as `laundry.owner`, open The
+Laundry, PIN **2001** as Server 1, order a drink + a plate, confirm bar vs
+kitchen tickets.
 
 **Two-stage onboarding:** SaaS finishes the **Host** (host_ready). The host then
 invites **operators/tenants** from Settings → Operators / Tenants by email or

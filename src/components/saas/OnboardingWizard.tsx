@@ -9,8 +9,8 @@ import {
   inviteMemberFn,
 } from "@/lib/saas/api";
 import type { LocationMode } from "@/lib/pos/saas-types";
-import { appHref } from "@/lib/platform/hosts";
 import { saveTenantPosContext } from "@/lib/saas/pos-context";
+import { sameOriginVenueHref } from "@/lib/saas/open-location";
 import { GuideLearnLink } from "@/components/guide/GuideLearnLink";
 
 export function OnboardingWizard({
@@ -107,9 +107,7 @@ export function OnboardingWizard({
         orgName: orgName.trim(),
         ownerName: defaultName || "Owner",
       });
-      window.location.href = appHref(
-        `/venue/${venueType}?loc=${encodeURIComponent(locationId)}`,
-      );
+      window.location.assign(sameOriginVenueHref(venueType, locationId));
       return;
     }
     void navigate({ to: "/dashboard" });

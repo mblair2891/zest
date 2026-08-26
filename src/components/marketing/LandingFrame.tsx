@@ -54,16 +54,16 @@ export function LandingFrame({ children }: { children: ReactNode }) {
             ) : (
               <>
                 <Link
-                  to="/login"
+                  to="/get-pricing"
                   className="hidden h-10 items-center px-3 text-xs tracking-widest text-muted-foreground uppercase transition-colors hover:text-champagne sm:inline-flex"
                 >
-                  Sign in
+                  Get pricing
                 </Link>
                 <Link
-                  to="/get-pricing"
+                  to="/login"
                   className="inline-flex h-10 items-center rounded-sm bg-primary px-4 text-xs font-semibold tracking-widest text-primary-foreground uppercase"
                 >
-                  Get pricing
+                  Login
                 </Link>
               </>
             )}

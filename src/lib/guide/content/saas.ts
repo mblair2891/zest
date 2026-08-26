@@ -245,10 +245,11 @@ export const SAAS_TOPICS: GuideTopic[] = [
       steps(
         "Owner Home and Settings list the live URLs for this location. Copy POS, ODS, kiosk, and table QR.",
         "Print table QR from Floor. The code points at the sites host in production.",
-        "Kiosk devices open the app host /kiosk — not the marketing homepage.",
+        "Kiosk devices open /kiosk on this origin — not the marketing homepage.",
+        "Temporary partner-demo: www Login → location picker → /venue/… on www. Set DEMO_OPEN_LOCATIONS=0 after the demo.",
       ),
       tip(
-        "If a tablet opens the marketing site, it is on the wrong bookmark. Use the app host for stations.",
+        "Do not bookmark app.summex.app until that host is live. Open POS stays on www.",
       ),
       related("network-readiness", "table-qr", "feature-kiosk", "onboarding-wizard", "wifi-offline"),
     ],

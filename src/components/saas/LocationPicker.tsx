@@ -1,8 +1,8 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { SummexBrandBlock } from "@/components/brand/SummexMark";
-import { appHref } from "@/lib/platform/hosts";
 import { setActiveContextFn } from "@/lib/saas/api";
+import { sameOriginVenueHref } from "@/lib/saas/open-location";
 import type { SessionContext } from "@/lib/saas/types";
 
 export function LocationPicker({
@@ -85,9 +85,7 @@ export function LocationPicker({
           variant="outline"
           onClick={() => {
             const loc = session.locations[0]!;
-            window.location.href = appHref(
-              `/venue/${loc.venueType}?loc=${encodeURIComponent(loc.id)}`,
-            );
+            window.location.assign(sameOriginVenueHref(loc.venueType, loc.id));
           }}
         >
           Open POS

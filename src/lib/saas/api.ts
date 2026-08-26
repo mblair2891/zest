@@ -544,15 +544,28 @@ export const applyOnboardingStepFn = createServerFn({ method: "POST" })
     });
   });
 
+export const listOpenDemoLocationsFn = createServerFn({ method: "GET" }).handler(
+  async () => {
+    const { listOpenDemoLocations } = await import("./tenancy.server");
+    return listOpenDemoLocations();
+  },
+);
+
 export const getPosBootstrapFn = createServerFn({ method: "POST" })
-  .middleware([authMiddleware])
+  .middleware([optionalAuthMiddleware])
   .validator((d: { locationId: string }) => ({
     locationId: String(d.locationId ?? ""),
   }))
   .handler(async ({ context, data }) => {
-    const { assertLocationAccess } = await import("./tenancy.server");
-    const access = await assertLocationAccess(context.userId, data.locationId);
     const { operatorsAsVendors } = await import("./onboarding.server");
+    if (context.userId) {
+      const { assertLocationAccess } = await import("./tenancy.server");
+      const access = await assertLocationAccess(context.userId, data.locationId);
+      const operators = await operatorsAsVendors(data.locationId);
+      return { ...access, operators, openDemo: false as const };
+    }
+    const { assertOpenDemoLocationAccess } = await import("./tenancy.server");
+    const access = await assertOpenDemoLocationAccess(data.locationId);
     const operators = await operatorsAsVendors(data.locationId);
     return { ...access, operators };
   });

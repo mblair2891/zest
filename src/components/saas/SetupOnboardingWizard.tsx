@@ -17,10 +17,10 @@ import type {
 } from "@/lib/saas/prospect-types";
 import { ONBOARDING_STEP_IDS } from "@/lib/saas/prospect-types";
 import { VENUE_ENTITIES } from "@/lib/pos/entities";
-import { appHref } from "@/lib/platform/hosts";
 import { NetworkReadinessPanel } from "./NetworkReadinessPanel";
 import { AccessPointsCard } from "@/components/pos/AccessPointsCard";
 import { saveTenantPosContext } from "@/lib/saas/pos-context";
+import { sameOriginVenueHref } from "@/lib/saas/open-location";
 import { setActiveContextFn } from "@/lib/saas/api";
 import type { LocationMode } from "@/lib/pos/saas-types";
 
@@ -776,9 +776,7 @@ export function SetupOnboardingWizard({ token }: { token: string }) {
                 void setActiveContextFn({
                   data: { orgId: detail.orgId, locationId },
                 }).finally(() => {
-                  window.location.href = appHref(
-                    `/venue/${venueType}?loc=${encodeURIComponent(locationId)}`,
-                  );
+                  window.location.assign(sameOriginVenueHref(venueType, locationId));
                 });
               }}
             >

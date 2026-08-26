@@ -1,7 +1,7 @@
 import { getSql } from "@/lib/db";
 import { defaultPackagesForMode, type PackageId } from "@/lib/pos/packages";
 import type { LocationMode } from "@/lib/pos/saas-types";
-import { appPublicUrl } from "./flags";
+import { appPublicUrl, isDemoOpenLocationsServer } from "./flags";
 import { inviteToken, newId, slugify } from "./ids";
 import type {
   InviteRecord,
@@ -9,6 +9,7 @@ import type {
   LocationSetup,
   MembershipRecord,
   MembershipRole,
+  OpenDemoLocation,
   OrgRecord,
   OrgStatus,
   PlanSlug,
@@ -34,6 +35,7 @@ type OrgRow = {
   hq_address?: string | null;
   tax_id?: string | null;
   is_demo?: boolean;
+  is_partner_demo?: boolean;
 };
 
 type MemRow = {
@@ -60,6 +62,7 @@ type LocRow = {
   operating_model?: string | null;
   setup?: unknown;
   lifecycle_status?: string | null;
+  is_partner_demo?: boolean;
 };
 
 type UserRow = { id: string; name: string | null; email: string | null };
@@ -836,6 +839,87 @@ export async function assertLocationAccess(
     location: mapLoc(loc),
     role: access.role,
     operatorId: access.operatorId ?? null,
+  };
+}
+
+function partnerDemoFallback(): OpenDemoLocation[] {
+  return [
+    {
+      id: "loc_partner_laundry",
+      orgId: "org_partner_laundry",
+      name: "The Laundry",
+      orgName: "The Laundry Group",
+      venueType: "food_hall",
+    },
+  ];
+}
+
+function locIsPartnerDemo(loc: LocRow, org?: OrgRow): boolean {
+  return Boolean(loc.is_partner_demo) || Boolean(org?.is_partner_demo);
+}
+
+/** Public list for the temporary Login → location picker path. Empty when the flag is off. */
+export async function listOpenDemoLocations(): Promise<{
+  enabled: boolean;
+  locations: OpenDemoLocation[];
+}> {
+  if (!isDemoOpenLocationsServer()) return { enabled: false, locations: [] };
+  try {
+    const { ensurePartnerDemoSeed } = await import("@/lib/demo/partner-seed.server");
+    await ensurePartnerDemoSeed();
+    const sql = await getSql();
+    const rows = await sql<LocRow & { org_name: string; org_partner?: boolean }>`
+      select l.*, o.name as org_name, coalesce(o.is_partner_demo, false) as org_partner
+      from locations l
+      join organizations o on o.id = l.org_id
+      where coalesce(l.is_partner_demo, false) = true
+         or coalesce(o.is_partner_demo, false) = true
+      order by l.name asc
+    `;
+    const locations = rows.map((r) => ({
+      id: r.id,
+      orgId: r.org_id,
+      name: r.name,
+      orgName: r.org_name,
+      venueType: (r.venue_type as LocationMode) || "food_hall",
+    }));
+    return {
+      enabled: true,
+      locations: locations.length > 0 ? locations : partnerDemoFallback(),
+    };
+  } catch {
+    return { enabled: true, locations: partnerDemoFallback() };
+  }
+}
+
+/** Unsigned POS bootstrap for partner-demo locations when the open-locations flag is on. */
+export async function assertOpenDemoLocationAccess(locationId: string): Promise<{
+  org: OrgRecord;
+  location: LocationRecord;
+  role: MembershipRole;
+  operatorId: string | null;
+  openDemo: true;
+}> {
+  if (!isDemoOpenLocationsServer()) {
+    throw new ForbiddenError("Open demo locations are off");
+  }
+  const sql = await getSql();
+  const locs = await sql<LocRow>`select * from locations where id = ${locationId} limit 1`;
+  const loc = locs[0];
+  if (!loc) throw new ForbiddenError("Location not found");
+  const orgs = await sql<OrgRow>`select * from organizations where id = ${loc.org_id} limit 1`;
+  const org = orgs[0];
+  if (!org) throw new ForbiddenError("Location not found");
+  if (!locIsPartnerDemo(loc, org) && locationId !== "loc_partner_laundry") {
+    throw new ForbiddenError("Location not found");
+  }
+  if (org.status === "suspended") throw new SuspendedError();
+  return {
+    org: mapOrg(org),
+    location: mapLoc(loc),
+    role: "staff",
+    operatorId: null,
+    openDemo: true,
   };
 }
 

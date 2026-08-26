@@ -160,6 +160,15 @@ export type LocationRecord = {
   lifecycleStatus?: string;
 };
 
+/** Public partner-demo location row for the temporary Login → picker path. */
+export type OpenDemoLocation = {
+  id: string;
+  orgId: string;
+  name: string;
+  orgName: string;
+  venueType: LocationMode;
+};
+
 export type InviteRecord = {
   id: string;
   orgId: string;
