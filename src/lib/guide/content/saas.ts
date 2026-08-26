@@ -246,7 +246,7 @@ export const SAAS_TOPICS: GuideTopic[] = [
         "Owner Home and Settings list the live URLs for this location. Copy POS, ODS, kiosk, and table QR.",
         "Print table QR from Floor. The code points at the sites host in production.",
         "Kiosk devices open /kiosk on this origin — not the marketing homepage.",
-        "Temporary partner-demo: www Login → location picker → /venue/… on www. Set DEMO_OPEN_LOCATIONS=0 after the demo.",
+        "Sign in on www is username and password. Open POS stays on this origin.",
       ),
       tip(
         "Do not bookmark app.summex.app until that host is live. Open POS stays on www.",
@@ -345,7 +345,7 @@ export const SAAS_TOPICS: GuideTopic[] = [
         "When a location is live, Open POS. Floor PIN is for that location’s staff.",
       ),
       warn(
-        "Never send Admin login as a prospect demo. Public demo tenants stay off. The Laundry partner-demo is tagged is_partner_demo and reseeds after factory reset.",
+        "Never send Admin login as a prospect demo. Public demo tenants stay off. Factory reset keeps Platform Admin only.",
       ),
       related("platform-admin", "prospect-demos", "empty-start", "partner-demo"),
     ],

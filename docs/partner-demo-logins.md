@@ -1,23 +1,10 @@
-# Partner demo — The Laundry
+# Partner demo — RETIRED
 
-Internal sales / partner login sheet. **Not a public demo site.**
+The Laundry / Steam Distillery / Diamond House BBQ seed has been **removed**.
+Do not use these credentials. Sign in is username + password on `/login`.
+Onboard a real house through Get pricing.
 
-## Temporary open-location path (disable after demo)
-
-`DEMO_OPEN_LOCATIONS=1` / `VITE_DEMO_OPEN_LOCATIONS=1` (unset currently means ON).
-
-1. www.summex.app → **Login** (no homepage password).
-2. Location picker lists **The Laundry**.
-3. Open → same-origin POS: `/venue/food_hall?loc=loc_partner_laundry` on www.
-   Do **not** use app.summex.app.
-4. Floor **PIN pad** still appears for role switch.
-
-**After the demo:** set `DEMO_OPEN_LOCATIONS=0` and `VITE_DEMO_OPEN_LOCATIONS=0`,
-redeploy. `/login` returns to username + password (`PartnerDemo1!` below).
-
-Tagged in the database as `is_partner_demo` (not `is_demo`). Factory reset
-wipes business data, keeps Platform Admin, then reseeds this location.
-Demo-tenant purge does **not** delete it.
+The remainder of this file is historical and must not be used on production.
 
 Shared back-office password: **`PartnerDemo1!`**  
 Must-change-password is **off**. Sign-in is username or email.

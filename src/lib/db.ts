@@ -335,16 +335,10 @@ export function ensureDbReady(): Promise<void> {
       console.error("[db] platform admin bootstrap skipped:", err);
     }
     try {
-      const { ensurePartnerDemoSeed } = await import("@/lib/demo/partner-seed.server");
-      await ensurePartnerDemoSeed();
+      const { purgeSeededDemoData } = await import("@/lib/demo/purge-seed.server");
+      await purgeSeededDemoData();
     } catch (err) {
-      console.error("[db] partner demo seed skipped:", err);
-    }
-    try {
-      const { ensureFloorTestSeed } = await import("@/lib/demo/floor-test-seed.server");
-      await ensureFloorTestSeed();
-    } catch (err) {
-      console.error("[db] floor-test seed skipped:", err);
+      console.error("[db] demo purge skipped:", err);
     }
   };
   return boot();

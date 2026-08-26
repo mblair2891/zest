@@ -27,7 +27,7 @@ export const PLATFORM_CRM_TOPICS: GuideTopic[] = [
         "Start onboarding when the deal is ready — that writes a real onboarding run, not a demo seed.",
         "Go live only after org, location, and owner invite exist. The org then shows under Tenants.",
       ),
-      warn("CRM never seeds public demo tenants or PIN 0000 rooms. The Laundry partner-demo is tagged is_partner_demo, not a CRM lead."),
+      warn("CRM never seeds public demo tenants or PIN 0000 rooms."),
       related("saas-lifecycle", "platform-tenants", "prospect-intake"),
     ],
   }),

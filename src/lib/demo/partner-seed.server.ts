@@ -459,18 +459,7 @@ async function seedOnce(): Promise<{ ok: true } | { ok: false; reason: string }>
 }
 
 export async function ensurePartnerDemoSeed(): Promise<{ ok: true } | { ok: false; reason: string }> {
-  globalRef.__summexPartnerDemoBoot__ ??= (async () => {
-    try {
-      return await seedOnce();
-    } catch (err) {
-      globalRef.__summexPartnerDemoBoot__ = undefined;
-      if (dbNotReady(err)) {
-        return { ok: false, reason: "Database not ready" };
-      }
-      throw err;
-    }
-  })();
-  return globalRef.__summexPartnerDemoBoot__;
+  return { ok: false, reason: "partner demo seed retired" };
 }
 
 /** Drop the tagged partner-demo org + its logins. Never deletes Platform Admin. */

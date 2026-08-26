@@ -559,25 +559,16 @@ export const getPosBootstrapFn = createServerFn({ method: "POST" })
   .handler(async ({ context, data }) => {
     const { operatorsAsVendors } = await import("./onboarding.server");
     const { listFloorStaffForLocation } = await import("@/lib/demo/floor-test-seed.server");
-    if (context.userId) {
-      const { assertLocationAccess } = await import("./tenancy.server");
-      const access = await assertLocationAccess(context.userId, data.locationId);
-      const operators = await operatorsAsVendors(data.locationId);
-      const floorStaff = await listFloorStaffForLocation(data.locationId);
-      return { ...access, operators, floorStaff, openDemo: false as const };
+    if (!context.userId) {
+      throw new Error("Sign in to open POS.");
     }
-    const { assertOpenDemoLocationAccess } = await import("./tenancy.server");
-    const access = await assertOpenDemoLocationAccess(data.locationId);
+    const { assertLocationAccess } = await import("./tenancy.server");
+    const access = await assertLocationAccess(context.userId, data.locationId);
     const operators = await operatorsAsVendors(data.locationId);
     const floorStaff = await listFloorStaffForLocation(data.locationId);
-    return { ...access, operators, floorStaff };
+    return { ...access, operators, floorStaff, openDemo: false as const };
   });
 
 export const getFloorTestInfoFn = createServerFn({ method: "GET" })
   .middleware([authMiddleware])
-  .handler(async ({ context }) => {
-    const { isPlatformAdmin } = await import("./tenancy.server");
-    if (!(await isPlatformAdmin(context.userId))) return null;
-    const { getFloorTestInfo } = await import("@/lib/demo/floor-test-seed.server");
-    return getFloorTestInfo();
-  });
+  .handler(async () => null);

@@ -122,7 +122,7 @@ export const ROLE_GUIDE_TOPICS: GuideTopic[] = [
         "A $35 dispute fee, when filed, splits by merchandise on that check.",
       ),
       p(
-        "The Laundry partner-demo (Steam Distillery + Diamond House BBQ) is the rehearsal for this model. It is tagged is_partner_demo — not a public demo site.",
+        "Rehearse this model by onboarding a host + two operators. There is no seeded laundry catalog.",
       ),
       related("type-food-hall", "host-capture", "chargebacks", "prospect-demos", "partner-demo"),
     ],

@@ -19,31 +19,10 @@ export async function listDemoVenues(): Promise<DemoRecord[]> {
   return [];
 }
 
-/** Delete is_demo orgs/locations. Never touches platform_admin, live tenants, or partner-demo. */
+/** Delete is_demo, is_partner_demo, and floor-test seed. Never touches platform_admin or live tenants. */
 export async function purgeDemoTenants(): Promise<{ removed: number }> {
-  const sql = await getSql();
-  const before = await sql<{ n: number }>`
-    select count(*)::int as n from organizations where coalesce(is_demo, false) = true
-  `;
-  await sql`
-    delete from locations
-    where coalesce(is_partner_demo, false) = false
-      and (
-        coalesce(is_demo, false) = true
-        or id like ${"loc_demo_%"}
-        or id = ${"loc_hall"}
-      )
-  `;
-  await sql`
-    delete from organizations
-    where coalesce(is_partner_demo, false) = false
-      and (
-        coalesce(is_demo, false) = true
-        or id like ${"org_demo%"}
-        or slug like ${"demo-%"}
-      )
-  `;
-  return { removed: Number(before[0]?.n ?? 0) };
+  const { purgeSeededDemoData } = await import("./purge-seed.server");
+  return purgeSeededDemoData();
 }
 
 export async function resetDemoVenues(userId: string): Promise<{ ok: true; removed: number }> {

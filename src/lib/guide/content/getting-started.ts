@@ -253,80 +253,31 @@ export const GETTING_STARTED_TOPICS: GuideTopic[] = [
       warn(
         "Live customer tenants stay empty until onboarding. There are no public demo sites on marketing.",
       ),
-      related("login", "prospect-intake", "onboarding-wizard", "network-readiness", "access-urls", "create-org", "type-food-hall", "prospect-demos", "partner-demo", "floor-test-pins"),
-    ],
-  }),
-  topic({
-    id: "floor-test-pins",
-    chapterId: "getting-started",
-    title: "Floor test PINs & devices",
-    summary: "Admin-only hashed PINs for device and station testing. Not on the marketing homepage.",
-    visibility: "platform",
-    roles: ["platform_admin"],
-    keywords: ["pin", "0000", "test location", "device", "ods", "kiosk", "floor test"],
-    openView: "floor",
-    blocks: [
-      why(
-        "Testers need a PIN pad and Change device without typing a roster. These PINs are hashed at rest, scoped to one location, and wiped by factory reset.",
-      ),
-      steps(
-        "Sign in as Platform Admin. Open POS for the seeded location (Test Location, or the single existing house).",
-        "At the floor PIN pad enter 0000 (Manager). Use This station / Change device to pick Server tablet, Host stand, Kitchen ODS, Bar ODS, Kiosk, or Cashier.",
-        "Log out of the PIN session. Try 1111 Server, 2222 Host, 3333 Bartender, 4444 Kitchen, 5555 Busser, 6666 Cashier.",
-        "Time clock uses the same PINs but is a separate punch — it does not log the floor session in.",
-      ),
-      ul(
-        "0000 Manager — can Change device among the seeded stations.",
-        "1111 Server · 2222 Host stand · 3333 Bartender · 4444 Kitchen · 5555 Busser · 6666 Cashier.",
-        "Listed on Platform Settings → General (Admin only). Never on www marketing.",
-        "Not the partner-demo Laundry catalog. Operators are not added unless the location already has them.",
-      ),
-      warn(
-        "These are test PINs for internal floor QA. Do not print them on the public site. Customer houses should set unique staff PINs.",
-      ),
-      related("partner-demo", "empty-start", "feature-kiosk", "platform-settings"),
+      related("login", "prospect-intake", "onboarding-wizard", "network-readiness", "access-urls", "create-org", "type-food-hall", "prospect-demos"),
     ],
   }),
   topic({
     id: "partner-demo",
     chapterId: "getting-started",
-    title: "Partner demo — The Laundry",
-    summary:
-      "Tagged partner-demo house with Steam Distillery + Diamond House BBQ. Not a public demo site.",
+    title: "No seeded demo house",
+    summary: "Partner-demo seed is retired. Onboard a real location through SaaS.",
     visibility: "platform",
-    roles: ["platform_admin", "owner_manager", "host_operator", "vendor_operator"],
-    keywords: [
-      "partner demo",
-      "the laundry",
-      "steam distillery",
-      "diamond house",
-      "pin",
-      "partner",
-    ],
-    openView: "floor",
+    roles: ["platform_admin"],
+    keywords: ["partner demo", "the laundry", "demo", "seed"],
     blocks: [
       why(
-        "Partners need a ready multi-operator house: one guest check under The Laundry, drinks to the bar, food to the kitchen. It is tagged is_partner_demo — not a public demo tenant.",
-      ),
-      p(
-        "Temporary walkthrough: www Login opens a location picker (The Laundry) with no platform password. POS stays on www. Floor PIN is still required. Disable after demo: DEMO_OPEN_LOCATIONS=0 and VITE_DEMO_OPEN_LOCATIONS=0. Password logins stay in docs/partner-demo-logins.md. Platform Admin is unchanged.",
+        "Production Summex does not ship a seeded restaurant. Sign in is username and password. Floor PINs exist only after you create staff on a real location.",
       ),
       steps(
-        "On www, tap Login. Choose The Laundry. POS opens at /venue/food_hall on this host — not app.summex.app.",
-        "Enter floor PIN 2001 (Server 1).",
-        "Order a Steam Distillery drink and a Diamond House BBQ plate on the same check.",
-        "Send. Bar ODS shows the drink. Kitchen ODS shows the food. Lines stay tagged to the operator.",
-      ),
-      ul(
-        "Host logins: owner, manager, host stand, accountant.",
-        "Steam Distillery: entity manager + bartender.",
-        "Diamond House BBQ: entity manager + kitchen.",
-        "Floor PINs are 4-digit and hashed. Time clock is a separate punch — not the PIN login.",
+        "Sign in at /login with your account password.",
+        "If you are Platform Admin, complete Get pricing → quote → onboarding to create the first house.",
+        "Open POS on this host (/venue/…), not app.summex.app.",
+        "Add staff PINs on that location. There is no skip-password picker and no PIN 0000 seed.",
       ),
       warn(
-        "This is not Load The Laundry and not a public PIN-0000 demo. Factory reset reseeds it. Demo-tenant purge does not delete it.",
+        "The Laundry / Steam Distillery / Diamond House BBQ seed has been removed. Factory reset keeps Platform Admin only.",
       ),
-      related("laundry-test-venue", "type-food-hall", "kds", "roles-dashboards", "floor-pin-login", "floor-test-pins"),
+      related("empty-start", "prospect-intake", "onboarding-wizard", "access-urls"),
     ],
   }),
   topic({
@@ -334,7 +285,7 @@ export const GETTING_STARTED_TOPICS: GuideTopic[] = [
     chapterId: "getting-started",
     title: "Test a host + operators location",
     summary:
-      "Onboard a real multi-operator house through SaaS, or use the tagged partner-demo.",
+      "Onboard a real multi-operator house through SaaS. No seeded demo catalog.",
     visibility: "platform",
     roles: ["platform_admin", "owner_manager", "host_operator", "vendor_operator"],
     keywords: [
@@ -349,10 +300,10 @@ export const GETTING_STARTED_TOPICS: GuideTopic[] = [
     openView: "hall",
     blocks: [
       why(
-        "Host capture and operator settlement are exercised on a real org row (is_demo is false) — either one you onboard, or the tagged partner-demo.",
+        "Host capture and operator settlement are exercised on a real org row you onboard (is_demo is false).",
       ),
       p(
-        "Prospects still go through Get pricing. There is no public demo site. The Laundry partner-demo is for partners only; see Partner demo — The Laundry. Customer onboarding still uses Host Venue / Operator A / Operator B unless they bring their own names.",
+        "Prospects go through Get pricing. There is no public demo site and no seeded laundry catalog. Use Host Venue / Operator A / Operator B unless they bring their own names.",
       ),
       steps(
         "Get pricing → describe a host + two operators.",
@@ -361,7 +312,7 @@ export const GETTING_STARTED_TOPICS: GuideTopic[] = [
         "Ledger shows host capture and allocations per operator. Settle the period.",
       ),
       warn(
-        "There is no Load The Laundry control and no universal PIN 0000 tenant. Empty tenants on a fresh Admin login (aside from the tagged partner-demo) is correct.",
+        "There is no Load The Laundry control and no universal PIN 0000 tenant. An empty tenant list after Admin login is correct until onboarding.",
       ),
       cta(
         "/get-pricing",

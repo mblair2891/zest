@@ -17,10 +17,8 @@ function parseOnOff(raw: string | undefined): boolean | null {
 }
 
 /**
- * Temporary partner-demo: Login → location picker → POS, no platform password.
- * Enable with DEMO_OPEN_LOCATIONS=1 / VITE_DEMO_OPEN_LOCATIONS=1.
- * Set either to 0 after the demo to restore password login.
- * Unset currently means ON (today's partner walkthrough). Flip default to false after.
+ * Retired partner-demo skip-password path. Default OFF.
+ * Only enable with DEMO_OPEN_LOCATIONS=1 / VITE_DEMO_OPEN_LOCATIONS=1.
  */
 export function isDemoOpenLocationsClient(): boolean {
   const v = parseOnOff(
@@ -28,8 +26,7 @@ export function isDemoOpenLocationsClient(): boolean {
       ? (import.meta.env as Record<string, string | undefined>).VITE_DEMO_OPEN_LOCATIONS
       : undefined,
   );
-  if (v != null) return v;
-  return true;
+  return v === true;
 }
 
 export function isDemoOpenLocationsServer(): boolean {
@@ -37,8 +34,7 @@ export function isDemoOpenLocationsServer(): boolean {
   const v = parseOnOff(
     process.env.DEMO_OPEN_LOCATIONS ?? process.env.VITE_DEMO_OPEN_LOCATIONS,
   );
-  if (v != null) return v;
-  return true;
+  return v === true;
 }
 
 export function appPublicUrl(): string {

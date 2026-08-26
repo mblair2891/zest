@@ -260,33 +260,14 @@ partner-demo (The Laundry). Never public `is_demo` tenants. Disable in
 Security or with `FACTORY_RESET_ENABLED=false`. Production stays off unless
 that env is `true`. `/guide?topic=factory-reset`.
 
-## Testing a location (SaaS + partner-demo)
+## Testing a location
 
 There are **no public demo tenants**. Marketing **Request demo** is Get pricing
-/ intake. `/demo` URLs redirect there.
-
-A tagged **partner-demo** (`is_partner_demo`) location — The Laundry, with
-Steam Distillery (bar) and Diamond House BBQ (kitchen) — is seeded for
-partners. Credentials: `docs/partner-demo-logins.md`. Not on the marketing
-homepage. Platform Admin is unchanged.
+/ intake. `/demo` URLs redirect there. Sign in is username and password.
 
 To test a customer house: complete SaaS onboarding (intake → quote → contract
-if required → **host** wizard → org + location). Invite the owner. Open POS.
-
-Temporary walkthrough (disable after demo): www → Login → The Laundry → POS
-on the same host (`/venue/food_hall?loc=loc_partner_laundry`). No platform
-password. Floor PIN still required. Set `DEMO_OPEN_LOCATIONS=0` and
-`VITE_DEMO_OPEN_LOCATIONS=0` after the session.
-
-To test the partner house with passwords: sign in as `laundry.owner`, open The
-Laundry, PIN **2001** as Server 1, order a drink + a plate, confirm bar vs
-kitchen tickets.
-
-Floor test PINs (Admin only, Platform Settings → General): **0000** Manager
-(Change device), **1111** Server, **2222** Host, **3333** Bartender, **4444**
-Kitchen, **5555** Busser, **6666** Cashier. Seeded onto Test Location if none
-exists, otherwise the single existing house. Clock in/out is a separate punch.
-Not on the marketing homepage. `/guide?topic=floor-test-pins`.
+if required → **host** wizard → org + location). Invite the owner. Open POS
+on www (`/venue/…`), not app.summex.app.
 
 **Two-stage onboarding:** SaaS finishes the **Host** (host_ready). The host then
 invites **operators/tenants** from Settings → Operators / Tenants by email or

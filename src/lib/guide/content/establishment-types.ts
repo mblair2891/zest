@@ -94,7 +94,7 @@ export const ESTABLISHMENT_TYPE_TOPICS: GuideTopic[] = [
         "Onboard a food-hall style location with two operators to rehearse bar vs kitchen on one guest check. Example names in this guide are not tenants.",
       ),
       warn(
-        "Customer tenants appear after SaaS onboarding. The Laundry partner-demo is tagged is_partner_demo — not a public demo site.",
+        "Customer tenants appear after SaaS onboarding. There is no public demo site and no seeded catalog.",
       ),
       cta(
         "/get-pricing",

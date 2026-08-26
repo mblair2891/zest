@@ -303,25 +303,13 @@ async function seedOnce(): Promise<FloorTestInfo> {
 export async function ensureFloorTestSeed(): Promise<
   FloorTestInfo | { ok: false; reason: string }
 > {
-  globalRef.__summexFloorTestBoot__ ??= (async () => {
-    try {
-      return await seedOnce();
-    } catch (err) {
-      globalRef.__summexFloorTestBoot__ = undefined;
-      if (dbNotReady(err)) return { ok: false, reason: "Database not ready" };
-      throw err;
-    }
-  })();
-  return globalRef.__summexFloorTestBoot__;
+  return { ok: false, reason: "floor test seed retired" };
 }
 
 export async function reseedFloorTest(): Promise<FloorTestInfo | { ok: false; reason: string }> {
-  globalRef.__summexFloorTestBoot__ = undefined;
-  return ensureFloorTestSeed();
+  return { ok: false, reason: "floor test seed retired" };
 }
 
 export async function getFloorTestInfo(): Promise<FloorTestInfo | null> {
-  const result = await ensureFloorTestSeed();
-  if ("ok" in result && result.ok === false) return null;
-  return result as FloorTestInfo;
+  return null;
 }
