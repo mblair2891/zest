@@ -9,6 +9,19 @@ import type { GuideUpdate } from "@/lib/guide/types";
  */
 export const WHATS_NEW_ENTRIES: GuideUpdate[] = [
   {
+    id: "upd_2026_10_01_floor_sync",
+    date: "2026-10-01",
+    title: "Tickets live across devices",
+    summary:
+      "Open checks, sends, ODS Start/Bump, table status, and cash payments persist for the location. A second tablet and kitchen display see the same floor within a few seconds when online.",
+    body: "Postgres is the floor of record. Zustand is a cache — refresh still shows the check. Vendor operators only see their own lines and tickets. Offline, this station queues the change; we do not pretend two devices share a check with no internet.",
+    roles: ["owner_manager", "server", "kitchen_bar", "host_operator", "vendor_operator"],
+    surfaces: ["floor", "kds"],
+    audience: "all",
+    topicId: "kds",
+    tags: ["pos", "ods", "sync", "tickets"],
+  },
+  {
     id: "upd_2026_09_30_station_cold_start",
     date: "2026-09-30",
     title: "Cold-start POS offline",

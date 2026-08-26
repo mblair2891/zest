@@ -49,6 +49,7 @@ export const ORDER_TOPICS: GuideTopic[] = [
       steps(
         "On Order, build the check, then Send. Do not expect ODS to see unsent lines.",
         "Kitchen order display shows food tickets; Bar ODS shows beverage tickets. Host floors also split by operator.",
+        "When this device is online, Send writes the tickets to the location — every POS and ODS at that location sees the same check within a few seconds. Refresh keeps it.",
         "Expo or the server marks Delivered when the table has the plate.",
       ),
       related("kds", "menu-modifiers", "multi-operator-orders"),
@@ -102,11 +103,15 @@ export const ORDER_TOPICS: GuideTopic[] = [
         "ODS ticket columns with Start and Bump.",
       ),
       steps(
-        "Send from the floor. Tickets land on the kitchen or bar ODS for that station and operator.",
-        "Start when you begin prep (Preparing). Bump when the plate/drink is ready.",
+        "Send from the floor. Tickets land on the kitchen or bar ODS for that station and operator — including a second tablet and a kitchen display, not only this browser.",
+        "Start when you begin prep (Preparing). Bump when the plate/drink is ready. Those actions persist on the location; the originating POS shows Ready without a refresh wait longer than a few seconds.",
         "The originating server’s device toasts, chimes, and vibrates (where the platform allows). The table pulses Up.",
         "Expo or the server marks Delivered on the floor. Recall if you bumped too early.",
         "Mute sound from the header bell. Multi-op: filter All operators or a single stall.",
+      ),
+      callout(
+        "Tickets are live across devices when online",
+        "Open checks, sent lines, Start/Bump, table status, and cash payments are stored for the location. A second POS and the kitchen ODS share the same floor while the house is online. Offline, this station still works from its cache and queues the change; other devices catch up when the uplink returns. We do not pretend two tablets share a check with no internet.",
       ),
       tip(
         "Ahead and curbside tickets may wait until the guest is marked arrived — see Online fire rules if a ticket “never showed.”",

@@ -64,6 +64,21 @@ export async function applyOfflineBatch(
       if (item.kind === "waitlist_sms") {
         await applyWaitlistSms(item).catch(() => undefined);
       }
+      if (
+        item.kind === "order_upsert" ||
+        item.kind === "ticket_upsert" ||
+        item.kind === "ticket_bump" ||
+        item.kind === "table_seat"
+      ) {
+        const { applyFloorOutboxPayload } = await import("@/lib/pos/floor.server");
+        await applyFloorOutboxPayload(
+          userId,
+          item.kind,
+          item.locationId,
+          item.payload,
+          item.clientMutationId,
+        );
+      }
 
       await sql`
         insert into offline_mutations (

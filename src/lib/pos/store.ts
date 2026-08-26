@@ -42,12 +42,16 @@ import { demoPosSlice, demoSaasOrg } from "@/lib/demo/pos-payloads";
 import {
   cardRequiresConnection,
   noteCashPayment,
-  noteOrderSent,
-  noteTicketBump,
-  noteTicketStatus,
-  noteTableSeat,
   noteWaitlistAdd,
 } from "@/lib/offline/enqueue-pos";
+
+function floorSync(kind: string, id?: string) {
+	try {
+		void import("./floor-sync").then((m) => m.persistAfterLocalMutation(kind, id)).catch(() => {});
+	} catch {
+		/* optional — POS still runs locally */
+	}
+}
 import {
   DEFAULT_FLOOR_SECTIONS,
   DEFAULT_SECTION_POLICY,
@@ -587,7 +591,8 @@ const usePosStoreRaw = create()(persist((set, get) => ({
 			"seat",
 			`Table ${table.label} · ${guestCount} guests · ${owner.name}${assigned ? " (host assigned)" : ""}`,
 		);
-		noteTableSeat({ tableId, guestCount });
+		floorSync("check", order.id);
+		floorSync("table", tableId);
 		return { ok: true };
 	},
 	releaseTable: (tableId) => {
@@ -617,6 +622,8 @@ const usePosStoreRaw = create()(persist((set, get) => ({
 			} : o),
 		});
 		get().audit("table_release", `Table ${table.label} released by ${emp.name}`);
+		floorSync("table", tableId);
+		floorSync("check", order.id);
 		return { ok: true };
 	},
 	acceptTable: (tableId) => {
@@ -651,6 +658,8 @@ const usePosStoreRaw = create()(persist((set, get) => ({
 			"table_accept",
 			`Table ${table.label} accepted by ${emp.name} (released by ${releasedBy})`,
 		);
+		floorSync("table", tableId);
+		if (table.orderId) floorSync("check", table.orderId);
 		return { ok: true };
 	},
 	reassignTable: (tableId, serverId) => {
@@ -679,6 +688,8 @@ const usePosStoreRaw = create()(persist((set, get) => ({
 				: get().orders,
 		});
 		get().audit("table_reassign", `Table ${table.label} → ${target.name} by ${emp.name}`);
+		floorSync("table", tableId);
+		if (table.orderId) floorSync("check", table.orderId);
 		return { ok: true };
 	},
 	markClean: (tableId) => {
@@ -694,6 +705,7 @@ const usePosStoreRaw = create()(persist((set, get) => ({
 			releasedById: void 0,
 			releasedByName: void 0,
 		} : t) });
+		floorSync("table", tableId);
 	},
 	clearTable: (tableId) => {
 		const childIds = get().tables.find((t) => t.id === tableId) ? get().tables.filter((t) => t.mergedIntoId === tableId).map((t) => t.id) : [];
@@ -714,6 +726,7 @@ const usePosStoreRaw = create()(persist((set, get) => ({
 			}),
 			activeOrderId: get().activeOrderId && get().orders.find((o) => o.id === get().activeOrderId)?.tableId === tableId ? null : get().activeOrderId
 		});
+		floorSync("table", tableId);
 	},
 	transferTable: (fromId, toId) => {
 		const from = get().tables.find((t) => t.id === fromId);
@@ -875,6 +888,7 @@ const usePosStoreRaw = create()(persist((set, get) => ({
 			activeOrderId: order.id,
 			view: "order"
 		});
+		floorSync("check", order.id);
 		return order.id;
 	},
 	openTakeout: (name) => {
@@ -902,6 +916,7 @@ const usePosStoreRaw = create()(persist((set, get) => ({
 			activeOrderId: order.id,
 			view: "order"
 		});
+		floorSync("check", order.id);
 		return order.id;
 	},
 	addItem: (menuItemId, opts = {}) => {
@@ -959,6 +974,7 @@ const usePosStoreRaw = create()(persist((set, get) => ({
 				stock: Math.max(0, (m.stock ?? 0) - line.quantity)
 			} : m) : get().menuItems
 		});
+		floorSync("lines", order.id);
 		return { ok: true };
 	},
 	updateLineQty: (lineId, delta) => {
@@ -977,6 +993,7 @@ const usePosStoreRaw = create()(persist((set, get) => ({
 				}).filter((l) => l.quantity > 0)
 			};
 		}) });
+		floorSync("lines", order.id);
 	},
 	setLineNote: (lineId, note) => {
 		const order = get().getActiveOrder();
@@ -988,6 +1005,7 @@ const usePosStoreRaw = create()(persist((set, get) => ({
 				note
 			} : l)
 		}) });
+		floorSync("lines", order.id);
 	},
 	setLineSeat: (lineId, seat) => {
 		const order = get().getActiveOrder();
@@ -999,6 +1017,7 @@ const usePosStoreRaw = create()(persist((set, get) => ({
 				seat
 			} : l)
 		}) });
+		floorSync("lines", order.id);
 	},
 	voidLine: (lineId, reason) => {
 		const order = get().getActiveOrder();
@@ -1019,6 +1038,7 @@ const usePosStoreRaw = create()(persist((set, get) => ({
 			}
 		});
 		get().audit("void", reason);
+		floorSync("lines", order.id);
 	},
 	compLine: (lineId, reason) => {
 		const order = get().getActiveOrder();
@@ -1039,6 +1059,7 @@ const usePosStoreRaw = create()(persist((set, get) => ({
 			}
 		});
 		get().audit("comp", reason);
+		floorSync("lines", order.id);
 	},
 	holdLine: (lineId, held) => {
 		const order = get().getActiveOrder();
@@ -1050,6 +1071,7 @@ const usePosStoreRaw = create()(persist((set, get) => ({
 				held
 			} : l)
 		}) });
+		floorSync("lines", order.id);
 	},
 	sendOrder: (opts = {}) => {
 		const order = get().getActiveOrder();
@@ -1112,11 +1134,7 @@ const usePosStoreRaw = create()(persist((set, get) => ({
 			tables: order.tableId ? get().tables.map((t) => t.id === order.tableId ? stampStatus(t, tableStatusFromOrder(updated)) : t) : get().tables
 		});
 		get().audit("send", `Order #${order.number} · ${toSend.length} items`);
-		noteOrderSent({
-			orderId: order.id,
-			orderNumber: order.number,
-			ticketIds: newTickets.map((t) => t.id),
-		});
+		floorSync("send", order.id);
 	},
 	fireCourse: (course) => {
 		const order = get().getActiveOrder();
@@ -1168,6 +1186,8 @@ const usePosStoreRaw = create()(persist((set, get) => ({
 				statusSince: Date.now(),
 			} : t) : get().tables
 		});
+		floorSync("check", order.id);
+		if (order.tableId) floorSync("table", order.tableId);
 	},
 	takePayment: ({ method, amountCents, tipCents = 0, tenderedCents, last4, giftCardCode, houseAccountId }) => {
 		const order = get().getActiveOrder();
@@ -1367,6 +1387,7 @@ const usePosStoreRaw = create()(persist((set, get) => ({
 				paymentId: payment.id,
 			});
 		}
+		floorSync("payment", order.id);
 		return {
 			ok: true,
 			changeCents
@@ -1403,7 +1424,7 @@ const usePosStoreRaw = create()(persist((set, get) => ({
 				});
 			}
 		}
-		noteTicketBump({ ticketId, orderNumber: ticket?.orderNumber });
+		floorSync("bump", ticketId);
 	},
 	recallTicket: (ticketId) => {
 		set({ tickets: get().tickets.map((t) => t.id === ticketId ? {
@@ -1411,6 +1432,7 @@ const usePosStoreRaw = create()(persist((set, get) => ({
 			status: "new",
 			bumpedAt: void 0
 		} : t) });
+		floorSync("recall", ticketId);
 	},
 	startTicket: (ticketId) => {
 		set({ tickets: get().tickets.map((t) => t.id === ticketId ? {
@@ -1418,7 +1440,7 @@ const usePosStoreRaw = create()(persist((set, get) => ({
 			status: "in_progress",
 			startedAt: t.startedAt ?? Date.now(),
 		} : t) });
-		try { noteTicketStatus({ ticketId, status: "in_progress" }); } catch { /* */ }
+		floorSync("start", ticketId);
 	},
 	readyTicket: (ticketId) => {
 		const ticket = get().tickets.find((t) => t.id === ticketId);
@@ -1427,7 +1449,7 @@ const usePosStoreRaw = create()(persist((set, get) => ({
 			status: "ready",
 		} : t);
 		set({ tickets });
-		try { noteTicketStatus({ ticketId, status: "ready" }); } catch { /* */ }
+		floorSync("ready", ticketId);
 		if (ticket?.orderId) {
 			const order = get().orders.find((o) => o.id === ticket.orderId);
 			if (order?.tableId) {
@@ -1458,8 +1480,9 @@ const usePosStoreRaw = create()(persist((set, get) => ({
 			});
 		}
 		for (const t of ready) {
-			noteTicketBump({ ticketId: t.id, orderNumber: t.orderNumber });
+			floorSync("bump", t.id);
 		}
+		floorSync("table", tableId);
 	},
 	addWaitlist: (entry) => {
 		const id = entry.id || uid("wl");
@@ -2042,6 +2065,7 @@ const usePosStoreRaw = create()(persist((set, get) => ({
 			tables: get().tables.map((t) => t.id === tableId ? { ...t, status: next, statusSince: Date.now() } : t),
 		});
 		get().audit("floor", `Table status ${next}`);
+		floorSync("table", tableId);
 		return { ok: true };
 	},
 	guestOpenTable: (tableId) => {

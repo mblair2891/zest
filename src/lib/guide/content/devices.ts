@@ -22,7 +22,7 @@ export const DEVICE_TOPICS: GuideTopic[] = [
         "Allow: create/edit orders, send to kitchen/bar (local queue), bump tickets, seat cached tables, cash tender, waitlist add (SMS pending send).",
         "Needs internet: Quantum Payments card auth, SMS/email send, cloud reporting AI, SaaS admin and billing.",
         "Card: blocked with “Card requires connection.” Offer cash or hold the tab. Cash never drops a closed check and never double-captures on sync.",
-        "Same-device floor + ODS is always consistent. Cross-device while internet is down is best-effort on LAN (BroadcastChannel + persist). Each device can work on its cache and merge by id when the cloud is back. Server wins on settings.",
+        "Tickets are live across devices when online: every POS and ODS at the location shares the same open checks, sends, Start/Bump, table status, and cash payments (server wins on refresh). Offline, this station still runs from its cache and queues mutations; we do not pretend two tablets share a check with no internet.",
       ),
       steps(
         "First install (internet required): sign in, Open POS, wait for the floor. Add to Home Screen from that station.",

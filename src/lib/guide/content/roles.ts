@@ -95,7 +95,7 @@ export const ROLE_GUIDE_TOPICS: GuideTopic[] = [
       ),
       steps(
         "PIN into Kitchen or Bar. You see only your station’s tickets.",
-        "Start when you begin, Bump when ready. The originating server’s device toasts, chimes, and vibrates. Expo or floor marks Delivered. Bump still works offline. Do not take payment from the ODS.",
+        "Start when you begin, Bump when ready. Tickets are live across devices when online — the originating POS sees Ready. Bump still works offline on this station and syncs when the uplink returns. Do not take payment from the ODS.",
         "On a host floor, bar tickets belong to the bar operator; kitchen tickets to the kitchen operator.",
         "Recipe on a ticket opens full prep steps, quantities, glassware, and garnish in large type.",
       ),

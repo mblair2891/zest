@@ -41,6 +41,7 @@ import {
 import { rememberLastPosPath } from "@/lib/offline/register-sw";
 import { Link } from "@tanstack/react-router";
 import { SummexBrandBlock, SummexMark } from "@/components/brand/SummexMark";
+import { hydrateFloor, useFloorPolling } from "@/lib/pos/floor-sync";
 
 const STORES = [
   usePosStore,
@@ -66,8 +67,10 @@ function PosAppInner({ entityId }: { entityId?: string }) {
   const [gateMsg, setGateMsg] = useState<string | null>(null);
   const currentEmployeeId = usePosStore((s) => s.currentEmployeeId);
   const activeEntityId = usePosStore((s) => s.activeEntityId);
+  const tenantLocationId = usePosStore((s) => s.tenantLocationId);
   const openTenantLocation = usePosStore((s) => s.openTenantLocation);
   const { user, isPending } = useCurrentUserState();
+  useFloorPolling(tenantGate === "ok" ? tenantLocationId : null);
 
   useEffect(() => {
     let cancelled = false;
@@ -249,6 +252,7 @@ function PosAppInner({ entityId }: { entityId?: string }) {
           setTenantGate("ok");
           rememberLastPosPath();
           persistLocationSnapshot();
+          void hydrateFloor(access.location.id);
         })
         .catch(async (e) => {
           const primed = await loadPrimedLocation(locationId);
