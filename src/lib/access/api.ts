@@ -16,6 +16,7 @@ import {
   makeClaimCode,
   parseLocationDevice,
   parseLocationDevices,
+  parsePrinterConfig,
   type DeviceFunction,
   type LocationDevice,
   type LocationDeviceType,
@@ -169,6 +170,7 @@ export const saveLocationDeviceFn = createServerFn({ method: "POST" })
       type: LocationDeviceType;
       serial?: string;
       assignment: { operatorId: string; function: DeviceFunction };
+      print?: unknown;
     };
   }) => {
     const type = DEVICE_TYPES.includes(d.device?.type) ? d.device.type : "other";
@@ -187,6 +189,7 @@ export const saveLocationDeviceFn = createServerFn({ method: "POST" })
           operatorId: String(d.device?.assignment?.operatorId ?? "host").trim().slice(0, 80) || "host",
           function: fn,
         },
+        print: type === "printer" ? parsePrinterConfig(d.device?.print) : undefined,
       },
     };
   })
@@ -212,6 +215,7 @@ export const saveLocationDeviceFn = createServerFn({ method: "POST" })
       serial: data.device.serial || existing?.serial,
       claimCode: existing?.claimCode || makeClaimCode(),
       assignment: data.device.assignment,
+      print: data.device.print ?? existing?.print,
     };
     const devices = existing
       ? prev.map((x) => (x.id === id ? nextDevice : x))
@@ -319,7 +323,10 @@ export const listLocationDevicesFn = createServerFn({ method: "POST" })
     const setupDevices = parseLocationDevices(access.location.setup?.locationDevices);
     const byId = new Map<string, LocationDevice>();
     for (const d of setupDevices) byId.set(d.id, d);
-    for (const d of tableRows) byId.set(d.id, { ...byId.get(d.id), ...d });
+    for (const d of tableRows) {
+      const prev = byId.get(d.id);
+      byId.set(d.id, { ...d, ...prev, print: prev?.print ?? d.print });
+    }
     let devices = Array.from(byId.values());
     if (tableRows.length === 0 && setupDevices.length) {
       for (const d of setupDevices) {

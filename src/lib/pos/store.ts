@@ -52,6 +52,14 @@ function floorSync(kind: string, id?: string) {
 		/* optional — POS still runs locally */
 	}
 }
+
+function printNow(kind: "send" | "bump" | "ready" | "receipt", id?: string) {
+	try {
+		void import("@/lib/print/from-store").then((m) => m.printFromPos(kind, id)).catch(() => {});
+	} catch {
+		/* printing is best-effort */
+	}
+}
 import {
   DEFAULT_FLOOR_SECTIONS,
   DEFAULT_SECTION_POLICY,
@@ -1135,6 +1143,7 @@ const usePosStoreRaw = create()(persist((set, get) => ({
 		});
 		get().audit("send", `Order #${order.number} · ${toSend.length} items`);
 		floorSync("send", order.id);
+		printNow("send", order.id);
 	},
 	fireCourse: (course) => {
 		const order = get().getActiveOrder();
@@ -1188,6 +1197,7 @@ const usePosStoreRaw = create()(persist((set, get) => ({
 		});
 		floorSync("check", order.id);
 		if (order.tableId) floorSync("table", order.tableId);
+		printNow("receipt", order.id);
 	},
 	takePayment: ({ method, amountCents, tipCents = 0, tenderedCents, last4, giftCardCode, houseAccountId }) => {
 		const order = get().getActiveOrder();
@@ -1388,6 +1398,7 @@ const usePosStoreRaw = create()(persist((set, get) => ({
 			});
 		}
 		floorSync("payment", order.id);
+		printNow("receipt", order.id);
 		return {
 			ok: true,
 			changeCents
@@ -1425,6 +1436,7 @@ const usePosStoreRaw = create()(persist((set, get) => ({
 			}
 		}
 		floorSync("bump", ticketId);
+		printNow("bump", ticketId);
 	},
 	recallTicket: (ticketId) => {
 		set({ tickets: get().tickets.map((t) => t.id === ticketId ? {
@@ -1450,6 +1462,7 @@ const usePosStoreRaw = create()(persist((set, get) => ({
 		} : t);
 		set({ tickets });
 		floorSync("ready", ticketId);
+		printNow("ready", ticketId);
 		if (ticket?.orderId) {
 			const order = get().orders.find((o) => o.id === ticket.orderId);
 			if (order?.tableId) {

@@ -29,6 +29,41 @@ export type DeviceAssignment = {
 
 export type LocationDeviceStatus = "online" | "offline" | "pending" | "inactive";
 
+export type PrinterFamily = "star" | "epson" | "generic";
+export type PrinterConnection = "lan" | "bluetooth" | "browser";
+export type PrintStation = "kitchen" | "bar" | "receipt" | "expo";
+
+export type PrinterConfig = {
+  family: PrinterFamily;
+  connection: PrinterConnection;
+  /** LAN host:port (default :9100) or Bluetooth address. Empty for browser fallback. */
+  target: string;
+  station: PrintStation;
+};
+
+export const PRINTER_FAMILIES: PrinterFamily[] = ["star", "epson", "generic"];
+export const PRINTER_CONNECTIONS: PrinterConnection[] = ["lan", "bluetooth", "browser"];
+export const PRINT_STATIONS: PrintStation[] = ["kitchen", "bar", "receipt", "expo"];
+
+export const PRINTER_FAMILY_LABEL: Record<PrinterFamily, string> = {
+  star: "Star Micronics",
+  epson: "Epson",
+  generic: "Generic ESC/POS",
+};
+
+export const PRINTER_CONNECTION_LABEL: Record<PrinterConnection, string> = {
+  lan: "LAN (Ethernet / Wi‑Fi)",
+  bluetooth: "Bluetooth",
+  browser: "This browser (window.print)",
+};
+
+export const PRINT_STATION_LABEL: Record<PrintStation, string> = {
+  kitchen: "Kitchen tickets",
+  bar: "Bar tickets",
+  receipt: "Guest receipt",
+  expo: "Expo / bump chit",
+};
+
 export type LocationDevice = {
   id: string;
   locationId: string;
@@ -39,6 +74,7 @@ export type LocationDevice = {
   serial?: string;
   claimCode?: string;
   assignment: DeviceAssignment;
+  print?: PrinterConfig;
 };
 
 export const DEVICE_TYPES: LocationDeviceType[] = [
@@ -154,7 +190,27 @@ export function parseLocationDevice(raw: unknown): LocationDevice | null {
     serial: o.serial ? String(o.serial) : undefined,
     claimCode: o.claimCode ? String(o.claimCode) : undefined,
     assignment,
+    print: type === "printer" ? parsePrinterConfig(o.print ?? o) : undefined,
   };
+}
+
+export function parsePrinterConfig(raw: unknown): PrinterConfig | undefined {
+  if (!raw || typeof raw !== "object") return undefined;
+  const o = raw as Record<string, unknown>;
+  const familyRaw = String(o.family ?? o.printerFamily ?? "generic");
+  const family: PrinterFamily = PRINTER_FAMILIES.includes(familyRaw as PrinterFamily)
+    ? (familyRaw as PrinterFamily)
+    : "generic";
+  const connRaw = String(o.connection ?? o.printerConnection ?? "browser");
+  const connection: PrinterConnection = PRINTER_CONNECTIONS.includes(connRaw as PrinterConnection)
+    ? (connRaw as PrinterConnection)
+    : "browser";
+  const stRaw = String(o.station ?? o.printStation ?? "");
+  const station: PrintStation = PRINT_STATIONS.includes(stRaw as PrintStation)
+    ? (stRaw as PrintStation)
+    : "receipt";
+  const target = String(o.target ?? o.printerTarget ?? o.ip ?? "").trim().slice(0, 120);
+  return { family, connection, station, target };
 }
 
 export function parseLocationDevices(raw: unknown): LocationDevice[] {
@@ -216,6 +272,20 @@ export function stationForDeviceFunction(
   if (fn === "kitchen_kds" || fn === "expo" || fn === "split") return "kitchen";
   if (fn === "bar_kds" || fn === "bar_pos") return "bar";
   return null;
+}
+
+export function functionForPrintStation(station: PrintStation): DeviceFunction {
+  switch (station) {
+    case "kitchen":
+      return "kitchen_kds";
+    case "bar":
+      return "bar_kds";
+    case "expo":
+      return "expo";
+    case "receipt":
+    default:
+      return "cashier";
+  }
 }
 
 export function browserDeviceStorageKey(locationId: string): string {

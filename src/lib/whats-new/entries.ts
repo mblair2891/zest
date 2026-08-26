@@ -9,6 +9,19 @@ import type { GuideUpdate } from "@/lib/guide/types";
  */
 export const WHATS_NEW_ENTRIES: GuideUpdate[] = [
   {
+    id: "upd_2026_10_03_printing",
+    date: "2026-10-03",
+    title: "Kitchen and receipt printing",
+    summary:
+      "Hardware registry printers (Star / Epson / generic) print tickets and receipts. SYOH sites use the browser print dialog today. LAN printers use the house print agent.",
+    body: "Add a printer, assign Kitchen / Bar / Receipt / Expo, tap Test print. Send fires station tickets. Bump prints expo. Pay prints the guest receipt. Browsers cannot open TCP 9100 — run node scripts/print-agent.mjs on the hub, or leave connection = This browser.",
+    roles: ["owner_manager", "server", "kitchen_bar", "host_operator"],
+    surfaces: ["floor", "kds", "settings"],
+    audience: "all",
+    topicId: "printers-kds",
+    tags: ["print", "printer", "star", "epson", "hardware"],
+  },
+  {
     id: "upd_2026_10_02_quantum_live",
     date: "2026-10-02",
     title: "Quantum Payments live path",

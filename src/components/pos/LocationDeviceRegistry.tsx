@@ -12,14 +12,25 @@ import {
   DEVICE_FUNCTION_LABEL,
   DEVICE_TYPE_LABEL,
   HARDWARE_DEVICE_TYPES,
+  PRINT_STATIONS,
+  PRINT_STATION_LABEL,
+  PRINTER_CONNECTIONS,
+  PRINTER_CONNECTION_LABEL,
+  PRINTER_FAMILIES,
+  PRINTER_FAMILY_LABEL,
   STATION_DEVICE_FUNCTIONS,
   STATION_DEVICE_TYPES,
   defaultFunctionForType,
+  functionForPrintStation,
   readOrCreateBrowserDeviceId,
   type DeviceFunction,
   type LocationDevice,
   type LocationDeviceType,
+  type PrintStation,
+  type PrinterConnection,
+  type PrinterFamily,
 } from "@/lib/pos/location-devices";
+import { dispatchPrintJob, testPrintJob } from "@/lib/print/dispatch";
 import { usePosStore } from "@/lib/pos/store";
 import { formatTime } from "@/lib/utils";
 import { GuideLearnLink } from "@/components/guide/GuideLearnLink";
@@ -67,6 +78,10 @@ export function LocationDeviceRegistry({
   const [fn, setFn] = useState<DeviceFunction>(
     mode === "hardware" ? "expo" : "floor_pos",
   );
+  const [printFamily, setPrintFamily] = useState<PrinterFamily>("generic");
+  const [printConnection, setPrintConnection] = useState<PrinterConnection>("browser");
+  const [printTarget, setPrintTarget] = useState("");
+  const [printStation, setPrintStation] = useState<PrintStation>("receipt");
   const [busy, setBusy] = useState(false);
 
   const load = useCallback(async () => {
@@ -113,6 +128,10 @@ export function LocationDeviceRegistry({
       preset?.assignment?.function ??
         (mode === "hardware" ? "expo" : "floor_pos"),
     );
+    setPrintFamily(preset?.print?.family ?? "generic");
+    setPrintConnection(preset?.print?.connection ?? "browser");
+    setPrintTarget(preset?.print?.target ?? "");
+    setPrintStation(preset?.print?.station ?? "receipt");
     setFormOpen(true);
   };
 
@@ -124,6 +143,7 @@ export function LocationDeviceRegistry({
       const name =
         label.trim() ||
         (opts?.asBrowser ? "This browser" : mode === "hardware" ? "Printer" : "Device");
+      const printer = type === "printer";
       await saveLocationDeviceFn({
         data: {
           orgId,
@@ -132,8 +152,19 @@ export function LocationDeviceRegistry({
             id,
             label: name,
             type,
-            assignment: { operatorId, function: fn },
-            serial: opts?.asBrowser ? "browser" : undefined,
+            assignment: {
+              operatorId,
+              function: printer ? functionForPrintStation(printStation) : fn,
+            },
+            serial: opts?.asBrowser ? "browser" : printTarget || undefined,
+            print: printer
+              ? {
+                  family: printFamily,
+                  connection: printConnection,
+                  target: printTarget.trim(),
+                  station: printStation,
+                }
+              : undefined,
           },
         },
       });
@@ -171,7 +202,7 @@ export function LocationDeviceRegistry({
   const heading = mode === "hardware" ? "Hardware" : "Devices";
   const help =
     mode === "hardware"
-      ? "Register card terminals and printers for this location. They are house assets — not locked to one operator."
+      ? "Register Quantum readers and Star/Epson printers. Assign kitchen, bar, receipt, or expo. Test print from this list."
       : "Register tablets, order displays, and kiosks. Suggested entity and function is a default; any device can switch via This station.";
   const addLabel = mode === "hardware" ? "Add terminal / printer" : "Add device";
 
@@ -193,9 +224,9 @@ export function LocationDeviceRegistry({
             <p className="mt-1 max-w-xl text-sm text-muted-foreground">{help}</p>
           </div>
           <div className="flex flex-wrap gap-2">
-            {mode === "stations" && (
-              <GuideLearnLink topicId="station-switcher">Learn</GuideLearnLink>
-            )}
+            <GuideLearnLink topicId={mode === "hardware" ? "printers-kds" : "station-switcher"}>
+              Learn
+            </GuideLearnLink>
             <Button size="sm" onClick={() => resetForm()}>
               {addLabel}
             </Button>
@@ -256,21 +287,80 @@ export function LocationDeviceRegistry({
                 ))}
               </select>
             </label>
-            <label className="text-xs text-muted-foreground">
-              Function
-              <select
-                className="mt-1 h-10 w-full rounded-xl border border-border bg-bg px-3 text-sm text-foreground"
-                value={fn}
-                onChange={(e) => setFn(e.target.value as DeviceFunction)}
-              >
-                {functionOptions(mode).map((f) => (
-                  <option key={f} value={f}>
-                    {DEVICE_FUNCTION_LABEL[f]}
-                  </option>
-                ))}
-              </select>
-            </label>
+            {type === "printer" ? (
+              <label className="text-xs text-muted-foreground">
+                Prints
+                <select
+                  className="mt-1 h-10 w-full rounded-xl border border-border bg-bg px-3 text-sm text-foreground"
+                  value={printStation}
+                  onChange={(e) => setPrintStation(e.target.value as PrintStation)}
+                >
+                  {PRINT_STATIONS.map((s) => (
+                    <option key={s} value={s}>
+                      {PRINT_STATION_LABEL[s]}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            ) : (
+              <label className="text-xs text-muted-foreground">
+                Function
+                <select
+                  className="mt-1 h-10 w-full rounded-xl border border-border bg-bg px-3 text-sm text-foreground"
+                  value={fn}
+                  onChange={(e) => setFn(e.target.value as DeviceFunction)}
+                >
+                  {functionOptions(mode).map((f) => (
+                    <option key={f} value={f}>
+                      {DEVICE_FUNCTION_LABEL[f]}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            )}
           </div>
+          {type === "printer" && (
+            <div className="grid gap-2 sm:grid-cols-3">
+              <label className="text-xs text-muted-foreground">
+                Model family
+                <select
+                  className="mt-1 h-10 w-full rounded-xl border border-border bg-bg px-3 text-sm text-foreground"
+                  value={printFamily}
+                  onChange={(e) => setPrintFamily(e.target.value as PrinterFamily)}
+                >
+                  {PRINTER_FAMILIES.map((f) => (
+                    <option key={f} value={f}>
+                      {PRINTER_FAMILY_LABEL[f]}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label className="text-xs text-muted-foreground">
+                Connection
+                <select
+                  className="mt-1 h-10 w-full rounded-xl border border-border bg-bg px-3 text-sm text-foreground"
+                  value={printConnection}
+                  onChange={(e) => setPrintConnection(e.target.value as PrinterConnection)}
+                >
+                  {PRINTER_CONNECTIONS.map((c) => (
+                    <option key={c} value={c}>
+                      {PRINTER_CONNECTION_LABEL[c]}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label className="text-xs text-muted-foreground">
+                IP / target
+                <Input
+                  className="mt-1"
+                  placeholder="192.168.1.50:9100"
+                  value={printTarget}
+                  onChange={(e) => setPrintTarget(e.target.value)}
+                  disabled={printConnection === "browser"}
+                />
+              </label>
+            </div>
+          )}
           <div className="flex flex-wrap gap-2">
             <Button size="sm" disabled={busy} onClick={() => void save()}>
               Save
@@ -338,7 +428,9 @@ export function LocationDeviceRegistry({
                 <p className="font-medium">{d.label}</p>
                 <p className="text-xs text-muted-foreground">
                   {DEVICE_TYPE_LABEL[d.type]} · {entityName(d.assignment.operatorId)} ·{" "}
-                  {DEVICE_FUNCTION_LABEL[d.assignment.function]}
+                  {d.print
+                    ? `${PRINT_STATION_LABEL[d.print.station]} · ${PRINTER_FAMILY_LABEL[d.print.family]} · ${PRINTER_CONNECTION_LABEL[d.print.connection]}${d.print.target ? ` · ${d.print.target}` : ""}`
+                    : DEVICE_FUNCTION_LABEL[d.assignment.function]}
                   {d.claimCode ? ` · claim ${d.claimCode}` : ""}
                 </p>
               </div>
@@ -353,6 +445,25 @@ export function LocationDeviceRegistry({
                 <span className="text-[11px] text-muted-foreground">
                   {d.lastSeenAt ? formatTime(d.lastSeenAt) : "—"}
                 </span>
+                {d.type === "printer" && (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    disabled={busy}
+                    onClick={() => {
+                      const job = testPrintJob({
+                        locationId,
+                        locationName: hostName || locationName,
+                        station: d.print?.station ?? "receipt",
+                      });
+                      void dispatchPrintJob(job, [d], {
+                        forceBrowser: d.print?.connection === "browser" || !d.print?.target,
+                      });
+                    }}
+                  >
+                    Test print
+                  </Button>
+                )}
                 <Button size="sm" variant="outline" onClick={() => resetForm(d)}>
                   Edit
                 </Button>

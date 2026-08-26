@@ -1,0 +1,68 @@
+import { formatCurrency } from "@/lib/utils";
+import type { PrintJob } from "./types";
+
+function esc(s: string): string {
+  return s
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
+
+export function ticketHtml(job: PrintJob): string {
+  const title =
+    job.kind === "receipt"
+      ? "Receipt"
+      : job.kind === "test"
+        ? "Test print"
+        : job.station === "bar"
+          ? "Bar ticket"
+          : job.station === "expo"
+            ? "Expo"
+            : "Kitchen ticket";
+  const items = job.items
+    .map((it) => {
+      const mods = (it.mods ?? []).map((m) => `<div class="mod">${esc(m)}</div>`).join("");
+      const note = it.note ? `<div class="mod">* ${esc(it.note)}</div>` : "";
+      const seat = it.seat != null ? `<div class="mod">seat ${it.seat}</div>` : "";
+      return `<div class="item"><strong>${it.qty}× ${esc(it.name)}</strong>${mods}${note}${seat}</div>`;
+    })
+    .join("");
+  const totals = job.totals
+    ? `<div class="rule"></div>
+       <div class="row"><span>Subtotal</span><span>${formatCurrency(job.totals.subtotalCents)}</span></div>
+       <div class="row"><span>Tax</span><span>${formatCurrency(job.totals.taxCents)}</span></div>
+       <div class="row total"><span>Total</span><span>${formatCurrency(job.totals.totalCents)}</span></div>
+       ${job.totals.tender ? `<div class="muted">${esc(job.totals.tender)}</div>` : ""}`
+    : "";
+  return `<!doctype html>
+<html>
+<head>
+<meta charset="utf-8"/>
+<title>${esc(title)} #${esc(String(job.checkNumber))}</title>
+<style>
+  @page { size: 80mm auto; margin: 6mm; }
+  body { font: 13px/1.35 ui-monospace, SFMono-Regular, Menlo, monospace; color: #111; }
+  h1 { font-size: 16px; text-align: center; margin: 0 0 4px; }
+  h2 { font-size: 13px; text-align: center; margin: 0 0 10px; letter-spacing: .12em; text-transform: uppercase; }
+  .row { display: flex; justify-content: space-between; gap: 8px; }
+  .item { margin: 6px 0; }
+  .mod { padding-left: 12px; font-size: 12px; }
+  .rule { border-top: 1px dashed #333; margin: 8px 0; }
+  .total { font-weight: 700; font-size: 15px; }
+  .muted { text-align: center; color: #444; margin-top: 10px; font-size: 11px; }
+</style>
+</head>
+<body>
+  <h1>${esc(job.locationName)}</h1>
+  <h2>${esc(title)}</h2>
+  <div class="row"><span>#${esc(String(job.checkNumber))}</span><span>${esc(job.tableLabel)}</span></div>
+  <div class="row"><span>${esc(job.serverName)}</span><span>${esc(new Date(job.at).toLocaleTimeString())}</span></div>
+  ${job.operatorName ? `<div>${esc(job.operatorName)}</div>` : ""}
+  <div class="rule"></div>
+  ${items}
+  ${totals}
+  <p class="muted">Quantum Payments · Summex</p>
+</body>
+</html>`;
+}
