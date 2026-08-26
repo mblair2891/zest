@@ -89,7 +89,7 @@ export const DEVICE_TOPICS: GuideTopic[] = [
         "ODS only shows tickets for that station and entity unless the host grants a broader view_tickets.",
       ),
       steps(
-        "Host settings → Operators → Device assignment (or Devices pack) to enroll and suggest a default.",
+        "Dashboard → Devices: add a tablet, order display, or kiosk (or Use this browser as a device). Hardware tab is terminals and printers.",
         "On the device, This station → pick function and entity. No special device SKU.",
         "On The Laundry: Tablet A can be Steam bar ODS, then switched to Diamond kitchen ODS without re-enrolling.",
         "Large / order-display screens: Split — two independent panes (each with its own station + entity). Optional 70/30. Tap a pane header to fullscreen.",

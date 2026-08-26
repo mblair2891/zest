@@ -204,6 +204,32 @@ async function upsertLocation(): Promise<void> {
       where id = ${PARTNER_DEMO_LOCATION_ID}
     `;
   }
+  for (const d of devices) {
+    try {
+      await sql`
+        insert into location_devices (
+          id, location_id, label, type, status, serial, claim_code,
+          assigned_operator_id, assigned_function, last_seen_at
+        )
+        values (
+          ${d.id}, ${PARTNER_DEMO_LOCATION_ID}, ${d.label}, ${d.type}, ${d.status},
+          ${d.serial ?? null}, ${d.claimCode ?? null},
+          ${d.assignment.operatorId}, ${d.assignment.function},
+          ${new Date(d.lastSeenAt).toISOString()}
+        )
+        on conflict (id) do update set
+          label = excluded.label,
+          type = excluded.type,
+          status = excluded.status,
+          serial = excluded.serial,
+          assigned_operator_id = excluded.assigned_operator_id,
+          assigned_function = excluded.assigned_function,
+          last_seen_at = excluded.last_seen_at
+      `;
+    } catch {
+      /* 0012 may not have applied yet */
+    }
+  }
 }
 
 async function upsertOperators(): Promise<void> {

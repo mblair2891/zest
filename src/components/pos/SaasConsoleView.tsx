@@ -17,7 +17,7 @@ import {
   HARDWARE_POLICY,
   HARDWARE_SKUS,
 } from "@/lib/pos/hardware-catalog";
-import { formatCurrency, formatTime } from "@/lib/utils";
+import { formatCurrency } from "@/lib/utils";
 import { venueById, VENUE_ENTITIES } from "@/lib/pos/entities";
 import {
   billingStatusFn,
@@ -26,6 +26,7 @@ import {
   startCheckoutFn,
   startPortalFn,
 } from "@/lib/saas/api";
+import { LocationDeviceRegistry } from "./LocationDeviceRegistry";
 
 type Tab =
   | "overview"
@@ -70,7 +71,6 @@ export function SaasConsoleView() {
   const org = useSaasStore((s) => s.org);
   const members = useSaasStore((s) => s.members);
   const locations = useSaasStore((s) => s.locations);
-  const devices = useSaasStore((s) => s.devices);
   const invoices = useSaasStore((s) => s.invoices);
   const onboarding = useSaasStore((s) => s.onboarding);
   const activeLocationId = useSaasStore((s) => s.activeLocationId);
@@ -356,36 +356,22 @@ export function SaasConsoleView() {
         )}
 
         {tab === "devices" && (
-          <div className="mx-auto max-w-3xl space-y-2">
-            {devices.map((d) => (
-              <div
-                key={d.id}
-                className="flex flex-wrap items-center justify-between gap-2 rounded-2xl border border-border bg-surface px-4 py-3"
-              >
-                <div>
-                  <p className="font-medium">{d.name}</p>
-                  <p className="text-xs text-muted-foreground">
-                    {d.type} · {d.serial} ·{" "}
-                    {locations.find((l) => l.id === d.locationId)?.code}
-                  </p>
-                </div>
-                <div className="text-right">
-                  <Badge
-                    variant={d.status === "online" ? "success" : "secondary"}
-                  >
-                    {d.status}
-                  </Badge>
-                  <p className="mt-1 text-[11px] text-muted-foreground">
-                    {formatTime(d.lastSeenAt)}
-                  </p>
-                </div>
-              </div>
-            ))}
-          </div>
+          <LocationDeviceRegistry
+            orgId={org.id}
+            locationId={loc?.id ?? ""}
+            locationName={loc?.name ?? org.name}
+            mode="stations"
+          />
         )}
 
         {tab === "hardware" && (
           <div className="mx-auto max-w-4xl space-y-4">
+            <LocationDeviceRegistry
+              orgId={org.id}
+              locationId={loc?.id ?? ""}
+              locationName={loc?.name ?? org.name}
+              mode="hardware"
+            />
             <div className="rounded-2xl border border-border bg-surface p-4">
               <p className="font-semibold">{HARDWARE_POLICY.title}</p>
               <p className="mt-1 text-sm text-muted-foreground">

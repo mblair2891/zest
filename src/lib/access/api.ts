@@ -14,8 +14,10 @@ import {
   DEVICE_FUNCTIONS,
   DEVICE_TYPES,
   makeClaimCode,
+  parseLocationDevice,
   parseLocationDevices,
   type DeviceFunction,
+  type LocationDevice,
   type LocationDeviceType,
 } from "@/lib/pos/location-devices";
 
@@ -203,7 +205,10 @@ export const saveLocationDeviceFn = createServerFn({ method: "POST" })
       locationId: data.locationId,
       label: data.device.label,
       type: data.device.type,
-      status: existing?.status ?? ("pending" as const),
+      status:
+        existing?.status === "inactive"
+          ? ("pending" as const)
+          : (existing?.status ?? ("pending" as const)),
       lastSeenAt: Date.now(),
       serial: data.device.serial || existing?.serial,
       claimCode: existing?.claimCode || makeClaimCode(),
@@ -227,11 +232,158 @@ export const saveLocationDeviceFn = createServerFn({ method: "POST" })
       on conflict (id) do update set
         label = excluded.label,
         type = excluded.type,
+        status = excluded.status,
         serial = excluded.serial,
         assigned_operator_id = excluded.assigned_operator_id,
         assigned_function = excluded.assigned_function,
         last_seen_at = now()
     `;
+    const { updateLocationSetupForUser } = await import("@/lib/saas/tenancy.server");
+    return updateLocationSetupForUser(context.userId, {
+      orgId: data.orgId,
+      locationId: data.locationId,
+      setup: { ...EMPTY_LOCATION_SETUP, ...ctx.setup, locationDevices: devices } as LocationSetup,
+    });
+  });
+
+function mapDeviceRow(r: {
+  id: string;
+  location_id: string;
+  label: string;
+  type: string;
+  status: string;
+  serial: string | null;
+  claim_code: string | null;
+  assigned_operator_id: string | null;
+  assigned_function: string | null;
+  last_seen_at: unknown;
+}): LocationDevice | null {
+  return parseLocationDevice({
+    id: r.id,
+    locationId: r.location_id,
+    label: r.label,
+    type: r.type,
+    status: r.status,
+    serial: r.serial,
+    claimCode: r.claim_code,
+    lastSeenAt:
+      r.last_seen_at instanceof Date
+        ? r.last_seen_at.getTime()
+        : r.last_seen_at
+          ? Date.parse(String(r.last_seen_at))
+          : Date.now(),
+    assignment: {
+      operatorId: r.assigned_operator_id || "host",
+      function: r.assigned_function || "floor_pos",
+    },
+  });
+}
+
+export const listLocationDevicesFn = createServerFn({ method: "POST" })
+  .middleware([authMiddleware])
+  .validator((d: { orgId: string; locationId: string }) => ({
+    orgId: String(d.orgId ?? "").trim(),
+    locationId: loc(d.locationId),
+  }))
+  .handler(async ({ context, data }) => {
+    const { assertLocationAccess } = await import("@/lib/saas/tenancy.server");
+    const access = await assertLocationAccess(context.userId, data.locationId);
+    if (access.org.id !== data.orgId) {
+      throw new Error("Location not found");
+    }
+    const { getSql } = await import("@/lib/db");
+    const sql = await getSql();
+    let tableRows: LocationDevice[] = [];
+    try {
+      const rows = await sql<{
+        id: string;
+        location_id: string;
+        label: string;
+        type: string;
+        status: string;
+        serial: string | null;
+        claim_code: string | null;
+        assigned_operator_id: string | null;
+        assigned_function: string | null;
+        last_seen_at: unknown;
+      }>`
+        select id, location_id, label, type, status, serial, claim_code,
+               assigned_operator_id, assigned_function, last_seen_at
+        from location_devices
+        where location_id = ${data.locationId}
+        order by created_at asc
+      `;
+      tableRows = rows.map(mapDeviceRow).filter((d): d is LocationDevice => !!d);
+    } catch {
+      tableRows = [];
+    }
+    const setupDevices = parseLocationDevices(access.location.setup?.locationDevices);
+    const byId = new Map<string, LocationDevice>();
+    for (const d of setupDevices) byId.set(d.id, d);
+    for (const d of tableRows) byId.set(d.id, { ...byId.get(d.id), ...d });
+    let devices = Array.from(byId.values());
+    if (tableRows.length === 0 && setupDevices.length) {
+      for (const d of setupDevices) {
+        try {
+          await sql`
+            insert into location_devices (
+              id, location_id, label, type, status, serial, claim_code,
+              assigned_operator_id, assigned_function, last_seen_at
+            )
+            values (
+              ${d.id}, ${data.locationId}, ${d.label}, ${d.type}, ${d.status},
+              ${d.serial ?? null}, ${d.claimCode ?? null},
+              ${d.assignment.operatorId}, ${d.assignment.function},
+              ${new Date(d.lastSeenAt).toISOString()}
+            )
+            on conflict (id) do nothing
+          `;
+        } catch {
+          /* ignore backfill races */
+        }
+      }
+      devices = setupDevices;
+    }
+    const { operatorsAsVendors } = await import("@/lib/saas/onboarding.server");
+    const operators = await operatorsAsVendors(data.locationId);
+    return {
+      devices,
+      operators: operators.map((o) => ({ id: o.id, name: o.name })),
+      hostName: access.location.hostBrandName || access.location.name,
+    };
+  });
+
+export const deactivateLocationDeviceFn = createServerFn({ method: "POST" })
+  .middleware([authMiddleware])
+  .validator((d: { orgId: string; locationId: string; deviceId: string; active: boolean }) => ({
+    orgId: String(d.orgId ?? "").trim(),
+    locationId: loc(d.locationId),
+    deviceId: String(d.deviceId ?? "").trim().slice(0, 80),
+    active: Boolean(d.active),
+  }))
+  .handler(async ({ context, data }) => {
+    const { loadEntityWriteContext, assertHostOrManageDevices } = await import(
+      "./assert-entity.server"
+    );
+    const ctx = await loadEntityWriteContext(context.userId, data.orgId, data.locationId);
+    const prev = parseLocationDevices(ctx.setup.locationDevices);
+    const existing = prev.find((x) => x.id === data.deviceId);
+    assertHostOrManageDevices(ctx, existing?.assignment.operatorId || "host");
+    const status = data.active ? "pending" : "inactive";
+    const devices = prev.map((d) =>
+      d.id === data.deviceId ? { ...d, status: status as LocationDevice["status"] } : d,
+    );
+    const { getSql } = await import("@/lib/db");
+    const sql = await getSql();
+    try {
+      await sql`
+        update location_devices
+        set status = ${status}, last_seen_at = now()
+        where id = ${data.deviceId} and location_id = ${data.locationId}
+      `;
+    } catch {
+      /* table may be empty until first save */
+    }
     const { updateLocationSetupForUser } = await import("@/lib/saas/tenancy.server");
     return updateLocationSetupForUser(context.userId, {
       orgId: data.orgId,

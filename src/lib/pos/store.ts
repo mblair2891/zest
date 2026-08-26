@@ -2415,6 +2415,8 @@ const usePosStoreRaw = create()(persist((set, get) => ({
 					sessionKind: "pin",
 					backOfficeUnlocked: false,
 				});
+			} else if (opts.locationDevices?.length) {
+				set({ locationDevices: opts.locationDevices });
 			}
 			try {
 				useSaasStore.getState().setActiveLocation(locationId);

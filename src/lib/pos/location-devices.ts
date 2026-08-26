@@ -7,6 +7,7 @@ export type LocationDeviceType =
   | "kiosk"
   | "printer"
   | "host_stand"
+  | "terminal"
   | "other";
 
 export type DeviceFunction =
@@ -17,19 +18,23 @@ export type DeviceFunction =
   | "expo"
   | "kiosk"
   | "host_stand"
-  | "cashier";
+  | "cashier"
+  | "busser"
+  | "split";
 
 export type DeviceAssignment = {
   operatorId: string;
   function: DeviceFunction;
 };
 
+export type LocationDeviceStatus = "online" | "offline" | "pending" | "inactive";
+
 export type LocationDevice = {
   id: string;
   locationId: string;
   label: string;
   type: LocationDeviceType;
-  status: "online" | "offline" | "pending";
+  status: LocationDeviceStatus;
   lastSeenAt: number;
   serial?: string;
   claimCode?: string;
@@ -42,8 +47,19 @@ export const DEVICE_TYPES: LocationDeviceType[] = [
   "kiosk",
   "printer",
   "host_stand",
+  "terminal",
   "other",
 ];
+
+export const STATION_DEVICE_TYPES: LocationDeviceType[] = [
+  "tablet_pos",
+  "kds",
+  "kiosk",
+  "host_stand",
+  "other",
+];
+
+export const HARDWARE_DEVICE_TYPES: LocationDeviceType[] = ["terminal", "printer"];
 
 export const DEVICE_FUNCTIONS: DeviceFunction[] = [
   "floor_pos",
@@ -54,19 +70,35 @@ export const DEVICE_FUNCTIONS: DeviceFunction[] = [
   "kiosk",
   "host_stand",
   "cashier",
+  "busser",
+  "split",
+];
+
+export const STATION_DEVICE_FUNCTIONS: DeviceFunction[] = [
+  "floor_pos",
+  "host_stand",
+  "kitchen_kds",
+  "bar_kds",
+  "split",
+  "cashier",
+  "expo",
+  "busser",
+  "bar_pos",
+  "kiosk",
 ];
 
 export const DEVICE_TYPE_LABEL: Record<LocationDeviceType, string> = {
-  tablet_pos: "Tablet POS",
+  tablet_pos: "Tablet",
   kds: "Order display",
   kiosk: "Kiosk",
   printer: "Printer",
   host_stand: "Host stand",
+  terminal: "Terminal",
   other: "Other",
 };
 
 export const DEVICE_FUNCTION_LABEL: Record<DeviceFunction, string> = {
-  floor_pos: "Floor POS",
+  floor_pos: "Server POS",
   bar_pos: "Bar POS",
   kitchen_kds: "Kitchen ODS",
   bar_kds: "Bar ODS",
@@ -74,6 +106,8 @@ export const DEVICE_FUNCTION_LABEL: Record<DeviceFunction, string> = {
   kiosk: "Kiosk",
   host_stand: "Host stand",
   cashier: "Cashier",
+  busser: "Busser",
+  split: "Split",
 };
 
 export function parseDeviceAssignment(raw: unknown): DeviceAssignment | null {
@@ -93,7 +127,7 @@ export function parseLocationDevice(raw: unknown): LocationDevice | null {
   if (!id || !label) return null;
   const typeRaw = String(o.type ?? "other");
   const type: LocationDeviceType =
-    typeRaw === "pos" || typeRaw === "handheld" || typeRaw === "terminal"
+    typeRaw === "pos" || typeRaw === "handheld"
       ? "tablet_pos"
       : DEVICE_TYPES.includes(typeRaw as LocationDeviceType)
         ? (typeRaw as LocationDeviceType)
@@ -103,8 +137,11 @@ export function parseLocationDevice(raw: unknown): LocationDevice | null {
       operatorId: HOST_SCOPE,
       function: defaultFunctionForType(type),
     };
-  const status =
-    o.status === "online" || o.status === "offline" || o.status === "pending"
+  const status: LocationDeviceStatus =
+    o.status === "online" ||
+    o.status === "offline" ||
+    o.status === "pending" ||
+    o.status === "inactive"
       ? o.status
       : "pending";
   return {
@@ -135,6 +172,8 @@ export function defaultFunctionForType(type: LocationDeviceType): DeviceFunction
       return "host_stand";
     case "printer":
       return "expo";
+    case "terminal":
+      return "cashier";
     default:
       return "floor_pos";
   }
@@ -161,6 +200,10 @@ export function viewForDeviceFunction(fn: DeviceFunction): PosView | "kiosk" {
       return "waitlist";
     case "cashier":
       return "order";
+    case "busser":
+      return "floor";
+    case "split":
+      return "kitchen";
     case "floor_pos":
     default:
       return "floor";
@@ -170,9 +213,26 @@ export function viewForDeviceFunction(fn: DeviceFunction): PosView | "kiosk" {
 export function stationForDeviceFunction(
   fn: DeviceFunction,
 ): "kitchen" | "bar" | null {
-  if (fn === "kitchen_kds" || fn === "expo") return "kitchen";
+  if (fn === "kitchen_kds" || fn === "expo" || fn === "split") return "kitchen";
   if (fn === "bar_kds" || fn === "bar_pos") return "bar";
   return null;
+}
+
+export function browserDeviceStorageKey(locationId: string): string {
+  return `summex-browser-device:${locationId || "loc"}`;
+}
+
+export function readOrCreateBrowserDeviceId(locationId: string): string {
+  const key = browserDeviceStorageKey(locationId);
+  try {
+    const existing = localStorage.getItem(key);
+    if (existing && existing.startsWith("dev_")) return existing;
+    const id = `dev_browser_${(locationId || "loc").replace(/[^a-zA-Z0-9]/g, "").slice(-10)}_${Math.random().toString(36).slice(2, 8)}`;
+    localStorage.setItem(key, id);
+    return id;
+  } catch {
+    return `dev_browser_${Date.now().toString(36)}`;
+  }
 }
 
 export function pickStaffForAssignment(
@@ -204,6 +264,9 @@ export function pickStaffForAssignment(
         byOp("vendor_operator") ??
         active.find((e) => e.role === "kitchen")
       );
+    case "busser":
+      return byOp("busser") ?? active.find((e) => e.role === "busser") ?? byOp("server");
+    case "split":
     case "floor_pos":
     default:
       return (

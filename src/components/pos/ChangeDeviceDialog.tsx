@@ -17,7 +17,12 @@ import {
   stationsAllowedForEmployee,
 } from "@/lib/pos/station-access";
 import { applySessionModeView } from "./DeviceModeView";
-import type { SessionModeId } from "@/lib/lifecycle/types";
+import { SESSION_MODES, type SessionModeId } from "@/lib/lifecycle/types";
+import {
+  DEVICE_FUNCTION_LABEL,
+  DEVICE_TYPE_LABEL,
+  STATION_DEVICE_TYPES,
+} from "@/lib/pos/location-devices";
 import { cn } from "@/lib/utils";
 
 function entityName(
@@ -114,6 +119,7 @@ export function StationSwitcherDialog({
   const seed = useStationSessionStore((s) => s.seedSplitDefaults);
   const setView = usePosStore((s) => s.setView);
   const setActiveDeviceId = usePosStore((s) => s.setActiveDeviceId);
+  const activeDeviceId = usePosStore((s) => s.activeDeviceId);
   const devices = usePosStore((s) => s.locationDevices ?? []);
 
   const current = pane === "a" ? paneA : pane === "b" ? paneB : assignment;
@@ -160,6 +166,55 @@ export function StationSwitcherDialog({
           What this screen is showing — not a new login. PIN still identifies the
           person. Tickets stay on this location.
         </p>
+
+        {devices.filter(
+          (d) => d.status !== "inactive" && STATION_DEVICE_TYPES.includes(d.type),
+        ).length > 0 && (
+          <div>
+            <p className="mb-1 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+              Registered devices
+            </p>
+            <ul className="grid gap-1">
+              {devices
+                .filter(
+                  (d) => d.status !== "inactive" && STATION_DEVICE_TYPES.includes(d.type),
+                )
+                .map((d) => (
+                  <li key={d.id}>
+                    <Button
+                      variant={activeDeviceId === d.id ? "default" : "outline"}
+                      className="w-full justify-start"
+                      size="sm"
+                      onClick={() => {
+                        const op = d.assignment.operatorId;
+                        const fn = d.assignment.function;
+                        if (fn === "split") {
+                          const kitchenOp =
+                            vendors.find((v) => v.stationType === "kitchen")?.id ?? op;
+                          const barOp =
+                            vendors.find((v) => v.stationType === "bar")?.id ?? op;
+                          seed(
+                            { kind: "kitchen_kds", operatorId: kitchenOp },
+                            { kind: "bar_kds", operatorId: barOp },
+                          );
+                          setActiveDeviceId(d.id);
+                        } else {
+                          const kind = (
+                            SESSION_MODES.some((m) => m.id === fn) ? fn : "floor_pos"
+                          ) as SessionModeId;
+                          apply(kind, op);
+                          setActiveDeviceId(d.id);
+                        }
+                      }}
+                    >
+                      {d.label} · {DEVICE_TYPE_LABEL[d.type]} ·{" "}
+                      {DEVICE_FUNCTION_LABEL[d.assignment.function]}
+                    </Button>
+                  </li>
+                ))}
+            </ul>
+          </div>
+        )}
 
         {pane == null || pane === "session" ? (
           <div className="flex flex-wrap items-center gap-2">

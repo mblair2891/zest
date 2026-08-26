@@ -168,7 +168,9 @@ export interface DeviceEnrollment {
       | "expo"
       | "kiosk"
       | "host_stand"
-      | "cashier";
+      | "cashier"
+      | "busser"
+      | "split";
   };
 }
 
