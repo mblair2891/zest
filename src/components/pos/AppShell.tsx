@@ -70,10 +70,7 @@ import { LifecycleWatcher } from "./LifecycleWatcher";
 import { useStationSessionStore } from "@/lib/pos/station-session";
 import { stationKindLabel, stationsAllowedForEmployee } from "@/lib/pos/station-access";
 import { HOST_SCOPE } from "@/lib/access/entity-grants";
-import { FloorView } from "./FloorView";
-import { OrderView } from "./OrderView";
 import { KitchenView } from "./KitchenView";
-import { WaitlistView } from "./WaitlistView";
 import { ReportsView } from "./ReportsView";
 import { InventoryView } from "./InventoryView";
 import { EmployeesView } from "./EmployeesView";
@@ -269,6 +266,28 @@ export function AppShell() {
       setPendingView(id);
       setUnlockOpen(true);
       return;
+    }
+    const cur = useStationSessionStore.getState().assignment.kind;
+    if (id === "kitchen") {
+      useStationSessionStore.getState().setAssignment({
+        kind: cur === "expo" ? "expo" : "kitchen_kds",
+      });
+    } else if (id === "bar") {
+      useStationSessionStore.getState().setAssignment({
+        kind: cur === "bar_pos" ? "bar_pos" : "bar_kds",
+      });
+    } else if (id === "order") {
+      useStationSessionStore.getState().setAssignment({
+        kind: cur === "bar_pos" ? "bar_pos" : "cashier",
+      });
+    } else if (id === "waitlist") {
+      useStationSessionStore.getState().setAssignment({
+        kind: cur === "kiosk" ? "kiosk" : "host_stand",
+      });
+    } else if (id === "floor") {
+      useStationSessionStore.getState().setAssignment({
+        kind: cur === "busser" ? "busser" : "floor_pos",
+      });
     }
     setView(id);
   };
@@ -679,19 +698,16 @@ export function AppShell() {
           {safeView === "ledger" && <LedgerView />}
           {safeView === "vendor_portal" && <VendorPortalView />}
           {safeView === "integrations" && <IntegrationsHubView />}
-          {safeView === "floor" && <FloorView />}
-          {safeView === "order" && <OrderView />}
-          {safeView === "kitchen" && (
-            <KitchenView
-              station="kitchen"
-              expo={stationAssignment.kind === "expo"}
+          {(safeView === "floor" ||
+            safeView === "order" ||
+            safeView === "kitchen" ||
+            safeView === "bar" ||
+            safeView === "waitlist") && (
+            <DeviceModeView
+              mode={stationAssignment.kind}
               operatorId={stationAssignment.operatorId}
             />
           )}
-          {safeView === "bar" && (
-            <KitchenView station="bar" operatorId={stationAssignment.operatorId} />
-          )}
-          {safeView === "waitlist" && <WaitlistView />}
           {safeView === "takeout" && <TakeoutView />}
           {safeView === "online" && <OnlineOrdersView />}
           {safeView === "hall" && <HallView />}

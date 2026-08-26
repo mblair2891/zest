@@ -55,21 +55,26 @@ export function KitchenView({ station, expo, operatorId }: Props) {
   const devices = usePosStore((s) => s.locationDevices ?? []);
   const activeDeviceId = usePosStore((s) => s.activeDeviceId);
   const device = devices.find((d) => d.id === activeDeviceId);
+  const paneOverride = operatorId !== undefined;
   const assignedOp =
-    device?.assignment.operatorId && device.assignment.operatorId !== HOST_SCOPE
+    !paneOverride && device?.assignment.operatorId && device.assignment.operatorId !== HOST_SCOPE
       ? device.assignment.operatorId
       : null;
-  const assignedStation = device ? stationForDeviceFunction(device.assignment.function) : null;
+  const assignedStation = paneOverride
+    ? null
+    : device
+      ? stationForDeviceFunction(device.assignment.function)
+      : null;
   const roleOp = emp?.operatorId ?? null;
   const hostWide = emp?.role === "owner" || emp?.role === "manager";
-  const paneOverride = operatorId !== undefined;
   const paneOp =
     operatorId && operatorId !== HOST_SCOPE ? operatorId : null;
   const lockedVendor = paneOverride
     ? paneOp
     : assignedOp ?? (!hostWide && roleOp ? roleOp : null);
   const [vendorFilter, setVendorFilter] = useState<string | null>(lockedVendor);
-  useStationTicketPolling(locId || null, assignedStation || station, lockedVendor);
+  const railStation = assignedStation || station;
+  useStationTicketPolling(locId || null, railStation, lockedVendor);
 
   const visibleVendorIds = vendors
     .filter(
@@ -79,7 +84,7 @@ export function KitchenView({ station, expo, operatorId }: Props) {
     )
     .map((v) => v.id);
   const list = useMemo(() => {
-    const st = assignedStation || station;
+    const st = railStation;
     let t = tickets.filter((x) => x.station === st);
     if (expo) t = t.filter((x) => x.status === "ready" || (showBumped && x.status === "bumped"));
     else if (!showBumped) t = t.filter((x) => x.status !== "bumped");
@@ -97,7 +102,7 @@ export function KitchenView({ station, expo, operatorId }: Props) {
     filter,
     vendorFilter,
     lockedVendor,
-    assignedStation,
+    railStation,
     visibleVendorIds,
     vendors.length,
     expo,
@@ -105,7 +110,7 @@ export function KitchenView({ station, expo, operatorId }: Props) {
 
   const active = tickets.filter(
     (t) =>
-      t.station === station &&
+      t.station === railStation &&
       t.status !== "bumped" &&
       (!(lockedVendor || vendorFilter) || t.vendorId === (lockedVendor || vendorFilter)),
   ).length;

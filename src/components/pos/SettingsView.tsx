@@ -22,7 +22,7 @@ import {
   parseVoiceByRole,
 } from "@/lib/voice/roles";
 import { HostOperatorsSettings } from "./HostOperatorsSettings";
-import { DeviceAssignmentPanel } from "./DeviceAssignmentPanel";
+import { LocationDeviceRegistry } from "./LocationDeviceRegistry";
 import { EntityPermissionsMatrix } from "./EntityPermissionsMatrix";
 import { OperatorOpsView } from "./OperatorOpsView";
 import { saveLocationSettingsFn } from "@/lib/access/api";
@@ -768,7 +768,6 @@ export function SettingsView() {
             </span>
           </label>
           <EntityPermissionsMatrix write={write} />
-          <DeviceAssignmentPanel write={write} />
         </div>
         </div>
       </Pack>
@@ -804,6 +803,14 @@ export function SettingsView() {
       </Pack>
 
       <Pack id="devices" packs={packs}>
+      <div className="mb-4">
+        <LocationDeviceRegistry
+          orgId={orgId || ""}
+          locationId={locId}
+          locationName={settings.name}
+          mode="stations"
+        />
+      </div>
       <NetworkSettingsPanel />
       <label className="mt-3 flex items-start gap-2 text-sm">
         <input
@@ -819,11 +826,6 @@ export function SettingsView() {
           </span>
         </span>
       </label>
-      {!packs.includes("host_operators") && (
-        <div className="mt-4">
-          <DeviceAssignmentPanel write={write} />
-        </div>
-      )}
       </Pack>
 
       <div className="mb-6 rounded-2xl border border-border bg-surface p-4">

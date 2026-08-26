@@ -4,10 +4,12 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { HOST_SCOPE } from "@/lib/access/entity-grants";
 import {
+  claimLocationDeviceFn,
   deactivateLocationDeviceFn,
   listLocationDevicesFn,
   saveLocationDeviceFn,
 } from "@/lib/access/api";
+import { getSessionContextFn } from "@/lib/saas/api";
 import {
   DEVICE_FUNCTION_LABEL,
   DEVICE_TYPE_LABEL,
@@ -23,6 +25,8 @@ import {
   defaultFunctionForType,
   functionForPrintStation,
   readOrCreateBrowserDeviceId,
+  readPairedDeviceId,
+  writePairedDeviceId,
   type DeviceFunction,
   type LocationDevice,
   type LocationDeviceType,
@@ -83,13 +87,50 @@ export function LocationDeviceRegistry({
   const [printTarget, setPrintTarget] = useState("");
   const [printStation, setPrintStation] = useState<PrintStation>("receipt");
   const [busy, setBusy] = useState(false);
+  const [claimInput, setClaimInput] = useState("");
+  const [resolvedOrgId, setResolvedOrgId] = useState(orgId);
+  const [resolvedLocId, setResolvedLocId] = useState(locationId);
+  const [resolvedName, setResolvedName] = useState(locationName);
+  const [sessionLocs, setSessionLocs] = useState<Array<{ id: string; name: string; orgId: string }>>(
+    [],
+  );
+
+  useEffect(() => {
+    setResolvedOrgId(orgId);
+    setResolvedLocId(locationId);
+    setResolvedName(locationName);
+  }, [orgId, locationId, locationName]);
+
+  useEffect(() => {
+    if (orgId && locationId) return;
+    let cancelled = false;
+    void getSessionContextFn()
+      .then((ctx) => {
+        if (cancelled) return;
+        const locs = ctx.locations.map((l) => ({ id: l.id, name: l.name, orgId: l.orgId }));
+        setSessionLocs(locs);
+        const loc =
+          locs.find((l) => l.id === ctx.active?.locationId) ?? locs[0];
+        if (!loc) return;
+        const org = ctx.orgs.find((o) => o.id === loc.orgId) ?? ctx.orgs[0];
+        setResolvedLocId(loc.id);
+        setResolvedName(loc.name);
+        setResolvedOrgId(org?.id || loc.orgId);
+      })
+      .catch(() => undefined);
+    return () => {
+      cancelled = true;
+    };
+  }, [orgId, locationId]);
 
   const load = useCallback(async () => {
-    if (!orgId || !locationId) return;
+    if (!resolvedOrgId || !resolvedLocId) return;
     setLoading(true);
     setError(null);
     try {
-      const res = await listLocationDevicesFn({ data: { orgId, locationId } });
+      const res = await listLocationDevicesFn({
+        data: { orgId: resolvedOrgId, locationId: resolvedLocId },
+      });
       setDevices(res.devices);
       setOperators(res.operators);
       setHostName(res.hostName || locationName);
@@ -103,7 +144,7 @@ export function LocationDeviceRegistry({
     } finally {
       setLoading(false);
     }
-  }, [orgId, locationId, locationName]);
+  }, [resolvedOrgId, resolvedLocId, locationName]);
 
   useEffect(() => {
     void load();
@@ -139,15 +180,18 @@ export function LocationDeviceRegistry({
     setBusy(true);
     setError(null);
     try {
-      const id = opts?.id || editingId || (opts?.asBrowser ? readOrCreateBrowserDeviceId(locationId) : "");
+      const id =
+        opts?.id ||
+        editingId ||
+        (opts?.asBrowser ? readOrCreateBrowserDeviceId(resolvedLocId) : "");
       const name =
         label.trim() ||
         (opts?.asBrowser ? "This browser" : mode === "hardware" ? "Printer" : "Device");
       const printer = type === "printer";
       await saveLocationDeviceFn({
         data: {
-          orgId,
-          locationId,
+          orgId: resolvedOrgId,
+          locationId: resolvedLocId,
           device: {
             id,
             label: name,
@@ -156,7 +200,9 @@ export function LocationDeviceRegistry({
               operatorId,
               function: printer ? functionForPrintStation(printStation) : fn,
             },
-            serial: opts?.asBrowser ? "browser" : printTarget || undefined,
+            serial: opts?.asBrowser
+              ? readOrCreateBrowserDeviceId(resolvedLocId)
+              : printTarget || undefined,
             print: printer
               ? {
                   family: printFamily,
@@ -168,6 +214,14 @@ export function LocationDeviceRegistry({
           },
         },
       });
+      if (opts?.asBrowser || id === readOrCreateBrowserDeviceId(resolvedLocId)) {
+        writePairedDeviceId(resolvedLocId, id);
+        try {
+          usePosStore.setState({ activeDeviceId: id });
+        } catch {
+          /* */
+        }
+      }
       setFormOpen(false);
       setEditingId(null);
       setLabel("");
@@ -185,8 +239,8 @@ export function LocationDeviceRegistry({
     try {
       await deactivateLocationDeviceFn({
         data: {
-          orgId,
-          locationId,
+          orgId: resolvedOrgId,
+          locationId: resolvedLocId,
           deviceId: d.id,
           active: d.status === "inactive",
         },
@@ -199,18 +253,54 @@ export function LocationDeviceRegistry({
     }
   };
 
+  const claimSlot = async () => {
+    const code = claimInput.trim();
+    if (!code || !resolvedLocId) return;
+    setBusy(true);
+    setError(null);
+    try {
+      const browserId = readOrCreateBrowserDeviceId(resolvedLocId);
+      const res = await claimLocationDeviceFn({
+        data: {
+          locationId: resolvedLocId,
+          claimCode: code,
+          browserDeviceId: browserId,
+        },
+      });
+      writePairedDeviceId(resolvedLocId, res.device.id);
+      try {
+        usePosStore.setState({ activeDeviceId: res.device.id });
+      } catch {
+        /* */
+      }
+      setClaimInput("");
+      await load();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Could not claim slot");
+    } finally {
+      setBusy(false);
+    }
+  };
+
   const heading = mode === "hardware" ? "Hardware" : "Devices";
   const help =
     mode === "hardware"
       ? "Register Quantum readers and Star/Epson printers. Assign kitchen, bar, receipt, or expo. Test print from this list."
-      : "Register tablets, order displays, and kiosks. Suggested entity and function is a default; any device can switch via This station.";
+      : "Pair this Samsung tablet or wall display to a named slot. Any device can switch station. Large displays can split kitchen | bar ODS.";
   const addLabel = mode === "hardware" ? "Add terminal / printer" : "Add device";
+  const pairedId = resolvedLocId ? readPairedDeviceId(resolvedLocId) : null;
+  const thisBrowserId = resolvedLocId ? readOrCreateBrowserDeviceId(resolvedLocId) : "";
 
-  if (!locationId) {
+  if (!resolvedLocId) {
     return (
       <div className="mx-auto max-w-3xl rounded-2xl border border-dashed border-border bg-surface px-6 py-10 text-center">
         <p className="font-semibold">{heading}</p>
-        <p className="mt-1 text-sm text-muted-foreground">Pick a location first.</p>
+        <p className="mt-1 text-sm text-muted-foreground">
+          Pick a location first, then add a tablet or pair this browser.
+        </p>
+        <Button size="sm" className="mt-4" onClick={() => resetForm()}>
+          {addLabel}
+        </Button>
       </div>
     );
   }
@@ -233,9 +323,56 @@ export function LocationDeviceRegistry({
           </div>
         </div>
         <p className="mt-1 text-xs text-muted-foreground">
-          {locationName} · persist on this location
+          {resolvedName || locationName} · persist on this location
         </p>
+        {sessionLocs.length > 1 && (
+          <label className="mt-2 block text-xs text-muted-foreground">
+            Location
+            <select
+              className="mt-1 h-10 w-full max-w-sm rounded-xl border border-border bg-bg px-3 text-sm text-foreground"
+              value={resolvedLocId}
+              onChange={(e) => {
+                const next = sessionLocs.find((l) => l.id === e.target.value);
+                if (!next) return;
+                setResolvedLocId(next.id);
+                setResolvedName(next.name);
+                setResolvedOrgId(next.orgId);
+              }}
+            >
+              {sessionLocs.map((l) => (
+                <option key={l.id} value={l.id}>
+                  {l.name}
+                </option>
+              ))}
+            </select>
+          </label>
+        )}
       </div>
+
+      {mode === "stations" && (
+        <div className="flex flex-wrap items-end gap-2 rounded-2xl border border-border bg-surface p-3">
+          <label className="min-w-[10rem] flex-1 text-xs text-muted-foreground">
+            Claim slot
+            <Input
+              className="mt-1"
+              placeholder="Claim code on the slot"
+              value={claimInput}
+              onChange={(e) => setClaimInput(e.target.value.toUpperCase())}
+            />
+          </label>
+          <Button size="sm" disabled={busy || !claimInput.trim()} onClick={() => void claimSlot()}>
+            Claim this browser
+          </Button>
+          <Button
+            size="sm"
+            variant="outline"
+            disabled={busy}
+            onClick={() => void save({ asBrowser: true })}
+          >
+            Pair this browser
+          </Button>
+        </div>
+      )}
 
       {error && (
         <p className="rounded-xl border border-danger/40 bg-danger/10 px-3 py-2 text-sm text-danger">
@@ -372,7 +509,7 @@ export function LocationDeviceRegistry({
                 disabled={busy}
                 onClick={() => void save({ asBrowser: true })}
               >
-                Use this browser as a device
+                Pair this browser
               </Button>
             )}
             <Button
@@ -399,7 +536,7 @@ export function LocationDeviceRegistry({
           <p className="mt-1 text-sm text-muted-foreground">
             {mode === "hardware"
               ? "Add a card terminal or receipt/kitchen printer so the house can find it."
-              : "Add a tablet, order display, or kiosk — or register this browser."}
+              : "Add a named slot for a Samsung tablet or wall display, or pair this browser now."}
           </p>
           <div className="mt-4 flex flex-wrap justify-center gap-2">
             <Button size="sm" onClick={() => resetForm()}>
@@ -412,7 +549,7 @@ export function LocationDeviceRegistry({
                 disabled={busy}
                 onClick={() => void save({ asBrowser: true })}
               >
-                Use this browser as a device
+                Pair this browser
               </Button>
             )}
           </div>
@@ -425,7 +562,12 @@ export function LocationDeviceRegistry({
               className="flex flex-wrap items-center justify-between gap-2 rounded-2xl border border-border bg-surface px-4 py-3"
             >
               <div className="min-w-0">
-                <p className="font-medium">{d.label}</p>
+                <p className="font-medium">
+                  {d.label}
+                  {(pairedId === d.id || d.id === thisBrowserId || d.serial === thisBrowserId) && (
+                    <span className="ml-2 text-[11px] font-normal text-primary">This browser</span>
+                  )}
+                </p>
                 <p className="text-xs text-muted-foreground">
                   {DEVICE_TYPE_LABEL[d.type]} · {entityName(d.assignment.operatorId)} ·{" "}
                   {d.print
@@ -452,7 +594,7 @@ export function LocationDeviceRegistry({
                     disabled={busy}
                     onClick={() => {
                       const job = testPrintJob({
-                        locationId,
+                        locationId: resolvedLocId,
                         locationName: hostName || locationName,
                         station: d.print?.station ?? "receipt",
                       });

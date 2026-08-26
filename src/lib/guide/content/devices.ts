@@ -98,10 +98,10 @@ export const DEVICE_TOPICS: GuideTopic[] = [
         "ODS only shows tickets for that station and entity unless the host grants a broader view_tickets.",
       ),
       steps(
-        "Dashboard → Devices: add a tablet, order display, or kiosk (or Use this browser as a device). Hardware tab is terminals and printers.",
-        "On the device, This station → pick function and entity. No special device SKU.",
-        "On The Laundry: Tablet A can be Steam bar ODS, then switched to Diamond kitchen ODS without re-enrolling.",
-        "Large / order-display screens: Split — two independent panes (each with its own station + entity). Optional 70/30. Tap a pane header to fullscreen.",
+        "Dashboard → Devices (or Settings → Devices): Add a named slot — name, type, entity, function (server, host, kitchen ODS, bar ODS, split, cashier, expo, busser, kiosk).",
+        "On the Samsung tablet or wall display: Pair this browser, or enter the slot’s claim code. This browser id stays in localStorage.",
+        "This station (header or PIN pad) switches function and entity. Last station is remembered on this device.",
+        "Large displays: Layout → Split. Each pane has its own station + entity (typical: kitchen | bar ODS). 50/50 or 70/30. Tap a pane title to fullscreen.",
       ),
       warn(
         "A Diamond ODS does not show Steam tickets unless the host grants Diamond view_tickets on Steam. Devices are not fixed roles.",
@@ -141,10 +141,10 @@ export const DEVICE_TOPICS: GuideTopic[] = [
         "No special device SKU — any device may enable split.",
       ),
       steps(
+        "Pair the display in Devices first (or Pair this browser). Open POS stays on this host — not a separate app origin.",
         "Open This station in the header (or on the PIN pad).",
-        "Pick the function. On a host house, pick the entity.",
-        "PIN in — identity only. The screen stays on that station.",
-        "On a wall display: Layout → Split. Set each pane. Start / Bump independently.",
+        "Pick the function. On a host house, pick the entity. Last choice is remembered here.",
+        "On a wall display: Layout → Split. Set each pane independently. Start / Bump on each rail.",
         "Tap a pane title to focus it. Tap Back to split when both rails are needed.",
       ),
       warn(

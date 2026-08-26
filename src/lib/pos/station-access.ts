@@ -4,8 +4,8 @@ import { HOST_SCOPE } from "@/lib/access/entity-grants";
 import { SESSION_MODES, type SessionModeId } from "@/lib/lifecycle/types";
 
 export const STATION_KIND_LABEL: Record<SessionModeId, string> = {
-  floor_pos: "Server POS",
-  host_stand: "Host stand",
+  floor_pos: "Server",
+  host_stand: "Host",
   kitchen_kds: "Kitchen ODS",
   bar_kds: "Bar ODS",
   expo: "Expo",

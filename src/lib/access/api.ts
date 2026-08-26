@@ -197,7 +197,8 @@ export const saveLocationDeviceFn = createServerFn({ method: "POST" })
     const { loadEntityWriteContext, assertHostOrManageDevices } = await import(
       "./assert-entity.server"
     );
-    const ctx = await loadEntityWriteContext(context.userId, data.orgId, data.locationId);
+    const orgId = data.orgId || context.organizationId || "";
+    const ctx = await loadEntityWriteContext(context.userId, orgId, data.locationId);
     assertHostOrManageDevices(ctx, data.device.assignment.operatorId);
     const prev = parseLocationDevices(ctx.setup.locationDevices);
     const id = data.device.id || `dev_${Math.random().toString(36).slice(2, 10)}`;
@@ -210,7 +211,9 @@ export const saveLocationDeviceFn = createServerFn({ method: "POST" })
       status:
         existing?.status === "inactive"
           ? ("pending" as const)
-          : (existing?.status ?? ("pending" as const)),
+          : data.device.serial
+            ? ("online" as const)
+            : (existing?.status ?? ("pending" as const)),
       lastSeenAt: Date.now(),
       serial: data.device.serial || existing?.serial,
       claimCode: existing?.claimCode || makeClaimCode(),
@@ -243,7 +246,7 @@ export const saveLocationDeviceFn = createServerFn({ method: "POST" })
     `;
     const { updateLocationSetupForUser } = await import("@/lib/saas/tenancy.server");
     return updateLocationSetupForUser(context.userId, {
-      orgId: data.orgId,
+      orgId: ctx.orgId,
       locationId: data.locationId,
       setup: { ...EMPTY_LOCATION_SETUP, ...ctx.setup, locationDevices: devices } as LocationSetup,
     });
@@ -291,7 +294,7 @@ export const listLocationDevicesFn = createServerFn({ method: "POST" })
   .handler(async ({ context, data }) => {
     const { assertLocationAccess } = await import("@/lib/saas/tenancy.server");
     const access = await assertLocationAccess(context.userId, data.locationId);
-    if (access.org.id !== data.orgId) {
+    if (data.orgId && access.org.id !== data.orgId) {
       throw new Error("Location not found");
     }
     const { getSql } = await import("@/lib/db");
@@ -371,7 +374,8 @@ export const deactivateLocationDeviceFn = createServerFn({ method: "POST" })
     const { loadEntityWriteContext, assertHostOrManageDevices } = await import(
       "./assert-entity.server"
     );
-    const ctx = await loadEntityWriteContext(context.userId, data.orgId, data.locationId);
+    const orgId = data.orgId || context.organizationId || "";
+    const ctx = await loadEntityWriteContext(context.userId, orgId, data.locationId);
     const prev = parseLocationDevices(ctx.setup.locationDevices);
     const existing = prev.find((x) => x.id === data.deviceId);
     assertHostOrManageDevices(ctx, existing?.assignment.operatorId || "host");
@@ -392,10 +396,112 @@ export const deactivateLocationDeviceFn = createServerFn({ method: "POST" })
     }
     const { updateLocationSetupForUser } = await import("@/lib/saas/tenancy.server");
     return updateLocationSetupForUser(context.userId, {
-      orgId: data.orgId,
+      orgId: ctx.orgId,
       locationId: data.locationId,
       setup: { ...EMPTY_LOCATION_SETUP, ...ctx.setup, locationDevices: devices } as LocationSetup,
     });
+  });
+
+export const claimLocationDeviceFn = createServerFn({ method: "POST" })
+  .middleware([tenantMiddleware])
+  .validator((d: { locationId: string; claimCode: string; browserDeviceId?: string }) => ({
+    locationId: loc(d.locationId),
+    claimCode: String(d.claimCode ?? "")
+      .replace(/[\s-]/g, "")
+      .toUpperCase()
+      .slice(0, 12),
+    browserDeviceId: d.browserDeviceId ? String(d.browserDeviceId).trim().slice(0, 80) : "",
+  }))
+  .handler(async ({ context, data }) => {
+    if (data.claimCode.length < 4) throw new Error("Enter the claim code from Devices");
+    const { assertLocationAccess } = await import("@/lib/saas/tenancy.server");
+    const access = await assertLocationAccess(context.userId, data.locationId);
+    const { getSql } = await import("@/lib/db");
+    const sql = await getSql();
+    const setupDevices = parseLocationDevices(access.location.setup?.locationDevices);
+    const byCode = (c: string) =>
+      setupDevices.find((d) => (d.claimCode || "").toUpperCase() === c);
+    let row: LocationDevice | null = byCode(data.claimCode) ?? null;
+    try {
+      const rows = await sql<{
+        id: string;
+        location_id: string;
+        label: string;
+        type: string;
+        status: string;
+        serial: string | null;
+        claim_code: string | null;
+        assigned_operator_id: string | null;
+        assigned_function: string | null;
+        last_seen_at: unknown;
+      }>`
+        select id, location_id, label, type, status, serial, claim_code,
+               assigned_operator_id, assigned_function, last_seen_at
+        from location_devices
+        where location_id = ${data.locationId}
+          and upper(claim_code) = ${data.claimCode}
+        limit 1
+      `;
+      if (rows[0]) row = mapDeviceRow(rows[0]) ?? row;
+    } catch {
+      /* table may be empty */
+    }
+    if (!row || row.status === "inactive") throw new Error("No slot for that claim code");
+    const serial = data.browserDeviceId || row.serial;
+    const next: LocationDevice = {
+      ...row,
+      serial: serial || row.serial,
+      status: "online",
+      lastSeenAt: Date.now(),
+    };
+    const devices = setupDevices.some((d) => d.id === next.id)
+      ? setupDevices.map((d) => (d.id === next.id ? { ...d, ...next, print: d.print ?? next.print } : d))
+      : [next, ...setupDevices];
+    try {
+      await sql`
+        update location_devices
+        set serial = ${next.serial ?? null}, status = ${"online"}, last_seen_at = now()
+        where id = ${next.id} and location_id = ${data.locationId}
+      `;
+    } catch {
+      /* ignore */
+    }
+    const { updateLocationSetupForUser } = await import("@/lib/saas/tenancy.server");
+    await updateLocationSetupForUser(context.userId, {
+      orgId: access.org.id,
+      locationId: data.locationId,
+      setup: {
+        ...EMPTY_LOCATION_SETUP,
+        ...(access.location.setup ?? {}),
+        locationDevices: devices,
+      } as LocationSetup,
+    });
+    return { device: next };
+  });
+
+export const heartbeatLocationDeviceFn = createServerFn({ method: "POST" })
+  .middleware([tenantMiddleware])
+  .validator((d: { locationId: string; deviceId: string }) => ({
+    locationId: loc(d.locationId),
+    deviceId: String(d.deviceId ?? "").trim().slice(0, 80),
+  }))
+  .handler(async ({ context, data }) => {
+    if (!data.deviceId) return { ok: false as const };
+    const { assertLocationAccess } = await import("@/lib/saas/tenancy.server");
+    await assertLocationAccess(context.userId, data.locationId);
+    const { getSql } = await import("@/lib/db");
+    const sql = await getSql();
+    try {
+      await sql`
+        update location_devices
+        set status = ${"online"}, last_seen_at = now()
+        where id = ${data.deviceId} and location_id = ${data.locationId}
+          and status <> ${"inactive"}
+      `;
+    } catch {
+      return { ok: false as const };
+    }
+    return { ok: true as const };
   });
 
 export const saveMenuItemFn = createServerFn({ method: "POST" })

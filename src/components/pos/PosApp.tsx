@@ -28,7 +28,13 @@ import { tablesFromCount, type TenantMenuMode } from "@/lib/pos/starter-seed";
 import { EMPTY_LOCATION_SETUP } from "@/lib/saas/types";
 import { membershipToEmployeeRole } from "@/lib/access/membership-map";
 import { parseGrantMatrix } from "@/lib/access/entity-grants";
-import { parseLocationDevices } from "@/lib/pos/location-devices";
+import {
+  findPairedDevice,
+  parseLocationDevices,
+  writePairedDeviceId,
+} from "@/lib/pos/location-devices";
+import { heartbeatLocationDeviceFn } from "@/lib/access/api";
+import { SESSION_MODES, type SessionModeId } from "@/lib/lifecycle/types";
 import {
   readTenantPosContext,
   saveTenantPosContext,
@@ -190,6 +196,42 @@ function PosAppInner({ entityId }: { entityId?: string }) {
               hostName: access.location.hostBrandName || access.location.name,
             },
           });
+          try {
+            const devices = parseLocationDevices(setup.locationDevices);
+            const paired = findPairedDevice(devices, access.location.id);
+            if (paired) {
+              writePairedDeviceId(access.location.id, paired.id);
+              usePosStore.setState({ activeDeviceId: paired.id });
+              const hadStation = Boolean(
+                useStationSessionStore.getState().byLocation[access.location.id],
+              );
+              useStationSessionStore.getState().ensureLocation(access.location.id);
+              if (!hadStation) {
+                if (paired.assignment.function === "split") {
+                  const kitchenOp =
+                    access.operators.find((v) => v.stationType === "kitchen")?.id ??
+                    paired.assignment.operatorId;
+                  const barOp =
+                    access.operators.find((v) => v.stationType === "bar")?.id ??
+                    paired.assignment.operatorId;
+                  useStationSessionStore.getState().seedSplitDefaults(
+                    { kind: "kitchen_kds", operatorId: kitchenOp },
+                    { kind: "bar_kds", operatorId: barOp },
+                  );
+                } else if (SESSION_MODES.some((m) => m.id === paired.assignment.function)) {
+                  useStationSessionStore.getState().setAssignment({
+                    kind: paired.assignment.function as SessionModeId,
+                    operatorId: paired.assignment.operatorId,
+                  });
+                }
+              }
+              void heartbeatLocationDeviceFn({
+                data: { locationId: access.location.id, deviceId: paired.id },
+              }).catch(() => undefined);
+            }
+          } catch {
+            /* pairing is best-effort */
+          }
           try {
             useLifecycleStore.getState().hydrateFromSetup({
               lifecycleStatus:

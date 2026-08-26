@@ -134,16 +134,16 @@ export const DEVICE_TYPE_LABEL: Record<LocationDeviceType, string> = {
 };
 
 export const DEVICE_FUNCTION_LABEL: Record<DeviceFunction, string> = {
-  floor_pos: "Server POS",
+  floor_pos: "Server",
   bar_pos: "Bar POS",
   kitchen_kds: "Kitchen ODS",
   bar_kds: "Bar ODS",
   expo: "Expo",
   kiosk: "Kiosk",
-  host_stand: "Host stand",
+  host_stand: "Host",
   cashier: "Cashier",
   busser: "Busser",
-  split: "Split",
+  split: "Split kitchen | bar",
 };
 
 export function parseDeviceAssignment(raw: unknown): DeviceAssignment | null {
@@ -292,17 +292,58 @@ export function browserDeviceStorageKey(locationId: string): string {
   return `summex-browser-device:${locationId || "loc"}`;
 }
 
+export const BROWSER_DEVICE_GLOBAL_KEY = "summex-browser-device-id";
+
+export function pairedDeviceStorageKey(locationId: string): string {
+  return `summex-paired-device:${locationId || "loc"}`;
+}
+
+export function readPairedDeviceId(locationId: string): string | null {
+  try {
+    const v = localStorage.getItem(pairedDeviceStorageKey(locationId));
+    return v && v.startsWith("dev_") ? v : null;
+  } catch {
+    return null;
+  }
+}
+
+export function writePairedDeviceId(locationId: string, deviceId: string): void {
+  if (!deviceId) return;
+  try {
+    localStorage.setItem(pairedDeviceStorageKey(locationId), deviceId);
+  } catch {
+    /* private mode */
+  }
+}
+
 export function readOrCreateBrowserDeviceId(locationId: string): string {
   const key = browserDeviceStorageKey(locationId);
   try {
+    let global = localStorage.getItem(BROWSER_DEVICE_GLOBAL_KEY);
+    if (!global || !global.startsWith("dev_")) {
+      global = `dev_browser_${Math.random().toString(36).slice(2, 10)}${Date.now().toString(36).slice(-4)}`;
+      localStorage.setItem(BROWSER_DEVICE_GLOBAL_KEY, global);
+    }
     const existing = localStorage.getItem(key);
     if (existing && existing.startsWith("dev_")) return existing;
-    const id = `dev_browser_${(locationId || "loc").replace(/[^a-zA-Z0-9]/g, "").slice(-10)}_${Math.random().toString(36).slice(2, 8)}`;
-    localStorage.setItem(key, id);
-    return id;
+    localStorage.setItem(key, global);
+    return global;
   } catch {
     return `dev_browser_${Date.now().toString(36)}`;
   }
+}
+
+export function findPairedDevice(
+  devices: LocationDevice[],
+  locationId: string,
+): LocationDevice | undefined {
+  const browserId = readOrCreateBrowserDeviceId(locationId);
+  const paired = readPairedDeviceId(locationId);
+  return (
+    devices.find((d) => d.id === paired) ||
+    devices.find((d) => d.id === browserId) ||
+    devices.find((d) => d.serial === browserId)
+  );
 }
 
 export function pickStaffForAssignment(

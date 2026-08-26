@@ -9,7 +9,7 @@ import { saveOperatorPayoutFn } from "@/lib/access/api";
 import { isProspectDemo } from "@/lib/demo/session";
 import { useSaasStore } from "@/lib/pos/saas-store";
 import { EntityPermissionsMatrix } from "./EntityPermissionsMatrix";
-import { DeviceAssignmentPanel } from "./DeviceAssignmentPanel";
+
 import { TenantInvitesPanel } from "./TenantInvitesPanel";
 
 export function HostOperatorsSettings({ write }: { write: boolean }) {
@@ -17,6 +17,7 @@ export function HostOperatorsSettings({ write }: { write: boolean }) {
   const updateVendor = usePosStore((s) => s.updateVendor);
   const orgId = useSaasStore((s) => s.org.id);
   const locId = usePosStore((s) => s.tenantLocationId) || "";
+
   const [selected, setSelected] = useState<string | null>(null);
 
   if (selected) {
@@ -40,7 +41,6 @@ export function HostOperatorsSettings({ write }: { write: boolean }) {
       <TenantInvitesPanel write={write} />
 
       <EntityPermissionsMatrix write={write} />
-      <DeviceAssignmentPanel write={write} />
 
       <section className="rounded-2xl border border-border bg-surface p-4" data-demo="host-payouts">
         <h3 className="mb-3 text-sm font-semibold">Payout destinations (host-managed)</h3>
