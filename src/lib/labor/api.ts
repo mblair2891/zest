@@ -1,5 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
-import { authMiddleware } from "@/lib/auth/middleware";
+import { tenantMiddleware } from "@/lib/saas/tenant-middleware";
 import { HOST_SCOPE, canEditSchedule, canViewPayroll, canViewSchedule } from "@/lib/access/entity-grants";
 import { parseGrantMatrix } from "@/lib/access/entity-grants";
 import { hashPin } from "@/lib/pos/pin";
@@ -11,7 +11,7 @@ function loc(raw: unknown): string {
 }
 
 export const saveShiftsFn = createServerFn({ method: "POST" })
-  .middleware([authMiddleware])
+  .middleware([tenantMiddleware])
   .validator((d: {
     orgId: string;
     locationId: string;
@@ -70,7 +70,7 @@ export const saveShiftsFn = createServerFn({ method: "POST" })
   });
 
 export const listShiftsFn = createServerFn({ method: "POST" })
-  .middleware([authMiddleware])
+  .middleware([tenantMiddleware])
   .validator((d: { orgId: string; locationId: string; operatorId?: string | null }) => ({
     orgId: String(d.orgId ?? "").trim(),
     locationId: loc(d.locationId),
@@ -132,7 +132,7 @@ export const listShiftsFn = createServerFn({ method: "POST" })
   });
 
 export const payrollReportFn = createServerFn({ method: "POST" })
-  .middleware([authMiddleware])
+  .middleware([tenantMiddleware])
   .validator((d: { orgId: string; locationId: string; operatorId?: string | null }) => ({
     orgId: String(d.orgId ?? "").trim(),
     locationId: loc(d.locationId),
@@ -155,7 +155,7 @@ export const payrollReportFn = createServerFn({ method: "POST" })
   });
 
 export const setStaffPinFn = createServerFn({ method: "POST" })
-  .middleware([authMiddleware])
+  .middleware([tenantMiddleware])
   .validator((d: {
     orgId: string;
     locationId: string;

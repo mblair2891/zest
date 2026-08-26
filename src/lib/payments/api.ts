@@ -1,5 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
-import { authMiddleware } from "@/lib/auth/middleware";
+import { tenantMiddleware } from "@/lib/saas/tenant-middleware";
 import type { CardPresentResult, PaymentsStatus } from "./types";
 
 function loc(raw: unknown): string {
@@ -9,7 +9,7 @@ function loc(raw: unknown): string {
 }
 
 export const getPaymentsStatusFn = createServerFn({ method: "POST" })
-  .middleware([authMiddleware])
+  .middleware([tenantMiddleware])
   .validator((d: { locationId: string }) => ({
     locationId: loc(d.locationId),
   }))
@@ -19,7 +19,7 @@ export const getPaymentsStatusFn = createServerFn({ method: "POST" })
   });
 
 export const captureCardPresentFn = createServerFn({ method: "POST" })
-  .middleware([authMiddleware])
+  .middleware([tenantMiddleware])
   .validator((d: {
     orgId: string;
     locationId: string;

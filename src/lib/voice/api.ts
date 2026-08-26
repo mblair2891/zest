@@ -1,5 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
-import { authMiddleware } from "@/lib/auth/middleware";
+import { tenantMiddleware } from "@/lib/saas/tenant-middleware";
 import { HOST_SCOPE } from "@/lib/access/entity-grants";
 
 function loc(raw: unknown): string {
@@ -9,7 +9,7 @@ function loc(raw: unknown): string {
 }
 
 export const logVoiceCommandFn = createServerFn({ method: "POST" })
-  .middleware([authMiddleware])
+  .middleware([tenantMiddleware])
   .validator((d: {
     locationId: string;
     operatorId?: string | null;
@@ -26,6 +26,8 @@ export const logVoiceCommandFn = createServerFn({ method: "POST" })
     detail: String(d.detail ?? "").slice(0, 240),
   }))
   .handler(async ({ context, data }) => {
+    const { bindTenant } = await import("@/lib/saas/assert-tenant.server");
+    await bindTenant(context.userId, { locationId: data.locationId });
     if (/payout|permission matrix|platform admin|host cut/i.test(data.transcript)) {
       return { ok: false as const, deny: true as const, message: "Voice cannot change host money or permissions" };
     }

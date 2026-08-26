@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { usePosStore } from "@/lib/pos/store";
 import { formatCurrency } from "@/lib/utils";
-import { parseQrMode, QR_MODE_LABEL } from "@/lib/pos/qr-table";
+import { parseQrMode, QR_MODE_LABEL, qrTokenMatchesLocation } from "@/lib/pos/qr-table";
 import { isEmptyTable } from "@/lib/pos/floor-status";
 import { computeTotals } from "@/lib/pos/calculations";
 import { captureIsSandbox } from "@/lib/lifecycle/store";
@@ -35,6 +35,7 @@ export function GuestTablePage({
   const tables = usePosStore((s) => s.tables);
   const orders = usePosStore((s) => s.orders);
   const settings = usePosStore((s) => s.settings);
+  const tenantLocationId = usePosStore((s) => s.tenantLocationId) || "";
   const vendors = usePosStore((s) => s.vendors);
   const guestAddToTable = usePosStore((s) => s.guestAddToTable);
   const guestSendOrder = usePosStore((s) => s.guestSendOrder);
@@ -60,13 +61,21 @@ export function GuestTablePage({
 
   const table: Table | null = useMemo(() => {
     if (token) {
-      return tables.find((t) => t.qrToken === token) ?? null;
+      const hit = tables.find((t) => t.qrToken === token) ?? null;
+      if (!hit) return null;
+      if (tenantLocationId && hit.locationId && hit.locationId !== tenantLocationId) {
+        return null;
+      }
+      if (tenantLocationId && !qrTokenMatchesLocation(token, tenantLocationId)) {
+        return null;
+      }
+      return hit;
     }
     if (!label) return null;
     return (
       tables.find((t) => t.label === label || t.label === String(label)) ?? null
     );
-  }, [tables, label, token]);
+  }, [tables, label, token, tenantLocationId]);
 
   const order = table?.orderId
     ? orders.find((o) => o.id === table.orderId)

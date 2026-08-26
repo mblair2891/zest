@@ -1,5 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
-import { authMiddleware } from "@/lib/auth/middleware";
+import { tenantMiddleware } from "@/lib/saas/tenant-middleware";
 import type { OpsDecisionAction, OpsFeatureSnapshot, OpsRecType } from "./types";
 
 function loc(raw: unknown): string {
@@ -9,7 +9,7 @@ function loc(raw: unknown): string {
 }
 
 export const recordOpsDecisionFn = createServerFn({ method: "POST" })
-  .middleware([authMiddleware])
+  .middleware([tenantMiddleware])
   .validator((d: {
     locationId: string;
     operatorId?: string | null;
@@ -26,6 +26,8 @@ export const recordOpsDecisionFn = createServerFn({ method: "POST" })
     features: d.features,
   }))
   .handler(async ({ context, data }) => {
+    const { bindTenant } = await import("@/lib/saas/assert-tenant.server");
+    await bindTenant(context.userId, { locationId: data.locationId });
     const { getSql } = await import("@/lib/db");
     const sql = await getSql();
     const id = `oad_${Math.random().toString(36).slice(2, 12)}`;

@@ -13,9 +13,30 @@ export function parseQrMode(raw: unknown): QrMode {
   return "hybrid";
 }
 
-export function makeTableQrToken(tableId: string, label: string): string {
-  const seed = `${tableId}:${label}`.replace(/[^a-zA-Z0-9]/g, "").slice(0, 12);
-  return `t${seed}${tableId.replace(/[^a-z0-9]/gi, "").slice(-4)}`.slice(0, 20).toLowerCase();
+/** Short stable fingerprint so a table QR cannot be replayed at another location. */
+export function locationQrFingerprint(locationId: string): string {
+  const s = String(locationId ?? "").trim();
+  let h = 2166136261;
+  for (let i = 0; i < s.length; i += 1) {
+    h ^= s.charCodeAt(i);
+    h = Math.imul(h, 16777619);
+  }
+  return (h >>> 0).toString(36).padStart(4, "0").slice(0, 4);
+}
+
+export function makeTableQrToken(tableId: string, label: string, locationId?: string): string {
+  const fp = locationId ? locationQrFingerprint(locationId) : "xxxx";
+  const seed = `${tableId}:${label}`.replace(/[^a-zA-Z0-9]/g, "").slice(0, 8);
+  const tail = tableId.replace(/[^a-z0-9]/gi, "").slice(-4);
+  return `t${fp}${seed}${tail}`.slice(0, 24).toLowerCase();
+}
+
+/** True when the token was minted for this location (fingerprint in bytes 1–4). */
+export function qrTokenMatchesLocation(token: string, locationId: string): boolean {
+  const t = String(token ?? "").trim().toLowerCase();
+  const loc = String(locationId ?? "").trim();
+  if (!t || t[0] !== "t" || t.length < 5 || !loc) return false;
+  return t.slice(1, 5) === locationQrFingerprint(loc);
 }
 
 export function tableQrPath(table: { label: string; qrToken?: string }): string {

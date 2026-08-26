@@ -4,37 +4,31 @@ import { authMiddleware } from "@/lib/auth/middleware";
 /**
  * Tenant context for every request that touches org/location data.
  *
- * Shared-app model (Toast-style): authenticate first, then resolve the active
- * organization + location from `active_contexts` (set by the location picker).
- * Never trust a client-supplied orgId as the only check — membership is
- * re-verified here.
+ * Authenticate first, then bind membership:
+ * - If the payload includes locationId, membership is checked for that location
+ *   (org is loaded from Postgres — client orgId cannot retarget another tenant).
+ * - If only orgId is present, membership for that org is required.
+ * - Otherwise the active organization from `active_contexts` is used.
+ * Platform admin is global and may omit an org.
  *
  *   createServerFn({ method: "POST" })
  *     .middleware([tenantMiddleware])
- *     .handler(async ({ context }) => {
- *       // context.userId, organizationId, locationId, role
- *     });
+ *     .handler(async ({ context, data }) => { ... });
  */
 export const tenantMiddleware = createMiddleware({ type: "function" })
   .middleware([authMiddleware])
-  .server(async ({ next, context }) => {
-    const { resolveActiveTenant, ForbiddenError } = await import("./tenancy.server");
-    const tenant = await resolveActiveTenant(context.userId);
-    if (!tenant) {
-      throw new ForbiddenError("Select an organization");
-    }
-    if (tenant.orgStatus === "suspended" && tenant.role !== "platform_admin") {
-      const { SuspendedError } = await import("./tenancy.server");
-      throw new SuspendedError();
-    }
+  .server(async (opts) => {
+    const { next, context } = opts;
+    const data = "data" in opts ? (opts as { data?: unknown }).data : undefined;
+    const { bindTenant } = await import("./assert-tenant.server");
+    const tenant = await bindTenant(context.userId, data);
     return next({
       context: {
         userId: context.userId,
         organizationId: tenant.organizationId,
         locationId: tenant.locationId,
         role: tenant.role,
-        orgName: tenant.orgName,
-        orgStatus: tenant.orgStatus,
+        isPlatformAdmin: tenant.isPlatformAdmin,
       },
     });
   });

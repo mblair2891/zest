@@ -110,7 +110,7 @@ import {
   parseFloorStatusConfig,
   tableFlash,
 } from "./floor-status";
-import { makeTableQrToken, parseQrMode } from "./qr-table";
+import { makeTableQrToken, parseQrMode, qrTokenMatchesLocation } from "./qr-table";
 import { useNotifyStore } from "./notify-store";
 import { isDemoStaffPin } from "@/lib/demo/pin";
 import {
@@ -2048,7 +2048,7 @@ const usePosStoreRaw = create()(persist((set, get) => ({
 			kind: partial.kind ?? (partial.shape === "bar" ? "barstool" : partial.shape === "booth" ? "booth" : "table"),
 			status: "empty",
 			statusSince: Date.now(),
-			qrToken: makeTableQrToken(id, partial.label ?? String(n)),
+			qrToken: makeTableQrToken(id, partial.label ?? String(n), get().tenantLocationId || undefined),
 		}] });
 		return id;
 	},
@@ -2135,7 +2135,7 @@ const usePosStoreRaw = create()(persist((set, get) => ({
 	rotateTableQr: (tableId) => {
 		const table = get().tables.find((t) => t.id === tableId);
 		if (!table) return { ok: false, error: "Not found" };
-		const token = makeTableQrToken(`${tableId}${Date.now()}`, table.label);
+		const token = makeTableQrToken(`${tableId}${Date.now()}`, table.label, get().tenantLocationId || undefined);
 		set({
 			tables: get().tables.map((t) => t.id === tableId ? { ...t, qrToken: token } : t),
 		});
@@ -2666,7 +2666,10 @@ const usePosStoreRaw = create()(persist((set, get) => ({
 				...t,
 				status: normalizeTableStatus(t.status),
 				statusSince: t.statusSince || t.seatedAt || Date.now(),
-				qrToken: t.qrToken || makeTableQrToken(t.id, t.label),
+				qrToken:
+					t.qrToken && qrTokenMatchesLocation(t.qrToken, locKey)
+						? t.qrToken
+						: makeTableQrToken(t.id, t.label, locKey),
 				kind: t.kind || (t.shape === "bar" ? "barstool" : "table"),
 			})),
 			floorSections: (p.floorSections && p.floorSections.length) ? p.floorSections : current.floorSections,

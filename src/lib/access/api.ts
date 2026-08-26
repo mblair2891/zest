@@ -1,5 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
-import { authMiddleware } from "@/lib/auth/middleware";
+import { tenantMiddleware } from "@/lib/saas/tenant-middleware";
 import type { LocationSetup } from "@/lib/saas/types";
 import { EMPTY_LOCATION_SETUP } from "@/lib/saas/types";
 import { SETTINGS_WRITE_MEMBERSHIP } from "./membership-map";
@@ -28,7 +28,7 @@ function loc(raw: unknown): string {
 }
 
 export const saveLocationSettingsFn = createServerFn({ method: "POST" })
-  .middleware([authMiddleware])
+  .middleware([tenantMiddleware])
   .validator((d: { orgId: string; locationId: string; setup: Partial<LocationSetup> }) => ({
     orgId: String(d.orgId ?? "").trim(),
     locationId: loc(d.locationId),
@@ -46,7 +46,7 @@ export const saveLocationSettingsFn = createServerFn({ method: "POST" })
   });
 
 export const saveOperatorPayoutFn = createServerFn({ method: "POST" })
-  .middleware([authMiddleware])
+  .middleware([tenantMiddleware])
   .validator((d: {
     orgId: string;
     locationId: string;
@@ -90,7 +90,7 @@ export const saveOperatorPayoutFn = createServerFn({ method: "POST" })
   });
 
 export const getLocationAccessFn = createServerFn({ method: "POST" })
-  .middleware([authMiddleware])
+  .middleware([tenantMiddleware])
   .validator((d: { orgId: string; locationId?: string }) => ({
     orgId: String(d.orgId ?? "").trim(),
     locationId: d.locationId ? loc(d.locationId) : null,
@@ -114,7 +114,7 @@ export const getLocationAccessFn = createServerFn({ method: "POST" })
   });
 
 export const saveEntityPermissionsFn = createServerFn({ method: "POST" })
-  .middleware([authMiddleware])
+  .middleware([tenantMiddleware])
   .validator((d: {
     orgId: string;
     locationId: string;
@@ -159,7 +159,7 @@ export const saveEntityPermissionsFn = createServerFn({ method: "POST" })
   });
 
 export const saveLocationDeviceFn = createServerFn({ method: "POST" })
-  .middleware([authMiddleware])
+  .middleware([tenantMiddleware])
   .validator((d: {
     orgId: string;
     locationId: string;
@@ -279,7 +279,7 @@ function mapDeviceRow(r: {
 }
 
 export const listLocationDevicesFn = createServerFn({ method: "POST" })
-  .middleware([authMiddleware])
+  .middleware([tenantMiddleware])
   .validator((d: { orgId: string; locationId: string }) => ({
     orgId: String(d.orgId ?? "").trim(),
     locationId: loc(d.locationId),
@@ -353,7 +353,7 @@ export const listLocationDevicesFn = createServerFn({ method: "POST" })
   });
 
 export const deactivateLocationDeviceFn = createServerFn({ method: "POST" })
-  .middleware([authMiddleware])
+  .middleware([tenantMiddleware])
   .validator((d: { orgId: string; locationId: string; deviceId: string; active: boolean }) => ({
     orgId: String(d.orgId ?? "").trim(),
     locationId: loc(d.locationId),
@@ -392,7 +392,7 @@ export const deactivateLocationDeviceFn = createServerFn({ method: "POST" })
   });
 
 export const saveMenuItemFn = createServerFn({ method: "POST" })
-  .middleware([authMiddleware])
+  .middleware([tenantMiddleware])
   .validator((d: {
     orgId: string;
     locationId: string;

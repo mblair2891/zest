@@ -1,4 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
+import { tenantMiddleware } from "@/lib/saas/tenant-middleware";
 import { guidedInsights } from "./rules";
 import type { LocationInsights, LocationMetrics } from "./types";
 
@@ -77,22 +78,17 @@ async function llmInsights(m: LocationMetrics): Promise<LocationInsights | null>
 const cache = new Map<string, LocationInsights>();
 
 export const analyzeLocationPerformanceFn = createServerFn({ method: "POST" })
+  .middleware([tenantMiddleware])
   .validator((d: { metrics: unknown; isDemo?: boolean }) => ({
     metrics: d.metrics,
     isDemo: Boolean(d.isDemo),
   }))
-  .handler(async ({ data }): Promise<LocationInsights> => {
+  .handler(async ({ context, data }): Promise<LocationInsights> => {
     const m = clipMetrics(data.metrics);
     if (!m) throw new Error("Invalid metrics payload");
     if (!data.isDemo && !m.isDemo) {
-      try {
-        const { getSessionUser } = await import("@/lib/auth/verify.server");
-        const u = await getSessionUser();
-        if (!u) throw new Error("Unauthorized");
-      } catch (e) {
-        if (e instanceof Error && e.message === "Unauthorized") throw e;
-        throw new Error("Unauthorized");
-      }
+      const { bindTenant } = await import("@/lib/saas/assert-tenant.server");
+      await bindTenant(context.userId, { locationId: m.locationId });
     }
     const key = `${m.locationId}:${m.range}:${m.from}:${m.to}:${m.operatorId ?? ""}:${m.serverId ?? ""}`;
     const hit = cache.get(key);

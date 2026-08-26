@@ -1,16 +1,16 @@
 import { createServerFn } from "@tanstack/react-start";
-import { authMiddleware } from "@/lib/auth/middleware";
+import { tenantMiddleware } from "./tenant-middleware";
 import type { PlatformTeamRole, PlatformTeamStatus, SaveableSection } from "./platform-settings";
 
 export const loadPlatformSettingsFn = createServerFn({ method: "GET" })
-  .middleware([authMiddleware])
+  .middleware([tenantMiddleware])
   .handler(async ({ context }) => {
     const { loadSettingsBundle } = await import("./platform-settings.server");
     return loadSettingsBundle(context.userId);
   });
 
 export const savePlatformSectionFn = createServerFn({ method: "POST" })
-  .middleware([authMiddleware])
+  .middleware([tenantMiddleware])
   .validator((d: { section: string; value: unknown }) => ({
     section: String(d.section ?? "") as SaveableSection,
     value: d.value,
@@ -32,7 +32,7 @@ export const savePlatformSectionFn = createServerFn({ method: "POST" })
   });
 
 export const savePlatformPlansFn = createServerFn({ method: "POST" })
-  .middleware([authMiddleware])
+  .middleware([tenantMiddleware])
   .validator((d: { plans: unknown; billing: unknown }) => ({
     plans: d.plans,
     billing: d.billing,
@@ -43,7 +43,7 @@ export const savePlatformPlansFn = createServerFn({ method: "POST" })
   });
 
 export const invitePlatformUserFn = createServerFn({ method: "POST" })
-  .middleware([authMiddleware])
+  .middleware([tenantMiddleware])
   .validator((d: { email: string; role: string }) => ({
     email: String(d.email ?? "").trim(),
     role: String(d.role ?? "read_only") as PlatformTeamRole,
@@ -54,7 +54,7 @@ export const invitePlatformUserFn = createServerFn({ method: "POST" })
   });
 
 export const updatePlatformUserFn = createServerFn({ method: "POST" })
-  .middleware([authMiddleware])
+  .middleware([tenantMiddleware])
   .validator((d: { userId: string; role?: string; status?: string }) => ({
     userId: String(d.userId ?? ""),
     role: d.role ? (String(d.role) as PlatformTeamRole) : undefined,

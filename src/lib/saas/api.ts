@@ -1,17 +1,18 @@
 import { createServerFn } from "@tanstack/react-start";
-import { authMiddleware, optionalAuthMiddleware } from "@/lib/auth/middleware";
+import { optionalAuthMiddleware } from "@/lib/auth/middleware";
+import { tenantMiddleware } from "./tenant-middleware";
 import type { LocationMode } from "@/lib/pos/saas-types";
 import type { MembershipRole, PlanSlug } from "./types";
 
 export const getSessionContextFn = createServerFn({ method: "GET" })
-  .middleware([authMiddleware])
+  .middleware([tenantMiddleware])
   .handler(async ({ context }) => {
     const { getSessionContext } = await import("./tenancy.server");
     return getSessionContext(context.userId);
   });
 
 export const createOrganizationFn = createServerFn({ method: "POST" })
-  .middleware([authMiddleware])
+  .middleware([tenantMiddleware])
   .validator((d: { name: string; venueType: string }) => ({
     name: String(d.name ?? "").trim(),
     venueType: String(d.venueType ?? "restaurant"),
@@ -28,14 +29,14 @@ export const createOrganizationFn = createServerFn({ method: "POST" })
   });
 
 export const listMyOrganizationsFn = createServerFn({ method: "GET" })
-  .middleware([authMiddleware])
+  .middleware([tenantMiddleware])
   .handler(async ({ context }) => {
     const { listMyOrganizations } = await import("./tenancy.server");
     return listMyOrganizations(context.userId);
   });
 
 export const createLocationFn = createServerFn({ method: "POST" })
-  .middleware([authMiddleware])
+  .middleware([tenantMiddleware])
   .validator((d: { orgId: string; name: string; venueType: string; timezone?: string }) => ({
     orgId: String(d.orgId ?? ""),
     name: String(d.name ?? "").trim(),
@@ -54,7 +55,7 @@ export const createLocationFn = createServerFn({ method: "POST" })
   });
 
 export const listLocationsFn = createServerFn({ method: "POST" })
-  .middleware([authMiddleware])
+  .middleware([tenantMiddleware])
   .validator((d: { orgId: string }) => ({ orgId: String(d.orgId ?? "") }))
   .handler(async ({ context, data }) => {
     const { listLocationsForOrg } = await import("./tenancy.server");
@@ -62,7 +63,7 @@ export const listLocationsFn = createServerFn({ method: "POST" })
   });
 
 export const inviteMemberFn = createServerFn({ method: "POST" })
-  .middleware([authMiddleware])
+  .middleware([tenantMiddleware])
   .validator((d: { orgId: string; email: string; role: string; operatorId?: string | null }) => ({
     orgId: String(d.orgId ?? ""),
     email: String(d.email ?? "").trim(),
@@ -91,7 +92,7 @@ export const peekInviteFn = createServerFn({ method: "POST" })
   });
 
 export const acceptInviteFn = createServerFn({ method: "POST" })
-  .middleware([authMiddleware])
+  .middleware([tenantMiddleware])
   .validator((d: { token: string }) => ({ token: String(d.token ?? "") }))
   .handler(async ({ context, data }) => {
     const { acceptInviteForUser } = await import("./tenancy.server");
@@ -99,7 +100,7 @@ export const acceptInviteFn = createServerFn({ method: "POST" })
   });
 
 export const listMembersFn = createServerFn({ method: "POST" })
-  .middleware([authMiddleware])
+  .middleware([tenantMiddleware])
   .validator((d: { orgId: string }) => ({ orgId: String(d.orgId ?? "") }))
   .handler(async ({ context, data }) => {
     const { listMembersForOrg } = await import("./tenancy.server");
@@ -107,7 +108,7 @@ export const listMembersFn = createServerFn({ method: "POST" })
   });
 
 export const entitlementsFn = createServerFn({ method: "POST" })
-  .middleware([authMiddleware])
+  .middleware([tenantMiddleware])
   .validator((d: { orgId: string }) => ({ orgId: String(d.orgId ?? "") }))
   .handler(async ({ context, data }) => {
     const { entitlementsForOrg } = await import("./tenancy.server");
@@ -115,7 +116,7 @@ export const entitlementsFn = createServerFn({ method: "POST" })
   });
 
 export const canAccessFn = createServerFn({ method: "POST" })
-  .middleware([authMiddleware])
+  .middleware([tenantMiddleware])
   .validator((d: { orgId: string; featureKey: string }) => ({
     orgId: String(d.orgId ?? ""),
     featureKey: String(d.featureKey ?? ""),
@@ -126,7 +127,7 @@ export const canAccessFn = createServerFn({ method: "POST" })
   });
 
 export const assertLocationAccessFn = createServerFn({ method: "POST" })
-  .middleware([authMiddleware])
+  .middleware([tenantMiddleware])
   .validator((d: { locationId: string }) => ({
     locationId: String(d.locationId ?? ""),
   }))
@@ -136,14 +137,14 @@ export const assertLocationAccessFn = createServerFn({ method: "POST" })
   });
 
 export const listTenantsFn = createServerFn({ method: "GET" })
-  .middleware([authMiddleware])
+  .middleware([tenantMiddleware])
   .handler(async ({ context }) => {
     const { listTenants } = await import("./tenancy.server");
     return listTenants(context.userId);
   });
 
 export const setTenantPlanFn = createServerFn({ method: "POST" })
-  .middleware([authMiddleware])
+  .middleware([tenantMiddleware])
   .validator((d: { orgId: string; planId: string }) => ({
     orgId: String(d.orgId ?? ""),
     planId: String(d.planId ?? "starter") as PlanSlug,
@@ -155,7 +156,7 @@ export const setTenantPlanFn = createServerFn({ method: "POST" })
   });
 
 export const setOrgStatusFn = createServerFn({ method: "POST" })
-  .middleware([authMiddleware])
+  .middleware([tenantMiddleware])
   .validator((d: { orgId: string; status: "active" | "suspended" }) => ({
     orgId: String(d.orgId ?? ""),
     status: d.status === "suspended" ? ("suspended" as const) : ("active" as const),
@@ -166,7 +167,7 @@ export const setOrgStatusFn = createServerFn({ method: "POST" })
   });
 
 export const startCheckoutFn = createServerFn({ method: "POST" })
-  .middleware([authMiddleware])
+  .middleware([tenantMiddleware])
   .validator((d: { orgId: string; planId: string }) => ({
     orgId: String(d.orgId ?? ""),
     planId: String(d.planId ?? "starter") as PlanSlug,
@@ -177,7 +178,7 @@ export const startCheckoutFn = createServerFn({ method: "POST" })
   });
 
 export const startPortalFn = createServerFn({ method: "POST" })
-  .middleware([authMiddleware])
+  .middleware([tenantMiddleware])
   .validator((d: { orgId: string }) => ({ orgId: String(d.orgId ?? "") }))
   .handler(async ({ context, data }) => {
     const { startPortal } = await import("./billing.server");
@@ -185,7 +186,7 @@ export const startPortalFn = createServerFn({ method: "POST" })
   });
 
 export const recordCardPaymentFn = createServerFn({ method: "POST" })
-  .middleware([authMiddleware])
+  .middleware([tenantMiddleware])
   .validator((d: {
     orgId: string;
     locationId?: string;
@@ -212,7 +213,7 @@ export const recordCardPaymentFn = createServerFn({ method: "POST" })
   });
 
 export const billingStatusFn = createServerFn({ method: "GET" })
-  .middleware([authMiddleware])
+  .middleware([tenantMiddleware])
   .handler(async () => {
     const { getBillingProvider } = await import("./billing.server");
     const p = getBillingProvider();
@@ -220,7 +221,7 @@ export const billingStatusFn = createServerFn({ method: "GET" })
   });
 
 export const setActiveContextFn = createServerFn({ method: "POST" })
-  .middleware([authMiddleware])
+  .middleware([tenantMiddleware])
   .validator((d: { orgId: string; locationId?: string | null }) => ({
     orgId: String(d.orgId ?? ""),
     locationId: d.locationId ? String(d.locationId) : null,
@@ -231,7 +232,7 @@ export const setActiveContextFn = createServerFn({ method: "POST" })
   });
 
 export const getActiveTenantFn = createServerFn({ method: "GET" })
-  .middleware([authMiddleware])
+  .middleware([tenantMiddleware])
   .handler(async ({ context }) => {
     const { resolveActiveTenant } = await import("./tenancy.server");
     return resolveActiveTenant(context.userId);
@@ -366,14 +367,14 @@ export const acceptQuoteFn = createServerFn({ method: "POST" })
   });
 
 export const listQuoteCatalogFn = createServerFn({ method: "GET" })
-  .middleware([authMiddleware])
+  .middleware([tenantMiddleware])
   .handler(async ({ context }) => {
     const { listQuoteCatalog } = await import("./prospects.server");
     return listQuoteCatalog(context.userId);
   });
 
 export const saveQuoteDraftFn = createServerFn({ method: "POST" })
-  .middleware([authMiddleware])
+  .middleware([tenantMiddleware])
   .validator((d: {
     prospectId: string;
     planSlug: string;
@@ -402,7 +403,7 @@ export const saveQuoteDraftFn = createServerFn({ method: "POST" })
   });
 
 export const sendQuoteFn = createServerFn({ method: "POST" })
-  .middleware([authMiddleware])
+  .middleware([tenantMiddleware])
   .validator((d: { prospectId: string }) => ({
     prospectId: String(d.prospectId ?? ""),
   }))
@@ -412,7 +413,7 @@ export const sendQuoteFn = createServerFn({ method: "POST" })
   });
 
 export const adminMarkQuoteAcceptedFn = createServerFn({ method: "POST" })
-  .middleware([authMiddleware])
+  .middleware([tenantMiddleware])
   .validator((d: { prospectId: string }) => ({
     prospectId: String(d.prospectId ?? ""),
   }))
@@ -422,7 +423,7 @@ export const adminMarkQuoteAcceptedFn = createServerFn({ method: "POST" })
   });
 
 export const claimProspectFn = createServerFn({ method: "POST" })
-  .middleware([authMiddleware])
+  .middleware([tenantMiddleware])
   .validator((d: { token: string }) => ({ token: String(d.token ?? "") }))
   .handler(async ({ context, data }) => {
     const { claimProspect } = await import("./prospects.server");
@@ -430,21 +431,21 @@ export const claimProspectFn = createServerFn({ method: "POST" })
   });
 
 export const listMyProspectsFn = createServerFn({ method: "GET" })
-  .middleware([authMiddleware])
+  .middleware([tenantMiddleware])
   .handler(async ({ context }) => {
     const { listMyProspects } = await import("./prospects.server");
     return listMyProspects(context.userId);
   });
 
 export const listAllProspectsFn = createServerFn({ method: "GET" })
-  .middleware([authMiddleware])
+  .middleware([tenantMiddleware])
   .handler(async ({ context }) => {
     const { listAllProspects } = await import("./prospects.server");
     return listAllProspects(context.userId);
   });
 
 export const markContractSignedFn = createServerFn({ method: "POST" })
-  .middleware([authMiddleware])
+  .middleware([tenantMiddleware])
   .validator((d: { prospectId: string }) => ({
     prospectId: String(d.prospectId ?? ""),
   }))
@@ -454,7 +455,7 @@ export const markContractSignedFn = createServerFn({ method: "POST" })
   });
 
 export const adminSetProspectStatusFn = createServerFn({ method: "POST" })
-  .middleware([authMiddleware])
+  .middleware([tenantMiddleware])
   .validator((d: { prospectId: string; status: string; note?: string }) => ({
     prospectId: String(d.prospectId ?? ""),
     status: String(d.status ?? ""),
@@ -471,7 +472,7 @@ export const adminSetProspectStatusFn = createServerFn({ method: "POST" })
   });
 
 export const adminPatchQuoteFn = createServerFn({ method: "POST" })
-  .middleware([authMiddleware])
+  .middleware([tenantMiddleware])
   .validator((d: { prospectId: string; lineItems: unknown; reissue?: boolean }) => ({
     prospectId: String(d.prospectId ?? ""),
     lineItems: d.lineItems,
@@ -491,21 +492,21 @@ export const adminPatchQuoteFn = createServerFn({ method: "POST" })
   });
 
 export const loadPricingRulesFn = createServerFn({ method: "GET" })
-  .middleware([authMiddleware])
+  .middleware([tenantMiddleware])
   .handler(async () => {
     const { loadPricingRules } = await import("./prospects.server");
     return loadPricingRules();
   });
 
 export const savePricingRulesFn = createServerFn({ method: "POST" })
-  .middleware([authMiddleware])
+  .middleware([tenantMiddleware])
   .validator((d: { rules: unknown }) => ({ rules: d.rules }))
   .handler(async () => {
     throw new Error("Pricing is edited in Platform → Settings → Plans & billing. Free-form JSON is not accepted.");
   });
 
 export const listProspectAuditFn = createServerFn({ method: "POST" })
-  .middleware([authMiddleware])
+  .middleware([tenantMiddleware])
   .validator((d: { prospectId: string }) => ({
     prospectId: String(d.prospectId ?? ""),
   }))
@@ -515,7 +516,7 @@ export const listProspectAuditFn = createServerFn({ method: "POST" })
   });
 
 export const saveOnboardingFn = createServerFn({ method: "POST" })
-  .middleware([authMiddleware])
+  .middleware([tenantMiddleware])
   .validator((d: { token: string; payload: unknown }) => ({
     token: String(d.token ?? ""),
     payload: d.payload,
@@ -530,7 +531,7 @@ export const saveOnboardingFn = createServerFn({ method: "POST" })
   });
 
 export const applyOnboardingStepFn = createServerFn({ method: "POST" })
-  .middleware([authMiddleware])
+  .middleware([tenantMiddleware])
   .validator((d: { token: string; step: string; payload?: unknown }) => ({
     token: String(d.token ?? ""),
     step: String(d.step ?? ""),
@@ -572,5 +573,5 @@ export const getPosBootstrapFn = createServerFn({ method: "POST" })
   });
 
 export const getFloorTestInfoFn = createServerFn({ method: "GET" })
-  .middleware([authMiddleware])
+  .middleware([tenantMiddleware])
   .handler(async () => null);

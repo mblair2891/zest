@@ -1,5 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
-import { optionalAuthMiddleware } from "@/lib/auth/middleware";
+import { tenantMiddleware } from "@/lib/saas/tenant-middleware";
 import {
   DEFAULT_FRONT_SETTINGS,
   WAITLIST_REASONS,
@@ -141,6 +141,7 @@ export const optOutWaitlistFn = createServerFn({ method: "POST" })
   });
 
 export const listFrontBoardFn = createServerFn({ method: "POST" })
+  .middleware([tenantMiddleware])
   .validator((d: { locationId: string }) => ({ locationId: loc(d.locationId) }))
   .handler(async ({ data }) => {
     const { listWaitlist, listReservations, getFrontSettings } = await import(
@@ -157,7 +158,7 @@ export const listFrontBoardFn = createServerFn({ method: "POST" })
   });
 
 export const saveFrontSettingsFn = createServerFn({ method: "POST" })
-  .middleware([optionalAuthMiddleware])
+  .middleware([tenantMiddleware])
   .validator((d: {
     locationId: string;
     kioskMode?: KioskMode;
@@ -195,23 +196,41 @@ export const saveFrontSettingsFn = createServerFn({ method: "POST" })
   });
 
 export const setWaitlistStatusFn = createServerFn({ method: "POST" })
+  .middleware([tenantMiddleware])
   .validator((d: { id: string; status: WaitlistStatus }) => ({
     id: String(d.id ?? ""),
     status: d.status,
   }))
-  .handler(async ({ data }) => {
+  .handler(async ({ context, data }) => {
     if (!data.id) throw new Error("Missing guest");
+    const { getSql } = await import("@/lib/db");
+    const sql = await getSql();
+    const rows = await sql<{ location_id: string }>`
+      select location_id from waitlist_entries where id = ${data.id} limit 1
+    `;
+    if (!rows[0]) throw new Error("Missing guest");
+    const { bindTenant } = await import("@/lib/saas/assert-tenant.server");
+    await bindTenant(context.userId, { locationId: rows[0].location_id });
     const { setWaitlistStatus } = await import("./store.server");
     return setWaitlistStatus(data.id, data.status);
   });
 
 export const setReservationStatusFn = createServerFn({ method: "POST" })
+  .middleware([tenantMiddleware])
   .validator((d: { id: string; status: ReservationStatus }) => ({
     id: String(d.id ?? ""),
     status: d.status,
   }))
-  .handler(async ({ data }) => {
+  .handler(async ({ context, data }) => {
     if (!data.id) throw new Error("Missing reservation");
+    const { getSql } = await import("@/lib/db");
+    const sql = await getSql();
+    const rows = await sql<{ location_id: string }>`
+      select location_id from reservations where id = ${data.id} limit 1
+    `;
+    if (!rows[0]) throw new Error("Missing reservation");
+    const { bindTenant } = await import("@/lib/saas/assert-tenant.server");
+    await bindTenant(context.userId, { locationId: rows[0].location_id });
     const { updateReservationStatus } = await import("./store.server");
     await updateReservationStatus(data.id, data.status);
     return { ok: true as const };

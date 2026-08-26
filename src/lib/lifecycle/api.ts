@@ -1,9 +1,9 @@
 import { createServerFn } from "@tanstack/react-start";
-import { authMiddleware } from "@/lib/auth/middleware";
+import { tenantMiddleware } from "@/lib/saas/tenant-middleware";
 import type { KeepEraseMap, LocationLifecycle } from "./types";
 
 export const saveLifecycleFn = createServerFn({ method: "POST" })
-  .middleware([authMiddleware])
+  .middleware([tenantMiddleware])
   .validator((d: {
     orgId: string;
     locationId: string;

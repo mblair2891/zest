@@ -18,6 +18,8 @@ export async function applyOfflineBatch(
       continue;
     }
     try {
+      const { bindTenant } = await import("@/lib/saas/assert-tenant.server");
+      await bindTenant(userId, { locationId: item.locationId });
       const existing = await sql<{ client_mutation_id: string; status: string }>`
         select client_mutation_id, status
         from offline_mutations

@@ -8,6 +8,7 @@ import {
   parseGrantMatrix,
   type EntityGrantKey,
 } from "./entity-grants";
+import { canWriteEntityResource } from "./entity-write-rules";
 
 const HOST_WRITE: MembershipRole[] = ["owner", "manager", "platform_admin"];
 
@@ -67,14 +68,18 @@ export function assertEntityResourceWrite(
   resourceOperatorId: string | null | undefined,
   grant: EntityGrantKey = "edit_menu",
 ): void {
-  if (ctx.isPlatformAdmin) return;
-  if (ctx.role !== "vendor" && HOST_WRITE.includes(ctx.role) && ctx.operatorId === HOST_SCOPE) {
+  if (
+    canWriteEntityResource({
+      isPlatformAdmin: ctx.isPlatformAdmin,
+      role: ctx.role,
+      operatorId: ctx.operatorId,
+      resourceOperatorId,
+      matrix: ctx.setup.entityPermissions,
+      grant,
+    })
+  ) {
     return;
   }
-  const target = resourceOperatorId?.trim() || HOST_SCOPE;
-  if (ctx.operatorId === target && grant !== "manage_devices") return;
-  const matrix = parseGrantMatrix(ctx.setup.entityPermissions);
-  if (canEntityGrant(matrix, ctx.operatorId, target, grant)) return;
   throw new ForbiddenError("Not permitted for this operator");
 }
 

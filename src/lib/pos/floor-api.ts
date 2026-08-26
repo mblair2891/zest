@@ -1,5 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
-import { authMiddleware } from "@/lib/auth/middleware";
+import { tenantMiddleware } from "@/lib/saas/tenant-middleware";
 import type { TicketStation } from "./types";
 import type {
   AddLinesInput,
@@ -27,7 +27,7 @@ function clip(raw: unknown, max: number): string {
 }
 
 export const listOpenFloorFn = createServerFn({ method: "POST" })
-  .middleware([authMiddleware])
+  .middleware([tenantMiddleware])
   .validator((d: { locationId: string }) => ({
     locationId: loc(d.locationId),
   }))
@@ -37,7 +37,7 @@ export const listOpenFloorFn = createServerFn({ method: "POST" })
   });
 
 export const listStationTicketsFn = createServerFn({ method: "POST" })
-  .middleware([authMiddleware])
+  .middleware([tenantMiddleware])
   .validator((d: { locationId: string; station: TicketStation; operatorId?: string | null }) => ({
     locationId: loc(d.locationId),
     station: clip(d.station, 24) as TicketStation,
@@ -54,7 +54,7 @@ export const listStationTicketsFn = createServerFn({ method: "POST" })
   });
 
 export const upsertCheckFn = createServerFn({ method: "POST" })
-  .middleware([authMiddleware])
+  .middleware([tenantMiddleware])
   .validator((d: UpsertCheckInput) => ({
     locationId: loc(d.locationId),
     check: d.check as FloorCheck,
@@ -66,7 +66,7 @@ export const upsertCheckFn = createServerFn({ method: "POST" })
   });
 
 export const addCheckLinesFn = createServerFn({ method: "POST" })
-  .middleware([authMiddleware])
+  .middleware([tenantMiddleware])
   .validator((d: AddLinesInput) => ({
     locationId: loc(d.locationId),
     checkId: clip(d.checkId, 80),
@@ -79,7 +79,7 @@ export const addCheckLinesFn = createServerFn({ method: "POST" })
   });
 
 export const sendToStationsFn = createServerFn({ method: "POST" })
-  .middleware([authMiddleware])
+  .middleware([tenantMiddleware])
   .validator((d: SendToStationsInput) => ({
     locationId: loc(d.locationId),
     checkId: clip(d.checkId, 80),
@@ -94,7 +94,7 @@ export const sendToStationsFn = createServerFn({ method: "POST" })
   });
 
 export const odsStartFn = createServerFn({ method: "POST" })
-  .middleware([authMiddleware])
+  .middleware([tenantMiddleware])
   .validator((d: OdsActionInput) => ({
     locationId: loc(d.locationId),
     ticketId: clip(d.ticketId, 80),
@@ -107,7 +107,7 @@ export const odsStartFn = createServerFn({ method: "POST" })
   });
 
 export const odsBumpFn = createServerFn({ method: "POST" })
-  .middleware([authMiddleware])
+  .middleware([tenantMiddleware])
   .validator((d: OdsActionInput) => ({
     locationId: loc(d.locationId),
     ticketId: clip(d.ticketId, 80),
@@ -120,7 +120,7 @@ export const odsBumpFn = createServerFn({ method: "POST" })
   });
 
 export const odsReadyFn = createServerFn({ method: "POST" })
-  .middleware([authMiddleware])
+  .middleware([tenantMiddleware])
   .validator((d: OdsActionInput) => ({
     locationId: loc(d.locationId),
     ticketId: clip(d.ticketId, 80),
@@ -133,7 +133,7 @@ export const odsReadyFn = createServerFn({ method: "POST" })
   });
 
 export const odsRecallFn = createServerFn({ method: "POST" })
-  .middleware([authMiddleware])
+  .middleware([tenantMiddleware])
   .validator((d: OdsActionInput) => ({
     locationId: loc(d.locationId),
     ticketId: clip(d.ticketId, 80),
@@ -146,7 +146,7 @@ export const odsRecallFn = createServerFn({ method: "POST" })
   });
 
 export const recordCheckPaymentFn = createServerFn({ method: "POST" })
-  .middleware([authMiddleware])
+  .middleware([tenantMiddleware])
   .validator((d: RecordPaymentInput) => ({
     locationId: loc(d.locationId),
     checkId: clip(d.checkId, 80),
@@ -162,7 +162,7 @@ export const recordCheckPaymentFn = createServerFn({ method: "POST" })
   });
 
 export const upsertTableStatusFn = createServerFn({ method: "POST" })
-  .middleware([authMiddleware])
+  .middleware([tenantMiddleware])
   .validator((d: UpsertTableStatusInput) => ({
     locationId: loc(d.locationId),
     table: d.table as FloorTableStatus,

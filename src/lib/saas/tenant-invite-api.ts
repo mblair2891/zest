@@ -1,9 +1,10 @@
 import { createServerFn } from "@tanstack/react-start";
-import { authMiddleware, optionalAuthMiddleware } from "@/lib/auth/middleware";
+import { optionalAuthMiddleware } from "@/lib/auth/middleware";
+import { tenantMiddleware } from "./tenant-middleware";
 import { parseTenantKind, type TenantKind } from "./tenant-invite";
 
 export const listTenantSlotsFn = createServerFn({ method: "POST" })
-  .middleware([authMiddleware])
+  .middleware([tenantMiddleware])
   .validator((d: { orgId: string; locationId?: string | null }) => ({
     orgId: String(d.orgId ?? ""),
     locationId: d.locationId ? String(d.locationId) : null,
@@ -14,7 +15,7 @@ export const listTenantSlotsFn = createServerFn({ method: "POST" })
   });
 
 export const addTenantSlotFn = createServerFn({ method: "POST" })
-  .middleware([authMiddleware])
+  .middleware([tenantMiddleware])
   .validator((d: {
     orgId: string;
     locationId: string;
@@ -38,7 +39,7 @@ export const addTenantSlotFn = createServerFn({ method: "POST" })
   });
 
 export const generateTenantInviteFn = createServerFn({ method: "POST" })
-  .middleware([authMiddleware])
+  .middleware([tenantMiddleware])
   .validator((d: { operatorId: string; email?: boolean; sms?: boolean }) => ({
     operatorId: String(d.operatorId ?? ""),
     email: d.email !== false,
@@ -53,7 +54,7 @@ export const generateTenantInviteFn = createServerFn({ method: "POST" })
   });
 
 export const revokeTenantInviteFn = createServerFn({ method: "POST" })
-  .middleware([authMiddleware])
+  .middleware([tenantMiddleware])
   .validator((d: { operatorId: string }) => ({
     operatorId: String(d.operatorId ?? ""),
   }))

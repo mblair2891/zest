@@ -1,10 +1,10 @@
 import { createServerFn } from "@tanstack/react-start";
-import { authMiddleware } from "@/lib/auth/middleware";
+import { tenantMiddleware } from "./tenant-middleware";
 import type { AccountSource, AccountStage, ActivityKind, ContactRole, DealStage, InvoiceStatus, TicketPriority, TicketStatus } from "./crm-types";
 import type { PlanSlug } from "./types";
 
 export const listCrmAccountsFn = createServerFn({ method: "POST" })
-  .middleware([authMiddleware])
+  .middleware([tenantMiddleware])
   .validator((d: { q?: string; stage?: string }) => ({
     q: d.q ? String(d.q) : "",
     stage: d.stage ? String(d.stage) : "all",
@@ -18,7 +18,7 @@ export const listCrmAccountsFn = createServerFn({ method: "POST" })
   });
 
 export const getCrmAccountFn = createServerFn({ method: "POST" })
-  .middleware([authMiddleware])
+  .middleware([tenantMiddleware])
   .validator((d: { accountId: string }) => ({ accountId: String(d.accountId ?? "") }))
   .handler(async ({ context, data }) => {
     const { getAccount } = await import("./crm.server");
@@ -26,7 +26,7 @@ export const getCrmAccountFn = createServerFn({ method: "POST" })
   });
 
 export const createCrmLeadFn = createServerFn({ method: "POST" })
-  .middleware([authMiddleware])
+  .middleware([tenantMiddleware])
   .validator((d: {
     name: string;
     email?: string;
@@ -51,7 +51,7 @@ export const createCrmLeadFn = createServerFn({ method: "POST" })
   });
 
 export const patchCrmAccountFn = createServerFn({ method: "POST" })
-  .middleware([authMiddleware])
+  .middleware([tenantMiddleware])
   .validator((d: {
     accountId: string;
     name?: string;
@@ -83,7 +83,7 @@ export const patchCrmAccountFn = createServerFn({ method: "POST" })
   });
 
 export const addCrmContactFn = createServerFn({ method: "POST" })
-  .middleware([authMiddleware])
+  .middleware([tenantMiddleware])
   .validator((d: { accountId: string; name: string; email?: string; phone?: string; role?: string }) => ({
     accountId: String(d.accountId ?? ""),
     name: String(d.name ?? "").trim(),
@@ -101,7 +101,7 @@ export const addCrmContactFn = createServerFn({ method: "POST" })
   });
 
 export const addCrmActivityFn = createServerFn({ method: "POST" })
-  .middleware([authMiddleware])
+  .middleware([tenantMiddleware])
   .validator((d: { accountId: string; kind: string; body: string; dueAt?: string | null }) => ({
     accountId: String(d.accountId ?? ""),
     kind: String(d.kind ?? "note"),
@@ -118,7 +118,7 @@ export const addCrmActivityFn = createServerFn({ method: "POST" })
   });
 
 export const completeCrmActivityFn = createServerFn({ method: "POST" })
-  .middleware([authMiddleware])
+  .middleware([tenantMiddleware])
   .validator((d: { activityId: string }) => ({ activityId: String(d.activityId ?? "") }))
   .handler(async ({ context, data }) => {
     const { completeActivity } = await import("./crm.server");
@@ -127,7 +127,7 @@ export const completeCrmActivityFn = createServerFn({ method: "POST" })
   });
 
 export const upsertCrmOpportunityFn = createServerFn({ method: "POST" })
-  .middleware([authMiddleware])
+  .middleware([tenantMiddleware])
   .validator((d: {
     id?: string;
     accountId: string;
@@ -158,7 +158,7 @@ export const upsertCrmOpportunityFn = createServerFn({ method: "POST" })
   });
 
 export const startCrmOnboardingFn = createServerFn({ method: "POST" })
-  .middleware([authMiddleware])
+  .middleware([tenantMiddleware])
   .validator((d: { accountId: string }) => ({ accountId: String(d.accountId ?? "") }))
   .handler(async ({ context, data }) => {
     const { startOnboardingForAccount } = await import("./crm.server");
@@ -166,7 +166,7 @@ export const startCrmOnboardingFn = createServerFn({ method: "POST" })
   });
 
 export const goLiveCrmAccountFn = createServerFn({ method: "POST" })
-  .middleware([authMiddleware])
+  .middleware([tenantMiddleware])
   .validator((d: { accountId: string }) => ({ accountId: String(d.accountId ?? "") }))
   .handler(async ({ context, data }) => {
     const { goLiveForAccount } = await import("./crm.server");
@@ -174,21 +174,21 @@ export const goLiveCrmAccountFn = createServerFn({ method: "POST" })
   });
 
 export const listCrmFollowUpsFn = createServerFn({ method: "GET" })
-  .middleware([authMiddleware])
+  .middleware([tenantMiddleware])
   .handler(async ({ context }) => {
     const { listFollowUps } = await import("./crm.server");
     return listFollowUps(context.userId);
   });
 
 export const listTenantDirectoryFn = createServerFn({ method: "GET" })
-  .middleware([authMiddleware])
+  .middleware([tenantMiddleware])
   .handler(async ({ context }) => {
     const { listTenantDirectory } = await import("./crm.server");
     return listTenantDirectory(context.userId);
   });
 
 export const getTenantDrillInFn = createServerFn({ method: "POST" })
-  .middleware([authMiddleware])
+  .middleware([tenantMiddleware])
   .validator((d: { orgId: string }) => ({ orgId: String(d.orgId ?? "") }))
   .handler(async ({ context, data }) => {
     const { getTenantDrillIn } = await import("./crm.server");
@@ -196,14 +196,14 @@ export const getTenantDrillInFn = createServerFn({ method: "POST" })
   });
 
 export const listOnboardingWorkspaceFn = createServerFn({ method: "GET" })
-  .middleware([authMiddleware])
+  .middleware([tenantMiddleware])
   .handler(async ({ context }) => {
     const { listOnboardingWorkspace } = await import("./crm.server");
     return listOnboardingWorkspace(context.userId);
   });
 
 export const listSupportTicketsFn = createServerFn({ method: "POST" })
-  .middleware([authMiddleware])
+  .middleware([tenantMiddleware])
   .validator((d: { status?: string }) => ({ status: d.status ?? "all" }))
   .handler(async ({ context, data }) => {
     const { listTickets } = await import("./crm.server");
@@ -211,7 +211,7 @@ export const listSupportTicketsFn = createServerFn({ method: "POST" })
   });
 
 export const createSupportTicketFn = createServerFn({ method: "POST" })
-  .middleware([authMiddleware])
+  .middleware([tenantMiddleware])
   .validator((d: { subject: string; accountId?: string; orgId?: string; priority?: string; body?: string }) => ({
     subject: String(d.subject ?? ""),
     accountId: d.accountId,
@@ -228,7 +228,7 @@ export const createSupportTicketFn = createServerFn({ method: "POST" })
   });
 
 export const patchSupportTicketFn = createServerFn({ method: "POST" })
-  .middleware([authMiddleware])
+  .middleware([tenantMiddleware])
   .validator((d: { ticketId: string; status?: string; priority?: string }) => ({
     ticketId: String(d.ticketId ?? ""),
     status: d.status,
@@ -244,7 +244,7 @@ export const patchSupportTicketFn = createServerFn({ method: "POST" })
   });
 
 export const listTicketCommentsFn = createServerFn({ method: "POST" })
-  .middleware([authMiddleware])
+  .middleware([tenantMiddleware])
   .validator((d: { ticketId: string }) => ({ ticketId: String(d.ticketId ?? "") }))
   .handler(async ({ context, data }) => {
     const { listTicketComments } = await import("./crm.server");
@@ -252,7 +252,7 @@ export const listTicketCommentsFn = createServerFn({ method: "POST" })
   });
 
 export const addTicketCommentFn = createServerFn({ method: "POST" })
-  .middleware([authMiddleware])
+  .middleware([tenantMiddleware])
   .validator((d: { ticketId: string; body: string }) => ({
     ticketId: String(d.ticketId ?? ""),
     body: String(d.body ?? ""),
@@ -264,14 +264,14 @@ export const addTicketCommentFn = createServerFn({ method: "POST" })
   });
 
 export const listSaasInvoicesFn = createServerFn({ method: "GET" })
-  .middleware([authMiddleware])
+  .middleware([tenantMiddleware])
   .handler(async ({ context }) => {
     const { listInvoices } = await import("./crm.server");
     return listInvoices(context.userId);
   });
 
 export const issueSaasInvoiceFn = createServerFn({ method: "POST" })
-  .middleware([authMiddleware])
+  .middleware([tenantMiddleware])
   .validator((d: { orgId: string; amountCents: number; note?: string }) => ({
     orgId: String(d.orgId ?? ""),
     amountCents: Number(d.amountCents) || 0,
@@ -284,7 +284,7 @@ export const issueSaasInvoiceFn = createServerFn({ method: "POST" })
   });
 
 export const setSaasInvoiceStatusFn = createServerFn({ method: "POST" })
-  .middleware([authMiddleware])
+  .middleware([tenantMiddleware])
   .validator((d: { invoiceId: string; status: string }) => ({
     invoiceId: String(d.invoiceId ?? ""),
     status: String(d.status ?? ""),
@@ -296,14 +296,14 @@ export const setSaasInvoiceStatusFn = createServerFn({ method: "POST" })
   });
 
 export const saasReportFn = createServerFn({ method: "GET" })
-  .middleware([authMiddleware])
+  .middleware([tenantMiddleware])
   .handler(async ({ context }) => {
     const { saasReport } = await import("./crm.server");
     return saasReport(context.userId);
   });
 
 export const factoryResetStatusFn = createServerFn({ method: "GET" })
-  .middleware([authMiddleware])
+  .middleware([tenantMiddleware])
   .handler(async ({ context }) => {
     const { isPlatformAdmin } = await import("./tenancy.server");
     if (!(await isPlatformAdmin(context.userId))) {
@@ -314,7 +314,7 @@ export const factoryResetStatusFn = createServerFn({ method: "GET" })
   });
 
 export const factoryResetFn = createServerFn({ method: "POST" })
-  .middleware([authMiddleware])
+  .middleware([tenantMiddleware])
   .validator((d: { confirmPhrase: string; password: string }) => ({
     confirmPhrase: String(d.confirmPhrase ?? ""),
     password: String(d.password ?? ""),
@@ -329,7 +329,7 @@ export const factoryResetFn = createServerFn({ method: "POST" })
   });
 
 export const listSaasPlansFn = createServerFn({ method: "GET" })
-  .middleware([authMiddleware])
+  .middleware([tenantMiddleware])
   .handler(async ({ context }) => {
     const { listPlans } = await import("./crm.server");
     return listPlans(context.userId);
