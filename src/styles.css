@@ -158,9 +158,29 @@
   --color-secondary-foreground: #f7f6f3;
   --color-link: #c4b8a5;
   --color-ring: #c4b8a5;
+  isolation: isolate;
+  overflow-x: hidden;
   color: var(--color-foreground);
   background-color: var(--color-bg);
   font-feature-settings: "liga", "kern";
+}
+
+/* Never let a raw SVG / device-frame / hero art cover the first viewport. */
+.mkt img,
+.mkt picture,
+.mkt video,
+.mkt canvas,
+.mkt [data-hero-media] {
+  max-width: 100%;
+  max-height: 420px;
+  width: auto;
+  height: auto;
+  object-fit: contain;
+}
+
+.mkt svg:not([class*="h-"]):not([class*="size-"]) {
+  max-width: 100%;
+  max-height: 420px;
 }
 
 .mkt ::selection {
@@ -178,6 +198,11 @@
 
 .mkt-sheen {
   pointer-events: none;
+  position: absolute;
+  inset: 0 auto auto 0;
+  width: 100%;
+  height: min(100dvh, 720px);
+  max-height: 100dvh;
   background: radial-gradient(
     ellipse 70% 40% at 50% 0%,
     rgb(196 184 165 / 0.07),

@@ -8,8 +8,7 @@ import { cn } from "@/lib/utils";
 const NAV = [
   { to: "/features" as const, label: "Product" },
   { to: "/pricing" as const, label: "Pricing" },
-  { to: "/get-pricing" as const, label: "Quote" },
-  { to: "/get-pricing" as const, label: "Request demo" },
+  { to: "/get-pricing" as const, label: "Get pricing" },
   { to: "/guide" as const, label: "Guide" },
   { to: "/whitepaper" as const, label: "White paper" },
 ];
@@ -22,8 +21,8 @@ export function LandingFrame({ children }: { children: ReactNode }) {
 
   return (
     <div className="mkt mkt-ambient relative min-h-[100dvh] overflow-x-hidden pt-[var(--grok-banner-h,0px)] text-foreground">
-      <div className="mkt-sheen absolute inset-0" aria-hidden />
-      <header className="relative z-10 border-b border-border">
+      <div className="mkt-sheen" aria-hidden />
+      <header className="relative z-20 border-b border-border bg-ink/80 backdrop-blur-sm">
         <div className="mx-auto flex h-16 max-w-6xl items-center gap-4 px-4 sm:px-6">
           <Link to="/" className="flex items-center gap-2.5">
             <SummexMark className="h-7 w-7 text-ivory" />
@@ -54,16 +53,16 @@ export function LandingFrame({ children }: { children: ReactNode }) {
             ) : (
               <>
                 <Link
-                  to="/get-pricing"
+                  to="/login"
                   className="hidden h-10 items-center px-3 text-xs tracking-widest text-muted-foreground uppercase transition-colors hover:text-champagne sm:inline-flex"
                 >
-                  Get pricing
+                  Sign in
                 </Link>
                 <Link
-                  to="/login"
+                  to="/get-pricing"
                   className="inline-flex h-10 items-center rounded-sm bg-primary px-4 text-xs font-semibold tracking-widest text-primary-foreground uppercase"
                 >
-                  Login
+                  Get pricing
                 </Link>
               </>
             )}
@@ -96,9 +95,6 @@ export function LandingFrame({ children }: { children: ReactNode }) {
             </Link>
             <Link to="/guide" className="hover:text-champagne">
               Operators Guide
-            </Link>
-            <Link to="/get-pricing" className="hover:text-champagne">
-              Request demo
             </Link>
             <Link to="/pricing" className="hover:text-champagne">
               Pricing

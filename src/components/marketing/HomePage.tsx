@@ -151,28 +151,27 @@ export function HomePage() {
   return (
     <LandingFrame>
       <main>
-        <section className="relative mx-auto max-w-6xl px-4 pb-20 pt-16 sm:px-6 sm:pb-28 sm:pt-24">
-          <div className="mkt-fade flex flex-col items-start">
-            <SummexMark className="h-11 w-11 text-ivory" />
+        <section className="relative mx-auto max-w-6xl px-4 pb-12 pt-8 sm:px-6 sm:pb-16 sm:pt-12">
+          <div className="mkt-fade flex max-w-3xl flex-col items-start">
+            <SummexMark className="h-9 w-9 text-ivory" />
             <Kicker>{PRODUCT_NAME}</Kicker>
-            <h1 className="mt-5 max-w-4xl font-display text-4xl font-medium leading-[0.98] tracking-tight text-ivory text-balance sm:text-6xl lg:text-7xl">
-              The hospitality OS for the house you run — and the ones after it.
+            <h1 className="mt-4 font-display text-4xl font-medium leading-[1.05] tracking-tight text-ivory text-balance sm:text-5xl lg:text-6xl">
+              Hospitality operations, all in one system.
             </h1>
-            <p className="mt-5 font-display text-xl italic tracking-wide text-champagne sm:text-2xl">
+            <p className="mt-5 text-base leading-relaxed text-muted-foreground text-pretty sm:text-lg">
+              For a single restaurant or bar, a multi-operator host, or a
+              multi-unit and franchise-style group.
+            </p>
+            <p className="mt-4 max-w-2xl text-sm leading-relaxed text-champagne/90 text-pretty sm:text-base">
+              {PRODUCT_DEFINITION}
+            </p>
+            <p className="mt-3 font-display text-lg italic tracking-wide text-champagne">
               Powered by {POWERED_BY}
             </p>
-            <p className="mt-7 max-w-2xl text-base leading-relaxed text-muted-foreground text-pretty sm:text-lg">
-              {PRODUCT_DEFINITION} One product for a single restaurant or bar, a
-              multi-operator host venue, or a multi-unit and franchise-style
-              group.
-            </p>
-            <div className="mkt-fade mkt-d2 mt-10 flex flex-wrap items-center gap-3">
-              <LandingCta to="/login">Login</LandingCta>
-              <LandingCta to="/get-pricing" tone="ghost">
-                Get pricing
-              </LandingCta>
-              <LandingCta to="/get-pricing" tone="ghost">
-                Request demo
+            <div className="mkt-fade mkt-d2 mt-8 flex flex-wrap items-center gap-3">
+              <LandingCta to="/get-pricing">Get pricing</LandingCta>
+              <LandingCta to="/login" tone="ghost">
+                Sign in
               </LandingCta>
               <Link
                 to="/guide"
@@ -371,12 +370,15 @@ export function HomePage() {
           </p>
           <div className="mt-10 flex flex-wrap justify-center gap-3">
             <LandingCta to="/get-pricing">Get pricing</LandingCta>
-            <LandingCta to="/signup" tone="ghost">
-              Create an account
+            <LandingCta to="/login" tone="ghost">
+              Sign in
             </LandingCta>
-            <LandingCta to="/get-pricing" tone="ghost">
-              Request demo
-            </LandingCta>
+            <Link
+              to="/guide"
+              className="inline-flex h-12 items-center px-2 text-xs font-semibold tracking-widest text-champagne uppercase transition-colors hover:text-ivory"
+            >
+              Operators Guide
+            </Link>
           </div>
         </section>
       </main>

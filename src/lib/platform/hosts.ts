@@ -157,17 +157,20 @@ function hostsEqual(a: string, b: string): boolean {
 }
 
 /**
- * Distinct live app host: VITE_APP_HOST is set and is not this deploy.
- * Unset, preview, or www/marketing (this Vercel project) → POS stays here.
+ * Distinct live app host: VITE_APP_HOST is set, is not this deploy, and is not
+ * the unserved default app.summex.app (DEPLOYMENT_NOT_FOUND).
+ * Unset, preview, or www/marketing → POS stays here.
  */
 export function appHostIsLiveAndDistinct(currentHostname?: string): boolean {
   const app = explicitAppHost();
   if (!app) return false;
+  if (hostsEqual(app, SUMMEX_HOSTS.app)) return false;
   const here =
     currentHostname ||
     (typeof window !== "undefined" ? window.location.hostname : "");
   if (!here) return false;
   if (isSingleOriginHost(here)) return false;
+  if (isMarketingPublicHost(here)) return false;
   if (hostsEqual(app, here)) return false;
   const marketing = configuredHosts().marketing;
   if (hostsEqual(here, marketing)) return false;
@@ -224,12 +227,13 @@ function sameOriginPosPath(path: string): string {
   return `/app${p}`;
 }
 
-/** Path inside the application surface. Same origin unless VITE_APP_HOST is a live distinct host. */
+/** Path inside the application surface. Same origin unless a live distinct app host exists. */
 export function appHref(path = "/"): string {
   const p = path.startsWith("/") ? path : `/${path}`;
   const local = sameOriginPosPath(p);
   if (typeof window === "undefined") return local;
   const host = window.location.hostname;
+  if (isMarketingPublicHost(host) || isSingleOriginHost(host)) return local;
   if (surfaceFromHost(host) === "app") {
     if (p === "/") return "/";
     if (p.startsWith("/venue/") || p.startsWith("/kiosk") || p.startsWith("/app")) return p;
@@ -237,6 +241,7 @@ export function appHref(path = "/"): string {
   }
   if (!appHostIsLiveAndDistinct(host)) return local;
   const app = explicitAppHost();
+  if (!app || hostsEqual(app, SUMMEX_HOSTS.app)) return local;
   return `${protocol()}//${app}${p === "/" ? "" : p}`;
 }
 
@@ -345,23 +350,23 @@ export function staffGuestAccessPoints(opts?: {
     },
     {
       id: "pos",
-      label: "app · POS",
-      hint: "Floor, order, host stand",
-      href: absoluteAppHref(`/venue/${venue}${locQ}`),
+      label: "POS",
+      hint: "Floor, order, host stand — this origin",
+      href: `/venue/${venue}${locQ}`,
       surface: "app",
     },
     {
       id: "kds",
-      label: "app · ODS",
-      hint: "Kitchen / bar order display on the same app host",
-      href: absoluteAppHref(`/venue/${venue}${locQ ? `${locQ}&` : "?"}station=kitchen`),
+      label: "ODS",
+      hint: "Kitchen / bar order display on this origin",
+      href: `/venue/${venue}${locQ ? `${locQ}&` : "?"}station=kitchen`,
       surface: "app",
     },
     {
       id: "kiosk",
-      label: "app · kiosk",
-      hint: "Guest kiosk device — still the app host",
-      href: absoluteAppHref(`/kiosk${locQ}`),
+      label: "Kiosk",
+      hint: "Guest kiosk device on this origin",
+      href: `/kiosk${locQ}`,
       surface: "app",
     },
     {
