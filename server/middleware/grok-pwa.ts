@@ -18,7 +18,7 @@ import {
   appNameFromHost,
   createHeadInjector,
   isDocumentPath,
-  isInstallQuery,
+  shouldServeInstallTutorial,
   renderInstallPageHtml,
   renderWebManifest,
 } from "../../scripts/grok-pwa-shared.mjs";
@@ -75,8 +75,7 @@ export default async function grokPwaMiddleware(
   }
 
   if (
-    isInstallQuery(urlWithQuery) &&
-    isDocumentPath(path) &&
+    shouldServeInstallTutorial(path, urlWithQuery) &&
     acceptsHtml(event.req.headers.get("accept"))
   ) {
     const html = renderInstallPageHtml(installPageTemplate, {

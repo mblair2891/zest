@@ -9,6 +9,7 @@ import {
   injectGrokPwaHead,
   isDocumentPath,
   isInstallQuery,
+  shouldServeInstallTutorial,
   renderWebManifest,
   stripInstallParams,
 } from "./grok-pwa-shared.mjs";
@@ -68,6 +69,14 @@ test("detects install query", () => {
   assert.equal(isInstallQuery("/?install=1&platform=android"), false);
   assert.equal(isInstallQuery("/?install=0&platform=ios"), false);
   assert.equal(isInstallQuery("/"), false);
+});
+
+test("does not replace marketing home with the device-frame tutorial", () => {
+  assert.equal(shouldServeInstallTutorial("/", "/?install=1&platform=ios"), false);
+  assert.equal(shouldServeInstallTutorial("/login", "/login?install=1&platform=ios"), false);
+  assert.equal(shouldServeInstallTutorial("/get-pricing", "/get-pricing?install=1&platform=ios"), false);
+  assert.equal(shouldServeInstallTutorial("/station", "/station?install=1&platform=ios"), true);
+  assert.equal(shouldServeInstallTutorial("/app", "/app?install=1&platform=ios"), true);
 });
 
 test("filters non-document paths", () => {

@@ -14,6 +14,7 @@ import {
   injectGrokPwaHead,
   isDocumentPath,
   isInstallQuery,
+  shouldServeInstallTutorial,
   renderInstallPageHtml,
   renderWebManifest,
 } from "./grok-pwa-shared.mjs";
@@ -60,7 +61,7 @@ function serveGrokPwa(middlewares) {
       return;
     }
 
-    if (isInstallQuery(rawUrl) && isDocumentPath(pathOnly) && acceptsHtml(req.headers.accept)) {
+    if (shouldServeInstallTutorial(pathOnly, rawUrl) && acceptsHtml(req.headers.accept)) {
       try {
         sendHtml(res, renderInstallPage(requestHost(req), rawUrl));
       } catch (err) {

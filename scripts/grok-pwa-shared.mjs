@@ -55,6 +55,34 @@ export function isInstallQuery(url) {
   return (install === "1" || install === "true") && platform === "ios";
 }
 
+/** Sales/marketing paths must keep the landing — never the Grok device-frame tutorial. */
+const MARKETING_INSTALL_SKIP = [
+  "/",
+  "/login",
+  "/signup",
+  "/pricing",
+  "/get-pricing",
+  "/features",
+  "/guide",
+  "/whitepaper",
+  "/blog",
+];
+
+/**
+ * Home Screen tutorial is for station/PWA paths. Serving it on `/` covers the
+ * Summex marketing hero with a full-bleed phone frame.
+ */
+export function shouldServeInstallTutorial(pathname, urlWithQuery) {
+  if (!isInstallQuery(urlWithQuery) || !isDocumentPath(pathname)) return false;
+  let path = String(pathname || "/");
+  if (path.length > 1 && path.endsWith("/")) path = path.slice(0, -1);
+  if (!path) path = "/";
+  if (path === "/") return false;
+  return !MARKETING_INSTALL_SKIP.some(
+    (p) => p !== "/" && (path === p || path.startsWith(`${p}/`)),
+  );
+}
+
 /** Paths that can carry an app document (vs assets / API / internals). */
 export function isDocumentPath(pathname) {
   const path = String(pathname ?? "");
