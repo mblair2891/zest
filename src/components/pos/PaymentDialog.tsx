@@ -17,6 +17,10 @@ import { cn, formatCurrency } from "@/lib/utils";
 import type { PaymentMethod } from "@/lib/pos/types";
 import { GuideLearnLink } from "@/components/guide/GuideLearnLink";
 import { captureIsSandbox } from "@/lib/lifecycle/store";
+import { captureCardPresentFn, getPaymentsStatusFn } from "@/lib/payments/api";
+import type { PaymentsStatus } from "@/lib/payments/types";
+import { uid } from "@/lib/utils";
+import { readTenantPosContext } from "@/lib/saas/pos-context";
 
 interface Props {
   open: boolean;
@@ -49,6 +53,8 @@ export function PaymentDialog({ open, onOpenChange }: Props) {
   const [error, setError] = useState<string | null>(null);
   const [change, setChange] = useState<number | null>(null);
   const [done, setDone] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [payStatus, setPayStatus] = useState<PaymentsStatus | null>(null);
 
   const amountCents = amount
     ? Math.round(parseFloat(amount) * 100)
@@ -60,6 +66,21 @@ export function PaymentDialog({ open, onOpenChange }: Props) {
     if (!wanOnline && method === "card") setMethod("cash");
   }, [wanOnline, method]);
 
+  useEffect(() => {
+    if (!open) return;
+    const loc =
+      usePosStore.getState().tenantLocationId ||
+      readTenantPosContext()?.locationId ||
+      "";
+    if (!loc || !wanOnline) {
+      setPayStatus(null);
+      return;
+    }
+    void getPaymentsStatusFn({ data: { locationId: loc } })
+      .then(setPayStatus)
+      .catch(() => setPayStatus(null));
+  }, [open, wanOnline]);
+
   const sandbox = captureIsSandbox({
     operatorId: order?.lines.find((l) => l.vendorId)?.vendorId,
     vendorIds: order?.lines.map((l) => l.vendorId).filter(Boolean) as string[],
@@ -68,10 +89,57 @@ export function PaymentDialog({ open, onOpenChange }: Props) {
   const quickCash = [5, 10, 20, 50, 100].map((d) => d * 100);
 
   const pay = () => {
+    void (async () => {
     setError(null);
     if ((method === "card" || method === "room_charge") && !wanOnline) {
-      setError("Card requires connection");
+      setError("Card requires connection. Take cash or keep the check open.");
+      setMethod("cash");
       return;
+    }
+    let cardLast4 = method === "card" ? last4 || undefined : undefined;
+    if (method === "card") {
+      const ctx = readTenantPosContext();
+      const locationId =
+        usePosStore.getState().tenantLocationId || ctx?.locationId || "";
+      const orgId = ctx?.orgId || "";
+      if (!locationId || !orgId) {
+        setError("Card requires connection. Take cash or keep the check open.");
+        return;
+      }
+      if (payStatus && payStatus.mode === "live" && !payStatus.liveReady) {
+        setError(
+          payStatus.message ||
+            "Card requires a Quantum reader. Take cash or keep the check open.",
+        );
+        return;
+      }
+      setBusy(true);
+      try {
+        const cap = await captureCardPresentFn({
+          data: {
+            orgId,
+            locationId,
+            amountCents: Math.min(amountCents, balance) + tip,
+            checkId: order?.id,
+            hostBrand: settings.name,
+            clientMutationId: uid("mut"),
+            sandboxLast4: payStatus?.mode === "sandbox" ? last4 || "4242" : undefined,
+          },
+        });
+        if (!cap.ok) {
+          setError(
+            cap.error || "Card requires connection. Take cash or keep the check open.",
+          );
+          setBusy(false);
+          return;
+        }
+        cardLast4 = cap.last4 || cardLast4;
+      } catch {
+        setError("Card requires connection. Take cash or keep the check open.");
+        setBusy(false);
+        return;
+      }
+      setBusy(false);
     }
     const res = takePayment({
       method,
@@ -82,36 +150,12 @@ export function PaymentDialog({ open, onOpenChange }: Props) {
           ? Math.round(parseFloat(tendered || "0") * 100) ||
             amountCents + tip
           : undefined,
-      last4: method === "card" ? last4 || "4242" : undefined,
+      last4: cardLast4,
       giftCardCode: method === "gift_card" ? giftCode : undefined,
     });
     if (!res.ok) {
       setError(res.error ?? "Payment failed");
       return;
-    }
-    if (method === "card" && wanOnline && !sandbox) {
-      const ctx = (() => {
-        try {
-          return JSON.parse(sessionStorage.getItem("summex-tenant-pos") || "null") as {
-            orgId?: string;
-            locationId?: string;
-          } | null;
-        } catch {
-          return null;
-        }
-      })();
-      if (ctx?.orgId) {
-        void import("@/lib/saas/api").then(({ recordCardPaymentFn }) =>
-          recordCardPaymentFn({
-            data: {
-              orgId: ctx.orgId!,
-              locationId: ctx.locationId,
-              amountCents: Math.min(amountCents, balance) + tip,
-              last4: last4 || "4242",
-            },
-          }).catch(() => undefined),
-        );
-      }
     }
     if (method === "gift_card") {
       useMarketingStore.getState().logGiftTxn({
@@ -121,10 +165,6 @@ export function PaymentDialog({ open, onOpenChange }: Props) {
         note: giftCode,
       });
     }
-    if (method === "card" && !useNetworkStore.getState().wanOnline()) {
-      setError("Card requires connection");
-      return;
-    }
     if (res.changeCents != null && res.changeCents > 0) {
       setChange(res.changeCents);
     }
@@ -132,11 +172,11 @@ export function PaymentDialog({ open, onOpenChange }: Props) {
     if (!o || o.status === "closed") {
       setDone(true);
     } else {
-      // partial — reset for next tender
       setTip(0);
       setAmount("");
       setTendered("");
     }
+    })();
   };
 
   const finish = () => {
@@ -182,9 +222,15 @@ export function PaymentDialog({ open, onOpenChange }: Props) {
             </GuideLearnLink>
           </DialogTitle>
         </DialogHeader>
-        {sandbox && method === "card" && (
+        {method === "card" && (payStatus?.mode === "sandbox" || sandbox) && (
           <p className="rounded-lg bg-warn/15 px-3 py-2 text-xs font-medium text-warn">
-            TRAINING — Quantum Payments sandbox. Not a live card capture.
+            TRAINING — Quantum Payments sandbox. Not a live card capture. Cash still works.
+          </p>
+        )}
+        {method === "card" && payStatus?.mode === "live" && (
+          <p className="rounded-lg bg-primary/10 px-3 py-2 text-xs font-medium">
+            Live Quantum Payments · present the card on a supplied reader. Tablets are not
+            card terminals. {payStatus.liveReady ? "" : payStatus.message}
           </p>
         )}
 
@@ -241,8 +287,8 @@ export function PaymentDialog({ open, onOpenChange }: Props) {
           <div className="space-y-4">
             {!wanOnline && (
               <p className="rounded-xl border border-warn/40 bg-warn/15 px-3 py-2 text-xs text-foreground">
-                Card requires connection. Cash, tab hold, comps, and local gift
-                still close on this device. Card will not queue a second capture.
+                Card requires connection. Take cash or keep the check open. Gift
+                and comps still work on this device. Card is not queued.
               </p>
             )}
             <div className="rounded-xl border border-border bg-bg p-4 text-center">
@@ -324,17 +370,26 @@ export function PaymentDialog({ open, onOpenChange }: Props) {
                 )}
 
                 <TabsContent value="card" className="mt-0 space-y-2">
-                  <Input
-                    placeholder="Last 4 (optional)"
-                    value={last4}
-                    maxLength={4}
-                    onChange={(e) =>
-                      setLast4(e.target.value.replace(/\D/g, ""))
-                    }
-                  />
+                  {(payStatus?.mode === "sandbox" || sandbox) && (
+                    <Input
+                      placeholder="Last 4 (sandbox receipt only)"
+                      value={last4}
+                      maxLength={4}
+                      onChange={(e) =>
+                        setLast4(e.target.value.replace(/\D/g, ""))
+                      }
+                    />
+                  )}
+                  {payStatus?.mode === "live" && (
+                    <p className="text-xs text-muted-foreground">
+                      Present the card on the Quantum reader. PAN/CVV are never
+                      typed into Summex.
+                    </p>
+                  )}
                   <p className="text-xs text-muted-foreground">
                     Quantum Payments capture under {settings.name}. Guest sees
-                    the host brand, not individual operators.
+                    the host brand, not individual operators. One charge on a
+                    multi-operator check.
                   </p>
                 </TabsContent>
 
@@ -403,11 +458,12 @@ export function PaymentDialog({ open, onOpenChange }: Props) {
               </span>
             </div>
 
-            <Button className="w-full" size="xl" onClick={pay}>
-              {method === "card" && "Charge card"}
-              {method === "cash" && "Take cash"}
-              {method === "gift_card" && "Redeem gift card"}
-              {method === "comp" && "Apply comp"}
+            <Button className="w-full" size="xl" onClick={pay} disabled={busy}>
+              {busy && "Present card on Quantum reader…"}
+              {!busy && method === "card" && "Charge card"}
+              {!busy && method === "cash" && "Take cash"}
+              {!busy && method === "gift_card" && "Redeem gift card"}
+              {!busy && method === "comp" && "Apply comp"}
             </Button>
           </div>
         )}

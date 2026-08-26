@@ -26,10 +26,15 @@ export const PAYMENT_TOPICS: GuideTopic[] = [
         "Every card tender runs through Quantum Payments. Integrations never offer Stripe, Square, Adyen, or other POS processors. Delivery, accounting, and payroll partners stay — they are not card processors.",
       ),
       ul(
-        "Guest-facing charge brand is the location / host name.",
+        "Guest-facing charge brand is the location / host name. One capture on a multi-operator check.",
         "Software billing (SaaS invoices) is separate from guest cards.",
         "Gift cards are first-party Summex, not Quantum Payments and not a third-party gift network.",
-        "If the internet is down, card captures queue on the house hub and flush when the uplink returns.",
+        "Sandbox (default, including Training): practice cards, not a live Visa. Live: present the card on a supplied Quantum reader. SYOH tablets run POS — they are not card terminals.",
+        "If the processor is down or the device is offline: “Card requires connection.” Take cash or keep the check open. Card is not queued and never fakes a live capture.",
+      ),
+      callout(
+        "Sandbox vs live",
+        "Platform → Payments sets the default (sandbox unless you choose live). Location settings can inherit, force sandbox, or take live. Training always sandboxes. Live capture needs server-only keys (QUANTUM_PAYMENTS_SECRET_KEY) and an enrolled reader. Without those, live fails closed — cash still works.",
       ),
       warn(
         "Do not connect a second processor “just for events.” It is not available, and it would break host capture on a multi-operator check.",
@@ -51,7 +56,7 @@ export const PAYMENT_TOPICS: GuideTopic[] = [
       ),
       steps(
         "On the check, tap Pay. Choose card (Quantum Payments), cash, or gift card.",
-        "Card: amount (defaults to balance), tip suggestions, last4 for the sandbox receipt. Capture is one host MID.",
+        "Card: amount (defaults to balance), tip suggestions. Sandbox may show last4 on the practice receipt. Live: present on the Quantum reader — never type PAN/CVV. Capture is one host MID.",
         "Cash: enter tendered; change due is calculated. Cash view tracks the drawer.",
         "Gift: enter the first-party code. Redeem never calls an outside gift network. The fulfilling operator gets the merchandise; issuer liability decreases; issuer remits to the fulfiller if they differ.",
         "To split tenders, pay less than the balance, then take the next tender on the same check.",

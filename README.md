@@ -69,7 +69,9 @@ See `.env.example`. Highlights:
 | `DEV_DEMO` / `VITE_DEV_DEMO` | Leave `0`. Demo tenants are not seeded. Test by onboarding a real location. |
 | `BOOTSTRAP_ADMIN_EMAIL` | First matching signup becomes `platform_admin` if none exists |
 | `STRIPE_SECRET_KEY` + price ids | SaaS subscription billing (software). Optional — sandbox provider if missing |
-| `SUMMEX_PAYMENTS_MODE` | `sandbox` (default) or `live` merchant facade |
+| `SUMMEX_PAYMENTS_MODE` | `sandbox` (default) or `live` Quantum Payments facade |
+| `QUANTUM_PAYMENTS_SECRET_KEY` | Server-only live card-present adapter. Absent → live fails closed (cash still works) |
+| `QUANTUM_PAYMENTS_WEBHOOK_SECRET` | Optional live capture webhook (`/api/payments/webhook`) |
 
 Sign-in methods: **username or email + password** only. Social / OAuth (Google, X) is disabled.
 

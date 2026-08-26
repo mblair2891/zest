@@ -8,6 +8,7 @@ import { formatCurrency } from "@/lib/utils";
 import { parseQrMode, QR_MODE_LABEL } from "@/lib/pos/qr-table";
 import { isEmptyTable } from "@/lib/pos/floor-status";
 import { computeTotals } from "@/lib/pos/calculations";
+import { captureIsSandbox } from "@/lib/lifecycle/store";
 import type { MenuItem, Table } from "@/lib/pos/types";
 
 type CartLine = { menuItemId: string; name: string; unitPriceCents: number; qty: number };
@@ -177,13 +178,25 @@ export function GuestTablePage({
       setMsg("No open check to pay");
       return;
     }
+    let sandbox = true;
+    try {
+      sandbox = captureIsSandbox();
+    } catch {
+      sandbox = true;
+    }
+    if (!sandbox) {
+      setMsg(
+        "Live cards are taken on a Quantum reader at the stand. Ask staff — cash still works.",
+      );
+      return;
+    }
     const res = guestPayOrder(oid);
     if (!res.ok) {
       setMsg(res.error ?? "Pay failed");
       return;
     }
     setPaid(true);
-    setMsg("Paid with Quantum Payments");
+    setMsg("Paid with Quantum Payments sandbox");
   };
 
   if (paid) {

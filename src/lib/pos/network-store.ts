@@ -356,7 +356,7 @@ export function worksWithoutInternet(): string[] {
 
 export function waitsForInternet(): string[] {
   return [
-    "Card charges via Quantum Payments (need a live connection)",
+    "Card charges via Quantum Payments (need a live connection + reader)",
     "SMS / email send",
     "Cloud reporting AI",
     "Marketplace / online order pull",

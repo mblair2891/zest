@@ -950,7 +950,10 @@ function PaymentsSection({
       saving={saving}
       onSave={() => onSave(v)}
     >
-      <Field label="Default Quantum Payments mode">
+      <Field
+        label="Default Quantum Payments mode"
+        hint="Sandbox is default. Live needs QUANTUM_PAYMENTS_SECRET_KEY (server-only) and a supplied reader. Locations can inherit or override. Training always sandboxes. Never a Stripe/Square POS picker."
+      >
         <SelectField
           value={v.quantumPaymentsMode}
           onChange={(quantumPaymentsMode) =>

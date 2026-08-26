@@ -44,6 +44,7 @@ import { FloorQrSettings } from "./FloorQrSettings";
 import { NetworkReadinessPanel } from "@/components/saas/NetworkReadinessPanel";
 import { AccessPointsCard } from "./AccessPointsCard";
 import { LifecycleSettings } from "./LifecycleSettings";
+import { QuantumPaymentsSettings } from "./QuantumPaymentsSettings";
 import { saveFrontSettingsFn } from "@/lib/front/api";
 import {
   CASH_ROUND_INCREMENTS,
@@ -314,6 +315,7 @@ export function SettingsView() {
   return (
     <div className="h-full overflow-y-auto p-3" data-demo="settings">
       <LifecycleSettings />
+      <QuantumPaymentsSettings write={write} />
       <div className="mb-4 flex flex-wrap items-center gap-2">
         <h2 className="text-sm font-semibold">
           {hostMulti ? "Host settings" : "Location settings"}

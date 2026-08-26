@@ -120,7 +120,7 @@ export async function listDeposits(orgId: string) {
   };
 }
 
-/** POS card path: authorize + capture in sandbox (and live facade until a processor is wired). */
+/** POS card path — sandbox or live via the Quantum Payments facade. Never fakes a live Visa. */
 export async function recordCapturedCard(opts: {
   userId: string;
   orgId: string;
@@ -129,13 +129,25 @@ export async function recordCapturedCard(opts: {
   last4?: string | null;
 }): Promise<PaymentIntent> {
   await requireActiveOrg(opts.userId, opts.orgId);
-  const intent = await createPaymentIntent({
+  const loc = String(opts.locationId ?? "").trim();
+  if (!loc) throw new Error("Location is required");
+  const { captureCardPresent } = await import("./facade.server");
+  const res = await captureCardPresent(opts.userId, {
     orgId: opts.orgId,
-    locationId: opts.locationId,
+    locationId: loc,
     amountCents: opts.amountCents,
-    method: "card",
-    last4: opts.last4 ?? "4242",
+    sandboxLast4: opts.last4,
   });
-  await capture(intent.id);
-  return { ...intent, status: "captured" };
+  if (!res.ok) throw new Error(res.error || "Card capture failed");
+  return {
+    id: res.paymentId || "",
+    orgId: opts.orgId,
+    locationId: loc,
+    merchantId: null,
+    amountCents: opts.amountCents,
+    currency: "usd",
+    status: "captured",
+    method: "card",
+    last4: res.last4 ?? null,
+  };
 }

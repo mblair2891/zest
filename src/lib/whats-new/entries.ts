@@ -9,6 +9,19 @@ import type { GuideUpdate } from "@/lib/guide/types";
  */
 export const WHATS_NEW_ENTRIES: GuideUpdate[] = [
   {
+    id: "upd_2026_10_02_quantum_live",
+    date: "2026-10-02",
+    title: "Quantum Payments live path",
+    summary:
+      "Sandbox remains the default. Live card-present uses a supplied Quantum reader under the host brand. Cash still works if the processor is down or the device is offline.",
+    body: "No Stripe/Square POS picker. Training always sandboxes. Live needs server-only keys and an enrolled reader — otherwise the pay dialog fails closed (“Card requires connection” / take cash). PAN and CVV are never stored. $35 dispute fee still splits by merchandise %.",
+    roles: ["owner_manager", "server", "host_operator", "vendor_operator"],
+    surfaces: ["floor", "settings"],
+    audience: "all",
+    topicId: "quantum-payments",
+    tags: ["payments", "quantum", "card", "sandbox", "live"],
+  },
+  {
     id: "upd_2026_10_01_floor_sync",
     date: "2026-10-01",
     title: "Tickets live across devices",

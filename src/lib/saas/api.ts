@@ -199,14 +199,16 @@ export const recordCardPaymentFn = createServerFn({ method: "POST" })
   }))
   .handler(async ({ context, data }) => {
     if (data.amountCents <= 0) throw new Error("Invalid amount");
-    const { recordCapturedCard } = await import("@/lib/payments/summex-payments");
-    return recordCapturedCard({
-      userId: context.userId,
+    if (!data.locationId) throw new Error("Location is required");
+    const { captureCardPresent } = await import("@/lib/payments/facade.server");
+    const res = await captureCardPresent(context.userId, {
       orgId: data.orgId,
       locationId: data.locationId,
       amountCents: data.amountCents,
-      last4: data.last4,
+      sandboxLast4: data.last4,
     });
+    if (!res.ok) throw new Error(res.error || "Card requires connection");
+    return res;
   });
 
 export const billingStatusFn = createServerFn({ method: "GET" })

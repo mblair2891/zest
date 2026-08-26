@@ -37,6 +37,10 @@ export type LocationSetup = {
   operatorLifecycle?: Record<string, string>;
   goLiveAt?: string | null;
   goLiveChoices?: Record<string, "keep" | "erase">;
+  /** inherit = platform default (sandbox unless Platform → Payments is live). */
+  paymentsMode?: "inherit" | "sandbox" | "live";
+  /** Processor reader id for live card-present (Quantum terminal serial). */
+  quantumReaderId?: string;
 };
 
 export const EMPTY_LOCATION_SETUP: LocationSetup = {
@@ -59,6 +63,7 @@ export const EMPTY_LOCATION_SETUP: LocationSetup = {
   operatorPayouts: [],
   entityPermissions: [],
   locationDevices: [],
+  paymentsMode: "inherit",
 };
 export type MembershipRole =
   | "owner"

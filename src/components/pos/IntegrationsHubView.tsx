@@ -1,4 +1,7 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { usePosStore } from "@/lib/pos/store";
+import { getPaymentsStatusFn } from "@/lib/payments/api";
+import type { PaymentsStatus } from "@/lib/payments/types";
 import {
   Plug,
   RefreshCw,
@@ -428,47 +431,64 @@ export function IntegrationsHubView() {
 }
 
 function SummexPaymentsPanel() {
+  const locId = usePosStore((s) => s.tenantLocationId) || "";
+  const [st, setSt] = useState<PaymentsStatus | null>(null);
+  useEffect(() => {
+    if (!locId) return;
+    void getPaymentsStatusFn({ data: { locationId: locId } })
+      .then(setSt)
+      .catch(() => setSt(null));
+  }, [locId]);
+  const live = st?.mode === "live";
   return (
     <div className="rounded-2xl border border-primary/30 bg-primary/5 p-4">
       <div className="mb-3 flex flex-wrap items-center gap-2">
         <ShieldCheck className="h-4 w-4 text-primary" />
-        <h3 className="text-sm font-semibold">Summex Payments · live</h3>
-        <Badge variant="success">This location</Badge>
+        <h3 className="text-sm font-semibold">Quantum Payments</h3>
+        <Badge variant={live && st?.liveReady ? "success" : "warn"}>
+          {st?.lifecycleForcesSandbox
+            ? "Sandbox · training"
+            : live
+              ? st?.liveReady
+                ? "Live"
+                : "Live · not ready"
+              : "Sandbox"}
+        </Badge>
       </div>
       <p className="mb-3 text-xs text-muted-foreground">
-        Guests pay Summex. Vendors get period payouts minus card fees and the
-        host cut. You do not connect Square, Stripe, or another processor.
+        Guests pay Quantum Payments under the host brand. Operators are not
+        processors — period payouts split merchandise. There is no Stripe or
+        Square POS picker. Cash still works if the reader is down.
       </p>
-      <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-        <Stat label="In-person" value="2.49% + 15¢" />
-        <Stat label="Keyed / online" value="2.9% + 30¢" />
-        <Stat label="Deposits" value="Next business day" />
-        <Stat label="Bank" value="•••• 4421" />
-      </div>
-      <div className="mt-3 grid gap-2 sm:grid-cols-3">
+      <p className="mb-3 text-xs text-muted-foreground">{st?.message}</p>
+      <div className="grid gap-2 sm:grid-cols-3">
         <div className="rounded-xl border border-border bg-surface px-3 py-2">
           <p className="flex items-center gap-1.5 text-[10px] uppercase tracking-wide text-muted-foreground">
-            <Landmark className="h-3 w-3" /> Deposit
+            <CreditCard className="h-3 w-3" /> Readers
           </p>
-          <p className="text-sm font-semibold tabular">$4,812.40 queued</p>
-          <p className="text-[11px] text-muted-foreground">Hits Friday 8am</p>
+          <p className="text-sm font-semibold">
+            {st?.readers.length ?? 0} enrolled
+          </p>
+          <p className="text-[11px] text-muted-foreground">
+            Supplied terminals · SYOH tablets run POS only
+          </p>
         </div>
         <div className="rounded-xl border border-border bg-surface px-3 py-2">
           <p className="flex items-center gap-1.5 text-[10px] uppercase tracking-wide text-muted-foreground">
-            <CreditCard className="h-3 w-3" /> Terminals
+            <Landmark className="h-3 w-3" /> Capture
           </p>
-          <p className="text-sm font-semibold">2 Summex readers online</p>
+          <p className="text-sm font-semibold">{live ? "Host MID" : "Sandbox book"}</p>
           <p className="text-[11px] text-muted-foreground">
-            Counter + handheld · Wi‑Fi
+            One guest charge · ledger allocates operators
           </p>
         </div>
         <div className="rounded-xl border border-border bg-surface px-3 py-2">
           <p className="flex items-center gap-1.5 text-[10px] uppercase tracking-wide text-muted-foreground">
             <Banknote className="h-3 w-3" /> Disputes
           </p>
-          <p className="text-sm font-semibold">0 open</p>
+          <p className="text-sm font-semibold">$35 on file</p>
           <p className="text-[11px] text-muted-foreground">
-            Processor handles first-loss risk
+            Split by merchandise % — not a standing fee
           </p>
         </div>
       </div>

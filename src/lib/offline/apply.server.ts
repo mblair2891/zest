@@ -33,6 +33,28 @@ export async function applyOfflineBatch(
         continue;
       }
 
+      if (item.kind === "card_capture") {
+        results.push({
+          clientMutationId: item.clientMutationId,
+          status: "rejected",
+          error: "Card requires connection",
+        });
+        await sql`
+          insert into offline_mutations (
+            client_mutation_id, location_id, user_id, kind, payload, status, error
+          ) values (
+            ${item.clientMutationId},
+            ${item.locationId},
+            ${userId},
+            ${item.kind},
+            ${JSON.stringify(item.payload)}::jsonb,
+            ${"rejected"},
+            ${"card_requires_connection"}
+          )
+        `;
+        continue;
+      }
+
       if (item.kind === "settings_patch") {
         results.push({
           clientMutationId: item.clientMutationId,

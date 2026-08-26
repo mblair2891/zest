@@ -20,8 +20,8 @@ export const DEVICE_TOPICS: GuideTopic[] = [
       ul(
         "Works offline (cached location): menu, modifiers, tables/sections, staff switcher, open checks, ODS tickets on this station.",
         "Allow: create/edit orders, send to kitchen/bar (local queue), bump tickets, seat cached tables, cash tender, waitlist add (SMS pending send).",
-        "Needs internet: Quantum Payments card auth, SMS/email send, cloud reporting AI, SaaS admin and billing.",
-        "Card: blocked with “Card requires connection.” Offer cash or hold the tab. Cash never drops a closed check and never double-captures on sync.",
+        "Needs internet: Quantum Payments live card-present, SMS/email send, cloud reporting AI, SaaS admin and billing.",
+        "Card: blocked with “Card requires connection.” Take cash or keep the check open. Card is not queued and never fakes a live Visa.",
         "Tickets are live across devices when online: every POS and ODS at the location shares the same open checks, sends, Start/Bump, table status, and cash payments (server wins on refresh). Offline, this station still runs from its cache and queues mutations; we do not pretend two tablets share a check with no internet.",
       ),
       steps(
@@ -63,8 +63,13 @@ export const DEVICE_TOPICS: GuideTopic[] = [
         "Receipt printers follow the house hub. If a chit does not print, check the hub outbox and the printer’s Wi‑Fi, not a second processor.",
         "BYOD phones are supported for running; Android tablets and desktops use the same This station switcher — no special SKU.",
       ),
+      ul(
+        "SYOH (bring your own) tablets and phones run POS, ODS, and host stand in the browser/PWA.",
+        "Live card-present uses a supplied Quantum reader (certified terminal). The tablet is not the card terminal.",
+        "Enroll the reader under Devices → Hardware. Serial is the processor reader id. Staff SSID only.",
+      ),
       warn(
-        "There is no separate “ODS appliance OS” in this product. A browser or the Android shell on the staff SSID is the device. Hardware is not locked to one role.",
+        "There is no separate “ODS appliance OS” in this product. A browser or the Android shell on the staff SSID is the device. Hardware is not locked to one role. Do not take live cards on a SYOH tablet keypad.",
       ),
       related("wifi-offline", "kds", "navigation", "host-operator-settings", "station-switcher"),
     ],

@@ -38,11 +38,10 @@ export const saveLocationSettingsFn = createServerFn({ method: "POST" })
     const { assertHostOrgWrite } = await import("./assert-host.server");
     await assertHostOrgWrite(context.userId, data.orgId, data.locationId);
     const { updateLocationSetupForUser } = await import("@/lib/saas/tenancy.server");
-    const merged: LocationSetup = { ...EMPTY_LOCATION_SETUP, ...data.setup };
     return updateLocationSetupForUser(context.userId, {
       orgId: data.orgId,
       locationId: data.locationId,
-      setup: merged,
+      setup: data.setup as LocationSetup,
     });
   });
 

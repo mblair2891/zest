@@ -188,6 +188,11 @@ function parseSetup(raw: unknown): LocationSetup {
       o.goLiveChoices && typeof o.goLiveChoices === "object"
         ? (o.goLiveChoices as LocationSetup["goLiveChoices"])
         : undefined,
+    paymentsMode:
+      o.paymentsMode === "sandbox" || o.paymentsMode === "live" || o.paymentsMode === "inherit"
+        ? o.paymentsMode
+        : "inherit",
+    quantumReaderId: typeof o.quantumReaderId === "string" ? o.quantumReaderId.slice(0, 80) : undefined,
   };
 }
 
