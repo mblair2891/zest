@@ -282,6 +282,12 @@ To test the partner house with passwords: sign in as `laundry.owner`, open The
 Laundry, PIN **2001** as Server 1, order a drink + a plate, confirm bar vs
 kitchen tickets.
 
+Floor test PINs (Admin only, Platform Settings → General): **0000** Manager
+(Change device), **1111** Server, **2222** Host, **3333** Bartender, **4444**
+Kitchen, **5555** Busser, **6666** Cashier. Seeded onto Test Location if none
+exists, otherwise the single existing house. Clock in/out is a separate punch.
+Not on the marketing homepage. `/guide?topic=floor-test-pins`.
+
 **Two-stage onboarding:** SaaS finishes the **Host** (host_ready). The host then
 invites **operators/tenants** from Settings → Operators / Tenants by email or
 SMS. Each POC opens the link, sets a password, and completes their own details.

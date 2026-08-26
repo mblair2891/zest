@@ -253,7 +253,38 @@ export const GETTING_STARTED_TOPICS: GuideTopic[] = [
       warn(
         "Live customer tenants stay empty until onboarding. There are no public demo sites on marketing.",
       ),
-      related("login", "prospect-intake", "onboarding-wizard", "network-readiness", "access-urls", "create-org", "type-food-hall", "prospect-demos", "partner-demo"),
+      related("login", "prospect-intake", "onboarding-wizard", "network-readiness", "access-urls", "create-org", "type-food-hall", "prospect-demos", "partner-demo", "floor-test-pins"),
+    ],
+  }),
+  topic({
+    id: "floor-test-pins",
+    chapterId: "getting-started",
+    title: "Floor test PINs & devices",
+    summary: "Admin-only hashed PINs for device and station testing. Not on the marketing homepage.",
+    visibility: "platform",
+    roles: ["platform_admin"],
+    keywords: ["pin", "0000", "test location", "device", "ods", "kiosk", "floor test"],
+    openView: "floor",
+    blocks: [
+      why(
+        "Testers need a PIN pad and Change device without typing a roster. These PINs are hashed at rest, scoped to one location, and wiped by factory reset.",
+      ),
+      steps(
+        "Sign in as Platform Admin. Open POS for the seeded location (Test Location, or the single existing house).",
+        "At the floor PIN pad enter 0000 (Manager). Use This station / Change device to pick Server tablet, Host stand, Kitchen ODS, Bar ODS, Kiosk, or Cashier.",
+        "Log out of the PIN session. Try 1111 Server, 2222 Host, 3333 Bartender, 4444 Kitchen, 5555 Busser, 6666 Cashier.",
+        "Time clock uses the same PINs but is a separate punch — it does not log the floor session in.",
+      ),
+      ul(
+        "0000 Manager — can Change device among the seeded stations.",
+        "1111 Server · 2222 Host stand · 3333 Bartender · 4444 Kitchen · 5555 Busser · 6666 Cashier.",
+        "Listed on Platform Settings → General (Admin only). Never on www marketing.",
+        "Not the partner-demo Laundry catalog. Operators are not added unless the location already has them.",
+      ),
+      warn(
+        "These are test PINs for internal floor QA. Do not print them on the public site. Customer houses should set unique staff PINs.",
+      ),
+      related("partner-demo", "empty-start", "feature-kiosk", "platform-settings"),
     ],
   }),
   topic({
@@ -295,7 +326,7 @@ export const GETTING_STARTED_TOPICS: GuideTopic[] = [
       warn(
         "This is not Load The Laundry and not a public PIN-0000 demo. Factory reset reseeds it. Demo-tenant purge does not delete it.",
       ),
-      related("laundry-test-venue", "type-food-hall", "kds", "roles-dashboards", "floor-pin-login"),
+      related("laundry-test-venue", "type-food-hall", "kds", "roles-dashboards", "floor-pin-login", "floor-test-pins"),
     ],
   }),
   topic({

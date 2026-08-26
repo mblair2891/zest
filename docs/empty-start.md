@@ -31,6 +31,28 @@ The plaintext initial password lives only in the server-side bootstrap (`src/lib
 
 Until you create a location, POS has no menus, tables, vendors, or tickets.
 
+## Floor test PINs (Admin only)
+
+Idempotent seed on boot / factory reset. **Not** on the marketing homepage.
+Listed on **Platform Settings → General**.
+
+If no real location exists, Summex creates **Test Location** (training / sandbox).
+If exactly one real location already exists, staff and devices attach there.
+
+| PIN | Role | Name |
+|---|---|---|
+| 0000 | Manager | Test Manager (Change device) |
+| 1111 | Server | Test Server |
+| 2222 | Host stand | Test Host |
+| 3333 | Bartender | Test Bartender |
+| 4444 | Kitchen | Test Kitchen |
+| 5555 | Busser | Test Busser |
+| 6666 | Cashier | Test Cashier |
+
+Devices: Server tablet, Host stand, Order Display — Kitchen, Order Display — Bar, Kiosk, Cashier.
+
+How to test: Admin → Open POS (same origin `/venue/…?loc=…`) → floor PIN pad. Clock in/out is a separate punch using the same PINs.
+
 See also `docs/quantum-payments-multi-operator.md` for host capture and the $35 dispute split.
 
 ## No demo tenants

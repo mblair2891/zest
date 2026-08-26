@@ -62,6 +62,8 @@ import {
   type EmailOutboxRow,
 } from "@/lib/saas/platform-settings";
 import { signOut } from "@/lib/auth/client";
+import { getFloorTestInfoFn } from "@/lib/saas/api";
+import type { FloorTestInfo } from "@/lib/demo/floor-test";
 import { cn } from "@/lib/utils";
 import {
   ChipList,
@@ -393,6 +395,8 @@ function GeneralSection({
   const [v, setV] = useState(initial);
   useEffect(() => setV(initial), [initial]);
   return (
+    <>
+    <FloorTestPinsCard />
     <SectionCard
       title="General"
       description="How Summex identifies itself to operators and guests. Powered by Quantum Reach."
@@ -444,6 +448,50 @@ function GeneralSection({
         <Input value={meta.appUrl} readOnly className="opacity-80" />
       </Field>
     </SectionCard>
+    </>
+  );
+}
+
+function FloorTestPinsCard() {
+  const [info, setInfo] = useState<FloorTestInfo | null>(null);
+  useEffect(() => {
+    void getFloorTestInfoFn()
+      .then(setInfo)
+      .catch(() => setInfo(null));
+  }, []);
+  if (!info) return null;
+  return (
+    <section className="mb-4 max-w-3xl space-y-3 rounded-2xl border border-border bg-surface p-4">
+      <div>
+        <h3 className="text-base font-semibold">Floor test PINs</h3>
+        <p className="mt-1 text-sm text-muted-foreground">
+          Admin-only. Seeded on {info.locationName} ({info.orgName}). Clock in/out
+          is separate from PIN session. Not shown on the public homepage.
+        </p>
+      </div>
+      <table className="w-full text-left text-sm">
+        <thead>
+          <tr className="text-xs uppercase tracking-wide text-muted-foreground">
+            <th className="py-1 pr-3 font-medium">PIN</th>
+            <th className="py-1 pr-3 font-medium">Role</th>
+            <th className="py-1 font-medium">Name</th>
+          </tr>
+        </thead>
+        <tbody>
+          {info.staff.map((s) => (
+            <tr key={s.pin} className="border-t border-border">
+              <td className="py-1.5 pr-3 font-mono tabular">{s.pin}</td>
+              <td className="py-1.5 pr-3 capitalize">{s.role.replace("_", " ")}</td>
+              <td className="py-1.5">{s.name}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+      <p className="text-xs text-muted-foreground">
+        Open POS for this location, then PIN on the floor pad. Manager 0000 can
+        Change device: {info.devices.map((d) => d.label).join(" · ")}.
+      </p>
+    </section>
   );
 }
 

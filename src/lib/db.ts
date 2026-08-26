@@ -340,6 +340,12 @@ export function ensureDbReady(): Promise<void> {
     } catch (err) {
       console.error("[db] partner demo seed skipped:", err);
     }
+    try {
+      const { ensureFloorTestSeed } = await import("@/lib/demo/floor-test-seed.server");
+      await ensureFloorTestSeed();
+    } catch (err) {
+      console.error("[db] floor-test seed skipped:", err);
+    }
   };
   return boot();
 }

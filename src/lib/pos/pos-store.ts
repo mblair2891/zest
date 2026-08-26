@@ -331,6 +331,8 @@ export interface PosStore {
     staff?: { role: EmployeeRole; operatorId?: string | null; name: string };
     entityPermissions?: import("@/lib/access/entity-grants").EntityGrantRow[];
     locationDevices?: import("./location-devices").LocationDevice[];
+    floorStaff?: import("./types").Employee[];
+    pinGate?: boolean;
   }) => ActionResult;
   tenantLocationId?: string | null;
   loginAsOwner: (name: string) => ActionResult;

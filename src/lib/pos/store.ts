@@ -77,6 +77,26 @@ import {
   type LocationDevice,
 } from "./location-devices";
 import { laundryLocationDevices } from "./laundry-seed";
+
+function mergeFloorStaff(get, set, floorStaff) {
+	if (!Array.isArray(floorStaff) || floorStaff.length === 0) return;
+	const loc = get().tenantLocationId || "loc";
+	const byId = new Map(get().employees.map((e) => [e.id, e]));
+	for (const e of floorStaff) {
+		if (!e?.id) continue;
+		const pin = String(e.pin ?? "").replace(/\D/g, "").slice(0, 4);
+		byId.set(e.id, {
+			...e,
+			pin: "",
+			pinHash: e.pinHash || (pin.length === 4 ? hashPin(pin, loc) : e.pinHash),
+			clockedIn: Boolean(e.clockedIn),
+			tipsEarned: e.tipsEarned ?? 0,
+			salesTotal: e.salesTotal ?? 0,
+			active: e.active !== false,
+		});
+	}
+	set({ employees: [...byId.values()] });
+}
 import {
   DEFAULT_FLOOR_STATUS_CONFIG,
   deriveTableStatus,
@@ -2421,6 +2441,7 @@ const usePosStoreRaw = create()(persist((set, get) => ({
 			} else if (opts.locationDevices?.length) {
 				set({ locationDevices: opts.locationDevices });
 			}
+			mergeFloorStaff(get, set, opts.floorStaff);
 			try {
 				useSaasStore.getState().setActiveLocation(locationId);
 			} catch {
@@ -2428,7 +2449,7 @@ const usePosStoreRaw = create()(persist((set, get) => ({
 			}
 			return { ok: true };
 		}
-		if (already && (!staff || staff.role === "owner")) {
+		if (already && (!staff || staff.role === "owner") && !opts.floorStaff?.length && !opts.pinGate) {
 			return get().loginAsOwner(ownerName);
 		}
 		if (!already) {
@@ -2461,10 +2482,23 @@ const usePosStoreRaw = create()(persist((set, get) => ({
 				locationDevices: opts.locationDevices ?? get().locationDevices,
 			});
 		}
+		mergeFloorStaff(get, set, opts.floorStaff);
 		try {
 			useSaasStore.getState().setActiveLocation(locationId);
 		} catch {
 			/* ignore */
+		}
+		if (opts.floorStaff?.length || opts.pinGate) {
+			const hasTestMgr = (opts.floorStaff ?? []).some((s) => s.id === "emp_ft_0000");
+			set({
+				currentEmployeeId: null,
+				sessionKind: "pin",
+				backOfficeUnlocked: false,
+				employees: hasTestMgr
+					? get().employees.filter((e) => e.id !== "emp_owner")
+					: get().employees,
+			});
+			return { ok: true };
 		}
 		if (staff && staff.role !== "owner") {
 			const existing = get().employees.find(

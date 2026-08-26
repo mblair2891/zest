@@ -134,7 +134,10 @@ function PosAppInner({ entityId }: { entityId?: string }) {
           const setup = access.location.setup ?? EMPTY_LOCATION_SETUP;
           const rawMode = setup.menuMode;
           const menuMode: TenantMenuMode =
-            rawMode === "categories" || rawMode === "csv_later" || rawMode === "empty"
+            rawMode === "categories" ||
+            rawMode === "csv_later" ||
+            rawMode === "empty" ||
+            rawMode === "starter"
               ? rawMode
               : "empty";
           const sectionNames = Array.isArray(setup.sectionNames)
@@ -163,6 +166,8 @@ function PosAppInner({ entityId }: { entityId?: string }) {
             address: access.location.address,
             entityPermissions: parseGrantMatrix(setup.entityPermissions),
             locationDevices: parseLocationDevices(setup.locationDevices),
+            floorStaff: access.floorStaff,
+            pinGate: Boolean(access.floorStaff?.length) || Boolean(access.openDemo),
             staff: staffRole
               ? {
                   role: staffRole,
