@@ -17,6 +17,8 @@ import {
 import { Button } from "@/components/ui/button";
 import { usePosStore } from "@/lib/pos/store";
 import { PinKeypad } from "./PinKeypad";
+import { ThisStationButton, SplitScreenToggle } from "./ChangeDeviceDialog";
+import { useStationSessionStore } from "@/lib/pos/station-session";
 import { isBackOfficeRole } from "@/lib/pos/pin";
 import { isProspectDemo } from "@/lib/demo/session";
 import { DEMO_STAFF_PIN, isDemoStaffPin } from "@/lib/demo/pin";
@@ -151,11 +153,15 @@ export function EntityLogin({ entityId }: { entityId: VenueEntityId }) {
   );
   const [staffId, setStaffId] = useState<string>("");
 
+  const locId = usePosStore((s) => s.tenantLocationId);
   useEffect(() => {
     if (isVenueEntityId(entityId) && activeEntityId !== entityId) {
       applyEntity(entityId);
     }
   }, [entityId, activeEntityId, applyEntity]);
+  useEffect(() => {
+    useStationSessionStore.getState().ensureLocation(locId || "loc");
+  }, [locId]);
 
   useEffect(() => {
     if (!staffId && clockStaff[0]) setStaffId(clockStaff[0].id);
@@ -217,6 +223,10 @@ export function EntityLogin({ entityId }: { entityId: VenueEntityId }) {
 
   return (
     <div className="flex min-h-[100dvh] flex-col bg-bg pt-[var(--grok-banner-h,0px)]">
+      <div className="flex items-center justify-end gap-2 px-4 pt-3">
+        <ThisStationButton />
+        <SplitScreenToggle />
+      </div>
       <div
         className="mx-auto flex w-full max-w-lg flex-1 flex-col justify-center px-4 py-8"
         data-demo={prospect ? "demo-pin-gate" : undefined}

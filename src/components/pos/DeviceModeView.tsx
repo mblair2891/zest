@@ -5,15 +5,22 @@ import { WaitlistView } from "./WaitlistView";
 import { CashView } from "./CashView";
 import type { SessionModeId } from "@/lib/lifecycle/types";
 
-export function DeviceModeView({ mode }: { mode: SessionModeId }) {
+export function DeviceModeView({
+  mode,
+  operatorId,
+}: {
+  mode: SessionModeId;
+  operatorId?: string | null;
+}) {
   switch (mode) {
     case "kitchen_kds":
-      return <KitchenView station="kitchen" />;
+      return <KitchenView station="kitchen" operatorId={operatorId} />;
     case "expo":
-      return <KitchenView station="kitchen" expo />;
+      return <KitchenView station="kitchen" expo operatorId={operatorId} />;
     case "bar_kds":
+      return <KitchenView station="bar" operatorId={operatorId} />;
     case "bar_pos":
-      return <KitchenView station="bar" />;
+      return <OrderView />;
     case "cashier":
       return <OrderView />;
     case "host_stand":

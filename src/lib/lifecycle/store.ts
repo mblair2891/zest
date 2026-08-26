@@ -58,11 +58,6 @@ function canOwner(): boolean {
   return r === "owner";
 }
 
-function canManagerDevice(): boolean {
-  const r = actor().role;
-  return r === "owner" || r === "manager";
-}
-
 function parseLife(v: unknown, fallback: LocationLifecycle): LocationLifecycle {
   const s = String(v ?? "");
   if (s === "onboarding" || s === "training" || s === "scheduled_live" || s === "live") {
@@ -136,17 +131,12 @@ export const useLifecycleStore = create<LifecycleState>()(
           operatorStatus: { ...get().operatorStatus, [operatorId]: s },
         }),
       setSessionMode: (sessionMode) => {
-        if (!canManagerDevice() && get().sessionMode !== sessionMode) {
-          /* PIN users stay in current mode unless manager already switched */
-        }
         set({ sessionMode });
       },
       setSplit: (splitEnabled) => {
-        if (!canManagerDevice()) return;
         set({ splitEnabled });
       },
       setPane: (which, m) => {
-        if (!canManagerDevice()) return;
         if (which === "a") set({ paneA: m });
         else set({ paneB: m });
       },

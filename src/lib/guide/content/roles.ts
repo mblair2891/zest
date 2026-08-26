@@ -200,12 +200,12 @@ export const ROLE_GUIDE_TOPICS: GuideTopic[] = [
       ul(
         "Host (owner/manager): profile, tax, cash discount, Quantum Payments location config, floor, kiosk/waitlist, packages, onboard/suspend operators, payout destinations, settlement rules, host cut, chargeback policy, entity permission matrix, all devices.",
         "Guest operator login: own menu (create/edit/86), own tickets/ODS, own reports, own staff and time clock. Peer menus default view-only. Cannot edit another entity unless the host grants edit_menu.",
-        "Devices: house assets. Host assigns any tablet to any entity + function (Steam bar ODS, Diamond floor POS, host kiosk).",
+        "Devices: house assets, not locked roles. Host enrolls tablets. Any device switches via This station (Steam bar ODS, Diamond floor POS, host kiosk, or split ODS).",
       ),
       steps(
         "PIN as host owner. Host settings → Operators to onboard a stall (name, station, payout last 4).",
         "Open Entity permissions. Defaults: view_menu on, edit_menu off, tickets/reports/settlement own-only, devices host-only.",
-        "Open Device assignment. Point Tablet A at Steam bar ODS and Tablet B at Diamond floor POS — no new hardware.",
+        "Open Device assignment to enroll. On the tablet, This station → Steam bar ODS or Diamond floor POS — no new hardware, no locked SKU.",
         "Switch Demo mode to Steam Distillery. Edit a Steam item. Diamond items show “view only.”",
         "Switch to Diamond House BBQ. Steam menu is read-only. You cannot change Steam settings.",
       ),

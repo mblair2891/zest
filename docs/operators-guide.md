@@ -26,6 +26,7 @@ a CMS.
 | `docs/quantum-payments-ledger.md` | Ledger sign convention + The Laundry worked example |
 | `docs/partner-demo-logins.md` | Partner-demo location + staff logins/PINs (not public, not marketing home) |
 | `/guide?topic=partner-demo` | Tagged partner-demo house (The Laundry) — not a public demo site |
+| `/guide?topic=station-switcher` | This station + split-screen ODS (devices are not locked roles) |
 | `/guide?topic=laundry-test-venue` | Test a host + operators location via SaaS onboarding |
 
 Bump `GUIDE_VERSION` in `types.ts` when you ship a batch of topics.
@@ -75,6 +76,12 @@ Bookmarkable URL: `/guide?topic=my-topic`.
 PIN roles: owner, manager, server, host stand, bartender, kitchen/expo,
 busser, cashier, vendor_operator, accountant, kiosk. Platform Admin is SaaS
 only — not a floor PIN.
+
+Devices are not fixed roles. **This station** switches Host stand, Server POS,
+Expo, Cashier, Busser, Kiosk, or Order Display (and entity on a host floor).
+PIN is identity; the screen remembers last station. Large displays **Split**
+two independent ODS/POS panes (optional 70/30, tap header to fullscreen).
+No special device SKU.
 
 Home (`hq`) is a **role dashboard**. Nav hides views the role cannot open.
 Vendor operators are scoped to `operatorId` (tickets, portal, settlement share).

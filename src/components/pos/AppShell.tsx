@@ -60,11 +60,16 @@ import { DemoDeviceSwitcher } from "@/components/demo/DemoDeviceSwitcher";
 import { useDemoDeviceStore } from "@/lib/demo/device-session";
 import { useDemoLiveSync } from "@/lib/demo/live-sync";
 import { TrainingBanner } from "./TrainingBanner";
-import { ChangeDeviceButton, SplitScreenToggle, ChangeDeviceDialog } from "./ChangeDeviceDialog";
-import { DeviceModeView } from "./DeviceModeView";
+import {
+  ThisStationButton,
+  SplitScreenToggle,
+  StationSwitcherDialog,
+} from "./ChangeDeviceDialog";
+import { DeviceModeView, applySessionModeView } from "./DeviceModeView";
 import { LifecycleWatcher } from "./LifecycleWatcher";
-import { useLifecycleStore } from "@/lib/lifecycle/store";
-import { SESSION_MODES } from "@/lib/lifecycle/types";
+import { useStationSessionStore } from "@/lib/pos/station-session";
+import { stationKindLabel, stationsAllowedForEmployee } from "@/lib/pos/station-access";
+import { HOST_SCOPE } from "@/lib/access/entity-grants";
 import { FloorView } from "./FloorView";
 import { OrderView } from "./OrderView";
 import { KitchenView } from "./KitchenView";
@@ -190,10 +195,15 @@ export function AppShell() {
   const backOfficeUnlocked = usePosStore((s) => s.backOfficeUnlocked);
   const [unlockOpen, setUnlockOpen] = useState(false);
   const [pendingView, setPendingView] = useState<PosView | null>(null);
-  const splitEnabled = useLifecycleStore((s) => s.splitEnabled);
-  const paneA = useLifecycleStore((s) => s.paneA);
-  const paneB = useLifecycleStore((s) => s.paneB);
+  const splitEnabled = useStationSessionStore((s) => s.splitEnabled);
+  const paneA = useStationSessionStore((s) => s.paneA);
+  const paneB = useStationSessionStore((s) => s.paneB);
+  const splitRatio = useStationSessionStore((s) => s.splitRatio);
+  const focusedPane = useStationSessionStore((s) => s.focusedPane);
+  const setFocusedPane = useStationSessionStore((s) => s.setFocusedPane);
+  const stationAssignment = useStationSessionStore((s) => s.assignment);
   const [panePick, setPanePick] = useState<null | "a" | "b">(null);
+  const tenantLocationId = usePosStore((s) => s.tenantLocationId);
   const kdsMode =
     isProspectDemo() &&
     demoEntered &&
@@ -219,6 +229,7 @@ export function AppShell() {
   const openManual = useManualStore((s) => s.openManual);
   const settings = usePosStore((s) => s.settings);
   const tickets = usePosStore((s) => s.tickets);
+  const vendors = usePosStore((s) => s.vendors);
   const clock = usePosStore((s) => s.clock);
   const tick = usePosStore((s) => s.tick);
   const orders = usePosStore((s) => s.orders);
@@ -324,6 +335,21 @@ export function AppShell() {
   }, [role, packagePreview]);
 
   useEffect(() => {
+    useStationSessionStore.getState().ensureLocation(tenantLocationId || "loc");
+  }, [tenantLocationId]);
+
+  useEffect(() => {
+    if (!emp) return;
+    const allowed = stationsAllowedForEmployee(emp);
+    let kind = useStationSessionStore.getState().assignment.kind;
+    if (allowed.length && !allowed.includes(kind)) {
+      kind = allowed[0]!;
+      useStationSessionStore.getState().setAssignment({ kind });
+    }
+    applySessionModeView(kind, (v) => setView(v));
+  }, [emp?.id, emp?.role, setView]);
+
+  useEffect(() => {
     const id = window.setInterval(() => tick(), 1000);
     return () => window.clearInterval(id);
   }, [tick]);
@@ -366,6 +392,8 @@ export function AppShell() {
           </p>
           <span className="text-xs text-muted-foreground">{settings.name}</span>
           <div className="ml-auto flex items-center gap-2">
+            <ThisStationButton compact />
+            <SplitScreenToggle />
             <VoiceCommandButton />
             <DemoDeviceSwitcher />
             <Button size="sm" variant="outline" onClick={isProspectDemo() ? switchDemoUser : () => logout()}>
@@ -380,6 +408,7 @@ export function AppShell() {
           <KitchenView
             station={demoDevice === "kds_bar" ? "bar" : "kitchen"}
             expo={demoDevice === "expo"}
+            operatorId={stationAssignment.operatorId}
           />
         </div>
       </div>
@@ -460,7 +489,7 @@ export function AppShell() {
             </div>
           )}
 
-          <ChangeDeviceButton />
+          <ThisStationButton />
           <SplitScreenToggle />
           <VoiceCommandButton />
           <NotificationBell />
@@ -566,34 +595,70 @@ export function AppShell() {
 
         {splitEnabled && !kdsMode ? (
           <div className="flex min-h-0 min-w-0 flex-1 overflow-hidden">
-            {(["a", "b"] as const).map((pane) => {
-              const mode = pane === "a" ? paneA : paneB;
-              const label = SESSION_MODES.find((m) => m.id === mode)?.label ?? mode;
-              return (
-                <div
-                  key={pane}
-                  className={cn(
-                    "flex min-h-0 min-w-0 flex-1 flex-col",
-                    pane === "a" && "border-r border-border",
-                  )}
-                >
-                  <div className="flex items-center justify-between gap-2 border-b border-border px-2 py-1">
-                    <span className="text-xs font-semibold">{label}</span>
-                    <button
-                      type="button"
-                      className="text-[11px] text-primary"
-                      onClick={() => setPanePick(pane)}
-                    >
-                      Change device
-                    </button>
+            {(["a", "b"] as const)
+              .filter((pane) => !focusedPane || focusedPane === pane)
+              .map((pane) => {
+                const asg = pane === "a" ? paneA : paneB;
+                const hostName = settings.name;
+                const entity =
+                  asg.operatorId === HOST_SCOPE
+                    ? hostName || "Host"
+                    : vendors.find((v) => v.id === asg.operatorId)?.name ?? "Host";
+                const label = `${stationKindLabel(asg.kind)} · ${entity}`;
+                const grow =
+                  focusedPane
+                    ? "flex-1"
+                    : splitRatio === "70"
+                      ? pane === "a"
+                        ? "flex-[7]"
+                        : "flex-[3]"
+                      : "flex-1";
+                return (
+                  <div
+                    key={pane}
+                    className={cn(
+                      "flex min-h-0 min-w-0 flex-col",
+                      grow,
+                      pane === "a" && !focusedPane && "border-r border-border",
+                    )}
+                  >
+                    <div className="kds-large-touch flex items-center justify-between gap-2 border-b border-border px-2 py-1">
+                      <button
+                        type="button"
+                        className="min-w-0 truncate text-left text-xs font-semibold"
+                        onClick={() =>
+                          setFocusedPane(focusedPane === pane ? null : pane)
+                        }
+                        title="Tap to fullscreen this pane"
+                      >
+                        {label}
+                      </button>
+                      <div className="flex shrink-0 items-center gap-2">
+                        {focusedPane === pane && (
+                          <button
+                            type="button"
+                            className="text-[11px] text-muted-foreground"
+                            onClick={() => setFocusedPane(null)}
+                          >
+                            Back to split
+                          </button>
+                        )}
+                        <button
+                          type="button"
+                          className="text-[11px] text-primary"
+                          onClick={() => setPanePick(pane)}
+                        >
+                          Station
+                        </button>
+                      </div>
+                    </div>
+                    <div className="min-h-0 flex-1 overflow-hidden">
+                      <DeviceModeView mode={asg.kind} operatorId={asg.operatorId} />
+                    </div>
                   </div>
-                  <div className="min-h-0 flex-1 overflow-hidden">
-                    <DeviceModeView mode={mode} />
-                  </div>
-                </div>
-              );
-            })}
-            <ChangeDeviceDialog
+                );
+              })}
+            <StationSwitcherDialog
               open={panePick != null}
               onOpenChange={(v) => {
                 if (!v) setPanePick(null);
@@ -616,8 +681,16 @@ export function AppShell() {
           {safeView === "integrations" && <IntegrationsHubView />}
           {safeView === "floor" && <FloorView />}
           {safeView === "order" && <OrderView />}
-          {safeView === "kitchen" && <KitchenView station="kitchen" />}
-          {safeView === "bar" && <KitchenView station="bar" />}
+          {safeView === "kitchen" && (
+            <KitchenView
+              station="kitchen"
+              expo={stationAssignment.kind === "expo"}
+              operatorId={stationAssignment.operatorId}
+            />
+          )}
+          {safeView === "bar" && (
+            <KitchenView station="bar" operatorId={stationAssignment.operatorId} />
+          )}
           {safeView === "waitlist" && <WaitlistView />}
           {safeView === "takeout" && <TakeoutView />}
           {safeView === "online" && <OnlineOrdersView />}

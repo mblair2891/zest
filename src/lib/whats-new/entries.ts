@@ -9,6 +9,19 @@ import type { GuideUpdate } from "@/lib/guide/types";
  */
 export const WHATS_NEW_ENTRIES: GuideUpdate[] = [
   {
+    id: "upd_2026_09_27_station_split",
+    date: "2026-09-27",
+    title: "This station + split-screen ODS",
+    summary:
+      "Any tablet, Android display, or desktop can switch Host stand, Server POS, ODS, Expo, Cashier, Busser, Kiosk. Split two panes (kitchen | bar). Devices are not fixed roles.",
+    body: "This station is what the screen is showing; PIN is who you are. Last station is remembered on this browser. Split: independent Start/Bump per pane, optional 70/30, tap header to fullscreen. No special device SKU.",
+    roles: ["owner_manager", "server", "kitchen_bar", "host_operator", "vendor_operator"],
+    surfaces: ["floor", "kds", "settings"],
+    audience: "all",
+    topicId: "station-switcher",
+    tags: ["station", "split", "ods", "device"],
+  },
+  {
     id: "upd_2026_09_26_partner_demo",
     date: "2026-09-26",
     title: "Partner demo: The Laundry",

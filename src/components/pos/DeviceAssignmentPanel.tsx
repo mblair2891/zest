@@ -78,8 +78,10 @@ export function DeviceAssignmentPanel({ write }: { write: boolean }) {
     >
       <h3 className="mb-1 text-sm font-semibold">Device assignment</h3>
       <p className="mb-3 text-xs text-muted-foreground">
-        Location assets. Assign any tablet to an entity and a function (Floor POS,
-        Kitchen ODS, Bar ODS, Expo) without new hardware. Claim codes pair devices.
+        Registry of tablets, Android displays, and desktops — not locked roles.
+        Suggested entity + function is a default. Any device can switch via{" "}
+        <strong>This station</strong>. Split screen is for ODS and wall displays;
+        any device may enable it. Claim codes pair hardware.
       </p>
       <ul className="space-y-2">
         {devices.map((d) => (

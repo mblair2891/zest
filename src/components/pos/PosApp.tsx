@@ -13,6 +13,7 @@ import { useNetworkStore } from "@/lib/pos/network-store";
 import { useOpsLearnStore } from "@/lib/ops-ai/learn-store";
 import { useCostStore } from "@/lib/costs/store";
 import { useLifecycleStore } from "@/lib/lifecycle/store";
+import { useStationSessionStore } from "@/lib/pos/station-session";
 import { EntityLogin } from "./EntityHome";
 import { AppShell } from "./AppShell";
 import { PosErrorBoundary } from "./PosErrorBoundary";
@@ -50,6 +51,7 @@ const STORES = [
   useOpsLearnStore,
   useCostStore,
   useLifecycleStore,
+  useStationSessionStore,
 ] as const;
 
 function PosAppInner({ entityId }: { entityId?: string }) {

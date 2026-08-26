@@ -18,6 +18,8 @@ interface Props {
   station: TicketStation;
   /** Expo rail: ready tickets and mark delivered (bump). */
   expo?: boolean;
+  /** Pane-scoped entity. Host scope = all operators this PIN can see. */
+  operatorId?: string | null;
 }
 
 function elapsedColor(sec: number): string {
@@ -32,7 +34,7 @@ function fmtElapsed(sec: number): string {
   return `${m}:${s.toString().padStart(2, "0")}`;
 }
 
-export function KitchenView({ station, expo }: Props) {
+export function KitchenView({ station, expo, operatorId }: Props) {
   const tickets = usePosStore((s) => s.tickets);
   const orders = usePosStore((s) => s.orders);
   const vendors = usePosStore((s) => s.vendors);
@@ -59,7 +61,12 @@ export function KitchenView({ station, expo }: Props) {
   const assignedStation = device ? stationForDeviceFunction(device.assignment.function) : null;
   const roleOp = emp?.operatorId ?? null;
   const hostWide = emp?.role === "owner" || emp?.role === "manager";
-  const lockedVendor = assignedOp || (!hostWide && roleOp ? roleOp : null);
+  const paneOverride = operatorId !== undefined;
+  const paneOp =
+    operatorId && operatorId !== HOST_SCOPE ? operatorId : null;
+  const lockedVendor = paneOverride
+    ? paneOp
+    : assignedOp ?? (!hostWide && roleOp ? roleOp : null);
   const [vendorFilter, setVendorFilter] = useState<string | null>(lockedVendor);
 
   const visibleVendorIds = vendors
