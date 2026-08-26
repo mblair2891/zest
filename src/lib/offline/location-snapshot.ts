@@ -1,5 +1,5 @@
 import { usePosStore } from "@/lib/pos/store";
-import { idbGetSnapshot, idbPutSnapshot } from "./idb";
+import { idbGetLatestSnapshot, idbGetSnapshot, idbPutSnapshot } from "./idb";
 import { activeLocationId } from "./scope";
 import { readTenantPosContext } from "@/lib/saas/pos-context";
 import type { LocationSnapshot } from "./types";
@@ -31,6 +31,8 @@ export function captureLocationSnapshot(): LocationSnapshot | null {
       floorSections: pos.floorSections,
       waitlist: pos.waitlist,
       reservations: pos.reservations,
+      locationDevices: pos.locationDevices,
+      activeEntityId: pos.activeEntityId,
     },
   };
 }
@@ -62,6 +64,12 @@ export function applyLocationSnapshot(snap: LocationSnapshot): boolean {
     if (Array.isArray(p.floorSections)) patch.floorSections = p.floorSections;
     if (Array.isArray(p.waitlist)) patch.waitlist = p.waitlist;
     if (Array.isArray(p.reservations)) patch.reservations = p.reservations;
+    if (Array.isArray(p.locationDevices)) patch.locationDevices = p.locationDevices;
+    if (typeof p.activeEntityId === "string" && p.activeEntityId) {
+      patch.activeEntityId = p.activeEntityId;
+    } else if (snap.venueType) {
+      patch.activeEntityId = snap.venueType;
+    }
     usePosStore.setState(patch as never);
     return true;
   } catch {
@@ -78,4 +86,36 @@ export async function loadPrimedLocation(locationId: string): Promise<boolean> {
   if (!snap) return false;
   if (snap.payload) return applyLocationSnapshot(snap);
   return pos.tenantLocationId === locationId;
+}
+
+export async function hasPrimedLocationPack(): Promise<boolean> {
+  const snap = await idbGetLatestSnapshot();
+  if (snap?.payload && (snap.menuItemCount > 0 || snap.tableCount > 0 || snap.staffCount > 0)) {
+    return true;
+  }
+  const pos = usePosStore.getState();
+  return Boolean(pos.tenantLocationId && (pos.menuItems?.length || pos.tables?.length));
+}
+
+export async function resolvePrimedLocation(): Promise<{
+  locationId: string;
+  venueType: string;
+} | null> {
+  const ctx = readTenantPosContext();
+  const pos = usePosStore.getState();
+  const snap = await idbGetLatestSnapshot();
+  const locationId = ctx?.locationId || pos.tenantLocationId || snap?.locationId || "";
+  const venueType =
+    ctx?.venueType ||
+    (typeof pos.activeEntityId === "string" ? pos.activeEntityId : "") ||
+    snap?.venueType ||
+    snap?.payload?.activeEntityId ||
+    "";
+  if (!locationId) return null;
+  if (snap && snap.locationId === locationId && snap.payload) {
+    applyLocationSnapshot(snap);
+  } else if (locationId) {
+    await loadPrimedLocation(locationId);
+  }
+  return { locationId, venueType: venueType || "food_hall" };
 }

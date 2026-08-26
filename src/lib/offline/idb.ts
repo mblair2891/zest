@@ -1,7 +1,7 @@
 import type { LocationSnapshot, OutboxItem, OutboxStatus } from "./types";
 
 const DB_NAME = "summex-offline-v1";
-const DB_VERSION = 1;
+const DB_VERSION = 2;
 
 function openDb(): Promise<IDBDatabase | null> {
   if (typeof indexedDB === "undefined") return Promise.resolve(null);
@@ -16,6 +16,9 @@ function openDb(): Promise<IDBDatabase | null> {
       }
       if (!db.objectStoreNames.contains("snapshot")) {
         db.createObjectStore("snapshot", { keyPath: "locationId" });
+      }
+      if (!db.objectStoreNames.contains("meta")) {
+        db.createObjectStore("meta", { keyPath: "id" });
       }
     };
     req.onsuccess = () => resolve(req.result);
@@ -90,8 +93,15 @@ export async function idbClearLocation(locationId: string, opts?: { keepQueued?:
 export async function idbPutSnapshot(snap: LocationSnapshot): Promise<void> {
   const db = await openDb();
   if (!db) return;
-  const tx = db.transaction("snapshot", "readwrite");
+  const names = db.objectStoreNames;
+  const stores = ["snapshot", ...(names.contains("meta") ? ["meta"] : [])];
+  const tx = db.transaction(stores, "readwrite");
   await reqToPromise(tx.objectStore("snapshot").put(snap));
+  if (names.contains("meta")) {
+    await reqToPromise(
+      tx.objectStore("meta").put({ id: "lastLocation", locationId: snap.locationId }),
+    );
+  }
 }
 
 export async function idbGetSnapshot(locationId: string): Promise<LocationSnapshot | null> {
@@ -99,6 +109,42 @@ export async function idbGetSnapshot(locationId: string): Promise<LocationSnapsh
   if (!db) return null;
   const tx = db.transaction("snapshot", "readonly");
   return ((await reqToPromise(tx.objectStore("snapshot").get(locationId))) as LocationSnapshot) ?? null;
+}
+
+export async function idbGetLatestSnapshot(): Promise<LocationSnapshot | null> {
+  const db = await openDb();
+  if (!db) return null;
+  const hasMeta = db.objectStoreNames.contains("meta");
+  const tx = db.transaction(hasMeta ? ["snapshot", "meta"] : ["snapshot"], "readonly");
+  let lastId: string | null = null;
+  if (hasMeta) {
+    try {
+      const meta = (await reqToPromise(tx.objectStore("meta").get("lastLocation"))) as
+        | { id: string; locationId: string }
+        | undefined;
+      lastId = meta?.locationId ?? null;
+    } catch {
+      lastId = null;
+    }
+  }
+  if (lastId) {
+    const hit = (await reqToPromise(tx.objectStore("snapshot").get(lastId))) as LocationSnapshot | undefined;
+    if (hit) return hit;
+  }
+  const all = (await reqToPromise(tx.objectStore("snapshot").getAll())) as LocationSnapshot[];
+  if (!all.length) return null;
+  return all.sort((a, b) => (b.savedAt || 0) - (a.savedAt || 0))[0] ?? null;
+}
+
+export async function idbRememberLastLocation(locationId: string): Promise<void> {
+  const db = await openDb();
+  if (!db) return;
+  try {
+    const tx = db.transaction("meta", "readwrite");
+    await reqToPromise(tx.objectStore("meta").put({ id: "lastLocation", locationId }));
+  } catch {
+    /* v1 dbs until upgrade */
+  }
 }
 
 export function isQueued(status: OutboxStatus): boolean {

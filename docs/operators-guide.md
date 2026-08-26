@@ -83,10 +83,10 @@ PIN is identity; the screen remembers last station. Large displays **Split**
 two independent ODS/POS panes (optional 70/30, tap header to fullscreen).
 No special device SKU.
 
-**Offline PWA:** open the location once while online (primes the app shell +
-last menu, floor, tickets). Installed PWA launches Offline. Cash still
-closes; card is blocked (Card requires connection). Outbox syncs when WAN
-returns. `/guide?topic=wifi-offline`.
+**Offline PWA:** first install needs internet (open POS, Add to Home Screen).
+Thereafter cold start can be offline: power on, tap the icon, PIN in — do not
+type a URL. Cash still closes; card is blocked. Outbox syncs when WAN returns.
+`/guide?topic=wifi-offline`.
 
 Home (`hq`) is a **role dashboard**. Nav hides views the role cannot open.
 Vendor operators are scoped to `operatorId` (tickets, portal, settlement share).

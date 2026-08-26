@@ -45,6 +45,8 @@ export type LocationSnapshotPayload = {
   floorSections: unknown;
   waitlist: unknown;
   reservations?: unknown;
+  locationDevices?: unknown;
+  activeEntityId?: string;
 };
 
 export type LocationSnapshot = {

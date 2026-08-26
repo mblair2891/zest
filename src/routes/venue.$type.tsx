@@ -10,7 +10,7 @@ export const Route = createFileRoute("/venue/$type")({
 function VenuePage() {
   const { type } = Route.useParams();
   return (
-    <SessionGate>
+    <SessionGate allowPrimedStation>
       <PosApp entityId={type} />
     </SessionGate>
   );

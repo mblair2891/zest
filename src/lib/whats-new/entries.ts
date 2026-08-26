@@ -9,6 +9,19 @@ import type { GuideUpdate } from "@/lib/guide/types";
  */
 export const WHATS_NEW_ENTRIES: GuideUpdate[] = [
   {
+    id: "upd_2026_09_30_station_cold_start",
+    date: "2026-09-30",
+    title: "Cold-start POS offline",
+    summary:
+      "After one online install, power the tablet with no internet, tap the icon, PIN in. Cached menu, floor, and open checks. Cash OK. Card blocked.",
+    body: "The home-screen icon opens the station — you do not type a URL. First install needs internet. Thereafter cold start can be offline. Outbox syncs when WAN returns.",
+    roles: ["owner_manager", "server", "kitchen_bar", "host_operator"],
+    surfaces: ["floor", "kds"],
+    audience: "all",
+    topicId: "wifi-offline",
+    tags: ["offline", "pwa", "station", "pin"],
+  },
+  {
     id: "upd_2026_09_29_offline_pwa",
     date: "2026-09-29",
     title: "Offline-first PWA",

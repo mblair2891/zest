@@ -10,7 +10,7 @@ export const Route = createFileRoute("/app")({
 
 function AppHome() {
   return (
-    <SessionGate>
+    <SessionGate allowPrimedStation>
       <PosApp />
     </SessionGate>
   );

@@ -4,6 +4,7 @@ const SHELL = "summex-shell-v1";
 const RUNTIME = "summex-runtime-v1";
 
 const PRECACHE = [
+  "/station",
   "/app",
   "/dashboard",
   "/login",
@@ -11,6 +12,7 @@ const PRECACHE = [
   "/icon-180.png",
   "/icon-192.png",
   "/icon-512.png",
+  "/station.webmanifest",
   "/__grok/manifest.webmanifest",
   "/__grok/icon-180.png",
 ];
@@ -65,12 +67,29 @@ function isNavigate(req) {
   return req.mode === "navigate" || (req.headers.get("accept") || "").includes("text/html");
 }
 
+async function cacheHtmlAssets(res) {
+  try {
+    const ct = res.headers.get("content-type") || "";
+    if (!ct.includes("text/html")) return;
+    const html = await res.clone().text();
+    const found = new Set();
+    const re = /(?:src|href)="(\/[^"]+\.(?:js|css)[^"]*)"/g;
+    let m;
+    while ((m = re.exec(html))) found.add(m[1]);
+    const runtime = await caches.open(RUNTIME);
+    await Promise.all([...found].map((u) => runtime.add(u).catch(() => undefined)));
+  } catch {
+    /* ignore */
+  }
+}
+
 async function networkFirst(req, cacheName) {
   const cache = await caches.open(cacheName);
   try {
     const res = await fetch(req);
     if (res && res.ok) {
       cache.put(req, res.clone()).catch(() => undefined);
+      cacheHtmlAssets(res).catch(() => undefined);
     }
     return res;
   } catch {
@@ -101,7 +120,7 @@ async function cacheFirst(req, cacheName) {
 async function navigationFallback() {
   const shell = await caches.open(SHELL);
   const runtime = await caches.open(RUNTIME);
-  for (const url of ["/app", "/dashboard", "/login", "/"]) {
+  for (const url of ["/station", "/app", "/dashboard", "/login", "/"]) {
     const hit = (await runtime.match(url)) || (await shell.match(url));
     if (hit) return hit;
   }
@@ -110,6 +129,22 @@ async function navigationFallback() {
     headers: { "content-type": "text/plain; charset=utf-8" },
   });
 }
+
+self.addEventListener("message", (event) => {
+  const data = event.data;
+  if (!data || data.type !== "CACHE_POS" || !data.url) return;
+  event.waitUntil(
+    (async () => {
+      try {
+        const cache = await caches.open(SHELL);
+        const res = await fetch(data.url, { credentials: "same-origin" });
+        if (res && res.ok) await cache.put(data.url, res);
+      } catch {
+        /* offline */
+      }
+    })(),
+  );
+});
 
 self.addEventListener("fetch", (event) => {
   const req = event.request;

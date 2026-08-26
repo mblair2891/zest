@@ -33,7 +33,11 @@ import {
   readTenantPosContext,
   saveTenantPosContext,
 } from "@/lib/saas/pos-context";
-import { loadPrimedLocation, persistLocationSnapshot } from "@/lib/offline/location-snapshot";
+import {
+  loadPrimedLocation,
+  persistLocationSnapshot,
+  resolvePrimedLocation,
+} from "@/lib/offline/location-snapshot";
 import { rememberLastPosPath } from "@/lib/offline/register-sw";
 import { Link } from "@tanstack/react-router";
 import { SummexBrandBlock, SummexMark } from "@/components/brand/SummexMark";
@@ -103,12 +107,19 @@ function PosAppInner({ entityId }: { entityId?: string }) {
       /* ignore */
     }
     if (isPending) return;
+    let cancelled = false;
+    void (async () => {
     const locParam =
       typeof window !== "undefined"
         ? new URLSearchParams(window.location.search).get("loc")
         : null;
     const ctx = readTenantPosContext();
-    const locationId = locParam || ctx?.locationId;
+    let locationId = locParam || ctx?.locationId;
+    if (!locationId) {
+      const pack = await resolvePrimedLocation();
+      locationId = pack?.locationId;
+    }
+    if (cancelled) return;
     if (entityId && isVenueEntityId(entityId) && locationId) {
       void getPosBootstrapFn({ data: { locationId } })
         .then((access) => {
@@ -256,7 +267,17 @@ function PosAppInner({ entityId }: { entityId?: string }) {
       return;
     }
     if (entityId && isVenueEntityId(entityId) && !locationId) {
-      setGateMsg("Open POS from the platform for a location you belong to.");
+      const pack = await resolvePrimedLocation();
+      if (cancelled) return;
+      if (pack?.locationId) {
+        const primed = await loadPrimedLocation(pack.locationId);
+        if (primed) {
+          setTenantGate("ok");
+          rememberLastPosPath();
+          return;
+        }
+      }
+      setGateMsg("Open this device once while online to prime the station.");
       setTenantGate("denied");
       return;
     }
@@ -266,6 +287,10 @@ function PosAppInner({ entityId }: { entityId?: string }) {
       return;
     }
     setTenantGate("ok");
+    })();
+    return () => {
+      cancelled = true;
+    };
   }, [
     ready,
     isPending,

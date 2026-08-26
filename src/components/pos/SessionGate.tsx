@@ -26,12 +26,21 @@ function Loading() {
 }
 
 /** Require a real signed-in user; force password change for platform admin. */
-export function SessionGate({ children }: { children: ReactNode }) {
+export function SessionGate({
+  children,
+  allowPrimedStation = false,
+}: {
+  children: ReactNode;
+  /** POS station cold start: PIN is identity; live session optional when a location pack exists. */
+  allowPrimedStation?: boolean;
+}) {
   const { user, isPending } = useCurrentUserState();
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const [mustChange, setMustChange] = useState<boolean | null>(() =>
     wasMustChangePasswordCleared() ? false : null,
   );
+  const [primed, setPrimed] = useState(false);
+  const [waited, setWaited] = useState(false);
 
   useEffect(() => {
     return subscribeMustChangePasswordCleared(() => setMustChange(false));
@@ -68,11 +77,30 @@ export function SessionGate({ children }: { children: ReactNode }) {
     if (user) saveLastSessionUser(user);
   }, [user]);
 
-  if (isPending) return <Loading />;
+  useEffect(() => {
+    const t = window.setTimeout(() => setWaited(true), 2500);
+    return () => window.clearTimeout(t);
+  }, []);
+
+  useEffect(() => {
+    if (!allowPrimedStation) return;
+    let cancelled = false;
+    void import("@/lib/offline/location-snapshot").then((m) =>
+      m.hasPrimedLocationPack().then((ok) => {
+        if (!cancelled) setPrimed(ok);
+      }),
+    );
+    return () => {
+      cancelled = true;
+    };
+  }, [allowPrimedStation]);
+
+  if (isPending && !waited) return <Loading />;
   if (!user) {
-    const cached = networkLooksOffline() ? readLastSessionUser() : null;
-    if (!cached) return <RedirectToSignIn to="/login" />;
-    return <>{children}</>;
+    const cached = readLastSessionUser();
+    if (allowPrimedStation && !primed && !cached && !waited) return <Loading />;
+    if (cached || primed) return <>{children}</>;
+    return <RedirectToSignIn to="/login" />;
   }
   if (mustChange === null) return <Loading />;
   if (mustChange && pathname !== "/change-password" && !wasMustChangePasswordCleared()) {

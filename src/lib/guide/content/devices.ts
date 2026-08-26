@@ -25,17 +25,17 @@ export const DEVICE_TOPICS: GuideTopic[] = [
         "Same-device floor + ODS is always consistent. Cross-device while internet is down is best-effort on LAN (BroadcastChannel + persist). Each device can work on its cache and merge by id when the cloud is back. Server wins on settings.",
       ),
       steps(
-        "Open the location once while online (menu, floor, and tickets cache; the service worker stores the app shell).",
-        "Install the PWA (Add to Home Screen). Later launches work with WAN down — banner: Offline.",
-        "Seat, send a ticket, Start and Bump on ODS. Take cash. Card shows Card requires connection.",
-        "When the uplink returns, banner says Syncing… Outbox applies orders and ticket status once. Failed rows show as Failed to sync.",
+        "First install (internet required): sign in, Open POS, wait for the floor. Add to Home Screen from that station.",
+        "Thereafter cold start can be offline: power the tablet, tap the Summex icon — no typing a URL. PIN in. Banner: Offline.",
+        "Seat, send a ticket, Start and Bump. Take cash. Card shows Card requires connection.",
+        "When WAN returns, banner says Syncing… Outbox applies orders and ticket status once.",
       ),
       shot(
         "Header Wi‑Fi chip — Simulate internet outage, outbox, failed sync list.",
         "Network sheet with house SSID, queued cash ledger, and dead-letter rows.",
       ),
       warn(
-        "Prime each device while online first: sign in, open the location, wait for the floor to load. Then Add to Home Screen. The installed PWA launches Offline with the last menu, floor, and tickets. Unprimed devices cannot start with WAN down. Cache is this location only.",
+        "First install requires internet. After that, cold start (power on, no WAN, tap the icon) opens the station PIN pad with cached menu, floor, PINs, and open checks. Unprimed devices cannot start offline.",
       ),
       tip(
         "Owner / manager: watch Failed to sync. Server / cashier: cash is the offline tender. Kitchen: bump locally. Host: waitlist SMS is pending send.",
