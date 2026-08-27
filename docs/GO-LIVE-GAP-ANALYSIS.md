@@ -115,15 +115,15 @@ Not card-blockers, but they will bite the first real house.
 | Item | Status | Evidence | Next build |
 |---|---|---|---|
 | Shared floor / ODS (server of record) | **DONE** | `migrations/0022_pos_floor.sql`, `floor.server.ts`, `floor-sync.ts` poll 3s | Offline: outbox + IDB; two tablets **without WAN** do not share a check (by design). |
-| Floorplan editor | **PARTIAL** | `FloorEditorView.tsx` drag/resize in POS persist | Persist layout to location setup / table rows. |
+| Floorplan editor | **DONE** | `FloorEditorView.tsx` + `location.setup.floorPlan` | None. |
 | Section assignment, release/accept | **DONE** | `section-control.ts`; `store.ts` grants | Server floor table status via `upsertTableStatusFn`. |
 | Table statuses/colors/flash | **DONE** | `floor-status.ts`; Settings floor QR pack | None. |
-| Menu + AI assist | **PARTIAL** | `MenuAdminView.tsx` + `saveMenuItemFn`; assist `src/lib/assist/*` | Confirm all menu edits hit the server (not only save/toggle). |
-| Recipes/prep | **PARTIAL** | `RecipeLookup`, `parseRecipeFn` | Persist recipes as location data. |
+| Menu + AI assist | **DONE** | `MenuAdminView.tsx` + `location.setup.menuCatalog` | None. |
+| Recipes/prep | **DONE** | `RecipeLookup` + `location.setup.recipes` | None. |
 | Modifiers | **DONE** | POS types + menu tiles; assist templates | None. |
 | 86 | **DONE** | `MenuItem.available`; reports `eightySix`; add-item blocked `"Item unavailable"` (`store.ts`) | None. |
 | Order flow + ODS Start/Bump | **DONE** | `KitchenView.tsx`; `odsStartFn` / `odsBumpFn` / `odsReadyFn` | None. |
-| Notify originator (sound/vibrate) | **PARTIAL** | `notify-store.ts` local; floor poll updates tickets on other devices | Cross-device push if houses need it without the originating tablet focused. |
+| Notify originator (sound/vibrate) | **DONE** | Floor poll + `pushFromTicket` + chime/vibrate on remote Start/Bump/Ready | Optional push if the originating tablet is asleep. |
 | Waitlist + reservation check-in + kiosk | **DONE** | `front/store.server.ts`; `KioskApp.tsx`; `/reserve`; `/waitlist/opt-out/$token` | SMS send BLOCKED on Twilio. |
 | QR order/pay modes | **DONE** | `qr-table.ts`; `/t/$token`, `/table/$label`, `/online` | Guest **live** pay follows host processor readiness. |
 | Gift first-party ledger | **DONE** | `migrations/0024_gift_ledger.sql`; `src/lib/gift/*`; hashed codes | None for v1. |
@@ -155,7 +155,7 @@ Not card-blockers, but they will bite the first real house.
 | Neon `DATABASE_URL`, no PGLite on Vercel | **DONE** (code) / **BLOCKED** (env) | `getDbSource()`; throw on serverless without URL | Set Neon on Vercel; confirm `/api/health` `source: "neon"`. |
 | Secrets not in `VITE_*` | **DONE** | Processor, DB, Better Auth, Finix, XAI are server `readServerEnv` | Never prefix processor keys with `VITE_`. |
 | Hosts www / app / sites / api | **PARTIAL** | `hosts.ts`; Open POS stays same-origin until app host is live | DNS + TLS; do not cut POS to `app.summex.app` until that host serves this app. |
-| Email | **BLOCKED** | Resend path exists; keys not listed in `.env.example` | Add keys + from-address. |
+| Email | **DONE** (code) / **BLOCKED** (send) | Resend path + `.env.example` `RESEND_API_KEY` / `EMAIL_FROM` | Set keys to send; else outbox. |
 | Health | **DONE** | `GET /api/health` db ping + host + demo flags | Wire uptime monitor. |
 | Cross-tenant isolation tests | **PARTIAL** | `scripts/idor.test.mjs` (7 unit tests of rules) | HTTP tests on floor/gift/payments fns. |
 | Typecheck / build | **DONE** | `npm run typecheck` pass this commit; `npm run build` = Vite + `db:migrate`, nitro `preset: "vercel"` | Run production build in CI. |

@@ -150,7 +150,7 @@ export function emptyIntakeAnswers(): IntakeAnswers {
       staffSeats: 12,
     },
     payments: {
-      zestPaymentsAck: false,
+      quantumPaymentsAck: false,
       tips: true,
       splitTenders: true,
       roomCharge: false,
@@ -253,7 +253,7 @@ export function parseIntakeAnswers(raw: unknown): IntakeAnswers {
   const payments = asObject(o.payments);
   const freq = str(payments.payoutFrequency, "weekly");
   d.payments = {
-    zestPaymentsAck: bool(payments.zestPaymentsAck),
+    quantumPaymentsAck: bool(payments.quantumPaymentsAck) || bool(payments.zestPaymentsAck),
     tips: bool(payments.tips, true),
     splitTenders: bool(payments.splitTenders, true),
     roomCharge: bool(payments.roomCharge),

@@ -16,6 +16,7 @@ import { tableGuestUrl } from "@/lib/pos/qr-table";
 import { getDemoType } from "@/lib/demo/session";
 import { GuideLearnLink } from "@/components/guide/GuideLearnLink";
 import { QrMark } from "./QrMark";
+import { persistLocationCatalog } from "@/lib/pos/persist-location-setup";
 
 const KINDS: { id: TableKind; label: string; shape: "rect" | "round" | "bar" | "booth" | "other"; w: number; h: number; seats: number }[] = [
   { id: "table", label: "Table", shape: "round", w: 12, h: 12, seats: 4 },
@@ -123,6 +124,7 @@ export function FloorEditorView() {
   };
 
   const onPointerUp = () => {
+    if (drag.current || resize.current) persistLocationCatalog("floor");
     drag.current = null;
     resize.current = null;
   };
@@ -135,6 +137,7 @@ export function FloorEditorView() {
         if (t.section === prev.name) update(t.id, { section: name });
       }
     }
+    persistLocationCatalog("floor");
   };
 
   const placeKind = (kind: (typeof KINDS)[number]) => {
@@ -156,6 +159,7 @@ export function FloorEditorView() {
           : undefined,
     });
     setSelected(id);
+    persistLocationCatalog("floor");
   };
 
   return (
@@ -484,7 +488,10 @@ export function FloorEditorView() {
                 onClick={() => {
                   const res = remove(selectedTable.id);
                   if (!res.ok) alert(res.error);
-                  else setSelected(null);
+                  else {
+                    setSelected(null);
+                    persistLocationCatalog("floor");
+                  }
                 }}
               >
                 <Trash2 className="h-3.5 w-3.5" />

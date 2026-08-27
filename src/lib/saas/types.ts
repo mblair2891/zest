@@ -47,6 +47,12 @@ export type LocationSetup = {
   giftTermAllowed?: boolean;
   giftTermDays?: number | null;
   giftOperatorBreakageSplitBps?: number;
+  /** Saved floor map (x/y/size). Always kept on go-live. */
+  floorPlan?: import("./location-catalog").LocationFloorPlan;
+  /** Saved menu catalog. Always kept on go-live. */
+  menuCatalog?: import("./location-catalog").LocationMenuCatalog;
+  /** Saved recipes. Always kept on go-live. */
+  recipes?: import("@/lib/costs/types").ItemRecipe[];
 };
 
 export const EMPTY_LOCATION_SETUP: LocationSetup = {

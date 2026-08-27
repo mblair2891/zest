@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   Bar,
   BarChart,
@@ -23,6 +23,7 @@ import { metricsFromPosStore } from "@/lib/reports/from-store";
 import { analyzeLocationPerformanceFn } from "@/lib/reports/api";
 import { guidedInsights } from "@/lib/reports/rules";
 import { useNetworkStore } from "@/lib/pos/network-store";
+import { hydrateFloor } from "@/lib/pos/floor-sync";
 import { isProspectDemo } from "@/lib/demo/session";
 import { speak } from "@/lib/demo/speech";
 import type { LocationInsights, RangeKey, ReportId } from "@/lib/reports/types";
@@ -82,6 +83,11 @@ export function ReportsView() {
   const wan = useNetworkStore((s) => s.browserOnline && s.healthOk && !s.simulateWanDown);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
+  const locId = usePosStore((s) => s.tenantLocationId);
+
+  useEffect(() => {
+    if (locId) void hydrateFloor(locId);
+  }, [locId]);
 
   const list = reportsFor(venue, emp?.role);
   const active = list.find((r) => r.id === reportId) ?? list[0];

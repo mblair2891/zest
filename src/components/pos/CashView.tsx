@@ -15,10 +15,24 @@ export function CashView() {
   const [mgrOpen, setMgrOpen] = useState(false);
   const [pending, setPending] = useState<"close" | "open" | null>(null);
 
+  const emp = usePosStore((s) => s.employees.find((e) => e.id === s.currentEmployeeId));
+  const orders = usePosStore((s) => s.orders);
   const expected =
-    shift.openingFloatCents + shift.cashSalesCents + shift.tipsCashCents;
+    shift.openingFloatCents + shift.cashSalesCents - shift.tipsCashCents;
   const counted = Math.round(parseFloat(count || "0") * 100);
   const variance = count ? counted - expected : 0;
+  const mine = orders.filter(
+    (o) => o.serverId === emp?.id && (o.status === "closed" || o.status === "open"),
+  );
+  const closedMine = mine.filter((o) => o.status === "closed");
+  const mySales = closedMine.reduce(
+    (n, o) => n + o.payments.reduce((s, p) => s + p.amountCents, 0),
+    0,
+  );
+  const myTips = closedMine.reduce(
+    (n, o) => n + o.payments.reduce((s, p) => s + (p.tipCents ?? 0), 0),
+    0,
+  );
 
   return (
     <div className="h-full overflow-y-auto p-3">
@@ -33,7 +47,7 @@ export function CashView() {
         {[
           ["Opening float", shift.openingFloatCents],
           ["Cash sales", shift.cashSalesCents],
-          ["Cash tips", shift.tipsCashCents],
+          ["Cash tips paid out", shift.tipsCashCents],
           ["Expected in drawer", expected],
         ].map(([label, val]) => (
           <div
@@ -55,6 +69,10 @@ export function CashView() {
             <div className="flex justify-between">
               <dt className="text-muted-foreground">Card sales</dt>
               <dd className="tabular">{formatCurrency(shift.cardSalesCents)}</dd>
+            </div>
+            <div className="flex justify-between">
+              <dt className="text-muted-foreground">Card tips</dt>
+              <dd className="tabular">{formatCurrency(shift.tipsCardCents)}</dd>
             </div>
             <div className="flex justify-between">
               <dt className="text-muted-foreground">Gift card</dt>
@@ -79,6 +97,34 @@ export function CashView() {
           </dl>
         </div>
 
+        <div className="rounded-2xl border border-border bg-surface p-4">
+          <p className="mb-3 text-sm font-medium">Server closeout (this PIN)</p>
+          <dl className="space-y-2 text-sm">
+            <div className="flex justify-between">
+              <dt className="text-muted-foreground">Closed checks</dt>
+              <dd className="tabular">{closedMine.length}</dd>
+            </div>
+            <div className="flex justify-between">
+              <dt className="text-muted-foreground">My sales</dt>
+              <dd className="tabular">{formatCurrency(mySales)}</dd>
+            </div>
+            <div className="flex justify-between">
+              <dt className="text-muted-foreground">My tips</dt>
+              <dd className="tabular">{formatCurrency(myTips)}</dd>
+            </div>
+            <div className="flex justify-between">
+              <dt className="text-muted-foreground">Cash due (drawer)</dt>
+              <dd className="tabular">{formatCurrency(expected)}</dd>
+            </div>
+          </dl>
+          <p className="mt-3 text-xs text-muted-foreground">
+            Floor PIN signs you onto this station. Clock in / out is Labor. Closing
+            the drawer does not punch you out.
+          </p>
+        </div>
+      </div>
+
+      <div className="mb-4 grid gap-3 lg:grid-cols-2">
         <div className="rounded-2xl border border-border bg-surface p-4">
           <p className="mb-3 text-sm font-medium">End of day count</p>
           <label className="mb-1 block text-xs text-muted-foreground">

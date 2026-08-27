@@ -566,6 +566,9 @@ export const useCostStore = create<CostState>()(
             ? get().recipes.map((r) => (r.id === id ? rec : r))
             : [rec, ...get().recipes],
         });
+        void import("@/lib/pos/persist-location-setup").then((m) =>
+          m.persistLocationCatalog("recipes"),
+        );
         return id;
       },
 

@@ -9,6 +9,19 @@ import type { GuideUpdate } from "@/lib/guide/types";
  */
 export const WHATS_NEW_ENTRIES: GuideUpdate[] = [
   {
+    id: "upd_2026_10_05_location_catalog",
+    date: "2026-10-05",
+    title: "Floor, menu, and recipes save for every tablet",
+    summary:
+      "The floorplan, menu, and recipes save to the location. ODS Start/Bump notifies the originating server on other devices. Server closeout is not the time clock.",
+    body: "Drag tables in the editor — every paired tablet gets the map. Menu edits and recipes persist for the house. When kitchen bumps on one tablet, the originating server’s device chimes and vibrates. Cash expected drawer is float + cash sales − cash tips paid out. PIN still does not punch you in or out.",
+    roles: ["owner_manager", "server", "kitchen_bar", "host_operator"],
+    surfaces: ["floor", "kds", "settings"],
+    audience: "all",
+    topicId: "floor-editor",
+    tags: ["floor", "menu", "recipes", "ods", "closeout"],
+  },
+  {
     id: "upd_2026_10_04_training_week",
     date: "2026-10-04",
     title: "Training vs live",

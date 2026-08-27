@@ -20,6 +20,7 @@ import { EMPTY_LOCATION_SETUP, MEMBERSHIP_ROLES, PLAN_SLUGS, VENUE_TYPES } from 
 import { parseGrantMatrix } from "@/lib/access/entity-grants";
 import { parseLocationDevices } from "@/lib/pos/location-devices";
 import { parseNetworkChecklist, parseNetworkReadyStatus } from "./network-readiness";
+import { parseFloorPlan, parseMenuCatalog, parseRecipes } from "./location-catalog";
 
 type OrgRow = {
   id: string;
@@ -208,6 +209,9 @@ function parseSetup(raw: unknown): LocationSetup {
       o.giftOperatorBreakageSplitBps == null
         ? undefined
         : Math.min(10_000, Math.max(0, Math.round(Number(o.giftOperatorBreakageSplitBps) || 0))),
+    floorPlan: parseFloorPlan(o.floorPlan),
+    menuCatalog: parseMenuCatalog(o.menuCatalog),
+    recipes: parseRecipes(o.recipes),
   };
 }
 

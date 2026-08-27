@@ -21,7 +21,7 @@ export const LIFECYCLE_TOPICS: GuideTopic[] = [
         "Optional Split — two panes, each with its own station + entity (kitchen ODS | bar ODS). 70/30 and tap-to-fullscreen on large displays.",
         "Toggle Track inventory during training if you want practice sales to move on-hand.",
         "Host may be live while a new tenant operator stays in Training (Settings → operator status).",
-        "Owner: Go live now (type GO LIVE NOW) or Schedule go live. For each data category, Keep or Erase. Menus, recipes, floor, staff, devices, SKUs always stay.",
+        "Owner: Go live now (type GO LIVE NOW) or Schedule go live. Keep or Erase: orders/tickets, payments, waitlist, time clock, gift balances, inventory qty. Menus, recipes, floorplan, staff, devices, SKUs, settings always stay. Erase also clears the shared floor on the server so other tablets match.",
       ),
       ul(
         "Training / scheduled_live always force Quantum Payments sandbox. Live processor keys are ignored until lifecycle is live.",

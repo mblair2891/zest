@@ -123,7 +123,7 @@ export function IntakeWizard({ initialToken }: { initialToken?: string }) {
 
   const submit = async () => {
     setError(null);
-    if (!answers.payments.zestPaymentsAck) {
+    if (!answers.payments.quantumPaymentsAck) {
       setError("Please acknowledge Quantum Payments as the only guest card processor.");
       return;
     }
@@ -528,7 +528,7 @@ export function IntakeWizard({ initialToken }: { initialToken?: string }) {
       {step === 6 && (
         <div className="space-y-3">
           <ToggleChip
-            on={answers.payments.zestPaymentsAck}
+            on={answers.payments.quantumPaymentsAck}
             label="Guest cards process on Quantum Payments only"
             hint="Required. Multi-operator locations use the host MID. Gift cards stay first-party."
             onClick={() =>
@@ -536,7 +536,7 @@ export function IntakeWizard({ initialToken }: { initialToken?: string }) {
                 ...a,
                 payments: {
                   ...a.payments,
-                  zestPaymentsAck: !a.payments.zestPaymentsAck,
+                  quantumPaymentsAck: !a.payments.quantumPaymentsAck,
                 },
               }))
             }

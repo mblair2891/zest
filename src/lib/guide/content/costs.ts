@@ -55,6 +55,7 @@ export const COST_TOPICS: GuideTopic[] = [
         "ODS tickets show the same Recipe control for the cook.",
       ),
       ul(
+        "Recipes save to the location so every paired tablet can look them up. Go live keeps recipes.",
         "One recipe can link to a menu item (and more ids). Entity-scoped for host vs operators.",
         "Theoretical cost = ingredient qty × latest SKU cost. Feeds price recs (human Save on Menu).",
         "Sales × recipe qty feeds variance when the costs module is on.",

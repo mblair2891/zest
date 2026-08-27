@@ -26,6 +26,7 @@ import { useCurrentUserState } from "@/lib/auth/use-current-user";
 import { getPosBootstrapFn } from "@/lib/saas/api";
 import { tablesFromCount, type TenantMenuMode } from "@/lib/pos/starter-seed";
 import { EMPTY_LOCATION_SETUP } from "@/lib/saas/types";
+import { tablesFromFloorPlan } from "@/lib/saas/location-catalog";
 import { membershipToEmployeeRole } from "@/lib/access/membership-map";
 import { parseGrantMatrix } from "@/lib/access/entity-grants";
 import {
@@ -176,8 +177,11 @@ function PosAppInner({ entityId }: { entityId?: string }) {
             : [];
           const tableCount = Number(setup.tableCount) || 0;
           const floorLater = Boolean(setup.floorLater);
-          const tables =
-            floorLater || tableCount <= 0 ? [] : tablesFromCount(tableCount, sectionNames);
+          const tables = setup.floorPlan?.tables?.length
+            ? tablesFromFloorPlan(setup.floorPlan)
+            : floorLater || tableCount <= 0
+              ? []
+              : tablesFromCount(tableCount, sectionNames);
           const settlementRaw =
             setup.settlement && typeof setup.settlement === "object"
               ? (setup.settlement as Record<string, unknown>)
@@ -193,6 +197,7 @@ function PosAppInner({ entityId }: { entityId?: string }) {
             menuMode,
             vendors: access.operators,
             tables,
+            floorSections: setup.floorPlan?.sections,
             hallMode: access.location.operatingModel === "host_operators",
             address: access.location.address,
             entityPermissions: parseGrantMatrix(setup.entityPermissions),
@@ -317,6 +322,34 @@ function PosAppInner({ entityId }: { entityId?: string }) {
             }
           } catch {
             /* ignore */
+          }
+          if (setup.floorPlan?.sections?.length) {
+            usePosStore.setState({ floorSections: setup.floorPlan.sections });
+          }
+          if (setup.menuCatalog?.items?.length) {
+            const cur = usePosStore.getState();
+            usePosStore.setState({
+              menuItems: setup.menuCatalog.items,
+              categories: setup.menuCatalog.categories.length
+                ? setup.menuCatalog.categories
+                : cur.categories,
+              modifierGroups: setup.menuCatalog.modifiers.length
+                ? setup.menuCatalog.modifiers
+                : cur.modifierGroups,
+            });
+          }
+          if (setup.recipes?.length) {
+            useCostStore.setState({ recipes: setup.recipes });
+          }
+          try {
+            useLifecycleStore.getState().hydrateFromSetup({
+              lifecycleStatus: setup.lifecycleStatus,
+              trainingTrackInventory: setup.trainingTrackInventory,
+              operatorLifecycle: setup.operatorLifecycle,
+              goLiveAt: setup.goLiveAt,
+            });
+          } catch {
+            /* lifecycle optional */
           }
           setTenantGate("ok");
           rememberLastPosPath();

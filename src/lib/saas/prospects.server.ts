@@ -601,7 +601,7 @@ export async function submitQuoteRequest(opts: {
   if (!row) throw new Error("Prospect not found");
   const prospect = mapProspect(row);
   await assertCanAccessProspect({ userId: opts.userId, prospect, token: opts.token, write: true });
-  if (!prospect.answers.payments.zestPaymentsAck) {
+  if (!prospect.answers.payments.quantumPaymentsAck && !prospect.answers.payments.zestPaymentsAck) {
     throw new Error("Acknowledge Quantum Payments as the only guest card processor to continue");
   }
   if (!prospect.answers.company.legalName.trim() || !prospect.answers.company.billingEmail.includes("@")) {

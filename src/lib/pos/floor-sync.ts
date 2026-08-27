@@ -270,12 +270,41 @@ export function applyOpenFloor(floor: OpenFloor): void {
 
   const nextOrders = [...mergedOrders, ...localOnly];
   const activeStill = nextOrders.some((o) => o.id === s.activeOrderId);
+  const prevById = new Map(s.tickets.map((t) => [t.id, t.status]));
   usePosStore.setState({
     orders: nextOrders,
     tickets: [...serverTickets, ...localTickets],
     tables,
     activeOrderId: activeStill ? s.activeOrderId : s.activeOrderId,
   });
+  void notifyRemoteTicketChanges(prevById, serverTickets);
+}
+
+async function notifyRemoteTicketChanges(
+  prevById: Map<string, KitchenTicket["status"]>,
+  serverTickets: KitchenTicket[],
+): Promise<void> {
+  const changed: { ticket: KitchenTicket; kind: "ticket_started" | "ticket_ready" | "ticket_bumped" }[] =
+    [];
+  for (const t of serverTickets) {
+    const prev = prevById.get(t.id);
+    if (!prev || prev === t.status) continue;
+    if (t.status === "in_progress") changed.push({ ticket: t, kind: "ticket_started" });
+    else if (t.status === "ready") changed.push({ ticket: t, kind: "ticket_ready" });
+    else if (t.status === "bumped") changed.push({ ticket: t, kind: "ticket_bumped" });
+  }
+  if (!changed.length) return;
+  try {
+    const { hapticNotify, playBumpChime, useNotifyStore } = await import("./notify-store");
+    const notify = useNotifyStore.getState();
+    for (const { ticket, kind } of changed) {
+      notify.pushFromTicket(ticket, kind);
+    }
+    hapticNotify();
+    if (notify.soundEnabled) playBumpChime();
+  } catch {
+    /* notify optional */
+  }
 }
 
 async function runOrQueue(

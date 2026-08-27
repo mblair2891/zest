@@ -57,5 +57,49 @@ export async function saveLifecycleForLocation(
       where id = ${data.locationId}
     `;
   }
+  if (String(life) === "live" && data.goLiveChoices) {
+    await erasePracticeOnServer(sql, data.locationId, data.goLiveChoices);
+  }
   return { ok: true as const };
+}
+
+async function erasePracticeOnServer(
+  sql: Awaited<ReturnType<typeof getSql>>,
+  locationId: string,
+  choices: KeepEraseMap,
+) {
+  const del = async (text: string) => {
+    try {
+      await sql.query(text, [locationId]);
+    } catch {
+      /* table may not exist yet */
+    }
+  };
+  if (choices.orders === "erase") {
+    await del("delete from pos_ticket_events where location_id = $1");
+    await del(
+      "delete from pos_check_items where check_id in (select id from pos_checks where location_id = $1)",
+    );
+    await del(
+      "delete from pos_check_payments where check_id in (select id from pos_checks where location_id = $1)",
+    );
+    await del("delete from pos_tickets where location_id = $1");
+    await del("delete from pos_table_status where location_id = $1");
+    await del("delete from pos_checks where location_id = $1");
+  }
+  if (choices.waitlist === "erase") {
+    await del("delete from waitlist_entries where location_id = $1");
+    await del("delete from reservations where location_id = $1");
+  }
+  if (choices.gift_balances === "erase") {
+    try {
+      await sql.query(
+        `update gift_cards set balance_cents = 0, status = case when status = 'void' then status else 'active' end
+         where location_id = $1`,
+        [locationId],
+      );
+    } catch {
+      /* gift schema */
+    }
+  }
 }

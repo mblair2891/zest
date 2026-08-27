@@ -156,7 +156,7 @@ export const FLOOR_TOPICS: GuideTopic[] = [
         "Place table, booth, barstool, or other. Drag to move. Corner handle resizes.",
         "Properties: label, seats, room/section, shape, kind. Each seat gets a stable table QR token.",
         "Rooms are sections. Multi-room houses switch rooms in the editor and on the live floor.",
-        "Layout saves per location as you edit. Rotate a token if a sticker is compromised.",
+        "Layout saves to the location (all paired tablets pick it up). Rotate a token if a sticker is compromised.",
       ),
       steps(
         "Open Floor → Floor editor (or Floor editor in nav).",
@@ -165,7 +165,7 @@ export const FLOOR_TOPICS: GuideTopic[] = [
         "Return to Floor. The live map uses this layout and the status colors from Settings.",
       ),
       tip(
-        "On The Laundry demo, Dining and Bar are two rooms on one host floor. Tokens stay bound to The Laundry, not Steam or Diamond House.",
+        "Go live always keeps the floorplan. Practice checks can be erased; tables stay where you drew them.",
       ),
       related("floor-tables", "floor-status", "table-qr", "sections"),
     ],

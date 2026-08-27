@@ -279,8 +279,7 @@ environment. `/guide?topic=platform-settings`.
 
 Factory reset (Settings → Danger zone): type RESET, Admin password. Only if
 Security → Factory reset enabled is on. Wipes all tenant/CRM data and reseeds
-Admin with the initial password and forced change, then reseeds the tagged
-partner-demo (The Laundry). Never public `is_demo` tenants. Disable in
+**Admin only** (forced password change). It does not seed demo venues. Disable in
 Security or with `FACTORY_RESET_ENABLED=false`. Production stays off unless
 that env is `true`. `/guide?topic=factory-reset`.
 

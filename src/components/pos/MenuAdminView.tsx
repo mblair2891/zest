@@ -14,6 +14,7 @@ import { isProspectDemo } from "@/lib/demo/session";
 import { useSaasStore } from "@/lib/pos/saas-store";
 import { useCostStore } from "@/lib/costs/store";
 import { RecipeAssistButton } from "@/components/recipes/RecipeAssistDialog";
+import { persistLocationCatalog } from "@/lib/pos/persist-location-setup";
 
 export function MenuAdminView() {
   const categories = usePosStore((s) => s.categories);
@@ -62,6 +63,7 @@ export function MenuAdminView() {
     void saveMenuItemFn({
       data: { orgId, locationId: locId, action, operatorId },
     }).catch(() => undefined);
+    persistLocationCatalog("menu");
   };
 
   const add = () => {

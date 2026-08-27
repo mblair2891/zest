@@ -108,7 +108,10 @@ export type IntakeVolume = {
 };
 
 export type IntakePayments = {
-  zestPaymentsAck: boolean;
+  /** Required: guest cards are Quantum Payments only. */
+  quantumPaymentsAck: boolean;
+  /** @deprecated stored as quantumPaymentsAck; accepted on read */
+  zestPaymentsAck?: boolean;
   tips: boolean;
   splitTenders: boolean;
   roomCharge: boolean;
