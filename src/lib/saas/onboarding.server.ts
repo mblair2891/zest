@@ -111,6 +111,13 @@ export async function applyOnboardingStep(opts: {
     await applyOperators(opts.userId, detail.id, payload);
   } else if (opts.step === "floor" || opts.step === "menu" || opts.step === "devices" || opts.step === "settlement") {
     await applyLocationSetup(opts.userId, detail.id, payload);
+  } else if (opts.step === "payments") {
+    await applyLocationSetup(opts.userId, detail.id, payload);
+    const locationId = payload.locations[0]?.serverId;
+    if (locationId) {
+      const { startHostPaymentsForUser } = await import("@/lib/payments/onboarding.server");
+      await startHostPaymentsForUser(opts.userId, locationId);
+    }
   } else if (opts.step === "network") {
     /* Warn-only. Always persist whatever status the subscriber recorded (including skipped/fail). */
     await applyLocationSetup(opts.userId, detail.id, payload);

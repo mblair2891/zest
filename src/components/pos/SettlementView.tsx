@@ -13,6 +13,7 @@ import { OperatorOpsView } from "./OperatorOpsView";
 import { liabilityByIssuer } from "@/lib/pos/gift-issuer";
 import { processGiftTermFn } from "@/lib/gift/api";
 import { hydrateGift } from "@/lib/gift/sync";
+import { queueOperatorPayoutsFn } from "@/lib/payments/onboarding-api";
 
 export function SettlementView() {
   const setView = usePosStore((s) => s.setView);
@@ -44,11 +45,33 @@ export function SettlementView() {
 
   const onClose = () => {
     const res = closePeriod();
-    if (!res.ok) setFlash(res.error ?? "Failed");
-    else
-      setFlash(
-        `Period closed. Host cut ${formatCurrency(res.period!.hostCutTotalCents)}. Electronic payouts ready.`,
-      );
+    if (!res.ok) {
+      setFlash(res.error ?? "Failed");
+      return;
+    }
+    setFlash(
+      `Period closed. Host cut ${formatCurrency(res.period!.hostCutTotalCents)}. Electronic payouts on the Summex ledger.`,
+    );
+    const locId = usePosStore.getState().tenantLocationId;
+    const rows = res.period?.rows ?? [];
+    if (!locId || !rows.length) return;
+    void queueOperatorPayoutsFn({
+      data: {
+        locationId: locId,
+        shares: rows
+          .filter((r) => r.netElectronicPayoutCents > 0)
+          .map((r) => ({ operatorId: r.vendorId, amountCents: r.netElectronicPayoutCents })),
+      },
+    })
+      .then((out) => {
+        const ok = out.results.filter((r) => r.ok).length;
+        const sand = out.results.every((r) => r.sandbox);
+        setFlash(
+          (s) =>
+            `${s ?? ""} ${ok ? `${ok} operator payout(s) ${sand ? "recorded in sandbox" : "sent on the Quantum rail"}.` : "Operator payouts stay on the Summex ledger until applications are approved."}`,
+        );
+      })
+      .catch(() => undefined);
   };
 
   return (

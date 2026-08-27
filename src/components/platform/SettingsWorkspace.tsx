@@ -942,7 +942,16 @@ function PaymentsSection({
   onSave: (v: PaymentsSettings) => Promise<void>;
 }) {
   const [v, setV] = useState(initial);
+  const [rail, setRail] = useState<{ configured: boolean; environment: string } | null>(null);
   useEffect(() => setV(initial), [initial]);
+  useEffect(() => {
+    void import("@/lib/payments/onboarding-api").then((m) =>
+      m
+        .getProcessorRailStatusFn()
+        .then(setRail)
+        .catch(() => setRail({ configured: false, environment: "sandbox" })),
+    );
+  }, []);
   return (
     <SectionCard
       title="Payments & gift defaults"
@@ -951,8 +960,17 @@ function PaymentsSection({
       onSave={() => onSave(v)}
     >
       <Field
+        label="Processor rail"
+        hint="Server environment only — keys never appear here. Guest and POS UI always say Quantum Payments."
+      >
+        <p className="flex h-11 items-center rounded-lg border border-border bg-surface px-3 text-sm">
+          {rail?.configured ? "Configured" : "Not configured"}
+          {rail ? ` · ${rail.environment}` : ""}
+        </p>
+      </Field>
+      <Field
         label="Default Quantum Payments mode"
-        hint="Sandbox is default. Live needs QUANTUM_PAYMENTS_SECRET_KEY (server-only) and a supplied reader. Locations can inherit or override. Training always sandboxes. Never a Stripe/Square POS picker."
+        hint="Sandbox is default. Live needs an approved host application, server-only keys, and a supplied reader. Locations can inherit or override. Training always sandboxes. Never a Stripe/Square POS picker."
       >
         <SelectField
           value={v.quantumPaymentsMode}

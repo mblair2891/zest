@@ -23,6 +23,7 @@ import { saveTenantPosContext } from "@/lib/saas/pos-context";
 import { sameOriginVenueHref } from "@/lib/saas/open-location";
 import { setActiveContextFn } from "@/lib/saas/api";
 import type { LocationMode } from "@/lib/pos/saas-types";
+import { QuantumPaymentsOnboardPanel } from "@/components/payments/QuantumPaymentsOnboardPanel";
 
 const LABELS = [
   "Organization",
@@ -33,6 +34,7 @@ const LABELS = [
   "Devices",
   "Team",
   "Settlement",
+  "Payments",
   "Network",
   "Go-live",
 ];
@@ -134,7 +136,7 @@ export function SetupOnboardingWizard({ token }: { token: string }) {
       const d = await applyOnboardingStepFn({ data: { token, step: stepId, payload: body } });
       setDetail(d);
       setPayload(d.onboarding?.payload ?? body);
-      if (step < 10) setStep(step + 1);
+      if (step < 11) setStep(step + 1);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Step failed");
     } finally {
@@ -149,13 +151,15 @@ export function SetupOnboardingWizard({ token }: { token: string }) {
   return (
     <WizardChrome
       learnTopicId={
-        step === 3
+        stepId === "operators"
           ? "single-vs-multi"
-          : step === 8
+          : stepId === "settlement"
             ? "settlement"
-            : step === 9
-              ? "network-readiness"
-              : "onboarding-wizard"
+            : stepId === "payments"
+              ? "quantum-payments"
+              : stepId === "network"
+                ? "network-readiness"
+                : "onboarding-wizard"
       }
       title={
         [
@@ -167,26 +171,27 @@ export function SetupOnboardingWizard({ token }: { token: string }) {
           "Devices",
           "People to invite",
           "Settlement",
+          "Quantum Payments",
           "Network readiness",
           "Go-live checklist",
         ][step - 1] ?? "Onboarding"
       }
       subtitle="Each step writes real org data. POS stays empty until you add a menu. Network check is warn-only."
       step={step}
-      total={10}
+      total={11}
       labels={LABELS}
       error={error}
       busy={busy}
       onBack={step > 1 ? () => setStep(step - 1) : undefined}
       onNext={() => void next()}
       nextLabel={
-        step === 9
+        stepId === "network"
           ? loc?.networkReadyStatus === "fail" || loc?.networkReadyStatus === "warn"
             ? "Continue anyway"
             : loc?.networkReadyStatus === "pass"
               ? "Save & continue"
               : "Skip for now"
-          : step < 10
+          : step < 11
             ? "Save & continue"
             : "Complete setup"
       }
@@ -681,7 +686,27 @@ export function SetupOnboardingWizard({ token }: { token: string }) {
         </div>
       )}
 
-      {step === 9 && loc && (
+      {stepId === "payments" && (
+        <div className="space-y-3">
+          <p className="text-sm text-muted-foreground">
+            Guest cards capture as Quantum Payments under the host brand. Complete this
+            application before enabling live cards. Cash is always available.
+          </p>
+          {loc?.serverId ? (
+            <QuantumPaymentsOnboardPanel
+              kind="host"
+              locationId={loc.serverId}
+              legalName={payload.org.legalName || payload.org.dba}
+            />
+          ) : (
+            <p className="text-sm text-muted-foreground">
+              Save the Locations step first so we can attach the application to the site.
+            </p>
+          )}
+        </div>
+      )}
+
+      {stepId === "network" && loc && (
         <div className="space-y-6">
           <NetworkReadinessPanel
             value={{
@@ -704,7 +729,7 @@ export function SetupOnboardingWizard({ token }: { token: string }) {
         </div>
       )}
 
-      {step === 10 && (
+      {stepId === "checklist" && (
         <div className="space-y-3">
           <ToggleChip
             on={payload.checklist.trainingAck}
@@ -744,6 +769,10 @@ export function SetupOnboardingWizard({ token }: { token: string }) {
             <CheckRow
               ok
               label="Tenant invites unlock after host is ready (multi-op)"
+            />
+            <CheckRow
+              ok={Boolean(payload.checklist.paymentsAck)}
+              label="Quantum Payments application (live cards wait for approval)"
             />
           </ul>
           {detail.status === "live" && (

@@ -17,6 +17,7 @@ export type PaymentsStatus = {
   lifecycleForcesSandbox: boolean;
   liveConfigured: boolean;
   liveReady: boolean;
+  hostPaymentsApproved?: boolean;
   readers: { id: string; label: string; serial: string; status: string }[];
   hostBrand: string;
   message: string;

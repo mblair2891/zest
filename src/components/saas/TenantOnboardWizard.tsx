@@ -14,6 +14,7 @@ import {
   type TenantKind,
   type TenantOnboardPayload,
 } from "@/lib/saas/tenant-invite";
+import { QuantumPaymentsOnboardPanel } from "@/components/payments/QuantumPaymentsOnboardPanel";
 
 const LABELS = ["Business", "Stations", "Staff", "Payouts", "Schedule", "Review"];
 
@@ -174,21 +175,16 @@ export function TenantOnboardWizard({
       {step === 4 && (
         <div className="space-y-3">
           <p className="text-sm text-muted-foreground">
-            Payout destination is recorded for the host to approve. You cannot change host payout
-            policy.
+            Payout account for your share of host capture. Guests still pay Quantum Payments
+            under {peek.hostBrand}. You can finish this wizard before approval — live split
+            payouts wait until the application is approved.
           </p>
-          <Field label="Bank last 4">
-            <Input
-              maxLength={4}
-              value={payload.payoutBankLast4}
-              onChange={(e) =>
-                patch((p) => ({
-                  ...p,
-                  payoutBankLast4: e.target.value.replace(/\D/g, "").slice(0, 4),
-                }))
-              }
-            />
-          </Field>
+          <QuantumPaymentsOnboardPanel
+            kind="operator"
+            operatorId={peek.operatorId}
+            locationId={peek.locationId ?? undefined}
+            legalName={payload.legalName || payload.dba}
+          />
           <Field label="Payout label">
             <Input
               value={payload.payoutLabel}
@@ -213,7 +209,7 @@ export function TenantOnboardWizard({
           <Row k="POC" v={`${payload.pocName || "—"} · ${payload.pocEmail || peek.email}`} />
           <Row k="Type" v={TENANT_KIND_LABEL[payload.stationKind]} />
           <Row k="Stations" v={payload.stations || "—"} />
-          <Row k="Payout last 4" v={payload.payoutBankLast4 || "—"} />
+          <Row k="Payout" v={payload.payoutLabel || payload.payoutBankLast4 || "Quantum Payments application"} />
         </dl>
       )}
     </WizardChrome>

@@ -59,6 +59,7 @@ export type TenantInviteRow = {
   status: TenantOnboardStatus;
   expiresAt: string | null;
   inviteId: string | null;
+  paymentsStatus?: string;
 };
 
 export type TenantInvitePeek = {

@@ -51,6 +51,7 @@ import { Route as AppVenueTypeRouteImport } from './routes/app.venue.$type'
 import { Route as DemoTypeTourRouteImport } from './routes/demo.$type.tour'
 import { Route as DemoTourFullRouteImport } from './routes/demo.tour.full'
 import { Route as WaitlistOptOutTokenRouteImport } from './routes/waitlist.opt-out.$token'
+import { Route as ApiPaymentsFinixWebhookRouteImport } from './routes/api/payments/finix/webhook'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -262,6 +263,11 @@ const WaitlistOptOutTokenRoute = WaitlistOptOutTokenRouteImport.update({
   path: '/waitlist/opt-out/$token',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPaymentsFinixWebhookRoute = ApiPaymentsFinixWebhookRouteImport.update({
+  id: '/api/payments/finix/webhook',
+  path: '/api/payments/finix/webhook',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -306,6 +312,7 @@ export interface FileRoutesByFullPath {
   '/demo/$type/tour': typeof DemoTypeTourRoute
   '/demo/tour/full': typeof DemoTourFullRoute
   '/waitlist/opt-out/$token': typeof WaitlistOptOutTokenRoute
+  '/api/payments/finix/webhook': typeof ApiPaymentsFinixWebhookRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -349,6 +356,7 @@ export interface FileRoutesByTo {
   '/demo/$type/tour': typeof DemoTypeTourRoute
   '/demo/tour/full': typeof DemoTourFullRoute
   '/waitlist/opt-out/$token': typeof WaitlistOptOutTokenRoute
+  '/api/payments/finix/webhook': typeof ApiPaymentsFinixWebhookRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -394,6 +402,7 @@ export interface FileRoutesById {
   '/demo/$type/tour': typeof DemoTypeTourRoute
   '/demo/tour/full': typeof DemoTourFullRoute
   '/waitlist/opt-out/$token': typeof WaitlistOptOutTokenRoute
+  '/api/payments/finix/webhook': typeof ApiPaymentsFinixWebhookRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -440,6 +449,7 @@ export interface FileRouteTypes {
     | '/demo/$type/tour'
     | '/demo/tour/full'
     | '/waitlist/opt-out/$token'
+    | '/api/payments/finix/webhook'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -483,6 +493,7 @@ export interface FileRouteTypes {
     | '/demo/$type/tour'
     | '/demo/tour/full'
     | '/waitlist/opt-out/$token'
+    | '/api/payments/finix/webhook'
   id:
     | '__root__'
     | '/'
@@ -527,6 +538,7 @@ export interface FileRouteTypes {
     | '/demo/$type/tour'
     | '/demo/tour/full'
     | '/waitlist/opt-out/$token'
+    | '/api/payments/finix/webhook'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -566,6 +578,7 @@ export interface RootRouteChildren {
   ApiBillingWebhookRoute: typeof ApiBillingWebhookRoute
   ApiPaymentsWebhookRoute: typeof ApiPaymentsWebhookRoute
   WaitlistOptOutTokenRoute: typeof WaitlistOptOutTokenRoute
+  ApiPaymentsFinixWebhookRoute: typeof ApiPaymentsFinixWebhookRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -864,6 +877,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof WaitlistOptOutTokenRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/payments/finix/webhook': {
+      id: '/api/payments/finix/webhook'
+      path: '/api/payments/finix/webhook'
+      fullPath: '/api/payments/finix/webhook'
+      preLoaderRoute: typeof ApiPaymentsFinixWebhookRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -950,6 +970,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiBillingWebhookRoute: ApiBillingWebhookRoute,
   ApiPaymentsWebhookRoute: ApiPaymentsWebhookRoute,
   WaitlistOptOutTokenRoute: WaitlistOptOutTokenRoute,
+  ApiPaymentsFinixWebhookRoute: ApiPaymentsFinixWebhookRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

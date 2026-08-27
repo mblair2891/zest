@@ -42,5 +42,7 @@ export function quantumWebhookSecret(): string | undefined {
 }
 
 export function liveAdapterConfigured(): boolean {
-  return Boolean(quantumSecretKey());
+  const finix =
+    readServerEnv("FINIX_API_KEY") || readServerEnv("FINIX_APPLICATION_ID");
+  return Boolean(quantumSecretKey() || finix);
 }

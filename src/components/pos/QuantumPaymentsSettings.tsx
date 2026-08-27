@@ -3,6 +3,7 @@ import { Badge } from "@/components/ui/badge";
 import { GuideLearnLink } from "@/components/guide/GuideLearnLink";
 import { saveLocationSettingsFn } from "@/lib/access/api";
 import { getPaymentsStatusFn } from "@/lib/payments/api";
+import { QuantumPaymentsOnboardPanel } from "@/components/payments/QuantumPaymentsOnboardPanel";
 import type { LocationPaymentsMode, PaymentsStatus } from "@/lib/payments/types";
 import { isProspectDemo } from "@/lib/demo/session";
 import { usePosStore } from "@/lib/pos/store";
@@ -73,10 +74,14 @@ export function QuantumPaymentsSettings({ write }: { write: boolean }) {
             Inherit platform default ({status?.platformDefault ?? "sandbox"})
           </option>
           <option value="sandbox">Sandbox (training)</option>
-          <option value="live">Live card-present</option>
+          <option value="live" disabled={!status?.hostPaymentsApproved}>
+            Live card-present
+            {!status?.hostPaymentsApproved ? " (application required)" : ""}
+          </option>
         </select>
       </label>
       {status && <p className="text-xs text-muted-foreground">{status.message}</p>}
+      <QuantumPaymentsOnboardPanel kind="host" locationId={locId} />
       {status && status.readers.length > 0 && (
         <ul className="space-y-1 text-xs">
           {status.readers.map((r) => (

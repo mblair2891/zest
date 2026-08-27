@@ -116,16 +116,28 @@ export async function getPaymentsStatus(
   });
   const liveConfigured = liveAdapterConfigured();
   const readers = readerCandidates(setup);
+  let hostApproved = false;
+  try {
+    const { hostPaymentsApproved } = await import("./onboarding.server");
+    hostApproved = await hostPaymentsApproved(locationId);
+  } catch {
+    hostApproved = false;
+  }
   const liveReady =
-    resolved.mode === "live" && liveConfigured && Boolean(pickReaderId(setup));
+    resolved.mode === "live" &&
+    liveConfigured &&
+    hostApproved &&
+    Boolean(pickReaderId(setup));
   let message =
     resolved.mode === "sandbox"
       ? "Quantum Payments sandbox. Training / practice — not a live card capture. Cash always works."
-      : liveReady
-        ? "Live Quantum Payments. Present the card on a supplied reader. Tablets run POS only."
-        : liveConfigured
-          ? "Live mode is on, but no Quantum reader is enrolled. Use cash or keep the check open."
-          : "Live mode is selected, but live keys are not configured. Use cash or keep the check open.";
+      : !hostApproved
+        ? "Complete the Quantum Payments application before taking live cards. Cash always works."
+        : liveReady
+          ? "Live Quantum Payments. Present the card on a supplied reader. Tablets run POS only."
+          : liveConfigured
+            ? "Live mode is on, but no Quantum reader is enrolled. Use cash or keep the check open."
+            : "Live mode is selected, but live keys are not configured. Use cash or keep the check open.";
   if (resolved.lifecycleForcesSandbox) {
     message =
       "Location is not live yet — Quantum Payments sandbox. Go live before taking real cards.";
@@ -138,6 +150,7 @@ export async function getPaymentsStatus(
     lifecycleForcesSandbox: resolved.lifecycleForcesSandbox,
     liveConfigured,
     liveReady,
+    hostPaymentsApproved: hostApproved,
     readers,
     hostBrand: loc.host_brand_name || loc.name,
     message,
@@ -172,6 +185,17 @@ export async function captureCardPresent(
 
   if (resolved.mode === "sandbox") {
     return captureSandbox({ input: payload, merchantId });
+  }
+
+  const { hostPaymentsApproved } = await import("./onboarding.server");
+  if (!(await hostPaymentsApproved(loc.id))) {
+    return {
+      ok: false,
+      status: "unavailable",
+      sandbox: false,
+      error:
+        "Complete the Quantum Payments application before taking live cards. Use cash or keep the check open.",
+    };
   }
 
   if (!liveAdapterConfigured()) {

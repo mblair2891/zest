@@ -39,6 +39,7 @@ export const ONBOARDING_STEP_IDS = [
   "devices",
   "invites",
   "settlement",
+  "payments",
   "network",
   "checklist",
 ] as const;
@@ -53,6 +54,7 @@ export const ONBOARDING_STEP_LABEL: Record<OnboardingStepId, string> = {
   devices: "Devices",
   invites: "Team",
   settlement: "Settlement",
+  payments: "Payments",
   network: "Network",
   checklist: "Go-live",
 };

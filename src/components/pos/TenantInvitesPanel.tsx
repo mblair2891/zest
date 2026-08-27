@@ -136,6 +136,19 @@ export function TenantInvitesPanel({ write }: { write: boolean }) {
             </div>
             <div className="flex flex-wrap items-center gap-2">
               <Badge variant={STATUS_BADGE[t.status] ?? "secondary"}>{t.status.replaceAll("_", " ")}</Badge>
+              <Badge
+                variant={
+                  t.paymentsStatus === "approved"
+                    ? "success"
+                    : t.paymentsStatus === "rejected"
+                      ? "danger"
+                      : t.paymentsStatus === "submitted" || t.paymentsStatus === "in_progress"
+                        ? "warn"
+                        : "secondary"
+                }
+              >
+                QP {t.paymentsStatus === "approved" ? "approved" : t.paymentsStatus === "not_started" || !t.paymentsStatus ? "pending" : t.paymentsStatus.replaceAll("_", " ")}
+              </Badge>
               {write && t.status !== "complete" && (
                 <>
                   <Button size="sm" disabled={busy} onClick={() => void invite(t.operatorId)}>

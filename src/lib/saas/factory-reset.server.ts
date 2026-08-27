@@ -10,6 +10,8 @@ import { ForbiddenError, isPlatformAdmin } from "./tenancy.server";
 
 /** App tables wiped on factory reset. Auth + plans + pricing catalog + migrations stay. */
 const WIPE_TABLES = [
+  "finix_webhook_events",
+  "payment_accounts",
   "gift_ledger",
   "gift_cards",
   "support_ticket_comments",

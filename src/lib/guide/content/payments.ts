@@ -34,7 +34,7 @@ export const PAYMENT_TOPICS: GuideTopic[] = [
       ),
       callout(
         "Sandbox vs live",
-        "Platform → Payments sets the default (sandbox unless you choose live). Location settings can inherit, force sandbox, or take live. Training always sandboxes. Live capture needs server-only keys (QUANTUM_PAYMENTS_SECRET_KEY) and an enrolled reader. Without those, live fails closed — cash still works.",
+        "Platform → Payments sets the default (sandbox unless you choose live). Location settings can inherit, force sandbox, or take live. Training always sandboxes. Hosts complete a Quantum Payments application during onboarding; live cards wait until that application is approved and live keys are present. Without those, live fails closed — cash still works.",
       ),
       warn(
         "Do not connect a second processor “just for events.” It is not available, and it would break host capture on a multi-operator check.",
@@ -91,7 +91,7 @@ export const PAYMENT_TOPICS: GuideTopic[] = [
         "Confirm operating model is host + operators and each item has an operator.",
         "Take payment as usual. The receipt shows the host brand via Quantum Payments.",
         "Do not ask a stall to “run it on their Square.” That path does not exist.",
-        "Period close creates payout rows per operator (sandbox/ledger — not live ACH).",
+        "Period close records payout rows per operator on the Summex ledger. When the host and operator applications are approved and live keys exist, Summex queues a transfer per operator share — funds never sit in a Summex operating bank.",
       ),
       related("single-vs-multi", "multi-operator-orders", "settlement", "chargebacks"),
     ],

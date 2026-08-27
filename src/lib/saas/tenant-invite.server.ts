@@ -152,6 +152,18 @@ export async function listTenantSlots(
   for (const inv of invites) {
     if (!latest.has(inv.operator_id)) latest.set(inv.operator_id, inv);
   }
+  const pay = new Map<string, string>();
+  try {
+    const accs = await sql<{ operator_id: string | null; onboarding_status: string }>`
+      select operator_id, onboarding_status from payment_accounts
+      where org_id = ${orgId} and kind = ${"operator"}
+    `;
+    for (const a of accs) {
+      if (a.operator_id) pay.set(a.operator_id, a.onboarding_status);
+    }
+  } catch {
+    /* migration may not have run in older previews */
+  }
   return ops.map((r) => {
     const inv = latest.get(r.id);
     return {
@@ -172,6 +184,7 @@ export async function listTenantSlots(
       }),
       expiresAt: inv?.expires_at ? asIso(inv.expires_at) : null,
       inviteId: inv?.id ?? null,
+      paymentsStatus: pay.get(r.id) ?? "not_started",
     };
   });
 }
