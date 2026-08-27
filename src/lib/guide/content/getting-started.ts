@@ -158,17 +158,17 @@ export const GETTING_STARTED_TOPICS: GuideTopic[] = [
         "The public site is sales, guide, and demos. The house — floor, money, staff — opens only after you sign in with a work account.",
       ),
       p(
-        "Two login modes. Back office (owners, managers, accountants, entity managers) uses email and password at Sign in. Working staff on a shared tablet, ODS, or host stand use a 4-digit PIN. PINs are hashed, scoped to the location (and entity on a host floor), and never appear on the marketing site.",
+        "Two login modes. Back office (owners, managers, accountants, entity managers) uses email and password at Sign in. Working staff on a shared tablet, ODS, or host stand use a 4-digit PIN. PINs are hashed, scoped to the location (and entity on a host floor), and never appear on the marketing site. PIN is not the time clock.",
       ),
       steps(
         "Back office: Sign in with work email and password. Open location settings, the host permission matrix, scheduling admin, payroll reports, menu management.",
         "Floor: on the assigned device, enter your 4-digit PIN. Fast Switch user returns to the keypad without changing the device assignment.",
-        "On the partner-demo house: Steam bar manager PIN 3000, bartender 3001. Diamond kitchen manager 4000, cook 4001. Server 1 is 2001. Time clock is a separate punch.",
+        "Clock in / out from Labor. The PIN pad does not punch you. Signing out of POS does not clock you out.",
         "Opening Settings from a floor PIN prompts back-office re-auth (password).",
-        "Kiosk guest flows stay PIN-free. Platform Admin is password only — never a restaurant PIN.",
+        "Kiosk guest flows stay PIN-free. Platform Admin is password only — never a restaurant PIN. Marketing never shows a Dashboard without a signed-in session.",
       ),
       warn(
-        "Signing out of POS does not clock you out of Labor. Product demos are not a tenant login.",
+        "Signing out of POS does not clock you out of Labor. There are no public demo tenants. Training uses sandbox cards — not a live Visa.",
       ),
       callout(
         "New house",

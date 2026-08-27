@@ -242,8 +242,7 @@ function mapLoc(r: LocRow): LocationRecord {
     hostBrandName: r.host_brand_name ?? null,
     operatingModel: r.operating_model === "host_operators" ? "host_operators" : "single",
     setup: parseSetup(r.setup),
-    lifecycleStatus:
-      r.lifecycle_status || parseSetup(r.setup).lifecycleStatus || "live",
+    lifecycleStatus: parseSetup(r.setup).lifecycleStatus || r.lifecycle_status || "training",
   };
 }
 
@@ -655,6 +654,11 @@ export async function updateLocationSetupForUser(
   const loc = rows[0];
   if (!loc) throw new ForbiddenError("Location not found");
   const next = parseSetup({ ...parseSetup(loc.setup), ...input.setup });
+  const { lifecycleForcesSandbox, locationLifecycleStatus } = await import("@/lib/payments/mode");
+  const life = locationLifecycleStatus(next, loc.lifecycle_status);
+  if (lifecycleForcesSandbox(life) && next.paymentsMode === "live") {
+    next.paymentsMode = "sandbox";
+  }
   await sql`
     update locations
     set setup = ${JSON.stringify(next)}::jsonb,

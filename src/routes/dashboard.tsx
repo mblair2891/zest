@@ -11,6 +11,18 @@ import { SessionGate } from "@/components/pos/SessionGate";
 
 export const Route = createFileRoute("/dashboard")({
   ssr: false,
+  validateSearch: (
+    s: Record<string, unknown>,
+  ): { passwordUpdated?: boolean } => {
+    if (
+      s.passwordUpdated === true ||
+      s.passwordUpdated === "1" ||
+      s.passwordUpdated === "true"
+    ) {
+      return { passwordUpdated: true };
+    }
+    return {};
+  },
   component: DashboardPage,
 });
 
@@ -25,8 +37,23 @@ function DashboardPage() {
 function DashboardInner() {
   const { user, isPending } = useCurrentUserState();
   const navigate = useNavigate();
+  const search = Route.useSearch();
   const [session, setSession] = useState<SessionContext | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [passwordUpdated, setPasswordUpdated] = useState(
+    () => Boolean(search.passwordUpdated),
+  );
+
+  useEffect(() => {
+    try {
+      if (sessionStorage.getItem("summex-password-updated") === "1") {
+        sessionStorage.removeItem("summex-password-updated");
+        setPasswordUpdated(true);
+      }
+    } catch {
+      /* ignore */
+    }
+  }, []);
   const load = () => {
     void getSessionContextFn()
       .then(setSession)
@@ -108,5 +135,17 @@ function DashboardInner() {
     );
   }
 
-  return <PlatformApp />;
+  return (
+    <>
+      {passwordUpdated && (
+        <div
+          className="border-b border-success/30 bg-success/10 px-4 py-2 text-center text-sm text-success"
+          role="status"
+        >
+          Password updated. You are signed in to the control plane.
+        </div>
+      )}
+      <PlatformApp />
+    </>
+  );
 }

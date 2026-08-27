@@ -45,7 +45,7 @@ export function MarketingShell({ children }: { children: ReactNode }) {
                 to="/dashboard"
                 className="rounded-lg bg-primary px-3 py-2 text-sm font-semibold text-primary-foreground"
               >
-                Dashboard
+                Open workspace
               </Link>
             ) : (
               <>

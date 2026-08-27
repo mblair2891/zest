@@ -84,22 +84,20 @@ export function LoginScreen() {
           </span>
         </button>
 
-        {/* Control plane is signed-in only. Demo rooms return to the public demo list. */}
         <Link
-          to="/dashboard"
-          className="mb-8 flex w-full items-start gap-3 rounded-2xl border border-primary/50 bg-primary/10 px-4 py-3.5 text-left transition hover:border-primary hover:bg-primary/15"
+          to="/login"
+          className="mb-8 flex w-full items-start gap-3 rounded-2xl border border-border bg-surface px-4 py-3.5 text-left transition hover:border-primary/60"
         >
           <Rocket className="mt-0.5 h-5 w-5 shrink-0 text-primary" />
           <span>
             <span className="block text-sm font-semibold text-foreground">
-              Control plane
+              Back office sign in
             </span>
-            <span className="mt-0.5 inline-flex rounded-md bg-primary/20 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-primary">
-              Control plane
+            <span className="mt-0.5 inline-flex rounded-md bg-surface-2 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+              Password · not this PIN
             </span>
             <span className="mt-1 block text-[11px] leading-snug text-muted-foreground">
-              Multi-tenant control plane: orgs, locations, packages, devices,
-              billing — not mixed into POS
+              Owners and managers use email and password. This pad is floor PIN only — it does not clock you in.
             </span>
           </span>
         </Link>

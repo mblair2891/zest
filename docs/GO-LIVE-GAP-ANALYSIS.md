@@ -190,6 +190,17 @@ Numbered so a later turn can pick one.
 
 Copy this into the deploy runbook. None of these are implemented by committing this file.
 
+**Training-week env (required before the first SaaS host trains)**
+
+Production must have all of these. Without them, health fails or sessions break.
+`DEV_DEMO` must stay off so no demo tenants are seeded.
+
+- [ ] `DATABASE_URL` (Neon). Serverless without this URL: `/api/health` returns **503** with `DATABASE_URL required (PGLite is not used in production)`. Never PGLite on Vercel.
+- [ ] `APP_URL` = public https origin (invite links, cookies)
+- [ ] `BETTER_AUTH_URL` same origin as `APP_URL`
+- [ ] `BETTER_AUTH_SECRET` long random
+- [ ] `DEV_DEMO=0`, `VITE_DEV_DEMO=0`, `DEMO_OPEN_LOCATIONS=0`
+
 **Vercel / app**
 
 - [ ] `DATABASE_URL` (Neon) set on Production
@@ -198,7 +209,7 @@ Copy this into the deploy runbook. None of these are implemented by committing t
 - [ ] `BETTER_AUTH_SECRET` long random
 - [ ] `DEV_DEMO=0`, `VITE_DEV_DEMO=0`, `DEMO_OPEN_LOCATIONS=0`
 - [ ] `FACTORY_RESET_ENABLED` unset or `false` on Production
-- [ ] `GET /api/health` → `ok: true`, `source: "neon"`, `demo: false`
+- [ ] `GET /api/health` → `ok: true`, `source: "neon"`, `demo: false`, `pglite: false`
 
 **DNS / TLS**
 
@@ -234,6 +245,24 @@ Copy this into the deploy runbook. None of these are implemented by committing t
 - [ ] Admin password changed from bootstrap
 - [ ] Owner email can sign in; floor staff have unique 4-digit PINs (hashed)
 - [ ] Counsel sign-off on gift term / cash-discount posting if those settings will be on
+
+---
+
+## 8. Training-week hardening (this pass)
+
+Software go-live for a SaaS-onboarded host in **TRAINING**. Live Visa remains out of scope.
+
+| MUST | Where |
+|---|---|
+| Training cannot use live processor keys; sandbox + TRAINING banner | `lifecycleForcesSandbox`; save of `paymentsMode=live` coerced to sandbox; Quantum Payments Live option disabled until live; banner on POS + PIN pad |
+| Go live explicit (now or schedule) keep/erase; live cards only after `status=live` | `GoLiveDialog` / `saveLifecycleFn`; capture always sandbox unless live |
+| No PGLite on production | `getSql` throws `DATABASE_URL required…`; `/api/health` **503** `source: "unconfigured"` |
+| Change-password → dashboard (or login with success) | `/change-password` → `/dashboard`; sessionStorage + login/dashboard banner |
+| Marketing has no unauthenticated Dashboard; PIN pad floor-only | Marketing: Sign in unless already signed in (then Open workspace). PIN pad copy: PIN ≠ clock |
+| `DEV_DEMO=0`: no demo tenants | `.env.example`; health `warnings` if demo flags on |
+| Quantum Payments only in POS integrations | `RETIRED_PAYMENT_PROVIDERS`; connect() refuses Stripe/Square/etc. |
+
+Out of this pass: Finix KYC, live keys, physical reader enrollment, Resend/Twilio (outbox stays).
 
 ---
 

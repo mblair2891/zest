@@ -7,6 +7,7 @@ import { EMPTY_LOCATION_SETUP } from "@/lib/saas/types";
 import {
   envPaymentsDefault,
   liveAdapterConfigured,
+  locationLifecycleStatus,
   parseLocationPaymentsMode,
   resolvePaymentsMode,
 } from "./mode";
@@ -108,7 +109,7 @@ export async function getPaymentsStatus(
   const setup = setupOf(loc.setup);
   const platformDefault = await platformPaymentsDefault();
   const locationOverride = parseLocationPaymentsMode(setup.paymentsMode);
-  const lifecycle = setup.lifecycleStatus || loc.lifecycle_status;
+  const lifecycle = locationLifecycleStatus(setup, loc.lifecycle_status);
   const resolved = resolvePaymentsMode({
     platformDefault,
     locationOverride,
@@ -172,7 +173,7 @@ export async function captureCardPresent(
   const resolved = resolvePaymentsMode({
     platformDefault,
     locationOverride: parseLocationPaymentsMode(setup.paymentsMode),
-    lifecycleStatus: setup.lifecycleStatus || loc.lifecycle_status,
+    lifecycleStatus: locationLifecycleStatus(setup, loc.lifecycle_status),
   });
   const hostBrand = input.hostBrand || loc.host_brand_name || loc.name;
   const merchantId = await ensureMerchant(loc.org_id, loc.id, resolved.mode);

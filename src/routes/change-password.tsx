@@ -74,7 +74,16 @@ function ChangePasswordForm() {
       markMustChangePasswordCleared();
       await getPlatformFlags().catch(() => undefined);
       setSuccess("Password updated. Opening the control plane…");
-      await navigate({ to: "/dashboard", replace: true });
+      try {
+        sessionStorage.setItem("summex-password-updated", "1");
+      } catch {
+        /* ignore */
+      }
+      try {
+        await navigate({ to: "/dashboard", replace: true });
+      } catch {
+        await navigate({ to: "/login", replace: true });
+      }
     } catch (err) {
       setBusy(false);
       setError(errorMessage(err));

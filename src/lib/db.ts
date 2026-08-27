@@ -1,9 +1,13 @@
-import { getDatabaseUrl, isServerlessRuntime } from "./database-url";
+import {
+  getDatabaseUrl,
+  isServerlessRuntime,
+  PRODUCTION_DB_REQUIRED,
+} from "./database-url";
 
-export { getDatabaseUrl, isServerlessRuntime };
+export { getDatabaseUrl, isServerlessRuntime, PRODUCTION_DB_REQUIRED };
 
 /** Which database backend is active. */
-export type DbSource = "neon" | "pglite";
+export type DbSource = "neon" | "pglite" | "unconfigured";
 
 /**
  * Active backend: real **Neon** when a Postgres URL is set (deployed / configured
@@ -13,10 +17,11 @@ export type DbSource = "neon" | "pglite";
  *
  * Resolved at call time (not module load) so Vite cannot inline an empty
  * `process.env.DATABASE_URL` from the compile environment.
+ * Serverless without a URL is **unconfigured** — never PGLite, never a fake neon.
  */
 export function getDbSource(): DbSource {
   if (getDatabaseUrl()) return "neon";
-  if (isServerlessRuntime()) return "neon";
+  if (isServerlessRuntime()) return "unconfigured";
   return "pglite";
 }
 
@@ -149,7 +154,7 @@ function createNeonSql(): Promise<Sql> {
     types.setTypeParser(OID_DATE, identity);
     types.setTypeParser(OID_INTERVAL, identity);
     const url = getDatabaseUrl();
-    if (!url) throw new Error("Database not ready");
+    if (!url) throw new Error(PRODUCTION_DB_REQUIRED);
     const pool = new Pool({ connectionString: url });
     globalRef.__pgPool__ = pool;
     try {
@@ -237,7 +242,7 @@ async function createSql(): Promise<Sql> {
   }
   if (getDatabaseUrl()) return createNeonSql();
   if (isServerlessRuntime()) {
-    throw new Error("Database not ready");
+    throw new Error(PRODUCTION_DB_REQUIRED);
   }
   return createPgliteSql();
 }

@@ -79,7 +79,7 @@ export const ensureAdminExists = createServerFn({ method: "POST" }).handler(
     } catch (err) {
       const msg = err instanceof Error ? err.message : "Could not prepare sign-in";
       const dbDown =
-        /database not ready|enoent|pglite|relation .* does not exist|econnrefused|enotfound|timeout/i.test(
+        /database not ready|database_url required|enoent|pglite|relation .* does not exist|econnrefused|enotfound|timeout/i.test(
           msg,
         );
       return {

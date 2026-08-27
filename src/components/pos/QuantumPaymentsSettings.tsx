@@ -29,6 +29,7 @@ export function QuantumPaymentsSettings({ write }: { write: boolean }) {
 
   const saveMode = (paymentsMode: LocationPaymentsMode) => {
     if (!write || isProspectDemo() || !orgId || !locId) return;
+    if (paymentsMode === "live" && status?.lifecycleForcesSandbox) return;
     setSaving(true);
     void saveLocationSettingsFn({
       data: { orgId, locationId: locId, setup: { paymentsMode } },
@@ -62,21 +63,38 @@ export function QuantumPaymentsSettings({ write }: { write: boolean }) {
         supplied Quantum reader. Never store PAN or CVV. Cash still works if the
         processor is down or this device is offline.
       </p>
+      {status?.lifecycleForcesSandbox && (
+        <p className="rounded-lg bg-warn/15 px-3 py-2 text-xs font-medium text-warn">
+          TRAINING — live processor keys are ignored. Quantum Payments sandbox
+          only until this location goes live.
+        </p>
+      )}
       <label className="block text-sm">
         <span className="mb-1 block text-xs text-muted-foreground">Capture mode</span>
         <select
           className="h-9 w-full rounded-lg border border-border bg-bg px-2 text-sm"
-          disabled={!write || saving}
-          value={status?.locationOverride ?? "inherit"}
+          disabled={!write || saving || status?.lifecycleForcesSandbox}
+          value={
+            status?.lifecycleForcesSandbox
+              ? "sandbox"
+              : (status?.locationOverride ?? "inherit")
+          }
           onChange={(e) => saveMode(e.target.value as LocationPaymentsMode)}
         >
           <option value="inherit">
             Inherit platform default ({status?.platformDefault ?? "sandbox"})
           </option>
           <option value="sandbox">Sandbox (training)</option>
-          <option value="live" disabled={!status?.hostPaymentsApproved}>
+          <option
+            value="live"
+            disabled={!status?.hostPaymentsApproved || status?.lifecycleForcesSandbox}
+          >
             Live card-present
-            {!status?.hostPaymentsApproved ? " (application required)" : ""}
+            {status?.lifecycleForcesSandbox
+              ? " (go live first)"
+              : !status?.hostPaymentsApproved
+                ? " (application required)"
+                : ""}
           </option>
         </select>
       </label>

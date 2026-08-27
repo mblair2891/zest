@@ -691,8 +691,9 @@ export async function getTenantDrillIn(userId: string, orgId: string): Promise<T
     venue_type: string;
     status: string;
     setup: unknown;
+    lifecycle_status: string | null;
   }>`
-    select id, name, venue_type, status, setup from locations
+    select id, name, venue_type, status, setup, lifecycle_status from locations
     where org_id = ${orgId} and coalesce(is_demo, false) = false
     order by name
   `;
@@ -711,7 +712,7 @@ export async function getTenantDrillIn(userId: string, orgId: string): Promise<T
     locations: locations.map((l) => {
       const setup =
         l.setup && typeof l.setup === "object" ? (l.setup as Record<string, unknown>) : {};
-      const life = String(setup.lifecycleStatus ?? l.status ?? "live");
+      const life = String(setup.lifecycleStatus ?? l.lifecycle_status ?? "training");
       return {
         id: l.id,
         name: l.name,

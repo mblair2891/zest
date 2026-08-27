@@ -4,18 +4,43 @@ import { AuthScreen, AuthShell } from "@/components/saas/AuthScreen";
 import { ensureAdminExists } from "@/lib/auth/platform-admin";
 import { sanitizeNextPath } from "@/lib/auth/safe-next-path";
 
+function parsePasswordUpdated(s: Record<string, unknown>): boolean {
+  return s.passwordUpdated === true || s.passwordUpdated === "1" || s.passwordUpdated === "true";
+}
+
 export const Route = createFileRoute("/login")({
-  validateSearch: (s: Record<string, unknown>): { next?: string } => {
+  validateSearch: (
+    s: Record<string, unknown>,
+  ): { next?: string; passwordUpdated?: boolean } => {
     const next =
       typeof s.next === "string" ? sanitizeNextPath(s.next) ?? undefined : undefined;
-    return next ? { next } : {};
+    const passwordUpdated = parsePasswordUpdated(s);
+    return {
+      ...(next ? { next } : {}),
+      ...(passwordUpdated ? { passwordUpdated: true } : {}),
+    };
   },
   component: LoginPage,
 });
 
 function LoginPage() {
+  const search = Route.useSearch();
   const [prepError, setPrepError] = useState<string | null>(null);
   const [ready, setReady] = useState(false);
+  const [passwordUpdated, setPasswordUpdated] = useState(
+    () => Boolean(search.passwordUpdated),
+  );
+
+  useEffect(() => {
+    try {
+      if (sessionStorage.getItem("summex-password-updated") === "1") {
+        sessionStorage.removeItem("summex-password-updated");
+        setPasswordUpdated(true);
+      }
+    } catch {
+      /* ignore */
+    }
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -44,6 +69,11 @@ function LoginPage() {
       title="Sign in to Summex"
       subtitle="Use your username or email and password."
     >
+      {passwordUpdated && (
+        <p className="mb-4 text-center text-sm text-success" role="status">
+          Password updated. Sign in with your new password.
+        </p>
+      )}
       <AuthScreen
         mode="signin"
         disabled={!ready || Boolean(prepError)}

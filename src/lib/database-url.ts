@@ -37,3 +37,11 @@ export function isServerlessRuntime(): boolean {
       readServerEnv("NETLIFY"),
   );
 }
+
+/** Health + getSql: production / serverless never falls back to PGLite. */
+export const PRODUCTION_DB_REQUIRED =
+  "DATABASE_URL required (PGLite is not used in production)";
+
+export function productionMissingDatabaseUrl(): boolean {
+  return isServerlessRuntime() && !getDatabaseUrl();
+}

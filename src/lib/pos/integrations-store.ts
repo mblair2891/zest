@@ -3,6 +3,7 @@ import { persist, createJSONStorage } from "zustand/middleware";
 import { uid } from "@/lib/utils";
 import {
   INTEGRATION_CATALOG,
+  RETIRED_PAYMENT_PROVIDERS,
   SUMMEX_PAYMENTS_ID,
   defaultConnections,
   migrateConnections,
@@ -93,6 +94,7 @@ export const useIntegrationsStore = create<IntegrationsState>()(
       },
 
       connect: (defId, config = {}) => {
+        if ((RETIRED_PAYMENT_PROVIDERS as readonly string[]).includes(defId)) return;
         const def = get().getDef(defId);
         if (!def) return;
         const existing = get().getConnection(defId);
@@ -243,7 +245,9 @@ export const useIntegrationsStore = create<IntegrationsState>()(
 
       filterCatalog: (q, category) => {
         const query = q.trim().toLowerCase();
+        const retired = new Set<string>(RETIRED_PAYMENT_PROVIDERS);
         return INTEGRATION_CATALOG.filter((d) => {
+          if (retired.has(d.id)) return false;
           if (category === "connected" && !get().isConnected(d.id)) return false;
           if (
             category !== "all" &&

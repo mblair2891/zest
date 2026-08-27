@@ -9,6 +9,19 @@ import type { GuideUpdate } from "@/lib/guide/types";
  */
 export const WHATS_NEW_ENTRIES: GuideUpdate[] = [
   {
+    id: "upd_2026_10_04_training_week",
+    date: "2026-10-04",
+    title: "Training vs live",
+    summary:
+      "Training locations stay on Quantum Payments sandbox. Go live is explicit (now or schedule) with keep/erase. Floor PIN is not the time clock.",
+    body: "Banner: TRAINING — practice mode. Live processor keys are ignored until the location is live. Cash, gift ledger, floor/ODS, devices, and settlement math all work in training. Marketing shows Sign in, not an unauthenticated Dashboard. Clock in / out is Labor.",
+    roles: ["owner_manager", "host_operator", "platform_admin", "server"],
+    surfaces: ["floor", "settings"],
+    audience: "all",
+    topicId: "location-training",
+    tags: ["training", "go live", "sandbox", "pin", "clock"],
+  },
+  {
     id: "upd_2026_10_03_printing",
     date: "2026-10-03",
     title: "Kitchen and receipt printing",

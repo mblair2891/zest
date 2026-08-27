@@ -103,6 +103,30 @@ go through `saveLocationSettingsFn` (membership owner/manager/platform_admin).
 
 In-app: `/guide?topic=roles-dashboards` and `/guide?topic=location-settings`.
 
+## Training vs live
+
+New locations start in **Training**. That is the real POS — cash, gift ledger,
+floor, ODS, devices, PIN, settlement math — with **Quantum Payments sandbox**.
+A yellow **TRAINING** banner is visible on the station, including the PIN pad.
+
+- Training and scheduled-live **cannot** use live processor keys. Capture is
+  sandbox even if someone stored a live mode preference.
+- **Go live** is explicit: now (type `GO LIVE NOW`) or schedule, with keep/erase
+  per data category. Menus, recipes, floor, staff/PINs, devices, and SKUs always
+  stay. Live cards only after lifecycle status is **live**, plus an approved
+  Quantum Payments application and an enrolled reader.
+- Training week is a software go-live. The first live Visa is a processor +
+  hardware go-live. Do not pretend live cards work in training.
+
+**PIN ≠ clock.** Floor PIN signs a person onto this station. Clock in / out is
+Labor (and Employees). Signing out of POS does not punch you out. Marketing
+never shows a PIN pad; back office is email + password at Sign in.
+
+**Sandbox cards.** Practice last4 on the receipt is not a live capture. Cash
+always works. Card is blocked offline.
+
+In-app: `/guide?topic=location-training` and `/guide?topic=floor-pin-login`.
+
 ## Order Display (ODS)
 
 User-facing name is **Order Display / ODS** (not KDS). Internal ids (`kds`,

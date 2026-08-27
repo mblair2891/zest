@@ -15,6 +15,20 @@ export function lifecycleForcesSandbox(lifecycle?: string | null): boolean {
   return lifecycle !== "live";
 }
 
+const LIFECYCLES = new Set(["onboarding", "training", "scheduled_live", "live"]);
+
+/** Prefer setup JSON, then the locations.lifecycle_status column. Missing → training (sandbox). */
+export function locationLifecycleStatus(
+  setup: { lifecycleStatus?: string | null } | null | undefined,
+  column?: string | null,
+): string {
+  const fromSetup = String(setup?.lifecycleStatus ?? "").trim();
+  if (LIFECYCLES.has(fromSetup)) return fromSetup;
+  const fromCol = String(column ?? "").trim();
+  if (LIFECYCLES.has(fromCol)) return fromCol;
+  return "training";
+}
+
 export function resolvePaymentsMode(opts: {
   platformDefault?: PaymentsMode | null;
   locationOverride?: LocationPaymentsMode | null;

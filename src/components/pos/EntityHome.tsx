@@ -19,6 +19,7 @@ import { usePosStore } from "@/lib/pos/store";
 import { PinKeypad } from "./PinKeypad";
 import { ThisStationButton, SplitScreenToggle } from "./ChangeDeviceDialog";
 import { NetworkBanner, NetworkWatcher } from "./NetworkStatus";
+import { TrainingBanner } from "./TrainingBanner";
 import { useStationSessionStore } from "@/lib/pos/station-session";
 import { isBackOfficeRole } from "@/lib/pos/pin";
 import { isProspectDemo } from "@/lib/demo/session";
@@ -31,7 +32,6 @@ import { cn } from "@/lib/utils";
 import { useGuideStore } from "@/lib/guide/store";
 import {
   ALL_ENTITIES,
-  SAAS_ENTITY,
   venuesForPicker,
   isVenueEntityId,
   venueById,
@@ -90,19 +90,19 @@ export function EntityPicker() {
             );
           })}
           <Link
-            to="/dashboard"
+            to="/login"
             className="flex min-h-14 items-start gap-3 rounded-2xl border border-primary/50 bg-primary/10 px-4 py-3.5 text-left transition hover:border-primary sm:col-span-2"
           >
             <Rocket className="mt-0.5 h-5 w-5 shrink-0 text-primary" />
             <span>
               <span className="block text-sm font-semibold text-foreground">
-                {SAAS_ENTITY.name}
+                Sign in
               </span>
               <span className="mt-0.5 inline-flex rounded-md bg-primary/20 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-primary">
-                Control plane
+                Back office
               </span>
               <span className="mt-1 block text-[11px] leading-snug text-muted-foreground">
-                {SAAS_ENTITY.blurb}
+                Email and password for owners and managers. Floor staff use a PIN on the station.
               </span>
             </span>
           </Link>
@@ -226,6 +226,7 @@ export function EntityLogin({ entityId }: { entityId: VenueEntityId }) {
     <div className="flex min-h-[100dvh] flex-col bg-bg pt-[var(--grok-banner-h,0px)]">
       <NetworkWatcher />
       <NetworkBanner />
+      <TrainingBanner />
       <div className="flex items-center justify-end gap-2 px-4 pt-3">
         <ThisStationButton />
         <SplitScreenToggle />
@@ -254,6 +255,9 @@ export function EntityLogin({ entityId }: { entityId: VenueEntityId }) {
           </p>
           <p className="mt-1 text-sm text-muted-foreground">{entity.blurb}</p>
           <p className="mt-3 text-sm font-medium">Floor login · 4-digit PIN</p>
+          <p className="mt-1 text-xs text-muted-foreground">
+            PIN signs you onto this station. Clock in / out is Labor — not this pad.
+          </p>
           {prospect && (
             <p className="mt-2 text-sm text-muted-foreground">
               Demo PIN is <strong>{DEMO_STAFF_PIN}</strong>. Login opens Owner / Manager.

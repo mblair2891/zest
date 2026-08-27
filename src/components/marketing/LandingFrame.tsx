@@ -48,7 +48,7 @@ export function LandingFrame({ children }: { children: ReactNode }) {
                 to="/dashboard"
                 className="inline-flex h-10 items-center rounded-sm bg-primary px-4 text-xs font-semibold tracking-widest text-primary-foreground"
               >
-                Dashboard
+                Open workspace
               </Link>
             ) : (
               <>

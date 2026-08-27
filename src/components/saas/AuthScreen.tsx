@@ -16,7 +16,7 @@ function mapAuthError(message: string): string {
     return "Sign-in could not complete. Refresh and try again.";
   }
   if (
-    /database not ready|enoent|pglite|relation .* does not exist|econnrefused|enotfound/i.test(
+    /database not ready|database_url required|enoent|pglite|relation .* does not exist|econnrefused|enotfound/i.test(
       message,
     )
   ) {
