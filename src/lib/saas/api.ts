@@ -446,20 +446,55 @@ export const listAllProspectsFn = createServerFn({ method: "GET" })
 
 export const markContractSignedFn = createServerFn({ method: "POST" })
   .middleware([tenantMiddleware])
+  .validator((d: { prospectId: string; signedOn?: string }) => ({
+    prospectId: String(d.prospectId ?? ""),
+    signedOn: d.signedOn ? String(d.signedOn).slice(0, 10) : undefined,
+  }))
+  .handler(async ({ context, data }) => {
+    const { markContractSigned } = await import("./prospects.server");
+    return markContractSigned({
+      userId: context.userId,
+      prospectId: data.prospectId,
+      signedOn: data.signedOn,
+    });
+  });
+
+export const goLiveProspectFn = createServerFn({ method: "POST" })
+  .middleware([tenantMiddleware])
   .validator((d: { prospectId: string }) => ({
     prospectId: String(d.prospectId ?? ""),
   }))
   .handler(async ({ context, data }) => {
-    const { markContractSigned } = await import("./prospects.server");
-    return markContractSigned({ userId: context.userId, prospectId: data.prospectId });
+    const { maybePromoteLive, getProspectById } = await import("./prospects.server");
+    const row = await getProspectById(data.prospectId);
+    if (!row) throw new Error("Prospect not found");
+    return maybePromoteLive({ prospectId: data.prospectId, actorUserId: context.userId });
+  });
+
+export const startOnboardingProspectFn = createServerFn({ method: "POST" })
+  .middleware([tenantMiddleware])
+  .validator((d: { prospectId: string }) => ({
+    prospectId: String(d.prospectId ?? ""),
+  }))
+  .handler(async ({ context, data }) => {
+    const { startOnboardingProspect } = await import("./prospects.server");
+    return startOnboardingProspect({ userId: context.userId, prospectId: data.prospectId });
   });
 
 export const adminSetProspectStatusFn = createServerFn({ method: "POST" })
   .middleware([tenantMiddleware])
-  .validator((d: { prospectId: string; status: string; note?: string }) => ({
+  .validator((d: {
+    prospectId: string;
+    status: string;
+    note?: string;
+    overridePhrase?: string;
+    reason?: string;
+  }) => ({
     prospectId: String(d.prospectId ?? ""),
     status: String(d.status ?? ""),
     note: d.note ? String(d.note) : undefined,
+    overridePhrase: d.overridePhrase ? String(d.overridePhrase) : undefined,
+    reason: d.reason ? String(d.reason).slice(0, 500) : undefined,
   }))
   .handler(async ({ context, data }) => {
     const { adminSetProspectStatus } = await import("./prospects.server");
@@ -468,6 +503,8 @@ export const adminSetProspectStatusFn = createServerFn({ method: "POST" })
       prospectId: data.prospectId,
       status: data.status as import("./prospect-types").ProspectStatus,
       note: data.note,
+      overridePhrase: data.overridePhrase,
+      reason: data.reason,
     });
   });
 

@@ -23,7 +23,7 @@ export const SAAS_TOPICS: GuideTopic[] = [
       ),
       callout(
         "Status machine",
-        "prospect → quoted → accepted → contracted → onboarding → live. Optional: churned or rejected.",
+        "Request → Sent → Accepted → Contracted → Onboarding → Live. Rejected / Churned are exits only. You cannot skip a stage without OVERRIDE.",
       ),
       shot(
         "Get pricing — interview on the left, recommendation card, then the structured form.",
@@ -48,7 +48,7 @@ export const SAAS_TOPICS: GuideTopic[] = [
         "Get pricing creates a request. Pipeline opens the quote builder: plan, location count, add-ons, setup fee.",
         "Save draft, then Send quote. That emails the prospect and sets status Sent. Print/PDF is on the quote link.",
         "Merchant taps Accept on the link, or Admin marks accepted. Status becomes accepted. Not a live tenant yet.",
-        "Platform Admin marks Contract signed. Status becomes contracted. The onboarding wizard unlocks.",
+        "Platform Admin records the contract (checkbox + date). Status stays Contracted. Start onboarding is enabled only then.",
         "Do not create the org by hand unless you are skipping the commercial path for an internal site.",
       ),
       warn(

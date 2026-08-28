@@ -399,6 +399,19 @@ export async function patchAccount(
   if (!cur[0]) throw new Error("Account not found");
   const name = patch.name?.trim() || cur[0].name;
   const stage = patch.stage && ACCOUNT_STAGES.includes(patch.stage) ? patch.stage : asStage(cur[0].stage);
+  if (patch.stage === "onboarding" || patch.stage === "live") {
+    const pid = cur[0].prospect_id;
+    if (pid) {
+      const { getProspectById } = await import("./prospects.server");
+      const p = await getProspectById(pid);
+      if (patch.stage === "onboarding" && p && p.status !== "contracted" && p.status !== "onboarding") {
+        throw new Error("Start onboarding only after the contract is recorded (Pipeline).");
+      }
+      if (patch.stage === "live" && p && p.status !== "onboarding" && p.status !== "live") {
+        throw new Error("Go live only after host onboarding is complete.");
+      }
+    }
+  }
   if (patch.stage === "qualified") {
     try {
       const { loadCrmSettings } = await import("./platform-settings.server");
@@ -531,41 +544,21 @@ export async function startOnboardingForAccount(userId: string, accountId: strin
     select prospect_id, name from crm_accounts where id = ${accountId}
   `;
   if (!acc[0]) throw new Error("Account not found");
-  let prospectId = acc[0].prospect_id;
+  const prospectId = acc[0].prospect_id;
   if (!prospectId) {
-    const { createProspect } = await import("./prospects.server");
-    const contacts = await sql<{ email: string | null }>`
-      select email from crm_contacts where account_id = ${accountId} and email is not null limit 1
-    `;
-    const p = await createProspect({ userId, email: contacts[0]?.email ?? null });
-    prospectId = p.id;
-    await sql`delete from crm_accounts where prospect_id = ${prospectId} and id <> ${accountId}`;
-    await sql`
-      update crm_accounts set prospect_id = ${prospectId}, updated_at = now() where id = ${accountId}
-    `;
-    await sql`
-      update prospects
-      set answers = jsonb_set(coalesce(answers, '{}'::jsonb), '{company,dba}', to_jsonb(${acc[0].name}::text))
-      where id = ${prospectId}
-    `;
+    throw new Error(
+      "No linked quote request. Use Get pricing, then Send quote → Accept → Contract before Start onboarding.",
+    );
   }
-  const { getProspectById, markContractSigned, adminSetProspectStatus } = await import(
-    "./prospects.server"
-  );
+  const { getProspectById, startOnboardingProspect } = await import("./prospects.server");
   const row = await getProspectById(prospectId);
   if (!row) throw new Error("Prospect missing");
-  const status = row.status;
-  if (status === "prospect" || status === "quoted" || status === "accepted") {
-    if (status === "prospect") {
-      await adminSetProspectStatus({ userId, prospectId, status: "quoted", note: "CRM start onboarding" });
-      await adminSetProspectStatus({ userId, prospectId, status: "accepted", note: "CRM start onboarding" });
-    } else if (status === "quoted") {
-      await adminSetProspectStatus({ userId, prospectId, status: "accepted", note: "CRM start onboarding" });
-    }
-    await markContractSigned({ userId, prospectId });
-  } else if (status === "contracted") {
-    await adminSetProspectStatus({ userId, prospectId, status: "onboarding" });
+  if (row.status !== "contracted") {
+    throw new Error(
+      "Start onboarding is available after Request → Sent → Accepted → Contracted. Send a quote, record accept, then the contract.",
+    );
   }
+  await startOnboardingProspect({ userId, prospectId });
   await patchAccount(userId, accountId, { stage: "onboarding" });
   return { prospectId };
 }

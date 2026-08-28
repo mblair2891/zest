@@ -380,6 +380,9 @@ export type ProspectListItem = {
   publicToken: string;
   createdAt: string;
   updatedAt: string;
+  locationCount: number;
+  operatingModel: string;
+  quoteSent: boolean;
 };
 
 export const MODULE_LABELS: { id: keyof IntakeModules; label: string; hint: string }[] = [

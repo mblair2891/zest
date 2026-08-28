@@ -254,6 +254,12 @@ function AccountDetail({
       <div className="flex flex-wrap gap-2">
         <Button
           size="sm"
+          disabled={a.stage !== "contract"}
+          title={
+            a.stage === "contract"
+              ? "Start host onboarding"
+              : "Available after Request → Sent → Accepted → Contracted"
+          }
           onClick={() => {
             onError(null);
             void startCrmOnboardingFn({ data: { accountId: a.id } })
@@ -270,6 +276,7 @@ function AccountDetail({
         <Button
           size="sm"
           variant="outline"
+          disabled={a.stage !== "onboarding"}
           onClick={() => {
             onError(null);
             void goLiveCrmAccountFn({ data: { accountId: a.id } })

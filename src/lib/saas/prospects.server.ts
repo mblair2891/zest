@@ -40,6 +40,13 @@ import {
   writeAudit,
 } from "./tenancy.server";
 import type { PlanSlug } from "./types";
+import {
+  canTransition,
+  gateBlockReason,
+  quoteIsSent,
+  OVERRIDE_PHRASE,
+} from "./pipeline-gates";
+export { canTransition } from "./pipeline-gates";
 
 type ProspectRow = {
   id: string;
@@ -297,21 +304,7 @@ function mapRun(r: RunRow): OnboardingRunRecord {
   };
 }
 
-const FORWARD: Record<ProspectStatus, ProspectStatus[]> = {
-  prospect: ["quoted", "rejected", "churned"],
-  quoted: ["accepted", "prospect", "rejected", "churned", "quoted"],
-  accepted: ["contracted", "quoted", "rejected", "churned"],
-  contracted: ["onboarding", "rejected", "churned"],
-  onboarding: ["live", "churned"],
-  live: ["churned"],
-  rejected: ["prospect"],
-  churned: ["prospect"],
-};
 
-export function canTransition(from: ProspectStatus, to: ProspectStatus): boolean {
-  if (from === to) return true;
-  return FORWARD[from]?.includes(to) ?? false;
-}
 
 async function getRow(id: string): Promise<ProspectRow | null> {
   const sql = await getSql();
@@ -487,8 +480,48 @@ export async function listMyProspects(userId: string): Promise<ProspectListItem[
   return rows.map(toListItem);
 }
 
+/** Demote houses that skipped a sent quote (e.g. Force into Onboarding). */
+export async function repairOrphanPipelineStages(): Promise<number> {
+  const sql = await getSql();
+  const rows = await sql<ProspectRow>`
+    select * from prospects
+    where status in ('accepted','contracted','onboarding','live')
+  `;
+  let n = 0;
+  for (const row of rows) {
+    const p = mapProspect(row);
+    let next: ProspectStatus | null = null;
+    if (p.status === "live" && p.orgId) continue;
+    if (!quoteIsSent(p.quote)) next = "prospect";
+    else if (!p.acceptedAt && (p.status === "contracted" || p.status === "onboarding")) {
+      next = "quoted";
+    } else if (!p.contractedAt && p.status === "onboarding") {
+      next = "accepted";
+    }
+    if (!next || next === p.status) continue;
+    await sql`
+      update prospects set status = ${next}, updated_at = now() where id = ${p.id}
+    `;
+    await writeAudit({
+      actorUserId: null,
+      orgId: p.orgId,
+      action: "status_changed",
+      payload: {
+        prospectId: p.id,
+        from: p.status,
+        to: next,
+        note: "auto-repaired: pipeline missing sent quote or contract",
+        forced: false,
+      },
+    });
+    n += 1;
+  }
+  return n;
+}
+
 export async function listAllProspects(userId: string): Promise<ProspectListItem[]> {
   if (!(await isPlatformAdmin(userId))) throw new ForbiddenError();
+  await repairOrphanPipelineStages().catch(() => 0);
   const sql = await getSql();
   const rows = await sql<ProspectRow & { org_name: string | null }>`
     select p.*, o.name as org_name
@@ -523,6 +556,9 @@ function toListItem(r: ProspectRow & { org_name?: string | null }): ProspectList
     publicToken: p.publicToken,
     createdAt: p.createdAt,
     updatedAt: p.updatedAt,
+    locationCount: p.quote?.locationCount ?? p.answers.portfolio.locationsNow ?? 0,
+    operatingModel: p.answers.operating.model,
+    quoteSent: quoteIsSent(p.quote),
   };
 }
 
@@ -712,19 +748,11 @@ export async function sendQuote(opts: {
   if (["live", "churned", "rejected", "contracted", "onboarding"].includes(prospect.status)) {
     throw new Error("Quote cannot be sent from this status");
   }
-  if (!prospect.quote) {
-    prospect = await saveQuoteDraft({
-      userId: opts.userId,
-      prospectId: opts.prospectId,
-      input: {
-        planSlug: "starter",
-        locationCount: locationCount(prospect.answers),
-        setupFeeCents: 0,
-        addOns: [],
-      },
-    });
+  if (!prospect.quote) throw new Error("Save a draft quote first (plan + price + location count)");
+  const locN = Number(prospect.quote.locationCount ?? prospect.quote.maxLocations ?? 0);
+  if (!prospect.quote.planSlug || locN < 1) {
+    throw new Error("Quote needs a plan and at least one location before send");
   }
-  if (!prospect.quote) throw new Error("Save a draft quote first");
   const now = new Date().toISOString();
   const quote = { ...prospect.quote, draft: false, sentAt: now, generatedAt: now };
   const sql = await getSql();
@@ -816,19 +844,23 @@ export async function adminMarkQuoteAccepted(opts: {
 export async function markContractSigned(opts: {
   userId: string;
   prospectId: string;
+  signedOn?: string;
 }): Promise<ProspectRecord> {
   if (!(await isPlatformAdmin(opts.userId))) throw new ForbiddenError();
   const row = await getRow(opts.prospectId);
   if (!row) throw new Error("Prospect not found");
   const prospect = mapProspect(row);
-  if (prospect.status !== "accepted" && prospect.status !== "quoted") {
-    throw new Error("Contract can be signed after the quote is accepted");
+  if (prospect.status !== "accepted") {
+    throw new Error("Accept the quote before recording the contract");
   }
+  const when = opts.signedOn && /^\d{4}-\d{2}-\d{2}/.test(opts.signedOn)
+    ? new Date(opts.signedOn).toISOString()
+    : new Date().toISOString();
   const sql = await getSql();
   await sql`
     update prospects
     set status = 'contracted',
-        contracted_at = now(),
+        contracted_at = ${when},
         contract_signed_by = ${opts.userId},
         updated_at = now()
     where id = ${prospect.id}
@@ -836,10 +868,35 @@ export async function markContractSigned(opts: {
   await writeAudit({
     actorUserId: opts.userId,
     action: "contract_signed",
-    payload: { prospectId: prospect.id },
+    payload: { prospectId: prospect.id, signedOn: when },
     orgId: prospect.orgId,
   });
+  const next = await getRow(prospect.id);
+  const mapped = mapProspect(next!);
+  await syncCrm(mapped);
+  return mapped;
+}
+
+export async function startOnboardingProspect(opts: {
+  userId: string;
+  prospectId: string;
+}): Promise<ProspectRecord> {
+  if (!(await isPlatformAdmin(opts.userId))) throw new ForbiddenError();
+  const row = await getRow(opts.prospectId);
+  if (!row) throw new Error("Prospect not found");
+  const prospect = mapProspect(row);
+  const blocked = gateBlockReason(
+    {
+      status: prospect.status,
+      quote: prospect.quote,
+      acceptedAt: prospect.acceptedAt,
+      contractedAt: prospect.contractedAt,
+    },
+    "onboarding",
+  );
+  if (blocked) throw new Error(blocked);
   await ensureOnboardingRun(prospect.id);
+  const sql = await getSql();
   await sql`
     update prospects set status = 'onboarding', updated_at = now()
     where id = ${prospect.id} and status = 'contracted'
@@ -861,6 +918,8 @@ export async function adminSetProspectStatus(opts: {
   prospectId: string;
   status: ProspectStatus;
   note?: string;
+  overridePhrase?: string;
+  reason?: string;
 }): Promise<ProspectRecord> {
   if (!(await isPlatformAdmin(opts.userId))) throw new ForbiddenError();
   if (!(PROSPECT_STATUSES as readonly string[]).includes(opts.status)) {
@@ -869,8 +928,24 @@ export async function adminSetProspectStatus(opts: {
   const row = await getRow(opts.prospectId);
   if (!row) throw new Error("Prospect not found");
   const prospect = mapProspect(row);
-  if (!canTransition(prospect.status, opts.status)) {
-    throw new Error(`Cannot move ${prospect.status} → ${opts.status}`);
+  const blocked = gateBlockReason(
+    {
+      status: prospect.status,
+      quote: prospect.quote,
+      acceptedAt: prospect.acceptedAt,
+      contractedAt: prospect.contractedAt,
+    },
+    opts.status,
+  );
+  const skipping = blocked || !canTransition(prospect.status, opts.status);
+  if (skipping && prospect.status !== opts.status) {
+    const phrase = (opts.overridePhrase ?? "").trim().toUpperCase();
+    const reason = (opts.reason ?? opts.note ?? "").trim();
+    if (phrase !== OVERRIDE_PHRASE || reason.length < 8) {
+      throw new Error(
+        `${blocked || `Cannot move ${prospect.status} → ${opts.status}`}. Force requires typing OVERRIDE and a reason.`,
+      );
+    }
   }
   const sql = await getSql();
   await sql`
@@ -880,9 +955,6 @@ export async function adminSetProspectStatus(opts: {
   if (opts.status === "onboarding" || opts.status === "contracted") {
     await ensureOnboardingRun(prospect.id);
   }
-  if (opts.status === "onboarding" && prospect.status === "contracted") {
-    /* already */
-  }
   await writeAudit({
     actorUserId: opts.userId,
     orgId: prospect.orgId,
@@ -891,8 +963,9 @@ export async function adminSetProspectStatus(opts: {
       prospectId: prospect.id,
       from: prospect.status,
       to: opts.status,
-      note: opts.note ?? "",
-      forced: true,
+      note: opts.note ?? opts.reason ?? "",
+      forced: skipping && prospect.status !== opts.status,
+      override: skipping && prospect.status !== opts.status,
     },
   });
   const next = await getRow(prospect.id);

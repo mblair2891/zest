@@ -28,8 +28,7 @@ import type { PlanSlug } from "./types";
 const UNLOCKED: ProspectStatusLike[] = ["contracted", "onboarding", "live"];
 type ProspectStatusLike = string;
 
-function assertOnboardingUnlocked(status: string, admin: boolean) {
-  if (admin) return;
+function assertOnboardingUnlocked(status: string, _admin: boolean) {
   if (!UNLOCKED.includes(status)) {
     throw new ForbiddenError("Onboarding unlocks after the contract is signed");
   }
