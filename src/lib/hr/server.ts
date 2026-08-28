@@ -325,6 +325,38 @@ export async function sendPacket(
   return { id, status: esign.status, message: esign.message };
 }
 
+export async function packetOutbox(
+  ctx: EntityWriteContext,
+  data: { employerId: string; id: string },
+): Promise<{ title: string; body: string; status: PacketStatus; fileName: string | null }> {
+  assertFeature(ctx, data.employerId, "onboardingPackets");
+  if (ctx.isPlatformAdmin) {
+    throw new ForbiddenError("Platform support cannot download tax or identity packets");
+  }
+  if (!canViewHrField(ctx, data.employerId, "documents")) {
+    throw new ForbiddenError("Not allowed to view employment documents");
+  }
+  const sql = await getSql();
+  const rows = await sql<{
+    title: string;
+    body: string | null;
+    status: string;
+    file_name: string | null;
+  }>`
+    select title, body, status, file_name from hr_packets
+    where id = ${data.id} and location_id = ${ctx.locationId} and employer_id = ${data.employerId}
+    limit 1
+  `;
+  const row = rows[0];
+  if (!row) throw new ForbiddenError("Packet not found");
+  return {
+    title: row.title,
+    body: row.body ?? "",
+    status: row.status as PacketStatus,
+    fileName: row.file_name,
+  };
+}
+
 export async function markPacket(
   ctx: EntityWriteContext,
   data: {

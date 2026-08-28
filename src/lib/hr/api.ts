@@ -244,6 +244,22 @@ export const sendHrPacketFn = createServerFn({ method: "POST" })
     return hr.sendPacket(ctx, data);
   });
 
+export const hrPacketOutboxFn = createServerFn({ method: "POST" })
+  .middleware([tenantMiddleware])
+  .validator(
+    (d: { orgId: string; locationId: string; employerId: string; id: string }) => ({
+      orgId: org(d.orgId),
+      locationId: loc(d.locationId),
+      employerId: employer(d.employerId),
+      id: String(d.id ?? "").slice(0, 80),
+    }),
+  )
+  .handler(async ({ context, data }) => {
+    const hr = await import("./server");
+    const ctx = await ctxFor(context.userId, data.orgId, data.locationId);
+    return hr.packetOutbox(ctx, data);
+  });
+
 export const markHrPacketFn = createServerFn({ method: "POST" })
   .middleware([tenantMiddleware])
   .validator(

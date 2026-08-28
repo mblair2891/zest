@@ -22,6 +22,7 @@ import {
   type EntityHrConfig,
   type HrApplicant,
   type HrAudience,
+  type HrAvailability,
   type HrEligibility,
   type HrFeatureKey,
   type HrOnboarding,
@@ -34,8 +35,10 @@ import { packetsForState, US_STATES, type PacketTemplate } from "@/lib/hr/packet
 import {
   addHrWriteupFn,
   hrOverviewFn,
+  hrPacketOutboxFn,
   hrPayrollSummaryFn,
   listHrApplicantsFn,
+  listHrAvailabilityFn,
   listHrEligibilityFn,
   listHrOnboardingFn,
   listHrPacketsFn,
@@ -46,6 +49,7 @@ import {
   saveHrPiiFn,
   saveHrSettingsFn,
   sendHrPacketFn,
+  setHrAvailabilityFn,
   setHrEligibilityFn,
   startHrOnboardingFn,
   upsertHrApplicantFn,
@@ -60,6 +64,7 @@ type Tab =
   | "packets"
   | "timeoff"
   | "writeups"
+  | "availability"
   | "eligibility"
   | "payroll";
 
@@ -141,6 +146,7 @@ export function HrWorkspace() {
     { id: "packets", label: "Packets", show: Boolean(enabled && features?.onboardingPackets && admin) },
     { id: "timeoff", label: "Time-off", show: Boolean(enabled && features?.timeOff) },
     { id: "writeups", label: "Write-ups", show: Boolean(enabled && features?.writeUps && admin) },
+    { id: "availability", label: "Availability", show: Boolean(enabled && features?.availability) },
     { id: "eligibility", label: "Eligibility", show: Boolean(enabled && features?.eligibility && admin) },
     {
       id: "payroll",
@@ -269,6 +275,9 @@ export function HrWorkspace() {
         )}
         {tab === "timeoff" && <TimeOffPanel scope={scope} staff={staff} admin={admin} onError={setFlash} />}
         {tab === "writeups" && <WriteupsPanel scope={scope} staff={staff} onError={setFlash} />}
+        {tab === "availability" && (
+          <AvailabilityPanel scope={scope} staff={staff} onError={setFlash} />
+        )}
         {tab === "eligibility" && <EligibilityPanel scope={scope} staff={staff} onError={setFlash} />}
         {tab === "payroll" && overview && (
           <PayrollPanel
@@ -829,6 +838,27 @@ function PacketsPanel({
               <span className="text-xs text-muted-foreground">{r.employeeName}</span>
             </div>
             <div className="mt-2 flex flex-wrap gap-1">
+              {(r.status === "awaiting_upload" || r.status === "sent" || r.status === "draft") && (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => {
+                    void hrPacketOutboxFn({ data: { ...scope, id: r.id } })
+                      .then((p) => {
+                        const blob = new Blob([p.body || p.title], { type: "text/plain" });
+                        const url = URL.createObjectURL(blob);
+                        const a = document.createElement("a");
+                        a.href = url;
+                        a.download = `${p.title.replace(/[^\w.-]+/g, "-")}.txt`;
+                        a.click();
+                        URL.revokeObjectURL(url);
+                      })
+                      .catch((e) => onError(errMsg(e)));
+                  }}
+                >
+                  Download to sign
+                </Button>
+              )}
               {r.status === "awaiting_upload" && (
                 <Button
                   size="sm"
@@ -1091,6 +1121,108 @@ function WriteupsPanel({
             <p className="mt-1 text-sm">{r.body}</p>
           </li>
         ))}
+      </ul>
+    </div>
+  );
+}
+
+const WEEKDAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+
+function AvailabilityPanel({
+  scope,
+  staff,
+  onError,
+}: {
+  scope: { orgId: string; locationId: string; employerId: string };
+  staff: { id: string; name: string }[];
+  onError: (m: string) => void;
+}) {
+  const [pick, setPick] = useState(staff[0]?.id ?? "");
+  const [rows, setRows] = useState<HrAvailability[]>([]);
+  const load = useCallback(async () => {
+    if (!pick) return;
+    try {
+      setRows(await listHrAvailabilityFn({ data: { ...scope, employeeId: pick } }));
+    } catch (e) {
+      onError(errMsg(e));
+    }
+  }, [scope, pick, onError]);
+  useEffect(() => {
+    void load();
+  }, [load]);
+  const byDay = (d: number) => rows.find((r) => r.weekday === d);
+  return (
+    <div className="max-w-3xl space-y-3">
+      <p className="text-xs text-muted-foreground">
+        Entity staff only. Windows are local minutes from midnight. Scheduling still lives on Labor.
+      </p>
+      <select
+        className="h-9 rounded-md border border-border bg-bg px-2 text-sm"
+        value={pick}
+        onChange={(e) => setPick(e.target.value)}
+      >
+        {staff.map((s) => (
+          <option key={s.id} value={s.id}>
+            {s.name}
+          </option>
+        ))}
+      </select>
+      <ul className="space-y-2" key={pick}>
+        {WEEKDAYS.map((label, d) => {
+          const row = byDay(d);
+          const start = row ? String(Math.floor(row.startMin / 60)).padStart(2, "0") + ":" + String(row.startMin % 60).padStart(2, "0") : "09:00";
+          const end = row ? String(Math.floor(row.endMin / 60)).padStart(2, "0") + ":" + String(row.endMin % 60).padStart(2, "0") : "17:00";
+          return (
+            <li key={d} className="flex flex-wrap items-center gap-2 rounded-xl border border-border bg-surface px-3 py-2 text-sm">
+              <span className="w-10 font-medium">{label}</span>
+              <Input
+                type="time"
+                className="h-8 w-28"
+                defaultValue={start}
+                id={`av-s-${pick}-${d}`}
+              />
+              <span className="text-xs text-muted-foreground">to</span>
+              <Input
+                type="time"
+                className="h-8 w-28"
+                defaultValue={end}
+                id={`av-e-${pick}-${d}`}
+              />
+              <Button
+                size="sm"
+                variant="outline"
+                disabled={!pick}
+                onClick={() => {
+                  const sEl = document.getElementById(`av-s-${pick}-${d}`) as HTMLInputElement | null;
+                  const eEl = document.getElementById(`av-e-${pick}-${d}`) as HTMLInputElement | null;
+                  const parse = (v: string, fallback: number) => {
+                    const [h, m] = (v || "").split(":").map(Number);
+                    if (Number.isFinite(h) && Number.isFinite(m)) return h * 60 + m;
+                    return fallback;
+                  };
+                  const next = WEEKDAYS.map((_, i) => {
+                    const existing = byDay(i);
+                    if (i !== d) {
+                      return existing
+                        ? { weekday: i, startMin: existing.startMin, endMin: existing.endMin }
+                        : null;
+                    }
+                    return {
+                      weekday: d,
+                      startMin: parse(sEl?.value ?? start, 9 * 60),
+                      endMin: parse(eEl?.value ?? end, 17 * 60),
+                    };
+                  }).filter((x): x is { weekday: number; startMin: number; endMin: number } => Boolean(x));
+                  void setHrAvailabilityFn({ data: { ...scope, employeeId: pick, rows: next } })
+                    .then(load)
+                    .catch((e) => onError(errMsg(e)));
+                }}
+              >
+                Save
+              </Button>
+            </li>
+          );
+        })}
       </ul>
     </div>
   );
