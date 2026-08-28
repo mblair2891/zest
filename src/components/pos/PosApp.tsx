@@ -367,6 +367,7 @@ function PosAppInner({ entityId }: { entityId?: string }) {
                     maps: pack.maps ?? useCostStore.getState().maps,
                     exceptions: pack.exceptions ?? useCostStore.getState().exceptions,
                     settings: pack.settings ?? useCostStore.getState().settings,
+                    pos: pack.pos?.length ? pack.pos : useCostStore.getState().pos,
                   }
                 : {}),
             });

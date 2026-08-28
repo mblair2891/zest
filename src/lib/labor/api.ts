@@ -200,3 +200,69 @@ export const setStaffPinFn = createServerFn({ method: "POST" })
     `;
     return { ok: true as const };
   });
+
+export const upsertPunchFn = createServerFn({ method: "POST" })
+  .middleware([tenantMiddleware])
+  .validator(
+    (d: {
+      orgId: string;
+      locationId: string;
+      punch: {
+        id: string;
+        employeeId: string;
+        employeeName: string;
+        employerId?: string | null;
+        clockInAt: number;
+        clockOutAt?: number | null;
+        regularMinutes?: number;
+        otMinutes?: number;
+        status: string;
+      };
+    }) => ({
+      orgId: String(d.orgId ?? "").trim(),
+      locationId: loc(d.locationId),
+      punch: {
+        id: String(d.punch.id ?? "").slice(0, 80),
+        employeeId: String(d.punch.employeeId ?? "").slice(0, 80),
+        employeeName: String(d.punch.employeeName ?? "").slice(0, 120),
+        employerId: String(d.punch.employerId ?? HOST_SCOPE).slice(0, 80) || HOST_SCOPE,
+        clockInAt: Number(d.punch.clockInAt) || Date.now(),
+        clockOutAt: d.punch.clockOutAt ? Number(d.punch.clockOutAt) : null,
+        regularMinutes: Math.max(0, Math.round(Number(d.punch.regularMinutes) || 0)),
+        otMinutes: Math.max(0, Math.round(Number(d.punch.otMinutes) || 0)),
+        status: String(d.punch.status ?? "open").slice(0, 40),
+      },
+    }),
+  )
+  .handler(async ({ context, data }) => {
+    const { loadEntityWriteContext } = await import("@/lib/access/assert-entity.server");
+    const ctx = await loadEntityWriteContext(context.userId, data.orgId, data.locationId);
+    const employerId = data.punch.employerId || ctx.operatorId || HOST_SCOPE;
+    if (ctx.role === "vendor" && ctx.operatorId !== employerId && ctx.operatorId !== HOST_SCOPE) {
+      const { ForbiddenError } = await import("@/lib/saas/tenancy.server");
+      throw new ForbiddenError("Clock is scoped to your employer entity");
+    }
+    const { getSql } = await import("@/lib/db");
+    const sql = await getSql();
+    const inAt = new Date(data.punch.clockInAt).toISOString();
+    const outAt = data.punch.clockOutAt ? new Date(data.punch.clockOutAt).toISOString() : null;
+    await sql`
+      insert into location_punches (
+        id, org_id, location_id, employer_id, employee_id, employee_name,
+        clock_in_at, clock_out_at, regular_minutes, ot_minutes, status, updated_at
+      ) values (
+        ${data.punch.id}, ${ctx.orgId}, ${ctx.locationId}, ${employerId},
+        ${data.punch.employeeId}, ${data.punch.employeeName},
+        ${inAt}, ${outAt}, ${data.punch.regularMinutes}, ${data.punch.otMinutes},
+        ${data.punch.status}, now()
+      )
+      on conflict (id) do update set
+        clock_out_at = excluded.clock_out_at,
+        regular_minutes = excluded.regular_minutes,
+        ot_minutes = excluded.ot_minutes,
+        status = excluded.status,
+        employee_name = excluded.employee_name,
+        updated_at = now()
+    `;
+    return { ok: true as const };
+  });

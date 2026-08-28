@@ -58,6 +58,7 @@ export async function flushLocationCatalog(
           maps: cost.maps,
           exceptions: cost.exceptions,
           settings: cost.settings,
+          pos: cost.pos,
         },
       },
     },

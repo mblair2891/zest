@@ -862,6 +862,9 @@ export const useCostStore = create<CostState>()(
         };
         set({ pos: [po, ...get().pos] });
         get().audit("po_create", `${sup.name} · ${lines.length} lines · $${(totalCents / 100).toFixed(2)}`, entityId);
+        void import("@/lib/pos/persist-location-setup").then((m) =>
+          m.persistLocationCatalog("costs"),
+        );
         return { ok: true, poId: po.id, blocked };
       },
 
@@ -912,6 +915,9 @@ export const useCostStore = create<CostState>()(
           ),
         });
         get().audit("po_send", `${po.supplierName} via ${result.method}`, po.entityId);
+        void import("@/lib/pos/persist-location-setup").then((m) =>
+          m.persistLocationCatalog("costs"),
+        );
         return {
           ok: true,
           csv: result.csv,
@@ -989,6 +995,9 @@ export const useCostStore = create<CostState>()(
           });
         }
         get().audit("po_receive", po.supplierName, po.entityId);
+        void import("@/lib/pos/persist-location-setup").then((m) =>
+          m.persistLocationCatalog("costs"),
+        );
         return { ok: true };
       },
 

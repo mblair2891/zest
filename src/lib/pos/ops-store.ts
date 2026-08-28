@@ -744,6 +744,7 @@ export const useOpsStore = create<OpsState>()(
           redFlag: false,
         };
         set({ punches: [punch, ...get().punches] });
+        void import("@/lib/labor/persist-punch").then((m) => m.persistPunchToServer(punch));
         return { ok: true, punchId: punch.id };
       },
 
@@ -821,6 +822,7 @@ export const useOpsStore = create<OpsState>()(
           punches: get().punches.map((p) => (p.id === punch.id ? updated : p)),
           alerts,
         });
+        void import("@/lib/labor/persist-punch").then((m) => m.persistPunchToServer(updated));
 
         return {
           ok: true,
@@ -831,22 +833,27 @@ export const useOpsStore = create<OpsState>()(
       },
 
       approvePunch: (punchId, supervisorName) => {
+        const next = get().punches.map((p) =>
+          p.id === punchId
+            ? {
+                ...p,
+                status: "approved" as const,
+                redFlag: false,
+                approvedBy: supervisorName,
+                approvedAt: Date.now(),
+              }
+            : p,
+        );
         set({
-          punches: get().punches.map((p) =>
-            p.id === punchId
-              ? {
-                  ...p,
-                  status: "approved",
-                  redFlag: false,
-                  approvedBy: supervisorName,
-                  approvedAt: Date.now(),
-                }
-              : p,
-          ),
+          punches: next,
           alerts: get().alerts.map((a) =>
             a.punchId === punchId ? { ...a, resolved: true } : a,
           ),
         });
+        const punch = next.find((p) => p.id === punchId);
+        if (punch) {
+          void import("@/lib/labor/persist-punch").then((m) => m.persistPunchToServer(punch));
+        }
       },
 
       correctPunch: (punchId, patch, supervisorName) => {

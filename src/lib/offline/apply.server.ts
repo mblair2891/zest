@@ -44,6 +44,7 @@ export async function applyOfflineBatch(
       }
 
       if (item.kind === "clock_punch") {
+        await applyClockPunch(sql, userId, item).catch(() => undefined);
         await sql`
           insert into offline_mutations (
             client_mutation_id, location_id, user_id, kind, payload, status
@@ -156,6 +157,64 @@ export async function applyOfflineBatch(
 }
 
 type Sql = Awaited<ReturnType<typeof getSql>>;
+
+async function applyClockPunch(sql: Sql, userId: string, item: FlushItem) {
+  const employeeId = String(item.payload.employeeId ?? "").slice(0, 80);
+  if (!employeeId) return;
+  const clockingOut = Boolean(item.payload.clockingOut);
+  const at = Number(item.payload.at) || Date.now();
+  const name = String(item.payload.employeeName ?? item.payload.name ?? employeeId).slice(0, 120);
+  const locs = await sql<{ org_id: string }>`
+    select org_id from locations where id = ${item.locationId} limit 1
+  `;
+  const orgId = locs[0]?.org_id;
+  if (!orgId) return;
+  const employerId = String(item.payload.employerId ?? item.payload.operatorId ?? "host").slice(
+    0,
+    80,
+  );
+  void userId;
+  if (clockingOut) {
+    const open = await sql<{ id: string; clock_in_at: unknown }>`
+      select id, clock_in_at from location_punches
+      where location_id = ${item.locationId}
+        and employee_id = ${employeeId}
+        and clock_out_at is null
+      order by clock_in_at desc
+      limit 1
+    `;
+    const row = open[0];
+    if (!row) return;
+    const inAt = new Date(row.clock_in_at as string).getTime();
+    const mins = Number.isFinite(inAt) ? Math.max(0, Math.round((at - inAt) / 60_000)) : 0;
+    const regular = Math.min(480, mins);
+    const ot = Math.max(0, mins - 480);
+    await sql`
+      update location_punches
+      set clock_out_at = ${new Date(at).toISOString()},
+          status = ${"auto_approved"},
+          regular_minutes = ${regular},
+          ot_minutes = ${ot},
+          updated_at = now()
+      where id = ${row.id}
+    `;
+    return;
+  }
+  const id = String(item.payload.punchId ?? item.clientMutationId ?? `tp_${employeeId}_${at}`).slice(
+    0,
+    80,
+  );
+  await sql`
+    insert into location_punches (
+      id, org_id, location_id, employer_id, employee_id, employee_name,
+      clock_in_at, status
+    ) values (
+      ${id}, ${orgId}, ${item.locationId}, ${employerId || "host"},
+      ${employeeId}, ${name}, ${new Date(at).toISOString()}, ${"open"}
+    )
+    on conflict (id) do nothing
+  `;
+}
 
 async function applyCashLedger(sql: Sql, userId: string, item: FlushItem) {
   const orgId = String(item.payload.orgId ?? "");

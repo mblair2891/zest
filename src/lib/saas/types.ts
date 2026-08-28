@@ -59,7 +59,7 @@ export type LocationSetup = {
   hrByEntity?: Record<string, import("@/lib/hr/types").EntityHrConfig>;
   /** Location default US state for employment packets when an entity has none. */
   employmentState?: string;
-  /** Cost catalog (SKUs, invoices, suppliers) — no image blobs. */
+  /** Cost catalog (SKUs, invoices, suppliers, POs) — no image blobs. */
   costPack?: {
     skus: import("@/lib/costs/types").CostSku[];
     suppliers: import("@/lib/costs/types").CostSupplier[];
@@ -67,6 +67,7 @@ export type LocationSetup = {
     maps: import("@/lib/costs/types").VendorSkuMap[];
     exceptions: import("@/lib/costs/types").VarianceException[];
     settings: import("@/lib/costs/types").CostSettings;
+    pos?: import("@/lib/costs/types").PurchaseOrder[];
   };
 };
 
