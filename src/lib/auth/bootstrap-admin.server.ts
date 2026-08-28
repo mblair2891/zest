@@ -146,7 +146,9 @@ export async function ensurePlatformAdmin(): Promise<void> {
 }
 
 /** After a factory wipe: ensure Admin exists, password is the bootstrap secret, must-change is on. */
-export async function reseedPlatformAdminBootstrap(): Promise<{ userId: string }> {
+export async function reseedPlatformAdminBootstrap(opts?: {
+  mustChangePassword?: boolean;
+}): Promise<{ userId: string }> {
   globalRef.__summexPlatformAdminBoot__ = undefined;
   await ensurePlatformAdmin();
   const sql = await getSql();
@@ -181,13 +183,17 @@ export async function reseedPlatformAdminBootstrap(): Promise<{ userId: string }
     `;
   }
   let mustChange = true;
-  try {
-    const { getRequireAdminPasswordChange } = await import(
-      "@/lib/saas/platform-settings.server"
-    );
-    mustChange = await getRequireAdminPasswordChange();
-  } catch {
+  if (opts?.mustChangePassword === true) {
     mustChange = true;
+  } else {
+    try {
+      const { getRequireAdminPasswordChange } = await import(
+        "@/lib/saas/platform-settings.server"
+      );
+      mustChange = await getRequireAdminPasswordChange();
+    } catch {
+      mustChange = true;
+    }
   }
   await sql`
     insert into platform_admin (user_id, must_change_password)

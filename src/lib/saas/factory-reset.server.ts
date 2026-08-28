@@ -35,6 +35,7 @@ const WIPE_TABLES = [
   "hr_packets",
   "hr_onboarding",
   "hr_applicants",
+  "location_punches",
   "message_log",
   "email_outbox",
   "waitlist_entries",
@@ -159,7 +160,7 @@ export async function factoryReset(opts: {
     );
   });
 
-  await reseedPlatformAdminBootstrap();
+  await reseedPlatformAdminBootstrap({ mustChangePassword: true });
   const after = await getSql();
   await after.query(`delete from "session"`);
   return { ok: true };
