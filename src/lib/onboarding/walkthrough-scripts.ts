@@ -270,7 +270,7 @@ const HOST: TourDefinition = w(
       id: "hs-kiosk",
       title: "Kiosk is for guests",
       script:
-        "Large targets, order or waitlist or check-in. You stay on this stand. Demo mode can switch the device if you are training.",
+        "Large targets, order or waitlist or check-in. You stay on this stand. Change device if you are training on this tablet.",
       selector: "[data-demo='device-switcher'], [data-demo='waitlist']",
       view: "waitlist",
     },
@@ -496,7 +496,7 @@ const VENDOR: TourDefinition = w(
     {
       id: "vo-done",
       title: "Replay",
-      script: "Replay from Guide. On a multi-operator demo, switch stalls from Demo mode to see the other brand.",
+      script: "Replay from Guide. On a multi-operator house, switch This station / entity to see the other brand.",
       selector: "[data-demo='home']",
       view: "hq",
     },
@@ -587,7 +587,7 @@ const KIOSK: TourDefinition = w(
       id: "ki-check",
       title: "Check in",
       script:
-        "Reservation check-in: last name plus a short code. Demo code is listed on the host stand topic.",
+        "Reservation check-in: last name plus the short code from the booking message.",
       selector: "[data-demo='kiosk-checkin'], [data-demo='kiosk-home']",
       kioskPane: "checkin",
     },
@@ -595,7 +595,7 @@ const KIOSK: TourDefinition = w(
       id: "ki-switch",
       title: "Back to staff",
       script:
-        "Demo mode switches this device back to Floor POS, ODS, or a role. Live kiosks stay locked to guests.",
+        "This station switches this device back to Floor POS, ODS, or a role. Live kiosks stay locked to guests.",
       selector: "[data-demo='device-switcher'], [data-demo='kiosk-home']",
     },
   ],
@@ -632,7 +632,7 @@ const KDS_KITCHEN: TourDefinition = w(
     {
       id: "kd-scope",
       title: "Your station only",
-      script: "Bar tickets do not belong here. Switch Demo mode to Bar ODS to see the well.",
+      script: "Bar tickets do not belong here. Switch This station to Bar ODS to see the well.",
       selector: "[data-demo='device-switcher'], [data-demo='kitchen']",
       view: "kitchen",
     },
@@ -676,7 +676,7 @@ const KDS_BAR: TourDefinition = w(
     {
       id: "kb-switch",
       title: "Switch device",
-      script: "Demo mode returns you to Floor POS or Kitchen ODS. Live bar displays stay locked.",
+      script: "This station returns you to Floor POS or Kitchen ODS. Live bar displays stay locked.",
       selector: "[data-demo='device-switcher'], [data-demo='bar']",
       view: "bar",
     },
@@ -693,13 +693,13 @@ const KDS_BAR: TourDefinition = w(
 const PLATFORM: TourDefinition = w(
   "walkthrough:platform_admin",
   "Platform Admin workflow",
-  "Console, pipeline, demos — not a restaurant PIN.",
+  "Console and pipeline — not a restaurant PIN.",
   [
     {
       id: "pa-console",
       title: "Console",
       script:
-        "Live organizations only. Demo houses are tagged demo and never appear in tenants, billing, or statistics.",
+        "Live organizations only. There are no demo houses in tenants, billing, or statistics.",
       route: { to: "/dashboard" },
       selector: "[data-demo='platform-console-nav'], [data-demo='platform-console']",
       platformSurface: "console",
@@ -708,7 +708,7 @@ const PLATFORM: TourDefinition = w(
       id: "pa-tenants",
       title: "Tenants",
       script:
-        "Empty tenants is valid. Do not expect The Laundry here. Support actions stay on the live org.",
+        "Empty tenants is valid until SaaS onboarding finishes. Support actions stay on the live org.",
       selector: "[data-demo='platform-console']",
       platformSurface: "console",
     },
@@ -722,17 +722,17 @@ const PLATFORM: TourDefinition = w(
     },
     {
       id: "pa-demos",
-      title: "Demos",
+      title: "Get pricing",
       script:
-        "Share a type link or the full product tour. Isolated rooms. Never send Admin credentials to a prospect.",
-      selector: "[data-demo='platform-demos-nav']",
-      platformSurface: "demos",
+        "Prospects start at Get pricing. Never send Admin credentials. There are no public demo tenants.",
+      selector: "[data-demo='platform-pipeline-nav'], [data-demo='platform-pipeline']",
+      platformSurface: "pipeline",
     },
     {
       id: "pa-pos",
       title: "Open POS",
       script:
-        "Open POS launches a location you already onboarded. Product demos stay under Demos.",
+        "Open POS launches a location you already onboarded. Training uses sandbox cards until go live.",
       selector: "[data-demo='platform-open-pos']",
       platformSurface: "console",
     },

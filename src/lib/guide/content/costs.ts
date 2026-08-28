@@ -121,7 +121,7 @@ export const COST_TOPICS: GuideTopic[] = [
         "Receive remaining (partial OK). Price changes vs last PO raise an info exception.",
         "Price recs from recipe cost vs target % (raise, lower, adjust pour, 86). Accept → Menu save.",
       ),
-      tip("Steam can own liquor suppliers; Diamond food; host paper. Permissions gate create / approve / receive."),
+      tip("Operator B can own liquor suppliers; Operator A food; host paper. Permissions gate create / approve / receive."),
       related("cost-control", "cost-invoices", "menu-modifiers"),
     ],
   }),

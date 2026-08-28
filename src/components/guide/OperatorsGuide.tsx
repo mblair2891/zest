@@ -288,22 +288,24 @@ export function OperatorsGuide({
                 </span>
               </button>
             )}
-            <div className="flex flex-wrap gap-1.5">
-              <ReplayWorkflowButton variant="secondary" />
-              <Button
-                type="button"
-                size="sm"
-                variant="outline"
-                className="h-9 gap-1.5"
-                onClick={() => {
-                  onClose?.();
-                  openWhatsNew();
-                }}
-              >
-                <Sparkles className="h-4 w-4" />
-                Latest updates
-              </Button>
-            </div>
+            {hasSessionRole ? (
+              <div className="flex flex-wrap gap-1.5">
+                <ReplayWorkflowButton variant="secondary" />
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  className="h-9 gap-1.5"
+                  onClick={() => {
+                    onClose?.();
+                    openWhatsNew();
+                  }}
+                >
+                  <Sparkles className="h-4 w-4" />
+                  Latest updates
+                </Button>
+              </div>
+            ) : null}
           </div>
           <nav className="min-h-0 flex-1 overflow-y-auto p-2">
             {grouped.map(({ chapter, topics }) => (
@@ -372,7 +374,6 @@ export function OperatorsGuide({
                     </Button>
                   )}
                   {(active.id === "role-walkthroughs" ||
-                    active.id === "whats-new-on-login" ||
                     active.id.startsWith("role-")) && (
                     <ReplayWorkflowButton variant="secondary" label="Replay workflow" />
                   )}

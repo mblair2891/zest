@@ -22,7 +22,7 @@ export const ROLE_GUIDE_TOPICS: GuideTopic[] = [
         "Sign in, complete the forced password change, land on the control plane.",
         "Use Console and Pipeline in the header.",
         "Empty tenants is valid until someone completes SaaS onboarding.",
-        "Send prospects Get pricing / Request demo — never this Admin session.",
+        "Send prospects Get pricing — never this Admin session.",
       ),
       callout(
         "Same topic",
@@ -114,7 +114,7 @@ export const ROLE_GUIDE_TOPICS: GuideTopic[] = [
         "You cook or pour for a host brand. The guest pays the host. You are paid on the period.",
       ),
       ul(
-        "Your login is scoped to your entity (Steam Distillery, Diamond House BBQ, …) under the host location.",
+        "Your login is scoped to your entity (Operator A, Operator B, …) under the host location.",
         "Full control of your menu, modifiers, 86, tickets/ODS, schedules, and your reports slice.",
         "Peer menus are view-only unless the host grants edit_menu. You cannot change another operator’s settings.",
         "Operator ops: your staff, time clock, and 86 board.",
@@ -122,9 +122,9 @@ export const ROLE_GUIDE_TOPICS: GuideTopic[] = [
         "A $35 dispute fee, when filed, splits by merchandise on that check.",
       ),
       p(
-        "Rehearse this model by onboarding a host + two operators. There is no seeded laundry catalog.",
+        "Rehearse this model by onboarding a host + two operators. There is no seeded catalog.",
       ),
-      related("type-food-hall", "host-capture", "chargebacks", "prospect-demos", "partner-demo"),
+      related("type-food-hall", "host-capture", "chargebacks", "settlement"),
     ],
   }),
   topic({
@@ -152,9 +152,9 @@ export const ROLE_GUIDE_TOPICS: GuideTopic[] = [
         "PIN in. Home is that role’s dashboard.",
         "The first time in that role, take the live walkthrough (or skip / replay later).",
         "Nav only lists views you can open. Settings writes are owner/manager.",
-        "On The Laundry partner-demo: owner 1000, manager 1001, server 2001, Steam bartender 3001, Diamond cook 4001. See Partner demo — The Laundry.",
+        "Staff PINs are unique to this location. There is no universal PIN.",
       ),
-      related("role-walkthroughs", "whats-new-on-login", "role-owner", "role-server", "role-vendor", "location-settings"),
+      related("role-walkthroughs", "login", "role-owner", "role-server", "role-vendor", "location-settings"),
     ],
   }),
   topic({
@@ -180,7 +180,7 @@ export const ROLE_GUIDE_TOPICS: GuideTopic[] = [
       steps(
         "PIN as owner or manager. Open Home → Location settings.",
         "Confirm the type badge (restaurant, host hall, bar, QSR…).",
-        "Save each pack. Live tenants persist on the location. Demo rooms stay local.",
+        "Save each pack. Settings persist on the location for every paired tablet.",
       ),
       related("roles-dashboards", "host-operator-settings", "cash-discount", "feature-kiosk", "type-food-hall"),
     ],
@@ -200,14 +200,14 @@ export const ROLE_GUIDE_TOPICS: GuideTopic[] = [
       ul(
         "Host (owner/manager): profile, tax, cash discount, Quantum Payments location config, floor, kiosk/waitlist, packages, onboard/suspend operators, payout destinations, settlement rules, host cut, chargeback policy, entity permission matrix, all devices.",
         "Guest operator login: own menu (create/edit/86), own tickets/ODS, own reports, own staff and time clock. Peer menus default view-only. Cannot edit another entity unless the host grants edit_menu.",
-        "Devices: house assets, not locked roles. Host enrolls tablets. Any device switches via This station (Steam bar ODS, Diamond floor POS, host kiosk, or split ODS).",
+        "Devices: house assets, not locked roles. Host enrolls tablets. Any device switches via This station (Operator B bar ODS, Operator A floor POS, host kiosk, or split ODS).",
       ),
       steps(
-        "PIN as host owner. Host settings → Operators to onboard a stall (name, station, payout last 4).",
+        "PIN as host owner. Host settings → Operators / Tenants to invite a stall (name, station, payout stub).",
         "Open Entity permissions. Defaults: view_menu on, edit_menu off, tickets/reports/settlement own-only, devices host-only.",
-        "Open Device assignment to enroll. On the tablet, This station → Steam bar ODS or Diamond floor POS — no new hardware, no locked SKU.",
-        "Switch Demo mode to Steam Distillery. Edit a Steam item. Diamond items show “view only.”",
-        "Switch to Diamond House BBQ. Steam menu is read-only. You cannot change Steam settings.",
+        "Open Device assignment to enroll. On the tablet, This station → Operator B bar ODS or Operator A floor POS — no new hardware, no locked SKU.",
+        "PIN as Operator A. Edit an Operator A item. Operator B items show view only unless the host granted edit_menu.",
+        "PIN as Operator B. Operator A menu is read-only. You cannot change Operator A settings.",
       ),
       warn(
         "Payout / settlement bank / payment routing never lives on the guest operator. The host collects the destination at onboard and can change it later.",
@@ -230,7 +230,7 @@ export const ROLE_GUIDE_TOPICS: GuideTopic[] = [
         "Back office: Sign in with username/email and password. Platform Admin, owners, managers, accountants, entity managers for settings, matrix, full reports, schedule admin, payroll, menu management.",
         "Floor PIN: 4-digit keypad on POS, ODS, host stand. Servers, hosts, bartenders, kitchen, cashiers, expo. Fast Switch user. PIN hashed, scoped to location and entity.",
         "PIN ≠ clock. The pad logs you into the station. Clock in / out is Labor (and Employees). Signing out of POS does not punch you out.",
-        "Assigned device still requires the matching entity’s PIN (Steam ODS rejects a Diamond PIN).",
+        "Assigned device still requires the matching entity’s PIN (Operator A ODS rejects an Operator B PIN).",
         "Kiosk guests never enter a PIN. Marketing pages never show a PIN pad or staff PINs. Platform Admin cannot use a restaurant PIN.",
       ),
       steps(
@@ -248,11 +248,11 @@ export const ROLE_GUIDE_TOPICS: GuideTopic[] = [
     title: "Entity schedule & payroll",
     summary: "Each entity schedules and pays its own staff. Host has oversight; edits to guest schedules stay off unless you turn them on.",
     roles: ["owner_manager", "host_operator", "vendor_operator"],
-    keywords: ["schedule", "payroll", "shifts", "overtime", "tips", "steam", "diamond"],
+    keywords: ["schedule", "payroll", "shifts", "overtime", "tips", "operator"],
     openView: "schedule",
     blocks: [
       why(
-        "Steam Distillery does not write Diamond House BBQ’s week. Diamond does not see Steam payroll unless the host grants view_payroll.",
+        "Operator A does not write Operator B’s week. Operator B does not see Operator A payroll unless the host grants view_payroll.",
       ),
       ul(
         "Week view, draft shifts, publish. Floor PIN users see My shifts only.",
@@ -261,11 +261,11 @@ export const ROLE_GUIDE_TOPICS: GuideTopic[] = [
         "Single-operator houses use the same screens under the location owner/manager.",
       ),
       steps(
-        "Back office as host or Steam manager. Open Schedule. Add a Steam shift. Publish week.",
-        "Open Labor → Payroll. Steam hours only when you are the Steam manager. CSV exports that slice.",
-        "PIN as Diamond (7777): you cannot add Steam shifts. Menu still badges Steam items view-only.",
+        "Back office as host or Operator A manager. Open Schedule. Add an Operator A shift. Publish week.",
+        "Open Labor → Payroll. Operator A hours only when you are that entity’s manager. CSV exports that slice.",
+        "PIN as Operator B: you cannot add Operator A shifts. Menu still badges peer items view-only.",
       ),
-      related("floor-pin-login", "host-operator-settings", "role-vendor", "laundry-test-venue", "voice-control", "ai-ops-learning"),
+      related("floor-pin-login", "host-operator-settings", "role-vendor", "voice-control", "ai-ops-learning"),
     ],
   }),
   topic({
@@ -287,7 +287,7 @@ export const ROLE_GUIDE_TOPICS: GuideTopic[] = [
         "Kitchen: “86 [item]”, “Bump ticket” on the focused rail.",
         "86, void, and waitlist-on confirm on screen. Ambiguous names show Did you mean…?",
         "Blocked: payouts, permission matrix, platform admin, tax. Floor PIN cannot use voice for those either.",
-        "Steam voice cannot 86 a Diamond item. Device assignment still applies.",
+        "Operator A voice cannot 86 an Operator B item. Device assignment still applies.",
       ),
       steps(
         "Host: Settings → Voice control. Leave server on, kiosk off.",
@@ -315,15 +315,15 @@ export const ROLE_GUIDE_TOPICS: GuideTopic[] = [
         "Accept records the decision and may open Schedule or Labor so you confirm. It never clocks anyone out.",
         "Dismiss downranks that type in similar dayparts. Snooze hides it for 20 minutes.",
         "Reports → AI insights shows “Based on your past decisions” when a pattern exists.",
-        "Demo rooms learn only inside the demo. Live tenants never share decisions.",
-        "Steam AI cannot change Diamond.",
+        "Learning stays on this location. Tenants never share decisions.",
+        "Operator A AI cannot change Operator B.",
       ),
       steps(
         "Open Home as host. Read the labor vs sales card.",
         "Dismiss it twice — confidence drops and the card notes you’ve dismissed this kind of tip.",
         "Accept it — later runs say Based on your past decisions and rank it higher.",
       ),
-      related("voice-control", "location-settings", "roles-dashboards", "laundry-test-venue"),
+      related("voice-control", "location-settings", "roles-dashboards", "ai-insights"),
     ],
   }),
 ];

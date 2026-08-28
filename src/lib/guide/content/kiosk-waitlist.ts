@@ -24,8 +24,8 @@ export const KIOSK_WAITLIST_TOPICS: GuideTopic[] = [
         "Staff keep POS open for Host stand, tickets, and notifications.",
       ),
       callout(
-        "Demo",
-        "The full product tour visits this kiosk on the live UI with voiceover. Reservation check-in sample: last name Blair, code K7M2. Waitlist texts log on Host stand when Twilio is not set.",
+        "Partial",
+        "Waitlist texts log on the Host stand when Twilio is not configured — they are not live carrier SMS. Reservation codes are unique per location per day.",
       ),
       cta("/kiosk", "Open guest kiosk"),
       related("feature-waitlist", "feature-reservation-checkin", "type-restaurant", "type-qsr"),
@@ -82,8 +82,7 @@ export const KIOSK_WAITLIST_TOPICS: GuideTopic[] = [
       ),
       steps(
         "Book from Host stand or the kiosk Book a table panel.",
-        "Guest uses /kiosk → Check in.",
-        "Demo path: Blair / K7M2.",
+        "Guest uses /kiosk → Check in with last name + the 4-character code from the booking message.",
       ),
       tip("Codes avoid 0/O and 1/I. They are unique per location per day."),
       related("feature-kiosk", "feature-waitlist", "type-restaurant"),

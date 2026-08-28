@@ -2,10 +2,13 @@
 
 The in-app **Operators Guide** is the living product manual. It is not a
 separate PDF. Staff open it from **Guide** / **?** in the POS and platform
-shells, from login and empty states, or at `/guide`.
+shells, or at `/guide`.
 
 Content lives in TypeScript modules so a new feature is a new topic file, not
 a CMS.
+
+Public `/guide` describes the product **as it works now** (training week). It
+does not document retired demo PIN / seeded-house / Zest stories.
 
 ## Where things live
 
@@ -13,7 +16,7 @@ a CMS.
 |---|---|
 | `src/lib/guide/content/*.ts` | Topics, grouped by chapter |
 | `src/lib/guide/catalog.ts` | Chapter list + assembled `GUIDE_TOPICS` |
-| `src/lib/whats-new/entries.ts` | Login “Latest updates” feed (roles, entityTypes, surfaces) |
+| `src/lib/whats-new/entries.ts` | Login “Latest updates” feed (not shown on public `/guide`) |
 | `src/lib/guide/updates.ts` | Filter + watermark helpers for that feed |
 | `src/lib/onboarding/walkthrough-scripts.ts` | Per-role live-UI walkthroughs |
 | `src/lib/guide/types.ts` | `GUIDE_VERSION`, roles, block types |
@@ -23,16 +26,48 @@ a CMS.
 | `src/routes/guide.tsx` | `/guide?topic=chargebacks` |
 | `docs/whitepaper/` | Shareable white paper (MD + print HTML) |
 | `/whitepaper` | Live white paper (prints to PDF) |
-| `docs/quantum-payments-ledger.md` | Ledger sign convention + The Laundry worked example |
-| `docs/partner-demo-logins.md` | Partner-demo location + staff logins/PINs (not public, not marketing home) |
-| `/guide?topic=partner-demo` | Tagged partner-demo house (The Laundry) — not a public demo site |
-| `/guide?topic=station-switcher` | This station + split-screen ODS (devices are not locked roles) |
-| `/guide?topic=laundry-test-venue` | Test a host + operators location via SaaS onboarding |
 
 Bump `GUIDE_VERSION` in `types.ts` when you ship a batch of topics.
 Add a What’s New row in `src/lib/whats-new/entries.ts` (newest first) so the
-login popup can show it. Keep role walkthrough steps in
-`src/lib/onboarding/walkthrough-scripts.ts` accurate when the job path changes.
+**signed-in** login popup can show it. Do not add a changelog chapter to the
+public guide.
+
+Keep role walkthrough steps in `src/lib/onboarding/walkthrough-scripts.ts`
+accurate when the job path changes.
+
+## Public vs Platform
+
+**Public `/guide` (and unsigned overlay)** is operations:
+
+1. What Summex is
+2. By establishment type
+3. Roles & floor PIN vs back-office password (separate from clock in/out and closeout)
+4. Floor, sections, table status, release/accept
+5. Menu, modifiers, recipes/ingredients/prep
+6. Orders + Order Display System (Start / Bump / notify)
+7. Kiosk, waitlist, reservation check-in
+8. QR order/pay modes
+9. Quantum Payments, cash discount, gift cards
+10. Settlement & multi-operator splits / chargeback fee split
+11. Reports & AI insights (recommendations, human confirm)
+12. Training vs Go live
+13. Devices: Change device, split screen, SYOH tablets + Summex terminals
+14. Offline / hybrid
+15. Troubleshooting
+
+Exit on the public page returns to marketing home (`/`).
+
+**Platform-only** (`visibility: "platform"` and/or the Platform chapter) renders
+only when the viewer is signed in as `platform_admin`:
+
+- CRM / pipeline / quotes / email outbox
+- Host onboarding then tenant invite links
+- Platform Settings (forms, not JSON)
+- Factory reset (danger)
+- Training status in the SaaS tenant view
+- Go-live ops checklist (Neon, auth URLs, processor approval, reader)
+
+Do **not** put those internals in the public guide.
 
 ## Add a topic
 
@@ -59,6 +94,8 @@ topic({
 Helpers: `why`, `p`, `steps`, `ul`, `ol`, `tip`, `warn`, `callout`, `shot`, `related`
 from `src/lib/guide/content/helpers.ts`.
 
+If the topic is SaaS-admin only, set `visibility: "platform"`.
+
 Every topic should include **Why it matters**, **Steps**, and **Related topics**.
 
 3. From a screen, deep-link with:
@@ -71,7 +108,29 @@ or `useGuideStore.getState().openGuide("my-topic")`.
 
 Bookmarkable URL: `/guide?topic=my-topic`.
 
-## Roles, dashboards, location settings
+## Current facts (keep copy honest)
+
+- Brand: **Summex**, powered by **Quantum Reach**. Guest cards: **Quantum Payments** only. Never Stripe/Square as a POS processor. Never Zest.
+- First location = SaaS onboard only. Host onboarded by SaaS; host invites operator tenants.
+- Training = practice + Quantum sandbox; optional inventory tracking. Go live now or schedule; owner keep/erase per data class; menus/recipes/staff/settings kept.
+- PIN login ≠ clock in/out ≠ server closeout.
+- Gift: sale-point issuer or house; redeem settles internally; unredeemed liability on issuer; house cards house-keeps remainder.
+- Public marketing: Get pricing, Guide, Sign in — no Dashboard, no Google/X login, no how-to-login on the home page.
+- Examples: **Host Venue**, **Operator A**, **Operator B**.
+- Chargebacks: **$35** when a dispute is **filed**; split by merchandise %; won/lost does not reverse the fee.
+- If a feature is partial, say so (“available in training; live cards require an approved Quantum application”). Do not document vapor as finished.
+
+## Do not say (retired)
+
+- Demo sites, PIN 0000 as public demo, The Laundry seed, Load demo
+- Google/X login on marketing
+- How-to-login instructions on the home page
+- Unauthenticated Dashboard
+- Stripe/Square as POS card processors
+- Recent-updates feed inside the public guide
+- SaaS platform-admin internals in the public guide
+
+## Roles
 
 PIN roles: owner, manager, server, host stand, bartender, kitchen/expo,
 busser, cashier, vendor_operator, accountant, kiosk. Platform Admin is SaaS
@@ -79,273 +138,27 @@ only — not a floor PIN.
 
 Devices are not fixed roles. **This station** switches Host stand, Server POS,
 Expo, Cashier, Busser, Kiosk, or Order Display (and entity on a host floor).
-PIN is identity; the screen remembers last station. Large displays **Split**
-two independent ODS/POS panes (optional 70/30, tap header to fullscreen).
-No special device SKU.
 
-**Offline PWA:** first install needs internet (open POS, Add to Home Screen).
-Thereafter cold start can be offline: power on, tap the icon, PIN in — do not
-type a URL. Cash still closes; card is blocked. Outbox syncs when WAN returns.
-`/guide?topic=wifi-offline`.
+**Offline PWA:** first install needs internet. Thereafter cold start can be
+offline: cash & tickets queue; cards when the processor allows (blocked if
+offline). `/guide?topic=wifi-offline`.
 
-Home (`hq`) is a **role dashboard**. Nav hides views the role cannot open.
-Vendor operators are scoped to `operatorId` (tickets, portal, settlement share).
-
-On **host + multi-operator** houses the subscriber is the host. Guest
-operators get **operator ops** only (staff, clock, 86, view-only settlement).
-Payout destinations and settlement rules live under **Host settings**.
-
-Location Settings (owner/manager) shows packs for the venue type: profile, tax,
-payments, cash discount, gift cards (issuer, term disclaimer, residual split),
-devices, staff, notifications, hours, plus type packs
-(sections, bar tabs, counter/expo, host operators, kiosk/waitlist). Live writes
-go through `saveLocationSettingsFn` (membership owner/manager/platform_admin).
-
-In-app: `/guide?topic=roles-dashboards` and `/guide?topic=location-settings`.
-
-## Training vs live
-
-New locations start in **Training**. That is the real POS — cash, gift ledger,
-floor, ODS, devices, PIN, settlement math — with **Quantum Payments sandbox**.
-A yellow **TRAINING** banner is visible on the station, including the PIN pad.
-
-- Training and scheduled-live **cannot** use live processor keys. Capture is
-  sandbox even if someone stored a live mode preference.
-- **Go live** is explicit: now (type `GO LIVE NOW`) or schedule, with keep/erase
-  per data category. Menus, recipes, floor, staff/PINs, devices, and SKUs always
-  stay. Live cards only after lifecycle status is **live**, plus an approved
-  Quantum Payments application and an enrolled reader.
-- Training week is a software go-live. The first live Visa is a processor +
-  hardware go-live. Do not pretend live cards work in training.
-
-**PIN ≠ clock.** Floor PIN signs a person onto this station. Clock in / out is
-Labor (and Employees). Signing out of POS does not punch you out. Marketing
-never shows a PIN pad; back office is email + password at Sign in.
-
-**Sandbox cards.** Practice last4 on the receipt is not a live capture. Cash
-always works. Card is blocked offline.
-
-In-app: `/guide?topic=location-training` and `/guide?topic=floor-pin-login`.
-
-## Order Display (ODS)
-
-User-facing name is **Order Display / ODS** (not KDS). Internal ids (`kds`,
-`kitchen_kds`, `bar_kds`) stay. Tickets route by **station + operator/entity**.
-
-Flow: **Send** → display → **Start** (preparing) → **Bump** (ready). Expo or
-the originating server marks **Delivered** on the floor. The originating staff
-device is notified on each status change (toast, chime, vibrate where the
-platform allows). Device assignment: **Kitchen ODS**, **Bar ODS**.
-
-In-app: `/guide?topic=kds`. Device labels: Settings → Device assignment.
-
-## Menu AI assist
-
-On **Menu** add/edit, **Describe with AI** or **Assist** (type or mic). Suggests
-name, description, category, station, modifier groups, and common omit/add.
-Follow-ups only when needed (cash vs card price; operator on a host floor when
-not locked). Preview, then **Confirm** — never auto-save. Dismiss discards.
-No API key → category templates. Multi-op: scoped to the operator’s entity.
-
-In-app: `/guide?topic=menu-modifiers`.
-
-## Cost control, suppliers, ordering
-
-Closed loop: **invoice → stock → theoretical use → variance → response → PO →
-price recs**. User-facing copy never accuses staff of theft.
-
-- **Invoices:** upload image/PDF or paste. AI extract when keyed; else guided.
-  Map lines to SKU / category / entity. Post = receipt + GL. Vendor-SKU maps persist.
-- **Recipes:** units of each SKU per sale + optional waste factor.
-- **Exceptions:** required response codes (event, take-home, spillage, count
-  error, investigating, other) + note. Linked to AI ops learning log.
-- **Counts / waste** feed expected on-hand. Cash closeout / comps inform the
-  cost picture when punches and voids exist.
-- **POs:** PAR min/max, entity-scoped suppliers, email/CSV connector, API stub.
-  Approve over threshold. Partial receive. Price-change flags vs last PO.
-- **Price recs:** Accept opens Menu with suggested price; human Save only.
-
-Permissions: invoice post, PO create/approve/receive, count, alert respond.
-In-app: `/guide?topic=cost-control`.
-
-## Recipes & prep
-
-Recipes link to menu items (entity-scoped). Lines: ingredient name + optional
-SKU, qty, unit. Prep steps, glassware, garnish, allergens, yield.
-
-Create: Describe recipe (type / voice / upload). Preview then Confirm.
-No key → templates + manual yield form.
-
-Floor: **Recipe / ingredients** on Order (tile or selected line) and ODS.
-Server = ingredients + allergens. Bartender/cook = quantities + steps (large type).
-
-Cost: theoretical plate cost from SKU unit costs; sales × recipe qty feeds
-variance. Price recs still require Menu Save.
-
-In-app: `/guide?topic=recipes-prep`.
-
-## Training, Change device, Go live
-
-Locations start in **Training** after onboard (not live cards). Banner on every
-device. Quantum Payments sandbox until that scope is **live**.
-
-- **Change device** (owner/manager): Server tablet, Host stand, Kitchen/Bar ODS,
-  Expo, Kiosk, Cashier, Busser.
-- **Split screen**: two panes, each with Change device.
-- **Track inventory in training**: optional; off = practice orders do not move on-hand.
-- **Tenant training**: host may be live while a new operator stays in training.
-- **Go live now**: Keep/Erase per category; type **GO LIVE NOW**. Always keep
-  menus, recipes, floor, staff, devices, SKU defs, suppliers, settings.
-- **Schedule go live**: date/time + same Keep/Erase; status `scheduled_live`
-  until the job fires (or Run scheduled job now).
-
-Platform Tenants: training | scheduled_live | live.
-
-In-app: `/guide?topic=location-training`.
-
-## Offline mode
-
-Wi‑Fi-first. If internet drops, the active location still runs from cache:
-orders, ODS bump, cash, seating, waitlist (SMS pending). Card is blocked
-(“Card requires connection”). Outbox (IndexedDB) flushes idempotently on
-reconnect — cash never double-captures. Server wins settings; open orders
-merge by id. Failed rows surface to the manager.
-
-In-app: `/guide?topic=wifi-offline`. Demo: Wi‑Fi chip → Simulate internet
-outage → cash order.
-
-## Reports & AI insights
-
-Location Reports (PIN owner/manager/accountant; vendor own slice; server “my”
-sales). Catalog is entity-type aware. AI Insights runs
-`analyzeLocationPerformance` on a metrics payload from this location — never
-invented inventory. No key → Guided insights, same JSON. Apply navigates; it
-does not auto-change prices.
-
-Public guide: `/guide?topic=reports` and `/guide?topic=ai-insights`. No
-platform-admin portfolio metrics.
-
-## Public vs Platform
-
-The public `/guide` is operations: floor, menu, routing, Quantum Payments,
-settlement concepts, kiosk/waitlist, cash discount, establishment types.
-It does **not** include SaaS platform-admin topics (pipeline, bootstrap Admin,
-reset-all-demos, tenant underwriting).
-
-Platform-admin topics use `visibility: "platform"` (and/or the **Platform**
-chapter). They render only when the viewer is signed in as `platform_admin`.
-
-Public **Exit** on `/guide` returns to `/`. Role walkthrough **Exit** stays on the live location.
+User-facing name is **Order Display / ODS** (not KDS). Internal ids may still
+say `kds`.
 
 ## What’s new on login
 
-After auth + role/location resolve (tenant PIN or demo enter), a **Latest
-updates** popup lists ~10 matching entries. Filter: `roles`, `entityTypes`,
-`surfaces` (floor | kds | kiosk | reports | settings | platform), optional
-`audience` (`platform` never reaches location staff). Close, or **Silence
-until the next update** (watermark per user/role). Empty feed: no popup.
-
-In-app: `/guide?topic=whats-new-on-login`.
+After auth + role/location resolve, a **Latest updates** popup lists matching
+entries. Filter: `roles`, `entityTypes`, `surfaces`, optional `audience`
+(`platform` never reaches location staff). Close, or **Silence until the next
+update**. Empty feed: no popup. This feed is **not** a chapter in public `/guide`.
 
 ## Role walkthroughs
 
-After updates (or immediately if none), offer a **position walkthrough** on
-the live UI (same tour engine as demos: spotlight + narrator). Auto-offer
-once per role until completed; **Skip tour** marks complete; **Replay later**
-does not. Replay from Guide or **Replay workflow** in the header. Demo role
-or device switch offers that job’s tour if not completed.
-
-Scripts: owner, manager, server, host stand, bartender, kitchen, cashier,
-vendor operator, accountant, kiosk, kitchen/bar ODS, platform admin.
-
-In-app: `/guide?topic=role-walkthroughs`.
-
-## Platform CRM (admin)
-
-Control plane nav: CRM · Pipeline · Tenants · Onboarding · Billing · Support ·
-Reports · Settings. Password only — no floor PIN.
-
-Add lead or convert Get pricing intake. Deals and prospect status share the
-lifecycle. Start onboarding after contract; Go live requires a real org and
-location. Tenants lists live orgs only. Software invoices are not Quantum
-Payments.
-
-Settings (platform_admin): General, Security & auth, CRM & pipeline, Onboarding,
-Plans & billing, Payments & gift defaults, Communications, Feature flags,
-Data & compliance, Team, Danger zone. Each section is a form with Save — no
-JSON editors. Edit plans (price, seats, modules) and gift defaults from
-dropdowns. Stripe/SMS/email show Connected or Not configured from the
-environment. `/guide?topic=platform-settings`.
-
-Factory reset (Settings → Danger zone): type RESET, Admin password. Only if
-Security → Factory reset enabled is on. Wipes all tenant/CRM data and reseeds
-**Admin only** (forced password change). It does not seed demo venues. Disable in
-Security or with `FACTORY_RESET_ENABLED=false`. Production stays off unless
-that env is `true`. `/guide?topic=factory-reset`.
-
-## Testing a location
-
-There are **no public demo tenants**. Marketing **Request demo** is Get pricing
-/ intake. `/demo` URLs redirect there. Sign in is username and password.
-
-To test a customer house: complete SaaS onboarding (intake → quote → contract
-if required → **host** wizard → org + location). Invite the owner. Open POS
-on www (`/venue/…`), not app.summex.app.
-
-**Two-stage onboarding:** SaaS finishes the **Host** (host_ready). The host then
-invites **operators/tenants** from Settings → Operators / Tenants by email or
-SMS. Each POC opens the link, sets a password, and completes their own details.
-The host still owns payouts and routing. No public demo tenants.
-
-Floor PIN is for **real** staff on that location.
-
-Quotes never use a JSON editor. Emails (request / sent / accepted) go through
-Resend when a key is set; otherwise they appear in Settings → Communications
-outbox as logged only.
-
-In-app: `/guide?topic=empty-start` and `/guide?topic=prospect-demos`.
-
-## Roles
-
-| Tab | Who |
-|---|---|
-| Platform Admin | Control plane, pipeline, tenants — **signed-in admin only** |
-| Owner / Manager | Site ops, money, staff |
-| Server | Floor, checks, guests (includes FOH host stand & busser) |
-| Kitchen / Bar | ODS tickets, Start/Bump, routing |
-| Host (multi-operator) | Hall/pod host — not the FOH host stand |
-| Vendor / Operator | Stall brand (Operator A / Operator B) |
-
-Session mapping: POS PIN `owner`/`manager` → Owner/Manager (plus Host on
-`food_hall` / `truck_pod`). `server`/`host`/`busser` → Server.
-`kitchen`/`bartender` → Kitchen/Bar. Platform Admin email or `platform_admin`
-SaaS role → Platform Admin. Signed-out public guide shows **All** public
-topics — never Platform Admin.
-
-## Progress
-
-Completion is stored in `localStorage` (`summex-guide-prefs-v1`), keyed by
-account id, else PIN employee id, else `local`. “Continue where you left off”
-resumes the last unfinished topic.
-
-## Copy rules
-
-- Product: **Summex**, powered by **Quantum Reach**.
-- Guest cards: **Quantum Payments** only. Never Stripe/Square as a POS processor.
-- Examples: **Host Venue**, **Operator A**, **Operator B**. No live customer names.
-- Chargebacks: **$35** when a dispute is **filed**; split by merchandise % on
-  that check; won/lost does not reverse the fee.
-
-## Role walkthroughs
-
-Optional walkthroughs run on a **real onboarded location** (spotlight on live
-UI). Catalog demo tours that required seeded tenants are retired.
-
-Unknown tour ids toast **Tour not available**.
-
-In-app topic: `/guide?topic=role-walkthroughs`.
+Optional walkthroughs run on a **real onboarded location**. Catalog demo tours
+that required seeded tenants are retired. Unknown tour ids toast **Tour not
+available**.
 
 ## Print
 
-The overlay and `/guide` page hide chrome under `@media print`. Use the printer
-button or the browser print dialog. A separate PDF is optional, not required.
+The overlay and `/guide` page hide chrome under `@media print`.

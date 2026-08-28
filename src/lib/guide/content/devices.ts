@@ -31,8 +31,8 @@ export const DEVICE_TOPICS: GuideTopic[] = [
         "When WAN returns, banner says Syncing… Outbox applies each mutation once (clientMutationId). Sync failed stays until a manager retries.",
       ),
       shot(
-        "Header Wi‑Fi chip — Simulate internet outage, outbox, failed sync list.",
-        "Network sheet with house SSID, queued cash ledger, and dead-letter rows.",
+        "Header Wi‑Fi chip — outbox, failed sync list, Offline banner.",
+        "Network sheet with house SSID, queued cash/tickets, and failed rows.",
       ),
       warn(
         "First install requires internet. A house router with no WAN is not enough for a cold uncached device — that tablet has never stored the app shell or location pack. Open POS once while the uplink is up, wait for the floor, then Add to Home Screen. After that, power on with no internet: PIN in, cached menu/floor, cash tender. Card still needs a connection.",
@@ -84,16 +84,16 @@ export const DEVICE_TOPICS: GuideTopic[] = [
     title: "Assign devices to any entity",
     summary: "Tablets, ODS, kiosks, and printers are location assets. Suggested assignment is a default — not a locked role.",
     roles: ["owner_manager", "host_operator", "vendor_operator", "kitchen_bar"],
-    keywords: ["device", "tablet", "kds", "kiosk", "assignment", "claim code", "steam", "diamond"],
+    keywords: ["device", "tablet", "ods", "kiosk", "assignment", "claim code"],
     openView: "settings",
     blocks: [
       why(
-        "Hardware is not branded to a stall. The host location owns the registry. Any tablet, Android touchscreen, or desktop can run Steam POS this week and Diamond ODS next week — This station switches the screen without a new login.",
+        "Hardware is not branded to a stall. The host location owns the registry. Any tablet, Android touchscreen, or desktop can run Operator A POS this week and Operator B ODS next week — This station switches the screen without a new login.",
       ),
       ul(
         "Type: tablet POS, order display, kiosk, printer, host stand, other.",
         "Suggested assignment: operator (host or a guest entity) + function (floor POS, bar POS, kitchen ODS, bar ODS, expo, kiosk, host stand, cashier).",
-        "This station (header): switch Host stand, Server POS, Expo, Cashier, Busser, Kiosk, or Order Display. Multi-op houses pick Host / Steam Distillery / Diamond House BBQ.",
+        "This station (header): switch Host stand, Server POS, Expo, Cashier, Busser, Kiosk, or Order Display. Multi-op houses pick Host / Operator A / Operator B.",
         "PIN still identifies the person. Station switch is what this screen is showing. Last station is remembered in this browser.",
         "ODS only shows tickets for that station and entity unless the host grants a broader view_tickets.",
       ),
@@ -104,9 +104,9 @@ export const DEVICE_TOPICS: GuideTopic[] = [
         "Large displays: Layout → Split. Each pane has its own station + entity (typical: kitchen | bar ODS). 50/50 or 70/30. Tap a pane title to fullscreen.",
       ),
       warn(
-        "A Diamond ODS does not show Steam tickets unless the host grants Diamond view_tickets on Steam. Devices are not fixed roles.",
+        "An Operator A ODS does not show Operator B tickets unless the host grants view_tickets. Devices are not fixed roles.",
       ),
-      related("station-switcher", "host-operator-settings", "printers-kds", "role-vendor", "partner-demo"),
+      related("station-switcher", "host-operator-settings", "printers-kds", "role-vendor"),
     ],
   }),
   topic({
@@ -134,9 +134,9 @@ export const DEVICE_TOPICS: GuideTopic[] = [
       ),
       ul(
         "This station: Host stand, Server POS, Expo, Cashier, Busser, Kiosk, Kitchen ODS, Bar ODS, Bar POS.",
-        "Multi-operator: pick Host, Steam Distillery, or Diamond House BBQ. Tickets stay location-scoped and tagged to the operator.",
+        "Multi-operator: pick Host, Operator A, or Operator B. Tickets stay location-scoped and tagged to the operator.",
         "Last station is remembered in this browser (next load).",
-        "Split: two independent panes, each with its own station + entity. Typical left Kitchen ODS (Diamond), right Bar ODS (Steam).",
+        "Split: two independent panes, each with its own station + entity. Typical left Kitchen ODS (Operator A), right Bar ODS (Operator B).",
         "Optional 70/30. Tap a pane header to fullscreen that pane; Back to split returns.",
         "No special device SKU — any device may enable split.",
       ),

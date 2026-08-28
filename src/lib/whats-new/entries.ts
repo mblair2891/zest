@@ -1,13 +1,23 @@
 import type { GuideUpdate } from "@/lib/guide/types";
 
 /**
- * Structured What’s New feed. Newest first.
- * Add a row when a product feature ships so the login popup can surface it.
- *
- * Filter by roles, entityTypes, surfaces, and audience (platform notes never
- * reach location staff).
+ * Structured What’s New feed (login popup only — not listed in the public guide).
+ * Newest first. Platform-audience rows never reach location staff.
  */
 export const WHATS_NEW_ENTRIES: GuideUpdate[] = [
+  {
+    id: "upd_2026_10_06_guide_training_week",
+    date: "2026-10-06",
+    title: "Operators Guide matches training week",
+    summary:
+      "Public guide is operations only. No demo PIN, no seeded house, no changelog on /guide. Platform Admin still has CRM, quotes, and go-live ops.",
+    body: "Exit on /guide returns to marketing home (Get pricing, Guide, Sign in). Training is sandbox Quantum Payments. Live cards wait for an approved application and an enrolled reader. PIN is not the time clock and not server closeout.",
+    roles: "all",
+    surfaces: ["floor", "settings", "platform"],
+    audience: "all",
+    topicId: "intro",
+    tags: ["guide", "training", "go live"],
+  },
   {
     id: "upd_2026_10_05_location_catalog",
     date: "2026-10-05",
@@ -87,19 +97,6 @@ export const WHATS_NEW_ENTRIES: GuideUpdate[] = [
     tags: ["offline", "pwa", "station", "pin"],
   },
   {
-    id: "upd_2026_09_29_offline_pwa",
-    date: "2026-09-29",
-    title: "Offline-first PWA",
-    summary:
-      "Prime a device online once. The installed PWA launches Offline with last menu, floor, and tickets. Cash still closes. Card requires connection. Outbox syncs when WAN returns.",
-    body: "Service worker caches the app shell. Location snapshot (menu, tables, tickets) is stored on the device. Banner: Offline. Open the house once while connected before you need it with the internet down.",
-    roles: ["owner_manager", "server", "kitchen_bar", "host_operator"],
-    surfaces: ["floor", "kds"],
-    audience: "all",
-    topicId: "wifi-offline",
-    tags: ["offline", "pwa", "outbox", "cash"],
-  },
-  {
     id: "upd_2026_09_27_station_split",
     date: "2026-09-27",
     title: "This station + split-screen ODS",
@@ -111,19 +108,6 @@ export const WHATS_NEW_ENTRIES: GuideUpdate[] = [
     audience: "all",
     topicId: "station-switcher",
     tags: ["station", "split", "ods", "device"],
-  },
-  {
-    id: "upd_2026_09_26_partner_demo",
-    date: "2026-09-26",
-    title: "Partner demo: The Laundry",
-    summary:
-      "Tagged partner-demo location with Steam Distillery + Diamond House BBQ. Not a public demo site. Credentials in the partner login sheet — not on marketing.",
-    body: "Sign in as laundry.owner, open The Laundry, PIN 2001 as Server 1. Order a drink and a plate — bar vs kitchen tickets split. Factory reset reseeds it. Platform Admin is unchanged.",
-    roles: ["platform_admin", "owner_manager", "host_operator"],
-    surfaces: ["platform", "floor"],
-    audience: "platform",
-    topicId: "partner-demo",
-    tags: ["partner", "laundry", "pin"],
   },
   {
     id: "upd_2026_09_23_training",
@@ -150,45 +134,6 @@ export const WHATS_NEW_ENTRIES: GuideUpdate[] = [
     audience: "all",
     topicId: "recipes-prep",
     tags: ["recipe", "prep", "allergen", "ai"],
-  },
-  {
-    id: "upd_2026_09_21_costs",
-    date: "2026-09-21",
-    title: "Cost control: invoices, variance, POs, price recs",
-    summary:
-      "Upload supplier invoices, map to SKUs, post receipts. Recipes drive theoretical use. Variance needs a manager response. PAR POs email/CSV. Price recs open Menu — never auto-change.",
-    body: "Costs and Cost intel. Closed loop: invoice → stock → sales theoretical → alert → response → order suggestions → price recs. Flags do not accuse. Guest operators stay on their entity.",
-    roles: ["owner_manager", "host_operator", "vendor_operator"],
-    surfaces: ["settings"],
-    audience: "all",
-    topicId: "cost-control",
-    tags: ["cost", "invoice", "variance", "po", "supplier"],
-  },
-  {
-    id: "upd_2026_09_20_menu_assist",
-    date: "2026-09-20",
-    title: "AI menu assist: describe, preview, confirm",
-    summary:
-      "On add or edit, type or speak the plate. Assist suggests name, station, modifiers, and common omit/add. You preview and confirm — nothing saves until you accept. Guest operators stay on their entity.",
-    body: "Menu → Describe with AI, or Assist on an existing item. Follow-ups only when needed (cash vs card price). No API key uses category templates. Dismiss discards the draft.",
-    roles: ["owner_manager", "host_operator", "vendor_operator"],
-    surfaces: ["settings"],
-    audience: "all",
-    topicId: "menu-modifiers",
-    tags: ["menu", "ai", "assist", "modifiers"],
-  },
-  {
-    id: "upd_2026_09_19_ods",
-    date: "2026-09-19",
-    title: "Order Display (ODS): Start, Bump, notify the server",
-    summary:
-      "Kitchen and bar screens are Order Displays. Tickets route by station and operator. Start to prep, Bump when ready. The originating server’s device chimes and vibrates. Expo or floor marks delivered.",
-    body: "Send from the floor. The right ODS shows the ticket. Start → Preparing, Bump → Ready. Expo/server taps Delivered. Mute from the bell. Device assignment labels are Kitchen ODS and Bar ODS.",
-    roles: ["owner_manager", "server", "kitchen_bar", "host_operator", "vendor_operator"],
-    surfaces: ["floor", "kds"],
-    audience: "all",
-    topicId: "kds",
-    tags: ["ods", "kds", "bump", "kitchen"],
   },
   {
     id: "upd_2026_09_18_host_tenant_onboard",
@@ -230,24 +175,11 @@ export const WHATS_NEW_ENTRIES: GuideUpdate[] = [
     tags: ["settings", "plans", "billing", "gifts", "admin"],
   },
   {
-    id: "upd_2026_09_15_factory_reset",
-    date: "2026-09-15",
-    title: "Factory reset in Platform Settings",
-    summary:
-      "Admin can wipe all tenant and CRM data from Settings → Danger zone. Admin/password remains with a forced password change. No demo seeds.",
-    body: "Type RESET, confirm, re-enter the Admin password. Orgs, locations, pipeline, and CRM go. Sign in again as Admin with the initial password and set a new one.",
-    roles: ["platform_admin"],
-    surfaces: ["platform"],
-    audience: "platform",
-    topicId: "factory-reset",
-    tags: ["factory reset", "settings", "admin"],
-  },
-  {
     id: "upd_2026_09_14_saas_crm",
     date: "2026-09-14",
     title: "Platform CRM: accounts, pipeline, tenants, billing, support",
     summary:
-      "Control plane now has CRM, deal board, tenant directory, software invoices, tickets, and SaaS reports. Locations still only come from onboarding.",
+      "Control plane has CRM, deal board, tenant directory, software invoices, tickets, and SaaS reports. Locations still only come from onboarding.",
     body: "Add a lead or convert Get pricing intake. Start onboarding from the account when the contract is ready. Go live creates a real tenant under Tenants — never a demo seed. Software billing is separate from Quantum Payments.",
     roles: ["platform_admin"],
     surfaces: ["platform"],
@@ -260,50 +192,12 @@ export const WHATS_NEW_ENTRIES: GuideUpdate[] = [
     date: "2026-09-13",
     title: "No demo tenants — onboard a real location to test",
     summary:
-      "Fake POS venues and PIN 0000 rooms are gone. Request demo is Get pricing. Platform Admin starts with zero tenants.",
-    body: "Marketing Request demo opens intake. /demo URLs redirect there. Admin login shows an empty tenant list until SaaS onboarding creates an org and location. Floor PIN is only for staff on that location.",
+      "Fake POS venues and PIN 0000 rooms are gone. Get pricing is the sales path. Platform Admin starts with zero tenants.",
+    body: "Marketing Get pricing opens intake. /demo URLs redirect there. Admin login shows an empty tenant list until SaaS onboarding creates an org and location. Floor PIN is only for staff on that location.",
     roles: "all",
     surfaces: ["platform", "settings"],
     topicId: "empty-start",
     tags: ["onboarding", "saas", "empty-start"],
-  },
-  {
-    id: "upd_2026_09_12_gift_pin_floor",
-    date: "2026-09-12",
-    title: "Demo PIN pad, Host stand / Server, release/accept, gift issuers",
-    summary:
-      "Demo sites open the real floor PIN pad (0000). Host stand and Server views, section assignment, release/accept transfers, and first-party gift liability by issuer.",
-    body: "Demo sites → entity → production PIN pad → 0000 as Owner. View includes Host stand and each Server. Host seats a section and can assign a server. Release puts the open check in the offer pool; Accept transfers ownership with an audit. Gift sale books issuer liability (bar → Steam, host stand → configured entity, house SKU → house), not seller merch. Redeem at another operator remits issuer → fulfiller. Operator residual splits; house-issued remaining balance stays with the house. Settings show the term disclaimer (off by default).",
-    roles: "all",
-    surfaces: ["floor", "settings"],
-    audience: "demo",
-    topicId: "prospect-demos",
-    tags: ["demo", "pin", "host stand", "release", "gift", "issuer"],
-  },
-  {
-    id: "upd_2026_09_11_demo_pin",
-    date: "2026-09-11",
-    title: "Demo sites: PIN 0000, View switcher, live floor path",
-    summary:
-      "Public Demo sites open a PIN pad, not a password. 0000 logs in as Owner. View switches Hostess → Server → ODS → Expo → pay → Busser on one house.",
-    body: "Marketing home → Demo sites → entity type → PIN 0000. Clock in/out is a separate action, still 0000. The View menu does not re-login. Demo PIN never works on live tenants. Exit returns to Demo sites, not the control plane.",
-    roles: "all",
-    surfaces: ["floor", "kiosk"],
-    audience: "demo",
-    topicId: "prospect-demos",
-    tags: ["demo", "pin", "0000", "hostess", "kds"],
-  },
-  {
-    id: "upd_2026_09_10_network_hosts",
-    date: "2026-09-10",
-    title: "Network readiness is warn-only; www vs app vs sites",
-    summary:
-      "Onboarding checks venue Wi‑Fi without blocking go-live. Staff bookmarks the app host; guests use the sites host for table QR.",
-    body: "Network readiness probes health and a staff Wi‑Fi checklist. Fail or skip is recorded on the location — POS, demo, and login stay up. Re-run from Settings. Production uses www for login, app for POS/ODS/kiosk, sites for table QR and online.",
-    roles: ["owner_manager", "host_operator", "platform_admin"],
-    surfaces: ["settings", "platform"],
-    topicId: "network-readiness",
-    tags: ["network", "wifi", "onboarding", "hosts", "qr"],
   },
   {
     id: "upd_2026_09_09_floor_qr",
@@ -311,221 +205,12 @@ export const WHATS_NEW_ENTRIES: GuideUpdate[] = [
     title: "Drag-and-drop floor, status flash, table QR pay",
     summary:
       "Draw the room, color tables by dining status, flash SLAs, and let guests order or pay from a table QR.",
-    body: "Owner/manager/host stand open Floor editor: drag, resize, booths and barstools. Settings maps the empty → sat → drinks → food → delivered → unpaid → needs-bus pipeline, colors, and flash minutes. QR mode is Full, Hybrid, or Pay only. Guest pay is Quantum Payments on the host check — Steam and Diamond lines stay tagged. Demo flash is seconds, not minutes.",
+    body: "Owner/manager/host stand open Floor editor: drag, resize, booths and barstools. Settings maps the empty → sat → drinks → food → delivered → unpaid → needs-bus pipeline, colors, and flash minutes. QR mode is Full, Hybrid, or Pay only. Guest pay is Quantum Payments on the host check — operator lines stay tagged.",
     roles: ["owner_manager", "server", "host_operator"],
     entityTypes: ["restaurant", "food_hall", "bar_lounge"],
     surfaces: ["floor", "settings"],
     topicId: "floor-editor",
     tags: ["floor", "qr", "status", "flash"],
-  },
-  {
-    id: "upd_2026_09_08_voice_ai",
-    date: "2026-09-08",
-    title: "Voice by role and AI that learns your calls",
-    summary:
-      "Tap the mic for role-gated floor commands. AI ops on Home learns from accept, dismiss, and snooze — never clocks anyone out.",
-    body: "Host settings turn the mic on per access level (kiosk stays off). Say 86 brisket and confirm. On Home, accept or dismiss a labor tip twice and watch the preference change. Demo learning stays in the demo.",
-    roles: ["owner_manager", "host_operator", "vendor_operator"],
-    entityTypes: ["food_hall", "truck_pod", "ghost_kitchen", "restaurant"],
-    surfaces: ["settings", "kds"],
-    topicId: "voice-control",
-    tags: ["voice", "ai", "labor", "86"],
-  },
-  {
-    id: "upd_2026_09_07_pin_schedule",
-    date: "2026-09-07",
-    title: "Floor PIN login, entity schedules, payroll reports",
-    summary:
-      "Working staff use a 4-digit PIN on shared devices. Back office stays email and password. Each entity schedules and pays its own people.",
-    body: "On The Laundry, PIN 1111 is a server on the floor. Switch user to 5555 for kitchen. Steam 6666 is the entity manager for Steam’s week and payroll. Diamond cannot edit Steam’s schedule. Host 0000 / password unlocks settings.",
-    roles: ["owner_manager", "host_operator", "vendor_operator"],
-    entityTypes: ["food_hall", "truck_pod", "ghost_kitchen", "restaurant"],
-    surfaces: ["settings", "kds"],
-    topicId: "floor-pin-login",
-    tags: ["pin", "schedule", "payroll", "login"],
-  },
-  {
-    id: "upd_2026_09_06_entity_logins",
-    date: "2026-09-06",
-    title: "Entity logins, permission matrix, device assignment",
-    summary:
-      "Steam and Diamond staff log in to their own entity. The host grants what they may see. Any tablet can be assigned to any stall and function.",
-    body: "On The Laundry, PIN 6666 is Steam Distillery (edit Steam, view Diamond read-only). 7777 is Diamond House BBQ. Host 9999 opens the permission matrix and device assignment — Tablet A → Steam bar ODS, Tablet B → Diamond floor POS.",
-    roles: ["owner_manager", "host_operator", "vendor_operator"],
-    entityTypes: ["food_hall", "truck_pod", "ghost_kitchen"],
-    surfaces: ["settings", "kds"],
-    topicId: "host-operator-settings",
-    tags: ["entities", "permissions", "devices", "host"],
-  },
-  {
-    id: "upd_2026_09_05_host_settings",
-    date: "2026-09-05",
-    title: "Host owns settings and payouts",
-    summary:
-      "The subscriber is the host location. Guest operators get operator ops (staff, clock, 86) — not tax, cash discount, or payout routing.",
-    body: "On The Laundry, owner settings show Host settings and Operators. Steam Distillery and Diamond House PINs open Operator ops only. Payout destinations are host-managed.",
-    roles: ["owner_manager", "host_operator", "vendor_operator"],
-    entityTypes: ["food_hall", "truck_pod", "ghost_kitchen"],
-    surfaces: ["settings"],
-    topicId: "host-operator-settings",
-    tags: ["settings", "host", "payouts", "operators"],
-  },
-  {
-    id: "upd_2026_09_04_offline",
-    date: "2026-09-04",
-    title: "Offline mode: cash and tickets without internet",
-    summary:
-      "If the uplink drops, floor, ODS, cash, and waitlist still run on this device. Card needs a connection. Changes sync once when internet returns.",
-    body: "Use Simulate internet outage on the Wi‑Fi chip. Cash closes locally. SMS is pending send. Failed syncs show to the manager. Same behavior in a prospect demo.",
-    roles: "all",
-    surfaces: ["floor", "kds", "kiosk", "settings"],
-    topicId: "wifi-offline",
-    tags: ["offline", "wifi", "payments", "kds"],
-  },
-  {
-    id: "upd_2026_09_03_login_onboarding",
-    date: "2026-09-03",
-    title: "Latest updates on login & role walkthroughs",
-    summary:
-      "After you sign in, Summex shows recent changes for your role and a short walkthrough of your job on the live screens.",
-    body: "Close the list, or silence until the next update. Replay the workflow any time from Guide or Replay workflow. Switching a demo role offers that job’s walkthrough if you have not finished it.",
-    roles: "all",
-    surfaces: "all",
-    topicId: "whats-new-on-login",
-    tags: ["onboarding", "guide", "walkthrough"],
-  },
-  {
-    id: "upd_2026_09_02_demo_switcher",
-    date: "2026-09-02",
-    title: "Demo login & device switcher",
-    summary:
-      "One demo login, then switch owner/server/kitchen, kiosk, or ODS on the same isolated house.",
-    roles: "all",
-    surfaces: ["floor", "kds", "kiosk"],
-    audience: "demo",
-    topicId: "prospect-demos",
-    tags: ["demo", "kiosk", "kds"],
-  },
-  {
-    id: "upd_2026_09_01_reports_ai",
-    date: "2026-09-01",
-    title: "Reports suite and AI insights",
-    summary:
-      "Full operational reports by type and role, plus AI (or guided) recommendations on cost vs ordering and performance.",
-    roles: ["owner_manager", "vendor_operator"],
-    surfaces: ["reports"],
-    topicId: "ai-insights",
-    tags: ["reports", "ai"],
-  },
-  {
-    id: "upd_2026_08_31_access",
-    date: "2026-08-31",
-    title: "Role dashboards and location settings packs",
-    summary:
-      "Each PIN lands on a job dashboard. Location settings show only the packs for that establishment type.",
-    roles: "all",
-    surfaces: ["floor", "settings"],
-    topicId: "roles-dashboards",
-    tags: ["roles", "settings", "access"],
-  },
-  {
-    id: "upd_2026_08_30_public_site",
-    date: "2026-08-30",
-    title: "Public site is sales, guide, and demos",
-    summary:
-      "The marketing home has no dashboard. Sign in to reach the control plane. Public Operators Guide covers the house — not SaaS admin.",
-    roles: "all",
-    topicId: "login",
-    tags: ["public", "guide", "demos"],
-  },
-  {
-    id: "upd_2026_08_29_voiceover_tours",
-    date: "2026-08-29",
-    title: "Guided demos & voiceover tours",
-    summary:
-      "Public Demos run live-UI tours with voiceover. Exit returns to the demo list. Control plane stays behind Sign in.",
-    roles: ["platform_admin", "owner_manager", "host_operator"],
-    surfaces: ["platform"],
-    audience: "platform",
-    topicId: "prospect-demos",
-    tags: ["demo", "tour", "voiceover", "saas"],
-  },
-  {
-    id: "upd_2026_08_27_demos",
-    date: "2026-08-27",
-    title: "Prospect demos & guided tours",
-    summary:
-      "Share a type link or the full product tour. Demo rooms stay out of tenants, billing, and statistics.",
-    roles: ["platform_admin", "owner_manager", "host_operator"],
-    surfaces: ["platform"],
-    audience: "platform",
-    topicId: "prospect-demos",
-    tags: ["demo", "tour", "saas"],
-  },
-  {
-    id: "upd_2026_08_26_laundry",
-    date: "2026-08-26",
-    title: "The Laundry TEST venue",
-    summary:
-      "Demo-only host: The Laundry with Steam Distillery (bar) and Diamond House BBQ (kitchen). One guest check, ledger allocations, $35 dispute split.",
-    roles: ["owner_manager", "host_operator", "platform_admin", "vendor_operator"],
-    entityTypes: ["food_hall", "truck_pod"],
-    audience: "demo",
-    topicId: "laundry-test-venue",
-    tags: ["demo", "ledger", "multi-operator"],
-  },
-  {
-    id: "upd_2026_08_26_ledger_wp",
-    date: "2026-08-26",
-    title: "White paper and system ledger",
-    summary:
-      "Shareable Summex white paper. Append-only Quantum Payments ledger: capture, allocations, $35 dispute fee, CSV export.",
-    roles: ["owner_manager", "host_operator", "platform_admin"],
-    surfaces: ["reports", "platform"],
-    topicId: "system-ledger",
-    tags: ["ledger", "payments"],
-  },
-  {
-    id: "upd_2026_08_25_setup_assist",
-    date: "2026-08-25",
-    title: "Talk your location into Summex",
-    summary:
-      "Describe with AI on menu, floor, staff, operators, routing, and cash discount. Type or speak; confirm the preview before it saves.",
-    roles: ["owner_manager", "host_operator"],
-    surfaces: ["settings"],
-    topicId: "setup-by-voice",
-    tags: ["ai", "setup", "voice"],
-  },
-  {
-    id: "upd_2026_08_24_cash_discount",
-    date: "2026-08-24",
-    title: "Cash discount with round-up prices",
-    summary:
-      "Keep $12.00 on the menu. Enable 5% cash, round up to $0.25 — card stays $12, cash is $11.50. No penny counting.",
-    roles: ["owner_manager", "server", "host_operator"],
-    surfaces: ["floor", "settings"],
-    topicId: "cash-discount",
-    tags: ["cash", "pricing"],
-  },
-  {
-    id: "upd_2026_08_23_operators_guide",
-    date: "2026-08-23",
-    title: "Operators Guide",
-    summary:
-      "Searchable in-app guide with role tabs, progress, What’s New on login, and Learn links from settlement, onboarding, payments, floor, and ODS.",
-    roles: "all",
-    topicId: "using-guide",
-    tags: ["guide", "training"],
-  },
-  {
-    id: "upd_2026_08_23_visual",
-    date: "2026-08-23",
-    title: "Premium Summex visual system",
-    summary:
-      "Cream paper, ink type, Inter, black actions. SUMMEX wordmark. No lime brand color.",
-    roles: "all",
-    topicId: "intro",
-    tags: ["design"],
   },
   {
     id: "upd_2026_08_13_quantum_pay",
@@ -549,71 +234,14 @@ export const WHATS_NEW_ENTRIES: GuideUpdate[] = [
     tags: ["chargeback", "settlement"],
   },
   {
-    id: "upd_2026_08_13_empty",
-    date: "2026-08-13",
-    title: "Empty start & Admin bootstrap",
-    summary:
-      "No demo tenant. Sign in as Admin, change the password, then run intake → onboarding. Examples: Host Venue / Operator A / Operator B.",
-    roles: ["platform_admin"],
-    surfaces: ["platform"],
-    audience: "platform",
-    topicId: "empty-start",
-    tags: ["admin", "onboarding"],
-  },
-  {
-    id: "upd_2026_08_13_saas",
-    date: "2026-08-13",
-    title: "Prospect intake → onboarding",
-    summary:
-      "Interview and form, snapshot quote, accept, contract signed, then a wizard that creates org, locations, operators, packages, and invites.",
-    roles: ["platform_admin"],
-    surfaces: ["platform"],
-    audience: "platform",
-    topicId: "prospect-intake",
-    tags: ["saas", "intake"],
-  },
-  {
     id: "upd_2026_08_13_gift",
     date: "2026-08-13",
-    title: "First-party gift cards + import",
+    title: "First-party gift cards",
     summary:
-      "Issue, reload, freeze, and void on the Summex ledger. One-way CSV import from Square, Toast, Clover, or Shopify — then those systems are done.",
+      "Issue, reload, freeze, and void on the Summex ledger. Sale-point issuer or house. Redeem settles internally. Unredeemed liability stays on the issuer; house cards keep remainder with the house.",
     roles: ["owner_manager", "server"],
     surfaces: ["floor"],
     topicId: "gift-cards",
     tags: ["gift"],
-  },
-  {
-    id: "upd_2026_08_13_wifi",
-    date: "2026-08-13",
-    title: "Wi‑Fi-first house network",
-    summary:
-      "Staff stay on the house SSID. If the internet dies, Wi‑Fi still runs floor, ODS, and cash. Card captures queue until Quantum Payments is reachable.",
-    roles: "all",
-    topicId: "wifi-offline",
-    tags: ["wifi", "offline"],
-  },
-  {
-    id: "upd_2026_08_13_bump",
-    date: "2026-08-13",
-    title: "Kitchen bump notifications",
-    summary:
-      "When kitchen or bar bumps a ticket, the floor gets a toast, chime, and inbox alert. Tables pulse with an Up badge for 90 seconds.",
-    roles: ["owner_manager", "server", "kitchen_bar"],
-    surfaces: ["floor", "kds"],
-    topicId: "kds",
-    tags: ["kitchen", "alerts"],
-  },
-  {
-    id: "upd_2026_08_13_sections",
-    date: "2026-08-13",
-    title: "Color-coded section assignments",
-    summary:
-      "Assign Dining, Booth, and Bar. Servers cannot seat or order outside their section unless a manager grants a table for the shift or that seating.",
-    roles: ["owner_manager", "server"],
-    surfaces: ["floor"],
-    entityTypes: ["restaurant", "food_hall", "bar_lounge", "cafe"],
-    topicId: "sections",
-    tags: ["floor", "sections"],
   },
 ];

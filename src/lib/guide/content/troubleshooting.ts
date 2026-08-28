@@ -21,7 +21,7 @@ export const TROUBLESHOOTING_TOPICS: GuideTopic[] = [
         "Can’t seat a table? Section lock. Ask a manager for a grant.",
         "Empty POS, no menu? You are on a live empty start. Add items or finish onboarding.",
         "Forced password screen? Platform Admin must set a new password once. It cannot be the initial password.",
-        "What’s New every login? Check Silence until the next update. It returns when a newer matching entry ships. Replay workflow from Guide is separate.",
+        "Latest updates on every login? After you sign in, check Silence until the next update. Replay workflow from Guide is separate. The public /guide page does not list a changelog.",
       ),
       steps(
         "Reproduce once. Note the screen, the PIN role, and whether the Wi‑Fi chip shows an outage.",
@@ -34,7 +34,7 @@ export const TROUBLESHOOTING_TOPICS: GuideTopic[] = [
         "Who to contact",
         "Server → Manager → Owner → Platform Admin → support@summex.app. Quantum Payments disputes stay in Settlement.",
       ),
-      related("wifi-offline", "chargebacks", "login", "whats-new-on-login", "role-walkthroughs", "audit", "using-guide"),
+      related("wifi-offline", "chargebacks", "login", "role-walkthroughs", "audit", "using-guide"),
     ],
   }),
   topic({

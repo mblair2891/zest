@@ -162,8 +162,8 @@ export function MenuAdminView() {
         <div className="rounded-2xl border border-dashed border-border bg-surface p-6 text-center">
           <p className="text-sm font-semibold">Menu is empty</p>
           <p className="mt-1 text-sm text-muted-foreground">
-            This location was onboarded without demo items. Add categories here, or
-            import a CSV later from settings.
+            Training starts empty. Add a category and item here — or Describe with
+            AI. There is no Load demo catalog.
           </p>
         </div>
       )}

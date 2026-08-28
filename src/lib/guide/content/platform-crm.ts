@@ -68,6 +68,7 @@ export const PLATFORM_CRM_TOPICS: GuideTopic[] = [
       why("Once a house is live it is a tenant — billed software, not a prospect card."),
       ul(
         "Directory shows plan, location count, operators, MRR proxy from the deal, past-due, open tickets.",
+        "Each location shows training | scheduled_live | live. Training is sandbox cards; live cards wait for processor approval.",
         "Drill-in lists locations, operators, and users.",
         "Suspend requires confirm. Reactivate restores access. Nothing is silently deleted.",
       ),
@@ -125,7 +126,7 @@ export const PLATFORM_CRM_TOPICS: GuideTopic[] = [
       ul(
         "Funnel counts CRM accounts by stage.",
         "Pipeline value sums opportunity monthly amounts.",
-        "Live orgs and locations exclude is_demo leftovers (there should be none).",
+        "Live orgs and locations are real onboarded tenants (there are no demo leftovers).",
       ),
       related("platform-crm", "saas-lifecycle", "platform-tenants"),
     ],
@@ -150,7 +151,7 @@ export const PLATFORM_CRM_TOPICS: GuideTopic[] = [
       ),
       ul(
         "Deletes orgs, locations, operators, CRM, prospects, tickets, invoices, ledger, devices, and non-admin users.",
-        "Does not seed demo venues or The Laundry.",
+        "Does not seed demo venues.",
         "Plans and software pricing catalog stay.",
         "Server-only. Floor PIN and location owners cannot run it.",
       ),
@@ -201,7 +202,53 @@ export const PLATFORM_CRM_TOPICS: GuideTopic[] = [
         "Gifts: set issuer mode and residual from dropdowns — there is no JSON textarea.",
       ),
       warn("Access is platform_admin only. Floor PIN never opens this control plane."),
-      related("factory-reset", "saas-billing", "platform-crm", "platform-admin"),
+      related("factory-reset", "saas-billing", "platform-crm", "platform-admin", "go-live-ops"),
+    ],
+  }),
+  topic({
+    id: "go-live-ops",
+    chapterId: "platform",
+    title: "Go-live ops checklist",
+    summary:
+      "Neon, auth URLs, processor approval, reader — software go-live is not a live Visa.",
+    visibility: "platform",
+    roles: ["platform_admin"],
+    keywords: [
+      "go live",
+      "neon",
+      "auth",
+      "processor",
+      "reader",
+      "checklist",
+      "production",
+    ],
+    blocks: [
+      why(
+        "Training week is a software go-live. The first live card is a processor + hardware go-live. Do not treat them as the same day.",
+      ),
+      ul(
+        "Database — production Postgres (Neon or equivalent) with migrations applied. No demo seed.",
+        "Auth URLs — Sign in and invite links on the public www host. POS/ODS/kiosk on the app host when that host is live; otherwise stay on this origin.",
+        "Processor — host Quantum Payments application approved. Training always sandboxes even if someone stored a live-mode preference.",
+        "Reader — enrolled Quantum reader for live card-present. SYOH tablets run POS; they are not card terminals.",
+        "Tenant status — Tenants list shows training | scheduled_live | live. Owner chooses keep/erase; menus, recipes, staff, settings always stay.",
+      ),
+      steps(
+        "Confirm the location is still Training until the owner types GO LIVE NOW or the schedule fires.",
+        "Confirm the host (and any operator) Quantum application is approved before expecting a live Visa.",
+        "Pair the reader. Take a sandbox card in training first.",
+        "Owner goes live. Cash still works if the processor is down.",
+      ),
+      warn(
+        "Available in training; live cards require an approved Quantum application and an enrolled reader. Factory reset is a danger-zone test tool — not a go-live step.",
+      ),
+      related(
+        "location-training",
+        "platform-tenants",
+        "quantum-payments",
+        "factory-reset",
+        "access-urls",
+      ),
     ],
   }),
 ];

@@ -89,8 +89,8 @@ export const CASH_GIFT_TOPICS: GuideTopic[] = [
       "freeze",
       "void",
       "ledger",
-      "Steam",
-      "Diamond",
+      "operator a",
+      "house issuer",
     ],
     openView: "customers",
     blocks: [
@@ -101,7 +101,7 @@ export const CASH_GIFT_TOPICS: GuideTopic[] = [
         "Balances live on the Summex server — hashed codes, issuer, and ledger — not only on the drawer that sold the card. The POS cache is a view of that ledger. There is no third-party gift network as system of record.",
       ),
       p(
-        "Default issuer follows the selling point: bar sale → that bar operator (Steam on The Laundry); host stand sale → the configured entity (Diamond by default on The Laundry); explicit house SKU → house. House issuer is optional location mode — you do not create a third legal company.",
+        "Default issuer follows the selling point: bar sale → that bar operator; host stand sale → the configured entity; explicit house SKU → house. House issuer is optional location mode — you do not create a third legal company.",
       ),
       ul(
         "Sale (cash or card) increases issuer gift liability. It is never booked as the seller’s operating merchandise.",
@@ -113,15 +113,15 @@ export const CASH_GIFT_TOPICS: GuideTopic[] = [
       ),
       steps(
         "Open Guests. Issue a card: amount, issuer (defaults to selling point), cash or card tender.",
-        "On The Laundry: bartender issues $50 — liability is Steam. Diamond sells food, Pay → Gift, enter the code — Diamond merch, Steam → Diamond remit.",
+        "Example: Operator B (bar) issues $50 — liability is Operator B. Operator A sells food, Pay → Gift, enter the code — Operator A merch, Operator B → Operator A remit.",
         "Settings → Gift cards: house issuer on/off, host-stand default issuer, term allowed (with disclaimer), operator residual split. Use the dropdowns — no JSON.",
         "Reports → Gift liability / Gift redemptions, or Settle → liability by issuer. Host: Process expired residual when a term is in force.",
-        "Freeze if lost. Void if issued in error. Import CSV is one-way from Square / Toast / Clover / Shopify / generic.",
+        "Freeze if lost. Void if issued in error. Import CSV is one-way from Square / Toast / Clover / Shopify / generic (those systems are not POS card processors).",
       ),
       warn(
         "Turning on a term does not make expiry legal. Confirm state law with counsel — expiry may be illegal in some states. Imported cards are not kept in sync with the old system.",
       ),
-      related("tenders-tips", "settlement", "guests", "prospect-demos"),
+      related("tenders-tips", "settlement", "guests", "cash-handling"),
     ],
   }),
   topic({

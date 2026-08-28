@@ -61,7 +61,7 @@ const WHYS = [
   {
     icon: BookOpen,
     title: "Live in weeks, not a months-long IT project",
-    body: "Describe the operation. Summex snapshots a quote, you accept, contract is marked signed, and a guided wizard creates org, locations, operators, packages, and invites. The Operators Guide is in the product from day one.",
+    body: "Get pricing. Summex snapshots a quote, you accept, contract is marked signed, and SaaS onboards the host. The host invites operators. Training week uses Quantum Payments sandbox. The Operators Guide is in the product from day one.",
   },
   {
     icon: Users,
@@ -130,7 +130,7 @@ const TRUST = [
   {
     icon: BookOpen,
     title: "Operators Guide included",
-    body: "Searchable, role-aware, in the product. Floor, settlement, payments, and onboarding — without a binder or a second login.",
+    body: "Searchable, role-aware, in the product. Floor, settlement, payments, and training vs go live — without a binder. Public Guide exits to this home.",
   },
   {
     icon: CreditCard,

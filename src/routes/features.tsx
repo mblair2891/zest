@@ -12,7 +12,7 @@ const ITEMS = [
   ["Staff", "Owner, manager, cashier — org-wide or per location."],
   ["Quantum Payments", "The only merchant processor in the product."],
   ["Kiosk & waitlist", "Guest order, waitlist, and reservation check-in on a large-touch surface."],
-  ["Onboarding", "Get pricing → quote → contract → guided setup. Sign in after you have a house."],
+  ["Onboarding", "Get pricing → quote → host setup. Sign in after the house exists. Training uses sandbox cards."],
 ];
 
 function FeaturesPage() {

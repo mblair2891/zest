@@ -233,8 +233,8 @@ export const FULL_TOUR: TourDefinition = {
       id: "f-guide",
       title: "Operators Guide",
       script:
-        "The guide is in the product. Overview, by type, features, and roles. Send a prospect a demo link, not Admin.",
-      route: { to: "/guide", search: { topic: "prospect-demos" } },
+        "The guide is in the product. Overview, by type, features, and roles. Prospects start at Get pricing — never Admin.",
+      route: { to: "/guide", search: { topic: "intro" } },
       selector: "[data-demo='guide-root']",
     },
     {

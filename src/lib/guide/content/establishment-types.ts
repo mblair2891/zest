@@ -45,22 +45,22 @@ export const ESTABLISHMENT_TYPE_TOPICS: GuideTopic[] = [
         "Onboard a restaurant",
         "Create a real location through SaaS. There is no seeded demo house.",
       ),
-      related("type-food-hall", "floor-editor", "floor-status", "table-qr", "feature-waitlist", "feature-kiosk", "prospect-demos"),
+      related("type-food-hall", "floor-editor", "floor-status", "table-qr", "feature-waitlist", "feature-kiosk"),
     ],
   }),
   topic({
     id: "type-food-hall",
     chapterId: "types",
     title: "Host + multi-operator (food hall)",
-    summary: "The Laundry model: one guest check, bar vs kitchen operators, settlement split.",
+    summary: "One guest check, bar vs kitchen operators, settlement split.",
     roles: "all",
     keywords: [
       "food hall",
       "host",
       "multi-operator",
-      "the laundry",
-      "steam distillery",
-      "diamond house",
+      "host venue",
+      "operator a",
+      "operator b",
       "settlement",
     ],
     openView: "hall",
@@ -72,9 +72,9 @@ export const ESTABLISHMENT_TYPE_TOPICS: GuideTopic[] = [
         "The guest sits at the host brand. Lines keep their operator. Kitchen and bar rails stay apart. Capture is Quantum Payments under the host.",
       ),
       ul(
-        "Host brand — guest-facing name on the receipt (example: The Laundry).",
-        "Bar operator — drinks and bar tickets (example: Steam Distillery).",
-        "Kitchen operator — food and kitchen tickets (example: Diamond House BBQ).",
+        "Host brand — guest-facing name on the receipt (example: Host Venue).",
+        "Bar operator — drinks and bar tickets (example: Operator B).",
+        "Kitchen operator — food and kitchen tickets (example: Operator A).",
         "Stations: host stand / floor (color-coded map + table QR), bar ODS, kitchen ODS, shared cash.",
       ),
       steps(
@@ -86,7 +86,7 @@ export const ESTABLISHMENT_TYPE_TOPICS: GuideTopic[] = [
         "If a dispute is filed — only then — a $35 fee splits by merchandise share on that check.",
       ),
       ul(
-        "Access includes vendor_operator (Steam Distillery, Diamond House BBQ) plus host, cashier, and accountant.",
+        "Access includes vendor_operator (Operator A, Operator B) plus host, cashier, and accountant.",
         "Vendor dashboards are operator ops: tickets, 86, staff. Host settings hold payouts and tax.",
       ),
       callout(
@@ -99,9 +99,9 @@ export const ESTABLISHMENT_TYPE_TOPICS: GuideTopic[] = [
       cta(
         "/get-pricing",
         "Onboard a host + operators location",
-        "Intake and the setup wizard create a real tenant. Request demo on marketing is the same path.",
+        "Intake and the setup wizard create a real tenant. Marketing Get pricing is this path.",
       ),
-      related("host-capture", "chargebacks", "system-ledger", "prospect-demos", "partner-demo", "type-restaurant"),
+      related("host-capture", "chargebacks", "system-ledger", "single-vs-multi", "type-restaurant"),
     ],
   }),
   topic({
@@ -135,7 +135,7 @@ export const ESTABLISHMENT_TYPE_TOPICS: GuideTopic[] = [
         "A lounge waitlist is the same kiosk flow. Tabs are not a substitute for a quoted wait when the room is full.",
       ),
       cta("/get-pricing", "Onboard a bar & lounge"),
-      related("type-restaurant", "feature-waitlist", "prospect-demos"),
+      related("type-restaurant", "feature-waitlist", "feature-kiosk"),
     ],
   }),
   topic({
@@ -166,7 +166,7 @@ export const ESTABLISHMENT_TYPE_TOPICS: GuideTopic[] = [
         "QSR kiosks usually stay on Order. Enable Combined only if you also take names for a make-line wait.",
       ),
       cta("/get-pricing", "Onboard a QSR"),
-      related("type-cafe", "type-ghost-kitchen", "prospect-demos"),
+      related("type-cafe", "type-ghost-kitchen", "feature-kiosk"),
     ],
   }),
   topic({
@@ -193,7 +193,7 @@ export const ESTABLISHMENT_TYPE_TOPICS: GuideTopic[] = [
         "Pay once with Quantum Payments.",
       ),
       cta("/get-pricing", "Onboard a café"),
-      related("type-qsr", "type-bar-lounge", "prospect-demos"),
+      related("type-qsr", "type-bar-lounge", "feature-kiosk"),
     ],
   }),
   topic({
@@ -224,7 +224,7 @@ export const ESTABLISHMENT_TYPE_TOPICS: GuideTopic[] = [
         "A pod can settle trucks like a hall settles stalls. Use host + operators when more than one window feeds a shared capture.",
       ),
       cta("/get-pricing", "Onboard a truck pod"),
-      related("type-food-hall", "host-capture", "prospect-demos"),
+      related("type-food-hall", "host-capture", "settlement"),
     ],
   }),
   topic({
@@ -251,7 +251,7 @@ export const ESTABLISHMENT_TYPE_TOPICS: GuideTopic[] = [
         "Close on Quantum Payments. No second processor for delivery.",
       ),
       cta("/get-pricing", "Onboard a ghost kitchen"),
-      related("type-qsr", "type-catering", "prospect-demos"),
+      related("type-qsr", "type-catering", "kds"),
     ],
   }),
   topic({
@@ -278,7 +278,7 @@ export const ESTABLISHMENT_TYPE_TOPICS: GuideTopic[] = [
         "Capture once for the job.",
       ),
       cta("/get-pricing", "Onboard a catering kitchen"),
-      related("type-ghost-kitchen", "type-restaurant", "prospect-demos"),
+      related("type-ghost-kitchen", "type-restaurant", "menu-modifiers"),
     ],
   }),
 ];

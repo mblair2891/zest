@@ -7,7 +7,8 @@ export const SAAS_TOPICS: GuideTopic[] = [
     chapterId: "saas",
     title: "Prospect intake",
     summary: "Free-text interview, structured form, and a snapshot quote.",
-    roles: ["platform_admin", "owner_manager", "host_operator"],
+    visibility: "platform",
+    roles: ["platform_admin"],
     keywords: ["intake", "prospect", "get pricing", "interview", "quote", "saas"],
     blocks: [
       why(
@@ -36,7 +37,8 @@ export const SAAS_TOPICS: GuideTopic[] = [
     chapterId: "saas",
     title: "Quote, accept, contract signed",
     summary: "Merchant accepts a snapshot quote; Admin marks the contract signed.",
-    roles: ["platform_admin", "owner_manager", "host_operator"],
+    visibility: "platform",
+    roles: ["platform_admin"],
     keywords: ["quote", "contract", "accept", "signed", "pipeline"],
     blocks: [
       why(
@@ -60,6 +62,7 @@ export const SAAS_TOPICS: GuideTopic[] = [
     chapterId: "saas",
     title: "Onboarding wizard",
     summary: "SaaS completes the Host. Operators (tenants) join later via email/SMS self-serve links.",
+    visibility: "platform",
     roles: ["platform_admin", "owner_manager", "host_operator"],
     keywords: ["onboarding", "setup", "wizard", "go-live", "contracted"],
     openView: "settings",
@@ -92,6 +95,7 @@ export const SAAS_TOPICS: GuideTopic[] = [
     chapterId: "saas",
     title: "Host invites operators (tenants)",
     summary: "After the host is ready, the host sends email/SMS links. Operators complete their own onboarding.",
+    visibility: "platform",
     roles: ["platform_admin", "owner_manager", "host_operator"],
     keywords: ["tenant", "operator invite", "self-serve", "host_ready", "SMS", "email"],
     blocks: [
@@ -116,6 +120,7 @@ export const SAAS_TOPICS: GuideTopic[] = [
     chapterId: "saas",
     title: "Create org, location, packages",
     summary: "Manual provision from the control plane when you are not on a prospect path.",
+    visibility: "platform",
     roles: ["platform_admin", "owner_manager"],
     keywords: ["organization", "location", "packages", "licensing", "console"],
     blocks: [
@@ -199,6 +204,7 @@ export const SAAS_TOPICS: GuideTopic[] = [
     chapterId: "saas",
     title: "Network readiness (warn only)",
     summary: "Onboarding probes health and a Wi‑Fi checklist. Fail or skip never blocks go-live.",
+    visibility: "platform",
     roles: ["platform_admin", "owner_manager", "host_operator"],
     keywords: ["network", "wifi", "readiness", "health", "warn only", "skip", "onboarding"],
     openView: "settings",
@@ -211,7 +217,7 @@ export const SAAS_TOPICS: GuideTopic[] = [
         "Checklist: staff Wi‑Fi, no guest-only isolation for POS, tablet count, printer on the same LAN, cash vs card when the internet is down.",
         "Warn or fail shows recommendations. Continue anyway is always allowed. Skip for now records skipped.",
         "Saved on the location: status, checked-at, notes. Re-run from Location settings anytime.",
-        "POS, demo, and login are never disabled by this result.",
+        "POS and login are never disabled by this result.",
       ),
       steps(
         "In onboarding, open Network readiness after Settlement.",
@@ -237,7 +243,7 @@ export const SAAS_TOPICS: GuideTopic[] = [
         "Staff and guests should not share one bookmark. The floor lives on the app host. Table stickers live on the sites host. Login lives on www.",
       ),
       ul(
-        "www / marketing host — public site, Sign in, dashboard, onboarding. The `/` path is always the sales landing (hero, Sign in, Get pricing, Guide). It never mounts POS.",
+        "www / marketing host — public site, Sign in, Get pricing, Guide, onboarding. The `/` path is always the sales landing. It never mounts POS and never shows a Dashboard without a signed-in session.",
         "app host — POS, ODS, kiosk device. Deep links prefer this when that host is live and distinct. Until then, stations stay on this origin: /app, /venue/…, /station.",
         "sites host — table QR, online menu, location pages. Guest links prefer this when configured.",
         "api host — health and HTTP API.",
@@ -285,9 +291,10 @@ export const SAAS_TOPICS: GuideTopic[] = [
   topic({
     id: "prospect-demos",
     chapterId: "saas",
-    title: "Request a demo / test a location",
+    title: "Get pricing — no demo tenants",
     summary: "Sales CTA is Get pricing. Testing a house means SaaS onboarding — no fake POS tenants.",
-    roles: "all",
+    visibility: "platform",
+    roles: ["platform_admin"],
     keywords: [
       "demo",
       "tour",
@@ -305,27 +312,25 @@ export const SAAS_TOPICS: GuideTopic[] = [
         "A live Summex has no fake restaurants. Prospects request a demo through intake. Operators test by onboarding a real location.",
       ),
       p(
-        "Marketing home → Request demo (or Get pricing) opens the intake wizard — not a PIN pad and not a seeded venue. /demo URLs redirect there.",
+        "Marketing home → Get pricing opens intake — not a PIN pad and not a seeded venue. /demo URLs redirect there.",
       ),
       ul(
         "No PIN 0000 tenant. Floor PIN exists only after a location is onboarded and staff are invited.",
         "Platform Admin signs in with username/email and password. Tenants list is empty until onboarding creates an org.",
-        "Test path: intake → quote → contract if required → onboarding wizard → org + location (+ operators if multi-op) → owner invite → Open POS.",
+        "Test path: intake → quote → contract if required → host wizard → org + location → owner invite → Open POS. Host then invites operators.",
       ),
       steps(
-        "From the public site, Request demo or Get pricing.",
-        "Complete intake. Accept the snapshot quote.",
-        "Finish the onboarding wizard so the first location is a real tenant.",
-        "Sign in. Open POS for that location. Staff use unique floor PINs — never a universal demo code.",
+        "From the public site, Get pricing.",
+        "Complete intake. Accept the quote.",
+        "Finish host onboarding so the first location is a real tenant in Training.",
+        "Sign in. Open POS. Staff use unique floor PINs — never a universal code.",
       ),
       callout(
         "Role walkthroughs",
-        "After a real location exists, optional in-product walkthroughs can spotlight the live UI. They never seed a demo org.",
+        "After a real location exists, optional in-product walkthroughs spotlight the live UI. They never seed a demo org.",
       ),
-      warn(
-        "Marketing home does not list The Laundry. The tagged partner-demo is not a public demo site — see Partner demo — The Laundry. Customer tenants are still created through intake.",
-      ),
-      related("partner-demo", "single-vs-multi", "prospect-intake", "type-food-hall", "feature-kiosk", "roles-dashboards"),
+      warn("Never send Admin credentials as a prospect walkthrough. Customer tenants are created through intake."),
+      related("partner-demo", "prospect-intake", "onboarding-wizard", "empty-start"),
     ],
   }),
   topic({
@@ -343,12 +348,12 @@ export const SAAS_TOPICS: GuideTopic[] = [
       steps(
         "Sign in as Admin (password). Tenants is empty until someone completes onboarding.",
         "Use Pipeline for intake → quote → contract → setup.",
-        "When a location is live, Open POS. Floor PIN is for that location’s staff.",
+        "When a location exists, Open POS. Floor PIN is for that location’s staff. Training vs live is on the tenant row.",
       ),
       warn(
-        "Never send Admin login as a prospect demo. Public demo tenants stay off. Factory reset keeps Platform Admin only.",
+        "Never send Admin login as a prospect walkthrough. Public demo tenants stay off. Factory reset keeps Platform Admin only.",
       ),
-      related("platform-admin", "prospect-demos", "empty-start", "partner-demo"),
+      related("platform-admin", "prospect-demos", "empty-start", "partner-demo", "go-live-ops"),
     ],
   }),
   topic({

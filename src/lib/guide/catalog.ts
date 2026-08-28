@@ -25,7 +25,7 @@ export const GUIDE_CHAPTERS: GuideChapter[] = [
   {
     id: "getting-started",
     title: "Getting started",
-    summary: "Login, navigation, empty start.",
+    summary: "What Summex is, PIN vs password, first location, training.",
     order: 1,
   },
   {
@@ -37,7 +37,7 @@ export const GUIDE_CHAPTERS: GuideChapter[] = [
   {
     id: "saas",
     title: "SaaS & onboarding",
-    summary: "Intake, quote, contract, network readiness, access URLs.",
+    summary: "Intake, quote, host onboard, tenant invites (platform + host ops).",
     order: 3,
   },
   {

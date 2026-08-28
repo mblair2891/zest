@@ -4,8 +4,8 @@ import type { GuideTopic } from "../types";
 export const LIFECYCLE_TOPICS: GuideTopic[] = [
   topic({
     id: "location-training",
-    chapterId: "saas",
-    title: "Training, devices, go live",
+    chapterId: "getting-started",
+    title: "Training vs go live",
     summary: "Practice mode with sandbox cards, This station / split screen, then go live with keep/erase.",
     roles: ["owner_manager", "host_operator", "platform_admin"],
     keywords: ["training", "go live", "sandbox", "split screen", "change device", "practice", "pin", "clock"],
@@ -32,7 +32,7 @@ export const LIFECYCLE_TOPICS: GuideTopic[] = [
       ),
       warn("Go live erase cannot be undone. Type GO LIVE NOW. Gift products stay even if balances are erased. Training week does not take a live Visa."),
       tip("Always-kept: menus, modifiers, recipes, floorplan, staff/PINs, devices, suppliers, SKU definitions, settings, host/tenant profile."),
-      related("onboarding-wizard", "floor-pin-login", "quantum-payments", "cost-control", "recipes-prep", "device-assignment", "station-switcher"),
+      related("empty-start", "floor-pin-login", "quantum-payments", "station-switcher", "wifi-offline", "device-assignment"),
     ],
   }),
 ];

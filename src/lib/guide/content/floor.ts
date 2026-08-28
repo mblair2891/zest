@@ -201,12 +201,8 @@ export const FLOOR_TOPICS: GuideTopic[] = [
       ),
       steps(
         "Settings → Floor statuses, flash & QR.",
-        "Turn steps on or off. Map colors. Set flash minutes (demo houses use seconds so you can watch it).",
+        "Turn steps on or off. Map colors. Set flash minutes (0/blank = off).",
         "Seat a table and wait past the sat · no order threshold to see the pulse.",
-      ),
-      callout(
-        "Demo",
-        "The Laundry and restaurant demos flash sat · no order in about 9 seconds and closed · needs bus in about 7 seconds so a tour can show SLA without waiting ten minutes.",
       ),
       related("floor-tables", "floor-editor", "table-qr", "host-stand"),
     ],
@@ -227,21 +223,17 @@ export const FLOOR_TOPICS: GuideTopic[] = [
         "A · Full QR — menu, order, and pay at the table.",
         "B · Hybrid — staff seats and starts the check; guests add follow-up food and drinks on the open check.",
         "C · Pay QR only — staff orders; the guest pays via table QR or the printed check QR.",
-        "Links: /t/{token} (stable) or /table/{label}. Pay: add ?pay=1. Demo links add ?demo={type} and only hydrate that demo house.",
+        "Links: /t/{token} (stable) or /table/{label}. Pay: add ?pay=1.",
       ),
       steps(
         "Pick the QR mode in Settings → Floor statuses, flash & QR.",
         "Print or copy the table QR from Floor (tap a table) or Floor editor.",
         "On Order, Check prints a pay QR for the open ticket.",
         "Guest scan adds to that table’s check when the mode allows. Hybrid will not open an empty table.",
-        "Pay is Quantum Payments on the host check. Multi-operator lines keep Steam vs Diamond tags; the card is still one host capture.",
+        "Pay is Quantum Payments on the host check. Multi-operator lines keep operator tags; the card is still one host capture.",
       ),
       warn(
-        "Tokens are location-scoped. Rotate a token if a sticker walks. Demo QR never writes a live tenant.",
-      ),
-      callout(
-        "How to try it",
-        "On The Laundry demo, seat table 1, open its table QR, add a Steam drink, send, then open pay QR and close with Quantum Payments.",
+        "Tokens are location-scoped. Rotate a token if a sticker walks. Live cards on QR pay still require an approved Quantum application — available in training as sandbox.",
       ),
       related("floor-tables", "floor-status", "quantum-payments", "host-capture", "type-food-hall"),
     ],
