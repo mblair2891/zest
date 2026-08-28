@@ -71,6 +71,7 @@ export function TenantWorkspace() {
                 <tr>
                   <th className="pb-2">Org</th>
                   <th className="pb-2">Plan</th>
+                  <th className="pb-2">Lifecycle</th>
                   <th className="pb-2">Locations</th>
                   <th className="pb-2">MRR</th>
                   <th className="pb-2">Health</th>
@@ -88,6 +89,18 @@ export function TenantWorkspace() {
                       <span className="mt-0.5 block text-xs text-muted-foreground">{t.status}</span>
                     </td>
                     <td className="py-2">{t.planId ?? "—"}</td>
+                    <td className="py-2">
+                      <Badge
+                        variant={
+                          t.lifecycleStatuses.includes("live") &&
+                          t.lifecycleStatuses.every((s) => s === "live")
+                            ? "success"
+                            : "warn"
+                        }
+                      >
+                        {t.lifecycleSummary || "Training"}
+                      </Badge>
+                    </td>
                     <td className="py-2 tabular">{t.locationCount}</td>
                     <td className="py-2 tabular">{formatCurrency(t.mrrCents)}</td>
                     <td className="py-2">

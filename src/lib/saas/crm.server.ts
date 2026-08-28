@@ -659,24 +659,65 @@ export async function listTenantDirectory(userId: string): Promise<TenantDirecto
     where coalesce(o.is_demo, false) = false
     order by o.created_at desc
   `;
-  return rows.map((r) => ({
-    id: r.id,
-    name: r.name,
-    status: r.status === "suspended" ? "suspended" : "active",
-    planId: (PLAN_SLUGS as readonly string[]).includes(String(r.plan_id))
-      ? (r.plan_id as PlanSlug)
-      : null,
-    planStatus: r.plan_status,
-    locationCount: Number(r.loc_count) || 0,
-    operatorCount: Number(r.op_count) || 0,
-    memberCount: Number(r.mem_count) || 0,
-    mrrCents: Number(r.mrr_cents) || 0,
-    pastDue: r.plan_status === "past_due",
-    openTickets: Number(r.open_tickets) || 0,
-    accountId: r.account_id,
-    stage: r.stage ? asStage(r.stage) : null,
-    createdAt: iso(r.created_at),
-  }));
+  const locLife = await sql<{
+    org_id: string;
+    lifecycle_status: string | null;
+    setup: unknown;
+  }>`
+    select org_id, lifecycle_status, setup from locations
+    where coalesce(is_demo, false) = false
+  `;
+  const lifeByOrg = new Map<string, string[]>();
+  for (const l of locLife) {
+    const setup =
+      l.setup && typeof l.setup === "object" ? (l.setup as Record<string, unknown>) : {};
+    const raw = String(setup.lifecycleStatus ?? l.lifecycle_status ?? "training");
+    const life =
+      raw === "onboarding" || raw === "training" || raw === "scheduled_live" || raw === "live"
+        ? raw
+        : "training";
+    const arr = lifeByOrg.get(l.org_id) ?? [];
+    if (!arr.includes(life)) arr.push(life);
+    lifeByOrg.set(l.org_id, arr);
+  }
+  const order = ["onboarding", "training", "scheduled_live", "live"];
+  const label: Record<string, string> = {
+    onboarding: "Onboarding",
+    training: "Training",
+    scheduled_live: "Scheduled live",
+    live: "Live",
+  };
+  return rows.map((r) => {
+    const lifecycleStatuses = (lifeByOrg.get(r.id) ?? []).sort(
+      (a, b) => order.indexOf(a) - order.indexOf(b),
+    );
+    const lifecycleSummary =
+      lifecycleStatuses.length === 0
+        ? "—"
+        : lifecycleStatuses.length === 1
+          ? (label[lifecycleStatuses[0]!] ?? lifecycleStatuses[0]!)
+          : lifecycleStatuses.map((s) => label[s] ?? s).join(" · ");
+    return {
+      id: r.id,
+      name: r.name,
+      status: r.status === "suspended" ? "suspended" : "active",
+      planId: (PLAN_SLUGS as readonly string[]).includes(String(r.plan_id))
+        ? (r.plan_id as PlanSlug)
+        : null,
+      planStatus: r.plan_status,
+      locationCount: Number(r.loc_count) || 0,
+      operatorCount: Number(r.op_count) || 0,
+      memberCount: Number(r.mem_count) || 0,
+      mrrCents: Number(r.mrr_cents) || 0,
+      pastDue: r.plan_status === "past_due",
+      openTickets: Number(r.open_tickets) || 0,
+      accountId: r.account_id,
+      stage: r.stage ? asStage(r.stage) : null,
+      createdAt: iso(r.created_at),
+      lifecycleStatuses,
+      lifecycleSummary,
+    };
+  });
 }
 
 export async function getTenantDrillIn(userId: string, orgId: string): Promise<TenantDrillIn> {

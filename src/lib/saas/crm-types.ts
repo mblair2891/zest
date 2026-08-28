@@ -160,6 +160,10 @@ export type TenantDirectoryRow = {
   accountId: string | null;
   stage: AccountStage | null;
   createdAt: string;
+  /** Distinct location lifecycles for this org (onboarding | training | scheduled_live | live). */
+  lifecycleStatuses: string[];
+  /** Short list label, e.g. "Training" or "Live + training". */
+  lifecycleSummary: string;
 };
 
 export type TenantDrillIn = {
