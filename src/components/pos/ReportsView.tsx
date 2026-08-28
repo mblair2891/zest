@@ -14,8 +14,8 @@ import { usePosStore } from "@/lib/pos/store";
 import { formatCurrency } from "@/lib/utils";
 import { canEmployee } from "@/lib/access/permissions";
 import { HOST_SCOPE, canViewPayroll, canViewSalesReports } from "@/lib/access/entity-grants";
-import { useOpsStore } from "@/lib/pos/ops-store";
-import { buildPayrollRows } from "@/lib/labor/payroll";
+import { useSaasStore } from "@/lib/pos/saas-store";
+import { hrPayrollExportFn } from "@/lib/hr/api";
 import { useOpsLearnStore } from "@/lib/ops-ai/learn-store";
 import { REPORT_GROUP_LABEL, reportsFor } from "@/lib/reports/catalog";
 import { csvFromRows } from "@/lib/reports/metrics";
@@ -787,40 +787,156 @@ function GiftLedgerReportSlice({ id }: { id: "gift-liability" | "gift-redemption
   );
 }
 
+function isoDay(d: Date): string {
+  return d.toISOString().slice(0, 10);
+}
+
 function PayrollReportSlice() {
-  const punches = useOpsStore((s) => s.punches);
-  const employees = usePosStore((s) => s.employees);
-  const vendors = usePosStore((s) => s.vendors);
+  const orgId = useSaasStore((s) => s.org.id);
+  const locationId = usePosStore((s) => s.tenantLocationId) || "";
   const settings = usePosStore((s) => s.settings);
+  const vendors = usePosStore((s) => s.vendors);
   const emp = usePosStore((s) => s.employees.find((e) => e.id === s.currentEmployeeId));
   const grants = usePosStore((s) => s.entityPermissions);
-  const lock = emp?.role === "vendor_operator" ? emp.operatorId : null;
-  const rows = buildPayrollRows({
-    punches,
-    employees: employees.filter(
-      (e) => !lock || (e.operatorId || HOST_SCOPE) === lock,
-    ),
-    operatorName: (id) =>
-      id === HOST_SCOPE ? settings.name || "Host" : vendors.find((v) => v.id === id)?.shortName ?? id,
-    operatorId: lock,
-  }).filter((r) => canViewPayroll(emp, grants, r.operatorId));
+  const lock = emp?.role === "vendor_operator" ? emp.operatorId || HOST_SCOPE : null;
+  const employerId = lock || HOST_SCOPE;
+  const employerName =
+    employerId === HOST_SCOPE
+      ? settings.name || "Host"
+      : vendors.find((v) => v.id === employerId)?.shortName ?? employerId;
+  const [from, setFrom] = useState(() => isoDay(new Date(Date.now() - 13 * 86400000)));
+  const [to, setTo] = useState(() => isoDay(new Date()));
+  const [err, setErr] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [hint, setHint] = useState<string | null>(null);
+  const [apiReady, setApiReady] = useState(false);
+  const [csv, setCsv] = useState("");
+  const [fileName, setFileName] = useState("summex-hours.csv");
+  const [lines, setLines] = useState<
+    {
+      employeeId: string;
+      employeeName: string;
+      department: string;
+      jobTitle: string;
+      workLocation: string;
+      regularHours: number;
+      otHours: number;
+      otFlag: boolean;
+      declaredTipsCents: number;
+      ccTipsCents: number;
+      providerEmployeeId: string | null;
+    }[]
+  >([]);
+
+  const allowed = canViewPayroll(emp, grants, employerId);
+
+  const run = (push: boolean) => {
+    if (!orgId || !locationId) {
+      setErr("Open a live location to export hours.");
+      return;
+    }
+    setBusy(true);
+    setErr(null);
+    void hrPayrollExportFn({
+      data: {
+        orgId,
+        locationId,
+        employerId,
+        employerName,
+        periodStart: from,
+        periodEnd: to,
+        push,
+      },
+    })
+      .then((r) => {
+        setLines(r.batch.lines);
+        setCsv(r.csv);
+        setFileName(r.fileName);
+        setHint(r.message);
+        setApiReady(r.connector.apiConfigured);
+      })
+      .catch((e) => setErr(e instanceof Error ? e.message : "Export failed"))
+      .finally(() => setBusy(false));
+  };
+
+  useEffect(() => {
+    if (!allowed) return;
+    run(false);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [orgId, locationId, employerId, from, to, allowed]);
+
+  if (!allowed) {
+    return <p className="text-sm text-muted-foreground">Hours export is scoped to your employer entity.</p>;
+  }
+
   return (
-    <ul className="space-y-2 text-sm">
-      {rows.map((r) => (
-        <li key={r.employeeId} className="flex justify-between gap-2">
-          <span>
-            {r.name}{" "}
-            <span className="text-xs text-muted-foreground">{r.operatorName}</span>
-          </span>
-          <span className="tabular">
-            {r.regularHours.toFixed(1)}h
-            {r.otFlag ? ` · OT ${r.otHours.toFixed(1)}` : ""} · tips{" "}
-            {formatCurrency(r.tipsCents)}
-          </span>
-        </li>
-      ))}
-      {rows.length === 0 && <li className="text-muted-foreground">No punches in this entity yet.</li>}
-    </ul>
+    <div className="space-y-3">
+      <p className="text-xs text-muted-foreground">
+        Summex does not process payroll; it feeds ADP, Intuit, or a CSV. Entity-scoped hours,
+        OT, declared tips, and card tips only. No net pay and no tax e-file.
+      </p>
+      <div className="flex flex-wrap items-end gap-2">
+        <label className="text-xs text-muted-foreground">
+          Period start
+          <input
+            type="date"
+            className="mt-1 flex h-9 rounded-md border border-border bg-bg px-2 text-sm"
+            value={from}
+            onChange={(e) => setFrom(e.target.value)}
+          />
+        </label>
+        <label className="text-xs text-muted-foreground">
+          Period end
+          <input
+            type="date"
+            className="mt-1 flex h-9 rounded-md border border-border bg-bg px-2 text-sm"
+            value={to}
+            onChange={(e) => setTo(e.target.value)}
+          />
+        </label>
+        <Button
+          size="sm"
+          variant="outline"
+          disabled={busy || !csv}
+          onClick={() => {
+            const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement("a");
+            a.href = url;
+            a.download = fileName;
+            a.click();
+            URL.revokeObjectURL(url);
+          }}
+        >
+          Download CSV
+        </Button>
+        <Button size="sm" disabled={busy} onClick={() => run(true)}>
+          {apiReady ? "Send hours to provider" : "Connect — CSV fallback"}
+        </Button>
+      </div>
+      {err && <p className="text-sm text-danger">{err}</p>}
+      {hint && <p className="text-xs text-muted-foreground">{hint}</p>}
+      <ul className="space-y-2 text-sm">
+        {lines.map((r) => (
+          <li key={r.employeeId} className="flex justify-between gap-2">
+            <span>
+              {r.employeeName}{" "}
+              <span className="text-xs text-muted-foreground">
+                {r.department} · {r.jobTitle} · {r.workLocation}
+              </span>
+            </span>
+            <span className="tabular">
+              {r.regularHours.toFixed(1)}h
+              {r.otFlag ? ` · OT ${r.otHours.toFixed(1)}` : ""} · cash tips{" "}
+              {formatCurrency(r.declaredTipsCents)} · CC {formatCurrency(r.ccTipsCents)}
+            </span>
+          </li>
+        ))}
+        {lines.length === 0 && !busy && (
+          <li className="text-muted-foreground">No punches in this entity for the period.</li>
+        )}
+      </ul>
+    </div>
   );
 }
 

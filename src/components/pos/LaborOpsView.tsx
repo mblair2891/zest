@@ -143,7 +143,7 @@ export function LaborOpsView() {
                     ["timecards", "Timecards"],
                     ["alerts", "Supervisor"],
                     ["settings", "Rules"],
-                    ["payroll", "Payroll"],
+                    ["payroll", "Hours export"],
                   ] as const)
             )
           ).map(([id, label]) => (
@@ -422,7 +422,7 @@ export function LaborOpsView() {
               </select>
             </label>
             <label className="block text-xs text-muted-foreground">
-              Payroll processing
+              Hours file
               <select
                 className="mt-1 flex h-9 w-full rounded-md border border-border bg-bg px-2 text-sm text-foreground"
                 value={labor.payrollMode}
@@ -431,13 +431,13 @@ export function LaborOpsView() {
                 }
               >
                 <option value="auto_export">
-                  Automatic export when all shifts approved
+                  Prepare hours file when all shifts are approved
                 </option>
-                <option value="manual">Manual process only</option>
+                <option value="manual">Hold until you export</option>
               </select>
             </label>
             <Field
-              label="Payroll processor id"
+              label="Destination (ADP / Intuit / CSV id)"
               value={labor.payrollProcessorId}
               onChange={(v) => updateLabor({ payrollProcessorId: v })}
             />
@@ -481,17 +481,18 @@ export function LaborOpsView() {
             <div className="rounded-2xl border border-border bg-surface p-4">
               <div className="mb-2 flex items-center gap-2 text-sm font-semibold">
                 <FileSpreadsheet className="h-4 w-4" />
-                Pay period run
+                Hours file for this period
               </div>
               <p className="mb-3 text-xs text-muted-foreground">
-                Mode:{" "}
+                Summex does not process payroll. Mode:{" "}
                 <span className="text-foreground">
                   {labor.payrollMode === "auto_export"
-                    ? "Auto-export to processor"
-                    : "Manual hold"}
+                    ? "Prepare file when shifts are approved"
+                    : "Hold until you export"}
                 </span>
                 . Requires every finished shift to be auto-approved, approved, or
-                corrected — no pending red flags.
+                corrected — no pending red flags. Use Reports → Payroll export for
+                ADP / Intuit / CSV.
               </p>
               <Button
                 onClick={() => {
@@ -499,7 +500,7 @@ export function LaborOpsView() {
                   setFlash(res.message);
                 }}
               >
-                Run payroll for period
+                Prepare hours file
               </Button>
             </div>
             {payPeriods.map((pp) => (
@@ -546,14 +547,14 @@ function PayrollTable({
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = "payroll.csv";
+    a.download = "summex-hours.csv";
     a.click();
     URL.revokeObjectURL(url);
   };
   return (
     <div className="rounded-2xl border border-border bg-surface p-4">
       <div className="mb-2 flex items-center justify-between gap-2">
-        <p className="text-sm font-semibold">Hours, OT, tips & sales</p>
+        <p className="text-sm font-semibold">Hours, OT, tips</p>
         <Button size="sm" variant="outline" onClick={download}>
           CSV
         </Button>

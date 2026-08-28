@@ -825,8 +825,218 @@ export async function payrollSummary(
     csv: showHours ? csv : "employee\nredacted",
     showWages,
     showHours,
-    note: "Hours from this entity’s published shifts and clock punches. Tips stay on Labor. Not a tax-filing engine.",
+    note: "Hours and tips for this employer entity. Summex does not process payroll, file taxes, or pay employees.",
   };
+}
+
+export type PayrollMapRow = {
+  employeeId: string;
+  provider: string;
+  providerEmployeeId: string;
+};
+
+export async function listPayrollMap(
+  ctx: EntityWriteContext,
+  employerId: string,
+): Promise<PayrollMapRow[]> {
+  assertEmployerScope(ctx, employerId);
+  if (!canViewHrField(ctx, employerId, "hours")) {
+    throw new ForbiddenError("Not allowed to view hours for this employer");
+  }
+  const sql = await getSql();
+  const rows = await sql<{
+    employee_id: string;
+    provider: string;
+    provider_employee_id: string;
+  }>`
+    select employee_id, provider, provider_employee_id
+    from hr_payroll_map
+    where location_id = ${ctx.locationId} and employer_id = ${employerId}
+  `;
+  return rows.map((r) => ({
+    employeeId: r.employee_id,
+    provider: r.provider,
+    providerEmployeeId: r.provider_employee_id,
+  }));
+}
+
+export async function savePayrollMap(
+  ctx: EntityWriteContext,
+  data: {
+    employerId: string;
+    employeeId: string;
+    providerEmployeeId: string;
+    provider?: string;
+  },
+): Promise<void> {
+  assertEmployerScope(ctx, data.employerId);
+  if (ctx.role === "server" || ctx.role === "host" || ctx.role === "bartender" || ctx.role === "kitchen" || ctx.role === "cashier" || ctx.role === "staff") {
+    throw new ForbiddenError("Hours-export mapping requires an entity owner or manager");
+  }
+  const cfg = configOf(ctx.setup, data.employerId);
+  const provider = (data.provider || cfg.payrollProvider || "csv").slice(0, 20);
+  const pid = data.providerEmployeeId.trim().slice(0, 80);
+  const sql = await getSql();
+  if (!pid) {
+    await sql`
+      delete from hr_payroll_map
+      where location_id = ${ctx.locationId}
+        and employer_id = ${data.employerId}
+        and employee_id = ${data.employeeId}
+        and provider = ${provider}
+    `;
+    return;
+  }
+  await sql`
+    insert into hr_payroll_map (
+      location_id, employer_id, employee_id, provider, provider_employee_id, updated_at
+    ) values (
+      ${ctx.locationId}, ${data.employerId}, ${data.employeeId}, ${provider}, ${pid}, now()
+    )
+    on conflict (location_id, employer_id, employee_id, provider) do update set
+      provider_employee_id = excluded.provider_employee_id,
+      updated_at = now()
+  `;
+}
+
+export async function buildPayrollExport(
+  ctx: EntityWriteContext,
+  data: {
+    employerId: string;
+    employerName?: string;
+    periodStart: string;
+    periodEnd: string;
+    push?: boolean;
+  },
+): Promise<import("@/lib/labor/payroll-export").PayrollPushResult & {
+  batch: import("@/lib/labor/payroll-export").PayrollExportBatch;
+  connector: import("@/lib/labor/payroll-connectors").PayrollConnectorStatus;
+}> {
+  const { departmentForRole, isCardTender, isCashTender, mergeTipSplits } = await import(
+    "@/lib/labor/payroll-export"
+  );
+  const { connectorStatus, pushPayrollBatch } = await import("@/lib/labor/payroll-connectors");
+  assertEmployerScope(ctx, data.employerId);
+  const cfg = configOf(ctx.setup, data.employerId);
+  if (!canViewHrField(ctx, data.employerId, "hours")) {
+    throw new ForbiddenError("Not allowed to view hours for this employer");
+  }
+  const startMs = Date.parse(data.periodStart);
+  const endMs = Date.parse(data.periodEnd);
+  if (!Number.isFinite(startMs) || !Number.isFinite(endMs) || endMs < startMs) {
+    throw new Error("Pay period dates are required");
+  }
+  const periodEndInclusive = endMs + 86_400_000 - 1;
+  const sql = await getSql();
+  const loc = await sql<{ name: string }>`
+    select name from locations where id = ${ctx.locationId} limit 1
+  `;
+  const locationName = loc[0]?.name || "Location";
+  const staff = await sql<{
+    id: string;
+    name: string;
+    role: string | null;
+    operator_id: string | null;
+  }>`
+    select id, name, role, operator_id from location_staff
+    where location_id = ${ctx.locationId}
+      and (operator_id = ${data.employerId} or (${data.employerId} = ${"host"} and (operator_id is null or operator_id = ${"host"})))
+  `;
+  const punches = await sql<{
+    employee_id: string;
+    employee_name: string;
+    regular_minutes: number;
+    ot_minutes: number;
+    clock_out_at: unknown;
+  }>`
+    select employee_id, employee_name, regular_minutes, ot_minutes, clock_out_at
+    from location_punches
+    where location_id = ${ctx.locationId}
+      and employer_id = ${data.employerId}
+      and clock_in_at >= ${new Date(startMs).toISOString()}
+      and clock_in_at <= ${new Date(periodEndInclusive).toISOString()}
+  `;
+  const pays = await sql<{
+    employee_id: string;
+    method: string;
+    tip_cents: number;
+  }>`
+    select employee_id, method, tip_cents
+    from pos_check_payments
+    where location_id = ${ctx.locationId}
+      and at_ms >= ${startMs}
+      and at_ms <= ${periodEndInclusive}
+      and employee_id <> ${""}
+  `;
+  const maps = await listPayrollMap(ctx, data.employerId);
+  const mapBy = new Map(maps.map((m) => [m.employeeId, m.providerEmployeeId]));
+  const hours = new Map<string, { name: string; regular: number; ot: number }>();
+  const ensure = (id: string, name: string) => {
+    const cur = hours.get(id) ?? { name, regular: 0, ot: 0 };
+    if (name && cur.name === id) cur.name = name;
+    hours.set(id, cur);
+    return cur;
+  };
+  for (const s of staff) ensure(s.id, s.name);
+  for (const p of punches) {
+    if (!p.clock_out_at) continue;
+    const cur = ensure(p.employee_id, p.employee_name);
+    cur.regular += (Number(p.regular_minutes) || 0) / 60;
+    cur.ot += (Number(p.ot_minutes) || 0) / 60;
+  }
+  const tips = new Map<string, { declaredCents: number; ccCents: number }>();
+  const staffIds = new Set(hours.keys());
+  for (const p of pays) {
+    if (!staffIds.has(p.employee_id) && staffIds.size > 0) continue;
+    const tip = Number(p.tip_cents) || 0;
+    if (!tip) continue;
+    mergeTipSplits(tips, p.employee_id, {
+      declaredCents: isCashTender(p.method) ? tip : 0,
+      ccCents: isCardTender(p.method) ? tip : 0,
+    });
+  }
+  const provider = cfg.payrollProvider === "none" ? "csv" : cfg.payrollProvider;
+  const lines = [...hours.entries()]
+    .map(([id, h]) => {
+      const st = staff.find((s) => s.id === id);
+      const role = st?.role || "";
+      const split = tips.get(id) ?? { declaredCents: 0, ccCents: 0 };
+      return {
+        employeeId: id,
+        employeeName: h.name,
+        providerEmployeeId: mapBy.get(id) ?? null,
+        department: departmentForRole(role),
+        jobTitle: role || "staff",
+        workLocation: locationName,
+        regularHours: h.regular,
+        otHours: h.ot,
+        otFlag: h.ot > 0,
+        declaredTipsCents: split.declaredCents,
+        ccTipsCents: split.ccCents,
+      };
+    })
+    .sort((a, b) => a.employeeName.localeCompare(b.employeeName));
+  const batch = {
+    employerId: data.employerId,
+    employerName: data.employerName || data.employerId,
+    locationId: ctx.locationId,
+    locationName,
+    periodStart: data.periodStart.slice(0, 10),
+    periodEnd: data.periodEnd.slice(0, 10),
+    provider,
+    lines,
+  };
+  const connector = connectorStatus(provider);
+  const result = data.push
+    ? await pushPayrollBatch(batch)
+    : {
+        ok: true as const,
+        mode: "csv_fallback" as const,
+        message: connector.connectHint,
+        csv: (await import("@/lib/labor/payroll-export")).genericPayrollCsv(batch),
+        fileName: (await import("@/lib/labor/payroll-export")).payrollExportFileName(batch),
+      };
+  return { ...result, batch, connector };
 }
 
 export async function saveEntityHrConfig(
@@ -837,6 +1047,7 @@ export async function saveEntityHrConfig(
     employmentState?: string;
     features?: Partial<EntityHrConfig["features"]>;
     visibility?: Partial<EntityHrConfig["visibility"]>;
+    payrollProvider?: EntityHrConfig["payrollProvider"];
   },
 ): Promise<EntityHrConfig> {
   assertEmployerScope(ctx, data.employerId);
@@ -855,6 +1066,7 @@ export async function saveEntityHrConfig(
       ...prev,
       employmentState: data.employmentState ?? prev.employmentState,
     }).employmentState,
+    payrollProvider: data.payrollProvider ?? prev.payrollProvider ?? "none",
   };
   const map: Record<string, EntityHrConfig> = { ...(ctx.setup.hrByEntity ?? {}) };
   map[data.employerId] = next;

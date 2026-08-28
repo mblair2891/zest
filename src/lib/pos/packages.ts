@@ -98,10 +98,10 @@ export const SUMMEX_PACKAGES: SummexPackage[] = [
   },
   {
     id: "labor",
-    name: "Labor & Payroll Rules",
+    name: "Labor & hours export",
     shortName: "Labor",
     category: "operations",
-    tagline: "Schedule, clock, optional employment packets, payroll export",
+    tagline: "Schedule, clock, optional employment packets, ADP/Intuit/CSV hours feed",
     priceMonthly: 79,
     modes: ["all"],
     views: ["labor", "employees", "schedule", "hr"],

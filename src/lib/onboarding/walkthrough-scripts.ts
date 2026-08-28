@@ -466,7 +466,7 @@ const VENDOR: TourDefinition = w(
       id: "vo-ops",
       title: "Operator ops",
       script:
-        "Staff, time clock, 86, and your week. Open Menu for your items — foreign rows badge as view only. You do not get host tax, cash discount, or payout routing. You cannot write another entity’s schedule or payroll.",
+        "Staff, time clock, 86, and your week. Open Menu for your items — foreign rows badge as view only. You do not get host tax, cash discount, or payout routing. You cannot write another entity’s schedule or hours export.",
       selector: "[data-demo='operator-ops']",
       view: "vendor_portal",
     },

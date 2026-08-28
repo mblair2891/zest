@@ -35,6 +35,7 @@ const WIPE_TABLES = [
   "hr_packets",
   "hr_onboarding",
   "hr_applicants",
+  "hr_payroll_map",
   "location_punches",
   "message_log",
   "email_outbox",

@@ -57,7 +57,7 @@ export function BackOfficeUnlock({
         <DialogHeader>
           <DialogTitle>Back office</DialogTitle>
           <DialogDescription>
-            Settings, scheduling admin, and payroll are password sign-in. Floor PIN cannot
+            Settings, scheduling admin, and hours export are password sign-in. Floor PIN cannot
             open them.
           </DialogDescription>
         </DialogHeader>

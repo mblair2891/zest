@@ -1,4 +1,8 @@
 import { HOST_SCOPE } from "@/lib/access/entity-grants";
+import {
+  parsePayrollProvider,
+  type PayrollProviderId,
+} from "@/lib/labor/payroll-export";
 
 export const HR_FEATURE_KEYS = [
   "applicants",
@@ -23,8 +27,8 @@ export const HR_FEATURE_LABEL: Record<HrFeatureKey, string> = {
   scheduling: "Scheduling",
   timeOff: "Time-off",
   timeClock: "Time clock",
-  payrollExport: "Payroll CSV export",
-  payrollSummary: "In-system payroll summary",
+  payrollExport: "Hours export (CSV / ADP / Intuit)",
+  payrollSummary: "Hours & tips summary (not a payroll run)",
   writeUps: "Write-ups / incidents",
   availability: "Availability",
   eligibility: "Minor / alcohol eligibility",
@@ -45,7 +49,7 @@ export type HrVisibilityKey = (typeof HR_VISIBILITY_KEYS)[number];
 
 export const HR_VISIBILITY_LABEL: Record<HrVisibilityKey, string> = {
   hours: "Hours",
-  wages: "Wages / payroll amounts",
+  wages: "Wage rates (never used to pay or file taxes)",
   documents: "Employment documents",
   writeUps: "Write-ups",
 };
@@ -59,6 +63,8 @@ export type EntityHrConfig = {
   visibility: HrVisibility;
   /** US state code (CA) or "federal". Drives W-4 + state packet list. */
   employmentState: string;
+  /** Who receives the hours file. Summex never processes payroll. */
+  payrollProvider: PayrollProviderId;
 };
 
 export const DEFAULT_HR_FEATURES: HrFeatures = {
@@ -95,6 +101,7 @@ export function emptyHrConfig(): EntityHrConfig {
     features: { ...DEFAULT_HR_FEATURES },
     visibility: { ...DEFAULT_HR_VISIBILITY },
     employmentState: "federal",
+    payrollProvider: "none",
   };
 }
 
@@ -254,6 +261,7 @@ export function parseHrConfig(raw: unknown): EntityHrConfig {
     features,
     visibility,
     employmentState: parseEmploymentState(o.employmentState ?? o.state),
+    payrollProvider: parsePayrollProvider(o.payrollProvider),
   };
 }
 

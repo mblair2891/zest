@@ -149,7 +149,7 @@ export const payrollReportFn = createServerFn({ method: "POST" })
     };
     const target = data.operatorId || ctx.operatorId;
     if (!canViewPayroll(emp, matrix, target)) {
-      throw new ForbiddenError("Cannot view this payroll");
+      throw new ForbiddenError("Cannot view this hours export");
     }
     return { ok: true as const, operatorId: target };
   });

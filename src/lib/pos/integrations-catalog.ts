@@ -161,9 +161,10 @@ export const INTEGRATION_CATALOG: IntegrationDef[] = [
   d("bill_com", "BILL", "BILL", "accounting", "AP automation for invoices and vendor pay.", ["AP", "Approvals"], { authType: "oauth" }),
 
   // Payroll / HR
-  d("adp", "ADP Workforce Now", "ADP", "payroll", "Hours, tips, and earnings export.", ["Hours", "Tips", "W-2"], { authType: "sftp", popular: true }),
-  d("gusto", "Gusto", "Gusto", "payroll", "Hours and tip files for SMB payroll.", ["Hours", "Tips"]),
-  d("paychex", "Paychex", "Paychex", "payroll", "Payroll export and tax filings feed.", ["Hours"], { authType: "sftp" }),
+  d("adp", "ADP Workforce Now", "ADP", "payroll", "Hours, OT, and tip feed. Summex does not process payroll.", ["Hours", "OT", "Tips"], { authType: "api_key", popular: true }),
+  d("intuit_payroll", "QuickBooks Payroll", "Intuit", "payroll", "Hours and tip export into Intuit. Summex does not process payroll.", ["Hours", "OT", "Tips"], { authType: "oauth", popular: true }),
+  d("gusto", "Gusto", "Gusto", "payroll", "Generic hours CSV for SMB payroll products.", ["Hours", "Tips"]),
+  d("paychex", "Paychex", "Paychex", "payroll", "Generic hours CSV. Tax filing stays in Paychex.", ["Hours"], { authType: "sftp" }),
   d("seven_shifts", "7shifts", "7shifts", "hr", "Scheduling, forecasting, and labor vs sales.", ["Schedule", "Forecast", "Tips"], { popular: true }),
   d("homebase", "Homebase", "Homebase", "hr", "Scheduling and time clock sync.", ["Schedule", "Time clock"]),
   d("harri", "Harri", "Harri", "hr", "Hiring and hospitality labor OS.", ["ATS", "Schedule"]),

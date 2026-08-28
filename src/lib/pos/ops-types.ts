@@ -1,6 +1,7 @@
 /** Labor rules, AI inventory, supplier hooks, drink AI */
 
 export type PayPeriodType = "weekly" | "biweekly" | "semimonthly" | "monthly";
+/** Prepare an hours file — Summex never runs payroll. */
 export type PayrollMode = "auto_export" | "manual";
 export type PunchStatus =
   | "open"
@@ -28,7 +29,7 @@ export interface LaborSettings {
   payrollMode: PayrollMode;
   /** employee id of default approving supervisor */
   defaultSupervisorId: string;
-  /** payroll processor integration id (demo) */
+  /** Hours-file destination id (adp, intuit, csv) — not a payroll run inside Summex */
   payrollProcessorId: string;
   requirePublishedShiftToClockIn: boolean;
 }

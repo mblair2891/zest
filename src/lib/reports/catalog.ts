@@ -83,8 +83,8 @@ export const REPORT_CATALOG: ReportDef[] = [
   {
     id: "staff-payroll",
     group: "staff",
-    title: "Payroll hours",
-    summary: "Hours, OT flag, tips and sales — entity-scoped.",
+    title: "Payroll export",
+    summary: "Hours, OT, declared/CC tips for ADP, Intuit, or CSV. Summex does not process payroll.",
     roles: ["owner", "manager", "accountant", "vendor_operator"],
   },
   {

@@ -2,6 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { tenantMiddleware } from "@/lib/saas/tenant-middleware";
 import { HOST_SCOPE } from "@/lib/access/entity-grants";
 import type { EntityHrConfig, HrAudience, HrFeatureKey, HrVisibilityKey } from "./types";
+import type { PayrollProviderId } from "@/lib/labor/payroll-export";
 
 function loc(raw: unknown): string {
   const s = String(raw ?? "").trim();
@@ -39,6 +40,8 @@ export const hrOverviewFn = createServerFn({ method: "POST" })
     const config = hr.snapshotConfig(ctx, employerId);
     const esign = hr.esignConfigured();
     const state = config.employmentState || ctx.setup.employmentState || "federal";
+    const { connectorStatus } = await import("@/lib/labor/payroll-connectors");
+    const payroll = connectorStatus(config.payrollProvider === "none" ? "csv" : config.payrollProvider);
     return {
       employerEntityId: employerId,
       employmentState: state,
@@ -50,6 +53,11 @@ export const hrOverviewFn = createServerFn({ method: "POST" })
         label: esign.ok
           ? `E-sign via ${esign.provider === "docusign" ? "DocuSign" : "HelloSign"}`
           : "E-sign outbox — download to sign, then attach the completed PDF",
+      },
+      payrollExport: {
+        provider: config.payrollProvider,
+        apiConfigured: payroll.apiConfigured,
+        connectHint: payroll.connectHint,
       },
       piiReady: hr.piiReady(),
       isPlatformAdmin: ctx.isPlatformAdmin,
@@ -69,6 +77,7 @@ export const saveHrSettingsFn = createServerFn({ method: "POST" })
       employmentState?: string;
       features?: Partial<Record<HrFeatureKey, boolean>>;
       visibility?: Partial<Record<HrVisibilityKey, HrAudience>>;
+      payrollProvider?: PayrollProviderId;
     }) => ({
       orgId: org(d.orgId),
       locationId: loc(d.locationId),
@@ -77,6 +86,7 @@ export const saveHrSettingsFn = createServerFn({ method: "POST" })
       employmentState: d.employmentState ? String(d.employmentState).slice(0, 16) : undefined,
       features: d.features,
       visibility: d.visibility,
+      payrollProvider: d.payrollProvider,
     }),
   )
   .handler(async ({ context, data }) => {
@@ -557,6 +567,72 @@ export const hrPayrollSummaryFn = createServerFn({ method: "POST" })
     const hr = await import("./server");
     const ctx = await ctxFor(context.userId, data.orgId, data.locationId);
     return hr.payrollSummary(ctx, data.employerId);
+  });
+
+export const listHrPayrollMapFn = createServerFn({ method: "POST" })
+  .middleware([tenantMiddleware])
+  .validator((d: { orgId: string; locationId: string; employerId: string }) => ({
+    orgId: org(d.orgId),
+    locationId: loc(d.locationId),
+    employerId: employer(d.employerId),
+  }))
+  .handler(async ({ context, data }) => {
+    const hr = await import("./server");
+    const ctx = await ctxFor(context.userId, data.orgId, data.locationId);
+    return hr.listPayrollMap(ctx, data.employerId);
+  });
+
+export const saveHrPayrollMapFn = createServerFn({ method: "POST" })
+  .middleware([tenantMiddleware])
+  .validator(
+    (d: {
+      orgId: string;
+      locationId: string;
+      employerId: string;
+      employeeId: string;
+      providerEmployeeId: string;
+      provider?: string;
+    }) => ({
+      orgId: org(d.orgId),
+      locationId: loc(d.locationId),
+      employerId: employer(d.employerId),
+      employeeId: String(d.employeeId ?? "").slice(0, 80),
+      providerEmployeeId: String(d.providerEmployeeId ?? "").slice(0, 80),
+      provider: d.provider ? String(d.provider).slice(0, 20) : undefined,
+    }),
+  )
+  .handler(async ({ context, data }) => {
+    const hr = await import("./server");
+    const ctx = await ctxFor(context.userId, data.orgId, data.locationId);
+    await hr.savePayrollMap(ctx, data);
+    return { ok: true as const };
+  });
+
+export const hrPayrollExportFn = createServerFn({ method: "POST" })
+  .middleware([tenantMiddleware])
+  .validator(
+    (d: {
+      orgId: string;
+      locationId: string;
+      employerId: string;
+      employerName?: string;
+      periodStart: string;
+      periodEnd: string;
+      push?: boolean;
+    }) => ({
+      orgId: org(d.orgId),
+      locationId: loc(d.locationId),
+      employerId: employer(d.employerId),
+      employerName: d.employerName ? String(d.employerName).slice(0, 120) : undefined,
+      periodStart: String(d.periodStart ?? "").slice(0, 10),
+      periodEnd: String(d.periodEnd ?? "").slice(0, 10),
+      push: Boolean(d.push),
+    }),
+  )
+  .handler(async ({ context, data }) => {
+    const hr = await import("./server");
+    const ctx = await ctxFor(context.userId, data.orgId, data.locationId);
+    return hr.buildPayrollExport(ctx, data);
   });
 
 export type { EntityHrConfig };

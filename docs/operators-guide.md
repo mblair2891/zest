@@ -116,7 +116,7 @@ Bookmarkable URL: `/guide?topic=my-topic`.
 ## Current facts (keep copy honest)
 
 - Brand: **Summex**, powered by **Quantum Reach**. Guest cards: **Quantum Payments** only. Never Stripe/Square as a POS processor. Never Zest.
-- HR: optional per entity (host or tenant employer). Packets + signed PDF fallback. Clock punches persist for payroll CSV. Platform never sees SSN.
+- HR: optional per entity (host or tenant employer). Packets + signed PDF fallback. Clock punches persist. Hours export feeds ADP / Intuit / CSV — Summex does not process payroll. Platform never sees SSN.
 - First location = SaaS onboard only. Host onboarded by SaaS; host invites operator tenants.
 - Training = practice + Quantum sandbox; optional inventory tracking. Go live now or schedule; owner keep/erase per data class; menus/recipes/staff/settings kept.
 - PIN login ≠ clock in/out ≠ server closeout.

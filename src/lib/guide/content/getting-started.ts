@@ -127,13 +127,13 @@ export const GETTING_STARTED_TOPICS: GuideTopic[] = [
     keywords: ["login", "password", "pin", "sign in", "staff", "clock", "closeout"],
     blocks: [
       why(
-        "A shared tablet is not a laptop. Servers should not type a password between tables. Owners should not run payroll from a four-digit code.",
+        "A shared tablet is not a laptop. Servers should not type a password between tables. Owners should not export hours from a four-digit code.",
       ),
       p(
         "Two login modes. Back office (owners, managers, accountants, entity managers) uses email and password at Sign in. Working staff on a shared tablet, ODS, or host stand use a 4-digit PIN. PINs are hashed, scoped to the location (and entity on a host floor), and never appear on the marketing site.",
       ),
       steps(
-        "Back office: Sign in with work email and password. Open location settings, the host permission matrix, scheduling, payroll, menu.",
+        "Back office: Sign in with work email and password. Open location settings, the host permission matrix, scheduling, hours export, menu.",
         "Floor: on the assigned device, enter your 4-digit PIN. Switch user returns to the keypad without changing the device assignment.",
         "Clock in / out from Labor (and Employees). The PIN pad does not punch you. Signing out of POS does not clock you out.",
         "Server closeout is Cash (expected drawer, Z). That is not clock-out and not PIN login.",

@@ -9,7 +9,7 @@ import { useSaasStore } from "@/lib/pos/saas-store";
 import { HOST_SCOPE } from "@/lib/access/entity-grants";
 import { isProspectDemo } from "@/lib/demo/session";
 import { formatCurrency } from "@/lib/utils";
-import { buildPayrollRows, payrollCsv } from "@/lib/labor/payroll";
+import { PAYROLL_PROVIDERS, PAYROLL_PROVIDER_LABEL, type PayrollProviderId } from "@/lib/labor/payroll-export";
 import { useOpsStore } from "@/lib/pos/ops-store";
 import {
   APPLICANT_STAGES,
@@ -38,7 +38,10 @@ import {
   hrOverviewFn,
   hrPacketFileFn,
   hrPacketOutboxFn,
+  hrPayrollExportFn,
   hrPayrollSummaryFn,
+  listHrPayrollMapFn,
+  saveHrPayrollMapFn,
   listHrApplicantsFn,
   listHrAvailabilityFn,
   listHrEligibilityFn,
@@ -76,6 +79,11 @@ type Overview = {
   config: EntityHrConfig;
   packets: PacketTemplate[];
   esign: { configured: boolean; provider: string | null; label: string };
+  payrollExport?: {
+    provider: PayrollProviderId;
+    apiConfigured: boolean;
+    connectHint: string;
+  };
   piiReady: boolean;
   isPlatformAdmin: boolean;
   isHost: boolean;
@@ -152,7 +160,7 @@ export function HrWorkspace() {
     { id: "eligibility", label: "Eligibility", show: Boolean(enabled && features?.eligibility && admin) },
     {
       id: "payroll",
-      label: "Payroll",
+      label: "Hours export",
       show: Boolean(enabled && (features?.payrollSummary || features?.payrollExport) && admin),
     },
   ];
@@ -297,8 +305,8 @@ export function HrWorkspace() {
         {!enabled && tab === "settings" && admin && (
           <p className="mt-3 max-w-xl text-xs text-muted-foreground">
             Scheduling and time clock stay available from Labor even while HR is off. Turn on
-            Employment for this entity to unlock hiring, packets, time-off, write-ups, and payroll
-            reports.
+            Employment for this entity to unlock hiring, packets, time-off, write-ups, and hours
+            export. Summex does not process payroll.
           </p>
         )}
         {!enabled && !admin && (
@@ -376,12 +384,16 @@ export function HrSettingsCard({
   const [state, setState] = useState(overview.config.employmentState || overview.employmentState);
   const [features, setFeatures] = useState(overview.config.features);
   const [visibility, setVisibility] = useState(overview.config.visibility);
+  const [payrollProvider, setPayrollProvider] = useState<PayrollProviderId>(
+    overview.config.payrollProvider || "none",
+  );
 
   useEffect(() => {
     setEnabled(overview.config.enabled);
     setState(overview.config.employmentState || overview.employmentState);
     setFeatures(overview.config.features);
     setVisibility(overview.config.visibility);
+    setPayrollProvider(overview.config.payrollProvider || "none");
   }, [overview]);
 
   const save = async () => {
@@ -396,6 +408,7 @@ export function HrSettingsCard({
           employmentState: state,
           features,
           visibility,
+          payrollProvider,
         },
       });
       await onSaved();
@@ -433,6 +446,24 @@ export function HrSettingsCard({
             </option>
           ))}
         </select>
+      </label>
+      <label className="block text-sm">
+        Hours export destination
+        <select
+          className="mt-1 h-9 w-full max-w-xs rounded-md border border-border bg-bg px-2 text-sm"
+          value={payrollProvider}
+          onChange={(e) => setPayrollProvider(e.target.value as PayrollProviderId)}
+        >
+          {PAYROLL_PROVIDERS.map((p) => (
+            <option key={p} value={p}>
+              {PAYROLL_PROVIDER_LABEL[p]}
+            </option>
+          ))}
+        </select>
+        <span className="mt-1 block text-[11px] text-muted-foreground">
+          Summex does not process payroll; it feeds ADP, Intuit, or a CSV. Manual download
+          always works.
+        </span>
       </label>
       <div className="grid gap-2 sm:grid-cols-2">
         {HR_FEATURE_KEYS.map((k) => (
@@ -1366,13 +1397,17 @@ function EligibilityPanel({
   );
 }
 
+function isoDay(d: Date): string {
+  return d.toISOString().slice(0, 10);
+}
+
 function PayrollPanel({
   scope,
   staff,
   features,
-  punches,
+  punches: _punches,
   hostName,
-  vendorName,
+  vendorName: _vendorName,
   onError,
 }: {
   scope: { orgId: string; locationId: string; employerId: string };
@@ -1383,74 +1418,193 @@ function PayrollPanel({
   vendorName: (id: string) => string;
   onError: (m: string) => void;
 }) {
-  const employees = usePosStore((s) => s.employees);
+  void _punches;
+  void _vendorName;
   const [note, setNote] = useState<string | null>(null);
-  const [shiftHours, setShiftHours] = useState<
-    { employeeId: string; employeeName?: string; scheduledHours: number; punchHours?: number; otHours?: number; shiftCount: number; punchCount?: number }[]
+  const [from, setFrom] = useState(() => isoDay(new Date(Date.now() - 13 * 86400000)));
+  const [to, setTo] = useState(() => isoDay(new Date()));
+  const [csv, setCsv] = useState("");
+  const [fileName, setFileName] = useState("summex-hours.csv");
+  const [hint, setHint] = useState<string | null>(null);
+  const [apiReady, setApiReady] = useState(false);
+  const [maps, setMaps] = useState<{ employeeId: string; providerEmployeeId: string }[]>([]);
+  const [busy, setBusy] = useState(false);
+  const [rows, setRows] = useState<
+    {
+      employeeId: string;
+      employeeName: string;
+      regularHours: number;
+      otHours: number;
+      declaredTipsCents: number;
+      ccTipsCents: number;
+      providerEmployeeId: string | null;
+      department: string;
+      jobTitle: string;
+    }[]
   >([]);
-  const [serverCsv, setServerCsv] = useState<string>("");
-  useEffect(() => {
-    void hrPayrollSummaryFn({ data: scope })
-      .then((r) => {
-        setShiftHours(r.rows);
-        setNote(r.note);
-        setServerCsv(r.csv);
-      })
-      .catch((e) => onError(errMsg(e)));
+
+  const loadMap = useCallback(async () => {
+    try {
+      const list = await listHrPayrollMapFn({ data: scope });
+      setMaps(list.map((m) => ({ employeeId: m.employeeId, providerEmployeeId: m.providerEmployeeId })));
+    } catch (e) {
+      onError(errMsg(e));
+    }
   }, [scope, onError]);
-  const laborRows = buildPayrollRows({
-    punches,
-    employees: employees.filter((e) => staff.some((s) => s.id === e.id)),
-    operatorName: vendorName,
-    operatorId: scope.employerId,
-  });
+
+  const runExport = useCallback(
+    async (push: boolean) => {
+      setBusy(true);
+      try {
+        const r = await hrPayrollExportFn({
+          data: {
+            ...scope,
+            employerName: hostName,
+            periodStart: from,
+            periodEnd: to,
+            push,
+          },
+        });
+        setRows(r.batch.lines);
+        setCsv(r.csv);
+        setFileName(r.fileName);
+        setHint(r.message);
+        setApiReady(r.connector.apiConfigured);
+        setNote(
+          "Summex does not process payroll, file taxes, or pay employees. This file feeds ADP, Intuit, or a generic CSV.",
+        );
+      } catch (e) {
+        onError(errMsg(e));
+      } finally {
+        setBusy(false);
+      }
+    },
+    [scope, hostName, from, to, onError],
+  );
+
+  useEffect(() => {
+    void loadMap();
+    void hrPayrollSummaryFn({ data: scope })
+      .then((r) => setNote(r.note))
+      .catch((e) => onError(errMsg(e)));
+    void runExport(false);
+  }, [scope, loadMap, onError, runExport]);
+
   const download = () => {
-    const body = serverCsv || payrollCsv(laborRows);
-    const blob = new Blob([body], { type: "text/csv" });
+    if (!csv) return;
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = `payroll-${scope.employerId}.csv`;
+    a.download = fileName;
     a.click();
     URL.revokeObjectURL(url);
   };
+
+  const mapVal = (id: string) => maps.find((m) => m.employeeId === id)?.providerEmployeeId ?? "";
+
   return (
     <div className="max-w-3xl space-y-3">
       {note && <p className="text-xs text-muted-foreground">{note}</p>}
+      <div className="flex flex-wrap items-end gap-2">
+        <label className="text-xs text-muted-foreground">
+          Period start
+          <Input type="date" className="mt-1 h-9" value={from} onChange={(e) => setFrom(e.target.value)} />
+        </label>
+        <label className="text-xs text-muted-foreground">
+          Period end
+          <Input type="date" className="mt-1 h-9" value={to} onChange={(e) => setTo(e.target.value)} />
+        </label>
+        <Button size="sm" variant="outline" disabled={busy} onClick={() => void runExport(false)}>
+          Refresh
+        </Button>
+        {features.payrollExport && (
+          <Button size="sm" variant="outline" disabled={busy || !csv} onClick={download}>
+            Download CSV
+          </Button>
+        )}
+        {features.payrollExport && (
+          <Button
+            size="sm"
+            disabled={busy}
+            onClick={() => void runExport(true)}
+          >
+            {apiReady ? "Send hours to provider" : "Connect — CSV fallback"}
+          </Button>
+        )}
+      </div>
+      {hint && <p className="text-xs text-muted-foreground">{hint}</p>}
       {features.payrollSummary && (
         <table className="w-full text-left text-sm">
           <thead>
             <tr className="text-xs text-muted-foreground">
               <th className="py-1">Staff</th>
-              <th>Hours</th>
+              <th>Dept / job</th>
+              <th>Reg</th>
               <th>OT</th>
-              <th>Tips</th>
-              <th>Shifts</th>
+              <th>Declared tips</th>
+              <th>CC tips</th>
+              <th>Provider id</th>
             </tr>
           </thead>
           <tbody>
-            {laborRows.map((r) => {
-              const sh = shiftHours.find((x) => x.employeeId === r.employeeId);
-              return (
-                <tr key={r.employeeId} className="border-t border-border">
-                  <td className="py-1">{r.name}</td>
-                  <td>{(sh?.punchHours ?? r.regularHours).toFixed(2)}</td>
-                  <td>{(sh?.otHours ?? r.otHours).toFixed(2)}</td>
-                  <td>{formatCurrency(r.tipsCents)}</td>
-                  <td>{sh?.punchCount ?? sh?.shiftCount ?? r.punchCount}</td>
-                </tr>
-              );
-            })}
+            {rows.map((r) => (
+              <tr key={r.employeeId} className="border-t border-border">
+                <td className="py-1">{r.employeeName}</td>
+                <td className="text-xs text-muted-foreground">
+                  {r.department} · {r.jobTitle}
+                </td>
+                <td>{r.regularHours.toFixed(2)}</td>
+                <td>{r.otHours.toFixed(2)}</td>
+                <td>{formatCurrency(r.declaredTipsCents)}</td>
+                <td>{formatCurrency(r.ccTipsCents)}</td>
+                <td className="text-xs">{r.providerEmployeeId || "—"}</td>
+              </tr>
+            ))}
           </tbody>
         </table>
       )}
       {features.payrollExport && (
-        <Button size="sm" variant="outline" onClick={download}>
-          Download hours/tips CSV
-        </Button>
+        <div className="rounded-xl border border-border bg-surface p-3">
+          <p className="text-xs font-semibold">Provider employee ids</p>
+          <p className="mt-1 text-[11px] text-muted-foreground">
+            Map local staff to the id in ADP or Intuit. Do not paste a Social Security number.
+          </p>
+          <ul className="mt-2 space-y-2">
+            {staff.map((s) => (
+              <li key={s.id} className="flex flex-wrap items-center gap-2 text-sm">
+                <span className="w-36 truncate">{s.name}</span>
+                <Input
+                  className="h-8 max-w-[14rem]"
+                  placeholder="Provider employee id"
+                  defaultValue={mapVal(s.id)}
+                  id={`px-${s.id}`}
+                />
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => {
+                    const el = document.getElementById(`px-${s.id}`) as HTMLInputElement | null;
+                    void saveHrPayrollMapFn({
+                      data: {
+                        ...scope,
+                        employeeId: s.id,
+                        providerEmployeeId: el?.value ?? "",
+                      },
+                    })
+                      .then(loadMap)
+                      .catch((e) => onError(errMsg(e)));
+                  }}
+                >
+                  Save
+                </Button>
+              </li>
+            ))}
+          </ul>
+        </div>
       )}
       <p className="text-[11px] text-muted-foreground">
-        {hostName} · entity {scope.employerId}. Not a withholding or tax-filing engine.
+        {hostName} · entity {scope.employerId}. No checks, no tax e-file, no net pay.
       </p>
     </div>
   );

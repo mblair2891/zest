@@ -30,7 +30,38 @@ export const HR_TOPICS: GuideTopic[] = [
       warn(
         "Do not text a full Social Security number to a manager. The house stores last4 and encrypted tax fields only.",
       ),
-      related("hr-employment", "location-training", "role-server"),
+      related("hr-employment", "payroll-export", "location-training", "role-server"),
+    ],
+  }),
+  topic({
+    id: "payroll-export",
+    chapterId: "roles",
+    title: "Hours export — not a payroll processor",
+    summary:
+      "Summex does not process payroll; it feeds ADP, Intuit, or a CSV with hours, OT, and tips.",
+    roles: ["owner_manager", "host_operator", "vendor_operator", "server", "kitchen_bar"],
+    keywords: ["payroll", "adp", "intuit", "quickbooks", "csv", "hours", "overtime", "tips", "export"],
+    openView: "reports",
+    blocks: [
+      why(
+        "The house already has a payroll product. Summex records time, jobs, OT flags, and tips, then hands a file to that product.",
+      ),
+      ul(
+        "Reports → Payroll export is entity-scoped: employees, regular/OT hours, declared and card tips, department, job, pay period, work location.",
+        "Formats: generic CSV always. Intuit QuickBooks Payroll and ADP when keys are set. Other payroll products import the same CSV.",
+        "HR → Flags: destination None, CSV only, Intuit, ADP, or Other. Map local staff to the provider employee id — never a Social Security number.",
+        "Direct API uses INTUIT_* or ADP_* on the server. Missing keys show Connect and still download CSV.",
+        "Host and tenant isolation: you export only that employer’s staff unless hours visibility allows the host.",
+      ),
+      steps(
+        "Pick the pay period. Review hours, OT, declared tips, and CC tips.",
+        "Download CSV (always). If Intuit or ADP keys exist, Send hours to provider.",
+        "Import the file in ADP, QuickBooks Payroll, or your other processor. They run payroll and file taxes.",
+      ),
+      warn(
+        "Summex does not print checks, e-file taxes, or calculate net pay. Wage rates in HR visibility are not a pay run.",
+      ),
+      related("entity-schedule-payroll", "hr-employment", "role-owner"),
     ],
   }),
   topic({
@@ -61,7 +92,7 @@ export const HR_TOPICS: GuideTopic[] = [
         "The employer of record is the entity that turns HR on — the host, or a tenant operator. Staff files stay on that entity.",
       ),
       ul(
-        "Flags (all default off except scheduling and time clock, which stay on Labor): applicants, onboarding packets, e-sign, scheduling, time-off, time clock, payroll CSV export, in-system payroll summary, write-ups, availability, minor/alcohol eligibility.",
+        "Flags (all default off except scheduling and time clock, which stay on Labor): applicants, onboarding packets, e-sign, scheduling, time-off, time clock, hours export (CSV/ADP/Intuit), hours & tips summary, write-ups, availability, minor/alcohol eligibility.",
         "Visibility per field: hours, wages, documents, write-ups. Options: entity owner, entity owner + managers, host (if this is a tenant), or hidden from others.",
         "Host sees a tenant’s HR only when that tenant’s visibility allows Host. Cross-entity files are denied.",
         "Employment state (or Federal only) drives W-4 plus that state’s withholding / new-hire packet list.",
@@ -82,7 +113,7 @@ export const HR_TOPICS: GuideTopic[] = [
         "I-9 is a status + date + file store. Do not skip sections, backdate, or tell the employee which documents to present. This is not a tax engine.",
       ),
       tip(
-        "Payroll summary and CSV are hours and tips for this entity — not withholding or deposits. Availability is weekday windows; published shifts stay on Labor.",
+        "Hours export feeds ADP, Intuit, or CSV. Summex does not process payroll. Availability is weekday windows; published shifts stay on Labor.",
       ),
       related("hr-staff-basics", "hr-platform-flags", "role-owner"),
     ],
@@ -103,7 +134,7 @@ export const HR_TOPICS: GuideTopic[] = [
       ul(
         "Flags live on the location setup, keyed by employer entity (host or operator id). There is no global HR kill switch in Platform Settings beyond what the entity saved.",
         "Support view redacts SSN, tax ciphertext, and write-up bodies. Wages and document packets are hidden from platform_admin by default.",
-        "Factory reset wipes hr_applicants, hr_onboarding, hr_packets, hr_time_off, hr_writeups, hr_availability, hr_eligibility, and hr_tax_pii.",
+        "Factory reset wipes hr_applicants, hr_onboarding, hr_packets, hr_time_off, hr_writeups, hr_availability, hr_eligibility, hr_tax_pii, and hr_payroll_map.",
       ),
       warn("Do not ask a house to paste a full SSN into a ticket. Last4 is the support identifier."),
       related("platform-settings", "factory-reset", "hr-employment"),

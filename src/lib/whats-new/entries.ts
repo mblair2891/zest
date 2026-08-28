@@ -6,6 +6,19 @@ import type { GuideUpdate } from "@/lib/guide/types";
  */
 export const WHATS_NEW_ENTRIES: GuideUpdate[] = [
   {
+    id: "upd_2026_10_13_payroll_export",
+    date: "2026-10-13",
+    title: "Hours export to ADP, Intuit, or CSV",
+    summary:
+      "Summex does not process payroll. Reports → Payroll export sends hours, OT, and tips to ADP, QuickBooks Payroll, or a generic CSV.",
+    body: "Pick a pay period. Download CSV anytime. Map staff to the provider employee id — never an SSN. If INTUIT_* or ADP_* keys are set, Send hours to provider; otherwise Connect and use CSV. Host and tenant isolation stays. No checks, no tax e-file, no net pay.",
+    roles: ["owner_manager", "host_operator", "vendor_operator"],
+    surfaces: ["reports", "settings"],
+    audience: "tenant",
+    topicId: "payroll-export",
+    tags: ["payroll", "adp", "intuit", "csv", "hours"],
+  },
+  {
     id: "upd_2026_10_12_hr_files_punches",
     date: "2026-10-12",
     title: "I-9 files, signed PDF, clock punches",

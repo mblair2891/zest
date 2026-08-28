@@ -223,9 +223,9 @@ export const SUMMEX_STORE_APPS: StoreApp[] = [
     id: "labor",
     name: "Summex Labor",
     shortName: "Labor",
-    tagline: "Clock, red-flag, payroll export",
+    tagline: "Clock, red-flag, hours export",
     description:
-      "Clock windows, auto-approve near last ticket, supervisor flags, and payroll export options.",
+      "Clock windows, auto-approve near last ticket, supervisor flags, and ADP/Intuit/CSV hours export. Summex does not process payroll.",
     category: "management",
     href: "/?station=labor",
     pinHint: "0000",

@@ -23,7 +23,7 @@ export const PAYMENT_TOPICS: GuideTopic[] = [
         "Guests must see one processor and one brand on the check. A second card integration would split liability, settlement, and the receipt.",
       ),
       p(
-        "Every card tender runs through Quantum Payments. Integrations never offer Stripe, Square, Adyen, or other POS processors. Delivery, accounting, and payroll partners stay — they are not card processors.",
+        "Every card tender runs through Quantum Payments. Integrations never offer Stripe, Square, Adyen, or other POS processors. Delivery, accounting, and hours-export partners (ADP, Intuit) stay — they are not card processors and Summex does not process payroll.",
       ),
       ul(
         "Guest-facing charge brand is the location / host name. One capture on a multi-operator check.",

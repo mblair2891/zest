@@ -35,7 +35,7 @@ export const ENTITY_GRANT_LABEL: Record<EntityGrantKey, string> = {
   manage_devices: "Manage devices",
   view_schedule: "View schedule",
   edit_schedule: "Edit schedule",
-  view_payroll: "View payroll",
+  view_payroll: "View hours export",
 };
 
 export type EntityGrantFlags = Record<EntityGrantKey, boolean>;

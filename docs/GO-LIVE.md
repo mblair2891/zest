@@ -83,6 +83,8 @@ These are **not** missing screens. List them here so a later turn does not rebui
 | Resend / Twilio domain | Outbox/sandbox until keys exist |
 | DocuSign or HelloSign keys | HR packets still generate; signed PDF upload without a vendor |
 | `HR_PII_SECRET` | Encrypts SSN/tax; last4 only if unset |
+| `INTUIT_CLIENT_ID` / `INTUIT_CLIENT_SECRET` / `INTUIT_REALM_ID` / `INTUIT_ACCESS_TOKEN` | Hours push to QuickBooks Payroll; CSV always works |
+| `ADP_CLIENT_ID` / `ADP_CLIENT_SECRET` / `ADP_ACCESS_TOKEN` | Hours push to ADP; CSV always works |
 
 Factory reset (off in production unless `FACTORY_RESET_ENABLED=true`): wipes business data, reseeds **Admin + must-change-password only**. No demo house.
 

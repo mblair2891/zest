@@ -225,10 +225,10 @@ export const ROLE_GUIDE_TOPICS: GuideTopic[] = [
     keywords: ["pin", "password", "floor", "kds", "switch user", "back office"],
     blocks: [
       why(
-        "A shared tablet is not a laptop. Servers should not type a password between tables. Owners should not run payroll from a four-digit code.",
+        "A shared tablet is not a laptop. Servers should not type a password between tables. Owners should not export hours from a four-digit code.",
       ),
       ul(
-        "Back office: Sign in with username/email and password. Platform Admin, owners, managers, accountants, entity managers for settings, matrix, full reports, schedule admin, payroll, menu management.",
+        "Back office: Sign in with username/email and password. Platform Admin, owners, managers, accountants, entity managers for settings, matrix, full reports, schedule admin, hours export, menu management.",
         "Floor PIN: 4-digit keypad on POS, ODS, host stand. Servers, hosts, bartenders, kitchen, cashiers, expo. Fast Switch user. PIN hashed, scoped to location and entity.",
         "PIN ≠ clock. The pad logs you into the station. Clock in / out is Labor (and Employees). Signing out of POS does not punch you out.",
         "Assigned device still requires the matching entity’s PIN (Operator A ODS rejects an Operator B PIN).",
@@ -246,27 +246,28 @@ export const ROLE_GUIDE_TOPICS: GuideTopic[] = [
   topic({
     id: "entity-schedule-payroll",
     chapterId: "roles",
-    title: "Entity schedule & payroll",
-    summary: "Each entity schedules and pays its own staff. Host has oversight; edits to guest schedules stay off unless you turn them on.",
+    title: "Entity schedule & hours export",
+    summary: "Each entity schedules its own staff and exports hours. Summex does not process payroll.",
     roles: ["owner_manager", "host_operator", "vendor_operator"],
-    keywords: ["schedule", "payroll", "shifts", "overtime", "tips", "operator"],
+    keywords: ["schedule", "payroll", "shifts", "overtime", "tips", "operator", "adp", "intuit", "csv"],
     openView: "schedule",
     blocks: [
       why(
-        "Operator A does not write Operator B’s week. Operator B does not see Operator A payroll unless the host grants view_payroll.",
+        "Operator A does not write Operator B’s week. Operator B does not see Operator A hours unless the host grants view_payroll.",
       ),
       ul(
         "Week view, draft shifts, publish. Floor PIN users see My shifts only.",
-        "Payroll report: hours, OT flag, tips, sales, CSV — scoped to the entity.",
+        "Hours export: regular/OT hours, declared and card tips, department, job, work location, pay period — scoped to the entity.",
+        "Summex does not process payroll; it feeds ADP, Intuit, or a CSV. Manual download always works.",
         "Host: oversight of every entity. Edit a guest entity’s schedule only if Host may edit guest-entity schedules is on (default off).",
         "Single-operator houses use the same screens under the location owner/manager.",
       ),
       steps(
         "Back office as host or Operator A manager. Open Schedule. Add an Operator A shift. Publish week.",
-        "Open Labor → Payroll. Operator A hours only when you are that entity’s manager. CSV exports that slice.",
+        "Open Reports → Payroll export (or Labor → Hours export). Operator A hours only when you are that entity’s manager.",
         "PIN as Operator B: you cannot add Operator A shifts. Menu still badges peer items view-only.",
       ),
-      related("floor-pin-login", "host-operator-settings", "role-vendor", "voice-control", "ai-ops-learning"),
+      related("payroll-export", "floor-pin-login", "host-operator-settings", "role-vendor"),
     ],
   }),
   topic({

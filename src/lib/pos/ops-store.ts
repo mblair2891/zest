@@ -978,7 +978,7 @@ export const useOpsStore = create<OpsState>()(
           set({ payPeriods: [period, ...get().payPeriods] });
           return {
             ok: true,
-            message: "Payroll held for manual processing — export when ready.",
+            message: "Hours file held. Export from Reports → Payroll export. Summex does not pay employees.",
             period,
           };
         }
@@ -1013,7 +1013,7 @@ export const useOpsStore = create<OpsState>()(
         set({ payPeriods: [period, ...get().payPeriods] });
         return {
           ok: true,
-          message: `Exported to ${labor.payrollProcessorId.toUpperCase()} — all shifts approved.`,
+          message: `Hours file prepared for ${labor.payrollProcessorId.toUpperCase()}. Summex does not process payroll or file taxes.`,
           period,
         };
       },
