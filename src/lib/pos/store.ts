@@ -955,7 +955,7 @@ const usePosStoreRaw = create()(persist((set, get) => ({
 				type: order.type,
 				tableId: order.tableId,
 				tabName: order.tabName,
-				guestCount: Math.max(1, extra.guestCount ?? moved.length || 1),
+				guestCount: Math.max(1, extra.guestCount ?? moved.length ?? 1),
 				serverId: order.serverId,
 				serverName: order.serverName,
 				lines: moved.map(cloneMovedLine),
