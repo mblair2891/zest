@@ -23,6 +23,8 @@ export type MetricsInput = {
   locationName: string;
   venueType: VenueEntityId;
   range: RangeKey;
+  from?: number;
+  to?: number;
   isDemo: boolean;
   operatorId?: string | null;
   serverId?: string | null;
@@ -42,7 +44,15 @@ export type MetricsInput = {
   shift: ShiftState;
 };
 
-function rangeBounds(range: RangeKey, now: number, shiftOpenedAt: number): { from: number; to: number } {
+function rangeBounds(
+  range: RangeKey,
+  now: number,
+  shiftOpenedAt: number,
+  custom?: { from?: number; to?: number },
+): { from: number; to: number } {
+  if (range === "custom" && custom?.from && custom?.to) {
+    return { from: custom.from, to: custom.to };
+  }
   const to = now;
   if (range === "shift") return { from: shiftOpenedAt || to - 8 * 3600_000, to };
   if (range === "today") {
@@ -64,7 +74,10 @@ function daypart(hour: number): string {
 
 export function buildLocationMetrics(input: MetricsInput): LocationMetrics {
   const now = input.now ?? Date.now();
-  const { from, to } = rangeBounds(input.range, now, input.shift.openedAt);
+  const { from, to } = rangeBounds(input.range, now, input.shift.openedAt, {
+    from: input.from,
+    to: input.to,
+  });
   const settings = input.settings;
   const hostMulti = Boolean(settings.hostMultiOperator || input.venueType === "food_hall");
   const op = input.operatorId || null;

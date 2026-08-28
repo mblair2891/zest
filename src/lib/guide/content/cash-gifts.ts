@@ -194,7 +194,7 @@ export const CASH_GIFT_TOPICS: GuideTopic[] = [
         "A night can look busy and still be unhealthy — voids, slow tickets, a waitlist that was quoted too short, or a mover with no cost data.",
       ),
       steps(
-        "Reports → AI insights → Run analysis for the selected range.",
+        "Reports → AI analysis. Pick shift / today / 7d / 30d or custom dates. Location is this house; entity is the operator filter (vendors see their slice only).",
         "Read findings (info / watch / urgent) and cost vs ordering. Gaps are labeled — inventory counts are never invented.",
         "Apply on a recommendation jumps to the setting or report. It does not change prices by itself.",
         "Read summary speaks the recap if you want voiceover.",
@@ -203,8 +203,11 @@ export const CASH_GIFT_TOPICS: GuideTopic[] = [
         "With or without a key",
         "When an AI key is set, the model writes the same JSON from your metrics. Without a key you get Guided insights — same shape, rule-based.",
       ),
+      p(
+        "Owner/manager: Settings → AI ops reports for daily or weekly. Delivery is in-app (Reports inbox) plus email if configured, otherwise the communications outbox. Owner, manager, and accountant can run analysis; vendor operators see their own slice.",
+      ),
       warn(
-        "Public Operators Guide never includes platform-admin portfolio metrics. This is location operations only.",
+        "Recommendations never auto-change menu prices. Public Operators Guide never includes platform-admin portfolio metrics.",
       ),
       related("reports", "location-settings", "type-food-hall", "roles-dashboards"),
     ],

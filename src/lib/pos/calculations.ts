@@ -103,7 +103,11 @@ export function computeTotals(
     (s, p) => s + p.amountCents + p.tipCents,
     0,
   );
-  const totalCents = afterDiscount + taxCents + serviceChargeCents;
+  const computedTotal = afterDiscount + taxCents + serviceChargeCents;
+  const totalCents =
+    typeof order.dueOverrideCents === "number"
+      ? Math.max(0, order.dueOverrideCents)
+      : computedTotal;
   const remainingOnCheck = Math.max(
     0,
     totalCents - order.payments.reduce((s, p) => s + p.amountCents, 0),

@@ -40,6 +40,21 @@ import { isPartnerDemoLocationId } from "@/lib/demo/partner-demo";
 import { demoPersistStorage } from "@/lib/demo/session";
 import { demoPosSlice, demoSaasOrg } from "@/lib/demo/pos-payloads";
 import {
+	groupMembers,
+	groupRootId,
+	lowestGroupLabel,
+	nativeSeats,
+	pickLowestPrimary,
+	displayLabel,
+} from "./table-groups";
+import {
+	canMutateCheck,
+	cloneMovedLine,
+	openLines,
+	partitionBySeat,
+	roundRobin,
+} from "./check-ops";
+import {
   cardRequiresConnection,
   noteCashPayment,
   noteWaitlistAdd,
@@ -779,96 +794,394 @@ const usePosStoreRaw = create()(persist((set, get) => ({
 		get().audit("transfer", `Table ${from.label} → ${to.label}`);
 		return { ok: true };
 	},
-	mergeTables: (primaryId, childId) => {
-		const primary = get().tables.find((t) => t.id === primaryId);
-		const child = get().tables.find((t) => t.id === childId);
-		if (!primary || !child) return {
-			ok: false,
-			error: "Tables not found"
-		};
-		if (primary.mergedIntoId || child.mergedIntoId) return {
-			ok: false,
-			error: "Already merged"
-		};
-		if (!primary.orderId && !child.orderId) return {
-			ok: false,
-			error: "Seat a table first"
-		};
-		let orderId = primary.orderId ?? child.orderId;
-		let guestCount = (primary.guestCount ?? 0) + (child.guestCount ?? 0);
-		if (child.orderId && child.orderId !== orderId) {
-			const childOrder = get().orders.find((o) => o.id === child.orderId);
-			const primaryOrder = get().orders.find((o) => o.id === orderId);
-			if (childOrder && primaryOrder) {
-				set({ orders: get().orders.map((o) => o.id === orderId ? {
-					...o,
-					lines: [...o.lines, ...childOrder.lines],
-					guestCount: o.guestCount + childOrder.guestCount,
-					mergedTableIds: [...o.mergedTableIds ?? [], childId]
-				} : o).map((o) => o.id === childOrder.id ? {
-					...o,
-					status: "cancelled",
-					tableId: void 0
-				} : o) });
-				guestCount = primaryOrder.guestCount + childOrder.guestCount;
+	mergeTables: (primaryId, childId) => get().combineTables([primaryId, childId]),
+	combineTables: (tableIds) => {
+		const emp = get().getCurrentEmployee();
+		if (!emp) return { ok: false, error: "Not signed in" };
+		const unique = [...new Set(tableIds.filter(Boolean))];
+		if (unique.length < 2) return { ok: false, error: "Pick two or more tables" };
+		const tables = get().tables;
+		const roots = [...new Set(unique.map((id) => groupRootId(tables, id)))];
+		const members = roots.flatMap((id) => groupMembers(tables, id));
+		if (members.length < 2) return { ok: false, error: "Already one group" };
+		const winner = pickLowestPrimary(members);
+		const others = members.filter((t) => t.id !== winner.id);
+		const seats = members.reduce((s, t) => s + nativeSeats(t), 0);
+		const label = lowestGroupLabel(members);
+		const status = members.find((t) => t.orderId)?.status ?? winner.status;
+		const guestCount = members.reduce((s, t) => s + (t.guestCount ?? 0), 0) || winner.guestCount;
+		const serverId = winner.serverId ?? members.find((t) => t.serverId)?.serverId;
+		const orderIds = [...new Set(members.map((t) => t.orderId).filter(Boolean))];
+		let keepOrderId = winner.orderId ?? orderIds[0];
+		let orders = get().orders;
+		if (orderIds.length > 1 && keepOrderId) {
+			const keep = orders.find((o) => o.id === keepOrderId);
+			if (keep && keep.status === "open") {
+				const extras = orderIds.filter((id) => id !== keepOrderId);
+				for (const oid of extras) {
+					const src = orders.find((o) => o.id === oid);
+					if (!src || src.status !== "open") continue;
+					const gate = canMutateCheck(emp, src);
+					if (!gate.ok) return gate;
+					orders = orders.map((o) => {
+						if (o.id === keep.id) {
+							return {
+								...o,
+								lines: [...o.lines, ...src.lines.map(cloneMovedLine)],
+								guestCount: o.guestCount + src.guestCount,
+								tableId: winner.id,
+								mergedTableIds: [...new Set([...(o.mergedTableIds ?? []), ...(src.mergedTableIds ?? []), ...others.map((t) => t.id)])],
+							};
+						}
+						if (o.id === src.id) {
+							return { ...o, status: "cancelled", tableId: undefined, lines: [] };
+						}
+						return o;
+					});
+				}
+				keepOrderId = keep.id;
 			}
-		} else set({ orders: get().orders.map((o) => o.id === orderId ? {
-			...o,
-			guestCount: Math.max(o.guestCount, guestCount),
-			mergedTableIds: [.../* @__PURE__ */ new Set([...o.mergedTableIds ?? [], childId])]
-		} : o) });
-		set({ tables: get().tables.map((t) => {
-			if (t.id === primaryId) return {
-				...t,
-				orderId,
-				guestCount,
-				mergedChildIds: [.../* @__PURE__ */ new Set([...t.mergedChildIds ?? [], childId])],
-				status: "seated"
-			};
-			if (t.id === childId) return {
-				...t,
-				mergedIntoId: primaryId,
-				orderId: void 0,
-				status: "seated"
-			};
-			return t;
-		}) });
-		get().audit("merge", `Tables ${primary.label}+${child.label}`);
+		} else if (keepOrderId) {
+			orders = orders.map((o) => o.id === keepOrderId ? {
+				...o,
+				tableId: winner.id,
+				guestCount: Math.max(o.guestCount, guestCount || o.guestCount),
+				mergedTableIds: [...new Set([...(o.mergedTableIds ?? []), ...others.map((t) => t.id)])],
+			} : o);
+		}
+		const now = Date.now();
+		set({
+			orders,
+			tables: tables.map((t) => {
+				if (t.id === winner.id) {
+					return {
+						...t,
+						originalLabel: t.originalLabel ?? displayLabel(t),
+						originalSeats: t.originalSeats ?? nativeSeats(t),
+						label,
+						seats,
+						mergedIntoId: undefined,
+						mergedChildIds: others.map((c) => c.id),
+						orderId: keepOrderId,
+						guestCount: guestCount || t.guestCount,
+						serverId,
+						status,
+						statusSince: now,
+					};
+				}
+				if (others.some((c) => c.id === t.id)) {
+					return {
+						...t,
+						originalLabel: t.originalLabel ?? displayLabel(t),
+						originalSeats: t.originalSeats ?? nativeSeats(t),
+						mergedIntoId: winner.id,
+						mergedChildIds: undefined,
+						orderId: undefined,
+						status,
+						statusSince: now,
+						serverId,
+						guestCount: undefined,
+					};
+				}
+				return t;
+			}),
+		});
+		get().audit(
+			"table_combine",
+			`Group ${label} · ${members.map((m) => displayLabel(m)).join("+")} · ${seats} seats`,
+		);
+		if (keepOrderId) floorSync("check", keepOrderId);
+		floorSync("table", winner.id);
 		return { ok: true };
 	},
 	unmergeTable: (tableId) => {
-		const table = get().tables.find((t) => t.id === tableId);
-		if (!table) return {
-			ok: false,
-			error: "Not found"
-		};
-		const primaryId = table.mergedIntoId ?? tableId;
-		const primary = get().tables.find((t) => t.id === primaryId);
-		if (!primary?.mergedChildIds?.length) return {
-			ok: false,
-			error: "Not a merge"
-		};
+		const tables = get().tables;
+		const primaryId = groupRootId(tables, tableId);
+		const primary = tables.find((t) => t.id === primaryId);
+		if (!primary?.mergedChildIds?.length) return { ok: false, error: "Not a combined group" };
 		const children = primary.mergedChildIds;
+		const now = Date.now();
 		set({
-			tables: get().tables.map((t) => {
-				if (t.id === primaryId) return {
-					...t,
-					mergedChildIds: void 0
-				};
-				if (children.includes(t.id)) return {
-					...t,
-					mergedIntoId: void 0,
-					status: "empty",
-					statusSince: Date.now(),
-					orderId: void 0
-				};
+			tables: tables.map((t) => {
+				if (t.id === primaryId) {
+					return {
+						...t,
+						label: t.originalLabel ?? t.label,
+						seats: t.originalSeats ?? t.seats,
+						mergedChildIds: undefined,
+						originalLabel: undefined,
+						originalSeats: undefined,
+					};
+				}
+				if (children.includes(t.id)) {
+					return {
+						...t,
+						mergedIntoId: undefined,
+						label: t.originalLabel ?? t.label,
+						seats: t.originalSeats ?? t.seats,
+						originalLabel: undefined,
+						originalSeats: undefined,
+						status: "empty",
+						statusSince: now,
+						orderId: undefined,
+						serverId: undefined,
+						guestCount: undefined,
+						seatedAt: undefined,
+					};
+				}
 				return t;
 			}),
-			orders: get().orders.map((o) => o.id === primary.orderId ? {
-				...o,
-				mergedTableIds: void 0
-			} : o)
+			orders: get().orders.map((o) => o.id === primary.orderId ? { ...o, mergedTableIds: undefined } : o),
 		});
+		get().audit("table_split", `Split group ${primary.label}`);
+		if (primary.orderId) floorSync("check", primary.orderId);
+		floorSync("table", primaryId);
+		return { ok: true };
+	},
+	splitCheck: (orderId, spec) => {
+		const emp = get().getCurrentEmployee();
+		const order = get().orders.find((o) => o.id === orderId);
+		if (!order || order.status !== "open") return { ok: false, error: "Open check not found" };
+		const gate = canMutateCheck(emp, order);
+		if (!gate.ok) return gate;
+		const lines = openLines(order);
+		const newOrders = [];
+		let keepIds = new Set(lines.map((l) => l.id));
+		const spawn = (moved, extra = {}) => {
+			if (!moved.length && extra.dueOverrideCents == null) return;
+			const neu = {
+				id: uid("ord"),
+				number: nextOrderNumber([...get().orders, ...newOrders]),
+				type: order.type,
+				tableId: order.tableId,
+				tabName: order.tabName,
+				guestCount: Math.max(1, extra.guestCount ?? moved.length || 1),
+				serverId: order.serverId,
+				serverName: order.serverName,
+				lines: moved.map(cloneMovedLine),
+				payments: [],
+				status: "open",
+				discountPercent: 0,
+				discountCents: 0,
+				autoGratApplied: false,
+				serviceChargeCents: 0,
+				createdAt: Date.now(),
+				splitFromId: order.id,
+				mergedTableIds: order.mergedTableIds,
+				...extra,
+			};
+			newOrders.push(neu);
+			for (const l of moved) keepIds.delete(l.id);
+		};
+		if (spec.mode === "seat") {
+			const parts = partitionBySeat(lines);
+			const keys = [...parts.keys()].filter((k) => k !== "shared");
+			if (keys.length < 1 && !parts.get("shared")?.length) return { ok: false, error: "No seated items to split" };
+			const first = keys[0] ?? "shared";
+			keepIds = new Set((parts.get(first) ?? []).map((l) => l.id));
+			for (const k of keys.slice(1)) spawn(parts.get(k) ?? [], { guestCount: 1 });
+		} else if (spec.mode === "items") {
+			const ids = new Set(spec.lineIds ?? []);
+			const moved = lines.filter((l) => ids.has(l.id));
+			if (!moved.length) return { ok: false, error: "Select items to move to a new check" };
+			spawn(moved);
+		} else if (spec.mode === "even") {
+			const piles = roundRobin(lines, spec.parts ?? 2);
+			if (piles.filter((p) => p.length).length < 2) return { ok: false, error: "Need items on the check to split evenly" };
+			keepIds = new Set((piles[0] ?? []).map((l) => l.id));
+			for (const pile of piles.slice(1)) spawn(pile);
+		} else if (spec.mode === "piles") {
+			const assigned = spec.piles ?? [];
+			if (assigned.length < 2) return { ok: false, error: "Make at least two piles" };
+			keepIds = new Set(assigned[0] ?? []);
+			for (const pile of assigned.slice(1)) {
+				spawn(lines.filter((l) => pile.includes(l.id)));
+			}
+		} else if (spec.mode === "custom_amount") {
+			const amounts = (spec.amountsCents ?? []).filter((n) => n > 0);
+			if (amounts.length < 2) return { ok: false, error: "Enter at least two dollar amounts" };
+			const totals = computeTotals(order, get().settings);
+			const sum = amounts.reduce((s, n) => s + n, 0);
+			if (Math.abs(sum - totals.balanceCents) > 2 && sum > totals.balanceCents) {
+				return { ok: false, error: "Amounts exceed remaining balance" };
+			}
+			keepIds = new Set(lines.map((l) => l.id));
+			set({
+				orders: get().orders.map((o) => o.id === order.id ? { ...o, dueOverrideCents: amounts[0] } : o),
+			});
+			for (const amt of amounts.slice(1)) spawn([], { dueOverrideCents: amt, guestCount: 1 });
+		}
+		const keptLines = order.lines.filter((l) => l.voided || keepIds.has(l.id));
+		set({
+			orders: [
+				...get().orders.map((o) => o.id === order.id ? { ...o, lines: keptLines } : o),
+				...newOrders,
+			],
+		});
+		get().audit(
+			"check_split",
+			`#${order.number} → ${1 + newOrders.length} checks (${spec.mode})`,
+		);
+		floorSync("check", order.id);
+		for (const n of newOrders) floorSync("check", n.id);
+		if (order.tableId) floorSync("table", order.tableId);
+		return { ok: true, newOrderIds: newOrders.map((o) => o.id) };
+	},
+	combineChecks: (sourceId, targetId) => {
+		if (sourceId === targetId) return { ok: false, error: "Pick two different checks" };
+		const emp = get().getCurrentEmployee();
+		const source = get().orders.find((o) => o.id === sourceId);
+		const target = get().orders.find((o) => o.id === targetId);
+		if (!source || !target) return { ok: false, error: "Check not found" };
+		if (source.status !== "open" || target.status !== "open") return { ok: false, error: "Both checks must be open" };
+		const g1 = canMutateCheck(emp, source);
+		if (!g1.ok) return g1;
+		const g2 = canMutateCheck(emp, target);
+		if (!g2.ok) return g2;
+		const destTable = target.tableId ?? source.tableId;
+		set({
+			orders: get().orders.map((o) => {
+				if (o.id === target.id) {
+					return {
+						...o,
+						lines: [...o.lines, ...source.lines.map(cloneMovedLine)],
+						guestCount: o.guestCount + source.guestCount,
+						tableId: destTable,
+						dueOverrideCents: undefined,
+						mergedTableIds: [...new Set([...(o.mergedTableIds ?? []), ...(source.mergedTableIds ?? [])])],
+					};
+				}
+				if (o.id === source.id) {
+					return { ...o, status: "cancelled", tableId: undefined, lines: [] };
+				}
+				return o;
+			}),
+			tables: get().tables.map((t) => {
+				if (source.tableId && t.id === source.tableId && t.orderId === source.id) {
+					return { ...t, orderId: destTable === t.id ? target.id : undefined };
+				}
+				if (destTable && t.id === destTable) {
+					return { ...t, orderId: target.id };
+				}
+				return t;
+			}),
+			activeOrderId: target.id,
+		});
+		get().audit("check_combine", `#${source.number} into #${target.number}`);
+		floorSync("check", target.id);
+		floorSync("check", source.id);
+		return { ok: true };
+	},
+	moveLines: (sourceId, targetId, lineIds, destTableId) => {
+		const emp = get().getCurrentEmployee();
+		const source = get().orders.find((o) => o.id === sourceId);
+		if (!source || source.status !== "open") return { ok: false, error: "Source check not found" };
+		const gate = canMutateCheck(emp, source);
+		if (!gate.ok) return gate;
+		const ids = new Set(lineIds);
+		const moved = source.lines.filter((l) => ids.has(l.id) && !l.voided);
+		if (!moved.length) return { ok: false, error: "Select items to move" };
+		let target = get().orders.find((o) => o.id === targetId);
+		let orders = get().orders;
+		if (!target || target.status !== "open") {
+			if (!destTableId && !source.tableId) return { ok: false, error: "Need a destination check or table" };
+			const tableId = destTableId ?? source.tableId;
+			target = {
+				id: uid("ord"),
+				number: nextOrderNumber(orders),
+				type: source.type,
+				tableId,
+				tabName: source.tabName,
+				guestCount: 1,
+				serverId: emp.id,
+				serverName: emp.name,
+				lines: [],
+				payments: [],
+				status: "open",
+				discountPercent: 0,
+				discountCents: 0,
+				autoGratApplied: false,
+				serviceChargeCents: 0,
+				createdAt: Date.now(),
+				splitFromId: source.id,
+			};
+			orders = [...orders, target];
+		} else {
+			const g2 = canMutateCheck(emp, target);
+			if (!g2.ok) return g2;
+		}
+		const destId = target.id;
+		const destTable = destTableId ?? target.tableId ?? source.tableId;
+		set({
+			orders: orders.map((o) => {
+				if (o.id === source.id) return { ...o, lines: o.lines.filter((l) => !ids.has(l.id) || l.voided) };
+				if (o.id === destId) {
+					return {
+						...o,
+						lines: [...o.lines, ...moved.map(cloneMovedLine)],
+						tableId: destTable ?? o.tableId,
+					};
+				}
+				return o;
+			}),
+			tables: get().tables.map((t) => {
+				if (destTable && t.id === destTable) return { ...t, orderId: destId };
+				return t;
+			}),
+			activeOrderId: destId,
+		});
+		get().audit("check_move_items", `${moved.length} item(s) #${source.number} → #${target.number}`);
+		floorSync("check", source.id);
+		floorSync("check", destId);
+		return { ok: true };
+	},
+	moveCheck: (orderId, destTableId) => {
+		const emp = get().getCurrentEmployee();
+		const order = get().orders.find((o) => o.id === orderId);
+		if (!order || order.status !== "open") return { ok: false, error: "Open check not found" };
+		const gate = canMutateCheck(emp, order);
+		if (!gate.ok) return gate;
+		const dest = get().tables.find((t) => t.id === destTableId);
+		if (!dest) return { ok: false, error: "Table not found" };
+		if (dest.mergedIntoId) return { ok: false, error: "Drop on the combined group, not a hidden child" };
+		if (dest.orderId && dest.orderId !== orderId) {
+			return get().combineChecks(orderId, dest.orderId);
+		}
+		const fromId = order.tableId;
+		if (fromId === destTableId) return { ok: true };
+		const from = fromId ? get().tables.find((t) => t.id === fromId) : null;
+		set({
+			orders: get().orders.map((o) => o.id === orderId ? { ...o, tableId: destTableId } : o),
+			tables: get().tables.map((t) => {
+				if (from && t.id === from.id) {
+					return {
+						...t,
+						orderId: undefined,
+						status: "closed_not_cleaned",
+						statusSince: Date.now(),
+						guestCount: undefined,
+						serverId: undefined,
+						seatedAt: undefined,
+					};
+				}
+				if (t.id === destTableId) {
+					return {
+						...t,
+						orderId,
+						status: from?.status ?? t.status,
+						serverId: order.serverId,
+						guestCount: order.guestCount,
+						seatedAt: t.seatedAt ?? Date.now(),
+						statusSince: Date.now(),
+					};
+				}
+				return t;
+			}),
+		});
+		get().audit("check_move", `#${order.number} → table ${dest.label}`);
+		floorSync("check", orderId);
+		if (fromId) floorSync("table", fromId);
+		floorSync("table", destTableId);
 		return { ok: true };
 	},
 	openBarTab: (name, guestCount = 1) => {
@@ -2074,11 +2387,13 @@ const usePosStoreRaw = create()(persist((set, get) => ({
 			get().markClean(tableId);
 			return { ok: true };
 		}
+		const root = groupRootId(get().tables, tableId);
+		const members = groupMembers(get().tables, root).map((t) => t.id);
 		set({
-			tables: get().tables.map((t) => t.id === tableId ? { ...t, status: next, statusSince: Date.now() } : t),
+			tables: get().tables.map((t) => members.includes(t.id) ? { ...t, status: next, statusSince: Date.now() } : t),
 		});
 		get().audit("floor", `Table status ${next}`);
-		floorSync("table", tableId);
+		floorSync("table", root);
 		return { ok: true };
 	},
 	guestOpenTable: (tableId) => {

@@ -7,6 +7,8 @@ import { canViewSalesReports, isHostPrivileged } from "@/lib/access/entity-grant
 
 export function metricsFromPosStore(opts: {
   range: RangeKey;
+  from?: number;
+  to?: number;
   operatorId?: string | null;
   serverId?: string | null;
 }): LocationMetrics {
@@ -30,6 +32,8 @@ export function metricsFromPosStore(opts: {
     locationName: s.settings.name,
     venueType: venue,
     range: opts.range,
+    from: opts.from,
+    to: opts.to,
     isDemo: isProspectDemo(),
     operatorId: lockOp,
     serverId: lockSrv,

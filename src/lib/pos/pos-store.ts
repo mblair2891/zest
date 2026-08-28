@@ -144,7 +144,20 @@ export interface PosStore {
   clearTable: (tableId: string) => void;
   transferTable: (fromId: string, toId: string) => ActionResult;
   mergeTables: (primaryId: string, childId: string) => ActionResult;
+  combineTables: (tableIds: string[]) => ActionResult;
   unmergeTable: (tableId: string) => ActionResult;
+  splitCheck: (
+    orderId: string,
+    spec: import("./check-ops").SplitSpec,
+  ) => ActionResult<{ newOrderIds?: string[] }>;
+  combineChecks: (sourceId: string, targetId: string) => ActionResult;
+  moveLines: (
+    sourceId: string,
+    targetId: string,
+    lineIds: string[],
+    destTableId?: string | null,
+  ) => ActionResult;
+  moveCheck: (orderId: string, destTableId: string) => ActionResult;
   openBarTab: (name: string, guestCount?: number) => string;
   openTakeout: (name: string) => string;
   addItem: (

@@ -6,7 +6,7 @@ export const FLOOR_TOPICS: GuideTopic[] = [
     id: "floor-tables",
     chapterId: "floor",
     title: "Tables & the floor map",
-    summary: "Seat, order, transfer, and turn a table.",
+    summary: "Entire location or by section. Seat, combine tables, transfer, turn.",
     roles: ["owner_manager", "server", "host_operator"],
     keywords: ["floor", "tables", "seat", "map", "turn"],
     openView: "floor",
@@ -22,13 +22,14 @@ export const FLOOR_TOPICS: GuideTopic[] = [
         "Restaurant floor plan with colored section bars on tables.",
       ),
       steps(
-        "Open Floor. Filter All, Mine (your assigned sections), or a named section. Server view defaults to Mine.",
+        "Open Floor. Entire location shows the whole map. By section shows one room at a time (tabs). Servers still have Mine.",
         "Tap an open table. Enter party size. Host stand can assign a server for that section.",
-        "Jump to Order to build items, or stay on Floor to watch status.",
+        "Combine tables: drag one onto another, or Select to combine. The group label is the lowest table number; seats add. Split group restores originals. Combined tables share status; the check sits on the group.",
+        "Jump to Order to build items, or stay on Floor to watch status. Color fill is dining status; SLA flash if configured.",
         "Release table moves an open check into the offer pool. Another server Accepts — ownership transfers and the audit log records who released, who accepted, and when. Manager can force reassign.",
         "After pay, the table goes closed · needs bus. Busser or server marks it cleaned and it returns to empty.",
       ),
-      related("floor-status", "floor-editor", "table-qr", "sections", "checks-comps", "counter-vs-table", "kds"),
+      related("floor-status", "floor-editor", "table-qr", "sections", "checks-comps", "check-split-move", "kds"),
     ],
   }),
   topic({
@@ -81,7 +82,8 @@ export const FLOOR_TOPICS: GuideTopic[] = [
       steps(
         "Open a table or start Takeout / a bar tab. That creates the check.",
         "Send items to fire them. Unsent lines can still be edited freely.",
-        "To move a party to another table: Floor → Transfer, tap source then destination (or use merge/split).",
+        "To move a party to another table: Floor → Transfer, or Order → Split / move → destination table.",
+        "To split or combine checks: Order → Split / move. By seat, selected items, even split, or custom $ shares. Combine two open checks (same or different tables). Move items keep operator tags. Audit log records the action.",
         "To hand a check to another server: Release table, then the other server Accepts (or a manager force-reassigns).",
         "To void or comp a line, choose Void/Comp. If Settings require it, enter a manager PIN.",
         "Never void a closed check to “fix” a card — use the correct tender or a manager adjustment.",
@@ -89,7 +91,33 @@ export const FLOOR_TOPICS: GuideTopic[] = [
       warn(
         "Manager PIN is a station override, not Platform Admin. Owners set whether comps/voids require it in Settings.",
       ),
-      related("floor-tables", "tenders-tips", "audit", "counter-vs-table"),
+      related("floor-tables", "tenders-tips", "audit", "counter-vs-table", "check-split-move"),
+    ],
+  }),
+  topic({
+    id: "check-split-move",
+    chapterId: "floor",
+    title: "Split, combine, and move checks",
+    summary:
+      "By seat, items, even split, or custom $. Combine checks. Move items or the whole check. Operator tags stay.",
+    roles: ["owner_manager", "server"],
+    keywords: ["split check", "combine check", "move items", "seat split", "even split"],
+    openView: "order",
+    blocks: [
+      why(
+        "A four-top that wants two bills should not wait on a spreadsheet. Split and move stay on the same floor; the audit log shows who did it.",
+      ),
+      steps(
+        "Open the check. Tap Split / move.",
+        "Split: selected items to a new check; by seat; even split of items into 2–8 checks; or custom dollar shares of the remaining balance.",
+        "Combine: pick another open check (same table or another). Lines merge. Operator / vendor tags stay on each line.",
+        "Move items onto another check, or move the entire check to another table (combines if that table already has a check).",
+        "Assigned servers can mutate their own checks. Managers can mutate any. Actions write the audit log.",
+      ),
+      warn(
+        "Custom $ shares set each check’s remaining due. Food lines stay on the original unless you also move items. Do not invent a second card processor for a split.",
+      ),
+      related("checks-comps", "floor-tables", "host-capture", "audit"),
     ],
   }),
   topic({
@@ -152,7 +180,7 @@ export const FLOOR_TOPICS: GuideTopic[] = [
         "The runtime floor is the saved layout — not a list. If the map is wrong, hosts seat the wrong room and QR tokens sit on the wrong sticker.",
       ),
       ul(
-        "Owner, manager, and host stand draw the room.",
+        "Owner, manager, and host stand draw the room. Entire location vs By section matches the runtime floor.",
         "Place table, booth, barstool, or other. Drag to move. Corner handle resizes.",
         "Properties: label, seats, room/section, shape, kind. Each seat gets a stable table QR token.",
         "Rooms are sections. Multi-room houses switch rooms in the editor and on the live floor.",

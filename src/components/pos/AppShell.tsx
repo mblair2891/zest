@@ -67,6 +67,7 @@ import {
 } from "./ChangeDeviceDialog";
 import { DeviceModeView, applySessionModeView } from "./DeviceModeView";
 import { LifecycleWatcher } from "./LifecycleWatcher";
+import { AiReportWatcher } from "./AiReportWatcher";
 import { useStationSessionStore } from "@/lib/pos/station-session";
 import { stationKindLabel, stationsAllowedForEmployee } from "@/lib/pos/station-access";
 import { HOST_SCOPE } from "@/lib/access/entity-grants";
@@ -438,6 +439,7 @@ export function AppShell() {
     <div className={cn("flex h-[100dvh] flex-col bg-bg text-foreground", shellPad)}>
       <LoginOnboardingHost />
       <LifecycleWatcher />
+      <AiReportWatcher />
       <TrainingBanner />
       <BackOfficeUnlock
         open={unlockOpen}

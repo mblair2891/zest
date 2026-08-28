@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import {
   Users,
   ArrowRightLeft,
@@ -75,6 +75,7 @@ export function FloorView() {
   const markClean = usePosStore((s) => s.markClean);
   const transferTable = usePosStore((s) => s.transferTable);
   const mergeTables = usePosStore((s) => s.mergeTables);
+  const combineTables = usePosStore((s) => s.combineTables);
   const unmergeTable = usePosStore((s) => s.unmergeTable);
   const openBarTab = usePosStore((s) => s.openBarTab);
   const setView = usePosStore((s) => s.setView);
@@ -119,6 +120,11 @@ export function FloorView() {
   const [blockReason, setBlockReason] = useState("");
   const [detail, setDetail] = useState<Table | null>(null);
   const [qrOpen, setQrOpen] = useState(false);
+  const [floorScope, setFloorScope] = useState<"entire" | "section">("entire");
+  const [selectMode, setSelectMode] = useState(false);
+  const [picked, setPicked] = useState<string[]>([]);
+  const drag = useRef<{ id: string; x: number; y: number } | null>(null);
+  const [dropId, setDropId] = useState<string | null>(null);
 
   const detailLive = detail
     ? (tables.find((t) => t.id === detail.id) ?? detail)
@@ -143,7 +149,13 @@ export function FloorView() {
 
   const showMine =
     (emp?.role === "server" || locked) && (emp?.homeSectionIds?.length ?? 0) > 0;
-  const effectiveSection = section === "__init" ? (showMine ? "Mine" : "All") : section;
+  const defaultSection =
+    floorScope === "section"
+      ? (sectionTabs[0]?.name ?? "All")
+      : showMine
+        ? "Mine"
+        : "All";
+  const effectiveSection = section === "__init" ? defaultSection : section;
   const floorServers = employees.filter(
     (e) => e.active && (e.role === "server" || e.role === "bartender"),
   );
@@ -183,6 +195,12 @@ export function FloorView() {
   };
 
   const onTableClick = (t: Table) => {
+    if (selectMode) {
+      setPicked((cur) =>
+        cur.includes(t.id) ? cur.filter((id) => id !== t.id) : [...cur, t.id],
+      );
+      return;
+    }
     if (mergeMode) {
       if (!mergePrimary) {
         setMergePrimary(t.id);
@@ -274,12 +292,36 @@ export function FloorView() {
         <div className="flex flex-wrap gap-1">
           <Button
             size="sm"
-            variant={effectiveSection === "All" ? "default" : "outline"}
-            onClick={() => setSection("All")}
+            variant={floorScope === "entire" ? "default" : "outline"}
+            onClick={() => {
+              setFloorScope("entire");
+              setSection("All");
+            }}
           >
-            All
+            Entire location
           </Button>
-          {showMine && (
+          <Button
+            size="sm"
+            variant={floorScope === "section" ? "default" : "outline"}
+            onClick={() => {
+              setFloorScope("section");
+              setSection(sectionTabs[0]?.name ?? "All");
+            }}
+          >
+            By section
+          </Button>
+        </div>
+        <div className="flex flex-wrap gap-1">
+          {floorScope === "entire" && (
+            <Button
+              size="sm"
+              variant={effectiveSection === "All" ? "default" : "outline"}
+              onClick={() => setSection("All")}
+            >
+              All
+            </Button>
+          )}
+          {floorScope === "entire" && showMine && (
             <Button
               size="sm"
               variant={effectiveSection === "Mine" ? "default" : "outline"}
@@ -386,6 +428,26 @@ export function FloorView() {
                   key={t.id}
                   type="button"
                   onClick={() => onTableClick(t)}
+                  onPointerDown={(e) => {
+                    if (mergeMode || transferMode || selectMode) return;
+                    drag.current = { id: t.id, x: e.clientX, y: e.clientY };
+                  }}
+                  onPointerUp={(e) => {
+                    const d = drag.current;
+                    drag.current = null;
+                    setDropId(null);
+                    if (!d) return;
+                    const dist = Math.hypot(e.clientX - d.x, e.clientY - d.y);
+                    if (dist < 24) return;
+                    const el = document.elementFromPoint(e.clientX, e.clientY);
+                    const btn = el?.closest("[data-table-id]") as HTMLElement | null;
+                    const dest = btn?.dataset.tableId;
+                    if (dest && dest !== d.id) {
+                      const res = mergeTables(d.id, dest);
+                      if (!res.ok) alert(res.error);
+                    }
+                  }}
+                  data-table-id={t.id}
                   style={{
                     left: `${t.x}%`,
                     top: `${t.y}%`,
@@ -402,7 +464,10 @@ export function FloorView() {
                       : kind === "booth"
                         ? "rounded-2xl"
                         : "rounded-xl",
-                    (transferFrom === t.id || mergePrimary === t.id) &&
+                    (transferFrom === t.id ||
+                      mergePrimary === t.id ||
+                      picked.includes(t.id) ||
+                      dropId === t.id) &&
                       "ring-2 ring-primary",
                     (t.mergedChildIds?.length ?? 0) > 0 && "border-info/60",
                     foodUp && "ring-2 ring-primary animate-pulse",
@@ -457,17 +522,19 @@ export function FloorView() {
             })}
           </div>
           <p className="mt-2 text-center text-xs text-muted-foreground">
-            {mergeMode
+            {selectMode
+              ? "Tap tables to select, then Combine. Drag one table onto another to combine. Label = lowest number."
+              : mergeMode
               ? mergePrimary
-                ? "Tap second table to merge"
-                : "Tap primary table, then secondary"
+                ? "Tap second table to combine (label = lowest number)"
+                : "Tap first table, then second"
               : transferMode
                 ? transferFrom
                   ? "Tap destination table"
                   : "Tap table with a check to move"
                 : locked
                   ? "Color fill = status · top bar = section · locked tables need a grant"
-                  : "Tap a table for check, status, or QR · flashing = SLA"}
+                  : "Tap a table · drag onto another to combine · flashing = SLA"}
           </p>
         </div>
 
@@ -515,17 +582,50 @@ export function FloorView() {
             </Button>
             <Button
               className="w-full"
+              variant={mergeMode || selectMode ? "default" : "outline"}
+              size="lg"
+              onClick={() => {
+                setTransferMode(false);
+                setTransferFrom(null);
+                setSelectMode((m) => !m);
+                setPicked([]);
+                setMergeMode(false);
+                setMergePrimary(null);
+              }}
+            >
+              <Combine className="h-4 w-4" />
+              {selectMode ? "Cancel select" : "Select to combine"}
+            </Button>
+            {selectMode && (
+              <Button
+                className="w-full"
+                disabled={picked.length < 2}
+                onClick={() => {
+                  const res = combineTables(picked);
+                  if (!res.ok) alert(res.error);
+                  else {
+                    setPicked([]);
+                    setSelectMode(false);
+                  }
+                }}
+              >
+                Combine {picked.length} tables
+              </Button>
+            )}
+            <Button
+              className="w-full"
               variant={mergeMode ? "default" : "outline"}
               size="lg"
               onClick={() => {
                 setTransferMode(false);
                 setTransferFrom(null);
+                setSelectMode(false);
                 setMergeMode((m) => !m);
                 setMergePrimary(null);
               }}
             >
               <Combine className="h-4 w-4" />
-              {mergeMode ? "Cancel merge" : "Merge tables"}
+              {mergeMode ? "Cancel combine" : "Combine (tap two)"}
             </Button>
             <Button
               className="w-full"
@@ -539,12 +639,12 @@ export function FloorView() {
                   const res = unmergeTable(merged.id);
                   if (!res.ok) alert(res.error);
                 } else {
-                  alert("No merged tables");
+                  alert("No combined group");
                 }
               }}
             >
               <Split className="h-4 w-4" />
-              Unmerge
+              Split group
             </Button>
             {canEdit && (
               <Button
@@ -786,6 +886,15 @@ export function FloorView() {
                   if (!res.ok) alert(res.error);
                   else setReassignId("");
                 }}
+                onSplitGroup={
+                  (detailLive.mergedChildIds?.length ?? 0) > 0
+                    ? () => {
+                        const res = unmergeTable(detailLive.id);
+                        if (!res.ok) alert(res.error);
+                        else setDetail(null);
+                      }
+                    : undefined
+                }
               />
             </>
           )}
@@ -939,6 +1048,7 @@ function TableDetailBody({
   reassignId,
   onReassignId,
   onReassign,
+  onSplitGroup,
 }: {
   table: Table;
   order: { number: number; status: string } | undefined;
@@ -967,6 +1077,7 @@ function TableDetailBody({
   reassignId?: string;
   onReassignId?: (id: string) => void;
   onReassign?: () => void;
+  onSplitGroup?: () => void;
 }) {
   const st = normalizeTableStatus(table.status);
   const empty = isEmptyTable(table.status);
@@ -1006,6 +1117,12 @@ function TableDetailBody({
         )}
         {!empty && table.orderId && (
           <Button onClick={onOpenCheck}>Open check</Button>
+        )}
+        {onSplitGroup && (
+          <Button variant="outline" onClick={onSplitGroup}>
+            <Split className="h-4 w-4" />
+            Split group
+          </Button>
         )}
         {(st === "ordered_food" || st === "food_delivered" || st === "ordered_drinks") && (
           <Button variant="outline" onClick={() => onStatus("food_delivered")}>

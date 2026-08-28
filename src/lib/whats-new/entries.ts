@@ -6,6 +6,19 @@ import type { GuideUpdate } from "@/lib/guide/types";
  */
 export const WHATS_NEW_ENTRIES: GuideUpdate[] = [
   {
+    id: "upd_2026_10_07_floor_checks_ai",
+    date: "2026-10-07",
+    title: "Floor views, table combine, check split/move, scheduled AI reports",
+    summary:
+      "Entire location or by section. Combine tables (lowest number). Split/combine/move checks with audit. AI analysis on demand or daily/weekly.",
+    body: "Drag a table onto another or multi-select Combine — the group label is the lowest number and seats add. Split group restores originals. On Order, Split / move handles seat, items, even split, custom $, combine checks, and move to another table. Operator tags stay. Reports → AI analysis; Settings schedules daily/weekly into the inbox and email/outbox. No auto price change.",
+    roles: ["owner_manager", "server", "host_operator"],
+    surfaces: ["floor", "reports", "settings"],
+    audience: "all",
+    topicId: "check-split-move",
+    tags: ["floor", "combine", "split", "ai"],
+  },
+  {
     id: "upd_2026_10_06_guide_training_week",
     date: "2026-10-06",
     title: "Operators Guide matches training week",

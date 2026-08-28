@@ -39,6 +39,9 @@ import { QrMark } from "./QrMark";
 import { tableGuestUrl } from "@/lib/pos/qr-table";
 import { getDemoType } from "@/lib/demo/session";
 import { RecipeLookupButton } from "@/components/recipes/RecipeLookup";
+import { CheckOpsDialog } from "./CheckOpsDialog";
+import { Split } from "lucide-react";
+import { canEmployee } from "@/lib/access/permissions";
 
 export function OrderView() {
   const activeOrderId = usePosStore((s) => s.activeOrderId);
@@ -81,6 +84,8 @@ export function OrderView() {
   const [search, setSearch] = useState("");
   const [vendorFilter, setVendorFilter] = useState<string | null>(null);
   const [payQrOpen, setPayQrOpen] = useState(false);
+  const [opsOpen, setOpsOpen] = useState(false);
+  const emp = usePosStore((s) => s.employees.find((e) => e.id === s.currentEmployeeId));
 
   const happy = isHappyHour(settings);
   const table = tables.find((t) => t.id === order?.tableId);
@@ -418,7 +423,7 @@ export function OrderView() {
           </Button>
         </div>
 
-        <div className="grid grid-cols-3 gap-1.5 border-t border-border p-2">
+        <div className="grid grid-cols-2 gap-1.5 border-t border-border p-2 sm:grid-cols-4">
           <Button
             variant="outline"
             onClick={() => {
@@ -429,6 +434,12 @@ export function OrderView() {
             <StickyNote className="h-4 w-4" />
             Note
           </Button>
+          {canEmployee(emp, "checks:mutate") && (
+            <Button variant="outline" onClick={() => setOpsOpen(true)}>
+              <Split className="h-4 w-4" />
+              Split / move
+            </Button>
+          )}
           <Button
             variant="outline"
             onClick={() => {
@@ -444,7 +455,7 @@ export function OrderView() {
             Send
           </Button>
           <Button
-            className="col-span-3"
+            className="col-span-full"
             size="lg"
             disabled={
               order.status !== "open" || !totals || totals.itemCount === 0
@@ -700,6 +711,9 @@ export function OrderView() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+      {order && (
+        <CheckOpsDialog open={opsOpen} onOpenChange={setOpsOpen} orderId={order.id} />
+      )}
     </div>
   );
 }

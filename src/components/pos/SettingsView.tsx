@@ -270,6 +270,8 @@ export function SettingsView() {
           giftTermAllowed: s.giftTermAllowed === true,
           giftTermDays: s.giftTermDays ?? 730,
           giftOperatorBreakageSplitBps: s.giftOperatorBreakageSplitBps ?? 5000,
+          aiReportSchedule: s.aiReportSchedule ?? "off",
+          aiReportEmail: s.aiReportEmail ?? "",
           devices: { pos: 0, kds: 0, handhelds: 0 },
           settlement: {
             periodType: "weekly",
@@ -327,6 +329,54 @@ export function SettingsView() {
   return (
     <div className="h-full overflow-y-auto p-3" data-demo="settings">
       <LifecycleSettings />
+      {(emp?.role === "owner" || emp?.role === "manager" || emp?.role === "accountant") && (
+        <div className="mb-4 rounded-2xl border border-border bg-surface p-4">
+          <div className="mb-2 flex items-center gap-2">
+            <h3 className="text-sm font-semibold">AI ops reports</h3>
+            <GuideLearnLink topicId="ai-insights" compact>
+              Learn
+            </GuideLearnLink>
+          </div>
+          <p className="mb-3 text-xs text-muted-foreground">
+            On-demand from Reports → AI analysis. Scheduled runs land in-app and
+            email if configured (otherwise the communications outbox). Never
+            auto-changes menu prices.
+          </p>
+          <div className="grid gap-3 sm:grid-cols-2">
+            <label className="text-sm">
+              Schedule
+              <select
+                className="mt-1 h-10 w-full rounded-md border border-border bg-bg px-2"
+                value={settings.aiReportSchedule ?? "off"}
+                disabled={!write}
+                onChange={(e) => {
+                  updateSettings({
+                    aiReportSchedule: e.target.value as "off" | "daily" | "weekly",
+                  });
+                  persist();
+                }}
+              >
+                <option value="off">Off</option>
+                <option value="daily">Daily</option>
+                <option value="weekly">Weekly</option>
+              </select>
+            </label>
+            <label className="text-sm">
+              Email (optional)
+              <Input
+                type="email"
+                disabled={!write}
+                value={settings.aiReportEmail ?? ""}
+                onChange={(e) => {
+                  updateSettings({ aiReportEmail: e.target.value });
+                  persist();
+                }}
+                placeholder="ops@house.example"
+              />
+            </label>
+          </div>
+        </div>
+      )}
       <QuantumPaymentsSettings write={write} />
       <div className="mb-4 flex flex-wrap items-center gap-2">
         <h2 className="text-sm font-semibold">

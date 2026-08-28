@@ -180,6 +180,11 @@ function parseSetup(raw: unknown): LocationSetup {
         : undefined,
     trainingTrackInventory:
       "trainingTrackInventory" in o ? Boolean(o.trainingTrackInventory) : undefined,
+    aiReportSchedule:
+      o.aiReportSchedule === "daily" || o.aiReportSchedule === "weekly" || o.aiReportSchedule === "off"
+        ? o.aiReportSchedule
+        : undefined,
+    aiReportEmail: typeof o.aiReportEmail === "string" ? o.aiReportEmail : undefined,
     operatorLifecycle:
       o.operatorLifecycle && typeof o.operatorLifecycle === "object"
         ? (o.operatorLifecycle as Record<string, string>)

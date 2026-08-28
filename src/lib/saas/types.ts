@@ -34,6 +34,8 @@ export type LocationSetup = {
   networkChecklist?: import("./network-readiness").NetworkChecklist;
   lifecycleStatus?: "onboarding" | "training" | "scheduled_live" | "live";
   trainingTrackInventory?: boolean;
+  aiReportSchedule?: "off" | "daily" | "weekly";
+  aiReportEmail?: string;
   operatorLifecycle?: Record<string, string>;
   goLiveAt?: string | null;
   goLiveChoices?: Record<string, "keep" | "erase">;

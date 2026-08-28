@@ -37,6 +37,7 @@ export function FloorEditorView() {
   const [selected, setSelected] = useState<string | null>(null);
   const [newName, setNewName] = useState("");
   const [room, setRoom] = useState<string>("All");
+  const [scope, setScope] = useState<"entire" | "section">("entire");
   const [showQr, setShowQr] = useState(false);
   const drag = useRef<{
     id: string;
@@ -58,6 +59,7 @@ export function FloorEditorView() {
   const selectedTable = tables.find((t) => t.id === selected);
   const visible = tables.filter((t) => {
     if (t.mergedIntoId) return false;
+    if (scope === "section" && room === "All") return t.section === (floorSections[0]?.name ?? t.section);
     if (room !== "All" && t.section !== room) return false;
     return true;
   });
@@ -174,11 +176,33 @@ export function FloorEditorView() {
         <div className="flex flex-wrap gap-1">
           <Button
             size="sm"
+            variant={scope === "entire" ? "default" : "outline"}
+            onClick={() => {
+              setScope("entire");
+              setRoom("All");
+            }}
+          >
+            Entire location
+          </Button>
+          <Button
+            size="sm"
+            variant={scope === "section" ? "default" : "outline"}
+            onClick={() => {
+              setScope("section");
+              setRoom(floorSections[0]?.name ?? "All");
+            }}
+          >
+            By section
+          </Button>
+          {scope === "entire" && (
+          <Button
+            size="sm"
             variant={room === "All" ? "default" : "outline"}
             onClick={() => setRoom("All")}
           >
             All rooms
           </Button>
+          )}
           {floorSections.map((s) => (
             <Button
               key={s.id}

@@ -20,7 +20,8 @@ export type Permission =
   | "demo:admin"
   | "costs:invoice"
   | "costs:po"
-  | "costs:receive";
+  | "costs:receive"
+  | "checks:mutate";
 
 const ALL: Permission[] = [
   "settings:read",
@@ -41,17 +42,18 @@ const ALL: Permission[] = [
   "costs:invoice",
   "costs:po",
   "costs:receive",
+  "checks:mutate",
 ];
 
 const ROLE_PERMS: Record<EmployeeRole, Permission[] | "all"> = {
   owner: "all",
   manager: ALL.filter((p) => p !== "demo:admin"),
-  server: ["orders:create", "payments:take", "floor:write", "reports:read"],
-  host: ["waitlist:manage", "floor:write", "reports:read"],
-  bartender: ["orders:create", "tickets:bump", "item:86", "payments:take", "reports:read"],
+  server: ["orders:create", "payments:take", "floor:write", "reports:read", "checks:mutate"],
+  host: ["waitlist:manage", "floor:write", "reports:read", "checks:mutate"],
+  bartender: ["orders:create", "tickets:bump", "item:86", "payments:take", "reports:read", "checks:mutate"],
   kitchen: ["tickets:bump", "item:86", "reports:read"],
   busser: ["floor:write"],
-  cashier: ["orders:create", "payments:take"],
+  cashier: ["orders:create", "payments:take", "checks:mutate"],
   vendor_operator: [
     "item:86",
     "tickets:bump",

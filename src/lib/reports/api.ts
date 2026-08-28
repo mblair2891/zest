@@ -44,7 +44,7 @@ async function llmInsights(m: LocationMetrics): Promise<LocationInsights | null>
           content: JSON.stringify({
             facts: [
               "Do not mention Zest. Do not recommend a second card processor.",
-              "Demo locations are isolated from live tenants.",
+              "Never auto-change menu prices. Recommendations require a human Save.",
             ],
             metrics: m,
             guided: fallback,
@@ -105,4 +105,30 @@ export const analyzeLocationPerformanceFn = createServerFn({ method: "POST" })
       if (first) cache.delete(first);
     }
     return out;
+  });
+
+export const deliverAiReportFn = createServerFn({ method: "POST" })
+  .middleware([tenantMiddleware])
+  .validator((d: { to?: string; subject: string; text: string; locationId: string }) => ({
+    to: typeof d.to === "string" ? d.to.trim() : "",
+    subject: String(d.subject || "Summex AI ops report").slice(0, 180),
+    text: String(d.text || "").slice(0, 8000),
+    locationId: String(d.locationId || ""),
+  }))
+  .handler(async ({ context, data }): Promise<{ status: "sent" | "logged_only" | "inbox" | "failed" }> => {
+    if (data.locationId) {
+      const { bindTenant } = await import("@/lib/saas/assert-tenant.server");
+      await bindTenant(context.userId, { locationId: data.locationId });
+    }
+    if (!data.to) return { status: "inbox" };
+    const { sendEmail } = await import("@/lib/saas/email.server");
+    const res = await sendEmail({
+      to: data.to,
+      subject: data.subject,
+      text: data.text,
+      kind: "ai_ops_report",
+    });
+    if (res.status === "sent") return { status: "sent" };
+    if (res.status === "logged_only") return { status: "logged_only" };
+    return { status: "failed" };
   });

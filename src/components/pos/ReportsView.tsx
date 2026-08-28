@@ -20,7 +20,9 @@ import { useOpsLearnStore } from "@/lib/ops-ai/learn-store";
 import { REPORT_GROUP_LABEL, reportsFor } from "@/lib/reports/catalog";
 import { csvFromRows } from "@/lib/reports/metrics";
 import { metricsFromPosStore } from "@/lib/reports/from-store";
-import { analyzeLocationPerformanceFn } from "@/lib/reports/api";
+import { analyzeLocationPerformanceFn, deliverAiReportFn } from "@/lib/reports/api";
+import { useAiReportStore } from "@/lib/reports/schedule-store";
+import { uid } from "@/lib/utils";
 import { guidedInsights } from "@/lib/reports/rules";
 import { useNetworkStore } from "@/lib/pos/network-store";
 import { hydrateFloor } from "@/lib/pos/floor-sync";
@@ -80,6 +82,14 @@ export function ReportsView() {
   const [operatorId, setOperatorId] = useState<string>(emp?.operatorId ?? "");
   const [reportId, setReportId] = useState<ReportId>("sales-summary");
   const [insights, setInsights] = useState<LocationInsights | null>(null);
+  const [customFrom, setCustomFrom] = useState("");
+  const [customTo, setCustomTo] = useState("");
+  const inbox = useAiReportStore((s) => s.inbox);
+  const canAi =
+    emp?.role === "owner" ||
+    emp?.role === "manager" ||
+    emp?.role === "accountant" ||
+    emp?.role === "vendor_operator";
   const wan = useNetworkStore((s) => s.browserOnline && s.healthOk && !s.simulateWanDown);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
@@ -95,11 +105,13 @@ export function ReportsView() {
     () =>
       metricsFromPosStore({
         range,
+        from: customFrom ? new Date(customFrom).getTime() : undefined,
+        to: customTo ? new Date(customTo).getTime() + 86400000 - 1 : undefined,
         operatorId: emp?.role === "vendor_operator" ? emp.operatorId : operatorId || null,
         serverId: emp?.role === "server" ? emp.id : null,
       }),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [range, operatorId, emp?.id, emp?.role, emp?.operatorId, venue],
+    [range, customFrom, customTo, operatorId, emp?.id, emp?.role, emp?.operatorId, venue],
   );
 
   if (!canEmployee(emp, "reports:read")) {
@@ -122,8 +134,40 @@ export function ReportsView() {
       const res = await analyzeLocationPerformanceFn({
         data: { metrics, isDemo: isProspectDemo() || metrics.isDemo },
       });
-      setInsights(annotateInsights(res));
+      const annotated = annotateInsights(res);
+      setInsights(annotated);
       setTab("ai");
+      const locId = usePosStore.getState().tenantLocationId || metrics.locationId;
+      let delivered: "inbox" | "email" | "outbox" = "inbox";
+      const to = usePosStore.getState().settings.aiReportEmail?.trim();
+      if (to && !isProspectDemo()) {
+        try {
+          const mail = await deliverAiReportFn({
+            data: {
+              to,
+              subject: `Summex AI ops · ${metrics.locationName}`,
+              text: [annotated.summary, ...annotated.findings.map((f) => `• ${f.observation}`)].join("\n"),
+              locationId: locId,
+            },
+          });
+          if (mail.status === "sent") delivered = "email";
+          else if (mail.status === "logged_only") delivered = "outbox";
+        } catch {
+          delivered = "inbox";
+        }
+      }
+      useAiReportStore.getState().push({
+        id: uid("air"),
+        at: Date.now(),
+        range: metrics.range,
+        from: metrics.from,
+        to: metrics.to,
+        locationId: locId,
+        locationName: metrics.locationName,
+        operatorId: metrics.operatorId ?? null,
+        insights: annotated,
+        delivered,
+      });
     } catch (e) {
       setInsights(annotateInsights(guidedInsights(metrics)));
       setTab("ai");
@@ -222,14 +266,16 @@ export function ReportsView() {
           <Button size="sm" variant={tab === "reports" ? "default" : "outline"} onClick={() => setTab("reports")}>
             Catalog
           </Button>
+          {canAi && (
           <Button
             size="sm"
             variant={tab === "ai" ? "default" : "outline"}
             data-demo="ai-insights"
             onClick={() => setTab("ai")}
           >
-            AI insights
+            AI analysis
           </Button>
+          )}
         </div>
         <select
           className="h-8 rounded-md border border-border bg-bg px-2 text-xs"
@@ -240,7 +286,24 @@ export function ReportsView() {
           <option value="today">Today</option>
           <option value="7d">7 days</option>
           <option value="30d">30 days</option>
+          <option value="custom">Custom dates</option>
         </select>
+        {range === "custom" && (
+          <>
+            <input
+              type="date"
+              className="h-8 rounded-md border border-border bg-bg px-2 text-xs"
+              value={customFrom}
+              onChange={(e) => setCustomFrom(e.target.value)}
+            />
+            <input
+              type="date"
+              className="h-8 rounded-md border border-border bg-bg px-2 text-xs"
+              value={customTo}
+              onChange={(e) => setCustomTo(e.target.value)}
+            />
+          </>
+        )}
         {vendors.length > 1 &&
           (emp?.role !== "vendor_operator" ||
             vendors.some(
@@ -304,10 +367,31 @@ export function ReportsView() {
           {err && <p className="mb-3 text-sm text-danger">{err}</p>}
           {!insights && (
             <p className="text-sm text-muted-foreground">
-              Run analysis on this range. Uses live location metrics. Cost
-              recommendations only when inventory/recipe cost exists — gaps are
-              labeled, never invented.
+              On-demand analysis for this location and date range. Vendor operators
+              see their own slice. Recommendations never auto-change menu prices.
+              Cost notes only when inventory/recipe cost exists. Scheduled reports
+              (Settings) land in-app here and email/outbox if configured.
             </p>
+          )}
+          {inbox.length > 0 && (
+            <div className="mb-4 rounded-2xl border border-border bg-surface p-3">
+              <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                Recent AI reports
+              </p>
+              <ul className="mt-2 space-y-1 text-sm">
+                {inbox.slice(0, 8).map((r) => (
+                  <li key={r.id}>
+                    <button
+                      type="button"
+                      className="text-left underline-offset-2 hover:underline"
+                      onClick={() => setInsights(r.insights)}
+                    >
+                      {new Date(r.at).toLocaleString()} · {r.delivered}
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            </div>
           )}
           {insights && (
             <div className="space-y-4">

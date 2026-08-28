@@ -39,7 +39,7 @@ export type ReportDef = {
   roles: EmployeeRole[] | "all";
 };
 
-export type RangeKey = "shift" | "today" | "7d" | "30d";
+export type RangeKey = "shift" | "today" | "7d" | "30d" | "custom";
 
 export type LocationMetrics = {
   locationId: string;

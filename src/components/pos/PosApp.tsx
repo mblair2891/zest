@@ -285,6 +285,8 @@ function PosAppInner({ entityId }: { entityId?: string }) {
               giftTermAllowed: setup.giftTermAllowed,
               giftTermDays: setup.giftTermDays,
               giftOperatorBreakageSplitBps: setup.giftOperatorBreakageSplitBps,
+              aiReportSchedule: setup.aiReportSchedule ?? "off",
+              aiReportEmail: setup.aiReportEmail ?? "",
             });
           } catch {
             /* */

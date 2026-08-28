@@ -43,7 +43,7 @@ export const ROLE_GUIDE_TOPICS: GuideTopic[] = [
         "The owner opens the house, sets PINs and packages, and owns the period close.",
       ),
       ul(
-        "Open POS for the location. PIN as owner or manager.",
+        "Open POS for the location. PIN as owner or manager. Floor: Entire location or By section. Combine tables (lowest number). Reports → AI analysis; Settings for daily/weekly.",
         "Staff, menu, floor, cash drawer, settlement.",
         "Packages decide which modules appear. Core POS and ODS are the floor.",
       ),

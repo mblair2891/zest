@@ -222,6 +222,10 @@ export interface RestaurantSettings {
   lifecycleStatus?: "onboarding" | "training" | "scheduled_live" | "live";
   /** Practice orders move on-hand when true. */
   trainingTrackInventory?: boolean;
+  /** AI ops report cadence. Off until the owner turns it on. */
+  aiReportSchedule?: "off" | "daily" | "weekly";
+  /** Optional email for scheduled AI reports. Empty → in-app + outbox only. */
+  aiReportEmail?: string;
   /** Term length in days when giftTermAllowed. */
   giftTermDays?: number | null;
   /** Operator-issued residual split to the other party, in basis points (5000 = 50/50). */
@@ -343,6 +347,10 @@ export interface Table {
   locationId?: string;
   mergedIntoId?: string;
   mergedChildIds?: string[];
+  /** Pre-combine label so Split restores originals. */
+  originalLabel?: string;
+  /** Pre-combine seat count. */
+  originalSeats?: number;
 }
 
 export interface OrderLine {
@@ -409,6 +417,10 @@ export interface Order {
   note?: string;
   checkPrintedAt?: number;
   mergedTableIds?: string[];
+  /** Sibling check this was split from. */
+  splitFromId?: string;
+  /** Payment-only split: this check's share of remaining, in cents. */
+  dueOverrideCents?: number;
 }
 
 export interface KitchenTicketItem {
