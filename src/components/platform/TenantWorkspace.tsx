@@ -7,6 +7,13 @@ import { setOrgStatusFn, setTenantPlanFn } from "@/lib/saas/api";
 import type { TenantDirectoryRow, TenantDrillIn } from "@/lib/saas/crm-types";
 import { STAGE_LABEL } from "@/lib/saas/crm-types";
 import { formatCurrency, formatDateTime } from "@/lib/utils";
+import { LIFECYCLE_LABEL, type LocationLifecycle } from "@/lib/lifecycle/types";
+
+function lifecycleLabel(raw: string | undefined): string {
+  if (!raw) return "Training";
+  if (raw in LIFECYCLE_LABEL) return LIFECYCLE_LABEL[raw as LocationLifecycle];
+  return raw.replaceAll("_", " ");
+}
 
 export function TenantWorkspace() {
   const [rows, setRows] = useState<TenantDirectoryRow[] | null>(null);
@@ -41,7 +48,9 @@ export function TenantWorkspace() {
         <GuideLearnLink topicId="platform-tenants" compact>
           Learn
         </GuideLearnLink>
-        <p className="text-xs text-muted-foreground">Live orgs only. No demo seeds.</p>
+        <p className="text-xs text-muted-foreground">
+          SaaS-onboarded orgs. Training, scheduled live, and live locations. No demo seeds.
+        </p>
       </div>
       {error && <p className="px-4 py-2 text-sm text-danger">{error}</p>}
       <div className="flex min-h-0 flex-1">
@@ -49,9 +58,10 @@ export function TenantWorkspace() {
           {!rows && <p className="text-sm text-muted-foreground">Loading tenants…</p>}
           {rows?.length === 0 && (
             <div className="rounded-2xl border border-dashed border-border bg-surface p-6 text-center">
-              <p className="font-medium">No live tenants</p>
+              <p className="font-medium">No tenants yet</p>
               <p className="mt-1 text-sm text-muted-foreground">
-                Locations appear here only after SaaS onboarding go-live.
+                Finish Get pricing → quote → host onboarding. Training locations
+                appear here — they are not public demo houses.
               </p>
             </div>
           )}
@@ -142,7 +152,13 @@ export function TenantWorkspace() {
               <ul className="mt-1 text-sm">
                 {detail.locations.map((l) => (
                   <li key={l.id}>
-                    {l.name} · {l.venueType} · {l.lifecycleStatus ?? l.status}
+                    {l.name} · {l.venueType} ·{" "}
+                    <Badge
+                      variant={l.lifecycleStatus === "live" ? "success" : "warn"}
+                      className="align-middle"
+                    >
+                      {lifecycleLabel(l.lifecycleStatus)}
+                    </Badge>
                   </li>
                 ))}
                 {detail.locations.length === 0 && (

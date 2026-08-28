@@ -215,18 +215,19 @@ export const GETTING_STARTED_TOPICS: GuideTopic[] = [
         "Open Get pricing on the public site. Describe the house. Submit for a quote.",
         "Accept the quote. When the contract is marked signed, the onboarding wizard unlocks (SaaS).",
         "SaaS completes the host: org, location, owner invite, plan. The host then invites operator tenants.",
-        "Sign in with the invited work email. Open POS for that location. It starts in Training.",
-        "Menu, tables, and tickets stay empty until you add them. There is no Load demo control.",
+        "Sign in with the invited work email. Open POS for that location. It starts in Training (sandbox cards).",
+        "If the house has no staff yet, location-only PINs are hashed in (0000 manager … 5555 busser). Change them before guests. PIN is not the time clock.",
+        "Run the training service loop (seat → order → Order Display → cash or sandbox card → bus). There is no Load demo control.",
       ),
       warn(
-        "There are no public demo sites, no PIN 0000 tenant, and no seeded catalog. Marketing is Get pricing, Guide, Sign in.",
+        "There are no public demo sites and no seeded demo tenant. Marketing is Get pricing, Guide, Sign in.",
       ),
       cta(
         "/get-pricing",
         "Get pricing",
         "Intake is how the first real location is created.",
       ),
-      related("intro", "location-training", "type-food-hall", "login"),
+      related("intro", "location-training", "training-floor-loop", "type-food-hall", "login"),
     ],
   }),
   topic({
