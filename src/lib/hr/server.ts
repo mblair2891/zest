@@ -131,9 +131,10 @@ export async function listOnboarding(ctx: EntityWriteContext, employerId: string
     i9_section2_at: unknown;
     i9_section3_at: unknown;
     completed_at: unknown;
+    i9_files: unknown;
   }>`
     select id, employer_id, employee_id, employee_name, checklist, i9_status,
-      i9_section1_at, i9_section2_at, i9_section3_at, completed_at
+      i9_section1_at, i9_section2_at, i9_section3_at, completed_at, i9_files
     from hr_onboarding
     where location_id = ${ctx.locationId} and employer_id = ${employerId}
     order by started_at desc
@@ -151,6 +152,9 @@ export async function listOnboarding(ctx: EntityWriteContext, employerId: string
     i9Section2At: iso(r.i9_section2_at),
     i9Section3At: iso(r.i9_section3_at),
     completedAt: iso(r.completed_at),
+    i9Files: Array.isArray(r.i9_files)
+      ? (r.i9_files as HrOnboarding["i9Files"])
+      : [],
   }));
 }
 
@@ -265,6 +269,7 @@ export async function listPackets(ctx: EntityWriteContext, employerId: string): 
     counterSignedAt: iso(r.counter_signed_at),
     expiresAt: iso(r.expires_at),
     fileName: r.file_name,
+    hasFile: Boolean(r.file_name),
     esignConfigured: esign.ok,
   }));
 }
@@ -364,6 +369,8 @@ export async function markPacket(
     id: string;
     action: "viewed" | "signed" | "counter_sign" | "upload";
     fileName?: string;
+    fileData?: string;
+    fileKind?: string;
   },
 ): Promise<void> {
   assertFeature(ctx, data.employerId, "onboardingPackets");
@@ -375,12 +382,85 @@ export async function markPacket(
   } else if (data.action === "counter_sign") {
     await sql`update hr_packets set counter_signed_at = now(), status = 'signed' where id = ${data.id} and location_id = ${ctx.locationId}`;
   } else if (data.action === "upload") {
+    const fileData = data.fileData ? data.fileData.slice(0, 450_000) : null;
+    const kind = (data.fileKind || "application/pdf").slice(0, 80);
     await sql`
       update hr_packets
-      set status = 'signed', signed_at = now(), file_name = ${data.fileName?.slice(0, 180) ?? "signed.pdf"}, file_kind = 'application/pdf'
+      set status = 'signed', signed_at = now(),
+          file_name = ${data.fileName?.slice(0, 180) ?? "signed.pdf"},
+          file_kind = ${kind},
+          file_data = ${fileData}
       where id = ${data.id} and location_id = ${ctx.locationId}
     `;
   }
+}
+
+export async function packetFile(
+  ctx: EntityWriteContext,
+  data: { employerId: string; id: string },
+): Promise<{ fileName: string; fileKind: string; fileData: string } | null> {
+  assertFeature(ctx, data.employerId, "onboardingPackets");
+  if (ctx.isPlatformAdmin) {
+    throw new ForbiddenError("Platform support cannot download tax or identity packets");
+  }
+  if (!canViewHrField(ctx, data.employerId, "documents")) {
+    throw new ForbiddenError("Not allowed to view employment documents");
+  }
+  const sql = await getSql();
+  const rows = await sql<{
+    file_name: string | null;
+    file_kind: string | null;
+    file_data: string | null;
+  }>`
+    select file_name, file_kind, file_data from hr_packets
+    where id = ${data.id} and location_id = ${ctx.locationId} and employer_id = ${data.employerId}
+    limit 1
+  `;
+  const row = rows[0];
+  if (!row?.file_data) return null;
+  return {
+    fileName: row.file_name || "signed.pdf",
+    fileKind: row.file_kind || "application/pdf",
+    fileData: row.file_data,
+  };
+}
+
+export async function attachI9File(
+  ctx: EntityWriteContext,
+  data: {
+    employerId: string;
+    id: string;
+    section: 1 | 2 | 3;
+    fileName: string;
+    fileKind?: string;
+  },
+): Promise<void> {
+  assertFeature(ctx, data.employerId, "onboardingPackets");
+  if (ctx.isPlatformAdmin) {
+    throw new ForbiddenError("Platform support cannot store I-9 files");
+  }
+  const sql = await getSql();
+  const rows = await sql<{ i9_files: unknown }>`
+    select i9_files from hr_onboarding
+    where id = ${data.id} and location_id = ${ctx.locationId} and employer_id = ${data.employerId}
+    limit 1
+  `;
+  if (!rows[0]) throw new ForbiddenError("Onboarding not found");
+  const prev = Array.isArray(rows[0].i9_files) ? (rows[0].i9_files as unknown[]) : [];
+  const next = [
+    ...prev,
+    {
+      section: data.section,
+      fileName: data.fileName.slice(0, 180),
+      fileKind: (data.fileKind || "application/pdf").slice(0, 80),
+      at: new Date().toISOString(),
+    },
+  ].slice(-12);
+  await sql`
+    update hr_onboarding
+    set i9_files = ${JSON.stringify(next)}::jsonb
+    where id = ${data.id} and location_id = ${ctx.locationId}
+  `;
 }
 
 export async function listTimeOff(ctx: EntityWriteContext, employerId: string): Promise<HrTimeOff[]> {
@@ -651,7 +731,10 @@ export type HrPayrollRow = {
   employeeId: string;
   employeeName: string;
   scheduledHours: number;
+  punchHours: number;
+  otHours: number;
   shiftCount: number;
+  punchCount: number;
 };
 
 export async function payrollSummary(
@@ -659,6 +742,7 @@ export async function payrollSummary(
   employerId: string,
 ): Promise<{
   rows: HrPayrollRow[];
+  csv: string;
   showWages: boolean;
   showHours: boolean;
   note: string;
@@ -673,7 +757,7 @@ export async function payrollSummary(
     throw new ForbiddenError("Not allowed to view hours or wages for this employer");
   }
   const sql = await getSql();
-  const rows = await sql<{
+  const shifts = await sql<{
     employee_id: string;
     start_at: unknown;
     end_at: unknown;
@@ -682,26 +766,66 @@ export async function payrollSummary(
     from location_shifts
     where location_id = ${ctx.locationId} and operator_id = ${employerId}
   `;
+  const punches = await sql<{
+    employee_id: string;
+    employee_name: string;
+    regular_minutes: number;
+    ot_minutes: number;
+    clock_out_at: unknown;
+  }>`
+    select employee_id, employee_name, regular_minutes, ot_minutes, clock_out_at
+    from location_punches
+    where location_id = ${ctx.locationId} and employer_id = ${employerId}
+  `;
   const by = new Map<string, HrPayrollRow>();
-  for (const r of rows) {
+  const ensure = (id: string, name?: string) => {
+    const cur = by.get(id) ?? {
+      employeeId: id,
+      employeeName: name || id,
+      scheduledHours: 0,
+      punchHours: 0,
+      otHours: 0,
+      shiftCount: 0,
+      punchCount: 0,
+    };
+    if (name && cur.employeeName === id) cur.employeeName = name;
+    by.set(id, cur);
+    return cur;
+  };
+  for (const r of shifts) {
     const start = r.start_at ? new Date(r.start_at as string).getTime() : 0;
     const end = r.end_at ? new Date(r.end_at as string).getTime() : 0;
     const hours = start && end && end > start ? (end - start) / 3_600_000 : 0;
-    const cur = by.get(r.employee_id) ?? {
-      employeeId: r.employee_id,
-      employeeName: r.employee_id,
-      scheduledHours: 0,
-      shiftCount: 0,
-    };
+    const cur = ensure(r.employee_id);
     cur.scheduledHours += hours;
     cur.shiftCount += 1;
-    by.set(r.employee_id, cur);
   }
+  for (const r of punches) {
+    const cur = ensure(r.employee_id, r.employee_name);
+    cur.punchHours += (Number(r.regular_minutes) || 0) / 60;
+    cur.otHours += (Number(r.ot_minutes) || 0) / 60;
+    if (r.clock_out_at) cur.punchCount += 1;
+  }
+  const rows = [...by.values()].sort((a, b) => a.employeeName.localeCompare(b.employeeName));
+  const csv = [
+    "employee,scheduled_hours,punch_hours,ot_hours,shifts,punches",
+    ...rows.map((r) =>
+      [
+        r.employeeName.replaceAll(",", " "),
+        r.scheduledHours.toFixed(2),
+        r.punchHours.toFixed(2),
+        r.otHours.toFixed(2),
+        String(r.shiftCount),
+        String(r.punchCount),
+      ].join(","),
+    ),
+  ].join("\n");
   return {
-    rows: [...by.values()].sort((a, b) => a.employeeId.localeCompare(b.employeeId)),
+    rows,
+    csv: showHours ? csv : "employee\nredacted",
     showWages,
     showHours,
-    note: "Hours from published entity shifts. Tips and wages come from Labor when visibility allows. Not a tax engine.",
+    note: "Hours from this entity’s published shifts and clock punches. Tips stay on Labor. Not a tax-filing engine.",
   };
 }
 

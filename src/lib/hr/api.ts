@@ -270,6 +270,8 @@ export const markHrPacketFn = createServerFn({ method: "POST" })
       id: string;
       action: "viewed" | "signed" | "counter_sign" | "upload";
       fileName?: string;
+      fileData?: string;
+      fileKind?: string;
     }) => ({
       orgId: org(d.orgId),
       locationId: loc(d.locationId),
@@ -277,6 +279,8 @@ export const markHrPacketFn = createServerFn({ method: "POST" })
       id: String(d.id ?? "").slice(0, 80),
       action: d.action,
       fileName: d.fileName ? String(d.fileName).slice(0, 180) : undefined,
+      fileData: d.fileData ? String(d.fileData).slice(0, 450_000) : undefined,
+      fileKind: d.fileKind ? String(d.fileKind).slice(0, 80) : undefined,
     }),
   )
   .handler(async ({ context, data }) => {
@@ -496,6 +500,50 @@ export const viewHrPiiFn = createServerFn({ method: "POST" })
     const hr = await import("./server");
     const ctx = await ctxFor(context.userId, data.orgId, data.locationId);
     return hr.viewPii(ctx, data.employerId, data.employeeId);
+  });
+
+export const hrPacketFileFn = createServerFn({ method: "POST" })
+  .middleware([tenantMiddleware])
+  .validator(
+    (d: { orgId: string; locationId: string; employerId: string; id: string }) => ({
+      orgId: org(d.orgId),
+      locationId: loc(d.locationId),
+      employerId: employer(d.employerId),
+      id: String(d.id ?? "").slice(0, 80),
+    }),
+  )
+  .handler(async ({ context, data }) => {
+    const hr = await import("./server");
+    const ctx = await ctxFor(context.userId, data.orgId, data.locationId);
+    return hr.packetFile(ctx, data);
+  });
+
+export const attachHrI9FileFn = createServerFn({ method: "POST" })
+  .middleware([tenantMiddleware])
+  .validator(
+    (d: {
+      orgId: string;
+      locationId: string;
+      employerId: string;
+      id: string;
+      section: 1 | 2 | 3;
+      fileName: string;
+      fileKind?: string;
+    }) => ({
+      orgId: org(d.orgId),
+      locationId: loc(d.locationId),
+      employerId: employer(d.employerId),
+      id: String(d.id ?? "").slice(0, 80),
+      section: d.section,
+      fileName: String(d.fileName ?? "i9.pdf").slice(0, 180),
+      fileKind: d.fileKind ? String(d.fileKind).slice(0, 80) : undefined,
+    }),
+  )
+  .handler(async ({ context, data }) => {
+    const hr = await import("./server");
+    const ctx = await ctxFor(context.userId, data.orgId, data.locationId);
+    await hr.attachI9File(ctx, data);
+    return { ok: true as const };
   });
 
 export const hrPayrollSummaryFn = createServerFn({ method: "POST" })

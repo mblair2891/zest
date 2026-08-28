@@ -139,6 +139,13 @@ export type HrApplicant = {
   createdAt: string;
 };
 
+export type HrI9File = {
+  section: 1 | 2 | 3;
+  fileName: string;
+  fileKind: string;
+  at: string;
+};
+
 export type HrOnboarding = {
   id: string;
   employerId: string;
@@ -150,6 +157,7 @@ export type HrOnboarding = {
   i9Section2At: string | null;
   i9Section3At: string | null;
   completedAt: string | null;
+  i9Files: HrI9File[];
 };
 
 export type HrPacket = {
@@ -168,6 +176,7 @@ export type HrPacket = {
   counterSignedAt: string | null;
   expiresAt: string | null;
   fileName: string | null;
+  hasFile: boolean;
   esignConfigured: boolean;
 };
 

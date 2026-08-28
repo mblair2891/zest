@@ -34,7 +34,9 @@ import {
 import { packetsForState, US_STATES, type PacketTemplate } from "@/lib/hr/packets";
 import {
   addHrWriteupFn,
+  attachHrI9FileFn,
   hrOverviewFn,
+  hrPacketFileFn,
   hrPacketOutboxFn,
   hrPayrollSummaryFn,
   listHrApplicantsFn,
@@ -730,7 +732,35 @@ function OnboardingPanel({
           </div>
           <p className="mt-1 text-[11px] text-muted-foreground">
             §1 {r.i9Section1At ?? "—"} · §2 {r.i9Section2At ?? "—"}
+            {(r.i9Files ?? []).length
+              ? ` · files: ${r.i9Files.map((f) => `§${f.section} ${f.fileName}`).join(", ")}`
+              : ""}
           </p>
+          <label className="mt-1 inline-flex cursor-pointer items-center text-[11px] text-primary">
+            Attach I-9 copy
+            <input
+              type="file"
+              accept="application/pdf,image/*"
+              className="sr-only"
+              onChange={(e) => {
+                const file = e.target.files?.[0];
+                e.target.value = "";
+                if (!file) return;
+                const section = r.i9Status === "not_started" ? 1 : r.i9Status === "section1" ? 2 : 2;
+                void attachHrI9FileFn({
+                  data: {
+                    ...scope,
+                    id: r.id,
+                    section,
+                    fileName: file.name,
+                    fileKind: file.type || "application/pdf",
+                  },
+                })
+                  .then(load)
+                  .catch((err) => onError(errMsg(err)));
+              }}
+            />
+          </label>
         </div>
       ))}
     </div>
@@ -859,21 +889,62 @@ function PacketsPanel({
                   Download to sign
                 </Button>
               )}
-              {r.status === "awaiting_upload" && (
+              {(r.status === "awaiting_upload" || r.status === "sent" || r.status === "viewed") && (
+                <label className="inline-flex h-8 cursor-pointer items-center rounded-md border border-border px-2 text-xs">
+                  Attach signed PDF
+                  <input
+                    type="file"
+                    accept="application/pdf"
+                    className="sr-only"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      e.target.value = "";
+                      if (!file) return;
+                      if (file.size > 280_000) {
+                        onError("Signed PDF must be under 280 KB");
+                        return;
+                      }
+                      const reader = new FileReader();
+                      reader.onload = () => {
+                        const fileData = typeof reader.result === "string" ? reader.result : "";
+                        void markHrPacketFn({
+                          data: {
+                            ...scope,
+                            id: r.id,
+                            action: "upload",
+                            fileName: file.name,
+                            fileKind: file.type || "application/pdf",
+                            fileData,
+                          },
+                        })
+                          .then(load)
+                          .catch((err) => onError(errMsg(err)));
+                      };
+                      reader.readAsDataURL(file);
+                    }}
+                  />
+                </label>
+              )}
+              {r.hasFile && (
                 <Button
                   size="sm"
                   variant="outline"
                   onClick={() => {
-                    const name = window.prompt("Signed PDF file name", "signed.pdf");
-                    if (!name) return;
-                    void markHrPacketFn({
-                      data: { ...scope, id: r.id, action: "upload", fileName: name },
-                    })
-                      .then(load)
+                    void hrPacketFileFn({ data: { ...scope, id: r.id } })
+                      .then((f) => {
+                        if (!f?.fileData) {
+                          onError("No signed file stored");
+                          return;
+                        }
+                        const a = document.createElement("a");
+                        a.href = f.fileData;
+                        a.download = f.fileName;
+                        a.click();
+                      })
                       .catch((e) => onError(errMsg(e)));
                   }}
                 >
-                  Attach signed PDF
+                  Download signed
                 </Button>
               )}
               {(r.status === "sent" || r.status === "viewed") && (
@@ -1314,14 +1385,16 @@ function PayrollPanel({
 }) {
   const employees = usePosStore((s) => s.employees);
   const [note, setNote] = useState<string | null>(null);
-  const [shiftHours, setShiftHours] = useState<{ employeeId: string; scheduledHours: number; shiftCount: number }[]>(
-    [],
-  );
+  const [shiftHours, setShiftHours] = useState<
+    { employeeId: string; employeeName?: string; scheduledHours: number; punchHours?: number; otHours?: number; shiftCount: number; punchCount?: number }[]
+  >([]);
+  const [serverCsv, setServerCsv] = useState<string>("");
   useEffect(() => {
     void hrPayrollSummaryFn({ data: scope })
       .then((r) => {
         setShiftHours(r.rows);
         setNote(r.note);
+        setServerCsv(r.csv);
       })
       .catch((e) => onError(errMsg(e)));
   }, [scope, onError]);
@@ -1332,7 +1405,8 @@ function PayrollPanel({
     operatorId: scope.employerId,
   });
   const download = () => {
-    const blob = new Blob([payrollCsv(laborRows)], { type: "text/csv" });
+    const body = serverCsv || payrollCsv(laborRows);
+    const blob = new Blob([body], { type: "text/csv" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
@@ -1360,10 +1434,10 @@ function PayrollPanel({
               return (
                 <tr key={r.employeeId} className="border-t border-border">
                   <td className="py-1">{r.name}</td>
-                  <td>{r.regularHours.toFixed(2)}</td>
-                  <td>{r.otHours.toFixed(2)}</td>
+                  <td>{(sh?.punchHours ?? r.regularHours).toFixed(2)}</td>
+                  <td>{(sh?.otHours ?? r.otHours).toFixed(2)}</td>
                   <td>{formatCurrency(r.tipsCents)}</td>
-                  <td>{sh?.shiftCount ?? r.punchCount}</td>
+                  <td>{sh?.punchCount ?? sh?.shiftCount ?? r.punchCount}</td>
                 </tr>
               );
             })}
