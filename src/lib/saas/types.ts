@@ -55,6 +55,15 @@ export type LocationSetup = {
   menuCatalog?: import("./location-catalog").LocationMenuCatalog;
   /** Saved recipes. Always kept on go-live. */
   recipes?: import("@/lib/costs/types").ItemRecipe[];
+  /** Cost catalog (SKUs, invoices, suppliers) — no image blobs. */
+  costPack?: {
+    skus: import("@/lib/costs/types").CostSku[];
+    suppliers: import("@/lib/costs/types").CostSupplier[];
+    invoices: import("@/lib/costs/types").CostInvoice[];
+    maps: import("@/lib/costs/types").VendorSkuMap[];
+    exceptions: import("@/lib/costs/types").VarianceException[];
+    settings: import("@/lib/costs/types").CostSettings;
+  };
 };
 
 export const EMPTY_LOCATION_SETUP: LocationSetup = {

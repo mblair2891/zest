@@ -13,7 +13,8 @@ export type OutboxKind =
   | "payout"
   | "menu_publish"
   | "receipt_email"
-  | "settings_patch";
+  | "settings_patch"
+  | "clock_punch";
 
 export type OutboxStatus = "queued" | "syncing" | "sent" | "dead";
 
@@ -77,6 +78,7 @@ export const OUTBOX_KIND_LABEL: Record<OutboxKind, string> = {
   menu_publish: "Menu publish",
   receipt_email: "Email receipt",
   settings_patch: "Settings",
+  clock_punch: "Time clock",
 };
 
 export const MAX_ATTEMPTS = 8;

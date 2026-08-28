@@ -64,7 +64,7 @@ export const CASH_GIFT_TOPICS: GuideTopic[] = [
         "During the shift, Cash shows cash in vs expected. Investigate shorts before close, not after.",
         "On a host venue, period close prints cash due per operator (after host cut on the cash share). Count out those envelopes separately from the host’s card batch.",
         "Use Reports with Cash for a daypart / tender recap.",
-        "Server closeout (this PIN) shows your closed checks, sales, and tips. Expected drawer is float + cash sales − cash tips paid out. Count, then Close shift (Z). That is not clock-out.",
+        "Server closeout (this PIN) shows your closed checks, sales, and tips. Expected drawer is float + cash sales − cash tips paid out. Open checks block Z. Count, then Close shift. That is not clock-out and not PIN login.",
       ),
       tip(
         "House Wi-Fi still records cash if the internet is down. You are not blocked from closing a cash table during an ISP outage. PIN login is not a punch.",

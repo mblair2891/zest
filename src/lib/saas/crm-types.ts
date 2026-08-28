@@ -222,7 +222,7 @@ export const SUPPORT_MACROS: { id: string; title: string; body: string }[] = [
 export const STAGE_LABEL: Record<AccountStage, string> = {
   lead: "Lead",
   qualified: "Qualified",
-  proposal: "Proposal / quote",
+  proposal: "Quote",
   contract: "Contract",
   onboarding: "Onboarding",
   live: "Live",

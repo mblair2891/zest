@@ -34,6 +34,7 @@ function clipKind(raw: unknown): OutboxKind {
     "menu_publish",
     "receipt_email",
     "settings_patch",
+    "clock_punch",
   ];
   return (ok.includes(s as OutboxKind) ? s : "order_upsert") as OutboxKind;
 }

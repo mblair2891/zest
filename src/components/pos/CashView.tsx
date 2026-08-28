@@ -14,6 +14,7 @@ export function CashView() {
   const [count, setCount] = useState("");
   const [mgrOpen, setMgrOpen] = useState(false);
   const [pending, setPending] = useState<"close" | "open" | null>(null);
+  const [closeErr, setCloseErr] = useState<string | null>(null);
 
   const emp = usePosStore((s) => s.employees.find((e) => e.id === s.currentEmployeeId));
   const orders = usePosStore((s) => s.orders);
@@ -164,6 +165,11 @@ export function CashView() {
               Open new shift
             </Button>
           </div>
+          {closeErr && (
+            <p className="mt-3 text-sm text-danger" role="alert">
+              {closeErr}
+            </p>
+          )}
           {shift.closedAt && (
             <p className="mt-3 text-xs text-muted-foreground">
               Closed {formatDateTime(shift.closedAt)} · counted{" "}
@@ -208,10 +214,16 @@ export function CashView() {
         title="Manager cash authorization"
         onVerified={() => {
           if (pending === "close") {
-            closeShift(counted || expected);
+            const res = closeShift(counted || expected);
+            if (res && res.ok === false) {
+              setCloseErr(res.error ?? "Cannot close with open checks.");
+            } else {
+              setCloseErr(null);
+            }
           } else if (pending === "open") {
             openShift(20000);
             setCount("");
+            setCloseErr(null);
           }
           setPending(null);
         }}

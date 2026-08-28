@@ -351,8 +351,25 @@ function PosAppInner({ entityId }: { entityId?: string }) {
                 : cur.modifierGroups,
             });
           }
-          if (setup.recipes?.length) {
-            useCostStore.setState({ recipes: setup.recipes });
+          if (setup.recipes?.length || setup.costPack) {
+            const pack = setup.costPack;
+            useCostStore.setState({
+              recipes: setup.recipes?.length
+                ? setup.recipes
+                : useCostStore.getState().recipes,
+              ...(pack
+                ? {
+                    skus: pack.skus?.length ? pack.skus : useCostStore.getState().skus,
+                    suppliers: pack.suppliers?.length
+                      ? pack.suppliers
+                      : useCostStore.getState().suppliers,
+                    invoices: pack.invoices ?? useCostStore.getState().invoices,
+                    maps: pack.maps ?? useCostStore.getState().maps,
+                    exceptions: pack.exceptions ?? useCostStore.getState().exceptions,
+                    settings: pack.settings ?? useCostStore.getState().settings,
+                  }
+                : {}),
+            });
           }
           try {
             useLifecycleStore.getState().hydrateFromSetup({

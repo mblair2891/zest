@@ -406,6 +406,17 @@ const usePosStoreRaw = create()(persist((set, get) => ({
 				sectionOverrides: { ...get().sectionOverrides, [employeeId]: [] }
 			});
 		}
+		const loc = get().tenantLocationId;
+		if (loc) {
+			void import("@/lib/pos/network-store").then((m) => {
+				m.enqueueMutation(
+					"clock_punch",
+					clockingOut ? "Clock out" : "Clock in",
+					emp?.name ?? employeeId,
+					{ employeeId, clockingOut, at: Date.now() },
+				);
+			});
+		}
 	},
 	tick: () => {
 		const now = Date.now();
@@ -2508,6 +2519,13 @@ const usePosStoreRaw = create()(persist((set, get) => ({
 		get().audit("shift_open", `Float $${(floatCents / 100).toFixed(2)}`);
 	},
 	closeShift: (closingCashCents) => {
+		const open = get().orders.filter((o) => o.status === "open");
+		if (open.length) {
+			return {
+				ok: false,
+				error: `${open.length} open check(s). Close or transfer them before server closeout.`,
+			};
+		}
 		const s = get().shift;
 		const expected = s.openingFloatCents + s.cashSalesCents - s.tipsCashCents;
 		set({ shift: {
@@ -2517,6 +2535,7 @@ const usePosStoreRaw = create()(persist((set, get) => ({
 			expectedCashCents: expected
 		} });
 		get().audit("shift_close", `Counted $${(closingCashCents / 100).toFixed(2)}`);
+		return { ok: true };
 	},
 	updateSettlementConfig: (patch) => {
 		const emp = get().getCurrentEmployee();

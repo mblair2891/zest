@@ -497,6 +497,9 @@ export const useCostStore = create<CostState>()(
           inv.entityId,
         );
         get().scanVariance(7);
+        void import("@/lib/pos/persist-location-setup").then((m) =>
+          m.persistLocationCatalog("costs"),
+        );
         return { ok: true };
       },
 

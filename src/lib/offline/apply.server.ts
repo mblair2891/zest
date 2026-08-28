@@ -43,6 +43,23 @@ export async function applyOfflineBatch(
         continue;
       }
 
+      if (item.kind === "clock_punch") {
+        await sql`
+          insert into offline_mutations (
+            client_mutation_id, location_id, user_id, kind, payload, status
+          ) values (
+            ${item.clientMutationId},
+            ${item.locationId},
+            ${userId},
+            ${item.kind},
+            ${JSON.stringify(item.payload)}::jsonb,
+            ${"applied"}
+          )
+        `;
+        results.push({ clientMutationId: item.clientMutationId, status: "applied" });
+        continue;
+      }
+
       if (item.kind === "card_capture") {
         results.push({
           clientMutationId: item.clientMutationId,

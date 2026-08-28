@@ -15,7 +15,7 @@ function ids(): { orgId: string; locationId: string } | null {
   return { orgId, locationId };
 }
 
-export function persistLocationCatalog(kind: "floor" | "menu" | "recipes"): void {
+export function persistLocationCatalog(kind: "floor" | "menu" | "recipes" | "costs"): void {
   const key = kind;
   const prev = timers.get(key);
   if (prev) clearTimeout(prev);
@@ -28,12 +28,14 @@ export function persistLocationCatalog(kind: "floor" | "menu" | "recipes"): void
   );
 }
 
-export async function flushLocationCatalog(_kind: "floor" | "menu" | "recipes"): Promise<void> {
+export async function flushLocationCatalog(
+  _kind: "floor" | "menu" | "recipes" | "costs",
+): Promise<void> {
   const ctx = ids();
   if (!ctx) return;
   const pos = usePosStore.getState();
   const plan = floorPlanFromPos(pos.tables, pos.floorSections);
-  const recipes = useCostStore.getState().recipes;
+  const cost = useCostStore.getState();
   await saveLocationSettingsFn({
     data: {
       orgId: ctx.orgId,
@@ -48,7 +50,15 @@ export async function flushLocationCatalog(_kind: "floor" | "menu" | "recipes"):
           items: pos.menuItems,
           modifiers: pos.modifierGroups,
         },
-        recipes,
+        recipes: cost.recipes,
+        costPack: {
+          skus: cost.skus,
+          suppliers: cost.suppliers,
+          invoices: cost.invoices.map((i) => ({ ...i, parseNote: i.parseNote?.slice(0, 400) })),
+          maps: cost.maps,
+          exceptions: cost.exceptions,
+          settings: cost.settings,
+        },
       },
     },
   });

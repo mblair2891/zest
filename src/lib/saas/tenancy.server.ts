@@ -217,6 +217,10 @@ function parseSetup(raw: unknown): LocationSetup {
     floorPlan: parseFloorPlan(o.floorPlan),
     menuCatalog: parseMenuCatalog(o.menuCatalog),
     recipes: parseRecipes(o.recipes),
+    costPack:
+      o.costPack && typeof o.costPack === "object"
+        ? (o.costPack as LocationSetup["costPack"])
+        : undefined,
   };
 }
 
