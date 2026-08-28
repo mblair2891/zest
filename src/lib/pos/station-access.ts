@@ -6,8 +6,8 @@ import { SESSION_MODES, type SessionModeId } from "@/lib/lifecycle/types";
 export const STATION_KIND_LABEL: Record<SessionModeId, string> = {
   floor_pos: "Server",
   host_stand: "Host",
-  kitchen_kds: "Kitchen ODS",
-  bar_kds: "Bar ODS",
+  kitchen_kds: "Kitchen Order Display",
+  bar_kds: "Bar Order Display",
   expo: "Expo",
   cashier: "Cashier",
   bar_pos: "Bar POS",
@@ -36,33 +36,64 @@ const ALL_KINDS: SessionModeId[] = SESSION_MODES.map((m) => m.id);
 
 export function stationsAllowedForEmployee(
   emp: Employee | null | undefined,
+  opts?: { training?: boolean },
 ): SessionModeId[] {
   if (!emp) return ALL_KINDS;
+  let base: SessionModeId[];
   switch (emp.role) {
     case "owner":
     case "manager":
-      return ALL_KINDS;
+      base = ALL_KINDS;
+      break;
     case "server":
-      return ["floor_pos", "expo", "cashier", "host_stand"];
+      base = ["floor_pos", "expo", "cashier", "host_stand"];
+      break;
     case "host":
-      return ["host_stand", "floor_pos", "expo", "kiosk"];
+      base = ["host_stand", "floor_pos", "expo", "kiosk"];
+      break;
     case "bartender":
-      return ["bar_pos", "bar_kds", "expo", "cashier"];
+      base = ["bar_pos", "bar_kds", "expo", "cashier"];
+      break;
     case "kitchen":
-      return ["kitchen_kds", "expo"];
+      base = ["kitchen_kds", "expo"];
+      break;
     case "busser":
-      return ["busser", "floor_pos"];
+      base = ["busser", "floor_pos"];
+      break;
     case "cashier":
-      return ["cashier", "floor_pos", "expo"];
+      base = ["cashier", "floor_pos", "expo"];
+      break;
     case "vendor_operator":
-      return ["floor_pos", "bar_pos", "kitchen_kds", "bar_kds", "expo", "cashier"];
+      base = ["floor_pos", "bar_pos", "kitchen_kds", "bar_kds", "expo", "cashier"];
+      break;
     case "kiosk":
-      return ["kiosk"];
+      base = ["kiosk"];
+      break;
     case "accountant":
-      return ["floor_pos", "cashier"];
+      base = ["floor_pos", "cashier"];
+      break;
     default:
-      return ["floor_pos"];
+      base = ["floor_pos"];
   }
+  return withTrainingLoop(base, opts?.training, emp.role);
+}
+
+function withTrainingLoop(
+  base: SessionModeId[],
+  training: boolean | undefined,
+  role: Employee["role"],
+): SessionModeId[] {
+  if (!training) return base;
+  if (role === "owner" || role === "manager") return ALL_KINDS;
+  const trainingCore: SessionModeId[] = [
+    "floor_pos",
+    "host_stand",
+    "kitchen_kds",
+    "bar_kds",
+    "kiosk",
+    "cashier",
+  ];
+  return [...new Set([...base, ...trainingCore])];
 }
 
 export type StationEntityOption = { id: string; name: string };

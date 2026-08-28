@@ -561,15 +561,22 @@ export const getPosBootstrapFn = createServerFn({ method: "POST" })
   }))
   .handler(async ({ context, data }) => {
     const { operatorsAsVendors } = await import("./onboarding.server");
-    const { listFloorStaffForLocation } = await import("@/lib/demo/floor-test-seed.server");
     if (!context.userId) {
       throw new Error("Sign in to open POS.");
     }
     const { assertLocationAccess } = await import("./tenancy.server");
     const access = await assertLocationAccess(context.userId, data.locationId);
+    const { ensureTrainingFloor } = await import("@/lib/pos/training-roster.server");
+    const pack = await ensureTrainingFloor(data.locationId);
     const operators = await operatorsAsVendors(data.locationId);
-    const floorStaff = await listFloorStaffForLocation(data.locationId);
-    return { ...access, operators, floorStaff, openDemo: false as const };
+    return {
+      ...access,
+      location: { ...access.location, setup: pack.setup },
+      operators,
+      floorStaff: pack.staff,
+      openDemo: false as const,
+      trainingRoster: pack.seededRoster || pack.staff.some((s) => s.id.startsWith("emp_tr_")),
+    };
   });
 
 export const getFloorTestInfoFn = createServerFn({ method: "GET" })

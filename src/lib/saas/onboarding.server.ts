@@ -327,6 +327,7 @@ function locationSetup(
     networkCheckedAt: loc.networkCheckedAt,
     networkNotes: loc.networkNotes,
     networkChecklist: loc.networkChecklist,
+    lifecycleStatus: "training" as const,
   };
 }
 

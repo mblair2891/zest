@@ -325,7 +325,18 @@ function PosAppInner({ entityId }: { entityId?: string }) {
           } catch {
             /* ignore */
           }
-          if (setup.floorPlan?.sections?.length) {
+          if (setup.floorPlan?.tables?.length) {
+            const cur = usePosStore.getState();
+            usePosStore.setState({
+              floorSections: setup.floorPlan.sections?.length
+                ? setup.floorPlan.sections
+                : cur.floorSections,
+              tables:
+                cur.tables.length === 0
+                  ? tablesFromFloorPlan(setup.floorPlan)
+                  : cur.tables,
+            });
+          } else if (setup.floorPlan?.sections?.length) {
             usePosStore.setState({ floorSections: setup.floorPlan.sections });
           }
           if (setup.menuCatalog?.items?.length) {

@@ -17,6 +17,7 @@ import {
   stationsAllowedForEmployee,
 } from "@/lib/pos/station-access";
 import { applySessionModeView } from "./DeviceModeView";
+import { locationIsTraining } from "@/lib/lifecycle/store";
 import { SESSION_MODES, type SessionModeId } from "@/lib/lifecycle/types";
 import {
   DEVICE_FUNCTION_LABEL,
@@ -123,7 +124,11 @@ export function StationSwitcherDialog({
   const devices = usePosStore((s) => s.locationDevices ?? []);
 
   const current = pane === "a" ? paneA : pane === "b" ? paneB : assignment;
-  const allowedKinds = useMemo(() => stationsAllowedForEmployee(emp ?? null), [emp]);
+  const training = locationIsTraining();
+  const allowedKinds = useMemo(
+    () => stationsAllowedForEmployee(emp ?? null, { training }),
+    [emp, training],
+  );
   const entities = useMemo(
     () => entitiesAllowedForEmployee(emp ?? null, vendors, hostName),
     [emp, vendors, hostName],

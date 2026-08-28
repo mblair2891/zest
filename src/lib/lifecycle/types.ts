@@ -65,8 +65,8 @@ export const SESSION_MODES: Array<{
 }> = [
   { id: "floor_pos", label: "Server POS", view: "floor" },
   { id: "host_stand", label: "Host stand", view: "waitlist" },
-  { id: "kitchen_kds", label: "Kitchen ODS", view: "kitchen" },
-  { id: "bar_kds", label: "Bar ODS", view: "bar" },
+  { id: "kitchen_kds", label: "Kitchen Order Display", view: "kitchen" },
+  { id: "bar_kds", label: "Bar Order Display", view: "bar" },
   { id: "expo", label: "Expo", view: "kitchen" },
   { id: "cashier", label: "Cashier", view: "order" },
   { id: "bar_pos", label: "Bar POS", view: "bar" },

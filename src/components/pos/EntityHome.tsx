@@ -39,6 +39,8 @@ import {
 } from "@/lib/pos/entities";
 import type { VenueEntityId } from "@/lib/pos/types";
 import { isDevDemoClient } from "@/lib/saas/flags";
+import { isTrainingRosterId, TRAINING_PIN_HINT } from "@/lib/pos/training-roster";
+import { locationIsTraining } from "@/lib/lifecycle/store";
 import { SummexBrandBlock } from "@/components/brand/SummexMark";
 import { useCurrentUserState } from "@/lib/auth/use-current-user";
 
@@ -317,7 +319,9 @@ export function EntityLogin({ entityId }: { entityId: VenueEntityId }) {
           hint={
             prospect
               ? `Universal demo PIN ${DEMO_STAFF_PIN}`
-              : "Servers, kitchen, bar, host stand, cashiers"
+              : employees.some((e) => isTrainingRosterId(e.id)) && locationIsTraining()
+                ? TRAINING_PIN_HINT
+                : "Servers, kitchen, bar, host stand, cashiers"
           }
           error={error}
           onComplete={submitPin}

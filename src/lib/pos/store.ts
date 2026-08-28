@@ -2841,12 +2841,18 @@ const usePosStoreRaw = create()(persist((set, get) => ({
 			/* ignore */
 		}
 		if (opts.floorStaff?.length || opts.pinGate) {
-			const hasTestMgr = (opts.floorStaff ?? []).some((s) => s.id === "emp_ft_0000");
+			const hasRoster = (opts.floorStaff ?? []).some(
+				(s) =>
+					s.id.startsWith("emp_tr_") ||
+					s.id === "emp_ft_0000" ||
+					s.role === "manager" ||
+					s.role === "server",
+			);
 			set({
 				currentEmployeeId: null,
 				sessionKind: "pin",
 				backOfficeUnlocked: false,
-				employees: hasTestMgr
+				employees: hasRoster
 					? get().employees.filter((e) => e.id !== "emp_owner")
 					: get().employees,
 			});

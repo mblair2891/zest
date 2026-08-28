@@ -60,6 +60,7 @@ import { DemoDeviceSwitcher } from "@/components/demo/DemoDeviceSwitcher";
 import { useDemoDeviceStore } from "@/lib/demo/device-session";
 import { useDemoLiveSync } from "@/lib/demo/live-sync";
 import { TrainingBanner } from "./TrainingBanner";
+import { locationIsTraining } from "@/lib/lifecycle/store";
 import {
   ThisStationButton,
   SplitScreenToggle,
@@ -360,7 +361,9 @@ export function AppShell() {
 
   useEffect(() => {
     if (!emp) return;
-    const allowed = stationsAllowedForEmployee(emp);
+    const allowed = stationsAllowedForEmployee(emp, {
+      training: locationIsTraining(),
+    });
     let kind = useStationSessionStore.getState().assignment.kind;
     if (allowed.length && !allowed.includes(kind)) {
       kind = allowed[0]!;

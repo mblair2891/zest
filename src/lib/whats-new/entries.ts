@@ -6,6 +6,19 @@ import type { GuideUpdate } from "@/lib/guide/types";
  */
 export const WHATS_NEW_ENTRIES: GuideUpdate[] = [
   {
+    id: "upd_2026_10_08_training_loop",
+    date: "2026-10-08",
+    title: "Training floor loop",
+    summary:
+      "A SaaS training host can seat, send, Start/Bump, pay cash or sandbox card, and bus. If no staff exist, location-only PINs 0000–5555 are hashed in.",
+    body: "Open POS on a training location. Banner stays TRAINING. PIN 1111 as server, 2222 host, 4444 kitchen, 5555 busser. This station switches Server, Host stand, Kitchen/Bar Order Display, Kiosk, Cashier. Live card keys are ignored. Gift and settlement are practice. PIN is not the time clock.",
+    roles: ["owner_manager", "server", "kitchen_bar", "host_operator"],
+    surfaces: ["floor", "kds"],
+    audience: "all",
+    topicId: "training-floor-loop",
+    tags: ["training", "pin", "ods", "sandbox"],
+  },
+  {
     id: "upd_2026_10_07_floor_checks_ai",
     date: "2026-10-07",
     title: "Floor views, table combine, check split/move, scheduled AI reports",
