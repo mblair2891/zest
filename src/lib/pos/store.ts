@@ -820,7 +820,8 @@ const usePosStoreRaw = create()(persist((set, get) => ({
 		const seats = members.reduce((s, t) => s + nativeSeats(t), 0);
 		const label = lowestGroupLabel(members);
 		const status = members.find((t) => t.orderId)?.status ?? winner.status;
-		const guestCount = members.reduce((s, t) => s + (t.guestCount ?? 0), 0) || winner.guestCount;
+		const guestCount =
+			(members.reduce((s, t) => s + (t.guestCount ?? 0), 0) || winner.guestCount);
 		const serverId = winner.serverId ?? members.find((t) => t.serverId)?.serverId;
 		const orderIds = [...new Set(members.map((t) => t.orderId).filter(Boolean))];
 		let keepOrderId = winner.orderId ?? orderIds[0];

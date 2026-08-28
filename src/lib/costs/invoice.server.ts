@@ -41,7 +41,7 @@ function asExtract(raw: unknown, fallback: InvoiceExtract): InvoiceExtract {
       const r = x && typeof x === "object" ? (x as Record<string, unknown>) : {};
       const name = String(r.name ?? r.description ?? "").trim();
       if (!name) return null;
-      const qty = Number(r.qty ?? r.quantity ?? 1) || 1;
+      const qty = (Number(r.qty ?? r.quantity ?? 1) || 1);
       let unitCostCents = Math.round(Number(r.unitCostCents ?? 0));
       if (!unitCostCents && r.unitCost != null) {
         unitCostCents = Math.round(Number(r.unitCost) * 100);

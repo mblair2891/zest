@@ -80,9 +80,9 @@ function ChangePasswordForm() {
         /* ignore */
       }
       try {
-        await navigate({ to: "/dashboard", replace: true });
+        await navigate({ to: "/dashboard", search: { passwordUpdated: true }, replace: true });
       } catch {
-        await navigate({ to: "/login", replace: true });
+        await navigate({ to: "/login", search: { passwordUpdated: true }, replace: true });
       }
     } catch (err) {
       setBusy(false);

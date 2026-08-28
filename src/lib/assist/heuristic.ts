@@ -187,7 +187,8 @@ function menuItem(text: string, ctx: AssistContext, messages: AssistMessage[]): 
     return { type: "questions", questions: questions.slice(0, 5), source: "guided" };
   }
 
-  const stated = dollarsToCents(reply(messages, "price") || text) ?? price ?? seed?.priceCents ?? 0;
+  const stated =
+    dollarsToCents(reply(messages, "price") || text) ?? price ?? seed?.priceCents ?? 0;
   const cashSaid = /\bcash\b/.test(basisAns) && !/\b(card|printed)\b/.test(basisAns);
   let priceCents = stated;
   if (cashSaid && ctx.cashDiscountEnabled && ctx.cashDiscountPercent > 0) {
@@ -265,7 +266,7 @@ function floor(text: string): AssistTurnResult {
     text.match(/by the ([^,.\n]+)/i)?.[0]?.trim() ||
     "Dining";
   const range = text.match(/tables?\s+(\d+)\s*(?:-|–|to)\s*(\d+)/i);
-  const seats = parseInt(text.match(/seats?\s+(\d+)/i)?.[1] ?? "4", 10) || 4;
+  const seats = (parseInt(text.match(/seats?\s+(\d+)/i)?.[1] ?? "4", 10) || 4);
   const labels = range
     ? rangeLabels(parseInt(range[1]!, 10), parseInt(range[2]!, 10))
     : ["1"];
