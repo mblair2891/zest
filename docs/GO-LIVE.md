@@ -43,7 +43,7 @@ A SaaS-onboarded host can operate in **TRAINING** when these are true.
 6. PIN **1111** (server) or **0000** (manager) → This station → Host stand seats → Server orders → Kitchen/Bar Order Display Start/Bump → Pay cash or Quantum sandbox → Busser cleaned.
 7. Guide: `/guide?topic=training-floor-loop`.
 
-Optional (not a training blocker): `RESEND_API_KEY` / `EMAIL_FROM` so quotes and invites send; otherwise they log in the outbox. Twilio for waitlist SMS; otherwise sandbox log.
+Optional (not a training blocker): `RESEND_API_KEY` / `EMAIL_FROM` so quotes and invites send; otherwise they log in the outbox. Twilio for waitlist SMS; otherwise sandbox log. HR packets work without DocuSign/HelloSign — download and attach the signed PDF.
 
 ---
 
@@ -81,6 +81,8 @@ These are **not** missing screens. List them here so a later turn does not rebui
 | Enroll physical reader | Serial on Hardware registry |
 | `app` / `sites` DNS | Separate hosts only when they serve this repo |
 | Resend / Twilio domain | Outbox/sandbox until keys exist |
+| DocuSign or HelloSign keys | HR packets still generate; signed PDF upload without a vendor |
+| `HR_PII_SECRET` | Encrypts SSN/tax; last4 only if unset |
 
 Factory reset (off in production unless `FACTORY_RESET_ENABLED=true`): wipes business data, reseeds **Admin + must-change-password only**. No demo house.
 

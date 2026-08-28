@@ -18,6 +18,7 @@ export const HR_TOPICS: GuideTopic[] = [
       ul(
         "PIN on this station is not a time punch. Clock in and out on Labor.",
         "If your employer enabled time-off, request it on HR. A manager approves or denies.",
+        "Availability windows (if enabled) are your usual days. The published schedule is still Labor.",
         "Onboarding packets (W-4, I-9, state forms) arrive by email or as a download to sign. Return the signed PDF if the house is not using an e-sign vendor.",
         "You belong to one employer entity. Another stall cannot open your file.",
       ),
@@ -79,7 +80,9 @@ export const HR_TOPICS: GuideTopic[] = [
       warn(
         "I-9 is a status + date + file store. Do not skip sections, backdate, or tell the employee which documents to present. This is not a tax engine.",
       ),
-      tip("Payroll summary and CSV are hours and tips for this entity — not withholding or deposits."),
+      tip(
+        "Payroll summary and CSV are hours and tips for this entity — not withholding or deposits. Availability is weekday windows; published shifts stay on Labor.",
+      ),
       related("hr-staff-basics", "hr-platform-flags", "role-owner"),
     ],
   }),

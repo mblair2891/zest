@@ -53,7 +53,7 @@ accurate when the job path changes.
 12. Training vs Go live
 13. Devices: Change device, split screen, SYOH tablets + Summex terminals
 14. Offline / hybrid
-15. Staff HR basics (clock vs PIN, time-off if the employer enabled it)
+15. Staff HR basics (clock vs PIN, time-off and availability if the employer enabled them)
 16. Troubleshooting
 
 Exit on the public page returns to marketing home (`/`).
