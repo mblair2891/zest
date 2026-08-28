@@ -12,7 +12,17 @@ import { Input } from "@/components/ui/input";
 import { useOpsStore } from "@/lib/pos/ops-store";
 import { usePosStore } from "@/lib/pos/store";
 import { formatCurrency, formatDateTime, formatTime } from "@/lib/utils";
-import type { PayrollMode, PayPeriodType } from "@/lib/pos/ops-types";
+import type {
+  ApprovalMode,
+  AutoPayrollTrigger,
+  ClockWindowAction,
+  PayPeriodType,
+  PayrollSendMode,
+} from "@/lib/pos/ops-types";
+import { computePayPeriod, hoursExportStatus, parseLaborRules } from "@/lib/labor/rules";
+import { hrPayrollExportFn } from "@/lib/hr/api";
+import { useSaasStore } from "@/lib/pos/saas-store";
+import { GuideLearnLink } from "@/components/guide/GuideLearnLink";
 import { HOST_SCOPE, canViewPayroll, isHostPrivileged } from "@/lib/access/entity-grants";
 import { isFloorRole } from "@/lib/pos/pin";
 import { buildPayrollRows, payrollCsv } from "@/lib/labor/payroll";
@@ -53,6 +63,11 @@ export function LaborOpsView() {
   const [opFilter, setOpFilter] = useState(
     isHostPrivileged(current) ? "" : current?.operatorId || HOST_SCOPE,
   );
+  const [forceOverride, setForceOverride] = useState(false);
+  const orgId = useSaasStore((s) => s.org.id);
+  const locId = usePosStore((s) => s.tenantLocationId) || "";
+  const rules = parseLaborRules(labor);
+  const period = computePayPeriod(Date.now(), rules);
 
   useEffect(() => {
     if (seeded.current) return;
@@ -69,8 +84,9 @@ export function LaborOpsView() {
   const supervisorName = current?.name ?? "Supervisor";
 
   const doClock = (id: string, name: string, isIn: boolean) => {
+    const force = forceOverride && (current?.role === "owner" || current?.role === "manager");
     if (isIn) {
-      const res = clockOut(id, name);
+      const res = clockOut(id, name, { force });
       if (!res.ok) {
         setFlash(res.error ?? "Clock out failed");
         return;
@@ -78,23 +94,19 @@ export function LaborOpsView() {
       const emp = employees.find((e) => e.id === id);
       if (emp?.clockedIn) clockTogglePos(id);
       if (res.redFlag) {
-        setFlash(
-          `Red flag — ${name} clocked out ${res.minutesFromLastTicket ?? "?"}m after last ticket. Supervisor notified.`,
-        );
+        setFlash(`Needs review — ${name}. ${res.flags?.[0] ?? "Supervisor notified."}`);
       } else {
-        setFlash(
-          `Auto-approved — ${name} clocked out within ${labor.clockOutRedFlagMinutes}m of last ticket.`,
-        );
+        setFlash(`Approved — ${name} clocked out.`);
       }
     } else {
-      const res = clockIn(id, name);
+      const res = clockIn(id, name, { force });
       if (!res.ok) {
         setFlash(res.error ?? "Clock in failed");
         return;
       }
       const emp = employees.find((e) => e.id === id);
       if (emp && !emp.clockedIn) clockTogglePos(id);
-      setFlash(`${name} clocked in (within schedule window)`);
+      setFlash(res.flags?.length ? `${name} clocked in · ${res.flags[0]}` : `${name} clocked in`);
     }
   };
 
@@ -104,13 +116,16 @@ export function LaborOpsView() {
         <div className="flex flex-wrap items-center gap-2">
           <Clock className="h-4 w-4 text-primary" />
           <h2 className="text-sm font-semibold">Labor · schedule & time</h2>
+          <GuideLearnLink topicId="shift-allowables" compact>
+            Learn
+          </GuideLearnLink>
           <Badge variant="warn">
             {alerts.filter((a) => !a.resolved).length} red flags
           </Badge>
         </div>
         <p className="mt-1 text-xs text-muted-foreground">
-          Clock-in window · red-flag clock-out from last closed ticket · daily
-          closeout · payroll export when all shifts approved. Entity-scoped.
+          Published shifts · clock windows · approval · hours export to ADP/Intuit/CSV.
+          Summex does not process payroll.
         </p>
         {!floor && isHostPrivileged(current) && vendors.length > 0 && (
           <select
@@ -166,17 +181,27 @@ export function LaborOpsView() {
           <div className="space-y-3">
             <div className="rounded-2xl border border-border bg-surface p-3 text-xs text-muted-foreground">
               <p>
-                Allowable clock-in:{" "}
-                <span className="text-foreground">
-                  {labor.clockInEarlyMinutes}m early / {labor.clockInLateMinutes}
-                  m late
-                </span>{" "}
-                vs published shift. Clock-out auto-approves if within{" "}
-                <span className="text-foreground">
-                  {labor.clockOutRedFlagMinutes}m
-                </span>{" "}
-                of last ticket closed by that staff member.
+                Clock-in {rules.clockInEarlyMinutes}m early / {rules.clockInLateMinutes}m late
+                vs published shift ({rules.clockInEarlyAction}/{rules.clockInLateAction}).
+                Clock-out {rules.clockOutEarlyMinutes}m early / {rules.clockOutLateMinutes}m late.
+                Approval:{" "}
+                {rules.approvalMode === "manual"
+                  ? "manual"
+                  : rules.approvalMode === "auto_shift_end"
+                    ? `auto if within ${rules.approvalWindowMinutes}m of shift end`
+                    : `auto if within ${rules.approvalWindowMinutes}m of last closed ticket`}
+                .
               </p>
+              {(current?.role === "owner" || current?.role === "manager") && rules.managerOverride && (
+                <label className="mt-2 flex items-center gap-2 text-xs">
+                  <input
+                    type="checkbox"
+                    checked={forceOverride}
+                    onChange={(e) => setForceOverride(e.target.checked)}
+                  />
+                  Manager override (no-shift / outside window)
+                </label>
+              )}
               <div className="mt-2 flex flex-wrap gap-2">
                 <Button
                   size="sm"
@@ -378,67 +403,220 @@ export function LaborOpsView() {
               <Settings2 className="h-4 w-4" />
               Labor rules (location settings)
             </div>
+            <p className="text-xs font-semibold">Clock windows (this employer)</p>
             <Field
-              label="Clock-in early window (minutes)"
-              value={String(labor.clockInEarlyMinutes)}
-              onChange={(v) =>
-                updateLabor({ clockInEarlyMinutes: parseInt(v, 10) || 0 })
-              }
+              label="Clock-in early (minutes)"
+              value={String(rules.clockInEarlyMinutes)}
+              onChange={(v) => updateLabor({ clockInEarlyMinutes: parseInt(v, 10) || 0 })}
+            />
+            <ActionField
+              label="If too early"
+              value={rules.clockInEarlyAction}
+              onChange={(v) => updateLabor({ clockInEarlyAction: v })}
             />
             <Field
-              label="Clock-in late window (minutes)"
-              value={String(labor.clockInLateMinutes)}
-              onChange={(v) =>
-                updateLabor({ clockInLateMinutes: parseInt(v, 10) || 0 })
-              }
+              label="Clock-in late (minutes)"
+              value={String(rules.clockInLateMinutes)}
+              onChange={(v) => updateLabor({ clockInLateMinutes: parseInt(v, 10) || 0 })}
+            />
+            <ActionField
+              label="If too late in"
+              value={rules.clockInLateAction}
+              onChange={(v) => updateLabor({ clockInLateAction: v })}
             />
             <Field
-              label="Clock-out red-flag window (minutes from last closed ticket)"
-              value={String(labor.clockOutRedFlagMinutes)}
-              onChange={(v) =>
-                updateLabor({ clockOutRedFlagMinutes: parseInt(v, 10) || 0 })
-              }
+              label="Clock-out early (minutes before shift end)"
+              value={String(rules.clockOutEarlyMinutes)}
+              onChange={(v) => updateLabor({ clockOutEarlyMinutes: parseInt(v, 10) || 0 })}
+            />
+            <ActionField
+              label="If too early out"
+              value={rules.clockOutEarlyAction}
+              onChange={(v) => updateLabor({ clockOutEarlyAction: v })}
             />
             <Field
-              label="Daily system closeout time (HH:mm)"
-              value={labor.dailyCloseoutTime}
+              label="Clock-out late (minutes after shift end)"
+              value={String(rules.clockOutLateMinutes)}
+              onChange={(v) => updateLabor({ clockOutLateMinutes: parseInt(v, 10) || 0 })}
+            />
+            <ActionField
+              label="If too late out"
+              value={rules.clockOutLateAction}
+              onChange={(v) => updateLabor({ clockOutLateAction: v })}
+            />
+            <label className="flex items-center gap-2 text-xs">
+              <input
+                type="checkbox"
+                checked={rules.allowClockWithNoShift}
+                onChange={(e) => updateLabor({ allowClockWithNoShift: e.target.checked })}
+              />
+              Allow clock with no published shift
+            </label>
+            <label className="flex items-center gap-2 text-xs">
+              <input
+                type="checkbox"
+                checked={rules.requireOverrideForNoShift}
+                onChange={(e) => updateLabor({ requireOverrideForNoShift: e.target.checked })}
+              />
+              Require manager override for no-shift punch
+            </label>
+            <label className="flex items-center gap-2 text-xs">
+              <input
+                type="checkbox"
+                checked={rules.managerOverride}
+                onChange={(e) => updateLabor({ managerOverride: e.target.checked })}
+              />
+              Manager override enabled
+            </label>
+            <Field
+              label="Punch rounding (minutes, 0 = off)"
+              value={String(rules.punchRoundingMinutes)}
+              onChange={(v) => updateLabor({ punchRoundingMinutes: parseInt(v, 10) || 0 })}
+            />
+            <Field
+              label="Break deduct (minutes, 0 = off)"
+              value={String(rules.breakDeductMinutes)}
+              onChange={(v) => updateLabor({ breakDeductMinutes: parseInt(v, 10) || 0 })}
+            />
+            <p className="pt-2 text-xs font-semibold">Shift approval</p>
+            <label className="block text-xs text-muted-foreground">
+              Approval mode
+              <select
+                className="mt-1 flex h-9 w-full rounded-md border border-border bg-bg px-2 text-sm"
+                value={rules.approvalMode}
+                onChange={(e) => updateLabor({ approvalMode: e.target.value as ApprovalMode })}
+              >
+                <option value="manual">Manual</option>
+                <option value="auto_shift_end">Auto if clock-out within X min of shift end</option>
+                <option value="auto_last_ticket">Auto if clock-out within X min of last closed ticket</option>
+              </select>
+            </label>
+            <Field
+              label="Auto-approve window (minutes)"
+              value={String(rules.approvalWindowMinutes)}
+              onChange={(v) => updateLabor({ approvalWindowMinutes: parseInt(v, 10) || 0 })}
+            />
+            <p className="text-xs font-semibold">Red-flag notify</p>
+            {(
+              [
+                ["notifyEarlyClockIn", "Early clock in"],
+                ["notifyLateClockIn", "Late clock in"],
+                ["notifyEarlyClockOut", "Early clock out"],
+                ["notifyLateClockOut", "Late clock out"],
+              ] as const
+            ).map(([k, label]) => (
+              <label key={k} className="flex items-center gap-2 text-xs">
+                <input
+                  type="checkbox"
+                  checked={rules[k]}
+                  onChange={(e) => updateLabor({ [k]: e.target.checked })}
+                />
+                {label}
+              </label>
+            ))}
+            <Field
+              label="Daily closeout time (HH:mm)"
+              value={rules.dailyCloseoutTime}
               onChange={(v) => updateLabor({ dailyCloseoutTime: v })}
             />
+            <p className="pt-2 text-xs font-semibold">Pay period (hours export, not a payroll run)</p>
             <label className="block text-xs text-muted-foreground">
-              Pay period
+              Period
               <select
-                className="mt-1 flex h-9 w-full rounded-md border border-border bg-bg px-2 text-sm text-foreground"
-                value={labor.payPeriodType}
-                onChange={(e) =>
-                  updateLabor({
-                    payPeriodType: e.target.value as PayPeriodType,
-                  })
-                }
+                className="mt-1 flex h-9 w-full rounded-md border border-border bg-bg px-2 text-sm"
+                value={rules.payPeriodType}
+                onChange={(e) => updateLabor({ payPeriodType: e.target.value as PayPeriodType })}
               >
                 <option value="weekly">Weekly</option>
                 <option value="biweekly">Biweekly</option>
                 <option value="semimonthly">Semi-monthly</option>
-                <option value="monthly">Monthly</option>
-              </select>
-            </label>
-            <label className="block text-xs text-muted-foreground">
-              Hours file
-              <select
-                className="mt-1 flex h-9 w-full rounded-md border border-border bg-bg px-2 text-sm text-foreground"
-                value={labor.payrollMode}
-                onChange={(e) =>
-                  updateLabor({ payrollMode: e.target.value as PayrollMode })
-                }
-              >
-                <option value="auto_export">
-                  Prepare hours file when all shifts are approved
-                </option>
-                <option value="manual">Hold until you export</option>
+                <option value="custom">Custom</option>
               </select>
             </label>
             <Field
-              label="Destination (ADP / Intuit / CSV id)"
-              value={labor.payrollProcessorId}
+              label="Period start weekday (0=Sun)"
+              value={String(rules.payPeriodStartWeekday)}
+              onChange={(v) => updateLabor({ payPeriodStartWeekday: parseInt(v, 10) || 0 })}
+            />
+            <Field
+              label="Anchor date (YYYY-MM-DD, biweekly/custom)"
+              value={rules.payPeriodAnchorDate}
+              onChange={(v) => updateLabor({ payPeriodAnchorDate: v })}
+            />
+            <Field
+              label="Custom length (days)"
+              value={String(rules.payPeriodCustomDays)}
+              onChange={(v) => updateLabor({ payPeriodCustomDays: parseInt(v, 10) || 14 })}
+            />
+            <Field
+              label="Pay date (days after period end)"
+              value={String(rules.payDateOffsetDays)}
+              onChange={(v) => updateLabor({ payDateOffsetDays: parseInt(v, 10) || 0 })}
+            />
+            <label className="flex items-center gap-2 text-xs">
+              <input
+                type="checkbox"
+                checked={rules.autoPayroll}
+                onChange={(e) => updateLabor({ autoPayroll: e.target.checked })}
+              />
+              Auto hours export
+            </label>
+            <label className="block text-xs text-muted-foreground">
+              Trigger
+              <select
+                className="mt-1 flex h-9 w-full rounded-md border border-border bg-bg px-2 text-sm"
+                value={rules.autoPayrollTrigger}
+                onChange={(e) =>
+                  updateLabor({ autoPayrollTrigger: e.target.value as AutoPayrollTrigger })
+                }
+              >
+                <option value="time_of_day">At time of day after period end</option>
+                <option value="days_before_pay">N days before pay date</option>
+              </select>
+            </label>
+            <Field
+              label="Trigger time (HH:mm)"
+              value={rules.autoPayrollTime}
+              onChange={(v) => updateLabor({ autoPayrollTime: v })}
+            />
+            <Field
+              label="Days before pay date"
+              value={String(rules.autoPayrollDaysBeforePay)}
+              onChange={(v) => updateLabor({ autoPayrollDaysBeforePay: parseInt(v, 10) || 0 })}
+            />
+            <label className="flex items-center gap-2 text-xs">
+              <input
+                type="checkbox"
+                checked={rules.requireAllApprovedToExport}
+                onChange={(e) => updateLabor({ requireAllApprovedToExport: e.target.checked })}
+              />
+              Require all shifts approved before export
+            </label>
+            <label className="block text-xs text-muted-foreground">
+              When a provider is connected
+              <select
+                className="mt-1 flex h-9 w-full rounded-md border border-border bg-bg px-2 text-sm"
+                value={rules.sendMode}
+                onChange={(e) => updateLabor({ sendMode: e.target.value as PayrollSendMode })}
+              >
+                <option value="automatic">Send automatic</option>
+                <option value="automatic_after_review">Automatic after review</option>
+                <option value="manual">Manual send</option>
+              </select>
+            </label>
+            <Field
+              label="Notify emails (no provider — download + notify)"
+              value={rules.notifyEmails}
+              onChange={(v) => updateLabor({ notifyEmails: v })}
+            />
+            <Field
+              label="Notify roles"
+              value={rules.notifyRoles}
+              onChange={(v) => updateLabor({ notifyRoles: v })}
+            />
+            <Field
+              label="Destination id (adp / intuit / csv)"
+              value={rules.payrollProcessorId}
               onChange={(v) => updateLabor({ payrollProcessorId: v })}
             />
             <Button
@@ -464,6 +642,16 @@ export function LaborOpsView() {
 
         {tab === "payroll" && (
           <div className="space-y-3" data-demo="payroll">
+            <PeriodExportCard
+              period={period}
+              rules={rules}
+              punches={punches}
+              orgId={orgId}
+              locationId={locId}
+              employerId={opFilter || current?.operatorId || HOST_SCOPE}
+              employerName={settings.name || "Host"}
+              onFlash={setFlash}
+            />
             <PayrollTable
               punches={punches}
               employees={employees.filter((e) => {
@@ -608,5 +796,117 @@ function Field({
         onChange={(e) => onChange(e.target.value)}
       />
     </label>
+  );
+}
+
+function ActionField({
+  label,
+  value,
+  onChange,
+}: {
+  label: string;
+  value: ClockWindowAction;
+  onChange: (v: ClockWindowAction) => void;
+}) {
+  return (
+    <label className="block text-xs text-muted-foreground">
+      {label}
+      <select
+        className="mt-1 flex h-9 w-full rounded-md border border-border bg-bg px-2 text-sm"
+        value={value}
+        onChange={(e) => onChange(e.target.value as ClockWindowAction)}
+      >
+        <option value="block">Block (manager override to proceed)</option>
+        <option value="flag">Allow and red-flag</option>
+      </select>
+    </label>
+  );
+}
+
+function PeriodExportCard({
+  period,
+  rules,
+  punches,
+  orgId,
+  locationId,
+  employerId,
+  employerName,
+  onFlash,
+}: {
+  period: ReturnType<typeof computePayPeriod>;
+  rules: ReturnType<typeof parseLaborRules>;
+  punches: { status: string; clockOutAt?: number }[];
+  orgId: string;
+  locationId: string;
+  employerId: string;
+  employerName: string;
+  onFlash: (m: string) => void;
+}) {
+  const pending = punches.filter(
+    (p) =>
+      p.status === "pending_review" &&
+      (p.clockOutAt ?? 0) >= period.start &&
+      (p.clockOutAt ?? 0) <= period.end,
+  ).length;
+  const st = hoursExportStatus({
+    now: Date.now(),
+    period,
+    rules,
+    pendingReview: pending,
+    alreadySent: false,
+    providerConnected: rules.payrollProcessorId === "adp" || rules.payrollProcessorId === "intuit",
+  });
+  const run = (push: boolean) => {
+    if (!orgId || !locationId) {
+      onFlash("Open a live location.");
+      return;
+    }
+    void hrPayrollExportFn({
+      data: {
+        orgId,
+        locationId,
+        employerId,
+        employerName,
+        periodStart: period.startIso,
+        periodEnd: period.endIso,
+        push,
+      },
+    })
+      .then((r) => {
+        if (!push) {
+          const blob = new Blob([r.csv], { type: "text/csv;charset=utf-8" });
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement("a");
+          a.href = url;
+          a.download = r.fileName;
+          a.click();
+          URL.revokeObjectURL(url);
+        }
+        onFlash(r.message);
+      })
+      .catch((e) => onFlash(e instanceof Error ? e.message : "Export failed"));
+  };
+  return (
+    <div className="rounded-2xl border border-border bg-surface p-4">
+      <p className="text-sm font-semibold">Pay period</p>
+      <p className="mt-1 text-xs text-muted-foreground">
+        {period.startIso} → {period.endIso} · pay date {period.payDateIso} · {st.label}
+      </p>
+      <Badge className="mt-2" variant={st.status === "pending_approval" ? "warn" : "info"}>
+        {st.status.replaceAll("_", " ")}
+      </Badge>
+      <p className="mt-2 text-[11px] text-muted-foreground">
+        Summex does not process payroll. Send to ADP/Intuit when connected, or download CSV and
+        notify {rules.notifyEmails || rules.notifyRoles || "managers"}.
+      </p>
+      <div className="mt-3 flex flex-wrap gap-2">
+        <Button size="sm" variant="outline" onClick={() => run(false)}>
+          Download
+        </Button>
+        <Button size="sm" onClick={() => run(true)} disabled={st.status === "pending_approval"}>
+          Send
+        </Button>
+      </div>
+    </div>
   );
 }

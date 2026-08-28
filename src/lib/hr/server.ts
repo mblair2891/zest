@@ -1036,6 +1036,20 @@ export async function buildPayrollExport(
         csv: (await import("@/lib/labor/payroll-export")).genericPayrollCsv(batch),
         fileName: (await import("@/lib/labor/payroll-export")).payrollExportFileName(batch),
       };
+  const { parseLaborRules, parseNotifyEmails } = await import("@/lib/labor/rules");
+  const labor = parseLaborRules(ctx.setup.laborByEntity?.[data.employerId] ?? ctx.setup.laborByEntity?.host);
+  const emails = parseNotifyEmails(labor.notifyEmails);
+  if (emails.length && (data.push || result.mode === "csv_fallback")) {
+    const text = `Hours file ${result.fileName} for ${batch.employerName} (${batch.periodStart}–${batch.periodEnd}).\n${result.message}\nSummex does not process payroll.\n\n${result.csv.slice(0, 8000)}`;
+    for (const to of emails) {
+      await sendEmail({
+        to,
+        subject: `Summex hours export · ${batch.employerName} · ${batch.periodStart}`,
+        text,
+        kind: "hours_export",
+      }).catch(() => undefined);
+    }
+  }
   return { ...result, batch, connector };
 }
 

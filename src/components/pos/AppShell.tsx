@@ -70,6 +70,7 @@ import {
 import { DeviceModeView, applySessionModeView } from "./DeviceModeView";
 import { LifecycleWatcher } from "./LifecycleWatcher";
 import { AiReportWatcher } from "./AiReportWatcher";
+import { PayrollExportWatcher } from "./PayrollExportWatcher";
 import { useStationSessionStore } from "@/lib/pos/station-session";
 import { stationKindLabel, stationsAllowedForEmployee } from "@/lib/pos/station-access";
 import { HOST_SCOPE } from "@/lib/access/entity-grants";
@@ -446,6 +447,7 @@ export function AppShell() {
       <LoginOnboardingHost />
       <LifecycleWatcher />
       <AiReportWatcher />
+      <PayrollExportWatcher />
       <TrainingBanner />
       <BackOfficeUnlock
         open={unlockOpen}

@@ -16,6 +16,8 @@ import { canEmployee } from "@/lib/access/permissions";
 import { HOST_SCOPE, canViewPayroll, canViewSalesReports } from "@/lib/access/entity-grants";
 import { useSaasStore } from "@/lib/pos/saas-store";
 import { hrPayrollExportFn } from "@/lib/hr/api";
+import { computePayPeriod, hoursExportStatus, parseLaborRules } from "@/lib/labor/rules";
+import { useOpsStore } from "@/lib/pos/ops-store";
 import { useOpsLearnStore } from "@/lib/ops-ai/learn-store";
 import { REPORT_GROUP_LABEL, reportsFor } from "@/lib/reports/catalog";
 import { csvFromRows } from "@/lib/reports/metrics";
@@ -804,8 +806,10 @@ function PayrollReportSlice() {
     employerId === HOST_SCOPE
       ? settings.name || "Host"
       : vendors.find((v) => v.id === employerId)?.shortName ?? employerId;
-  const [from, setFrom] = useState(() => isoDay(new Date(Date.now() - 13 * 86400000)));
-  const [to, setTo] = useState(() => isoDay(new Date()));
+  const labor = useOpsStore((s) => s.labor);
+  const periodWin = computePayPeriod(Date.now(), parseLaborRules(labor));
+  const [from, setFrom] = useState(() => periodWin.startIso);
+  const [to, setTo] = useState(() => periodWin.endIso);
   const [err, setErr] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [hint, setHint] = useState<string | null>(null);
@@ -872,8 +876,18 @@ function PayrollReportSlice() {
   return (
     <div className="space-y-3">
       <p className="text-xs text-muted-foreground">
-        Summex does not process payroll; it feeds ADP, Intuit, or a CSV. Entity-scoped hours,
-        OT, declared tips, and card tips only. No net pay and no tax e-file.
+        Period {periodWin.startIso} → {periodWin.endIso} · pay date {periodWin.payDateIso}.{" "}
+        {
+          hoursExportStatus({
+            now: Date.now(),
+            period: periodWin,
+            rules: parseLaborRules(labor),
+            pendingReview: 0,
+            alreadySent: false,
+            providerConnected: false,
+          }).label
+        }
+        . Summex does not process payroll; it feeds ADP, Intuit, or a CSV.
       </p>
       <div className="flex flex-wrap items-end gap-2">
         <label className="text-xs text-muted-foreground">

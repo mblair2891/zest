@@ -1,8 +1,12 @@
 /** Labor rules, AI inventory, supplier hooks, drink AI */
 
-export type PayPeriodType = "weekly" | "biweekly" | "semimonthly" | "monthly";
+export type PayPeriodType = import("@/lib/labor/rules").PayPeriodKind;
 /** Prepare an hours file — Summex never runs payroll. */
-export type PayrollMode = "auto_export" | "manual";
+export type PayrollMode = import("@/lib/labor/rules").PayrollMode;
+export type ClockWindowAction = import("@/lib/labor/rules").ClockWindowAction;
+export type ApprovalMode = import("@/lib/labor/rules").ApprovalMode;
+export type PayrollSendMode = import("@/lib/labor/rules").PayrollSendMode;
+export type AutoPayrollTrigger = import("@/lib/labor/rules").AutoPayrollTrigger;
 export type PunchStatus =
   | "open"
   | "auto_approved"
@@ -11,28 +15,7 @@ export type PunchStatus =
   | "corrected"
   | "rejected";
 
-export interface LaborSettings {
-  /** minutes before scheduled start allowed to clock in */
-  clockInEarlyMinutes: number;
-  /** minutes after scheduled start still allowed to clock in */
-  clockInLateMinutes: number;
-  /**
-   * If staff clocks out within this many minutes of their last closed ticket,
-   * the shift is auto-approved. Outside the window → red flag for supervisor.
-   */
-  clockOutRedFlagMinutes: number;
-  /** daily system closeout local time "HH:mm" */
-  dailyCloseoutTime: string;
-  payPeriodType: PayPeriodType;
-  /** day of week 0=Sun when weekly/biweekly periods end */
-  payPeriodEndDay: number;
-  payrollMode: PayrollMode;
-  /** employee id of default approving supervisor */
-  defaultSupervisorId: string;
-  /** Hours-file destination id (adp, intuit, csv) — not a payroll run inside Summex */
-  payrollProcessorId: string;
-  requirePublishedShiftToClockIn: boolean;
-}
+export type LaborSettings = import("@/lib/labor/rules").EntityLaborRules;
 
 export interface ScheduledShift {
   id: string;
@@ -89,12 +72,14 @@ export interface PayPeriod {
   id: string;
   start: number;
   end: number;
-  status: "open" | "ready" | "exported" | "manual_hold";
+  payDate?: number;
+  status: "open" | "ready" | "exported" | "manual_hold" | "pending_approval" | "sent" | "download_ready";
   punchIds: string[];
   totalRegularMinutes: number;
   totalOtMinutes: number;
   exportPayload?: string;
   exportedAt?: number;
+  lastAutoExportAt?: number;
 }
 
 export type StockCategory = "liquor" | "beer" | "wine" | "food" | "dry" | "other";

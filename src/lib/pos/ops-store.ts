@@ -19,19 +19,17 @@ import type {
 } from "./ops-types";
 import { HOST_SCOPE } from "@/lib/access/entity-grants";
 import { startOfWeek, addDays, sameDay } from "@/lib/labor/week";
+import {
+  applyBreakDeduct,
+  computePayPeriod,
+  evaluateClockIn,
+  evaluateClockOut,
+  parseLaborRules,
+  roundPunch,
+  DEFAULT_LABOR_RULES,
+} from "@/lib/labor/rules";
 
-const DEFAULT_LABOR: LaborSettings = {
-  clockInEarlyMinutes: 15,
-  clockInLateMinutes: 10,
-  clockOutRedFlagMinutes: 20,
-  dailyCloseoutTime: "04:00",
-  payPeriodType: "biweekly",
-  payPeriodEndDay: 0,
-  payrollMode: "auto_export",
-  defaultSupervisorId: "emp_mgr",
-  payrollProcessorId: "adp",
-  requirePublishedShiftToClockIn: true,
-};
+const DEFAULT_LABOR: LaborSettings = DEFAULT_LABOR_RULES;
 
 function seedStock(): StockItem[] {
   const now = Date.now();
@@ -529,16 +527,19 @@ interface OpsState {
     employeeId: string,
     employeeName: string,
     opts?: { force?: boolean },
-  ) => { ok: boolean; error?: string; punchId?: string };
+  ) => { ok: boolean; error?: string; punchId?: string; forceRequired?: boolean; flags?: string[] };
   clockOut: (
     employeeId: string,
     employeeName: string,
+    opts?: { force?: boolean },
   ) => {
     ok: boolean;
     error?: string;
     status?: PunchStatus;
     redFlag?: boolean;
     minutesFromLastTicket?: number;
+    forceRequired?: boolean;
+    flags?: string[];
   };
   approvePunch: (punchId: string, supervisorName: string) => void;
   correctPunch: (
@@ -592,8 +593,11 @@ export const useOpsStore = create<OpsState>()(
       shifts: [],
       todayShifts: [],
 
-      updateLabor: (patch) =>
-        set({ labor: { ...get().labor, ...patch } }),
+      updateLabor: (patch) => {
+        const labor = parseLaborRules({ ...get().labor, ...patch });
+        set({ labor });
+        void import("@/lib/pos/persist-location-setup").then((m) => m.persistLaborRules());
+      },
 
       recordTicketClosed: (employeeId, at = Date.now()) => {
         set({
@@ -687,48 +691,25 @@ export const useOpsStore = create<OpsState>()(
         );
         if (open) return { ok: false, error: "Already clocked in" };
 
-        const labor = get().labor;
-        const now = Date.now();
-        let shift =
-          get().shifts.find(
-            (s) => s.employeeId === employeeId && sameDay(s.start, now) && s.published,
-          ) ?? get().todayShifts.find((s) => s.employeeId === employeeId);
-        if (!shift && get().shifts.length === 0 && get().todayShifts.length === 0) {
-          shift = {
-            id: uid("ts"),
-            employeeId,
-            operatorId: HOST_SCOPE,
-            start: now - 5 * 60000,
-            end: now + 8 * 3600000,
-            published: true,
-          };
-          set({
-            shifts: [...get().shifts, shift],
-            todayShifts: [...get().todayShifts, shift],
-          });
-        }
-
-        if (labor.requirePublishedShiftToClockIn && !opts?.force) {
-          if (!shift || !shift.published) {
-            return {
-              ok: false,
-              error: "No published shift — manager override required",
-            };
-          }
-          const early = shift.start - labor.clockInEarlyMinutes * 60000;
-          const late = shift.start + labor.clockInLateMinutes * 60000;
-          if (now < early) {
-            return {
-              ok: false,
-              error: `Too early — clock-in opens ${labor.clockInEarlyMinutes}m before shift`,
-            };
-          }
-          if (now > late) {
-            return {
-              ok: false,
-              error: `Outside clock-in window (+${labor.clockInLateMinutes}m). Supervisor can force.`,
-            };
-          }
+        const labor = parseLaborRules(get().labor);
+        const now = roundPunch(Date.now(), labor.punchRoundingMinutes);
+        const force = Boolean(opts?.force);
+        const published = get().shifts.filter(
+          (s) => s.employeeId === employeeId && s.published && sameDay(s.start, now),
+        );
+        const shift =
+          published.find((s) => now >= s.start - labor.clockInEarlyMinutes * 60_000 && now <= s.end + labor.clockInLateMinutes * 60_000) ??
+          published[0] ??
+          get().todayShifts.find((s) => s.employeeId === employeeId && s.published) ??
+          null;
+        const evalIn = evaluateClockIn(
+          now,
+          shift ? { id: shift.id, start: shift.start, end: shift.end, published: shift.published } : null,
+          labor,
+          force,
+        );
+        if (!evalIn.ok) {
+          return { ok: false, error: evalIn.error, forceRequired: evalIn.forceRequired, flags: evalIn.flags };
         }
 
         const punch: TimePunch = {
@@ -741,52 +722,59 @@ export const useOpsStore = create<OpsState>()(
           operatorId: shift?.operatorId,
           clockInAt: now,
           status: "open",
-          redFlag: false,
+          redFlag: evalIn.flags.length > 0,
+          redFlagReason: evalIn.flags[0],
         };
-        set({ punches: [punch, ...get().punches] });
+        let alerts = get().alerts;
+        if (evalIn.notify.length) {
+          alerts = [
+            {
+              id: uid("al"),
+              at: now,
+              punchId: punch.id,
+              employeeName,
+              reason: evalIn.notify.join("; "),
+              resolved: false,
+            },
+            ...alerts,
+          ];
+        }
+        set({ punches: [punch, ...get().punches], alerts });
         void import("@/lib/labor/persist-punch").then((m) => m.persistPunchToServer(punch));
-        return { ok: true, punchId: punch.id };
+        return { ok: true, punchId: punch.id, flags: evalIn.flags };
       },
 
-      clockOut: (employeeId, employeeName) => {
+      clockOut: (employeeId, employeeName, opts) => {
         const punch = get().punches.find(
           (p) => p.employeeId === employeeId && p.status === "open",
         );
         if (!punch) return { ok: false, error: "Not clocked in" };
 
-        const now = Date.now();
+        const labor = parseLaborRules(get().labor);
+        const now = roundPunch(Date.now(), labor.punchRoundingMinutes);
+        const force = Boolean(opts?.force);
         const lastTicket = get().lastTicketByEmployee[employeeId];
-        const labor = get().labor;
-        let minutesFromLastTicket: number | undefined;
-        let redFlag = false;
-        let status: PunchStatus = "auto_approved";
-        let redFlagReason: string | undefined;
-
-        if (lastTicket) {
-          minutesFromLastTicket = minutesBetween(lastTicket, now);
-          if (minutesFromLastTicket <= labor.clockOutRedFlagMinutes) {
-            status = "auto_approved";
-            redFlag = false;
-          } else {
-            status = "pending_review";
-            redFlag = true;
-            redFlagReason = `Clock-out ${minutesFromLastTicket}m after last closed ticket (window ${labor.clockOutRedFlagMinutes}m)`;
-          }
-        } else {
-          // no tickets closed — flag for review (may be host/manager)
-          status = "pending_review";
-          redFlag = true;
-          redFlagReason = "No closed tickets on this shift — needs supervisor review";
+        const shiftRow =
+          (punch.shiftId ? get().shifts.find((s) => s.id === punch.shiftId) : undefined) ??
+          get().shifts.find((s) => s.employeeId === employeeId && s.published && sameDay(s.start, punch.clockInAt));
+        const shift = shiftRow
+          ? { id: shiftRow.id, start: shiftRow.start, end: shiftRow.end, published: shiftRow.published }
+          : punch.scheduledStart && punch.scheduledEnd
+            ? { id: punch.shiftId || "shift", start: punch.scheduledStart, end: punch.scheduledEnd, published: true }
+            : null;
+        const evalOut = evaluateClockOut(now, shift, lastTicket, labor, force);
+        if (!evalOut.ok) {
+          return { ok: false, error: evalOut.error, forceRequired: evalOut.forceRequired, flags: evalOut.flags };
         }
 
-        const regularMinutes = Math.min(
-          8 * 60,
-          minutesBetween(punch.clockInAt, now),
-        );
-        const otMinutes = Math.max(
-          0,
-          minutesBetween(punch.clockInAt, now) - 8 * 60,
-        );
+        const minutesFromLastTicket = lastTicket ? minutesBetween(lastTicket, now) : undefined;
+        const auto = evalOut.autoApprove && labor.approvalMode !== "manual";
+        const status: PunchStatus = auto ? "auto_approved" : "pending_review";
+        const redFlag = !auto || evalOut.flags.length > 0;
+        const redFlagReason = evalOut.flags[0];
+        const worked = minutesBetween(punch.clockInAt, now);
+        const regularMinutes = applyBreakDeduct(Math.min(8 * 60, worked), labor);
+        const otMinutes = Math.max(0, worked - 8 * 60);
 
         const updated: TimePunch = {
           ...punch,
@@ -804,14 +792,14 @@ export const useOpsStore = create<OpsState>()(
         };
 
         let alerts = get().alerts;
-        if (redFlag) {
+        if (evalOut.notify.length || (redFlag && status === "pending_review")) {
           alerts = [
             {
               id: uid("al"),
               at: now,
               punchId: punch.id,
               employeeName,
-              reason: redFlagReason ?? "Red flag",
+              reason: evalOut.notify[0] ?? redFlagReason ?? "Needs review",
               resolved: false,
             },
             ...alerts,
@@ -829,6 +817,7 @@ export const useOpsStore = create<OpsState>()(
           status,
           redFlag,
           minutesFromLastTicket,
+          flags: evalOut.flags,
         };
       },
 
@@ -943,61 +932,47 @@ export const useOpsStore = create<OpsState>()(
       },
 
       runPayroll: () => {
-        const labor = get().labor;
+        const labor = parseLaborRules(get().labor);
+        const window = computePayPeriod(Date.now(), labor);
         const finished = get().punches.filter(
-          (p) => p.clockOutAt && p.status !== "open" && p.status !== "rejected",
-        );
-        const unapproved = finished.filter(
           (p) =>
-            p.status === "pending_review" ||
-            (p.redFlag && p.status !== "approved" && p.status !== "corrected" && p.status !== "auto_approved"),
+            p.clockOutAt &&
+            p.status !== "open" &&
+            p.status !== "rejected" &&
+            (p.clockOutAt ?? 0) >= window.start &&
+            (p.clockOutAt ?? 0) <= window.end,
         );
-        // auto_approved counts as approved
         const stillPending = finished.filter((p) => p.status === "pending_review");
 
-        if (stillPending.length > 0) {
+        if (labor.requireAllApprovedToExport && stillPending.length > 0) {
           return {
             ok: false,
             message: `${stillPending.length} shift(s) still pending supervisor approval. Resolve red flags first.`,
           };
         }
 
-        if (labor.payrollMode === "manual") {
-          const period: PayPeriod = {
-            id: uid("pp"),
-            start: startOfDay() - 13 * 86400000,
-            end: Date.now(),
-            status: "manual_hold",
-            punchIds: finished.map((p) => p.id),
-            totalRegularMinutes: finished.reduce(
-              (s, p) => s + (p.regularMinutes ?? 0),
-              0,
-            ),
-            totalOtMinutes: finished.reduce((s, p) => s + (p.otMinutes ?? 0), 0),
-          };
-          set({ payPeriods: [period, ...get().payPeriods] });
-          return {
-            ok: true,
-            message: "Hours file held. Export from Reports → Payroll export. Summex does not pay employees.",
-            period,
-          };
-        }
-
         const period: PayPeriod = {
           id: uid("pp"),
-          start: startOfDay() - 13 * 86400000,
-          end: Date.now(),
-          status: "exported",
+          start: window.start,
+          end: window.end,
+          payDate: window.payDate,
+          status:
+            labor.sendMode === "manual" || !labor.autoPayroll
+              ? "download_ready"
+              : stillPending.length
+                ? "pending_approval"
+                : labor.sendMode === "automatic"
+                  ? "ready"
+                  : "ready",
           punchIds: finished.map((p) => p.id),
-          totalRegularMinutes: finished.reduce(
-            (s, p) => s + (p.regularMinutes ?? 0),
-            0,
-          ),
+          totalRegularMinutes: finished.reduce((s, p) => s + (p.regularMinutes ?? 0), 0),
           totalOtMinutes: finished.reduce((s, p) => s + (p.otMinutes ?? 0), 0),
           exportedAt: Date.now(),
           exportPayload: JSON.stringify(
             {
               processor: labor.payrollProcessorId,
+              period: window.startIso + "–" + window.endIso,
+              payDate: window.payDateIso,
               employees: finished.map((p) => ({
                 employeeId: p.employeeId,
                 name: p.employeeName,
@@ -1013,7 +988,10 @@ export const useOpsStore = create<OpsState>()(
         set({ payPeriods: [period, ...get().payPeriods] });
         return {
           ok: true,
-          message: `Hours file prepared for ${labor.payrollProcessorId.toUpperCase()}. Summex does not process payroll or file taxes.`,
+          message:
+            period.status === "download_ready"
+              ? "Hours file ready to download. Summex does not process payroll."
+              : `Hours file prepared for ${labor.payrollProcessorId}. Summex does not process payroll or file taxes.`,
           period,
         };
       },
@@ -1158,6 +1136,14 @@ export const useOpsStore = create<OpsState>()(
       name: "summex-ops-v2",
       storage: createJSONStorage(() => localStorage),
       skipHydration: true,
+      merge: (persisted, current) => {
+        const p = (persisted ?? {}) as Partial<OpsState>;
+        return {
+          ...current,
+          ...p,
+          labor: parseLaborRules({ ...current.labor, ...(p.labor ?? {}) }),
+        };
+      },
     },
   ),
 );

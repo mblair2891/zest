@@ -28,7 +28,8 @@ import { tablesFromCount, type TenantMenuMode } from "@/lib/pos/starter-seed";
 import { EMPTY_LOCATION_SETUP } from "@/lib/saas/types";
 import { tablesFromFloorPlan } from "@/lib/saas/location-catalog";
 import { membershipToEmployeeRole } from "@/lib/access/membership-map";
-import { parseGrantMatrix } from "@/lib/access/entity-grants";
+import { HOST_SCOPE, parseGrantMatrix } from "@/lib/access/entity-grants";
+import { parseLaborRules } from "@/lib/labor/rules";
 import {
   findPairedDevice,
   parseLocationDevices,
@@ -270,6 +271,13 @@ function PosAppInner({ entityId }: { entityId?: string }) {
                 | import("@/lib/lifecycle/types").KeepEraseMap
                 | undefined,
             });
+            {
+              const opId =
+                usePosStore.getState().employees.find((e) => e.id === usePosStore.getState().currentEmployeeId)
+                  ?.operatorId || HOST_SCOPE;
+              const rules = setup.laborByEntity?.[opId] ?? setup.laborByEntity?.[HOST_SCOPE];
+              if (rules) useOpsStore.setState({ labor: parseLaborRules(rules) });
+            }
             usePosStore.getState().updateSettings?.({
               lifecycleStatus:
                 (access.location.lifecycleStatus as
@@ -381,6 +389,13 @@ function PosAppInner({ entityId }: { entityId?: string }) {
             });
           } catch {
             /* lifecycle optional */
+          }
+          try {
+            const opId = usePosStore.getState().employees.find((e) => e.id === usePosStore.getState().currentEmployeeId)?.operatorId || HOST_SCOPE;
+            const rules = setup.laborByEntity?.[opId] ?? setup.laborByEntity?.[HOST_SCOPE];
+            if (rules) useOpsStore.setState({ labor: parseLaborRules(rules) });
+          } catch {
+            /* labor optional */
           }
           setTenantGate("ok");
           rememberLastPosPath();

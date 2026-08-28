@@ -23,7 +23,7 @@ export const HR_TOPICS: GuideTopic[] = [
         "You belong to one employer entity. Another stall cannot open your file.",
       ),
       steps(
-        "PIN in. Open Labor to clock.",
+        "PIN in. Open Labor to clock. Published shift windows apply unless a manager overrides.",
         "Open HR only if your house uses it — request time-off or confirm availability.",
         "Complete packets you were sent. Do not skip I-9 sections or backdate them.",
       ),
@@ -47,7 +47,7 @@ export const HR_TOPICS: GuideTopic[] = [
         "The house already has a payroll product. Summex records time, jobs, OT flags, and tips, then hands a file to that product.",
       ),
       ul(
-        "Reports → Payroll export is entity-scoped: employees, regular/OT hours, declared and card tips, department, job, pay period, work location.",
+        "Reports → Payroll export (and Labor → Hours export) is entity-scoped: employees, regular/OT hours, declared and card tips, department, job, pay period, work location.",
         "Formats: generic CSV always. Intuit QuickBooks Payroll and ADP when keys are set. Other payroll products import the same CSV.",
         "HR → Flags: destination None, CSV only, Intuit, ADP, or Other. Map local staff to the provider employee id — never a Social Security number.",
         "Direct API uses INTUIT_* or ADP_* on the server. Missing keys show Connect and still download CSV.",
@@ -61,7 +61,42 @@ export const HR_TOPICS: GuideTopic[] = [
       warn(
         "Summex does not print checks, e-file taxes, or calculate net pay. Wage rates in HR visibility are not a pay run.",
       ),
-      related("entity-schedule-payroll", "hr-employment", "role-owner"),
+      related("shift-allowables", "entity-schedule-payroll", "hr-employment", "role-owner"),
+    ],
+  }),
+  topic({
+    id: "shift-allowables",
+    chapterId: "roles",
+    title: "Clock windows, approval, pay periods",
+    summary:
+      "Published shifts, clock allowables, shift approval, and when the hours file goes to ADP/Intuit or download+notify. We do not run payroll.",
+    roles: ["owner_manager", "host_operator", "vendor_operator", "server", "kitchen_bar"],
+    keywords: ["clock", "allowable", "approval", "pay period", "override", "red flag", "schedule"],
+    openView: "labor",
+    blocks: [
+      why(
+        "The floor clock must match the published week. Exceptions are either blocked or flagged — managers override. Hours still leave the house as an export, not a paycheck.",
+      ),
+      ul(
+        "Schedule: draft then Publish week for that employer entity.",
+        "Clock in/out windows: early and late minutes vs shift start and end. Each window can Block or Allow and red-flag.",
+        "No published shift: allow, or require manager override.",
+        "Approval: manual, auto if clock-out is within X minutes of shift end, or auto if within X minutes of the employee’s last closed ticket.",
+        "Red-flag notifies (each toggle): early/late clock in, early/late clock out.",
+        "Optional punch rounding and break deduct. Pay period weekly / biweekly / semimonthly / custom with start and pay date.",
+        "Auto hours export on/off. Trigger at a time of day after period end, or N days before pay date. Require all shifts approved (toggle).",
+        "Provider connected: send Automatic, Automatic after review, or Manual. No provider: same schedule builds a downloadable file and notifies roles/emails.",
+      ),
+      steps(
+        "Labor → Schedule. Add shifts. Publish week.",
+        "Labor → Rules. Set windows, approval, pay period, export timing.",
+        "Staff clock on Labor. Manager queue on Supervisor for red flags.",
+        "Labor → Hours export or Reports → Payroll export: period status, Download or Send.",
+      ),
+      warn(
+        "Summex exports to payroll providers. It does not run payroll, print checks, or e-file taxes.",
+      ),
+      related("payroll-export", "entity-schedule-payroll", "hr-staff-basics"),
     ],
   }),
   topic({

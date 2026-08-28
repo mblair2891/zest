@@ -6,6 +6,19 @@ import type { GuideUpdate } from "@/lib/guide/types";
  */
 export const WHATS_NEW_ENTRIES: GuideUpdate[] = [
   {
+    id: "upd_2026_10_14_shift_allowables",
+    date: "2026-10-14",
+    title: "Clock windows, shift approval, pay-period export",
+    summary:
+      "Published shifts, clock allowables, approval modes, and hours-file timing to ADP/Intuit or download+notify. Summex does not run payroll.",
+    body: "Labor → Rules: early/late in and out (block or flag), no-shift override, rounding, break deduct. Approval: manual, auto vs shift end, or auto vs last closed ticket. Pay period weekly/biweekly/semimonthly/custom with pay date. Auto export at a time of day or N days before pay, with all-approved required. Hours export shows period status — Send or Download.",
+    roles: ["owner_manager", "host_operator", "vendor_operator"],
+    surfaces: ["settings"],
+    audience: "tenant",
+    topicId: "shift-allowables",
+    tags: ["clock", "schedule", "payroll", "approval"],
+  },
+  {
     id: "upd_2026_10_13_payroll_export",
     date: "2026-10-13",
     title: "Hours export to ADP, Intuit, or CSV",

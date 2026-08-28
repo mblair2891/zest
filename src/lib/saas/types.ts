@@ -59,6 +59,8 @@ export type LocationSetup = {
   hrByEntity?: Record<string, import("@/lib/hr/types").EntityHrConfig>;
   /** Location default US state for employment packets when an entity has none. */
   employmentState?: string;
+  /** Clock / approval / pay-period rules keyed by employer entity. */
+  laborByEntity?: Record<string, import("@/lib/labor/rules").EntityLaborRules>;
   /** Cost catalog (SKUs, invoices, suppliers, POs) — no image blobs. */
   costPack?: {
     skus: import("@/lib/costs/types").CostSku[];

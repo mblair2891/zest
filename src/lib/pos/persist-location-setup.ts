@@ -2,8 +2,11 @@ import { saveLocationSettingsFn } from "@/lib/access/api";
 import { useSaasStore } from "@/lib/pos/saas-store";
 import { usePosStore } from "@/lib/pos/store";
 import { useCostStore } from "@/lib/costs/store";
+import { useOpsStore } from "@/lib/pos/ops-store";
 import { isProspectDemo } from "@/lib/demo/session";
 import { floorPlanFromPos } from "@/lib/saas/location-catalog";
+import { HOST_SCOPE } from "@/lib/access/entity-grants";
+import { parseLaborRules } from "@/lib/labor/rules";
 
 const timers = new Map<string, ReturnType<typeof setTimeout>>();
 
@@ -13,6 +16,31 @@ function ids(): { orgId: string; locationId: string } | null {
   const locationId = usePosStore.getState().tenantLocationId || "";
   if (!orgId || !locationId) return null;
   return { orgId, locationId };
+}
+
+export function persistLaborRules(): void {
+  const ctx = ids();
+  if (!ctx) return;
+  const prev = timers.get("labor");
+  if (prev) clearTimeout(prev);
+  timers.set(
+    "labor",
+    setTimeout(() => {
+      timers.delete("labor");
+      const emp = usePosStore.getState().employees.find((e) => e.id === usePosStore.getState().currentEmployeeId);
+      const employerId = emp?.operatorId || HOST_SCOPE;
+      const labor = parseLaborRules(useOpsStore.getState().labor);
+      void saveLocationSettingsFn({
+        data: {
+          orgId: ctx.orgId,
+          locationId: ctx.locationId,
+          setup: {
+            laborByEntity: { [employerId]: labor },
+          },
+        },
+      }).catch(() => undefined);
+    }, 700),
+  );
 }
 
 export function persistLocationCatalog(kind: "floor" | "menu" | "recipes" | "costs"): void {

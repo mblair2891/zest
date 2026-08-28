@@ -22,6 +22,7 @@ import { parseLocationDevices } from "@/lib/pos/location-devices";
 import { parseNetworkChecklist, parseNetworkReadyStatus } from "./network-readiness";
 import { parseFloorPlan, parseMenuCatalog, parseRecipes } from "./location-catalog";
 import { parseHrMap } from "@/lib/hr/types";
+import { parseLaborMap } from "@/lib/labor/rules";
 
 type OrgRow = {
   id: string;
@@ -225,6 +226,10 @@ function parseSetup(raw: unknown): LocationSetup {
     hrByEntity:
       o.hrByEntity && typeof o.hrByEntity === "object" && !Array.isArray(o.hrByEntity)
         ? parseHrMap(o.hrByEntity)
+        : undefined,
+    laborByEntity:
+      o.laborByEntity && typeof o.laborByEntity === "object" && !Array.isArray(o.laborByEntity)
+        ? parseLaborMap(o.laborByEntity)
         : undefined,
     employmentState:
       typeof o.employmentState === "string" && o.employmentState.trim()
@@ -675,7 +680,11 @@ export async function updateLocationSetupForUser(
   `;
   const loc = rows[0];
   if (!loc) throw new ForbiddenError("Location not found");
-  const next = parseSetup({ ...parseSetup(loc.setup), ...input.setup });
+  const prev = parseSetup(loc.setup);
+  const next = parseSetup({ ...prev, ...input.setup });
+  if (input.setup.laborByEntity) {
+    next.laborByEntity = { ...(prev.laborByEntity ?? {}), ...input.setup.laborByEntity };
+  }
   const { lifecycleForcesSandbox, locationLifecycleStatus } = await import("@/lib/payments/mode");
   const life = locationLifecycleStatus(next, loc.lifecycle_status);
   if (lifecycleForcesSandbox(life) && next.paymentsMode === "live") {

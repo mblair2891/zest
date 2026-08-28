@@ -84,7 +84,7 @@ export function EntityScheduleView() {
     <div className="flex h-full flex-col" data-demo="schedule">
       <div className="flex flex-wrap items-center gap-2 border-b border-border px-3 py-2">
         <h2 className="text-sm font-semibold">
-          {floor ? "My shifts" : "Schedule"}
+          {floor ? "My shifts" : "Schedule (publish per entity)"}
         </h2>
         <Button size="icon" variant="outline" onClick={() => setWeekStart(addDays(weekStart, -7))}>
           <ChevronLeft className="h-4 w-4" />

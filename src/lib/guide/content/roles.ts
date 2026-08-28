@@ -256,7 +256,7 @@ export const ROLE_GUIDE_TOPICS: GuideTopic[] = [
         "Operator A does not write Operator B’s week. Operator B does not see Operator A hours unless the host grants view_payroll.",
       ),
       ul(
-        "Week view, draft shifts, publish. Floor PIN users see My shifts only.",
+        "Week view, draft shifts, Publish week — published per employer entity. Floor PIN users see My shifts only.",
         "Hours export: regular/OT hours, declared and card tips, department, job, work location, pay period — scoped to the entity.",
         "Summex does not process payroll; it feeds ADP, Intuit, or a CSV. Manual download always works.",
         "Host: oversight of every entity. Edit a guest entity’s schedule only if Host may edit guest-entity schedules is on (default off).",
@@ -267,7 +267,7 @@ export const ROLE_GUIDE_TOPICS: GuideTopic[] = [
         "Open Reports → Payroll export (or Labor → Hours export). Operator A hours only when you are that entity’s manager.",
         "PIN as Operator B: you cannot add Operator A shifts. Menu still badges peer items view-only.",
       ),
-      related("payroll-export", "floor-pin-login", "host-operator-settings", "role-vendor"),
+      related("shift-allowables", "payroll-export", "floor-pin-login", "host-operator-settings", "role-vendor"),
     ],
   }),
   topic({
