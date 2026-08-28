@@ -74,6 +74,8 @@ const MATRIX: { domain: string; items: string[] }[] = [
       "Auto-approve vs supervisor review",
       "Daily closeout time",
       "Pay period + auto/manual payroll export",
+      "Optional HR: applicants, onboarding packets, e-sign, time-off, write-ups",
+      "Entity-scoped employment files (host or operator as employer)",
     ],
   },
   {

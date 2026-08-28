@@ -112,6 +112,7 @@ export type PosView =
   | "saas"
   | "truck_pod"
   | "labor"
+  | "hr"
   | "inventory_ai"
   | "drink_ai"
   | "marketing"

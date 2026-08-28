@@ -190,7 +190,7 @@ export const PLATFORM_CRM_TOPICS: GuideTopic[] = [
         "Plans & billing — name, code, active, monthly price per location, locations, seats, module checkboxes, setup fee, trial/grace/suspend. This catalog drives the quote builder. Stripe is Connected or Not configured.",
         "Payments & gift defaults — Quantum Payments sandbox/live, chargeback fee, issuer mode, term, residual, house retains, legal disclaimer.",
         "Communications — SMS/email status, waitlist and invite templates with {{tokens}}.",
-        "Feature flags — global defaults for new orgs. Per-plan overrides stay under Plans.",
+        "Feature flags — global defaults for new orgs. Per-plan overrides stay under Plans. HR modules are per employer entity, not a platform JSON blob.",
         "Data & compliance — waitlist phone and audit retention, privacy notes.",
         "Team — invite platform users (admin / sales / success / read only). Deactivate anyone except the last admin.",
         "Danger zone — factory reset only if Security allows it. Type RESET.",

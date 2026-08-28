@@ -55,6 +55,10 @@ export type LocationSetup = {
   menuCatalog?: import("./location-catalog").LocationMenuCatalog;
   /** Saved recipes. Always kept on go-live. */
   recipes?: import("@/lib/costs/types").ItemRecipe[];
+  /** Employer-of-record HR config keyed by entity id (`host` or operator id). */
+  hrByEntity?: Record<string, import("@/lib/hr/types").EntityHrConfig>;
+  /** Location default US state for employment packets when an entity has none. */
+  employmentState?: string;
   /** Cost catalog (SKUs, invoices, suppliers) — no image blobs. */
   costPack?: {
     skus: import("@/lib/costs/types").CostSku[];

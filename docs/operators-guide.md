@@ -53,7 +53,8 @@ accurate when the job path changes.
 12. Training vs Go live
 13. Devices: Change device, split screen, SYOH tablets + Summex terminals
 14. Offline / hybrid
-15. Troubleshooting
+15. Staff HR basics (clock vs PIN, time-off if the employer enabled it)
+16. Troubleshooting
 
 Exit on the public page returns to marketing home (`/`).
 
@@ -66,8 +67,11 @@ only when the viewer is signed in as `platform_admin`:
 - Factory reset (danger)
 - Training status in the SaaS tenant view
 - Go-live ops checklist (Neon, auth URLs, processor approval, reader)
+- HR flags only (entity-scoped modules exist; platform never sees SSN / full tax packets)
 
 Do **not** put those internals in the public guide.
+
+Owner / manager (signed-in overlay) also gets the entity HR topic: flags, visibility dropdowns, e-sign vs outbox, state packets. Public `/guide` keeps staff-facing HR basics only.
 
 ## Add a topic
 

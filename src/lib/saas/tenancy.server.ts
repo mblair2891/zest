@@ -21,6 +21,7 @@ import { parseGrantMatrix } from "@/lib/access/entity-grants";
 import { parseLocationDevices } from "@/lib/pos/location-devices";
 import { parseNetworkChecklist, parseNetworkReadyStatus } from "./network-readiness";
 import { parseFloorPlan, parseMenuCatalog, parseRecipes } from "./location-catalog";
+import { parseHrMap } from "@/lib/hr/types";
 
 type OrgRow = {
   id: string;
@@ -220,6 +221,14 @@ function parseSetup(raw: unknown): LocationSetup {
     costPack:
       o.costPack && typeof o.costPack === "object"
         ? (o.costPack as LocationSetup["costPack"])
+        : undefined,
+    hrByEntity:
+      o.hrByEntity && typeof o.hrByEntity === "object" && !Array.isArray(o.hrByEntity)
+        ? parseHrMap(o.hrByEntity)
+        : undefined,
+    employmentState:
+      typeof o.employmentState === "string" && o.employmentState.trim()
+        ? o.employmentState.trim().slice(0, 16)
         : undefined,
   };
 }

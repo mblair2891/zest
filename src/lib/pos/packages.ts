@@ -101,10 +101,10 @@ export const SUMMEX_PACKAGES: SummexPackage[] = [
     name: "Labor & Payroll Rules",
     shortName: "Labor",
     category: "operations",
-    tagline: "Schedule windows, red-flag clock-out, closeout, payroll export",
+    tagline: "Schedule, clock, optional employment packets, payroll export",
     priceMonthly: 79,
     modes: ["all"],
-    views: ["labor", "employees", "schedule"],
+    views: ["labor", "employees", "schedule", "hr"],
   },
   {
     id: "inventory",

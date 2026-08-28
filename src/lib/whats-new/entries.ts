@@ -6,6 +6,19 @@ import type { GuideUpdate } from "@/lib/guide/types";
  */
 export const WHATS_NEW_ENTRIES: GuideUpdate[] = [
   {
+    id: "upd_2026_10_11_hr_employment",
+    date: "2026-10-11",
+    title: "Entity-scoped employment",
+    summary:
+      "Host or tenant can be the employer. Optional hiring, packets, e-sign or PDF outbox, time-off, payroll summary, write-ups. Visibility per field.",
+    body: "Settings or HR → Flags. Enable HR for this entity. Employment state drives W-4 and state packets. Without DocuSign/HelloSign keys, packets still generate — attach the signed PDF. Platform support never sees SSN or full tax packets. Clock remains Labor.",
+    roles: ["owner_manager", "host_operator", "vendor_operator"],
+    surfaces: ["settings"],
+    audience: "tenant",
+    topicId: "hr-employment",
+    tags: ["hr", "employment", "packets", "e-sign"],
+  },
+  {
     id: "upd_2026_10_08_training_loop",
     date: "2026-10-08",
     title: "Training floor loop",

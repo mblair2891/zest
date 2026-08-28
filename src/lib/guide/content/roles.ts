@@ -46,6 +46,7 @@ export const ROLE_GUIDE_TOPICS: GuideTopic[] = [
         "Open POS for the location. PIN as owner or manager. Floor: Entire location or By section. Combine tables (lowest number). Reports → AI analysis; Settings for daily/weekly.",
         "Staff, menu, floor, cash drawer, settlement.",
         "Packages decide which modules appear. Core POS and ODS are the floor.",
+        "Optional Employment (HR) is per entity: host or a tenant operator as employer. Flags and visibility live on HR → Flags.",
       ),
       steps(
         "Confirm the location mode (restaurant vs host + operators) matches how you actually serve.",
@@ -55,7 +56,7 @@ export const ROLE_GUIDE_TOPICS: GuideTopic[] = [
         "Close the period on Settle. Guest cards are Quantum Payments.",
       ),
       tip("The Operators Guide overlay is in the header on every surface."),
-      related("login", "invites-roles", "host-capture", "type-restaurant", "recipes-prep", "location-training"),
+      related("login", "invites-roles", "host-capture", "type-restaurant", "recipes-prep", "location-training", "hr-employment"),
     ],
   }),
   topic({
@@ -79,7 +80,7 @@ export const ROLE_GUIDE_TOPICS: GuideTopic[] = [
       p(
         "On a host + multi-operator floor, food and drinks still live on one guest check. You are not splitting cards by stall.",
       ),
-      related("type-restaurant", "type-food-hall", "host-capture", "recipes-prep"),
+      related("type-restaurant", "type-food-hall", "host-capture", "recipes-prep", "hr-staff-basics"),
     ],
   }),
   topic({

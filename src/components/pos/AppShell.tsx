@@ -27,6 +27,7 @@ import {
   Layers,
   Truck,
   Clock3,
+  IdCard,
   Brain,
   Sparkles,
   Rocket,
@@ -90,6 +91,7 @@ import { VendorPortalView } from "./VendorPortalView";
 import { FeatureMatrixView } from "./FeatureMatrixView";
 import { TruckPodView } from "./TruckPodView";
 import { LaborOpsView } from "./LaborOpsView";
+import { HrWorkspace } from "./HrWorkspace";
 import { InventoryAiView } from "./InventoryAiView";
 import { DrinkAiView } from "./DrinkAiView";
 import { MarketingHubView } from "./MarketingHubView";
@@ -148,6 +150,7 @@ const NAV: {
   { id: "inventory", label: "Costs", icon: Package },
   { id: "menu", label: "Menu", icon: BookOpen },
   { id: "labor", label: "Labor", icon: Clock3 },
+  { id: "hr", label: "HR", icon: IdCard },
   { id: "schedule", label: "Schedule", icon: Clock },
   { id: "inventory_ai", label: "Cost intel", icon: Brain },
   { id: "drink_ai", label: "Drink AI", icon: Sparkles },
@@ -694,6 +697,7 @@ export function AppShell() {
         <main className="min-h-0 min-w-0 flex-1 overflow-hidden" data-demo={safeView}>
           {safeView === "truck_pod" && <TruckPodView />}
           {safeView === "labor" && <LaborOpsView />}
+          {safeView === "hr" && <HrWorkspace />}
           {safeView === "inventory_ai" && <InventoryAiView />}
           {safeView === "drink_ai" && <DrinkAiView />}
           {safeView === "hq" && <HqView />}

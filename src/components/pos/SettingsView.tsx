@@ -44,6 +44,7 @@ import { FloorQrSettings } from "./FloorQrSettings";
 import { NetworkReadinessPanel } from "@/components/saas/NetworkReadinessPanel";
 import { AccessPointsCard } from "./AccessPointsCard";
 import { LifecycleSettings } from "./LifecycleSettings";
+import { HrSettingsPack } from "./HrWorkspace";
 import { QuantumPaymentsSettings } from "./QuantumPaymentsSettings";
 import { saveFrontSettingsFn } from "@/lib/front/api";
 import {
@@ -329,6 +330,7 @@ export function SettingsView() {
   return (
     <div className="h-full overflow-y-auto p-3" data-demo="settings">
       <LifecycleSettings />
+      <HrSettingsPack />
       {(emp?.role === "owner" || emp?.role === "manager" || emp?.role === "accountant") && (
         <div className="mb-4 rounded-2xl border border-border bg-surface p-4">
           <div className="mb-2 flex items-center gap-2">
