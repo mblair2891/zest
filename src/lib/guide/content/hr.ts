@@ -19,7 +19,7 @@ export const HR_TOPICS: GuideTopic[] = [
         "PIN on this station is not a time punch. Clock in and out on Labor.",
         "If your employer enabled time-off, request it on HR. A manager approves or denies.",
         "Availability windows (if enabled) are your usual days. The published schedule is still Labor.",
-        "Onboarding packets (W-4, I-9, state forms) arrive by email or as a download to sign. Return the signed PDF if the house is not using an e-sign vendor.",
+        "Onboarding packets (W-4, I-9, state forms) arrive by email or as a download to sign. Return the signed PDF if the house is not using an e-sign vendor. I-9 copies are stored by section.",
         "You belong to one employer entity. Another stall cannot open your file.",
       ),
       steps(
@@ -54,6 +54,7 @@ export const HR_TOPICS: GuideTopic[] = [
       "write-up",
       "visibility",
     ],
+    visibility: "signed",
     openView: "hr",
     blocks: [
       why(
@@ -70,7 +71,7 @@ export const HR_TOPICS: GuideTopic[] = [
         "Turn on only the modules you will use. Save.",
         "Hiring: add applicants and move stages (applied → hired).",
         "Onboarding: start a checklist. Date I-9 Section 1 before Section 2. Store last4; full SSN encrypts when a PII secret is set.",
-        "Packets: send to the employee email. If e-sign is configured, the vendor sends. If not, status is awaiting upload — attach the signed PDF.",
+        "Packets: send to the employee email. If e-sign is configured, the vendor sends. If not, status is awaiting upload — attach the signed PDF (stored on the packet).",
         "Employer counter-sign when the form requires it (I-9 Section 2).",
       ),
       callout(

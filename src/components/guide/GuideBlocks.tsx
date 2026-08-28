@@ -15,10 +15,12 @@ export function GuideBlocks({
   blocks,
   onOpenTopic,
   includePlatform = false,
+  includeSigned = false,
 }: {
   blocks: GuideBlock[];
   onOpenTopic: (id: string) => void;
   includePlatform?: boolean;
+  includeSigned?: boolean;
 }) {
   return (
     <div className="space-y-4">
@@ -28,6 +30,7 @@ export function GuideBlocks({
           block={b}
           onOpenTopic={onOpenTopic}
           includePlatform={includePlatform}
+          includeSigned={includeSigned}
         />
       ))}
     </div>
@@ -38,10 +41,12 @@ function GuideBlockView({
   block,
   onOpenTopic,
   includePlatform,
+  includeSigned,
 }: {
   block: GuideBlock;
   onOpenTopic: (id: string) => void;
   includePlatform: boolean;
+  includeSigned: boolean;
 }) {
   if (block.type === "why") {
     return (
@@ -152,7 +157,7 @@ function GuideBlockView({
     const topics = block.topicIds
       .map((id) => topicById(id))
       .filter((t): t is NonNullable<typeof t> => Boolean(t))
-      .filter((t) => topicVisible(t, "all", { includePlatform }));
+      .filter((t) => topicVisible(t, "all", { includePlatform, includeSigned }));
     if (topics.length === 0) return null;
     return (
       <div className="border-t border-border pt-4">

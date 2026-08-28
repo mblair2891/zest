@@ -4,7 +4,7 @@ import type { GuideChapter, GuideRole, GuideTopic } from "./types";
 export function searchTopics(
   query: string,
   roles: GuideRole[] | "all" = "all",
-  opts?: { includePlatform?: boolean },
+  opts?: { includePlatform?: boolean; includeSigned?: boolean },
 ): GuideTopic[] {
   const q = query.trim().toLowerCase();
   return GUIDE_TOPICS.filter((t) => {
@@ -17,7 +17,7 @@ export function searchTopics(
 export function chaptersWithMatches(
   query: string,
   roles: GuideRole[] | "all" = "all",
-  opts?: { includePlatform?: boolean },
+  opts?: { includePlatform?: boolean; includeSigned?: boolean },
 ): Array<{ chapter: GuideChapter; topics: GuideTopic[] }> {
   const topics = searchTopics(query, roles, opts);
   return GUIDE_CHAPTERS.map((chapter) => ({

@@ -43,7 +43,7 @@ A SaaS-onboarded host can operate in **TRAINING** when these are true.
 6. PIN **1111** (server) or **0000** (manager) → This station → Host stand seats → Server orders → Kitchen/Bar Order Display Start/Bump → Pay cash or Quantum sandbox → Busser cleaned.
 7. Guide: `/guide?topic=training-floor-loop`.
 
-Optional (not a training blocker): `RESEND_API_KEY` / `EMAIL_FROM` so quotes and invites send; otherwise they log in the outbox. Twilio for waitlist SMS; otherwise sandbox log. HR packets work without DocuSign/HelloSign — download and attach the signed PDF.
+Optional (not a training blocker): `RESEND_API_KEY` / `EMAIL_FROM` so quotes and invites send; otherwise they log in the outbox. Twilio for waitlist SMS; otherwise sandbox log. HR packets work without DocuSign/HelloSign — download and attach the signed PDF. Clock punches persist per entity for payroll CSV (not a tax engine).
 
 ---
 

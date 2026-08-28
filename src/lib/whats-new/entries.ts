@@ -6,6 +6,19 @@ import type { GuideUpdate } from "@/lib/guide/types";
  */
 export const WHATS_NEW_ENTRIES: GuideUpdate[] = [
   {
+    id: "upd_2026_10_12_hr_files_punches",
+    date: "2026-10-12",
+    title: "I-9 files, signed PDF, clock punches",
+    summary:
+      "Attach signed PDFs to packets. I-9 copies store by section. Clock punches save to the location for payroll CSV. Public Guide stays ops-only.",
+    body: "HR packets: download to sign, then attach the completed PDF (or e-sign when a vendor key is set). I-9 is dates plus stored copies — do not skip Section 1 before 2. Clock in/out on Labor writes to this entity. Payroll summary/CSV uses those punches. Tenant list in Platform shows training | scheduled live | live.",
+    roles: ["owner_manager", "host_operator", "vendor_operator"],
+    surfaces: ["settings"],
+    audience: "tenant",
+    topicId: "hr-employment",
+    tags: ["hr", "i-9", "payroll", "clock"],
+  },
+  {
     id: "upd_2026_10_11_hr_employment",
     date: "2026-10-11",
     title: "Entity-scoped employment",

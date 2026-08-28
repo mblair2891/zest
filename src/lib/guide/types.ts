@@ -1,7 +1,7 @@
 import type { PosView } from "@/lib/pos/types";
 
 /** Bump when shipping a docs/features batch so What’s New can watermark. */
-export const GUIDE_VERSION = "2026.10.11";
+export const GUIDE_VERSION = "2026.10.12";
 export const GUIDE_EDITION = "Operators Guide · training week";
 export const GUIDE_TITLE = "Operators Guide";
 
@@ -61,8 +61,11 @@ export type GuideBlock =
 
 export type GuideNavId = "overview" | "types" | "features" | "roles" | "platform";
 
-/** Platform-admin topics never appear on the public /guide. */
-export type GuideVisibility = "public" | "platform";
+/**
+ * Platform-admin topics never appear on the public /guide.
+ * `signed` is owner/manager overlay only — not the public Operators Guide.
+ */
+export type GuideVisibility = "public" | "signed" | "platform";
 
 export type GuideNavTab = {
   id: GuideNavId;
@@ -83,7 +86,7 @@ export interface GuideTopic {
   title: string;
   summary: string;
   roles: GuideAudience;
-  /** Default public. `platform` is hidden unless the viewer is platform_admin. */
+  /** Default public. `signed` = overlay when signed in. `platform` = platform_admin only. */
   visibility?: GuideVisibility;
   /** Optional jump into a live POS view when the current PIN allows it. */
   openView?: PosView;

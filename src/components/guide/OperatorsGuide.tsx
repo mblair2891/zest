@@ -93,16 +93,22 @@ export function OperatorsGuide({
   }, [filter, sessionRoles]);
 
   const searching = query.trim().length > 0;
+  const includeSigned = variant === "overlay" && (hasSessionRole || isPlatformAdmin);
+  const includePlatform = isPlatformAdmin && variant === "overlay";
   const groupedAll = useMemo(
     () =>
       chaptersWithMatches(query, activeRoles, {
-        includePlatform: isPlatformAdmin,
+        includePlatform,
+        includeSigned,
       }),
-    [query, activeRoles, isPlatformAdmin],
+    [query, activeRoles, includePlatform, includeSigned],
   );
   const navTabs = useMemo(
-    () => GUIDE_NAV_TABS.filter((t) => t.id !== "platform" || isPlatformAdmin),
-    [isPlatformAdmin],
+    () =>
+      GUIDE_NAV_TABS.filter(
+        (t) => t.id !== "platform" || (isPlatformAdmin && variant === "overlay"),
+      ),
+    [isPlatformAdmin, variant],
   );
   const roleChips = useMemo(
     () => GUIDE_ROLES.filter((r) => r !== "platform_admin" || isPlatformAdmin),
@@ -239,7 +245,8 @@ export function OperatorsGuide({
                       (t) =>
                         tab.chapterIds.includes(t.chapterId) &&
                         topicVisible(t, activeRoles, {
-                          includePlatform: isPlatformAdmin,
+                          includePlatform,
+                          includeSigned,
                         }),
                     );
                     if (first) openTopic(first.id);
@@ -314,7 +321,10 @@ export function OperatorsGuide({
                   {chapter.title}
                 </p>
                 {topics.map((t) => {
-                  const mine = topicVisible(t, sessionRoles.length ? sessionRoles : "all");
+                  const mine = topicVisible(t, sessionRoles.length ? sessionRoles : "all", {
+                    includePlatform,
+                    includeSigned,
+                  });
                   const complete = isComplete(userKey, t.id);
                   return (
                     <button
@@ -391,7 +401,8 @@ export function OperatorsGuide({
               <GuideBlocks
                 blocks={active.blocks}
                 onOpenTopic={openTopic}
-                includePlatform={isPlatformAdmin}
+                includePlatform={includePlatform}
+                includeSigned={includeSigned}
               />
 
               <footer className="border-t border-border pt-4 text-[11px] text-muted-foreground">

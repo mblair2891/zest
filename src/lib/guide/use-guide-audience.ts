@@ -28,9 +28,7 @@ export function useGuideAudience(): GuideAudienceState {
     if (emp) {
       for (const r of employeeToGuideRoles(emp.role, venue)) roles.add(r);
     }
-    const isAdminEmail =
-      user?.primaryEmail?.toLowerCase() === PLATFORM_ADMIN_EMAIL ||
-      user?.primaryEmail?.toLowerCase() === "admin@zest.local";
+    const isAdminEmail = user?.primaryEmail?.toLowerCase() === PLATFORM_ADMIN_EMAIL;
     if (platformAuthed || isAdminEmail) {
       for (const r of saasRoleToGuideRoles(platformAdminRole, isAdminEmail)) {
         roles.add(r);

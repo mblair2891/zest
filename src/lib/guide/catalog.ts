@@ -195,12 +195,14 @@ export function topicIsPlatformOnly(topic: GuideTopic): boolean {
 export function topicVisible(
   topic: GuideTopic,
   roles: GuideRole[] | "all",
-  opts?: { includePlatform?: boolean },
+  opts?: { includePlatform?: boolean; includeSigned?: boolean },
 ): boolean {
   const includePlatform =
     opts?.includePlatform ??
     (Array.isArray(roles) && roles.includes("platform_admin"));
+  const includeSigned = opts?.includeSigned ?? includePlatform;
   if (topicIsPlatformOnly(topic) && !includePlatform) return false;
+  if (topic.visibility === "signed" && !includeSigned && !includePlatform) return false;
   if (roles === "all") return true;
   if (roles.length === 0) return true;
   return topicMatchesRoles(topic.roles, roles);

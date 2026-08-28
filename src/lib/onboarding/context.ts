@@ -118,9 +118,7 @@ export function useOnboardingContext(pathname: string): OnboardingContext {
       ? (employees.find((e) => e.id === demoEmployeeId) ?? null)
       : null);
 
-  const isAdminEmail =
-    user?.primaryEmail?.toLowerCase() === PLATFORM_ADMIN_EMAIL ||
-    user?.primaryEmail?.toLowerCase() === "admin@zest.local";
+  const isAdminEmail = user?.primaryEmail?.toLowerCase() === PLATFORM_ADMIN_EMAIL;
   const isPlatformAdmin = platformAuthed || isAdminEmail;
 
   const roles = new Set<GuideRole>();

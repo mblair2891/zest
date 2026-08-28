@@ -8,7 +8,8 @@ Content lives in TypeScript modules so a new feature is a new topic file, not
 a CMS.
 
 Public `/guide` describes the product **as it works now** (training week). It
-does not document retired demo PIN / seeded-house / Zest stories.
+does not document retired demo PIN / seeded-house / Zest stories. Owner HR
+flags (`hr-employment`) are overlay-only (`visibility: "signed"`), not public.
 
 ## Where things live
 
@@ -71,7 +72,7 @@ only when the viewer is signed in as `platform_admin`:
 
 Do **not** put those internals in the public guide.
 
-Owner / manager (signed-in overlay) also gets the entity HR topic: flags, visibility dropdowns, e-sign vs outbox, state packets. Public `/guide` keeps staff-facing HR basics only.
+Owner / manager (signed-in overlay) also gets the entity HR topic (`visibility: "signed"`): flags, visibility dropdowns, e-sign vs outbox, state packets, I-9 file store. Public `/guide` keeps staff-facing HR basics only.
 
 ## Add a topic
 
@@ -115,6 +116,7 @@ Bookmarkable URL: `/guide?topic=my-topic`.
 ## Current facts (keep copy honest)
 
 - Brand: **Summex**, powered by **Quantum Reach**. Guest cards: **Quantum Payments** only. Never Stripe/Square as a POS processor. Never Zest.
+- HR: optional per entity (host or tenant employer). Packets + signed PDF fallback. Clock punches persist for payroll CSV. Platform never sees SSN.
 - First location = SaaS onboard only. Host onboarded by SaaS; host invites operator tenants.
 - Training = practice + Quantum sandbox; optional inventory tracking. Go live now or schedule; owner keep/erase per data class; menus/recipes/staff/settings kept.
 - PIN login ≠ clock in/out ≠ server closeout.
