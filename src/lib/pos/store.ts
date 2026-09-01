@@ -1192,7 +1192,7 @@ const usePosStoreRaw = create()(persist((set, get) => ({
 		const table = get().tables.find((t) => t.id === tableId);
 		if (!table) return { ok: false, error: "Not found" };
 		if (!table.orderId) return { ok: false, error: "No open check" };
-		const order = get().orders.find((o) => o.id === table.orderId);
+		let order = get().orders.find((o) => o.id === table.orderId);
 		if (!order || order.status !== "open") return { ok: false, error: "No open check" };
 		if (!order.serverId) {
 			set({
@@ -1244,7 +1244,7 @@ const usePosStoreRaw = create()(persist((set, get) => ({
 		if (!isCheckHoldKind(hold) || !String(reason || "").trim()) {
 			return { ok: false, error: "Named hold requires a reason." };
 		}
-		const order = get().orders.find((o) => o.id === orderId);
+		let order = get().orders.find((o) => o.id === orderId);
 		if (!order || order.status !== "open") return { ok: false, error: "No open check" };
 		if (!order.serverId) {
 			set({
@@ -2285,7 +2285,7 @@ const usePosStoreRaw = create()(persist((set, get) => ({
 		const emp = get().getCurrentEmployee();
 		const cfg = lpCfg(get);
 		const merchEst = order.lines.filter((l) => !l.voided && !l.comped).reduce((s, l) => s + lineUnitTotal(l) * l.quantity, 0);
-		const amtEst = Math.round((merchEst * (percent ?? order.discountPercent || 0)) / 100) + (cents ?? order.discountCents || 0);
+		const amtEst = Math.round((merchEst * ((percent ?? order.discountPercent) || 0)) / 100) + ((cents ?? order.discountCents) || 0);
 		const mgr = skipGate || path === "break_glass" || get().canAuthorizeGate("discount", amtEst);
 		if (discountNeedsManager(order, cfg) && !mgr) {
 			return { ok: false, error: "Discount after send needs a manager, shift lead, or pending approval." };
