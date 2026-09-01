@@ -63,7 +63,6 @@ import {
 import { applyCashTender, useCashSessionStore } from "./cash-session";
 import { hasCompletedCloseoutToday } from "./closeout-store";
 import { cashRoleFromSession, parseCashHandling } from "./cash-handling";
-import { useStationSessionStore } from "./station-session";
 import {
   cardRequiresConnection,
   noteCashPayment,
