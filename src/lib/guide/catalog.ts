@@ -62,7 +62,7 @@ export const GUIDE_CHAPTERS: GuideChapter[] = [
   {
     id: "cash-gifts",
     title: "Cash, gifts, guests",
-    summary: "Drawer, first-party gift, CRM, reports.",
+    summary: "Drawer, server closeout, first-party gift, CRM, reports.",
     order: 7,
   },
   {

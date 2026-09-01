@@ -93,7 +93,69 @@ export const CASH_GIFT_TOPICS: GuideTopic[] = [
       tip(
         "House Wi-Fi still records cash if the internet is down. You are not blocked from closing a cash table during an ISP outage. Open on cash sale: always, never, or manager PIN. No-sale: off, manager, or assigned user.",
       ),
-      related("tenders-tips", "cash-discount", "settlement", "wifi-offline", "reports"),
+      related("tenders-tips", "cash-discount", "settlement", "wifi-offline", "reports", "server-closeout"),
+    ],
+  }),
+  topic({
+    id: "server-closeout",
+    chapterId: "cash-gifts",
+    title: "Server closeout, blind count, mix-based tip-out",
+    summary:
+      "End of shift on the order device: sales, tenders, blind cash count, declared tips, mix-based tip-out recs. Not PIN login and not clock-out.",
+    roles: ["owner_manager", "server", "kitchen_bar", "host_operator"],
+    keywords: [
+      "closeout",
+      "end of shift",
+      "blind count",
+      "over short",
+      "tip out",
+      "kitchen tip",
+      "bar tip",
+      "busser",
+      "declared cash",
+      "checkout slip",
+    ],
+    openView: "cash",
+    blocks: [
+      why(
+        "PIN signs you into the floor. Clock-out punches time. Closeout is the third thing: this server’s sales, cash, and tip-outs for the shift.",
+      ),
+      p(
+        "On an order-taking device tap Closeout (not Labor, not the house Cash drawer close). House well/drawer close stays a separate manager/closer screen.",
+      ),
+      steps(
+        "Open checks — blocked by default until you close or transfer them. A manager can allow a pending closeout if that toggle is on.",
+        "Read-only sales: guests, items, food vs drink, comps, voids.",
+        "Tenders: card / cash / gift.",
+        "Cash count if you had a server bank or an assigned one-person drawer. Shared well: skip the drawer count unless you are the house closer — still declare cash tips and tip-outs.",
+        "Card tips come from payments (manager can adjust). Declare cash tips.",
+        "Tip-out recommendations — accept or override with an optional note. Not payroll and not an automatic pay.",
+        "Drops, paid-in, paid-out listed.",
+        "Confirm with your PIN. Optional checkout slip if the location prints one.",
+      ),
+      p(
+        "Blind count (default on for server bank and one-person drawer): enter cash on hand first. Then the system shows expected and over/short. Expected = starting bank + cash sales − cash refunds − drops + paid-in − paid-out. Over/short over $X requires a note and flags the manager queue.",
+      ),
+      p(
+        "Tip-out rates follow sales mix, not a flat percent of all sales. Ticket lines already own food vs drink (bar station or drink course). Two servers with $500 sales do not owe the same kitchen and bar amounts.",
+      ),
+      ul(
+        "Server A, $500, 60% food / 40% drink. Kitchen 3% of food = $9.00. Bar 5% of drink = $10.00. Higher kitchen rec.",
+        "Server B, $500, 25% food / 75% drink. Kitchen 3% of food = $3.75. Bar 5% of drink = $18.75. Higher bar rec.",
+        "Host can be % of total sales or covers. Busser % of food or total. Map each pool to a house department or an operator entity.",
+        "Default basis: % of category sales. Optional: % of tips allocated by the same food/drink mix. Card vs cash tip source does not change the mix unless that setting is on.",
+        "The closeout stores both recommended and actual dollars per pool.",
+      ),
+      p(
+        "Settings: require closeout before clock-out (default on for servers), pending closeout with manager, print checkout slip, block open checks. Manager queue on Cash: closed / pending / over-short; reopen with manager PIN.",
+      ),
+      p(
+        "Reports → Server closeouts: declared cash, blind over/short, recommended vs actual by pool. Export CSV is payroll-ready later — Summex does not process payroll.",
+      ),
+      warn(
+        "Closeout is not clock-out. Labor still punches time. House drawer/well close is still Cash, not this wizard.",
+      ),
+      related("cash-handling", "tenders-tips", "payroll-export", "reports", "floor-pin-login"),
     ],
   }),
   topic({
@@ -191,7 +253,7 @@ export const CASH_GIFT_TOPICS: GuideTopic[] = [
         "Payments: tender mix (Quantum Payments card), cash discount cost, voids/comps, $35 chargeback splits.",
         "Staff: by server (your own if you are a server), aging checks.",
         "Kitchen/bar: ticket times and 86s.",
-        "Close: end of day; cash expected vs counted if tracked.",
+        "Close: end of day; drawer/well close; server banks; server closeouts (declared cash, blind over/short, tip-out rec vs actual).",
         "Guest: waitlist, reservations, kiosk — hidden when the type does not use them.",
         "Gift: liability by issuer and redemptions (server ledger).",
         "Host venues: sales by operator, settlement/ledger.",
@@ -202,7 +264,7 @@ export const CASH_GIFT_TOPICS: GuideTopic[] = [
         "Export CSV for the active report.",
         "On a host venue, still use Settle for period close — Reports is the recap, not the payout.",
       ),
-      related("ai-insights", "cash-handling", "settlement", "roles-dashboards"),
+      related("ai-insights", "cash-handling", "server-closeout", "settlement", "roles-dashboards"),
     ],
   }),
   topic({

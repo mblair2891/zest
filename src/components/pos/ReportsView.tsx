@@ -36,6 +36,8 @@ import { cn } from "@/lib/utils";
 import { liabilityByIssuer } from "@/lib/pos/gift-issuer";
 import { parseCashHandling } from "@/lib/pos/cash-handling";
 import { bankExpected, drawerExpected, useCashSessionStore } from "@/lib/pos/cash-session";
+import { closeoutPayrollCsv } from "@/lib/pos/closeout";
+import { useCloseoutStore } from "@/lib/pos/closeout-store";
 
 function annotateInsights(ins: LocationInsights): LocationInsights {
   const events = useOpsLearnStore.getState().events;
@@ -244,6 +246,15 @@ export function ReportsView() {
           ]),
         ),
       );
+      return;
+    }
+    if (active.id === "close-closeouts") {
+      const emp = usePosStore.getState().employees.find((e) => e.id === usePosStore.getState().currentEmployeeId);
+      let rows = useCloseoutStore.getState().records.filter((r) => r.at >= metrics.from && r.at <= metrics.to);
+      if (emp?.role === "server" || emp?.role === "bartender") {
+        rows = rows.filter((r) => r.employeeId === emp.id);
+      }
+      downloadCsv("server-closeouts.csv", closeoutPayrollCsv(rows));
       return;
     }
     downloadCsv(
@@ -724,6 +735,67 @@ function ReportBody({ id, m }: { id: ReportId; m: ReturnType<typeof metricsFromP
             );
           })}
         </ul>
+      </div>
+    );
+  }
+  if (id === "close-closeouts") {
+    const emp = usePosStore.getState().employees.find((e) => e.id === usePosStore.getState().currentEmployeeId);
+    const all = useCloseoutStore.getState().records.filter((r) => r.at >= m.from && r.at <= m.to);
+    const rows =
+      emp?.role === "server" || emp?.role === "bartender"
+        ? all.filter((r) => r.employeeId === emp.id)
+        : all;
+    const declared = rows.reduce((s, r) => s + r.cashTipsDeclaredCents, 0);
+    const overShort = rows.reduce((s, r) => s + (r.overShortCents ?? 0), 0);
+    const rec = rows.reduce((s, r) => s + r.tipOuts.reduce((a, t) => a + t.recommendedCents, 0), 0);
+    const actual = rows.reduce((s, r) => s + r.tipOuts.reduce((a, t) => a + t.actualCents, 0), 0);
+    const byPool = new Map<string, { rec: number; actual: number }>();
+    for (const r of rows) {
+      for (const t of r.tipOuts) {
+        const cur = byPool.get(t.label) ?? { rec: 0, actual: 0 };
+        cur.rec += t.recommendedCents;
+        cur.actual += t.actualCents;
+        byPool.set(t.label, cur);
+      }
+    }
+    if (!rows.length) return <p className="text-sm text-muted-foreground">No server closeouts in this range.</p>;
+    return (
+      <div className="space-y-3">
+        <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+          <Card label="Declared cash tips" value={formatCurrency(declared)} />
+          <Card label="Blind over/short" value={formatCurrency(overShort)} sub="Counted vs expected" />
+          <Card label="Tip-out recommended" value={formatCurrency(rec)} />
+          <Card label="Tip-out actual" value={formatCurrency(actual)} />
+        </div>
+        <p className="text-sm font-medium">Recommended vs actual by pool</p>
+        <ul className="space-y-2 text-sm">
+          {[...byPool.entries()].map(([label, v]) => (
+            <li key={label} className="flex justify-between gap-2 rounded-xl border border-border px-3 py-2">
+              <span>{label}</span>
+              <span className="tabular">
+                rec {formatCurrency(v.rec)} · actual {formatCurrency(v.actual)}
+              </span>
+            </li>
+          ))}
+        </ul>
+        <ul className="space-y-2 text-sm">
+          {rows.slice(0, 40).map((r) => (
+            <li key={r.id} className="flex justify-between gap-2 rounded-xl border border-border px-3 py-2">
+              <span>
+                {r.employeeName}
+                <span className="text-muted-foreground"> · {r.status.replace("_", " ")}</span>
+              </span>
+              <span className="tabular">
+                cash {formatCurrency(r.cashTipsDeclaredCents)}
+                {r.overShortCents != null ? ` · O/S ${formatCurrency(r.overShortCents)}` : ""}
+              </span>
+            </li>
+          ))}
+        </ul>
+        <p className="text-xs text-muted-foreground">
+          Export CSV is payroll-ready (declared cash, over/short, rec vs actual by pool). Summex does not
+          process payroll.
+        </p>
       </div>
     );
   }

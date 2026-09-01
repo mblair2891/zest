@@ -29,6 +29,7 @@ import { buildPayrollRows, payrollCsv } from "@/lib/labor/payroll";
 import { EntityScheduleView } from "./EntityScheduleView";
 import { parseCashHandling } from "@/lib/pos/cash-handling";
 import { useCashSessionStore } from "@/lib/pos/cash-session";
+import { hasCompletedCloseoutToday } from "@/lib/pos/closeout-store";
 
 type Tab = "clock" | "myshifts" | "timecards" | "alerts" | "settings" | "payroll";
 
@@ -94,6 +95,18 @@ export function LaborOpsView() {
           const missing = useCashSessionStore.getState().uncountedForEmployee(id, cfg);
           if (missing.length) {
             setFlash(`Count ${missing.join(" and ")} before clock-out.`);
+            return;
+          }
+        }
+        const staff = employees.find((e) => e.id === id);
+        if (
+          cfg.requireCloseoutBeforeClockOut &&
+          staff &&
+          (staff.role === "server" || staff.role === "bartender") &&
+          !force
+        ) {
+          if (!hasCompletedCloseoutToday(id)) {
+            setFlash("Finish end-of-shift closeout before clock-out.");
             return;
           }
         }

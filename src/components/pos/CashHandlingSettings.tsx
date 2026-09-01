@@ -11,6 +11,8 @@ import {
   DEFAULT_CASH_HANDLING,
   DRAWER_KIND_LABEL,
   DRAWER_KINDS,
+  TIP_OUT_ROLES,
+  TIP_OUT_ROLE_LABEL,
   newDrawerId,
   parseCashHandling,
   type CashHandlingConfig,
@@ -20,9 +22,11 @@ import {
   type OpenOnCashSale,
   type NoSaleOpen,
   type IssueBankWhen,
+  type TipOutRole,
 } from "@/lib/pos/cash-handling";
 import type { DeviceRole } from "@/lib/pos/device-roles";
 import { DEVICE_ROLE_LABEL } from "@/lib/pos/device-roles";
+import { HOST_SCOPE } from "@/lib/access/entity-grants";
 
 function save(next: CashHandlingConfig) {
   usePosStore.getState().updateSettings({ cashHandling: next });
@@ -50,6 +54,7 @@ function Field({
 export function CashHandlingSettings({ write }: { write: boolean }) {
   const settings = usePosStore((s) => s.settings);
   const employees = usePosStore((s) => s.employees);
+  const vendors = usePosStore((s) => s.vendors);
   const devices = usePosStore((s) => s.locationDevices ?? []);
   const cfg = parseCashHandling(settings.cashHandling);
   const printers = devices.filter((d) => d.type === "printer" && d.status !== "inactive");
@@ -69,6 +74,9 @@ export function CashHandlingSettings({ write }: { write: boolean }) {
         <p className="text-sm font-medium">Cash handling</p>
         <GuideLearnLink topicId="cash-handling" compact>
           Learn
+        </GuideLearnLink>
+        <GuideLearnLink topicId="server-closeout" compact>
+          Closeout
         </GuideLearnLink>
       </div>
       <p className="text-xs text-muted-foreground">
@@ -414,6 +422,9 @@ export function CashHandlingSettings({ write }: { write: boolean }) {
         </Field>
       </div>
 
+      <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+        End-of-shift closeout
+      </p>
       <label className="flex items-start gap-2 text-sm">
         <input
           type="checkbox"
@@ -425,10 +436,205 @@ export function CashHandlingSettings({ write }: { write: boolean }) {
         <span>
           Blind count
           <span className="mt-0.5 block text-xs text-muted-foreground">
-            Hide expected until counted.
+            Server enters cash on hand first, then expected and over/short. Default on for
+            server bank and one-person drawer.
           </span>
         </span>
       </label>
+      <label className="flex items-start gap-2 text-sm">
+        <input
+          type="checkbox"
+          className="mt-0.5 h-4 w-4 rounded border-border"
+          disabled={!write}
+          checked={cfg.blockOpenChecks}
+          onChange={(e) => patch({ blockOpenChecks: e.target.checked })}
+        />
+        <span>Block closeout while this PIN still has open checks</span>
+      </label>
+      <label className="flex items-start gap-2 text-sm">
+        <input
+          type="checkbox"
+          className="mt-0.5 h-4 w-4 rounded border-border"
+          disabled={!write}
+          checked={cfg.pendingCloseoutNeedsManager}
+          onChange={(e) => patch({ pendingCloseoutNeedsManager: e.target.checked })}
+        />
+        <span>Pending closeout with open checks requires manager</span>
+      </label>
+      <label className="flex items-start gap-2 text-sm">
+        <input
+          type="checkbox"
+          className="mt-0.5 h-4 w-4 rounded border-border"
+          disabled={!write}
+          checked={cfg.requireCloseoutBeforeClockOut}
+          onChange={(e) => patch({ requireCloseoutBeforeClockOut: e.target.checked })}
+        />
+        <span>Require closeout before clock-out (servers)</span>
+      </label>
+      <label className="flex items-start gap-2 text-sm">
+        <input
+          type="checkbox"
+          className="mt-0.5 h-4 w-4 rounded border-border"
+          disabled={!write}
+          checked={cfg.printCheckoutSlip}
+          onChange={(e) => patch({ printCheckoutSlip: e.target.checked })}
+        />
+        <span>Print checkout slip on confirm</span>
+      </label>
+      <label className="flex items-start gap-2 text-sm">
+        <input
+          type="checkbox"
+          className="mt-0.5 h-4 w-4 rounded border-border"
+          disabled={!write}
+          checked={cfg.tipOutEnabled}
+          onChange={(e) => patch({ tipOutEnabled: e.target.checked })}
+        />
+        <span>Enable mix-based tip-out recommendations (not payroll)</span>
+      </label>
+      <Field label="Tip-out basis">
+        <select
+          className="h-9 w-full rounded-lg border border-border bg-bg px-2 text-sm"
+          disabled={!write}
+          value={cfg.tipOutBasis}
+          onChange={(e) =>
+            patch({ tipOutBasis: e.target.value === "tips_by_mix" ? "tips_by_mix" : "category_sales" })
+          }
+        >
+          <option value="category_sales">% of category sales (food vs drink)</option>
+          <option value="tips_by_mix">% of tips allocated by sales mix</option>
+        </select>
+      </Field>
+      <div>
+        <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+          Tip-out pools
+        </p>
+        <ul className="space-y-2">
+          {cfg.tipOutPools.map((p, i) => (
+            <li key={p.id} className="grid gap-2 rounded-xl border border-border p-3 sm:grid-cols-2 lg:grid-cols-6">
+              <Input
+                disabled={!write}
+                value={p.label}
+                onChange={(e) =>
+                  patch({
+                    tipOutPools: cfg.tipOutPools.map((x, j) =>
+                      j === i ? { ...x, label: e.target.value.slice(0, 40) } : x,
+                    ),
+                  })
+                }
+              />
+              <select
+                className="h-9 rounded-lg border border-border bg-bg px-2 text-sm"
+                disabled={!write}
+                value={p.role}
+                onChange={(e) =>
+                  patch({
+                    tipOutPools: cfg.tipOutPools.map((x, j) =>
+                      j === i ? { ...x, role: e.target.value as TipOutRole } : x,
+                    ),
+                  })
+                }
+              >
+                {TIP_OUT_ROLES.map((role) => (
+                  <option key={role} value={role}>
+                    {TIP_OUT_ROLE_LABEL[role]}
+                  </option>
+                ))}
+              </select>
+              <select
+                className="h-9 rounded-lg border border-border bg-bg px-2 text-sm"
+                disabled={!write}
+                value={p.category}
+                onChange={(e) =>
+                  patch({
+                    tipOutPools: cfg.tipOutPools.map((x, j) =>
+                      j === i
+                        ? {
+                            ...x,
+                            category: e.target.value as typeof p.category,
+                          }
+                        : x,
+                    ),
+                  })
+                }
+              >
+                <option value="food">% of food sales</option>
+                <option value="drink">% of drink sales</option>
+                <option value="total">% of total sales</option>
+                <option value="covers">% of covers</option>
+              </select>
+              <Input
+                disabled={!write}
+                inputMode="decimal"
+                value={String(p.percent)}
+                onChange={(e) =>
+                  patch({
+                    tipOutPools: cfg.tipOutPools.map((x, j) =>
+                      j === i ? { ...x, percent: Math.max(0, parseFloat(e.target.value) || 0) } : x,
+                    ),
+                  })
+                }
+              />
+              <select
+                className="h-9 rounded-lg border border-border bg-bg px-2 text-sm"
+                disabled={!write}
+                value={p.entityId ?? HOST_SCOPE}
+                onChange={(e) =>
+                  patch({
+                    tipOutPools: cfg.tipOutPools.map((x, j) =>
+                      j === i
+                        ? {
+                            ...x,
+                            entityId: e.target.value === HOST_SCOPE ? null : e.target.value,
+                          }
+                        : x,
+                    ),
+                  })
+                }
+              >
+                <option value={HOST_SCOPE}>House department</option>
+                {vendors.filter((v) => v.active).map((v) => (
+                  <option key={v.id} value={v.id}>
+                    {v.shortName || v.name}
+                  </option>
+                ))}
+              </select>
+              {write && (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => patch({ tipOutPools: cfg.tipOutPools.filter((_, j) => j !== i) })}
+                >
+                  Remove
+                </Button>
+              )}
+            </li>
+          ))}
+        </ul>
+        {write && (
+          <Button
+            size="sm"
+            className="mt-2"
+            variant="outline"
+            onClick={() =>
+              patch({
+                tipOutPools: [
+                  ...cfg.tipOutPools,
+                  {
+                    id: `pool_${Date.now().toString(36)}`,
+                    label: "Pool",
+                    role: "other",
+                    category: "total",
+                    percent: 1,
+                    entityId: null,
+                  },
+                ],
+              })
+            }
+          >
+            Add pool
+          </Button>
+        )}
+      </div>
       <label className="flex items-start gap-2 text-sm">
         <input
           type="checkbox"

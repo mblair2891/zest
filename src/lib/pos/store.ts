@@ -61,6 +61,7 @@ import {
 	roundRobin,
 } from "./check-ops";
 import { applyCashTender, useCashSessionStore } from "./cash-session";
+import { hasCompletedCloseoutToday } from "./closeout-store";
 import { cashRoleFromSession, parseCashHandling } from "./cash-handling";
 import { useStationSessionStore } from "./station-session";
 import {
@@ -417,6 +418,16 @@ const usePosStoreRaw = create()(persist((set, get) => ({
 				const missing = useCashSessionStore.getState().uncountedForEmployee(emp.id, cfg);
 				if (missing.length) {
 					return { ok: false, error: `Count ${missing.join(" and ")} before clock-out.` };
+				}
+			}
+			if (
+				clockingOut &&
+				cfg.requireCloseoutBeforeClockOut &&
+				emp &&
+				(emp.role === "server" || emp.role === "bartender")
+			) {
+				if (!hasCompletedCloseoutToday(emp.id)) {
+					return { ok: false, error: "Finish end-of-shift closeout before clock-out." };
 				}
 			}
 			if (!clockingOut && emp && cfg.issueBank === "clock_in") {

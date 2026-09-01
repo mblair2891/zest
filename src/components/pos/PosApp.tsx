@@ -15,6 +15,7 @@ import { useCostStore } from "@/lib/costs/store";
 import { useLifecycleStore } from "@/lib/lifecycle/store";
 import { useStationSessionStore } from "@/lib/pos/station-session";
 import { useCashSessionStore } from "@/lib/pos/cash-session";
+import { useCloseoutStore } from "@/lib/pos/closeout-store";
 import { EntityLogin } from "./EntityHome";
 import { AppShell } from "./AppShell";
 import { PosErrorBoundary } from "./PosErrorBoundary";
@@ -93,6 +94,7 @@ const STORES = [
   useLifecycleStore,
   useStationSessionStore,
   useCashSessionStore,
+  useCloseoutStore,
 ] as const;
 
 function PosAppInner({ entityId }: { entityId?: string }) {
@@ -326,6 +328,7 @@ function PosAppInner({ entityId }: { entityId?: string }) {
             });
             if (access.location.id) {
               useCashSessionStore.getState().ensureLocation(access.location.id);
+              useCloseoutStore.getState().ensureLocation(access.location.id);
             }
           } catch {
             /* */

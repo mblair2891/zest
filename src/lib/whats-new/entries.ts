@@ -6,6 +6,19 @@ import type { GuideUpdate } from "@/lib/guide/types";
  */
 export const WHATS_NEW_ENTRIES: GuideUpdate[] = [
   {
+    id: "upd_2026_10_16_server_closeout",
+    date: "2026-10-16",
+    title: "Server closeout, blind count, mix-based tip-out",
+    summary:
+      "End-of-shift closeout on order devices: open checks, sales, tenders, blind cash count, declared tips, mix-based tip-out recs. Not PIN login and not clock-out.",
+    body: "Closeout is separate from PIN and from Labor clock-out. Servers enter cash on hand first when blind count is on (default for server bank and one-person drawer), then see expected and over/short. Tip-out recommendations follow food vs drink mix — two $500 servers do not owe the same kitchen and bar amounts. Accept or override; both recommended and actual store. House well/drawer close stays on Cash. Reports → Server closeouts exports a payroll-ready CSV. Summex does not process payroll.",
+    roles: ["owner_manager", "server", "kitchen_bar", "host_operator"],
+    surfaces: ["floor", "reports", "settings"],
+    audience: "all",
+    topicId: "server-closeout",
+    tags: ["closeout", "tips", "cash", "blind count"],
+  },
+  {
     id: "upd_2026_10_14_shift_allowables",
     date: "2026-10-14",
     title: "Clock windows, shift approval, pay-period export",

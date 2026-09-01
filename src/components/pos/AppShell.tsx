@@ -33,6 +33,7 @@ import {
   Rocket,
   Megaphone,
   Globe2,
+  ClipboardCheck,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -74,6 +75,7 @@ import { PayrollExportWatcher } from "./PayrollExportWatcher";
 import { useStationSessionStore } from "@/lib/pos/station-session";
 import { canChangeDevice, stationKindLabel, stationsAllowedForEmployee } from "@/lib/pos/station-access";
 import { readStationDeviceRole } from "@/lib/pos/device-roles";
+import { CloseoutView } from "./CloseoutView";
 import { HOST_SCOPE } from "@/lib/access/entity-grants";
 import { KitchenView } from "./KitchenView";
 import { ReportsView } from "./ReportsView";
@@ -207,6 +209,7 @@ export function AppShell() {
   const setFocusedPane = useStationSessionStore((s) => s.setFocusedPane);
   const stationAssignment = useStationSessionStore((s) => s.assignment);
   const [panePick, setPanePick] = useState<null | "a" | "b">(null);
+  const [closeoutOpen, setCloseoutOpen] = useState(false);
   const tenantLocationId = usePosStore((s) => s.tenantLocationId);
   const kdsMode =
     isProspectDemo() &&
@@ -440,7 +443,7 @@ export function AppShell() {
   }
 
   return (
-    <div className={cn("flex h-[100dvh] flex-col bg-bg text-foreground", shellPad)}>
+    <div className={cn("relative flex h-[100dvh] flex-col bg-bg text-foreground", shellPad)}>
       <LoginOnboardingHost />
       <LifecycleWatcher />
       <AiReportWatcher />
@@ -517,6 +520,24 @@ export function AppShell() {
 
           <ThisStationButton />
           {canChangeDevice(emp) && <SplitScreenToggle />}
+          {emp &&
+            (role === "server" ||
+              role === "bartender" ||
+              role === "cashier" ||
+              role === "host" ||
+              role === "manager" ||
+              role === "owner") &&
+            urlStation !== "ods" && (
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => setCloseoutOpen(true)}
+                title="End of shift — not clock-out"
+              >
+                <ClipboardCheck className="h-3.5 w-3.5" />
+                Closeout
+              </Button>
+            )}
           <VoiceCommandButton />
           <NotificationBell />
           <NetworkChip />
@@ -783,6 +804,11 @@ export function AppShell() {
       </nav>
       )}
 
+      {closeoutOpen && (
+        <div className="absolute inset-0 z-30 bg-bg">
+          <CloseoutView onDone={() => setCloseoutOpen(false)} />
+        </div>
+      )}
       <TicketBumpWatcher />
       <NetworkWatcher />
     </div>

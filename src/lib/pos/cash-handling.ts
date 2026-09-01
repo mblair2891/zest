@@ -3,6 +3,61 @@ import { deviceRoleFromSessionMode } from "./device-roles";
 import type { SessionModeId } from "@/lib/lifecycle/types";
 import type { Employee, EmployeeRole, Order } from "./types";
 
+export const TIP_OUT_CATEGORIES = ["food", "drink", "total", "covers"] as const;
+export type TipOutCategory = (typeof TIP_OUT_CATEGORIES)[number];
+export const TIP_OUT_BASES = ["category_sales", "tips_by_mix"] as const;
+export type TipOutBasis = (typeof TIP_OUT_BASES)[number];
+export const TIP_OUT_ROLES = ["kitchen", "bar", "host", "busser", "expo", "other"] as const;
+export type TipOutRole = (typeof TIP_OUT_ROLES)[number];
+
+export type TipOutPool = {
+  id: string;
+  label: string;
+  role: TipOutRole;
+  category: TipOutCategory;
+  percent: number;
+  /** Operator entity, or null for the house department. */
+  entityId: string | null;
+};
+
+export const TIP_OUT_ROLE_LABEL: Record<TipOutRole, string> = {
+  kitchen: "Kitchen",
+  bar: "Bar",
+  host: "Host",
+  busser: "Busser",
+  expo: "Expo",
+  other: "Other",
+};
+
+export const DEFAULT_TIP_OUT_POOLS: TipOutPool[] = [
+  { id: "pool_kitchen", label: "Kitchen", role: "kitchen", category: "food", percent: 3, entityId: null },
+  { id: "pool_bar", label: "Bar", role: "bar", category: "drink", percent: 5, entityId: null },
+  { id: "pool_host", label: "Host", role: "host", category: "total", percent: 1, entityId: null },
+  { id: "pool_busser", label: "Busser", role: "busser", category: "food", percent: 2, entityId: null },
+];
+
+export function parseTipOutPools(raw: unknown): TipOutPool[] {
+  if (!Array.isArray(raw) || !raw.length) return DEFAULT_TIP_OUT_POOLS.map((p) => ({ ...p }));
+  const out: TipOutPool[] = [];
+  for (const row of raw.slice(0, 12)) {
+    if (!row || typeof row !== "object") continue;
+    const o = row as Record<string, unknown>;
+    const id = String(o.id ?? "").trim() || `pool_${out.length + 1}`;
+    const label = String(o.label ?? "").trim().slice(0, 40) || "Pool";
+    const role = (TIP_OUT_ROLES as readonly string[]).includes(String(o.role))
+      ? (o.role as TipOutRole)
+      : "other";
+    const category = (TIP_OUT_CATEGORIES as readonly string[]).includes(String(o.category))
+      ? (o.category as TipOutCategory)
+      : "total";
+    const percent = Math.min(100, Math.max(0, Number(o.percent) || 0));
+    const entityRaw = String(o.entityId ?? "").trim();
+    const entityId = !entityRaw || entityRaw === "host" ? null : entityRaw.slice(0, 40);
+    out.push({ id: id.slice(0, 40), label, role, category, percent, entityId });
+  }
+  return out.length ? out : DEFAULT_TIP_OUT_POOLS.map((p) => ({ ...p }));
+}
+
 export const CASH_MODELS = [
   "single_user_drawer",
   "shared_drawer",
@@ -76,6 +131,13 @@ export type CashHandlingConfig = {
   cashFollowsOnTransfer: CashFollowsTransfer;
   requireCountToClockOut: boolean;
   handheldWellCash: HandheldWellCash;
+  blockOpenChecks: boolean;
+  requireCloseoutBeforeClockOut: boolean;
+  pendingCloseoutNeedsManager: boolean;
+  printCheckoutSlip: boolean;
+  tipOutEnabled: boolean;
+  tipOutBasis: TipOutBasis;
+  tipOutPools: TipOutPool[];
 };
 
 export const DEFAULT_PAID_REASONS = [
@@ -110,12 +172,19 @@ export const DEFAULT_CASH_HANDLING: CashHandlingConfig = {
   skimOverCents: 50000,
   paidInOutReasons: [...DEFAULT_PAID_REASONS],
   paidInOutRequireManagerPin: true,
-  blindCount: false,
+  blindCount: true,
   overShortWarnCents: 500,
   overShortRequireNoteCents: 2000,
   cashFollowsOnTransfer: "original_server",
   requireCountToClockOut: false,
   handheldWellCash: "well_drawer",
+  blockOpenChecks: true,
+  requireCloseoutBeforeClockOut: true,
+  pendingCloseoutNeedsManager: true,
+  printCheckoutSlip: false,
+  tipOutEnabled: true,
+  tipOutBasis: "category_sales",
+  tipOutPools: DEFAULT_TIP_OUT_POOLS.map((p) => ({ ...p })),
 };
 
 function asModel(raw: unknown): CashModel | null {
@@ -201,13 +270,23 @@ export function parseCashHandling(raw: unknown): CashHandlingConfig {
     skimOverCents: Math.max(0, Math.round(Number(o.skimOverCents) || 0)),
     paidInOutReasons: reasons.length ? reasons : [...DEFAULT_PAID_REASONS],
     paidInOutRequireManagerPin: o.paidInOutRequireManagerPin !== false,
-    blindCount: Boolean(o.blindCount),
     overShortWarnCents: Math.max(0, Math.round(Number(o.overShortWarnCents) || 0)),
     overShortRequireNoteCents: Math.max(0, Math.round(Number(o.overShortRequireNoteCents) || 0)),
     cashFollowsOnTransfer:
       o.cashFollowsOnTransfer === "accepting_server" ? "accepting_server" : "original_server",
     requireCountToClockOut: Boolean(o.requireCountToClockOut),
     handheldWellCash: o.handheldWellCash === "server_bank" ? "server_bank" : "well_drawer",
+    blockOpenChecks: o.blockOpenChecks !== false,
+    requireCloseoutBeforeClockOut: o.requireCloseoutBeforeClockOut !== false,
+    pendingCloseoutNeedsManager: o.pendingCloseoutNeedsManager !== false,
+    printCheckoutSlip: Boolean(o.printCheckoutSlip),
+    tipOutEnabled: o.tipOutEnabled !== false,
+    tipOutBasis: o.tipOutBasis === "tips_by_mix" ? "tips_by_mix" : "category_sales",
+    tipOutPools: parseTipOutPools(o.tipOutPools),
+    blindCount:
+      o.blindCount === undefined
+        ? defaultModel === "server_bank" || defaultModel === "single_user_drawer"
+        : Boolean(o.blindCount),
   };
 }
 

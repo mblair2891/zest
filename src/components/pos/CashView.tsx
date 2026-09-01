@@ -21,6 +21,7 @@ import {
 } from "@/lib/pos/cash-session";
 import { useStationSessionStore } from "@/lib/pos/station-session";
 import { kickCashDrawer } from "@/lib/print/dispatch";
+import { CloseoutQueue } from "./CloseoutQueue";
 
 export function CashView() {
   const shift = usePosStore((s) => s.shift);
@@ -242,6 +243,7 @@ export function CashView() {
         <p className="mb-3 rounded-xl border border-warn/40 bg-warn/10 px-3 py-2 text-sm">{sink.reason}</p>
       )}
       {flash && <p className="mb-3 text-sm text-muted-foreground">{flash}</p>}
+      <CloseoutQueue />
 
       <div className="mb-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         {[

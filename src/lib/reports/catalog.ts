@@ -123,6 +123,13 @@ export const REPORT_CATALOG: ReportDef[] = [
     roles: ["owner", "manager", "accountant", "server", "cashier"],
   },
   {
+    id: "close-closeouts",
+    group: "close",
+    title: "Server closeouts",
+    summary: "Declared cash, blind over/short, recommended vs actual tip-outs by pool.",
+    roles: ["owner", "manager", "accountant", "server", "bartender", "cashier"],
+  },
+  {
     id: "guest-waitlist",
     group: "guest",
     title: "Waitlist & reservations",

@@ -18,6 +18,7 @@ export type ReportId =
   | "close-eod"
   | "close-drawers"
   | "close-banks"
+  | "close-closeouts"
   | "guest-waitlist"
   | "guest-kiosk"
   | "multi-op-sales"
