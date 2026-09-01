@@ -13,8 +13,9 @@ import {
 } from "./mode";
 import { captureSandbox } from "./sandbox-adapter";
 import { captureLiveCardPresent } from "./stripe-terminal.server";
-import type { CardPresentInput, CardPresentResult, PaymentsStatus } from "./types";
+import type { CardPresentInput, CardPresentResult, CardPresentSplit, PaymentsStatus } from "./types";
 import { newId } from "@/lib/saas/ids";
+import { HOST_SCOPE } from "@/lib/access/entity-grants";
 
 type LocRow = {
   id: string;
@@ -129,19 +130,33 @@ export async function getPaymentsStatus(
     liveConfigured &&
     hostApproved &&
     Boolean(pickReaderId(setup));
+  let entityMerchants: PaymentsStatus["entityMerchants"] = [];
+  try {
+    const { listPaymentAccountsForLocation } = await import("./onboarding.server");
+    const accounts = await listPaymentAccountsForLocation(userId, locationId);
+    entityMerchants = accounts.map((a) => ({
+      entityId: a.kind === "host" ? HOST_SCOPE : (a.operatorId || HOST_SCOPE),
+      displayName: a.displayName,
+      kind: a.kind,
+      status: a.entityStatus,
+      canCapture: a.canCapture,
+    }));
+  } catch {
+    entityMerchants = [];
+  }
   let message =
     resolved.mode === "sandbox"
-      ? "Quantum Payments sandbox. Training / practice — not a live card capture. Cash always works."
+      ? "Quantum Payments sandbox. Each brand is its own payments account; the guest still pays one check. Cash always works."
       : !hostApproved
-        ? "Complete the Quantum Payments application before taking live cards. Cash always works."
+        ? "Each brand needs an approved Quantum Payments account before live cards. Cash always works."
         : liveReady
-          ? "Live Quantum Payments. Present the card on a supplied reader. Tablets run POS only."
+          ? "Live Quantum Payments. One guest tender splits to each brand’s account. Present the card on a supplied reader."
           : liveConfigured
             ? "Live mode is on, but no Quantum reader is enrolled. Use cash or keep the check open."
             : "Live mode is selected, but live keys are not configured. Use cash or keep the check open.";
   if (resolved.lifecycleForcesSandbox) {
     message =
-      "Location is not live yet — Quantum Payments sandbox. Go live before taking real cards.";
+      "Location is not live yet — Quantum Payments sandbox. Each brand uses a sandbox payments account. Guest still pays one check.";
   }
   return {
     locationId,
@@ -152,6 +167,7 @@ export async function getPaymentsStatus(
     liveConfigured,
     liveReady,
     hostPaymentsApproved: hostApproved,
+    entityMerchants,
     readers,
     hostBrand: loc.host_brand_name || loc.name,
     message,
@@ -177,26 +193,86 @@ export async function captureCardPresent(
   });
   const hostBrand = input.hostBrand || loc.host_brand_name || loc.name;
   const merchantId = await ensureMerchant(loc.org_id, loc.id, resolved.mode);
+  const entities: CardPresentSplit[] =
+    Array.isArray(input.entities) && input.entities.length
+      ? input.entities
+          .filter((e) => e && e.amountCents > 0)
+          .map((e) => ({
+            entityId: String(e.entityId || HOST_SCOPE).slice(0, 80),
+            kind: e.kind === "operator" ? "operator" : "host",
+            displayName: String(e.displayName || hostBrand).slice(0, 80),
+            merchandiseCents: Math.max(0, Math.round(Number(e.merchandiseCents) || 0)),
+            taxCents: Math.max(0, Math.round(Number(e.taxCents) || 0)),
+            serviceCents: Math.max(0, Math.round(Number(e.serviceCents) || 0)),
+            tipCents: Math.max(0, Math.round(Number(e.tipCents) || 0)),
+            amountCents: Math.max(0, Math.round(Number(e.amountCents) || 0)),
+          }))
+      : [
+          {
+            entityId: HOST_SCOPE,
+            kind: "host",
+            displayName: hostBrand,
+            merchandiseCents: input.amountCents,
+            taxCents: 0,
+            serviceCents: 0,
+            tipCents: 0,
+            amountCents: input.amountCents,
+          },
+        ];
+  const splitSum = entities.reduce((s, e) => s + e.amountCents, 0);
+  if (Math.abs(splitSum - input.amountCents) > 1) {
+    return {
+      ok: false,
+      status: "declined",
+      sandbox: resolved.mode === "sandbox",
+      error: "Split does not match the tender. Use cash or keep the check open.",
+    };
+  }
+
+  const training = resolved.lifecycleForcesSandbox || resolved.mode === "sandbox";
+  const { assertEntitiesCanCapture, persistPaymentSplits } = await import("./onboarding.server");
+  const gate = await assertEntitiesCanCapture({
+    locationId: loc.id,
+    orgId: loc.org_id,
+    training,
+    liveMode: resolved.mode === "live",
+    entities,
+  });
+  if (!gate.ok) {
+    return {
+      ok: false,
+      status: "unavailable",
+      sandbox: training,
+      error: gate.error,
+    };
+  }
+
   const payload: CardPresentInput = {
     ...input,
     orgId: loc.org_id,
     locationId: loc.id,
     hostBrand,
+    entities,
+  };
+
+  const finish = async (result: CardPresentResult): Promise<CardPresentResult> => {
+    if (!result.ok || !result.paymentId) return { ...result, splits: entities };
+    try {
+      await persistPaymentSplits({
+        paymentId: result.paymentId,
+        orgId: loc.org_id,
+        locationId: loc.id,
+        entities,
+        accounts: gate.accounts,
+      });
+    } catch {
+      /* splits table may be applying */
+    }
+    return { ...result, splits: entities };
   };
 
   if (resolved.mode === "sandbox") {
-    return captureSandbox({ input: payload, merchantId });
-  }
-
-  const { hostPaymentsApproved } = await import("./onboarding.server");
-  if (!(await hostPaymentsApproved(loc.id))) {
-    return {
-      ok: false,
-      status: "unavailable",
-      sandbox: false,
-      error:
-        "Complete the Quantum Payments application before taking live cards. Use cash or keep the check open.",
-    };
+    return finish(await captureSandbox({ input: payload, merchantId }));
   }
 
   if (!liveAdapterConfigured()) {
@@ -210,5 +286,5 @@ export async function captureCardPresent(
   }
 
   const readerId = pickReaderId(setup, input.readerId);
-  return captureLiveCardPresent({ input: payload, merchantId, readerId });
+  return finish(await captureLiveCardPresent({ input: payload, merchantId, readerId }));
 }

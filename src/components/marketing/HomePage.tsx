@@ -46,7 +46,7 @@ const WHYS = [
   {
     icon: CreditCard,
     title: `${PAYMENTS_BRAND} is the only guest card`,
-    body: "The guest is charged once, under the host brand. There is no Stripe, Square, or processor picker in the product. Software billing is separate. Gift cards stay on the first-party Summex ledger.",
+    body: "Each brand is its own payments account; the guest still pays one check. There is no Stripe, Square, or processor picker in the product. Software billing is separate. Gift cards stay on the first-party Summex ledger.",
   },
   {
     icon: Landmark,

@@ -24,6 +24,7 @@ import type { PaymentsStatus } from "@/lib/payments/types";
 import { uid } from "@/lib/utils";
 import { readTenantPosContext } from "@/lib/saas/pos-context";
 import { canEmployee } from "@/lib/access/permissions";
+import { splitTenderByEntity } from "@/lib/payments/entity-split";
 
 interface Props {
   open: boolean;
@@ -123,17 +124,44 @@ export function PaymentDialog({ open, onOpenChange }: Props) {
         );
         return;
       }
+      const tend = Math.min(amountCents, balance);
+      const entities = order
+        ? splitTenderByEntity({
+            order,
+            settings,
+            amountCents: tend,
+            tipCents: tip,
+            hostName: settings.name,
+            operatorName: (id) =>
+              usePosStore.getState().vendors.find((v) => v.id === id)?.name ?? id,
+          }).map((s) => ({ ...s, amountCents: s.totalCents }))
+        : [];
+      const merchants = payStatus?.entityMerchants ?? [];
+      const training = Boolean(payStatus?.lifecycleForcesSandbox || payStatus?.mode === "sandbox");
+      if (!training && merchants.length) {
+        const blocked = entities.find((e) => {
+          const m = merchants.find((x) => x.entityId === e.entityId);
+          return m ? !m.canCapture : true;
+        });
+        if (blocked) {
+          setError(
+            `${blocked.displayName} is not approved for live cards. Use cash or keep the check open.`,
+          );
+          return;
+        }
+      }
       setBusy(true);
       try {
         const cap = await captureCardPresentFn({
           data: {
             orgId,
             locationId,
-            amountCents: Math.min(amountCents, balance) + tip,
+            amountCents: tend + tip,
             checkId: order?.id,
             hostBrand: settings.name,
             clientMutationId: uid("mut"),
             sandboxLast4: payStatus?.mode === "sandbox" ? last4 || "4242" : undefined,
+            entities,
           },
         });
         if (!cap.ok) {
@@ -443,9 +471,9 @@ export function PaymentDialog({ open, onOpenChange }: Props) {
                     </p>
                   )}
                   <p className="text-xs text-muted-foreground">
-                    Quantum Payments capture under {settings.name}. Guest sees
-                    the host brand, not individual operators. One charge on a
-                    multi-operator check.
+                    One guest tender through Quantum Payments. Each brand on the
+                    check is its own payments account — the guest still gets one
+                    charge.
                   </p>
                 </TabsContent>
 

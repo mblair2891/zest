@@ -20,21 +20,22 @@ export const PAYMENT_TOPICS: GuideTopic[] = [
     openView: "integrations",
     blocks: [
       why(
-        "Guests must see one processor and one brand on the check. A second card integration would split liability, settlement, and the receipt.",
+        "Guests must see one processor and one check. A second card integration would split liability, settlement, and the receipt.",
       ),
       p(
-        "Every card tender runs through Quantum Payments. Integrations never offer Stripe, Square, Adyen, or other POS processors. Delivery, accounting, and hours-export partners (ADP, Intuit) stay — they are not card processors and Summex does not process payroll.",
+        "Every card tender runs through Quantum Payments. Each brand is its own payments account; the guest still pays one check. Integrations never offer Stripe, Square, Adyen, or other POS processors. Delivery, accounting, and hours-export partners (ADP, Intuit) stay — they are not card processors and Summex does not process payroll.",
       ),
       ul(
-        "Guest-facing charge brand is the location / host name. One capture on a multi-operator check.",
+        "Host and each tenant operator complete their own Quantum Payments application. Guest UI never names the processor rail.",
+        "One guest tender. Capture splits to each brand’s account by merchandise owner. Tax, tip, and service allocate by merchandise share.",
         "Software billing (SaaS invoices) is separate from guest cards.",
-        "Gift cards are first-party Summex, not Quantum Payments and not a third-party gift network.",
+        "Gift load with a bank card charges the issuer brand’s account. Gift redeem stays on the Summex ledger.",
         "Sandbox (default, including Training): practice cards, not a live Visa. Live: present the card on a supplied Quantum reader. SYOH tablets run POS — they are not card terminals.",
-        "If the processor is down or the device is offline: “Card requires connection.” Take cash or keep the check open. Card is not queued and never fakes a live capture.",
+        "A brand cannot take live cards until that brand’s application is approved. Training uses sandbox account ids. If the processor is down: take cash or keep the check open.",
       ),
       callout(
         "Sandbox vs live",
-        "Platform → Payments sets the default (sandbox unless you choose live). Location settings can inherit, force sandbox, or take live. Training always sandboxes. Hosts complete a Quantum Payments application during onboarding; live cards wait until that application is approved and live keys are present. Without those, live fails closed — cash still works.",
+        "Platform → Payments sets the default (sandbox unless you choose live). Location settings can inherit, force sandbox, or take live. Training always sandboxes. Status per brand: not started, sandbox, submitted, approved, live. Without an approved account, live fails closed — cash still works.",
       ),
       warn(
         "Do not connect a second processor “just for events.” It is not available, and it would break host capture on a multi-operator check.",
@@ -56,7 +57,7 @@ export const PAYMENT_TOPICS: GuideTopic[] = [
       ),
       steps(
         "On the check, tap Pay. Choose card (Quantum Payments), cash, or gift card.",
-        "Card: amount (defaults to balance), tip suggestions. Sandbox may show last4 on the practice receipt. Live: present on the Quantum reader — never type PAN/CVV. Capture is one host MID.",
+        "Card: amount (defaults to balance), tip suggestions. Sandbox may show last4 on the practice receipt. Live: present on the Quantum reader — never type PAN/CVV. One guest tender; each brand’s account is funded from the split.",
         "Cash: enter tendered; change due is calculated. Cash view tracks the drawer.",
         "Gift: enter the first-party code. Redeem never calls an outside gift network. The fulfilling operator gets the merchandise; issuer liability decreases; issuer remits to the fulfiller if they differ.",
         "To split tenders, pay less than the balance, then take the next tender on the same check.",
@@ -76,22 +77,22 @@ export const PAYMENT_TOPICS: GuideTopic[] = [
     id: "host-capture",
     chapterId: "payments",
     title: "Host capture for multi-operator",
-    summary: "One guest brand, one MID, operators are not processors.",
+    summary: "Each brand is its own payments account; guest still gets one check.",
     roles: ["owner_manager", "host_operator", "vendor_operator"],
-    keywords: ["host capture", "mid", "multi-operator", "operator", "brand"],
+    keywords: ["host capture", "mid", "multi-operator", "operator", "brand", "split"],
     openView: "settlement",
     blocks: [
       why(
-        "If Operator A and Operator B each ran a card, the guest would see two charges and the host could not take a fair cut or a fair dispute fee.",
+        "Each brand must be a merchant of record for its own merchandise. The guest still pays once so the room does not feel like a food-court of terminals.",
       ),
       p(
-        "On a host venue the guest-facing name is Host Venue (or your location name). Line items stay tagged to Operator A / Operator B. Quantum Payments captures once on the host MID.",
+        "Host and each tenant operator have their own Quantum Payments account. Line items stay tagged to the brand that sold them. The guest tenders once; capture splits to those accounts by merchandise share, with tax/tip/service allocated the same way. The host is not the sole merchant of record.",
       ),
       steps(
-        "Confirm operating model is host + operators and each item has an operator.",
-        "Take payment as usual. The receipt shows the host brand via Quantum Payments.",
+        "Confirm each brand has a Quantum Payments application (sandbox in training, approved before live cards).",
+        "Take payment as usual. Receipts group items under the vendor name. Guest receipt is one document.",
         "Do not ask a stall to “run it on their Square.” That path does not exist.",
-        "Period close records payout rows per operator on the Summex ledger. When the host and operator applications are approved and live keys exist, Summex queues a transfer per operator share — funds never sit in a Summex operating bank.",
+        "A line whose brand has no approved account fails closed on live — cash still works. Training provisions sandbox ids.",
       ),
       related("single-vs-multi", "multi-operator-orders", "settlement", "chargebacks"),
     ],

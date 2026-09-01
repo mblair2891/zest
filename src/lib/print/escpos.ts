@@ -1,5 +1,6 @@
 import { formatCurrency } from "@/lib/utils";
 import type { PrintJob } from "./types";
+import { groupLinesByEntity } from "@/lib/payments/entity-split";
 
 const ENC = new TextEncoder();
 
@@ -59,7 +60,7 @@ export function buildEscPos(job: PrintJob): Uint8Array {
     text(job.locationName.slice(0, 20)),
     FEED,
     DBL_OFF,
-    text(title),
+    text(title + (job.copy === "merchant" ? " MERCH" : "")),
     FEED,
     BOLD_OFF,
     ALIGN_LT,
@@ -68,11 +69,17 @@ export function buildEscPos(job: PrintJob): Uint8Array {
   ];
   if (job.operatorName) parts.push(line(job.operatorName));
   parts.push(text("-".repeat(42)), FEED);
-  for (const it of job.items) {
-    parts.push(BOLD_ON, line(`${it.qty}x ${it.name}`), BOLD_OFF);
-    for (const m of it.mods ?? []) parts.push(line(`  ${m}`));
-    if (it.note) parts.push(line(`  * ${it.note}`));
-    if (it.seat != null) parts.push(line(`  seat ${it.seat}`));
+  const groups = groupLinesByEntity(job.items, job.locationName);
+  for (const g of groups) {
+    if (groups.length > 1) {
+      parts.push(BOLD_ON, line(g.displayName.toUpperCase()), BOLD_OFF);
+    }
+    for (const it of g.lines) {
+      parts.push(BOLD_ON, line(`${it.qty}x ${it.name}`), BOLD_OFF);
+      for (const m of it.mods ?? []) parts.push(line(`  ${m}`));
+      if (it.note) parts.push(line(`  * ${it.note}`));
+      if (it.seat != null) parts.push(line(`  seat ${it.seat}`));
+    }
   }
   if (job.totals) {
     parts.push(text("-".repeat(42)), FEED);
@@ -80,6 +87,23 @@ export function buildEscPos(job: PrintJob): Uint8Array {
     parts.push(line("Tax", formatCurrency(job.totals.taxCents)));
     parts.push(BOLD_ON, line("Total", formatCurrency(job.totals.totalCents)), BOLD_OFF);
     if (job.totals.tender) parts.push(line(job.totals.tender));
+    if (job.allocations && job.allocations.length > 1) {
+      if (job.copy === "merchant") {
+        parts.push(text("-".repeat(42)), FEED);
+        parts.push(BOLD_ON, line("ALLOCATION"), BOLD_OFF);
+        for (const a of job.allocations) {
+          parts.push(line(a.name, formatCurrency(a.totalCents)));
+          parts.push(line("  merch", formatCurrency(a.merchandiseCents)));
+          parts.push(line("  tax/tip/svc", formatCurrency(a.feesCents)));
+        }
+      } else {
+        parts.push(
+          line(
+            job.allocations.map((a) => `${a.name} ${formatCurrency(a.totalCents)}`).join(" / "),
+          ),
+        );
+      }
+    }
   }
   parts.push(FEED, ALIGN_CT, text("Quantum Payments · Summex"), FEED, FEED, CUT);
   return concat(parts);

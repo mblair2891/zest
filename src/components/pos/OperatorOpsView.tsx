@@ -9,6 +9,7 @@ import { formatCurrency, formatDateTime } from "@/lib/utils";
 import { canEmployee } from "@/lib/access/permissions";
 import type { EmployeeRole } from "@/lib/pos/types";
 import { ROLE_LABEL } from "@/lib/pos/rbac";
+import { QuantumPaymentsOnboardPanel } from "@/components/payments/QuantumPaymentsOnboardPanel";
 
 /**
  * Narrow ops surface for a guest operator: staff, clock, 86, view-only settlement.
@@ -31,6 +32,7 @@ export function OperatorOpsView({
   const clockToggle = usePosStore((s) => s.clockToggle);
   const createEmployee = usePosStore((s) => s.createEmployee);
   const emp = usePosStore((s) => s.employees.find((e) => e.id === s.currentEmployeeId));
+  const locId = usePosStore((s) => s.tenantLocationId);
   const lockedId = emp?.role === "vendor_operator" ? emp.operatorId : forcedId;
   const isGuest = emp?.role === "vendor_operator";
   const canStaff = canEmployee(emp, "staff:invite") || hostManaged;
@@ -114,6 +116,12 @@ export function OperatorOpsView({
       </div>
 
       <div className="min-h-0 flex-1 space-y-4 overflow-y-auto p-3">
+        <QuantumPaymentsOnboardPanel
+          kind="operator"
+          operatorId={vendor.id}
+          locationId={locId || undefined}
+          legalName={vendor.name}
+        />
         <div className="rounded-2xl border border-border bg-surface p-4">
           <h3 className="text-lg font-semibold">{vendor.name}</h3>
           <p className="text-sm text-muted-foreground">

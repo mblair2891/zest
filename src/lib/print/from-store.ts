@@ -1,10 +1,11 @@
-import { computeTotals } from "@/lib/pos/calculations";
+import { computeTotals, linePrintedCents } from "@/lib/pos/calculations";
 import { usePosStore } from "@/lib/pos/store";
 import type { KitchenTicket, Order } from "@/lib/pos/types";
 import { uid } from "@/lib/utils";
 import { dispatchPrintJob } from "./dispatch";
 import type { PrintJob, PrintLine } from "./types";
 import type { PrintStation } from "@/lib/pos/location-devices";
+import { splitTenderByEntity } from "@/lib/payments/entity-split";
 
 function linesFromTicket(t: KitchenTicket): PrintLine[] {
   return t.items.map((it) => ({
@@ -25,6 +26,9 @@ function receiptLines(order: Order): PrintLine[] {
       mods: l.modifiers.map((m) => m.optionName),
       note: l.note,
       seat: l.seat,
+      vendorId: l.vendorId,
+      vendorName: l.vendorName,
+      amountCents: linePrintedCents(l),
     }));
 }
 
@@ -93,7 +97,21 @@ export async function printFromPos(
       const totals = computeTotals(order, s.settings, {
         tender: tender?.method === "cash" ? "cash" : "card",
       });
-      jobs.push({
+      const shares = splitTenderByEntity({
+        order,
+        settings: s.settings,
+        amountCents: totals.totalCents,
+        tipCents: totals.tipCents,
+        hostName: locationName,
+        operatorName: (id) => s.vendors.find((v) => v.id === id)?.name ?? id,
+      });
+      const allocations = shares.map((sh) => ({
+        name: sh.displayName,
+        merchandiseCents: sh.merchandiseCents,
+        feesCents: sh.taxCents + sh.serviceCents + sh.tipCents,
+        totalCents: sh.totalCents,
+      }));
+      const guestJob: PrintJob = {
         id: uid("prn"),
         kind: "receipt",
         station: "receipt",
@@ -103,7 +121,9 @@ export async function printFromPos(
         checkNumber: order.number,
         tableLabel: table?.label ?? order.tabName ?? order.type.replace("_", " "),
         serverName: order.serverName,
+        copy: "guest",
         items: receiptLines(order),
+        allocations,
         totals: {
           subtotalCents: totals.subtotalCents,
           taxCents: totals.taxCents,
@@ -113,7 +133,15 @@ export async function printFromPos(
             : undefined,
         },
         at: Date.now(),
-      });
+      };
+      jobs.push(guestJob);
+      if (allocations.length > 1) {
+        jobs.push({
+          ...guestJob,
+          id: uid("prn"),
+          copy: "merchant",
+        });
+      }
     }
   }
 

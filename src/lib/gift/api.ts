@@ -100,11 +100,18 @@ export const setGiftStatusFn = createServerFn({ method: "POST" })
 
 export const reloadGiftCardFn = createServerFn({ method: "POST" })
   .middleware([tenantMiddleware])
-  .validator((d: { locationId: string; code?: string; cardId?: string; amountCents: number }) => ({
+  .validator((d: {
+    locationId: string;
+    code?: string;
+    cardId?: string;
+    amountCents: number;
+    tender?: "cash" | "card";
+  }) => ({
     locationId: loc(d.locationId),
     code: d.code ? String(d.code).slice(0, 40) : undefined,
     cardId: d.cardId ? String(d.cardId).slice(0, 80) : undefined,
     amountCents: Math.max(0, Math.round(Number(d.amountCents) || 0)),
+    tender: d.tender === "cash" ? ("cash" as const) : ("card" as const),
   }))
   .handler(async ({ context, data }) => {
     const { reloadGiftCard } = await import("./gift.server");

@@ -58,10 +58,10 @@ export function QuantumPaymentsSettings({ write }: { write: boolean }) {
         </GuideLearnLink>
       </div>
       <p className="text-xs text-muted-foreground">
-        Guest cards run only through Quantum Payments — one host capture on
-        multi-operator checks. Tablets (SYOH) run POS. Live card-present uses a
-        supplied Quantum reader. Never store PAN or CVV. Cash still works if the
-        processor is down or this device is offline.
+        Each brand is its own Quantum Payments account. The guest still pays one
+        check — capture splits by merchandise owner. Tablets run POS; live cards
+        use a supplied Quantum reader. Never store PAN or CVV. Cash still works
+        if the processor is down.
       </p>
       {status?.lifecycleForcesSandbox && (
         <p className="rounded-lg bg-warn/15 px-3 py-2 text-xs font-medium text-warn">
@@ -99,6 +99,22 @@ export function QuantumPaymentsSettings({ write }: { write: boolean }) {
         </select>
       </label>
       {status && <p className="text-xs text-muted-foreground">{status.message}</p>}
+      {status?.entityMerchants && status.entityMerchants.length > 0 && (
+        <ul className="space-y-1 text-xs">
+          {status.entityMerchants.map((m) => (
+            <li key={`${m.kind}:${m.entityId}`} className="flex justify-between gap-2">
+              <span>
+                {m.displayName}
+                <span className="text-muted-foreground"> · {m.kind}</span>
+              </span>
+              <span className="tabular text-muted-foreground">
+                {m.status}
+                {m.canCapture ? "" : " · blocked"}
+              </span>
+            </li>
+          ))}
+        </ul>
+      )}
       <QuantumPaymentsOnboardPanel kind="host" locationId={locId} />
       {status && status.readers.length > 0 && (
         <ul className="space-y-1 text-xs">

@@ -689,8 +689,9 @@ export function SetupOnboardingWizard({ token }: { token: string }) {
       {stepId === "payments" && (
         <div className="space-y-3">
           <p className="text-sm text-muted-foreground">
-            Guest cards capture as Quantum Payments under the host brand. Complete this
-            application before enabling live cards. Cash is always available.
+            This host’s Quantum Payments account. Each brand on a check is its own
+            payments account; the guest still pays one tender. Complete this before
+            live cards. Cash is always available.
           </p>
           {loc?.serverId ? (
             <QuantumPaymentsOnboardPanel

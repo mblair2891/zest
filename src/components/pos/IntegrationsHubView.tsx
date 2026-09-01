@@ -456,9 +456,9 @@ function SummexPaymentsPanel() {
         </Badge>
       </div>
       <p className="mb-3 text-xs text-muted-foreground">
-        Guests pay Quantum Payments under the host brand. Operators are not
-        processors — period payouts split merchandise. There is no Stripe or
-        Square POS picker. Cash still works if the reader is down.
+        Each brand is its own Quantum Payments account. The guest still pays one
+        check — capture splits by merchandise owner. There is no Stripe or Square
+        POS picker. Cash still works if the reader is down.
       </p>
       <p className="mb-3 text-xs text-muted-foreground">{st?.message}</p>
       <div className="grid gap-2 sm:grid-cols-3">
@@ -477,9 +477,9 @@ function SummexPaymentsPanel() {
           <p className="flex items-center gap-1.5 text-[10px] uppercase tracking-wide text-muted-foreground">
             <Landmark className="h-3 w-3" /> Capture
           </p>
-          <p className="text-sm font-semibold">{live ? "Host MID" : "Sandbox book"}</p>
+          <p className="text-sm font-semibold">{live ? "Split capture" : "Sandbox book"}</p>
           <p className="text-[11px] text-muted-foreground">
-            One guest charge · ledger allocates operators
+            One guest tender · each brand’s account
           </p>
         </div>
         <div className="rounded-xl border border-border bg-surface px-3 py-2">

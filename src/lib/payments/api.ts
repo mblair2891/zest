@@ -29,6 +29,16 @@ export const captureCardPresentFn = createServerFn({ method: "POST" })
     readerId?: string;
     clientMutationId?: string;
     sandboxLast4?: string;
+    entities?: {
+      entityId: string;
+      kind: "host" | "operator";
+      displayName: string;
+      merchandiseCents: number;
+      taxCents: number;
+      serviceCents: number;
+      tipCents: number;
+      amountCents: number;
+    }[];
   }) => ({
     orgId: String(d.orgId ?? "").trim().slice(0, 80),
     locationId: loc(d.locationId),
@@ -39,6 +49,18 @@ export const captureCardPresentFn = createServerFn({ method: "POST" })
     clientMutationId: d.clientMutationId ? String(d.clientMutationId).slice(0, 80) : undefined,
     sandboxLast4: d.sandboxLast4
       ? String(d.sandboxLast4).replace(/\D/g, "").slice(-4)
+      : undefined,
+    entities: Array.isArray(d.entities)
+      ? d.entities.slice(0, 40).map((e) => ({
+          entityId: String(e?.entityId ?? "host").slice(0, 80),
+          kind: e?.kind === "operator" ? ("operator" as const) : ("host" as const),
+          displayName: String(e?.displayName ?? "").slice(0, 80),
+          merchandiseCents: Math.max(0, Math.round(Number(e?.merchandiseCents) || 0)),
+          taxCents: Math.max(0, Math.round(Number(e?.taxCents) || 0)),
+          serviceCents: Math.max(0, Math.round(Number(e?.serviceCents) || 0)),
+          tipCents: Math.max(0, Math.round(Number(e?.tipCents) || 0)),
+          amountCents: Math.max(0, Math.round(Number(e?.amountCents) || 0)),
+        }))
       : undefined,
   }))
   .handler(async ({ context, data }): Promise<CardPresentResult> => {

@@ -17,6 +17,13 @@ import {
   type PaymentsOnboardingStatus,
   type PaymentsProvider,
 } from "./finix";
+import { HOST_SCOPE } from "@/lib/access/entity-grants";
+import {
+  entityCanCapture,
+  surfaceEntityStatus,
+  type EntityMerchantStatus,
+} from "./entity-status";
+import type { CardPresentSplit } from "./types";
 
 export type PaymentAccountView = {
   id: string;
@@ -34,6 +41,8 @@ export type PaymentAccountView = {
   rejectionReason: string | null;
   finixConfigured: boolean;
   displayName: string;
+  entityStatus: EntityMerchantStatus;
+  canCapture: boolean;
 };
 
 type AccountRow = {
@@ -81,7 +90,16 @@ function mapStatus(raw: string): PaymentsOnboardingStatus {
 function view(
   row: AccountRow,
   displayName: string,
+  surface?: { locationLive: boolean; liveMode: boolean },
 ): PaymentAccountView {
+  const entityStatus = surfaceEntityStatus({
+    onboardingStatus: row.onboarding_status,
+    paymentsProvider: row.payments_provider,
+    merchantId: row.finix_merchant_id,
+    locationLive: surface?.locationLive ?? false,
+    liveMode: surface?.liveMode ?? false,
+  });
+  const training = !surface?.locationLive;
   return {
     id: row.id,
     orgId: row.org_id,
@@ -98,6 +116,38 @@ function view(
     rejectionReason: row.rejection_reason,
     finixConfigured: finixConfigured(),
     displayName,
+    entityStatus,
+    canCapture: entityCanCapture(entityStatus, { training }).ok,
+  };
+}
+
+function emptyView(opts: {
+  orgId: string;
+  locationId: string | null;
+  operatorId: string | null;
+  kind: "host" | "operator";
+  displayName: string;
+  locationLive?: boolean;
+}): PaymentAccountView {
+  const entityStatus: EntityMerchantStatus = "not_started";
+  return {
+    id: "",
+    orgId: opts.orgId,
+    locationId: opts.locationId,
+    operatorId: opts.operatorId,
+    kind: opts.kind,
+    paymentsProvider: finixConfigured() ? "finix" : "sandbox",
+    onboardingStatus: "not_started",
+    payoutBankLast4: null,
+    payoutRoutingLast4: null,
+    onboardingLink: null,
+    approvedAt: null,
+    submittedAt: null,
+    rejectionReason: null,
+    finixConfigured: finixConfigured(),
+    displayName: opts.displayName,
+    entityStatus,
+    canCapture: entityCanCapture(entityStatus, { training: !opts.locationLive }).ok,
   };
 }
 
@@ -170,23 +220,13 @@ export async function getPaymentAccount(
     await requireMembership(userId, op.orgId, undefined, op.locationId ?? undefined);
     const row = await getRow({ operatorId: opts.operatorId });
     if (!row) {
-      return {
-        id: "",
+      return emptyView({
         orgId: op.orgId,
         locationId: op.locationId,
         operatorId: opts.operatorId,
         kind: "operator",
-        paymentsProvider: finixConfigured() ? "finix" : "sandbox",
-        onboardingStatus: "not_started",
-        payoutBankLast4: null,
-        payoutRoutingLast4: null,
-        onboardingLink: null,
-        approvedAt: null,
-        submittedAt: null,
-        rejectionReason: null,
-        finixConfigured: finixConfigured(),
         displayName: op.name,
-      };
+      });
     }
     return view(row, op.name);
   }
@@ -196,23 +236,13 @@ export async function getPaymentAccount(
   await requireMembership(userId, loc.orgId, undefined, locationId);
   const row = await getRow({ locationId });
   if (!row) {
-    return {
-      id: "",
+    return emptyView({
       orgId: loc.orgId,
       locationId,
       operatorId: null,
       kind: "host",
-      paymentsProvider: finixConfigured() ? "finix" : "sandbox",
-      onboardingStatus: "not_started",
-      payoutBankLast4: null,
-      payoutRoutingLast4: null,
-      onboardingLink: null,
-      approvedAt: null,
-      submittedAt: null,
-      rejectionReason: null,
-      finixConfigured: finixConfigured(),
       displayName: loc.name,
-    };
+    });
   }
   return view(row, loc.name);
 }
@@ -224,6 +254,12 @@ export async function listPaymentAccountsForLocation(
   const loc = await loadLocationOrg(locationId);
   await requireMembership(userId, loc.orgId, undefined, locationId);
   const sql = await getSql();
+  const lifeRows = await sql<{ lifecycle_status: string | null }>`
+    select lifecycle_status from locations where id = ${locationId} limit 1
+  `;
+  const locationLive = lifeRows[0]?.lifecycle_status === "live";
+  const liveMode = locationLive; // surface live only when the house is live
+  const surface = { locationLive, liveMode };
   const rows = await sql<AccountRow>`
     select * from payment_accounts
     where org_id = ${loc.orgId}
@@ -238,14 +274,44 @@ export async function listPaymentAccountsForLocation(
     select id, legal_name, dba from operators where location_id = ${locationId}
   `;
   for (const o of ops) names.set(`op:${o.id}`, o.dba || o.legal_name);
-  return rows.map((r) =>
+  const listed = rows.map((r) =>
     view(
       r,
       r.kind === "operator"
         ? names.get(`op:${r.operator_id}`) || "Operator"
         : names.get(`host:${r.location_id}`) || loc.name,
+      surface,
     ),
   );
+  const haveHost = listed.some((a) => a.kind === "host");
+  const haveOp = new Set(listed.filter((a) => a.kind === "operator").map((a) => a.operatorId));
+  const extra: PaymentAccountView[] = [];
+  if (!haveHost) {
+    extra.push(
+      emptyView({
+        orgId: loc.orgId,
+        locationId,
+        operatorId: null,
+        kind: "host",
+        displayName: loc.name,
+        locationLive,
+      }),
+    );
+  }
+  for (const o of ops) {
+    if (haveOp.has(o.id)) continue;
+    extra.push(
+      emptyView({
+        orgId: loc.orgId,
+        locationId,
+        operatorId: o.id,
+        kind: "operator",
+        displayName: o.dba || o.legal_name,
+        locationLive,
+      }),
+    );
+  }
+  return [...extra, ...listed];
 }
 
 async function upsertStart(opts: {
@@ -445,6 +511,127 @@ export async function refreshPaymentAccount(
 export async function hostPaymentsApproved(locationId: string): Promise<boolean> {
   const row = await getRow({ locationId });
   return row?.onboarding_status === "approved" && row.payments_provider === "finix";
+}
+
+export async function ensureEntityPaymentAccount(opts: {
+  orgId: string;
+  locationId: string;
+  entityId: string;
+  displayName: string;
+}): Promise<AccountRow> {
+  const kind: "host" | "operator" = opts.entityId === HOST_SCOPE ? "host" : "operator";
+  const existing = await getRow({
+    locationId: kind === "host" ? opts.locationId : null,
+    operatorId: kind === "operator" ? opts.entityId : null,
+  });
+  if (existing?.finix_merchant_id) return existing;
+  return upsertStart({
+    orgId: opts.orgId,
+    locationId: opts.locationId,
+    operatorId: kind === "operator" ? opts.entityId : null,
+    kind,
+    legalName: opts.displayName || (kind === "host" ? "Host" : "Operator"),
+  });
+}
+
+export async function assertEntitiesCanCapture(opts: {
+  locationId: string;
+  orgId: string;
+  training: boolean;
+  liveMode: boolean;
+  entities: CardPresentSplit[];
+}): Promise<{ ok: true; accounts: AccountRow[] } | { ok: false; error: string }> {
+  const accounts: AccountRow[] = [];
+  for (const share of opts.entities) {
+    if (share.amountCents <= 0) continue;
+    let row = await getRow({
+      locationId: share.kind === "host" ? opts.locationId : null,
+      operatorId: share.kind === "operator" ? share.entityId : null,
+    });
+    if (opts.training && (!row || !row.finix_merchant_id)) {
+      row = await ensureEntityPaymentAccount({
+        orgId: opts.orgId,
+        locationId: opts.locationId,
+        entityId: share.entityId,
+        displayName: share.displayName,
+      });
+    }
+    const status = surfaceEntityStatus({
+      onboardingStatus: row?.onboarding_status,
+      paymentsProvider: row?.payments_provider,
+      merchantId: row?.finix_merchant_id,
+      locationLive: !opts.training,
+      liveMode: opts.liveMode,
+    });
+    const gate = entityCanCapture(status, { training: opts.training });
+    if (!gate.ok || !row?.finix_merchant_id) {
+      return {
+        ok: false,
+        error: `${share.displayName} does not have an approved Quantum Payments account. Use cash or keep the check open.`,
+      };
+    }
+    accounts.push(row);
+  }
+  return { ok: true, accounts };
+}
+
+export async function persistPaymentSplits(opts: {
+  paymentId: string;
+  orgId: string;
+  locationId: string;
+  entities: CardPresentSplit[];
+  accounts: AccountRow[];
+}): Promise<{ transferId?: string; sandbox: boolean }[]> {
+  const sql = await getSql();
+  const out: { transferId?: string; sandbox: boolean }[] = [];
+  for (const share of opts.entities) {
+    if (share.amountCents <= 0) continue;
+    const acc = opts.accounts.find((a) =>
+      share.kind === "host" ? a.kind === "host" : a.operator_id === share.entityId,
+    );
+    const merchantId = acc?.finix_merchant_id || null;
+    let transferId: string | undefined;
+    let sandbox = true;
+    if (
+      merchantId &&
+      share.amountCents > 0 &&
+      finixConfigured() &&
+      acc?.payments_provider === "finix" &&
+      !merchantId.includes("sandbox")
+    ) {
+      const xfer = await createTransfer({
+        merchantId,
+        amountCents: share.amountCents,
+      });
+      transferId = xfer.transferId;
+      sandbox = xfer.sandbox;
+    }
+    await sql`
+      insert into summex_payment_splits (
+        id, payment_id, org_id, location_id, entity_id, entity_kind, display_name,
+        merchandise_cents, tax_cents, service_cents, tip_cents, amount_cents,
+        finix_merchant_id, transfer_id, status
+      ) values (
+        ${newId("pspl")},
+        ${opts.paymentId},
+        ${opts.orgId},
+        ${opts.locationId},
+        ${share.entityId},
+        ${share.kind},
+        ${share.displayName.slice(0, 80)},
+        ${share.merchandiseCents},
+        ${share.taxCents},
+        ${share.serviceCents},
+        ${share.tipCents},
+        ${share.amountCents},
+        ${merchantId},
+        ${transferId ?? null},
+        ${"recorded"}
+      )
+    `;
+    out.push({ transferId, sandbox });
+  }
+  return out;
 }
 
 export async function applyFinixWebhook(event: {

@@ -8,6 +8,16 @@ export type PrintLine = {
   mods?: string[];
   note?: string;
   seat?: number;
+  vendorId?: string | null;
+  vendorName?: string | null;
+  amountCents?: number;
+};
+
+export type PrintAllocation = {
+  name: string;
+  merchandiseCents: number;
+  feesCents: number;
+  totalCents: number;
 };
 
 export type PrintJob = {
@@ -22,7 +32,9 @@ export type PrintJob = {
   serverName: string;
   operatorId?: string | null;
   operatorName?: string | null;
+  copy?: "guest" | "merchant";
   items: PrintLine[];
+  allocations?: PrintAllocation[];
   totals?: {
     subtotalCents: number;
     taxCents: number;

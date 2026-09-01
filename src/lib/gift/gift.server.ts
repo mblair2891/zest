@@ -228,6 +228,32 @@ export async function issueGiftCard(
   const denied = issuerDenied(ctx, input.issuerId);
   if (denied) return { ok: false, error: denied };
   if (input.amountCents <= 0) return { ok: false, error: "Amount required" };
+  if (input.tender === "card") {
+    const { captureCardPresent } = await import("@/lib/payments/facade.server");
+    const entityId = input.issuerKind === "operator" ? input.issuerId : HOST_SCOPE;
+    const cap = await captureCardPresent(userId, {
+      orgId: ctx.orgId,
+      locationId: ctx.locationId,
+      amountCents: input.amountCents,
+      hostBrand: input.issuerName,
+      clientMutationId: input.clientMutationId ?? null,
+      entities: [
+        {
+          entityId,
+          kind: input.issuerKind === "operator" ? "operator" : "host",
+          displayName: input.issuerName,
+          merchandiseCents: input.amountCents,
+          taxCents: 0,
+          serviceCents: 0,
+          tipCents: 0,
+          amountCents: input.amountCents,
+        },
+      ],
+    });
+    if (!cap.ok) {
+      return { ok: false, error: cap.error || "Card load failed. Use cash or keep the sale open." };
+    }
+  }
   const plaintext =
     normalizeGiftCode(input.code || "") ||
     `SUMMEX-${Math.random().toString(36).slice(2, 6).toUpperCase()}-${Math.floor(Math.random() * 9000 + 1000)}`;
@@ -409,7 +435,13 @@ export async function setGiftStatus(
 
 export async function reloadGiftCard(
   userId: string,
-  input: { locationId: string; code?: string; cardId?: string; amountCents: number },
+  input: {
+    locationId: string;
+    code?: string;
+    cardId?: string;
+    amountCents: number;
+    tender?: "cash" | "card";
+  },
 ): Promise<{ ok: true; card: GiftCard } | { ok: false; error: string }> {
   const ctx = await ctxFor(userId, input.locationId);
   if (input.amountCents <= 0) return { ok: false, error: "Amount required" };
@@ -429,6 +461,31 @@ export async function reloadGiftCard(
   if (denied) return { ok: false, error: denied };
   if (row.status === "frozen" || row.status === "void") {
     return { ok: false, error: "Card is not reloadable" };
+  }
+  if ((input.tender ?? "card") === "card") {
+    const { captureCardPresent } = await import("@/lib/payments/facade.server");
+    const entityId = row.issuer_kind === "operator" ? row.issuer_id : HOST_SCOPE;
+    const cap = await captureCardPresent(userId, {
+      orgId: ctx.orgId,
+      locationId: ctx.locationId,
+      amountCents: input.amountCents,
+      hostBrand: row.issuer_name,
+      entities: [
+        {
+          entityId,
+          kind: row.issuer_kind === "operator" ? "operator" : "host",
+          displayName: row.issuer_name,
+          merchandiseCents: input.amountCents,
+          taxCents: 0,
+          serviceCents: 0,
+          tipCents: 0,
+          amountCents: input.amountCents,
+        },
+      ],
+    });
+    if (!cap.ok) {
+      return { ok: false, error: cap.error || "Card load failed. Use cash or keep the sale open." };
+    }
   }
   const next = n(row.balance_cents) + input.amountCents;
   await sql`

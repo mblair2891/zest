@@ -13,18 +13,22 @@ import type { PaymentAccountView } from "@/lib/payments/onboarding.server";
 
 const STATUS_BADGE: Record<string, "secondary" | "info" | "warn" | "success" | "danger"> = {
   not_started: "secondary",
+  sandbox: "info",
   in_progress: "info",
   submitted: "warn",
   approved: "success",
+  live: "success",
   rejected: "danger",
   needs_info: "warn",
 };
 
 const STATUS_LABEL: Record<string, string> = {
   not_started: "Not started",
+  sandbox: "Sandbox",
   in_progress: "In progress",
   submitted: "Submitted",
   approved: "Approved",
+  live: "Live",
   rejected: "Needs attention",
   needs_info: "Update info",
 };
@@ -120,8 +124,9 @@ export function QuantumPaymentsOnboardPanel({
     }
   };
 
-  const status = acc?.onboardingStatus ?? "not_started";
+  const status = acc?.entityStatus ?? acc?.onboardingStatus ?? "not_started";
   const sandboxRail = !acc?.finixConfigured || acc.paymentsProvider === "sandbox";
+  const complete = status === "approved" || status === "live" || status === "sandbox";
 
   return (
     <div className="space-y-3 rounded-2xl border border-border bg-surface p-4">
@@ -136,8 +141,8 @@ export function QuantumPaymentsOnboardPanel({
       </div>
       <p className="text-xs text-muted-foreground">
         {kind === "host"
-          ? "Guest cards capture once under the host brand. Complete this application before turning on live cards. Cash always works."
-          : "Payout account for your share of host capture. You can still be ticketed in POS on sandbox and cash before this is approved."}
+          ? "This location’s payments account. Each brand on a check is its own account; the guest still pays one tender. Complete this before live cards. Cash always works."
+          : "This brand’s payments account. Guest still pays one check — your merchandise (plus allocated tax/tip/service) lands here. Live cards wait until this application is approved."}
       </p>
       {sandboxRail && (
         <p className="text-xs text-muted-foreground">
@@ -160,7 +165,7 @@ export function QuantumPaymentsOnboardPanel({
       {acc?.rejectionReason && (
         <p className="text-xs text-danger">{acc.rejectionReason}</p>
       )}
-      {status !== "approved" && !acc?.onboardingLink && (
+      {!complete && !acc?.onboardingLink && (
         <div className="grid gap-2 sm:grid-cols-2">
           <label className="text-sm">
             <span className="mb-1 block text-xs text-muted-foreground">Legal business name</span>
@@ -190,7 +195,7 @@ export function QuantumPaymentsOnboardPanel({
           </label>
         </div>
       )}
-      {acc?.payoutBankLast4 && status === "approved" && (
+      {acc?.payoutBankLast4 && complete && (
         <p className="text-xs text-muted-foreground">
           Deposit account ••••{acc.payoutBankLast4}
           {acc.payoutRoutingLast4 ? ` · routing ••••${acc.payoutRoutingLast4}` : ""}
@@ -208,7 +213,7 @@ export function QuantumPaymentsOnboardPanel({
             {status === "needs_info" ? "Update info" : "Continue application"}
           </Button>
         )}
-        {status !== "approved" && !acc?.onboardingLink && (
+        {!complete && !acc?.onboardingLink && (
           <Button
             size="sm"
             disabled={busy || bankLast4.length !== 4 || legal.trim().length < 2}

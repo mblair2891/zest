@@ -1,5 +1,6 @@
 import { formatCurrency } from "@/lib/utils";
 import type { PrintJob } from "./types";
+import { groupLinesByEntity } from "@/lib/payments/entity-split";
 
 function esc(s: string): string {
   return s
@@ -20,20 +21,45 @@ export function ticketHtml(job: PrintJob): string {
           : job.station === "expo"
             ? "Expo"
             : "Kitchen ticket";
-  const items = job.items
-    .map((it) => {
-      const mods = (it.mods ?? []).map((m) => `<div class="mod">${esc(m)}</div>`).join("");
-      const note = it.note ? `<div class="mod">* ${esc(it.note)}</div>` : "";
-      const seat = it.seat != null ? `<div class="mod">seat ${it.seat}</div>` : "";
-      return `<div class="item"><strong>${it.qty}× ${esc(it.name)}</strong>${mods}${note}${seat}</div>`;
+  const groups = groupLinesByEntity(job.items, job.locationName);
+  const items = groups
+    .map((g) => {
+      const head =
+        groups.length > 1
+          ? `<div class="vendor">${esc(g.displayName)}</div>`
+          : "";
+      const rows = g.lines
+        .map((it) => {
+          const mods = (it.mods ?? []).map((m) => `<div class="mod">${esc(m)}</div>`).join("");
+          const note = it.note ? `<div class="mod">* ${esc(it.note)}</div>` : "";
+          const seat = it.seat != null ? `<div class="mod">seat ${it.seat}</div>` : "";
+          return `<div class="item"><strong>${it.qty}× ${esc(it.name)}</strong>${mods}${note}${seat}</div>`;
+        })
+        .join("");
+      return `${head}${rows}`;
     })
     .join("");
+  const alloc =
+    job.copy === "merchant" && job.allocations && job.allocations.length > 1
+      ? `<div class="rule"></div>
+         <div class="vendor">Merchant allocation</div>
+         ${job.allocations
+           .map(
+             (a) =>
+               `<div class="row"><span>${esc(a.name)}</span><span>${formatCurrency(a.totalCents)}</span></div>
+                <div class="mod">${formatCurrency(a.merchandiseCents)} merch · ${formatCurrency(a.feesCents)} tax/tip/svc</div>`,
+           )
+           .join("")}`
+      : job.allocations && job.allocations.length > 1
+        ? `<div class="muted">${esc(job.allocations.map((a) => `${a.name} ${formatCurrency(a.totalCents)}`).join(" · "))}</div>`
+        : "";
   const totals = job.totals
     ? `<div class="rule"></div>
        <div class="row"><span>Subtotal</span><span>${formatCurrency(job.totals.subtotalCents)}</span></div>
        <div class="row"><span>Tax</span><span>${formatCurrency(job.totals.taxCents)}</span></div>
        <div class="row total"><span>Total</span><span>${formatCurrency(job.totals.totalCents)}</span></div>
-       ${job.totals.tender ? `<div class="muted">${esc(job.totals.tender)}</div>` : ""}`
+       ${job.totals.tender ? `<div class="muted">${esc(job.totals.tender)}</div>` : ""}
+       ${alloc}`
     : "";
   return `<!doctype html>
 <html>
@@ -48,6 +74,7 @@ export function ticketHtml(job: PrintJob): string {
   .row { display: flex; justify-content: space-between; gap: 8px; }
   .item { margin: 6px 0; }
   .mod { padding-left: 12px; font-size: 12px; }
+  .vendor { font-weight: 700; margin-top: 8px; text-transform: uppercase; font-size: 11px; letter-spacing: .06em; }
   .rule { border-top: 1px dashed #333; margin: 8px 0; }
   .total { font-weight: 700; font-size: 15px; }
   .muted { text-align: center; color: #444; margin-top: 10px; font-size: 11px; }
@@ -55,7 +82,7 @@ export function ticketHtml(job: PrintJob): string {
 </head>
 <body>
   <h1>${esc(job.locationName)}</h1>
-  <h2>${esc(title)}</h2>
+  <h2>${esc(title)}${job.copy === "merchant" ? " · merchant" : ""}</h2>
   <div class="row"><span>#${esc(String(job.checkNumber))}</span><span>${esc(job.tableLabel)}</span></div>
   <div class="row"><span>${esc(job.serverName)}</span><span>${esc(new Date(job.at).toLocaleTimeString())}</span></div>
   ${job.operatorName ? `<div>${esc(job.operatorName)}</div>` : ""}

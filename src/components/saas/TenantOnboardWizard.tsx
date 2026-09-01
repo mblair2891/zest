@@ -175,9 +175,10 @@ export function TenantOnboardWizard({
       {step === 4 && (
         <div className="space-y-3">
           <p className="text-sm text-muted-foreground">
-            Payout account for your share of host capture. Guests still pay Quantum Payments
-            under {peek.hostBrand}. You can finish this wizard before approval — live split
-            payouts wait until the application is approved.
+            This brand’s Quantum Payments account. Guests still pay one check under{" "}
+            {peek.hostBrand} — your merchandise (plus allocated tax/tip/service) lands
+            here. You can finish this wizard before approval; live cards wait until
+            this application is approved.
           </p>
           <QuantumPaymentsOnboardPanel
             kind="operator"

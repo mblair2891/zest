@@ -9,6 +9,21 @@ export type CardPresentStatus =
   | "unavailable"
   | "timeout";
 
+export type EntityMerchantStatus =
+  | "not_started"
+  | "sandbox"
+  | "submitted"
+  | "approved"
+  | "live";
+
+export type EntityMerchantView = {
+  entityId: string;
+  displayName: string;
+  kind: "host" | "operator";
+  status: EntityMerchantStatus;
+  canCapture: boolean;
+};
+
 export type PaymentsStatus = {
   locationId: string;
   mode: PaymentsMode;
@@ -18,9 +33,21 @@ export type PaymentsStatus = {
   liveConfigured: boolean;
   liveReady: boolean;
   hostPaymentsApproved?: boolean;
+  entityMerchants?: EntityMerchantView[];
   readers: { id: string; label: string; serial: string; status: string }[];
   hostBrand: string;
   message: string;
+};
+
+export type CardPresentSplit = {
+  entityId: string;
+  kind: "host" | "operator";
+  displayName: string;
+  merchandiseCents: number;
+  taxCents: number;
+  serviceCents: number;
+  tipCents: number;
+  amountCents: number;
 };
 
 export type CardPresentResult = {
@@ -31,6 +58,7 @@ export type CardPresentResult = {
   last4?: string | null;
   error?: string;
   hostBrand?: string;
+  splits?: CardPresentSplit[];
 };
 
 export type CardPresentInput = {
@@ -43,4 +71,6 @@ export type CardPresentInput = {
   clientMutationId?: string | null;
   /** Training/sandbox receipt only — never a PAN. Live ignores client last4. */
   sandboxLast4?: string | null;
+  /** Per-entity shares of this tender. Guest still pays one check. */
+  entities?: CardPresentSplit[] | null;
 };
