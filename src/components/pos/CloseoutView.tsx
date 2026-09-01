@@ -303,6 +303,13 @@ export function CloseoutView({ onDone }: { onDone: () => void }) {
       pendingReason: status === "pending" ? "Open checks or manager pending" : undefined,
       pinConfirmed: true,
     });
+    if (over && variance != null) {
+      usePosStore.getState().audit("over_short", `Closeout over/short ${formatCurrency(variance)}`, {
+        amountCents: variance,
+        reason: overNote || "over_short",
+        after: rec.id,
+      });
+    }
     if (counting && counted != null && sink.type === "bank") {
       useCashSessionStore.getState().countBank({
         employeeId: emp.id,
@@ -540,17 +547,9 @@ export function CloseoutView({ onDone }: { onDone: () => void }) {
                 ? ` · cash due ${formatCurrency(cardDue)}`
                 : " · informational (not cashed out)"}
             </p>
-            {(emp.role === "manager" || emp.role === "owner") && (
-              <label className="block text-xs text-muted-foreground">
-                Manager adjust card tips
-                <Input
-                  className="mt-1"
-                  inputMode="decimal"
-                  value={cardTipsAdj ?? (sales.cardTipsCents / 100).toFixed(2)}
-                  onChange={(e) => setCardTipsAdj(e.target.value)}
-                />
-              </label>
-            )}
+            <p className="text-xs text-muted-foreground">
+              Card tips come from the processor on the tender. They are not typed here.
+            </p>
             <label className="block text-xs text-muted-foreground">
               Cash tips declared
               <Input

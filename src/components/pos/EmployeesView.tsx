@@ -153,9 +153,10 @@ export function EmployeesView() {
                     </p>
                     <p className="text-xs text-muted-foreground">
                       {staffTitle(e)} · {e.pinHash || e.pin ? "PIN set" : "No PIN"}
+                      {e.pinLocked ? " · PIN locked" : ""}
                       {locked && " · section-limited"}
                     </p>
-                    {canPin && <ResetPinRow employeeId={e.id} />}
+                    {canPin && <ResetPinRow employeeId={e.id} pinLocked={!!e.pinLocked} />}
                   </div>
                   <Badge variant={e.clockedIn ? "success" : "secondary"}>
                     {e.clockedIn ? "In" : "Out"}
@@ -276,8 +277,10 @@ export function EmployeesView() {
   );
 }
 
-function ResetPinRow({ employeeId }: { employeeId: string }) {
+function ResetPinRow({ employeeId, pinLocked }: { employeeId: string; pinLocked?: boolean }) {
   const setStaffPin = usePosStore((s) => s.setStaffPin);
+  const resetLock = usePosStore((s) => s.resetStaffPinLock);
+  const hasAuth = usePosStore((s) => s.hasManagerAuth);
   const locId = usePosStore((s) => s.tenantLocationId) || "";
   const orgId = useSaasStore((s) => s.org.id);
   const [pin, setPin] = useState("");
@@ -312,6 +315,18 @@ function ResetPinRow({ employeeId }: { employeeId: string }) {
       >
         Set PIN
       </Button>
+      {pinLocked && (
+        <Button
+          size="sm"
+          variant="ghost"
+          onClick={() => {
+            const res = resetLock(employeeId);
+            setNote(res.ok ? "PIN unlocked." : res.error ?? "Manager required");
+          }}
+        >
+          {hasAuth() ? "Unlock PIN" : "Unlock (manager)"}
+        </Button>
+      )}
       {note && <span className="self-center text-[10px] text-muted-foreground">{note}</span>}
     </div>
   );

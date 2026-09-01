@@ -41,7 +41,34 @@ export interface AuditEntry {
   employeeName: string;
   action: string;
   detail: string;
+  overrideEmployeeId?: string;
+  overrideEmployeeName?: string;
+  deviceId?: string;
+  deviceRole?: string;
+  entityId?: string;
+  ticketId?: string;
+  orderId?: string;
+  orderNumber?: number;
+  amountCents?: number;
+  reason?: string;
+  before?: string;
+  after?: string;
 }
+
+export type AuditMeta = {
+  overrideEmployeeId?: string;
+  overrideEmployeeName?: string;
+  deviceId?: string;
+  deviceRole?: string;
+  entityId?: string;
+  ticketId?: string;
+  orderId?: string;
+  orderNumber?: number;
+  amountCents?: number;
+  reason?: string;
+  before?: string;
+  after?: string;
+};
 
 export interface ShiftState {
   id: string;
@@ -106,10 +133,23 @@ export interface PosStore {
   logout: () => void;
   sessionKind: "pin" | "backoffice";
   backOfficeUnlocked: boolean;
+  stationPinFailures: number;
+  stationPinLocked: boolean;
+  managerAuthUntil: number | null;
+  managerAuthEmployeeId: string | null;
+  managerAuthEmployeeName: string | null;
+  acknowledgedExceptionIds: string[];
   setStaffPin: (employeeId: string, pin: string) => ActionResult;
   unlockBackOffice: (secret: string) => ActionResult;
   lockBackOffice: () => void;
   verifyManagerPin: (pin: string) => boolean;
+  hasManagerAuth: () => boolean;
+  authorizeManager: (pin: string) => ActionResult<{ employeeId?: string; employeeName?: string }>;
+  beginManagerSession: (emp: { id: string; name: string }) => void;
+  notePinFailure: () => ActionResult;
+  unlockStationPin: () => void;
+  resetStaffPinLock: (employeeId: string) => ActionResult;
+  acknowledgeException: (id: string) => void;
   clockToggle: (employeeId: string) => void;
   tick: () => void;
   setView: (v: PosView) => void;
@@ -119,7 +159,7 @@ export interface PosStore {
   setActiveOrder: (id: string | null) => ActionResult;
   getCurrentEmployee: () => Employee | null;
   getActiveOrder: () => Order | undefined;
-  audit: (action: string, detail: string) => void;
+  audit: (action: string, detail: string, meta?: AuditMeta) => void;
   updateSettings: (patch: Partial<RestaurantSettings>) => void;
   tableAccess: (
     tableId: string,
@@ -172,8 +212,8 @@ export interface PosStore {
   updateLineQty: (lineId: string, delta: number) => void;
   setLineNote: (lineId: string, note: string) => void;
   setLineSeat: (lineId: string, seat: number) => void;
-  voidLine: (lineId: string, reason: string) => void;
-  compLine: (lineId: string, reason: string) => void;
+  voidLine: (lineId: string, reason: string) => ActionResult;
+  compLine: (lineId: string, reason: string) => ActionResult;
   holdLine: (lineId: string, held: boolean) => void;
   sendOrder: (opts?: object) => ActionResult;
   fireCourse: (course: string) => void;
@@ -182,7 +222,21 @@ export interface PosStore {
     cents?: number;
     reason?: string;
     promoCode?: string;
-  }) => void;
+  }) => ActionResult;
+  reopenCheck: (orderId: string, reason: string) => ActionResult;
+  swapTender: (opts: {
+    orderId: string;
+    paymentId: string;
+    method: PaymentMethod;
+    reason: string;
+    last4?: string;
+    giftCardCode?: string;
+  }) => ActionResult;
+  adjustGiftBalance: (opts: {
+    code: string;
+    deltaCents: number;
+    reason: string;
+  }) => ActionResult;
   setOrderNote: (note: string) => void;
   printCheck: () => void;
   takePayment: (opts: {

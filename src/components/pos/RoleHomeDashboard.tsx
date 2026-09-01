@@ -23,6 +23,7 @@ import { canEmployee } from "@/lib/access/permissions";
 import { VENUE_TYPE_LABEL } from "@/lib/access/entity-roles";
 import { AiOpsCard } from "./AiOpsCard";
 import { AccessPointsCard } from "./AccessPointsCard";
+import { ExceptionLiveFeed } from "./ExceptionLiveFeed";
 import { useCostStore } from "@/lib/costs/store";
 
 function Jump({
@@ -112,6 +113,7 @@ export function RoleHomeDashboard() {
               <Stat label="Staff on" value={String(onClock)} />
             </div>
             <AiOpsCard />
+            <ExceptionLiveFeed compact />
             {openCostEx > 0 && (
               <div className="rounded-2xl border border-warn/40 bg-surface p-4">
                 <p className="text-sm font-medium">Cost exceptions</p>

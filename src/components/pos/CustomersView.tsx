@@ -37,6 +37,9 @@ import {
   setGiftStatusFn,
 } from "@/lib/gift/api";
 import { giftExpiresAt, resolveGiftIssuer } from "@/lib/pos/gift-issuer";
+import { ManagerPinDialog } from "./ManagerPinDialog";
+import { GIFT_ADJUST_REASONS } from "@/lib/pos/loss-prevention";
+import type { GiftCardStatus } from "@/lib/pos/types";
 
 export function CustomersView() {
   const customers = usePosStore((s) => s.customers);
@@ -79,6 +82,13 @@ export function CustomersView() {
   const [fileName, setFileName] = useState("");
   const [preview, setPreview] = useState<GiftImportPreview | null>(null);
   const [overwrite, setOverwrite] = useState(false);
+  const [giftMgrOpen, setGiftMgrOpen] = useState(false);
+  const [pendingGift, setPendingGift] = useState<{
+    code: string;
+    id: string;
+    status: GiftCardStatus;
+  } | null>(null);
+  const hasManagerAuth = usePosStore((s) => s.hasManagerAuth);
 
   const filtered = customers.filter(
     (c) =>
@@ -310,6 +320,16 @@ export function CustomersView() {
                 Issued {formatDateTime(g.issuedAt)}
               </p>
             )}
+            {g.ledger && g.ledger.length > 0 && (
+              <ul className="mt-2 space-y-0.5 text-[10px] text-muted-foreground">
+                {g.ledger.slice(-4).reverse().map((row, i) => (
+                  <li key={`${g.id}-led-${i}`}>
+                    {row.kind} · {formatCurrency(row.afterCents)}
+                    {row.reason ? ` · ${row.reason}` : ""}
+                  </li>
+                ))}
+              </ul>
+            )}
             <div className="mt-2 flex flex-wrap gap-1">
               {g.status !== "frozen" && g.active && (
                 <Button
@@ -317,25 +337,9 @@ export function CustomersView() {
                   variant="outline"
                   className="h-7 text-[11px]"
                   onClick={() => {
-                    void (async () => {
-                      if (locId) {
-                        const res = await setGiftStatusFn({
-                          data: { locationId: locId, cardId: g.id, status: "frozen" },
-                        });
-                        if (!res.ok) {
-                          setMsg(res.error ?? "Failed");
-                          return;
-                        }
-                        await hydrateGift(locId);
-                      } else setGiftCardStatus(g.code, "frozen");
-                      logGiftTxn({
-                        giftCardId: g.id,
-                        type: "freeze",
-                        amountCents: 0,
-                        note: g.code,
-                      });
-                      setMsg(`Frozen ${g.code}`);
-                    })();
+                    setPendingGift({ code: g.code, id: g.id, status: "frozen" });
+                    if (hasManagerAuth()) setGiftMgrOpen(true);
+                    else setGiftMgrOpen(true);
                   }}
                 >
                   <Snowflake className="h-3 w-3" />
@@ -348,19 +352,8 @@ export function CustomersView() {
                   variant="outline"
                   className="h-7 text-[11px]"
                   onClick={() => {
-                    void (async () => {
-                      if (locId) {
-                        const res = await setGiftStatusFn({
-                          data: { locationId: locId, cardId: g.id, status: "active" },
-                        });
-                        if (!res.ok) {
-                          setMsg(res.error ?? "Failed");
-                          return;
-                        }
-                        await hydrateGift(locId);
-                      } else setGiftCardStatus(g.code, "active");
-                      setMsg(`Unfrozen ${g.code}`);
-                    })();
+                    setPendingGift({ code: g.code, id: g.id, status: "active" });
+                    setGiftMgrOpen(true);
                   }}
                 >
                   Unfreeze
@@ -372,25 +365,8 @@ export function CustomersView() {
                   variant="ghost"
                   className="h-7 text-[11px]"
                   onClick={() => {
-                    void (async () => {
-                      if (locId) {
-                        const res = await setGiftStatusFn({
-                          data: { locationId: locId, cardId: g.id, status: "void" },
-                        });
-                        if (!res.ok) {
-                          setMsg(res.error ?? "Failed");
-                          return;
-                        }
-                        await hydrateGift(locId);
-                      } else setGiftCardStatus(g.code, "void");
-                      logGiftTxn({
-                        giftCardId: g.id,
-                        type: "void",
-                        amountCents: 0,
-                        note: g.code,
-                      });
-                      setMsg(`Voided ${g.code}`);
-                    })();
+                    setPendingGift({ code: g.code, id: g.id, status: "void" });
+                    setGiftMgrOpen(true);
                   }}
                 >
                   <Ban className="h-3 w-3" />
@@ -879,6 +855,42 @@ export function CustomersView() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+      <ManagerPinDialog
+        open={giftMgrOpen}
+        onOpenChange={setGiftMgrOpen}
+        title="Gift card change"
+        description="Balance adjust and deactivate are manager-only. Reason is logged."
+        reasons={GIFT_ADJUST_REASONS}
+        onVerified={() => {
+          if (!pendingGift) return;
+          const { code, id, status } = pendingGift;
+          const local = setGiftCardStatus(code, status);
+          if (local && local.ok === false) {
+            setMsg(local.error ?? "Failed");
+            setPendingGift(null);
+            return;
+          }
+          if (locId) {
+            void setGiftStatusFn({ data: { locationId: locId, cardId: id, status } })
+              .then(async (res) => {
+                if (!res.ok) {
+                  setMsg(res.error ?? "Failed");
+                  return;
+                }
+                await hydrateGift(locId);
+              })
+              .catch(() => undefined);
+          }
+          logGiftTxn({
+            giftCardId: id,
+            type: status === "frozen" ? "freeze" : status === "void" ? "void" : "adjust",
+            amountCents: 0,
+            note: code,
+          });
+          setMsg(`${status} ${code}`);
+          setPendingGift(null);
+        }}
+      />
     </div>
   );
 }

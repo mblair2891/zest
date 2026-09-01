@@ -38,6 +38,12 @@ import { parseCashHandling } from "@/lib/pos/cash-handling";
 import { bankExpected, drawerExpected, useCashSessionStore } from "@/lib/pos/cash-session";
 import { closeoutPayrollCsv } from "@/lib/pos/closeout";
 import { useCloseoutStore } from "@/lib/pos/closeout-store";
+import {
+  buildExceptionRows,
+  formatPct,
+  parseLossPrevention,
+} from "@/lib/pos/loss-prevention";
+import { useCostStore } from "@/lib/costs/store";
 
 function annotateInsights(ins: LocationInsights): LocationInsights {
   const events = useOpsLearnStore.getState().events;
@@ -624,6 +630,9 @@ function ReportBody({ id, m }: { id: ReportId; m: ReturnType<typeof metricsFromP
       </div>
     );
   }
+  if (id === "lp-exceptions") {
+    return <LpExceptionsSlice range={m.range} />;
+  }
   if (id === "payments-chargebacks") {
     return (
       <Card
@@ -1162,6 +1171,78 @@ function Card({ label, value, sub }: { label: string; value: string; sub?: strin
       <p className="text-xs uppercase tracking-wide text-muted-foreground">{label}</p>
       <p className="mt-1 text-2xl font-semibold tabular">{value}</p>
       {sub && <p className="mt-1 text-xs text-muted-foreground">{sub}</p>}
+    </div>
+  );
+}
+
+function LpExceptionsSlice({ range }: { range: RangeKey }) {
+  const employees = usePosStore((s) => s.employees);
+  const orders = usePosStore((s) => s.orders);
+  const auditLog = usePosStore((s) => s.auditLog);
+  const settings = usePosStore((s) => s.settings);
+  const ack = usePosStore((s) => s.acknowledgedExceptionIds) ?? [];
+  const acknowledge = usePosStore((s) => s.acknowledgeException);
+  const closeouts = useCloseoutStore((s) => s.records);
+  const costEx = useCostStore((s) => s.exceptions.filter((e) => e.status === "open"));
+  const cfg = parseLossPrevention(settings.lossPrevention);
+  const period = range === "shift" || range === "today" ? "day" : "week";
+  const rows = buildExceptionRows({
+    period,
+    cfg,
+    employees,
+    orders,
+    auditLog,
+    closeouts,
+  });
+  const flagged = rows.filter((r) => r.flagged);
+  return (
+    <div className="space-y-3">
+      <p className="text-xs text-muted-foreground">
+        Employee vs house and vs the same weekday. A flag means the rate is at least{" "}
+        {cfg.outlierMultiplier}× the house rate (or a repeat reopen / gift adjust). Queued for
+        manager review — not an accusation.
+      </p>
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+        <Card label="Flagged" value={String(flagged.length)} sub={`${period} vs house`} />
+        <Card label="Voids $" value={formatCurrency(rows.filter((r) => r.metric === "voids").reduce((s, r) => s + r.employeeAmountCents, 0))} />
+        <Card label="No-sales" value={String(rows.filter((r) => r.metric === "no_sales").reduce((s, r) => s + r.employeeCount, 0))} />
+        <Card label="Reopens" value={String(rows.filter((r) => r.metric === "reopens").reduce((s, r) => s + r.employeeCount, 0))} />
+      </div>
+      {costEx.length > 0 && (
+        <p className="text-xs text-muted-foreground">
+          Inventory / recipe vs sales: {costEx.length} open cost variance item{costEx.length === 1 ? "" : "s"} on Costs. Review there with a reason.
+        </p>
+      )}
+      <ul className="space-y-2 text-sm">
+        {rows.slice(0, 60).map((r) => (
+          <li
+            key={r.id}
+            className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-border px-3 py-2"
+          >
+            <span>
+              {r.employeeName}
+              <span className="text-muted-foreground"> · {r.label}</span>
+              {r.flagged && (
+                <Badge variant="warn" className="ml-2">
+                  Review
+                </Badge>
+              )}
+            </span>
+            <span className="tabular text-xs">
+              {r.employeeAmountCents ? formatCurrency(r.employeeAmountCents) : `${r.employeeCount}×`}
+              {r.employeePct != null ? ` · emp ${formatPct(r.employeePct)}` : ""}
+              {r.housePct != null ? ` · house ${formatPct(r.housePct)}` : ""}
+              {r.weekdayPct != null ? ` · weekday ${formatPct(r.weekdayPct)}` : ""}
+              {r.flagged && !ack.includes(r.id) && (
+                <Button size="sm" variant="ghost" className="ml-2 h-7" onClick={() => acknowledge(r.id)}>
+                  Noted
+                </Button>
+              )}
+            </span>
+          </li>
+        ))}
+        {rows.length === 0 && <li className="text-muted-foreground">No exception rows in this range.</li>}
+      </ul>
     </div>
   );
 }

@@ -6,6 +6,19 @@ import type { GuideUpdate } from "@/lib/guide/types";
  */
 export const WHATS_NEW_ENTRIES: GuideUpdate[] = [
   {
+    id: "upd_2026_10_20_loss_prevention",
+    date: "2026-10-20",
+    title: "Loss-prevention gates, audit log, exception reports",
+    summary:
+      "Unique PIN lockout, manager session, gated void/comp/discount, frozen paid checks, immutable audit, manager exception queue.",
+    body: "Each employee has a unique PIN. Failed attempts lock the station until a manager unlocks. ODS cannot tender cash or gift. After send or bump, void/comp/discount need a manager PIN and a listed reason. Paid checks freeze; reopen or tender-swap is a manager event with before/after. Gift adjust is manager-only; load needs cash or card on the same ticket. Home shows a live feed. Reports → Loss-prevention exceptions compares employee vs house vs same weekday and queues flags for review — never an automatic accusation.",
+    roles: ["owner_manager"],
+    surfaces: ["floor", "reports", "settings"],
+    audience: "all",
+    topicId: "loss-prevention",
+    tags: ["audit", "void", "comp", "PIN", "exceptions"],
+  },
+  {
     id: "upd_2026_10_19_guide_catchup",
     date: "2026-10-19",
     title: "Operators Guide: device roles, merchants, cash, printers",

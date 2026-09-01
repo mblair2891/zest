@@ -93,7 +93,7 @@ export const CASH_GIFT_TOPICS: GuideTopic[] = [
       tip(
         "House Wi-Fi still records cash if the internet is down. You are not blocked from closing a cash table during an ISP outage. Open on cash sale: always, never, or manager PIN. No-sale: off, manager, or assigned user.",
       ),
-      related("tenders-tips", "cash-discount", "settlement", "wifi-offline", "reports", "server-closeout", "printers-kds", "tip-pooling"),
+      related("tenders-tips", "cash-discount", "settlement", "wifi-offline", "reports", "server-closeout", "printers-kds", "tip-pooling", "loss-prevention"),
     ],
   }),
   topic({
@@ -261,12 +261,12 @@ export const CASH_GIFT_TOPICS: GuideTopic[] = [
         "Pay → Gift: swipe, scan, or key the code. Example: Operator B (bar) issues $50 — liability is Operator B. Operator A sells food, redeem — Operator A merch, Operator B → Operator A remit.",
         "Settings → Gift cards: house issuer on/off, host-stand default issuer, term allowed (with disclaimer), operator residual split. Use the dropdowns — no JSON.",
         "Reports → Gift liability / Gift redemptions, or Settle → liability by issuer. Host: Process expired residual when a term is in force.",
-        "Freeze if lost. Void if issued in error. Import CSV is one-way from Square / Toast / Clover / Shopify / generic (those systems are not POS card processors).",
+        "Freeze if lost. Void if issued in error. Both need a manager PIN. Load needs cash or card on the same ticket. Import CSV is one-way from Square / Toast / Clover / Shopify / generic (those systems are not POS card processors).",
       ),
       warn(
         "Turning on a term does not make expiry legal. Confirm state law with counsel — expiry may be illegal in some states. Imported cards are not kept in sync with the old system.",
       ),
-      related("tenders-tips", "settlement", "guests", "cash-handling", "quantum-payments"),
+      related("tenders-tips", "settlement", "guests", "cash-handling", "quantum-payments", "loss-prevention"),
     ],
   }),
   topic({

@@ -8,6 +8,7 @@ export type ReportId =
   | "payments-tenders"
   | "payments-cash-discount"
   | "payments-voids"
+  | "lp-exceptions"
   | "payments-chargebacks"
   | "gift-liability"
   | "gift-redemptions"

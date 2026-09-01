@@ -28,6 +28,8 @@ import { splitTenderByEntity } from "@/lib/payments/entity-split";
 import { cashRoleFromSession, parseCashHandling } from "@/lib/pos/cash-handling";
 import { currentCashSink } from "@/lib/pos/cash-session";
 import { useStationSessionStore } from "@/lib/pos/station-session";
+import { deviceRoleFromSessionMode, parseStationQuery } from "@/lib/pos/device-roles";
+import { odsBlocksTender } from "@/lib/pos/loss-prevention";
 
 interface Props {
   open: boolean;
@@ -52,6 +54,16 @@ export function PaymentDialog({ open, onOpenChange }: Props) {
     order: order ?? null,
   });
   const cashAllowed = cashSink.type !== "blocked";
+  const deviceRole = (() => {
+    try {
+      const q = parseStationQuery(new URLSearchParams(window.location.search).get("station"));
+      if (q) return q;
+      return deviceRoleFromSessionMode(useStationSessionStore.getState().assignment.kind);
+    } catch {
+      return null;
+    }
+  })();
+  const odsBlocked = deviceRole === "ods";
 
   const [method, setMethod] = useState<PaymentMethod>(wanOnline ? "card" : "cash");
   const dual = useMemo(
@@ -113,6 +125,10 @@ export function PaymentDialog({ open, onOpenChange }: Props) {
   const pay = () => {
     void (async () => {
     setError(null);
+    if (odsBlocksTender(deviceRole, method)) {
+      setError("ODS cannot tender cash or gift. Use an order or host station.");
+      return;
+    }
     if (method === "cash") {
       const cfg = parseCashHandling(settings.cashHandling);
       const sink = currentCashSink({
@@ -422,13 +438,19 @@ export function PaymentDialog({ open, onOpenChange }: Props) {
                 </TabsTrigger>
                 <TabsTrigger
                   value="cash"
-                  disabled={!cashAllowed}
-                  title={!cashAllowed && cashSink.type === "blocked" ? cashSink.reason : undefined}
+                  disabled={!cashAllowed || odsBlocked}
+                  title={
+                    odsBlocked
+                      ? "ODS cannot tender cash"
+                      : !cashAllowed && cashSink.type === "blocked"
+                        ? cashSink.reason
+                        : undefined
+                  }
                 >
                   <Banknote className="h-3.5 w-3.5" />
                 </TabsTrigger>
                 {giftOk && (
-                <TabsTrigger value="gift_card">
+                <TabsTrigger value="gift_card" disabled={odsBlocked} title={odsBlocked ? "ODS cannot tender gift" : undefined}>
                   <Gift className="h-3.5 w-3.5" />
                 </TabsTrigger>
                 )}
@@ -450,10 +472,18 @@ export function PaymentDialog({ open, onOpenChange }: Props) {
                   />
                 </div>
 
+                {odsBlocked && (
+                  <p className="rounded-lg bg-warn/15 px-3 py-2 text-xs">
+                    This station is ODS. Cash and gift tenders are off. Use an order or host
+                    device.
+                  </p>
+                )}
                 {method !== "comp" && (
                   <div>
                     <label className="mb-1.5 block text-xs text-muted-foreground">
-                      Tip
+                      {method === "card"
+                        ? "Tip (from the reader / processor — not typed)"
+                        : "Tip"}
                     </label>
                     <div className="flex flex-wrap gap-2">
                       {[0, ...tips].map((t, i) => (

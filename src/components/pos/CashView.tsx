@@ -22,6 +22,7 @@ import {
 import { useStationSessionStore } from "@/lib/pos/station-session";
 import { kickCashDrawer } from "@/lib/print/dispatch";
 import { CloseoutQueue } from "./CloseoutQueue";
+import { NO_SALE_REASONS } from "@/lib/pos/loss-prevention";
 
 export function CashView() {
   const shift = usePosStore((s) => s.shift);
@@ -55,6 +56,8 @@ export function CashView() {
   const [countNote, setCountNote] = useState("");
   const [amt, setAmt] = useState("");
   const [reason, setReason] = useState(cfg.paidInOutReasons[0] ?? "Other");
+  const [noSaleReason, setNoSaleReason] = useState<string>(NO_SALE_REASONS[0]);
+  const audit = usePosStore((s) => s.audit);
   const [mgrOpen, setMgrOpen] = useState(false);
   const [pending, setPending] = useState<
     null | "close" | "open" | "paid_in" | "paid_out" | "drop" | "no_sale" | "kick" | "issue"
@@ -101,6 +104,12 @@ export function CashView() {
       if (Math.abs(variance) >= cfg.overShortRequireNoteCents && !countNote.trim() && count) {
         setCloseErr(`Note required for over/short over ${formatCurrency(cfg.overShortRequireNoteCents)}.`);
         return;
+      }
+      if (count && Math.abs(variance) >= cfg.overShortWarnCents) {
+        audit("over_short", `Over/short ${formatCurrency(variance)}`, {
+          amountCents: variance,
+          reason: countNote || "over_short",
+        });
       }
       if (sink.type === "drawer") {
         useCashSessionStore.getState().countDrawer({
@@ -171,6 +180,10 @@ export function CashView() {
       else {
         setFlash(`${kind.replace("_", " ")} ${formatCurrency(cents)}`);
         setAmt("");
+        audit(kind === "drop" ? "drop" : kind, reason, {
+          amountCents: cents,
+          reason,
+        });
       }
       return;
     }
@@ -181,11 +194,18 @@ export function CashView() {
           devices,
           printerId: sink.drawer.kickPrinterId,
         });
-        useCashSessionStore.getState().logNoSale({
-          employeeId: emp.id,
-          employeeName: emp.name,
-          drawerId: sink.drawer.id,
-        });
+        if (kind === "no_sale") {
+          useCashSessionStore.getState().logNoSale({
+            employeeId: emp.id,
+            employeeName: emp.name,
+            drawerId: sink.drawer.id,
+            reason: noSaleReason,
+          });
+          audit("no_sale", noSaleReason, {
+            reason: noSaleReason,
+            after: sink.drawer.id,
+          });
+        }
       }
     }
   };
@@ -416,6 +436,17 @@ export function CashView() {
             <Button size="sm" variant="outline" onClick={() => ask("drop")}>
               Skim / drop
             </Button>
+            <select
+              className="h-9 rounded-md border border-border bg-bg px-2 text-sm"
+              value={noSaleReason}
+              onChange={(e) => setNoSaleReason(e.target.value)}
+            >
+              {NO_SALE_REASONS.map((r) => (
+                <option key={r} value={r}>
+                  {r}
+                </option>
+              ))}
+            </select>
             <Button size="sm" variant="outline" onClick={() => ask("no_sale")}>
               No sale
             </Button>

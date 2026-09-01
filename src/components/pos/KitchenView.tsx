@@ -400,7 +400,12 @@ export function KitchenView({ station, expo, operatorId }: Props) {
                   findStaffByPin(employees, pin, locId, lockedVendor) ||
                   (isDemoStaffPin(pin) ? emp : null);
                 if (!match) {
-                  setBumpPinError("Invalid PIN");
+                  const fail = usePosStore.getState().notePinFailure();
+                  setBumpPinError(fail.error ?? "Invalid PIN");
+                  return;
+                }
+                if (match.pinLocked) {
+                  setBumpPinError("PIN locked. Ask a manager to reset.");
                   return;
                 }
                 const ticket = tickets.find((x) => x.id === bumpPinFor);

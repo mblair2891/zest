@@ -52,6 +52,13 @@ export const REPORT_CATALOG: ReportDef[] = [
     roles: ["owner", "manager", "accountant"],
   },
   {
+    id: "lp-exceptions",
+    group: "payments",
+    title: "Loss-prevention exceptions",
+    summary: "Employee vs house vs same weekday. Flags queue for review — never an accusation.",
+    roles: ["owner", "manager", "accountant"],
+  },
+  {
     id: "payments-chargebacks",
     group: "payments",
     title: "Chargebacks",

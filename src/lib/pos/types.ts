@@ -65,7 +65,7 @@ export type Course =
 
 export type TicketStation = "kitchen" | "bar" | "expo" | "dessert";
 
-export type TicketStatus = "new" | "in_progress" | "ready" | "bumped";
+export type TicketStatus = "new" | "in_progress" | "ready" | "bumped" | "voided";
 
 export type PaymentMethod =
   | "card"
@@ -240,6 +240,8 @@ export interface RestaurantSettings {
   networkNotes?: string;
   networkChecklist?: import("@/lib/saas/network-readiness").NetworkChecklist;
   cashHandling?: import("./cash-handling").CashHandlingConfig;
+  /** Location-configurable loss-prevention gates. */
+  lossPrevention?: import("./loss-prevention").LossPreventionConfig;
 }
 
 export interface Employee {
@@ -267,6 +269,9 @@ export interface Employee {
   extraViews?: PosView[];
   /** Multi-operator host: this person is scoped to one operator. */
   operatorId?: string;
+  pinFailedAttempts?: number;
+  /** Locked until a manager resets. Not a timeout. */
+  pinLocked?: boolean;
 }
 
 export interface MenuCategory {
@@ -396,6 +401,8 @@ export interface Payment {
   chargeBrand?: string;
   /** True while location or operator is in Training — Quantum Payments sandbox */
   sandbox?: boolean;
+  drawerId?: string;
+  cashSink?: "drawer" | "server_bank";
 }
 
 export interface Order {
@@ -423,6 +430,11 @@ export interface Order {
   splitFromId?: string;
   /** Payment-only split: this check's share of remaining, in cents. */
   dueOverrideCents?: number;
+  discountReason?: string;
+  promoCode?: string;
+  reopenedAt?: number;
+  reopenReason?: string;
+  reopenBefore?: string;
 }
 
 export interface KitchenTicketItem {
@@ -518,6 +530,18 @@ export interface GiftCard {
   soldByOperatorId?: string;
   expiresAt?: number;
   breakageProcessedAt?: number;
+  ledger?: GiftCardLedgerEntry[];
+}
+
+export interface GiftCardLedgerEntry {
+  at: number;
+  kind: "issue" | "reload" | "redeem" | "adjust" | "status";
+  amountCents: number;
+  employeeId?: string;
+  employeeName?: string;
+  reason?: string;
+  beforeCents: number;
+  afterCents: number;
 }
 
 export type GiftTransferReason = "redeem" | "breakage" | "issue_remit";

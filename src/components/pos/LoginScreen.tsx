@@ -13,6 +13,9 @@ export function LoginScreen() {
   const login = usePosStore((s) => s.login);
   const settings = usePosStore((s) => s.settings);
   const openGuide = useGuideStore((s) => s.openGuide);
+  const stationLocked = usePosStore((s) => s.stationPinLocked);
+  const authorize = usePosStore((s) => s.authorizeManager);
+  const [mgrPin, setMgrPin] = useState("");
 
   const press = (d: string) => {
     setError(null);
@@ -42,9 +45,35 @@ export function LoginScreen() {
             {settings.name}
           </h1>
           <p className="mt-1 text-sm text-muted-foreground">
-            Staff PIN
+            Staff PIN — unique per person, not clock-in
           </p>
         </div>
+        {stationLocked && (
+          <div className="mb-4 rounded-2xl border border-warn/40 bg-warn/10 p-3 text-sm">
+            <p className="font-medium">This station is locked after failed PIN attempts.</p>
+            <p className="mt-1 text-xs text-muted-foreground">A manager must unlock it. That unlock is logged.</p>
+            <input
+              type="password"
+              inputMode="numeric"
+              autoComplete="off"
+              value={mgrPin}
+              onChange={(e) => setMgrPin(e.target.value.replace(/\D/g, "").slice(0, 6))}
+              placeholder="Manager PIN"
+              className="mt-2 flex h-10 w-full rounded-xl border border-border bg-bg px-3 text-center tracking-[0.3em]"
+            />
+            <Button
+              className="mt-2 w-full"
+              onClick={() => {
+                const res = authorize(mgrPin);
+                setMgrPin("");
+                if (!res.ok) setError(res.error ?? "Invalid manager PIN");
+                else setError(null);
+              }}
+            >
+              Unlock station
+            </Button>
+          </div>
+        )}
 
         <Link
           to="/apps"

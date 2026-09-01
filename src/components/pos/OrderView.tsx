@@ -42,6 +42,22 @@ import { RecipeLookupButton } from "@/components/recipes/RecipeLookup";
 import { CheckOpsDialog } from "./CheckOpsDialog";
 import { Split } from "lucide-react";
 import { canEmployee } from "@/lib/access/permissions";
+import {
+  COMP_REASONS,
+  DISCOUNT_REASONS,
+  REOPEN_REASONS,
+  TENDER_SWAP_REASONS,
+  VOID_REASONS,
+  discountNeedsManager,
+  lineIsOnBumpedTicket,
+  parseLossPrevention,
+  voidNeedsManager,
+} from "@/lib/pos/loss-prevention";
+import {
+  deviceRoleFromSessionMode,
+  parseStationQuery,
+} from "@/lib/pos/device-roles";
+import { useStationSessionStore } from "@/lib/pos/station-session";
 
 export function OrderView() {
   const activeOrderId = usePosStore((s) => s.activeOrderId);
@@ -75,9 +91,14 @@ export function OrderView() {
   const [payOpen, setPayOpen] = useState(false);
   const [mgrOpen, setMgrOpen] = useState(false);
   const [mgrAction, setMgrAction] = useState<
-    null | "void" | "comp" | "discount"
+    null | "void" | "comp" | "discount" | "reopen" | "tender_swap"
   >(null);
   const [discountOpen, setDiscountOpen] = useState(false);
+  const [gateError, setGateError] = useState<string | null>(null);
+  const reopenCheck = usePosStore((s) => s.reopenCheck);
+  const swapTender = usePosStore((s) => s.swapTender);
+  const tickets = usePosStore((s) => s.tickets);
+  const hasManagerAuth = usePosStore((s) => s.hasManagerAuth);
   const [discPct, setDiscPct] = useState("10");
   const [noteOpen, setNoteOpen] = useState(false);
   const [noteDraft, setNoteDraft] = useState("");
@@ -172,6 +193,7 @@ export function OrderView() {
   const onMenuClick = (item: MenuItem) => {
     if (!item.available) return;
     if (orderLocked) return;
+    if (order.status !== "open") return;
     const groups = usePosStore
       .getState()
       .modifierGroups.filter((g) => item.modifierGroupIds.includes(g.id));
@@ -184,16 +206,70 @@ export function OrderView() {
     addItem(item.id);
   };
 
-  const runMgr = () => {
+  const lp = parseLossPrevention(settings.lossPrevention);
+  const frozen = order.status !== "open";
+  const stationRole = (() => {
+    try {
+      const q = parseStationQuery(new URLSearchParams(window.location.search).get("station"));
+      if (q) return q;
+      return deviceRoleFromSessionMode(useStationSessionStore.getState().assignment.kind);
+    } catch {
+      return null;
+    }
+  })();
+  const odsNoPay = stationRole === "ods";
+
+  const runMgr = (ctx?: { reason: string }) => {
+    const reason = ctx?.reason?.trim() || "";
+    setGateError(null);
+    if (mgrAction === "reopen") {
+      const res = reopenCheck(order.id, reason || "Manager approved");
+      if (!res.ok) setGateError(res.error ?? "Could not reopen");
+      setMgrAction(null);
+      return;
+    }
+    if (mgrAction === "tender_swap") {
+      const pay = order.payments[order.payments.length - 1];
+      if (pay) {
+        const next = pay.method === "card" ? "cash" : "card";
+        const res = swapTender({
+          orderId: order.id,
+          paymentId: pay.id,
+          method: next,
+          reason: reason || "Wrong tender",
+        });
+        if (!res.ok) setGateError(res.error ?? "Could not change tender");
+      }
+      setMgrAction(null);
+      return;
+    }
     if (mgrAction === "discount") {
       setDiscountOpen(true);
       setMgrAction(null);
       return;
     }
     if (!selectedLineId) return;
-    if (mgrAction === "void") voidLine(selectedLineId, "Manager void");
-    if (mgrAction === "comp") compLine(selectedLineId, "Manager comp");
+    if (mgrAction === "void") {
+      const res = voidLine(selectedLineId, reason || "Manager approved");
+      if (res && res.ok === false) setGateError(res.error ?? "Void failed");
+    }
+    if (mgrAction === "comp") {
+      const res = compLine(selectedLineId, reason || "Manager approved");
+      if (res && res.ok === false) setGateError(res.error ?? "Comp failed");
+    }
     setMgrAction(null);
+  };
+
+  const askVoid = () => {
+    const line = order.lines.find((l) => l.id === selectedLineId);
+    const need = voidNeedsManager(line, tickets, lp);
+    if (!need && !lineIsOnBumpedTicket(selectedLineId ?? "", tickets)) {
+      setMgrAction("void");
+      setMgrOpen(true);
+      return;
+    }
+    setMgrAction("void");
+    setMgrOpen(true);
   };
 
   return (
@@ -380,15 +456,44 @@ export function OrderView() {
             </div>
           )}
 
+        {frozen && (
+          <div className="border-t border-warn/40 bg-warn/10 px-3 py-2 text-xs">
+            Paid check is frozen. Reopen or swap a tender only with a manager PIN and a listed
+            reason. Before/after is stored.
+            <div className="mt-2 flex gap-1">
+              <Button
+                size="sm"
+                onClick={() => {
+                  setMgrAction("reopen");
+                  setMgrOpen(true);
+                }}
+              >
+                Reopen
+              </Button>
+              {order.payments.length > 0 && (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => {
+                    setMgrAction("tender_swap");
+                    setMgrOpen(true);
+                  }}
+                >
+                  Swap last tender
+                </Button>
+              )}
+            </div>
+          </div>
+        )}
+        {gateError && (
+          <p className="px-3 py-1 text-xs text-danger">{gateError}</p>
+        )}
         <div className="grid grid-cols-4 gap-1 border-t border-border p-2">
           <Button
             size="sm"
             variant="outline"
-            disabled={!selectedLineId}
-            onClick={() => {
-              setMgrAction("void");
-              setMgrOpen(true);
-            }}
+            disabled={!selectedLineId || frozen}
+            onClick={askVoid}
           >
             <Trash2 className="h-3.5 w-3.5" />
             Void
@@ -396,7 +501,7 @@ export function OrderView() {
           <Button
             size="sm"
             variant="outline"
-            disabled={!selectedLineId}
+            disabled={!selectedLineId || frozen}
             onClick={() => {
               setMgrAction("comp");
               setMgrOpen(true);
@@ -423,9 +528,14 @@ export function OrderView() {
           <Button
             size="sm"
             variant="outline"
+            disabled={frozen}
             onClick={() => {
-              setMgrAction("discount");
-              setMgrOpen(true);
+              if (discountNeedsManager(order, lp) && !hasManagerAuth()) {
+                setMgrAction("discount");
+                setMgrOpen(true);
+                return;
+              }
+              setDiscountOpen(true);
             }}
           >
             <Percent className="h-3.5 w-3.5" />
@@ -464,7 +574,7 @@ export function OrderView() {
             <Send className="h-4 w-4" />
             Send
           </Button>
-          {canEmployee(emp, "payments:take") && (
+          {canEmployee(emp, "payments:take") && !odsNoPay && (
           <Button
             className="col-span-full"
             size="lg"
@@ -636,6 +746,31 @@ export function OrderView() {
         open={mgrOpen}
         onOpenChange={setMgrOpen}
         onVerified={runMgr}
+        title={
+          mgrAction === "reopen"
+            ? "Reopen paid check"
+            : mgrAction === "tender_swap"
+              ? "Change tender"
+              : mgrAction === "void"
+                ? "Void"
+                : mgrAction === "comp"
+                  ? "Comp"
+                  : "Manager authorization"
+        }
+        description="Manager PIN and a reason from the house list. This is logged."
+        reasons={
+          mgrAction === "void"
+            ? VOID_REASONS
+            : mgrAction === "comp"
+              ? COMP_REASONS
+              : mgrAction === "discount"
+                ? DISCOUNT_REASONS
+                : mgrAction === "reopen"
+                  ? REOPEN_REASONS
+                  : mgrAction === "tender_swap"
+                    ? TENDER_SWAP_REASONS
+                    : undefined
+        }
       />
       <Dialog open={discountOpen} onOpenChange={setDiscountOpen}>
         <DialogContent>
@@ -648,16 +783,35 @@ export function OrderView() {
             placeholder="Percent"
             inputMode="decimal"
           />
+          <label className="block text-xs text-muted-foreground">
+            Reason
+            <select
+              className="mt-1 flex h-10 w-full rounded-md border border-border bg-bg px-3 text-sm text-foreground"
+              defaultValue={DISCOUNT_REASONS[0]}
+              id="disc-reason"
+            >
+              {DISCOUNT_REASONS.map((r) => (
+                <option key={r} value={r}>
+                  {r}
+                </option>
+              ))}
+            </select>
+          </label>
           <DialogFooter>
             <Button variant="outline" onClick={() => setDiscountOpen(false)}>
               Cancel
             </Button>
             <Button
               onClick={() => {
-                applyDiscount({
+                const sel = document.getElementById("disc-reason") as HTMLSelectElement | null;
+                const res = applyDiscount({
                   percent: parseFloat(discPct) || 0,
-                  reason: "Manager discount",
+                  reason: sel?.value || DISCOUNT_REASONS[0],
                 });
+                if (res && res.ok === false) {
+                  setGateError(res.error ?? "Discount not applied");
+                  return;
+                }
                 setDiscountOpen(false);
               }}
             >

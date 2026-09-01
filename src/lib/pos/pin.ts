@@ -103,13 +103,21 @@ export function pinMatches(
   return false;
 }
 
+export function staffMatchingPin(
+  employees: Employee[],
+  pin: string,
+  locationId: string,
+): Employee[] {
+  return employees.filter((e) => pinMatches(e, pin, locationId));
+}
+
 export function findStaffByPin(
   employees: Employee[],
   pin: string,
   locationId: string,
   deviceOperatorId?: string | null,
 ): Employee | undefined {
-  let matches = employees.filter((e) => pinMatches(e, pin, locationId));
+  let matches = staffMatchingPin(employees, pin, locationId);
   if (!matches.length && isDemoStaffPin(pin)) {
     matches = employees.filter((e) => e.active);
   }
@@ -121,6 +129,20 @@ export function findStaffByPin(
     );
   }
   return matches[0];
+}
+
+/** True when two active employees share the same PIN or hash at this location. */
+export function pinTakenByOther(
+  employees: Employee[],
+  employeeId: string,
+  pin: string,
+  locationId: string,
+): boolean {
+  if (!isFourDigitPin(pin)) return false;
+  const hashed = hashPin(pin, locationId);
+  return employees.some(
+    (e) => e.id !== employeeId && e.active && (e.pin === pin || (!!e.pinHash && e.pinHash === hashed)),
+  );
 }
 
 export function withHashedPin<T extends { pin?: string; pinHash?: string }>(

@@ -129,7 +129,7 @@ type CashSessionState = {
     toName: string;
     amountCents: number;
   }) => void;
-  logNoSale: (opts: { employeeId: string; employeeName: string; drawerId?: string }) => void;
+  logNoSale: (opts: { employeeId: string; employeeName: string; drawerId?: string; reason?: string }) => void;
   uncountedForEmployee: (employeeId: string, cfg: CashHandlingConfig) => string[];
 };
 
@@ -483,6 +483,7 @@ export const useCashSessionStore = create<CashSessionState>()(
               employeeName: opts.employeeName,
               amountCents: 0,
               drawerId: opts.drawerId,
+              reason: opts.reason,
             },
             ...get().events,
           ].slice(0, 500),

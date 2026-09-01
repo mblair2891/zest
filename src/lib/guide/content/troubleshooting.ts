@@ -50,7 +50,7 @@ export const TROUBLESHOOTING_TOPICS: GuideTopic[] = [
       ),
       ul(
         "Checks keep line history, tenders, tips, and operator tags.",
-        "Comps/voids may require a manager PIN — that is the audit trail.",
+        "Comps/voids after send, void after bump, paid-check reopen, gift adjust, and no-sale write an append-only audit row (who, override, device, ticket, $, reason, before/after).",
         "Settlement periods are immutable once closed; a new period is the correction path.",
         "Chargeback filings record the $35 split. Won/lost does not erase the fee.",
         "Prospect pipeline events (quoted, accepted, contracted) are the SaaS audit for onboarding.",
@@ -63,7 +63,7 @@ export const TROUBLESHOOTING_TOPICS: GuideTopic[] = [
       warn(
         "Platform Admin can see tenants; that is not a reason to impersonate a PIN on the floor. Support should ask the owner to reproduce.",
       ),
-      related("checks-comps", "chargebacks", "settlement", "platform-admin"),
+      related("checks-comps", "chargebacks", "settlement", "platform-admin", "loss-prevention"),
     ],
   }),
   topic({

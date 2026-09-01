@@ -32,7 +32,7 @@ export const DEVICE_TOPICS: GuideTopic[] = [
       ),
       ul(
         "Order: handhelds + bar. PIN in, ring, send, take tenders the PIN allows.",
-        "ODS: kitchen tickets. Start / Bump. No pay path.",
+        "ODS: kitchen tickets. Start / Bump. No pay path — cash and gift tenders are blocked on ODS.",
         "Host: floor map + to-go. Seat the room; ring takeout at the stand.",
         "A manager Change device switches among those three. PIN stays the person; the role is the screen.",
         "Floor stations open on the PIN pad — not /login. Back-office email and password is for owners on a laptop, not the handheld.",
@@ -46,7 +46,7 @@ export const DEVICE_TOPICS: GuideTopic[] = [
       warn(
         "Do not send kitchen staff to /login. Do not clock anyone in from the PIN pad. Time clock is Labor. Server closeout is Cash.",
       ),
-      related("floor-pin-login", "login", "device-assignment", "station-switcher", "kds", "printers-kds"),
+      related("floor-pin-login", "login", "device-assignment", "station-switcher", "kds", "printers-kds", "loss-prevention"),
     ],
   }),
   topic({

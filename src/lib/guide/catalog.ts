@@ -5,6 +5,7 @@ import { FLOOR_TOPICS } from "./content/floor";
 import { ORDER_TOPICS } from "./content/orders";
 import { PAYMENT_TOPICS } from "./content/payments";
 import { CASH_GIFT_TOPICS } from "./content/cash-gifts";
+import { LOSS_PREVENTION_TOPICS } from "./content/loss-prevention";
 import { DEVICE_TOPICS } from "./content/devices";
 import { ROLE_GUIDE_TOPICS } from "./content/roles";
 import { KIOSK_WAITLIST_TOPICS } from "./content/kiosk-waitlist";
@@ -150,6 +151,7 @@ export const GUIDE_TOPICS: GuideTopic[] = [
   ...ORDER_TOPICS,
   ...PAYMENT_TOPICS,
   ...CASH_GIFT_TOPICS,
+  ...LOSS_PREVENTION_TOPICS,
   ...DEVICE_TOPICS,
   ...COST_TOPICS,
   ...KIOSK_WAITLIST_TOPICS,
