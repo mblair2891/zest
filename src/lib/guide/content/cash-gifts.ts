@@ -93,7 +93,7 @@ export const CASH_GIFT_TOPICS: GuideTopic[] = [
       tip(
         "House Wi-Fi still records cash if the internet is down. You are not blocked from closing a cash table during an ISP outage. Open on cash sale: always, never, or manager PIN. No-sale: off, manager, or assigned user.",
       ),
-      related("tenders-tips", "cash-discount", "settlement", "wifi-offline", "reports", "server-closeout"),
+      related("tenders-tips", "cash-discount", "settlement", "wifi-offline", "reports", "server-closeout", "printers-kds", "tip-pooling"),
     ],
   }),
   topic({
@@ -233,6 +233,9 @@ export const CASH_GIFT_TOPICS: GuideTopic[] = [
       "ledger",
       "operator a",
       "house issuer",
+      "swipe",
+      "scan",
+      "finix",
     ],
     openView: "customers",
     blocks: [
@@ -240,7 +243,7 @@ export const CASH_GIFT_TOPICS: GuideTopic[] = [
         "Gift liability belongs to the issuing operator or the house — not to the drawer that collected cash, and not to a leftover Toast/Square gift SKU. One ledger means freeze/void actually work.",
       ),
       p(
-        "Balances live on the Summex server — hashed codes, issuer, and ledger — not only on the drawer that sold the card. The POS cache is a view of that ledger. There is no third-party gift network as system of record.",
+        "Gift is the Summex house ledger — not Finix, not Quantum Payments, not a card processor. Swipe the mag stripe, scan the barcode, or key the code. Balances live on the Summex server (hashed codes, issuer, ledger). The POS cache is a view of that ledger. There is no third-party gift network as system of record.",
       ),
       p(
         "Default issuer follows the selling point: bar sale → that bar operator; host stand sale → the configured entity; explicit house SKU → house. House issuer is optional location mode — you do not create a third legal company.",
@@ -254,8 +257,8 @@ export const CASH_GIFT_TOPICS: GuideTopic[] = [
         "At term end, host processes residual: operator-issued remaining balance splits per location formula (default 50/50). House-issued remaining balance is retained by the house.",
       ),
       steps(
-        "Open Guests. Issue a card: amount, issuer (defaults to selling point), cash or card tender.",
-        "Example: Operator B (bar) issues $50 — liability is Operator B. Operator A sells food, Pay → Gift, enter the code — Operator A merch, Operator B → Operator A remit.",
+        "Open Guests. Issue a card: amount, issuer (defaults to selling point), cash or card tender. Card load still charges Quantum Payments; the gift balance is Summex ledger, not Finix.",
+        "Pay → Gift: swipe, scan, or key the code. Example: Operator B (bar) issues $50 — liability is Operator B. Operator A sells food, redeem — Operator A merch, Operator B → Operator A remit.",
         "Settings → Gift cards: house issuer on/off, host-stand default issuer, term allowed (with disclaimer), operator residual split. Use the dropdowns — no JSON.",
         "Reports → Gift liability / Gift redemptions, or Settle → liability by issuer. Host: Process expired residual when a term is in force.",
         "Freeze if lost. Void if issued in error. Import CSV is one-way from Square / Toast / Clover / Shopify / generic (those systems are not POS card processors).",
@@ -263,7 +266,7 @@ export const CASH_GIFT_TOPICS: GuideTopic[] = [
       warn(
         "Turning on a term does not make expiry legal. Confirm state law with counsel — expiry may be illegal in some states. Imported cards are not kept in sync with the old system.",
       ),
-      related("tenders-tips", "settlement", "guests", "cash-handling"),
+      related("tenders-tips", "settlement", "guests", "cash-handling", "quantum-payments"),
     ],
   }),
   topic({

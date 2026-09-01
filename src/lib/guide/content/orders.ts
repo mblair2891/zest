@@ -116,7 +116,7 @@ export const ORDER_TOPICS: GuideTopic[] = [
       tip(
         "Ahead and curbside tickets may wait until the guest is marked arrived — see Online fire rules if a ticket “never showed.”",
       ),
-      related("kitchen-bar-routing", "wifi-offline", "floor-tables", "troubleshooting"),
+      related("kitchen-bar-routing", "device-roles", "wifi-offline", "floor-tables", "printers-kds", "troubleshooting"),
     ],
   }),
   topic({

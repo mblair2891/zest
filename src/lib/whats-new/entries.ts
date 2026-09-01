@@ -6,6 +6,19 @@ import type { GuideUpdate } from "@/lib/guide/types";
  */
 export const WHATS_NEW_ENTRIES: GuideUpdate[] = [
   {
+    id: "upd_2026_10_19_guide_catchup",
+    date: "2026-10-19",
+    title: "Operators Guide: device roles, merchants, cash, printers",
+    summary:
+      "Order / ODS / host, PIN first, per-entity Quantum Payments merchants, house gift ledger, cash/tips/closeout, Ethernet printers.",
+    body: "Stations are order-taking (handhelds + bar), ODS (kitchen), or host (floor + to-go). PIN first — not /login. Each entity is its own Quantum Payments merchant (Finix rail); guest sees one check; capture splits; receipts group by vendor. Gift is the Summex ledger — swipe, scan, or key — not Finix. Cash: single/shared drawer, server bank, one drawer per well, host to-go, blind count. Closeout is not clock-out. Tips: mix-based tip-out, cash-at-close vs paycheck, FOH/bar/team/dual pools. Staffing recs never auto clock-out. Printers on the AP LAN: Epson TM-T20 receipts, TM-U220 kitchen, drawer kick on the receipt printer.",
+    roles: "all",
+    surfaces: ["floor", "settings", "kds"],
+    audience: "all",
+    topicId: "device-roles",
+    tags: ["guide", "devices", "payments", "cash", "printers"],
+  },
+  {
     id: "upd_2026_10_18_staffing_recs",
     date: "2026-10-18",
     title: "Realtime staffing cut / hold / add",

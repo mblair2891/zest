@@ -56,7 +56,7 @@ export const GUIDE_CHAPTERS: GuideChapter[] = [
   {
     id: "payments",
     title: "Payments",
-    summary: "Quantum Payments, settlement, ledger, chargebacks.",
+    summary: "Quantum Payments per-entity merchant, split capture, settlement, chargebacks.",
     order: 6,
   },
   {
@@ -68,7 +68,7 @@ export const GUIDE_CHAPTERS: GuideChapter[] = [
   {
     id: "devices",
     title: "Devices & offline",
-    summary: "Wi‑Fi-first house, outbox, printers, ODS.",
+    summary: "Order / ODS / host roles, PIN first, AP-LAN printers, offline.",
     order: 8,
   },
   {

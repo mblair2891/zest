@@ -4,6 +4,13 @@ The in-app **Operators Guide** is the living product manual. It is not a
 separate PDF. Staff open it from **Guide** / **?** in the POS and platform
 shells, or at `/guide`.
 
+**Rule (inherit on every POS / payments / devices / cash / tips / HR / SaaS
+change):** update the matching Operators Guide sections **in the same commit**.
+Do not ship behavior without the topic. Guide is by establishment type and
+role (order / ODS / host / owner). Public `/guide` is operations only — no
+SaaS-platform internals, no “how to login with Google.” PIN ≠ owner password ≠
+clock-in ≠ closeout.
+
 Content lives in TypeScript modules so a new feature is a new topic file, not
 a CMS.
 
@@ -52,10 +59,14 @@ accurate when the job path changes.
 10. Settlement & multi-operator splits / chargeback fee split
 11. Reports & AI insights (recommendations, human confirm)
 12. Training vs Go live
-13. Devices: Change device, split screen, SYOH tablets + Summex terminals
-14. Offline / hybrid
-15. Staff HR basics (clock vs PIN, time-off and availability if the employer enabled them)
-16. Troubleshooting
+13. Devices: three roles — **order** (handhelds + bar), **ODS** (kitchen), **host** (floor map + to-go). PIN first, not `/login`. Change device among those three.
+14. Printers: Ethernet on the AP LAN (not printer Wi‑Fi). Thermal receipts (Epson TM-T20). Impact kitchen (Epson TM-U220). Drawer kick on the receipt printer.
+15. Offline / hybrid
+16. Cash: single/shared drawer, server bank, multi-well (one drawer per well), host to-go drawer, blind count. Closeout ≠ clock-out ≠ PIN.
+17. Tips: mix-based tip-out recs; CC tips cash-at-close vs paycheck; individual / tip-out / FOH / bar / team / dual pools; autograt vs service charge.
+18. Staffing recs: recommend cut/add only; never auto clock-out.
+19. Staff HR basics (clock vs PIN, time-off and availability if the employer enabled them)
+20. Troubleshooting
 
 Exit on the public page returns to marketing home (`/`).
 
@@ -115,12 +126,17 @@ Bookmarkable URL: `/guide?topic=my-topic`.
 
 ## Current facts (keep copy honest)
 
-- Brand: **Summex**, powered by **Quantum Reach**. Guest cards: **Quantum Payments** only. Never Stripe/Square as a POS processor. Never Zest.
+- Brand: **Summex**, powered by **Quantum Reach**. Guest cards: **Quantum Payments** only (Finix rail). Guest UI never names Finix. Never Stripe/Square as a POS processor. Never Zest.
+- Each entity is its own Quantum Payments merchant. One guest check; split capture; receipts grouped by vendor.
+- Gift cards: Summex house ledger — swipe, scan, or key. Not Finix.
+- Device roles: **order** | **ODS** | **host**. PIN first on the station. Not `/login`.
+- Printers on the house AP LAN (Ethernet), not the printer’s own Wi‑Fi. Receipts: Epson TM-T20 thermal. Kitchen: Epson TM-U220 impact. Cash drawer kick is on the receipt printer.
 - HR: optional per entity (host or tenant employer). Packets + signed PDF fallback. Clock punches persist. Clock windows, shift approval, and pay-period timing drive hours export to ADP / Intuit / CSV — Summex does not process payroll. Platform never sees SSN.
 - First location = SaaS onboard only. Host onboarded by SaaS; host invites operator tenants.
 - Training = practice + Quantum sandbox; optional inventory tracking. Go live now or schedule; owner keep/erase per data class; menus/recipes/staff/settings kept.
 - PIN login ≠ clock in/out ≠ server closeout.
 - Gift: sale-point issuer or house; redeem settles internally; unredeemed liability on issuer; house cards house-keeps remainder.
+- Staffing recs never auto clock-out. Accept ≠ punch out.
 - Public marketing: Get pricing, Guide, Sign in — no Dashboard, no Google/X login, no how-to-login on the home page.
 - Examples: **Host Venue**, **Operator A**, **Operator B**.
 - Chargebacks: **$35** when a dispute is **filed**; split by merchandise %; won/lost does not reverse the fee.
@@ -142,8 +158,10 @@ PIN roles: owner, manager, server, host stand, bartender, kitchen/expo,
 busser, cashier, vendor_operator, accountant, kiosk. Platform Admin is SaaS
 only — not a floor PIN.
 
-Devices are not fixed roles. **This station** switches Host stand, Server POS,
-Expo, Cashier, Busser, Kiosk, or Order Display (and entity on a host floor).
+**Device roles** are three: **order** (handhelds + bar order-taking), **ODS**
+(kitchen tickets — Start/Bump), **host** (floor map + to-go). Manager Change
+device switches among those three. PIN identifies the person; the role is the
+screen. Not `/login` on the floor.
 
 **Offline PWA:** first install needs internet. Thereafter cold start can be
 offline: cash & tickets queue; cards when the processor allows (blocked if

@@ -16,6 +16,9 @@ export const PAYMENT_TOPICS: GuideTopic[] = [
       "square",
       "guest card",
       "mid",
+      "finix",
+      "merchant",
+      "split capture",
     ],
     openView: "integrations",
     blocks: [
@@ -23,11 +26,11 @@ export const PAYMENT_TOPICS: GuideTopic[] = [
         "Guests must see one processor and one check. A second card integration would split liability, settlement, and the receipt.",
       ),
       p(
-        "Every card tender runs through Quantum Payments. Each brand is its own payments account; the guest still pays one check. Integrations never offer Stripe, Square, Adyen, or other POS processors. Delivery, accounting, and hours-export partners (ADP, Intuit) stay — they are not card processors and Summex does not process payroll.",
+        "Every card tender runs through Quantum Payments. Each entity is its own merchant (Finix rail). The guest never sees Finix — they see Quantum Payments and one check. Capture splits to each brand. Receipts group lines by vendor. Integrations never offer Stripe, Square, Adyen, or other POS processors. Delivery, accounting, and hours-export partners (ADP, Intuit) stay — they are not card processors and Summex does not process payroll.",
       ),
       ul(
-        "Host and each tenant operator complete their own Quantum Payments application. Guest UI never names the processor rail.",
-        "One guest tender. Capture splits to each brand’s account by merchandise owner. Tax, tip, and service allocate by merchandise share.",
+        "Host and each tenant operator complete their own Quantum Payments merchant application. Guest UI never names Finix.",
+        "One guest tender. Split capture to each brand’s merchant by merchandise owner. Tax, tip, and service allocate by merchandise share. The printed receipt groups items under the vendor name.",
         "Software billing (SaaS invoices) is separate from guest cards.",
         "Gift load with a bank card charges the issuer brand’s account. Gift redeem stays on the Summex ledger.",
         "Sandbox (default, including Training): practice cards, not a live Visa. Live: present the card on a supplied Quantum reader. SYOH tablets run POS — they are not card terminals.",
@@ -40,7 +43,7 @@ export const PAYMENT_TOPICS: GuideTopic[] = [
       warn(
         "Do not connect a second processor “just for events.” It is not available, and it would break host capture on a multi-operator check.",
       ),
-      related("tenders-tips", "host-capture", "table-qr", "chargebacks", "wifi-offline"),
+      related("tenders-tips", "host-capture", "table-qr", "chargebacks", "wifi-offline", "gift-cards"),
     ],
   }),
   topic({
@@ -68,9 +71,9 @@ export const PAYMENT_TOPICS: GuideTopic[] = [
         "Payment dialog showing Quantum Payments as the card tender.",
       ),
       tip(
-        "Tips on card follow the house rule (house vs pool with operators) at settlement — they are not a second capture.",
+        "Tips on card follow the house rule (cash-at-close vs paycheck, and any tip pool) — they are not a second capture.",
       ),
-      related("quantum-payments", "cash-discount", "cash-handling", "gift-cards", "host-capture"),
+      related("quantum-payments", "cash-discount", "cash-handling", "gift-cards", "host-capture", "tip-pooling", "server-closeout"),
     ],
   }),
   topic({
@@ -86,11 +89,11 @@ export const PAYMENT_TOPICS: GuideTopic[] = [
         "Each brand must be a merchant of record for its own merchandise. The guest still pays once so the room does not feel like a food-court of terminals.",
       ),
       p(
-        "Host and each tenant operator have their own Quantum Payments account. Line items stay tagged to the brand that sold them. The guest tenders once; capture splits to those accounts by merchandise share, with tax/tip/service allocated the same way. The host is not the sole merchant of record.",
+        "Each entity is its own merchant on Quantum Payments (Finix). Line items stay tagged to the brand that sold them. The guest tenders once; capture splits to those merchants by merchandise share, with tax/tip/service allocated the same way. Receipts group by vendor. The guest never sees Finix. The host is not the sole merchant of record.",
       ),
       steps(
-        "Confirm each brand has a Quantum Payments application (sandbox in training, approved before live cards).",
-        "Take payment as usual. Receipts group items under the vendor name. Guest receipt is one document.",
+        "Confirm each brand has its own Quantum Payments merchant application (sandbox in training, approved before live cards).",
+        "Take payment as usual. One guest check. Capture splits. Receipts group items under the vendor name — still one document.",
         "Do not ask a stall to “run it on their Square.” That path does not exist.",
         "A line whose brand has no approved account fails closed on live — cash still works. Training provisions sandbox ids.",
       ),

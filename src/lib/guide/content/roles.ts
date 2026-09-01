@@ -229,7 +229,7 @@ export const ROLE_GUIDE_TOPICS: GuideTopic[] = [
       ),
       ul(
         "Back office: Sign in with username/email and password. Platform Admin, owners, managers, accountants, entity managers for settings, matrix, full reports, schedule admin, hours export, menu management.",
-        "Floor PIN: 4-digit keypad on POS, ODS, host stand. Servers, hosts, bartenders, kitchen, cashiers, expo. Fast Switch user. PIN hashed, scoped to location and entity.",
+        "Floor PIN: 4-digit keypad on the station (order, ODS, or host) — not /login. Servers, hosts, bartenders, kitchen, cashiers, expo. Fast Switch user. PIN hashed, scoped to location and entity.",
         "PIN ≠ clock. The pad logs you into the station. Clock in / out is Labor (and Employees). Signing out of POS does not punch you out.",
         "Assigned device still requires the matching entity’s PIN (Operator A ODS rejects an Operator B PIN).",
         "Kiosk guests never enter a PIN. Marketing pages never show a PIN pad or staff PINs. Platform Admin cannot use a restaurant PIN.",
@@ -240,7 +240,7 @@ export const ROLE_GUIDE_TOPICS: GuideTopic[] = [
         "Clock in from Labor when the house tracks punches. That is a separate action from PIN login.",
         "Open Settings from a floor PIN — you are asked for back-office password.",
       ),
-      related("login", "entity-schedule-payroll", "host-operator-settings", "device-assignment", "voice-control", "ai-ops-learning"),
+      related("login", "device-roles", "entity-schedule-payroll", "host-operator-settings", "device-assignment", "voice-control", "ai-ops-learning"),
     ],
   }),
   topic({

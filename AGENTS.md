@@ -45,6 +45,13 @@ broken, or ugly, that is their whole experience.
 If `AGENTS.project.md` exists in this workspace, it contains the user's
 project instructions; follow it with the same priority as this file.
 
+**Operators Guide is part of the product.** Any POS, payments, devices, cash,
+tips, HR, or SaaS behavior change MUST update the matching Operators Guide
+sections in the same commit. See `AGENTS.project.md` and
+`docs/operators-guide.md`. Public `/guide` is operations only (by entity type
+and role: order / ODS / host / owner). No SaaS-platform internals. No “how to
+login with Google.” PIN ≠ owner password ≠ clock-in ≠ closeout.
+
 ---
 
 ## 1. Your environment / workspace (for you, never surfaced to the user)

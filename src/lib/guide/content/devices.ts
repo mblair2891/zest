@@ -3,6 +3,53 @@ import type { GuideTopic } from "../types";
 
 export const DEVICE_TOPICS: GuideTopic[] = [
   topic({
+    id: "device-roles",
+    chapterId: "devices",
+    title: "Device roles: order, ODS, host",
+    summary:
+      "Three screens: order-taking (handhelds + bar), kitchen ODS, host hybrid (floor map + to-go). PIN first — not /login.",
+    roles: "all",
+    keywords: [
+      "device role",
+      "order",
+      "ods",
+      "host",
+      "handheld",
+      "bar",
+      "kitchen",
+      "to-go",
+      "pin",
+      "change device",
+      "station",
+    ],
+    openView: "settings",
+    blocks: [
+      why(
+        "The tablet is a screen, not a person. PIN says who is working. The device role says what this screen is for: taking orders, showing tickets, or running the host stand.",
+      ),
+      p(
+        "Every station is one of three roles. Order-taking covers handhelds and bar POS — menu, checks, pay, gift. ODS is kitchen (and bar display): tickets only, Start and Bump, no menu, no pay. Host is hybrid: floor map, seat, table status, and to-go order entry at the stand.",
+      ),
+      ul(
+        "Order: handhelds + bar. PIN in, ring, send, take tenders the PIN allows.",
+        "ODS: kitchen tickets. Start / Bump. No pay path.",
+        "Host: floor map + to-go. Seat the room; ring takeout at the stand.",
+        "A manager Change device switches among those three. PIN stays the person; the role is the screen.",
+        "Floor stations open on the PIN pad — not /login. Back-office email and password is for owners on a laptop, not the handheld.",
+      ),
+      steps(
+        "Pair the tablet in Devices. Set its role: Order, Order Display, or Host.",
+        "Power on → PIN keypad. Enter your 4-digit PIN. That is not clock-in and not closeout.",
+        "Owner or manager: Change device to move this screen among Order / ODS / Host without a new account login.",
+        "Switch user returns to the PIN pad. The device role does not change.",
+      ),
+      warn(
+        "Do not send kitchen staff to /login. Do not clock anyone in from the PIN pad. Time clock is Labor. Server closeout is Cash.",
+      ),
+      related("floor-pin-login", "login", "device-assignment", "station-switcher", "kds", "printers-kds"),
+    ],
+  }),
+  topic({
     id: "wifi-offline",
     chapterId: "devices",
     title: "Offline mode",
@@ -47,35 +94,52 @@ export const DEVICE_TOPICS: GuideTopic[] = [
     id: "printers-kds",
     chapterId: "devices",
     title: "Printers & ODS devices",
-    summary: "Register Star/Epson printers, assign kitchen/bar/receipt/expo, test print.",
+    summary:
+      "Ethernet on the house AP LAN. Thermal receipts (Epson TM-T20). Impact kitchen (Epson TM-U220). Drawer kick on the receipt printer.",
     roles: ["owner_manager", "kitchen_bar", "platform_admin"],
-    keywords: ["printer", "kds", "device", "station", "android", "tablet", "star", "epson", "escpos", "receipt"],
+    keywords: [
+      "printer",
+      "kds",
+      "device",
+      "station",
+      "android",
+      "tablet",
+      "star",
+      "epson",
+      "escpos",
+      "receipt",
+      "t20",
+      "u220",
+      "ethernet",
+      "drawer kick",
+    ],
     openView: "settings",
     blocks: [
       why(
-        "Tickets and chits are devices on the staff SSID. If an ODS is on guest Wi‑Fi, it will look “down” while the floor is fine. A printer that is only in a catalog cannot fire a kitchen ticket.",
+        "Tickets and chits live on the staff network. Guest Wi‑Fi or the printer’s own Wi‑Fi hotspot will look “down” while the floor is fine. Ethernet to the house access-point LAN is the production path.",
+      ),
+      p(
+        "Plug printers into the AP LAN — Ethernet — not the printer’s built-in Wi‑Fi. Thermal receipts: Epson TM-T20 (or TM-T88 / TM-m30). Impact kitchen: Epson TM-U220 so the ticket survives heat and grease. The cash drawer kick is on the receipt printer, not the kitchen printer.",
       ),
       steps(
-        "Dashboard → Hardware (or Location settings). Add printer. Name it (Kitchen 1).",
-        "Model family: Star Micronics, Epson, or generic ESC/POS. Connection: This browser (SYOH today), LAN, or Bluetooth.",
-        "Assign Prints: Kitchen tickets, Bar tickets, Guest receipt, or Expo / bump chit. Entity = host or one operator.",
-        "LAN: enter IP (default port 9100). Run the house print agent on the hub: node scripts/print-agent.mjs — browsers cannot open raw sockets.",
-        "Tap Test print. You should see a Summex test chit (browser dialog or the physical printer).",
-        "Send from POS prints kitchen/bar. Bump/Ready prints expo. Pay or Check prints the guest receipt.",
+        "Dashboard → Hardware (or Location settings). Add printer. Name it (Receipt, Kitchen 1).",
+        "Model family: Epson (T20 receipt, U220 kitchen), Star, or generic ESC/POS. Connection: LAN (Ethernet on the AP), This browser (SYOH practice), or Bluetooth.",
+        "Assign Prints: Guest receipt (thermal T20), Kitchen tickets (impact U220), Bar tickets, or Expo / bump chit. Entity = host or one operator.",
+        "Bind the cash drawer kick to the receipt printer. Kitchen impact printers do not kick the till.",
+        "LAN: enter IP (default port 9100). The house print agent on the hub talks raw sockets — browsers cannot.",
+        "Tap Test print. Send from POS prints kitchen/bar. Pay or Check prints the guest receipt and can kick the drawer.",
       ),
       ul(
-        "Supported: Star mC-Print3, TSP100/143, mPOP; Epson TM-T88, TM-T20, TM-m30. Others: generic ESC/POS, best-effort.",
-        "SYOH: connection = This browser. window.print opens an 80mm ticket. No agent required.",
-        "LAN raw: local agent POST /print { target, escposBase64 }. If the agent is down, Summex falls back to the browser dialog.",
-        "SYOH tablets and phones run POS/ODS. Live cards still use a supplied Quantum reader — not the tablet keypad.",
-      ),
-      tip(
-        "Override the agent URL in this browser: localStorage.setItem(\"summex-print-agent\", \"http://192.168.1.10:9105\"). Details: docs/PRINT-AGENT.md.",
+        "Production: Ethernet to the staff AP. Do not join the printer to guest Wi‑Fi or run it as its own hotspot.",
+        "Receipts: Epson TM-T20 thermal. Kitchen: Epson TM-U220 impact. Star mC-Print3 / TSP100 and Epson TM-T88 / TM-m30 also work as thermal.",
+        "Drawer kick: receipt printer only (open on cash sale always / never / manager PIN).",
+        "SYOH practice: connection = This browser. An 80mm dialog is not a substitute for the LAN printers at go-live.",
+        "SYOH tablets run POS/ODS. Live cards still use a supplied Quantum reader — not the tablet keypad.",
       ),
       warn(
-        "There is no separate “ODS appliance OS.” Hardware is not a locked role. Do not take live cards on a SYOH tablet keypad.",
+        "There is no separate “ODS appliance OS.” Hardware is not a locked role. Do not take live cards on a SYOH tablet keypad. Do not put kitchen printers on printer Wi‑Fi.",
       ),
-      related("wifi-offline", "kds", "navigation", "host-operator-settings", "station-switcher"),
+      related("wifi-offline", "kds", "device-roles", "cash-handling", "station-switcher"),
     ],
   }),
   topic({
@@ -106,7 +170,7 @@ export const DEVICE_TOPICS: GuideTopic[] = [
       warn(
         "An Operator A ODS does not show Operator B tickets unless the host grants view_tickets. Devices are not fixed roles.",
       ),
-      related("station-switcher", "host-operator-settings", "printers-kds", "role-vendor"),
+      related("device-roles", "station-switcher", "host-operator-settings", "printers-kds", "role-vendor"),
     ],
   }),
   topic({
@@ -133,7 +197,8 @@ export const DEVICE_TOPICS: GuideTopic[] = [
         "Samsung tablets, Android touchscreens, and desktops are the same product. Hardware is not a locked role. This station is what the screen is showing; PIN is who is signed in.",
       ),
       ul(
-        "This station: Host stand, Server POS, Expo, Cashier, Busser, Kiosk, Kitchen ODS, Bar ODS, Bar POS.",
+        "Three device roles: Order (handhelds + bar), ODS (kitchen tickets), Host (floor map + to-go). Change device among those three.",
+        "This station still names the function on that role: Host stand, Server POS, Expo, Cashier, Busser, Kiosk, Kitchen ODS, Bar ODS, Bar POS.",
         "Multi-operator: pick Host, Operator A, or Operator B. Tickets stay location-scoped and tagged to the operator.",
         "Last station is remembered in this browser (next load).",
         "Split: two independent panes, each with its own station + entity. Typical left Kitchen ODS (Operator A), right Bar ODS (Operator B).",
@@ -150,7 +215,7 @@ export const DEVICE_TOPICS: GuideTopic[] = [
       warn(
         "Station switch does not clock you in or change the location. Time clock is a separate punch. Guest checks stay under the host brand.",
       ),
-      related("device-assignment", "printers-kds", "kds", "floor-pin-login", "location-training"),
+      related("device-roles", "device-assignment", "printers-kds", "kds", "floor-pin-login", "location-training"),
     ],
   }),
 ];

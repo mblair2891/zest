@@ -134,7 +134,7 @@ export const GETTING_STARTED_TOPICS: GuideTopic[] = [
       ),
       steps(
         "Back office: Sign in with work email and password. Open location settings, the host permission matrix, scheduling, hours export, menu.",
-        "Floor: on the assigned device, enter your 4-digit PIN. Switch user returns to the keypad without changing the device assignment.",
+        "Floor: the station opens on the PIN pad (order / ODS / host) — not /login. Enter your 4-digit PIN. Switch user returns to the keypad without changing the device role.",
         "Clock in / out from Labor (and Employees). The PIN pad does not punch you. Signing out of POS does not clock you out.",
         "Server closeout is Cash (expected drawer, Z). That is not clock-out and not PIN login.",
         "Opening Settings from a floor PIN prompts back-office re-auth (password).",
@@ -143,7 +143,7 @@ export const GETTING_STARTED_TOPICS: GuideTopic[] = [
       warn(
         "PIN ≠ clock ≠ closeout. There are no public demo tenants and no universal PIN. Training uses sandbox cards — not a live Visa.",
       ),
-      related("floor-pin-login", "empty-start", "role-walkthroughs", "navigation", "invites-roles"),
+      related("floor-pin-login", "device-roles", "empty-start", "role-walkthroughs", "navigation", "invites-roles"),
     ],
   }),
   topic({
