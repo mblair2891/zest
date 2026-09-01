@@ -98,7 +98,13 @@ export function OrderView() {
   const reopenCheck = usePosStore((s) => s.reopenCheck);
   const swapTender = usePosStore((s) => s.swapTender);
   const tickets = usePosStore((s) => s.tickets);
-  const hasManagerAuth = usePosStore((s) => s.hasManagerAuth);
+  const canAuthorizeGate = usePosStore((s) => s.canAuthorizeGate);
+  const requestApproval = usePosStore((s) => s.requestApproval);
+  const lineUnit = (lineId: string) => {
+    const line = order?.lines.find((l) => l.id === lineId);
+    if (!line) return 0;
+    return (line.unitPriceCents + line.modifiers.reduce((s, m) => s + m.priceCents, 0)) * line.quantity;
+  };
   const [discPct, setDiscPct] = useState("10");
   const [noteOpen, setNoteOpen] = useState(false);
   const [noteDraft, setNoteDraft] = useState("");
@@ -219,11 +225,12 @@ export function OrderView() {
   })();
   const odsNoPay = stationRole === "ods";
 
-  const runMgr = (ctx?: { reason: string }) => {
+  const runMgr = (ctx?: { reason: string; path?: "manager" | "shift_lead" | "break_glass" }) => {
     const reason = ctx?.reason?.trim() || "";
+    const path = ctx?.path;
     setGateError(null);
     if (mgrAction === "reopen") {
-      const res = reopenCheck(order.id, reason || "Manager approved");
+      const res = reopenCheck(order.id, reason || "Manager approved", { path });
       if (!res.ok) setGateError(res.error ?? "Could not reopen");
       setMgrAction(null);
       return;
@@ -237,6 +244,7 @@ export function OrderView() {
           paymentId: pay.id,
           method: next,
           reason: reason || "Wrong tender",
+          path,
         });
         if (!res.ok) setGateError(res.error ?? "Could not change tender");
       }
@@ -250,13 +258,48 @@ export function OrderView() {
     }
     if (!selectedLineId) return;
     if (mgrAction === "void") {
-      const res = voidLine(selectedLineId, reason || "Manager approved");
+      const res = voidLine(selectedLineId, reason || "Manager approved", { path });
       if (res && res.ok === false) setGateError(res.error ?? "Void failed");
     }
     if (mgrAction === "comp") {
-      const res = compLine(selectedLineId, reason || "Manager approved");
+      const res = compLine(selectedLineId, reason || "Manager approved", { path });
       if (res && res.ok === false) setGateError(res.error ?? "Comp failed");
     }
+    setMgrAction(null);
+  };
+
+  const submitPending = (reason: string) => {
+    if (!mgrAction) return;
+    const line = selectedLineId ? order.lines.find((l) => l.id === selectedLineId) : undefined;
+    const amt =
+      mgrAction === "void" || mgrAction === "comp"
+        ? lineUnit(selectedLineId ?? "")
+        : mgrAction === "discount"
+          ? Math.round(((order.lines.filter((l) => !l.voided && !l.comped).reduce((s, l) => s + l.unitPriceCents * l.quantity, 0) * (parseFloat(discPct) || 0)) / 100))
+          : 0;
+    const fired = line
+      ? tickets.some((t) => t.items.some((i) => i.lineId === line.id) && t.status !== "voided")
+      : false;
+    const res = requestApproval({
+      kind: mgrAction === "tender_swap" ? "tender_swap" : mgrAction === "reopen" ? "reopen" : mgrAction,
+      reason: reason || "Manager approved",
+      amountCents: amt,
+      orderId: order.id,
+      orderNumber: order.number,
+      lineId: line?.id,
+      ticketId: line ? tickets.find((t) => t.items.some((i) => i.lineId === line.id))?.id : undefined,
+      lineWasSent: line?.sent,
+      ticketFired: fired,
+      payload: {
+        lineId: line?.id,
+        percent: mgrAction === "discount" ? parseFloat(discPct) || 0 : undefined,
+        paymentId: mgrAction === "tender_swap" ? order.payments[order.payments.length - 1]?.id : undefined,
+        method: mgrAction === "tender_swap"
+          ? (order.payments[order.payments.length - 1]?.method === "card" ? "cash" : "card")
+          : undefined,
+      },
+    });
+    setGateError(res.ok ? "Held for manager / shift-lead approval." : res.error ?? "Could not queue");
     setMgrAction(null);
   };
 
@@ -372,6 +415,7 @@ export function OrderView() {
                         {line.held ? " · fire later" : ""}
                         {line.seat ? ` · seat ${line.seat}` : ""}
                         {line.comped ? " · COMP" : ""}
+                        {line.pendingAction ? ` · ${line.pendingAction} pending` : ""}
                       </span>
                     </span>
                     <span className="shrink-0 text-right tabular text-sm">
@@ -530,7 +574,7 @@ export function OrderView() {
             variant="outline"
             disabled={frozen}
             onClick={() => {
-              if (discountNeedsManager(order, lp) && !hasManagerAuth()) {
+              if (discountNeedsManager(order, lp) && !canAuthorizeGate("discount", 0)) {
                 setMgrAction("discount");
                 setMgrOpen(true);
                 return;
@@ -757,7 +801,24 @@ export function OrderView() {
                   ? "Comp"
                   : "Manager authorization"
         }
-        description="Manager PIN and a reason from the house list. This is logged."
+        description="Manager or shift-lead PIN, or request approval if no one is on the floor. Logged."
+        gate={
+          mgrAction === "tender_swap"
+            ? "tender_swap"
+            : mgrAction === "reopen"
+              ? "reopen"
+              : mgrAction === "discount"
+                ? "discount"
+                : mgrAction === "comp"
+                  ? "comp"
+                  : mgrAction === "void"
+                    ? "void"
+                    : undefined
+        }
+        amountCents={
+          mgrAction === "void" || mgrAction === "comp" ? lineUnit(selectedLineId ?? "") : 0
+        }
+        onRequestPending={submitPending}
         reasons={
           mgrAction === "void"
             ? VOID_REASONS

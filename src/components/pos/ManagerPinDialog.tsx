@@ -9,16 +9,24 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { usePosStore } from "@/lib/pos/store";
+import {
+  BREAK_GLASS_REASONS,
+  parseLossPrevention,
+  type ApprovalGateKind,
+} from "@/lib/pos/loss-prevention";
 
 interface Props {
   open: boolean;
   onOpenChange: (o: boolean) => void;
   title?: string;
   description?: string;
-  onVerified: (ctx?: { reason: string }) => void;
+  onVerified: (ctx?: { reason: string; path?: "manager" | "shift_lead" | "break_glass" }) => void;
   reasons?: readonly string[];
   requireReason?: boolean;
   skipIfAuthed?: boolean;
+  gate?: ApprovalGateKind;
+  amountCents?: number;
+  onRequestPending?: (reason: string) => void;
 }
 
 export function ManagerPinDialog({
@@ -30,18 +38,33 @@ export function ManagerPinDialog({
   reasons,
   requireReason = Boolean(reasons?.length),
   skipIfAuthed = true,
+  gate,
+  amountCents = 0,
+  onRequestPending,
 }: Props) {
   const [pin, setPin] = useState("");
   const [reason, setReason] = useState(reasons?.[0] ?? "");
   const [error, setError] = useState<string | null>(null);
+  const [glass, setGlass] = useState(false);
   const authorize = usePosStore((s) => s.authorizeManager);
+  const authorizeForGate = usePosStore((s) => s.authorizeForGate);
+  const canAuthorizeGate = usePosStore((s) => s.canAuthorizeGate);
   const hasAuth = usePosStore((s) => s.hasManagerAuth);
+  const breakGlass = usePosStore((s) => s.breakGlass);
+  const cfg = parseLossPrevention(usePosStore((s) => s.settings.lossPrevention));
 
   useEffect(() => {
-    if (open) setReason(reasons?.[0] ?? "");
+    if (open) {
+      setReason(reasons?.[0] ?? "");
+      setGlass(false);
+      setError(null);
+      setPin("");
+    }
   }, [open, reasons]);
 
-  const finish = () => {
+  const authed = skipIfAuthed && (gate ? canAuthorizeGate(gate, amountCents) : hasAuth());
+
+  const finish = (path?: "manager" | "shift_lead" | "break_glass") => {
     if (requireReason && !reason.trim()) {
       setError("Pick a reason from the list.");
       return false;
@@ -49,7 +72,7 @@ export function ManagerPinDialog({
     setPin("");
     setError(null);
     onOpenChange(false);
-    onVerified({ reason });
+    onVerified({ reason, path });
     return true;
   };
 
@@ -58,18 +81,38 @@ export function ManagerPinDialog({
       setError("Pick a reason from the list.");
       return;
     }
-    if (skipIfAuthed && hasAuth()) {
-      finish();
+    if (authed) {
+      finish(canAuthorizeGate(gate ?? "void", amountCents) && !isManagerSession() ? "shift_lead" : "manager");
       return;
     }
-    const res = authorize(pin);
+    if (glass) {
+      const res = breakGlass(pin, reason);
+      if (res.ok) finish("break_glass");
+      else {
+        setError(res.error ?? "Break-glass failed");
+        setPin("");
+      }
+      return;
+    }
+    const res = gate
+      ? authorizeForGate(pin, gate, amountCents)
+      : authorize(pin);
     if (res.ok) {
-      finish();
+      const path = "path" in res && res.path === "shift_lead" ? "shift_lead" : "manager";
+      finish(path);
     } else {
-      setError(res.error ?? "Invalid manager PIN");
+      setError(res.error ?? "Invalid PIN");
       setPin("");
     }
   };
+
+  const isManagerSession = () => {
+    const kind = usePosStore.getState().managerAuthKind;
+    return kind === "manager";
+  };
+
+  const pendingOn = Boolean(onRequestPending) && cfg.pendingApproval;
+  const glassOn = cfg.breakGlass;
 
   return (
     <Dialog
@@ -78,6 +121,7 @@ export function ManagerPinDialog({
         if (!o) {
           setPin("");
           setError(null);
+          setGlass(false);
         }
         onOpenChange(o);
       }}
@@ -99,7 +143,7 @@ export function ManagerPinDialog({
                   setReason(e.target.value);
                 }}
               >
-                {reasons.map((r) => (
+                {(glass ? BREAK_GLASS_REASONS : reasons).map((r) => (
                   <option key={r} value={r}>
                     {r}
                   </option>
@@ -107,7 +151,7 @@ export function ManagerPinDialog({
               </select>
             </label>
           )}
-          {!(skipIfAuthed && hasAuth()) && (
+          {!authed && (
             <input
               type="password"
               inputMode="numeric"
@@ -118,22 +162,64 @@ export function ManagerPinDialog({
                 setPin(e.target.value.replace(/\D/g, "").slice(0, 6));
               }}
               onKeyDown={(e) => e.key === "Enter" && submit()}
-              placeholder="Manager PIN"
+              placeholder={glass ? "Your PIN" : "Manager or shift-lead PIN"}
               className="flex h-12 w-full rounded-xl border border-border bg-bg px-4 text-center text-xl tracking-[0.4em] text-foreground outline-none focus:ring-2 focus:ring-ring"
             />
           )}
-          {skipIfAuthed && hasAuth() && (
+          {authed && (
             <p className="text-center text-xs text-muted-foreground">
-              Manager session is still open.
+              Approval session is still open.
+            </p>
+          )}
+          {glass && (
+            <p className="text-center text-xs text-warn">
+              Break-glass alerts on-call and flags the exception queue. Clocked-in PIN required.
             </p>
           )}
           {error && <p className="text-center text-sm text-danger">{error}</p>}
         </div>
-        <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)}>
-            Cancel
-          </Button>
-          <Button onClick={submit}>Authorize</Button>
+        <DialogFooter className="flex-col gap-2 sm:flex-col">
+          <div className="flex w-full flex-wrap justify-end gap-2">
+            <Button variant="outline" onClick={() => onOpenChange(false)}>
+              Cancel
+            </Button>
+            <Button onClick={submit}>
+              {glass ? "Break glass" : "Authorize"}
+            </Button>
+          </div>
+          {(pendingOn || glassOn) && !authed && (
+            <div className="flex w-full flex-wrap justify-end gap-2">
+              {pendingOn && (
+                <Button
+                  variant="secondary"
+                  onClick={() => {
+                    if (requireReason && !reason.trim()) {
+                      setError("Pick a reason from the list.");
+                      return;
+                    }
+                    onRequestPending?.(reason);
+                    setPin("");
+                    onOpenChange(false);
+                  }}
+                >
+                  Request approval
+                </Button>
+              )}
+              {glassOn && (
+                <Button
+                  variant="ghost"
+                  onClick={() => {
+                    setGlass((g) => !g);
+                    setError(null);
+                    if (!glass) setReason(BREAK_GLASS_REASONS[0]);
+                    else setReason(reasons?.[0] ?? "");
+                  }}
+                >
+                  {glass ? "Use manager PIN" : "Break glass"}
+                </Button>
+              )}
+            </div>
+          )}
         </DialogFooter>
       </DialogContent>
     </Dialog>

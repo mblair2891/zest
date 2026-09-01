@@ -33,6 +33,11 @@ import type {
   WaitlistEntry,
 } from "./types";
 import type { GiftImportPreview } from "./gift-import";
+import type {
+  ApprovalGateKind,
+  ApprovalPath,
+  PendingApproval,
+} from "./loss-prevention";
 
 export interface AuditEntry {
   id: string;
@@ -53,6 +58,9 @@ export interface AuditEntry {
   reason?: string;
   before?: string;
   after?: string;
+  requesterId?: string;
+  requesterName?: string;
+  approvalStatus?: "pending" | "approved" | "denied" | "break_glass";
 }
 
 export type AuditMeta = {
@@ -68,6 +76,9 @@ export type AuditMeta = {
   reason?: string;
   before?: string;
   after?: string;
+  requesterId?: string;
+  requesterName?: string;
+  approvalStatus?: "pending" | "approved" | "denied" | "break_glass";
 };
 
 export interface ShiftState {
@@ -138,14 +149,41 @@ export interface PosStore {
   managerAuthUntil: number | null;
   managerAuthEmployeeId: string | null;
   managerAuthEmployeeName: string | null;
+  managerAuthKind: "manager" | "shift_lead" | null;
+  managerAuthRole: string | null;
   acknowledgedExceptionIds: string[];
+  pendingApprovals: PendingApproval[];
   setStaffPin: (employeeId: string, pin: string) => ActionResult;
   unlockBackOffice: (secret: string) => ActionResult;
   lockBackOffice: () => void;
   verifyManagerPin: (pin: string) => boolean;
   hasManagerAuth: () => boolean;
   authorizeManager: (pin: string) => ActionResult<{ employeeId?: string; employeeName?: string }>;
-  beginManagerSession: (emp: { id: string; name: string }) => void;
+  authorizeForGate: (
+    pin: string,
+    kind: ApprovalGateKind,
+    amountCents: number,
+  ) => ActionResult<{ employeeId?: string; employeeName?: string; path?: ApprovalPath }>;
+  canAuthorizeGate: (kind: ApprovalGateKind, amountCents: number) => boolean;
+  beginManagerSession: (emp: { id: string; name: string; kind?: "manager" | "shift_lead"; role?: string }) => void;
+  requestApproval: (input: {
+    kind: ApprovalGateKind;
+    reason: string;
+    amountCents: number;
+    orderId?: string;
+    orderNumber?: number;
+    lineId?: string;
+    ticketId?: string;
+    lineWasSent?: boolean;
+    ticketFired?: boolean;
+    payload?: PendingApproval["payload"];
+  }) => ActionResult<{ pendingId?: string }>;
+  resolveApproval: (
+    id: string,
+    decision: "approved" | "denied",
+    opts?: { remote?: boolean },
+  ) => ActionResult;
+  breakGlass: (pin: string, reason: string) => ActionResult<{ employeeId?: string; employeeName?: string }>;
   notePinFailure: () => ActionResult;
   unlockStationPin: () => void;
   resetStaffPinLock: (employeeId: string) => ActionResult;
@@ -212,8 +250,16 @@ export interface PosStore {
   updateLineQty: (lineId: string, delta: number) => void;
   setLineNote: (lineId: string, note: string) => void;
   setLineSeat: (lineId: string, seat: number) => void;
-  voidLine: (lineId: string, reason: string) => ActionResult;
-  compLine: (lineId: string, reason: string) => ActionResult;
+  voidLine: (
+    lineId: string,
+    reason: string,
+    opts?: { skipGate?: boolean; path?: ApprovalPath; approval?: PendingApproval; orderId?: string },
+  ) => ActionResult;
+  compLine: (
+    lineId: string,
+    reason: string,
+    opts?: { skipGate?: boolean; path?: ApprovalPath; approval?: PendingApproval; orderId?: string },
+  ) => ActionResult;
   holdLine: (lineId: string, held: boolean) => void;
   sendOrder: (opts?: object) => ActionResult;
   fireCourse: (course: string) => void;
@@ -222,8 +268,15 @@ export interface PosStore {
     cents?: number;
     reason?: string;
     promoCode?: string;
+    skipGate?: boolean;
+    path?: ApprovalPath;
+    approval?: PendingApproval;
   }) => ActionResult;
-  reopenCheck: (orderId: string, reason: string) => ActionResult;
+  reopenCheck: (
+    orderId: string,
+    reason: string,
+    opts?: { skipGate?: boolean; path?: ApprovalPath; approval?: PendingApproval },
+  ) => ActionResult;
   swapTender: (opts: {
     orderId: string;
     paymentId: string;
@@ -231,11 +284,17 @@ export interface PosStore {
     reason: string;
     last4?: string;
     giftCardCode?: string;
+    skipGate?: boolean;
+    path?: ApprovalPath;
+    approval?: PendingApproval;
   }) => ActionResult;
   adjustGiftBalance: (opts: {
     code: string;
     deltaCents: number;
     reason: string;
+    skipGate?: boolean;
+    path?: ApprovalPath;
+    approval?: PendingApproval;
   }) => ActionResult;
   setOrderNote: (note: string) => void;
   printCheck: () => void;
@@ -276,7 +335,11 @@ export interface PosStore {
   }) => ActionResult<{ card?: GiftCard; code?: string }>;
   processGiftBreakage: () => ActionResult<{ processed?: number }>;
   reloadGiftCard: (code: string, amountCents: number) => ActionResult;
-  setGiftCardStatus: (code: string, status: GiftCardStatus) => ActionResult;
+  setGiftCardStatus: (
+    code: string,
+    status: GiftCardStatus,
+    opts?: { skipGate?: boolean; path?: ApprovalPath; approval?: PendingApproval },
+  ) => ActionResult;
   importGiftCards: (
     preview: GiftImportPreview,
     opts: { overwrite?: boolean },

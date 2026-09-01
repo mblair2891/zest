@@ -112,13 +112,16 @@ import {
 } from "./pin";
 import {
   AUDIT_MAX_ENTRIES,
+  canRoleApproveGate,
   discountAllowed,
   discountNeedsManager,
+  isManagerRole,
   lineIsOnBumpedTicket,
   odsBlocksTender,
   parseLossPrevention,
   realTenderOnOrder,
   snapshotPayments,
+  underVoidCompThreshold,
   voidNeedsManager,
 } from "./loss-prevention";
 import {
@@ -274,7 +277,10 @@ function initialState() {
 		managerAuthUntil: null,
 		managerAuthEmployeeId: null,
 		managerAuthEmployeeName: null,
+		managerAuthKind: null,
+		managerAuthRole: null,
 		acknowledgedExceptionIds: [],
+		pendingApprovals: [],
 	};
 }
 
@@ -302,6 +308,39 @@ function managerActor(get) {
 	return {
 		id: get().managerAuthEmployeeId || "mgr",
 		name: get().managerAuthEmployeeName || "Manager",
+	};
+}
+
+function notifyOnCall(get, body, approvalId) {
+	const cfg = lpCfg(get);
+	if (!cfg.remoteApprove) return;
+	const phones = (cfg.onCallList || []).map((c) => c.phone).filter((p) => p && p.length >= 8);
+	const loc = get().tenantLocationId || "";
+	if (!phones.length) return;
+	try {
+		const host = typeof window !== "undefined" ? window.location.origin : "";
+		const link = host ? ` Approve in POS Home (${host}/station).` : " Approve in POS Home.";
+		void import("@/lib/pos/approval-api").then((m) =>
+			m.notifyOnCallFn({
+				data: {
+					locationId: loc,
+					phones,
+					body: `${body}${link}`.slice(0, 480),
+				},
+			}).catch(() => undefined),
+		);
+	} catch { /* optional */ }
+}
+
+function gateMeta(approval, path) {
+	if (!approval && !path) return {};
+	return {
+		requesterId: approval?.requesterId,
+		requesterName: approval?.requesterName,
+		overrideEmployeeId: approval?.approverId,
+		overrideEmployeeName: approval?.approverName,
+		after: path || (approval ? "approved" : undefined),
+		approvalStatus: path === "break_glass" ? "break_glass" : approval ? "approved" : undefined,
 	};
 }
 
@@ -404,6 +443,8 @@ const usePosStoreRaw = create()(persist((set, get) => ({
 			managerAuthUntil: null,
 			managerAuthEmployeeId: null,
 			managerAuthEmployeeName: null,
+			managerAuthKind: null,
+			managerAuthRole: null,
 		});
 		get().audit("login", `${emp.name} (${emp.role}) · floor PIN`);
 		return { ok: true };
@@ -435,6 +476,8 @@ const usePosStoreRaw = create()(persist((set, get) => ({
 			managerAuthUntil: null,
 			managerAuthEmployeeId: null,
 			managerAuthEmployeeName: null,
+			managerAuthKind: null,
+			managerAuthRole: null,
 		});
 	},
 	setStaffPin: (employeeId, pin) => {
@@ -487,11 +530,46 @@ const usePosStoreRaw = create()(persist((set, get) => ({
 	},
 	beginManagerSession: (who) => {
 		const minutes = lpCfg(get).managerSessionMinutes;
+		const kind = who.kind || (isManagerRole(who.role) ? "manager" : "shift_lead");
 		set({
 			managerAuthUntil: Date.now() + minutes * 60_000,
 			managerAuthEmployeeId: who.id,
 			managerAuthEmployeeName: who.name,
+			managerAuthKind: kind,
+			managerAuthRole: who.role || (kind === "manager" ? "manager" : null),
 		});
+	},
+	canAuthorizeGate: (kind, amountCents) => {
+		if (!get().hasManagerAuth()) return false;
+		if (get().managerAuthKind === "manager" || isManagerRole(get().managerAuthRole)) return true;
+		return canRoleApproveGate(get().managerAuthRole, kind, amountCents || 0, lpCfg(get));
+	},
+	authorizeForGate: (pin, kind, amountCents) => {
+		const loc = get().tenantLocationId || get().activeEntityId || "loc";
+		const cfg = lpCfg(get);
+		const emp = findStaffByPin(get().employees, pin, loc, null);
+		if (emp?.pinLocked) {
+			return { ok: false, error: "PIN locked. Ask a manager to reset.", locked: true };
+		}
+		if (emp && emp.active && isManagerRole(emp.role)) {
+			if (get().stationPinLocked) set({ stationPinLocked: false, stationPinFailures: 0 });
+			get().beginManagerSession({ id: emp.id, name: emp.name, kind: "manager", role: emp.role });
+			return { ok: true, employeeId: emp.id, employeeName: emp.name, path: "manager" };
+		}
+		if (emp && emp.active && canRoleApproveGate(emp.role, kind, amountCents || 0, cfg)) {
+			get().beginManagerSession({ id: emp.id, name: emp.name, kind: "shift_lead", role: emp.role });
+			return { ok: true, employeeId: emp.id, employeeName: emp.name, path: "shift_lead" };
+		}
+		if (pin && pin === get().settings.managerPin) {
+			if (get().stationPinLocked) set({ stationPinLocked: false, stationPinFailures: 0 });
+			get().beginManagerSession({ id: "mgr_pin", name: "Manager PIN", kind: "manager", role: "manager" });
+			return { ok: true, employeeId: "mgr_pin", employeeName: "Manager PIN", path: "manager" };
+		}
+		if (emp && emp.active) {
+			return { ok: false, error: "This PIN cannot approve that action or amount." };
+		}
+		const fail = get().notePinFailure();
+		return { ok: false, error: fail.error || "Invalid PIN", locked: fail.locked };
 	},
 	authorizeManager: (pin) => {
 		const loc = get().tenantLocationId || get().activeEntityId || "loc";
@@ -509,12 +587,12 @@ const usePosStoreRaw = create()(persist((set, get) => ({
 		}
 		if (emp && emp.active && (emp.role === "manager" || emp.role === "owner")) {
 			if (get().stationPinLocked) set({ stationPinLocked: false, stationPinFailures: 0 });
-			get().beginManagerSession({ id: emp.id, name: emp.name });
+			get().beginManagerSession({ id: emp.id, name: emp.name, kind: "manager", role: emp.role });
 			return { ok: true, employeeId: emp.id, employeeName: emp.name };
 		}
 		if (pin && pin === get().settings.managerPin) {
 			if (get().stationPinLocked) set({ stationPinLocked: false, stationPinFailures: 0 });
-			get().beginManagerSession({ id: "mgr_pin", name: "Manager PIN" });
+			get().beginManagerSession({ id: "mgr_pin", name: "Manager PIN", kind: "manager", role: "manager" });
 			return { ok: true, employeeId: "mgr_pin", employeeName: "Manager PIN" };
 		}
 		const fail = get().notePinFailure();
@@ -559,6 +637,247 @@ const usePosStoreRaw = create()(persist((set, get) => ({
 		if (ids.includes(id)) return;
 		set({ acknowledgedExceptionIds: [id, ...ids].slice(0, 500) });
 		get().audit("manager_override", `Exception acknowledged ${id}`);
+	},
+	breakGlass: (pin, reason) => {
+		const cfg = lpCfg(get);
+		if (!cfg.breakGlass) return { ok: false, error: "Break-glass is off." };
+		if (!String(reason || "").trim()) return { ok: false, error: "Pick a reason" };
+		const loc = get().tenantLocationId || get().activeEntityId || "loc";
+		const emp = findStaffByPin(get().employees, pin, loc, null);
+		if (!emp || !emp.active) {
+			const fail = get().notePinFailure();
+			return { ok: false, error: fail.error || "Invalid PIN", locked: fail.locked };
+		}
+		if (!emp.clockedIn) return { ok: false, error: "Break-glass is only for clocked-in staff." };
+		if (emp.pinLocked) return { ok: false, error: "PIN locked. Ask a manager to reset.", locked: true };
+		get().audit("break_glass", reason, {
+			reason,
+			after: "break_glass",
+			approvalStatus: "break_glass",
+			requesterId: emp.id,
+			requesterName: emp.name,
+		});
+		try {
+			useNotifyStore.getState().pushNotice({
+				kind: "break_glass",
+				title: "Break-glass used",
+				body: `${emp.name} · ${reason}`,
+				serverId: emp.id,
+				serverName: emp.name,
+			});
+		} catch { /* */ }
+		notifyOnCall(get, `Break-glass: ${emp.name} · ${reason}`);
+		return { ok: true, employeeId: emp.id, employeeName: emp.name, path: "break_glass" };
+	},
+	requestApproval: (input) => {
+		const cfg = lpCfg(get);
+		if (!cfg.pendingApproval) return { ok: false, error: "Pending approval is off. A manager or shift lead must authorize now." };
+		const emp = get().getCurrentEmployee();
+		if (!emp) return { ok: false, error: "Sign in first" };
+		if (!String(input.reason || "").trim()) return { ok: false, error: "Pick a reason" };
+		const id = uid("appr");
+		const row = {
+			id,
+			at: Date.now(),
+			kind: input.kind,
+			status: "pending",
+			requesterId: emp.id,
+			requesterName: emp.name,
+			orderId: input.orderId,
+			orderNumber: input.orderNumber,
+			lineId: input.lineId,
+			ticketId: input.ticketId,
+			amountCents: input.amountCents || 0,
+			reason: input.reason,
+			lineWasSent: input.lineWasSent,
+			ticketFired: input.ticketFired,
+			payload: input.payload || {},
+			notify: cfg.onCallList.map((c) => c.employeeId),
+		};
+		set({ pendingApprovals: [row, ...(get().pendingApprovals ?? [])].slice(0, 200) });
+		if (input.lineId && input.orderId && (input.kind === "void" || input.kind === "comp")) {
+			set({
+				orders: get().orders.map((o) => o.id !== input.orderId ? o : {
+					...o,
+					lines: o.lines.map((l) => l.id === input.lineId
+						? { ...l, pendingAction: input.kind, note: `Pending ${input.kind}` }
+						: l),
+				}),
+			});
+		}
+		get().audit("approval_pending", input.reason, {
+			orderId: input.orderId,
+			orderNumber: input.orderNumber,
+			ticketId: input.ticketId,
+			amountCents: input.amountCents,
+			reason: input.reason,
+			after: "pending",
+			approvalStatus: "pending",
+			requesterId: emp.id,
+			requesterName: emp.name,
+		});
+		try {
+			useNotifyStore.getState().pushNotice({
+				kind: "approval_request",
+				title: `Approval · ${input.kind.replace("_", " ")}`,
+				body: `${emp.name} · #${input.orderNumber ?? "—"} · ${input.reason}`,
+				serverId: emp.id,
+				serverName: emp.name,
+			});
+		} catch { /* */ }
+		notifyOnCall(
+			get,
+			`Summex approval: ${input.kind} $${((input.amountCents || 0) / 100).toFixed(2)} #${input.orderNumber ?? "?"} from ${emp.name}. ${input.reason}`,
+			id,
+		);
+		return { ok: true, pendingId: id };
+	},
+	resolveApproval: (id, decision, opts) => {
+		const row = (get().pendingApprovals ?? []).find((p) => p.id === id);
+		if (!row || row.status !== "pending") return { ok: false, error: "Request not found" };
+		const cfg = lpCfg(get);
+		const actor = get().getCurrentEmployee();
+		const remote = Boolean(opts?.remote);
+		if (decision === "approved") {
+			if (!get().canAuthorizeGate(row.kind, row.amountCents) && !isManagerRole(actor?.role) && !get().hasManagerAuth()) {
+				return { ok: false, error: "Manager or shift lead PIN required to approve." };
+			}
+		} else if (!get().hasManagerAuth() && !isManagerRole(actor?.role) && !get().canAuthorizeGate(row.kind, row.amountCents)) {
+			return { ok: false, error: "Manager or shift lead PIN required to deny." };
+		}
+		const approverId = get().managerAuthEmployeeId || actor?.id || "mgr";
+		const approverName = get().managerAuthEmployeeName || actor?.name || "Manager";
+		set({
+			pendingApprovals: (get().pendingApprovals ?? []).map((p) =>
+				p.id === id
+					? {
+						...p,
+						status: decision,
+						approverId,
+						approverName,
+						resolvedAt: Date.now(),
+						channel: remote ? "remote" : "floor",
+					}
+					: p,
+			),
+		});
+		if (decision === "denied") {
+			if (row.lineId && row.orderId) {
+				set({
+					orders: get().orders.map((o) => o.id !== row.orderId ? o : {
+						...o,
+						lines: o.lines.map((l) => l.id === row.lineId ? { ...l, pendingAction: undefined } : l),
+					}),
+				});
+			}
+			if (cfg.pendingRejectPolicy === "auto_void" && row.ticketFired && row.lineId) {
+				set({
+					tickets: get().tickets.map((t) =>
+						t.items.some((i) => i.lineId === row.lineId) && t.status !== "bumped" && t.status !== "voided"
+							? { ...t, status: "voided" }
+							: t,
+					),
+				});
+			}
+			get().audit(row.kind, row.reason, {
+				orderId: row.orderId,
+				orderNumber: row.orderNumber,
+				ticketId: row.ticketId,
+				amountCents: row.amountCents,
+				reason: row.reason,
+				after: "denied",
+				approvalStatus: "denied",
+				requesterId: row.requesterId,
+				requesterName: row.requesterName,
+				overrideEmployeeId: approverId,
+				overrideEmployeeName: approverName,
+			});
+			return { ok: true };
+		}
+		const prevEmp = get().currentEmployeeId;
+		const apply = () => {
+			if (row.kind === "void" && row.lineId) {
+				if (row.orderId) set({ activeOrderId: row.orderId });
+				return get().voidLine(row.lineId, row.reason, { skipGate: true, approval: row });
+			}
+			if (row.kind === "comp" && row.lineId) {
+				if (row.orderId) set({ activeOrderId: row.orderId });
+				return get().compLine(row.lineId, row.reason, { skipGate: true, approval: row });
+			}
+			if (row.kind === "discount" && row.orderId) {
+				set({ activeOrderId: row.orderId });
+				return get().applyDiscount({
+					percent: row.payload.percent,
+					cents: row.payload.cents,
+					reason: row.reason,
+					promoCode: row.payload.promoCode,
+					skipGate: true,
+					approval: row,
+				});
+			}
+			if (row.kind === "reopen" && row.orderId) {
+				return get().reopenCheck(row.orderId, row.reason, { skipGate: true, approval: row });
+			}
+			if (row.kind === "tender_swap" && row.orderId && row.payload.paymentId) {
+				return get().swapTender({
+					orderId: row.orderId,
+					paymentId: row.payload.paymentId,
+					method: row.payload.method || "cash",
+					reason: row.reason,
+					skipGate: true,
+					approval: row,
+				});
+			}
+			if (row.kind === "gift_adjust" && row.payload.giftCode) {
+				if (row.payload.giftStatus) {
+					return get().setGiftCardStatus(row.payload.giftCode, row.payload.giftStatus, { skipGate: true, approval: row });
+				}
+				return get().adjustGiftBalance({
+					code: row.payload.giftCode,
+					deltaCents: row.payload.deltaCents || 0,
+					reason: row.reason,
+					skipGate: true,
+					approval: row,
+				});
+			}
+			if (row.kind === "no_sale") {
+				const drawerId = row.payload.drawerId;
+				try {
+					const cashCfg = parseCashHandling(get().settings.cashHandling);
+					const drawer = cashCfg.drawers.find((d) => d.id === drawerId);
+					useCashSessionStore.getState().logNoSale({
+						employeeId: row.requesterId,
+						employeeName: row.requesterName,
+						drawerId,
+						reason: row.reason,
+					});
+					if (drawer) {
+						void import("@/lib/print/dispatch").then((m) =>
+							m.kickCashDrawer({
+								locationId: get().tenantLocationId || "",
+								devices: get().locationDevices,
+								printerId: drawer.kickPrinterId,
+							}),
+						);
+					}
+				} catch { /* */ }
+				get().audit("no_sale", row.reason, {
+					reason: row.reason,
+					after: "approved",
+					approvalStatus: "approved",
+					requesterId: row.requesterId,
+					requesterName: row.requesterName,
+					overrideEmployeeId: approverId,
+					overrideEmployeeName: approverName,
+					amountCents: 0,
+				});
+				return { ok: true };
+			}
+			return { ok: true };
+		};
+		const res = apply();
+		if (prevEmp) set({ currentEmployeeId: prevEmp });
+		return res || { ok: true };
 	},
 	clockToggle: (employeeId) => {
 		const emp = get().employees.find((e) => e.id === employeeId);
@@ -707,6 +1026,9 @@ const usePosStoreRaw = create()(persist((set, get) => ({
 			reason: meta?.reason,
 			before: meta?.before,
 			after: meta?.after,
+			requesterId: meta?.requesterId,
+			requesterName: meta?.requesterName,
+			approvalStatus: meta?.approvalStatus,
 		};
 		set({ auditLog: [entry, ...get().auditLog].slice(0, AUDIT_MAX_ENTRIES) });
 	},
@@ -1593,8 +1915,10 @@ const usePosStoreRaw = create()(persist((set, get) => ({
 		}) });
 		floorSync("lines", order.id);
 	},
-	voidLine: (lineId, reason) => {
-		const order = get().getActiveOrder();
+	voidLine: (lineId, reason, opts) => {
+		const order = opts?.orderId
+			? get().orders.find((o) => o.id === opts.orderId)
+			: get().getActiveOrder();
 		if (!order) return { ok: false, error: "No order" };
 		if (order.status !== "open") return { ok: false, error: "Paid check is frozen. Reopen to change it." };
 		const line = order.lines.find((l) => l.id === lineId);
@@ -1602,11 +1926,17 @@ const usePosStoreRaw = create()(persist((set, get) => ({
 		const cfg = lpCfg(get);
 		const tickets = get().tickets;
 		const bumped = lineIsOnBumpedTicket(lineId, tickets);
-		if (voidNeedsManager(line, tickets, cfg) && !get().hasManagerAuth()) {
-			return { ok: false, error: bumped ? "Void after bump needs a manager PIN and reason." : "Void after send needs a manager PIN and reason." };
+		const amt = lineUnitTotal(line) * line.quantity;
+		const skip = Boolean(opts?.skipGate);
+		const path = opts?.path;
+		if (!skip && voidNeedsManager(line, tickets, cfg, amt) && !get().canAuthorizeGate("void", amt)) {
+			if (path === "break_glass") {
+				/* execute below */
+			} else {
+				return { ok: false, error: bumped ? "Void after bump needs a manager or shift lead." : "Void needs a manager, shift lead, or pending approval." };
+			}
 		}
 		if (!String(reason || "").trim()) return { ok: false, error: "Pick a reason" };
-		const amt = lineUnitTotal(line) * line.quantity;
 		const nextTickets = bumped
 			? tickets.map((t) =>
 				t.items.some((i) => i.lineId === lineId) && t.status === "bumped"
@@ -1620,6 +1950,7 @@ const usePosStoreRaw = create()(persist((set, get) => ({
 				lines: o.lines.map((l) => l.id === lineId ? {
 					...l,
 					voided: true,
+					pendingAction: undefined,
 					note: reason
 				} : l)
 			}),
@@ -1636,30 +1967,35 @@ const usePosStoreRaw = create()(persist((set, get) => ({
 			amountCents: amt,
 			reason,
 			before: "open",
-			after: bumped ? "VOID" : "voided",
+			after: path === "break_glass" ? "break_glass" : bumped ? "VOID" : "voided",
+			...gateMeta(opts?.approval, path),
 		});
 		floorSync("lines", order.id);
 		return { ok: true };
 	},
-	compLine: (lineId, reason) => {
-		const order = get().getActiveOrder();
+	compLine: (lineId, reason, opts) => {
+		const order = opts?.orderId
+			? get().orders.find((o) => o.id === opts.orderId)
+			: get().getActiveOrder();
 		if (!order) return { ok: false, error: "No order" };
 		if (order.status !== "open") return { ok: false, error: "Paid check is frozen. Reopen to change it." };
 		const line = order.lines.find((l) => l.id === lineId);
 		if (!line || line.voided || line.comped) return { ok: false, error: "Nothing to comp" };
 		const cfg = lpCfg(get);
-		const needsMgr = cfg.compAlwaysManager || (line.sent && cfg.voidAfterSend === "manager");
-		if (needsMgr && !get().hasManagerAuth()) {
-			return { ok: false, error: "Comp needs a manager PIN and reason." };
+		const amt = lineUnitTotal(line) * line.quantity;
+		const under = underVoidCompThreshold(!!line.sent, amt, cfg);
+		const needsMgr = !under && (cfg.compAlwaysManager || (line.sent && cfg.voidAfterSend === "manager"));
+		if (!opts?.skipGate && needsMgr && !get().canAuthorizeGate("comp", amt) && opts?.path !== "break_glass") {
+			return { ok: false, error: "Comp needs a manager, shift lead, or pending approval." };
 		}
 		if (!String(reason || "").trim()) return { ok: false, error: "Pick a reason" };
-		const amt = lineUnitTotal(line) * line.quantity;
 		set({
 			orders: get().orders.map((o) => o.id !== order.id ? o : {
 				...o,
 				lines: o.lines.map((l) => l.id === lineId ? {
 					...l,
 					comped: true,
+					pendingAction: undefined,
 					note: reason
 				} : l)
 			}),
@@ -1673,6 +2009,7 @@ const usePosStoreRaw = create()(persist((set, get) => ({
 			orderNumber: order.number,
 			amountCents: amt,
 			reason,
+			...gateMeta(opts?.approval, opts?.path),
 		});
 		floorSync("lines", order.id);
 		return { ok: true };
@@ -1768,15 +2105,17 @@ const usePosStoreRaw = create()(persist((set, get) => ({
 			fireHeld: true
 		});
 	},
-	applyDiscount: ({ percent, cents, reason, promoCode }) => {
+	applyDiscount: ({ percent, cents, reason, promoCode, skipGate, approval, path }) => {
 		const order = get().getActiveOrder();
 		if (!order) return { ok: false, error: "No order" };
 		if (order.status !== "open") return { ok: false, error: "Paid check is frozen. Reopen to change it." };
 		const emp = get().getCurrentEmployee();
 		const cfg = lpCfg(get);
-		const mgr = get().hasManagerAuth();
+		const merchEst = order.lines.filter((l) => !l.voided && !l.comped).reduce((s, l) => s + lineUnitTotal(l) * l.quantity, 0);
+		const amtEst = Math.round((merchEst * (percent ?? order.discountPercent || 0)) / 100) + (cents ?? order.discountCents || 0);
+		const mgr = skipGate || path === "break_glass" || get().canAuthorizeGate("discount", amtEst);
 		if (discountNeedsManager(order, cfg) && !mgr) {
-			return { ok: false, error: "Discount after send needs a manager PIN and reason." };
+			return { ok: false, error: "Discount after send needs a manager, shift lead, or pending approval." };
 		}
 		if (!String(reason || "").trim()) return { ok: false, error: "Pick a reason" };
 		const allowed = discountAllowed({
@@ -1785,7 +2124,7 @@ const usePosStoreRaw = create()(persist((set, get) => ({
 			cents,
 			role: emp?.role,
 			cfg,
-			managerOverride: mgr,
+			managerOverride: mgr || Boolean(skipGate) || path === "break_glass",
 		});
 		if (!allowed.ok) return allowed;
 		const merch = order.lines.filter((l) => !l.voided && !l.comped).reduce((s, l) => s + lineUnitTotal(l) * l.quantity, 0);
@@ -1805,16 +2144,22 @@ const usePosStoreRaw = create()(persist((set, get) => ({
 			amountCents: amt,
 			reason,
 			before: `${order.discountPercent || 0}% / ${order.discountCents || 0}`,
-			after: `${nextPct || 0}% / ${nextCents || 0}`,
+			after: path === "break_glass" ? "break_glass" : `${nextPct || 0}% / ${nextCents || 0}`,
+			...gateMeta(approval, path),
 		});
 		return { ok: true };
 	},
-	reopenCheck: (orderId, reason) => {
+	reopenCheck: (orderId, reason, opts) => {
 		const order = get().orders.find((o) => o.id === orderId);
 		if (!order) return { ok: false, error: "Unknown check" };
 		if (order.status === "open") return { ok: false, error: "Check is already open" };
-		if (lpCfg(get).paidCheckReopen === "manager" && !get().hasManagerAuth()) {
-			return { ok: false, error: "Reopening a paid check needs a manager PIN and reason." };
+		if (
+			lpCfg(get).paidCheckReopen === "manager" &&
+			!opts?.skipGate &&
+			opts?.path !== "break_glass" &&
+			!get().canAuthorizeGate("reopen", 0)
+		) {
+			return { ok: false, error: "Reopening a paid check needs a manager (or a granted shift lead)." };
 		}
 		if (!String(reason || "").trim()) return { ok: false, error: "Pick a reason" };
 		const before = snapshotPayments(order);
@@ -1834,15 +2179,21 @@ const usePosStoreRaw = create()(persist((set, get) => ({
 			orderNumber: order.number,
 			reason,
 			before,
-			after: "open",
+			after: opts?.path === "break_glass" ? "break_glass" : "open",
+			...gateMeta(opts?.approval, opts?.path),
 		});
 		return { ok: true };
 	},
-	swapTender: ({ orderId, paymentId, method, reason, last4, giftCardCode }) => {
+	swapTender: ({ orderId, paymentId, method, reason, last4, giftCardCode, skipGate, approval, path }) => {
 		const order = get().orders.find((o) => o.id === orderId);
 		if (!order) return { ok: false, error: "Unknown check" };
-		if (lpCfg(get).paidCheckReopen === "manager" && !get().hasManagerAuth()) {
-			return { ok: false, error: "Tender change needs a manager PIN and reason." };
+		if (
+			lpCfg(get).paidCheckReopen === "manager" &&
+			!skipGate &&
+			path !== "break_glass" &&
+			!get().canAuthorizeGate("tender_swap", 0)
+		) {
+			return { ok: false, error: "Tender change needs a manager (or a granted shift lead)." };
 		}
 		if (!String(reason || "").trim()) return { ok: false, error: "Pick a reason" };
 		const pay = order.payments.find((p) => p.id === paymentId);
@@ -1866,13 +2217,19 @@ const usePosStoreRaw = create()(persist((set, get) => ({
 			amountCents: pay.amountCents,
 			reason,
 			before,
-			after: snapshotPayments({ ...order, payments }),
+			after: path === "break_glass" ? "break_glass" : snapshotPayments({ ...order, payments }),
+			...gateMeta(approval, path),
 		});
 		return { ok: true };
 	},
-	adjustGiftBalance: ({ code, deltaCents, reason }) => {
-		if (lpCfg(get).giftAdjustManager && !get().hasManagerAuth()) {
-			return { ok: false, error: "Gift balance adjust needs a manager PIN." };
+	adjustGiftBalance: ({ code, deltaCents, reason, skipGate, approval, path }) => {
+		if (
+			lpCfg(get).giftAdjustManager &&
+			!skipGate &&
+			path !== "break_glass" &&
+			!get().canAuthorizeGate("gift_adjust", Math.abs(deltaCents || 0))
+		) {
+			return { ok: false, error: "Gift balance adjust needs a manager (or a granted shift lead)." };
 		}
 		if (!String(reason || "").trim()) return { ok: false, error: "Pick a reason" };
 		const needle = (code || "").replace(/[\s-]/g, "").toUpperCase();
@@ -1902,7 +2259,8 @@ const usePosStoreRaw = create()(persist((set, get) => ({
 			amountCents: deltaCents,
 			reason,
 			before: String(before),
-			after: String(after),
+			after: path === "break_glass" ? "break_glass" : String(after),
+			...gateMeta(approval, path),
 		});
 		return { ok: true };
 	},
@@ -2591,9 +2949,14 @@ const usePosStoreRaw = create()(persist((set, get) => ({
 		get().audit("gift_issue", `Reload ${gc.code}`, { amountCents });
 		return { ok: true };
 	},
-	setGiftCardStatus: (code, status) => {
-		if (lpCfg(get).giftAdjustManager && !get().hasManagerAuth()) {
-			return { ok: false, error: "Gift deactivate / freeze needs a manager PIN." };
+	setGiftCardStatus: (code, status, opts) => {
+		if (
+			lpCfg(get).giftAdjustManager &&
+			!opts?.skipGate &&
+			opts?.path !== "break_glass" &&
+			!get().canAuthorizeGate("gift_adjust", 0)
+		) {
+			return { ok: false, error: "Gift deactivate / freeze needs a manager (or a granted shift lead)." };
 		}
 		const needle = (code || "").replace(/[\s-]/g, "").toUpperCase();
 		const gc = get().giftCards.find((g) => g.code.replace(/[\s-]/g, "").toUpperCase() === needle);
@@ -2619,7 +2982,8 @@ const usePosStoreRaw = create()(persist((set, get) => ({
 		get().audit(status === "void" || status === "frozen" ? "gift_deactivate" : "gift_adjust", `${gc.code} → ${status}`, {
 			reason: String(status),
 			before: gc.status || "active",
-			after: status,
+			after: opts?.path === "break_glass" ? "break_glass" : status,
+			...gateMeta(opts?.approval, opts?.path),
 		});
 		return { ok: true };
 	},
@@ -3502,6 +3866,7 @@ const usePosStoreRaw = create()(persist((set, get) => ({
 		stationPinFailures: s.stationPinFailures ?? 0,
 		stationPinLocked: s.stationPinLocked ?? false,
 		acknowledgedExceptionIds: s.acknowledgedExceptionIds ?? [],
+		pendingApprovals: s.pendingApprovals ?? [],
 	}),
 	merge: (persisted, current) => {
 		const p = persisted || {};

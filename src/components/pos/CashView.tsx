@@ -22,7 +22,8 @@ import {
 import { useStationSessionStore } from "@/lib/pos/station-session";
 import { kickCashDrawer } from "@/lib/print/dispatch";
 import { CloseoutQueue } from "./CloseoutQueue";
-import { NO_SALE_REASONS } from "@/lib/pos/loss-prevention";
+import { NO_SALE_REASONS, parseLossPrevention } from "@/lib/pos/loss-prevention";
+import { ApprovalQueue } from "./ApprovalQueue";
 
 export function CashView() {
   const shift = usePosStore((s) => s.shift);
@@ -58,6 +59,9 @@ export function CashView() {
   const [reason, setReason] = useState(cfg.paidInOutReasons[0] ?? "Other");
   const [noSaleReason, setNoSaleReason] = useState<string>(NO_SALE_REASONS[0]);
   const audit = usePosStore((s) => s.audit);
+  const requestApproval = usePosStore((s) => s.requestApproval);
+  const canAuthorizeGate = usePosStore((s) => s.canAuthorizeGate);
+  const lp = parseLossPrevention(settings.lossPrevention);
   const [mgrOpen, setMgrOpen] = useState(false);
   const [pending, setPending] = useState<
     null | "close" | "open" | "paid_in" | "paid_out" | "drop" | "no_sale" | "kick" | "issue"
@@ -220,6 +224,19 @@ export function CashView() {
       setFlash("No-sale is off.");
       return;
     }
+    if (kind === "no_sale" && cfg.noSaleOpen === "manager" && !canAuthorizeGate("no_sale", 0) && !manager) {
+      if (lp.pendingApproval) {
+        const res = requestApproval({
+          kind: "no_sale",
+          reason: noSaleReason,
+          amountCents: 0,
+          payload: { drawerId: sink.type === "drawer" ? sink.drawer.id : undefined },
+        });
+        setFlash(res.ok ? "No-sale held for approval." : res.error ?? "Could not queue");
+        setPending(null);
+        return;
+      }
+    }
     if (kind === "no_sale" && cfg.noSaleOpen === "assigned_user" && sink.type === "drawer") {
       const allowed =
         manager ||
@@ -263,6 +280,9 @@ export function CashView() {
         <p className="mb-3 rounded-xl border border-warn/40 bg-warn/10 px-3 py-2 text-sm">{sink.reason}</p>
       )}
       {flash && <p className="mb-3 text-sm text-muted-foreground">{flash}</p>}
+      <div className="mb-4">
+        <ApprovalQueue compact />
+      </div>
       <CloseoutQueue />
 
       <div className="mb-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
@@ -494,7 +514,29 @@ export function CashView() {
         open={mgrOpen}
         onOpenChange={setMgrOpen}
         title="Manager cash authorization"
-        onVerified={() => {
+        gate={pending === "no_sale" ? "no_sale" : undefined}
+        reasons={pending === "no_sale" ? NO_SALE_REASONS : undefined}
+        onRequestPending={
+          pending === "no_sale"
+            ? (reason) => {
+                const res = requestApproval({
+                  kind: "no_sale",
+                  reason,
+                  amountCents: 0,
+                  payload: { drawerId: sink.type === "drawer" ? sink.drawer.id : undefined },
+                });
+                setFlash(res.ok ? "No-sale held for approval." : res.error ?? "Could not queue");
+                setPending(null);
+              }
+            : undefined
+        }
+        onVerified={(ctx) => {
+          if (pending === "no_sale" && ctx?.path === "break_glass") {
+            run("no_sale");
+            audit("break_glass", ctx.reason || noSaleReason, { after: "break_glass", approvalStatus: "break_glass" });
+            setPending(null);
+            return;
+          }
           if (pending) run(pending);
           setPending(null);
         }}

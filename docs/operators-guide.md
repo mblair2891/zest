@@ -66,7 +66,7 @@ accurate when the job path changes.
 17. Tips: mix-based tip-out recs; CC tips cash-at-close vs paycheck; individual / tip-out / FOH / bar / team / dual pools; autograt vs service charge.
 18. Staffing recs: recommend cut/add only; never auto clock-out.
 19. Staff HR basics (clock vs PIN, time-off and availability if the employer enabled them)
-20. Loss prevention (owner/manager): unique PIN lockout, gated void/comp/discount after send and after bump, paid-check freeze, gift adjust manager-only, append-only audit, exception queue vs house / same weekday. Not a theft how-to.
+20. Loss prevention (owner/manager): unique PIN lockout, gated void/comp/discount after send and after bump, paid-check freeze, gift adjust manager-only, append-only audit, exception queue vs house / same weekday. When no manager is on the floor: shift-lead grants, pending approval, remote on-call, optional break-glass. Not a theft how-to.
 21. Troubleshooting
 
 Exit on the public page returns to marketing home (`/`).

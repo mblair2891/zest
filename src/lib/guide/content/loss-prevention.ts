@@ -14,6 +14,10 @@ export const LOSS_PREVENTION_TOPICS: GuideTopic[] = [
       "comp",
       "discount",
       "no sale",
+      "shift lead",
+      "pending approval",
+      "break glass",
+      "on-call",
       "reopen",
       "audit",
       "exception",
@@ -31,7 +35,7 @@ export const LOSS_PREVENTION_TOPICS: GuideTopic[] = [
         "PIN is not clock-in and not closeout. Each employee has a unique PIN. After too many failed attempts the station PIN pad locks until a manager unlocks it. A locked employee PIN is reset by a manager on Staff (set a new unique PIN or Unlock PIN). ODS stations cannot tender cash or gift — order and host stations follow their cash-handling roles.",
       ),
       p(
-        "Gated actions need a manager PIN (or an open manager session) and a reason from the house list. Settings → Loss prevention turns each gate to manager PIN or log-only. No-sale, blind count, over/short $X, and closeout-before-clock-out stay on Cash drawers.",
+        "Gated actions need a manager PIN (or an open manager session) and a reason from the house list. When no manager is on the floor, a shift-lead role you named can approve the gates you granted them (with a $ cap). Gift adjust, paid-check reopen, and tender-swap stay manager-only unless you explicitly grant those gates. Settings → Loss prevention also turns pending approval, remote notify, and break-glass on or off.",
       ),
       ul(
         "Void or discount after send to ODS: manager PIN + listed reason.",
@@ -45,10 +49,12 @@ export const LOSS_PREVENTION_TOPICS: GuideTopic[] = [
       ),
       steps(
         "Settings → Loss prevention: lockout count, manager session minutes, which gates need a PIN, discount caps, outlier multiplier.",
-        "On a check: Void / Comp / Disc collect a listed reason. After send or bump, the manager PIN dialog opens unless a manager session is still open.",
+        "On a check: Void / Comp / Disc collect a listed reason. After send or bump, the manager or shift-lead PIN dialog opens unless an approval session is still open. Under the before-send $ threshold, void/comp skip the gate.",
         "After pay, the check shows frozen. Reopen or Swap last tender only from that banner.",
         "Home (owner/manager) shows a live feed of gated actions and a queue of flags. Reports → Loss-prevention exceptions compares each employee to the house and to the same weekday.",
         "A flag (for example void % at least 3× the house) is queued for review. Tap Noted when you have looked at it. It is not an automatic write-up.",
+        "No manager on the floor: the server can Request approval. The action is held. Home shows Pending approvals. On-call gets an in-app notice and SMS when Twilio is configured — approve or deny with your PIN (attribution stored). Fired kitchen tickets stay on the rail until you deny; deny policy is leave or auto-void the kitchen ticket.",
+        "Break-glass (off by default): a clocked-in user enters their PIN and a listed reason. The action runs, on-call is alerted, and the exception queue is flagged. Use it when a guest is waiting and nobody who can approve is reachable — not as a daily path.",
       ),
       callout(
         "Why paid checks freeze",

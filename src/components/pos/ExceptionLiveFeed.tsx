@@ -8,6 +8,7 @@ import {
   parseLossPrevention,
 } from "@/lib/pos/loss-prevention";
 import { useCloseoutStore } from "@/lib/pos/closeout-store";
+import { ApprovalQueue } from "./ApprovalQueue";
 
 export function ExceptionLiveFeed({ compact = false }: { compact?: boolean }) {
   const auditLog = usePosStore((s) => s.auditLog);
@@ -42,6 +43,9 @@ export function ExceptionLiveFeed({ compact = false }: { compact?: boolean }) {
         Live log of voids, comps, discounts, no-sales, reopens, gift adjusts, and overrides. Flags
         queue for review — they are not accusations.
       </p>
+      <div className="mb-3">
+        <ApprovalQueue compact={compact} />
+      </div>
       {flagged.length > 0 && (
         <div className="mb-3 space-y-1.5 rounded-xl border border-warn/40 bg-warn/10 p-2">
           <p className="text-xs font-medium">Queued for manager review</p>

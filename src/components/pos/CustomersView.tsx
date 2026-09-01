@@ -89,6 +89,7 @@ export function CustomersView() {
     status: GiftCardStatus;
   } | null>(null);
   const hasManagerAuth = usePosStore((s) => s.hasManagerAuth);
+  const requestApproval = usePosStore((s) => s.requestApproval);
 
   const filtered = customers.filter(
     (c) =>
@@ -859,8 +860,20 @@ export function CustomersView() {
         open={giftMgrOpen}
         onOpenChange={setGiftMgrOpen}
         title="Gift card change"
-        description="Balance adjust and deactivate are manager-only. Reason is logged."
+        description="Gift adjust stays manager-only unless a shift-lead role is granted it. Reason is logged."
         reasons={GIFT_ADJUST_REASONS}
+        gate="gift_adjust"
+        onRequestPending={(reason) => {
+          if (!pendingGift) return;
+          const res = requestApproval({
+            kind: "gift_adjust",
+            reason,
+            amountCents: 0,
+            payload: { giftCode: pendingGift.code, giftStatus: pendingGift.status },
+          });
+          setMsg(res.ok ? "Held for manager approval." : res.error ?? "Could not queue");
+          setPendingGift(null);
+        }}
         onVerified={() => {
           if (!pendingGift) return;
           const { code, id, status } = pendingGift;

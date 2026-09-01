@@ -377,6 +377,7 @@ export interface OrderLine {
   held: boolean;
   voided: boolean;
   comped: boolean;
+  pendingAction?: "void" | "comp";
   discountCents: number;
   taxExempt: boolean;
   createdAt: number;

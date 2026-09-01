@@ -6,6 +6,19 @@ import type { GuideUpdate } from "@/lib/guide/types";
  */
 export const WHATS_NEW_ENTRIES: GuideUpdate[] = [
   {
+    id: "upd_2026_10_21_shift_lead_approvals",
+    date: "2026-10-21",
+    title: "Shift-lead, pending, and remote approvals",
+    summary:
+      "When no manager is on the floor: shift-lead gates with $ caps, hold-for-approval, on-call SMS, optional break-glass.",
+    body: "Settings → Loss prevention: name which roles may approve void/comp/discount/no-sale and their $ cap. Gift adjust, paid-check reopen, and tender-swap stay manager-only unless you grant them. Servers can request approval — the action is held; Home shows the queue. On-call is notified in-app and by SMS when Twilio is on. Approve or deny with PIN and attribution. Fired ODS tickets stay in kitchen until deny; policy is leave or auto-void. Break-glass is off by default: clocked-in PIN + reason, always alerts and flags. Void/comp under $X before send skips the gate.",
+    roles: ["owner_manager"],
+    surfaces: ["floor", "reports", "settings"],
+    audience: "all",
+    topicId: "loss-prevention",
+    tags: ["approval", "shift lead", "void", "manager"],
+  },
+  {
     id: "upd_2026_10_20_loss_prevention",
     date: "2026-10-20",
     title: "Loss-prevention gates, audit log, exception reports",

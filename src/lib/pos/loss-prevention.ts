@@ -16,6 +16,74 @@ export type DiscountCap = {
   maxCents: number;
 };
 
+export const APPROVAL_GATES = [
+  "void",
+  "comp",
+  "discount",
+  "no_sale",
+  "gift_adjust",
+  "reopen",
+  "tender_swap",
+] as const;
+export type ApprovalGateKind = (typeof APPROVAL_GATES)[number];
+
+/** Gates a shift lead may be granted. Gift / paid-check reopen / tender-swap stay manager-only unless listed. */
+export const DEFAULT_SHIFT_LEAD_GATES: ApprovalGateKind[] = ["void", "comp", "discount", "no_sale"];
+export const MANAGER_ONLY_GATES: ApprovalGateKind[] = ["gift_adjust", "reopen", "tender_swap"];
+
+export type ShiftLeadGrant = {
+  role: EmployeeRole;
+  gates: ApprovalGateKind[];
+  maxCents: number;
+};
+
+export type PendingRejectPolicy = "leave" | "auto_void";
+
+export type OnCallContact = {
+  employeeId: string;
+  phone: string;
+};
+
+export type ApprovalPath = "threshold" | "manager" | "shift_lead" | "pending" | "break_glass";
+
+export type PendingApprovalStatus = "pending" | "approved" | "denied";
+
+export type PendingApprovalPayload = {
+  lineId?: string;
+  percent?: number;
+  cents?: number;
+  promoCode?: string;
+  paymentId?: string;
+  method?: string;
+  giftCode?: string;
+  giftStatus?: string;
+  deltaCents?: number;
+  drawerId?: string;
+};
+
+export type PendingApproval = {
+  id: string;
+  at: number;
+  kind: ApprovalGateKind;
+  status: PendingApprovalStatus;
+  requesterId: string;
+  requesterName: string;
+  orderId?: string;
+  orderNumber?: number;
+  lineId?: string;
+  ticketId?: string;
+  amountCents: number;
+  reason: string;
+  lineWasSent?: boolean;
+  ticketFired?: boolean;
+  payload: PendingApprovalPayload;
+  approverId?: string;
+  approverName?: string;
+  resolvedAt?: number;
+  channel?: "floor" | "remote" | "break_glass";
+  notify?: string[];
+};
+
 export type LossPreventionConfig = {
   pinLockoutAttempts: number;
   managerSessionMinutes: number;
@@ -29,6 +97,15 @@ export type LossPreventionConfig = {
   giftLoadRequiresTender: boolean;
   outlierMultiplier: number;
   minSalesCentsForOutlier: number;
+  /** Roles that may approve void/comp/discount/no-sale (and other gates if granted) with a $ cap. */
+  shiftLeadGrants: ShiftLeadGrant[];
+  pendingApproval: boolean;
+  pendingRejectPolicy: PendingRejectPolicy;
+  remoteApprove: boolean;
+  onCallList: OnCallContact[];
+  breakGlass: boolean;
+  /** Void/comp before send under this amount skips the gate. */
+  voidCompBeforeSendCents: number;
 };
 
 export const VOID_REASONS = [
@@ -87,6 +164,13 @@ export const GIFT_ADJUST_REASONS = [
   "Manager approved",
 ] as const;
 
+export const BREAK_GLASS_REASONS = [
+  "Manager unreachable",
+  "Guest waiting",
+  "Quality / safety",
+  "Other (logged)",
+] as const;
+
 export const GATED_AUDIT_ACTIONS = [
   "void",
   "comp",
@@ -102,6 +186,8 @@ export const GATED_AUDIT_ACTIONS = [
   "manager_override",
   "pin_lockout",
   "over_short",
+  "approval_pending",
+  "break_glass",
 ] as const;
 
 export type GatedAuditAction = (typeof GATED_AUDIT_ACTIONS)[number];
@@ -122,6 +208,19 @@ export const DEFAULT_DISCOUNT_CAPS: Record<EmployeeRole, DiscountCap> = {
   kiosk: { maxPercent: 0, maxCents: 0 },
 };
 
+export const SHIFT_LEAD_ROLES: EmployeeRole[] = [
+  "bartender",
+  "host",
+  "cashier",
+  "server",
+  "vendor_operator",
+];
+
+export const DEFAULT_SHIFT_LEAD_GRANTS: ShiftLeadGrant[] = [
+  { role: "bartender", gates: [...DEFAULT_SHIFT_LEAD_GATES], maxCents: 2500 },
+  { role: "host", gates: [...DEFAULT_SHIFT_LEAD_GATES], maxCents: 1500 },
+];
+
 export const DEFAULT_LOSS_PREVENTION: LossPreventionConfig = {
   pinLockoutAttempts: 5,
   managerSessionMinutes: 5,
@@ -135,6 +234,13 @@ export const DEFAULT_LOSS_PREVENTION: LossPreventionConfig = {
   giftLoadRequiresTender: true,
   outlierMultiplier: 3,
   minSalesCentsForOutlier: 10000,
+  shiftLeadGrants: DEFAULT_SHIFT_LEAD_GRANTS.map((g) => ({ ...g, gates: [...g.gates] })),
+  pendingApproval: true,
+  pendingRejectPolicy: "leave",
+  remoteApprove: true,
+  onCallList: [],
+  breakGlass: false,
+  voidCompBeforeSendCents: 500,
 };
 
 function asGate(raw: unknown, fallback: GateMode): GateMode {
@@ -150,9 +256,57 @@ function asCap(raw: unknown, fallback: DiscountCap): DiscountCap {
   };
 }
 
+function asGateKind(raw: unknown): ApprovalGateKind | null {
+  const s = String(raw ?? "");
+  return (APPROVAL_GATES as readonly string[]).includes(s) ? (s as ApprovalGateKind) : null;
+}
+
+function parseShiftLeadGrants(raw: unknown): ShiftLeadGrant[] {
+  if (!Array.isArray(raw)) {
+    return DEFAULT_SHIFT_LEAD_GRANTS.map((g) => ({ ...g, gates: [...g.gates] }));
+  }
+  const out: ShiftLeadGrant[] = [];
+  for (const row of raw.slice(0, 12)) {
+    if (!row || typeof row !== "object") continue;
+    const o = row as Record<string, unknown>;
+    const role = String(o.role ?? "") as EmployeeRole;
+    if (!SHIFT_LEAD_ROLES.includes(role)) continue;
+    const gates = Array.isArray(o.gates)
+      ? o.gates.map(asGateKind).filter((g): g is ApprovalGateKind => !!g)
+      : [...DEFAULT_SHIFT_LEAD_GATES];
+    out.push({
+      role,
+      gates: gates.length ? gates : [...DEFAULT_SHIFT_LEAD_GATES],
+      maxCents: Math.max(0, Math.round(Number(o.maxCents) || 0)),
+    });
+  }
+  return out;
+}
+
+function parseOnCall(raw: unknown): OnCallContact[] {
+  if (!Array.isArray(raw)) return [];
+  const out: OnCallContact[] = [];
+  for (const row of raw.slice(0, 12)) {
+    if (!row || typeof row !== "object") continue;
+    const o = row as Record<string, unknown>;
+    const employeeId = String(o.employeeId ?? "").trim();
+    const phone = String(o.phone ?? "").replace(/[^\d+]/g, "").slice(0, 20);
+    if (!employeeId) continue;
+    out.push({ employeeId: employeeId.slice(0, 40), phone });
+  }
+  return out;
+}
+
 export function parseLossPrevention(raw: unknown): LossPreventionConfig {
   const base = DEFAULT_LOSS_PREVENTION;
-  if (!raw || typeof raw !== "object") return { ...base, discountCaps: { ...DEFAULT_DISCOUNT_CAPS } };
+  if (!raw || typeof raw !== "object") {
+    return {
+      ...base,
+      discountCaps: { ...DEFAULT_DISCOUNT_CAPS },
+      shiftLeadGrants: DEFAULT_SHIFT_LEAD_GRANTS.map((g) => ({ ...g, gates: [...g.gates] })),
+      onCallList: [],
+    };
+  }
   const o = raw as Record<string, unknown>;
   const caps: Partial<Record<EmployeeRole, DiscountCap>> = { ...DEFAULT_DISCOUNT_CAPS };
   if (o.discountCaps && typeof o.discountCaps === "object") {
@@ -175,6 +329,13 @@ export function parseLossPrevention(raw: unknown): LossPreventionConfig {
     giftLoadRequiresTender: o.giftLoadRequiresTender !== false,
     outlierMultiplier: Math.min(10, Math.max(1.5, Number(o.outlierMultiplier) || base.outlierMultiplier)),
     minSalesCentsForOutlier: Math.max(0, Math.round(Number(o.minSalesCentsForOutlier) || base.minSalesCentsForOutlier)),
+    shiftLeadGrants: parseShiftLeadGrants(o.shiftLeadGrants),
+    pendingApproval: o.pendingApproval !== false,
+    pendingRejectPolicy: o.pendingRejectPolicy === "auto_void" ? "auto_void" : "leave",
+    remoteApprove: o.remoteApprove !== false,
+    onCallList: parseOnCall(o.onCallList),
+    breakGlass: Boolean(o.breakGlass),
+    voidCompBeforeSendCents: Math.max(0, Math.round(Number(o.voidCompBeforeSendCents) || 0)),
   };
 }
 
@@ -194,11 +355,64 @@ export function voidNeedsManager(
   line: OrderLine | undefined,
   tickets: KitchenTicket[],
   cfg: LossPreventionConfig,
+  amountCents = 0,
 ): boolean {
   if (!line) return true;
   if (lineIsOnBumpedTicket(line.id, tickets)) return cfg.voidAfterBump === "manager";
   if (line.sent) return cfg.voidAfterSend === "manager";
-  return false;
+  return amountCents > cfg.voidCompBeforeSendCents;
+}
+
+export function isManagerRole(role: EmployeeRole | string | null | undefined): boolean {
+  return role === "owner" || role === "manager" || role === "manager_pin";
+}
+
+export function grantForRole(role: EmployeeRole | undefined, cfg: LossPreventionConfig): ShiftLeadGrant | null {
+  if (!role) return null;
+  return cfg.shiftLeadGrants.find((g) => g.role === role) ?? null;
+}
+
+export function canRoleApproveGate(
+  role: EmployeeRole | string | null | undefined,
+  kind: ApprovalGateKind,
+  amountCents: number,
+  cfg: LossPreventionConfig,
+): boolean {
+  if (isManagerRole(role)) return true;
+  const grant = grantForRole(role as EmployeeRole, cfg);
+  if (!grant) return false;
+  if (!grant.gates.includes(kind)) return false;
+  if (grant.maxCents > 0 && amountCents > grant.maxCents) return false;
+  return true;
+}
+
+export function underVoidCompThreshold(
+  sent: boolean,
+  amountCents: number,
+  cfg: LossPreventionConfig,
+): boolean {
+  return !sent && amountCents <= cfg.voidCompBeforeSendCents;
+}
+
+export function reasonsForGate(kind: ApprovalGateKind): readonly string[] {
+  switch (kind) {
+    case "void":
+      return VOID_REASONS;
+    case "comp":
+      return COMP_REASONS;
+    case "discount":
+      return DISCOUNT_REASONS;
+    case "no_sale":
+      return NO_SALE_REASONS;
+    case "reopen":
+      return REOPEN_REASONS;
+    case "tender_swap":
+      return TENDER_SWAP_REASONS;
+    case "gift_adjust":
+      return GIFT_ADJUST_REASONS;
+    default:
+      return VOID_REASONS;
+  }
 }
 
 export function discountNeedsManager(order: Order, cfg: LossPreventionConfig): boolean {
