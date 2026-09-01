@@ -179,7 +179,8 @@ export function runDemoStepAction(action: DemoStep["action"]): void {
     case "accept_labor_rec":
     case "dismiss_labor_rec": {
       const pack = buildShiftRecommendations({});
-      const labor = pack.recs.find((r) => r.type === "labor_high") ?? pack.recs[0];
+      const labor =
+        pack.recs.find((r) => r.type === "recommend_cut" || r.type === "labor_high") ?? pack.recs[0];
       if (labor) {
         recordDecision({
           locationId: usePosStore.getState().tenantLocationId || "demo",

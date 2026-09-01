@@ -6,6 +6,19 @@ import type { GuideUpdate } from "@/lib/guide/types";
  */
 export const WHATS_NEW_ENTRIES: GuideUpdate[] = [
   {
+    id: "upd_2026_10_18_staffing_recs",
+    date: "2026-10-18",
+    title: "Realtime staffing cut / hold / add",
+    summary:
+      "Live recommendations from sales velocity, ODS, waitlist, and labor. Accept is not a clock-out — notify them to close out.",
+    body: "Labor → Rules: on/off, min headcount, labor % target and high alert, sales-per-labor-hour floor, idle minutes, no-cut open/close padding and rush lock, lookahead from reservations and waitlist. Optional add-staff recs when queue/wait exceeds thresholds. Manager, host, and expo can be notified. Recommendations only — the manager decides. Never auto clock-out.",
+    roles: ["owner_manager", "host_operator", "vendor_operator", "server", "kitchen_bar"],
+    surfaces: ["floor", "settings"],
+    audience: "all",
+    topicId: "staffing-recs",
+    tags: ["staffing", "labor", "cut", "add"],
+  },
+  {
     id: "upd_2026_10_17_tip_pooling",
     date: "2026-10-17",
     title: "Tip pooling: individual, tip-out, FOH / bar / team / dual",

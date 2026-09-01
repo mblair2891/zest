@@ -8,6 +8,7 @@ import {
   type CcTipPayoutSetting,
 } from "@/lib/pos/cash-handling";
 import { parseTipPoolingSetting, type TipPoolingSetting } from "@/lib/pos/tip-pooling";
+import { parseStaffingRecs, type StaffingRecsConfig } from "@/lib/ops-ai/staffing";
 
 export type ClockWindowAction = "block" | "flag";
 export type ApprovalMode = "manual" | "auto_shift_end" | "auto_last_ticket";
@@ -61,6 +62,7 @@ export type EntityLaborRules = {
   ccTipPayout: CcTipPayoutSetting;
   /** inherit = use location cash-handling tipPooling */
   tipPooling: TipPoolingSetting;
+  staffingRecs: StaffingRecsConfig;
 };
 
 export const DEFAULT_LABOR_RULES: EntityLaborRules = {
@@ -104,6 +106,7 @@ export const DEFAULT_LABOR_RULES: EntityLaborRules = {
   clockOutRedFlagMinutes: 20,
   ccTipPayout: "inherit",
   tipPooling: "inherit",
+  staffingRecs: parseStaffingRecs(undefined),
 };
 
 function int(raw: unknown, fallback: number, min = 0, max = 10_080): number {
@@ -201,6 +204,7 @@ export function parseLaborRules(raw: unknown): EntityLaborRules {
     clockOutRedFlagMinutes: approvalWindowMinutes,
     ccTipPayout: parseCcTipPayoutSetting(o.ccTipPayout),
     tipPooling: parseTipPoolingSetting(o.tipPooling),
+    staffingRecs: parseStaffingRecs(o.staffingRecs),
   };
 }
 

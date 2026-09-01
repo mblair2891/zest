@@ -1,9 +1,12 @@
 import { usePosStore } from "@/lib/pos/store";
+import { useOpsStore } from "@/lib/pos/ops-store";
+import { parseLaborRules } from "@/lib/labor/rules";
 import { metricsFromPosStore } from "@/lib/reports/from-store";
 import { HOST_SCOPE } from "@/lib/access/entity-grants";
 import { isProspectDemo } from "@/lib/demo/session";
 import { daypartOf, typeWeight, useOpsLearnStore } from "./learn-store";
 import type { OpsFeatureSnapshot, OpsRecommendation, OpsRecType } from "./types";
+import { buildStaffingSnapshot, decideStaffing } from "./staffing";
 
 export function captureOpsFeatures(): OpsFeatureSnapshot {
   const s = usePosStore.getState();
@@ -13,6 +16,7 @@ export function captureOpsFeatures(): OpsFeatureSnapshot {
   const idleTables = s.tables.filter((t) => t.status === "available").length;
   const laborPct =
     sales > 0 ? Math.round(((clocked.length * 1800) / Math.max(sales, 1)) * 10000) / 100 : clocked.length > 2 ? 80 : null;
+  const staffing = captureStaffingSnap();
   return {
     daypart: daypartOf(),
     laborHeadcount: clocked.length,
@@ -23,7 +27,14 @@ export function captureOpsFeatures(): OpsFeatureSnapshot {
     waitlistWaiting: s.waitlist.filter((w) => w.status === "waiting" || w.status === "notified").length,
     idleTables,
     openChecks: s.orders.filter((o) => o.status === "open").length,
-    laborPct,
+    laborPct: staffing?.laborPct ?? laborPct,
+    salesLast30mCents: staffing?.salesLast30mCents,
+    baseline30mCents: staffing?.baseline30mCents,
+    idleMinutes: staffing?.idleMinutes,
+    odsOpen: staffing?.odsOpen,
+    waitlistQuotedAvg: staffing?.waitlistQuotedAvg,
+    reservationsSoon: staffing?.reservationsSoon,
+    splhCents: staffing?.splhCents,
   };
 }
 
@@ -37,7 +48,7 @@ function rec(
   extra?: Partial<OpsRecommendation>,
 ): OpsRecommendation {
   return {
-    id: `orec_${type}`,
+    id: extra?.targetRole ? `orec_${type}_${extra.targetRole}` : `orec_${type}`,
     type,
     area,
     severity,
@@ -48,7 +59,83 @@ function rec(
     operatorId: extra?.operatorId,
     basedOnPastDecisions: extra?.basedOnPastDecisions,
     dismissedBefore: extra?.dismissedBefore,
+    staffingKind: extra?.staffingKind,
+    targetRole: extra?.targetRole,
+    reasons: extra?.reasons,
+    candidateEmployeeIds: extra?.candidateEmployeeIds,
   };
+}
+
+function captureStaffingSnap() {
+  const s = usePosStore.getState();
+  const ops = useOpsStore.getState();
+  const cfg = parseLaborRules(ops.labor).staffingRecs;
+  if (!cfg.enabled) return null;
+  const sales = s.shift.cashSalesCents + s.shift.cardSalesCents + s.shift.giftSalesCents;
+  return buildStaffingSnapshot({
+    cfg,
+    employees: s.employees,
+    punches: ops.punches,
+    orders: s.orders,
+    tables: s.tables,
+    tickets: s.tickets,
+    waitlist: s.waitlist,
+    reservations: s.reservations,
+    lastTicketByEmployee: ops.lastTicketByEmployee,
+    shiftSalesCents: sales,
+    shiftOpenedAt: s.shift.openedAt,
+  });
+}
+
+function buildStaffingOpsRecs(
+  features: OpsFeatureSnapshot,
+  scopedEvents: ReturnType<typeof useOpsLearnStore.getState>["events"],
+  op: string | null,
+  demo: boolean,
+): OpsRecommendation[] {
+  const snap = captureStaffingSnap();
+  const cfg = parseLaborRules(useOpsStore.getState().labor).staffingRecs;
+  if (!cfg.enabled) return [];
+  if (!snap) return [];
+  const decisions = decideStaffing(cfg, snap);
+  if (!decisions.length && demo && features.laborHeadcount >= 3 && !snap.inNoCut.locked) {
+    decisions.push({
+      kind: "recommend_cut",
+      role: "server",
+      reasons: ["Demo: several people on the clock vs light floor activity"],
+      severity: "watch",
+      message: "Cut one server — labor looks heavy for current sales.",
+      suggestedAction:
+        "Accept notifies them to close out when ready. It does not clock anyone out. Manager decides.",
+    });
+  }
+  const out: OpsRecommendation[] = [];
+  for (const d of decisions) {
+    const recType: OpsRecType =
+      d.kind === "recommend_cut" ? "recommend_cut" : d.kind === "recommend_add" ? "recommend_add" : "recommend_hold";
+    const w = typeWeight(scopedEvents, recType, features, op);
+    const legacy = typeWeight(scopedEvents, d.kind === "recommend_cut" ? "labor_high" : "labor_low", features, op);
+    const weight = Math.max(w.weight, legacy.weight);
+    const conf = (d.severity === "urgent" ? 0.78 : d.severity === "watch" ? 0.64 : 0.5) * weight;
+    if (conf < 0.25 && !demo) continue;
+    const candidates = snap.clocked
+      .filter((c) => c.role === d.role)
+      .sort((a, b) => b.idleMinutes - a.idleMinutes)
+      .map((c) => c.id);
+    out.push(
+      rec(recType, "Staffing", d.severity, d.message, d.suggestedAction, conf, {
+        applyView: "labor",
+        operatorId: op,
+        basedOnPastDecisions: w.accepts + legacy.accepts > 0,
+        dismissedBefore: w.dismisses + legacy.dismisses >= 2,
+        staffingKind: d.kind,
+        targetRole: d.role,
+        reasons: d.reasons,
+        candidateEmployeeIds: candidates,
+      }),
+    );
+  }
+  return out;
 }
 
 export function buildShiftRecommendations(opts?: {
@@ -63,50 +150,7 @@ export function buildShiftRecommendations(opts?: {
   const demo = isProspectDemo();
   const out: OpsRecommendation[] = [];
 
-  const laborHigh =
-    (features.laborPct != null && features.laborPct >= 35 && features.laborHeadcount >= 3) ||
-    (features.salesCents < 8000 && features.laborHeadcount >= 4) ||
-    (demo && features.laborHeadcount >= 3);
-
-  if (laborHigh) {
-    const w = typeWeight(scopedEvents, "labor_high", features, op);
-    const conf = 0.62 * w.weight;
-    if (conf >= 0.28) {
-      out.push(
-        rec(
-          "labor_high",
-          "Labor vs sales",
-          "watch",
-          features.laborPct
-            ? `Labor proxy ${features.laborPct.toFixed(0)}% vs sales with ${features.laborHeadcount} clocked in.`
-            : `${features.laborHeadcount} people on the clock vs light sales.`,
-          "Consider cutting one server — confirm on the time clock. AI will not clock anyone out.",
-          conf,
-          {
-            applyView: "labor",
-            operatorId: op,
-            basedOnPastDecisions: w.accepts > 0,
-            dismissedBefore: w.dismisses >= 2,
-          },
-        ),
-      );
-    }
-  }
-
-  if (features.salesCents > 40000 && features.serverCount <= 1 && features.waitlistWaiting >= 4) {
-    const w = typeWeight(scopedEvents, "labor_low", features, op);
-    out.push(
-      rec(
-        "labor_low",
-        "Labor vs sales",
-        "urgent",
-        "Sales and waitlist are up with a thin floor.",
-        "Call a server or hold seating. Confirm before changing the roster.",
-        0.7 * w.weight,
-        { applyView: "schedule", basedOnPastDecisions: w.accepts > 0, dismissedBefore: w.dismisses >= 2 },
-      ),
-    );
-  }
+  out.push(...buildStaffingOpsRecs(features, scopedEvents, op, demo));
 
   if (features.kitchenAvgSec >= 480 || (demo && features.kitchenAvgSec >= 0 && features.laborHeadcount >= 1)) {
     if (features.kitchenAvgSec >= 360 || features.kitchenCount >= 1) {

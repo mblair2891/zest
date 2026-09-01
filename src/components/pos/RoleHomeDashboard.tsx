@@ -186,6 +186,7 @@ export function RoleHomeDashboard() {
 
         {role === "host" && (
           <>
+            <AiOpsCard />
             <div className="grid grid-cols-2 gap-3 lg:grid-cols-3">
               <Stat label="Waiting" value={String(waiting.length)} />
               <Stat label="Open tables" value={String(tables.filter((t) => t.status === "available").length)} />

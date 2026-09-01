@@ -72,6 +72,7 @@ import { DeviceModeView, applySessionModeView } from "./DeviceModeView";
 import { LifecycleWatcher } from "./LifecycleWatcher";
 import { AiReportWatcher } from "./AiReportWatcher";
 import { PayrollExportWatcher } from "./PayrollExportWatcher";
+import { StaffingWatcher } from "./StaffingWatcher";
 import { useStationSessionStore } from "@/lib/pos/station-session";
 import { canChangeDevice, stationKindLabel, stationsAllowedForEmployee } from "@/lib/pos/station-access";
 import { readStationDeviceRole } from "@/lib/pos/device-roles";
@@ -448,6 +449,7 @@ export function AppShell() {
       <LifecycleWatcher />
       <AiReportWatcher />
       <PayrollExportWatcher />
+      <StaffingWatcher />
       <TrainingBanner />
       <BackOfficeUnlock
         open={unlockOpen}

@@ -12,7 +12,9 @@ export type PosNoticeKind =
   | "ticket_ready"
   | "ticket_started"
   | "ticket_sent"
-  | "table_needs_bus";
+  | "table_needs_bus"
+  | "staffing_rec"
+  | "staffing_closeout";
 
 export interface PosNotice {
   id: string;
@@ -43,6 +45,8 @@ interface NotifyState {
     title: string;
     body: string;
     tableLabel?: string;
+    serverId?: string;
+    serverName?: string;
   }) => PosNotice;
   markRead: (id: string) => void;
   markAllRead: () => void;
@@ -76,6 +80,12 @@ export function noticeVisibleTo(
   if (n.serverName && emp.name === n.serverName) return true;
   if (n.kind === "ticket_ready" || n.kind === "ticket_started" || n.kind === "ticket_sent") {
     return role === "server" || role === "busser" || role === "cashier";
+  }
+  if (n.kind === "staffing_rec") {
+    return role === "kitchen";
+  }
+  if (n.kind === "staffing_closeout") {
+    return false;
   }
   if (n.kind === "guest_checked_in" || n.kind === "waitlist_update") {
     return role === "server" || role === "cashier";
@@ -176,6 +186,8 @@ export const useNotifyStore = create<NotifyState>()(
           createdAt: Date.now(),
           read: false,
           tableLabel: input.tableLabel,
+          serverId: input.serverId,
+          serverName: input.serverName,
         };
         set({
           notices: [notice, ...get().notices].slice(0, MAX_NOTICES),

@@ -7,7 +7,10 @@ export type OpsRecType =
   | "voids_high"
   | "mix_86"
   | "cost_variance"
-  | "price_rec";
+  | "price_rec"
+  | "recommend_cut"
+  | "recommend_hold"
+  | "recommend_add";
 export type OpsDecisionAction = "accept" | "dismiss" | "snooze";
 
 export type OpsFeatureSnapshot = {
@@ -21,6 +24,13 @@ export type OpsFeatureSnapshot = {
   idleTables: number;
   openChecks: number;
   laborPct: number | null;
+  salesLast30mCents?: number;
+  baseline30mCents?: number;
+  idleMinutes?: number;
+  odsOpen?: number;
+  waitlistQuotedAvg?: number;
+  reservationsSoon?: number;
+  splhCents?: number | null;
 };
 
 export type OpsRecommendation = {
@@ -35,6 +45,10 @@ export type OpsRecommendation = {
   operatorId?: string | null;
   basedOnPastDecisions?: boolean;
   dismissedBefore?: boolean;
+  staffingKind?: "recommend_cut" | "recommend_hold" | "recommend_add";
+  targetRole?: string;
+  reasons?: string[];
+  candidateEmployeeIds?: string[];
 };
 
 export type OpsDecisionEvent = {

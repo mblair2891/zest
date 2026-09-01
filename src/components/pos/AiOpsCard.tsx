@@ -9,20 +9,30 @@ import { useOpsLearnStore } from "@/lib/ops-ai/learn-store";
 import type { OpsRecommendation } from "@/lib/ops-ai/types";
 import { toast } from "sonner";
 import type { PosView } from "@/lib/pos/types";
+import { useNotifyStore } from "@/lib/pos/notify-store";
+import { GuideLearnLink } from "@/components/guide/GuideLearnLink";
 
 export function AiOpsCard() {
   const emp = usePosStore((s) => s.employees.find((e) => e.id === s.currentEmployeeId));
   const locId = usePosStore((s) => s.tenantLocationId) || "demo";
   const setView = usePosStore((s) => s.setView);
   const events = useOpsLearnStore((s) => s.events);
+  const employees = usePosStore((s) => s.employees);
   const role = emp?.role;
   const [snoozed, setSnoozed] = useState<Record<string, number>>({});
+  const [tick, setTick] = useState(0);
+  const [notifyFor, setNotifyFor] = useState<OpsRecommendation | null>(null);
+
+  useEffect(() => {
+    const id = window.setInterval(() => setTick((n) => n + 1), 20_000);
+    return () => window.clearInterval(id);
+  }, []);
 
   const pack = useMemo(() => {
-    if (role !== "owner" && role !== "manager" && role !== "vendor_operator") return null;
+    if (role !== "owner" && role !== "manager" && role !== "vendor_operator" && role !== "host") return null;
     return buildShiftRecommendations({ operatorId: operatorScopeId() });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [role, events.length, emp?.id]);
+  }, [role, events.length, emp?.id, tick]);
 
   useEffect(() => {
     const first = pack?.recs[0];
@@ -51,9 +61,30 @@ export function AiOpsCard() {
       setSnoozed((m) => ({ ...m, [r.id]: Date.now() + 20 * 60_000 }));
       return;
     }
+    if (action === "accept" && r.staffingKind === "recommend_cut") {
+      setNotifyFor(r);
+      toast.message("Accepted — not a clock-out", {
+        description: "Notify the employee to close out when ready. You still decide.",
+      });
+      return;
+    }
     if (action === "accept" && r.applyView) {
       setView(r.applyView as PosView);
     }
+  };
+
+  const pingCloseOut = (employeeId: string) => {
+    const target = employees.find((e) => e.id === employeeId);
+    if (!target) return;
+    useNotifyStore.getState().pushNotice({
+      kind: "staffing_closeout",
+      title: "Please close out when ready",
+      body: `${emp?.name ?? "Manager"} asked you to finish tables and close out. This is not a clock-out.`,
+      serverId: target.id,
+      serverName: target.name,
+    });
+    toast.message(`Notified ${target.name} to close out`);
+    setNotifyFor(null);
   };
 
   return (
@@ -62,6 +93,9 @@ export function AiOpsCard() {
         <Sparkles className="h-4 w-4 text-primary" />
         <h3 className="text-sm font-semibold">AI ops</h3>
         <Badge variant="secondary">This shift</Badge>
+        <GuideLearnLink topicId="staffing-recs" compact>
+          Learn
+        </GuideLearnLink>
       </div>
       <ul className="space-y-3">
         {recs.map((r) => (
@@ -82,9 +116,16 @@ export function AiOpsCard() {
             </div>
             <p className="mt-1 text-sm">{r.message}</p>
             <p className="text-xs text-muted-foreground">{r.suggestedAction}</p>
+            {r.reasons && r.reasons.length > 0 && (
+              <ul className="mt-1 list-disc pl-4 text-[11px] text-muted-foreground">
+                {r.reasons.slice(0, 4).map((x) => (
+                  <li key={x}>{x}</li>
+                ))}
+              </ul>
+            )}
             <div className="mt-2 flex flex-wrap gap-1">
               <Button size="sm" data-demo="ai-accept" onClick={() => act(r, "accept")}>
-                Accept
+                {r.staffingKind === "recommend_cut" ? "Accept (notify to close out)" : "Accept"}
               </Button>
               <Button size="sm" variant="outline" data-demo="ai-dismiss" onClick={() => act(r, "dismiss")}>
                 Dismiss
@@ -96,6 +137,37 @@ export function AiOpsCard() {
           </li>
         ))}
       </ul>
+      {notifyFor && (
+        <div className="mt-3 rounded-xl border border-border bg-bg p-3">
+          <p className="text-xs font-medium">Notify to close out — not a clock-out</p>
+          <p className="mt-1 text-[11px] text-muted-foreground">
+            They still close their own checks and punch out. Recommendations only.
+          </p>
+          <ul className="mt-2 space-y-1">
+            {employees
+              .filter(
+                (e) =>
+                  e.active &&
+                  e.clockedIn &&
+                  (notifyFor.candidateEmployeeIds?.includes(e.id) || e.role === notifyFor.targetRole),
+              )
+              .map((e) => (
+                <li key={e.id} className="flex items-center justify-between gap-2 text-sm">
+                  <span>
+                    {e.name}
+                    <span className="text-xs text-muted-foreground"> · {e.role}</span>
+                  </span>
+                  <Button size="sm" variant="outline" onClick={() => pingCloseOut(e.id)}>
+                    Notify
+                  </Button>
+                </li>
+              ))}
+          </ul>
+          <Button size="sm" variant="ghost" className="mt-2" onClick={() => setNotifyFor(null)}>
+            Skip
+          </Button>
+        </div>
+      )}
     </div>
   );
 }

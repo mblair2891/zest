@@ -313,8 +313,8 @@ export const ROLE_GUIDE_TOPICS: GuideTopic[] = [
         "A labor tip you always dismiss should get quieter. One you accept on busy dinners should rank higher next time — at this location, not across tenants.",
       ),
       ul(
-        "Live AI ops card on owner/manager (and vendor) Home: labor vs sales, slow tickets, waitlist vs idle tables.",
-        "Accept records the decision and may open Schedule or Labor so you confirm. It never clocks anyone out.",
+        "Live AI ops card on owner/manager/host (and vendor) Home: staffing cut/hold/add, slow tickets, waitlist vs idle tables.",
+        "Accept records the decision. A cut rec offers Notify employee to close out — it never clocks anyone out.",
         "Dismiss downranks that type in similar dayparts. Snooze hides it for 20 minutes.",
         "Reports → AI insights shows “Based on your past decisions” when a pattern exists.",
         "Learning stays on this location. Tenants never share decisions.",
@@ -325,7 +325,35 @@ export const ROLE_GUIDE_TOPICS: GuideTopic[] = [
         "Dismiss it twice — confidence drops and the card notes you’ve dismissed this kind of tip.",
         "Accept it — later runs say Based on your past decisions and rank it higher.",
       ),
-      related("voice-control", "location-settings", "roles-dashboards", "ai-insights"),
+      related("voice-control", "location-settings", "roles-dashboards", "ai-insights", "staffing-recs"),
+    ],
+  }),
+  topic({
+    id: "staffing-recs",
+    chapterId: "roles",
+    title: "Realtime staffing cut / hold / add",
+    summary:
+      "Recommendations only. Manager decides. Never auto clock-out. Optional notify to close out.",
+    roles: ["owner_manager", "host_operator", "vendor_operator", "server", "kitchen_bar"],
+    keywords: ["staffing", "cut", "hold", "add", "labor", "idle", "waitlist", "ODS"],
+    openView: "labor",
+    blocks: [
+      why(
+        "The floor needs a live read of labor vs demand — not a bot that punches people out. Summex recommends cut, hold, or add. You decide.",
+      ),
+      p(
+        "Labor → Rules: staffing recs on/off, min headcount per role, labor % target and high alert, sales-per-labor-hour floor, idle minutes with no tables or tickets before a cut, no-cut windows (open/close padding plus optional rush lock by daypart), lookahead from reservations, waitlist, and typical turn. Notify manager, host, and/or expo. Optional ADD recs when waitlist, quoted wait, or ODS depth exceeds thresholds.",
+      ),
+      p(
+        "The engine watches sales velocity vs the same daypart baseline, open tables, ODS depth and times, waitlist, reservations, clocked-in roles, and a labor $ proxy (hours × house hourly rate — not a payroll run). It emits recommend_cut, recommend_hold, or recommend_add with reasons.",
+      ),
+      p(
+        "Accept and dismiss are stored so later recs can weight your house. Accept is not a clock-out. On a cut rec, Notify employee to close out pings them to finish tables and close out when ready.",
+      ),
+      warn(
+        "Recommendations only. The manager decides. Summex never auto clock-out.",
+      ),
+      related("ai-ops-learning", "shift-allowables", "roles-dashboards"),
     ],
   }),
 ];

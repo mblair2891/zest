@@ -74,6 +74,7 @@ const MATRIX: { domain: string; items: string[] }[] = [
       "Auto-approve vs supervisor review",
       "Daily closeout time",
       "Hours export to ADP / Intuit / CSV (Summex is not a payroll processor)",
+      "Realtime staffing cut/hold/add recs (never auto clock-out)",
       "Server/bartender end-of-shift closeout (not clock-out)",
       "Blind cash count + mix-based tip-out recommendations",
       "Card tips cash-at-close vs hours-export (paycheck)",

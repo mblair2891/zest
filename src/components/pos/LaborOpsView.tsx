@@ -36,6 +36,7 @@ import {
 } from "@/lib/pos/cash-handling";
 import { DEFAULT_TIP_POOLING } from "@/lib/pos/tip-pooling";
 import { TipPoolingSettings } from "./TipPoolingSettings";
+import { StaffingRecsSettings } from "./StaffingRecsSettings";
 import { useCashSessionStore } from "@/lib/pos/cash-session";
 import { hasCompletedCloseoutToday } from "@/lib/pos/closeout-store";
 
@@ -438,6 +439,11 @@ export function LaborOpsView() {
               <Settings2 className="h-4 w-4" />
               Labor rules (location settings)
             </div>
+            <StaffingRecsSettings
+              cfg={rules.staffingRecs}
+              write
+              onChange={(staffingRecs) => updateLabor({ staffingRecs })}
+            />
             <p className="text-xs font-semibold">Clock windows (this employer)</p>
             <Field
               label="Clock-in early (minutes)"
