@@ -11,7 +11,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { usePosStore } from "@/lib/pos/store";
-import { formatCurrency } from "@/lib/utils";
+import { formatCurrency, formatDateTime } from "@/lib/utils";
 import { canEmployee } from "@/lib/access/permissions";
 import { HOST_SCOPE, canViewPayroll, canViewSalesReports } from "@/lib/access/entity-grants";
 import { useSaasStore } from "@/lib/pos/saas-store";
@@ -1199,14 +1199,19 @@ function LpExceptionsSlice({ range }: { range: RangeKey }) {
     <div className="space-y-3">
       <p className="text-xs text-muted-foreground">
         Employee vs house and vs the same weekday. A flag means the rate is at least{" "}
-        {cfg.outlierMultiplier}× the house rate (or a repeat reopen / gift adjust). Queued for
-        manager review — not an accusation.
+        {cfg.outlierMultiplier}× the house rate (or a repeat reopen / gift adjust / late-window
+        comp then cash close). Queued for manager review — not an accusation.
       </p>
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         <Card label="Flagged" value={String(flagged.length)} sub={`${period} vs house`} />
         <Card label="Voids $" value={formatCurrency(rows.filter((r) => r.metric === "voids").reduce((s, r) => s + r.employeeAmountCents, 0))} />
         <Card label="No-sales" value={String(rows.filter((r) => r.metric === "no_sales").reduce((s, r) => s + r.employeeCount, 0))} />
         <Card label="Reopens" value={String(rows.filter((r) => r.metric === "reopens").reduce((s, r) => s + r.employeeCount, 0))} />
+        <Card
+          label="Late comp + cash"
+          value={String(rows.filter((r) => r.metric === "late_comp_cash").length)}
+          sub="Long-open then cash"
+        />
       </div>
       {costEx.length > 0 && (
         <p className="text-xs text-muted-foreground">
@@ -1222,6 +1227,7 @@ function LpExceptionsSlice({ range }: { range: RangeKey }) {
             <span>
               {r.employeeName}
               <span className="text-muted-foreground"> · {r.label}</span>
+              {r.orderNumber != null ? <span className="text-muted-foreground"> · #{r.orderNumber}</span> : null}
               {r.flagged && (
                 <Badge variant="warn" className="ml-2">
                   Review
@@ -1229,10 +1235,24 @@ function LpExceptionsSlice({ range }: { range: RangeKey }) {
               )}
             </span>
             <span className="tabular text-xs">
-              {r.employeeAmountCents ? formatCurrency(r.employeeAmountCents) : `${r.employeeCount}×`}
-              {r.employeePct != null ? ` · emp ${formatPct(r.employeePct)}` : ""}
-              {r.housePct != null ? ` · house ${formatPct(r.housePct)}` : ""}
-              {r.weekdayPct != null ? ` · weekday ${formatPct(r.weekdayPct)}` : ""}
+              {r.metric === "late_comp_cash" ? (
+                <>
+                  {r.openAt ? `open ${formatDateTime(r.openAt)}` : ""}
+                  {r.closeAt ? ` · close ${formatDateTime(r.closeAt)}` : ""}
+                  {r.dwellMinutes != null ? ` · dwell ${r.dwellMinutes}m` : ""}
+                  {r.employeeAmountCents ? ` · comp ${formatCurrency(r.employeeAmountCents)}` : ""}
+                  {r.approverName ? ` · ${r.approverName}` : ""}
+                  {r.tender ? ` · ${r.tender}` : ""}
+                  {r.secondsCompToClose != null ? ` · ${r.secondsCompToClose}s comp→close` : ""}
+                </>
+              ) : (
+                <>
+                  {r.employeeAmountCents ? formatCurrency(r.employeeAmountCents) : `${r.employeeCount}×`}
+                  {r.employeePct != null ? ` · emp ${formatPct(r.employeePct)}` : ""}
+                  {r.housePct != null ? ` · house ${formatPct(r.housePct)}` : ""}
+                  {r.weekdayPct != null ? ` · weekday ${formatPct(r.weekdayPct)}` : ""}
+                </>
+              )}
               {r.flagged && !ack.includes(r.id) && (
                 <Button size="sm" variant="ghost" className="ml-2 h-7" onClick={() => acknowledge(r.id)}>
                   Noted

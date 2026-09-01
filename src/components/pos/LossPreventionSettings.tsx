@@ -222,6 +222,74 @@ export function LossPreventionSettings({ write }: { write: boolean }) {
         />
         Break-glass — clocked-in PIN + reason; always alerts and flags
       </label>
+      <p className="text-sm font-medium">Late-window comp + cash close</p>
+      <p className="text-xs text-muted-foreground">
+        Flags a check that sat open, took a large manager/shift-lead comp, then closed cash right
+        after. Queued for review — not an accusation. Cash close is not blocked unless you turn that
+        on.
+      </p>
+      <div className="grid gap-3 sm:grid-cols-2">
+        <Num
+          label="Open longer than (minutes)"
+          value={cfg.lateCompOpenMinutes}
+          min={30}
+          max={1440}
+          disabled={!write}
+          onChange={(n) => patch({ lateCompOpenMinutes: n })}
+        />
+        <Num
+          label="Comp at or over $"
+          value={cfg.lateCompAmountCents / 100}
+          min={0}
+          max={500}
+          disabled={!write}
+          onChange={(n) => patch({ lateCompAmountCents: Math.round(n * 100) })}
+        />
+        <Num
+          label="Or comp % of check"
+          value={cfg.lateCompPercent}
+          min={0}
+          max={100}
+          disabled={!write}
+          onChange={(n) => patch({ lateCompPercent: n })}
+        />
+        <Num
+          label="Cash close within (minutes)"
+          value={cfg.lateCompCashCloseMinutes}
+          min={1}
+          max={60}
+          disabled={!write}
+          onChange={(n) => patch({ lateCompCashCloseMinutes: n })}
+        />
+        <Num
+          label="Stale last-send (hours)"
+          value={cfg.lateCompStaleSendHours}
+          min={1}
+          max={24}
+          disabled={!write}
+          onChange={(n) => patch({ lateCompStaleSendHours: n })}
+        />
+      </div>
+      <label className="flex items-center gap-2 text-sm">
+        <input
+          type="checkbox"
+          className="h-4 w-4 rounded border-border"
+          checked={cfg.lateCompDualControl}
+          disabled={!write}
+          onChange={(e) => patch({ lateCompDualControl: e.target.checked })}
+        />
+        Dual-control: late-window comps need a shift lead or pending/remote — stand manager PIN is not enough
+      </label>
+      <label className="flex items-center gap-2 text-sm">
+        <input
+          type="checkbox"
+          className="h-4 w-4 rounded border-border"
+          checked={cfg.lateCompBlockCash}
+          disabled={!write}
+          onChange={(e) => patch({ lateCompBlockCash: e.target.checked })}
+        />
+        Hard-block cash close after a late-window comp (default off — flag only)
+      </label>
       <Num
         label="Flag vs house when ≥ this × house rate"
         value={cfg.outlierMultiplier}

@@ -123,6 +123,10 @@ import {
   snapshotPayments,
   underVoidCompThreshold,
   voidNeedsManager,
+  findLateCompCashEvents,
+  isLateWindowComp,
+  stackedCompCents,
+  wouldFlagLateCompCashClose,
 } from "./loss-prevention";
 import {
   makeClaimCode,
@@ -1988,16 +1992,43 @@ const usePosStoreRaw = create()(persist((set, get) => ({
 		if (!opts?.skipGate && needsMgr && !get().canAuthorizeGate("comp", amt) && opts?.path !== "break_glass") {
 			return { ok: false, error: "Comp needs a manager, shift lead, or pending approval." };
 		}
+		if (
+			cfg.lateCompDualControl &&
+			isLateWindowComp(order, amt, cfg) &&
+			!opts?.skipGate &&
+			opts?.path !== "break_glass" &&
+			opts?.path !== "shift_lead" &&
+			get().managerAuthKind !== "shift_lead"
+		) {
+			return {
+				ok: false,
+				error: "Late-window comp on a long-open check needs a shift lead or pending/remote approval — stand manager PIN is not enough.",
+			};
+		}
 		if (!String(reason || "").trim()) return { ok: false, error: "Pick a reason" };
+		const approver = get().managerAuthEmployeeName || opts?.approval?.approverName || get().getCurrentEmployee()?.name;
+		const nextLines = order.lines.map((l) => l.id === lineId ? {
+			...l,
+			comped: true,
+			pendingAction: undefined,
+			note: reason
+		} : l);
+		const nextOrder = { ...order, lines: nextLines };
+		const stacked = stackedCompCents(nextOrder);
+		const late = isLateWindowComp(order, amt, cfg);
+		const sentAt = Math.max(0, ...order.lines.map((l) => l.firedAt || (l.sent ? l.createdAt : 0)));
+		const stale = sentAt > 0 && Date.now() - sentAt >= cfg.lateCompStaleSendHours * 3_600_000;
 		set({
 			orders: get().orders.map((o) => o.id !== order.id ? o : {
 				...o,
-				lines: o.lines.map((l) => l.id === lineId ? {
-					...l,
-					comped: true,
-					pendingAction: undefined,
-					note: reason
-				} : l)
+				lines: nextLines,
+				...(late || stale
+					? {
+						lateCompAt: Date.now(),
+						lateCompCents: stacked,
+						lateCompApprover: approver,
+					}
+					: {}),
 			}),
 			shift: {
 				...get().shift,
@@ -2311,6 +2342,16 @@ const usePosStoreRaw = create()(persist((set, get) => ({
 		}
 		let changeCents = 0;
 		if (method === "cash") {
+			const lp = lpCfg(get);
+			if (lp.lateCompBlockCash) {
+				const hit = wouldFlagLateCompCashClose(order, get().auditLog, lp, Date.now());
+				if (hit) {
+					return {
+						ok: false,
+						error: "Cash close after a late-window comp is blocked for review. Use another tender or ask a manager.",
+					};
+				}
+			}
 			const tendered = tenderedCents ?? amountCents + tipCents;
 			if (tendered < amountCents + tipCents) return {
 				ok: false,
@@ -2524,6 +2565,35 @@ const usePosStoreRaw = create()(persist((set, get) => ({
 				? `${emp.id} · ${cashSinkKind || "cash"} · ${cashDrawerId || "bank"} · ${payment.at}`
 				: method,
 		});
+		if (updated.status === "closed" && method === "cash") {
+			try {
+				const lp = lpCfg(get);
+				const evs = findLateCompCashEvents({
+					orders: [updated],
+					auditLog: get().auditLog,
+					cfg: lp,
+					from: updated.createdAt,
+					to: Date.now() + 1,
+				});
+				const ev = evs[0];
+				if (ev) {
+					get().audit("late_comp_cash", `#${ev.orderNumber} ${ev.kind.replace(/_/g, " ")}`, {
+						orderId: ev.orderId,
+						orderNumber: ev.orderNumber,
+						amountCents: ev.compCents,
+						after: `${ev.tender} · ${ev.secondsCompToClose}s · dwell ${ev.dwellMinutes}m`,
+						overrideEmployeeName: ev.approverName,
+					});
+					useNotifyStore.getState().pushNotice({
+						kind: "late_comp_cash",
+						title: "Late comp + cash close",
+						body: `#${ev.orderNumber} · ${ev.employeeName} · dwell ${ev.dwellMinutes}m · ${ev.secondsCompToClose}s to cash`,
+						serverId: ev.employeeId,
+						serverName: ev.employeeName,
+					});
+				}
+			} catch { /* */ }
+		}
 		if (method === "cash") {
 			noteCashPayment({
 				orderId: order.id,

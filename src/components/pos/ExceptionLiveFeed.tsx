@@ -53,6 +53,10 @@ export function ExceptionLiveFeed({ compact = false }: { compact?: boolean }) {
             <div key={r.id} className="flex items-center justify-between gap-2 text-xs">
               <span>
                 {r.employeeName} · {r.label}
+                {r.orderNumber != null ? ` · #${r.orderNumber}` : ""}
+                {r.dwellMinutes != null ? ` · open ${r.dwellMinutes}m` : ""}
+                {r.secondsCompToClose != null ? ` · ${r.secondsCompToClose}s to cash` : ""}
+                {r.approverName ? ` · ${r.approverName}` : ""}
                 {r.employeePct != null ? ` · ${Math.round(r.employeePct * 1000) / 10}%` : ""}
               </span>
               <Button size="sm" variant="ghost" className="h-7" onClick={() => acknowledge(r.id)}>

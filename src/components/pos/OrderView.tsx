@@ -49,6 +49,7 @@ import {
   TENDER_SWAP_REASONS,
   VOID_REASONS,
   discountNeedsManager,
+  isLateWindowComp,
   lineIsOnBumpedTicket,
   parseLossPrevention,
   voidNeedsManager,
@@ -100,6 +101,7 @@ export function OrderView() {
   const tickets = usePosStore((s) => s.tickets);
   const canAuthorizeGate = usePosStore((s) => s.canAuthorizeGate);
   const requestApproval = usePosStore((s) => s.requestApproval);
+  const managerAuthKind = usePosStore((s) => s.managerAuthKind);
   const lineUnit = (lineId: string) => {
     const line = order?.lines.find((l) => l.id === lineId);
     if (!line) return 0;
@@ -224,6 +226,12 @@ export function OrderView() {
     }
   })();
   const odsNoPay = stationRole === "ods";
+  const compAmt = mgrAction === "comp" ? lineUnit(selectedLineId ?? "") : 0;
+  const lateCompDual =
+    mgrAction === "comp" &&
+    lp.lateCompDualControl &&
+    isLateWindowComp(order, compAmt, lp) &&
+    managerAuthKind !== "shift_lead";
 
   const runMgr = (ctx?: { reason: string; path?: "manager" | "shift_lead" | "break_glass" }) => {
     const reason = ctx?.reason?.trim() || "";
@@ -801,7 +809,12 @@ export function OrderView() {
                   ? "Comp"
                   : "Manager authorization"
         }
-        description="Manager or shift-lead PIN, or request approval if no one is on the floor. Logged."
+        description={
+          lateCompDual
+            ? "This check has been open a long time. A shift lead or pending/remote approval is required — the stand manager PIN is not enough."
+            : "Manager or shift-lead PIN, or request approval if no one is on the floor. Logged."
+        }
+        skipIfAuthed={!lateCompDual}
         gate={
           mgrAction === "tender_swap"
             ? "tender_swap"

@@ -106,6 +106,20 @@ export type LossPreventionConfig = {
   breakGlass: boolean;
   /** Void/comp before send under this amount skips the gate. */
   voidCompBeforeSendCents: number;
+  /** Flag: check open longer than this (minutes) before a late-window comp. */
+  lateCompOpenMinutes: number;
+  /** Stacked manager/shift-lead comps at or above this $ trip the late-window rule. */
+  lateCompAmountCents: number;
+  /** Or comps at or above this % of the check. */
+  lateCompPercent: number;
+  /** Cash close within this many minutes after the late-window comp. */
+  lateCompCashCloseMinutes: number;
+  /** Also flag when last send was this many hours before a comp-then-cash close. */
+  lateCompStaleSendHours: number;
+  /** Late-window comps need a shift lead or pending/remote — stand manager PIN is not enough. */
+  lateCompDualControl: boolean;
+  /** When on, refuse cash close after a late-window comp. Default off: flag only. */
+  lateCompBlockCash: boolean;
 };
 
 export const VOID_REASONS = [
@@ -188,6 +202,7 @@ export const GATED_AUDIT_ACTIONS = [
   "over_short",
   "approval_pending",
   "break_glass",
+  "late_comp_cash",
 ] as const;
 
 export type GatedAuditAction = (typeof GATED_AUDIT_ACTIONS)[number];
@@ -241,6 +256,13 @@ export const DEFAULT_LOSS_PREVENTION: LossPreventionConfig = {
   onCallList: [],
   breakGlass: false,
   voidCompBeforeSendCents: 500,
+  lateCompOpenMinutes: 180,
+  lateCompAmountCents: 2500,
+  lateCompPercent: 15,
+  lateCompCashCloseMinutes: 5,
+  lateCompStaleSendHours: 2,
+  lateCompDualControl: false,
+  lateCompBlockCash: false,
 };
 
 function asGate(raw: unknown, fallback: GateMode): GateMode {
@@ -336,6 +358,13 @@ export function parseLossPrevention(raw: unknown): LossPreventionConfig {
     onCallList: parseOnCall(o.onCallList),
     breakGlass: Boolean(o.breakGlass),
     voidCompBeforeSendCents: Math.max(0, Math.round(Number(o.voidCompBeforeSendCents) || 0)),
+    lateCompOpenMinutes: Math.min(24 * 60, Math.max(30, Math.round(Number(o.lateCompOpenMinutes) || base.lateCompOpenMinutes))),
+    lateCompAmountCents: Math.max(0, Math.round(Number(o.lateCompAmountCents) || base.lateCompAmountCents)),
+    lateCompPercent: Math.min(100, Math.max(0, Number(o.lateCompPercent) || base.lateCompPercent)),
+    lateCompCashCloseMinutes: Math.min(60, Math.max(1, Math.round(Number(o.lateCompCashCloseMinutes) || base.lateCompCashCloseMinutes))),
+    lateCompStaleSendHours: Math.min(24, Math.max(1, Math.round(Number(o.lateCompStaleSendHours) || base.lateCompStaleSendHours))),
+    lateCompDualControl: Boolean(o.lateCompDualControl),
+    lateCompBlockCash: Boolean(o.lateCompBlockCash),
   };
 }
 
@@ -488,6 +517,211 @@ export function snapshotPayments(order: Order): string {
   );
 }
 
+export function lineCompCents(line: OrderLine): number {
+  if (!line.comped || line.voided) return 0;
+  return lineGrossCents({ ...line, voided: false, comped: false });
+}
+
+export function stackedCompCents(order: Order): number {
+  return order.lines.reduce((s, l) => s + lineCompCents(l), 0);
+}
+
+export function checkGrossCents(order: Order): number {
+  return order.lines
+    .filter((l) => !l.voided)
+    .reduce((s, l) => s + lineGrossCents({ ...l, voided: false, comped: false }), 0);
+}
+
+export function lastSentAt(order: Order): number | null {
+  let max = 0;
+  for (const l of order.lines) {
+    if (l.voided) continue;
+    const t = l.firedAt || (l.sent ? l.createdAt : 0);
+    if (t > max) max = t;
+  }
+  return max || null;
+}
+
+export function lastCashAt(order: Order): number | null {
+  const cash = order.payments.filter((p) => p.method === "cash");
+  if (!cash.length) return null;
+  return Math.max(...cash.map((p) => p.at));
+}
+
+export function compsOverLateThreshold(
+  stackedCents: number,
+  grossCents: number,
+  cfg: LossPreventionConfig,
+): boolean {
+  if (cfg.lateCompAmountCents > 0 && stackedCents >= cfg.lateCompAmountCents) return true;
+  if (cfg.lateCompPercent > 0 && grossCents > 0 && stackedCents / grossCents >= cfg.lateCompPercent / 100) {
+    return true;
+  }
+  return false;
+}
+
+/** Comp on a check that has been open past the late-window dwell and over $ or %. */
+export function isLateWindowComp(
+  order: Order,
+  extraCents: number,
+  cfg: LossPreventionConfig,
+  now = Date.now(),
+): boolean {
+  if (now - order.createdAt < cfg.lateCompOpenMinutes * 60_000) return false;
+  const stacked = stackedCompCents(order) + Math.max(0, extraCents);
+  return compsOverLateThreshold(stacked, checkGrossCents(order), cfg);
+}
+
+export type LateCompCashKind = "late_comp_cash" | "stale_comp_cash";
+
+export type LateCompCashEvent = {
+  id: string;
+  orderId: string;
+  orderNumber: number;
+  employeeId: string;
+  employeeName: string;
+  kind: LateCompCashKind;
+  openAt: number;
+  closeAt: number;
+  dwellMinutes: number;
+  compCents: number;
+  approverName?: string;
+  tender: string;
+  secondsCompToClose: number;
+  lastSentAt?: number | null;
+};
+
+export type CompAuditLike = {
+  at: number;
+  employeeId: string;
+  employeeName: string;
+  action: string;
+  amountCents?: number;
+  orderId?: string;
+  overrideEmployeeName?: string;
+};
+
+function lastCompAudit(orderId: string, audit: CompAuditLike[]): CompAuditLike | null {
+  const rows = audit
+    .filter((a) => a.action === "comp" && a.orderId === orderId)
+    .sort((a, b) => b.at - a.at);
+  return rows[0] ?? null;
+}
+
+function cashTenderLabel(order: Order): string {
+  const last = [...order.payments].reverse().find((p) => p.method === "cash");
+  if (!last) return "cash";
+  if (last.cashSink === "server_bank") return "cash · server bank";
+  if (last.drawerId) return `cash · drawer ${last.drawerId}`;
+  return "cash";
+}
+
+/**
+ * Closed cash checks that match late-window dwell + stacked comps + quick cash,
+ * or stale last-send + only comps then cash. Review queue — not an accusation.
+ */
+export function findLateCompCashEvents(opts: {
+  orders: Order[];
+  auditLog: CompAuditLike[];
+  cfg: LossPreventionConfig;
+  from: number;
+  to: number;
+}): LateCompCashEvent[] {
+  const cfg = opts.cfg;
+  const out: LateCompCashEvent[] = [];
+  const windowMs = cfg.lateCompCashCloseMinutes * 60_000;
+  const staleMs = cfg.lateCompStaleSendHours * 3_600_000;
+  const dwellMs = cfg.lateCompOpenMinutes * 60_000;
+
+  for (const order of opts.orders) {
+    const closeAt = order.closedAt ?? lastCashAt(order);
+    if (!closeAt || !inRange(closeAt, opts.from, opts.to)) continue;
+    const cashAt = lastCashAt(order);
+    if (!cashAt) continue;
+    const stacked = stackedCompCents(order);
+    if (stacked <= 0) continue;
+
+    const lastComp = lastCompAudit(order.id, opts.auditLog);
+    const compAt = order.lateCompAt || lastComp?.at || 0;
+    const approver =
+      order.lateCompApprover || lastComp?.overrideEmployeeName || lastComp?.employeeName;
+    const sentAt = lastSentAt(order);
+    const secondsCompToClose = compAt ? Math.max(0, Math.round((cashAt - compAt) / 1000)) : 0;
+    const dwellMinutes = Math.round((closeAt - order.createdAt) / 60_000);
+
+    const lateWindow =
+      closeAt - order.createdAt >= dwellMs &&
+      compsOverLateThreshold(stacked, checkGrossCents(order), cfg) &&
+      compAt > 0 &&
+      cashAt - compAt >= 0 &&
+      cashAt - compAt <= windowMs;
+
+    const linesAfterSend = sentAt
+      ? order.lines.some((l) => !l.voided && l.createdAt > sentAt + 1000)
+      : false;
+    const staleOnlyComp =
+      !!sentAt &&
+      cashAt - sentAt >= staleMs &&
+      !linesAfterSend &&
+      stacked > 0 &&
+      (compAt === 0 || (compAt >= sentAt && cashAt >= compAt));
+
+    if (!lateWindow && !staleOnlyComp) continue;
+
+    const kind: LateCompCashKind = lateWindow ? "late_comp_cash" : "stale_comp_cash";
+    out.push({
+      id: `latecomp:${order.id}:${kind}`,
+      orderId: order.id,
+      orderNumber: order.number,
+      employeeId: order.serverId,
+      employeeName: order.serverName,
+      kind,
+      openAt: order.createdAt,
+      closeAt,
+      dwellMinutes,
+      compCents: stacked,
+      approverName: approver,
+      tender: cashTenderLabel(order),
+      secondsCompToClose,
+      lastSentAt: sentAt,
+    });
+  }
+  return out.sort((a, b) => b.closeAt - a.closeAt);
+}
+
+/** True when a cash tender now would trip the late-comp cash-close flag. */
+export function wouldFlagLateCompCashClose(
+  order: Order,
+  auditLog: CompAuditLike[],
+  cfg: LossPreventionConfig,
+  now = Date.now(),
+): LateCompCashEvent | null {
+  const fake: Order = {
+    ...order,
+    status: "closed",
+    closedAt: now,
+    payments: [
+      ...order.payments,
+      {
+        id: "preview",
+        method: "cash",
+        amountCents: 0,
+        tipCents: 0,
+        at: now,
+        employeeId: order.serverId,
+      },
+    ],
+  };
+  const found = findLateCompCashEvents({
+    orders: [fake],
+    auditLog,
+    cfg,
+    from: order.createdAt,
+    to: now + 1,
+  });
+  return found[0] ?? null;
+}
+
 export type ExceptionMetric =
   | "voids"
   | "comps"
@@ -497,7 +731,8 @@ export type ExceptionMetric =
   | "gift_adjusts"
   | "reopens"
   | "tip_declare"
-  | "inventory";
+  | "inventory"
+  | "late_comp_cash";
 
 export type ExceptionRow = {
   id: string;
@@ -514,6 +749,13 @@ export type ExceptionRow = {
   flagged: boolean;
   salesCents: number;
   label: string;
+  openAt?: number;
+  closeAt?: number;
+  dwellMinutes?: number;
+  approverName?: string;
+  tender?: string;
+  secondsCompToClose?: number;
+  orderNumber?: number;
 };
 
 export type AuditLike = {
@@ -522,6 +764,8 @@ export type AuditLike = {
   employeeName: string;
   action: string;
   amountCents?: number;
+  orderId?: string;
+  overrideEmployeeName?: string;
 };
 
 export type CloseoutLike = {
@@ -783,6 +1027,42 @@ export function buildExceptionRows(opts: {
       tipMixFlag,
       "Declared cash tips vs card tips / sales",
     );
+  }
+
+  const late = findLateCompCashEvents({
+    orders: opts.orders,
+    auditLog: opts.auditLog,
+    cfg: opts.cfg,
+    from,
+    to,
+  });
+  for (const ev of late) {
+    rows.push({
+      id: `${opts.period}:${ev.id}`,
+      employeeId: ev.employeeId,
+      employeeName: ev.employeeName,
+      metric: "late_comp_cash",
+      period: opts.period,
+      employeeAmountCents: ev.compCents,
+      employeeCount: 1,
+      employeePct: null,
+      housePct: null,
+      weekdayPct: null,
+      ratioToHouse: null,
+      flagged: true,
+      salesCents: 0,
+      label:
+        ev.kind === "stale_comp_cash"
+          ? "Stale send then comp + cash close"
+          : "Late-window comp then cash close",
+      openAt: ev.openAt,
+      closeAt: ev.closeAt,
+      dwellMinutes: ev.dwellMinutes,
+      approverName: ev.approverName,
+      tender: ev.tender,
+      secondsCompToClose: ev.secondsCompToClose,
+      orderNumber: ev.orderNumber,
+    });
   }
 
   return rows.sort((a, b) => Number(b.flagged) - Number(a.flagged) || b.employeeAmountCents - a.employeeAmountCents);

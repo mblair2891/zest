@@ -6,6 +6,19 @@ import type { GuideUpdate } from "@/lib/guide/types";
  */
 export const WHATS_NEW_ENTRIES: GuideUpdate[] = [
   {
+    id: "upd_2026_10_22_late_comp_cash",
+    date: "2026-10-22",
+    title: "Late-comp + cash-close flags",
+    summary:
+      "Long-open checks that take a large comp then close cash are queued for manager review. Optional dual-control and cash block.",
+    body: "Settings → Loss prevention: open longer than N minutes (default 180), stacked comps over $X or Y% of the check, then cash within T minutes (default 5). Also flags last send hours earlier + only a comp then cash. The queue shows open, close, dwell, comp $, approver, tender, and seconds from comp to close. Default is flag only — cash still closes. Dual-control (off by default) requires a shift lead or pending/remote on late-window comps even if a manager PIN was used at the stand. Hard-block cash after a late comp is off by default.",
+    roles: ["owner_manager"],
+    surfaces: ["floor", "reports", "settings"],
+    audience: "all",
+    topicId: "loss-prevention",
+    tags: ["comp", "cash", "exceptions", "audit"],
+  },
+  {
     id: "upd_2026_10_21_shift_lead_approvals",
     date: "2026-10-21",
     title: "Shift-lead, pending, and remote approvals",

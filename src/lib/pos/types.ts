@@ -436,6 +436,10 @@ export interface Order {
   reopenedAt?: number;
   reopenReason?: string;
   reopenBefore?: string;
+  /** Last late-window / stale-send comp on this check (for cash-close flags). */
+  lateCompAt?: number;
+  lateCompCents?: number;
+  lateCompApprover?: string;
 }
 
 export interface KitchenTicketItem {

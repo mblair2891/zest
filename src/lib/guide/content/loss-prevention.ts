@@ -25,6 +25,8 @@ export const LOSS_PREVENTION_TOPICS: GuideTopic[] = [
       "manager PIN",
       "paid check",
       "gift adjust",
+      "late comp",
+      "cash close",
     ],
     openView: "reports",
     blocks: [
@@ -53,6 +55,7 @@ export const LOSS_PREVENTION_TOPICS: GuideTopic[] = [
         "After pay, the check shows frozen. Reopen or Swap last tender only from that banner.",
         "Home (owner/manager) shows a live feed of gated actions and a queue of flags. Reports → Loss-prevention exceptions compares each employee to the house and to the same weekday.",
         "A flag (for example void % at least 3× the house) is queued for review. Tap Noted when you have looked at it. It is not an automatic write-up.",
+        "Late-window comp + cash: if a check sits open past N minutes, takes a manager/shift-lead comp (or stacked comps) over $X or Y% of the check, then closes cash within T minutes, it is flagged. Also flagged: last item sent hours earlier, then only a comp and a cash close. Home and Reports show open time, close time, dwell, comp $, approver, tender, and seconds from comp to close. Cash still closes unless you turn on the hard-block. Optional dual-control: a late-window comp on a long-open check needs a shift lead or pending/remote approval even if a manager PIN was used at the stand.",
         "No manager on the floor: the server can Request approval. The action is held. Home shows Pending approvals. On-call gets an in-app notice and SMS when Twilio is configured — approve or deny with your PIN (attribution stored). Fired kitchen tickets stay on the rail until you deny; deny policy is leave or auto-void the kitchen ticket.",
         "Break-glass (off by default): a clocked-in user enters their PIN and a listed reason. The action runs, on-call is alerted, and the exception queue is flagged. Use it when a guest is waiting and nobody who can approve is reachable — not as a daily path.",
       ),
