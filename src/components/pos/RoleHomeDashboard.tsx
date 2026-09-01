@@ -22,6 +22,7 @@ import { ROLE_LABEL, canAccessViewForEmployee } from "@/lib/pos/rbac";
 import { canEmployee } from "@/lib/access/permissions";
 import { VENUE_TYPE_LABEL } from "@/lib/access/entity-roles";
 import { AiOpsCard } from "./AiOpsCard";
+import { OpsJobsInbox } from "./OpsJobsInbox";
 import { AccessPointsCard } from "./AccessPointsCard";
 import { ExceptionLiveFeed } from "./ExceptionLiveFeed";
 import { useCostStore } from "@/lib/costs/store";
@@ -113,6 +114,7 @@ export function RoleHomeDashboard() {
               <Stat label="Staff on" value={String(onClock)} />
             </div>
             <AiOpsCard />
+            <OpsJobsInbox compact />
             <ExceptionLiveFeed compact />
             {openCostEx > 0 && (
               <div className="rounded-2xl border border-warn/40 bg-surface p-4">
@@ -189,6 +191,7 @@ export function RoleHomeDashboard() {
         {role === "host" && (
           <>
             <AiOpsCard />
+            <OpsJobsInbox compact />
             <div className="grid grid-cols-2 gap-3 lg:grid-cols-3">
               <Stat label="Waiting" value={String(waiting.length)} />
               <Stat label="Open tables" value={String(tables.filter((t) => t.status === "available").length)} />
@@ -240,6 +243,7 @@ export function RoleHomeDashboard() {
         {role === "vendor_operator" && (
           <>
             <AiOpsCard />
+            <OpsJobsInbox compact />
             <div className="grid grid-cols-2 gap-3 lg:grid-cols-3">
               <Stat label="Open tickets" value={String(myTickets.length)} />
               <Stat

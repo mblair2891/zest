@@ -48,6 +48,7 @@ import { HrSettingsPack } from "./HrWorkspace";
 import { QuantumPaymentsSettings } from "./QuantumPaymentsSettings";
 import { CashHandlingSettings } from "./CashHandlingSettings";
 import { LossPreventionSettings } from "./LossPreventionSettings";
+import { OpsJobsSettings } from "./OpsJobsSettings";
 import { saveFrontSettingsFn } from "@/lib/front/api";
 import {
   CASH_ROUND_INCREMENTS,
@@ -275,6 +276,7 @@ export function SettingsView() {
           giftOperatorBreakageSplitBps: s.giftOperatorBreakageSplitBps ?? 5000,
           aiReportSchedule: s.aiReportSchedule ?? "off",
           aiReportEmail: s.aiReportEmail ?? "",
+          opsJobs: s.opsJobs,
           devices: { pos: 0, kds: 0, handhelds: 0 },
           settlement: {
             periodType: "weekly",
@@ -334,6 +336,8 @@ export function SettingsView() {
       <LifecycleSettings />
       <HrSettingsPack />
       {(emp?.role === "owner" || emp?.role === "manager" || emp?.role === "accountant") && (
+        <>
+        <OpsJobsSettings write={write} persist={persist} />
         <div className="mb-4 rounded-2xl border border-border bg-surface p-4">
           <div className="mb-2 flex items-center gap-2">
             <h3 className="text-sm font-semibold">AI ops reports</h3>
@@ -380,6 +384,7 @@ export function SettingsView() {
             </label>
           </div>
         </div>
+        </>
       )}
       <QuantumPaymentsSettings write={write} />
       <div className="mb-4 flex flex-wrap items-center gap-2">

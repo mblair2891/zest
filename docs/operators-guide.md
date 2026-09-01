@@ -57,7 +57,7 @@ accurate when the job path changes.
 8. QR order/pay modes
 9. Quantum Payments, cash discount, gift cards
 10. Settlement & multi-operator splits / chargeback fee split
-11. Reports & AI insights (recommendations, human confirm)
+11. Reports & AI insights (recommendations, human confirm). Scheduled AI ops jobs: hourly / nightly / weekly / pay period / monthly. Missing xAI key queues skipped — never invented insights. Never auto clock-out. Never invent Finix/Visa charges.
 12. Training vs Go live
 13. Devices: three roles — **order** (handhelds + bar), **ODS** (kitchen), **host** (floor map + to-go). PIN first, not `/login`. Change device among those three.
 14. Printers: Ethernet on the AP LAN (not printer Wi‑Fi). Thermal receipts (Epson TM-T20). Impact kitchen (Epson TM-U220). Drawer kick on the receipt printer.
@@ -66,7 +66,7 @@ accurate when the job path changes.
 17. Tips: mix-based tip-out recs; CC tips cash-at-close vs paycheck; individual / tip-out / FOH / bar / team / dual pools; autograt vs service charge.
 18. Staffing recs: recommend cut/add only; never auto clock-out.
 19. Staff HR basics (clock vs PIN, time-off and availability if the employer enabled them)
-20. Loss prevention (owner/manager): unique PIN lockout, gated void/comp/discount after send and after bump, paid-check freeze, gift adjust manager-only, append-only audit, exception queue vs house / same weekday. When no manager is on the floor: shift-lead grants, pending approval, remote on-call, optional break-glass. Late-window comp + cash close flags (dwell, $/%, seconds to cash) on the daily queue. Table/check integrity: no nameless unassigned; named holds; empty table never drops an open check. Nightly pack gates house Z (ack or hard-block). Not a theft how-to.
+20. Loss prevention (owner/manager): unique PIN lockout, gated void/comp/discount after send and after bump, paid-check freeze, gift adjust manager-only, append-only audit, exception queue vs house / same weekday. When no manager is on the floor: shift-lead grants, pending approval, remote on-call, optional break-glass. Late-window comp + cash close flags (dwell, $/%, seconds to cash) on the daily queue. Table/check integrity: no nameless unassigned; named holds; empty table never drops an open check. Nightly pack gates house Z (ack or hard-block). Scheduled AI ops jobs (hourly through monthly) plus recipe cost engine feed the same queue — review only, never accuse. Not a theft how-to.
 21. Troubleshooting
 
 Exit on the public page returns to marketing home (`/`).

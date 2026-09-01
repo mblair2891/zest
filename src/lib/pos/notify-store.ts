@@ -17,7 +17,8 @@ export type PosNoticeKind =
   | "staffing_closeout"
   | "approval_request"
   | "break_glass"
-  | "late_comp_cash";
+  | "late_comp_cash"
+  | "ops_job";
 
 export interface PosNotice {
   id: string;
@@ -92,6 +93,9 @@ export function noticeVisibleTo(
   }
   if (n.kind === "approval_request" || n.kind === "break_glass" || n.kind === "late_comp_cash") {
     return role === "bartender" || role === "cashier";
+  }
+  if (n.kind === "ops_job") {
+    return false;
   }
   if (n.kind === "guest_checked_in" || n.kind === "waitlist_update") {
     return role === "server" || role === "cashier";

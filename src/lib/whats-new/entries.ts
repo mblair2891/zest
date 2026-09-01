@@ -6,6 +6,19 @@ import type { GuideUpdate } from "@/lib/guide/types";
  */
 export const WHATS_NEW_ENTRIES: GuideUpdate[] = [
   {
+    id: "upd_2026_10_24_scheduled_ops_jobs",
+    date: "2026-10-24",
+    title: "Scheduled AI ops jobs",
+    summary:
+      "Hourly, nightly, weekly, pay-period, and monthly packs. Real xAI or skipped — never invented insights, never auto clock-out, never invented card charges.",
+    body: "Settings → Scheduled AI ops jobs. While open: floor integrity, labor pulse (cut/hold/add only), gate feed, gift bursts, unreachable Ethernet printers. Nightly: exception pack, blind counts, tips, tender/void-comp outliers, Quantum capture vs line split, cost flash, staffing postmortem, house Z ack or hard-block. Weekly: peer flags, schedule vs sales, drawer trend, recipe variance, gift liability, training leftovers. Pay period: hours and CC tips vs cash-at-close for ADP/Intuit/CSV — Summex is not payroll. Monthly: risk digest (review queue), daypart baselines, vendor price creep, Quantum fees/chargebacks when present, menu stars/dogs, HR packet reminder, unseen devices. Steam-style bar entities see bar cost/sales; Diamond-style food see food; host sees the house pack. Missing xAI key queues skipped. Email printable pack when Resend is on; else inbox.",
+    roles: ["owner_manager"],
+    surfaces: ["reports", "settings"],
+    audience: "all",
+    topicId: "ops-jobs",
+    tags: ["AI", "jobs", "exceptions", "cost", "staffing"],
+  },
+  {
     id: "upd_2026_10_23_table_check_integrity",
     date: "2026-10-23",
     title: "Table/check integrity and nightly exception pack",

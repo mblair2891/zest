@@ -323,7 +323,7 @@ export const CASH_GIFT_TOPICS: GuideTopic[] = [
         "Export CSV for the active report.",
         "On a host venue, still use Settle for period close — Reports is the recap, not the payout.",
       ),
-      related("ai-insights", "cash-handling", "server-closeout", "settlement", "roles-dashboards"),
+      related("ai-insights", "ops-jobs", "cash-handling", "server-closeout", "settlement", "roles-dashboards"),
     ],
   }),
   topic({
@@ -349,12 +349,12 @@ export const CASH_GIFT_TOPICS: GuideTopic[] = [
         "When an AI key is set, the model writes the same JSON from your metrics. Without a key you get Guided insights — same shape, rule-based.",
       ),
       p(
-        "Owner/manager: Settings → AI ops reports for daily or weekly. Delivery is in-app (Reports inbox) plus email if configured, otherwise the communications outbox. Owner, manager, and accountant can run analysis; vendor operators see their own slice.",
+        "Owner/manager: Settings → AI ops reports for daily or weekly on-demand analysis. Delivery is in-app (Reports inbox) plus email if configured, otherwise the communications outbox. Scheduled hourly/nightly/weekly/pay-period/monthly packs are Settings → Scheduled AI ops jobs (Reports → Ops jobs). Owner, manager, and accountant can run analysis; vendor operators see their own slice.",
       ),
       warn(
         "Recommendations never auto-change menu prices. Public Operators Guide never includes platform-admin portfolio metrics.",
       ),
-      related("reports", "location-settings", "type-food-hall", "roles-dashboards"),
+      related("reports", "ops-jobs", "location-settings", "type-food-hall", "roles-dashboards"),
     ],
   }),
 ];

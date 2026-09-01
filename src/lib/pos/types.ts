@@ -227,6 +227,8 @@ export interface RestaurantSettings {
   aiReportSchedule?: "off" | "daily" | "weekly";
   /** Optional email for scheduled AI reports. Empty → in-app + outbox only. */
   aiReportEmail?: string;
+  /** Scheduled AI ops jobs (hourly / nightly / weekly / pay period / monthly). */
+  opsJobs?: import("@/lib/ops-jobs/types").OpsJobsConfig;
   /** Term length in days when giftTermAllowed. */
   giftTermDays?: number | null;
   /** Operator-issued residual split to the other party, in basis points (5000 = 50/50). */

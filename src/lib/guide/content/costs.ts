@@ -58,7 +58,7 @@ export const COST_TOPICS: GuideTopic[] = [
         "Recipes save to the location so every paired tablet can look them up. Go live keeps recipes.",
         "One recipe can link to a menu item (and more ids). Entity-scoped for host vs operators.",
         "Theoretical cost = ingredient qty × latest SKU cost. Feeds price recs (human Save on Menu).",
-        "Sales × recipe qty feeds variance when the costs module is on.",
+        "Sales × recipe qty feeds variance when the costs module is on. Voids default off; comps default on (Settings → Scheduled AI ops jobs).",
       ),
       related("cost-control", "cost-variance", "role-server", "role-kitchen-bar", "menu-modifiers"),
     ],
@@ -102,7 +102,7 @@ export const COST_TOPICS: GuideTopic[] = [
         "Pick a response code and a note. That writes the audit and the AI ops learning log.",
       ),
       p("Counts (full/partial) and waste/breakage logs feed expected on-hand."),
-      related("cost-control", "ai-ops-learning"),
+      related("cost-control", "ops-jobs-cost", "ai-ops-learning"),
     ],
   }),
   topic({

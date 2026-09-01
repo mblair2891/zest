@@ -36,6 +36,7 @@ export type LocationSetup = {
   trainingTrackInventory?: boolean;
   aiReportSchedule?: "off" | "daily" | "weekly";
   aiReportEmail?: string;
+  opsJobs?: import("@/lib/ops-jobs/types").OpsJobsConfig;
   operatorLifecycle?: Record<string, string>;
   goLiveAt?: string | null;
   goLiveChoices?: Record<string, "keep" | "erase">;

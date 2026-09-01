@@ -3,18 +3,30 @@ import type { CostSku, ItemRecipe } from "./types";
 import { recipeMenuIds } from "@/lib/recipes/normalize";
 import { suggestSku } from "@/lib/recipes/match-sku";
 
+export type TheoreticalSalesRules = {
+  /** Default false — voided lines do not consume. */
+  includeVoids?: boolean;
+  /** Default true — comps still used product unless the house turns this off. */
+  includeComps?: boolean;
+};
+
 export function salesQtyByMenuItem(
   orders: Order[],
   from: number,
   to: number,
   entityId?: string | null,
+  rules?: TheoreticalSalesRules,
 ): Record<string, number> {
+  const includeVoids = rules?.includeVoids === true;
+  const includeComps = rules?.includeComps !== false;
   const out: Record<string, number> = {};
   for (const o of orders) {
     const t = o.closedAt ?? o.createdAt;
     if (t < from || t > to) continue;
     for (const line of o.lines) {
-      if (line.voided || !line.sent) continue;
+      if (!line.sent) continue;
+      if (line.voided && !includeVoids) continue;
+      if (line.comped && !includeComps) continue;
       if (entityId && line.vendorId && line.vendorId !== entityId) continue;
       out[line.menuItemId] = (out[line.menuItemId] ?? 0) + line.quantity;
     }

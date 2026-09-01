@@ -71,6 +71,7 @@ import {
 import { DeviceModeView, applySessionModeView } from "./DeviceModeView";
 import { LifecycleWatcher } from "./LifecycleWatcher";
 import { AiReportWatcher } from "./AiReportWatcher";
+import { OpsJobsWatcher } from "./OpsJobsWatcher";
 import { PayrollExportWatcher } from "./PayrollExportWatcher";
 import { StaffingWatcher } from "./StaffingWatcher";
 import { useStationSessionStore } from "@/lib/pos/station-session";
@@ -448,6 +449,7 @@ export function AppShell() {
       <LoginOnboardingHost />
       <LifecycleWatcher />
       <AiReportWatcher />
+      <OpsJobsWatcher />
       <PayrollExportWatcher />
       <StaffingWatcher />
       <TrainingBanner />

@@ -39,6 +39,7 @@ import { bankExpected, drawerExpected, useCashSessionStore } from "@/lib/pos/cas
 import { closeoutPayrollCsv } from "@/lib/pos/closeout";
 import { useCloseoutStore } from "@/lib/pos/closeout-store";
 import { NightlyIntegrityPanel } from "@/components/pos/NightlyIntegrityPanel";
+import { OpsJobsInbox } from "@/components/pos/OpsJobsInbox";
 import { buildNightlyIntegrityPack, INTEGRITY_KIND_LABEL } from "@/lib/pos/check-integrity";
 import {
   buildExceptionRows,
@@ -91,7 +92,7 @@ export function ReportsView() {
   const vendors = usePosStore((s) => s.vendors);
   const grants = usePosStore((s) => s.entityPermissions);
   const setView = usePosStore((s) => s.setView);
-  const [tab, setTab] = useState<"reports" | "ai">("reports");
+  const [tab, setTab] = useState<"reports" | "ai" | "jobs">("reports");
   const [range, setRange] = useState<RangeKey>("shift");
   const [operatorId, setOperatorId] = useState<string>(emp?.operatorId ?? "");
   const [reportId, setReportId] = useState<ReportId>("sales-summary");
@@ -299,6 +300,15 @@ export function ReportsView() {
             AI analysis
           </Button>
           )}
+          {canAi && (
+          <Button
+            size="sm"
+            variant={tab === "jobs" ? "default" : "outline"}
+            onClick={() => setTab("jobs")}
+          >
+            Ops jobs
+          </Button>
+          )}
         </div>
         <select
           className="h-8 rounded-md border border-border bg-bg px-2 text-xs"
@@ -363,7 +373,11 @@ export function ReportsView() {
         )}
       </div>
 
-      {tab === "ai" ? (
+      {tab === "jobs" ? (
+        <div className="min-h-0 flex-1 overflow-y-auto p-3">
+          <OpsJobsInbox />
+        </div>
+      ) : tab === "ai" ? (
         <div className="min-h-0 flex-1 overflow-y-auto p-3" data-demo="ai-insights">
           <div className="mb-3 flex flex-wrap items-center gap-2">
             <Button size="sm" disabled={busy} onClick={() => void runAi()}>
@@ -702,6 +716,9 @@ function ReportBody({ id, m }: { id: ReportId; m: ReturnType<typeof metricsFromP
   }
   if (id === "close-nightly") {
     return <NightlyReportSlice />;
+  }
+  if (id === "ops-jobs") {
+    return <OpsJobsInbox />;
   }
   if (id === "close-eod") {
     return (

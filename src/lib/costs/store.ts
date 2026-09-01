@@ -632,7 +632,10 @@ export const useCostStore = create<CostState>()(
         const now = Date.now();
         const from = now - windowDays * 86400000;
         const pos = usePosStore.getState();
-        const sales = salesQtyByMenuItem(pos.orders, from, now);
+        const sales = salesQtyByMenuItem(pos.orders, from, now, null, {
+          includeVoids: get().settings.theoreticalIncludeVoids === true,
+          includeComps: get().settings.theoreticalIncludeComps !== false,
+        });
         const use = theoreticalUse({
           recipes: get().recipes,
           skus: get().skus,
@@ -1030,7 +1033,10 @@ export const useCostStore = create<CostState>()(
         const now = Date.now();
         const from = now - windowDays * 86400000;
         const pos = usePosStore.getState();
-        const sales = salesQtyByMenuItem(pos.orders, from, now);
+        const sales = salesQtyByMenuItem(pos.orders, from, now, null, {
+          includeVoids: get().settings.theoreticalIncludeVoids === true,
+          includeComps: get().settings.theoreticalIncludeComps !== false,
+        });
         const recs = buildPriceRecommendations({
           menuItems: pos.menuItems,
           recipes: get().recipes,

@@ -18,6 +18,7 @@ export type ReportId =
   | "kitchen-tickets"
   | "close-eod"
   | "close-nightly"
+  | "ops-jobs"
   | "close-drawers"
   | "close-banks"
   | "close-closeouts"

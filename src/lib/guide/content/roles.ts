@@ -171,7 +171,7 @@ export const ROLE_GUIDE_TOPICS: GuideTopic[] = [
         "A café does not need a dining-room map pack. A host hall does. The type badge on Settings is the pack you are editing.",
       ),
       ul(
-        "Every house: profile, tax, Quantum Payments tenders, cash discount, devices, staff, notifications, hours.",
+        "Every house: profile, tax, Quantum Payments tenders, cash discount, devices, staff, notifications, hours, scheduled AI ops jobs.",
         "Full-service: sections and floor control.",
         "Bar: tab auto-close.",
         "Counter / QSR / café / ghost: ticket prefix and expo.",
@@ -325,7 +325,7 @@ export const ROLE_GUIDE_TOPICS: GuideTopic[] = [
         "Dismiss it twice — confidence drops and the card notes you’ve dismissed this kind of tip.",
         "Accept it — later runs say Based on your past decisions and rank it higher.",
       ),
-      related("voice-control", "location-settings", "roles-dashboards", "ai-insights", "staffing-recs"),
+      related("voice-control", "location-settings", "roles-dashboards", "ai-insights", "ops-jobs", "staffing-recs"),
     ],
   }),
   topic({
@@ -353,7 +353,7 @@ export const ROLE_GUIDE_TOPICS: GuideTopic[] = [
       warn(
         "Recommendations only. The manager decides. Summex never auto clock-out.",
       ),
-      related("ai-ops-learning", "shift-allowables", "roles-dashboards"),
+      related("ai-ops-learning", "ops-jobs", "shift-allowables", "roles-dashboards"),
     ],
   }),
 ];

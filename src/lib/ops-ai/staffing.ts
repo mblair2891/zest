@@ -1,5 +1,6 @@
 import type { Employee, EmployeeRole, KitchenTicket, Order, Reservation, Table, WaitlistEntry } from "@/lib/pos/types";
 import type { TimePunch } from "@/lib/pos/ops-types";
+import { baseline30mFor } from "@/lib/ops-jobs/store";
 import { daypartOf } from "./learn-store";
 
 export const STAFFING_KINDS = ["recommend_cut", "recommend_hold", "recommend_add"] as const;
@@ -425,6 +426,9 @@ export function buildStaffingSnapshot(input: {
   const hours = Math.max(clockedHoursFromPunches(input.punches, now), clocked.length * 0.25);
   const salesLast30mCents = salesInWindow(input.orders, now - 30 * 60_000, now);
   let baseline30mCents = daypartBaseline30m(input.orders, now, daypart);
+  if (baseline30mCents <= 0) {
+    baseline30mCents = baseline30mFor(daypart);
+  }
   if (baseline30mCents <= 0) {
     const shiftHours = Math.max(0.5, (now - (input.shiftOpenedAt || now)) / 3_600_000);
     baseline30mCents = Math.round((input.shiftSalesCents / shiftHours) * 0.5);

@@ -334,6 +334,10 @@ export interface CostSettings {
   varianceAlertPct: number;
   defaultWasteFactor: number;
   categories: Array<{ id: CostCategory; label: string }>;
+  /** Voided lines count toward theoretical use. Default false. */
+  theoreticalIncludeVoids?: boolean;
+  /** Comped lines count toward theoretical use. Default true. */
+  theoreticalIncludeComps?: boolean;
 }
 
 export interface CostAudit {

@@ -22,6 +22,7 @@ export const TROUBLESHOOTING_TOPICS: GuideTopic[] = [
         "Empty POS, no menu? You are on a live empty start. Add items or finish onboarding.",
         "Forced password screen? Platform Admin must set a new password once. It cannot be the initial password.",
         "Latest updates on every login? After you sign in, check Silence until the next update. Replay workflow from Guide is separate. The public /guide page does not list a changelog.",
+        "Scheduled ops job says Skipped? No xAI key — that is correct. The inbox keeps house fact rows; nothing was invented. Do not treat it as a theft verdict.",
       ),
       steps(
         "Reproduce once. Note the screen, the PIN role, and whether the Wi‑Fi chip shows an outage.",

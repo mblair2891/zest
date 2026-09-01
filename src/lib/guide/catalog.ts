@@ -14,6 +14,7 @@ import { PLATFORM_CRM_TOPICS } from "./content/platform-crm";
 import { COST_TOPICS } from "./content/costs";
 import { LIFECYCLE_TOPICS } from "./content/lifecycle";
 import { HR_TOPICS } from "./content/hr";
+import { OPS_JOBS_TOPICS } from "./content/ops-jobs";
 import { topicMatchesRoles } from "./roles";
 import type {
   GuideAudience,
@@ -151,6 +152,7 @@ export const GUIDE_TOPICS: GuideTopic[] = [
   ...ORDER_TOPICS,
   ...PAYMENT_TOPICS,
   ...CASH_GIFT_TOPICS,
+  ...OPS_JOBS_TOPICS,
   ...LOSS_PREVENTION_TOPICS,
   ...DEVICE_TOPICS,
   ...COST_TOPICS,

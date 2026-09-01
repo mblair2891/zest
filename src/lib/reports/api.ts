@@ -109,10 +109,11 @@ export const analyzeLocationPerformanceFn = createServerFn({ method: "POST" })
 
 export const deliverAiReportFn = createServerFn({ method: "POST" })
   .middleware([tenantMiddleware])
-  .validator((d: { to?: string; subject: string; text: string; locationId: string }) => ({
+  .validator((d: { to?: string; subject: string; text: string; html?: string; locationId: string }) => ({
     to: typeof d.to === "string" ? d.to.trim() : "",
     subject: String(d.subject || "Summex AI ops report").slice(0, 180),
     text: String(d.text || "").slice(0, 8000),
+    html: typeof d.html === "string" ? d.html.slice(0, 24_000) : "",
     locationId: String(d.locationId || ""),
   }))
   .handler(async ({ context, data }): Promise<{ status: "sent" | "logged_only" | "inbox" | "failed" }> => {
@@ -126,6 +127,7 @@ export const deliverAiReportFn = createServerFn({ method: "POST" })
       to: data.to,
       subject: data.subject,
       text: data.text,
+      html: data.html || undefined,
       kind: "ai_ops_report",
     });
     if (res.status === "sent") return { status: "sent" };

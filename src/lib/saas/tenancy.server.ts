@@ -23,6 +23,7 @@ import { parseNetworkChecklist, parseNetworkReadyStatus } from "./network-readin
 import { parseFloorPlan, parseMenuCatalog, parseRecipes } from "./location-catalog";
 import { parseHrMap } from "@/lib/hr/types";
 import { parseLaborMap } from "@/lib/labor/rules";
+import { parseOpsJobsConfig } from "@/lib/ops-jobs/config";
 
 type OrgRow = {
   id: string;
@@ -187,6 +188,7 @@ function parseSetup(raw: unknown): LocationSetup {
         ? o.aiReportSchedule
         : undefined,
     aiReportEmail: typeof o.aiReportEmail === "string" ? o.aiReportEmail : undefined,
+    opsJobs: o.opsJobs ? parseOpsJobsConfig(o.opsJobs) : undefined,
     operatorLifecycle:
       o.operatorLifecycle && typeof o.operatorLifecycle === "object"
         ? (o.operatorLifecycle as Record<string, string>)

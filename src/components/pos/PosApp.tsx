@@ -324,6 +324,7 @@ function PosAppInner({ entityId }: { entityId?: string }) {
               giftOperatorBreakageSplitBps: setup.giftOperatorBreakageSplitBps,
               aiReportSchedule: setup.aiReportSchedule ?? "off",
               aiReportEmail: setup.aiReportEmail ?? "",
+              opsJobs: setup.opsJobs,
               cashHandling: setup.cashHandling,
             });
             if (access.location.id) {

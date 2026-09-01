@@ -123,6 +123,13 @@ export const REPORT_CATALOG: ReportDef[] = [
     roles: ["owner", "manager", "accountant", "cashier", "host"],
   },
   {
+    id: "ops-jobs",
+    group: "close",
+    title: "Scheduled AI ops jobs",
+    summary: "Hourly / nightly / weekly / pay period / monthly packs. Skipped if no xAI key — never invented.",
+    roles: ["owner", "manager", "accountant"],
+  },
+  {
     id: "close-drawers",
     group: "close",
     title: "Drawer & well close",
