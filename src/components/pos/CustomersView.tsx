@@ -563,6 +563,27 @@ export function CustomersView() {
                     return;
                   }
                   await hydrateGift(locId);
+                  if (giftTender === "cash") {
+                    const empNow = usePosStore.getState().getCurrentEmployee?.();
+                    if (empNow) {
+                      const { parseCashHandling, cashRoleFromSession } = await import(
+                        "@/lib/pos/cash-handling"
+                      );
+                      const { applyCashTender } = await import("@/lib/pos/cash-session");
+                      const { useStationSessionStore } = await import("@/lib/pos/station-session");
+                      applyCashTender({
+                        cfg: parseCashHandling(usePosStore.getState().settings.cashHandling),
+                        emp: empNow,
+                        deviceRole: cashRoleFromSession(
+                          useStationSessionStore.getState().assignment.kind,
+                        ),
+                        deviceId: usePosStore.getState().activeDeviceId,
+                        amountCents: cents,
+                        locationId: locId,
+                        devices: usePosStore.getState().locationDevices,
+                      });
+                    }
+                  }
                   logGiftTxn({
                     giftCardId: res.card.id,
                     type: "issue",

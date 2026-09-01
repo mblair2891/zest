@@ -109,6 +109,20 @@ export const REPORT_CATALOG: ReportDef[] = [
     roles: ["owner", "manager", "accountant", "cashier"],
   },
   {
+    id: "close-drawers",
+    group: "close",
+    title: "Drawer & well close",
+    summary: "Per-drawer count, well close, over/short, drops, paid-in/out.",
+    roles: ["owner", "manager", "accountant", "cashier", "bartender"],
+  },
+  {
+    id: "close-banks",
+    group: "close",
+    title: "Server banks",
+    summary: "Expected vs actual server bank; cash by user on shared drawers.",
+    roles: ["owner", "manager", "accountant", "server", "cashier"],
+  },
+  {
     id: "guest-waitlist",
     group: "guest",
     title: "Waitlist & reservations",

@@ -61,6 +61,8 @@ export type LocationSetup = {
   employmentState?: string;
   /** Clock / approval / pay-period rules keyed by employer entity. */
   laborByEntity?: Record<string, import("@/lib/labor/rules").EntityLaborRules>;
+  /** Drawers, wells, server banks — location-configurable cash handling. */
+  cashHandling?: import("@/lib/pos/cash-handling").CashHandlingConfig;
   /** Cost catalog (SKUs, invoices, suppliers, POs) — no image blobs. */
   costPack?: {
     skus: import("@/lib/costs/types").CostSku[];

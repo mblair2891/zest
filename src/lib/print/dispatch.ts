@@ -1,7 +1,7 @@
 import { HOST_SCOPE } from "@/lib/access/entity-grants";
 import type { LocationDevice, PrintStation } from "@/lib/pos/location-devices";
 import { uid } from "@/lib/utils";
-import { escposBase64 } from "./escpos";
+import { escposBase64, buildDrawerKickBytes } from "./escpos";
 import { ticketHtml } from "./ticket-html";
 import {
   DEFAULT_PRINT_AGENT_URL,
@@ -150,6 +150,45 @@ export function testPrintJob(opts: {
     items: [{ qty: 1, name: "Summex test print", note: opts.station }],
     at: Date.now(),
   };
+}
+
+export async function kickCashDrawer(opts: {
+  locationId: string;
+  devices: LocationDevice[] | undefined;
+  printerId: string | null | undefined;
+}): Promise<boolean> {
+  const printers = (opts.devices ?? []).filter((d) => d.type === "printer" && d.status !== "inactive");
+  const target = opts.printerId
+    ? printers.find((d) => d.id === opts.printerId)
+    : printers.find((d) => d.print?.station === "receipt");
+  if (!target?.print || target.print.connection === "browser" || !target.print.target) {
+    return false;
+  }
+  const job: PrintJob = {
+    id: uid("kick"),
+    kind: "drawer_kick",
+    station: "receipt",
+    locationId: opts.locationId,
+    locationName: "Kick",
+    checkId: "kick",
+    checkNumber: "",
+    tableLabel: "",
+    serverName: "",
+    items: [],
+    at: Date.now(),
+  };
+  const bytes = buildDrawerKickBytes();
+  let bin = "";
+  for (let i = 0; i < bytes.length; i += 1) bin += String.fromCharCode(bytes[i]!);
+  return sendToAgent({
+    locationId: opts.locationId,
+    printerId: target.id,
+    family: target.print.family,
+    connection: target.print.connection,
+    target: target.print.target,
+    job,
+    escposBase64: btoa(bin),
+  });
 }
 
 export function describeTarget(p: PrintTarget): string {

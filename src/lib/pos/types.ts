@@ -239,6 +239,7 @@ export interface RestaurantSettings {
   networkCheckedAt?: number;
   networkNotes?: string;
   networkChecklist?: import("@/lib/saas/network-readiness").NetworkChecklist;
+  cashHandling?: import("./cash-handling").CashHandlingConfig;
 }
 
 export interface Employee {

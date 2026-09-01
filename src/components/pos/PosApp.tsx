@@ -14,6 +14,7 @@ import { useOpsLearnStore } from "@/lib/ops-ai/learn-store";
 import { useCostStore } from "@/lib/costs/store";
 import { useLifecycleStore } from "@/lib/lifecycle/store";
 import { useStationSessionStore } from "@/lib/pos/station-session";
+import { useCashSessionStore } from "@/lib/pos/cash-session";
 import { EntityLogin } from "./EntityHome";
 import { AppShell } from "./AppShell";
 import { PosErrorBoundary } from "./PosErrorBoundary";
@@ -91,6 +92,7 @@ const STORES = [
   useCostStore,
   useLifecycleStore,
   useStationSessionStore,
+  useCashSessionStore,
 ] as const;
 
 function PosAppInner({ entityId }: { entityId?: string }) {
@@ -320,7 +322,11 @@ function PosAppInner({ entityId }: { entityId?: string }) {
               giftOperatorBreakageSplitBps: setup.giftOperatorBreakageSplitBps,
               aiReportSchedule: setup.aiReportSchedule ?? "off",
               aiReportEmail: setup.aiReportEmail ?? "",
+              cashHandling: setup.cashHandling,
             });
+            if (access.location.id) {
+              useCashSessionStore.getState().ensureLocation(access.location.id);
+            }
           } catch {
             /* */
           }

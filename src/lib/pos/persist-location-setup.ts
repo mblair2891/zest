@@ -18,6 +18,28 @@ function ids(): { orgId: string; locationId: string } | null {
   return { orgId, locationId };
 }
 
+export function persistCashHandling(): void {
+  const ctx = ids();
+  if (!ctx) return;
+  const prev = timers.get("cash");
+  if (prev) clearTimeout(prev);
+  timers.set(
+    "cash",
+    setTimeout(() => {
+      timers.delete("cash");
+      const cashHandling = usePosStore.getState().settings.cashHandling;
+      if (!cashHandling) return;
+      void saveLocationSettingsFn({
+        data: {
+          orgId: ctx.orgId,
+          locationId: ctx.locationId,
+          setup: { cashHandling },
+        },
+      }).catch(() => undefined);
+    }, 700),
+  );
+}
+
 export function persistLaborRules(): void {
   const ctx = ids();
   if (!ctx) return;

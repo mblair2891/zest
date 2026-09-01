@@ -34,6 +34,8 @@ import type { LocationInsights, RangeKey, ReportId } from "@/lib/reports/types";
 import type { PosView, VenueEntityId } from "@/lib/pos/types";
 import { cn } from "@/lib/utils";
 import { liabilityByIssuer } from "@/lib/pos/gift-issuer";
+import { parseCashHandling } from "@/lib/pos/cash-handling";
+import { bankExpected, drawerExpected, useCashSessionStore } from "@/lib/pos/cash-session";
 
 function annotateInsights(ins: LocationInsights): LocationInsights {
   const events = useOpsLearnStore.getState().events;
@@ -684,6 +686,70 @@ function ReportBody({ id, m }: { id: ReportId; m: ReturnType<typeof metricsFromP
         <Card label="Tips" value={formatCurrency(m.payments.tipsCents)} />
         <Card label="Closed checks" value={String(m.sales.closedChecks)} />
       </div>
+    );
+  }
+  if (id === "close-drawers") {
+    const cfg = parseCashHandling(usePosStore.getState().settings.cashHandling);
+    const ses = useCashSessionStore.getState();
+    const events = ses.events;
+    const drops = events.filter((e) => e.kind === "drop").reduce((s, e) => s + e.amountCents, 0);
+    const paidIn = events.filter((e) => e.kind === "paid_in").reduce((s, e) => s + e.amountCents, 0);
+    const paidOut = events.filter((e) => e.kind === "paid_out").reduce((s, e) => s + e.amountCents, 0);
+    return (
+      <div className="space-y-3">
+        <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+          <Card label="Drops" value={formatCurrency(drops)} />
+          <Card label="Paid in" value={formatCurrency(paidIn)} />
+          <Card label="Paid out" value={formatCurrency(paidOut)} />
+          <Card label="Drawers" value={String(cfg.drawers.length)} />
+        </div>
+        <ul className="space-y-2 text-sm">
+          {cfg.drawers.map((d) => {
+            const s = ses.drawers[d.id];
+            const exp = s ? drawerExpected(s) : d.startingBankCents;
+            const counted = s?.countedCents;
+            const varn = counted == null ? null : counted - exp;
+            return (
+              <li key={d.id} className="flex justify-between gap-2 rounded-xl border border-border px-3 py-2">
+                <span>
+                  {d.name}
+                  <span className="text-muted-foreground"> · {d.kind}</span>
+                </span>
+                <span className="tabular">
+                  exp {formatCurrency(exp)}
+                  {counted != null ? ` · counted ${formatCurrency(counted)}` : " · not counted"}
+                  {varn != null ? ` · ${varn >= 0 ? "+" : ""}${formatCurrency(varn)}` : ""}
+                </span>
+              </li>
+            );
+          })}
+        </ul>
+      </div>
+    );
+  }
+  if (id === "close-banks") {
+    const ses = useCashSessionStore.getState();
+    const employees = usePosStore.getState().employees;
+    const rows = Object.values(ses.banks);
+    if (!rows.length) return <p className="text-sm text-muted-foreground">No server banks issued this shift.</p>;
+    return (
+      <ul className="space-y-2 text-sm">
+        {rows.map((b) => {
+          const exp = bankExpected(b);
+          const name = employees.find((e) => e.id === b.employeeId)?.name ?? b.employeeId;
+          const varn = b.countedCents == null ? null : b.countedCents - exp;
+          return (
+            <li key={b.employeeId} className="flex justify-between gap-2 rounded-xl border border-border px-3 py-2">
+              <span>{name}</span>
+              <span className="tabular">
+                exp {formatCurrency(exp)}
+                {b.countedCents != null ? ` · counted ${formatCurrency(b.countedCents)}` : " · open"}
+                {varn != null ? ` · ${varn >= 0 ? "+" : ""}${formatCurrency(varn)}` : ""}
+              </span>
+            </li>
+          );
+        })}
+      </ul>
     );
   }
   if (id === "guest-waitlist") {

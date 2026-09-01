@@ -40,8 +40,14 @@ function line(left: string, right = "", width = 42): Uint8Array {
   return concat([text(l + " ".repeat(pad) + r), FEED]);
 }
 
+/** Printer-kick pulse. Star/Epson/generic ESC p (drawer 1). */
+export function buildDrawerKickBytes(): Uint8Array {
+  return concat([INIT, u8(0x1b, 0x70, 0x00, 0x19, 0xfa)]);
+}
+
 /** ESC/POS bytes for Star / Epson / generic thermal (cut + init). */
 export function buildEscPos(job: PrintJob): Uint8Array {
+  if (job.kind === "drawer_kick") return buildDrawerKickBytes();
   const title =
     job.kind === "receipt"
       ? "RECEIPT"
@@ -110,7 +116,7 @@ export function buildEscPos(job: PrintJob): Uint8Array {
 }
 
 export function escposBase64(job: PrintJob): string {
-  const bytes = buildEscPos(job);
+  const bytes = job.kind === "drawer_kick" ? buildDrawerKickBytes() : buildEscPos(job);
   let bin = "";
   for (let i = 0; i < bytes.length; i += 1) bin += String.fromCharCode(bytes[i]!);
   return btoa(bin);

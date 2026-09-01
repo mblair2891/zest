@@ -87,7 +87,8 @@ export type SettingsPackId =
   | "kiosk_front"
   | "voice"
   | "floor_qr"
-  | "gift_cards";
+  | "gift_cards"
+  | "cash_handling";
 
 const UNIVERSAL: SettingsPackId[] = [
   "profile",
@@ -95,6 +96,7 @@ const UNIVERSAL: SettingsPackId[] = [
   "payments",
   "cash_discount",
   "gift_cards",
+  "cash_handling",
   "devices",
   "staff",
   "notifications",
@@ -130,6 +132,7 @@ export const SETTINGS_PACK_LABEL: Record<SettingsPackId, string> = {
   voice: "Voice control",
   floor_qr: "Floor statuses, flash & QR",
   gift_cards: "Gift cards & residual",
+  cash_handling: "Cash drawers, wells & banks",
 };
 
 /** Subscriber is the host location; guest operators are onboarded onto it. */

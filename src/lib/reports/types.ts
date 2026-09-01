@@ -16,6 +16,8 @@ export type ReportId =
   | "staff-aging"
   | "kitchen-tickets"
   | "close-eod"
+  | "close-drawers"
+  | "close-banks"
   | "guest-waitlist"
   | "guest-kiosk"
   | "multi-op-sales"

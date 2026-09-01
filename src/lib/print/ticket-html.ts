@@ -14,13 +14,15 @@ export function ticketHtml(job: PrintJob): string {
   const title =
     job.kind === "receipt"
       ? "Receipt"
-      : job.kind === "test"
-        ? "Test print"
-        : job.station === "bar"
-          ? "Bar ticket"
-          : job.station === "expo"
-            ? "Expo"
-            : "Kitchen ticket";
+      : job.kind === "drawer_kick"
+        ? "Drawer"
+        : job.kind === "test"
+          ? "Test print"
+          : job.station === "bar"
+            ? "Bar ticket"
+            : job.station === "expo"
+              ? "Expo"
+              : "Kitchen ticket";
   const groups = groupLinesByEntity(job.items, job.locationName);
   const items = groups
     .map((g) => {

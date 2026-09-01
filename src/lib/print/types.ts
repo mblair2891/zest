@@ -1,6 +1,6 @@
 import type { PrintStation, PrinterConfig, PrinterConnection, PrinterFamily } from "@/lib/pos/location-devices";
 
-export type PrintJobKind = "ticket" | "receipt" | "test";
+export type PrintJobKind = "ticket" | "receipt" | "test" | "drawer_kick";
 
 export type PrintLine = {
   qty: number;

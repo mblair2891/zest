@@ -46,6 +46,7 @@ import { AccessPointsCard } from "./AccessPointsCard";
 import { LifecycleSettings } from "./LifecycleSettings";
 import { HrSettingsPack } from "./HrWorkspace";
 import { QuantumPaymentsSettings } from "./QuantumPaymentsSettings";
+import { CashHandlingSettings } from "./CashHandlingSettings";
 import { saveFrontSettingsFn } from "@/lib/front/api";
 import {
   CASH_ROUND_INCREMENTS,
@@ -674,6 +675,10 @@ export function SettingsView() {
           )}
         </div>
         </Pack>
+
+      <Pack id="cash_handling" packs={packs}>
+        <CashHandlingSettings write={write} />
+      </Pack>
 
       <GiftCardSettingsPack packs={packs} write={write} persist={persist} />
 

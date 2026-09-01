@@ -25,6 +25,9 @@ import { uid } from "@/lib/utils";
 import { readTenantPosContext } from "@/lib/saas/pos-context";
 import { canEmployee } from "@/lib/access/permissions";
 import { splitTenderByEntity } from "@/lib/payments/entity-split";
+import { cashRoleFromSession, parseCashHandling } from "@/lib/pos/cash-handling";
+import { currentCashSink } from "@/lib/pos/cash-session";
+import { useStationSessionStore } from "@/lib/pos/station-session";
 
 interface Props {
   open: boolean;
@@ -41,6 +44,14 @@ export function PaymentDialog({ open, onOpenChange }: Props) {
   const emp = usePosStore((s) => s.employees.find((e) => e.id === s.currentEmployeeId));
   const canPay = canEmployee(emp, "payments:take");
   const giftOk = canPay && settings.giftHouseIssuerEnabled !== false;
+  const cashSink = currentCashSink({
+    cfg: parseCashHandling(settings.cashHandling),
+    emp: emp ?? null,
+    deviceRole: cashRoleFromSession(useStationSessionStore.getState().assignment.kind),
+    deviceId: usePosStore((s) => s.activeDeviceId),
+    order: order ?? null,
+  });
+  const cashAllowed = cashSink.type !== "blocked";
 
   const [method, setMethod] = useState<PaymentMethod>(wanOnline ? "card" : "cash");
   const dual = useMemo(
@@ -102,6 +113,20 @@ export function PaymentDialog({ open, onOpenChange }: Props) {
   const pay = () => {
     void (async () => {
     setError(null);
+    if (method === "cash") {
+      const cfg = parseCashHandling(settings.cashHandling);
+      const sink = currentCashSink({
+        cfg,
+        emp: emp ?? null,
+        deviceRole: cashRoleFromSession(useStationSessionStore.getState().assignment.kind),
+        deviceId: usePosStore.getState().activeDeviceId,
+        order,
+      });
+      if (sink.type === "blocked") {
+        setError(sink.reason);
+        return;
+      }
+    }
     if ((method === "card" || method === "room_charge") && !wanOnline) {
       setError("Card requires connection. Take cash or keep the check open.");
       setMethod("cash");
@@ -395,7 +420,11 @@ export function PaymentDialog({ open, onOpenChange }: Props) {
                 <TabsTrigger value="card" disabled={!wanOnline} title={!wanOnline ? "Card requires connection" : undefined}>
                   <CreditCard className="h-3.5 w-3.5" />
                 </TabsTrigger>
-                <TabsTrigger value="cash">
+                <TabsTrigger
+                  value="cash"
+                  disabled={!cashAllowed}
+                  title={!cashAllowed && cashSink.type === "blocked" ? cashSink.reason : undefined}
+                >
                   <Banknote className="h-3.5 w-3.5" />
                 </TabsTrigger>
                 {giftOk && (

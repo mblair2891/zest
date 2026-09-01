@@ -27,6 +27,8 @@ import { HOST_SCOPE, canViewPayroll, isHostPrivileged } from "@/lib/access/entit
 import { isFloorRole } from "@/lib/pos/pin";
 import { buildPayrollRows, payrollCsv } from "@/lib/labor/payroll";
 import { EntityScheduleView } from "./EntityScheduleView";
+import { parseCashHandling } from "@/lib/pos/cash-handling";
+import { useCashSessionStore } from "@/lib/pos/cash-session";
 
 type Tab = "clock" | "myshifts" | "timecards" | "alerts" | "settings" | "payroll";
 
@@ -86,6 +88,18 @@ export function LaborOpsView() {
   const doClock = (id: string, name: string, isIn: boolean) => {
     const force = forceOverride && (current?.role === "owner" || current?.role === "manager");
     if (isIn) {
+      try {
+        const cfg = parseCashHandling(usePosStore.getState().settings.cashHandling);
+        if (cfg.requireCountToClockOut) {
+          const missing = useCashSessionStore.getState().uncountedForEmployee(id, cfg);
+          if (missing.length) {
+            setFlash(`Count ${missing.join(" and ")} before clock-out.`);
+            return;
+          }
+        }
+      } catch {
+        /* */
+      }
       const res = clockOut(id, name, { force });
       if (!res.ok) {
         setFlash(res.error ?? "Clock out failed");

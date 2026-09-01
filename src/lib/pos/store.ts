@@ -60,6 +60,9 @@ import {
 	partitionBySeat,
 	roundRobin,
 } from "./check-ops";
+import { applyCashTender, useCashSessionStore } from "./cash-session";
+import { cashRoleFromSession, parseCashHandling } from "./cash-handling";
+import { useStationSessionStore } from "./station-session";
 import {
   cardRequiresConnection,
   noteCashPayment,
@@ -408,6 +411,25 @@ const usePosStoreRaw = create()(persist((set, get) => ({
 	clockToggle: (employeeId) => {
 		const emp = get().employees.find((e) => e.id === employeeId);
 		const clockingOut = !!emp?.clockedIn;
+		try {
+			const cfg = parseCashHandling(get().settings.cashHandling);
+			if (clockingOut && cfg.requireCountToClockOut && emp) {
+				const missing = useCashSessionStore.getState().uncountedForEmployee(emp.id, cfg);
+				if (missing.length) {
+					return { ok: false, error: `Count ${missing.join(" and ")} before clock-out.` };
+				}
+			}
+			if (!clockingOut && emp && cfg.issueBank === "clock_in") {
+				const model = cfg.roleOverride.order ?? cfg.defaultModel;
+				if (model === "server_bank" || model === "well_plus_server_bank") {
+					useCashSessionStore.getState().issueBank({
+						employeeId: emp.id,
+						employeeName: emp.name,
+						startCents: cfg.serverBankStartingCents,
+					});
+				}
+			}
+		} catch { /* */ }
 		set({ employees: get().employees.map((e) => {
 			if (e.id !== employeeId) return e;
 			if (e.clockedIn) return {
@@ -824,6 +846,27 @@ const usePosStoreRaw = create()(persist((set, get) => ({
 			} : o)
 		});
 		get().audit("transfer", `Table ${from.label} → ${to.label}`);
+		try {
+			const cfg = parseCashHandling(get().settings.cashHandling);
+			if (cfg.cashFollowsOnTransfer === "accepting_server") {
+				const order = get().orders.find((o) => o.id === orderId);
+				const cash = (order?.payments ?? [])
+					.filter((p) => p.method === "cash")
+					.reduce((s, p) => s + p.amountCents + (p.tipCents || 0), 0);
+				const fromEmp = from.serverId;
+				const toEmp = get().currentEmployeeId;
+				if (cash && fromEmp && toEmp && fromEmp !== toEmp) {
+					const toStaff = get().employees.find((e) => e.id === toEmp);
+					useCashSessionStore.getState().reattributeOrder({
+						orderId,
+						fromEmployeeId: fromEmp,
+						toEmployeeId: toEmp,
+						toName: toStaff?.name ?? "Server",
+						amountCents: cash,
+					});
+				}
+			}
+		} catch { /* */ }
 		return { ok: true };
 	},
 	mergeTables: (primaryId, childId) => get().combineTables([primaryId, childId]),
@@ -1742,6 +1785,19 @@ const usePosStoreRaw = create()(persist((set, get) => ({
 				amountCents: amountCents + tipCents,
 				paymentId: payment.id,
 			});
+			try {
+				const cfg = parseCashHandling(get().settings.cashHandling);
+				applyCashTender({
+					cfg,
+					emp,
+					deviceRole: cashRoleFromSession(useStationSessionStore.getState().assignment.kind),
+					deviceId: get().activeDeviceId,
+					order,
+					amountCents: amountCents + tipCents,
+					locationId: get().tenantLocationId || "",
+					devices: get().locationDevices,
+				});
+			} catch { /* cash session optional */ }
 		}
 		floorSync("payment", order.id);
 		printNow("receipt", order.id);
