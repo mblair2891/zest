@@ -141,6 +141,7 @@ const MATRIX: { domain: string; items: string[] }[] = [
       "Scheduling",
       "Shift swaps",
       "Break tracking",
+      "Tip pooling: individual, tip-out, FOH / bar / team / dual",
       "Tip pool calculator",
       "Training mode",
       "RBAC matrix",

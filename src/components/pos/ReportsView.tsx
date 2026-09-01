@@ -248,7 +248,7 @@ export function ReportsView() {
       );
       return;
     }
-    if (active.id === "close-closeouts") {
+    if (active.id === "close-closeouts" || active.id === "close-tip-pools") {
       const emp = usePosStore.getState().employees.find((e) => e.id === usePosStore.getState().currentEmployeeId);
       let rows = useCloseoutStore.getState().records.filter((r) => r.at >= metrics.from && r.at <= metrics.to);
       if (emp?.role === "server" || emp?.role === "bartender") {
@@ -766,6 +766,14 @@ function ReportBody({ id, m }: { id: ReportId; m: ReturnType<typeof metricsFromP
           <Card label="Blind over/short" value={formatCurrency(overShort)} sub="Counted vs expected" />
           <Card label="Tip-out recommended" value={formatCurrency(rec)} />
           <Card label="Tip-out actual" value={formatCurrency(actual)} />
+          <Card
+            label="Pool in"
+            value={formatCurrency(rows.reduce((s, r) => s + (r.poolInCents ?? 0), 0))}
+          />
+          <Card
+            label="Net tips"
+            value={formatCurrency(rows.reduce((s, r) => s + (r.netTipsCents ?? 0), 0))}
+          />
         </div>
         <p className="text-sm font-medium">Recommended vs actual by pool</p>
         <ul className="space-y-2 text-sm">
@@ -787,6 +795,8 @@ function ReportBody({ id, m }: { id: ReportId; m: ReturnType<typeof metricsFromP
               </span>
               <span className="tabular">
                 cash {formatCurrency(r.cashTipsDeclaredCents)}
+                {r.poolInCents ? ` · pool in ${formatCurrency(r.poolInCents)}` : ""}
+                {r.netTipsCents != null ? ` · net ${formatCurrency(r.netTipsCents)}` : ""}
                 {r.overShortCents != null ? ` · O/S ${formatCurrency(r.overShortCents)}` : ""}
               </span>
             </li>
@@ -795,6 +805,60 @@ function ReportBody({ id, m }: { id: ReportId; m: ReturnType<typeof metricsFromP
         <p className="text-xs text-muted-foreground">
           Export CSV is payroll-ready (declared cash, over/short, rec vs actual by pool). Summex does not
           process payroll.
+        </p>
+      </div>
+    );
+  }
+  if (id === "close-tip-pools") {
+    const emp = usePosStore.getState().employees.find((e) => e.id === usePosStore.getState().currentEmployeeId);
+    const all = useCloseoutStore.getState().records.filter((r) => r.at >= m.from && r.at <= m.to);
+    const rows =
+      emp?.role === "server" || emp?.role === "bartender"
+        ? all.filter((r) => r.employeeId === emp.id)
+        : all;
+    const byPool = new Map<string, { inCents: number; outCents: number }>();
+    for (const r of rows) {
+      for (const p of r.poolLines ?? []) {
+        const cur = byPool.get(p.label) ?? { inCents: 0, outCents: 0 };
+        cur.inCents += p.inCents;
+        cur.outCents += p.outCents;
+        byPool.set(p.label, cur);
+      }
+    }
+    if (!rows.length) return <p className="text-sm text-muted-foreground">No closeouts with pool data in this range.</p>;
+    return (
+      <div className="space-y-3">
+        <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+          <Card label="Own tips" value={formatCurrency(rows.reduce((s, r) => s + (r.ownTipsCents ?? 0), 0))} />
+          <Card label="Pool in" value={formatCurrency(rows.reduce((s, r) => s + (r.poolInCents ?? 0), 0))} />
+          <Card label="Pool out" value={formatCurrency(rows.reduce((s, r) => s + (r.poolOutCents ?? 0), 0))} />
+          <Card label="Net tips" value={formatCurrency(rows.reduce((s, r) => s + (r.netTipsCents ?? 0), 0))} />
+        </div>
+        <p className="text-sm font-medium">By pool</p>
+        <ul className="space-y-2 text-sm">
+          {[...byPool.entries()].map(([label, v]) => (
+            <li key={label} className="flex justify-between rounded-xl border border-border px-3 py-2">
+              <span>{label}</span>
+              <span className="tabular">
+                in {formatCurrency(v.inCents)} · out {formatCurrency(v.outCents)}
+              </span>
+            </li>
+          ))}
+          {byPool.size === 0 && <li className="text-muted-foreground">No house pool this range (individual / tip-out only).</li>}
+        </ul>
+        <ul className="space-y-2 text-sm">
+          {rows.slice(0, 40).map((r) => (
+            <li key={r.id} className="flex justify-between gap-2 rounded-xl border border-border px-3 py-2">
+              <span>{r.employeeName}</span>
+              <span className="tabular">
+                net {formatCurrency(r.netTipsCents ?? 0)} · now {formatCurrency(r.netDueNowCents ?? 0)} ·
+                paycheck {formatCurrency(r.netToPayrollCents ?? 0)}
+              </span>
+            </li>
+          ))}
+        </ul>
+        <p className="text-xs text-muted-foreground">
+          Export uses the closeout CSV (net tips by person and pool). Summex does not process payroll.
         </p>
       </div>
     );

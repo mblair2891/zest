@@ -28,6 +28,14 @@ import {
 import { useStationSessionStore } from "@/lib/pos/station-session";
 import { useOpsStore } from "@/lib/pos/ops-store";
 import {
+  netTipsForCloseout,
+  poolingActive,
+  punchHours,
+  resolveTipPooling,
+  type PoolContributionRow,
+  type PoolParticipant,
+} from "@/lib/pos/tip-pooling";
+import {
   ordersForServer,
   recommendTipOuts,
   blindCountEnabled,
@@ -59,7 +67,12 @@ export function CloseoutView({ onDone }: { onDone: () => void }) {
   const kind = useStationSessionStore((s) => s.assignment.kind);
   const cfg = parseCashHandling(settings.cashHandling);
   const laborPayout = useOpsStore((s) => s.labor.ccTipPayout);
+  const laborPool = useOpsStore((s) => s.labor.tipPooling);
   const payout = resolveCcTipPayout(cfg.ccTipPayout, laborPayout);
+  const pooling = resolveTipPooling(cfg.tipPooling, laborPool);
+  const punches = useOpsStore((s) => s.punches);
+  const staff = usePosStore((s) => s.employees);
+  const closeouts = useCloseoutStore((s) => s.records);
   const sink = currentCashSink({
     cfg,
     emp: emp ?? null,
@@ -76,6 +89,7 @@ export function CloseoutView({ onDone }: { onDone: () => void }) {
   const [cashTips, setCashTips] = useState("");
   const [cardTipsAdj, setCardTipsAdj] = useState<string | null>(null);
   const [tipLines, setTipLines] = useState<TipOutLine[] | null>(null);
+  const [poolOutStr, setPoolOutStr] = useState<string | null>(null);
   const [err, setErr] = useState<string | null>(null);
 
   const sales = useMemo(
@@ -94,7 +108,6 @@ export function CloseoutView({ onDone }: { onDone: () => void }) {
   const declared = Math.max(0, Math.round(parseFloat(cashTips || "0") * 100) || 0);
   const cardDue = cardTipsCashDueCents(payout, cardTips);
   const declaredDue = declaredCashDueCents(payout, declared);
-  const cashDue = cashDueToServerCents(payout, cardTips, declared);
   const baseExpected =
     sink.type === "drawer"
       ? drawerExpected(
@@ -124,18 +137,6 @@ export function CloseoutView({ onDone }: { onDone: () => void }) {
             },
           )
         : null;
-  const expected =
-    baseExpected == null
-      ? null
-      : expectedAfterTipPayout({
-          baseExpected,
-          payout,
-          cardTipsCents: cardTips,
-          sinkType: sink.type,
-        });
-
-  const counted = countStr.trim() === "" ? null : Math.round(parseFloat(countStr) * 100) || 0;
-  const variance = counted != null && expected != null ? counted - expected : null;
   const recs = useMemo(
     () =>
       cfg.tipOutEnabled
@@ -149,6 +150,68 @@ export function CloseoutView({ onDone }: { onDone: () => void }) {
     [cfg.tipOutEnabled, cfg.tipOutPools, cfg.tipOutBasis, sales, cardTips, declared],
   );
   const lines = tipLines ?? recs;
+  const tipOutsCents = lines.reduce((s, l) => s + l.actualCents, 0);
+  const dayStart = (() => {
+    const d = new Date();
+    d.setHours(0, 0, 0, 0);
+    return d.getTime();
+  })();
+  const wellId = emp ? cash.floaterWellByEmployee[emp.id] ?? null : null;
+  const people: PoolParticipant[] = staff
+    .filter((e) => e.active && (e.clockedIn || e.id === emp?.id))
+    .map((e) => ({
+      employeeId: e.id,
+      name: e.name,
+      role: e.role,
+      hours: punchHours(punches, e.id, dayStart, Date.now()),
+      salesCents: e.salesTotal ?? 0,
+      wellId: cash.floaterWellByEmployee[e.id] ?? null,
+    }));
+  const priorContributions: PoolContributionRow[] = closeouts
+    .filter((r) => r.at >= dayStart && r.employeeId !== emp?.id)
+    .flatMap((r) =>
+      (r.poolLines ?? []).map((l) => ({
+        employeeId: r.employeeId,
+        poolKey: l.key as PoolContributionRow["poolKey"],
+        cents: l.inCents,
+      })),
+    );
+  const poolOutOverride =
+    pooling.split === "manual" && poolOutStr != null
+      ? Math.max(0, Math.round(parseFloat(poolOutStr || "0") * 100) || 0)
+      : null;
+  const poolNet = emp
+    ? netTipsForCloseout({
+        cfg: pooling,
+        payout,
+        cardTipsCents: cardTips,
+        declaredCents: declared,
+        salesCents: sales.totalSalesCents,
+        foodSalesCents: sales.foodSalesCents,
+        drinkSalesCents: sales.drinkSalesCents,
+        tipOutsCents,
+        autogratCents: sales.autoGratCents ?? 0,
+        serviceChargeCents: sales.serviceChargeCents ?? 0,
+        employeeId: emp.id,
+        role: emp.role,
+        wellId,
+        people,
+        priorContributions,
+        poolOutOverride,
+      })
+    : null;
+  const cashDue = poolNet?.netDueNowCents ?? cashDueToServerCents(payout, cardTips, declared);
+  const expected =
+    baseExpected == null
+      ? null
+      : expectedAfterTipPayout({
+          baseExpected,
+          payout,
+          cardTipsCents: payout === "cash_at_close" ? cashDue : cardTips,
+          sinkType: sink.type,
+        });
+  const counted = countStr.trim() === "" ? null : Math.round(parseFloat(countStr) * 100) || 0;
+  const variance = counted != null && expected != null ? counted - expected : null;
   const drops = emp
     ? cash.events.filter((e) => e.kind === "drop" && (e.employeeId === emp.id || e.bankEmployeeId === emp.id))
     : [];
@@ -220,6 +283,19 @@ export function CloseoutView({ onDone }: { onDone: () => void }) {
       cardTipsCashDueCents: cardDue,
       cardTipsToPayrollCents: payrollIncludesCardTips(payout) ? cardTips : 0,
       declaredCashDueCents: declaredDue,
+      ownTipsCents: poolNet?.ownTipsCents ?? cardTips + declared,
+      poolInCents: poolNet?.poolInCents ?? 0,
+      poolOutCents: poolNet?.poolOutCents ?? 0,
+      poolHeldCents: poolNet?.poolHeldCents ?? 0,
+      netTipsCents: poolNet?.netTipsCents ?? cardTips + declared - tipOutsCents,
+      netDueNowCents: cashDue,
+      netToPayrollCents: poolNet?.netToPayrollCents ?? (payrollIncludesCardTips(payout) ? cardTips : 0),
+      poolLines: (poolNet?.byPool ?? []).map((p) => ({
+        key: p.key,
+        label: p.label,
+        inCents: p.inCents,
+        outCents: p.outCents,
+      })),
       dropsCents: drops.reduce((s, e) => s + e.amountCents, 0),
       paidInCents: paid.filter((e) => e.kind === "paid_in").reduce((s, e) => s + e.amountCents, 0),
       paidOutCents: paid.filter((e) => e.kind === "paid_out").reduce((s, e) => s + e.amountCents, 0),
@@ -247,14 +323,14 @@ export function CloseoutView({ onDone }: { onDone: () => void }) {
         close: false,
       });
     }
-    if (cardDue > 0) {
+    if (cashDue > 0 && payout === "cash_at_close") {
       const ses = useCashSessionStore.getState();
       if (sink.type === "drawer") {
         ses.paid({
           sink,
           employeeId: emp.id,
           employeeName: emp.name,
-          amountCents: cardDue,
+          amountCents: cashDue,
           direction: "out",
           reason: "CC tips",
         });
@@ -263,7 +339,7 @@ export function CloseoutView({ onDone }: { onDone: () => void }) {
           sink,
           employeeId: emp.id,
           employeeName: emp.name,
-          amountCents: cardDue,
+          amountCents: cashDue,
           direction: "in",
           reason: "CC tips",
         });
@@ -273,7 +349,7 @@ export function CloseoutView({ onDone }: { onDone: () => void }) {
             sink: { type: "drawer", drawer: house },
             employeeId: emp.id,
             employeeName: emp.name,
-            amountCents: cardDue,
+            amountCents: cashDue,
             direction: "out",
             reason: "CC tips",
           });
@@ -285,7 +361,7 @@ export function CloseoutView({ onDone }: { onDone: () => void }) {
             sink: { type: "drawer", drawer: house },
             employeeId: emp.id,
             employeeName: emp.name,
-            amountCents: cardDue,
+            amountCents: cashDue,
             direction: "out",
             reason: "CC tips",
           });
@@ -310,7 +386,10 @@ export function CloseoutView({ onDone }: { onDone: () => void }) {
           { qty: 1, name: `Drink ${formatCurrency(sales.drinkSalesCents)}` },
           { qty: 1, name: `Card tips ${formatCurrency(cardTips)}` },
           { qty: 1, name: `Cash tips declared ${formatCurrency(declared)}` },
-          { qty: 1, name: `Cash due ${formatCurrency(cashDue)} (${CC_TIP_PAYOUT_LABEL[payout]})` },
+          { qty: 1, name: `Own tips ${formatCurrency(poolNet?.ownTipsCents ?? cardTips + declared)}` },
+          { qty: 1, name: `Tip-outs ${formatCurrency(tipOutsCents)}` },
+          { qty: 1, name: `Pool in ${formatCurrency(poolNet?.poolInCents ?? 0)} · out ${formatCurrency(poolNet?.poolOutCents ?? 0)}` },
+          { qty: 1, name: `Net due now ${formatCurrency(cashDue)} (${CC_TIP_PAYOUT_LABEL[payout]})` },
           ...lines.map((l) => ({
             qty: 1,
             name: `${l.label} rec ${formatCurrency(l.recommendedCents)} → ${formatCurrency(l.actualCents)}`,
@@ -484,7 +563,7 @@ export function CloseoutView({ onDone }: { onDone: () => void }) {
             {declaredDue > 0 && (
               <p className="text-sm">Declared cash settled in person: {formatCurrency(declaredDue)}</p>
             )}
-            <p className="text-sm font-medium">Cash due to server {formatCurrency(cashDue)}</p>
+            <p className="text-sm font-medium">Net due now {formatCurrency(cashDue)}</p>
             {payrollIncludesCardTips(payout) && (
               <p className="text-xs text-muted-foreground">
                 Card tips {formatCurrency(cardTips)} go on the hours-export file. Not a payroll run.
@@ -556,6 +635,51 @@ export function CloseoutView({ onDone }: { onDone: () => void }) {
                 </div>
               </>
             )}
+            {poolNet && poolingActive(pooling) && (
+              <div className="rounded-xl border border-border p-3 text-sm">
+                <p className="text-xs text-muted-foreground">House pool — policy only, not legal advice.</p>
+                <dl className="mt-2 grid grid-cols-2 gap-2">
+                  <div>
+                    <dt className="text-xs text-muted-foreground">Own tips</dt>
+                    <dd className="tabular">{formatCurrency(poolNet.ownTipsCents)}</dd>
+                  </div>
+                  <div>
+                    <dt className="text-xs text-muted-foreground">Tip-outs</dt>
+                    <dd className="tabular">{formatCurrency(poolNet.tipOutsCents)}</dd>
+                  </div>
+                  <div>
+                    <dt className="text-xs text-muted-foreground">Pool in</dt>
+                    <dd className="tabular">{formatCurrency(poolNet.poolInCents)}</dd>
+                  </div>
+                  <div>
+                    <dt className="text-xs text-muted-foreground">Pool out</dt>
+                    <dd className="tabular">{formatCurrency(poolNet.poolOutCents)}</dd>
+                  </div>
+                </dl>
+                {pooling.split === "manual" && (
+                  <label className="mt-2 block text-xs text-muted-foreground">
+                    Manual pool out
+                    <Input
+                      className="mt-1"
+                      inputMode="decimal"
+                      value={poolOutStr ?? (poolNet.poolOutCents / 100).toFixed(2)}
+                      onChange={(e) => setPoolOutStr(e.target.value)}
+                    />
+                  </label>
+                )}
+                {poolNet.poolHeldCents > 0 && (
+                  <p className="mt-2 text-xs text-muted-foreground">
+                    Held for pay-period settle {formatCurrency(poolNet.poolHeldCents)}
+                  </p>
+                )}
+                <p className="mt-2 font-medium">
+                  Net due now {formatCurrency(poolNet.netDueNowCents)}
+                  {poolNet.netToPayrollCents > 0
+                    ? ` · paycheck / hours export ${formatCurrency(poolNet.netToPayrollCents)}`
+                    : ""}
+                </p>
+              </div>
+            )}
           </div>
         )}
         {step === 6 && (
@@ -581,9 +705,14 @@ export function CloseoutView({ onDone }: { onDone: () => void }) {
             <p className="mb-3 text-center text-sm">
               Confirm with your PIN. Not clock-out.
               <span className="mt-1 block text-xs text-muted-foreground">
-                Cash due {formatCurrency(cashDue)}
-                {payrollIncludesCardTips(payout)
-                  ? ` · card tips ${formatCurrency(cardTips)} to hours export`
+                Own {formatCurrency(poolNet?.ownTipsCents ?? cardTips + declared)} · tip-outs{" "}
+                {formatCurrency(tipOutsCents)}
+                {poolingActive(pooling)
+                  ? ` · pool in ${formatCurrency(poolNet?.poolInCents ?? 0)} · pool out ${formatCurrency(poolNet?.poolOutCents ?? 0)}`
+                  : ""}
+                · net due now {formatCurrency(cashDue)}
+                {(poolNet?.netToPayrollCents ?? 0) > 0
+                  ? ` · paycheck ${formatCurrency(poolNet!.netToPayrollCents)}`
                   : ""}
               </span>
             </p>

@@ -16,6 +16,8 @@ import {
   CC_TIP_PAYOUT_BLURB,
   type CcTipPayoutSetting,
 } from "@/lib/pos/cash-handling";
+import { DEFAULT_TIP_POOLING, type TipPoolingSetting } from "@/lib/pos/tip-pooling";
+import { TipPoolingSettings } from "./TipPoolingSettings";
 import { useOpsStore } from "@/lib/pos/ops-store";
 import {
   APPLICANT_STAGES,
@@ -396,6 +398,9 @@ export function HrSettingsCard({
   const [ccTipPayout, setCcTipPayout] = useState<CcTipPayoutSetting>(
     overview.config.ccTipPayout || "inherit",
   );
+  const [tipPooling, setTipPooling] = useState<TipPoolingSetting>(
+    overview.config.tipPooling || "inherit",
+  );
 
   useEffect(() => {
     setEnabled(overview.config.enabled);
@@ -404,6 +409,7 @@ export function HrSettingsCard({
     setVisibility(overview.config.visibility);
     setPayrollProvider(overview.config.payrollProvider || "none");
     setCcTipPayout(overview.config.ccTipPayout || "inherit");
+    setTipPooling(overview.config.tipPooling || "inherit");
   }, [overview]);
 
   const save = async () => {
@@ -420,6 +426,7 @@ export function HrSettingsCard({
           visibility,
           payrollProvider,
           ccTipPayout,
+          tipPooling,
         },
       });
       await onSaved();
@@ -496,6 +503,31 @@ export function HrSettingsCard({
             : CC_TIP_PAYOUT_BLURB[ccTipPayout]}
         </span>
       </label>
+      <label className="block text-sm">
+        Tip pooling
+        <select
+          className="mt-1 h-9 w-full max-w-xs rounded-md border border-border bg-bg px-2 text-sm"
+          value={tipPooling === "inherit" ? "inherit" : "override"}
+          onChange={(e) =>
+            setTipPooling(
+              e.target.value === "inherit"
+                ? "inherit"
+                : {
+                    ...DEFAULT_TIP_POOLING,
+                    includeRoles: [...DEFAULT_TIP_POOLING.includeRoles],
+                    excludeRoles: [...DEFAULT_TIP_POOLING.excludeRoles],
+                    rolePoints: { ...DEFAULT_TIP_POOLING.rolePoints },
+                  },
+            )
+          }
+        >
+          <option value="inherit">Inherit location default</option>
+          <option value="override">Override for this employer</option>
+        </select>
+      </label>
+      {tipPooling !== "inherit" && (
+        <TipPoolingSettings cfg={tipPooling} write onChange={setTipPooling} />
+      )}
       <div className="grid gap-2 sm:grid-cols-2">
         {HR_FEATURE_KEYS.map((k) => (
           <label key={k} className="flex items-center gap-2 text-sm">

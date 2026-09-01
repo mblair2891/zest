@@ -34,6 +34,8 @@ import {
   CC_TIP_PAYOUT_BLURB,
   type CcTipPayoutSetting,
 } from "@/lib/pos/cash-handling";
+import { DEFAULT_TIP_POOLING } from "@/lib/pos/tip-pooling";
+import { TipPoolingSettings } from "./TipPoolingSettings";
 import { useCashSessionStore } from "@/lib/pos/cash-session";
 import { hasCompletedCloseoutToday } from "@/lib/pos/closeout-store";
 
@@ -575,6 +577,37 @@ export function LaborOpsView() {
                   : CC_TIP_PAYOUT_BLURB[rules.ccTipPayout]}
               </span>
             </label>
+            <p className="pt-2 text-xs font-semibold">Tip pooling (this employer)</p>
+            <label className="block text-xs text-muted-foreground">
+              Policy
+              <select
+                className="mt-1 flex h-9 w-full rounded-md border border-border bg-bg px-2 text-sm"
+                value={rules.tipPooling === "inherit" ? "inherit" : "override"}
+                onChange={(e) =>
+                  updateLabor({
+                    tipPooling:
+                      e.target.value === "inherit"
+                        ? "inherit"
+                        : {
+                            ...DEFAULT_TIP_POOLING,
+                            includeRoles: [...DEFAULT_TIP_POOLING.includeRoles],
+                            excludeRoles: [...DEFAULT_TIP_POOLING.excludeRoles],
+                            rolePoints: { ...DEFAULT_TIP_POOLING.rolePoints },
+                          },
+                  })
+                }
+              >
+                <option value="inherit">Inherit location default</option>
+                <option value="override">Override for this employer</option>
+              </select>
+            </label>
+            {rules.tipPooling !== "inherit" && (
+              <TipPoolingSettings
+                cfg={rules.tipPooling}
+                write
+                onChange={(tipPooling) => updateLabor({ tipPooling })}
+              />
+            )}
             <p className="pt-2 text-xs font-semibold">Pay period (hours export, not a payroll run)</p>
             <label className="block text-xs text-muted-foreground">
               Period

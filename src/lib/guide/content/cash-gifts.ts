@@ -167,7 +167,51 @@ export const CASH_GIFT_TOPICS: GuideTopic[] = [
       warn(
         "Closeout is not clock-out. Labor still punches time. House drawer/well close is still Cash, not this wizard.",
       ),
-      related("cash-handling", "tenders-tips", "payroll-export", "reports", "floor-pin-login"),
+      related("cash-handling", "tenders-tips", "tip-pooling", "payroll-export", "reports", "floor-pin-login"),
+    ],
+  }),
+  topic({
+    id: "tip-pooling",
+    chapterId: "cash-gifts",
+    title: "Tip pooling — individual, tip-out, FOH / bar / team / dual",
+    summary:
+      "Location-configurable pools with mix-based tip-outs, autograt, and service charge. Payout uses cash-at-close vs paycheck. Not a payroll run.",
+    roles: ["owner_manager", "server", "kitchen_bar", "host_operator"],
+    keywords: [
+      "tip pool",
+      "FOH pool",
+      "bar pool",
+      "team pool",
+      "dual pool",
+      "autograt",
+      "service charge",
+      "points",
+      "hours",
+    ],
+    openView: "settings",
+    blocks: [
+      why(
+        "Houses pool tips in different ways: keep your own, tip-out by food/drink mix, FOH share, bar wells, one team pool, or food vs drink dual pools. Summex calculates the policy you set.",
+      ),
+      warn(
+        "Pooling and tip-credit rules vary by state. Summex calculates your configured policy only — it is not legal advice, not a payroll processor, and does not file taxes.",
+      ),
+      p(
+        "Individual: each person keeps their own tips. Individual + tip-out: mix-based recommendations to kitchen, bar, host, busser, then the rest stays with the server.",
+      ),
+      p(
+        "FOH pool: servers, hosts, bussers, and cashiers share one pool. Bar pool: bartenders share all wells together or each well on its own. Team pool: every included role. Dual pool: food-line ownership funds the FOH pool; drink-line ownership funds the bar pool.",
+      ),
+      p(
+        "Contribution can be card tips, declared cash, both, a percent of tips, or a percent of sales. Split by hours, point table × hours, equal shares, sales, or manual at closeout. Managers are excluded by default. Settle at end of shift or hold until the pay period.",
+      ),
+      p(
+        "Auto-grat stays with the server, enters the pool, or splits at a custom percent. Service charge is house money or a percent to the staff pool — never labeled a tip unless you check treat as tip.",
+      ),
+      p(
+        "Payout rail is the existing card-tips setting: cash out at closeout or on the hours-export file (paycheck). Closeout shows own tips, tip-outs, pool in, pool out, net due now vs paycheck. Reports → Tip pools and the closeout CSV list net tips by person and pool.",
+      ),
+      related("server-closeout", "cash-handling", "payroll-export", "tenders-tips"),
     ],
   }),
   topic({
@@ -265,7 +309,7 @@ export const CASH_GIFT_TOPICS: GuideTopic[] = [
         "Payments: tender mix (Quantum Payments card), cash discount cost, voids/comps, $35 chargeback splits.",
         "Staff: by server (your own if you are a server), aging checks.",
         "Kitchen/bar: ticket times and 86s.",
-        "Close: end of day; drawer/well close; server banks; server closeouts (declared cash, blind over/short, tip-out rec vs actual).",
+        "Close: end of day; drawer/well close; server banks; server closeouts; tip pools (net by person and pool).",
         "Guest: waitlist, reservations, kiosk — hidden when the type does not use them.",
         "Gift: liability by issuer and redemptions (server ledger).",
         "Host venues: sales by operator, settlement/ledger.",

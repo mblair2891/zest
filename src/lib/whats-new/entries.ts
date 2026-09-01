@@ -6,6 +6,19 @@ import type { GuideUpdate } from "@/lib/guide/types";
  */
 export const WHATS_NEW_ENTRIES: GuideUpdate[] = [
   {
+    id: "upd_2026_10_17_tip_pooling",
+    date: "2026-10-17",
+    title: "Tip pooling: individual, tip-out, FOH / bar / team / dual",
+    summary:
+      "Location-configurable pools with mix-based tip-outs, autograt, and service charge. Closeout shows own tips, pool in/out, net due now vs paycheck.",
+    body: "Settings → Cash drawers: individual, individual + tip-out, FOH pool, bar pool (all wells or per well), team pool, or dual food/drink pools from ticket line ownership. Contribution, split (hours/points/equal/sales/manual), settle at shift or pay period. Auto-grat stays, enters the pool, or splits. Service charge is house or % to staff — never labeled a tip unless you check it. Payout uses cash-at-close vs hours export. Pooling rules vary by state; Summex calculates policy only.",
+    roles: ["owner_manager", "server", "kitchen_bar", "host_operator"],
+    surfaces: ["floor", "reports", "settings"],
+    audience: "all",
+    topicId: "tip-pooling",
+    tags: ["tips", "pool", "closeout", "payroll"],
+  },
+  {
     id: "upd_2026_10_16_server_closeout",
     date: "2026-10-16",
     title: "Server closeout, blind count, mix-based tip-out",

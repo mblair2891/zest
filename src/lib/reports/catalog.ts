@@ -126,7 +126,14 @@ export const REPORT_CATALOG: ReportDef[] = [
     id: "close-closeouts",
     group: "close",
     title: "Server closeouts",
-    summary: "Declared cash, blind over/short, recommended vs actual tip-outs by pool.",
+    summary: "Declared cash, blind over/short, tip-outs, pool in/out, net tips.",
+    roles: ["owner", "manager", "accountant", "server", "bartender", "cashier"],
+  },
+  {
+    id: "close-tip-pools",
+    group: "close",
+    title: "Tip pools",
+    summary: "Net tips by person and pool. Exportable with payroll CSV later.",
     roles: ["owner", "manager", "accountant", "server", "bartender", "cashier"],
   },
   {

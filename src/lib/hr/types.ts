@@ -7,6 +7,7 @@ import {
   parseCcTipPayoutSetting,
   type CcTipPayoutSetting,
 } from "@/lib/pos/cash-handling";
+import { parseTipPoolingSetting, type TipPoolingSetting } from "@/lib/pos/tip-pooling";
 
 export const HR_FEATURE_KEYS = [
   "applicants",
@@ -71,6 +72,7 @@ export type EntityHrConfig = {
   payrollProvider: PayrollProviderId;
   /** inherit = use location cash-handling ccTipPayout */
   ccTipPayout: CcTipPayoutSetting;
+  tipPooling: TipPoolingSetting;
 };
 
 export const DEFAULT_HR_FEATURES: HrFeatures = {
@@ -109,6 +111,7 @@ export function emptyHrConfig(): EntityHrConfig {
     employmentState: "federal",
     payrollProvider: "none",
     ccTipPayout: "inherit",
+    tipPooling: "inherit",
   };
 }
 
@@ -270,6 +273,7 @@ export function parseHrConfig(raw: unknown): EntityHrConfig {
     employmentState: parseEmploymentState(o.employmentState ?? o.state),
     payrollProvider: parsePayrollProvider(o.payrollProvider),
     ccTipPayout: parseCcTipPayoutSetting(o.ccTipPayout),
+    tipPooling: parseTipPoolingSetting(o.tipPooling),
   };
 }
 

@@ -1073,6 +1073,7 @@ export async function saveEntityHrConfig(
     visibility?: Partial<EntityHrConfig["visibility"]>;
     payrollProvider?: EntityHrConfig["payrollProvider"];
     ccTipPayout?: EntityHrConfig["ccTipPayout"];
+    tipPooling?: EntityHrConfig["tipPooling"];
   },
 ): Promise<EntityHrConfig> {
   assertEmployerScope(ctx, data.employerId);
@@ -1093,14 +1094,16 @@ export async function saveEntityHrConfig(
     }).employmentState,
     payrollProvider: data.payrollProvider ?? prev.payrollProvider ?? "none",
     ccTipPayout: data.ccTipPayout ?? prev.ccTipPayout ?? "inherit",
+    tipPooling: data.tipPooling ?? prev.tipPooling ?? "inherit",
   };
   const map: Record<string, EntityHrConfig> = { ...(ctx.setup.hrByEntity ?? {}) };
   map[data.employerId] = next;
   const laborByEntity = { ...(ctx.setup.laborByEntity ?? {}) };
-  if (data.ccTipPayout !== undefined) {
+  if (data.ccTipPayout !== undefined || data.tipPooling !== undefined) {
     laborByEntity[data.employerId] = parseLaborRules({
       ...laborByEntity[data.employerId],
       ccTipPayout: next.ccTipPayout,
+      tipPooling: next.tipPooling,
     });
   }
   const merged = {

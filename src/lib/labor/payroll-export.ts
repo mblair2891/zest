@@ -34,6 +34,9 @@ export type PayrollExportLine = {
   otFlag: boolean;
   declaredTipsCents: number;
   ccTipsCents: number;
+  netTipsCents?: number;
+  poolInCents?: number;
+  poolOutCents?: number;
 };
 
 export type PayrollExportBatch = {
@@ -76,6 +79,9 @@ export function genericPayrollCsv(batch: PayrollExportBatch): string {
     "ot_flag",
     "declared_tips",
     "cc_tips",
+    "net_tips",
+    "pool_in",
+    "pool_out",
     "employer_id",
     "employer_name",
   ];
@@ -94,6 +100,9 @@ export function genericPayrollCsv(batch: PayrollExportBatch): string {
       r.otFlag ? "Y" : "N",
       (r.declaredTipsCents / 100).toFixed(2),
       (r.ccTipsCents / 100).toFixed(2),
+      ((r.netTipsCents ?? r.declaredTipsCents + r.ccTipsCents) / 100).toFixed(2),
+      ((r.poolInCents ?? 0) / 100).toFixed(2),
+      ((r.poolOutCents ?? 0) / 100).toFixed(2),
       csvEscape(batch.employerId),
       csvEscape(batch.employerName),
     ].join(","),

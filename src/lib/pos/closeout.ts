@@ -38,6 +38,8 @@ export type CloseoutSales = {
   giftCents: number;
   cardTipsCents: number;
   cashTipsOnTendersCents: number;
+  autoGratCents?: number;
+  serviceChargeCents?: number;
 };
 
 export type ServerCloseout = {
@@ -63,6 +65,14 @@ export type ServerCloseout = {
   cardTipsCashDueCents: number;
   cardTipsToPayrollCents: number;
   declaredCashDueCents: number;
+  ownTipsCents?: number;
+  poolInCents?: number;
+  poolOutCents?: number;
+  poolHeldCents?: number;
+  netTipsCents?: number;
+  netDueNowCents?: number;
+  netToPayrollCents?: number;
+  poolLines?: { key: string; label: string; inCents: number; outCents: number }[];
   dropsCents: number;
   paidInCents: number;
   paidOutCents: number;
@@ -92,6 +102,8 @@ export function summarizeServerSales(orders: Order[], employeeId: string): Close
   let giftCents = 0;
   let cardTipsCents = 0;
   let cashTipsOnTendersCents = 0;
+  let autoGratCents = 0;
+  let serviceChargeCents = 0;
   for (const o of mine) {
     if (o.status === "voided" || o.status === "cancelled") continue;
     guests += Math.max(0, o.guestCount || 0);
@@ -121,6 +133,9 @@ export function summarizeServerSales(orders: Order[], employeeId: string): Close
         giftCents += p.amountCents;
       }
     }
+    const sc = Math.max(0, o.serviceChargeCents || 0);
+    if (o.autoGratApplied) autoGratCents += sc;
+    else serviceChargeCents += sc;
   }
   return {
     guests,
@@ -135,6 +150,8 @@ export function summarizeServerSales(orders: Order[], employeeId: string): Close
     giftCents,
     cardTipsCents,
     cashTipsOnTendersCents,
+    autoGratCents,
+    serviceChargeCents,
   };
 }
 
@@ -241,6 +258,13 @@ export function closeoutPayrollCsv(records: ServerCloseout[]): string {
     "card_tips_to_payroll",
     "declared_cash_tips",
     "declared_cash_due",
+    "own_tips",
+    "pool_in",
+    "pool_out",
+    "pool_held",
+    "net_tips",
+    "net_due_now",
+    "net_to_payroll",
     "counted",
     "expected",
     "over_short",
@@ -283,6 +307,13 @@ export function closeoutPayrollCsv(records: ServerCloseout[]): string {
           dollars(r.cardTipsToPayrollCents),
           dollars(r.cashTipsDeclaredCents),
           dollars(r.declaredCashDueCents),
+          dollars(r.ownTipsCents),
+          dollars(r.poolInCents),
+          dollars(r.poolOutCents),
+          dollars(r.poolHeldCents),
+          dollars(r.netTipsCents),
+          dollars(r.netDueNowCents),
+          dollars(r.netToPayrollCents),
           dollars(r.countedCents),
           dollars(r.expectedCents),
           dollars(r.overShortCents),

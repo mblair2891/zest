@@ -2,6 +2,8 @@ import type { DeviceRole } from "./device-roles";
 import { deviceRoleFromSessionMode } from "./device-roles";
 import type { SessionModeId } from "@/lib/lifecycle/types";
 import type { Employee, EmployeeRole, Order } from "./types";
+import { DEFAULT_TIP_POOLING, parseTipPooling, type TipPoolingConfig } from "./tip-pooling";
+export type { TipPoolingConfig } from "./tip-pooling";
 
 export const TIP_OUT_CATEGORIES = ["food", "drink", "total", "covers"] as const;
 export type TipOutCategory = (typeof TIP_OUT_CATEGORIES)[number];
@@ -213,6 +215,7 @@ export type CashHandlingConfig = {
   tipOutBasis: TipOutBasis;
   tipOutPools: TipOutPool[];
   ccTipPayout: CcTipPayout;
+  tipPooling: TipPoolingConfig;
 };
 
 export const DEFAULT_PAID_REASONS = [
@@ -262,6 +265,12 @@ export const DEFAULT_CASH_HANDLING: CashHandlingConfig = {
   tipOutBasis: "category_sales",
   tipOutPools: DEFAULT_TIP_OUT_POOLS.map((p) => ({ ...p })),
   ccTipPayout: "cash_at_close",
+  tipPooling: {
+    ...DEFAULT_TIP_POOLING,
+    includeRoles: [...DEFAULT_TIP_POOLING.includeRoles],
+    excludeRoles: [...DEFAULT_TIP_POOLING.excludeRoles],
+    rolePoints: { ...DEFAULT_TIP_POOLING.rolePoints },
+  },
 };
 
 function asModel(raw: unknown): CashModel | null {
@@ -361,6 +370,12 @@ export function parseCashHandling(raw: unknown): CashHandlingConfig {
     tipOutBasis: o.tipOutBasis === "tips_by_mix" ? "tips_by_mix" : "category_sales",
     tipOutPools: parseTipOutPools(o.tipOutPools),
     ccTipPayout: parseCcTipPayout(o.ccTipPayout),
+    tipPooling: o.tipPooling
+      ? parseTipPooling(o.tipPooling)
+      : parseTipPooling({
+          ...DEFAULT_TIP_POOLING,
+          mode: o.tipOutEnabled === false ? "individual" : "individual_plus_tipout",
+        }),
     blindCount:
       o.blindCount === undefined
         ? defaultModel === "server_bank" || defaultModel === "single_user_drawer"

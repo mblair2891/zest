@@ -31,6 +31,7 @@ import {
 import type { DeviceRole } from "@/lib/pos/device-roles";
 import { DEVICE_ROLE_LABEL } from "@/lib/pos/device-roles";
 import { HOST_SCOPE } from "@/lib/access/entity-grants";
+import { TipPoolingSettings } from "./TipPoolingSettings";
 
 function save(next: CashHandlingConfig) {
   usePosStore.getState().updateSettings({ cashHandling: next });
@@ -678,6 +679,22 @@ export function CashHandlingSettings({ write }: { write: boolean }) {
           Cannot clock out until bank or assigned drawer is counted
         </span>
       </label>
+
+      <TipPoolingSettings
+        cfg={cfg.tipPooling}
+        write={write}
+        onChange={(tipPooling) =>
+          patch({
+            tipPooling,
+            tipOutEnabled:
+              tipPooling.mode === "individual"
+                ? false
+                : tipPooling.mode === "individual_plus_tipout"
+                  ? true
+                  : cfg.tipOutEnabled,
+          })
+        }
+      />
 
       <Field label="Paid-in / paid-out reasons" hint="One per line">
         <textarea
