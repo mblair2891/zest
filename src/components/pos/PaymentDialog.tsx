@@ -23,6 +23,7 @@ import { fulfillingIssuer } from "@/lib/pos/gift-issuer";
 import type { PaymentsStatus } from "@/lib/payments/types";
 import { uid } from "@/lib/utils";
 import { readTenantPosContext } from "@/lib/saas/pos-context";
+import { canEmployee } from "@/lib/access/permissions";
 
 interface Props {
   open: boolean;
@@ -36,6 +37,9 @@ export function PaymentDialog({ open, onOpenChange }: Props) {
   const wanOnline = useNetworkStore((s) => s.wanOnline());
   const clearTable = usePosStore((s) => s.clearTable);
   const setView = usePosStore((s) => s.setView);
+  const emp = usePosStore((s) => s.employees.find((e) => e.id === s.currentEmployeeId));
+  const canPay = canEmployee(emp, "payments:take");
+  const giftOk = canPay && settings.giftHouseIssuerEnabled !== false;
 
   const [method, setMethod] = useState<PaymentMethod>(wanOnline ? "card" : "cash");
   const dual = useMemo(
@@ -67,6 +71,10 @@ export function PaymentDialog({ open, onOpenChange }: Props) {
   useEffect(() => {
     if (!wanOnline && method === "card") setMethod("cash");
   }, [wanOnline, method]);
+
+  useEffect(() => {
+    if (!giftOk && method === "gift_card") setMethod(wanOnline ? "card" : "cash");
+  }, [giftOk, method, wanOnline]);
 
   useEffect(() => {
     if (!open) return;
@@ -355,16 +363,18 @@ export function PaymentDialog({ open, onOpenChange }: Props) {
               value={method}
               onValueChange={(v) => setMethod(v as PaymentMethod)}
             >
-              <TabsList className="grid w-full grid-cols-4">
+              <TabsList className={cn("grid w-full", giftOk ? "grid-cols-4" : "grid-cols-3")}>
                 <TabsTrigger value="card" disabled={!wanOnline} title={!wanOnline ? "Card requires connection" : undefined}>
                   <CreditCard className="h-3.5 w-3.5" />
                 </TabsTrigger>
                 <TabsTrigger value="cash">
                   <Banknote className="h-3.5 w-3.5" />
                 </TabsTrigger>
+                {giftOk && (
                 <TabsTrigger value="gift_card">
                   <Gift className="h-3.5 w-3.5" />
                 </TabsTrigger>
+                )}
                 <TabsTrigger value="comp">
                   <Percent className="h-3.5 w-3.5" />
                 </TabsTrigger>

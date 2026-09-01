@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute } from "@tanstack/react-router";
 import { PosApp } from "@/components/pos/PosApp";
 import { SessionGate } from "@/components/pos/SessionGate";
 import { SummexMark } from "@/components/brand/SummexMark";
@@ -7,9 +7,17 @@ import { isVenueEntityId } from "@/lib/pos/entities";
 import type { VenueEntityId } from "@/lib/pos/types";
 import { resolvePrimedLocation } from "@/lib/offline/location-snapshot";
 import { rememberLastPosPath } from "@/lib/offline/register-sw";
+import { parseStationQuery } from "@/lib/pos/device-roles";
 
 export const Route = createFileRoute("/station")({
   ssr: false,
+  validateSearch: (s: Record<string, unknown>): { station?: "order" | "ods" | "host"; loc?: string } => {
+    const out: { station?: "order" | "ods" | "host"; loc?: string } = {};
+    const station = parseStationQuery(typeof s.station === "string" ? s.station : undefined);
+    if (station) out.station = station;
+    if (typeof s.loc === "string" && s.loc) out.loc = s.loc;
+    return out;
+  },
   component: StationPage,
 });
 
@@ -54,13 +62,10 @@ function StationPage() {
         <SummexMark className="h-10 w-10" />
         <p className="text-sm font-medium">This device is not primed yet</p>
         <p className="max-w-sm text-sm text-muted-foreground">
-          First install requires internet: sign in, open the location, wait for
-          the floor to load, then Add to Home Screen. After that, cold start
-          works with no network.
+          First install requires internet: open this location from the control
+          plane so the station can prime. After that, cold start is PIN-only —
+          never a password login.
         </p>
-        <Link to="/login" className="text-sm font-medium text-primary underline">
-          Sign in
-        </Link>
       </div>
     );
   }

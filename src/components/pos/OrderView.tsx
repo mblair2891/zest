@@ -120,13 +120,20 @@ export function OrderView() {
       <div className="flex h-full flex-col items-center justify-center gap-4 p-6 text-center">
         <p className="text-lg font-medium">No active order</p>
         <p className="max-w-sm text-sm text-muted-foreground">
-          Seat a table from the floor plan, open a bar tab, or select an open
-          check below.
+          Open a to-go check, bar tab, or an existing check below.
         </p>
         <div className="flex flex-wrap justify-center gap-2">
-          <Button onClick={() => setView("floor")}>Floor plan</Button>
-          <Button variant="outline" onClick={() => setView("takeout")}>
-            Takeout
+          <Button
+            variant="outline"
+            onClick={() => usePosStore.getState().openTakeout("To-go")}
+          >
+            To-go
+          </Button>
+          <Button
+            variant="outline"
+            onClick={() => usePosStore.getState().openBarTab("Bar")}
+          >
+            Bar tab
           </Button>
         </div>
         {openOrders.length > 0 && (
@@ -196,8 +203,11 @@ export function OrderView() {
           <Button
             size="icon"
             variant="ghost"
-            onClick={() => setView("floor")}
-            aria-label="Back to floor"
+            onClick={() => {
+              setActiveOrder(null);
+              setView("order");
+            }}
+            aria-label="Close check"
           >
             <ChevronLeft className="h-4 w-4" />
           </Button>
@@ -454,6 +464,7 @@ export function OrderView() {
             <Send className="h-4 w-4" />
             Send
           </Button>
+          {canEmployee(emp, "payments:take") && (
           <Button
             className="col-span-full"
             size="lg"
@@ -471,6 +482,7 @@ export function OrderView() {
               ? ` · cash ${formatCurrency(dual.cash.balanceCents || dual.cash.totalCents)}`
               : ""}
           </Button>
+          )}
         </div>
       </aside>
 

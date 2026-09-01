@@ -1,20 +1,31 @@
 #!/usr/bin/env node
 /**
  * Update native/summex-native.json station (and optional url).
- * Usage: node scripts/android-config.mjs kitchen
- *        node scripts/android-config.mjs floor http://192.168.1.10:8080
+ * Usage: node scripts/android-config.mjs order|ods|host
+ *        node scripts/android-config.mjs ods http://192.168.1.10:8080
  */
 import { readFileSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
 
-const station = (process.argv[2] || "").trim();
+function normalizeStation(raw) {
+  const s = String(raw || "").trim().toLowerCase().replace(/[\s-]+/g, "_");
+  if (!s) return "";
+  if (s === "order" || s === "cashier" || s === "bar_pos" || s === "handheld")
+    return "order";
+  if (s === "ods" || s === "kitchen" || s === "bar" || s === "kds" || s === "expo") return "ods";
+  if (s === "host" || s === "floor" || s === "waitlist" || s === "host_stand" || s === "busser")
+    return "host";
+  return s === "clear" || s === "none" || s === "-" ? "" : s;
+}
+
+const stationArg = (process.argv[2] || "").trim();
 const urlArg = (process.argv[3] || "").trim();
 const path = resolve("native/summex-native.json");
 const cur = JSON.parse(readFileSync(path, "utf8"));
-if (station === "clear" || station === "none" || station === "-") {
+if (stationArg === "clear" || stationArg === "none" || stationArg === "-") {
   cur.station = "";
-} else if (station) {
-  cur.station = station;
+} else if (stationArg) {
+  cur.station = normalizeStation(stationArg);
 }
 if (urlArg) {
   cur.url = urlArg.replace(/\/$/, "");

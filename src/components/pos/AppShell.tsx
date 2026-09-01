@@ -72,7 +72,8 @@ import { LifecycleWatcher } from "./LifecycleWatcher";
 import { AiReportWatcher } from "./AiReportWatcher";
 import { PayrollExportWatcher } from "./PayrollExportWatcher";
 import { useStationSessionStore } from "@/lib/pos/station-session";
-import { stationKindLabel, stationsAllowedForEmployee } from "@/lib/pos/station-access";
+import { canChangeDevice, stationKindLabel, stationsAllowedForEmployee } from "@/lib/pos/station-access";
+import { readStationDeviceRole } from "@/lib/pos/device-roles";
 import { HOST_SCOPE } from "@/lib/access/entity-grants";
 import { KitchenView } from "./KitchenView";
 import { ReportsView } from "./ReportsView";
@@ -318,7 +319,10 @@ export function AppShell() {
       .slice(0, 5);
   }, [navItems]);
 
+  const urlStation = readStationDeviceRole();
+
   useEffect(() => {
+    if (urlStation) return;
     const roleOk = emp ? canAccessViewForEmployee(emp, view) : false;
     const packagesOk = pkgOk(view);
     const entityOk = viewOk(view);
@@ -344,32 +348,25 @@ export function AppShell() {
   }, [role, view, setView, activeEntityId, packageLocationId, packagePreview, enabledPackages.join(",")]);
 
 
-  // Deep link: /?station=kitchen|bar|floor|order|...
-  useEffect(() => {
-    try {
-      const q = new URLSearchParams(window.location.search);
-      const station = q.get("station") as PosView | null;
-      if (!station) return;
-      if (canAccessView(role, station) && pkgOk(station)) {
-        setView(station);
-      }
-    } catch {
-      /* ignore */
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [role, packagePreview]);
-
   useEffect(() => {
     useStationSessionStore.getState().ensureLocation(tenantLocationId || "loc");
   }, [tenantLocationId]);
 
   useEffect(() => {
     if (!emp) return;
+    const urlRole = readStationDeviceRole();
+    if (urlRole) {
+      applySessionModeView(
+        useStationSessionStore.getState().assignment.kind,
+        (v) => setView(v),
+      );
+      return;
+    }
     const allowed = stationsAllowedForEmployee(emp, {
       training: locationIsTraining(),
     });
     let kind = useStationSessionStore.getState().assignment.kind;
-    if (allowed.length && !allowed.includes(kind)) {
+    if (canChangeDevice(emp) && allowed.length && !allowed.includes(kind)) {
       kind = allowed[0]!;
       useStationSessionStore.getState().setAssignment({ kind });
     }
@@ -519,7 +516,7 @@ export function AppShell() {
           )}
 
           <ThisStationButton />
-          <SplitScreenToggle />
+          {canChangeDevice(emp) && <SplitScreenToggle />}
           <VoiceCommandButton />
           <NotificationBell />
           <NetworkChip />
@@ -577,6 +574,7 @@ export function AppShell() {
       <NetworkBanner />
 
       <div className="flex min-h-0 flex-1">
+        {!urlStation && (
         <nav className="hidden h-full w-[11.5rem] shrink-0 flex-col gap-0.5 overflow-y-auto border-r border-border bg-surface p-2 lg:flex xl:w-52">
           <p className="mb-1 px-2 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
             {ROLE_LABEL[role]} menu
@@ -621,6 +619,7 @@ export function AppShell() {
             </button>
           </div>
         </nav>
+        )}
 
         {splitEnabled && !kdsMode ? (
           <div className="flex min-h-0 min-w-0 flex-1 overflow-hidden">
@@ -697,6 +696,13 @@ export function AppShell() {
           </div>
         ) : (
         <main className="min-h-0 min-w-0 flex-1 overflow-hidden" data-demo={safeView}>
+          {urlStation ? (
+            <DeviceModeView
+              mode={stationAssignment.kind}
+              operatorId={stationAssignment.operatorId}
+            />
+          ) : (
+          <>
           {safeView === "truck_pod" && <TruckPodView />}
           {safeView === "labor" && <LaborOpsView />}
           {safeView === "hr" && <HrWorkspace />}
@@ -741,10 +747,13 @@ export function AppShell() {
           {safeView === "website" && <MarketingHubView />}
           {safeView === "cash" && <CashView />}
           {safeView === "settings" && <SettingsView />}
+          </>
+          )}
         </main>
         )}
       </div>
 
+      {!urlStation && (
       <nav className="flex shrink-0 gap-0.5 overflow-x-auto border-t border-border bg-surface px-1 py-1 safe-bottom md:hidden">
         {mobileItems.map((item) => {
           const Icon = item.icon;
@@ -772,6 +781,7 @@ export function AppShell() {
           Guide
         </button>
       </nav>
+      )}
 
       <TicketBumpWatcher />
       <NetworkWatcher />

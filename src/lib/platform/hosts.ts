@@ -359,7 +359,7 @@ export function staffGuestAccessPoints(opts?: {
       id: "kds",
       label: "ODS",
       hint: "Kitchen / bar order display on this origin",
-      href: `/venue/${venue}${locQ ? `${locQ}&` : "?"}station=kitchen`,
+      href: `/venue/${venue}${locQ ? `${locQ}&` : "?"}station=ods`,
       surface: "app",
     },
     {

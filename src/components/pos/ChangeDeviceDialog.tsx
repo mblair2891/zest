@@ -12,18 +12,24 @@ import { HOST_SCOPE } from "@/lib/access/entity-grants";
 import { useStationSessionStore } from "@/lib/pos/station-session";
 import {
   STATION_GROUPS,
+  canChangeDevice,
   entitiesAllowedForEmployee,
-  stationKindLabel,
-  stationsAllowedForEmployee,
 } from "@/lib/pos/station-access";
 import { applySessionModeView } from "./DeviceModeView";
-import { locationIsTraining } from "@/lib/lifecycle/store";
-import { SESSION_MODES, type SessionModeId } from "@/lib/lifecycle/types";
+import type { SessionModeId } from "@/lib/lifecycle/types";
 import {
   DEVICE_FUNCTION_LABEL,
   DEVICE_TYPE_LABEL,
   STATION_DEVICE_TYPES,
 } from "@/lib/pos/location-devices";
+import {
+  DEVICE_ROLE_BLURB,
+  DEVICE_ROLE_LABEL,
+  deviceRoleFromFunction,
+  deviceRoleFromSessionMode,
+  sessionModeForDeviceRole,
+  type DeviceRole,
+} from "@/lib/pos/device-roles";
 import { cn } from "@/lib/utils";
 
 function entityName(
@@ -42,22 +48,30 @@ export function ThisStationButton({ compact }: { compact?: boolean }) {
   const split = useStationSessionStore((s) => s.splitEnabled);
   const vendors = usePosStore((s) => s.vendors);
   const hostName = usePosStore((s) => s.settings.name);
+  const emp = usePosStore((s) => s.employees.find((e) => e.id === s.currentEmployeeId));
+  const role = deviceRoleFromSessionMode(kind);
+  const manager = canChangeDevice(emp ?? null);
   const label = split
     ? "Split display"
-    : `${stationKindLabel(kind)} · ${entityName(operatorId, hostName, vendors)}`;
+    : `${DEVICE_ROLE_LABEL[role]}${compact ? "" : ` · ${entityName(operatorId, hostName, vendors)}`}`;
   return (
     <>
       <Button
         size="sm"
         variant="outline"
-        onClick={() => setOpen(true)}
-        title="This station — what this screen is showing"
+        onClick={() => manager && setOpen(true)}
+        title={
+          manager
+            ? "Change device — Order, Order Display, or Host"
+            : `${DEVICE_ROLE_LABEL[role]} device`
+        }
         className="max-w-[14rem] shrink"
+        disabled={!manager}
       >
         <MonitorSmartphone className="h-3.5 w-3.5 shrink-0" />
-        <span className="truncate">{compact ? "Station" : label}</span>
+        <span className="truncate">{compact ? DEVICE_ROLE_LABEL[role] : label}</span>
       </Button>
-      <StationSwitcherDialog open={open} onOpenChange={setOpen} />
+      {manager && <StationSwitcherDialog open={open} onOpenChange={setOpen} />}
     </>
   );
 }
@@ -124,11 +138,7 @@ export function StationSwitcherDialog({
   const devices = usePosStore((s) => s.locationDevices ?? []);
 
   const current = pane === "a" ? paneA : pane === "b" ? paneB : assignment;
-  const training = locationIsTraining();
-  const allowedKinds = useMemo(
-    () => stationsAllowedForEmployee(emp ?? null, { training }),
-    [emp, training],
-  );
+  const manager = canChangeDevice(emp ?? null);
   const entities = useMemo(
     () => entitiesAllowedForEmployee(emp ?? null, vendors, hostName),
     [emp, vendors, hostName],
@@ -165,11 +175,12 @@ export function StationSwitcherDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent showClose className="w-[min(100vw-1.25rem,32rem)]">
         <DialogHeader>
-          <DialogTitle>{title}</DialogTitle>
+          <DialogTitle>{pane ? title : "Change device"}</DialogTitle>
         </DialogHeader>
         <p className="text-xs text-muted-foreground">
-          What this screen is showing — not a new login. PIN still identifies the
-          person. Tickets stay on this location.
+          {manager
+            ? "Order, Order Display, or Host. PIN still identifies the person."
+            : "Only a manager can change this device."}
         </p>
 
         {devices.filter(
@@ -204,9 +215,7 @@ export function StationSwitcherDialog({
                           );
                           setActiveDeviceId(d.id);
                         } else {
-                          const kind = (
-                            SESSION_MODES.some((m) => m.id === fn) ? fn : "floor_pos"
-                          ) as SessionModeId;
+                          const kind = sessionModeForDeviceRole(deviceRoleFromFunction(fn));
                           apply(kind, op);
                           setActiveDeviceId(d.id);
                         }
@@ -273,31 +282,40 @@ export function StationSwitcherDialog({
           </div>
         ) : null}
 
-        {STATION_GROUPS.map((g) => {
-          const kinds = g.kinds.filter((k) => allowedKinds.includes(k));
-          if (!kinds.length) return null;
-          return (
-            <div key={g.id}>
-              <p className="mb-1 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-                {g.label}
-              </p>
-              <ul className="grid gap-1 sm:grid-cols-2">
-                {kinds.map((id) => (
-                  <li key={id}>
+        {manager && (
+          <div>
+            <p className="mb-1 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+              Device
+            </p>
+            <ul className="grid gap-1">
+              {STATION_GROUPS.map((g) => {
+                const id = g.kinds[0]!;
+                const role = g.id as DeviceRole;
+                const selected = deviceRoleFromSessionMode(current.kind) === role;
+                return (
+                  <li key={g.id}>
                     <Button
-                      variant={current.kind === id ? "default" : "outline"}
-                      className="w-full justify-start"
+                      variant={selected ? "default" : "outline"}
+                      className="h-auto w-full flex-col items-start justify-start gap-0.5 py-2.5"
                       size="sm"
                       onClick={() => pickKind(id)}
                     >
-                      {stationKindLabel(id)}
+                      <span className="font-semibold">{g.label}</span>
+                      <span
+                        className={cn(
+                          "text-left text-[11px] font-normal",
+                          selected ? "text-primary-foreground/80" : "text-muted-foreground",
+                        )}
+                      >
+                        {DEVICE_ROLE_BLURB[role]}
+                      </span>
                     </Button>
                   </li>
-                ))}
-              </ul>
-            </div>
-          );
-        })}
+                );
+              })}
+            </ul>
+          </div>
+        )}
 
         {showEntities && (
           <div>
@@ -322,8 +340,7 @@ export function StationSwitcherDialog({
         )}
 
         <p className={cn("text-[11px] text-muted-foreground")}>
-          Any tablet, Android display, or desktop can switch. Hardware is not locked
-          to one role.
+          Manager can change this device among Order, Order Display, and Host.
         </p>
       </DialogContent>
     </Dialog>

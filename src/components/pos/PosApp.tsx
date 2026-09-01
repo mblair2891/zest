@@ -38,6 +38,14 @@ import {
 import { heartbeatLocationDeviceFn } from "@/lib/access/api";
 import { SESSION_MODES, type SessionModeId } from "@/lib/lifecycle/types";
 import {
+  consumeStationPinGate,
+  deviceRoleFromFunction,
+  isStationPinPath,
+  readStationDeviceRole,
+  sessionModeForDeviceRole,
+} from "@/lib/pos/device-roles";
+import { isNativeApp } from "@/lib/native-shell";
+import {
   readTenantPosContext,
   saveTenantPosContext,
 } from "@/lib/saas/pos-context";
@@ -95,6 +103,21 @@ function PosAppInner({ entityId }: { entityId?: string }) {
   const openTenantLocation = usePosStore((s) => s.openTenantLocation);
   const { user, isPending } = useCurrentUserState();
   useFloorPolling(tenantGate === "ok" ? tenantLocationId : null);
+
+  useEffect(() => {
+    if (!ready) return;
+    const role = readStationDeviceRole();
+    if (role) {
+      useStationSessionStore.getState().setAssignment({
+        kind: sessionModeForDeviceRole(role),
+      });
+    }
+    if ((isStationPinPath() || isNativeApp()) && consumeStationPinGate()) {
+      if (usePosStore.getState().currentEmployeeId) {
+        usePosStore.getState().logout();
+      }
+    }
+  }, [ready]);
 
   useEffect(() => {
     let cancelled = false;
@@ -247,8 +270,10 @@ function PosAppInner({ entityId }: { entityId?: string }) {
                     { kind: "bar_kds", operatorId: barOp },
                   );
                 } else if (SESSION_MODES.some((m) => m.id === paired.assignment.function)) {
+                  const urlRole = readStationDeviceRole();
+                  const role = urlRole ?? deviceRoleFromFunction(paired.assignment.function);
                   useStationSessionStore.getState().setAssignment({
-                    kind: paired.assignment.function as SessionModeId,
+                    kind: sessionModeForDeviceRole(role),
                     operatorId: paired.assignment.operatorId,
                   });
                 }
@@ -483,9 +508,11 @@ function PosAppInner({ entityId }: { entityId?: string }) {
         <p className="text-sm text-muted-foreground">
           {gateMsg ?? "You do not have access to this venue."}
         </p>
-        <Link to="/login" className="text-sm font-medium text-primary underline">
-          Sign in
-        </Link>
+        {!isStationPinPath() && !isNativeApp() && (
+          <Link to="/login" className="text-sm font-medium text-primary underline">
+            Sign in
+          </Link>
+        )}
         <Link to="/get-pricing" className="text-sm font-medium text-primary underline">
           Start onboarding
         </Link>
@@ -501,6 +528,11 @@ function PosAppInner({ entityId }: { entityId?: string }) {
       return <AppShell />;
     }
     return <EntityLogin entityId={entityId as VenueEntityId} />;
+  }
+
+  if (!user && (isStationPinPath() || isNativeApp())) {
+    const fallbackEntity: VenueEntityId = "restaurant";
+    return <EntityLogin entityId={fallbackEntity} />;
   }
 
   if (!user) {
@@ -570,6 +602,10 @@ function PosAppInner({ entityId }: { entityId?: string }) {
         </Link>
       </div>
     );
+  }
+
+  if (isStationPinPath() || isNativeApp()) {
+    return <EntityLogin entityId={"restaurant"} />;
   }
 
   return (

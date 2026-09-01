@@ -134,16 +134,16 @@ export const DEVICE_TYPE_LABEL: Record<LocationDeviceType, string> = {
 };
 
 export const DEVICE_FUNCTION_LABEL: Record<DeviceFunction, string> = {
-  floor_pos: "Server",
-  bar_pos: "Bar POS",
-  kitchen_kds: "Kitchen ODS",
-  bar_kds: "Bar ODS",
-  expo: "Expo",
-  kiosk: "Kiosk",
+  floor_pos: "Order",
+  bar_pos: "Order",
+  kitchen_kds: "Order Display",
+  bar_kds: "Order Display",
+  expo: "Order Display",
+  kiosk: "Host",
   host_stand: "Host",
-  cashier: "Cashier",
-  busser: "Busser",
-  split: "Split kitchen | bar",
+  cashier: "Order",
+  busser: "Host",
+  split: "Split display",
 };
 
 export function parseDeviceAssignment(raw: unknown): DeviceAssignment | null {
@@ -248,21 +248,18 @@ export function viewForDeviceFunction(fn: DeviceFunction): PosView | "kiosk" {
       return "kiosk";
     case "kitchen_kds":
     case "expo":
-      return "kitchen";
-    case "bar_kds":
-    case "bar_pos":
-      return "bar";
-    case "host_stand":
-      return "waitlist";
-    case "cashier":
-      return "order";
-    case "busser":
-      return "floor";
     case "split":
       return "kitchen";
+    case "bar_kds":
+      return "kitchen";
+    case "host_stand":
+    case "busser":
+      return "floor";
+    case "cashier":
+    case "bar_pos":
     case "floor_pos":
     default:
-      return "floor";
+      return "order";
   }
 }
 

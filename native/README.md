@@ -28,7 +28,7 @@ Edit `native/summex-native.json`:
 | Field | Meaning |
 |---|---|
 | `url` | Live Summex origin (LAN IP while developing, HTTPS in prod) |
-| `station` | Optional: `kitchen`, `bar`, `floor`, `order`… |
+| `station` | Optional PIN-first role: `order`, `ods`, `host`. Native opens `/station?station=` (PIN pad, never `/login`). |
 | `cleartext` | `true` if using `http://` |
 
 Emulator → host machine: `http://10.0.2.2:8080`  
@@ -42,10 +42,10 @@ npm run android:sync          # refresh Capacitor + Android project
 npm run android:open          # open Android Studio
 npm run android:apk           # assemble debug APK (needs SDK)
 
-# Station-specific config helpers
-npm run android:config:kds    # station=kitchen for 27″
-npm run android:config:floor  # station=floor for server tablet
-npm run android:config:bar    # station=bar
+# Station-specific config helpers (PIN pad → role)
+npm run android:config:order  # handhelds / bar stations
+npm run android:config:ods    # 27″ kitchen ticket display
+npm run android:config:host   # host stand (floor + to-go)
 ```
 
 Debug APK path (after assemble):
@@ -57,7 +57,7 @@ Debug APK path (after assemble):
 1. Set `url` to a host the tablet can reach.
 2. `npm run android:sync && npm run android:apk` (or Open in Android Studio → Run).
 3. Install APK on Galaxy A / B / 27″.
-4. Login with role PINs; ODS build should land on Kitchen when `station=kitchen`.
+4. Station builds open the PIN pad, then that role (`order` | `ods` | `host`). Never `/login`.
 
 ## Keep screen on (ODS)
 

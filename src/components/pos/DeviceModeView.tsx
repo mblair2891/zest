@@ -1,9 +1,11 @@
 import { KitchenView } from "./KitchenView";
 import { OrderView } from "./OrderView";
-import { FloorView } from "./FloorView";
-import { WaitlistView } from "./WaitlistView";
+import { HostStationView } from "./HostStationView";
 import { CashView } from "./CashView";
+import { useStationSessionStore } from "@/lib/pos/station-session";
+import { deviceRoleFromSessionMode } from "@/lib/pos/device-roles";
 import type { SessionModeId } from "@/lib/lifecycle/types";
+import type { PosView } from "@/lib/pos/types";
 
 export function DeviceModeView({
   mode,
@@ -12,43 +14,37 @@ export function DeviceModeView({
   mode: SessionModeId;
   operatorId?: string | null;
 }) {
-  switch (mode) {
-    case "kitchen_kds":
-      return <KitchenView station="kitchen" operatorId={operatorId} />;
-    case "expo":
-      return <KitchenView station="kitchen" expo operatorId={operatorId} />;
-    case "bar_kds":
+  const split = useStationSessionStore((s) => s.splitEnabled);
+  const role = deviceRoleFromSessionMode(mode);
+
+  if (role === "ods") {
+    if (mode === "bar_kds") {
       return <KitchenView station="bar" operatorId={operatorId} />;
-    case "bar_pos":
-      return <OrderView />;
-    case "cashier":
-      return <OrderView />;
-    case "host_stand":
-    case "kiosk":
-      return <WaitlistView />;
-    case "busser":
-      return <FloorView />;
-    case "floor_pos":
-    default:
-      return (
-        <div className="flex h-full min-h-0 flex-col">
-          <div className="min-h-0 flex-1 overflow-hidden">
-            <FloorView />
-          </div>
-        </div>
-      );
+    }
+    if (mode === "expo") {
+      return <KitchenView station="kitchen" expo operatorId={operatorId} />;
+    }
+    if (split && mode === "kitchen_kds") {
+      return <KitchenView station="kitchen" operatorId={operatorId} />;
+    }
+    return <KitchenView station="all" operatorId={operatorId} />;
   }
+
+  if (role === "host") {
+    return <HostStationView />;
+  }
+
+  return <OrderView />;
 }
 
 export function applySessionModeView(
   mode: SessionModeId,
-  setView: (v: "floor" | "order" | "kitchen" | "bar" | "waitlist") => void,
+  setView: (v: PosView) => void,
 ): void {
-  if (mode === "kitchen_kds" || mode === "expo") setView("kitchen");
-  else if (mode === "bar_kds" || mode === "bar_pos") setView("bar");
-  else if (mode === "cashier") setView("order");
-  else if (mode === "host_stand" || mode === "kiosk") setView("waitlist");
-  else setView("floor");
+  const role = deviceRoleFromSessionMode(mode);
+  if (role === "ods") setView("kitchen");
+  else if (role === "host") setView("floor");
+  else setView("order");
 }
 
 /** Used so cashier split can still show cash if wanted */

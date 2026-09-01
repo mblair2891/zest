@@ -15,8 +15,10 @@ import { isProspectDemo } from "@/lib/demo/session";
 import { isDemoStaffPin } from "@/lib/demo/pin";
 import { RecipeLookupButton } from "@/components/recipes/RecipeLookup";
 
+type KitchenRail = TicketStation | "all";
+
 interface Props {
-  station: TicketStation;
+  station: KitchenRail;
   /** Expo rail: ready tickets and mark delivered (bump). */
   expo?: boolean;
   /** Pane-scoped entity. Host scope = all operators this PIN can see. */
@@ -73,8 +75,17 @@ export function KitchenView({ station, expo, operatorId }: Props) {
     ? paneOp
     : assignedOp ?? (!hostWide && roleOp ? roleOp : null);
   const [vendorFilter, setVendorFilter] = useState<string | null>(lockedVendor);
-  const railStation = assignedStation || station;
-  useStationTicketPolling(locId || null, railStation, lockedVendor);
+  const [railPick, setRailPick] = useState<"all" | "kitchen" | "bar">("all");
+  const railStation: KitchenRail = assignedStation || station;
+  const showAllRails = railStation === "all";
+  const activeRail: KitchenRail =
+    showAllRails ? railPick : railStation === "bar" ? "bar" : railStation === "kitchen" ? "kitchen" : railStation;
+  useStationTicketPolling(
+    locId || null,
+    activeRail === "bar" ? "bar" : "kitchen",
+    lockedVendor,
+  );
+  useStationTicketPolling(showAllRails ? locId || null : null, "bar", lockedVendor);
 
   const visibleVendorIds = vendors
     .filter(
@@ -84,8 +95,11 @@ export function KitchenView({ station, expo, operatorId }: Props) {
     )
     .map((v) => v.id);
   const list = useMemo(() => {
-    const st = railStation;
-    let t = tickets.filter((x) => x.station === st);
+    const st = activeRail;
+    let t =
+      st === "all"
+        ? tickets.filter((x) => x.station === "kitchen" || x.station === "bar")
+        : tickets.filter((x) => x.station === st);
     if (expo) t = t.filter((x) => x.status === "ready" || (showBumped && x.status === "bumped"));
     else if (!showBumped) t = t.filter((x) => x.status !== "bumped");
     if (filter !== "all") t = t.filter((x) => x.status === filter);
@@ -103,6 +117,7 @@ export function KitchenView({ station, expo, operatorId }: Props) {
     vendorFilter,
     lockedVendor,
     railStation,
+    activeRail,
     visibleVendorIds,
     vendors.length,
     expo,
@@ -110,7 +125,9 @@ export function KitchenView({ station, expo, operatorId }: Props) {
 
   const active = tickets.filter(
     (t) =>
-      t.station === railStation &&
+      (activeRail === "all"
+        ? t.station === "kitchen" || t.station === "bar"
+        : t.station === activeRail) &&
       t.status !== "bumped" &&
       (!(lockedVendor || vendorFilter) || t.vendorId === (lockedVendor || vendorFilter)),
   ).length;
@@ -119,7 +136,13 @@ export function KitchenView({ station, expo, operatorId }: Props) {
     <div className="kds-large-touch relative flex h-full flex-col">
       <div className="flex flex-wrap items-center gap-2 border-b border-border px-3 py-2">
         <h2 className="text-sm font-semibold capitalize">
-          {expo ? "Expo" : station === "bar" ? "Bar order display" : "Kitchen order display"}
+          {expo
+            ? "Expo"
+            : railStation === "bar"
+              ? "Bar order display"
+              : railStation === "all"
+                ? "Order display"
+                : "Kitchen order display"}
         </h2>
         <GuideLearnLink topicId="kds" compact>
           Learn
@@ -128,6 +151,21 @@ export function KitchenView({ station, expo, operatorId }: Props) {
           {active} active
         </Badge>
         <div className="flex flex-wrap gap-1">
+          {showAllRails && (
+            <>
+              {(["all", "kitchen", "bar"] as const).map((id) => (
+                <Button
+                  key={id}
+                  size="sm"
+                  variant={railPick === id ? "default" : "outline"}
+                  onClick={() => setRailPick(id)}
+                  className="capitalize"
+                >
+                  {id === "all" ? "All tickets" : id}
+                </Button>
+              ))}
+            </>
+          )}
           {(!lockedVendor ||
             vendors.some((v) => v.id !== lockedVendor && canViewTickets(emp, grants, v.id))) && (
             <Button

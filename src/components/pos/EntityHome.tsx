@@ -43,6 +43,13 @@ import { isTrainingRosterId, TRAINING_PIN_HINT } from "@/lib/pos/training-roster
 import { locationIsTraining } from "@/lib/lifecycle/store";
 import { SummexBrandBlock } from "@/components/brand/SummexMark";
 import { useCurrentUserState } from "@/lib/auth/use-current-user";
+import {
+  DEVICE_ROLE_BLURB,
+  DEVICE_ROLE_LABEL,
+  isStationPinPath,
+  readStationDeviceRole,
+} from "@/lib/pos/device-roles";
+import { isNativeApp } from "@/lib/native-shell";
 
 const ICONS: Record<string, React.ComponentType<{ className?: string }>> = {
   restaurant: UtensilsCrossed,
@@ -229,10 +236,12 @@ export function EntityLogin({ entityId }: { entityId: VenueEntityId }) {
       <NetworkWatcher />
       <NetworkBanner />
       <TrainingBanner />
+      {!(isStationPinPath() || isNativeApp()) && (
       <div className="flex items-center justify-end gap-2 px-4 pt-3">
         <ThisStationButton />
         <SplitScreenToggle />
       </div>
+      )}
       <div
         className="mx-auto flex w-full max-w-lg flex-1 flex-col justify-center px-4 py-8"
         data-demo={prospect ? "demo-pin-gate" : undefined}
@@ -257,6 +266,18 @@ export function EntityLogin({ entityId }: { entityId: VenueEntityId }) {
           </p>
           <p className="mt-1 text-sm text-muted-foreground">{entity.blurb}</p>
           <p className="mt-3 text-sm font-medium">Floor login · 4-digit PIN</p>
+          {(() => {
+            const stationRole = readStationDeviceRole();
+            if (!stationRole) return null;
+            return (
+              <p className="mt-2 text-sm text-foreground">
+                {DEVICE_ROLE_LABEL[stationRole]}
+                <span className="mt-1 block text-xs font-normal text-muted-foreground">
+                  {DEVICE_ROLE_BLURB[stationRole]}
+                </span>
+              </p>
+            );
+          })()}
           <p className="mt-1 text-xs text-muted-foreground">
             PIN signs you onto this station. Clock in / out is Labor — not this pad.
           </p>
@@ -333,7 +354,7 @@ export function EntityLogin({ entityId }: { entityId: VenueEntityId }) {
           </p>
         )}
 
-        {!prospect && (
+        {!prospect && !(isStationPinPath() || isNativeApp()) && (
         <p className="mt-6 text-center text-xs text-muted-foreground">
           <Link to="/login" className="text-primary underline">
             Back office

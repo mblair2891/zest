@@ -12,6 +12,8 @@ import {
   readLastSessionUser,
   saveLastSessionUser,
 } from "@/lib/offline/last-session";
+import { isNativeApp } from "@/lib/native-shell";
+import { isStationPinPath } from "@/lib/pos/device-roles";
 
 function Loading() {
   return (
@@ -97,8 +99,10 @@ export function SessionGate({
   if (isPending && !waited) return <Loading />;
   if (!user) {
     const cached = readLastSessionUser();
-    if (allowPrimedStation && !primed && !cached && !waited) return <Loading />;
-    if (cached || primed) return <>{children}</>;
+    const stationPin = allowPrimedStation && (isStationPinPath() || isNativeApp());
+    if (allowPrimedStation && !primed && !cached && !stationPin && !waited) return <Loading />;
+    // Station / native PIN pad is identity — never bounce floor devices to /login.
+    if (cached || primed || stationPin) return <>{children}</>;
     return <RedirectToSignIn to="/login" />;
   }
   if (mustChange === null) return <Loading />;

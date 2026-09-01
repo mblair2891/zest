@@ -1,99 +1,61 @@
 import type { Employee } from "./types";
 import type { Vendor } from "./types";
 import { HOST_SCOPE } from "@/lib/access/entity-grants";
-import { SESSION_MODES, type SessionModeId } from "@/lib/lifecycle/types";
+import type { SessionModeId } from "@/lib/lifecycle/types";
+import {
+  DEVICE_ROLE_LABEL,
+  deviceRoleFromSessionMode,
+  sessionModeForDeviceRole,
+  type DeviceRole,
+} from "@/lib/pos/device-roles";
+
+/** Change-device kinds — only the three device roles. */
+export const DEVICE_ROLE_KINDS: SessionModeId[] = [
+  sessionModeForDeviceRole("order"),
+  sessionModeForDeviceRole("ods"),
+  sessionModeForDeviceRole("host"),
+];
 
 export const STATION_KIND_LABEL: Record<SessionModeId, string> = {
-  floor_pos: "Server",
-  host_stand: "Host",
-  kitchen_kds: "Kitchen Order Display",
-  bar_kds: "Bar Order Display",
-  expo: "Expo",
-  cashier: "Cashier",
-  bar_pos: "Bar POS",
-  kiosk: "Kiosk",
-  busser: "Busser",
+  floor_pos: DEVICE_ROLE_LABEL.order,
+  host_stand: DEVICE_ROLE_LABEL.host,
+  kitchen_kds: DEVICE_ROLE_LABEL.ods,
+  bar_kds: DEVICE_ROLE_LABEL.ods,
+  expo: DEVICE_ROLE_LABEL.ods,
+  cashier: DEVICE_ROLE_LABEL.order,
+  bar_pos: DEVICE_ROLE_LABEL.order,
+  kiosk: DEVICE_ROLE_LABEL.host,
+  busser: DEVICE_ROLE_LABEL.host,
 };
 
 export const STATION_GROUPS: Array<{
-  id: "floor" | "ods";
+  id: DeviceRole;
   label: string;
   kinds: SessionModeId[];
 }> = [
-  {
-    id: "floor",
-    label: "Stations",
-    kinds: ["host_stand", "floor_pos", "bar_pos", "expo", "cashier", "busser", "kiosk"],
-  },
-  {
-    id: "ods",
-    label: "Order display",
-    kinds: ["kitchen_kds", "bar_kds"],
-  },
+  { id: "order", label: DEVICE_ROLE_LABEL.order, kinds: [sessionModeForDeviceRole("order")] },
+  { id: "ods", label: DEVICE_ROLE_LABEL.ods, kinds: [sessionModeForDeviceRole("ods")] },
+  { id: "host", label: DEVICE_ROLE_LABEL.host, kinds: [sessionModeForDeviceRole("host")] },
 ];
 
-const ALL_KINDS: SessionModeId[] = SESSION_MODES.map((m) => m.id);
+const ALL_KINDS: SessionModeId[] = [...DEVICE_ROLE_KINDS];
+
+export function canChangeDevice(emp: Employee | null | undefined): boolean {
+  return emp?.role === "owner" || emp?.role === "manager";
+}
 
 export function stationsAllowedForEmployee(
   emp: Employee | null | undefined,
-  opts?: { training?: boolean },
+  _opts?: { training?: boolean },
 ): SessionModeId[] {
-  if (!emp) return ALL_KINDS;
-  let base: SessionModeId[];
-  switch (emp.role) {
-    case "owner":
-    case "manager":
-      base = ALL_KINDS;
-      break;
-    case "server":
-      base = ["floor_pos", "expo", "cashier", "host_stand"];
-      break;
-    case "host":
-      base = ["host_stand", "floor_pos", "expo", "kiosk"];
-      break;
-    case "bartender":
-      base = ["bar_pos", "bar_kds", "expo", "cashier"];
-      break;
-    case "kitchen":
-      base = ["kitchen_kds", "expo"];
-      break;
-    case "busser":
-      base = ["busser", "floor_pos"];
-      break;
-    case "cashier":
-      base = ["cashier", "floor_pos", "expo"];
-      break;
-    case "vendor_operator":
-      base = ["floor_pos", "bar_pos", "kitchen_kds", "bar_kds", "expo", "cashier"];
-      break;
-    case "kiosk":
-      base = ["kiosk"];
-      break;
-    case "accountant":
-      base = ["floor_pos", "cashier"];
-      break;
-    default:
-      base = ["floor_pos"];
-  }
-  return withTrainingLoop(base, opts?.training, emp.role);
+  if (emp?.role === "owner" || emp?.role === "manager") return ALL_KINDS;
+  return [];
 }
 
-function withTrainingLoop(
-  base: SessionModeId[],
-  training: boolean | undefined,
-  role: Employee["role"],
-): SessionModeId[] {
-  if (!training) return base;
-  if (role === "owner" || role === "manager") return ALL_KINDS;
-  const trainingCore: SessionModeId[] = [
-    "floor_pos",
-    "host_stand",
-    "kitchen_kds",
-    "bar_kds",
-    "kiosk",
-    "cashier",
-  ];
-  return [...new Set([...base, ...trainingCore])];
+export function deviceRolesAllowedForEmployee(
+  emp: Employee | null | undefined,
+): DeviceRole[] {
+  return stationsAllowedForEmployee(emp).map(deviceRoleFromSessionMode);
 }
 
 export type StationEntityOption = { id: string; name: string };

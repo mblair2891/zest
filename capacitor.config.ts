@@ -25,14 +25,23 @@ let baseUrl = (
   "http://10.0.2.2:8080/apps"
 ).replace(/\/$/, "");
 
-const station = (process.env.SUMMEX_STATION || file.station || "").trim();
+const stationRaw = (process.env.SUMMEX_STATION || file.station || "").trim();
 
-// If station set, open POS with station query (not the store)
+function nativeStationRole(raw: string): "order" | "ods" | "host" | "" {
+  const s = raw.toLowerCase().replace(/[\s-]+/g, "_");
+  if (s === "order" || s === "cashier" || s === "bar_pos" || s === "handheld") return "order";
+  if (s === "ods" || s === "kitchen" || s === "bar" || s === "kds" || s === "expo") return "ods";
+  if (s === "host" || s === "floor" || s === "waitlist" || s === "host_stand" || s === "busser")
+    return "host";
+  return "";
+}
+
+// If station set, open PIN pad then that role — never /login, never marketing.
 let serverUrl = baseUrl;
+const station = nativeStationRole(stationRaw) || (stationRaw ? "order" : "");
 if (station) {
-  // strip trailing /apps if present
   const origin = baseUrl.replace(/\/apps$/i, "") || baseUrl;
-  serverUrl = `${origin}/?station=${encodeURIComponent(station)}`;
+  serverUrl = `${origin}/station?station=${encodeURIComponent(station)}`;
 } else if (!/\/apps$/i.test(baseUrl) && !/[?&]/.test(baseUrl)) {
   // default shell → store
   if (!baseUrl.endsWith("/apps")) {

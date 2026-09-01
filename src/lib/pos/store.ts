@@ -4,6 +4,12 @@ import { persist, createJSONStorage } from "zustand/middleware";
 import { uid } from "@/lib/utils";
 import { homeViewForEmployee, homeViewForRole } from "./rbac";
 import {
+	deviceRoleFromSessionMode,
+	parseStationQuery,
+	viewForDeviceRole,
+} from "./device-roles";
+import { useStationSessionStore } from "./station-session";
+import {
   SETTINGS,
   EMPLOYEES,
   CATEGORIES,
@@ -303,10 +309,25 @@ const usePosStoreRaw = create()(persist((set, get) => ({
 			: get().employees.map((e) =>
 				e.id === emp.id && !e.pinHash ? { ...e, pinHash: hashed, pin: "" } : e,
 			);
+		let view = isDemoStaffPin(pin) ? "hq" : homeViewForEmployee(emp);
+		try {
+			const raw = typeof window !== "undefined"
+				? new URLSearchParams(window.location.search).get("station")
+				: null;
+			const stationRole = parseStationQuery(raw);
+			if (stationRole) {
+				view = viewForDeviceRole(stationRole);
+			} else {
+				const kind = useStationSessionStore.getState().assignment?.kind;
+				if (kind) view = viewForDeviceRole(deviceRoleFromSessionMode(kind));
+			}
+		} catch {
+			/* station role optional */
+		}
 		set({
 			employees,
 			currentEmployeeId: emp.id,
-			view: isDemoStaffPin(pin) ? "hq" : homeViewForEmployee(emp),
+			view,
 			activeOrderId: null,
 			activeTableId: null,
 			sessionKind: "pin",
