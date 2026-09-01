@@ -8,7 +8,17 @@ import { GuideLearnLink } from "@/components/guide/GuideLearnLink";
 import { usePosStore } from "@/lib/pos/store";
 import { formatCurrency, uid } from "@/lib/utils";
 import { pinMatches } from "@/lib/pos/pin";
-import { cashRoleFromSession, parseCashHandling } from "@/lib/pos/cash-handling";
+import {
+  cardTipsCashDueCents,
+  cashDueToServerCents,
+  cashRoleFromSession,
+  CC_TIP_PAYOUT_LABEL,
+  declaredCashDueCents,
+  expectedAfterTipPayout,
+  parseCashHandling,
+  payrollIncludesCardTips,
+  resolveCcTipPayout,
+} from "@/lib/pos/cash-handling";
 import {
   bankExpected,
   currentCashSink,
@@ -16,6 +26,7 @@ import {
   useCashSessionStore,
 } from "@/lib/pos/cash-session";
 import { useStationSessionStore } from "@/lib/pos/station-session";
+import { useOpsStore } from "@/lib/pos/ops-store";
 import {
   ordersForServer,
   recommendTipOuts,
@@ -47,6 +58,8 @@ export function CloseoutView({ onDone }: { onDone: () => void }) {
   const devices = usePosStore((s) => s.locationDevices ?? []);
   const kind = useStationSessionStore((s) => s.assignment.kind);
   const cfg = parseCashHandling(settings.cashHandling);
+  const laborPayout = useOpsStore((s) => s.labor.ccTipPayout);
+  const payout = resolveCcTipPayout(cfg.ccTipPayout, laborPayout);
   const sink = currentCashSink({
     cfg,
     emp: emp ?? null,
@@ -74,7 +87,15 @@ export function CloseoutView({ onDone }: { onDone: () => void }) {
     : [];
   const counting = emp ? shouldCountCashOnCloseout({ sink, emp, cfg }) : false;
   const blind = blindCountEnabled(cfg, counting);
-  const expected =
+  const cardTips =
+    cardTipsAdj != null && cardTipsAdj !== ""
+      ? Math.max(0, Math.round(parseFloat(cardTipsAdj) * 100) || 0)
+      : sales.cardTipsCents;
+  const declared = Math.max(0, Math.round(parseFloat(cashTips || "0") * 100) || 0);
+  const cardDue = cardTipsCashDueCents(payout, cardTips);
+  const declaredDue = declaredCashDueCents(payout, declared);
+  const cashDue = cashDueToServerCents(payout, cardTips, declared);
+  const baseExpected =
     sink.type === "drawer"
       ? drawerExpected(
           cash.drawers[sink.drawer.id] ?? {
@@ -103,14 +124,18 @@ export function CloseoutView({ onDone }: { onDone: () => void }) {
             },
           )
         : null;
+  const expected =
+    baseExpected == null
+      ? null
+      : expectedAfterTipPayout({
+          baseExpected,
+          payout,
+          cardTipsCents: cardTips,
+          sinkType: sink.type,
+        });
 
   const counted = countStr.trim() === "" ? null : Math.round(parseFloat(countStr) * 100) || 0;
   const variance = counted != null && expected != null ? counted - expected : null;
-  const cardTips =
-    cardTipsAdj != null && cardTipsAdj !== ""
-      ? Math.max(0, Math.round(parseFloat(cardTipsAdj) * 100) || 0)
-      : sales.cardTipsCents;
-  const declared = Math.max(0, Math.round(parseFloat(cashTips || "0") * 100) || 0);
   const recs = useMemo(
     () =>
       cfg.tipOutEnabled
@@ -191,6 +216,10 @@ export function CloseoutView({ onDone }: { onDone: () => void }) {
       skippedDrawerCount: !counting,
       tipOuts: lines,
       tipOutBasis: cfg.tipOutBasis,
+      ccTipPayout: payout,
+      cardTipsCashDueCents: cardDue,
+      cardTipsToPayrollCents: payrollIncludesCardTips(payout) ? cardTips : 0,
+      declaredCashDueCents: declaredDue,
       dropsCents: drops.reduce((s, e) => s + e.amountCents, 0),
       paidInCents: paid.filter((e) => e.kind === "paid_in").reduce((s, e) => s + e.amountCents, 0),
       paidOutCents: paid.filter((e) => e.kind === "paid_out").reduce((s, e) => s + e.amountCents, 0),
@@ -218,6 +247,51 @@ export function CloseoutView({ onDone }: { onDone: () => void }) {
         close: false,
       });
     }
+    if (cardDue > 0) {
+      const ses = useCashSessionStore.getState();
+      if (sink.type === "drawer") {
+        ses.paid({
+          sink,
+          employeeId: emp.id,
+          employeeName: emp.name,
+          amountCents: cardDue,
+          direction: "out",
+          reason: "CC tips",
+        });
+      } else if (sink.type === "bank") {
+        ses.paid({
+          sink,
+          employeeId: emp.id,
+          employeeName: emp.name,
+          amountCents: cardDue,
+          direction: "in",
+          reason: "CC tips",
+        });
+        const house = cfg.drawers.find((d) => d.kind === "front") ?? cfg.drawers[0];
+        if (house) {
+          ses.paid({
+            sink: { type: "drawer", drawer: house },
+            employeeId: emp.id,
+            employeeName: emp.name,
+            amountCents: cardDue,
+            direction: "out",
+            reason: "CC tips",
+          });
+        }
+      } else {
+        const house = cfg.drawers.find((d) => d.kind === "front") ?? cfg.drawers[0];
+        if (house) {
+          ses.paid({
+            sink: { type: "drawer", drawer: house },
+            employeeId: emp.id,
+            employeeName: emp.name,
+            amountCents: cardDue,
+            direction: "out",
+            reason: "CC tips",
+          });
+        }
+      }
+    }
     if (cfg.printCheckoutSlip) {
       const job: PrintJob = {
         id: uid("prn"),
@@ -236,6 +310,7 @@ export function CloseoutView({ onDone }: { onDone: () => void }) {
           { qty: 1, name: `Drink ${formatCurrency(sales.drinkSalesCents)}` },
           { qty: 1, name: `Card tips ${formatCurrency(cardTips)}` },
           { qty: 1, name: `Cash tips declared ${formatCurrency(declared)}` },
+          { qty: 1, name: `Cash due ${formatCurrency(cashDue)} (${CC_TIP_PAYOUT_LABEL[payout]})` },
           ...lines.map((l) => ({
             qty: 1,
             name: `${l.label} rec ${formatCurrency(l.recommendedCents)} → ${formatCurrency(l.actualCents)}`,
@@ -360,6 +435,12 @@ export function CloseoutView({ onDone }: { onDone: () => void }) {
                     {variance != null ? ` · over/short ${formatCurrency(variance)}` : ""}
                   </p>
                 )}
+                {cardDue > 0 && (
+                  <p className="text-xs text-muted-foreground">
+                    Card tips cash due {formatCurrency(cardDue)} is paid from the drawer/safe.
+                    Expected includes that paid-out.
+                  </p>
+                )}
                 {variance != null && Math.abs(variance) >= cfg.overShortWarnCents && (
                   <Input
                     placeholder="Over/short note"
@@ -373,8 +454,12 @@ export function CloseoutView({ onDone }: { onDone: () => void }) {
         )}
         {step === 4 && (
           <div className="max-w-sm space-y-3">
+            <p className="text-xs text-muted-foreground">{CC_TIP_PAYOUT_LABEL[payout]}</p>
             <p className="text-sm">
               Card tips from payments: {formatCurrency(sales.cardTipsCents)}
+              {cardDue > 0
+                ? ` · cash due ${formatCurrency(cardDue)}`
+                : " · informational (not cashed out)"}
             </p>
             {(emp.role === "manager" || emp.role === "owner") && (
               <label className="block text-xs text-muted-foreground">
@@ -396,6 +481,15 @@ export function CloseoutView({ onDone }: { onDone: () => void }) {
                 onChange={(e) => setCashTips(e.target.value)}
               />
             </label>
+            {declaredDue > 0 && (
+              <p className="text-sm">Declared cash settled in person: {formatCurrency(declaredDue)}</p>
+            )}
+            <p className="text-sm font-medium">Cash due to server {formatCurrency(cashDue)}</p>
+            {payrollIncludesCardTips(payout) && (
+              <p className="text-xs text-muted-foreground">
+                Card tips {formatCurrency(cardTips)} go on the hours-export file. Not a payroll run.
+              </p>
+            )}
           </div>
         )}
         {step === 5 && (
@@ -484,7 +578,15 @@ export function CloseoutView({ onDone }: { onDone: () => void }) {
         )}
         {step === 7 && (
           <div className="mx-auto max-w-xs">
-            <p className="mb-3 text-center text-sm">Confirm with your PIN. Not clock-out.</p>
+            <p className="mb-3 text-center text-sm">
+              Confirm with your PIN. Not clock-out.
+              <span className="mt-1 block text-xs text-muted-foreground">
+                Cash due {formatCurrency(cashDue)}
+                {payrollIncludesCardTips(payout)
+                  ? ` · card tips ${formatCurrency(cardTips)} to hours export`
+                  : ""}
+              </span>
+            </p>
             <PinKeypad
               error={pinErr}
               onClearError={() => setPinErr(null)}

@@ -8,6 +8,7 @@ import { assertEmployerScope, canViewHrField, configOf, employerOf, featureOn } 
 import { esignConfigured, sendEsignEnvelope } from "./esign";
 import { packSsn, piiReady } from "./pii";
 import { packetTemplateById, packetsForState, renderPacketBody } from "./packets";
+import { parseLaborRules } from "@/lib/labor/rules";
 import {
   parseHrConfig,
   type ApplicantStage,
@@ -915,6 +916,10 @@ export async function buildPayrollExport(
   const { departmentForRole, isCardTender, isCashTender, mergeTipSplits } = await import(
     "@/lib/labor/payroll-export"
   );
+  const { parseCashHandling, payrollIncludesCardTips, resolveCcTipPayout } = await import(
+    "@/lib/pos/cash-handling"
+  );
+  const { parseLaborRules, parseNotifyEmails } = await import("@/lib/labor/rules");
   const { connectorStatus, pushPayrollBatch } = await import("@/lib/labor/payroll-connectors");
   assertEmployerScope(ctx, data.employerId);
   const cfg = configOf(ctx.setup, data.employerId);
@@ -995,6 +1000,12 @@ export async function buildPayrollExport(
       ccCents: isCardTender(p.method) ? tip : 0,
     });
   }
+  const locationPayout = parseCashHandling(ctx.setup.cashHandling).ccTipPayout;
+  const laborPayout = parseLaborRules(
+    ctx.setup.laborByEntity?.[data.employerId] ?? ctx.setup.laborByEntity?.host,
+  ).ccTipPayout;
+  const payout = resolveCcTipPayout(locationPayout, cfg.ccTipPayout, laborPayout);
+  const includeCc = payrollIncludesCardTips(payout);
   const provider = cfg.payrollProvider === "none" ? "csv" : cfg.payrollProvider;
   const lines = [...hours.entries()]
     .map(([id, h]) => {
@@ -1012,7 +1023,7 @@ export async function buildPayrollExport(
         otHours: h.ot,
         otFlag: h.ot > 0,
         declaredTipsCents: split.declaredCents,
-        ccTipsCents: split.ccCents,
+        ccTipsCents: includeCc ? split.ccCents : 0,
       };
     })
     .sort((a, b) => a.employeeName.localeCompare(b.employeeName));
@@ -1036,7 +1047,6 @@ export async function buildPayrollExport(
         csv: (await import("@/lib/labor/payroll-export")).genericPayrollCsv(batch),
         fileName: (await import("@/lib/labor/payroll-export")).payrollExportFileName(batch),
       };
-  const { parseLaborRules, parseNotifyEmails } = await import("@/lib/labor/rules");
   const labor = parseLaborRules(ctx.setup.laborByEntity?.[data.employerId] ?? ctx.setup.laborByEntity?.host);
   const emails = parseNotifyEmails(labor.notifyEmails);
   if (emails.length && (data.push || result.mode === "csv_fallback")) {
@@ -1062,6 +1072,7 @@ export async function saveEntityHrConfig(
     features?: Partial<EntityHrConfig["features"]>;
     visibility?: Partial<EntityHrConfig["visibility"]>;
     payrollProvider?: EntityHrConfig["payrollProvider"];
+    ccTipPayout?: EntityHrConfig["ccTipPayout"];
   },
 ): Promise<EntityHrConfig> {
   assertEmployerScope(ctx, data.employerId);
@@ -1081,13 +1092,22 @@ export async function saveEntityHrConfig(
       employmentState: data.employmentState ?? prev.employmentState,
     }).employmentState,
     payrollProvider: data.payrollProvider ?? prev.payrollProvider ?? "none",
+    ccTipPayout: data.ccTipPayout ?? prev.ccTipPayout ?? "inherit",
   };
   const map: Record<string, EntityHrConfig> = { ...(ctx.setup.hrByEntity ?? {}) };
   map[data.employerId] = next;
+  const laborByEntity = { ...(ctx.setup.laborByEntity ?? {}) };
+  if (data.ccTipPayout !== undefined) {
+    laborByEntity[data.employerId] = parseLaborRules({
+      ...laborByEntity[data.employerId],
+      ccTipPayout: next.ccTipPayout,
+    });
+  }
   const merged = {
     ...ctx.setup,
     employmentState: data.employmentState ?? ctx.setup.employmentState,
     hrByEntity: map,
+    laborByEntity,
   };
   const sql = await getSql();
   await sql`

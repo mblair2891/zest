@@ -114,6 +114,9 @@ export const CASH_GIFT_TOPICS: GuideTopic[] = [
       "busser",
       "declared cash",
       "checkout slip",
+      "paycheck",
+      "card tips",
+      "cc tips",
     ],
     openView: "cash",
     blocks: [
@@ -134,7 +137,16 @@ export const CASH_GIFT_TOPICS: GuideTopic[] = [
         "Confirm with your PIN. Optional checkout slip if the location prints one.",
       ),
       p(
-        "Blind count (default on for server bank and one-person drawer): enter cash on hand first. Then the system shows expected and over/short. Expected = starting bank + cash sales − cash refunds − drops + paid-in − paid-out. Over/short over $X requires a note and flags the manager queue.",
+        "Blind count (default on for server bank and one-person drawer): enter cash on hand first. Then the system shows expected and over/short. Expected = starting bank + cash sales − cash refunds − drops + paid-in − paid-out. When card tips cash out at close, that paid-out is included in expected. Over/short over $X requires a note and flags the manager queue.",
+      ),
+      p(
+        "Cash out card tips at closeout: cash due to the server includes card tips, paid out from the drawer or safe. The hours-export file does not add those card tips again — they were already handed over in cash.",
+      ),
+      p(
+        "Card tips on paycheck: closeout shows card tips as informational. Cash due from card tips is $0. Card tips are included on the hours-export file for ADP, Intuit, or CSV. Summex does not run payroll.",
+      ),
+      p(
+        "Only declared cash tips at closeout: only declared cash tips are settled in person. Card tips always go on the hours-export file.",
       ),
       p(
         "Tip-out rates follow sales mix, not a flat percent of all sales. Ticket lines already own food vs drink (bar station or drink course). Two servers with $500 sales do not owe the same kitchen and bar amounts.",
@@ -147,7 +159,7 @@ export const CASH_GIFT_TOPICS: GuideTopic[] = [
         "The closeout stores both recommended and actual dollars per pool.",
       ),
       p(
-        "Settings: require closeout before clock-out (default on for servers), pending closeout with manager, print checkout slip, block open checks. Manager queue on Cash: closed / pending / over-short; reopen with manager PIN.",
+        "Settings: require closeout before clock-out (default on for servers), pending closeout with manager, print checkout slip, block open checks, card tips cash-at-close vs paycheck (location default; each employer entity can inherit or override). Manager queue on Cash: closed / pending / over-short; reopen with manager PIN.",
       ),
       p(
         "Reports → Server closeouts: declared cash, blind over/short, recommended vs actual by pool. Export CSV is payroll-ready later — Summex does not process payroll.",

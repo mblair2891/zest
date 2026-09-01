@@ -27,7 +27,13 @@ import { HOST_SCOPE, canViewPayroll, isHostPrivileged } from "@/lib/access/entit
 import { isFloorRole } from "@/lib/pos/pin";
 import { buildPayrollRows, payrollCsv } from "@/lib/labor/payroll";
 import { EntityScheduleView } from "./EntityScheduleView";
-import { parseCashHandling } from "@/lib/pos/cash-handling";
+import {
+  parseCashHandling,
+  CC_TIP_PAYOUTS,
+  CC_TIP_PAYOUT_LABEL,
+  CC_TIP_PAYOUT_BLURB,
+  type CcTipPayoutSetting,
+} from "@/lib/pos/cash-handling";
 import { useCashSessionStore } from "@/lib/pos/cash-session";
 import { hasCompletedCloseoutToday } from "@/lib/pos/closeout-store";
 
@@ -546,6 +552,29 @@ export function LaborOpsView() {
               value={rules.dailyCloseoutTime}
               onChange={(v) => updateLabor({ dailyCloseoutTime: v })}
             />
+            <p className="pt-2 text-xs font-semibold">Card tips (this employer)</p>
+            <label className="block text-xs text-muted-foreground">
+              Cash at close vs paycheck
+              <select
+                className="mt-1 flex h-9 w-full rounded-md border border-border bg-bg px-2 text-sm"
+                value={rules.ccTipPayout}
+                onChange={(e) =>
+                  updateLabor({ ccTipPayout: e.target.value as CcTipPayoutSetting })
+                }
+              >
+                <option value="inherit">Inherit location default</option>
+                {CC_TIP_PAYOUTS.map((v) => (
+                  <option key={v} value={v}>
+                    {CC_TIP_PAYOUT_LABEL[v]}
+                  </option>
+                ))}
+              </select>
+              <span className="mt-1 block text-[11px]">
+                {rules.ccTipPayout === "inherit"
+                  ? "Uses Settings → Cash drawers card-tip payout."
+                  : CC_TIP_PAYOUT_BLURB[rules.ccTipPayout]}
+              </span>
+            </label>
             <p className="pt-2 text-xs font-semibold">Pay period (hours export, not a payroll run)</p>
             <label className="block text-xs text-muted-foreground">
               Period

@@ -3,6 +3,10 @@ import {
   parsePayrollProvider,
   type PayrollProviderId,
 } from "@/lib/labor/payroll-export";
+import {
+  parseCcTipPayoutSetting,
+  type CcTipPayoutSetting,
+} from "@/lib/pos/cash-handling";
 
 export const HR_FEATURE_KEYS = [
   "applicants",
@@ -65,6 +69,8 @@ export type EntityHrConfig = {
   employmentState: string;
   /** Who receives the hours file. Summex never processes payroll. */
   payrollProvider: PayrollProviderId;
+  /** inherit = use location cash-handling ccTipPayout */
+  ccTipPayout: CcTipPayoutSetting;
 };
 
 export const DEFAULT_HR_FEATURES: HrFeatures = {
@@ -102,6 +108,7 @@ export function emptyHrConfig(): EntityHrConfig {
     visibility: { ...DEFAULT_HR_VISIBILITY },
     employmentState: "federal",
     payrollProvider: "none",
+    ccTipPayout: "inherit",
   };
 }
 
@@ -262,6 +269,7 @@ export function parseHrConfig(raw: unknown): EntityHrConfig {
     visibility,
     employmentState: parseEmploymentState(o.employmentState ?? o.state),
     payrollProvider: parsePayrollProvider(o.payrollProvider),
+    ccTipPayout: parseCcTipPayoutSetting(o.ccTipPayout),
   };
 }
 

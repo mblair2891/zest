@@ -104,6 +104,80 @@ export type IssueBankWhen = "clock_in" | "first_cash_sale" | "manager_issue";
 export type CashFollowsTransfer = "original_server" | "accepting_server";
 export type HandheldWellCash = "well_drawer" | "server_bank";
 
+export const CC_TIP_PAYOUTS = ["cash_at_close", "paycheck", "cash_tips_only_at_close"] as const;
+export type CcTipPayout = (typeof CC_TIP_PAYOUTS)[number];
+export type CcTipPayoutSetting = CcTipPayout | "inherit";
+
+export const CC_TIP_PAYOUT_LABEL: Record<CcTipPayout, string> = {
+  cash_at_close: "Cash out card tips at closeout",
+  paycheck: "Card tips on paycheck (hours export)",
+  cash_tips_only_at_close: "Only declared cash tips at closeout",
+};
+
+export const CC_TIP_PAYOUT_BLURB: Record<CcTipPayout, string> = {
+  cash_at_close:
+    "Cash due to the server includes card tips, paid out from the drawer or safe. Hours export does not add those card tips again.",
+  paycheck:
+    "Closeout shows card tips as informational. Cash due from card tips is $0. Card tips go on the hours-export file — Summex does not run payroll.",
+  cash_tips_only_at_close:
+    "Only declared cash tips are settled in person. Card tips always go on the hours-export file.",
+};
+
+export function parseCcTipPayout(raw: unknown, fallback: CcTipPayout = "cash_at_close"): CcTipPayout {
+  const s = String(raw ?? "");
+  return (CC_TIP_PAYOUTS as readonly string[]).includes(s) ? (s as CcTipPayout) : fallback;
+}
+
+export function parseCcTipPayoutSetting(raw: unknown): CcTipPayoutSetting {
+  if (raw === "inherit" || raw == null || raw === "") return "inherit";
+  return parseCcTipPayout(raw);
+}
+
+/** First non-inherit override wins; otherwise the location default. */
+export function resolveCcTipPayout(
+  location: CcTipPayout,
+  ...overrides: Array<CcTipPayoutSetting | null | undefined>
+): CcTipPayout {
+  for (const o of overrides) {
+    if (o && o !== "inherit") return o;
+  }
+  return location;
+}
+
+export function cardTipsCashDueCents(payout: CcTipPayout, cardTipsCents: number): number {
+  return payout === "cash_at_close" ? Math.max(0, cardTipsCents) : 0;
+}
+
+export function declaredCashDueCents(payout: CcTipPayout, declaredCents: number): number {
+  return payout === "cash_tips_only_at_close" ? Math.max(0, declaredCents) : 0;
+}
+
+export function cashDueToServerCents(
+  payout: CcTipPayout,
+  cardTipsCents: number,
+  declaredCents: number,
+): number {
+  return cardTipsCashDueCents(payout, cardTipsCents) + declaredCashDueCents(payout, declaredCents);
+}
+
+export function payrollIncludesCardTips(payout: CcTipPayout): boolean {
+  return payout !== "cash_at_close";
+}
+
+/** Fold pending CC-tip paid-out into blind expected before the event is recorded. */
+export function expectedAfterTipPayout(opts: {
+  baseExpected: number;
+  payout: CcTipPayout;
+  cardTipsCents: number;
+  sinkType: "drawer" | "bank" | "blocked";
+}): number {
+  const due = cardTipsCashDueCents(opts.payout, opts.cardTipsCents);
+  if (!due) return opts.baseExpected;
+  if (opts.sinkType === "drawer") return opts.baseExpected - due;
+  if (opts.sinkType === "bank") return opts.baseExpected + due;
+  return opts.baseExpected;
+}
+
 export type CashDrawerDef = {
   id: string;
   name: string;
@@ -138,10 +212,12 @@ export type CashHandlingConfig = {
   tipOutEnabled: boolean;
   tipOutBasis: TipOutBasis;
   tipOutPools: TipOutPool[];
+  ccTipPayout: CcTipPayout;
 };
 
 export const DEFAULT_PAID_REASONS = [
   "Tip out",
+  "CC tips",
   "Vendor",
   "Petty cash",
   "Lottery",
@@ -185,6 +261,7 @@ export const DEFAULT_CASH_HANDLING: CashHandlingConfig = {
   tipOutEnabled: true,
   tipOutBasis: "category_sales",
   tipOutPools: DEFAULT_TIP_OUT_POOLS.map((p) => ({ ...p })),
+  ccTipPayout: "cash_at_close",
 };
 
 function asModel(raw: unknown): CashModel | null {
@@ -283,6 +360,7 @@ export function parseCashHandling(raw: unknown): CashHandlingConfig {
     tipOutEnabled: o.tipOutEnabled !== false,
     tipOutBasis: o.tipOutBasis === "tips_by_mix" ? "tips_by_mix" : "category_sales",
     tipOutPools: parseTipOutPools(o.tipOutPools),
+    ccTipPayout: parseCcTipPayout(o.ccTipPayout),
     blindCount:
       o.blindCount === undefined
         ? defaultModel === "server_bank" || defaultModel === "single_user_drawer"

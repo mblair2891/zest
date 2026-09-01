@@ -47,7 +47,7 @@ export const HR_TOPICS: GuideTopic[] = [
         "The house already has a payroll product. Summex records time, jobs, OT flags, and tips, then hands a file to that product.",
       ),
       ul(
-        "Reports → Payroll export (and Labor → Hours export) is entity-scoped: employees, regular/OT hours, declared and card tips, department, job, pay period, work location.",
+        "Reports → Payroll export (and Labor → Hours export) is entity-scoped: employees, regular/OT hours, declared and card tips, department, job, pay period, work location. Card tips already cashed out at closeout are omitted from the file.",
         "Formats: generic CSV always. Intuit QuickBooks Payroll and ADP when keys are set. Other payroll products import the same CSV.",
         "HR → Flags: destination None, CSV only, Intuit, ADP, or Other. Map local staff to the provider employee id — never a Social Security number.",
         "Direct API uses INTUIT_* or ADP_* on the server. Missing keys show Connect and still download CSV.",
@@ -61,7 +61,7 @@ export const HR_TOPICS: GuideTopic[] = [
       warn(
         "Summex does not print checks, e-file taxes, or calculate net pay. Wage rates in HR visibility are not a pay run.",
       ),
-      related("shift-allowables", "entity-schedule-payroll", "hr-employment", "role-owner"),
+      related("shift-allowables", "entity-schedule-payroll", "hr-employment", "role-owner", "server-closeout"),
     ],
   }),
   topic({

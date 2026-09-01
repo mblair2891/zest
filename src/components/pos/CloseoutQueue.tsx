@@ -40,6 +40,7 @@ export function CloseoutQueue() {
               <span className="tabular text-xs">O/S {formatCurrency(r.overShortCents)}</span>
             )}
             <span className="tabular text-xs">
+              due {formatCurrency((r.cardTipsCashDueCents ?? 0) + (r.declaredCashDueCents ?? 0))} ·
               tips {formatCurrency(r.cashTipsDeclaredCents)} · tip-out rec{" "}
               {formatCurrency(r.tipOuts.reduce((s, t) => s + t.recommendedCents, 0))} / actual{" "}
               {formatCurrency(r.tipOuts.reduce((s, t) => s + t.actualCents, 0))}

@@ -3,12 +3,13 @@ import type { Employee, Order, OrderLine } from "./types";
 import type {
   CashHandlingConfig,
   CashSink,
+  CcTipPayout,
   TipOutBasis,
   TipOutCategory,
   TipOutPool,
   TipOutRole,
 } from "./cash-handling";
-export type { TipOutBasis, TipOutCategory, TipOutPool, TipOutRole };
+export type { TipOutBasis, TipOutCategory, TipOutPool, TipOutRole, CcTipPayout };
 
 export type CloseoutStatus = "closed" | "pending" | "over_short";
 
@@ -58,6 +59,10 @@ export type ServerCloseout = {
   skippedDrawerCount: boolean;
   tipOuts: TipOutLine[];
   tipOutBasis: TipOutBasis;
+  ccTipPayout: CcTipPayout;
+  cardTipsCashDueCents: number;
+  cardTipsToPayrollCents: number;
+  declaredCashDueCents: number;
   dropsCents: number;
   paidInCents: number;
   paidOutCents: number;
@@ -230,8 +235,12 @@ export function closeoutPayrollCsv(records: ServerCloseout[]): string {
     "card",
     "cash",
     "gift",
+    "cc_tip_payout",
     "card_tips",
+    "card_tips_cash_due",
+    "card_tips_to_payroll",
     "declared_cash_tips",
+    "declared_cash_due",
     "counted",
     "expected",
     "over_short",
@@ -268,8 +277,12 @@ export function closeoutPayrollCsv(records: ServerCloseout[]): string {
           dollars(r.sales.cardCents),
           dollars(r.sales.cashCents),
           dollars(r.sales.giftCents),
+          csvEsc(r.ccTipPayout ?? ""),
           dollars(r.cardTipsCents),
+          dollars(r.cardTipsCashDueCents),
+          dollars(r.cardTipsToPayrollCents),
           dollars(r.cashTipsDeclaredCents),
+          dollars(r.declaredCashDueCents),
           dollars(r.countedCents),
           dollars(r.expectedCents),
           dollars(r.overShortCents),

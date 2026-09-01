@@ -185,3 +185,89 @@ test("shared well skip: individual server does not count a multi-user well", () 
     true,
   );
 });
+
+function cardTipsCashDueCents(payout, cardTipsCents) {
+  return payout === "cash_at_close" ? Math.max(0, cardTipsCents) : 0;
+}
+function declaredCashDueCents(payout, declaredCents) {
+  return payout === "cash_tips_only_at_close" ? Math.max(0, declaredCents) : 0;
+}
+function payrollIncludesCardTips(payout) {
+  return payout !== "cash_at_close";
+}
+function expectedAfterTipPayout(opts) {
+  const due = cardTipsCashDueCents(opts.payout, opts.cardTipsCents);
+  if (!due) return opts.baseExpected;
+  if (opts.sinkType === "drawer") return opts.baseExpected - due;
+  if (opts.sinkType === "bank") return opts.baseExpected + due;
+  return opts.baseExpected;
+}
+function resolveCcTipPayout(location, ...overrides) {
+  for (const o of overrides) {
+    if (o && o !== "inherit") return o;
+  }
+  return location;
+}
+
+test("cash_at_close: cash due includes card tips; payroll omits them", () => {
+  assert.equal(cardTipsCashDueCents("cash_at_close", 2500), 2500);
+  assert.equal(payrollIncludesCardTips("cash_at_close"), false);
+});
+
+test("paycheck: cash due from card tips is 0; payroll includes them", () => {
+  assert.equal(cardTipsCashDueCents("paycheck", 2500), 0);
+  assert.equal(declaredCashDueCents("paycheck", 800), 0);
+  assert.equal(payrollIncludesCardTips("paycheck"), true);
+});
+
+test("cash_tips_only_at_close: declared cash settled; card tips to payroll", () => {
+  assert.equal(cardTipsCashDueCents("cash_tips_only_at_close", 2500), 0);
+  assert.equal(declaredCashDueCents("cash_tips_only_at_close", 800), 800);
+  assert.equal(payrollIncludesCardTips("cash_tips_only_at_close"), true);
+});
+
+test("blind expected includes CC tip paid-out when cash_at_close", () => {
+  const base = expectedCashCents({
+    startCents: 20000,
+    cashSalesCents: 5000,
+    cashRefundsCents: 0,
+    dropsCents: 0,
+    paidInCents: 0,
+    paidOutCents: 0,
+  });
+  assert.equal(base, 25000);
+  assert.equal(
+    expectedAfterTipPayout({
+      baseExpected: base,
+      payout: "cash_at_close",
+      cardTipsCents: 1500,
+      sinkType: "drawer",
+    }),
+    23500,
+  );
+  assert.equal(
+    expectedAfterTipPayout({
+      baseExpected: base,
+      payout: "cash_at_close",
+      cardTipsCents: 1500,
+      sinkType: "bank",
+    }),
+    26500,
+  );
+  assert.equal(
+    expectedAfterTipPayout({
+      baseExpected: base,
+      payout: "paycheck",
+      cardTipsCents: 1500,
+      sinkType: "drawer",
+    }),
+    25000,
+  );
+});
+
+test("employer inherit uses location default", () => {
+  assert.equal(resolveCcTipPayout("cash_at_close", "inherit", "inherit"), "cash_at_close");
+  assert.equal(resolveCcTipPayout("cash_at_close", "paycheck", "inherit"), "paycheck");
+  assert.equal(resolveCcTipPayout("paycheck", "inherit", "cash_tips_only_at_close"), "cash_tips_only_at_close");
+});
+

@@ -10,6 +10,12 @@ import { HOST_SCOPE } from "@/lib/access/entity-grants";
 import { isProspectDemo } from "@/lib/demo/session";
 import { formatCurrency } from "@/lib/utils";
 import { PAYROLL_PROVIDERS, PAYROLL_PROVIDER_LABEL, type PayrollProviderId } from "@/lib/labor/payroll-export";
+import {
+  CC_TIP_PAYOUTS,
+  CC_TIP_PAYOUT_LABEL,
+  CC_TIP_PAYOUT_BLURB,
+  type CcTipPayoutSetting,
+} from "@/lib/pos/cash-handling";
 import { useOpsStore } from "@/lib/pos/ops-store";
 import {
   APPLICANT_STAGES,
@@ -387,6 +393,9 @@ export function HrSettingsCard({
   const [payrollProvider, setPayrollProvider] = useState<PayrollProviderId>(
     overview.config.payrollProvider || "none",
   );
+  const [ccTipPayout, setCcTipPayout] = useState<CcTipPayoutSetting>(
+    overview.config.ccTipPayout || "inherit",
+  );
 
   useEffect(() => {
     setEnabled(overview.config.enabled);
@@ -394,6 +403,7 @@ export function HrSettingsCard({
     setFeatures(overview.config.features);
     setVisibility(overview.config.visibility);
     setPayrollProvider(overview.config.payrollProvider || "none");
+    setCcTipPayout(overview.config.ccTipPayout || "inherit");
   }, [overview]);
 
   const save = async () => {
@@ -409,6 +419,7 @@ export function HrSettingsCard({
           features,
           visibility,
           payrollProvider,
+          ccTipPayout,
         },
       });
       await onSaved();
@@ -463,6 +474,26 @@ export function HrSettingsCard({
         <span className="mt-1 block text-[11px] text-muted-foreground">
           Summex does not process payroll; it feeds ADP, Intuit, or a CSV. Manual download
           always works.
+        </span>
+      </label>
+      <label className="block text-sm">
+        Card tips: cash at close vs paycheck
+        <select
+          className="mt-1 h-9 w-full max-w-xs rounded-md border border-border bg-bg px-2 text-sm"
+          value={ccTipPayout}
+          onChange={(e) => setCcTipPayout(e.target.value as CcTipPayoutSetting)}
+        >
+          <option value="inherit">Inherit location default</option>
+          {CC_TIP_PAYOUTS.map((v) => (
+            <option key={v} value={v}>
+              {CC_TIP_PAYOUT_LABEL[v]}
+            </option>
+          ))}
+        </select>
+        <span className="mt-1 block text-[11px] text-muted-foreground">
+          {ccTipPayout === "inherit"
+            ? "Uses the location cash-handling setting. Hours export skips card tips already cashed out at close."
+            : CC_TIP_PAYOUT_BLURB[ccTipPayout]}
         </span>
       </label>
       <div className="grid gap-2 sm:grid-cols-2">

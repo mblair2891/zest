@@ -3,6 +3,7 @@ import { tenantMiddleware } from "@/lib/saas/tenant-middleware";
 import { HOST_SCOPE } from "@/lib/access/entity-grants";
 import type { EntityHrConfig, HrAudience, HrFeatureKey, HrVisibilityKey } from "./types";
 import type { PayrollProviderId } from "@/lib/labor/payroll-export";
+import type { CcTipPayoutSetting } from "@/lib/pos/cash-handling";
 
 function loc(raw: unknown): string {
   const s = String(raw ?? "").trim();
@@ -78,6 +79,7 @@ export const saveHrSettingsFn = createServerFn({ method: "POST" })
       features?: Partial<Record<HrFeatureKey, boolean>>;
       visibility?: Partial<Record<HrVisibilityKey, HrAudience>>;
       payrollProvider?: PayrollProviderId;
+      ccTipPayout?: CcTipPayoutSetting;
     }) => ({
       orgId: org(d.orgId),
       locationId: loc(d.locationId),
@@ -87,6 +89,7 @@ export const saveHrSettingsFn = createServerFn({ method: "POST" })
       features: d.features,
       visibility: d.visibility,
       payrollProvider: d.payrollProvider,
+      ccTipPayout: d.ccTipPayout,
     }),
   )
   .handler(async ({ context, data }) => {

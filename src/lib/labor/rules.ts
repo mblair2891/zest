@@ -3,6 +3,11 @@
  * Summex exports hours; it does not process payroll.
  */
 
+import {
+  parseCcTipPayoutSetting,
+  type CcTipPayoutSetting,
+} from "@/lib/pos/cash-handling";
+
 export type ClockWindowAction = "block" | "flag";
 export type ApprovalMode = "manual" | "auto_shift_end" | "auto_last_ticket";
 export type PayPeriodKind = "weekly" | "biweekly" | "semimonthly" | "custom";
@@ -51,6 +56,8 @@ export type EntityLaborRules = {
   requirePublishedShiftToClockIn: boolean;
   /** Alias of approvalWindowMinutes when last-ticket auto-approve is on */
   clockOutRedFlagMinutes: number;
+  /** inherit = use location cash-handling ccTipPayout */
+  ccTipPayout: CcTipPayoutSetting;
 };
 
 export const DEFAULT_LABOR_RULES: EntityLaborRules = {
@@ -92,6 +99,7 @@ export const DEFAULT_LABOR_RULES: EntityLaborRules = {
   payrollProcessorId: "csv",
   requirePublishedShiftToClockIn: true,
   clockOutRedFlagMinutes: 20,
+  ccTipPayout: "inherit",
 };
 
 function int(raw: unknown, fallback: number, min = 0, max = 10_080): number {
@@ -187,6 +195,7 @@ export function parseLaborRules(raw: unknown): EntityLaborRules {
     payrollProcessorId: String(o.payrollProcessorId ?? "csv").slice(0, 40) || "csv",
     requirePublishedShiftToClockIn: !allowClockWithNoShift,
     clockOutRedFlagMinutes: approvalWindowMinutes,
+    ccTipPayout: parseCcTipPayoutSetting(o.ccTipPayout),
   };
 }
 

@@ -13,6 +13,9 @@ import {
   DRAWER_KINDS,
   TIP_OUT_ROLES,
   TIP_OUT_ROLE_LABEL,
+  CC_TIP_PAYOUTS,
+  CC_TIP_PAYOUT_LABEL,
+  CC_TIP_PAYOUT_BLURB,
   newDrawerId,
   parseCashHandling,
   type CashHandlingConfig,
@@ -23,6 +26,7 @@ import {
   type NoSaleOpen,
   type IssueBankWhen,
   type TipOutRole,
+  type CcTipPayout,
 } from "@/lib/pos/cash-handling";
 import type { DeviceRole } from "@/lib/pos/device-roles";
 import { DEVICE_ROLE_LABEL } from "@/lib/pos/device-roles";
@@ -481,6 +485,23 @@ export function CashHandlingSettings({ write }: { write: boolean }) {
         />
         <span>Print checkout slip on confirm</span>
       </label>
+      <Field
+        label="Card tips: cash at close vs paycheck"
+        hint={CC_TIP_PAYOUT_BLURB[cfg.ccTipPayout]}
+      >
+        <select
+          className="h-9 w-full rounded-lg border border-border bg-bg px-2 text-sm"
+          disabled={!write}
+          value={cfg.ccTipPayout}
+          onChange={(e) => patch({ ccTipPayout: e.target.value as CcTipPayout })}
+        >
+          {CC_TIP_PAYOUTS.map((v) => (
+            <option key={v} value={v}>
+              {CC_TIP_PAYOUT_LABEL[v]}
+            </option>
+          ))}
+        </select>
+      </Field>
       <label className="flex items-start gap-2 text-sm">
         <input
           type="checkbox"
