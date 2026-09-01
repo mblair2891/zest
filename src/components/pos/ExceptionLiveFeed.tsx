@@ -9,6 +9,7 @@ import {
 } from "@/lib/pos/loss-prevention";
 import { useCloseoutStore } from "@/lib/pos/closeout-store";
 import { ApprovalQueue } from "./ApprovalQueue";
+import { NightlyIntegrityPanel } from "./NightlyIntegrityPanel";
 
 export function ExceptionLiveFeed({ compact = false }: { compact?: boolean }) {
   const auditLog = usePosStore((s) => s.auditLog);
@@ -45,6 +46,9 @@ export function ExceptionLiveFeed({ compact = false }: { compact?: boolean }) {
       </p>
       <div className="mb-3">
         <ApprovalQueue compact={compact} />
+      </div>
+      <div className="mb-3">
+        <NightlyIntegrityPanel compact={compact} />
       </div>
       {flagged.length > 0 && (
         <div className="mb-3 space-y-1.5 rounded-xl border border-warn/40 bg-warn/10 p-2">

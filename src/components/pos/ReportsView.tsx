@@ -38,6 +38,8 @@ import { parseCashHandling } from "@/lib/pos/cash-handling";
 import { bankExpected, drawerExpected, useCashSessionStore } from "@/lib/pos/cash-session";
 import { closeoutPayrollCsv } from "@/lib/pos/closeout";
 import { useCloseoutStore } from "@/lib/pos/closeout-store";
+import { NightlyIntegrityPanel } from "@/components/pos/NightlyIntegrityPanel";
+import { buildNightlyIntegrityPack, INTEGRITY_KIND_LABEL } from "@/lib/pos/check-integrity";
 import {
   buildExceptionRows,
   formatPct,
@@ -698,6 +700,9 @@ function ReportBody({ id, m }: { id: ReportId; m: ReturnType<typeof metricsFromP
       </div>
     );
   }
+  if (id === "close-nightly") {
+    return <NightlyReportSlice />;
+  }
   if (id === "close-eod") {
     return (
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
@@ -1171,6 +1176,43 @@ function Card({ label, value, sub }: { label: string; value: string; sub?: strin
       <p className="text-xs uppercase tracking-wide text-muted-foreground">{label}</p>
       <p className="mt-1 text-2xl font-semibold tabular">{value}</p>
       {sub && <p className="mt-1 text-xs text-muted-foreground">{sub}</p>}
+    </div>
+  );
+}
+
+function NightlyReportSlice() {
+  const tables = usePosStore((s) => s.tables);
+  const orders = usePosStore((s) => s.orders);
+  const employees = usePosStore((s) => s.employees);
+  const auditLog = usePosStore((s) => s.auditLog);
+  const settings = usePosStore((s) => s.settings);
+  const cfg = parseLossPrevention(settings.lossPrevention);
+  const issues = buildNightlyIntegrityPack({ tables, orders, employees, auditLog, cfg });
+  return (
+    <div className="space-y-3">
+      <p className="text-xs text-muted-foreground">
+        Run at house close and anytime. House Z cannot finish while items remain
+        {cfg.nightCloseMode === "ack" ? " unless a manager acknowledges with a reason" : " (hard-block)"}.
+      </p>
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+        <Card label="Items" value={String(issues.length)} />
+        <Card label="Open checks" value={String(issues.filter((i) => i.kind === "open_check").length)} />
+        <Card label="Holds" value={String(issues.filter((i) => i.kind === "hold_bucket").length)} />
+        <Card label="Mismatches" value={String(issues.filter((i) => i.kind === "empty_open_check" || i.kind === "occupied_no_check").length)} />
+      </div>
+      <NightlyIntegrityPanel />
+      <ul className="space-y-1 text-sm">
+        {issues.map((i) => (
+          <li key={i.id} className="flex justify-between gap-2 rounded-xl border border-border px-3 py-2">
+            <span>
+              {INTEGRITY_KIND_LABEL[i.kind]}
+              <span className="text-muted-foreground"> · {i.detail}</span>
+            </span>
+            <span className="tabular text-xs text-muted-foreground">{formatDateTime(i.at)}</span>
+          </li>
+        ))}
+        {issues.length === 0 && <li className="text-muted-foreground">Pack is clear.</li>}
+      </ul>
     </div>
   );
 }

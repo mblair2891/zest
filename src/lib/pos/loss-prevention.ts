@@ -120,6 +120,12 @@ export type LossPreventionConfig = {
   lateCompDualControl: boolean;
   /** When on, refuse cash close after a late-window comp. Default off: flag only. */
   lateCompBlockCash: boolean;
+  /** Flag open checks with no new item after this many minutes. */
+  integrityIdleMinutes: number;
+  /** Empty table while a check is open: auto-move to left_to_close, or require a lead first. */
+  integrityEmptyTable: "auto_hold" | "require_lead";
+  /** House Z / night close: must clear issues, or manager ack with reason. */
+  nightCloseMode: "hard_block" | "ack";
 };
 
 export const VOID_REASONS = [
@@ -203,6 +209,10 @@ export const GATED_AUDIT_ACTIONS = [
   "approval_pending",
   "break_glass",
   "late_comp_cash",
+  "table_hold",
+  "table_offer",
+  "integrity_ack",
+  "clockout_open_checks",
 ] as const;
 
 export type GatedAuditAction = (typeof GATED_AUDIT_ACTIONS)[number];
@@ -263,6 +273,9 @@ export const DEFAULT_LOSS_PREVENTION: LossPreventionConfig = {
   lateCompStaleSendHours: 2,
   lateCompDualControl: false,
   lateCompBlockCash: false,
+  integrityIdleMinutes: 45,
+  integrityEmptyTable: "auto_hold",
+  nightCloseMode: "ack",
 };
 
 function asGate(raw: unknown, fallback: GateMode): GateMode {
@@ -365,6 +378,9 @@ export function parseLossPrevention(raw: unknown): LossPreventionConfig {
     lateCompStaleSendHours: Math.min(24, Math.max(1, Math.round(Number(o.lateCompStaleSendHours) || base.lateCompStaleSendHours))),
     lateCompDualControl: Boolean(o.lateCompDualControl),
     lateCompBlockCash: Boolean(o.lateCompBlockCash),
+    integrityIdleMinutes: Math.min(24 * 60, Math.max(10, Math.round(Number(o.integrityIdleMinutes) || base.integrityIdleMinutes))),
+    integrityEmptyTable: o.integrityEmptyTable === "require_lead" ? "require_lead" : "auto_hold",
+    nightCloseMode: o.nightCloseMode === "hard_block" ? "hard_block" : "ack",
   };
 }
 
@@ -593,8 +609,8 @@ export type LateCompCashEvent = {
 
 export type CompAuditLike = {
   at: number;
-  employeeId: string;
-  employeeName: string;
+  employeeId?: string;
+  employeeName?: string;
   action: string;
   amountCents?: number;
   orderId?: string;

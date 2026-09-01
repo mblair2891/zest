@@ -343,10 +343,12 @@ export interface Table {
   serverId?: string;
   guestCount?: number;
   seatedAt?: number;
-  /** Open check offered to the floor; ownership pending accept. */
+  /** Open check offered to a named server; they must accept. Never nameless. */
   releasedAt?: number;
   releasedById?: string;
   releasedByName?: string;
+  pendingAcceptId?: string;
+  pendingAcceptName?: string;
   statusSince?: number;
   qrToken?: string;
   /** Set when an SLA flash notice has already been pushed for this status. */
@@ -440,6 +442,14 @@ export interface Order {
   lateCompAt?: number;
   lateCompCents?: number;
   lateCompApprover?: string;
+  holdKind?: import("./check-integrity").CheckHoldKind;
+  holdReason?: string;
+  holdAt?: number;
+  holdById?: string;
+  holdByName?: string;
+  holdOwner?: "user" | "house";
+  pendingAcceptId?: string;
+  pendingAcceptName?: string;
 }
 
 export interface KitchenTicketItem {

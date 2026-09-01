@@ -6,6 +6,19 @@ import type { GuideUpdate } from "@/lib/guide/types";
  */
 export const WHATS_NEW_ENTRIES: GuideUpdate[] = [
   {
+    id: "upd_2026_10_23_table_check_integrity",
+    date: "2026-10-23",
+    title: "Table/check integrity and nightly exception pack",
+    summary:
+      "No nameless unassigned. Named holds. Empty table cannot drop an open check. House Z waits on the nightly pack.",
+    body: "Transfer a check to a named server (they must accept) or park it in manager hold, walkout, bar tab, or left to close — always with a reason and an owner (person or house). Marking a table empty while a check is open moves that check to Left to close and flags; it never disappears. Empty + open check is a warning color on the floor. The nightly pack (Home, Cash, Reports → Nightly exception pack) lists open checks, occupied-no-check, empty/dirty with check open, stale open, cash-not-closed, late-comp cash, hold buckets, and clock-out with open checks. House Z cannot complete until those are cleared or a manager acknowledges with a reason (hard-block is optional).",
+    roles: ["owner_manager"],
+    surfaces: ["floor", "reports", "settings"],
+    audience: "all",
+    topicId: "floor-tables",
+    tags: ["floor", "checks", "nightly", "Z close"],
+  },
+  {
     id: "upd_2026_10_22_late_comp_cash",
     date: "2026-10-22",
     title: "Late-comp + cash-close flags",

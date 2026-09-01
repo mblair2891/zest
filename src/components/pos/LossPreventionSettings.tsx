@@ -290,6 +290,47 @@ export function LossPreventionSettings({ write }: { write: boolean }) {
         />
         Hard-block cash close after a late-window comp (default off — flag only)
       </label>
+      <p className="text-sm font-medium">Table / check integrity &amp; nightly pack</p>
+      <p className="text-xs text-muted-foreground">
+        Checks never go nameless. Empty table with an open check moves to Left to close (or needs a
+        lead first). House Z close waits on the nightly pack.
+      </p>
+      <Num
+        label="Open check, no new item (minutes)"
+        value={cfg.integrityIdleMinutes}
+        min={10}
+        max={1440}
+        disabled={!write}
+        onChange={(n) => patch({ integrityIdleMinutes: n })}
+      />
+      <label className="flex items-center justify-between gap-3 text-sm">
+        <span>Empty table while check is open</span>
+        <select
+          disabled={!write}
+          className="h-9 rounded-md border border-border bg-bg px-2 text-sm"
+          value={cfg.integrityEmptyTable}
+          onChange={(e) =>
+            patch({ integrityEmptyTable: e.target.value === "require_lead" ? "require_lead" : "auto_hold" })
+          }
+        >
+          <option value="auto_hold">Auto-move to Left to close + flag</option>
+          <option value="require_lead">Require shift lead / manager, then hold</option>
+        </select>
+      </label>
+      <label className="flex items-center justify-between gap-3 text-sm">
+        <span>House Z / night close</span>
+        <select
+          disabled={!write}
+          className="h-9 rounded-md border border-border bg-bg px-2 text-sm"
+          value={cfg.nightCloseMode}
+          onChange={(e) =>
+            patch({ nightCloseMode: e.target.value === "hard_block" ? "hard_block" : "ack" })
+          }
+        >
+          <option value="ack">Manager ack with reason</option>
+          <option value="hard_block">Hard-block until cleared</option>
+        </select>
+      </label>
       <Num
         label="Flag vs house when ≥ this × house rate"
         value={cfg.outlierMultiplier}

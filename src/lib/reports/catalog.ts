@@ -116,6 +116,13 @@ export const REPORT_CATALOG: ReportDef[] = [
     roles: ["owner", "manager", "accountant", "cashier"],
   },
   {
+    id: "close-nightly",
+    group: "close",
+    title: "Nightly exception pack",
+    summary: "Open checks, table/check mismatches, holds, cash-not-closed, late-comp cash. Required before house Z.",
+    roles: ["owner", "manager", "accountant", "cashier", "host"],
+  },
+  {
     id: "close-drawers",
     group: "close",
     title: "Drawer & well close",

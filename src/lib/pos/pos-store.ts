@@ -209,10 +209,21 @@ export interface PosStore {
     guestCount: number,
     opts?: { serverId?: string },
   ) => ActionResult;
-  releaseTable: (tableId: string) => ActionResult;
+  releaseTable: (
+    tableId: string,
+    opts:
+      | { toEmployeeId: string }
+      | { hold: import("./check-integrity").CheckHoldKind; reason: string; house?: boolean },
+  ) => ActionResult;
   acceptTable: (tableId: string) => ActionResult;
   reassignTable: (tableId: string, serverId: string) => ActionResult;
-  markClean: (tableId: string) => void;
+  holdCheck: (
+    orderId: string,
+    hold: import("./check-integrity").CheckHoldKind,
+    reason: string,
+    opts?: { house?: boolean; clearTable?: boolean },
+  ) => ActionResult;
+  markClean: (tableId: string) => ActionResult;
   setTableStatus: (tableId: string, status: TableStatus) => ActionResult;
   guestOpenTable: (tableId: string) => ActionResult;
   guestAddToTable: (tableId: string, menuItemId: string) => ActionResult;
@@ -394,7 +405,10 @@ export interface PosStore {
   addFloorTable: (partial?: Partial<Table>) => string;
   removeFloorTable: (id: string) => ActionResult;
   openShift: (floatCents: number) => void;
-  closeShift: (closingCashCents: number) => ActionResult;
+  closeShift: (
+    closingCashCents: number,
+    opts?: { ackReason?: string },
+  ) => ActionResult<{ issues?: number }>;
   updateSettlementConfig: (patch: Partial<SettlementConfig>) => void;
   getOpenPeriodPreview: () => SettlementPeriod | null;
   closeSettlementPeriod: () => ActionResult<{ period?: SettlementPeriod }>;

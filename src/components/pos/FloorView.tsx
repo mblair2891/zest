@@ -55,6 +55,14 @@ import { SectionAccessDialog } from "./GrantTableDialog";
 import { GuideLearnLink } from "@/components/guide/GuideLearnLink";
 import { QrMark } from "./QrMark";
 import { canAccessView } from "@/lib/pos/rbac";
+import {
+  CHECK_HOLD_LABEL,
+  CHECK_HOLD_REASONS,
+  CHECK_HOLDS,
+  INTEGRITY_WARN_COLOR,
+  tableEmptyWithOpenCheck,
+  type CheckHoldKind,
+} from "@/lib/pos/check-integrity";
 
 function pipelineLabel(status: string): string {
   const n = normalizeTableStatus(status);
@@ -116,6 +124,12 @@ export function FloorView() {
   const [section, setSection] = useState<string>("__init");
   const [seatServerId, setSeatServerId] = useState<string>("");
   const [reassignId, setReassignId] = useState<string>("");
+  const [offerOpen, setOfferOpen] = useState(false);
+  const [offerTo, setOfferTo] = useState("");
+  const [offerHold, setOfferHold] = useState<CheckHoldKind>("left_to_close");
+  const [offerReason, setOfferReason] = useState(CHECK_HOLD_REASONS.left_to_close[0]);
+  const [offerMode, setOfferMode] = useState<"staff" | "hold">("staff");
+  const [offerErr, setOfferErr] = useState<string | null>(null);
   const [blockTable, setBlockTable] = useState<Table | null>(null);
   const [blockReason, setBlockReason] = useState("");
   const [detail, setDetail] = useState<Table | null>(null);
@@ -369,7 +383,7 @@ export function FloorView() {
           data-demo="released-pool"
         >
           <span className="text-[11px] font-semibold uppercase tracking-wide text-amber-900">
-            Released / unassigned
+            Pending accept
           </span>
           {releasedPool.map((t) => (
             <Button
@@ -380,7 +394,8 @@ export function FloorView() {
               onClick={() => setDetail(t)}
             >
               Table {t.label}
-              {t.releasedByName ? ` · ${t.releasedByName}` : ""}
+              {t.pendingAcceptName ? ` → ${t.pendingAcceptName}` : ""}
+              {t.releasedByName ? ` · from ${t.releasedByName}` : ""}
             </Button>
           ))}
         </div>
@@ -398,8 +413,10 @@ export function FloorView() {
               const totals = order ? computeTotals(order, settings) : null;
               const server = employees.find((e) => e.id === t.serverId);
               const st = normalizeTableStatus(t.status);
-              const fill =
-                st === "reserved"
+              const integrityWarn = tableEmptyWithOpenCheck(t, orders);
+              const fill = integrityWarn
+                ? INTEGRITY_WARN_COLOR
+                : st === "reserved"
                   ? "#e8e6e1"
                   : floorCfg.colors[st] ?? "#ffffff";
               const ink = contrastInk(fill);
@@ -472,6 +489,7 @@ export function FloorView() {
                     (t.mergedChildIds?.length ?? 0) > 0 && "border-info/60",
                     foodUp && "ring-2 ring-primary animate-pulse",
                     flashing && "table-sla-flash",
+                    integrityWarn && "ring-2 ring-amber-600",
                     outOfSection && "opacity-55",
                   )}
                 >
@@ -487,6 +505,11 @@ export function FloorView() {
                   {flashing && (
                     <span className="mt-0.5 rounded bg-danger px-1 text-[9px] font-bold uppercase tracking-wide text-danger-foreground">
                       SLA
+                    </span>
+                  )}
+                  {integrityWarn && (
+                    <span className="mt-0.5 rounded bg-amber-700 px-1 text-[9px] font-bold uppercase tracking-wide text-white">
+                      Check open
                     </span>
                   )}
                   {grant && (
@@ -842,8 +865,9 @@ export function FloorView() {
                   setDetail(null);
                 }}
                 onClean={() => {
-                  markClean(detailLive.id);
-                  setDetail(null);
+                  const res = markClean(detailLive.id);
+                  if (res && res.ok === false) alert(res.error);
+                  else setDetail(null);
                 }}
                 onStatus={(st) => {
                   const res = setTableStatus(detailLive.id, st);
@@ -855,8 +879,12 @@ export function FloorView() {
                   isHostStand ? () => { setDetail(null); setView("waitlist"); } : undefined
                 }
                 onRelease={() => {
-                  const res = releaseTable(detailLive.id);
-                  if (!res.ok) alert(res.error);
+                  setOfferTo(floorServers.find((e) => e.id !== emp?.id)?.id ?? "");
+                  setOfferMode("staff");
+                  setOfferHold("left_to_close");
+                  setOfferReason(CHECK_HOLD_REASONS.left_to_close[0] ?? "Table needed");
+                  setOfferErr(null);
+                  setOfferOpen(true);
                 }}
                 onAccept={() => {
                   const res = acceptTable(detailLive.id);
@@ -898,6 +926,101 @@ export function FloorView() {
               />
             </>
           )}
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={offerOpen} onOpenChange={setOfferOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Transfer or named hold</DialogTitle>
+          </DialogHeader>
+          <p className="text-xs text-muted-foreground">
+            Checks cannot go to a nameless unassigned pool. Offer to a server (they must accept) or
+            park in a named hold still owned by that server or the house.
+          </p>
+          <div className="flex gap-2">
+            <Button size="sm" variant={offerMode === "staff" ? "default" : "outline"} onClick={() => setOfferMode("staff")}>
+              To staff
+            </Button>
+            <Button size="sm" variant={offerMode === "hold" ? "default" : "outline"} onClick={() => setOfferMode("hold")}>
+              Named hold
+            </Button>
+          </div>
+          {offerMode === "staff" ? (
+            <label className="block text-xs text-muted-foreground">
+              Server who must accept
+              <select
+                className="mt-1 flex h-9 w-full rounded-md border border-border bg-bg px-2 text-sm text-foreground"
+                value={offerTo}
+                onChange={(e) => setOfferTo(e.target.value)}
+              >
+                <option value="">Choose</option>
+                {floorServers.map((s) => (
+                  <option key={s.id} value={s.id}>
+                    {s.name}
+                  </option>
+                ))}
+              </select>
+            </label>
+          ) : (
+            <>
+              <label className="block text-xs text-muted-foreground">
+                Hold
+                <select
+                  className="mt-1 flex h-9 w-full rounded-md border border-border bg-bg px-2 text-sm text-foreground"
+                  value={offerHold}
+                  onChange={(e) => {
+                    const k = e.target.value as CheckHoldKind;
+                    setOfferHold(k);
+                    setOfferReason(CHECK_HOLD_REASONS[k][0] ?? "");
+                  }}
+                >
+                  {CHECK_HOLDS.map((k) => (
+                    <option key={k} value={k}>
+                      {CHECK_HOLD_LABEL[k]}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label className="block text-xs text-muted-foreground">
+                Reason
+                <select
+                  className="mt-1 flex h-9 w-full rounded-md border border-border bg-bg px-2 text-sm text-foreground"
+                  value={offerReason}
+                  onChange={(e) => setOfferReason(e.target.value)}
+                >
+                  {CHECK_HOLD_REASONS[offerHold].map((r) => (
+                    <option key={r} value={r}>
+                      {r}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            </>
+          )}
+          {offerErr && <p className="text-xs text-danger">{offerErr}</p>}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setOfferOpen(false)}>
+              Cancel
+            </Button>
+            <Button
+              onClick={() => {
+                if (!detailLive) return;
+                const res =
+                  offerMode === "staff"
+                    ? releaseTable(detailLive.id, { toEmployeeId: offerTo })
+                    : releaseTable(detailLive.id, { hold: offerHold, reason: offerReason, house: offerHold !== "bar_tab" });
+                if (!res.ok) {
+                  setOfferErr(res.error ?? "Failed");
+                  return;
+                }
+                setOfferOpen(false);
+                setDetail(null);
+              }}
+            >
+              {offerMode === "staff" ? "Offer for accept" : "Park in hold"}
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
 
@@ -1100,12 +1223,15 @@ function TableDetailBody({
           Check #{order.number}
           {order.status !== "open" ? " · closed" : ""} ·{" "}
           {formatCurrency(totals.balanceCents || totals.totalCents)}
-          {serverName ? ` · ${serverName}` : table.releasedAt ? " · unassigned" : ""}
+          {serverName ? ` · ${serverName}` : ""}
+          {table.pendingAcceptName ? ` · pending ${table.pendingAcceptName}` : ""}
         </p>
       )}
       {table.releasedAt && (
         <p className="rounded-lg border border-amber-700/30 bg-amber-50 px-3 py-2 text-xs text-amber-950">
-          Released by {releasedByName ?? "staff"} — in the offer pool until a server accepts.
+          Offered by {releasedByName ?? "staff"}
+          {table.pendingAcceptName ? ` to ${table.pendingAcceptName}` : ""} — they must accept.
+          The check stays owned until accept. Not unassigned.
         </p>
       )}
       <div className="flex flex-wrap gap-2">
@@ -1142,7 +1268,7 @@ function TableDetailBody({
         {canRelease && onRelease && (
           <Button variant="outline" onClick={onRelease} data-demo="release-table">
             <Handshake className="h-4 w-4" />
-            Release table
+            Transfer / hold
           </Button>
         )}
         {canAccept && onAccept && (

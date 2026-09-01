@@ -22,6 +22,7 @@ import {
 import { useStationSessionStore } from "@/lib/pos/station-session";
 import { kickCashDrawer } from "@/lib/print/dispatch";
 import { CloseoutQueue } from "./CloseoutQueue";
+import { NightlyIntegrityPanel } from "./NightlyIntegrityPanel";
 import { NO_SALE_REASONS, parseLossPrevention } from "@/lib/pos/loss-prevention";
 import { ApprovalQueue } from "./ApprovalQueue";
 
@@ -68,6 +69,8 @@ export function CashView() {
   >(null);
   const [closeErr, setCloseErr] = useState<string | null>(null);
   const [flash, setFlash] = useState<string | null>(null);
+  const [nightAck, setNightAck] = useState("");
+  const [nightErr, setNightErr] = useState<string | null>(null);
 
   const drawerSes = sink.type === "drawer" ? drawers[sink.drawer.id] : undefined;
   const bankSes = sink.type === "bank" && emp ? banks[emp.id] : undefined;
@@ -134,9 +137,15 @@ export function CashView() {
           close: true,
         });
       }
-      const res = closeShift(counted || expected);
-      if (res && res.ok === false) setCloseErr(res.error ?? "Cannot close with open checks.");
-      else setCloseErr(null);
+      const res = closeShift(counted || expected, nightAck.trim() ? { ackReason: nightAck.trim() } : undefined);
+      if (res && res.ok === false) {
+        setCloseErr(res.error ?? "Cannot close house.");
+        setNightErr(res.error ?? null);
+      } else {
+        setCloseErr(null);
+        setNightErr(null);
+        setNightAck("");
+      }
       return;
     }
     if (kind === "open") {
@@ -282,6 +291,23 @@ export function CashView() {
       {flash && <p className="mb-3 text-sm text-muted-foreground">{flash}</p>}
       <div className="mb-4">
         <ApprovalQueue compact />
+      </div>
+      <div className="mb-4">
+        <NightlyIntegrityPanel
+          compact
+          ackReason={nightAck}
+          onAckReason={setNightAck}
+          ackError={nightErr}
+          onAckClose={() => {
+            if (!emp) return;
+            if (needMgr("close") && !manager) {
+              setPending("close");
+              setMgrOpen(true);
+              return;
+            }
+            run("close");
+          }}
+        />
       </div>
       <CloseoutQueue />
 

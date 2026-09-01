@@ -163,6 +163,11 @@ import {
   tableFlash,
 } from "./floor-status";
 import { makeTableQrToken, parseQrMode, qrTokenMatchesLocation } from "./qr-table";
+import {
+  buildNightlyIntegrityPack,
+  CHECK_HOLD_LABEL,
+  isCheckHoldKind,
+} from "./check-integrity";
 import { useNotifyStore } from "./notify-store";
 import { isDemoStaffPin } from "@/lib/demo/pin";
 import {
@@ -929,6 +934,12 @@ const usePosStoreRaw = create()(persist((set, get) => ({
 			};
 		}) });
 		if (clockingOut) {
+			const openMine = get().orders.filter((o) => o.status === "open" && o.serverId === employeeId && !o.holdKind);
+			if (openMine.length) {
+				get().audit("clockout_open_checks", `${emp?.name ?? employeeId} clocked out with ${openMine.length} open check(s)`, {
+					after: openMine.map((o) => `#${o.number}`).join(", "),
+				});
+			}
 			set({
 				extraTableGrants: get().extraTableGrants.filter((g) => !(g.employeeId === employeeId && g.scope === "shift")),
 				sectionOverrides: { ...get().sectionOverrides, [employeeId]: [] }
@@ -1175,7 +1186,7 @@ const usePosStoreRaw = create()(persist((set, get) => ({
 		floorSync("table", tableId);
 		return { ok: true };
 	},
-	releaseTable: (tableId) => {
+	releaseTable: (tableId, opts) => {
 		const emp = get().getCurrentEmployee();
 		if (!emp) return { ok: false, error: "Not signed in" };
 		const table = get().tables.find((t) => t.id === tableId);
@@ -1183,27 +1194,101 @@ const usePosStoreRaw = create()(persist((set, get) => ({
 		if (!table.orderId) return { ok: false, error: "No open check" };
 		const order = get().orders.find((o) => o.id === table.orderId);
 		if (!order || order.status !== "open") return { ok: false, error: "No open check" };
+		if (!order.serverId) {
+			set({
+				orders: get().orders.map((o) => o.id === order.id ? { ...o, serverId: emp.id, serverName: emp.name } : o),
+			});
+			order = { ...order, serverId: emp.id, serverName: emp.name };
+		}
 		const isMgr = emp.role === "owner" || emp.role === "manager" || emp.role === "host";
 		if (!isMgr && table.serverId && table.serverId !== emp.id && order.serverId !== emp.id) {
-			return { ok: false, error: "Only the assigned server can release" };
+			return { ok: false, error: "Only the assigned server can transfer" };
 		}
+		if (!opts) return { ok: false, error: "Pick a server to accept, or a named hold. Checks cannot go unassigned." };
+		if ("hold" in opts) {
+			if (!isCheckHoldKind(opts.hold) || !String(opts.reason || "").trim()) {
+				return { ok: false, error: "Named hold requires a reason." };
+			}
+			return get().holdCheck(order.id, opts.hold, opts.reason, { house: opts.house !== false, clearTable: true });
+		}
+		const target = get().employees.find((e) => e.id === opts.toEmployeeId && e.active);
+		if (!target) return { ok: false, error: "Staff not found" };
+		if (target.id === order.serverId) return { ok: false, error: "Already owned by that person" };
 		set({
 			tables: get().tables.map((t) => t.id === tableId ? {
 				...t,
-				serverId: void 0,
 				releasedAt: Date.now(),
 				releasedById: emp.id,
 				releasedByName: emp.name,
+				pendingAcceptId: target.id,
+				pendingAcceptName: target.name,
 			} : t),
 			orders: get().orders.map((o) => o.id === order.id ? {
 				...o,
-				serverId: void 0,
-				serverName: "Released",
+				pendingAcceptId: target.id,
+				pendingAcceptName: target.name,
 			} : o),
 		});
-		get().audit("table_release", `Table ${table.label} released by ${emp.name}`);
+		get().audit("table_offer", `Table ${table.label} offered to ${target.name} by ${emp.name}`, {
+			orderId: order.id,
+			orderNumber: order.number,
+			reason: `pending accept · ${target.name}`,
+		});
 		floorSync("table", tableId);
 		floorSync("check", order.id);
+		return { ok: true };
+	},
+	holdCheck: (orderId, hold, reason, opts) => {
+		const emp = get().getCurrentEmployee();
+		if (!emp) return { ok: false, error: "Not signed in" };
+		if (!isCheckHoldKind(hold) || !String(reason || "").trim()) {
+			return { ok: false, error: "Named hold requires a reason." };
+		}
+		const order = get().orders.find((o) => o.id === orderId);
+		if (!order || order.status !== "open") return { ok: false, error: "No open check" };
+		if (!order.serverId) {
+			set({
+				orders: get().orders.map((o) => o.id === order.id ? { ...o, serverId: emp.id, serverName: emp.name } : o),
+			});
+			order = { ...order, serverId: emp.id, serverName: emp.name };
+		}
+		const house = opts?.house !== false && hold !== "bar_tab";
+		const tableId = order.tableId;
+		set({
+			orders: get().orders.map((o) => o.id !== order.id ? o : {
+				...o,
+				holdKind: hold,
+				holdReason: reason,
+				holdAt: Date.now(),
+				holdById: emp.id,
+				holdByName: emp.name,
+				holdOwner: house ? "house" : "user",
+				tableId: opts?.clearTable ? undefined : o.tableId,
+				pendingAcceptId: undefined,
+				pendingAcceptName: undefined,
+			}),
+			tables: opts?.clearTable && tableId
+				? get().tables.map((t) => t.id === tableId || t.orderId === order.id ? {
+					...t,
+					orderId: t.orderId === order.id ? undefined : t.orderId,
+					releasedAt: undefined,
+					releasedById: undefined,
+					releasedByName: undefined,
+					pendingAcceptId: undefined,
+					pendingAcceptName: undefined,
+					status: t.id === tableId ? "closed_not_cleaned" : t.status,
+					statusSince: Date.now(),
+				} : t)
+				: get().tables,
+		});
+		get().audit("table_hold", `${CHECK_HOLD_LABEL[hold]} · #${order.number} · ${reason}`, {
+			orderId: order.id,
+			orderNumber: order.number,
+			reason,
+			after: house ? "house" : order.serverName,
+		});
+		floorSync("check", order.id);
+		if (tableId) floorSync("table", tableId);
 		return { ok: true };
 	},
 	acceptTable: (tableId) => {
@@ -1217,8 +1302,12 @@ const usePosStoreRaw = create()(persist((set, get) => ({
 			emp.role === "host";
 		if (!canTake) return { ok: false, error: "Only floor staff can accept a table" };
 		const table = get().tables.find((t) => t.id === tableId);
-		if (!table?.releasedAt) return { ok: false, error: "Table is not in the offer pool" };
+		if (!table?.releasedAt) return { ok: false, error: "Table is not waiting for accept" };
 		if (!table.orderId) return { ok: false, error: "No open check" };
+		const lead = emp.role === "owner" || emp.role === "manager" || emp.role === "host";
+		if (table.pendingAcceptId && table.pendingAcceptId !== emp.id && !lead) {
+			return { ok: false, error: `Waiting for ${table.pendingAcceptName || "the named server"} to accept` };
+		}
 		const releasedBy = table.releasedByName ?? "unknown";
 		set({
 			tables: get().tables.map((t) => t.id === tableId ? {
@@ -1227,16 +1316,22 @@ const usePosStoreRaw = create()(persist((set, get) => ({
 				releasedAt: void 0,
 				releasedById: void 0,
 				releasedByName: void 0,
+				pendingAcceptId: void 0,
+				pendingAcceptName: void 0,
 			} : t),
 			orders: get().orders.map((o) => o.id === table.orderId ? {
 				...o,
 				serverId: emp.id,
 				serverName: emp.name,
+				pendingAcceptId: undefined,
+				pendingAcceptName: undefined,
+				holdKind: undefined,
+				holdReason: undefined,
 			} : o),
 		});
 		get().audit(
 			"table_accept",
-			`Table ${table.label} accepted by ${emp.name} (released by ${releasedBy})`,
+			`Table ${table.label} accepted by ${emp.name} (offered by ${releasedBy})`,
 		);
 		floorSync("table", tableId);
 		if (table.orderId) floorSync("check", table.orderId);
@@ -1273,6 +1368,50 @@ const usePosStoreRaw = create()(persist((set, get) => ({
 		return { ok: true };
 	},
 	markClean: (tableId) => {
+		const table = get().tables.find((t) => t.id === tableId);
+		if (!table) return { ok: false, error: "Not found" };
+		const open = get().orders.find((o) =>
+			o.status === "open" && !o.holdKind && (o.id === table.orderId || o.tableId === tableId),
+		);
+		if (open) {
+			const cfg = lpCfg(get);
+			const emp = get().getCurrentEmployee();
+			const lead =
+				emp &&
+				(isManagerRole(emp.role) ||
+					canRoleApproveGate(emp.role, "void", 0, cfg) ||
+					get().hasManagerAuth());
+			if (cfg.integrityEmptyTable === "require_lead" && !lead) {
+				return {
+					ok: false,
+					error: "Open check on this table. A shift lead or manager must empty it — the check will move to Left to close.",
+				};
+			}
+			const held = get().holdCheck(open.id, "left_to_close", "Table marked empty", { house: true, clearTable: true });
+			if (!held.ok) return held;
+			set({
+				tables: get().tables.map((t) => t.id === tableId ? {
+					...t,
+					status: "empty",
+					statusSince: Date.now(),
+					orderId: void 0,
+					guestCount: void 0,
+					seatedAt: void 0,
+					releasedAt: void 0,
+					releasedById: void 0,
+					releasedByName: void 0,
+					pendingAcceptId: void 0,
+					pendingAcceptName: void 0,
+				} : t),
+			});
+			get().audit("integrity_ack", `T${table.label} emptied · #${open.number} → left to close`, {
+				orderId: open.id,
+				orderNumber: open.number,
+				reason: "Table marked empty",
+			});
+			floorSync("table", tableId);
+			return { ok: true };
+		}
 		set({ tables: get().tables.map((t) => t.id === tableId ? {
 			...t,
 			status: "empty",
@@ -1284,8 +1423,11 @@ const usePosStoreRaw = create()(persist((set, get) => ({
 			releasedAt: void 0,
 			releasedById: void 0,
 			releasedByName: void 0,
+			pendingAcceptId: void 0,
+			pendingAcceptName: void 0,
 		} : t) });
 		floorSync("table", tableId);
+		return { ok: true };
 	},
 	clearTable: (tableId) => {
 		const childIds = get().tables.find((t) => t.id === tableId) ? get().tables.filter((t) => t.mergedIntoId === tableId).map((t) => t.id) : [];
@@ -3381,8 +3523,7 @@ const usePosStoreRaw = create()(persist((set, get) => ({
 		if (emp && !cfg.changeRoles.includes(emp.role) && emp.role !== "owner") return { ok: false, error: "Not allowed to change table status" };
 		const next = normalizeTableStatus(status);
 		if (next === "empty") {
-			get().markClean(tableId);
-			return { ok: true };
+			return get().markClean(tableId);
 		}
 		const root = groupRootId(get().tables, tableId);
 		const members = groupMembers(get().tables, root).map((t) => t.id);
@@ -3504,13 +3645,40 @@ const usePosStoreRaw = create()(persist((set, get) => ({
 		} });
 		get().audit("shift_open", `Float $${(floatCents / 100).toFixed(2)}`);
 	},
-	closeShift: (closingCashCents) => {
-		const open = get().orders.filter((o) => o.status === "open");
-		if (open.length) {
-			return {
-				ok: false,
-				error: `${open.length} open check(s). Close or transfer them before server closeout.`,
-			};
+	closeShift: (closingCashCents, opts) => {
+		const cfg = lpCfg(get);
+		const issues = buildNightlyIntegrityPack({
+			tables: get().tables,
+			orders: get().orders,
+			employees: get().employees,
+			auditLog: get().auditLog,
+			cfg,
+		});
+		if (issues.length) {
+			if (cfg.nightCloseMode === "hard_block") {
+				return {
+					ok: false,
+					error: `House close blocked: ${issues.length} integrity item(s). Clear them before Z close.`,
+					issues: issues.length,
+				};
+			}
+			const reason = String(opts?.ackReason ?? "").trim();
+			if (!reason) {
+				return {
+					ok: false,
+					error: `House close has ${issues.length} integrity item(s). A manager must acknowledge with a reason, or clear them.`,
+					issues: issues.length,
+				};
+			}
+			const emp = get().getCurrentEmployee();
+			const lead = emp && (emp.role === "owner" || emp.role === "manager" || get().hasManagerAuth());
+			if (!lead) {
+				return { ok: false, error: "Manager PIN required to acknowledge nightly exceptions.", issues: issues.length };
+			}
+			get().audit("integrity_ack", reason, {
+				reason,
+				after: issues.map((i) => i.kind).join(","),
+			});
 		}
 		const s = get().shift;
 		const expected = s.openingFloatCents + s.cashSalesCents - s.tipsCashCents;
@@ -3521,7 +3689,7 @@ const usePosStoreRaw = create()(persist((set, get) => ({
 			expectedCashCents: expected
 		} });
 		get().audit("shift_close", `Counted $${(closingCashCents / 100).toFixed(2)}`);
-		return { ok: true };
+		return { ok: true, issues: issues.length };
 	},
 	updateSettlementConfig: (patch) => {
 		const emp = get().getCurrentEmployee();
