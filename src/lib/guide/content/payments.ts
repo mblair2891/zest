@@ -41,9 +41,9 @@ export const PAYMENT_TOPICS: GuideTopic[] = [
         "Platform → Payments sets the default (sandbox unless you choose live). Location settings can inherit, force sandbox, or take live. Training always sandboxes. Status per brand: not started, sandbox, submitted, approved, live. Without an approved account, live fails closed — cash still works.",
       ),
       warn(
-        "Do not connect a second processor “just for events.” It is not available, and it would break host capture on a multi-operator check.",
+        "Do not connect a second processor “just for events.” It is not available, and it would break one-check split capture on a multi-operator floor.",
       ),
-      related("tenders-tips", "host-capture", "table-qr", "chargebacks", "wifi-offline", "gift-cards"),
+      related("tenders-tips", "host-capture", "receipts-by-vendor", "table-qr", "chargebacks", "wifi-offline", "gift-cards"),
     ],
   }),
   topic({
@@ -79,8 +79,8 @@ export const PAYMENT_TOPICS: GuideTopic[] = [
   topic({
     id: "host-capture",
     chapterId: "payments",
-    title: "Host capture for multi-operator",
-    summary: "Each brand is its own payments account; guest still gets one check.",
+    title: "One guest check, per-entity merchants",
+    summary: "Each brand is its own Quantum Payments merchant; guest still gets one check; capture splits; receipts group by vendor.",
     roles: ["owner_manager", "host_operator", "vendor_operator"],
     keywords: ["host capture", "mid", "multi-operator", "operator", "brand", "split"],
     openView: "settlement",
@@ -93,11 +93,49 @@ export const PAYMENT_TOPICS: GuideTopic[] = [
       ),
       steps(
         "Confirm each brand has its own Quantum Payments merchant application (sandbox in training, approved before live cards).",
-        "Take payment as usual. One guest check. Capture splits. Receipts group items under the vendor name — still one document.",
+        "Take payment as usual. One guest check. Capture splits to each brand’s merchant. Receipts group items under the vendor name — still one document.",
         "Do not ask a stall to “run it on their Square.” That path does not exist.",
         "A line whose brand has no approved account fails closed on live — cash still works. Training provisions sandbox ids.",
       ),
-      related("single-vs-multi", "multi-operator-orders", "settlement", "chargebacks"),
+      related("single-vs-multi", "multi-operator-orders", "receipts-by-vendor", "settlement", "chargebacks"),
+    ],
+  }),
+  topic({
+    id: "receipts-by-vendor",
+    chapterId: "payments",
+    title: "Receipts by vendor",
+    summary: "One guest receipt. Lines group under the operator name. Merchant copy lists the split.",
+    roles: ["owner_manager", "server", "host_operator", "vendor_operator"],
+    keywords: [
+      "receipt",
+      "vendor",
+      "group",
+      "print",
+      "thermal",
+      "operator a",
+      "operator b",
+      "merchant copy",
+    ],
+    openView: "order",
+    blocks: [
+      why(
+        "The guest should see who cooked or poured without a second checkout. The house still prints one document under the location name.",
+      ),
+      p(
+        "Pay or Check prints a guest receipt on the thermal (Epson TM-T20 on the AP LAN). On a multi-operator check, line items group under the vendor heading (Operator A, Operator B). The header is still the host / location name. Quantum Payments is the card tender line — guests never see Finix.",
+      ),
+      ul(
+        "One document. Do not print a stall receipt as a second card run.",
+        "When more than one brand is on the check, a merchant copy can list allocation: merchandise, tax/tip/service, total per brand.",
+        "Kitchen and bar tickets still print only that station’s lines (impact TM-U220 for kitchen).",
+        "Cash discount receipts show both printed/card and cash amounts when cash was taken.",
+      ),
+      steps(
+        "Close or print the check as usual.",
+        "Confirm lines sit under the selling operator. Untagged lines group with the host.",
+        "Do not ask the bar to “run it on their Square” for a second chit.",
+      ),
+      related("host-capture", "quantum-payments", "multi-operator-orders", "printers-kds", "tenders-tips"),
     ],
   }),
   topic({
@@ -137,13 +175,13 @@ export const PAYMENT_TOPICS: GuideTopic[] = [
     openView: "ledger",
     blocks: [
       why(
-        "Settlement math is only useful if you can see the events that produced it. The system ledger is the house book for Quantum Payments — one guest capture, then operator allocations, then period fees and payouts.",
+        "Settlement math is only useful if you can see the events that produced it. The system ledger is the house book for Quantum Payments — one guest tender, split capture to each brand’s merchant, then operator allocations, then period fees and payouts.",
       ),
       p(
         "Each row has a type, a party (host or operator), a signed amount, and an idempotency key. Positive amounts increase that party’s claim; negative amounts decrease it. Retries do not double-post.",
       ),
       ul(
-        "Card pay → capture on the host (Quantum Payments).",
+        "Card pay → split capture to each brand’s Quantum Payments merchant (guest still sees one check).",
         "Cash pay → capture plus an optional cash_discount_adjustment when discount is on.",
         "Check close → allocation to each operator by merchandise share.",
         "Period close → processor_fee, host_fee, sandbox payout (not live bank).",
@@ -165,7 +203,7 @@ export const PAYMENT_TOPICS: GuideTopic[] = [
     chapterId: "payments",
     title: "White paper",
     summary:
-      "Shareable description of Summex: per-entity Quantum merchants, gift ledger, device roles, cash, tips, training vs live.",
+      "Shareable description of Summex: per-entity Quantum merchants, one guest check, gift ledger, device roles, cash, tips, training vs live.",
     roles: "all",
     keywords: ["white paper", "pdf", "processor", "partner", "quantum reach"],
     blocks: [
@@ -173,14 +211,14 @@ export const PAYMENT_TOPICS: GuideTopic[] = [
         "Processors, prospects, and partners need one document that does not invent rates, banks, or seals — and that stays in lockstep with this Operators Guide.",
       ),
       p(
-        "Open /whitepaper (also linked from the marketing footer). Print from the browser for a PDF. The markdown source lives with the product docs. Revision · 29 Oct 2026 matches Guide v2026.10.29.",
+        "Open /whitepaper (also linked from the marketing footer). Print from the browser for a PDF. The markdown source lives with the product docs. It stays in lockstep with this guide: positioning, multi-entity, Quantum Payments / per-entity merchants + one guest check, gift ledger, device roles, cash models, tip-out/pools, training vs live. No SaaS CRM internals. No how-to-login. Revision · 29 Oct 2026 matches Guide v2026.10.30 (receipts-by-vendor topic).",
       ),
       steps(
         "Open White paper from the site footer or this topic.",
         "Use Print / PDF in the toolbar.",
         "Treat Roadmap items as not shipped — live ACH is not claimed.",
       ),
-      related("system-ledger", "quantum-payments", "host-capture", "gift-cards", "device-roles", "cash-handling", "location-training"),
+      related("system-ledger", "quantum-payments", "host-capture", "receipts-by-vendor", "gift-cards", "device-roles", "cash-handling", "location-training"),
     ],
   }),
   topic({

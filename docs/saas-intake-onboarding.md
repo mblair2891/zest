@@ -2,7 +2,7 @@
 
 Two automated stages take a company from first contact to a live POS location. **No demo tenant is seeded.** The only optional bootstrap is a platform admin (`BOOTSTRAP_ADMIN_EMAIL` / `npm run bootstrap:admin`).
 
-Guest card processing is **Summex Payments only** (host MID when a location is multi-operator). Gift cards stay first-party on our ledger — they are a module in intake, not an external vendor.
+Guest card processing is **Quantum Payments only**. Each entity is its own merchant; one guest check; split capture; receipts grouped by vendor. Gift cards stay first-party on our ledger — they are a module in intake, not an external vendor.
 
 ## Status machine
 

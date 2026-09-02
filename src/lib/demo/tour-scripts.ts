@@ -174,7 +174,7 @@ export const FULL_TOUR: TourDefinition = {
       id: "f-pay",
       title: "Quantum Payments",
       script:
-        "Turn the outage off. One capture under The Laundry. Quantum Payments is the only guest card. There is no Stripe or Square picker on this floor.",
+        "Turn the outage off. One guest check. Capture splits to Steam and Diamond House merchants. Receipts group by vendor. Quantum Payments is the only guest card. There is no Stripe or Square picker on this floor.",
       selector: "[data-demo='order']",
       view: "order",
       action: "pay",
@@ -304,7 +304,7 @@ function typeTour(type: VenueEntityId): TourDefinition {
           id: "l-qr",
           title: "Table QR",
           script:
-            "Hybrid QR: staff starts the check. Guests add follow-ups. Pay is Quantum Payments once under The Laundry, Steam and Diamond lines still tagged.",
+            "Hybrid QR: staff starts the check. Guests add follow-ups. Pay is Quantum Payments once; capture splits to Steam and Diamond merchants; the receipt groups by vendor.",
           selector: "[data-demo='table-detail']",
           view: "floor",
         },
@@ -434,7 +434,7 @@ function typeTour(type: VenueEntityId): TourDefinition {
           id: "l-pay",
           title: "Quantum Payments",
           script:
-            "Pay once under The Laundry. Quantum Payments is the only guest card.",
+            "Pay once. Capture splits to each brand’s Quantum Payments merchant. The receipt groups Steam vs Diamond House. No second terminal.",
           selector: "[data-demo='order']",
           view: "order",
           action: "pay",

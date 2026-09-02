@@ -48,7 +48,7 @@ export const LIFECYCLE_TOPICS: GuideTopic[] = [
         "The first house should rehearse a real table before live cards. Training is the production POS with Quantum Payments sandbox.",
       ),
       steps(
-        "Sign in (password). Open the location POS. Banner: TRAINING — practice mode · Quantum Payments sandbox.",
+        "Sign in (owner password). Open the location POS so this tablet primes. Banner: TRAINING — practice mode · Quantum Payments sandbox.",
         "If this house has no staff yet, floor PINs are created for this location only (hashed): 0000 manager, 1111 server, 2222 host, 3333 bartender, 4444 kitchen, 5555 busser. PIN is not the time clock.",
         "PIN 2222 (or 1111 in training): Host stand → seat a table.",
         "PIN 1111: This station → Server. Open the table, add a kitchen item (burger) and a bar item (wine), Send.",

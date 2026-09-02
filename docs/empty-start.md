@@ -31,7 +31,7 @@ The plaintext initial password lives only in the server-side bootstrap (`src/lib
 
 Until you create a location, POS has no menus, tables, vendors, or tickets.
 
-See also `docs/quantum-payments-multi-operator.md` for host capture and the $35 dispute split.
+See also `docs/quantum-payments-multi-operator.md` for per-entity merchants, split capture, receipts by vendor, and the $35 dispute split.
 
 ## No demo tenants
 

@@ -77,7 +77,7 @@ const AUDIENCES = [
   },
   {
     title: "Multi-operator host venues",
-    body: "A bar and a kitchen, or a hall of stalls, under one guest-facing brand. One Quantum Payments capture. Operators paid from their share on the period — not from a second card terminal at the table.",
+    body: "A bar and a kitchen, or a hall of stalls, under one guest-facing brand. One guest check. Each brand is its own Quantum Payments merchant; capture splits; receipts group by vendor. Operators paid from their share on the period — not from a second card terminal at the table.",
   },
   {
     title: "Multi-unit & franchise-style operations",
@@ -88,8 +88,8 @@ const AUDIENCES = [
 const MONEY = [
   {
     step: "01",
-    title: "Guest pays the host",
-    body: `One check, host brand on the receipt, captured through ${PAYMENTS_BRAND}. Cash and first-party gift sit beside the card — never a second processor.`,
+    title: "Guest pays once",
+    body: `One check. Capture splits to each brand’s ${PAYMENTS_BRAND} merchant. The receipt groups lines by vendor. Cash and first-party gift sit beside the card — never a second processor.`,
   },
   {
     step: "02",

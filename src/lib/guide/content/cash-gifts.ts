@@ -43,7 +43,7 @@ export const CASH_GIFT_TOPICS: GuideTopic[] = [
       p(
         "On a host venue, cash prices are the merchandise amounts used when allocating a cash tender to Operator A / Operator B. Card tenders still split on printed merchandise. Period settlement follows the tender that actually hit the check.",
       ),
-      related("tenders-tips", "cash-handling", "quantum-payments", "settlement"),
+      related("tenders-tips", "cash-handling", "quantum-payments", "settlement", "receipts-by-vendor"),
     ],
   }),
   topic({
@@ -185,7 +185,7 @@ export const CASH_GIFT_TOPICS: GuideTopic[] = [
       warn(
         "Closeout is not clock-out. Labor still punches time. House drawer/well close is still Cash, not this wizard.",
       ),
-      related("cash-handling", "tenders-tips", "tip-pooling", "payroll-export", "reports", "floor-pin-login"),
+      related("cash-handling", "tenders-tips", "tip-pooling", "payroll-export", "reports", "floor-pin-login", "login"),
     ],
   }),
   topic({

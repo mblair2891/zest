@@ -1,7 +1,8 @@
 # Operators Guide — authoring
 
-**Revision · 29 Oct 2026** — Tip pools: individual, tip-out, FOH / bar / team / dual.
-Location-configurable. Pooling rules vary by state; Summex calculates policy only. Guide v2026.10.29.
+**Revision · 30 Oct 2026** — Receipts by vendor topic. White paper lockstep (per-entity
+merchants, one guest check, split capture, gift ledger, device roles, cash, tip pools,
+prime-then-PIN). Guide v2026.10.30.
 
 The in-app **Operators Guide** is the living product manual. It is not a
 separate PDF. Staff open it from **Guide** / **?** in the POS and platform

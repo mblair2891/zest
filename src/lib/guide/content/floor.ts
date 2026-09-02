@@ -245,7 +245,7 @@ export const FLOOR_TOPICS: GuideTopic[] = [
     openView: "settings",
     blocks: [
       why(
-        "The sticker on the table is a deep link to that seat at this location. Guests add to the open host check. Capture is always Quantum Payments under the host brand.",
+        "The sticker on the table is a deep link to that seat at this location. Guests add to the open host check. Capture is always Quantum Payments — one guest tender, split to each brand’s merchant when operators share the check.",
       ),
       ul(
         "A · Full QR — menu, order, and pay at the table.",
@@ -258,7 +258,7 @@ export const FLOOR_TOPICS: GuideTopic[] = [
         "Print or copy the table QR from Floor (tap a table) or Floor editor.",
         "On Order, Check prints a pay QR for the open ticket.",
         "Guest scan adds to that table’s check when the mode allows. Hybrid will not open an empty table.",
-        "Pay is Quantum Payments on the host check. Multi-operator lines keep operator tags; the card is still one host capture.",
+        "Pay is Quantum Payments on the host check. Multi-operator lines keep operator tags; capture splits to each merchant; the receipt groups by vendor.",
       ),
       warn(
         "Tokens are location-scoped. Rotate a token if a sticker walks. Live cards on QR pay still require an approved Quantum application — available in training as sandbox.",

@@ -11,7 +11,7 @@ Stage A (`/get-pricing`) now starts with an interview, then the structured form,
 5. **Enter details myself** skips the interview.
 6. Generate quote from the structured form (source of truth).
 
-Guest cards are always **Summex Payments** (host MID for multi-operator). Gift cards stay first-party.
+Guest cards are always **Quantum Payments**. Each entity is its own merchant; one guest check; split capture. Gift cards stay first-party.
 
 The UI badge is **AI recommendations** when a server key is present, otherwise **Guided recommendations** (heuristic, no model call).
 

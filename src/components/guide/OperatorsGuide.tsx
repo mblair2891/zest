@@ -163,7 +163,7 @@ export function OperatorsGuide({
       <div className="min-w-0 flex-1">
         <p className="truncate text-sm font-semibold">{GUIDE_TITLE}</p>
         <p className="truncate text-[11px] text-muted-foreground">
-          {GUIDE_EDITION} · v{GUIDE_VERSION}
+          {GUIDE_EDITION} · v{GUIDE_VERSION} · Revision {GUIDE_REVISION}
           {hasSessionRole ? (
             <>
               {" "}

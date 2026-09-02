@@ -3,7 +3,7 @@
 **Powered by Quantum Reach**
 
 White paper · October 2026  
-**Revision · 29 Oct 2026** — Tip pools: individual, tip-out, FOH / bar / team / dual. Location-configurable. Aligns with Operators Guide v2026.10.29.
+**Revision · 30 Oct 2026** — Operators Guide topic: receipts by vendor. White paper stays in lockstep: per-entity Quantum Payments merchants, one guest check, split capture, gift ledger, device roles, cash, tip pools, training vs live. Aligns with Operators Guide v2026.10.30.
 
 summex.app  
 Guest cards: **Quantum Payments** only

@@ -70,10 +70,10 @@ export const ESTABLISHMENT_TYPE_TOPICS: GuideTopic[] = [
     openView: "hall",
     blocks: [
       why(
-        "When more than one operator feeds the same guest, the house still presents one brand and one card. Operators are paid from the period ledger — not from a second terminal.",
+        "When more than one operator feeds the same guest, the house still presents one brand and one check. Each operator is its own Quantum Payments merchant. Operators are paid from the period ledger — not from a second terminal.",
       ),
       p(
-        "The guest sits at the host brand. Lines keep their operator. Kitchen and bar rails stay apart. Capture is Quantum Payments under the host.",
+        "The guest sits at the host brand. Lines keep their operator. Kitchen and bar rails stay apart. Each entity is its own Quantum Payments merchant. The guest tenders once; capture splits; receipts group by vendor.",
       ),
       ul(
         "Host brand — guest-facing name on the receipt (example: Host Venue).",
@@ -85,7 +85,7 @@ export const ESTABLISHMENT_TYPE_TOPICS: GuideTopic[] = [
         "Seat under the host. Do not open a second check for the other operator.",
         "Add a drink (bar operator) and a plate (kitchen operator) on the same check.",
         "Send once. Bar sees only bar lines; kitchen sees only kitchen lines.",
-        "Pay once with Quantum Payments under the host brand.",
+        "Pay once. Capture splits to each brand’s Quantum Payments merchant. The receipt groups lines by vendor.",
         "On Settle, merchandise, card fees, and the host cut allocate per operator.",
         "If a dispute is filed — only then — a $35 fee splits by merchandise share on that check.",
       ),
@@ -231,13 +231,13 @@ export const ESTABLISHMENT_TYPE_TOPICS: GuideTopic[] = [
       ul(
         "Stations: lot / pad map, truck window, truck kitchen.",
         "Floor: pads, not tables.",
-        "Order flow: window check → truck ODS → pay. Host capture is optional by agreement.",
+        "Order flow: window check → truck ODS → pay. Shared one-check capture is optional by agreement (each truck can be its own merchant).",
       ),
       steps(
         "Open the lot map. Pads are the floor.",
         "Take a window order on the truck brand.",
         "Kitchen tickets stay on the truck ODS.",
-        "When the host captures, Quantum Payments is still the only card.",
+        "When the guest pays the house check, Quantum Payments is still the only card. Each truck can be its own merchant; capture splits if more than one brand is on the check.",
       ),
       callout(
         "Multi-operator",

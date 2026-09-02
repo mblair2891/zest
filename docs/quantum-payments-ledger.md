@@ -2,6 +2,8 @@
 
 Append-only, first-party book inside Summex. **Not** QuickBooks. **Not** live ACH.
 
+**Revision · 1 September 2026** — Split capture to per-entity merchants. Example names: Host Venue / Operator A / Operator B (not a seeded customer).
+
 Code: `src/lib/pos/ledger.ts`. UI: POS **Ledger**. Sign convention and event types below.
 
 ## Sign convention
@@ -21,7 +23,7 @@ Writes are **idempotent**: each row has `idempotencyKey`. A retry with the same 
 
 | type | Typical party | Typical sign | When |
 |---|---|---|---|
-| `capture` | host | + | Card (Quantum Payments) or cash tender |
+| `capture` | host | + | Card (Quantum Payments) or cash tender (guest-facing total) |
 | `tip` | host | + | Tip on that tender |
 | `void` | host | − | Comp tender |
 | `cash_discount_adjustment` | host | − | Printed merchandise minus cash merchandise on a cash tender |
@@ -33,18 +35,20 @@ Writes are **idempotent**: each row has `idempotencyKey`. A retry with the same 
 | `chargeback_fee` | operator | − | $35 fee share (merchandise % on that check) |
 | `refund` / `adjustment` | — | — | Reserved |
 
-## Example — The Laundry check ($100 merchandise, 65% / 35%)
+Per-entity processor funding is also recorded on `summex_payment_splits` (merchant id + transfer stub per brand).
 
-Illustrative TEST venue (DEV_DEMO only): host brand **The Laundry**.  
-**Diamond House BBQ** (kitchen) $65 food. **Steam Distillery** (bar) $35 drinks. Guest pays **$100 card** on Quantum Payments under The Laundry (tax omitted).
+## Example — Host Venue check ($100 merchandise, 65% / 35%)
+
+Illustrative names (not a seeded tenant): host brand **Host Venue**.
+**Operator A** (kitchen) $65 food. **Operator B** (bar) $35 drinks. Guest pays **$100 card** on Quantum Payments (tax omitted). Capture splits to each brand’s merchant. The receipt groups lines by vendor.
 
 ### On capture / close
 
 | type | party | operator | amount |
 |---|---|---|---|
-| capture | host | The Laundry | +$100.00 |
-| allocation | operator | Diamond House BBQ | +$65.00 |
-| allocation | operator | Steam Distillery | +$35.00 |
+| capture | host | Host Venue | +$100.00 (guest-facing total) |
+| allocation | operator | Operator A | +$65.00 |
+| allocation | operator | Operator B | +$35.00 |
 
 ### Chargeback filed ($35 fee)
 
@@ -52,9 +56,9 @@ Fee splits 65/35 → **$22.75** / **$12.25**. Filing posts the fee; won/lost doe
 
 | type | party | operator | amount |
 |---|---|---|---|
-| chargeback | host | The Laundry | −$100.00 (disputed capture impact) |
-| chargeback_fee | operator | Diamond House BBQ | −$22.75 |
-| chargeback_fee | operator | Steam Distillery | −$12.25 |
+| chargeback | host | Host Venue | −$100.00 (disputed capture impact) |
+| chargeback_fee | operator | Operator A | −$22.75 |
+| chargeback_fee | operator | Operator B | −$12.25 |
 
 ### Period close (illustration)
 

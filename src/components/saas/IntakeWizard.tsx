@@ -209,7 +209,7 @@ export function IntakeWizard({ initialToken }: { initialToken?: string }) {
           "Single operator vs host with vendors under one guest check.",
           "Software modules that change the quote. Gift cards stay first-party.",
           "Used for seat packs, device packs, and volume band.",
-          "Guest cards run through Quantum Payments only — including host MID.",
+          "Guest cards run through Quantum Payments only. Each entity is its own merchant; one guest check.",
           "Target go-live and anything a human should know before quoting.",
         ][step - 1]
       }
@@ -403,7 +403,7 @@ export function IntakeWizard({ initialToken }: { initialToken?: string }) {
               <ToggleChip
                 on={o.guestPaysHostCheck}
                 label="Guest pays one host check"
-                hint="Split settlement to operators (host MID)"
+                hint="One guest check; capture splits to each brand’s merchant; receipts group by vendor"
                 onClick={() =>
                   patch((a) => ({
                     ...a,
@@ -530,7 +530,7 @@ export function IntakeWizard({ initialToken }: { initialToken?: string }) {
           <ToggleChip
             on={answers.payments.quantumPaymentsAck}
             label="Guest cards process on Quantum Payments only"
-            hint="Required. Multi-operator locations use the host MID. Gift cards stay first-party."
+            hint="Required. Each entity is its own merchant; one guest check. Gift cards stay first-party."
             onClick={() =>
               patch((a) => ({
                 ...a,

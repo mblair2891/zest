@@ -1,12 +1,12 @@
 import type { PosView } from "@/lib/pos/types";
 
 /** Bump when shipping a docs/features batch so What’s New can watermark. */
-export const GUIDE_VERSION = "2026.10.29";
+export const GUIDE_VERSION = "2026.10.30";
 export const GUIDE_EDITION = "Operators Guide · training week";
 export const GUIDE_TITLE = "Operators Guide";
 /** Short public revision line (date + what changed). Keep in lockstep with the white paper. */
 export const GUIDE_REVISION =
-  "29 Oct 2026 — Tip pools: individual, tip-out, FOH / bar / team / dual. Location-configurable. Policy only.";
+  "30 Oct 2026 — Lockstep white paper + guide: receipts by vendor; tip pools; per-entity merchants; prime-then-PIN";
 
 /**
  * Audience tabs in the guide. Distinct from POS PIN roles:

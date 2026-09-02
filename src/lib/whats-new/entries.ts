@@ -6,6 +6,19 @@ import type { GuideUpdate } from "@/lib/guide/types";
  */
 export const WHATS_NEW_ENTRIES: GuideUpdate[] = [
   {
+    id: "upd_2026_10_30_receipts_whitepaper",
+    date: "2026-10-30",
+    title: "Receipts by vendor · white paper lockstep",
+    summary:
+      "Guest receipts group lines under the operator name. White paper and Operators Guide stay in lockstep.",
+    body: "Pay or Check prints one guest receipt under the location name. On a multi-operator check, lines group by vendor. Each entity is its own Quantum Payments merchant; the guest still tenders once; capture splits. Prime the tablet from the owner workspace, then PIN-only. Closeout is not clock-out. Public Guide stays operations only. Landing Guide link stays operator-only.",
+    roles: "all",
+    surfaces: ["settings"],
+    audience: "all",
+    topicId: "receipts-by-vendor",
+    tags: ["guide", "white paper", "receipts", "payments"],
+  },
+  {
     id: "upd_2026_10_29_tip_pooling_modes",
     date: "2026-10-29",
     title: "Tip pools: individual, tip-out, FOH / bar / team / dual",

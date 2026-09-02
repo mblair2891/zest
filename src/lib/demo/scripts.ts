@@ -220,7 +220,7 @@ export const TYPE_SCRIPTS: Record<VenueEntityId, DemoScript> = {
       {
         id: "l8",
         title: "One guest card",
-        body: "Quantum Payments captures once, under The Laundry. No second terminal at the table.",
+        body: "One guest check. Capture splits to each brand’s Quantum Payments merchant. The receipt groups Steam vs Diamond House. No second terminal at the table.",
         kind: "pos",
         view: "order",
         target: "order",
@@ -442,7 +442,7 @@ export const TYPE_SCRIPTS: Record<VenueEntityId, DemoScript> = {
       {
         id: "t4",
         title: "Pay the house brand",
-        body: "When the host captures, Quantum Payments is still the only card.",
+        body: "When the guest pays the house check, Quantum Payments is still the only card. Each truck can be its own merchant.",
         kind: "pos",
         view: "order",
         target: "order",
@@ -604,7 +604,7 @@ export const FULL_TOUR_SCRIPT: DemoScript = {
     {
       id: "f6",
       title: "Host check + Quantum Payments",
-      body: "Food and drink on one guest bill. Capture once under The Laundry. There is no Stripe or Square picker on this floor.",
+      body: "Food and drink on one guest bill. Capture splits to each brand’s Quantum Payments merchant. Receipts group by vendor. There is no Stripe or Square picker on this floor.",
       kind: "pos",
       view: "order",
       target: "order",

@@ -82,7 +82,7 @@ export const SAAS_TOPICS: GuideTopic[] = [
         "Devices — how many POS / ODS stations you expect (Wi-Fi first).",
         "Team — invite emails and roles.",
         "Settlement — host cut, tax remittance, tip pooling. Guest cards are Quantum Payments.",
-        "Payments — Quantum Payments application for the host brand. Live cards wait for approval. Cash always works.",
+        "Payments — Quantum Payments application per entity (host and each operator). Live cards wait for that brand’s approval. Cash always works.",
         "Network — probe health, staff Wi‑Fi checklist. Warn or fail never blocks finish. Skip is allowed and recorded.",
         "Go-live — apply remaining steps. Host is ready (host_ready). Open POS. Multi-op: invite tenants from Operators / Tenants.",
       ),
@@ -156,16 +156,16 @@ export const SAAS_TOPICS: GuideTopic[] = [
       ),
       ul(
         "Single-operator — one brand owns the location. Menu, kitchen, and payout are that brand. Still Quantum Payments.",
-        "Host + operators — Host Venue owns the floor, guest brand, and card MID. Operator A / Operator B own lines, tickets, and period payouts.",
+        "Host + operators — Host Venue owns the floor and guest-facing brand. Each entity (host and each operator) is its own Quantum Payments merchant. Operator A / Operator B own lines, tickets, and period payouts.",
       ),
       steps(
         "In intake or onboarding, set operating model to host + operators when more than one food or drink brand shares a check.",
         "Name the host (guest-facing) separately from Operator A, Operator B.",
         "Tag every menu item to an operator. Untagged lines settle to the host.",
-        "Guest pays once. Settlement splits merchandise, card fees, host cut, and any dispute fee.",
+        "Guest pays once. Capture splits to each merchant. Receipts group by vendor. Settlement splits merchandise, card fees, host cut, and any dispute fee.",
       ),
       warn(
-        "Operators are not card processors. They never see a Stripe/Square onboarding. Payouts are period ledger entries (sandbox/export), not live ACH.",
+        "Operators are Quantum Payments merchants for their own merchandise — not a second card brand at the table. They never see a Stripe/Square onboarding. Period payouts are ledger entries (sandbox/export), not live ACH.",
       ),
       related("host-capture", "multi-operator-orders", "settlement", "chargebacks"),
     ],

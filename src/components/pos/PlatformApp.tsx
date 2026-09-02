@@ -256,7 +256,7 @@ export function PlatformApp() {
             <span>
               <span className="block text-sm font-semibold">Operators Guide</span>
               <span className="mt-1 block text-[11px] text-muted-foreground">
-                Intake, onboarding, host capture, and the $35 dispute fee.
+                Floor, payments, cash closeout, devices, and the $35 dispute fee.
               </span>
             </span>
           </Link>

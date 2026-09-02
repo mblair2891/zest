@@ -10,7 +10,7 @@ const ITEMS = [
   ["Kitchen & bar", "Expo rails, bump, vendor-routed tickets."],
   ["Halls & pods", "One guest pay, settlement, pad maps."],
   ["Staff", "Owner, manager, cashier — org-wide or per location."],
-  ["Quantum Payments", "The only merchant processor in the product."],
+  ["Quantum Payments", "Each brand is its own merchant. One guest check. Split capture. Receipts group by vendor."],
   ["Kiosk & waitlist", "Guest order, waitlist, and reservation check-in on a large-touch surface."],
   ["Onboarding", "Get pricing → quote → host setup. Sign in after the house exists. Training uses sandbox cards."],
 ];

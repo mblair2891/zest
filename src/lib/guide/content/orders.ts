@@ -65,15 +65,15 @@ export const ORDER_TOPICS: GuideTopic[] = [
     openView: "hall",
     blocks: [
       why(
-        "A hall guest should not run three cards. The host captures once; Operator A and Operator B still see their own tickets and period payouts.",
+        "A hall guest should not run three cards. The guest tenders once; capture splits to Operator A and Operator B merchants. Each still sees their own tickets and period payouts.",
       ),
       p(
-        "Example: Host Venue. Guest orders tacos from Operator A and a cocktail from Operator B. One check, one Quantum Payments capture, two ODS tickets.",
+        "Example: Host Venue. Guest orders tacos from Operator A and a cocktail from Operator B. One check, split capture to each merchant, two ODS tickets, receipt grouped by vendor.",
       ),
       steps(
         "Items carry the operator set on the menu. The hall cart can mix stalls on one check.",
         "Fire still routes by station + operator so Operator A’s kitchen does not see Operator B’s drinks.",
-        "Pay once at the host stand (or table). The guest-facing brand is the host, not the stall.",
+        "Pay once at the host stand (or table). The guest-facing name is the location. Capture splits. The receipt groups lines by vendor.",
         "Settlement later splits merchandise, fees, host cut, and any $35 dispute fee by merchandise share.",
       ),
       shot(
@@ -83,7 +83,7 @@ export const ORDER_TOPICS: GuideTopic[] = [
       warn(
         "Do not take a second card “for the bar” on a host check. That breaks settlement and the guest receipt.",
       ),
-      related("single-vs-multi", "host-capture", "settlement", "chargebacks", "kds"),
+      related("single-vs-multi", "host-capture", "receipts-by-vendor", "settlement", "chargebacks", "kds"),
     ],
   }),
   topic({
