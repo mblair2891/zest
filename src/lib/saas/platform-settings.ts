@@ -1,5 +1,16 @@
 import { z } from "zod";
 import type { PackageId } from "@/lib/pos/packages";
+import {
+  defaultQuotePackageCents,
+  PACKAGE_BY_ID,
+  QUOTE_SOFTWARE_PACKAGES,
+} from "@/lib/pos/packages";
+
+export { QUOTE_SOFTWARE_PACKAGES };
+
+export const QUOTE_PACKAGE_LABEL: Record<string, string> = Object.fromEntries(
+  QUOTE_SOFTWARE_PACKAGES.map((id) => [id, PACKAGE_BY_ID[id]?.name ?? id]),
+);
 import { PRODUCT_NAME } from "@/lib/platform/brand";
 import type { PlanSlug } from "./types";
 
@@ -272,6 +283,9 @@ export const billingSettingsSchema = z.object({
   quoteExpireDays: int(1, 180).default(30),
   terminalMonthlyCents: int(0, 10_000_000).default(0),
   terminalSetupCents: int(0, 10_000_000).default(0),
+  packageMonthlyCents: z
+    .record(z.string(), int(0, 10_000_000))
+    .default(defaultQuotePackageCents()),
   gmvScaleCents: z
     .object({
       under_50k: int(0, 10_000_000).default(0),

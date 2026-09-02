@@ -6,6 +6,19 @@ import type { GuideUpdate } from "@/lib/guide/types";
  */
 export const WHATS_NEW_ENTRIES: GuideUpdate[] = [
   {
+    id: "upd_2026_10_31_quote_monthly_package",
+    date: "2026-09-02",
+    title: "Quotes include monthly software from intake",
+    summary:
+      "Create/send quote builds a package from intake (and the AI interview). Setup is never the only line.",
+    body: "Pipeline quote builder rebuilds from Get pricing answers: package name, features they asked for, monthly software, optional setup, entities and stations, expires-on. Processing (Quantum / cash-discount) stays a separate note. Paid package dollars are Plans & billing forms. Start onboarding still needs an accepted monthly package quote unless OVERRIDE + reason.",
+    roles: ["platform_admin"],
+    surfaces: ["platform"],
+    audience: "platform",
+    topicId: "quote-contract",
+    tags: ["quote", "saas", "intake"],
+  },
+  {
     id: "upd_2026_10_30_receipts_whitepaper",
     date: "2026-10-30",
     title: "Receipts by vendor · white paper lockstep",

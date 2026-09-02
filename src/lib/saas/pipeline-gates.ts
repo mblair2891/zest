@@ -40,7 +40,10 @@ export function quoteIsComplete(quote: QuoteSnapshot | null | undefined): boolea
   const locations = Number(quote.locationCount ?? quote.maxLocations ?? 0);
   if (!quote.planSlug || locations < 1) return false;
   if (quoteIsSetupOnly(quote)) return false;
-  return quoteHasSoftwarePackage(quote) && quote.monthlyCents != null;
+  if (!quoteHasSoftwarePackage(quote) || quote.monthlyCents == null) return false;
+  if (!quote.expiresAt) return false;
+  if (!quote.featureList || quote.featureList.length < 1) return false;
+  return true;
 }
 
 export function quoteIsSent(quote: QuoteSnapshot | null | undefined): boolean {

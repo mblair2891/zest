@@ -46,7 +46,7 @@ export const SAAS_TOPICS: GuideTopic[] = [
       ),
       steps(
         "Get pricing creates a request. Pipeline quote builder rebuilds from intake: package name, features they asked for, monthly software, optional setup, entities/stations. AI interview recs are the default the human can edit.",
-        "Base counter-service + kitchen display is $0 / mo software. Paid packages add monthly for floor/host, kiosk, QR, labor/HR, recipes/costing, multi-entity, etc. Hardware is BYO except optional Quantum terminals. Setup is waive / flat / by package in Settings → Plans & billing — never the only line.",
+        "Base counter-service + kitchen display is $0 / mo software. Paid packages add monthly for floor/host, kiosk, QR, labor/HR, recipes/costing, multi-entity, etc. — dollar amounts are Settings → Plans & billing forms (not JSON). Hardware is BYO except optional Quantum terminals. Setup is waive / flat / by package — never the only line.",
         "Save draft, then Send quote. Email and Print/PDF show monthly software, processing as a separate note (Quantum / cash-discount, not mixed into software $), expires-on, Accept and Request changes.",
         "Merchant taps Accept, or Request changes, or Admin marks accepted. Status becomes accepted. Not a live tenant yet.",
         "Platform Admin records the contract (checkbox + date) → Contracted. Start onboarding is enabled only then, and only if a monthly package quote was accepted. OVERRIDE + reason for an admin skip.",

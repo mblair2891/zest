@@ -268,6 +268,8 @@ export type PricingRules = {
   quoteExpireDays: number;
   terminalMonthlyCents: number;
   terminalSetupCents: number;
+  /** Monthly cents per paid software package (Plans & billing forms). */
+  packageMonthlyCents: Partial<Record<PackageId, number>>;
 };
 
 export type OperatorDraft = {

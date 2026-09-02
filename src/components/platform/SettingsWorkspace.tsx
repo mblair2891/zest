@@ -33,6 +33,8 @@ import {
   TENANT_EMAIL_TOKENS,
   MODULE_FLAG_KEYS,
   MODULE_FLAG_LABEL,
+  QUOTE_PACKAGE_LABEL,
+  QUOTE_SOFTWARE_PACKAGES,
   NETWORK_READY_MODES,
   PAYMENTS_MODES,
   PIN_LENGTHS,
@@ -980,6 +982,30 @@ function BillingSection({
             }
           />
         </Field>
+      </div>
+      <p className="pt-2 text-sm font-medium">Paid software packages (monthly)</p>
+      <p className="text-xs text-muted-foreground">
+        Toggles on each plan say what is included. These dollar amounts are what intake quotes
+        add when the house selected that feature. Base POS + kitchen display stays $0.
+      </p>
+      <div className="grid gap-3 sm:grid-cols-2">
+        {QUOTE_SOFTWARE_PACKAGES.map((id) => (
+          <Field key={id} label={QUOTE_PACKAGE_LABEL[id] ?? id}>
+            <Input
+              inputMode="decimal"
+              value={formatMoneyCents(billing.packageMonthlyCents?.[id] ?? 0)}
+              onChange={(e) =>
+                setBilling({
+                  ...billing,
+                  packageMonthlyCents: {
+                    ...billing.packageMonthlyCents,
+                    [id]: parseMoneyToCents(e.target.value),
+                  },
+                })
+              }
+            />
+          </Field>
+        ))}
       </div>
       <p className="text-xs text-muted-foreground">
         Base counter-service + kitchen display software is $0 / mo. Paid packages add monthly

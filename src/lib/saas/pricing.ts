@@ -1,5 +1,6 @@
 import {
-  defaultPackagesForMode,
+  catalogPackageCents,
+  defaultQuotePackageCents,
   PACKAGE_BY_ID,
   type PackageId,
 } from "@/lib/pos/packages";
@@ -59,6 +60,7 @@ export const DEFAULT_PRICING_RULES: PricingRules = {
   quoteExpireDays: 30,
   terminalMonthlyCents: 0,
   terminalSetupCents: 0,
+  packageMonthlyCents: defaultQuotePackageCents(),
 };
 
 const MODULE_PACKAGES: Record<keyof IntakeAnswers["modules"], PackageId[]> = {
@@ -120,6 +122,13 @@ export function parsePricingRules(raw: unknown): PricingRules {
   base.quoteExpireDays = Math.max(1, Math.min(180, Math.floor(num(o.quoteExpireDays, base.quoteExpireDays))));
   base.terminalMonthlyCents = num(o.terminalMonthlyCents, base.terminalMonthlyCents);
   base.terminalSetupCents = num(o.terminalSetupCents, base.terminalSetupCents);
+  const pkgCents = { ...defaultQuotePackageCents(), ...base.packageMonthlyCents };
+  if (o.packageMonthlyCents && typeof o.packageMonthlyCents === "object") {
+    for (const [k, v] of Object.entries(o.packageMonthlyCents as Record<string, unknown>)) {
+      pkgCents[k as PackageId] = Math.max(0, Math.round(num(v, pkgCents[k as PackageId] ?? 0)));
+    }
+  }
+  base.packageMonthlyCents = pkgCents;
   return base;
 }
 
@@ -315,15 +324,27 @@ export function hostLocationCount(answers: IntakeAnswers): number {
   return hall;
 }
 
-export function recommendedPlan(answers: IntakeAnswers, rules: PricingRules): PlanSlug {
-  const primary = primaryLocationType(answers);
+export function recommendedPlan(
+  answers: IntakeAnswers,
+  rules: PricingRules,
+  interview?: InterviewRecommendation | null,
+): PlanSlug {
+  const hinted = interview?.pricingHints?.suggestedPlan;
+  if (hinted && PLAN_SLUGS.includes(hinted) && hinted !== "platform_internal") {
+    if (interview?.operatingModel === "host_multi_operator" || hinted === "food_hall") {
+      return hinted === "starter" ? "food_hall" : hinted;
+    }
+    return hinted;
+  }
+  const merged = applyInterviewToIntake(answers, interview);
+  const primary = primaryLocationType(merged);
   let plan = rules.basePlanByLocationType[primary] ?? "starter";
-  if (answers.operating.model === "host_operators" || hostLocationCount(answers) > 0) {
+  if (merged.operating.model === "host_operators" || hostLocationCount(merged) > 0) {
     plan = "food_hall";
-  } else if (answers.modules.tableService && plan === "starter") {
+  } else if (merged.modules.tableService && plan === "starter") {
     plan = "full_service";
   }
-  if (answers.portfolio.locationsNow >= 6 && plan === "starter") plan = "full_service";
+  if (merged.portfolio.locationsNow >= 6 && plan === "starter") plan = "full_service";
   if (!PLAN_SLUGS.includes(plan) || plan === "platform_internal") plan = "starter";
   return plan;
 }
@@ -377,12 +398,19 @@ export function applyInterviewToIntake(
   if (!rec) return answers;
   const next = parseIntakeAnswers(answers);
   if (rec.operatingModel === "host_multi_operator") {
-    next.operating = { ...next.operating, model: "host_operators" };
+    next.operating = { ...next.operating, model: "host_operators", guestPaysHostCheck: true };
   } else if (rec.operatingModel === "single_operator" && next.operating.model === "single") {
     next.operating = { ...next.operating, model: "single" };
   }
+  if (rec.venueTypes && rec.venueTypes.length > 0) {
+    const typeCounts: IntakeAnswers["portfolio"]["typeCounts"] = { ...next.portfolio.typeCounts };
+    for (const t of rec.venueTypes) {
+      typeCounts[t] = Math.max(typeCounts[t] ?? 0, 1);
+    }
+    next.portfolio = { ...next.portfolio, typeCounts };
+  }
   for (const m of rec.modules ?? []) {
-    if (m in next.modules) next.modules[m] = true;
+    if (m in next.modules) next.modules[m as keyof IntakeAnswers["modules"]] = true;
   }
   if (rec.estimates?.locations) {
     next.portfolio = {
@@ -429,6 +457,40 @@ export function stationCountsFromAnswers(answers: IntakeAnswers): QuoteStationCo
     ods: answers.modules.kds ? Math.max(1, Math.ceil(devices / 2)) : 0,
     host: answers.modules.tableService ? 1 : 0,
   };
+}
+
+/** Software packages the house actually asked for — not the full venue default dump. */
+export function packagesFromIntake(answers: IntakeAnswers): PackageId[] {
+  const pkgs = new Set<PackageId>(["pos_core", "kds"]);
+  const host =
+    answers.operating.model === "host_operators" ||
+    answers.operating.model === "mixed" ||
+    hostLocationCount(answers) > 0;
+  if (answers.modules.tableService) pkgs.add("host_stand");
+  if (answers.modules.kiosk || answers.modules.online) pkgs.add("online_kiosk");
+  if (answers.modules.inventory) pkgs.add("inventory");
+  if (answers.modules.labor) pkgs.add("labor");
+  if (answers.modules.giftCards || answers.modules.crm) pkgs.add("guests_crm");
+  if (answers.modules.marketing) {
+    pkgs.add("marketing_suite");
+    pkgs.add("location_website");
+  }
+  if (answers.modules.vendorPortal || host) {
+    pkgs.add("hall_settlement");
+    pkgs.add("vendor_portal");
+  }
+  if (answers.modules.multiLocationReporting) pkgs.add("advanced_ops");
+  const primary = primaryLocationType(answers);
+  if (primary === "truck_pod") pkgs.add("truck_pod");
+  return [...pkgs];
+}
+
+export function packageUnitCents(id: PackageId, rules: PricingRules): number {
+  const fromSettings = rules.packageMonthlyCents?.[id];
+  if (typeof fromSettings === "number" && Number.isFinite(fromSettings)) {
+    return Math.max(0, Math.round(fromSettings));
+  }
+  return catalogPackageCents(id);
 }
 
 export function resolveSetupFeeCents(
@@ -495,30 +557,25 @@ export function generateQuote(
   const entityCount =
     hostLocs > 0 ? hostLocs + operators : Math.max(1, locs);
 
-  const packages = new Set<PackageId>(defaultPackagesForMode(primary));
-  packages.add("pos_core");
-  packages.add("kds");
+  const packages = new Set<PackageId>(packagesFromIntake(answers));
   if (plan === "food_hall" || hostLocs > 0) {
-    for (const p of defaultPackagesForMode("food_hall")) packages.add(p);
+    packages.add("hall_settlement");
+    packages.add("vendor_portal");
   }
   (Object.keys(answers.modules) as (keyof IntakeAnswers["modules"])[]).forEach((key) => {
     if (!answers.modules[key]) return;
     for (const pkg of MODULE_PACKAGES[key]) packages.add(pkg);
   });
-  if (hostLocs > 0 || answers.modules.vendorPortal) {
-    packages.add("hall_settlement");
-    packages.add("vendor_portal");
-  }
 
   const items: QuoteLineItem[] = [];
   items.push(
-    line("pos_core", "package", "POS core — counter service + kitchen display", locs, 0, {
+    line("pos_core", "package", `${planLabel(plan)} — counter service + kitchen display`, locs, 0, {
       packageId: "pos_core",
       note: "Base software $0 / mo. Hardware is BYO except optional Quantum terminals.",
     }),
   );
 
-  const planFee = rules.planMonthlyCents[plan] ?? 0;
+  const planFee = Math.max(0, rules.planMonthlyCents[plan] ?? 0);
   if (planFee > 0) {
     items.push(line("plan", "plan", `${planLabel(plan)} software × ${locs} loc`, locs, planFee));
   }
@@ -526,9 +583,10 @@ export function generateQuote(
   for (const pkgId of [...packages]) {
     if (pkgId === "pos_core" || pkgId === "kds") continue;
     const pkg = PACKAGE_BY_ID[pkgId];
-    if (!pkg || pkg.priceMonthly <= 0) continue;
+    const unit = packageUnitCents(pkgId, rules);
+    if (!pkg || unit <= 0) continue;
     items.push(
-      line(`pkg_${pkgId}`, "package", `${pkg.name} × ${locs} loc`, locs, pkg.priceMonthly * 100, {
+      line(`pkg_${pkgId}`, "package", `${pkg.name} × ${locs} loc`, locs, unit, {
         packageId: pkgId,
       }),
     );
@@ -560,6 +618,19 @@ export function generateQuote(
         `Staff seats (${rules.seatPackSize}/pack)`,
         seatPacks,
         rules.seatPackFeeCents,
+      ),
+    );
+  }
+  if ((rules.devicePackFeeCents ?? 0) > 0) {
+    const deviceCount = Math.max(1, stations.order + stations.ods + stations.host);
+    const devicePacks = Math.ceil(deviceCount / Math.max(1, rules.devicePackSize || 4));
+    items.push(
+      line(
+        "devices",
+        "custom",
+        `Stations (${rules.devicePackSize}/pack) · order ${stations.order} / ODS ${stations.ods} / host ${stations.host}`,
+        devicePacks,
+        rules.devicePackFeeCents,
       ),
     );
   }

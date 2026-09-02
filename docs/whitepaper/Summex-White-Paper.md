@@ -3,7 +3,7 @@
 **Powered by Quantum Reach**
 
 White paper · October 2026  
-**Revision · 30 Oct 2026** — Operators Guide topic: receipts by vendor. White paper stays in lockstep: per-entity Quantum Payments merchants, one guest check, split capture, gift ledger, device roles, cash, tip pools, training vs live. Aligns with Operators Guide v2026.10.30.
+**Revision · 2 Sep 2026** — Intake quotes always include a monthly software package (setup is never the only line). Aligns with Operators Guide v2026.10.31.
 
 summex.app  
 Guest cards: **Quantum Payments** only
@@ -262,7 +262,7 @@ Software billing is **not** guest card processing.
 - **Setup** is optional (waive, flat, or by package). It is never the only line on a proposal.
 - **Quantum Payments** (and cash-discount settings) are estimated as a **separate note**, not mixed into the software monthly unless the house chose a bundled plan.
 
-A proposal includes the package name, the feature list from intake, monthly software, any setup, entity and station counts, and an expires-on date. The house can accept or request changes. Onboarding does not start until a monthly package quote exists and is accepted.
+A proposal includes the package name, the feature list from intake (and the AI interview if they confirmed it), monthly software, estimated Quantum Payments / cash-discount processing as a **separate note**, any setup, entity and station counts, and an expires-on date. The house can accept or request changes. Onboarding does not start until a monthly package quote exists and is accepted (platform override requires a reason).
 
 This paper is **not** a rate card. Snapshot quotes come from the live catalog at send time.
 

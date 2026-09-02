@@ -412,6 +412,34 @@ export function packageMonthlyTotal(enabled: PackageId[]): number {
   return enabled.reduce((s, id) => s + (PACKAGE_BY_ID[id]?.priceMonthly ?? 0), 0);
 }
 
+/** Paid software add-ons that appear on intake quotes (cents live in Plans & billing). */
+export const QUOTE_SOFTWARE_PACKAGES: PackageId[] = [
+  "host_stand",
+  "online_kiosk",
+  "labor",
+  "inventory",
+  "guests_crm",
+  "integrations",
+  "hall_settlement",
+  "vendor_portal",
+  "truck_pod",
+  "ai_inventory",
+  "drink_ai",
+  "advanced_ops",
+  "marketing_suite",
+  "location_website",
+];
+
+export function catalogPackageCents(id: PackageId): number {
+  return Math.max(0, Math.round((PACKAGE_BY_ID[id]?.priceMonthly ?? 0) * 100));
+}
+
+export function defaultQuotePackageCents(): Record<PackageId, number> {
+  const out = {} as Record<PackageId, number>;
+  for (const id of QUOTE_SOFTWARE_PACKAGES) out[id] = catalogPackageCents(id);
+  return out;
+}
+
 /** Map POS view → required package (if any). Missing = always allowed. */
 export function packageForView(view: string): PackageId | null {
   for (const p of SUMMEX_PACKAGES) {

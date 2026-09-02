@@ -295,6 +295,7 @@ export async function pricingRulesFromStore(): Promise<{ version: number; rules:
       quoteExpireDays: billing.quoteExpireDays,
       terminalMonthlyCents: billing.terminalMonthlyCents,
       terminalSetupCents: billing.terminalSetupCents,
+      packageMonthlyCents: billing.packageMonthlyCents ?? {},
     },
   };
 }

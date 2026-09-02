@@ -10,7 +10,13 @@ import {
 } from "@/lib/saas/api";
 import { buildIntakeQuote, type QuoteAddOn } from "@/lib/saas/quote-builder";
 import { parseMoneyToCents, newLocalId } from "@/lib/saas/platform-settings";
-import { DEFAULT_PRICING_RULES, parsePricingRules, recommendedPlan } from "@/lib/saas/pricing";
+import {
+  DEFAULT_PRICING_RULES,
+  parsePricingRules,
+  quoteHasSoftwarePackage,
+  quoteIsSetupOnly,
+  recommendedPlan,
+} from "@/lib/saas/pricing";
 import type { PricingRules, ProspectDetail } from "@/lib/saas/prospect-types";
 import type { PlanSlug } from "@/lib/saas/types";
 import { QuoteSummary } from "./QuoteSummary";
@@ -25,8 +31,18 @@ export function QuoteBuilder({
   const [plans, setPlans] = useState<Awaited<ReturnType<typeof listQuoteCatalogFn>>["plans"]>([]);
   const [trialDays, setTrialDays] = useState(14);
   const [rules, setRules] = useState<PricingRules>(DEFAULT_PRICING_RULES);
-  const intakePlan = recommendedPlan(detail.answers, rules);
-  const [planSlug, setPlanSlug] = useState<PlanSlug>(detail.quote?.planSlug ?? intakePlan);
+  const intakePlan = recommendedPlan(
+    detail.answers,
+    rules,
+    detail.interviewRecommendation,
+  );
+  const staleQuote =
+    !detail.quote ||
+    quoteIsSetupOnly(detail.quote) ||
+    !quoteHasSoftwarePackage(detail.quote);
+  const [planSlug, setPlanSlug] = useState<PlanSlug>(
+    staleQuote ? intakePlan : (detail.quote?.planSlug ?? intakePlan),
+  );
   const [locationCount, setLocationCount] = useState(
     detail.quote?.locationCount ?? detail.answers.portfolio.locationsNow ?? 1,
   );
@@ -59,7 +75,13 @@ export function QuoteBuilder({
       setTrialDays(c.trialDays);
       const parsed = parsePricingRules(pr.rules);
       setRules(parsed);
-      if (!detail.quote) applyIntake(parsed, c.trialDays);
+      if (
+        !detail.quote ||
+        quoteIsSetupOnly(detail.quote) ||
+        !quoteHasSoftwarePackage(detail.quote)
+      ) {
+        applyIntake(parsed, c.trialDays);
+      }
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [detail.id]);
@@ -227,6 +249,11 @@ export function QuoteBuilder({
           <QuoteSummary quote={preview} status={detail.status} compact />
         </div>
       )}
+      {preview && (quoteIsSetupOnly(preview) || !quoteHasSoftwarePackage(preview)) && (
+        <p className="mt-2 text-sm text-danger">
+          This draft is setup-only. Rebuild from intake so monthly software is on the proposal.
+        </p>
+      )}
       {msg && <p className="mt-2 text-sm text-muted-foreground">{msg}</p>}
       <div className="mt-3 flex flex-wrap gap-2">
         <Button
@@ -243,7 +270,16 @@ export function QuoteBuilder({
         <Button size="sm" variant="outline" disabled={busy} onClick={() => void save(false)}>
           Save draft
         </Button>
-        <Button size="sm" disabled={busy} onClick={() => void save(true)}>
+        <Button
+          size="sm"
+          disabled={
+            busy ||
+            !preview ||
+            quoteIsSetupOnly(preview) ||
+            !quoteHasSoftwarePackage(preview)
+          }
+          onClick={() => void save(true)}
+        >
           {busy ? "Working…" : "Send quote"}
         </Button>
         {detail.status === "quoted" && (

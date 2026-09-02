@@ -6,6 +6,7 @@ import type { IntakeAnswers, InterviewRecommendation, PricingRules, QuoteSnapsho
 import {
   applyInterviewToIntake,
   generateQuote,
+  recommendedPlan,
 } from "./pricing";
 
 export const quoteAddOnSchema = z.object({
@@ -57,7 +58,7 @@ export function buildIntakeQuote(opts: {
   const slug =
     opts.planSlug && (PLAN_SLUGS as readonly string[]).includes(opts.planSlug)
       ? opts.planSlug
-      : undefined;
+      : recommendedPlan(answers, opts.rules, opts.interview);
   return generateQuote(answers, opts.rules, {
     planSlug: slug,
     locationCount: opts.locationCount,
