@@ -6,6 +6,19 @@ import type { GuideUpdate } from "@/lib/guide/types";
  */
 export const WHATS_NEW_ENTRIES: GuideUpdate[] = [
   {
+    id: "upd_2026_10_33_byo_hardware",
+    date: "2026-09-02",
+    title: "BYO hardware default, optional Finix drop-ship",
+    summary:
+      "Quotes lead with bring-your-own tablets and printers. Partner readers/kiosks ship to the house, not to Summex.",
+    body: "Get a price and proposals list a $0 BYO hardware line plus a checklist (order tablet, ODS, Wi-Fi printer + kick, optional USB MSR, ~$75 reader if they buy their own). Optional Finix catalog items can drop-ship to the customer address — marked partner hardware, typically more expensive than BYO. Software monthly stays separate from hardware. Onboarding collects ship-to and shipped/delivered status. Summex does not take possession.",
+    roles: ["platform_admin", "owner_manager"],
+    surfaces: ["platform", "settings"],
+    audience: "all",
+    topicId: "quote-contract",
+    tags: ["hardware", "quote", "intake"],
+  },
+  {
     id: "upd_2026_10_32_get_a_price_modules",
     date: "2026-09-02",
     title: "Get a price: live module monthly",
