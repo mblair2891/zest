@@ -6,6 +6,19 @@ import type { GuideUpdate } from "@/lib/guide/types";
  */
 export const WHATS_NEW_ENTRIES: GuideUpdate[] = [
   {
+    id: "upd_2026_10_29_tip_pooling_modes",
+    date: "2026-10-29",
+    title: "Tip pools: individual, tip-out, FOH / bar / team / dual",
+    summary:
+      "Location (and employer) setting covers every common house type. Combine mix-based tip-out with a pool. Closeout and payroll CSV show net by person and pool.",
+    body: "Settings → Cash drawers (Labor / HR inherit or override). Modes: individual; individual + mix-based tip-out; FOH pool; bar pool (all wells or per well); team pool; dual food/drink from ticket line ownership. Contribution, split (hours / points / equal / sales / manual), include/exclude roles, managers excluded by default, settle at shift or pay period. Auto-grat stays, enters the pool, or splits. Service charge is house or % to staff — never labeled a tip unless you check it. Payout uses cash-at-close vs paycheck. Pooling rules vary by state; Summex calculates policy only — not legal advice and not a payroll run.",
+    roles: ["owner_manager", "server", "kitchen_bar", "host_operator"],
+    surfaces: ["settings", "reports"],
+    audience: "all",
+    topicId: "tip-pooling",
+    tags: ["tips", "pool", "closeout", "payroll"],
+  },
+  {
     id: "upd_2026_10_28_cc_tip_payout",
     date: "2026-10-28",
     title: "CC tips: cash at close vs paycheck",

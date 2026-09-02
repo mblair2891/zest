@@ -36,7 +36,7 @@ import { cn } from "@/lib/utils";
 import { liabilityByIssuer } from "@/lib/pos/gift-issuer";
 import { parseCashHandling } from "@/lib/pos/cash-handling";
 import { bankExpected, drawerExpected, useCashSessionStore } from "@/lib/pos/cash-session";
-import { closeoutPayrollCsv } from "@/lib/pos/closeout";
+import { closeoutNetsForPeriod, closeoutPayrollCsv, tipPoolReportCsv } from "@/lib/pos/closeout";
 import { useCloseoutStore } from "@/lib/pos/closeout-store";
 import { NightlyIntegrityPanel } from "@/components/pos/NightlyIntegrityPanel";
 import { OpsJobsInbox } from "@/components/pos/OpsJobsInbox";
@@ -263,7 +263,10 @@ export function ReportsView() {
       if (emp?.role === "server" || emp?.role === "bartender") {
         rows = rows.filter((r) => r.employeeId === emp.id);
       }
-      downloadCsv("server-closeouts.csv", closeoutPayrollCsv(rows));
+      downloadCsv(
+        active.id === "close-tip-pools" ? "tip-pools.csv" : "server-closeouts.csv",
+        active.id === "close-tip-pools" ? tipPoolReportCsv(rows) : closeoutPayrollCsv(rows),
+      );
       return;
     }
     downloadCsv(
@@ -1061,6 +1064,9 @@ function PayrollReportSlice() {
       otFlag: boolean;
       declaredTipsCents: number;
       ccTipsCents: number;
+      netTipsCents?: number;
+      poolInCents?: number;
+      poolOutCents?: number;
       providerEmployeeId: string | null;
     }[]
   >([]);
@@ -1074,6 +1080,13 @@ function PayrollReportSlice() {
     }
     setBusy(true);
     setErr(null);
+    const fromMs = Date.parse(from);
+    const toMs = Date.parse(to) + 86_400_000 - 1;
+    const closeoutNets = closeoutNetsForPeriod(
+      useCloseoutStore.getState().records,
+      Number.isFinite(fromMs) ? fromMs : 0,
+      Number.isFinite(toMs) ? toMs : Date.now(),
+    );
     void hrPayrollExportFn({
       data: {
         orgId,
@@ -1083,6 +1096,7 @@ function PayrollReportSlice() {
         periodStart: from,
         periodEnd: to,
         push,
+        closeoutNets,
       },
     })
       .then((r) => {
@@ -1176,6 +1190,9 @@ function PayrollReportSlice() {
               {r.regularHours.toFixed(1)}h
               {r.otFlag ? ` · OT ${r.otHours.toFixed(1)}` : ""} · cash tips{" "}
               {formatCurrency(r.declaredTipsCents)} · CC {formatCurrency(r.ccTipsCents)}
+              {r.netTipsCents != null ? ` · net ${formatCurrency(r.netTipsCents)}` : ""}
+              {r.poolInCents ? ` · pool in ${formatCurrency(r.poolInCents)}` : ""}
+              {r.poolOutCents ? ` · pool out ${formatCurrency(r.poolOutCents)}` : ""}
             </span>
           </li>
         ))}

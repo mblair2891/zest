@@ -36,7 +36,7 @@ export const GETTING_STARTED_TOPICS: GuideTopic[] = [
         "Training week: the real POS with Quantum Payments sandbox. Live cards wait for an approved Quantum application and an enrolled reader.",
         "Floor PIN signs a person onto this station. Clock in / out is Labor. Server closeout is Cash — none of those are the same action.",
         "Examples in this guide use Host Venue, Operator A, Operator B — never a live customer name.",
-        "Revision · 28 Oct 2026 — CC tips: cash-at-close vs paycheck vs cash-tips-only-at-close.",
+        "Revision · 29 Oct 2026 — Tip pools: individual, tip-out, FOH / bar / team / dual. Policy only.",
       ),
       steps(
         "Tap Guide or “?” in the header (POS and platform) — or open /guide from the marketing site (Operators Guide, not a SaaS user manual).",

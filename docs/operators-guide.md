@@ -1,7 +1,7 @@
 # Operators Guide — authoring
 
-**Revision · 28 Oct 2026** — CC tips cash-at-close vs paycheck vs cash-tips-only-at-close.
-Blind expected includes tip paid-out. Guide v2026.10.28.
+**Revision · 29 Oct 2026** — Tip pools: individual, tip-out, FOH / bar / team / dual.
+Location-configurable. Pooling rules vary by state; Summex calculates policy only. Guide v2026.10.29.
 
 The in-app **Operators Guide** is the living product manual. It is not a
 separate PDF. Staff open it from **Guide** / **?** in the POS and platform

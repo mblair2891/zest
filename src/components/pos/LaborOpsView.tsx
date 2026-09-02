@@ -34,11 +34,12 @@ import {
   CC_TIP_PAYOUT_BLURB,
   type CcTipPayoutSetting,
 } from "@/lib/pos/cash-handling";
-import { DEFAULT_TIP_POOLING } from "@/lib/pos/tip-pooling";
+import { cloneTipPooling, DEFAULT_TIP_POOLING } from "@/lib/pos/tip-pooling";
+import { closeoutNetsForPeriod } from "@/lib/pos/closeout";
 import { TipPoolingSettings } from "./TipPoolingSettings";
 import { StaffingRecsSettings } from "./StaffingRecsSettings";
 import { useCashSessionStore } from "@/lib/pos/cash-session";
-import { hasCompletedCloseoutToday } from "@/lib/pos/closeout-store";
+import { hasCompletedCloseoutToday, useCloseoutStore } from "@/lib/pos/closeout-store";
 
 type Tab = "clock" | "myshifts" | "timecards" | "alerts" | "settings" | "payroll";
 
@@ -594,12 +595,7 @@ export function LaborOpsView() {
                     tipPooling:
                       e.target.value === "inherit"
                         ? "inherit"
-                        : {
-                            ...DEFAULT_TIP_POOLING,
-                            includeRoles: [...DEFAULT_TIP_POOLING.includeRoles],
-                            excludeRoles: [...DEFAULT_TIP_POOLING.excludeRoles],
-                            rolePoints: { ...DEFAULT_TIP_POOLING.rolePoints },
-                          },
+                        : cloneTipPooling(DEFAULT_TIP_POOLING),
                   })
                 }
               >
@@ -965,6 +961,11 @@ function PeriodExportCard({
         periodStart: period.startIso,
         periodEnd: period.endIso,
         push,
+        closeoutNets: closeoutNetsForPeriod(
+          useCloseoutStore.getState().records,
+          period.start,
+          period.end,
+        ),
       },
     })
       .then((r) => {

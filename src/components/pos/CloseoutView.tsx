@@ -33,6 +33,8 @@ import {
   poolingActive,
   punchHours,
   resolveTipPooling,
+  tipOutWithMode,
+  TIP_POOL_MODE_LABEL,
   type PoolContributionRow,
   type PoolParticipant,
 } from "@/lib/pos/tip-pooling";
@@ -138,9 +140,10 @@ export function CloseoutView({ onDone }: { onDone: () => void }) {
             },
           )
         : null;
+  const tipOutOn = tipOutWithMode(pooling);
   const recs = useMemo(
     () =>
-      cfg.tipOutEnabled
+      tipOutOn
         ? recommendTipOuts({
             sales: { ...sales, cardTipsCents: cardTips },
             pools: cfg.tipOutPools,
@@ -148,7 +151,7 @@ export function CloseoutView({ onDone }: { onDone: () => void }) {
             tipPoolCents: cardTips + declared,
           })
         : [],
-    [cfg.tipOutEnabled, cfg.tipOutPools, cfg.tipOutBasis, sales, cardTips, declared],
+    [tipOutOn, cfg.tipOutPools, cfg.tipOutBasis, sales, cardTips, declared],
   );
   const lines = tipLines ?? recs;
   const tipOutsCents = lines.reduce((s, l) => s + l.actualCents, 0);
@@ -573,7 +576,7 @@ export function CloseoutView({ onDone }: { onDone: () => void }) {
         )}
         {step === 5 && (
           <div className="space-y-3">
-            {!cfg.tipOutEnabled ? (
+            {!tipOutOn ? (
               <p className="text-sm text-muted-foreground">Tip-out recommendations are off.</p>
             ) : (
               <>
@@ -635,9 +638,12 @@ export function CloseoutView({ onDone }: { onDone: () => void }) {
                 </div>
               </>
             )}
-            {poolNet && poolingActive(pooling) && (
+            {poolNet && (
               <div className="rounded-xl border border-border p-3 text-sm">
-                <p className="text-xs text-muted-foreground">House pool — policy only, not legal advice.</p>
+                <p className="text-xs text-muted-foreground">
+                  {TIP_POOL_MODE_LABEL[pooling.mode]}. Pooling rules vary by state — Summex
+                  calculates this house policy only.
+                </p>
                 <dl className="mt-2 grid grid-cols-2 gap-2">
                   <div>
                     <dt className="text-xs text-muted-foreground">Own tips</dt>

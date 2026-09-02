@@ -336,4 +336,126 @@ export function closeoutPayrollCsv(records: ServerCloseout[]): string {
   return [header.join(","), ...rows].join("\n");
 }
 
+/** Net tips by person and by pool. Payroll-ready; not a payroll run. */
+export function tipPoolReportCsv(records: ServerCloseout[]): string {
+  const header = [
+    "row_type",
+    "employee_id",
+    "employee_name",
+    "role",
+    "closed_at",
+    "pool",
+    "own_tips",
+    "tip_outs",
+    "pool_in",
+    "pool_out",
+    "pool_held",
+    "net_tips",
+    "net_due_now",
+    "net_to_payroll",
+    "cc_tip_payout",
+  ];
+  const rows: string[] = [];
+  const poolTotals = new Map<string, { inCents: number; outCents: number }>();
+  for (const r of records) {
+    const at = new Date(r.at).toISOString();
+    const tipOuts = r.tipOuts.reduce((s, l) => s + l.actualCents, 0);
+    rows.push(
+      [
+        "person",
+        csvEsc(r.employeeId),
+        csvEsc(r.employeeName),
+        csvEsc(r.role),
+        csvEsc(at),
+        "",
+        dollars(r.ownTipsCents),
+        dollars(tipOuts),
+        dollars(r.poolInCents),
+        dollars(r.poolOutCents),
+        dollars(r.poolHeldCents),
+        dollars(r.netTipsCents),
+        dollars(r.netDueNowCents),
+        dollars(r.netToPayrollCents),
+        csvEsc(r.ccTipPayout ?? ""),
+      ].join(","),
+    );
+    for (const p of r.poolLines ?? []) {
+      rows.push(
+        [
+          "pool_line",
+          csvEsc(r.employeeId),
+          csvEsc(r.employeeName),
+          csvEsc(r.role),
+          csvEsc(at),
+          csvEsc(p.label),
+          "",
+          "",
+          dollars(p.inCents),
+          dollars(p.outCents),
+          "",
+          "",
+          "",
+          "",
+          csvEsc(r.ccTipPayout ?? ""),
+        ].join(","),
+      );
+      const cur = poolTotals.get(p.label) ?? { inCents: 0, outCents: 0 };
+      cur.inCents += p.inCents;
+      cur.outCents += p.outCents;
+      poolTotals.set(p.label, cur);
+    }
+  }
+  for (const [label, v] of poolTotals) {
+    rows.push(
+      [
+        "pool_total",
+        "",
+        "",
+        "",
+        "",
+        csvEsc(label),
+        "",
+        "",
+        dollars(v.inCents),
+        dollars(v.outCents),
+        "",
+        "",
+        "",
+        "",
+        "",
+      ].join(","),
+    );
+  }
+  return [header.join(","), ...rows].join("\n");
+}
+
+export type CloseoutNetInput = {
+  employeeId: string;
+  netTipsCents: number;
+  poolInCents: number;
+  poolOutCents: number;
+};
+
+export function closeoutNetsForPeriod(
+  records: ServerCloseout[],
+  fromMs: number,
+  toMs: number,
+): CloseoutNetInput[] {
+  const by = new Map<string, CloseoutNetInput>();
+  for (const r of records) {
+    if (r.at < fromMs || r.at > toMs) continue;
+    const cur = by.get(r.employeeId) ?? {
+      employeeId: r.employeeId,
+      netTipsCents: 0,
+      poolInCents: 0,
+      poolOutCents: 0,
+    };
+    cur.netTipsCents += r.netTipsCents ?? 0;
+    cur.poolInCents += r.poolInCents ?? 0;
+    cur.poolOutCents += r.poolOutCents ?? 0;
+    by.set(r.employeeId, cur);
+  }
+  return [...by.values()];
+}
+
 

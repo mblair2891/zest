@@ -173,7 +173,7 @@ export const PAYMENT_TOPICS: GuideTopic[] = [
         "Processors, prospects, and partners need one document that does not invent rates, banks, or seals — and that stays in lockstep with this Operators Guide.",
       ),
       p(
-        "Open /whitepaper (also linked from the marketing footer). Print from the browser for a PDF. The markdown source lives with the product docs. Revision · 28 Oct 2026 matches Guide v2026.10.28.",
+        "Open /whitepaper (also linked from the marketing footer). Print from the browser for a PDF. The markdown source lives with the product docs. Revision · 29 Oct 2026 matches Guide v2026.10.29.",
       ),
       steps(
         "Open White paper from the site footer or this topic.",

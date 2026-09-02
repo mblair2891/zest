@@ -625,6 +625,12 @@ export const hrPayrollExportFn = createServerFn({ method: "POST" })
       periodStart: string;
       periodEnd: string;
       push?: boolean;
+      closeoutNets?: Array<{
+        employeeId: string;
+        netTipsCents: number;
+        poolInCents: number;
+        poolOutCents: number;
+      }>;
     }) => ({
       orgId: org(d.orgId),
       locationId: loc(d.locationId),
@@ -633,6 +639,14 @@ export const hrPayrollExportFn = createServerFn({ method: "POST" })
       periodStart: String(d.periodStart ?? "").slice(0, 10),
       periodEnd: String(d.periodEnd ?? "").slice(0, 10),
       push: Boolean(d.push),
+      closeoutNets: Array.isArray(d.closeoutNets)
+        ? d.closeoutNets.slice(0, 200).map((n) => ({
+            employeeId: String(n?.employeeId ?? "").slice(0, 80),
+            netTipsCents: Math.max(0, Math.round(Number(n?.netTipsCents) || 0)),
+            poolInCents: Math.max(0, Math.round(Number(n?.poolInCents) || 0)),
+            poolOutCents: Math.max(0, Math.round(Number(n?.poolOutCents) || 0)),
+          })).filter((n) => n.employeeId)
+        : undefined,
     }),
   )
   .handler(async ({ context, data }) => {

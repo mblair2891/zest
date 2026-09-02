@@ -37,6 +37,10 @@ export const ESTABLISHMENT_TYPE_TOPICS: GuideTopic[] = [
         "Payments",
         "Quantum Payments is the only guest card. Cash and first-party gift sit beside it. There is no processor picker.",
       ),
+      callout(
+        "Tips",
+        "Typical: individual + mix-based tip-out. Switch to FOH or dual pool if the house shares. Pooling rules vary by state — Summex calculates policy only.",
+      ),
       p(
         "When the dining room is full, turn Waitlist on. The kiosk shows a wait range and takes the guest’s phone. Reservation check-in is last name + code.",
       ),
@@ -45,7 +49,7 @@ export const ESTABLISHMENT_TYPE_TOPICS: GuideTopic[] = [
         "Onboard a restaurant",
         "Create a real location through SaaS. There is no seeded demo house.",
       ),
-      related("type-food-hall", "floor-editor", "floor-status", "table-qr", "feature-waitlist", "feature-kiosk"),
+      related("type-food-hall", "floor-editor", "floor-status", "table-qr", "feature-waitlist", "feature-kiosk", "tip-pooling"),
     ],
   }),
   topic({
@@ -101,7 +105,11 @@ export const ESTABLISHMENT_TYPE_TOPICS: GuideTopic[] = [
         "Onboard a host + operators location",
         "Intake and the setup wizard create a real tenant. Marketing Get pricing is this path.",
       ),
-      related("host-capture", "chargebacks", "system-ledger", "single-vs-multi", "type-restaurant"),
+      callout(
+        "Tips",
+        "Each employer inherits or overrides the location pool. Dual pool if food vs drink operators share a floor. The host does not pool across operators unless that employer says so.",
+      ),
+      related("host-capture", "chargebacks", "system-ledger", "single-vs-multi", "type-restaurant", "tip-pooling"),
     ],
   }),
   topic({
@@ -131,11 +139,15 @@ export const ESTABLISHMENT_TYPE_TOPICS: GuideTopic[] = [
         "Payments",
         "Quantum Payments is the only guest card. Tabs are not a second processor.",
       ),
+      callout(
+        "Tips",
+        "Typical: bar pool — all wells together, or each well on its own. Mix-based tip-out is optional.",
+      ),
       p(
         "A lounge waitlist is the same kiosk flow. Tabs are not a substitute for a quoted wait when the room is full.",
       ),
       cta("/get-pricing", "Onboard a bar & lounge"),
-      related("type-restaurant", "feature-waitlist", "feature-kiosk"),
+      related("type-restaurant", "feature-waitlist", "feature-kiosk", "tip-pooling"),
     ],
   }),
   topic({
@@ -162,11 +174,15 @@ export const ESTABLISHMENT_TYPE_TOPICS: GuideTopic[] = [
         "Take Quantum Payments at the register and close.",
       ),
       callout("Payments", "One card at the counter. Quantum Payments only."),
+      callout(
+        "Tips",
+        "Typical: individual. Team pool if the counter shares. Pooling rules vary by state — policy only.",
+      ),
       p(
         "QSR kiosks usually stay on Order. Enable Combined only if you also take names for a make-line wait.",
       ),
       cta("/get-pricing", "Onboard a QSR"),
-      related("type-cafe", "type-ghost-kitchen", "feature-kiosk"),
+      related("type-cafe", "type-ghost-kitchen", "feature-kiosk", "tip-pooling"),
     ],
   }),
   topic({
@@ -192,8 +208,12 @@ export const ESTABLISHMENT_TYPE_TOPICS: GuideTopic[] = [
         "Send so each station gets its ticket.",
         "Pay once with Quantum Payments.",
       ),
+      callout(
+        "Tips",
+        "Typical: team pool (counter + espresso), or individual + tip-out between bar and pastry.",
+      ),
       cta("/get-pricing", "Onboard a café"),
-      related("type-qsr", "type-bar-lounge", "feature-kiosk"),
+      related("type-qsr", "type-bar-lounge", "feature-kiosk", "tip-pooling"),
     ],
   }),
   topic({
@@ -223,8 +243,12 @@ export const ESTABLISHMENT_TYPE_TOPICS: GuideTopic[] = [
         "Multi-operator",
         "A pod can settle trucks like a hall settles stalls. Use host + operators when more than one window feeds a shared capture.",
       ),
+      callout(
+        "Tips",
+        "Typical: individual per window. The lot host does not pool across trucks.",
+      ),
       cta("/get-pricing", "Onboard a truck pod"),
-      related("type-food-hall", "host-capture", "settlement"),
+      related("type-food-hall", "host-capture", "settlement", "tip-pooling"),
     ],
   }),
   topic({
@@ -250,8 +274,12 @@ export const ESTABLISHMENT_TYPE_TOPICS: GuideTopic[] = [
         "Bump when the bag is ready.",
         "Close on Quantum Payments. No second processor for delivery.",
       ),
+      callout(
+        "Tips",
+        "Typical: individual — no dining-room pool.",
+      ),
       cta("/get-pricing", "Onboard a ghost kitchen"),
-      related("type-qsr", "type-catering", "kds"),
+      related("type-qsr", "type-catering", "kds", "tip-pooling"),
     ],
   }),
   topic({
@@ -277,8 +305,12 @@ export const ESTABLISHMENT_TYPE_TOPICS: GuideTopic[] = [
         "Send so the commissary line sees the pack list.",
         "Capture once for the job.",
       ),
+      callout(
+        "Tips",
+        "Typical: team pool on the event crew, or individual.",
+      ),
       cta("/get-pricing", "Onboard a catering kitchen"),
-      related("type-ghost-kitchen", "type-restaurant", "menu-modifiers"),
+      related("type-ghost-kitchen", "type-restaurant", "menu-modifiers", "tip-pooling"),
     ],
   }),
 ];

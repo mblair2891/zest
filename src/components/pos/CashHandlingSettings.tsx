@@ -31,6 +31,7 @@ import {
 import type { DeviceRole } from "@/lib/pos/device-roles";
 import { DEVICE_ROLE_LABEL } from "@/lib/pos/device-roles";
 import { HOST_SCOPE } from "@/lib/access/entity-grants";
+import { tipOutWithMode } from "@/lib/pos/tip-pooling";
 import { TipPoolingSettings } from "./TipPoolingSettings";
 
 function save(next: CashHandlingConfig) {
@@ -509,9 +510,26 @@ export function CashHandlingSettings({ write }: { write: boolean }) {
           className="mt-0.5 h-4 w-4 rounded border-border"
           disabled={!write}
           checked={cfg.tipOutEnabled}
-          onChange={(e) => patch({ tipOutEnabled: e.target.checked })}
+          onChange={(e) => {
+            const on = e.target.checked;
+            const mode = cfg.tipPooling.mode;
+            patch({
+              tipOutEnabled: on,
+              tipPooling: {
+                ...cfg.tipPooling,
+                combineTipOut: on,
+                mode: on
+                  ? mode === "individual"
+                    ? "individual_plus_tipout"
+                    : mode
+                  : mode === "individual_plus_tipout"
+                    ? "individual"
+                    : mode,
+              },
+            });
+          }}
         />
-        <span>Enable mix-based tip-out recommendations (not payroll)</span>
+        <span>Enable mix-based tip-out recommendations (not payroll). Pool modes can combine this with a house pool.</span>
       </label>
       <Field label="Tip-out basis">
         <select
@@ -686,12 +704,7 @@ export function CashHandlingSettings({ write }: { write: boolean }) {
         onChange={(tipPooling) =>
           patch({
             tipPooling,
-            tipOutEnabled:
-              tipPooling.mode === "individual"
-                ? false
-                : tipPooling.mode === "individual_plus_tipout"
-                  ? true
-                  : cfg.tipOutEnabled,
+            tipOutEnabled: tipOutWithMode(tipPooling),
           })
         }
       />

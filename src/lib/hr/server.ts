@@ -908,12 +908,18 @@ export async function buildPayrollExport(
     periodStart: string;
     periodEnd: string;
     push?: boolean;
+    closeoutNets?: Array<{
+      employeeId: string;
+      netTipsCents: number;
+      poolInCents: number;
+      poolOutCents: number;
+    }>;
   },
 ): Promise<import("@/lib/labor/payroll-export").PayrollPushResult & {
   batch: import("@/lib/labor/payroll-export").PayrollExportBatch;
   connector: import("@/lib/labor/payroll-connectors").PayrollConnectorStatus;
 }> {
-  const { departmentForRole, isCardTender, isCashTender, mergeTipSplits } = await import(
+  const { departmentForRole, isCardTender, isCashTender, mergeCloseoutNets, mergeTipSplits } = await import(
     "@/lib/labor/payroll-export"
   );
   const { parseCashHandling, payrollIncludesCardTips, resolveCcTipPayout } = await import(
@@ -1027,6 +1033,7 @@ export async function buildPayrollExport(
       };
     })
     .sort((a, b) => a.employeeName.localeCompare(b.employeeName));
+  const withPools = mergeCloseoutNets(lines, data.closeoutNets);
   const batch = {
     employerId: data.employerId,
     employerName: data.employerName || data.employerId,
@@ -1035,7 +1042,7 @@ export async function buildPayrollExport(
     periodStart: data.periodStart.slice(0, 10),
     periodEnd: data.periodEnd.slice(0, 10),
     provider,
-    lines,
+    lines: withPools,
   };
   const connector = connectorStatus(provider);
   const result = data.push

@@ -128,7 +128,7 @@
       <h1>Summex</h1>
       <p class="sub">Hospitality operations and money movement. Powered by Quantum Reach.</p>
       <p class="meta">summex.app · Guest cards: Quantum Payments only</p>
-      <p class="revision"><strong>Revision · 28 Oct 2026</strong> — CC tips cash-at-close vs paycheck vs cash-tips-only-at-close. Aligns with Operators Guide v2026.10.28.</p>
+      <p class="revision"><strong>Revision · 29 Oct 2026</strong> — Tip pools: individual, tip-out, FOH / bar / team / dual. Location-configurable. Aligns with Operators Guide v2026.10.29.</p>
     </header>
 
     <h2>1. Executive summary</h2>
@@ -219,8 +219,17 @@
       <li><strong>paycheck</strong> — closeout shows card tips as informational; cash due from card tips is $0; card tips go on the hours-export file. Summex does not run payroll.</li>
       <li><strong>cash_tips_only_at_close</strong> — only declared cash tips are settled in person; card tips always export to payroll.</li>
     </ul>
-    <p>Pools: individual, tip-out, FOH, bar, team, dual. Autograt and service charge are distinct from tip pools.</p>
-    <p><strong>Summex does not process payroll.</strong> Hours export to ADP, Intuit, or CSV. Staffing recommendations are cut / hold / add only — never auto clock-out.</p>
+    <p>Pools are a location (or employer-entity) setting. A pool mode can combine mix-based tip-out. Payout uses cash-at-close vs paycheck.</p>
+    <ul>
+      <li><strong>individual</strong> — each person keeps their own tips.</li>
+      <li><strong>individual_plus_tipout</strong> — keep own tips after mix-based tip-outs.</li>
+      <li><strong>foh_pool</strong> — servers, hosts, bussers, cashiers share one pool.</li>
+      <li><strong>bar_pool</strong> — bartenders share all wells together, or each well on its own.</li>
+      <li><strong>team_pool</strong> — one pool for every included role.</li>
+      <li><strong>dual_pool</strong> — food-line ownership funds the FOH pool; drink-line ownership funds the bar pool.</li>
+    </ul>
+    <p>Contribution, split (hours / points / equal / sales / manual), include/exclude roles, managers excluded by default, settle at shift or pay period. Auto-grat stays with the server, enters the pool, or splits. Service charge is house or a percent to staff — never labeled a tip unless that box is checked. Closeout shows own tips, tip-outs, pool in, pool out, net due now vs paycheck. Reports and the hours CSV list net by person and pool.</p>
+    <p><strong>Pooling rules vary by state. Summex calculates the configured policy only — not legal advice and not a payroll run.</strong> Hours, OT, declared and card tips export to ADP, Intuit, or CSV. Staffing recommendations are <strong>cut / hold / add only</strong> — never auto clock-out.</p>
 
     <h2>11. Cash discount model</h2>
     <p>Printed / card price is the source of truth. When cash discount is enabled: <code>cashRaw = printed × (1 − percent/100)</code>, then round <strong>up</strong> to the increment ($0.25, $0.50, $0.75, or $1.00). Exact multiples stay.</p>

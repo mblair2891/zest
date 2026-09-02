@@ -3,7 +3,7 @@
 **Powered by Quantum Reach**
 
 White paper · October 2026  
-**Revision · 28 Oct 2026** — CC tips cash-at-close vs paycheck vs cash-tips-only-at-close. Aligns with Operators Guide v2026.10.28.
+**Revision · 29 Oct 2026** — Tip pools: individual, tip-out, FOH / bar / team / dual. Location-configurable. Aligns with Operators Guide v2026.10.29.
 
 summex.app  
 Guest cards: **Quantum Payments** only
@@ -175,9 +175,18 @@ Card tips follow a location (or employer-entity) setting:
 - **paycheck** — closeout shows card tips as informational; cash due from card tips is $0; card tips go on the hours-export file. Summex does not run payroll.
 - **cash_tips_only_at_close** — only declared cash tips are settled in person; card tips always export to payroll.
 
-Pools: individual, tip-out, FOH, bar, team, dual. Autograt and service charge are distinct from tip pools.
+Pools are a location (or employer-entity) setting. A pool mode can combine mix-based tip-out. Payout uses cash-at-close vs paycheck.
 
-**Summex does not process payroll.** Hours, OT, declared and card tips export to ADP, Intuit, or CSV. Staffing recommendations are **cut / hold / add only** — never auto clock-out.
+- **individual** — each person keeps their own tips.
+- **individual_plus_tipout** — keep own tips after mix-based tip-outs.
+- **foh_pool** — servers, hosts, bussers, cashiers share one pool.
+- **bar_pool** — bartenders share all wells together, or each well on its own.
+- **team_pool** — one pool for every included role.
+- **dual_pool** — food-line ownership funds the FOH pool; drink-line ownership funds the bar pool.
+
+Contribution, split (hours / points / equal / sales / manual), include/exclude roles, managers excluded by default, settle at shift or pay period. Auto-grat stays with the server, enters the pool, or splits. Service charge is house or a percent to staff — never labeled a tip unless that box is checked. Closeout shows own tips, tip-outs, pool in, pool out, net due now vs paycheck. Reports and the hours CSV list net by person and pool.
+
+**Pooling rules vary by state. Summex calculates the configured policy only — not legal advice and not a payroll run.** Hours, OT, declared and card tips export to ADP, Intuit, or CSV. Staffing recommendations are **cut / hold / add only** — never auto clock-out.
 
 ---
 

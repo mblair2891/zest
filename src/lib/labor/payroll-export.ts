@@ -145,3 +145,37 @@ export function isCardTender(method: string): boolean {
 export function isCashTender(method: string): boolean {
   return method.toLowerCase() === "cash";
 }
+
+export type CloseoutNetInput = {
+  employeeId: string;
+  netTipsCents: number;
+  poolInCents: number;
+  poolOutCents: number;
+};
+
+export function mergeCloseoutNets(
+  lines: PayrollExportLine[],
+  nets: CloseoutNetInput[] | undefined,
+): PayrollExportLine[] {
+  if (!nets?.length) return lines;
+  const by = new Map<string, CloseoutNetInput>();
+  for (const n of nets) {
+    const id = String(n.employeeId ?? "").slice(0, 80);
+    if (!id) continue;
+    const cur = by.get(id) ?? { employeeId: id, netTipsCents: 0, poolInCents: 0, poolOutCents: 0 };
+    cur.netTipsCents += Math.max(0, Math.round(Number(n.netTipsCents) || 0));
+    cur.poolInCents += Math.max(0, Math.round(Number(n.poolInCents) || 0));
+    cur.poolOutCents += Math.max(0, Math.round(Number(n.poolOutCents) || 0));
+    by.set(id, cur);
+  }
+  return lines.map((line) => {
+    const n = by.get(line.employeeId);
+    if (!n) return line;
+    return {
+      ...line,
+      netTipsCents: n.netTipsCents,
+      poolInCents: n.poolInCents,
+      poolOutCents: n.poolOutCents,
+    };
+  });
+}

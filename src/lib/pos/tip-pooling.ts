@@ -1,4 +1,4 @@
-import type { EmployeeRole, Order } from "./types";
+import type { EmployeeRole, Order, VenueEntityId } from "./types";
 import type { TimePunch } from "./ops-types";
 import type { CcTipPayout } from "./cash-handling";
 
@@ -67,9 +67,48 @@ export const TIP_POOL_MODE_BLURB: Record<TipPoolMode, string> = {
   dual_pool: "Food-line tips pool to FOH; drink-line tips pool to bar, from ticket line ownership.",
 };
 
+export const POOL_CONTRIBUTION_LABEL: Record<PoolContribution, string> = {
+  card_tips: "Card tips",
+  cash_declared: "Declared cash tips",
+  both: "Card + declared cash",
+  percent_of_tips: "% of tips",
+  percent_of_sales: "% of sales",
+};
+
+export const POOL_SPLIT_LABEL: Record<PoolSplit, string> = {
+  hours: "Hours worked",
+  points: "Point table × hours",
+  equal: "Equal shares",
+  sales: "Sales",
+  manual: "Manual at closeout",
+};
+
+export const POOL_SETTLE_LABEL: Record<PoolSettle, string> = {
+  end_of_shift: "End of shift",
+  end_of_pay_period: "End of pay period",
+};
+
+export const AUTOGRAT_DEST_LABEL: Record<AutogratDest, string> = {
+  stays_with_server: "Stays with the server",
+  enters_pool: "Enters the pool",
+  split_custom: "Split custom",
+};
+
+export const SERVICE_CHARGE_DEST_LABEL: Record<ServiceChargeDest, string> = {
+  house: "House (not a tip)",
+  percent_to_staff_pool: "% to staff pool",
+};
+
+export const BAR_POOL_SCOPE_LABEL: Record<BarPoolScope, string> = {
+  all_wells: "All wells together",
+  per_well: "Per well",
+};
+
 export type TipPoolingConfig = {
   mode: TipPoolMode;
   barPoolScope: BarPoolScope;
+  /** When a pool mode is on, mix-based tip-out can run as well. */
+  combineTipOut: boolean;
   contribution: PoolContribution;
   contributionPercent: number;
   split: PoolSplit;
@@ -98,6 +137,7 @@ export const DEFAULT_ROLE_POINTS: Partial<Record<EmployeeRole, number>> = {
 export const DEFAULT_TIP_POOLING: TipPoolingConfig = {
   mode: "individual_plus_tipout",
   barPoolScope: "all_wells",
+  combineTipOut: true,
   contribution: "both",
   contributionPercent: 100,
   split: "hours",
@@ -112,6 +152,99 @@ export const DEFAULT_TIP_POOLING: TipPoolingConfig = {
   excludeRoles: ["owner", "manager", "accountant", "kiosk", "vendor_operator"],
   excludeManagers: true,
 };
+
+export function cloneTipPooling(cfg: TipPoolingConfig): TipPoolingConfig {
+  return {
+    ...cfg,
+    includeRoles: [...cfg.includeRoles],
+    excludeRoles: [...cfg.excludeRoles],
+    rolePoints: { ...cfg.rolePoints },
+  };
+}
+
+export type VenuePoolHint = {
+  mode: TipPoolMode;
+  barPoolScope: BarPoolScope;
+  combineTipOut: boolean;
+  blurb: string;
+};
+
+/** Typical starting policy per establishment type. Location still configures the form. */
+export function recommendedPoolingForVenue(venue?: VenueEntityId | string | null): VenuePoolHint {
+  switch (venue) {
+    case "bar_lounge":
+      return {
+        mode: "bar_pool",
+        barPoolScope: "all_wells",
+        combineTipOut: false,
+        blurb: "Bar & lounge: bar pool (all wells, or per well). Mix-based tip-out optional.",
+      };
+    case "food_hall":
+      return {
+        mode: "individual_plus_tipout",
+        barPoolScope: "all_wells",
+        combineTipOut: true,
+        blurb: "Host venue: each employer inherits or overrides. Dual pool if food vs drink operators share a floor.",
+      };
+    case "cafe":
+      return {
+        mode: "team_pool",
+        barPoolScope: "all_wells",
+        combineTipOut: true,
+        blurb: "Café: team pool (counter + espresso), or individual + tip-out between bar and pastry.",
+      };
+    case "qsr":
+      return {
+        mode: "individual",
+        barPoolScope: "all_wells",
+        combineTipOut: false,
+        blurb: "QSR: usually individual; team pool if the counter shares.",
+      };
+    case "truck_pod":
+      return {
+        mode: "individual",
+        barPoolScope: "all_wells",
+        combineTipOut: false,
+        blurb: "Truck pod: individual per window. The lot host does not pool across trucks.",
+      };
+    case "ghost_kitchen":
+      return {
+        mode: "individual",
+        barPoolScope: "all_wells",
+        combineTipOut: false,
+        blurb: "Ghost kitchen: individual — no dining-room pool.",
+      };
+    case "catering":
+      return {
+        mode: "team_pool",
+        barPoolScope: "all_wells",
+        combineTipOut: false,
+        blurb: "Catering: team pool on the event crew, or individual.",
+      };
+    case "restaurant":
+    default:
+      return {
+        mode: "individual_plus_tipout",
+        barPoolScope: "all_wells",
+        combineTipOut: true,
+        blurb: "Full-service: individual + mix-based tip-out. FOH or dual pool if the house shares.",
+      };
+  }
+}
+
+export function applyVenuePoolingHint(
+  cfg: TipPoolingConfig,
+  venue?: VenueEntityId | string | null,
+): TipPoolingConfig {
+  const hint = recommendedPoolingForVenue(venue);
+  return {
+    ...cloneTipPooling(cfg),
+    mode: hint.mode,
+    barPoolScope: hint.barPoolScope,
+    combineTipOut: hint.combineTipOut,
+    includeRoles: includeRolesForMode(hint.mode),
+  };
+}
 
 function asMode(raw: unknown): TipPoolMode | null {
   const s = String(raw ?? "");
@@ -163,6 +296,7 @@ export function parseTipPooling(raw: unknown): TipPoolingConfig {
   return {
     mode,
     barPoolScope: o.barPoolScope === "per_well" ? "per_well" : "all_wells",
+    combineTipOut: o.combineTipOut !== false,
     contribution: (POOL_CONTRIBUTIONS as readonly string[]).includes(String(o.contribution))
       ? (o.contribution as PoolContribution)
       : d.contribution,
@@ -213,8 +347,11 @@ export function poolingActive(cfg: TipPoolingConfig): boolean {
   return cfg.mode === "foh_pool" || cfg.mode === "bar_pool" || cfg.mode === "team_pool" || cfg.mode === "dual_pool";
 }
 
+/** Mix-based tip-out: always on for individual_plus_tipout; optional on a pool mode. */
 export function tipOutWithMode(cfg: TipPoolingConfig): boolean {
-  return cfg.mode === "individual_plus_tipout" || poolingActive(cfg);
+  if (cfg.mode === "individual") return false;
+  if (cfg.mode === "individual_plus_tipout") return true;
+  return poolingActive(cfg) && cfg.combineTipOut !== false;
 }
 
 export function roleInPool(cfg: TipPoolingConfig, role: string): boolean {
@@ -400,22 +537,16 @@ export function participantsForPool(
 ): PoolParticipant[] {
   return people.filter((p) => {
     if (!roleInPool(cfg, p.role)) return false;
-    if (poolKey === "foh" || poolKey === "food") {
-      return p.role !== "bartender" || cfg.mode === "team_pool";
-    }
-    if (poolKey === "bar" || poolKey === "drink") {
-      return cfg.mode === "dual_pool" || cfg.mode === "bar_pool" || cfg.mode === "team_pool"
-        ? cfg.mode === "dual_pool"
-          ? p.role === "bartender"
-          : cfg.mode === "bar_pool"
-            ? p.role === "bartender"
-            : true
-        : p.role === "bartender";
-    }
     if (poolKey.startsWith("well:")) {
       const id = poolKey.slice(5);
       return p.role === "bartender" && (p.wellId === id || !p.wellId);
     }
+    if (cfg.mode === "dual_pool") {
+      if (poolKey === "food" || poolKey === "foh") return p.role !== "bartender";
+      if (poolKey === "drink" || poolKey === "bar") return p.role === "bartender";
+    }
+    if (cfg.mode === "bar_pool") return p.role === "bartender";
+    if (cfg.mode === "foh_pool") return p.role !== "bartender";
     return true;
   });
 }

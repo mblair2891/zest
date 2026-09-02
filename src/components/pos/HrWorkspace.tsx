@@ -16,7 +16,7 @@ import {
   CC_TIP_PAYOUT_BLURB,
   type CcTipPayoutSetting,
 } from "@/lib/pos/cash-handling";
-import { DEFAULT_TIP_POOLING, type TipPoolingSetting } from "@/lib/pos/tip-pooling";
+import { cloneTipPooling, DEFAULT_TIP_POOLING, type TipPoolingSetting } from "@/lib/pos/tip-pooling";
 import { TipPoolingSettings } from "./TipPoolingSettings";
 import { useOpsStore } from "@/lib/pos/ops-store";
 import {
@@ -512,12 +512,7 @@ export function HrSettingsCard({
             setTipPooling(
               e.target.value === "inherit"
                 ? "inherit"
-                : {
-                    ...DEFAULT_TIP_POOLING,
-                    includeRoles: [...DEFAULT_TIP_POOLING.includeRoles],
-                    excludeRoles: [...DEFAULT_TIP_POOLING.excludeRoles],
-                    rolePoints: { ...DEFAULT_TIP_POOLING.rolePoints },
-                  },
+                : cloneTipPooling(DEFAULT_TIP_POOLING),
             )
           }
         >

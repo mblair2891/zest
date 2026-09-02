@@ -61,7 +61,7 @@ export const HR_TOPICS: GuideTopic[] = [
       warn(
         "Summex does not print checks, e-file taxes, or calculate net pay. Wage rates in HR visibility are not a pay run.",
       ),
-      related("ops-jobs", "shift-allowables", "entity-schedule-payroll", "hr-employment", "role-owner", "server-closeout"),
+      related("ops-jobs", "shift-allowables", "entity-schedule-payroll", "hr-employment", "role-owner", "server-closeout", "tip-pooling"),
     ],
   }),
   topic({

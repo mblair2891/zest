@@ -1,15 +1,26 @@
 import type { ReactNode } from "react";
+import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { GuideLearnLink } from "@/components/guide/GuideLearnLink";
-import type { EmployeeRole } from "@/lib/pos/types";
+import { usePosStore } from "@/lib/pos/store";
+import type { EmployeeRole, VenueEntityId } from "@/lib/pos/types";
 import {
+  applyVenuePoolingHint,
+  AUTOGRAT_DEST_LABEL,
   AUTOGRAT_DESTS,
+  BAR_POOL_SCOPE_LABEL,
   BAR_POOL_SCOPES,
   DEFAULT_ROLE_POINTS,
   includeRolesForMode,
+  POOL_CONTRIBUTION_LABEL,
   POOL_CONTRIBUTIONS,
+  POOL_SETTLE_LABEL,
   POOL_SETTLES,
+  POOL_SPLIT_LABEL,
   POOL_SPLITS,
+  poolingActive,
+  recommendedPoolingForVenue,
+  SERVICE_CHARGE_DEST_LABEL,
   SERVICE_CHARGE_DESTS,
   TIP_POOL_MODE_BLURB,
   TIP_POOL_MODE_LABEL,
@@ -43,31 +54,29 @@ function Field({
   );
 }
 
-const CONTRIB_LABEL: Record<PoolContribution, string> = {
-  card_tips: "Card tips",
-  cash_declared: "Declared cash tips",
-  both: "Card + declared cash",
-  percent_of_tips: "% of tips",
-  percent_of_sales: "% of sales",
-};
-
-const SPLIT_LABEL: Record<PoolSplit, string> = {
-  hours: "Hours worked",
-  points: "Point table × hours",
-  equal: "Equal shares",
-  sales: "Sales",
-  manual: "Manual at closeout",
-};
+const EXCLUDE_CHOICES: EmployeeRole[] = [
+  "manager",
+  "owner",
+  "kitchen",
+  "accountant",
+  "vendor_operator",
+];
 
 export function TipPoolingSettings({
   cfg,
   write,
   onChange,
+  venueType,
 }: {
   cfg: TipPoolingConfig;
   write: boolean;
   onChange: (next: TipPoolingConfig) => void;
+  venueType?: VenueEntityId | string | null;
 }) {
+  const storeVenue = usePosStore((s) => s.activeEntityId);
+  const venue = venueType ?? storeVenue;
+  const hint = recommendedPoolingForVenue(venue);
+  const active = poolingActive(cfg);
   const patch = (p: Partial<TipPoolingConfig>) => {
     if (!write) return;
     onChange({ ...cfg, ...p });
@@ -87,6 +96,19 @@ export function TipPoolingSettings({
         Pooling rules vary by state. Summex calculates the policy you set — it is not legal advice
         and not a payroll run.
       </p>
+      <p className="text-[11px] text-muted-foreground">
+        Typical for this house type: {hint.blurb}
+      </p>
+      {write && (
+        <Button
+          type="button"
+          size="sm"
+          variant="outline"
+          onClick={() => onChange(applyVenuePoolingHint(cfg, venue))}
+        >
+          Apply typical ({TIP_POOL_MODE_LABEL[hint.mode]})
+        </Button>
+      )}
       <Field label="Mode" hint={TIP_POOL_MODE_BLURB[cfg.mode]}>
         <select
           className="h-9 w-full rounded-lg border border-border bg-bg px-2 text-sm"
@@ -94,7 +116,11 @@ export function TipPoolingSettings({
           value={cfg.mode}
           onChange={(e) => {
             const mode = e.target.value as TipPoolMode;
-            patch({ mode, includeRoles: includeRolesForMode(mode) });
+            patch({
+              mode,
+              includeRoles: includeRolesForMode(mode),
+              combineTipOut: mode === "individual_plus_tipout" ? true : mode === "individual" ? false : cfg.combineTipOut,
+            });
           }}
         >
           {TIP_POOL_MODES.map((m) => (
@@ -114,66 +140,82 @@ export function TipPoolingSettings({
           >
             {BAR_POOL_SCOPES.map((s) => (
               <option key={s} value={s}>
-                {s === "all_wells" ? "All wells together" : "Per well"}
+                {BAR_POOL_SCOPE_LABEL[s]}
               </option>
             ))}
           </select>
         </Field>
       )}
-      <Field label="Pool contribution">
-        <select
-          className="h-9 w-full rounded-lg border border-border bg-bg px-2 text-sm"
-          disabled={!write}
-          value={cfg.contribution}
-          onChange={(e) => patch({ contribution: e.target.value as PoolContribution })}
-        >
-          {POOL_CONTRIBUTIONS.map((c) => (
-            <option key={c} value={c}>
-              {CONTRIB_LABEL[c]}
-            </option>
-          ))}
-        </select>
-      </Field>
-      {(cfg.contribution === "percent_of_tips" || cfg.contribution === "percent_of_sales") && (
-        <Field label="Contribution percent">
-          <Input
+      {active && (
+        <label className="flex items-start gap-2 text-sm">
+          <input
+            type="checkbox"
+            className="mt-0.5 h-4 w-4 rounded border-border"
             disabled={!write}
-            inputMode="decimal"
-            value={String(cfg.contributionPercent)}
-            onChange={(e) =>
-              patch({ contributionPercent: Math.max(0, parseFloat(e.target.value) || 0) })
-            }
+            checked={cfg.combineTipOut !== false}
+            onChange={(e) => patch({ combineTipOut: e.target.checked })}
           />
-        </Field>
+          <span>Combine mix-based tip-out with this pool (kitchen / bar / host / busser recs)</span>
+        </label>
       )}
-      <Field label="Pool split">
-        <select
-          className="h-9 w-full rounded-lg border border-border bg-bg px-2 text-sm"
-          disabled={!write}
-          value={cfg.split}
-          onChange={(e) => patch({ split: e.target.value as PoolSplit })}
-        >
-          {POOL_SPLITS.map((s) => (
-            <option key={s} value={s}>
-              {SPLIT_LABEL[s]}
-            </option>
-          ))}
-        </select>
-      </Field>
-      <Field label="Settle">
-        <select
-          className="h-9 w-full rounded-lg border border-border bg-bg px-2 text-sm"
-          disabled={!write}
-          value={cfg.settle}
-          onChange={(e) => patch({ settle: e.target.value as PoolSettle })}
-        >
-          {POOL_SETTLES.map((s) => (
-            <option key={s} value={s}>
-              {s === "end_of_shift" ? "End of shift" : "End of pay period"}
-            </option>
-          ))}
-        </select>
-      </Field>
+      {active && (
+        <>
+          <Field label="Pool contribution">
+            <select
+              className="h-9 w-full rounded-lg border border-border bg-bg px-2 text-sm"
+              disabled={!write}
+              value={cfg.contribution}
+              onChange={(e) => patch({ contribution: e.target.value as PoolContribution })}
+            >
+              {POOL_CONTRIBUTIONS.map((c) => (
+                <option key={c} value={c}>
+                  {POOL_CONTRIBUTION_LABEL[c]}
+                </option>
+              ))}
+            </select>
+          </Field>
+          {(cfg.contribution === "percent_of_tips" || cfg.contribution === "percent_of_sales") && (
+            <Field label="Contribution percent">
+              <Input
+                disabled={!write}
+                inputMode="decimal"
+                value={String(cfg.contributionPercent)}
+                onChange={(e) =>
+                  patch({ contributionPercent: Math.max(0, parseFloat(e.target.value) || 0) })
+                }
+              />
+            </Field>
+          )}
+          <Field label="Pool split">
+            <select
+              className="h-9 w-full rounded-lg border border-border bg-bg px-2 text-sm"
+              disabled={!write}
+              value={cfg.split}
+              onChange={(e) => patch({ split: e.target.value as PoolSplit })}
+            >
+              {POOL_SPLITS.map((s) => (
+                <option key={s} value={s}>
+                  {POOL_SPLIT_LABEL[s]}
+                </option>
+              ))}
+            </select>
+          </Field>
+          <Field label="Settle">
+            <select
+              className="h-9 w-full rounded-lg border border-border bg-bg px-2 text-sm"
+              disabled={!write}
+              value={cfg.settle}
+              onChange={(e) => patch({ settle: e.target.value as PoolSettle })}
+            >
+              {POOL_SETTLES.map((s) => (
+                <option key={s} value={s}>
+                  {POOL_SETTLE_LABEL[s]}
+                </option>
+              ))}
+            </select>
+          </Field>
+        </>
+      )}
       <Field
         label="Auto-grat"
         hint="Party-size auto-grat on the check. Split custom uses the percent below."
@@ -186,11 +228,7 @@ export function TipPoolingSettings({
         >
           {AUTOGRAT_DESTS.map((d) => (
             <option key={d} value={d}>
-              {d === "stays_with_server"
-                ? "Stays with the server"
-                : d === "enters_pool"
-                  ? "Enters the pool"
-                  : "Split custom"}
+              {AUTOGRAT_DEST_LABEL[d]}
             </option>
           ))}
         </select>
@@ -219,7 +257,7 @@ export function TipPoolingSettings({
         >
           {SERVICE_CHARGE_DESTS.map((d) => (
             <option key={d} value={d}>
-              {d === "house" ? "House (not a tip)" : "% to staff pool"}
+              {SERVICE_CHARGE_DEST_LABEL[d]}
             </option>
           ))}
         </select>
@@ -250,60 +288,87 @@ export function TipPoolingSettings({
           </label>
         </>
       )}
-      <label className="flex items-start gap-2 text-sm">
-        <input
-          type="checkbox"
-          className="mt-0.5 h-4 w-4 rounded border-border"
-          disabled={!write}
-          checked={cfg.excludeManagers}
-          onChange={(e) => patch({ excludeManagers: e.target.checked })}
-        />
-        <span>Exclude managers and owners from the pool (default on)</span>
-      </label>
-      <div>
-        <p className="mb-2 text-xs text-muted-foreground">Include roles</p>
-        <div className="flex flex-wrap gap-2">
-          {TIP_POOL_STAFF_ROLES.map((role) => (
-            <label key={role} className="flex items-center gap-1 text-xs">
-              <input
-                type="checkbox"
-                disabled={!write}
-                checked={cfg.includeRoles.includes(role)}
-                onChange={(e) => {
-                  const includeRoles = e.target.checked
-                    ? [...cfg.includeRoles, role]
-                    : cfg.includeRoles.filter((r) => r !== role);
-                  patch({ includeRoles });
-                }}
-              />
-              {role}
-            </label>
-          ))}
-        </div>
-      </div>
-      <div>
-        <p className="mb-2 text-xs text-muted-foreground">Point table (per role)</p>
-        <ul className="grid gap-2 sm:grid-cols-2">
-          {TIP_POOL_STAFF_ROLES.map((role) => (
-            <li key={role} className="flex items-center gap-2">
-              <span className="w-24 text-xs">{role}</span>
-              <Input
-                disabled={!write}
-                inputMode="decimal"
-                value={String(cfg.rolePoints[role] ?? DEFAULT_ROLE_POINTS[role] ?? 0)}
-                onChange={(e) =>
-                  patch({
-                    rolePoints: {
-                      ...cfg.rolePoints,
-                      [role]: Math.max(0, parseFloat(e.target.value) || 0),
-                    },
-                  })
-                }
-              />
-            </li>
-          ))}
-        </ul>
-      </div>
+      {active && (
+        <>
+          <label className="flex items-start gap-2 text-sm">
+            <input
+              type="checkbox"
+              className="mt-0.5 h-4 w-4 rounded border-border"
+              disabled={!write}
+              checked={cfg.excludeManagers}
+              onChange={(e) => patch({ excludeManagers: e.target.checked })}
+            />
+            <span>Exclude managers and owners from the pool (default on)</span>
+          </label>
+          <div>
+            <p className="mb-2 text-xs text-muted-foreground">Include roles</p>
+            <div className="flex flex-wrap gap-2">
+              {TIP_POOL_STAFF_ROLES.map((role) => (
+                <label key={role} className="flex items-center gap-1 text-xs">
+                  <input
+                    type="checkbox"
+                    disabled={!write}
+                    checked={cfg.includeRoles.includes(role)}
+                    onChange={(e) => {
+                      const includeRoles = e.target.checked
+                        ? [...cfg.includeRoles, role]
+                        : cfg.includeRoles.filter((r) => r !== role);
+                      patch({ includeRoles });
+                    }}
+                  />
+                  {role}
+                </label>
+              ))}
+            </div>
+          </div>
+          <div>
+            <p className="mb-2 text-xs text-muted-foreground">Exclude roles</p>
+            <div className="flex flex-wrap gap-2">
+              {EXCLUDE_CHOICES.map((role) => (
+                <label key={role} className="flex items-center gap-1 text-xs">
+                  <input
+                    type="checkbox"
+                    disabled={!write}
+                    checked={cfg.excludeRoles.includes(role)}
+                    onChange={(e) => {
+                      const excludeRoles = e.target.checked
+                        ? [...cfg.excludeRoles, role]
+                        : cfg.excludeRoles.filter((r) => r !== role);
+                      patch({ excludeRoles });
+                    }}
+                  />
+                  {role}
+                </label>
+              ))}
+            </div>
+          </div>
+          {cfg.split === "points" && (
+            <div>
+              <p className="mb-2 text-xs text-muted-foreground">Point table (per role)</p>
+              <ul className="grid gap-2 sm:grid-cols-2">
+                {TIP_POOL_STAFF_ROLES.map((role) => (
+                  <li key={role} className="flex items-center gap-2">
+                    <span className="w-24 text-xs">{role}</span>
+                    <Input
+                      disabled={!write}
+                      inputMode="decimal"
+                      value={String(cfg.rolePoints[role] ?? DEFAULT_ROLE_POINTS[role] ?? 0)}
+                      onChange={(e) =>
+                        patch({
+                          rolePoints: {
+                            ...cfg.rolePoints,
+                            [role]: Math.max(0, parseFloat(e.target.value) || 0),
+                          },
+                        })
+                      }
+                    />
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+        </>
+      )}
     </div>
   );
 }

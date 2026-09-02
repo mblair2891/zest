@@ -215,21 +215,51 @@ export const CASH_GIFT_TOPICS: GuideTopic[] = [
         "Pooling and tip-credit rules vary by state. Summex calculates your configured policy only — it is not legal advice, not a payroll processor, and does not file taxes.",
       ),
       p(
-        "Individual: each person keeps their own tips. Individual + tip-out: mix-based recommendations to kitchen, bar, host, busser, then the rest stays with the server.",
+        "Settings → Cash drawers (Labor / HR can inherit or override per employer). A pool mode can combine mix-based tip-out. Payout uses the existing card-tips setting: cash_at_close or paycheck.",
+      ),
+      callout(
+        "individual",
+        "Each person keeps their own tips. No house pool. Typical for QSR, ghost kitchen, and a truck window.",
+      ),
+      callout(
+        "individual_plus_tipout",
+        "Keep own tips after mix-based tip-outs to kitchen, bar, host, and busser. Two servers with the same volume do not owe the same kitchen and bar amounts. Typical for a full-service dining room.",
+      ),
+      callout(
+        "foh_pool",
+        "Servers, hosts, bussers, and cashiers share one pool. Combine mix-based tip-out if kitchen or bar still gets a cut.",
+      ),
+      callout(
+        "bar_pool",
+        "Bartender tips share a pool — all wells together, or each well on its own. Typical for a bar & lounge.",
+      ),
+      callout(
+        "team_pool",
+        "One pool for every included role on the floor. Typical for a café counter or a catering event crew.",
+      ),
+      callout(
+        "dual_pool",
+        "Food-line ownership funds the FOH (food) pool; drink-line ownership funds the bar (drink) pool. Ticket station and drink course decide the split — not a flat percent of all sales.",
       ),
       p(
-        "FOH pool: servers, hosts, bussers, and cashiers share one pool. Bar pool: bartenders share all wells together or each well on its own. Team pool: every included role. Dual pool: food-line ownership funds the FOH pool; drink-line ownership funds the bar pool.",
-      ),
-      p(
-        "Contribution can be card tips, declared cash, both, a percent of tips, or a percent of sales. Split by hours, point table × hours, equal shares, sales, or manual at closeout. Managers are excluded by default. Settle at end of shift or hold until the pay period.",
+        "Contribution: card tips, declared cash, both, a percent of tips, or a percent of sales. Split: hours, point table × hours, equal shares, sales, or manual at closeout. Point table is per role. Include or exclude roles; managers are excluded by default. Settle at end of shift or hold until the pay period.",
       ),
       p(
         "Auto-grat stays with the server, enters the pool, or splits at a custom percent. Service charge is house money or a percent to the staff pool — never labeled a tip unless you check treat as tip.",
       ),
       p(
-        "Payout rail is the existing card-tips setting: cash out at closeout or on the hours-export file (paycheck). Closeout shows own tips, tip-outs, pool in, pool out, net due now vs paycheck. Reports → Tip pools and the closeout CSV list net tips by person and pool.",
+        "Closeout shows own tips, tip-outs, pool in, pool out, net due now vs paycheck. Reports → Tip pools and the hours CSV list net tips by person and by pool. Summex does not run payroll.",
       ),
-      related("server-closeout", "cash-handling", "payroll-export", "tenders-tips"),
+      ul(
+        "Restaurant: individual + mix-based tip-out; FOH or dual if the house shares.",
+        "Bar & lounge: bar pool, all wells or per well.",
+        "Café: team pool, or individual + tip-out between espresso and pastry.",
+        "QSR: individual; team pool if the counter shares.",
+        "Food hall: each employer inherits or overrides. Dual pool if food vs drink operators share a floor.",
+        "Truck pod / ghost kitchen: individual. The lot host does not pool across trucks.",
+        "Catering: team pool on the event crew, or individual.",
+      ),
+      related("server-closeout", "cash-handling", "payroll-export", "tenders-tips", "type-restaurant", "type-bar-lounge"),
     ],
   }),
   topic({
