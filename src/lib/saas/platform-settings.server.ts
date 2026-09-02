@@ -290,6 +290,11 @@ export async function pricingRulesFromStore(): Promise<{ version: number; rules:
       onboardingFeeCents: onboard,
       gmvScaleCents: billing.gmvScaleCents,
       basePlanByLocationType: billing.basePlanByLocationType,
+      setupFeeMode: billing.setupFeeMode,
+      setupFeeFlatCents: billing.setupFeeFlatCents,
+      quoteExpireDays: billing.quoteExpireDays,
+      terminalMonthlyCents: billing.terminalMonthlyCents,
+      terminalSetupCents: billing.terminalSetupCents,
     },
   };
 }

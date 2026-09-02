@@ -5,10 +5,9 @@ import {
   parsePricingRules,
   retotalQuote,
   emptyIntakeAnswers,
-  recommendedPlan,
-  locationCount,
 } from "./pricing";
-import { buildStructuredQuote, quoteDraftInputSchema } from "./quote-builder";
+import { buildIntakeQuote, quoteDraftInputSchema } from "./quote-builder";
+import { quoteHasSoftwarePackage, quoteIsSetupOnly } from "./pricing";
 import { payloadFromAnswers } from "./onboarding-defaults";
 import { parseMessages, parseRecommendation } from "./interview";
 import type { InterviewSource, InterviewStatus } from "./prospect-types";
@@ -598,33 +597,16 @@ export async function saveProspectAnswers(opts: {
 }
 
 async function suggestedQuote(prospect: ProspectRecord) {
-  const { loadPlanRows, loadBillingSettings } = await import("./platform-settings.server");
+  const { loadBillingSettings } = await import("./platform-settings.server");
   const { version, rules } = await loadPricingRules();
-  const plans = await loadPlanRows();
   const billing = await loadBillingSettings();
-  const slug = recommendedPlan(prospect.answers, rules);
-  const plan =
-    plans.find((p) => p.slug === slug && p.active) ??
-    plans.find((p) => p.active) ??
-    plans[0];
-  if (!plan) throw new Error("No software plans are configured");
-  const locs = locationCount(prospect.answers);
-  return buildStructuredQuote({
-    plan: {
-      slug: plan.slug,
-      name: plan.name,
-      active: plan.active,
-      monthlyCents: plan.monthlyCents,
-      onboardingFeeCents: plan.onboardingFeeCents,
-      maxLocations: plan.maxLocations,
-      maxSeats: plan.maxSeats,
-      modules: plan.modules,
-    },
-    locationCount: locs,
-    setupFeeCents: plan.onboardingFeeCents,
-    addOns: [],
+  return buildIntakeQuote({
+    answers: prospect.answers,
+    rules,
+    interview: prospect.interviewRecommendation,
     trialDays: billing.trialDays,
     rulesVersion: version,
+    expireDays: billing.quoteExpireDays ?? rules.quoteExpireDays,
     draft: true,
   });
 }
@@ -694,6 +676,7 @@ export async function saveQuoteDraft(opts: {
   }
   const parsed = quoteDraftInputSchema.parse(opts.input);
   const { loadPlanRows, loadBillingSettings } = await import("./platform-settings.server");
+  const { version, rules } = await loadPricingRules();
   const plans = await loadPlanRows();
   const billing = await loadBillingSettings();
   const plan = plans.find((p) => p.slug === parsed.planSlug);
@@ -701,25 +684,24 @@ export async function saveQuoteDraft(opts: {
   if (!plan.active && prospect.quote?.planSlug !== plan.slug) {
     throw new Error("That plan is not active");
   }
-  const quote = buildStructuredQuote({
-    plan: {
-      slug: plan.slug,
-      name: plan.name,
-      active: plan.active,
-      monthlyCents: plan.monthlyCents,
-      onboardingFeeCents: plan.onboardingFeeCents,
-      maxLocations: plan.maxLocations,
-      maxSeats: plan.maxSeats,
-      modules: plan.modules,
-    },
+  const quote = buildIntakeQuote({
+    answers: prospect.answers,
+    rules,
+    interview: prospect.interviewRecommendation,
+    planSlug: parsed.planSlug,
     locationCount: parsed.locationCount,
     setupFeeCents: parsed.setupFeeCents,
     addOns: parsed.addOns,
+    terminalQty: parsed.terminalQty,
     trialDays: billing.trialDays,
-    rulesVersion: billing.rulesVersion,
+    rulesVersion: version,
+    expireDays: billing.quoteExpireDays ?? rules.quoteExpireDays,
     draft: prospect.status !== "quoted",
     sentAt: prospect.status === "quoted" ? prospect.quote?.sentAt ?? new Date().toISOString() : null,
   });
+  if (quoteIsSetupOnly(quote) || !quoteHasSoftwarePackage(quote)) {
+    throw new Error("Quote must include a monthly software package from intake — setup fee cannot be the only line.");
+  }
   const sql = await getSql();
   await sql`
     update prospects
@@ -748,10 +730,13 @@ export async function sendQuote(opts: {
   if (["live", "churned", "rejected", "contracted", "onboarding"].includes(prospect.status)) {
     throw new Error("Quote cannot be sent from this status");
   }
-  if (!prospect.quote) throw new Error("Save a draft quote first (plan + price + location count)");
+  if (!prospect.quote) throw new Error("Save a draft quote first (monthly package from intake)");
   const locN = Number(prospect.quote.locationCount ?? prospect.quote.maxLocations ?? 0);
   if (!prospect.quote.planSlug || locN < 1) {
-    throw new Error("Quote needs a plan and at least one location before send");
+    throw new Error("Quote needs a package and at least one location before send");
+  }
+  if (quoteIsSetupOnly(prospect.quote) || !quoteHasSoftwarePackage(prospect.quote)) {
+    throw new Error("Cannot send a setup-only quote. Rebuild from intake so monthly software is on the proposal.");
   }
   const now = new Date().toISOString();
   const quote = { ...prospect.quote, draft: false, sentAt: now, generatedAt: now };
@@ -782,6 +767,45 @@ export async function sendQuote(opts: {
   return next;
 }
 
+export async function requestQuoteChanges(opts: {
+  userId: string | null;
+  token: string;
+  message: string;
+}): Promise<ProspectRecord> {
+  const row = await getRowByToken(opts.token.trim());
+  if (!row) throw new Error("Prospect not found");
+  const prospect = mapProspect(row);
+  await assertCanAccessProspect({ userId: opts.userId, prospect, token: opts.token, write: true });
+  if (prospect.status !== "quoted") throw new Error("Request changes after the proposal is sent");
+  const message = opts.message.trim().slice(0, 2000);
+  if (message.length < 4) throw new Error("Say what you need changed");
+  const quote = {
+    ...prospect.quote!,
+    changeRequest: { at: new Date().toISOString(), message },
+  };
+  const sql = await getSql();
+  await sql`
+    update prospects
+    set quote = ${JSON.stringify(quote)}::jsonb, updated_at = now()
+    where id = ${prospect.id}
+  `;
+  await writeAudit({
+    actorUserId: opts.userId,
+    action: "quote_changes_requested",
+    payload: { prospectId: prospect.id, message: message.slice(0, 240) },
+    orgId: prospect.orgId,
+  });
+  const next = mapProspect((await getRow(prospect.id))!);
+  await syncCrm(next);
+  try {
+    const mail = await import("./quote-emails.server");
+    await mail.emailQuoteChangesRequested(next, message);
+  } catch (err) {
+    console.warn("[quote-changes-email]", err);
+  }
+  return next;
+}
+
 export async function listQuoteCatalog(userId: string) {
   if (!(await isPlatformAdmin(userId))) throw new ForbiddenError();
   const { loadPlanRows, loadBillingSettings } = await import("./platform-settings.server");
@@ -804,6 +828,9 @@ export async function acceptQuote(opts: {
     throw new Error("This proposal has not been sent yet");
   }
   if (!prospect.quote || prospect.quote.draft) throw new Error("No sent quote on file");
+  if (quoteIsSetupOnly(prospect.quote) || !quoteHasSoftwarePackage(prospect.quote)) {
+    throw new Error("This proposal is setup-only. Ask Summex to rebuild a monthly package from intake.");
+  }
   if (opts.userId) await claimProspect(opts.userId, opts.token);
   const owner = opts.userId ?? prospect.ownerUserId;
   const sql = await getSql();
@@ -998,6 +1025,9 @@ export async function adminPatchQuote(opts: {
     })),
     generatedAt: new Date().toISOString(),
   });
+  if (quoteIsSetupOnly(nextQuote) || !quoteHasSoftwarePackage(nextQuote)) {
+    throw new Error("Quote must keep a monthly software package — setup cannot be the only line.");
+  }
   let status = prospect.status;
   if (opts.reissue && (status === "quoted" || status === "accepted")) {
     status = "quoted";

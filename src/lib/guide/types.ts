@@ -1,12 +1,12 @@
 import type { PosView } from "@/lib/pos/types";
 
 /** Bump when shipping a docs/features batch so What’s New can watermark. */
-export const GUIDE_VERSION = "2026.10.25";
+export const GUIDE_VERSION = "2026.10.26";
 export const GUIDE_EDITION = "Operators Guide · training week";
 export const GUIDE_TITLE = "Operators Guide";
 /** Short public revision line (date + what changed). Keep in lockstep with the white paper. */
 export const GUIDE_REVISION =
-  "25 Oct 2026 — White paper lockstep: per-entity Quantum merchants, one guest check, gift ledger, device roles, cash/tips, training vs live.";
+  "26 Oct 2026 — Quotes build a monthly software package from intake (not setup-only). Processing stays a separate note.";
 
 /**
  * Audience tabs in the guide. Distinct from POS PIN roles:

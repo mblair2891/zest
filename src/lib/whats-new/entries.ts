@@ -6,6 +6,19 @@ import type { GuideUpdate } from "@/lib/guide/types";
  */
 export const WHATS_NEW_ENTRIES: GuideUpdate[] = [
   {
+    id: "upd_2026_10_26_intake_monthly_quotes",
+    date: "2026-10-26",
+    title: "Quotes include monthly software from intake",
+    summary:
+      "Create/send quote now builds a package from intake: monthly software, optional setup, processing as a separate note.",
+    body: "A proposal must list the package, features from intake, monthly software $, optional setup, entities/stations, and expires-on. Base counter + kitchen display is $0 / mo; paid packages add monthly. Setup cannot be the only line. Onboarding waits until that monthly package is accepted (admin OVERRIDE + reason to skip).",
+    roles: ["platform_admin"],
+    surfaces: ["platform"],
+    audience: "platform",
+    topicId: "quote-contract",
+    tags: ["quote", "intake", "pricing"],
+  },
+  {
     id: "upd_2026_10_25_white_paper_lockstep",
     date: "2026-10-25",
     title: "White paper matches the Operators Guide",

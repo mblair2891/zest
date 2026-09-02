@@ -1,8 +1,8 @@
 # Operators Guide — authoring
 
-**Revision · 25 Oct 2026** — White paper lockstep: per-entity Quantum merchants,
-one guest check, gift ledger, device roles, cash/tips, training vs live.
-Guide v2026.10.25.
+**Revision · 26 Oct 2026** — Quotes build a monthly software package from intake
+(not setup-only). Processing stays a separate Quantum / cash-discount note.
+Guide v2026.10.26.
 
 The in-app **Operators Guide** is the living product manual. It is not a
 separate PDF. Staff open it from **Guide** / **?** in the POS and platform

@@ -14,6 +14,7 @@ export function QuoteSummary({
 }) {
   const monthly = quote.lineItems.filter((i) => !i.oneTime);
   const oneTime = quote.lineItems.filter((i) => i.oneTime);
+  const expires = quote.expiresAt ? new Date(quote.expiresAt).toLocaleDateString() : null;
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-end justify-between gap-3">
@@ -23,21 +24,45 @@ export function QuoteSummary({
           </p>
           <p className="mt-1 text-3xl font-semibold tracking-tight tabular">
             {formatCurrency(quote.monthlyCents)}
-            <span className="ml-1 text-base font-medium text-muted-foreground">/ mo</span>
+            <span className="ml-1 text-base font-medium text-muted-foreground">/ mo software</span>
           </p>
           <p className="mt-1 text-sm text-muted-foreground">
             {quote.planName || planLabel(quote.planSlug)}
             {quote.locationCount ? ` · ${quote.locationCount} loc` : ""}
+            {quote.entityCount ? ` · ${quote.entityCount} entit${quote.entityCount === 1 ? "y" : "ies"}` : ""}
             {quote.trialDays ? ` · ${quote.trialDays}-day trial` : ""}
             {" · "}
             annual {formatCurrency(quote.annualCents)}
             {quote.onboardingFeeCents > 0
               ? ` · setup ${formatCurrency(quote.onboardingFeeCents)}`
-              : ""}
+              : " · no setup fee"}
           </p>
+          {expires && (
+            <p className="text-xs text-muted-foreground">Expires {expires}</p>
+          )}
         </div>
         {status && <Badge variant="info">{statusLabel(status)}</Badge>}
       </div>
+
+      {quote.featureList && quote.featureList.length > 0 && (
+        <div className="rounded-2xl border border-border bg-surface p-4">
+          <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+            From intake
+          </p>
+          <ul className="mt-2 list-disc space-y-1 pl-4 text-sm">
+            {quote.featureList.map((f) => (
+              <li key={f}>{f}</li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      {quote.stationCounts && (
+        <p className="text-xs text-muted-foreground">
+          Stations from intake: order {quote.stationCounts.order} · ODS {quote.stationCounts.ods} ·
+          host {quote.stationCounts.host}
+        </p>
+      )}
 
       <ul className="divide-y divide-border overflow-hidden rounded-2xl border border-border bg-surface">
         {monthly.map((line) => (
@@ -65,6 +90,18 @@ export function QuoteSummary({
           </li>
         ))}
       </ul>
+
+      <p className="text-xs text-muted-foreground">
+        {quote.processingNote ||
+          "Guest card processing is Quantum Payments, billed separately from software."}
+      </p>
+
+      {quote.changeRequest && (
+        <p className="rounded-lg border border-border bg-surface-2 px-3 py-2 text-xs">
+          Changes requested {new Date(quote.changeRequest.at).toLocaleString()}:{" "}
+          {quote.changeRequest.message}
+        </p>
+      )}
 
       {!compact && (
         <div className="rounded-2xl border border-border bg-surface p-4">

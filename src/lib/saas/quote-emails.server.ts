@@ -28,6 +28,11 @@ function varsFor(prospect: ProspectRecord, extra?: Partial<Vars>): Vars {
     monthly: formatCurrency(q?.monthlyCents ?? 0),
     setup: formatCurrency(q?.onboardingFeeCents ?? q?.setupFeeCents ?? 0),
     locationCount: String(q?.locationCount ?? prospect.answers.portfolio.locationsNow ?? 1),
+    features: (q?.featureList ?? []).map((f) => `• ${f}`).join("\n") || "• POS core + kitchen display",
+    expires: q?.expiresAt ? new Date(q.expiresAt).toLocaleDateString() : "see proposal",
+    processingNote:
+      q?.processingNote ||
+      "Guest card processing is Quantum Payments, billed separately from software.",
     quoteUrl: quoteUrl(prospect.publicToken),
     supportEmail: extra?.supportEmail ?? "support@summex.app",
     platformName: extra?.platformName ?? PRODUCT_NAME,
@@ -148,6 +153,25 @@ export async function emailQuoteAccepted(prospect: ProspectRecord): Promise<void
       prospectId: prospect.id,
     });
   }
+}
+
+export async function emailQuoteChangesRequested(
+  prospect: ProspectRecord,
+  message: string,
+): Promise<void> {
+  const ctx = await contextVars();
+  const to = ctx.supportEmail;
+  if (!to || !to.includes("@")) return;
+  const v = varsFor(prospect, ctx);
+  const text = `${v.companyName} requested changes to ${v.planName} (${v.monthly} / mo).\n\n${message}\n\n${v.quoteUrl}\n`;
+  await sendEmail({
+    to,
+    subject: `Quote changes: ${v.companyName}`,
+    text,
+    html: htmlFromText(`Quote changes: ${v.companyName}`, text),
+    kind: "quote_changes_requested",
+    prospectId: prospect.id,
+  });
 }
 
 export { quoteUrl };

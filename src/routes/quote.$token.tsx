@@ -5,7 +5,7 @@ import { QuoteSummary } from "@/components/saas/QuoteSummary";
 import { QuotePrintView } from "@/components/saas/QuotePrintView";
 import { Button } from "@/components/ui/button";
 import { useCurrentUserState } from "@/lib/auth/use-current-user";
-import { acceptQuoteFn, claimProspectFn, getProspectFn } from "@/lib/saas/api";
+import { acceptQuoteFn, claimProspectFn, getProspectFn, requestQuoteChangesFn } from "@/lib/saas/api";
 import type { ProspectDetail } from "@/lib/saas/prospect-types";
 import { writeProspectToken } from "@/lib/saas/prospect-token";
 
@@ -21,6 +21,7 @@ function QuotePage() {
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [printing, setPrinting] = useState(false);
+  const [changeNote, setChangeNote] = useState("");
 
   const load = () => {
     void getProspectFn({ data: { token } })
@@ -132,6 +133,32 @@ function QuotePage() {
               <Button disabled={busy || isPending} onClick={() => void accept()}>
                 Accept quote
               </Button>
+            )}
+            {canAccept && (
+              <div className="flex w-full flex-wrap items-center gap-2">
+                <input
+                  className="h-10 min-w-[12rem] flex-1 rounded-lg border border-border bg-bg px-3 text-sm"
+                  placeholder="Request changes…"
+                  value={changeNote}
+                  onChange={(e) => setChangeNote(e.target.value)}
+                />
+                <Button
+                  variant="outline"
+                  disabled={busy || changeNote.trim().length < 4}
+                  onClick={() => {
+                    setBusy(true);
+                    void requestQuoteChangesFn({ data: { token, message: changeNote } })
+                      .then(() => {
+                        setChangeNote("");
+                        load();
+                      })
+                      .catch((e) => setError(e instanceof Error ? e.message : "Could not send"))
+                      .finally(() => setBusy(false));
+                  }}
+                >
+                  Request changes
+                </Button>
+              </div>
             )}
             {sent && (
               <Button variant="outline" onClick={printQuote}>

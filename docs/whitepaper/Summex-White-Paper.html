@@ -128,7 +128,7 @@
       <h1>Summex</h1>
       <p class="sub">Hospitality operations and money movement. Powered by Quantum Reach.</p>
       <p class="meta">summex.app · Guest cards: Quantum Payments only</p>
-      <p class="revision"><strong>Revision · 25 Oct 2026</strong> — Per-entity Quantum Payments merchants (Finix rail, guest never sees Finix), one guest check, gift ledger, device roles (order / ODS / host), cash models, tip-out and pools, training vs live. Aligns with Operators Guide v2026.10.25.</p>
+      <p class="revision"><strong>Revision · 26 Oct 2026</strong> — Quotes build a monthly software package from intake (not setup-only). Base counter + kitchen display $0 / mo; paid packages add monthly; processing stays a separate Quantum / cash-discount note. Aligns with Operators Guide v2026.10.26.</p>
     </header>
 
     <h2>1. Executive summary</h2>
@@ -237,7 +237,17 @@
     <h2>14. Security, roles, and audit</h2>
     <p>PIN access level controls POS tools. Account membership controls the back office. Platform Admin is not a restaurant owner. Paid checks freeze. Gift adjust is manager-only. The audit log and system ledger are append-only. This paper does <strong>not</strong> claim PCI DSS, SOC, or other seals. Summex does not store full PAN on guest profiles.</p>
 
-    <h2>15. Implementation path</h2>
+    <h2>15. Software subscription vs processing</h2>
+    <p>Software billing is <strong>not</strong> guest card processing.</p>
+    <ul>
+      <li><strong>Base software</strong> (counter-service POS + kitchen display) is <strong>$0 / month</strong>. Hardware is bring-your-own except optional Quantum payment terminals.</li>
+      <li><strong>Paid packages</strong> add monthly software for features selected at intake (floor/host, kiosk, QR, labor/HR, recipes/costing, multi-entity, and similar).</li>
+      <li><strong>Setup</strong> is optional (waive, flat, or by package) and is never the only line on a proposal.</li>
+      <li><strong>Quantum Payments</strong> (and cash-discount settings) are a <strong>separate note</strong>, not mixed into the software monthly unless the house chose a bundled plan.</li>
+    </ul>
+    <p>A proposal includes package name, intake feature list, monthly software, any setup, entity and station counts, and an expires-on date. Accept or request changes. Onboarding waits until a monthly package quote exists and is accepted. This paper is not a rate card.</p>
+
+    <h2>16. Implementation path</h2>
     <ol>
       <li>The house is onboarded as a location.</li>
       <li>Owner or manager primes each tablet once while online (Open POS).</li>
@@ -247,7 +257,7 @@
     </ol>
     <p class="note"><strong>Roadmap (not in this build):</strong> live ACH/payout rails, QuickBooks sync, PCI audit letter, guaranteed processor rates.</p>
 
-    <h2>16. Glossary</h2>
+    <h2>17. Glossary</h2>
     <table>
       <tbody>
         <tr><td>Host Venue</td><td>Guest-facing brand on a multi-operator floor</td></tr>
@@ -263,7 +273,7 @@
       </tbody>
     </table>
 
-    <h2>17. Appendix — illustrative host model</h2>
+    <h2>18. Appendix — illustrative host model</h2>
     <p class="note">This is an example, not a customer case study. Public docs use Host Venue, Operator A, Operator B — never a live customer name.</p>
     <table>
       <tbody>

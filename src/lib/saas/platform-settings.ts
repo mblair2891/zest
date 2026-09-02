@@ -126,6 +126,9 @@ export const QUOTE_EMAIL_TOKENS = [
   "{{monthly}}",
   "{{setup}}",
   "{{locationCount}}",
+  "{{features}}",
+  "{{expires}}",
+  "{{processingNote}}",
   "{{quoteUrl}}",
   "{{supportEmail}}",
   "{{platformName}}",
@@ -264,6 +267,11 @@ export const billingSettingsSchema = z.object({
   devicePackSize: int(1, 100).default(4),
   devicePackFeeCents: int(0, 10_000_000).default(2500),
   annualDiscountPercent: int(0, 90).default(10),
+  setupFeeMode: z.enum(["waive", "flat", "by_package"]).default("by_package"),
+  setupFeeFlatCents: int(0, 10_000_000).default(0),
+  quoteExpireDays: int(1, 180).default(30),
+  terminalMonthlyCents: int(0, 10_000_000).default(0),
+  terminalSetupCents: int(0, 10_000_000).default(0),
   gmvScaleCents: z
     .object({
       under_50k: int(0, 10_000_000).default(0),
@@ -340,7 +348,7 @@ export const communicationsSettingsSchema = z.object({
   ),
   quoteSentSubject: str(200).default("Your {{platformName}} proposal for {{companyName}}"),
   quoteSentBody: str(4000).default(
-    "Hi {{companyName}},\n\nHere is your {{platformName}} proposal.\n\nPlan: {{planName}}\nLocations: {{locationCount}}\nMonthly: {{monthly}}\nSetup: {{setup}}\n\nReview and accept: {{quoteUrl}}\n\nQuestions: {{supportEmail}}\n\n— {{fromName}}",
+    "Hi {{companyName}},\n\nHere is your {{platformName}} proposal.\n\nPackage: {{planName}}\nLocations: {{locationCount}}\nMonthly software: {{monthly}}\nSetup: {{setup}}\nExpires: {{expires}}\n\nIncluded from intake:\n{{features}}\n\n{{processingNote}}\n\nReview, accept, or request changes: {{quoteUrl}}\n\nQuestions: {{supportEmail}}\n\n— {{fromName}}",
   ),
   quoteAcceptedSubject: str(200).default("You accepted the {{platformName}} proposal"),
   quoteAcceptedBody: str(4000).default(

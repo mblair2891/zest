@@ -1,8 +1,12 @@
 import { z } from "zod";
-import { packagesFromModules, type ModuleFlags } from "./platform-settings";
 import type { PlanSlug } from "./types";
 import { PLAN_SLUGS } from "./types";
-import type { QuoteLineItem, QuoteSnapshot } from "./prospect-types";
+import type { ModuleFlags } from "./platform-settings";
+import type { IntakeAnswers, InterviewRecommendation, PricingRules, QuoteSnapshot } from "./prospect-types";
+import {
+  applyInterviewToIntake,
+  generateQuote,
+} from "./pricing";
 
 export const quoteAddOnSchema = z.object({
   id: z.string().min(1).max(40),
@@ -17,6 +21,7 @@ export const quoteDraftInputSchema = z.object({
   locationCount: z.number().int().min(1).max(999),
   setupFeeCents: z.number().int().min(0).max(10_000_000),
   addOns: z.array(quoteAddOnSchema).max(24).default([]),
+  terminalQty: z.number().int().min(0).max(200).default(0),
 });
 export type QuoteDraftInput = z.infer<typeof quoteDraftInputSchema>;
 
@@ -31,111 +36,39 @@ export type QuoteCatalogPlan = {
   modules: ModuleFlags;
 };
 
-function line(
-  id: string,
-  kind: QuoteLineItem["kind"],
-  label: string,
-  qty: number,
-  unitCents: number,
-  extra?: Partial<QuoteLineItem>,
-): QuoteLineItem {
-  const q = Math.max(0, qty);
-  return {
-    id,
-    kind,
-    label,
-    qty: q,
-    unitCents,
-    totalCents: q * unitCents,
-    ...extra,
-  };
-}
-
-export function buildStructuredQuote(opts: {
-  plan: QuoteCatalogPlan;
-  locationCount: number;
-  setupFeeCents: number;
-  addOns: QuoteAddOn[];
-  trialDays: number;
+/** Build the sendable quote from intake (+ interview) with optional admin overrides. */
+export function buildIntakeQuote(opts: {
+  answers: IntakeAnswers;
+  rules: PricingRules;
+  interview?: InterviewRecommendation | null;
+  planSlug?: PlanSlug;
+  locationCount?: number;
+  setupFeeCents?: number | null;
+  addOns?: QuoteAddOn[];
+  terminalQty?: number;
+  trialDays?: number;
   rulesVersion?: number;
   now?: string;
   draft?: boolean;
   sentAt?: string | null;
+  expireDays?: number;
 }): QuoteSnapshot {
-  const loc = Math.max(1, Math.floor(opts.locationCount));
-  const setup = Math.max(0, Math.round(opts.setupFeeCents));
-  const addOns = opts.addOns.map((a) => quoteAddOnSchema.parse(a));
-  const items: QuoteLineItem[] = [
-    line(
-      "plan",
-      "plan",
-      `${opts.plan.name} × ${loc} location${loc === 1 ? "" : "s"}`,
-      loc,
-      opts.plan.monthlyCents,
-    ),
-  ];
-  for (const a of addOns) {
-    items.push(
-      line(`addon_${a.id}`, a.oneTime ? "onboarding" : "custom", a.name, 1, a.amountCents, {
-        oneTime: a.oneTime || undefined,
-      }),
-    );
-  }
-  if (setup > 0) {
-    items.push(line("setup", "onboarding", "One-time setup", 1, setup, { oneTime: true }));
-  }
-  const monthlyCents = items.filter((i) => !i.oneTime).reduce((s, i) => s + i.totalCents, 0);
-  const onboardingFeeCents = items.filter((i) => i.oneTime).reduce((s, i) => s + i.totalCents, 0);
-  const assumptions = [
-    `${opts.plan.name} at ${loc} location${loc === 1 ? "" : "s"}. Monthly is price per location × count.`,
-    setup > 0 ? `One-time setup ${centsLabel(setup)}.` : "No setup fee on this proposal.",
-    opts.trialDays > 0 ? `Trial: ${opts.trialDays} days.` : "No trial period on this proposal.",
-    "Guest card processing is Quantum Payments, billed separately from software.",
-    "Gift cards are first-party (our ledger), not an external processor.",
-  ];
-  const slug = (PLAN_SLUGS as readonly string[]).includes(opts.plan.slug)
-    ? opts.plan.slug
-    : "starter";
-  return {
-    version: 1,
-    rulesVersion: opts.rulesVersion ?? 1,
-    generatedAt: opts.now ?? new Date().toISOString(),
+  const answers = applyInterviewToIntake(opts.answers, opts.interview);
+  const slug =
+    opts.planSlug && (PLAN_SLUGS as readonly string[]).includes(opts.planSlug)
+      ? opts.planSlug
+      : undefined;
+  return generateQuote(answers, opts.rules, {
     planSlug: slug,
-    planName: opts.plan.name,
-    maxLocations: Math.max(opts.plan.maxLocations, loc),
-    maxSeats: opts.plan.maxSeats,
-    locationCount: loc,
-    setupFeeCents: setup,
-    addOns,
+    locationCount: opts.locationCount,
+    setupFeeCents: opts.setupFeeCents,
+    addOns: opts.addOns,
+    terminalQty: opts.terminalQty,
     trialDays: opts.trialDays,
-    draft: opts.draft !== false && !opts.sentAt,
-    sentAt: opts.sentAt ?? null,
-    lineItems: items,
-    monthlyCents,
-    annualCents: monthlyCents * 12,
-    onboardingFeeCents,
-    assumptions,
-    packages: packagesFromModules(opts.plan.modules),
-  };
-}
-
-function centsLabel(cents: number): string {
-  return `$${(Math.max(0, cents) / 100).toFixed(2)}`;
-}
-
-export function quoteFromSnapshot(
-  quote: QuoteSnapshot,
-  plan: QuoteCatalogPlan,
-  trialDays: number,
-): QuoteSnapshot {
-  return buildStructuredQuote({
-    plan,
-    locationCount: quote.locationCount || 1,
-    setupFeeCents: quote.setupFeeCents ?? quote.onboardingFeeCents ?? 0,
-    addOns: Array.isArray(quote.addOns) ? quote.addOns : [],
-    trialDays: quote.trialDays ?? trialDays,
-    rulesVersion: quote.rulesVersion,
-    draft: quote.draft,
-    sentAt: quote.sentAt,
+    rulesVersion: opts.rulesVersion,
+    now: opts.now,
+    draft: opts.draft,
+    sentAt: opts.sentAt,
+    expireDays: opts.expireDays,
   });
 }

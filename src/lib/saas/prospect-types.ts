@@ -208,6 +208,19 @@ export type QuoteAddOn = {
   oneTime: boolean;
 };
 
+export type SetupFeeMode = "waive" | "flat" | "by_package";
+
+export type QuoteStationCounts = {
+  order: number;
+  ods: number;
+  host: number;
+};
+
+export type QuoteChangeRequest = {
+  at: string;
+  message: string;
+};
+
 export type QuoteSnapshot = {
   version: 1;
   rulesVersion: number;
@@ -217,11 +230,19 @@ export type QuoteSnapshot = {
   maxLocations: number;
   maxSeats: number;
   locationCount?: number;
+  entityCount?: number;
+  stationCounts?: QuoteStationCounts;
   setupFeeCents?: number;
+  setupFeeMode?: SetupFeeMode;
   addOns?: QuoteAddOn[];
   trialDays?: number;
   draft?: boolean;
   sentAt?: string | null;
+  expiresAt?: string | null;
+  featureList?: string[];
+  processingNote?: string;
+  terminalQty?: number;
+  changeRequest?: QuoteChangeRequest | null;
   lineItems: QuoteLineItem[];
   monthlyCents: number;
   annualCents: number;
@@ -242,6 +263,11 @@ export type PricingRules = {
   onboardingFeeCents: Partial<Record<PlanSlug, number>>;
   gmvScaleCents: Partial<Record<GmvBand, number>>;
   basePlanByLocationType: Partial<Record<LocationMode, PlanSlug>>;
+  setupFeeMode: SetupFeeMode;
+  setupFeeFlatCents: number;
+  quoteExpireDays: number;
+  terminalMonthlyCents: number;
+  terminalSetupCents: number;
 };
 
 export type OperatorDraft = {

@@ -927,7 +927,65 @@ function BillingSection({
             onChange={(annualDiscountPercent) => setBilling({ ...billing, annualDiscountPercent })}
           />
         </Field>
+        <Field label="Setup fee">
+          <select
+            className="h-11 w-full rounded-lg border border-border bg-surface px-3 text-sm"
+            value={billing.setupFeeMode}
+            onChange={(e) =>
+              setBilling({
+                ...billing,
+                setupFeeMode: e.target.value as "waive" | "flat" | "by_package",
+              })
+            }
+          >
+            <option value="waive">Waive (no setup)</option>
+            <option value="flat">Flat amount</option>
+            <option value="by_package">By package (plan onboarding fee)</option>
+          </select>
+        </Field>
+        {billing.setupFeeMode === "flat" && (
+          <Field label="Flat setup fee">
+            <Input
+              inputMode="decimal"
+              value={formatMoneyCents(billing.setupFeeFlatCents)}
+              onChange={(e) =>
+                setBilling({ ...billing, setupFeeFlatCents: parseMoneyToCents(e.target.value) })
+              }
+            />
+          </Field>
+        )}
+        <Field label="Quote expires (days)">
+          <NumberField
+            value={billing.quoteExpireDays}
+            min={1}
+            max={180}
+            onChange={(quoteExpireDays) => setBilling({ ...billing, quoteExpireDays })}
+          />
+        </Field>
+        <Field label="Terminal monthly (optional, each)">
+          <Input
+            inputMode="decimal"
+            value={formatMoneyCents(billing.terminalMonthlyCents)}
+            onChange={(e) =>
+              setBilling({ ...billing, terminalMonthlyCents: parseMoneyToCents(e.target.value) })
+            }
+          />
+        </Field>
+        <Field label="Terminal setup (optional, each)">
+          <Input
+            inputMode="decimal"
+            value={formatMoneyCents(billing.terminalSetupCents)}
+            onChange={(e) =>
+              setBilling({ ...billing, terminalSetupCents: parseMoneyToCents(e.target.value) })
+            }
+          />
+        </Field>
       </div>
+      <p className="text-xs text-muted-foreground">
+        Base counter-service + kitchen display software is $0 / mo. Paid packages add monthly
+        from intake. Setup is never the only line on a quote. Hardware is BYO except optional
+        Quantum terminals.
+      </p>
     </SectionCard>
   );
 }

@@ -381,12 +381,14 @@ export const saveQuoteDraftFn = createServerFn({ method: "POST" })
     locationCount: number;
     setupFeeCents: number;
     addOns: unknown;
+    terminalQty?: number;
   }) => ({
     prospectId: String(d.prospectId ?? ""),
     planSlug: String(d.planSlug ?? ""),
     locationCount: Number(d.locationCount) || 1,
     setupFeeCents: Math.max(0, Math.round(Number(d.setupFeeCents) || 0)),
     addOns: Array.isArray(d.addOns) ? d.addOns : [],
+    terminalQty: Math.max(0, Math.round(Number(d.terminalQty) || 0)),
   }))
   .handler(async ({ context, data }) => {
     const { saveQuoteDraft } = await import("./prospects.server");
@@ -398,7 +400,23 @@ export const saveQuoteDraftFn = createServerFn({ method: "POST" })
         locationCount: data.locationCount,
         setupFeeCents: data.setupFeeCents,
         addOns: data.addOns,
+        terminalQty: data.terminalQty,
       },
+    });
+  });
+
+export const requestQuoteChangesFn = createServerFn({ method: "POST" })
+  .middleware([optionalAuthMiddleware])
+  .validator((d: { token: string; message: string }) => ({
+    token: String(d.token ?? ""),
+    message: String(d.message ?? "").trim(),
+  }))
+  .handler(async ({ context, data }) => {
+    const { requestQuoteChanges } = await import("./prospects.server");
+    return requestQuoteChanges({
+      userId: context.userId,
+      token: data.token,
+      message: data.message,
     });
   });
 

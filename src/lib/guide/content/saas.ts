@@ -19,7 +19,7 @@ export const SAAS_TOPICS: GuideTopic[] = [
         "Answer follow-ups. The assistant (or a local heuristic if no AI key is set) proposes a recommendation card.",
         "Confirm or edit the structured form: company, portfolio, ops model, modules, volume, payments, timeline.",
         "Submit. That creates a CRM lead and a quote request — not a sent proposal yet.",
-        "You land on a request-received page. Platform builds the quote from Plans & billing, then sends email.",
+        "You land on a request-received page. Platform builds a monthly software package from those answers (and the interview recommendation if they confirmed it), then sends the quote.",
       ),
       callout(
         "Status machine",
@@ -36,7 +36,7 @@ export const SAAS_TOPICS: GuideTopic[] = [
     id: "quote-contract",
     chapterId: "saas",
     title: "Quote, accept, contract signed",
-    summary: "Merchant accepts a snapshot quote; Admin marks the contract signed.",
+    summary: "Monthly software package from intake, then accept and contract. Setup is never the only line.",
     visibility: "platform",
     roles: ["platform_admin"],
     keywords: ["quote", "contract", "accept", "signed", "pipeline"],
@@ -45,10 +45,11 @@ export const SAAS_TOPICS: GuideTopic[] = [
         "Commercial agreement is a human step. The product records it; it does not e-sign the paper for you.",
       ),
       steps(
-        "Get pricing creates a request. Pipeline opens the quote builder: plan, location count, add-ons, setup fee.",
-        "Save draft, then Send quote. That emails the prospect and sets status Sent. Print/PDF is on the quote link.",
-        "Merchant taps Accept on the link, or Admin marks accepted. Status becomes accepted. Not a live tenant yet.",
-        "Platform Admin records the contract (checkbox + date). Status stays Contracted. Start onboarding is enabled only then.",
+        "Get pricing creates a request. Pipeline quote builder rebuilds from intake: package name, features they asked for, monthly software, optional setup, entities/stations. AI interview recs are the default the human can edit.",
+        "Base counter-service + kitchen display is $0 / mo software. Paid packages add monthly for floor/host, kiosk, QR, labor/HR, recipes/costing, multi-entity, etc. Hardware is BYO except optional Quantum terminals. Setup is waive / flat / by package in Settings → Plans & billing — never the only line.",
+        "Save draft, then Send quote. Email and Print/PDF show monthly software, processing as a separate note (Quantum / cash-discount, not mixed into software $), expires-on, Accept and Request changes.",
+        "Merchant taps Accept, or Request changes, or Admin marks accepted. Status becomes accepted. Not a live tenant yet.",
+        "Platform Admin records the contract (checkbox + date) → Contracted. Start onboarding is enabled only then, and only if a monthly package quote was accepted. OVERRIDE + reason for an admin skip.",
         "Do not create the org by hand unless you are skipping the commercial path for an internal site.",
       ),
       warn(
@@ -71,6 +72,7 @@ export const SAAS_TOPICS: GuideTopic[] = [
         "A contracted prospect is still empty. The wizard is what creates the working tenant so the floor can open.",
       ),
       steps(
+        "Start onboarding only after a monthly software package quote exists and is accepted (then contract). OVERRIDE + reason to skip.",
         "Open the setup link from the quote email or Pipeline.",
         "Organization — legal/display name (e.g. Host Venue).",
         "Locations — one or more sites and the operating model (single operator vs host + operators).",

@@ -1,16 +1,17 @@
 import { useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { formatCurrency } from "@/lib/utils";
 import {
   listQuoteCatalogFn,
+  loadPricingRulesFn,
   saveQuoteDraftFn,
   sendQuoteFn,
   adminMarkQuoteAcceptedFn,
 } from "@/lib/saas/api";
-import { buildStructuredQuote, type QuoteAddOn } from "@/lib/saas/quote-builder";
+import { buildIntakeQuote, type QuoteAddOn } from "@/lib/saas/quote-builder";
 import { parseMoneyToCents, newLocalId } from "@/lib/saas/platform-settings";
-import type { ProspectDetail } from "@/lib/saas/prospect-types";
+import { DEFAULT_PRICING_RULES, parsePricingRules, recommendedPlan } from "@/lib/saas/pricing";
+import type { PricingRules, ProspectDetail } from "@/lib/saas/prospect-types";
 import type { PlanSlug } from "@/lib/saas/types";
 import { QuoteSummary } from "./QuoteSummary";
 
@@ -23,7 +24,9 @@ export function QuoteBuilder({
 }) {
   const [plans, setPlans] = useState<Awaited<ReturnType<typeof listQuoteCatalogFn>>["plans"]>([]);
   const [trialDays, setTrialDays] = useState(14);
-  const [planSlug, setPlanSlug] = useState<PlanSlug>(detail.quote?.planSlug ?? "starter");
+  const [rules, setRules] = useState<PricingRules>(DEFAULT_PRICING_RULES);
+  const intakePlan = recommendedPlan(detail.answers, rules);
+  const [planSlug, setPlanSlug] = useState<PlanSlug>(detail.quote?.planSlug ?? intakePlan);
   const [locationCount, setLocationCount] = useState(
     detail.quote?.locationCount ?? detail.answers.portfolio.locationsNow ?? 1,
   );
@@ -31,36 +34,50 @@ export function QuoteBuilder({
     ((detail.quote?.setupFeeCents ?? detail.quote?.onboardingFeeCents ?? 0) / 100).toFixed(2),
   );
   const [addOns, setAddOns] = useState<QuoteAddOn[]>(detail.quote?.addOns ?? []);
+  const [terminalQty, setTerminalQty] = useState(detail.quote?.terminalQty ?? 0);
   const [msg, setMsg] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
+  const applyIntake = (r: PricingRules, catalogTrial: number) => {
+    const built = buildIntakeQuote({
+      answers: detail.answers,
+      rules: r,
+      interview: detail.interviewRecommendation,
+      trialDays: catalogTrial,
+    });
+    setPlanSlug(built.planSlug);
+    setLocationCount(built.locationCount ?? 1);
+    setSetup(((built.setupFeeCents ?? built.onboardingFeeCents ?? 0) / 100).toFixed(2));
+    setAddOns(built.addOns ?? []);
+    setTerminalQty(built.terminalQty ?? 0);
+    return built;
+  };
+
   useEffect(() => {
-    void listQuoteCatalogFn().then((c) => {
+    void Promise.all([listQuoteCatalogFn(), loadPricingRulesFn()]).then(([c, pr]) => {
       setPlans(c.plans);
       setTrialDays(c.trialDays);
-      if (!detail.quote && c.plans[0]) {
-        const suggested =
-          c.plans.find((p) => p.slug === planSlug) ?? c.plans.find((p) => p.active) ?? c.plans[0];
-        if (suggested) {
-          setPlanSlug(suggested.slug);
-          if (!detail.quote) setSetup((suggested.onboardingFeeCents / 100).toFixed(2));
-        }
-      }
+      const parsed = parsePricingRules(pr.rules);
+      setRules(parsed);
+      if (!detail.quote) applyIntake(parsed, c.trialDays);
     });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [detail.id]);
 
-  const plan = plans.find((p) => p.slug === planSlug) ?? plans[0];
   const preview = useMemo(() => {
-    if (!plan) return null;
-    return buildStructuredQuote({
-      plan,
+    return buildIntakeQuote({
+      answers: detail.answers,
+      rules,
+      interview: detail.interviewRecommendation,
+      planSlug,
       locationCount,
       setupFeeCents: parseMoneyToCents(setup),
       addOns,
+      terminalQty,
       trialDays,
       draft: detail.status !== "quoted",
     });
-  }, [plan, locationCount, setup, addOns, trialDays, detail.status]);
+  }, [detail.answers, detail.interviewRecommendation, detail.status, rules, planSlug, locationCount, setup, addOns, terminalQty, trialDays]);
 
   const save = async (send: boolean) => {
     setBusy(true);
@@ -73,10 +90,11 @@ export function QuoteBuilder({
           locationCount,
           setupFeeCents: parseMoneyToCents(setup),
           addOns: addOns.filter((a) => a.name.trim().length > 0),
+          terminalQty,
         },
       });
       if (send) await sendQuoteFn({ data: { prospectId: detail.id } });
-      setMsg(send ? "Quote sent. Status is Sent." : "Draft saved.");
+      setMsg(send ? "Quote sent with monthly package." : "Draft saved.");
       onChanged();
     } catch (e) {
       setMsg(e instanceof Error ? e.message : "Could not save quote");
@@ -85,26 +103,31 @@ export function QuoteBuilder({
     }
   };
 
+  const rec = detail.interviewRecommendation;
+
   return (
     <div className="rounded-2xl border border-border p-4">
       <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
         Quote builder
       </p>
       <p className="mt-1 text-xs text-muted-foreground">
-        Plans come from Settings → Plans & billing. Monthly is price per location. No JSON.
+        Built from intake (and the AI interview if they confirmed it). Monthly software is
+        required. Setup is optional and cannot be the only line. Guest processing stays a
+        separate note.
       </p>
+      {rec && (
+        <p className="mt-2 rounded-lg border border-border bg-surface-2 px-3 py-2 text-xs text-muted-foreground">
+          Interview default: {rec.pricingHints?.suggestedPlan ?? rec.operatingModel}
+          {rec.summary ? ` — ${rec.summary}` : ""}
+        </p>
+      )}
       <div className="mt-3 grid gap-3 sm:grid-cols-2">
         <label className="block text-sm">
-          <span className="mb-1 block text-muted-foreground">Plan</span>
+          <span className="mb-1 block text-muted-foreground">Package</span>
           <select
             className="h-11 w-full rounded-lg border border-border bg-surface px-3 text-sm"
             value={planSlug}
-            onChange={(e) => {
-              const slug = e.target.value as PlanSlug;
-              setPlanSlug(slug);
-              const p = plans.find((x) => x.slug === slug);
-              if (p) setSetup((p.onboardingFeeCents / 100).toFixed(2));
-            }}
+            onChange={(e) => setPlanSlug(e.target.value as PlanSlug)}
           >
             {plans.map((p) => (
               <option key={p.id} value={p.slug}>
@@ -124,15 +147,21 @@ export function QuoteBuilder({
           />
         </label>
         <label className="block text-sm">
-          <span className="mb-1 block text-muted-foreground">Setup fee (one-time)</span>
+          <span className="mb-1 block text-muted-foreground">Setup fee (optional, one-time)</span>
           <Input value={setup} inputMode="decimal" onChange={(e) => setSetup(e.target.value)} />
         </label>
-        {plan && (
-          <p className="self-end text-sm text-muted-foreground">
-            {formatCurrency(plan.monthlyCents)} / location / mo · {plan.maxSeats} seats included
-            {trialDays ? ` · ${trialDays}-day trial` : ""}
-          </p>
-        )}
+        <label className="block text-sm">
+          <span className="mb-1 block text-muted-foreground">Quantum terminals (optional qty)</span>
+          <Input
+            type="number"
+            min={0}
+            value={terminalQty}
+            onChange={(e) => setTerminalQty(Math.max(0, Number(e.target.value) || 0))}
+          />
+          <span className="mt-1 block text-[11px] text-muted-foreground">
+            Leave 0 if they already have readers. Hardware is otherwise BYO.
+          </span>
+        </label>
       </div>
       <div className="mt-4 space-y-2">
         <p className="text-sm font-medium">Add-ons</p>
@@ -200,6 +229,17 @@ export function QuoteBuilder({
       )}
       {msg && <p className="mt-2 text-sm text-muted-foreground">{msg}</p>}
       <div className="mt-3 flex flex-wrap gap-2">
+        <Button
+          size="sm"
+          variant="outline"
+          disabled={busy}
+          onClick={() => {
+            applyIntake(rules, trialDays);
+            setMsg("Rebuilt from intake.");
+          }}
+        >
+          Rebuild from intake
+        </Button>
         <Button size="sm" variant="outline" disabled={busy} onClick={() => void save(false)}>
           Save draft
         </Button>

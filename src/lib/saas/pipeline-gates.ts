@@ -5,6 +5,7 @@
  */
 import type { ProspectStatus } from "./prospect-types";
 import type { QuoteSnapshot } from "./prospect-types";
+import { quoteHasSoftwarePackage, quoteIsSetupOnly } from "./pricing";
 
 export const PIPELINE_COLUMNS = [
   "prospect",
@@ -37,7 +38,9 @@ export function isPipelineColumn(s: string): s is PipelineColumn {
 export function quoteIsComplete(quote: QuoteSnapshot | null | undefined): boolean {
   if (!quote) return false;
   const locations = Number(quote.locationCount ?? quote.maxLocations ?? 0);
-  return Boolean(quote.planSlug) && locations >= 1 && quote.monthlyCents != null;
+  if (!quote.planSlug || locations < 1) return false;
+  if (quoteIsSetupOnly(quote)) return false;
+  return quoteHasSoftwarePackage(quote) && quote.monthlyCents != null;
 }
 
 export function quoteIsSent(quote: QuoteSnapshot | null | undefined): boolean {
@@ -76,18 +79,24 @@ export function gateBlockReason(facts: PipelineFacts, to: ProspectStatus): strin
   }
   if (to === "quoted") {
     if (!quoteIsSent(facts.quote)) {
-      return "Send a quote first (plan + price + location count, marked sent).";
+      return "Send a quote first (monthly software package from intake + location count, marked sent). Setup-only is not a quote.";
     }
   }
   if (to === "accepted") {
-    if (!quoteIsSent(facts.quote)) return "A sent quote is required before Accepted.";
+    if (!quoteIsSent(facts.quote)) return "A sent monthly package quote is required before Accepted.";
   }
   if (to === "contracted") {
     if (from !== "accepted") return "Accept the quote before recording the contract.";
   }
   if (to === "onboarding") {
+    if (!quoteHasSoftwarePackage(facts.quote) || quoteIsSetupOnly(facts.quote)) {
+      return "Onboarding needs an accepted quote with a monthly software package from intake — not setup-only.";
+    }
     if (from !== "contracted" && !facts.contractedAt) {
       return "Record the contract before Start onboarding.";
+    }
+    if (!facts.acceptedAt && from !== "contracted") {
+      return "The monthly package quote must be accepted before onboarding.";
     }
   }
   if (to === "live") {

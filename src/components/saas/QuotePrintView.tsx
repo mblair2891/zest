@@ -30,16 +30,39 @@ export function QuotePrintView({ detail }: { detail: ProspectDetail }) {
           </p>
           <p className="mt-1 text-3xl font-semibold tabular">
             {formatCurrency(quote.monthlyCents)}
-            <span className="ml-1 text-base font-medium text-muted-foreground">/ mo</span>
+            <span className="ml-1 text-base font-medium text-muted-foreground">/ mo software</span>
           </p>
           {quote.onboardingFeeCents > 0 && (
             <p className="text-sm text-muted-foreground">
               Setup {formatCurrency(quote.onboardingFeeCents)} one-time
             </p>
           )}
+          {quote.expiresAt && (
+            <p className="text-sm text-muted-foreground">
+              Expires {new Date(quote.expiresAt).toLocaleDateString()}
+            </p>
+          )}
         </div>
         <p className="text-sm text-muted-foreground">{statusLabel(detail.status)}</p>
       </div>
+      {quote.featureList && quote.featureList.length > 0 && (
+        <div className="mt-4">
+          <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+            From intake
+          </p>
+          <ul className="mt-1 list-disc pl-4 text-sm">
+            {quote.featureList.map((f) => (
+              <li key={f}>{f}</li>
+            ))}
+          </ul>
+        </div>
+      )}
+      {quote.stationCounts && (
+        <p className="mt-2 text-xs text-muted-foreground">
+          Entities {quote.entityCount ?? 1} · stations order {quote.stationCounts.order} / ODS{" "}
+          {quote.stationCounts.ods} / host {quote.stationCounts.host}
+        </p>
+      )}
       <table className="mt-6 w-full text-sm">
         <thead>
           <tr className="border-b border-border text-left text-muted-foreground">
@@ -68,8 +91,10 @@ export function QuotePrintView({ detail }: { detail: ProspectDetail }) {
         </tbody>
       </table>
       <p className="mt-6 text-xs text-muted-foreground">
-        Guest card processing is Quantum Payments, billed separately. Gift cards are first-party.
-        This snapshot does not change if the catalog changes later.
+        {quote.processingNote ||
+          "Guest card processing is Quantum Payments, billed separately from software."}{" "}
+        Gift cards are first-party. Hardware is BYO except optional Quantum terminals on this
+        quote. This snapshot does not change if the catalog changes later.
       </p>
     </article>
   );

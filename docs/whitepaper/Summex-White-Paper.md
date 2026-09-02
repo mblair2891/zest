@@ -3,7 +3,7 @@
 **Powered by Quantum Reach**
 
 White paper · October 2026  
-**Revision · 25 Oct 2026** — Per-entity Quantum Payments merchants (Finix rail, guest never sees Finix), one guest check, gift ledger, device roles (order / ODS / host), cash models, tip-out and pools, training vs live. Aligns with Operators Guide v2026.10.25.
+**Revision · 26 Oct 2026** — Quotes build a monthly software package from intake (not setup-only). Base counter + kitchen display $0 / mo; paid packages add monthly; processing stays a separate Quantum / cash-discount note. Aligns with Operators Guide v2026.10.26.
 
 summex.app  
 Guest cards: **Quantum Payments** only
@@ -236,7 +236,20 @@ This paper does **not** claim PCI DSS certification, SOC reports, or other seals
 
 ---
 
-## 15. Implementation path
+## 15. Software subscription vs processing
+
+Software billing is **not** guest card processing.
+
+- **Base software** (counter-service POS + kitchen display) is **$0 / month**. Hardware is bring-your-own except optional Quantum payment terminals.
+- **Paid packages** add monthly software for features the house actually selected at intake: full service / floor & host, kiosk, QR / online, reservations and waitlist, labor and HR, recipes and costing, multi-entity / food hall, and similar.
+- **Setup** is optional (waive, flat, or by package). It is never the only line on a proposal.
+- **Quantum Payments** (and cash-discount settings) are estimated as a **separate note**, not mixed into the software monthly unless the house chose a bundled plan.
+
+A proposal includes the package name, the feature list from intake, monthly software, any setup, entity and station counts, and an expires-on date. The house can accept or request changes. Onboarding does not start until a monthly package quote exists and is accepted.
+
+This paper is **not** a rate card. Snapshot quotes come from the live catalog at send time.
+
+## 16. Implementation path
 
 1. The house is onboarded as a location (intake and guided setup).  
 2. Owner or manager primes each tablet once while online (Open POS).  
@@ -250,7 +263,7 @@ Typical first-week work is configuration, not a six-month integration.
 
 ---
 
-## 16. Glossary
+## 17. Glossary
 
 | Term | Meaning |
 |---|---|
@@ -271,7 +284,7 @@ Typical first-week work is configuration, not a six-month integration.
 
 ---
 
-## 17. Appendix — illustrative host model
+## 18. Appendix — illustrative host model
 
 **This is an example, not a customer case study.** Public docs use Host Venue, Operator A, Operator B — never a live customer name.
 
