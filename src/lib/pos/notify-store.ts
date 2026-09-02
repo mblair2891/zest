@@ -2,6 +2,7 @@ import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
 import { uid } from "@/lib/utils";
 import type { Employee, EmployeeRole, KitchenTicket } from "./types";
+import { useStationSessionStore } from "./station-session";
 
 export type PosNoticeKind =
   | "ticket_bumped"
@@ -34,6 +35,8 @@ export interface PosNotice {
   serverName?: string;
   serverId?: string;
   itemSummary?: string;
+  /** For staffing_rec: manager | host | expo */
+  audience?: string[];
 }
 
 interface NotifyState {
@@ -51,6 +54,7 @@ interface NotifyState {
     tableLabel?: string;
     serverId?: string;
     serverName?: string;
+    audience?: string[];
   }) => PosNotice;
   markRead: (id: string) => void;
   markAllRead: () => void;
@@ -76,6 +80,17 @@ export function noticeVisibleTo(
 ): boolean {
   if (!emp) return false;
   const role: EmployeeRole = emp.role;
+  if (n.kind === "staffing_rec") {
+    const aud = n.audience?.length ? n.audience : ["manager", "host"];
+    if (aud.includes("manager") && (role === "owner" || role === "manager")) return true;
+    if (aud.includes("host") && role === "host") return true;
+    if (aud.includes("expo")) {
+      const kind = useStationSessionStore.getState().assignment?.kind ?? "";
+      if (kind === "expo" || kind === "kitchen_kds") return true;
+      if (role === "kitchen") return true;
+    }
+    return false;
+  }
   if (role === "owner" || role === "manager" || role === "host" || role === "accountant") return true;
   if (n.kind === "sla_alert" || n.kind === "table_needs_bus") {
     return role === "server" || role === "busser" || role === "cashier";
@@ -84,9 +99,6 @@ export function noticeVisibleTo(
   if (n.serverName && emp.name === n.serverName) return true;
   if (n.kind === "ticket_ready" || n.kind === "ticket_started" || n.kind === "ticket_sent") {
     return role === "server" || role === "busser" || role === "cashier";
-  }
-  if (n.kind === "staffing_rec") {
-    return role === "kitchen";
   }
   if (n.kind === "staffing_closeout") {
     return false;
@@ -198,6 +210,7 @@ export const useNotifyStore = create<NotifyState>()(
           tableLabel: input.tableLabel,
           serverId: input.serverId,
           serverName: input.serverName,
+          audience: input.audience,
         };
         set({
           notices: [notice, ...get().notices].slice(0, MAX_NOTICES),

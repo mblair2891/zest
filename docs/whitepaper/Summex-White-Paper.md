@@ -3,7 +3,7 @@
 **Powered by Quantum Reach**
 
 White paper · October 2026  
-**Revision · 26 Oct 2026** — Quotes build a monthly software package from intake (not setup-only). Base counter + kitchen display $0 / mo; paid packages add monthly; processing stays a separate Quantum / cash-discount note. Aligns with Operators Guide v2026.10.26.
+**Revision · 27 Oct 2026** — Realtime staffing recs (cut / hold / add); never auto clock-out. Aligns with Operators Guide v2026.10.27.
 
 summex.app  
 Guest cards: **Quantum Payments** only
@@ -142,6 +142,8 @@ A manager **Change device** switches among those three. PIN stays the person; th
 **Prime, then PIN-only.** Pair and open the station once from the signed-in control plane (internet required). After that, cold start is the PIN pad — not `/login`. Switch user returns to the keypad without changing the device role.
 
 **PIN ≠ owner password ≠ clock-in ≠ closeout.** Back office (owners, managers, accountants) uses email and password. Floor staff use a 4-digit PIN, hashed and scoped to the location (and entity on a host floor). Clock in / out is Labor. Server closeout is Cash.
+
+Realtime **staffing recommendations** (cut / hold / add) run from location settings while the house is open. They never clock anyone out. Accept on a cut rec offers notify-to-close-out. The manager decides.
 
 Printers sit on the **AP LAN** (not printer Wi‑Fi): thermal receipts (Epson TM-T20), impact kitchen (Epson TM-U220), drawer kick on the receipt printer.
 

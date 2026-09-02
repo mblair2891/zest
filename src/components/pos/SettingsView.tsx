@@ -49,6 +49,9 @@ import { QuantumPaymentsSettings } from "./QuantumPaymentsSettings";
 import { CashHandlingSettings } from "./CashHandlingSettings";
 import { LossPreventionSettings } from "./LossPreventionSettings";
 import { OpsJobsSettings } from "./OpsJobsSettings";
+import { StaffingRecsSettings } from "./StaffingRecsSettings";
+import { useOpsStore } from "@/lib/pos/ops-store";
+import { parseLaborRules } from "@/lib/labor/rules";
 import { saveFrontSettingsFn } from "@/lib/front/api";
 import {
   CASH_ROUND_INCREMENTS,
@@ -244,6 +247,8 @@ export function SettingsView() {
   const [hostTab, setHostTab] = useState<"host" | "operators">("host");
   const packs = settingsPacksForVenue(entityId);
   const updateSettings = usePosStore((s) => s.updateSettings);
+  const labor = useOpsStore((s) => s.labor);
+  const updateLabor = useOpsStore((s) => s.updateLabor);
   const persist = () => {
     if (!write || isProspectDemo() || !orgId) return;
     const s = usePosStore.getState().settings;
@@ -688,6 +693,14 @@ export function SettingsView() {
 
       <Pack id="loss_prevention" packs={packs}>
         <LossPreventionSettings write={write} />
+      </Pack>
+
+      <Pack id="staffing" packs={packs}>
+        <StaffingRecsSettings
+          cfg={parseLaborRules(labor).staffingRecs}
+          write={write}
+          onChange={(staffingRecs) => updateLabor({ staffingRecs })}
+        />
       </Pack>
 
       <GiftCardSettingsPack packs={packs} write={write} persist={persist} />

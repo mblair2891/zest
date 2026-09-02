@@ -268,7 +268,11 @@ export function decideStaffing(cfg: StaffingRecsConfig, snap: StaffingSnapshot):
           ? "host"
           : (snap.byRole.bartender ?? 0) > (cfg.minHeadcount.bartender ?? 0)
             ? "bartender"
-            : null;
+            : (snap.byRole.cashier ?? 0) > (cfg.minHeadcount.cashier ?? 0)
+              ? "cashier"
+              : kitchen > minKitchen && snap.odsOpen === 0
+                ? "kitchen"
+                : null;
 
   const canCut =
     !!cutRole &&

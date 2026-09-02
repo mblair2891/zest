@@ -171,7 +171,7 @@ export const ROLE_GUIDE_TOPICS: GuideTopic[] = [
         "A café does not need a dining-room map pack. A host hall does. The type badge on Settings is the pack you are editing.",
       ),
       ul(
-        "Every house: profile, tax, Quantum Payments tenders, cash discount, devices, staff, notifications, hours, scheduled AI ops jobs.",
+        "Every house: profile, tax, Quantum Payments tenders, cash discount, devices, staff, notifications, hours, staffing recs (cut/hold/add — never auto clock-out), scheduled AI ops jobs.",
         "Full-service: sections and floor control.",
         "Bar: tab auto-close.",
         "Counter / QSR / café / ghost: ticket prefix and expo.",
@@ -345,7 +345,7 @@ export const ROLE_GUIDE_TOPICS: GuideTopic[] = [
         "The floor needs a live read of labor vs demand — not a bot that punches people out. Summex recommends cut, hold, or add. You decide.",
       ),
       p(
-        "Labor → Rules: staffing recs on/off, min headcount per role, labor % target and high alert, sales-per-labor-hour floor, idle minutes with no tables or tickets before a cut, no-cut windows (open/close padding plus optional rush lock by daypart), lookahead from reservations, waitlist, and typical turn. Notify manager, host, and/or expo. Optional ADD recs when waitlist, quoted wait, or ODS depth exceeds thresholds.",
+        "Location settings → Staffing recs (also Labor → Rules): on/off, min headcount per role, labor % target and high alert, sales-per-labor-hour floor, idle minutes with no tables or tickets before a cut, no-cut windows (open/close padding plus optional rush lock by daypart), lookahead from reservations, waitlist, and typical turn. Notify manager, host, and/or expo. Optional ADD recs when waitlist, quoted wait, or ODS depth exceeds thresholds.",
       ),
       p(
         "The engine watches sales velocity vs the same daypart baseline, open tables, ODS depth and times, waitlist, reservations, clocked-in roles, and a labor $ proxy (hours × house hourly rate — not a payroll run). It emits recommend_cut, recommend_hold, or recommend_add with reasons.",

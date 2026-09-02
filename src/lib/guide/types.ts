@@ -1,12 +1,12 @@
 import type { PosView } from "@/lib/pos/types";
 
 /** Bump when shipping a docs/features batch so What’s New can watermark. */
-export const GUIDE_VERSION = "2026.10.26";
+export const GUIDE_VERSION = "2026.10.27";
 export const GUIDE_EDITION = "Operators Guide · training week";
 export const GUIDE_TITLE = "Operators Guide";
 /** Short public revision line (date + what changed). Keep in lockstep with the white paper. */
 export const GUIDE_REVISION =
-  "26 Oct 2026 — Quotes build a monthly software package from intake (not setup-only). Processing stays a separate note.";
+  "27 Oct 2026 — Realtime staffing recs (cut / hold / add) on Location settings. Never auto clock-out.";
 
 /**
  * Audience tabs in the guide. Distinct from POS PIN roles:

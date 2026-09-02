@@ -6,6 +6,19 @@ import type { GuideUpdate } from "@/lib/guide/types";
  */
 export const WHATS_NEW_ENTRIES: GuideUpdate[] = [
   {
+    id: "upd_2026_10_27_staffing_recs_location",
+    date: "2026-10-27",
+    title: "Realtime staffing cut / hold / add",
+    summary:
+      "Location settings drive live cut, hold, and add recs. Accept is not a clock-out — notify them to close out.",
+    body: "Settings → Staffing recs (also Labor → Rules): on/off, min headcount, labor % target and high alert, sales-per-labor-hour floor, idle minutes, no-cut open/close padding and rush lock, lookahead from reservations and waitlist. Notify manager, host, and/or expo. Optional add-staff when waitlist, quoted wait, or ODS depth exceeds thresholds. The engine uses sales velocity vs the same daypart baseline, open tables, ODS, waitlist, reservations, clocked roles, and a labor $ proxy. Recommendations only. Never auto clock-out.",
+    roles: ["owner_manager", "host_operator", "vendor_operator", "server", "kitchen_bar"],
+    surfaces: ["floor", "settings"],
+    audience: "all",
+    topicId: "staffing-recs",
+    tags: ["staffing", "labor", "cut", "add"],
+  },
+  {
     id: "upd_2026_10_26_intake_monthly_quotes",
     date: "2026-10-26",
     title: "Quotes include monthly software from intake",

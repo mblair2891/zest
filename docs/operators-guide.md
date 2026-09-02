@@ -1,8 +1,7 @@
 # Operators Guide — authoring
 
-**Revision · 26 Oct 2026** — Quotes build a monthly software package from intake
-(not setup-only). Processing stays a separate Quantum / cash-discount note.
-Guide v2026.10.26.
+**Revision · 27 Oct 2026** — Realtime staffing recs (cut / hold / add) on Location
+settings. Accept notifies to close out — never auto clock-out. Guide v2026.10.27.
 
 The in-app **Operators Guide** is the living product manual. It is not a
 separate PDF. Staff open it from **Guide** / **?** in the POS and platform
@@ -70,7 +69,7 @@ accurate when the job path changes.
 15. Offline / hybrid
 16. Cash: single/shared drawer, server bank, multi-well (one drawer per well), host to-go drawer, blind count. Closeout ≠ clock-out ≠ PIN.
 17. Tips: mix-based tip-out recs; CC tips cash-at-close vs paycheck; individual / tip-out / FOH / bar / team / dual pools; autograt vs service charge.
-18. Staffing recs: recommend cut/add only; never auto clock-out.
+18. Staffing recs (Location settings): recommend cut / hold / add only; never auto clock-out. Accept notifies to close out.
 19. Staff HR basics (clock vs PIN, time-off and availability if the employer enabled them)
 20. Loss prevention (owner/manager): unique PIN lockout, gated void/comp/discount after send and after bump, paid-check freeze, gift adjust manager-only, append-only audit, exception queue vs house / same weekday. When no manager is on the floor: shift-lead grants, pending approval, remote on-call, optional break-glass. Late-window comp + cash close flags (dwell, $/%, seconds to cash) on the daily queue. Table/check integrity: no nameless unassigned; named holds; empty table never drops an open check. Nightly pack gates house Z (ack or hard-block). Scheduled AI ops jobs (hourly through monthly) plus recipe cost engine feed the same queue — review only, never accuse. Not a theft how-to.
 21. Troubleshooting

@@ -28,6 +28,7 @@ export function StaffingWatcher() {
           kind: "staffing_rec",
           title: r.staffingKind === "recommend_add" ? "Staffing: add" : r.staffingKind === "recommend_cut" ? "Staffing: cut" : "Staffing: hold",
           body: `${r.message} Recommendations only — manager decides. Never auto clock-out.`,
+          audience: roles,
         });
       }
     };
