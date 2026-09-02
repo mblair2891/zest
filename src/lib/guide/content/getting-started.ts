@@ -32,20 +32,21 @@ export const GETTING_STARTED_TOPICS: GuideTopic[] = [
         "Operators Guide with table of contents on the left and an article pane on the right.",
       ),
       ul(
-        "Public site: Get pricing, Guide, Sign in. No Dashboard until you are signed in.",
+        "Public site: Get pricing, Operators Guide, Sign in. No Dashboard until you are signed in. Guide is operations-only — not a SaaS user manual.",
         "Training week: the real POS with Quantum Payments sandbox. Live cards wait for an approved Quantum application and an enrolled reader.",
         "Floor PIN signs a person onto this station. Clock in / out is Labor. Server closeout is Cash — none of those are the same action.",
         "Examples in this guide use Host Venue, Operator A, Operator B — never a live customer name.",
+        "Revision · 25 Oct 2026 — White paper lockstep: per-entity Quantum merchants, one guest check, gift ledger, device roles, cash/tips, training vs live.",
       ),
       steps(
-        "Tap Guide or “?” in the header (POS and platform) — or open /guide from the marketing site.",
+        "Tap Guide or “?” in the header (POS and platform) — or open /guide from the marketing site (Operators Guide, not a SaaS user manual).",
         "Search, pick a role tab, and open a topic. Read Why it matters, then the numbered steps.",
         "Mark complete as you go. Continue where you left off resumes the last unfinished topic.",
       ),
       tip(
         "Press Esc to close the overlay. Press / to jump to search. Exit on the public /guide page returns to the marketing home.",
       ),
-      related("using-guide", "login", "empty-start", "location-training", "venue-types"),
+      related("using-guide", "login", "empty-start", "location-training", "venue-types", "white-paper"),
     ],
   }),
   topic({
@@ -132,8 +133,12 @@ export const GETTING_STARTED_TOPICS: GuideTopic[] = [
       p(
         "Two login modes. Back office (owners, managers, accountants, entity managers) uses email and password at Sign in. Working staff on a shared tablet, ODS, or host stand use a 4-digit PIN. PINs are hashed, scoped to the location (and entity on a host floor), and never appear on the marketing site.",
       ),
+      p(
+        "Prime from the control plane, then PIN-only. Open the tablet once while signed in and online (Open POS). After that, cold start is the PIN pad — not /login. Printed receipts group lines by vendor; the guest still holds one check and one Quantum Payments tender.",
+      ),
       steps(
         "Back office: Sign in with work email and password. Open location settings, the host permission matrix, scheduling, hours export, menu.",
+        "Prime each station once from that signed-in session (internet required). Thereafter the device is PIN-only.",
         "Floor: the station opens on the PIN pad (order / ODS / host) — not /login. Enter your 4-digit PIN. Switch user returns to the keypad without changing the device role.",
         "Clock in / out from Labor (and Employees). The PIN pad does not punch you. Signing out of POS does not clock you out.",
         "Server closeout is Cash (expected drawer, Z). That is not clock-out and not PIN login.",

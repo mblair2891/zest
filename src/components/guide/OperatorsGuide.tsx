@@ -17,6 +17,7 @@ import { usePosStore } from "@/lib/pos/store";
 import { useGuideStore } from "@/lib/guide/store";
 import {
   GUIDE_EDITION,
+  GUIDE_REVISION,
   GUIDE_ROLE_LABEL,
   GUIDE_ROLES,
   GUIDE_TITLE,
@@ -174,6 +175,9 @@ export function OperatorsGuide({
           ) : (
             " · all roles"
           )}
+        </p>
+        <p className="hidden truncate text-[10px] text-muted-foreground lg:block">
+          Revision · {GUIDE_REVISION}
         </p>
       </div>
       <p className="hidden text-[11px] text-muted-foreground sm:block">

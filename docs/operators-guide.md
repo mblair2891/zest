@@ -1,15 +1,21 @@
 # Operators Guide — authoring
 
+**Revision · 25 Oct 2026** — White paper lockstep: per-entity Quantum merchants,
+one guest check, gift ledger, device roles, cash/tips, training vs live.
+Guide v2026.10.25.
+
 The in-app **Operators Guide** is the living product manual. It is not a
 separate PDF. Staff open it from **Guide** / **?** in the POS and platform
 shells, or at `/guide`.
 
 **Rule (inherit on every POS / payments / devices / cash / tips / HR / SaaS
-change):** update the matching Operators Guide sections **in the same commit**.
-Do not ship behavior without the topic. Guide is by establishment type and
-role (order / ODS / host / owner). Public `/guide` is operations only — no
-SaaS-platform internals, no “how to login with Google.” PIN ≠ owner password ≠
-clock-in ≠ closeout.
+change):** update (1) the matching Operators Guide sections, (2) the product
+white paper (`docs/whitepaper/` + `public/whitepaper.html`), and (3) demos if
+station/guest flow changed — **in the same commit**. Do not ship behavior
+without the topic. Guide is by establishment type and role (order / ODS / host /
+owner). Public `/guide` is operations only — no SaaS-platform internals, no
+“how to login with Google.” PIN ≠ owner password ≠ clock-in ≠ closeout. Landing
+page Guide link stays operator-only (`/guide`).
 
 Content lives in TypeScript modules so a new feature is a new topic file, not
 a CMS.
@@ -35,7 +41,7 @@ flags (`hr-employment`) are overlay-only (`visibility: "signed"`), not public.
 | `docs/whitepaper/` | Shareable white paper (MD + print HTML) |
 | `/whitepaper` | Live white paper (prints to PDF) |
 
-Bump `GUIDE_VERSION` in `types.ts` when you ship a batch of topics.
+Bump `GUIDE_VERSION` and `GUIDE_REVISION` in `types.ts` when you ship a batch of topics. Keep the white paper revision line in the same commit.
 Add a What’s New row in `src/lib/whats-new/entries.ts` (newest first) so the
 **signed-in** login popup can show it. Do not add a changelog chapter to the
 public guide.

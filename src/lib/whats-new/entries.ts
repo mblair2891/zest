@@ -6,6 +6,19 @@ import type { GuideUpdate } from "@/lib/guide/types";
  */
 export const WHATS_NEW_ENTRIES: GuideUpdate[] = [
   {
+    id: "upd_2026_10_25_white_paper_lockstep",
+    date: "2026-10-25",
+    title: "White paper matches the Operators Guide",
+    summary:
+      "Shareable white paper rewritten for per-entity Quantum merchants, gift ledger, device roles, cash/tips, and training vs live.",
+    body: "The product white paper now matches production and this guide: each entity is its own Quantum Payments merchant (Finix rail; guest never sees Finix); one guest check with split capture and receipts grouped by vendor; gift is the Summex ledger; stations are order / ODS / host, primed once then PIN-only; cash models and mix-based tip-out; training vs live. Public /guide stays operations-only. Landing Guide link stays the Operators Guide.",
+    roles: ["owner_manager"],
+    surfaces: ["reports", "settings"],
+    audience: "all",
+    topicId: "white-paper",
+    tags: ["guide", "white paper", "payments", "devices"],
+  },
+  {
     id: "upd_2026_10_24_scheduled_ops_jobs",
     date: "2026-10-24",
     title: "Scheduled AI ops jobs",

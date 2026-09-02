@@ -1,12 +1,13 @@
-# Quantum Payments — host capture and $35 chargeback split
+# Quantum Payments — per-entity merchants, one guest check, $35 chargeback split
 
-Guest cards always run on **Quantum Payments**. Integrations never offer Stripe, Square, Adyen, or similar as a POS processor. Gift cards stay first-party.
+Guest cards always run on **Quantum Payments**. Integrations never offer Stripe, Square, Adyen, or similar as a POS processor. Gift cards stay first-party (Summex ledger — not Finix).
 
-## One check, one capture
+## One check, split capture
 
-- The guest sees **one host brand** (the location’s guest-facing name).
+- The guest sees **one host brand** (the location’s guest-facing name) and tenders once.
+- Each entity (host and each tenant operator) is its own Quantum Payments merchant (Finix rail). Guest UI never names Finix.
 - Line items are tagged to an **operator**. Kitchen/bar tickets route by station.
-- Card tender is a **single capture** on the host MID. Operators are not card processors.
+- Capture splits to each brand’s merchant by merchandise owner. Printed receipts group lines by vendor — still one document.
 
 ## Settlement (period close)
 

@@ -266,7 +266,7 @@ export const CASH_GIFT_TOPICS: GuideTopic[] = [
       warn(
         "Turning on a term does not make expiry legal. Confirm state law with counsel — expiry may be illegal in some states. Imported cards are not kept in sync with the old system.",
       ),
-      related("tenders-tips", "settlement", "guests", "cash-handling", "quantum-payments", "loss-prevention"),
+      related("tenders-tips", "settlement", "guests", "cash-handling", "quantum-payments", "loss-prevention", "white-paper"),
     ],
   }),
   topic({

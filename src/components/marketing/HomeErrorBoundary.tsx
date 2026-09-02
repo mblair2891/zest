@@ -39,7 +39,7 @@ function HomeFallback({ error }: { error?: Error | null }) {
           className="inline-flex h-12 items-center px-2 text-xs font-semibold tracking-widest uppercase"
           style={{ color: "#c4b8a5" }}
         >
-          Guide
+          Operators Guide
         </a>
       </div>
     </main>

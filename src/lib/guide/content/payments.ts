@@ -60,7 +60,7 @@ export const PAYMENT_TOPICS: GuideTopic[] = [
       ),
       steps(
         "On the check, tap Pay. Choose card (Quantum Payments), cash, or gift card.",
-        "Card: amount (defaults to balance), tip suggestions. Sandbox may show last4 on the practice receipt. Live: present on the Quantum reader — never type PAN/CVV. One guest tender; each brand’s account is funded from the split.",
+        "Card: amount (defaults to balance), tip suggestions. Sandbox may show last4 on the practice receipt. Live: present on the Quantum reader — never type PAN/CVV. One guest tender; each brand’s account is funded from the split. The printed receipt groups lines by vendor — still one document.",
         "Cash: enter tendered; change due is calculated. Cash view tracks the drawer.",
         "Gift: enter the first-party code. Redeem never calls an outside gift network. The fulfilling operator gets the merchandise; issuer liability decreases; issuer remits to the fulfiller if they differ.",
         "To split tenders, pay less than the balance, then take the next tender on the same check.",
@@ -164,22 +164,23 @@ export const PAYMENT_TOPICS: GuideTopic[] = [
     id: "white-paper",
     chapterId: "payments",
     title: "White paper",
-    summary: "Shareable description of Summex, Quantum Payments, cash discount, and the ledger.",
+    summary:
+      "Shareable description of Summex: per-entity Quantum merchants, gift ledger, device roles, cash, tips, training vs live.",
     roles: "all",
     keywords: ["white paper", "pdf", "processor", "partner", "quantum reach"],
     blocks: [
       why(
-        "Processors, prospects, and partners need one document that does not invent rates, banks, or seals.",
+        "Processors, prospects, and partners need one document that does not invent rates, banks, or seals — and that stays in lockstep with this Operators Guide.",
       ),
       p(
-        "Open /whitepaper (also linked from the marketing footer). Print from the browser for a PDF. The markdown source lives with the product docs.",
+        "Open /whitepaper (also linked from the marketing footer). Print from the browser for a PDF. The markdown source lives with the product docs. Revision · 25 Oct 2026 matches Guide v2026.10.25.",
       ),
       steps(
         "Open White paper from the site footer or this topic.",
         "Use Print / PDF in the toolbar.",
         "Treat Roadmap items as not shipped — live ACH is not claimed.",
       ),
-      related("system-ledger", "quantum-payments", "settlement", "cash-discount"),
+      related("system-ledger", "quantum-payments", "host-capture", "gift-cards", "device-roles", "cash-handling", "location-training"),
     ],
   }),
   topic({

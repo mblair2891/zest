@@ -2,7 +2,9 @@
 ### Hospitality operations and money movement  
 **Powered by Quantum Reach**
 
-White paper · August 2026  
+White paper · October 2026  
+**Revision · 25 Oct 2026** — Per-entity Quantum Payments merchants (Finix rail, guest never sees Finix), one guest check, gift ledger, device roles (order / ODS / host), cash models, tip-out and pools, training vs live. Aligns with Operators Guide v2026.10.25.
+
 summex.app  
 Guest cards: **Quantum Payments** only
 
@@ -10,17 +12,18 @@ Guest cards: **Quantum Payments** only
 
 ## 1. Executive summary
 
-Summex is a hospitality operating system for restaurants, bars, and **host venues** where more than one operator can appear on a single guest check. It is powered by **Quantum Reach**. Guest-facing cards run exclusively through **Quantum Payments**.
+Summex is a hospitality operating system for a single restaurant or bar, a **host venue** where more than one operator can appear on a single guest check, or a multi-unit group. It is powered by **Quantum Reach**. Guest-facing cards run exclusively through **Quantum Payments**.
 
 The product combines:
 
-- **Service** — floor, sections, checks, kitchen and bar routing.
-- **SaaS** — prospect intake, snapshot quote, contract, guided onboarding.
-- **Money movement** — one host capture, internal operator allocations, period settlement, a first-party **system ledger**.
+- **Service** — floor, sections, checks, kitchen and bar routing (ODS).
+- **Stations** — three device roles: **order** (handhelds + bar), **ODS** (kitchen tickets), **host** (floor map + to-go).
+- **Money movement** — each entity is its own Quantum Payments merchant; the guest tenders once; capture splits; receipts group by vendor; period settlement on a first-party **system ledger**.
+- **House money** — cash drawers and server banks, mix-based tip-out and pools, first-party **gift ledger** (not the card processor).
 
-It is built for houses that refuse to run a POS, an ODS, a hall splitter, and a second card brand as four separate arguments. The guest pays once, under the host name. Operators are paid from merchandise share on a period ledger — not from a second terminal at the table.
+The guest pays once, under the host name. Operators are paid from merchandise share on a period ledger — not from a second terminal at the table. Software billing (Summex packages) is **separate** from guest card processing.
 
-This paper describes how the system works today. Items that are **not built** are marked **Roadmap**. No processor rates are guaranteed here. No bank partners are named. No compliance seals are claimed.
+This paper describes how the system works today. Items that are **not built** are marked **Roadmap**. No processor rates are guaranteed. No bank partners are named. No compliance seals are claimed. The in-product **Operators Guide** (`/guide`) is the operator manual; this paper is the shareable product description.
 
 ---
 
@@ -40,20 +43,22 @@ Summex’s answer is one system for **service and money movement**.
 
 ---
 
-## 3. Platform overview
+## 3. What Summex is
 
-Summex is a **single application**. Merchants sign in at summex.app. Organization and location are chosen after authentication — not as a maze of subdomains. The floor runs on the application host.
+Summex is a **single application**. The public site is product, pricing, the Operators Guide, and Sign in — not a dashboard. Organization and location are chosen after a back-office session. Floor work is PIN on a primed station.
 
 | Layer | What it does |
 |---|---|
-| Control plane | Organizations, locations, packages, invites, prospect pipeline |
 | POS | Floor, order, tenders, cash, guests, first-party gift |
-| ODS | Kitchen and bar tickets, Start/Bump, operator filters |
+| ODS | Kitchen and bar tickets, Start / Bump, operator filters |
+| Host stand | Floor map, seat, table status, to-go at the stand |
 | Settlement | Period close, host cut, card fee %, operator payouts (ledger, not live ACH) |
 | System ledger | Append-only money events for the location |
-| Operators Guide | In-product manual, searchable, role-aware |
+| Operators Guide | In-product manual, searchable, by establishment type and role |
 
-Software billing (Summex packages) is **separate** from guest card processing (Quantum Payments). Gift cards stay on a first-party Summex ledger. Integrations never offer Stripe, Square, or similar as a POS processor.
+Integrations never offer Stripe, Square, or similar as a POS processor. Hours-export partners (ADP, Intuit, CSV) are not card processors, and **Summex does not process payroll**.
+
+This paper does not document control-plane CRM, quotes, or pipeline internals.
 
 ---
 
@@ -61,13 +66,15 @@ Software billing (Summex packages) is **separate** from guest card processing (Q
 
 ### Single-operator
 
-One brand owns the location. Menu, kitchen, and payout belong to that brand. Cards still run on Quantum Payments. Settlement is simpler; the ledger still records captures, tips, cash, voids, and (if filed) disputes.
+One brand owns the location. Menu, kitchen, and payout belong to that brand. Cards still run on Quantum Payments. That brand is its own merchant. Settlement is simpler; the ledger still records captures, tips, cash, voids, and (if filed) disputes.
 
 ### Host + multiple operators
 
-**Host Venue** owns the floor, the guest-facing brand, and the card MID. **Operator A**, **Operator B**, … own lines, tickets, and period payouts. They are **not** card processors.
+**Host Venue** owns the floor and the guest-facing brand. **Operator A**, **Operator B**, … own lines, tickets, and period payouts. Each entity is its own Quantum Payments merchant. They are **not** a second guest-facing processor.
 
-The guest sees one check and one charge. Kitchen and bar still receive only their tickets. Period close allocates merchandise, optional host cut, card fees on the card-tendered share, cash due, and any dispute fee.
+The guest sees one check and one tender. Kitchen and bar still receive only their tickets. Capture splits to each brand’s merchant by merchandise owner. Printed receipts group lines under the vendor name — still one document. Period close allocates merchandise, optional host cut, card fees on the card-tendered share, cash due, and any dispute fee.
+
+A bar-scoped operator sees bar cost and bar sales; a food-scoped operator sees food; the host sees the house pack.
 
 This model is the reason Summex exists as more than a cash register.
 
@@ -79,45 +86,94 @@ The guest should not have to understand the house’s corporate structure.
 
 - One check, even when food and drink belong to different operators.
 - One guest-facing brand (the location / host name).
-- One card capture on Quantum Payments.
+- One card tender on Quantum Payments. The guest never sees Finix.
+- Printed receipts group items by vendor; the guest still holds one check.
 - Printed menu prices stay **pretty** (e.g. $15.00). If the house offers a cash discount, cash prices are computed — they are not a second ugly menu.
 
-The guest does not see operator splits, host cut, or ledger rows.
+The guest does not see operator splits, host cut, ledger rows, or device roles.
 
 ---
 
-## 6. Quantum Payments — host capture and internal split
+## 6. Quantum Payments — per-entity merchants, one guest check
 
-### Capture
+### Merchants
 
-Card tender is a **single capture** on the host MID. The receipt shows the host brand. Operators never receive a guest PAN and never onboard as processors inside Summex.
+Every card tender runs through **Quantum Payments**. Each entity (host and each tenant operator) is its own merchant on the Finix rail. **Guest UI never names Finix.** Host and each operator complete their own merchant application. A brand cannot take live cards until that brand’s application is approved.
 
-### Split (internal)
+### One tender, split capture
 
-Line items carry an operator tag. After capture, Summex records:
+The guest tenders once. Capture splits to each brand’s merchant by merchandise owner. Tax, tip, and service allocate by merchandise share. Receipts group lines by vendor.
 
-1. A **capture** on the host.
-2. **Allocations** to operators by merchandise share (pre-tax product; voids/comps excluded).
-3. Tax and service charges remain with the host unless configured otherwise.
-4. Tips default to the house unless “pool with operators” is on.
+This is **not** a second terminal at the table, and **not** Stripe Connect-style live split-payout. Period money movement after the tender is a **product-owned ledger**. Electronic “payout” rows address an operator’s account placeholder. **Live ACH is not claimed.** Marking a period paid records that money was sent **outside** Summex.
 
-This is **not** a live processor split-payout (Connect-style). It is a **product-owned ledger**. Electronic “payout” rows address an operator’s account placeholder. **Live ACH is not claimed.** Marking a period paid records that money was sent **outside** Summex.
+### Sandbox vs live
+
+Training (and default) uses Quantum Payments **sandbox** — practice cards, not a live Visa. Live cards require location lifecycle **live**, an approved application, and an enrolled Quantum reader. SYOH tablets run POS; they are not card terminals. If the processor is down: take cash or keep the check open. Card is not queued and never fakes a live Visa.
 
 ### Settlement periods
 
-The house closes a period. For each operator Summex computes:
-
-- Merchandise share  
-- Card-tendered merchandise (for card fee %)  
-- Optional host cut (percent of gross or fixed)  
-- Cash due (after host cut on the cash share)  
-- Electronic payout (card share net of fees, host cut, and any dispute fee)  
-
-Payout last4 is a **stub** for operations rehearsal. Connecting a live bank rail is **Roadmap**.
+The house closes a period. For each operator Summex computes merchandise share, card-tendered merchandise (for card fee %), optional host cut, cash due, and electronic payout (card share net of fees, host cut, and any dispute fee). Payout last4 is a **stub** for operations rehearsal. Connecting a live bank rail is **Roadmap**.
 
 ---
 
-## 7. Cash discount model
+## 7. Gift ledger
+
+Gift is a **first-party Summex ledger** — swipe, scan, or key. It is not Finix and not Quantum Payments.
+
+- Load requires cash or card on the same ticket. Card load charges the issuer brand’s Quantum account.
+- Redeem never calls an outside gift network. The fulfilling operator gets the merchandise; issuer liability decreases; issuer remits to the fulfiller if they differ.
+- House and operators may issue. Outstanding liability is tracked by issuer entity, with aging.
+- Adjust, freeze, and deactivate are manager events. Only issued or imported card IDs.
+
+---
+
+## 8. Stations — order, ODS, host
+
+The tablet is a screen, not a person. **PIN** says who is working. The **device role** says what this screen is for.
+
+| Role | Screen |
+|---|---|
+| **Order** | Handhelds and bar POS — menu, checks, pay, gift |
+| **ODS** | Kitchen (and bar display) — tickets, Start / Bump. No menu, no pay. Cash and gift tenders are blocked on ODS. |
+| **Host** | Floor map, seat, table status, to-go at the stand |
+
+A manager **Change device** switches among those three. PIN stays the person; the role is the screen.
+
+**Prime, then PIN-only.** Pair and open the station once from the signed-in control plane (internet required). After that, cold start is the PIN pad — not `/login`. Switch user returns to the keypad without changing the device role.
+
+**PIN ≠ owner password ≠ clock-in ≠ closeout.** Back office (owners, managers, accountants) uses email and password. Floor staff use a 4-digit PIN, hashed and scoped to the location (and entity on a host floor). Clock in / out is Labor. Server closeout is Cash.
+
+Printers sit on the **AP LAN** (not printer Wi‑Fi): thermal receipts (Epson TM-T20), impact kitchen (Epson TM-U220), drawer kick on the receipt printer.
+
+---
+
+## 9. Cash models
+
+Card is Quantum Payments. Cash still has to land in the right drawer or bank.
+
+- One-person drawer
+- Shared drawer (one till; cash still reported by user)
+- Server bank (server carries a starting bank)
+- Multi-well bar — **one drawer per well** (Well-2 never kicks Well-1)
+- Host to-go drawer plus floor banks
+
+Count may be **blind** (enter cash on hand first, then see expected). Over/short flags a manager queue — it is not an automatic accusation. Closeout is not clock-out and not PIN login. House well/drawer close is a separate closer screen from server closeout.
+
+House Wi‑Fi still records cash if the internet is down. Card requires connection.
+
+---
+
+## 10. Tips, tip-out, and pools
+
+Tip-out recommendations follow **sales mix** (food vs drink), not a flat percent of all sales. Two servers with the same volume do not owe the same kitchen and bar amounts.
+
+Card tips cash-at-close vs paycheck is a house (and employer-entity) setting. Pools: individual, tip-out, FOH, bar, team, dual. Autograt and service charge are distinct from tip pools.
+
+**Summex does not process payroll.** Hours, OT, declared and card tips export to ADP, Intuit, or CSV. Staffing recommendations are **cut / hold / add only** — never auto clock-out.
+
+---
+
+## 11. Cash discount model
 
 Straight percentage discounts produce ugly menu prices ($11.40) and coin chaos.
 
@@ -134,17 +190,27 @@ Examples at 5%, increment $0.25:
 | $12.00 | $11.40 | $11.50 |
 | $7.00 | $6.65 | $6.75 |
 
-Quantum Payments still captures the **printed** amount. Cash tenders use per-line cash prices; tax follows existing check rules. On a host venue, cash merchandise is what settlement uses for a cash tender.
+Quantum Payments still captures the **printed** amount. Cash tenders use per-line cash prices. On a host venue, cash merchandise is what settlement uses for a cash tender; card tenders still split on printed merchandise.
 
 The house is responsible for **local cash-discount posting rules**. Summex does not change legal copy per state.
 
 ---
 
-## 8. Fees and disputes
+## 12. Training vs live
+
+A live Summex starts **empty**. There is no public demo tenant.
+
+**Training** is the real POS with Quantum Payments **sandbox**. Cash, gift, floor, ODS, PIN, devices, and settlement math all work. Live Visa is blocked until lifecycle is **live**, plus an approved application and enrolled reader.
+
+Go live is an explicit owner action (now or scheduled) with keep/erase for transactional data. Menus, recipes, floorplan, staff, devices, and settings always stay. A host may be live while a new tenant operator stays in training.
+
+---
+
+## 13. Fees and disputes
 
 **Software fees** (packages, onboarding) are quoted in intake. They are not card-processing rates. This paper does **not** publish a rate card.
 
-**Card fee %** on settlement is a **house-configured** estimate used on the period ledger (for example to reserve a processor cost). It is not a guaranteed Quantum Payments schedule.
+**Card fee %** on settlement is a **house-configured** estimate used on the period ledger. It is not a guaranteed Quantum Payments schedule.
 
 **$35 dispute fee.** Quantum Payments charges **$35.00** only when a **real dispute is filed** on a closed check that has a card capture.
 
@@ -154,74 +220,73 @@ The house is responsible for **local cash-discount posting rules**. Summex does 
 | Mixed check, e.g. $65 food / $35 drink | Split by merchandise % → $22.75 / $12.25 |
 | No dispute filed | $0 — never a standing fee |
 
-Filing creates the fee. Marking the dispute won or lost does **not** reverse the $35. The ledger posts `chargeback_fee` rows per operator share. A guest-side `chargeback` row records impact of the disputed capture.
+Filing creates the fee. Marking the dispute won or lost does **not** reverse the $35. The ledger posts `chargeback_fee` rows per operator share.
 
-Voids and comps are station events with optional manager PIN — they are not a substitute for a filed dispute.
+Voids and comps are station events with a manager or shift-lead path — they are not a substitute for a filed dispute. Exception reports are a **review queue**, not verdicts. The product does not accuse staff of theft.
 
 ---
 
-## 9. Security, roles, and audit
+## 14. Security, roles, and audit
 
-Summex uses role-based access. PIN access level (Owner, Manager, Server, Bartender, Host stand, Kitchen, Busser) controls which POS tools appear. Account membership (owner, manager, staff) controls the control plane. Platform Admin is a control-plane identity, not a restaurant owner.
+PIN access level (Owner, Manager, Server, Bartender, Host stand, Kitchen, Busser, …) controls which POS tools appear. Account membership controls the back office. Platform Admin is a control-plane identity, not a restaurant owner.
 
-Section control can lock servers to assigned sections unless a manager grants a table.
-
-The **system ledger** is append-only with idempotent writes (retries do not double-post). Audit log records payments, comps, voids, period close, and dispute filing.
+Section control can lock servers to assigned sections unless a manager grants a table. Paid checks freeze. Gift adjust is manager-only. The audit log is append-only. The system ledger is append-only with idempotent writes (retries do not double-post).
 
 This paper does **not** claim PCI DSS certification, SOC reports, or other seals. Card data handling is limited to the processor path (Quantum Payments). Summex does not store full PAN on guest profiles.
 
 ---
 
-## 10. Implementation path
+## 15. Implementation path
 
-A live Summex starts **empty**. There is no demo tenant.
+1. The house is onboarded as a location (intake and guided setup).  
+2. Owner or manager primes each tablet once while online (Open POS).  
+3. Thereafter the station is **PIN-only**.  
+4. Training week with sandbox cards. Configure floor, menu, devices, cash, tips.  
+5. Go live when the house is ready — approved Quantum application and enrolled reader for live cards.
 
-1. **Intake** — describe the operation (type or speak). Snapshot quote from the current catalog.  
-2. **Accept** — merchant accepts the quote.  
-3. **Contract signed** — Platform Admin records the commercial step.  
-4. **Onboarding wizard** — organization, locations, operators, floor, menu, devices, invites, settlement, go-live.  
-5. **Live** — Open POS. Add menu and floor if left empty. Enable cash discount if the house posts one.
-
-Typical first-week work is configuration, not a six-month integration. Assist (“Describe with AI”) is a parallel path to forms.
+Typical first-week work is configuration, not a six-month integration.
 
 **Roadmap (not in this build):** live ACH/payout rails, QuickBooks sync, PCI audit letter, guaranteed processor rates.
 
 ---
 
-## 11. Glossary
+## 16. Glossary
 
 | Term | Meaning |
 |---|---|
-| Host Venue | Guest-facing brand and card MID owner on a multi-operator floor |
-| Operator | Stall or kitchen brand; not a card processor |
-| Host capture | One Quantum Payments charge on the host MID |
+| Host Venue | Guest-facing brand on a multi-operator floor |
+| Operator | Stall or kitchen brand; its own Quantum Payments merchant |
+| Per-entity merchant | Each entity’s Quantum Payments account (Finix rail; guest never sees Finix) |
+| One guest check | One tender; split capture; receipts grouped by vendor |
 | Printed / card price | Menu source of truth; what Quantum Payments captures |
 | Cash price | Printed price × (1 − %), rounded **up** to the configured increment |
+| Gift ledger | First-party Summex gift — not Finix |
+| Order / ODS / host | The three device roles |
+| PIN | Floor identity on a primed station — not clock-in, not closeout, not owner password |
 | Period | Settlement window; close mints operator payouts on the ledger |
 | System ledger | Append-only money events (capture, allocation, fees, payout, chargeback) |
 | Chargeback fee | $35 on file, split by merchandise %; not reversed on won/lost |
-| Package | Licensed module bundle on a location |
+| Training | Real POS, Quantum Payments sandbox |
 | Roadmap | Described, not shipped |
 
 ---
 
-## 12. Appendix — illustrative host model (The Laundry)
+## 17. Appendix — illustrative host model
 
-**This is an example, not a customer case study.** In DEV_DEMO the product can load a labeled TEST venue with this shape so ledger and settlement are exercisable. Production empty-start (`DEV_DEMO=0`) does not seed it.
+**This is an example, not a customer case study.** Public docs use Host Venue, Operator A, Operator B — never a live customer name.
 
-| Role | Name |
+| Role | Example |
 |---|---|
-| Host brand (guest-facing) | **The Laundry** |
-| Organization (test) | The Laundry Group |
-| Operator A — bar | **Steam Distillery** (drinks, bar station) |
-| Operator B — kitchen | **Diamond House BBQ** (food, kitchen station) |
+| Host brand (guest-facing) | **Host Venue** |
+| Operator A — bar | Drinks, bar station, liquor/beer/wine cost |
+| Operator B — kitchen | Food, kitchen station, food cost |
 
-The guest pays **one check** branded The Laundry, captured on Quantum Payments. A Highball ($12) is Steam Distillery; a Brisket plate ($18) is Diamond House BBQ. Kitchen sees food tickets; bar sees drink tickets. Period settlement and the system ledger allocate merchandise to each operator. A mixed $65 food / $35 drink check that is disputed posts a $35 fee as $22.75 / $12.25.
+The guest pays **one check** branded Host Venue, tendered on Quantum Payments. A drink line belongs to Operator A; a plate belongs to Operator B. Kitchen sees food tickets; bar sees drink tickets. Capture splits to each brand’s merchant. The receipt groups items under the vendor name. Period settlement and the system ledger allocate merchandise to each operator. A mixed $65 food / $35 drink check that is disputed posts a $35 fee as $22.75 / $12.25.
 
-Cash discount in the test seed is **5%, round up to $0.25** (printed $12.00 card → $11.50 cash).
+Illustrative cash discount: **5%, round up to $0.25** (printed $12.00 card → $11.50 cash).
 
 ---
 
 © Quantum Reach · Summex · summex.app  
 Authors of the product: Michael Blair & Andy Baida  
-This document describes current product behavior and explicitly marked roadmap. It is not a rate sheet, a bank offering, or a compliance certificate.
+This document describes current product behavior and explicitly marked roadmap. It is not a rate sheet, a bank offering, or a compliance certificate. Operator procedures live in the Operators Guide.

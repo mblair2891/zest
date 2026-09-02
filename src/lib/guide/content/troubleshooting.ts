@@ -88,7 +88,7 @@ export const TROUBLESHOOTING_TOPICS: GuideTopic[] = [
         "Host Venue — the guest-facing hall/pod brand and card MID owner.",
         "Operator A / Operator B — stall or kitchen brands on a host floor. Not card processors.",
         "Host stand — FOH waitlist/seating role (PIN: Host).",
-        "Host capture — one Quantum Payments charge on the host MID.",
+        "One guest check — Quantum Payments tender; capture splits to each brand’s merchant. Receipts group by vendor.",
         "Package — licensed module bundle on a location.",
         "PIN access level — which POS tools a station user may open.",
         "House hub — station that holds live checks; satellites reach it over Wi‑Fi.",

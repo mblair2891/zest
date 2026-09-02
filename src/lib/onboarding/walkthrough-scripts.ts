@@ -482,7 +482,7 @@ const VENDOR: TourDefinition = w(
       id: "vo-slice",
       title: "Your settlement slice",
       script:
-        "Merchandise, fees, host cut — view only. A $35 dispute fee, when filed, splits by your share. You cannot mark payouts sent or edit the host MID.",
+        "Merchandise, fees, host cut — view only. A $35 dispute fee, when filed, splits by your share. You cannot mark payouts sent or edit host merchant / payout routing.",
       selector: "[data-demo='operator-ops']",
       view: "vendor_portal",
     },

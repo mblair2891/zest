@@ -28,7 +28,7 @@ UI path: [`docs/saas-onboarding.md`](docs/saas-onboarding.md). Money rules: [`do
 - **Application** (`app.summex.app` / `/app`) — shared POS. Tenant is chosen after login, never as a subdomain.
 - **API** (`api.summex.app` / `/api`).
 - **Gift cards** — first-party ledger (import / freeze / void stay in-app).
-- **Guest cards** — Quantum Payments only (host MID for multi-operator locations).
+- **Guest cards** — Quantum Payments only. Each entity is its own merchant; one guest check; split capture; receipts grouped by vendor. Guest UI never names Finix.
 - **Brand** — Summex, powered by Quantum Reach.
 
 ## Requirements
