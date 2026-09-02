@@ -1,135 +1,136 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-/** Mirrors src/lib/saas/pricing.ts commercial rules for intake quotes. */
-const PACKAGE_CENTS = {
-  host_stand: 2900,
-  online_kiosk: 4900,
-  labor: 7900,
-  inventory: 4900,
-  guests_crm: 3900,
-  hall_settlement: 19900,
-  vendor_portal: 2900,
+const CAT = {
+  baseCents: 0,
+  fullServiceCents: 14900,
+  multiOpHostCents: 29900,
+  tenantCents: 4900,
+  opsPackCents: 9900,
+  extraStationCents: 1900,
+  includedStations: 4,
+  kioskCents: 2900,
+  terminalLeaseCents: 1500,
+  setupCents: 0,
 };
 
 function quoteHasSoftwarePackage(quote) {
-  if (!quote) return false;
   return quote.lineItems.some((i) => !i.oneTime);
 }
-
 function quoteIsSetupOnly(quote) {
-  if (!quote) return false;
   const software = quote.lineItems.filter((i) => !i.oneTime);
   const setup = quote.lineItems.filter((i) => i.oneTime);
   return software.length === 0 && setup.length > 0;
 }
 
-function packagesFromIntake(modules, host) {
-  const pkgs = ["pos_core", "kds"];
-  if (modules.tableService) pkgs.push("host_stand");
-  if (modules.kiosk || modules.online) pkgs.push("online_kiosk");
-  if (modules.inventory) pkgs.push("inventory");
-  if (modules.labor) pkgs.push("labor");
-  if (modules.giftCards || modules.crm) pkgs.push("guests_crm");
-  if (host || modules.vendorPortal) pkgs.push("hall_settlement", "vendor_portal");
-  return pkgs;
-}
-
-function buildQuote({ modules, host = false, locs = 1, setupCents = 0 }) {
-  const pkgs = packagesFromIntake(modules, host);
-  const lineItems = [
-    { id: "pos_core", oneTime: false, totalCents: 0, label: "Starter — counter service + kitchen display" },
+function build({
+  full = false,
+  multi = false,
+  ops = false,
+  tenants = 1,
+  order = 2,
+  ods = 1,
+  kiosks = 0,
+  lease = false,
+  locs = 1,
+}) {
+  const items = [
+    { id: "base", oneTime: false, totalCents: CAT.baseCents * locs, label: "Base counter + 1 ODS" },
   ];
-  for (const id of pkgs) {
-    const unit = PACKAGE_CENTS[id];
-    if (!unit) continue;
-    lineItems.push({
-      id: `pkg_${id}`,
+  if (multi) {
+    items.push({
+      id: "multi_op",
       oneTime: false,
-      totalCents: unit * locs,
-      label: id,
+      totalCents: CAT.multiOpHostCents * locs,
+      label: "Multi-operator",
+    });
+    items.push({
+      id: "tenants",
+      oneTime: false,
+      totalCents: CAT.tenantCents * tenants,
+      label: "Tenant",
+    });
+  } else if (full) {
+    items.push({
+      id: "full_service",
+      oneTime: false,
+      totalCents: CAT.fullServiceCents * locs,
+      label: "Full service",
     });
   }
-  if (setupCents > 0) {
-    lineItems.push({ id: "onb", oneTime: true, totalCents: setupCents, label: "One-time setup" });
+  if (ops) {
+    items.push({
+      id: "ops_pack",
+      oneTime: false,
+      totalCents: CAT.opsPackCents * locs,
+      label: "Ops pack",
+    });
   }
-  const monthlyCents = lineItems.filter((i) => !i.oneTime).reduce((s, i) => s + i.totalCents, 0);
+  const extra = Math.max(0, order + ods - CAT.includedStations);
+  if (extra > 0) {
+    items.push({
+      id: "extra_stations",
+      oneTime: false,
+      totalCents: extra * CAT.extraStationCents,
+      label: "Extra stations",
+    });
+  }
+  if (kiosks > 0) {
+    items.push({
+      id: "kiosk",
+      oneTime: false,
+      totalCents: kiosks * CAT.kioskCents,
+      label: "Kiosk",
+    });
+  }
+  if (lease) {
+    items.push({
+      id: "terminals_mo",
+      oneTime: false,
+      totalCents: CAT.terminalLeaseCents,
+      label: "Terminal lease",
+    });
+  }
+  const monthlyCents = items.filter((i) => !i.oneTime).reduce((s, i) => s + i.totalCents, 0);
   return {
-    planSlug: host ? "food_hall" : modules.tableService ? "full_service" : "starter",
-    planName: host ? "Food hall" : modules.tableService ? "Full service" : "Starter",
+    planSlug: multi ? "food_hall" : full ? "full_service" : "starter",
+    planName: multi ? "Multi-operator" : full ? "Full service" : "Counter",
     monthlyCents,
-    onboardingFeeCents: setupCents,
-    expiresAt: "2026-10-02T00:00:00.000Z",
-    featureList: ["POS core — counter service, checks, tenders"],
-    processingNote:
-      "Guest card processing is Quantum Payments (cash-discount settings apply). It is billed separately from software.",
-    lineItems,
-    locationCount: locs,
+    onboardingFeeCents: 0,
+    lineItems: items,
+    processingNote: "Guest card processing is Quantum Payments. Billed separately from software.",
   };
 }
 
-test("restaurant intake quote has monthly software, not setup-only", () => {
-  const quote = buildQuote({
-    modules: {
-      tableService: true,
-      kds: true,
-      online: true,
-      inventory: true,
-      labor: true,
-      crm: true,
-    },
-    setupCents: 149900,
-  });
-  assert.equal(quote.planSlug, "full_service");
-  assert.ok(quote.monthlyCents > 0);
-  assert.ok(quote.lineItems.some((i) => !i.oneTime && i.totalCents > 0));
-  assert.ok(quote.lineItems.some((i) => i.id === "pos_core" && i.totalCents === 0));
-  assert.ok(quote.onboardingFeeCents > 0);
-  assert.equal(quoteIsSetupOnly(quote), false);
-  assert.equal(quoteHasSoftwarePackage(quote), true);
-  assert.match(quote.processingNote, /Quantum Payments/);
+test("counter package is $0 software, not setup-only", () => {
+  const q = build({});
+  assert.equal(q.planSlug, "starter");
+  assert.equal(q.monthlyCents, 0);
+  assert.equal(quoteHasSoftwarePackage(q), true);
+  assert.equal(quoteIsSetupOnly(q), false);
 });
 
-test("setup fee is optional and never the only line", () => {
-  const waived = buildQuote({
-    modules: { tableService: true, labor: true },
-    setupCents: 0,
-  });
-  assert.equal(waived.onboardingFeeCents, 0);
-  assert.ok(waived.monthlyCents > 0);
-  assert.equal(waived.lineItems.filter((i) => i.oneTime).length, 0);
-  assert.equal(quoteIsSetupOnly(waived), false);
+test("full service is $149 / location", () => {
+  const q = build({ full: true });
+  assert.equal(q.planSlug, "full_service");
+  assert.equal(q.monthlyCents, 14900);
 });
 
-test("counter-only starter still has a monthly software line at $0", () => {
-  const quote = buildQuote({
-    modules: { counterQsr: true, kds: true },
-    setupCents: 0,
-  });
-  assert.equal(quote.planSlug, "starter");
-  assert.ok(quote.lineItems.some((i) => !i.oneTime));
-  assert.equal(quoteIsSetupOnly(quote), false);
-  assert.equal(quoteHasSoftwarePackage(quote), true);
+test("multi-operator is $299 + $49 per tenant", () => {
+  const q = build({ multi: true, tenants: 2 });
+  assert.equal(q.planSlug, "food_hall");
+  assert.equal(q.monthlyCents, 29900 + 4900 * 2);
 });
 
-test("host interview maps to food-hall monthly package", () => {
-  const quote = buildQuote({
-    modules: { tableService: true, kds: true, vendorPortal: true, labor: true },
-    host: true,
-    setupCents: 249900,
-  });
-  assert.equal(quote.planSlug, "food_hall");
-  assert.ok(quote.monthlyCents > 0);
-  assert.ok(quote.lineItems.some((i) => i.id === "pkg_hall_settlement"));
-  assert.equal(quoteIsSetupOnly(quote), false);
+test("ops pack, extra stations, kiosk add monthly", () => {
+  const q = build({ full: true, ops: true, order: 4, ods: 2, kiosks: 1 });
+  // extra = 6 - 4 = 2 * 19
+  assert.equal(q.monthlyCents, 14900 + 9900 + 1900 * 2 + 2900);
 });
 
-test("setup-only line items are rejected as a complete quote", () => {
-  const bad = {
-    planSlug: "starter",
-    monthlyCents: 0,
-    lineItems: [{ id: "onb", oneTime: true, totalCents: 49900, label: "Setup" }],
-  };
-  assert.equal(quoteIsSetupOnly(bad), true);
-  assert.equal(quoteHasSoftwarePackage(bad), false);
+test("setup default $0 is never the only line", () => {
+  const q = build({ full: true });
+  assert.equal(q.onboardingFeeCents, 0);
+  assert.equal(quoteIsSetupOnly(q), false);
+  assert.match(q.processingNote, /separately|Quantum/);
 });

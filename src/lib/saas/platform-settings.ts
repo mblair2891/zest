@@ -5,6 +5,7 @@ import {
   PACKAGE_BY_ID,
   QUOTE_SOFTWARE_PACKAGES,
 } from "@/lib/pos/packages";
+import { DEFAULT_QUOTE_CATALOG } from "./quote-catalog";
 
 export { QUOTE_SOFTWARE_PACKAGES };
 
@@ -278,7 +279,7 @@ export const billingSettingsSchema = z.object({
   devicePackSize: int(1, 100).default(4),
   devicePackFeeCents: int(0, 10_000_000).default(2500),
   annualDiscountPercent: int(0, 90).default(10),
-  setupFeeMode: z.enum(["waive", "flat", "by_package"]).default("by_package"),
+  setupFeeMode: z.enum(["waive", "flat", "by_package"]).default("waive"),
   setupFeeFlatCents: int(0, 10_000_000).default(0),
   quoteExpireDays: int(1, 180).default(30),
   terminalMonthlyCents: int(0, 10_000_000).default(0),
@@ -286,6 +287,22 @@ export const billingSettingsSchema = z.object({
   packageMonthlyCents: z
     .record(z.string(), int(0, 10_000_000))
     .default(defaultQuotePackageCents()),
+  quoteCatalog: z
+    .object({
+      baseCents: int(0, 10_000_000).default(0),
+      fullServiceCents: int(0, 10_000_000).default(14900),
+      multiOpHostCents: int(0, 10_000_000).default(29900),
+      tenantCents: int(0, 10_000_000).default(4900),
+      opsPackCents: int(0, 10_000_000).default(9900),
+      extraStationCents: int(0, 10_000_000).default(1900),
+      includedStations: int(1, 100).default(4),
+      kioskCents: int(0, 10_000_000).default(2900),
+      terminalLeaseCents: int(0, 10_000_000).default(1500),
+      terminalBuyCents: int(0, 10_000_000).default(0),
+      setupCents: int(0, 10_000_000).default(0),
+      setupCapCents: int(0, 10_000_000).default(0),
+    })
+    .default(DEFAULT_QUOTE_CATALOG),
   gmvScaleCents: z
     .object({
       under_50k: int(0, 10_000_000).default(0),

@@ -45,8 +45,8 @@ export const SAAS_TOPICS: GuideTopic[] = [
         "Commercial agreement is a human step. The product records it; it does not e-sign the paper for you.",
       ),
       steps(
-        "Get pricing creates a request. Pipeline quote builder rebuilds from intake: package name, features they asked for, monthly software, optional setup, entities/stations. AI interview recs are the default the human can edit.",
-        "Base counter-service + kitchen display is $0 / mo software. Paid packages add monthly for floor/host, kiosk, QR, labor/HR, recipes/costing, multi-entity, etc. — dollar amounts are Settings → Plans & billing forms (not JSON). Hardware is BYO except optional Quantum terminals. Setup is waive / flat / by package — never the only line.",
+        "Get pricing shows a live quote: Counter $0, Full service $149/loc, Multi-operator $299/loc + $49/tenant. Prospect toggles modules (ops pack $99, extra stations $19, kiosk $29, terminal lease $15). Request this quote snapshots those lines.",
+        "Dollar amounts live in Settings → Plans & billing (Get a price catalog forms). Setup defaults to $0. Processing is a note, not software $. PDF, email, and CRM use the same lines. Hardware is BYO except optional Quantum terminals.",
         "Save draft, then Send quote. Email and Print/PDF show monthly software, processing as a separate note (Quantum / cash-discount, not mixed into software $), expires-on, Accept and Request changes.",
         "Merchant taps Accept, or Request changes, or Admin marks accepted. Status becomes accepted. Not a live tenant yet.",
         "Platform Admin records the contract (checkbox + date) → Contracted. Start onboarding is enabled only then, and only if a monthly package quote was accepted. OVERRIDE + reason for an admin skip.",

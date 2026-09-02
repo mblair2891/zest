@@ -238,6 +238,20 @@ export const getActiveTenantFn = createServerFn({ method: "GET" })
     return resolveActiveTenant(context.userId);
   });
 
+export const loadPublicQuoteCatalogFn = createServerFn({ method: "GET" })
+  .handler(async () => {
+    const { DEFAULT_QUOTE_CATALOG, parseQuoteCatalog, publicQuoteCatalog } = await import(
+      "./quote-catalog"
+    );
+    try {
+      const { loadPricingRules } = await import("./prospects.server");
+      const { rules } = await loadPricingRules();
+      return { catalog: publicQuoteCatalog(parseQuoteCatalog(rules.quoteCatalog)) };
+    } catch {
+      return { catalog: DEFAULT_QUOTE_CATALOG };
+    }
+  });
+
 export const startProspectFn = createServerFn({ method: "POST" })
   .middleware([optionalAuthMiddleware])
   .handler(async ({ context }) => {

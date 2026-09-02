@@ -6,6 +6,19 @@ import type { GuideUpdate } from "@/lib/guide/types";
  */
 export const WHATS_NEW_ENTRIES: GuideUpdate[] = [
   {
+    id: "upd_2026_10_32_get_a_price_modules",
+    date: "2026-09-02",
+    title: "Get a price: live module monthly",
+    summary:
+      "Prospects see Counter $0 / Full service $149 / Multi-op $299+tenants, toggle modules, then request the quote.",
+    body: "Public Get pricing ends on a live quote. Base POS + 1 ODS is $0. Full service floor is $149/location. Multi-operator host is $299 plus $49 per tenant. Ops pack $99, extra order/ODS over 4 is $19, kiosk $29, optional terminal lease $15/mo. Setup defaults to $0. Processing stays a note. PDF, email, and CRM use the same lines. Amounts are Plans & billing forms.",
+    roles: ["platform_admin"],
+    surfaces: ["platform"],
+    audience: "platform",
+    topicId: "quote-contract",
+    tags: ["quote", "intake", "pricing"],
+  },
+  {
     id: "upd_2026_10_31_quote_monthly_package",
     date: "2026-09-02",
     title: "Quotes include monthly software from intake",

@@ -1,7 +1,7 @@
 # Operators Guide — authoring
 
-**Revision · 2 Sep 2026** — Quotes build a monthly software package from intake (setup is
-never the only line). Guide v2026.10.31.
+**Revision · 2 Sep 2026** — Get a price shows live module monthly (Counter $0 / Full service
+$149 / Multi-op $299 + tenants). Setup defaults to $0. Guide v2026.10.32.
 
 The in-app **Operators Guide** is the living product manual. It is not a
 separate PDF. Staff open it from **Guide** / **?** in the POS and platform

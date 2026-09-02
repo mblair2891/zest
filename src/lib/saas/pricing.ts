@@ -18,12 +18,25 @@ import type {
   SetupFeeMode,
 } from "./prospect-types";
 import { GMV_BANDS } from "./prospect-types";
+import type { TerminalNeed } from "./prospect-types";
+import {
+  DEFAULT_QUOTE_CATALOG,
+  cappedSetupCents,
+  catalogFeatureList,
+  catalogSoftwareLines,
+  catalogStationCounts,
+  isMultiOperatorHouse,
+  parseQuoteCatalog,
+  recommendedCatalogPlan,
+  tenantEntityCount,
+  terminalNeedOf,
+} from "./quote-catalog";
 
 export const DEFAULT_PRICING_RULES: PricingRules = {
   planMonthlyCents: {
     starter: 0,
-    full_service: 0,
-    food_hall: 0,
+    full_service: 14900,
+    food_hall: 29900,
     platform_internal: 0,
   },
   perLocationFeeCents: 4900,
@@ -34,9 +47,9 @@ export const DEFAULT_PRICING_RULES: PricingRules = {
   devicePackFeeCents: 2500,
   annualDiscountPercent: 10,
   onboardingFeeCents: {
-    starter: 49900,
-    full_service: 149900,
-    food_hall: 249900,
+    starter: 0,
+    full_service: 0,
+    food_hall: 0,
     platform_internal: 0,
   },
   gmvScaleCents: {
@@ -55,12 +68,13 @@ export const DEFAULT_PRICING_RULES: PricingRules = {
     cafe: "starter",
     qsr: "starter",
   },
-  setupFeeMode: "by_package",
+  setupFeeMode: "waive",
   setupFeeFlatCents: 0,
   quoteExpireDays: 30,
-  terminalMonthlyCents: 0,
+  terminalMonthlyCents: 1500,
   terminalSetupCents: 0,
   packageMonthlyCents: defaultQuotePackageCents(),
+  quoteCatalog: { ...DEFAULT_QUOTE_CATALOG },
 };
 
 const MODULE_PACKAGES: Record<keyof IntakeAnswers["modules"], PackageId[]> = {
@@ -129,6 +143,7 @@ export function parsePricingRules(raw: unknown): PricingRules {
     }
   }
   base.packageMonthlyCents = pkgCents;
+  base.quoteCatalog = parseQuoteCatalog(o.quoteCatalog ?? base.quoteCatalog);
   return base;
 }
 
@@ -152,6 +167,7 @@ export function emptyIntakeAnswers(): IntakeAnswers {
       operatorsPerLocation: 1,
       guestPaysHostCheck: false,
       barKitchenSplit: false,
+      hostStand: true,
     },
     modules: {
       tableService: true,
@@ -171,8 +187,12 @@ export function emptyIntakeAnswers(): IntakeAnswers {
       volumeKind: "gmv",
       monthlyChecks: 2000,
       gmvBand: "50_150k",
-      peakDevices: 6,
+      peakDevices: 4,
       staffSeats: 12,
+      orderStations: 2,
+      odsStations: 1,
+      kioskCount: 0,
+      terminalNeed: "none",
     },
     payments: {
       quantumPaymentsAck: false,
@@ -250,6 +270,7 @@ export function parseIntakeAnswers(raw: unknown): IntakeAnswers {
     operatorsPerLocation: Math.max(1, Math.floor(num(operating.operatorsPerLocation, 1))),
     guestPaysHostCheck: bool(operating.guestPaysHostCheck),
     barKitchenSplit: bool(operating.barKitchenSplit),
+    hostStand: bool(operating.hostStand, false),
   };
   const modules = asObject(o.modules);
   d.modules = {
@@ -268,13 +289,21 @@ export function parseIntakeAnswers(raw: unknown): IntakeAnswers {
   };
   const volume = asObject(o.volume);
   const gmv = str(volume.gmvBand, "50_150k") as GmvBand;
+  const term = str(volume.terminalNeed, "none") as TerminalNeed;
   d.volume = {
     volumeKind: volume.volumeKind === "checks" ? "checks" : "gmv",
     monthlyChecks: Math.max(0, Math.floor(num(volume.monthlyChecks, 2000))),
     gmvBand: GMV_BANDS.includes(gmv) ? gmv : "50_150k",
-    peakDevices: Math.max(1, Math.floor(num(volume.peakDevices, 6))),
+    peakDevices: Math.max(1, Math.floor(num(volume.peakDevices, 4))),
     staffSeats: Math.max(1, Math.floor(num(volume.staffSeats, 8))),
+    orderStations: Math.max(1, Math.floor(num(volume.orderStations, d.volume.orderStations))),
+    odsStations: Math.max(0, Math.floor(num(volume.odsStations, d.volume.odsStations))),
+    kioskCount: Math.max(0, Math.floor(num(volume.kioskCount, d.volume.kioskCount))),
+    terminalNeed: term === "lease" || term === "buy" || term === "none" ? term : "none",
   };
+  if (!("hostStand" in operating)) {
+    d.operating.hostStand = d.modules.tableService;
+  }
   const payments = asObject(o.payments);
   const freq = str(payments.payoutFrequency, "weekly");
   d.payments = {
@@ -337,6 +366,10 @@ export function recommendedPlan(
     return hinted;
   }
   const merged = applyInterviewToIntake(answers, interview);
+  const catalogPlan = recommendedCatalogPlan(merged);
+  if (catalogPlan === "food_hall" || catalogPlan === "full_service" || catalogPlan === "starter") {
+    return catalogPlan;
+  }
   const primary = primaryLocationType(merged);
   let plan = rules.basePlanByLocationType[primary] ?? "starter";
   if (merged.operating.model === "host_operators" || hostLocationCount(merged) > 0) {
@@ -344,7 +377,6 @@ export function recommendedPlan(
   } else if (merged.modules.tableService && plan === "starter") {
     plan = "full_service";
   }
-  if (merged.portfolio.locationsNow >= 6 && plan === "starter") plan = "full_service";
   if (!PLAN_SLUGS.includes(plan) || plan === "platform_internal") plan = "starter";
   return plan;
 }
@@ -376,21 +408,6 @@ function line(
 export const PROCESSING_NOTE =
   "Guest card processing is Quantum Payments (cash-discount settings apply). It is billed separately from software and is not mixed into the monthly software total unless you chose a bundled plan.";
 
-const MODULE_FEATURE_LABEL: Record<keyof IntakeAnswers["modules"], string> = {
-  tableService: "Floor / host stand (waitlist & reservations)",
-  counterQsr: "Counter / QSR service",
-  kiosk: "Guest kiosk",
-  online: "Online / QR ordering",
-  kds: "Kitchen / bar order display",
-  inventory: "Recipes, invoices, and costing",
-  labor: "Labor, hours export, and HR packets",
-  giftCards: "First-party gift ledger",
-  crm: "Guests / CRM",
-  marketing: "Marketing",
-  vendorPortal: "Multi-entity / vendor portal",
-  multiLocationReporting: "Multi-location reporting",
-};
-
 export function applyInterviewToIntake(
   answers: IntakeAnswers,
   rec: InterviewRecommendation | null | undefined,
@@ -398,7 +415,12 @@ export function applyInterviewToIntake(
   if (!rec) return answers;
   const next = parseIntakeAnswers(answers);
   if (rec.operatingModel === "host_multi_operator") {
-    next.operating = { ...next.operating, model: "host_operators", guestPaysHostCheck: true };
+    next.operating = {
+      ...next.operating,
+      model: "host_operators",
+      guestPaysHostCheck: true,
+      hostStand: true,
+    };
   } else if (rec.operatingModel === "single_operator" && next.operating.model === "single") {
     next.operating = { ...next.operating, model: "single" };
   }
@@ -428,35 +450,25 @@ export function applyInterviewToIntake(
     next.volume = { ...next.volume, staffSeats: Math.max(next.volume.staffSeats, rec.estimates.seats) };
   }
   if (rec.estimates?.devices) {
-    next.volume = { ...next.volume, peakDevices: Math.max(next.volume.peakDevices, rec.estimates.devices) };
+    const devices = Math.max(next.volume.peakDevices, rec.estimates.devices);
+    next.volume = {
+      ...next.volume,
+      peakDevices: devices,
+      orderStations: Math.max(next.volume.orderStations, Math.max(1, Math.ceil(devices / 2))),
+      odsStations: Math.max(next.volume.odsStations, 1),
+    };
   }
+  if (rec.modules?.includes("tableService")) next.operating.hostStand = true;
+  if (rec.modules?.includes("kiosk")) next.volume.kioskCount = Math.max(next.volume.kioskCount, 1);
   return next;
 }
 
 export function featureListFromAnswers(answers: IntakeAnswers): string[] {
-  const out: string[] = [];
-  out.push("POS core — counter service, checks, tenders");
-  out.push("Kitchen / bar order display (printer software)");
-  if (answers.operating.model === "host_operators" || answers.operating.model === "mixed") {
-    out.push("Host + operators: one guest check, per-entity Quantum merchants");
-  }
-  if (answers.operating.barKitchenSplit) out.push("Bar / kitchen split on one check");
-  (Object.keys(answers.modules) as (keyof IntakeAnswers["modules"])[]).forEach((key) => {
-    if (!answers.modules[key]) return;
-    if (key === "kds") return;
-    out.push(MODULE_FEATURE_LABEL[key]);
-  });
-  if (answers.payments.tips) out.push("Tips, tip-out, and pools");
-  return [...new Set(out)];
+  return catalogFeatureList(answers);
 }
 
 export function stationCountsFromAnswers(answers: IntakeAnswers): QuoteStationCounts {
-  const devices = Math.max(1, answers.volume.peakDevices || 1);
-  return {
-    order: devices,
-    ods: answers.modules.kds ? Math.max(1, Math.ceil(devices / 2)) : 0,
-    host: answers.modules.tableService ? 1 : 0,
-  };
+  return catalogStationCounts(answers);
 }
 
 /** Software packages the house actually asked for — not the full venue default dump. */
@@ -553,106 +565,26 @@ export function generateQuote(
   const nowMs = Date.parse(nowIso) || Date.now();
   const expireDays = Math.max(1, opts?.expireDays ?? rules.quoteExpireDays ?? 30);
   const expiresAt = new Date(nowMs + expireDays * 86_400_000).toISOString();
+  const catalog = parseQuoteCatalog(rules.quoteCatalog ?? DEFAULT_QUOTE_CATALOG);
   const stations = stationCountsFromAnswers(answers);
+  const tenants = tenantEntityCount(answers);
   const entityCount =
-    hostLocs > 0 ? hostLocs + operators : Math.max(1, locs);
+    isMultiOperatorHouse(answers) ? Math.max(1, locs) + tenants : Math.max(1, locs);
 
   const packages = new Set<PackageId>(packagesFromIntake(answers));
-  if (plan === "food_hall" || hostLocs > 0) {
-    packages.add("hall_settlement");
-    packages.add("vendor_portal");
+  const items: QuoteLineItem[] = catalogSoftwareLines(answers, catalog, locs, plan);
+
+  let terminalQty = Math.max(0, Math.floor(opts?.terminalQty ?? 0));
+  const need = terminalNeedOf(answers);
+  if (terminalQty === 0 && (need === "lease" || need === "buy")) {
+    terminalQty = Math.max(1, Math.min(12, stations.order || 1));
   }
-  (Object.keys(answers.modules) as (keyof IntakeAnswers["modules"])[]).forEach((key) => {
-    if (!answers.modules[key]) return;
-    for (const pkg of MODULE_PACKAGES[key]) packages.add(pkg);
-  });
-
-  const items: QuoteLineItem[] = [];
-  items.push(
-    line("pos_core", "package", `${planLabel(plan)} — counter service + kitchen display`, locs, 0, {
-      packageId: "pos_core",
-      note: "Base software $0 / mo. Hardware is BYO except optional Quantum terminals.",
-    }),
-  );
-
-  const planFee = Math.max(0, rules.planMonthlyCents[plan] ?? 0);
-  if (planFee > 0) {
-    items.push(line("plan", "plan", `${planLabel(plan)} software × ${locs} loc`, locs, planFee));
-  }
-
-  for (const pkgId of [...packages]) {
-    if (pkgId === "pos_core" || pkgId === "kds") continue;
-    const pkg = PACKAGE_BY_ID[pkgId];
-    const unit = packageUnitCents(pkgId, rules);
-    if (!pkg || unit <= 0) continue;
+  if (need === "buy" && catalog.terminalBuyCents > 0 && terminalQty > 0) {
     items.push(
-      line(`pkg_${pkgId}`, "package", `${pkg.name} × ${locs} loc`, locs, unit, {
-        packageId: pkgId,
+      line("terminals_buy", "onboarding", "Quantum payment terminal (purchase)", terminalQty, catalog.terminalBuyCents, {
+        oneTime: true,
+        note: "Optional. Other hardware is BYO.",
       }),
-    );
-  }
-
-  if (rules.perLocationFeeCents > 0) {
-    items.push(
-      line("loc_fee", "location", "Per-location platform fee", locs, rules.perLocationFeeCents),
-    );
-  }
-  if (operators > 0 && rules.perOperatorFeeCents > 0) {
-    items.push(
-      line(
-        "opr_fee",
-        "operator",
-        "Host-model operator seat",
-        operators,
-        rules.perOperatorFeeCents,
-      ),
-    );
-  }
-
-  if (rules.seatPackFeeCents > 0) {
-    const seatPacks = Math.ceil(Math.max(1, answers.volume.staffSeats) / Math.max(1, rules.seatPackSize));
-    items.push(
-      line(
-        "seats",
-        "seat_pack",
-        `Staff seats (${rules.seatPackSize}/pack)`,
-        seatPacks,
-        rules.seatPackFeeCents,
-      ),
-    );
-  }
-  if ((rules.devicePackFeeCents ?? 0) > 0) {
-    const deviceCount = Math.max(1, stations.order + stations.ods + stations.host);
-    const devicePacks = Math.ceil(deviceCount / Math.max(1, rules.devicePackSize || 4));
-    items.push(
-      line(
-        "devices",
-        "custom",
-        `Stations (${rules.devicePackSize}/pack) · order ${stations.order} / ODS ${stations.ods} / host ${stations.host}`,
-        devicePacks,
-        rules.devicePackFeeCents,
-      ),
-    );
-  }
-
-  const gmvFee = rules.gmvScaleCents[answers.volume.gmvBand] ?? 0;
-  if (gmvFee > 0) {
-    items.push(
-      line("gmv", "gmv_scale", `Volume band ${gmvLabel(answers.volume.gmvBand)}`, 1, gmvFee),
-    );
-  }
-
-  const terminalQty = Math.max(0, Math.floor(opts?.terminalQty ?? 0));
-  if (terminalQty > 0 && (rules.terminalMonthlyCents ?? 0) > 0) {
-    items.push(
-      line(
-        "terminals_mo",
-        "custom",
-        "Quantum payment terminals (optional)",
-        terminalQty,
-        rules.terminalMonthlyCents,
-        { note: "Not required if the house already has readers." },
-      ),
     );
   }
 
@@ -668,21 +600,14 @@ export function generateQuote(
   const monthlyCents = items.filter((i) => !i.oneTime).reduce((s, i) => s + i.totalCents, 0);
   const discount = Math.min(90, Math.max(0, rules.annualDiscountPercent)) / 100;
   const annualCents = Math.round(monthlyCents * 12 * (1 - discount));
-  const setup = resolveSetupFeeCents(plan, rules, opts?.setupFeeCents);
-  if (setup.cents > 0) {
+  const setupCents = cappedSetupCents(catalog, opts?.setupFeeCents);
+  if (setupCents > 0) {
     items.push(
-      line("onb", "onboarding", "One-time setup", 1, setup.cents, { oneTime: true }),
-    );
-  }
-  if (terminalQty > 0 && (rules.terminalSetupCents ?? 0) > 0) {
-    items.push(
-      line("terminals_setup", "onboarding", "Terminal setup (optional)", terminalQty, rules.terminalSetupCents, {
-        oneTime: true,
-        note: "Skip if they already have readers.",
-      }),
+      line("onb", "onboarding", "One-time setup", 1, setupCents, { oneTime: true }),
     );
   }
   const onboardingFeeCents = items.filter((i) => i.oneTime).reduce((s, i) => s + i.totalCents, 0);
+  const setup = { cents: setupCents, mode: (catalog.setupCents > 0 ? "flat" : "waive") as SetupFeeMode };
 
   const maxLocations = Math.max(
     locs,
@@ -781,9 +706,9 @@ export function retotalQuote(quote: QuoteSnapshot): QuoteSnapshot {
 
 export function planLabel(plan: PlanSlug): string {
   if (plan === "full_service") return "Full service";
-  if (plan === "food_hall") return "Food hall";
+  if (plan === "food_hall") return "Multi-operator";
   if (plan === "platform_internal") return "Platform internal";
-  return "Starter";
+  return "Counter";
 }
 
 export function gmvLabel(band: GmvBand): string {

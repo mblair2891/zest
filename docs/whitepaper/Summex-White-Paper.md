@@ -3,7 +3,7 @@
 **Powered by Quantum Reach**
 
 White paper · October 2026  
-**Revision · 2 Sep 2026** — Intake quotes always include a monthly software package (setup is never the only line). Aligns with Operators Guide v2026.10.31.
+**Revision · 2 Sep 2026** — Get a price: live module monthly (Counter $0 / Full service $149 / Multi-operator $299 + $49/tenant). Setup defaults to $0. Aligns with Operators Guide v2026.10.32.
 
 summex.app  
 Guest cards: **Quantum Payments** only
@@ -257,12 +257,14 @@ This paper does **not** claim PCI DSS certification, SOC reports, or other seals
 
 Software billing is **not** guest card processing.
 
-- **Base software** (counter-service POS + kitchen display) is **$0 / month**. Hardware is bring-your-own except optional Quantum payment terminals.
-- **Paid packages** add monthly software for features the house actually selected at intake: full service / floor & host, kiosk, QR / online, reservations and waitlist, labor and HR, recipes and costing, multi-entity / food hall, and similar.
-- **Setup** is optional (waive, flat, or by package). It is never the only line on a proposal.
-- **Quantum Payments** (and cash-discount settings) are estimated as a **separate note**, not mixed into the software monthly unless the house chose a bundled plan.
+- **Counter (base)** — POS + 1 kitchen/bar display, **$0 / month**.
+- **Full service** — floor, host stand, sections, closeout, **$149 / location / month**.
+- **Multi-operator** — hall/pod host **$299 / location / month** plus **$49 per tenant entity**.
+- **Add-ons** the house actually uses: ops pack (recipes, costing, staffing recs, HR, payroll export) **$99**; extra order/ODS stations over 4 **$19 each**; kiosk **$29 each**; optional Quantum terminal lease **$15 / month** (or one-time). Other hardware is BYO.
+- **Setup** defaults to **$0** (settings can cap a setup amount). It is never the only line on a proposal.
+- **Quantum Payments** (and cash-discount) are a **separate processing note**, not mixed into software $.
 
-A proposal includes the package name, the feature list from intake (and the AI interview if they confirmed it), monthly software, estimated Quantum Payments / cash-discount processing as a **separate note**, any setup, entity and station counts, and an expires-on date. The house can accept or request changes. Onboarding does not start until a monthly package quote exists and is accepted (platform override requires a reason).
+Get a price shows this live. The prospect can toggle modules; monthly recalculates before they request the quote. PDF, email, and the CRM quote use the same lines. Onboarding does not start until that monthly package quote is accepted (platform override requires a reason).
 
 This paper is **not** a rate card. Snapshot quotes come from the live catalog at send time.
 

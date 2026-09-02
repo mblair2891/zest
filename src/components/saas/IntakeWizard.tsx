@@ -9,9 +9,13 @@ import {
   saveIntakeFn,
   startProspectFn,
   getProspectFn,
+  loadPublicQuoteCatalogFn,
 } from "@/lib/saas/api";
 import { emptyIntakeAnswers } from "@/lib/saas/pricing";
-import type { IntakeAnswers, GmvBand, InterviewMessage, InterviewRecommendation } from "@/lib/saas/prospect-types";
+import { DEFAULT_QUOTE_CATALOG } from "@/lib/saas/quote-catalog";
+import { LiveQuotePanel } from "./LiveQuotePanel";
+import type { QuoteCatalog, TerminalNeed } from "@/lib/saas/prospect-types";
+import type { IntakeAnswers, InterviewMessage, InterviewRecommendation } from "@/lib/saas/prospect-types";
 import { MODULE_LABELS } from "@/lib/saas/prospect-types";
 import { readProspectToken, writeProspectToken } from "@/lib/saas/prospect-token";
 import type { LocationMode } from "@/lib/pos/saas-types";
@@ -19,12 +23,12 @@ import { InterviewPanel } from "./InterviewPanel";
 
 const LABELS = [
   "Company",
-  "Portfolio",
+  "House",
   "Ops model",
-  "Modules",
-  "Volume",
+  "Floor",
+  "Stations",
   "Payments",
-  "Timeline",
+  "Your price",
 ];
 
 export function IntakeWizard({ initialToken }: { initialToken?: string }) {
@@ -40,6 +44,13 @@ export function IntakeWizard({ initialToken }: { initialToken?: string }) {
   const [interviewText, setInterviewText] = useState("");
   const [interviewMessages, setInterviewMessages] = useState<InterviewMessage[]>([]);
   const [interviewRec, setInterviewRec] = useState<InterviewRecommendation | null>(null);
+  const [catalog, setCatalog] = useState<QuoteCatalog>(DEFAULT_QUOTE_CATALOG);
+
+  useEffect(() => {
+    void loadPublicQuoteCatalogFn()
+      .then((r) => setCatalog(r.catalog))
+      .catch(() => undefined);
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -194,23 +205,23 @@ export function IntakeWizard({ initialToken }: { initialToken?: string }) {
       title={
         [
           "Company",
-          "Portfolio shape",
-          "How each location operates",
-          "Channels & modules",
-          "Volume drivers",
+          "What you run",
+          "How the house operates",
+          "Floor & ops",
+          "Stations & terminals",
           "Payments",
-          "Timeline & notes",
+          "Your price",
         ][step - 1] ?? "Intake"
       }
       subtitle={
         [
           "Legal entity we will quote. Guest-facing brand can differ.",
-          "How many sites now, and what they are.",
-          "Single operator vs host with vendors under one guest check.",
-          "Software modules that change the quote. Gift cards stay first-party.",
-          "Used for seat packs, device packs, and volume band.",
+          "Entity type and how many locations.",
+          "Single operator vs host with tenant brands. Guest can pay one check.",
+          "Floor, reservations, waitlist, recipes/costing/HR.",
+          "Order stations, ODS, kiosks, and whether you need Quantum terminals.",
           "Guest cards run through Quantum Payments only. Each entity is its own merchant; one guest check.",
-          "Target go-live and anything a human should know before quoting.",
+          "Live monthly software. Toggle modules — price recalculates. Then request this quote.",
         ][step - 1]
       }
       step={step}
@@ -220,7 +231,7 @@ export function IntakeWizard({ initialToken }: { initialToken?: string }) {
       busy={busy}
       onBack={step > 1 ? () => void go(step - 1) : undefined}
       onNext={step < 7 ? () => void go(step + 1) : () => void submit()}
-      nextLabel={step < 7 ? "Continue" : "Request pricing"}
+      nextLabel={step < 7 ? "Continue" : "Request this quote"}
     >
       {step === 1 && (
         <div className="grid gap-3 sm:grid-cols-2">
@@ -417,6 +428,18 @@ export function IntakeWizard({ initialToken }: { initialToken?: string }) {
             </>
           )}
           <ToggleChip
+            on={o.hostStand}
+            label="Host stand"
+            hint="Seating map, waitlist, to-go at the stand"
+            onClick={() =>
+              patch((a) => ({
+                ...a,
+                operating: { ...a.operating, hostStand: !a.operating.hostStand },
+                modules: { ...a.modules, tableService: !a.operating.hostStand ? true : a.modules.tableService },
+              }))
+            }
+          />
+          <ToggleChip
             on={o.barKitchenSplit}
             label="Bar and kitchen are split ops"
             hint="Separate station teams / ODS rails"
@@ -451,77 +474,78 @@ export function IntakeWizard({ initialToken }: { initialToken?: string }) {
 
       {step === 5 && (
         <div className="space-y-3">
-          <div className="grid gap-2 sm:grid-cols-2">
-            <ToggleChip
-              on={v.volumeKind === "gmv"}
-              label="Monthly GMV band"
-              onClick={() => patch((a) => ({ ...a, volume: { ...a.volume, volumeKind: "gmv" } }))}
-            />
-            <ToggleChip
-              on={v.volumeKind === "checks"}
-              label="Monthly check volume"
-              onClick={() =>
-                patch((a) => ({ ...a, volume: { ...a.volume, volumeKind: "checks" } }))
-              }
-            />
-          </div>
-          {v.volumeKind === "gmv" ? (
-            <Field label="GMV band">
-              <NativeSelect
-                value={v.gmvBand}
-                onChange={(val) =>
-                  patch((a) => ({ ...a, volume: { ...a.volume, gmvBand: val as GmvBand } }))
+          <div className="grid gap-3 sm:grid-cols-2">
+            <Field label="Order stations" hint="Handhelds + bar POS">
+              <Input
+                type="number"
+                min={1}
+                value={v.orderStations}
+                onChange={(e) =>
+                  patch((a) => ({
+                    ...a,
+                    volume: { ...a.volume, orderStations: Math.max(1, Number(e.target.value) || 1) },
+                  }))
                 }
-              >
-                <option value="under_50k">Under $50k / mo</option>
-                <option value="50_150k">$50–150k / mo</option>
-                <option value="150_400k">$150–400k / mo</option>
-                <option value="400k_plus">$400k+ / mo</option>
-              </NativeSelect>
+              />
             </Field>
-          ) : (
-            <Field label="Est. monthly checks">
+            <Field label="ODS displays" hint="Kitchen / bar tickets. 1 included in base.">
               <Input
                 type="number"
                 min={0}
-                value={v.monthlyChecks}
+                value={v.odsStations}
                 onChange={(e) =>
                   patch((a) => ({
                     ...a,
-                    volume: { ...a.volume, monthlyChecks: Number(e.target.value) || 0 },
+                    volume: {
+                      ...a.volume,
+                      odsStations: Math.max(0, Number(e.target.value) || 0),
+                    },
+                    modules: { ...a.modules, kds: (Number(e.target.value) || 0) > 0 },
                   }))
                 }
               />
             </Field>
-          )}
-          <div className="grid gap-3 sm:grid-cols-2">
-            <Field label="Peak concurrent devices" hint="POS, ODS, handhelds">
+            <Field label="Kiosks" hint="$29 each / mo">
               <Input
                 type="number"
-                min={1}
-                value={v.peakDevices}
+                min={0}
+                value={v.kioskCount}
                 onChange={(e) =>
                   patch((a) => ({
                     ...a,
-                    volume: { ...a.volume, peakDevices: Number(e.target.value) || 1 },
-                  }))
-                }
-              />
-            </Field>
-            <Field label="Staff seats" hint="Managers + servers + BOH logins">
-              <Input
-                type="number"
-                min={1}
-                value={v.staffSeats}
-                onChange={(e) =>
-                  patch((a) => ({
-                    ...a,
-                    volume: { ...a.volume, staffSeats: Number(e.target.value) || 1 },
+                    volume: { ...a.volume, kioskCount: Math.max(0, Number(e.target.value) || 0) },
+                    modules: { ...a.modules, kiosk: (Number(e.target.value) || 0) > 0 },
                   }))
                 }
               />
             </Field>
           </div>
+          <p className="text-xs text-muted-foreground">
+            First 4 order+ODS stations are included. Extra stations are $19 / mo each.
+          </p>
+          <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+            Payment terminals
+          </p>
+          {(
+            [
+              ["none", "We already have readers / BYO"],
+              ["lease", "Lease Quantum terminals ($15 / mo each)"],
+              ["buy", "Buy terminals (one-time if priced)"],
+            ] as const
+          ).map(([id, label]) => (
+            <ToggleChip
+              key={id}
+              on={v.terminalNeed === id}
+              label={label}
+              hint="Other hardware is bring-your-own."
+              onClick={() =>
+                patch((a) => ({
+                  ...a,
+                  volume: { ...a.volume, terminalNeed: id as TerminalNeed },
+                }))
+              }
+            />
+          ))}
         </div>
       )}
 
@@ -593,20 +617,16 @@ export function IntakeWizard({ initialToken }: { initialToken?: string }) {
       )}
 
       {step === 7 && (
-        <div className="space-y-3">
-          <Field label="Target go-live">
-            <Input
-              type="date"
-              value={answers.timeline.goLiveDate}
-              onChange={(e) =>
-                patch((a) => ({
-                  ...a,
-                  timeline: { ...a.timeline, goLiveDate: e.target.value },
-                }))
-              }
-            />
-          </Field>
-          <Field label="Notes">
+        <div className="space-y-4">
+          <LiveQuotePanel
+            answers={answers}
+            catalog={catalog}
+            onChange={(next) => {
+              setAnswers(next);
+              void persist(next);
+            }}
+          />
+          <Field label="Notes for the proposal (optional)">
             <VoiceTextarea
               value={answers.timeline.notes}
               onChange={(notes) =>
@@ -615,8 +635,8 @@ export function IntakeWizard({ initialToken }: { initialToken?: string }) {
                   timeline: { ...a.timeline, notes },
                 }))
               }
-              rows={4}
-              placeholder="Anything we should price around or flag for onboarding."
+              rows={3}
+              placeholder="Anything we should flag for onboarding."
             />
           </Field>
         </div>

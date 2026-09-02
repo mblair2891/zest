@@ -200,6 +200,7 @@ export function applyRecommendation(
     guestPaysHostCheck: host,
     barKitchenSplit:
       rec.venueTypes.includes("bar_lounge") || rec.modules.includes("kds"),
+    hostStand: host || rec.modules.includes("tableService"),
   };
   const mods = { ...emptyIntakeAnswers().modules };
   for (const id of MODULE_IDS) mods[id] = rec.modules.includes(id);
@@ -212,6 +213,9 @@ export function applyRecommendation(
     ...next.volume,
     peakDevices: rec.estimates.devices,
     staffSeats: rec.estimates.seats,
+    orderStations: Math.max(1, Math.ceil(rec.estimates.devices / 2) || next.volume.orderStations),
+    odsStations: Math.max(next.volume.odsStations, rec.modules.includes("kds") ? 1 : 0),
+    kioskCount: Math.max(next.volume.kioskCount, rec.modules.includes("kiosk") ? 1 : 0),
   };
   const noteBits = [rec.summary, rec.pricingHints.notes].filter(Boolean);
   if (noteBits.length) {
@@ -462,11 +466,14 @@ Only recommend catalog options:
 - suggestedPlan: starter | full_service | food_hall
 
 Ask 3–8 targeted follow-ups total across the whole interview. Prefer clarifying:
-- location / operator counts
-- one host check vs pay-per-vendor
-- bar vs food routing
-- channels (floor, ODS, online, kiosk)
-- volume, devices, staff seats
+- entity type (restaurant, hall, bar, QSR…)
+- number of tenant operators
+- number of order stations and ODS displays
+- host stand yes/no
+- kiosk yes/no
+- floor / reservations / waitlist
+- recipes, costing, HR
+- whether they need Quantum payment terminals (lease vs they already have readers)
 Do not interrogate endlessly. When you have enough, return a recommendation.
 
 Reply with JSON only, no markdown. One of:

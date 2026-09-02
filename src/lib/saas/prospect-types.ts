@@ -77,11 +77,14 @@ export type IntakePortfolio = {
   typeCounts: Partial<Record<LocationMode, number>>;
 };
 
+export type TerminalNeed = "none" | "lease" | "buy";
+
 export type IntakeOperating = {
   model: OperatingModel;
   operatorsPerLocation: number;
   guestPaysHostCheck: boolean;
   barKitchenSplit: boolean;
+  hostStand: boolean;
 };
 
 export type IntakeModules = {
@@ -105,6 +108,10 @@ export type IntakeVolume = {
   gmvBand: GmvBand;
   peakDevices: number;
   staffSeats: number;
+  orderStations: number;
+  odsStations: number;
+  kioskCount: number;
+  terminalNeed: TerminalNeed;
 };
 
 export type IntakePayments = {
@@ -270,6 +277,22 @@ export type PricingRules = {
   terminalSetupCents: number;
   /** Monthly cents per paid software package (Plans & billing forms). */
   packageMonthlyCents: Partial<Record<PackageId, number>>;
+  quoteCatalog: QuoteCatalog;
+};
+
+export type QuoteCatalog = {
+  baseCents: number;
+  fullServiceCents: number;
+  multiOpHostCents: number;
+  tenantCents: number;
+  opsPackCents: number;
+  extraStationCents: number;
+  includedStations: number;
+  kioskCents: number;
+  terminalLeaseCents: number;
+  terminalBuyCents: number;
+  setupCents: number;
+  setupCapCents: number;
 };
 
 export type OperatorDraft = {

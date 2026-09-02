@@ -20,9 +20,9 @@ function GetPricingPage() {
         </p>
         <h1 className="mt-2 text-3xl font-semibold tracking-tight">Get pricing</h1>
         <p className="mt-2 max-w-xl text-sm text-muted-foreground">
-          Describe the operation, answer a few follow-ups, then confirm the structured
-          form. We snapshot a quote from the current catalog — later package changes
-          will not rewrite this proposal.
+          Describe the house, answer a few follow-ups, then see a live monthly price
+          you can adjust — Counter $0, Full service $149, Multi-operator $299 + tenants.
+          Setup defaults to $0. Guest processing is a note, not part of software $.
         </p>
         <div className="mt-8">
           <IntakeWizard initialToken={t} />

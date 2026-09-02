@@ -36,7 +36,7 @@ export const GETTING_STARTED_TOPICS: GuideTopic[] = [
         "Training week: the real POS with Quantum Payments sandbox. Live cards wait for an approved Quantum application and an enrolled reader.",
         "Floor PIN signs a person onto this station. Clock in / out is Labor. Server closeout is Cash — none of those are the same action.",
         "Examples in this guide use Host Venue, Operator A, Operator B — never a live customer name.",
-        "Revision · 2 Sep 2026 — Quotes build a monthly software package from intake. Setup is never the only line.",
+        "Revision · 2 Sep 2026 — Get a price: live module monthly (Counter $0 / Full service $149 / Multi-op $299).",
       ),
       steps(
         "Tap Guide or “?” in the header (POS and platform) — or open /guide from the marketing site (Operators Guide, not a SaaS user manual).",

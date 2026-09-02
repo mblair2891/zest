@@ -24,6 +24,8 @@ import {
   savePlatformSectionFn,
   updatePlatformUserFn,
 } from "@/lib/saas/platform-settings-api";
+import { QUOTE_CATALOG_FIELDS } from "@/lib/saas/quote-catalog";
+import type { QuoteCatalog } from "@/lib/saas/prospect-types";
 import {
   CURRENCIES,
   GIFT_ISSUER_MODES,
@@ -866,9 +868,52 @@ function BillingSection({
           ))}
         </div>
       )}
-      <p className="pt-2 text-sm font-medium">Quote catalog add-ons</p>
+      <p className="pt-2 text-sm font-medium">Get a price catalog</p>
       <p className="text-xs text-muted-foreground">
-        Used when generating intake quotes. Edited here as numbers — never as JSON.
+        Public Get pricing uses these amounts. Forms only — never JSON. Defaults: Counter $0,
+        Full service $149, Multi-op $299, tenant $49, Ops $99, extra station $19, kiosk $29,
+        setup $0.
+      </p>
+      <div className="grid gap-3 sm:grid-cols-2">
+        {QUOTE_CATALOG_FIELDS.map((f) => {
+          const value = billing.quoteCatalog?.[f.key] ?? 0;
+          const isCount = f.key === "includedStations";
+          return (
+            <Field key={f.key} label={f.label} hint={f.hint}>
+              {isCount ? (
+                <NumberField
+                  value={value}
+                  min={1}
+                  max={100}
+                  onChange={(n) =>
+                    setBilling({
+                      ...billing,
+                      quoteCatalog: { ...billing.quoteCatalog, [f.key]: n } as QuoteCatalog,
+                    })
+                  }
+                />
+              ) : (
+                <Input
+                  inputMode="decimal"
+                  value={formatMoneyCents(value)}
+                  onChange={(e) =>
+                    setBilling({
+                      ...billing,
+                      quoteCatalog: {
+                        ...billing.quoteCatalog,
+                        [f.key]: parseMoneyToCents(e.target.value),
+                      } as QuoteCatalog,
+                    })
+                  }
+                />
+              )}
+            </Field>
+          );
+        })}
+      </div>
+      <p className="pt-2 text-sm font-medium">Legacy add-ons</p>
+      <p className="text-xs text-muted-foreground">
+        Not shown on Get a price. Kept for older internal quotes.
       </p>
       <div className="grid gap-3 sm:grid-cols-2">
         <Field label="Per-location fee">
