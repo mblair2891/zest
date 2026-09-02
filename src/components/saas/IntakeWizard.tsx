@@ -14,7 +14,7 @@ import {
 import { emptyIntakeAnswers } from "@/lib/saas/pricing";
 import { DEFAULT_QUOTE_CATALOG } from "@/lib/saas/quote-catalog";
 import { LiveQuotePanel } from "./LiveQuotePanel";
-import type { QuoteCatalog, TerminalNeed } from "@/lib/saas/prospect-types";
+import type { QuoteCatalog } from "@/lib/saas/prospect-types";
 import type { IntakeAnswers, InterviewMessage, InterviewRecommendation } from "@/lib/saas/prospect-types";
 import { MODULE_LABELS } from "@/lib/saas/prospect-types";
 import { readProspectToken, writeProspectToken } from "@/lib/saas/prospect-token";
@@ -523,29 +523,75 @@ export function IntakeWizard({ initialToken }: { initialToken?: string }) {
           <p className="text-xs text-muted-foreground">
             First 4 order+ODS stations are included. Extra stations are $19 / mo each.
           </p>
-          <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-            Payment terminals
+          <p className="text-sm text-muted-foreground">
+            Bring your own tablets, printers, cash drawers, stands. Summex is the software.
+            Card readers can be yours or shipped by our payments partner.
           </p>
-          {(
-            [
-              ["none", "We already have readers / BYO"],
-              ["lease", "Lease Quantum terminals ($15 / mo each)"],
-              ["buy", "Buy terminals (one-time if priced)"],
-            ] as const
-          ).map(([id, label]) => (
-            <ToggleChip
-              key={id}
-              on={v.terminalNeed === id}
-              label={label}
-              hint="Other hardware is bring-your-own."
-              onClick={() =>
-                patch((a) => ({
-                  ...a,
-                  volume: { ...a.volume, terminalNeed: id as TerminalNeed },
-                }))
-              }
-            />
-          ))}
+          <ToggleChip
+            on={answers.hardware.ownsTabletsPrintersDrawers}
+            label="We already own tablets, printers, and cash drawers"
+            hint="Default. $0 hardware. We'll list what you still need to provide."
+            onClick={() =>
+              patch((a) => ({
+                ...a,
+                hardware: {
+                  ...a.hardware,
+                  ownsTabletsPrintersDrawers: !a.hardware.ownsTabletsPrintersDrawers,
+                },
+              }))
+            }
+          />
+          <ToggleChip
+            on={answers.hardware.shipReaders}
+            label="Need card readers shipped to us"
+            hint="Finix/Quantum partner hardware. Typically more expensive than a BYO ~$75 reader. Drop-ships to your site."
+            onClick={() =>
+              patch((a) => ({
+                ...a,
+                hardware: {
+                  ...a.hardware,
+                  shipReaders: !a.hardware.shipReaders,
+                  readerQty: a.hardware.readerQty || 1,
+                },
+                volume: {
+                  ...a.volume,
+                  terminalNeed: !a.hardware.shipReaders ? "buy" : "none",
+                },
+              }))
+            }
+          />
+          {answers.hardware.shipReaders && (
+            <Field label="How many readers">
+              <Input
+                type="number"
+                min={1}
+                value={answers.hardware.readerQty || 1}
+                onChange={(e) =>
+                  patch((a) => ({
+                    ...a,
+                    hardware: {
+                      ...a.hardware,
+                      readerQty: Math.max(1, Number(e.target.value) || 1),
+                    },
+                  }))
+                }
+              />
+            </Field>
+          )}
+          <ToggleChip
+            on={answers.hardware.shipPartnerDevices}
+            label="Need kiosk or other partner devices shipped"
+            hint="Optional stands/kiosks from the payments partner. Not a Summex hardware kit."
+            onClick={() =>
+              patch((a) => ({
+                ...a,
+                hardware: {
+                  ...a.hardware,
+                  shipPartnerDevices: !a.hardware.shipPartnerDevices,
+                },
+              }))
+            }
+          />
         </div>
       )}
 

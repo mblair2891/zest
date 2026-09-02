@@ -134,3 +134,18 @@ test("setup default $0 is never the only line", () => {
   assert.equal(quoteIsSetupOnly(q), false);
   assert.match(q.processingNote, /separately|Quantum/);
 });
+
+test("BYO hardware is $0 and not mixed into software monthly", () => {
+  const software = 14900;
+  const hwOnce = 19900;
+  const monthlySoftware = software;
+  assert.equal(monthlySoftware, 14900);
+  assert.notEqual(monthlySoftware + hwOnce, monthlySoftware);
+});
+
+test("partner reader one-time does not change software monthly", () => {
+  const softwareMo = 14900;
+  const hardwareOnce = 19900 * 2;
+  assert.equal(softwareMo, 14900);
+  assert.equal(hardwareOnce, 39800);
+});

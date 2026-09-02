@@ -12,8 +12,12 @@ export function QuoteSummary({
   status?: ProspectStatus;
   compact?: boolean;
 }) {
-  const monthly = quote.lineItems.filter((i) => !i.oneTime);
-  const oneTime = quote.lineItems.filter((i) => i.oneTime);
+  const software = quote.lineItems.filter((i) => !i.oneTime && i.bucket !== "hardware");
+  const hwMonthly = quote.lineItems.filter((i) => !i.oneTime && i.bucket === "hardware");
+  const hwOnce = quote.lineItems.filter((i) => i.oneTime && i.bucket === "hardware");
+  const oneTime = quote.lineItems.filter((i) => i.oneTime && i.bucket !== "hardware");
+  const hwMo = quote.hardwareMonthlyCents ?? hwMonthly.reduce((s, i) => s + i.totalCents, 0);
+  const hwBuy = quote.hardwareOneTimeCents ?? hwOnce.reduce((s, i) => s + i.totalCents, 0);
   const expires = quote.expiresAt ? new Date(quote.expiresAt).toLocaleDateString() : null;
   return (
     <div className="space-y-4">
@@ -36,6 +40,8 @@ export function QuoteSummary({
             {quote.onboardingFeeCents > 0
               ? ` · setup ${formatCurrency(quote.onboardingFeeCents)}`
               : " · no setup fee"}
+            {hwMo > 0 ? ` · hardware ${formatCurrency(hwMo)}/mo` : ""}
+            {hwBuy > 0 ? ` · hardware ${formatCurrency(hwBuy)} one-time` : " · hardware BYO $0"}
           </p>
           {expires && (
             <p className="text-xs text-muted-foreground">Expires {expires}</p>
@@ -64,13 +70,58 @@ export function QuoteSummary({
         </p>
       )}
 
+      {quote.byoChecklist && quote.byoChecklist.length > 0 && (
+        <div className="rounded-2xl border border-border bg-surface p-4">
+          <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+            You provide (BYO)
+          </p>
+          <ul className="mt-2 list-disc space-y-1 pl-4 text-sm">
+            {quote.byoChecklist.map((f) => (
+              <li key={f}>{f}</li>
+            ))}
+          </ul>
+        </div>
+      )}
+
       <ul className="divide-y divide-border overflow-hidden rounded-2xl border border-border bg-surface">
-        {monthly.map((line) => (
+        <li className="px-4 py-2 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+          Software
+        </li>
+        {software.map((line) => (
           <li key={line.id} className="flex items-start justify-between gap-3 px-4 py-3 text-sm">
             <span>
               <span className="block font-medium">{line.label}</span>
               <span className="text-[11px] text-muted-foreground">
                 {line.qty} × {formatCurrency(line.unitCents)}
+                {line.note ? ` · ${line.note}` : ""}
+              </span>
+            </span>
+            <span className="tabular">{formatCurrency(line.totalCents)}</span>
+          </li>
+        ))}
+        {(hwMonthly.length > 0 || hwOnce.length > 0) && (
+          <li className="px-4 py-2 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+            Hardware (separate from software)
+          </li>
+        )}
+        {hwMonthly.map((line) => (
+          <li key={line.id} className="flex items-start justify-between gap-3 px-4 py-3 text-sm">
+            <span>
+              <span className="block font-medium">{line.label}</span>
+              <span className="text-[11px] text-muted-foreground">
+                {line.qty} × {formatCurrency(line.unitCents)} / mo
+                {line.note ? ` · ${line.note}` : ""}
+              </span>
+            </span>
+            <span className="tabular">{formatCurrency(line.totalCents)}</span>
+          </li>
+        ))}
+        {hwOnce.map((line) => (
+          <li key={line.id} className="flex items-start justify-between gap-3 px-4 py-3 text-sm">
+            <span>
+              <span className="block font-medium">{line.label}</span>
+              <span className="text-[11px] text-muted-foreground">
+                One-time · partner drop-ship to your site
                 {line.note ? ` · ${line.note}` : ""}
               </span>
             </span>

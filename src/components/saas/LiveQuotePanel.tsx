@@ -4,17 +4,20 @@ import { ToggleChip } from "./WizardChrome";
 import { generateQuote, planLabel } from "@/lib/saas/pricing";
 import {
   applyQuoteToggles,
+  BYO_CHECKLIST,
+  HARDWARE_LEAD,
   extraStationCount,
   isMultiOperatorHouse,
   kioskCount,
   odsStationCount,
   orderStationCount,
+  otherPartnerSkus,
   tenantEntityCount,
-  terminalNeedOf,
   wantsFullServiceFloor,
   wantsOpsPack,
 } from "@/lib/saas/quote-catalog";
 import type { IntakeAnswers, QuoteCatalog } from "@/lib/saas/prospect-types";
+import { emptyIntakeHardware } from "@/lib/saas/quote-catalog";
 import { DEFAULT_PRICING_RULES } from "@/lib/saas/pricing";
 import { QuoteSummary } from "./QuoteSummary";
 
@@ -34,7 +37,8 @@ export function LiveQuotePanel({
   const ops = wantsOpsPack(answers);
   const extra = extraStationCount(answers, catalog);
   const kiosks = kioskCount(answers);
-  const term = terminalNeedOf(answers);
+  const hw = answers.hardware ?? emptyIntakeHardware();
+  const others = otherPartnerSkus(catalog);
 
   return (
     <div className="space-y-5">
@@ -133,28 +137,105 @@ export function LiveQuotePanel({
             }
           />
         </label>
-        <div className="grid gap-2">
-          {(
-            [
-              ["none", "We have readers / BYO terminals"],
-              ["lease", `Lease Quantum terminals · ${formatCurrency(catalog.terminalLeaseCents)} / mo each`],
-              ["buy", "Buy terminals (one-time, if priced in settings)"],
-            ] as const
-          ).map(([id, label]) => (
-            <ToggleChip
-              key={id}
-              on={term === id}
-              label={label}
-              onClick={() => onChange(applyQuoteToggles(answers, { terminalNeed: id }))}
-            />
-          ))}
+        <div className="space-y-2 rounded-2xl border border-border p-4">
+          <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+            Hardware
+          </p>
+          <p className="text-sm text-muted-foreground">{HARDWARE_LEAD}</p>
+          <ToggleChip
+            on={hw.ownsTabletsPrintersDrawers !== false}
+            label="Provide your own hardware — $0"
+            hint="Tablets, printers, drawers, stands. Default."
+            onClick={() =>
+              onChange(
+                applyQuoteToggles(answers, {
+                  ownsTabletsPrintersDrawers: !(hw.ownsTabletsPrintersDrawers !== false),
+                }),
+              )
+            }
+          />
+          {hw.ownsTabletsPrintersDrawers !== false && (
+            <ul className="list-disc space-y-1 pl-5 text-xs text-muted-foreground">
+              {BYO_CHECKLIST.map((row) => (
+                <li key={row}>{row}</li>
+              ))}
+            </ul>
+          )}
+          <ToggleChip
+            on={hw.shipReaders}
+            label="Ship card readers from our payments partner"
+            hint="Typically more expensive than a BYO ~$75 Finix/Quantum reader. Drop-ships to your site."
+            onClick={() => onChange(applyQuoteToggles(answers, { shipReaders: !hw.shipReaders }))}
+          />
+          {hw.shipReaders && (
+            <div className="grid gap-3 sm:grid-cols-2">
+              <label className="block text-sm">
+                <span className="mb-1 block text-muted-foreground">How many readers</span>
+                <Input
+                  type="number"
+                  min={1}
+                  value={hw.readerQty || 1}
+                  onChange={(e) =>
+                    onChange(applyQuoteToggles(answers, { readerQty: Number(e.target.value) || 1 }))
+                  }
+                />
+              </label>
+              <div className="space-y-1">
+                <ToggleChip
+                  on={hw.readerPay !== "lease"}
+                  label="Purchase (one-time, partner priced)"
+                  onClick={() => onChange(applyQuoteToggles(answers, { readerPay: "purchase" }))}
+                />
+                <ToggleChip
+                  on={hw.readerPay === "lease"}
+                  label="Monthly lease (partner priced)"
+                  onClick={() => onChange(applyQuoteToggles(answers, { readerPay: "lease" }))}
+                />
+              </div>
+            </div>
+          )}
+          <ToggleChip
+            on={hw.shipPartnerDevices}
+            label="Ship kiosk / stand / other partner devices"
+            hint="Optional. Partner hardware, typically more expensive than BYO. Ships to your site."
+            onClick={() =>
+              onChange(applyQuoteToggles(answers, { shipPartnerDevices: !hw.shipPartnerDevices }))
+            }
+          />
+          {hw.shipPartnerDevices &&
+            others.map((sku) => (
+              <label key={sku.id} className="block text-sm">
+                <span className="mb-1 block text-muted-foreground">
+                  {sku.customerFacingName}
+                  {sku.monthlyCents > 0
+                    ? ` · ${formatCurrency(sku.monthlyCents)} / mo`
+                    : ""}
+                  {sku.oneTimeCents > 0
+                    ? ` · ${formatCurrency(sku.oneTimeCents)} one-time`
+                    : ""}
+                </span>
+                <Input
+                  type="number"
+                  min={0}
+                  value={hw.partnerSkuQty?.[sku.id] ?? 0}
+                  onChange={(e) =>
+                    onChange(
+                      applyQuoteToggles(answers, {
+                        partnerSkuQty: { [sku.id]: Number(e.target.value) || 0 },
+                      }),
+                    )
+                  }
+                />
+              </label>
+            ))}
         </div>
       </div>
 
       <QuoteSummary quote={quote} compact />
       <p className="text-xs text-muted-foreground">
-        Toggle anything above — monthly software recalculates. Processing (Quantum Payments /
-        cash-discount) is a note, not part of software $. Setup defaults to $0.
+        Toggle anything above — monthly software recalculates separately from hardware.
+        Processing (Quantum Payments / cash-discount) is a note, not part of software $.
+        Setup defaults to $0.
       </p>
     </div>
   );

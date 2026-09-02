@@ -236,6 +236,39 @@ export function parseOnboardingPayload(raw: unknown): OnboardingPayload {
       hardwareAck: Boolean(checkIn.hardwareAck),
       paymentsAck: Boolean(checkIn.paymentsAck),
     },
+    partnerHardware: parsePartnerHardware(o.partnerHardware, {
+      name: str(orgIn.legalName) || str(orgIn.dba),
+      address: str(orgIn.hqAddress),
+      phone: str(orgIn.phone),
+    }),
+  };
+}
+
+function parsePartnerHardware(
+  raw: unknown,
+  fallback: { name: string; address: string; phone: string },
+): OnboardingPayload["partnerHardware"] {
+  const o = raw && typeof raw === "object" ? (raw as Record<string, unknown>) : {};
+  const str = (v: unknown) => (typeof v === "string" ? v : "");
+  const itemsRaw = Array.isArray(o.items) ? o.items : [];
+  return {
+    shipToName: str(o.shipToName) || fallback.name,
+    shipToAddress: str(o.shipToAddress) || fallback.address,
+    shipToPhone: str(o.shipToPhone) || fallback.phone,
+    note:
+      str(o.note) ||
+      "Partner hardware ships from the payments partner to this address. Summex does not take possession.",
+    items: itemsRaw.map((it) => {
+      const x = it && typeof it === "object" ? (it as Record<string, unknown>) : {};
+      const status = String(x.status ?? "requested");
+      return {
+        skuId: str(x.skuId).slice(0, 40),
+        name: str(x.name).slice(0, 80) || str(x.skuId),
+        qty: Math.max(0, Math.floor(Number(x.qty) || 0)),
+        status:
+          status === "shipped" || status === "delivered" ? status : ("requested" as const),
+      };
+    }),
   };
 }
 

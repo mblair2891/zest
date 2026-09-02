@@ -1,11 +1,71 @@
 import type { PlanSlug } from "./types";
 import type {
   IntakeAnswers,
+  IntakeHardware,
+  PartnerHardwareSku,
   QuoteCatalog,
   QuoteLineItem,
   QuoteStationCounts,
   TerminalNeed,
 } from "./prospect-types";
+
+export const HARDWARE_LEAD =
+  "Bring your own tablets, printers, cash drawers, stands. Summex is the software. Card readers can be yours or shipped by our payments partner.";
+
+export const BYO_CHECKLIST = [
+  "Order tablet or POS screen (Android / iPad / browser)",
+  "ODS display for kitchen or bar",
+  "Wi-Fi or Ethernet receipt printer with cash-drawer kick",
+  "Optional USB mag-stripe reader for gift cards",
+  "Card reader you already have, or a typical ~$75 Finix/Quantum reader you buy yourself",
+];
+
+export const DEFAULT_PARTNER_SKUS: PartnerHardwareSku[] = [
+  {
+    id: "finix_reader",
+    skuName: "Finix card reader",
+    customerFacingName: "Quantum / Finix card reader",
+    kind: "reader",
+    monthlyCents: 0,
+    oneTimeCents: 19900,
+    costNoteInternal: "Partner drop-ship. Typically more than a BYO ~$75 reader.",
+    shipToCustomer: true,
+    active: true,
+  },
+  {
+    id: "finix_reader_lease",
+    skuName: "Finix reader monthly",
+    customerFacingName: "Quantum / Finix reader (monthly)",
+    kind: "reader",
+    monthlyCents: 2500,
+    oneTimeCents: 0,
+    costNoteInternal: "Partner lease. Priced above a typical BYO purchase amortized.",
+    shipToCustomer: true,
+    active: true,
+  },
+  {
+    id: "finix_kiosk",
+    skuName: "Finix kiosk",
+    customerFacingName: "Partner kiosk terminal",
+    kind: "kiosk",
+    monthlyCents: 4900,
+    oneTimeCents: 0,
+    costNoteInternal: "Partner kiosk hardware. Software kiosk fee is separate.",
+    shipToCustomer: true,
+    active: true,
+  },
+  {
+    id: "finix_stand",
+    skuName: "Finix counter stand",
+    customerFacingName: "Partner counter stand",
+    kind: "stand",
+    monthlyCents: 0,
+    oneTimeCents: 8900,
+    costNoteInternal: "Optional. House can BYO a stand.",
+    shipToCustomer: true,
+    active: true,
+  },
+];
 
 export const DEFAULT_QUOTE_CATALOG: QuoteCatalog = {
   baseCents: 0,
@@ -20,7 +80,20 @@ export const DEFAULT_QUOTE_CATALOG: QuoteCatalog = {
   terminalBuyCents: 0,
   setupCents: 0,
   setupCapCents: 0,
+  byoDefault: true,
+  partnerSkus: DEFAULT_PARTNER_SKUS,
 };
+
+export function emptyIntakeHardware(): IntakeHardware {
+  return {
+    ownsTabletsPrintersDrawers: true,
+    shipReaders: false,
+    readerQty: 0,
+    readerPay: "purchase",
+    shipPartnerDevices: false,
+    partnerSkuQty: {},
+  };
+}
 
 function num(v: unknown, fallback: number): number {
   const n = typeof v === "number" ? v : Number(v);
@@ -43,11 +116,57 @@ export function parseQuoteCatalog(raw: unknown): QuoteCatalog {
   base.terminalBuyCents = Math.max(0, Math.round(num(o.terminalBuyCents, base.terminalBuyCents)));
   base.setupCents = Math.max(0, Math.round(num(o.setupCents, base.setupCents)));
   base.setupCapCents = Math.max(0, Math.round(num(o.setupCapCents, base.setupCapCents)));
+  if (typeof o.byoDefault === "boolean") base.byoDefault = o.byoDefault;
+  if (Array.isArray(o.partnerSkus) && o.partnerSkus.length > 0) {
+    base.partnerSkus = o.partnerSkus.map((s) => parsePartnerSku(s)).filter((s): s is PartnerHardwareSku => Boolean(s));
+  }
+  if (!base.partnerSkus.length) base.partnerSkus = DEFAULT_PARTNER_SKUS.map((s) => ({ ...s }));
   return base;
 }
 
+function parsePartnerSku(raw: unknown): PartnerHardwareSku | null {
+  if (!raw || typeof raw !== "object") return null;
+  const o = raw as Record<string, unknown>;
+  const id = String(o.id ?? "").trim().slice(0, 40);
+  if (!id) return null;
+  const kindRaw = String(o.kind ?? "other");
+  const kind: PartnerHardwareSku["kind"] =
+    kindRaw === "reader" || kindRaw === "kiosk" || kindRaw === "terminal" || kindRaw === "stand"
+      ? kindRaw
+      : "other";
+  return {
+    id,
+    skuName: String(o.skuName ?? o.customerFacingName ?? id).slice(0, 80),
+    customerFacingName: String(o.customerFacingName ?? o.skuName ?? id).slice(0, 80),
+    kind,
+    monthlyCents: Math.max(0, Math.round(num(o.monthlyCents, 0))),
+    oneTimeCents: Math.max(0, Math.round(num(o.oneTimeCents, 0))),
+    costNoteInternal: String(o.costNoteInternal ?? "").slice(0, 240),
+    shipToCustomer: o.shipToCustomer !== false,
+    active: o.active !== false,
+  };
+}
+
 export function publicQuoteCatalog(catalog: QuoteCatalog): QuoteCatalog {
-  return { ...catalog };
+  return {
+    ...catalog,
+    partnerSkus: (catalog.partnerSkus ?? []).map((s) => ({
+      ...s,
+      costNoteInternal: "",
+    })),
+  };
+}
+
+export function activePartnerSkus(catalog: QuoteCatalog): PartnerHardwareSku[] {
+  return (catalog.partnerSkus ?? DEFAULT_PARTNER_SKUS).filter((s) => s.active);
+}
+
+export function readerSkus(catalog: QuoteCatalog): PartnerHardwareSku[] {
+  return activePartnerSkus(catalog).filter((s) => s.kind === "reader");
+}
+
+export function otherPartnerSkus(catalog: QuoteCatalog): PartnerHardwareSku[] {
+  return activePartnerSkus(catalog).filter((s) => s.kind !== "reader");
 }
 
 export function isMultiOperatorHouse(answers: IntakeAnswers): boolean {
@@ -153,9 +272,15 @@ export function catalogFeatureList(answers: IntakeAnswers): string[] {
   if (extra > 0) out.push(`${extra} extra order/ODS station${extra === 1 ? "" : "s"}`);
   const kiosks = kioskCount(answers);
   if (kiosks > 0) out.push(`${kiosks} guest kiosk${kiosks === 1 ? "" : "s"}`);
-  const term = terminalNeedOf(answers);
-  if (term === "lease") out.push("Quantum payment terminals (monthly lease)");
-  if (term === "buy") out.push("Quantum payment terminals (one-time)");
+  const hw = answers.hardware ?? emptyIntakeHardware();
+  if (hw.ownsTabletsPrintersDrawers !== false) {
+    out.push("BYO tablets, printers, drawers, stands");
+  }
+  if (hw.shipReaders) {
+    out.push(
+      `${Math.max(1, hw.readerQty || 1)} partner card reader${(hw.readerQty || 1) === 1 ? "" : "s"} (drop-ship to site)`,
+    );
+  }
   return out;
 }
 
@@ -175,7 +300,7 @@ export function catalogSoftwareLines(
       "Base counter + 1 ODS",
       locN,
       catalog.baseCents,
-      { note: "Included. Hardware is BYO except optional Quantum terminals." },
+      { note: "Included software. Hardware is BYO by default." },
     ),
   );
 
@@ -245,25 +370,79 @@ export function catalogSoftwareLines(
   const kiosks = kioskCount(answers);
   if (kiosks > 0 && catalog.kioskCents > 0) {
     items.push(
-      line("kiosk", "package", "Guest kiosk", kiosks, catalog.kioskCents),
+      line("kiosk", "package", "Guest kiosk software", kiosks, catalog.kioskCents, {
+        note: "Software. Hardware for the kiosk is BYO or optional partner drop-ship.",
+      }),
     );
   }
 
-  const term = terminalNeedOf(answers);
-  if (term === "lease" && catalog.terminalLeaseCents > 0) {
-    const qty = Math.max(1, orderStationCount(answers));
+  return items;
+}
+
+export function catalogHardwareLines(
+  answers: IntakeAnswers,
+  catalog: QuoteCatalog,
+): QuoteLineItem[] {
+  const items: QuoteLineItem[] = [];
+  const hw = answers.hardware ?? emptyIntakeHardware();
+  const byo = hw.ownsTabletsPrintersDrawers !== false;
+  if (byo || catalog.byoDefault !== false) {
     items.push(
-      line(
-        "terminals_mo",
-        "custom",
-        "Quantum payment terminal lease",
-        qty,
-        catalog.terminalLeaseCents,
-        { note: "Optional. Skip if you already have readers. Other hardware is BYO." },
-      ),
+      line("hw_byo", "hardware", "Bring your own hardware", 1, 0, {
+        bucket: "hardware",
+        note: HARDWARE_LEAD,
+      }),
     );
   }
 
+  const skus = activePartnerSkus(catalog);
+  if (hw.shipReaders) {
+    const qty = Math.max(1, Math.floor(hw.readerQty || 1));
+    const sku =
+      hw.readerPay === "lease"
+        ? skus.find((s) => s.kind === "reader" && s.monthlyCents > 0)
+        : skus.find((s) => s.kind === "reader" && s.oneTimeCents > 0) ??
+          skus.find((s) => s.kind === "reader");
+    if (sku) {
+      const monthly = hw.readerPay === "lease";
+      items.push(
+        line(
+          `hw_${sku.id}`,
+          "hardware",
+          sku.customerFacingName,
+          qty,
+          monthly ? sku.monthlyCents : sku.oneTimeCents,
+          {
+            bucket: "hardware",
+            oneTime: !monthly,
+            note: "Partner hardware, typically more expensive than BYO. Ships from payments partner to your site. Summex does not take possession.",
+          },
+        ),
+      );
+    }
+  }
+
+  if (hw.shipPartnerDevices) {
+    for (const sku of otherPartnerSkus(catalog)) {
+      const qty = Math.max(0, Math.floor(hw.partnerSkuQty?.[sku.id] ?? 0));
+      if (qty <= 0) continue;
+      const monthly = sku.monthlyCents > 0 && sku.oneTimeCents <= 0;
+      items.push(
+        line(
+          `hw_${sku.id}`,
+          "hardware",
+          sku.customerFacingName,
+          qty,
+          monthly ? sku.monthlyCents : sku.oneTimeCents,
+          {
+            bucket: "hardware",
+            oneTime: !monthly && sku.oneTimeCents > 0,
+            note: "Partner hardware, typically more expensive than BYO. Ships from payments partner to your site.",
+          },
+        ),
+      );
+    }
+  }
   return items;
 }
 
@@ -287,6 +466,12 @@ export function applyQuoteToggles(
     kioskCount?: number;
     terminalNeed?: TerminalNeed;
     tenantCount?: number;
+    ownsTabletsPrintersDrawers?: boolean;
+    shipReaders?: boolean;
+    readerQty?: number;
+    readerPay?: "purchase" | "lease";
+    shipPartnerDevices?: boolean;
+    partnerSkuQty?: Record<string, number>;
   },
 ): IntakeAnswers {
   const next: IntakeAnswers = {
@@ -294,6 +479,7 @@ export function applyQuoteToggles(
     operating: { ...answers.operating },
     modules: { ...answers.modules },
     volume: { ...answers.volume },
+    hardware: { ...(answers.hardware ?? emptyIntakeHardware()) },
     portfolio: { ...answers.portfolio, typeCounts: { ...answers.portfolio.typeCounts } },
   };
   if (patch.multiOp === true) {
@@ -341,6 +527,25 @@ export function applyQuoteToggles(
     next.modules.kiosk = next.volume.kioskCount > 0;
   }
   if (patch.terminalNeed) next.volume.terminalNeed = patch.terminalNeed;
+  if (patch.ownsTabletsPrintersDrawers != null) {
+    next.hardware.ownsTabletsPrintersDrawers = patch.ownsTabletsPrintersDrawers;
+  }
+  if (patch.shipReaders != null) {
+    next.hardware.shipReaders = patch.shipReaders;
+    next.volume.terminalNeed = patch.shipReaders ? (next.hardware.readerPay === "lease" ? "lease" : "buy") : "none";
+    if (patch.shipReaders && next.hardware.readerQty < 1) next.hardware.readerQty = 1;
+  }
+  if (patch.readerQty != null) next.hardware.readerQty = Math.max(0, Math.floor(patch.readerQty));
+  if (patch.readerPay) {
+    next.hardware.readerPay = patch.readerPay;
+    if (next.hardware.shipReaders) {
+      next.volume.terminalNeed = patch.readerPay === "lease" ? "lease" : "buy";
+    }
+  }
+  if (patch.shipPartnerDevices != null) next.hardware.shipPartnerDevices = patch.shipPartnerDevices;
+  if (patch.partnerSkuQty) {
+    next.hardware.partnerSkuQty = { ...next.hardware.partnerSkuQty, ...patch.partnerSkuQty };
+  }
   if (patch.tenantCount != null) {
     next.operating.operatorsPerLocation = Math.max(1, Math.floor(patch.tenantCount));
   }
@@ -351,8 +556,10 @@ export function applyQuoteToggles(
   return next;
 }
 
+type QuoteCatalogMoneyKey = Exclude<keyof QuoteCatalog, "byoDefault" | "partnerSkus">;
+
 export const QUOTE_CATALOG_FIELDS: {
-  key: keyof QuoteCatalog;
+  key: QuoteCatalogMoneyKey;
   label: string;
   hint: string;
 }[] = [
@@ -369,3 +576,7 @@ export const QUOTE_CATALOG_FIELDS: {
   { key: "setupCents", label: "Setup fee", hint: "Default $0" },
   { key: "setupCapCents", label: "Setup fee cap", hint: "0 = no cap beyond the setup amount" },
 ];
+
+export function hardwareLeadCopy(): string {
+  return HARDWARE_LEAD;
+}

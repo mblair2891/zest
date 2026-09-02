@@ -25,8 +25,14 @@ function varsFor(prospect: ProspectRecord, extra?: Partial<Vars>): Vars {
   return {
     companyName: prospect.answers.company.legalName || prospect.email || "there",
     planName: q?.planName || q?.planSlug?.replaceAll("_", " ") || "Summex",
-    monthly: formatCurrency(q?.monthlyCents ?? 0),
+    monthly: formatCurrency(q?.softwareMonthlyCents ?? q?.monthlyCents ?? 0),
     setup: formatCurrency(q?.onboardingFeeCents ?? q?.setupFeeCents ?? 0),
+    hardwareMonthly: formatCurrency(q?.hardwareMonthlyCents ?? 0),
+    hardwareOnce: formatCurrency(q?.hardwareOneTimeCents ?? 0),
+    byo:
+      (q?.byoChecklist ?? []).length > 0
+        ? `You provide:\n${(q?.byoChecklist ?? []).map((x) => `• ${x}`).join("\n")}`
+        : "Hardware is bring-your-own unless partner drop-ship is on the quote.",
     locationCount: String(q?.locationCount ?? prospect.answers.portfolio.locationsNow ?? 1),
     features: (q?.featureList ?? []).map((f) => `• ${f}`).join("\n") || "• POS core + kitchen display",
     expires: q?.expiresAt ? new Date(q.expiresAt).toLocaleDateString() : "see proposal",

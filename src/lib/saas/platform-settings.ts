@@ -5,7 +5,7 @@ import {
   PACKAGE_BY_ID,
   QUOTE_SOFTWARE_PACKAGES,
 } from "@/lib/pos/packages";
-import { DEFAULT_QUOTE_CATALOG } from "./quote-catalog";
+import { DEFAULT_PARTNER_SKUS, DEFAULT_QUOTE_CATALOG } from "./quote-catalog";
 
 export { QUOTE_SOFTWARE_PACKAGES };
 
@@ -301,6 +301,22 @@ export const billingSettingsSchema = z.object({
       terminalBuyCents: int(0, 10_000_000).default(0),
       setupCents: int(0, 10_000_000).default(0),
       setupCapCents: int(0, 10_000_000).default(0),
+      byoDefault: z.boolean().default(true),
+      partnerSkus: z
+        .array(
+          z.object({
+            id: str(40, 1),
+            skuName: str(80, 1),
+            customerFacingName: str(80, 1),
+            kind: z.enum(["reader", "kiosk", "terminal", "stand", "other"]).default("reader"),
+            monthlyCents: int(0, 10_000_000).default(0),
+            oneTimeCents: int(0, 10_000_000).default(0),
+            costNoteInternal: str(240).default(""),
+            shipToCustomer: z.boolean().default(true),
+            active: z.boolean().default(true),
+          }),
+        )
+        .default(DEFAULT_PARTNER_SKUS),
     })
     .default(DEFAULT_QUOTE_CATALOG),
   gmvScaleCents: z
@@ -379,7 +395,7 @@ export const communicationsSettingsSchema = z.object({
   ),
   quoteSentSubject: str(200).default("Your {{platformName}} proposal for {{companyName}}"),
   quoteSentBody: str(4000).default(
-    "Hi {{companyName}},\n\nHere is your {{platformName}} proposal.\n\nPackage: {{planName}}\nLocations: {{locationCount}}\nMonthly software: {{monthly}}\nSetup: {{setup}}\nExpires: {{expires}}\n\nIncluded from intake:\n{{features}}\n\n{{processingNote}}\n\nReview, accept, or request changes: {{quoteUrl}}\n\nQuestions: {{supportEmail}}\n\n— {{fromName}}",
+    "Hi {{companyName}},\n\nHere is your {{platformName}} proposal.\n\nPackage: {{planName}}\nLocations: {{locationCount}}\nMonthly software: {{monthly}}\nSetup: {{setup}}\nHardware monthly: {{hardwareMonthly}}\nHardware one-time: {{hardwareOnce}}\n{{byo}}\nExpires: {{expires}}\n\nIncluded from intake:\n{{features}}\n\n{{processingNote}}\n\nReview, accept, or request changes: {{quoteUrl}}\n\nQuestions: {{supportEmail}}\n\n— {{fromName}}",
   ),
   quoteAcceptedSubject: str(200).default("You accepted the {{platformName}} proposal"),
   quoteAcceptedBody: str(4000).default(

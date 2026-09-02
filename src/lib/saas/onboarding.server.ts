@@ -108,7 +108,13 @@ export async function applyOnboardingStep(opts: {
     await applyLocations(opts.userId, detail.id, payload);
   } else if (opts.step === "operators") {
     await applyOperators(opts.userId, detail.id, payload);
-  } else if (opts.step === "floor" || opts.step === "menu" || opts.step === "devices" || opts.step === "settlement") {
+  } else if (
+    opts.step === "floor" ||
+    opts.step === "menu" ||
+    opts.step === "devices" ||
+    opts.step === "hardware" ||
+    opts.step === "settlement"
+  ) {
     await applyLocationSetup(opts.userId, detail.id, payload);
   } else if (opts.step === "payments") {
     await applyLocationSetup(opts.userId, detail.id, payload);

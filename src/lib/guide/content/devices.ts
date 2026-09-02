@@ -134,7 +134,7 @@ export const DEVICE_TOPICS: GuideTopic[] = [
         "Receipts: Epson TM-T20 thermal. Kitchen: Epson TM-U220 impact. Star mC-Print3 / TSP100 and Epson TM-T88 / TM-m30 also work as thermal.",
         "Drawer kick: receipt printer only (open on cash sale always / never / manager PIN).",
         "SYOH practice: connection = This browser. An 80mm dialog is not a substitute for the LAN printers at go-live.",
-        "SYOH tablets run POS/ODS. Live cards still use a supplied Quantum reader — not the tablet keypad.",
+        "SYOH tablets run POS/ODS. Live cards still use a supplied Quantum reader — not the tablet keypad. Default is bring-your-own tablets, printers, and drawers; optional Finix readers drop-ship to the house.",
       ),
       warn(
         "There is no separate “ODS appliance OS.” Hardware is not a locked role. Do not take live cards on a SYOH tablet keypad. Do not put kitchen printers on printer Wi‑Fi.",

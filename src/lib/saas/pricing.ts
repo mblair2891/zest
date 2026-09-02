@@ -23,13 +23,16 @@ import {
   DEFAULT_QUOTE_CATALOG,
   cappedSetupCents,
   catalogFeatureList,
+  catalogHardwareLines,
   catalogSoftwareLines,
   catalogStationCounts,
+  emptyIntakeHardware,
+  BYO_CHECKLIST,
+  HARDWARE_LEAD,
   isMultiOperatorHouse,
   parseQuoteCatalog,
   recommendedCatalogPlan,
   tenantEntityCount,
-  terminalNeedOf,
 } from "./quote-catalog";
 
 export const DEFAULT_PRICING_RULES: PricingRules = {
@@ -194,6 +197,7 @@ export function emptyIntakeAnswers(): IntakeAnswers {
       kioskCount: 0,
       terminalNeed: "none",
     },
+    hardware: emptyIntakeHardware(),
     payments: {
       quantumPaymentsAck: false,
       tips: true,
@@ -304,6 +308,23 @@ export function parseIntakeAnswers(raw: unknown): IntakeAnswers {
   if (!("hostStand" in operating)) {
     d.operating.hostStand = d.modules.tableService;
   }
+  const hardware = asObject(o.hardware);
+  const qtyMap: Record<string, number> = {};
+  const rawQty = asObject(hardware.partnerSkuQty);
+  for (const [k, v] of Object.entries(rawQty)) {
+    const n = Math.max(0, Math.floor(num(v, 0)));
+    if (n > 0) qtyMap[k] = n;
+  }
+  const readerPay = str(hardware.readerPay, "purchase");
+  d.hardware = {
+    ownsTabletsPrintersDrawers: bool(hardware.ownsTabletsPrintersDrawers, true),
+    shipReaders: bool(hardware.shipReaders, d.volume.terminalNeed === "lease" || d.volume.terminalNeed === "buy"),
+    readerQty: Math.max(0, Math.floor(num(hardware.readerQty, 0))),
+    readerPay: readerPay === "lease" ? "lease" : "purchase",
+    shipPartnerDevices: bool(hardware.shipPartnerDevices),
+    partnerSkuQty: qtyMap,
+  };
+  if (d.hardware.shipReaders && d.hardware.readerQty < 1) d.hardware.readerQty = 1;
   const payments = asObject(o.payments);
   const freq = str(payments.payoutFrequency, "weekly");
   d.payments = {
@@ -522,7 +543,7 @@ export function resolveSetupFeeCents(
 /** Software package is present when there is at least one non-setup line (including $0 POS core). */
 export function quoteHasSoftwarePackage(quote: QuoteSnapshot | null | undefined): boolean {
   if (!quote) return false;
-  return quote.lineItems.some((i) => !i.oneTime);
+  return quote.lineItems.some((i) => !i.oneTime && i.bucket !== "hardware");
 }
 
 export function quoteIsSetupOnly(quote: QuoteSnapshot | null | undefined): boolean {
@@ -572,21 +593,13 @@ export function generateQuote(
     isMultiOperatorHouse(answers) ? Math.max(1, locs) + tenants : Math.max(1, locs);
 
   const packages = new Set<PackageId>(packagesFromIntake(answers));
-  const items: QuoteLineItem[] = catalogSoftwareLines(answers, catalog, locs, plan);
+  const items: QuoteLineItem[] = [
+    ...catalogSoftwareLines(answers, catalog, locs, plan),
+    ...catalogHardwareLines(answers, catalog),
+  ];
 
-  let terminalQty = Math.max(0, Math.floor(opts?.terminalQty ?? 0));
-  const need = terminalNeedOf(answers);
-  if (terminalQty === 0 && (need === "lease" || need === "buy")) {
-    terminalQty = Math.max(1, Math.min(12, stations.order || 1));
-  }
-  if (need === "buy" && catalog.terminalBuyCents > 0 && terminalQty > 0) {
-    items.push(
-      line("terminals_buy", "onboarding", "Quantum payment terminal (purchase)", terminalQty, catalog.terminalBuyCents, {
-        oneTime: true,
-        note: "Optional. Other hardware is BYO.",
-      }),
-    );
-  }
+  const hw = answers.hardware ?? emptyIntakeHardware();
+  const terminalQty = hw.shipReaders ? Math.max(1, hw.readerQty || 1) : 0;
 
   for (const a of opts?.addOns ?? []) {
     if (!a.name?.trim()) continue;
@@ -597,13 +610,22 @@ export function generateQuote(
     );
   }
 
-  const monthlyCents = items.filter((i) => !i.oneTime).reduce((s, i) => s + i.totalCents, 0);
+  const softwareMonthlyCents = items
+    .filter((i) => !i.oneTime && i.bucket !== "hardware")
+    .reduce((s, i) => s + i.totalCents, 0);
+  const hardwareMonthlyCents = items
+    .filter((i) => !i.oneTime && i.bucket === "hardware")
+    .reduce((s, i) => s + i.totalCents, 0);
+  const hardwareOneTimeCents = items
+    .filter((i) => i.oneTime && i.bucket === "hardware")
+    .reduce((s, i) => s + i.totalCents, 0);
+  const monthlyCents = softwareMonthlyCents;
   const discount = Math.min(90, Math.max(0, rules.annualDiscountPercent)) / 100;
   const annualCents = Math.round(monthlyCents * 12 * (1 - discount));
   const setupCents = cappedSetupCents(catalog, opts?.setupFeeCents);
   if (setupCents > 0) {
     items.push(
-      line("onb", "onboarding", "One-time setup", 1, setupCents, { oneTime: true }),
+      line("onb", "onboarding", "One-time setup", 1, setupCents, { oneTime: true, bucket: "setup" }),
     );
   }
   const onboardingFeeCents = items.filter((i) => i.oneTime).reduce((s, i) => s + i.totalCents, 0);
@@ -631,7 +653,10 @@ export function generateQuote(
       : "Single-operator location.",
     PROCESSING_NOTE,
     "Gift cards are first-party (Summex ledger), not Finix.",
-    "Hardware is bring-your-own except optional Quantum terminals on this quote.",
+    HARDWARE_LEAD,
+    hw.ownsTabletsPrintersDrawers !== false
+      ? `You provide: ${BYO_CHECKLIST.join("; ")}.`
+      : "Partner hardware ships from the payments partner to the house — Summex does not take possession.",
     answers.volume.volumeKind === "checks"
       ? `Volume driver: ~${answers.volume.monthlyChecks.toLocaleString()} checks / month.`
       : `Volume driver: GMV band ${gmvLabel(answers.volume.gmvBand)}.`,
@@ -673,6 +698,10 @@ export function generateQuote(
     terminalQty,
     lineItems: items,
     monthlyCents,
+    softwareMonthlyCents,
+    hardwareMonthlyCents,
+    hardwareOneTimeCents,
+    byoChecklist: hw.ownsTabletsPrintersDrawers !== false ? BYO_CHECKLIST : [],
     annualCents,
     onboardingFeeCents,
     assumptions,
@@ -686,10 +715,16 @@ export function retotalQuote(quote: QuoteSnapshot): QuoteSnapshot {
     totalCents: Math.max(0, i.qty) * i.unitCents,
   }));
   const monthlyCents = lineItems
-    .filter((i) => !i.oneTime)
+    .filter((i) => !i.oneTime && i.bucket !== "hardware")
+    .reduce((s, i) => s + i.totalCents, 0);
+  const hardwareMonthlyCents = lineItems
+    .filter((i) => !i.oneTime && i.bucket === "hardware")
+    .reduce((s, i) => s + i.totalCents, 0);
+  const hardwareOneTimeCents = lineItems
+    .filter((i) => i.oneTime && i.bucket === "hardware")
     .reduce((s, i) => s + i.totalCents, 0);
   const onboardingFeeCents = lineItems
-    .filter((i) => i.oneTime)
+    .filter((i) => i.oneTime && i.bucket !== "hardware")
     .reduce((s, i) => s + i.totalCents, 0);
   const annualCents =
     quote.annualCents && quote.monthlyCents
@@ -699,6 +734,9 @@ export function retotalQuote(quote: QuoteSnapshot): QuoteSnapshot {
     ...quote,
     lineItems,
     monthlyCents,
+    softwareMonthlyCents: monthlyCents,
+    hardwareMonthlyCents,
+    hardwareOneTimeCents,
     annualCents,
     onboardingFeeCents,
   };

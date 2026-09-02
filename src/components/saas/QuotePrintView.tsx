@@ -6,8 +6,10 @@ import type { ProspectDetail } from "@/lib/saas/prospect-types";
 export function QuotePrintView({ detail }: { detail: ProspectDetail }) {
   const quote = detail.quote;
   if (!quote) return null;
-  const monthly = quote.lineItems.filter((i) => !i.oneTime);
-  const oneTime = quote.lineItems.filter((i) => i.oneTime);
+  const software = quote.lineItems.filter((i) => !i.oneTime && i.bucket !== "hardware");
+  const hwMonthly = quote.lineItems.filter((i) => !i.oneTime && i.bucket === "hardware");
+  const hwOnce = quote.lineItems.filter((i) => i.oneTime && i.bucket === "hardware");
+  const oneTime = quote.lineItems.filter((i) => i.oneTime && i.bucket !== "hardware");
   const company = detail.answers.company;
   return (
     <article className="mx-auto max-w-2xl bg-surface p-8 text-foreground print:max-w-none print:p-0">
@@ -37,6 +39,14 @@ export function QuotePrintView({ detail }: { detail: ProspectDetail }) {
               Setup {formatCurrency(quote.onboardingFeeCents)} one-time
             </p>
           )}
+          <p className="text-sm text-muted-foreground">
+            Hardware {(quote.hardwareMonthlyCents ?? 0) > 0
+              ? `${formatCurrency(quote.hardwareMonthlyCents ?? 0)} / mo`
+              : "BYO $0"}
+            {(quote.hardwareOneTimeCents ?? 0) > 0
+              ? ` · ${formatCurrency(quote.hardwareOneTimeCents ?? 0)} one-time partner drop-ship`
+              : ""}
+          </p>
           {quote.expiresAt && (
             <p className="text-sm text-muted-foreground">
               Expires {new Date(quote.expiresAt).toLocaleDateString()}
@@ -72,9 +82,27 @@ export function QuotePrintView({ detail }: { detail: ProspectDetail }) {
           </tr>
         </thead>
         <tbody>
-          {monthly.map((line) => (
+          {software.map((line) => (
             <tr key={line.id} className="border-b border-border">
               <td className="py-2">{line.label}</td>
+              <td className="py-2">{line.qty}</td>
+              <td className="py-2 text-right tabular">{formatCurrency(line.totalCents)}</td>
+            </tr>
+          ))}
+          {hwMonthly.map((line) => (
+            <tr key={line.id} className="border-b border-border">
+              <td className="py-2">
+                {line.label} <span className="text-muted-foreground">(hardware / mo)</span>
+              </td>
+              <td className="py-2">{line.qty}</td>
+              <td className="py-2 text-right tabular">{formatCurrency(line.totalCents)}</td>
+            </tr>
+          ))}
+          {hwOnce.map((line) => (
+            <tr key={line.id} className="border-b border-border">
+              <td className="py-2">
+                {line.label} <span className="text-muted-foreground">(hardware one-time)</span>
+              </td>
               <td className="py-2">{line.qty}</td>
               <td className="py-2 text-right tabular">{formatCurrency(line.totalCents)}</td>
             </tr>
@@ -93,8 +121,9 @@ export function QuotePrintView({ detail }: { detail: ProspectDetail }) {
       <p className="mt-6 text-xs text-muted-foreground">
         {quote.processingNote ||
           "Guest card processing is Quantum Payments, billed separately from software."}{" "}
-        Gift cards are first-party. Hardware is BYO except optional Quantum terminals on this
-        quote. This snapshot does not change if the catalog changes later.
+        Gift cards are first-party. Bring your own tablets, printers, cash drawers, stands.
+        Card readers can be yours or shipped by our payments partner to your site. This
+        snapshot does not change if the catalog changes later.
       </p>
     </article>
   );

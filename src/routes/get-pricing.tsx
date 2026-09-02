@@ -20,9 +20,10 @@ function GetPricingPage() {
         </p>
         <h1 className="mt-2 text-3xl font-semibold tracking-tight">Get pricing</h1>
         <p className="mt-2 max-w-xl text-sm text-muted-foreground">
-          Describe the house, answer a few follow-ups, then see a live monthly price
-          you can adjust — Counter $0, Full service $149, Multi-operator $299 + tenants.
-          Setup defaults to $0. Guest processing is a note, not part of software $.
+          Describe the house, then see a live monthly software price. Bring your own
+          tablets, printers, cash drawers, stands — Summex is the software. Card readers
+          can be yours or shipped by our payments partner. Setup defaults to $0.
+          Processing is a note, not part of software $.
         </p>
         <div className="mt-8">
           <IntakeWizard initialToken={t} />

@@ -3,7 +3,7 @@
 **Powered by Quantum Reach**
 
 White paper · October 2026  
-**Revision · 2 Sep 2026** — Get a price: live module monthly (Counter $0 / Full service $149 / Multi-operator $299 + $49/tenant). Setup defaults to $0. Aligns with Operators Guide v2026.10.32.
+**Revision · 2 Sep 2026** — Hardware is BYO by default. Optional Finix/Quantum devices drop-ship from the payments partner to the house. Aligns with Operators Guide v2026.10.33.
 
 summex.app  
 Guest cards: **Quantum Payments** only
@@ -260,7 +260,7 @@ Software billing is **not** guest card processing.
 - **Counter (base)** — POS + 1 kitchen/bar display, **$0 / month**.
 - **Full service** — floor, host stand, sections, closeout, **$149 / location / month**.
 - **Multi-operator** — hall/pod host **$299 / location / month** plus **$49 per tenant entity**.
-- **Add-ons** the house actually uses: ops pack (recipes, costing, staffing recs, HR, payroll export) **$99**; extra order/ODS stations over 4 **$19 each**; kiosk **$29 each**; optional Quantum terminal lease **$15 / month** (or one-time). Other hardware is BYO.
+- **Hardware is BYO by default.** Bring your own tablets, printers, cash drawers, stands. Summex is the software. Card readers can be yours (a typical Finix/Quantum reader is about **$75**) or **shipped by our payments partner to the house** — never as a bundled Summex kit, and never through a Summex warehouse. Partner SKUs are optional, typically more expensive than BYO, and billed as hardware (one-time and/or monthly), separate from software.
 - **Setup** defaults to **$0** (settings can cap a setup amount). It is never the only line on a proposal.
 - **Quantum Payments** (and cash-discount) are a **separate processing note**, not mixed into software $.
 

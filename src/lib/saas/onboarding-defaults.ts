@@ -47,7 +47,36 @@ export function payloadFromAnswers(answers: IntakeAnswers): OnboardingPayload {
       hostCutPercent: answers.operating.guestPaysHostCheck ? 10 : 0,
     },
     checklist: { trainingAck: false, hardwareAck: false, paymentsAck: false },
+    partnerHardware: {
+      shipToName: answers.company.legalName || answers.company.dba || "",
+      shipToAddress: answers.company.hqAddress || "",
+      shipToPhone: answers.company.phone || "",
+      items: partnerHardwareItemsFromAnswers(answers),
+      note: "Partner hardware ships from the payments partner to this address. Summex does not take possession.",
+    },
   };
+}
+
+function partnerHardwareItemsFromAnswers(answers: IntakeAnswers): OnboardingPayload["partnerHardware"]["items"] {
+  const hw = answers.hardware;
+  if (!hw) return [];
+  const items: OnboardingPayload["partnerHardware"]["items"] = [];
+  if (hw.shipReaders && hw.readerQty > 0) {
+    items.push({
+      skuId: hw.readerPay === "lease" ? "finix_reader_lease" : "finix_reader",
+      name: "Quantum / Finix card reader",
+      qty: hw.readerQty,
+      status: "requested",
+    });
+  }
+  if (hw.shipPartnerDevices) {
+    for (const [skuId, qty] of Object.entries(hw.partnerSkuQty ?? {})) {
+      if ((qty ?? 0) > 0) {
+        items.push({ skuId, name: skuId, qty: Number(qty) || 0, status: "requested" });
+      }
+    }
+  }
+  return items;
 }
 
 function emptyLocationDraft(

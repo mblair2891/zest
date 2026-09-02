@@ -32,6 +32,7 @@ const LABELS = [
   "Floor",
   "Menu",
   "Devices",
+  "Hardware",
   "Team",
   "Settlement",
   "Payments",
@@ -136,7 +137,7 @@ export function SetupOnboardingWizard({ token }: { token: string }) {
       const d = await applyOnboardingStepFn({ data: { token, step: stepId, payload: body } });
       setDetail(d);
       setPayload(d.onboarding?.payload ?? body);
-      if (step < 11) setStep(step + 1);
+      if (step < 12) setStep(step + 1);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Step failed");
     } finally {
@@ -169,6 +170,7 @@ export function SetupOnboardingWizard({ token }: { token: string }) {
           "Floor",
           "Menu starting point",
           "Devices",
+          "Partner hardware ship-to",
           "People to invite",
           "Settlement",
           "Quantum Payments",
@@ -178,7 +180,7 @@ export function SetupOnboardingWizard({ token }: { token: string }) {
       }
       subtitle="Each step writes real org data. POS stays empty until you add a menu. Network check is warn-only."
       step={step}
-      total={11}
+      total={12}
       labels={LABELS}
       error={error}
       busy={busy}
@@ -641,11 +643,91 @@ export function SetupOnboardingWizard({ token }: { token: string }) {
         </div>
       )}
 
-      {step === 7 && (
-        <InvitesStep payload={payload} patch={patch} />
+      {stepId === "hardware" && (
+        <div className="space-y-4">
+          <p className="text-sm text-muted-foreground">
+            Bring your own tablets, printers, cash drawers, and stands. Summex is the
+            software. If this quote includes partner hardware, it ships from the payments
+            partner to the house — Summex does not take possession.
+          </p>
+          {(payload.partnerHardware.items.length === 0) && (
+            <p className="rounded-2xl border border-border bg-surface p-4 text-sm">
+              BYO on this quote. Confirm the house has order tablets, ODS display, Wi-Fi
+              printer with drawer kick, and a reader (theirs or a typical ~$75 Finix/Quantum
+              unit).
+            </p>
+          )}
+          {payload.partnerHardware.items.length > 0 && (
+            <div className="space-y-3">
+              <Field label="Ship-to name">
+                <Input
+                  value={payload.partnerHardware.shipToName}
+                  onChange={(e) =>
+                    patch((p) => ({
+                      ...p,
+                      partnerHardware: { ...p.partnerHardware, shipToName: e.target.value },
+                    }))
+                  }
+                />
+              </Field>
+              <Field label="Ship-to address" hint="Payments partner drop-ships here. Not a Summex warehouse.">
+                <Input
+                  value={payload.partnerHardware.shipToAddress}
+                  onChange={(e) =>
+                    patch((p) => ({
+                      ...p,
+                      partnerHardware: { ...p.partnerHardware, shipToAddress: e.target.value },
+                    }))
+                  }
+                />
+              </Field>
+              <Field label="Ship-to phone">
+                <Input
+                  value={payload.partnerHardware.shipToPhone}
+                  onChange={(e) =>
+                    patch((p) => ({
+                      ...p,
+                      partnerHardware: { ...p.partnerHardware, shipToPhone: e.target.value },
+                    }))
+                  }
+                />
+              </Field>
+              <ul className="divide-y divide-border overflow-hidden rounded-2xl border border-border">
+                {payload.partnerHardware.items.map((it, i) => (
+                  <li key={`${it.skuId}-${i}`} className="flex flex-wrap items-center gap-2 px-4 py-3 text-sm">
+                    <span className="flex-1 font-medium">
+                      {it.name} × {it.qty}
+                    </span>
+                    <NativeSelect
+                      value={it.status}
+                      onChange={(val) =>
+                        patch((p) => {
+                          const items = p.partnerHardware.items.slice();
+                          items[i] = {
+                            ...it,
+                            status: val as "requested" | "shipped" | "delivered",
+                          };
+                          return { ...p, partnerHardware: { ...p.partnerHardware, items } };
+                        })
+                      }
+                    >
+                      <option value="requested">Requested</option>
+                      <option value="shipped">Shipped</option>
+                      <option value="delivered">Delivered</option>
+                    </NativeSelect>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+        </div>
       )}
 
       {step === 8 && (
+        <InvitesStep payload={payload} patch={patch} />
+      )}
+
+      {step === 9 && (
         <div className="space-y-3">
           <Field label="Settlement period">
             <NativeSelect
@@ -744,7 +826,7 @@ export function SetupOnboardingWizard({ token }: { token: string }) {
           />
           <ToggleChip
             on={payload.checklist.hardwareAck}
-            label="Hardware arrival acknowledged"
+            label="Hardware plan acknowledged (BYO on site, or partner drop-ship to the house)"
             onClick={() =>
               patch((p) => ({
                 ...p,

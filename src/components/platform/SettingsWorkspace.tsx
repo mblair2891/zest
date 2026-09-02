@@ -911,6 +911,150 @@ function BillingSection({
           );
         })}
       </div>
+      <ToggleRow
+        label="BYO hardware is the default on Get a price"
+        hint="Never imply Summex bundles a full hardware kit. Partner devices are optional drop-ship."
+        checked={billing.quoteCatalog?.byoDefault !== false}
+        onChange={(byoDefault) =>
+          setBilling({
+            ...billing,
+            quoteCatalog: { ...billing.quoteCatalog, byoDefault },
+          })
+        }
+      />
+      <p className="pt-2 text-sm font-medium">Partner hardware SKUs (Finix drop-ship)</p>
+      <p className="text-xs text-muted-foreground">
+        Ships from the payments partner to the customer address. Customer-facing price is
+        typically higher than BYO. Cost note is internal only.
+      </p>
+      {(billing.quoteCatalog?.partnerSkus ?? []).map((sku, i) => (
+        <div key={sku.id} className="space-y-2 rounded-xl border border-border bg-bg p-3">
+          <div className="grid gap-3 sm:grid-cols-2">
+            <Field label="SKU name (internal)">
+              <Input
+                value={sku.skuName}
+                onChange={(e) => {
+                  const partnerSkus = (billing.quoteCatalog.partnerSkus ?? []).slice();
+                  partnerSkus[i] = { ...sku, skuName: e.target.value };
+                  setBilling({
+                    ...billing,
+                    quoteCatalog: { ...billing.quoteCatalog, partnerSkus },
+                  });
+                }}
+              />
+            </Field>
+            <Field label="Customer-facing name">
+              <Input
+                value={sku.customerFacingName}
+                onChange={(e) => {
+                  const partnerSkus = (billing.quoteCatalog.partnerSkus ?? []).slice();
+                  partnerSkus[i] = { ...sku, customerFacingName: e.target.value };
+                  setBilling({
+                    ...billing,
+                    quoteCatalog: { ...billing.quoteCatalog, partnerSkus },
+                  });
+                }}
+              />
+            </Field>
+            <Field label="Monthly $">
+              <Input
+                inputMode="decimal"
+                value={formatMoneyCents(sku.monthlyCents)}
+                onChange={(e) => {
+                  const partnerSkus = (billing.quoteCatalog.partnerSkus ?? []).slice();
+                  partnerSkus[i] = { ...sku, monthlyCents: parseMoneyToCents(e.target.value) };
+                  setBilling({
+                    ...billing,
+                    quoteCatalog: { ...billing.quoteCatalog, partnerSkus },
+                  });
+                }}
+              />
+            </Field>
+            <Field label="One-time $">
+              <Input
+                inputMode="decimal"
+                value={formatMoneyCents(sku.oneTimeCents)}
+                onChange={(e) => {
+                  const partnerSkus = (billing.quoteCatalog.partnerSkus ?? []).slice();
+                  partnerSkus[i] = { ...sku, oneTimeCents: parseMoneyToCents(e.target.value) };
+                  setBilling({
+                    ...billing,
+                    quoteCatalog: { ...billing.quoteCatalog, partnerSkus },
+                  });
+                }}
+              />
+            </Field>
+            <Field label="Internal cost note">
+              <Input
+                value={sku.costNoteInternal}
+                onChange={(e) => {
+                  const partnerSkus = (billing.quoteCatalog.partnerSkus ?? []).slice();
+                  partnerSkus[i] = { ...sku, costNoteInternal: e.target.value };
+                  setBilling({
+                    ...billing,
+                    quoteCatalog: { ...billing.quoteCatalog, partnerSkus },
+                  });
+                }}
+              />
+            </Field>
+          </div>
+          <div className="flex flex-wrap gap-3">
+            <ToggleRow
+              label="Ship to customer"
+              checked={sku.shipToCustomer !== false}
+              onChange={(shipToCustomer) => {
+                const partnerSkus = (billing.quoteCatalog.partnerSkus ?? []).slice();
+                partnerSkus[i] = { ...sku, shipToCustomer };
+                setBilling({
+                  ...billing,
+                  quoteCatalog: { ...billing.quoteCatalog, partnerSkus },
+                });
+              }}
+            />
+            <ToggleRow
+              label="Active"
+              checked={sku.active !== false}
+              onChange={(active) => {
+                const partnerSkus = (billing.quoteCatalog.partnerSkus ?? []).slice();
+                partnerSkus[i] = { ...sku, active };
+                setBilling({
+                  ...billing,
+                  quoteCatalog: { ...billing.quoteCatalog, partnerSkus },
+                });
+              }}
+            />
+          </div>
+        </div>
+      ))}
+      <Button
+        type="button"
+        size="sm"
+        variant="outline"
+        onClick={() =>
+          setBilling({
+            ...billing,
+            quoteCatalog: {
+              ...billing.quoteCatalog,
+              partnerSkus: [
+                ...(billing.quoteCatalog.partnerSkus ?? []),
+                {
+                  id: newLocalId("sku"),
+                  skuName: "New partner SKU",
+                  customerFacingName: "Partner device",
+                  kind: "other",
+                  monthlyCents: 0,
+                  oneTimeCents: 0,
+                  costNoteInternal: "",
+                  shipToCustomer: true,
+                  active: true,
+                },
+              ],
+            },
+          })
+        }
+      >
+        Add partner SKU
+      </Button>
       <p className="pt-2 text-sm font-medium">Legacy add-ons</p>
       <p className="text-xs text-muted-foreground">
         Not shown on Get a price. Kept for older internal quotes.

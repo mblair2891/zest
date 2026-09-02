@@ -37,6 +37,7 @@ export const ONBOARDING_STEP_IDS = [
   "floor",
   "menu",
   "devices",
+  "hardware",
   "invites",
   "settlement",
   "payments",
@@ -52,6 +53,7 @@ export const ONBOARDING_STEP_LABEL: Record<OnboardingStepId, string> = {
   floor: "Floor",
   menu: "Menu",
   devices: "Devices",
+  hardware: "Partner hardware",
   invites: "Team",
   settlement: "Settlement",
   payments: "Payments",
@@ -114,6 +116,33 @@ export type IntakeVolume = {
   terminalNeed: TerminalNeed;
 };
 
+export type PartnerHardwareKind = "reader" | "kiosk" | "terminal" | "stand" | "other";
+
+export type PartnerHardwareSku = {
+  id: string;
+  skuName: string;
+  customerFacingName: string;
+  kind: PartnerHardwareKind;
+  monthlyCents: number;
+  oneTimeCents: number;
+  /** Internal only — never on Get a price or guest PDF. */
+  costNoteInternal: string;
+  shipToCustomer: boolean;
+  active: boolean;
+};
+
+export type IntakeHardware = {
+  /** Default true: tablets, printers, drawers, stands are the house's. */
+  ownsTabletsPrintersDrawers: boolean;
+  shipReaders: boolean;
+  readerQty: number;
+  /** Lease (monthly) vs purchase (one-time) for shipped readers. */
+  readerPay: "purchase" | "lease";
+  shipPartnerDevices: boolean;
+  /** sku id → qty for non-reader partner catalog items */
+  partnerSkuQty: Record<string, number>;
+};
+
 export type IntakePayments = {
   /** Required: guest cards are Quantum Payments only. */
   quantumPaymentsAck: boolean;
@@ -136,6 +165,7 @@ export type IntakeAnswers = {
   operating: IntakeOperating;
   modules: IntakeModules;
   volume: IntakeVolume;
+  hardware: IntakeHardware;
   payments: IntakePayments;
   timeline: IntakeTimeline;
 };
@@ -194,6 +224,7 @@ export type QuoteLineKind =
   | "device_pack"
   | "gmv_scale"
   | "onboarding"
+  | "hardware"
   | "custom";
 
 export type QuoteLineItem = {
@@ -206,6 +237,7 @@ export type QuoteLineItem = {
   packageId?: PackageId;
   note?: string;
   oneTime?: boolean;
+  bucket?: "software" | "hardware" | "setup";
 };
 
 export type QuoteAddOn = {
@@ -251,7 +283,12 @@ export type QuoteSnapshot = {
   terminalQty?: number;
   changeRequest?: QuoteChangeRequest | null;
   lineItems: QuoteLineItem[];
+  /** Recurring software only — never partner hardware. */
   monthlyCents: number;
+  softwareMonthlyCents?: number;
+  hardwareMonthlyCents?: number;
+  hardwareOneTimeCents?: number;
+  byoChecklist?: string[];
   annualCents: number;
   onboardingFeeCents: number;
   assumptions: string[];
@@ -293,6 +330,8 @@ export type QuoteCatalog = {
   terminalBuyCents: number;
   setupCents: number;
   setupCapCents: number;
+  byoDefault: boolean;
+  partnerSkus: PartnerHardwareSku[];
 };
 
 export type OperatorDraft = {
@@ -351,6 +390,18 @@ export type OnboardingPayload = {
     trainingAck: boolean;
     hardwareAck: boolean;
     paymentsAck: boolean;
+  };
+  partnerHardware: {
+    shipToName: string;
+    shipToAddress: string;
+    shipToPhone: string;
+    items: Array<{
+      skuId: string;
+      name: string;
+      qty: number;
+      status: "requested" | "shipped" | "delivered";
+    }>;
+    note: string;
   };
 };
 
