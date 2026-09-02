@@ -150,6 +150,11 @@ function parseSetup(raw: unknown): LocationSetup {
     ticketPrefix: typeof o.ticketPrefix === "string" ? o.ticketPrefix : "",
     kioskMode: typeof o.kioskMode === "string" ? o.kioskMode : "combined",
     waitlistEnabled: Boolean(o.waitlistEnabled),
+    smsEnabled: o.smsEnabled !== false,
+    smsMonthlyCap:
+      o.smsMonthlyCap == null || !Number.isFinite(Number(o.smsMonthlyCap))
+        ? null
+        : Math.max(0, Math.floor(Number(o.smsMonthlyCap))),
     reservationCheckIn: o.reservationCheckIn !== false,
     waitlistReason: typeof o.waitlistReason === "string" ? o.waitlistReason : "",
     operatorPayouts: Array.isArray(o.operatorPayouts)

@@ -82,6 +82,7 @@ export const DEFAULT_QUOTE_CATALOG: QuoteCatalog = {
   setupCapCents: 0,
   byoDefault: true,
   partnerSkus: DEFAULT_PARTNER_SKUS,
+  smsIncludedPerMonth: 500,
 };
 
 export function emptyIntakeHardware(): IntakeHardware {
@@ -121,7 +122,14 @@ export function parseQuoteCatalog(raw: unknown): QuoteCatalog {
     base.partnerSkus = o.partnerSkus.map((s) => parsePartnerSku(s)).filter((s): s is PartnerHardwareSku => Boolean(s));
   }
   if (!base.partnerSkus.length) base.partnerSkus = DEFAULT_PARTNER_SKUS.map((s) => ({ ...s }));
+  if (typeof o.smsIncludedPerMonth === "number" && Number.isFinite(o.smsIncludedPerMonth)) {
+    base.smsIncludedPerMonth = Math.max(0, Math.floor(o.smsIncludedPerMonth));
+  }
   return base;
+}
+
+export function commsIncludedNote(smsIncluded = DEFAULT_QUOTE_CATALOG.smsIncludedPerMonth ?? 500): string {
+  return `Email included. SMS: ${Math.max(0, Math.floor(smsIncluded))}/mo included, extra at cost. AI reports in Ops pack.`;
 }
 
 function parsePartnerSku(raw: unknown): PartnerHardwareSku | null {
@@ -281,6 +289,7 @@ export function catalogFeatureList(answers: IntakeAnswers): string[] {
       `${Math.max(1, hw.readerQty || 1)} partner card reader${(hw.readerQty || 1) === 1 ? "" : "s"} (drop-ship to site)`,
     );
   }
+  out.push(commsIncludedNote());
   return out;
 }
 
@@ -556,7 +565,10 @@ export function applyQuoteToggles(
   return next;
 }
 
-type QuoteCatalogMoneyKey = Exclude<keyof QuoteCatalog, "byoDefault" | "partnerSkus">;
+type QuoteCatalogMoneyKey = Exclude<
+  keyof QuoteCatalog,
+  "byoDefault" | "partnerSkus" | "smsIncludedPerMonth"
+>;
 
 export const QUOTE_CATALOG_FIELDS: {
   key: QuoteCatalogMoneyKey;

@@ -22,6 +22,7 @@ import { ROLE_LABEL, canAccessViewForEmployee } from "@/lib/pos/rbac";
 import { canEmployee } from "@/lib/access/permissions";
 import { VENUE_TYPE_LABEL } from "@/lib/access/entity-roles";
 import { AiOpsCard } from "./AiOpsCard";
+import { CommsUsageCard } from "./CommsUsageCard";
 import { OpsJobsInbox } from "./OpsJobsInbox";
 import { AccessPointsCard } from "./AccessPointsCard";
 import { ExceptionLiveFeed } from "./ExceptionLiveFeed";
@@ -114,6 +115,7 @@ export function RoleHomeDashboard() {
               <Stat label="Staff on" value={String(onClock)} />
             </div>
             <AiOpsCard />
+            <CommsUsageCard />
             <OpsJobsInbox compact />
             <ExceptionLiveFeed compact />
             {openCostEx > 0 && (

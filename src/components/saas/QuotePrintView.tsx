@@ -119,6 +119,8 @@ export function QuotePrintView({ detail }: { detail: ProspectDetail }) {
         </tbody>
       </table>
       <p className="mt-6 text-xs text-muted-foreground">
+        {quote.commsNote ||
+          "Email included. SMS: 500/mo included, extra at cost. AI reports in Ops pack."}{" "}
         {quote.processingNote ||
           "Guest card processing is Quantum Payments, billed separately from software."}{" "}
         Gift cards are first-party. Bring your own tablets, printers, cash drawers, stands.

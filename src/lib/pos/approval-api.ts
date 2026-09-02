@@ -22,6 +22,7 @@ export const notifyOnCallFn = createServerFn({ method: "POST" })
           kind: "approval",
           locationId: data.locationId || null,
         });
+        if (!r.ok) continue;
         provider = r.provider;
         sent += 1;
       } catch {

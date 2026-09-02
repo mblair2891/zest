@@ -72,10 +72,18 @@ export async function parseInvoiceExtract(opts: {
   text: string;
   fileName?: string;
   imageDataUrl?: string;
+  locationId?: string;
 }): Promise<InvoiceExtract> {
   const fallback = heuristicInvoiceExtract(opts.text, opts.fileName);
   const creds = aiCredentials();
   if (!creds) return fallback;
+  try {
+    const { reserveAiCall } = await import("@/lib/comms/ai.server");
+    const gate = await reserveAiCall({ locationId: opts.locationId, kind: "invoice" });
+    if (!gate.allow) return fallback;
+  } catch {
+    /* heuristic extract */
+  }
 
   const userContent: unknown[] = [
     {
@@ -126,9 +134,16 @@ Text/filename:\n${(opts.text || opts.fileName || "").slice(0, 4000)}`,
   }
 }
 
-export async function narrativeCostPicture(prompt: string): Promise<string | null> {
+export async function narrativeCostPicture(prompt: string, locationId?: string): Promise<string | null> {
   const creds = aiCredentials();
   if (!creds) return null;
+  try {
+    const { reserveAiCall } = await import("@/lib/comms/ai.server");
+    const gate = await reserveAiCall({ locationId, kind: "cost_picture" });
+    if (!gate.allow) return null;
+  } catch {
+    return null;
+  }
   try {
     const res = await fetch(`${creds.base}/chat/completions`, {
       method: "POST",

@@ -79,6 +79,12 @@ export type PlatformTeamStatus = (typeof PLATFORM_TEAM_STATUS)[number];
 export const NETWORK_READY_MODES = ["warn_only", "off"] as const;
 export type NetworkReadyMode = (typeof NETWORK_READY_MODES)[number];
 
+export const SMS_OVERAGE_MODES = ["bill_at_cost", "block_when_cap", "warn_only"] as const;
+export type SmsOverageMode = (typeof SMS_OVERAGE_MODES)[number];
+
+export const AI_INCLUDED_WITH = ["ops_pack", "all_paid", "all_plans"] as const;
+export type AiIncludedWith = (typeof AI_INCLUDED_WITH)[number];
+
 export const PAYMENTS_MODES = ["sandbox", "live"] as const;
 export type PaymentsMode = (typeof PAYMENTS_MODES)[number];
 
@@ -141,6 +147,7 @@ export const QUOTE_EMAIL_TOKENS = [
   "{{features}}",
   "{{expires}}",
   "{{processingNote}}",
+  "{{commsNote}}",
   "{{quoteUrl}}",
   "{{supportEmail}}",
   "{{platformName}}",
@@ -379,6 +386,11 @@ export type PaymentsSettings = z.infer<typeof paymentsSettingsSchema>;
 
 export const communicationsSettingsSchema = z.object({
   fromName: str(80, 1).default(PRODUCT_NAME),
+  smsIncludedPerLocationPerMonth: int(0, 1_000_000).default(500),
+  smsOverageMode: z.enum(SMS_OVERAGE_MODES).default("bill_at_cost"),
+  smsOverageRateUsd: z.number().min(0).max(5).default(0.0079),
+  aiMaxCallsPerLocationPerDay: int(0, 100_000).default(200),
+  aiIncludedWith: z.enum(AI_INCLUDED_WITH).default("ops_pack"),
   waitlistConfirmTemplate: str(2000).default(
     "Hi {{guestName}}, you're on the waitlist at {{locationName}} for {{partySize}}. We'll text when your table is ready.",
   ),
@@ -395,7 +407,7 @@ export const communicationsSettingsSchema = z.object({
   ),
   quoteSentSubject: str(200).default("Your {{platformName}} proposal for {{companyName}}"),
   quoteSentBody: str(4000).default(
-    "Hi {{companyName}},\n\nHere is your {{platformName}} proposal.\n\nPackage: {{planName}}\nLocations: {{locationCount}}\nMonthly software: {{monthly}}\nSetup: {{setup}}\nHardware monthly: {{hardwareMonthly}}\nHardware one-time: {{hardwareOnce}}\n{{byo}}\nExpires: {{expires}}\n\nIncluded from intake:\n{{features}}\n\n{{processingNote}}\n\nReview, accept, or request changes: {{quoteUrl}}\n\nQuestions: {{supportEmail}}\n\n— {{fromName}}",
+    "Hi {{companyName}},\n\nHere is your {{platformName}} proposal.\n\nPackage: {{planName}}\nLocations: {{locationCount}}\nMonthly software: {{monthly}}\nSetup: {{setup}}\nHardware monthly: {{hardwareMonthly}}\nHardware one-time: {{hardwareOnce}}\n{{byo}}\nExpires: {{expires}}\n\nIncluded from intake:\n{{features}}\n\n{{commsNote}}\n{{processingNote}}\n\nReview, accept, or request changes: {{quoteUrl}}\n\nQuestions: {{supportEmail}}\n\n— {{fromName}}",
   ),
   quoteAcceptedSubject: str(200).default("You accepted the {{platformName}} proposal"),
   quoteAcceptedBody: str(4000).default(

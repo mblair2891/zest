@@ -143,6 +143,10 @@ export function QuoteSummary({
       </ul>
 
       <p className="text-xs text-muted-foreground">
+        {quote.commsNote ||
+          "Email included. SMS: 500/mo included, extra at cost. AI reports in Ops pack."}
+      </p>
+      <p className="text-xs text-muted-foreground">
         {quote.processingNote ||
           "Guest card processing is Quantum Payments, billed separately from software."}
       </p>

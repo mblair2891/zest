@@ -107,7 +107,17 @@ export async function estimateWaitMinutes(opts: {
   let estimate = heuristicWait(signals);
 
   const key = typeof process !== "undefined" ? process.env.XAI_API_KEY?.trim() : "";
-  if (key) {
+  let aiOk = Boolean(key);
+  if (aiOk) {
+    try {
+      const { reserveAiCall } = await import("@/lib/comms/ai.server");
+      const gate = await reserveAiCall({ locationId: loc, kind: "wait_estimate" });
+      if (!gate.allow) aiOk = false;
+    } catch {
+      /* heuristic wait if throttle store is down */
+    }
+  }
+  if (aiOk && key) {
     try {
       const res = await fetch("https://api.x.ai/v1/chat/completions", {
         method: "POST",

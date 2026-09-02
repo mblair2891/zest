@@ -35,6 +35,8 @@ export type FrontSettings = {
   waitlistReason: WaitlistReason | null;
   waitlistReasons: WaitlistReason[];
   smsFrom: string | null;
+  smsEnabled: boolean;
+  smsMonthlyCap: number | null;
 };
 
 export type ReservationRecord = {
@@ -93,4 +95,6 @@ export const DEFAULT_FRONT_SETTINGS: Omit<FrontSettings, "locationId"> = {
   waitlistReason: "at_capacity",
   waitlistReasons: [...WAITLIST_REASONS],
   smsFrom: null,
+  smsEnabled: true,
+  smsMonthlyCap: null,
 };

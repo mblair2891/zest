@@ -325,6 +325,8 @@ function PosAppInner({ entityId }: { entityId?: string }) {
               aiReportSchedule: setup.aiReportSchedule ?? "off",
               aiReportEmail: setup.aiReportEmail ?? "",
               opsJobs: setup.opsJobs,
+              smsEnabled: setup.smsEnabled !== false,
+              smsMonthlyCap: setup.smsMonthlyCap ?? null,
               cashHandling: setup.cashHandling,
             });
             if (access.location.id) {

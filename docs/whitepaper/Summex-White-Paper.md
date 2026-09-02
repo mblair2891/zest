@@ -3,7 +3,7 @@
 **Powered by Quantum Reach**
 
 White paper · October 2026  
-**Revision · 2 Sep 2026** — Hardware is BYO by default. Optional Finix/Quantum devices drop-ship from the payments partner to the house. Aligns with Operators Guide v2026.10.33.
+**Revision · 2 Sep 2026** — SMS allotment (500/location/month, extra at cost or block) and AI daily throttle. Email stays included. Aligns with Operators Guide v2026.10.34.
 
 summex.app  
 Guest cards: **Quantum Payments** only
@@ -262,7 +262,12 @@ Software billing is **not** guest card processing.
 - **Multi-operator** — hall/pod host **$299 / location / month** plus **$49 per tenant entity**.
 - **Hardware is BYO by default.** Bring your own tablets, printers, cash drawers, stands. Summex is the software. Card readers can be yours (a typical Finix/Quantum reader is about **$75**) or **shipped by our payments partner to the house** — never as a bundled Summex kit, and never through a Summex warehouse. Partner SKUs are optional, typically more expensive than BYO, and billed as hardware (one-time and/or monthly), separate from software.
 - **Setup** defaults to **$0** (settings can cap a setup amount). It is never the only line on a proposal.
+- **Email** (quotes, invites, receipts) is **included** — never surcharged.
+- **SMS** is allotted **500 texts / location / month** (editable). Extra bills at a pass-through rate, or the house can block at cap. Location can turn SMS off or set a lower cap. Waitlist confirm, table-ready, and opt-out each count 1. Managers and platform are alerted at 80% and 100%.
+- **AI reports** ship with the **Ops pack** (Get-a-price interview is always allowed) and are throttled per location per day so jobs cannot loop.
 - **Quantum Payments** (and cash-discount) are a **separate processing note**, not mixed into software $.
+
+Get a price shows: “Email included. SMS: 500/mo included, extra at cost. AI reports in Ops pack.”
 
 Get a price shows this live. The prospect can toggle modules; monthly recalculates before they request the quote. PDF, email, and the CRM quote use the same lines. Onboarding does not start until that monthly package quote is accepted (platform override requires a reason).
 

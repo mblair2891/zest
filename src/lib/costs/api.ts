@@ -17,7 +17,17 @@ export const parseCostInvoiceFn = createServerFn({ method: "POST" })
       throw new Error("Too many invoice scans — wait a minute");
     }
     const { parseInvoiceExtract } = await import("./invoice.server");
-    return parseInvoiceExtract(data);
+    let locationId: string | undefined;
+    if (context.userId) {
+      try {
+        const { resolveActiveTenant } = await import("@/lib/saas/tenancy.server");
+        const t = await resolveActiveTenant(context.userId);
+        locationId = t?.locationId ?? undefined;
+      } catch {
+        /* */
+      }
+    }
+    return parseInvoiceExtract({ ...data, locationId });
   });
 
 export const costAiStatusFn = createServerFn({ method: "GET" }).handler(async () => {
@@ -30,9 +40,19 @@ export const costPictureFn = createServerFn({ method: "POST" })
   .validator((d: { prompt: string }) => ({
     prompt: String(d.prompt ?? "").slice(0, 4000),
   }))
-  .handler(async ({ data }) => {
+  .handler(async ({ context, data }) => {
     const { narrativeCostPicture } = await import("./invoice.server");
-    const text = await narrativeCostPicture(data.prompt);
+    let locationId: string | undefined;
+    if (context.userId) {
+      try {
+        const { resolveActiveTenant } = await import("@/lib/saas/tenancy.server");
+        const t = await resolveActiveTenant(context.userId);
+        locationId = t?.locationId ?? undefined;
+      } catch {
+        /* */
+      }
+    }
+    const text = await narrativeCostPicture(data.prompt, locationId);
     return { text };
   });
 

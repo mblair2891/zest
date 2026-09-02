@@ -165,12 +165,16 @@ export const saveFrontSettingsFn = createServerFn({ method: "POST" })
     waitlistEnabled?: boolean;
     waitlistReason?: WaitlistReason | null;
     smsFrom?: string | null;
+    smsEnabled?: boolean;
+    smsMonthlyCap?: number | null;
   }) => ({
     locationId: loc(d.locationId),
     kioskMode: d.kioskMode,
     waitlistEnabled: d.waitlistEnabled,
     waitlistReason: d.waitlistReason,
     smsFrom: d.smsFrom,
+    smsEnabled: d.smsEnabled,
+    smsMonthlyCap: d.smsMonthlyCap,
   }))
   .handler(async ({ context, data }) => {
     if (context.userId) {
@@ -192,6 +196,13 @@ export const saveFrontSettingsFn = createServerFn({ method: "POST" })
     if (typeof data.waitlistEnabled === "boolean") patch.waitlistEnabled = data.waitlistEnabled;
     if (data.waitlistReason !== undefined) patch.waitlistReason = data.waitlistReason;
     if (data.smsFrom !== undefined) patch.smsFrom = data.smsFrom;
+    if (typeof data.smsEnabled === "boolean") patch.smsEnabled = data.smsEnabled;
+    if (data.smsMonthlyCap !== undefined) {
+      patch.smsMonthlyCap =
+        data.smsMonthlyCap == null || !Number.isFinite(Number(data.smsMonthlyCap))
+          ? null
+          : Math.max(0, Math.floor(Number(data.smsMonthlyCap)));
+    }
     return saveFrontSettings(data.locationId, patch);
   });
 

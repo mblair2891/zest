@@ -19,6 +19,10 @@ export type LocationSetup = {
   ticketPrefix?: string;
   kioskMode?: string;
   waitlistEnabled?: boolean;
+  /** Waitlist + tenant-invite SMS. Off = no guest/invite texts; email still sends. */
+  smsEnabled?: boolean;
+  /** Hard cap this location, at or below platform included. Null = platform included. */
+  smsMonthlyCap?: number | null;
   reservationCheckIn?: boolean;
   waitlistReason?: string;
   /** Host-managed operator payout destinations. Guest operators cannot edit. */
@@ -91,6 +95,8 @@ export const EMPTY_LOCATION_SETUP: LocationSetup = {
   ticketPrefix: "",
   kioskMode: "combined",
   waitlistEnabled: false,
+  smsEnabled: true,
+  smsMonthlyCap: null,
   reservationCheckIn: true,
   waitlistReason: "",
   operatorPayouts: [],

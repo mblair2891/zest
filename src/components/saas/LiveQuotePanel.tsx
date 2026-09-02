@@ -233,6 +233,10 @@ export function LiveQuotePanel({
 
       <QuoteSummary quote={quote} compact />
       <p className="text-xs text-muted-foreground">
+        {quote.commsNote ||
+          `Email included. SMS: ${catalog.smsIncludedPerMonth ?? 500}/mo included, extra at cost. AI reports in Ops pack.`}
+      </p>
+      <p className="text-xs text-muted-foreground">
         Toggle anything above — monthly software recalculates separately from hardware.
         Processing (Quantum Payments / cash-discount) is a note, not part of software $.
         Setup defaults to $0.

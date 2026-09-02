@@ -44,6 +44,8 @@ function mapSettings(r: {
   waitlist_reason: string | null;
   waitlist_reasons: unknown;
   sms_from: string | null;
+  sms_enabled?: boolean | null;
+  sms_monthly_cap?: number | null;
 }): FrontSettings {
   const mode = r.kiosk_mode;
   return {
@@ -60,6 +62,11 @@ function mapSettings(r: {
       : null,
     waitlistReasons: parseReasons(r.waitlist_reasons),
     smsFrom: r.sms_from,
+    smsEnabled: r.sms_enabled !== false,
+    smsMonthlyCap:
+      r.sms_monthly_cap == null || !Number.isFinite(Number(r.sms_monthly_cap))
+        ? null
+        : Math.max(0, Math.floor(Number(r.sms_monthly_cap))),
   };
 }
 
@@ -130,6 +137,8 @@ export async function getFrontSettings(locationId: string): Promise<FrontSetting
     waitlist_reason: string | null;
     waitlist_reasons: unknown;
     sms_from: string | null;
+    sms_enabled: boolean | null;
+    sms_monthly_cap: number | null;
   }>`
     select * from front_settings where location_id = ${locationId} limit 1
   `;
@@ -137,7 +146,8 @@ export async function getFrontSettings(locationId: string): Promise<FrontSetting
   const created: FrontSettings = { locationId, ...DEFAULT_FRONT_SETTINGS };
   await sql`
     insert into front_settings (
-      location_id, kiosk_mode, waitlist_enabled, waitlist_reason, waitlist_reasons, sms_from
+      location_id, kiosk_mode, waitlist_enabled, waitlist_reason, waitlist_reasons,
+      sms_from, sms_enabled, sms_monthly_cap
     )
     values (
       ${locationId},
@@ -145,7 +155,9 @@ export async function getFrontSettings(locationId: string): Promise<FrontSetting
       ${created.waitlistEnabled},
       ${created.waitlistReason},
       ${JSON.stringify(created.waitlistReasons)}::jsonb,
-      ${created.smsFrom}
+      ${created.smsFrom},
+      ${created.smsEnabled},
+      ${created.smsMonthlyCap}
     )
     on conflict (location_id) do nothing
   `;
@@ -165,7 +177,8 @@ export async function saveFrontSettings(
   const sql = await getSql();
   await sql`
     insert into front_settings (
-      location_id, kiosk_mode, waitlist_enabled, waitlist_reason, waitlist_reasons, sms_from, updated_at
+      location_id, kiosk_mode, waitlist_enabled, waitlist_reason, waitlist_reasons,
+      sms_from, sms_enabled, sms_monthly_cap, updated_at
     )
     values (
       ${locationId},
@@ -174,6 +187,8 @@ export async function saveFrontSettings(
       ${next.waitlistReason},
       ${JSON.stringify(next.waitlistReasons)}::jsonb,
       ${next.smsFrom},
+      ${next.smsEnabled},
+      ${next.smsMonthlyCap},
       now()
     )
     on conflict (location_id) do update set
@@ -182,6 +197,8 @@ export async function saveFrontSettings(
       waitlist_reason = excluded.waitlist_reason,
       waitlist_reasons = excluded.waitlist_reasons,
       sms_from = excluded.sms_from,
+      sms_enabled = excluded.sms_enabled,
+      sms_monthly_cap = excluded.sms_monthly_cap,
       updated_at = now()
   `;
   return next;
@@ -423,6 +440,9 @@ export async function joinWaitlist(input: {
     locationId: input.locationId,
     from: settings.smsFrom,
   });
+  if (!sms.ok) {
+    console.info("[waitlist_join:sms]", sms.reason, input.locationId);
+  }
   const rows = await sql<{
     id: string;
     location_id: string;
@@ -472,13 +492,16 @@ export async function setWaitlistStatus(
   const settings = await getFrontSettings(cur.location_id);
   if (status === "notified" && cur.phone) {
     const remove = optOutUrl(cur.opt_out_token);
-    await sendSms({
+    const ready = await sendSms({
       to: cur.phone,
       body: `Your table is ready. Come to the host stand. Remove yourself: ${remove}`,
       kind: "waitlist_ready",
       locationId: cur.location_id,
       from: settings.smsFrom,
     });
+    if (!ready.ok) {
+      console.info("[waitlist_ready:sms]", ready.reason, cur.location_id);
+    }
   }
   return mapWait({ ...cur, status, notified_at: status === "notified" ? notified : cur.notified_at });
 }
@@ -505,6 +528,23 @@ export async function optOutWaitlist(token: string): Promise<{
   await sql`
     update waitlist_entries set status = ${"removed"} where id = ${row.id}
   `;
+  const phoneRows = await sql<{ phone: string }>`
+    select phone from waitlist_entries where id = ${row.id} limit 1
+  `;
+  const phone = phoneRows[0]?.phone?.trim();
+  if (phone) {
+    const settings = await getFrontSettings(row.location_id);
+    const opt = await sendSms({
+      to: phone,
+      body: "You've been removed from the waitlist. You will not receive more texts for this visit.",
+      kind: "waitlist_opt_out",
+      locationId: row.location_id,
+      from: settings.smsFrom,
+    });
+    if (!opt.ok) {
+      console.info("[waitlist_opt_out:sms]", opt.reason, row.location_id);
+    }
+  }
   return { name: row.name, locationId: row.location_id };
 }
 

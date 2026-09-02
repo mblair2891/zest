@@ -56,6 +56,24 @@ export const runOpsJobFn = createServerFn({ method: "POST" })
 
     const seedRows = parseOpsJobRows(facts.seedRows, 40);
     const seedGaps = parseDataGaps(facts.dataGaps, 8);
+    const { reserveAiCall, aiSkipReason } = await import("@/lib/comms/ai.server");
+    const gate = await reserveAiCall({
+      locationId: data.locationId || facts.location?.id,
+      kind: `ops:${facts.cadence}`,
+    });
+    if (!gate.allow) {
+      return {
+        status: "skipped",
+        skipReason: aiSkipReason(gate.reason ?? "daily_cap"),
+        narrative:
+          gate.reason === "daily_cap"
+            ? "AI daily cap reached. This pack is queued until tomorrow — it will not retry in a loop. House fact rows below."
+            : "AI reports are included with the Ops pack. House fact rows below — nothing invented.",
+        rows: seedRows,
+        dataGaps: [...seedGaps, aiSkipReason(gate.reason ?? "daily_cap")].slice(0, 8),
+      };
+    }
+
     const apiKey = process.env.XAI_API_KEY?.trim();
     if (!apiKey) {
       return {

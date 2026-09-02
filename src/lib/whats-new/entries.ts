@@ -6,6 +6,19 @@ import type { GuideUpdate } from "@/lib/guide/types";
  */
 export const WHATS_NEW_ENTRIES: GuideUpdate[] = [
   {
+    id: "upd_2026_10_34_sms_allotment",
+    date: "2026-09-02",
+    title: "SMS allotment, caps, AI throttle",
+    summary:
+      "Email stays included. Each location gets 500 SMS/month (editable); extra at cost or block. AI reports cap at 200/day with Ops pack.",
+    body: "Quotes and Get a price show: Email included. SMS: 500/mo included, extra at cost. AI reports in Ops pack. Platform Communications settings set included texts, overage mode (bill at cost / block / warn), pass-through rate, and AI daily cap. Location settings can turn SMS off or set a lower cap. Waitlist confirm, table-ready, and opt-out each count 1 SMS. Managers and platform are alerted at 80% and 100%. Email receipts never use the SMS counter. Over the AI daily cap, jobs skip and do not loop.",
+    roles: ["platform_admin", "owner_manager"],
+    surfaces: ["platform", "settings", "kiosk"],
+    audience: "all",
+    topicId: "feature-waitlist",
+    tags: ["sms", "ai", "comms", "quote"],
+  },
+  {
     id: "upd_2026_10_33_byo_hardware",
     date: "2026-09-02",
     title: "BYO hardware default, optional Finix drop-ship",

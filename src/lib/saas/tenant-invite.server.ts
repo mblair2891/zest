@@ -589,6 +589,7 @@ async function sendTenantInviteSms(opts: {
       kind: "tenant_invite",
       locationId: opts.locationId,
     });
+    if (!r.ok) return "blocked";
     return r.provider === "sandbox" ? "logged_only" : "sent";
   } catch (err) {
     console.warn("[tenant-sms]", err);

@@ -378,6 +378,20 @@ export async function runAssistSetupTurn(opts: {
   }
 
   try {
+    const { reserveAiCall } = await import("@/lib/comms/ai.server");
+    const gate = await reserveAiCall({
+      locationId: opts.context.locationId,
+      kind: `assist:${domain}`,
+    });
+    if (!gate.allow) {
+      console.info("[assist]", domain, "throttled", gate.reason);
+      return fallback;
+    }
+  } catch {
+    /* guided fallback if throttle store is unavailable */
+  }
+
+  try {
     const chat = [
       { role: "system" as const, content: systemPrompt(domain, opts.context) },
       ...messages.map((m) => ({

@@ -38,6 +38,8 @@ const WIPE_TABLES = [
   "hr_payroll_map",
   "location_punches",
   "message_log",
+  "comms_cap_alerts",
+  "ai_usage_log",
   "email_outbox",
   "waitlist_entries",
   "reservations",

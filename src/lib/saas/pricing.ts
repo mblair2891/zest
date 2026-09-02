@@ -26,6 +26,7 @@ import {
   catalogHardwareLines,
   catalogSoftwareLines,
   catalogStationCounts,
+  commsIncludedNote,
   emptyIntakeHardware,
   BYO_CHECKLIST,
   HARDWARE_LEAD,
@@ -652,6 +653,7 @@ export function generateQuote(
       ? `Host + operator model: ~${operators} operator(s) across ${hostLocs} host location(s). Guest pays one check; capture splits to each brand’s Quantum merchant.`
       : "Single-operator location.",
     PROCESSING_NOTE,
+    commsIncludedNote(catalog.smsIncludedPerMonth),
     "Gift cards are first-party (Summex ledger), not Finix.",
     HARDWARE_LEAD,
     hw.ownsTabletsPrintersDrawers !== false
@@ -695,6 +697,7 @@ export function generateQuote(
     expiresAt,
     featureList: featureListFromAnswers(answers),
     processingNote: PROCESSING_NOTE,
+    commsNote: commsIncludedNote(catalog.smsIncludedPerMonth),
     terminalQty,
     lineItems: items,
     monthlyCents,

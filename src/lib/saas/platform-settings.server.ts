@@ -296,7 +296,10 @@ export async function pricingRulesFromStore(): Promise<{ version: number; rules:
       terminalMonthlyCents: billing.terminalMonthlyCents,
       terminalSetupCents: billing.terminalSetupCents,
       packageMonthlyCents: billing.packageMonthlyCents ?? {},
-      quoteCatalog: billing.quoteCatalog,
+      quoteCatalog: {
+        ...billing.quoteCatalog,
+        smsIncludedPerMonth: (await loadCommunicationsSettings()).smsIncludedPerLocationPerMonth,
+      },
     },
   };
 }

@@ -95,7 +95,18 @@ export const analyzeLocationPerformanceFn = createServerFn({ method: "POST" })
     if (hit) return hit;
     let out: LocationInsights;
     try {
-      out = (await llmInsights(m)) ?? guidedInsights(m);
+      const { reserveAiCall, aiSkipReason } = await import("@/lib/comms/ai.server");
+      const gate = await reserveAiCall({ locationId: m.locationId, kind: "reports" });
+      if (!gate.allow) {
+        const guided = guidedInsights(m);
+        out = {
+          ...guided,
+          source: "guided",
+          dataGaps: [...guided.dataGaps, aiSkipReason(gate.reason ?? "daily_cap")].slice(0, 6),
+        };
+      } else {
+        out = (await llmInsights(m)) ?? guidedInsights(m);
+      }
     } catch {
       out = guidedInsights(m);
     }

@@ -201,6 +201,8 @@ export interface RestaurantSettings {
   waitlistEnabled?: boolean;
   waitlistReason?: string;
   smsFrom?: string;
+  smsEnabled?: boolean;
+  smsMonthlyCap?: number | null;
   timezone?: string;
   hoursNote?: string;
   tipPooling?: boolean;

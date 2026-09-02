@@ -39,6 +39,9 @@ function varsFor(prospect: ProspectRecord, extra?: Partial<Vars>): Vars {
     processingNote:
       q?.processingNote ||
       "Guest card processing is Quantum Payments, billed separately from software.",
+    commsNote:
+      q?.commsNote ||
+      "Email included. SMS: 500/mo included, extra at cost. AI reports in Ops pack.",
     quoteUrl: quoteUrl(prospect.publicToken),
     supportEmail: extra?.supportEmail ?? "support@summex.app",
     platformName: extra?.platformName ?? PRODUCT_NAME,

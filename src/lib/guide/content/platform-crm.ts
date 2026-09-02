@@ -190,7 +190,7 @@ export const PLATFORM_CRM_TOPICS: GuideTopic[] = [
         "Onboarding — checklist template, network warn-only, default plan, auto-invite.",
         "Plans & billing — name, code, active, monthly per location, setup (waive / flat / by package), quote expiry, optional terminal lines, module checkboxes. Intake maps to paid packages. Stripe is Connected or Not configured. No JSON editor.",
         "Payments & gift defaults — Quantum Payments sandbox/live, chargeback fee, issuer mode, term, residual, house retains, legal disclaimer.",
-        "Communications — SMS/email status, waitlist and invite templates with {{tokens}}.",
+        "Communications — SMS/email status, SMS included per location (default 500), overage mode (bill at cost / block / warn) and pass-through rate, AI daily cap (default 200) and included-with (Ops pack by default), waitlist and invite templates with {{tokens}}. Email is never surcharged.",
         "Feature flags — global defaults for new orgs. Per-plan overrides stay under Plans. HR modules are per employer entity, not a platform JSON blob.",
         "Data & compliance — waitlist phone and audit retention, privacy notes.",
         "Team — invite platform users (admin / sales / success / read only). Deactivate anyone except the last admin.",

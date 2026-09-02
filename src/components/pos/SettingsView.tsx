@@ -265,6 +265,8 @@ export function SettingsView() {
           ticketPrefix: s.ticketPrefix,
           kioskMode: s.kioskMode,
           waitlistEnabled: s.waitlistEnabled,
+          smsEnabled: s.smsEnabled !== false,
+          smsMonthlyCap: s.smsMonthlyCap ?? null,
           reservationCheckIn: s.reservationCheckIn,
           waitlistReason: s.waitlistReason,
           voiceControlEnabledByRole: s.voiceControlEnabledByRole,
@@ -304,6 +306,9 @@ export function SettingsView() {
         waitlistEnabled:
           patch.waitlistEnabled ?? settings.waitlistEnabled,
         smsFrom: patch.smsFrom ?? settings.smsFrom,
+        smsEnabled: patch.smsEnabled ?? settings.smsEnabled,
+        smsMonthlyCap:
+          patch.smsMonthlyCap !== undefined ? patch.smsMonthlyCap : settings.smsMonthlyCap,
       },
     }).catch(() => undefined);
   };
@@ -352,8 +357,9 @@ export function SettingsView() {
           </div>
           <p className="mb-3 text-xs text-muted-foreground">
             On-demand from Reports → AI analysis. Scheduled runs land in-app and
-            email if configured (otherwise the communications outbox). Never
-            auto-changes menu prices.
+            email if configured (otherwise the communications outbox). AI is
+            included with the Ops pack and capped per location per day — over
+            cap is queued, not retried in a loop. Never auto-changes menu prices.
           </p>
           <div className="grid gap-3 sm:grid-cols-2">
             <label className="text-sm">
@@ -574,6 +580,35 @@ export function SettingsView() {
             <option value="combined">Combined (Order | Check in | Waitlist)</option>
           </select>
         </label>
+        <label className="flex items-center gap-2 text-sm">
+          <input
+            type="checkbox"
+            checked={settings.smsEnabled !== false}
+            onChange={(e) => {
+              saveFront({ smsEnabled: e.target.checked });
+              persist();
+            }}
+            className="h-4 w-4 rounded border-border"
+          />
+          SMS on (waitlist + tenant invites)
+        </label>
+        <label className="block text-sm">
+          <span className="mb-1 block text-muted-foreground">
+            SMS monthly cap (blank = platform included, typically 500; may only go lower)
+          </span>
+          <Input
+            type="number"
+            min={0}
+            value={settings.smsMonthlyCap ?? ""}
+            onChange={(e) => {
+              const raw = e.target.value.trim();
+              const cap = raw === "" ? null : Math.max(0, Math.floor(Number(raw) || 0));
+              saveFront({ smsMonthlyCap: cap });
+              persist();
+            }}
+            placeholder="Platform included"
+          />
+        </label>
         <label className="block text-sm">
           <span className="mb-1 block text-muted-foreground">SMS from (optional)</span>
           <Input
@@ -583,7 +618,9 @@ export function SettingsView() {
           />
         </label>
         <p className="text-xs text-muted-foreground">
-          Guest kiosk: /kiosk — Twilio keys optional; sandbox logs messages on Host stand.
+          Each waitlist confirm, table-ready, and opt-out counts 1 SMS. Email receipts never
+          use this counter. At cap the house follows platform overage (bill at cost, block, or
+          warn). Managers are alerted at 80% and 100%.
         </p>
         <label className="block text-sm">
           <span className="mb-1 block text-muted-foreground">Hours</span>

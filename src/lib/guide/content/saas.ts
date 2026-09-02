@@ -46,7 +46,7 @@ export const SAAS_TOPICS: GuideTopic[] = [
       ),
       steps(
         "Get pricing shows a live quote: Counter $0, Full service $149/loc, Multi-operator $299/loc + $49/tenant. Prospect toggles modules (ops pack $99, extra stations $19, kiosk $29, terminal lease $15). Request this quote snapshots those lines.",
-        "Dollar amounts live in Settings → Plans & billing (Get a price catalog forms). Setup defaults to $0. Processing is a note, not software $. PDF, email, and CRM use the same lines. Hardware is BYO by default; optional Finix devices drop-ship to the customer.",
+        "Dollar amounts live in Settings → Plans & billing (Get a price catalog forms). Setup defaults to $0. Processing is a note, not software $. Quotes also show: Email included. SMS: 500/mo included, extra at cost. AI reports in Ops pack. PDF, email, and CRM use the same lines. Hardware is BYO by default; optional Finix devices drop-ship to the customer.",
         "Save draft, then Send quote. Email and Print/PDF show monthly software, processing as a separate note (Quantum / cash-discount, not mixed into software $), expires-on, Accept and Request changes.",
         "Merchant taps Accept, or Request changes, or Admin marks accepted. Status becomes accepted. Not a live tenant yet.",
         "Platform Admin records the contract (checkbox + date) → Contracted. Start onboarding is enabled only then, and only if a monthly package quote was accepted. OVERRIDE + reason for an admin skip.",
@@ -279,7 +279,7 @@ export const SAAS_TOPICS: GuideTopic[] = [
         "Sign in as Admin (after the forced password change).",
         "Pipeline lists prospects by status. Open one to quote, mark contract signed, or reject.",
         "Console lists organizations. Open a tenant to inspect locations, packages, and members.",
-        "Settings is sectioned: General, Security, CRM, Onboarding, Plans, Payments & gifts, Communications, Flags, Compliance, Team, Danger zone. Save per section. No JSON editors.",
+        "Settings is sectioned: General, Security, CRM, Onboarding, Plans, Payments & gifts, Communications (SMS allotment, overage, AI cap), Flags, Compliance, Team, Danger zone. Save per section. No JSON editors.",
         "Support actions: resend an invite, open POS as that location context, review audit-style prospect events.",
         "Never seed a named customer. If you need a sandbox site, call it Host Venue.",
       ),

@@ -43,6 +43,8 @@ import {
   PLATFORM_TEAM_ROLES,
   SETTINGS_SECTION_LABEL,
   SETTINGS_SECTIONS,
+  SMS_OVERAGE_MODES,
+  AI_INCLUDED_WITH,
   TIMEZONES,
   WAITLIST_TOKENS,
   formatMoneyCents,
@@ -1361,7 +1363,7 @@ function CommunicationsSection({
   return (
     <SectionCard
       title="Communications"
-      description="SMS and email status come from the environment. Templates are edited as text, with helper tokens. Without an API key, quote mail is logged to the outbox."
+      description="Email (quotes, invites, receipts) is included — never surcharged. Twilio SMS is allotted per location. xAI is included with the Ops pack; daily cap throttles abuse. Get-a-price interview is always allowed."
       saving={saving}
       onSave={() => onSave(v)}
     >
@@ -1372,6 +1374,74 @@ function CommunicationsSection({
         <div className="flex items-center gap-2 text-sm">
           Email <StatusPill ok={email} okLabel="Configured" offLabel="Not configured" />
         </div>
+      </div>
+      <p className="text-sm font-medium">SMS allotment</p>
+      <div className="grid gap-3 sm:grid-cols-2">
+        <Field label="Included SMS per location / month" hint="Default 500. Location may set a lower cap.">
+          <NumberField
+            value={v.smsIncludedPerLocationPerMonth}
+            min={0}
+            max={1_000_000}
+            onChange={(n) => setV({ ...v, smsIncludedPerLocationPerMonth: Math.max(0, Math.floor(n)) })}
+          />
+        </Field>
+        <Field label="Overage mode">
+          <SelectField
+            value={v.smsOverageMode}
+            onChange={(mode) =>
+              setV({
+                ...v,
+                smsOverageMode: SMS_OVERAGE_MODES.includes(mode as (typeof SMS_OVERAGE_MODES)[number])
+                  ? (mode as (typeof SMS_OVERAGE_MODES)[number])
+                  : "bill_at_cost",
+              })
+            }
+          >
+            <option value="bill_at_cost">Bill extra at cost</option>
+            <option value="block_when_cap">Block when cap is reached</option>
+            <option value="warn_only">Warn only (still send)</option>
+          </SelectField>
+        </Field>
+        <Field
+          label="Overage rate (USD / SMS)"
+          hint="Pass-through estimate. Edit to match Twilio. Email never uses this."
+        >
+          <NumberField
+            value={v.smsOverageRateUsd}
+            min={0}
+            max={5}
+            step={0.0001}
+            onChange={(n) => setV({ ...v, smsOverageRateUsd: Math.max(0, n) })}
+          />
+        </Field>
+      </div>
+      <p className="text-sm font-medium">AI throttle</p>
+      <div className="grid gap-3 sm:grid-cols-2">
+        <Field label="Max AI calls per location / day" hint="Default 200. Over cap is rejected and queued — reports do not loop.">
+          <NumberField
+            value={v.aiMaxCallsPerLocationPerDay}
+            min={0}
+            max={100_000}
+            onChange={(n) => setV({ ...v, aiMaxCallsPerLocationPerDay: Math.max(0, Math.floor(n)) })}
+          />
+        </Field>
+        <Field label="AI included with" hint="Get-a-price interview is always allowed.">
+          <SelectField
+            value={v.aiIncludedWith}
+            onChange={(mode) =>
+              setV({
+                ...v,
+                aiIncludedWith: AI_INCLUDED_WITH.includes(mode as (typeof AI_INCLUDED_WITH)[number])
+                  ? (mode as (typeof AI_INCLUDED_WITH)[number])
+                  : "ops_pack",
+              })
+            }
+          >
+            <option value="ops_pack">Ops pack</option>
+            <option value="all_paid">All paid plans</option>
+            <option value="all_plans">All plans</option>
+          </SelectField>
+        </Field>
       </div>
       <Field label="From name" hint="Display name on quote emails. Address stays in the environment.">
         <Input value={v.fromName} onChange={(e) => setV({ ...v, fromName: e.target.value })} />

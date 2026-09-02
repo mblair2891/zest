@@ -40,13 +40,30 @@ async function logMessage(row: {
   `;
 }
 
+export type SendSmsResult =
+  | { ok: true; provider: string; blocked?: false }
+  | { ok: false; provider: "blocked"; blocked: true; reason: string };
+
 export async function sendSms(opts: {
   to: string;
   body: string;
   kind: string;
   locationId?: string | null;
   from?: string | null;
-}): Promise<{ ok: true; provider: string }> {
+}): Promise<SendSmsResult> {
+  try {
+    const { authorizeSmsSend } = await import("@/lib/comms/sms.server");
+    const gate = await authorizeSmsSend({
+      locationId: opts.locationId,
+      kind: opts.kind,
+    });
+    if (!gate.ok) {
+      console.info("[sms:blocked]", gate.reason, opts.kind, opts.locationId, opts.to);
+      return { ok: false, provider: "blocked", blocked: true, reason: gate.reason };
+    }
+  } catch (err) {
+    console.warn("[sms:gate]", err);
+  }
   const sid = readEnv("TWILIO_ACCOUNT_SID");
   const token = readEnv("TWILIO_AUTH_TOKEN");
   const from = opts.from || readEnv("TWILIO_FROM_NUMBER");

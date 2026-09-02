@@ -176,7 +176,7 @@ export const ROLE_GUIDE_TOPICS: GuideTopic[] = [
         "Bar: tab auto-close.",
         "Counter / QSR / café / ghost: ticket prefix and expo.",
         "Host + multi-operator: Host settings (tax, cash discount, Quantum Payments, payouts, entity permission matrix, device assignment) vs Operators (ops only). Guest operators never edit host merchant or payout routing.",
-        "Kiosk / waitlist types: kiosk mode, waitlist, reservation check-in.",
+        "Kiosk / waitlist types: kiosk mode, waitlist, reservation check-in, SMS on/off and monthly cap (defaults to platform included; location may only go lower).",
       ),
       steps(
         "PIN as owner or manager. Open Home → Location settings.",

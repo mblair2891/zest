@@ -16,7 +16,7 @@ const MATRIX: { domain: string; items: string[] }[] = [
       "Table transfer",
       "Color-coded server sections",
       "Extra-table grants (shift / seating)",
-      "Waitlist + SMS (Twilio)",
+      "Waitlist SMS (monthly allotment)",
       "Reservations + deposits",
       "Host stand",
       "Bar tabs",

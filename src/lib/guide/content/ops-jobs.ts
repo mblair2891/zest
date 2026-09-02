@@ -30,7 +30,7 @@ export const OPS_JOBS_TOPICS: GuideTopic[] = [
         "The house needs a clock that reads the floor, labor, exceptions, and cost — without accusing anyone, clocking anyone out, or inventing card charges.",
       ),
       p(
-        "Settings → Scheduled AI ops jobs. Each cadence pulls tenant facts, asks Grok for a short narrative plus rows (type, severity, subject, $ or %, suggested action), then stores the pack in Reports → Ops jobs (and Home). Notify roles get an in-app notice. If a notify email is set and Resend is configured, the owner pack emails as a printable HTML report; otherwise it stays in the in-app inbox (Print / PDF from the pack). Missing xAI key: the job is queued as skipped with a reason. Seed rows from the house still show. Nothing is invented.",
+        "Settings → Scheduled AI ops jobs. Each cadence pulls tenant facts, asks Grok for a short narrative plus rows (type, severity, subject, $ or %, suggested action), then stores the pack in Reports → Ops jobs (and Home). Notify roles get an in-app notice. If a notify email is set and Resend is configured, the owner pack emails as a printable HTML report; otherwise it stays in the in-app inbox (Print / PDF from the pack). Missing xAI key or daily AI cap: the job is queued as skipped with a reason and does not retry in a loop. Seed rows from the house still show. Nothing is invented.",
       ),
       callout(
         "Hard rules",

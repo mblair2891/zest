@@ -466,7 +466,9 @@ function WaitlistPane({
       });
       if (r) {
         setMsg(
-          `You're on the list. ${r.estimateLabel}. A text was ${r.provider === "sandbox" ? "logged (sandbox)" : "sent"} with a remove link.`,
+          r.provider === "blocked"
+            ? `You're on the list. ${r.estimateLabel}. A text was not sent (SMS off or this location is at its monthly cap). Ask the host.`
+            : `You're on the list. ${r.estimateLabel}. A text was ${r.provider === "sandbox" ? "logged (sandbox)" : "sent"} with a remove link.`,
         );
       } else {
         setMsg(

@@ -280,6 +280,8 @@ export type QuoteSnapshot = {
   expiresAt?: string | null;
   featureList?: string[];
   processingNote?: string;
+  /** Email included. SMS allotment. AI in Ops pack. */
+  commsNote?: string;
   terminalQty?: number;
   changeRequest?: QuoteChangeRequest | null;
   lineItems: QuoteLineItem[];
@@ -332,6 +334,8 @@ export type QuoteCatalog = {
   setupCapCents: number;
   byoDefault: boolean;
   partnerSkus: PartnerHardwareSku[];
+  /** From Communications settings. Used on Get-a-price copy. */
+  smsIncludedPerMonth?: number;
 };
 
 export type OperatorDraft = {

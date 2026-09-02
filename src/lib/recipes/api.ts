@@ -17,7 +17,17 @@ export const parseRecipeFn = createServerFn({ method: "POST" })
       throw new Error("Too many recipe scans — wait a minute");
     }
     const { parseRecipeExtract } = await import("./server");
-    return parseRecipeExtract(data);
+    let locationId: string | undefined;
+    if (context.userId) {
+      try {
+        const { resolveActiveTenant } = await import("@/lib/saas/tenancy.server");
+        const t = await resolveActiveTenant(context.userId);
+        locationId = t?.locationId ?? undefined;
+      } catch {
+        /* */
+      }
+    }
+    return parseRecipeExtract({ ...data, locationId });
   });
 
 export const recipeAiStatusFn = createServerFn({ method: "GET" }).handler(async () => {

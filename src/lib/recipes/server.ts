@@ -90,10 +90,18 @@ export async function parseRecipeExtract(opts: {
   text: string;
   fileName?: string;
   imageDataUrl?: string;
+  locationId?: string;
 }): Promise<RecipeExtract> {
   const fallback = heuristicRecipeExtract(opts.text, opts.fileName);
   const creds = aiCredentials();
   if (!creds) return fallback;
+  try {
+    const { reserveAiCall } = await import("@/lib/comms/ai.server");
+    const gate = await reserveAiCall({ locationId: opts.locationId, kind: "recipe" });
+    if (!gate.allow) return fallback;
+  } catch {
+    /* heuristic extract */
+  }
 
   const userContent: unknown[] = [
     {
