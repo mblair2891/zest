@@ -3,7 +3,7 @@
 **Powered by Quantum Reach**
 
 White paper · October 2026  
-**Revision · 27 Oct 2026** — Realtime staffing recs (cut / hold / add); never auto clock-out. Aligns with Operators Guide v2026.10.27.
+**Revision · 28 Oct 2026** — CC tips cash-at-close vs paycheck vs cash-tips-only-at-close. Aligns with Operators Guide v2026.10.28.
 
 summex.app  
 Guest cards: **Quantum Payments** only
@@ -169,7 +169,13 @@ House Wi‑Fi still records cash if the internet is down. Card requires connecti
 
 Tip-out recommendations follow **sales mix** (food vs drink), not a flat percent of all sales. Two servers with the same volume do not owe the same kitchen and bar amounts.
 
-Card tips cash-at-close vs paycheck is a house (and employer-entity) setting. Pools: individual, tip-out, FOH, bar, team, dual. Autograt and service charge are distinct from tip pools.
+Card tips follow a location (or employer-entity) setting:
+
+- **cash_at_close** — closeout cash due includes card tips, paid out from the drawer or safe; payroll export does not add those card tips again. Blind expected includes that paid-out.
+- **paycheck** — closeout shows card tips as informational; cash due from card tips is $0; card tips go on the hours-export file. Summex does not run payroll.
+- **cash_tips_only_at_close** — only declared cash tips are settled in person; card tips always export to payroll.
+
+Pools: individual, tip-out, FOH, bar, team, dual. Autograt and service charge are distinct from tip pools.
 
 **Summex does not process payroll.** Hours, OT, declared and card tips export to ADP, Intuit, or CSV. Staffing recommendations are **cut / hold / add only** — never auto clock-out.
 

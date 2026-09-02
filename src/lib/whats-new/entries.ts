@@ -6,6 +6,19 @@ import type { GuideUpdate } from "@/lib/guide/types";
  */
 export const WHATS_NEW_ENTRIES: GuideUpdate[] = [
   {
+    id: "upd_2026_10_28_cc_tip_payout",
+    date: "2026-10-28",
+    title: "CC tips: cash at close vs paycheck",
+    summary:
+      "Location (and employer entity) setting: cash out card tips at closeout, put them on the hours file, or settle only declared cash.",
+    body: "Settings → Cash drawers, wells & banks (Labor / HR can inherit or override per employer). cash_at_close: cash due includes card tips, paid from the drawer or safe; payroll export does not add them again; blind expected includes that paid-out. paycheck: card tips are informational at closeout; cash due from card tips is $0; they go on the ADP / Intuit / CSV hours file. cash_tips_only_at_close: only declared cash tips settle in person; card tips always export. Summex does not run payroll.",
+    roles: ["owner_manager", "server", "host_operator"],
+    surfaces: ["settings", "reports"],
+    audience: "all",
+    topicId: "server-closeout",
+    tags: ["tips", "closeout", "payroll", "cash"],
+  },
+  {
     id: "upd_2026_10_27_staffing_recs_location",
     date: "2026-10-27",
     title: "Realtime staffing cut / hold / add",

@@ -118,11 +118,11 @@ export const CC_TIP_PAYOUT_LABEL: Record<CcTipPayout, string> = {
 
 export const CC_TIP_PAYOUT_BLURB: Record<CcTipPayout, string> = {
   cash_at_close:
-    "Cash due to the server includes card tips, paid out from the drawer or safe. Hours export does not add those card tips again.",
+    "Closeout cash due to the server includes card tips, paid out from the drawer or safe. The payroll export does not add those card tips again.",
   paycheck:
-    "Closeout shows card tips as informational. Cash due from card tips is $0. Card tips go on the hours-export file — Summex does not run payroll.",
+    "Closeout shows card tips as informational. Cash due from card tips is $0. Card tips are included on the hours-export file (ADP / Intuit / CSV). Summex does not run payroll.",
   cash_tips_only_at_close:
-    "Only declared cash tips are settled in person. Card tips always go on the hours-export file.",
+    "Only declared cash tips are settled in person. Card tips always export to payroll.",
 };
 
 export function parseCcTipPayout(raw: unknown, fallback: CcTipPayout = "cash_at_close"): CcTipPayout {
@@ -166,18 +166,21 @@ export function payrollIncludesCardTips(payout: CcTipPayout): boolean {
   return payout !== "cash_at_close";
 }
 
-/** Fold pending CC-tip paid-out into blind expected before the event is recorded. */
+/** Cash leaving the till for CC tips when cash_at_close is on. */
+export function tipPaidOutCents(payout: CcTipPayout, cashDueCents: number): number {
+  return payout === "cash_at_close" ? Math.max(0, cashDueCents) : 0;
+}
+
+/** Fold pending tip paid-out into blind expected before the event is recorded. */
 export function expectedAfterTipPayout(opts: {
   baseExpected: number;
-  payout: CcTipPayout;
-  cardTipsCents: number;
+  payoutCents: number;
   sinkType: "drawer" | "bank" | "blocked";
 }): number {
-  const due = cardTipsCashDueCents(opts.payout, opts.cardTipsCents);
-  if (!due) return opts.baseExpected;
+  const due = Math.max(0, opts.payoutCents);
+  if (!due || opts.sinkType === "blocked") return opts.baseExpected;
   if (opts.sinkType === "drawer") return opts.baseExpected - due;
-  if (opts.sinkType === "bank") return opts.baseExpected + due;
-  return opts.baseExpected;
+  return opts.baseExpected + due;
 }
 
 export type CashDrawerDef = {

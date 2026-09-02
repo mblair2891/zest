@@ -128,7 +128,7 @@
       <h1>Summex</h1>
       <p class="sub">Hospitality operations and money movement. Powered by Quantum Reach.</p>
       <p class="meta">summex.app · Guest cards: Quantum Payments only</p>
-      <p class="revision"><strong>Revision · 27 Oct 2026</strong> — Realtime staffing recs (cut / hold / add); never auto clock-out. Aligns with Operators Guide v2026.10.27.</p>
+      <p class="revision"><strong>Revision · 28 Oct 2026</strong> — CC tips cash-at-close vs paycheck vs cash-tips-only-at-close. Aligns with Operators Guide v2026.10.28.</p>
     </header>
 
     <h2>1. Executive summary</h2>
@@ -212,7 +212,14 @@
     <p>Count may be <strong>blind</strong>. Over/short flags a manager queue — not an automatic accusation. Closeout is not clock-out and not PIN login. House Wi‑Fi still records cash if the internet is down. Card requires connection.</p>
 
     <h2>10. Tips, tip-out, and pools</h2>
-    <p>Tip-out recommendations follow <strong>sales mix</strong> (food vs drink), not a flat percent of all sales. Card tips cash-at-close vs paycheck is a house setting. Pools: individual, tip-out, FOH, bar, team, dual.</p>
+    <p>Tip-out recommendations follow <strong>sales mix</strong> (food vs drink), not a flat percent of all sales. Two servers with the same volume do not owe the same kitchen and bar amounts.</p>
+    <p>Card tips follow a location (or employer-entity) setting:</p>
+    <ul>
+      <li><strong>cash_at_close</strong> — closeout cash due includes card tips, paid out from the drawer or safe; payroll export does not add those card tips again. Blind expected includes that paid-out.</li>
+      <li><strong>paycheck</strong> — closeout shows card tips as informational; cash due from card tips is $0; card tips go on the hours-export file. Summex does not run payroll.</li>
+      <li><strong>cash_tips_only_at_close</strong> — only declared cash tips are settled in person; card tips always export to payroll.</li>
+    </ul>
+    <p>Pools: individual, tip-out, FOH, bar, team, dual. Autograt and service charge are distinct from tip pools.</p>
     <p><strong>Summex does not process payroll.</strong> Hours export to ADP, Intuit, or CSV. Staffing recommendations are cut / hold / add only — never auto clock-out.</p>
 
     <h2>11. Cash discount model</h2>

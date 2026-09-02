@@ -10,6 +10,7 @@ import { formatCurrency, uid } from "@/lib/utils";
 import { pinMatches } from "@/lib/pos/pin";
 import {
   cardTipsCashDueCents,
+  tipPaidOutCents,
   cashDueToServerCents,
   cashRoleFromSession,
   CC_TIP_PAYOUT_LABEL,
@@ -201,13 +202,13 @@ export function CloseoutView({ onDone }: { onDone: () => void }) {
       })
     : null;
   const cashDue = poolNet?.netDueNowCents ?? cashDueToServerCents(payout, cardTips, declared);
+  const paidOutForTips = tipPaidOutCents(payout, cashDue);
   const expected =
     baseExpected == null
       ? null
       : expectedAfterTipPayout({
           baseExpected,
-          payout,
-          cardTipsCents: payout === "cash_at_close" ? cashDue : cardTips,
+          payoutCents: paidOutForTips,
           sinkType: sink.type,
         });
   const counted = countStr.trim() === "" ? null : Math.round(parseFloat(countStr) * 100) || 0;
@@ -330,25 +331,25 @@ export function CloseoutView({ onDone }: { onDone: () => void }) {
         close: false,
       });
     }
-    if (cashDue > 0 && payout === "cash_at_close") {
+    if (paidOutForTips > 0) {
       const ses = useCashSessionStore.getState();
       if (sink.type === "drawer") {
         ses.paid({
           sink,
           employeeId: emp.id,
           employeeName: emp.name,
-          amountCents: cashDue,
+          amountCents: paidOutForTips,
           direction: "out",
-          reason: "CC tips",
+          reason: "CC tips cash-at-close",
         });
       } else if (sink.type === "bank") {
         ses.paid({
           sink,
           employeeId: emp.id,
           employeeName: emp.name,
-          amountCents: cashDue,
+          amountCents: paidOutForTips,
           direction: "in",
-          reason: "CC tips",
+          reason: "CC tips cash-at-close",
         });
         const house = cfg.drawers.find((d) => d.kind === "front") ?? cfg.drawers[0];
         if (house) {
@@ -356,9 +357,9 @@ export function CloseoutView({ onDone }: { onDone: () => void }) {
             sink: { type: "drawer", drawer: house },
             employeeId: emp.id,
             employeeName: emp.name,
-            amountCents: cashDue,
+            amountCents: paidOutForTips,
             direction: "out",
-            reason: "CC tips",
+            reason: "CC tips cash-at-close",
           });
         }
       } else {
@@ -368,9 +369,9 @@ export function CloseoutView({ onDone }: { onDone: () => void }) {
             sink: { type: "drawer", drawer: house },
             employeeId: emp.id,
             employeeName: emp.name,
-            amountCents: cashDue,
+            amountCents: paidOutForTips,
             direction: "out",
-            reason: "CC tips",
+            reason: "CC tips cash-at-close",
           });
         }
       }
@@ -521,10 +522,10 @@ export function CloseoutView({ onDone }: { onDone: () => void }) {
                     {variance != null ? ` · over/short ${formatCurrency(variance)}` : ""}
                   </p>
                 )}
-                {cardDue > 0 && (
+                {paidOutForTips > 0 && (
                   <p className="text-xs text-muted-foreground">
-                    Card tips cash due {formatCurrency(cardDue)} is paid from the drawer/safe.
-                    Expected includes that paid-out.
+                    Card tips cash-at-close {formatCurrency(paidOutForTips)} is paid from the
+                    drawer or safe. Blind expected includes that paid-out.
                   </p>
                 )}
                 {variance != null && Math.abs(variance) >= cfg.overShortWarnCents && (

@@ -1,7 +1,7 @@
 # Operators Guide — authoring
 
-**Revision · 27 Oct 2026** — Realtime staffing recs (cut / hold / add) on Location
-settings. Accept notifies to close out — never auto clock-out. Guide v2026.10.27.
+**Revision · 28 Oct 2026** — CC tips cash-at-close vs paycheck vs cash-tips-only-at-close.
+Blind expected includes tip paid-out. Guide v2026.10.28.
 
 The in-app **Operators Guide** is the living product manual. It is not a
 separate PDF. Staff open it from **Guide** / **?** in the POS and platform

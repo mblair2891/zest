@@ -90,6 +90,21 @@ export const CASH_GIFT_TOPICS: GuideTopic[] = [
         "Optional: cannot clock out until the bank or assigned drawer is counted. Table transfer: cash stays with the original server or follows the accepting server.",
         "Reports → Drawer & well close, Server banks. That is not clock-out and not PIN login.",
       ),
+      p(
+        "Settings → Cash drawers: Card tips cash at close vs paycheck. Location default; each employer entity can inherit or override on Labor / HR.",
+      ),
+      callout(
+        "cash_at_close",
+        "Closeout cash due to the server includes card tips, paid out from the drawer or safe. The payroll export does not add those card tips again. Blind expected includes that paid-out.",
+      ),
+      callout(
+        "paycheck",
+        "Closeout shows card tips as informational. Cash due from card tips is $0. Card tips are included on the hours-export file. Summex does not run payroll.",
+      ),
+      callout(
+        "cash_tips_only_at_close",
+        "Only declared cash tips are settled in person. Card tips always export to payroll.",
+      ),
       tip(
         "House Wi-Fi still records cash if the internet is down. You are not blocked from closing a cash table during an ISP outage. Open on cash sale: always, never, or manager PIN. No-sale: off, manager, or assigned user.",
       ),
@@ -139,14 +154,17 @@ export const CASH_GIFT_TOPICS: GuideTopic[] = [
       p(
         "Blind count (default on for server bank and one-person drawer): enter cash on hand first. Then the system shows expected and over/short. Expected = starting bank + cash sales − cash refunds − drops + paid-in − paid-out. When card tips cash out at close, that paid-out is included in expected. Over/short over $X requires a note and flags the manager queue.",
       ),
-      p(
-        "Cash out card tips at closeout: cash due to the server includes card tips, paid out from the drawer or safe. The hours-export file does not add those card tips again — they were already handed over in cash.",
+      callout(
+        "cash_at_close",
+        "Closeout cash due to the server includes card tips, paid out from the drawer or safe. The payroll export does not add those card tips again. Blind expected includes that paid-out.",
       ),
-      p(
-        "Card tips on paycheck: closeout shows card tips as informational. Cash due from card tips is $0. Card tips are included on the hours-export file for ADP, Intuit, or CSV. Summex does not run payroll.",
+      callout(
+        "paycheck",
+        "Closeout shows card tips as informational. Cash due from card tips is $0. Card tips are included on the hours-export file for ADP, Intuit, or CSV. Summex does not run payroll.",
       ),
-      p(
-        "Only declared cash tips at closeout: only declared cash tips are settled in person. Card tips always go on the hours-export file.",
+      callout(
+        "cash_tips_only_at_close",
+        "Only declared cash tips are settled in person. Card tips always export to payroll.",
       ),
       p(
         "Tip-out rates follow sales mix, not a flat percent of all sales. Ticket lines already own food vs drink (bar station or drink course). Two servers with $500 sales do not owe the same kitchen and bar amounts.",
