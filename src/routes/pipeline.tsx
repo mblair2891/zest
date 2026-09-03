@@ -51,13 +51,13 @@ function PipelineInner() {
 
   return (
     <div className="flex h-[100dvh] flex-col bg-bg pt-[var(--grok-banner-h,0px)]">
-      <header className="flex h-14 items-center gap-3 border-b border-border px-4">
+      <header className="flex h-14 shrink-0 items-center gap-3 border-b border-border px-4">
         <Link to="/dashboard" className="text-sm text-muted-foreground hover:text-foreground">
           Dashboard
         </Link>
         <h1 className="text-sm font-semibold">Platform pipeline</h1>
       </header>
-      <main className="min-h-0 flex-1">
+      <main className="flex min-h-0 flex-1 flex-col overflow-hidden">
         <ProspectPipelineView />
       </main>
     </div>

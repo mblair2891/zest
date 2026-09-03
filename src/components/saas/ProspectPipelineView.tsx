@@ -68,14 +68,14 @@ export function ProspectPipelineView() {
   if (openId) {
     return (
       <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
-        <div className="flex items-center gap-2 border-b border-border px-4 py-3">
+        <div className="flex shrink-0 items-center gap-2 border-b border-border px-4 py-3">
           <Button size="sm" variant="outline" onClick={() => setOpenId(null)}>
             <ArrowLeft className="mr-1 h-3.5 w-3.5" />
             Board
           </Button>
           <h2 className="text-sm font-semibold">Account</h2>
         </div>
-        <div className="min-h-0 flex-1 overflow-y-auto">
+        <div className="min-h-0 flex-1 overflow-y-auto overscroll-y-contain [-webkit-overflow-scrolling:touch]">
           <ProspectAccountPage
             prospectId={openId}
             onChanged={load}
@@ -237,7 +237,7 @@ function ProspectAccountPage({
   const a = detail.answers;
 
   return (
-    <div className="mx-auto max-w-3xl space-y-4 px-4 py-4">
+    <div className="mx-auto max-w-3xl space-y-4 px-4 py-4 pb-10">
       <div>
         <h3 className="text-lg font-semibold">{a.company.legalName || a.company.dba || "Untitled"}</h3>
         <p className="text-xs text-muted-foreground">

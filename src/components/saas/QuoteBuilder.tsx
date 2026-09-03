@@ -128,7 +128,8 @@ export function QuoteBuilder({
   const rec = detail.interviewRecommendation;
 
   return (
-    <div className="rounded-2xl border border-border p-4">
+    <div className="flex min-h-0 flex-col rounded-2xl border border-border">
+      <div className="p-4">
       <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
         Quote builder
       </p>
@@ -255,7 +256,8 @@ export function QuoteBuilder({
         </p>
       )}
       {msg && <p className="mt-2 text-sm text-muted-foreground">{msg}</p>}
-      <div className="mt-3 flex flex-wrap gap-2">
+      </div>
+      <div className="sticky bottom-0 z-10 flex flex-wrap gap-2 border-t border-border bg-bg/95 px-4 py-3 backdrop-blur supports-[backdrop-filter]:bg-bg/80">
         <Button
           size="sm"
           variant="outline"

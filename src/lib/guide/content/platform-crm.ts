@@ -47,7 +47,7 @@ export const PLATFORM_CRM_TOPICS: GuideTopic[] = [
         "Board columns are Request → Sent → Accepted → Contracted → Onboarding → Live. Rejected and Churned are exits only. Cards show name, amount, stage, one-line meta, Open, and the next allowed action. Details live on Open.",
       ),
       steps(
-        "Get pricing creates a Request. Open the account. Rebuild from intake so the quote has a monthly software package (not setup-only). Send → Sent.",
+        "Get pricing creates a Request. Open the account. Rebuild from intake so the quote has a monthly software package (not setup-only). Scroll the account pane to modules, monthly total, and Send (Save/Send stay pinned). Send → Sent.",
         "Prospect accepts or requests changes, or Admin records accept → Accepted.",
         "Record contract (checkbox + date) → Contracted. Start onboarding needs that accepted monthly package. OVERRIDE + reason to skip.",
         "CRM Start onboarding uses the same gate.",
