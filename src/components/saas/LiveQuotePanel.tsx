@@ -143,61 +143,50 @@ export function LiveQuotePanel({
           </p>
           <p className="text-sm text-muted-foreground">{HARDWARE_LEAD}</p>
           <ToggleChip
-            on={hw.ownsTabletsPrintersDrawers !== false}
-            label="Provide your own hardware — $0"
-            hint="Tablets, printers, drawers, stands. Default."
-            onClick={() =>
-              onChange(
-                applyQuoteToggles(answers, {
-                  ownsTabletsPrintersDrawers: !(hw.ownsTabletsPrintersDrawers !== false),
-                }),
-              )
-            }
+            on
+            label="Provide your own tablets, printers, drawers, stands — $0"
+            hint="Required BYO. Summex does not sell a hardware kit."
+            onClick={() => undefined}
           />
-          {hw.ownsTabletsPrintersDrawers !== false && (
-            <ul className="list-disc space-y-1 pl-5 text-xs text-muted-foreground">
-              {BYO_CHECKLIST.map((row) => (
-                <li key={row}>{row}</li>
-              ))}
-            </ul>
-          )}
-          <ToggleChip
-            on={hw.shipReaders}
-            label="Ship card readers from our payments partner"
-            hint="Typically more expensive than a BYO ~$75 Finix/Quantum reader. Drop-ships to your site."
-            onClick={() => onChange(applyQuoteToggles(answers, { shipReaders: !hw.shipReaders }))}
-          />
-          {hw.shipReaders && (
-            <div className="grid gap-3 sm:grid-cols-2">
-              <label className="block text-sm">
-                <span className="mb-1 block text-muted-foreground">How many readers</span>
-                <Input
-                  type="number"
-                  min={1}
-                  value={hw.readerQty || 1}
-                  onChange={(e) =>
-                    onChange(applyQuoteToggles(answers, { readerQty: Number(e.target.value) || 1 }))
-                  }
-                />
-              </label>
-              <div className="space-y-1">
-                <ToggleChip
-                  on={hw.readerPay !== "lease"}
-                  label="Purchase (one-time, partner priced)"
-                  onClick={() => onChange(applyQuoteToggles(answers, { readerPay: "purchase" }))}
-                />
-                <ToggleChip
-                  on={hw.readerPay === "lease"}
-                  label="Monthly lease (partner priced)"
-                  onClick={() => onChange(applyQuoteToggles(answers, { readerPay: "lease" }))}
-                />
-              </div>
+          <ul className="list-disc space-y-1 pl-5 text-xs text-muted-foreground">
+            {BYO_CHECKLIST.map((row) => (
+              <li key={row}>{row}</li>
+            ))}
+          </ul>
+          <p className="text-sm font-medium">Required: Finix / Quantum payments readers</p>
+          <p className="text-xs text-muted-foreground">
+            Shipped via Summex to your site. Required to take live cards. Customer-owned
+            Square, Stripe, or bank terminals are not supported.
+          </p>
+          <div className="grid gap-3 sm:grid-cols-2">
+            <label className="block text-sm">
+              <span className="mb-1 block text-muted-foreground">How many readers</span>
+              <Input
+                type="number"
+                min={1}
+                value={hw.readerQty || 1}
+                onChange={(e) =>
+                  onChange(applyQuoteToggles(answers, { readerQty: Number(e.target.value) || 1 }))
+                }
+              />
+            </label>
+            <div className="space-y-1">
+              <ToggleChip
+                on={hw.readerPay !== "lease"}
+                label={`Purchase · ${formatCurrency(catalog.requiredReaderCents || 7500)} each`}
+                onClick={() => onChange(applyQuoteToggles(answers, { readerPay: "purchase" }))}
+              />
+              <ToggleChip
+                on={hw.readerPay === "lease"}
+                label="Monthly lease (settings price)"
+                onClick={() => onChange(applyQuoteToggles(answers, { readerPay: "lease" }))}
+              />
             </div>
-          )}
+          </div>
           <ToggleChip
             on={hw.shipPartnerDevices}
-            label="Ship kiosk / stand / other partner devices"
-            hint="Optional. Partner hardware, typically more expensive than BYO. Ships to your site."
+            label="Optional: ship kiosk / stand / other partner devices"
+            hint="Typically more expensive than BYO. Ships from the payments partner to your site via Summex."
             onClick={() =>
               onChange(applyQuoteToggles(answers, { shipPartnerDevices: !hw.shipPartnerDevices }))
             }

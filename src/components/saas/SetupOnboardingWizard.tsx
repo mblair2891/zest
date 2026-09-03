@@ -646,19 +646,12 @@ export function SetupOnboardingWizard({ token }: { token: string }) {
       {stepId === "hardware" && (
         <div className="space-y-4">
           <p className="text-sm text-muted-foreground">
-            Bring your own tablets, printers, cash drawers, and stands. Summex is the
-            software. If this quote includes partner hardware, it ships from the payments
-            partner to the house — Summex does not take possession.
+            Bring your own tablets, printers, cash drawers, and stands. Live cards require
+            Finix / Quantum Payments readers supplied through Summex — we ship them to this
+            address. Customer-owned Square, Stripe, or bank terminals are not supported.
+            Training/sandbox can run without a physical reader (cash + sandbox).
           </p>
-          {(payload.partnerHardware.items.length === 0) && (
-            <p className="rounded-2xl border border-border bg-surface p-4 text-sm">
-              BYO on this quote. Confirm the house has order tablets, ODS display, Wi-Fi
-              printer with drawer kick, and a reader (theirs or a typical ~$75 Finix/Quantum
-              unit).
-            </p>
-          )}
-          {payload.partnerHardware.items.length > 0 && (
-            <div className="space-y-3">
+          <div className="space-y-3">
               <Field label="Ship-to name">
                 <Input
                   value={payload.partnerHardware.shipToName}
@@ -670,7 +663,7 @@ export function SetupOnboardingWizard({ token }: { token: string }) {
                   }
                 />
               </Field>
-              <Field label="Ship-to address" hint="Payments partner drop-ships here. Not a Summex warehouse.">
+              <Field label="Ship-to address" hint="Payments partner drop-ships here via Summex. Not a Summex warehouse.">
                 <Input
                   value={payload.partnerHardware.shipToAddress}
                   onChange={(e) =>
@@ -695,9 +688,24 @@ export function SetupOnboardingWizard({ token }: { token: string }) {
               <ul className="divide-y divide-border overflow-hidden rounded-2xl border border-border">
                 {payload.partnerHardware.items.map((it, i) => (
                   <li key={`${it.skuId}-${i}`} className="flex flex-wrap items-center gap-2 px-4 py-3 text-sm">
-                    <span className="flex-1 font-medium">
-                      {it.name} × {it.qty}
-                    </span>
+                    <span className="flex-1 font-medium">{it.name}</span>
+                    <Input
+                      className="h-9 w-20"
+                      type="number"
+                      min={it.skuId.includes("reader") ? 1 : 0}
+                      value={it.qty}
+                      onChange={(e) =>
+                        patch((p) => {
+                          const items = p.partnerHardware.items.slice();
+                          const min = it.skuId.includes("reader") ? 1 : 0;
+                          items[i] = {
+                            ...it,
+                            qty: Math.max(min, Number(e.target.value) || min),
+                          };
+                          return { ...p, partnerHardware: { ...p.partnerHardware, items } };
+                        })
+                      }
+                    />
                     <NativeSelect
                       value={it.status}
                       onChange={(val) =>
@@ -719,7 +727,6 @@ export function SetupOnboardingWizard({ token }: { token: string }) {
                 ))}
               </ul>
             </div>
-          )}
         </div>
       )}
 
@@ -826,7 +833,7 @@ export function SetupOnboardingWizard({ token }: { token: string }) {
           />
           <ToggleChip
             on={payload.checklist.hardwareAck}
-            label="Hardware plan acknowledged (BYO on site, or partner drop-ship to the house)"
+            label="Hardware plan acknowledged (BYO tablets/printers/drawers; Finix/Quantum readers ship to the house)"
             onClick={() =>
               patch((p) => ({
                 ...p,

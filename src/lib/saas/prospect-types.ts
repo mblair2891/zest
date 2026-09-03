@@ -332,6 +332,8 @@ export type QuoteCatalog = {
   terminalBuyCents: number;
   setupCents: number;
   setupCapCents: number;
+  /** Customer-facing one-time price for the required Finix/Quantum reader. Default $75. */
+  requiredReaderCents: number;
   byoDefault: boolean;
   partnerSkus: PartnerHardwareSku[];
   /** From Communications settings. Used on Get-a-price copy. */

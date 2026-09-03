@@ -308,6 +308,7 @@ export const billingSettingsSchema = z.object({
       terminalBuyCents: int(0, 10_000_000).default(0),
       setupCents: int(0, 10_000_000).default(0),
       setupCapCents: int(0, 10_000_000).default(0),
+      requiredReaderCents: int(0, 10_000_000).default(7500),
       byoDefault: z.boolean().default(true),
       partnerSkus: z
         .array(

@@ -6,6 +6,19 @@ import type { GuideUpdate } from "@/lib/guide/types";
  */
 export const WHATS_NEW_ENTRIES: GuideUpdate[] = [
   {
+    id: "upd_2026_10_35_required_readers",
+    date: "2026-09-03",
+    title: "Required Finix readers, BYO everything else",
+    summary:
+      "Tablets, printers, and drawers stay yours. Live cards require Finix/Quantum readers shipped via Summex. No Square/Stripe terminals.",
+    body: "Get a price and quotes list a $0 BYO kit (tablets, printers, drawers, optional gift MSR) plus required N × Finix/Quantum payments readers (default ~$75, settings price) that ship to the house. Optional partner kiosk/stand extras are marked more expensive. Onboarding collects ship-to and reader quantity. Training/sandbox can run without a physical reader. Live cards fail closed until a reader is enrolled.",
+    roles: ["platform_admin", "owner_manager"],
+    surfaces: ["platform", "settings"],
+    audience: "all",
+    topicId: "quantum-payments",
+    tags: ["hardware", "quote", "payments"],
+  },
+  {
     id: "upd_2026_10_34_sms_allotment",
     date: "2026-09-02",
     title: "SMS allotment, caps, AI throttle",

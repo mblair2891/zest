@@ -914,8 +914,8 @@ function BillingSection({
         })}
       </div>
       <ToggleRow
-        label="BYO hardware is the default on Get a price"
-        hint="Never imply Summex bundles a full hardware kit. Partner devices are optional drop-ship."
+        label="BYO tablets / printers / drawers on Get a price"
+        hint="Tablets, stands, printers, cash drawers, gift MSR are customer-provided. Card-present readers are always Finix/Quantum supplied through Summex."
         checked={billing.quoteCatalog?.byoDefault !== false}
         onChange={(byoDefault) =>
           setBilling({
@@ -924,10 +924,11 @@ function BillingSection({
           })
         }
       />
-      <p className="pt-2 text-sm font-medium">Partner hardware SKUs (Finix drop-ship)</p>
+      <p className="pt-2 text-sm font-medium">Partner hardware SKUs (Finix drop-ship via Summex)</p>
       <p className="text-xs text-muted-foreground">
-        Ships from the payments partner to the customer address. Customer-facing price is
-        typically higher than BYO. Cost note is internal only.
+        Readers are required for live cards. Optional kiosk/stand SKUs are typically more
+        expensive than BYO. Ships from the payments partner to the customer address. Cost
+        note is internal only.
       </p>
       {(billing.quoteCatalog?.partnerSkus ?? []).map((sku, i) => (
         <div key={sku.id} className="space-y-2 rounded-xl border border-border bg-bg p-3">
@@ -1200,8 +1201,8 @@ function BillingSection({
       </div>
       <p className="text-xs text-muted-foreground">
         Base counter-service + kitchen display software is $0 / mo. Paid packages add monthly
-        from intake. Setup is never the only line on a quote. Hardware is BYO except optional
-        Quantum terminals.
+        from intake. Setup is never the only line on a quote. Tablets, printers, and drawers
+        are BYO. Live cards require Finix/Quantum readers supplied through Summex.
       </p>
     </SectionCard>
   );

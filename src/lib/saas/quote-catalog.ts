@@ -10,15 +10,17 @@ import type {
 } from "./prospect-types";
 
 export const HARDWARE_LEAD =
-  "Bring your own tablets, printers, cash drawers, stands. Summex is the software. Card readers can be yours or shipped by our payments partner.";
+  "Bring your own tablets, printers, cash drawers, and stands. Summex is the software. Guest card-present payments require Finix / Quantum Payments readers supplied through Summex — we ship them to your site. Customer-owned Square, Stripe, or other bank terminals are not supported.";
 
 export const BYO_CHECKLIST = [
   "Order tablet or POS screen (Android / iPad / browser)",
   "ODS display for kitchen or bar",
   "Wi-Fi or Ethernet receipt printer with cash-drawer kick",
-  "Optional USB mag-stripe reader for gift cards",
-  "Card reader you already have, or a typical ~$75 Finix/Quantum reader you buy yourself",
+  "Optional USB mag-stripe reader for gift cards (not a card-present terminal)",
 ];
+
+export const READER_REQUIRED_NOTE =
+  "Required to take live cards. Finix / Quantum Payments readers issued and supplied through Summex (drop-ship to your site). No Square, Stripe, or other bank terminals.";
 
 export const DEFAULT_PARTNER_SKUS: PartnerHardwareSku[] = [
   {
@@ -27,8 +29,8 @@ export const DEFAULT_PARTNER_SKUS: PartnerHardwareSku[] = [
     customerFacingName: "Quantum / Finix card reader",
     kind: "reader",
     monthlyCents: 0,
-    oneTimeCents: 19900,
-    costNoteInternal: "Partner drop-ship. Typically more than a BYO ~$75 reader.",
+    oneTimeCents: 7500,
+    costNoteInternal: "Required Finix/Quantum reader supplied through Summex. Default ~$75 customer-facing.",
     shipToCustomer: true,
     active: true,
   },
@@ -80,6 +82,7 @@ export const DEFAULT_QUOTE_CATALOG: QuoteCatalog = {
   terminalBuyCents: 0,
   setupCents: 0,
   setupCapCents: 0,
+  requiredReaderCents: 7500,
   byoDefault: true,
   partnerSkus: DEFAULT_PARTNER_SKUS,
   smsIncludedPerMonth: 500,
@@ -88,11 +91,43 @@ export const DEFAULT_QUOTE_CATALOG: QuoteCatalog = {
 export function emptyIntakeHardware(): IntakeHardware {
   return {
     ownsTabletsPrintersDrawers: true,
-    shipReaders: false,
-    readerQty: 0,
+    shipReaders: true,
+    readerQty: 1,
     readerPay: "purchase",
     shipPartnerDevices: false,
     partnerSkuQty: {},
+  };
+}
+
+export function requiredReaderQty(answers: IntakeAnswers): number {
+  const hw = answers.hardware ?? emptyIntakeHardware();
+  return Math.max(1, Math.floor(hw.readerQty || 1));
+}
+
+export function requiredReaderPrice(
+  catalog: QuoteCatalog,
+  pay: "purchase" | "lease",
+): { cents: number; oneTime: boolean; skuId: string; label: string } {
+  const skus = activePartnerSkus(catalog);
+  if (pay === "lease") {
+    const sku = skus.find((s) => s.kind === "reader" && s.monthlyCents > 0);
+    return {
+      cents: sku?.monthlyCents || catalog.terminalLeaseCents || 1500,
+      oneTime: false,
+      skuId: sku?.id ?? "finix_reader_lease",
+      label: sku?.customerFacingName ?? "Quantum / Finix reader (monthly)",
+    };
+  }
+  const sku = skus.find((s) => s.kind === "reader" && s.oneTimeCents > 0) ?? skus.find((s) => s.kind === "reader");
+  const cents =
+    catalog.requiredReaderCents && catalog.requiredReaderCents > 0
+      ? catalog.requiredReaderCents
+      : sku?.oneTimeCents || 7500;
+  return {
+    cents,
+    oneTime: true,
+    skuId: sku?.id ?? "finix_reader",
+    label: sku?.customerFacingName ?? "Quantum / Finix card reader",
   };
 }
 
@@ -117,6 +152,10 @@ export function parseQuoteCatalog(raw: unknown): QuoteCatalog {
   base.terminalBuyCents = Math.max(0, Math.round(num(o.terminalBuyCents, base.terminalBuyCents)));
   base.setupCents = Math.max(0, Math.round(num(o.setupCents, base.setupCents)));
   base.setupCapCents = Math.max(0, Math.round(num(o.setupCapCents, base.setupCapCents)));
+  base.requiredReaderCents = Math.max(
+    0,
+    Math.round(num(o.requiredReaderCents, base.requiredReaderCents ?? 7500)),
+  );
   if (typeof o.byoDefault === "boolean") base.byoDefault = o.byoDefault;
   if (Array.isArray(o.partnerSkus) && o.partnerSkus.length > 0) {
     base.partnerSkus = o.partnerSkus.map((s) => parsePartnerSku(s)).filter((s): s is PartnerHardwareSku => Boolean(s));
@@ -284,11 +323,10 @@ export function catalogFeatureList(answers: IntakeAnswers): string[] {
   if (hw.ownsTabletsPrintersDrawers !== false) {
     out.push("BYO tablets, printers, drawers, stands");
   }
-  if (hw.shipReaders) {
-    out.push(
-      `${Math.max(1, hw.readerQty || 1)} partner card reader${(hw.readerQty || 1) === 1 ? "" : "s"} (drop-ship to site)`,
-    );
-  }
+  const readers = Math.max(1, Math.floor(hw.readerQty || 1));
+  out.push(
+    `${readers} Finix/Quantum payments reader${readers === 1 ? "" : "s"} (required for live cards, shipped via Summex)`,
+  );
   out.push(commsIncludedNote());
   return out;
 }
@@ -309,7 +347,7 @@ export function catalogSoftwareLines(
       "Base counter + 1 ODS",
       locN,
       catalog.baseCents,
-      { note: "Included software. Hardware is BYO by default." },
+      { note: "Included software. Tablets/printers/drawers are BYO. Finix/Quantum readers required for live cards." },
     ),
   );
 
@@ -394,59 +432,39 @@ export function catalogHardwareLines(
 ): QuoteLineItem[] {
   const items: QuoteLineItem[] = [];
   const hw = answers.hardware ?? emptyIntakeHardware();
-  const byo = hw.ownsTabletsPrintersDrawers !== false;
-  if (byo || catalog.byoDefault !== false) {
-    items.push(
-      line("hw_byo", "hardware", "Bring your own hardware", 1, 0, {
-        bucket: "hardware",
-        note: HARDWARE_LEAD,
-      }),
-    );
-  }
+  items.push(
+    line("hw_byo", "hardware", "Bring your own tablets, printers, drawers, stands", 1, 0, {
+      bucket: "hardware",
+      note: HARDWARE_LEAD,
+    }),
+  );
 
-  const skus = activePartnerSkus(catalog);
-  if (hw.shipReaders) {
-    const qty = Math.max(1, Math.floor(hw.readerQty || 1));
-    const sku =
-      hw.readerPay === "lease"
-        ? skus.find((s) => s.kind === "reader" && s.monthlyCents > 0)
-        : skus.find((s) => s.kind === "reader" && s.oneTimeCents > 0) ??
-          skus.find((s) => s.kind === "reader");
-    if (sku) {
-      const monthly = hw.readerPay === "lease";
-      items.push(
-        line(
-          `hw_${sku.id}`,
-          "hardware",
-          sku.customerFacingName,
-          qty,
-          monthly ? sku.monthlyCents : sku.oneTimeCents,
-          {
-            bucket: "hardware",
-            oneTime: !monthly,
-            note: "Partner hardware, typically more expensive than BYO. Ships from payments partner to your site. Summex does not take possession.",
-          },
-        ),
-      );
-    }
-  }
+  const qty = requiredReaderQty(answers);
+  const price = requiredReaderPrice(catalog, hw.readerPay === "lease" ? "lease" : "purchase");
+  items.push(
+    line(`hw_${price.skuId}`, "hardware", price.label, qty, price.cents, {
+      bucket: "hardware",
+      oneTime: price.oneTime,
+      note: READER_REQUIRED_NOTE,
+    }),
+  );
 
   if (hw.shipPartnerDevices) {
     for (const sku of otherPartnerSkus(catalog)) {
-      const qty = Math.max(0, Math.floor(hw.partnerSkuQty?.[sku.id] ?? 0));
-      if (qty <= 0) continue;
+      const extraQty = Math.max(0, Math.floor(hw.partnerSkuQty?.[sku.id] ?? 0));
+      if (extraQty <= 0) continue;
       const monthly = sku.monthlyCents > 0 && sku.oneTimeCents <= 0;
       items.push(
         line(
           `hw_${sku.id}`,
           "hardware",
           sku.customerFacingName,
-          qty,
+          extraQty,
           monthly ? sku.monthlyCents : sku.oneTimeCents,
           {
             bucket: "hardware",
             oneTime: !monthly && sku.oneTimeCents > 0,
-            note: "Partner hardware, typically more expensive than BYO. Ships from payments partner to your site.",
+            note: "Optional partner hardware, typically more expensive than BYO. Ships from payments partner to your site via Summex.",
           },
         ),
       );
@@ -539,18 +557,13 @@ export function applyQuoteToggles(
   if (patch.ownsTabletsPrintersDrawers != null) {
     next.hardware.ownsTabletsPrintersDrawers = patch.ownsTabletsPrintersDrawers;
   }
-  if (patch.shipReaders != null) {
-    next.hardware.shipReaders = patch.shipReaders;
-    next.volume.terminalNeed = patch.shipReaders ? (next.hardware.readerPay === "lease" ? "lease" : "buy") : "none";
-    if (patch.shipReaders && next.hardware.readerQty < 1) next.hardware.readerQty = 1;
-  }
-  if (patch.readerQty != null) next.hardware.readerQty = Math.max(0, Math.floor(patch.readerQty));
+  next.hardware.shipReaders = true;
+  if (patch.readerQty != null) next.hardware.readerQty = Math.max(1, Math.floor(patch.readerQty));
+  if (next.hardware.readerQty < 1) next.hardware.readerQty = 1;
   if (patch.readerPay) {
     next.hardware.readerPay = patch.readerPay;
-    if (next.hardware.shipReaders) {
-      next.volume.terminalNeed = patch.readerPay === "lease" ? "lease" : "buy";
-    }
   }
+  next.volume.terminalNeed = next.hardware.readerPay === "lease" ? "lease" : "buy";
   if (patch.shipPartnerDevices != null) next.hardware.shipPartnerDevices = patch.shipPartnerDevices;
   if (patch.partnerSkuQty) {
     next.hardware.partnerSkuQty = { ...next.hardware.partnerSkuQty, ...patch.partnerSkuQty };
@@ -583,8 +596,9 @@ export const QUOTE_CATALOG_FIELDS: {
   { key: "extraStationCents", label: "Extra order/ODS station", hint: "Each over included count — default $19" },
   { key: "includedStations", label: "Included order+ODS stations", hint: "Default 4" },
   { key: "kioskCents", label: "Kiosk (each)", hint: "Default $29" },
-  { key: "terminalLeaseCents", label: "Terminal lease (each / mo)", hint: "Default $15. BYO other hardware." },
-  { key: "terminalBuyCents", label: "Terminal purchase (each, one-time)", hint: "Optional one-time instead of lease" },
+  { key: "requiredReaderCents", label: "Required Finix/Quantum reader (each, one-time)", hint: "Default ~$75. Live cards require this reader, shipped via Summex." },
+  { key: "terminalLeaseCents", label: "Reader lease (each / mo)", hint: "Optional monthly instead of purchase. Default $15." },
+  { key: "terminalBuyCents", label: "Legacy terminal purchase (unused if required reader is set)", hint: "Fallback only" },
   { key: "setupCents", label: "Setup fee", hint: "Default $0" },
   { key: "setupCapCents", label: "Setup fee cap", hint: "0 = no cap beyond the setup amount" },
 ];

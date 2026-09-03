@@ -50,7 +50,9 @@ export function QuoteBuilder({
     ((detail.quote?.setupFeeCents ?? detail.quote?.onboardingFeeCents ?? 0) / 100).toFixed(2),
   );
   const [addOns, setAddOns] = useState<QuoteAddOn[]>(detail.quote?.addOns ?? []);
-  const [terminalQty, setTerminalQty] = useState(detail.quote?.terminalQty ?? 0);
+  const [terminalQty, setTerminalQty] = useState(
+    Math.max(1, detail.quote?.terminalQty ?? 1),
+  );
   const [msg, setMsg] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
@@ -65,7 +67,7 @@ export function QuoteBuilder({
     setLocationCount(built.locationCount ?? 1);
     setSetup(((built.setupFeeCents ?? built.onboardingFeeCents ?? 0) / 100).toFixed(2));
     setAddOns(built.addOns ?? []);
-    setTerminalQty(built.terminalQty ?? 0);
+    setTerminalQty(Math.max(1, built.terminalQty ?? 1));
     return built;
   };
 
@@ -174,15 +176,18 @@ export function QuoteBuilder({
           <Input value={setup} inputMode="decimal" onChange={(e) => setSetup(e.target.value)} />
         </label>
         <label className="block text-sm">
-          <span className="mb-1 block text-muted-foreground">Quantum terminals (optional qty)</span>
+          <span className="mb-1 block text-muted-foreground">
+            Finix/Quantum readers (required for live cards)
+          </span>
           <Input
             type="number"
-            min={0}
+            min={1}
             value={terminalQty}
-            onChange={(e) => setTerminalQty(Math.max(0, Number(e.target.value) || 0))}
+            onChange={(e) => setTerminalQty(Math.max(1, Number(e.target.value) || 1))}
           />
           <span className="mt-1 block text-[11px] text-muted-foreground">
-            Leave 0 if they already have readers. Hardware is otherwise BYO.
+            Shipped via Summex to the house. Tablets/printers/drawers stay BYO. No
+            Square, Stripe, or other bank terminals.
           </span>
         </label>
       </div>

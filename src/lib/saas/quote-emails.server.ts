@@ -31,8 +31,8 @@ function varsFor(prospect: ProspectRecord, extra?: Partial<Vars>): Vars {
     hardwareOnce: formatCurrency(q?.hardwareOneTimeCents ?? 0),
     byo:
       (q?.byoChecklist ?? []).length > 0
-        ? `You provide:\n${(q?.byoChecklist ?? []).map((x) => `• ${x}`).join("\n")}`
-        : "Hardware is bring-your-own unless partner drop-ship is on the quote.",
+        ? `You provide (BYO):\n${(q?.byoChecklist ?? []).map((x) => `• ${x}`).join("\n")}\nLive cards require Finix/Quantum readers supplied through Summex.`
+        : "BYO tablets, printers, drawers, stands. Live cards require Finix/Quantum readers supplied through Summex.",
     locationCount: String(q?.locationCount ?? prospect.answers.portfolio.locationsNow ?? 1),
     features: (q?.featureList ?? []).map((f) => `• ${f}`).join("\n") || "• POS core + kitchen display",
     expires: q?.expiresAt ? new Date(q.expiresAt).toLocaleDateString() : "see proposal",

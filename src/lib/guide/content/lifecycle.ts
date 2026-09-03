@@ -25,7 +25,7 @@ export const LIFECYCLE_TOPICS: GuideTopic[] = [
       ),
       ul(
         "Training / scheduled_live always force Quantum Payments sandbox. Live processor keys are ignored until lifecycle is live.",
-        "Go live is explicit (now or schedule) with keep/erase. Live cards only after status = live, plus an approved application and enrolled reader.",
+        "Go live is explicit (now or schedule) with keep/erase. Live cards only after status = live, plus an approved application and an enrolled Finix/Quantum reader supplied through Summex. Training/sandbox can run without a physical reader (cash + sandbox). Live cards fail closed without that reader.",
         "Floor PIN signs a person onto the station. Clock in / out is Labor — PIN is not a time punch.",
         "Scheduled live fires at the timestamp (or Run scheduled job now to simulate).",
         "Platform Tenants list shows training | scheduled_live | live.",

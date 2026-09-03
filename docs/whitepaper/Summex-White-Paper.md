@@ -3,7 +3,7 @@
 **Powered by Quantum Reach**
 
 White paper · October 2026  
-**Revision · 2 Sep 2026** — SMS allotment (500/location/month, extra at cost or block) and AI daily throttle. Email stays included. Aligns with Operators Guide v2026.10.34.
+**Revision · 3 Sep 2026** — Tablets, printers, and drawers stay BYO. Live cards require Finix/Quantum readers supplied through Summex. Aligns with Operators Guide v2026.10.35.
 
 summex.app  
 Guest cards: **Quantum Payments** only
@@ -260,7 +260,9 @@ Software billing is **not** guest card processing.
 - **Counter (base)** — POS + 1 kitchen/bar display, **$0 / month**.
 - **Full service** — floor, host stand, sections, closeout, **$149 / location / month**.
 - **Multi-operator** — hall/pod host **$299 / location / month** plus **$49 per tenant entity**.
-- **Hardware is BYO by default.** Bring your own tablets, printers, cash drawers, stands. Summex is the software. Card readers can be yours (a typical Finix/Quantum reader is about **$75**) or **shipped by our payments partner to the house** — never as a bundled Summex kit, and never through a Summex warehouse. Partner SKUs are optional, typically more expensive than BYO, and billed as hardware (one-time and/or monthly), separate from software.
+- **Tablets, printers, cash drawers, stands, and gift MSR are BYO.** Summex is the software. It does not sell a hardware kit.
+- **Card-present readers are required and Finix / Quantum only**, issued and supplied through Summex (drop-ship to the site is OK). Default about **$75** each (settings price). Customer-owned Square, Stripe, or other bank terminals are **not supported**. Optional partner extras (kiosk, stand) are typically more expensive than BYO.
+- **Training/sandbox** can run without a physical reader (cash + sandbox). **Live cards fail closed** until at least one Finix/Quantum reader is enrolled at the location.
 - **Setup** defaults to **$0** (settings can cap a setup amount). It is never the only line on a proposal.
 - **Email** (quotes, invites, receipts) is **included** — never surcharged.
 - **SMS** is allotted **500 texts / location / month** (editable). Extra bills at a pass-through rate, or the house can block at cap. Location can turn SMS off or set a lower cap. Waitlist confirm, table-ready, and opt-out each count 1. Managers and platform are alerted at 80% and 100%.

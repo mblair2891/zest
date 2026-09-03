@@ -251,13 +251,13 @@ function parsePartnerHardware(
   const o = raw && typeof raw === "object" ? (raw as Record<string, unknown>) : {};
   const str = (v: unknown) => (typeof v === "string" ? v : "");
   const itemsRaw = Array.isArray(o.items) ? o.items : [];
-  return {
+  const parsed: OnboardingPayload["partnerHardware"] = {
     shipToName: str(o.shipToName) || fallback.name,
     shipToAddress: str(o.shipToAddress) || fallback.address,
     shipToPhone: str(o.shipToPhone) || fallback.phone,
     note:
       str(o.note) ||
-      "Partner hardware ships from the payments partner to this address. Summex does not take possession.",
+      "Finix/Quantum readers ship via Summex to this address (payments partner drop-ship). Tablets, printers, and drawers stay BYO.",
     items: itemsRaw.map((it) => {
       const x = it && typeof it === "object" ? (it as Record<string, unknown>) : {};
       const status = String(x.status ?? "requested");
@@ -270,6 +270,15 @@ function parsePartnerHardware(
       };
     }),
   };
+  if (!parsed.items.some((it) => it.skuId.includes("reader") || /reader/i.test(it.name))) {
+    parsed.items.unshift({
+      skuId: "finix_reader",
+      name: "Quantum / Finix card reader",
+      qty: 1,
+      status: "requested",
+    });
+  }
+  return parsed;
 }
 
 function mapOperator(r: OperatorRow): OperatorRecord {

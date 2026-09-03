@@ -28,8 +28,10 @@ import {
   catalogStationCounts,
   commsIncludedNote,
   emptyIntakeHardware,
+  requiredReaderQty,
   BYO_CHECKLIST,
   HARDWARE_LEAD,
+  READER_REQUIRED_NOTE,
   isMultiOperatorHouse,
   parseQuoteCatalog,
   recommendedCatalogPlan,
@@ -319,13 +321,13 @@ export function parseIntakeAnswers(raw: unknown): IntakeAnswers {
   const readerPay = str(hardware.readerPay, "purchase");
   d.hardware = {
     ownsTabletsPrintersDrawers: bool(hardware.ownsTabletsPrintersDrawers, true),
-    shipReaders: bool(hardware.shipReaders, d.volume.terminalNeed === "lease" || d.volume.terminalNeed === "buy"),
-    readerQty: Math.max(0, Math.floor(num(hardware.readerQty, 0))),
+    shipReaders: true,
+    readerQty: Math.max(1, Math.floor(num(hardware.readerQty, 1))),
     readerPay: readerPay === "lease" ? "lease" : "purchase",
     shipPartnerDevices: bool(hardware.shipPartnerDevices),
     partnerSkuQty: qtyMap,
   };
-  if (d.hardware.shipReaders && d.hardware.readerQty < 1) d.hardware.readerQty = 1;
+  d.volume.terminalNeed = d.hardware.readerPay === "lease" ? "lease" : "buy";
   const payments = asObject(o.payments);
   const freq = str(payments.payoutFrequency, "weekly");
   d.payments = {
@@ -593,14 +595,18 @@ export function generateQuote(
   const entityCount =
     isMultiOperatorHouse(answers) ? Math.max(1, locs) + tenants : Math.max(1, locs);
 
-  const packages = new Set<PackageId>(packagesFromIntake(answers));
-  const items: QuoteLineItem[] = [
-    ...catalogSoftwareLines(answers, catalog, locs, plan),
-    ...catalogHardwareLines(answers, catalog),
-  ];
+  const hwIn = answers.hardware ?? emptyIntakeHardware();
+  const terminalQty = Math.max(1, opts?.terminalQty ?? requiredReaderQty(answers));
+  const answersWithReaders: IntakeAnswers = {
+    ...answers,
+    hardware: { ...hwIn, shipReaders: true, readerQty: terminalQty },
+  };
 
-  const hw = answers.hardware ?? emptyIntakeHardware();
-  const terminalQty = hw.shipReaders ? Math.max(1, hw.readerQty || 1) : 0;
+  const packages = new Set<PackageId>(packagesFromIntake(answersWithReaders));
+  const items: QuoteLineItem[] = [
+    ...catalogSoftwareLines(answersWithReaders, catalog, locs, plan),
+    ...catalogHardwareLines(answersWithReaders, catalog),
+  ];
 
   for (const a of opts?.addOns ?? []) {
     if (!a.name?.trim()) continue;
@@ -656,9 +662,8 @@ export function generateQuote(
     commsIncludedNote(catalog.smsIncludedPerMonth),
     "Gift cards are first-party (Summex ledger), not Finix.",
     HARDWARE_LEAD,
-    hw.ownsTabletsPrintersDrawers !== false
-      ? `You provide: ${BYO_CHECKLIST.join("; ")}.`
-      : "Partner hardware ships from the payments partner to the house — Summex does not take possession.",
+    `You provide: ${BYO_CHECKLIST.join("; ")}.`,
+    `${terminalQty} Finix/Quantum payments reader${terminalQty === 1 ? "" : "s"} required for live cards. ${READER_REQUIRED_NOTE}`,
     answers.volume.volumeKind === "checks"
       ? `Volume driver: ~${answers.volume.monthlyChecks.toLocaleString()} checks / month.`
       : `Volume driver: GMV band ${gmvLabel(answers.volume.gmvBand)}.`,
@@ -695,7 +700,7 @@ export function generateQuote(
     draft: opts?.draft !== false && !opts?.sentAt,
     sentAt: opts?.sentAt ?? null,
     expiresAt,
-    featureList: featureListFromAnswers(answers),
+    featureList: featureListFromAnswers(answersWithReaders),
     processingNote: PROCESSING_NOTE,
     commsNote: commsIncludedNote(catalog.smsIncludedPerMonth),
     terminalQty,
@@ -704,7 +709,7 @@ export function generateQuote(
     softwareMonthlyCents,
     hardwareMonthlyCents,
     hardwareOneTimeCents,
-    byoChecklist: hw.ownsTabletsPrintersDrawers !== false ? BYO_CHECKLIST : [],
+    byoChecklist: BYO_CHECKLIST,
     annualCents,
     onboardingFeeCents,
     assumptions,

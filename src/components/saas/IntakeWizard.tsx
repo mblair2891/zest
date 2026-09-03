@@ -524,60 +524,35 @@ export function IntakeWizard({ initialToken }: { initialToken?: string }) {
             First 4 order+ODS stations are included. Extra stations are $19 / mo each.
           </p>
           <p className="text-sm text-muted-foreground">
-            Bring your own tablets, printers, cash drawers, stands. Summex is the software.
-            Card readers can be yours or shipped by our payments partner.
+            Bring your own tablets, printers, cash drawers, and stands. Summex is the
+            software. Live cards require Finix / Quantum Payments readers supplied through
+            Summex — we ship them to your site. Customer-owned Square, Stripe, or bank
+            terminals are not supported.
           </p>
           <ToggleChip
-            on={answers.hardware.ownsTabletsPrintersDrawers}
-            label="We already own tablets, printers, and cash drawers"
-            hint="Default. $0 hardware. We'll list what you still need to provide."
-            onClick={() =>
-              patch((a) => ({
-                ...a,
-                hardware: {
-                  ...a.hardware,
-                  ownsTabletsPrintersDrawers: !a.hardware.ownsTabletsPrintersDrawers,
-                },
-              }))
-            }
+            on
+            label="We provide tablets, printers, and cash drawers"
+            hint="Required BYO. $0. Summex does not sell a hardware kit."
+            onClick={() => undefined}
           />
-          <ToggleChip
-            on={answers.hardware.shipReaders}
-            label="Need card readers shipped to us"
-            hint="Finix/Quantum partner hardware. Typically more expensive than a BYO ~$75 reader. Drop-ships to your site."
-            onClick={() =>
-              patch((a) => ({
-                ...a,
-                hardware: {
-                  ...a.hardware,
-                  shipReaders: !a.hardware.shipReaders,
-                  readerQty: a.hardware.readerQty || 1,
-                },
-                volume: {
-                  ...a.volume,
-                  terminalNeed: !a.hardware.shipReaders ? "buy" : "none",
-                },
-              }))
-            }
-          />
-          {answers.hardware.shipReaders && (
-            <Field label="How many readers">
-              <Input
-                type="number"
-                min={1}
-                value={answers.hardware.readerQty || 1}
-                onChange={(e) =>
-                  patch((a) => ({
-                    ...a,
-                    hardware: {
-                      ...a.hardware,
-                      readerQty: Math.max(1, Number(e.target.value) || 1),
-                    },
-                  }))
-                }
-              />
-            </Field>
-          )}
+          <Field label="How many Finix/Quantum payments readers (required for live cards)">
+            <Input
+              type="number"
+              min={1}
+              value={answers.hardware.readerQty || 1}
+              onChange={(e) =>
+                patch((a) => ({
+                  ...a,
+                  hardware: {
+                    ...a.hardware,
+                    shipReaders: true,
+                    readerQty: Math.max(1, Number(e.target.value) || 1),
+                  },
+                  volume: { ...a.volume, terminalNeed: "buy" },
+                }))
+              }
+            />
+          </Field>
           <ToggleChip
             on={answers.hardware.shipPartnerDevices}
             label="Need kiosk or other partner devices shipped"

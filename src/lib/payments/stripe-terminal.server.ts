@@ -87,7 +87,7 @@ export async function captureLiveCardPresent(opts: {
       status: "requires_terminal",
       sandbox: false,
       error:
-        "Present card on a Quantum reader. Tablets run the POS; supplied terminals take the card. Use cash or keep the check open.",
+        "Present card on an enrolled Finix/Quantum reader supplied through Summex. Tablets run the POS; they are not card terminals. Customer-owned bank readers are not supported. Use cash or keep the check open.",
     };
   }
 

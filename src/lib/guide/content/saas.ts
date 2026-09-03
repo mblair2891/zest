@@ -46,7 +46,7 @@ export const SAAS_TOPICS: GuideTopic[] = [
       ),
       steps(
         "Get pricing shows a live quote: Counter $0, Full service $149/loc, Multi-operator $299/loc + $49/tenant. Prospect toggles modules (ops pack $99, extra stations $19, kiosk $29, terminal lease $15). Request this quote snapshots those lines.",
-        "Dollar amounts live in Settings → Plans & billing (Get a price catalog forms). Setup defaults to $0. Processing is a note, not software $. Quotes also show: Email included. SMS: 500/mo included, extra at cost. AI reports in Ops pack. PDF, email, and CRM use the same lines. Hardware is BYO by default; optional Finix devices drop-ship to the customer.",
+        "Dollar amounts live in Settings → Plans & billing (Get a price catalog forms). Setup defaults to $0. Processing is a note, not software $. Quotes also show: Email included. SMS: 500/mo included, extra at cost. AI reports in Ops pack. PDF, email, and CRM use the same lines. Tablets, printers, drawers, and gift MSR are BYO. Live cards require Finix/Quantum readers supplied through Summex (drop-ship to the site). Customer-owned Square/Stripe/bank terminals are not supported.",
         "Save draft, then Send quote. The account quote form scrolls — modules, monthly total, setup, and Send sit in that pane (Save/Send stay pinned at the bottom). Email and Print/PDF show monthly software, processing as a separate note (Quantum / cash-discount, not mixed into software $), expires-on, Accept and Request changes.",
         "Merchant taps Accept, or Request changes, or Admin marks accepted. Status becomes accepted. Not a live tenant yet.",
         "Platform Admin records the contract (checkbox + date) → Contracted. Start onboarding is enabled only then, and only if a monthly package quote was accepted. OVERRIDE + reason for an admin skip.",
@@ -80,6 +80,7 @@ export const SAAS_TOPICS: GuideTopic[] = [
         "Floor — table count / sections (you can refine later in the floor editor).",
         "Menu — categories now, CSV later, or leave empty.",
         "Devices — how many POS / ODS stations you expect (Wi-Fi first).",
+        "Hardware — ship-to and quantity of Finix/Quantum readers (required for live cards). Tablets, printers, drawers stay BYO. Training/sandbox can run without a physical reader.",
         "Team — invite emails and roles.",
         "Settlement — host cut, tax remittance, tip pooling. Guest cards are Quantum Payments.",
         "Payments — Quantum Payments application per entity (host and each operator). Live cards wait for that brand’s approval. Cash always works.",

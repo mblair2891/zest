@@ -30,6 +30,7 @@ export function QuantumPaymentsSettings({ write }: { write: boolean }) {
   const saveMode = (paymentsMode: LocationPaymentsMode) => {
     if (!write || isProspectDemo() || !orgId || !locId) return;
     if (paymentsMode === "live" && status?.lifecycleForcesSandbox) return;
+    if (paymentsMode === "live" && !status?.readers.some((r) => r.serial)) return;
     setSaving(true);
     void saveLocationSettingsFn({
       data: { orgId, locationId: locId, setup: { paymentsMode } },
@@ -60,8 +61,10 @@ export function QuantumPaymentsSettings({ write }: { write: boolean }) {
       <p className="text-xs text-muted-foreground">
         Each brand is its own Quantum Payments account. The guest still pays one
         check — capture splits by merchandise owner. Tablets run POS; live cards
-        use a supplied Quantum reader. Never store PAN or CVV. Cash still works
-        if the processor is down.
+        require an enrolled Finix/Quantum reader supplied through Summex.
+        Customer-owned Square, Stripe, or bank terminals are not supported.
+        Training/sandbox works without a physical reader (cash + sandbox). Never
+        store PAN or CVV. Cash still works if the processor is down.
       </p>
       {status?.lifecycleForcesSandbox && (
         <p className="rounded-lg bg-warn/15 px-3 py-2 text-xs font-medium text-warn">
@@ -87,14 +90,20 @@ export function QuantumPaymentsSettings({ write }: { write: boolean }) {
           <option value="sandbox">Sandbox (training)</option>
           <option
             value="live"
-            disabled={!status?.hostPaymentsApproved || status?.lifecycleForcesSandbox}
+            disabled={
+              !status?.hostPaymentsApproved ||
+              status?.lifecycleForcesSandbox ||
+              !status?.readers.some((r) => r.serial)
+            }
           >
             Live card-present
             {status?.lifecycleForcesSandbox
               ? " (go live first)"
               : !status?.hostPaymentsApproved
                 ? " (application required)"
-                : ""}
+                : !status?.readers.some((r) => r.serial)
+                  ? " (enroll a Finix/Quantum reader)"
+                  : ""}
           </option>
         </select>
       </label>

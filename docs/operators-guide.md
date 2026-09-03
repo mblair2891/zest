@@ -1,7 +1,7 @@
 # Operators Guide — authoring
 
-**Revision · 2 Sep 2026** — SMS allotment and caps; AI daily throttle; email stays
-included. Guide v2026.10.34.
+**Revision · 3 Sep 2026** — BYO tablets/printers/drawers; Finix/Quantum readers
+required via Summex. Guide v2026.10.35.
 
 The in-app **Operators Guide** is the living product manual. It is not a
 separate PDF. Staff open it from **Guide** / **?** in the POS and platform

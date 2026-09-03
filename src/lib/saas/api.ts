@@ -402,7 +402,7 @@ export const saveQuoteDraftFn = createServerFn({ method: "POST" })
     locationCount: Number(d.locationCount) || 1,
     setupFeeCents: Math.max(0, Math.round(Number(d.setupFeeCents) || 0)),
     addOns: Array.isArray(d.addOns) ? d.addOns : [],
-    terminalQty: Math.max(0, Math.round(Number(d.terminalQty) || 0)),
+    terminalQty: Math.max(1, Math.round(Number(d.terminalQty) || 1)),
   }))
   .handler(async ({ context, data }) => {
     const { saveQuoteDraft } = await import("./prospects.server");

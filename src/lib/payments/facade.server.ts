@@ -150,9 +150,9 @@ export async function getPaymentsStatus(
       : !hostApproved
         ? "Each brand needs an approved Quantum Payments account before live cards. Cash always works."
         : liveReady
-          ? "Live Quantum Payments. One guest tender splits to each brand’s account. Present the card on a supplied reader."
+          ? "Live Quantum Payments. One guest tender splits to each brand’s account. Present the card on an enrolled Finix/Quantum reader supplied through Summex."
           : liveConfigured
-            ? "Live mode is on, but no Quantum reader is enrolled. Use cash or keep the check open."
+            ? "Live mode is on, but no Finix/Quantum reader is enrolled. Live cards fail closed. Use cash or keep the check open. Customer-owned bank readers are not supported."
             : "Live mode is selected, but live keys are not configured. Use cash or keep the check open.";
   if (resolved.lifecycleForcesSandbox) {
     message =
@@ -286,5 +286,14 @@ export async function captureCardPresent(
   }
 
   const readerId = pickReaderId(setup, input.readerId);
+  if (!readerId) {
+    return {
+      ok: false,
+      status: "requires_terminal",
+      sandbox: false,
+      error:
+        "Live cards require an enrolled Finix/Quantum reader supplied through Summex. Customer-owned bank readers are not supported. Use cash or keep the check open.",
+    };
+  }
   return finish(await captureLiveCardPresent({ input: payload, merchantId, readerId }));
 }

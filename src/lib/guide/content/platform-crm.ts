@@ -231,7 +231,7 @@ export const PLATFORM_CRM_TOPICS: GuideTopic[] = [
         "Database — production Postgres (Neon or equivalent) with migrations applied. No demo seed.",
         "Auth URLs — Sign in and invite links on the public www host. POS/ODS/kiosk on the app host when that host is live; otherwise stay on this origin.",
         "Processor — host Quantum Payments application approved. Training always sandboxes even if someone stored a live-mode preference.",
-        "Reader — enrolled Quantum reader for live card-present. SYOH tablets run POS; they are not card terminals.",
+        "Reader — enrolled Finix/Quantum reader supplied through Summex for live card-present. Tablets, printers, and drawers stay BYO. Customer-owned Square/Stripe/bank terminals are not supported. Live cards fail closed without an enrolled reader.",
         "Tenant status — Tenants list shows training | scheduled_live | live. Owner chooses keep/erase; menus, recipes, staff, settings always stay.",
       ),
       steps(

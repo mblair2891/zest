@@ -161,7 +161,7 @@ export function PaymentDialog({ open, onOpenChange }: Props) {
       if (payStatus && payStatus.mode === "live" && !payStatus.liveReady) {
         setError(
           payStatus.message ||
-            "Card requires a Quantum reader. Take cash or keep the check open.",
+            "Live cards require an enrolled Finix/Quantum reader supplied through Summex. Take cash or keep the check open.",
         );
         return;
       }

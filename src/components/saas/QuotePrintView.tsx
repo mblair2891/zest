@@ -123,9 +123,10 @@ export function QuotePrintView({ detail }: { detail: ProspectDetail }) {
           "Email included. SMS: 500/mo included, extra at cost. AI reports in Ops pack."}{" "}
         {quote.processingNote ||
           "Guest card processing is Quantum Payments, billed separately from software."}{" "}
-        Gift cards are first-party. Bring your own tablets, printers, cash drawers, stands.
-        Card readers can be yours or shipped by our payments partner to your site. This
-        snapshot does not change if the catalog changes later.
+        Gift cards are first-party. Bring your own tablets, printers, cash drawers, and
+        stands. Live cards require Finix / Quantum Payments readers supplied through
+        Summex (drop-ship to your site). Customer-owned bank readers are not supported.
+        This snapshot does not change if the catalog changes later.
       </p>
     </article>
   );

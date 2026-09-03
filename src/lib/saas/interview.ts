@@ -219,8 +219,8 @@ export function applyRecommendation(
   };
   next.hardware = {
     ownsTabletsPrintersDrawers: true,
-    shipReaders: false,
-    readerQty: 0,
+    shipReaders: true,
+    readerQty: Math.max(1, next.hardware?.readerQty || 1),
     readerPay: "purchase",
     shipPartnerDevices: false,
     partnerSkuQty: {},
@@ -481,8 +481,9 @@ Ask 3–8 targeted follow-ups total across the whole interview. Prefer clarifyin
 - kiosk yes/no
 - floor / reservations / waitlist
 - recipes, costing, HR
-- whether they already own tablets / printers / drawers
-- whether they need card readers or other partner devices shipped to their site (Finix drop-ship — Summex does not take possession)
+- whether they already own tablets / printers / drawers (BYO — required)
+- how many Finix/Quantum payments readers to ship via Summex (required for live cards; customer-owned Square/Stripe/bank terminals are not supported)
+- optional partner extras (kiosk/stand) shipped to the site
 Do not interrogate endlessly. When you have enough, return a recommendation.
 
 Reply with JSON only, no markdown. One of:

@@ -22,7 +22,7 @@ export const quoteDraftInputSchema = z.object({
   locationCount: z.number().int().min(1).max(999),
   setupFeeCents: z.number().int().min(0).max(10_000_000),
   addOns: z.array(quoteAddOnSchema).max(24).default([]),
-  terminalQty: z.number().int().min(0).max(200).default(0),
+  terminalQty: z.number().int().min(1).max(200).default(1),
 });
 export type QuoteDraftInput = z.infer<typeof quoteDraftInputSchema>;
 
