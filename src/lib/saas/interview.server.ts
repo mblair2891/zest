@@ -1,9 +1,9 @@
 import { getSql } from "@/lib/db";
 import {
   applyRecommendation,
+  followUpRoundCount,
   heuristicInterviewTurn,
   interviewSystemPrompt,
-  parseMessages,
   parseRecommendation,
 } from "./interview";
 import type {
@@ -99,8 +99,16 @@ function parseTurn(raw: unknown, source: InterviewSource): InterviewTurnResult |
       if (typeof row.hint === "string" && row.hint.trim()) item.hint = row.hint.trim();
       questions.push(item);
     });
-    questions.splice(4);
-    if (questions.length) return { type: "questions", questions, source };
+    questions.splice(5);
+    if (questions.length) {
+      const draft = parseRecommendation(o.draftRecommendation ?? o.draft ?? null);
+      return {
+        type: "questions",
+        questions,
+        source,
+        ...(draft ? { draftRecommendation: draft } : {}),
+      };
+    }
   }
   if (o.type === "recommendation" || o.recommendation) {
     const rec = parseRecommendation(o.recommendation ?? o);
@@ -127,7 +135,7 @@ export async function runInterviewTurn(opts: {
   if (!prospect) throw new Error("Prospect not found");
   await assertCanAccessProspect({ userId: opts.userId, prospect, token, write: true });
 
-  const freeText = opts.freeText.trim();
+  const freeText = opts.freeText.replace(/^Contact email:[^\n]*\n/i, "").trim();
   if (freeText.length < 40) {
     throw new Error("Describe the operation in at least a couple of sentences (~40 characters).");
   }
@@ -135,6 +143,11 @@ export async function runInterviewTurn(opts: {
   const prior = prospect.interviewMessages;
   const now = new Date().toISOString();
   const messages: InterviewMessage[] = [...prior];
+  const storedNarrative = (prospect.interviewFreeText || "").trim();
+  const newFacts =
+    storedNarrative.length > 0 &&
+    freeText.length > storedNarrative.length + 24 &&
+    freeText !== storedNarrative;
   if (!messages.length || messages[0]?.text !== freeText) {
     if (!messages.some((m) => m.role === "user" && m.text === freeText)) {
       messages.push({ role: "user", text: freeText, at: now });
@@ -148,9 +161,19 @@ export async function runInterviewTurn(opts: {
     if (blob) messages.push({ role: "user", text: blob, at: now });
   }
 
-  const userTurns = messages.filter((m) => m.role === "user").length;
+  const rounds = followUpRoundCount(messages);
+  const forceRecommend = rounds >= 2 && Boolean(opts.replies?.length) && !newFacts;
   let turn: InterviewTurnResult | null = null;
   let source: InterviewSource = "heuristic";
+
+  const intakeSnapshot = {
+    company: prospect.answers.company,
+    portfolio: prospect.answers.portfolio,
+    operating: prospect.answers.operating,
+    modules: prospect.answers.modules,
+    volume: prospect.answers.volume,
+    hardware: prospect.answers.hardware,
+  };
 
   try {
     const content = await callModel([
@@ -159,12 +182,13 @@ export async function runInterviewTurn(opts: {
         role: "user",
         content: JSON.stringify({
           freeText,
+          intakeAlreadyFilled: intakeSnapshot,
           priorMessages: messages.map((m) => ({ role: m.role, text: m.text })),
-          userTurns,
-          instruction:
-            userTurns >= 5
-              ? "Return a recommendation now. Do not ask more questions."
-              : "Ask at most 3 short follow-ups if needed, else recommend.",
+          followUpRound: rounds,
+          newFactsAdded: newFacts,
+          instruction: forceRecommend
+            ? "Two follow-up rounds are done. Return a recommendation now. Do not ask more questions."
+            : "Ask 2–5 questions only about what is missing or ambiguous in THEIR description. Do not use a generic list. Include draftRecommendation.",
         }),
       },
     ]);
@@ -177,22 +201,16 @@ export async function runInterviewTurn(opts: {
     source = "heuristic";
   }
 
+  if (forceRecommend && turn?.type === "questions") {
+    turn = null;
+  }
+
   if (!turn) {
-    turn = heuristicInterviewTurn({ freeText, messages });
+    turn = heuristicInterviewTurn({ freeText, messages, forceRecommend });
     source = "heuristic";
   }
-  if (userTurns >= 6 && turn.type === "questions") {
-    turn = heuristicInterviewTurn({ freeText, messages: [...messages, { role: "assistant", text: "force rec", at: now }] });
-    if (turn.type === "questions") {
-      const recTurn = heuristicInterviewTurn({
-        freeText,
-        messages: [
-          ...messages,
-          { role: "assistant", text: "[q:locations] [q:model] [q:one_check] [q:routing] [q:channels] [q:volume] [q:scale]", at: now },
-        ],
-      });
-      turn = recTurn.type === "recommendation" ? recTurn : turn;
-    }
+  if (forceRecommend && turn.type === "questions") {
+    turn = heuristicInterviewTurn({ freeText, messages, forceRecommend: true });
   }
 
   if (turn.type === "questions") {
@@ -208,12 +226,11 @@ export async function runInterviewTurn(opts: {
     });
   }
 
-  const recJson =
+  const recForStore =
     turn.type === "recommendation"
-      ? JSON.stringify(turn.recommendation)
-      : prospect.interviewRecommendation
-        ? JSON.stringify(prospect.interviewRecommendation)
-        : null;
+      ? turn.recommendation
+      : turn.draftRecommendation ?? prospect.interviewRecommendation;
+  const recJson = recForStore ? JSON.stringify(recForStore) : null;
   const sql = await getSql();
   await sql`
     update prospects

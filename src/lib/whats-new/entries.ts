@@ -6,6 +6,19 @@ import type { GuideUpdate } from "@/lib/guide/types";
  */
 export const WHATS_NEW_ENTRIES: GuideUpdate[] = [
   {
+    id: "upd_2026_10_36_intake_narrative",
+    date: "2026-09-03",
+    title: "Get-a-price questions from what you typed",
+    summary:
+      "Clarifying questions are derived from the prospect’s description — not a canned list.",
+    body: "Describe the house in the free-text box (type or voice). Follow-ups only ask what is missing in that text: a food hall is asked tenant count and who takes the card; a coffee counter is not asked about wells or a host stand. At most two rounds. Suggested modules and monthly price recalculate. Narrative, Q&A, and recommended modules stay on the lead.",
+    roles: ["platform_admin"],
+    surfaces: ["platform"],
+    audience: "platform",
+    topicId: "prospect-intake",
+    tags: ["quote", "intake", "ai"],
+  },
+  {
     id: "upd_2026_10_35_required_readers",
     date: "2026-09-03",
     title: "Required Finix readers, BYO everything else",

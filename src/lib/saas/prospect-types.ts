@@ -208,6 +208,8 @@ export type InterviewTurnResult =
       type: "questions";
       questions: InterviewQuestion[];
       source: InterviewSource;
+      /** Partial package guess so the prospect can toggle modules while answering. */
+      draftRecommendation?: InterviewRecommendation;
     }
   | {
       type: "recommendation";

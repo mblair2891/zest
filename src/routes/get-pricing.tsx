@@ -20,7 +20,8 @@ function GetPricingPage() {
         </p>
         <h1 className="mt-2 text-3xl font-semibold tracking-tight">Get pricing</h1>
         <p className="mt-2 max-w-xl text-sm text-muted-foreground">
-          Describe the house, then see a live monthly software price. Bring your own
+          Describe the house in your own words. Follow-ups are specific to what you
+          typed — not a canned list. Then see a live monthly software price. Bring your own
           tablets, printers, cash drawers, and stands — Summex is the software. Live
           cards require Finix / Quantum Payments readers supplied through Summex (we
           ship them to your site). Customer-owned bank readers are not supported.

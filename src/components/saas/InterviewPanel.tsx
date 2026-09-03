@@ -8,18 +8,23 @@ import {
   finishInterviewFn,
   interviewAiStatusFn,
   interviewTurnFn,
+  loadPublicQuoteCatalogFn,
 } from "@/lib/saas/api";
 import type {
   InterviewMessage,
   InterviewQuestion,
   InterviewRecommendation,
   InterviewSource,
+  QuoteCatalog,
 } from "@/lib/saas/prospect-types";
 import { MODULE_LABELS } from "@/lib/saas/prospect-types";
 import type { IntakeAnswers } from "@/lib/saas/prospect-types";
 import { VENUE_ENTITIES } from "@/lib/pos/entities";
 import type { LocationMode } from "@/lib/pos/saas-types";
-import { planLabel } from "@/lib/saas/pricing";
+import { applyRecommendation } from "@/lib/saas/interview";
+import { DEFAULT_PRICING_RULES, emptyIntakeAnswers, generateQuote, planLabel } from "@/lib/saas/pricing";
+import { DEFAULT_QUOTE_CATALOG } from "@/lib/saas/quote-catalog";
+import { QuoteSummary } from "./QuoteSummary";
 
 export function InterviewPanel({
   token,
@@ -48,11 +53,15 @@ export function InterviewPanel({
   const [ai, setAi] = useState<boolean | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [catalog, setCatalog] = useState<QuoteCatalog>(DEFAULT_QUOTE_CATALOG);
 
   useEffect(() => {
     void interviewAiStatusFn()
       .then((r) => setAi(r.ai))
       .catch(() => setAi(false));
+    void loadPublicQuoteCatalogFn()
+      .then((r) => setCatalog(r.catalog))
+      .catch(() => undefined);
   }, []);
 
   const runTurn = async (withReplies: boolean) => {
@@ -80,7 +89,7 @@ export function InterviewPanel({
       if (res.turn.type === "questions") {
         setQuestions(res.turn.questions);
         setReplies({});
-        setRec(null);
+        if (res.turn.draftRecommendation) setRec(res.turn.draftRecommendation);
       } else {
         setQuestions([]);
         setRec(res.turn.recommendation);
@@ -130,9 +139,8 @@ export function InterviewPanel({
         </p>
         <h2 className="mt-1 text-2xl font-semibold tracking-tight">Describe the operation</h2>
         <p className="mt-1.5 text-sm leading-relaxed text-muted-foreground">
-          In your own words: locations, bar vs kitchen, host vs single operator, volume,
-          what you need. We will ask a few follow-ups, then recommend a setup you can
-          edit. Guest cards are always Quantum Payments.
+          Type or speak what you run. Follow-ups are specific to what you typed — we
+          will not walk a canned list. Guest cards are always Quantum Payments.
         </p>
         {ai !== null && (
           <Badge className="mt-2" variant={ai ? "info" : "secondary"}>
@@ -163,21 +171,11 @@ export function InterviewPanel({
         </span>
       </Field>
 
-      {messages.filter((m) => m.role === "assistant").length > 0 && (
-        <ol className="space-y-2 rounded-2xl border border-border bg-surface p-4 text-sm">
-          {messages.map((m, i) => (
-            <li key={`${m.at}-${i}`}>
-              <span className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
-                {m.role === "user" ? "You" : "Summex"}
-              </span>
-              <p className="mt-0.5 whitespace-pre-wrap text-sm">{m.text.replace(/\[q:[^\]]+\]\s*/g, "")}</p>
-            </li>
-          ))}
-        </ol>
-      )}
-
       {questions.length > 0 && (
         <div className="space-y-3">
+          <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+            From what you wrote
+          </p>
           {questions.map((q) => (
             <Field key={q.id} label={q.prompt} hint={q.hint}>
               <VoiceTextarea
@@ -199,6 +197,7 @@ export function InterviewPanel({
         <RecommendationCard
           rec={rec}
           source={source}
+          catalog={catalog}
           onChange={setRec}
           onAccept={() => void accept()}
           busy={busy}
@@ -214,7 +213,7 @@ export function InterviewPanel({
       <div className="flex flex-wrap gap-2">
         {!rec && (
           <Button disabled={busy} onClick={() => void runTurn(false)}>
-            {busy ? "Analyzing…" : questions.length ? "Re-analyze" : "Analyze"}
+            {busy ? "Analyzing…" : questions.length || messages.length ? "Re-analyze" : "Analyze"}
           </Button>
         )}
         <Button variant="outline" disabled={busy} onClick={() => void skip()}>
@@ -228,12 +227,14 @@ export function InterviewPanel({
 function RecommendationCard({
   rec,
   source,
+  catalog,
   onChange,
   onAccept,
   busy,
 }: {
   rec: InterviewRecommendation;
   source: InterviewSource | null;
+  catalog: QuoteCatalog;
   onChange: (r: InterviewRecommendation) => void;
   onAccept: () => void;
   busy: boolean;
@@ -355,6 +356,14 @@ function RecommendationCard({
         Suggested plan: {planLabel(rec.pricingHints.suggestedPlan)}
         {rec.pricingHints.notes ? ` — ${rec.pricingHints.notes}` : ""}
       </p>
+      <QuoteSummary
+        quote={generateQuote(
+          applyRecommendation(emptyIntakeAnswers(), rec),
+          { ...DEFAULT_PRICING_RULES, quoteCatalog: catalog },
+          { draft: true },
+        )}
+        compact
+      />
       {rec.rationale.length > 0 && (
         <ul className="list-disc space-y-1 pl-4 text-xs text-muted-foreground">
           {rec.rationale.map((r) => (

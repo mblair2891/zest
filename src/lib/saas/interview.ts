@@ -250,99 +250,218 @@ function askedIds(messages: InterviewMessage[]): Set<string> {
   return ids;
 }
 
-const QUESTION_BANK: InterviewQuestion[] = [
-  {
-    id: "locations",
-    prompt: "How many locations do you operate today, and how many in the next 12 months?",
-    hint: "A number is enough — e.g. 1 now, 2 next year.",
-  },
-  {
-    id: "model",
-    prompt: "Is each location a single operator, or a host with multiple operators / vendors?",
-    hint: "Food halls and truck pods are typically host + operators.",
-  },
-  {
-    id: "one_check",
-    prompt: "Do guests pay one host check (split settlement), or pay each operator separately?",
-  },
-  {
-    id: "routing",
-    prompt: "Do bar and kitchen run as separate stations that need their own displays?",
-  },
-  {
-    id: "channels",
-    prompt: "Which channels do you need: floor / table service, counter, ODS, online/order-ahead, kiosk?",
-  },
-  {
-    id: "volume",
-    prompt: "Rough monthly guest-check volume or GMV band (under $50k, $50–150k, $150–400k, $400k+)?",
-  },
-  {
-    id: "scale",
-    prompt: "Peak concurrent devices (POS, ODS, handhelds) and roughly how many staff logins?",
-  },
-];
+export function followUpRoundCount(messages: InterviewMessage[]): number {
+  return messages.filter((m) => m.role === "assistant" && /\[q:/.test(m.text)).length;
+}
+
+export type NarrativeShape =
+  | "hall"
+  | "cafe"
+  | "qsr"
+  | "bar"
+  | "full_service"
+  | "ghost"
+  | "unknown";
+
+export type NarrativeFacts = {
+  shape: NarrativeShape;
+  hostLikely: boolean;
+  singleLikely: boolean;
+  locCount: number;
+  operatorCount: number;
+  seats: number;
+  devices: number;
+  hasBar: boolean;
+  noBar: boolean;
+  hasKitchen: boolean;
+  hasFloor: boolean;
+  hasCounter: boolean;
+  oneCheck: boolean;
+  payEach: boolean;
+  reservations: boolean;
+  waitlist: boolean;
+  kiosk: boolean;
+  online: boolean;
+  cashVsCard: boolean;
+  sections: boolean;
+};
+
+export function inferNarrativeFacts(corpus: string): NarrativeFacts {
+  const hostLikely = has(
+    corpus,
+    "food hall",
+    "foodhall",
+    "hall with",
+    "two kitchens",
+    "2 kitchens",
+    "stall",
+    "stalls",
+    "vendors",
+    "operators",
+    "multi-vendor",
+    "multi vendor",
+    "multiple operators",
+    "truck pod",
+    "pod",
+  );
+  const singleLikely = has(
+    corpus,
+    "single operator",
+    "just us",
+    "one team",
+    "owner-operated",
+    "family run",
+    "our shop",
+    "my cafe",
+    "my coffee",
+    "one iPad",
+    "one ipad",
+    "one tablet",
+  );
+  const hasBar = has(corpus, "bar", "well", "wells", "cocktail", "lounge", "spirits", "tap");
+  const noBar = has(corpus, "no bar", "without a bar", "no liquor", "no alcohol", "beer and wine only")
+    || (has(corpus, "coffee", "cafe", "café", "espresso") && !hasBar);
+  const hasKitchen = has(corpus, "kitchen", "kitchens", "cook", "line");
+  const hasFloor = has(corpus, "seat", "seats", "server", "servers", "table", "tables", "dining", "floor", "section");
+  const hasCounter = has(corpus, "counter", "qsr", "quick service", "takeout", "coffee", "cafe", "café", "window");
+  const locCount = firstInt(corpus, [/(\d+)\s+(location|site|venue|spot)/i], 0);
+  const operatorCount = firstInt(corpus, [/(\d+)\s+(operator|vendor|stall|concept|kitchen)/i], 0);
+  const seats = firstInt(corpus, [/(\d+)\s+(seat|covers)/i], 0);
+  let devices = firstInt(
+    corpus,
+    [/(\d+)\s+(ipad|tablet|device|terminal|handheld|pos|station)/i],
+    0,
+  );
+  if (devices < 1 && has(corpus, "one ipad", "one tablet", "an ipad")) devices = 1;
+  let shape: NarrativeShape = "unknown";
+  if (hostLikely || has(corpus, "food hall", "foodhall")) shape = "hall";
+  else if (has(corpus, "ghost")) shape = "ghost";
+  else if (has(corpus, "cafe", "café", "coffee", "espresso") && !hasFloor) shape = "cafe";
+  else if (has(corpus, "qsr", "quick service", "counter") && !hasFloor) shape = "qsr";
+  else if (hasBar && !hasFloor) shape = "bar";
+  else if (hasFloor || seats >= 20) shape = "full_service";
+  else if (hasCounter) shape = "cafe";
+
+  return {
+    shape,
+    hostLikely,
+    singleLikely: singleLikely && !hostLikely,
+    locCount,
+    operatorCount,
+    seats,
+    devices,
+    hasBar: hasBar && !noBar,
+    noBar,
+    hasKitchen,
+    hasFloor,
+    hasCounter,
+    oneCheck: has(corpus, "one check", "one host check", "split settlement", "split capture"),
+    payEach: has(corpus, "pay each", "per vendor", "own terminal", "each pays"),
+    reservations: has(corpus, "reservation", "book a table", "opentable"),
+    waitlist: has(corpus, "waitlist", "wait list"),
+    kiosk: has(corpus, "kiosk"),
+    online: has(corpus, "online", "order-ahead", "order ahead", "website", "delivery"),
+    cashVsCard: has(corpus, "cash", "card", "quantum", "reader"),
+    sections: has(corpus, "section", "sections", "server section"),
+  };
+}
+
+function q(id: string, prompt: string, hint?: string): InterviewQuestion {
+  return hint ? { id, prompt, hint } : { id, prompt };
+}
+
+/** 1–3 questions that only fill gaps in THIS narrative. Never a canned script. */
+export function gapQuestionsFromNarrative(
+  facts: NarrativeFacts,
+  asked: Set<string>,
+): InterviewQuestion[] {
+  const out: InterviewQuestion[] = [];
+  const add = (item: InterviewQuestion) => {
+    if (!asked.has(item.id) && out.length < 3) out.push(item);
+  };
+
+  if (facts.shape === "hall") {
+    if (facts.operatorCount < 2) {
+      add(q("tenants", "How many tenant operators (brands) sit on that floor?", "A number is enough — e.g. two kitchens plus a bar."));
+    }
+    if (!facts.oneCheck && !facts.payEach) {
+      add(q("one_check", "Who takes the guest card — one host check, or does each brand swipe separately?"));
+    }
+    if (!facts.hasFloor && !asked.has("shared_floor")) {
+      add(q("shared_floor", "Is the dining room a shared floor (one host stand), or does each kitchen run its own seating?"));
+    }
+    return out;
+  }
+
+  if (facts.shape === "cafe" || facts.shape === "qsr") {
+    if (!facts.online && !facts.kiosk) {
+      add(q("channels_light", "Besides the counter, do you need online / order-ahead or a guest kiosk?"));
+    }
+    if (facts.devices < 1) {
+      add(q("stations_light", "How many order tablets and kitchen/bar displays will you run?"));
+    }
+    return out;
+  }
+
+  if (facts.shape === "full_service") {
+    if (!facts.sections && facts.seats >= 20) {
+      add(q("sections", "Do you split the room into server sections?"));
+    }
+    if (!facts.reservations && !facts.waitlist) {
+      add(q("reservations", "Do you take reservations or run a waitlist, or walk-in only?"));
+    }
+    if (!facts.cashVsCard) {
+      add(q("cash_card", "Mostly card, mostly cash, or a mix?"));
+    }
+    return out;
+  }
+
+  if (facts.shape === "bar") {
+    if (!facts.hasKitchen && !asked.has("food")) {
+      add(q("food", "Is this drinks-only, or is there a kitchen / food program too?"));
+    }
+    if (facts.hasBar && !hasWellsKnown(facts)) {
+      add(q("wells", "How many bar wells / bartender stations?"));
+    }
+    return out;
+  }
+
+  if (facts.locCount < 1 && facts.shape === "unknown") {
+    add(q("what_you_run", "What kind of house is this — counter, dining room, bar, or a hall with more than one brand?"));
+  }
+  if (!facts.hostLikely && !facts.singleLikely && facts.shape === "unknown") {
+    add(q("model", "Is this one operator, or a host with more than one brand on the same floor?"));
+  }
+  return out;
+}
+
+function hasWellsKnown(facts: NarrativeFacts): boolean {
+  return facts.devices > 0 && facts.hasBar;
+}
 
 export function heuristicInterviewTurn(opts: {
   freeText: string;
   messages: InterviewMessage[];
+  forceRecommend?: boolean;
 }): InterviewTurnResult {
   const corpus = corpusOf(opts.freeText, opts.messages);
+  const facts = inferNarrativeFacts(corpus);
   const asked = askedIds(opts.messages);
-  const followupRounds = opts.messages.filter((m) => m.role === "user").length;
-  const missing: InterviewQuestion[] = [];
+  const rounds = followUpRoundCount(opts.messages);
+  const rec = heuristicRecommendation(corpus, opts.freeText);
+  const missing = gapQuestionsFromNarrative(facts, asked);
 
-  const locKnown =
-    firstInt(corpus, [/(\d+)\s+(location|site|venue|spot)/i, /(\d+)\s+now/i], 0) > 0 ||
-    has(corpus, "one location", "single location", "a location", "this location");
-  const hostSignal = has(
-    corpus,
-    "food hall",
-    "foodhall",
-    "host",
-    "vendor",
-    "operators",
-    "stall",
-    "pod",
-    "multi-vendor",
-    "multi vendor",
-    "multiple operators",
-  );
-  const singleSignal = has(corpus, "single operator", "just us", "one team", "owner-operated");
-  const payKnown = has(corpus, "one check", "one host check", "split settlement", "pay each", "per vendor");
-  const routingKnown = has(corpus, "bar and kitchen", "separate station", "kds", "expo", "bar display");
-  const channelKnown = has(
-    corpus,
-    "floor",
-    "table service",
-    "kds",
-    "online",
-    "order-ahead",
-    "kiosk",
-    "counter",
-  );
-  const volumeKnown = has(corpus, "gmv", "volume", "checks", "50k", "150k", "400k", "$");
-  const scaleKnown = has(corpus, "device", "terminal", "handheld", "seat", "staff", "login");
-
-  if (!locKnown && !asked.has("locations")) missing.push(QUESTION_BANK[0]!);
-  if (!hostSignal && !singleSignal && !asked.has("model")) missing.push(QUESTION_BANK[1]!);
-  if (hostSignal && !payKnown && !asked.has("one_check")) missing.push(QUESTION_BANK[2]!);
-  if (!routingKnown && !asked.has("routing")) missing.push(QUESTION_BANK[3]!);
-  if (!channelKnown && !asked.has("channels")) missing.push(QUESTION_BANK[4]!);
-  if (!volumeKnown && !asked.has("volume")) missing.push(QUESTION_BANK[5]!);
-  if (!scaleKnown && !asked.has("scale")) missing.push(QUESTION_BANK[6]!);
-
-  const shouldRecommend = followupRounds >= 3 || missing.length === 0 || asked.size >= 6;
-  if (!shouldRecommend && missing.length > 0) {
-    const batch = missing.slice(0, 2).map((q) => ({
-      ...q,
-      prompt: q.prompt,
-    }));
-    return { type: "questions", questions: batch, source: "heuristic" };
+  if (!opts.forceRecommend && rounds < 2 && missing.length > 0) {
+    return {
+      type: "questions",
+      questions: missing.slice(0, 3),
+      source: "heuristic",
+      draftRecommendation: rec,
+    };
   }
   return {
     type: "recommendation",
-    recommendation: heuristicRecommendation(corpus, opts.freeText),
+    recommendation: rec,
     source: "heuristic",
   };
 }
@@ -394,10 +513,12 @@ export function heuristicRecommendation(corpus: string, freeText: string): Inter
   if (has(corpus, "multi-location", "multiple location", "portfolio")) {
     modules.add("multiLocationReporting");
   }
-  if (modules.size <= 1) {
-    modules.add("tableService");
-    modules.add("online");
-    modules.add("labor");
+  if (modules.size <= 1 && host) {
+    modules.add("vendorPortal");
+  }
+  if (modules.size <= 1 && has(corpus, "coffee", "cafe", "café", "counter", "qsr")) {
+    modules.add("counterQsr");
+    modules.add("kds");
   }
 
   const locations = firstInt(corpus, [/(\d+)\s+(location|site|venue|spot)/i], 1);
@@ -462,31 +583,30 @@ export function parseMessages(raw: unknown): InterviewMessage[] {
 }
 
 export function interviewSystemPrompt(): string {
-  return `You are interviewing a hospitality operator for Summex SaaS pricing.
-Summex is multi-tenant restaurant software: restaurants, bars, cafes, QSR, food halls, truck pods, ghost kitchens, catering.
-Guest card processing is ALWAYS Quantum Payments. Each entity is its own merchant; one guest check; split capture; receipts group by vendor. Never recommend Stripe, Square, or Adyen.
-Gift cards are first-party (our ledger), not an external vendor.
+  return `You interview a hospitality operator for Summex pricing. Questions MUST be derived from THEIR free-text description. Never use a fixed same-for-everybody list.
 
-Only recommend catalog options:
+Summex: restaurants, bars, cafés, QSR, food halls, truck pods, ghost kitchens, catering.
+Guest cards are ALWAYS Quantum Payments (per-entity merchant, one guest check, split capture). Never recommend Square, Stripe, or Adyen. Gift cards are first-party. Tablets/printers/drawers are BYO. Live cards need Finix/Quantum readers supplied through Summex.
+
+Catalog only:
 - venueTypes: restaurant, food_hall, truck_pod, ghost_kitchen, catering, bar_lounge, cafe, qsr
 - modules: tableService, counterQsr, kiosk, online, kds, inventory, labor, giftCards, crm, marketing, vendorPortal, multiLocationReporting
 - operatingModel: host_multi_operator OR single_operator
 - suggestedPlan: starter | full_service | food_hall
 
-Ask 3–8 targeted follow-ups total across the whole interview. Prefer clarifying:
-- entity type (restaurant, hall, bar, QSR…)
-- number of tenant operators
-- number of order stations and ODS displays
-- host stand yes/no
-- kiosk yes/no
-- floor / reservations / waitlist
-- recipes, costing, HR
-- whether they already own tablets / printers / drawers (BYO — required)
-- how many Finix/Quantum payments readers to ship via Summex (required for live cards; customer-owned Square/Stripe/bank terminals are not supported)
-- optional partner extras (kiosk/stand) shipped to the site
-Do not interrogate endlessly. When you have enough, return a recommendation.
+Rules:
+1. Read the narrative + structured intake already filled + prior Q&A.
+2. Ask 2–5 clarifying questions that only cover what is missing or ambiguous in THEIR description.
+3. Do not ask anything already stated in the text or prior fields.
+4. Do not ask about features their description does not imply.
+   Examples:
+   - "food hall, two kitchens" → tenant count, who takes the card, shared floor or not. Not espresso machines.
+   - "coffee counter, one iPad" → do NOT ask about wells, host stand, or tip pools.
+   - "80 seats, servers, no bar" → skip multi-well; ask sections, reservations, cash vs card.
+5. Max TWO rounds of follow-ups unless they add new facts in the narrative. After two rounds, return a recommendation.
+6. Always include a draftRecommendation (best guess from what they already wrote) alongside questions so they can toggle modules.
 
-Reply with JSON only, no markdown. One of:
-{"type":"questions","questions":[{"id":"snake_id","prompt":"...","hint":"..."}]}
+JSON only, no markdown. One of:
+{"type":"questions","questions":[{"id":"snake_id","prompt":"...","hint":"..."}],"draftRecommendation":{...}}
 {"type":"recommendation","recommendation":{"summary":"...","operatingModel":"host_multi_operator"|"single_operator","venueTypes":["restaurant"],"modules":["kds","online"],"estimates":{"locations":1,"operators":2,"seats":15,"devices":6},"rationale":["..."],"pricingHints":{"suggestedPlan":"food_hall","notes":"..."}}}`;
 }

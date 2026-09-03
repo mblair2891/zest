@@ -1,7 +1,7 @@
 # Operators Guide — authoring
 
-**Revision · 3 Sep 2026** — BYO tablets/printers/drawers; Finix/Quantum readers
-required via Summex. Guide v2026.10.35.
+**Revision · 3 Sep 2026** — Get-a-price interview is specific to what you typed.
+Guide v2026.10.36.
 
 The in-app **Operators Guide** is the living product manual. It is not a
 separate PDF. Staff open it from **Guide** / **?** in the POS and platform

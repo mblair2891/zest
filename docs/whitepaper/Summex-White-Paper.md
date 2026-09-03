@@ -3,7 +3,7 @@
 **Powered by Quantum Reach**
 
 White paper · October 2026  
-**Revision · 3 Sep 2026** — Tablets, printers, and drawers stay BYO. Live cards require Finix/Quantum readers supplied through Summex. Aligns with Operators Guide v2026.10.35.
+**Revision · 3 Sep 2026** — Get-a-price interview is specific to what you typed. Aligns with Operators Guide v2026.10.36.
 
 summex.app  
 Guest cards: **Quantum Payments** only
@@ -271,7 +271,7 @@ Software billing is **not** guest card processing.
 
 Get a price shows: “Email included. SMS: 500/mo included, extra at cost. AI reports in Ops pack.”
 
-Get a price shows this live. The prospect can toggle modules; monthly recalculates before they request the quote. PDF, email, and the CRM quote use the same lines. Onboarding does not start until that monthly package quote is accepted (platform override requires a reason).
+The pricing interview is **specific to what you typed**. Clarifying questions only fill gaps in that description (at most two rounds). A coffee counter is not asked about wells or a host stand. Toggle modules; monthly recalculates before they request the quote. PDF, email, and the CRM quote use the same lines. Onboarding does not start until that monthly package quote is accepted (platform override requires a reason).
 
 This paper is **not** a rate card. Snapshot quotes come from the live catalog at send time.
 

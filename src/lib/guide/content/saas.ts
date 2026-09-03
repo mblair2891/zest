@@ -15,8 +15,8 @@ export const SAAS_TOPICS: GuideTopic[] = [
         "Pricing should start from how the house actually runs — single brand vs host + operators — not from a generic SKU list.",
       ),
       steps(
-        "Open Get pricing. Describe the operation in the interview (or skip to the form).",
-        "Answer follow-ups. The assistant (or a local heuristic if no AI key is set) proposes a recommendation card.",
+        "Open Get pricing. Describe the operation in your own words (type or voice).",
+        "Follow-ups are specific to what you typed — not a canned list. A coffee counter is not asked about wells or a host stand. A food hall is asked tenant count and who takes the card. At most two rounds. Then toggle modules; monthly recalculates.",
         "Confirm or edit the structured form: company, portfolio, ops model, modules, volume, payments, timeline.",
         "Submit. That creates a CRM lead and a quote request — not a sent proposal yet.",
         "You land on a request-received page. Platform builds a monthly software package from those answers (and the interview recommendation if they confirmed it), then sends the quote.",
