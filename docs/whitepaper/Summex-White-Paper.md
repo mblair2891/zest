@@ -3,7 +3,7 @@
 **Powered by Quantum Reach**
 
 White paper · October 2026  
-**Revision · 4 Sep 2026** — shared building, no landlord-brand POS. Aligns with Operators Guide v2026.10.38.
+**Revision · 4 Sep 2026** — QR order/pay: table tents, ticket codes, location modes. Aligns with Operators Guide v2026.10.39.
 
 summex.app  
 Guest cards: **Quantum Payments** only
@@ -92,6 +92,7 @@ The guest should not have to understand the house’s corporate structure.
 - One guest-facing brand (the location / host name).
 - One card tender on Quantum Payments. The guest never sees Finix.
 - Printed receipts group items by vendor; the guest still holds one check.
+- Table QR is scoped to that table’s open check. Ticket QR is signed to the check and expires. Location settings pick combinable modes (self-serve, reorder after staff open, pay/split, print QR on the ticket, table tents). Guest UI is public — no PIN. After pay they stay on thank-you, not Sign in.
 - Printed menu prices stay **pretty** (e.g. $15.00). If the house offers a cash discount, cash prices are computed — they are not a second ugly menu.
 
 The guest does not see operator splits, host cut, ledger rows, or device roles.

@@ -1,7 +1,7 @@
 # Operators Guide — authoring
 
-**Revision · 4 Sep 2026** — shared building, no landlord-brand POS.
-Guide v2026.10.38.
+**Revision · 4 Sep 2026** — QR order/pay: table tents, ticket codes, location modes.
+Guide v2026.10.39.
 
 The in-app **Operators Guide** is the living product manual. It is not a
 separate PDF. Staff open it from **Guide** / **?** in the POS and platform

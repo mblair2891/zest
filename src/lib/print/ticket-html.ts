@@ -109,6 +109,14 @@ export function ticketHtml(job: PrintJob): string {
   <div class="rule"></div>
   ${items}
   ${totals}
+  ${
+    job.qrUrl
+      ? `<div class="muted" style="margin-top:12px">
+           <img src="https://api.qrserver.com/v1/create-qr-code/?size=140x140&margin=4&data=${encodeURIComponent(job.qrUrl)}" width="140" height="140" alt="Pay QR"/>
+           <div>${esc(job.qrCaption || "Scan to pay this check")}</div>
+         </div>`
+      : ""
+  }
   <p class="muted">Quantum Payments · Summex</p>
 </body>
 </html>`;

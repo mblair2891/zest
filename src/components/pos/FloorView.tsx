@@ -40,7 +40,9 @@ import {
   tableFlash,
   type FloorPipelineStatus,
 } from "@/lib/pos/floor-status";
-import { QR_MODE_LABEL, parseQrMode, tableGuestUrl } from "@/lib/pos/qr-table";
+import { parseQrMode, tableGuestUrl } from "@/lib/pos/qr-table";
+import { parseQrPolicy, qrPolicySummary, qrTableTents } from "@/lib/pos/qr-policy";
+import { printTableTents } from "@/lib/print/from-store";
 import { getDemoType } from "@/lib/demo/session";
 import { cn, formatCurrency, formatTime } from "@/lib/utils";
 import { computeTotals } from "@/lib/pos/calculations";
@@ -106,6 +108,7 @@ export function FloorView() {
   const locked = emp ? roleIsLocked(emp.role, policy) : false;
   const floorCfg = parseFloorStatusConfig(settings.floorStatusConfig);
   const qrMode = parseQrMode(settings.qrMode);
+  const qrPolicy = parseQrPolicy(settings.qrPolicy, settings.qrMode);
   const demoType = getDemoType();
   const canStatus = canChangeTableStatus(emp?.role, floorCfg);
   const canSeat = canSeatTable(emp?.role, floorCfg);
@@ -684,9 +687,21 @@ export function FloorView() {
 
             <div className="rounded-xl border border-border bg-bg p-3">
               <p className="mb-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                QR · {qrMode === "full" ? "Full" : qrMode === "hybrid" ? "Hybrid" : "Pay only"}
+                QR · {qrPolicySummary(qrPolicy)}
               </p>
-              <p className="text-[11px] text-muted-foreground">{QR_MODE_LABEL[qrMode]}</p>
+              <p className="text-[11px] text-muted-foreground">
+                Table QR is scoped to this table’s open check. Ticket QR is on the printed check.
+              </p>
+              {qrTableTents(qrPolicy) && (
+                <Button
+                  className="mt-2 w-full"
+                  size="sm"
+                  variant="outline"
+                  onClick={() => void printTableTents()}
+                >
+                  Print table tents
+                </Button>
+              )}
             </div>
 
             <div className="rounded-xl border border-border bg-bg p-3">
@@ -1331,7 +1346,7 @@ function TableDetailBody({
       {qrOpen && (
         <div className="rounded-xl border border-border bg-bg p-3 text-center" data-demo="table-qr">
           <p className="mb-2 text-xs text-muted-foreground">
-            {QR_MODE_LABEL[qrMode]}
+            {qrPolicySummary(parseQrPolicy(undefined, qrMode))}
           </p>
           <QrMark value={tableGuestUrl(table, { demoType })} />
           <div className="mt-2 flex flex-col gap-1.5">

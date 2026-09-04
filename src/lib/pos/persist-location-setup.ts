@@ -18,6 +18,30 @@ function ids(): { orgId: string; locationId: string } | null {
   return { orgId, locationId };
 }
 
+export function persistQrPolicy(): void {
+  const ctx = ids();
+  if (!ctx) return;
+  const prev = timers.get("qr");
+  if (prev) clearTimeout(prev);
+  timers.set(
+    "qr",
+    setTimeout(() => {
+      timers.delete("qr");
+      const settings = usePosStore.getState().settings;
+      void saveLocationSettingsFn({
+        data: {
+          orgId: ctx.orgId,
+          locationId: ctx.locationId,
+          setup: {
+            qrMode: settings.qrMode,
+            qrPolicy: settings.qrPolicy,
+          },
+        },
+      }).catch(() => undefined);
+    }, 700),
+  );
+}
+
 export function persistCashHandling(): void {
   const ctx = ids();
   if (!ctx) return;

@@ -128,7 +128,7 @@
       <h1>Summex</h1>
       <p class="sub">Hospitality operations and money movement. Powered by Quantum Reach.</p>
       <p class="meta">summex.app · Guest cards: Quantum Payments only</p>
-      <p class="revision"><strong>Revision · 4 Sep 2026</strong> — shared building, no landlord-brand POS. Aligns with Operators Guide v2026.10.38.</p>
+      <p class="revision"><strong>Revision · 4 Sep 2026</strong> — QR order/pay: table tents, ticket codes, location modes. Aligns with Operators Guide v2026.10.39.</p>
     </header>
 
     <h2>1. Executive summary</h2>
@@ -175,6 +175,7 @@
       <li>One guest-facing brand (the location / host name).</li>
       <li>One card tender on Quantum Payments. The guest never sees Finix.</li>
       <li>Printed receipts group items by vendor; the guest still holds one check.</li>
+      <li>Table QR is scoped to that table’s open check. Ticket QR is signed to the check and expires. Location settings pick combinable QR modes. Guest UI is public — no PIN. After pay they stay on thank-you, not Sign in.</li>
       <li>Printed menu prices stay clean (e.g. $15.00). Cash discount, if posted, is computed — not a second ugly menu.</li>
     </ul>
     <p>The guest does not see operator splits, host cut, ledger rows, or device roles.</p>

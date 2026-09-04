@@ -36,7 +36,8 @@ import { ModifierDialog } from "./ModifierDialog";
 import { PaymentDialog } from "./PaymentDialog";
 import { ManagerPinDialog } from "./ManagerPinDialog";
 import { QrMark } from "./QrMark";
-import { tableGuestUrl } from "@/lib/pos/qr-table";
+import { tableGuestUrl, ticketGuestUrl } from "@/lib/pos/qr-table";
+import { parseQrPolicy } from "@/lib/pos/qr-policy";
 import { getDemoType } from "@/lib/demo/session";
 import { RecipeLookupButton } from "@/components/recipes/RecipeLookup";
 import { CheckOpsDialog } from "./CheckOpsDialog";
@@ -932,25 +933,33 @@ export function OrderView() {
           <DialogHeader>
             <DialogTitle>Pay QR on the check</DialogTitle>
           </DialogHeader>
-          {table ? (
+          {order ? (
             <div className="space-y-3 text-center">
               <p className="text-sm text-muted-foreground">
-                Guest scans to pay this table with Quantum Payments. Print sits
-                with the ticket; the QR is bound to table {table.label}.
+                Guest scans to pay this check with Quantum Payments. The code is
+                signed to check #{order.number} and expires; reprint to refresh.
               </p>
               <QrMark
-                value={tableGuestUrl(table, { pay: true, demoType: getDemoType() })}
-                caption={`Table ${table.label} · pay`}
+                value={
+                  ticketGuestUrl(
+                    order.id,
+                    usePosStore.getState().tenantLocationId || "loc",
+                    parseQrPolicy(settings.qrPolicy, settings.qrMode).ticketQrTtlSec,
+                  ).url
+                }
+                caption={`Check #${order.number} · pay`}
               />
-              <a
-                className="block text-sm underline"
-                href={tableGuestUrl(table, {
-                  pay: true,
-                  demoType: getDemoType(),
-                })}
-              >
-                Open pay sandbox
-              </a>
+              {table ? (
+                <a
+                  className="block text-sm underline"
+                  href={tableGuestUrl(table, {
+                    pay: true,
+                    demoType: getDemoType(),
+                  })}
+                >
+                  Table tent · {table.label}
+                </a>
+              ) : null}
             </div>
           ) : (
             <p className="text-sm text-muted-foreground">

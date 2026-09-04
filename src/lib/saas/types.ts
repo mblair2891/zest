@@ -53,6 +53,8 @@ export type LocationSetup = {
   operatorLifecycle?: Record<string, string>;
   goLiveAt?: string | null;
   goLiveChoices?: Record<string, "keep" | "erase">;
+  qrMode?: string;
+  qrPolicy?: import("@/lib/pos/qr-policy").QrPolicy;
   /** inherit = platform default (sandbox unless Platform → Payments is live). */
   paymentsMode?: "inherit" | "sandbox" | "live";
   /** Processor reader id for live card-present (Quantum terminal serial). */

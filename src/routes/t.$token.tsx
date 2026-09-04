@@ -12,11 +12,15 @@ function TokenTablePage() {
     typeof window === "undefined"
       ? {}
       : Object.fromEntries(new URLSearchParams(window.location.search));
+  if (token.startsWith("c.")) {
+    return <GuestTablePage checkToken={token} payOnly />;
+  }
   return (
     <GuestTablePage
       token={token}
       payOnly={search.pay === "1"}
       demoHint={typeof search.demo === "string" ? search.demo : undefined}
+      seat={search.seat ? Number(search.seat) || undefined : undefined}
     />
   );
 }

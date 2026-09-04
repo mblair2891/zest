@@ -164,6 +164,13 @@ import {
 } from "./floor-status";
 import { makeTableQrToken, parseQrMode, qrTokenMatchesLocation } from "./qr-table";
 import {
+  parseQrPolicy,
+  qrCanOpenCheck,
+  qrCanPay,
+  qrCanReorder,
+  qrItemAllowed,
+} from "./qr-policy";
+import {
   buildNightlyIntegrityPack,
   CHECK_HOLD_LABEL,
   isCheckHoldKind,
@@ -2464,7 +2471,7 @@ const usePosStoreRaw = create()(persist((set, get) => ({
 		if (order.tableId) floorSync("table", order.tableId);
 		printNow("receipt", order.id);
 	},
-	takePayment: ({ method, amountCents, tipCents = 0, tenderedCents, last4, giftCardCode, houseAccountId, serverGift }) => {
+	takePayment: ({ method, amountCents, tipCents = 0, tenderedCents, last4, giftCardCode, houseAccountId, serverGift, keepOpen }) => {
 		const order = get().getActiveOrder();
 		const emp = get().getCurrentEmployee();
 		if (!order || !emp) return {
@@ -2639,7 +2646,7 @@ const usePosStoreRaw = create()(persist((set, get) => ({
 			salesTotal: e.salesTotal + amountCents
 		} : e);
 		let tables = get().tables;
-		if (totals.balanceCents <= 0) {
+		if (totals.balanceCents <= 0 && !keepOpen) {
 			updated = {
 				...updated,
 				status: "closed",
@@ -3559,16 +3566,21 @@ const usePosStoreRaw = create()(persist((set, get) => ({
 		return { ok: true };
 	},
 	guestOpenTable: (tableId) => {
-		const mode = parseQrMode(get().settings.qrMode);
+		const policy = parseQrPolicy(get().settings.qrPolicy, get().settings.qrMode);
 		const table = get().tables.find((t) => t.id === tableId);
 		if (!table) return { ok: false, error: "Unknown table" };
-		if (mode === "pay_only") return { ok: false, error: "This table QR is pay only — ask staff to order" };
 		if (table.orderId) {
-			set({ activeOrderId: table.orderId, activeTableId: tableId });
-			return { ok: true };
+			const existing = get().orders.find((o) => o.id === table.orderId);
+			if (existing && existing.status === "open") {
+				set({ activeOrderId: table.orderId, activeTableId: tableId });
+				return { ok: true };
+			}
 		}
-		if (mode === "hybrid" && isEmptyTable(table.status)) {
-			return { ok: false, error: "Ask staff to seat you first, then add follow-ups here" };
+		if (!qrCanReorder(policy)) {
+			return { ok: false, error: "This table QR is pay only — ask staff to order" };
+		}
+		if (!qrCanOpenCheck(policy)) {
+			return { ok: false, error: "See your server" };
 		}
 		const order = {
 			id: uid("ord"),
@@ -3600,18 +3612,35 @@ const usePosStoreRaw = create()(persist((set, get) => ({
 			activeOrderId: order.id,
 			activeTableId: tableId,
 		});
+		try {
+			useNotifyStore.getState().pushNotice({
+				kind: "guest_checked_in",
+				title: `QR open · Table ${table.label}`,
+				body: "Guest opened a check from the table QR",
+				tableLabel: table.label,
+				audience: ["host", "manager"],
+			});
+		} catch { /* */ }
+		floorSync("table", tableId);
 		return { ok: true };
 	},
-	guestAddToTable: (tableId, menuItemId) => {
+	guestAddToTable: (tableId, menuItemId, opts) => {
+		const policy = parseQrPolicy(get().settings.qrPolicy, get().settings.qrMode);
+		const item = get().menuItems.find((m) => m.id === menuItemId);
+		if (!item) return { ok: false, error: "Item unavailable" };
+		if (!qrItemAllowed(item, policy.orderAllow)) {
+			return { ok: false, error: "That item is not on the table QR menu" };
+		}
 		ensureGuestCashier(get, set);
 		const prev = get().currentEmployeeId;
 		set({ currentEmployeeId: "guest_qr" });
+		if (opts?.seat != null) set({ activeSeat: opts.seat });
 		const opened = get().guestOpenTable(tableId);
 		if (!opened.ok) {
 			set({ currentEmployeeId: prev });
 			return opened;
 		}
-		const res = get().addItem(menuItemId);
+		const res = get().addItem(menuItemId, { seat: opts?.seat });
 		set({ currentEmployeeId: prev });
 		return res;
 	},
@@ -3631,20 +3660,37 @@ const usePosStoreRaw = create()(persist((set, get) => ({
 		});
 		return { ok: true, token };
 	},
-	guestPayOrder: (orderId) => {
+	guestPayOrder: (orderId, opts) => {
+		const policy = parseQrPolicy(get().settings.qrPolicy, get().settings.qrMode);
+		if (!qrCanPay(policy)) return { ok: false, error: "Pay is not on for this QR" };
 		const order = get().orders.find((o) => o.id === orderId);
 		if (!order) return { ok: false, error: "Check not found" };
 		if (order.status !== "open") return { ok: false, error: "Check already closed" };
-		const totals = computeTotals(order, get().settings, { tender: "card" });
+		const method = opts?.method === "gift_card" ? "gift_card" : "card";
+		if (method === "gift_card" && policy.payAllow === "card") {
+			return { ok: false, error: "Gift is not on for table QR" };
+		}
+		if (method === "card" && policy.payAllow === "gift") {
+			return { ok: false, error: "Card is not on for table QR — use gift" };
+		}
+		const totals = computeTotals(order, get().settings, { tender: method === "gift_card" ? "card" : "card" });
 		if (totals.balanceCents <= 0) return { ok: false, error: "Already paid" };
+		const amount = Math.min(
+			Math.max(1, opts?.amountCents ?? totals.balanceCents),
+			totals.balanceCents,
+		);
+		const tip = policy.tip ? Math.max(0, opts?.tipCents ?? 0) : 0;
 		const prev = get().currentEmployeeId;
 		ensureGuestCashier(get, set);
 		set({ currentEmployeeId: "guest_qr", activeOrderId: orderId });
+		const keepOpen = policy.afterPay === "keep_open_for_reorder";
 		const res = get().takePayment({
-			method: "card",
-			amountCents: totals.balanceCents,
-			tipCents: 0,
-			last4: "4242",
+			method,
+			amountCents: amount,
+			tipCents: tip,
+			last4: method === "card" ? "4242" : undefined,
+			giftCardCode: method === "gift_card" ? opts?.giftCode : undefined,
+			keepOpen,
 		});
 		set({ currentEmployeeId: prev });
 		return res;
@@ -4174,6 +4220,10 @@ const usePosStoreRaw = create()(persist((set, get) => ({
 					(p.settings && p.settings.floorStatusConfig) ?? current.settings?.floorStatusConfig,
 				),
 				qrMode: parseQrMode((p.settings && p.settings.qrMode) ?? current.settings?.qrMode),
+				qrPolicy: parseQrPolicy(
+					(p.settings && p.settings.qrPolicy) ?? current.settings?.qrPolicy,
+					(p.settings && p.settings.qrMode) ?? current.settings?.qrMode,
+				),
 				voiceControlEnabledByRole: {
 					...(p.settings && p.settings.voiceControlEnabledByRole),
 				},

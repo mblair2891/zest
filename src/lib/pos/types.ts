@@ -43,6 +43,14 @@ export type TableStatus =
 export type TableKind = "table" | "booth" | "barstool" | "other";
 
 export type QrMode = "full" | "hybrid" | "pay_only";
+export type {
+  QrModeFlag,
+  QrOrderAllow,
+  QrPayAllow,
+  QrSplitMode,
+  QrAfterPay,
+  QrPolicy,
+} from "./qr-policy";
 
 export type OrderType =
   | "dine_in"
@@ -220,6 +228,8 @@ export interface RestaurantSettings {
   voiceControlEnabledByRole?: Partial<Record<EmployeeRole, boolean>>;
   floorStatusConfig?: import("./floor-status").FloorStatusConfig;
   qrMode?: QrMode;
+  /** Combinable QR order/pay policy. When set, wins over exclusive qrMode. */
+  qrPolicy?: import("./qr-policy").QrPolicy;
   /** When true, Expo is a distinct station between kitchen ready and floor delivery. */
   expoEnabled?: boolean;
   /** When true, gift cards may carry a term. Off by default — many states prohibit expiry. */

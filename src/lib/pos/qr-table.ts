@@ -47,10 +47,12 @@ export function tableQrPath(table: { label: string; qrToken?: string }): string 
 export function tableQrSearch(opts?: {
   pay?: boolean;
   demoType?: string | null;
+  seat?: number;
 }): string {
   const params = new URLSearchParams();
   if (opts?.pay) params.set("pay", "1");
   if (opts?.demoType) params.set("demo", opts.demoType);
+  if (opts?.seat && opts.seat > 0) params.set("seat", String(opts.seat));
   const q = params.toString();
   return q ? `?${q}` : "";
 }
@@ -76,7 +78,54 @@ export function absolutePath(path: string): string {
 
 export function tableGuestUrl(
   table: { label: string; qrToken?: string },
-  opts?: { pay?: boolean; demoType?: string | null },
+  opts?: { pay?: boolean; demoType?: string | null; seat?: number },
 ): string {
   return absoluteGuestHref(tableGuestPath(table, opts));
+}
+
+function ticketSig(orderId: string, locationId: string, exp: number): string {
+  return locationQrFingerprint(`${locationId}|${orderId}|${exp}`);
+}
+
+/** Signed, short-lived pay/order token for one check. */
+export function makeTicketQrToken(
+  orderId: string,
+  locationId: string,
+  ttlSec = 15 * 60,
+): { token: string; exp: number } {
+  const exp = Math.floor(Date.now() / 1000) + Math.max(60, ttlSec);
+  const id = String(orderId).replace(/[^a-zA-Z0-9_-]/g, "").slice(0, 40);
+  const token = `c.${id}.${exp.toString(36)}.${ticketSig(id, locationId, exp)}`;
+  return { token, exp };
+}
+
+export function parseTicketQrToken(
+  token: string,
+  locationId: string,
+): { orderId: string; exp: number; expired: boolean } | null {
+  const t = String(token ?? "").trim();
+  const m = /^c\.([a-zA-Z0-9_-]{2,40})\.([a-z0-9]+)\.([a-z0-9]{4})$/.exec(t);
+  if (!m) return null;
+  const orderId = m[1]!;
+  const exp = parseInt(m[2]!, 36);
+  if (!Number.isFinite(exp)) return null;
+  if (ticketSig(orderId, locationId, exp) !== m[3]) return null;
+  return { orderId, exp, expired: Math.floor(Date.now() / 1000) >= exp };
+}
+
+export function ticketQrPath(token: string): string {
+  return `/t/${encodeURIComponent(token)}`;
+}
+
+export function ticketGuestUrl(
+  orderId: string,
+  locationId: string,
+  ttlSec?: number,
+): { url: string; token: string; exp: number } {
+  const minted = makeTicketQrToken(orderId, locationId, ttlSec);
+  return {
+    url: absoluteGuestHref(ticketQrPath(minted.token)),
+    token: minted.token,
+    exp: minted.exp,
+  };
 }

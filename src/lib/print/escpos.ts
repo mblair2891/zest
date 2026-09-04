@@ -111,6 +111,10 @@ export function buildEscPos(job: PrintJob): Uint8Array {
       parts.push(line("Guest still paid once"));
     }
   }
+  if (job.qrUrl) {
+    parts.push(FEED, ALIGN_CT, text(job.qrCaption || "Scan to pay this check"), FEED);
+    parts.push(text(job.qrUrl.slice(0, 42)), FEED);
+  }
   parts.push(FEED, ALIGN_CT, text("Quantum Payments · Summex"), FEED, FEED, CUT);
   return concat(parts);
 }

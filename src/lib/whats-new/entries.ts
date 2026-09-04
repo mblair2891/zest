@@ -6,6 +6,19 @@ import type { GuideUpdate } from "@/lib/guide/types";
  */
 export const WHATS_NEW_ENTRIES: GuideUpdate[] = [
   {
+    id: "upd_2026_10_39_qr_modes",
+    date: "2026-09-04",
+    title: "QR order, reorder, pay, table tents, ticket codes",
+    summary:
+      "Location settings pick combinable QR modes: full self-serve, reorder after a staff-opened check, pay/split, print QR on the ticket, and table tents.",
+    body: "Settings → Floor statuses, flash & QR. Flags combine. Reorder-after-open never silently starts a ticket — guests see “see your server.” Full self-serve opening a check notifies host/server. Table QR is scoped to that table’s open check; ticket QR is signed to the check id with a short TTL and refreshes on reprint. Guest UI is public (no PIN, no CRM); after pay they stay on thank-you, not Sign in. Print table-tent sheets from the floor. The Laundry peer venue defaults to reorder + pay + tents + ticket QR, food and drinks, card or gift, split by item, tip on, age affirm, keep open for reorder.",
+    roles: ["owner_manager", "server", "host_operator"],
+    surfaces: ["floor", "settings"],
+    audience: "all",
+    topicId: "table-qr",
+    tags: ["qr", "floor", "payments"],
+  },
+  {
     id: "upd_2026_10_38_peer_venue",
     date: "2026-09-04",
     title: "Shared venue — no host entity required",

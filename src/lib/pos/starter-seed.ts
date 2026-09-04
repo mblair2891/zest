@@ -37,6 +37,16 @@ export function starterSettings(venueName: string): RestaurantSettings {
     onlineOrderingEnabled: true,
     qrOrderingEnabled: true,
     qrMode: "hybrid",
+    qrPolicy: {
+      flags: ["reorder_after_open", "pay_only", "print_qr_on_ticket", "table_tents"],
+      orderAllow: "food_and_drinks",
+      payAllow: "both",
+      split: "off",
+      tip: true,
+      alcoholAgeAffirm: true,
+      afterPay: "close_table",
+      ticketQrTtlSec: 15 * 60,
+    },
     expoEnabled: true,
     floorStatusConfig: {
       ...DEFAULT_FLOOR_STATUS_CONFIG,

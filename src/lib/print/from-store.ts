@@ -6,6 +6,8 @@ import { dispatchPrintJob } from "./dispatch";
 import type { PrintJob, PrintLine } from "./types";
 import type { PrintStation } from "@/lib/pos/location-devices";
 import { entityIdForLine, splitTenderByEntity } from "@/lib/payments/entity-split";
+import { parseQrPolicy, qrPrintOnTicket } from "@/lib/pos/qr-policy";
+import { ticketGuestUrl } from "@/lib/pos/qr-table";
 
 function linesFromTicket(t: KitchenTicket): PrintLine[] {
   return t.items.map((it) => ({
@@ -111,6 +113,11 @@ export async function printFromPos(
         feesCents: sh.taxCents + sh.serviceCents + sh.tipCents,
         totalCents: sh.totalCents,
       }));
+      const policy = parseQrPolicy(s.settings.qrPolicy, s.settings.qrMode);
+      const ticketQr =
+        qrPrintOnTicket(policy) && locationId
+          ? ticketGuestUrl(order.id, locationId, policy.ticketQrTtlSec)
+          : null;
       const guestJob: PrintJob = {
         id: uid("prn"),
         kind: "receipt",
@@ -124,6 +131,8 @@ export async function printFromPos(
         copy: "guest",
         items: receiptLines(order),
         allocations,
+        qrUrl: ticketQr?.url,
+        qrCaption: ticketQr ? "Scan to pay this check" : undefined,
         totals: {
           subtotalCents: totals.subtotalCents,
           taxCents: totals.taxCents,
@@ -177,4 +186,92 @@ export async function printFromPos(
       });
     }
   }
+}
+
+export async function printTableTents(): Promise<void> {
+  const s = usePosStore.getState();
+  const policy = parseQrPolicy(s.settings.qrPolicy, s.settings.qrMode);
+  if (!policy.flags.includes("table_tents")) return;
+  const { tableGuestUrl } = await import("@/lib/pos/qr-table");
+  const { getDemoType } = await import("@/lib/demo/session");
+  const demoType = getDemoType();
+  const locationName = s.settings.name || "Summex";
+  const cards = s.tables
+    .filter((t) => !t.mergedIntoId)
+    .map((t) => {
+      const url = tableGuestUrl(t, { demoType });
+      const seats = Math.max(1, t.seats || 1);
+      const seatUrls =
+        seats > 1 && seats <= 8
+          ? Array.from({ length: seats }, (_, i) => ({
+              seat: i + 1,
+              url: tableGuestUrl(t, { demoType, seat: i + 1 }),
+            }))
+          : [];
+      return { label: t.label, section: t.section, url, seatUrls };
+    });
+  const html = `<!doctype html>
+<html><head><meta charset="utf-8"/><title>Table tents · ${escHtml(locationName)}</title>
+<style>
+  @page { size: letter; margin: 12mm; }
+  body { font: 13px/1.3 ui-sans-serif, system-ui, sans-serif; color: #111; }
+  h1 { font-size: 18px; text-align: center; }
+  .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .card { border: 1px dashed #333; padding: 12px; text-align: center; break-inside: avoid; }
+  img { width: 140px; height: 140px; }
+  .seats { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px; margin-top: 8px; }
+  .seats img { width: 72px; height: 72px; }
+  .muted { color: #555; font-size: 11px; }
+</style></head>
+<body>
+  <h1>${escHtml(locationName)} · table tents</h1>
+  <p class="muted" style="text-align:center">Scan to order or pay this table. Quantum Payments · Summex</p>
+  <div class="grid">
+    ${cards
+      .map(
+        (c) => `<div class="card">
+      <strong>Table ${escHtml(c.label)}</strong>
+      <div class="muted">${escHtml(c.section || "")}</div>
+      <img src="https://api.qrserver.com/v1/create-qr-code/?size=140x140&margin=4&data=${encodeURIComponent(c.url)}" alt="Table ${escHtml(c.label)}"/>
+      ${
+        c.seatUrls.length
+          ? `<div class="seats">${c.seatUrls
+              .map(
+                (s) =>
+                  `<div><img src="https://api.qrserver.com/v1/create-qr-code/?size=72x72&margin=2&data=${encodeURIComponent(s.url)}" alt="Seat ${s.seat}"/><div class="muted">Seat ${s.seat}</div></div>`,
+              )
+              .join("")}</div>`
+          : ""
+      }
+    </div>`,
+      )
+      .join("")}
+  </div>
+</body></html>`;
+  const iframe = document.createElement("iframe");
+  iframe.setAttribute("aria-hidden", "true");
+  iframe.style.cssText = "position:fixed;right:0;bottom:0;width:0;height:0;border:0;";
+  document.body.appendChild(iframe);
+  const doc = iframe.contentDocument;
+  if (!doc) {
+    iframe.remove();
+    return;
+  }
+  doc.open();
+  doc.write(html);
+  doc.close();
+  const run = () => {
+    try {
+      iframe.contentWindow?.focus();
+      iframe.contentWindow?.print();
+    } finally {
+      window.setTimeout(() => iframe.remove(), 1500);
+    }
+  };
+  if (iframe.contentWindow?.document.readyState === "complete") run();
+  else iframe.onload = run;
+}
+
+function escHtml(s: string): string {
+  return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 }

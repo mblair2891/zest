@@ -17,6 +17,7 @@ function TableQrOrderPage() {
       label={label}
       payOnly={search.pay === "1"}
       demoHint={typeof search.demo === "string" ? search.demo : undefined}
+      seat={search.seat ? Number(search.seat) || undefined : undefined}
     />
   );
 }

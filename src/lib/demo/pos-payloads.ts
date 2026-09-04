@@ -239,6 +239,16 @@ export function demoPosSlice(type: VenueEntityId) {
   settings.cashRoundIncrement = 0.25;
   settings.cashRoundMode = "up";
   settings.qrMode = "hybrid";
+  settings.qrPolicy = {
+    flags: ["reorder_after_open", "pay_only", "print_qr_on_ticket", "table_tents"],
+    orderAllow: "food_and_drinks",
+    payAllow: "both",
+    split: "off",
+    tip: true,
+    alcoholAgeAffirm: true,
+    afterPay: "close_table",
+    ticketQrTtlSec: 15 * 60,
+  };
   settings.expoEnabled = type === "restaurant" || type === "bar_lounge";
   settings.floorStatusConfig = {
     ...DEFAULT_FLOOR_STATUS_CONFIG,

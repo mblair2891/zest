@@ -43,6 +43,9 @@ export type PrintJob = {
     totalCents: number;
     tender?: string;
   };
+  /** Guest pay QR (ticket-scoped). Printed when location enables print_qr_on_ticket. */
+  qrUrl?: string;
+  qrCaption?: string;
   at: number;
 };
 

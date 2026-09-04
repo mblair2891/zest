@@ -226,9 +226,21 @@ export interface PosStore {
   markClean: (tableId: string) => ActionResult;
   setTableStatus: (tableId: string, status: TableStatus) => ActionResult;
   guestOpenTable: (tableId: string) => ActionResult;
-  guestAddToTable: (tableId: string, menuItemId: string) => ActionResult;
+  guestAddToTable: (
+    tableId: string,
+    menuItemId: string,
+    opts?: { seat?: number },
+  ) => ActionResult;
   guestSendOrder: (tableId: string) => ActionResult;
-  guestPayOrder: (orderId: string) => ActionResult;
+  guestPayOrder: (
+    orderId: string,
+    opts?: {
+      amountCents?: number;
+      tipCents?: number;
+      method?: "card" | "gift_card";
+      giftCode?: string;
+    },
+  ) => ActionResult;
   rotateTableQr: (tableId: string) => ActionResult<{ token?: string }>;
   clearTable: (tableId: string) => void;
   transferTable: (fromId: string, toId: string) => ActionResult;
@@ -318,6 +330,7 @@ export interface PosStore {
     giftCardCode?: string;
     houseAccountId?: string;
     serverGift?: boolean;
+    keepOpen?: boolean;
   }) => ActionResult<{ changeCents?: number }>;
   closeOrderIfPaid: () => void;
   bumpTicket: (ticketId: string) => void;

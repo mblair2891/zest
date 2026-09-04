@@ -27,6 +27,8 @@ import { useDemoDeviceStore } from "@/lib/demo/device-session";
 import { useCurrentUserState } from "@/lib/auth/use-current-user";
 import { getPosBootstrapFn } from "@/lib/saas/api";
 import { tablesFromCount, type TenantMenuMode } from "@/lib/pos/starter-seed";
+import { parseQrPolicy } from "@/lib/pos/qr-policy";
+import { parseQrMode } from "@/lib/pos/qr-table";
 import { EMPTY_LOCATION_SETUP } from "@/lib/saas/types";
 import { tablesFromFloorPlan } from "@/lib/saas/location-catalog";
 import { membershipToEmployeeRole } from "@/lib/access/membership-map";
@@ -254,6 +256,16 @@ function PosAppInner({ entityId }: { entityId?: string }) {
               hostName: access.location.hostBrandName || access.location.name,
             },
           });
+          try {
+            const st = usePosStore.getState();
+            usePosStore.setState({
+              settings: {
+                ...st.settings,
+                qrMode: parseQrMode(setup.qrMode ?? st.settings.qrMode),
+                qrPolicy: parseQrPolicy(setup.qrPolicy, setup.qrMode ?? st.settings.qrMode),
+              },
+            });
+          } catch { /* optional */ }
           try {
             const devices = parseLocationDevices(setup.locationDevices);
             const paired = findPairedDevice(devices, access.location.id);
