@@ -42,6 +42,7 @@ import { RecipeLookupButton } from "@/components/recipes/RecipeLookup";
 import { CheckOpsDialog } from "./CheckOpsDialog";
 import { Split } from "lucide-react";
 import { canEmployee } from "@/lib/access/permissions";
+import { groupLinesByEntity } from "@/lib/payments/entity-split";
 import {
   COMP_REASONS,
   DISCOUNT_REASONS,
@@ -383,8 +384,19 @@ export function OrderView() {
               Tap menu items · mix vendors on one check · one payment
             </p>
           )}
-          <ul className="space-y-1">
-            {order.lines.map((line) => (
+          <ul className="space-y-2">
+            {(() => {
+              const groups = groupLinesByEntity(order.lines, settings.name);
+              const multi = groups.length > 1;
+              return groups.map((group) => (
+              <li key={group.entityId}>
+                {multi ? (
+                  <p className="px-1 pb-1 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                    {group.displayName}
+                  </p>
+                ) : null}
+                <ul className="space-y-1">
+            {group.lines.map((line) => (
               <li key={line.id}>
                 <button
                   type="button"
@@ -402,11 +414,6 @@ export function OrderView() {
                     <span>
                       <span className="font-medium">
                         {line.quantity}× {line.name}
-                        {line.vendorName && (
-                          <span className="ml-1 rounded bg-surface-2 px-1 text-[10px] font-normal text-muted-foreground">
-                            {line.vendorName}
-                          </span>
-                        )}
                       </span>
                       {line.modifiers.length > 0 && (
                         <span className="mt-0.5 block text-[11px] text-muted-foreground">
@@ -440,6 +447,10 @@ export function OrderView() {
                 </button>
               </li>
             ))}
+                </ul>
+              </li>
+              ));
+            })()}
           </ul>
         </div>
 

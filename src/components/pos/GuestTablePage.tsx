@@ -4,12 +4,13 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { usePosStore } from "@/lib/pos/store";
-import { formatCurrency } from "@/lib/utils";
+import { cn, formatCurrency } from "@/lib/utils";
 import { parseQrMode, QR_MODE_LABEL, qrTokenMatchesLocation } from "@/lib/pos/qr-table";
 import { isEmptyTable } from "@/lib/pos/floor-status";
-import { computeTotals } from "@/lib/pos/calculations";
+import { computeTotals, linePrintedCents } from "@/lib/pos/calculations";
 import { captureIsSandbox } from "@/lib/lifecycle/store";
 import type { MenuItem, Table } from "@/lib/pos/types";
+import { groupLinesByEntity } from "@/lib/payments/entity-split";
 
 type CartLine = { menuItemId: string; name: string; unitPriceCents: number; qty: number };
 
@@ -240,27 +241,54 @@ export function GuestTablePage({
         {order && totals && (
           <div className="rounded-2xl border border-border bg-surface p-4">
             <p className="text-sm font-medium">Open check #{order.number}</p>
-            <ul className="mt-2 space-y-1 text-sm">
-              {order.lines
-                .filter((l) => !l.voided)
-                .slice(0, 12)
-                .map((l) => (
-                  <li key={l.id} className="flex justify-between gap-2">
-                    <span>
-                      {l.quantity}× {l.name}
-                      {l.vendorName ? (
-                        <span className="text-muted-foreground"> · {l.vendorName}</span>
-                      ) : null}
-                    </span>
-                    <span className="tabular">
-                      {formatCurrency(l.unitPriceCents * l.quantity)}
-                    </span>
-                  </li>
-                ))}
-            </ul>
+            <div className="mt-2 space-y-2 text-sm">
+              {(() => {
+                const groups = groupLinesByEntity(
+                  order.lines.filter((l) => !l.voided),
+                  settings.name,
+                );
+                const multi = groups.length > 1;
+                return groups.map((g) => (
+                  <div key={g.entityId}>
+                    {multi ? (
+                      <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                        {g.displayName}
+                      </p>
+                    ) : null}
+                    <ul className="space-y-1">
+                      {g.lines.slice(0, 12).map((l) => (
+                        <li
+                          key={l.id}
+                          className={cn("flex justify-between gap-2", multi && "pl-2")}
+                        >
+                          <span>
+                            {l.quantity}× {l.name}
+                          </span>
+                          <span className="tabular">
+                            {formatCurrency(linePrintedCents(l))}
+                          </span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                ));
+              })()}
+            </div>
             <p className="mt-2 text-lg font-semibold tabular">
               Due {formatCurrency(totals.balanceCents || totals.totalCents)}
             </p>
+            {order.lines.some((l) => l.vendorId) &&
+            new Set(order.lines.filter((l) => !l.voided).map((l) => l.vendorId || "host")).size >
+              1 ? (
+              <p className="mt-1 text-[11px] text-muted-foreground">
+                One check. Card: one authorization, split to the vendors above. Quantum
+                Payments · Summex.
+              </p>
+            ) : (
+              <p className="mt-1 text-[11px] text-muted-foreground">
+                Quantum Payments · Summex. One guest check.
+              </p>
+            )}
             <Button className="mt-3 w-full" onClick={pay}>
               Pay with Quantum Payments
             </Button>

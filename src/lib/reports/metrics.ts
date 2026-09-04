@@ -244,7 +244,7 @@ export function buildLocationMetrics(input: MetricsInput): LocationMetrics {
   const coverage = costItems.length ? withCost / costItems.length : 0;
 
   const cbs = input.chargebacks.filter((c) => c.filedAt >= from && c.filedAt <= to);
-  const lastPeriod = input.settlementPeriods[0];
+  const lastPeriod = [...input.settlementPeriods].sort((a, b) => b.closedAt - a.closedAt)[0];
   const hostCutCents = lastPeriod?.rows.reduce((s, r) => s + (r.hostCutCents || 0), 0) ?? 0;
 
   const clockedMap: Record<string, number> = {};
@@ -332,9 +332,19 @@ export function buildLocationMetrics(input: MetricsInput): LocationMetrics {
       kioskOrders,
     },
     multiOp: {
-      byOperator: Object.values(byOperator).sort((a, b) => b.cents - a.cents),
+      byOperator: Object.values(byOperator)
+        .sort((a, b) => b.cents - a.cents)
+        .map((o) => {
+          const row = lastPeriod?.rows.find((r) => r.vendorId === o.id);
+          return {
+            ...o,
+            cardShareCents: row?.cardSalesCents,
+            payoutCents: row?.netElectronicPayoutCents,
+          };
+        }),
       hostCutCents,
       periodCount: input.settlementPeriods.length,
+      guestPaidCents: lastPeriod?.guestCardPaidCents ?? cardCents,
     },
     cost: {
       items: costItems.slice(0, 20),

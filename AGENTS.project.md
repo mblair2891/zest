@@ -21,7 +21,7 @@ Any **POS, payments, devices, cash, tips, HR, or SaaS behavior change** MUST upd
 
 ### Facts to keep honest
 
-- Guest cards: **Quantum Payments** (Finix rail). Guest UI never names Finix. Each entity is its own merchant; one guest check; split capture; receipts grouped by vendor.
+- Guest cards: **Quantum Payments** (Finix rail). Guest UI never names Finix. Each entity is its own merchant; one guest check; receipt itemized by vendor; Finix pays each operator their share.
 - Gift cards: **Summex house ledger** — swipe / scan / key. Not Finix.
 - Device roles: **order** (handhelds + bar), **ODS** (kitchen), **host** (floor map + to-go). PIN first on the station — not `/login`.
 - Printers: Ethernet on the **AP LAN** (not printer Wi‑Fi). Thermal receipts (Epson TM-T20). Impact kitchen (Epson TM-U220). Drawer kick on the receipt printer.

@@ -302,6 +302,49 @@ export async function createTransfer(opts: {
   return { ok: true, transferId: id, sandbox: false };
 }
 
+/** One guest authorization; Finix sends each vendor merchant their share. */
+export async function createSplitTransfer(opts: {
+  parentMerchantId: string;
+  amountCents: number;
+  splits: Array<{ merchantId: string; amountCents: number }>;
+  currency?: string;
+}): Promise<FinixTransferResult> {
+  const total = Math.max(0, opts.amountCents);
+  const parts = opts.splits.filter((s) => s.amountCents > 0 && s.merchantId);
+  if (total <= 0 || !opts.parentMerchantId) {
+    return { ok: false, sandbox: !finixConfigured(), error: "Invalid split" };
+  }
+  const sandbox =
+    !finixConfigured() ||
+    opts.parentMerchantId.includes("sandbox") ||
+    parts.some((s) => s.merchantId.includes("sandbox"));
+  if (sandbox) {
+    return { ok: true, transferId: sandboxId("TR"), sandbox: true };
+  }
+  const others = parts.filter((s) => s.merchantId !== opts.parentMerchantId);
+  const body: Record<string, unknown> = {
+    merchant: opts.parentMerchantId,
+    amount: total,
+    currency: (opts.currency || "USD").toLowerCase(),
+  };
+  if (others.length) {
+    body.split_transfers = others.map((s) => ({
+      merchant: s.merchantId,
+      amount: s.amountCents,
+    }));
+  }
+  const res = await finixFetch("POST", "/transfers", body);
+  if (!res.ok) {
+    const msg =
+      typeof (res.json as { message?: string }).message === "string"
+        ? (res.json as { message: string }).message
+        : "Split transfer failed";
+    return { ok: false, sandbox: false, error: msg.slice(0, 200) };
+  }
+  const id = typeof res.json.id === "string" ? res.json.id : sandboxId("TR");
+  return { ok: true, transferId: id, sandbox: false };
+}
+
 export function mapWebhookType(type: string): PaymentsOnboardingStatus | null {
   const t = type.toLowerCase();
   if (t.includes("approved") || t.includes("activated")) return "approved";

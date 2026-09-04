@@ -1,7 +1,7 @@
 # Operators Guide — authoring
 
-**Revision · 3 Sep 2026** — Get-a-price interview is specific to what you typed.
-Guide v2026.10.36.
+**Revision · 4 Sep 2026** — one guest check; receipt by vendor; Finix pays each operator.
+Guide v2026.10.37.
 
 The in-app **Operators Guide** is the living product manual. It is not a
 separate PDF. Staff open it from **Guide** / **?** in the POS and platform
@@ -133,7 +133,7 @@ Bookmarkable URL: `/guide?topic=my-topic`.
 ## Current facts (keep copy honest)
 
 - Brand: **Summex**, powered by **Quantum Reach**. Guest cards: **Quantum Payments** only (Finix rail). Guest UI never names Finix. Never Stripe/Square as a POS processor. Never Zest.
-- Each entity is its own Quantum Payments merchant. One guest check; split capture; receipts grouped by vendor.
+- Each entity is its own Quantum Payments merchant. One guest check; receipt itemized by vendor; Finix pays each operator their share on capture.
 - Gift cards: Summex house ledger — swipe, scan, or key. Not Finix.
 - Device roles: **order** | **ODS** | **host**. PIN first on the station. Not `/login`.
 - Printers on the house AP LAN (Ethernet), not the printer’s own Wi‑Fi. Receipts: Epson TM-T20 thermal. Kitchen: Epson TM-U220 impact. Cash drawer kick is on the receipt printer.

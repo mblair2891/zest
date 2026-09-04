@@ -2927,6 +2927,11 @@ const usePosStoreRaw = create()(persist((set, get) => ({
 			return { ok: false, error: "ODS cannot tender cash or gift." };
 		}
 		const emp = get().getCurrentEmployee();
+		const settings = get().settings;
+		const vendors = get().vendors;
+		const issuer = issuerId
+			? resolveGiftIssuer(issuerId, settings, vendors)
+			: defaultGiftIssuer(emp, settings, vendors);
 		if (lpCfg(get).giftLoadRequiresTender) {
 			let order = get().getActiveOrder();
 			const covered =
@@ -2940,6 +2945,30 @@ const usePosStoreRaw = create()(persist((set, get) => ({
 				const id = get().openTakeout("Gift");
 				order = get().orders.find((o) => o.id === id) ?? get().getActiveOrder();
 				if (!order) return { ok: false, error: "Open a ticket to load gift with cash or card." };
+				const loadLine = {
+					id: uid("ln"),
+					menuItemId: "gift_load",
+					name: `Gift load · ${issuer.name}`,
+					vendorId: issuer.kind === "operator" ? issuer.id : undefined,
+					vendorName: issuer.name,
+					quantity: 1,
+					unitPriceCents: amountCents,
+					modifiers: [],
+					course: "other" as const,
+					station: "expo" as const,
+					sent: true,
+					held: false,
+					voided: false,
+					comped: false,
+					discountCents: 0,
+					taxExempt: true,
+					createdAt: Date.now(),
+				};
+				set({
+					orders: get().orders.map((o) =>
+						o.id === order!.id ? { ...o, lines: [...o.lines, loadLine] } : o,
+					),
+				});
 				const pay = get().takePayment({
 					method: tender,
 					amountCents,
@@ -2949,11 +2978,6 @@ const usePosStoreRaw = create()(persist((set, get) => ({
 				if (!pay.ok) return pay;
 			}
 		}
-		const settings = get().settings;
-		const vendors = get().vendors;
-		const issuer = issuerId
-			? resolveGiftIssuer(issuerId, settings, vendors)
-			: defaultGiftIssuer(emp, settings, vendors);
 		const c = (code || "").trim().toUpperCase() || `SUMMEX-${Math.random().toString(36).slice(2, 6).toUpperCase()}-${Math.floor(Math.random() * 9e3 + 1e3)}`;
 		if (get().giftCards.some((g) => g.code === c)) return {
 			ok: false,

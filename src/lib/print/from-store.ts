@@ -5,7 +5,7 @@ import { uid } from "@/lib/utils";
 import { dispatchPrintJob } from "./dispatch";
 import type { PrintJob, PrintLine } from "./types";
 import type { PrintStation } from "@/lib/pos/location-devices";
-import { splitTenderByEntity } from "@/lib/payments/entity-split";
+import { entityIdForLine, splitTenderByEntity } from "@/lib/payments/entity-split";
 
 function linesFromTicket(t: KitchenTicket): PrintLine[] {
   return t.items.map((it) => ({
@@ -127,20 +127,42 @@ export async function printFromPos(
         totals: {
           subtotalCents: totals.subtotalCents,
           taxCents: totals.taxCents,
+          tipCents: totals.tipCents,
+          giftCents: order.payments
+            .filter((p) => p.method === "gift_card")
+            .reduce((s, p) => s + p.amountCents, 0),
           totalCents: totals.totalCents,
           tender: tender
-            ? `${tender.method}${tender.last4 ? ` ·${tender.last4}` : ""}`
+            ? tender.method === "card"
+              ? `Card${tender.last4 ? ` ·${tender.last4}` : ""} · Quantum Payments`
+              : tender.method === "gift_card"
+                ? "Gift"
+                : tender.method === "cash"
+                  ? "Cash"
+                  : tender.method
             : undefined,
         },
         at: Date.now(),
       };
       jobs.push(guestJob);
       if (allocations.length > 1) {
-        jobs.push({
-          ...guestJob,
-          id: uid("prn"),
-          copy: "merchant",
-        });
+        for (const sh of shares) {
+          jobs.push({
+            ...guestJob,
+            id: uid("prn"),
+            copy: "merchant",
+            operatorName: sh.displayName,
+            items: receiptLines(order).filter((l) => entityIdForLine(l) === sh.entityId),
+            allocations: [
+              {
+                name: sh.displayName,
+                merchandiseCents: sh.merchandiseCents,
+                feesCents: sh.taxCents + sh.serviceCents + sh.tipCents,
+                totalCents: sh.totalCents,
+              },
+            ],
+          });
+        }
       }
     }
   }

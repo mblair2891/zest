@@ -227,6 +227,15 @@ export function buildPeriodSettlement(
   settings: RestaurantSettings = SETTINGS,
 ): SettlementPeriod {
   const aggs = aggregateVendorSales(orders, vendors, periodStart, periodEnd, settings);
+  let guestCardPaidCents = 0;
+  for (const order of orders) {
+    if (order.status !== "closed") continue;
+    const closedAt = order.closedAt ?? order.createdAt;
+    if (closedAt < periodStart || closedAt > periodEnd) continue;
+    for (const p of order.payments) {
+      if (p.method === "card" || p.method === "room_charge") guestCardPaidCents += p.amountCents + (p.tipCents || 0);
+    }
+  }
   const feePct = config.cardFeePercent / 100;
   const hostPct = config.hostCutEnabled ? config.hostCutPercent / 100 : 0;
   const cbByVendor = new Map<string, number>();
@@ -306,6 +315,7 @@ export function buildPeriodSettlement(
     hostCutTotalCents: hostTotal,
     cardFeesTotalCents: feesTotal,
     chargebackFeesTotalCents: cbTotal,
+    guestCardPaidCents,
     rows,
     status: "closed",
   };

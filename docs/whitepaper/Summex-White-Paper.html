@@ -128,13 +128,13 @@
       <h1>Summex</h1>
       <p class="sub">Hospitality operations and money movement. Powered by Quantum Reach.</p>
       <p class="meta">summex.app · Guest cards: Quantum Payments only</p>
-      <p class="revision"><strong>Revision · 3 Sep 2026</strong> — Get-a-price interview is specific to what you typed. Aligns with Operators Guide v2026.10.36.</p>
+      <p class="revision"><strong>Revision · 4 Sep 2026</strong> — one guest check; receipt by vendor; Finix pays each operator. Aligns with Operators Guide v2026.10.37.</p>
     </header>
 
     <h2>1. Executive summary</h2>
     <p>Summex is a hospitality operating system for a single restaurant or bar, a <strong>host venue</strong> where more than one operator can appear on a single guest check, or a multi-unit group. It is powered by <strong>Quantum Reach</strong>. Guest-facing cards run exclusively through <strong>Quantum Payments</strong>.</p>
-    <p>The product combines service (floor, sections, kitchen and bar routing), stations (order / ODS / host), money movement (each entity is its own Quantum Payments merchant; one guest tender; split capture; receipts by vendor; period settlement on a first-party ledger), and house money (cash drawers and banks, mix-based tip-out, first-party gift ledger).</p>
-    <p>The guest pays once, under the host name. Operators are paid from merchandise share on a period ledger — not from a second terminal at the table. Software billing is separate from guest card processing.</p>
+    <p>The product combines service (floor, sections, kitchen and bar routing), stations (order / ODS / host), money movement (each entity is its own Quantum Payments merchant; one guest tender; receipt itemized by vendor; Finix pays each operator their share; period settlement is the house book for cash, host cut, and fees), and house money (cash drawers and banks, mix-based tip-out, first-party gift ledger).</p>
+    <p>The guest pays once, under the host name. On card capture, Finix sends each operator their share. Period close remains the house book for cash, host cut, fees, and disputes — not a second terminal at the table. Software billing is separate from guest card processing.</p>
     <p class="note">This paper describes how the system works today. Items that are not built are marked <strong>Roadmap</strong>. No processor rates are guaranteed. No bank partners are named. No compliance seals are claimed. The in-product Operators Guide is the operator manual.</p>
 
     <h2>2. The problem</h2>
@@ -179,8 +179,8 @@
 
     <h2>6. Quantum Payments — per-entity merchants, one guest check</h2>
     <p>Every card tender runs through <strong>Quantum Payments</strong>. Each entity (host and each tenant operator) is its own merchant on the Finix rail. <strong>Guest UI never names Finix.</strong> A brand cannot take live cards until that brand’s application is approved.</p>
-    <p>The guest tenders once. Capture splits to each brand’s merchant by merchandise owner. Tax, tip, and service allocate by merchandise share. Receipts group lines by vendor.</p>
-    <p>This is <strong>not</strong> a second terminal and <strong>not</strong> a live processor split-payout. Period money movement is a product-owned ledger. Electronic payout rows address an operator’s account placeholder. <strong>Live ACH is not claimed.</strong></p>
+    <p>The guest tenders once. Capture splits to each brand’s merchant by merchandise owner. Tax, tip, and service allocate by merchandise share. Receipts, email, and QR checks itemize by vendor, then totals. Card: one authorization, split to the vendors above.</p>
+    <p>This is <strong>not</strong> a second terminal. <strong>Finix pays each approved operator merchant their share on capture.</strong> Period close is still a product-owned ledger for cash, host cut, card fees, and disputes. Leftover electronic payout rows address an operator’s account placeholder. <strong>Live ACH of period leftovers is not claimed.</strong></p>
     <p>Training uses Quantum Payments <strong>sandbox</strong> — practice cards, not a live Visa. Live cards require lifecycle live, an approved application, and an enrolled Quantum reader. If the processor is down: take cash or keep the check open. Card is not queued and never fakes a live Visa.</p>
     <p class="note"><strong>Roadmap:</strong> connecting a live bank rail. Payout last4 in the product is a stub for operations rehearsal.</p>
 
@@ -282,7 +282,7 @@
         <tr><td>Host Venue</td><td>Guest-facing brand on a multi-operator floor</td></tr>
         <tr><td>Operator</td><td>Stall or kitchen brand; its own Quantum Payments merchant</td></tr>
         <tr><td>Per-entity merchant</td><td>Each entity’s Quantum Payments account (Finix rail; guest never sees Finix)</td></tr>
-        <tr><td>One guest check</td><td>One tender; split capture; receipts grouped by vendor</td></tr>
+        <tr><td>One guest check</td><td>One tender; receipt by vendor; Finix pays each operator</td></tr>
         <tr><td>Gift ledger</td><td>First-party Summex gift — not Finix</td></tr>
         <tr><td>Order / ODS / host</td><td>The three device roles</td></tr>
         <tr><td>PIN</td><td>Floor identity on a primed station — not clock-in, not closeout, not owner password</td></tr>

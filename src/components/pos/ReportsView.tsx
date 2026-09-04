@@ -953,11 +953,33 @@ function ReportBody({ id, m }: { id: ReportId; m: ReturnType<typeof metricsFromP
   }
   if (id === "multi-op-settlement") {
     return (
-      <Card
-        label="Host cut (last period)"
-        value={formatCurrency(m.multiOp.hostCutCents)}
-        sub={`${m.multiOp.periodCount} period(s) on the ledger. Open Settle for allocations.`}
-      />
+      <div className="space-y-3">
+        <div className="grid grid-cols-2 gap-3">
+          <Card
+            label="Guest paid once"
+            value={formatCurrency(m.multiOp.guestPaidCents)}
+            sub="One authorization per check. Quantum Payments."
+          />
+          <Card
+            label="Host cut (last period)"
+            value={formatCurrency(m.multiOp.hostCutCents)}
+            sub={`${m.multiOp.periodCount} period(s) on the ledger.`}
+          />
+        </div>
+        <ul className="space-y-2 text-sm">
+          {m.multiOp.byOperator.map((o) => (
+            <li key={o.id} className="flex justify-between gap-2">
+              <span>{o.name}</span>
+              <span className="tabular text-muted-foreground">
+                {formatCurrency(o.cardShareCents ?? o.cents)} ticket share
+                {o.payoutCents != null
+                  ? ` · ${formatCurrency(o.payoutCents)} Quantum payout`
+                  : ""}
+              </span>
+            </li>
+          ))}
+        </ul>
+      </div>
     );
   }
   return null;

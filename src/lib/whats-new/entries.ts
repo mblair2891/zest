@@ -6,6 +6,19 @@ import type { GuideUpdate } from "@/lib/guide/types";
  */
 export const WHATS_NEW_ENTRIES: GuideUpdate[] = [
   {
+    id: "upd_2026_10_37_vendor_split_check",
+    date: "2026-09-04",
+    title: "One guest check; receipt by vendor; Finix pays each operator",
+    summary:
+      "Guest tenders once. The receipt groups food and drink under each vendor. Quantum Payments (Finix) sends each operator their share.",
+    body: "One tap, cash, or gift tender — the guest never pays Operator A and Operator B separately. Guest-facing copy is Quantum Payments / Summex only (never Finix). Each selling entity has its own merchant (sandbox in training, live after approval). Card capture splits by merchandise owner; tax, tip, and service follow that mix. Chargebacks and the $35 house fee use the same mix. Live cards fail closed if a line’s entity has no approved merchant. Gift redeem stays on the Summex ledger; gift load with a bank card charges the issuer’s merchant. Guest, email, QR, and merchant copies itemize by vendor then totals. Settlement: guest paid $X once; each operator’s ticket share vs Quantum payout.",
+    roles: ["owner_manager", "host_operator", "vendor_operator", "server"],
+    surfaces: ["floor", "reports", "settings"],
+    audience: "all",
+    topicId: "host-capture",
+    tags: ["payments", "receipts", "settlement"],
+  },
+  {
     id: "upd_2026_10_36_intake_narrative",
     date: "2026-09-03",
     title: "Get-a-price questions from what you typed",

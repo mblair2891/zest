@@ -73,8 +73,8 @@ export const ORDER_TOPICS: GuideTopic[] = [
       steps(
         "Items carry the operator set on the menu. The hall cart can mix stalls on one check.",
         "Fire still routes by station + operator so Operator A’s kitchen does not see Operator B’s drinks.",
-        "Pay once at the host stand (or table). The guest-facing name is the location. Capture splits. The receipt groups lines by vendor.",
-        "Settlement later splits merchandise, fees, host cut, and any $35 dispute fee by merchandise share.",
+        "Pay once at the host stand (or table). The guest-facing name is the location. Finix pays each operator their share. The receipt groups lines by vendor.",
+        "Period settlement still nets cash, host cut, fees, and any $35 dispute fee by merchandise share. ODS routing does not change.",
       ),
       shot(
         "One guest check with Operator A food lines and Operator B drink lines, single tender.",

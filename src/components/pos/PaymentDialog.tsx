@@ -17,7 +17,14 @@ import { cn, formatCurrency } from "@/lib/utils";
 import type { PaymentMethod } from "@/lib/pos/types";
 import { GuideLearnLink } from "@/components/guide/GuideLearnLink";
 import { captureIsSandbox } from "@/lib/lifecycle/store";
-import { captureCardPresentFn, getPaymentsStatusFn } from "@/lib/payments/api";
+import { captureCardPresentFn, getPaymentsStatusFn, sendGuestReceiptFn } from "@/lib/payments/api";
+import {
+  buildGuestCheckView,
+  guestCheckHtml,
+  guestCheckText,
+} from "@/lib/payments/check-by-vendor";
+import { GuestCheckByVendor } from "./GuestCheckByVendor";
+import { printFromPos } from "@/lib/print/from-store";
 import { redeemGiftCardFn } from "@/lib/gift/api";
 import { fulfillingIssuer } from "@/lib/pos/gift-issuer";
 import type { PaymentsStatus } from "@/lib/payments/types";
@@ -85,6 +92,8 @@ export function PaymentDialog({ open, onOpenChange }: Props) {
   const [done, setDone] = useState(false);
   const [busy, setBusy] = useState(false);
   const [payStatus, setPayStatus] = useState<PaymentsStatus | null>(null);
+  const [receiptEmail, setReceiptEmail] = useState("");
+  const [receiptMsg, setReceiptMsg] = useState<string | null>(null);
 
   const amountCents = amount
     ? Math.round(parseFloat(amount) * 100)
@@ -161,7 +170,7 @@ export function PaymentDialog({ open, onOpenChange }: Props) {
       if (payStatus && payStatus.mode === "live" && !payStatus.liveReady) {
         setError(
           payStatus.message ||
-            "Live cards require an enrolled Finix/Quantum reader supplied through Summex. Take cash or keep the check open.",
+            "Live cards require an enrolled Quantum reader supplied through Summex. Take cash or keep the check open.",
         );
         return;
       }
@@ -319,6 +328,8 @@ export function PaymentDialog({ open, onOpenChange }: Props) {
           setDone(false);
           setChange(null);
           setError(null);
+          setReceiptEmail("");
+          setReceiptMsg(null);
         }
         onOpenChange(o);
       }}
@@ -364,6 +375,31 @@ export function PaymentDialog({ open, onOpenChange }: Props) {
                 </span>
               </p>
             )}
+            {(() => {
+              const view = buildGuestCheckView({
+                order,
+                settings,
+                hostName: settings.name,
+                operatorName: (id) =>
+                  usePosStore.getState().vendors.find((v) => v.id === id)?.name ?? id,
+              });
+              return (
+                <div className="rounded-xl border border-border bg-bg p-3 text-left">
+                  <GuestCheckByVendor view={view} compact />
+                  {view.vendors.length > 1 ? (
+                    <ul className="mt-2 space-y-0.5 text-xs text-muted-foreground">
+                      {view.allocations.map((a) => (
+                        <li key={a.entityId} className="flex justify-between gap-2">
+                          <span>{a.displayName}</span>
+                          <span className="tabular">{formatCurrency(a.totalCents)}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  ) : null}
+                  <p className="mt-2 text-[11px] text-muted-foreground">{view.splitNote}</p>
+                </div>
+              );
+            })()}
             <p className="text-sm text-muted-foreground">
               Charged as{" "}
               {order.payments[order.payments.length - 1]?.chargeBrand ||
@@ -372,7 +408,9 @@ export function PaymentDialog({ open, onOpenChange }: Props) {
                 ? "via Quantum Payments"
                 : order.payments[order.payments.length - 1]?.method === "cash"
                   ? "cash"
-                  : ""}
+                  : order.payments[order.payments.length - 1]?.method === "gift_card"
+                    ? "gift"
+                    : ""}
               . Tip recorded: {formatCurrency(tip)}
             </p>
             {dual.enabled && (
@@ -384,6 +422,64 @@ export function PaymentDialog({ open, onOpenChange }: Props) {
                   : ""}
               </p>
             )}
+            <div className="flex gap-2">
+              <Input
+                type="email"
+                placeholder="Email receipt"
+                value={receiptEmail}
+                onChange={(e) => setReceiptEmail(e.target.value)}
+              />
+              <Button
+                variant="outline"
+                disabled={!receiptEmail.trim()}
+                onClick={() => {
+                  const loc =
+                    usePosStore.getState().tenantLocationId ||
+                    readTenantPosContext()?.locationId ||
+                    "";
+                  const view = buildGuestCheckView({
+                    order,
+                    settings,
+                    hostName: settings.name,
+                    operatorName: (id) =>
+                      usePosStore.getState().vendors.find((v) => v.id === id)?.name ?? id,
+                  });
+                  void sendGuestReceiptFn({
+                    data: {
+                      locationId: loc,
+                      to: receiptEmail,
+                      subject: `${settings.name} receipt #${order.number}`,
+                      text: guestCheckText(view),
+                      html: guestCheckHtml(view),
+                    },
+                  })
+                    .then((r) =>
+                      setReceiptMsg(
+                        r.ok
+                          ? r.status === "logged_only"
+                            ? "Receipt queued"
+                            : "Receipt sent"
+                          : r.error || "Could not send",
+                      ),
+                    )
+                    .catch(() => setReceiptMsg("Could not send"));
+                }}
+              >
+                Send
+              </Button>
+            </div>
+            {receiptMsg ? (
+              <p className="text-xs text-muted-foreground" role="status">
+                {receiptMsg}
+              </p>
+            ) : null}
+            <Button
+              className="w-full"
+              variant="outline"
+              onClick={() => void printFromPos("receipt", order.id)}
+            >
+              Print guest check
+            </Button>
             <Button className="w-full" size="lg" onClick={finish}>
               Done
             </Button>

@@ -58,7 +58,7 @@ export const GUIDE_CHAPTERS: GuideChapter[] = [
   {
     id: "payments",
     title: "Payments",
-    summary: "Quantum Payments per-entity merchant, split capture, settlement, chargebacks.",
+    summary: "One guest check; receipt by vendor; Finix pays each operator. Settlement, chargebacks.",
     order: 6,
   },
   {

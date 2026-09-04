@@ -185,7 +185,7 @@ export const REPORT_CATALOG: ReportDef[] = [
     id: "multi-op-settlement",
     group: "multi",
     title: "Settlement & ledger",
-    summary: "Period shares, host cut, chargeback fees.",
+    summary: "Guest paid once; ticket share vs Quantum payout; host cut; chargebacks.",
     venues: ["food_hall", "truck_pod"],
     roles: ["owner", "manager", "accountant", "vendor_operator"],
   },

@@ -106,9 +106,17 @@ export type LocationMetrics = {
     kioskOrders: number;
   };
   multiOp: {
-    byOperator: { id: string; name: string; cents: number; tickets: number }[];
+    byOperator: {
+      id: string;
+      name: string;
+      cents: number;
+      tickets: number;
+      cardShareCents?: number;
+      payoutCents?: number;
+    }[];
     hostCutCents: number;
     periodCount: number;
+    guestPaidCents: number;
   };
   cost: {
     items: {

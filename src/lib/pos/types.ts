@@ -695,6 +695,8 @@ export interface SettlementPeriod {
   hostCutTotalCents: number;
   cardFeesTotalCents: number;
   chargebackFeesTotalCents: number;
+  /** Guest card tenders this period — one authorization per check, not a sum of stall terminals. */
+  guestCardPaidCents: number;
   rows: VendorPeriodRow[];
   status: "open" | "closed" | "paid";
 }

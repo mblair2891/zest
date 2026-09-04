@@ -7,9 +7,11 @@ Guest cards always run on **Quantum Payments**. Integrations never offer Stripe,
 - The guest sees **one host brand** (the location’s guest-facing name) and tenders once.
 - Each entity (host and each tenant operator) is its own Quantum Payments merchant (Finix rail). Guest UI never names Finix.
 - Line items are tagged to an **operator**. Kitchen/bar tickets route by station.
-- Capture splits to each brand’s merchant by merchandise owner. Printed receipts group lines by vendor — still one document.
+- Capture splits to each brand’s merchant by merchandise owner. Printed receipts, email, and QR checks itemize by vendor — still one document. Card: one authorization, split to the vendors above.
 
 ## Settlement (period close)
+
+On **card capture**, Finix already sends each operator merchant their share. Period close is the house book for cash, host cut, fees, and disputes.
 
 For each operator in the period:
 

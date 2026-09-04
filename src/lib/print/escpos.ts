@@ -81,7 +81,9 @@ export function buildEscPos(job: PrintJob): Uint8Array {
       parts.push(BOLD_ON, line(g.displayName.toUpperCase()), BOLD_OFF);
     }
     for (const it of g.lines) {
-      parts.push(BOLD_ON, line(`${it.qty}x ${it.name}`), BOLD_OFF);
+      const amt =
+        typeof it.amountCents === "number" ? formatCurrency(it.amountCents) : "";
+      parts.push(BOLD_ON, line(`${it.qty}x ${it.name}`, amt), BOLD_OFF);
       for (const m of it.mods ?? []) parts.push(line(`  ${m}`));
       if (it.note) parts.push(line(`  * ${it.note}`));
       if (it.seat != null) parts.push(line(`  seat ${it.seat}`));
@@ -91,24 +93,22 @@ export function buildEscPos(job: PrintJob): Uint8Array {
     parts.push(text("-".repeat(42)), FEED);
     parts.push(line("Subtotal", formatCurrency(job.totals.subtotalCents)));
     parts.push(line("Tax", formatCurrency(job.totals.taxCents)));
+    if (job.totals.tipCents) parts.push(line("Tip", formatCurrency(job.totals.tipCents)));
+    if (job.totals.giftCents) parts.push(line("Gift", formatCurrency(job.totals.giftCents)));
     parts.push(BOLD_ON, line("Total", formatCurrency(job.totals.totalCents)), BOLD_OFF);
     if (job.totals.tender) parts.push(line(job.totals.tender));
-    if (job.allocations && job.allocations.length > 1) {
-      if (job.copy === "merchant") {
-        parts.push(text("-".repeat(42)), FEED);
-        parts.push(BOLD_ON, line("ALLOCATION"), BOLD_OFF);
-        for (const a of job.allocations) {
-          parts.push(line(a.name, formatCurrency(a.totalCents)));
-          parts.push(line("  merch", formatCurrency(a.merchandiseCents)));
-          parts.push(line("  tax/tip/svc", formatCurrency(a.feesCents)));
-        }
-      } else {
-        parts.push(
-          line(
-            job.allocations.map((a) => `${a.name} ${formatCurrency(a.totalCents)}`).join(" / "),
-          ),
-        );
+    if (job.copy === "guest" && groups.length > 1) {
+      parts.push(line("Card: one authorization, split to the vendors above"));
+    }
+    if (job.copy === "merchant" && job.allocations && job.allocations.length) {
+      parts.push(text("-".repeat(42)), FEED);
+      parts.push(BOLD_ON, line((job.operatorName || "MERCHANT").toUpperCase() + " SHARE"), BOLD_OFF);
+      for (const a of job.allocations) {
+        parts.push(line(a.name, formatCurrency(a.totalCents)));
+        parts.push(line("  merch", formatCurrency(a.merchandiseCents)));
+        parts.push(line("  tax/tip/svc", formatCurrency(a.feesCents)));
       }
+      parts.push(line("Guest still paid once"));
     }
   }
   parts.push(FEED, ALIGN_CT, text("Quantum Payments · Summex"), FEED, FEED, CUT);

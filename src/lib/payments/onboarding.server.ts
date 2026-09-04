@@ -9,6 +9,7 @@ import {
   attachBank,
   createIdentity,
   createMerchant,
+  createSplitTransfer,
   createTransfer,
   finixConfigured,
   getStatus,
@@ -583,29 +584,35 @@ export async function persistPaymentSplits(opts: {
   accounts: AccountRow[];
 }): Promise<{ transferId?: string; sandbox: boolean }[]> {
   const sql = await getSql();
-  const out: { transferId?: string; sandbox: boolean }[] = [];
-  for (const share of opts.entities) {
-    if (share.amountCents <= 0) continue;
+  const shares = opts.entities.filter((s) => s.amountCents > 0);
+  const mapped = shares.map((share) => {
     const acc = opts.accounts.find((a) =>
       share.kind === "host" ? a.kind === "host" : a.operator_id === share.entityId,
     );
-    const merchantId = acc?.finix_merchant_id || null;
-    let transferId: string | undefined;
-    let sandbox = true;
-    if (
-      merchantId &&
-      share.amountCents > 0 &&
-      finixConfigured() &&
-      acc?.payments_provider === "finix" &&
-      !merchantId.includes("sandbox")
-    ) {
-      const xfer = await createTransfer({
-        merchantId,
-        amountCents: share.amountCents,
-      });
-      transferId = xfer.transferId;
-      sandbox = xfer.sandbox;
-    }
+    return { share, acc, merchantId: acc?.finix_merchant_id || null };
+  });
+  const parent =
+    mapped.find((m) => m.share.kind === "host" && m.merchantId && m.share.amountCents > 0) ??
+    mapped.find((m) => m.merchantId && m.share.amountCents > 0) ??
+    mapped.find((m) => m.merchantId);
+  const total = shares.reduce((s, e) => s + e.amountCents, 0);
+  let parentXfer: { transferId?: string; sandbox: boolean } = {
+    sandbox: true,
+  };
+  if (parent?.merchantId) {
+    parentXfer = await createSplitTransfer({
+      parentMerchantId: parent.merchantId,
+      amountCents: total,
+      splits: mapped
+        .filter((m) => m.merchantId)
+        .map((m) => ({
+          merchantId: m.merchantId!,
+          amountCents: m.share.amountCents,
+        })),
+    });
+  }
+  const out: { transferId?: string; sandbox: boolean }[] = [];
+  for (const row of mapped) {
     await sql`
       insert into summex_payment_splits (
         id, payment_id, org_id, location_id, entity_id, entity_kind, display_name,
@@ -616,20 +623,23 @@ export async function persistPaymentSplits(opts: {
         ${opts.paymentId},
         ${opts.orgId},
         ${opts.locationId},
-        ${share.entityId},
-        ${share.kind},
-        ${share.displayName.slice(0, 80)},
-        ${share.merchandiseCents},
-        ${share.taxCents},
-        ${share.serviceCents},
-        ${share.tipCents},
-        ${share.amountCents},
-        ${merchantId},
-        ${transferId ?? null},
+        ${row.share.entityId},
+        ${row.share.kind},
+        ${row.share.displayName.slice(0, 80)},
+        ${row.share.merchandiseCents},
+        ${row.share.taxCents},
+        ${row.share.serviceCents},
+        ${row.share.tipCents},
+        ${row.share.amountCents},
+        ${row.merchantId},
+        ${parentXfer.transferId ?? null},
         ${"recorded"}
       )
     `;
-    out.push({ transferId, sandbox });
+    out.push({
+      transferId: parentXfer.transferId,
+      sandbox: parentXfer.sandbox,
+    });
   }
   return out;
 }

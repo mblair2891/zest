@@ -3,7 +3,7 @@
 **Powered by Quantum Reach**
 
 White paper · October 2026  
-**Revision · 3 Sep 2026** — Get-a-price interview is specific to what you typed. Aligns with Operators Guide v2026.10.36.
+**Revision · 4 Sep 2026** — one guest check; receipt by vendor; Finix pays each operator. Aligns with Operators Guide v2026.10.37.
 
 summex.app  
 Guest cards: **Quantum Payments** only
@@ -18,10 +18,10 @@ The product combines:
 
 - **Service** — floor, sections, checks, kitchen and bar routing (ODS).
 - **Stations** — three device roles: **order** (handhelds + bar), **ODS** (kitchen tickets), **host** (floor map + to-go).
-- **Money movement** — each entity is its own Quantum Payments merchant; the guest tenders once; capture splits; receipts group by vendor; period settlement on a first-party **system ledger**.
+- **Money movement** — each entity is its own Quantum Payments merchant; the guest tenders once; the receipt itemizes by vendor; Finix pays each operator their share; period settlement is the house book for cash, host cut, and fees.
 - **House money** — cash drawers and server banks, mix-based tip-out and pools, first-party **gift ledger** (not the card processor).
 
-The guest pays once, under the host name. Operators are paid from merchandise share on a period ledger — not from a second terminal at the table. Software billing (Summex packages) is **separate** from guest card processing.
+The guest pays once, under the host name. On card capture, Finix sends each operator their share. Period close remains the house book for cash, host cut, fees, and disputes — not a second terminal at the table. Software billing (Summex packages) is **separate** from guest card processing.
 
 This paper describes how the system works today. Items that are **not built** are marked **Roadmap**. No processor rates are guaranteed. No bank partners are named. No compliance seals are claimed. The in-product **Operators Guide** (`/guide`) is the operator manual; this paper is the shareable product description.
 
@@ -102,9 +102,9 @@ Every card tender runs through **Quantum Payments**. Each entity (host and each 
 
 ### One tender, split capture
 
-The guest tenders once. Capture splits to each brand’s merchant by merchandise owner. Tax, tip, and service allocate by merchandise share. Receipts group lines by vendor.
+The guest tenders once. Capture splits to each brand’s merchant by merchandise owner. Tax, tip, and service allocate by merchandise share. Receipts, email, and QR checks itemize by vendor, then totals. Card: one authorization, split to the vendors above.
 
-This is **not** a second terminal at the table, and **not** Stripe Connect-style live split-payout. Period money movement after the tender is a **product-owned ledger**. Electronic “payout” rows address an operator’s account placeholder. **Live ACH is not claimed.** Marking a period paid records that money was sent **outside** Summex.
+This is **not** a second terminal at the table. **Finix pays each approved operator merchant their share on capture.** Period close is still a **product-owned ledger** for cash, host cut, card fees, and disputes. Leftover electronic “payout” rows address an operator’s account placeholder. **Live ACH of period leftovers is not claimed.** Marking a period paid records that leftover money was sent **outside** Summex.
 
 ### Sandbox vs live
 
@@ -112,7 +112,7 @@ Training (and default) uses Quantum Payments **sandbox** — practice cards, not
 
 ### Settlement periods
 
-The house closes a period. For each operator Summex computes merchandise share, card-tendered merchandise (for card fee %), optional host cut, cash due, and electronic payout (card share net of fees, host cut, and any dispute fee). Payout last4 is a **stub** for operations rehearsal. Connecting a live bank rail is **Roadmap**.
+The house closes a period. Settlement shows: guest paid $X once; each operator’s ticket share vs Quantum (Finix) payout. Then cash due, host cut, card fees, and any $35 dispute split. Payout last4 for leftover period balances is a **stub** for operations rehearsal. Connecting a live bank rail for leftovers is **Roadmap**.
 
 ---
 
@@ -296,7 +296,7 @@ Typical first-week work is configuration, not a six-month integration.
 | Host Venue | Guest-facing brand on a multi-operator floor |
 | Operator | Stall or kitchen brand; its own Quantum Payments merchant |
 | Per-entity merchant | Each entity’s Quantum Payments account (Finix rail; guest never sees Finix) |
-| One guest check | One tender; split capture; receipts grouped by vendor |
+| One guest check | One tender; receipt by vendor; Finix pays each operator |
 | Printed / card price | Menu source of truth; what Quantum Payments captures |
 | Cash price | Printed price × (1 − %), rounded **up** to the configured increment |
 | Gift ledger | First-party Summex gift — not Finix |

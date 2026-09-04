@@ -35,32 +35,50 @@ export function ticketHtml(job: PrintJob): string {
           const mods = (it.mods ?? []).map((m) => `<div class="mod">${esc(m)}</div>`).join("");
           const note = it.note ? `<div class="mod">* ${esc(it.note)}</div>` : "";
           const seat = it.seat != null ? `<div class="mod">seat ${it.seat}</div>` : "";
-          return `<div class="item"><strong>${it.qty}× ${esc(it.name)}</strong>${mods}${note}${seat}</div>`;
+          const amt =
+            typeof it.amountCents === "number"
+              ? `<span>${formatCurrency(it.amountCents)}</span>`
+              : "";
+          return `<div class="item row"><strong>${it.qty}× ${esc(it.name)}</strong>${amt}</div>${mods}${note}${seat}`;
         })
         .join("");
       return `${head}${rows}`;
     })
     .join("");
+  const splitNote =
+    job.copy === "guest" && groups.length > 1
+      ? `<div class="muted">Card: one authorization, split to the vendors above</div>`
+      : "";
   const alloc =
-    job.copy === "merchant" && job.allocations && job.allocations.length > 1
+    job.copy === "merchant" && job.allocations && job.allocations.length
       ? `<div class="rule"></div>
-         <div class="vendor">Merchant allocation</div>
+         <div class="vendor">${esc(job.operatorName || "Merchant")} share</div>
          ${job.allocations
            .map(
              (a) =>
                `<div class="row"><span>${esc(a.name)}</span><span>${formatCurrency(a.totalCents)}</span></div>
                 <div class="mod">${formatCurrency(a.merchandiseCents)} merch · ${formatCurrency(a.feesCents)} tax/tip/svc</div>`,
            )
-           .join("")}`
-      : job.allocations && job.allocations.length > 1
-        ? `<div class="muted">${esc(job.allocations.map((a) => `${a.name} ${formatCurrency(a.totalCents)}`).join(" · "))}</div>`
-        : "";
+           .join("")}
+         <div class="muted">Guest still paid once</div>`
+      : "";
   const totals = job.totals
     ? `<div class="rule"></div>
        <div class="row"><span>Subtotal</span><span>${formatCurrency(job.totals.subtotalCents)}</span></div>
        <div class="row"><span>Tax</span><span>${formatCurrency(job.totals.taxCents)}</span></div>
+       ${
+         job.totals.tipCents
+           ? `<div class="row"><span>Tip</span><span>${formatCurrency(job.totals.tipCents)}</span></div>`
+           : ""
+       }
+       ${
+         job.totals.giftCents
+           ? `<div class="row"><span>Gift</span><span>${formatCurrency(job.totals.giftCents)}</span></div>`
+           : ""
+       }
        <div class="row total"><span>Total</span><span>${formatCurrency(job.totals.totalCents)}</span></div>
        ${job.totals.tender ? `<div class="muted">${esc(job.totals.tender)}</div>` : ""}
+       ${splitNote}
        ${alloc}`
     : "";
   return `<!doctype html>

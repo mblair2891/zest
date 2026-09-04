@@ -91,9 +91,10 @@ export function SettlementView() {
           </div>
         </div>
         <p className="text-xs text-muted-foreground">
-          Subscriber host owns Quantum Payments MID, split rules, and payout
-          destinations. Guest pays once via {PAYMENTS_BRAND}. Operators see a
-          report slice only — they cannot edit banks or host cut.
+          Guest pays once via {PAYMENTS_BRAND}. On card capture, each selling
+          entity is paid its share. This period book still nets cash, host cut,
+          card fees, and disputes. Operators see a report slice only — they
+          cannot edit banks or host cut.
         </p>
       </div>
 
@@ -355,6 +356,10 @@ export function SettlementView() {
                   )}
                 />
               </div>
+              <GuestPaidOnce
+                guestPaidCents={live.guestCardPaidCents ?? 0}
+                rows={live.rows}
+              />
               <SettlementTable rows={live.rows} />
               <div className="mt-4 rounded-xl border border-border bg-bg p-3">
                 <h4 className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
@@ -460,6 +465,10 @@ export function SettlementView() {
                     </Button>
                   )}
                 </div>
+                <GuestPaidOnce
+                  guestPaidCents={p.guestCardPaidCents ?? 0}
+                  rows={p.rows}
+                />
                 <SettlementTable rows={p.rows} />
                 <p className="mt-2 text-xs text-muted-foreground">
                   Host ({p.hostName}): {formatCurrency(p.hostCutTotalCents)} ·
@@ -495,6 +504,45 @@ export function SettlementView() {
           </ol>
         </section>
       </div>
+    </div>
+  );
+}
+
+function GuestPaidOnce({
+  guestPaidCents,
+  rows,
+}: {
+  guestPaidCents: number;
+  rows: {
+    vendorId: string;
+    vendorName: string;
+    cardSalesCents: number;
+    netElectronicPayoutCents?: number;
+    cardPayoutCents: number;
+  }[];
+}) {
+  if (!rows.length) return null;
+  return (
+    <div className="mb-3 rounded-xl border border-border bg-bg p-3">
+      <p className="text-sm">
+        Guest paid{" "}
+        <span className="font-semibold tabular">{formatCurrency(guestPaidCents)}</span>{" "}
+        once (Quantum Payments). Each operator’s share:
+      </p>
+      <ul className="mt-2 space-y-1 text-sm">
+        {rows.map((r) => (
+          <li key={r.vendorId} className="flex justify-between gap-2">
+            <span>{r.vendorName}</span>
+            <span className="tabular text-muted-foreground">
+              {formatCurrency(r.cardSalesCents)} ticket share ·{" "}
+              <span className="font-medium text-foreground">
+                {formatCurrency(r.netElectronicPayoutCents ?? r.cardPayoutCents)}{" "}
+                Quantum payout
+              </span>
+            </span>
+          </li>
+        ))}
+      </ul>
     </div>
   );
 }
@@ -536,12 +584,12 @@ function SettlementTable({
           <tr>
             <th className="px-2 py-1.5">Vendor</th>
             <th className="px-2 py-1.5">Gross</th>
-            <th className="px-2 py-1.5">Card</th>
+            <th className="px-2 py-1.5">Ticket share (card)</th>
             <th className="px-2 py-1.5">Cash</th>
             <th className="px-2 py-1.5">CC fees</th>
             <th className="px-2 py-1.5">Host cut</th>
             <th className="px-2 py-1.5">CB $35</th>
-            <th className="px-2 py-1.5">E-payout</th>
+            <th className="px-2 py-1.5">Quantum payout</th>
             <th className="px-2 py-1.5">Cash due</th>
             <th className="px-2 py-1.5">Payout account</th>
           </tr>

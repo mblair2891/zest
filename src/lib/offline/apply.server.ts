@@ -105,6 +105,20 @@ export async function applyOfflineBatch(
         continue;
       }
 
+      if (item.kind === "receipt_email") {
+        const to = String(item.payload.to ?? "").trim().toLowerCase();
+        const text = String(item.payload.text ?? "");
+        if (to && text) {
+          const { sendEmail } = await import("@/lib/saas/email.server");
+          await sendEmail({
+            to,
+            subject: String(item.payload.subject ?? "Your receipt").slice(0, 180),
+            text: text.slice(0, 12_000),
+            html: typeof item.payload.html === "string" ? item.payload.html.slice(0, 24_000) : undefined,
+            kind: "receipt_email",
+          });
+        }
+      }
       if (item.kind === "cash_ledger") {
         await applyCashLedger(sql, userId, item);
       }

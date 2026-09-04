@@ -30,7 +30,7 @@ export const PAYMENT_TOPICS: GuideTopic[] = [
       ),
       ul(
         "Host and each tenant operator complete their own Quantum Payments merchant application. Guest UI never names Finix.",
-        "One guest tender. Split capture to each brand’s merchant by merchandise owner. Tax, tip, and service allocate by merchandise share. The printed receipt groups items under the vendor name.",
+        "One guest tender. Split capture to each brand’s merchant by merchandise owner. Tax, tip, and service allocate by merchandise share. Receipt, email, and QR check itemize by vendor, then totals — still one document.",
         "Software billing (SaaS invoices) is separate from guest cards.",
         "Gift load with a bank card charges the issuer brand’s account. Gift redeem stays on the Summex ledger.",
         "Sandbox (default, including Training): practice cards, not a live Visa. Live: present the card on an enrolled Finix/Quantum reader supplied through Summex. Tablets, printers, and drawers stay BYO. Customer-owned Square, Stripe, or bank terminals are not supported. Live cards fail closed without an enrolled reader.",
@@ -89,7 +89,7 @@ export const PAYMENT_TOPICS: GuideTopic[] = [
         "Each brand must be a merchant of record for its own merchandise. The guest still pays once so the room does not feel like a food-court of terminals.",
       ),
       p(
-        "Each entity is its own merchant on Quantum Payments (Finix). Line items stay tagged to the brand that sold them. The guest tenders once; capture splits to those merchants by merchandise share, with tax/tip/service allocated the same way. Receipts group by vendor. The guest never sees Finix. The host is not the sole merchant of record.",
+        "Each entity is its own merchant on Quantum Payments (Finix). Line items stay tagged to the brand that sold them. The guest tenders once; Finix pays each operator their share by merchandise owner, with tax/tip/service allocated the same way. Receipts, email, and QR itemize by vendor. The guest never sees Finix. The host is not the sole merchant of record.",
       ),
       steps(
         "Confirm each brand has its own Quantum Payments merchant application (sandbox in training, approved before live cards).",
@@ -122,12 +122,12 @@ export const PAYMENT_TOPICS: GuideTopic[] = [
         "The guest should see who cooked or poured without a second checkout. The house still prints one document under the location name.",
       ),
       p(
-        "Pay or Check prints a guest receipt on the thermal (Epson TM-T20 on the AP LAN). On a multi-operator check, line items group under the vendor heading (Operator A, Operator B). The header is still the host / location name. Quantum Payments is the card tender line — guests never see Finix.",
+        "Pay, Check, email, and table QR all show one guest document. Lines group under the vendor heading, then subtotal / tax / tip / gift / tender. Example: Operator A — plate $18, side $6; Operator B — cocktail $14, beer $7; then totals. Card: one authorization, split to the vendors above. Quantum Payments is the tender line — guests never see Finix.",
       ),
       ul(
         "One document. Do not print a stall receipt as a second card run.",
-        "When more than one brand is on the check, a merchant copy can list allocation: merchandise, tax/tip/service, total per brand.",
-        "Kitchen and bar tickets still print only that station’s lines (impact TM-U220 for kitchen).",
+        "Merchant copy (when more than one brand is on the check) lists that vendor’s share: merchandise, tax/tip/service, total. Guest still paid once.",
+        "Kitchen and bar tickets still print only that station’s lines (impact TM-U220 for kitchen). Pay uses the same ownership map as ODS routing — do not change routing.",
         "Cash discount receipts show both printed/card and cash amounts when cash was taken.",
       ),
       steps(
@@ -148,18 +148,19 @@ export const PAYMENT_TOPICS: GuideTopic[] = [
     openView: "settlement",
     blocks: [
       why(
-        "Guests pay once. Operators get paid on a period, net of fees and host cut. This is a product-owned ledger, not live processor split-payouts.",
+        "Guests pay once. On card capture, Finix (Quantum Payments) already sends each operator their share. The period book still nets cash, host cut, card fees, and disputes.",
       ),
       steps(
-        "Open Settle. Set host cut (percent of gross or fixed per operator), card fee %, tax remittance (host default), and whether tips pool.",
-        "Work the period. Live preview shows merchandise, card fees, host cut, cash due, electronic payout.",
-        "Close the period. Payout rows address each operator’s account placeholder (last4 stub — not live ACH).",
-        "Mark paid when you actually send money outside Summex (bank, envelope, export).",
+        "Open Settle. Live preview: guest paid $X once; each operator’s ticket share vs Quantum payout.",
+        "Set host cut (percent of gross or fixed per operator), card fee %, tax remittance (host default), and whether tips pool.",
+        "Work the period. Card capture already paid each operator their merchandise mix. Close still records cash due, host cut, fees, and any $35 dispute split.",
+        "Close the period. Remaining electronic rows (host cut, fees) address each operator’s account placeholder (last4 stub — live ACH of leftovers is Roadmap).",
+        "Mark paid when you actually send leftover money outside Summex (bank, envelope, export).",
         "Cash tenders are counted separately (cash due after host cut on the cash share).",
       ),
       callout(
-        "Sandbox / ledger",
-        "Payout account last4 is a stub so you can rehearse ops. Connecting a live bank rail is out of scope for this guide. The math on the period is still the production contract.",
+        "Capture vs period",
+        "Card: one guest authorization; Finix pays each approved merchant their share immediately. Period close is the house book for cash, host cut, fees, and chargebacks — not a second stall checkout. Connecting leftover ACH is out of scope for this guide.",
       ),
       related("host-capture", "chargebacks", "system-ledger", "cash-handling", "single-vs-multi"),
     ],
@@ -181,7 +182,7 @@ export const PAYMENT_TOPICS: GuideTopic[] = [
         "Each row has a type, a party (host or operator), a signed amount, and an idempotency key. Positive amounts increase that party’s claim; negative amounts decrease it. Retries do not double-post.",
       ),
       ul(
-        "Card pay → split capture to each brand’s Quantum Payments merchant (guest still sees one check).",
+        "Card pay → one guest authorization; Finix split to each brand’s Quantum Payments merchant (guest still sees one check).",
         "Cash pay → capture plus an optional cash_discount_adjustment when discount is on.",
         "Check close → allocation to each operator by merchandise share.",
         "Period close → processor_fee, host_fee, sandbox payout (not live bank).",
@@ -211,7 +212,7 @@ export const PAYMENT_TOPICS: GuideTopic[] = [
         "Processors, prospects, and partners need one document that does not invent rates, banks, or seals — and that stays in lockstep with this Operators Guide.",
       ),
       p(
-        "Open /whitepaper (also linked from the marketing footer). Print from the browser for a PDF. The markdown source lives with the product docs. It stays in lockstep with this guide: positioning, multi-entity, Quantum Payments / per-entity merchants + one guest check, gift ledger, device roles, cash models, tip-out/pools, training vs live. No SaaS CRM internals. No how-to-login. Revision · 29 Oct 2026 matches Guide v2026.10.30 (receipts-by-vendor topic).",
+        "Open /whitepaper (also linked from the marketing footer). Print from the browser for a PDF. The markdown source lives with the product docs. It stays in lockstep with this guide: positioning, multi-entity, Quantum Payments / per-entity merchants + one guest check, receipt by vendor, Finix pays each operator, gift ledger, device roles, cash models, tip-out/pools, training vs live. No SaaS CRM internals. No how-to-login. Revision · 4 Sep 2026 matches Guide v2026.10.37.",
       ),
       steps(
         "Open White paper from the site footer or this topic.",

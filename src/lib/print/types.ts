@@ -38,6 +38,8 @@ export type PrintJob = {
   totals?: {
     subtotalCents: number;
     taxCents: number;
+    tipCents?: number;
+    giftCents?: number;
     totalCents: number;
     tender?: string;
   };
