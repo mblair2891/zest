@@ -273,6 +273,7 @@ export function starterPosSlice(opts: {
   settlement?: Partial<SettlementConfig>;
   address?: string;
   hallMode?: boolean;
+  peerVenue?: boolean;
 }) {
   const owner = starterOwner(opts.ownerName);
   const menuMode = opts.menuMode ?? "empty";
@@ -299,6 +300,14 @@ export function starterPosSlice(opts: {
   const settings = starterSettings(opts.venueName);
   if (opts.address) settings.address = opts.address;
   settings.multiTenantHallMode = hall;
+  settings.hostMultiOperator = hall;
+  settings.peerVenue = Boolean(opts.peerVenue);
+  settings.operatingModel = opts.peerVenue
+    ? "peer_venue"
+    : hall
+      ? "host_operators"
+      : "single";
+  if (opts.peerVenue) settings.giftHouseIssuerEnabled = false;
   const settlement = {
     ...starterSettlement(opts.venueName),
     locationId: opts.locationId,

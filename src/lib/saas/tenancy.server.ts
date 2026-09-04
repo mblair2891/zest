@@ -274,7 +274,12 @@ function mapLoc(r: LocRow): LocationRecord {
     createdAt: asIso(r.created_at),
     address: r.address ?? "",
     hostBrandName: r.host_brand_name ?? null,
-    operatingModel: r.operating_model === "host_operators" ? "host_operators" : "single",
+    operatingModel:
+      r.operating_model === "peer_venue"
+        ? "peer_venue"
+        : r.operating_model === "host_operators"
+          ? "host_operators"
+          : "single",
     setup: parseSetup(r.setup),
     lifecycleStatus: parseSetup(r.setup).lifecycleStatus || r.lifecycle_status || "training",
   };
@@ -606,7 +611,7 @@ export async function createLocationForOrg(
     timezone?: string;
     address?: string;
     hostBrandName?: string;
-    operatingModel?: "single" | "host_operators";
+    operatingModel?: "single" | "host_operators" | "peer_venue";
     setup?: LocationSetup;
     enabledPackages?: PackageId[];
     skipLimit?: boolean;
@@ -641,7 +646,12 @@ export async function createLocationForOrg(
     requested && requested.length ? requested : defaults.filter((p) => planFeatures.has(p));
   const id = newId("loc");
   const tz = input.timezone?.trim() || "America/Los_Angeles";
-  const model = input.operatingModel === "host_operators" ? "host_operators" : "single";
+  const model =
+    input.operatingModel === "peer_venue"
+      ? "peer_venue"
+      : input.operatingModel === "host_operators"
+        ? "host_operators"
+        : "single";
   const setupObj = {
     ...(input.setup ?? {}),
     lifecycleStatus: input.setup?.lifecycleStatus ?? "training",

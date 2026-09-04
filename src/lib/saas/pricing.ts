@@ -271,7 +271,10 @@ export function parseIntakeAnswers(raw: unknown): IntakeAnswers {
   const model = str(operating.model, "single");
   d.operating = {
     model:
-      model === "host_operators" || model === "mixed" || model === "single"
+      model === "host_operators" ||
+      model === "peer_venue" ||
+      model === "mixed" ||
+      model === "single"
         ? model
         : "single",
     operatorsPerLocation: Math.max(1, Math.floor(num(operating.operatorsPerLocation, 1))),
@@ -368,7 +371,12 @@ export function locationCount(answers: IntakeAnswers): number {
 }
 
 export function hostLocationCount(answers: IntakeAnswers): number {
-  if (answers.operating.model === "host_operators") return locationCount(answers);
+  if (
+    answers.operating.model === "host_operators" ||
+    answers.operating.model === "peer_venue"
+  ) {
+    return locationCount(answers);
+  }
   const hall =
     (answers.portfolio.typeCounts.food_hall ?? 0) +
     (answers.portfolio.typeCounts.truck_pod ?? 0);
@@ -384,7 +392,11 @@ export function recommendedPlan(
 ): PlanSlug {
   const hinted = interview?.pricingHints?.suggestedPlan;
   if (hinted && PLAN_SLUGS.includes(hinted) && hinted !== "platform_internal") {
-    if (interview?.operatingModel === "host_multi_operator" || hinted === "food_hall") {
+    if (
+      interview?.operatingModel === "host_multi_operator" ||
+      interview?.operatingModel === "peer_venue" ||
+      hinted === "food_hall"
+    ) {
       return hinted === "starter" ? "food_hall" : hinted;
     }
     return hinted;
@@ -396,7 +408,11 @@ export function recommendedPlan(
   }
   const primary = primaryLocationType(merged);
   let plan = rules.basePlanByLocationType[primary] ?? "starter";
-  if (merged.operating.model === "host_operators" || hostLocationCount(merged) > 0) {
+  if (
+    merged.operating.model === "host_operators" ||
+    merged.operating.model === "peer_venue" ||
+    hostLocationCount(merged) > 0
+  ) {
     plan = "food_hall";
   } else if (merged.modules.tableService && plan === "starter") {
     plan = "full_service";
@@ -438,7 +454,15 @@ export function applyInterviewToIntake(
 ): IntakeAnswers {
   if (!rec) return answers;
   const next = parseIntakeAnswers(answers);
-  if (rec.operatingModel === "host_multi_operator") {
+  if (rec.operatingModel === "peer_venue") {
+    next.operating = {
+      ...next.operating,
+      model: "peer_venue",
+      guestPaysHostCheck: true,
+      hostStand: true,
+      operatorsPerLocation: Math.max(2, next.operating.operatorsPerLocation || 2),
+    };
+  } else if (rec.operatingModel === "host_multi_operator") {
     next.operating = {
       ...next.operating,
       model: "host_operators",
@@ -593,7 +617,11 @@ export function generateQuote(
   const stations = stationCountsFromAnswers(answers);
   const tenants = tenantEntityCount(answers);
   const entityCount =
-    isMultiOperatorHouse(answers) ? Math.max(1, locs) + tenants : Math.max(1, locs);
+    answers.operating.model === "peer_venue"
+      ? Math.max(2, tenants)
+      : isMultiOperatorHouse(answers)
+        ? Math.max(1, locs) + tenants
+        : Math.max(1, locs);
 
   const hwIn = answers.hardware ?? emptyIntakeHardware();
   const terminalQty = Math.max(1, opts?.terminalQty ?? requiredReaderQty(answers));

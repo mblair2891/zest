@@ -212,7 +212,7 @@ export const PAYMENT_TOPICS: GuideTopic[] = [
         "Processors, prospects, and partners need one document that does not invent rates, banks, or seals — and that stays in lockstep with this Operators Guide.",
       ),
       p(
-        "Open /whitepaper (also linked from the marketing footer). Print from the browser for a PDF. The markdown source lives with the product docs. It stays in lockstep with this guide: positioning, multi-entity, Quantum Payments / per-entity merchants + one guest check, receipt by vendor, Finix pays each operator, gift ledger, device roles, cash models, tip-out/pools, training vs live. No SaaS CRM internals. No how-to-login. Revision · 4 Sep 2026 matches Guide v2026.10.37.",
+        "Open /whitepaper (also linked from the marketing footer). Print from the browser for a PDF. The markdown source lives with the product docs. It stays in lockstep with this guide: positioning, multi-entity, shared venue without a landlord-brand POS, Quantum Payments / per-entity merchants + one guest check, receipt by vendor, Finix pays each operator, gift ledger, device roles, cash models, tip-out/pools, training vs live. No SaaS CRM internals. No how-to-login. Revision · 4 Sep 2026 matches Guide v2026.10.38.",
       ),
       steps(
         "Open White paper from the site footer or this topic.",

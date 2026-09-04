@@ -104,11 +104,16 @@ export function parseRecommendation(raw: unknown): InterviewRecommendation | nul
   const o = raw as Record<string, unknown>;
   const modelRaw = String(o.operatingModel ?? "");
   const operatingModel: InterviewRecommendation["operatingModel"] =
-    modelRaw === "host_multi_operator" ||
-    modelRaw === "host_operators" ||
-    modelRaw === "host"
-      ? "host_multi_operator"
-      : "single_operator";
+    modelRaw === "peer_venue" ||
+    modelRaw === "peer" ||
+    modelRaw === "shared_venue" ||
+    modelRaw === "shared_building"
+      ? "peer_venue"
+      : modelRaw === "host_multi_operator" ||
+          modelRaw === "host_operators" ||
+          modelRaw === "host"
+        ? "host_multi_operator"
+        : "single_operator";
   const venueTypes: LocationMode[] = [];
   const venuesRaw = Array.isArray(o.venueTypes) ? o.venueTypes : [];
   for (const v of venuesRaw) {
@@ -146,7 +151,7 @@ export function parseRecommendation(raw: unknown): InterviewRecommendation | nul
   const suggestedPlan: PlanSlug =
     planRaw === "full_service" || planRaw === "food_hall" || planRaw === "starter"
       ? planRaw
-      : operatingModel === "host_multi_operator"
+      : operatingModel === "host_multi_operator" || operatingModel === "peer_venue"
         ? "food_hall"
         : venueTypes.includes("restaurant") || venueTypes.includes("bar_lounge")
           ? "full_service"
@@ -179,6 +184,7 @@ export function applyRecommendation(
 ): IntakeAnswers {
   const next = structuredClone(base) as IntakeAnswers;
   const host = rec.operatingModel === "host_multi_operator";
+  const peer = rec.operatingModel === "peer_venue";
   const typeCounts: IntakeAnswers["portfolio"]["typeCounts"] = {};
   const locCount = rec.estimates.locations;
   if (rec.venueTypes.length === 1) {
@@ -195,16 +201,22 @@ export function applyRecommendation(
     typeCounts,
   };
   next.operating = {
-    model: host ? "host_operators" : rec.venueTypes.length > 1 ? "mixed" : "single",
-    operatorsPerLocation: host ? Math.max(2, rec.estimates.operators) : 1,
-    guestPaysHostCheck: host,
+    model: peer
+      ? "peer_venue"
+      : host
+        ? "host_operators"
+        : rec.venueTypes.length > 1
+          ? "mixed"
+          : "single",
+    operatorsPerLocation: host || peer ? Math.max(2, rec.estimates.operators) : 1,
+    guestPaysHostCheck: host || peer,
     barKitchenSplit:
       rec.venueTypes.includes("bar_lounge") || rec.modules.includes("kds"),
-    hostStand: host || rec.modules.includes("tableService"),
+    hostStand: host || peer || rec.modules.includes("tableService"),
   };
   const mods = { ...emptyIntakeAnswers().modules };
   for (const id of MODULE_IDS) mods[id] = rec.modules.includes(id);
-  if (host) {
+  if (host || peer) {
     mods.vendorPortal = true;
     mods.kds = true;
   }
@@ -467,7 +479,20 @@ export function heuristicInterviewTurn(opts: {
 }
 
 export function heuristicRecommendation(corpus: string, freeText: string): InterviewRecommendation {
+  const peer =
+    has(
+      corpus,
+      "shared building",
+      "shared venue",
+      "no landlord",
+      "peer venue",
+      "independent operators",
+      "the laundry",
+      "no host brand",
+      "no host company",
+    ) && !has(corpus, "single operator only");
   const host =
+    !peer &&
     has(
       corpus,
       "food hall",
@@ -481,7 +506,7 @@ export function heuristicRecommendation(corpus: string, freeText: string): Inter
       "multiple operators",
     ) && !has(corpus, "single operator only");
   const venues: LocationMode[] = [];
-  if (has(corpus, "food hall", "foodhall", "stall")) venues.push("food_hall");
+  if (peer || has(corpus, "food hall", "foodhall", "stall")) venues.push("food_hall");
   if (has(corpus, "truck", "pod")) venues.push("truck_pod");
   if (has(corpus, "ghost")) venues.push("ghost_kitchen");
   if (has(corpus, "cater")) venues.push("catering");
@@ -505,7 +530,7 @@ export function heuristicRecommendation(corpus: string, freeText: string): Inter
   if (has(corpus, "gift")) modules.add("giftCards");
   if (has(corpus, "crm", "loyalty", "guest", "regular")) modules.add("crm");
   if (has(corpus, "marketing", "campaign", "sms", "email")) modules.add("marketing");
-  if (host) {
+  if (host || peer) {
     modules.add("vendorPortal");
     modules.add("kds");
     modules.add("online");
@@ -522,27 +547,29 @@ export function heuristicRecommendation(corpus: string, freeText: string): Inter
   }
 
   const locations = firstInt(corpus, [/(\d+)\s+(location|site|venue|spot)/i], 1);
-  const operators = host
+  const operators = host || peer
     ? firstInt(corpus, [/(\d+)\s+(operator|vendor|stall|concept)/i], 2)
     : 1;
-  const seats = firstInt(corpus, [/(\d+)\s+(seat|staff|login|employee)/i], host ? 20 : 12);
-  const devices = firstInt(corpus, [/(\d+)\s+(device|terminal|handheld|pos|kds)/i], host ? 8 : 6);
+  const seats = firstInt(corpus, [/(\d+)\s+(seat|staff|login|employee)/i], host || peer ? 20 : 12);
+  const devices = firstInt(corpus, [/(\d+)\s+(device|terminal|handheld|pos|kds)/i], host || peer ? 8 : 6);
 
   let gmvNote = "";
   if (has(corpus, "400k", "400 k")) gmvNote = "Volume band sounds like $400k+.";
   else if (has(corpus, "150k", "150 k")) gmvNote = "Volume band sounds like $150–400k.";
   else if (has(corpus, "50k", "50 k")) gmvNote = "Volume band sounds like $50–150k.";
 
-  const suggestedPlan: PlanSlug = host
+  const suggestedPlan: PlanSlug = host || peer
     ? "food_hall"
     : uniqueVenues.includes("restaurant") || uniqueVenues.includes("bar_lounge")
       ? "full_service"
       : "starter";
 
   const rationale = [
-    host
-      ? "Description sounds like a host with multiple operators."
-      : "Treating this as a single-operator location unless you change it.",
+    peer
+      ? "Description sounds like a shared building with independent operators — no landlord-brand POS."
+      : host
+        ? "Description sounds like a host with multiple operators."
+        : "Treating this as a single-operator location unless you change it.",
     `Venue type(s): ${uniqueVenues.join(", ").replaceAll("_", " ")}.`,
     `Modules chosen from what you mentioned (and host defaults if applicable).`,
   ];
@@ -550,16 +577,18 @@ export function heuristicRecommendation(corpus: string, freeText: string): Inter
 
   return {
     summary: freeText.trim().slice(0, 240),
-    operatingModel: host ? "host_multi_operator" : "single_operator",
+    operatingModel: peer ? "peer_venue" : host ? "host_multi_operator" : "single_operator",
     venueTypes: uniqueVenues,
     modules: [...modules],
     estimates: { locations, operators, seats, devices },
     rationale,
     pricingHints: {
       suggestedPlan,
-      notes: host
-        ? "Guest cards still run on Quantum Payments. Each entity is its own merchant; one guest check; split capture. Gift cards stay first-party."
-        : "Guest cards run on Quantum Payments only. Gift cards stay first-party.",
+      notes: peer
+        ? "Shared venue: guest pays once; receipt by vendor; each operator is its own Quantum Payments merchant. No host merchant or host gift product."
+        : host
+          ? "Guest cards still run on Quantum Payments. Each entity is its own merchant; one guest check; split capture. Gift cards stay first-party."
+          : "Guest cards run on Quantum Payments only. Gift cards stay first-party.",
     },
   };
 }
@@ -591,7 +620,7 @@ Guest cards are ALWAYS Quantum Payments (per-entity merchant, one guest check, s
 Catalog only:
 - venueTypes: restaurant, food_hall, truck_pod, ghost_kitchen, catering, bar_lounge, cafe, qsr
 - modules: tableService, counterQsr, kiosk, online, kds, inventory, labor, giftCards, crm, marketing, vendorPortal, multiLocationReporting
-- operatingModel: host_multi_operator OR single_operator
+- operatingModel: host_multi_operator OR peer_venue OR single_operator
 - suggestedPlan: starter | full_service | food_hall
 
 Rules:
@@ -608,5 +637,6 @@ Rules:
 
 JSON only, no markdown. One of:
 {"type":"questions","questions":[{"id":"snake_id","prompt":"...","hint":"..."}],"draftRecommendation":{...}}
-{"type":"recommendation","recommendation":{"summary":"...","operatingModel":"host_multi_operator"|"single_operator","venueTypes":["restaurant"],"modules":["kds","online"],"estimates":{"locations":1,"operators":2,"seats":15,"devices":6},"rationale":["..."],"pricingHints":{"suggestedPlan":"food_hall","notes":"..."}}}`;
+{"type":"recommendation","recommendation":{"summary":"...","operatingModel":"host_multi_operator"|"peer_venue"|"single_operator","venueTypes":["restaurant"],"modules":["kds","online"],"estimates":{"locations":1,"operators":2,"seats":15,"devices":6},"rationale":["..."],"pricingHints":{"suggestedPlan":"food_hall","notes":"..."}}}
+A shared building with independent operators and no landlord POS is peer_venue (not host_multi_operator). Host_multi_operator is only when a host company sells or takes a cut.`;
 }

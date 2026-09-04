@@ -3,7 +3,7 @@
 **Powered by Quantum Reach**
 
 White paper · October 2026  
-**Revision · 4 Sep 2026** — one guest check; receipt by vendor; Finix pays each operator. Aligns with Operators Guide v2026.10.37.
+**Revision · 4 Sep 2026** — shared building, no landlord-brand POS. Aligns with Operators Guide v2026.10.38.
 
 summex.app  
 Guest cards: **Quantum Payments** only
@@ -68,13 +68,17 @@ This paper does not document control-plane CRM, quotes, or pipeline internals.
 
 One brand owns the location. Menu, kitchen, and payout belong to that brand. Cards still run on Quantum Payments. That brand is its own merchant. Settlement is simpler; the ledger still records captures, tips, cash, voids, and (if filed) disputes.
 
-### Host + multiple operators
+### Host + tenants
 
-**Host Venue** owns the floor and the guest-facing brand. **Operator A**, **Operator B**, … own lines, tickets, and period payouts. Each entity is its own Quantum Payments merchant. They are **not** a second guest-facing processor.
+A **host subscriber** owns the floor and may sell. **Operator A**, **Operator B**, … own lines, tickets, and period payouts. Each entity (including the host) is its own Quantum Payments merchant. They are **not** a second guest-facing processor.
 
-The guest sees one check and one tender. Kitchen and bar still receive only their tickets. Capture splits to each brand’s merchant by merchandise owner. Printed receipts group lines under the vendor name — still one document. Period close allocates merchandise, optional host cut, card fees on the card-tendered share, cash due, and any dispute fee.
+### Shared venue (peers)
 
-A bar-scoped operator sees bar cost and bar sales; a food-scoped operator sees food; the host sees the house pack.
+A **named building** only. Two or more independent operators. **No host merchant, no host menu, no host gift product required.** Venue admin holds legal site name, address, floor, devices, guest branding, cash-discount rounding, waitlist/kiosk, and who may see whom. Each operator has Finix identity + merchant, menu, recipes, ODS, staff, scheduling, payroll export, and a gift ledger if they issue cards. Untagged lines fail closed — the building is not a merchant. Quotes are Shared venue + per entity — not a third host operator.
+
+In both multi-operator models the guest sees one check and one tender. Kitchen and bar still receive only their tickets. Capture splits to each brand’s merchant by merchandise owner. Printed receipts group lines under the vendor name — still one document. Period close allocates merchandise, optional host cut (shared venues default to none), card fees on the card-tendered share, cash due, and any dispute fee.
+
+A bar-scoped operator sees bar cost and bar sales; a food-scoped operator sees food. The host pack exists only when there is a host company.
 
 This model is the reason Summex exists as more than a cash register.
 
@@ -98,7 +102,7 @@ The guest does not see operator splits, host cut, ledger rows, or device roles.
 
 ### Merchants
 
-Every card tender runs through **Quantum Payments**. Each entity (host and each tenant operator) is its own merchant on the Finix rail. **Guest UI never names Finix.** Host and each operator complete their own merchant application. A brand cannot take live cards until that brand’s application is approved.
+Every card tender runs through **Quantum Payments**. Every selling entity is its own merchant on the Finix rail. A shared venue is not a merchant. **Guest UI never names Finix.** Each selling operator completes their own merchant application. A brand cannot take live cards until that brand’s application is approved.
 
 ### One tender, split capture
 

@@ -328,6 +328,8 @@ function locationSetup(
     devices: loc.devices,
     settlement: payload.settlement,
     hostBrandName: loc.hostBrandName,
+    operatingModel: loc.operatingModel,
+    giftHouseIssuerEnabled: loc.operatingModel !== "peer_venue",
     networkReadyStatus: loc.networkReadyStatus,
     networkCheckedAt: loc.networkCheckedAt,
     networkNotes: loc.networkNotes,
@@ -349,7 +351,7 @@ async function applyOperators(userId: string, prospectId: string, payload: Onboa
   const orgId = p[0]?.org_id;
   if (!orgId) throw new Error("Organization missing");
   for (const loc of payload.locations) {
-    if (loc.operatingModel !== "host_operators") continue;
+    if (loc.operatingModel !== "host_operators" && loc.operatingModel !== "peer_venue") continue;
     if (!loc.serverId) continue;
     const named = loc.operators.filter(
       (o) => o.legalName.trim() || o.dba.trim() || o.contactEmail.trim(),

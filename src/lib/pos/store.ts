@@ -4014,6 +4014,7 @@ const usePosStoreRaw = create()(persist((set, get) => ({
 				settlement: opts.settlement,
 				address: opts.address,
 				hallMode: opts.hallMode,
+				peerVenue: opts.peerVenue,
 			});
 			set({
 				...slice,

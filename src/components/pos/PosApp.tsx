@@ -226,7 +226,10 @@ function PosAppInner({ entityId }: { entityId?: string }) {
             vendors: access.operators,
             tables,
             floorSections: setup.floorPlan?.sections,
-            hallMode: access.location.operatingModel === "host_operators",
+            hallMode:
+              access.location.operatingModel === "host_operators" ||
+              access.location.operatingModel === "peer_venue",
+            peerVenue: access.location.operatingModel === "peer_venue",
             address: access.location.address,
             entityPermissions: parseGrantMatrix(setup.entityPermissions),
             locationDevices: parseLocationDevices(setup.locationDevices),

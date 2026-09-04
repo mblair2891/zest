@@ -128,7 +128,7 @@
       <h1>Summex</h1>
       <p class="sub">Hospitality operations and money movement. Powered by Quantum Reach.</p>
       <p class="meta">summex.app · Guest cards: Quantum Payments only</p>
-      <p class="revision"><strong>Revision · 4 Sep 2026</strong> — one guest check; receipt by vendor; Finix pays each operator. Aligns with Operators Guide v2026.10.37.</p>
+      <p class="revision"><strong>Revision · 4 Sep 2026</strong> — shared building, no landlord-brand POS. Aligns with Operators Guide v2026.10.38.</p>
     </header>
 
     <h2>1. Executive summary</h2>
@@ -164,8 +164,10 @@
     <h2>4. Operating models</h2>
     <h3>Single-operator</h3>
     <p>One brand owns the location. That brand is its own Quantum Payments merchant. The ledger still records captures, tips, cash, voids, and (if filed) disputes.</p>
-    <h3>Host + multiple operators</h3>
-    <p><strong>Host Venue</strong> owns the floor and the guest-facing brand. <strong>Operator A</strong> and <strong>Operator B</strong> own lines, tickets, and period payouts. Each entity is its own Quantum Payments merchant. The guest sees one check and one tender. Capture splits by merchandise owner. Printed receipts group lines under the vendor name — still one document. A bar-scoped operator sees bar cost and sales; a food-scoped operator sees food; the host sees the house pack.</p>
+    <h3>Host + tenants</h3>
+    <p>A <strong>host subscriber</strong> owns the floor and may sell. <strong>Operator A</strong> and <strong>Operator B</strong> own lines, tickets, and period payouts. Each entity (including the host) is its own Quantum Payments merchant.</p>
+    <h3>Shared venue (peers)</h3>
+    <p>A <strong>named building</strong> only. Two or more independent operators. <strong>No host merchant, no host menu, no host gift product required.</strong> Venue admin holds the floor, devices, guest branding, and who may see whom. Each operator has Finix identity + merchant, menu, ODS, staff, and a gift ledger if they issue cards. Untagged lines fail closed. Quotes are Shared venue + per entity — not a third host operator. The guest still sees one check and one tender. Capture splits by merchandise owner. Receipts group by vendor.</p>
 
     <h2>5. Guest experience</h2>
     <ul>
@@ -178,7 +180,7 @@
     <p>The guest does not see operator splits, host cut, ledger rows, or device roles.</p>
 
     <h2>6. Quantum Payments — per-entity merchants, one guest check</h2>
-    <p>Every card tender runs through <strong>Quantum Payments</strong>. Each entity (host and each tenant operator) is its own merchant on the Finix rail. <strong>Guest UI never names Finix.</strong> A brand cannot take live cards until that brand’s application is approved.</p>
+    <p>Every card tender runs through <strong>Quantum Payments</strong>. Every selling entity is its own merchant on the Finix rail. A shared venue is not a merchant. <strong>Guest UI never names Finix.</strong> A brand cannot take live cards until that brand’s application is approved.</p>
     <p>The guest tenders once. Capture splits to each brand’s merchant by merchandise owner. Tax, tip, and service allocate by merchandise share. Receipts, email, and QR checks itemize by vendor, then totals. Card: one authorization, split to the vendors above.</p>
     <p>This is <strong>not</strong> a second terminal. <strong>Finix pays each approved operator merchant their share on capture.</strong> Period close is still a product-owned ledger for cash, host cut, card fees, and disputes. Leftover electronic payout rows address an operator’s account placeholder. <strong>Live ACH of period leftovers is not claimed.</strong></p>
     <p>Training uses Quantum Payments <strong>sandbox</strong> — practice cards, not a live Visa. Live cards require lifecycle live, an approved application, and an enrolled Quantum reader. If the processor is down: take cash or keep the check open. Card is not queued and never fakes a live Visa.</p>

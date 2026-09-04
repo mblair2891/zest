@@ -219,10 +219,15 @@ export function otherPartnerSkus(catalog: QuoteCatalog): PartnerHardwareSku[] {
 export function isMultiOperatorHouse(answers: IntakeAnswers): boolean {
   return (
     answers.operating.model === "host_operators" ||
+    answers.operating.model === "peer_venue" ||
     answers.operating.model === "mixed" ||
     (answers.portfolio.typeCounts.food_hall ?? 0) > 0 ||
     (answers.portfolio.typeCounts.truck_pod ?? 0) > 0
   );
+}
+
+export function isPeerVenueHouse(answers: IntakeAnswers): boolean {
+  return answers.operating.model === "peer_venue";
 }
 
 export function wantsFullServiceFloor(answers: IntakeAnswers): boolean {
@@ -235,6 +240,9 @@ export function wantsOpsPack(answers: IntakeAnswers): boolean {
 
 export function tenantEntityCount(answers: IntakeAnswers): number {
   if (!isMultiOperatorHouse(answers)) return 0;
+  if (isPeerVenueHouse(answers)) {
+    return Math.max(2, answers.operating.operatorsPerLocation || 2);
+  }
   return Math.max(1, answers.operating.operatorsPerLocation || 1);
 }
 
@@ -306,7 +314,12 @@ export function catalogFeatureList(answers: IntakeAnswers): string[] {
   const out = [
     "Base counter POS + 1 kitchen / bar display (included)",
   ];
-  if (isMultiOperatorHouse(answers)) {
+  if (isPeerVenueHouse(answers)) {
+    out.push("Shared venue — named building, no landlord-brand POS");
+    out.push(
+      `${tenantEntityCount(answers)} selling ${tenantEntityCount(answers) === 1 ? "entity" : "entities"}`,
+    );
+  } else if (isMultiOperatorHouse(answers)) {
     out.push("Multi-operator / hall host — one guest check, per-entity merchants");
     out.push(`${tenantEntityCount(answers)} tenant operator${tenantEntityCount(answers) === 1 ? "" : "s"}`);
   } else if (wantsFullServiceFloor(answers)) {
@@ -355,14 +368,19 @@ export function catalogSoftwareLines(
   const full = !multi && (plan === "full_service" || wantsFullServiceFloor(answers));
 
   if (multi) {
+    const peer = isPeerVenueHouse(answers);
     items.push(
       line(
         "multi_op",
         "plan",
-        "Multi-operator / hall host",
+        peer ? "Shared venue" : "Multi-operator / hall host",
         locN,
         catalog.multiOpHostCents,
-        { note: "One guest check. Each brand is its own Quantum Payments merchant." },
+        {
+          note: peer
+            ? "Named building. Peers share the floor. No landlord-brand POS or host merchant."
+            : "One guest check. Each brand is its own Quantum Payments merchant.",
+        },
       ),
     );
     const tenants = tenantEntityCount(answers);
@@ -371,9 +389,14 @@ export function catalogSoftwareLines(
         line(
           "tenants",
           "operator",
-          "Tenant operator entity",
+          peer ? "Venue entity" : "Tenant operator entity",
           tenants,
           catalog.tenantCents,
+          {
+            note: peer
+              ? "Each selling operator. Not a third host company."
+              : undefined,
+          },
         ),
       );
     }
@@ -486,6 +509,7 @@ export function applyQuoteToggles(
   patch: {
     fullService?: boolean;
     multiOp?: boolean;
+    peerVenue?: boolean;
     opsPack?: boolean;
     hostStand?: boolean;
     orderStations?: number;
@@ -509,14 +533,23 @@ export function applyQuoteToggles(
     hardware: { ...(answers.hardware ?? emptyIntakeHardware()) },
     portfolio: { ...answers.portfolio, typeCounts: { ...answers.portfolio.typeCounts } },
   };
-  if (patch.multiOp === true) {
+  if (patch.peerVenue === true) {
+    next.operating.model = "peer_venue";
+    next.operating.guestPaysHostCheck = true;
+    next.operating.hostStand = true;
+    next.operating.operatorsPerLocation = Math.max(2, next.operating.operatorsPerLocation || 2);
+    next.modules.vendorPortal = true;
+    if (!next.portfolio.typeCounts.food_hall && !next.portfolio.typeCounts.truck_pod) {
+      next.portfolio.typeCounts = { ...next.portfolio.typeCounts, food_hall: 1 };
+    }
+  } else if (patch.multiOp === true) {
     next.operating.model = "host_operators";
     next.operating.guestPaysHostCheck = true;
     next.modules.vendorPortal = true;
     if (!next.portfolio.typeCounts.food_hall && !next.portfolio.typeCounts.truck_pod) {
       next.portfolio.typeCounts = { ...next.portfolio.typeCounts, food_hall: 1 };
     }
-  } else if (patch.multiOp === false) {
+  } else if (patch.multiOp === false || patch.peerVenue === false) {
     next.operating.model = "single";
     next.modules.vendorPortal = false;
     const rest = { ...next.portfolio.typeCounts };
@@ -590,8 +623,8 @@ export const QUOTE_CATALOG_FIELDS: {
 }[] = [
   { key: "baseCents", label: "Base counter + 1 ODS", hint: "Included software, default $0" },
   { key: "fullServiceCents", label: "Full service (per location)", hint: "Floor, host, sections, closeout — default $149" },
-  { key: "multiOpHostCents", label: "Multi-operator host (per location)", hint: "Hall / pod host — default $299" },
-  { key: "tenantCents", label: "Per tenant entity", hint: "Default $49" },
+  { key: "multiOpHostCents", label: "Shared venue / multi-operator (per location)", hint: "Shared building or hall host — default $299. Peer venue does not add a host operator line." },
+  { key: "tenantCents", label: "Per selling entity", hint: "Default $49. Peer venue: each operator. Host+tenants: each tenant." },
   { key: "opsPackCents", label: "Ops pack (per location)", hint: "Recipes, costing, staffing recs, HR, payroll export — default $99" },
   { key: "extraStationCents", label: "Extra order/ODS station", hint: "Each over included count — default $19" },
   { key: "includedStations", label: "Included order+ODS stations", hint: "Default 4" },

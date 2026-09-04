@@ -187,6 +187,9 @@ export interface RestaurantSettings {
   multiTenantHallMode?: boolean;
   /** Host + multiple operators: one guest check, Quantum Payments under host brand */
   hostMultiOperator?: boolean;
+  /** Shared building with independent operators. No host merchant, menu, or gift product required. */
+  peerVenue?: boolean;
+  operatingModel?: "single" | "host_operators" | "peer_venue";
   onlineOrderingEnabled?: boolean;
   qrOrderingEnabled?: boolean;
   sectionPolicy?: SectionPolicy;

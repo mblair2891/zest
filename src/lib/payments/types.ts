@@ -33,6 +33,9 @@ export type PaymentsStatus = {
   liveConfigured: boolean;
   liveReady: boolean;
   hostPaymentsApproved?: boolean;
+  /** Peer venue: every selling operator is ready. Host+tenants: host merchant ready. */
+  sellingMerchantsReady?: boolean;
+  operatingModel?: "single" | "host_operators" | "peer_venue";
   entityMerchants?: EntityMerchantView[];
   readers: { id: string; label: string; serial: string; status: string }[];
   hostBrand: string;

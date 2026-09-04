@@ -152,10 +152,21 @@ function emptyView(opts: {
   };
 }
 
-async function loadLocationOrg(locationId: string): Promise<{ orgId: string; name: string; email: string | null }> {
+async function loadLocationOrg(locationId: string): Promise<{
+  orgId: string;
+  name: string;
+  email: string | null;
+  operatingModel: string;
+}> {
   const sql = await getSql();
-  const rows = await sql<{ org_id: string; name: string; host_brand_name: string | null; billing_email: string | null }>`
-    select l.org_id, l.name, l.host_brand_name, o.billing_email
+  const rows = await sql<{
+    org_id: string;
+    name: string;
+    host_brand_name: string | null;
+    billing_email: string | null;
+    operating_model: string | null;
+  }>`
+    select l.org_id, l.name, l.host_brand_name, o.billing_email, l.operating_model
     from locations l
     join organizations o on o.id = l.org_id
     where l.id = ${locationId} and coalesce(l.is_demo, false) = false
@@ -163,7 +174,12 @@ async function loadLocationOrg(locationId: string): Promise<{ orgId: string; nam
   `;
   const r = rows[0];
   if (!r) throw new ForbiddenError("Location not found");
-  return { orgId: r.org_id, name: r.host_brand_name || r.name, email: r.billing_email };
+  return {
+    orgId: r.org_id,
+    name: r.host_brand_name || r.name,
+    email: r.billing_email,
+    operatingModel: r.operating_model || "single",
+  };
 }
 
 async function loadOperator(
@@ -287,7 +303,8 @@ export async function listPaymentAccountsForLocation(
   const haveHost = listed.some((a) => a.kind === "host");
   const haveOp = new Set(listed.filter((a) => a.kind === "operator").map((a) => a.operatorId));
   const extra: PaymentAccountView[] = [];
-  if (!haveHost) {
+  const peerVenue = loc.operatingModel === "peer_venue";
+  if (!haveHost && !peerVenue) {
     extra.push(
       emptyView({
         orgId: loc.orgId,
@@ -510,8 +527,30 @@ export async function refreshPaymentAccount(
 }
 
 export async function hostPaymentsApproved(locationId: string): Promise<boolean> {
+  const loc = await loadLocationOrg(locationId).catch(() => null);
+  if (loc?.operatingModel === "peer_venue") {
+    return sellingOperatorsReady(locationId);
+  }
   const row = await getRow({ locationId });
   return row?.onboarding_status === "approved" && row.payments_provider === "finix";
+}
+
+async function sellingOperatorsReady(locationId: string): Promise<boolean> {
+  const sql = await getSql();
+  const ops = await sql<{ id: string }>`
+    select id from operators where location_id = ${locationId}
+  `;
+  if (ops.length < 1) return false;
+  for (const op of ops) {
+    const row = await getRow({ operatorId: op.id });
+    const ok =
+      Boolean(row?.finix_merchant_id) &&
+      (row?.onboarding_status === "approved" ||
+        row?.payments_provider === "sandbox" ||
+        String(row?.finix_merchant_id ?? "").includes("sandbox"));
+    if (!ok) return false;
+  }
+  return true;
 }
 
 export async function ensureEntityPaymentAccount(opts: {
@@ -543,12 +582,20 @@ export async function assertEntitiesCanCapture(opts: {
   entities: CardPresentSplit[];
 }): Promise<{ ok: true; accounts: AccountRow[] } | { ok: false; error: string }> {
   const accounts: AccountRow[] = [];
+  const loc = await loadLocationOrg(opts.locationId).catch(() => null);
+  const peerVenue = loc?.operatingModel === "peer_venue";
   for (const share of opts.entities) {
     if (share.amountCents <= 0) continue;
     let row = await getRow({
       locationId: share.kind === "host" ? opts.locationId : null,
       operatorId: share.kind === "operator" ? share.entityId : null,
     });
+    if (peerVenue && share.kind === "host") {
+      return {
+        ok: false,
+        error: `${share.displayName} is the venue name, not a selling merchant. Tag the line to an operator. Use cash or keep the check open.`,
+      };
+    }
     if (opts.training && (!row || !row.finix_merchant_id)) {
       row = await ensureEntityPaymentAccount({
         orgId: opts.orgId,

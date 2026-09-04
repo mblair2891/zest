@@ -40,7 +40,7 @@ export const GUIDE_CHAPTERS: GuideChapter[] = [
   {
     id: "saas",
     title: "SaaS & onboarding",
-    summary: "Intake, quote, host onboard, tenant invites (platform + host ops).",
+    summary: "Intake, quote, host or shared-venue onboard, tenant invites.",
     order: 3,
   },
   {

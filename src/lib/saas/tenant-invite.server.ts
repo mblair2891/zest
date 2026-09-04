@@ -103,8 +103,12 @@ async function assertHostCanInvite(userId: string, orgId: string, locationId?: s
       select operating_model from locations where id = ${locationId} and org_id = ${orgId} limit 1
     `;
     if (!loc[0]) throw new Error("Location not found");
-    if (loc[0].operating_model !== "host_operators" && !admin) {
-      throw new ForbiddenError("Tenant invites are for host + operator locations");
+    if (
+      loc[0].operating_model !== "host_operators" &&
+      loc[0].operating_model !== "peer_venue" &&
+      !admin
+    ) {
+      throw new ForbiddenError("Tenant invites are for host + tenants or shared-venue locations");
     }
   }
 }
@@ -611,7 +615,7 @@ export async function emailHostReady(orgId: string): Promise<void> {
   const sql = await getSql();
   const multi = await sql<{ n: number }>`
     select count(*)::int as n from locations
-    where org_id = ${orgId} and operating_model = 'host_operators'
+    where org_id = ${orgId} and operating_model in ('host_operators', 'peer_venue')
   `;
   if (!Number(multi[0]?.n)) return;
   const settings = await loadOnboardingSettings();

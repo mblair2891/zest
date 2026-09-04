@@ -373,11 +373,16 @@ export function IntakeWizard({ initialToken }: { initialToken?: string }) {
           <div className="grid gap-2">
             {(
               [
-                ["single", "Single operator", "One team runs the location"],
+                ["single", "Single operator", "One entity, one merchant"],
                 [
                   "host_operators",
-                  "Host + operators",
-                  "Hall / pod host with vendors. Guest can pay one check.",
+                  "Host + tenants",
+                  "Host subscriber plus guest operators. Host may sell.",
+                ],
+                [
+                  "peer_venue",
+                  "Shared venue (peers)",
+                  "Named building only. Independent operators. No landlord-brand POS.",
                 ],
                 ["mixed", "Mixed portfolio", "Some locations host, some single-operator"],
               ] as const
@@ -395,7 +400,13 @@ export function IntakeWizard({ initialToken }: { initialToken?: string }) {
           </div>
           {o.model !== "single" && (
             <>
-              <Field label="Estimated operators per host location">
+              <Field
+                label={
+                  o.model === "peer_venue"
+                    ? "Selling entities at the venue"
+                    : "Estimated operators per host location"
+                }
+              >
                 <Input
                   type="number"
                   min={1}

@@ -1,8 +1,16 @@
 import type { LocationMode } from "@/lib/pos/saas-types";
 import type { PackageId } from "@/lib/pos/packages";
+import type { LocationOperatingModel as LocationOperatingModelT } from "./location-model";
 
 export type OrgStatus = "active" | "suspended";
-export type LocationOperatingModel = "single" | "host_operators";
+export type LocationOperatingModel = LocationOperatingModelT;
+export {
+  LOCATION_OPERATING_MODELS,
+  LOCATION_MODEL_LABEL,
+  parseLocationOperatingModel,
+  isSharedFloorModel,
+  isPeerVenueModel,
+} from "./location-model";
 
 export type LocationSetup = {
   tableCount: number;
@@ -12,6 +20,7 @@ export type LocationSetup = {
   devices: { pos: number; kds: number; handhelds: number };
   settlement: { periodType: string; hostCutPercent: number };
   hostBrandName: string;
+  operatingModel?: import("./location-model").LocationOperatingModel;
   timezone?: string;
   hoursNote?: string;
   tipPooling?: boolean;

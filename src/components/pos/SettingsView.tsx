@@ -153,8 +153,9 @@ function GiftCardSettingsPack({
             <span>
               House issuer (optional)
               <span className="mt-0.5 block text-xs text-muted-foreground">
-                House-issued cards stay with the house at term end. No third legal
-                company is required.
+                {settings.peerVenue || settings.operatingModel === "peer_venue"
+                  ? "Not required on a shared venue. No landlord gift product. Each operator may still issue on their own ledger."
+                  : "House-issued cards stay with the house at term end. No third legal company is required."}
               </span>
             </span>
           </label>
@@ -857,9 +858,9 @@ export function SettingsView() {
       <Pack id="host_operators" packs={packs}>
         <div data-demo="host-operators">
         <p className="text-xs text-muted-foreground">
-          The subscriber host configures settlement, host cut, payout destinations,
-          the entity permission matrix, and device assignment. Guest operators cannot
-          edit these. Open Payouts & settlement, or Operators / Tenants to invite operators.
+          {settings.peerVenue || settings.operatingModel === "peer_venue"
+            ? "Venue admin holds the floor, devices, guest branding, and who may see whom. There is no host merchant, host menu, or host gift product. Invite each operator — they complete their own Quantum Payments and menu."
+            : "The subscriber host configures settlement, host cut, payout destinations, the entity permission matrix, and device assignment. Guest operators cannot edit these. Open Payouts & settlement, or Operators / Tenants to invite operators."}
         </p>
         <div className="mt-3 flex flex-wrap gap-2">
           <Button size="sm" variant="outline" onClick={() => setView("settlement")}>
@@ -878,9 +879,11 @@ export function SettingsView() {
               onChange={(e) => updateSettings({ hostMayEditEntitySchedules: e.target.checked })}
             />
             <span>
-              Host may edit guest-entity schedules
+              {settings.peerVenue || settings.operatingModel === "peer_venue"
+                ? "Venue admin may edit operator schedules"
+                : "Host may edit guest-entity schedules"}
               <span className="mt-0.5 block text-xs text-muted-foreground">
-                Off by default. Host still sees every entity’s week as oversight.
+                Off by default. Venue admin still sees every entity’s week as oversight.
               </span>
             </span>
           </label>

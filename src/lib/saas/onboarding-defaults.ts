@@ -44,7 +44,12 @@ export function payloadFromAnswers(answers: IntakeAnswers): OnboardingPayload {
     invites: [],
     settlement: {
       periodType: period,
-      hostCutPercent: answers.operating.guestPaysHostCheck ? 10 : 0,
+      hostCutPercent:
+        answers.operating.model === "peer_venue"
+          ? 0
+          : answers.operating.guestPaysHostCheck
+            ? 10
+            : 0,
     },
     checklist: { trainingAck: false, hardwareAck: false, paymentsAck: false },
     partnerHardware: {
@@ -82,20 +87,23 @@ function emptyLocationDraft(
   venueType: LocationMode,
   index: number,
 ): OnboardingPayload["locations"][0] {
+  const peer = answers.operating.model === "peer_venue";
   const host =
     answers.operating.model === "host_operators" ||
-    venueType === "food_hall" ||
-    venueType === "truck_pod";
-  const opCount = host ? Math.max(2, answers.operating.operatorsPerLocation) : 0;
+    (!peer && (venueType === "food_hall" || venueType === "truck_pod"));
+  const shared = host || peer;
+  const opCount = shared
+    ? Math.max(peer ? 2 : 2, answers.operating.operatorsPerLocation)
+    : 0;
   const brand = answers.company.dba || answers.company.legalName || "Location";
   return {
     clientId: `draft_${index}`,
     name: index === 0 ? brand : `${brand} ${index + 1}`,
     address: answers.company.hqAddress,
     timezone: "America/Los_Angeles",
-    venueType,
+    venueType: peer && venueType === "restaurant" ? "food_hall" : venueType,
     hostBrandName: brand,
-    operatingModel: host ? "host_operators" : "single",
+    operatingModel: peer ? "peer_venue" : host ? "host_operators" : "single",
     operators: Array.from({ length: opCount }, (_, n) => ({
       legalName: "",
       dba: `Operator ${n + 1}`,

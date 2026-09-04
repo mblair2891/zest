@@ -397,10 +397,10 @@ export function defaultPackagesForMode(
 
 export function packagesForLocation(
   mode: Parameters<typeof defaultPackagesForMode>[0],
-  operatingModel?: "single_operator" | "host_multi_operator",
+  operatingModel?: "single_operator" | "host_multi_operator" | "peer_venue",
 ): PackageId[] {
   const pkgs = new Set<PackageId>(defaultPackagesForMode(mode));
-  if (operatingModel === "host_multi_operator") {
+  if (operatingModel === "host_multi_operator" || operatingModel === "peer_venue") {
     pkgs.add("kds");
     pkgs.add("hall_settlement");
     pkgs.add("vendor_portal");

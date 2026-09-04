@@ -1,6 +1,18 @@
 import type { LocationMode } from "@/lib/pos/saas-types";
 import type { PackageId } from "@/lib/pos/packages";
 import type { MembershipRole, PlanSlug } from "./types";
+import type { LocationOperatingModel, OperatingModel } from "./location-model";
+export type { LocationOperatingModel, OperatingModel } from "./location-model";
+export {
+  LOCATION_OPERATING_MODELS,
+  OPERATING_MODELS,
+  LOCATION_MODEL_LABEL,
+  LOCATION_MODEL_HINT,
+  parseLocationOperatingModel,
+  parseOperatingModel,
+  isSharedFloorModel,
+  isPeerVenueModel,
+} from "./location-model";
 
 export const PROSPECT_STATUSES = [
   "prospect",
@@ -21,11 +33,7 @@ export type GmvBand = (typeof GMV_BANDS)[number];
 export const PAYOUT_FREQUENCIES = ["daily", "weekly", "biweekly"] as const;
 export type PayoutFrequency = (typeof PAYOUT_FREQUENCIES)[number];
 
-export const OPERATING_MODELS = ["single", "host_operators", "mixed"] as const;
-export type OperatingModel = (typeof OPERATING_MODELS)[number];
 
-export const LOCATION_OPERATING_MODELS = ["single", "host_operators"] as const;
-export type LocationOperatingModel = (typeof LOCATION_OPERATING_MODELS)[number];
 
 export const MENU_MODES = ["empty", "categories", "csv_later"] as const;
 export type MenuMode = (typeof MENU_MODES)[number];
@@ -187,7 +195,7 @@ export type InterviewQuestion = {
 
 export type InterviewRecommendation = {
   summary: string;
-  operatingModel: "host_multi_operator" | "single_operator";
+  operatingModel: "host_multi_operator" | "single_operator" | "peer_venue";
   venueTypes: LocationMode[];
   modules: Array<keyof IntakeModules>;
   estimates: {

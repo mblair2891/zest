@@ -18,8 +18,9 @@ export function EntityPermissionsMatrix({ write }: { write: boolean }) {
   const settings = usePosStore((s) => s.settings);
   const locId = usePosStore((s) => s.tenantLocationId) || "";
   const orgId = useSaasStore((s) => s.org.id);
+  const peer = Boolean(settings.peerVenue || settings.operatingModel === "peer_venue");
   const scopes = [
-    { id: HOST_SCOPE, name: settings.name || "Host" },
+    { id: HOST_SCOPE, name: peer ? "Venue admin" : settings.name || "Host" },
     ...vendors.map((v) => ({ id: v.id, name: v.shortName })),
   ];
 
@@ -50,8 +51,9 @@ export function EntityPermissionsMatrix({ write }: { write: boolean }) {
     >
       <h3 className="mb-1 text-sm font-semibold">Entity permissions</h3>
       <p className="mb-3 text-xs text-muted-foreground">
-        Host grants what each operator may see or change on another. Defaults: view
-        menus, deny edits, tickets/reports/settlement own-only, devices host-only.
+        {peer
+          ? "Venue admin sets what each operator may see of another. There is no host company. Defaults: view menus, deny edits, tickets/reports/settlement own-only, devices venue-only."
+          : "Host grants what each operator may see or change on another. Defaults: view menus, deny edits, tickets/reports/settlement own-only, devices host-only."}
       </p>
       <div className="overflow-x-auto">
         <table className="min-w-full text-left text-xs">

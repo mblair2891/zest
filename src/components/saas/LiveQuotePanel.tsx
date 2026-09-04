@@ -8,6 +8,7 @@ import {
   HARDWARE_LEAD,
   extraStationCount,
   isMultiOperatorHouse,
+  isPeerVenueHouse,
   kioskCount,
   odsStationCount,
   orderStationCount,
@@ -33,6 +34,7 @@ export function LiveQuotePanel({
   const rules = { ...DEFAULT_PRICING_RULES, quoteCatalog: catalog };
   const quote = generateQuote(answers, rules, { draft: true });
   const multi = isMultiOperatorHouse(answers);
+  const peer = isPeerVenueHouse(answers);
   const full = wantsFullServiceFloor(answers);
   const ops = wantsOpsPack(answers);
   const extra = extraStationCount(answers, catalog);
@@ -52,7 +54,9 @@ export function LiveQuotePanel({
           {quote.planSlug === "full_service" &&
             `Full service floor — ${formatCurrency(catalog.fullServiceCents)} / location / mo.`}
           {quote.planSlug === "food_hall" &&
-            `Multi-operator host — ${formatCurrency(catalog.multiOpHostCents)} / location / mo + ${formatCurrency(catalog.tenantCents)} per tenant.`}
+            (peer
+              ? `Shared venue — ${formatCurrency(catalog.multiOpHostCents)} / location / mo + ${formatCurrency(catalog.tenantCents)} per entity.`
+              : `Host + tenants — ${formatCurrency(catalog.multiOpHostCents)} / location / mo + ${formatCurrency(catalog.tenantCents)} per tenant.`)}
         </p>
       </div>
 
@@ -73,14 +77,31 @@ export function LiveQuotePanel({
           onClick={() => onChange(applyQuoteToggles(answers, { fullService: !(full && !multi), multiOp: false }))}
         />
         <ToggleChip
-          on={multi}
-          label={`Multi-operator / hall host · ${formatCurrency(catalog.multiOpHostCents)} + ${formatCurrency(catalog.tenantCents)} / tenant`}
-          hint="One guest check. Each brand is its own Quantum Payments merchant."
-          onClick={() => onChange(applyQuoteToggles(answers, { multiOp: !multi }))}
+          on={multi && !peer}
+          label={`Host + tenants · ${formatCurrency(catalog.multiOpHostCents)} + ${formatCurrency(catalog.tenantCents)} / tenant`}
+          hint="Host subscriber plus guest operators. Host may sell."
+          onClick={() =>
+            onChange(
+              applyQuoteToggles(answers, {
+                multiOp: !(multi && !peer),
+                peerVenue: false,
+              }),
+            )
+          }
+        />
+        <ToggleChip
+          on={peer}
+          label={`Shared venue (peers) · ${formatCurrency(catalog.multiOpHostCents)} + ${formatCurrency(catalog.tenantCents)} / entity`}
+          hint="Named building only. No landlord-brand POS, host merchant, or host gift. Two or more independent operators."
+          onClick={() =>
+            onChange(applyQuoteToggles(answers, { peerVenue: !peer, multiOp: false }))
+          }
         />
         {multi && (
           <label className="block text-sm">
-            <span className="mb-1 block text-muted-foreground">Tenant operators</span>
+            <span className="mb-1 block text-muted-foreground">
+              {peer ? "Selling entities" : "Tenant operators"}
+            </span>
             <Input
               type="number"
               min={1}

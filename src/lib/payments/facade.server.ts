@@ -24,6 +24,7 @@ type LocRow = {
   host_brand_name: string | null;
   setup: unknown;
   lifecycle_status: string | null;
+  operating_model: string | null;
 };
 
 function setupOf(raw: unknown): LocationSetup {
@@ -49,7 +50,7 @@ async function platformPaymentsDefault(): Promise<"sandbox" | "live"> {
 async function loadLocation(locationId: string): Promise<LocRow> {
   const sql = await getSql();
   const rows = await sql<LocRow>`
-    select id, org_id, name, host_brand_name, setup, lifecycle_status
+    select id, org_id, name, host_brand_name, setup, lifecycle_status, operating_model
     from locations
     where id = ${locationId} and coalesce(is_demo, false) = false
     limit 1
@@ -125,11 +126,6 @@ export async function getPaymentsStatus(
   } catch {
     hostApproved = false;
   }
-  const liveReady =
-    resolved.mode === "live" &&
-    liveConfigured &&
-    hostApproved &&
-    Boolean(pickReaderId(setup));
   let entityMerchants: PaymentsStatus["entityMerchants"] = [];
   try {
     const { listPaymentAccountsForLocation } = await import("./onboarding.server");
@@ -144,19 +140,34 @@ export async function getPaymentsStatus(
   } catch {
     entityMerchants = [];
   }
+  const peerVenue = loc.operating_model === "peer_venue";
+  const opMerchants = (entityMerchants ?? []).filter((m) => m.kind === "operator");
+  const sellingReady = peerVenue
+    ? opMerchants.length > 0 && opMerchants.every((m) => m.canCapture)
+    : hostApproved;
+  const liveReady =
+    resolved.mode === "live" &&
+    liveConfigured &&
+    sellingReady &&
+    Boolean(pickReaderId(setup));
   let message =
     resolved.mode === "sandbox"
-      ? "Quantum Payments sandbox. Each brand is its own payments account; the guest still pays one check. Cash always works."
-      : !hostApproved
-        ? "Each brand needs an approved Quantum Payments account before live cards. Cash always works."
+      ? peerVenue
+        ? "Quantum Payments sandbox. This shared venue has no host merchant. Each operator is its own payments account; the guest still pays one check. Cash always works."
+        : "Quantum Payments sandbox. Each brand is its own payments account; the guest still pays one check. Cash always works."
+      : !sellingReady
+        ? peerVenue
+          ? "Each selling operator needs an approved Quantum Payments account before live cards. The venue itself is not a merchant. Cash always works."
+          : "Each brand needs an approved Quantum Payments account before live cards. Cash always works."
         : liveReady
           ? "Live Quantum Payments. One guest tender splits to each brand’s account. Present the card on an enrolled Finix/Quantum reader supplied through Summex."
           : liveConfigured
             ? "Live mode is on, but no Finix/Quantum reader is enrolled. Live cards fail closed. Use cash or keep the check open. Customer-owned bank readers are not supported."
             : "Live mode is selected, but live keys are not configured. Use cash or keep the check open.";
   if (resolved.lifecycleForcesSandbox) {
-    message =
-      "Location is not live yet — Quantum Payments sandbox. Each brand uses a sandbox payments account. Guest still pays one check.";
+    message = peerVenue
+      ? "Location is not live yet — Quantum Payments sandbox. Each operator uses a sandbox payments account. The venue is not a merchant. Guest still pays one check."
+      : "Location is not live yet — Quantum Payments sandbox. Each brand uses a sandbox payments account. Guest still pays one check.";
   }
   return {
     locationId,
@@ -167,6 +178,12 @@ export async function getPaymentsStatus(
     liveConfigured,
     liveReady,
     hostPaymentsApproved: hostApproved,
+    sellingMerchantsReady: sellingReady,
+    operatingModel: peerVenue
+      ? "peer_venue"
+      : loc.operating_model === "host_operators"
+        ? "host_operators"
+        : "single",
     entityMerchants,
     readers,
     hostBrand: loc.host_brand_name || loc.name,

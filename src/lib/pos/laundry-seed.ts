@@ -46,6 +46,8 @@ export const LAUNDRY_SETTINGS: RestaurantSettings = {
   serviceChargeLabel: "Auto-gratuity",
   multiTenantHallMode: true,
   hostMultiOperator: true,
+  peerVenue: true,
+  operatingModel: "peer_venue",
   onlineOrderingEnabled: true,
   qrOrderingEnabled: true,
   sectionPolicy: { ...DEFAULT_SECTION_POLICY },
@@ -60,7 +62,7 @@ export const LAUNDRY_SETTINGS: RestaurantSettings = {
   giftTermAllowed: false,
   giftTermDays: 730,
   giftOperatorBreakageSplitBps: 5000,
-  giftHouseIssuerEnabled: true,
+  giftHouseIssuerEnabled: false,
   giftHostessDefaultIssuerId: LAUNDRY_DIAMOND_ID,
   floorStatusConfig: {
     enabled: {

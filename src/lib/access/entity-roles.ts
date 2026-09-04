@@ -131,7 +131,7 @@ export const SETTINGS_PACK_LABEL: Record<SettingsPackId, string> = {
   sections: "Sections & floor",
   bar_tabs: "Bar stations & tabs",
   counter_expo: "Counter & expo",
-  host_operators: "Operators, permissions & devices",
+  host_operators: "Operators, venue admin & devices",
   kiosk_front: "Kiosk, waitlist, check-in",
   voice: "Voice control",
   floor_qr: "Floor statuses, flash & QR",
@@ -155,7 +155,7 @@ export function settingsPacksForVenue(
 
 export const VENUE_TYPE_LABEL: Record<VenueEntityId, string> = {
   restaurant: "Full-service restaurant",
-  food_hall: "Host + multi-operator",
+  food_hall: "Shared venue / host + operators",
   truck_pod: "Truck pod",
   ghost_kitchen: "Ghost kitchen",
   catering: "Catering",

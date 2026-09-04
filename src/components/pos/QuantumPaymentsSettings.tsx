@@ -91,7 +91,7 @@ export function QuantumPaymentsSettings({ write }: { write: boolean }) {
           <option
             value="live"
             disabled={
-              !status?.hostPaymentsApproved ||
+              !(status?.sellingMerchantsReady ?? status?.hostPaymentsApproved) ||
               status?.lifecycleForcesSandbox ||
               !status?.readers.some((r) => r.serial)
             }
@@ -99,8 +99,8 @@ export function QuantumPaymentsSettings({ write }: { write: boolean }) {
             Live card-present
             {status?.lifecycleForcesSandbox
               ? " (go live first)"
-              : !status?.hostPaymentsApproved
-                ? " (application required)"
+              : !(status?.sellingMerchantsReady ?? status?.hostPaymentsApproved)
+                ? " (each selling entity must be approved)"
                 : !status?.readers.some((r) => r.serial)
                   ? " (enroll a Finix/Quantum reader)"
                   : ""}
@@ -124,7 +124,15 @@ export function QuantumPaymentsSettings({ write }: { write: boolean }) {
           ))}
         </ul>
       )}
-      <QuantumPaymentsOnboardPanel kind="host" locationId={locId} />
+      {status?.operatingModel === "peer_venue" ? (
+        <p className="rounded-lg bg-surface-2 px-3 py-2 text-xs text-muted-foreground">
+          This is a shared venue. The building name is guest branding only — not a merchant.
+          Each operator completes their own Quantum Payments application. Live cards wait
+          until every selling entity is approved (sandbox is OK in training).
+        </p>
+      ) : (
+        <QuantumPaymentsOnboardPanel kind="host" locationId={locId} />
+      )}
       {status && status.readers.length > 0 && (
         <ul className="space-y-1 text-xs">
           {status.readers.map((r) => (

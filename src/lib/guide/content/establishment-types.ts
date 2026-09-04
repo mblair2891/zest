@@ -55,8 +55,8 @@ export const ESTABLISHMENT_TYPE_TOPICS: GuideTopic[] = [
   topic({
     id: "type-food-hall",
     chapterId: "types",
-    title: "Host + multi-operator (food hall)",
-    summary: "One guest check, bar vs kitchen operators, settlement split.",
+    title: "Host + tenants, or shared venue",
+    summary: "One guest check. Host company optional. Peers can share a building with no landlord-brand POS.",
     roles: "all",
     keywords: [
       "food hall",
@@ -70,16 +70,16 @@ export const ESTABLISHMENT_TYPE_TOPICS: GuideTopic[] = [
     openView: "hall",
     blocks: [
       why(
-        "When more than one operator feeds the same guest, the house still presents one brand and one check. Each operator is its own Quantum Payments merchant. Operators are paid from the period ledger — not from a second terminal.",
+        "When more than one operator feeds the same guest, they still present one check. Each operator is its own Quantum Payments merchant. They do not need a landlord company that also sells.",
       ),
       p(
-        "The guest sits at the host brand. Lines keep their operator. Kitchen and bar rails stay apart. Each entity is its own Quantum Payments merchant. The guest tenders once; capture splits; receipts group by vendor.",
+        "Two models. Host + tenants: a host subscriber owns the floor and may sell. Shared venue: a named building only (example: The Laundry) — no host merchant, menu, or gift product. Lines keep their operator. Kitchen and bar rails stay apart. The guest tenders once; Finix splits; receipts group by vendor.",
       ),
       ul(
-        "Host brand — guest-facing name on the receipt (example: Host Venue).",
+        "Venue name — guest-facing on the receipt (the building). Not automatically a merchant.",
         "Bar operator — drinks and bar tickets (example: Operator B).",
         "Kitchen operator — food and kitchen tickets (example: Operator A).",
-        "Stations: host stand / floor (color-coded map + table QR), bar ODS, kitchen ODS, shared cash.",
+        "Stations: floor / host stand (color-coded map + table QR), bar ODS, kitchen ODS, shared cash policy.",
       ),
       steps(
         "Seat under the host. Do not open a second check for the other operator.",
@@ -94,8 +94,8 @@ export const ESTABLISHMENT_TYPE_TOPICS: GuideTopic[] = [
         "Vendor dashboards are operator ops: tickets, 86, staff. Host settings hold payouts and tax.",
       ),
       callout(
-        "Host + operators",
-        "Onboard a food-hall style location with two operators to rehearse bar vs kitchen on one guest check. Example names in this guide are not tenants.",
+        "Shared building",
+        "Onboard a shared venue and invite two operator POCs. Each completes Finix and menu. Example names in this guide are not tenants. There is no landlord-brand POS.",
       ),
       warn(
         "Customer tenants appear after SaaS onboarding. There is no public demo site and no seeded catalog.",

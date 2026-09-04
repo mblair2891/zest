@@ -94,7 +94,9 @@ export function SetupOnboardingWizard({ token }: { token: string }) {
   }
 
   const stepId = ONBOARDING_STEP_IDS[step - 1]!;
-  const hostLocs = payload.locations.filter((l) => l.operatingModel === "host_operators");
+  const hostLocs = payload.locations.filter(
+    (l) => l.operatingModel === "host_operators" || l.operatingModel === "peer_venue",
+  );
 
   const patch = (fn: (p: OnboardingPayload) => OnboardingPayload) => {
     setPayload((prev) => (prev ? fn(prev) : prev));
@@ -367,7 +369,13 @@ export function SetupOnboardingWizard({ token }: { token: string }) {
                   </NativeSelect>
                 </Field>
               </div>
-              <Field label="Host brand (guest-facing)">
+              <Field
+                label={
+                  l.operatingModel === "peer_venue"
+                    ? "Venue name (guest-facing — not a merchant)"
+                    : "Host brand (guest-facing)"
+                }
+              >
                 <Input
                   value={l.hostBrandName}
                   onChange={(e) =>
@@ -393,7 +401,7 @@ export function SetupOnboardingWizard({ token }: { token: string }) {
                 />
                 <ToggleChip
                   on={l.operatingModel === "host_operators"}
-                  label="Host + operators"
+                  label="Host + tenants"
                   onClick={() =>
                     patch((p) => {
                       const locations = p.locations.slice();
@@ -405,6 +413,26 @@ export function SetupOnboardingWizard({ token }: { token: string }) {
                               emptyOp("Operator 2"),
                             ];
                       locations[i] = { ...l, operatingModel: "host_operators", operators: ops };
+                      return { ...p, locations };
+                    })
+                  }
+                />
+                <ToggleChip
+                  on={l.operatingModel === "peer_venue"}
+                  label="Shared venue (peers)"
+                  onClick={() =>
+                    patch((p) => {
+                      const locations = p.locations.slice();
+                      const ops =
+                        l.operators.length >= 2
+                          ? l.operators
+                          : [emptyOp("Steam Distillery"), emptyOp("Diamond House BBQ")];
+                      locations[i] = {
+                        ...l,
+                        operatingModel: "peer_venue",
+                        venueType: l.venueType === "restaurant" ? "food_hall" : l.venueType,
+                        operators: ops,
+                      };
                       return { ...p, locations };
                     })
                   }
@@ -448,18 +476,19 @@ export function SetupOnboardingWizard({ token }: { token: string }) {
         <div className="space-y-4">
           {hostLocs.length === 0 && (
             <p className="text-sm text-muted-foreground">
-              Single-operator host. Tenant invites are for host + operator locations. Continue.
+              Single-operator location. Tenant invites are for host + tenants or shared venues.
+              Continue.
             </p>
           )}
           {hostLocs.length > 0 && (
             <p className="text-sm text-muted-foreground">
-              Optional tenant slots only. After this host is live, you invite each operator by
-              email/SMS from Operators / Tenants. They complete their own legal, stations, and
-              payout stubs. Not required to finish host onboarding.
+              Name each selling entity and their POC. After the venue is live, invite them by
+              email/SMS from Operators / Tenants. Each completes their own Quantum Payments
+              merchant and menu. A shared venue has no host merchant.
             </p>
           )}
           {payload.locations.map((l, li) =>
-            l.operatingModel !== "host_operators" ? null : (
+            l.operatingModel !== "host_operators" && l.operatingModel !== "peer_venue" ? null : (
               <div key={l.clientId} className="space-y-3 rounded-2xl border border-border p-4">
                 <p className="text-sm font-semibold">{l.name || `Location ${li + 1}`}</p>
                 {l.operators.map((op, oi) => (
@@ -755,7 +784,10 @@ export function SetupOnboardingWizard({ token }: { token: string }) {
               <option value="monthly">Monthly</option>
             </NativeSelect>
           </Field>
-          <Field label="Host cut %" hint="Used when a location is host + operators">
+          <Field
+            label="Host cut %"
+            hint="Host + tenants only. Shared venues default to 0 — no landlord cut unless you set one."
+          >
             <Input
               type="number"
               min={0}
@@ -858,7 +890,7 @@ export function SetupOnboardingWizard({ token }: { token: string }) {
             <CheckRow ok={live.hasPlan} label="Plan attached from accepted quote" />
             <CheckRow
               ok
-              label="Tenant invites unlock after host is ready (multi-op)"
+              label="Invite each selling entity — they complete Finix + menu"
             />
             <CheckRow
               ok={Boolean(payload.checklist.paymentsAck)}
@@ -867,8 +899,9 @@ export function SetupOnboardingWizard({ token }: { token: string }) {
           </ul>
           {detail.status === "live" && (
             <p className="text-sm text-success">
-              Host is ready. Open POS. If this is a multi-operator house, invite tenants from
-              Operators / Tenants — they complete their own onboarding.
+              Venue is ready. Open POS. Invite each selling entity from Operators / Tenants —
+              they complete their own Quantum Payments merchant and menu. Shared venues have no
+              host merchant.
             </p>
           )}
           {canOpenPos && loc && (

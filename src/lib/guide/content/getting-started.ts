@@ -189,11 +189,11 @@ export const GETTING_STARTED_TOPICS: GuideTopic[] = [
     keywords: ["venue", "restaurant", "food hall", "truck pod", "entity", "ghost kitchen"],
     blocks: [
       why(
-        "The location mode decides the default packages, floor story, and whether you are a single operator or a host with several brands.",
+        "The location mode decides the default packages, floor story, and whether you are a single operator, a host with tenants, or peers sharing a building.",
       ),
       ul(
         "Restaurant — one brand, table or counter service, kitchen + bar routing.",
-        "Food hall — Host Venue with Operator A, Operator B, … on one guest check.",
+        "Food hall / shared venue — Operator A, Operator B on one guest check. Host company optional. Shared venue = named building, no landlord-brand POS.",
         "Truck pod — pads, utilities, and pod settlement for multiple trucks.",
         "Ghost kitchen — dispatch-first, little or no dining room.",
         "Catering — events and off-site production.",

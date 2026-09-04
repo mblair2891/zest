@@ -256,7 +256,7 @@ function RecommendationCard({
         </Badge>
       </div>
 
-      <div className="grid gap-2 sm:grid-cols-2">
+      <div className="grid gap-2 sm:grid-cols-3">
         <ToggleChip
           on={rec.operatingModel === "single_operator"}
           label="Single operator"
@@ -264,8 +264,13 @@ function RecommendationCard({
         />
         <ToggleChip
           on={rec.operatingModel === "host_multi_operator"}
-          label="Host + multiple operators"
+          label="Host + tenants"
           onClick={() => onChange({ ...rec, operatingModel: "host_multi_operator" })}
+        />
+        <ToggleChip
+          on={rec.operatingModel === "peer_venue"}
+          label="Shared venue (peers)"
+          onClick={() => onChange({ ...rec, operatingModel: "peer_venue" })}
         />
       </div>
 

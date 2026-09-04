@@ -180,7 +180,12 @@ export function parseOnboardingPayload(raw: unknown): OnboardingPayload {
         timezone: str(l.timezone) || "America/Los_Angeles",
         venueType: (str(l.venueType) || "restaurant") as OnboardingPayload["locations"][0]["venueType"],
         hostBrandName: str(l.hostBrandName),
-        operatingModel: model === "host_operators" ? "host_operators" : "single",
+        operatingModel:
+          model === "peer_venue"
+            ? "peer_venue"
+            : model === "host_operators"
+              ? "host_operators"
+              : "single",
         operators: ops.map((op) => {
           const p = op && typeof op === "object" ? (op as Record<string, unknown>) : {};
           const stations = Array.isArray(p.stationTypes)

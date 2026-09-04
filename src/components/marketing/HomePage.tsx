@@ -159,8 +159,8 @@ export function HomePage() {
               Hospitality operations, all in one system.
             </h1>
             <p className="mt-5 text-base leading-relaxed text-muted-foreground text-pretty sm:text-lg">
-              For a single restaurant or bar, a multi-operator host, or a
-              multi-unit and franchise-style group.
+              For a single restaurant or bar, a host with tenants, peers sharing
+              a building, or a multi-unit group.
             </p>
             <p className="mt-4 max-w-2xl text-sm leading-relaxed text-champagne/90 text-pretty sm:text-base">
               {PRODUCT_DEFINITION}

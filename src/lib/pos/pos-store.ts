@@ -473,6 +473,7 @@ export interface PosStore {
     settlement?: Partial<import("./types").SettlementConfig>;
     address?: string;
     hallMode?: boolean;
+    peerVenue?: boolean;
     staff?: { role: EmployeeRole; operatorId?: string | null; name: string };
     entityPermissions?: import("@/lib/access/entity-grants").EntityGrantRow[];
     locationDevices?: import("./location-devices").LocationDevice[];

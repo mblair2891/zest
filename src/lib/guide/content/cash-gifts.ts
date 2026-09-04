@@ -297,7 +297,7 @@ export const CASH_GIFT_TOPICS: GuideTopic[] = [
         "Default issuer follows the selling point: bar sale → that bar operator; host stand sale → the configured entity; explicit house SKU → house. House issuer is optional location mode — you do not create a third legal company.",
       ),
       ul(
-        "Sale (cash or card) increases issuer gift liability. It is never booked as the seller’s operating merchandise. Bank-card load charges the issuer entity’s Quantum Payments merchant — redeem stays on the Summex ledger, not a Finix gift product.",
+        "Sale (cash or card) increases issuer gift liability. It is never booked as the seller’s operating merchandise. Bank-card load charges the issuer entity’s Quantum Payments merchant — redeem stays on the Summex ledger, not a Finix gift product. A shared venue does not require a house gift product.",
         "The collecting drawer may hold cash; settlement tracks due-to-issuer remit when seller ≠ issuer.",
         "Guest redeems at any allowed operator. The fulfilling operator gets the merchandise sale. Issuer liability decreases. In-system settlement issuer → fulfiller (no-op if the same entity).",
         "An operator cannot freeze, void, reload, or import another issuer’s cards. Redeem by code is location-wide so any allowed drawer can take the card.",

@@ -6,6 +6,19 @@ import type { GuideUpdate } from "@/lib/guide/types";
  */
 export const WHATS_NEW_ENTRIES: GuideUpdate[] = [
   {
+    id: "upd_2026_10_38_peer_venue",
+    date: "2026-09-04",
+    title: "Shared venue — no host entity required",
+    summary:
+      "Peers can share a named building without a landlord-brand POS, host merchant, or host gift product.",
+    body: "Location types: single operator; host + tenants; shared venue (peers). A shared venue holds the legal site name, address, floor, devices, guest branding, cash-discount rounding, waitlist/kiosk, and venue admin. Each operator has their own Quantum Payments merchant, menu, recipes, ODS, staff, scheduling, payroll export, and gift ledger if they issue cards. Guest still pays once; receipt by vendor; Finix splits by line owner. Quotes: Shared venue $299 + $49 per entity — not a third host operator. Invite each POC; live cards wait until every selling entity is approved (sandbox in training).",
+    roles: ["platform_admin", "owner_manager", "host_operator", "vendor_operator"],
+    surfaces: ["platform", "settings", "floor"],
+    audience: "all",
+    topicId: "single-vs-multi",
+    tags: ["onboarding", "venue", "payments"],
+  },
+  {
     id: "upd_2026_10_37_vendor_split_check",
     date: "2026-09-04",
     title: "One guest check; receipt by vendor; Finix pays each operator",
