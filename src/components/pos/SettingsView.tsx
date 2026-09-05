@@ -245,7 +245,11 @@ export function SettingsView() {
   const emp = usePosStore((s) => s.employees.find((e) => e.id === s.currentEmployeeId));
   const orgId = useSaasStore((s) => s.org.id);
   const write = canEmployee(emp, "settings:write");
-  const hostMulti = isHostMultiVenue(entityId);
+  const peerVenue = Boolean(
+    settings.peerVenue || settings.operatingModel === "peer_venue",
+  );
+  const hostMulti = isHostMultiVenue(entityId) && !peerVenue;
+  const sharedMulti = hostMulti || peerVenue;
   const [hostTab, setHostTab] = useState<"host" | "operators">("host");
   const packs = settingsPacksForVenue(entityId);
   const updateSettings = usePosStore((s) => s.updateSettings);
@@ -402,11 +406,16 @@ export function SettingsView() {
       <QuantumPaymentsSettings write={write} />
       <div className="mb-4 flex flex-wrap items-center gap-2">
         <h2 className="text-sm font-semibold">
-          {hostMulti ? "Host settings" : "Location settings"}
+          {peerVenue ? "Venue settings" : hostMulti ? "Host settings" : "Location settings"}
         </h2>
         <span className="rounded-full bg-surface-2 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
           {typeLabel}
         </span>
+        {peerVenue && (
+          <span className="text-xs text-muted-foreground">
+            Shared venue — no host merchant. Operators are their own brands.
+          </span>
+        )}
         {hostMulti && (
           <span className="text-xs text-muted-foreground">
             Subscriber host owns location and payouts. Guest operators get ops only.
@@ -421,22 +430,22 @@ export function SettingsView() {
           </Button>
         )}
       </div>
-      {hostMulti && (
+      {sharedMulti && (
         <div className="mb-4 flex gap-1">
           <Button size="sm" variant={hostTab === "host" ? "default" : "outline"} onClick={() => setHostTab("host")}>
-            Host settings
+            {peerVenue ? "Venue settings" : "Host settings"}
           </Button>
           <Button
             size="sm"
             variant={hostTab === "operators" ? "default" : "outline"}
             onClick={() => setHostTab("operators")}
           >
-            Operators / Tenants
+            Operators
           </Button>
         </div>
       )}
 
-      {hostMulti && hostTab === "operators" ? (
+      {sharedMulti && hostTab === "operators" ? (
         <HostOperatorsSettings write={write} />
       ) : (
       <fieldset disabled={!write} className="min-w-0 border-0 p-0">

@@ -4204,11 +4204,17 @@ const usePosStoreRaw = create<PosStore>()(persist((set, get) => {
 		const p = persisted || {};
 		const entityId = p.activeEntityId || current.activeEntityId || "restaurant";
 		const fromPersist = p.employees || [];
+		const locKey = p.tenantLocationId || entityId || "loc";
+		const tenantLoc = String(p.tenantLocationId || current.tenantLocationId || "");
+		const demoHallLoc =
+			!tenantLoc ||
+			tenantLoc === "loc_hall" ||
+			tenantLoc === "loc_partner_laundry";
 		const tagged =
 			fromPersist.length > 0 &&
 			fromPersist.some((e: any) => e.entityId === entityId);
-		const locKey = p.tenantLocationId || entityId || "loc";
-		const employees = (tagged ? fromPersist : employeesForVenue(entityId)).map((e: any) => {
+		const keepTenantStaff = Boolean(tenantLoc) && !demoHallLoc && fromPersist.length > 0;
+		const employees = (keepTenantStaff || tagged ? fromPersist : employeesForVenue(entityId)).map((e: any) => {
 			const hashed =
 				e.pinHash || (e.pin && /^\d{4}$/.test(e.pin) ? hashPin(e.pin, locKey) : e.pinHash);
 			return {
@@ -4222,6 +4228,8 @@ const usePosStoreRaw = create<PosStore>()(persist((set, get) => {
 		const locationDevices =
 			(p.locationDevices && p.locationDevices.length)
 				? p.locationDevices
+				: !demoHallLoc
+					? (p.locationDevices ?? current.locationDevices ?? [])
 				: entityId === "food_hall"
 					? laundryLocationDevices()
 					: current.locationDevices ?? [];
@@ -4263,13 +4271,22 @@ const usePosStoreRaw = create<PosStore>()(persist((set, get) => {
 				giftHostessDefaultIssuerId:
 					(p.settings && p.settings.giftHostessDefaultIssuerId) ??
 					current.settings?.giftHostessDefaultIssuerId,
-				...(ent
+				...(!demoHallLoc && p.settings
 					? {
-							name: ent.venueName,
-							address: ent.address,
-							multiTenantHallMode: entityId === "food_hall"
+							name: p.settings.name || current.settings?.name,
+							address: p.settings.address ?? current.settings?.address,
+							multiTenantHallMode:
+								p.settings.multiTenantHallMode ??
+								p.settings.peerVenue ??
+								entityId === "food_hall",
 						}
-					: { multiTenantHallMode: false })
+					: ent
+						? {
+								name: ent.venueName,
+								address: ent.address,
+								multiTenantHallMode: entityId === "food_hall",
+							}
+						: { multiTenantHallMode: false }),
 			},
 			tables: (p.tables || current.tables || []).map((t: any) => ({
 				...t,

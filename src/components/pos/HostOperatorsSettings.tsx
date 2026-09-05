@@ -17,6 +17,9 @@ export function HostOperatorsSettings({ write }: { write: boolean }) {
   const updateVendor = usePosStore((s) => s.updateVendor);
   const orgId = useSaasStore((s) => s.org.id);
   const locId = usePosStore((s) => s.tenantLocationId) || "";
+  const peerVenue = usePosStore(
+    (s) => Boolean(s.settings.peerVenue || s.settings.operatingModel === "peer_venue"),
+  );
 
   const [selected, setSelected] = useState<string | null>(null);
 
@@ -34,8 +37,9 @@ export function HostOperatorsSettings({ write }: { write: boolean }) {
   return (
     <div className="space-y-4" data-demo="host-operators">
       <p className="text-xs text-muted-foreground">
-        You are the subscriber host. Invite each operator; they complete their own details.
-        Guest operators get entity-scoped ops. You keep payouts, routing, and host billing.
+        {peerVenue
+          ? "Shared venue — no host merchant. Invite each operator; they complete their own Quantum Payments, menu, and payouts."
+          : "You are the subscriber host. Invite each operator; they complete their own details. Guest operators get entity-scoped ops. You keep payouts, routing, and host billing."}
       </p>
 
       <TenantInvitesPanel write={write} />

@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link, useNavigate } from "@tanstack/react-router";
 import { ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -30,8 +30,15 @@ import type { SaasLocation, SaasOrganization } from "@/lib/pos/saas-types";
 import { useCurrentUserState } from "@/lib/auth/use-current-user";
 import { parseQrPolicy } from "@/lib/pos/qr-policy";
 import { parseQrMode } from "@/lib/pos/qr-table";
+import {
+  buildTenantDetailModel,
+  hostMerchantName,
+  type TenantDetailModel,
+} from "@/lib/saas/tenant-detail";
+import { LocationDeviceRegistry } from "@/components/pos/LocationDeviceRegistry";
+import { QuantumPaymentsSettings } from "@/components/pos/QuantumPaymentsSettings";
 
-type Tab = "settings" | "menu" | "people";
+type Tab = "overview" | "settings" | "devices" | "menu" | "payments" | "people";
 
 function venueTypeOf(raw: string): VenueEntityId {
   return isVenueEntityId(raw) ? raw : "food_hall";
@@ -46,7 +53,7 @@ export function PlatformTenantVenue({
 }) {
   const navigate = useNavigate();
   const { user } = useCurrentUserState();
-  const [tab, setTab] = useState<Tab>("settings");
+  const [tab, setTab] = useState<Tab>("overview");
   const [error, setError] = useState<string | null>(null);
   const [ready, setReady] = useState(false);
   const [title, setTitle] = useState("Venue");
@@ -54,9 +61,15 @@ export function PlatformTenantVenue({
   const [locs, setLocs] = useState<Array<{ id: string; name: string; venueType: string }>>([]);
   const [people, setPeople] = useState<Array<{ id: string; name: string; email: string; role: string }>>([]);
   const [activeLoc, setActiveLoc] = useState(locId || "");
+  const [detail, setDetail] = useState<TenantDetailModel | null>(null);
+  const [orgReadyId, setOrgReadyId] = useState("");
   const employees = usePosStore((s) => s.employees);
+  const hydrateKey = `${orgId}:${locId || ""}`;
+  const lastHydrated = useRef("");
 
   useEffect(() => {
+    if (lastHydrated.current === hydrateKey && ready) return;
+    lastHydrated.current = hydrateKey;
     let cancelled = false;
     setReady(false);
     setError(null);
@@ -77,6 +90,13 @@ export function PlatformTenantVenue({
       }
       setActiveLoc(loc.id);
       setTitle(loc.name || drill.org.name);
+      setDetail(
+        buildTenantDetailModel({
+          venueName: loc.name || drill.org.name,
+          operatingModel: undefined,
+          operators: drill.operators,
+        }),
+      );
       await setActiveContextFn({ data: { orgId, locationId: loc.id } }).catch(() => undefined);
       const access = await getPosBootstrapFn({ data: { locationId: loc.id } });
       if (cancelled) return;
@@ -182,11 +202,24 @@ export function PlatformTenantVenue({
         },
       });
       usePosStore.getState().loginAsOwner(user?.displayName || "Platform admin");
+      const peer = access.location.operatingModel === "peer_venue";
+      setDetail(
+        buildTenantDetailModel({
+          venueName: access.location.name || loc.name || drill.org.name,
+          operatingModel: access.location.operatingModel,
+          peerVenue: peer,
+          operators: drill.operators,
+        }),
+      );
       const st = usePosStore.getState();
       usePosStore.setState({
         view: "settings",
         settings: {
           ...st.settings,
+          peerVenue: peer || st.settings.peerVenue,
+          operatingModel: peer
+            ? "peer_venue"
+            : st.settings.operatingModel,
           qrMode: parseQrMode(setup.qrMode ?? st.settings.qrMode),
           qrPolicy: parseQrPolicy(setup.qrPolicy, setup.qrMode ?? st.settings.qrMode),
           cashDiscountEnabled: setup.cashDiscountEnabled ?? st.settings.cashDiscountEnabled,
@@ -199,7 +232,9 @@ export function PlatformTenantVenue({
               ? setup.cashRoundIncrement
               : st.settings.cashRoundIncrement,
           cashRoundMode: setup.cashRoundMode === "up" ? "up" : st.settings.cashRoundMode,
-          giftHouseIssuerEnabled: setup.giftHouseIssuerEnabled ?? st.settings.giftHouseIssuerEnabled,
+          giftHouseIssuerEnabled: peer
+            ? false
+            : (setup.giftHouseIssuerEnabled ?? st.settings.giftHouseIssuerEnabled),
           lifecycleStatus:
             (access.location.lifecycleStatus as
               | "training"
@@ -243,16 +278,22 @@ export function PlatformTenantVenue({
           laborByEntity: laborMap,
         });
       }
-      if (!cancelled) setReady(true);
+      if (!cancelled) {
+        setOrgReadyId(access.org.id);
+        setReady(true);
+      }
     })().catch((e) => {
       if (cancelled) return;
+      lastHydrated.current = "";
       setError(e instanceof Error ? e.message : "Could not open this venue");
       setReady(true);
     });
     return () => {
       cancelled = true;
     };
-  }, [orgId, locId, user?.displayName, user?.primaryEmail]);
+    // Hydrate once per org/location. User identity is read at run time.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [hydrateKey]);
 
   const back = () => {
     void navigate({ to: "/dashboard", search: { surface: "tenants" } });
@@ -312,19 +353,28 @@ export function PlatformTenantVenue({
               ))}
             </div>
           )}
-          <div className="flex shrink-0 gap-1 border-b border-border px-3 py-2">
-            {(["settings", "menu", "people"] as const).map((id) => (
+          <div className="flex shrink-0 gap-1 overflow-x-auto border-b border-border px-3 py-2">
+            {(
+              [
+                ["overview", "Overview"],
+                ["settings", "Settings"],
+                ["devices", "Devices"],
+                ["menu", "Menus"],
+                ["payments", "Payments"],
+                ["people", "Users"],
+              ] as const
+            ).map(([id, label]) => (
               <button
                 key={id}
                 type="button"
                 onClick={() => setTab(id)}
-                className={`h-9 rounded-lg px-3 text-xs font-medium capitalize ${
+                className={`h-9 shrink-0 rounded-lg px-3 text-xs font-medium ${
                   tab === id
                     ? "bg-primary text-primary-foreground"
                     : "border border-border text-muted-foreground"
                 }`}
               >
-                {id === "people" ? "Users" : id}
+                {label}
               </button>
             ))}
           </div>
@@ -333,8 +383,26 @@ export function PlatformTenantVenue({
               <p className="text-sm text-muted-foreground">Opening venue…</p>
             )}
             {error && <p className="text-sm text-danger">{error}</p>}
+            {ready && !error && tab === "overview" && (
+              <TenantOverview
+                detail={detail}
+                title={title}
+                onOpen={setTab}
+              />
+            )}
             {ready && !error && tab === "settings" && <SettingsView />}
+            {ready && !error && tab === "devices" && (
+              <LocationDeviceRegistry
+                orgId={orgReadyId}
+                locationId={activeLoc}
+                locationName={title}
+                mode="stations"
+              />
+            )}
             {ready && !error && tab === "menu" && <MenuAdminView />}
+            {ready && !error && tab === "payments" && (
+              <QuantumPaymentsSettings write />
+            )}
             {ready && !error && tab === "people" && (
               <div className="mx-auto max-w-lg space-y-4">
                 <p className="text-sm font-semibold">Users</p>
@@ -374,5 +442,59 @@ export function PlatformTenantVenue({
           </main>
         </div>
       </PosErrorBoundary>
+  );
+}
+
+function TenantOverview({
+  detail,
+  title,
+  onOpen,
+}: {
+  detail: TenantDetailModel | null;
+  title: string;
+  onOpen: (tab: Tab) => void;
+}) {
+  const hostName = hostMerchantName(detail?.host);
+  const entities = detail?.entities ?? [];
+  const peer = detail?.operatingModel === "peer_venue";
+  return (
+    <div className="mx-auto max-w-lg space-y-4" data-demo="platform-tenant-overview">
+      <div>
+        <p className="text-lg font-semibold">{detail?.venueName || title}</p>
+        <p className="mt-1 text-xs text-muted-foreground">
+          {peer
+            ? "Shared venue — no host merchant. Child brands below."
+            : hostName
+              ? `Host merchant · ${hostName}`
+              : "Location"}
+        </p>
+      </div>
+      {entities.length > 0 && (
+        <ul className="space-y-2">
+          {entities.map((e) => (
+            <li key={e.id} className="rounded-xl border border-border bg-surface px-3 py-2 text-sm">
+              <span className="font-medium">{e.name}</span>
+            </li>
+          ))}
+        </ul>
+      )}
+      {entities.length === 0 && (
+        <p className="text-sm text-muted-foreground">No child operators yet.</p>
+      )}
+      <div className="flex flex-wrap gap-2">
+        <Button size="sm" onClick={() => onOpen("settings")}>
+          Settings
+        </Button>
+        <Button size="sm" variant="outline" onClick={() => onOpen("devices")}>
+          Devices
+        </Button>
+        <Button size="sm" variant="outline" onClick={() => onOpen("menu")}>
+          Menus
+        </Button>
+        <Button size="sm" variant="outline" onClick={() => onOpen("payments")}>
+          Payments
+        </Button>
+      </div>
+    </div>
   );
 }

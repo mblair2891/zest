@@ -12,6 +12,9 @@ import { useSaasStore } from "@/lib/pos/saas-store";
 export function QuantumPaymentsSettings({ write }: { write: boolean }) {
   const orgId = useSaasStore((s) => s.org.id);
   const locId = usePosStore((s) => s.tenantLocationId) || "";
+  const peerVenue = usePosStore(
+    (s) => Boolean(s.settings.peerVenue || s.settings.operatingModel === "peer_venue"),
+  );
   const [status, setStatus] = useState<PaymentsStatus | null>(null);
   const [saving, setSaving] = useState(false);
 
@@ -124,7 +127,7 @@ export function QuantumPaymentsSettings({ write }: { write: boolean }) {
           ))}
         </ul>
       )}
-      {status?.operatingModel === "peer_venue" ? (
+      {peerVenue || status?.operatingModel === "peer_venue" ? (
         <p className="rounded-lg bg-surface-2 px-3 py-2 text-xs text-muted-foreground">
           This is a shared venue. The building name is guest branding only — not a merchant.
           Each operator completes their own Quantum Payments application. Live cards wait

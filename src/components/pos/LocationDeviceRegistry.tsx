@@ -147,9 +147,14 @@ export function LocationDeviceRegistry({
       });
       setDevices(res.devices);
       setOperators(res.operators);
-      setHostName(res.hostName || locationName);
+      setHostName(res.hostName || locationName || "Venue");
       try {
-        usePosStore.setState({ locationDevices: res.devices.filter((d) => d.status !== "inactive") });
+        const next = res.devices.filter((d) => d.status !== "inactive");
+        const prev = usePosStore.getState().locationDevices ?? [];
+        const same =
+          prev.length === next.length &&
+          prev.every((d, i) => d.id === next[i]?.id && d.status === next[i]?.status);
+        if (!same) usePosStore.setState({ locationDevices: next });
       } catch {
         /* POS store may not be hydrated on dashboard */
       }
