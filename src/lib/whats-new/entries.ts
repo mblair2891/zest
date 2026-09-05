@@ -6,6 +6,19 @@ import type { GuideUpdate } from "@/lib/guide/types";
  */
 export const WHATS_NEW_ENTRIES: GuideUpdate[] = [
   {
+    id: "upd_2026_10_51_host_split",
+    date: "2026-09-05",
+    title: "Sales site and console are different hosts",
+    summary:
+      "summex.app is marketing only. Log in, dashboard, stations, and pair QR live on app.summex.app.",
+    body: "The public site is Get a price, Guide, Demo, and Log in — Log in opens https://app.summex.app/login. There is no Go to console, Open POS, or Replay workflow on the sales host. Floor tablets bookmark app.summex.app/?station= or /station/order. Pair QR uses that host. Set APP_URL=https://app.summex.app so session cookies stay on the console.",
+    roles: ["owner_manager", "host_operator", "platform_admin"],
+    surfaces: ["platform", "settings"],
+    audience: "all",
+    topicId: "access-urls",
+    tags: ["login", "hosts", "station"],
+  },
+  {
     id: "upd_2026_10_50_marketing_login",
     date: "2026-09-05",
     title: "Sales home is not the console",

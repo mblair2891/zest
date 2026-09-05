@@ -15,7 +15,7 @@ A SaaS-onboarded host can operate in **TRAINING** when these are true.
 ### Ops (you set)
 
 - [ ] `DATABASE_URL` (Neon) on Production — health fails clearly without it (no PGLite on Vercel)
-- [ ] `APP_URL` = public https origin
+- [ ] `APP_URL` = `https://app.summex.app` (console cookies on that host)
 - [ ] `BETTER_AUTH_URL` same origin as `APP_URL`
 - [ ] `BETTER_AUTH_SECRET` long random
 - [ ] `DEV_DEMO=0`, `VITE_DEV_DEMO=0`, `DEMO_OPEN_LOCATIONS=0`
@@ -59,7 +59,7 @@ Do **not** pretend live Visa works until all of these are true.
 - [ ] Platform → Payments default **Live** (or location override Live) **after** go-live
 - [ ] Webhook URL `https://<origin>/api/payments/finix/webhook` (and `/api/payments/webhook` if using the Terminal adapter)
 - [ ] One sandbox presentment, then one live presentment in the house
-- [ ] DNS/TLS: `www` marketing + login; do **not** cut POS to `app.summex.app` until that host serves this app
+- [ ] DNS/TLS: `www` / apex = marketing only; `app.summex.app` = login, dashboard, stations. Both hosts on this deploy.
 - [ ] **Once:** Namecheap + Vercel wildcard `*.summex.app` (CNAME to Vercel). Venue hosts are `{slug}.summex.app`. No per-tenant DNS. Preview uses `/v/{slug}`.
 - [ ] `sites.summex.app` / custom guest domains only when that host is a real deploy
 - [ ] Resend + Twilio domains if you want production email/SMS

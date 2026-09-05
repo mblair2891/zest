@@ -269,10 +269,10 @@ export const SAAS_TOPICS: GuideTopic[] = [
         "Each house gets a stable URL from its venue name. Staff pair tablets and guests scan QR on that host — not a new DNS record per tenant.",
       ),
       ul(
-        "www / marketing — Get a price, Guide, Demo, Log in. The `/` path on www is the sales landing only — never POS or the control plane.",
+        "www / marketing (summex.app) — Get a price, Guide, Demo, Log in → https://app.summex.app/login. The `/` path is the sales landing only — never POS or the control plane.",
         "Venue host — https://{slug}.summex.app. Assigned at onboard from the venue name (editable before publish). Reserved labels (www, app, login, …) are blocked.",
         "Path fallback — /v/{slug} on preview and localhost. Same app; no wildcard DNS required there.",
-        "Device pair, station, and table QR prefer the venue subdomain when Host is a venue slug (or production *.summex.app).",
+        "Staff pair QR and station bookmarks use https://app.summex.app/station (and /station/order). Table QR for guests can stay on the venue host.",
         "One operator job: add *.summex.app in Namecheap (CNAME to Vercel) and on the Vercel project. No per-tenant DNS.",
       ),
       steps(
@@ -282,7 +282,7 @@ export const SAAS_TOPICS: GuideTopic[] = [
         "Platform Tenants → click the house opens the venue URL.",
       ),
       tip(
-        "Do not create a DNS record per tenant. Wildcard once. Do not bookmark app.summex.app until that host is live.",
+        "Do not create a DNS record per tenant. Wildcard once. Bookmark stations on app.summex.app. Set APP_URL=https://app.summex.app so console cookies land on that host.",
       ),
       related("network-readiness", "table-qr", "feature-kiosk", "onboarding-wizard", "wifi-offline"),
     ],

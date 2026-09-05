@@ -6,6 +6,7 @@ export {
   surfaceFromHost,
   surfaceFromPath,
   isMarketingPublicHost,
+  isAppPlatformHost,
   isSingleOriginHost,
   appHref,
   explicitAppHost,
@@ -14,6 +15,9 @@ export {
   apiHref,
   sitesHref,
   absoluteAppHref,
+  absolutePlatformHref,
+  platformLoginHref,
+  leftoverMarketingPlatformHref,
   absoluteGuestHref,
   absoluteMarketingHref,
   originForSurface,
@@ -22,6 +26,9 @@ export {
   staffGuestAccessPoints,
   currentHostname,
   currentOrigin,
+  hostSplitActive,
+  isPlatformPath,
+  marketingToPlatformHref,
 } from "./hosts";
 export type { AccessPoint } from "./hosts";
 export type { ActiveTenantContext, WorkspaceLocation } from "./tenant-types";

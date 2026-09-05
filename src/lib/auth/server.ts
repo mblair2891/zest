@@ -90,6 +90,8 @@ export const authConfigured =
 // it derives the origin per-request from the (proxied) host, validated against the
 // preview allowlist, which makes the OAuth `redirect_uri` the concrete preview URL
 // the broker's preview client accepts.
+// Console host. Production: APP_URL=https://app.summex.app so session
+// cookies (`__Host-`) are set on the platform host, not the marketing apex.
 const explicitBaseURL = env("BETTER_AUTH_URL") ?? env("APP_URL");
 // Explicit `string[]` (not a readonly tuple) — Better Auth's DynamicBaseURLConfig
 // requires a mutable `allowedHosts: string[]`.
@@ -125,7 +127,7 @@ const baseURL = explicitBaseURL ?? {
   // `auto` → trust both http:// and https:// expansions of allowedHosts
   // (preview is https; local dev is http).
   protocol: "auto" as const,
-  fallback: "https://www.summex.app",
+  fallback: "https://app.summex.app",
 };
 
 function originVariants(url: string | undefined): string[] {
@@ -152,6 +154,11 @@ const STATIC_TRUSTED_ORIGINS: string[] = [
   ...originVariants(explicitBaseURL),
   ...originVariants(env("APP_URL")),
   ...originVariants(env("VITE_PUBLIC_HOSTNAME")),
+  // Console cookies live on app.summex.app (APP_URL). Marketing apex is
+  // trusted so leftover /login can redirect without "Invalid origin".
+  "https://app.summex.app",
+  "https://summex.app",
+  "https://www.summex.app",
 ];
 
 // Origins Better Auth accepts on credentialed POSTs (sign-up/sign-in, etc.).

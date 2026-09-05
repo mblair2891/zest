@@ -1,7 +1,7 @@
 # Operators Guide — authoring
 
-**Revision · 5 Sep 2026** — Marketing home vs platform login.
-Guide v2026.10.50.
+**Revision · 5 Sep 2026** — Marketing on summex.app, console on app.summex.app.
+Guide v2026.10.51.
 
 The in-app **Operators Guide** is the living product manual. It is not a
 separate PDF. Staff open it from **Guide** / **?** in the POS and platform
@@ -145,7 +145,7 @@ Bookmarkable URL: `/guide?topic=my-topic`.
 - PIN login ≠ clock in/out ≠ server closeout.
 - Gift: sale-point issuer or house; redeem settles internally; unredeemed liability on issuer; house cards house-keeps remainder.
 - Staffing recs never auto clock-out. Accept ≠ punch out.
-- Public marketing: Get a price, Guide, Demo, Log in — no Dashboard, Open POS, pipeline, or tenant chrome on `/`. No Google/X. Logged-in visitors still see the sales home (Log in / Go to console). Staff stations: `/?station=` or `/station/:role`.
+- Public marketing (summex.app / www): Get a price, Guide, Demo, Log in → https://app.summex.app/login. No Go to console, Open POS, Replay workflow, dashboard, or tenant chrome on the sales host. Console, stations, pair QR: app.summex.app. No Google/X.
 - Examples: **Host Venue**, **Operator A**, **Operator B**.
 - Chargebacks: **$35** when a dispute is **filed**; split by merchandise %; won/lost does not reverse the fee.
 - If a feature is partial, say so (“available in training; live cards require an approved Quantum application”). Do not document vapor as finished.

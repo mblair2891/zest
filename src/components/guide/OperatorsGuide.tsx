@@ -299,7 +299,7 @@ export function OperatorsGuide({
                 </span>
               </button>
             )}
-            {hasSessionRole ? (
+            {hasSessionRole && variant === "overlay" ? (
               <div className="flex flex-wrap gap-1.5">
                 <ReplayWorkflowButton variant="secondary" />
                 <Button
@@ -387,8 +387,9 @@ export function OperatorsGuide({
                       Open in app
                     </Button>
                   )}
-                  {(active.id === "role-walkthroughs" ||
-                    active.id.startsWith("role-")) && (
+                  {variant === "overlay" &&
+                    (active.id === "role-walkthroughs" ||
+                      active.id.startsWith("role-")) && (
                     <ReplayWorkflowButton variant="secondary" label="Replay workflow" />
                   )}
                   <Button

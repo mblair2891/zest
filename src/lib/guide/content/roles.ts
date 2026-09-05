@@ -20,7 +20,7 @@ export const ROLE_GUIDE_TOPICS: GuideTopic[] = [
         "Help button (header): ask a task. Answers from this guide for Platform Admin — not a second guide browser. Floor staff never see CRM Help.",
       ),
       steps(
-        "Log in at /login with username and password (no Google/X). Complete the forced password change. You land on the platform dashboard — not the sales home.",
+        "Log in at app.summex.app/login with username and password (no Google/X). Complete the forced password change. You land on the platform dashboard — not the sales home.",
         "Use Console and Pipeline in the header.",
         "Empty tenants is valid until someone completes SaaS onboarding. Click a listed tenant to open that venue’s settings.",
         "Send prospects Get pricing — never this Admin session.",
@@ -44,7 +44,7 @@ export const ROLE_GUIDE_TOPICS: GuideTopic[] = [
         "The owner opens the house, sets PINs and packages, and owns the period close.",
       ),
       ul(
-        "Log in at /login. You open that house (venue home), not the marketing page. PIN as owner or manager. Floor: Entire location or By section. Combine tables (lowest number). Reports → AI analysis; Settings for daily/weekly.",
+        "Log in at app.summex.app/login. You open that house (venue home), not the marketing page. PIN as owner or manager. Floor: Entire location or By section. Combine tables (lowest number). Reports → AI analysis; Settings for daily/weekly.",
         "Staff, menu, floor, cash drawer, settlement. Loss-prevention gates and exception queue (Home feed + Reports).",
         "Packages decide which modules appear. Core POS and ODS are the floor.",
         "Optional Employment (HR) is per entity: host or a tenant operator as employer. Flags and visibility live on HR → Flags.",

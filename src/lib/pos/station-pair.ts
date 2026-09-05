@@ -4,8 +4,7 @@
  */
 import { isVenueEntityId } from "./entities";
 import type { VenueEntityId } from "./types";
-import { readTenantPosContext } from "@/lib/saas/pos-context";
-import { venueAwareHref } from "@/lib/platform/venue-host";
+import { absolutePlatformHref } from "@/lib/platform/hosts";
 
 export type DeviceRole = "order" | "ods" | "host";
 
@@ -95,14 +94,7 @@ export function stationPairPath(code: string): string {
 export function stationPairHref(code: string, origin?: string): string {
   const path = stationPairPath(code);
   if (origin) return `${origin.replace(/\/$/, "")}${path}`;
-  try {
-    const slug = readTenantPosContext()?.slug;
-    if (slug) return venueAwareHref(path, slug);
-  } catch {
-    /* ignore */
-  }
-  if (typeof window !== "undefined") return `${window.location.origin}${path}`;
-  return `https://summex.app${path}`;
+  return absolutePlatformHref(path);
 }
 
 export function pairQrImageSrc(code: string, origin?: string): string {

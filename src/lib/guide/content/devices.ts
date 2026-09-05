@@ -39,7 +39,7 @@ export const DEVICE_TOPICS: GuideTopic[] = [
         "ODS: kitchen tickets. Start / Bump. No pay path — cash and gift tenders are blocked on ODS.",
         "Host: floor map + to-go. Seat the room; ring takeout at the stand.",
         "A manager Change device switches among those three. PIN stays the person; the role is the screen.",
-        "Pair once (internet required). After that, floor stations open on /?station= or /station/order (ods, host) — the PIN pad, not /login and not the sales home. App updates keep the pairing. Back-office username and password is for owners on a laptop, not the handheld.",
+        "Pair once (internet required). Pair QR and bookmarks are app.summex.app/station. After that, floor stations open on app.summex.app/?station= or /station/order (ods, host) — the PIN pad, not the sales home. App updates keep the pairing. Back-office username and password is for owners on a laptop, not the handheld.",
         "Broken ODS → reassign a server tablet from Devices. Same pair code; staff PIN in again. Do not reinstall.",
       ),
       steps(

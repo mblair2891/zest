@@ -6,16 +6,16 @@ Summex is a multi-tenant hospitality SaaS: restaurants, food halls, truck pods, 
 
 | Host (production) | Path (local / preview) | Surface |
 |---|---|---|
-| summex.app / www.summex.app | `/` | Marketing sales landing (Get a price, Guide, Demo, Log in) — never POS, dashboard, or pipeline |
-| summex.app/login | `/login` | Username/password only → Admin dashboard or venue owner home |
-| summex.app/dashboard | `/dashboard` | Platform Admin control plane (CRM / pipeline / tenants) |
-| app.summex.app | `/app` | Shared POS / admin application |
+| summex.app / www.summex.app | `/` | Marketing sales landing only (Get a price, Guide, Demo, Log in → app host) |
+| app.summex.app/login | `/login` | Username/password only → Admin dashboard or venue owner home |
+| app.summex.app/dashboard | `/dashboard` | Platform Admin control plane (CRM / pipeline / tenants) |
+| app.summex.app | `/station/:role`, `/?station=` | Staff stations and pair QR |
 | api.summex.app | `/api` | HTTP API (`/api/health`, `/api/auth/*`) |
 | sites.summex.app | `/sites/$slug` | Guest location sites (later: custom domains) |
 
-**There are no per-tenant POS subdomains.** Every merchant uses `app.summex.app`. Tenant (organization + location) is resolved **after** authentication via `active_contexts` and `tenantMiddleware`.
+**Console cookies live on `app.summex.app`.** Set `APP_URL=https://app.summex.app` and `BETTER_AUTH_URL` the same. The marketing apex never renders `PlatformApp`. Leftover `/login` on summex.app redirects to `https://app.summex.app/login`.
 
-Local preview is a single origin: hosts are simulated with those path prefixes. `Host: app.localhost:8080` is rewritten to `/app` in Vite.
+Local preview is a single origin: hosts are simulated with path prefixes. `Host: app.localhost:8080` is rewritten to `/app` in Vite.
 
 ## Surfaces (routes)
 
@@ -23,8 +23,8 @@ Local preview is a single origin: hosts are simulated with those path prefixes. 
 |---|---|---|
 | Marketing | `/`, `/pricing`, `/features`, `/blog`, `/get-pricing`, `/demo` | Public |
 | Quote | `/quote/$token` | Prospect (accept requires sign-in) |
-| Merchant login / dashboard | `/login`, `/signup`, `/dashboard` | Operators (password only at `/login`) |
-| Staff station | `/?station=`, `/station`, `/station/:role` | PIN pad — not marketing `/` |
+| Merchant login / dashboard | `app.summex.app/login`, `/dashboard` | Operators (password only). Apex `/login` redirects here. |
+| Staff station | `app.summex.app/station/:role`, `/?station=` | PIN pad — never the sales host |
 | Control plane (legacy alias) | `/platform` → `/dashboard` | same |
 | Subscriber pipeline | `/pipeline` | Platform admin |
 | Onboarding | `/onboarding` resumes intake/quote/setup; `/setup/$token` is Stage B after contract |

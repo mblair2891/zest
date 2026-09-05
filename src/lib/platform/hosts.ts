@@ -1,14 +1,22 @@
-import { venueAwareHref, venuePosHref, venueSlugFromHost } from "./venue-host";
+import { venueAwareHref, venueSlugFromHost } from "./venue-host";
+import {
+  hostSplitActive,
+  isAppPlatformHostName,
+  isMarketingPublicHostName,
+  isPlatformPath,
+  isSingleOriginHostName,
+  marketingToPlatformHref,
+  platformOriginFor,
+} from "./host-split";
 
 /**
  * Canonical Summex surfaces.
  *
  * Production:
- *   summex.app              marketing + login + merchant dashboard
- *   app.summex.app          shared POS / admin application (no per-tenant hosts)
+ *   summex.app / www        public marketing ONLY (Get a price, Guide, Demo, Log in)
+ *   app.summex.app          login, dashboard, CRM, pipeline, stations, owner POS
  *   api.summex.app          HTTP API
  *   sites.summex.app        guest-facing (ordering, location sites) — later
- *   order.restaurant.com  custom domain → sites.summex.app (later)
  *
  * Local / live preview (single origin): path prefixes stand in for hosts.
  *   /                     marketing
@@ -16,6 +24,9 @@ import { venueAwareHref, venuePosHref, venueSlugFromHost } from "./venue-host";
  *   /app                  application
  *   /api                  API
  *   /sites                guest platform
+ *
+ * Cookies for the console live on app.summex.app. Set
+ * APP_URL=https://app.summex.app (and BETTER_AUTH_URL the same).
  */
 
 export type SummexSurface = "marketing" | "app" | "api" | "sites";
@@ -59,38 +70,22 @@ export function stripPort(host: string): string {
   return host.split(":")[0]?.toLowerCase() ?? host.toLowerCase();
 }
 
-/** Single-origin mode: localhost, loopback, grok preview, or unset split DNS. */
+/** Single-origin mode: localhost, loopback, grok preview, or Vercel preview. */
 export function isSingleOriginHost(hostname: string): boolean {
-  const h = stripPort(hostname);
-  return (
-    h === "localhost" ||
-    h === "127.0.0.1" ||
-    h === "0.0.0.0" ||
-    h === "[::1]" ||
-    h.endsWith(".grok-sandbox.com") ||
-    h.endsWith(".grok.me") ||
-    h.endsWith(".vercel.app")
-  );
+  return isSingleOriginHostName(hostname);
+}
+
+export function isAppPlatformHost(hostname: string): boolean {
+  return isAppPlatformHostName(hostname, configuredHosts().app);
 }
 
 /**
- * www / apex marketing hosts. Never POS — even if VITE_APP_HOST is this host
- * or app.summex.app is unset/unserved.
+ * www / apex marketing hosts. Never POS, dashboard, or PlatformApp.
  */
 export function isMarketingPublicHost(hostname: string): boolean {
   const h = stripPort(hostname);
   if (!h) return true;
-  if (h.startsWith("app.") || h.startsWith("api.") || h.startsWith("sites.")) return false;
-  const names = new Set<string>();
-  const add = (raw: string) => {
-    const x = stripPort(raw);
-    if (!x) return;
-    names.add(x);
-    if (!x.startsWith("www.")) names.add(`www.${x}`);
-  };
-  add(SUMMEX_HOSTS.marketing);
-  add(configuredHosts().marketing);
-  return names.has(h);
+  return isMarketingPublicHostName(h, configuredHosts().marketing);
 }
 
 export function surfaceFromHost(hostname: string): SummexSurface | null {
@@ -161,29 +156,19 @@ function hostsEqual(a: string, b: string): boolean {
 }
 
 /**
- * Distinct live app host: VITE_APP_HOST is set, is not this deploy, and is not
- * the unserved default app.summex.app (DEPLOYMENT_NOT_FOUND).
- * Unset, preview, or www/marketing → POS stays here.
+ * True when this request is on the marketing apex and the console lives on
+ * app.summex.app (production split). Preview/local stay same-origin.
  */
 export function appHostIsLiveAndDistinct(currentHostname?: string): boolean {
-  const app = explicitAppHost();
-  if (!app) return false;
-  if (hostsEqual(app, SUMMEX_HOSTS.app)) return false;
   const here =
     currentHostname ||
     (typeof window !== "undefined" ? window.location.hostname : "");
   if (!here) return false;
-  if (isSingleOriginHost(here)) return false;
-  if (isMarketingPublicHost(here)) return false;
-  if (hostsEqual(app, here)) return false;
-  const marketing = configuredHosts().marketing;
-  if (hostsEqual(here, marketing)) return false;
-  return true;
+  return hostSplitActive(here) && isMarketingPublicHost(here);
 }
 
-/** True when we should keep a single origin (dev, preview, or unset/unserved app host). */
+/** True when we should keep a single origin (dev, preview). */
 export function isSingleOrigin(origin?: string): boolean {
-  if (!explicitAppHost()) return true;
   let hostname = "";
   if (origin) {
     try {
@@ -201,7 +186,7 @@ export function isSingleOrigin(origin?: string): boolean {
     hostname = window.location.hostname;
   }
   if (!hostname) return true;
-  return isSingleOriginHost(hostname) || !appHostIsLiveAndDistinct(hostname);
+  return !hostSplitActive(hostname);
 }
 
 /** Component hook — wraps isSingleOrigin(). Do not call from plain helpers. */
@@ -248,22 +233,57 @@ function sameOriginPosPath(path: string): string {
   return `/app${p}`;
 }
 
-/** Path inside the application surface. Same origin unless a live distinct app host exists. */
+/** Path inside the application surface. Production marketing → app.summex.app. */
 export function appHref(path = "/"): string {
   const p = path.startsWith("/") ? path : `/${path}`;
   const local = sameOriginPosPath(p);
-  if (typeof window === "undefined") return local;
+  if (typeof window === "undefined") {
+    return hostSplitActive(stripPort(fallbackOrigin().replace(/^https?:\/\//, "")))
+      ? `${platformOriginFor(protocol(), configuredHosts().app)}${p === "/" ? "" : p}`
+      : local;
+  }
   const host = window.location.hostname;
-  if (isMarketingPublicHost(host) || isSingleOriginHost(host)) return local;
-  if (surfaceFromHost(host) === "app") {
-    if (p === "/") return "/";
-    if (p.startsWith("/venue/") || p.startsWith("/kiosk") || p.startsWith("/app")) return p;
+  if (isSingleOriginHost(host)) return local;
+  if (isAppPlatformHost(host)) {
+    if (p === "/") return "/dashboard";
     return p;
   }
-  if (!appHostIsLiveAndDistinct(host)) return local;
-  const app = explicitAppHost();
-  if (!app || hostsEqual(app, SUMMEX_HOSTS.app)) return local;
-  return `${protocol()}//${app}${p === "/" ? "" : p}`;
+  if (isMarketingPublicHost(host)) {
+    return `${platformOriginFor(protocol(), configuredHosts().app)}${p === "/" ? "/dashboard" : p}`;
+  }
+  return local;
+}
+
+/** Absolute console URL (login, dashboard, stations). Preview = this origin. */
+export function absolutePlatformHref(path = "/", origin?: string): string {
+  const p = path.startsWith("/") ? path : `/${path}`;
+  const here = origin || (typeof window !== "undefined" ? window.location.origin : fallbackOrigin());
+  let hostname = "";
+  try {
+    hostname = new URL(here).hostname;
+  } catch {
+    hostname = typeof window !== "undefined" ? window.location.hostname : "";
+  }
+  if (!hostSplitActive(hostname)) {
+    if (p.startsWith("http")) return p;
+    return withOrigin(here, p);
+  }
+  return `${platformOriginFor(protocol(), configuredHosts().app)}${p}`;
+}
+
+export function platformLoginHref(): string {
+  return absolutePlatformHref("/login");
+}
+
+export function leftoverMarketingPlatformHref(): string | null {
+  if (typeof window === "undefined") return null;
+  const path = `${window.location.pathname}${window.location.search}`;
+  return marketingToPlatformHref(
+    path,
+    window.location.hostname,
+    window.location.protocol,
+    configuredHosts().app,
+  );
 }
 
 export function marketingHref(path = "/"): string {
@@ -307,18 +327,9 @@ export function sitesHref(path = "/", origin?: string): string {
   return withOrigin(sitesOrigin, p);
 }
 
-/** Absolute staff URL (POS, ODS, kiosk). Prefers app host when split DNS is on. */
+/** Absolute staff URL (POS, ODS, kiosk, pair). Production → app.summex.app. */
 export function absoluteAppHref(path = "/", origin?: string): string {
-  const p = path.startsWith("/") ? path : `/${path}`;
-  const here = origin || (typeof window !== "undefined" ? window.location.origin : fallbackOrigin());
-  if (isSingleOrigin(here)) {
-    const local = appHref(p);
-    if (local.startsWith("http")) return local;
-    return withOrigin(here, local);
-  }
-  const href = appHref(p);
-  if (href.startsWith("http")) return href;
-  return withOrigin(originForSurface("app"), href);
+  return absolutePlatformHref(path, origin);
 }
 
 /** Absolute guest URL (table QR, online, location sites). Prefers sites host when split DNS is on. */
@@ -363,47 +374,50 @@ export function staffGuestAccessPoints(opts?: {
   const locQ = opts?.locationId ? `?loc=${encodeURIComponent(opts.locationId)}` : "";
   const table = opts?.tablePath || "/t/demo";
   const slug = opts?.slug?.trim() || "";
-  let posHref = `/venue/${venue}${locQ}`;
-  let odsHref = `/venue/${venue}${locQ ? `${locQ}&` : "?"}station=ods`;
-  let kioskHref = `/kiosk${locQ}`;
+  const posHref = absolutePlatformHref(`/venue/${venue}${locQ}`);
+  const odsHref = absolutePlatformHref(
+    `/station/ods${opts?.locationId ? `?loc=${encodeURIComponent(opts.locationId)}` : ""}`,
+  );
+  const kioskHref = absolutePlatformHref(`/kiosk${locQ}`);
   let qrHref = absoluteGuestHref(table);
   let onlineHref = absoluteGuestHref("/online");
   if (slug) {
-    posHref = venuePosHref(slug);
-    odsHref = venueAwareHref(
-      `/station/ods${opts?.locationId ? `?loc=${encodeURIComponent(opts.locationId)}` : ""}`,
-      slug,
-    );
-    kioskHref = venueAwareHref(`/kiosk${locQ}`, slug);
     qrHref = venueAwareHref(table, slug);
     onlineHref = venueAwareHref("/online", slug);
   }
   return [
     {
       id: "marketing",
-      label: "www · marketing & login",
-      hint: "Public site, Log in, Get a price, Guide — not the POS",
-      href: absoluteMarketingHref("/login"),
+      label: "www · marketing",
+      hint: "Public site: Get a price, Guide, Demo, Log in → app.summex.app",
+      href: absoluteMarketingHref("/"),
       surface: "marketing",
+    },
+    {
+      id: "login",
+      label: "Log in",
+      hint: "Username/password on app.summex.app — not the sales home",
+      href: absolutePlatformHref("/login"),
+      surface: "app",
     },
     {
       id: "pos",
       label: "POS",
-      hint: slug ? "Venue host (slug subdomain or /v/{slug})" : "Floor, order, host stand — this origin",
+      hint: "Owner venue on app.summex.app",
       href: posHref,
       surface: "app",
     },
     {
       id: "kds",
       label: "ODS",
-      hint: slug ? "Order display on the venue host" : "Kitchen / bar order display on this origin",
+      hint: "Kitchen / bar order display on app.summex.app",
       href: odsHref,
       surface: "app",
     },
     {
       id: "kiosk",
       label: "Kiosk",
-      hint: slug ? "Kiosk on the venue host" : "Guest kiosk device on this origin",
+      hint: "Guest kiosk on app.summex.app",
       href: kioskHref,
       surface: "app",
     },
@@ -428,11 +442,14 @@ export function staffGuestAccessPoints(opts?: {
 
 export const MARKETING_PATHS = [
   "/",
-  "/login",
-  "/signup",
   "/pricing",
   "/features",
   "/blog",
-  "/dashboard",
-  "/onboarding",
+  "/get-pricing",
+  "/guide",
+  "/demo",
+  "/whitepaper",
+  "/privacy",
 ] as const;
+
+export { isPlatformPath, marketingToPlatformHref, hostSplitActive };

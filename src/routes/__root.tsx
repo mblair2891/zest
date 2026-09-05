@@ -5,6 +5,7 @@ import { OfflineSwRegistrar } from "@/components/offline-sw";
 import { DemoTourHost } from "@/components/demo/DemoTourHost";
 import { GuideHost } from "@/components/guide/GuideHost";
 import { VenueHostBootstrap } from "@/components/platform/VenueHostBootstrap";
+import { HostSplitGuard } from "@/components/platform/HostSplitGuard";
 
 import appCss from "../styles.css?url";
 
@@ -47,6 +48,7 @@ export const Route = createRootRoute({
         <AuthProvider>
           <GuideHost />
           <DemoTourHost />
+          <HostSplitGuard />
           <VenueHostBootstrap />
           <Outlet />
         </AuthProvider>

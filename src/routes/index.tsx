@@ -7,10 +7,17 @@ import { venueSlugFromHost } from "@/lib/platform/venue-host";
 import { SessionGate } from "@/components/pos/SessionGate";
 import { VenueSlugApp } from "@/components/pos/VenueSlugApp";
 import { normalizeClaimCode } from "@/lib/pos/station-pair";
+import {
+  absolutePlatformHref,
+  hostSplitActive,
+  isAppPlatformHost,
+  isMarketingPublicHost,
+} from "@/lib/platform/hosts";
 
 export const Route = createFileRoute("/")({
   ssr: false,
   beforeLoad: ({ location }) => {
+    const host = typeof window !== "undefined" ? window.location.hostname : "";
     const qs = (location.searchStr || "").replace(/^\?/, "");
     const params = new URLSearchParams(qs);
     const station = parseStationQuery(params.get("station"));
@@ -18,6 +25,15 @@ export const Route = createFileRoute("/")({
       const loc = params.get("loc") || undefined;
       const pairRaw = params.get("pair");
       const pair = pairRaw ? normalizeClaimCode(pairRaw) : undefined;
+      const q = new URLSearchParams();
+      if (loc) q.set("loc", loc);
+      if (pair) q.set("pair", pair);
+      const tail = q.toString() ? `?${q.toString()}` : "";
+      if (host && hostSplitActive(host) && isMarketingPublicHost(host)) {
+        throw redirect({
+          href: absolutePlatformHref(`/station/${station}${tail}`),
+        });
+      }
       throw redirect({
         to: "/station/$role",
         params: { role: station },
@@ -27,6 +43,9 @@ export const Route = createFileRoute("/")({
         },
         replace: true,
       });
+    }
+    if (host && hostSplitActive(host) && isAppPlatformHost(host)) {
+      throw redirect({ to: "/dashboard" });
     }
   },
   component: IndexPage,

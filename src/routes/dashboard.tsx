@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, redirect, useNavigate } from "@tanstack/react-router";
 import { useCurrentUserState } from "@/lib/auth/use-current-user";
 import { getSessionContextFn, listMyProspectsFn, setActiveContextFn } from "@/lib/saas/api";
 import type { SessionContext } from "@/lib/saas/types";
@@ -12,9 +12,14 @@ import {
   parsePlatformSurface,
   type PlatformSurface,
 } from "@/components/platform/surfaces";
+import { leftoverMarketingPlatformHref } from "@/lib/platform/hosts";
 
 export const Route = createFileRoute("/dashboard")({
   ssr: false,
+  beforeLoad: () => {
+    const href = leftoverMarketingPlatformHref();
+    if (href) throw redirect({ href });
+  },
   validateSearch: (
     s: Record<string, unknown>,
   ): { passwordUpdated?: boolean; surface?: PlatformSurface } => {

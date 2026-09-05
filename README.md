@@ -4,7 +4,7 @@ Hospitality OS for restaurants, food halls, truck pods, and related venues.
 
 **Service, sharp.** From Latin *summus* — highest, greatest, supreme.
 
-Marketing and merchant login live on **summex.app**. The shared POS is **app.summex.app**.
+Marketing lives on **summex.app**. Login, dashboard, and stations live on **app.summex.app**.
 
 Built by Michael Blair & Andy Baida.
 
@@ -23,9 +23,9 @@ UI path: [`docs/saas-onboarding.md`](docs/saas-onboarding.md). Money rules: [`do
 
 ## What this is
 
-- **Marketing** (`summex.app` / `/`) — homepage, pricing, features, journal, signup.
-- **Merchant login** (`summex.app/login`) → **dashboard** with location selector.
-- **Application** (`app.summex.app` / `/app`) — shared POS. Tenant is chosen after login, never as a subdomain.
+- **Marketing** (`summex.app` / www) — homepage, Get a price, Guide, Demo. Log in → `https://app.summex.app/login`.
+- **Console** (`app.summex.app`) — `/login`, `/dashboard`, CRM, pipeline, tenants, onboarding, owner venue, `/station/:role`.
+- **Stations** — pair QR and bookmarks on `app.summex.app`. Tenant is chosen after login.
 - **API** (`api.summex.app` / `/api`).
 - **Gift cards** — first-party ledger (import / freeze / void stay in-app).
 - **Guest cards** — Quantum Payments only. Each entity is its own merchant; one guest check; split capture; receipts grouped by vendor. Guest UI never names Finix.
@@ -64,7 +64,7 @@ See `.env.example`. Highlights:
 | Variable | Purpose |
 |---|---|
 | `DATABASE_URL` | Neon/Postgres. Unset → PGLite |
-| `APP_URL` / `BETTER_AUTH_URL` | Public origin |
+| `APP_URL` / `BETTER_AUTH_URL` | Console origin. Production: `https://app.summex.app` (session cookies on that host). |
 | `BETTER_AUTH_SECRET` | Session signing |
 | `DEV_DEMO` / `VITE_DEV_DEMO` | Leave `0`. Demo tenants are not seeded. Test by onboarding a real location. |
 | `BOOTSTRAP_ADMIN_EMAIL` | First matching signup becomes `platform_admin` if none exists |

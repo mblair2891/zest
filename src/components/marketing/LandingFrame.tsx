@@ -1,9 +1,10 @@
 import type { ReactNode } from "react";
 import { Link } from "@tanstack/react-router";
-import { MarketingAuthCtas } from "@/components/marketing/AuthCtas";
+import { MarketingAuthCtas, MarketingLoginLink } from "@/components/marketing/AuthCtas";
 import { SummexMark, SummexWordmark } from "@/components/brand/SummexMark";
 import { POWERED_BY, PRODUCT_NAME, PRODUCT_TAGLINE } from "@/lib/platform/brand";
 import { cn } from "@/lib/utils";
+import { platformLoginHref } from "@/lib/platform/hosts";
 
 const NAV = [
   { to: "/get-pricing" as const, label: "Get a price" },
@@ -41,9 +42,7 @@ export function LandingFrame({ children }: { children: ReactNode }) {
               {n.label}
             </Link>
           ))}
-          <Link to="/login" className="shrink-0 hover:text-champagne">
-            Log in
-          </Link>
+          <MarketingLoginLink className="shrink-0 hover:text-champagne" />
         </nav>
       </header>
       <div className="relative z-10">{children}</div>
@@ -63,9 +62,7 @@ export function LandingFrame({ children }: { children: ReactNode }) {
             <Link to="/demo" className="hover:text-champagne">
               Demo
             </Link>
-            <Link to="/login" className="hover:text-champagne">
-              Log in
-            </Link>
+            <MarketingLoginLink className="hover:text-champagne" />
             <Link to="/guide" className="hover:text-champagne">
               Guide
             </Link>
@@ -88,8 +85,6 @@ export function LandingFrame({ children }: { children: ReactNode }) {
 
 export type LandingHref =
   | "/get-pricing"
-  | "/login"
-  | "/signup"
   | "/guide"
   | "/pricing"
   | "/demo"
@@ -98,27 +93,48 @@ export type LandingHref =
 
 export function LandingCta({
   to,
+  href,
   children,
   tone = "solid",
   className,
 }: {
-  to: LandingHref;
+  to?: LandingHref;
+  href?: string;
   children: ReactNode;
   tone?: "solid" | "ghost";
   className?: string;
 }) {
+  const cls = cn(
+    "inline-flex h-12 min-w-40 items-center justify-center rounded-sm px-6 text-xs font-semibold tracking-widest uppercase transition-colors",
+    tone === "solid"
+      ? "bg-ivory text-ink hover:bg-primary-hover"
+      : "border border-champagne/40 text-ivory hover:border-champagne hover:text-champagne",
+    className,
+  );
+  if (href) {
+    return (
+      <a href={href} className={cls}>
+        {children}
+      </a>
+    );
+  }
   return (
-    <Link
-      to={to}
-      className={cn(
-        "inline-flex h-12 min-w-40 items-center justify-center rounded-sm px-6 text-xs font-semibold tracking-widest uppercase transition-colors",
-        tone === "solid"
-          ? "bg-ivory text-ink hover:bg-primary-hover"
-          : "border border-champagne/40 text-ivory hover:border-champagne hover:text-champagne",
-        className,
-      )}
-    >
+    <Link to={to ?? "/get-pricing"} className={cls}>
       {children}
     </Link>
+  );
+}
+
+export function LandingLoginCta({
+  tone = "ghost",
+  className,
+}: {
+  tone?: "solid" | "ghost";
+  className?: string;
+}) {
+  return (
+    <LandingCta href={platformLoginHref()} tone={tone} className={className}>
+      Log in
+    </LandingCta>
   );
 }

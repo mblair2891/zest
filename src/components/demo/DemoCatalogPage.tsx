@@ -1,5 +1,5 @@
-import { Link } from "@tanstack/react-router";
-import { LandingCta, LandingFrame } from "@/components/marketing/LandingFrame";
+import { MarketingLoginLink } from "@/components/marketing/AuthCtas";
+import { LandingCta, LandingFrame, LandingLoginCta } from "@/components/marketing/LandingFrame";
 
 /** Sales demo — not a seeded restaurant and not the platform console. */
 export function DemoCatalogPage() {
@@ -45,17 +45,12 @@ export function DemoCatalogPage() {
           <LandingCta to="/guide" tone="ghost">
             Guide
           </LandingCta>
-          <LandingCta to="/login" tone="ghost">
-            Log in
-          </LandingCta>
+          <LandingLoginCta />
         </div>
         <p className="mt-8 text-xs text-muted-foreground">
           Already onboarded?{" "}
-          <Link to="/login" className="text-champagne hover:text-ivory">
-            Log in
-          </Link>{" "}
-          goes to the platform dashboard (Admin) or your venue home — not this
-          page.
+          <MarketingLoginLink className="text-champagne hover:text-ivory" />{" "}
+          on app.summex.app — not this page.
         </p>
       </main>
     </LandingFrame>

@@ -128,7 +128,7 @@
       <h1>Summex</h1>
       <p class="sub">Hospitality operations and money movement. Powered by Quantum Reach.</p>
       <p class="meta">summex.app · Guest cards: Quantum Payments only</p>
-      <p class="revision"><strong>Revision · 5 Sep 2026</strong> — Marketing home vs platform login. Aligns with Operators Guide v2026.10.50.</p>
+      <p class="revision"><strong>Revision · 5 Sep 2026</strong> — Marketing on summex.app, console on app.summex.app. Aligns with Operators Guide v2026.10.51.</p>
     </header>
 
     <h2>1. Executive summary</h2>
@@ -148,7 +148,7 @@
     <p>Summex’s answer is one system for service and money movement.</p>
 
     <h2>3. What Summex is</h2>
-    <p>Summex is a single application. The public site is Get a price, Guide, Demo, and Log in — not a dashboard, Open POS, or pipeline. A logged-in visitor still sees the sales home; they use Log in or Go to console. Username/password at /login (no Google/X): Platform Admin lands on the control plane; a venue owner lands on that house. Floor work is PIN on /?station= or /station/:role. Integrations never offer Stripe, Square, or similar as a POS processor. Hours-export partners are not card processors, and Summex does not process payroll. This paper does not document SaaS admin, CRM, or pipeline internals.</p>
+    <p>Summex is a single application on two production hosts. summex.app is Get a price, Guide, Demo, and Log in — Log in opens https://app.summex.app/login. The sales host never shows a dashboard, Open POS, or pipeline. Username/password on the console host (no Google/X): Platform Admin lands on the control plane; a venue owner lands on that house. Floor work is PIN on app.summex.app/?station= or /station/:role. Pair QR uses that host. Integrations never offer Stripe, Square, or similar as a POS processor. Hours-export partners are not card processors, and Summex does not process payroll. This paper does not document SaaS admin, CRM, or pipeline internals.</p>
     <table>
       <thead><tr><th>Layer</th><th>Role</th></tr></thead>
       <tbody>

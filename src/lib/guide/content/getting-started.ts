@@ -32,11 +32,11 @@ export const GETTING_STARTED_TOPICS: GuideTopic[] = [
         "Operators Guide with table of contents on the left and an article pane on the right.",
       ),
       ul(
-        "Public site: Get a price, Guide, Demo, Log in. No dashboard, Open POS, or pipeline on `/`. Guide is operations-only — not a SaaS user manual.",
+        "Public site (summex.app): Get a price, Guide, Demo, Log in. Log in opens app.summex.app. No dashboard, Open POS, or pipeline on the sales host. Guide is operations-only — not a SaaS user manual.",
         "Training week: the real POS with Quantum Payments sandbox. Live cards wait for an approved Quantum application and an enrolled reader.",
         "Floor PIN signs a person onto this station. Clock in / out is Labor. Server closeout is Cash — none of those are the same action.",
         "Examples in this guide use Host Venue, Operator A, Operator B — never a live customer name.",
-        "Revision · 5 Sep 2026 — Marketing home vs platform login.",
+        "Revision · 5 Sep 2026 — Marketing on summex.app; console on app.summex.app.",
       ),
       steps(
         "Tap Guide or “?” in the header (POS and platform) — or open /guide from the marketing site (operations only, not a SaaS user manual).",
@@ -137,9 +137,9 @@ export const GETTING_STARTED_TOPICS: GuideTopic[] = [
         "Prime from the control plane, then PIN-only. Open the tablet once while signed in and online (Open POS). After that, cold start is the PIN pad — not /login. Printed receipts group lines by vendor; the guest still holds one check and one Quantum Payments tender.",
       ),
       steps(
-        "Back office: Log in at /login with username or email and password. Admin lands on the platform dashboard. A venue owner lands on that house — never the sales home.",
+        "Back office: Log in at app.summex.app/login with username or email and password. Admin lands on the platform dashboard. A venue owner lands on that house — never the sales home.",
         "Prime each station once from that signed-in session (internet required). Thereafter the device is PIN-only.",
-        "Floor: the station opens on /?station= or /station/order (ods, host) — not the sales `/` and not /login. Enter your 4-digit PIN. Switch user returns to the keypad without changing the device role.",
+        "Floor: the station opens on app.summex.app/?station= or app.summex.app/station/order (ods, host) — never the sales home. Enter your 4-digit PIN. Switch user returns to the keypad without changing the device role.",
         "Clock in / out from Labor (and Employees). The PIN pad does not punch you. Signing out of POS does not clock you out.",
         "Server closeout is Cash (expected drawer, Z). That is not clock-out and not PIN login.",
         "Opening Settings from a floor PIN prompts back-office re-auth (password).",
@@ -163,8 +163,8 @@ export const GETTING_STARTED_TOPICS: GuideTopic[] = [
         "Summex is one application with two working surfaces. Mixing them up is the most common new-user stall.",
       ),
       ul(
-        "Marketing (summex.app) — Get a price, Guide, Demo, Log in. Logged-in visitors still see the sales home; they use Log in or Go to console. No dashboard, Open POS, pipeline, or tenant chrome on `/`.",
-        "Account — /login is username/password only (no Google/X). Admin → platform dashboard. Venue owner → that house. Never stay on `/`.",
+        "Marketing (summex.app / www) — Get a price, Guide, Demo, Log in. Log in is a single link to https://app.summex.app/login. No Go to console, Open POS, Replay workflow, dashboard, or tenant chrome on the sales host.",
+        "Console (app.summex.app) — /login (username/password only, no Google/X), /dashboard, CRM, pipeline, tenants, onboarding, owner venue settings. Admin → platform dashboard. Venue owner → that house.",
         "POS — floor, order, ODS, cash, settlement, guests, after a location is open from a signed-in session.",
         "Operators Guide — public page at /guide (operations). Overlay inside the signed-in product. Exit on the public page returns to marketing home.",
       ),

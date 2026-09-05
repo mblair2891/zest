@@ -1,17 +1,26 @@
 import { useEffect, useState } from "react";
-import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, redirect, useNavigate } from "@tanstack/react-router";
 import { AuthScreen, AuthShell } from "@/components/saas/AuthScreen";
 import { ensureAdminExists } from "@/lib/auth/platform-admin";
 import { sanitizeNextPath } from "@/lib/auth/safe-next-path";
 import { useCurrentUserState } from "@/lib/auth/use-current-user";
 import { getSessionContextFn } from "@/lib/saas/api";
 import { navigateAfterPasswordSignIn } from "@/lib/auth/post-login-navigate";
+import {
+  absoluteMarketingHref,
+  leftoverMarketingPlatformHref,
+} from "@/lib/platform/hosts";
 
 function parsePasswordUpdated(s: Record<string, unknown>): boolean {
   return s.passwordUpdated === true || s.passwordUpdated === "1" || s.passwordUpdated === "true";
 }
 
 export const Route = createFileRoute("/login")({
+  ssr: false,
+  beforeLoad: () => {
+    const href = leftoverMarketingPlatformHref();
+    if (href) throw redirect({ href });
+  },
   validateSearch: (
     s: Record<string, unknown>,
   ): { next?: string; passwordUpdated?: boolean } => {
@@ -122,9 +131,9 @@ function LoginPage() {
         Floor staff use a 4-digit PIN on the station — not this page.
       </p>
       <p className="mt-8 text-center text-sm text-muted-foreground">
-        <Link to="/" className="underline-offset-2 hover:underline">
+        <a href={absoluteMarketingHref("/")} className="underline-offset-2 hover:underline">
           Back to Summex
-        </Link>
+        </a>
       </p>
     </AuthShell>
   );

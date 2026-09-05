@@ -1,6 +1,7 @@
 import { Component, type ErrorInfo, type ReactNode } from "react";
 import type { ErrorComponentProps } from "@tanstack/react-router";
 import { PRODUCT_NAME } from "@/lib/platform/brand";
+import { platformLoginHref } from "@/lib/platform/hosts";
 
 function HomeFallback({ error }: { error?: Error | null }) {
   return (
@@ -21,7 +22,7 @@ function HomeFallback({ error }: { error?: Error | null }) {
       </p>
       <div className="flex flex-wrap items-center justify-center gap-3">
         <a
-          href="/login"
+          href={platformLoginHref()}
           className="inline-flex h-12 min-w-36 items-center justify-center rounded-sm px-6 text-xs font-semibold tracking-widest uppercase"
           style={{ background: "#f7f6f3", color: "#0a0a0a" }}
         >

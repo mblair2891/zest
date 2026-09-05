@@ -212,7 +212,7 @@ export const PAYMENT_TOPICS: GuideTopic[] = [
         "Processors, prospects, and partners need one document that does not invent rates, banks, or seals — and that stays in lockstep with this Operators Guide.",
       ),
       p(
-        "Open /whitepaper (also linked from the marketing footer). Print from the browser for a PDF. The markdown source lives with the product docs. It stays in lockstep with this guide. Revision · 5 Sep 2026 matches Guide v2026.10.50 (marketing home vs platform login). The public Guide and this paper do not include SaaS admin, CRM, or pipeline.",
+        "Open /whitepaper (also linked from the marketing footer). Print from the browser for a PDF. The markdown source lives with the product docs. It stays in lockstep with this guide. Revision · 5 Sep 2026 matches Guide v2026.10.51 (marketing on summex.app, console on app.summex.app). The public Guide and this paper do not include SaaS admin, CRM, or pipeline.",
       ),
       steps(
         "Open White paper from the site footer or this topic.",

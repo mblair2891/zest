@@ -1,6 +1,7 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute } from "@tanstack/react-router";
 import { AuthScreen, AuthShell } from "@/components/saas/AuthScreen";
 import { sanitizeNextPath } from "@/lib/auth/safe-next-path";
+import { absoluteMarketingHref } from "@/lib/platform/hosts";
 
 export const Route = createFileRoute("/signup")({
   validateSearch: (s: Record<string, unknown>): { next?: string } => {
@@ -19,9 +20,9 @@ function SignupPage() {
     >
       <AuthScreen mode="signup" />
       <p className="mt-8 text-center text-sm text-muted-foreground">
-        <Link to="/" className="underline-offset-2 hover:underline">
+        <a href={absoluteMarketingHref("/")} className="underline-offset-2 hover:underline">
           Back
-        </Link>
+        </a>
       </p>
     </AuthShell>
   );
