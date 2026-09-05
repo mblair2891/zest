@@ -1,7 +1,7 @@
 # Operators Guide — authoring
 
-**Revision · 5 Sep 2026** — The Laundry peer venue seed has no staff; add users on the platform.
-Guide v2026.10.40.
+**Revision · 5 Sep 2026** — Tablets run Summex only (kiosk station shell).
+Guide v2026.10.41.
 
 The in-app **Operators Guide** is the living product manual. It is not a
 separate PDF. Staff open it from **Guide** / **?** in the POS and platform
@@ -136,7 +136,7 @@ Bookmarkable URL: `/guide?topic=my-topic`.
 - Each entity is its own Quantum Payments merchant. One guest check; receipt itemized by vendor; Finix pays each operator their share on capture.
 - Location models: single operator; host + tenants; shared venue (peers). Shared venue is a named building only — no host merchant, menu, or gift product required.
 - Gift cards: Summex house ledger — swipe, scan, or key. Not Finix.
-- Device roles: **order** | **ODS** | **host**. PIN first on the station. Not `/login`.
+- Device roles: **order** | **ODS** | **host**. PIN first on the station. Not `/login`. Tablets run Summex only (kiosk APK). Guest QR stays in the browser.
 - Printers on the house AP LAN (Ethernet), not the printer’s own Wi‑Fi. Receipts: Epson TM-T20 thermal. Kitchen: Epson TM-U220 impact. Cash drawer kick is on the receipt printer.
 - HR: optional per entity (host or tenant employer). Packets + signed PDF fallback. Clock punches persist. Clock windows, shift approval, and pay-period timing drive hours export to ADP / Intuit / CSV — Summex does not process payroll. Platform never sees SSN.
 - First location = SaaS onboard only. Host onboarded by SaaS; host invites operator tenants.

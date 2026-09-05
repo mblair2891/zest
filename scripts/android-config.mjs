@@ -2,6 +2,7 @@
 /**
  * Update native/summex-native.json station (and optional url).
  * Usage: node scripts/android-config.mjs order|ods|host
+ * Station APK loads https://summex.app/?station=… (PIN pad). Guest QR stays in the browser.
  *        node scripts/android-config.mjs ods http://192.168.1.10:8080
  */
 import { readFileSync, writeFileSync } from "node:fs";

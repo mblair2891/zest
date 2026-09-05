@@ -1,75 +1,92 @@
-## Default: Summex Store
+# Summex Android station shell (kiosk)
 
-The Android shell opens **`/apps`** — an app-store style hub to install/open Floor, Kitchen, Bar, Platform, etc.
+Staff tablets run **Summex only**. This Capacitor APK is a kiosk POS: lock-task (or screen pinning), boot into Summex, no launcher escape. Guest QR / pay links stay in the **browser** — never this APK.
 
-# Summex Android (Capacitor)
-
-Native **Android shell** around the Summex web POS — one product, installable APK for Galaxy tablets and the 27″ ODS.
+Station roles: **host** | **order** | **ods**. The WebView loads `https://summex.app/?station=…` (PIN pad, never `/login`).
 
 ## Requirements (build machine)
 
-- Node 20+
+- Node 22+
 - [Android Studio](https://developer.android.com/studio) (JDK 17)
 - Android SDK 34+, build-tools
-- USB debugging on tablets **or** download APK and sideload
+- USB debugging **or** sideload the APK
 
-## Configure target URL
+## Configure
 
 Edit `native/summex-native.json`:
 
 ```json
 {
-  "url": "http://192.168.1.20:8080",
-  "station": "",
-  "cleartext": true
+  "url": "https://summex.app",
+  "station": "order",
+  "cleartext": false
 }
 ```
 
 | Field | Meaning |
 |---|---|
-| `url` | Live Summex origin (LAN IP while developing, HTTPS in prod) |
-| `station` | Optional PIN-first role: `order`, `ods`, `host`. Native opens `/station?station=` (PIN pad, never `/login`). |
-| `cleartext` | `true` if using `http://` |
+| `url` | Live origin (`https://summex.app` in production; LAN `http://192.168.x.x:8080` while developing) |
+| `station` | `order` (handhelds / bar), `ods` (kitchen tickets), `host` (floor + to-go). Opens `/?station=` then `/station`. |
+| `cleartext` | `true` only for `http://` |
 
-Emulator → host machine: `http://10.0.2.2:8080`  
-Physical tablet → your PC’s LAN IP: `http://192.168.x.x:8080`
+## Two APKs (host vs order)
 
-## Commands
+Build a **host** APK and an **order** APK. Same shell, different default station. ODS uses the same recipe when you need a kitchen wall.
 
 ```bash
-# From repo root
-npm run android:sync          # refresh Capacitor + Android project
-npm run android:open          # open Android Studio
-npm run android:apk           # assemble debug APK (needs SDK)
+# Order — handhelds and bar
+npm run android:config:order
+npm run android:sync
+npm run android:apk
+# → android/app/build/outputs/apk/debug/app-debug.apk  (rename summex-order.apk)
 
-# Station-specific config helpers (PIN pad → role)
-npm run android:config:order  # handhelds / bar stations
-npm run android:config:ods    # 27″ kitchen ticket display
-npm run android:config:host   # host stand (floor + to-go)
+# Host — host stand (floor + to-go)
+npm run android:config:host
+npm run android:sync
+npm run android:apk
+# → rename summex-host.apk
+
+# ODS — 27″ kitchen / bar tickets (same shell)
+npm run android:config:ods
+npm run android:sync
+npm run android:apk
 ```
 
-Debug APK path (after assemble):
+`npm run android:open` opens Android Studio.
 
-`android/app/build/outputs/apk/debug/app-debug.apk`
+## Training: Samsung pin-windows
 
-## Device setup
+On a Galaxy tablet that is **not** Device Owner:
 
-1. Set `url` to a host the tablet can reach.
-2. `npm run android:sync && npm run android:apk` (or Open in Android Studio → Run).
-3. Install APK on Galaxy A / B / 27″.
-4. Station builds open the PIN pad, then that role (`order` | `ods` | `host`). Never `/login`.
+1. Install the station APK. Set Summex as the Home app when Android asks (optional but recommended).
+2. Open Summex. The first lock-task request is **screen pinning** (Pin windows). Confirm.
+3. Status bar stays hidden. Back does not return to the launcher; it only walks WebView history.
+4. To unpin for a manager: the usual Samsung pin-windows gesture (often Recents + Back together) — only while training.
 
-## Keep screen on (ODS)
+## Production: Device Owner / Knox
 
-MainActivity enables `FLAG_KEEP_SCREEN_ON` so the 27″ does not sleep mid-service.
+Silent lock-task (no pin prompt), boot straight into Summex, Home/Recents blocked:
+
+```bash
+# USB, after a factory-reset tablet with no Google account
+adb shell dpm set-device-owner app.summex.pos/.SummexDeviceAdminReceiver
+adb shell dpm set-lock-task-packages app.summex.pos app.summex.pos
+```
+
+Knox / EMM: whitelist `app.summex.pos` for lock-task / kiosk, set it as the default Home, disable status bar. Same APK.
+
+`RECEIVE_BOOT_COMPLETED` starts `MainActivity` after reboot. On Android 10+ that start is reliable as Device Owner or default Home.
+
+## Kiosk behavior
+
+- Remote URL in the WebView (`server.url`). Capacitor `triggerEvent` is shimmed so a late bridge inject does not black-screen.
+- Lock task on start (pin fallback). Immersive status / nav bars.
+- Keep screen on (ODS / floor).
+- Back never leaves Summex.
+- Guest/QR stays browser.
 
 ## Play Store later
 
 - Create upload keystore
 - `cd android && ./gradlew bundleRelease`
 - Play Console listing for `app.summex.pos`
-
-## Not in this shell yet
-
-- Stripe Terminal native SDK (use web Terminal when processing is live)
-- USB printer plugins (prefer LAN Star/Epson from the web app)

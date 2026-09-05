@@ -1,6 +1,6 @@
 {
-  "url": "http://10.0.2.2:8080/apps",
-  "station": "",
-  "cleartext": true,
-  "_comment": "Default Android shell opens Summex Store (/apps). For a PIN-first station APK set station to order | ods | host (never /login). Override url to your host."
+  "url": "https://summex.app",
+  "station": "order",
+  "cleartext": false,
+  "_comment": "Staff kiosk APK. station = order | ods | host opens https://summex.app/?station=… (PIN pad, never /login). Guest QR stays in the browser."
 }

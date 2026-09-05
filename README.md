@@ -75,6 +75,19 @@ See `.env.example`. Highlights:
 
 Sign-in methods: **username or email + password** only. Social / OAuth (Google, X) is disabled.
 
+## Android station APK (kiosk)
+
+Staff tablets run **Summex only**. Guest QR stays in the browser.
+
+Build **two APKs** — host vs order — from the same Capacitor shell (`native/README.md`):
+
+```bash
+npm run android:config:order && npm run android:sync && npm run android:apk
+npm run android:config:host  && npm run android:sync && npm run android:apk
+```
+
+Training: Samsung **pin-windows**. Production: Device Owner / Knox lock-task. WebView loads `https://summex.app/?station=order` or `…=host`.
+
 ## Architecture
 
 See [docs/architecture.md](docs/architecture.md).

@@ -128,7 +128,7 @@
       <h1>Summex</h1>
       <p class="sub">Hospitality operations and money movement. Powered by Quantum Reach.</p>
       <p class="meta">summex.app · Guest cards: Quantum Payments only</p>
-      <p class="revision"><strong>Revision · 5 Sep 2026</strong> — The Laundry peer venue seed has no staff; add users on the platform. Aligns with Operators Guide v2026.10.40.</p>
+      <p class="revision"><strong>Revision · 5 Sep 2026</strong> — Tablets run Summex only (kiosk station shell). Aligns with Operators Guide v2026.10.41.</p>
     </header>
 
     <h2>1. Executive summary</h2>
@@ -200,6 +200,7 @@
         <tr><td>Host</td><td>Floor map, seat, table status, to-go at the stand</td></tr>
       </tbody>
     </table>
+    <p><strong>Tablets run Summex only.</strong> The Android station APK (host or order; ODS is the same shell) boots into the PIN pad, pins the screen, and does not return to the launcher. Guest QR stays in the ordinary browser.</p>
     <p><strong>Prime, then PIN-only.</strong> Pair and open the station once from the signed-in control plane (internet required). After that, cold start is the PIN pad — not <code>/login</code>.</p>
     <p><strong>PIN ≠ owner password ≠ clock-in ≠ closeout.</strong> Back office uses email and password. Floor staff use a 4-digit PIN, hashed and scoped to the location (and entity). Clock in / out is Labor. Server closeout is Cash. Realtime staffing recommendations (cut / hold / add) never clock anyone out — accept offers notify-to-close-out.</p>
     <p>Printers sit on the <strong>AP LAN</strong> (not printer Wi‑Fi): thermal receipts (Epson TM-T20), impact kitchen (Epson TM-U220), drawer kick on the receipt printer.</p>

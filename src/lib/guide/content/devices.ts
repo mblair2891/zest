@@ -30,6 +30,9 @@ export const DEVICE_TOPICS: GuideTopic[] = [
       p(
         "Every station is one of three roles. Order-taking covers handhelds and bar POS — menu, checks, pay, gift. ODS is kitchen (and bar display): tickets only, Start and Bump, no menu, no pay. Host is hybrid: floor map, seat, table status, and to-go order entry at the stand.",
       ),
+      p(
+        "Tablets run Summex only. The Android station APK boots into the PIN pad, pins the screen (lock-task), and does not return to the launcher. Guest QR and pay links stay in the phone browser — this APK is staff stations only.",
+      ),
       ul(
         "Order: handhelds + bar. PIN in, ring, send, take tenders the PIN allows.",
         "ODS: kitchen tickets. Start / Bump. No pay path — cash and gift tenders are blocked on ODS.",
@@ -46,7 +49,44 @@ export const DEVICE_TOPICS: GuideTopic[] = [
       warn(
         "Do not send kitchen staff to /login. Do not clock anyone in from the PIN pad. Time clock is Labor. Server closeout is Cash.",
       ),
-      related("floor-pin-login", "login", "device-assignment", "station-switcher", "kds", "printers-kds", "loss-prevention"),
+      related("floor-pin-login", "login", "device-assignment", "station-switcher", "android-kiosk", "kds", "printers-kds", "loss-prevention"),
+    ],
+  }),
+  topic({
+    id: "android-kiosk",
+    chapterId: "devices",
+    title: "Tablets run Summex only",
+    summary: "Staff Android APK is a kiosk: lock-task, boot to PIN, no launcher. Guest QR stays in the browser.",
+    roles: ["owner_manager", "host_operator", "kitchen_bar", "platform_admin"],
+    keywords: [
+      "android",
+      "apk",
+      "kiosk",
+      "tablet",
+      "lock task",
+      "pin windows",
+      "knox",
+      "station",
+      "launcher",
+    ],
+    openView: "settings",
+    blocks: [
+      why(
+        "A floor tablet is a station, not a general-purpose phone. If someone can swipe to the launcher, they are not in service.",
+      ),
+      p(
+        "Install the Summex station APK (host or order; ODS is the same shell). It loads Summex at /?station=host|order|ods, shows the PIN pad, hides the status bar, and requests lock-task so Home and Recents do not escape. Guest QR codes stay in the ordinary browser.",
+      ),
+      steps(
+        "Build or install the host APK on host-stand tablets and the order APK on handhelds / bar. ODS tablets use the ODS flavor of the same shell.",
+        "Training: on Samsung, confirm pin-windows when Summex asks. Set Summex as Home if the tablet offers it.",
+        "Production: Device Owner or Knox whitelist so lock-task is silent, then reboot — the tablet should come up in Summex.",
+        "Prime once while online (Open POS). Thereafter: power on → PIN. Back never returns to the launcher.",
+      ),
+      warn(
+        "Do not put guest QR / pay on this APK. Table tents and ticket codes open in the guest’s browser.",
+      ),
+      related("device-roles", "device-assignment", "floor-pin-login", "table-qr", "wifi-offline"),
     ],
   }),
   topic({

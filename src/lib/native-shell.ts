@@ -24,6 +24,8 @@ export async function initNativeShell(): Promise<void> {
   if (!isNativeApp()) return;
   try {
     const { StatusBar, Style } = await import("@capacitor/status-bar");
+    await StatusBar.hide();
+    await StatusBar.setOverlaysWebView({ overlay: true });
     await StatusBar.setStyle({ style: Style.Dark });
     await StatusBar.setBackgroundColor({ color: "#0a0c0b" });
   } catch {

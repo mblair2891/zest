@@ -3,7 +3,7 @@
 **Powered by Quantum Reach**
 
 White paper · October 2026  
-**Revision · 5 Sep 2026** — The Laundry peer venue seed has no staff; add users on the platform. Aligns with Operators Guide v2026.10.40.
+**Revision · 5 Sep 2026** — Tablets run Summex only (kiosk station shell). Aligns with Operators Guide v2026.10.41.
 
 summex.app  
 Guest cards: **Quantum Payments** only
@@ -143,6 +143,8 @@ The tablet is a screen, not a person. **PIN** says who is working. The **device 
 | **Host** | Floor map, seat, table status, to-go at the stand |
 
 A manager **Change device** switches among those three. PIN stays the person; the role is the screen.
+
+**Tablets run Summex only.** The Android station APK (host or order; ODS is the same shell) boots into the PIN pad, pins the screen, and does not return to the launcher. Guest QR and pay links stay in the ordinary browser.
 
 **Prime, then PIN-only.** Pair and open the station once from the signed-in control plane (internet required). After that, cold start is the PIN pad — not `/login`. Switch user returns to the keypad without changing the device role.
 

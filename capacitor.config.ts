@@ -36,14 +36,13 @@ function nativeStationRole(raw: string): "order" | "ods" | "host" | "" {
   return "";
 }
 
-// If station set, open PIN pad then that role — never /login, never marketing.
+// Station APK: PIN pad for host | order | ods. Guest QR stays in the browser.
 let serverUrl = baseUrl;
 const station = nativeStationRole(stationRaw) || (stationRaw ? "order" : "");
 if (station) {
-  const origin = baseUrl.replace(/\/apps$/i, "") || baseUrl;
-  serverUrl = `${origin}/station?station=${encodeURIComponent(station)}`;
+  const origin = (baseUrl.replace(/\/apps$/i, "") || baseUrl).replace(/\/$/, "");
+  serverUrl = `${origin}/?station=${encodeURIComponent(station)}`;
 } else if (!/\/apps$/i.test(baseUrl) && !/[?&]/.test(baseUrl)) {
-  // default shell → store
   if (!baseUrl.endsWith("/apps")) {
     serverUrl = `${baseUrl}/apps`;
   }
@@ -63,6 +62,7 @@ const config: CapacitorConfig = {
     url: serverUrl,
     cleartext,
     androidScheme: "https",
+    allowNavigation: ["summex.app", "*.summex.app"],
   },
   android: {
     allowMixedContent: true,
@@ -78,6 +78,7 @@ const config: CapacitorConfig = {
     StatusBar: {
       style: "DARK",
       backgroundColor: "#0a0c0b",
+      overlaysWebView: true,
     },
   },
 };

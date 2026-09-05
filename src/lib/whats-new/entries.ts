@@ -6,6 +6,19 @@ import type { GuideUpdate } from "@/lib/guide/types";
  */
 export const WHATS_NEW_ENTRIES: GuideUpdate[] = [
   {
+    id: "upd_2026_10_41_android_kiosk",
+    date: "2026-09-05",
+    title: "Tablets run Summex only",
+    summary:
+      "The Android station APK is a kiosk: lock-task, boot to the PIN pad, no launcher. Guest QR stays in the browser.",
+    body: "Staff tablets (host or order; ODS is the same shell) load https://summex.app/?station=… and stay there. Lock-task pins the screen (Samsung pin-windows in training; Device Owner / Knox in production). Status bar is hidden. Back does not return to the launcher. Guest table tents and ticket QR stay in the ordinary browser.",
+    roles: ["owner_manager", "host_operator", "kitchen_bar"],
+    surfaces: ["settings", "floor"],
+    audience: "all",
+    topicId: "android-kiosk",
+    tags: ["devices", "android", "kiosk"],
+  },
+  {
     id: "upd_2026_10_40_laundry_peer_seed",
     date: "2026-09-05",
     title: "The Laundry shared venue — no staff seeded",
