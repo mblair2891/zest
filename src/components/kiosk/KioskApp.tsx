@@ -20,6 +20,7 @@ import { cn } from "@/lib/utils";
 import { getDemoType, isProspectDemo, parseDemoType } from "@/lib/demo/session";
 import { useDemoDeviceStore } from "@/lib/demo/device-session";
 import { DemoDeviceSwitcher } from "@/components/demo/DemoDeviceSwitcher";
+import { HelpButton } from "@/components/help/HelpPanel";
 import { LoginOnboardingHost } from "@/components/onboarding/LoginOnboardingHost";
 import { NetworkBanner, NetworkWatcher } from "@/components/pos/NetworkStatus";
 import { useDemoLiveSync } from "@/lib/demo/live-sync";
@@ -154,7 +155,10 @@ export function KioskApp() {
           </div>
         </div>
         {isProspectDemo() && demoEntered ? (
-          <DemoDeviceSwitcher />
+          <div className="flex items-center gap-2">
+            <HelpButton surface="kiosk" />
+            <DemoDeviceSwitcher />
+          </div>
         ) : (
           <Link
             to="/login"

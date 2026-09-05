@@ -102,6 +102,7 @@ import { InventoryAiView } from "./InventoryAiView";
 import { DrinkAiView } from "./DrinkAiView";
 import { MarketingHubView } from "./MarketingHubView";
 import { GuideTriggerButton } from "@/components/guide/OperatorsGuide";
+import { HelpButton } from "@/components/help/HelpPanel";
 import { ReplayWorkflowButton } from "@/components/onboarding/ReplayWorkflowButton";
 import { LoginOnboardingHost } from "@/components/onboarding/LoginOnboardingHost";
 import { venueById } from "@/lib/pos/entities";
@@ -423,6 +424,7 @@ export function AppShell() {
           <div className="ml-auto flex items-center gap-2">
             <ThisStationButton compact />
             <SplitScreenToggle />
+            <HelpButton surface="pos" compact />
             <VoiceCommandButton />
             <DemoDeviceSwitcher />
             <Button size="sm" variant="outline" onClick={isProspectDemo() ? switchDemoUser : () => logout()}>
@@ -542,6 +544,7 @@ export function AppShell() {
                 Closeout
               </Button>
             )}
+          <HelpButton surface="pos" />
           <VoiceCommandButton />
           <NotificationBell />
           <NetworkChip />

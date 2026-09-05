@@ -17,6 +17,7 @@ export const ROLE_GUIDE_TOPICS: GuideTopic[] = [
       ul(
         "Console — live organizations only. There are no demo houses.",
         "Pipeline — prospects from intake through contract and onboarding.",
+        "Help button (header): ask a task. Answers from this guide for Platform Admin — not a second guide browser. Floor staff never see CRM Help.",
       ),
       steps(
         "Sign in, complete the forced password change, land on the control plane.",
@@ -56,6 +57,9 @@ export const ROLE_GUIDE_TOPICS: GuideTopic[] = [
         "Close the period on Settle. Guest cards are Quantum Payments.",
       ),
       tip("The Operators Guide overlay is in the header on every surface."),
+      p(
+        "Help button (header): ask how to do a task. Answers from this guide for owner/manager and this location — not a second guide browser.",
+      ),
       related("login", "invites-roles", "host-capture", "type-restaurant", "recipes-prep", "location-training", "hr-employment", "loss-prevention"),
     ],
   }),
@@ -76,6 +80,9 @@ export const ROLE_GUIDE_TOPICS: GuideTopic[] = [
         "Take Quantum Payments when online. If the uplink is down, cash still closes; card requires connection.",
         "Do not open a second check for another operator on a host floor.",
         "Recipe / ingredients on a menu tile or selected check line shows allergens and what’s in the plate — not full prep.",
+      ),
+      p(
+        "Help button (header): ask how to do a task. Answers from this guide for a server on this screen (for example Floor · table 12). Not Settings, not CRM.",
       ),
       p(
         "On a host + multi-operator floor, food and drinks still live on one guest check. You are not splitting cards by stall.",
@@ -100,6 +107,9 @@ export const ROLE_GUIDE_TOPICS: GuideTopic[] = [
         "On a host floor, bar tickets belong to the bar operator; kitchen tickets to the kitchen operator.",
         "Recipe on a ticket opens full prep steps, quantities, glassware, and garnish in large type.",
       ),
+      p(
+        "Help button (header): ask how to Start or Bump. Answers from this guide for kitchen/bar on this ODS. You do not take the guest card.",
+      ),
       related("type-food-hall", "type-bar-lounge", "type-restaurant", "recipes-prep"),
     ],
   }),
@@ -121,6 +131,7 @@ export const ROLE_GUIDE_TOPICS: GuideTopic[] = [
         "Operator ops: your staff, time clock, and 86 board.",
         "View-only settlement slice. Payout destinations are host-managed — you cannot edit banks, tax, or host branding.",
         "A $35 dispute fee, when filed, splits by merchandise on that check.",
+        "Help button (header): ask how to do a task. Answers from this guide for your entity — not host payouts or platform CRM.",
       ),
       p(
         "Rehearse this model by onboarding a host + two operators. There is no seeded catalog.",
@@ -154,6 +165,7 @@ export const ROLE_GUIDE_TOPICS: GuideTopic[] = [
         "The first time in that role, take the live walkthrough (or skip / replay later).",
         "Nav only lists views you can open. Settings writes are owner/manager.",
         "Staff PINs are unique to this location. There is no universal PIN.",
+        "Help button (header): ask how to do a task. Answers from this guide for that role and this location.",
       ),
       related("role-walkthroughs", "login", "role-owner", "role-server", "role-vendor", "location-settings"),
     ],

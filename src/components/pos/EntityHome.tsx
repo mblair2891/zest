@@ -18,6 +18,7 @@ import { Button } from "@/components/ui/button";
 import { usePosStore } from "@/lib/pos/store";
 import { PinKeypad } from "./PinKeypad";
 import { ThisStationButton, SplitScreenToggle } from "./ChangeDeviceDialog";
+import { HelpButton } from "@/components/help/HelpPanel";
 import { NetworkBanner, NetworkWatcher } from "./NetworkStatus";
 import { TrainingBanner } from "./TrainingBanner";
 import { useStationSessionStore } from "@/lib/pos/station-session";
@@ -238,12 +239,15 @@ export function EntityLogin({ entityId }: { entityId: VenueEntityId }) {
       <NetworkWatcher />
       <NetworkBanner />
       <TrainingBanner />
-      {!(isStationPinPath() || isNativeApp()) && (
       <div className="flex items-center justify-end gap-2 px-4 pt-3">
-        <ThisStationButton />
-        <SplitScreenToggle />
+        <HelpButton surface="pin" />
+        {!(isStationPinPath() || isNativeApp()) && (
+          <>
+            <ThisStationButton />
+            <SplitScreenToggle />
+          </>
+        )}
       </div>
-      )}
       <div
         className="mx-auto flex w-full max-w-lg flex-1 flex-col justify-center px-4 py-8"
         data-demo={prospect ? "demo-pin-gate" : undefined}

@@ -6,6 +6,19 @@ import type { GuideUpdate } from "@/lib/guide/types";
  */
 export const WHATS_NEW_ENTRIES: GuideUpdate[] = [
   {
+    id: "upd_2026_10_48_in_app_help",
+    date: "2026-09-05",
+    title: "Help button — ask the Operators Guide",
+    summary:
+      "Header Help on PIN sessions, owner POS, and platform. Numbered steps for this screen and role. Not a second manual.",
+    body: "Tap Help. Type or speak a task (how do I seat a table?). Answers come from the Operators Guide for this role, this venue, and this screen — for example a server on Floor at table 12. If the action is off for that login, Help says who can do it. No card numbers or other PINs go to the model. When AI is off, Help still returns the written guide steps.",
+    roles: ["owner_manager", "server", "kitchen_bar", "host_operator", "vendor_operator", "platform_admin"],
+    surfaces: ["floor", "kds", "settings", "platform"],
+    audience: "all",
+    topicId: "roles-dashboards",
+    tags: ["help", "guide", "pin"],
+  },
+  {
     id: "upd_2026_10_47_device_role_dropdown",
     date: "2026-09-05",
     title: "Change a paired tablet’s role from Devices",

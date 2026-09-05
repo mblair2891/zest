@@ -1,7 +1,7 @@
 # Operators Guide — authoring
 
-**Revision · 5 Sep 2026** — Reassign a paired tablet’s role from Devices.
-Guide v2026.10.47.
+**Revision · 5 Sep 2026** — In-app Help from the Operators Guide.
+Guide v2026.10.48.
 
 The in-app **Operators Guide** is the living product manual. It is not a
 separate PDF. Staff open it from **Guide** / **?** in the POS and platform

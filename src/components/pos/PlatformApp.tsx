@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { Link, useNavigate } from "@tanstack/react-router";
 import { LogOut, ArrowLeft, BookOpen } from "lucide-react";
 import { GuideTriggerButton } from "@/components/guide/OperatorsGuide";
+import { HelpButton } from "@/components/help/HelpPanel";
 import { ReplayWorkflowButton } from "@/components/onboarding/ReplayWorkflowButton";
 import { LoginOnboardingHost } from "@/components/onboarding/LoginOnboardingHost";
 import { Button } from "@/components/ui/button";
@@ -345,6 +346,7 @@ export function PlatformApp({
           </span>
         )}
         <ReplayWorkflowButton className="hidden md:inline-flex" />
+        <HelpButton surface="platform" />
         <GuideTriggerButton topicId="platform-admin" />
         <Link
           to="/whitepaper"
