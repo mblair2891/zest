@@ -32,7 +32,8 @@ export function StaffingRecsSettings({
         </GuideLearnLink>
       </div>
       <p className="text-[11px] text-muted-foreground">
-        Cut / hold / add only. Never auto clock-out. Manager decides.
+        Cut / hold / add only. Never auto clock-out. Manager decides. Labor % and SPLH
+        use this entity’s revenue basis (owned lines on a shared venue).
       </p>
       <label className="flex items-center gap-2 text-xs">
         <input

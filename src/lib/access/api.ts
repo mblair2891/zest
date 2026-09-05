@@ -624,7 +624,8 @@ export const pairStationFn = createServerFn({ method: "POST" })
     try {
       await sql`
         update location_devices
-        set serial = ${device.serial ?? null}, status = ${"online"}, last_seen_at = now()
+        set serial = ${device.serial ?? null}, status = ${"online"}, last_seen_at = now(),
+            claim_code = ${null}
         where id = ${device.id} and location_id = ${hit.location_id}
       `;
     } catch {
@@ -632,6 +633,22 @@ export const pairStationFn = createServerFn({ method: "POST" })
     }
 
     const pack = await ensureTrainingFloor(hit.location_id);
+    try {
+      const devices = parseLocationDevices(pack.setup.locationDevices).map((d) =>
+        d.id === device.id
+          ? { ...d, serial: device.serial, status: "online" as const, claimCode: undefined, lastSeenAt: Date.now() }
+          : d,
+      );
+      await sql`
+        update locations
+        set setup = jsonb_set(coalesce(setup, '{}'::jsonb), '{locationDevices}', ${JSON.stringify(devices)}::jsonb)
+        where id = ${hit.location_id}
+      `;
+    } catch {
+      /* optional */
+    }
+
+    const pack2 = await ensureTrainingFloor(hit.location_id);
     const operators = await operatorsAsVendors(hit.location_id);
     const venueType = isVenueEntityId(hit.venue_type) ? hit.venue_type : "food_hall";
     const station = deviceRoleFromFunction(device.assignment.function);
@@ -641,6 +658,25 @@ export const pairStationFn = createServerFn({ method: "POST" })
         : hit.operating_model === "host_operators"
           ? ("host_operators" as const)
           : ("single" as const);
+    const publish = pack2.setup.stationPublish ?? {
+      version: 1,
+      publishedAt: Date.now(),
+      publishedByName: "Pair",
+      setup: {
+        menuCatalog: pack2.setup.menuCatalog,
+        floorPlan: pack2.setup.floorPlan,
+        locationDevices: pack2.setup.locationDevices,
+        qrMode: pack2.setup.qrMode,
+        qrPolicy: pack2.setup.qrPolicy,
+        cashHandling: pack2.setup.cashHandling,
+        cashDiscountEnabled: pack2.setup.cashDiscountEnabled,
+        cashDiscountPercent: pack2.setup.cashDiscountPercent,
+        cashRoundIncrement: pack2.setup.cashRoundIncrement,
+        cashRoundMode: pack2.setup.cashRoundMode,
+        sectionNames: pack2.setup.sectionNames,
+        laborByEntity: pack2.setup.laborByEntity,
+      },
+    };
 
     return {
       pair: {
@@ -651,7 +687,7 @@ export const pairStationFn = createServerFn({ method: "POST" })
         venueType,
         station,
         deviceId: device.id,
-        claimCode: data.claimCode,
+        claimCode: "",
       },
       org: { id: hit.org_id, name: hit.org_name, status: "active" as const },
       location: {
@@ -666,16 +702,300 @@ export const pairStationFn = createServerFn({ method: "POST" })
         address: hit.address ?? "",
         hostBrandName: hit.host_brand_name ?? null,
         operatingModel,
+        setup: pack2.setup,
+        lifecycleStatus: pack2.setup.lifecycleStatus || "training",
+      },
+      operators,
+      floorStaff: pack2.staff,
+      role: "staff" as const,
+      operatorId: device.assignment.operatorId === "host" ? null : device.assignment.operatorId,
+      openDemo: false as const,
+      trainingRoster: pack2.seededRoster || pack2.staff.some((s) => s.id.startsWith("emp_tr_")),
+      publish,
+    };
+  });
+
+function publishSetupSlice(setup: LocationSetup) {
+  return {
+    menuCatalog: setup.menuCatalog,
+    floorPlan: setup.floorPlan,
+    locationDevices: setup.locationDevices,
+    qrMode: setup.qrMode,
+    qrPolicy: setup.qrPolicy,
+    cashHandling: setup.cashHandling,
+    cashDiscountEnabled: setup.cashDiscountEnabled,
+    cashDiscountPercent: setup.cashDiscountPercent,
+    cashRoundIncrement: setup.cashRoundIncrement,
+    cashRoundMode: setup.cashRoundMode,
+    sectionNames: setup.sectionNames,
+    laborByEntity: setup.laborByEntity,
+    sharedVenueCostsCents: setup.sharedVenueCostsCents,
+  };
+}
+
+export const getPairedStationFn = createServerFn({ method: "POST" })
+  .validator((d: { locationId: string; deviceId: string }) => ({
+    locationId: loc(d.locationId),
+    deviceId: String(d.deviceId ?? "").trim().slice(0, 80),
+  }))
+  .handler(async ({ data }) => {
+    if (!data.deviceId) throw new Error("This tablet is not paired.");
+    const { getSql } = await import("@/lib/db");
+    const sql = await getSql();
+    const rows = await sql<{
+      id: string;
+      location_id: string;
+      status: string;
+      serial: string | null;
+      assigned_function: string | null;
+    }>`
+      select id, location_id, status, serial, assigned_function
+      from location_devices
+      where location_id = ${data.locationId}
+        and status <> ${"inactive"}
+        and (id = ${data.deviceId} or serial = ${data.deviceId})
+      limit 1
+    `.catch(() => [] as Array<{
+      id: string;
+      location_id: string;
+      status: string;
+      serial: string | null;
+      assigned_function: string | null;
+    }>);
+    const row = rows[0];
+    if (!row) throw new Error("This tablet is not paired. Ask the owner for a new code.");
+    const { operatorsAsVendors } = await import("@/lib/saas/onboarding.server");
+    const { ensureTrainingFloor } = await import("@/lib/pos/training-roster.server");
+    const pack = await ensureTrainingFloor(data.locationId);
+    const operators = await operatorsAsVendors(data.locationId);
+    const locRows = await sql<{
+      org_id: string;
+      name: string;
+      venue_type: string;
+      timezone: string;
+      address: string | null;
+      host_brand_name: string | null;
+      operating_model: string | null;
+      org_name: string;
+    }>`
+      select l.org_id, l.name, l.venue_type, l.timezone, l.address, l.host_brand_name,
+             l.operating_model, o.name as org_name
+      from locations l
+      join organizations o on o.id = l.org_id
+      where l.id = ${data.locationId}
+      limit 1
+    `;
+    const locRow = locRows[0];
+    if (!locRow) throw new Error("Location not found");
+    const { isVenueEntityId } = await import("@/lib/pos/entities");
+    const { deviceRoleFromFunction } = await import("@/lib/pos/device-roles");
+    const venueType = isVenueEntityId(locRow.venue_type) ? locRow.venue_type : "food_hall";
+    const operatingModel =
+      locRow.operating_model === "peer_venue"
+        ? ("peer_venue" as const)
+        : locRow.operating_model === "host_operators"
+          ? ("host_operators" as const)
+          : ("single" as const);
+    const station = deviceRoleFromFunction((row.assigned_function || "floor_pos") as DeviceFunction);
+    const publish = pack.setup.stationPublish ?? {
+      version: 1,
+      publishedAt: Date.now(),
+      publishedByName: "House",
+      setup: publishSetupSlice(pack.setup),
+    };
+    return {
+      pair: {
+        locationId: data.locationId,
+        orgId: locRow.org_id,
+        locationName: locRow.name,
+        orgName: locRow.org_name,
+        venueType,
+        station,
+        deviceId: row.id,
+        claimCode: "",
+      },
+      org: { id: locRow.org_id, name: locRow.org_name, status: "active" as const },
+      location: {
+        id: data.locationId,
+        orgId: locRow.org_id,
+        name: locRow.name,
+        venueType,
+        timezone: locRow.timezone || "America/Los_Angeles",
+        status: "active",
+        enabledPackages: [] as string[],
+        createdAt: new Date().toISOString(),
+        address: locRow.address ?? "",
+        hostBrandName: locRow.host_brand_name ?? null,
+        operatingModel,
         setup: pack.setup,
         lifecycleStatus: pack.setup.lifecycleStatus || "training",
       },
       operators,
       floorStaff: pack.staff,
       role: "staff" as const,
-      operatorId: device.assignment.operatorId === "host" ? null : device.assignment.operatorId,
+      operatorId: null as string | null,
       openDemo: false as const,
       trainingRoster: pack.seededRoster || pack.staff.some((s) => s.id.startsWith("emp_tr_")),
+      publish,
     };
+  });
+
+export const getStationPublishFn = createServerFn({ method: "POST" })
+  .validator((d: { locationId: string; deviceId: string; sinceVersion?: number }) => ({
+    locationId: loc(d.locationId),
+    deviceId: String(d.deviceId ?? "").trim().slice(0, 80),
+    sinceVersion: Math.max(0, Math.round(Number(d.sinceVersion) || 0)),
+  }))
+  .handler(async ({ data }) => {
+    const { getSql } = await import("@/lib/db");
+    const sql = await getSql();
+    const ok = await sql<{ n: number }>`
+      select 1 as n from location_devices
+      where location_id = ${data.locationId}
+        and status <> ${"inactive"}
+        and (id = ${data.deviceId} or serial = ${data.deviceId})
+      limit 1
+    `.catch(() => [] as Array<{ n: number }>);
+    if (!ok[0]) return { upToDate: true as const, publish: null };
+    const rows = await sql<{ setup: unknown }>`
+      select setup from locations where id = ${data.locationId} limit 1
+    `;
+    const setup = rows[0]?.setup;
+    const raw =
+      setup && typeof setup === "object" && !Array.isArray(setup)
+        ? (setup as { stationPublish?: unknown }).stationPublish
+        : null;
+    const rawObj = raw && typeof raw === "object" ? (raw as { version?: number; publishedAt?: number; publishedByName?: string; setup?: object }) : null;
+    const publish = rawObj && Number(rawObj.version) > 0
+      ? {
+          version: Math.round(Number(rawObj.version)),
+          publishedAt: Number(rawObj.publishedAt) || Date.now(),
+          publishedByName: String(rawObj.publishedByName ?? "Owner"),
+          setup: (rawObj.setup && typeof rawObj.setup === "object" ? rawObj.setup : {}) as {
+            menuCatalog?: object;
+            floorPlan?: object;
+            locationDevices?: object[];
+            qrMode?: string;
+            sectionNames?: string[];
+            sharedVenueCostsCents?: number;
+          },
+        }
+      : null;
+    if (!publish || publish.version <= data.sinceVersion) {
+      return { upToDate: true as const, publish: null };
+    }
+    return { upToDate: false as const, publish };
+  });
+
+export const publishLocationFn = createServerFn({ method: "POST" })
+  .middleware([tenantMiddleware])
+  .validator((d: { orgId: string; locationId: string }) => ({
+    orgId: String(d.orgId ?? "").trim(),
+    locationId: loc(d.locationId),
+  }))
+  .handler(async ({ context, data }) => {
+    const { assertHostOrgWrite } = await import("./assert-host.server");
+    await assertHostOrgWrite(context.userId, data.orgId, data.locationId);
+    const { assertLocationAccess, updateLocationSetupForUser } = await import(
+      "@/lib/saas/tenancy.server"
+    );
+    const access = await assertLocationAccess(context.userId, data.locationId);
+    const prev = access.location.setup?.stationPublish;
+    const version = (prev?.version ?? 0) + 1;
+    const record = {
+      version,
+      publishedAt: Date.now(),
+      publishedByName: "Owner",
+      setup: publishSetupSlice(access.location.setup ?? EMPTY_LOCATION_SETUP),
+    };
+    await updateLocationSetupForUser(context.userId, {
+      orgId: data.orgId || access.org.id,
+      locationId: data.locationId,
+      setup: { ...EMPTY_LOCATION_SETUP, ...access.location.setup, stationPublish: record },
+    });
+    return { publish: record };
+  });
+
+export const unpairLocationDeviceFn = createServerFn({ method: "POST" })
+  .middleware([tenantMiddleware])
+  .validator((d: { orgId: string; locationId: string; deviceId: string }) => ({
+    orgId: String(d.orgId ?? "").trim(),
+    locationId: loc(d.locationId),
+    deviceId: String(d.deviceId ?? "").trim().slice(0, 80),
+  }))
+  .handler(async ({ context, data }) => {
+    const { loadEntityWriteContext, assertHostOrManageDevices } = await import(
+      "./assert-entity.server"
+    );
+    const orgId = data.orgId || context.organizationId || "";
+    const ctx = await loadEntityWriteContext(context.userId, orgId, data.locationId);
+    const prev = parseLocationDevices(ctx.setup.locationDevices);
+    const existing = prev.find((x) => x.id === data.deviceId);
+    assertHostOrManageDevices(ctx, existing?.assignment.operatorId || "host");
+    const devices = prev.map((d) =>
+      d.id === data.deviceId
+        ? { ...d, status: "inactive" as const, serial: undefined, claimCode: undefined }
+        : d,
+    );
+    const { getSql } = await import("@/lib/db");
+    const sql = await getSql();
+    try {
+      await sql`
+        update location_devices
+        set status = ${"inactive"}, serial = ${null}, claim_code = ${null}, last_seen_at = now()
+        where id = ${data.deviceId} and location_id = ${data.locationId}
+      `;
+    } catch {
+      /* optional */
+    }
+    const { updateLocationSetupForUser } = await import("@/lib/saas/tenancy.server");
+    return updateLocationSetupForUser(context.userId, {
+      orgId: ctx.orgId,
+      locationId: data.locationId,
+      setup: { ...EMPTY_LOCATION_SETUP, ...ctx.setup, locationDevices: devices } as LocationSetup,
+    });
+  });
+
+export const rotateDevicePairFn = createServerFn({ method: "POST" })
+  .middleware([tenantMiddleware])
+  .validator((d: { orgId: string; locationId: string; deviceId: string }) => ({
+    orgId: String(d.orgId ?? "").trim(),
+    locationId: loc(d.locationId),
+    deviceId: String(d.deviceId ?? "").trim().slice(0, 80),
+  }))
+  .handler(async ({ context, data }) => {
+    const { loadEntityWriteContext, assertHostOrManageDevices } = await import(
+      "./assert-entity.server"
+    );
+    const orgId = data.orgId || context.organizationId || "";
+    const ctx = await loadEntityWriteContext(context.userId, orgId, data.locationId);
+    const prev = parseLocationDevices(ctx.setup.locationDevices);
+    const existing = prev.find((x) => x.id === data.deviceId);
+    if (!existing) throw new Error("Device not found");
+    assertHostOrManageDevices(ctx, existing.assignment.operatorId || "host");
+    const code = makeClaimCode();
+    const devices = prev.map((d) =>
+      d.id === data.deviceId
+        ? { ...d, status: "pending" as const, serial: undefined, claimCode: code }
+        : d,
+    );
+    const { getSql } = await import("@/lib/db");
+    const sql = await getSql();
+    try {
+      await sql`
+        update location_devices
+        set status = ${"pending"}, serial = ${null}, claim_code = ${code}, last_seen_at = now()
+        where id = ${data.deviceId} and location_id = ${data.locationId}
+      `;
+    } catch {
+      /* optional */
+    }
+    const { updateLocationSetupForUser } = await import("@/lib/saas/tenancy.server");
+    return updateLocationSetupForUser(context.userId, {
+      orgId: ctx.orgId,
+      locationId: data.locationId,
+      setup: { ...EMPTY_LOCATION_SETUP, ...ctx.setup, locationDevices: devices } as LocationSetup,
+    });
   });
 
 export const heartbeatLocationDeviceFn = createServerFn({ method: "POST" })

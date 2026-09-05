@@ -3,7 +3,7 @@
 **Powered by Quantum Reach**
 
 White paper · October 2026  
-**Revision · 5 Sep 2026** — One Summex Station app (pair, then PIN). Aligns with Operators Guide v2026.10.42.
+**Revision · 5 Sep 2026** — Publish to devices; labor vs owned sales. Aligns with Operators Guide v2026.10.43.
 
 summex.app  
 Guest cards: **Quantum Payments** only
@@ -144,7 +144,9 @@ The tablet is a screen, not a person. **PIN** says who is working. The **device 
 
 A manager **Change device** switches among those three. PIN stays the person; the role is the screen.
 
-**Tablets run Summex only.** One Android app — Summex Station. First open pairs with the venue code or QR from Devices (venue id and station role stored on the tablet). After that, the PIN pad. App updates do not wipe pairing. Lock-task pins the screen. Guest QR and pay links stay in the ordinary browser.
+**Tablets run Summex only.** One Android app — Summex Station. Owner (back office) adds a device by name and role, then shows a one-time pair code or QR. After pair the tablet stores venue and role, receives the house snapshot, and is PIN only. **Publish changes** pushes menu, floor, printers, QR, and cash model. Staff keep the last publish until Switch user; idle PIN pads may refresh. Never mid-ticket. Unpair or replace from Devices.
+
+**Labor vs what they are paid.** On a shared venue, each entity’s labor $, labor %, SPLH, food/pour cost, and staffing recs use **owned lines** by default (Steam vs beverage sales $; Diamond vs food sales $) — not the whole guest check. Shared venue costs (rent, utilities) are optional allocation percents, off by default. Tip-out and pools stay their own rules unless “tips in labor” is on.
 
 **Prime, then PIN-only.** Pair once (internet required). After that, cold start is the PIN pad — not `/login`. Switch user returns to the keypad without changing the device role.
 

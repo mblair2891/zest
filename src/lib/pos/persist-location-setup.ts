@@ -64,6 +64,27 @@ export function persistCashHandling(): void {
   );
 }
 
+export function persistLaborMap(): void {
+  const ctx = ids();
+  if (!ctx) return;
+  const prev = timers.get("labor-map");
+  if (prev) clearTimeout(prev);
+  timers.set(
+    "labor-map",
+    setTimeout(() => {
+      timers.delete("labor-map");
+      const map = useOpsStore.getState().laborByEntity ?? {};
+      void saveLocationSettingsFn({
+        data: {
+          orgId: ctx.orgId,
+          locationId: ctx.locationId,
+          setup: { laborByEntity: map },
+        },
+      }).catch(() => undefined);
+    }, 700),
+  );
+}
+
 export function persistLaborRules(): void {
   const ctx = ids();
   if (!ctx) return;

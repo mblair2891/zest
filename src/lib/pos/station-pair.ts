@@ -75,7 +75,7 @@ export function clearStationPair(): void {
 
 /** Pairing must survive APK updates and demo reset. Never bulk-delete this key. */
 export function isDurableStationStorageKey(key: string): boolean {
-  return key === STATION_PAIR_KEY;
+  return key === STATION_PAIR_KEY || key === "summex-station-publish-state-v1";
 }
 
 export function normalizeClaimCode(raw: string): string {

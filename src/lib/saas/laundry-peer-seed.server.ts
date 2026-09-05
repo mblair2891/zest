@@ -9,6 +9,7 @@ import type { QrPolicy } from "@/lib/pos/qr-policy";
 import type { MenuCategory, MenuItem } from "@/lib/pos/types";
 import type { LocationFloorPlan } from "./location-catalog";
 import type { LocationSetup } from "./types";
+import { parseLaborRules } from "@/lib/labor/rules";
 
 export const LAUNDRY_PEER_ORG_ID = "org_the_laundry";
 export const LAUNDRY_PEER_LOCATION_ID = "loc_the_laundry";
@@ -218,6 +219,10 @@ function locationSetup(): LocationSetup {
     cashDiscountPercent: 5,
     cashRoundIncrement: 0.25,
     cashRoundMode: "up",
+    laborByEntity: {
+      [LAUNDRY_STEAM_OP_ID]: parseLaborRules({ revenueBasis: "owned_lines" }),
+      [LAUNDRY_DIAMOND_OP_ID]: parseLaborRules({ revenueBasis: "owned_lines" }),
+    },
     floorPlan: plan,
     menuCatalog: {
       categories: LAUNDRY_PEER_CATEGORIES,

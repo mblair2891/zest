@@ -76,19 +76,20 @@ export const DEVICE_TOPICS: GuideTopic[] = [
         "A floor tablet is a station, not a general-purpose phone. If someone can swipe to the launcher, they are not in service.",
       ),
       p(
-        "Install Summex Station once. The store binary has no venue baked in. First open is a pair screen: venue code or QR from owner Devices. The tablet stores the venue and its role (Order, Order Display, or Host). After pair it shows the PIN pad, hides the status bar, and requests lock-task so Home and Recents do not escape. Guest QR codes stay in the ordinary browser.",
+        "Install Summex Station once. The store binary has no venue baked in. Owner (back office password, not staff PIN): Devices → Add device → name + role. Show the one-time code or QR. After pair, the tablet stores venue and role, receives the house snapshot, and is PIN only. Publish changes pushes menu, floor, printers, QR, and cash model to paired tablets. Staff keep the last publish until Switch user. Idle PIN pads can refresh. Never mid-ticket.",
       ),
       steps(
         "Install Summex Station on every staff tablet (same app for host, order, and ODS).",
-        "Owner: Devices → add a slot. Show the 6-character code or QR to the tablet.",
-        "Tablet: pair. Thereafter power on → PIN. App updates do not wipe pairing.",
+        "Owner: Devices → Add device (name + Order / Order Display / Host). Show the one-time code or QR.",
+        "Tablet: pair. Config is pushed. Thereafter power on → PIN. App updates do not wipe pairing.",
+        "After menu or floor edits: Publish changes. Logged-in staff keep running; next PIN login loads the new publish.",
+        "Unpair or Replace from the same Devices list when a tablet is lost or swapped.",
         "Training: on Samsung, confirm pin-windows when Summex asks. Set Summex as Home if the tablet offers it.",
-        "Production: Device Owner or Knox whitelist so lock-task is silent, then reboot — the tablet should come up in Summex.",
       ),
       warn(
         "Do not put guest QR / pay on this APK. Table tents and ticket codes open in the guest’s browser.",
       ),
-      related("device-roles", "device-assignment", "floor-pin-login", "table-qr", "wifi-offline"),
+      related("device-roles", "device-assignment", "floor-pin-login", "table-qr", "wifi-offline", "labor-basis"),
     ],
   }),
   topic({

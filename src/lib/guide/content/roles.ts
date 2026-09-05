@@ -356,7 +356,41 @@ export const ROLE_GUIDE_TOPICS: GuideTopic[] = [
       warn(
         "Recommendations only. The manager decides. Summex never auto clock-out.",
       ),
-      related("ai-ops-learning", "ops-jobs", "shift-allowables", "roles-dashboards"),
+      related("ai-ops-learning", "ops-jobs", "shift-allowables", "roles-dashboards", "labor-basis"),
+    ],
+  }),
+  topic({
+    id: "labor-basis",
+    chapterId: "roles",
+    title: "Labor vs what they are paid",
+    summary:
+      "On a shared venue, each entity’s labor %, SPLH, food/pour cost, and staffing recs use owned lines — not the whole guest check.",
+    roles: ["owner_manager", "host_operator", "vendor_operator"],
+    keywords: ["labor", "owned lines", "SPLH", "food cost", "pour cost", "peer venue", "staffing"],
+    openView: "settings",
+    blocks: [
+      why(
+        "Steam Distillery is paid for drinks. Diamond House BBQ is paid for food. Mixing both into one labor % lies about the house.",
+      ),
+      p(
+        "Location settings → Labor basis (peer venue and host + tenants). Per entity: owned lines (default on a shared venue), all-check sales, or selected categories. Labor $, labor %, SPLH, food cost, pour cost, and staffing recs use that basis only. Recs label it — Steam labor vs beverage sales $.",
+      ),
+      ul(
+        "Owned lines: what that entity is paid on card capture. Steam = drink/bar lines. Diamond = food lines.",
+        "All-check: whole guest check. Rare on a shared floor.",
+        "Selected categories: pick the categories that count.",
+        "Shared venue costs (rent, utilities): optional allocation % per entity. Off by default. Do not dump the same cost into both labor %.",
+        "Tip-out and pools stay the existing rules. They do not mix into labor % unless you turn on tips in labor.",
+      ),
+      steps(
+        "Owner: Location settings → Labor basis. Confirm each operator is on owned lines.",
+        "Publish if tablets should pick up the setting. Staff keep the last snapshot until Switch user.",
+        "Read staffing recs and cost pictures with the basis in the line.",
+      ),
+      warn(
+        "Do not run Steam labor against Diamond food sales. Do not allocate 100% of rent to every entity.",
+      ),
+      related("staffing-recs", "device-roles", "android-kiosk", "cost-control", "tip-pooling"),
     ],
   }),
 ];

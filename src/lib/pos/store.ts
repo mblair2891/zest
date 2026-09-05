@@ -495,6 +495,11 @@ const usePosStoreRaw = create()(persist((set, get) => ({
 			managerAuthKind: null,
 			managerAuthRole: null,
 		});
+		try {
+			void import("./station-publish").then((m) => m.applyPendingIfIdle());
+		} catch {
+			/* optional */
+		}
 	},
 	setStaffPin: (employeeId, pin) => {
 		const actor = get().getCurrentEmployee();

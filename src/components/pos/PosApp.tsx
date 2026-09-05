@@ -33,15 +33,18 @@ import { EMPTY_LOCATION_SETUP } from "@/lib/saas/types";
 import { tablesFromFloorPlan } from "@/lib/saas/location-catalog";
 import { membershipToEmployeeRole } from "@/lib/access/membership-map";
 import { HOST_SCOPE, parseGrantMatrix } from "@/lib/access/entity-grants";
-import { parseLaborRules } from "@/lib/labor/rules";
+import { parseLaborMap, parseLaborRules } from "@/lib/labor/rules";
 import {
   findPairedDevice,
   parseLocationDevices,
   readOrCreateBrowserDeviceId,
   writePairedDeviceId,
 } from "@/lib/pos/location-devices";
-import { heartbeatLocationDeviceFn, pairStationFn } from "@/lib/access/api";
+import { heartbeatLocationDeviceFn, getPairedStationFn, pairStationFn } from "@/lib/access/api";
 import { readStationPair } from "@/lib/pos/station-pair";
+import { applyStationPublish, parseStationPublish } from "@/lib/pos/station-publish";
+import { StationPublishWatcher } from "@/components/pos/StationPublishWatcher";
+
 import { SESSION_MODES, type SessionModeId } from "@/lib/lifecycle/types";
 import {
   consumeStationPinGate,
@@ -186,6 +189,11 @@ function PosAppInner({ entityId }: { entityId?: string }) {
       const pair = storedPair?.locationId === locationId ? storedPair : null;
       const fetchBoot = () => {
         if (user) return getPosBootstrapFn({ data: { locationId } });
+        if (pair?.deviceId) {
+          return getPairedStationFn({
+            data: { locationId, deviceId: pair.deviceId },
+          }) as unknown as ReturnType<typeof getPosBootstrapFn>;
+        }
         if (pair?.claimCode) {
           return pairStationFn({
             data: {
@@ -351,7 +359,23 @@ function PosAppInner({ entityId }: { entityId?: string }) {
                 usePosStore.getState().employees.find((e) => e.id === usePosStore.getState().currentEmployeeId)
                   ?.operatorId || HOST_SCOPE;
               const rules = setup.laborByEntity?.[opId] ?? setup.laborByEntity?.[HOST_SCOPE];
-              if (rules) useOpsStore.setState({ labor: parseLaborRules(rules) });
+              const laborMap = parseLaborMap(setup.laborByEntity);
+              if (rules || Object.keys(laborMap).length) {
+                useOpsStore.setState({
+                  labor: parseLaborRules(rules ?? laborMap[opId] ?? laborMap[HOST_SCOPE]),
+                  laborByEntity: laborMap,
+                });
+              }
+              if (setup.sharedVenueCostsCents != null) {
+                const st = usePosStore.getState();
+                usePosStore.setState({
+                  settings: { ...st.settings, sharedVenueCostsCents: setup.sharedVenueCostsCents },
+                });
+              }
+              const pub = parseStationPublish(setup.stationPublish) ?? parseStationPublish(
+                (access as { publish?: unknown }).publish,
+              );
+              if (pub) applyStationPublish(pub);
             }
             usePosStore.getState().updateSettings?.({
               lifecycleStatus:
@@ -476,7 +500,13 @@ function PosAppInner({ entityId }: { entityId?: string }) {
           try {
             const opId = usePosStore.getState().employees.find((e) => e.id === usePosStore.getState().currentEmployeeId)?.operatorId || HOST_SCOPE;
             const rules = setup.laborByEntity?.[opId] ?? setup.laborByEntity?.[HOST_SCOPE];
-            if (rules) useOpsStore.setState({ labor: parseLaborRules(rules) });
+            const laborMap = parseLaborMap(setup.laborByEntity);
+            if (rules || Object.keys(laborMap).length) {
+              useOpsStore.setState({
+                labor: parseLaborRules(rules ?? laborMap[opId] ?? laborMap[HOST_SCOPE]),
+                laborByEntity: laborMap,
+              });
+            }
           } catch {
             /* labor optional */
           }
@@ -697,6 +727,7 @@ export function PosApp({ entityId }: { entityId?: string }) {
 
   return (
     <PosErrorBoundary>
+      <StationPublishWatcher />
       <PosAppInner entityId={entityId} />
     </PosErrorBoundary>
   );

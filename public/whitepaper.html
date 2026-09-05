@@ -128,7 +128,7 @@
       <h1>Summex</h1>
       <p class="sub">Hospitality operations and money movement. Powered by Quantum Reach.</p>
       <p class="meta">summex.app · Guest cards: Quantum Payments only</p>
-      <p class="revision"><strong>Revision · 5 Sep 2026</strong> — One Summex Station app (pair, then PIN). Aligns with Operators Guide v2026.10.42.</p>
+      <p class="revision"><strong>Revision · 5 Sep 2026</strong> — Publish to devices; labor vs owned sales. Aligns with Operators Guide v2026.10.43.</p>
     </header>
 
     <h2>1. Executive summary</h2>
@@ -200,7 +200,8 @@
         <tr><td>Host</td><td>Floor map, seat, table status, to-go at the stand</td></tr>
       </tbody>
     </table>
-    <p><strong>Tablets run Summex only.</strong> One Android app — Summex Station. First open pairs with the venue code or QR from Devices (venue id and station role stored on the tablet). After that, the PIN pad. App updates do not wipe pairing. Lock-task pins the screen. Guest QR stays in the ordinary browser.</p>
+    <p><strong>Tablets run Summex only.</strong> One Android app — Summex Station. Owner adds a device by name and role, then shows a one-time pair code or QR. After pair the tablet stores venue and role, receives the house snapshot, and is PIN only. Publish changes pushes menu, floor, printers, QR, and cash model. Staff keep the last publish until Switch user. Never mid-ticket.</p>
+    <p><strong>Labor vs what they are paid.</strong> On a shared venue, labor %, SPLH, food/pour cost, and staffing recs use owned lines by default (Steam vs beverage sales; Diamond vs food) — not the whole guest check. Shared rent/utilities stay off until allocated. Tips stay out of labor % unless toggled.</p>
     <p><strong>Prime, then PIN-only.</strong> Pair once (internet required). After that, cold start is the PIN pad — not <code>/login</code>.</p>
     <p><strong>PIN ≠ owner password ≠ clock-in ≠ closeout.</strong> Back office uses email and password. Floor staff use a 4-digit PIN, hashed and scoped to the location (and entity). Clock in / out is Labor. Server closeout is Cash. Realtime staffing recommendations (cut / hold / add) never clock anyone out — accept offers notify-to-close-out.</p>
     <p>Printers sit on the <strong>AP LAN</strong> (not printer Wi‑Fi): thermal receipts (Epson TM-T20), impact kitchen (Epson TM-U220), drawer kick on the receipt printer.</p>

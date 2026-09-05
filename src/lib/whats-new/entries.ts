@@ -6,6 +6,19 @@ import type { GuideUpdate } from "@/lib/guide/types";
  */
 export const WHATS_NEW_ENTRIES: GuideUpdate[] = [
   {
+    id: "upd_2026_10_43_publish_labor_basis",
+    date: "2026-09-05",
+    title: "Publish to devices · labor vs owned sales",
+    summary:
+      "Owner Publish pushes menu, floor, printers, and QR to paired tablets. Shared-venue labor % uses what that entity is paid.",
+    body: "Devices: add name + role, one-time pair code/QR. After pair the tablet is PIN only. Publish changes pushes the house snapshot. Staff keep the last publish until Switch user; the PIN pad can refresh idle. Never mid-ticket. Unpair or Replace from the same list. On a shared venue, Steam labor vs beverage sales $ and Diamond labor vs food sales $ — owned lines, not the whole guest check. Shared rent/utilities stay off until you allocate a percent. Tips stay out of labor % unless you turn tips in labor on.",
+    roles: ["owner_manager", "host_operator", "vendor_operator", "kitchen_bar"],
+    surfaces: ["settings", "floor"],
+    audience: "all",
+    topicId: "labor-basis",
+    tags: ["devices", "publish", "labor"],
+  },
+  {
     id: "upd_2026_10_42_station_pair",
     date: "2026-09-05",
     title: "One station app — pair, then PIN",

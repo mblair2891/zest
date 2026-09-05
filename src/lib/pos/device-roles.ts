@@ -1,5 +1,5 @@
 import type { SessionModeId } from "@/lib/lifecycle/types";
-import type { DeviceFunction } from "@/lib/pos/location-devices";
+import type { DeviceFunction, LocationDeviceType } from "@/lib/pos/location-devices";
 import type { PosView } from "@/lib/pos/types";
 import { readStationPair } from "./station-pair";
 
@@ -83,6 +83,28 @@ export function deviceRoleFromSessionMode(kind: SessionModeId): DeviceRole {
     case "cashier":
     default:
       return "order";
+  }
+}
+
+export function functionForDeviceRole(role: DeviceRole): DeviceFunction {
+  switch (role) {
+    case "ods":
+      return "kitchen_kds";
+    case "host":
+      return "host_stand";
+    default:
+      return "floor_pos";
+  }
+}
+
+export function typeForDeviceRole(role: DeviceRole): LocationDeviceType {
+  switch (role) {
+    case "ods":
+      return "kds";
+    case "host":
+      return "host_stand";
+    default:
+      return "tablet_pos";
   }
 }
 

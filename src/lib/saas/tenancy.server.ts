@@ -108,6 +108,23 @@ function parsePackages(raw: unknown): PackageId[] {
   return [];
 }
 
+function parseStationPublishRow(raw: unknown): LocationSetup["stationPublish"] {
+  if (!raw || typeof raw !== "object") return undefined;
+  const p = raw as Record<string, unknown>;
+  const version = Math.max(0, Math.round(Number(p.version) || 0));
+  if (!version) return undefined;
+  const setup =
+    p.setup && typeof p.setup === "object" && !Array.isArray(p.setup)
+      ? (p.setup as NonNullable<LocationSetup["stationPublish"]>["setup"])
+      : {};
+  return {
+    version,
+    publishedAt: Number(p.publishedAt) || Date.now(),
+    publishedByName: String(p.publishedByName ?? "Owner").trim() || "Owner",
+    setup,
+  };
+}
+
 function parseSetup(raw: unknown): LocationSetup {
   let o: Record<string, unknown> = {};
   if (raw && typeof raw === "object" && !Array.isArray(raw)) {
@@ -251,6 +268,15 @@ function parseSetup(raw: unknown): LocationSetup {
       o.laborByEntity && typeof o.laborByEntity === "object" && !Array.isArray(o.laborByEntity)
         ? parseLaborMap(o.laborByEntity)
         : undefined,
+    cashHandling:
+      o.cashHandling && typeof o.cashHandling === "object" && !Array.isArray(o.cashHandling)
+        ? (o.cashHandling as LocationSetup["cashHandling"])
+        : undefined,
+    sharedVenueCostsCents:
+      o.sharedVenueCostsCents == null
+        ? undefined
+        : Math.max(0, Math.round(Number(o.sharedVenueCostsCents) || 0)),
+    stationPublish: parseStationPublishRow(o.stationPublish),
     employmentState:
       typeof o.employmentState === "string" && o.employmentState.trim()
         ? o.employmentState.trim().slice(0, 16)

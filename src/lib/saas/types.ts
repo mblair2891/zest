@@ -84,6 +84,10 @@ export type LocationSetup = {
   employmentState?: string;
   /** Clock / approval / pay-period rules keyed by employer entity. */
   laborByEntity?: Record<string, import("@/lib/labor/rules").EntityLaborRules>;
+  /** Optional monthly shared venue costs (rent, utilities). Off until allocated per entity. */
+  sharedVenueCostsCents?: number;
+  /** Last catalog push to paired station tablets. */
+  stationPublish?: import("@/lib/pos/station-publish").StationPublishRecord;
   /** Drawers, wells, server banks — location-configurable cash handling. */
   cashHandling?: import("@/lib/pos/cash-handling").CashHandlingConfig;
   /** Cost catalog (SKUs, invoices, suppliers, POs) — no image blobs. */

@@ -1,6 +1,11 @@
 import { usePosStore } from "@/lib/pos/store";
 import { useOpsStore } from "@/lib/pos/ops-store";
 import { parseLaborRules } from "@/lib/labor/rules";
+import {
+  allocatedSharedCostCents,
+  laborBasisLabel,
+  salesForLaborBasis,
+} from "@/lib/labor/revenue-basis";
 import { metricsFromPosStore } from "@/lib/reports/from-store";
 import { HOST_SCOPE } from "@/lib/access/entity-grants";
 import { isProspectDemo } from "@/lib/demo/session";
@@ -69,12 +74,38 @@ function rec(
 function captureStaffingSnap() {
   const s = usePosStore.getState();
   const ops = useOpsStore.getState();
-  const cfg = parseLaborRules(ops.labor).staffingRecs;
+  const emp = s.employees.find((e) => e.id === s.currentEmployeeId);
+  const entityId = emp?.operatorId || HOST_SCOPE;
+  const rules = parseLaborRules(ops.laborByEntity?.[entityId] ?? ops.labor);
+  const cfg = rules.staffingRecs;
   if (!cfg.enabled) return null;
-  const sales = s.shift.cashSalesCents + s.shift.cardSalesCents + s.shift.giftSalesCents;
+  const entityName =
+    entityId === HOST_SCOPE
+      ? s.settings.name || "Host"
+      : s.vendors.find((v) => v.id === entityId)?.name || entityId;
+  const sales = salesForLaborBasis({
+    orders: s.orders,
+    entityId,
+    basis: rules.revenueBasis,
+    categoryIds: rules.revenueCategoryIds,
+    menuItems: s.menuItems,
+  });
+  const last30 = salesForLaborBasis({
+    orders: s.orders,
+    entityId,
+    basis: rules.revenueBasis,
+    categoryIds: rules.revenueCategoryIds,
+    menuItems: s.menuItems,
+    from: Date.now() - 30 * 60_000,
+    to: Date.now(),
+  });
+  const extraLabor = allocatedSharedCostCents(
+    s.settings.sharedVenueCostsCents ?? 0,
+    rules.sharedCostAllocationPct,
+  );
   return buildStaffingSnapshot({
     cfg,
-    employees: s.employees,
+    employees: s.employees.filter((e) => (e.operatorId || HOST_SCOPE) === entityId || !e.operatorId),
     punches: ops.punches,
     orders: s.orders,
     tables: s.tables,
@@ -84,6 +115,9 @@ function captureStaffingSnap() {
     lastTicketByEmployee: ops.lastTicketByEmployee,
     shiftSalesCents: sales,
     shiftOpenedAt: s.shift.openedAt,
+    extraLaborCents: extraLabor,
+    salesLast30mCents: last30,
+    basisLabel: laborBasisLabel(entityName, rules.revenueBasis),
   });
 }
 
@@ -123,7 +157,14 @@ function buildStaffingOpsRecs(
       .sort((a, b) => b.idleMinutes - a.idleMinutes)
       .map((c) => c.id);
     out.push(
-      rec(recType, "Staffing", d.severity, d.message, d.suggestedAction, conf, {
+      rec(
+        recType,
+        "Staffing",
+        d.severity,
+        snap.basisLabel ? `${d.message} (${snap.basisLabel})` : d.message,
+        d.suggestedAction,
+        conf,
+        {
         applyView: "labor",
         operatorId: op,
         basedOnPastDecisions: w.accepts + legacy.accepts > 0,

@@ -1,7 +1,7 @@
 # Operators Guide — authoring
 
-**Revision · 5 Sep 2026** — One Summex Station app (pair, then PIN).
-Guide v2026.10.42.
+**Revision · 5 Sep 2026** — Publish to devices; labor vs owned sales.
+Guide v2026.10.43.
 
 The in-app **Operators Guide** is the living product manual. It is not a
 separate PDF. Staff open it from **Guide** / **?** in the POS and platform
@@ -136,7 +136,8 @@ Bookmarkable URL: `/guide?topic=my-topic`.
 - Each entity is its own Quantum Payments merchant. One guest check; receipt itemized by vendor; Finix pays each operator their share on capture.
 - Location models: single operator; host + tenants; shared venue (peers). Shared venue is a named building only — no host merchant, menu, or gift product required.
 - Gift cards: Summex house ledger — swipe, scan, or key. Not Finix.
-- Device roles: **order** | **ODS** | **host**. One Summex Station APK. First run: pair with the Devices code or QR. Thereafter PIN only. Updates keep the pairing. Guest QR stays in the browser.
+- Device roles: **order** | **ODS** | **host**. One Summex Station APK. Owner adds a device (name + role), shows a one-time code/QR. After pair: PIN only. Publish pushes menu/floor/printers/QR. Staff keep the last publish until Switch user.
+- Shared-venue labor: per entity **owned lines** (default) | all-check | selected categories. Steam vs beverage sales; Diamond vs food. Shared rent/utilities off until allocated. Tips stay out of labor % unless toggled.
 - Printers on the house AP LAN (Ethernet), not the printer’s own Wi‑Fi. Receipts: Epson TM-T20 thermal. Kitchen: Epson TM-U220 impact. Cash drawer kick is on the receipt printer.
 - HR: optional per entity (host or tenant employer). Packets + signed PDF fallback. Clock punches persist. Clock windows, shift approval, and pay-period timing drive hours export to ADP / Intuit / CSV — Summex does not process payroll. Platform never sees SSN.
 - First location = SaaS onboard only. Host onboarded by SaaS; host invites operator tenants.

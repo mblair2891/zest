@@ -4,6 +4,8 @@ import { uid } from "@/lib/utils";
 import { HOST_SCOPE } from "@/lib/access/entity-grants";
 import { usePosStore } from "@/lib/pos/store";
 import { useOpsStore } from "@/lib/pos/ops-store";
+import { parseLaborRules } from "@/lib/labor/rules";
+import { laborBasisLabel, salesForLaborBasis } from "@/lib/labor/revenue-basis";
 import { recordDecision, daypartOf } from "@/lib/ops-ai/learn-store";
 import { canCost, costEntityScope } from "./permissions";
 import { suggestPoLines } from "./ordering";
@@ -1145,16 +1147,21 @@ export const useCostStore = create<CostState>()(
         const now = Date.now();
         const from = now - windowDays * 86400000;
         const pos = usePosStore.getState();
-        const salesCents = pos.orders
-          .filter((o) => (o.closedAt ?? o.createdAt) >= from)
-          .reduce(
-            (s, o) =>
-              s +
-              o.lines
-                .filter((l) => !l.voided)
-                .reduce((n, l) => n + l.quantity * l.unitPriceCents, 0),
-            0,
-          );
+        const emp = pos.employees.find((e) => e.id === pos.currentEmployeeId);
+        const entityId = emp?.operatorId || HOST_SCOPE;
+        const opsLabor = useOpsStore.getState();
+        const laborRules = parseLaborRules(opsLabor.laborByEntity?.[entityId] ?? opsLabor.labor);
+        const entityName =
+          entityId === HOST_SCOPE
+            ? pos.settings.name || "Host"
+            : pos.vendors.find((v) => v.id === entityId)?.name || entityId;
+        const salesCents = salesForLaborBasis({
+          orders: pos.orders.filter((o) => (o.closedAt ?? o.createdAt) >= from),
+          entityId,
+          basis: laborRules.revenueBasis,
+          categoryIds: laborRules.revenueCategoryIds,
+          menuItems: pos.menuItems,
+        });
         const cogsCents = get()
           .ledger.filter((e) => e.at >= from)
           .reduce((s, e) => s + e.amountCents, 0);
@@ -1194,7 +1201,7 @@ export const useCostStore = create<CostState>()(
         const guided =
           `COGS ${cogsPct == null ? "n/a" : `${cogsPct}%`} on $${(salesCents / 100).toFixed(0)} sales. ` +
           `Posted spend $${(cogsCents / 100).toFixed(0)}. Open variance items: ${openExceptions}. ` +
-          `Labor ${laborPct == null ? "n/a (no punches)" : `${laborPct}%`}. ` +
+          `Labor ${laborPct == null ? "n/a (no punches)" : `${laborPct}%`} (${laborBasisLabel(entityName, laborRules.revenueBasis)}). ` +
           `Recommendations stay human-confirmed.`;
         const picture: CostPicture = {
           generatedAt: now,

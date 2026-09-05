@@ -7,7 +7,10 @@ import {
   claimLocationDeviceFn,
   deactivateLocationDeviceFn,
   listLocationDevicesFn,
+  publishLocationFn,
+  rotateDevicePairFn,
   saveLocationDeviceFn,
+  unpairLocationDeviceFn,
 } from "@/lib/access/api";
 import { getSessionContextFn } from "@/lib/saas/api";
 import {
@@ -39,7 +42,14 @@ import { usePosStore } from "@/lib/pos/store";
 import { formatTime } from "@/lib/utils";
 import { GuideLearnLink } from "@/components/guide/GuideLearnLink";
 import { pairQrImageSrc, stationPairHref } from "@/lib/pos/station-pair";
-import { DEVICE_ROLE_LABEL, deviceRoleFromFunction } from "@/lib/pos/device-roles";
+import {
+  DEVICE_ROLE_LABEL,
+  DEVICE_ROLES,
+  deviceRoleFromFunction,
+  functionForDeviceRole,
+  typeForDeviceRole,
+  type DeviceRole,
+} from "@/lib/pos/device-roles";
 
 type Mode = "stations" | "hardware";
 
@@ -84,6 +94,8 @@ export function LocationDeviceRegistry({
   const [fn, setFn] = useState<DeviceFunction>(
     mode === "hardware" ? "expo" : "floor_pos",
   );
+  const [stationRole, setStationRole] = useState<DeviceRole>("order");
+  const [publishMsg, setPublishMsg] = useState<string | null>(null);
   const [printFamily, setPrintFamily] = useState<PrinterFamily>("generic");
   const [printConnection, setPrintConnection] = useState<PrinterConnection>("browser");
   const [printTarget, setPrintTarget] = useState("");
@@ -171,6 +183,11 @@ export function LocationDeviceRegistry({
       preset?.assignment?.function ??
         (mode === "hardware" ? "expo" : "floor_pos"),
     );
+    setStationRole(
+      preset?.assignment?.function
+        ? deviceRoleFromFunction(preset.assignment.function)
+        : "order",
+    );
     setPrintFamily(preset?.print?.family ?? "generic");
     setPrintConnection(preset?.print?.connection ?? "browser");
     setPrintTarget(preset?.print?.target ?? "");
@@ -190,6 +207,9 @@ export function LocationDeviceRegistry({
         label.trim() ||
         (opts?.asBrowser ? "This browser" : mode === "hardware" ? "Printer" : "Device");
       const printer = type === "printer";
+      const stationType = mode === "stations" ? typeForDeviceRole(stationRole) : type;
+      const stationFn =
+        mode === "stations" ? functionForDeviceRole(stationRole) : fn;
       await saveLocationDeviceFn({
         data: {
           orgId: resolvedOrgId,
@@ -197,10 +217,10 @@ export function LocationDeviceRegistry({
           device: {
             id,
             label: name,
-            type,
+            type: printer ? type : stationType,
             assignment: {
               operatorId,
-              function: printer ? functionForPrintStation(printStation) : fn,
+              function: printer ? functionForPrintStation(printStation) : stationFn,
             },
             serial: opts?.asBrowser
               ? readOrCreateBrowserDeviceId(resolvedLocId)
@@ -284,11 +304,60 @@ export function LocationDeviceRegistry({
     }
   };
 
+  const publishNow = async () => {
+    if (!resolvedOrgId || !resolvedLocId) return;
+    setBusy(true);
+    setError(null);
+    setPublishMsg(null);
+    try {
+      const res = await publishLocationFn({
+        data: { orgId: resolvedOrgId, locationId: resolvedLocId },
+      });
+      setPublishMsg(
+        `Published v${res.publish.version}. Idle PIN pads pick it up; staff keep the last snapshot until Switch user.`,
+      );
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Could not publish");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const unpair = async (d: LocationDevice) => {
+    setBusy(true);
+    setError(null);
+    try {
+      await unpairLocationDeviceFn({
+        data: { orgId: resolvedOrgId, locationId: resolvedLocId, deviceId: d.id },
+      });
+      await load();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Could not unpair");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const replaceDevice = async (d: LocationDevice) => {
+    setBusy(true);
+    setError(null);
+    try {
+      await rotateDevicePairFn({
+        data: { orgId: resolvedOrgId, locationId: resolvedLocId, deviceId: d.id },
+      });
+      await load();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Could not replace");
+    } finally {
+      setBusy(false);
+    }
+  };
+
   const heading = mode === "hardware" ? "Hardware" : "Devices";
   const help =
     mode === "hardware"
       ? "Register Quantum readers and Star/Epson printers. Assign kitchen, bar, receipt, or expo. Test print from this list."
-      : "Pair a Summex Station tablet with the venue code or QR. The APK has no location baked in. After pair, the tablet is PIN only.";
+      : "Add a device (name + role). Show the one-time code or QR. After pair, the tablet is PIN only. Publish pushes menu, floor, printers, and QR to paired tablets.";
   const addLabel = mode === "hardware" ? "Add terminal / printer" : "Add device";
   const pairedId = resolvedLocId ? readPairedDeviceId(resolvedLocId) : null;
   const thisBrowserId = resolvedLocId ? readOrCreateBrowserDeviceId(resolvedLocId) : "";
@@ -319,6 +388,11 @@ export function LocationDeviceRegistry({
             <GuideLearnLink topicId={mode === "hardware" ? "printers-kds" : "station-switcher"}>
               Learn
             </GuideLearnLink>
+            {mode === "stations" && (
+              <Button size="sm" variant="outline" disabled={busy} onClick={() => void publishNow()}>
+                Publish changes
+              </Button>
+            )}
             <Button size="sm" onClick={() => resetForm()}>
               {addLabel}
             </Button>
@@ -327,6 +401,7 @@ export function LocationDeviceRegistry({
         <p className="mt-1 text-xs text-muted-foreground">
           {resolvedName || locationName} · persist on this location
         </p>
+        {publishMsg && <p className="mt-1 text-xs text-primary">{publishMsg}</p>}
         {sessionLocs.length > 1 && (
           <label className="mt-2 block text-xs text-muted-foreground">
             Location
@@ -393,6 +468,22 @@ export function LocationDeviceRegistry({
             onChange={(e) => setLabel(e.target.value)}
           />
           <div className="grid gap-2 sm:grid-cols-3">
+            {mode === "stations" ? (
+              <label className="text-xs text-muted-foreground">
+                Role
+                <select
+                  className="mt-1 h-10 w-full rounded-xl border border-border bg-bg px-3 text-sm text-foreground"
+                  value={stationRole}
+                  onChange={(e) => setStationRole(e.target.value as DeviceRole)}
+                >
+                  {DEVICE_ROLES.map((r) => (
+                    <option key={r} value={r}>
+                      {DEVICE_ROLE_LABEL[r]}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            ) : (
             <label className="text-xs text-muted-foreground">
               Type
               <select
@@ -411,6 +502,7 @@ export function LocationDeviceRegistry({
                 ))}
               </select>
             </label>
+            )}
             <label className="text-xs text-muted-foreground">
               Entity
               <select
@@ -441,7 +533,7 @@ export function LocationDeviceRegistry({
                   ))}
                 </select>
               </label>
-            ) : (
+            ) : mode === "hardware" ? (
               <label className="text-xs text-muted-foreground">
                 Function
                 <select
@@ -456,7 +548,7 @@ export function LocationDeviceRegistry({
                   ))}
                 </select>
               </label>
-            )}
+            ) : null}
           </div>
           {type === "printer" && (
             <div className="grid gap-2 sm:grid-cols-3">
@@ -564,7 +656,7 @@ export function LocationDeviceRegistry({
               className="flex flex-wrap items-center justify-between gap-2 rounded-2xl border border-border bg-surface px-4 py-3"
             >
               <div className="flex min-w-0 items-start gap-3">
-                {mode === "stations" && d.claimCode ? (
+                {mode === "stations" && d.claimCode && d.status !== "online" ? (
                   <img
                     src={pairQrImageSrc(d.claimCode)}
                     alt={`Pair QR ${d.claimCode}`}
@@ -586,13 +678,15 @@ export function LocationDeviceRegistry({
                     ? `${PRINT_STATION_LABEL[d.print.station]} · ${PRINTER_FAMILY_LABEL[d.print.family]} · ${PRINTER_CONNECTION_LABEL[d.print.connection]}${d.print.target ? ` · ${d.print.target}` : ""}`
                     : `${DEVICE_FUNCTION_LABEL[d.assignment.function]} · ${DEVICE_ROLE_LABEL[deviceRoleFromFunction(d.assignment.function)]}`}
                 </p>
-                {mode === "stations" && d.claimCode ? (
+                {mode === "stations" && d.claimCode && d.status !== "online" ? (
                   <p className="mt-1 font-mono text-sm tracking-[0.2em] text-foreground">
                     {d.claimCode}
                     <span className="ml-2 font-sans text-[11px] tracking-normal text-muted-foreground">
-                      {stationPairHref(d.claimCode).replace(/^https?:\/\//, "")}
+                      One-time · {stationPairHref(d.claimCode).replace(/^https?:\/\//, "")}
                     </span>
                   </p>
+                ) : mode === "stations" && d.status === "online" ? (
+                  <p className="mt-1 text-[11px] text-muted-foreground">Paired · PIN only</p>
                 ) : null}
                 </div>
               </div>
@@ -629,6 +723,26 @@ export function LocationDeviceRegistry({
                 <Button size="sm" variant="outline" onClick={() => resetForm(d)}>
                   Edit
                 </Button>
+                {mode === "stations" && (
+                  <>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      disabled={busy}
+                      onClick={() => void replaceDevice(d)}
+                    >
+                      Replace
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      disabled={busy}
+                      onClick={() => void unpair(d)}
+                    >
+                      Unpair
+                    </Button>
+                  </>
+                )}
                 <Button
                   size="sm"
                   variant="ghost"

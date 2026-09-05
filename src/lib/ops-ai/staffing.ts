@@ -168,6 +168,7 @@ export type StaffingSnapshot = {
   laborCostProxyCents: number;
   laborPct: number | null;
   splhCents: number | null;
+  basisLabel?: string;
   idleMinutes: number;
   idleTables: number;
   openChecks: number;
@@ -414,6 +415,9 @@ export function buildStaffingSnapshot(input: {
   lastTicketByEmployee: Record<string, number>;
   shiftSalesCents: number;
   shiftOpenedAt: number;
+  extraLaborCents?: number;
+  salesLast30mCents?: number;
+  basisLabel?: string;
 }): StaffingSnapshot {
   const now = input.now ?? Date.now();
   const daypart = daypartOf(now);
@@ -428,7 +432,8 @@ export function buildStaffingSnapshot(input: {
   const byRole: Partial<Record<EmployeeRole, number>> = {};
   for (const c of clocked) byRole[c.role] = (byRole[c.role] ?? 0) + 1;
   const hours = Math.max(clockedHoursFromPunches(input.punches, now), clocked.length * 0.25);
-  const salesLast30mCents = salesInWindow(input.orders, now - 30 * 60_000, now);
+  const salesLast30mCents =
+    input.salesLast30mCents ?? salesInWindow(input.orders, now - 30 * 60_000, now);
   let baseline30mCents = daypartBaseline30m(input.orders, now, daypart);
   if (baseline30mCents <= 0) {
     baseline30mCents = baseline30mFor(daypart);
@@ -437,7 +442,8 @@ export function buildStaffingSnapshot(input: {
     const shiftHours = Math.max(0.5, (now - (input.shiftOpenedAt || now)) / 3_600_000);
     baseline30mCents = Math.round((input.shiftSalesCents / shiftHours) * 0.5);
   }
-  const laborCostProxyCents = Math.round(hours * cfgHourly(input.cfg));
+  const laborCostProxyCents =
+    Math.round(hours * cfgHourly(input.cfg)) + Math.max(0, input.extraLaborCents ?? 0);
   const salesCents = Math.max(input.shiftSalesCents, salesLast30mCents);
   const laborPct = salesCents > 0 ? Math.round((laborCostProxyCents / salesCents) * 10000) / 100 : clocked.length > 2 ? 80 : null;
   const splhCents = hours > 0 ? Math.round(salesCents / hours) : null;
@@ -460,6 +466,7 @@ export function buildStaffingSnapshot(input: {
     laborCostProxyCents,
     laborPct,
     splhCents,
+    basisLabel: input.basisLabel,
     idleMinutes,
     idleTables: input.tables.filter((t) => t.status === "available").length,
     openChecks: input.orders.filter((o) => o.status === "open").length,

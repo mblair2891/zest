@@ -38,6 +38,7 @@ import { cloneTipPooling, DEFAULT_TIP_POOLING } from "@/lib/pos/tip-pooling";
 import { closeoutNetsForPeriod } from "@/lib/pos/closeout";
 import { TipPoolingSettings } from "./TipPoolingSettings";
 import { StaffingRecsSettings } from "./StaffingRecsSettings";
+import { LaborBasisSettings } from "./LaborBasisSettings";
 import { useCashSessionStore } from "@/lib/pos/cash-session";
 import { hasCompletedCloseoutToday, useCloseoutStore } from "@/lib/pos/closeout-store";
 
@@ -440,6 +441,7 @@ export function LaborOpsView() {
               <Settings2 className="h-4 w-4" />
               Labor rules (location settings)
             </div>
+            <LaborBasisSettings write />
             <StaffingRecsSettings
               cfg={rules.staffingRecs}
               write

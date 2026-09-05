@@ -9,6 +9,12 @@ import {
 } from "@/lib/pos/cash-handling";
 import { parseTipPoolingSetting, type TipPoolingSetting } from "@/lib/pos/tip-pooling";
 import { parseStaffingRecs, type StaffingRecsConfig } from "@/lib/ops-ai/staffing";
+import {
+  parseAllocationPct,
+  parseCategoryIds,
+  parseRevenueBasis,
+  type RevenueBasis,
+} from "./revenue-basis";
 
 export type ClockWindowAction = "block" | "flag";
 export type ApprovalMode = "manual" | "auto_shift_end" | "auto_last_ticket";
@@ -63,6 +69,17 @@ export type EntityLaborRules = {
   /** inherit = use location cash-handling tipPooling */
   tipPooling: TipPoolingSetting;
   staffingRecs: StaffingRecsConfig;
+  /** Sales this labor % / SPLH / recs run against. */
+  revenueBasis: RevenueBasis;
+  /** When revenueBasis is custom_categories. */
+  revenueCategoryIds: string[];
+  /**
+   * Share of location shared venue costs (rent, utilities) in this entity’s labor $.
+   * Null = off. Do not dump the same cost into every entity.
+   */
+  sharedCostAllocationPct: number | null;
+  /** When true, include attributed tips in labor $. Default off. */
+  tipsInLabor: boolean;
 };
 
 export const DEFAULT_LABOR_RULES: EntityLaborRules = {
@@ -107,6 +124,10 @@ export const DEFAULT_LABOR_RULES: EntityLaborRules = {
   ccTipPayout: "inherit",
   tipPooling: "inherit",
   staffingRecs: parseStaffingRecs(undefined),
+  revenueBasis: "all_check",
+  revenueCategoryIds: [],
+  sharedCostAllocationPct: null,
+  tipsInLabor: false,
 };
 
 function int(raw: unknown, fallback: number, min = 0, max = 10_080): number {
@@ -205,6 +226,10 @@ export function parseLaborRules(raw: unknown): EntityLaborRules {
     ccTipPayout: parseCcTipPayoutSetting(o.ccTipPayout),
     tipPooling: parseTipPoolingSetting(o.tipPooling),
     staffingRecs: parseStaffingRecs(o.staffingRecs),
+    revenueBasis: parseRevenueBasis(o.revenueBasis),
+    revenueCategoryIds: parseCategoryIds(o.revenueCategoryIds),
+    sharedCostAllocationPct: parseAllocationPct(o.sharedCostAllocationPct),
+    tipsInLabor: bool(o.tipsInLabor, false),
   };
 }
 

@@ -24,9 +24,11 @@ import {
   computePayPeriod,
   evaluateClockIn,
   evaluateClockOut,
+  parseLaborMap,
   parseLaborRules,
   roundPunch,
   DEFAULT_LABOR_RULES,
+  type EntityLaborRules,
 } from "@/lib/labor/rules";
 
 const DEFAULT_LABOR: LaborSettings = DEFAULT_LABOR_RULES;
@@ -505,6 +507,7 @@ export function suggestDrinks(
 
 interface OpsState {
   labor: LaborSettings;
+  laborByEntity: Record<string, EntityLaborRules>;
   punches: TimePunch[];
   alerts: SupervisorAlert[];
   closeouts: DailyCloseout[];
@@ -522,6 +525,7 @@ interface OpsState {
   todayShifts: ScheduledShift[];
 
   updateLabor: (patch: Partial<LaborSettings>) => void;
+  setLaborForEntity: (entityId: string, patch: Partial<EntityLaborRules>) => void;
   recordTicketClosed: (employeeId: string, at?: number) => void;
   clockIn: (
     employeeId: string,
@@ -580,6 +584,7 @@ export const useOpsStore = create<OpsState>()(
   persist(
     (set, get) => ({
       labor: DEFAULT_LABOR,
+      laborByEntity: {},
       punches: [],
       alerts: [],
       closeouts: [],
@@ -597,6 +602,14 @@ export const useOpsStore = create<OpsState>()(
         const labor = parseLaborRules({ ...get().labor, ...patch });
         set({ labor });
         void import("@/lib/pos/persist-location-setup").then((m) => m.persistLaborRules());
+      },
+
+      setLaborForEntity: (entityId, patch) => {
+        const id = String(entityId || HOST_SCOPE);
+        const cur = parseLaborRules(get().laborByEntity[id] ?? get().labor);
+        const next = parseLaborRules({ ...cur, ...patch });
+        set({ laborByEntity: { ...get().laborByEntity, [id]: next } });
+        void import("@/lib/pos/persist-location-setup").then((m) => m.persistLaborMap());
       },
 
       recordTicketClosed: (employeeId, at = Date.now()) => {
@@ -1142,6 +1155,10 @@ export const useOpsStore = create<OpsState>()(
           ...current,
           ...p,
           labor: parseLaborRules({ ...current.labor, ...(p.labor ?? {}) }),
+          laborByEntity: parseLaborMap({
+            ...(current.laborByEntity ?? {}),
+            ...(p.laborByEntity ?? {}),
+          }),
         };
       },
     },
