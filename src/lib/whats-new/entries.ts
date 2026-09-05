@@ -6,6 +6,19 @@ import type { GuideUpdate } from "@/lib/guide/types";
  */
 export const WHATS_NEW_ENTRIES: GuideUpdate[] = [
   {
+    id: "upd_2026_10_46_crm_delete",
+    date: "2026-09-05",
+    title: "Delete a CRM or pipeline record",
+    summary:
+      "Platform admin can delete a lead, training venue, or live tenant from CRM and the pipeline. Factory reset stays the full wipe.",
+    body: "Each CRM row, account, and pipeline card has Delete. A lead confirms Delete lead {name} and removes that org, intake, and quotes. A training house needs a second confirm that the venue, entities, menus, and devices go with it — that org only, never Admin or other tenants. Live still requires typing the name. After delete you stay on the CRM or pipeline list. Shared venue has no host object to look up.",
+    roles: ["platform_admin"],
+    surfaces: ["platform"],
+    audience: "platform",
+    topicId: "platform-crm",
+    tags: ["crm", "pipeline", "delete", "admin"],
+  },
+  {
     id: "upd_2026_10_45_venue_slug_host",
     date: "2026-09-05",
     title: "Venue URL on onboard — {slug}.summex.app",

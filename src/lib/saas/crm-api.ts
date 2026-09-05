@@ -302,6 +302,30 @@ export const saasReportFn = createServerFn({ method: "GET" })
     return saasReport(context.userId);
   });
 
+export const previewCrmDeleteFn = createServerFn({ method: "POST" })
+  .middleware([tenantMiddleware])
+  .validator((d: { kind: string; id: string }) => ({
+    kind: d.kind === "pipeline" ? ("pipeline" as const) : ("crm" as const),
+    id: String(d.id ?? "").trim(),
+  }))
+  .handler(async ({ context, data }) => {
+    const { previewCrmDelete } = await import("./delete-org.server");
+    return previewCrmDelete(context.userId, data);
+  });
+
+export const deleteCrmOrPipelineFn = createServerFn({ method: "POST" })
+  .middleware([tenantMiddleware])
+  .validator((d: { kind: string; id: string; confirmName: string; extraConfirm?: boolean }) => ({
+    kind: d.kind === "pipeline" ? ("pipeline" as const) : ("crm" as const),
+    id: String(d.id ?? "").trim(),
+    confirmName: String(d.confirmName ?? "").trim(),
+    extraConfirm: Boolean(d.extraConfirm),
+  }))
+  .handler(async ({ context, data }) => {
+    const { deleteCrmOrPipeline } = await import("./delete-org.server");
+    return deleteCrmOrPipeline(context.userId, data);
+  });
+
 export const factoryResetStatusFn = createServerFn({ method: "GET" })
   .middleware([tenantMiddleware])
   .handler(async ({ context }) => {

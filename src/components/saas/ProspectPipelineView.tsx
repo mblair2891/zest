@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { Link } from "@tanstack/react-router";
 import { ArrowLeft } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
@@ -17,6 +17,8 @@ import {
 import { QuoteBuilder } from "./QuoteBuilder";
 import { statusLabel } from "@/lib/saas/pricing";
 import { GuideLearnLink } from "@/components/guide/GuideLearnLink";
+import { DeleteCrmRecordButton } from "@/components/platform/DeleteCrmRecordButton";
+import { classifyCrmDelete } from "@/lib/saas/delete-org";
 import type {
   ProspectDetail,
   ProspectListItem,
@@ -99,6 +101,9 @@ export function ProspectPipelineView() {
           Request → Sent → Accepted → Contracted → Onboarding → Live. No skipping.
         </p>
       </div>
+      {error && (
+        <p className="border-b border-danger/30 bg-danger/10 px-4 py-2 text-sm text-danger">{error}</p>
+      )}
 
       {rows.length === 0 ? (
         <div className="grid flex-1 place-items-center p-8 text-center">
@@ -131,7 +136,12 @@ export function ProspectPipelineView() {
                   <ul className="flex flex-1 flex-col gap-2">
                     {col.map((r) => (
                       <li key={r.id}>
-                        <PipelineCard row={r} onOpen={() => setOpenId(r.id)} />
+                        <PipelineCard
+                          row={r}
+                          onOpen={() => setOpenId(r.id)}
+                          onDeleted={load}
+                          onError={setError}
+                        />
                       </li>
                     ))}
                   </ul>
@@ -145,7 +155,17 @@ export function ProspectPipelineView() {
   );
 }
 
-function PipelineCard({ row, onOpen }: { row: ProspectListItem; onOpen: () => void }) {
+function PipelineCard({
+  row,
+  onOpen,
+  onDeleted,
+  onError,
+}: {
+  row: ProspectListItem;
+  onOpen: () => void;
+  onDeleted: () => void;
+  onError: (message: string) => void;
+}) {
   const nextLabel: Partial<Record<ProspectStatus, string>> = {
     prospect: row.quoteSent ? "Send quote" : "Create quote",
     quoted: "Record accept",
@@ -166,9 +186,11 @@ function PipelineCard({ row, onOpen }: { row: ProspectListItem; onOpen: () => vo
     .filter(Boolean)
     .join(" · ");
 
+  const name = row.legalName || row.dba || "Untitled";
+
   return (
-    <div className="flex h-[11rem] flex-col overflow-hidden rounded-xl border border-border bg-bg p-2.5 text-left">
-      <p className="truncate text-sm font-semibold leading-tight">{row.legalName || row.dba || "Untitled"}</p>
+    <div className="flex min-h-[11rem] flex-col overflow-hidden rounded-xl border border-border bg-bg p-2.5 text-left">
+      <p className="truncate text-sm font-semibold leading-tight">{name}</p>
       <p className="mt-1 text-xs tabular text-muted-foreground">{amount}</p>
       <Badge className="mt-1.5 w-fit" variant={BADGE[row.status] ?? "secondary"}>
         {statusLabel(row.status)}
@@ -183,6 +205,18 @@ function PipelineCard({ row, onOpen }: { row: ProspectListItem; onOpen: () => vo
             {action}
           </Button>
         )}
+        <DeleteCrmRecordButton
+          kind="pipeline"
+          id={row.id}
+          fallbackName={name}
+          fallbackClass={classifyCrmDelete({
+            prospectStatus: row.status,
+            orgId: row.orgId,
+            locationCount: row.locationCount,
+          })}
+          onDeleted={onDeleted}
+          onError={onError}
+        />
       </div>
     </div>
   );
@@ -315,6 +349,21 @@ function ProspectAccountPage({
             Open wizard
           </Link>
         )}
+        <DeleteCrmRecordButton
+          kind="pipeline"
+          id={detail.id}
+          fallbackName={a.company.legalName || a.company.dba || "Untitled"}
+          fallbackClass={classifyCrmDelete({
+            prospectStatus: detail.status,
+            orgId: detail.orgId,
+            locationCount: detail.liveChecklist.hasLocation ? 1 : 0,
+          })}
+          onDeleted={() => {
+            onClose();
+            onChanged();
+          }}
+          onError={setMsg}
+        />
       </div>
 
       <QuoteBuilder detail={detail} onChanged={() => { refresh(); onChanged(); }} />

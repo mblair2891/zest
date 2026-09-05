@@ -9,7 +9,7 @@ export const PLATFORM_CRM_TOPICS: GuideTopic[] = [
     summary: "Leads, accounts, opportunities, and a timeline — not POS guest CRM.",
     visibility: "platform",
     roles: ["platform_admin"],
-    keywords: ["crm", "lead", "account", "contact", "deal", "opportunity", "activity"],
+    keywords: ["crm", "lead", "account", "contact", "deal", "opportunity", "activity", "delete"],
     blocks: [
       why(
         "Sales and success need a house record before there is a tenant. CRM lives on the control plane. Guest loyalty is a different product.",
@@ -20,6 +20,7 @@ export const PLATFORM_CRM_TOPICS: GuideTopic[] = [
         "Opportunities carry monthly amount, plan, probability, and close date.",
         "Activities are notes, calls, emails, tasks, and stage changes. Tasks have due dates.",
         "Get pricing / intake creates a prospect that syncs into CRM automatically.",
+        "Platform admin can Delete a CRM or pipeline record (lead confirm; extra confirm for a training venue; type-the-name for live). Factory reset stays the full wipe + Admin reseed.",
       ),
       steps(
         "Platform → CRM. Add lead, or wait for intake to appear.",

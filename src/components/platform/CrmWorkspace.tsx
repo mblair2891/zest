@@ -26,6 +26,8 @@ import {
   type CrmActivity,
 } from "@/lib/saas/crm-types";
 import { formatCurrency, formatDateTime } from "@/lib/utils";
+import { DeleteCrmRecordButton } from "./DeleteCrmRecordButton";
+import { classifyCrmDelete } from "@/lib/saas/delete-org";
 
 const STAGE_BADGE: Record<AccountStage, "secondary" | "info" | "warn" | "success" | "danger"> = {
   lead: "secondary",
@@ -157,20 +159,39 @@ export function CrmWorkspace({ onOpenPipeline }: { onOpenPipeline?: () => void }
           )}
           {rows?.map((a) => (
             <li key={a.id}>
-              <button
-                type="button"
-                onClick={() => setOpenId(a.id)}
+              <div
                 className={`flex w-full flex-col items-start gap-1 border-b border-border px-4 py-3 text-left hover:bg-surface-2 ${openId === a.id ? "bg-surface-2" : ""}`}
               >
-                <span className="flex w-full items-center justify-between gap-2">
-                  <span className="font-medium">{a.name}</span>
-                  <Badge variant={STAGE_BADGE[a.stage]}>{STAGE_LABEL[a.stage]}</Badge>
-                </span>
-                <span className="text-xs text-muted-foreground">
-                  {a.source} · {a.contactCount} contacts
-                  {a.orgName ? ` · ${a.orgName}` : ""}
-                </span>
-              </button>
+                <button
+                  type="button"
+                  onClick={() => setOpenId(a.id)}
+                  className="flex w-full flex-col items-start gap-1 text-left"
+                >
+                  <span className="flex w-full items-center justify-between gap-2">
+                    <span className="font-medium">{a.name}</span>
+                    <Badge variant={STAGE_BADGE[a.stage]}>{STAGE_LABEL[a.stage]}</Badge>
+                  </span>
+                  <span className="text-xs text-muted-foreground">
+                    {a.source} · {a.contactCount} contacts
+                    {a.orgName ? ` · ${a.orgName}` : ""}
+                  </span>
+                </button>
+                <DeleteCrmRecordButton
+                  kind="crm"
+                  id={a.id}
+                  fallbackName={a.name}
+                  fallbackClass={classifyCrmDelete({
+                    crmStage: a.stage,
+                    orgId: a.orgId,
+                    locationCount: a.orgId ? 1 : 0,
+                  })}
+                  onDeleted={() => {
+                    if (openId === a.id) setOpenId(null);
+                    load();
+                  }}
+                  onError={setError}
+                />
+              </div>
             </li>
           ))}
         </ul>
@@ -179,6 +200,10 @@ export function CrmWorkspace({ onOpenPipeline }: { onOpenPipeline?: () => void }
             <AccountDetail
               id={openId}
               onChanged={load}
+              onDeleted={() => {
+                setOpenId(null);
+                load();
+              }}
               onError={setError}
               onOpenPipeline={onOpenPipeline}
             />
@@ -194,11 +219,13 @@ export function CrmWorkspace({ onOpenPipeline }: { onOpenPipeline?: () => void }
 function AccountDetail({
   id,
   onChanged,
+  onDeleted,
   onError,
   onOpenPipeline,
 }: {
   id: string;
   onChanged: () => void;
+  onDeleted: () => void;
   onError: (m: string | null) => void;
   onOpenPipeline?: () => void;
 }) {
@@ -273,6 +300,18 @@ function AccountDetail({
         >
           Start onboarding
         </Button>
+        <DeleteCrmRecordButton
+          kind="crm"
+          id={a.id}
+          fallbackName={a.name}
+          fallbackClass={classifyCrmDelete({
+            crmStage: a.stage,
+            orgId: a.orgId,
+            locationCount: a.orgId ? 1 : 0,
+          })}
+          onDeleted={onDeleted}
+          onError={onError}
+        />
         <Button
           size="sm"
           variant="outline"

@@ -3,7 +3,7 @@
 **Powered by Quantum Reach**
 
 White paper · October 2026  
-**Revision · 5 Sep 2026** — Venue slug subdomains on onboard. Aligns with Operators Guide v2026.10.45.
+**Revision · 5 Sep 2026** — Venue slug subdomains on onboard. Aligns with Operators Guide v2026.10.46.
 
 summex.app  
 Guest cards: **Quantum Payments** only
