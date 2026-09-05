@@ -1,6 +1,7 @@
 import { Component, type ErrorInfo, type ReactNode } from "react";
 import { Button } from "@/components/ui/button";
 import { SummexMark } from "@/components/brand/SummexMark";
+import { isProspectDemo } from "@/lib/demo/session";
 
 interface Props {
   children: ReactNode;
@@ -8,6 +9,15 @@ interface Props {
 
 interface State {
   error: Error | null;
+}
+
+function isRealTenant(): boolean {
+  try {
+    if (isProspectDemo()) return false;
+  } catch {
+    /* ignore */
+  }
+  return true;
 }
 
 /** Catches render crashes (incl. max update depth) and offers a clean recovery. */
@@ -22,7 +32,15 @@ export class PosErrorBoundary extends Component<Props, State> {
     console.error("[Summex] render error", error, info.componentStack);
   }
 
-  private clearAndReload = () => {
+  private reload = () => {
+    window.location.reload();
+  };
+
+  private clearDemoAndReload = () => {
+    if (isRealTenant()) {
+      this.reload();
+      return;
+    }
     try {
       const keys: string[] = [];
       for (let i = 0; i < localStorage.length; i++) {
@@ -40,6 +58,7 @@ export class PosErrorBoundary extends Component<Props, State> {
 
   render() {
     if (this.state.error) {
+      const real = isRealTenant();
       return (
         <div className="flex min-h-[100dvh] flex-col items-center justify-center gap-4 bg-bg px-6 pt-[var(--grok-banner-h,0px)] text-center">
           <SummexMark className="h-10 w-10" />
@@ -47,17 +66,20 @@ export class PosErrorBoundary extends Component<Props, State> {
             Summex hit a snag
           </h1>
           <p className="max-w-md text-sm text-muted-foreground">
-            Something went wrong loading the console. Clearing local demo data
-            and reloading usually fixes it.
+            {real
+              ? "Something went wrong loading this location. Reload to continue. This does not erase the house."
+              : "Something went wrong loading the console. Reloading usually fixes it."}
           </p>
           <p className="max-w-lg break-all font-mono text-[11px] text-danger">
             {this.state.error.message}
           </p>
           <div className="flex flex-wrap justify-center gap-2">
-            <Button onClick={this.clearAndReload}>Reset demo data & reload</Button>
-            <Button variant="outline" onClick={() => window.location.reload()}>
-              Reload only
-            </Button>
+            <Button onClick={this.reload}>Reload</Button>
+            {!real && (
+              <Button variant="outline" onClick={this.clearDemoAndReload}>
+                Reset demo data & reload
+              </Button>
+            )}
           </div>
         </div>
       );

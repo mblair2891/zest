@@ -255,15 +255,16 @@ export function AppShell() {
   const setPackagePreview = useDevPreviewStore((s) => s.setPackagePreview);
 
   const packageLocationId =
-    saasActiveId || venue?.locationId || saasLocations[0]?.id || "";
+    tenantLocationId || saasActiveId || venue?.locationId || saasLocations[0]?.id || "";
   const enabledPackages =
     saasLocations.find((l) => l.id === packageLocationId)?.enabledPackages ??
     [];
 
-  const pkgOk = (v: PosView) =>
-    isProspectDemo()
-      ? true
-      : allowsView(v, enabledPackages, isDevDemoClient() ? packagePreview : "location");
+  const pkgOk = (v: PosView) => {
+    if (isProspectDemo()) return true;
+    if (!enabledPackages.length) return true;
+    return allowsView(v, enabledPackages, isDevDemoClient() ? packagePreview : "location");
+  };
 
   const viewOk = (v: PosView) => {
     const ent = venueById(activeEntityId);
@@ -326,32 +327,32 @@ export function AppShell() {
 
   const urlStation = readStationDeviceRole();
 
+  const pickStableView = (current: PosView): PosView => {
+    const roleOk = emp ? canAccessViewForEmployee(emp, current) : true;
+    const packagesOk = pkgOk(current);
+    const entityOk = viewOk(current);
+    if (roleOk && packagesOk && entityOk) return current;
+    const home = emp ? homeViewForEmployee(emp) : homeViewForRole(role);
+    if (
+      viewOk(home) &&
+      pkgOk(home) &&
+      (emp ? canAccessViewForEmployee(emp, home) : canAccessView(role, home))
+    ) {
+      return home;
+    }
+    const first = NAV.find(
+      (n) => viewOk(n.id) && canAccessView(role, n.id) && pkgOk(n.id),
+    );
+    return first?.id ?? current;
+  };
+
   useEffect(() => {
     if (urlStation) return;
-    const roleOk = emp ? canAccessViewForEmployee(emp, view) : false;
-    const packagesOk = pkgOk(view);
-    const entityOk = viewOk(view);
-    if (!roleOk || !packagesOk || !entityOk) {
-      const home = emp ? homeViewForEmployee(emp) : homeViewForRole(role);
-      if (
-        viewOk(home) &&
-        pkgOk(home) &&
-        (emp ? canAccessViewForEmployee(emp, home) : canAccessView(role, home))
-      ) {
-        setView(home);
-      } else {
-        const first = NAV.find(
-          (n) =>
-            viewOk(n.id) &&
-            canAccessView(role, n.id) &&
-            pkgOk(n.id),
-        );
-        if (first) setView(first.id);
-      }
-    }
+    if (!emp) return;
+    const next = pickStableView(view);
+    if (next !== view) setView(next);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [role, view, setView, activeEntityId, packageLocationId, packagePreview, enabledPackages.join(",")]);
-
+  }, [role, view, emp?.id, activeEntityId, packageLocationId, packagePreview, enabledPackages.join(",")]);
 
   useEffect(() => {
     useStationSessionStore.getState().ensureLocation(tenantLocationId || "loc");
@@ -375,8 +376,11 @@ export function AppShell() {
       kind = allowed[0]!;
       useStationSessionStore.getState().setAssignment({ kind });
     }
+    const stationViews: PosView[] = ["floor", "order", "kitchen", "bar", "waitlist"];
+    if (view === "hq" || !stationViews.includes(view)) return;
     applySessionModeView(kind, (v) => setView(v));
-  }, [emp?.id, emp?.role, setView]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [emp?.id, emp?.role]);
 
   useEffect(() => {
     const id = window.setInterval(() => tick(), 1000);
@@ -400,11 +404,7 @@ export function AppShell() {
       : demoDevice === "expo"
         ? "kitchen"
         : "kitchen"
-    : viewOk(view) && canAccessView(role, view) && pkgOk(view)
-      ? view
-      : emp
-        ? homeViewForEmployee(emp)
-        : homeViewForRole(role);
+    : pickStableView(view);
 
   const shellPad = isProspectDemo()
     ? "pt-[calc(var(--grok-banner-h,0px)+3.25rem)]"

@@ -121,7 +121,19 @@ export function StationSwitcherDialog({
   const emp = usePosStore((s) => s.employees.find((e) => e.id === s.currentEmployeeId));
   const vendors = usePosStore((s) => s.vendors);
   const hostName = usePosStore((s) => s.settings.name);
-  const hall = Boolean(usePosStore((s) => s.settings.hostMultiOperator || s.settings.multiTenantHallMode));
+  const hall = Boolean(
+    usePosStore(
+      (s) =>
+        s.settings.hostMultiOperator ||
+        s.settings.multiTenantHallMode ||
+        s.settings.peerVenue ||
+        s.settings.operatingModel === "peer_venue" ||
+        s.settings.operatingModel === "host_operators",
+    ),
+  );
+  const peerVenue = Boolean(
+    usePosStore((s) => s.settings.peerVenue || s.settings.operatingModel === "peer_venue"),
+  );
   const assignment = useStationSessionStore((s) => s.assignment);
   const paneA = useStationSessionStore((s) => s.paneA);
   const paneB = useStationSessionStore((s) => s.paneB);
@@ -140,8 +152,8 @@ export function StationSwitcherDialog({
   const current = pane === "a" ? paneA : pane === "b" ? paneB : assignment;
   const manager = canChangeDevice(emp ?? null);
   const entities = useMemo(
-    () => entitiesAllowedForEmployee(emp ?? null, vendors, hostName),
-    [emp, vendors, hostName],
+    () => entitiesAllowedForEmployee(emp ?? null, vendors, hostName, { peerVenue }),
+    [emp, vendors, hostName, peerVenue],
   );
   const showEntities = hall && entities.length > 1;
 

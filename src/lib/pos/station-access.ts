@@ -64,17 +64,19 @@ export function entitiesAllowedForEmployee(
   emp: Employee | null | undefined,
   vendors: Vendor[],
   hostName: string,
+  opts?: { peerVenue?: boolean },
 ): StationEntityOption[] {
-  const host: StationEntityOption = { id: HOST_SCOPE, name: hostName || "Host" };
+  const host: StationEntityOption = { id: HOST_SCOPE, name: hostName || "Venue" };
   const ops = vendors.filter((v) => v.active).map((v) => ({ id: v.id, name: v.name }));
+  const withHost = opts?.peerVenue ? ops : [host, ...ops];
   if (!emp || emp.role === "owner" || emp.role === "manager" || emp.role === "host") {
-    return [host, ...ops];
+    return withHost.length ? withHost : ops;
   }
   if (emp.operatorId) {
     const mine = ops.filter((o) => o.id === emp.operatorId);
-    return mine.length ? mine : [host, ...ops];
+    return mine.length ? mine : withHost;
   }
-  return [host, ...ops];
+  return withHost.length ? withHost : ops;
 }
 
 export function stationKindLabel(kind: SessionModeId): string {

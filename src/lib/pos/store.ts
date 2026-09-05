@@ -992,7 +992,10 @@ const usePosStoreRaw = create()(persist((set, get) => ({
 			})
 		});
 	},
-	setView: (v) => set({ view: v }),
+	setView: (v) => {
+		if (get().view === v) return;
+		set({ view: v });
+	},
 	setCategory: (id) => set({ selectedCategoryId: id ?? null }),
 	setSelectedLine: (id) => set({ selectedLineId: id }),
 	setActiveSeat: (n) => set({ activeSeat: n }),
@@ -3976,6 +3979,16 @@ const usePosStoreRaw = create()(persist((set, get) => ({
 	},
 	loginAsOwner: (name: string) => {
 		const existing = get().employees.find((e) => e.role === "owner" && e.active);
+		if (existing && get().currentEmployeeId === existing.id && get().sessionKind === "backoffice") {
+			if (name.trim() && existing.name !== name.trim()) {
+				set({
+					employees: get().employees.map((e) =>
+						e.id === existing.id ? { ...e, name: name.trim() } : e,
+					),
+				});
+			}
+			return { ok: true };
+		}
 		const owner = existing ?? {
 			id: "emp_owner",
 			name: name.trim() || "Owner",
@@ -3997,7 +4010,7 @@ const usePosStoreRaw = create()(persist((set, get) => ({
 		set({
 			employees,
 			currentEmployeeId: owner.id,
-			view: "floor",
+			view: get().view && get().view !== "floor" ? get().view : "hq",
 			activeOrderId: null,
 			activeTableId: null,
 			sessionKind: "backoffice",

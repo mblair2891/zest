@@ -69,9 +69,18 @@ export function RoleHomeDashboard() {
   const vendors = usePosStore((s) => s.vendors);
   const periods = usePosStore((s) => s.settlementPeriods);
   const entityId = usePosStore((s) => s.activeEntityId) as VenueEntityId | undefined;
+  const locationId = usePosStore((s) => s.tenantLocationId);
   const venue = venueById(entityId);
   const role: EmployeeRole = emp?.role ?? "server";
-  const hostMulti = Boolean(settings.hostMultiOperator || entityId === "food_hall");
+  const sharedVenue = Boolean(
+    settings.peerVenue ||
+      settings.operatingModel === "peer_venue" ||
+      settings.operatingModel === "host_operators" ||
+      settings.hostMultiOperator ||
+      settings.multiTenantHallMode ||
+      entityId === "food_hall",
+  );
+  const peerVenue = Boolean(settings.peerVenue || settings.operatingModel === "peer_venue");
 
   const openChecks = orders.filter((o) => o.status === "open");
   const mine = openChecks.filter((o) => o.serverId === emp?.id);
@@ -95,7 +104,9 @@ export function RoleHomeDashboard() {
   }, [periods, operatorId]);
 
   const typeLabel = entityId ? VENUE_TYPE_LABEL[entityId] : venue?.shortName ?? "House";
-  const openCostEx = useCostStore((s) => s.exceptions.filter((e) => e.status === "open").length);
+  const openCostEx = useCostStore(
+    (s) => (s.exceptions ?? []).filter((e) => e.status === "open").length,
+  );
 
   return (
     <div data-demo="home" className="flex h-full flex-col">
@@ -140,15 +151,15 @@ export function RoleHomeDashboard() {
                 <Jump id="settings" label="Location settings" icon={Settings} />
               )}
               <Jump id="reports" label="Reports & AI" icon={BarChart3} />
-              {hostMulti && <Jump id="settlement" label="Settlement" icon={Landmark} />}
+              {sharedVenue && <Jump id="settlement" label="Settlement" icon={Landmark} />}
             </div>
             <div className="rounded-2xl border border-border bg-surface p-4">
-              <AccessPointsCard venueType={entityId} />
+              <AccessPointsCard venueType={entityId} locationId={locationId || undefined} />
             </div>
-            {hostMulti && vendors.length > 0 && (
+            {sharedVenue && vendors.length > 0 && (
               <div className="rounded-2xl border border-border bg-surface p-4" data-demo="host-entities">
                 <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                  Operators at this host
+                  {peerVenue ? "Operators in this venue" : "Operators at this host"}
                 </p>
                 <ul className="space-y-1 text-sm">
                   {vendors.map((v) => (
@@ -264,7 +275,10 @@ export function RoleHomeDashboard() {
             </div>
             <p className="text-xs text-muted-foreground">
               Full control of {myVendor?.name ?? "your"} menu, tickets, and reports. Peer menus
-              are view-only unless the host grants edit. Payouts stay host-managed.
+              are view-only unless granted.{" "}
+              {peerVenue
+                ? "Each operator is paid on their own merchant."
+                : "Payouts stay host-managed."}
             </p>
           </>
         )}
@@ -278,7 +292,7 @@ export function RoleHomeDashboard() {
             <div className="flex flex-wrap gap-2">
               <Jump id="reports" label="Reports" icon={BarChart3} />
               <Jump id="ledger" label="Ledger" icon={Landmark} />
-              {hostMulti && <Jump id="settlement" label="Settlement" icon={Landmark} />}
+              {sharedVenue && <Jump id="settlement" label="Settlement" icon={Landmark} />}
             </div>
           </>
         )}

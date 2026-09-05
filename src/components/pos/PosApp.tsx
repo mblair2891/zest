@@ -522,7 +522,7 @@ function PosAppInner({ entityId }: { entityId?: string }) {
     isPending,
     entityId,
     openTenantLocation,
-    user,
+    user?.id,
   ]);
 
   if (!ready) {
