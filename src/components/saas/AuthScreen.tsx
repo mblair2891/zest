@@ -3,6 +3,7 @@ import { Link, useNavigate } from "@tanstack/react-router";
 import { authClient } from "@/lib/auth/client";
 import { getPlatformFlags } from "@/lib/auth/platform-admin";
 import { navigateAfterPasswordSignIn } from "@/lib/auth/post-login-navigate";
+import { getSessionContextFn } from "@/lib/saas/api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { SummexBrandBlock } from "@/components/brand/SummexMark";
@@ -57,10 +58,19 @@ export function AuthScreen({
       flagsFailed = true;
     }
     const nextRaw = new URLSearchParams(window.location.search).get("next");
+    let session = null;
+    try {
+      session = await getSessionContextFn();
+    } catch {
+      session = signedInAsAdmin
+        ? { isPlatformAdmin: true, orgs: [], locations: [], active: null }
+        : null;
+    }
     try {
       await navigateAfterPasswordSignIn(navigate, {
         mustChangePassword: mustChange || (signedInAsAdmin && flagsFailed),
         nextRaw,
+        session,
       });
     } catch {
       await navigate({ to: "/dashboard" });
@@ -161,7 +171,7 @@ export function AuthScreen({
             ? "Please wait…"
             : mode === "signup"
               ? "Create account"
-              : "Sign in"}
+              : "Log in"}
         </Button>
       </form>
 
@@ -176,7 +186,7 @@ export function AuthScreen({
           <>
             Already have an account?{" "}
             <Link to="/login" className="text-link underline-offset-2 hover:underline">
-              Sign in
+              Log in
             </Link>
           </>
         ) : (

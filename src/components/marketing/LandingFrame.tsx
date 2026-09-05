@@ -1,24 +1,17 @@
-import { useEffect, useState, type ReactNode } from "react";
+import type { ReactNode } from "react";
 import { Link } from "@tanstack/react-router";
-import { useCurrentUserState } from "@/lib/auth/use-current-user";
+import { MarketingAuthCtas } from "@/components/marketing/AuthCtas";
 import { SummexMark, SummexWordmark } from "@/components/brand/SummexMark";
 import { POWERED_BY, PRODUCT_NAME, PRODUCT_TAGLINE } from "@/lib/platform/brand";
 import { cn } from "@/lib/utils";
 
 const NAV = [
-  { to: "/features" as const, label: "Product" },
-  { to: "/pricing" as const, label: "Pricing" },
-  { to: "/get-pricing" as const, label: "Get pricing" },
-  { to: "/guide" as const, label: "Operators Guide" },
-  { to: "/whitepaper" as const, label: "White paper" },
+  { to: "/get-pricing" as const, label: "Get a price" },
+  { to: "/guide" as const, label: "Guide" },
+  { to: "/demo" as const, label: "Demo" },
 ];
 
 export function LandingFrame({ children }: { children: ReactNode }) {
-  const { user, isPending } = useCurrentUserState();
-  const [mounted, setMounted] = useState(false);
-  useEffect(() => setMounted(true), []);
-  const authReady = mounted && !isPending;
-
   return (
     <div className="mkt mkt-ambient relative min-h-[100dvh] overflow-x-hidden pt-[var(--grok-banner-h,0px)] text-foreground">
       <div className="mkt-sheen" aria-hidden />
@@ -40,33 +33,7 @@ export function LandingFrame({ children }: { children: ReactNode }) {
               </Link>
             ))}
           </nav>
-          <div className="ml-auto flex items-center gap-2">
-            {!authReady ? (
-              <div className="h-9 w-24 animate-pulse rounded-sm bg-surface-2" />
-            ) : user ? (
-              <Link
-                to="/dashboard"
-                className="inline-flex h-10 items-center rounded-sm bg-primary px-4 text-xs font-semibold tracking-widest text-primary-foreground"
-              >
-                Open workspace
-              </Link>
-            ) : (
-              <>
-                <Link
-                  to="/login"
-                  className="hidden h-10 items-center px-3 text-xs tracking-widest text-muted-foreground uppercase transition-colors hover:text-champagne sm:inline-flex"
-                >
-                  Sign in
-                </Link>
-                <Link
-                  to="/get-pricing"
-                  className="inline-flex h-10 items-center rounded-sm bg-primary px-4 text-xs font-semibold tracking-widest text-primary-foreground uppercase"
-                >
-                  Get pricing
-                </Link>
-              </>
-            )}
-          </div>
+          <MarketingAuthCtas />
         </div>
         <nav className="flex gap-4 overflow-x-auto border-t border-border px-4 py-3 text-xs tracking-widest text-muted-foreground uppercase sm:hidden">
           {NAV.map((n) => (
@@ -74,6 +41,9 @@ export function LandingFrame({ children }: { children: ReactNode }) {
               {n.label}
             </Link>
           ))}
+          <Link to="/login" className="shrink-0 hover:text-champagne">
+            Log in
+          </Link>
         </nav>
       </header>
       <div className="relative z-10">{children}</div>
@@ -88,16 +58,16 @@ export function LandingFrame({ children }: { children: ReactNode }) {
           </div>
           <div className="flex flex-wrap gap-x-6 gap-y-2 text-xs text-muted-foreground">
             <Link to="/get-pricing" className="hover:text-champagne">
-              Get pricing
+              Get a price
+            </Link>
+            <Link to="/demo" className="hover:text-champagne">
+              Demo
             </Link>
             <Link to="/login" className="hover:text-champagne">
-              Sign in
+              Log in
             </Link>
             <Link to="/guide" className="hover:text-champagne">
-              Operators Guide
-            </Link>
-            <Link to="/pricing" className="hover:text-champagne">
-              Pricing
+              Guide
             </Link>
             <Link to="/whitepaper" className="hover:text-champagne">
               White paper

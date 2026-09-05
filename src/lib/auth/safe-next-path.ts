@@ -12,14 +12,10 @@ export const POST_LOGIN_STATIC = [
   "/guide",
   "/apps",
   "/app",
-  "/pricing",
-  "/features",
-  "/whitepaper",
   "/kiosk",
   "/online",
   "/reserve",
-  "/demo",
-  "/demo/tour/full",
+  "/station",
 ] as const;
 
 export type PostLoginStatic = (typeof POST_LOGIN_STATIC)[number];
@@ -41,6 +37,8 @@ export function sanitizeNextPath(raw: string | null | undefined): string | null 
     : "";
   if (!pathOnly.startsWith("/") || pathOnly.includes("..")) return null;
 
+  if (pathOnly === "/") return null;
+
   if (STATIC_SET.has(pathOnly)) {
     if (
       pathOnly === "/get-pricing" &&
@@ -48,6 +46,17 @@ export function sanitizeNextPath(raw: string | null | undefined): string | null 
       /^t=[A-Za-z0-9_-]{8,128}$/.test(search)
     ) {
       return `${pathOnly}?${search}`;
+    }
+    if (pathOnly === "/station" && search) {
+      const qs = new URLSearchParams(search);
+      const station = qs.get("station");
+      const loc = qs.get("loc");
+      if (station || loc) {
+        const keep = new URLSearchParams();
+        if (station) keep.set("station", station);
+        if (loc) keep.set("loc", loc);
+        return `${pathOnly}?${keep.toString()}`;
+      }
     }
     return pathOnly;
   }
@@ -59,13 +68,17 @@ export function sanitizeNextPath(raw: string | null | undefined): string | null 
   const invite = pathOnly.match(/^\/invite\/([^/]+)$/);
   if (invite?.[1] && TOKEN.test(invite[1])) return pathOnly;
   const venue = pathOnly.match(/^\/venue\/([^/]+)$/);
-  if (venue?.[1] && VENUE_TYPE.test(venue[1])) return pathOnly;
+  if (venue?.[1] && VENUE_TYPE.test(venue[1])) {
+    const loc = search.match(/(?:^|&)loc=([A-Za-z0-9_-]{1,80})/)?.[1];
+    return loc ? `${pathOnly}?loc=${loc}` : pathOnly;
+  }
   const appVenue = pathOnly.match(/^\/app\/venue\/([^/]+)$/);
   if (appVenue?.[1] && VENUE_TYPE.test(appVenue[1])) return pathOnly;
-  const demo = pathOnly.match(/^\/demo\/([^/]+)$/);
-  if (demo?.[1] && (VENUE_TYPE.test(demo[1]) || demo[1] === "tour")) return pathOnly;
-  const demoTour = pathOnly.match(/^\/demo\/([^/]+)\/tour$/);
-  if (demoTour?.[1] && VENUE_TYPE.test(demoTour[1])) return pathOnly;
+  const stationRole = pathOnly.match(/^\/station\/([^/]+)$/);
+  if (stationRole?.[1] && /^(order|ods|host)$/.test(stationRole[1])) {
+    const loc = search.match(/(?:^|&)loc=([A-Za-z0-9_-]{1,80})/)?.[1];
+    return loc ? `${pathOnly}?loc=${loc}` : pathOnly;
+  }
 
   return null;
 }

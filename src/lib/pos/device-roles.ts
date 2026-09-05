@@ -60,6 +60,13 @@ export function parseStationQuery(raw: string | null | undefined): DeviceRole | 
   return STATION_ALIASES[key] ?? null;
 }
 
+/** `/station/order` · `/station/ods` · `/station/host` (and aliases). */
+export function parseStationPath(pathname: string | null | undefined): DeviceRole | null {
+  if (!pathname) return null;
+  const m = pathname.trim().match(/^\/station\/([^/]+)\/?$/);
+  return m ? parseStationQuery(m[1]) : null;
+}
+
 export function sessionModeForDeviceRole(role: DeviceRole): SessionModeId {
   return SESSION_FOR_ROLE[role];
 }
@@ -142,6 +149,8 @@ export {
 export function readStationDeviceRole(): DeviceRole | null {
   if (typeof window === "undefined") return null;
   try {
+    const fromPath = parseStationPath(window.location.pathname);
+    if (fromPath) return fromPath;
     const fromQuery = parseStationQuery(new URLSearchParams(window.location.search).get("station"));
     if (fromQuery) return fromQuery;
     return readStationPair()?.station ?? null;

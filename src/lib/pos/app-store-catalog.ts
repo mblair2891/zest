@@ -68,7 +68,7 @@ export const SUMMEX_STORE_APPS: StoreApp[] = [
     description:
       "Floor map, seat guests, table status, and to-go order entry on the host stand.",
     category: "front_of_house",
-    href: "/station?station=host",
+    href: "/station/host",
     pinHint: "1111",
     roleHint: "Server",
     rating: 4.9,
@@ -89,7 +89,7 @@ export const SUMMEX_STORE_APPS: StoreApp[] = [
     description:
       "Order entry on handhelds and bar stations. Pay and gift when the PIN allows. Send to ODS.",
     category: "front_of_house",
-    href: "/station?station=order",
+    href: "/station/order",
     pinHint: "1111",
     roleHint: "Server",
     rating: 4.8,
@@ -109,7 +109,7 @@ export const SUMMEX_STORE_APPS: StoreApp[] = [
     description:
       "Kitchen order display only: Start and Bump. No menu, no pay. Built for 27″ Android and tablets.",
     category: "production",
-    href: "/station?station=ods",
+    href: "/station/ods",
     pinHint: "5555",
     roleHint: "Kitchen",
     rating: 4.9,
@@ -130,7 +130,7 @@ export const SUMMEX_STORE_APPS: StoreApp[] = [
     description:
       "Bar rail order entry — send tickets, pay and gift when the PIN allows. Same Order role as handhelds.",
     category: "production",
-    href: "/station?station=order",
+    href: "/station/order",
     pinHint: "3333",
     roleHint: "Bartender",
     rating: 4.7,
@@ -149,7 +149,7 @@ export const SUMMEX_STORE_APPS: StoreApp[] = [
     description:
       "Host stand: floor map, seat parties, table status, and to-go order entry.",
     category: "front_of_house",
-    href: "/station?station=host",
+    href: "/station/host",
     pinHint: "4444",
     roleHint: "Host",
     rating: 4.6,

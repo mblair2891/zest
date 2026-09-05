@@ -371,7 +371,7 @@ export function staffGuestAccessPoints(opts?: {
   if (slug) {
     posHref = venuePosHref(slug);
     odsHref = venueAwareHref(
-      `/station?station=ods${opts?.locationId ? `&loc=${encodeURIComponent(opts.locationId)}` : ""}`,
+      `/station/ods${opts?.locationId ? `?loc=${encodeURIComponent(opts.locationId)}` : ""}`,
       slug,
     );
     kioskHref = venueAwareHref(`/kiosk${locQ}`, slug);
@@ -382,7 +382,7 @@ export function staffGuestAccessPoints(opts?: {
     {
       id: "marketing",
       label: "www · marketing & login",
-      hint: "Public site, Sign in, dashboard, onboarding",
+      hint: "Public site, Log in, Get a price, Guide — not the POS",
       href: absoluteMarketingHref("/login"),
       surface: "marketing",
     },

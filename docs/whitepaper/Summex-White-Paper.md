@@ -3,7 +3,7 @@
 **Powered by Quantum Reach**
 
 White paper · October 2026  
-**Revision · 5 Sep 2026** — Independent per-entity staff schedules. Aligns with Operators Guide v2026.10.49.
+**Revision · 5 Sep 2026** — Marketing home vs platform login. Aligns with Operators Guide v2026.10.50.
 
 summex.app  
 Guest cards: **Quantum Payments** only
@@ -45,7 +45,7 @@ Summex’s answer is one system for **service and money movement**.
 
 ## 3. What Summex is
 
-Summex is a **single application**. The public site is product, pricing, the Operators Guide, and Sign in — not a dashboard. Organization and location are chosen after a back-office session. Floor work is PIN on a primed station.
+Summex is a **single application**. The public site is Get a price, Guide, Demo, and Log in — not a dashboard, Open POS, or pipeline. A logged-in visitor still sees the sales home; they use Log in or Go to console. Organization and location are chosen after username/password at `/login` (no Google/X): Platform Admin lands on the control plane; a venue owner lands on that house. Floor work is PIN on `/?station=` or `/station/:role`. This paper does not document SaaS admin, CRM, or pipeline internals.
 
 | Layer | What it does |
 |---|---|

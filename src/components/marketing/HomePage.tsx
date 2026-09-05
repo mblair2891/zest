@@ -169,15 +169,18 @@ export function HomePage() {
               Powered by {POWERED_BY}
             </p>
             <div className="mkt-fade mkt-d2 mt-8 flex flex-wrap items-center gap-3">
-              <LandingCta to="/get-pricing">Get pricing</LandingCta>
+              <LandingCta to="/get-pricing">Get a price</LandingCta>
+              <LandingCta to="/demo" tone="ghost">
+                Demo
+              </LandingCta>
               <LandingCta to="/login" tone="ghost">
-                Sign in
+                Log in
               </LandingCta>
               <Link
                 to="/guide"
                 className="inline-flex h-12 items-center px-2 text-xs font-semibold tracking-widest text-champagne uppercase transition-colors hover:text-ivory"
               >
-                Operators Guide
+                Guide
               </Link>
             </div>
           </div>
@@ -307,7 +310,7 @@ export function HomePage() {
                 public rate card that pretends every room is the same.
               </p>
             </div>
-            <LandingCta to="/get-pricing">Start intake</LandingCta>
+            <LandingCta to="/get-pricing">Get a price</LandingCta>
           </div>
           <ul className="mt-14 grid gap-px bg-border md:grid-cols-3">
             {PACKAGES.map((p) => (
@@ -369,15 +372,15 @@ export function HomePage() {
             six-month integration.
           </p>
           <div className="mt-10 flex flex-wrap justify-center gap-3">
-            <LandingCta to="/get-pricing">Get pricing</LandingCta>
+            <LandingCta to="/get-pricing">Get a price</LandingCta>
             <LandingCta to="/login" tone="ghost">
-              Sign in
+              Log in
             </LandingCta>
             <Link
               to="/guide"
               className="inline-flex h-12 items-center px-2 text-xs font-semibold tracking-widest text-champagne uppercase transition-colors hover:text-ivory"
             >
-              Operators Guide
+              Guide
             </Link>
           </div>
         </section>

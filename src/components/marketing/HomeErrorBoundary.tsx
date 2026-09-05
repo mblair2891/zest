@@ -16,7 +16,7 @@ function HomeFallback({ error }: { error?: Error | null }) {
       </h1>
       <p className="max-w-md text-sm leading-relaxed" style={{ color: "#9a9488" }}>
         {error?.message
-          ? "The homepage hit a snag. Use Sign in, Get pricing, or the Operators Guide."
+          ? "The homepage hit a snag. Use Log in, Get a price, or the Guide."
           : "Something went wrong loading the homepage."}
       </p>
       <div className="flex flex-wrap items-center justify-center gap-3">
@@ -25,21 +25,21 @@ function HomeFallback({ error }: { error?: Error | null }) {
           className="inline-flex h-12 min-w-36 items-center justify-center rounded-sm px-6 text-xs font-semibold tracking-widest uppercase"
           style={{ background: "#f7f6f3", color: "#0a0a0a" }}
         >
-          Sign in
+          Log in
         </a>
         <a
           href="/get-pricing"
           className="inline-flex h-12 min-w-36 items-center justify-center rounded-sm border px-6 text-xs font-semibold tracking-widest uppercase"
           style={{ borderColor: "rgb(196 184 165 / 0.4)", color: "#f7f6f3" }}
         >
-          Get pricing
+          Get a price
         </a>
         <a
           href="/guide"
           className="inline-flex h-12 items-center px-2 text-xs font-semibold tracking-widest uppercase"
           style={{ color: "#c4b8a5" }}
         >
-          Operators Guide
+          Guide
         </a>
       </div>
     </main>

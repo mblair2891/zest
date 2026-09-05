@@ -6,9 +6,9 @@ Summex is a multi-tenant hospitality SaaS: restaurants, food halls, truck pods, 
 
 | Host (production) | Path (local / preview) | Surface |
 |---|---|---|
-| summex.app / www.summex.app | `/` | Marketing sales landing (hero, Sign in, Get pricing, Guide) — never POS |
-| summex.app/login | `/login` | Merchant login → dashboard |
-| summex.app/dashboard | `/dashboard` | Org + **location selector**, then control plane |
+| summex.app / www.summex.app | `/` | Marketing sales landing (Get a price, Guide, Demo, Log in) — never POS, dashboard, or pipeline |
+| summex.app/login | `/login` | Username/password only → Admin dashboard or venue owner home |
+| summex.app/dashboard | `/dashboard` | Platform Admin control plane (CRM / pipeline / tenants) |
 | app.summex.app | `/app` | Shared POS / admin application |
 | api.summex.app | `/api` | HTTP API (`/api/health`, `/api/auth/*`) |
 | sites.summex.app | `/sites/$slug` | Guest location sites (later: custom domains) |
@@ -21,9 +21,10 @@ Local preview is a single origin: hosts are simulated with those path prefixes. 
 
 | Surface | Route | Who |
 |---|---|---|
-| Marketing | `/`, `/pricing`, `/features`, `/blog`, `/get-pricing` | Public |
+| Marketing | `/`, `/pricing`, `/features`, `/blog`, `/get-pricing`, `/demo` | Public |
 | Quote | `/quote/$token` | Prospect (accept requires sign-in) |
-| Merchant login / dashboard | `/login`, `/signup`, `/dashboard` | Operators |
+| Merchant login / dashboard | `/login`, `/signup`, `/dashboard` | Operators (password only at `/login`) |
+| Staff station | `/?station=`, `/station`, `/station/:role` | PIN pad — not marketing `/` |
 | Control plane (legacy alias) | `/platform` → `/dashboard` | same |
 | Subscriber pipeline | `/pipeline` | Platform admin |
 | Onboarding | `/onboarding` resumes intake/quote/setup; `/setup/$token` is Stage B after contract |

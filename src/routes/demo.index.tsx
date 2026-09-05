@@ -1,6 +1,7 @@
-import { createFileRoute, Navigate } from "@tanstack/react-router";
+import { createFileRoute } from "@tanstack/react-router";
+import { DemoCatalogPage } from "@/components/demo/DemoCatalogPage";
 
 export const Route = createFileRoute("/demo/")({
   ssr: false,
-  component: () => <Navigate to="/get-pricing" />,
+  component: DemoCatalogPage,
 });

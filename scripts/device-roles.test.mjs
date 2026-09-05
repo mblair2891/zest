@@ -48,3 +48,16 @@ test("unknown and empty are rejected", () => {
   assert.equal(parseStationQuery("login"), null);
   assert.equal(parseStationQuery("hq"), null);
 });
+
+function parseStationPath(pathname) {
+  if (!pathname) return null;
+  const m = pathname.trim().match(/^\/station\/([^/]+)\/?$/);
+  return m ? parseStationQuery(m[1]) : null;
+}
+
+test("station path form /station/:role", () => {
+  assert.equal(parseStationPath("/station/order"), "order");
+  assert.equal(parseStationPath("/station/ods"), "ods");
+  assert.equal(parseStationPath("/station/host"), "host");
+  assert.equal(parseStationPath("/"), null);
+});

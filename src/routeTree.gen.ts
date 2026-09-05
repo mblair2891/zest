@@ -30,6 +30,7 @@ import { Route as PricingRouteImport } from './routes/pricing'
 import { Route as ReserveRouteImport } from './routes/reserve'
 import { Route as SignupRouteImport } from './routes/signup'
 import { Route as StationRouteImport } from './routes/station'
+import { Route as StationRoleRouteImport } from './routes/station.$role'
 import { Route as WhitepaperRouteImport } from './routes/whitepaper'
 import { Route as PrivacyRouteImport } from './routes/privacy'
 import { Route as ApiHealthRouteImport } from './routes/api/health'
@@ -159,6 +160,11 @@ const SignupRoute = SignupRouteImport.update({
 const StationRoute = StationRouteImport.update({
   id: '/station',
   path: '/station',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const StationRoleRoute = StationRoleRouteImport.update({
+  id: '/station/$role',
+  path: '/station/$role',
   getParentRoute: () => rootRouteImport,
 } as any)
 const WhitepaperRoute = WhitepaperRouteImport.update({
@@ -309,6 +315,7 @@ export interface FileRoutesByFullPath {
   '/reserve': typeof ReserveRoute
   '/signup': typeof SignupRoute
   '/station': typeof StationRoute
+  '/station/$role': typeof StationRoleRoute
   '/whitepaper': typeof WhitepaperRoute
   '/privacy': typeof PrivacyRoute
   '/api/health': typeof ApiHealthRoute
@@ -356,6 +363,7 @@ export interface FileRoutesByTo {
   '/reserve': typeof ReserveRoute
   '/signup': typeof SignupRoute
   '/station': typeof StationRoute
+  '/station/$role': typeof StationRoleRoute
   '/whitepaper': typeof WhitepaperRoute
   '/privacy': typeof PrivacyRoute
   '/api/health': typeof ApiHealthRoute
@@ -405,6 +413,7 @@ export interface FileRoutesById {
   '/reserve': typeof ReserveRoute
   '/signup': typeof SignupRoute
   '/station': typeof StationRoute
+  '/station/$role': typeof StationRoleRoute
   '/whitepaper': typeof WhitepaperRoute
   '/privacy': typeof PrivacyRoute
   '/api/health': typeof ApiHealthRoute
@@ -455,6 +464,7 @@ export interface FileRouteTypes {
     | '/reserve'
     | '/signup'
     | '/station'
+    | '/station/$role'
     | '/whitepaper'
     | '/privacy'
     | '/api/health'
@@ -502,6 +512,7 @@ export interface FileRouteTypes {
     | '/reserve'
     | '/signup'
     | '/station'
+    | '/station/$role'
     | '/whitepaper'
     | '/privacy'
     | '/api/health'
@@ -550,6 +561,7 @@ export interface FileRouteTypes {
     | '/reserve'
     | '/signup'
     | '/station'
+    | '/station/$role'
     | '/whitepaper'
     | '/privacy'
     | '/api/health'
@@ -598,6 +610,7 @@ export interface RootRouteChildren {
   ReserveRoute: typeof ReserveRoute
   SignupRoute: typeof SignupRoute
   StationRoute: typeof StationRoute
+  StationRoleRoute: typeof StationRoleRoute
   WhitepaperRoute: typeof WhitepaperRoute
   PrivacyRoute: typeof PrivacyRoute
   ApiHealthRoute: typeof ApiHealthRoute
@@ -766,6 +779,13 @@ declare module '@tanstack/react-router' {
       path: '/station'
       fullPath: '/station'
       preLoaderRoute: typeof StationRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/station/$role': {
+      id: '/station/$role'
+      path: '/station/$role'
+      fullPath: '/station/$role'
+      preLoaderRoute: typeof StationRoleRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/whitepaper': {
@@ -1025,6 +1045,7 @@ const rootRouteChildren: RootRouteChildren = {
   ReserveRoute: ReserveRoute,
   SignupRoute: SignupRoute,
   StationRoute: StationRoute,
+  StationRoleRoute: StationRoleRoute,
   WhitepaperRoute: WhitepaperRoute,
   PrivacyRoute: PrivacyRoute,
   ApiHealthRoute: ApiHealthRoute,

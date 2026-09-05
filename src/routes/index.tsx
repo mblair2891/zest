@@ -6,14 +6,27 @@ import { parseStationQuery } from "@/lib/pos/device-roles";
 import { venueSlugFromHost } from "@/lib/platform/venue-host";
 import { SessionGate } from "@/components/pos/SessionGate";
 import { VenueSlugApp } from "@/components/pos/VenueSlugApp";
+import { normalizeClaimCode } from "@/lib/pos/station-pair";
 
 export const Route = createFileRoute("/")({
   ssr: false,
   beforeLoad: ({ location }) => {
     const qs = (location.searchStr || "").replace(/^\?/, "");
-    const station = parseStationQuery(new URLSearchParams(qs).get("station"));
+    const params = new URLSearchParams(qs);
+    const station = parseStationQuery(params.get("station"));
     if (station) {
-      throw redirect({ to: "/station", search: { station }, replace: true });
+      const loc = params.get("loc") || undefined;
+      const pairRaw = params.get("pair");
+      const pair = pairRaw ? normalizeClaimCode(pairRaw) : undefined;
+      throw redirect({
+        to: "/station/$role",
+        params: { role: station },
+        search: {
+          ...(loc ? { loc } : {}),
+          ...(pair ? { pair } : {}),
+        },
+        replace: true,
+      });
     }
   },
   component: IndexPage,

@@ -32,14 +32,14 @@ export const GETTING_STARTED_TOPICS: GuideTopic[] = [
         "Operators Guide with table of contents on the left and an article pane on the right.",
       ),
       ul(
-        "Public site: Get pricing, Operators Guide, Sign in. No Dashboard until you are signed in. Guide is operations-only — not a SaaS user manual.",
+        "Public site: Get a price, Guide, Demo, Log in. No dashboard, Open POS, or pipeline on `/`. Guide is operations-only — not a SaaS user manual.",
         "Training week: the real POS with Quantum Payments sandbox. Live cards wait for an approved Quantum application and an enrolled reader.",
         "Floor PIN signs a person onto this station. Clock in / out is Labor. Server closeout is Cash — none of those are the same action.",
         "Examples in this guide use Host Venue, Operator A, Operator B — never a live customer name.",
-        "Revision · 3 Sep 2026 — Get-a-price interview is specific to what you typed.",
+        "Revision · 5 Sep 2026 — Marketing home vs platform login.",
       ),
       steps(
-        "Tap Guide or “?” in the header (POS and platform) — or open /guide from the marketing site (Operators Guide, not a SaaS user manual).",
+        "Tap Guide or “?” in the header (POS and platform) — or open /guide from the marketing site (operations only, not a SaaS user manual).",
         "Search, pick a role tab, and open a topic. Read Why it matters, then the numbered steps.",
         "Mark complete as you go. Continue where you left off resumes the last unfinished topic.",
       ),
@@ -131,15 +131,15 @@ export const GETTING_STARTED_TOPICS: GuideTopic[] = [
         "A shared tablet is not a laptop. Servers should not type a password between tables. Owners should not export hours from a four-digit code.",
       ),
       p(
-        "Two login modes. Back office (owners, managers, accountants, entity managers) uses email and password at Sign in. Working staff on a shared tablet, ODS, or host stand use a 4-digit PIN. PINs are hashed, scoped to the location (and entity on a host floor), and never appear on the marketing site.",
+        "Two login modes. Back office (owners, managers, accountants, entity managers) uses username or email and password at /login — no Google or X. Working staff on a shared tablet, ODS, or host stand use a 4-digit PIN. PINs are hashed, scoped to the location (and entity on a host floor), and never appear on the marketing site.",
       ),
       p(
         "Prime from the control plane, then PIN-only. Open the tablet once while signed in and online (Open POS). After that, cold start is the PIN pad — not /login. Printed receipts group lines by vendor; the guest still holds one check and one Quantum Payments tender.",
       ),
       steps(
-        "Back office: Sign in with work email and password. Open location settings, the host permission matrix, scheduling, hours export, menu.",
+        "Back office: Log in at /login with username or email and password. Admin lands on the platform dashboard. A venue owner lands on that house — never the sales home.",
         "Prime each station once from that signed-in session (internet required). Thereafter the device is PIN-only.",
-        "Floor: the station opens on the PIN pad (order / ODS / host) — not /login. Enter your 4-digit PIN. Switch user returns to the keypad without changing the device role.",
+        "Floor: the station opens on /?station= or /station/order (ods, host) — not the sales `/` and not /login. Enter your 4-digit PIN. Switch user returns to the keypad without changing the device role.",
         "Clock in / out from Labor (and Employees). The PIN pad does not punch you. Signing out of POS does not clock you out.",
         "Server closeout is Cash (expected drawer, Z). That is not clock-out and not PIN login.",
         "Opening Settings from a floor PIN prompts back-office re-auth (password).",
@@ -163,8 +163,8 @@ export const GETTING_STARTED_TOPICS: GuideTopic[] = [
         "Summex is one application with two working surfaces. Mixing them up is the most common new-user stall.",
       ),
       ul(
-        "Marketing (summex.app) — product, pricing, Get pricing, Operators Guide, Sign in. No Dashboard on the public home.",
-        "Account — /login, /signup. Sign-in is required before any control plane or POS location.",
+        "Marketing (summex.app) — Get a price, Guide, Demo, Log in. Logged-in visitors still see the sales home; they use Log in or Go to console. No dashboard, Open POS, pipeline, or tenant chrome on `/`.",
+        "Account — /login is username/password only (no Google/X). Admin → platform dashboard. Venue owner → that house. Never stay on `/`.",
         "POS — floor, order, ODS, cash, settlement, guests, after a location is open from a signed-in session.",
         "Operators Guide — public page at /guide (operations). Overlay inside the signed-in product. Exit on the public page returns to marketing home.",
       ),
@@ -225,7 +225,7 @@ export const GETTING_STARTED_TOPICS: GuideTopic[] = [
         "The Laundry peer venue skips that roster. Add users on the platform, then run the training loop (seat → order → Order Display → cash or sandbox card → bus).",
       ),
       warn(
-        "There are no public demo sites. The Laundry is a real training venue with no seeded logins. Marketing is Get pricing, Guide, Sign in.",
+        "There are no public demo sites. The Laundry is a real training venue with no seeded logins. Marketing is Get a price, Guide, Demo, Log in.",
       ),
       cta(
         "/get-pricing",

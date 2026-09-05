@@ -1,33 +1,44 @@
 import type { useNavigate } from "@tanstack/react-router";
-import type { VenueEntityId } from "@/lib/pos/types";
 import { DEFAULT_POST_LOGIN, sanitizeNextPath } from "./safe-next-path";
-
-const VENUE_IDS: readonly VenueEntityId[] = [
-  "restaurant",
-  "food_hall",
-  "truck_pod",
-  "ghost_kitchen",
-  "catering",
-  "bar_lounge",
-  "cafe",
-  "qsr",
-];
-
-function asVenueType(raw: string): VenueEntityId | null {
-  return (VENUE_IDS as readonly string[]).includes(raw)
-    ? (raw as VenueEntityId)
-    : null;
-}
+import {
+  asVenueType,
+  isMarketingStayPath,
+  postLoginDestination,
+  type PostLoginSession,
+} from "./post-login-dest";
+import { parseStationQuery } from "@/lib/pos/device-roles";
 
 type AppNavigate = ReturnType<typeof useNavigate>;
 
+async function navigateSessionDest(
+  navigate: AppNavigate,
+  session: PostLoginSession | null | undefined,
+): Promise<void> {
+  if (!session) {
+    await navigate({ to: "/dashboard" });
+    return;
+  }
+  const dest = postLoginDestination(session);
+  if (dest.to === "/venue/$type") {
+    await navigate({
+      to: "/venue/$type",
+      params: { type: dest.type },
+      search: { loc: dest.loc },
+    });
+    return;
+  }
+  await navigate({ to: dest.to });
+}
+
 /**
  * Post-login / post-auth navigation that only uses registered TanStack routes.
- * Unknown `?next=` values fall through to `/dashboard`. Never `window.location`.
+ * Unknown `?next=` values fall through to session dest (Admin dashboard or owner house).
+ * Never `window.location`. Never `/`.
  */
 export async function navigateToSanitizedPath(
   navigate: AppNavigate,
   raw: string | null | undefined,
+  session?: PostLoginSession | null,
 ): Promise<void> {
   const sanitized = sanitizeNextPath(raw);
   const path = sanitized?.split("?")[0] ?? null;
@@ -35,8 +46,8 @@ export async function navigateToSanitizedPath(
     ? sanitized.slice(sanitized.indexOf("?") + 1).split("#")[0]
     : "";
 
-  if (!path || path === "/platform" || path === DEFAULT_POST_LOGIN) {
-    await navigate({ to: "/dashboard" });
+  if (!path || path === "/platform" || path === DEFAULT_POST_LOGIN || isMarketingStayPath(path)) {
+    await navigateSessionDest(navigate, session);
     return;
   }
 
@@ -68,25 +79,26 @@ export async function navigateToSanitizedPath(
     case "/app":
       await navigate({ to: "/app" });
       return;
-    case "/pricing":
-      await navigate({ to: "/pricing" });
-      return;
-    case "/features":
-      await navigate({ to: "/features" });
-      return;
-    case "/whitepaper":
-      await navigate({ to: "/whitepaper" });
-      return;
     case "/kiosk":
       await navigate({ to: "/kiosk" });
       return;
     case "/online":
       await navigate({ to: "/online" });
       return;
-    case "/demo":
-    case "/demo/tour/full":
-      await navigate({ to: "/get-pricing" });
+    case "/station": {
+      const station = parseStationQuery(search.match(/(?:^|&)station=([^&]+)/)?.[1]);
+      const loc = search.match(/(?:^|&)loc=([^&]+)/)?.[1];
+      if (station) {
+        await navigate({
+          to: "/station/$role",
+          params: { role: station },
+          search: loc ? { loc: decodeURIComponent(loc) } : {},
+        });
+        return;
+      }
+      await navigate({ to: "/station" });
       return;
+    }
     default:
       break;
   }
@@ -109,11 +121,23 @@ export async function navigateToSanitizedPath(
   const venue = path.match(/^\/venue\/([^/]+)$/);
   const venueType = venue?.[1] ? asVenueType(venue[1]) : null;
   if (venueType) {
-    await navigate({ to: "/venue/$type", params: { type: venueType } });
+    const loc = search.match(/(?:^|&)loc=([^&]+)/)?.[1];
+    await navigate({
+      to: "/venue/$type",
+      params: { type: venueType },
+      search: loc ? { loc: decodeURIComponent(loc) } : {},
+    });
     return;
   }
-  if (path.startsWith("/demo")) {
-    await navigate({ to: "/get-pricing" });
+  const stationRole = path.match(/^\/station\/([^/]+)$/);
+  const role = stationRole?.[1] ? parseStationQuery(stationRole[1]) : null;
+  if (role) {
+    const loc = search.match(/(?:^|&)loc=([^&]+)/)?.[1];
+    await navigate({
+      to: "/station/$role",
+      params: { role },
+      search: loc ? { loc: decodeURIComponent(loc) } : {},
+    });
     return;
   }
   const appVenue = path.match(/^\/app\/venue\/([^/]+)$/);
@@ -123,16 +147,20 @@ export async function navigateToSanitizedPath(
     return;
   }
 
-  await navigate({ to: "/dashboard" });
+  await navigateSessionDest(navigate, session);
 }
 
 export async function navigateAfterPasswordSignIn(
   navigate: AppNavigate,
-  opts: { mustChangePassword: boolean; nextRaw?: string | null },
+  opts: {
+    mustChangePassword: boolean;
+    nextRaw?: string | null;
+    session?: PostLoginSession | null;
+  },
 ): Promise<void> {
   if (opts.mustChangePassword) {
     await navigate({ to: "/change-password" });
     return;
   }
-  await navigateToSanitizedPath(navigate, opts.nextRaw);
+  await navigateToSanitizedPath(navigate, opts.nextRaw, opts.session);
 }

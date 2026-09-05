@@ -6,6 +6,19 @@ import type { GuideUpdate } from "@/lib/guide/types";
  */
 export const WHATS_NEW_ENTRIES: GuideUpdate[] = [
   {
+    id: "upd_2026_10_50_marketing_login",
+    date: "2026-09-05",
+    title: "Sales home is not the console",
+    summary:
+      "summex.app is Get a price, Guide, Demo, Log in. After login: Admin → platform dashboard; owner → the house. Staff stay on /?station= or /station/order.",
+    body: "The public home never shows Open POS, pipeline, or tenant chrome — even if you are already signed in. Use Log in or Go to console. /login is username or email and password only (no Google or X). Floor tablets keep /?station= and /station/order (ods, host). The public Guide and white paper stay operations-only; SaaS admin topics stay in the signed-in overlay.",
+    roles: ["owner_manager", "host_operator", "platform_admin"],
+    surfaces: ["platform", "settings"],
+    audience: "all",
+    topicId: "navigation",
+    tags: ["login", "marketing", "station"],
+  },
+  {
     id: "upd_2026_10_49_entity_schedules",
     date: "2026-09-05",
     title: "Each entity schedules its own staff",

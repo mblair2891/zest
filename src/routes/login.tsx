@@ -1,8 +1,11 @@
 import { useEffect, useState } from "react";
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { AuthScreen, AuthShell } from "@/components/saas/AuthScreen";
 import { ensureAdminExists } from "@/lib/auth/platform-admin";
 import { sanitizeNextPath } from "@/lib/auth/safe-next-path";
+import { useCurrentUserState } from "@/lib/auth/use-current-user";
+import { getSessionContextFn } from "@/lib/saas/api";
+import { navigateAfterPasswordSignIn } from "@/lib/auth/post-login-navigate";
 
 function parsePasswordUpdated(s: Record<string, unknown>): boolean {
   return s.passwordUpdated === true || s.passwordUpdated === "1" || s.passwordUpdated === "true";
@@ -25,11 +28,14 @@ export const Route = createFileRoute("/login")({
 
 function LoginPage() {
   const search = Route.useSearch();
+  const navigate = useNavigate();
+  const { user, isPending } = useCurrentUserState();
   const [prepError, setPrepError] = useState<string | null>(null);
   const [ready, setReady] = useState(false);
   const [passwordUpdated, setPasswordUpdated] = useState(
     () => Boolean(search.passwordUpdated),
   );
+  const [leaving, setLeaving] = useState(false);
 
   useEffect(() => {
     try {
@@ -64,14 +70,47 @@ function LoginPage() {
     };
   }, []);
 
+  useEffect(() => {
+    if (isPending || !user || leaving) return;
+    setLeaving(true);
+    void (async () => {
+      try {
+        const session = await getSessionContextFn();
+        await navigateAfterPasswordSignIn(navigate, {
+          mustChangePassword: false,
+          nextRaw: search.next,
+          session,
+        });
+      } catch {
+        await navigate({ to: "/dashboard" });
+      }
+    })();
+  }, [user, isPending, leaving, navigate, search.next]);
+
+  if (isPending) {
+    return (
+      <AuthShell title="Log in to Summex" subtitle="Username or email and password.">
+        <p className="text-center text-sm text-muted-foreground">Checking session…</p>
+      </AuthShell>
+    );
+  }
+
+  if (user) {
+    return (
+      <AuthShell title="Log in to Summex" subtitle="Opening your console…">
+        <p className="text-center text-sm text-muted-foreground">Taking you in.</p>
+      </AuthShell>
+    );
+  }
+
   return (
     <AuthShell
-      title="Sign in to Summex"
-      subtitle="Use your username or email and password."
+      title="Log in to Summex"
+      subtitle="Username or email and password. No Google or X."
     >
       {passwordUpdated && (
         <p className="mb-4 text-center text-sm text-success" role="status">
-          Password updated. Sign in with your new password.
+          Password updated. Log in with your new password.
         </p>
       )}
       <AuthScreen
@@ -84,7 +123,7 @@ function LoginPage() {
       </p>
       <p className="mt-8 text-center text-sm text-muted-foreground">
         <Link to="/" className="underline-offset-2 hover:underline">
-          Back
+          Back to Summex
         </Link>
       </p>
     </AuthShell>

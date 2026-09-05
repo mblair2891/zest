@@ -269,7 +269,7 @@ export const SAAS_TOPICS: GuideTopic[] = [
         "Each house gets a stable URL from its venue name. Staff pair tablets and guests scan QR on that host — not a new DNS record per tenant.",
       ),
       ul(
-        "www / marketing — public site, Sign in, Get pricing, Guide. The `/` path on www is the sales landing.",
+        "www / marketing — Get a price, Guide, Demo, Log in. The `/` path on www is the sales landing only — never POS or the control plane.",
         "Venue host — https://{slug}.summex.app. Assigned at onboard from the venue name (editable before publish). Reserved labels (www, app, login, …) are blocked.",
         "Path fallback — /v/{slug} on preview and localhost. Same app; no wildcard DNS required there.",
         "Device pair, station, and table QR prefer the venue subdomain when Host is a venue slug (or production *.summex.app).",
@@ -338,7 +338,7 @@ export const SAAS_TOPICS: GuideTopic[] = [
         "A live Summex has no fake restaurants. Prospects request a demo through intake. Operators test by onboarding a real location.",
       ),
       p(
-        "Marketing home → Get pricing opens intake — not a PIN pad and not a seeded venue. /demo URLs redirect there.",
+        "Marketing home → Get a price opens intake — not a PIN pad and not a seeded venue. Demo explains the product; it is not a seeded house.",
       ),
       ul(
         "No PIN 0000 tenant. Floor PIN exists only after you add staff.",
