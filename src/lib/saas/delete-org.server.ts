@@ -2,7 +2,7 @@
  * Platform-admin delete of one CRM lead / pipeline prospect / tenant org.
  * Never wipes Admin or other tenants. Not factory reset.
  */
-import { getSql, withDbTransaction, type Sql } from "@/lib/db";
+import { deleteIgnoringMissing, getSql, withDbTransaction, type Sql } from "@/lib/db";
 import { ForbiddenError, isPlatformAdmin, writeAudit } from "./tenancy.server";
 import { classifyCrmDelete, type CrmDeleteClass } from "./delete-org";
 
@@ -18,12 +18,11 @@ export type DeletePreview = {
   accountId: string | null;
 };
 
+/** Tables that actually have org_id. Missing column used to abort the tx (25P02). */
 const ORG_TABLES = [
-  "finix_webhook_events",
   "payment_accounts",
   "gift_ledger",
   "gift_cards",
-  "support_ticket_comments",
   "support_tickets",
   "saas_invoices",
   "operator_invites",
@@ -38,9 +37,6 @@ const ORG_TABLES = [
   "hr_payroll_map",
   "location_punches",
   "message_log",
-  "comms_cap_alerts",
-  "ai_usage_log",
-  "email_outbox",
   "summex_deposits",
   "summex_payments",
   "summex_payment_splits",
@@ -65,6 +61,8 @@ const LOC_TABLES = [
   "ops_ai_decisions",
   "offline_mutations",
   "summex_payment_splits",
+  "comms_cap_alerts",
+  "ai_usage_log",
   "gift_ledger",
   "gift_cards",
   "location_devices",
@@ -73,13 +71,7 @@ const LOC_TABLES = [
 ] as const;
 
 async function del(sql: Sql, table: string, where: string, params: unknown[]): Promise<void> {
-  try {
-    await sql.query(`delete from ${table} where ${where}`, params);
-  } catch (err) {
-    const msg = err instanceof Error ? err.message : String(err);
-    if (/does not exist|undefined table|column .* does not exist/i.test(msg)) return;
-    throw err;
-  }
+  await deleteIgnoringMissing(sql, table, where, params);
 }
 
 function namesMatch(a: string, b: string): boolean {
@@ -257,8 +249,15 @@ export async function deleteCrmOrPipeline(
 
     if (prospectId) {
       await del(sql, "onboarding_runs", "prospect_id = $1", [prospectId]);
+      await del(sql, "email_outbox", "prospect_id = $1", [prospectId]);
     }
     if (accountId) {
+      await del(
+        sql,
+        "support_ticket_comments",
+        "ticket_id in (select id from support_tickets where account_id = $1)",
+        [accountId],
+      );
       await del(sql, "crm_activities", "account_id = $1", [accountId]);
       await del(sql, "crm_opportunities", "account_id = $1", [accountId]);
       await del(sql, "crm_contacts", "account_id = $1", [accountId]);
@@ -272,7 +271,12 @@ export async function deleteCrmOrPipeline(
     }
 
     if (orgId) {
-      await del(sql, "memberships", "org_id = $1", [orgId]);
+      await del(
+        sql,
+        "memberships",
+        "org_id = $1 and not (role = 'platform_admin' and org_id is null)",
+        [orgId],
+      );
       await del(sql, "locations", "org_id = $1", [orgId]);
       await del(sql, "organizations", "id = $1", [orgId]);
     }

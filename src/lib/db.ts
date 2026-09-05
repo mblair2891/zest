@@ -3,6 +3,17 @@ import {
   isServerlessRuntime,
   PRODUCTION_DB_REQUIRED,
 } from "./database-url";
+import {
+  isAbortedTransactionError,
+  isMissingRelationError,
+  preferFirstSqlError,
+} from "./db-errors";
+
+export {
+  isAbortedTransactionError,
+  isMissingRelationError,
+  preferFirstSqlError,
+} from "./db-errors";
 
 export { getDatabaseUrl, isServerlessRuntime, PRODUCTION_DB_REQUIRED };
 
@@ -226,8 +237,19 @@ async function createPgliteSql(): Promise<Sql> {
   await pass;
 
   return toSql(async <T>(text: string, params: unknown[]) => {
-    const result = await pg.query<T>(text, params);
-    return result.rows;
+    try {
+      const result = await pg.query<T>(text, params);
+      return result.rows;
+    } catch (err) {
+      if (!isAbortedTransactionError(err)) throw err;
+      try {
+        await pg.query("ROLLBACK");
+      } catch {
+        /* already idle */
+      }
+      const retry = await pg.query<T>(text, params);
+      return retry.rows;
+    }
   });
 }
 
@@ -262,6 +284,70 @@ export function getSql(): Promise<Sql> {
   return sqlPromise;
 }
 
+function wrapTxRunner(run: Run): { sql: Sql; firstError: () => unknown } {
+  let first: unknown = null;
+  const sql = toSql(async (text, params) => {
+    try {
+      return await run(text, params);
+    } catch (err) {
+      first = preferFirstSqlError(first, err);
+      if (isAbortedTransactionError(err) && first && first !== err) {
+        console.error("[db] transaction aborted; first SQL error:", first);
+        throw first;
+      }
+      throw err;
+    }
+  });
+  return { sql, firstError: () => first };
+}
+
+function rethrowTx(err: unknown, first: unknown): never {
+  const real = preferFirstSqlError(first, err);
+  if (real !== err) {
+    console.error("[db] transaction aborted; first SQL error:", real);
+  }
+  throw real;
+}
+
+/**
+ * DELETE that does not abort the surrounding transaction when the table or
+ * column is missing. Uses SAVEPOINT so a 42P01/42703 is rolled back locally.
+ */
+export async function deleteIgnoringMissing(
+  sql: Sql,
+  table: string,
+  where: string,
+  params: unknown[] = [],
+): Promise<void> {
+  const sp = `sp_${table.replace(/[^a-z0-9_]/gi, "_").slice(0, 24)}_${Math.random().toString(36).slice(2, 8)}`;
+  let inTx = true;
+  try {
+    await sql.query(`savepoint ${sp}`);
+  } catch {
+    inTx = false;
+  }
+  try {
+    await sql.query(`delete from ${table} where ${where}`, params);
+    if (inTx) {
+      try {
+        await sql.query(`release savepoint ${sp}`);
+      } catch {
+        /* optional */
+      }
+    }
+  } catch (err) {
+    if (inTx) {
+      try {
+        await sql.query(`rollback to savepoint ${sp}`);
+      } catch {
+        /* aborted savepoint */
+      }
+    }
+    if (isMissingRelationError(err)) return;
+    throw err;
+  }
+}
+
 /** Run `fn` on one connection inside BEGIN/COMMIT (ROLLBACK on throw). */
 export async function withDbTransaction<T>(fn: (sql: Sql) => Promise<T>): Promise<T> {
   await getSql();
@@ -269,39 +355,51 @@ export async function withDbTransaction<T>(fn: (sql: Sql) => Promise<T>): Promis
     const pool = globalRef.__pgPool__;
     if (!pool) throw new Error("Database not ready");
     const client = await pool.connect();
-    const sql = toSql(async (text, params) => {
+    const wrapped = wrapTxRunner(async (text, params) => {
       const res = await client.query(text, params);
       return res.rows as never;
     });
+    let pooled = true;
     try {
       await client.query("BEGIN");
-      const result = await fn(sql);
+      const result = await fn(wrapped.sql);
       await client.query("COMMIT");
       return result;
     } catch (err) {
       try {
         await client.query("ROLLBACK");
-      } catch {
-        /* aborted */
+      } catch (rb) {
+        pooled = false;
+        try {
+          client.release(rb instanceof Error ? rb : new Error(String(rb)));
+        } catch {
+          /* destroyed */
+        }
+        rethrowTx(err, wrapped.firstError());
       }
-      throw err;
+      rethrowTx(err, wrapped.firstError());
     } finally {
-      client.release();
+      if (pooled) client.release();
     }
   }
-  const sql = await getSql();
-  await sql.query("BEGIN");
+  const raw = await getSql();
+  const wrapped = wrapTxRunner((text, params) => raw.query(text, params));
+  await wrapped.sql.query("BEGIN");
   try {
-    const result = await fn(sql);
-    await sql.query("COMMIT");
+    const result = await fn(wrapped.sql);
+    await wrapped.sql.query("COMMIT");
     return result;
   } catch (err) {
     try {
-      await sql.query("ROLLBACK");
+      await wrapped.sql.query("ROLLBACK");
     } catch {
-      /* aborted */
+      try {
+        await raw.query("ROLLBACK");
+      } catch {
+        /* idle */
+      }
     }
-    throw err;
+    rethrowTx(err, wrapped.firstError());
   }
 }
 

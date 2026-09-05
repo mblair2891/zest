@@ -4,7 +4,7 @@
  */
 import { verifyPassword } from "better-auth/crypto";
 import { getDatabaseUrl, isServerlessRuntime, readServerEnv } from "@/lib/database-url";
-import { getSql, withDbTransaction, type Sql } from "@/lib/db";
+import { deleteIgnoringMissing, getSql, withDbTransaction, type Sql } from "@/lib/db";
 import { reseedPlatformAdminBootstrap } from "@/lib/auth/bootstrap-admin.server";
 import { ForbiddenError, isPlatformAdmin } from "./tenancy.server";
 
@@ -109,13 +109,7 @@ function normalizePhrase(raw: string): string {
 }
 
 async function deleteIfExists(sql: Sql, table: string): Promise<void> {
-  try {
-    await sql.query(`delete from ${table}`);
-  } catch (err) {
-    const msg = err instanceof Error ? err.message : String(err);
-    if (/does not exist|undefined table/i.test(msg)) return;
-    throw err;
-  }
+  await deleteIgnoringMissing(sql, table, "true", []);
 }
 
 export async function factoryReset(opts: {
