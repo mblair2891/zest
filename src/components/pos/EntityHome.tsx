@@ -46,6 +46,7 @@ import { useCurrentUserState } from "@/lib/auth/use-current-user";
 import {
   DEVICE_ROLE_BLURB,
   DEVICE_ROLE_LABEL,
+  deviceRoleFromSessionMode,
   isStationPinPath,
   readStationDeviceRole,
 } from "@/lib/pos/device-roles";
@@ -164,6 +165,7 @@ export function EntityLogin({ entityId }: { entityId: VenueEntityId }) {
   const [staffId, setStaffId] = useState<string>("");
 
   const locId = usePosStore((s) => s.tenantLocationId);
+  const stationKind = useStationSessionStore((s) => s.assignment.kind);
   useEffect(() => {
     if (isVenueEntityId(entityId) && activeEntityId !== entityId) {
       applyEntity(entityId);
@@ -267,7 +269,12 @@ export function EntityLogin({ entityId }: { entityId: VenueEntityId }) {
           <p className="mt-1 text-sm text-muted-foreground">{entity.blurb}</p>
           <p className="mt-3 text-sm font-medium">Floor login · 4-digit PIN</p>
           {(() => {
-            const stationRole = readStationDeviceRole();
+            const paired = readStationDeviceRole();
+            const stationRole =
+              paired ??
+              (isStationPinPath() || isNativeApp()
+                ? deviceRoleFromSessionMode(stationKind)
+                : null);
             if (!stationRole) return null;
             return (
               <p className="mt-2 text-sm text-foreground">

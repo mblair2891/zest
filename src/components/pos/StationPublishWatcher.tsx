@@ -3,11 +3,15 @@ import { getStationPublishFn } from "@/lib/access/api";
 import { readStationPair } from "@/lib/pos/station-pair";
 import {
   applyPendingIfIdle,
+  isMidTicket,
   readPublishState,
   stashOrApplyPublish,
 } from "@/lib/pos/station-publish";
+import {
+  applyPendingDeviceRoleIfIdle,
+  ingestServerDeviceRole,
+} from "@/lib/pos/station-role-sync";
 import { usePosStore } from "@/lib/pos/store";
-import { isStationPinPath } from "@/lib/pos/device-roles";
 
 /** Idle PIN pad pulls a new publish. Logged-in staff keep the last snapshot. */
 export function StationPublishWatcher() {
@@ -15,7 +19,10 @@ export function StationPublishWatcher() {
   const locationId = usePosStore((s) => s.tenantLocationId);
 
   useEffect(() => {
-    if (!currentEmployeeId) applyPendingIfIdle();
+    if (!currentEmployeeId) {
+      applyPendingIfIdle();
+      applyPendingDeviceRoleIfIdle({ staffOpen: false, midTicket: isMidTicket() });
+    }
   }, [currentEmployeeId]);
 
   useEffect(() => {
@@ -23,9 +30,6 @@ export function StationPublishWatcher() {
     let cancelled = false;
     const tick = () => {
       if (cancelled) return;
-      if (!isStationPinPath() && typeof window !== "undefined" && !window.location.pathname.startsWith("/station")) {
-        return;
-      }
       const pair = readStationPair();
       const deviceId = pair?.deviceId || "";
       if (!deviceId) return;
@@ -34,13 +38,20 @@ export function StationPublishWatcher() {
         data: { locationId, deviceId, sinceVersion: since },
       })
         .then((res) => {
-          if (cancelled || res.upToDate || !res.publish) return;
+          if (cancelled) return;
+          if (res.device) {
+            ingestServerDeviceRole(res.device, {
+              staffOpen: Boolean(usePosStore.getState().currentEmployeeId),
+              midTicket: isMidTicket(),
+            });
+          }
+          if (res.upToDate || !res.publish) return;
           stashOrApplyPublish(res.publish);
         })
         .catch(() => undefined);
     };
     tick();
-    const id = window.setInterval(tick, 45_000);
+    const id = window.setInterval(tick, 20_000);
     return () => {
       cancelled = true;
       window.clearInterval(id);

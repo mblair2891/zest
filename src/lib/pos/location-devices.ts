@@ -64,6 +64,15 @@ export const PRINT_STATION_LABEL: Record<PrintStation, string> = {
   expo: "Expo / bump chit",
 };
 
+export type DeviceRoleChange = {
+  at: number;
+  actorName: string;
+  deviceId: string;
+  deviceLabel: string;
+  from: string;
+  to: string;
+};
+
 export type LocationDevice = {
   id: string;
   locationId: string;
@@ -75,6 +84,9 @@ export type LocationDevice = {
   claimCode?: string;
   assignment: DeviceAssignment;
   print?: PrinterConfig;
+  /** Owner asked the idle PIN pad to take the new role now. */
+  applyRoleNow?: boolean;
+  roleRevision?: number;
 };
 
 export const DEVICE_TYPES: LocationDeviceType[] = [
@@ -191,7 +203,14 @@ export function parseLocationDevice(raw: unknown): LocationDevice | null {
     claimCode: o.claimCode ? String(o.claimCode) : undefined,
     assignment,
     print: type === "printer" ? parsePrinterConfig(o.print ?? o) : undefined,
+    applyRoleNow: o.applyRoleNow === true,
+    roleRevision: Number(o.roleRevision) > 0 ? Math.round(Number(o.roleRevision)) : undefined,
   };
+}
+
+export function isPairedActivatedStation(d: LocationDevice): boolean {
+  if (d.type === "printer" || d.type === "terminal") return false;
+  return d.status === "online" || d.status === "offline";
 }
 
 export function parsePrinterConfig(raw: unknown): PrinterConfig | undefined {

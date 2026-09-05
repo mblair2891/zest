@@ -13,11 +13,13 @@ import {
 import {
   DEVICE_FUNCTIONS,
   DEVICE_TYPES,
+  isPairedActivatedStation,
   makeClaimCode,
   parseLocationDevice,
   parseLocationDevices,
   parsePrinterConfig,
   type DeviceFunction,
+  type DeviceRoleChange,
   type LocationDevice,
   type LocationDeviceType,
 } from "@/lib/pos/location-devices";
@@ -219,6 +221,8 @@ export const saveLocationDeviceFn = createServerFn({ method: "POST" })
       claimCode: existing?.claimCode || makeClaimCode(),
       assignment: data.device.assignment,
       print: data.device.print ?? existing?.print,
+      applyRoleNow: existing?.applyRoleNow,
+      roleRevision: existing?.roleRevision,
     };
     const devices = existing
       ? prev.map((x) => (x.id === id ? nextDevice : x))
@@ -250,6 +254,139 @@ export const saveLocationDeviceFn = createServerFn({ method: "POST" })
       locationId: data.locationId,
       setup: { ...EMPTY_LOCATION_SETUP, ...ctx.setup, locationDevices: devices } as LocationSetup,
     });
+  });
+
+const PAIRED_ROLES = ["order", "host", "ods", "ods_kitchen", "ods_bar", "kiosk"] as const;
+
+export const changePairedDeviceRoleFn = createServerFn({ method: "POST" })
+  .middleware([tenantMiddleware])
+  .validator((d: {
+    orgId: string;
+    locationId: string;
+    deviceId: string;
+    role: string;
+    applyNow?: boolean;
+  }) => {
+    const role = PAIRED_ROLES.includes(d.role as (typeof PAIRED_ROLES)[number])
+      ? (d.role as (typeof PAIRED_ROLES)[number])
+      : null;
+    if (!role) throw new Error("Pick Order, Host, ODS, or Kiosk");
+    return {
+      orgId: String(d.orgId ?? "").trim(),
+      locationId: loc(d.locationId),
+      deviceId: String(d.deviceId ?? "").trim().slice(0, 80),
+      role,
+      applyNow: Boolean(d.applyNow),
+    };
+  })
+  .handler(async ({ context, data }) => {
+    const { loadEntityWriteContext, assertHostOrManageDevices } = await import(
+      "./assert-entity.server"
+    );
+    const {
+      functionForPairedRole,
+      typeForPairedRole,
+      pairedRoleFromFunction,
+      locationHasDualOds,
+      PAIRED_ROLE_LABEL,
+    } = await import("@/lib/pos/device-roles");
+    const orgId = data.orgId || context.organizationId || "";
+    const ctx = await loadEntityWriteContext(context.userId, orgId, data.locationId);
+    const prev = parseLocationDevices(ctx.setup.locationDevices);
+    const existing = prev.find((x) => x.id === data.deviceId);
+    if (!existing) throw new Error("Device not found");
+    if (!isPairedActivatedStation(existing)) {
+      throw new Error("Pair the tablet first, then change its role.");
+    }
+    assertHostOrManageDevices(ctx, existing.assignment.operatorId || "host");
+
+    const { operatorsAsVendors } = await import("@/lib/saas/onboarding.server");
+    const operators = await operatorsAsVendors(data.locationId);
+    const dualOds = locationHasDualOds(prev, operators);
+    const fromRole = pairedRoleFromFunction(existing.assignment.function, dualOds);
+    if (fromRole === data.role && !data.applyNow) {
+      return { ok: true as const, device: existing };
+    }
+
+    const nextFn = functionForPairedRole(data.role);
+    const nextType = typeForPairedRole(data.role);
+    let operatorId = existing.assignment.operatorId;
+    if (data.role === "ods_kitchen") {
+      operatorId =
+        operators.find((o) => o.stationType === "kitchen" || o.stationType === "both")?.id ??
+        operatorId;
+    } else if (data.role === "ods_bar") {
+      operatorId =
+        operators.find((o) => o.stationType === "bar" || o.stationType === "both")?.id ??
+        operatorId;
+    }
+
+    const nextDevice: LocationDevice = {
+      ...existing,
+      type: nextType,
+      assignment: { operatorId, function: nextFn },
+      applyRoleNow: data.applyNow,
+      roleRevision: Math.max(0, existing.roleRevision ?? 0) + 1,
+      print: existing.print,
+      serial: existing.serial,
+      claimCode: existing.claimCode,
+    };
+    const devices = prev.map((d) => (d.id === existing.id ? nextDevice : d));
+    const actorRows = await (await import("@/lib/db")).getSql().then((sql) =>
+      sql<{ name: string | null }>`
+        select name from "user" where id = ${context.userId} limit 1
+      `.catch(() => [] as Array<{ name: string | null }>),
+    );
+    const actorName = String(actorRows[0]?.name ?? "Owner").trim() || "Owner";
+    const entry: DeviceRoleChange = {
+      at: Date.now(),
+      actorName,
+      deviceId: existing.id,
+      deviceLabel: existing.label,
+      from: PAIRED_ROLE_LABEL[fromRole],
+      to: PAIRED_ROLE_LABEL[data.role],
+    };
+    const history = [...(ctx.setup.deviceRoleHistory ?? []), entry].slice(-40);
+
+    const { getSql } = await import("@/lib/db");
+    const sql = await getSql();
+    try {
+      await sql`
+        update location_devices
+        set type = ${nextDevice.type},
+            assigned_operator_id = ${nextDevice.assignment.operatorId},
+            assigned_function = ${nextDevice.assignment.function},
+            last_seen_at = now()
+        where id = ${existing.id} and location_id = ${data.locationId}
+      `;
+    } catch {
+      /* optional table */
+    }
+    const { updateLocationSetupForUser, writeAudit } = await import("@/lib/saas/tenancy.server");
+    await writeAudit({
+      orgId: ctx.orgId,
+      actorUserId: context.userId,
+      action: "device_role_changed",
+      payload: {
+        deviceId: existing.id,
+        label: existing.label,
+        from: entry.from,
+        to: entry.to,
+        applyNow: data.applyNow,
+      },
+    }).catch(() => undefined);
+    await updateLocationSetupForUser(context.userId, {
+      orgId: ctx.orgId,
+      locationId: data.locationId,
+      setup: {
+        ...EMPTY_LOCATION_SETUP,
+        ...ctx.setup,
+        locationDevices: devices,
+        deviceRoleHistory: history,
+        cashHandling: ctx.setup.cashHandling,
+      } as LocationSetup,
+    });
+    return { ok: true as const, device: nextDevice };
   });
 
 function mapDeviceRow(r: {
@@ -355,10 +492,18 @@ export const listLocationDevicesFn = createServerFn({ method: "POST" })
     }
     const { operatorsAsVendors } = await import("@/lib/saas/onboarding.server");
     const operators = await operatorsAsVendors(data.locationId);
+    const history = Array.isArray(access.location.setup?.deviceRoleHistory)
+      ? access.location.setup.deviceRoleHistory
+      : [];
     return {
       devices,
-      operators: operators.map((o) => ({ id: o.id, name: o.name })),
+      operators: operators.map((o) => ({
+        id: o.id,
+        name: o.name,
+        stationType: o.stationType ?? null,
+      })),
       hostName: access.location.hostBrandName || access.location.name,
+      roleHistory: history.slice(0, 40),
     };
   });
 
@@ -856,7 +1001,7 @@ export const getStationPublishFn = createServerFn({ method: "POST" })
         and (id = ${data.deviceId} or serial = ${data.deviceId})
       limit 1
     `.catch(() => [] as Array<{ n: number }>);
-    if (!ok[0]) return { upToDate: true as const, publish: null };
+    if (!ok[0]) return { upToDate: true as const, publish: null, device: null };
     const rows = await sql<{ setup: unknown }>`
       select setup from locations where id = ${data.locationId} limit 1
     `;
@@ -881,10 +1026,26 @@ export const getStationPublishFn = createServerFn({ method: "POST" })
           },
         }
       : null;
+    const devices = parseLocationDevices(
+      setup && typeof setup === "object" && !Array.isArray(setup)
+        ? (setup as { locationDevices?: unknown }).locationDevices
+        : [],
+    );
+    const mine =
+      devices.find((d) => d.id === data.deviceId || d.serial === data.deviceId) ?? null;
+    const device = mine
+      ? {
+          id: mine.id,
+          function: mine.assignment.function,
+          operatorId: mine.assignment.operatorId,
+          applyRoleNow: Boolean(mine.applyRoleNow),
+          roleRevision: Math.max(0, mine.roleRevision ?? 0),
+        }
+      : null;
     if (!publish || publish.version <= data.sinceVersion) {
-      return { upToDate: true as const, publish: null };
+      return { upToDate: true as const, publish: null, device };
     }
-    return { upToDate: false as const, publish };
+    return { upToDate: false as const, publish, device };
   });
 
 export const publishLocationFn = createServerFn({ method: "POST" })

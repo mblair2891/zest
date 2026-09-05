@@ -6,6 +6,19 @@ import type { GuideUpdate } from "@/lib/guide/types";
  */
 export const WHATS_NEW_ENTRIES: GuideUpdate[] = [
   {
+    id: "upd_2026_10_47_device_role_dropdown",
+    date: "2026-09-05",
+    title: "Change a paired tablet’s role from Devices",
+    summary:
+      "Paired tablets: Role dropdown (Order / Host / ODS). Same pair code. Staff PIN in again. Broken ODS → reassign a server tablet.",
+    body: "Settings → Devices. On a paired row, pick Order, Host, or ODS (ODS kitchen / ODS bar when both exist; Kiosk when the house has one). Confirm: this tablet will become ODS — staff must PIN in again. The pair code and device id stay. The new role loads on the next PIN, same as Publish. Apply now only if that tablet is idle on the PIN pad — never mid-check. Printers and drawer kick stay on the station type or a named printer. Shared venue: any tablet any role; ODS kitchen vs bar is the exception.",
+    roles: ["owner_manager", "host_operator", "platform_admin"],
+    surfaces: ["settings", "platform"],
+    audience: "all",
+    topicId: "device-roles",
+    tags: ["devices", "ods", "pair"],
+  },
+  {
     id: "upd_2026_10_46_crm_delete",
     date: "2026-09-05",
     title: "Delete a CRM or pipeline record",

@@ -127,6 +127,18 @@ export function deviceRoleFromFunction(fn: DeviceFunction): DeviceRole {
   }
 }
 
+export {
+  PAIRED_ROLE_LABEL,
+  confirmPairedRoleChange,
+  functionForPairedRole,
+  listPairedRoleOptions,
+  locationHasDualOds,
+  locationHasKioskRole,
+  pairedRoleFromFunction,
+  typeForPairedRole,
+  type PairedStationRole,
+} from "./paired-station-role";
+
 export function readStationDeviceRole(): DeviceRole | null {
   if (typeof window === "undefined") return null;
   try {

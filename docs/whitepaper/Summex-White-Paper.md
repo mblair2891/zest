@@ -3,7 +3,7 @@
 **Powered by Quantum Reach**
 
 White paper · October 2026  
-**Revision · 5 Sep 2026** — Venue slug subdomains on onboard. Aligns with Operators Guide v2026.10.46.
+**Revision · 5 Sep 2026** — Reassign a paired tablet’s role from Devices. Aligns with Operators Guide v2026.10.47.
 
 summex.app  
 Guest cards: **Quantum Payments** only
@@ -144,7 +144,7 @@ The tablet is a screen, not a person. **PIN** says who is working. The **device 
 
 A manager **Change device** switches among those three. PIN stays the person; the role is the screen.
 
-**Tablets run Summex only.** One Android app — Summex Station. Owner (back office) adds a device by name and role, then shows a one-time pair code or QR. After pair the tablet stores venue and role, receives the house snapshot, and is PIN only. **Publish changes** pushes menu, floor, printers, QR, and cash model. Staff keep the last publish until Switch user; idle PIN pads may refresh. Never mid-ticket. Unpair or replace from Devices.
+**Tablets run Summex only.** One Android app — Summex Station. Owner (back office) adds a device by name and role, then shows a one-time pair code or QR. After pair the tablet stores venue and role, receives the house snapshot, and is PIN only. **Publish changes** pushes menu, floor, printers, QR, and cash model. Staff keep the last publish until Switch user; idle PIN pads may refresh. Never mid-ticket. Unpair or replace from Devices. **Broken ODS → reassign a server tablet from Devices** (Role dropdown). Same pair code; staff PIN in again. Do not reinstall. Printers and drawer kick stay bound to the station type or a named printer.
 
 **Labor vs what they are paid.** On a shared venue, each entity’s labor $, labor %, SPLH, food/pour cost, and staffing recs use **owned lines** by default (Steam vs beverage sales $; Diamond vs food sales $) — not the whole guest check. Shared venue costs (rent, utilities) are optional allocation percents, off by default. Tip-out and pools stay their own rules unless “tips in labor” is on.
 

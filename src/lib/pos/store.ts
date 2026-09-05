@@ -8,6 +8,7 @@ import {
 	viewForDeviceRole,
 } from "./device-roles";
 import { useStationSessionStore } from "./station-session";
+import { applyPendingDeviceRoleOnPinLogin } from "./station-role-sync";
 import {
   SETTINGS,
   EMPLOYEES,
@@ -430,6 +431,11 @@ const usePosStoreRaw = create<PosStore>()(persist((set, get) => {
 			: get().employees.map((e: any) =>
 				e.id === emp.id && !e.pinHash ? { ...e, pinHash: hashed, pin: "" } : e,
 			);
+		try {
+			applyPendingDeviceRoleOnPinLogin();
+		} catch {
+			/* optional */
+		}
 		let view: import("./types").PosView = isDemoStaffPin(pin) ? "hq" : homeViewForEmployee(emp);
 		try {
 			const raw = typeof window !== "undefined"

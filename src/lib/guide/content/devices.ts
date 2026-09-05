@@ -21,6 +21,7 @@ export const DEVICE_TOPICS: GuideTopic[] = [
       "pin",
       "change device",
       "station",
+      "reassign",
     ],
     openView: "settings",
     blocks: [
@@ -39,12 +40,14 @@ export const DEVICE_TOPICS: GuideTopic[] = [
         "Host: floor map + to-go. Seat the room; ring takeout at the stand.",
         "A manager Change device switches among those three. PIN stays the person; the role is the screen.",
         "Pair once (internet required). After that, floor stations open on the PIN pad — not /login. App updates keep the pairing. Back-office email and password is for owners on a laptop, not the handheld.",
+        "Broken ODS → reassign a server tablet from Devices. Same pair code; staff PIN in again. Do not reinstall.",
       ),
       steps(
         "Owner: Devices → add a slot (Order, Order Display, or Host). Show the 6-character code or QR.",
         "Tablet: first open of Summex Station, enter the code or scan the QR. Thereafter: power on → PIN keypad. That is not clock-in and not closeout.",
+        "Paired row: Role dropdown (Order / Host / ODS, plus ODS kitchen or ODS bar when both exist, and Kiosk when the house has one). Confirm, then staff PIN in again. Apply now only if that tablet is on the PIN pad — never mid-check.",
         "Owner or manager: Change device to move this screen among Order / ODS / Host without a new account login.",
-        "Switch user returns to the PIN pad. The device role does not change.",
+        "Switch user returns to the PIN pad. A Devices role change takes effect on the next PIN, same as Publish.",
       ),
       warn(
         "Do not send kitchen staff to /login. Do not clock anyone in from the PIN pad. Time clock is Labor. Server closeout is Cash.",
@@ -83,6 +86,7 @@ export const DEVICE_TOPICS: GuideTopic[] = [
         "Owner: Devices → Add device (name + Order / Order Display / Host). Show the one-time code or QR.",
         "Tablet: pair. Config is pushed. Thereafter power on → PIN. App updates do not wipe pairing.",
         "After menu or floor edits: Publish changes. Logged-in staff keep running; next PIN login loads the new publish.",
+        "Broken ODS → reassign a server tablet from Devices (Role dropdown). No new pair code.",
         "Unpair or Replace from the same Devices list when a tablet is lost or swapped.",
         "Training: on Samsung, confirm pin-windows when Summex asks. Set Summex as Home if the tablet offers it.",
       ),
@@ -200,6 +204,7 @@ export const DEVICE_TOPICS: GuideTopic[] = [
       ul(
         "Type: tablet POS, order display, kiosk, printer, host stand, other.",
         "Suggested assignment: operator (host or a guest entity) + function (floor POS, bar POS, kitchen ODS, bar ODS, expo, kiosk, host stand, cashier).",
+        "Paired Devices row: Role dropdown reassigns that tablet (Order / Host / ODS). Broken ODS → reassign a server tablet from Devices. Same pair; next PIN. Printers and drawer kick stay on the station type or named printer.",
         "This station (header): switch Host stand, Server POS, Expo, Cashier, Busser, Kiosk, or Order Display. Multi-op houses pick Host / Operator A / Operator B.",
         "PIN still identifies the person. Station switch is what this screen is showing. Last station is remembered in this browser.",
         "ODS only shows tickets for that station and entity unless the host grants a broader view_tickets.",

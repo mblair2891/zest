@@ -4,6 +4,7 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { HOST_SCOPE } from "@/lib/access/entity-grants";
 import {
+  changePairedDeviceRoleFn,
   claimLocationDeviceFn,
   deactivateLocationDeviceFn,
   listLocationDevicesFn,
@@ -27,10 +28,12 @@ import {
   STATION_DEVICE_TYPES,
   defaultFunctionForType,
   functionForPrintStation,
+  isPairedActivatedStation,
   readOrCreateBrowserDeviceId,
   readPairedDeviceId,
   writePairedDeviceId,
   type DeviceFunction,
+  type DeviceRoleChange,
   type LocationDevice,
   type LocationDeviceType,
   type PrintStation,
@@ -45,10 +48,17 @@ import { pairQrImageSrc, stationPairHref } from "@/lib/pos/station-pair";
 import {
   DEVICE_ROLE_LABEL,
   DEVICE_ROLES,
+  PAIRED_ROLE_LABEL,
+  confirmPairedRoleChange,
   deviceRoleFromFunction,
   functionForDeviceRole,
+  listPairedRoleOptions,
+  locationHasDualOds,
+  locationHasKioskRole,
+  pairedRoleFromFunction,
   typeForDeviceRole,
   type DeviceRole,
+  type PairedStationRole,
 } from "@/lib/pos/device-roles";
 
 type Mode = "stations" | "hardware";
@@ -80,7 +90,10 @@ export function LocationDeviceRegistry({
   mode: Mode;
 }) {
   const [devices, setDevices] = useState<LocationDevice[]>([]);
-  const [operators, setOperators] = useState<Array<{ id: string; name: string }>>([]);
+  const [operators, setOperators] = useState<
+    Array<{ id: string; name: string; stationType?: string | null }>
+  >([]);
+  const [roleHistory, setRoleHistory] = useState<DeviceRoleChange[]>([]);
   const [hostName, setHostName] = useState(locationName);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -147,6 +160,7 @@ export function LocationDeviceRegistry({
       });
       setDevices(res.devices);
       setOperators(res.operators);
+      setRoleHistory(res.roleHistory ?? []);
       setHostName(res.hostName || locationName || "Venue");
       try {
         const next = res.devices.filter((d) => d.status !== "inactive");
@@ -358,11 +372,38 @@ export function LocationDeviceRegistry({
     }
   };
 
+  const dualOds = locationHasDualOds(devices, operators);
+  const includeKiosk = locationHasKioskRole(devices) || mode === "stations";
+  const pairedRoles = listPairedRoleOptions({ dualOds, includeKiosk });
+
+  const changeRole = async (d: LocationDevice, role: PairedStationRole, applyNow: boolean) => {
+    if (pairedRoleFromFunction(d.assignment.function, dualOds) === role && !applyNow) return;
+    if (!window.confirm(confirmPairedRoleChange(role))) return;
+    setBusy(true);
+    setError(null);
+    try {
+      await changePairedDeviceRoleFn({
+        data: {
+          orgId: resolvedOrgId,
+          locationId: resolvedLocId,
+          deviceId: d.id,
+          role,
+          applyNow,
+        },
+      });
+      await load();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Could not change role");
+    } finally {
+      setBusy(false);
+    }
+  };
+
   const heading = mode === "hardware" ? "Hardware" : "Devices";
   const help =
     mode === "hardware"
       ? "Register Quantum readers and Star/Epson printers. Assign kitchen, bar, receipt, or expo. Test print from this list."
-      : "Add a device (name + role). Show the one-time code or QR. After pair, the tablet is PIN only. Publish pushes menu, floor, printers, and QR to paired tablets.";
+      : "Add a device (name + role). Show the one-time code or QR. After pair, change Role on that row — no reinstall. Publish pushes menu, floor, printers, and QR to paired tablets.";
   const addLabel = mode === "hardware" ? "Add terminal / printer" : "Add device";
   const pairedId = resolvedLocId ? readPairedDeviceId(resolvedLocId) : null;
   const thisBrowserId = resolvedLocId ? readOrCreateBrowserDeviceId(resolvedLocId) : "";
@@ -693,9 +734,57 @@ export function LocationDeviceRegistry({
                 ) : mode === "stations" && d.status === "online" ? (
                   <p className="mt-1 text-[11px] text-muted-foreground">Paired · PIN only</p>
                 ) : null}
+                {mode === "stations" &&
+                  isPairedActivatedStation(d) &&
+                  (() => {
+                    const last = roleHistory.filter((h) => h.deviceId === d.id).at(-1);
+                    if (!last) return null;
+                    return (
+                      <p className="mt-1 text-[11px] text-muted-foreground">
+                        {last.from} → {last.to} · {last.actorName} · {formatTime(last.at)}
+                      </p>
+                    );
+                  })()}
                 </div>
               </div>
               <div className="flex flex-wrap items-center gap-2">
+                {mode === "stations" && isPairedActivatedStation(d) && (
+                  <>
+                    <label className="text-[11px] text-muted-foreground">
+                      Role
+                      <select
+                        className="ml-1 h-8 rounded-lg border border-border bg-bg px-2 text-xs text-foreground"
+                        disabled={busy}
+                        value={pairedRoleFromFunction(d.assignment.function, dualOds)}
+                        onChange={(e) =>
+                          void changeRole(d, e.target.value as PairedStationRole, false)
+                        }
+                      >
+                        {pairedRoles.map((r) => (
+                          <option key={r} value={r}>
+                            {PAIRED_ROLE_LABEL[r]}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="h-7 px-2 text-xs"
+                      disabled={busy}
+                      title="Idle PIN pad only. Never mid-check."
+                      onClick={() =>
+                        void changeRole(
+                          d,
+                          pairedRoleFromFunction(d.assignment.function, dualOds),
+                          true,
+                        )
+                      }
+                    >
+                      Apply now
+                    </Button>
+                  </>
+                )}
                 <Badge
                   variant={
                     d.status === "online" ? "success" : d.status === "pending" ? "warn" : "secondary"
