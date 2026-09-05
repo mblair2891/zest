@@ -17,6 +17,7 @@ export {
   absoluteGuestHref,
   absoluteMarketingHref,
   originForSurface,
+  isSingleOrigin,
   useSingleOrigin,
   staffGuestAccessPoints,
   currentHostname,

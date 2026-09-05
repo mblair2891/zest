@@ -18,7 +18,7 @@ export function rememberLastPosPath(): void {
   }
 }
 
-function useStationManifest(): void {
+function applyStationManifest(): void {
   try {
     const path = window.location.pathname;
     if (!path.startsWith("/venue") && !path.startsWith("/app") && !path.startsWith("/station")) {
@@ -68,7 +68,7 @@ export function redirectStandaloneToStation(): void {
 
 export function registerOfflineServiceWorker(): void {
   if (typeof window === "undefined") return;
-  useStationManifest();
+  applyStationManifest();
   redirectStandaloneToStation();
   if (!("serviceWorker" in navigator)) return;
   const start = () => {

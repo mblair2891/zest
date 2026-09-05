@@ -178,22 +178,37 @@ export function appHostIsLiveAndDistinct(currentHostname?: string): boolean {
 }
 
 /** True when we should keep a single origin (dev, preview, or unset/unserved app host). */
-export function useSingleOrigin(): boolean {
+export function isSingleOrigin(origin?: string): boolean {
   if (!explicitAppHost()) return true;
-  if (typeof window === "undefined") {
-    const url = fallbackOrigin();
+  let hostname = "";
+  if (origin) {
     try {
-      return isSingleOriginHost(new URL(url).hostname) || !appHostIsLiveAndDistinct(new URL(url).hostname);
+      hostname = new URL(origin).hostname;
+    } catch {
+      hostname = "";
+    }
+  } else if (typeof window === "undefined") {
+    try {
+      hostname = new URL(fallbackOrigin()).hostname;
     } catch {
       return true;
     }
+  } else {
+    hostname = window.location.hostname;
   }
-  return isSingleOriginHost(window.location.hostname) || !appHostIsLiveAndDistinct(window.location.hostname);
+  if (!hostname) return true;
+  return isSingleOriginHost(hostname) || !appHostIsLiveAndDistinct(hostname);
 }
 
-export function originForSurface(surface: SummexSurface): string {
-  if (useSingleOrigin()) {
-    return typeof window !== "undefined" ? window.location.origin : fallbackOrigin();
+/** Component hook — wraps isSingleOrigin(). Do not call from plain helpers. */
+export function useSingleOrigin(): boolean {
+  return isSingleOrigin(typeof window !== "undefined" ? window.location.origin : fallbackOrigin());
+}
+
+export function originForSurface(surface: SummexSurface, origin?: string): string {
+  const here = origin || (typeof window !== "undefined" ? window.location.origin : fallbackOrigin());
+  if (isSingleOrigin(here)) {
+    return here;
   }
   const cfg = configuredHosts();
   const host =
@@ -265,9 +280,9 @@ export function apiHref(path = "/health"): string {
   return `${proto}//${configuredHosts().api}${p.startsWith("/api") ? p.slice(4) || "/" : p}`;
 }
 
-export function sitesHref(path = "/"): string {
+export function sitesHref(path = "/", origin?: string): string {
   const p = path.startsWith("/") ? path : `/${path}`;
-  if (useSingleOrigin()) {
+  if (isSingleOrigin(origin)) {
     if (typeof window === "undefined") {
       return p.startsWith("/sites") || p.startsWith("/t/") || p.startsWith("/table/")
         ? p
@@ -280,20 +295,20 @@ export function sitesHref(path = "/"): string {
     }
     return p.startsWith("/sites") ? p : `/sites${p === "/" ? "" : p}`;
   }
-  const origin = originForSurface("sites");
+  const sitesOrigin = originForSurface("sites", origin);
   const host = typeof window !== "undefined" ? window.location.hostname : "";
   if (surfaceFromHost(host) === "sites") return p;
-  return withOrigin(origin, p);
+  return withOrigin(sitesOrigin, p);
 }
 
 /** Absolute staff URL (POS, ODS, kiosk). Prefers app host when split DNS is on. */
-export function absoluteAppHref(path = "/"): string {
+export function absoluteAppHref(path = "/", origin?: string): string {
   const p = path.startsWith("/") ? path : `/${path}`;
-  if (useSingleOrigin()) {
-    const origin = typeof window !== "undefined" ? window.location.origin : fallbackOrigin();
+  const here = origin || (typeof window !== "undefined" ? window.location.origin : fallbackOrigin());
+  if (isSingleOrigin(here)) {
     const local = appHref(p);
     if (local.startsWith("http")) return local;
-    return withOrigin(origin, local);
+    return withOrigin(here, local);
   }
   const href = appHref(p);
   if (href.startsWith("http")) return href;
@@ -301,11 +316,11 @@ export function absoluteAppHref(path = "/"): string {
 }
 
 /** Absolute guest URL (table QR, online, location sites). Prefers sites host when split DNS is on. */
-export function absoluteGuestHref(path = "/"): string {
+export function absoluteGuestHref(path = "/", origin?: string): string {
   const p = path.startsWith("/") ? path : `/${path}`;
-  if (useSingleOrigin()) {
-    const origin = typeof window !== "undefined" ? window.location.origin : fallbackOrigin();
-    return withOrigin(origin, p);
+  const here = origin || (typeof window !== "undefined" ? window.location.origin : fallbackOrigin());
+  if (isSingleOrigin(here)) {
+    return withOrigin(here, p);
   }
   const href = sitesHref(p);
   if (href.startsWith("http")) return href;
@@ -313,11 +328,11 @@ export function absoluteGuestHref(path = "/"): string {
 }
 
 /** Absolute marketing / login / dashboard URL. */
-export function absoluteMarketingHref(path = "/"): string {
+export function absoluteMarketingHref(path = "/", origin?: string): string {
   const p = path.startsWith("/") ? path : `/${path}`;
-  if (useSingleOrigin()) {
-    const origin = typeof window !== "undefined" ? window.location.origin : fallbackOrigin();
-    return withOrigin(origin, p);
+  const here = origin || (typeof window !== "undefined" ? window.location.origin : fallbackOrigin());
+  if (isSingleOrigin(here)) {
+    return withOrigin(here, p);
   }
   const href = marketingHref(p);
   if (href.startsWith("http")) return href;

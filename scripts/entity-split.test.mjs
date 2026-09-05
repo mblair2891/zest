@@ -118,9 +118,9 @@ test("guest receipt groups by vendor then totals", () => {
   assert.equal(groups[1].displayName, "Steam Distillery");
   const text = guestCheckText(groups, { subtotal: 4500, tax: 0, tip: 0, total: 4500 });
   assert.match(text, /Diamond House BBQ/);
-  assert.match(text, /  Brisket/);
+  assert.match(text, / {2}Brisket/);
   assert.match(text, /Steam Distillery/);
-  assert.match(text, /  Old Fashioned/);
+  assert.match(text, / {2}Old Fashioned/);
   assert.match(text, /one authorization, split to the vendors above/);
   assert.doesNotMatch(text, /Finix/i);
 });

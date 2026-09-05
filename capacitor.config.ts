@@ -20,7 +20,7 @@ function loadNativeFile(): NativeFile {
 }
 
 const file = loadNativeFile();
-let baseUrl = (
+const baseUrl = (
   process.env.SUMMEX_NATIVE_URL ||
   file.url ||
   "http://10.0.2.2:8080/apps"

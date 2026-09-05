@@ -447,7 +447,7 @@ function allocate(total: number, weights: { id: string; w: number }[]): Record<s
   }
   if (sum <= 0) {
     const each = Math.floor(total / weights.length);
-    let rem = total - each * weights.length;
+    const rem = total - each * weights.length;
     weights.forEach((x, i) => {
       out[x.id] = each + (i === weights.length - 1 ? rem : 0);
     });

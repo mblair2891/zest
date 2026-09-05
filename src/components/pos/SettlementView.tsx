@@ -30,11 +30,6 @@ export function SettlementView() {
   const emp = usePosStore((s) => s.employees.find((e) => e.id === s.currentEmployeeId));
   const write = canEmployee(emp, "settlement:write");
   const [flash, setFlash] = useState<string | null>(null);
-
-  if (emp?.role === "vendor_operator") {
-    return <OperatorOpsView />;
-  }
-
   const orders = usePosStore((s) => s.orders);
   const live = useMemo(
     () => preview(),
@@ -42,6 +37,10 @@ export function SettlementView() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [orders, config, vendors, preview],
   );
+
+  if (emp?.role === "vendor_operator") {
+    return <OperatorOpsView />;
+  }
 
   const onClose = () => {
     const res = closePeriod();

@@ -20,6 +20,8 @@ function concat(parts: Uint8Array[]): Uint8Array {
 }
 
 function text(s: string): Uint8Array {
+  // ESC/POS is 7-bit; keep tab/LF/CR and printable ASCII.
+  // eslint-disable-next-line no-control-regex -- strip non-printable bytes for thermal printers
   return ENC.encode(s.replace(/[^\x09\x0a\x0d\x20-\x7e]/g, "?"));
 }
 

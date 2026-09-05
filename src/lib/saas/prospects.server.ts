@@ -773,7 +773,7 @@ export async function sendQuote(opts: {
   if (!(await isPlatformAdmin(opts.userId))) throw new ForbiddenError();
   const row = await getRow(opts.prospectId);
   if (!row) throw new Error("Prospect not found");
-  let prospect = mapProspect(row);
+  const prospect = mapProspect(row);
   if (["live", "churned", "rejected", "contracted", "onboarding"].includes(prospect.status)) {
     throw new Error("Quote cannot be sent from this status");
   }

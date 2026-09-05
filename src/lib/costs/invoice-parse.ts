@@ -45,7 +45,7 @@ export function heuristicInvoiceExtract(
 
   const lines: InvoiceExtract["lines"] = [];
   const rowRe =
-    /([A-Za-z][A-Za-z0-9'’+\-\/& ]{2,40})\s+(\d+(?:\.\d+)?)\s+(?:x|@)?\s*\$?\s*(\d+(?:\.\d{1,2})?)/g;
+    /([A-Za-z][A-Za-z0-9'’+/& -]{2,40})\s+(\d+(?:\.\d+)?)\s+(?:x|@)?\s*\$?\s*(\d+(?:\.\d{1,2})?)/g;
   let m: RegExpExecArray | null;
   while ((m = rowRe.exec(blob)) && lines.length < 40) {
     lines.push({

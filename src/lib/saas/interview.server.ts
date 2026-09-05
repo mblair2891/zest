@@ -275,7 +275,7 @@ export async function finishInterview(opts: {
     token: opts.token,
     write: true,
   });
-  let rec =
+  const rec =
     parseRecommendation(opts.recommendation) ?? prospect.interviewRecommendation;
   let answers = prospect.answers;
   if (opts.status === "accepted") {

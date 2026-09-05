@@ -1,4 +1,3 @@
-// @ts-nocheck — store implementation recovered from production SSR bundle
 import { create, type StoreApi, type UseBoundStore } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
 import { uid } from "@/lib/utils";
@@ -134,10 +133,10 @@ import {
 } from "./location-devices";
 import { laundryLocationDevices } from "./laundry-seed";
 
-function mergeFloorStaff(get, set, floorStaff) {
+function mergeFloorStaff(get: any, set: any, floorStaff: any) {
 	if (!Array.isArray(floorStaff) || floorStaff.length === 0) return;
 	const loc = get().tenantLocationId || "loc";
-	const byId = new Map(get().employees.map((e) => [e.id, e]));
+	const byId = new Map(get().employees.map((e: any) => [e.id, e]));
 	for (const e of floorStaff) {
 		if (!e?.id) continue;
 		const pin = String(e.pin ?? "").replace(/\D/g, "").slice(0, 4);
@@ -188,14 +187,14 @@ import {
 	resolveGiftIssuer,
 } from "./gift-issuer";
 
-function nextOrderNumber(orders) {
-	return orders.reduce((m, o) => Math.max(m, o.number), 100) + 1;
+function nextOrderNumber(orders: any) {
+	return orders.reduce((m: any, o: any) => Math.max(m, o.number), 100) + 1;
 }
 function floorCfg() {
 	return parseFloorStatusConfig(usePosStore.getState().settings?.floorStatusConfig ?? DEFAULT_FLOOR_STATUS_CONFIG);
 }
-function ensureGuestCashier(get, set) {
-	if (get().employees.some((e) => e.id === "guest_qr")) return;
+function ensureGuestCashier(get: any, set: any) {
+	if (get().employees.some((e: any) => e.id === "guest_qr")) return;
 	set({
 		employees: [
 			...get().employees,
@@ -213,7 +212,7 @@ function ensureGuestCashier(get, set) {
 		],
 	});
 }
-function tableStatusFromOrder(order) {
+function tableStatusFromOrder(order: any) {
 	if (!order) return "empty";
 	if (order.status !== "open") return "closed_not_cleaned";
 	const settings = usePosStore.getState().settings ?? SETTINGS;
@@ -223,7 +222,7 @@ function tableStatusFromOrder(order) {
 	const tickets = usePosStore.getState().tickets ?? [];
 	return deriveTableStatus(order, tickets, floorCfg());
 }
-function stampStatus(t, status) {
+function stampStatus(t: any, status: any) {
 	const next = normalizeTableStatus(status);
 	if (normalizeTableStatus(t.status) === next) return t;
 	return { ...t, status: next, statusSince: Date.now(), flashNotified: false };
@@ -249,44 +248,44 @@ function initialState() {
 		settings: { ...SETTINGS },
 		employees: employeesForVenue("restaurant"),
 		currentEmployeeId: null,
-		categories: CATEGORIES.map((c) => ({ ...c })),
-		menuItems: MENU_ITEMS.map((m) => ({ ...m })),
-		modifierGroups: MODIFIER_GROUPS.map((g) => ({
+		categories: CATEGORIES.map((c: any) => ({ ...c })),
+		menuItems: MENU_ITEMS.map((m: any) => ({ ...m })),
+		modifierGroups: MODIFIER_GROUPS.map((g: any) => ({
 			...g,
-			options: g.options.map((o) => ({ ...o }))
+			options: g.options.map((o: any) => ({ ...o }))
 		})),
-		tables: TABLES.map((t) => ({ ...t })),
+		tables: TABLES.map((t: any) => ({ ...t })),
 		orders: [],
 		tickets: [],
-		waitlist: WAITLIST.map((w) => ({ ...w })),
-		reservations: RESERVATIONS.map((r) => ({ ...r })),
-		customers: CUSTOMERS.map((c) => ({ ...c })),
-		giftCards: GIFT_CARDS.map((g) => ({ ...g })),
+		waitlist: WAITLIST.map((w: any) => ({ ...w })),
+		reservations: RESERVATIONS.map((r: any) => ({ ...r })),
+		customers: CUSTOMERS.map((c: any) => ({ ...c })),
+		giftCards: GIFT_CARDS.map((g: any) => ({ ...g })),
 		giftTransfers: [],
-		inventory: INVENTORY.map((i) => ({ ...i })),
-		vendors: VENDORS.map((v) => ({ ...v })),
+		inventory: INVENTORY.map((i: any) => ({ ...i })),
+		vendors: VENDORS.map((v: any) => ({ ...v })),
 		settlementConfig: { ...SETTLEMENT_CONFIG },
 		settlementPeriods: [],
 		chargebacks: [],
 		ledgerEntries: [],
 		auditLog: [],
 		shift: emptyShift(),
-		view: "floor",
+		view: "floor" as const,
 		activeOrderId: null,
 		activeTableId: null,
 		selectedCategoryId: CATEGORIES[0]?.id ?? null,
 		selectedLineId: null,
 		activeSeat: null,
 		clock: Date.now(),
-		floorSections: DEFAULT_FLOOR_SECTIONS.map((s) => ({ ...s })),
-		extraTableGrants: EXTRA_TABLE_GRANTS.map((g) => ({ ...g })),
+		floorSections: DEFAULT_FLOOR_SECTIONS.map((s: any) => ({ ...s })),
+		extraTableGrants: EXTRA_TABLE_GRANTS.map((g: any) => ({ ...g })),
 		sectionOverrides: {},
-		activeEntityId: "restaurant",
+		activeEntityId: "restaurant" as const,
 		tenantLocationId: null,
 		entityPermissions: [],
 		locationDevices: [],
 		activeDeviceId: null,
-		sessionKind: "pin",
+		sessionKind: "pin" as const,
 		backOfficeUnlocked: false,
 		stationPinFailures: 0,
 		stationPinLocked: false,
@@ -300,7 +299,7 @@ function initialState() {
 	};
 }
 
-function currentDeviceRole(get) {
+function currentDeviceRole(get: any) {
 	try {
 		const raw = typeof window !== "undefined"
 			? new URLSearchParams(window.location.search).get("station")
@@ -315,11 +314,11 @@ function currentDeviceRole(get) {
 	return null;
 }
 
-function lpCfg(get) {
+function lpCfg(get: any) {
 	return parseLossPrevention(get().settings?.lossPrevention);
 }
 
-function managerActor(get) {
+function managerActor(get: any) {
 	if (!get().hasManagerAuth()) return null;
 	return {
 		id: get().managerAuthEmployeeId || "mgr",
@@ -327,10 +326,10 @@ function managerActor(get) {
 	};
 }
 
-function notifyOnCall(get, body, approvalId) {
+function notifyOnCall(get: any, body: any, _approvalId?: any) {
 	const cfg = lpCfg(get);
 	if (!cfg.remoteApprove) return;
-	const phones = (cfg.onCallList || []).map((c) => c.phone).filter((p) => p && p.length >= 8);
+	const phones = (cfg.onCallList || []).map((c: any) => c.phone).filter((p: any) => p && p.length >= 8);
 	const loc = get().tenantLocationId || "";
 	if (!phones.length) return;
 	try {
@@ -348,7 +347,7 @@ function notifyOnCall(get, body, approvalId) {
 	} catch { /* optional */ }
 }
 
-function gateMeta(approval, path) {
+function gateMeta(approval: any, path: any) {
 	if (!approval && !path) return {};
 	return {
 		requesterId: approval?.requesterId,
@@ -360,19 +359,19 @@ function gateMeta(approval, path) {
 	};
 }
 
-function optsSandbox(method, order, emp) {
+function optsSandbox(method: any, order: any, emp: any) {
 	if (method !== "card" && method !== "room_charge") return false;
 	try {
 		return captureIsSandbox({
 			operatorId: emp?.operatorId,
-			vendorIds: (order?.lines ?? []).map((l) => l.vendorId).filter(Boolean),
+			vendorIds: (order?.lines ?? []).map((l: any) => l.vendorId).filter(Boolean),
 		});
 	} catch {
 		return false;
 	}
 }
 
-function accessCtx(get) {
+function accessCtx(get: any) {
 	const emp = get().getCurrentEmployee();
 	return {
 		emp,
@@ -383,30 +382,31 @@ function accessCtx(get) {
 	};
 }
 
-function checkTableAccess(get, table, action) {
+function checkTableAccess(get: any, table: any, action: any) {
 	const ctx = accessCtx(get);
 	return canAccessTable({ ...ctx, table, action });
 }
 
-const usePosStoreRaw = create()(persist((set, get) => ({
+const usePosStoreRaw = create<PosStore>()(persist((set, get) => {
+	const store: PosStore = {
 	...initialState(),
 	login: (pin) => {
 		const loc = get().tenantLocationId || get().activeEntityId || "loc";
-		const device = (get().locationDevices ?? []).find((d) => d.id === get().activeDeviceId);
+		const device = (get().locationDevices ?? []).find((d: any) => d.id === get().activeDeviceId);
 		const deviceOp = device?.assignment?.operatorId ?? null;
 		if (get().stationPinLocked && !isDemoStaffPin(pin)) {
 			return { ok: false, error: "This station is locked. Ask a manager to unlock.", locked: true };
 		}
 		if (!isDemoStaffPin(pin)) {
-			const collisions = staffMatchingPin(get().employees, pin, loc).filter((e) => e.active);
+			const collisions = staffMatchingPin(get().employees, pin, loc).filter((e: any) => e.active);
 			if (collisions.length > 1) {
 				get().audit("pin_lockout", "Shared PIN blocked at login", { reason: "unique_pin" });
 				return { ok: false, error: "This PIN is assigned to more than one person. A manager must set unique PINs." };
 			}
 		}
-		let emp = isDemoStaffPin(pin)
-			? (get().employees.find((e) => e.active && e.role === "owner")
-				?? get().employees.find((e) => e.active && e.role === "manager")
+		const emp = isDemoStaffPin(pin)
+			? (get().employees.find((e: any) => e.active && e.role === "owner")
+				?? get().employees.find((e: any) => e.active && e.role === "manager")
 				?? findStaffByPin(get().employees, pin, loc, deviceOp))
 			: findStaffByPin(get().employees, pin, loc, deviceOp);
 		if (!emp) {
@@ -427,10 +427,10 @@ const usePosStoreRaw = create()(persist((set, get) => ({
 		const hashed = hashPin(pin, loc);
 		const employees = isDemoStaffPin(pin)
 			? get().employees
-			: get().employees.map((e) =>
+			: get().employees.map((e: any) =>
 				e.id === emp.id && !e.pinHash ? { ...e, pinHash: hashed, pin: "" } : e,
 			);
-		let view = isDemoStaffPin(pin) ? "hq" : homeViewForEmployee(emp);
+		let view: import("./types").PosView = isDemoStaffPin(pin) ? "hq" : homeViewForEmployee(emp);
 		try {
 			const raw = typeof window !== "undefined"
 				? new URLSearchParams(window.location.search).get("station")
@@ -446,7 +446,7 @@ const usePosStoreRaw = create()(persist((set, get) => ({
 			/* station role optional */
 		}
 		set({
-			employees: employees.map((e) =>
+			employees: employees.map((e: any) =>
 				e.id === emp.id ? { ...e, pinFailedAttempts: 0 } : e,
 			),
 			currentEmployeeId: emp.id,
@@ -466,7 +466,7 @@ const usePosStoreRaw = create()(persist((set, get) => ({
 		return { ok: true };
 	},
 	loginAs: (employeeId, opts) => {
-		const emp = get().employees.find((e) => e.id === employeeId && e.active);
+		const emp = get().employees.find((e: any) => e.id === employeeId && e.active);
 		if (!emp) return { ok: false, error: "Unknown employee" };
 		const kind = opts?.kind ?? (isBackOfficeRole(emp.role) ? "backoffice" : "pin");
 		set({
@@ -508,20 +508,20 @@ const usePosStoreRaw = create()(persist((set, get) => ({
 			return { ok: false, error: "Only back office can set PINs" };
 		}
 		if (!isFourDigitPin(pin)) return { ok: false, error: "PIN must be 4 digits" };
-		const target = get().employees.find((e) => e.id === employeeId);
+		const target = get().employees.find((e: any) => e.id === employeeId);
 		if (!target) return { ok: false, error: "Unknown employee" };
 		if (actor.role === "vendor_operator" && target.operatorId !== actor.operatorId) {
 			return { ok: false, error: "You can only set PINs for your entity" };
 		}
 		const loc = get().tenantLocationId || get().activeEntityId || "loc";
 		const used = get().employees.some(
-			(e) => e.id !== employeeId && (e.pin === pin || e.pinHash === hashPin(pin, loc)),
+			(e: any) => e.id !== employeeId && (e.pin === pin || e.pinHash === hashPin(pin, loc)),
 		);
 		if (used || pinTakenByOther(get().employees, employeeId, pin, loc)) {
 			return { ok: false, error: "PIN already in use at this location" };
 		}
 		set({
-			employees: get().employees.map((e) =>
+			employees: get().employees.map((e: any) =>
 				e.id === employeeId
 					? { ...withHashedPin(e, pin, loc), pinLocked: false, pinFailedAttempts: 0 }
 					: e,
@@ -639,10 +639,10 @@ const usePosStoreRaw = create()(persist((set, get) => ({
 		if (!get().hasManagerAuth() && actor?.role !== "owner" && actor?.role !== "manager") {
 			return { ok: false, error: "Manager PIN required" };
 		}
-		const target = get().employees.find((e) => e.id === employeeId);
+		const target = get().employees.find((e: any) => e.id === employeeId);
 		if (!target) return { ok: false, error: "Unknown employee" };
 		set({
-			employees: get().employees.map((e) =>
+			employees: get().employees.map((e: any) =>
 				e.id === employeeId ? { ...e, pinLocked: false, pinFailedAttempts: 0 } : e,
 			),
 		});
@@ -713,14 +713,14 @@ const usePosStoreRaw = create()(persist((set, get) => ({
 			lineWasSent: input.lineWasSent,
 			ticketFired: input.ticketFired,
 			payload: input.payload || {},
-			notify: cfg.onCallList.map((c) => c.employeeId),
+			notify: cfg.onCallList.map((c: any) => c.employeeId),
 		};
 		set({ pendingApprovals: [row, ...(get().pendingApprovals ?? [])].slice(0, 200) });
 		if (input.lineId && input.orderId && (input.kind === "void" || input.kind === "comp")) {
 			set({
-				orders: get().orders.map((o) => o.id !== input.orderId ? o : {
+				orders: get().orders.map((o: any) => o.id !== input.orderId ? o : {
 					...o,
-					lines: o.lines.map((l) => l.id === input.lineId
+					lines: o.lines.map((l: any) => l.id === input.lineId
 						? { ...l, pendingAction: input.kind, note: `Pending ${input.kind}` }
 						: l),
 				}),
@@ -754,7 +754,7 @@ const usePosStoreRaw = create()(persist((set, get) => ({
 		return { ok: true, pendingId: id };
 	},
 	resolveApproval: (id, decision, opts) => {
-		const row = (get().pendingApprovals ?? []).find((p) => p.id === id);
+		const row = (get().pendingApprovals ?? []).find((p: any) => p.id === id);
 		if (!row || row.status !== "pending") return { ok: false, error: "Request not found" };
 		const cfg = lpCfg(get);
 		const actor = get().getCurrentEmployee();
@@ -769,7 +769,7 @@ const usePosStoreRaw = create()(persist((set, get) => ({
 		const approverId = get().managerAuthEmployeeId || actor?.id || "mgr";
 		const approverName = get().managerAuthEmployeeName || actor?.name || "Manager";
 		set({
-			pendingApprovals: (get().pendingApprovals ?? []).map((p) =>
+			pendingApprovals: (get().pendingApprovals ?? []).map((p: any) =>
 				p.id === id
 					? {
 						...p,
@@ -785,16 +785,16 @@ const usePosStoreRaw = create()(persist((set, get) => ({
 		if (decision === "denied") {
 			if (row.lineId && row.orderId) {
 				set({
-					orders: get().orders.map((o) => o.id !== row.orderId ? o : {
+					orders: get().orders.map((o: any) => o.id !== row.orderId ? o : {
 						...o,
-						lines: o.lines.map((l) => l.id === row.lineId ? { ...l, pendingAction: undefined } : l),
+						lines: o.lines.map((l: any) => l.id === row.lineId ? { ...l, pendingAction: undefined } : l),
 					}),
 				});
 			}
 			if (cfg.pendingRejectPolicy === "auto_void" && row.ticketFired && row.lineId) {
 				set({
-					tickets: get().tickets.map((t) =>
-						t.items.some((i) => i.lineId === row.lineId) && t.status !== "bumped" && t.status !== "voided"
+					tickets: get().tickets.map((t: any) =>
+						t.items.some((i: any) => i.lineId === row.lineId) && t.status !== "bumped" && t.status !== "voided"
 							? { ...t, status: "voided" }
 							: t,
 					),
@@ -865,7 +865,7 @@ const usePosStoreRaw = create()(persist((set, get) => ({
 				const drawerId = row.payload.drawerId;
 				try {
 					const cashCfg = parseCashHandling(get().settings.cashHandling);
-					const drawer = cashCfg.drawers.find((d) => d.id === drawerId);
+					const drawer = cashCfg.drawers.find((d: any) => d.id === drawerId);
 					useCashSessionStore.getState().logNoSale({
 						employeeId: row.requesterId,
 						employeeName: row.requesterName,
@@ -901,7 +901,7 @@ const usePosStoreRaw = create()(persist((set, get) => ({
 		return res || { ok: true };
 	},
 	clockToggle: (employeeId) => {
-		const emp = get().employees.find((e) => e.id === employeeId);
+		const emp = get().employees.find((e: any) => e.id === employeeId);
 		const clockingOut = !!emp?.clockedIn;
 		try {
 			const cfg = parseCashHandling(get().settings.cashHandling);
@@ -932,7 +932,7 @@ const usePosStoreRaw = create()(persist((set, get) => ({
 				}
 			}
 		} catch { /* */ }
-		set({ employees: get().employees.map((e) => {
+		set({ employees: get().employees.map((e: any) => {
 			if (e.id !== employeeId) return e;
 			if (e.clockedIn) return {
 				...e,
@@ -946,14 +946,14 @@ const usePosStoreRaw = create()(persist((set, get) => ({
 			};
 		}) });
 		if (clockingOut) {
-			const openMine = get().orders.filter((o) => o.status === "open" && o.serverId === employeeId && !o.holdKind);
+			const openMine = get().orders.filter((o: any) => o.status === "open" && o.serverId === employeeId && !o.holdKind);
 			if (openMine.length) {
 				get().audit("clockout_open_checks", `${emp?.name ?? employeeId} clocked out with ${openMine.length} open check(s)`, {
-					after: openMine.map((o) => `#${o.number}`).join(", "),
+					after: openMine.map((o: any) => `#${o.number}`).join(", "),
 				});
 			}
 			set({
-				extraTableGrants: get().extraTableGrants.filter((g) => !(g.employeeId === employeeId && g.scope === "shift")),
+				extraTableGrants: get().extraTableGrants.filter((g: any) => !(g.employeeId === employeeId && g.scope === "shift")),
 				sectionOverrides: { ...get().sectionOverrides, [employeeId]: [] }
 			});
 		}
@@ -972,7 +972,7 @@ const usePosStoreRaw = create()(persist((set, get) => ({
 	tick: () => {
 		const now = Date.now();
 		const cfg = floorCfg();
-		const tables = get().tables.map((t) => {
+		const tables = get().tables.map((t: any) => {
 			if (t.flashNotified) return t;
 			if (!tableFlash(t, cfg, now)) return t;
 			try {
@@ -991,7 +991,7 @@ const usePosStoreRaw = create()(persist((set, get) => ({
 		set({
 			clock: now,
 			tables,
-			tickets: get().tickets.map((t) => t.status === "bumped" ? t : {
+			tickets: get().tickets.map((t: any) => t.status === "bumped" ? t : {
 				...t,
 				elapsedSec: Math.floor((now - t.createdAt) / 1e3)
 			})
@@ -1005,9 +1005,9 @@ const usePosStoreRaw = create()(persist((set, get) => ({
 	setSelectedLine: (id) => set({ selectedLineId: id }),
 	setActiveSeat: (n) => set({ activeSeat: n }),
 	setActiveOrder: (id) => {
-		const order = get().orders.find((o) => o.id === id);
+		const order = get().orders.find((o: any) => o.id === id);
 		if (order?.tableId) {
-			const table = get().tables.find((t) => t.id === order.tableId);
+			const table = get().tables.find((t: any) => t.id === order.tableId);
 			if (table) {
 				const access = checkTableAccess(get, table, "order");
 				if (!access.ok && !access.viewOnly) {
@@ -1023,11 +1023,11 @@ const usePosStoreRaw = create()(persist((set, get) => ({
 	},
 	getCurrentEmployee: () => {
 		const id = get().currentEmployeeId;
-		return get().employees.find((e) => e.id === id) ?? null;
+		return get().employees.find((e: any) => e.id === id) ?? null;
 	},
 	getActiveOrder: () => {
 		const id = get().activeOrderId;
-		return get().orders.find((o) => o.id === id);
+		return get().orders.find((o: any) => o.id === id);
 	},
 	postLedger: (entries) => {
 		if (!entries.length) return;
@@ -1087,7 +1087,7 @@ const usePosStoreRaw = create()(persist((set, get) => ({
 		const emp = get().getCurrentEmployee();
 		if (emp?.role === "vendor_operator") return;
 		set({
-			locationDevices: (get().locationDevices ?? []).map((d) =>
+			locationDevices: (get().locationDevices ?? []).map((d: any) =>
 				d.id === id ? { ...d, assignment, lastSeenAt: Date.now() } : d,
 			),
 		});
@@ -1115,12 +1115,12 @@ const usePosStoreRaw = create()(persist((set, get) => ({
 	},
 	setActiveDeviceId: (id) => set({ activeDeviceId: id }),
 	tableAccess: (tableId, action = "order") => {
-		const table = get().tables.find((t) => t.id === tableId);
+		const table = get().tables.find((t: any) => t.id === tableId);
 		if (!table) return { ok: false, reason: "Table not found", code: "blocked_order" };
 		return checkTableAccess(get, table, action);
 	},
 	selectTable: (tableId) => {
-		const table = get().tables.find((t) => t.id === tableId);
+		const table = get().tables.find((t: any) => t.id === tableId);
 		if (!table) return { ok: false, error: "Not found" };
 		const access = checkTableAccess(get, table, "order");
 		if (!access.ok && !access.viewOnly) {
@@ -1145,13 +1145,13 @@ const usePosStoreRaw = create()(persist((set, get) => ({
 	seatTable: (tableId, guestCount, opts) => {
 		const emp = get().getCurrentEmployee();
 		if (!emp) return { ok: false, error: "Not signed in" };
-		const table = get().tables.find((t) => t.id === tableId);
+		const table = get().tables.find((t: any) => t.id === tableId);
 		if (!table || !isEmptyTable(table.status)) return { ok: false, error: "Table not available" };
 		const access = checkTableAccess(get, table, "seat");
 		if (!access.ok) return { ok: false, error: access.reason, access };
 		const canAssign = emp.role === "owner" || emp.role === "manager" || emp.role === "host";
 		const assigned = opts?.serverId && canAssign
-			? get().employees.find((e) => e.id === opts.serverId && e.active)
+			? get().employees.find((e: any) => e.id === opts.serverId && e.active)
 			: null;
 		const owner = assigned ?? emp;
 		const order = {
@@ -1173,7 +1173,7 @@ const usePosStoreRaw = create()(persist((set, get) => ({
 		};
 		set({
 			orders: [...get().orders, order],
-			tables: get().tables.map((t) => t.id === tableId ? {
+			tables: get().tables.map((t: any) => t.id === tableId ? {
 				...t,
 				status: "sat_no_order",
 				statusSince: Date.now(),
@@ -1204,14 +1204,14 @@ const usePosStoreRaw = create()(persist((set, get) => ({
 	releaseTable: (tableId, opts) => {
 		const emp = get().getCurrentEmployee();
 		if (!emp) return { ok: false, error: "Not signed in" };
-		const table = get().tables.find((t) => t.id === tableId);
+		const table = get().tables.find((t: any) => t.id === tableId);
 		if (!table) return { ok: false, error: "Not found" };
 		if (!table.orderId) return { ok: false, error: "No open check" };
-		let order = get().orders.find((o) => o.id === table.orderId);
+		let order = get().orders.find((o: any) => o.id === table.orderId);
 		if (!order || order.status !== "open") return { ok: false, error: "No open check" };
 		if (!order.serverId) {
 			set({
-				orders: get().orders.map((o) => o.id === order.id ? { ...o, serverId: emp.id, serverName: emp.name } : o),
+				orders: get().orders.map((o: any) => o.id === order.id ? { ...o, serverId: emp.id, serverName: emp.name } : o),
 			});
 			order = { ...order, serverId: emp.id, serverName: emp.name };
 		}
@@ -1226,11 +1226,11 @@ const usePosStoreRaw = create()(persist((set, get) => ({
 			}
 			return get().holdCheck(order.id, opts.hold, opts.reason, { house: opts.house !== false, clearTable: true });
 		}
-		const target = get().employees.find((e) => e.id === opts.toEmployeeId && e.active);
+		const target = get().employees.find((e: any) => e.id === opts.toEmployeeId && e.active);
 		if (!target) return { ok: false, error: "Staff not found" };
 		if (target.id === order.serverId) return { ok: false, error: "Already owned by that person" };
 		set({
-			tables: get().tables.map((t) => t.id === tableId ? {
+			tables: get().tables.map((t: any) => t.id === tableId ? {
 				...t,
 				releasedAt: Date.now(),
 				releasedById: emp.id,
@@ -1238,7 +1238,7 @@ const usePosStoreRaw = create()(persist((set, get) => ({
 				pendingAcceptId: target.id,
 				pendingAcceptName: target.name,
 			} : t),
-			orders: get().orders.map((o) => o.id === order.id ? {
+			orders: get().orders.map((o: any) => o.id === order.id ? {
 				...o,
 				pendingAcceptId: target.id,
 				pendingAcceptName: target.name,
@@ -1259,18 +1259,18 @@ const usePosStoreRaw = create()(persist((set, get) => ({
 		if (!isCheckHoldKind(hold) || !String(reason || "").trim()) {
 			return { ok: false, error: "Named hold requires a reason." };
 		}
-		let order = get().orders.find((o) => o.id === orderId);
+		let order = get().orders.find((o: any) => o.id === orderId);
 		if (!order || order.status !== "open") return { ok: false, error: "No open check" };
 		if (!order.serverId) {
 			set({
-				orders: get().orders.map((o) => o.id === order.id ? { ...o, serverId: emp.id, serverName: emp.name } : o),
+				orders: get().orders.map((o: any) => o.id === order.id ? { ...o, serverId: emp.id, serverName: emp.name } : o),
 			});
 			order = { ...order, serverId: emp.id, serverName: emp.name };
 		}
 		const house = opts?.house !== false && hold !== "bar_tab";
 		const tableId = order.tableId;
 		set({
-			orders: get().orders.map((o) => o.id !== order.id ? o : {
+			orders: get().orders.map((o: any) => o.id !== order.id ? o : {
 				...o,
 				holdKind: hold,
 				holdReason: reason,
@@ -1283,7 +1283,7 @@ const usePosStoreRaw = create()(persist((set, get) => ({
 				pendingAcceptName: undefined,
 			}),
 			tables: opts?.clearTable && tableId
-				? get().tables.map((t) => t.id === tableId || t.orderId === order.id ? {
+				? get().tables.map((t: any) => t.id === tableId || t.orderId === order.id ? {
 					...t,
 					orderId: t.orderId === order.id ? undefined : t.orderId,
 					releasedAt: undefined,
@@ -1316,7 +1316,7 @@ const usePosStoreRaw = create()(persist((set, get) => ({
 			emp.role === "manager" ||
 			emp.role === "host";
 		if (!canTake) return { ok: false, error: "Only floor staff can accept a table" };
-		const table = get().tables.find((t) => t.id === tableId);
+		const table = get().tables.find((t: any) => t.id === tableId);
 		if (!table?.releasedAt) return { ok: false, error: "Table is not waiting for accept" };
 		if (!table.orderId) return { ok: false, error: "No open check" };
 		const lead = emp.role === "owner" || emp.role === "manager" || emp.role === "host";
@@ -1325,7 +1325,7 @@ const usePosStoreRaw = create()(persist((set, get) => ({
 		}
 		const releasedBy = table.releasedByName ?? "unknown";
 		set({
-			tables: get().tables.map((t) => t.id === tableId ? {
+			tables: get().tables.map((t: any) => t.id === tableId ? {
 				...t,
 				serverId: emp.id,
 				releasedAt: void 0,
@@ -1334,7 +1334,7 @@ const usePosStoreRaw = create()(persist((set, get) => ({
 				pendingAcceptId: void 0,
 				pendingAcceptName: void 0,
 			} : t),
-			orders: get().orders.map((o) => o.id === table.orderId ? {
+			orders: get().orders.map((o: any) => o.id === table.orderId ? {
 				...o,
 				serverId: emp.id,
 				serverName: emp.name,
@@ -1357,12 +1357,12 @@ const usePosStoreRaw = create()(persist((set, get) => ({
 		if (!emp || (emp.role !== "owner" && emp.role !== "manager" && emp.role !== "host")) {
 			return { ok: false, error: "Manager or host can reassign" };
 		}
-		const target = get().employees.find((e) => e.id === serverId && e.active);
+		const target = get().employees.find((e: any) => e.id === serverId && e.active);
 		if (!target) return { ok: false, error: "Staff not found" };
-		const table = get().tables.find((t) => t.id === tableId);
+		const table = get().tables.find((t: any) => t.id === tableId);
 		if (!table) return { ok: false, error: "Not found" };
 		set({
-			tables: get().tables.map((t) => t.id === tableId ? {
+			tables: get().tables.map((t: any) => t.id === tableId ? {
 				...t,
 				serverId: target.id,
 				releasedAt: void 0,
@@ -1370,7 +1370,7 @@ const usePosStoreRaw = create()(persist((set, get) => ({
 				releasedByName: void 0,
 			} : t),
 			orders: table.orderId
-				? get().orders.map((o) => o.id === table.orderId ? {
+				? get().orders.map((o: any) => o.id === table.orderId ? {
 					...o,
 					serverId: target.id,
 					serverName: target.name,
@@ -1383,9 +1383,9 @@ const usePosStoreRaw = create()(persist((set, get) => ({
 		return { ok: true };
 	},
 	markClean: (tableId) => {
-		const table = get().tables.find((t) => t.id === tableId);
+		const table = get().tables.find((t: any) => t.id === tableId);
 		if (!table) return { ok: false, error: "Not found" };
-		const open = get().orders.find((o) =>
+		const open = get().orders.find((o: any) =>
 			o.status === "open" && !o.holdKind && (o.id === table.orderId || o.tableId === tableId),
 		);
 		if (open) {
@@ -1405,7 +1405,7 @@ const usePosStoreRaw = create()(persist((set, get) => ({
 			const held = get().holdCheck(open.id, "left_to_close", "Table marked empty", { house: true, clearTable: true });
 			if (!held.ok) return held;
 			set({
-				tables: get().tables.map((t) => t.id === tableId ? {
+				tables: get().tables.map((t: any) => t.id === tableId ? {
 					...t,
 					status: "empty",
 					statusSince: Date.now(),
@@ -1427,7 +1427,7 @@ const usePosStoreRaw = create()(persist((set, get) => ({
 			floorSync("table", tableId);
 			return { ok: true };
 		}
-		set({ tables: get().tables.map((t) => t.id === tableId ? {
+		set({ tables: get().tables.map((t: any) => t.id === tableId ? {
 			...t,
 			status: "empty",
 			statusSince: Date.now(),
@@ -1445,10 +1445,10 @@ const usePosStoreRaw = create()(persist((set, get) => ({
 		return { ok: true };
 	},
 	clearTable: (tableId) => {
-		const childIds = get().tables.find((t) => t.id === tableId) ? get().tables.filter((t) => t.mergedIntoId === tableId).map((t) => t.id) : [];
+		const childIds = get().tables.find((t: any) => t.id === tableId) ? get().tables.filter((t: any) => t.mergedIntoId === tableId).map((t: any) => t.id) : [];
 		set({
-			extraTableGrants: get().extraTableGrants.filter((g) => !(g.scope === "seating" && (g.tableId === tableId || childIds.includes(g.tableId)))),
-			tables: get().tables.map((t) => {
+			extraTableGrants: get().extraTableGrants.filter((g: any) => !(g.scope === "seating" && (g.tableId === tableId || childIds.includes(g.tableId)))),
+			tables: get().tables.map((t: any) => {
 				if (t.id === tableId || childIds.includes(t.id)) return {
 					...t,
 					status: "closed_not_cleaned",
@@ -1461,13 +1461,13 @@ const usePosStoreRaw = create()(persist((set, get) => ({
 				};
 				return t;
 			}),
-			activeOrderId: get().activeOrderId && get().orders.find((o) => o.id === get().activeOrderId)?.tableId === tableId ? null : get().activeOrderId
+			activeOrderId: get().activeOrderId && get().orders.find((o: any) => o.id === get().activeOrderId)?.tableId === tableId ? null : get().activeOrderId
 		});
 		floorSync("table", tableId);
 	},
 	transferTable: (fromId, toId) => {
-		const from = get().tables.find((t) => t.id === fromId);
-		const to = get().tables.find((t) => t.id === toId);
+		const from = get().tables.find((t: any) => t.id === fromId);
+		const to = get().tables.find((t: any) => t.id === toId);
 		if (!from?.orderId) return {
 			ok: false,
 			error: "Source has no check"
@@ -1480,7 +1480,7 @@ const usePosStoreRaw = create()(persist((set, get) => ({
 		if (!destAccess.ok) return { ok: false, error: destAccess.reason, access: destAccess };
 		const orderId = from.orderId;
 		set({
-			tables: get().tables.map((t) => {
+			tables: get().tables.map((t: any) => {
 				if (t.id === fromId) return {
 					...t,
 					status: "closed_not_cleaned",
@@ -1492,7 +1492,7 @@ const usePosStoreRaw = create()(persist((set, get) => ({
 				};
 				if (t.id === toId) return {
 					...t,
-					status: tableStatusFromOrder(get().orders.find((o) => o.id === orderId)),
+					status: tableStatusFromOrder(get().orders.find((o: any) => o.id === orderId)),
 					orderId,
 					serverId: from.serverId,
 					guestCount: from.guestCount,
@@ -1500,7 +1500,7 @@ const usePosStoreRaw = create()(persist((set, get) => ({
 				};
 				return t;
 			}),
-			orders: get().orders.map((o) => o.id === orderId ? {
+			orders: get().orders.map((o: any) => o.id === orderId ? {
 				...o,
 				tableId: toId
 			} : o)
@@ -1509,14 +1509,14 @@ const usePosStoreRaw = create()(persist((set, get) => ({
 		try {
 			const cfg = parseCashHandling(get().settings.cashHandling);
 			if (cfg.cashFollowsOnTransfer === "accepting_server") {
-				const order = get().orders.find((o) => o.id === orderId);
+				const order = get().orders.find((o: any) => o.id === orderId);
 				const cash = (order?.payments ?? [])
-					.filter((p) => p.method === "cash")
-					.reduce((s, p) => s + p.amountCents + (p.tipCents || 0), 0);
+					.filter((p: any) => p.method === "cash")
+					.reduce((s: any, p: any) => s + p.amountCents + (p.tipCents || 0), 0);
 				const fromEmp = from.serverId;
 				const toEmp = get().currentEmployeeId;
 				if (cash && fromEmp && toEmp && fromEmp !== toEmp) {
-					const toStaff = get().employees.find((e) => e.id === toEmp);
+					const toStaff = get().employees.find((e: any) => e.id === toEmp);
 					useCashSessionStore.getState().reattributeOrder({
 						orderId,
 						fromEmployeeId: fromEmp,
@@ -1536,37 +1536,37 @@ const usePosStoreRaw = create()(persist((set, get) => ({
 		const unique = [...new Set(tableIds.filter(Boolean))];
 		if (unique.length < 2) return { ok: false, error: "Pick two or more tables" };
 		const tables = get().tables;
-		const roots = [...new Set(unique.map((id) => groupRootId(tables, id)))];
-		const members = roots.flatMap((id) => groupMembers(tables, id));
+		const roots = [...new Set(unique.map((id: any) => groupRootId(tables, id)))];
+		const members = roots.flatMap((id: any) => groupMembers(tables, id));
 		if (members.length < 2) return { ok: false, error: "Already one group" };
 		const winner = pickLowestPrimary(members);
-		const others = members.filter((t) => t.id !== winner.id);
-		const seats = members.reduce((s, t) => s + nativeSeats(t), 0);
+		const others = members.filter((t: any) => t.id !== winner.id);
+		const seats = members.reduce((s: any, t: any) => s + nativeSeats(t), 0);
 		const label = lowestGroupLabel(members);
-		const status = members.find((t) => t.orderId)?.status ?? winner.status;
+		const status = members.find((t: any) => t.orderId)?.status ?? winner.status;
 		const guestCount =
-			(members.reduce((s, t) => s + (t.guestCount ?? 0), 0) || winner.guestCount);
-		const serverId = winner.serverId ?? members.find((t) => t.serverId)?.serverId;
-		const orderIds = [...new Set(members.map((t) => t.orderId).filter(Boolean))];
+			(members.reduce((s: any, t: any) => s + (t.guestCount ?? 0), 0) || winner.guestCount);
+		const serverId = winner.serverId ?? members.find((t: any) => t.serverId)?.serverId;
+		const orderIds = [...new Set(members.map((t: any) => t.orderId).filter(Boolean))];
 		let keepOrderId = winner.orderId ?? orderIds[0];
 		let orders = get().orders;
 		if (orderIds.length > 1 && keepOrderId) {
-			const keep = orders.find((o) => o.id === keepOrderId);
+			const keep = orders.find((o: any) => o.id === keepOrderId);
 			if (keep && keep.status === "open") {
-				const extras = orderIds.filter((id) => id !== keepOrderId);
+				const extras = orderIds.filter((id: any) => id !== keepOrderId);
 				for (const oid of extras) {
-					const src = orders.find((o) => o.id === oid);
+					const src = orders.find((o: any) => o.id === oid);
 					if (!src || src.status !== "open") continue;
 					const gate = canMutateCheck(emp, src);
 					if (!gate.ok) return gate;
-					orders = orders.map((o) => {
+					orders = orders.map((o: any) => {
 						if (o.id === keep.id) {
 							return {
 								...o,
 								lines: [...o.lines, ...src.lines.map(cloneMovedLine)],
 								guestCount: o.guestCount + src.guestCount,
 								tableId: winner.id,
-								mergedTableIds: [...new Set([...(o.mergedTableIds ?? []), ...(src.mergedTableIds ?? []), ...others.map((t) => t.id)])],
+								mergedTableIds: [...new Set([...(o.mergedTableIds ?? []), ...(src.mergedTableIds ?? []), ...others.map((t: any) => t.id)])],
 							};
 						}
 						if (o.id === src.id) {
@@ -1578,17 +1578,17 @@ const usePosStoreRaw = create()(persist((set, get) => ({
 				keepOrderId = keep.id;
 			}
 		} else if (keepOrderId) {
-			orders = orders.map((o) => o.id === keepOrderId ? {
+			orders = orders.map((o: any) => o.id === keepOrderId ? {
 				...o,
 				tableId: winner.id,
 				guestCount: Math.max(o.guestCount, guestCount || o.guestCount),
-				mergedTableIds: [...new Set([...(o.mergedTableIds ?? []), ...others.map((t) => t.id)])],
+				mergedTableIds: [...new Set([...(o.mergedTableIds ?? []), ...others.map((t: any) => t.id)])],
 			} : o);
 		}
 		const now = Date.now();
 		set({
 			orders,
-			tables: tables.map((t) => {
+			tables: tables.map((t: any) => {
 				if (t.id === winner.id) {
 					return {
 						...t,
@@ -1597,7 +1597,7 @@ const usePosStoreRaw = create()(persist((set, get) => ({
 						label,
 						seats,
 						mergedIntoId: undefined,
-						mergedChildIds: others.map((c) => c.id),
+						mergedChildIds: others.map((c: any) => c.id),
 						orderId: keepOrderId,
 						guestCount: guestCount || t.guestCount,
 						serverId,
@@ -1605,7 +1605,7 @@ const usePosStoreRaw = create()(persist((set, get) => ({
 						statusSince: now,
 					};
 				}
-				if (others.some((c) => c.id === t.id)) {
+				if (others.some((c: any) => c.id === t.id)) {
 					return {
 						...t,
 						originalLabel: t.originalLabel ?? displayLabel(t),
@@ -1624,7 +1624,7 @@ const usePosStoreRaw = create()(persist((set, get) => ({
 		});
 		get().audit(
 			"table_combine",
-			`Group ${label} · ${members.map((m) => displayLabel(m)).join("+")} · ${seats} seats`,
+			`Group ${label} · ${members.map((m: any) => displayLabel(m)).join("+")} · ${seats} seats`,
 		);
 		if (keepOrderId) floorSync("check", keepOrderId);
 		floorSync("table", winner.id);
@@ -1633,12 +1633,12 @@ const usePosStoreRaw = create()(persist((set, get) => ({
 	unmergeTable: (tableId) => {
 		const tables = get().tables;
 		const primaryId = groupRootId(tables, tableId);
-		const primary = tables.find((t) => t.id === primaryId);
+		const primary = tables.find((t: any) => t.id === primaryId);
 		if (!primary?.mergedChildIds?.length) return { ok: false, error: "Not a combined group" };
 		const children = primary.mergedChildIds;
 		const now = Date.now();
 		set({
-			tables: tables.map((t) => {
+			tables: tables.map((t: any) => {
 				if (t.id === primaryId) {
 					return {
 						...t,
@@ -1667,7 +1667,7 @@ const usePosStoreRaw = create()(persist((set, get) => ({
 				}
 				return t;
 			}),
-			orders: get().orders.map((o) => o.id === primary.orderId ? { ...o, mergedTableIds: undefined } : o),
+			orders: get().orders.map((o: any) => o.id === primary.orderId ? { ...o, mergedTableIds: undefined } : o),
 		});
 		get().audit("table_split", `Split group ${primary.label}`);
 		if (primary.orderId) floorSync("check", primary.orderId);
@@ -1676,14 +1676,14 @@ const usePosStoreRaw = create()(persist((set, get) => ({
 	},
 	splitCheck: (orderId, spec) => {
 		const emp = get().getCurrentEmployee();
-		const order = get().orders.find((o) => o.id === orderId);
+		const order = get().orders.find((o: any) => o.id === orderId);
 		if (!order || order.status !== "open") return { ok: false, error: "Open check not found" };
 		const gate = canMutateCheck(emp, order);
 		if (!gate.ok) return gate;
 		const lines = openLines(order);
-		const newOrders = [];
-		let keepIds = new Set(lines.map((l) => l.id));
-		const spawn = (moved, extra = {}) => {
+		const newOrders: any[] = [];
+		let keepIds = new Set(lines.map((l: any) => l.id));
+		const spawn = (moved: any[], extra: any = {}) => {
 			if (!moved.length && extra.dueOverrideCents == null) return;
 			const neu = {
 				id: uid("ord"),
@@ -1711,46 +1711,46 @@ const usePosStoreRaw = create()(persist((set, get) => ({
 		};
 		if (spec.mode === "seat") {
 			const parts = partitionBySeat(lines);
-			const keys = [...parts.keys()].filter((k) => k !== "shared");
+			const keys = [...parts.keys()].filter((k: any) => k !== "shared");
 			if (keys.length < 1 && !parts.get("shared")?.length) return { ok: false, error: "No seated items to split" };
 			const first = keys[0] ?? "shared";
-			keepIds = new Set((parts.get(first) ?? []).map((l) => l.id));
+			keepIds = new Set((parts.get(first) ?? []).map((l: any) => l.id));
 			for (const k of keys.slice(1)) spawn(parts.get(k) ?? [], { guestCount: 1 });
 		} else if (spec.mode === "items") {
 			const ids = new Set(spec.lineIds ?? []);
-			const moved = lines.filter((l) => ids.has(l.id));
+			const moved = lines.filter((l: any) => ids.has(l.id));
 			if (!moved.length) return { ok: false, error: "Select items to move to a new check" };
 			spawn(moved);
 		} else if (spec.mode === "even") {
 			const piles = roundRobin(lines, spec.parts ?? 2);
-			if (piles.filter((p) => p.length).length < 2) return { ok: false, error: "Need items on the check to split evenly" };
-			keepIds = new Set((piles[0] ?? []).map((l) => l.id));
+			if (piles.filter((p: any) => p.length).length < 2) return { ok: false, error: "Need items on the check to split evenly" };
+			keepIds = new Set((piles[0] ?? []).map((l: any) => l.id));
 			for (const pile of piles.slice(1)) spawn(pile);
 		} else if (spec.mode === "piles") {
 			const assigned = spec.piles ?? [];
 			if (assigned.length < 2) return { ok: false, error: "Make at least two piles" };
 			keepIds = new Set(assigned[0] ?? []);
 			for (const pile of assigned.slice(1)) {
-				spawn(lines.filter((l) => pile.includes(l.id)));
+				spawn(lines.filter((l: any) => pile.includes(l.id)));
 			}
 		} else if (spec.mode === "custom_amount") {
-			const amounts = (spec.amountsCents ?? []).filter((n) => n > 0);
+			const amounts = (spec.amountsCents ?? []).filter((n: any) => n > 0);
 			if (amounts.length < 2) return { ok: false, error: "Enter at least two dollar amounts" };
 			const totals = computeTotals(order, get().settings);
-			const sum = amounts.reduce((s, n) => s + n, 0);
+			const sum = amounts.reduce((s: any, n: any) => s + n, 0);
 			if (Math.abs(sum - totals.balanceCents) > 2 && sum > totals.balanceCents) {
 				return { ok: false, error: "Amounts exceed remaining balance" };
 			}
-			keepIds = new Set(lines.map((l) => l.id));
+			keepIds = new Set(lines.map((l: any) => l.id));
 			set({
-				orders: get().orders.map((o) => o.id === order.id ? { ...o, dueOverrideCents: amounts[0] } : o),
+				orders: get().orders.map((o: any) => o.id === order.id ? { ...o, dueOverrideCents: amounts[0] } : o),
 			});
 			for (const amt of amounts.slice(1)) spawn([], { dueOverrideCents: amt, guestCount: 1 });
 		}
-		const keptLines = order.lines.filter((l) => l.voided || keepIds.has(l.id));
+		const keptLines = order.lines.filter((l: any) => l.voided || keepIds.has(l.id));
 		set({
 			orders: [
-				...get().orders.map((o) => o.id === order.id ? { ...o, lines: keptLines } : o),
+				...get().orders.map((o: any) => o.id === order.id ? { ...o, lines: keptLines } : o),
 				...newOrders,
 			],
 		});
@@ -1761,13 +1761,13 @@ const usePosStoreRaw = create()(persist((set, get) => ({
 		floorSync("check", order.id);
 		for (const n of newOrders) floorSync("check", n.id);
 		if (order.tableId) floorSync("table", order.tableId);
-		return { ok: true, newOrderIds: newOrders.map((o) => o.id) };
+		return { ok: true, newOrderIds: newOrders.map((o: any) => o.id) };
 	},
 	combineChecks: (sourceId, targetId) => {
 		if (sourceId === targetId) return { ok: false, error: "Pick two different checks" };
 		const emp = get().getCurrentEmployee();
-		const source = get().orders.find((o) => o.id === sourceId);
-		const target = get().orders.find((o) => o.id === targetId);
+		const source = get().orders.find((o: any) => o.id === sourceId);
+		const target = get().orders.find((o: any) => o.id === targetId);
 		if (!source || !target) return { ok: false, error: "Check not found" };
 		if (source.status !== "open" || target.status !== "open") return { ok: false, error: "Both checks must be open" };
 		const g1 = canMutateCheck(emp, source);
@@ -1776,7 +1776,7 @@ const usePosStoreRaw = create()(persist((set, get) => ({
 		if (!g2.ok) return g2;
 		const destTable = target.tableId ?? source.tableId;
 		set({
-			orders: get().orders.map((o) => {
+			orders: get().orders.map((o: any) => {
 				if (o.id === target.id) {
 					return {
 						...o,
@@ -1792,7 +1792,7 @@ const usePosStoreRaw = create()(persist((set, get) => ({
 				}
 				return o;
 			}),
-			tables: get().tables.map((t) => {
+			tables: get().tables.map((t: any) => {
 				if (source.tableId && t.id === source.tableId && t.orderId === source.id) {
 					return { ...t, orderId: destTable === t.id ? target.id : undefined };
 				}
@@ -1810,14 +1810,14 @@ const usePosStoreRaw = create()(persist((set, get) => ({
 	},
 	moveLines: (sourceId, targetId, lineIds, destTableId) => {
 		const emp = get().getCurrentEmployee();
-		const source = get().orders.find((o) => o.id === sourceId);
+		const source = get().orders.find((o: any) => o.id === sourceId);
 		if (!source || source.status !== "open") return { ok: false, error: "Source check not found" };
 		const gate = canMutateCheck(emp, source);
 		if (!gate.ok) return gate;
 		const ids = new Set(lineIds);
-		const moved = source.lines.filter((l) => ids.has(l.id) && !l.voided);
+		const moved = source.lines.filter((l: any) => ids.has(l.id) && !l.voided);
 		if (!moved.length) return { ok: false, error: "Select items to move" };
-		let target = get().orders.find((o) => o.id === targetId);
+		let target = get().orders.find((o: any) => o.id === targetId);
 		let orders = get().orders;
 		if (!target || target.status !== "open") {
 			if (!destTableId && !source.tableId) return { ok: false, error: "Need a destination check or table" };
@@ -1849,8 +1849,8 @@ const usePosStoreRaw = create()(persist((set, get) => ({
 		const destId = target.id;
 		const destTable = destTableId ?? target.tableId ?? source.tableId;
 		set({
-			orders: orders.map((o) => {
-				if (o.id === source.id) return { ...o, lines: o.lines.filter((l) => !ids.has(l.id) || l.voided) };
+			orders: orders.map((o: any) => {
+				if (o.id === source.id) return { ...o, lines: o.lines.filter((l: any) => !ids.has(l.id) || l.voided) };
 				if (o.id === destId) {
 					return {
 						...o,
@@ -1860,7 +1860,7 @@ const usePosStoreRaw = create()(persist((set, get) => ({
 				}
 				return o;
 			}),
-			tables: get().tables.map((t) => {
+			tables: get().tables.map((t: any) => {
 				if (destTable && t.id === destTable) return { ...t, orderId: destId };
 				return t;
 			}),
@@ -1873,11 +1873,11 @@ const usePosStoreRaw = create()(persist((set, get) => ({
 	},
 	moveCheck: (orderId, destTableId) => {
 		const emp = get().getCurrentEmployee();
-		const order = get().orders.find((o) => o.id === orderId);
+		const order = get().orders.find((o: any) => o.id === orderId);
 		if (!order || order.status !== "open") return { ok: false, error: "Open check not found" };
 		const gate = canMutateCheck(emp, order);
 		if (!gate.ok) return gate;
-		const dest = get().tables.find((t) => t.id === destTableId);
+		const dest = get().tables.find((t: any) => t.id === destTableId);
 		if (!dest) return { ok: false, error: "Table not found" };
 		if (dest.mergedIntoId) return { ok: false, error: "Drop on the combined group, not a hidden child" };
 		if (dest.orderId && dest.orderId !== orderId) {
@@ -1885,10 +1885,10 @@ const usePosStoreRaw = create()(persist((set, get) => ({
 		}
 		const fromId = order.tableId;
 		if (fromId === destTableId) return { ok: true };
-		const from = fromId ? get().tables.find((t) => t.id === fromId) : null;
+		const from = fromId ? get().tables.find((t: any) => t.id === fromId) : null;
 		set({
-			orders: get().orders.map((o) => o.id === orderId ? { ...o, tableId: destTableId } : o),
-			tables: get().tables.map((t) => {
+			orders: get().orders.map((o: any) => o.id === orderId ? { ...o, tableId: destTableId } : o),
+			tables: get().tables.map((t: any) => {
 				if (from && t.id === from.id) {
 					return {
 						...t,
@@ -1978,7 +1978,7 @@ const usePosStoreRaw = create()(persist((set, get) => ({
 	},
 	addItem: (menuItemId, opts = {}) => {
 		const order = get().getActiveOrder();
-		const item = get().menuItems.find((m) => m.id === menuItemId);
+		const item = get().menuItems.find((m: any) => m.id === menuItemId);
 		if (!order || order.status !== "open") return {
 			ok: false,
 			error: "No open order"
@@ -1988,7 +1988,7 @@ const usePosStoreRaw = create()(persist((set, get) => ({
 			error: "Item unavailable"
 		};
 		if (order.tableId && get().currentEmployeeId !== "guest_qr") {
-			const table = get().tables.find((t) => t.id === order.tableId);
+			const table = get().tables.find((t: any) => t.id === order.tableId);
 			if (table) {
 				const access = checkTableAccess(get, table, "order");
 				if (!access.ok) return { ok: false, error: access.reason, access };
@@ -1996,7 +1996,7 @@ const usePosStoreRaw = create()(persist((set, get) => ({
 		}
 		const settings = get().settings;
 		const unit = isHappyHour(settings, /* @__PURE__ */ new Date()) && item.happyHourPriceCents != null ? item.happyHourPriceCents : item.priceCents;
-		const vendor = item.vendorId ? get().vendors.find((v) => v.id === item.vendorId) : void 0;
+		const vendor = item.vendorId ? get().vendors.find((v: any) => v.id === item.vendorId) : void 0;
 		const line = {
 			id: uid("ln"),
 			menuItemId: item.id,
@@ -2023,10 +2023,10 @@ const usePosStoreRaw = create()(persist((set, get) => ({
 			lines: [...order.lines, line]
 		};
 		set({
-			orders: get().orders.map((o) => o.id === order.id ? updated : o),
+			orders: get().orders.map((o: any) => o.id === order.id ? updated : o),
 			selectedLineId: line.id,
-			tables: order.tableId ? get().tables.map((t) => t.id === order.tableId ? stampStatus(t, tableStatusFromOrder(updated)) : t) : get().tables,
-			menuItems: item.trackStock && item.stock != null ? get().menuItems.map((m) => m.id === item.id ? {
+			tables: order.tableId ? get().tables.map((t: any) => t.id === order.tableId ? stampStatus(t, tableStatusFromOrder(updated)) : t) : get().tables,
+			menuItems: item.trackStock && item.stock != null ? get().menuItems.map((m: any) => m.id === item.id ? {
 				...m,
 				stock: Math.max(0, (m.stock ?? 0) - line.quantity)
 			} : m) : get().menuItems
@@ -2037,17 +2037,17 @@ const usePosStoreRaw = create()(persist((set, get) => ({
 	updateLineQty: (lineId, delta) => {
 		const order = get().getActiveOrder();
 		if (!order) return;
-		set({ orders: get().orders.map((o) => {
+		set({ orders: get().orders.map((o: any) => {
 			if (o.id !== order.id) return o;
 			return {
 				...o,
-				lines: o.lines.map((l) => {
+				lines: o.lines.map((l: any) => {
 					if (l.id !== lineId || l.sent || l.voided) return l;
 					return {
 						...l,
 						quantity: Math.max(1, l.quantity + delta)
 					};
-				}).filter((l) => l.quantity > 0)
+				}).filter((l: any) => l.quantity > 0)
 			};
 		}) });
 		floorSync("lines", order.id);
@@ -2055,9 +2055,9 @@ const usePosStoreRaw = create()(persist((set, get) => ({
 	setLineNote: (lineId, note) => {
 		const order = get().getActiveOrder();
 		if (!order) return;
-		set({ orders: get().orders.map((o) => o.id !== order.id ? o : {
+		set({ orders: get().orders.map((o: any) => o.id !== order.id ? o : {
 			...o,
-			lines: o.lines.map((l) => l.id === lineId ? {
+			lines: o.lines.map((l: any) => l.id === lineId ? {
 				...l,
 				note
 			} : l)
@@ -2067,9 +2067,9 @@ const usePosStoreRaw = create()(persist((set, get) => ({
 	setLineSeat: (lineId, seat) => {
 		const order = get().getActiveOrder();
 		if (!order) return;
-		set({ orders: get().orders.map((o) => o.id !== order.id ? o : {
+		set({ orders: get().orders.map((o: any) => o.id !== order.id ? o : {
 			...o,
-			lines: o.lines.map((l) => l.id === lineId ? {
+			lines: o.lines.map((l: any) => l.id === lineId ? {
 				...l,
 				seat
 			} : l)
@@ -2078,11 +2078,11 @@ const usePosStoreRaw = create()(persist((set, get) => ({
 	},
 	voidLine: (lineId, reason, opts) => {
 		const order = opts?.orderId
-			? get().orders.find((o) => o.id === opts.orderId)
+			? get().orders.find((o: any) => o.id === opts.orderId)
 			: get().getActiveOrder();
 		if (!order) return { ok: false, error: "No order" };
 		if (order.status !== "open") return { ok: false, error: "Paid check is frozen. Reopen to change it." };
-		const line = order.lines.find((l) => l.id === lineId);
+		const line = order.lines.find((l: any) => l.id === lineId);
 		if (!line || line.voided) return { ok: false, error: "Nothing to void" };
 		const cfg = lpCfg(get);
 		const tickets = get().tickets;
@@ -2099,16 +2099,16 @@ const usePosStoreRaw = create()(persist((set, get) => ({
 		}
 		if (!String(reason || "").trim()) return { ok: false, error: "Pick a reason" };
 		const nextTickets = bumped
-			? tickets.map((t) =>
-				t.items.some((i) => i.lineId === lineId) && t.status === "bumped"
+			? tickets.map((t: any) =>
+				t.items.some((i: any) => i.lineId === lineId) && t.status === "bumped"
 					? { ...t, status: "voided" }
 					: t,
 			)
 			: tickets;
 		set({
-			orders: get().orders.map((o) => o.id !== order.id ? o : {
+			orders: get().orders.map((o: any) => o.id !== order.id ? o : {
 				...o,
-				lines: o.lines.map((l) => l.id === lineId ? {
+				lines: o.lines.map((l: any) => l.id === lineId ? {
 					...l,
 					voided: true,
 					pendingAction: undefined,
@@ -2124,7 +2124,7 @@ const usePosStoreRaw = create()(persist((set, get) => ({
 		get().audit("void", reason, {
 			orderId: order.id,
 			orderNumber: order.number,
-			ticketId: tickets.find((t) => t.items.some((i) => i.lineId === lineId))?.id,
+			ticketId: tickets.find((t: any) => t.items.some((i: any) => i.lineId === lineId))?.id,
 			amountCents: amt,
 			reason,
 			before: "open",
@@ -2136,11 +2136,11 @@ const usePosStoreRaw = create()(persist((set, get) => ({
 	},
 	compLine: (lineId, reason, opts) => {
 		const order = opts?.orderId
-			? get().orders.find((o) => o.id === opts.orderId)
+			? get().orders.find((o: any) => o.id === opts.orderId)
 			: get().getActiveOrder();
 		if (!order) return { ok: false, error: "No order" };
 		if (order.status !== "open") return { ok: false, error: "Paid check is frozen. Reopen to change it." };
-		const line = order.lines.find((l) => l.id === lineId);
+		const line = order.lines.find((l: any) => l.id === lineId);
 		if (!line || line.voided || line.comped) return { ok: false, error: "Nothing to comp" };
 		const cfg = lpCfg(get);
 		const amt = lineUnitTotal(line) * line.quantity;
@@ -2164,7 +2164,7 @@ const usePosStoreRaw = create()(persist((set, get) => ({
 		}
 		if (!String(reason || "").trim()) return { ok: false, error: "Pick a reason" };
 		const approver = get().managerAuthEmployeeName || opts?.approval?.approverName || get().getCurrentEmployee()?.name;
-		const nextLines = order.lines.map((l) => l.id === lineId ? {
+		const nextLines = order.lines.map((l: any) => l.id === lineId ? {
 			...l,
 			comped: true,
 			pendingAction: undefined,
@@ -2173,10 +2173,10 @@ const usePosStoreRaw = create()(persist((set, get) => ({
 		const nextOrder = { ...order, lines: nextLines };
 		const stacked = stackedCompCents(nextOrder);
 		const late = isLateWindowComp(order, amt, cfg);
-		const sentAt = Math.max(0, ...order.lines.map((l) => l.firedAt || (l.sent ? l.createdAt : 0)));
+		const sentAt = Math.max(0, ...order.lines.map((l: any) => l.firedAt || (l.sent ? l.createdAt : 0)));
 		const stale = sentAt > 0 && Date.now() - sentAt >= cfg.lateCompStaleSendHours * 3_600_000;
 		set({
-			orders: get().orders.map((o) => o.id !== order.id ? o : {
+			orders: get().orders.map((o: any) => o.id !== order.id ? o : {
 				...o,
 				lines: nextLines,
 				...(late || stale
@@ -2205,23 +2205,23 @@ const usePosStoreRaw = create()(persist((set, get) => ({
 	holdLine: (lineId, held) => {
 		const order = get().getActiveOrder();
 		if (!order) return;
-		set({ orders: get().orders.map((o) => o.id !== order.id ? o : {
+		set({ orders: get().orders.map((o: any) => o.id !== order.id ? o : {
 			...o,
-			lines: o.lines.map((l) => l.id === lineId ? {
+			lines: o.lines.map((l: any) => l.id === lineId ? {
 				...l,
 				held
 			} : l)
 		}) });
 		floorSync("lines", order.id);
 	},
-	sendOrder: (opts = {}) => {
+	sendOrder: (opts: any = {}) => {
 		const order = get().getActiveOrder();
-		if (!order) return;
+		if (!order) return { ok: false, error: "No active order" };
 		const onlyUnsent = opts.onlyUnsent !== false;
 		const fireHeld = opts.fireHeld === true;
 		const now = Date.now();
-		const toSend = order.lines.filter((l) => !l.voided && (!onlyUnsent || !l.sent) && (fireHeld || !l.held));
-		if (toSend.length === 0) return;
+		const toSend = order.lines.filter((l: any) => !l.voided && (!onlyUnsent || !l.sent) && (fireHeld || !l.held));
+		if (toSend.length === 0) return { ok: false, error: "Nothing to send" };
 		const byKey = /* @__PURE__ */ new Map();
 		for (const l of toSend) {
 			const key = `${l.station}|${l.vendorId ?? ""}|${l.course}`;
@@ -2229,11 +2229,11 @@ const usePosStoreRaw = create()(persist((set, get) => ({
 			arr.push(l);
 			byKey.set(key, arr);
 		}
-		const table = order.tableId ? get().tables.find((t) => t.id === order.tableId) : void 0;
+		const table = order.tableId ? get().tables.find((t: any) => t.id === order.tableId) : void 0;
 		const newTickets = [];
 		for (const [, lines] of byKey) {
 			const first = lines[0];
-			const vendor = first.vendorId ? get().vendors.find((v) => v.id === first.vendorId) : void 0;
+			const vendor = first.vendorId ? get().vendors.find((v: any) => v.id === first.vendorId) : void 0;
 			newTickets.push({
 				id: uid("kt"),
 				orderId: order.id,
@@ -2248,21 +2248,21 @@ const usePosStoreRaw = create()(persist((set, get) => ({
 				course: first.course,
 				createdAt: now,
 				elapsedSec: 0,
-				items: lines.map((l) => ({
+				items: lines.map((l: any) => ({
 					lineId: l.id,
 					name: l.name,
 					quantity: l.quantity,
-					modifiers: l.modifiers.map((m) => m.optionName),
+					modifiers: l.modifiers.map((m: any) => m.optionName),
 					note: l.note,
 					course: l.course,
 					seat: l.seat
 				}))
 			});
 		}
-		const sentIds = new Set(toSend.map((l) => l.id));
+		const sentIds = new Set(toSend.map((l: any) => l.id));
 		const updated = {
 			...order,
-			lines: order.lines.map((l) => sentIds.has(l.id) ? {
+			lines: order.lines.map((l: any) => sentIds.has(l.id) ? {
 				...l,
 				sent: true,
 				held: false,
@@ -2270,20 +2270,21 @@ const usePosStoreRaw = create()(persist((set, get) => ({
 			} : l)
 		};
 		set({
-			orders: get().orders.map((o) => o.id === order.id ? updated : o),
+			orders: get().orders.map((o: any) => o.id === order.id ? updated : o),
 			tickets: [...newTickets, ...get().tickets],
-			tables: order.tableId ? get().tables.map((t) => t.id === order.tableId ? stampStatus(t, tableStatusFromOrder(updated)) : t) : get().tables
+			tables: order.tableId ? get().tables.map((t: any) => t.id === order.tableId ? stampStatus(t, tableStatusFromOrder(updated)) : t) : get().tables
 		});
 		get().audit("send", `Order #${order.number} · ${toSend.length} items`);
 		floorSync("send", order.id);
 		printNow("send", order.id);
+		return { ok: true };
 	},
 	fireCourse: (course) => {
 		const order = get().getActiveOrder();
 		if (!order) return;
-		set({ orders: get().orders.map((o) => o.id !== order.id ? o : {
+		set({ orders: get().orders.map((o: any) => o.id !== order.id ? o : {
 			...o,
-			lines: o.lines.map((l) => l.course === course && l.held ? {
+			lines: o.lines.map((l: any) => l.course === course && l.held ? {
 				...l,
 				held: false
 			} : l)
@@ -2299,7 +2300,7 @@ const usePosStoreRaw = create()(persist((set, get) => ({
 		if (order.status !== "open") return { ok: false, error: "Paid check is frozen. Reopen to change it." };
 		const emp = get().getCurrentEmployee();
 		const cfg = lpCfg(get);
-		const merchEst = order.lines.filter((l) => !l.voided && !l.comped).reduce((s, l) => s + lineUnitTotal(l) * l.quantity, 0);
+		const merchEst = order.lines.filter((l: any) => !l.voided && !l.comped).reduce((s: any, l: any) => s + lineUnitTotal(l) * l.quantity, 0);
 		const amtEst = Math.round((merchEst * ((percent ?? order.discountPercent) || 0)) / 100) + ((cents ?? order.discountCents) || 0);
 		const mgr = skipGate || path === "break_glass" || get().canAuthorizeGate("discount", amtEst);
 		if (discountNeedsManager(order, cfg) && !mgr) {
@@ -2312,14 +2313,14 @@ const usePosStoreRaw = create()(persist((set, get) => ({
 			cents,
 			role: emp?.role,
 			cfg,
-			managerOverride: mgr || Boolean(skipGate) || path === "break_glass",
+			managerOverride: mgr || Boolean(skipGate) || (path as string) === "break_glass",
 		});
 		if (!allowed.ok) return allowed;
-		const merch = order.lines.filter((l) => !l.voided && !l.comped).reduce((s, l) => s + lineUnitTotal(l) * l.quantity, 0);
+		const merch = order.lines.filter((l: any) => !l.voided && !l.comped).reduce((s: any, l: any) => s + lineUnitTotal(l) * l.quantity, 0);
 		const nextPct = percent ?? order.discountPercent;
 		const nextCents = cents ?? order.discountCents;
 		const amt = Math.round((merch * (nextPct || 0)) / 100) + (nextCents || 0);
-		set({ orders: get().orders.map((o) => o.id !== order.id ? o : {
+		set({ orders: get().orders.map((o: any) => o.id !== order.id ? o : {
 			...o,
 			discountPercent: percent ?? o.discountPercent,
 			discountCents: cents ?? o.discountCents,
@@ -2338,7 +2339,7 @@ const usePosStoreRaw = create()(persist((set, get) => ({
 		return { ok: true };
 	},
 	reopenCheck: (orderId, reason, opts) => {
-		const order = get().orders.find((o) => o.id === orderId);
+		const order = get().orders.find((o: any) => o.id === orderId);
 		if (!order) return { ok: false, error: "Unknown check" };
 		if (order.status === "open") return { ok: false, error: "Check is already open" };
 		if (
@@ -2352,7 +2353,7 @@ const usePosStoreRaw = create()(persist((set, get) => ({
 		if (!String(reason || "").trim()) return { ok: false, error: "Pick a reason" };
 		const before = snapshotPayments(order);
 		set({
-			orders: get().orders.map((o) => o.id !== order.id ? o : {
+			orders: get().orders.map((o: any) => o.id !== order.id ? o : {
 				...o,
 				status: "open",
 				closedAt: undefined,
@@ -2373,7 +2374,7 @@ const usePosStoreRaw = create()(persist((set, get) => ({
 		return { ok: true };
 	},
 	swapTender: ({ orderId, paymentId, method, reason, last4, giftCardCode, skipGate, approval, path }) => {
-		const order = get().orders.find((o) => o.id === orderId);
+		const order = get().orders.find((o: any) => o.id === orderId);
 		if (!order) return { ok: false, error: "Unknown check" };
 		if (
 			lpCfg(get).paidCheckReopen === "manager" &&
@@ -2384,7 +2385,7 @@ const usePosStoreRaw = create()(persist((set, get) => ({
 			return { ok: false, error: "Tender change needs a manager (or a granted shift lead)." };
 		}
 		if (!String(reason || "").trim()) return { ok: false, error: "Pick a reason" };
-		const pay = order.payments.find((p) => p.id === paymentId);
+		const pay = order.payments.find((p: any) => p.id === paymentId);
 		if (!pay) return { ok: false, error: "Tender not found" };
 		const before = snapshotPayments(order);
 		const nextPay = {
@@ -2394,9 +2395,9 @@ const usePosStoreRaw = create()(persist((set, get) => ({
 			giftCardCode: giftCardCode ?? pay.giftCardCode,
 			processor: method === "card" || method === "room_charge" ? "quantum_payments" : undefined,
 		};
-		const payments = order.payments.map((p) => p.id === paymentId ? nextPay : p);
+		const payments = order.payments.map((p: any) => p.id === paymentId ? nextPay : p);
 		set({
-			orders: get().orders.map((o) => o.id !== order.id ? o : { ...o, payments, status: "open" }),
+			orders: get().orders.map((o: any) => o.id !== order.id ? o : { ...o, payments, status: "open" }),
 			activeOrderId: order.id,
 		});
 		get().audit("tender_change", reason, {
@@ -2421,7 +2422,7 @@ const usePosStoreRaw = create()(persist((set, get) => ({
 		}
 		if (!String(reason || "").trim()) return { ok: false, error: "Pick a reason" };
 		const needle = (code || "").replace(/[\s-]/g, "").toUpperCase();
-		const gc = get().giftCards.find((g) => g.code.replace(/[\s-]/g, "").toUpperCase() === needle);
+		const gc = get().giftCards.find((g: any) => g.code.replace(/[\s-]/g, "").toUpperCase() === needle);
 		if (!gc) return { ok: false, error: "Only issued or imported cards can be adjusted" };
 		const emp = get().getCurrentEmployee();
 		const before = gc.balanceCents;
@@ -2437,7 +2438,7 @@ const usePosStoreRaw = create()(persist((set, get) => ({
 			afterCents: after,
 		};
 		set({
-			giftCards: get().giftCards.map((g) => g.id === gc.id ? {
+			giftCards: get().giftCards.map((g: any) => g.id === gc.id ? {
 				...g,
 				balanceCents: after,
 				ledger: [...(g.ledger ?? []), entry],
@@ -2455,7 +2456,7 @@ const usePosStoreRaw = create()(persist((set, get) => ({
 	setOrderNote: (note) => {
 		const order = get().getActiveOrder();
 		if (!order) return;
-		set({ orders: get().orders.map((o) => o.id === order.id ? {
+		set({ orders: get().orders.map((o: any) => o.id === order.id ? {
 			...o,
 			note
 		} : o) });
@@ -2468,8 +2469,8 @@ const usePosStoreRaw = create()(persist((set, get) => ({
 			checkPrintedAt: Date.now()
 		};
 		set({
-			orders: get().orders.map((o) => o.id === order.id ? updated : o),
-			tables: order.tableId ? get().tables.map((t) => t.id === order.tableId ? {
+			orders: get().orders.map((o: any) => o.id === order.id ? updated : o),
+			tables: order.tableId ? get().tables.map((t: any) => t.id === order.tableId ? {
 				...t,
 				status: "food_completed",
 				statusSince: Date.now(),
@@ -2516,15 +2517,15 @@ const usePosStoreRaw = create()(persist((set, get) => ({
 			};
 			changeCents = tendered - amountCents - tipCents;
 		}
-		let giftRedeemLed = [];
-		let giftRedeemTransfers = [];
+		let giftRedeemLed: any[] = [];
+		let giftRedeemTransfers: any[] = [];
 		if (method === "gift_card" && !serverGift) {
 			if (!giftCardCode) return {
 				ok: false,
 				error: "Enter gift card code"
 			};
 			const needle = giftCardCode.replace(/[\s-]/g, "").toUpperCase();
-			const gc = get().giftCards.find((g) => g.code.replace(/[\s-]/g, "").toUpperCase() === needle && g.active);
+			const gc = get().giftCards.find((g: any) => g.code.replace(/[\s-]/g, "").toUpperCase() === needle && g.active);
 			if (!gc) return {
 				ok: false,
 				error: "Unknown gift card — only issued or imported cards"
@@ -2546,7 +2547,7 @@ const usePosStoreRaw = create()(persist((set, get) => ({
 				beforeCents: gc.balanceCents,
 				afterCents: nextBal,
 			};
-			set({ giftCards: get().giftCards.map((g) => g.id === gc.id ? {
+			set({ giftCards: get().giftCards.map((g: any) => g.id === gc.id ? {
 				...g,
 				balanceCents: nextBal,
 				status: nextBal === 0 ? "zeroed" : g.status || "active",
@@ -2594,7 +2595,7 @@ const usePosStoreRaw = create()(persist((set, get) => ({
 				}));
 			}
 		}
-		let cashSinkKind;
+		let cashSinkKind: "drawer" | "server_bank" | undefined;
 		let cashDrawerId;
 		if (method === "cash") {
 			try {
@@ -2627,7 +2628,7 @@ const usePosStoreRaw = create()(persist((set, get) => ({
 			at: Date.now(),
 			createdAt: Date.now(),
 			employeeId: emp.id,
-			processor: method === "card" || method === "room_charge" ? "quantum_payments" : void 0,
+			processor: method === "card" || method === "room_charge" ? ("quantum_payments" as const) : undefined,
 			chargeBrand: get().settlementConfig.hostName || get().settings.name,
 			sandbox: optsSandbox(method, order, emp),
 			drawerId: cashDrawerId,
@@ -2648,7 +2649,7 @@ const usePosStoreRaw = create()(persist((set, get) => ({
 		if (method === "comp") shift.compsCents += amountCents;
 		if (method === "cash") shift.tipsCashCents += tipCents;
 		if (method === "card") shift.tipsCardCents += tipCents;
-		const employees = get().employees.map((e) => e.id === order.serverId ? {
+		const employees = get().employees.map((e: any) => e.id === order.serverId ? {
 			...e,
 			tipsEarned: e.tipsEarned + tipCents,
 			salesTotal: e.salesTotal + amountCents
@@ -2663,13 +2664,13 @@ const usePosStoreRaw = create()(persist((set, get) => ({
 			shift.orderCount += 1;
 			if (order.tableId) {
 				const childIds = order.mergedTableIds ?? [];
-				tables = tables.map((t) => t.id === order.tableId || childIds.includes(t.id) ? {
+				tables = tables.map((t: any) => t.id === order.tableId || childIds.includes(t.id) ? {
 					...t,
 					status: "closed_not_cleaned",
 					statusSince: Date.now(),
 				} : t);
 				try {
-					const tb = get().tables.find((x) => x.id === order.tableId);
+					const tb = get().tables.find((x: any) => x.id === order.tableId);
 					useNotifyStore.getState().pushNotice({
 						kind: "table_needs_bus",
 						title: `Bus · Table ${tb?.label ?? ""}`,
@@ -2678,7 +2679,7 @@ const usePosStoreRaw = create()(persist((set, get) => ({
 					});
 				} catch { /* optional */ }
 			}
-		} else if (order.tableId) tables = tables.map((t) => t.orderId === order.id ? {
+		} else if (order.tableId) tables = tables.map((t: any) => t.orderId === order.id ? {
 			...t,
 			status: tableStatusFromOrder(updated)
 		} : t);
@@ -2702,7 +2703,7 @@ const usePosStoreRaw = create()(persist((set, get) => ({
 		}
 		led = led.concat(giftRedeemLed);
 		set({
-			orders: get().orders.map((o) => o.id === order.id ? updated : o),
+			orders: get().orders.map((o: any) => o.id === order.id ? updated : o),
 			shift,
 			employees,
 			tables,
@@ -2713,7 +2714,9 @@ const usePosStoreRaw = create()(persist((set, get) => ({
 		});
 		if (updated.status === "closed") try {
 			useOpsStore.getState().recordTicketClosed(order.serverId, Date.now());
-		} catch {}
+		} catch {
+			/* optional */
+		}
 		get().audit("payment", `#${order.number} ${method} $${(amountCents / 100).toFixed(2)}`, {
 			orderId: order.id,
 			orderNumber: order.number,
@@ -2783,30 +2786,30 @@ const usePosStoreRaw = create()(persist((set, get) => ({
 		const order = get().getActiveOrder();
 		if (!order) return;
 		if (computeTotals(order, get().settings, {
-			tender: order.payments.some((p) => p.method === "cash") &&
-				!order.payments.some((p) => p.method === "card" || p.method === "room_charge")
+			tender: order.payments.some((p: any) => p.method === "cash") &&
+				!order.payments.some((p: any) => p.method === "card" || p.method === "room_charge")
 				? "cash"
 				: "card",
-		}).balanceCents <= 0 && order.status === "open") set({ orders: get().orders.map((o) => o.id === order.id ? {
+		}).balanceCents <= 0 && order.status === "open") set({ orders: get().orders.map((o: any) => o.id === order.id ? {
 			...o,
 			status: "closed",
 			closedAt: Date.now()
 		} : o) });
 	},
 	bumpTicket: (ticketId) => {
-		const ticket = get().tickets.find((t) => t.id === ticketId);
-		const tickets = get().tickets.map((t) => t.id === ticketId ? {
+		const ticket = get().tickets.find((t: any) => t.id === ticketId);
+		const tickets = get().tickets.map((t: any) => t.id === ticketId ? {
 			...t,
 			status: "bumped",
 			bumpedAt: Date.now()
 		} : t);
 		set({ tickets });
 		if (ticket?.orderId) {
-			const order = get().orders.find((o) => o.id === ticket.orderId);
+			const order = get().orders.find((o: any) => o.id === ticket.orderId);
 			if (order?.tableId) {
 				const st = deriveTableStatus(order, tickets, floorCfg());
 				set({
-					tables: get().tables.map((tb) => tb.id === order.tableId ? stampStatus(tb, st) : tb),
+					tables: get().tables.map((tb: any) => tb.id === order.tableId ? stampStatus(tb, st) : tb),
 				});
 			}
 		}
@@ -2814,7 +2817,7 @@ const usePosStoreRaw = create()(persist((set, get) => ({
 		printNow("bump", ticketId);
 	},
 	recallTicket: (ticketId) => {
-		set({ tickets: get().tickets.map((t) => t.id === ticketId ? {
+		set({ tickets: get().tickets.map((t: any) => t.id === ticketId ? {
 			...t,
 			status: "new",
 			bumpedAt: void 0
@@ -2822,7 +2825,7 @@ const usePosStoreRaw = create()(persist((set, get) => ({
 		floorSync("recall", ticketId);
 	},
 	startTicket: (ticketId) => {
-		set({ tickets: get().tickets.map((t) => t.id === ticketId ? {
+		set({ tickets: get().tickets.map((t: any) => t.id === ticketId ? {
 			...t,
 			status: "in_progress",
 			startedAt: t.startedAt ?? Date.now(),
@@ -2830,8 +2833,8 @@ const usePosStoreRaw = create()(persist((set, get) => ({
 		floorSync("start", ticketId);
 	},
 	readyTicket: (ticketId) => {
-		const ticket = get().tickets.find((t) => t.id === ticketId);
-		const tickets = get().tickets.map((t) => t.id === ticketId ? {
+		const ticket = get().tickets.find((t: any) => t.id === ticketId);
+		const tickets = get().tickets.map((t: any) => t.id === ticketId ? {
 			...t,
 			status: "ready",
 		} : t);
@@ -2839,23 +2842,23 @@ const usePosStoreRaw = create()(persist((set, get) => ({
 		floorSync("ready", ticketId);
 		printNow("ready", ticketId);
 		if (ticket?.orderId) {
-			const order = get().orders.find((o) => o.id === ticket.orderId);
+			const order = get().orders.find((o: any) => o.id === ticket.orderId);
 			if (order?.tableId) {
 				const st = deriveTableStatus(order, tickets, floorCfg());
 				set({
-					tables: get().tables.map((tb) => tb.id === order.tableId ? stampStatus(tb, st) : tb),
+					tables: get().tables.map((tb: any) => tb.id === order.tableId ? stampStatus(tb, st) : tb),
 				});
 			}
 		}
 	},
 	deliverReadyTicketsForTable: (tableId) => {
-		const order = get().orders.find((o) => o.tableId === tableId && o.status === "open")
-			?? get().orders.find((o) => o.tableId === tableId);
+		const order = get().orders.find((o: any) => o.tableId === tableId && o.status === "open")
+			?? get().orders.find((o: any) => o.tableId === tableId);
 		if (!order) return;
 		const now = Date.now();
-		const ready = get().tickets.filter((t) => t.orderId === order.id && t.status === "ready");
+		const ready = get().tickets.filter((t: any) => t.orderId === order.id && t.status === "ready");
 		if (!ready.length) return;
-		const tickets = get().tickets.map((t) =>
+		const tickets = get().tickets.map((t: any) =>
 			t.orderId === order.id && t.status === "ready"
 				? { ...t, status: "bumped", bumpedAt: now }
 				: t,
@@ -2864,7 +2867,7 @@ const usePosStoreRaw = create()(persist((set, get) => ({
 		if (order.tableId) {
 			const st = deriveTableStatus(order, tickets, floorCfg());
 			set({
-				tables: get().tables.map((tb) => tb.id === order.tableId ? stampStatus(tb, st) : tb),
+				tables: get().tables.map((tb: any) => tb.id === order.tableId ? stampStatus(tb, st) : tb),
 			});
 		}
 		for (const t of ready) {
@@ -2884,21 +2887,21 @@ const usePosStoreRaw = create()(persist((set, get) => ({
 		}, ...get().waitlist] });
 		noteWaitlistAdd({
 			id,
-			name: entry.name,
-			phone: entry.phone,
-			partySize: entry.partySize,
+			name: entry.name ?? "Guest",
+			phone: entry.phone ?? "",
+			partySize: entry.partySize ?? 1,
 			smsPending,
 		});
 	},
 	updateWaitlistStatus: (id, status) => {
-		set({ waitlist: get().waitlist.map((w) => w.id === id ? {
+		set({ waitlist: get().waitlist.map((w: any) => w.id === id ? {
 			...w,
 			status,
 			notifiedAt: status === "notified" ? Date.now() : w.notifiedAt
 		} : w) });
 	},
 	seatFromWaitlist: (waitId, tableId) => {
-		const w = get().waitlist.find((x) => x.id === waitId);
+		const w = get().waitlist.find((x: any) => x.id === waitId);
 		if (!w) return { ok: false, error: "Guest not found" };
 		const res = get().seatTable(tableId, w.partySize);
 		if (!res.ok) return res;
@@ -2914,7 +2917,7 @@ const usePosStoreRaw = create()(persist((set, get) => ({
 		}, ...get().reservations] });
 	},
 	updateReservationStatus: (id, status) => {
-		set({ reservations: get().reservations.map((r) => r.id === id ? {
+		set({ reservations: get().reservations.map((r: any) => r.id === id ? {
 			...r,
 			status
 		} : r) });
@@ -2954,11 +2957,11 @@ const usePosStoreRaw = create()(persist((set, get) => ({
 				order.status === "open" &&
 				realTenderOnOrder(order) &&
 				order.payments
-					.filter((p) => p.method === "cash" || p.method === "card")
-					.reduce((s, p) => s + p.amountCents, 0) >= amountCents;
+					.filter((p: any) => p.method === "cash" || p.method === "card")
+					.reduce((s: any, p: any) => s + p.amountCents, 0) >= amountCents;
 			if (!covered) {
 				const id = get().openTakeout("Gift");
-				order = get().orders.find((o) => o.id === id) ?? get().getActiveOrder();
+				order = get().orders.find((o: any) => o.id === id) ?? get().getActiveOrder();
 				if (!order) return { ok: false, error: "Open a ticket to load gift with cash or card." };
 				const loadLine = {
 					id: uid("ln"),
@@ -2980,7 +2983,7 @@ const usePosStoreRaw = create()(persist((set, get) => ({
 					createdAt: Date.now(),
 				};
 				set({
-					orders: get().orders.map((o) =>
+					orders: get().orders.map((o: any) =>
 						o.id === order!.id ? { ...o, lines: [...o.lines, loadLine] } : o,
 					),
 				});
@@ -2994,7 +2997,7 @@ const usePosStoreRaw = create()(persist((set, get) => ({
 			}
 		}
 		const c = (code || "").trim().toUpperCase() || `SUMMEX-${Math.random().toString(36).slice(2, 6).toUpperCase()}-${Math.floor(Math.random() * 9e3 + 1e3)}`;
-		if (get().giftCards.some((g) => g.code === c)) return {
+		if (get().giftCards.some((g: any) => g.code === c)) return {
 			ok: false,
 			error: "Code already exists"
 		};
@@ -3093,7 +3096,7 @@ const usePosStoreRaw = create()(persist((set, get) => ({
 		let processed = 0;
 		let cards = get().giftCards;
 		const transfers = [...(get().giftTransfers ?? [])];
-		let led = [];
+		let led: any[] = [];
 		for (const c of cards) {
 			if (c.status === "void" || c.breakageProcessedAt) continue;
 			if (!isGiftExpired(c, now)) continue;
@@ -3101,7 +3104,7 @@ const usePosStoreRaw = create()(persist((set, get) => ({
 			if (remaining <= 0) continue;
 			const issuer = resolveGiftIssuer(c.issuerId, settings, vendors);
 			const houseShare = giftBreakageHouseShareCents(remaining, issuer.kind, settings);
-			cards = cards.map((g) => g.id === c.id ? {
+			cards = cards.map((g: any) => g.id === c.id ? {
 				...g,
 				balanceCents: 0,
 				status: "zeroed",
@@ -3155,7 +3158,7 @@ const usePosStoreRaw = create()(persist((set, get) => ({
 	},
 	reloadGiftCard: (code, amountCents) => {
 		const needle = (code || "").replace(/[\s-]/g, "").toUpperCase();
-		const gc = get().giftCards.find((g) => g.code.replace(/[\s-]/g, "").toUpperCase() === needle && g.active);
+		const gc = get().giftCards.find((g: any) => g.code.replace(/[\s-]/g, "").toUpperCase() === needle && g.active);
 		if (!gc) return {
 			ok: false,
 			error: "Only issued or imported cards can be reloaded"
@@ -3169,7 +3172,7 @@ const usePosStoreRaw = create()(persist((set, get) => ({
 			let order = get().getActiveOrder();
 			if (!order || order.status !== "open") {
 				const id = get().openTakeout("Gift reload");
-				order = get().orders.find((o) => o.id === id) ?? get().getActiveOrder();
+				order = get().orders.find((o: any) => o.id === id) ?? get().getActiveOrder();
 			}
 			if (!order) return { ok: false, error: "Open a ticket to load gift with cash or card." };
 			if (!realTenderOnOrder(order)) {
@@ -3183,7 +3186,7 @@ const usePosStoreRaw = create()(persist((set, get) => ({
 		const emp = get().getCurrentEmployee();
 		const before = gc.balanceCents;
 		const after = before + amountCents;
-		set({ giftCards: get().giftCards.map((g) => g.id === gc.id ? {
+		set({ giftCards: get().giftCards.map((g: any) => g.id === gc.id ? {
 			...g,
 			balanceCents: after,
 			status: "active",
@@ -3210,7 +3213,7 @@ const usePosStoreRaw = create()(persist((set, get) => ({
 			return { ok: false, error: "Gift deactivate / freeze needs a manager (or a granted shift lead)." };
 		}
 		const needle = (code || "").replace(/[\s-]/g, "").toUpperCase();
-		const gc = get().giftCards.find((g) => g.code.replace(/[\s-]/g, "").toUpperCase() === needle);
+		const gc = get().giftCards.find((g: any) => g.code.replace(/[\s-]/g, "").toUpperCase() === needle);
 		if (!gc) return { ok: false, error: "Only issued or imported cards" };
 		const emp = get().getCurrentEmployee();
 		const entry = {
@@ -3224,7 +3227,7 @@ const usePosStoreRaw = create()(persist((set, get) => ({
 			afterCents: gc.balanceCents,
 		};
 		set({
-			giftCards: get().giftCards.map((g) =>
+			giftCards: get().giftCards.map((g: any) =>
 				g.id === gc.id
 					? { ...g, status, active: status !== "void", ledger: [...(g.ledger ?? []), entry] }
 					: g,
@@ -3241,7 +3244,7 @@ const usePosStoreRaw = create()(persist((set, get) => ({
 	importGiftCards: (preview, opts) => {
 		const skipExisting = !opts.overwrite;
 		const existing = new Set(
-			get().giftCards.map((g) => g.code.replace(/[\s-]/g, "").toUpperCase()),
+			get().giftCards.map((g: any) => g.code.replace(/[\s-]/g, "").toUpperCase()),
 		);
 		let imported = 0;
 		let skipped = 0;
@@ -3300,7 +3303,7 @@ const usePosStoreRaw = create()(persist((set, get) => ({
 		return { ok: true, imported, skipped };
 	},
 	adjustLoyalty: (customerId, deltaPoints) => {
-		set({ customers: get().customers.map((c) => {
+		set({ customers: get().customers.map((c: any) => {
 			if (c.id !== customerId) return c;
 			const loyaltyPoints = Math.max(0, c.loyaltyPoints + deltaPoints);
 			let tier = "standard";
@@ -3315,23 +3318,23 @@ const usePosStoreRaw = create()(persist((set, get) => ({
 		}) });
 	},
 	setCustomerTier: (customerId, tier) => {
-		set({ customers: get().customers.map((c) => c.id === customerId ? {
+		set({ customers: get().customers.map((c: any) => c.id === customerId ? {
 			...c,
 			tier
 		} : c) });
 	},
 	setCustomerMarketingOptIn: (customerId, optIn) => {
-		set({ customers: get().customers.map((c) => c.id === customerId ? {
+		set({ customers: get().customers.map((c: any) => c.id === customerId ? {
 			...c,
 			marketingOptIn: optIn
 		} : c) });
 	},
 	toggleItemAvailable: (id) => {
 		const emp = get().getCurrentEmployee();
-		const item = get().menuItems.find((m) => m.id === id);
+		const item = get().menuItems.find((m: any) => m.id === id);
 		if (!item) return;
 		if (!canEditMenu(emp, get().entityPermissions, item.vendorId)) return;
-		set({ menuItems: get().menuItems.map((m) => m.id === id ? {
+		set({ menuItems: get().menuItems.map((m: any) => m.id === id ? {
 			...m,
 			available: !m.available
 		} : m) });
@@ -3363,7 +3366,7 @@ const usePosStoreRaw = create()(persist((set, get) => ({
 		if (!canEditMenu(emp, get().entityPermissions, vendorId)) return { id: "" };
 		const id = uid("itm");
 		const vendor = vendorId
-			? get().vendors.find((v) => v.id === vendorId)
+			? get().vendors.find((v: any) => v.id === vendorId)
 			: undefined;
 		set({
 			menuItems: [
@@ -3388,7 +3391,7 @@ const usePosStoreRaw = create()(persist((set, get) => ({
 	},
 	updateMenuItem: (id, patch) => {
 		const emp = get().getCurrentEmployee();
-		const item = get().menuItems.find((m) => m.id === id);
+		const item = get().menuItems.find((m: any) => m.id === id);
 		if (!item) return;
 		const target = patch.vendorId ?? item.vendorId;
 		if (!canEditMenu(emp, get().entityPermissions, item.vendorId)) return;
@@ -3397,15 +3400,15 @@ const usePosStoreRaw = create()(persist((set, get) => ({
 			patch = { ...patch, vendorId: emp.operatorId };
 		}
 		set({
-			menuItems: get().menuItems.map((m) => (m.id === id ? { ...m, ...patch } : m)),
+			menuItems: get().menuItems.map((m: any) => (m.id === id ? { ...m, ...patch } : m)),
 		});
 	},
 	deleteMenuItem: (id) => {
 		const emp = get().getCurrentEmployee();
-		const item = get().menuItems.find((m) => m.id === id);
+		const item = get().menuItems.find((m: any) => m.id === id);
 		if (!item) return;
 		if (!canEditMenu(emp, get().entityPermissions, item.vendorId)) return;
-		set({ menuItems: get().menuItems.filter((m) => m.id !== id) });
+		set({ menuItems: get().menuItems.filter((m: any) => m.id !== id) });
 		get().audit("menu", `Removed ${item.name}`);
 	},
 	createModifierGroup: (input) => {
@@ -3462,7 +3465,7 @@ const usePosStoreRaw = create()(persist((set, get) => ({
 		const emp = get().getCurrentEmployee();
 		if (emp?.role === "vendor_operator") return;
 		set({
-			vendors: get().vendors.map((v) => {
+			vendors: get().vendors.map((v: any) => {
 				if (v.id !== id) return v;
 				const next = { ...v, ...patch };
 				if (patch.stationType && !patch.stationLabel) {
@@ -3519,19 +3522,19 @@ const usePosStoreRaw = create()(persist((set, get) => ({
 		return { id, pin };
 	},
 	receiveInventory: (id, qty) => {
-		set({ inventory: get().inventory.map((i) => i.id === id ? {
+		set({ inventory: get().inventory.map((i: any) => i.id === id ? {
 			...i,
 			onHand: i.onHand + qty
 		} : i) });
 	},
 	updateInventory: (id, patch) => {
-		set({ inventory: get().inventory.map((i) => i.id === id ? {
+		set({ inventory: get().inventory.map((i: any) => i.id === id ? {
 			...i,
 			...patch
 		} : i) });
 	},
 	updateTableLayout: (id, patch) => {
-		set({ tables: get().tables.map((t) => t.id === id ? {
+		set({ tables: get().tables.map((t: any) => t.id === id ? {
 			...t,
 			...patch
 		} : t) });
@@ -3565,9 +3568,9 @@ const usePosStoreRaw = create()(persist((set, get) => ({
 			return get().markClean(tableId);
 		}
 		const root = groupRootId(get().tables, tableId);
-		const members = groupMembers(get().tables, root).map((t) => t.id);
+		const members = groupMembers(get().tables, root).map((t: any) => t.id);
 		set({
-			tables: get().tables.map((t) => members.includes(t.id) ? { ...t, status: next, statusSince: Date.now() } : t),
+			tables: get().tables.map((t: any) => members.includes(t.id) ? { ...t, status: next, statusSince: Date.now() } : t),
 		});
 		get().audit("floor", `Table status ${next}`);
 		floorSync("table", root);
@@ -3575,10 +3578,10 @@ const usePosStoreRaw = create()(persist((set, get) => ({
 	},
 	guestOpenTable: (tableId) => {
 		const policy = parseQrPolicy(get().settings.qrPolicy, get().settings.qrMode);
-		const table = get().tables.find((t) => t.id === tableId);
+		const table = get().tables.find((t: any) => t.id === tableId);
 		if (!table) return { ok: false, error: "Unknown table" };
 		if (table.orderId) {
-			const existing = get().orders.find((o) => o.id === table.orderId);
+			const existing = get().orders.find((o: any) => o.id === table.orderId);
 			if (existing && existing.status === "open") {
 				set({ activeOrderId: table.orderId, activeTableId: tableId });
 				return { ok: true };
@@ -3609,7 +3612,7 @@ const usePosStoreRaw = create()(persist((set, get) => ({
 		};
 		set({
 			orders: [...get().orders, order],
-			tables: get().tables.map((t) => t.id === tableId ? {
+			tables: get().tables.map((t: any) => t.id === tableId ? {
 				...t,
 				status: "sat_no_order",
 				statusSince: Date.now(),
@@ -3634,7 +3637,7 @@ const usePosStoreRaw = create()(persist((set, get) => ({
 	},
 	guestAddToTable: (tableId, menuItemId, opts) => {
 		const policy = parseQrPolicy(get().settings.qrPolicy, get().settings.qrMode);
-		const item = get().menuItems.find((m) => m.id === menuItemId);
+		const item = get().menuItems.find((m: any) => m.id === menuItemId);
 		if (!item) return { ok: false, error: "Item unavailable" };
 		if (!qrItemAllowed(item, policy.orderAllow)) {
 			return { ok: false, error: "That item is not on the table QR menu" };
@@ -3653,25 +3656,25 @@ const usePosStoreRaw = create()(persist((set, get) => ({
 		return res;
 	},
 	guestSendOrder: (tableId) => {
-		const table = get().tables.find((t) => t.id === tableId);
+		const table = get().tables.find((t: any) => t.id === tableId);
 		if (!table?.orderId) return { ok: false, error: "No open check" };
 		set({ activeOrderId: table.orderId, activeTableId: tableId });
 		get().sendOrder();
 		return { ok: true };
 	},
 	rotateTableQr: (tableId) => {
-		const table = get().tables.find((t) => t.id === tableId);
+		const table = get().tables.find((t: any) => t.id === tableId);
 		if (!table) return { ok: false, error: "Not found" };
 		const token = makeTableQrToken(`${tableId}${Date.now()}`, table.label, get().tenantLocationId || undefined);
 		set({
-			tables: get().tables.map((t) => t.id === tableId ? { ...t, qrToken: token } : t),
+			tables: get().tables.map((t: any) => t.id === tableId ? { ...t, qrToken: token } : t),
 		});
 		return { ok: true, token };
 	},
 	guestPayOrder: (orderId, opts) => {
 		const policy = parseQrPolicy(get().settings.qrPolicy, get().settings.qrMode);
 		if (!qrCanPay(policy)) return { ok: false, error: "Pay is not on for this QR" };
-		const order = get().orders.find((o) => o.id === orderId);
+		const order = get().orders.find((o: any) => o.id === orderId);
 		if (!order) return { ok: false, error: "Check not found" };
 		if (order.status !== "open") return { ok: false, error: "Check already closed" };
 		const method = opts?.method === "gift_card" ? "gift_card" : "card";
@@ -3704,7 +3707,7 @@ const usePosStoreRaw = create()(persist((set, get) => ({
 		return res;
 	},
 	removeFloorTable: (id) => {
-		const t = get().tables.find((x) => x.id === id);
+		const t = get().tables.find((x: any) => x.id === id);
 		if (!t) return {
 			ok: false,
 			error: "Not found"
@@ -3713,7 +3716,7 @@ const usePosStoreRaw = create()(persist((set, get) => ({
 			ok: false,
 			error: "Table has open check"
 		};
-		set({ tables: get().tables.filter((x) => x.id !== id) });
+		set({ tables: get().tables.filter((x: any) => x.id !== id) });
 		return { ok: true };
 	},
 	openShift: (floatCents) => {
@@ -3755,7 +3758,7 @@ const usePosStoreRaw = create()(persist((set, get) => ({
 			}
 			get().audit("integrity_ack", reason, {
 				reason,
-				after: issues.map((i) => i.kind).join(","),
+				after: issues.map((i: any) => i.kind).join(","),
 			});
 		}
 		const s = get().shift;
@@ -3791,12 +3794,12 @@ const usePosStoreRaw = create()(persist((set, get) => ({
 		);
 	},
 	fileChargeback: (orderId) => {
-		const order = get().orders.find((o) => o.id === orderId);
+		const order = get().orders.find((o: any) => o.id === orderId);
 		if (!order) return { ok: false, error: "Order not found" };
 		if (order.status !== "closed") return { ok: false, error: "File a dispute only on a closed check" };
-		const hasCard = order.payments.some((p) => p.method === "card" || p.method === "room_charge");
+		const hasCard = order.payments.some((p: any) => p.method === "card" || p.method === "room_charge");
 		if (!hasCard) return { ok: false, error: "No Quantum Payments card capture on this check" };
-		if ((get().chargebacks ?? []).some((c) => c.orderId === orderId)) {
+		if ((get().chargebacks ?? []).some((c: any) => c.orderId === orderId)) {
 			return { ok: false, error: "A dispute is already filed on this check" };
 		}
 		const allocations = allocateChargebackFee(order, get().vendors);
@@ -3805,9 +3808,9 @@ const usePosStoreRaw = create()(persist((set, get) => ({
 			id: uid("cb"),
 			orderId: order.id,
 			orderNumber: order.number,
-			amountCents: order.payments.filter((p) => p.method === "card" || p.method === "room_charge").reduce((s, p) => s + p.amountCents, 0),
+			amountCents: order.payments.filter((p: any) => p.method === "card" || p.method === "room_charge").reduce((s: any, p: any) => s + p.amountCents, 0),
 			feeCents: CHARGEBACK_FEE_CENTS,
-			status: "filed",
+			status: "filed" as const,
 			filedAt: Date.now(),
 			allocations
 		};
@@ -3826,10 +3829,10 @@ const usePosStoreRaw = create()(persist((set, get) => ({
 		return { ok: true, chargeback: cb };
 	},
 	resolveChargeback: (id, outcome) => {
-		const hit = (get().chargebacks ?? []).find((c) => c.id === id);
+		const hit = (get().chargebacks ?? []).find((c: any) => c.id === id);
 		if (!hit) return { ok: false, error: "Dispute not found" };
 		set({
-			chargebacks: get().chargebacks.map((c) =>
+			chargebacks: get().chargebacks.map((c: any) =>
 				c.id === id ? { ...c, status: outcome, resolvedAt: Date.now() } : c,
 			),
 		});
@@ -3864,21 +3867,21 @@ const usePosStoreRaw = create()(persist((set, get) => ({
 		};
 	},
 	markSettlementPaid: (periodId) => {
-		set({ settlementPeriods: get().settlementPeriods.map((p) => p.id === periodId ? {
+		set({ settlementPeriods: get().settlementPeriods.map((p: any) => p.id === periodId ? {
 			...p,
 			status: "paid"
 		} : p) });
 	},
 	reassignServer: (tableId, serverId) => {
-		const emp = get().employees.find((e) => e.id === serverId);
+		const emp = get().employees.find((e: any) => e.id === serverId);
 		if (!emp) return;
-		const table = get().tables.find((t) => t.id === tableId);
+		const table = get().tables.find((t: any) => t.id === tableId);
 		set({
-			tables: get().tables.map((t) => t.id === tableId ? {
+			tables: get().tables.map((t: any) => t.id === tableId ? {
 				...t,
 				serverId
 			} : t),
-			orders: table?.orderId ? get().orders.map((o) => o.id === table.orderId ? {
+			orders: table?.orderId ? get().orders.map((o: any) => o.id === table.orderId ? {
 				...o,
 				serverId,
 				serverName: emp.name
@@ -3887,7 +3890,7 @@ const usePosStoreRaw = create()(persist((set, get) => ({
 	},
 	assignEmployeeSections: (employeeId, sectionIds) => {
 		set({
-			employees: get().employees.map((e) => e.id === employeeId ? { ...e, homeSectionIds: [...sectionIds] } : e)
+			employees: get().employees.map((e: any) => e.id === employeeId ? { ...e, homeSectionIds: [...sectionIds] } : e)
 		});
 		get().audit("section_assign", `${employeeId} → ${sectionIds.join(",") || "none"}`);
 	},
@@ -3896,11 +3899,11 @@ const usePosStoreRaw = create()(persist((set, get) => ({
 		const i = list.findIndex((s) => s.id === section.id);
 		if (i >= 0) list[i] = { ...list[i], ...section };
 		else list.push({ id: section.id || uid("sec"), name: section.name || "Section", color: section.color || "sec-1", sort: section.sort ?? list.length });
-		set({ floorSections: list.sort((a, b) => a.sort - b.sort) });
+		set({ floorSections: list.sort((a: any, b: any) => a.sort - b.sort) });
 	},
 	removeFloorSection: (id) => {
 		if (get().floorSections.length <= 1) return { ok: false, error: "Keep at least one section" };
-		set({ floorSections: get().floorSections.filter((s) => s.id !== id) });
+		set({ floorSections: get().floorSections.filter((s: any) => s.id !== id) });
 		return { ok: true };
 	},
 	updateSectionPolicy: (patch) => {
@@ -3914,27 +3917,27 @@ const usePosStoreRaw = create()(persist((set, get) => ({
 	grantExtraTable: ({ employeeId, tableId, scope, reason }) => {
 		const policy = policyOf(get().settings.sectionPolicy);
 		if (!policy.extraTableGrantsEnabled) return { ok: false, error: "Extra table grants are off" };
-		const table = get().tables.find((t) => t.id === tableId);
+		const table = get().tables.find((t: any) => t.id === tableId);
 		if (!table) return { ok: false, error: "Table not found" };
 		const granter = get().getCurrentEmployee();
 		const grant = {
 			id: uid("xg"),
 			employeeId,
 			tableId,
-			scope: scope === "seating" ? "seating" : "shift",
+			scope,
 			grantedById: granter?.id ?? "system",
 			grantedAt: Date.now(),
 			orderId: scope === "seating" ? table.orderId : undefined,
 			reason
 		};
 		set({
-			extraTableGrants: [grant, ...get().extraTableGrants.filter((g) => !(g.employeeId === employeeId && g.tableId === tableId))]
+			extraTableGrants: [grant, ...get().extraTableGrants.filter((g: any) => !(g.employeeId === employeeId && g.tableId === tableId))]
 		});
 		get().audit("section_grant", `${employeeId} · ${table.label} · ${grant.scope}`);
 		return { ok: true, grant };
 	},
 	revokeExtraTable: (id) => {
-		set({ extraTableGrants: get().extraTableGrants.filter((g) => g.id !== id) });
+		set({ extraTableGrants: get().extraTableGrants.filter((g: any) => g.id !== id) });
 	},
 	overrideSectionTable: (employeeId, tableId) => {
 		const policy = policyOf(get().settings.sectionPolicy);
@@ -3983,11 +3986,11 @@ const usePosStoreRaw = create()(persist((set, get) => ({
 		return { ok: true };
 	},
 	loginAsOwner: (name: string) => {
-		const existing = get().employees.find((e) => e.role === "owner" && e.active);
+		const existing = get().employees.find((e: any) => e.role === "owner" && e.active);
 		if (existing && get().currentEmployeeId === existing.id && get().sessionKind === "backoffice") {
 			if (name.trim() && existing.name !== name.trim()) {
 				set({
-					employees: get().employees.map((e) =>
+					employees: get().employees.map((e: any) =>
 						e.id === existing.id ? { ...e, name: name.trim() } : e,
 					),
 				});
@@ -4008,7 +4011,7 @@ const usePosStoreRaw = create()(persist((set, get) => ({
 			homeSectionIds: [] as string[],
 		};
 		const employees = existing
-			? get().employees.map((e) =>
+			? get().employees.map((e: any) =>
 					e.id === existing.id ? { ...e, name: owner.name, clockedIn: true } : e,
 				)
 			: [owner, ...get().employees];
@@ -4030,8 +4033,8 @@ const usePosStoreRaw = create()(persist((set, get) => ({
 		if (isPartnerDemoLocationId(locationId)) {
 			const partnerReady =
 				already &&
-				get().menuItems.some((m) => m.id === "itm_steam_highball") &&
-				get().employees.some((e) => e.pinHash);
+				get().menuItems.some((m: any) => m.id === "itm_steam_highball") &&
+				get().employees.some((e: any) => e.pinHash);
 			if (!partnerReady) {
 				const slice = partnerLaundryPosSlice(locationId);
 				set({
@@ -4115,14 +4118,14 @@ const usePosStoreRaw = create()(persist((set, get) => ({
 				sessionKind: "pin",
 				backOfficeUnlocked: false,
 				employees: hasRoster
-					? get().employees.filter((e) => e.id !== "emp_owner")
+					? get().employees.filter((e: any) => e.id !== "emp_owner")
 					: get().employees,
 			});
 			return { ok: true };
 		}
 		if (staff && staff.role !== "owner") {
 			const existing = get().employees.find(
-				(e) =>
+				(e: any) =>
 					e.role === staff.role &&
 					(staff.operatorId ? e.operatorId === staff.operatorId : !e.operatorId) &&
 					e.active,
@@ -4150,11 +4153,13 @@ const usePosStoreRaw = create()(persist((set, get) => ({
 			currentEmployeeId: keepEmp
 		});
 	}
-}), {
+	};
+	return store;
+}, {
 	name: "summex-pos-v7",
 	storage: createJSONStorage(() => demoPersistStorage()),
 	skipHydration: true,
-	partialize: (s) => ({
+	partialize: (s: any) => ({
 		tenantLocationId: s.tenantLocationId,
 		settings: s.settings,
 		employees: s.employees,
@@ -4195,15 +4200,15 @@ const usePosStoreRaw = create()(persist((set, get) => ({
 		acknowledgedExceptionIds: s.acknowledgedExceptionIds ?? [],
 		pendingApprovals: s.pendingApprovals ?? [],
 	}),
-	merge: (persisted, current) => {
+	merge: (persisted: any, current: any) => {
 		const p = persisted || {};
 		const entityId = p.activeEntityId || current.activeEntityId || "restaurant";
 		const fromPersist = p.employees || [];
 		const tagged =
 			fromPersist.length > 0 &&
-			fromPersist.some((e) => e.entityId === entityId);
+			fromPersist.some((e: any) => e.entityId === entityId);
 		const locKey = p.tenantLocationId || entityId || "loc";
-		const employees = (tagged ? fromPersist : employeesForVenue(entityId)).map((e) => {
+		const employees = (tagged ? fromPersist : employeesForVenue(entityId)).map((e: any) => {
 			const hashed =
 				e.pinHash || (e.pin && /^\d{4}$/.test(e.pin) ? hashPin(e.pin, locKey) : e.pinHash);
 			return {
@@ -4266,7 +4271,7 @@ const usePosStoreRaw = create()(persist((set, get) => ({
 						}
 					: { multiTenantHallMode: false })
 			},
-			tables: (p.tables || current.tables || []).map((t) => ({
+			tables: (p.tables || current.tables || []).map((t: any) => ({
 				...t,
 				status: normalizeTableStatus(t.status),
 				statusSince: t.statusSince || t.seatedAt || Date.now(),
@@ -4280,7 +4285,7 @@ const usePosStoreRaw = create()(persist((set, get) => ({
 			extraTableGrants: p.extraTableGrants || current.extraTableGrants || [],
 			chargebacks: p.chargebacks || current.chargebacks || [],
 			sectionOverrides: {},
-			giftCards: (p.giftCards || current.giftCards || []).map((g) => ({
+			giftCards: (p.giftCards || current.giftCards || []).map((g: any) => ({
 				...g,
 				source: g.source || "summex",
 				status: g.status || (g.active === false ? "void" : g.balanceCents === 0 ? "zeroed" : "active"),
