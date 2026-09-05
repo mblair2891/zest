@@ -3,6 +3,11 @@ import { defaultPackagesForMode, type PackageId } from "@/lib/pos/packages";
 import type { LocationMode } from "@/lib/pos/saas-types";
 import { appPublicUrl } from "./flags";
 import { inviteToken, newId, slugify } from "./ids";
+import {
+  isReservedVenueSlug,
+  normalizeVenueSlug,
+  suggestVenueSlug,
+} from "@/lib/platform/venue-host";
 import type {
   InviteRecord,
   LocationRecord,
@@ -69,6 +74,7 @@ type LocRow = {
   setup?: unknown;
   lifecycle_status?: string | null;
   is_partner_demo?: boolean;
+  slug?: string | null;
 };
 
 type UserRow = { id: string; name: string | null; email: string | null };
@@ -321,6 +327,7 @@ function mapLoc(r: LocRow): LocationRecord {
           : "single",
     setup: parseSetup(r.setup),
     lifecycleStatus: parseSetup(r.setup).lifecycleStatus || r.lifecycle_status || "training",
+    slug: r.slug ? String(r.slug) : null,
   };
 }
 
@@ -555,7 +562,8 @@ export async function getSessionContext(userId: string): Promise<SessionContext>
 
 async function uniqueSlug(name: string): Promise<string> {
   const sql = await getSql();
-  const base = slugify(name);
+  let base = slugify(name);
+  if (isReservedVenueSlug(base)) base = `org-${base}`.slice(0, 48);
   let slug = base;
   for (let i = 0; i < 8; i += 1) {
     const hit = await sql<{ id: string }>`select id from organizations where slug = ${slug} limit 1`;
@@ -563,6 +571,56 @@ async function uniqueSlug(name: string): Promise<string> {
     slug = `${base}-${newId("s").slice(-4)}`;
   }
   return `${base}-${Date.now().toString(36)}`;
+}
+
+export async function uniqueVenueSlug(
+  name: string,
+  excludeLocationId?: string | null,
+): Promise<string> {
+  const sql = await getSql();
+  let base = suggestVenueSlug(name);
+  if (base.length < 2) base = "venue";
+  let slug = base;
+  for (let i = 0; i < 12; i += 1) {
+    try {
+      const hit = excludeLocationId
+        ? await sql<{ id: string }>`
+            select id from locations
+            where slug = ${slug} and id <> ${excludeLocationId}
+            limit 1
+          `
+        : await sql<{ id: string }>`
+            select id from locations where slug = ${slug} limit 1
+          `;
+      if (!hit[0]) return slug;
+    } catch {
+      return slug;
+    }
+    slug = `${base}-${newId("s").slice(-4)}`;
+  }
+  return `${base}-${Date.now().toString(36)}`;
+}
+
+export async function resolveLocationBySlug(slug: string): Promise<LocationRecord | null> {
+  const s = normalizeVenueSlug(slug);
+  if (!s || isReservedVenueSlug(s)) return null;
+  const sql = await getSql();
+  try {
+    const rows = await sql<LocRow>`
+      select l.*
+      from locations l
+      join organizations o on o.id = l.org_id
+      where l.slug = ${s}
+        and coalesce(l.is_demo, false) = false
+        and coalesce(o.is_demo, false) = false
+        and o.status = 'active'
+        and l.status = 'active'
+      limit 1
+    `;
+    return rows[0] ? mapLoc(rows[0]) : null;
+  } catch {
+    return null;
+  }
 }
 
 export async function createOrganizationForUser(
@@ -654,6 +712,7 @@ export async function createLocationForOrg(
     setup?: LocationSetup;
     enabledPackages?: PackageId[];
     skipLimit?: boolean;
+    slug?: string;
   },
 ): Promise<LocationRecord> {
   await requireActiveOrg(userId, input.orgId, ["owner", "manager"]);
@@ -696,10 +755,13 @@ export async function createLocationForOrg(
     lifecycleStatus: input.setup?.lifecycleStatus ?? "training",
   };
   const setup = JSON.stringify(setupObj);
+  const slug = await uniqueVenueSlug(
+    input.slug?.trim() || input.hostBrandName || input.name,
+  );
   await sql`
     insert into locations (
       id, org_id, name, venue_type, timezone, status, enabled_packages,
-      address, host_brand_name, operating_model, setup
+      address, host_brand_name, operating_model, setup, slug
     )
     values (
       ${id}, ${input.orgId}, ${input.name}, ${input.venueType}, ${tz}, 'active',
@@ -707,7 +769,8 @@ export async function createLocationForOrg(
       ${input.address?.trim() || ""},
       ${input.hostBrandName?.trim() || null},
       ${model},
-      ${setup}::jsonb
+      ${setup}::jsonb,
+      ${slug}
     )
   `;
   try {

@@ -1,4 +1,6 @@
 import { absoluteGuestHref } from "@/lib/platform/hosts";
+import { venueAwareHref } from "@/lib/platform/venue-host";
+import { readTenantPosContext } from "@/lib/saas/pos-context";
 
 export type QrMode = "full" | "hybrid" | "pay_only";
 
@@ -76,11 +78,22 @@ export function absolutePath(path: string): string {
   return `${window.location.origin}${path}`;
 }
 
+function venueSlugNow(): string | null {
+  try {
+    return readTenantPosContext()?.slug || null;
+  } catch {
+    return null;
+  }
+}
+
 export function tableGuestUrl(
   table: { label: string; qrToken?: string },
   opts?: { pay?: boolean; demoType?: string | null; seat?: number },
 ): string {
-  return absoluteGuestHref(tableGuestPath(table, opts));
+  const path = tableGuestPath(table, opts);
+  const slug = venueSlugNow();
+  if (slug) return venueAwareHref(path, slug);
+  return absoluteGuestHref(path);
 }
 
 function ticketSig(orderId: string, locationId: string, exp: number): string {
@@ -123,8 +136,10 @@ export function ticketGuestUrl(
   ttlSec?: number,
 ): { url: string; token: string; exp: number } {
   const minted = makeTicketQrToken(orderId, locationId, ttlSec);
+  const path = ticketQrPath(minted.token);
+  const slug = venueSlugNow();
   return {
-    url: absoluteGuestHref(ticketQrPath(minted.token)),
+    url: slug ? venueAwareHref(path, slug) : absoluteGuestHref(path),
     token: minted.token,
     exp: minted.exp,
   };

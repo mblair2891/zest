@@ -59,7 +59,7 @@ Not card-blockers, but they will bite the first real house.
 | Confirm `DEV_DEMO=0` and `DEMO_OPEN_LOCATIONS=0` | Production must not seed test houses (`.env.example`). |
 | Pair each tablet once **online** | Offline PWA needs a primed shell + IndexedDB pack (`/station`, `src/lib/offline/location-snapshot.ts`). A router with no WAN is not enough for a cold uncached device. |
 | Software billing prices (`STRIPE_PRICE_*`) | Only if Summex invoices the host for software. Guest cards never use this Stripe account (`src/lib/saas/billing.server.ts`). |
-| Host DNS | `www` marketing + login; POS same-origin unless `VITE_APP_HOST` is a **live** distinct app host (`src/lib/platform/hosts.ts`, `src/lib/saas/open-location.ts`). Default `app.summex.app` is treated as **not served**. |
+| Host DNS | `www` marketing + login; venue `{slug}.summex.app` via one-time `*.summex.app` wildcard; path fallback `/v/{slug}`. POS same-origin unless `VITE_APP_HOST` is a **live** distinct app host. Default `app.summex.app` is treated as **not served**. |
 
 ---
 
@@ -214,6 +214,7 @@ Production must have all of these. Without them, health fails or sessions break.
 **DNS / TLS**
 
 - [ ] `www.summex.app` (and apex) → this app
+- [ ] Wildcard `*.summex.app` once (Namecheap CNAME + Vercel domain). Venue hosts are `{slug}.summex.app`. No per-tenant DNS. Preview uses `/v/{slug}`.
 - [ ] Do **not** send POS to `app.summex.app` until that host is a real deploy of this repo
 - [ ] `sites.summex.app` only when guest sites are a separate surface
 

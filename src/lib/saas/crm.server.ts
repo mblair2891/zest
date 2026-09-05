@@ -627,12 +627,16 @@ export async function listTenantDirectory(userId: string): Promise<TenantDirecto
   const sql = await getSql();
   const rows = await sql<{
     id: string; name: string; status: string; created_at: unknown;
+    venue_slug: string | null;
     plan_id: string | null; plan_status: string | null;
     loc_count: number; op_count: number; mem_count: number;
     open_tickets: number; account_id: string | null; stage: string | null;
     mrr_cents: number | null;
   }>`
     select o.id, o.name, o.status, o.created_at,
+      (select l.slug from locations l
+        where l.org_id = o.id and coalesce(l.is_demo, false) = false
+        order by l.created_at asc limit 1) as venue_slug,
       s.plan_id, s.status as plan_status,
       (select count(*)::int from locations l
         where l.org_id = o.id and coalesce(l.is_demo, false) = false) as loc_count,
@@ -709,6 +713,7 @@ export async function listTenantDirectory(userId: string): Promise<TenantDirecto
       createdAt: iso(r.created_at),
       lifecycleStatuses,
       lifecycleSummary,
+      venueSlug: r.venue_slug || null,
     };
   });
 }
@@ -726,8 +731,9 @@ export async function getTenantDrillIn(userId: string, orgId: string): Promise<T
     status: string;
     setup: unknown;
     lifecycle_status: string | null;
+    slug: string | null;
   }>`
-    select id, name, venue_type, status, setup, lifecycle_status from locations
+    select id, name, venue_type, status, setup, lifecycle_status, slug from locations
     where org_id = ${orgId} and coalesce(is_demo, false) = false
     order by name
   `;
@@ -752,6 +758,7 @@ export async function getTenantDrillIn(userId: string, orgId: string): Promise<T
         name: l.name,
         venueType: l.venue_type,
         status: l.status,
+        slug: l.slug || null,
         lifecycleStatus:
           life === "training" || life === "scheduled_live" || life === "live" || life === "onboarding"
             ? life

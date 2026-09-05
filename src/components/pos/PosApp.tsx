@@ -216,6 +216,7 @@ function PosAppInner({ entityId }: { entityId?: string }) {
             locationName: access.location.name,
             orgName: access.org.name,
             ownerName: user?.displayName || "Owner",
+            slug: access.location.slug,
           });
           const setup = access.location.setup ?? EMPTY_LOCATION_SETUP;
           const rawMode = setup.menuMode;

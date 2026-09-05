@@ -623,6 +623,25 @@ export const listOpenDemoLocationsFn = createServerFn({ method: "GET" }).handler
   },
 );
 
+/** Public venue host lookup: {slug}.summex.app and /v/{slug}. */
+export const resolveVenueBySlugFn = createServerFn({ method: "POST" })
+  .validator((d: { slug: string }) => ({
+    slug: String(d.slug ?? "").trim().toLowerCase().slice(0, 48),
+  }))
+  .handler(async ({ data }) => {
+    const { resolveLocationBySlug } = await import("./tenancy.server");
+    const loc = await resolveLocationBySlug(data.slug);
+    if (!loc) return null;
+    return {
+      id: loc.id,
+      orgId: loc.orgId,
+      name: loc.name,
+      venueType: loc.venueType,
+      slug: loc.slug || data.slug,
+      operatingModel: loc.operatingModel ?? "single",
+    };
+  });
+
 export const getPosBootstrapFn = createServerFn({ method: "POST" })
   .middleware([optionalAuthMiddleware])
   .validator((d: { locationId: string }) => ({

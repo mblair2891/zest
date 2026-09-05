@@ -4,6 +4,7 @@ import { CreatedWithGrokBanner } from "@/components/created-with-grok-banner";
 import { OfflineSwRegistrar } from "@/components/offline-sw";
 import { DemoTourHost } from "@/components/demo/DemoTourHost";
 import { GuideHost } from "@/components/guide/GuideHost";
+import { VenueHostBootstrap } from "@/components/platform/VenueHostBootstrap";
 
 import appCss from "../styles.css?url";
 
@@ -46,6 +47,7 @@ export const Route = createRootRoute({
         <AuthProvider>
           <GuideHost />
           <DemoTourHost />
+          <VenueHostBootstrap />
           <Outlet />
         </AuthProvider>
         <Scripts />

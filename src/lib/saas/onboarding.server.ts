@@ -20,8 +20,10 @@ import {
   inviteMemberToOrg,
   isPlatformAdmin,
   parseVenueType,
+  uniqueVenueSlug,
   writeAudit,
 } from "./tenancy.server";
+import { isReservedVenueSlug, normalizeVenueSlug } from "@/lib/platform/venue-host";
 import type { PackageId } from "@/lib/pos/packages";
 import type { PlanSlug } from "./types";
 
@@ -282,6 +284,25 @@ async function applyLocations(userId: string, prospectId: string, payload: Onboa
       );
       if (hit) loc.serverId = hit.id;
     }
+    const slugSource =
+      loc.slug?.trim() || loc.hostBrandName.trim() || loc.name.trim();
+    const requested = normalizeVenueSlug(slugSource);
+    if (loc.slugEdited && loc.slug?.trim()) {
+      if (isReservedVenueSlug(requested)) {
+        throw new Error(`Venue URL "${requested}" is reserved. Pick another.`);
+      }
+      const taken = await sql<{ id: string }>`
+        select id from locations
+        where slug = ${requested}
+          and id <> ${loc.serverId || "__none__"}
+        limit 1
+      `;
+      if (taken[0]) throw new Error(`Venue URL "${requested}" is taken. Pick another.`);
+    }
+    const slug = loc.slugEdited
+      ? requested
+      : await uniqueVenueSlug(slugSource, loc.serverId ?? null);
+    loc.slug = slug;
     if (loc.serverId) {
       await sql`
         update locations
@@ -292,7 +313,8 @@ async function applyLocations(userId: string, prospectId: string, payload: Onboa
             host_brand_name = ${loc.hostBrandName.trim() || loc.name.trim()},
             operating_model = ${loc.operatingModel},
             setup = ${JSON.stringify(setup)}::jsonb,
-            enabled_packages = ${JSON.stringify(quoted.packages)}::jsonb
+            enabled_packages = ${JSON.stringify(quoted.packages)}::jsonb,
+            slug = ${slug}
         where id = ${loc.serverId} and org_id = ${orgId}
       `;
       continue;
@@ -308,6 +330,7 @@ async function applyLocations(userId: string, prospectId: string, payload: Onboa
       setup,
       enabledPackages: quoted.packages,
       skipLimit: true,
+      slug,
     });
     loc.serverId = created.id;
   }

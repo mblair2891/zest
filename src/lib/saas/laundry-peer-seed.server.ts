@@ -330,7 +330,7 @@ async function upsertLocation(): Promise<void> {
     await sql`
       insert into locations (
         id, org_id, name, venue_type, timezone, status, enabled_packages,
-        address, host_brand_name, operating_model, setup, is_demo
+        address, host_brand_name, operating_model, setup, is_demo, slug
       )
       values (
         ${LAUNDRY_PEER_LOCATION_ID},
@@ -344,7 +344,8 @@ async function upsertLocation(): Promise<void> {
         ${LAUNDRY_PEER_NAME},
         ${"peer_venue"},
         ${setup}::jsonb,
-        ${false}
+        ${false},
+        ${LAUNDRY_PEER_SLUG}
       )
     `;
   } else {
@@ -358,7 +359,8 @@ async function upsertLocation(): Promise<void> {
           setup = ${setup}::jsonb,
           is_demo = ${false},
           status = ${"active"},
-          org_id = ${orgId}
+          org_id = ${orgId},
+          slug = ${LAUNDRY_PEER_SLUG}
       where id = ${locId}
     `;
   }
@@ -366,7 +368,8 @@ async function upsertLocation(): Promise<void> {
     await sql`
       update locations
       set is_partner_demo = ${false},
-          lifecycle_status = ${"training"}
+          lifecycle_status = ${"training"},
+          slug = ${LAUNDRY_PEER_SLUG}
       where id = ${locId}
     `;
   } catch {

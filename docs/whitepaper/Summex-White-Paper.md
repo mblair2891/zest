@@ -3,7 +3,7 @@
 **Powered by Quantum Reach**
 
 White paper · October 2026  
-**Revision · 5 Sep 2026** — Open tenant from list into venue settings. Aligns with Operators Guide v2026.10.44.
+**Revision · 5 Sep 2026** — Venue slug subdomains on onboard. Aligns with Operators Guide v2026.10.45.
 
 summex.app  
 Guest cards: **Quantum Payments** only

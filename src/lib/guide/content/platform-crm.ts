@@ -70,7 +70,7 @@ export const PLATFORM_CRM_TOPICS: GuideTopic[] = [
       ul(
         "Directory shows plan, location count, operators, MRR proxy from the deal, past-due, open tickets.",
         "Each location shows training | scheduled_live | live. Training is sandbox cards; live cards wait for processor approval.",
-        "Click the tenant row (or the name) to open that venue’s owner settings — location, devices/publish, menus per entity, payments, QR, cash, labor, users. Not the CRM pipeline.",
+        "Click the tenant row to open the venue URL (https://{slug}.summex.app, or /v/{slug} in preview). Settings stays on the list for in-console edits.",
         "Shared venue (peer) works with no host merchant. The screen shows the building plus child entities (example: The Laundry → Diamond House BBQ, Steam Distillery).",
         "Back returns to Tenants. The house stays listed after save.",
         "Plan / Suspend stay on the list (Plan) and do not require a host merchant.",

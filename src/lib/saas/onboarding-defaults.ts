@@ -1,5 +1,6 @@
 import type { LocationMode } from "@/lib/pos/saas-types";
 import { VENUE_TYPES } from "./types";
+import { suggestVenueSlug } from "@/lib/platform/venue-host";
 import type {
   IntakeAnswers,
   OnboardingPayload,
@@ -103,6 +104,8 @@ function emptyLocationDraft(
     timezone: "America/Los_Angeles",
     venueType: peer && venueType === "restaurant" ? "food_hall" : venueType,
     hostBrandName: brand,
+    slug: suggestVenueSlug(brand),
+    slugEdited: false,
     operatingModel: peer ? "peer_venue" : host ? "host_operators" : "single",
     operators: Array.from({ length: opCount }, (_, n) => ({
       legalName: "",

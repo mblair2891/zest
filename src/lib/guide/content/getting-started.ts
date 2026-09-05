@@ -276,7 +276,7 @@ export const GETTING_STARTED_TOPICS: GuideTopic[] = [
         "Steam Distillery is the bar (drinks, bar ODS). Diamond House BBQ is the kitchen (food, kitchen ODS). One guest check; lines owned by entity; receipt grouped by vendor. Training / sandbox cards.",
       ),
       steps(
-        "Sign in as Platform Admin. Tenants → click The Laundry. Venue settings open (building + Steam Distillery + Diamond House BBQ). No host merchant required.",
+        "Sign in as Platform Admin. Tenants → click The Laundry. That opens the venue URL (the-laundry.summex.app, or /v/the-laundry in preview). Steam Distillery + Diamond House BBQ. No host merchant required.",
         "Add users on the platform (owners, floor PINs, operator POCs). The seed has no staff.",
         "QR: table tents + ticket QR, reorder after a staff-opened check, pay/split. Full self-serve is off. Order food and drinks.",
         "Ticket a drink and a plate. Bar ODS gets Steam. Kitchen ODS gets Diamond. Guest pays once.",

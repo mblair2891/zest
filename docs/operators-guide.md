@@ -1,7 +1,7 @@
 # Operators Guide — authoring
 
-**Revision · 5 Sep 2026** — Open tenant from list into venue settings.
-Guide v2026.10.44.
+**Revision · 5 Sep 2026** — Venue slug subdomains on onboard.
+Guide v2026.10.45.
 
 The in-app **Operators Guide** is the living product manual. It is not a
 separate PDF. Staff open it from **Guide** / **?** in the POS and platform

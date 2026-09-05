@@ -110,6 +110,7 @@ export function PlatformTenantVenue({
         locationName: access.location.name,
         orgName: access.org.name,
         ownerName: user?.displayName || "Platform admin",
+        slug: access.location.slug,
       });
       const saasOrg: SaasOrganization = {
         id: access.org.id,

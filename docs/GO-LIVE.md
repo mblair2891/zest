@@ -60,6 +60,7 @@ Do **not** pretend live Visa works until all of these are true.
 - [ ] Webhook URL `https://<origin>/api/payments/finix/webhook` (and `/api/payments/webhook` if using the Terminal adapter)
 - [ ] One sandbox presentment, then one live presentment in the house
 - [ ] DNS/TLS: `www` marketing + login; do **not** cut POS to `app.summex.app` until that host serves this app
+- [ ] **Once:** Namecheap + Vercel wildcard `*.summex.app` (CNAME to Vercel). Venue hosts are `{slug}.summex.app`. No per-tenant DNS. Preview uses `/v/{slug}`.
 - [ ] `sites.summex.app` / custom guest domains only when that host is a real deploy
 - [ ] Resend + Twilio domains if you want production email/SMS
 
@@ -80,6 +81,7 @@ These are **not** missing screens. List them here so a later turn does not rebui
 | Live processor keys | Card-present adapter |
 | Enroll physical reader | Serial on Hardware registry |
 | `app` / `sites` DNS | Separate hosts only when they serve this repo |
+| `*.summex.app` wildcard | One Namecheap CNAME + Vercel domain. Venue `{slug}.summex.app`. No per-tenant DNS |
 | Resend / Twilio domain | Outbox/sandbox until keys exist |
 | DocuSign or HelloSign keys | HR packets still generate; signed PDF upload without a vendor |
 | `HR_PII_SECRET` | Encrypts SSN/tax; last4 only if unset |

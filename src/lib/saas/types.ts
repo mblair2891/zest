@@ -224,6 +224,8 @@ export type LocationRecord = {
   operatingModel?: LocationOperatingModel;
   setup?: LocationSetup;
   lifecycleStatus?: string;
+  /** Public host label: {slug}.summex.app and /v/{slug}. */
+  slug?: string | null;
 };
 
 /** Public partner-demo location row for the temporary Login → picker path. */

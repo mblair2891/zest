@@ -40,3 +40,19 @@ Use invented names such as **Host Venue**, **Operator A**, **Operator B**. Do no
 4. File a **dispute** on that closed check. $35 fee splits by merchandise % (see `docs/quantum-payments-multi-operator.md`). Mark won or lost — fee stays.
 
 No demo org and no PIN chips unless `DEV_DEMO=1` (leave off on Vercel). The Laundry peer venue is a real training house with no staff — add users on the platform.
+
+## Venue URL (wildcard DNS once)
+
+Onboarding (shared venue and host + tenants) assigns a unique slug from the venue name. It is editable before publish. Reserved labels (`www`, `app`, `login`, …) are blocked.
+
+| Environment | House URL |
+|---|---|
+| Production | `https://{slug}.summex.app` |
+| Preview / localhost | `/v/{slug}` |
+
+Operator DNS is **one job**, not per tenant:
+
+1. Namecheap: CNAME `*` → Vercel (`cname.vercel-dns.com`).
+2. Vercel project: add domain `*.summex.app`.
+
+Device pair, table QR, and station links prefer the subdomain when Host is a venue slug. Platform Tenants → click the house opens that URL.

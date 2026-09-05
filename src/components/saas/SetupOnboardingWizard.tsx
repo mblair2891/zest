@@ -19,6 +19,13 @@ import { ONBOARDING_STEP_IDS } from "@/lib/saas/prospect-types";
 import { VENUE_ENTITIES } from "@/lib/pos/entities";
 import { NetworkReadinessPanel } from "./NetworkReadinessPanel";
 import { AccessPointsCard } from "@/components/pos/AccessPointsCard";
+import {
+  isReservedVenueSlug,
+  normalizeVenueSlug,
+  suggestVenueSlug,
+  venuePosHref,
+  venueSubdomainHost,
+} from "@/lib/platform/venue-host";
 import { saveTenantPosContext } from "@/lib/saas/pos-context";
 import { sameOriginVenueHref } from "@/lib/saas/open-location";
 import { setActiveContextFn } from "@/lib/saas/api";
@@ -308,7 +315,12 @@ export function SetupOnboardingWizard({ token }: { token: string }) {
                   onChange={(e) =>
                     patch((p) => {
                       const locations = p.locations.slice();
-                      locations[i] = { ...l, name: e.target.value };
+                      const name = e.target.value;
+                      const next = { ...l, name };
+                      if (!l.slugEdited) {
+                        next.slug = suggestVenueSlug(name || l.hostBrandName);
+                      }
+                      locations[i] = next;
                       return { ...p, locations };
                     })
                   }
@@ -381,12 +393,59 @@ export function SetupOnboardingWizard({ token }: { token: string }) {
                   onChange={(e) =>
                     patch((p) => {
                       const locations = p.locations.slice();
-                      locations[i] = { ...l, hostBrandName: e.target.value };
+                      const hostBrandName = e.target.value;
+                      const next = { ...l, hostBrandName };
+                      if (!l.slugEdited) {
+                        next.slug = suggestVenueSlug(hostBrandName || l.name);
+                      }
+                      locations[i] = next;
                       return { ...p, locations };
                     })
                   }
                 />
               </Field>
+              {(l.operatingModel === "peer_venue" ||
+                l.operatingModel === "host_operators") && (
+                <Field label="Venue URL (editable before publish)">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <Input
+                      value={l.slug || suggestVenueSlug(l.hostBrandName || l.name)}
+                      onChange={(e) =>
+                        patch((p) => {
+                          const locations = p.locations.slice();
+                          locations[i] = {
+                            ...l,
+                            slug: normalizeVenueSlug(e.target.value),
+                            slugEdited: true,
+                          };
+                          return { ...p, locations };
+                        })
+                      }
+                      className="max-w-xs font-mono text-sm"
+                    />
+                    <span className="text-xs text-muted-foreground">
+                      {venueSubdomainHost(
+                        l.slug || suggestVenueSlug(l.hostBrandName || l.name),
+                      )}
+                    </span>
+                  </div>
+                  {isReservedVenueSlug(
+                    l.slug || suggestVenueSlug(l.hostBrandName || l.name),
+                  ) ? (
+                    <p className="mt-1 text-xs text-danger">
+                      That label is reserved. Pick another.
+                    </p>
+                  ) : (
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      Wildcard DNS is one-time (*.summex.app). Preview uses{" "}
+                      {venuePosHref(
+                        l.slug || suggestVenueSlug(l.hostBrandName || l.name),
+                      )}
+                      .
+                    </p>
+                  )}
+                </Field>
+              )}
               <div className="grid gap-2 sm:grid-cols-2">
                 <ToggleChip
                   on={l.operatingModel === "single"}
@@ -455,6 +514,8 @@ export function SetupOnboardingWizard({ token }: { token: string }) {
                     timezone: "America/Los_Angeles",
                     venueType: "restaurant" as LocationMode,
                     hostBrandName: p.org.dba || p.org.legalName,
+                    slug: suggestVenueSlug(p.org.dba || p.org.legalName || "venue"),
+                    slugEdited: false,
                     operatingModel: "single" as const,
                     operators: [],
                     tableCount: 0,

@@ -6,6 +6,19 @@ import type { GuideUpdate } from "@/lib/guide/types";
  */
 export const WHATS_NEW_ENTRIES: GuideUpdate[] = [
   {
+    id: "upd_2026_10_45_venue_slug_host",
+    date: "2026-09-05",
+    title: "Venue URL on onboard — {slug}.summex.app",
+    summary:
+      "Shared venue and host + tenants get a unique slug from the venue name. Pair, QR, and stations use that host. One wildcard DNS job — not per house.",
+    body: "Onboarding assigns a unique venue slug (editable before publish). Production is https://{slug}.summex.app. Preview and localhost use /v/{slug}. Reserved labels (www, app, login, …) are blocked. Device pair, table QR, and station links prefer the subdomain when you are on a venue host. Platform Tenants → click the house opens that URL. Operator adds *.summex.app once in Namecheap and Vercel.",
+    roles: ["platform_admin", "owner_manager", "host_operator"],
+    surfaces: ["platform", "settings"],
+    audience: "all",
+    topicId: "access-urls",
+    tags: ["onboarding", "dns", "devices", "qr"],
+  },
+  {
     id: "upd_2026_10_44_open_tenant_venue",
     date: "2026-09-05",
     title: "Tenants open venue settings",

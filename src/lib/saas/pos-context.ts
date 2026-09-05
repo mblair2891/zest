@@ -8,6 +8,7 @@ export type TenantPosContext = {
   locationName: string;
   orgName: string;
   ownerName: string;
+  slug?: string | null;
 };
 
 export function saveTenantPosContext(ctx: TenantPosContext): void {

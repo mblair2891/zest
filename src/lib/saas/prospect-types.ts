@@ -368,6 +368,10 @@ export type OnboardingLocationDraft = {
   timezone: string;
   venueType: LocationMode;
   hostBrandName: string;
+  /** Public venue host: {slug}.summex.app. Assigned from the venue name; editable before publish. */
+  slug?: string;
+  /** True once the operator typed the slug (stop auto-fill from name). */
+  slugEdited?: boolean;
   operatingModel: LocationOperatingModel;
   operators: OperatorDraft[];
   tableCount: number;

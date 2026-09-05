@@ -1,3 +1,5 @@
+import { venueAwareHref, venuePosHref, venueSlugFromHost } from "./venue-host";
+
 /**
  * Canonical Summex surfaces.
  *
@@ -99,6 +101,7 @@ export function surfaceFromHost(hostname: string): SummexSurface | null {
   if (h.startsWith("app.") || (app && hostsEqual(h, app))) return "app";
   if (h === cfg.api || h.startsWith("api.")) return "api";
   if (h === cfg.sites || h.startsWith("sites.")) return "sites";
+  if (venueSlugFromHost(h)) return "app";
   return null;
 }
 
@@ -108,6 +111,7 @@ export function surfaceFromPath(pathname: string): SummexSurface | null {
   if (pathname === "/sites" || pathname.startsWith("/sites/")) return "sites";
   if (pathname.startsWith("/venue/") || pathname === "/kiosk" || pathname === "/station" || pathname.startsWith("/station/"))
     return "app";
+  if (pathname === "/v" || pathname.startsWith("/v/")) return "app";
   return null;
 }
 
@@ -236,7 +240,9 @@ function sameOriginPosPath(path: string): string {
     p.startsWith("/venue/") ||
     p.startsWith("/kiosk") ||
     p === "/station" ||
-    p.startsWith("/station/")
+    p.startsWith("/station/") ||
+    p === "/v" ||
+    p.startsWith("/v/")
   )
     return p;
   return `/app${p}`;
@@ -351,10 +357,27 @@ export function staffGuestAccessPoints(opts?: {
   venueType?: string;
   locationId?: string;
   tablePath?: string;
+  slug?: string | null;
 }): AccessPoint[] {
   const venue = opts?.venueType || "restaurant";
   const locQ = opts?.locationId ? `?loc=${encodeURIComponent(opts.locationId)}` : "";
   const table = opts?.tablePath || "/t/demo";
+  const slug = opts?.slug?.trim() || "";
+  let posHref = `/venue/${venue}${locQ}`;
+  let odsHref = `/venue/${venue}${locQ ? `${locQ}&` : "?"}station=ods`;
+  let kioskHref = `/kiosk${locQ}`;
+  let qrHref = absoluteGuestHref(table);
+  let onlineHref = absoluteGuestHref("/online");
+  if (slug) {
+    posHref = venuePosHref(slug);
+    odsHref = venueAwareHref(
+      `/station?station=ods${opts?.locationId ? `&loc=${encodeURIComponent(opts.locationId)}` : ""}`,
+      slug,
+    );
+    kioskHref = venueAwareHref(`/kiosk${locQ}`, slug);
+    qrHref = venueAwareHref(table, slug);
+    onlineHref = venueAwareHref("/online", slug);
+  }
   return [
     {
       id: "marketing",
@@ -366,36 +389,38 @@ export function staffGuestAccessPoints(opts?: {
     {
       id: "pos",
       label: "POS",
-      hint: "Floor, order, host stand — this origin",
-      href: `/venue/${venue}${locQ}`,
+      hint: slug ? "Venue host (slug subdomain or /v/{slug})" : "Floor, order, host stand — this origin",
+      href: posHref,
       surface: "app",
     },
     {
       id: "kds",
       label: "ODS",
-      hint: "Kitchen / bar order display on this origin",
-      href: `/venue/${venue}${locQ ? `${locQ}&` : "?"}station=ods`,
+      hint: slug ? "Order display on the venue host" : "Kitchen / bar order display on this origin",
+      href: odsHref,
       surface: "app",
     },
     {
       id: "kiosk",
       label: "Kiosk",
-      hint: "Guest kiosk device on this origin",
-      href: `/kiosk${locQ}`,
+      hint: slug ? "Kiosk on the venue host" : "Guest kiosk device on this origin",
+      href: kioskHref,
       surface: "app",
     },
     {
       id: "qr",
-      label: "sites · table QR",
-      hint: "Guest order / pay from the table sticker",
-      href: absoluteGuestHref(table),
+      label: "Table QR",
+      hint: slug
+        ? "Guest order / pay on the venue host"
+        : "Guest order / pay from the table sticker",
+      href: qrHref,
       surface: "sites",
     },
     {
       id: "online",
-      label: "sites · online menu",
+      label: "Online menu",
       hint: "Order-ahead and location pages",
-      href: absoluteGuestHref("/online"),
+      href: onlineHref,
       surface: "sites",
     },
   ];

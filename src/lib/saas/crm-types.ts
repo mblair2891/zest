@@ -164,11 +164,20 @@ export type TenantDirectoryRow = {
   lifecycleStatuses: string[];
   /** Short list label, e.g. "Training" or "Live + training". */
   lifecycleSummary: string;
+  /** First location slug → {slug}.summex.app */
+  venueSlug?: string | null;
 };
 
 export type TenantDrillIn = {
   org: TenantDirectoryRow;
-  locations: { id: string; name: string; venueType: string; status: string; lifecycleStatus?: string }[];
+  locations: {
+    id: string;
+    name: string;
+    venueType: string;
+    status: string;
+    lifecycleStatus?: string;
+    slug?: string | null;
+  }[];
   members: { id: string; name: string; email: string; role: string }[];
   operators: { id: string; dba: string; locationId: string | null; onboardStatus?: string }[];
 };

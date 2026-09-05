@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import { Link, useNavigate } from "@tanstack/react-router";
+import { useNavigate } from "@tanstack/react-router";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { GuideLearnLink } from "@/components/guide/GuideLearnLink";
@@ -9,6 +9,7 @@ import type { TenantDirectoryRow, TenantDrillIn } from "@/lib/saas/crm-types";
 import { STAGE_LABEL } from "@/lib/saas/crm-types";
 import { formatCurrency, formatDateTime } from "@/lib/utils";
 import { LIFECYCLE_LABEL, type LocationLifecycle } from "@/lib/lifecycle/types";
+import { venuePosHref } from "@/lib/platform/venue-host";
 
 function lifecycleLabel(raw: string | undefined): string {
   if (!raw) return "Training";
@@ -23,7 +24,19 @@ export function TenantWorkspace() {
   const [detail, setDetail] = useState<TenantDrillIn | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  const openVenue = (orgId: string, loc?: string) => {
+  const openVenue = (slug: string | null | undefined, orgId: string, loc?: string) => {
+    if (slug) {
+      window.location.assign(venuePosHref(slug));
+      return;
+    }
+    void navigate({
+      to: "/platform/tenants/$orgId",
+      params: { orgId },
+      search: loc ? { loc } : {},
+    });
+  };
+
+  const openSettings = (orgId: string, loc?: string) => {
     void navigate({
       to: "/platform/tenants/$orgId",
       params: { orgId },
@@ -59,7 +72,7 @@ export function TenantWorkspace() {
           Learn
         </GuideLearnLink>
         <p className="text-xs text-muted-foreground">
-          Click a tenant to open venue settings. Shared venue works with no host merchant.
+          Click a tenant to open its venue URL. Settings stays on the row. Shared venue works with no host merchant.
         </p>
       </div>
       {error && <p className="px-4 py-2 text-sm text-danger">{error}</p>}
@@ -97,23 +110,16 @@ export function TenantWorkspace() {
                     data-demo="platform-tenant-row"
                     data-org-id={t.id}
                     className="cursor-pointer border-t border-border hover:bg-surface-2"
-                    onClick={() => openVenue(t.id)}
+                    onClick={() => openVenue(t.venueSlug, t.id)}
                     onKeyDown={(e) => {
                       if (e.key === "Enter" || e.key === " ") {
                         e.preventDefault();
-                        openVenue(t.id);
+                        openVenue(t.venueSlug, t.id);
                       }
                     }}
                   >
                     <td className="py-2">
-                      <Link
-                        to="/platform/tenants/$orgId"
-                        params={{ orgId: t.id }}
-                        className="font-medium underline-offset-2 hover:underline"
-                        onClick={(e) => e.stopPropagation()}
-                      >
-                        {t.name}
-                      </Link>
+                      <span className="font-medium">{t.name}</span>
                       <span className="mt-0.5 block text-xs text-muted-foreground">{t.status}</span>
                     </td>
                     <td className="py-2">{t.planId ?? "—"}</td>
@@ -151,6 +157,16 @@ export function TenantWorkspace() {
                       >
                         Plan
                       </Button>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          openSettings(t.id);
+                        }}
+                      >
+                        Settings
+                      </Button>
                     </td>
                   </tr>
                 ))}
@@ -167,8 +183,23 @@ export function TenantWorkspace() {
               {detail.org.stage ? ` · CRM ${STAGE_LABEL[detail.org.stage]}` : ""}
             </p>
             <div className="mt-3 flex flex-wrap gap-2">
-              <Button size="sm" onClick={() => openVenue(detail.org.id)}>
+              <Button
+                size="sm"
+                onClick={() =>
+                  openVenue(
+                    detail.org.venueSlug || detail.locations[0]?.slug,
+                    detail.org.id,
+                  )
+                }
+              >
                 Open venue
+              </Button>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => openSettings(detail.org.id)}
+              >
+                Settings
               </Button>
               <Button
                 size="sm"
@@ -211,7 +242,7 @@ export function TenantWorkspace() {
                     <button
                       type="button"
                       className="text-left font-medium underline-offset-2 hover:underline"
-                      onClick={() => openVenue(detail.org.id, l.id)}
+                      onClick={() => openVenue(l.slug, detail.org.id, l.id)}
                     >
                       {l.name}
                     </button>

@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { staffGuestAccessPoints, useSingleOrigin, configuredHosts } from "@/lib/platform/hosts";
+import { readTenantPosContext } from "@/lib/saas/pos-context";
 import { GuideLearnLink } from "@/components/guide/GuideLearnLink";
 
 export function AccessPointsCard({
@@ -13,7 +14,13 @@ export function AccessPointsCard({
   tablePath?: string;
 }) {
   const points = useMemo(
-    () => staffGuestAccessPoints({ venueType, locationId, tablePath }),
+    () =>
+      staffGuestAccessPoints({
+        venueType,
+        locationId,
+        tablePath,
+        slug: readTenantPosContext()?.slug,
+      }),
     [venueType, locationId, tablePath],
   );
   const hosts = configuredHosts();
@@ -27,8 +34,8 @@ export function AccessPointsCard({
           <p className="text-sm font-medium">Staff and guest URLs</p>
           <p className="mt-1 text-xs text-muted-foreground">
             {single
-              ? "This environment is one origin. Production uses www, app, and sites hosts."
-              : `www ${hosts.marketing} · app ${hosts.app} · sites ${hosts.sites}`}
+              ? "This environment is one origin. Production uses {slug}.summex.app (wildcard once) with /v/{slug} as fallback."
+              : `www ${hosts.marketing} · venue {slug}.summex.app`}
           </p>
         </div>
         <GuideLearnLink topicId="access-urls" compact>

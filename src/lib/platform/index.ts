@@ -25,3 +25,18 @@ export {
 } from "./hosts";
 export type { AccessPoint } from "./hosts";
 export type { ActiveTenantContext, WorkspaceLocation } from "./tenant-types";
+export {
+  RESERVED_VENUE_SLUGS,
+  slugifyVenue,
+  isReservedVenueSlug,
+  normalizeVenueSlug,
+  suggestVenueSlug,
+  venueSlugFromHost,
+  venueSlugFromPath,
+  canUseVenueSubdomain,
+  venueSubdomainHost,
+  venuePublicOrigin,
+  venuePosPath,
+  venuePosHref,
+  venueAwareHref,
+} from "./venue-host";
