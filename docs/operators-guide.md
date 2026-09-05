@@ -1,7 +1,7 @@
 # Operators Guide — authoring
 
-**Revision · 4 Sep 2026** — QR order/pay: table tents, ticket codes, location modes.
-Guide v2026.10.39.
+**Revision · 5 Sep 2026** — The Laundry peer venue seed has no staff; add users on the platform.
+Guide v2026.10.40.
 
 The in-app **Operators Guide** is the living product manual. It is not a
 separate PDF. Staff open it from **Guide** / **?** in the POS and platform
@@ -151,7 +151,7 @@ Bookmarkable URL: `/guide?topic=my-topic`.
 
 ## Do not say (retired)
 
-- Demo sites, PIN 0000 as public demo, The Laundry seed, Load demo
+- Demo sites, PIN 0000 as public demo, Load demo, historical partner-demo Laundry logins
 - Google/X login on marketing
 - How-to-login instructions on the home page
 - Unauthenticated Dashboard

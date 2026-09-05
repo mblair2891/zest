@@ -3,7 +3,7 @@
 **Powered by Quantum Reach**
 
 White paper · October 2026  
-**Revision · 4 Sep 2026** — QR order/pay: table tents, ticket codes, location modes. Aligns with Operators Guide v2026.10.39.
+**Revision · 5 Sep 2026** — The Laundry peer venue seed has no staff; add users on the platform. Aligns with Operators Guide v2026.10.40.
 
 summex.app  
 Guest cards: **Quantum Payments** only

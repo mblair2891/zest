@@ -1,8 +1,11 @@
 # Partner demo — RETIRED
 
-The Laundry / Steam Distillery / Diamond House BBQ seed has been **removed**.
-Do not use these credentials. Sign in is username + password on `/login`.
-Onboard a real house through Get pricing.
+Partner-demo **logins** for The Laundry / Steam Distillery / Diamond House BBQ
+have been **removed**. Do not use these credentials.
+
+The Laundry is now a **real shared-venue** training house (no host entity, no
+staff). Sign in is username + password on `/login` as Platform Admin, then add
+users on the platform.
 
 The remainder of this file is historical and must not be used on production.
 

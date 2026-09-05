@@ -24,6 +24,8 @@ import { parseFloorPlan, parseMenuCatalog, parseRecipes } from "./location-catal
 import { parseHrMap } from "@/lib/hr/types";
 import { parseLaborMap } from "@/lib/labor/rules";
 import { parseOpsJobsConfig } from "@/lib/ops-jobs/config";
+import { parseQrPolicy } from "@/lib/pos/qr-policy";
+import { parseLocationOperatingModel } from "./location-model";
 
 type OrgRow = {
   id: string;
@@ -207,6 +209,17 @@ function parseSetup(raw: unknown): LocationSetup {
       o.paymentsMode === "sandbox" || o.paymentsMode === "live" || o.paymentsMode === "inherit"
         ? o.paymentsMode
         : "inherit",
+    qrMode: typeof o.qrMode === "string" ? o.qrMode : undefined,
+    qrPolicy: o.qrPolicy != null ? parseQrPolicy(o.qrPolicy, o.qrMode) : undefined,
+    skipTrainingRoster: "skipTrainingRoster" in o ? Boolean(o.skipTrainingRoster) : undefined,
+    operatingModel: o.operatingModel != null ? parseLocationOperatingModel(o.operatingModel) : undefined,
+    peerVenue: "peerVenue" in o ? Boolean(o.peerVenue) : undefined,
+    cashDiscountEnabled: "cashDiscountEnabled" in o ? Boolean(o.cashDiscountEnabled) : undefined,
+    cashDiscountPercent:
+      o.cashDiscountPercent == null ? undefined : Number(o.cashDiscountPercent) || undefined,
+    cashRoundIncrement:
+      o.cashRoundIncrement == null ? undefined : Number(o.cashRoundIncrement) || undefined,
+    cashRoundMode: typeof o.cashRoundMode === "string" ? o.cashRoundMode : undefined,
     quantumReaderId: typeof o.quantumReaderId === "string" ? o.quantumReaderId.slice(0, 80) : undefined,
     giftHouseIssuerEnabled:
       "giftHouseIssuerEnabled" in o ? Boolean(o.giftHouseIssuerEnabled) : undefined,

@@ -263,6 +263,21 @@ function PosAppInner({ entityId }: { entityId?: string }) {
                 ...st.settings,
                 qrMode: parseQrMode(setup.qrMode ?? st.settings.qrMode),
                 qrPolicy: parseQrPolicy(setup.qrPolicy, setup.qrMode ?? st.settings.qrMode),
+                cashDiscountEnabled:
+                  setup.cashDiscountEnabled ?? st.settings.cashDiscountEnabled,
+                cashDiscountPercent:
+                  setup.cashDiscountPercent ?? st.settings.cashDiscountPercent,
+                cashRoundIncrement:
+                  setup.cashRoundIncrement === 0.25 ||
+                  setup.cashRoundIncrement === 0.5 ||
+                  setup.cashRoundIncrement === 0.75 ||
+                  setup.cashRoundIncrement === 1
+                    ? setup.cashRoundIncrement
+                    : st.settings.cashRoundIncrement,
+                cashRoundMode:
+                  setup.cashRoundMode === "up" ? "up" : st.settings.cashRoundMode,
+                giftHouseIssuerEnabled:
+                  setup.giftHouseIssuerEnabled ?? st.settings.giftHouseIssuerEnabled,
               },
             });
           } catch { /* optional */ }

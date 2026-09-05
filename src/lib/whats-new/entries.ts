@@ -6,6 +6,19 @@ import type { GuideUpdate } from "@/lib/guide/types";
  */
 export const WHATS_NEW_ENTRIES: GuideUpdate[] = [
   {
+    id: "upd_2026_10_40_laundry_peer_seed",
+    date: "2026-09-05",
+    title: "The Laundry shared venue — no staff seeded",
+    summary:
+      "The Laundry is a real shared-venue training house (Steam Distillery + Diamond House BBQ). It has no staff. Add people on the platform.",
+    body: "Guest branding is The Laundry. Two independent operators — Steam Distillery (bar) and Diamond House BBQ (kitchen). No host merchant or host menu. One guest check; receipt by vendor. Training / sandbox cards. QR: table tents + ticket QR, reorder after a staff-opened check, pay/split, food and drinks; full self-serve off. Cash drawers come later. Platform Admin is the only login until you add users. This is not a demo tenant.",
+    roles: ["platform_admin", "owner_manager", "host_operator"],
+    surfaces: ["platform", "floor", "settings"],
+    audience: "all",
+    topicId: "laundry-test-venue",
+    tags: ["onboarding", "venue", "staff"],
+  },
+  {
     id: "upd_2026_10_39_qr_modes",
     date: "2026-09-04",
     title: "QR order, reorder, pay, table tents, ticket codes",

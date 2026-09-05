@@ -7,6 +7,11 @@ import { PLATFORM_ADMIN_EMAIL } from "@/lib/platform/brand";
 import { PARTNER_DEMO_EMAILS } from "./partner-demo";
 import { FLOOR_TEST_LOCATION_ID, FLOOR_TEST_ORG_ID } from "./floor-test";
 
+/** Real test peer venue — never treated as demo, never wiped here. */
+const REAL_LAUNDRY_ORG_ID = "org_the_laundry";
+const REAL_LAUNDRY_LOCATION_ID = "loc_the_laundry";
+const REAL_LAUNDRY_SLUG = "the-laundry";
+
 const LEGACY_ADMIN_EMAIL = "admin@zest.local";
 const DEMO_ORG_IDS = ["org_partner_laundry", "org_floor_test"] as const;
 const DEMO_LOC_IDS = ["loc_partner_laundry", "loc_floor_test"] as const;
@@ -66,25 +71,31 @@ async function purgeOnce(): Promise<{ removed: number }> {
 
   const tagged = await sql<{ id: string }>`
     select id from organizations
-    where coalesce(is_demo, false) = true
-       or coalesce(is_partner_demo, false) = true
-       or id = ${FLOOR_TEST_ORG_ID}
-       or id = ${"org_partner_laundry"}
-       or slug = ${"the-laundry-partner"}
-       or slug = ${"test-location-floor"}
-       or lower(name) = ${"the laundry"}
-       or lower(name) = ${"the laundry group"}
-       or lower(name) = ${"test org"}
+    where id <> ${REAL_LAUNDRY_ORG_ID}
+      and slug <> ${REAL_LAUNDRY_SLUG}
+      and (
+        coalesce(is_demo, false) = true
+        or coalesce(is_partner_demo, false) = true
+        or id = ${FLOOR_TEST_ORG_ID}
+        or id = ${"org_partner_laundry"}
+        or slug = ${"the-laundry-partner"}
+        or slug = ${"test-location-floor"}
+        or lower(name) = ${"the laundry group"}
+        or lower(name) = ${"test org"}
+      )
   `.catch(() => [] as { id: string }[]);
 
   const locTagged = await sql<{ id: string; org_id: string }>`
     select id, org_id from locations
-    where coalesce(is_demo, false) = true
-       or coalesce(is_partner_demo, false) = true
-       or id = ${FLOOR_TEST_LOCATION_ID}
-       or id = ${"loc_partner_laundry"}
-       or lower(name) = ${"the laundry"}
-       or lower(name) = ${"test location"}
+    where id <> ${REAL_LAUNDRY_LOCATION_ID}
+      and org_id <> ${REAL_LAUNDRY_ORG_ID}
+      and (
+        coalesce(is_demo, false) = true
+        or coalesce(is_partner_demo, false) = true
+        or id = ${FLOOR_TEST_LOCATION_ID}
+        or id = ${"loc_partner_laundry"}
+        or lower(name) = ${"test location"}
+      )
   `.catch(() => [] as { id: string; org_id: string }[]);
 
   const orgIds = new Set<string>([
@@ -92,7 +103,9 @@ async function purgeOnce(): Promise<{ removed: number }> {
     ...locTagged.map((r) => r.org_id),
     ...DEMO_ORG_IDS,
   ]);
+  orgIds.delete(REAL_LAUNDRY_ORG_ID);
   const locIds = new Set<string>([...locTagged.map((r) => r.id), ...DEMO_LOC_IDS]);
+  locIds.delete(REAL_LAUNDRY_LOCATION_ID);
   const removed = orgIds.size;
 
   for (const locId of locIds) {

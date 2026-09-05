@@ -21,6 +21,11 @@ export type LocationSetup = {
   settlement: { periodType: string; hostCutPercent: number };
   hostBrandName: string;
   operatingModel?: import("./location-model").LocationOperatingModel;
+  peerVenue?: boolean;
+  cashDiscountEnabled?: boolean;
+  cashDiscountPercent?: number;
+  cashRoundIncrement?: number;
+  cashRoundMode?: string;
   timezone?: string;
   hoursNote?: string;
   tipPooling?: boolean;
@@ -55,6 +60,8 @@ export type LocationSetup = {
   goLiveChoices?: Record<string, "keep" | "erase">;
   qrMode?: string;
   qrPolicy?: import("@/lib/pos/qr-policy").QrPolicy;
+  /** When true, Open POS does not hash in the training PIN roster. Add staff in the UI. */
+  skipTrainingRoster?: boolean;
   /** inherit = platform default (sandbox unless Platform → Payments is live). */
   paymentsMode?: "inherit" | "sandbox" | "live";
   /** Processor reader id for live card-present (Quantum terminal serial). */

@@ -164,6 +164,15 @@ export async function factoryReset(opts: {
   });
 
   await reseedPlatformAdminBootstrap({ mustChangePassword: true });
+  try {
+    const { resetLaundryPeerSeedLatch, ensureLaundryPeerVenue } = await import(
+      "./laundry-peer-seed.server"
+    );
+    resetLaundryPeerSeedLatch();
+    await ensureLaundryPeerVenue();
+  } catch (err) {
+    console.error("[factory-reset] The Laundry peer venue seed skipped:", err);
+  }
   const after = await getSql();
   await after.query(`delete from "session"`);
   return { ok: true };

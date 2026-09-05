@@ -162,7 +162,7 @@ export async function ensureTrainingFloor(locationId: string): Promise<{
   if (parsed0.lifecycleStatus !== "live" && colLife === "live") {
     parsed0.lifecycleStatus = "live";
   }
-  if (parsed0.lifecycleStatus === "live") {
+  if (parsed0.lifecycleStatus === "live" || parsed0.skipTrainingRoster) {
     const staff = await listLocationStaff(locationId);
     return { staff, setup: parsed0, seededRoster: false };
   }

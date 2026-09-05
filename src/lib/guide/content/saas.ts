@@ -329,9 +329,9 @@ export const SAAS_TOPICS: GuideTopic[] = [
         "Marketing home → Get pricing opens intake — not a PIN pad and not a seeded venue. /demo URLs redirect there.",
       ),
       ul(
-        "No PIN 0000 tenant. Floor PIN exists only after a location is onboarded and staff are invited.",
-        "Platform Admin signs in with username/email and password. Tenants list is empty until onboarding creates an org.",
-        "Test path: intake → quote → contract if required → host wizard → org + location → owner invite → Open POS. Host then invites operators.",
+        "No PIN 0000 tenant. Floor PIN exists only after you add staff.",
+        "Platform Admin signs in with username/email and password. The Laundry shared venue may already be listed (no staff). Other customer orgs appear after onboarding.",
+        "Test path: open The Laundry and add users on the platform, or intake → quote → contract if required → wizard → org + location → owner invite → Open POS.",
       ),
       steps(
         "From the public site, Get pricing.",
@@ -360,7 +360,7 @@ export const SAAS_TOPICS: GuideTopic[] = [
         "Platform Admin manages live tenants and the prospect pipeline. Fake POS rooms are not a product surface.",
       ),
       steps(
-        "Sign in as Admin (password). Tenants is empty until someone completes onboarding.",
+        "Sign in as Admin (password). The Laundry shared venue may already be listed with no staff. Add users on the platform.",
         "Use Pipeline for intake → quote → contract → setup.",
         "When a location exists, Open POS. Floor PIN is for that location’s staff. Training vs live is on the tenant row.",
       ),

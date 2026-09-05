@@ -75,6 +75,12 @@ export const ensureAdminExists = createServerFn({ method: "POST" }).handler(
       } catch (err) {
         console.error("[auth] demo purge skipped:", err);
       }
+      try {
+        const { ensureLaundryPeerVenue } = await import("@/lib/saas/laundry-peer-seed.server");
+        await ensureLaundryPeerVenue();
+      } catch (err) {
+        console.error("[auth] The Laundry peer venue seed skipped:", err);
+      }
       return { ok: true };
     } catch (err) {
       const msg = err instanceof Error ? err.message : "Could not prepare sign-in";

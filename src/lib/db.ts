@@ -345,6 +345,12 @@ export function ensureDbReady(): Promise<void> {
     } catch (err) {
       console.error("[db] demo purge skipped:", err);
     }
+    try {
+      const { ensureLaundryPeerVenue } = await import("@/lib/saas/laundry-peer-seed.server");
+      await ensureLaundryPeerVenue();
+    } catch (err) {
+      console.error("[db] The Laundry peer venue seed skipped:", err);
+    }
   };
   return boot();
 }

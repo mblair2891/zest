@@ -1,6 +1,8 @@
 # Fresh Summex (empty start)
 
-This app ships with **no tenant data**. There are no demo restaurants, orgs, menus, floors, or staff rosters.
+This app ships with **no demo tenants**. Platform Admin is the only seeded login.
+
+A real shared-venue training house named **The Laundry** is seeded on boot (Steam Distillery + Diamond House BBQ). It has **no staff, PINs, or owner logins**. Add users on the platform. Re-running the seed does not duplicate the house or menus.
 
 **Summex, powered by Quantum Reach.** Guest cards: **Quantum Payments** only.
 
@@ -25,17 +27,17 @@ The plaintext initial password lives only in the server-side bootstrap (`src/lib
 1. Open `/login`.
 2. Sign in as `Admin` / `password`.
 3. Set a new password (8+ characters, not `password`).
-4. You land on **SaaS / platform**. There are **no organizations**.
-5. Run intake → quote → contract → onboarding (see `docs/saas-onboarding.md`). Use generic names such as Host Venue / Operator A / Operator B.
-6. **Open POS** for that location. POS is empty until you add a menu.
+4. You land on **SaaS / platform**. **The Laundry** may already be listed (shared venue, training). It has no staff.
+5. Add people on the platform before anyone works that floor. Or run intake → quote → contract → onboarding for a new house (see `docs/saas-onboarding.md`).
+6. **Open POS** for The Laundry: small Steam + Diamond menus, table tents + ticket QR. No hashed 0000–5555 roster.
 
-Until you create a location, POS has no menus, tables, vendors, or tickets.
+Customer houses you onboard yourself start empty until you add a menu.
 
 See also `docs/quantum-payments-multi-operator.md` for per-entity merchants, split capture, receipts by vendor, and the $35 dispute split.
 
 ## No demo tenants
 
-There is no Load The Laundry control, no skip-password location picker, and no
-PIN 0000 seed. Marketing **Request demo** is Get pricing / intake. Test by
-completing SaaS onboarding so the first location is a real tenant. Admin
-bootstrap is unchanged. Open POS stays on www (`/venue/…`).
+There is no Load demo control, no skip-password location picker, and no
+PIN 0000 catalog. The Laundry peer venue is a real training tenant, not a demo
+row. Marketing **Request demo** is Get pricing / intake. Admin bootstrap is
+unchanged. Open POS stays on www (`/venue/…`).
