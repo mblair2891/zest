@@ -136,6 +136,7 @@ export interface PosStore {
   clock: number;
   floorSections: FloorSection[];
   extraTableGrants: ExtraTableGrant[];
+  extraEntityShiftGrants: import("./types").ExtraEntityShiftGrant[];
   sectionOverrides: Record<string, string[]>;
   activeEntityId: VenueEntityId;
 
@@ -444,6 +445,13 @@ export interface PosStore {
     reason?: string;
   }) => ActionResult<{ grant?: ExtraTableGrant }>;
   revokeExtraTable: (id: string) => void;
+  grantEntityShiftWork: (opts: {
+    employeeId: string;
+    workOperatorId: string;
+    scope: "shift" | "standing";
+    reason?: string;
+  }) => ActionResult<{ grant?: import("./types").ExtraEntityShiftGrant }>;
+  revokeEntityShiftWork: (id: string) => void;
   overrideSectionTable: (employeeId: string, tableId: string) => ActionResult;
   entityPermissions: import("@/lib/access/entity-grants").EntityGrantRow[];
   locationDevices: import("./location-devices").LocationDevice[];

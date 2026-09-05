@@ -6,6 +6,19 @@ import type { GuideUpdate } from "@/lib/guide/types";
  */
 export const WHATS_NEW_ENTRIES: GuideUpdate[] = [
   {
+    id: "upd_2026_10_49_entity_schedules",
+    date: "2026-09-05",
+    title: "Each entity schedules its own staff",
+    summary:
+      "Diamond’s week is not Steam’s. Entity switcher on Scheduling. Publish does not merge calendars. Grant to work for another entity this shift.",
+    body: "Open Schedule. The switcher defaults to the entity you belong to. Venue admin can view both boards — never one merged calendar. Publish week publishes that entity only. To put a Steam person on Diamond, venue admin grants work for other entity this shift (same idea as an extra table). Clock in is still the venue tablet; hours post to the shift’s entity, or home entity if there is no shift. Reports and AI labor use that entity’s owned-lines sales. Boards stay empty until you add staff.",
+    roles: ["owner_manager", "host_operator", "vendor_operator"],
+    surfaces: ["settings"],
+    audience: "all",
+    topicId: "entity-schedule-payroll",
+    tags: ["schedule", "labor", "peer"],
+  },
+  {
     id: "upd_2026_10_48_in_app_help",
     date: "2026-09-05",
     title: "Help button — ask the Operators Guide",

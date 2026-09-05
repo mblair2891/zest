@@ -18,7 +18,7 @@ import type {
   TimePunch,
 } from "./ops-types";
 import { HOST_SCOPE } from "@/lib/access/entity-grants";
-import { startOfWeek, addDays, sameDay } from "@/lib/labor/week";
+import { addDays, sameDay } from "@/lib/labor/week";
 import {
   applyBreakDeduct,
   computePayPeriod,
@@ -530,7 +530,7 @@ interface OpsState {
   clockIn: (
     employeeId: string,
     employeeName: string,
-    opts?: { force?: boolean },
+    opts?: { force?: boolean; homeOperatorId?: string },
   ) => { ok: boolean; error?: string; punchId?: string; forceRequired?: boolean; flags?: string[] };
   clockOut: (
     employeeId: string,
@@ -563,8 +563,8 @@ interface OpsState {
   toggleSupplier: (id: string) => void;
   createReorderDraft: (supplierId: string) => SupplierOrder | null;
   submitSupplierOrder: (id: string) => void;
-  seedTodayShifts: (employeeIds: string[]) => void;
-  seedWeekShifts: (staff: { id: string; operatorId?: string }[]) => void;
+  seedTodayShifts: (employeeIds?: string[]) => void;
+  seedWeekShifts: (staff?: { id: string; operatorId?: string }[]) => void;
   upsertShift: (input: Omit<ScheduledShift, "id"> & { id?: string }) => ScheduledShift;
   removeShift: (id: string) => void;
   publishWeek: (weekStart: number, operatorId?: string | null) => void;
@@ -621,38 +621,14 @@ export const useOpsStore = create<OpsState>()(
         });
       },
 
-      seedTodayShifts: (employeeIds) => {
-        get().seedWeekShifts(employeeIds.map((id) => ({ id })));
+      seedTodayShifts: () => {
+        const existing = get().shifts;
+        set({ todayShifts: existing.filter((s) => sameDay(s.start, Date.now())) });
       },
 
-      seedWeekShifts: (staff) => {
-        if (!staff.length) return;
-        const week = startOfWeek();
+      seedWeekShifts: () => {
         const existing = get().shifts;
-        if (existing.length > 0) {
-          set({ todayShifts: existing.filter((s) => sameDay(s.start, Date.now())) });
-          return;
-        }
-        const shifts: ScheduledShift[] = [];
-        staff.forEach((st, i) => {
-          for (const day of [1, 2, 3, 4, 5]) {
-            const sod = addDays(week, day);
-            const start = sod + (10 + (i % 3)) * 3600000;
-            const end = start + 8 * 3600000;
-            shifts.push({
-              id: `ts_${st.id}_${day}`,
-              employeeId: st.id,
-              operatorId: st.operatorId || HOST_SCOPE,
-              start,
-              end,
-              published: true,
-            });
-          }
-        });
-        set({
-          shifts,
-          todayShifts: shifts.filter((s) => sameDay(s.start, Date.now())),
-        });
+        set({ todayShifts: existing.filter((s) => sameDay(s.start, Date.now())) });
       },
 
       upsertShift: (input) => {
@@ -704,12 +680,20 @@ export const useOpsStore = create<OpsState>()(
         );
         if (open) return { ok: false, error: "Already clocked in" };
 
-        const labor = parseLaborRules(get().labor);
+        const homeOp = String(opts?.homeOperatorId || HOST_SCOPE);
+        const published = get().shifts.filter(
+          (s) => s.employeeId === employeeId && s.published && sameDay(s.start, Date.now()),
+        );
+        const hoursEntity =
+          published.find((s) => {
+            const now0 = Date.now();
+            return now0 >= s.start - 3 * 3600000 && now0 <= s.end + 3 * 3600000;
+          })?.operatorId ||
+          published[0]?.operatorId ||
+          homeOp;
+        const labor = parseLaborRules(get().laborByEntity[hoursEntity] ?? get().labor);
         const now = roundPunch(Date.now(), labor.punchRoundingMinutes);
         const force = Boolean(opts?.force);
-        const published = get().shifts.filter(
-          (s) => s.employeeId === employeeId && s.published && sameDay(s.start, now),
-        );
         const shift =
           published.find((s) => now >= s.start - labor.clockInEarlyMinutes * 60_000 && now <= s.end + labor.clockInLateMinutes * 60_000) ??
           published[0] ??
@@ -732,7 +716,7 @@ export const useOpsStore = create<OpsState>()(
           shiftId: shift?.id,
           scheduledStart: shift?.start,
           scheduledEnd: shift?.end,
-          operatorId: shift?.operatorId,
+          operatorId: shift?.operatorId || homeOp,
           clockInAt: now,
           status: "open",
           redFlag: evalIn.flags.length > 0,
@@ -763,7 +747,8 @@ export const useOpsStore = create<OpsState>()(
         );
         if (!punch) return { ok: false, error: "Not clocked in" };
 
-        const labor = parseLaborRules(get().labor);
+        const hoursEntity = punch.operatorId || HOST_SCOPE;
+        const labor = parseLaborRules(get().laborByEntity[hoursEntity] ?? get().labor);
         const now = roundPunch(Date.now(), labor.punchRoundingMinutes);
         const force = Boolean(opts?.force);
         const lastTicket = get().lastTicketByEmployee[employeeId];

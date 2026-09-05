@@ -299,6 +299,7 @@ export function demoPosSlice(type: VenueEntityId) {
     chargebacks: [],
     ledgerEntries: [],
     extraTableGrants: [],
+    extraEntityShiftGrants: [],
     sectionOverrides: {} as Record<string, string[]>,
     floorSections: demoSections(type),
     activeEntityId: type,

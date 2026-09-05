@@ -280,6 +280,7 @@ function initialState() {
 		clock: Date.now(),
 		floorSections: DEFAULT_FLOOR_SECTIONS.map((s: any) => ({ ...s })),
 		extraTableGrants: EXTRA_TABLE_GRANTS.map((g: any) => ({ ...g })),
+		extraEntityShiftGrants: [],
 		sectionOverrides: {},
 		activeEntityId: "restaurant" as const,
 		tenantLocationId: null,
@@ -960,6 +961,7 @@ const usePosStoreRaw = create<PosStore>()(persist((set, get) => {
 			}
 			set({
 				extraTableGrants: get().extraTableGrants.filter((g: any) => !(g.employeeId === employeeId && g.scope === "shift")),
+				extraEntityShiftGrants: (get().extraEntityShiftGrants ?? []).filter((g: any) => !(g.employeeId === employeeId && g.scope === "shift")),
 				sectionOverrides: { ...get().sectionOverrides, [employeeId]: [] }
 			});
 		}
@@ -3945,6 +3947,37 @@ const usePosStoreRaw = create<PosStore>()(persist((set, get) => {
 	revokeExtraTable: (id) => {
 		set({ extraTableGrants: get().extraTableGrants.filter((g: any) => g.id !== id) });
 	},
+	grantEntityShiftWork: ({ employeeId, workOperatorId, scope, reason }) => {
+		const person = get().employees.find((e: any) => e.id === employeeId);
+		if (!person) return { ok: false, error: "Staff not found" };
+		const granter = get().getCurrentEmployee();
+		if (!granter || (granter.role !== "owner" && granter.role !== "manager")) {
+			return { ok: false, error: "Venue admin grants work for another entity" };
+		}
+		const grant = {
+			id: uid("xeg"),
+			employeeId,
+			homeOperatorId: person.operatorId || "host",
+			workOperatorId,
+			scope,
+			grantedById: granter.id,
+			grantedAt: Date.now(),
+			reason,
+		};
+		set({
+			extraEntityShiftGrants: [
+				grant,
+				...(get().extraEntityShiftGrants ?? []).filter(
+					(g: any) => !(g.employeeId === employeeId && g.workOperatorId === workOperatorId),
+				),
+			],
+		});
+		get().audit("schedule_grant", `${person.name} → ${workOperatorId} · ${scope}`);
+		return { ok: true, grant };
+	},
+	revokeEntityShiftWork: (id) => {
+		set({ extraEntityShiftGrants: (get().extraEntityShiftGrants ?? []).filter((g: any) => g.id !== id) });
+	},
 	overrideSectionTable: (employeeId, tableId) => {
 		const policy = policyOf(get().settings.sectionPolicy);
 		if (!policy.allowManagerOverride) return { ok: false, error: "Overrides disabled" };
@@ -4195,6 +4228,7 @@ const usePosStoreRaw = create<PosStore>()(persist((set, get) => {
 		selectedCategoryId: s.selectedCategoryId,
 		floorSections: s.floorSections,
 		extraTableGrants: s.extraTableGrants,
+		extraEntityShiftGrants: s.extraEntityShiftGrants ?? [],
 		activeEntityId: s.activeEntityId,
 		entityPermissions: s.entityPermissions ?? [],
 		locationDevices: s.locationDevices ?? [],
@@ -4306,6 +4340,7 @@ const usePosStoreRaw = create<PosStore>()(persist((set, get) => {
 			})),
 			floorSections: (p.floorSections && p.floorSections.length) ? p.floorSections : current.floorSections,
 			extraTableGrants: p.extraTableGrants || current.extraTableGrants || [],
+			extraEntityShiftGrants: p.extraEntityShiftGrants || current.extraEntityShiftGrants || [],
 			chargebacks: p.chargebacks || current.chargebacks || [],
 			sectionOverrides: {},
 			giftCards: (p.giftCards || current.giftCards || []).map((g: any) => ({

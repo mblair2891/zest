@@ -350,6 +350,7 @@ export function starterPosSlice(opts: {
     settlementConfig: settlement,
     settlementPeriods: [],
     extraTableGrants: [],
+    extraEntityShiftGrants: [],
     sectionOverrides: {},
     floorSections,
     activeEntityId: opts.entityId,

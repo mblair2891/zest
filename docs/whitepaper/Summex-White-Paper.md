@@ -3,7 +3,7 @@
 **Powered by Quantum Reach**
 
 White paper · October 2026  
-**Revision · 5 Sep 2026** — In-app Help from the Operators Guide. Aligns with Operators Guide v2026.10.48.
+**Revision · 5 Sep 2026** — Independent per-entity staff schedules. Aligns with Operators Guide v2026.10.49.
 
 summex.app  
 Guest cards: **Quantum Payments** only
@@ -146,7 +146,7 @@ A manager **Change device** switches among those three. PIN stays the person; th
 
 **Tablets run Summex only.** One Android app — Summex Station. Owner (back office) adds a device by name and role, then shows a one-time pair code or QR. After pair the tablet stores venue and role, receives the house snapshot, and is PIN only. **Publish changes** pushes menu, floor, printers, QR, and cash model. Staff keep the last publish until Switch user; idle PIN pads may refresh. Never mid-ticket. Unpair or replace from Devices. **Broken ODS → reassign a server tablet from Devices** (Role dropdown). Same pair code; staff PIN in again. Do not reinstall. Printers and drawer kick stay bound to the station type or a named printer.
 
-**Labor vs what they are paid.** On a shared venue, each entity’s labor $, labor %, SPLH, food/pour cost, and staffing recs use **owned lines** by default (Steam vs beverage sales $; Diamond vs food sales $) — not the whole guest check. Shared venue costs (rent, utilities) are optional allocation percents, off by default. Tip-out and pools stay their own rules unless “tips in labor” is on.
+**Labor vs what they are paid.** On a shared venue, each entity’s labor $, labor %, SPLH, food/pour cost, and staffing recs use **owned lines** by default (Steam vs beverage sales $; Diamond vs food sales $) — not the whole guest check. Shared venue costs (rent, utilities) are optional allocation percents, off by default. Tip-out and pools stay their own rules unless “tips in labor” is on. **Schedules are per entity** (Diamond’s week is not Steam’s). Publish does not merge calendars. Clock in is still the venue tablet; hours post to the shift’s entity.
 
 **Help** (header icon on PIN sessions, owner POS, and platform): ask how to do a task. Answers come from this Operators Guide for that role and location — numbered steps that match the screen (tap Floor, tap the table, Seat). Not a second manual. If the action is off for that login, Help says so and who can do it.
 

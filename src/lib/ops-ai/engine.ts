@@ -105,7 +105,7 @@ function captureStaffingSnap() {
   );
   return buildStaffingSnapshot({
     cfg,
-    employees: s.employees.filter((e) => (e.operatorId || HOST_SCOPE) === entityId || !e.operatorId),
+    employees: s.employees.filter((e) => (e.operatorId || HOST_SCOPE) === entityId),
     punches: ops.punches,
     orders: s.orders,
     tables: s.tables,

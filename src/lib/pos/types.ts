@@ -147,6 +147,9 @@ export interface ExtraTableGrant {
   reason?: string;
 }
 
+/** Opt-in: this person may work a shift for another entity. Same idea as extra table grants. */
+export type ExtraEntityShiftGrant = import("@/lib/labor/schedule-entity").ExtraEntityShiftGrant;
+
 export interface SectionPolicy {
   enforceForRoles: EmployeeRole[];
   serversCannotOrderOutsideSection: boolean;

@@ -35,13 +35,17 @@ export const saveShiftsFn = createServerFn({ method: "POST" })
     const ctx = await loadEntityWriteContext(context.userId, data.orgId, data.locationId);
     const matrix = parseGrantMatrix(ctx.setup.entityPermissions);
     const hostEdit = Boolean((ctx.setup as { hostMayEditEntitySchedules?: boolean }).hostMayEditEntitySchedules);
+    const peerVenue = Boolean(
+      (ctx.setup as { peerVenue?: boolean; operatingModel?: string }).peerVenue ||
+        (ctx.setup as { operatingModel?: string }).operatingModel === "peer_venue",
+    );
     const emp = {
       role: ctx.role === "vendor" ? ("vendor_operator" as const) : ctx.role === "owner" || ctx.role === "manager" ? ctx.role : ("manager" as const),
       operatorId: ctx.operatorId === HOST_SCOPE ? undefined : ctx.operatorId,
     };
     for (const s of data.shifts) {
       const target = s.operatorId || HOST_SCOPE;
-      if (!canEditSchedule(emp, matrix, target, hostEdit)) {
+      if (!canEditSchedule(emp, matrix, target, hostEdit, peerVenue)) {
         throw new ForbiddenError("Cannot edit this entity’s schedule");
       }
     }

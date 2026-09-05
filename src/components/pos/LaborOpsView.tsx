@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useState } from "react";
 import {
   Clock,
   AlertTriangle,
@@ -23,7 +23,7 @@ import { computePayPeriod, hoursExportStatus, parseLaborRules } from "@/lib/labo
 import { hrPayrollExportFn } from "@/lib/hr/api";
 import { useSaasStore } from "@/lib/pos/saas-store";
 import { GuideLearnLink } from "@/components/guide/GuideLearnLink";
-import { HOST_SCOPE, canViewPayroll, isHostPrivileged } from "@/lib/access/entity-grants";
+import { HOST_SCOPE, canViewPayroll } from "@/lib/access/entity-grants";
 import { isFloorRole } from "@/lib/pos/pin";
 import { buildPayrollRows, payrollCsv } from "@/lib/labor/payroll";
 import { EntityScheduleView } from "./EntityScheduleView";
@@ -64,36 +64,22 @@ export function LaborOpsView() {
   const runDailyCloseout = useOpsStore((s) => s.runDailyCloseout);
   const runPayroll = useOpsStore((s) => s.runPayroll);
   const updateLabor = useOpsStore((s) => s.updateLabor);
-  const seedWeekShifts = useOpsStore((s) => s.seedWeekShifts);
+
   const recordTicketClosed = useOpsStore((s) => s.recordTicketClosed);
   const todayShifts = useOpsStore((s) => s.todayShifts);
-  const shifts = useOpsStore((s) => s.shifts);
   const grants = usePosStore((s) => s.entityPermissions);
   const vendors = usePosStore((s) => s.vendors);
   const sessionKind = usePosStore((s) => s.sessionKind);
   const settings = usePosStore((s) => s.settings);
-  const seeded = useRef(false);
   const floor = sessionKind === "pin" && isFloorRole(current?.role);
   const [opFilter, setOpFilter] = useState(
-    isHostPrivileged(current) ? "" : current?.operatorId || HOST_SCOPE,
+    () => current?.operatorId || HOST_SCOPE,
   );
   const [forceOverride, setForceOverride] = useState(false);
   const orgId = useSaasStore((s) => s.org.id);
   const locId = usePosStore((s) => s.tenantLocationId) || "";
   const rules = parseLaborRules(labor);
   const period = computePayPeriod(Date.now(), rules);
-
-  useEffect(() => {
-    if (seeded.current) return;
-    if (shifts.length > 0) {
-      seeded.current = true;
-      return;
-    }
-    const staff = employees.filter((e) => e.active).map((e) => ({ id: e.id, operatorId: e.operatorId }));
-    if (staff.length === 0) return;
-    seeded.current = true;
-    seedWeekShifts(staff);
-  }, [employees, shifts.length, seedWeekShifts]);
 
   const supervisorName = current?.name ?? "Supervisor";
 
@@ -137,7 +123,10 @@ export function LaborOpsView() {
         setFlash(`Approved — ${name} clocked out.`);
       }
     } else {
-      const res = clockIn(id, name, { force });
+      const res = clockIn(id, name, {
+        force,
+        homeOperatorId: employees.find((e) => e.id === id)?.operatorId || HOST_SCOPE,
+      });
       if (!res.ok) {
         setFlash(res.error ?? "Clock in failed");
         return;
@@ -165,14 +154,15 @@ export function LaborOpsView() {
           Published shifts · clock windows · approval · hours export to ADP/Intuit/CSV.
           Summex does not process payroll.
         </p>
-        {!floor && isHostPrivileged(current) && vendors.length > 0 && (
+        {!floor && vendors.length > 0 && (
           <select
             className="mt-2 h-8 rounded-md border border-border bg-bg px-2 text-xs"
             value={opFilter}
             onChange={(e) => setOpFilter(e.target.value)}
           >
-            <option value="">All entities</option>
-            <option value={HOST_SCOPE}>{settings.name || "Host"}</option>
+            {!(settings.peerVenue || settings.operatingModel === "peer_venue") && (
+              <option value={HOST_SCOPE}>{settings.name || "Host"}</option>
+            )}
             {vendors.map((v) => (
               <option key={v.id} value={v.id}>
                 {v.shortName}
@@ -757,7 +747,7 @@ export function LaborOpsView() {
                   ? settings.name || "Host"
                   : vendors.find((v) => v.id === id)?.shortName ?? id
               }
-              operatorId={opFilter || (isHostPrivileged(current) ? null : current?.operatorId)}
+              operatorId={opFilter}
             />
             <div className="rounded-2xl border border-border bg-surface p-4">
               <div className="mb-2 flex items-center gap-2 text-sm font-semibold">

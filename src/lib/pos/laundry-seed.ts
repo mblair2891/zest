@@ -631,6 +631,7 @@ export function laundryPosSliceFor(locationId: string, opts?: { partner?: boolea
     chargebacks: [],
     ledgerEntries: [],
     extraTableGrants: [],
+    extraEntityShiftGrants: [],
     sectionOverrides: {} as Record<string, string[]>,
     floorSections: LAUNDRY_SECTIONS.map((s) => ({ ...s })),
     activeEntityId: "food_hall" as const,

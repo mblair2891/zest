@@ -269,9 +269,11 @@ export function canEditSchedule(
   matrix: EntityGrantRow[] | null | undefined,
   targetOperatorId?: string | null,
   hostMayEditEntitySchedules = false,
+  peerVenue = false,
 ): boolean {
   if (isHostPrivileged(emp)) {
     const target = resourceOperatorId(targetOperatorId);
+    if (peerVenue) return true;
     if (target === HOST_SCOPE) return true;
     return hostMayEditEntitySchedules || canEntityGrant(matrix, HOST_SCOPE, target, "edit_schedule");
   }
