@@ -1,7 +1,7 @@
 # Operators Guide — authoring
 
-**Revision · 5 Sep 2026** — Publish to devices; labor vs owned sales.
-Guide v2026.10.43.
+**Revision · 5 Sep 2026** — Open tenant from list into venue settings.
+Guide v2026.10.44.
 
 The in-app **Operators Guide** is the living product manual. It is not a
 separate PDF. Staff open it from **Guide** / **?** in the POS and platform

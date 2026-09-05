@@ -21,7 +21,7 @@ export const ROLE_GUIDE_TOPICS: GuideTopic[] = [
       steps(
         "Sign in, complete the forced password change, land on the control plane.",
         "Use Console and Pipeline in the header.",
-        "Empty tenants is valid until someone completes SaaS onboarding.",
+        "Empty tenants is valid until someone completes SaaS onboarding. Click a listed tenant to open that venue’s settings.",
         "Send prospects Get pricing — never this Admin session.",
       ),
       callout(

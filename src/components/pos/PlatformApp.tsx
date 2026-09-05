@@ -60,7 +60,11 @@ function OnboardingResume({
  * Fully separate SaaS / multi-tenant platform surface at `/platform`.
  * Production path: Better Auth (username/email + password) + server tenancy.
  */
-export function PlatformApp() {
+export function PlatformApp({
+  initialSurface,
+}: {
+  initialSurface?: PlatformSurface;
+} = {}) {
   const navigate = useNavigate();
   const [ready, setReady] = useState(false);
   const [bootError, setBootError] = useState<string | null>(null);
@@ -79,13 +83,21 @@ export function PlatformApp() {
     (s) => s.locations.find((l) => l.id === s.activeLocationId) ?? s.locations[0],
   );
   const { user, isPending } = useCurrentUserState();
-  const [surface, setSurface] = useState<PlatformSurface | "console">("crm");
+  const [surface, setSurface] = useState<PlatformSurface | "console">(
+    () => initialSurface ?? "crm",
+  );
   const [adminNav, setAdminNav] = useState(false);
-  const userPickedSurface = useRef(false);
+  const userPickedSurface = useRef(Boolean(initialSurface));
   const pickSurface = (next: PlatformSurface | "console") => {
     userPickedSurface.current = true;
     setSurface(next);
   };
+
+  useEffect(() => {
+    if (!initialSurface) return;
+    userPickedSurface.current = true;
+    setSurface(initialSurface);
+  }, [initialSurface]);
 
   useEffect(() => {
     const onSurface = (e: Event) => {

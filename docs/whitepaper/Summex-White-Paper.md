@@ -3,7 +3,7 @@
 **Powered by Quantum Reach**
 
 White paper · October 2026  
-**Revision · 5 Sep 2026** — Publish to devices; labor vs owned sales. Aligns with Operators Guide v2026.10.43.
+**Revision · 5 Sep 2026** — Open tenant from list into venue settings. Aligns with Operators Guide v2026.10.44.
 
 summex.app  
 Guest cards: **Quantum Payments** only

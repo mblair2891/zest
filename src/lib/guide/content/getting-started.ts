@@ -249,7 +249,7 @@ export const GETTING_STARTED_TOPICS: GuideTopic[] = [
       ),
       steps(
         "Sign in at /login with your account password (Platform Admin is the only seeded login).",
-        "Open The Laundry from Tenants if it is listed — or complete Get pricing → quote → onboarding for a new house.",
+        "Open The Laundry from Tenants (the row opens venue settings) — or complete Get pricing → quote → onboarding for a new house.",
         "Add users on the platform. The peer venue seed does not create staff, PINs, or owner logins.",
         "Open POS. Unique floor PINs belong to the people you added.",
       ),
@@ -276,7 +276,7 @@ export const GETTING_STARTED_TOPICS: GuideTopic[] = [
         "Steam Distillery is the bar (drinks, bar ODS). Diamond House BBQ is the kitchen (food, kitchen ODS). One guest check; lines owned by entity; receipt grouped by vendor. Training / sandbox cards.",
       ),
       steps(
-        "Sign in as Platform Admin. Open The Laundry from Tenants.",
+        "Sign in as Platform Admin. Tenants → click The Laundry. Venue settings open (building + Steam Distillery + Diamond House BBQ). No host merchant required.",
         "Add users on the platform (owners, floor PINs, operator POCs). The seed has no staff.",
         "QR: table tents + ticket QR, reorder after a staff-opened check, pay/split. Full self-serve is off. Order food and drinks.",
         "Ticket a drink and a plate. Bar ODS gets Steam. Kitchen ODS gets Diamond. Guest pays once.",

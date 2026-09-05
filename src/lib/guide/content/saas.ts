@@ -290,7 +290,7 @@ export const SAAS_TOPICS: GuideTopic[] = [
       steps(
         "Sign in as Admin (after the forced password change).",
         "Pipeline lists prospects by status. Open one to quote, mark contract signed, or reject.",
-        "Console lists organizations. Open a tenant to inspect locations, packages, and members.",
+        "Tenants lists organizations. Click a tenant to open venue settings (location, devices, menus per entity, payments, QR, cash, labor, users). Shared venue works with no host merchant. Back returns to Tenants.",
         "Settings is sectioned: General, Security, CRM, Onboarding, Plans, Payments & gifts, Communications (SMS allotment, overage, AI cap), Flags, Compliance, Team, Danger zone. Save per section. No JSON editors.",
         "Support actions: resend an invite, open POS as that location context, review audit-style prospect events.",
         "Never seed a named customer. If you need a sandbox site, call it Host Venue.",

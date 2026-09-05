@@ -8,20 +8,25 @@ import { PlatformApp } from "@/components/pos/PlatformApp";
 import { prospectResumePath } from "@/lib/saas/prospect-resume";
 import { navigateToSanitizedPath } from "@/lib/auth/post-login-navigate";
 import { SessionGate } from "@/components/pos/SessionGate";
+import {
+  parsePlatformSurface,
+  type PlatformSurface,
+} from "@/components/platform/surfaces";
 
 export const Route = createFileRoute("/dashboard")({
   ssr: false,
   validateSearch: (
     s: Record<string, unknown>,
-  ): { passwordUpdated?: boolean } => {
-    if (
+  ): { passwordUpdated?: boolean; surface?: PlatformSurface } => {
+    const surface = parsePlatformSurface(s.surface) ?? undefined;
+    const passwordUpdated =
       s.passwordUpdated === true ||
       s.passwordUpdated === "1" ||
-      s.passwordUpdated === "true"
-    ) {
-      return { passwordUpdated: true };
-    }
-    return {};
+      s.passwordUpdated === "true";
+    return {
+      ...(passwordUpdated ? { passwordUpdated: true as const } : {}),
+      ...(surface ? { surface } : {}),
+    };
   },
   component: DashboardPage,
 });
@@ -145,7 +150,7 @@ function DashboardInner() {
           Password updated. You are signed in to the control plane.
         </div>
       )}
-      <PlatformApp />
+      <PlatformApp initialSurface={search.surface} />
     </>
   );
 }

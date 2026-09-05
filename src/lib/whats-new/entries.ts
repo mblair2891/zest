@@ -6,6 +6,19 @@ import type { GuideUpdate } from "@/lib/guide/types";
  */
 export const WHATS_NEW_ENTRIES: GuideUpdate[] = [
   {
+    id: "upd_2026_10_44_open_tenant_venue",
+    date: "2026-09-05",
+    title: "Tenants open venue settings",
+    summary:
+      "Click a tenant in the platform directory to edit that venue — location, devices, menus, payments, QR, cash, labor. Shared venue works with no host merchant.",
+    body: "Platform → Tenants. The row is a real target. It opens that org’s venue settings (The Laundry, or any tenant), not the CRM pipeline. A shared venue shows the building plus child entities (Steam Distillery, Diamond House BBQ) with no host merchant required. After save, Back returns to Tenants and the house is still listed.",
+    roles: ["platform_admin"],
+    surfaces: ["platform", "settings"],
+    audience: "platform",
+    topicId: "platform-tenants",
+    tags: ["platform", "tenants", "settings"],
+  },
+  {
     id: "upd_2026_10_43_publish_labor_basis",
     date: "2026-09-05",
     title: "Publish to devices · labor vs owned sales",

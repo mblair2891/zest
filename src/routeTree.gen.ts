@@ -25,6 +25,7 @@ import { Route as OnboardingRouteImport } from './routes/onboarding'
 import { Route as OnlineRouteImport } from './routes/online'
 import { Route as PipelineRouteImport } from './routes/pipeline'
 import { Route as PlatformRouteImport } from './routes/platform'
+import { Route as PlatformTenantsOrgIdRouteImport } from './routes/platform.tenants.$orgId'
 import { Route as PricingRouteImport } from './routes/pricing'
 import { Route as ReserveRouteImport } from './routes/reserve'
 import { Route as SignupRouteImport } from './routes/signup'
@@ -133,6 +134,11 @@ const PlatformRoute = PlatformRouteImport.update({
   id: '/platform',
   path: '/platform',
   getParentRoute: () => rootRouteImport,
+} as any)
+const PlatformTenantsOrgIdRoute = PlatformTenantsOrgIdRouteImport.update({
+  id: '/tenants/$orgId',
+  path: '/tenants/$orgId',
+  getParentRoute: () => PlatformRoute,
 } as any)
 const PricingRoute = PricingRouteImport.update({
   id: '/pricing',
@@ -291,7 +297,8 @@ export interface FileRoutesByFullPath {
   '/onboarding': typeof OnboardingRoute
   '/online': typeof OnlineRoute
   '/pipeline': typeof PipelineRoute
-  '/platform': typeof PlatformRoute
+  '/platform': typeof PlatformRouteWithChildren
+  '/platform/tenants/$orgId': typeof PlatformTenantsOrgIdRoute
   '/pricing': typeof PricingRoute
   '/reserve': typeof ReserveRoute
   '/signup': typeof SignupRoute
@@ -336,7 +343,8 @@ export interface FileRoutesByTo {
   '/onboarding': typeof OnboardingRoute
   '/online': typeof OnlineRoute
   '/pipeline': typeof PipelineRoute
-  '/platform': typeof PlatformRoute
+  '/platform': typeof PlatformRouteWithChildren
+  '/platform/tenants/$orgId': typeof PlatformTenantsOrgIdRoute
   '/pricing': typeof PricingRoute
   '/reserve': typeof ReserveRoute
   '/signup': typeof SignupRoute
@@ -383,7 +391,8 @@ export interface FileRoutesById {
   '/onboarding': typeof OnboardingRoute
   '/online': typeof OnlineRoute
   '/pipeline': typeof PipelineRoute
-  '/platform': typeof PlatformRoute
+  '/platform': typeof PlatformRouteWithChildren
+  '/platform/tenants/$orgId': typeof PlatformTenantsOrgIdRoute
   '/pricing': typeof PricingRoute
   '/reserve': typeof ReserveRoute
   '/signup': typeof SignupRoute
@@ -432,6 +441,7 @@ export interface FileRouteTypes {
     | '/online'
     | '/pipeline'
     | '/platform'
+    | '/platform/tenants/$orgId'
     | '/pricing'
     | '/reserve'
     | '/signup'
@@ -477,6 +487,7 @@ export interface FileRouteTypes {
     | '/online'
     | '/pipeline'
     | '/platform'
+    | '/platform/tenants/$orgId'
     | '/pricing'
     | '/reserve'
     | '/signup'
@@ -523,6 +534,7 @@ export interface FileRouteTypes {
     | '/online'
     | '/pipeline'
     | '/platform'
+    | '/platform/tenants/$orgId'
     | '/pricing'
     | '/reserve'
     | '/signup'
@@ -569,7 +581,7 @@ export interface RootRouteChildren {
   OnboardingRoute: typeof OnboardingRoute
   OnlineRoute: typeof OnlineRoute
   PipelineRoute: typeof PipelineRoute
-  PlatformRoute: typeof PlatformRoute
+  PlatformRoute: typeof PlatformRouteWithChildren
   PricingRoute: typeof PricingRoute
   ReserveRoute: typeof ReserveRoute
   SignupRoute: typeof SignupRoute
@@ -707,6 +719,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/platform'
       preLoaderRoute: typeof PlatformRouteImport
       parentRoute: typeof rootRouteImport
+    }
+    '/platform/tenants/$orgId': {
+      id: '/platform/tenants/$orgId'
+      path: '/tenants/$orgId'
+      fullPath: '/platform/tenants/$orgId'
+      preLoaderRoute: typeof PlatformTenantsOrgIdRouteImport
+      parentRoute: typeof PlatformRoute
     }
     '/pricing': {
       id: '/pricing'
@@ -917,6 +936,18 @@ const AppRouteChildren: AppRouteChildren = {
 
 const AppRouteWithChildren = AppRoute._addFileChildren(AppRouteChildren)
 
+interface PlatformRouteChildren {
+  PlatformTenantsOrgIdRoute: typeof PlatformTenantsOrgIdRoute
+}
+
+const PlatformRouteChildren: PlatformRouteChildren = {
+  PlatformTenantsOrgIdRoute: PlatformTenantsOrgIdRoute,
+}
+
+const PlatformRouteWithChildren = PlatformRoute._addFileChildren(
+  PlatformRouteChildren,
+)
+
 interface BlogRouteChildren {
   BlogSlugRoute: typeof BlogSlugRoute
 }
@@ -969,7 +1000,7 @@ const rootRouteChildren: RootRouteChildren = {
   OnboardingRoute: OnboardingRoute,
   OnlineRoute: OnlineRoute,
   PipelineRoute: PipelineRoute,
-  PlatformRoute: PlatformRoute,
+  PlatformRoute: PlatformRouteWithChildren,
   PricingRoute: PricingRoute,
   ReserveRoute: ReserveRoute,
   SignupRoute: SignupRoute,

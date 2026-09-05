@@ -21,7 +21,7 @@ export type TourStep = {
   view?: PosView;
   action?: DemoStep["action"];
   waitMs?: number;
-  platformSurface?: "console" | "pipeline" | "demos";
+  platformSurface?: "console" | "pipeline" | "demos" | "tenants";
   kioskPane?: "home" | "order" | "waitlist" | "checkin";
 };
 

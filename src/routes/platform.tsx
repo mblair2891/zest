@@ -1,15 +1,21 @@
-import { createFileRoute, Navigate } from "@tanstack/react-router";
+import { createFileRoute, Outlet, redirect } from "@tanstack/react-router";
 import { SessionGate } from "@/components/pos/SessionGate";
 
 export const Route = createFileRoute("/platform")({
   ssr: false,
-  component: PlatformRedirect,
+  beforeLoad: ({ location }) => {
+    const path = location.pathname.replace(/\/+$/, "") || "/";
+    if (path === "/platform") {
+      throw redirect({ to: "/dashboard" });
+    }
+  },
+  component: PlatformLayout,
 });
 
-function PlatformRedirect() {
+function PlatformLayout() {
   return (
     <SessionGate>
-      <Navigate to="/dashboard" replace />
+      <Outlet />
     </SessionGate>
   );
 }

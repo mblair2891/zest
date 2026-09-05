@@ -708,9 +708,9 @@ const PLATFORM: TourDefinition = w(
       id: "pa-tenants",
       title: "Tenants",
       script:
-        "Empty tenants is valid until SaaS onboarding finishes. Support actions stay on the live org.",
-      selector: "[data-demo='platform-console']",
-      platformSurface: "console",
+        "Click a tenant row to open that venue’s settings — location, devices, menus, payments, QR, cash, labor. Shared venue works with no host merchant. Back returns to Tenants.",
+      selector: "[data-demo='platform-tenants'], [data-demo='platform-tenant-row']",
+      platformSurface: "tenants",
     },
     {
       id: "pa-pipe",

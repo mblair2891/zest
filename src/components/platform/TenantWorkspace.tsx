@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
+import { Link, useNavigate } from "@tanstack/react-router";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { GuideLearnLink } from "@/components/guide/GuideLearnLink";
@@ -16,10 +17,19 @@ function lifecycleLabel(raw: string | undefined): string {
 }
 
 export function TenantWorkspace() {
+  const navigate = useNavigate();
   const [rows, setRows] = useState<TenantDirectoryRow[] | null>(null);
   const [openId, setOpenId] = useState<string | null>(null);
   const [detail, setDetail] = useState<TenantDrillIn | null>(null);
   const [error, setError] = useState<string | null>(null);
+
+  const openVenue = (orgId: string, loc?: string) => {
+    void navigate({
+      to: "/platform/tenants/$orgId",
+      params: { orgId },
+      search: loc ? { loc } : {},
+    });
+  };
 
   const load = useCallback(() => {
     void listTenantDirectoryFn()
@@ -49,7 +59,7 @@ export function TenantWorkspace() {
           Learn
         </GuideLearnLink>
         <p className="text-xs text-muted-foreground">
-          SaaS-onboarded orgs. Training, scheduled live, and live locations. No demo seeds.
+          Click a tenant to open venue settings. Shared venue works with no host merchant.
         </p>
       </div>
       {error && <p className="px-4 py-2 text-sm text-danger">{error}</p>}
@@ -75,17 +85,35 @@ export function TenantWorkspace() {
                   <th className="pb-2">Locations</th>
                   <th className="pb-2">MRR</th>
                   <th className="pb-2">Health</th>
+                  <th className="pb-2"></th>
                 </tr>
               </thead>
               <tbody>
                 {rows.map((t) => (
                   <tr
                     key={t.id}
+                    role="link"
+                    tabIndex={0}
+                    data-demo="platform-tenant-row"
+                    data-org-id={t.id}
                     className="cursor-pointer border-t border-border hover:bg-surface-2"
-                    onClick={() => setOpenId(t.id)}
+                    onClick={() => openVenue(t.id)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" || e.key === " ") {
+                        e.preventDefault();
+                        openVenue(t.id);
+                      }
+                    }}
                   >
                     <td className="py-2">
-                      <span className="font-medium">{t.name}</span>
+                      <Link
+                        to="/platform/tenants/$orgId"
+                        params={{ orgId: t.id }}
+                        className="font-medium underline-offset-2 hover:underline"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        {t.name}
+                      </Link>
                       <span className="mt-0.5 block text-xs text-muted-foreground">{t.status}</span>
                     </td>
                     <td className="py-2">{t.planId ?? "—"}</td>
@@ -112,6 +140,18 @@ export function TenantWorkspace() {
                         <Badge variant="success">OK</Badge>
                       )}
                     </td>
+                    <td className="py-2">
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setOpenId(t.id);
+                        }}
+                      >
+                        Plan
+                      </Button>
+                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -127,6 +167,9 @@ export function TenantWorkspace() {
               {detail.org.stage ? ` · CRM ${STAGE_LABEL[detail.org.stage]}` : ""}
             </p>
             <div className="mt-3 flex flex-wrap gap-2">
+              <Button size="sm" onClick={() => openVenue(detail.org.id)}>
+                Open venue
+              </Button>
               <Button
                 size="sm"
                 variant="outline"
@@ -165,7 +208,15 @@ export function TenantWorkspace() {
               <ul className="mt-1 text-sm">
                 {detail.locations.map((l) => (
                   <li key={l.id}>
-                    {l.name} · {l.venueType} ·{" "}
+                    <button
+                      type="button"
+                      className="text-left font-medium underline-offset-2 hover:underline"
+                      onClick={() => openVenue(detail.org.id, l.id)}
+                    >
+                      {l.name}
+                    </button>
+                    {" · "}
+                    {l.venueType} ·{" "}
                     <Badge
                       variant={l.lifecycleStatus === "live" ? "success" : "warn"}
                       className="align-middle"
