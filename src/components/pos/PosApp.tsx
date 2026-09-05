@@ -37,9 +37,11 @@ import { parseLaborRules } from "@/lib/labor/rules";
 import {
   findPairedDevice,
   parseLocationDevices,
+  readOrCreateBrowserDeviceId,
   writePairedDeviceId,
 } from "@/lib/pos/location-devices";
-import { heartbeatLocationDeviceFn } from "@/lib/access/api";
+import { heartbeatLocationDeviceFn, pairStationFn } from "@/lib/access/api";
+import { readStationPair } from "@/lib/pos/station-pair";
 import { SESSION_MODES, type SessionModeId } from "@/lib/lifecycle/types";
 import {
   consumeStationPinGate,
@@ -170,7 +172,8 @@ function PosAppInner({ entityId }: { entityId?: string }) {
         ? new URLSearchParams(window.location.search).get("loc")
         : null;
     const ctx = readTenantPosContext();
-    let locationId = locParam || ctx?.locationId;
+    const storedPair = readStationPair();
+    let locationId = locParam || storedPair?.locationId || ctx?.locationId;
     if (!locationId) {
       const pack = await resolvePrimedLocation();
       locationId = pack?.locationId;
@@ -180,9 +183,22 @@ function PosAppInner({ entityId }: { entityId?: string }) {
       const skipCloud =
         (typeof navigator !== "undefined" && navigator.onLine === false) ||
         !useNetworkStore.getState().wanOnline();
+      const pair = storedPair?.locationId === locationId ? storedPair : null;
+      const fetchBoot = () => {
+        if (user) return getPosBootstrapFn({ data: { locationId } });
+        if (pair?.claimCode) {
+          return pairStationFn({
+            data: {
+              claimCode: pair.claimCode,
+              browserDeviceId: readOrCreateBrowserDeviceId(locationId),
+            },
+          }) as unknown as ReturnType<typeof getPosBootstrapFn>;
+        }
+        return getPosBootstrapFn({ data: { locationId } });
+      };
       const boot = skipCloud
         ? Promise.reject(new Error("offline"))
-        : withTimeout(getPosBootstrapFn({ data: { locationId } }), 4000);
+        : withTimeout(fetchBoot(), 4000);
       void boot
         .then((access) => {
           saveTenantPosContext({

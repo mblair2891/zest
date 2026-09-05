@@ -75,18 +75,33 @@ See `.env.example`. Highlights:
 
 Sign-in methods: **username or email + password** only. Social / OAuth (Google, X) is disabled.
 
-## Android station APK (kiosk)
+## Android — Play vs sideload
 
-Staff tablets run **Summex only**. Guest QR stays in the browser.
+One APK: **Summex Station** (`app.summex.pos`). Staff tablets run Summex only. Guest QR stays in the browser.
 
-Build **two APKs** — host vs order — from the same Capacitor shell (`native/README.md`):
+### Play (store) — generic, no venue in the binary
+
+Leave `native/summex-native.json` with empty `station` and `sideload: false`. The WebView opens `/station`. First run is the pair screen (venue code or QR from owner Devices). After pair: PIN pad only. Updates keep the pairing.
 
 ```bash
-npm run android:config:order && npm run android:sync && npm run android:apk
-npm run android:config:host  && npm run android:sync && npm run android:apk
+npm run android:config:clear
+npm run android:sync
+cd android && ./gradlew bundleRelease
 ```
 
-Training: Samsung **pin-windows**. Production: Device Owner / Knox lock-task. WebView loads `https://summex.app/?station=order` or `…=host`.
+Do not submit to Play from this pass — packaging only. Listing copy: [`docs/play-store-listing.md`](docs/play-store-listing.md). Privacy: https://summex.app/privacy
+
+### Sideload (local LAN / training)
+
+`android-config` is for sideload only. It may bake a station role and a LAN URL:
+
+```bash
+npm run android:config:order   # or host | ods
+npm run android:sync
+npm run android:apk
+```
+
+Training: Samsung **pin-windows**. Production: Device Owner / Knox lock-task. See [`native/README.md`](native/README.md).
 
 ## Architecture
 

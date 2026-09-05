@@ -38,6 +38,8 @@ import { dispatchPrintJob, testPrintJob } from "@/lib/print/dispatch";
 import { usePosStore } from "@/lib/pos/store";
 import { formatTime } from "@/lib/utils";
 import { GuideLearnLink } from "@/components/guide/GuideLearnLink";
+import { pairQrImageSrc, stationPairHref } from "@/lib/pos/station-pair";
+import { DEVICE_ROLE_LABEL, deviceRoleFromFunction } from "@/lib/pos/device-roles";
 
 type Mode = "stations" | "hardware";
 
@@ -286,7 +288,7 @@ export function LocationDeviceRegistry({
   const help =
     mode === "hardware"
       ? "Register Quantum readers and Star/Epson printers. Assign kitchen, bar, receipt, or expo. Test print from this list."
-      : "Pair this Samsung tablet or wall display to a named slot. Any device can switch station. Large displays can split kitchen | bar ODS.";
+      : "Pair a Summex Station tablet with the venue code or QR. The APK has no location baked in. After pair, the tablet is PIN only.";
   const addLabel = mode === "hardware" ? "Add terminal / printer" : "Add device";
   const pairedId = resolvedLocId ? readPairedDeviceId(resolvedLocId) : null;
   const thisBrowserId = resolvedLocId ? readOrCreateBrowserDeviceId(resolvedLocId) : "";
@@ -561,7 +563,17 @@ export function LocationDeviceRegistry({
               key={d.id}
               className="flex flex-wrap items-center justify-between gap-2 rounded-2xl border border-border bg-surface px-4 py-3"
             >
-              <div className="min-w-0">
+              <div className="flex min-w-0 items-start gap-3">
+                {mode === "stations" && d.claimCode ? (
+                  <img
+                    src={pairQrImageSrc(d.claimCode)}
+                    alt={`Pair QR ${d.claimCode}`}
+                    width={72}
+                    height={72}
+                    className="h-[72px] w-[72px] shrink-0 rounded-md border border-border bg-white p-1"
+                  />
+                ) : null}
+                <div className="min-w-0">
                 <p className="font-medium">
                   {d.label}
                   {(pairedId === d.id || d.id === thisBrowserId || d.serial === thisBrowserId) && (
@@ -572,9 +584,17 @@ export function LocationDeviceRegistry({
                   {DEVICE_TYPE_LABEL[d.type]} · {entityName(d.assignment.operatorId)} ·{" "}
                   {d.print
                     ? `${PRINT_STATION_LABEL[d.print.station]} · ${PRINTER_FAMILY_LABEL[d.print.family]} · ${PRINTER_CONNECTION_LABEL[d.print.connection]}${d.print.target ? ` · ${d.print.target}` : ""}`
-                    : DEVICE_FUNCTION_LABEL[d.assignment.function]}
-                  {d.claimCode ? ` · claim ${d.claimCode}` : ""}
+                    : `${DEVICE_FUNCTION_LABEL[d.assignment.function]} · ${DEVICE_ROLE_LABEL[deviceRoleFromFunction(d.assignment.function)]}`}
                 </p>
+                {mode === "stations" && d.claimCode ? (
+                  <p className="mt-1 font-mono text-sm tracking-[0.2em] text-foreground">
+                    {d.claimCode}
+                    <span className="ml-2 font-sans text-[11px] tracking-normal text-muted-foreground">
+                      {stationPairHref(d.claimCode).replace(/^https?:\/\//, "")}
+                    </span>
+                  </p>
+                ) : null}
+                </div>
               </div>
               <div className="flex flex-wrap items-center gap-2">
                 <Badge

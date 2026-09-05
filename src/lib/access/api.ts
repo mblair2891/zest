@@ -479,6 +479,205 @@ export const claimLocationDeviceFn = createServerFn({ method: "POST" })
     return { device: next };
   });
 
+/**
+ * First-run station pair. No login — the claim code from Devices is the capability.
+ * Returns enough to prime the tablet, then PIN is identity.
+ */
+export const pairStationFn = createServerFn({ method: "POST" })
+  .validator((d: { claimCode: string; browserDeviceId?: string }) => ({
+    claimCode: String(d.claimCode ?? "")
+      .replace(/[\s-]/g, "")
+      .toUpperCase()
+      .slice(0, 12),
+    browserDeviceId: d.browserDeviceId ? String(d.browserDeviceId).trim().slice(0, 80) : "",
+  }))
+  .handler(async ({ data }) => {
+    if (data.claimCode.length < 4) throw new Error("Enter the code from Devices");
+    const { getSql } = await import("@/lib/db");
+    const sql = await getSql();
+    const { deviceRoleFromFunction } = await import("@/lib/pos/device-roles");
+    const { parseLocationDevices } = await import("@/lib/pos/location-devices");
+    const { isVenueEntityId } = await import("@/lib/pos/entities");
+    const { operatorsAsVendors } = await import("@/lib/saas/onboarding.server");
+    const { ensureTrainingFloor } = await import("@/lib/pos/training-roster.server");
+
+    type LocHit = {
+      device_id: string;
+      location_id: string;
+      org_id: string;
+      loc_name: string;
+      venue_type: string;
+      org_name: string;
+      timezone: string;
+      address: string | null;
+      host_brand_name: string | null;
+      operating_model: string | null;
+      label: string;
+      type: string;
+      status: string;
+      serial: string | null;
+      claim_code: string | null;
+      assigned_operator_id: string | null;
+      assigned_function: string | null;
+      last_seen_at: unknown;
+    };
+
+    let hit: LocHit | null = null;
+    try {
+      const rows = await sql<LocHit>`
+        select d.id as device_id, d.location_id, l.org_id, l.name as loc_name, l.venue_type,
+               l.timezone, l.address, l.host_brand_name, l.operating_model,
+               o.name as org_name, d.label, d.type, d.status, d.serial, d.claim_code,
+               d.assigned_operator_id, d.assigned_function, d.last_seen_at
+        from location_devices d
+        join locations l on l.id = d.location_id
+        join organizations o on o.id = l.org_id
+        where upper(d.claim_code) = ${data.claimCode}
+          and d.status <> ${"inactive"}
+        limit 2
+      `;
+      if (rows.length > 1) throw new Error("That code matches more than one slot. Ask the owner for a new code.");
+      hit = rows[0] ?? null;
+    } catch (e) {
+      if (e instanceof Error && e.message.startsWith("That code")) throw e;
+      /* table may be missing — fall through to setup scan */
+    }
+
+    if (!hit) {
+      const locs = await sql<{
+        id: string;
+        org_id: string;
+        name: string;
+        venue_type: string;
+        timezone: string;
+        address: string | null;
+        host_brand_name: string | null;
+        operating_model: string | null;
+        setup: unknown;
+        org_name: string;
+      }>`
+        select l.id, l.org_id, l.name, l.venue_type, l.timezone, l.address,
+               l.host_brand_name, l.operating_model, l.setup, o.name as org_name
+        from locations l
+        join organizations o on o.id = l.org_id
+        where coalesce(l.status, ${"active"}) = ${"active"}
+      `.catch(() => [] as Array<{
+        id: string;
+        org_id: string;
+        name: string;
+        venue_type: string;
+        timezone: string;
+        address: string | null;
+        host_brand_name: string | null;
+        operating_model: string | null;
+        setup: unknown;
+        org_name: string;
+      }>);
+      for (const loc of locs) {
+        const setup =
+          loc.setup && typeof loc.setup === "object" && !Array.isArray(loc.setup)
+            ? (loc.setup as { locationDevices?: unknown })
+            : {};
+        const devices = parseLocationDevices(setup.locationDevices);
+        const d = devices.find((x) => (x.claimCode || "").toUpperCase() === data.claimCode);
+        if (!d || d.status === "inactive") continue;
+        hit = {
+          device_id: d.id,
+          location_id: loc.id,
+          org_id: loc.org_id,
+          loc_name: loc.name,
+          venue_type: loc.venue_type,
+          org_name: loc.org_name,
+          timezone: loc.timezone,
+          address: loc.address,
+          host_brand_name: loc.host_brand_name,
+          operating_model: loc.operating_model,
+          label: d.label,
+          type: d.type,
+          status: d.status,
+          serial: d.serial ?? null,
+          claim_code: d.claimCode ?? data.claimCode,
+          assigned_operator_id: d.assignment.operatorId,
+          assigned_function: d.assignment.function,
+          last_seen_at: d.lastSeenAt,
+        };
+        break;
+      }
+    }
+
+    if (!hit) throw new Error("No station slot for that code. Check Devices.");
+
+    const device = mapDeviceRow({
+      id: hit.device_id,
+      location_id: hit.location_id,
+      label: hit.label,
+      type: hit.type,
+      status: hit.status,
+      serial: data.browserDeviceId || hit.serial,
+      claim_code: hit.claim_code,
+      assigned_operator_id: hit.assigned_operator_id,
+      assigned_function: hit.assigned_function,
+      last_seen_at: hit.last_seen_at,
+    });
+    if (!device) throw new Error("No station slot for that code. Check Devices.");
+
+    try {
+      await sql`
+        update location_devices
+        set serial = ${device.serial ?? null}, status = ${"online"}, last_seen_at = now()
+        where id = ${device.id} and location_id = ${hit.location_id}
+      `;
+    } catch {
+      /* optional */
+    }
+
+    const pack = await ensureTrainingFloor(hit.location_id);
+    const operators = await operatorsAsVendors(hit.location_id);
+    const venueType = isVenueEntityId(hit.venue_type) ? hit.venue_type : "food_hall";
+    const station = deviceRoleFromFunction(device.assignment.function);
+    const operatingModel =
+      hit.operating_model === "peer_venue"
+        ? ("peer_venue" as const)
+        : hit.operating_model === "host_operators"
+          ? ("host_operators" as const)
+          : ("single" as const);
+
+    return {
+      pair: {
+        locationId: hit.location_id,
+        orgId: hit.org_id,
+        locationName: hit.loc_name,
+        orgName: hit.org_name,
+        venueType,
+        station,
+        deviceId: device.id,
+        claimCode: data.claimCode,
+      },
+      org: { id: hit.org_id, name: hit.org_name, status: "active" as const },
+      location: {
+        id: hit.location_id,
+        orgId: hit.org_id,
+        name: hit.loc_name,
+        venueType,
+        timezone: hit.timezone || "America/Los_Angeles",
+        status: "active",
+        enabledPackages: [] as string[],
+        createdAt: new Date().toISOString(),
+        address: hit.address ?? "",
+        hostBrandName: hit.host_brand_name ?? null,
+        operatingModel,
+        setup: pack.setup,
+        lifecycleStatus: pack.setup.lifecycleStatus || "training",
+      },
+      operators,
+      floorStaff: pack.staff,
+      role: "staff" as const,
+      operatorId: device.assignment.operatorId === "host" ? null : device.assignment.operatorId,
+      openDemo: false as const,
+      trainingRoster: pack.seededRoster || pack.staff.some((s) => s.id.startsWith("emp_tr_")),
+    };
+  });
+
 export const heartbeatLocationDeviceFn = createServerFn({ method: "POST" })
   .middleware([tenantMiddleware])
   .validator((d: { locationId: string; deviceId: string }) => ({

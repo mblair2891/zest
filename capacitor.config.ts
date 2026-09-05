@@ -3,10 +3,11 @@ import { readFileSync, existsSync } from "node:fs";
 import { resolve } from "node:path";
 
 /**
- * Summex native shell — defaults to App Store (/apps).
+ * Summex Station native shell.
+ * Play / store: generic /station (pair first). Sideload may bake a station role.
  */
 
-type NativeFile = { url?: string; station?: string; cleartext?: boolean };
+type NativeFile = { url?: string; station?: string; cleartext?: boolean; sideload?: boolean };
 
 function loadNativeFile(): NativeFile {
   const p = resolve("native/summex-native.json");
@@ -36,16 +37,15 @@ function nativeStationRole(raw: string): "order" | "ods" | "host" | "" {
   return "";
 }
 
-// Station APK: PIN pad for host | order | ods. Guest QR stays in the browser.
+// Play / store APK: generic /station (pair first). Sideload may bake a station role.
 let serverUrl = baseUrl;
-const station = nativeStationRole(stationRaw) || (stationRaw ? "order" : "");
-if (station) {
-  const origin = (baseUrl.replace(/\/apps$/i, "") || baseUrl).replace(/\/$/, "");
+const sideload = process.env.SUMMEX_SIDELOAD === "1" || file.sideload === true;
+const station = nativeStationRole(stationRaw);
+const origin = (baseUrl.replace(/\/apps$/i, "") || baseUrl).replace(/\/$/, "") || "https://summex.app";
+if (sideload && station) {
   serverUrl = `${origin}/?station=${encodeURIComponent(station)}`;
-} else if (!/\/apps$/i.test(baseUrl) && !/[?&]/.test(baseUrl)) {
-  if (!baseUrl.endsWith("/apps")) {
-    serverUrl = `${baseUrl}/apps`;
-  }
+} else {
+  serverUrl = `${origin}/station`;
 }
 
 const cleartext =
@@ -55,7 +55,7 @@ const cleartext =
 
 const config: CapacitorConfig = {
   appId: "app.summex.pos",
-  appName: "Summex",
+  appName: "Summex Station",
   webDir: "native/www",
   backgroundColor: "#0a0c0b",
   server: {

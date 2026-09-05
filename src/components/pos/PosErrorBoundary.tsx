@@ -2,6 +2,7 @@ import { Component, type ErrorInfo, type ReactNode } from "react";
 import { Button } from "@/components/ui/button";
 import { SummexMark } from "@/components/brand/SummexMark";
 import { isProspectDemo } from "@/lib/demo/session";
+import { isDurableStationStorageKey } from "@/lib/pos/station-pair";
 
 interface Props {
   children: ReactNode;
@@ -45,7 +46,11 @@ export class PosErrorBoundary extends Component<Props, State> {
       const keys: string[] = [];
       for (let i = 0; i < localStorage.length; i++) {
         const k = localStorage.key(i);
-        if (k && (k.startsWith("summex-") || k.startsWith("zest-") || k.startsWith("blair") || k.startsWith("harbor"))) {
+        if (
+          k &&
+          (k.startsWith("summex-") || k.startsWith("zest-") || k.startsWith("blair") || k.startsWith("harbor")) &&
+          !isDurableStationStorageKey(k)
+        ) {
           keys.push(k);
         }
       }

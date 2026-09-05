@@ -1,6 +1,7 @@
 {
   "url": "https://summex.app",
-  "station": "order",
+  "station": "",
   "cleartext": false,
-  "_comment": "Staff kiosk APK. station = order | ods | host opens https://summex.app/?station=… (PIN pad, never /login). Guest QR stays in the browser."
+  "sideload": false,
+  "_comment": "Play APK is generic: /station pair screen, no location in the binary. android-config sets sideload+station for local LAN only."
 }

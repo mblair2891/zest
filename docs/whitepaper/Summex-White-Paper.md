@@ -3,7 +3,7 @@
 **Powered by Quantum Reach**
 
 White paper · October 2026  
-**Revision · 5 Sep 2026** — Tablets run Summex only (kiosk station shell). Aligns with Operators Guide v2026.10.41.
+**Revision · 5 Sep 2026** — One Summex Station app (pair, then PIN). Aligns with Operators Guide v2026.10.42.
 
 summex.app  
 Guest cards: **Quantum Payments** only
@@ -144,9 +144,9 @@ The tablet is a screen, not a person. **PIN** says who is working. The **device 
 
 A manager **Change device** switches among those three. PIN stays the person; the role is the screen.
 
-**Tablets run Summex only.** The Android station APK (host or order; ODS is the same shell) boots into the PIN pad, pins the screen, and does not return to the launcher. Guest QR and pay links stay in the ordinary browser.
+**Tablets run Summex only.** One Android app — Summex Station. First open pairs with the venue code or QR from Devices (venue id and station role stored on the tablet). After that, the PIN pad. App updates do not wipe pairing. Lock-task pins the screen. Guest QR and pay links stay in the ordinary browser.
 
-**Prime, then PIN-only.** Pair and open the station once from the signed-in control plane (internet required). After that, cold start is the PIN pad — not `/login`. Switch user returns to the keypad without changing the device role.
+**Prime, then PIN-only.** Pair once (internet required). After that, cold start is the PIN pad — not `/login`. Switch user returns to the keypad without changing the device role.
 
 **PIN ≠ owner password ≠ clock-in ≠ closeout.** Back office (owners, managers, accountants) uses email and password. Floor staff use a 4-digit PIN, hashed and scoped to the location (and entity on a host floor). Clock in / out is Labor. Server closeout is Cash.
 

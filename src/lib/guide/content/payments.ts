@@ -212,7 +212,7 @@ export const PAYMENT_TOPICS: GuideTopic[] = [
         "Processors, prospects, and partners need one document that does not invent rates, banks, or seals — and that stays in lockstep with this Operators Guide.",
       ),
       p(
-        "Open /whitepaper (also linked from the marketing footer). Print from the browser for a PDF. The markdown source lives with the product docs. It stays in lockstep with this guide. Revision · 4 Sep 2026 matches Guide v2026.10.39 (QR order/pay: table tents, ticket codes, location modes).",
+        "Open /whitepaper (also linked from the marketing footer). Print from the browser for a PDF. The markdown source lives with the product docs. It stays in lockstep with this guide. Revision · 5 Sep 2026 matches Guide v2026.10.42 (one Summex Station app: pair, then PIN).",
       ),
       steps(
         "Open White paper from the site footer or this topic.",

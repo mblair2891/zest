@@ -102,6 +102,9 @@ export function LandingFrame({ children }: { children: ReactNode }) {
             <Link to="/whitepaper" className="hover:text-champagne">
               White paper
             </Link>
+            <Link to="/privacy" className="hover:text-champagne">
+              Privacy
+            </Link>
           </div>
           <p className="text-xs text-muted-foreground">
             Powered by {POWERED_BY}

@@ -1,9 +1,9 @@
 #!/usr/bin/env node
 /**
- * Update native/summex-native.json station (and optional url).
+ * Local sideload only. Play builds leave station empty (pair screen).
  * Usage: node scripts/android-config.mjs order|ods|host
- * Station APK loads https://summex.app/?station=… (PIN pad). Guest QR stays in the browser.
  *        node scripts/android-config.mjs ods http://192.168.1.10:8080
+ *        node scripts/android-config.mjs clear
  */
 import { readFileSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
@@ -25,8 +25,10 @@ const path = resolve("native/summex-native.json");
 const cur = JSON.parse(readFileSync(path, "utf8"));
 if (stationArg === "clear" || stationArg === "none" || stationArg === "-") {
   cur.station = "";
+  cur.sideload = false;
 } else if (stationArg) {
   cur.station = normalizeStation(stationArg);
+  cur.sideload = true;
 }
 if (urlArg) {
   cur.url = urlArg.replace(/\/$/, "");

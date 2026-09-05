@@ -1,6 +1,7 @@
 import type { SessionModeId } from "@/lib/lifecycle/types";
 import type { DeviceFunction } from "@/lib/pos/location-devices";
 import type { PosView } from "@/lib/pos/types";
+import { readStationPair } from "./station-pair";
 
 /** Native / station device roles. PIN identifies the person; this is the screen. */
 export const DEVICE_ROLES = ["order", "ods", "host"] as const;
@@ -107,7 +108,9 @@ export function deviceRoleFromFunction(fn: DeviceFunction): DeviceRole {
 export function readStationDeviceRole(): DeviceRole | null {
   if (typeof window === "undefined") return null;
   try {
-    return parseStationQuery(new URLSearchParams(window.location.search).get("station"));
+    const fromQuery = parseStationQuery(new URLSearchParams(window.location.search).get("station"));
+    if (fromQuery) return fromQuery;
+    return readStationPair()?.station ?? null;
   } catch {
     return null;
   }

@@ -17,6 +17,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { GuideLearnLink } from "@/components/guide/GuideLearnLink";
 import { factoryResetFn, factoryResetStatusFn } from "@/lib/saas/crm-api";
+import { isDurableStationStorageKey } from "@/lib/pos/station-pair";
 import {
   invitePlatformUserFn,
   loadPlatformSettingsFn,
@@ -100,7 +101,7 @@ function clearLocalAppData() {
     const keys: string[] = [];
     for (let i = 0; i < localStorage.length; i += 1) {
       const k = localStorage.key(i);
-      if (k?.startsWith("summex-")) keys.push(k);
+      if (k?.startsWith("summex-") && !isDurableStationStorageKey(k)) keys.push(k);
     }
     for (const k of keys) localStorage.removeItem(k);
   } catch {

@@ -6,6 +6,19 @@ import type { GuideUpdate } from "@/lib/guide/types";
  */
 export const WHATS_NEW_ENTRIES: GuideUpdate[] = [
   {
+    id: "upd_2026_10_42_station_pair",
+    date: "2026-09-05",
+    title: "One station app — pair, then PIN",
+    summary:
+      "Summex Station is one tablet app. First open: venue code or QR from Devices. After pair, PIN only. Updates keep the pairing.",
+    body: "Install Summex Station once. The owner shows a 6-character code or QR on Devices. The tablet stores the venue and its role (Order, Order Display, or Host). Thereafter power on is the PIN pad — not a new login. App updates do not wipe pairing. Guest QR stays in the ordinary browser. Local sideload may still bake a station role for LAN testing; store builds never bake a location.",
+    roles: ["owner_manager", "host_operator", "kitchen_bar"],
+    surfaces: ["settings", "floor"],
+    audience: "all",
+    topicId: "android-kiosk",
+    tags: ["devices", "android", "pair"],
+  },
+  {
     id: "upd_2026_10_41_android_kiosk",
     date: "2026-09-05",
     title: "Tablets run Summex only",
