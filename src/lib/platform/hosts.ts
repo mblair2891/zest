@@ -389,7 +389,7 @@ export function staffGuestAccessPoints(opts?: {
     {
       id: "marketing",
       label: "www · marketing",
-      hint: "Public site: Get a price, Guide, Demo, Contact — no login",
+      hint: "Public site: Get a price, Guide, Demo, White paper, Contact — no login",
       href: absoluteMarketingHref("/"),
       surface: "marketing",
     },

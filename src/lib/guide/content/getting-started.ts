@@ -32,7 +32,7 @@ export const GETTING_STARTED_TOPICS: GuideTopic[] = [
         "Operators Guide with table of contents on the left and an article pane on the right.",
       ),
       ul(
-        "Public site (summex.app): Get a price, Guide, Demo, Contact. No Log in, dashboard, or Open POS on the sales host. Operators bookmark https://app.summex.app/login themselves. Guide is operations-only — not a SaaS user manual.",
+        "Public site (summex.app): Get a price, Guide, Demo, White paper, Contact. No Log in, dashboard, or Open POS on the sales host. Operators bookmark https://app.summex.app/login themselves. Guide is operations-only — not a SaaS user manual. The white paper is public positioning — no platform admin or CRM.",
         "Training week: the real POS with Quantum Payments sandbox. Live cards wait for an approved Quantum application and an enrolled reader.",
         "Floor PIN signs a person onto this station. Clock in / out is Labor. Server closeout is Cash — none of those are the same action.",
         "Examples in this guide use Host Venue, Operator A, Operator B — never a live customer name.",
@@ -163,7 +163,7 @@ export const GETTING_STARTED_TOPICS: GuideTopic[] = [
         "Summex is one application with two working surfaces. Mixing them up is the most common new-user stall.",
       ),
       ul(
-        "Marketing (summex.app / www) — Get a price, Guide, Demo, Contact. No Log in, Go to console, Open POS, Replay workflow, dashboard, or tenant chrome. Operators type https://app.summex.app/login themselves.",
+        "Marketing (summex.app / www) — Get a price, Guide, Demo, White paper, Contact. No Log in, Go to console, Open POS, Replay workflow, dashboard, or tenant chrome. Operators type https://app.summex.app/login themselves. White paper is public architecture, not SaaS admin docs.",
         "Console (app.summex.app) — /login (username/password only, no Google/X), /dashboard, CRM, pipeline, tenants, onboarding, owner venue settings. Admin → platform dashboard. Venue owner → that house.",
         "POS — floor, order, ODS, cash, settlement, guests, after a location is open from a signed-in session.",
         "Operators Guide — public page at /guide (operations). Overlay inside the signed-in product. Exit on the public page returns to marketing home.",

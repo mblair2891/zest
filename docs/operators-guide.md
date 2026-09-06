@@ -145,7 +145,7 @@ Bookmarkable URL: `/guide?topic=my-topic`.
 - PIN login ≠ clock in/out ≠ server closeout.
 - Gift: sale-point issuer or house; redeem settles internally; unredeemed liability on issuer; house cards house-keeps remainder.
 - Staffing recs never auto clock-out. Accept ≠ punch out.
-- Public marketing (summex.app / www): Get a price, Guide, Demo, Contact. No Log in, Go to console, Open POS, Replay workflow, dashboard, or tenant chrome. Operators bookmark https://app.summex.app/login. Stations and pair QR: app.summex.app. No Google/X.
+- Public marketing (summex.app / www): Get a price, Guide, Demo, White paper, Contact. No Log in, Go to console, Open POS, Replay workflow, dashboard, or tenant chrome. Operators bookmark https://app.summex.app/login. Stations and pair QR: app.summex.app. No Google/X. White paper is public positioning — no CRM.
 - Examples: **Host Venue**, **Operator A**, **Operator B**.
 - Chargebacks: **$35** when a dispute is **filed**; split by merchandise %; won/lost does not reverse the fee.
 - If a feature is partial, say so (“available in training; live cards require an approved Quantum application”). Do not document vapor as finished.
