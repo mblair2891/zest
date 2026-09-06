@@ -37,7 +37,7 @@ export const OPS_JOBS_TOPICS: GuideTopic[] = [
         "Never theft language. Never auto clock-out (staffing is recommend_cut | hold | add only). Never invent Finix, Visa, or Quantum charges — if capture or fee facts are missing, the pack says so. Gift is the Summex ledger. Guest cards are Quantum Payments only.",
       ),
       p(
-        "Entity scope: host sees the house pack. A bar operator (Steam-style) sees bar cost and bar sales. A food operator (Diamond-style) sees food cost and kitchen sales.",
+        "Entity scope: host sees the house pack. A bar operator sees bar cost and bar sales. A food operator sees food cost and kitchen sales.",
       ),
       ul(
         "Service / hourly (while the location is open): floor integrity (occupied + no check; empty/dirty + open check; hold buckets); labor pulse vs target, idle role minutes, ODS depth/times, waitlist, reservations lookahead → recommend_cut | hold | add only; gate feed of voids/comps/no-sales/reopens/gift adjusts to manager devices; gift burst load/redeem/adjust; unreachable Ethernet printers.",

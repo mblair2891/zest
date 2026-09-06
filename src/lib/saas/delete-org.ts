@@ -30,4 +30,4 @@ export function deleteLeadPrompt(name: string): string {
 }
 
 export const DELETE_TRAINING_PROMPT =
-  "This removes The Laundry-style venue, entities, menus, devices.";
+  "This removes the shared venue, entities, menus, and devices.";

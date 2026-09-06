@@ -174,7 +174,7 @@ export function heuristicInvoiceExtract(
   const vendor =
     blob.match(/vendor[:\s]+([^\n]+)/i)?.[1]?.trim() ||
     blob.match(/from[:\s]+([^\n]+)/i)?.[1]?.trim() ||
-    (/\btito/i.test(blob) ? "Southern Glazer's" : "Vendor");
+    "Vendor";
   const invoiceNumber =
     blob.match(/inv(?:oice)?\s*#?\s*([A-Z0-9-]+)/i)?.[1] ??
     `INV-${Date.now().toString(36).toUpperCase()}`;
@@ -196,11 +196,11 @@ export function heuristicInvoiceExtract(
       unitCostCents: Math.round(parseFloat(m[3]!) * 100),
     });
   }
-  if (!lines.length && /\btito/i.test(blob)) {
+  if (!lines.length && /\b(vodka|gin|whiskey|bourbon|tequila)\b/i.test(blob)) {
     const qty = parseFloat(blob.match(/(\d+(?:\.\d+)?)\s*(?:cs|case|btl|bottle)/i)?.[1] ?? "6");
     const cost = dollarsToCents(blob) ?? 2899;
     lines.push({
-      name: "Tito's Handmade Vodka 1.75L",
+      name: "Vodka 1.75L",
       qty: Number.isFinite(qty) ? qty : 6,
       unitCostCents: cost,
       packSize: "1.75L",

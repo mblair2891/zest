@@ -355,7 +355,7 @@ const KITCHEN: TourDefinition = w(
       id: "kt-rail",
       title: "Kitchen rail",
       script:
-        "Tickets fire here. On a host floor you only see your operator — Diamond House does not see Steam’s well.",
+        "Tickets fire here. On a host floor you only see your operator — the food operator does not see the bar operator’s well.",
       selector: "[data-demo='kitchen']",
       view: "kitchen",
     },

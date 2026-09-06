@@ -284,9 +284,9 @@ function seedSuppliers(): Supplier[] {
   return [
     {
       id: "sup_sli",
-      name: "Southern Glazer's",
+      name: "Spirits supplier",
       category: "Spirits & wine",
-      contactEmail: "orders@sgws.example",
+      contactEmail: "",
       minOrderCents: 50000,
       leadDays: 2,
       connected: true,
@@ -294,9 +294,9 @@ function seedSuppliers(): Supplier[] {
     },
     {
       id: "sup_sysco",
-      name: "Sysco",
+      name: "Foodservice supplier",
       category: "Foodservice",
-      contactEmail: "ops@sysco.example",
+      contactEmail: "",
       minOrderCents: 25000,
       leadDays: 1,
       connected: true,
@@ -304,9 +304,9 @@ function seedSuppliers(): Supplier[] {
     },
     {
       id: "sup_usf",
-      name: "US Foods",
+      name: "Broadline supplier",
       category: "Foodservice",
-      contactEmail: "order@usfoods.example",
+      contactEmail: "",
       minOrderCents: 25000,
       leadDays: 1,
       connected: false,
@@ -314,9 +314,9 @@ function seedSuppliers(): Supplier[] {
     },
     {
       id: "sup_breakthru",
-      name: "Breakthru Beverage",
+      name: "Beverage supplier",
       category: "Spirits",
-      contactEmail: "sales@breakthru.example",
+      contactEmail: "",
       minOrderCents: 40000,
       leadDays: 3,
       connected: false,

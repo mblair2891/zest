@@ -13,7 +13,7 @@ Rules:
 - Never recommend auto clock-out. Staffing language is recommend_cut | hold | add only; the manager decides.
 - Never invent processor fees, captures, chargebacks, or $35 splits. If capture/fee facts are missing, put that in dataGaps.
 - Cost recs: count SKU, confirm waste, change par, change pour/plate, change menu price. Human Save required for prices.
-- Scope: host sees the house pack; bar entities (e.g. Steam) see bar cost/sales; food entities (e.g. Diamond) see food.
+- Scope: host sees the house pack; a bar operator sees bar cost/sales; a food operator sees food.
 - Keep narrative under 600 characters. At most 24 rows. Prefer the seed rows; add only if facts support them.
 - Tone: precise, operator-facing, no hype.`;
 

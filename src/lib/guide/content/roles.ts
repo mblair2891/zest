@@ -268,21 +268,21 @@ export const ROLE_GUIDE_TOPICS: GuideTopic[] = [
     openView: "schedule",
     blocks: [
       why(
-        "Diamond House BBQ’s week is not Steam Distillery’s week. Each entity owns employees, shifts, pay period, clock rules, overtime flags, and labor % on owned lines.",
+        "The food operator’s week is not the bar operator’s week. Each entity owns employees, shifts, pay period, clock rules, overtime flags, and labor % on owned lines.",
       ),
       ul(
         "Scheduling has an entity switcher. Default is the entity the logged-in manager belongs to. Venue admin can view both boards — they are never one merged calendar.",
         "Publish week publishes that entity only. It does not merge the other calendar.",
-        "You cannot drag a Steam person onto Diamond’s board without an explicit “work for other entity this shift” grant (same idea as an extra table outside section). Shift grants drop at clock-out.",
+        "You cannot drag a bar-operator person onto the food operator’s board without an explicit “work for other entity this shift” grant (same idea as an extra table outside section). Shift grants drop at clock-out.",
         "Clock in / PIN is still the venue tablet. Hours post to the entity on the shift, or the person’s home entity if they have no shift.",
         "Reports and AI labor use that entity’s sales basis only (owned lines on a shared venue).",
         "Boards stay empty until you add staff in Users. No users or shifts are auto-created.",
         "Hours export stays entity-scoped. Summex does not process payroll.",
       ),
       steps(
-        "Open Schedule. Confirm the switcher is Diamond or Steam (your home entity).",
+        "Open Schedule. Confirm the switcher is your home entity (bar operator or food operator).",
         "Add a shift for that entity’s staff. Publish week — the other entity’s board is unchanged.",
-        "To put a Steam person on Diamond tonight: venue admin grants work for other entity this shift, then drop them on Diamond’s day.",
+        "To put a bar-operator person on the food operator tonight: venue admin grants work for other entity this shift, then drop them on that entity’s day.",
         "PIN in on any tablet. Clock in from Labor. Hours land on the shift’s entity.",
       ),
       related("shift-allowables", "payroll-export", "floor-pin-login", "host-operator-settings", "role-vendor"),
@@ -385,13 +385,13 @@ export const ROLE_GUIDE_TOPICS: GuideTopic[] = [
     openView: "settings",
     blocks: [
       why(
-        "Steam Distillery is paid for drinks. Diamond House BBQ is paid for food. Mixing both into one labor % lies about the house.",
+        "The bar operator is paid for drinks. The food operator is paid for food. Mixing both into one labor % lies about the house.",
       ),
       p(
-        "Location settings → Labor basis (peer venue and host + tenants). Per entity: owned lines (default on a shared venue), all-check sales, or selected categories. Labor $, labor %, SPLH, food cost, pour cost, and staffing recs use that basis only. Recs label it — Steam labor vs beverage sales $.",
+        "Location settings → Labor basis (peer venue and host + tenants). Per entity: owned lines (default on a shared venue), all-check sales, or selected categories. Labor $, labor %, SPLH, food cost, pour cost, and staffing recs use that basis only. Recs label it — bar operator labor vs beverage sales $.",
       ),
       ul(
-        "Owned lines: what that entity is paid on card capture. Steam = drink/bar lines. Diamond = food lines.",
+        "Owned lines: what that entity is paid on card capture. Bar operator = drink/bar lines. Food operator = food lines.",
         "All-check: whole guest check. Rare on a shared floor.",
         "Selected categories: pick the categories that count.",
         "Shared venue costs (rent, utilities): optional allocation % per entity. Off by default. Do not dump the same cost into both labor %.",
@@ -403,7 +403,7 @@ export const ROLE_GUIDE_TOPICS: GuideTopic[] = [
         "Read staffing recs and cost pictures with the basis in the line.",
       ),
       warn(
-        "Do not run Steam labor against Diamond food sales. Do not allocate 100% of rent to every entity.",
+        "Do not run bar-operator labor against food-operator sales. Do not allocate 100% of rent to every entity.",
       ),
       related("staffing-recs", "device-roles", "android-kiosk", "cost-control", "tip-pooling"),
     ],

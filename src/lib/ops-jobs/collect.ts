@@ -869,8 +869,8 @@ export function collectOpsJobFacts(
               flash.costPct == null ? "n/a" : flash.costPct.toFixed(1) + "%"
             } vs target ${flash.target}%`,
             kind === "bar"
-              ? "Steam-style bar scope: liquor/beer/wine vs bar sales."
-              : "Diamond-style food scope: food SKUs vs kitchen sales.",
+              ? "Bar operator scope: liquor/beer/wine vs bar sales."
+              : "Food operator scope: food SKUs vs kitchen sales.",
             { entityId: v.id, entityName: v.shortName || v.name, pct: flash.costPct, amountCents: sales },
           ),
         );

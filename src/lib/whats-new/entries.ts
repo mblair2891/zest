@@ -11,7 +11,7 @@ export const WHATS_NEW_ENTRIES: GuideUpdate[] = [
     title: "Upload invoices, recipe vs usage alerts",
     summary:
       "Each entity posts its own invoices. Recipe oz × tickets is compared to bottles received. Gaps flag the entity manager — not an accusation.",
-    body: "Costs / Purchasing: upload a PDF, photo, or CSV (voice note optional). Confirm vendor, date, and lines — follow-ups only when unit size, item, or entity is unclear. Post to that entity’s inventory and cost ledger. Vodka drinks decrement vodka by recipe oz × that entity’s tickets. Example: 10 bottles in, 3 used before the next 10 — the gap flags the entity manager (venue admin only if they opted in). Reasons: event, owner take-home, breakage, mis-ring, theft review. Steam invoices and tickets stay on Steam; Diamond food stays on Diamond. Help can explain the flag.",
+    body: "Costs / Purchasing: upload a PDF, photo, or CSV (voice note optional). Confirm vendor, date, and lines — follow-ups only when unit size, item, or entity is unclear. Post to that entity’s inventory and cost ledger. Vodka drinks decrement vodka by recipe oz × that entity’s tickets. Example: 10 bottles in, 3 used before the next 10 — the gap flags the entity manager (venue admin only if they opted in). Reasons: event, owner take-home, breakage, mis-ring, theft review. A bar operator’s invoices and tickets stay on the bar operator; a food operator’s food invoices stay on the food operator. Help can explain the flag.",
     roles: ["owner_manager", "host_operator", "vendor_operator"],
     surfaces: ["settings", "reports"],
     audience: "all",
@@ -75,8 +75,8 @@ export const WHATS_NEW_ENTRIES: GuideUpdate[] = [
     date: "2026-09-05",
     title: "Each entity schedules its own staff",
     summary:
-      "Diamond’s week is not Steam’s. Entity switcher on Scheduling. Publish does not merge calendars. Grant to work for another entity this shift.",
-    body: "Open Schedule. The switcher defaults to the entity you belong to. Venue admin can view both boards — never one merged calendar. Publish week publishes that entity only. To put a Steam person on Diamond, venue admin grants work for other entity this shift (same idea as an extra table). Clock in is still the venue tablet; hours post to the shift’s entity, or home entity if there is no shift. Reports and AI labor use that entity’s owned-lines sales. Boards stay empty until you add staff.",
+      "The food operator’s week is not the bar operator’s. Entity switcher on Scheduling. Publish does not merge calendars. Grant to work for another entity this shift.",
+    body: "Open Schedule. The switcher defaults to the entity you belong to. Venue admin can view both boards — never one merged calendar. Publish week publishes that entity only. To put a bar-operator person on the food operator, venue admin grants work for other entity this shift (same idea as an extra table). Clock in is still the venue tablet; hours post to the shift’s entity, or home entity if there is no shift. Reports and AI labor use that entity’s owned-lines sales. Boards stay empty until you add staff.",
     roles: ["owner_manager", "host_operator", "vendor_operator"],
     surfaces: ["settings"],
     audience: "all",
@@ -141,7 +141,7 @@ export const WHATS_NEW_ENTRIES: GuideUpdate[] = [
     title: "Tenants open venue settings",
     summary:
       "Click a tenant in the platform directory to edit that venue — location, devices, menus, payments, QR, cash, labor. Shared venue works with no host merchant.",
-    body: "Platform → Tenants. The row is a real target. It opens that org’s venue settings (The Laundry, or any tenant), not the CRM pipeline. A shared venue shows the building plus child entities (Steam Distillery, Diamond House BBQ) with no host merchant required. After save, Back returns to Tenants and the house is still listed.",
+    body: "Platform → Tenants. The row is a real target. It opens that org’s venue settings, not the CRM pipeline. A shared venue shows the building plus child entities (bar operator, food operator) with no host merchant required. After save, Back returns to Tenants and the house is still listed.",
     roles: ["platform_admin"],
     surfaces: ["platform", "settings"],
     audience: "platform",
@@ -154,7 +154,7 @@ export const WHATS_NEW_ENTRIES: GuideUpdate[] = [
     title: "Publish to devices · labor vs owned sales",
     summary:
       "Owner Publish pushes menu, floor, printers, and QR to paired tablets. Shared-venue labor % uses what that entity is paid.",
-    body: "Devices: add name + role, one-time pair code/QR. After pair the tablet is PIN only. Publish changes pushes the house snapshot. Staff keep the last publish until Switch user; the PIN pad can refresh idle. Never mid-ticket. Unpair or Replace from the same list. On a shared venue, Steam labor vs beverage sales $ and Diamond labor vs food sales $ — owned lines, not the whole guest check. Shared rent/utilities stay off until you allocate a percent. Tips stay out of labor % unless you turn tips in labor on.",
+    body: "Devices: add name + role, one-time pair code/QR. After pair the tablet is PIN only. Publish changes pushes the house snapshot. Staff keep the last publish until Switch user; the PIN pad can refresh idle. Never mid-ticket. Unpair or Replace from the same list. On a shared venue, bar-operator labor vs beverage sales $ and food-operator labor vs food sales $ — owned lines, not the whole guest check. Shared rent/utilities stay off until you allocate a percent. Tips stay out of labor % unless you turn tips in labor on.",
     roles: ["owner_manager", "host_operator", "vendor_operator", "kitchen_bar"],
     surfaces: ["settings", "floor"],
     audience: "all",
@@ -190,10 +190,10 @@ export const WHATS_NEW_ENTRIES: GuideUpdate[] = [
   {
     id: "upd_2026_10_40_laundry_peer_seed",
     date: "2026-09-05",
-    title: "The Laundry shared venue — no staff seeded",
+    title: "Shared venue training house — no staff seeded",
     summary:
-      "The Laundry is a real shared-venue training house (Steam Distillery + Diamond House BBQ). It has no staff. Add people on the platform.",
-    body: "Guest branding is The Laundry. Two independent operators — Steam Distillery (bar) and Diamond House BBQ (kitchen). No host merchant or host menu. One guest check; receipt by vendor. Training / sandbox cards. QR: table tents + ticket QR, reorder after a staff-opened check, pay/split, food and drinks; full self-serve off. Cash drawers come later. Platform Admin is the only login until you add users. This is not a demo tenant.",
+      "A shared-venue training house (bar operator + food operator) has no staff. Add people on the platform.",
+    body: "Guest branding is the building name. Two independent operators — a bar operator and a food operator. No host merchant or host menu. One guest check; receipt by vendor. Training / sandbox cards. QR: table tents + ticket QR, reorder after a staff-opened check, pay/split, food and drinks; full self-serve off. Cash drawers come later. Platform Admin is the only login until you add users. This is not a demo tenant.",
     roles: ["platform_admin", "owner_manager", "host_operator"],
     surfaces: ["platform", "floor", "settings"],
     audience: "all",
@@ -206,7 +206,7 @@ export const WHATS_NEW_ENTRIES: GuideUpdate[] = [
     title: "QR order, reorder, pay, table tents, ticket codes",
     summary:
       "Location settings pick combinable QR modes: full self-serve, reorder after a staff-opened check, pay/split, print QR on the ticket, and table tents.",
-    body: "Settings → Floor statuses, flash & QR. Flags combine. Reorder-after-open never silently starts a ticket — guests see “see your server.” Full self-serve opening a check notifies host/server. Table QR is scoped to that table’s open check; ticket QR is signed to the check id with a short TTL and refreshes on reprint. Guest UI is public (no PIN, no CRM); after pay they stay on thank-you, not Sign in. Print table-tent sheets from the floor. The Laundry peer venue defaults to reorder + pay + tents + ticket QR, food and drinks, card or gift, split by item, tip on, age affirm, keep open for reorder.",
+    body: "Settings → Floor statuses, flash & QR. Flags combine. Reorder-after-open never silently starts a ticket — guests see “see your server.” Full self-serve opening a check notifies host/server. Table QR is scoped to that table’s open check; ticket QR is signed to the check id with a short TTL and refreshes on reprint. Guest UI is public (no PIN, no CRM); after pay they stay on thank-you, not Sign in. Print table-tent sheets from the floor. A shared venue defaults to reorder + pay + tents + ticket QR, food and drinks, card or gift, split by item, tip on, age affirm, keep open for reorder.",
     roles: ["owner_manager", "server", "host_operator"],
     surfaces: ["floor", "settings"],
     audience: "all",
@@ -401,7 +401,7 @@ export const WHATS_NEW_ENTRIES: GuideUpdate[] = [
     title: "Scheduled AI ops jobs",
     summary:
       "Hourly, nightly, weekly, pay-period, and monthly packs. Real xAI or skipped — never invented insights, never auto clock-out, never invented card charges.",
-    body: "Settings → Scheduled AI ops jobs. While open: floor integrity, labor pulse (cut/hold/add only), gate feed, gift bursts, unreachable Ethernet printers. Nightly: exception pack, blind counts, tips, tender/void-comp outliers, Quantum capture vs line split, cost flash, staffing postmortem, house Z ack or hard-block. Weekly: peer flags, schedule vs sales, drawer trend, recipe variance, gift liability, training leftovers. Pay period: hours and CC tips vs cash-at-close for ADP/Intuit/CSV — Summex is not payroll. Monthly: risk digest (review queue), daypart baselines, vendor price creep, Quantum fees/chargebacks when present, menu stars/dogs, HR packet reminder, unseen devices. Steam-style bar entities see bar cost/sales; Diamond-style food see food; host sees the house pack. Missing xAI key queues skipped. Email printable pack when Resend is on; else inbox.",
+    body: "Settings → Scheduled AI ops jobs. While open: floor integrity, labor pulse (cut/hold/add only), gate feed, gift bursts, unreachable Ethernet printers. Nightly: exception pack, blind counts, tips, tender/void-comp outliers, Quantum capture vs line split, cost flash, staffing postmortem, house Z ack or hard-block. Weekly: peer flags, schedule vs sales, drawer trend, recipe variance, gift liability, training leftovers. Pay period: hours and CC tips vs cash-at-close for ADP/Intuit/CSV — Summex is not payroll. Monthly: risk digest (review queue), daypart baselines, vendor price creep, Quantum fees/chargebacks when present, menu stars/dogs, HR packet reminder, unseen devices. A bar operator sees bar cost/sales; a food operator sees food; host sees the house pack. Missing key queues skipped. Email printable pack when mail is on; else inbox.",
     roles: ["owner_manager"],
     surfaces: ["reports", "settings"],
     audience: "all",

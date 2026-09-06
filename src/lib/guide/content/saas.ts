@@ -159,7 +159,6 @@ export const SAAS_TOPICS: GuideTopic[] = [
       "peer venue",
       "shared venue",
       "shared building",
-      "the laundry",
     ],
     blocks: [
       why(
@@ -168,7 +167,7 @@ export const SAAS_TOPICS: GuideTopic[] = [
       ul(
         "Single operator — one entity, one merchant, one menu.",
         "Host + tenants — a host subscriber plus guest operators. The host may sell, issue gift, and take a cut. Each entity is its own Quantum Payments merchant.",
-        "Shared venue (peers) — a named building only (example: The Laundry). Two or more independent operators. No host merchant, no host menu, no host gift product required. Venue admin holds floor, devices, guest branding, and who may see whom.",
+        "Shared venue (peers) — a named building only. Two or more independent operators (bar operator, food operator). No host merchant, no host menu, no host gift product required. Venue admin holds floor, devices, guest branding, and who may see whom.",
       ),
       steps(
         "In Get-a-price or onboarding, pick the model that matches the building.",
@@ -342,8 +341,8 @@ export const SAAS_TOPICS: GuideTopic[] = [
       ),
       ul(
         "No PIN 0000 tenant. Floor PIN exists only after you add staff.",
-        "Platform Admin signs in with username/email and password. The Laundry shared venue may already be listed (no staff). Other customer orgs appear after onboarding.",
-        "Test path: open The Laundry and add users on the platform, or intake → quote → contract if required → wizard → org + location → owner invite → Open POS.",
+        "Platform Admin signs in with username/email and password. A shared-venue training house may already be listed (no staff). Other customer orgs appear after onboarding.",
+        "Test path: open the shared venue and add users on the platform, or intake → quote → contract if required → wizard → org + location → owner invite → Open POS.",
       ),
       steps(
         "From the public site, Get pricing.",
@@ -372,7 +371,7 @@ export const SAAS_TOPICS: GuideTopic[] = [
         "Platform Admin manages live tenants and the prospect pipeline. Fake POS rooms are not a product surface.",
       ),
       steps(
-        "Sign in as Admin (password). The Laundry shared venue may already be listed with no staff. Add users on the platform.",
+        "Sign in as Admin (password). A shared-venue training house may already be listed with no staff. Add users on the platform.",
         "Use Pipeline for intake → quote → contract → setup.",
         "When a location exists, Open POS. Floor PIN is for that location’s staff. Training vs live is on the tenant row.",
       ),

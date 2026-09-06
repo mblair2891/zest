@@ -160,7 +160,7 @@ export function isHostPrivileged(
   return !emp.operatorId || emp.operatorId === HOST_SCOPE;
 }
 
-/** Login scope: host | Steam | Diamond | … */
+/** Login scope: host | bar operator | food operator | … */
 export function subjectIdForEmployee(
   emp: Pick<Employee, "role" | "operatorId"> | null | undefined,
 ): string {

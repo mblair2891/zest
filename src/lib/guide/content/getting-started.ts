@@ -25,7 +25,7 @@ export const GETTING_STARTED_TOPICS: GuideTopic[] = [
         "Summex is the hospitality operating system for a single restaurant or bar, a host venue with multiple operators, or a multi-unit group. Powered by Quantum Reach. Guest cards run through Quantum Payments. Gift cards stay on the first-party Summex ledger. Software billing is separate from card processing.",
       ),
       p(
-        "The first customer location is created through SaaS onboarding. A shared-venue training house named The Laundry may already exist (Steam Distillery + Diamond House BBQ) with no staff — add people on the platform. There are no public demo houses and no PIN 0000 catalog.",
+        "The first customer location is created through SaaS onboarding. A shared-venue training house may already exist (bar operator + food operator) with no staff — add people on the platform. There are no public demo houses and no PIN 0000 catalog.",
       ),
       shot(
         "Guide overlay — search, role tabs, and a topic on the right.",
@@ -36,7 +36,7 @@ export const GETTING_STARTED_TOPICS: GuideTopic[] = [
         "Training week: the real POS with Quantum Payments sandbox. Live cards wait for an approved Quantum application and an enrolled reader.",
         "Floor PIN signs a person onto this station. Clock in / out is Labor. Server closeout is Cash — none of those are the same action.",
         "Examples in this guide use Host Venue, Operator A, Operator B — never a live customer name.",
-        "Revision · 6 Sep 2026 — Subscriber-facing white paper.",
+        "Revision · 6 Sep 2026 — Generic product copy (food operator / bar operator / shared venue).",
       ),
       steps(
         "Tap Guide or “?” in the header (POS and platform) — or open /guide from the marketing site (operations only, not a SaaS user manual).",
@@ -209,12 +209,12 @@ export const GETTING_STARTED_TOPICS: GuideTopic[] = [
     id: "empty-start",
     chapterId: "getting-started",
     title: "First location (SaaS onboard only)",
-    summary: "Customer houses appear after SaaS onboarding. The Laundry peer venue has no staff until you add people.",
+    summary: "Customer houses appear after SaaS onboarding. A shared-venue training house has no staff until you add people.",
     roles: ["platform_admin", "owner_manager", "host_operator"],
-    keywords: ["empty", "first org", "bootstrap", "no demo", "getting started", "onboard", "the laundry"],
+    keywords: ["empty", "first org", "bootstrap", "no demo", "getting started", "onboard", "shared venue"],
     blocks: [
       why(
-        "Production Summex does not ship a demo restaurant. Customer tenants appear after onboarding. A shared-venue training house named The Laundry may already be listed — it has no staff.",
+        "Production Summex does not ship a demo restaurant. Customer tenants appear after onboarding. A shared-venue training house may already be listed — it has no staff.",
       ),
       steps(
         "Open Get pricing on the public site. Describe the house. Submit for a quote.",
@@ -222,10 +222,10 @@ export const GETTING_STARTED_TOPICS: GuideTopic[] = [
         "SaaS completes the host: org, location, owner invite, plan. The host then invites operator tenants.",
         "Sign in with the invited work email. Open POS for that location. It starts in Training (sandbox cards).",
         "If a newly onboarded house has no staff, location-only PINs may be hashed in (0000 manager … 5555 busser). Change them before guests. PIN is not the time clock.",
-        "The Laundry peer venue skips that roster. Add users on the platform, then run the training loop (seat → order → Order Display → cash or sandbox card → bus).",
+        "A shared-venue training house skips that roster. Add users on the platform, then run the training loop (seat → order → Order Display → cash or sandbox card → bus).",
       ),
       warn(
-        "There are no public demo sites. The Laundry is a real training venue with no seeded logins. Marketing is Get a price, Guide, Demo, Contact — no login link.",
+        "There are no public demo sites. Marketing is Get a price, Guide, Demo, Contact — no login link. Add staff on the platform; there are no seeded logins.",
       ),
       cta(
         "/get-pricing",
@@ -239,22 +239,22 @@ export const GETTING_STARTED_TOPICS: GuideTopic[] = [
     id: "partner-demo",
     chapterId: "getting-started",
     title: "No seeded demo house",
-    summary: "Partner-demo logins are retired. The Laundry is a real shared venue with no staff.",
+    summary: "Partner-demo logins are retired. A shared venue training house has no staff until you add people.",
     visibility: "platform",
     roles: ["platform_admin"],
-    keywords: ["partner demo", "the laundry", "demo", "seed", "pin 0000"],
+    keywords: ["partner demo", "shared venue", "demo", "seed", "pin 0000"],
     blocks: [
       why(
         "There is no skip-password picker and no PIN 0000 catalog. Sign in is username and password. Floor PINs exist only after you create staff.",
       ),
       steps(
         "Sign in at /login with your account password (Platform Admin is the only seeded login).",
-        "Open The Laundry from Tenants (the row opens venue settings) — or complete Get pricing → quote → onboarding for a new house.",
+        "Open the training house from Tenants (the row opens venue settings) — or complete Get pricing → quote → onboarding for a new house.",
         "Add users on the platform. The peer venue seed does not create staff, PINs, or owner logins.",
         "Open POS. Unique floor PINs belong to the people you added.",
       ),
       warn(
-        "Historical partner-demo Laundry logins are gone. Factory reset keeps Platform Admin, then reseeds The Laundry with no staff.",
+        "Historical partner-demo logins are gone. Factory reset keeps Platform Admin, then reseeds a shared-venue training house with no staff.",
       ),
       related("empty-start", "laundry-test-venue", "onboarding-wizard", "factory-reset", "go-live-ops"),
     ],
@@ -262,24 +262,24 @@ export const GETTING_STARTED_TOPICS: GuideTopic[] = [
   topic({
     id: "laundry-test-venue",
     chapterId: "getting-started",
-    title: "The Laundry — shared venue, no staff",
-    summary: "Peer venue seed: Steam Distillery + Diamond House BBQ. Add users on the platform.",
+    title: "Shared venue training house — no staff",
+    summary: "Peer venue: bar operator + food operator. Add users on the platform.",
     visibility: "platform",
     roles: ["platform_admin", "owner_manager", "host_operator"],
-    keywords: ["test venue", "the laundry", "peer venue", "shared venue", "steam", "diamond", "staff"],
+    keywords: ["test venue", "peer venue", "shared venue", "bar operator", "food operator", "staff"],
     openView: "hall",
     blocks: [
       why(
-        "The first real test house is a shared building, not a landlord-brand POS. Guest branding is The Laundry. Two independent operators. No host merchant, host menu, or host gift.",
+        "The first real test house is a shared building, not a landlord-brand POS. Guest branding is the building name. Two independent operators. No host merchant, host menu, or host gift.",
       ),
       p(
-        "Steam Distillery is the bar (drinks, bar ODS). Diamond House BBQ is the kitchen (food, kitchen ODS). One guest check; lines owned by entity; receipt grouped by vendor. Training / sandbox cards.",
+        "The bar operator sells drinks (bar ODS). The food operator sells plates (kitchen ODS). One guest check; lines owned by entity; receipt grouped by vendor. Training / sandbox cards.",
       ),
       steps(
-        "Sign in as Platform Admin. Tenants → click The Laundry. That opens the venue URL (the-laundry.summex.app, or /v/the-laundry in preview). Steam Distillery + Diamond House BBQ. No host merchant required.",
+        "Sign in as Platform Admin. Tenants → click the shared venue. That opens the venue URL. Bar operator + food operator. No host merchant required.",
         "Add users on the platform (owners, floor PINs, operator POCs). The seed has no staff.",
         "QR: table tents + ticket QR, reorder after a staff-opened check, pay/split. Full self-serve is off. Order food and drinks.",
-        "Ticket a drink and a plate. Bar ODS gets Steam. Kitchen ODS gets Diamond. Guest pays once.",
+        "Ticket a drink and a plate. Bar ODS gets the bar operator. Kitchen ODS gets the food operator. Guest pays once.",
         "Cash drawers / K11 come later. Do not expect seeded banks.",
       ),
       warn(

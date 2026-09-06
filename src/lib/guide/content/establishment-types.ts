@@ -73,7 +73,7 @@ export const ESTABLISHMENT_TYPE_TOPICS: GuideTopic[] = [
         "When more than one operator feeds the same guest, they still present one check. Each operator is its own Quantum Payments merchant. They do not need a landlord company that also sells.",
       ),
       p(
-        "Two models. Host + tenants: a host subscriber owns the floor and may sell. Shared venue: a named building only (example: The Laundry) — no host merchant, menu, or gift product. Lines keep their operator. Kitchen and bar rails stay apart. The guest tenders once; Finix splits; receipts group by vendor.",
+        "Two models. Host + tenants: a host subscriber owns the floor and may sell. Shared venue: a named building only — no host merchant, menu, or gift product. Lines keep their operator. Kitchen and bar rails stay apart. The guest tenders once; Finix splits; receipts group by vendor.",
       ),
       ul(
         "Venue name — guest-facing on the receipt (the building). Not automatically a merchant.",

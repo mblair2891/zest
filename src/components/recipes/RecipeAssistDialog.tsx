@@ -221,7 +221,7 @@ export function RecipeAssistDialog({
               value={text}
               onChange={setText}
               rows={5}
-              placeholder="2 oz Tito’s, 1 oz lime, 0.75 oz triple sec. Shake, rocks, salt rim."
+              placeholder="2 oz house vodka, 1 oz lime, 0.75 oz triple sec. Shake, rocks, salt rim."
             />
             <Button disabled={busy} onClick={() => void analyze()}>
               {busy ? "Reading…" : "Analyze"}

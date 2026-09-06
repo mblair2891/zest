@@ -181,7 +181,7 @@ export function TenantInvitesPanel({ write }: { write: boolean }) {
           <div className="grid gap-2 sm:grid-cols-2">
             <label className="text-sm">
               <span className="mb-1 block text-muted-foreground">Display name</span>
-              <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="Steam Distillery" />
+              <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="Bar operator" />
             </label>
             <label className="text-sm">
               <span className="mb-1 block text-muted-foreground">Type</span>

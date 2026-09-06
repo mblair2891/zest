@@ -485,7 +485,7 @@ export function SetupOnboardingWizard({ token }: { token: string }) {
                       const ops =
                         l.operators.length >= 2
                           ? l.operators
-                          : [emptyOp("Steam Distillery"), emptyOp("Diamond House BBQ")];
+                          : [emptyOp("Bar operator"), emptyOp("Food operator")];
                       locations[i] = {
                         ...l,
                         operatingModel: "peer_venue",

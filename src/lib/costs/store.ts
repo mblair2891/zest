@@ -77,7 +77,7 @@ function seedSkus(): CostSku[] {
   return [
     {
       id: "sku_titos",
-      name: "Tito's Handmade Vodka 1.75L",
+      name: "Vodka 1.75L",
       category: "liquor",
       entityId: HOST_SCOPE,
       unit: "bottle",
@@ -89,7 +89,7 @@ function seedSkus(): CostSku[] {
       parMax: 12,
       costCents: 2899,
       supplierId: "sup_sgws",
-      supplierSku: "TITOS-175",
+      supplierSku: "VODKA-175",
       leadDays: 2,
     },
     {
@@ -163,9 +163,9 @@ function seedSuppliers(): CostSupplier[] {
   return [
     {
       id: "sup_sgws",
-      name: "Southern Glazer's",
-      contacts: [{ name: "Orders", email: "orders@sgws.example" }],
-      accountNumber: "SG-4410",
+      name: "Spirits supplier",
+      contacts: [{ name: "Orders", email: "" }],
+      accountNumber: "",
       terms: "Net 14",
       entityIds: [],
       orderMethod: "email",
@@ -176,9 +176,9 @@ function seedSuppliers(): CostSupplier[] {
     },
     {
       id: "sup_sysco",
-      name: "Sysco",
-      contacts: [{ name: "Ops", email: "ops@sysco.example" }],
-      accountNumber: "SYS-902",
+      name: "Foodservice supplier",
+      contacts: [{ name: "Ops", email: "" }],
+      accountNumber: "",
       terms: "Net 7",
       entityIds: [],
       orderMethod: "api",
@@ -407,8 +407,8 @@ export const useCostStore = create<CostState>()(
             get().skus.find((s) =>
               s.name.toLowerCase().includes(l.name.trim().toLowerCase().slice(0, 12)),
             ) ||
-            (/\btito/i.test(l.name)
-              ? get().skus.find((s) => /tito/i.test(s.name))
+            (/\bvodka\b/i.test(l.name)
+              ? get().skus.find((s) => /vodka/i.test(s.name))
               : undefined);
           return {
             id: uid("il"),

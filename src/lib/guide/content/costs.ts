@@ -114,7 +114,7 @@ export const COST_TOPICS: GuideTopic[] = [
         "Record why: event, owner take-home, breakage, mis-ring, or a theft review — plus a note.",
       ),
       ul(
-        "Steam usage gaps use Steam tickets + Steam invoices only. Diamond uses Diamond food invoices + food tickets. Owned-lines basis.",
+        "A bar operator’s usage gaps use that operator’s tickets and invoices only. A food operator uses food invoices and food tickets. Owned-lines basis.",
         "Help can explain the flag: receipts vs recipe use, not a verdict.",
         "Counts (full/partial) and waste/breakage logs feed expected on-hand.",
       ),

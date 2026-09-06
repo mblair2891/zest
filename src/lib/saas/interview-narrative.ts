@@ -184,7 +184,7 @@ function isBrandName(raw: string): boolean {
   return tokens.length === 1 && tokens[0]!.length >= 4;
 }
 
-/** Named bar-side brand + named kitchen brand (Steam Distillery + Diamond House BBQ). */
+/** Named bar-side brand + named kitchen brand in one building. */
 function twoNamedBarKitchen(corpus: string): boolean {
   const re =
     /\b([a-z][a-z'&-]*(?:\s+[a-z][a-z'&-]*){0,3})\s+(bar|distillery|brewery|taproom|lounge|cocktail)\b[\s\S]{0,80}\b(?:and|\+)\b[\s\S]{0,80}\b([a-z][a-z'&-]*(?:\s+[a-z][a-z'&-]*){0,3})\s+(kitchen|kitchens|bbq|barbecue|grill|smokehouse)\b/;

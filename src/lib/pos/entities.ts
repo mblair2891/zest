@@ -6,7 +6,6 @@ import type {
 } from "./types";
 import { EMPLOYEES } from "./seed";
 import { ROLE_LABEL } from "./rbac";
-import { isDevDemoClient } from "@/lib/saas/flags";
 import { hashPin } from "./pin";
 
 export interface EntityStaffSpec {
@@ -632,19 +631,7 @@ export const SAAS_ENTITY: SaasEntity = {
 export const ALL_ENTITIES: EntityDef[] = [...VENUE_ENTITIES, SAAS_ENTITY];
 
 export function venueById(id: string | undefined): VenueEntity | undefined {
-  const found = VENUE_ENTITIES.find((e) => e.id === id);
-  if (!found) return undefined;
-  if (found.id === "food_hall" && isDevDemoClient()) {
-    return {
-      ...found,
-      name: "The Laundry (TEST)",
-      venueName: "The Laundry",
-      address: "TEST · The Laundry Group",
-      tagline: "Steam Distillery + Diamond House BBQ",
-      blurb: "TEST host venue. One guest check branded The Laundry. Bar: Steam Distillery. Kitchen: Diamond House BBQ.",
-    };
-  }
-  return found;
+  return VENUE_ENTITIES.find((e) => e.id === id);
 }
 
 export function venuesForPicker(): VenueEntity[] {

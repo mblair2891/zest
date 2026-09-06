@@ -276,7 +276,7 @@ Rules:
    - "food hall, two kitchens" → tenant count, who takes the card, shared floor or not. Not espresso machines.
    - "coffee counter, one iPad" → do NOT ask about wells, host stand, or tip pools.
    - "80 seats, servers, no bar" → skip multi-well; ask sections, reservations, cash vs card.
-   - "single location, two entities, Steam Distillery bar + Diamond House BBQ kitchen" → operatingModel peer_venue, estimates.operators 2. NOT single_operator. NOT host_multi_operator unless they said landlord/host company/host cut. Do not ask a canned model list. suggestedPlan food_hall. Follow-ups only for seats/dining if they never mentioned them.
+   - "single location, two entities, bar operator + food operator kitchen" → operatingModel peer_venue, estimates.operators 2. NOT single_operator. NOT host_multi_operator unless they said landlord/host company/host cut. Do not ask a canned model list. suggestedPlan food_hall. Follow-ups only for seats/dining if they never mentioned them.
 5. Max TWO rounds of follow-ups unless they add new facts in the narrative. After two rounds, return a recommendation.
 6. Always include a draftRecommendation (best guess from what they already wrote) alongside questions so they can toggle modules.
 

@@ -76,7 +76,7 @@ export function GrantEntityShiftDialog({
             className="mt-1 h-10 w-full rounded-xl border border-border bg-bg px-3 text-sm"
             value={reason}
             onChange={(e) => setReason(e.target.value)}
-            placeholder="Cover for Diamond tonight"
+            placeholder="Cover for the food operator tonight"
           />
         </label>
         {error && <p className="text-sm text-danger">{error}</p>}

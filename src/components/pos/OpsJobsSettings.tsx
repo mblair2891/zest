@@ -52,8 +52,8 @@ export function OpsJobsSettings({ write, persist }: { write: boolean; persist: (
       <p className="mb-3 text-xs text-muted-foreground">
         Hourly while open, then nightly, weekly, pay period, and monthly packs. Real xAI when
         keyed; missing key queues skipped — no invented insights. Never auto clock-out. Never
-        invent Quantum/Finix charges. Steam-style bar entities see bar cost/sales; Diamond-style
-        food entities see food; host sees the house pack.
+        invent Quantum/Finix charges. A bar operator sees bar cost/sales; a food operator
+        sees food; host sees the house pack.
       </p>
       <label className="mb-3 flex items-center gap-2 text-sm">
         <input

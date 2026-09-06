@@ -160,7 +160,7 @@ const MATRIX: { domain: string; items: string[] }[] = [
       "Purchasing / POs",
       "Recipes & costing",
       "Cycle counts",
-      "Distributor bridges (Sysco)",
+      "Distributor bridges",
       "Bev inventory",
       "Safe drops / petty cash",
     ],

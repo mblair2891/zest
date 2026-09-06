@@ -294,7 +294,7 @@ function InvoicePanel() {
           value={text}
           onChange={setText}
           rows={5}
-          placeholder="Paste invoice text, speak a voice note, or describe: 10 Tito's 1.75L @ $28.99 from Southern Glazer's"
+          placeholder="Paste invoice text, speak a voice note, or describe: 10 bottles house vodka 1.75L @ $28.99"
         />
         <Button disabled={busy || !canPost} onClick={() => void runExtract()}>
           <FileUp className="h-3.5 w-3.5" />
@@ -581,7 +581,7 @@ function RecipePanel() {
         })}
         {visible.length === 0 && (
           <p className="text-sm text-muted-foreground">
-            Describe a cocktail or plate, or attach SKUs (e.g. 45ml Tito’s per highball).
+            Describe a cocktail or plate, or attach SKUs (e.g. 45ml house vodka per highball).
           </p>
         )}
       </div>
@@ -733,7 +733,7 @@ function AlertPanel() {
       {visibleEx.length === 0 && (
         <p className="text-sm text-muted-foreground">
           No variance items. Post an invoice and sell recipe items, then scan.
-          Steam flags use Steam tickets and Steam invoices only.
+          A bar operator’s flags use that operator’s tickets and invoices only.
         </p>
       )}
       {visibleEx.map((e) => (
