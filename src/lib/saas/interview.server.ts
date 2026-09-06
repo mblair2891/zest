@@ -2,8 +2,8 @@ import { getSql } from "@/lib/db";
 import {
   applyRecommendation,
   followUpRoundCount,
-  heuristicInterviewTurn,
   interviewSystemPrompt,
+  normalizeInterviewTurn,
   parseRecommendation,
 } from "./interview";
 import type {
@@ -201,17 +201,13 @@ export async function runInterviewTurn(opts: {
     source = "heuristic";
   }
 
-  if (forceRecommend && turn?.type === "questions") {
-    turn = null;
-  }
-
-  if (!turn) {
-    turn = heuristicInterviewTurn({ freeText, messages, forceRecommend });
-    source = "heuristic";
-  }
-  if (forceRecommend && turn.type === "questions") {
-    turn = heuristicInterviewTurn({ freeText, messages, forceRecommend: true });
-  }
+  turn = normalizeInterviewTurn(turn, {
+    freeText,
+    messages,
+    forceRecommend,
+    source: turn?.source ?? source,
+  });
+  source = turn.source;
 
   if (turn.type === "questions") {
     const labeled = turn.questions

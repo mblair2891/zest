@@ -71,10 +71,16 @@ export function LiveQuotePanel({
           onClick={() => undefined}
         />
         <ToggleChip
-          on={full && !multi}
+          on={answers.modules.tableService || (full && !multi)}
           label={`Full service floor / host / sections / closeout · ${formatCurrency(catalog.fullServiceCents)} / loc`}
-          hint="Dining room, reservations, waitlist, server closeout."
-          onClick={() => onChange(applyQuoteToggles(answers, { fullService: !(full && !multi), multiOp: false }))}
+          hint="Dining room, reservations, waitlist, server closeout. Stacks with shared venue when you have seated dining."
+          onClick={() =>
+            onChange(
+              applyQuoteToggles(answers, {
+                fullService: !(answers.modules.tableService || (full && !multi)),
+              }),
+            )
+          }
         />
         <ToggleChip
           on={multi && !peer}

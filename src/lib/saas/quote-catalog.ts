@@ -322,7 +322,8 @@ export function catalogFeatureList(answers: IntakeAnswers): string[] {
   } else if (isMultiOperatorHouse(answers)) {
     out.push("Multi-operator / hall host — one guest check, per-entity merchants");
     out.push(`${tenantEntityCount(answers)} tenant operator${tenantEntityCount(answers) === 1 ? "" : "s"}`);
-  } else if (wantsFullServiceFloor(answers)) {
+  }
+  if (answers.modules.tableService || (!isMultiOperatorHouse(answers) && wantsFullServiceFloor(answers))) {
     out.push("Full service floor, host stand, sections, closeout");
   }
   if (wantsOpsPack(answers)) {
@@ -401,6 +402,18 @@ export function catalogSoftwareLines(
       );
     }
   } else if (full) {
+    items.push(
+      line(
+        "full_service",
+        "plan",
+        "Full service floor / host / sections / closeout",
+        locN,
+        catalog.fullServiceCents,
+      ),
+    );
+  }
+
+  if (multi && answers.modules.tableService && catalog.fullServiceCents > 0) {
     items.push(
       line(
         "full_service",
@@ -560,9 +573,9 @@ export function applyQuoteToggles(
   if (patch.fullService === true) {
     next.modules.tableService = true;
     next.operating.hostStand = true;
-  } else if (patch.fullService === false && next.operating.model === "single") {
+  } else if (patch.fullService === false) {
     next.modules.tableService = false;
-    next.operating.hostStand = false;
+    if (next.operating.model === "single") next.operating.hostStand = false;
   }
   if (patch.opsPack === true) {
     next.modules.inventory = true;
