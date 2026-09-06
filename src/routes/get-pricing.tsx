@@ -2,6 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { MarketingShell } from "@/components/marketing/MarketingShell";
 import { IntakeWizard } from "@/components/saas/IntakeWizard";
 
+/** Interview + live quote. Not `/whitepaper`. */
 export const Route = createFileRoute("/get-pricing")({
   validateSearch: (s: Record<string, unknown>): { t?: string } => {
     const t = typeof s.t === "string" && s.t.length > 0 ? s.t : undefined;

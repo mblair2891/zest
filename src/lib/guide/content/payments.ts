@@ -215,9 +215,9 @@ export const PAYMENT_TOPICS: GuideTopic[] = [
         "Open White paper from the marketing header or footer (no login). Print from the browser for a PDF. Revision · 6 Sep 2026 matches Guide v2026.10.53. It is written for prospective subscribers: one guest check, floor, multi-entity, 5% cash-discount processing story, plans from Get a price. No CRM, pipeline, factory reset, or how to log in. Internal operations notes stay off the public site.",
       ),
       steps(
-        "Open White paper from Get a price, Guide, Demo, White paper on summex.app.",
-        "Use Print / PDF in the toolbar.",
-        "Start from Get a price on summex.app — not a login on the sales site.",
+        "Open White paper from the marketing header (White paper). That page is the paper — not Get a price.",
+        "Get a price is a different page: the interview and live quote.",
+        "Print from the browser if you want a PDF. Start a quote from Get a price on summex.app.",
       ),
       related("system-ledger", "quantum-payments", "host-capture", "receipts-by-vendor", "gift-cards", "device-roles", "cash-handling", "location-training"),
     ],
