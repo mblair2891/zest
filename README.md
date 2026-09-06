@@ -23,7 +23,7 @@ UI path: [`docs/saas-onboarding.md`](docs/saas-onboarding.md). Money rules: [`do
 
 ## What this is
 
-- **Marketing** (`summex.app` / www) — homepage, Get a price, Guide, Demo. Log in → `https://app.summex.app/login`.
+- **Marketing** (`summex.app` / www) — homepage, Get a price, Guide, Demo, Contact. No login link.
 - **Console** (`app.summex.app`) — `/login`, `/dashboard`, CRM, pipeline, tenants, onboarding, owner venue, `/station/:role`.
 - **Stations** — pair QR and bookmarks on `app.summex.app`. Tenant is chosen after login.
 - **API** (`api.summex.app` / `/api`).

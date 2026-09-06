@@ -1,7 +1,6 @@
 import { Component, type ErrorInfo, type ReactNode } from "react";
 import type { ErrorComponentProps } from "@tanstack/react-router";
 import { PRODUCT_NAME } from "@/lib/platform/brand";
-import { platformLoginHref } from "@/lib/platform/hosts";
 
 function HomeFallback({ error }: { error?: Error | null }) {
   return (
@@ -17,23 +16,23 @@ function HomeFallback({ error }: { error?: Error | null }) {
       </h1>
       <p className="max-w-md text-sm leading-relaxed" style={{ color: "#9a9488" }}>
         {error?.message
-          ? "The homepage hit a snag. Use Log in, Get a price, or the Guide."
+          ? "The homepage hit a snag. Use Get a price, the Guide, or Contact."
           : "Something went wrong loading the homepage."}
       </p>
       <div className="flex flex-wrap items-center justify-center gap-3">
         <a
-          href={platformLoginHref()}
+          href="/get-pricing"
           className="inline-flex h-12 min-w-36 items-center justify-center rounded-sm px-6 text-xs font-semibold tracking-widest uppercase"
           style={{ background: "#f7f6f3", color: "#0a0a0a" }}
         >
-          Log in
+          Get a price
         </a>
         <a
-          href="/get-pricing"
+          href="/contact"
           className="inline-flex h-12 min-w-36 items-center justify-center rounded-sm border px-6 text-xs font-semibold tracking-widest uppercase"
           style={{ borderColor: "rgb(196 184 165 / 0.4)", color: "#f7f6f3" }}
         >
-          Get a price
+          Contact
         </a>
         <a
           href="/guide"

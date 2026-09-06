@@ -8,6 +8,7 @@ const NAV = [
   { to: "/get-pricing" as const, label: "Get a price" },
   { to: "/guide" as const, label: "Guide" },
   { to: "/demo" as const, label: "Demo" },
+  { to: "/contact" as const, label: "Contact" },
 ];
 
 export function MarketingShell({ children }: { children: ReactNode }) {
@@ -31,7 +32,6 @@ export function MarketingShell({ children }: { children: ReactNode }) {
             ))}
           </nav>
           <MarketingAuthCtas
-            ghostClass="px-3 py-2 text-sm text-muted-foreground hover:text-foreground"
             solidClass="rounded-lg bg-primary px-3 py-2 text-sm font-semibold text-primary-foreground"
           />
         </div>

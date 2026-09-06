@@ -1,5 +1,4 @@
-import { MarketingLoginLink } from "@/components/marketing/AuthCtas";
-import { LandingCta, LandingFrame, LandingLoginCta } from "@/components/marketing/LandingFrame";
+import { LandingCta, LandingFrame } from "@/components/marketing/LandingFrame";
 
 /** Sales demo — not a seeded restaurant and not the platform console. */
 export function DemoCatalogPage() {
@@ -15,17 +14,14 @@ export function DemoCatalogPage() {
         <p className="mt-5 max-w-2xl text-sm leading-relaxed text-muted-foreground sm:text-base">
           There is no public PIN pad and no seeded restaurant on this site. A
           walkthrough happens after you have a house — training uses Quantum
-          Payments sandbox. Get a price to start, or log in if you already have
-          an account.
+          Payments sandbox. Get a price to start.
         </p>
         <ul className="mt-10 space-y-4 text-sm leading-relaxed text-muted-foreground">
           <li>
             <span className="font-medium text-ivory">Order / ODS / host</span>
             {" — "}
-            three station screens. Staff PIN on{" "}
-            <span className="text-ivory">/?station=</span> or{" "}
-            <span className="text-ivory">/station/order</span> — never the sales
-            home.
+            three station screens. Staff PIN on the console host, never this
+            sales site.
           </li>
           <li>
             <span className="font-medium text-ivory">One guest check</span>
@@ -45,13 +41,10 @@ export function DemoCatalogPage() {
           <LandingCta to="/guide" tone="ghost">
             Guide
           </LandingCta>
-          <LandingLoginCta />
+          <LandingCta to="/contact" tone="ghost">
+            Contact
+          </LandingCta>
         </div>
-        <p className="mt-8 text-xs text-muted-foreground">
-          Already onboarded?{" "}
-          <MarketingLoginLink className="text-champagne hover:text-ivory" />{" "}
-          on app.summex.app — not this page.
-        </p>
       </main>
     </LandingFrame>
   );

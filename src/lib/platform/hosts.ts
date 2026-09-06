@@ -389,7 +389,7 @@ export function staffGuestAccessPoints(opts?: {
     {
       id: "marketing",
       label: "www · marketing",
-      hint: "Public site: Get a price, Guide, Demo, Log in → app.summex.app",
+      hint: "Public site: Get a price, Guide, Demo, Contact — no login",
       href: absoluteMarketingHref("/"),
       surface: "marketing",
     },
@@ -450,6 +450,7 @@ export const MARKETING_PATHS = [
   "/demo",
   "/whitepaper",
   "/privacy",
+  "/contact",
 ] as const;
 
 export { isPlatformPath, marketingToPlatformHref, hostSplitActive };

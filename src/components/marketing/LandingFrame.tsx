@@ -1,15 +1,15 @@
 import type { ReactNode } from "react";
 import { Link } from "@tanstack/react-router";
-import { MarketingAuthCtas, MarketingLoginLink } from "@/components/marketing/AuthCtas";
+import { MarketingAuthCtas } from "@/components/marketing/AuthCtas";
 import { SummexMark, SummexWordmark } from "@/components/brand/SummexMark";
 import { POWERED_BY, PRODUCT_NAME, PRODUCT_TAGLINE } from "@/lib/platform/brand";
 import { cn } from "@/lib/utils";
-import { platformLoginHref } from "@/lib/platform/hosts";
 
 const NAV = [
   { to: "/get-pricing" as const, label: "Get a price" },
   { to: "/guide" as const, label: "Guide" },
   { to: "/demo" as const, label: "Demo" },
+  { to: "/contact" as const, label: "Contact" },
 ];
 
 export function LandingFrame({ children }: { children: ReactNode }) {
@@ -42,7 +42,6 @@ export function LandingFrame({ children }: { children: ReactNode }) {
               {n.label}
             </Link>
           ))}
-          <MarketingLoginLink className="shrink-0 hover:text-champagne" />
         </nav>
       </header>
       <div className="relative z-10">{children}</div>
@@ -62,7 +61,9 @@ export function LandingFrame({ children }: { children: ReactNode }) {
             <Link to="/demo" className="hover:text-champagne">
               Demo
             </Link>
-            <MarketingLoginLink className="hover:text-champagne" />
+            <Link to="/contact" className="hover:text-champagne">
+              Contact
+            </Link>
             <Link to="/guide" className="hover:text-champagne">
               Guide
             </Link>
@@ -89,7 +90,8 @@ export type LandingHref =
   | "/pricing"
   | "/demo"
   | "/features"
-  | "/whitepaper";
+  | "/whitepaper"
+  | "/contact";
 
 export function LandingCta({
   to,
@@ -122,19 +124,5 @@ export function LandingCta({
     <Link to={to ?? "/get-pricing"} className={cls}>
       {children}
     </Link>
-  );
-}
-
-export function LandingLoginCta({
-  tone = "ghost",
-  className,
-}: {
-  tone?: "solid" | "ghost";
-  className?: string;
-}) {
-  return (
-    <LandingCta href={platformLoginHref()} tone={tone} className={className}>
-      Log in
-    </LandingCta>
   );
 }

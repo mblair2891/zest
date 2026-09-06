@@ -269,7 +269,7 @@ export const SAAS_TOPICS: GuideTopic[] = [
         "Each house gets a stable URL from its venue name. Staff pair tablets and guests scan QR on that host — not a new DNS record per tenant.",
       ),
       ul(
-        "www / marketing (summex.app) — Get a price, Guide, Demo, Log in → https://app.summex.app/login. The `/` path is the sales landing only — never POS or the control plane.",
+        "www / marketing (summex.app) — Get a price, Guide, Demo, Contact. No login link. The `/` path is the sales landing only — never POS or the control plane.",
         "Venue host — https://{slug}.summex.app. Assigned at onboard from the venue name (editable before publish). Reserved labels (www, app, login, …) are blocked.",
         "Path fallback — /v/{slug} on preview and localhost. Same app; no wildcard DNS required there.",
         "Staff pair QR and station bookmarks use https://app.summex.app/station (and /station/order). Table QR for guests can stay on the venue host.",

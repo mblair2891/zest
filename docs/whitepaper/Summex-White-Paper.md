@@ -3,7 +3,7 @@
 **Powered by Quantum Reach**
 
 White paper · October 2026  
-**Revision · 5 Sep 2026** — Marketing on summex.app, console on app.summex.app. Aligns with Operators Guide v2026.10.51.
+**Revision · 6 Sep 2026** — Marketing has no login; console is app.summex.app. Aligns with Operators Guide v2026.10.52.
 
 summex.app  
 Guest cards: **Quantum Payments** only
@@ -45,7 +45,7 @@ Summex’s answer is one system for **service and money movement**.
 
 ## 3. What Summex is
 
-Summex is a **single application** on two production hosts. **summex.app** is Get a price, Guide, Demo, and Log in — Log in opens **https://app.summex.app/login**. The sales host never shows a dashboard, Open POS, or pipeline. Organization and location are chosen after username/password on the console host (no Google/X): Platform Admin lands on the control plane; a venue owner lands on that house. Floor work is PIN on `app.summex.app/?station=` or `/station/:role`. Pair QR uses that host. This paper does not document SaaS admin, CRM, or pipeline internals.
+Summex is a **single application** on two production hosts. **summex.app** is Get a price, Guide, Demo, and Contact — no login, no console. Operators bookmark **https://app.summex.app/login**. The sales host never shows a dashboard, Open POS, or pipeline. Organization and location are chosen after username/password on the console host (no Google/X): Platform Admin lands on the control plane; a venue owner lands on that house. Floor work is PIN on `app.summex.app/?station=` or `/station/:role`. Pair QR uses that host. This paper does not document SaaS admin, CRM, or pipeline internals.
 
 | Layer | What it does |
 |---|---|

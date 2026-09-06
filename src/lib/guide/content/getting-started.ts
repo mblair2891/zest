@@ -32,11 +32,11 @@ export const GETTING_STARTED_TOPICS: GuideTopic[] = [
         "Operators Guide with table of contents on the left and an article pane on the right.",
       ),
       ul(
-        "Public site (summex.app): Get a price, Guide, Demo, Log in. Log in opens app.summex.app. No dashboard, Open POS, or pipeline on the sales host. Guide is operations-only — not a SaaS user manual.",
+        "Public site (summex.app): Get a price, Guide, Demo, Contact. No Log in, dashboard, or Open POS on the sales host. Operators bookmark https://app.summex.app/login themselves. Guide is operations-only — not a SaaS user manual.",
         "Training week: the real POS with Quantum Payments sandbox. Live cards wait for an approved Quantum application and an enrolled reader.",
         "Floor PIN signs a person onto this station. Clock in / out is Labor. Server closeout is Cash — none of those are the same action.",
         "Examples in this guide use Host Venue, Operator A, Operator B — never a live customer name.",
-        "Revision · 5 Sep 2026 — Marketing on summex.app; console on app.summex.app.",
+        "Revision · 6 Sep 2026 — Marketing has no login; console is app.summex.app.",
       ),
       steps(
         "Tap Guide or “?” in the header (POS and platform) — or open /guide from the marketing site (operations only, not a SaaS user manual).",
@@ -163,7 +163,7 @@ export const GETTING_STARTED_TOPICS: GuideTopic[] = [
         "Summex is one application with two working surfaces. Mixing them up is the most common new-user stall.",
       ),
       ul(
-        "Marketing (summex.app / www) — Get a price, Guide, Demo, Log in. Log in is a single link to https://app.summex.app/login. No Go to console, Open POS, Replay workflow, dashboard, or tenant chrome on the sales host.",
+        "Marketing (summex.app / www) — Get a price, Guide, Demo, Contact. No Log in, Go to console, Open POS, Replay workflow, dashboard, or tenant chrome. Operators type https://app.summex.app/login themselves.",
         "Console (app.summex.app) — /login (username/password only, no Google/X), /dashboard, CRM, pipeline, tenants, onboarding, owner venue settings. Admin → platform dashboard. Venue owner → that house.",
         "POS — floor, order, ODS, cash, settlement, guests, after a location is open from a signed-in session.",
         "Operators Guide — public page at /guide (operations). Overlay inside the signed-in product. Exit on the public page returns to marketing home.",
@@ -225,7 +225,7 @@ export const GETTING_STARTED_TOPICS: GuideTopic[] = [
         "The Laundry peer venue skips that roster. Add users on the platform, then run the training loop (seat → order → Order Display → cash or sandbox card → bus).",
       ),
       warn(
-        "There are no public demo sites. The Laundry is a real training venue with no seeded logins. Marketing is Get a price, Guide, Demo, Log in.",
+        "There are no public demo sites. The Laundry is a real training venue with no seeded logins. Marketing is Get a price, Guide, Demo, Contact — no login link.",
       ),
       cta(
         "/get-pricing",

@@ -11,7 +11,7 @@ import {
 import { Link } from "@tanstack/react-router";
 import { SummexMark } from "@/components/brand/SummexMark";
 import { PAYMENTS_BRAND, POWERED_BY, PRODUCT_DEFINITION, PRODUCT_NAME } from "@/lib/platform/brand";
-import { LandingCta, LandingFrame, LandingLoginCta } from "./LandingFrame";
+import { LandingCta, LandingFrame } from "./LandingFrame";
 
 const PAINS = [
   {
@@ -173,7 +173,9 @@ export function HomePage() {
               <LandingCta to="/demo" tone="ghost">
                 Demo
               </LandingCta>
-              <LandingLoginCta />
+              <LandingCta to="/contact" tone="ghost">
+                Contact
+              </LandingCta>
               <Link
                 to="/guide"
                 className="inline-flex h-12 items-center px-2 text-xs font-semibold tracking-widest text-champagne uppercase transition-colors hover:text-ivory"
@@ -371,7 +373,9 @@ export function HomePage() {
           </p>
           <div className="mt-10 flex flex-wrap justify-center gap-3">
             <LandingCta to="/get-pricing">Get a price</LandingCta>
-            <LandingLoginCta />
+            <LandingCta to="/contact" tone="ghost">
+              Contact
+            </LandingCta>
             <Link
               to="/guide"
               className="inline-flex h-12 items-center px-2 text-xs font-semibold tracking-widest text-champagne uppercase transition-colors hover:text-ivory"

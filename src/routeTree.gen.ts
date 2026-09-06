@@ -33,6 +33,7 @@ import { Route as StationRouteImport } from './routes/station'
 import { Route as StationRoleRouteImport } from './routes/station.$role'
 import { Route as WhitepaperRouteImport } from './routes/whitepaper'
 import { Route as PrivacyRouteImport } from './routes/privacy'
+import { Route as ContactRouteImport } from './routes/contact'
 import { Route as ApiHealthRouteImport } from './routes/api/health'
 import { Route as BlogSlugRouteImport } from './routes/blog.$slug'
 import { Route as DemoIndexRouteImport } from './routes/demo.index'
@@ -177,6 +178,11 @@ const PrivacyRoute = PrivacyRouteImport.update({
   path: '/privacy',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ContactRoute = ContactRouteImport.update({
+  id: '/contact',
+  path: '/contact',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiHealthRoute = ApiHealthRouteImport.update({
   id: '/api/health',
   path: '/api/health',
@@ -318,6 +324,7 @@ export interface FileRoutesByFullPath {
   '/station/$role': typeof StationRoleRoute
   '/whitepaper': typeof WhitepaperRoute
   '/privacy': typeof PrivacyRoute
+  '/contact': typeof ContactRoute
   '/api/health': typeof ApiHealthRoute
   '/blog/$slug': typeof BlogSlugRoute
   '/demo/$type': typeof DemoTypeRouteWithChildren
@@ -366,6 +373,7 @@ export interface FileRoutesByTo {
   '/station/$role': typeof StationRoleRoute
   '/whitepaper': typeof WhitepaperRoute
   '/privacy': typeof PrivacyRoute
+  '/contact': typeof ContactRoute
   '/api/health': typeof ApiHealthRoute
   '/blog/$slug': typeof BlogSlugRoute
   '/demo/$type': typeof DemoTypeRouteWithChildren
@@ -416,6 +424,7 @@ export interface FileRoutesById {
   '/station/$role': typeof StationRoleRoute
   '/whitepaper': typeof WhitepaperRoute
   '/privacy': typeof PrivacyRoute
+  '/contact': typeof ContactRoute
   '/api/health': typeof ApiHealthRoute
   '/blog/$slug': typeof BlogSlugRoute
   '/demo/$type': typeof DemoTypeRouteWithChildren
@@ -467,6 +476,7 @@ export interface FileRouteTypes {
     | '/station/$role'
     | '/whitepaper'
     | '/privacy'
+    | '/contact'
     | '/api/health'
     | '/blog/$slug'
     | '/demo/$type'
@@ -515,6 +525,7 @@ export interface FileRouteTypes {
     | '/station/$role'
     | '/whitepaper'
     | '/privacy'
+    | '/contact'
     | '/api/health'
     | '/blog/$slug'
     | '/demo/$type'
@@ -564,6 +575,7 @@ export interface FileRouteTypes {
     | '/station/$role'
     | '/whitepaper'
     | '/privacy'
+    | '/contact'
     | '/api/health'
     | '/blog/$slug'
     | '/demo/$type'
@@ -613,6 +625,7 @@ export interface RootRouteChildren {
   StationRoleRoute: typeof StationRoleRoute
   WhitepaperRoute: typeof WhitepaperRoute
   PrivacyRoute: typeof PrivacyRoute
+  ContactRoute: typeof ContactRoute
   ApiHealthRoute: typeof ApiHealthRoute
   InviteTokenRoute: typeof InviteTokenRoute
   OrderOrderIdRoute: typeof OrderOrderIdRoute
@@ -800,6 +813,13 @@ declare module '@tanstack/react-router' {
       path: '/privacy'
       fullPath: '/privacy'
       preLoaderRoute: typeof PrivacyRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/contact': {
+      id: '/contact'
+      path: '/contact'
+      fullPath: '/contact'
+      preLoaderRoute: typeof ContactRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/health': {
@@ -1048,6 +1068,7 @@ const rootRouteChildren: RootRouteChildren = {
   StationRoleRoute: StationRoleRoute,
   WhitepaperRoute: WhitepaperRoute,
   PrivacyRoute: PrivacyRoute,
+  ContactRoute: ContactRoute,
   ApiHealthRoute: ApiHealthRoute,
   InviteTokenRoute: InviteTokenRoute,
   OrderOrderIdRoute: OrderOrderIdRoute,

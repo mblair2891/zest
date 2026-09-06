@@ -6,6 +6,19 @@ import type { GuideUpdate } from "@/lib/guide/types";
  */
 export const WHATS_NEW_ENTRIES: GuideUpdate[] = [
   {
+    id: "upd_2026_10_52_no_marketing_login",
+    date: "2026-09-06",
+    title: "The sales site has no login",
+    summary:
+      "summex.app is Get a price, Guide, Demo, Contact. Bookmark https://app.summex.app/login — it is not linked from marketing.",
+    body: "The public header does not offer Log in or Go to console. Open POS and Replay workflow stay off the sales host. Operators type or bookmark https://app.summex.app/login. Stations and pair QR stay on that host.",
+    roles: ["owner_manager", "host_operator", "platform_admin"],
+    surfaces: ["platform", "settings"],
+    audience: "all",
+    topicId: "navigation",
+    tags: ["login", "marketing"],
+  },
+  {
     id: "upd_2026_10_51_host_split",
     date: "2026-09-05",
     title: "Sales site and console are different hosts",
