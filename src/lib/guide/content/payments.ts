@@ -204,20 +204,20 @@ export const PAYMENT_TOPICS: GuideTopic[] = [
     chapterId: "payments",
     title: "White paper",
     summary:
-      "Shareable description of Summex: per-entity Quantum merchants, one guest check, gift ledger, device roles, cash, tips, training vs live.",
+      "Shareable paper for owners considering Summex: one guest check, floor, money, plans. Get a price on summex.app.",
     roles: "all",
     keywords: ["white paper", "pdf", "processor", "partner", "quantum reach"],
     blocks: [
       why(
-        "Processors, prospects, and partners need one document that does not invent rates, banks, or seals — and that stays in lockstep with this Operators Guide.",
+        "An owner considering Summex should read a product paper — not a stack spec. Processors and partners can share the same document.",
       ),
       p(
-        "Open /whitepaper (also linked from the marketing footer). Print from the browser for a PDF. The markdown source lives with the product docs. It stays in lockstep with this guide. Revision · 6 Sep 2026 matches Guide v2026.10.52 (marketing has no login). The public Guide and this paper do not include SaaS admin, CRM, or pipeline.",
+        "Open White paper from the marketing header or footer (no login). Print from the browser for a PDF. Revision · 6 Sep 2026 matches Guide v2026.10.53. It is written for prospective subscribers: one guest check, floor, multi-entity, 5% cash-discount processing story, plans from Get a price. No CRM, pipeline, factory reset, or how to log in. Internal operations notes stay off the public site.",
       ),
       steps(
-        "Open White paper from the site footer or this topic.",
+        "Open White paper from Get a price, Guide, Demo, White paper on summex.app.",
         "Use Print / PDF in the toolbar.",
-        "Treat Roadmap items as not shipped — live ACH is not claimed.",
+        "Start from Get a price on summex.app — not a login on the sales site.",
       ),
       related("system-ledger", "quantum-payments", "host-capture", "receipts-by-vendor", "gift-cards", "device-roles", "cash-handling", "location-training"),
     ],

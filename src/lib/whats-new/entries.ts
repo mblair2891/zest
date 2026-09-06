@@ -6,6 +6,19 @@ import type { GuideUpdate } from "@/lib/guide/types";
  */
 export const WHATS_NEW_ENTRIES: GuideUpdate[] = [
   {
+    id: "upd_2026_10_53_subscriber_whitepaper",
+    date: "2026-09-06",
+    title: "White paper for owners considering Summex",
+    summary:
+      "The public White paper is a subscriber brief: one guest check, floor, plans from Get a price. Not an internal spec.",
+    body: "Open White paper from the sales site (no login). It covers who Summex is for, guest experience, stations, multi-entity, BYO hardware plus Quantum/Finix-class readers, 5% cash-discount as the processing story, ops and devices, and how to start at Get a price. No CRM, pipeline, or factory reset.",
+    roles: ["owner_manager", "host_operator", "platform_admin"],
+    surfaces: ["platform", "settings"],
+    audience: "all",
+    topicId: "white-paper",
+    tags: ["whitepaper", "marketing"],
+  },
+  {
     id: "upd_2026_10_52_no_marketing_login",
     date: "2026-09-06",
     title: "The sales site has no login",

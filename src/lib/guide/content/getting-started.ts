@@ -36,7 +36,7 @@ export const GETTING_STARTED_TOPICS: GuideTopic[] = [
         "Training week: the real POS with Quantum Payments sandbox. Live cards wait for an approved Quantum application and an enrolled reader.",
         "Floor PIN signs a person onto this station. Clock in / out is Labor. Server closeout is Cash — none of those are the same action.",
         "Examples in this guide use Host Venue, Operator A, Operator B — never a live customer name.",
-        "Revision · 6 Sep 2026 — Marketing has no login; console is app.summex.app.",
+        "Revision · 6 Sep 2026 — Subscriber-facing white paper.",
       ),
       steps(
         "Tap Guide or “?” in the header (POS and platform) — or open /guide from the marketing site (operations only, not a SaaS user manual).",

@@ -8,7 +8,7 @@ export const Route = createFileRoute("/whitepaper")({
       {
         name: "description",
         content:
-          "Summex, powered by Quantum Reach. Per-entity Quantum Payments merchants, one guest check, gift ledger, device roles, cash, and settlement.",
+          "Summex, powered by Quantum Reach. One guest check, one or many operators, Quantum Payments. For owners considering the house.",
       },
     ],
   }),

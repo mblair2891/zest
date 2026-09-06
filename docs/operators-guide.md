@@ -1,7 +1,7 @@
 # Operators Guide — authoring
 
-**Revision · 6 Sep 2026** — Marketing has no login; console is app.summex.app.
-Guide v2026.10.52.
+**Revision · 6 Sep 2026** — Subscriber-facing white paper.
+Guide v2026.10.53.
 
 The in-app **Operators Guide** is the living product manual. It is not a
 separate PDF. Staff open it from **Guide** / **?** in the POS and platform
