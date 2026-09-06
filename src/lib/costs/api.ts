@@ -76,3 +76,20 @@ export const sendCostPoEmailFn = createServerFn({ method: "POST" })
       kind: "cost_po",
     });
   });
+
+export const sendVarianceAlertFn = createServerFn({ method: "POST" })
+  .middleware([optionalAuthMiddleware])
+  .validator((d: { to: string; subject: string; text: string }) => ({
+    to: String(d.to ?? "").slice(0, 180),
+    subject: String(d.subject ?? "").slice(0, 180),
+    text: String(d.text ?? "").slice(0, 8000),
+  }))
+  .handler(async ({ data }) => {
+    const { sendEmail } = await import("@/lib/saas/email.server");
+    return sendEmail({
+      to: data.to,
+      subject: data.subject,
+      text: data.text,
+      kind: "cost_variance",
+    });
+  });

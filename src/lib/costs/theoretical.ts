@@ -27,7 +27,7 @@ export function salesQtyByMenuItem(
       if (!line.sent) continue;
       if (line.voided && !includeVoids) continue;
       if (line.comped && !includeComps) continue;
-      if (entityId && line.vendorId && line.vendorId !== entityId) continue;
+      if (entityId && line.vendorId !== entityId) continue;
       out[line.menuItemId] = (out[line.menuItemId] ?? 0) + line.quantity;
     }
   }
@@ -38,9 +38,14 @@ export function salesQtyByMenuItem(
 export function toPackUnits(sku: CostSku, qty: number, unit: string): number {
   const u = unit.toLowerCase();
   const pack = sku.packLabel.toLowerCase();
-  if ((u === "ml" || u === "oz") && (pack === "ml" || sku.unit === "bottle")) {
-    const ml = u === "oz" ? qty * 29.5735 : qty;
-    return sku.packSize > 0 ? ml / sku.packSize : qty;
+  if (
+    (u === "ml" || u === "oz" || u === "cl") &&
+    (pack === "ml" || pack === "oz" || sku.unit === "bottle")
+  ) {
+    const ml = u === "oz" ? qty * 29.5735 : u === "cl" ? qty * 10 : qty;
+    const packMl =
+      pack === "oz" ? sku.packSize * 29.5735 : sku.packSize > 0 ? sku.packSize : 0;
+    return packMl > 0 ? ml / packMl : qty;
   }
   if (u === sku.unit || u === pack) return qty;
   return qty;

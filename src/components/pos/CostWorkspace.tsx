@@ -18,7 +18,7 @@ import { useCostStore } from "@/lib/costs/store";
 import { canCost, canSeeEntity, costEntityScope } from "@/lib/costs/permissions";
 import { parseCostInvoiceFn, costPictureFn, sendCostPoEmailFn } from "@/lib/costs/api";
 import { downloadText, poPrintHtml } from "@/lib/costs/connectors";
-import { heuristicInvoiceExtract } from "@/lib/costs/invoice-parse";
+import { extractPdfStrings, heuristicInvoiceExtract } from "@/lib/costs/invoice-parse";
 import { recipeCostCents } from "@/lib/costs/theoretical";
 import {
   COST_CATEGORIES,
@@ -210,7 +210,8 @@ function InvoicePanel() {
   const vendors = usePosStore((s) => s.vendors);
   const house = usePosStore((s) => s.settings.name);
   const skus = useCostStore((s) => s.skus);
-  const invoices = useCostStore((s) => s.invoices);
+  const invoicesAll = useCostStore((s) => s.invoices);
+  const invoices = invoicesAll.filter((i) => canSeeEntity(emp, i.entityId));
   const suppliers = useCostStore((s) => s.suppliers);
   const createDraft = useCostStore((s) => s.createInvoiceDraft);
   const mapLine = useCostStore((s) => s.mapInvoiceLine);
@@ -245,34 +246,55 @@ function InvoicePanel() {
   return (
     <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.2fr)]">
       <div className="space-y-3 rounded-2xl border border-border bg-surface p-4">
-        <p className="text-sm font-medium">Upload or paste</p>
+        <p className="text-sm font-medium">Upload invoice or receipt</p>
+        <p className="text-xs text-muted-foreground">
+          PDF, photo, or CSV. Optional voice note below. Posts to this entity’s inventory and cost ledger after you confirm.
+        </p>
         <input
           type="file"
-          accept="image/*,.pdf,text/plain"
+          accept="image/*,.pdf,.csv,text/plain,text/csv"
           className="text-xs"
           onChange={(e) => {
             const f = e.target.files?.[0];
             if (!f) return;
             setFileName(f.name);
+            const name = f.name.toLowerCase();
+            const isCsv = f.type.includes("csv") || name.endsWith(".csv");
+            const isPdf = f.type.includes("pdf") || name.endsWith(".pdf");
+            const isText = f.type.startsWith("text/") || isCsv;
             const reader = new FileReader();
-            reader.onload = () => {
-              const url = String(reader.result ?? "");
-              if (f.type.startsWith("image/")) setImage(url);
-              else if (f.type.startsWith("text/")) setText(url);
-              else setImage(undefined);
-            };
-            if (f.type.startsWith("image/") || f.type.startsWith("text/")) reader.readAsDataURL(f);
-            else {
-              setImage(undefined);
-              setText((t) => t || `PDF ${f.name}`);
+            if (f.type.startsWith("image/")) {
+              reader.onload = () => setImage(String(reader.result ?? ""));
+              reader.readAsDataURL(f);
+              return;
             }
+            if (isText) {
+              reader.onload = () => {
+                setImage(undefined);
+                setText(String(reader.result ?? ""));
+              };
+              reader.readAsText(f);
+              return;
+            }
+            if (isPdf) {
+              reader.onload = () => {
+                const url = String(reader.result ?? "");
+                const extracted = extractPdfStrings(url);
+                setImage(undefined);
+                setText(extracted || `PDF ${f.name}`);
+              };
+              reader.readAsDataURL(f);
+              return;
+            }
+            setImage(undefined);
+            setText((t) => t || f.name);
           }}
         />
         <VoiceTextarea
           value={text}
           onChange={setText}
           rows={5}
-          placeholder="Paste invoice text, or describe: Southern Glazer's, 6 Tito's 1.75L @ $28.99"
+          placeholder="Paste invoice text, speak a voice note, or describe: 10 Tito's 1.75L @ $28.99 from Southern Glazer's"
         />
         <Button disabled={busy || !canPost} onClick={() => void runExtract()}>
           <FileUp className="h-3.5 w-3.5" />
@@ -318,6 +340,25 @@ function InvoicePanel() {
               ))}
             </select>
           </label>
+          {active.followUps && active.followUps.length > 0 && active.status !== "posted" && (
+            <div className="space-y-2 rounded-xl border border-border bg-bg p-3">
+              <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                From this invoice
+              </p>
+              {active.followUps.map((q) => (
+                <p key={q.id} className="text-sm">
+                  {q.prompt}
+                  {q.hint ? (
+                    <span className="block text-xs text-muted-foreground">{q.hint}</span>
+                  ) : null}
+                </p>
+              ))}
+              <p className="text-[11px] text-muted-foreground">
+                Map SKU, pack size, and entity on each line below, then post. We only ask
+                what the file left unclear.
+              </p>
+            </div>
+          )}
           <ul className="space-y-2">
             {active.lines.map((l) => (
               <li key={l.id} className="rounded-xl border border-border p-2 text-sm">
@@ -417,9 +458,26 @@ function RecipePanel() {
     (r) => (r.menuItemIds?.length ? r.menuItemIds : [r.menuItemId]).includes(menuItemId),
   );
   const visible = recipes.filter((r) => !scope || r.entityId === scope || r.entityId === HOST_SCOPE);
+  const covered = new Set(
+    recipes.flatMap((r) => (r.menuItemIds?.length ? r.menuItemIds : [r.menuItemId])),
+  );
+  const missing = menuItems
+    .filter((m) => !scope || !m.vendorId || m.vendorId === scope)
+    .filter((m) => m.available !== false && !covered.has(m.id))
+    .slice(0, 8);
 
   return (
     <div className="grid gap-4 lg:grid-cols-2">
+      {missing.length > 0 && (
+        <div className="lg:col-span-2 rounded-2xl border border-warn/40 bg-surface p-3 text-sm">
+          <p className="font-medium">Attach a recipe so usage can be compared to invoices.</p>
+          <p className="mt-1 text-xs text-muted-foreground">
+            {missing.map((m) => m.name).join(", ")}
+            {missing.length === 8 ? "…" : ""}. Vodka drinks decrement vodka by recipe oz ×
+            tickets in the period — only for this entity’s tickets.
+          </p>
+        </div>
+      )}
       <div className="space-y-2 rounded-2xl border border-border bg-surface p-4">
         <div className="flex flex-wrap items-center gap-2">
           <p className="text-sm font-medium">Yield per sale</p>
@@ -632,22 +690,53 @@ function AlertPanel() {
   const exceptions = useCostStore((s) => s.exceptions);
   const respond = useCostStore((s) => s.respondException);
   const scan = useCostStore((s) => s.scanVariance);
+  const settings = useCostStore((s) => s.settings);
+  const updateSettings = useCostStore((s) => s.updateSettings);
   const [note, setNote] = useState<Record<string, string>>({});
   const [code, setCode] = useState<Record<string, VarianceResponseCode>>({});
   const [err, setErr] = useState<string | null>(null);
+  const scope = costEntityScope(emp);
+  const visibleEx = exceptions.filter((e) => !scope || e.entityId === scope);
 
   return (
     <div className="space-y-3">
-      <Button size="sm" variant="outline" onClick={() => scan(7)}>
-        Scan last 7 days
-      </Button>
+      <div className="flex flex-wrap items-center gap-2">
+        <Button size="sm" variant="outline" onClick={() => scan(7)}>
+          Scan last 7 days
+        </Button>
+        <label className="flex items-center gap-2 text-xs text-muted-foreground">
+          <input
+            type="checkbox"
+            checked={Boolean(settings.varianceNotifyVenueAdmin)}
+            onChange={(e) => updateSettings({ varianceNotifyVenueAdmin: e.target.checked })}
+          />
+          Also notify venue admin
+        </label>
+      </div>
+      <div className="flex flex-wrap items-center gap-2">
+        <label className="flex items-center gap-2 text-xs text-muted-foreground">
+          <input
+            type="checkbox"
+            checked={Boolean(settings.emailOnVariance)}
+            onChange={(e) => updateSettings({ emailOnVariance: e.target.checked })}
+          />
+          Email flags
+        </label>
+        <Input
+          className="h-8 max-w-xs text-xs"
+          placeholder="ops@house.com"
+          value={settings.varianceEmail ?? ""}
+          onChange={(e) => updateSettings({ varianceEmail: e.target.value })}
+        />
+      </div>
       {err && <p className="text-sm text-danger">{err}</p>}
-      {exceptions.length === 0 && (
+      {visibleEx.length === 0 && (
         <p className="text-sm text-muted-foreground">
           No variance items. Post an invoice and sell recipe items, then scan.
+          Steam flags use Steam tickets and Steam invoices only.
         </p>
       )}
-      {exceptions.map((e) => (
+      {visibleEx.map((e) => (
         <div key={e.id} className="rounded-2xl border border-border bg-surface p-4">
           <div className="flex flex-wrap items-center gap-2">
             <AlertTriangle className="h-4 w-4 text-warn" />

@@ -52,6 +52,9 @@ function shouldToast(
   if (notice.kind === "ticket_sent" || notice.kind === "ticket_started") {
     return false;
   }
+  if (notice.kind === "cost_variance") {
+    return role === "vendor_operator" || role === "owner" || role === "manager" || role === "accountant";
+  }
   if (notice.kind === "guest_checked_in" || notice.kind === "waitlist_update") {
     return FOH_ROLES.has(role);
   }

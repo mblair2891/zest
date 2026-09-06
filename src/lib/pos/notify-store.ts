@@ -19,7 +19,8 @@ export type PosNoticeKind =
   | "approval_request"
   | "break_glass"
   | "late_comp_cash"
-  | "ops_job";
+  | "ops_job"
+  | "cost_variance";
 
 export interface PosNotice {
   id: string;
@@ -35,8 +36,9 @@ export interface PosNotice {
   serverName?: string;
   serverId?: string;
   itemSummary?: string;
-  /** For staffing_rec: manager | host | expo */
+  /** For staffing_rec: manager | host | expo. For cost_variance: entity_manager | venue_admin */
   audience?: string[];
+  entityId?: string;
 }
 
 interface NotifyState {
@@ -55,6 +57,7 @@ interface NotifyState {
     serverId?: string;
     serverName?: string;
     audience?: string[];
+    entityId?: string;
   }) => PosNotice;
   markRead: (id: string) => void;
   markAllRead: () => void;
@@ -80,6 +83,19 @@ export function noticeVisibleTo(
 ): boolean {
   if (!emp) return false;
   const role: EmployeeRole = emp.role;
+  if (n.kind === "cost_variance") {
+    const aud = n.audience?.length ? n.audience : ["entity_manager"];
+    if (aud.includes("venue_admin") && (role === "owner" || role === "manager" || role === "accountant")) {
+      return true;
+    }
+    if (aud.includes("entity_manager")) {
+      if (role === "vendor_operator" && (!n.entityId || emp.operatorId === n.entityId)) return true;
+      if ((role === "manager" || role === "owner") && emp.operatorId && emp.operatorId === n.entityId) {
+        return true;
+      }
+    }
+    return false;
+  }
   if (n.kind === "staffing_rec") {
     const aud = n.audience?.length ? n.audience : ["manager", "host"];
     if (aud.includes("manager") && (role === "owner" || role === "manager")) return true;
@@ -211,6 +227,7 @@ export const useNotifyStore = create<NotifyState>()(
           serverId: input.serverId,
           serverName: input.serverName,
           audience: input.audience,
+          entityId: input.entityId,
         };
         set({
           notices: [notice, ...get().notices].slice(0, MAX_NOTICES),

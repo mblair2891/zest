@@ -6,6 +6,19 @@ import type { GuideUpdate } from "@/lib/guide/types";
  */
 export const WHATS_NEW_ENTRIES: GuideUpdate[] = [
   {
+    id: "upd_2026_10_54_invoice_variance",
+    date: "2026-09-06",
+    title: "Upload invoices, recipe vs usage alerts",
+    summary:
+      "Each entity posts its own invoices. Recipe oz × tickets is compared to bottles received. Gaps flag the entity manager — not an accusation.",
+    body: "Costs / Purchasing: upload a PDF, photo, or CSV (voice note optional). Confirm vendor, date, and lines — follow-ups only when unit size, item, or entity is unclear. Post to that entity’s inventory and cost ledger. Vodka drinks decrement vodka by recipe oz × that entity’s tickets. Example: 10 bottles in, 3 used before the next 10 — the gap flags the entity manager (venue admin only if they opted in). Reasons: event, owner take-home, breakage, mis-ring, theft review. Steam invoices and tickets stay on Steam; Diamond food stays on Diamond. Help can explain the flag.",
+    roles: ["owner_manager", "host_operator", "vendor_operator"],
+    surfaces: ["settings", "reports"],
+    audience: "all",
+    topicId: "cost-variance",
+    tags: ["costs", "invoice", "recipe", "variance"],
+  },
+  {
     id: "upd_2026_10_53_subscriber_whitepaper",
     date: "2026-09-06",
     title: "White paper for owners considering Summex",

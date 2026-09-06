@@ -41,7 +41,9 @@ export type ExceptionKind = "purchase_vs_sales" | "count_variance" | "price_chan
 export const VARIANCE_RESPONSE_CODES = [
   "event",
   "owner_take_home",
-  "spillage",
+  "breakage",
+  "mis_ring",
+  "theft_review",
   "count_error",
   "investigating",
   "other",
@@ -52,11 +54,22 @@ export type VarianceResponseCode = (typeof VARIANCE_RESPONSE_CODES)[number];
 export const VARIANCE_RESPONSE_LABEL: Record<VarianceResponseCode, string> = {
   event: "Event / extra usage",
   owner_take_home: "Owner take-home",
-  spillage: "Spillage / breakage",
+  breakage: "Breakage / spillage",
+  mis_ring: "Mis-ring",
+  theft_review: "Theft review",
   count_error: "Count error",
   investigating: "Investigating",
   other: "Other",
 };
+
+export function parseVarianceResponseCode(raw: unknown): VarianceResponseCode {
+  const s = String(raw ?? "");
+  if (s === "spillage") return "breakage";
+  if ((VARIANCE_RESPONSE_CODES as readonly string[]).includes(s)) {
+    return s as VarianceResponseCode;
+  }
+  return "investigating";
+}
 
 export type PoStatus =
   | "draft"
@@ -144,6 +157,7 @@ export interface CostInvoice {
   postedAt?: number;
   poId?: string;
   parseNote?: string;
+  followUps?: InvoiceFollowUp[];
 }
 
 export interface CostLedgerEntry {
@@ -338,6 +352,11 @@ export interface CostSettings {
   theoreticalIncludeVoids?: boolean;
   /** Comped lines count toward theoretical use. Default true. */
   theoreticalIncludeComps?: boolean;
+  /** House owner/manager also sees entity usage-gap flags. Default off. */
+  varianceNotifyVenueAdmin?: boolean;
+  /** Optional email when a usage-gap flag opens. */
+  emailOnVariance?: boolean;
+  varianceEmail?: string;
 }
 
 export interface CostAudit {
@@ -356,6 +375,13 @@ export interface PendingPriceEdit {
   recId: string;
 }
 
+export interface InvoiceFollowUp {
+  id: string;
+  prompt: string;
+  hint?: string;
+  lineIndex?: number;
+}
+
 export interface InvoiceExtract {
   vendorName: string;
   invoiceNumber: string;
@@ -365,9 +391,11 @@ export interface InvoiceExtract {
     qty: number;
     unitCostCents: number;
     packSize?: string;
+    unit?: string;
   }>;
   note?: string;
   source: "ai" | "guided";
+  followUps?: InvoiceFollowUp[];
 }
 
 export interface CostPicture {

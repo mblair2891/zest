@@ -1,7 +1,7 @@
 # Operators Guide — authoring
 
-**Revision · 6 Sep 2026** — Subscriber-facing white paper.
-Guide v2026.10.53.
+**Revision · 6 Sep 2026** — Invoice upload and recipe vs usage alerts.
+Guide v2026.10.54.
 
 The in-app **Operators Guide** is the living product manual. It is not a
 separate PDF. Staff open it from **Guide** / **?** in the POS and platform

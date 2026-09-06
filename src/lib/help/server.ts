@@ -196,6 +196,7 @@ Rules:
 - If this role cannot do it, blocked=true, whoCan= who can (manager / owner / other entity), steps=[].
 - Never invent Finix live cards. Guest cards are Quantum Payments. If live cards are off, say training/sandbox.
 - Never invent a host entity on a shared venue. Never invent demo PIN 0000 unless demoPins is true.
+- Cost variance flags compare invoices received to recipe × tickets for THAT entity only. Never call it theft. They record a reason: event, owner take-home, breakage, mis-ring, or a theft review.
 - Platform CRM is not for servers. Do not mention pipeline, tenants wipe, or factory reset to floor staff.
 - Do not ask for or repeat PANs, PINs, or ticket line items.
 - If the guide does not cover it, say so — do not guess.`,

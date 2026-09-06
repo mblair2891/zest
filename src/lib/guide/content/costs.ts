@@ -1,4 +1,4 @@
-import { p, related, steps, tip, topic, ul, warn, why } from "./helpers";
+import { related, steps, tip, topic, ul, warn, why } from "./helpers";
 import type { GuideTopic } from "../types";
 
 export const COST_TOPICS: GuideTopic[] = [
@@ -15,10 +15,10 @@ export const COST_TOPICS: GuideTopic[] = [
         "Purchases, pours, and menu price have to live in one loop or you fly blind. Summex flags and recommends. It does not auto-accuse staff or auto-change prices.",
       ),
       steps(
-        "Costs → Invoices: upload an image/PDF or paste text. Extract maps vendor, date, lines.",
-        "Map each line to a SKU, cost category, and entity (host / operator). Confirm, then Post receipt + GL.",
-        "Recipes: oz/ml/units of each SKU per sale, optional waste factor.",
-        "Scan exceptions. Manager records a required response code + note (event, take-home, spillage, count error, investigating, other).",
+        "Costs / Purchasing → Invoices: upload a PDF, photo, or CSV (voice note optional). Extract maps vendor, date, lines.",
+        "Follow-ups only when the file is ambiguous (unit size, which recipe item, which entity). Confirm, then Post receipt + GL to that entity’s inventory and cost ledger.",
+        "Recipes: oz/ml of each SKU per sale. Menu items without a recipe are prompted to attach. Vodka drinks decrement vodka by recipe oz × that entity’s tickets.",
+        "Scan exceptions. Manager records a required response (event, take-home, breakage, mis-ring, theft review). Not an accusation.",
         "PAR POs: draft from min/max, send email/CSV (API stub available). Receive partial. Match to invoice.",
         "Price recs: Accept opens Menu with the suggested price prefilled. You still Save.",
       ),
@@ -74,10 +74,10 @@ export const COST_TOPICS: GuideTopic[] = [
     blocks: [
       why("A posted invoice is both a receipt into on-hand and an operating cost by category."),
       steps(
-        "Upload or paste. Extract (AI when keyed, else guided).",
-        "Map Tito’s (or any line) to a catalog SKU — Create SKU from this line if needed.",
-        "Set category and entity. Post receipt + GL.",
-        "Cost picture and spend tiles show posted amounts.",
+        "Entity manager (each operator independently): Costs / Purchasing → upload PDF, photo, or CSV. Optional voice note.",
+        "Extract (AI when keyed, else guided). Follow-ups only for missing unit size, unmatched item, or which entity.",
+        "Map each line to a catalog SKU — Create SKU from this line if needed. Set category and entity.",
+        "Confirm → Post receipt + GL. On-hand and the cost ledger update for that entity only.",
       ),
       tip("The next invoice from the same vendor auto-maps remembered line names."),
       related("cost-control", "cost-ordering"),
@@ -87,22 +87,39 @@ export const COST_TOPICS: GuideTopic[] = [
     id: "cost-variance",
     chapterId: "costs",
     title: "Recipes, theoretical use, exceptions",
-    summary: "Opening + receipts − sales theoretical vs count. Required manager response.",
+    summary: "Upload invoices, recipe vs usage alerts. Required manager response — never an accusation.",
     roles: ["owner_manager", "kitchen_bar", "vendor_operator"],
-    keywords: ["recipe", "theoretical", "variance", "alert", "waste", "count"],
+    keywords: [
+      "recipe",
+      "theoretical",
+      "variance",
+      "alert",
+      "waste",
+      "count",
+      "invoice",
+      "usage",
+      "flag",
+      "vodka",
+    ],
     openView: "inventory_ai",
     blocks: [
       why(
-        "If bottles received far exceed pours sold, something is off — event, overpour, count, or worse. The house records a response. Silent dismiss is blocked.",
+        "If bottles received far exceed pours sold, something is off — event, overpour, count, or worse. The house records a response. Silent dismiss is blocked. Summex does not auto-accuse anyone.",
       ),
       steps(
-        "Put a recipe on the drink (e.g. 45ml Tito’s per sale).",
-        "Sell from the floor. Post invoices.",
-        "Scan last 7 days. Open exceptions show receipts vs theoretical.",
-        "Pick a response code and a note. That writes the audit and the AI ops learning log.",
+        "Put a recipe on the drink (e.g. 1.5 oz vodka per sale). Attach recipes if the item has none.",
+        "Post that entity’s invoices (10 bottles day 1, another 10 a week later).",
+        "Tickets for that entity decrement recipe oz × qty. Example: 3 bottles used between receipts → flag the gap.",
+        "The entity manager sees the flag in-app. Venue admin only if they opted in. Optional email.",
+        "Record why: event, owner take-home, breakage, mis-ring, or a theft review — plus a note.",
       ),
-      p("Counts (full/partial) and waste/breakage logs feed expected on-hand."),
-      related("cost-control", "ops-jobs-cost", "ai-ops-learning"),
+      ul(
+        "Steam usage gaps use Steam tickets + Steam invoices only. Diamond uses Diamond food invoices + food tickets. Owned-lines basis.",
+        "Help can explain the flag: receipts vs recipe use, not a verdict.",
+        "Counts (full/partial) and waste/breakage logs feed expected on-hand.",
+      ),
+      warn("Copy never says theft to the floor unless the manager chose Theft review as the stored reason."),
+      related("cost-control", "cost-invoices", "ops-jobs-cost", "ai-ops-learning"),
     ],
   }),
   topic({

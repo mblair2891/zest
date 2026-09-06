@@ -1,4 +1,4 @@
-import type { CostCategory, InvoiceExtract } from "./types";
+import type { CostCategory, InvoiceExtract, InvoiceFollowUp } from "./types";
 import { COST_CATEGORIES } from "./types";
 
 function dollarsToCents(raw: string): number | null {
@@ -23,11 +23,153 @@ export function normalizeVendorKey(name: string): string {
   return name.toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
 }
 
-/** Deterministic fallback when no AI key — parse pasted text or filename. */
+function splitCsvRow(row: string): string[] {
+  const out: string[] = [];
+  let cur = "";
+  let q = false;
+  for (let i = 0; i < row.length; i++) {
+    const ch = row[i];
+    if (ch === '"') {
+      q = !q;
+      continue;
+    }
+    if (ch === "," && !q) {
+      out.push(cur.trim());
+      cur = "";
+      continue;
+    }
+    cur += ch;
+  }
+  out.push(cur.trim());
+  return out;
+}
+
+function parseCsvInvoice(text: string): InvoiceExtract | null {
+  const rows = text
+    .split(/\r?\n/)
+    .map((l) => l.trim())
+    .filter(Boolean);
+  if (rows.length < 2) return null;
+  const header = splitCsvRow(rows[0]!).map((h) => h.toLowerCase().replace(/\s+/g, ""));
+  const col = (names: string[]) => {
+    const exact = header.findIndex((h) => names.includes(h));
+    if (exact >= 0) return exact;
+    return header.findIndex((h) => names.some((n) => n.length >= 4 && h.includes(n)));
+  };
+  const itemI = col(["item", "desc", "product", "sku", "name"]);
+  const qtyI = col(["qty", "quantity", "count", "bottles"]);
+  const priceI = col(["price", "unitcost", "cost", "amount", "each"]);
+  const vendorI = col(["vendor", "supplier"]);
+  const dateI = col(["date"]);
+  const unitI = col(["unit", "size", "pack"]);
+  const invI = col(["invoice", "inv#", "number"]);
+  if (itemI < 0 && qtyI < 0) return null;
+  if (!header.some((h) => /item|qty|quantity|price|vendor|desc|sku/.test(h))) return null;
+
+  const lines: InvoiceExtract["lines"] = [];
+  let vendorName = "Vendor";
+  let dateIso = new Date().toISOString().slice(0, 10);
+  let invoiceNumber = `INV-${Date.now().toString(36).toUpperCase()}`;
+  for (const row of rows.slice(1)) {
+    const cells = splitCsvRow(row);
+    if (vendorI >= 0 && cells[vendorI]) vendorName = cells[vendorI]!;
+    if (dateI >= 0 && cells[dateI]) {
+      const d = new Date(cells[dateI]!);
+      if (!Number.isNaN(d.getTime())) dateIso = d.toISOString().slice(0, 10);
+    }
+    if (invI >= 0 && cells[invI]) invoiceNumber = cells[invI]!.slice(0, 40);
+    const name = (itemI >= 0 ? cells[itemI] : cells[0])?.trim();
+    if (!name) continue;
+    const qty = parseFloat(qtyI >= 0 ? cells[qtyI] ?? "1" : "1") || 1;
+    const priceRaw = priceI >= 0 ? cells[priceI] ?? "" : "";
+    const unitCostCents = dollarsToCents(priceRaw) ?? 0;
+    const packSize = unitI >= 0 ? cells[unitI] : undefined;
+    lines.push({ name, qty, unitCostCents, packSize: packSize || undefined });
+  }
+  if (!lines.length) return null;
+  return {
+    vendorName: vendorName.slice(0, 80),
+    invoiceNumber,
+    dateIso,
+    lines: lines.slice(0, 60),
+    note: "CSV extract — confirm quantities and map to SKUs before posting.",
+    source: "guided",
+  };
+}
+
+/** Pull printable strings from a PDF data URL when we cannot render pages. */
+export function extractPdfStrings(dataUrl: string): string {
+  try {
+    const b64 = dataUrl.includes(",") ? dataUrl.split(",")[1] ?? "" : dataUrl;
+    const bin = atob(b64);
+    const chunks: string[] = [];
+    let cur = "";
+    for (let i = 0; i < bin.length; i++) {
+      const c = bin.charCodeAt(i);
+      if (c >= 32 && c < 127) cur += bin[i]!;
+      else {
+        if (cur.length >= 4) chunks.push(cur);
+        cur = "";
+      }
+    }
+    if (cur.length >= 4) chunks.push(cur);
+    return chunks.join(" ").replace(/\s+/g, " ").trim().slice(0, 8000);
+  } catch {
+    return "";
+  }
+}
+
+export function invoiceFollowUps(opts: {
+  extract: InvoiceExtract;
+  skuNames: string[];
+  entityLabels: string[];
+  currentEntityId?: string | null;
+}): InvoiceFollowUp[] {
+  const out: InvoiceFollowUp[] = [];
+  const add = (q: InvoiceFollowUp) => {
+    if (out.length < 5) out.push(q);
+  };
+  for (const [i, line] of opts.extract.lines.entries()) {
+    const liquor = guessCategory(line.name) === "liquor";
+    if (liquor && !line.packSize && !line.unit) {
+      add({
+        id: `unit_${i}`,
+        lineIndex: i,
+        prompt: `What bottle / pack size is ${line.name}?`,
+        hint: "e.g. 750ml or 1.75L. Needed to compare pours to bottles received.",
+      });
+    }
+    const key = line.name.trim().toLowerCase();
+    const matched = opts.skuNames.some((n) => {
+      const s = n.toLowerCase();
+      return s.includes(key.slice(0, 8)) || key.includes(s.slice(0, 8));
+    });
+    if (!matched) {
+      add({
+        id: `sku_${i}`,
+        lineIndex: i,
+        prompt: `Which recipe item is “${line.name}”?`,
+        hint: "Map to a catalog SKU or create one from this line.",
+      });
+    }
+  }
+  if (opts.entityLabels.length > 1 && !opts.currentEntityId) {
+    add({
+      id: "entity",
+      prompt: "Which entity is this invoice for?",
+      hint: opts.entityLabels.join(" or "),
+    });
+  }
+  return out;
+}
+
+/** Deterministic fallback when no AI key — parse pasted text, CSV, or filename. */
 export function heuristicInvoiceExtract(
   text: string,
   fileName?: string,
 ): InvoiceExtract {
+  const csv = parseCsvInvoice(text);
+  if (csv) return csv;
   const blob = `${fileName ?? ""}\n${text}`.trim();
   const vendor =
     blob.match(/vendor[:\s]+([^\n]+)/i)?.[1]?.trim() ||

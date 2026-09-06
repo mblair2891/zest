@@ -10,13 +10,22 @@ import { recordDecision, daypartOf } from "@/lib/ops-ai/learn-store";
 import { canCost, costEntityScope } from "./permissions";
 import { suggestPoLines } from "./ordering";
 import { CONNECTORS } from "./connectors";
-import { guessCategory, heuristicInvoiceExtract, normalizeVendorKey } from "./invoice-parse";
+import { guessCategory, heuristicInvoiceExtract, invoiceFollowUps, normalizeVendorKey } from "./invoice-parse";
 import { salesQtyByMenuItem, theoreticalUse, recipeCostCents } from "./theoretical";
+import {
+  purchaseGapShouldFlag,
+  receiptWindows,
+  round2,
+  varianceSummary,
+  windowDays,
+  type ReceiptEvent,
+} from "./variance";
+import { parseVarianceResponseCode } from "./types";
+import { useNotifyStore } from "@/lib/pos/notify-store";
 import { buildPriceRecommendations } from "./price-recs";
 import type {
   CostAudit,
   CostAuditAction,
-  CostCategory,
   CostInvoice,
   CostInvoiceLine,
   CostLedgerEntry,
@@ -48,6 +57,9 @@ const DEFAULT_SETTINGS: CostSettings = {
   varianceAlertPct: 15,
   defaultWasteFactor: 0.03,
   categories: COST_CATEGORIES.map((id) => ({ id, label: COST_CATEGORY_LABEL[id] })),
+  varianceNotifyVenueAdmin: false,
+  emailOnVariance: false,
+  varianceEmail: "",
 };
 
 function actor() {
@@ -179,21 +191,21 @@ function seedSuppliers(): CostSupplier[] {
   ];
 }
 
-function receiptsInWindow(
-  invoices: CostInvoice[],
-  skuId: string,
-  from: number,
-  to: number,
-): number {
-  let q = 0;
+function postedReceipts(invoices: CostInvoice[]): ReceiptEvent[] {
+  const out: ReceiptEvent[] = [];
   for (const inv of invoices) {
     if (inv.status !== "posted" || !inv.postedAt) continue;
-    if (inv.postedAt < from || inv.postedAt > to) continue;
     for (const l of inv.lines) {
-      if (l.skuId === skuId) q += l.qty;
+      if (!l.skuId || !(l.qty > 0)) continue;
+      out.push({
+        at: inv.postedAt,
+        qty: l.qty,
+        skuId: l.skuId,
+        entityId: l.entityId || inv.entityId,
+      });
     }
   }
-  return q;
+  return out;
 }
 
 interface CostState {
@@ -424,6 +436,17 @@ export const useCostStore = create<CostState>()(
           normalizeVendorKey(s.name).includes(vendorKey.slice(0, 8)),
         );
         if (sup) inv.supplierId = sup.id;
+        const vendors = usePosStore.getState().vendors ?? [];
+        const followUps =
+          extract.followUps?.length
+            ? extract.followUps
+            : invoiceFollowUps({
+                extract,
+                skuNames: get().skus.map((s) => s.name),
+                entityLabels: vendors.map((v) => v.shortName || v.name),
+                currentEntityId: a.entity,
+              });
+        if (followUps.length) inv.followUps = followUps;
         set({ invoices: [inv, ...get().invoices] });
         return inv.id;
       },
@@ -626,108 +649,194 @@ export const useCostStore = create<CostState>()(
         get().audit("waste", `${sku.name} × ${qty} · ${reason}`, sku.entityId);
       },
 
-      scanVariance: (windowDays = 7) => {
+      scanVariance: (lookbackDays = 7) => {
         const life = usePosStore.getState().settings;
         const training =
           life.lifecycleStatus && life.lifecycleStatus !== "live";
         if (training && !life.trainingTrackInventory) return [];
         const now = Date.now();
-        const from = now - windowDays * 86400000;
         const pos = usePosStore.getState();
-        const sales = salesQtyByMenuItem(pos.orders, from, now, null, {
-          includeVoids: get().settings.theoreticalIncludeVoids === true,
-          includeComps: get().settings.theoreticalIncludeComps !== false,
-        });
-        const use = theoreticalUse({
-          recipes: get().recipes,
-          skus: get().skus,
-          sales,
-        });
-        const created: VarianceException[] = [];
         const settings = get().settings;
+        const alertPct = settings.varianceAlertPct ?? 15;
+        const salesRules = {
+          includeVoids: settings.theoreticalIncludeVoids === true,
+          includeComps: settings.theoreticalIncludeComps !== false,
+        };
+        const receipts = postedReceipts(get().invoices);
+        const keys = new Map<string, { skuId: string; entityId: string; skuName: string }>();
         for (const sku of get().skus) {
-          const theoretical = use[sku.id] ?? 0;
-          const receipts = receiptsInWindow(get().invoices, sku.id, from, now);
-          const wasteQty = get()
-            .waste.filter((w) => w.skuId === sku.id && w.at >= from && w.at <= now)
-            .reduce((s, w) => s + w.qty, 0);
-          const lastCount = get().counts.find((c) =>
-            c.lines.some((l) => l.skuId === sku.id),
-          );
-          const counted = lastCount
-            ? lastCount.lines.find((l) => l.skuId === sku.id)?.qty
-            : undefined;
-          const opening = Math.max(
-            0,
-            sku.onHand - receipts + theoretical + wasteQty,
-          );
-          const expected = Math.max(0, opening + receipts - theoretical - wasteQty);
-          const actual = counted ?? sku.onHand;
-          const denom = Math.max(expected, theoretical, receipts, 0.25);
-          const purchaseGap = receipts - theoretical;
-          const countGap = actual - expected;
-          const pct = Math.abs(purchaseGap) / denom * 100;
+          keys.set(`${sku.id}::${sku.entityId}`, {
+            skuId: sku.id,
+            entityId: sku.entityId,
+            skuName: sku.name,
+          });
+        }
+        for (const r of receipts) {
+          const sku = get().skus.find((s) => s.id === r.skuId);
+          keys.set(`${r.skuId}::${r.entityId}`, {
+            skuId: r.skuId,
+            entityId: r.entityId,
+            skuName: sku?.name ?? r.skuId,
+          });
+        }
+
+        const created: VarianceException[] = [];
+        for (const pair of keys.values()) {
           const already = get().exceptions.find(
             (e) =>
-              e.skuId === sku.id &&
+              e.skuId === pair.skuId &&
+              e.entityId === pair.entityId &&
               e.status === "open" &&
-              e.at > now - 86400000,
+              e.kind === "purchase_vs_sales",
           );
-          if (already) continue;
-
-          const evidence = {
-            windowStart: from,
-            windowEnd: now,
-            salesQty: Object.entries(sales).reduce((n, [mid, q]) => {
-              const r = get().recipes.find(
-                (x) =>
-                  (x.menuItemIds ?? [x.menuItemId]).includes(mid) &&
-                  x.lines.some((l) => l.skuId === sku.id || l.name),
-              );
-              return n + (r ? q : 0);
-            }, 0),
-            receiptsQty: receipts,
-            theoretical: round2(theoretical),
-            expected: round2(expected),
-            actual: round2(actual),
-            opening: round2(opening),
-          };
-
-          if (receipts >= 1 && theoretical < receipts * 0.25 && pct >= settings.varianceAlertPct) {
+          const sku = get().skus.find((s) => s.id === pair.skuId);
+          const entityFilter =
+            pair.entityId && pair.entityId !== HOST_SCOPE ? pair.entityId : null;
+          const windows = receiptWindows(receipts, pair.skuId, pair.entityId, now);
+          const recent = windows.filter((w) => w.to >= now - lookbackDays * 86400000 || w.from >= now - lookbackDays * 86400000);
+          for (const w of recent.length ? recent : windows.slice(-1)) {
+            if (already && created.every((c) => c.skuId !== pair.skuId || c.entityId !== pair.entityId)) {
+              /* still allow a new window if none open — skip if any open */
+            }
+            if (already) break;
+            const sales = salesQtyByMenuItem(pos.orders, w.from, w.to, entityFilter, salesRules);
+            const theoreticalMap = theoreticalUse({
+              recipes: get().recipes.filter(
+                (r) => !r.entityId || r.entityId === entityFilter,
+              ),
+              skus: get().skus,
+              sales,
+              entityId: entityFilter,
+            });
+            const theoretical = theoreticalMap[pair.skuId] ?? 0;
+            if (!purchaseGapShouldFlag(w.receiptsQty, theoretical, alertPct)) continue;
+            const salesQty = Object.values(sales).reduce((n, q) => n + q, 0);
             created.push({
               id: uid("vex"),
               at: now,
               kind: "purchase_vs_sales",
-              severity: receipts >= 4 && theoretical < 0.5 ? "urgent" : "watch",
-              skuId: sku.id,
-              skuName: sku.name,
-              entityId: sku.entityId,
+              severity: w.receiptsQty >= 4 && theoretical < w.receiptsQty * 0.2 ? "urgent" : "watch",
+              skuId: pair.skuId,
+              skuName: pair.skuName,
+              entityId: pair.entityId,
               status: "open",
-              summary: `${sku.name}: received ${round2(receipts)} vs theoretical use ${round2(theoretical)} in ${windowDays}d. Review pours, waste, or events — do not treat this as an accusation.`,
-              evidence,
+              summary: varianceSummary({
+                skuName: pair.skuName,
+                receiptsQty: w.receiptsQty,
+                theoretical,
+                windowDays: windowDays(w.from, w.to),
+              }),
+              evidence: {
+                windowStart: w.from,
+                windowEnd: w.to,
+                salesQty,
+                receiptsQty: round2(w.receiptsQty),
+                theoretical: round2(theoretical),
+                expected: round2(Math.max(0, w.receiptsQty - theoretical)),
+                opening: 0,
+              },
               assigneeRole: "manager",
             });
-          } else if (
-            counted != null &&
-            Math.abs(countGap) / Math.max(expected, 0.25) * 100 >= settings.varianceAlertPct
-          ) {
-            created.push({
-              id: uid("vex"),
-              at: now,
-              kind: "count_variance",
-              severity: Math.abs(countGap) > 2 ? "watch" : "info",
-              skuId: sku.id,
-              skuName: sku.name,
-              entityId: sku.entityId,
-              status: "open",
-              summary: `${sku.name}: counted ${round2(actual)} vs expected ${round2(expected)} (opening + receipts − sales theoretical).`,
-              evidence,
-              assigneeRole: "manager",
-            });
+            break;
           }
+
+          if (already) continue;
+          if (created.some((c) => c.skuId === pair.skuId && c.entityId === pair.entityId)) continue;
+          const from = now - lookbackDays * 86400000;
+          const wasteQty = get()
+            .waste.filter(
+              (w) =>
+                w.skuId === pair.skuId &&
+                w.entityId === pair.entityId &&
+                w.at >= from &&
+                w.at <= now,
+            )
+            .reduce((s, w) => s + w.qty, 0);
+          const lastCount = get().counts.find(
+            (c) =>
+              c.entityId === pair.entityId &&
+              c.lines.some((l) => l.skuId === pair.skuId),
+          );
+          const counted = lastCount
+            ? lastCount.lines.find((l) => l.skuId === pair.skuId)?.qty
+            : undefined;
+          if (counted == null || !sku) continue;
+          const sales = salesQtyByMenuItem(pos.orders, from, now, entityFilter, salesRules);
+          const theoretical =
+            theoreticalUse({
+              recipes: get().recipes.filter(
+                (r) => !r.entityId || r.entityId === entityFilter,
+              ),
+              skus: get().skus,
+              sales,
+              entityId: entityFilter,
+            })[pair.skuId] ?? 0;
+          const recQty = receipts
+            .filter(
+              (r) =>
+                r.skuId === pair.skuId &&
+                r.entityId === pair.entityId &&
+                r.at >= from &&
+                r.at <= now,
+            )
+            .reduce((s, r) => s + r.qty, 0);
+          const opening = Math.max(0, sku.onHand - recQty + theoretical + wasteQty);
+          const expected = Math.max(0, opening + recQty - theoretical - wasteQty);
+          const countGap = counted - expected;
+          if (Math.abs(countGap) / Math.max(expected, 0.25) * 100 < alertPct) continue;
+          created.push({
+            id: uid("vex"),
+            at: now,
+            kind: "count_variance",
+            severity: Math.abs(countGap) > 2 ? "watch" : "info",
+            skuId: pair.skuId,
+            skuName: pair.skuName,
+            entityId: pair.entityId,
+            status: "open",
+            summary: `${pair.skuName}: counted ${round2(counted)} vs expected ${round2(expected)} (opening + receipts − recipe use). Not an accusation.`,
+            evidence: {
+              windowStart: from,
+              windowEnd: now,
+              salesQty: Object.values(sales).reduce((n, q) => n + q, 0),
+              receiptsQty: round2(recQty),
+              theoretical: round2(theoretical),
+              expected: round2(expected),
+              actual: round2(counted),
+              opening: round2(opening),
+            },
+            assigneeRole: "manager",
+          });
         }
         if (created.length) {
           set({ exceptions: [...created, ...get().exceptions].slice(0, 80) });
+          try {
+            const aud = settings.varianceNotifyVenueAdmin
+              ? ["entity_manager", "venue_admin"]
+              : ["entity_manager"];
+            for (const ex of created) {
+              useNotifyStore.getState().pushNotice({
+                kind: "cost_variance",
+                title: `Usage gap · ${ex.skuName}`,
+                body: ex.summary,
+                audience: aud,
+                entityId: ex.entityId,
+              });
+            }
+          } catch {
+            /* notices optional */
+          }
+          if (settings.emailOnVariance && settings.varianceEmail?.includes("@")) {
+            const body = created.map((e) => e.summary).join("\n");
+            void import("./api").then((m) =>
+              m.sendVarianceAlertFn({
+                data: {
+                  to: settings.varianceEmail!,
+                  subject: `Usage gap · ${created.length} flag${created.length === 1 ? "" : "s"}`,
+                  text: `${body}\n\nRecord a reason on Costs → Exceptions. This is not an accusation.`,
+                },
+              }),
+            );
+          }
         }
         return created;
       },
@@ -740,6 +849,7 @@ export const useCostStore = create<CostState>()(
         if (!note.trim()) return { ok: false, error: "Note required — cannot dismiss silently" };
         const ex = get().exceptions.find((e) => e.id === id);
         if (!ex) return { ok: false, error: "Alert missing" };
+        const parsed = parseVarianceResponseCode(code);
         set({
           exceptions: get().exceptions.map((e) =>
             e.id === id
@@ -747,7 +857,7 @@ export const useCostStore = create<CostState>()(
                   ...e,
                   status: "responded" as const,
                   response: {
-                    code,
+                    code: parsed,
                     note: note.trim(),
                     byId: a.id,
                     byName: a.name,
@@ -757,7 +867,7 @@ export const useCostStore = create<CostState>()(
               : e,
           ),
         });
-        get().audit("alert_response", `${ex.skuName}: ${code} · ${note.trim()}`, ex.entityId);
+        get().audit("alert_response", `${ex.skuName}: ${parsed} · ${note.trim()}`, ex.entityId);
         try {
           const locId = usePosStore.getState().tenantLocationId || "local";
           recordDecision({
@@ -1249,10 +1359,6 @@ export const useCostStore = create<CostState>()(
     },
   ),
 );
-
-function round2(n: number): number {
-  return Math.round(n * 100) / 100;
-}
 
 export function heuristicExtract(text: string, fileName?: string): InvoiceExtract {
   return heuristicInvoiceExtract(text, fileName);

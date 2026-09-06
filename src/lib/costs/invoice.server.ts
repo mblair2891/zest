@@ -1,5 +1,5 @@
 import { heuristicInvoiceExtract } from "./invoice-parse";
-import type { InvoiceExtract } from "./types";
+import type { InvoiceExtract, InvoiceFollowUp } from "./types";
 
 function aiCredentials(): { key: string; base: string; model: string } | null {
   const xai = process.env.XAI_API_KEY?.trim();
@@ -53,7 +53,8 @@ function asExtract(raw: unknown, fallback: InvoiceExtract): InvoiceExtract {
         name,
         qty,
         unitCostCents: Math.max(0, unitCostCents),
-        packSize: r.packSize ? String(r.packSize) : undefined,
+        packSize: r.packSize ? String(r.packSize) : r.unit ? String(r.unit) : undefined,
+        unit: r.unit ? String(r.unit) : undefined,
       };
     })
     .filter((v): v is NonNullable<typeof v> => Boolean(v))
@@ -65,6 +66,23 @@ function asExtract(raw: unknown, fallback: InvoiceExtract): InvoiceExtract {
     lines: lines.length ? lines : fallback.lines,
     note: o.note ? String(o.note) : undefined,
     source: "ai",
+    followUps: Array.isArray(o.followUps)
+      ? o.followUps
+          .map((x, i): InvoiceFollowUp | null => {
+            const r = x && typeof x === "object" ? (x as Record<string, unknown>) : {};
+            const prompt = String(r.prompt ?? "").trim();
+            if (!prompt) return null;
+            const item: InvoiceFollowUp = {
+              id: typeof r.id === "string" && r.id.trim() ? r.id.trim() : `q_${i}`,
+              prompt,
+            };
+            if (typeof r.hint === "string" && r.hint.trim()) item.hint = r.hint.trim();
+            if (typeof r.lineIndex === "number") item.lineIndex = r.lineIndex;
+            return item;
+          })
+          .filter((v): v is InvoiceFollowUp => Boolean(v))
+          .slice(0, 5)
+      : undefined,
   };
 }
 
@@ -88,9 +106,10 @@ export async function parseInvoiceExtract(opts: {
   const userContent: unknown[] = [
     {
       type: "text",
-      text: `Extract a hospitality supplier invoice as JSON:
-{"vendorName":"","invoiceNumber":"","dateIso":"YYYY-MM-DD","lines":[{"name":"","qty":1,"unitCostCents":0,"packSize":""}]}
+      text: `Extract a hospitality supplier invoice/receipt as JSON:
+{"vendorName":"","invoiceNumber":"","dateIso":"YYYY-MM-DD","lines":[{"name":"","qty":1,"unitCostCents":0,"packSize":"","unit":""}],"followUps":[]}
 unitCostCents is integer cents. Guest cards are Quantum Payments — this is a supplier bill, not a guest check.
+followUps: ONLY questions for what the document left ambiguous (unit/pack size, which recipe item, which entity). Empty array if the lines are clear. Never a canned list.
 Text/filename:\n${(opts.text || opts.fileName || "").slice(0, 4000)}`,
     },
   ];
@@ -116,7 +135,7 @@ Text/filename:\n${(opts.text || opts.fileName || "").slice(0, 4000)}`,
           {
             role: "system",
             content:
-              "You extract supplier invoices for Summex cost control. Return JSON only. Never invent SKUs that are not on the document. If the image is unreadable, return empty lines.",
+              "You extract supplier invoices for Summex cost control. Return JSON only. Never invent SKUs that are not on the document. If the image is unreadable, return empty lines. Ask follow-ups only for missing unit size, unmatched item, or which entity — never a generic questionnaire.",
           },
           { role: "user", content: userContent },
         ],

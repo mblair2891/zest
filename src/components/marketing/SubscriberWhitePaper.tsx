@@ -192,7 +192,10 @@ export function SubscriberWhitePaper() {
         <ul>
           <li>
             <strong className="text-ivory">Recipes and costing</strong> — against what
-            that entity sold.
+            that entity sold. Upload invoices or receipts (PDF, photo, or spreadsheet).
+            Recipe usage is compared to what that entity received. Gaps flag the
+            entity manager — not an accusation. They record why (event, take-home,
+            breakage, mis-ring, or a theft review). Venue admin only if they opted in.
           </li>
           <li>
             <strong className="text-ivory">Labor</strong> — hours and recs against what
