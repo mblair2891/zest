@@ -34,6 +34,7 @@ export function InterviewPanel({
   initialRec,
   onSkip,
   onAccepted,
+  onDraftChange,
 }: {
   token: string;
   initialEmail?: string;
@@ -42,6 +43,12 @@ export function InterviewPanel({
   initialRec?: InterviewRecommendation | null;
   onSkip: () => void;
   onAccepted: (answers: IntakeAnswers) => void;
+  onDraftChange?: (next: {
+    email: string;
+    freeText: string;
+    messages: InterviewMessage[];
+    rec: InterviewRecommendation | null;
+  }) => void;
 }) {
   const [email, setEmail] = useState(initialEmail ?? "");
   const [freeText, setFreeText] = useState(initialFreeText ?? "");
@@ -54,6 +61,10 @@ export function InterviewPanel({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [catalog, setCatalog] = useState<QuoteCatalog>(DEFAULT_QUOTE_CATALOG);
+
+  useEffect(() => {
+    onDraftChange?.({ email, freeText, messages, rec });
+  }, [email, freeText, messages, rec]);
 
   useEffect(() => {
     void interviewAiStatusFn()

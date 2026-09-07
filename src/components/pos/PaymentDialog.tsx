@@ -151,6 +151,15 @@ export function PaymentDialog({ open, onOpenChange }: Props) {
         setError(sink.reason);
         return;
       }
+      const { useTillCloseoutStore } = await import("@/lib/pos/till-closeout-store");
+      const blocked = useTillCloseoutStore.getState().cashBlockedFor(
+        sink.type === "drawer" ? sink.drawer.id : `bank:${emp?.id ?? ""}`,
+        sink.type === "bank" ? emp?.id ?? null : null,
+      );
+      if (blocked) {
+        setError("This till is closing. New cash sales are blocked until a manager opens it again.");
+        return;
+      }
     }
     if ((method === "card" || method === "room_charge") && !wanOnline) {
       setError("Card requires connection. Take cash or keep the check open.");

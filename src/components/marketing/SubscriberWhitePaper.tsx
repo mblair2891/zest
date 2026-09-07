@@ -138,7 +138,9 @@ export function SubscriberWhitePaper() {
         <p>
           <strong className="text-ivory">PIN is not clock-in and not closeout.</strong>{" "}
           Owners use a back-office password. Floor staff use a 4-digit PIN. Clock
-          in and out is Labor. Server closeout is Cash.
+          in and out is Labor. Server closeout is Cash. During the shift, staff can
+          move cash till to till when one drawer is short on small bills; expected
+          cash on each till updates so the blind count still balances.
         </p>
         <p>
           Kiosk and waitlist sit beside the host stand. Staffing recs never clock

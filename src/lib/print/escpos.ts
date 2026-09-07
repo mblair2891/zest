@@ -1,6 +1,7 @@
 import { formatCurrency } from "@/lib/utils";
 import type { PrintJob } from "./types";
 import { groupLinesByEntity } from "@/lib/payments/entity-split";
+import { formatTurnInSlipLines } from "@/lib/pos/till-turn-in-slip";
 
 const ENC = new TextEncoder();
 
@@ -47,9 +48,57 @@ export function buildDrawerKickBytes(): Uint8Array {
   return concat([INIT, u8(0x1b, 0x70, 0x00, 0x19, 0xfa)]);
 }
 
+function qrPayload(data: string): Uint8Array {
+  const d = text(data.slice(0, 80));
+  const storeLen = d.length + 3;
+  return concat([
+    ALIGN_CT,
+    u8(0x1d, 0x28, 0x6b, 0x04, 0x00, 0x31, 0x41, 0x32, 0x00),
+    u8(0x1d, 0x28, 0x6b, 0x03, 0x00, 0x31, 0x43, 0x04),
+    u8(0x1d, 0x28, 0x6b, 0x03, 0x00, 0x31, 0x45, 0x31),
+    u8(0x1d, 0x28, 0x6b, storeLen & 0xff, (storeLen >> 8) & 0xff, 0x31, 0x50, 0x30),
+    d,
+    u8(0x1d, 0x28, 0x6b, 0x03, 0x00, 0x31, 0x51, 0x30),
+    FEED,
+  ]);
+}
+
+function code128(data: string): Uint8Array {
+  const d = text(data.slice(0, 32));
+  return concat([
+    ALIGN_CT,
+    u8(0x1d, 0x68, 0x40),
+    u8(0x1d, 0x77, 0x02),
+    u8(0x1d, 0x48, 0x02),
+    u8(0x1d, 0x6b, 0x49, d.length),
+    d,
+    FEED,
+  ]);
+}
+
+function buildTillTurnInEscPos(job: PrintJob): Uint8Array {
+  const slip = job.turnIn;
+  const parts: Uint8Array[] = [INIT, ALIGN_LT];
+  if (slip) {
+    for (const ln of formatTurnInSlipLines(slip)) {
+      if (ln.trim() === "TILL TURN-IN" || ln.trim() === "COPY" || ln.trim() === slip.storeName) {
+        parts.push(ALIGN_CT, BOLD_ON, text(ln.trim()), FEED, BOLD_OFF, ALIGN_LT);
+      } else if (ln.startsWith("TURN-IN CASH")) {
+        parts.push(BOLD_ON, text(ln), FEED, BOLD_OFF);
+      } else {
+        parts.push(text(ln), FEED);
+      }
+    }
+    parts.push(FEED, code128(slip.closeId), qrPayload(slip.closeId), ALIGN_LT);
+  }
+  parts.push(FEED, ALIGN_CT, text("Summex"), FEED, FEED, CUT);
+  return concat(parts);
+}
+
 /** ESC/POS bytes for Star / Epson / generic thermal (cut + init). */
 export function buildEscPos(job: PrintJob): Uint8Array {
   if (job.kind === "drawer_kick") return buildDrawerKickBytes();
+  if (job.kind === "till_turn_in") return buildTillTurnInEscPos(job);
   const title =
     job.kind === "receipt"
       ? "RECEIPT"

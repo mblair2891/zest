@@ -1,6 +1,7 @@
 import type { PrintStation, PrinterConfig, PrinterConnection, PrinterFamily } from "@/lib/pos/location-devices";
+import type { TillTurnInSlip } from "@/lib/pos/till-turn-in-slip";
 
-export type PrintJobKind = "ticket" | "receipt" | "test" | "drawer_kick";
+export type PrintJobKind = "ticket" | "receipt" | "test" | "drawer_kick" | "till_turn_in";
 
 export type PrintLine = {
   qty: number;
@@ -46,6 +47,8 @@ export type PrintJob = {
   /** Guest pay QR (ticket-scoped). Printed when location enables print_qr_on_ticket. */
   qrUrl?: string;
   qrCaption?: string;
+  /** Bag companion after a successful till submit. Never set on a draft. */
+  turnIn?: TillTurnInSlip;
   at: number;
 };
 

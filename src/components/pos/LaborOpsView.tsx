@@ -41,6 +41,7 @@ import { StaffingRecsSettings } from "./StaffingRecsSettings";
 import { LaborBasisSettings } from "./LaborBasisSettings";
 import { useCashSessionStore } from "@/lib/pos/cash-session";
 import { hasCompletedCloseoutToday, useCloseoutStore } from "@/lib/pos/closeout-store";
+import { useTillCloseoutStore } from "@/lib/pos/till-closeout-store";
 
 type Tab = "clock" | "myshifts" | "timecards" | "alerts" | "settings" | "payroll";
 
@@ -99,13 +100,17 @@ export function LaborOpsView() {
         if (
           cfg.requireCloseoutBeforeClockOut &&
           staff &&
-          (staff.role === "server" || staff.role === "bartender") &&
+          (staff.role === "server" || staff.role === "bartender" || staff.role === "cashier") &&
           !force
         ) {
           if (!hasCompletedCloseoutToday(id)) {
             setFlash("Finish end-of-shift closeout before clock-out.");
             return;
           }
+        }
+        if (useTillCloseoutStore.getState().clockOutBlockedFor(id) && !force) {
+          setFlash("Over/short is above house tolerance. A manager must accept the till close before clock-out.");
+          return;
         }
       } catch {
         /* */

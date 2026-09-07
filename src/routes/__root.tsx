@@ -1,4 +1,6 @@
-import { createRootRoute, HeadContent, Outlet, Scripts } from "@tanstack/react-router";
+import { useEffect } from "react";
+import { createRootRoute, HeadContent, Outlet, Scripts, useRouterState } from "@tanstack/react-router";
+import { noteGetAPricePath } from "@/lib/saas/get-a-price-draft";
 import { AuthProvider } from "@/lib/auth/provider";
 import { CreatedWithGrokBanner } from "@/components/created-with-grok-banner";
 import { OfflineSwRegistrar } from "@/components/offline-sw";
@@ -8,6 +10,14 @@ import { VenueHostBootstrap } from "@/components/platform/VenueHostBootstrap";
 import { HostSplitGuard } from "@/components/platform/HostSplitGuard";
 
 import appCss from "../styles.css?url";
+
+function GetAPricePathObserver() {
+  const pathname = useRouterState({ select: (s) => s.location.pathname });
+  useEffect(() => {
+    noteGetAPricePath(pathname);
+  }, [pathname]);
+  return null;
+}
 
 const APP_NAME = "Summex";
 const host = import.meta.env.VITE_PUBLIC_HOSTNAME;
@@ -50,6 +60,7 @@ export const Route = createRootRoute({
           <DemoTourHost />
           <HostSplitGuard />
           <VenueHostBootstrap />
+          <GetAPricePathObserver />
           <Outlet />
         </AuthProvider>
         <Scripts />

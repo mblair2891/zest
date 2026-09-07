@@ -22,9 +22,13 @@ import {
 import { useStationSessionStore } from "@/lib/pos/station-session";
 import { kickCashDrawer } from "@/lib/print/dispatch";
 import { CloseoutQueue } from "./CloseoutQueue";
+import { TillCloseoutQueue } from "./TillCloseoutQueue";
+import { TillCloseoutView } from "./TillCloseoutView";
+import { useTillCloseoutStore } from "@/lib/pos/till-closeout-store";
 import { NightlyIntegrityPanel } from "./NightlyIntegrityPanel";
 import { NO_SALE_REASONS, parseLossPrevention } from "@/lib/pos/loss-prevention";
 import { ApprovalQueue } from "./ApprovalQueue";
+import { TillTransferSection } from "./TillTransferPanel";
 
 export function CashView() {
   const shift = usePosStore((s) => s.shift);
@@ -56,6 +60,7 @@ export function CashView() {
 
   const [count, setCount] = useState("");
   const [countNote, setCountNote] = useState("");
+  const [tillOpen, setTillOpen] = useState(false);
   const [amt, setAmt] = useState("");
   const [reason, setReason] = useState(cfg.paidInOutReasons[0] ?? "Other");
   const [noSaleReason, setNoSaleReason] = useState<string>(NO_SALE_REASONS[0]);
@@ -86,15 +91,17 @@ export function CashView() {
             dropsCents: 0,
             paidInCents: 0,
             paidOutCents: 0,
+            transfersInCents: 0,
+            transfersOutCents: 0,
             salesByEmployee: {},
           },
         )
       : sink.type === "bank" && bankSes
         ? bankExpected(bankSes)
         : shift.openingFloatCents + shift.cashSalesCents - shift.tipsCashCents;
-  const counted = Math.round(parseFloat(count || "0") * 100) || 0;
-  const variance = count ? counted - expected : 0;
-  const showExpected = !cfg.blindCount || count !== "";
+  const counted = count.trim() === "" ? null : Math.round(parseFloat(count) * 100) || 0;
+  const variance = counted != null ? counted - expected : 0;
+  const showExpected = manager && (!cfg.blindCount || counted != null);
   const cents = Math.max(0, Math.round(parseFloat(amt || "0") * 100) || 0);
 
   const needMgr = (kind: typeof pending) => {
@@ -108,13 +115,29 @@ export function CashView() {
   const run = (kind: NonNullable<typeof pending>) => {
     if (!emp) return;
     if (kind === "close") {
-      if (Math.abs(variance) >= cfg.overShortRequireNoteCents && !countNote.trim() && count) {
+      const tillCounted = useTillCloseoutStore
+        .getState()
+        .records.find(
+          (r) =>
+            r.countedCents != null &&
+            r.status !== "voided" &&
+            r.status !== "counting" &&
+            r.status !== "recounting" &&
+            (sink.type === "drawer" ? r.drawerId === sink.drawer.id : r.employeeId === emp.id),
+        )?.countedCents;
+      const closingCents = tillCounted ?? counted;
+      if (closingCents == null) {
+        setCloseErr("Count the till first. The house will not fill expected or force a $0 balance.");
+        return;
+      }
+      const houseVar = closingCents - expected;
+      if (Math.abs(houseVar) >= cfg.overShortRequireNoteCents && !countNote.trim()) {
         setCloseErr(`Note required for over/short over ${formatCurrency(cfg.overShortRequireNoteCents)}.`);
         return;
       }
-      if (count && Math.abs(variance) >= cfg.overShortWarnCents) {
-        audit("over_short", `Over/short ${formatCurrency(variance)}`, {
-          amountCents: variance,
+      if (Math.abs(houseVar) >= cfg.overShortWarnCents) {
+        audit("over_short", `Over/short ${formatCurrency(houseVar)}`, {
+          amountCents: houseVar,
           reason: countNote || "over_short",
         });
       }
@@ -123,7 +146,7 @@ export function CashView() {
           drawerId: sink.drawer.id,
           employeeId: emp.id,
           employeeName: emp.name,
-          countedCents: counted || expected,
+          countedCents: closingCents,
           note: countNote,
           close: true,
         });
@@ -132,12 +155,12 @@ export function CashView() {
           employeeId: emp.id,
           countedById: emp.id,
           countedByName: emp.name,
-          countedCents: counted || expected,
+          countedCents: closingCents,
           note: countNote,
           close: true,
         });
       }
-      const res = closeShift(counted || expected, nightAck.trim() ? { ackReason: nightAck.trim() } : undefined);
+      const res = closeShift(closingCents, nightAck.trim() ? { ackReason: nightAck.trim() } : undefined);
       if (res && res.ok === false) {
         setCloseErr(res.error ?? "Cannot close house.");
         setNightErr(res.error ?? null);
@@ -309,7 +332,9 @@ export function CashView() {
           }}
         />
       </div>
+      <TillCloseoutQueue />
       <CloseoutQueue />
+      <TillTransferSection />
 
       <div className="mb-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         {[
@@ -322,7 +347,14 @@ export function CashView() {
                 : "—",
           ],
           ["Starting bank", sink.type === "drawer" ? sink.drawer.startingBankCents : cfg.serverBankStartingCents],
-          ["Cash sales", sink.type === "drawer" ? drawerSes?.cashSalesCents ?? 0 : bankSes?.cashSalesCents ?? shift.cashSalesCents],
+          [
+            "Cash sales",
+            manager
+              ? sink.type === "drawer"
+                ? drawerSes?.cashSalesCents ?? 0
+                : bankSes?.cashSalesCents ?? shift.cashSalesCents
+              : null,
+          ],
           ["Expected", showExpected ? expected : null],
         ].map(([label, val]) => (
           <div key={String(label)} className="rounded-2xl border border-border bg-surface p-4">
@@ -374,62 +406,24 @@ export function CashView() {
 
       <div className="mb-4 grid gap-3 lg:grid-cols-2">
         <div className="rounded-2xl border border-border bg-surface p-4">
-          <p className="mb-3 text-sm font-medium">Count</p>
-          <label className="mb-1 block text-xs text-muted-foreground">Counted cash</label>
-          <Input
-            inputMode="decimal"
-            placeholder={cfg.blindCount ? "Blind count" : (expected / 100).toFixed(2)}
-            value={count}
-            onChange={(e) => setCount(e.target.value)}
-            className="mb-2"
-          />
-          {count && (
-            <p className={`mb-2 text-sm tabular ${variance === 0 ? "text-success" : "text-warn"}`}>
-              Over/short: {formatCurrency(variance)}
-              {Math.abs(variance) >= cfg.overShortWarnCents && cfg.overShortWarnCents > 0 ? " · over warn" : ""}
-            </p>
-          )}
-          <Input
-            placeholder="Note"
-            value={countNote}
-            onChange={(e) => setCountNote(e.target.value)}
-            className="mb-2"
-          />
+          <p className="mb-3 text-sm font-medium">Close this drawer</p>
+          <p className="mb-3 text-sm text-muted-foreground">
+            Count your till is a blind count. Enter what is in the drawer — the system will not
+            fill expected, and you cannot force the till to $0.
+          </p>
           <div className="flex flex-wrap gap-2">
             <Button
               size="sm"
               disabled={sink.type === "blocked"}
-              onClick={() => {
-                if (!emp) return;
-                if (Math.abs(variance) >= cfg.overShortRequireNoteCents && !countNote.trim() && count) {
-                  setCloseErr(`Note required for over/short over ${formatCurrency(cfg.overShortRequireNoteCents)}.`);
-                  return;
-                }
-                if (sink.type === "drawer") {
-                  useCashSessionStore.getState().countDrawer({
-                    drawerId: sink.drawer.id,
-                    employeeId: emp.id,
-                    employeeName: emp.name,
-                    countedCents: counted,
-                    note: countNote,
-                  });
-                } else if (sink.type === "bank") {
-                  useCashSessionStore.getState().countBank({
-                    employeeId: emp.id,
-                    countedById: emp.id,
-                    countedByName: emp.name,
-                    countedCents: counted,
-                    note: countNote,
-                  });
-                }
-                setFlash("Count saved");
-              }}
+              onClick={() => setTillOpen(true)}
             >
-              Save count
+              Count your till
             </Button>
-            <Button size="sm" disabled={!!shift.closedAt} onClick={() => ask("close")}>
-              Close (Z)
-            </Button>
+            {manager && (
+              <Button size="sm" disabled={!!shift.closedAt} onClick={() => ask("close")}>
+                Close house (Z)
+              </Button>
+            )}
             <Button size="sm" variant="outline" onClick={() => ask("open")}>
               Open new
             </Button>
@@ -501,8 +495,8 @@ export function CashView() {
             </Button>
           </div>
           <p className="mt-3 text-xs text-muted-foreground">
-            Server bank expected = start + cash sales − refunds − drops + paid-in − paid-out.
-            Shared well: one count; cash by user still listed. PIN is not clock-out.
+            Expected = start + cash sales − refunds − drops + paid-in − paid-out + transfers in −
+            transfers out. Shared well: one count; cash by user still listed. PIN is not clock-out.
           </p>
         </div>
       </div>
@@ -567,6 +561,11 @@ export function CashView() {
           setPending(null);
         }}
       />
+      {tillOpen && (
+        <div className="fixed inset-0 z-40 bg-bg">
+          <TillCloseoutView onDone={() => setTillOpen(false)} />
+        </div>
+      )}
     </div>
   );
 }

@@ -3,7 +3,17 @@ import { deviceRoleFromSessionMode } from "./device-roles";
 import type { SessionModeId } from "@/lib/lifecycle/types";
 import type { Employee, EmployeeRole, Order } from "./types";
 import { cloneTipPooling, DEFAULT_TIP_POOLING, parseTipPooling, type TipPoolingConfig } from "./tip-pooling";
+import {
+  DEFAULT_TILL_CLOSE,
+  parseBankMix,
+  parseTillCountMode,
+  parseVarianceAction,
+  type BankMixLine,
+  type TillCountMode,
+  type VarianceAction,
+} from "./till-closeout";
 export type { TipPoolingConfig } from "./tip-pooling";
+export type { TillCountMode, VarianceAction, BankMixLine };
 
 export const TIP_OUT_CATEGORIES = ["food", "drink", "total", "covers"] as const;
 export type TipOutCategory = (typeof TIP_OUT_CATEGORIES)[number];
@@ -219,6 +229,25 @@ export type CashHandlingConfig = {
   tipOutPools: TipOutPool[];
   ccTipPayout: CcTipPayout;
   tipPooling: TipPoolingConfig;
+  /** Blind till close: full drawer vs turn-in only. */
+  countMode: TillCountMode;
+  denominationRequired: boolean;
+  dualControlRequired: boolean;
+  dropBagRequired: boolean;
+  otherTendersEnabled: boolean;
+  /** 0 = same as opening / starting bank. */
+  nextShiftBankCents: number;
+  varianceAction: VarianceAction;
+  bankMix: BankMixLine[];
+  /** 1 or 2 copies of the bag turn-in slip after submit. */
+  turnInSlipCopies: 1 | 2;
+  matchToleranceCents: number;
+  revealVarianceAfterFinalMismatch: boolean;
+  notifyInApp: boolean;
+  notifySms: boolean;
+  notifyEmail: boolean;
+  notifyPush: boolean;
+  notifyEmails: string[];
 };
 
 export const DEFAULT_PAID_REASONS = [
@@ -269,6 +298,22 @@ export const DEFAULT_CASH_HANDLING: CashHandlingConfig = {
   tipOutPools: DEFAULT_TIP_OUT_POOLS.map((p) => ({ ...p })),
   ccTipPayout: "cash_at_close",
   tipPooling: cloneTipPooling(DEFAULT_TIP_POOLING),
+  countMode: DEFAULT_TILL_CLOSE.countMode,
+  denominationRequired: DEFAULT_TILL_CLOSE.denominationRequired,
+  dualControlRequired: DEFAULT_TILL_CLOSE.dualControlRequired,
+  dropBagRequired: DEFAULT_TILL_CLOSE.dropBagRequired,
+  otherTendersEnabled: DEFAULT_TILL_CLOSE.otherTendersEnabled,
+  nextShiftBankCents: DEFAULT_TILL_CLOSE.nextShiftBankCents,
+  varianceAction: DEFAULT_TILL_CLOSE.varianceAction,
+  bankMix: [],
+  turnInSlipCopies: DEFAULT_TILL_CLOSE.turnInSlipCopies,
+  matchToleranceCents: DEFAULT_TILL_CLOSE.matchToleranceCents,
+  revealVarianceAfterFinalMismatch: DEFAULT_TILL_CLOSE.revealVarianceAfterFinalMismatch,
+  notifyInApp: DEFAULT_TILL_CLOSE.notifyInApp,
+  notifySms: DEFAULT_TILL_CLOSE.notifySms,
+  notifyEmail: DEFAULT_TILL_CLOSE.notifyEmail,
+  notifyPush: DEFAULT_TILL_CLOSE.notifyPush,
+  notifyEmails: [],
 };
 
 function asModel(raw: unknown): CashModel | null {
@@ -378,6 +423,24 @@ export function parseCashHandling(raw: unknown): CashHandlingConfig {
       o.blindCount === undefined
         ? defaultModel === "server_bank" || defaultModel === "single_user_drawer"
         : Boolean(o.blindCount),
+    countMode: parseTillCountMode(o.countMode),
+    denominationRequired: Boolean(o.denominationRequired),
+    dualControlRequired: Boolean(o.dualControlRequired),
+    dropBagRequired: Boolean(o.dropBagRequired),
+    otherTendersEnabled: o.otherTendersEnabled !== false,
+    nextShiftBankCents: Math.max(0, Math.round(Number(o.nextShiftBankCents) || 0)),
+    varianceAction: parseVarianceAction(o.varianceAction),
+    bankMix: parseBankMix(o.bankMix),
+    turnInSlipCopies: Math.round(Number(o.turnInSlipCopies) || 1) >= 2 ? 2 : 1,
+    matchToleranceCents: Math.max(0, Math.round(Number(o.matchToleranceCents) || 0)),
+    revealVarianceAfterFinalMismatch: Boolean(o.revealVarianceAfterFinalMismatch),
+    notifyInApp: o.notifyInApp !== false,
+    notifySms: o.notifySms !== false,
+    notifyEmail: o.notifyEmail !== false,
+    notifyPush: o.notifyPush !== false,
+    notifyEmails: Array.isArray(o.notifyEmails)
+      ? o.notifyEmails.map((x) => String(x).trim()).filter((x) => x.includes("@")).slice(0, 12)
+      : [],
   };
 }
 
@@ -490,6 +553,8 @@ export function expectedCashCents(opts: {
   dropsCents: number;
   paidInCents: number;
   paidOutCents: number;
+  transfersInCents?: number;
+  transfersOutCents?: number;
 }): number {
   return (
     opts.startCents +
@@ -497,7 +562,9 @@ export function expectedCashCents(opts: {
     opts.cashRefundsCents -
     opts.dropsCents +
     opts.paidInCents -
-    opts.paidOutCents
+    opts.paidOutCents +
+    (opts.transfersInCents ?? 0) -
+    (opts.transfersOutCents ?? 0)
   );
 }
 

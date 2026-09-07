@@ -22,6 +22,7 @@ export type ReportId =
   | "close-drawers"
   | "close-banks"
   | "close-closeouts"
+  | "close-tills"
   | "close-tip-pools"
   | "guest-waitlist"
   | "guest-kiosk"

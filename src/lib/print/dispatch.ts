@@ -83,6 +83,58 @@ async function sendToAgent(req: AgentPrintRequest): Promise<boolean> {
   }
 }
 
+/**
+ * Turn-in bag slip. Prefers the named receipt printer, then station receipt printers.
+ * Agent printers must succeed; browser-only stations count as printed (preview).
+ */
+export async function dispatchTurnInSlip(
+  job: PrintJob,
+  devices: LocationDevice[] | undefined,
+  opts?: { printerId?: string | null; copies?: 1 | 2 },
+): Promise<{ ok: boolean; printed: number; error?: string }> {
+  const copies = opts?.copies === 2 ? 2 : 1;
+  const all = (devices ?? []).filter((d) => d.type === "printer" && d.status !== "inactive");
+  const named = opts?.printerId ? all.find((d) => d.id === opts.printerId) : undefined;
+  const receipts = printersForStation(devices, "receipt", job.operatorId);
+  const targets = named ? [named] : receipts.length ? receipts : all.filter((d) => d.print?.station === "receipt");
+  const agentTargets = targets.filter((p) => p.print && p.print.connection !== "browser" && p.print.target);
+
+  let printed = 0;
+  for (let i = 0; i < copies; i += 1) {
+    const copyJob: PrintJob = i === 0 ? job : { ...job, id: uid("prn"), turnIn: job.turnIn };
+    if (agentTargets.length) {
+      let any = false;
+      for (const p of agentTargets) {
+        const cfg = p.print;
+        if (!cfg?.target) continue;
+        const ok = await sendToAgent({
+          locationId: copyJob.locationId,
+          printerId: p.id,
+          family: cfg.family,
+          connection: cfg.connection,
+          target: cfg.target,
+          job: copyJob,
+          escposBase64: escposBase64(copyJob),
+        });
+        if (ok) {
+          any = true;
+          printed += 1;
+        }
+      }
+      if (!any) {
+        return { ok: false, printed, error: "Count is saved. Reprint required before drop." };
+      }
+    } else {
+      printHtml(ticketHtml(copyJob));
+      printed += 1;
+    }
+  }
+  if (printed === 0) {
+    return { ok: false, printed: 0, error: "Count is saved. Reprint required before drop." };
+  }
+  return { ok: true, printed };
+}
+
 export async function dispatchPrintJob(
   job: PrintJob,
   devices: LocationDevice[] | undefined,

@@ -6,6 +6,58 @@ import type { GuideUpdate } from "@/lib/guide/types";
  */
 export const WHATS_NEW_ENTRIES: GuideUpdate[] = [
   {
+    id: "upd_2026_10_59_till_transfer",
+    date: "2026-09-07",
+    title: "Till-to-till cash transfer",
+    summary:
+      "Request small bills from another open till. Cash moves when they accept. Both expected balances stay correct for the blind count.",
+    body: "On Cash tap Transfer cash. Pick an open till, an amount, and an optional mix (ones and fives). That till gets Accept or decline. No manager is required. Accept prints a short TILL TRANSFER slip on both sides. Pending transfers must be resolved before End shift. After accept, only a manager can reverse. Transfers never change sales — only expected cash in each drawer.",
+    roles: ["owner_manager", "server", "kitchen_bar", "host_operator"],
+    surfaces: ["settings", "reports"],
+    audience: "all",
+    topicId: "cash-handling",
+    tags: ["cash", "till", "transfer", "closeout"],
+  },
+  {
+    id: "upd_2026_10_58_two_step_count",
+    date: "2026-09-07",
+    title: "Two-step blind count",
+    summary:
+      "Enter one till total first. Only a mismatch asks for denominations. A second mismatch notifies management and prints MANAGER REVIEW.",
+    body: "End shift still blocks cash on that till. Count is blind. If the first total matches expected, you never see a denom grid and the turn-in slip prints. If it does not match, count by bill and coin — you still cannot see expected. A matching denom sum closes balanced. A second mismatch locks the close, notifies on-duty managers, and prints a bag slip with MANAGER REVIEW. You bag and drop; only a manager starts a recount.",
+    roles: ["owner_manager", "server", "kitchen_bar", "host_operator"],
+    surfaces: ["settings", "reports"],
+    audience: "all",
+    topicId: "server-closeout",
+    tags: ["cash", "closeout", "blind count", "till", "print"],
+  },
+  {
+    id: "upd_2026_10_57_turn_in_slip",
+    date: "2026-09-07",
+    title: "Turn-in slip prints after you submit",
+    summary:
+      "The station receipt printer prints a bag slip only after a successful blind count. Put it in the drop bag with the cash.",
+    body: "End shift → count → submit. Then the till prints TILL TURN-IN: counted, bank left, turn-in cash, over/short, bag number, signatures. Reprints say COPY. If the printer fails, the count is still saved — reprint before you mark Dropped, or a manager overrides with a reason. No fill-in form. The system count is the record; the slip goes in the bag.",
+    roles: ["owner_manager", "server", "kitchen_bar", "host_operator"],
+    surfaces: ["settings", "reports"],
+    audience: "all",
+    topicId: "server-closeout",
+    tags: ["cash", "closeout", "print", "till", "drop"],
+  },
+  {
+    id: "upd_2026_10_56_blind_till",
+    date: "2026-09-07",
+    title: "Blind till close — count what you counted",
+    summary:
+      "End shift opens Count your till. Expected cash stays hidden until you submit. No paper form, no force-balance.",
+    body: "Cashiers and servers close the drawer by counting the physical till. Enter bills and coin or a single total. The system compares that to expected on the server and records over/short. You cannot see expected, cash sales, or variance until submit succeeds. After submit the count is locked — only a manager can void it and start a still-blind recount. Turn-in mode leaves the house bank in the till. Bag the turn-in and mark Dropped. Reports stay closed while you count.",
+    roles: ["owner_manager", "server", "kitchen_bar", "host_operator"],
+    surfaces: ["settings", "reports"],
+    audience: "all",
+    topicId: "server-closeout",
+    tags: ["cash", "closeout", "blind count", "till"],
+  },
+  {
     id: "upd_2026_10_54_invoice_variance",
     date: "2026-09-06",
     title: "Upload invoices, recipe vs usage alerts",

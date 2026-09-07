@@ -38,6 +38,9 @@ import { parseCashHandling } from "@/lib/pos/cash-handling";
 import { bankExpected, drawerExpected, useCashSessionStore } from "@/lib/pos/cash-session";
 import { closeoutNetsForPeriod, closeoutPayrollCsv, tipPoolReportCsv } from "@/lib/pos/closeout";
 import { useCloseoutStore } from "@/lib/pos/closeout-store";
+import { reportsBlockedForClose, useTillCloseoutStore } from "@/lib/pos/till-closeout-store";
+import { tillCloseReportCsv, TILL_CLOSE_STATUS_LABEL } from "@/lib/pos/till-closeout";
+import { useTillTransferStore } from "@/lib/pos/till-transfer-store";
 import { NightlyIntegrityPanel } from "@/components/pos/NightlyIntegrityPanel";
 import { OpsJobsInbox } from "@/components/pos/OpsJobsInbox";
 import { buildNightlyIntegrityPack, INTEGRITY_KIND_LABEL } from "@/lib/pos/check-integrity";
@@ -88,6 +91,16 @@ function downloadCsv(name: string, csv: string) {
 
 export function ReportsView() {
   const emp = usePosStore((s) => s.employees.find((e) => e.id === s.currentEmployeeId));
+  if (emp && reportsBlockedForClose(emp.id)) {
+    return (
+      <div className="p-6">
+        <p className="text-sm">
+          Reports are closed while you count your till. Enter what you counted — do not use reports
+          to guess expected cash.
+        </p>
+      </div>
+    );
+  }
   const venue = usePosStore((s) => s.activeEntityId) as VenueEntityId;
   const vendors = usePosStore((s) => s.vendors);
   const grants = usePosStore((s) => s.entityPermissions);
@@ -255,6 +268,15 @@ export function ReportsView() {
           ]),
         ),
       );
+      return;
+    }
+    if (active.id === "close-tills") {
+      const emp = usePosStore.getState().employees.find((e) => e.id === usePosStore.getState().currentEmployeeId);
+      let rows = useTillCloseoutStore.getState().records.filter((r) => r.startedAt >= metrics.from && r.startedAt <= metrics.to);
+      if (emp && emp.role !== "owner" && emp.role !== "manager" && emp.role !== "accountant") {
+        rows = rows.filter((r) => r.employeeId === emp.id && r.countedCents != null);
+      }
+      downloadCsv("till-closeouts.csv", tillCloseReportCsv(rows));
       return;
     }
     if (active.id === "close-closeouts" || active.id === "close-tip-pools") {
@@ -727,7 +749,7 @@ function ReportBody({ id, m }: { id: ReportId; m: ReturnType<typeof metricsFromP
     return (
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         <Card label="Card" value={formatCurrency(m.payments.cardCents)} />
-        <Card label="Cash expected" value={formatCurrency(m.payments.cashCents)} sub="Counted cash is entered on Cash if tracked." />
+        <Card label="Cash tenders" value={formatCurrency(m.payments.cashCents)} sub="Drawer expected is only on a submitted till close." />
         <Card label="Tips" value={formatCurrency(m.payments.tipsCents)} />
         <Card label="Closed checks" value={String(m.sales.closedChecks)} />
       </div>
@@ -751,9 +773,9 @@ function ReportBody({ id, m }: { id: ReportId; m: ReturnType<typeof metricsFromP
         <ul className="space-y-2 text-sm">
           {cfg.drawers.map((d) => {
             const s = ses.drawers[d.id];
-            const exp = s ? drawerExpected(s) : d.startingBankCents;
             const counted = s?.countedCents;
-            const varn = counted == null ? null : counted - exp;
+            const exp = counted != null ? (s ? drawerExpected(s) : d.startingBankCents) : null;
+            const varn = counted != null && exp != null ? counted - exp : null;
             return (
               <li key={d.id} className="flex justify-between gap-2 rounded-xl border border-border px-3 py-2">
                 <span>
@@ -761,14 +783,66 @@ function ReportBody({ id, m }: { id: ReportId; m: ReturnType<typeof metricsFromP
                   <span className="text-muted-foreground"> · {d.kind}</span>
                 </span>
                 <span className="tabular">
-                  exp {formatCurrency(exp)}
-                  {counted != null ? ` · counted ${formatCurrency(counted)}` : " · not counted"}
-                  {varn != null ? ` · ${varn >= 0 ? "+" : ""}${formatCurrency(varn)}` : ""}
+                  {counted != null
+                    ? `counted ${formatCurrency(counted)}${exp != null ? ` · exp ${formatCurrency(exp)}` : ""}${varn != null ? ` · ${varn >= 0 ? "+" : ""}${formatCurrency(varn)}` : ""}`
+                    : "not counted — expected hidden until submit"}
                 </span>
               </li>
             );
           })}
         </ul>
+      </div>
+    );
+  }
+  if (id === "close-tills") {
+    const emp = usePosStore.getState().employees.find((e) => e.id === usePosStore.getState().currentEmployeeId);
+    const manager = emp?.role === "owner" || emp?.role === "manager" || emp?.role === "accountant";
+    let rows = useTillCloseoutStore.getState().records.filter((r) => r.startedAt >= m.from && r.startedAt <= m.to);
+    if (!manager && emp) rows = rows.filter((r) => r.employeeId === emp.id && r.countedCents != null);
+    const os = rows.reduce((s, r) => s + (r.overShortCents ?? 0), 0);
+    const audit = useTillCloseoutStore.getState().audit.filter((a) => a.action === "recount");
+    if (!rows.length) return <p className="text-sm text-muted-foreground">No till closes in this range.</p>;
+    return (
+      <div className="space-y-3">
+        <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+          <Card label="Closes" value={String(rows.length)} />
+          <Card label="Over/short" value={formatCurrency(os)} />
+          <Card label="Recounts" value={String(audit.length)} />
+        </div>
+        <ul className="space-y-2 text-sm">
+          {rows.slice(0, 50).map((r) => (
+            <li key={r.id} className="flex justify-between gap-2 rounded-xl border border-border px-3 py-2">
+              <span>
+                {r.employeeName}
+                <span className="text-muted-foreground">
+                  {" "}
+                  · {r.drawerName} · {TILL_CLOSE_STATUS_LABEL[r.status]}
+                </span>
+              </span>
+              <span className="tabular">
+                {r.countedCents != null ? `counted ${formatCurrency(r.countedCents)}` : "in progress"}
+                {r.expected && r.countedCents != null ? ` · exp ${formatCurrency(r.expected.expectedCents)}` : ""}
+                {r.overShortCents != null ? ` · O/S ${formatCurrency(r.overShortCents)}` : ""}
+                {r.bagNumber ? ` · bag ${r.bagNumber}` : ""}
+              </span>
+            </li>
+          ))}
+        </ul>
+        {manager && (
+          <TillTransferReport from={m.from} to={m.to} />
+        )}
+        {manager && audit.length > 0 && (
+          <>
+            <p className="text-sm font-medium">Recount log</p>
+            <ul className="space-y-1 text-xs text-muted-foreground">
+              {audit.slice(0, 30).map((a) => (
+                <li key={a.id}>
+                  {formatDateTime(a.at)} · {a.actorName} · {a.detail}
+                </li>
+              ))}
+            </ul>
+          </>
+        )}
       </div>
     );
   }
@@ -1221,6 +1295,33 @@ function PayrollReportSlice() {
         {lines.length === 0 && !busy && (
           <li className="text-muted-foreground">No punches in this entity for the period.</li>
         )}
+      </ul>
+    </div>
+  );
+}
+
+function TillTransferReport({ from, to }: { from: number; to: number }) {
+  const transfers = useTillTransferStore((s) => s.transfers).filter(
+    (t) => t.requestedAt >= from && t.requestedAt <= to,
+  );
+  if (!transfers.length) return null;
+  const accepted = transfers.filter((t) => t.status === "accepted" || t.status === "reversed");
+  const cents = accepted.reduce((s, t) => s + t.amountCents, 0);
+  return (
+    <div className="space-y-2">
+      <p className="text-sm font-medium">Till-to-till transfers</p>
+      <p className="text-xs text-muted-foreground">
+        {transfers.length} requests · accepted/reversed {formatCurrency(cents)}. Does not change sales.
+      </p>
+      <ul className="space-y-1 text-sm">
+        {transfers.slice(0, 40).map((t) => (
+          <li key={t.id} className="flex justify-between gap-2 rounded-xl border border-border px-3 py-2">
+            <span>
+              {t.id} · {t.status} · {t.fromDrawerName} → {t.toDrawerName}
+            </span>
+            <span className="tabular">{formatCurrency(t.amountCents)}</span>
+          </li>
+        ))}
       </ul>
     </div>
   );

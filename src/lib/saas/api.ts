@@ -341,6 +341,36 @@ export const interviewAiStatusFn = createServerFn({ method: "GET" })
     return { ai: interviewUsesAi() };
   });
 
+export const qualifyTurnFn = createServerFn({ method: "POST" })
+  .middleware([optionalAuthMiddleware])
+  .validator((d: {
+    message?: string;
+    chip?: { id: string; label: string } | null;
+    session?: unknown;
+    open?: boolean;
+  }) => ({
+    message: d.message ? String(d.message).slice(0, 4000) : "",
+    chip:
+      d.chip && typeof d.chip === "object"
+        ? { id: String(d.chip.id ?? "").slice(0, 80), label: String(d.chip.label ?? "").slice(0, 80) }
+        : null,
+    session: d.session,
+    open: d.open === true,
+  }))
+  .handler(async ({ context, data }) => {
+    const { rateLimit } = await import("./rate-limit.server");
+    if (rateLimit(`qualify:${context.userId ?? "anon"}`, 30, 60_000)) {
+      throw new Error("Too many interview turns — wait a minute");
+    }
+    const { runQualifyTurn } = await import("./qualify.server");
+    return runQualifyTurn({
+      message: data.message,
+      chip: data.chip?.id ? data.chip : null,
+      session: data.session,
+      open: data.open,
+    });
+  });
+
 export const saveIntakeFn = createServerFn({ method: "POST" })
   .middleware([optionalAuthMiddleware])
   .validator((d: { token: string; answers: unknown }) => ({

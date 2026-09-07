@@ -77,7 +77,9 @@ import { StaffingWatcher } from "./StaffingWatcher";
 import { useStationSessionStore } from "@/lib/pos/station-session";
 import { canChangeDevice, stationKindLabel, stationsAllowedForEmployee } from "@/lib/pos/station-access";
 import { readStationDeviceRole } from "@/lib/pos/device-roles";
-import { CloseoutView } from "./CloseoutView";
+import { EndShiftFlow } from "./EndShiftFlow";
+import { TillTransferBanner } from "./TillTransferPanel";
+import { reportsBlockedForClose } from "@/lib/pos/till-closeout-store";
 import { HOST_SCOPE } from "@/lib/access/entity-grants";
 import { KitchenView } from "./KitchenView";
 import { ReportsView } from "./ReportsView";
@@ -276,6 +278,13 @@ export function AppShell() {
   const floorLocked =
     sessionKind === "pin" && !backOfficeUnlocked && isFloorRole(role);
   const requestView = (id: PosView) => {
+    if (
+      id === "reports" &&
+      emp &&
+      reportsBlockedForClose(emp.id)
+    ) {
+      return;
+    }
     if (BACK_OFFICE_VIEWS.includes(id) && sessionKind === "pin" && !backOfficeUnlocked) {
       setPendingView(id);
       setUnlockOpen(true);
@@ -541,7 +550,7 @@ export function AppShell() {
                 title="End of shift — not clock-out"
               >
                 <ClipboardCheck className="h-3.5 w-3.5" />
-                Closeout
+                End shift
               </Button>
             )}
           <HelpButton surface="pos" />
@@ -600,6 +609,7 @@ export function AppShell() {
         </div>
       )}
       <NetworkBanner />
+      <TillTransferBanner />
 
       <div className="flex min-h-0 flex-1">
         {!urlStation && (
@@ -613,11 +623,14 @@ export function AppShell() {
             if (id === "bar") badge = barOpen;
             if (id === "order") badge = openOrders;
             if (id === "online") badge = onlineOpen;
+            const reportsLocked = id === "reports" && emp && reportsBlockedForClose(emp.id);
             return (
               <button
                 key={id}
                 type="button"
                 data-demo-nav={id}
+                disabled={Boolean(reportsLocked)}
+                title={reportsLocked ? "Reports closed while you count your till" : undefined}
                 onClick={() => requestView(id)}
                 className={cn(
                   "flex items-center gap-3 rounded-xl px-2 py-2.5 text-left text-sm transition-colors lg:px-3",
@@ -785,10 +798,12 @@ export function AppShell() {
       <nav className="flex shrink-0 gap-0.5 overflow-x-auto border-t border-border bg-surface px-1 py-1 safe-bottom md:hidden">
         {mobileItems.map((item) => {
           const Icon = item.icon;
+          const reportsLocked = item.id === "reports" && emp && reportsBlockedForClose(emp.id);
           return (
             <button
               key={item.id}
               type="button"
+              disabled={Boolean(reportsLocked)}
               onClick={() => requestView(item.id)}
               className={cn(
                 "flex min-w-[4.25rem] flex-1 flex-col items-center gap-0.5 rounded-lg px-1 py-1.5 text-[10px]",
@@ -813,7 +828,7 @@ export function AppShell() {
 
       {closeoutOpen && (
         <div className="absolute inset-0 z-30 bg-bg">
-          <CloseoutView onDone={() => setCloseoutOpen(false)} />
+          <EndShiftFlow onDone={() => setCloseoutOpen(false)} />
         </div>
       )}
       <TicketBumpWatcher />

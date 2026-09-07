@@ -14,6 +14,7 @@ import { Route as AppRouteImport } from './routes/app'
 import { Route as AppsRouteImport } from './routes/apps'
 import { Route as BlogRouteImport } from './routes/blog'
 import { Route as ChangePasswordRouteImport } from './routes/change-password'
+import { Route as ContactRouteImport } from './routes/contact'
 import { Route as DashboardRouteImport } from './routes/dashboard'
 import { Route as DemoRouteImport } from './routes/demo'
 import { Route as FeaturesRouteImport } from './routes/features'
@@ -25,15 +26,12 @@ import { Route as OnboardingRouteImport } from './routes/onboarding'
 import { Route as OnlineRouteImport } from './routes/online'
 import { Route as PipelineRouteImport } from './routes/pipeline'
 import { Route as PlatformRouteImport } from './routes/platform'
-import { Route as PlatformTenantsOrgIdRouteImport } from './routes/platform.tenants.$orgId'
 import { Route as PricingRouteImport } from './routes/pricing'
+import { Route as PrivacyRouteImport } from './routes/privacy'
 import { Route as ReserveRouteImport } from './routes/reserve'
 import { Route as SignupRouteImport } from './routes/signup'
 import { Route as StationRouteImport } from './routes/station'
-import { Route as StationRoleRouteImport } from './routes/station.$role'
 import { Route as WhitepaperRouteImport } from './routes/whitepaper'
-import { Route as PrivacyRouteImport } from './routes/privacy'
-import { Route as ContactRouteImport } from './routes/contact'
 import { Route as ApiHealthRouteImport } from './routes/api/health'
 import { Route as BlogSlugRouteImport } from './routes/blog.$slug'
 import { Route as DemoIndexRouteImport } from './routes/demo.index'
@@ -43,11 +41,12 @@ import { Route as OrderOrderIdRouteImport } from './routes/order.$orderId'
 import { Route as QuoteTokenRouteImport } from './routes/quote.$token'
 import { Route as SetupTokenRouteImport } from './routes/setup.$token'
 import { Route as SiteSlugRouteImport } from './routes/site.$slug'
-import { Route as VSlugRouteImport } from './routes/v.$slug'
 import { Route as SitesSlugRouteImport } from './routes/sites.$slug'
+import { Route as StationRoleRouteImport } from './routes/station.$role'
 import { Route as TTokenRouteImport } from './routes/t.$token'
 import { Route as TableLabelRouteImport } from './routes/table.$label'
 import { Route as TenantTokenRouteImport } from './routes/tenant.$token'
+import { Route as VSlugRouteImport } from './routes/v.$slug'
 import { Route as VenueTypeRouteImport } from './routes/venue.$type'
 import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
 import { Route as ApiBillingWebhookRouteImport } from './routes/api/billing/webhook'
@@ -55,6 +54,7 @@ import { Route as ApiPaymentsWebhookRouteImport } from './routes/api/payments/we
 import { Route as AppVenueTypeRouteImport } from './routes/app.venue.$type'
 import { Route as DemoTypeTourRouteImport } from './routes/demo.$type.tour'
 import { Route as DemoTourFullRouteImport } from './routes/demo.tour.full'
+import { Route as PlatformTenantsOrgIdRouteImport } from './routes/platform.tenants.$orgId'
 import { Route as WaitlistOptOutTokenRouteImport } from './routes/waitlist.opt-out.$token'
 import { Route as ApiPaymentsFinixWebhookRouteImport } from './routes/api/payments/finix/webhook'
 
@@ -81,6 +81,11 @@ const BlogRoute = BlogRouteImport.update({
 const ChangePasswordRoute = ChangePasswordRouteImport.update({
   id: '/change-password',
   path: '/change-password',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ContactRoute = ContactRouteImport.update({
+  id: '/contact',
+  path: '/contact',
   getParentRoute: () => rootRouteImport,
 } as any)
 const DashboardRoute = DashboardRouteImport.update({
@@ -138,14 +143,14 @@ const PlatformRoute = PlatformRouteImport.update({
   path: '/platform',
   getParentRoute: () => rootRouteImport,
 } as any)
-const PlatformTenantsOrgIdRoute = PlatformTenantsOrgIdRouteImport.update({
-  id: '/tenants/$orgId',
-  path: '/tenants/$orgId',
-  getParentRoute: () => PlatformRoute,
-} as any)
 const PricingRoute = PricingRouteImport.update({
   id: '/pricing',
   path: '/pricing',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PrivacyRoute = PrivacyRouteImport.update({
+  id: '/privacy',
+  path: '/privacy',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ReserveRoute = ReserveRouteImport.update({
@@ -163,24 +168,9 @@ const StationRoute = StationRouteImport.update({
   path: '/station',
   getParentRoute: () => rootRouteImport,
 } as any)
-const StationRoleRoute = StationRoleRouteImport.update({
-  id: '/station/$role',
-  path: '/station/$role',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const WhitepaperRoute = WhitepaperRouteImport.update({
   id: '/whitepaper',
   path: '/whitepaper',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const PrivacyRoute = PrivacyRouteImport.update({
-  id: '/privacy',
-  path: '/privacy',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ContactRoute = ContactRouteImport.update({
-  id: '/contact',
-  path: '/contact',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiHealthRoute = ApiHealthRouteImport.update({
@@ -228,15 +218,15 @@ const SiteSlugRoute = SiteSlugRouteImport.update({
   path: '/site/$slug',
   getParentRoute: () => rootRouteImport,
 } as any)
-const VSlugRoute = VSlugRouteImport.update({
-  id: '/v/$slug',
-  path: '/v/$slug',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const SitesSlugRoute = SitesSlugRouteImport.update({
   id: '/sites/$slug',
   path: '/sites/$slug',
   getParentRoute: () => rootRouteImport,
+} as any)
+const StationRoleRoute = StationRoleRouteImport.update({
+  id: '/$role',
+  path: '/$role',
+  getParentRoute: () => StationRoute,
 } as any)
 const TTokenRoute = TTokenRouteImport.update({
   id: '/t/$token',
@@ -251,6 +241,11 @@ const TableLabelRoute = TableLabelRouteImport.update({
 const TenantTokenRoute = TenantTokenRouteImport.update({
   id: '/tenant/$token',
   path: '/tenant/$token',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const VSlugRoute = VSlugRouteImport.update({
+  id: '/v/$slug',
+  path: '/v/$slug',
   getParentRoute: () => rootRouteImport,
 } as any)
 const VenueTypeRoute = VenueTypeRouteImport.update({
@@ -288,6 +283,11 @@ const DemoTourFullRoute = DemoTourFullRouteImport.update({
   path: '/tour/full',
   getParentRoute: () => DemoRoute,
 } as any)
+const PlatformTenantsOrgIdRoute = PlatformTenantsOrgIdRouteImport.update({
+  id: '/tenants/$orgId',
+  path: '/tenants/$orgId',
+  getParentRoute: () => PlatformRoute,
+} as any)
 const WaitlistOptOutTokenRoute = WaitlistOptOutTokenRouteImport.update({
   id: '/waitlist/opt-out/$token',
   path: '/waitlist/opt-out/$token',
@@ -305,6 +305,7 @@ export interface FileRoutesByFullPath {
   '/apps': typeof AppsRoute
   '/blog': typeof BlogRouteWithChildren
   '/change-password': typeof ChangePasswordRoute
+  '/contact': typeof ContactRoute
   '/dashboard': typeof DashboardRoute
   '/demo': typeof DemoRouteWithChildren
   '/features': typeof FeaturesRoute
@@ -316,15 +317,12 @@ export interface FileRoutesByFullPath {
   '/online': typeof OnlineRoute
   '/pipeline': typeof PipelineRoute
   '/platform': typeof PlatformRouteWithChildren
-  '/platform/tenants/$orgId': typeof PlatformTenantsOrgIdRoute
   '/pricing': typeof PricingRoute
+  '/privacy': typeof PrivacyRoute
   '/reserve': typeof ReserveRoute
   '/signup': typeof SignupRoute
-  '/station': typeof StationRoute
-  '/station/$role': typeof StationRoleRoute
+  '/station': typeof StationRouteWithChildren
   '/whitepaper': typeof WhitepaperRoute
-  '/privacy': typeof PrivacyRoute
-  '/contact': typeof ContactRoute
   '/api/health': typeof ApiHealthRoute
   '/blog/$slug': typeof BlogSlugRoute
   '/demo/$type': typeof DemoTypeRouteWithChildren
@@ -333,11 +331,12 @@ export interface FileRoutesByFullPath {
   '/quote/$token': typeof QuoteTokenRoute
   '/setup/$token': typeof SetupTokenRoute
   '/site/$slug': typeof SiteSlugRoute
-  '/v/$slug': typeof VSlugRoute
   '/sites/$slug': typeof SitesSlugRoute
+  '/station/$role': typeof StationRoleRoute
   '/t/$token': typeof TTokenRoute
   '/table/$label': typeof TableLabelRoute
   '/tenant/$token': typeof TenantTokenRoute
+  '/v/$slug': typeof VSlugRoute
   '/venue/$type': typeof VenueTypeRoute
   '/demo/': typeof DemoIndexRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
@@ -346,6 +345,7 @@ export interface FileRoutesByFullPath {
   '/app/venue/$type': typeof AppVenueTypeRoute
   '/demo/$type/tour': typeof DemoTypeTourRoute
   '/demo/tour/full': typeof DemoTourFullRoute
+  '/platform/tenants/$orgId': typeof PlatformTenantsOrgIdRoute
   '/waitlist/opt-out/$token': typeof WaitlistOptOutTokenRoute
   '/api/payments/finix/webhook': typeof ApiPaymentsFinixWebhookRoute
 }
@@ -355,6 +355,7 @@ export interface FileRoutesByTo {
   '/apps': typeof AppsRoute
   '/blog': typeof BlogRouteWithChildren
   '/change-password': typeof ChangePasswordRoute
+  '/contact': typeof ContactRoute
   '/dashboard': typeof DashboardRoute
   '/features': typeof FeaturesRoute
   '/get-pricing': typeof GetPricingRoute
@@ -365,15 +366,12 @@ export interface FileRoutesByTo {
   '/online': typeof OnlineRoute
   '/pipeline': typeof PipelineRoute
   '/platform': typeof PlatformRouteWithChildren
-  '/platform/tenants/$orgId': typeof PlatformTenantsOrgIdRoute
   '/pricing': typeof PricingRoute
+  '/privacy': typeof PrivacyRoute
   '/reserve': typeof ReserveRoute
   '/signup': typeof SignupRoute
-  '/station': typeof StationRoute
-  '/station/$role': typeof StationRoleRoute
+  '/station': typeof StationRouteWithChildren
   '/whitepaper': typeof WhitepaperRoute
-  '/privacy': typeof PrivacyRoute
-  '/contact': typeof ContactRoute
   '/api/health': typeof ApiHealthRoute
   '/blog/$slug': typeof BlogSlugRoute
   '/demo/$type': typeof DemoTypeRouteWithChildren
@@ -382,11 +380,12 @@ export interface FileRoutesByTo {
   '/quote/$token': typeof QuoteTokenRoute
   '/setup/$token': typeof SetupTokenRoute
   '/site/$slug': typeof SiteSlugRoute
-  '/v/$slug': typeof VSlugRoute
   '/sites/$slug': typeof SitesSlugRoute
+  '/station/$role': typeof StationRoleRoute
   '/t/$token': typeof TTokenRoute
   '/table/$label': typeof TableLabelRoute
   '/tenant/$token': typeof TenantTokenRoute
+  '/v/$slug': typeof VSlugRoute
   '/venue/$type': typeof VenueTypeRoute
   '/demo': typeof DemoIndexRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
@@ -395,6 +394,7 @@ export interface FileRoutesByTo {
   '/app/venue/$type': typeof AppVenueTypeRoute
   '/demo/$type/tour': typeof DemoTypeTourRoute
   '/demo/tour/full': typeof DemoTourFullRoute
+  '/platform/tenants/$orgId': typeof PlatformTenantsOrgIdRoute
   '/waitlist/opt-out/$token': typeof WaitlistOptOutTokenRoute
   '/api/payments/finix/webhook': typeof ApiPaymentsFinixWebhookRoute
 }
@@ -405,6 +405,7 @@ export interface FileRoutesById {
   '/apps': typeof AppsRoute
   '/blog': typeof BlogRouteWithChildren
   '/change-password': typeof ChangePasswordRoute
+  '/contact': typeof ContactRoute
   '/dashboard': typeof DashboardRoute
   '/demo': typeof DemoRouteWithChildren
   '/features': typeof FeaturesRoute
@@ -416,15 +417,12 @@ export interface FileRoutesById {
   '/online': typeof OnlineRoute
   '/pipeline': typeof PipelineRoute
   '/platform': typeof PlatformRouteWithChildren
-  '/platform/tenants/$orgId': typeof PlatformTenantsOrgIdRoute
   '/pricing': typeof PricingRoute
+  '/privacy': typeof PrivacyRoute
   '/reserve': typeof ReserveRoute
   '/signup': typeof SignupRoute
-  '/station': typeof StationRoute
-  '/station/$role': typeof StationRoleRoute
+  '/station': typeof StationRouteWithChildren
   '/whitepaper': typeof WhitepaperRoute
-  '/privacy': typeof PrivacyRoute
-  '/contact': typeof ContactRoute
   '/api/health': typeof ApiHealthRoute
   '/blog/$slug': typeof BlogSlugRoute
   '/demo/$type': typeof DemoTypeRouteWithChildren
@@ -433,11 +431,12 @@ export interface FileRoutesById {
   '/quote/$token': typeof QuoteTokenRoute
   '/setup/$token': typeof SetupTokenRoute
   '/site/$slug': typeof SiteSlugRoute
-  '/v/$slug': typeof VSlugRoute
   '/sites/$slug': typeof SitesSlugRoute
+  '/station/$role': typeof StationRoleRoute
   '/t/$token': typeof TTokenRoute
   '/table/$label': typeof TableLabelRoute
   '/tenant/$token': typeof TenantTokenRoute
+  '/v/$slug': typeof VSlugRoute
   '/venue/$type': typeof VenueTypeRoute
   '/demo/': typeof DemoIndexRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
@@ -446,6 +445,7 @@ export interface FileRoutesById {
   '/app/venue/$type': typeof AppVenueTypeRoute
   '/demo/$type/tour': typeof DemoTypeTourRoute
   '/demo/tour/full': typeof DemoTourFullRoute
+  '/platform/tenants/$orgId': typeof PlatformTenantsOrgIdRoute
   '/waitlist/opt-out/$token': typeof WaitlistOptOutTokenRoute
   '/api/payments/finix/webhook': typeof ApiPaymentsFinixWebhookRoute
 }
@@ -457,6 +457,7 @@ export interface FileRouteTypes {
     | '/apps'
     | '/blog'
     | '/change-password'
+    | '/contact'
     | '/dashboard'
     | '/demo'
     | '/features'
@@ -468,15 +469,12 @@ export interface FileRouteTypes {
     | '/online'
     | '/pipeline'
     | '/platform'
-    | '/platform/tenants/$orgId'
     | '/pricing'
+    | '/privacy'
     | '/reserve'
     | '/signup'
     | '/station'
-    | '/station/$role'
     | '/whitepaper'
-    | '/privacy'
-    | '/contact'
     | '/api/health'
     | '/blog/$slug'
     | '/demo/$type'
@@ -485,11 +483,12 @@ export interface FileRouteTypes {
     | '/quote/$token'
     | '/setup/$token'
     | '/site/$slug'
-    | '/v/$slug'
     | '/sites/$slug'
+    | '/station/$role'
     | '/t/$token'
     | '/table/$label'
     | '/tenant/$token'
+    | '/v/$slug'
     | '/venue/$type'
     | '/demo/'
     | '/api/auth/$'
@@ -498,6 +497,7 @@ export interface FileRouteTypes {
     | '/app/venue/$type'
     | '/demo/$type/tour'
     | '/demo/tour/full'
+    | '/platform/tenants/$orgId'
     | '/waitlist/opt-out/$token'
     | '/api/payments/finix/webhook'
   fileRoutesByTo: FileRoutesByTo
@@ -507,6 +507,7 @@ export interface FileRouteTypes {
     | '/apps'
     | '/blog'
     | '/change-password'
+    | '/contact'
     | '/dashboard'
     | '/features'
     | '/get-pricing'
@@ -517,15 +518,12 @@ export interface FileRouteTypes {
     | '/online'
     | '/pipeline'
     | '/platform'
-    | '/platform/tenants/$orgId'
     | '/pricing'
+    | '/privacy'
     | '/reserve'
     | '/signup'
     | '/station'
-    | '/station/$role'
     | '/whitepaper'
-    | '/privacy'
-    | '/contact'
     | '/api/health'
     | '/blog/$slug'
     | '/demo/$type'
@@ -534,11 +532,12 @@ export interface FileRouteTypes {
     | '/quote/$token'
     | '/setup/$token'
     | '/site/$slug'
-    | '/v/$slug'
     | '/sites/$slug'
+    | '/station/$role'
     | '/t/$token'
     | '/table/$label'
     | '/tenant/$token'
+    | '/v/$slug'
     | '/venue/$type'
     | '/demo'
     | '/api/auth/$'
@@ -547,6 +546,7 @@ export interface FileRouteTypes {
     | '/app/venue/$type'
     | '/demo/$type/tour'
     | '/demo/tour/full'
+    | '/platform/tenants/$orgId'
     | '/waitlist/opt-out/$token'
     | '/api/payments/finix/webhook'
   id:
@@ -556,6 +556,7 @@ export interface FileRouteTypes {
     | '/apps'
     | '/blog'
     | '/change-password'
+    | '/contact'
     | '/dashboard'
     | '/demo'
     | '/features'
@@ -567,15 +568,12 @@ export interface FileRouteTypes {
     | '/online'
     | '/pipeline'
     | '/platform'
-    | '/platform/tenants/$orgId'
     | '/pricing'
+    | '/privacy'
     | '/reserve'
     | '/signup'
     | '/station'
-    | '/station/$role'
     | '/whitepaper'
-    | '/privacy'
-    | '/contact'
     | '/api/health'
     | '/blog/$slug'
     | '/demo/$type'
@@ -584,11 +582,12 @@ export interface FileRouteTypes {
     | '/quote/$token'
     | '/setup/$token'
     | '/site/$slug'
-    | '/v/$slug'
     | '/sites/$slug'
+    | '/station/$role'
     | '/t/$token'
     | '/table/$label'
     | '/tenant/$token'
+    | '/v/$slug'
     | '/venue/$type'
     | '/demo/'
     | '/api/auth/$'
@@ -597,6 +596,7 @@ export interface FileRouteTypes {
     | '/app/venue/$type'
     | '/demo/$type/tour'
     | '/demo/tour/full'
+    | '/platform/tenants/$orgId'
     | '/waitlist/opt-out/$token'
     | '/api/payments/finix/webhook'
   fileRoutesById: FileRoutesById
@@ -607,6 +607,7 @@ export interface RootRouteChildren {
   AppsRoute: typeof AppsRoute
   BlogRoute: typeof BlogRouteWithChildren
   ChangePasswordRoute: typeof ChangePasswordRoute
+  ContactRoute: typeof ContactRoute
   DashboardRoute: typeof DashboardRoute
   DemoRoute: typeof DemoRouteWithChildren
   FeaturesRoute: typeof FeaturesRoute
@@ -619,24 +620,22 @@ export interface RootRouteChildren {
   PipelineRoute: typeof PipelineRoute
   PlatformRoute: typeof PlatformRouteWithChildren
   PricingRoute: typeof PricingRoute
+  PrivacyRoute: typeof PrivacyRoute
   ReserveRoute: typeof ReserveRoute
   SignupRoute: typeof SignupRoute
-  StationRoute: typeof StationRoute
-  StationRoleRoute: typeof StationRoleRoute
+  StationRoute: typeof StationRouteWithChildren
   WhitepaperRoute: typeof WhitepaperRoute
-  PrivacyRoute: typeof PrivacyRoute
-  ContactRoute: typeof ContactRoute
   ApiHealthRoute: typeof ApiHealthRoute
   InviteTokenRoute: typeof InviteTokenRoute
   OrderOrderIdRoute: typeof OrderOrderIdRoute
   QuoteTokenRoute: typeof QuoteTokenRoute
   SetupTokenRoute: typeof SetupTokenRoute
   SiteSlugRoute: typeof SiteSlugRoute
-  VSlugRoute: typeof VSlugRoute
   SitesSlugRoute: typeof SitesSlugRoute
   TTokenRoute: typeof TTokenRoute
   TableLabelRoute: typeof TableLabelRoute
   TenantTokenRoute: typeof TenantTokenRoute
+  VSlugRoute: typeof VSlugRoute
   VenueTypeRoute: typeof VenueTypeRoute
   ApiAuthSplatRoute: typeof ApiAuthSplatRoute
   ApiBillingWebhookRoute: typeof ApiBillingWebhookRoute
@@ -680,6 +679,13 @@ declare module '@tanstack/react-router' {
       path: '/change-password'
       fullPath: '/change-password'
       preLoaderRoute: typeof ChangePasswordRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/contact': {
+      id: '/contact'
+      path: '/contact'
+      fullPath: '/contact'
+      preLoaderRoute: typeof ContactRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/dashboard': {
@@ -759,18 +765,18 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof PlatformRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/platform/tenants/$orgId': {
-      id: '/platform/tenants/$orgId'
-      path: '/tenants/$orgId'
-      fullPath: '/platform/tenants/$orgId'
-      preLoaderRoute: typeof PlatformTenantsOrgIdRouteImport
-      parentRoute: typeof PlatformRoute
-    }
     '/pricing': {
       id: '/pricing'
       path: '/pricing'
       fullPath: '/pricing'
       preLoaderRoute: typeof PricingRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/privacy': {
+      id: '/privacy'
+      path: '/privacy'
+      fullPath: '/privacy'
+      preLoaderRoute: typeof PrivacyRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/reserve': {
@@ -794,32 +800,11 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof StationRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/station/$role': {
-      id: '/station/$role'
-      path: '/station/$role'
-      fullPath: '/station/$role'
-      preLoaderRoute: typeof StationRoleRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/whitepaper': {
       id: '/whitepaper'
       path: '/whitepaper'
       fullPath: '/whitepaper'
       preLoaderRoute: typeof WhitepaperRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/privacy': {
-      id: '/privacy'
-      path: '/privacy'
-      fullPath: '/privacy'
-      preLoaderRoute: typeof PrivacyRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/contact': {
-      id: '/contact'
-      path: '/contact'
-      fullPath: '/contact'
-      preLoaderRoute: typeof ContactRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/health': {
@@ -885,19 +870,19 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof SiteSlugRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/v/$slug': {
-      id: '/v/$slug'
-      path: '/v/$slug'
-      fullPath: '/v/$slug'
-      preLoaderRoute: typeof VSlugRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/sites/$slug': {
       id: '/sites/$slug'
       path: '/sites/$slug'
       fullPath: '/sites/$slug'
       preLoaderRoute: typeof SitesSlugRouteImport
       parentRoute: typeof rootRouteImport
+    }
+    '/station/$role': {
+      id: '/station/$role'
+      path: '/$role'
+      fullPath: '/station/$role'
+      preLoaderRoute: typeof StationRoleRouteImport
+      parentRoute: typeof StationRoute
     }
     '/t/$token': {
       id: '/t/$token'
@@ -918,6 +903,13 @@ declare module '@tanstack/react-router' {
       path: '/tenant/$token'
       fullPath: '/tenant/$token'
       preLoaderRoute: typeof TenantTokenRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/v/$slug': {
+      id: '/v/$slug'
+      path: '/v/$slug'
+      fullPath: '/v/$slug'
+      preLoaderRoute: typeof VSlugRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/venue/$type': {
@@ -969,6 +961,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DemoTourFullRouteImport
       parentRoute: typeof DemoRoute
     }
+    '/platform/tenants/$orgId': {
+      id: '/platform/tenants/$orgId'
+      path: '/tenants/$orgId'
+      fullPath: '/platform/tenants/$orgId'
+      preLoaderRoute: typeof PlatformTenantsOrgIdRouteImport
+      parentRoute: typeof PlatformRoute
+    }
     '/waitlist/opt-out/$token': {
       id: '/waitlist/opt-out/$token'
       path: '/waitlist/opt-out/$token'
@@ -995,18 +994,6 @@ const AppRouteChildren: AppRouteChildren = {
 }
 
 const AppRouteWithChildren = AppRoute._addFileChildren(AppRouteChildren)
-
-interface PlatformRouteChildren {
-  PlatformTenantsOrgIdRoute: typeof PlatformTenantsOrgIdRoute
-}
-
-const PlatformRouteChildren: PlatformRouteChildren = {
-  PlatformTenantsOrgIdRoute: PlatformTenantsOrgIdRoute,
-}
-
-const PlatformRouteWithChildren = PlatformRoute._addFileChildren(
-  PlatformRouteChildren,
-)
 
 interface BlogRouteChildren {
   BlogSlugRoute: typeof BlogSlugRoute
@@ -1044,12 +1031,36 @@ const DemoRouteChildren: DemoRouteChildren = {
 
 const DemoRouteWithChildren = DemoRoute._addFileChildren(DemoRouteChildren)
 
+interface PlatformRouteChildren {
+  PlatformTenantsOrgIdRoute: typeof PlatformTenantsOrgIdRoute
+}
+
+const PlatformRouteChildren: PlatformRouteChildren = {
+  PlatformTenantsOrgIdRoute: PlatformTenantsOrgIdRoute,
+}
+
+const PlatformRouteWithChildren = PlatformRoute._addFileChildren(
+  PlatformRouteChildren,
+)
+
+interface StationRouteChildren {
+  StationRoleRoute: typeof StationRoleRoute
+}
+
+const StationRouteChildren: StationRouteChildren = {
+  StationRoleRoute: StationRoleRoute,
+}
+
+const StationRouteWithChildren =
+  StationRoute._addFileChildren(StationRouteChildren)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AppRoute: AppRouteWithChildren,
   AppsRoute: AppsRoute,
   BlogRoute: BlogRouteWithChildren,
   ChangePasswordRoute: ChangePasswordRoute,
+  ContactRoute: ContactRoute,
   DashboardRoute: DashboardRoute,
   DemoRoute: DemoRouteWithChildren,
   FeaturesRoute: FeaturesRoute,
@@ -1062,24 +1073,22 @@ const rootRouteChildren: RootRouteChildren = {
   PipelineRoute: PipelineRoute,
   PlatformRoute: PlatformRouteWithChildren,
   PricingRoute: PricingRoute,
+  PrivacyRoute: PrivacyRoute,
   ReserveRoute: ReserveRoute,
   SignupRoute: SignupRoute,
-  StationRoute: StationRoute,
-  StationRoleRoute: StationRoleRoute,
+  StationRoute: StationRouteWithChildren,
   WhitepaperRoute: WhitepaperRoute,
-  PrivacyRoute: PrivacyRoute,
-  ContactRoute: ContactRoute,
   ApiHealthRoute: ApiHealthRoute,
   InviteTokenRoute: InviteTokenRoute,
   OrderOrderIdRoute: OrderOrderIdRoute,
   QuoteTokenRoute: QuoteTokenRoute,
   SetupTokenRoute: SetupTokenRoute,
   SiteSlugRoute: SiteSlugRoute,
-  VSlugRoute: VSlugRoute,
   SitesSlugRoute: SitesSlugRoute,
   TTokenRoute: TTokenRoute,
   TableLabelRoute: TableLabelRoute,
   TenantTokenRoute: TenantTokenRoute,
+  VSlugRoute: VSlugRoute,
   VenueTypeRoute: VenueTypeRoute,
   ApiAuthSplatRoute: ApiAuthSplatRoute,
   ApiBillingWebhookRoute: ApiBillingWebhookRoute,

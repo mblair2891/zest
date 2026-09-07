@@ -9,7 +9,7 @@ Not linked from marketing, `/whitepaper`, or the public Guide. For product and s
 **Powered by Quantum Reach**
 
 White paper · October 2026  
-**Revision · 6 Sep 2026** — Marketing has no login; console is app.summex.app. Aligns with Operators Guide v2026.10.52.
+**Revision · 7 Sep 2026** — Marketing has no login; console is app.summex.app. Aligns with Operators Guide v2026.10.59.
 
 summex.app  
 Guest cards: **Quantum Payments** only
@@ -176,7 +176,9 @@ Card is Quantum Payments. Cash still has to land in the right drawer or bank.
 - Multi-well bar — **one drawer per well** (Well-2 never kicks Well-1)
 - Host to-go drawer plus floor banks
 
-Count may be **blind** (enter cash on hand first, then see expected). Over/short flags a manager queue — it is not an automatic accusation. Closeout is not clock-out and not PIN login. House well/drawer close is a separate closer screen from server closeout.
+Count is **blind**: staff enter what is in the drawer; expected, cash sales, and over/short stay hidden until submit. No paper form and no force-balance to $0. Over/short flags a manager queue — it is not an automatic accusation. Closeout is not clock-out and not PIN login. House well/drawer close is a separate closer screen from server sales & tips.
+
+**Till-to-till transfer.** A till short on small bills can request cash from another currently open till. No manager is required to complete. Cash moves when the giving till accepts (not when requested). Both expected balances update (`+ transfers in − transfers out`) so the blind count still balances. Pending transfers must be accepted, declined, or cancelled before that till can start close. After accept, only a manager reverse (a paired opposite transfer) undoes it. Transfers never change sales totals.
 
 House Wi‑Fi still records cash if the internet is down. Card requires connection.
 

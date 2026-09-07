@@ -20,7 +20,9 @@ export type PosNoticeKind =
   | "break_glass"
   | "late_comp_cash"
   | "ops_job"
-  | "cost_variance";
+  | "cost_variance"
+  | "till_mismatch"
+  | "till_transfer";
 
 export interface PosNotice {
   id: string;
@@ -94,6 +96,15 @@ export function noticeVisibleTo(
         return true;
       }
     }
+    return false;
+  }
+  if (n.kind === "till_mismatch") {
+    return role === "owner" || role === "manager";
+  }
+  if (n.kind === "till_transfer") {
+    if (role === "owner" || role === "manager") return true;
+    if (n.serverId && emp.id === n.serverId) return true;
+    if (n.serverName && emp.name === n.serverName) return true;
     return false;
   }
   if (n.kind === "staffing_rec") {

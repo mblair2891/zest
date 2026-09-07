@@ -1,6 +1,7 @@
 import { formatCurrency } from "@/lib/utils";
 import type { PrintJob } from "./types";
 import { groupLinesByEntity } from "@/lib/payments/entity-split";
+import { formatTurnInSlipLines } from "@/lib/pos/till-turn-in-slip";
 
 function esc(s: string): string {
   return s
@@ -10,7 +11,40 @@ function esc(s: string): string {
     .replace(/"/g, "&quot;");
 }
 
+function tillTurnInHtml(job: PrintJob): string {
+  const slip = job.turnIn;
+  const lines = slip
+    ? formatTurnInSlipLines(slip)
+        .map((ln) => `<div class="ln">${esc(ln) || "&nbsp;"}</div>`)
+        .join("")
+    : "";
+  const qr = slip
+    ? `<div class="muted">
+         <img src="https://api.qrserver.com/v1/create-qr-code/?size=120x120&margin=4&data=${encodeURIComponent(slip.closeId)}" width="120" height="120" alt="Close ID"/>
+         <div>${esc(slip.closeId)}</div>
+       </div>`
+    : "";
+  return `<!doctype html>
+<html>
+<head>
+<meta charset="utf-8"/>
+<title>Till turn-in</title>
+<style>
+  @page { size: 80mm auto; margin: 6mm; }
+  body { font: 12px/1.35 ui-monospace, SFMono-Regular, Menlo, monospace; color: #111; }
+  .ln { white-space: pre; }
+  .muted { text-align: center; color: #444; margin-top: 10px; font-size: 11px; }
+</style>
+</head>
+<body>
+  ${lines}
+  ${qr}
+</body>
+</html>`;
+}
+
 export function ticketHtml(job: PrintJob): string {
+  if (job.kind === "till_turn_in") return tillTurnInHtml(job);
   const title =
     job.kind === "receipt"
       ? "Receipt"

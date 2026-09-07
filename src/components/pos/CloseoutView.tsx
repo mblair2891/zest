@@ -61,7 +61,13 @@ const STEPS = [
   "Confirm",
 ] as const;
 
-export function CloseoutView({ onDone }: { onDone: () => void }) {
+export function CloseoutView({
+  onDone,
+  skipCashCount = false,
+}: {
+  onDone: () => void;
+  skipCashCount?: boolean;
+}) {
   const emp = usePosStore((s) => s.employees.find((e) => e.id === s.currentEmployeeId));
   const orders = usePosStore((s) => s.orders);
   const settings = usePosStore((s) => s.settings);
@@ -102,7 +108,7 @@ export function CloseoutView({ onDone }: { onDone: () => void }) {
   const openMine = emp
     ? ordersForServer(orders, emp.id).filter((o) => o.status === "open")
     : [];
-  const counting = emp ? shouldCountCashOnCloseout({ sink, emp, cfg }) : false;
+  const counting = skipCashCount ? false : emp ? shouldCountCashOnCloseout({ sink, emp, cfg }) : false;
   const blind = blindCountEnabled(cfg, counting);
   const cardTips =
     cardTipsAdj != null && cardTipsAdj !== ""
@@ -123,6 +129,8 @@ export function CloseoutView({ onDone }: { onDone: () => void }) {
             dropsCents: 0,
             paidInCents: 0,
             paidOutCents: 0,
+            transfersInCents: 0,
+            transfersOutCents: 0,
             salesByEmployee: {},
           },
         )
@@ -137,6 +145,8 @@ export function CloseoutView({ onDone }: { onDone: () => void }) {
               dropsCents: 0,
               paidInCents: 0,
               paidOutCents: 0,
+              transfersInCents: 0,
+              transfersOutCents: 0,
             },
           )
         : null;
@@ -498,47 +508,17 @@ export function CloseoutView({ onDone }: { onDone: () => void }) {
         )}
         {step === 3 && (
           <div className="max-w-sm space-y-3">
-            {!counting ? (
+            {skipCashCount || !counting ? (
               <p className="text-sm text-muted-foreground">
-                Shared well — you are not the well closer. Skip drawer count. House close is a
-                separate manager screen. Declare cash tips and tip-outs next.
+                {skipCashCount
+                  ? "Cash was counted on the till close. This step is sales and tips only — not a second drawer count."
+                  : "Shared well — you are not the well closer. Skip drawer count. House close is a separate manager screen. Declare cash tips and tip-outs next."}
               </p>
             ) : (
-              <>
-                <p className="text-sm">
-                  {blind
-                    ? "Blind count: enter cash on hand first. Expected shows after."
-                    : "Enter cash on hand."}
-                </p>
-                <Input
-                  inputMode="decimal"
-                  placeholder="Cash on hand"
-                  value={countStr}
-                  onChange={(e) => {
-                    setCountStr(e.target.value);
-                    if (blind) setRevealed(false);
-                  }}
-                />
-                {(!blind || revealed) && expected != null && (
-                  <p className="text-sm">
-                    Expected {formatCurrency(expected)}
-                    {variance != null ? ` · over/short ${formatCurrency(variance)}` : ""}
-                  </p>
-                )}
-                {paidOutForTips > 0 && (
-                  <p className="text-xs text-muted-foreground">
-                    Card tips cash-at-close {formatCurrency(paidOutForTips)} is paid from the
-                    drawer or safe. Blind expected includes that paid-out.
-                  </p>
-                )}
-                {variance != null && Math.abs(variance) >= cfg.overShortWarnCents && (
-                  <Input
-                    placeholder="Over/short note"
-                    value={overNote}
-                    onChange={(e) => setOverNote(e.target.value)}
-                  />
-                )}
-              </>
+              <p className="text-sm text-muted-foreground">
+                Use End shift → Count your till for the cash count. This wizard does not show
+                expected cash or let you type a balancing amount.
+              </p>
             )}
           </div>
         )}
@@ -743,7 +723,7 @@ export function CloseoutView({ onDone }: { onDone: () => void }) {
             Back
           </Button>
           <Button size="sm" className="ml-auto" onClick={next}>
-            {step === 3 && counting && blind && !revealed && counted != null ? "Show expected" : "Continue"}
+            Continue
           </Button>
         </div>
       )}

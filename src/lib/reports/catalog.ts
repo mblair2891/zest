@@ -151,6 +151,13 @@ export const REPORT_CATALOG: ReportDef[] = [
     roles: ["owner", "manager", "accountant", "server", "bartender", "cashier"],
   },
   {
+    id: "close-tills",
+    group: "close",
+    title: "Till close & recounts",
+    summary: "Blind drawer count: expected, counted, over/short, turn-in, bag, till transfers, recount log.",
+    roles: ["owner", "manager", "accountant", "cashier"],
+  },
+  {
     id: "close-tip-pools",
     group: "close",
     title: "Tip pools",

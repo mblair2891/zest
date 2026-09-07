@@ -11,6 +11,18 @@ import {
 import type { DeviceRole } from "./device-roles";
 import type { Employee, Order } from "./types";
 
+/** Registered by till-closeout-store to avoid a store ↔ cash-session import cycle. */
+let tillCashBlocked: ((drawerId: string, bankEmployeeId?: string | null) => boolean) | null = null;
+export function registerTillCashBlocked(
+  fn: (drawerId: string, bankEmployeeId?: string | null) => boolean,
+): void {
+  tillCashBlocked = fn;
+}
+
+export function isTillCashBlocked(drawerId: string, bankEmployeeId?: string | null): boolean {
+  return Boolean(tillCashBlocked?.(drawerId, bankEmployeeId));
+}
+
 export type CashEventKind =
   | "sale"
   | "refund"
@@ -47,6 +59,8 @@ export type DrawerSession = {
   dropsCents: number;
   paidInCents: number;
   paidOutCents: number;
+  transfersInCents: number;
+  transfersOutCents: number;
   salesByEmployee: Record<string, number>;
   countedCents?: number;
   countedAt?: number;
@@ -64,6 +78,8 @@ export type BankSession = {
   dropsCents: number;
   paidInCents: number;
   paidOutCents: number;
+  transfersInCents: number;
+  transfersOutCents: number;
   countedCents?: number;
   countedAt?: number;
   countedById?: string;
@@ -130,6 +146,15 @@ type CashSessionState = {
     amountCents: number;
   }) => void;
   logNoSale: (opts: { employeeId: string; employeeName: string; drawerId?: string; reason?: string }) => void;
+  applyTillTransfer: (opts: {
+    fromDrawerId: string;
+    toDrawerId: string;
+    amountCents: number;
+    fromEmployeeId?: string;
+    fromEmployeeName?: string;
+    toEmployeeId?: string;
+    toEmployeeName?: string;
+  }) => void;
   uncountedForEmployee: (employeeId: string, cfg: CashHandlingConfig) => string[];
 };
 
@@ -143,6 +168,8 @@ function emptyDrawer(drawerId: string, startCents: number): DrawerSession {
     dropsCents: 0,
     paidInCents: 0,
     paidOutCents: 0,
+    transfersInCents: 0,
+    transfersOutCents: 0,
     salesByEmployee: {},
   };
 }
@@ -157,6 +184,8 @@ function emptyBank(employeeId: string, startCents: number): BankSession {
     dropsCents: 0,
     paidInCents: 0,
     paidOutCents: 0,
+    transfersInCents: 0,
+    transfersOutCents: 0,
   };
 }
 
@@ -472,6 +501,81 @@ export const useCashSessionStore = create<CashSessionState>()(
         });
       },
 
+      applyTillTransfer: ({
+        fromDrawerId,
+        toDrawerId,
+        amountCents,
+        fromEmployeeId,
+        fromEmployeeName,
+        toEmployeeId,
+        toEmployeeName,
+      }) => {
+        const amt = Math.round(amountCents);
+        if (!amt) return;
+        const patch = (id: string, dir: "in" | "out") => {
+          if (id.startsWith("bank:")) {
+            const empId = id.slice(5);
+            const b = get().banks[empId] ?? emptyBank(empId, 0);
+            if (b.closedAt) return;
+            set({
+              banks: {
+                ...get().banks,
+                [empId]: {
+                  ...b,
+                  transfersInCents: (b.transfersInCents ?? 0) + (dir === "in" ? amt : 0),
+                  transfersOutCents: (b.transfersOutCents ?? 0) + (dir === "out" ? amt : 0),
+                },
+              },
+            });
+            return;
+          }
+          const d = get().drawers[id] ?? emptyDrawer(id, 0);
+          if (d.closedAt) return;
+          set({
+            drawers: {
+              ...get().drawers,
+              [id]: {
+                ...d,
+                transfersInCents: (d.transfersInCents ?? 0) + (dir === "in" ? amt : 0),
+                transfersOutCents: (d.transfersOutCents ?? 0) + (dir === "out" ? amt : 0),
+              },
+            },
+          });
+        };
+        patch(fromDrawerId, "out");
+        patch(toDrawerId, "in");
+        const at = Date.now();
+        set({
+          events: [
+            {
+              id: uid("csh"),
+              at,
+              kind: "transfer" as const,
+              employeeId: fromEmployeeId || "",
+              employeeName: fromEmployeeName || "Till",
+              drawerId: fromDrawerId,
+              bankEmployeeId: fromDrawerId.startsWith("bank:") ? fromDrawerId.slice(5) : null,
+              amountCents: -amt,
+              reason: "till_transfer_out",
+              note: `to ${toDrawerId}`,
+            },
+            {
+              id: uid("csh"),
+              at,
+              kind: "transfer" as const,
+              employeeId: toEmployeeId || "",
+              employeeName: toEmployeeName || "Till",
+              drawerId: toDrawerId,
+              bankEmployeeId: toDrawerId.startsWith("bank:") ? toDrawerId.slice(5) : null,
+              amountCents: amt,
+              reason: "till_transfer_in",
+              note: `from ${fromDrawerId}`,
+            },
+            ...get().events,
+          ].slice(0, 500),
+        });
+      },
+
       logNoSale: (opts) => {
         set({
           events: [
@@ -542,6 +646,13 @@ export function applyCashTender(opts: {
     order: opts.order,
   });
   if (sink.type === "blocked") return { ok: false, error: sink.reason };
+  const blocked = tillCashBlocked?.(
+    sink.type === "drawer" ? sink.drawer.id : `bank:${opts.emp.id}`,
+    sink.type === "bank" ? opts.emp.id : null,
+  );
+  if (blocked) {
+    return { ok: false, error: "This till is closing. New cash sales are blocked." };
+  }
   const store = useCashSessionStore.getState();
   if (sink.type === "bank" && opts.cfg.issueBank === "first_cash_sale") {
     const b = store.banks[opts.emp.id];

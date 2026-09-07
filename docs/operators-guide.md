@@ -67,7 +67,7 @@ accurate when the job path changes.
 13. Devices: three roles — **order** (handhelds + bar), **ODS** (kitchen), **host** (floor map + to-go). PIN first, not `/login`. Change device among those three.
 14. Printers: Ethernet on the AP LAN (not printer Wi‑Fi). Thermal receipts (Epson TM-T20). Impact kitchen (Epson TM-U220). Drawer kick on the receipt printer.
 15. Offline / hybrid
-16. Cash: single/shared drawer, server bank, multi-well (one drawer per well), host to-go drawer, blind count. Closeout ≠ clock-out ≠ PIN.
+16. Cash: single/shared drawer, server bank, multi-well (one drawer per well), host to-go drawer, **till-to-till transfer** (request from another open till; cash moves on accept; no manager required), **blind till close** (count first; expected hidden until submit; turn-in slip prints after submit for the drop bag — not a fill-in form; no force-balance). Closeout ≠ clock-out ≠ PIN.
 17. Tips: mix-based tip-out recs; CC tips cash-at-close vs paycheck; individual / tip-out / FOH / bar / team / dual pools; autograt vs service charge.
 18. Staffing recs (Location settings): recommend cut / hold / add only; never auto clock-out. Accept notifies to close out.
 19. Staff HR basics (clock vs PIN, time-off and availability if the employer enabled them)

@@ -28,6 +28,15 @@ import {
   type TipOutRole,
   type CcTipPayout,
 } from "@/lib/pos/cash-handling";
+import {
+  TILL_COUNT_MODES,
+  TILL_COUNT_MODE_LABEL,
+  TILL_DENOMS,
+  VARIANCE_ACTIONS,
+  VARIANCE_ACTION_LABEL,
+  type TillCountMode,
+  type VarianceAction,
+} from "@/lib/pos/till-closeout";
 import type { DeviceRole } from "@/lib/pos/device-roles";
 import { DEVICE_ROLE_LABEL } from "@/lib/pos/device-roles";
 import { HOST_SCOPE } from "@/lib/access/entity-grants";
@@ -442,11 +451,180 @@ export function CashHandlingSettings({ write }: { write: boolean }) {
         <span>
           Blind count
           <span className="mt-0.5 block text-xs text-muted-foreground">
-            Server enters cash on hand first, then expected and over/short. Default on for
-            server bank and one-person drawer.
+            Cashier enters what they counted. Expected, cash sales, and over/short stay hidden
+            until submit. There is no force-balance to $0.
           </span>
         </span>
       </label>
+      <div className="grid gap-3 sm:grid-cols-2">
+        <Field label="Count mode">
+          <select
+            className="h-9 w-full rounded-lg border border-border bg-bg px-2 text-sm"
+            disabled={!write}
+            value={cfg.countMode}
+            onChange={(e) => patch({ countMode: e.target.value as TillCountMode })}
+          >
+            {TILL_COUNT_MODES.map((m) => (
+              <option key={m} value={m}>
+                {TILL_COUNT_MODE_LABEL[m]}
+              </option>
+            ))}
+          </select>
+        </Field>
+        <Field label="Variance above tolerance">
+          <select
+            className="h-9 w-full rounded-lg border border-border bg-bg px-2 text-sm"
+            disabled={!write}
+            value={cfg.varianceAction}
+            onChange={(e) => patch({ varianceAction: e.target.value as VarianceAction })}
+          >
+            {VARIANCE_ACTIONS.map((m) => (
+              <option key={m} value={m}>
+                {VARIANCE_ACTION_LABEL[m]}
+              </option>
+            ))}
+          </select>
+        </Field>
+        <Field
+          label="Next-shift bank ($)"
+          hint="0 = same as opening bank. Left in the till on turn-in."
+        >
+          <Input
+            disabled={!write}
+            inputMode="decimal"
+            value={(cfg.nextShiftBankCents / 100).toFixed(2)}
+            onChange={(e) =>
+              patch({
+                nextShiftBankCents: Math.max(0, Math.round(parseFloat(e.target.value || "0") * 100) || 0),
+              })
+            }
+          />
+        </Field>
+      </div>
+      <Field
+        label="Match tolerance ($)"
+        hint="0 = exact. Within this amount the first total (or second denomination sum) counts as balanced — no manager notify."
+      >
+        <Input
+          disabled={!write}
+          inputMode="decimal"
+          value={(cfg.matchToleranceCents / 100).toFixed(2)}
+          onChange={(e) =>
+            patch({
+              matchToleranceCents: Math.max(0, Math.round(parseFloat(e.target.value || "0") * 100) || 0),
+            })
+          }
+        />
+      </Field>
+      <label className="flex items-start gap-2 text-sm">
+        <input
+          type="checkbox"
+          className="mt-0.5 h-4 w-4 rounded border-border"
+          disabled={!write}
+          checked={cfg.revealVarianceAfterFinalMismatch}
+          onChange={(e) => patch({ revealVarianceAfterFinalMismatch: e.target.checked })}
+        />
+        <span>
+          Show over/short to the cashier after a second mismatch
+          <span className="mt-0.5 block text-xs text-muted-foreground">
+            Off by default. After two failures they still bag and drop; management is notified either way.
+          </span>
+        </span>
+      </label>
+      <p className="text-xs font-medium text-muted-foreground">Notify management on second mismatch</p>
+      <div className="grid gap-2 sm:grid-cols-2">
+        {(
+          [
+            ["notifyInApp", "In-app"],
+            ["notifyPush", "Push / desktop"],
+            ["notifySms", "SMS (on-call list)"],
+            ["notifyEmail", "Email"],
+          ] as const
+        ).map(([key, label]) => (
+          <label key={key} className="flex items-start gap-2 text-sm">
+            <input
+              type="checkbox"
+              className="mt-0.5 h-4 w-4 rounded border-border"
+              disabled={!write}
+              checked={cfg[key]}
+              onChange={(e) => patch({ [key]: e.target.checked })}
+            />
+            <span>{label}</span>
+          </label>
+        ))}
+      </div>
+      <Field label="Management email list" hint="One address per line. Used when Email is on.">
+        <textarea
+          className="min-h-20 w-full rounded-lg border border-border bg-bg p-2 text-sm"
+          disabled={!write}
+          value={cfg.notifyEmails.join("\n")}
+          onChange={(e) =>
+            patch({
+              notifyEmails: e.target.value
+                .split("\n")
+                .map((x) => x.trim())
+                .filter((x) => x.includes("@"))
+                .slice(0, 12),
+            })
+          }
+        />
+      </Field>
+      <label className="flex items-start gap-2 text-sm">
+        <input
+          type="checkbox"
+          className="mt-0.5 h-4 w-4 rounded border-border"
+          disabled={!write}
+          checked={cfg.dualControlRequired}
+          onChange={(e) => patch({ dualControlRequired: e.target.checked })}
+        />
+        <span>Dual control — a second employee PIN must witness before the count screen</span>
+      </label>
+      <label className="flex items-start gap-2 text-sm">
+        <input
+          type="checkbox"
+          className="mt-0.5 h-4 w-4 rounded border-border"
+          disabled={!write}
+          checked={cfg.dropBagRequired}
+          onChange={(e) => patch({ dropBagRequired: e.target.checked })}
+        />
+        <span>Require bag / drop number</span>
+      </label>
+      <label className="flex items-start gap-2 text-sm">
+        <input
+          type="checkbox"
+          className="mt-0.5 h-4 w-4 rounded border-border"
+          disabled={!write}
+          checked={cfg.otherTendersEnabled}
+          onChange={(e) => patch({ otherTendersEnabled: e.target.checked })}
+        />
+        <span>Checks and money orders on the count screen (separate lines, never mixed into cash)</span>
+      </label>
+      <div>
+        <p className="mb-1 text-xs font-medium text-muted-foreground">
+          Optional leftover bank mix (next-shift bills/coin)
+        </p>
+        <ul className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+          {TILL_DENOMS.filter((d) => d.kind === "bill").map((d) => {
+            const line = cfg.bankMix.find((b) => b.denomId === d.id);
+            return (
+              <label key={d.id} className="text-xs">
+                <span className="mb-1 block text-muted-foreground">{d.label}</span>
+                <Input
+                  disabled={!write}
+                  inputMode="numeric"
+                  value={String(line?.qty ?? 0)}
+                  onChange={(e) => {
+                    const qty = Math.max(0, Math.round(Number(e.target.value) || 0));
+                    const bankMix = cfg.bankMix.filter((b) => b.denomId !== d.id);
+                    if (qty > 0) bankMix.push({ denomId: d.id, qty });
+                    patch({ bankMix });
+                  }}
+                />
+              </label>
+            );
+          })}
+        </ul>
+      </div>
       <label className="flex items-start gap-2 text-sm">
         <input
           type="checkbox"
@@ -485,8 +663,22 @@ export function CashHandlingSettings({ write }: { write: boolean }) {
           checked={cfg.printCheckoutSlip}
           onChange={(e) => patch({ printCheckoutSlip: e.target.checked })}
         />
-        <span>Print checkout slip on confirm</span>
+        <span>Print checkout slip on confirm (sales & tips — not the till bag slip)</span>
       </label>
+      <Field
+        label="Till turn-in slip copies"
+        hint="Prints automatically after a successful blind submit. Reprints are marked COPY. This is the bag companion, not a fill-in form."
+      >
+        <select
+          className="h-9 w-full rounded-lg border border-border bg-bg px-2 text-sm"
+          disabled={!write}
+          value={String(cfg.turnInSlipCopies)}
+          onChange={(e) => patch({ turnInSlipCopies: e.target.value === "2" ? 2 : 1 })}
+        >
+          <option value="1">1 copy</option>
+          <option value="2">2 copies</option>
+        </select>
+      </Field>
       <Field
         label="Card tips: cash at close vs paycheck"
         hint={CC_TIP_PAYOUT_BLURB[cfg.ccTipPayout]}
