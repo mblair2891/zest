@@ -216,7 +216,7 @@ export const PAYMENT_TOPICS: GuideTopic[] = [
       ),
       steps(
         "Open White paper from the marketing header (White paper). That page is the paper — not Get a price.",
-        "Get a price is a different page: the interview and live quote.",
+        "Get a price is a different page: the selector wizard and live quote.",
         "Print from the browser if you want a PDF. Start a quote from Get a price on summex.app.",
       ),
       related("system-ledger", "quantum-payments", "host-capture", "receipts-by-vendor", "gift-cards", "device-roles", "cash-handling", "location-training"),

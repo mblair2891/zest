@@ -273,9 +273,9 @@ export function SubscriberWhitePaper() {
       <Section n="10" title="How to start">
         <p>
           Open <strong className="text-ivory">Get a price</strong> on summex.app.
-          Describe the house in your own words. You see a live monthly package,
-          then a quote. There is no public demo restaurant and no login on the
-          sales site.
+          Pick how the house is organized, service style, modules, and counts.
+          The quote updates as you pick. There is no public demo restaurant and
+          no login on the sales site.
         </p>
         <div className="mt-8">
           <LandingCta to="/get-pricing">Get a price</LandingCta>

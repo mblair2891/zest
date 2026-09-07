@@ -636,6 +636,8 @@ export async function saveProspectAnswers(opts: {
     set answers = ${JSON.stringify(answers)}::jsonb,
         email = ${email},
         owner_user_id = ${owner},
+        interview_recommendation = null,
+        interview_status = 'skipped',
         updated_at = now()
     where id = ${prospect.id}
   `;
@@ -650,7 +652,7 @@ async function suggestedQuote(prospect: ProspectRecord) {
   return buildIntakeQuote({
     answers: prospect.answers,
     rules,
-    interview: prospect.interviewRecommendation,
+    interview: prospect.interviewStatus === "accepted" ? prospect.interviewRecommendation : null,
     trialDays: billing.trialDays,
     rulesVersion: version,
     expireDays: billing.quoteExpireDays ?? rules.quoteExpireDays,

@@ -21,9 +21,9 @@ function GetPricingPage() {
         </p>
         <h1 className="mt-2 text-3xl font-semibold tracking-tight">Get a price</h1>
         <p className="mt-2 max-w-xl text-sm text-muted-foreground">
-          A short interview — one or two questions at a time. Type naturally or tap a
-          chip. Contact comes after you see the quote. Tablets, printers, and drawers are
-          BYO; live cards use Finix / Quantum readers we ship.
+          A short selector: house shape, service style, modules, and counts. The quote
+          updates as you pick. Contact is last. Tablets, printers, and drawers are BYO;
+          live cards use Finix / Quantum readers we ship.
         </p>
         <div className="mt-8">
           <IntakeWizard initialToken={t} />

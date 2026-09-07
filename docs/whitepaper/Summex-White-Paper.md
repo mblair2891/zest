@@ -146,7 +146,7 @@ Get a price shows the same lines you will see on the quote.
 
 ## 10. How to start
 
-Open **Get a price** on **summex.app**. Describe the house in your own words. Follow-ups are specific to what you typed. You see a live monthly package, then a quote.
+Open **Get a price** on **summex.app**. Pick how the house is organized, service style, modules, and counts. The quote updates as you pick.
 
 There is no public demo restaurant and no login on the sales site.
 

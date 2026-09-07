@@ -54,7 +54,9 @@ export function buildIntakeQuote(opts: {
   sentAt?: string | null;
   expireDays?: number;
 }): QuoteSnapshot {
-  const answers = applyInterviewToIntake(opts.answers, opts.interview);
+  const answers = opts.interview
+    ? applyInterviewToIntake(opts.answers, opts.interview)
+    : opts.answers;
   const slug =
     opts.planSlug && (PLAN_SLUGS as readonly string[]).includes(opts.planSlug)
       ? opts.planSlug
