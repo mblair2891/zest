@@ -15,8 +15,8 @@ export const SAAS_TOPICS: GuideTopic[] = [
         "Pricing should start from how the house actually runs — single brand vs host + operators — not from a generic SKU list.",
       ),
       steps(
-        "Open Get a price. Pick house shape: single operator, host + tenants, or shared venue (peers).",
-        "Service style is filtered by shape (counter, full service, bar-only, mixed, hall/stalls). Modules are checkboxes; options the shape cannot use stay hidden.",
+        "Open Get a price. Pick house shape: single operator, host + tenants, or shared venue (peers). The shape stays selected until you pick a different one.",
+        "Service style is filtered by shape (counter, full service, bar-only, mixed, hall/stalls). Shared venue asks for entity count on the next step (default 2). Modules are checkboxes; options the shape cannot use stay hidden.",
         "Enter counts (locations, entities if not single, seats, stations, kiosks, Quantum readers). The live catalog recalculates monthly software. Optional: paste a description to pre-check boxes, then confirm in the wizard.",
         "Review: monthly software + optional setup + reader line. Processing is a note, not the software total. Email last — that creates a CRM lead.",
         "The stored quote is the wizard answers, not a stale food-hall default. Two operators in one building is shared venue with entity count ≥ 2.",

@@ -7,6 +7,9 @@ import {
   isGetAPricePath,
   isSameLocalDay,
   parseGetAPriceDraft,
+  parseGetAPriceSearch,
+  withGetAPriceStep,
+  withGetAPriceToken,
   type GetAPriceDraft,
 } from "../src/lib/saas/get-a-price-draft.ts";
 
@@ -144,4 +147,17 @@ test("isGetAPricePath normalizes trailing slash", () => {
   assert.equal(isGetAPricePath("/get-pricing"), true);
   assert.equal(isGetAPricePath("/get-pricing/"), true);
   assert.equal(isGetAPricePath("/"), false);
+});
+
+test("parseGetAPriceSearch reads token and step", () => {
+  assert.deepEqual(parseGetAPriceSearch({ t: "abc", step: "2" }), { t: "abc", step: 2 });
+  assert.deepEqual(parseGetAPriceSearch({ t: "", step: 0 }), {});
+  assert.deepEqual(parseGetAPriceSearch({ step: 9 }), {});
+});
+
+test("writing token does not drop step; writing step does not drop token", () => {
+  const withStep = withGetAPriceStep({ t: "tok" }, 2);
+  assert.deepEqual(withStep, { t: "tok", step: 2 });
+  assert.deepEqual(withGetAPriceToken({ step: 2 }, "tok"), { step: 2, t: "tok" });
+  assert.equal(withGetAPriceToken(withStep, "other").step, 2);
 });

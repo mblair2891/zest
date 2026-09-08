@@ -6,6 +6,18 @@ import type { OperatingModel } from "./location-model";
 export const HOUSE_SHAPES = ["single", "host_operators", "peer_venue"] as const;
 export type HouseShape = (typeof HOUSE_SHAPES)[number];
 
+export const PRICE_WIZARD_STEPS = [
+  "Shape",
+  "Service",
+  "Modules",
+  "Counts",
+  "Hardware",
+  "Review",
+  "Contact",
+] as const;
+
+export const PRICE_WIZARD_STEP_COUNT = PRICE_WIZARD_STEPS.length;
+
 export const SERVICE_STYLES = ["counter", "full_service", "bar_only", "mixed", "hall"] as const;
 export type ServiceStyle = (typeof SERVICE_STYLES)[number];
 
@@ -123,6 +135,18 @@ export function stylesForShape(shape: HouseShape | null): ServiceStyle[] {
   if (shape === "peer_venue") return ["mixed", "hall", "bar_only"];
   if (shape === "single") return ["counter", "full_service", "bar_only", "mixed"];
   return [...SERVICE_STYLES];
+}
+
+export function clampWizardStep(step: unknown): number {
+  const n = Math.round(Number(step));
+  if (!Number.isInteger(n) || n < 1) return 1;
+  if (n > PRICE_WIZARD_STEPS.length) return PRICE_WIZARD_STEPS.length;
+  return n;
+}
+
+/** Set a house shape. Never clears — pick another shape to change. */
+export function selectHouseShape(state: PriceWizardState, shape: HouseShape): PriceWizardState {
+  return clampWizard({ ...state, shape });
 }
 
 export function clampWizard(state: PriceWizardState): PriceWizardState {
@@ -346,13 +370,3 @@ export function parsePriceWizard(raw: unknown): PriceWizardState | null {
   w.describe = typeof o.describe === "string" ? o.describe : "";
   return clampWizard(w);
 }
-
-export const PRICE_WIZARD_STEPS = [
-  "Shape",
-  "Service",
-  "Modules",
-  "Counts",
-  "Hardware",
-  "Review",
-  "Contact",
-] as const;

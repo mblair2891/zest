@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -19,8 +19,9 @@ import {
   SERVICE_STYLE_LABEL,
   WIZARD_MODULE_META,
   clampWizard,
-  emptyPriceWizard,
+  clampWizardStep,
   prefillFromDescription,
+  selectHouseShape,
   stylesForShape,
   visibleModules,
   wizardToIntake,
@@ -34,28 +35,26 @@ import { clearGetAPriceStorage } from "@/lib/saas/get-a-price-draft";
 export function PriceWizard({
   token,
   catalog,
-  initial,
+  state,
+  step,
   onChange,
+  onStep,
 }: {
   token: string;
   catalog: QuoteCatalog;
-  initial?: PriceWizardState | null;
-  onChange?: (state: PriceWizardState) => void;
+  state: PriceWizardState;
+  step: number;
+  onChange: (state: PriceWizardState) => void;
+  onStep: (step: number) => void;
 }) {
   const navigate = useNavigate();
-  const [step, setStep] = useState(1);
-  const [state, setState] = useState<PriceWizardState>(() => clampWizard(initial ?? emptyPriceWizard()));
-  const [describeOpen, setDescribeOpen] = useState(Boolean(initial?.describe));
+  const [describeOpen, setDescribeOpen] = useState(Boolean(state.describe));
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const patch = (fn: (s: PriceWizardState) => PriceWizardState) => {
-    setState((prev) => clampWizard(fn(prev)));
+    onChange(clampWizard(fn(state)));
   };
-
-  useEffect(() => {
-    onChange?.(state);
-  }, [state]);
 
   const answers = useMemo(() => wizardToIntake(state), [state]);
   const quote = useMemo(() => {
@@ -65,24 +64,24 @@ export function PriceWizard({
 
   const go = (n: number) => {
     setError(null);
-    setStep(n);
+    onStep(clampWizardStep(n));
   };
 
   const submit = async () => {
     setError(null);
     if (!state.email.includes("@")) {
       setError("Email is required to send the quote.");
-      setStep(7);
+      go(7);
       return;
     }
     if (state.legalName.trim().length < 2) {
       setError("Business / legal name is required.");
-      setStep(7);
+      go(7);
       return;
     }
     if (!state.shape || !state.style) {
       setError("Pick a house shape and service style first.");
-      setStep(state.shape ? 2 : 1);
+      go(state.shape ? 2 : 1);
       return;
     }
     setBusy(true);
@@ -175,7 +174,7 @@ export function PriceWizard({
                 on={state.shape === id}
                 label={HOUSE_SHAPE_LABEL[id]}
                 hint={HOUSE_SHAPE_HINT[id]}
-                onClick={() => patch((s) => ({ ...s, shape: id }))}
+                onClick={() => patch((s) => selectHouseShape(s, id))}
               />
             ))}
           </div>
@@ -212,15 +211,34 @@ export function PriceWizard({
       )}
 
       {step === 2 && (
-        <div className="grid gap-2">
-          {styles.map((id) => (
-            <ToggleChip
-              key={id}
-              on={state.style === id}
-              label={SERVICE_STYLE_LABEL[id]}
-              onClick={() => patch((s) => ({ ...s, style: id as ServiceStyle }))}
-            />
-          ))}
+        <div className="space-y-4">
+          <div className="grid gap-2">
+            {styles.map((id) => (
+              <ToggleChip
+                key={id}
+                on={state.style === id}
+                label={SERVICE_STYLE_LABEL[id]}
+                onClick={() => patch((s) => ({ ...s, style: id as ServiceStyle }))}
+              />
+            ))}
+          </div>
+          {state.shape && state.shape !== "single" && (
+            <Field
+              label={state.shape === "peer_venue" ? "Entities (min 2)" : "Tenant entities"}
+              hint={
+                state.shape === "peer_venue"
+                  ? "Independent operators in this building. Default 2."
+                  : "Tenant operators at this host."
+              }
+            >
+              <Input
+                type="number"
+                min={state.shape === "peer_venue" ? 2 : 1}
+                value={state.entities}
+                onChange={(e) => patch((s) => ({ ...s, entities: Number(e.target.value) }))}
+              />
+            </Field>
+          )}
         </div>
       )}
 

@@ -1,18 +1,20 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { MarketingShell } from "@/components/marketing/MarketingShell";
 import { IntakeWizard } from "@/components/saas/IntakeWizard";
+import {
+  parseGetAPriceSearch,
+  type GetAPriceSearch,
+} from "@/lib/saas/get-a-price-draft";
 
 /** Interview + live quote. Not `/whitepaper`. */
 export const Route = createFileRoute("/get-pricing")({
-  validateSearch: (s: Record<string, unknown>): { t?: string } => {
-    const t = typeof s.t === "string" && s.t.length > 0 ? s.t : undefined;
-    return t ? { t } : {};
-  },
+  validateSearch: (s: Record<string, unknown>): GetAPriceSearch => parseGetAPriceSearch(s),
   component: GetPricingPage,
 });
 
 function GetPricingPage() {
-  const { t } = Route.useSearch();
+  const search = Route.useSearch();
+  const navigate = Route.useNavigate();
   return (
     <MarketingShell>
       <main className="mx-auto max-w-5xl px-4 py-12">
@@ -26,7 +28,15 @@ function GetPricingPage() {
           live cards use Finix / Quantum readers we ship.
         </p>
         <div className="mt-8">
-          <IntakeWizard initialToken={t} />
+          <IntakeWizard
+            search={search}
+            onSearch={(next) => {
+              void navigate({
+                search: (prev) => (typeof next === "function" ? next(prev) : next),
+                replace: true,
+              });
+            }}
+          />
         </div>
       </main>
     </MarketingShell>

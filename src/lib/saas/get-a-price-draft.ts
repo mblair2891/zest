@@ -15,6 +15,40 @@ export type GetAPriceDraft = {
   data?: unknown;
 };
 
+/** Public `/get-pricing` search. Token + step live here; answers do not. */
+export type GetAPriceSearch = {
+  t?: string;
+  step?: number;
+};
+
+const WIZARD_STEP_MIN = 1;
+const WIZARD_STEP_MAX = 7;
+
+export function parseGetAPriceSearch(s: Record<string, unknown>): GetAPriceSearch {
+  const t = typeof s.t === "string" && s.t.length > 0 ? s.t : undefined;
+  const raw = s.step;
+  const n = typeof raw === "number" ? raw : typeof raw === "string" && raw.trim() !== "" ? Number(raw) : NaN;
+  const out: GetAPriceSearch = {};
+  if (t) out.t = t;
+  if (Number.isInteger(n) && n >= WIZARD_STEP_MIN && n <= WIZARD_STEP_MAX) out.step = n;
+  return out;
+}
+
+/** Write token without dropping an existing step. */
+export function withGetAPriceToken(prev: GetAPriceSearch, token: string): GetAPriceSearch {
+  const next: GetAPriceSearch = { ...prev };
+  if (token) next.t = token;
+  return next;
+}
+
+/** Write step without dropping an existing token. */
+export function withGetAPriceStep(prev: GetAPriceSearch, step: number): GetAPriceSearch {
+  const n = Math.round(Number(step));
+  const clamped =
+    Number.isInteger(n) && n >= WIZARD_STEP_MIN && n <= WIZARD_STEP_MAX ? n : WIZARD_STEP_MIN;
+  return { ...prev, step: clamped };
+}
+
 let currentObservedPath =
   typeof window !== "undefined" ? normalizePath(window.location.pathname) : "";
 let previousObservedPath = currentObservedPath;

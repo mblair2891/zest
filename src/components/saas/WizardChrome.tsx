@@ -123,6 +123,7 @@ export function ToggleChip({
     <button
       type="button"
       onClick={onClick}
+      aria-pressed={on}
       className={`rounded-2xl border px-4 py-3 text-left transition ${
         on ? "border-primary bg-primary/10" : "border-border bg-surface hover:border-primary/40"
       }`}

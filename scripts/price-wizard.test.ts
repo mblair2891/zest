@@ -1,8 +1,10 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {
+  clampWizardStep,
   emptyPriceWizard,
   prefillFromDescription,
+  selectHouseShape,
   stylesForShape,
   visibleModules,
   wizardToIntake,
@@ -71,6 +73,26 @@ test("single counter is not a food-hall default", () => {
   assert.equal(quote.planSlug, "starter");
   assert.equal(quote.lineItems.some((i) => i.id === "multi_op"), false);
   assert.equal(quote.lineItems.some((i) => i.id === "full_service"), false);
+});
+
+test("selecting shared venue sticks and defaults entities to 2", () => {
+  let w = emptyPriceWizard();
+  w = selectHouseShape(w, "peer_venue");
+  assert.equal(w.shape, "peer_venue");
+  assert.equal(w.entities, 2);
+  w = selectHouseShape(w, "peer_venue");
+  assert.equal(w.shape, "peer_venue");
+  assert.equal(w.entities, 2);
+  w = selectHouseShape(w, "single");
+  assert.equal(w.shape, "single");
+  assert.equal(w.entities, 1);
+});
+
+test("wizard step clamps to 1–7", () => {
+  assert.equal(clampWizardStep(2), 2);
+  assert.equal(clampWizardStep(0), 1);
+  assert.equal(clampWizardStep(99), 7);
+  assert.equal(clampWizardStep("3"), 3);
 });
 
 test("service styles are filtered by shape", () => {
