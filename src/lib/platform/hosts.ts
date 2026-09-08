@@ -449,6 +449,7 @@ export const MARKETING_PATHS = [
   "/guide",
   "/demo",
   "/whitepaper",
+  "/terms",
   "/privacy",
   "/contact",
 ] as const;

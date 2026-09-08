@@ -16,6 +16,8 @@ test("reserved slugs are blocked", () => {
   assert.equal(isReservedVenueSlug("app"), true);
   assert.equal(isReservedVenueSlug("api"), true);
   assert.equal(isReservedVenueSlug("login"), true);
+  assert.equal(isReservedVenueSlug("privacy"), true);
+  assert.equal(isReservedVenueSlug("terms"), true);
   assert.equal(isReservedVenueSlug("the-laundry"), false);
   assert.equal(suggestVenueSlug("App"), "v-app");
   assert.equal(suggestVenueSlug("The Laundry"), "the-laundry");

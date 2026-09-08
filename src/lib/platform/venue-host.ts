@@ -90,6 +90,7 @@ export const RESERVED_VENUE_SLUGS: ReadonlySet<string> = new Set([
   "venue",
   "online",
   "privacy",
+  "terms",
   "pricing",
   "features",
   "onboarding",

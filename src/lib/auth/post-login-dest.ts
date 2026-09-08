@@ -65,6 +65,11 @@ export function isMarketingStayPath(path: string | null | undefined): boolean {
     p === "/features" ||
     p === "/pricing" ||
     p === "/whitepaper" ||
-    p === "/blog"
+    p === "/blog" ||
+    p === "/terms" ||
+    p === "/privacy" ||
+    p === "/contact" ||
+    p === "/guide" ||
+    p === "/get-pricing"
   );
 }

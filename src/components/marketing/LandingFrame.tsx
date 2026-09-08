@@ -38,11 +38,13 @@ export function LandingFrame({ children }: { children: ReactNode }) {
           <MarketingAuthCtas />
         </div>
         <nav className="flex gap-4 overflow-x-auto border-t border-border px-4 py-3 text-xs tracking-widest text-muted-foreground uppercase sm:hidden">
-          {NAV.map((n) => (
-            <Link key={`${n.to}:${n.label}`} to={n.to} className="shrink-0 hover:text-champagne">
-              {n.label}
-            </Link>
-          ))}
+          {[...NAV, { to: "/terms" as const, label: "Terms" }, { to: "/privacy" as const, label: "Privacy" }].map(
+            (n) => (
+              <Link key={`${n.to}:${n.label}`} to={n.to} className="shrink-0 hover:text-champagne">
+                {n.label}
+              </Link>
+            ),
+          )}
         </nav>
       </header>
       <div className="relative z-10">{children}</div>
@@ -71,6 +73,9 @@ export function LandingFrame({ children }: { children: ReactNode }) {
             <Link to="/whitepaper" className="hover:text-champagne">
               White paper
             </Link>
+            <Link to="/terms" className="hover:text-champagne">
+              Terms
+            </Link>
             <Link to="/privacy" className="hover:text-champagne">
               Privacy
             </Link>
@@ -92,7 +97,9 @@ export type LandingHref =
   | "/demo"
   | "/features"
   | "/whitepaper"
-  | "/contact";
+  | "/contact"
+  | "/terms"
+  | "/privacy";
 
 export function LandingCta({
   to,

@@ -67,6 +67,8 @@ test("venue owner never lands on the control plane", () => {
 test("sales home is never a post-login stay path", () => {
   assert.equal(isMarketingStayPath("/"), true);
   assert.equal(isMarketingStayPath("/demo"), true);
+  assert.equal(isMarketingStayPath("/terms"), true);
+  assert.equal(isMarketingStayPath("/privacy"), true);
   assert.equal(isMarketingStayPath("/dashboard"), false);
   assert.equal(isMarketingStayPath("/venue/restaurant"), false);
 });

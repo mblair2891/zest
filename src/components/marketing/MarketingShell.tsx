@@ -34,6 +34,7 @@ export function MarketingShell({ children }: { children: ReactNode }) {
           </nav>
           <MarketingAuthCtas
             solidClass="rounded-lg bg-primary px-3 py-2 text-sm font-semibold text-primary-foreground"
+            legalClass="hidden text-sm text-muted-foreground hover:text-foreground sm:inline"
           />
         </div>
       </header>
@@ -47,6 +48,12 @@ export function MarketingShell({ children }: { children: ReactNode }) {
             </Link>
             <Link to="/whitepaper" className="hover:text-foreground">
               White paper
+            </Link>
+            <Link to="/terms" className="hover:text-foreground">
+              Terms
+            </Link>
+            <Link to="/privacy" className="hover:text-foreground">
+              Privacy
             </Link>
             <span>By Michael Blair & Andy Baida</span>
           </p>
