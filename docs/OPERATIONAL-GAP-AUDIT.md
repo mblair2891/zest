@@ -110,7 +110,7 @@ Status: **DONE** = user can complete the job in UI + code; **PARTIAL** = UI exis
 4. **Printer path.** Chits/receipts have no Star/Epson driver — Hardware tab is registry + catalog only.
 5. **Isolation tests.** Add cross-org IDOR tests; either use `tenantMiddleware` on mutating fns or prove every handler scopes by `requireMembership`.
 
-### P1 — first paying **software** site (Training / one iPad, cash + sandbox cards)
+### P1 — first paying **software** site (Training / one Android tablet, cash + sandbox cards)
 
 1. Set `APP_URL` / `BETTER_AUTH_URL` to `https://www.summex.app`; `RESEND_API_KEY` for quote emails.
 2. Optional `STRIPE_SECRET_KEY` + price IDs for **SaaS** invoices (not POS).
@@ -152,7 +152,7 @@ If the first site is **Training** on **one managed tablet** (or split-screen on 
 - Software invoice sandbox (or Stripe if keys set).
 - Factory reset if you need an empty control plane (Admin remains).
 
-**Do not promise:** kitchen display on a second iPad seeing the same tickets, live Visa/MC capture, printers, or ACH payouts.
+**Do not promise:** kitchen display on a second tablet seeing the same tickets, live Visa/MC capture, printers, or ACH payouts.
 
 ---
 

@@ -1,4 +1,4 @@
-# Summex Hardware Policy (v1.0)
+# Summex Hardware Policy (v1.1)
 
 **BYOD-first software. Certified payments & printers. Optional buy · finance · subscribe.**
 
@@ -16,7 +16,7 @@ Proprietors: Michael Blair & Andy Baida · Product: Summex Hospitality OS
 | **Device subscription** | $/device/mo + swap SLA | Summex (fleet) | Always-on ODS / managed counters |
 
 ### Non‑negotiables
-1. Software runs in browser/PWA on **customer tablets/phones** by default.  
+1. Staff stations (host, order, ODS) run on **Android tablets** with the **Summex Station** app (sideload now; Play later). Guest QR pay/order stays on the guest’s phone browser. iPad and browser POS are not a supported house setup.  
 2. **Live card-present** = **Stripe Terminal** certified readers only.  
 3. Printers = **Star Micronics** or **Epson** models on the certified list.  
 4. Hardware contract **≠** software SaaS **≠** processing rate (quote separately).  
@@ -33,10 +33,10 @@ Proprietors: Michael Blair & Andy Baida · Product: Summex Hospitality OS
 
 | Kit | Buy ≈ | Finance ≈ /mo (36) | Subscribe ≈ /mo |
 |---|---|---|---|
-| Counter Ready | $1,198 | $42 | $90 |
-| Handheld Service | $558 | $22 | $47 |
+| Counter Ready | $1,078 | $38 | $86 |
+| Handheld Service | $288 | $14 | $37 |
 | ODS Station | $539 | $18 | $46 |
-| Hall Host Pack | $1,458 | $55 | $109 |
+| Hall Host Pack | $1,338 | $50 | $105 |
 
 ---
 
@@ -47,9 +47,7 @@ Proprietors: Michael Blair & Andy Baida · Product: Summex Hospitality OS
 | Stripe Terminal catalog | https://stripe.com/terminal/devices |
 | Stripe Reader M2 | https://stripe.com/terminal/m2 |
 | Stripe Reader S700 | https://stripe.com/terminal/s700 |
-| Apple iPad | https://www.apple.com/ipad/ |
-| Apple iPad mini | https://www.apple.com/ipad-mini/ |
-| Samsung tablets | https://www.samsung.com/us/tablets/ |
+| Samsung tablets (staff stations) | https://www.samsung.com/us/tablets/ |
 | Star thermal printers | https://starmicronics.com/thermal-pos-receipt-printers/ |
 | Epson POS printers | https://epson.com/For-Work/Printers/POS/c/w330 |
 | APG cash drawers | https://www.apgcashdrawer.com/ |

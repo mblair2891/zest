@@ -33,7 +33,7 @@ export const PAYMENT_TOPICS: GuideTopic[] = [
         "One guest tender. Split capture to each brand’s merchant by merchandise owner. Tax, tip, and service allocate by merchandise share. Receipt, email, and QR check itemize by vendor, then totals — still one document.",
         "Software billing (SaaS invoices) is separate from guest cards.",
         "Gift load with a bank card charges the issuer brand’s account. Gift redeem stays on the Summex ledger.",
-        "Sandbox (default, including Training): practice cards, not a live Visa. Live: present the card on an enrolled Finix/Quantum reader supplied through Summex. Tablets, printers, and drawers stay BYO. Customer-owned Square, Stripe, or bank terminals are not supported. Live cards fail closed without an enrolled reader.",
+        "Sandbox (default, including Training): practice cards, not a live Visa. Live: present the card on an enrolled Finix/Quantum reader supplied through Summex. Staff stations are Android tablets with Summex Station. Printers and drawers stay BYO. Customer-owned Square, Stripe, or bank terminals are not supported. Live cards fail closed without an enrolled reader.",
         "A brand cannot take live cards until that brand’s application is approved. Training uses sandbox account ids. If the processor is down: take cash or keep the check open.",
       ),
       callout(
@@ -212,7 +212,7 @@ export const PAYMENT_TOPICS: GuideTopic[] = [
         "An owner considering Summex should read a product paper — not a stack spec. Processors and partners can share the same document.",
       ),
       p(
-        "Open White paper from the marketing header or footer (no login). Print from the browser for a PDF. Revision · 6 Sep 2026 matches Guide v2026.10.53. It is written for prospective subscribers: one guest check, floor, multi-entity, 5% cash-discount processing story, plans from Get a price. No CRM, pipeline, factory reset, or how to log in. Internal operations notes stay off the public site.",
+        "Open White paper from the marketing header or footer (no login). Print from the browser for a PDF. Revision · 8 Sep 2026 matches Guide v2026.10.60. It is written for prospective subscribers: one guest check, floor, multi-entity, Android staff stations, 5% cash-discount processing story, plans from Get a price. No CRM, pipeline, factory reset, or how to log in. Internal operations notes stay off the public site.",
       ),
       steps(
         "Open White paper from the marketing header (White paper). That page is the paper — not Get a price.",

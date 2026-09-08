@@ -6,6 +6,19 @@ import type { GuideUpdate } from "@/lib/guide/types";
  */
 export const WHATS_NEW_ENTRIES: GuideUpdate[] = [
   {
+    id: "upd_2026_10_60_android_stations",
+    date: "2026-09-08",
+    title: "Staff stations are Android tablets",
+    summary:
+      "Host, order, and ODS run on Android tablets with Summex Station. iPad and browser POS are not a supported house setup.",
+    body: "Staff stations (host, order, ODS) are an Android tablet running the Summex Station app (sideload now; Play later). Guest QR pay/order stays on the guest’s own phone browser — that is not a staff station. Printers, drawers, and Finix/Quantum readers are unchanged. Chrome pairing may still exist for development; do not sell it as the house setup.",
+    roles: ["owner_manager", "host_operator", "kitchen_bar", "platform_admin"],
+    surfaces: ["settings", "floor"],
+    audience: "all",
+    topicId: "android-kiosk",
+    tags: ["devices", "android", "hardware"],
+  },
+  {
     id: "upd_2026_10_59_till_transfer",
     date: "2026-09-07",
     title: "Till-to-till cash transfer",

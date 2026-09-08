@@ -172,8 +172,11 @@ export function SubscriberWhitePaper() {
 
       <Section n="6" title="Money and hardware">
         <p>
-          <strong className="text-ivory">Bring your own tablets, printers, cash
-          drawers, and stands.</strong> Summex is the software.
+          <strong className="text-ivory">Staff stations are Android tablets
+          running the Summex Station app (sideload now; Play later).</strong>{" "}
+          Bring your own printers, cash drawers, and stands. Summex is the
+          software. Guest QR pay/order stays on the guest’s own phone browser.
+          iPad and browser POS are not a supported house setup.
         </p>
         <p>
           <strong className="text-ivory">
@@ -216,7 +219,7 @@ export function SubscriberWhitePaper() {
 
       <Section n="8" title="Devices">
         <ol className="list-decimal space-y-2 pl-5">
-          <li>Install Summex Station on the tablet.</li>
+          <li>Install Summex Station on an Android tablet (sideload now; Play later).</li>
           <li>The owner adds a device (name and role) and shows a one-time code or QR.</li>
           <li>The tablet pairs, then opens on the PIN pad.</li>
           <li>

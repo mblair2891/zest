@@ -3,7 +3,7 @@
 **Powered by Quantum Reach**
 
 White paper · for owners and operators  
-**Revision · 7 Sep 2026** — Written for prospective subscribers. Aligns with Operators Guide v2026.10.59.
+**Revision · 8 Sep 2026** — Written for prospective subscribers. Aligns with Operators Guide v2026.10.60. Staff stations are Android tablets.
 
 summex.app  
 Guest cards: **Quantum Payments** only
@@ -91,7 +91,7 @@ Untagged lines fail closed. The building does not become a third merchant.
 
 ## 6. Money and hardware
 
-**Bring your own tablets, printers, cash drawers, and stands.** Summex is the software. It does not sell a hardware kit.
+**Staff stations are Android tablets running the Summex Station app (sideload now; Play later).** Bring your own printers, cash drawers, and stands. Summex is the software. It does not sell a hardware kit. Guest QR pay/order stays on the guest’s own phone browser — not a staff station. iPad and browser POS are not a supported house setup.
 
 **Live cards require Quantum / Finix-class readers supplied through Summex** (drop-ship to the site). Customer-owned Square, Stripe, or bank terminals are not supported. Training can run on cash and sandbox cards. Live cards wait for an approved Quantum application and an enrolled reader.
 
@@ -114,7 +114,7 @@ When the house is ready for more than service:
 
 ## 8. Devices
 
-1. Install **Summex Station** on the tablet.
+1. Install **Summex Station** on an Android tablet (sideload now; Play later).
 2. The owner adds a device (name and role) and shows a one-time code or QR.
 3. The tablet pairs, then opens on the PIN pad.
 4. **Publish changes** pushes menu, floor, printers, and QR. Staff keep the last publish until they switch user. Never mid-check.

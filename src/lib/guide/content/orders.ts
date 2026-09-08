@@ -103,7 +103,7 @@ export const ORDER_TOPICS: GuideTopic[] = [
         "ODS ticket columns with Start and Bump.",
       ),
       steps(
-        "Send from the floor. Tickets land on the kitchen or bar ODS for that station and operator — including a second tablet and a kitchen display, not only this browser.",
+        "Send from the floor. Tickets land on the kitchen or bar ODS for that station and operator — including a second tablet and a kitchen display, not only this station.",
         "Start when you begin prep (Preparing). Bump when the plate/drink is ready. Those actions persist on the location; the originating POS shows Ready without a refresh wait longer than a few seconds.",
         "The originating server’s device toasts, chimes, and vibrates (where the platform allows). The table pulses Up.",
         "Expo or the server marks Delivered on the floor. Recall if you bumped too early.",

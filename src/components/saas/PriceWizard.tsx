@@ -347,7 +347,8 @@ export function PriceWizard({
           <p>{HARDWARE_LEAD}</p>
           <p className="text-muted-foreground">
             This quote includes {state.readers} reader{state.readers === 1 ? "" : "s"} supplied through
-            Summex. Tablets, printers, cash drawers, and stands stay BYO.
+            Summex. Staff stations are Android tablets running Summex Station. Printers, cash
+            drawers, and stands stay BYO.
           </p>
           <Field label="Reader quantity">
             <Input

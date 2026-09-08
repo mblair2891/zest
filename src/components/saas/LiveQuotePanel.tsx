@@ -171,8 +171,8 @@ export function LiveQuotePanel({
           <p className="text-sm text-muted-foreground">{HARDWARE_LEAD}</p>
           <ToggleChip
             on
-            label="Provide your own tablets, printers, drawers, stands — $0"
-            hint="Required BYO. Summex does not sell a hardware kit."
+            label="Provide your own Android tablets, printers, drawers, stands — $0"
+            hint="Staff stations: Android tablet + Summex Station (sideload now; Play later). Not iPad or browser POS."
             onClick={() => undefined}
           />
           <ul className="list-disc space-y-1 pl-5 text-xs text-muted-foreground">

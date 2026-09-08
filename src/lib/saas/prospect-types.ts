@@ -140,7 +140,7 @@ export type PartnerHardwareSku = {
 };
 
 export type IntakeHardware = {
-  /** Default true: tablets, printers, drawers, stands are the house's. */
+  /** Default true: Android tablets, printers, drawers, stands are the house's. */
   ownsTabletsPrintersDrawers: boolean;
   shipReaders: boolean;
   readerQty: number;

@@ -9,12 +9,15 @@ import type {
   TerminalNeed,
 } from "./prospect-types";
 
+export const STAFF_STATION_DEVICE =
+  "Android tablet running the Summex Station app (sideload now; Play later).";
+
 export const HARDWARE_LEAD =
-  "Bring your own tablets, printers, cash drawers, and stands. Summex is the software. Guest card-present payments require Finix / Quantum Payments readers supplied through Summex — we ship them to your site. Customer-owned Square, Stripe, or other bank terminals are not supported.";
+  "Staff stations are Android tablets running the Summex Station app (sideload now; Play later). Bring your own printers, cash drawers, and stands. Summex is the software. Guest QR pay/order stays on the guest’s phone browser — not a staff station. Guest card-present payments require Finix / Quantum Payments readers supplied through Summex — we ship them to your site. Customer-owned Square, Stripe, or other bank terminals are not supported.";
 
 export const BYO_CHECKLIST = [
-  "Order tablet or POS screen (Android / iPad / browser)",
-  "ODS display for kitchen or bar",
+  STAFF_STATION_DEVICE,
+  "ODS display for kitchen or bar (Android tablet running Summex Station)",
   "Wi-Fi or Ethernet receipt printer with cash-drawer kick",
   "Optional USB mag-stripe reader for gift cards (not a card-present terminal)",
 ];
@@ -335,7 +338,7 @@ export function catalogFeatureList(answers: IntakeAnswers): string[] {
   if (kiosks > 0) out.push(`${kiosks} guest kiosk${kiosks === 1 ? "" : "s"}`);
   const hw = answers.hardware ?? emptyIntakeHardware();
   if (hw.ownsTabletsPrintersDrawers !== false) {
-    out.push("BYO tablets, printers, drawers, stands");
+    out.push("BYO Android tablets (Summex Station), printers, drawers, stands");
   }
   const readers = Math.max(1, Math.floor(hw.readerQty || 1));
   out.push(
@@ -469,7 +472,7 @@ export function catalogHardwareLines(
   const items: QuoteLineItem[] = [];
   const hw = answers.hardware ?? emptyIntakeHardware();
   items.push(
-    line("hw_byo", "hardware", "Bring your own tablets, printers, drawers, stands", 1, 0, {
+    line("hw_byo", "hardware", "BYO Android tablets (Summex Station), printers, drawers, stands", 1, 0, {
       bucket: "hardware",
       note: HARDWARE_LEAD,
     }),

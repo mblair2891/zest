@@ -736,10 +736,12 @@ export function SetupOnboardingWizard({ token }: { token: string }) {
       {stepId === "hardware" && (
         <div className="space-y-4">
           <p className="text-sm text-muted-foreground">
-            Bring your own tablets, printers, cash drawers, and stands. Live cards require
-            Finix / Quantum Payments readers supplied through Summex — we ship them to this
-            address. Customer-owned Square, Stripe, or bank terminals are not supported.
-            Training/sandbox can run without a physical reader (cash + sandbox).
+            Staff stations are Android tablets running the Summex Station app (sideload now;
+            Play later). Bring your own printers, cash drawers, and stands. Guest QR stays on
+            the guest’s phone. Live cards require Finix / Quantum Payments readers supplied
+            through Summex — we ship them to this address. Customer-owned Square, Stripe, or
+            bank terminals are not supported. Training/sandbox can run without a physical
+            reader (cash + sandbox).
           </p>
           <div className="space-y-3">
               <Field label="Ship-to name">

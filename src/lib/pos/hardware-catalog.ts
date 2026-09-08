@@ -37,11 +37,11 @@ export interface HardwareKit {
 
 export const HARDWARE_POLICY = {
   title: "Summex Hardware Policy",
-  version: "1.0",
+  version: "1.1",
   summary:
-    "BYOD-first software. Certified payments & printers. Optional buy, 24–36 mo partner finance, or device subscription — never a mystery 48-month ISO trap.",
+    "BYOD-first software. Staff stations are Android tablets with Summex Station. Certified payments & printers. Optional buy, 24–36 mo partner finance, or device subscription — never a mystery 48-month ISO trap.",
   principles: [
-    "Software runs on customer-owned tablets/phones/desktops (BYOD) by default.",
+    "Staff stations (host, order, ODS) run on Android tablets with the Summex Station app (sideload now; Play later). Guest QR pay/order stays on the guest’s phone browser — not a staff station.",
     "Site fabric is WiFi-first: one business AP, staff SSID, isolated guest. No CAT6 to every station.",
     "Internet is only the uplink. If the ISP dies, house WiFi still carries POS, ODS, printers, and handhelds to the hub.",
     "Card-present payments use certified Stripe Terminal (or successor) only — not random NFC dongles.",
@@ -57,7 +57,7 @@ export const HARDWARE_POLICY = {
       id: "byod" as HardwareAcquireMode,
       name: "Bring your own (BYOD)",
       customerPays: "Devices they already own",
-      summexRole: "Certify OS/browser; enroll in Devices",
+      summexRole: "Certify Android + Summex Station; enroll in Devices",
       when: "Default for software, halls vendors, pods",
     },
     {
@@ -90,7 +90,7 @@ export const HARDWARE_POLICY = {
     "Summex does not book leases on balance sheet in v1; partner lessor does.",
   ],
   supportMatrix: [
-    { item: "iPad / Android tablet POS", support: "BYOD supported (see min OS)" },
+    { item: "Android tablet + Summex Station app", support: "Supported staff station (sideload now; Play later)" },
     { item: "Stripe Terminal readers", support: "Required for live card-present" },
     { item: "Star / Epson LAN printers", support: "Certified; others best-effort" },
     { item: "Cash drawer (printer-kick)", support: "Optional; APG/Star common" },
@@ -107,7 +107,7 @@ export const HARDWARE_SKUS: HardwareSku[] = [
     role: "Floor server + Bar/Manager",
     listPriceUsd: 0,
     byodOk: true,
-    notes: "BYOD test units. Landscape Chrome; Install app / Add to Home screen. Assign A=Server, B=Bar or Manager.",
+    notes: "BYOD test units. Summex Station app (sideload now; Play later). Assign A=Server, B=Bar or Manager.",
     sources: [
       { label: "Samsung tablets", url: "https://www.samsung.com/us/tablets/" },
       { label: "Samsung tablets", url: "https://www.samsung.com/us/tablets/" },
@@ -120,7 +120,7 @@ export const HARDWARE_SKUS: HardwareSku[] = [
     role: "Kitchen expo ODS",
     listPriceUsd: 0,
     byodOk: true,
-    notes: "Large-format Android touch. Use Kitchen login + /?station=kitchen. Stay awake while plugged in; zoom 110% if tickets feel small.",
+    notes: "Large-format Android touch running Summex Station (same app as tablets). Stay awake while plugged in.",
     sources: [
       {
         label: "Android large-format / commercial touch (category)",
@@ -129,44 +129,14 @@ export const HARDWARE_SKUS: HardwareSku[] = [
     ],
   },
   {
-    id: "sku_ipad",
-    name: "Apple iPad (10.9\" / 11\")",
-    category: "compute",
-    role: "Counter POS / host stand",
-    listPriceUsd: 349,
-    subscribeMonthlyUsd: 29,
-    byodOk: true,
-    notes: "Safari or Chrome; guided access recommended. Min recent iPadOS.",
-    sources: [
-      { label: "Apple Store — iPad", url: "https://www.apple.com/ipad/" },
-      {
-        label: "Apple Business",
-        url: "https://www.apple.com/business/",
-      },
-    ],
-  },
-  {
-    id: "sku_ipad_mini",
-    name: "Apple iPad mini",
-    category: "compute",
-    role: "Server handheld",
-    listPriceUsd: 499,
-    subscribeMonthlyUsd: 35,
-    byodOk: true,
-    notes: "Best BYOD handheld form factor for floor service.",
-    sources: [
-      { label: "Apple Store — iPad mini", url: "https://www.apple.com/ipad-mini/" },
-    ],
-  },
-  {
     id: "sku_android_tab",
     name: "Android tablet 10\" (Samsung/Lenovo class)",
     category: "compute",
-    role: "Counter POS / ODS",
+    role: "Staff station — order / ODS / host",
     listPriceUsd: 229,
     subscribeMonthlyUsd: 25,
     byodOk: true,
-    notes: "Chrome; Android 12+. Prefer Wi-Fi 6, 4GB+ RAM for ODS.",
+    notes: "Android 12+. Summex Station app (sideload now; Play later). Prefer Wi-Fi 6, 4GB+ RAM for ODS. iPad and browser POS are not supported house stations.",
     sources: [
       {
         label: "Samsung Galaxy Tab",
@@ -308,7 +278,7 @@ export const HARDWARE_SKUS: HardwareSku[] = [
     listPriceUsd: 220,
     subscribeMonthlyUsd: 15,
     byodOk: true,
-    notes: "Drive with dedicated tablet or mini-PC; always plugged in.",
+    notes: "Drive with a dedicated Android tablet running Summex Station; always plugged in.",
     sources: [
       {
         label: "Example commercial displays (Samsung)",
@@ -358,24 +328,24 @@ export const HARDWARE_KITS: HardwareKit[] = [
     name: "Counter Ready Kit",
     bestFor: "Single register restaurant / bar",
     skuIds: [
-      "sku_ipad",
+      "sku_android_tab",
       "sku_stand",
       "sku_stripe_s700",
       "sku_star_mcprint3",
       "sku_apg_drawer",
     ],
-    buyTotalUsd: 349 + 90 + 299 + 320 + 140,
-    financeMonthlyUsd: 42,
-    subscribeMonthlyUsd: 29 + 6 + 29 + 18 + 8,
+    buyTotalUsd: 229 + 90 + 299 + 320 + 140,
+    financeMonthlyUsd: 38,
+    subscribeMonthlyUsd: 25 + 6 + 29 + 18 + 8,
   },
   {
     id: "kit_handheld",
     name: "Handheld Service Kit",
     bestFor: "Servers / hall runners",
-    skuIds: ["sku_ipad_mini", "sku_stripe_m2"],
-    buyTotalUsd: 499 + 59,
-    financeMonthlyUsd: 22,
-    subscribeMonthlyUsd: 35 + 12,
+    skuIds: ["sku_android_tab", "sku_stripe_m2"],
+    buyTotalUsd: 229 + 59,
+    financeMonthlyUsd: 14,
+    subscribeMonthlyUsd: 25 + 12,
   },
   {
     id: "kit_kds",
@@ -391,16 +361,16 @@ export const HARDWARE_KITS: HardwareKit[] = [
     name: "Hall Host Pack",
     bestFor: "Food hall building operator",
     skuIds: [
-      "sku_ipad",
+      "sku_android_tab",
       "sku_stand",
       "sku_stripe_s700",
       "sku_star_mcprint3",
       "sku_kds_display",
       "sku_router",
     ],
-    buyTotalUsd: 349 + 90 + 299 + 320 + 220 + 180,
-    financeMonthlyUsd: 55,
-    subscribeMonthlyUsd: 29 + 6 + 29 + 18 + 15 + 12,
+    buyTotalUsd: 229 + 90 + 299 + 320 + 220 + 180,
+    financeMonthlyUsd: 50,
+    subscribeMonthlyUsd: 25 + 6 + 29 + 18 + 15 + 12,
   },
 ];
 

@@ -13,8 +13,8 @@ test("quotes always include at least one required reader", () => {
 
 test("BYO checklist has no customer-owned bank reader", () => {
   const byo = [
-    "Order tablet or POS screen (Android / iPad / browser)",
-    "ODS display for kitchen or bar",
+    "Android tablet running the Summex Station app (sideload now; Play later).",
+    "ODS display for kitchen or bar (Android tablet running Summex Station)",
     "Wi-Fi or Ethernet receipt printer with cash-drawer kick",
     "Optional USB mag-stripe reader for gift cards (not a card-present terminal)",
   ];
@@ -22,4 +22,6 @@ test("BYO checklist has no customer-owned bank reader", () => {
     byo.some((r) => /square|your own stripe|bank terminal|you already have/i.test(r)),
     false,
   );
+  assert.equal(byo.some((r) => /ipad|browser POS|Android \/ iPad/i.test(r)), false);
+  assert.ok(byo.some((r) => /Summex Station/i.test(r)));
 });

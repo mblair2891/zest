@@ -1,7 +1,7 @@
 # Operators Guide — authoring
 
-**Revision · 6 Sep 2026** — Generic product copy (food operator / bar operator / shared venue).
-Guide v2026.10.55.
+**Revision · 8 Sep 2026** — Staff stations are Android tablets with Summex Station.
+Guide v2026.10.60.
 
 The in-app **Operators Guide** is the living product manual. It is not a
 separate PDF. Staff open it from **Guide** / **?** in the POS and platform
@@ -136,7 +136,7 @@ Bookmarkable URL: `/guide?topic=my-topic`.
 - Each entity is its own Quantum Payments merchant. One guest check; receipt itemized by vendor; Finix pays each operator their share on capture.
 - Location models: single operator; host + tenants; shared venue (peers). Shared venue is a named building only — no host merchant, menu, or gift product required.
 - Gift cards: Summex house ledger — swipe, scan, or key. Not Finix.
-- Device roles: **order** | **ODS** | **host**. One Summex Station APK. Owner adds a device (name + role), shows a one-time code/QR. After pair: PIN only. Publish pushes menu/floor/printers/QR. Staff keep the last publish until Switch user.
+- Device roles: **order** | **ODS** | **host**. Android tablet running the Summex Station app (sideload now; Play later). iPad and browser POS are not a supported house setup. Guest QR pay/order stays on the guest’s phone. Owner adds a device (name + role), shows a one-time code/QR. After pair: PIN only. Publish pushes menu/floor/printers/QR. Staff keep the last publish until Switch user.
 - Shared-venue labor: per entity **owned lines** (default) | all-check | selected categories. Steam vs beverage sales; Diamond vs food. Shared rent/utilities off until allocated. Tips stay out of labor % unless toggled.
 - Printers on the house AP LAN (Ethernet), not the printer’s own Wi‑Fi. Receipts: Epson TM-T20 thermal. Kitchen: Epson TM-U220 impact. Cash drawer kick is on the receipt printer.
 - HR: optional per entity (host or tenant employer). Packets + signed PDF fallback. Clock punches persist. Clock windows, shift approval, and pay-period timing drive hours export to ADP / Intuit / CSV — Summex does not process payroll. Platform never sees SSN.
@@ -171,9 +171,9 @@ only — not a floor PIN.
 device switches among those three. PIN identifies the person; the role is the
 screen. Not `/login` on the floor.
 
-**Offline PWA:** first install needs internet. Thereafter cold start can be
-offline: cash & tickets queue; cards when the processor allows (blocked if
-offline). `/guide?topic=wifi-offline`.
+**Offline:** first install of Summex Station needs internet. Thereafter cold
+start can be offline: cash & tickets queue; cards when the processor allows
+(blocked if offline). `/guide?topic=wifi-offline`.
 
 User-facing name is **Order Display / ODS** (not KDS). Internal ids may still
 say `kds`.

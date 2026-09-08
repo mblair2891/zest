@@ -32,7 +32,7 @@ export const DEVICE_TOPICS: GuideTopic[] = [
         "Every station is one of three roles. Order-taking covers handhelds and bar POS — menu, checks, pay, gift. ODS is kitchen (and bar display): tickets only, Start and Bump, no menu, no pay. Host is hybrid: floor map, seat, table status, and to-go order entry at the stand.",
       ),
       p(
-        "Tablets run Summex only. One Android app — Summex Station. First open pairs with the venue code or QR from Devices. After that, the PIN pad, lock-task, no launcher. Guest QR and pay links stay in the phone browser — this APK is staff stations only.",
+        "Staff stations are Android tablets running the Summex Station app (sideload now; Play later). First open pairs with the venue code or QR from Devices. After that, the PIN pad, lock-task, no launcher. Guest QR and pay links stay on the guest’s own phone browser — not a staff station. iPad and browser POS are not a supported house setup.",
       ),
       ul(
         "Order: handhelds + bar. PIN in, ring, send, take tenders the PIN allows.",
@@ -60,7 +60,7 @@ export const DEVICE_TOPICS: GuideTopic[] = [
     chapterId: "devices",
     title: "Tablets run Summex only",
     summary:
-      "One Summex Station app. Pair with Devices code/QR, then PIN. Lock-task, no launcher. Updates keep pairing. Guest QR stays in the browser.",
+      "Android tablet + Summex Station (sideload now; Play later). Pair with Devices code/QR, then PIN. Lock-task, no launcher. Guest QR stays on the guest’s phone.",
     roles: ["owner_manager", "host_operator", "kitchen_bar", "platform_admin"],
     keywords: [
       "android",
@@ -82,7 +82,7 @@ export const DEVICE_TOPICS: GuideTopic[] = [
         "Install Summex Station once. The store binary has no venue baked in. Owner (back office password, not staff PIN): Devices → Add device → name + role. Show the one-time code or QR. After pair, the tablet stores venue and role, receives the house snapshot, and is PIN only. Publish changes pushes menu, floor, printers, QR, and cash model to paired tablets. Staff keep the last publish until Switch user. Idle PIN pads can refresh. Never mid-ticket.",
       ),
       steps(
-        "Install Summex Station on every staff tablet (same app for host, order, and ODS).",
+        "Install Summex Station on every staff Android tablet (sideload now; Play later). Same app for host, order, and ODS.",
         "Owner: Devices → Add device (name + Order / Order Display / Host). Show the one-time code or QR.",
         "Tablet: pair. Config is pushed. Thereafter power on → PIN. App updates do not wipe pairing.",
         "After menu or floor edits: Publish changes. Logged-in staff keep running; next PIN login loads the new publish.",
@@ -119,7 +119,7 @@ export const DEVICE_TOPICS: GuideTopic[] = [
         "Tickets are live across devices when online: every POS and ODS at the location shares the same open checks, sends, Start/Bump, table status, and cash payments (server wins on refresh). Offline, this station still runs from its cache and queues mutations; we do not pretend two tablets share a check with no internet.",
       ),
       steps(
-        "First install (internet required): on Summex Station, pair with the Devices code or QR, wait for the PIN pad. In a browser, Open POS once while online. Do this on each tablet.",
+        "First install (internet required): on Summex Station, pair with the Devices code or QR, wait for the PIN pad. Do this on each Android tablet.",
         "Thereafter cold start can be offline: power the tablet, tap Summex Station — no typing a URL. PIN in. Banner: Offline.",
         "Seat, send a ticket, Start and Bump. Take cash. Card shows Card requires connection — not queued, never a fake Visa.",
         "When WAN returns, banner says Syncing… Outbox applies each mutation once (clientMutationId). Sync failed stays until a manager retries.",
@@ -129,7 +129,7 @@ export const DEVICE_TOPICS: GuideTopic[] = [
         "Network sheet with house SSID, queued cash/tickets, and failed rows.",
       ),
       warn(
-        "First install requires internet. A house router with no WAN is not enough for a cold unpaired tablet. Pair (or Open POS in a browser) once while the uplink is up, wait for the floor. After that, power on with no internet: PIN in, cached menu/floor, cash tender. Card still needs a connection. App updates do not wipe pairing.",
+        "First install requires internet. A house router with no WAN is not enough for a cold unpaired tablet. Pair Summex Station once while the uplink is up, wait for the floor. After that, power on with no internet: PIN in, cached menu/floor, cash tender. Card still needs a connection. App updates do not wipe pairing.",
       ),
       tip(
         "Owner / manager: watch Failed to sync. Server / cashier: cash is the offline tender. Kitchen: bump locally. Host: waitlist SMS is pending send.",
@@ -181,7 +181,7 @@ export const DEVICE_TOPICS: GuideTopic[] = [
         "Receipts: Epson TM-T20 thermal. Kitchen: Epson TM-U220 impact. Star mC-Print3 / TSP100 and Epson TM-T88 / TM-m30 also work as thermal.",
         "Drawer kick: receipt printer only (open on cash sale always / never / manager PIN).",
         "SYOH practice: connection = This browser. An 80mm dialog is not a substitute for the LAN printers at go-live.",
-        "SYOH tablets run POS/ODS. Live cards still use a supplied Quantum reader — not the tablet keypad. Default is bring-your-own tablets, printers, and drawers; optional Finix readers drop-ship to the house.",
+        "Bring-your-own Android tablets run POS/ODS via Summex Station. Live cards still use a supplied Quantum reader — not the tablet keypad. Printers and drawers stay BYO; Finix readers drop-ship to the house.",
       ),
       warn(
         "There is no separate “ODS appliance OS.” Hardware is not a locked role. Do not take live cards on a SYOH tablet keypad. Do not put kitchen printers on printer Wi‑Fi.",
@@ -199,20 +199,20 @@ export const DEVICE_TOPICS: GuideTopic[] = [
     openView: "settings",
     blocks: [
       why(
-        "Hardware is not branded to a stall. The host location owns the registry. Any tablet, Android touchscreen, or desktop can run Operator A POS this week and Operator B ODS next week — This station switches the screen without a new login.",
+        "Hardware is not branded to a stall. The host location owns the registry. Any Android tablet running Summex Station can run Operator A POS this week and Operator B ODS next week — This station switches the screen without a new login.",
       ),
       ul(
         "Type: tablet POS, order display, kiosk, printer, host stand, other.",
         "Suggested assignment: operator (host or a guest entity) + function (floor POS, bar POS, kitchen ODS, bar ODS, expo, kiosk, host stand, cashier).",
         "Paired Devices row: Role dropdown reassigns that tablet (Order / Host / ODS). Broken ODS → reassign a server tablet from Devices. Same pair; next PIN. Printers and drawer kick stay on the station type or named printer.",
         "This station (header): switch Host stand, Server POS, Expo, Cashier, Busser, Kiosk, or Order Display. Multi-op houses pick Host / Operator A / Operator B.",
-        "PIN still identifies the person. Station switch is what this screen is showing. Last station is remembered in this browser.",
+        "PIN still identifies the person. Station switch is what this screen is showing. Last station is remembered on this tablet.",
         "ODS only shows tickets for that station and entity unless the host grants a broader view_tickets.",
       ),
       steps(
         "Dashboard → Devices (or Settings → Devices): Add a named slot — name, type, entity, function (server, host, kitchen ODS, bar ODS, split, cashier, expo, busser, kiosk).",
         "Show the 6-character code and QR on that slot. On Summex Station: first run, enter the code or scan the QR. Pairing stays on the tablet through app updates.",
-        "On a laptop browser: Pair this browser, or enter the slot’s claim code. This browser id stays in localStorage.",
+        "Production staff stations are Android tablets running Summex Station. A Chrome “Pair this browser” path may exist for development — it is not a supported house setup.",
         "This station (header or PIN pad) switches function and entity. Last station is remembered on this device.",
         "Large displays: Layout → Split. Each pane has its own station + entity (typical: kitchen | bar ODS). 50/50 or 70/30. Tap a pane title to fullscreen.",
       ),
@@ -243,19 +243,19 @@ export const DEVICE_TOPICS: GuideTopic[] = [
     openView: "kitchen",
     blocks: [
       why(
-        "Samsung tablets, Android touchscreens, and desktops are the same product. Hardware is not a locked role. This station is what the screen is showing; PIN is who is signed in.",
+        "Samsung tablets and Android touchscreens running Summex Station are the house product. Hardware is not a locked role. This station is what the screen is showing; PIN is who is signed in.",
       ),
       ul(
         "Three device roles: Order (handhelds + bar), ODS (kitchen tickets), Host (floor map + to-go). Change device among those three.",
         "This station still names the function on that role: Host stand, Server POS, Expo, Cashier, Busser, Kiosk, Kitchen ODS, Bar ODS, Bar POS.",
         "Multi-operator: pick Host, Operator A, or Operator B. Tickets stay location-scoped and tagged to the operator.",
-        "Last station is remembered in this browser (next load).",
+        "Last station is remembered on this tablet (next load).",
         "Split: two independent panes, each with its own station + entity. Typical left Kitchen ODS (Operator A), right Bar ODS (Operator B).",
         "Optional 70/30. Tap a pane header to fullscreen that pane; Back to split returns.",
         "No special device SKU — any device may enable split.",
       ),
       steps(
-        "Pair the display in Devices first (or Pair this browser). Open POS stays on this host — not a separate app origin.",
+        "Pair the display in Devices first with Summex Station. Open POS stays on this host — not a separate app origin.",
         "Open This station in the header (or on the PIN pad).",
         "Pick the function. On a host house, pick the entity. Last choice is remembered here.",
         "On a wall display: Layout → Split. Set each pane independently. Start / Bump on each rail.",

@@ -78,7 +78,7 @@ export function DeviceAssignmentPanel({ write }: { write: boolean }) {
     >
       <h3 className="mb-1 text-sm font-semibold">Device assignment</h3>
       <p className="mb-3 text-xs text-muted-foreground">
-        Registry of tablets, Android displays, and desktops — not locked roles.
+        Registry of Android tablets and ODS displays — not locked roles.
         Suggested entity + function is a default. Any device can switch via{" "}
         <strong>This station</strong>. Split screen is for ODS and wall displays;
         any device may enable it. Claim codes pair hardware.

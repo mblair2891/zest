@@ -373,9 +373,10 @@ export function AppStoreView() {
             <div>
               <p className="font-semibold">One Android app · Summex Station</p>
               <p className="mt-1 text-xs text-muted-foreground">
-                Install Summex Station on each Galaxy tablet or the 27″ display.
-                First open: pair with the Devices code or QR. After that, PIN only —
-                Order, Order Display, or Host. Guest QR stays in the browser.
+                Install Summex Station (sideload now; Play later) on each Galaxy
+                tablet or the 27″ display. First open: pair with the Devices code or
+                QR. After that, PIN only — Order, Order Display, or Host. Guest QR
+                stays on the guest’s phone browser.
               </p>
               <p className="mt-2 text-[11px] text-muted-foreground">
                 Sideload APK: <code className="text-foreground">artifacts/summex-pos-debug.apk</code>

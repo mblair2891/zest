@@ -9,7 +9,7 @@ Not linked from marketing, `/whitepaper`, or the public Guide. For product and s
 **Powered by Quantum Reach**
 
 White paper · October 2026  
-**Revision · 7 Sep 2026** — Marketing has no login; console is app.summex.app. Aligns with Operators Guide v2026.10.59.
+**Revision · 8 Sep 2026** — Staff stations are Android tablets. Aligns with Operators Guide v2026.10.60.
 
 summex.app  
 Guest cards: **Quantum Payments** only
@@ -150,7 +150,7 @@ The tablet is a screen, not a person. **PIN** says who is working. The **device 
 
 A manager **Change device** switches among those three. PIN stays the person; the role is the screen.
 
-**Tablets run Summex only.** One Android app — Summex Station. Owner (back office) adds a device by name and role, then shows a one-time pair code or QR. After pair the tablet stores venue and role, receives the house snapshot, and is PIN only. **Publish changes** pushes menu, floor, printers, QR, and cash model. Staff keep the last publish until Switch user; idle PIN pads may refresh. Never mid-ticket. Unpair or replace from Devices. **Broken ODS → reassign a server tablet from Devices** (Role dropdown). Same pair code; staff PIN in again. Do not reinstall. Printers and drawer kick stay bound to the station type or a named printer.
+**Staff stations are Android tablets.** One Android app — Summex Station (sideload now; Play later). iPad and browser POS are not a supported house setup. Guest QR pay/order stays on the guest’s phone. Owner (back office) adds a device by name and role, then shows a one-time pair code or QR. After pair the tablet stores venue and role, receives the house snapshot, and is PIN only. **Publish changes** pushes menu, floor, printers, QR, and cash model. Staff keep the last publish until Switch user; idle PIN pads may refresh. Never mid-ticket. Unpair or replace from Devices. **Broken ODS → reassign a server tablet from Devices** (Role dropdown). Same pair code; staff PIN in again. Do not reinstall. Printers and drawer kick stay bound to the station type or a named printer.
 
 **Labor vs what they are paid.** On a shared venue, each entity’s labor $, labor %, SPLH, food/pour cost, and staffing recs use **owned lines** by default (Steam vs beverage sales $; Diamond vs food sales $) — not the whole guest check. Shared venue costs (rent, utilities) are optional allocation percents, off by default. Tip-out and pools stay their own rules unless “tips in labor” is on. **Schedules are per entity** (Diamond’s week is not Steam’s). Publish does not merge calendars. Clock in is still the venue tablet; hours post to the shift’s entity.
 
@@ -279,7 +279,7 @@ Software billing is **not** guest card processing.
 - **Counter (base)** — POS + 1 kitchen/bar display, **$0 / month**.
 - **Full service** — floor, host stand, sections, closeout, **$149 / location / month**.
 - **Multi-operator** — hall/pod host **$299 / location / month** plus **$49 per tenant entity**.
-- **Tablets, printers, cash drawers, stands, and gift MSR are BYO.** Summex is the software. It does not sell a hardware kit.
+- **Staff stations are Android tablets running Summex Station (sideload now; Play later).** Printers, cash drawers, stands, and gift MSR are BYO. Summex is the software. It does not sell a hardware kit. Guest QR stays on the guest’s phone. iPad and browser POS are not a supported house setup.
 - **Card-present readers are required and Finix / Quantum only**, issued and supplied through Summex (drop-ship to the site is OK). Default about **$75** each (settings price). Customer-owned Square, Stripe, or other bank terminals are **not supported**. Optional partner extras (kiosk, stand) are typically more expensive than BYO.
 - **Training/sandbox** can run without a physical reader (cash + sandbox). **Live cards fail closed** until at least one Finix/Quantum reader is enrolled at the location.
 - **Setup** defaults to **$0** (settings can cap a setup amount). It is never the only line on a proposal.

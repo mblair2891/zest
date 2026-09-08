@@ -24,8 +24,9 @@ function GetPricingPage() {
         <h1 className="mt-2 text-3xl font-semibold tracking-tight">Get a price</h1>
         <p className="mt-2 max-w-xl text-sm text-muted-foreground">
           A short selector: house shape, service style, modules, and counts. The quote
-          updates as you pick. Contact is last. Tablets, printers, and drawers are BYO;
-          live cards use Finix / Quantum readers we ship.
+          updates as you pick. Contact is last. Staff stations are Android tablets running
+          Summex Station (sideload now; Play later). Printers and drawers are BYO; live
+          cards use Finix / Quantum readers we ship.
         </p>
         <div className="mt-8">
           <IntakeWizard

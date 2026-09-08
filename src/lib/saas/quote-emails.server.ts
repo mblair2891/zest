@@ -32,7 +32,7 @@ function varsFor(prospect: ProspectRecord, extra?: Partial<Vars>): Vars {
     byo:
       (q?.byoChecklist ?? []).length > 0
         ? `You provide (BYO):\n${(q?.byoChecklist ?? []).map((x) => `• ${x}`).join("\n")}\nLive cards require Finix/Quantum readers supplied through Summex.`
-        : "BYO tablets, printers, drawers, stands. Live cards require Finix/Quantum readers supplied through Summex.",
+        : "Staff stations: Android tablet running the Summex Station app (sideload now; Play later). BYO printers, drawers, stands. Guest QR stays on the guest’s phone. Live cards require Finix/Quantum readers supplied through Summex.",
     locationCount: String(q?.locationCount ?? prospect.answers.portfolio.locationsNow ?? 1),
     features: (q?.featureList ?? []).map((f) => `• ${f}`).join("\n") || "• POS core + kitchen display",
     expires: q?.expiresAt ? new Date(q.expiresAt).toLocaleDateString() : "see proposal",
