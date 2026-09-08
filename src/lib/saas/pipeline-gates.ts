@@ -1,6 +1,6 @@
 /**
  * Canonical SaaS pipeline. Stages do not skip.
- * Request → Sent → Accepted → Contracted → Onboarding → Live
+ * Request → Sent → Accepted → Signed → Onboarding → Training → Live
  * Rejected / Churned are terminal exits only.
  */
 import type { ProspectStatus } from "./prospect-types";
@@ -13,6 +13,7 @@ export const PIPELINE_COLUMNS = [
   "accepted",
   "contracted",
   "onboarding",
+  "training",
   "live",
 ] as const;
 
@@ -25,7 +26,8 @@ export const FORWARD_ADJACENT: Record<ProspectStatus, ProspectStatus[]> = {
   quoted: ["accepted", "rejected", "churned"],
   accepted: ["contracted", "rejected", "churned"],
   contracted: ["onboarding", "rejected", "churned"],
-  onboarding: ["live", "churned"],
+  onboarding: ["training", "churned"],
+  training: ["live", "churned"],
   live: ["churned"],
   rejected: ["prospect"],
   churned: ["prospect"],
@@ -78,7 +80,7 @@ export function gateBlockReason(facts: PipelineFacts, to: ProspectStatus): strin
   if (to === "rejected" || to === "churned") return null;
   if ((from === "rejected" || from === "churned") && to === "prospect") return null;
   if (!canTransition(from, to)) {
-    return `Cannot skip: ${from} → ${to}. Path is Request → Sent → Accepted → Contracted → Onboarding → Live.`;
+    return `Cannot skip: ${from} → ${to}. Path is Request → Sent → Accepted → Signed → Onboarding → Training → Live.`;
   }
   if (to === "quoted") {
     if (!quoteIsSent(facts.quote)) {
@@ -102,15 +104,18 @@ export function gateBlockReason(facts: PipelineFacts, to: ProspectStatus): strin
       return "The monthly package quote must be accepted before onboarding.";
     }
   }
+  if (to === "training") {
+    if (from !== "onboarding") return "The venue owner must finish onboarding before Training.";
+    if (facts.liveReady === false) return "Owner onboarding (org, location) is not finished.";
+  }
   if (to === "live") {
-    if (from !== "onboarding") return "Host onboarding must complete before Live.";
-    if (facts.liveReady === false) return "Finish host onboarding (org, location, owner) and go live.";
+    if (from !== "training") return "Training sandbox until the subscriber schedules go-live.";
   }
   return null;
 }
 
 export type PipelineAction = {
-  kind: "open" | "send_quote" | "accept" | "contract" | "start_onboarding" | "go_live";
+  kind: "open" | "send_quote" | "accept" | "contract" | "resend_invite";
   label: string;
 };
 
@@ -123,16 +128,21 @@ export function nextAllowedAction(facts: PipelineFacts): PipelineAction | null {
     case "accepted":
       return { kind: "contract", label: "Record contract" };
     case "contracted":
-      return { kind: "start_onboarding", label: "Start onboarding" };
     case "onboarding":
-      return { kind: "go_live", label: "Go live" };
+    case "training":
+      return { kind: "resend_invite", label: "Resend invite" };
     default:
       return null;
   }
 }
 
+export function canResendOwnerInvite(facts: PipelineFacts): boolean {
+  return facts.status === "contracted" || facts.status === "onboarding" || facts.status === "training";
+}
+
+/** @deprecated Platform does not start the subscriber wizard. */
 export function canStartOnboarding(facts: PipelineFacts): boolean {
-  return facts.status === "contracted";
+  return canResendOwnerInvite(facts);
 }
 
 export const OVERRIDE_PHRASE = "OVERRIDE";

@@ -20,6 +20,7 @@ export const PROSPECT_STATUSES = [
   "accepted",
   "contracted",
   "onboarding",
+  "training",
   "live",
   "churned",
   "rejected",
@@ -488,6 +489,7 @@ export type ProspectDetail = ProspectRecord & {
     hasOperatorIfNeeded: boolean;
     ready: boolean;
   };
+  ownerInvite?: { username: string; sentAt: string | null } | null;
 };
 
 export type ProspectListItem = {

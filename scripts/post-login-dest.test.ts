@@ -40,6 +40,30 @@ test("owner with no location and no org goes to get a price", () => {
   assert.deepEqual(dest, { to: "/get-pricing" });
 });
 
+test("venue owner in onboarding goes to their setup wizard", () => {
+  const dest = postLoginDestination({
+    isPlatformAdmin: false,
+    orgs: [],
+    locations: [],
+    active: null,
+    setupToken: "tok_abc",
+    setupStatus: "onboarding",
+  });
+  assert.deepEqual(dest, { to: "/setup/$token", token: "tok_abc" });
+});
+
+test("venue owner never lands on the control plane", () => {
+  const dest = postLoginDestination({
+    isPlatformAdmin: false,
+    orgs: [{ id: "org_1" }],
+    locations: [],
+    active: null,
+    setupToken: "tok_abc",
+    setupStatus: "onboarding",
+  });
+  assert.equal(dest.to, "/setup/$token");
+});
+
 test("sales home is never a post-login stay path", () => {
   assert.equal(isMarketingStayPath("/"), true);
   assert.equal(isMarketingStayPath("/demo"), true);

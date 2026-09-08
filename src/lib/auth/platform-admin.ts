@@ -42,13 +42,21 @@ export const getPlatformFlags = createServerFn({ method: "GET" })
       where user_id = ${context.userId}
       limit 1
     `;
-    if (!rows[0]) {
+    if (rows[0]) {
+      return {
+        isPlatformAdmin: true,
+        mustChangePassword: Boolean(rows[0].must_change_password),
+      };
+    }
+    try {
+      const { subscriberMustChangePassword } = await import(
+        "@/lib/saas/subscriber-login.server"
+      );
+      const must = await subscriberMustChangePassword(context.userId);
+      return { isPlatformAdmin: false, mustChangePassword: must };
+    } catch {
       return { isPlatformAdmin: false, mustChangePassword: false };
     }
-    return {
-      isPlatformAdmin: true,
-      mustChangePassword: Boolean(rows[0].must_change_password),
-    };
   });
 
 export const clearMustChangePassword = createServerFn({ method: "POST" })

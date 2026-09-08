@@ -22,26 +22,36 @@ export type PostLoginSession = {
   orgs: { id: string }[];
   locations: { id: string; venueType: string }[];
   active: { locationId: string | null } | null;
+  setupToken?: string | null;
+  setupStatus?: string | null;
 };
 
 export type PostLoginDest =
   | { to: "/dashboard" }
   | { to: "/get-pricing" }
+  | { to: "/onboarding" }
+  | { to: "/setup/$token"; token: string }
   | { to: "/venue/$type"; type: VenueEntityId; loc: string };
 
 /**
  * After username/password sign-in: Platform Admin → control plane.
- * Venue owner (or any tenant member with a location) → that house.
- * Never `/` (sales landing).
+ * Venue owner in signed/onboarding → their wizard. Training/live → their house.
+ * Never `/` (sales landing). Never pipeline/CRM for a venue owner.
  */
 export function postLoginDestination(session: PostLoginSession): PostLoginDest {
   if (session.isPlatformAdmin) return { to: "/dashboard" };
+  const setup = session.setupToken;
+  const setupStatus = session.setupStatus || "";
+  if (setup && (setupStatus === "contracted" || setupStatus === "onboarding")) {
+    return { to: "/setup/$token", token: setup };
+  }
   const loc =
     session.locations.find((l) => l.id === session.active?.locationId) ??
     session.locations[0];
   const type = loc ? asVenueType(loc.venueType) : null;
   if (loc && type) return { to: "/venue/$type", type, loc: loc.id };
-  if (session.orgs.length > 0) return { to: "/dashboard" };
+  if (setup) return { to: "/setup/$token", token: setup };
+  if (session.orgs.length > 0) return { to: "/onboarding" };
   return { to: "/get-pricing" };
 }
 

@@ -8,7 +8,6 @@ import {
   adminMarkQuoteAcceptedFn,
   adminSetProspectStatusFn,
   getProspectFn,
-  goLiveProspectFn,
   listAllProspectsFn,
   listProspectAuditFn,
   markContractSignedFn,
@@ -34,6 +33,7 @@ const BADGE: Record<string, "info" | "success" | "warn" | "danger" | "secondary"
   accepted: "warn",
   contracted: "warn",
   onboarding: "info",
+  training: "info",
   live: "success",
   rejected: "danger",
   churned: "danger",
@@ -170,8 +170,9 @@ function PipelineCard({
     prospect: row.quoteSent ? "Send quote" : "Create quote",
     quoted: "Record accept",
     accepted: "Record contract",
-    contracted: "Start onboarding",
-    onboarding: "Go live",
+    contracted: "Resend invite",
+    onboarding: "Resend invite",
+    training: "Resend invite",
   };
   const action = nextLabel[row.status];
   const amount =
@@ -308,30 +309,27 @@ function ProspectAccountPage({
             </Button>
           </label>
         )}
-        {detail.status === "contracted" ? (
+        {(detail.status === "contracted" ||
+          detail.status === "onboarding" ||
+          detail.status === "training") && (
           <Button
             size="sm"
+            variant="outline"
             onClick={() =>
               void run(async () => {
                 await startOnboardingProspectFn({ data: { prospectId: detail.id } });
               })
             }
           >
-            Start onboarding
-          </Button>
-        ) : (
-          <Button size="sm" disabled title="Requires Contracted">
-            Start onboarding
+            Resend invite
           </Button>
         )}
-        {detail.status === "onboarding" && (
-          <Button
-            size="sm"
-            variant="outline"
-            onClick={() => void run(() => goLiveProspectFn({ data: { prospectId: detail.id } }))}
-          >
-            Go live
-          </Button>
+        {detail.ownerInvite?.username && (
+          <p className="w-full text-xs text-muted-foreground">
+            Venue owner invite: {detail.ownerInvite.username}
+            {detail.ownerInvite.sentAt ? " · sent" : ""}
+            . They complete setup — platform does not fill menus or staff.
+          </p>
         )}
         <Link
           to="/quote/$token"
@@ -340,15 +338,6 @@ function ProspectAccountPage({
         >
           Preview quote
         </Link>
-        {(detail.status === "contracted" || detail.status === "onboarding" || detail.status === "live") && (
-          <Link
-            to="/setup/$token"
-            params={{ token: detail.publicToken }}
-            className="inline-flex h-8 items-center rounded-md border border-border px-3 text-xs"
-          >
-            Open wizard
-          </Link>
-        )}
         <DeleteCrmRecordButton
           kind="pipeline"
           id={detail.id}

@@ -27,7 +27,7 @@ import { isReservedVenueSlug, normalizeVenueSlug } from "@/lib/platform/venue-ho
 import type { PackageId } from "@/lib/pos/packages";
 import type { PlanSlug } from "./types";
 
-const UNLOCKED: ProspectStatusLike[] = ["contracted", "onboarding", "live"];
+const UNLOCKED: ProspectStatusLike[] = ["contracted", "onboarding", "training", "live"];
 type ProspectStatusLike = string;
 
 function assertOnboardingUnlocked(status: string, _admin: boolean) {
@@ -44,6 +44,11 @@ export async function saveOnboardingPayload(opts: {
   const detail = await getProspectDetail({ userId: opts.userId, token: opts.token });
   const admin = await isPlatformAdmin(opts.userId);
   assertOnboardingUnlocked(detail.status, admin);
+  if (admin) {
+    throw new ForbiddenError(
+      "The venue owner completes onboarding. Resend their invite from Pipeline — do not fill their venue.",
+    );
+  }
   if (!detail.ownerUserId && opts.userId) {
     const { claimProspect } = await import("./prospects.server");
     await claimProspect(opts.userId, opts.token);
@@ -71,6 +76,11 @@ export async function applyOnboardingStep(opts: {
   let detail = await getProspectDetail({ userId: opts.userId, token: opts.token });
   const admin = await isPlatformAdmin(opts.userId);
   assertOnboardingUnlocked(detail.status, admin);
+  if (admin) {
+    throw new ForbiddenError(
+      "The venue owner completes onboarding. Resend their invite from Pipeline — do not fill their venue.",
+    );
+  }
   if (!detail.ownerUserId) {
     const { claimProspect } = await import("./prospects.server");
     await claimProspect(opts.userId, opts.token);

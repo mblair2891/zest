@@ -13,6 +13,7 @@ import {
   type PlatformSurface,
 } from "@/components/platform/surfaces";
 import { leftoverMarketingPlatformHref } from "@/lib/platform/hosts";
+import { asVenueType } from "@/lib/auth/post-login-dest";
 
 export const Route = createFileRoute("/dashboard")({
   ssr: false,
@@ -87,16 +88,38 @@ function DashboardInner() {
 
   useEffect(() => {
     if (!session) return;
-    if (session.orgs.length === 0 && !session.isPlatformAdmin) {
-      void listMyProspectsFn()
-        .then((rows) =>
-          navigateToSanitizedPath(
-            navigate,
-            prospectResumePath(rows) || "/get-pricing",
-          ),
-        )
-        .catch(() => navigate({ to: "/get-pricing" }));
+    if (session.isPlatformAdmin) return;
+    if (
+      session.setupToken &&
+      (session.setupStatus === "contracted" || session.setupStatus === "onboarding")
+    ) {
+      void navigate({ to: "/setup/$token", params: { token: session.setupToken } });
+      return;
     }
+    const loc =
+      session.locations.find((l) => l.id === session.active?.locationId) ??
+      session.locations[0];
+    const venueType = loc ? asVenueType(loc.venueType) : null;
+    if (loc && venueType) {
+      void navigate({
+        to: "/venue/$type",
+        params: { type: venueType },
+        search: { loc: loc.id },
+      });
+      return;
+    }
+    if (session.setupToken) {
+      void navigate({ to: "/setup/$token", params: { token: session.setupToken } });
+      return;
+    }
+    void listMyProspectsFn()
+      .then((rows) =>
+        navigateToSanitizedPath(
+          navigate,
+          prospectResumePath(rows) || "/get-pricing",
+        ),
+      )
+      .catch(() => navigate({ to: "/get-pricing" }));
   }, [session, navigate]);
 
   if (isPending) {
@@ -124,10 +147,10 @@ function DashboardInner() {
     );
   }
 
-  if (session.orgs.length === 0 && !session.isPlatformAdmin) {
+  if (!session.isPlatformAdmin) {
     return (
       <div className="grid min-h-[100dvh] place-items-center bg-bg text-sm text-muted-foreground">
-        Opening your application…
+        Opening your venue…
       </div>
     );
   }
@@ -152,7 +175,7 @@ function DashboardInner() {
           className="border-b border-success/30 bg-success/10 px-4 py-2 text-center text-sm text-success"
           role="status"
         >
-          Password updated. You are signed in to the control plane.
+          Password updated. You are signed in.
         </div>
       )}
       <PlatformApp initialSurface={search.surface} />

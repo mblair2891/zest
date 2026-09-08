@@ -7,6 +7,7 @@ export const ACCOUNT_STAGES = [
   "proposal",
   "contract",
   "onboarding",
+  "training",
   "live",
   "churned",
 ] as const;
@@ -236,8 +237,9 @@ export const STAGE_LABEL: Record<AccountStage, string> = {
   lead: "Lead",
   qualified: "Qualified",
   proposal: "Quote",
-  contract: "Contract",
+  contract: "Signed",
   onboarding: "Onboarding",
+  training: "Training",
   live: "Live",
   churned: "Churned",
 };
@@ -251,6 +253,8 @@ export function prospectStatusToStage(status: ProspectStatus): AccountStage {
       return "contract";
     case "onboarding":
       return "onboarding";
+    case "training":
+      return "training";
     case "live":
       return "live";
     case "churned":

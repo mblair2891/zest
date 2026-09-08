@@ -13,12 +13,13 @@ Company (subscriber) status lives on `prospects.status`:
 | `prospect` | Intake in progress or submitted | Anyone with the public token |
 | `quoted` | Pricing snapshot generated | Auto on “Generate quote”; admin can re-issue |
 | `accepted` | Prospect accepted the quote | Prospect (signed in) |
-| `contracted` | Contract marked signed | Platform admin (“Mark contract signed”) |
-| `onboarding` | Stage B wizard | Auto after contracted |
-| `live` | Org usable in POS / dashboard | Auto when the minimum checklist is complete |
+| `contracted` | Contract marked signed | Platform admin (“Mark contract signed”) — creates the venue owner and emails login |
+| `onboarding` | Owner’s Stage B wizard | Auto after signed; the subscriber fills it |
+| `training` | House in training sandbox | Auto when the owner finishes the wizard |
+| `live` | Org usable in POS / dashboard | Subscriber schedules go-live |
 | `churned` / `rejected` | Terminal | Platform admin (force status) |
 
-`quoted → accepted` is the prospect. `accepted → contracted` is admin. `contracted → onboarding` is automatic. `onboarding → live` when:
+`quoted → accepted` is the prospect. `accepted → contracted` (Signed) is admin. That emails the venue owner. `contracted → onboarding` when the owner starts their wizard. `onboarding → training` when they finish it. `training → live` when they schedule go-live. Wizard complete means:
 
 - organization exists
 - ≥1 location
@@ -58,7 +59,7 @@ Platform admin can edit line items and **Save & re-issue quote** (accepted quote
 
 ## Stage B — Post-contract onboarding
 
-Unlocks at `/setup/$token` when status is `contracted` or `onboarding`.
+Unlocks at `/setup/$token` for the **venue owner** when status is `contracted` or `onboarding`. Platform admin does not fill this wizard.
 
 Steps: org confirmation → locations → operators (if host) → floor → menu start → devices → invites → settlement → go-live checklist.
 
@@ -76,8 +77,8 @@ POS opens **empty** (`menuMode: empty` or `categories` with no priced items). No
 
 - Dashboard (platform admin) → **Pipeline**, or `/pipeline`
 - List by status (empty state if none)
-- Open intake + quote, edit lines, mark contract signed, force status with audit
-- Onboarding checklist per company
+- Open intake + quote, edit lines, mark contract signed, resend owner invite, force status with audit
+- See onboarding/training progress. Do not impersonate the subscriber wizard.
 
 Audit events: `prospect_created`, `quote_issued`, `quote_accepted`, `quote_reissued`, `contract_signed`, `status_changed`, `onboarding_step`, `pricing_rules_updated`.
 

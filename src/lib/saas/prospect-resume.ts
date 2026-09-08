@@ -8,8 +8,8 @@ export function prospectResumePath(rows: ProspectListItem[]): string {
   if (setup) return `/setup/${setup.publicToken}`;
   const quoted = rows.find((r) => r.status === "quoted" || r.status === "accepted");
   if (quoted) return `/quote/${quoted.publicToken}`;
-  const live = rows.find((r) => r.status === "live");
-  if (live) return "/dashboard";
+  const house = rows.find((r) => r.status === "training" || r.status === "live");
+  if (house) return "/dashboard";
   const intake = rows.find((r) => r.status === "prospect");
   if (intake) return `/get-pricing?t=${encodeURIComponent(intake.publicToken)}`;
   return "/get-pricing";

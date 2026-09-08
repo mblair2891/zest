@@ -16,7 +16,9 @@ export function classifyCrmDelete(opts: {
   const hasVenue = Boolean(opts.orgId) && (opts.locationCount ?? 0) > 0;
   if (
     status === "onboarding" ||
+    status === "training" ||
     stage === "onboarding" ||
+    stage === "training" ||
     hasVenue ||
     lives.some((s) => s === "training" || s === "onboarding" || s === "scheduled_live")
   ) {

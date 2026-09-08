@@ -531,7 +531,7 @@ export async function repairOrphanPipelineStages(): Promise<number> {
   const sql = await getSql();
   const rows = await sql<ProspectRow>`
     select * from prospects
-    where status in ('accepted','contracted','onboarding','live')
+    where status in ('accepted','contracted','onboarding','training','live')
   `;
   let n = 0;
   for (const row of rows) {
@@ -539,9 +539,9 @@ export async function repairOrphanPipelineStages(): Promise<number> {
     let next: ProspectStatus | null = null;
     if (p.status === "live" && p.orgId) continue;
     if (!quoteIsSent(p.quote)) next = "prospect";
-    else if (!p.acceptedAt && (p.status === "contracted" || p.status === "onboarding")) {
+    else if (!p.acceptedAt && (p.status === "contracted" || p.status === "onboarding" || p.status === "training")) {
       next = "quoted";
-    } else if (!p.contractedAt && p.status === "onboarding") {
+    } else if (!p.contractedAt && (p.status === "onboarding" || p.status === "training")) {
       next = "accepted";
     }
     if (!next || next === p.status) continue;
@@ -580,8 +580,9 @@ export async function listAllProspects(userId: string): Promise<ProspectListItem
         when 'accepted' then 2
         when 'contracted' then 3
         when 'onboarding' then 4
-        when 'live' then 5
-        else 6
+        when 'training' then 5
+        when 'live' then 6
+        else 7
       end,
       p.updated_at desc
   `;
@@ -947,6 +948,16 @@ export async function markContractSigned(opts: {
     payload: { prospectId: prospect.id, signedOn: when },
     orgId: prospect.orgId,
   });
+  const signed = mapProspect((await getRow(prospect.id))!);
+  const { provisionSubscriberOwner } = await import("./subscriber-login.server");
+  const invite = await provisionSubscriberOwner({ prospect: signed });
+  await ensureOnboardingRun(prospect.id);
+  await writeAudit({
+    actorUserId: opts.userId,
+    action: "subscriber_owner_invited",
+    payload: { prospectId: prospect.id, userId: invite.userId, username: invite.username, sent: invite.sent },
+    orgId: prospect.orgId,
+  });
   const next = await getRow(prospect.id);
   const mapped = mapProspect(next!);
   await syncCrm(mapped);
@@ -961,26 +972,20 @@ export async function startOnboardingProspect(opts: {
   const row = await getRow(opts.prospectId);
   if (!row) throw new Error("Prospect not found");
   const prospect = mapProspect(row);
-  const blocked = gateBlockReason(
-    {
-      status: prospect.status,
-      quote: prospect.quote,
-      acceptedAt: prospect.acceptedAt,
-      contractedAt: prospect.contractedAt,
-    },
-    "onboarding",
-  );
-  if (blocked) throw new Error(blocked);
+  if (
+    prospect.status !== "contracted" &&
+    prospect.status !== "onboarding" &&
+    prospect.status !== "training"
+  ) {
+    throw new Error("Record the signed contract first. Then resend the venue-owner invite.");
+  }
+  const { resendSubscriberInvite } = await import("./subscriber-login.server");
+  const invite = await resendSubscriberInvite(prospect.id);
   await ensureOnboardingRun(prospect.id);
-  const sql = await getSql();
-  await sql`
-    update prospects set status = 'onboarding', updated_at = now()
-    where id = ${prospect.id} and status = 'contracted'
-  `;
   await writeAudit({
     actorUserId: opts.userId,
-    action: "status_changed",
-    payload: { prospectId: prospect.id, from: "contracted", to: "onboarding" },
+    action: "subscriber_owner_invited",
+    payload: { prospectId: prospect.id, userId: invite.userId, username: invite.username, resent: true },
     orgId: prospect.orgId,
   });
   const next = await getRow(prospect.id);
@@ -1028,7 +1033,7 @@ export async function adminSetProspectStatus(opts: {
     update prospects set status = ${opts.status}, updated_at = now()
     where id = ${prospect.id}
   `;
-  if (opts.status === "onboarding" || opts.status === "contracted") {
+  if (opts.status === "onboarding" || opts.status === "contracted" || opts.status === "training") {
     await ensureOnboardingRun(prospect.id);
   }
   await writeAudit({
@@ -1214,7 +1219,28 @@ export async function getProspectDetail(opts: {
     orgName,
     operators,
     liveChecklist,
+    ownerInvite: await loadOwnerInvite(sql, prospect.id),
   };
+}
+
+async function loadOwnerInvite(
+  sql: Awaited<ReturnType<typeof getSql>>,
+  prospectId: string,
+): Promise<ProspectDetail["ownerInvite"]> {
+  try {
+    const rows = await sql<{ username: string; invite_sent_at: unknown }>`
+      select username, invite_sent_at from subscriber_logins
+      where prospect_id = ${prospectId}
+      limit 1
+    `;
+    if (!rows[0]) return null;
+    return {
+      username: rows[0].username,
+      sentAt: rows[0].invite_sent_at ? String(rows[0].invite_sent_at) : null,
+    };
+  } catch {
+    return null;
+  }
 }
 
 export async function evaluateLiveChecklist(
@@ -1292,7 +1318,7 @@ export async function maybePromoteLive(opts: {
   if (!detail.liveChecklist.ready || !acksOk) return detail;
   const sql = await getSql();
   await sql`
-    update prospects set status = 'live', updated_at = now() where id = ${detail.id}
+    update prospects set status = 'training', updated_at = now() where id = ${detail.id}
   `;
   if (run) {
     await sql`
@@ -1303,7 +1329,7 @@ export async function maybePromoteLive(opts: {
     actorUserId: opts.actorUserId,
     orgId: detail.orgId,
     action: "status_changed",
-    payload: { prospectId: detail.id, from: "onboarding", to: "live" },
+    payload: { prospectId: detail.id, from: "onboarding", to: "training" },
   });
   if (detail.orgId) {
     try {
@@ -1318,6 +1344,31 @@ export async function maybePromoteLive(opts: {
   const mapped = mapProspect(next!);
   await syncCrm(mapped);
   return mapped;
+}
+
+export async function markProspectLiveFromOrg(orgId: string, actorUserId: string | null): Promise<void> {
+  const sql = await getSql();
+  const rows = await sql<{ id: string; status: string }>`
+    select id, status from prospects where org_id = ${orgId} limit 1
+  `;
+  const row = rows[0];
+  if (!row) return;
+  if (row.status !== "training" && row.status !== "onboarding") return;
+  await sql`
+    update prospects set status = 'live', updated_at = now() where id = ${row.id}
+  `;
+  await writeAudit({
+    actorUserId,
+    orgId,
+    action: "status_changed",
+    payload: { prospectId: row.id, from: row.status, to: "live" },
+  });
+  try {
+    const mapped = mapProspect((await getRow(row.id))!);
+    await syncCrm(mapped);
+  } catch {
+    /* CRM sync is best-effort */
+  }
 }
 
 export type { PlanSlug };

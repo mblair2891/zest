@@ -23,13 +23,13 @@ Use invented names such as **Host Venue**, **Operator A**, **Operator B**. Do no
 1. **Get pricing** (`/get-pricing`) — optional interview or **Enter details myself**.
 2. Structured form: host + operators, two operators, Quantum Payments ack → generate quote.
 3. Sign in as the prospect (or stay Admin) and **Accept quote**.
-4. As Admin: Pipeline → **Mark contract signed**.
-5. `/setup/<token>`:
+4. As Admin: Pipeline → **Mark contract signed**. That emails the venue owner a one-time password. Do not open their wizard.
+5. Owner logs in at `/login`, changes the password, lands on `/setup/<token>`:
    - Organization = Host Venue (legal/DBA).
    - Location = host + operators, guest-facing **Host Venue**.
-   - Operators: Operator A (kitchen), Operator B (bar). Bank last4 stubs.
+   - Invite Operator A and Operator B POCs (existing tenant link).
    - Menu: start empty. Complete checklist acks.
-6. Status **live** when org, ≥1 location, owner, plan, and ≥1 operator exist.
+6. Status **Training** when org, ≥1 location, owner, and plan exist. **Live** when they schedule go-live.
 7. **Open POS** — empty menu. Add two items (or import later): one kitchen / Operator A, one bar / Operator B.
 
 ## Mixed check + settlement

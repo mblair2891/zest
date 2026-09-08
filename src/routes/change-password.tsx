@@ -8,6 +8,8 @@ import {
   getPlatformFlags,
   markMustChangePasswordCleared,
 } from "@/lib/auth/platform-admin";
+import { getSessionContextFn } from "@/lib/saas/api";
+import { navigateAfterPasswordSignIn } from "@/lib/auth/post-login-navigate";
 import { SessionGate } from "@/components/pos/SessionGate";
 
 function errorMessage(err: unknown): string {
@@ -73,16 +75,20 @@ function ChangePasswordForm() {
       });
       markMustChangePasswordCleared();
       await getPlatformFlags().catch(() => undefined);
-      setSuccess("Password updated. Opening the control plane…");
+      setSuccess("Password updated. Opening your venue…");
       try {
         sessionStorage.setItem("summex-password-updated", "1");
       } catch {
         /* ignore */
       }
       try {
-        await navigate({ to: "/dashboard", search: { passwordUpdated: true }, replace: true });
+        const session = await getSessionContextFn();
+        await navigateAfterPasswordSignIn(navigate, {
+          mustChangePassword: false,
+          session,
+        });
       } catch {
-        await navigate({ to: "/login", search: { passwordUpdated: true }, replace: true });
+        await navigate({ to: "/onboarding", replace: true });
       }
     } catch (err) {
       setBusy(false);
@@ -99,8 +105,8 @@ function ChangePasswordForm() {
             Change your password
           </h1>
           <p className="mt-2 text-sm text-muted-foreground">
-            Platform admin must set a new password before using the control
-            plane. The initial password cannot be reused.
+            Set a new password before continuing. The one-time password from
+            your email cannot be reused.
           </p>
         </div>
         <form onSubmit={(e) => void submit(e)} className="space-y-3">

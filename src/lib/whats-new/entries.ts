@@ -6,6 +6,19 @@ import type { GuideUpdate } from "@/lib/guide/types";
  */
 export const WHATS_NEW_ENTRIES: GuideUpdate[] = [
   {
+    id: "upd_2026_10_61_subscriber_onboarding",
+    date: "2026-09-08",
+    title: "The venue owner completes onboarding",
+    summary:
+      "After contract signed, Summex emails the owner a login. They set up the house. Platform does not fill their wizard.",
+    body: "Quote accepted + contract marked signed creates the venue-owner user and emails app.summex.app/login, username, and a one-time password they must change. First landing is their onboarding wizard — venue profile, entities if shared, devices, payments. They never see CRM, pipeline, or other tenants. Platform sees Quote → Signed → Onboarding → Training → Live and can resend the invite. Training sandbox until they schedule go-live. Shared venue: owner invites each selling-entity POC on the existing tenant link.",
+    roles: ["platform_admin", "owner_manager", "host_operator"],
+    surfaces: ["settings"],
+    audience: "platform",
+    topicId: "onboarding-wizard",
+    tags: ["onboarding", "saas", "invite"],
+  },
+  {
     id: "upd_2026_10_60_android_stations",
     date: "2026-09-08",
     title: "Staff stations are Android tablets",

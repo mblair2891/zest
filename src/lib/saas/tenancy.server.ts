@@ -510,6 +510,7 @@ export async function getSessionContext(userId: string): Promise<SessionContext>
   const activeRows = await sql<{ org_id: string; location_id: string | null }>`
     select org_id, location_id from active_contexts where user_id = ${userId} limit 1
   `;
+  const setup = admin ? null : await loadSetupToken(userId);
 
   return {
     user: {
@@ -557,7 +558,18 @@ export async function getSessionContext(userId: string): Promise<SessionContext>
     active: activeRows[0]
       ? { orgId: activeRows[0].org_id, locationId: activeRows[0].location_id }
       : null,
+    setupToken: setup?.token ?? null,
+    setupStatus: setup?.status ?? null,
   };
+}
+
+async function loadSetupToken(userId: string): Promise<{ token: string; status: string } | null> {
+  try {
+    const { setupPathForUser } = await import("./subscriber-login.server");
+    return setupPathForUser(userId);
+  } catch {
+    return null;
+  }
 }
 
 async function uniqueSlug(name: string): Promise<string> {

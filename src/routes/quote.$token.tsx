@@ -174,13 +174,11 @@ function QuotePage() {
             </Link>
             {detail.status === "accepted" && (
               <p className="w-full text-sm text-muted-foreground">
-                Accepted. A platform admin will mark the contract signed. Onboarding
-                unlocks after that.
+                Accepted. A platform admin will mark the contract signed. Then Summex
+                emails the venue owner a login — they complete setup, not platform.
               </p>
             )}
-            {(detail.status === "contracted" ||
-              detail.status === "onboarding" ||
-              detail.status === "live") && (
+            {(detail.status === "contracted" || detail.status === "onboarding") && (
               <Button onClick={() => void navigate({ to: "/setup/$token", params: { token } })}>
                 Continue onboarding
               </Button>

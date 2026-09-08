@@ -1,9 +1,7 @@
 import { useEffect, useState } from "react";
-import { Link } from "@tanstack/react-router";
-import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { GuideLearnLink } from "@/components/guide/GuideLearnLink";
-import { goLiveCrmAccountFn, listOnboardingWorkspaceFn } from "@/lib/saas/crm-api";
+import { listOnboardingWorkspaceFn } from "@/lib/saas/crm-api";
 import type { OnboardingWorkspaceRow } from "@/lib/saas/crm-types";
 import { formatDateTime } from "@/lib/utils";
 
@@ -36,7 +34,8 @@ export function OnboardingWorkspace() {
           <div className="rounded-2xl border border-dashed border-border bg-surface p-6 text-center">
             <p className="font-medium">No onboarding runs</p>
             <p className="mt-1 text-sm text-muted-foreground">
-              Start onboarding from a CRM account after contract, or mark contract signed in Pipeline.
+              Mark the contract signed in Pipeline. That emails the venue owner. They
+              complete setup — platform does not fill their wizard.
             </p>
           </div>
         )}
@@ -68,26 +67,9 @@ export function OnboardingWorkspace() {
               <p className="mt-1 text-xs text-muted-foreground">
                 Updated {formatDateTime(Date.parse(r.updatedAt))}
               </p>
-              <div className="mt-3 flex flex-wrap gap-2">
-                <Button asChild size="sm" variant="outline">
-                  <Link to="/setup/$token" params={{ token: r.publicToken }}>
-                    Open wizard
-                  </Link>
-                </Button>
-                {r.accountId && (
-                  <Button
-                    size="sm"
-                    onClick={() => {
-                      setError(null);
-                      void goLiveCrmAccountFn({ data: { accountId: r.accountId! } })
-                        .then(load)
-                        .catch((e) => setError(e instanceof Error ? e.message : "Go live failed"));
-                    }}
-                  >
-                    Go live
-                  </Button>
-                )}
-              </div>
+              <p className="mt-3 text-xs text-muted-foreground">
+                Subscriber wizard. Resend their invite from Pipeline. Do not impersonate setup.
+              </p>
             </li>
           ))}
         </ul>

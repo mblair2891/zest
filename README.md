@@ -15,9 +15,9 @@ Production onboarding starts **empty** — no demo tenants, menus, or staff, and
 Bootstrap identity (first run): username **Admin**, password **password**. You **must** change it on first login. See [`docs/empty-start.md`](docs/empty-start.md).
 
 - Prospect: `/get-pricing` → `/quote/$token` → accept
-- Admin: Dashboard → Pipeline (or `/pipeline`) → mark contract signed
-- After contract: `/setup/$token` creates org, locations, operators
-- POS opens without a seeded menu
+- Admin: Dashboard → Pipeline (or `/pipeline`) → mark contract signed (emails the venue owner)
+- Owner: `/login` → change one-time password → their `/setup/$token` wizard
+- POS opens without a seeded menu. Training sandbox until they schedule go-live.
 
 UI path: [`docs/saas-onboarding.md`](docs/saas-onboarding.md). Money rules: [`docs/quantum-payments-multi-operator.md`](docs/quantum-payments-multi-operator.md).
 

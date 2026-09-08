@@ -27,6 +27,10 @@ async function navigateSessionDest(
     });
     return;
   }
+  if (dest.to === "/setup/$token") {
+    await navigate({ to: "/setup/$token", params: { token: dest.token } });
+    return;
+  }
   await navigate({ to: dest.to });
 }
 

@@ -297,4 +297,7 @@ export type SessionContext = {
     operatorId?: string | null;
   }>;
   active: ActiveContextRecord | null;
+  /** Venue-owner onboarding path. Never set for platform admin. */
+  setupToken?: string | null;
+  setupStatus?: string | null;
 };

@@ -10,7 +10,6 @@ import {
   completeCrmActivityFn,
   createCrmLeadFn,
   getCrmAccountFn,
-  goLiveCrmAccountFn,
   listCrmAccountsFn,
   listCrmFollowUpsFn,
   patchCrmAccountFn,
@@ -35,6 +34,7 @@ const STAGE_BADGE: Record<AccountStage, "secondary" | "info" | "warn" | "success
   proposal: "warn",
   contract: "warn",
   onboarding: "info",
+  training: "info",
   live: "success",
   churned: "danger",
 };
@@ -281,11 +281,11 @@ function AccountDetail({
       <div className="flex flex-wrap gap-2">
         <Button
           size="sm"
-          disabled={a.stage !== "contract"}
+          disabled={a.stage !== "contract" && a.stage !== "onboarding" && a.stage !== "training"}
           title={
-            a.stage === "contract"
-              ? "Start host onboarding"
-              : "Available after Request → Sent → Accepted → Contracted"
+            a.stage === "contract" || a.stage === "onboarding" || a.stage === "training"
+              ? "Resend the venue-owner invite. Platform does not fill their wizard."
+              : "Available after the contract is signed"
           }
           onClick={() => {
             onError(null);
@@ -298,7 +298,7 @@ function AccountDetail({
               .catch((e) => onError(e instanceof Error ? e.message : "Onboarding failed"));
           }}
         >
-          Start onboarding
+          Resend invite
         </Button>
         <DeleteCrmRecordButton
           kind="crm"
@@ -312,22 +312,9 @@ function AccountDetail({
           onDeleted={onDeleted}
           onError={onError}
         />
-        <Button
-          size="sm"
-          variant="outline"
-          disabled={a.stage !== "onboarding"}
-          onClick={() => {
-            onError(null);
-            void goLiveCrmAccountFn({ data: { accountId: a.id } })
-              .then(() => {
-                load();
-                onChanged();
-              })
-              .catch((e) => onError(e instanceof Error ? e.message : "Go live failed"));
-          }}
-        >
-          Go live
-        </Button>
+        <span className="text-xs text-muted-foreground">
+          Go-live is the subscriber’s job from their venue.
+        </span>
         {ACCOUNT_SOURCES.map((s) => (
           <Button
             key={s}

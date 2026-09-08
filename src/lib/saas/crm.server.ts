@@ -399,16 +399,19 @@ export async function patchAccount(
   if (!cur[0]) throw new Error("Account not found");
   const name = patch.name?.trim() || cur[0].name;
   const stage = patch.stage && ACCOUNT_STAGES.includes(patch.stage) ? patch.stage : asStage(cur[0].stage);
-  if (patch.stage === "onboarding" || patch.stage === "live") {
+  if (patch.stage === "onboarding" || patch.stage === "training" || patch.stage === "live") {
     const pid = cur[0].prospect_id;
     if (pid) {
       const { getProspectById } = await import("./prospects.server");
       const p = await getProspectById(pid);
       if (patch.stage === "onboarding" && p && p.status !== "contracted" && p.status !== "onboarding") {
-        throw new Error("Start onboarding only after the contract is recorded (Pipeline).");
+        throw new Error("Onboarding starts after the contract is signed and the owner is invited.");
       }
-      if (patch.stage === "live" && p && p.status !== "onboarding" && p.status !== "live") {
-        throw new Error("Go live only after host onboarding is complete.");
+      if (patch.stage === "training" && p && p.status !== "training" && p.status !== "onboarding") {
+        throw new Error("Training is after the owner finishes their wizard.");
+      }
+      if (patch.stage === "live" && p && p.status !== "training" && p.status !== "live") {
+        throw new Error("Live is after the subscriber schedules go-live from the house.");
       }
     }
   }
@@ -553,44 +556,21 @@ export async function startOnboardingForAccount(userId: string, accountId: strin
   const { getProspectById, startOnboardingProspect } = await import("./prospects.server");
   const row = await getProspectById(prospectId);
   if (!row) throw new Error("Prospect missing");
-  if (row.status !== "contracted") {
+  if (row.status !== "contracted" && row.status !== "onboarding" && row.status !== "training") {
     throw new Error(
-      "Start onboarding is available after Request → Sent → Accepted → Contracted. Send a quote, record accept, then the contract.",
+      "Record the signed contract first. Then resend the venue-owner invite — platform does not fill their wizard.",
     );
   }
   await startOnboardingProspect({ userId, prospectId });
-  await patchAccount(userId, accountId, { stage: "onboarding" });
+  await patchAccount(userId, accountId, { stage: row.status === "training" ? "training" : "onboarding" });
   return { prospectId };
 }
 
-export async function goLiveForAccount(userId: string, accountId: string) {
+export async function goLiveForAccount(userId: string, _accountId: string) {
   await requireAdmin(userId);
-  const sql = await getSql();
-  const acc = await sql<{ prospect_id: string | null; org_id: string | null }>`
-    select prospect_id, org_id from crm_accounts where id = ${accountId}
-  `;
-  if (!acc[0]?.prospect_id) throw new Error("No linked prospect — complete intake or start onboarding first");
-  const { maybePromoteLive, adminSetProspectStatus, getProspectDetail } = await import(
-    "./prospects.server"
+  throw new Error(
+    "The venue owner schedules go-live from their house. Training sandbox until they do. Platform does not impersonate that step.",
   );
-  const promoted = await maybePromoteLive({ prospectId: acc[0].prospect_id, actorUserId: userId });
-  if (promoted.status !== "live") {
-    const detail = await getProspectDetail({ userId, prospectId: acc[0].prospect_id });
-    if (detail.orgId) {
-      await adminSetProspectStatus({
-        userId,
-        prospectId: acc[0].prospect_id,
-        status: "live",
-        note: "Admin go-live",
-      });
-    } else {
-      throw new Error(
-        `Not ready to go live: ${detail.liveChecklist.ready ? "complete onboarding acks" : "org, location, and owner invite required"}`,
-      );
-    }
-  }
-  await patchAccount(userId, accountId, { stage: "live" });
-  return { ok: true as const };
 }
 
 export async function listFollowUps(userId: string): Promise<CrmActivity[]> {

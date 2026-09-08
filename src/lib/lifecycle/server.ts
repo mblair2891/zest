@@ -60,6 +60,14 @@ export async function saveLifecycleForLocation(
   if (String(life) === "live" && data.goLiveChoices) {
     await erasePracticeOnServer(sql, data.locationId, data.goLiveChoices);
   }
+  if (String(life) === "live") {
+    try {
+      const { markProspectLiveFromOrg } = await import("@/lib/saas/prospects.server");
+      await markProspectLiveFromOrg(data.orgId, userId);
+    } catch (err) {
+      console.warn("[prospect-live]", err);
+    }
+  }
   return { ok: true as const };
 }
 

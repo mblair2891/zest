@@ -1,7 +1,7 @@
 # Operators Guide — authoring
 
-**Revision · 8 Sep 2026** — Staff stations are Android tablets with Summex Station.
-Guide v2026.10.60.
+**Revision · 8 Sep 2026** — Subscriber completes onboarding after contract signed.
+Guide v2026.10.61.
 
 The in-app **Operators Guide** is the living product manual. It is not a
 separate PDF. Staff open it from **Guide** / **?** in the POS and platform
@@ -140,7 +140,7 @@ Bookmarkable URL: `/guide?topic=my-topic`.
 - Shared-venue labor: per entity **owned lines** (default) | all-check | selected categories. Steam vs beverage sales; Diamond vs food. Shared rent/utilities off until allocated. Tips stay out of labor % unless toggled.
 - Printers on the house AP LAN (Ethernet), not the printer’s own Wi‑Fi. Receipts: Epson TM-T20 thermal. Kitchen: Epson TM-U220 impact. Cash drawer kick is on the receipt printer.
 - HR: optional per entity (host or tenant employer). Packets + signed PDF fallback. Clock punches persist. Clock windows, shift approval, and pay-period timing drive hours export to ADP / Intuit / CSV — Summex does not process payroll. Platform never sees SSN.
-- First location = SaaS onboard only. Host onboarded by SaaS; host invites operator tenants.
+- First location = the venue owner’s job after contract signed. Platform records the contract and emails the owner a one-time password. They never see CRM / pipeline / other tenants. Shared venue: owner invites each selling-entity POC. Training sandbox until they schedule go-live.
 - Training = practice + Quantum sandbox; optional inventory tracking. Go live now or schedule; owner keep/erase per data class; menus/recipes/staff/settings kept.
 - PIN login ≠ clock in/out ≠ server closeout.
 - Gift: sale-point issuer or house; redeem settles internally; unredeemed liability on issuer; house cards house-keeps remainder.
