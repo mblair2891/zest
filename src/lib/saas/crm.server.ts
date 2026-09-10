@@ -607,6 +607,7 @@ export async function listTenantDirectory(userId: string): Promise<TenantDirecto
   const sql = await getSql();
   const rows = await sql<{
     id: string; name: string; status: string; created_at: unknown;
+    is_demo: boolean;
     venue_slug: string | null;
     plan_id: string | null; plan_status: string | null;
     loc_count: number; op_count: number; mem_count: number;
@@ -614,27 +615,27 @@ export async function listTenantDirectory(userId: string): Promise<TenantDirecto
     mrr_cents: number | null;
   }>`
     select o.id, o.name, o.status, o.created_at,
+      coalesce(o.is_demo, false) as is_demo,
       (select l.slug from locations l
-        where l.org_id = o.id and coalesce(l.is_demo, false) = false
+        where l.org_id = o.id
         order by l.created_at asc limit 1) as venue_slug,
       s.plan_id, s.status as plan_status,
       (select count(*)::int from locations l
-        where l.org_id = o.id and coalesce(l.is_demo, false) = false) as loc_count,
+        where l.org_id = o.id) as loc_count,
       (select count(*)::int from operators op where op.org_id = o.id) as op_count,
       (select count(*)::int from memberships m
         where m.org_id = o.id and m.status = 'active') as mem_count,
       (select count(*)::int from support_tickets t
         where t.org_id = o.id and t.status in ('open','pending')) as open_tickets,
       a.id as account_id, a.stage,
-      coalesce((
+      case when coalesce(o.is_demo, false) then 0 else coalesce((
         select o2.amount_cents from crm_opportunities o2
         where o2.account_id = a.id order by o2.updated_at desc limit 1
-      ), 0) as mrr_cents
+      ), 0) end as mrr_cents
     from organizations o
     left join org_subscriptions s on s.org_id = o.id
-    left join crm_accounts a on a.org_id = o.id
-    where coalesce(o.is_demo, false) = false
-    order by o.created_at desc
+    left join crm_accounts a on a.org_id = o.id and coalesce(o.is_demo, false) = false
+    order by coalesce(o.is_demo, false) desc, o.created_at desc
   `;
   const locLife = await sql<{
     org_id: string;
@@ -642,7 +643,6 @@ export async function listTenantDirectory(userId: string): Promise<TenantDirecto
     setup: unknown;
   }>`
     select org_id, lifecycle_status, setup from locations
-    where coalesce(is_demo, false) = false
   `;
   const lifeByOrg = new Map<string, string[]>();
   for (const l of locLife) {
@@ -694,6 +694,7 @@ export async function listTenantDirectory(userId: string): Promise<TenantDirecto
       lifecycleStatuses,
       lifecycleSummary,
       venueSlug: r.venue_slug || null,
+      isDemo: Boolean(r.is_demo),
     };
   });
 }
@@ -714,7 +715,7 @@ export async function getTenantDrillIn(userId: string, orgId: string): Promise<T
     slug: string | null;
   }>`
     select id, name, venue_type, status, setup, lifecycle_status, slug from locations
-    where org_id = ${orgId} and coalesce(is_demo, false) = false
+    where org_id = ${orgId}
     order by name
   `;
   const members = await listMembersForOrg(userId, orgId);

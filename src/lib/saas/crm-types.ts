@@ -167,6 +167,8 @@ export type TenantDirectoryRow = {
   lifecycleSummary: string;
   /** First location slug → {slug}.summex.app */
   venueSlug?: string | null;
+  /** Isolated demo house — pairable, excluded from CRM stats / MRR / subscriber counts. */
+  isDemo?: boolean;
 };
 
 export type TenantDrillIn = {

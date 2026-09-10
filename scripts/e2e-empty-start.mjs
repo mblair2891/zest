@@ -83,8 +83,10 @@ if (!/Platform/i.test(platform)) {
 if (/Seaport|Morgan Blair|Zest Market Hall|Forge Bistro/i.test(platform)) {
   await fail("demo tenants still on platform: " + platform.slice(0, 500));
 }
-if (!/No organization|Create organization|Host setup/i.test(platform)) {
-  await fail("expected empty org CTA: " + platform.slice(0, 500));
+const hasEmptyCta = /No organization|Create organization|Host setup/i.test(platform);
+const hasIsolatedDemo = /Summit Hall/i.test(platform);
+if (!hasEmptyCta && !hasIsolatedDemo) {
+  await fail("expected empty org CTA or isolated Summit Hall demo: " + platform.slice(0, 500));
 }
 await shot("empty-start-03-platform.png");
 

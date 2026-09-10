@@ -70,7 +70,7 @@ export const saveOperatorPayoutFn = createServerFn({ method: "POST" })
     const sql = await getSql();
     const rows = await sql<{ setup: unknown }>`
       select setup from locations
-      where id = ${data.locationId} and org_id = ${data.orgId} and coalesce(is_demo, false) = false
+      where id = ${data.locationId} and org_id = ${data.orgId}
       limit 1
     `;
     const raw = (rows[0]?.setup ?? {}) as Record<string, unknown>;
@@ -143,7 +143,7 @@ export const saveEntityPermissionsFn = createServerFn({ method: "POST" })
     const sql = await getSql();
     const rows = await sql<{ setup: unknown }>`
       select setup from locations
-      where id = ${data.locationId} and org_id = ${data.orgId} and coalesce(is_demo, false) = false
+      where id = ${data.locationId} and org_id = ${data.orgId}
       limit 1
     `;
     const raw = (rows[0]?.setup ?? {}) as Record<string, unknown>;

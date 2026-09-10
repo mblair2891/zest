@@ -1,7 +1,7 @@
 # Operators Guide — authoring
 
-**Revision · 8 Sep 2026** — Subscriber completes onboarding after contract signed.
-Guide v2026.10.61.
+**Revision · 10 Sep 2026** — Isolated Summit Hall demo peer venue.
+Guide v2026.10.62.
 
 The in-app **Operators Guide** is the living product manual. It is not a
 separate PDF. Staff open it from **Guide** / **?** in the POS and platform

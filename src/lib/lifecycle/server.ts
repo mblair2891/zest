@@ -19,7 +19,7 @@ export async function saveLifecycleForLocation(
   const sql = await getSql();
   const rows = await sql<{ setup: unknown }>`
     select setup from locations
-    where id = ${data.locationId} and org_id = ${data.orgId} and coalesce(is_demo, false) = false
+    where id = ${data.locationId} and org_id = ${data.orgId}
     limit 1
   `;
   if (!rows[0]) throw new ForbiddenError("Location not found");

@@ -10,7 +10,7 @@ Built by Michael Blair & Andy Baida.
 
 ## Fresh start
 
-Production onboarding starts **empty** — no demo tenants, menus, or staff, and no hardcoded customer names.
+Production onboarding starts **empty of customers** — no hardcoded customer names. An isolated generic Demo peer venue (Summit Hall) may be seeded for tablet priming; it is excluded from CRM stats and subscriber counts.
 
 Bootstrap identity (first run): username **Admin**, password **password**. You **must** change it on first login. See [`docs/empty-start.md`](docs/empty-start.md).
 

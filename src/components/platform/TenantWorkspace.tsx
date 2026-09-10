@@ -73,6 +73,7 @@ export function TenantWorkspace() {
         </GuideLearnLink>
         <p className="text-xs text-muted-foreground">
           Click a tenant to open its venue URL. Settings stays on the row. Shared venue works with no host merchant.
+          Demo rows are pairable training houses — they do not count in CRM, pipeline, or subscribers.
         </p>
       </div>
       {error && <p className="px-4 py-2 text-sm text-danger">{error}</p>}
@@ -121,22 +122,29 @@ export function TenantWorkspace() {
                     <td className="py-2">
                       <span className="font-medium">{t.name}</span>
                       <span className="mt-0.5 block text-xs text-muted-foreground">{t.status}</span>
+                      {t.isDemo ? (
+                        <Badge variant="info" className="mt-1">
+                          Demo
+                        </Badge>
+                      ) : null}
                     </td>
-                    <td className="py-2">{t.planId ?? "—"}</td>
+                    <td className="py-2">{t.isDemo ? "—" : (t.planId ?? "—")}</td>
                     <td className="py-2">
                       <Badge
                         variant={
-                          t.lifecycleStatuses.includes("live") &&
-                          t.lifecycleStatuses.every((s) => s === "live")
-                            ? "success"
-                            : "warn"
+                          t.isDemo
+                            ? "info"
+                            : t.lifecycleStatuses.includes("live") &&
+                                t.lifecycleStatuses.every((s) => s === "live")
+                              ? "success"
+                              : "warn"
                         }
                       >
-                        {t.lifecycleSummary || "Training"}
+                        {t.isDemo ? "Demo · pairable" : t.lifecycleSummary || "Training"}
                       </Badge>
                     </td>
                     <td className="py-2 tabular">{t.locationCount}</td>
-                    <td className="py-2 tabular">{formatCurrency(t.mrrCents)}</td>
+                    <td className="py-2 tabular">{t.isDemo ? "—" : formatCurrency(t.mrrCents)}</td>
                     <td className="py-2">
                       {t.pastDue && <Badge variant="danger">Past due</Badge>}
                       {t.openTickets > 0 && (

@@ -4,10 +4,15 @@
  */
 import { getSql } from "@/lib/db";
 import { PLATFORM_ADMIN_EMAIL } from "@/lib/platform/brand";
+import {
+  SUMMIT_HALL_LOCATION_ID,
+  SUMMIT_HALL_ORG_ID,
+  SUMMIT_HALL_SLUG,
+} from "@/lib/saas/summit-hall";
 import { PARTNER_DEMO_EMAILS } from "./partner-demo";
 import { FLOOR_TEST_LOCATION_ID, FLOOR_TEST_ORG_ID } from "./floor-test";
 
-/** Real test peer venue — never treated as demo, never wiped here. */
+/** Real customer houses — never wiped here. */
 const REAL_LAUNDRY_ORG_ID = "org_the_laundry";
 const REAL_LAUNDRY_LOCATION_ID = "loc_the_laundry";
 const REAL_LAUNDRY_SLUG = "the-laundry";
@@ -72,7 +77,9 @@ async function purgeOnce(): Promise<{ removed: number }> {
   const tagged = await sql<{ id: string }>`
     select id from organizations
     where id <> ${REAL_LAUNDRY_ORG_ID}
+      and id <> ${SUMMIT_HALL_ORG_ID}
       and slug <> ${REAL_LAUNDRY_SLUG}
+      and slug <> ${SUMMIT_HALL_SLUG}
       and (
         coalesce(is_demo, false) = true
         or coalesce(is_partner_demo, false) = true
@@ -88,7 +95,9 @@ async function purgeOnce(): Promise<{ removed: number }> {
   const locTagged = await sql<{ id: string; org_id: string }>`
     select id, org_id from locations
     where id <> ${REAL_LAUNDRY_LOCATION_ID}
+      and id <> ${SUMMIT_HALL_LOCATION_ID}
       and org_id <> ${REAL_LAUNDRY_ORG_ID}
+      and org_id <> ${SUMMIT_HALL_ORG_ID}
       and (
         coalesce(is_demo, false) = true
         or coalesce(is_partner_demo, false) = true
@@ -104,8 +113,10 @@ async function purgeOnce(): Promise<{ removed: number }> {
     ...DEMO_ORG_IDS,
   ]);
   orgIds.delete(REAL_LAUNDRY_ORG_ID);
+  orgIds.delete(SUMMIT_HALL_ORG_ID);
   const locIds = new Set<string>([...locTagged.map((r) => r.id), ...DEMO_LOC_IDS]);
   locIds.delete(REAL_LAUNDRY_LOCATION_ID);
+  locIds.delete(SUMMIT_HALL_LOCATION_ID);
   const removed = orgIds.size;
 
   for (const locId of locIds) {

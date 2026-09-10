@@ -403,9 +403,6 @@ export async function requireMembership(
   const orgs = await sql<OrgRow>`select * from organizations where id = ${orgId} limit 1`;
   const org = orgs[0];
   if (!org) throw new ForbiddenError("Organization not found");
-  if (org.is_demo) {
-    throw new ForbiddenError("Demo venues are isolated from tenants");
-  }
 
   if (await isPlatformAdmin(userId)) {
     return {
@@ -415,6 +412,9 @@ export async function requireMembership(
       locationId: locationId ?? null,
       operatorId: null,
     };
+  }
+  if (org.is_demo) {
+    throw new ForbiddenError("Demo venues are isolated from tenants");
   }
 
   const mems = await sql<MemRow>`
@@ -623,8 +623,6 @@ export async function resolveLocationBySlug(slug: string): Promise<LocationRecor
       from locations l
       join organizations o on o.id = l.org_id
       where l.slug = ${s}
-        and coalesce(l.is_demo, false) = false
-        and coalesce(o.is_demo, false) = false
         and o.status = 'active'
         and l.status = 'active'
       limit 1
@@ -806,7 +804,7 @@ export async function updateLocationSetupForUser(
   const sql = await getSql();
   const rows = await sql<LocRow>`
     select * from locations
-    where id = ${input.locationId} and org_id = ${input.orgId} and coalesce(is_demo, false) = false
+    where id = ${input.locationId} and org_id = ${input.orgId}
     limit 1
   `;
   const loc = rows[0];
@@ -837,7 +835,7 @@ export async function listLocationsForOrg(userId: string, orgId: string): Promis
   const sql = await getSql();
   const rows = await sql<LocRow>`
     select * from locations
-    where org_id = ${orgId} and coalesce(is_demo, false) = false
+    where org_id = ${orgId}
     order by created_at asc
   `;
   return rows.map(mapLoc);
@@ -1048,18 +1046,17 @@ export async function listTenants(userId: string) {
     OrgRow & { plan_id: string | null; plan_status: string | null; loc_count: number }
   >`
     select o.*, s.plan_id, s.status as plan_status,
-           (select count(*)::int from locations l
-            where l.org_id = o.id and coalesce(l.is_demo, false) = false) as loc_count
+           (select count(*)::int from locations l where l.org_id = o.id) as loc_count
     from organizations o
     left join org_subscriptions s on s.org_id = o.id
-    where coalesce(o.is_demo, false) = false
-    order by o.created_at desc
+    order by coalesce(o.is_demo, false) desc, o.created_at desc
   `;
   return rows.map((r) => ({
     ...mapOrg(r),
     planId: (r.plan_id as PlanSlug | null) ?? null,
     planStatus: (r.plan_status as SubscriptionStatus | null) ?? null,
     locationCount: Number(r.loc_count ?? 0),
+    isDemo: Boolean(r.is_demo),
   }));
 }
 

@@ -52,7 +52,7 @@ async function loadLocation(locationId: string): Promise<LocRow> {
   const rows = await sql<LocRow>`
     select id, org_id, name, host_brand_name, setup, lifecycle_status, operating_model
     from locations
-    where id = ${locationId} and coalesce(is_demo, false) = false
+    where id = ${locationId}
     limit 1
   `;
   const row = rows[0];

@@ -94,7 +94,7 @@ export async function orgIdForLocation(locationId: string): Promise<string | nul
   const sql = await getSql();
   const rows = await sql<{ org_id: string }>`
     select org_id from locations
-    where id = ${locationId} and coalesce(is_demo, false) = false
+    where id = ${locationId}
     limit 1
   `;
   return rows[0]?.org_id ?? null;

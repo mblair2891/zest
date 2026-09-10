@@ -35,8 +35,9 @@ export function BillingWorkspace() {
     void billingStatusFn().then((b) => setProvider(b.provider));
     void listSaasInvoicesFn().then(setInvoices);
     void listTenantDirectoryFn().then((t) => {
-      setTenants(t);
-      if (!orgId && t[0]) setOrgId(t[0].id);
+      const billed = t.filter((row) => !row.isDemo);
+      setTenants(billed);
+      if (!orgId && billed[0]) setOrgId(billed[0].id);
     });
     void listSaasPlansFn().then(setPlans);
   };

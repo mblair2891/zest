@@ -39,7 +39,7 @@ Use invented names such as **Host Venue**, **Operator A**, **Operator B**. Do no
 3. Settlement: merchandise shares, host cut, tax/tip policy as configured.
 4. File a **dispute** on that closed check. $35 fee splits by merchandise % (see `docs/quantum-payments-multi-operator.md`). Mark won or lost — fee stays.
 
-No demo org and no PIN chips unless `DEV_DEMO=1` (leave off on Vercel). The Laundry peer venue is a real training house with no staff — add users on the platform.
+No public skip-password demo org. Isolated Summit Hall (is_demo) may already exist for tablet priming — it does not count as a subscriber. Customer houses still come from intake.
 
 ## Venue URL (wildcard DNS once)
 

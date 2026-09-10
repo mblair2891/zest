@@ -139,7 +139,7 @@ export const PLATFORM_CRM_TOPICS: GuideTopic[] = [
       ul(
         "Funnel counts CRM accounts by stage.",
         "Pipeline value sums opportunity monthly amounts.",
-        "Live orgs and locations are real onboarded tenants (there are no demo leftovers).",
+        "Live orgs and locations are real onboarded tenants. Isolated Demo houses (Summit Hall) are excluded from those counts.",
       ),
       related("platform-crm", "saas-lifecycle", "platform-tenants"),
     ],
@@ -154,7 +154,7 @@ export const PLATFORM_CRM_TOPICS: GuideTopic[] = [
     keywords: ["factory reset", "wipe", "danger zone", "bootstrap", "testing"],
     blocks: [
       why(
-        "Build and test cycles accumulate junk orgs. Factory reset returns the store to first-run: only the platform Admin login.",
+        "Build and test cycles accumulate junk orgs. Factory reset returns the store to first-run: Platform Admin plus the isolated Summit Hall Demo.",
       ),
       steps(
         "Platform → Settings → Danger zone.",
@@ -164,7 +164,7 @@ export const PLATFORM_CRM_TOPICS: GuideTopic[] = [
       ),
       ul(
         "Deletes orgs, locations, operators, CRM, prospects, tickets, invoices, ledger, devices, and non-admin users.",
-        "Does not seed demo venues.",
+        "Reseeds isolated Summit Hall (Demo). Does not count in CRM.",
         "Plans and software pricing catalog stay.",
         "Server-only. Floor PIN and location owners cannot run it.",
       ),

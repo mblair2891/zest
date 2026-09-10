@@ -296,7 +296,7 @@ export const SAAS_TOPICS: GuideTopic[] = [
         "Tenants lists organizations. Click a tenant to open venue settings (location, devices, menus per entity, payments, QR, cash, labor, users). Shared venue works with no host merchant. Back returns to Tenants.",
         "Settings is sectioned: General, Security, CRM, Onboarding, Plans, Payments & gifts, Communications (SMS allotment, overage, AI cap), Flags, Compliance, Team, Danger zone. Save per section. No JSON editors.",
         "Support actions: resend an invite, open POS as that location context, review audit-style prospect events.",
-        "Never seed a named customer. If you need a sandbox site, call it Host Venue.",
+        "Never seed a named customer. Isolated Summit Hall is the generic Demo row for tablet priming.",
       ),
       callout(
         "Who to contact",
@@ -317,7 +317,7 @@ export const SAAS_TOPICS: GuideTopic[] = [
       "tour",
       "share",
       "prospect",
-      "the laundry",
+      "summit hall",
       "guided",
       "auto-play",
       "voiceover",
@@ -326,15 +326,15 @@ export const SAAS_TOPICS: GuideTopic[] = [
     ],
     blocks: [
       why(
-        "A live Summex has no fake restaurants. Prospects request a demo through intake. Operators test by onboarding a real location.",
+        "A live Summex has no fake customer restaurants. Prospects request a demo through intake. Platform Admin may use isolated Summit Hall to prime tablets — it is not a subscriber.",
       ),
       p(
         "Marketing home → Get a price opens intake — not a PIN pad and not a seeded venue. Demo explains the product; it is not a seeded house.",
       ),
       ul(
-        "No PIN 0000 tenant. Floor PIN exists only after you add staff.",
-        "Platform Admin signs in with username/email and password. A shared-venue training house may already be listed (no staff). Other customer orgs appear after onboarding.",
-        "Test path: open the shared venue and add users on the platform, or intake → quote → contract if required → wizard → org + location → owner invite → Open POS.",
+        "No PIN 0000 tenant. Isolated Summit Hall has named floor PINs; customer houses get PINs when you add staff.",
+        "Platform Admin signs in with username/email and password. Summit Hall may already be listed as Demo / pairable (not a subscriber). Other customer orgs appear after onboarding.",
+        "Test path: open Summit Hall, or intake → quote → contract if required → wizard → org + location → owner invite → Open POS.",
       ),
       steps(
         "From the public site, Get pricing.",
@@ -353,22 +353,22 @@ export const SAAS_TOPICS: GuideTopic[] = [
   topic({
     id: "platform-demos-admin",
     chapterId: "platform",
-    title: "No demo tenants (platform)",
-    summary: "Control plane never seeds is_demo orgs. Test by onboarding a location.",
+    title: "Isolated demo venue (platform)",
+    summary: "One is_demo peer venue (Summit Hall) for tablet priming. Excluded from CRM stats.",
     visibility: "platform",
     roles: ["platform_admin"],
-    keywords: ["demo", "reset", "pipeline", "tenants", "share"],
+    keywords: ["demo", "reset", "pipeline", "tenants", "share", "summit hall"],
     blocks: [
       why(
-        "Platform Admin manages live tenants and the prospect pipeline. Fake POS rooms are not a product surface.",
+        "Platform Admin manages live tenants and the prospect pipeline. Summit Hall is tagged Demo so tablets can pair without counting as a subscriber.",
       ),
       steps(
-        "Sign in as Admin (password). A shared-venue training house may already be listed with no staff. Add users on the platform.",
-        "Use Pipeline for intake → quote → contract → setup.",
-        "When a location exists, Open POS. Floor PIN is for that location’s staff. Training vs live is on the tenant row.",
+        "Sign in as Admin (password). Tenants shows Summit Hall as Demo / pairable.",
+        "Devices: add host, order, ODS kitchen, ODS bar. Pair Android stations. Publish when ready.",
+        "Pipeline is for real intake → quote → contract → setup. Demo rows stay out of CRM stats, pipeline revenue, and subscriber counts.",
       ),
       warn(
-        "Never send Admin login as a prospect walkthrough. Public demo tenants stay off. Factory reset keeps Platform Admin only.",
+        "Never send Admin login as a prospect walkthrough. Public skip-password demo tenants stay off. Factory reset keeps Platform Admin and reseeds Summit Hall.",
       ),
       related("platform-admin", "prospect-demos", "empty-start", "partner-demo", "go-live-ops"),
     ],

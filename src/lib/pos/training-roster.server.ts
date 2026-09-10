@@ -151,7 +151,7 @@ export async function ensureTrainingFloor(locationId: string): Promise<{
   const sql = await getSql();
   const rows = await sql<{ setup: unknown; lifecycle_status: string | null }>`
     select setup, lifecycle_status from locations
-    where id = ${locationId} and coalesce(is_demo, false) = false
+    where id = ${locationId}
     limit 1
   `;
   if (!rows[0]) {

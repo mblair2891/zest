@@ -6,6 +6,19 @@ import type { GuideUpdate } from "@/lib/guide/types";
  */
 export const WHATS_NEW_ENTRIES: GuideUpdate[] = [
   {
+    id: "upd_2026_10_62_summit_hall_demo",
+    date: "2026-09-10",
+    title: "Summit Hall isolated demo",
+    summary:
+      "Generic peer venue for tablet priming. Hearth Kitchen + Copper Bar. Not counted in CRM or subscribers.",
+    body: "Tenants shows Summit Hall as Demo / pairable. No host merchant or host menu. Floor PINs: Host 1111, Server 2222, Bartender 3333, Kitchen 4444, Supervisor 5555, Busser 6666, Manager 9999. PIN is not clock-in. No 0000. Devices start empty — add host, order, ODS kitchen, ODS bar. Training / sandbox cards, cash, and gift. Idempotent seed; Platform Admin stays the only password login.",
+    roles: ["platform_admin"],
+    surfaces: ["settings", "floor"],
+    audience: "platform",
+    topicId: "laundry-test-venue",
+    tags: ["demo", "peer venue", "devices"],
+  },
+  {
     id: "upd_2026_10_61_subscriber_onboarding",
     date: "2026-09-08",
     title: "The venue owner completes onboarding",

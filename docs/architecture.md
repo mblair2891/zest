@@ -64,7 +64,7 @@ Production identity is Better Auth:
 
 PIN login is a **station lock** for floor staff after a location is opened. It is not the production identity path.
 
-There are no seeded demo tenants. Locations exist only after SaaS onboarding.
+Customer locations exist after SaaS onboarding. One isolated Demo peer venue (Summit Hall) may be seeded for tablet priming; it is excluded from CRM stats and subscriber counts.
 
 ## Packages & entitlements
 

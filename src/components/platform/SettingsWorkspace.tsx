@@ -1815,7 +1815,7 @@ function DangerSection({
       <p className="mt-2 text-sm text-muted-foreground">
         Irreversible. Deletes all orgs, locations, operators, CRM, prospects, pipeline,
         tickets, software invoices, ledger, devices, and staff except the platform Admin
-        login. Does not seed demo venues. After reset, sign in as Admin with the initial
+        login. Reseeds the isolated Summit Hall demo (not counted in CRM). After reset, sign in as Admin with the initial
         password — you must change it if first-login change is on.
       </p>
       <GuideLearnLink topicId="factory-reset" compact>

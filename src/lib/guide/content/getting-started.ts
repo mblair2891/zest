@@ -25,7 +25,7 @@ export const GETTING_STARTED_TOPICS: GuideTopic[] = [
         "Summex is the hospitality operating system for a single restaurant or bar, a host venue with multiple operators, or a multi-unit group. Powered by Quantum Reach. Guest cards run through Quantum Payments. Gift cards stay on the first-party Summex ledger. Software billing is separate from card processing.",
       ),
       p(
-        "The first customer location is created through SaaS onboarding. A shared-venue training house may already exist (bar operator + food operator) with no staff — add people on the platform. There are no public demo houses and no PIN 0000 catalog.",
+        "The first customer location is created through SaaS onboarding. Platform Admin may see an isolated Demo peer venue (Summit Hall) for tablet priming — it is not a subscriber. There are no public demo houses and no PIN 0000 catalog.",
       ),
       shot(
         "Guide overlay — search, role tabs, and a topic on the right.",
@@ -209,12 +209,12 @@ export const GETTING_STARTED_TOPICS: GuideTopic[] = [
     id: "empty-start",
     chapterId: "getting-started",
     title: "First location (SaaS onboard only)",
-    summary: "Customer houses appear after SaaS onboarding. A shared-venue training house has no staff until you add people.",
+    summary: "Customer houses appear after SaaS onboarding. An isolated Demo peer venue may exist for tablet priming — it is not a subscriber.",
     roles: ["platform_admin", "owner_manager", "host_operator"],
-    keywords: ["empty", "first org", "bootstrap", "no demo", "getting started", "onboard", "shared venue"],
+    keywords: ["empty", "first org", "bootstrap", "no demo", "getting started", "onboard", "shared venue", "summit hall"],
     blocks: [
       why(
-        "Production Summex does not ship a demo restaurant. Customer tenants appear after onboarding. A shared-venue training house may already be listed — it has no staff.",
+        "Production Summex does not ship a public demo restaurant. Customer tenants appear after onboarding. Platform Admin may see Summit Hall tagged Demo — pairable, excluded from CRM stats.",
       ),
       steps(
         "Open Get pricing on the public site. Describe the house. Submit for a quote.",
@@ -222,10 +222,10 @@ export const GETTING_STARTED_TOPICS: GuideTopic[] = [
         "SaaS completes the host: org, location, owner invite, plan. The host then invites operator tenants.",
         "Sign in with the invited work email. Open POS for that location. It starts in Training (sandbox cards).",
         "If a newly onboarded house has no staff, location-only PINs may be hashed in (0000 manager … 5555 busser). Change them before guests. PIN is not the time clock.",
-        "A shared-venue training house skips that roster. Add users on the platform, then run the training loop (seat → order → Order Display → cash or sandbox card → bus).",
+        "The isolated Demo house (Summit Hall) already has floor PINs. PIN login is not clock-in. No extra 0000 user. Owner password stays Platform Admin only.",
       ),
       warn(
-        "There are no public demo sites. Marketing is Get a price, Guide, Demo, Contact — no login link. Add staff on the platform; there are no seeded logins.",
+        "There are no public demo sites. Marketing is Get a price, Guide, Demo, Contact — no login link. Customer tenants are created through intake. Summit Hall is not pipeline revenue.",
       ),
       cta(
         "/get-pricing",
@@ -238,23 +238,23 @@ export const GETTING_STARTED_TOPICS: GuideTopic[] = [
   topic({
     id: "partner-demo",
     chapterId: "getting-started",
-    title: "No seeded demo house",
-    summary: "Partner-demo logins are retired. A shared venue training house has no staff until you add people.",
+    title: "No skip-password demo logins",
+    summary: "Partner-demo password logins are retired. Isolated Summit Hall is PIN + Platform Admin only.",
     visibility: "platform",
     roles: ["platform_admin"],
-    keywords: ["partner demo", "shared venue", "demo", "seed", "pin 0000"],
+    keywords: ["partner demo", "shared venue", "demo", "seed", "pin 0000", "summit hall"],
     blocks: [
       why(
-        "There is no skip-password picker and no PIN 0000 catalog. Sign in is username and password. Floor PINs exist only after you create staff.",
+        "There is no skip-password picker and no PIN 0000 catalog. Sign in is username and password (Platform Admin). Floor PINs on Summit Hall are station identity, not owner password and not clock-in.",
       ),
       steps(
-        "Sign in at /login with your account password (Platform Admin is the only seeded login).",
-        "Open the training house from Tenants (the row opens venue settings) — or complete Get pricing → quote → onboarding for a new house.",
-        "Add users on the platform. The peer venue seed does not create staff, PINs, or owner logins.",
-        "Open POS. Unique floor PINs belong to the people you added.",
+        "Sign in at /login with your account password (Platform Admin is the only seeded password login).",
+        "Tenants shows Summit Hall as Demo / pairable. Open it. Devices can add host, order, ODS kitchen, ODS bar — no hardware is pre-paired.",
+        "Floor PINs: Host 1111, Server 2222, Bartender 3333, Kitchen 4444, Supervisor 5555, Busser 6666, Manager 9999.",
+        "Clock in is Labor, separate from PIN. No extra 0000 user.",
       ),
       warn(
-        "Historical partner-demo logins are gone. Factory reset keeps Platform Admin, then reseeds a shared-venue training house with no staff.",
+        "Historical partner-demo logins are gone. Factory reset keeps Platform Admin, then reseeds isolated Summit Hall (not counted in CRM).",
       ),
       related("empty-start", "laundry-test-venue", "onboarding-wizard", "factory-reset", "go-live-ops"),
     ],
@@ -262,30 +262,30 @@ export const GETTING_STARTED_TOPICS: GuideTopic[] = [
   topic({
     id: "laundry-test-venue",
     chapterId: "getting-started",
-    title: "Shared venue training house — no staff",
-    summary: "Peer venue: bar operator + food operator. Add users on the platform.",
+    title: "Summit Hall — isolated demo peer venue",
+    summary: "Generic shared building: Hearth Kitchen + Copper Bar. Demo / pairable. Not CRM revenue.",
     visibility: "platform",
     roles: ["platform_admin", "owner_manager", "host_operator"],
-    keywords: ["test venue", "peer venue", "shared venue", "bar operator", "food operator", "staff"],
+    keywords: ["summit hall", "hearth", "copper", "peer venue", "shared venue", "demo", "pin"],
     openView: "hall",
     blocks: [
       why(
-        "The first real test house is a shared building, not a landlord-brand POS. Guest branding is the building name. Two independent operators. No host merchant, host menu, or host gift.",
+        "Summit Hall is a generic product demo, not a customer house. Peer venue: named building, no host merchant, no host menu. Two selling entities. Isolated from SaaS CRM stats, pipeline revenue, and subscriber counts. Visible as Demo so tablets can be primed.",
       ),
       p(
-        "The bar operator sells drinks (bar ODS). The food operator sells plates (kitchen ODS). One guest check; lines owned by entity; receipt grouped by vendor. Training / sandbox cards.",
+        "Hearth Kitchen sells plates, sandwiches, sides, dessert (kitchen ODS). Copper Bar sells cocktails, beer, wine, NA (bar ODS). One guest check; line owner is the entity; receipt grouped by vendor. Training / sandbox cards, cash, and house gift. Not live processing.",
       ),
       steps(
-        "Sign in as Platform Admin. Tenants → click the shared venue. That opens the venue URL. Bar operator + food operator. No host merchant required.",
-        "Add users on the platform (owners, floor PINs, operator POCs). The seed has no staff.",
-        "QR: table tents + ticket QR, reorder after a staff-opened check, pay/split. Full self-serve is off. Order food and drinks.",
-        "Ticket a drink and a plate. Bar ODS gets the bar operator. Kitchen ODS gets the food operator. Guest pays once.",
-        "Cash drawers / K11 come later. Do not expect seeded banks.",
+        "Sign in as Platform Admin. Tenants → Summit Hall (Demo / pairable). Venue slug summit-hall.",
+        "Floor PINs (not clock-in, not owner password): Host 1111 · Server 2222 (Hearth FOH, both menus on one check) · Bartender 3333 (Copper) · Kitchen 4444 (Hearth ODS) · Supervisor 5555 · Manager 9999 · Busser 6666. No 0000.",
+        "Devices: add Android stations (host | order | ODS kitchen | ODS bar). Nothing is pre-paired. Publish when ready.",
+        "QR: table tents + ticket QR, reorder after a staff-opened check, pay/split. Full self-serve is off.",
+        "Labor: Hearth vs food $ and Copper vs drink $ (owned lines). Independent schedules. PIN login and clock-in are both available and separate.",
       ),
       warn(
-        "This is not a demo tenant. DEV demo lists stay empty. Re-running the seed does not duplicate the house or menus, and it does not create PINs.",
+        "Do not treat Summit Hall as a paying subscriber. Re-running the seed is idempotent: it does not factory-reset, does not delete Platform Admin, and does not wipe paired devices.",
       ),
-      related("partner-demo", "single-vs-multi", "type-food-hall", "empty-start", "table-qr", "tenant-invites"),
+      related("partner-demo", "single-vs-multi", "type-food-hall", "empty-start", "table-qr", "android-kiosk"),
     ],
   }),
   topic({

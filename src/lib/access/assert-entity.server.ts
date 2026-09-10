@@ -42,7 +42,7 @@ export async function loadEntityWriteContext(
      and m.org_id = ${orgId}
      and m.status = 'active'
      and (m.location_id = ${locationId} or m.location_id is null)
-    where l.id = ${locationId} and l.org_id = ${orgId} and coalesce(l.is_demo, false) = false
+    where l.id = ${locationId} and l.org_id = ${orgId}
     order by m.location_id desc nulls last
     limit 1
   `;

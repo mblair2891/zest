@@ -245,7 +245,7 @@ export async function loadFloorContext(
   const sql = await getSql();
   const rows = await sql<{ id: string; org_id: string }>`
     select id, org_id from locations
-    where id = ${loc} and coalesce(is_demo, false) = false
+    where id = ${loc}
     limit 1
   `;
   const row = rows[0];

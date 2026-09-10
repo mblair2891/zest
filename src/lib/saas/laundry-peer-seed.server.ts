@@ -1,7 +1,6 @@
 /**
- * Idempotent real test venue: The Laundry (peer_venue).
- * Not is_demo / not is_partner_demo — DEV demo stats skip it.
- * No staff, PINs, or owner logins. Platform Admin is the only seeded login.
+ * Retired boot seed. Isolated Summit Hall (`ensureSummitHallDemo`) replaced this.
+ * Do not call from db bootstrap. Kept so existing rows are not force-wiped.
  */
 import { getSql } from "@/lib/db";
 import { defaultPackagesForMode } from "@/lib/pos/packages";

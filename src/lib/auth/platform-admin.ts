@@ -84,10 +84,10 @@ export const ensureAdminExists = createServerFn({ method: "POST" }).handler(
         console.error("[auth] demo purge skipped:", err);
       }
       try {
-        const { ensureLaundryPeerVenue } = await import("@/lib/saas/laundry-peer-seed.server");
-        await ensureLaundryPeerVenue();
+        const { ensureSummitHallDemo } = await import("@/lib/saas/summit-hall-seed.server");
+        await ensureSummitHallDemo();
       } catch (err) {
-        console.error("[auth] The Laundry peer venue seed skipped:", err);
+        console.error("[auth] Summit Hall isolated demo seed skipped:", err);
       }
       return { ok: true };
     } catch (err) {

@@ -159,13 +159,13 @@ export async function factoryReset(opts: {
 
   await reseedPlatformAdminBootstrap({ mustChangePassword: true });
   try {
-    const { resetLaundryPeerSeedLatch, ensureLaundryPeerVenue } = await import(
-      "./laundry-peer-seed.server"
+    const { resetSummitHallSeedLatch, ensureSummitHallDemo } = await import(
+      "./summit-hall-seed.server"
     );
-    resetLaundryPeerSeedLatch();
-    await ensureLaundryPeerVenue();
+    resetSummitHallSeedLatch();
+    await ensureSummitHallDemo();
   } catch (err) {
-    console.error("[factory-reset] The Laundry peer venue seed skipped:", err);
+    console.error("[factory-reset] Summit Hall isolated demo seed skipped:", err);
   }
   const after = await getSql();
   await after.query(`delete from "session"`);
