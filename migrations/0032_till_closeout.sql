@@ -1,5 +1,6 @@
 -- Blind till / drawer closeout. Expected snapshot is stored server-side and
 -- is never returned to the cashier until submit succeeds.
+-- Canonical table name: till_closeouts (not pos_till_closeouts).
 
 create table if not exists till_closeouts (
   id text primary key,
