@@ -44,7 +44,7 @@ import { dispatchPrintJob, testPrintJob } from "@/lib/print/dispatch";
 import { usePosStore } from "@/lib/pos/store";
 import { formatTime } from "@/lib/utils";
 import { GuideLearnLink } from "@/components/guide/GuideLearnLink";
-import { pairQrImageSrc, stationPairHref } from "@/lib/pos/station-pair";
+import { formatClaimExpiry, pairQrImageSrc, stationPairHref } from "@/lib/pos/station-pair";
 import {
   DEVICE_ROLE_LABEL,
   DEVICE_ROLES,
@@ -403,7 +403,7 @@ export function LocationDeviceRegistry({
   const help =
     mode === "hardware"
       ? "Register Quantum readers and Star/Epson printers. Assign kitchen, bar, receipt, or expo. Test print from this list."
-      : "Add a device (name + role). Show the one-time code or QR. After pair, change Role on that row — no reinstall. Publish pushes menu, floor, printers, and QR to paired tablets.";
+      : "Add a device, pick a role, then show the one-time code or QR (venue + role). Codes expire — regenerate from the row. After pair, the house snapshot is pushed. Publish updates idle PIN pads / next PIN login.";
   const addLabel = mode === "hardware" ? "Add terminal / printer" : "Add device";
   const pairedId = resolvedLocId ? readPairedDeviceId(resolvedLocId) : null;
   const thisBrowserId = resolvedLocId ? readOrCreateBrowserDeviceId(resolvedLocId) : "";
@@ -704,7 +704,10 @@ export function LocationDeviceRegistry({
               <div className="flex min-w-0 items-start gap-3">
                 {mode === "stations" && d.claimCode && d.status !== "online" ? (
                   <img
-                    src={pairQrImageSrc(d.claimCode)}
+                    src={pairQrImageSrc(d.claimCode, undefined, {
+                      venue: resolvedLocId,
+                      role: deviceRoleFromFunction(d.assignment.function),
+                    })}
                     alt={`Pair QR ${d.claimCode}`}
                     width={72}
                     height={72}
@@ -728,7 +731,13 @@ export function LocationDeviceRegistry({
                   <p className="mt-1 font-mono text-sm tracking-[0.2em] text-foreground">
                     {d.claimCode}
                     <span className="ml-2 font-sans text-[11px] tracking-normal text-muted-foreground">
-                      One-time · {stationPairHref(d.claimCode).replace(/^https?:\/\//, "")}
+                      One-time
+                      {d.claimExpiresAt ? ` · ${formatClaimExpiry(d.claimExpiresAt)}` : ""}
+                      {" · "}
+                      {stationPairHref(d.claimCode, undefined, {
+                        venue: resolvedLocId,
+                        role: deviceRoleFromFunction(d.assignment.function),
+                      }).replace(/^https?:\/\//, "")}
                     </span>
                   </p>
                 ) : mode === "stations" && d.status === "online" ? (
@@ -825,7 +834,7 @@ export function LocationDeviceRegistry({
                       disabled={busy}
                       onClick={() => void replaceDevice(d)}
                     >
-                      Replace
+                      {d.status === "online" ? "Replace" : "Regenerate"}
                     </Button>
                     <Button
                       size="sm"

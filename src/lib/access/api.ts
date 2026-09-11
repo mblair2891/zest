@@ -23,6 +23,23 @@ import {
   type LocationDevice,
   type LocationDeviceType,
 } from "@/lib/pos/location-devices";
+import { claimExpired, nextClaimExpiry } from "@/lib/pos/station-pair-payload";
+
+function mintClaim(): { claimCode: string; claimExpiresAt: number } {
+  return { claimCode: makeClaimCode(), claimExpiresAt: nextClaimExpiry() };
+}
+
+function expiryIso(ms: number | undefined): string | null {
+  if (!ms) return null;
+  return new Date(ms).toISOString();
+}
+
+function expiryMs(v: unknown): number | undefined {
+  if (!v) return undefined;
+  if (v instanceof Date) return v.getTime();
+  const n = typeof v === "number" ? v : Date.parse(String(v));
+  return Number.isFinite(n) && n > 0 ? n : undefined;
+}
 
 function loc(raw: unknown): string {
   const s = String(raw ?? "").trim();
@@ -205,6 +222,7 @@ export const saveLocationDeviceFn = createServerFn({ method: "POST" })
     const prev = parseLocationDevices(ctx.setup.locationDevices);
     const id = data.device.id || `dev_${Math.random().toString(36).slice(2, 10)}`;
     const existing = prev.find((x) => x.id === id);
+    const minted = existing?.claimCode ? null : mintClaim();
     const nextDevice = {
       id,
       locationId: data.locationId,
@@ -218,7 +236,10 @@ export const saveLocationDeviceFn = createServerFn({ method: "POST" })
             : (existing?.status ?? ("pending" as const)),
       lastSeenAt: Date.now(),
       serial: data.device.serial || existing?.serial,
-      claimCode: existing?.claimCode || makeClaimCode(),
+      claimCode: existing?.claimCode || minted!.claimCode,
+      claimExpiresAt: existing?.claimCode
+        ? existing.claimExpiresAt
+        : minted!.claimExpiresAt,
       assignment: data.device.assignment,
       print: data.device.print ?? existing?.print,
       applyRoleNow: existing?.applyRoleNow,
@@ -229,25 +250,50 @@ export const saveLocationDeviceFn = createServerFn({ method: "POST" })
       : [nextDevice, ...prev];
     const { getSql } = await import("@/lib/db");
     const sql = await getSql();
-    await sql`
-      insert into location_devices (
-        id, location_id, label, type, status, serial, claim_code,
-        assigned_operator_id, assigned_function, last_seen_at
-      )
-      values (
-        ${nextDevice.id}, ${data.locationId}, ${nextDevice.label}, ${nextDevice.type},
-        ${nextDevice.status}, ${nextDevice.serial ?? null}, ${nextDevice.claimCode ?? null},
-        ${nextDevice.assignment.operatorId}, ${nextDevice.assignment.function}, now()
-      )
-      on conflict (id) do update set
-        label = excluded.label,
-        type = excluded.type,
-        status = excluded.status,
-        serial = excluded.serial,
-        assigned_operator_id = excluded.assigned_operator_id,
-        assigned_function = excluded.assigned_function,
-        last_seen_at = now()
-    `;
+    try {
+      await sql`
+        insert into location_devices (
+          id, location_id, label, type, status, serial, claim_code, claim_expires_at,
+          assigned_operator_id, assigned_function, last_seen_at
+        )
+        values (
+          ${nextDevice.id}, ${data.locationId}, ${nextDevice.label}, ${nextDevice.type},
+          ${nextDevice.status}, ${nextDevice.serial ?? null}, ${nextDevice.claimCode ?? null},
+          ${expiryIso(nextDevice.claimExpiresAt)},
+          ${nextDevice.assignment.operatorId}, ${nextDevice.assignment.function}, now()
+        )
+        on conflict (id) do update set
+          label = excluded.label,
+          type = excluded.type,
+          status = excluded.status,
+          serial = excluded.serial,
+          claim_code = excluded.claim_code,
+          claim_expires_at = excluded.claim_expires_at,
+          assigned_operator_id = excluded.assigned_operator_id,
+          assigned_function = excluded.assigned_function,
+          last_seen_at = now()
+      `;
+    } catch {
+      await sql`
+        insert into location_devices (
+          id, location_id, label, type, status, serial, claim_code,
+          assigned_operator_id, assigned_function, last_seen_at
+        )
+        values (
+          ${nextDevice.id}, ${data.locationId}, ${nextDevice.label}, ${nextDevice.type},
+          ${nextDevice.status}, ${nextDevice.serial ?? null}, ${nextDevice.claimCode ?? null},
+          ${nextDevice.assignment.operatorId}, ${nextDevice.assignment.function}, now()
+        )
+        on conflict (id) do update set
+          label = excluded.label,
+          type = excluded.type,
+          status = excluded.status,
+          serial = excluded.serial,
+          assigned_operator_id = excluded.assigned_operator_id,
+          assigned_function = excluded.assigned_function,
+          last_seen_at = now()
+      `;
+    }
     const { updateLocationSetupForUser } = await import("@/lib/saas/tenancy.server");
     return updateLocationSetupForUser(context.userId, {
       orgId: ctx.orgId,
@@ -400,6 +446,7 @@ function mapDeviceRow(r: {
   assigned_operator_id: string | null;
   assigned_function: string | null;
   last_seen_at: unknown;
+  claim_expires_at?: unknown;
 }): LocationDevice | null {
   return parseLocationDevice({
     id: r.id,
@@ -409,6 +456,7 @@ function mapDeviceRow(r: {
     status: r.status,
     serial: r.serial,
     claimCode: r.claim_code,
+    claimExpiresAt: expiryMs(r.claim_expires_at),
     lastSeenAt:
       r.last_seen_at instanceof Date
         ? r.last_seen_at.getTime()
@@ -449,9 +497,10 @@ export const listLocationDevicesFn = createServerFn({ method: "POST" })
         assigned_operator_id: string | null;
         assigned_function: string | null;
         last_seen_at: unknown;
+        claim_expires_at: unknown;
       }>`
         select id, location_id, label, type, status, serial, claim_code,
-               assigned_operator_id, assigned_function, last_seen_at
+               assigned_operator_id, assigned_function, last_seen_at, claim_expires_at
         from location_devices
         where location_id = ${data.locationId}
         order by created_at asc
@@ -465,7 +514,13 @@ export const listLocationDevicesFn = createServerFn({ method: "POST" })
     for (const d of setupDevices) byId.set(d.id, d);
     for (const d of tableRows) {
       const prev = byId.get(d.id);
-      byId.set(d.id, { ...d, ...prev, print: prev?.print ?? d.print });
+      byId.set(d.id, {
+        ...d,
+        ...prev,
+        print: prev?.print ?? d.print,
+        claimCode: d.claimCode || prev?.claimCode,
+        claimExpiresAt: d.claimExpiresAt ?? prev?.claimExpiresAt,
+      });
     }
     let devices = Array.from(byId.values());
     if (tableRows.length === 0 && setupDevices.length) {
@@ -665,6 +720,7 @@ export const pairStationFn = createServerFn({ method: "POST" })
       assigned_operator_id: string | null;
       assigned_function: string | null;
       last_seen_at: unknown;
+      claim_expires_at?: unknown;
     };
 
     let hit: LocHit | null = null;
@@ -673,7 +729,7 @@ export const pairStationFn = createServerFn({ method: "POST" })
         select d.id as device_id, d.location_id, l.org_id, l.name as loc_name, l.venue_type,
                l.timezone, l.address, l.host_brand_name, l.operating_model,
                o.name as org_name, d.label, d.type, d.status, d.serial, d.claim_code,
-               d.assigned_operator_id, d.assigned_function, d.last_seen_at
+               d.assigned_operator_id, d.assigned_function, d.last_seen_at, d.claim_expires_at
         from location_devices d
         join locations l on l.id = d.location_id
         join organizations o on o.id = l.org_id
@@ -745,12 +801,16 @@ export const pairStationFn = createServerFn({ method: "POST" })
           assigned_operator_id: d.assignment.operatorId,
           assigned_function: d.assignment.function,
           last_seen_at: d.lastSeenAt,
+          claim_expires_at: d.claimExpiresAt,
         };
         break;
       }
     }
 
     if (!hit) throw new Error("No station slot for that code. Check Devices.");
+    if (claimExpired(expiryMs(hit.claim_expires_at))) {
+      throw new Error("That code expired. Ask the owner to regenerate it on Devices.");
+    }
 
     const device = mapDeviceRow({
       id: hit.device_id,
@@ -807,21 +867,23 @@ export const pairStationFn = createServerFn({ method: "POST" })
       version: 1,
       publishedAt: Date.now(),
       publishedByName: "Pair",
-      setup: {
-        menuCatalog: pack2.setup.menuCatalog,
-        floorPlan: pack2.setup.floorPlan,
-        locationDevices: pack2.setup.locationDevices,
-        qrMode: pack2.setup.qrMode,
-        qrPolicy: pack2.setup.qrPolicy,
-        cashHandling: pack2.setup.cashHandling,
-        cashDiscountEnabled: pack2.setup.cashDiscountEnabled,
-        cashDiscountPercent: pack2.setup.cashDiscountPercent,
-        cashRoundIncrement: pack2.setup.cashRoundIncrement,
-        cashRoundMode: pack2.setup.cashRoundMode,
-        sectionNames: pack2.setup.sectionNames,
-        laborByEntity: pack2.setup.laborByEntity,
-      },
+      setup: publishSetupSlice(pack2.setup),
     };
+    if (!pack2.setup.stationPublish) {
+      try {
+        await sql`
+          update locations
+          set setup = jsonb_set(
+            coalesce(setup, '{}'::jsonb),
+            '{stationPublish}',
+            ${JSON.stringify(publish)}::jsonb
+          )
+          where id = ${hit.location_id}
+        `;
+      } catch {
+        /* optional */
+      }
+    }
 
     return {
       pair: {
@@ -1134,10 +1196,16 @@ export const rotateDevicePairFn = createServerFn({ method: "POST" })
     const existing = prev.find((x) => x.id === data.deviceId);
     if (!existing) throw new Error("Device not found");
     assertHostOrManageDevices(ctx, existing.assignment.operatorId || "host");
-    const code = makeClaimCode();
+    const minted = mintClaim();
     const devices = prev.map((d) =>
       d.id === data.deviceId
-        ? { ...d, status: "pending" as const, serial: undefined, claimCode: code }
+        ? {
+            ...d,
+            status: "pending" as const,
+            serial: undefined,
+            claimCode: minted.claimCode,
+            claimExpiresAt: minted.claimExpiresAt,
+          }
         : d,
     );
     const { getSql } = await import("@/lib/db");
@@ -1145,7 +1213,8 @@ export const rotateDevicePairFn = createServerFn({ method: "POST" })
     try {
       await sql`
         update location_devices
-        set status = ${"pending"}, serial = ${null}, claim_code = ${code}, last_seen_at = now()
+        set status = ${"pending"}, serial = ${null}, claim_code = ${minted.claimCode},
+            claim_expires_at = ${expiryIso(minted.claimExpiresAt)}, last_seen_at = now()
         where id = ${data.deviceId} and location_id = ${data.locationId}
       `;
     } catch {

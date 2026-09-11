@@ -87,6 +87,8 @@ export type LocationDevice = {
   /** Owner asked the idle PIN pad to take the new role now. */
   applyRoleNow?: boolean;
   roleRevision?: number;
+  /** Epoch ms when the one-time pair code dies. */
+  claimExpiresAt?: number;
 };
 
 export const DEVICE_TYPES: LocationDeviceType[] = [
@@ -205,6 +207,8 @@ export function parseLocationDevice(raw: unknown): LocationDevice | null {
     print: type === "printer" ? parsePrinterConfig(o.print ?? o) : undefined,
     applyRoleNow: o.applyRoleNow === true,
     roleRevision: Number(o.roleRevision) > 0 ? Math.round(Number(o.roleRevision)) : undefined,
+    claimExpiresAt:
+      Number(o.claimExpiresAt) > 0 ? Math.round(Number(o.claimExpiresAt)) : undefined,
   };
 }
 

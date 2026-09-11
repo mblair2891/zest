@@ -32,19 +32,19 @@ export const DEVICE_TOPICS: GuideTopic[] = [
         "Every station is one of three roles. Order-taking covers handhelds and bar POS — menu, checks, pay, gift. ODS is kitchen (and bar display): tickets only, Start and Bump, no menu, no pay. Host is hybrid: floor map, seat, table status, and to-go order entry at the stand.",
       ),
       p(
-        "Staff stations are Android tablets running the Summex Station app (sideload now; Play later). First open pairs with the venue code or QR from Devices. After that, the PIN pad, lock-task, no launcher. Guest QR and pay links stay on the guest’s own phone browser — not a staff station. iPad and browser POS are not a supported house setup.",
+        "Staff stations are Android tablets running one Play-ready app: Summex Station (`app.summex.pos`). First open is Scan QR or Enter code from Devices — never /login, never the marketing site. After pair, the PIN pad, optional lock-task. Guest QR and pay links stay on the guest’s own phone browser — not a staff station. iPad and browser POS are not a supported house setup.",
       ),
       ul(
         "Order: handhelds + bar. PIN in, ring, send, take tenders the PIN allows.",
         "ODS: kitchen tickets. Start / Bump. No pay path — cash and gift tenders are blocked on ODS.",
         "Host: floor map + to-go. Seat the room; ring takeout at the stand.",
         "A manager Change device switches among those three. PIN stays the person; the role is the screen.",
-        "Pair once (internet required). Pair QR and bookmarks are app.summex.app/station. After that, floor stations open on app.summex.app/?station= or /station/order (ods, host) — the PIN pad, not the sales home. App updates keep the pairing. Back-office username and password is for owners on a laptop, not the handheld.",
+        "Pair once (internet required). Pair QR payload is the one-time token plus venue and role. Bookmarks are app.summex.app/station. After that, power on → PIN pad for that venue and role, not the sales home. App updates keep the pairing. Store APKs do not need a baked station. Back-office username and password is for owners on a laptop, not the handheld.",
         "Broken ODS → reassign a server tablet from Devices. Same pair code; staff PIN in again. Do not reinstall.",
       ),
       steps(
-        "Owner: Devices → add a slot (Order, Order Display, or Host). Show the 6-character code or QR.",
-        "Tablet: first open of Summex Station, enter the code or scan the QR. Thereafter: power on → PIN keypad. That is not clock-in and not closeout.",
+        "Owner: Devices → Add device → Order / Order Display / Host. Show the one-time code or QR. Codes expire; regenerate from that row.",
+        "Tablet: first open of Summex Station → Scan QR or Enter code. Thereafter: power on → PIN keypad. That is not clock-in and not closeout.",
         "Paired row: Role dropdown (Order / Host / ODS, plus ODS kitchen or ODS bar when both exist, and Kiosk when the house has one). Confirm, then staff PIN in again. Apply now only if that tablet is on the PIN pad — never mid-check.",
         "Owner or manager: Change device to move this screen among Order / ODS / Host without a new account login.",
         "Switch user returns to the PIN pad. A Devices role change takes effect on the next PIN, same as Publish.",
@@ -60,7 +60,7 @@ export const DEVICE_TOPICS: GuideTopic[] = [
     chapterId: "devices",
     title: "Tablets run Summex only",
     summary:
-      "Android tablet + Summex Station (sideload now; Play later). Pair with Devices code/QR, then PIN. Lock-task, no launcher. Guest QR stays on the guest’s phone.",
+      "One Play-ready APK: Summex Station. Pair with Devices QR or code, then PIN. Lock-task after pair. Guest QR stays on the guest’s phone.",
     roles: ["owner_manager", "host_operator", "kitchen_bar", "platform_admin"],
     keywords: [
       "android",
@@ -79,12 +79,12 @@ export const DEVICE_TOPICS: GuideTopic[] = [
         "A floor tablet is a station, not a general-purpose phone. If someone can swipe to the launcher, they are not in service.",
       ),
       p(
-        "Install Summex Station once. The store binary has no venue baked in. Owner (back office password, not staff PIN): Devices → Add device → name + role. Show the one-time code or QR. After pair, the tablet stores venue and role, receives the house snapshot, and is PIN only. Publish changes pushes menu, floor, printers, QR, and cash model to paired tablets. Staff keep the last publish until Switch user. Idle PIN pads can refresh. Never mid-ticket.",
+        "Install Summex Station once. The store binary has no venue baked in and does not require a debug station preset. Owner (back office password, not staff PIN): Devices → Add device → name + role. Show the one-time code or QR (pair token, venue, role). Codes expire; regenerate from the row. After pair, the tablet stores venue and role, receives the house snapshot, and is PIN only. Optional lock-task / pin-windows after pair. Publish updates idle devices and the next PIN login. Staff keep the last publish until Switch user. Never mid-ticket.",
       ),
       steps(
-        "Install Summex Station on every staff Android tablet (sideload now; Play later). Same app for host, order, and ODS.",
+        "Install Summex Station on every staff Android tablet (same Play-ready APK for host, order, and ODS).",
         "Owner: Devices → Add device (name + Order / Order Display / Host). Show the one-time code or QR.",
-        "Tablet: pair. Config is pushed. Thereafter power on → PIN. App updates do not wipe pairing.",
+        "Tablet: Scan QR or Enter code. Snapshot is pushed. Thereafter power on → PIN. App updates do not wipe pairing.",
         "After menu or floor edits: Publish changes. Logged-in staff keep running; next PIN login loads the new publish.",
         "Broken ODS → reassign a server tablet from Devices (Role dropdown). No new pair code.",
         "Unpair or Replace from the same Devices list when a tablet is lost or swapped.",

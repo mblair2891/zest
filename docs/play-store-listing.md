@@ -16,7 +16,7 @@ Staff POS for restaurants. Pair once, then PIN. Order, kitchen, or host stand.
 
 Summex Station is the staff tablet app for restaurants, food halls, and related venues.
 
-Install once. On first open, enter the venue code or scan the QR from the owner Devices screen. The tablet stores the venue and its role:
+Install once. On first open, scan the QR or enter the one-time code from the owner Devices screen. The tablet stores the venue and its role:
 
 • Order — handhelds and bar  
 • Order Display — kitchen tickets (Start and Bump)  
@@ -36,7 +36,7 @@ Business
 
 ## Screenshots needed
 
-1. Pair screen (venue code)  
+1. Pair screen (Scan QR | Enter code)  
 2. PIN pad  
 3. Order / floor  
 4. Kitchen Order Display  

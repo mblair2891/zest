@@ -9,8 +9,8 @@ Staff tablets run **Summex only**. This Capacitor APK is a kiosk POS: lock-task 
 | | Play (store) | Sideload (local) |
 |---|---|---|
 | Config | `station` empty, `sideload: false` | `android-config` sets `sideload: true` + a role |
-| WebView | `https://summex.app/station` | LAN origin with `/?station=` |
-| First run | Pair screen (venue code / QR from Devices) | Same pair screen unless already primed |
+| WebView | `https://summex.app/station` | LAN origin with `/station/{role}` |
+| First run | Pair screen (Scan QR \| Enter code from Devices) | Same pair screen unless already primed |
 | Location in APK | Never | Never (role only, and only for LAN) |
 | After pair | PIN pad. Updates keep pairing. | PIN pad |
 
@@ -73,10 +73,11 @@ npm run android:apk
 
 ## Pair, then PIN
 
-1. Owner: Devices → add a slot (Order / Order Display / Host). Show the 6-character code or QR.
-2. Tablet: first open of Summex Station → enter the code or scan the QR.
-3. The tablet stores venue id + station role locally. Thereafter: power on → PIN pad.
-4. App updates do not wipe pairing (`app.summex.pos` stays the same).
+1. Owner: Devices → Add device → role. Show the one-time code or QR (payload: pair token, venue, role). Codes expire; regenerate from the row.
+2. Tablet: first open of Summex Station → **Scan QR** or **Enter code**. Never `/login`, never the marketing site.
+3. After pair, the house snapshot is pushed. The tablet stores venue + role locally. Thereafter: power on → PIN pad. Publish updates idle devices / next PIN login.
+4. Lock-task / pin-windows is requested after pair (optional confirm on Samsung). Guest QR stays in the phone browser.
+5. App updates do not wipe pairing (`app.summex.pos` stays the same). Store builds do not run `android-config`.
 
 ## Training: Samsung pin-windows
 

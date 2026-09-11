@@ -81,7 +81,7 @@ One APK: **Summex Station** (`app.summex.pos`). Staff tablets run Summex only. G
 
 ### Play (store) — generic, no venue in the binary
 
-Leave `native/summex-native.json` with empty `station` and `sideload: false`. The WebView opens `/station`. First run is the pair screen (venue code or QR from owner Devices). After pair: PIN pad only. Updates keep the pairing.
+Leave `native/summex-native.json` with empty `station` and `sideload: false`. The WebView opens `/station`. First run is **Scan QR** or **Enter code** from owner Devices. After pair: PIN pad only. Updates keep the pairing. Store builds never require `android-config`.
 
 ```bash
 npm run android:config:clear
@@ -93,7 +93,7 @@ Do not submit to Play from this pass — packaging only. Listing copy: [`docs/pl
 
 ### Sideload (local LAN / training)
 
-`android-config` is for sideload only. It may bake a station role and a LAN URL:
+`android-config` is **local debug only**. It may bake a station role and a LAN URL. Play / sideload store APKs must not run it:
 
 ```bash
 npm run android:config:order   # or host | ods

@@ -1,7 +1,7 @@
 # Operators Guide — authoring
 
-**Revision · 10 Sep 2026** — Tenant Users: add location admin and floor staff.
-Guide v2026.10.63.
+**Revision · 10 Sep 2026** — Summex Station pairs from Devices QR or code.
+Guide v2026.10.64.
 
 The in-app **Operators Guide** is the living product manual. It is not a
 separate PDF. Staff open it from **Guide** / **?** in the POS and platform

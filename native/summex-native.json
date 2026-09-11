@@ -3,5 +3,5 @@
   "station": "",
   "cleartext": false,
   "sideload": false,
-  "_comment": "Play APK is generic: /station pair screen, no location in the binary. android-config sets sideload+station for local LAN only."
+  "_comment": "Play/store APK is generic: /station pair (Scan QR | Enter code). android-config is local debug only — never required for a store build."
 }

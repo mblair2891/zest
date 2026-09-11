@@ -15,6 +15,7 @@ import {
   type StationPairRecord,
 } from "@/lib/pos/station-pair";
 import { writePairedDeviceId } from "@/lib/pos/location-devices";
+import { requestKioskLock } from "@/lib/native-kiosk";
 
 export type StationSearch = {
   station?: DeviceRole;
@@ -52,7 +53,7 @@ export function StationRouteApp({
     const stored = readStationPair();
     if (stored) setPair(stored);
 
-    const loc = search.loc || stored?.locationId;
+    const loc = stored?.locationId || (!search.pair ? search.loc : undefined);
     if (loc) {
       void resolvePrimedLocation().then((pack) => {
         if (cancelled) return;
@@ -71,6 +72,11 @@ export function StationRouteApp({
     };
   }, [search.loc, search.pair]);
 
+  useEffect(() => {
+    if (!ready) return;
+    if (pair?.locationId) requestKioskLock();
+  }, [ready, pair?.locationId]);
+
   if (!ready) {
     return (
       <div className="flex min-h-[100dvh] items-center justify-center bg-bg pt-[var(--grok-banner-h,0px)] text-muted-foreground">
@@ -82,7 +88,7 @@ export function StationRouteApp({
     );
   }
 
-  const loc = search.loc || pair?.locationId;
+  const loc = pair?.locationId;
   if (!loc) {
     return (
       <StationPairScreen

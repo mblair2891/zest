@@ -1,9 +1,10 @@
 #!/usr/bin/env node
 /**
- * Local sideload only. Play builds leave station empty (pair screen).
- * Usage: node scripts/android-config.mjs order|ods|host
- *        node scripts/android-config.mjs ods http://192.168.1.10:8080
- *        node scripts/android-config.mjs clear
+ * Local debug only. Play / sideload store builds must NOT run this —
+ * they open /station (pair QR or code). Usage:
+ *   node scripts/android-config.mjs order|ods|host
+ *   node scripts/android-config.mjs ods http://192.168.1.10:8080
+ *   node scripts/android-config.mjs clear
  */
 import { readFileSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";

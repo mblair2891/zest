@@ -43,7 +43,8 @@ const sideload = process.env.SUMMEX_SIDELOAD === "1" || file.sideload === true;
 const station = nativeStationRole(stationRaw);
 const origin = (baseUrl.replace(/\/apps$/i, "") || baseUrl).replace(/\/$/, "") || "https://summex.app";
 if (sideload && station) {
-  serverUrl = `${origin}/?station=${encodeURIComponent(station)}`;
+  // Local debug only — never marketing apex, never /login.
+  serverUrl = `${origin}/station/${encodeURIComponent(station)}`;
 } else {
   serverUrl = `${origin}/station`;
 }

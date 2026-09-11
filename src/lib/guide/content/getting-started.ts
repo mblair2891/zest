@@ -138,8 +138,8 @@ export const GETTING_STARTED_TOPICS: GuideTopic[] = [
       ),
       steps(
         "Back office: Log in at app.summex.app/login with username or email and password. Admin lands on the platform dashboard. A location admin (venue owner) lands on that house — never the sales home, CRM, or other tenants.",
-        "Prime each Android tablet once: install Summex Station, pair with the Devices code or QR (internet required). Thereafter the device is PIN-only.",
-        "Floor: the station opens on app.summex.app/?station= or app.summex.app/station/order (ods, host) — never the sales home. Enter your 4-digit PIN. Switch user returns to the keypad without changing the device role.",
+        "Prime each Android tablet once: install Summex Station, Scan QR or Enter code from Devices (internet required). Thereafter the device is PIN-only for that venue and role.",
+        "Floor: Summex Station opens on the pair screen until paired, then the PIN pad — never the sales home. Enter your 4-digit PIN. Switch user returns to the keypad without changing the device role.",
         "Clock in / out from Labor (and Employees). The PIN pad does not punch you. Signing out of POS does not clock you out.",
         "Server closeout is Cash (expected drawer, Z). That is not clock-out and not PIN login.",
         "Opening Settings from a floor PIN prompts back-office re-auth (password).",

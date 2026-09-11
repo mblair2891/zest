@@ -42,8 +42,9 @@ public class MainActivity extends BridgeActivity {
             );
         hideSystemBars();
         installBridgeGuard();
+        installKioskBridge();
         installBackGuard();
-        startKioskLock();
+        /* Lock-task is after pair — pair screen needs the camera. */
     }
 
     @Override
@@ -51,7 +52,8 @@ public class MainActivity extends BridgeActivity {
         super.onStart();
         hideSystemBars();
         wrapWebView();
-        startKioskLock();
+        installKioskBridge();
+        if (lockPrimed) startKioskLock();
     }
 
     @Override
@@ -59,7 +61,7 @@ public class MainActivity extends BridgeActivity {
         injectCapacitorShim();
         super.onResume();
         hideSystemBars();
-        startKioskLock();
+        if (lockPrimed) startKioskLock();
     }
 
     @Override
@@ -67,7 +69,7 @@ public class MainActivity extends BridgeActivity {
         super.onWindowFocusChanged(hasFocus);
         if (hasFocus) {
             hideSystemBars();
-            startKioskLock();
+            if (lockPrimed) startKioskLock();
         }
     }
 
@@ -122,6 +124,7 @@ public class MainActivity extends BridgeActivity {
         WebView wv = webView();
         if (wv == null || getBridge() == null) return;
         wv.setBackgroundColor(0xFF0A0C0B);
+        wv.getSettings().setMediaPlaybackRequiresUserGesture(false);
         wv.setWebViewClient(new KioskWebViewClient(getBridge()));
     }
 
@@ -181,6 +184,19 @@ public class MainActivity extends BridgeActivity {
                     | View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN
                     | View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION
             );
+        }
+    }
+
+    private void installKioskBridge() {
+        WebView wv = webView();
+        if (wv == null) return;
+        wv.addJavascriptInterface(new KioskBridge(), "SummexKiosk");
+    }
+
+    public class KioskBridge {
+        @android.webkit.JavascriptInterface
+        public void startLock() {
+            runOnUiThread(() -> startKioskLock());
         }
     }
 

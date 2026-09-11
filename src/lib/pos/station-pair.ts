@@ -5,6 +5,22 @@
 import { isVenueEntityId } from "./entities";
 import type { VenueEntityId } from "./types";
 import { absolutePlatformHref } from "@/lib/platform/hosts";
+import {
+  encodePairQuery,
+  normalizePairToken,
+  parsePairScan,
+  type PairDeviceRole,
+} from "./station-pair-payload";
+
+export {
+  PAIR_TTL_MS,
+  claimExpired,
+  formatClaimExpiry,
+  nextClaimExpiry,
+  parsePairScan,
+  type PairDeviceRole,
+  type StationPairPayload,
+} from "./station-pair-payload";
 
 export type DeviceRole = "order" | "ods" | "host";
 
@@ -84,20 +100,35 @@ export function isDurableStationStorageKey(key: string): boolean {
 }
 
 export function normalizeClaimCode(raw: string): string {
-  return raw.replace(/[\s-]/g, "").toUpperCase().slice(0, 12);
+  return normalizePairToken(raw);
 }
 
-export function stationPairPath(code: string): string {
-  return `/station?pair=${encodeURIComponent(normalizeClaimCode(code))}`;
+export function stationPairPath(
+  code: string,
+  extras?: { venue?: string; role?: PairDeviceRole },
+): string {
+  return encodePairQuery({ token: code, venue: extras?.venue, role: extras?.role });
 }
 
-export function stationPairHref(code: string, origin?: string): string {
-  const path = stationPairPath(code);
+export function stationPairHref(
+  code: string,
+  origin?: string,
+  extras?: { venue?: string; role?: PairDeviceRole },
+): string {
+  const path = stationPairPath(code, extras);
   if (origin) return `${origin.replace(/\/$/, "")}${path}`;
   return absolutePlatformHref(path);
 }
 
-export function pairQrImageSrc(code: string, origin?: string): string {
-  const url = stationPairHref(code, origin);
+export function pairQrImageSrc(
+  code: string,
+  origin?: string,
+  extras?: { venue?: string; role?: PairDeviceRole },
+): string {
+  const url = stationPairHref(code, origin, extras);
   return `https://api.qrserver.com/v1/create-qr-code/?size=180x180&margin=8&data=${encodeURIComponent(url)}`;
+}
+
+export function pairPayloadFromScan(raw: string) {
+  return parsePairScan(raw);
 }

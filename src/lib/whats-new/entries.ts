@@ -6,6 +6,19 @@ import type { GuideUpdate } from "@/lib/guide/types";
  */
 export const WHATS_NEW_ENTRIES: GuideUpdate[] = [
   {
+    id: "upd_2026_10_64_station_pair",
+    date: "2026-09-10",
+    title: "Summex Station pairs from Devices QR or code",
+    summary:
+      "One Play-ready APK. First screen is Scan QR or Enter code. Then PIN for that venue and role.",
+    body: "Summex Station (app.summex.pos) is one store APK. Unpaired cold start: Scan QR or Enter code from Devices — never /login, never the marketing site. Pair QR carries the one-time token, venue, and role. Codes expire; regenerate from the Devices row. After pair, the house snapshot is pushed and stored on the tablet. Next launches: PIN pad. Publish updates idle devices and the next PIN login. Lock-task / pin-windows is after pair. Guest QR stays in the phone browser. android-config is local debug only.",
+    roles: ["platform_admin", "owner_manager", "host_operator", "kitchen_bar"],
+    surfaces: ["settings", "floor"],
+    audience: "all",
+    topicId: "android-kiosk",
+    tags: ["android", "station", "devices", "pair"],
+  },
+  {
     id: "upd_2026_10_63_tenant_users",
     date: "2026-09-10",
     title: "Add location admin from Tenants → Users",
