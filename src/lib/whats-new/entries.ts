@@ -6,6 +6,19 @@ import type { GuideUpdate } from "@/lib/guide/types";
  */
 export const WHATS_NEW_ENTRIES: GuideUpdate[] = [
   {
+    id: "upd_2026_10_65_password_back_office",
+    date: "2026-09-11",
+    title: "Password login never shows the PIN pad",
+    summary:
+      "app.summex.app/login is back office only. Admin → CRM/tenants. Location admin → venue settings. PIN is the station app.",
+    body: "Username and password at app.summex.app/login never open the staff PIN pad. Platform Admin lands on the control plane (CRM / tenants). A location admin lands on that venue’s settings — Overview, Devices, Menus — not /venue/food_hall. There is no Continue as owner on a PIN screen after password auth. PIN is only Summex Station after pair, or /station/:role. A shared venue with no host merchant does not bounce the owner into a food_hall PIN loop.",
+    roles: ["platform_admin", "owner_manager"],
+    surfaces: ["settings"],
+    audience: "all",
+    topicId: "login",
+    tags: ["login", "pin", "back office", "station"],
+  },
+  {
     id: "upd_2026_10_64_station_pair",
     date: "2026-09-10",
     title: "Summex Station pairs from Devices QR or code",

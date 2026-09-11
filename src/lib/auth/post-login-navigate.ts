@@ -3,6 +3,7 @@ import { DEFAULT_POST_LOGIN, sanitizeNextPath } from "./safe-next-path";
 import {
   asVenueType,
   isMarketingStayPath,
+  isStaffPinSurface,
   postLoginDestination,
   type PostLoginSession,
 } from "./post-login-dest";
@@ -19,14 +20,6 @@ async function navigateSessionDest(
     return;
   }
   const dest = postLoginDestination(session);
-  if (dest.to === "/venue/$type") {
-    await navigate({
-      to: "/venue/$type",
-      params: { type: dest.type },
-      search: { loc: dest.loc },
-    });
-    return;
-  }
   if (dest.to === "/setup/$token") {
     await navigate({ to: "/setup/$token", params: { token: dest.token } });
     return;
@@ -164,6 +157,10 @@ export async function navigateAfterPasswordSignIn(
 ): Promise<void> {
   if (opts.mustChangePassword) {
     await navigate({ to: "/change-password" });
+    return;
+  }
+  if (isStaffPinSurface(opts.nextRaw)) {
+    await navigateSessionDest(navigate, opts.session);
     return;
   }
   await navigateToSanitizedPath(navigate, opts.nextRaw, opts.session);

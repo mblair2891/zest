@@ -1,8 +1,6 @@
 import { useState } from "react";
-import { Button } from "@/components/ui/button";
 import { SummexBrandBlock } from "@/components/brand/SummexMark";
 import { setActiveContextFn } from "@/lib/saas/api";
-import { sameOriginVenueHref } from "@/lib/saas/open-location";
 import type { SessionContext } from "@/lib/saas/types";
 
 export function LocationPicker({
@@ -15,7 +13,7 @@ export function LocationPicker({
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  const pick = async (orgId: string, locationId: string | null, venueType?: string) => {
+  const pick = async (orgId: string, locationId: string | null, _venueType?: string) => {
     setBusy(locationId ?? orgId);
     setError(null);
     try {
@@ -79,17 +77,10 @@ export function LocationPicker({
           </section>
         ))}
       </div>
-      {session.locations.length === 1 && (
-        <Button
-          className="w-full"
-          variant="outline"
-          onClick={() => {
-            const loc = session.locations[0]!;
-            window.location.assign(sameOriginVenueHref(loc.venueType, loc.id));
-          }}
-        >
-          Open POS
-        </Button>
+      {session.locations.length === 1 && !session.isPlatformAdmin && (
+        <p className="text-center text-xs text-muted-foreground">
+          After you select a house, you land on venue settings — not the PIN pad.
+        </p>
       )}
     </div>
   );

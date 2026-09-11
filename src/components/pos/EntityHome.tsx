@@ -14,7 +14,6 @@ import {
   UtensilsCrossed,
   Wine,
 } from "lucide-react";
-import { Button } from "@/components/ui/button";
 import { usePosStore } from "@/lib/pos/store";
 import { PinKeypad } from "./PinKeypad";
 import { ThisStationButton, SplitScreenToggle } from "./ChangeDeviceDialog";
@@ -43,7 +42,6 @@ import { isDevDemoClient } from "@/lib/saas/flags";
 import { isTrainingRosterId, TRAINING_PIN_HINT } from "@/lib/pos/training-roster";
 import { locationIsTraining } from "@/lib/lifecycle/store";
 import { SummexBrandBlock } from "@/components/brand/SummexMark";
-import { useCurrentUserState } from "@/lib/auth/use-current-user";
 import {
   DEVICE_ROLE_BLURB,
   DEVICE_ROLE_LABEL,
@@ -150,10 +148,8 @@ export function EntityLogin({ entityId }: { entityId: VenueEntityId }) {
   const [mode, setMode] = useState<GateMode>("login");
   const login = usePosStore((s) => s.login);
   const loginAs = usePosStore((s) => s.loginAs);
-  const loginAsOwner = usePosStore((s) => s.loginAsOwner);
   const applyEntity = usePosStore((s) => s.applyEntity);
   const clockToggle = usePosStore((s) => s.clockToggle);
-  const { user } = useCurrentUserState();
   const demo = isDevDemoClient();
   const prospect = isProspectDemo();
   const employees = usePosStore((s) => s.employees);
@@ -397,15 +393,6 @@ export function EntityLogin({ entityId }: { entityId: VenueEntityId }) {
               Marketing home
             </Link>
           </div>
-        )}
-
-        {user && !demo && !stationPad && (
-          <Button
-            className="mb-6 w-full"
-            onClick={() => loginAsOwner(user.displayName || "Owner")}
-          >
-            Continue as owner
-          </Button>
         )}
 
         {demo && !prospect && !stationPad && (

@@ -1,7 +1,9 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import {
   isMarketingStayPath,
+  isStaffPinSurface,
   postLoginDestination,
 } from "../src/lib/auth/post-login-dest.ts";
 import { sanitizeNextPath } from "../src/lib/auth/safe-next-path.ts";
@@ -16,18 +18,35 @@ test("admin always goes to the platform dashboard", () => {
   assert.deepEqual(dest, { to: "/dashboard" });
 });
 
-test("venue owner with a location goes to that house", () => {
+test("venue owner with a location goes to back-office dashboard, never PIN", () => {
   const dest = postLoginDestination({
     isPlatformAdmin: false,
     orgs: [{ id: "org_1" }],
     locations: [{ id: "loc_1", venueType: "food_hall" }],
     active: { locationId: "loc_1" },
   });
-  assert.deepEqual(dest, {
-    to: "/venue/$type",
-    type: "food_hall",
-    loc: "loc_1",
+  assert.deepEqual(dest, { to: "/dashboard" });
+});
+
+test("peer venue with no host does not send the owner to /venue/food_hall", () => {
+  const dest = postLoginDestination({
+    isPlatformAdmin: false,
+    orgs: [{ id: "org_peer" }],
+    locations: [{ id: "loc_peer", venueType: "food_hall" }],
+    active: { locationId: "loc_peer" },
   });
+  assert.equal(dest.to, "/dashboard");
+  assert.equal("type" in dest, false);
+});
+
+test("staff PIN surfaces are not password-login landings", () => {
+  assert.equal(isStaffPinSurface("/venue/food_hall"), true);
+  assert.equal(isStaffPinSurface("/venue/food_hall?loc=loc_1"), true);
+  assert.equal(isStaffPinSurface("/station"), true);
+  assert.equal(isStaffPinSurface("/station/ods"), true);
+  assert.equal(isStaffPinSurface("/?station=order"), true);
+  assert.equal(isStaffPinSurface("/dashboard"), false);
+  assert.equal(isStaffPinSurface("/login"), false);
 });
 
 test("owner with no location and no org goes to get a price", () => {
@@ -71,6 +90,11 @@ test("sales home is never a post-login stay path", () => {
   assert.equal(isMarketingStayPath("/privacy"), true);
   assert.equal(isMarketingStayPath("/dashboard"), false);
   assert.equal(isMarketingStayPath("/venue/restaurant"), false);
+});
+
+test("PIN pad UI is not the password-login escape hatch", () => {
+  const pin = readFileSync("src/components/pos/EntityHome.tsx", "utf8");
+  assert.doesNotMatch(pin, /Continue as owner/);
 });
 
 test("sanitizeNextPath drops the sales home and keeps station/venue", () => {

@@ -8,8 +8,9 @@ import { SettingsView } from "@/components/pos/SettingsView";
 import { MenuAdminView } from "@/components/pos/MenuAdminView";
 import { PosErrorBoundary } from "@/components/pos/PosErrorBoundary";
 import { getTenantDrillInFn } from "@/lib/saas/crm-api";
-import { getPosBootstrapFn } from "@/lib/saas/api";
+import { getPosBootstrapFn, getSessionContextFn } from "@/lib/saas/api";
 import { setActiveContextFn } from "@/lib/saas/api";
+import { signOut } from "@/lib/auth/client";
 import { usePosStore } from "@/lib/pos/store";
 import { useSaasStore } from "@/lib/pos/saas-store";
 import { useOpsStore } from "@/lib/pos/ops-store";
@@ -48,9 +49,12 @@ function venueTypeOf(raw: string): VenueEntityId {
 export function PlatformTenantVenue({
   orgId,
   locId,
+  audience = "platform",
 }: {
   orgId: string;
   locId?: string;
+  /** platform = Tenants drill-in. owner = location admin back office (never PIN). */
+  audience?: "platform" | "owner";
 }) {
   const navigate = useNavigate();
   const { user } = useCurrentUserState();
@@ -63,8 +67,12 @@ export function PlatformTenantVenue({
   const [activeLoc, setActiveLoc] = useState(locId || "");
   const [detail, setDetail] = useState<TenantDetailModel | null>(null);
   const [orgReadyId, setOrgReadyId] = useState("");
-  const hydrateKey = `${orgId}:${locId || ""}`;
+  const hydrateKey = `${audience}:${orgId}:${activeLoc || locId || ""}`;
   const lastHydrated = useRef("");
+
+  useEffect(() => {
+    if (locId) setActiveLoc(locId);
+  }, [locId]);
 
   useEffect(() => {
     if (lastHydrated.current === hydrateKey && ready) return;
@@ -73,28 +81,54 @@ export function PlatformTenantVenue({
     setReady(false);
     setError(null);
     void (async () => {
-      const drill = await getTenantDrillInFn({ data: { orgId } });
-      if (cancelled) return;
-      const locations = drill.locations;
+      type LocRow = { id: string; name: string; venueType: string; status?: string };
+      let locations: LocRow[] = [];
+      let drillOrg: {
+        name: string;
+        planId?: string | null;
+        status?: string;
+        createdAt?: string;
+      } = { name: "Venue" };
+      let drillMembers: Array<{ id: string; name: string; email: string; role: string }> = [];
+      let drillOps: Array<{ id: string; dba: string }> = [];
+
+      if (audience === "owner") {
+        const session = await getSessionContextFn();
+        if (cancelled) return;
+        const scoped = session.locations.filter((l) => l.orgId === orgId);
+        locations = (scoped.length ? scoped : session.locations).map((l) => ({
+          id: l.id,
+          name: l.name,
+          venueType: l.venueType,
+        }));
+        const org = session.orgs.find((o) => o.id === orgId) ?? session.orgs[0];
+        drillOrg = {
+          name: org?.name || session.locations[0]?.orgName || "Venue",
+          planId: org?.planId ?? "starter",
+          status: org?.status ?? "active",
+          createdAt: "",
+        };
+      } else {
+        const drill = await getTenantDrillInFn({ data: { orgId } });
+        if (cancelled) return;
+        locations = drill.locations;
+        drillOrg = drill.org;
+        drillMembers = drill.members;
+        drillOps = drill.operators.map((o) => ({ id: o.id, dba: o.dba }));
+      }
+
       setLocs(locations);
-      setOps(drill.operators.map((o) => ({ id: o.id, dba: o.dba })));
+      setOps(drillOps);
       const loc =
-        locations.find((l) => l.id === locId) ?? locations[0];
+        locations.find((l) => l.id === (activeLoc || locId)) ?? locations[0];
       if (!loc) {
-        setTitle(drill.org.name);
+        setTitle(drillOrg.name);
         setError("This org has no location yet.");
         setReady(true);
         return;
       }
       setActiveLoc(loc.id);
-      setTitle(loc.name || drill.org.name);
-      setDetail(
-        buildTenantDetailModel({
-          venueName: loc.name || drill.org.name,
-          operatingModel: undefined,
-          operators: drill.operators,
-        }),
-      );
+      setTitle(loc.name || drillOrg.name);
       await setActiveContextFn({ data: { orgId, locationId: loc.id } }).catch(() => undefined);
       const access = await getPosBootstrapFn({ data: { locationId: loc.id } });
       if (cancelled) return;
@@ -127,20 +161,20 @@ export function PlatformTenantVenue({
         venueType,
         locationName: access.location.name,
         orgName: access.org.name,
-        ownerName: user?.displayName || "Platform admin",
+        ownerName: user?.displayName || (audience === "owner" ? "Owner" : "Platform admin"),
         slug: access.location.slug,
       });
       const saasOrg: SaasOrganization = {
         id: access.org.id,
         name: access.org.name,
         legalName: access.org.name,
-        plan: (drill.org.planId ?? "starter") as SaasOrganization["plan"],
+        plan: (drillOrg.planId ?? "starter") as SaasOrganization["plan"],
         seats: 99,
         locationsIncluded: 99,
         merchantsIncluded: 40,
         billingEmail: user?.primaryEmail ?? "",
-        status: drill.org.status === "suspended" ? "cancelled" : "active",
-        createdAt: Date.parse(drill.org.createdAt) || Date.now(),
+        status: drillOrg.status === "suspended" ? "cancelled" : "active",
+        createdAt: Date.parse(drillOrg.createdAt || "") || Date.now(),
       };
       const saasLocs: SaasLocation[] = locations.map((l) => ({
         id: l.id,
@@ -150,7 +184,7 @@ export function PlatformTenantVenue({
         mode: venueTypeOf(l.venueType),
         address: "",
         timezone: access.location.timezone,
-        open: l.status === "active",
+        open: l.status ? l.status === "active" : true,
         enabledPackages:
           (access.location.enabledPackages as PackageId[] | undefined)?.length
             ? (access.location.enabledPackages as PackageId[])
@@ -158,7 +192,7 @@ export function PlatformTenantVenue({
       }));
       useSaasStore.getState().hydrateTenant({
         org: saasOrg,
-        members: drill.members.map((m) => ({
+        members: drillMembers.map((m) => ({
           id: m.id,
           orgId: access.org.id,
           name: m.name,
@@ -166,14 +200,14 @@ export function PlatformTenantVenue({
           role: m.role === "owner" || m.role === "manager" ? m.role : "ops",
         })),
         locations: saasLocs,
-        adminName: user?.displayName || "Platform admin",
-        adminRole: "platform_admin",
+        adminName: user?.displayName || (audience === "owner" ? "Owner" : "Platform admin"),
+        adminRole: audience === "owner" ? "owner" : "platform_admin",
       });
       useSaasStore.getState().setActiveLocation(loc.id);
       usePosStore.getState().openTenantLocation({
         entityId: venueType,
         venueName: access.location.name,
-        ownerName: user?.displayName || "Platform admin",
+        ownerName: user?.displayName || (audience === "owner" ? "Owner" : "Platform admin"),
         locationId: access.location.id,
         menuMode,
         vendors: access.operators,
@@ -199,14 +233,22 @@ export function PlatformTenantVenue({
           hostName: access.location.hostBrandName || access.location.name,
         },
       });
-      usePosStore.getState().loginAsOwner(user?.displayName || "Platform admin");
+      usePosStore.getState().loginAsOwner(
+        user?.displayName || (audience === "owner" ? "Owner" : "Platform admin"),
+      );
       const peer = access.location.operatingModel === "peer_venue";
+      const opsRows =
+        access.operators?.map((o) => ({
+          id: o.id,
+          dba: o.name || "",
+        })) ?? drillOps;
+      setOps(opsRows.filter((o) => o.dba));
       setDetail(
         buildTenantDetailModel({
-          venueName: access.location.name || loc.name || drill.org.name,
+          venueName: access.location.name || loc.name || drillOrg.name,
           operatingModel: access.location.operatingModel,
           peerVenue: peer,
-          operators: drill.operators,
+          operators: opsRows,
         }),
       );
       const st = usePosStore.getState();
@@ -298,6 +340,11 @@ export function PlatformTenantVenue({
   };
 
   const switchLoc = (id: string) => {
+    if (audience === "owner") {
+      setActiveLoc(id);
+      void setActiveContextFn({ data: { orgId, locationId: id } }).catch(() => undefined);
+      return;
+    }
     void navigate({
       to: "/platform/tenants/$orgId",
       params: { orgId },
@@ -313,14 +360,22 @@ export function PlatformTenantVenue({
         >
           <header className="flex h-14 shrink-0 items-center gap-3 border-b border-border bg-surface px-3">
             <SummexMark className="h-8 w-8" />
-            <Button size="sm" variant="ghost" onClick={back}>
-              <ArrowLeft className="mr-1 h-4 w-4" />
-              Tenants
-            </Button>
+            {audience === "owner" ? (
+              <Button size="sm" variant="ghost" onClick={() => void signOut("/login")}>
+                Sign out
+              </Button>
+            ) : (
+              <Button size="sm" variant="ghost" onClick={back}>
+                <ArrowLeft className="mr-1 h-4 w-4" />
+                Tenants
+              </Button>
+            )}
             <div className="min-w-0 flex-1">
               <p className="truncate text-sm font-semibold leading-tight">{title}</p>
               <p className="truncate text-[11px] text-muted-foreground">
-                Venue settings · no host merchant required
+                {audience === "owner"
+                  ? "Venue settings · Overview, Devices, Menus"
+                  : "Venue settings · no host merchant required"}
               </p>
             </div>
             {ops.length > 0 && (
@@ -353,14 +408,16 @@ export function PlatformTenantVenue({
           )}
           <div className="flex shrink-0 gap-1 overflow-x-auto border-b border-border px-3 py-2">
             {(
-              [
-                ["overview", "Overview"],
-                ["settings", "Settings"],
-                ["devices", "Devices"],
-                ["menu", "Menus"],
-                ["payments", "Payments"],
-                ["people", "Users"],
-              ] as const
+              (
+                [
+                  ["overview", "Overview"],
+                  ["settings", "Settings"],
+                  ["devices", "Devices"],
+                  ["menu", "Menus"],
+                  ["payments", "Payments"],
+                  ["people", "Users"],
+                ] as const
+              ).filter(([id]) => audience === "platform" || id !== "people")
             ).map(([id, label]) => (
               <button
                 key={id}
@@ -401,7 +458,7 @@ export function PlatformTenantVenue({
             {ready && !error && tab === "payments" && (
               <QuantumPaymentsSettings write />
             )}
-            {ready && !error && tab === "people" && (
+            {ready && !error && audience === "platform" && tab === "people" && (
               <TenantUsersPanel
                 orgId={orgReadyId || orgId}
                 locationId={activeLoc}

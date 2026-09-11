@@ -127,12 +127,17 @@ function PosAppInner({ entityId }: { entityId?: string }) {
         kind: sessionModeForDeviceRole(role),
       });
     }
-    if ((isStationPinPath() || isNativeApp()) && consumeStationPinGate()) {
+    const stationPad = isStationPinPath() || isNativeApp();
+    if (stationPad && consumeStationPinGate()) {
       if (usePosStore.getState().currentEmployeeId) {
         usePosStore.getState().logout();
       }
+      return;
     }
-  }, [ready]);
+    if (!stationPad && user && !usePosStore.getState().currentEmployeeId) {
+      usePosStore.getState().loginAsOwner(user.displayName || "Owner");
+    }
+  }, [ready, user]);
 
   useEffect(() => {
     let cancelled = false;
@@ -265,7 +270,9 @@ function PosAppInner({ entityId }: { entityId?: string }) {
             entityPermissions: parseGrantMatrix(setup.entityPermissions),
             locationDevices: parseLocationDevices(setup.locationDevices),
             floorStaff: access.floorStaff,
-            pinGate: Boolean(access.floorStaff?.length) || Boolean(access.openDemo),
+            pinGate:
+            (isStationPinPath() || isNativeApp()) &&
+            (Boolean(access.floorStaff?.length) || Boolean(access.openDemo)),
             staff: staffRole
               ? {
                   role: staffRole,
@@ -630,6 +637,15 @@ function PosAppInner({ entityId }: { entityId?: string }) {
   }
 
   if (entityId && isVenueEntityId(entityId)) {
+    const stationPad = isStationPinPath() || isNativeApp();
+    if (!stationPad && user) {
+      if (currentEmployeeId) return <AppShell />;
+      return (
+        <div className="flex min-h-[100dvh] items-center justify-center bg-bg pt-[var(--grok-banner-h,0px)] text-sm text-muted-foreground">
+          Opening back office…
+        </div>
+      );
+    }
     if (currentEmployeeId && activeEntityId === entityId) {
       return <AppShell />;
     }

@@ -10,7 +10,6 @@ import {
 } from "@/lib/saas/api";
 import type { LocationMode } from "@/lib/pos/saas-types";
 import { saveTenantPosContext } from "@/lib/saas/pos-context";
-import { sameOriginVenueHref } from "@/lib/saas/open-location";
 import { GuideLearnLink } from "@/components/guide/GuideLearnLink";
 
 export function OnboardingWizard({
@@ -107,7 +106,7 @@ export function OnboardingWizard({
         orgName: orgName.trim(),
         ownerName: defaultName || "Owner",
       });
-      window.location.assign(sameOriginVenueHref(venueType, locationId));
+      void navigate({ to: "/dashboard" });
       return;
     }
     void navigate({ to: "/dashboard" });

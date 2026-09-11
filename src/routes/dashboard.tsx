@@ -13,7 +13,7 @@ import {
   type PlatformSurface,
 } from "@/components/platform/surfaces";
 import { leftoverMarketingPlatformHref } from "@/lib/platform/hosts";
-import { asVenueType } from "@/lib/auth/post-login-dest";
+import { PlatformTenantVenue } from "@/components/platform/PlatformTenantVenue";
 
 export const Route = createFileRoute("/dashboard")({
   ssr: false,
@@ -96,18 +96,7 @@ function DashboardInner() {
       void navigate({ to: "/setup/$token", params: { token: session.setupToken } });
       return;
     }
-    const loc =
-      session.locations.find((l) => l.id === session.active?.locationId) ??
-      session.locations[0];
-    const venueType = loc ? asVenueType(loc.venueType) : null;
-    if (loc && venueType) {
-      void navigate({
-        to: "/venue/$type",
-        params: { type: venueType },
-        search: { loc: loc.id },
-      });
-      return;
-    }
+    if (session.locations.length > 0) return;
     if (session.setupToken) {
       void navigate({ to: "/setup/$token", params: { token: session.setupToken } });
       return;
@@ -148,10 +137,28 @@ function DashboardInner() {
   }
 
   if (!session.isPlatformAdmin) {
+    const loc =
+      session.locations.find((l) => l.id === session.active?.locationId) ??
+      session.locations[0];
+    if (!loc) {
+      return (
+        <div className="grid min-h-[100dvh] place-items-center bg-bg text-sm text-muted-foreground">
+          Opening your venue…
+        </div>
+      );
+    }
     return (
-      <div className="grid min-h-[100dvh] place-items-center bg-bg text-sm text-muted-foreground">
-        Opening your venue…
-      </div>
+      <>
+        {passwordUpdated && (
+          <div
+            className="border-b border-success/30 bg-success/10 px-4 py-2 text-center text-sm text-success"
+            role="status"
+          >
+            Password updated. You are signed in.
+          </div>
+        )}
+        <PlatformTenantVenue orgId={loc.orgId} locId={loc.id} audience="owner" />
+      </>
     );
   }
 

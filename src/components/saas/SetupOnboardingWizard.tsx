@@ -27,7 +27,6 @@ import {
   venueSubdomainHost,
 } from "@/lib/platform/venue-host";
 import { saveTenantPosContext } from "@/lib/saas/pos-context";
-import { sameOriginVenueHref } from "@/lib/saas/open-location";
 import { setActiveContextFn } from "@/lib/saas/api";
 import type { LocationMode } from "@/lib/pos/saas-types";
 import { QuantumPaymentsOnboardPanel } from "@/components/payments/QuantumPaymentsOnboardPanel";
@@ -962,7 +961,7 @@ export function SetupOnboardingWizard({ token }: { token: string }) {
           </ul>
           {detail.status === "live" && (
             <p className="text-sm text-success">
-              Venue is ready. Open POS. Invite each selling entity from Operators / Tenants —
+              Venue is ready. Open venue settings. Invite each selling entity from Operators / Tenants —
               they complete their own Quantum Payments merchant and menu. Shared venues have no
               host merchant.
             </p>
@@ -991,11 +990,11 @@ export function SetupOnboardingWizard({ token }: { token: string }) {
                 void setActiveContextFn({
                   data: { orgId: detail.orgId, locationId },
                 }).finally(() => {
-                  window.location.assign(sameOriginVenueHref(venueType, locationId));
+                  void navigate({ to: "/dashboard" });
                 });
               }}
             >
-              Open POS
+              Open venue settings
             </Button>
           )}
           <Link to="/dashboard" className="block text-sm text-primary underline-offset-2 hover:underline">
