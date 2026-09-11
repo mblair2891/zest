@@ -186,22 +186,22 @@ export const SAAS_TOPICS: GuideTopic[] = [
         "Account membership controls who can open the platform. PIN access level controls which POS tools appear after a station login.",
       ),
       ul(
-        "Platform Admin — tenants, pipeline, support. Not a restaurant owner.",
-        "Owner — org, billing lens, every location, packages.",
+        "Platform Admin — tenants, pipeline, support. Not a restaurant owner. There is only one platform Admin; tenant Users cannot mint another.",
+        "Location admin (venue owner) — email and password at app.summex.app/login. Sees only that house. Never CRM, pipeline, or other tenants.",
         "Manager — users, devices, day-to-day; not SaaS billing.",
         "Staff / vendor — limited location or stall tools.",
-        "PIN roles: Owner, Manager, Server, Bartender, Host (stand), Kitchen, Busser.",
+        "PIN roles: Server, Bartender, Host (stand), Kitchen, Busser, Cashier. Floor staff can be added from Tenants → Users with name, PIN, role, and home entity.",
       ),
       steps(
-        "From the platform, invite a work email and choose owner or manager.",
-        "The invitee sets their own password. They never share Admin.",
-        "In POS Staff, add people with a PIN and access level. Assign floor sections.",
+        "Tenants → open the venue → Users. Add location admin: name, email, temporary password, force change on first login.",
+        "They sign in at app.summex.app/login and land on that venue. Isolated demo houses work the same.",
+        "Optional: add floor staff who only have a PIN. Edit role, reset password or PIN, disable from the same list.",
         "Menus hide tools the PIN cannot use. A blocked deep link returns that person to their home screen.",
       ),
       tip(
         "FOH “Host” on the waitlist is not the same as Host Venue (multi-operator). The guide tab Host (multi-operator) is the hall/pod operator.",
       ),
-      related("login", "sections", "platform-admin", "create-org"),
+      related("login", "sections", "platform-admin", "create-org", "platform-tenants"),
     ],
   }),
   topic({
@@ -364,6 +364,7 @@ export const SAAS_TOPICS: GuideTopic[] = [
       ),
       steps(
         "Sign in as Admin (password). Tenants shows Summit Hall as Demo / pairable.",
+        "Open the demo → Users to add a location admin or PIN floor staff. They sign in at app.summex.app/login and only see that demo house. Other tenants cannot.",
         "Devices: add host, order, ODS kitchen, ODS bar. Pair Android stations. Publish when ready.",
         "Pipeline is for real intake → quote → contract → setup. Demo rows stay out of CRM stats, pipeline revenue, and subscriber counts.",
       ),

@@ -3,7 +3,7 @@
 **Powered by Quantum Reach**
 
 White paper · for owners and operators  
-**Revision · 10 Sep 2026** — Written for prospective subscribers. Aligns with Operators Guide v2026.10.62. Staff stations are Android tablets.
+**Revision · 10 Sep 2026** — Written for prospective subscribers. Aligns with Operators Guide v2026.10.63. Staff stations are Android tablets.
 
 summex.app  
 Guest cards: **Quantum Payments** only
@@ -68,7 +68,7 @@ The tablet is a screen. **PIN** says who is working.
 
 **Sections** keep servers on their part of the room unless a manager grants a table. Combine tables on the lowest number.
 
-**PIN is not clock-in and not closeout.** Owners and managers use a back-office password. Floor staff use a 4-digit PIN on the station. Clock in and out is Labor. End of shift is a **blind till count** — staff enter what is in the drawer; expected cash is hidden until they submit. After submit the station prints a turn-in slip for the drop bag. No fill-in close form. During the shift, staff can move cash **till to till** when one drawer is short on small bills; expected cash on each till updates so the blind count still balances.
+**PIN is not clock-in and not closeout.** The location admin (venue owner) signs in with email and password and only sees that house. Floor staff who only need a PIN are added with name, PIN, role, and home entity. Clock in and out is Labor. End of shift is a **blind till count** — staff enter what is in the drawer; expected cash is hidden until they submit. After submit the station prints a turn-in slip for the drop bag. No fill-in close form. During the shift, staff can move cash **till to till** when one drawer is short on small bills; expected cash on each till updates so the blind count still balances.
 
 **Kiosk and waitlist** sit beside the host stand. Guests order, join a wait, or check in. Staff keep the floor.
 

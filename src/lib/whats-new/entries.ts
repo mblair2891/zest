@@ -6,6 +6,19 @@ import type { GuideUpdate } from "@/lib/guide/types";
  */
 export const WHATS_NEW_ENTRIES: GuideUpdate[] = [
   {
+    id: "upd_2026_10_63_tenant_users",
+    date: "2026-09-10",
+    title: "Add location admin from Tenants → Users",
+    summary:
+      "Peer venues and demo houses get users on this page: location admin login, optional PIN staff.",
+    body: "Tenants → venue → Users adds a location admin (name, email, temporary password, force change on first login — venue owner). They sign in at app.summex.app/login and only see that house. Optional floor staff: name, PIN, role, home entity. Edit role, reset password or PIN, disable. You cannot create a second platform Admin. Isolated demo tenants included. The empty “add people on the platform” loop is gone.",
+    roles: ["platform_admin"],
+    surfaces: ["settings"],
+    audience: "platform",
+    topicId: "platform-tenants",
+    tags: ["tenants", "users", "location admin"],
+  },
+  {
     id: "upd_2026_10_62_summit_hall_demo",
     date: "2026-09-10",
     title: "Summit Hall isolated demo",

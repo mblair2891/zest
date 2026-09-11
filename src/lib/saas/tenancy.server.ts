@@ -31,6 +31,7 @@ import { parseLaborMap } from "@/lib/labor/rules";
 import { parseOpsJobsConfig } from "@/lib/ops-jobs/config";
 import { parseQrPolicy } from "@/lib/pos/qr-policy";
 import { parseLocationOperatingModel } from "./location-model";
+import { demoVenueIsolated } from "./tenant-users";
 
 type OrgRow = {
   id: string;
@@ -413,9 +414,6 @@ export async function requireMembership(
       operatorId: null,
     };
   }
-  if (org.is_demo) {
-    throw new ForbiddenError("Demo venues are isolated from tenants");
-  }
 
   const mems = await sql<MemRow>`
     select * from memberships
@@ -426,6 +424,15 @@ export async function requireMembership(
     : undefined;
   const orgWide = mems.find((m) => !m.location_id);
   const mem = specific ?? orgWide ?? mems[0];
+  if (
+    demoVenueIsolated({
+      isDemo: Boolean(org.is_demo),
+      isPlatformAdmin: false,
+      hasOrgMembership: Boolean(mem),
+    })
+  ) {
+    throw new ForbiddenError("Demo venues are isolated from tenants");
+  }
   if (!mem) throw new ForbiddenError();
   if (locationId && mem.location_id && mem.location_id !== locationId) {
     throw new ForbiddenError();
@@ -481,7 +488,6 @@ export async function getSessionContext(userId: string): Promise<SessionContext>
     join memberships m on m.org_id = o.id and m.user_id = ${userId} and m.status = 'active'
     left join org_subscriptions s on s.org_id = o.id
     left join plans p on p.id = s.plan_id
-    where coalesce(o.is_demo, false) = false
     order by o.created_at desc
   `;
 
@@ -501,8 +507,6 @@ export async function getSessionContext(userId: string): Promise<SessionContext>
     join organizations o on o.id = l.org_id
     join memberships m on m.org_id = l.org_id and m.user_id = ${userId} and m.status = 'active'
     where o.status = 'active'
-      and coalesce(o.is_demo, false) = false
-      and coalesce(l.is_demo, false) = false
       and (m.location_id is null or m.location_id = l.id)
     order by o.name, l.name
   `;

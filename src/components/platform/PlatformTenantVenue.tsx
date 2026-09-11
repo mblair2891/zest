@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Link, useNavigate } from "@tanstack/react-router";
+import { useNavigate } from "@tanstack/react-router";
 import { ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -37,6 +37,7 @@ import {
 } from "@/lib/saas/tenant-detail";
 import { LocationDeviceRegistry } from "@/components/pos/LocationDeviceRegistry";
 import { QuantumPaymentsSettings } from "@/components/pos/QuantumPaymentsSettings";
+import { TenantUsersPanel } from "@/components/platform/TenantUsersPanel";
 
 type Tab = "overview" | "settings" | "devices" | "menu" | "payments" | "people";
 
@@ -59,11 +60,9 @@ export function PlatformTenantVenue({
   const [title, setTitle] = useState("Venue");
   const [ops, setOps] = useState<Array<{ id: string; dba: string }>>([]);
   const [locs, setLocs] = useState<Array<{ id: string; name: string; venueType: string }>>([]);
-  const [people, setPeople] = useState<Array<{ id: string; name: string; email: string; role: string }>>([]);
   const [activeLoc, setActiveLoc] = useState(locId || "");
   const [detail, setDetail] = useState<TenantDetailModel | null>(null);
   const [orgReadyId, setOrgReadyId] = useState("");
-  const employees = usePosStore((s) => s.employees);
   const hydrateKey = `${orgId}:${locId || ""}`;
   const lastHydrated = useRef("");
 
@@ -79,7 +78,6 @@ export function PlatformTenantVenue({
       const locations = drill.locations;
       setLocs(locations);
       setOps(drill.operators.map((o) => ({ id: o.id, dba: o.dba })));
-      setPeople(drill.members);
       const loc =
         locations.find((l) => l.id === locId) ?? locations[0];
       if (!loc) {
@@ -404,40 +402,11 @@ export function PlatformTenantVenue({
               <QuantumPaymentsSettings write />
             )}
             {ready && !error && tab === "people" && (
-              <div className="mx-auto max-w-lg space-y-4">
-                <p className="text-sm font-semibold">Users</p>
-                <ul className="space-y-2 text-sm">
-                  {people.map((m) => (
-                    <li key={m.id} className="rounded-xl border border-border bg-surface px-3 py-2">
-                      <span className="font-medium">{m.name}</span>
-                      <span className="mt-0.5 block text-xs text-muted-foreground">
-                        {m.role}
-                        {m.email ? ` · ${m.email}` : ""}
-                      </span>
-                    </li>
-                  ))}
-                  {employees
-                    .filter((e) => e.active && e.id !== "emp_owner")
-                    .map((e) => (
-                      <li key={e.id} className="rounded-xl border border-border bg-surface px-3 py-2">
-                        <span className="font-medium">{e.name}</span>
-                        <span className="mt-0.5 block text-xs text-muted-foreground">
-                          Floor · {e.role}
-                        </span>
-                      </li>
-                    ))}
-                  {people.length === 0 && employees.filter((e) => e.id !== "emp_owner").length === 0 && (
-                    <li className="text-muted-foreground">No users yet. Add people on the platform.</li>
-                  )}
-                </ul>
-                <Link
-                  to="/dashboard"
-                  search={{ surface: "tenants" }}
-                  className="text-sm text-muted-foreground underline"
-                >
-                  Back to Tenants
-                </Link>
-              </div>
+              <TenantUsersPanel
+                orgId={orgReadyId || orgId}
+                locationId={activeLoc}
+                operators={ops}
+              />
             )}
           </main>
         </div>
@@ -493,6 +462,9 @@ function TenantOverview({
         </Button>
         <Button size="sm" variant="outline" onClick={() => onOpen("payments")}>
           Payments
+        </Button>
+        <Button size="sm" variant="outline" onClick={() => onOpen("people")}>
+          Users
         </Button>
       </div>
     </div>

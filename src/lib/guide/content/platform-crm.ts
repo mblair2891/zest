@@ -69,23 +69,25 @@ export const PLATFORM_CRM_TOPICS: GuideTopic[] = [
     blocks: [
       why("Once a house is live it is a tenant — billed software, not a prospect card."),
       ul(
-        "Directory shows plan, location count, operators, MRR proxy from the deal, past-due, open tickets.",
+        "Directory shows plan, location count, operators, MRR proxy from the deal, past-due, open tickets. Isolated demo houses are listed as Demo / pairable.",
         "Each location shows training | scheduled_live | live. Training is sandbox cards; live cards wait for processor approval.",
         "Click the tenant row to open the venue URL (https://{slug}.summex.app, or /v/{slug} in preview). Settings stays on the list for in-console edits.",
         "Shared venue (peer) works with no host merchant. The screen shows the building plus child entities (bar operator, food operator).",
+        "Users tab: add a location admin (name, email, temporary password, force change on first login — role is venue owner). They sign in at app.summex.app/login and only see that venue. Optional: add floor staff who only have a PIN (name, PIN, role, home entity). Edit role, reset password or PIN, disable. You cannot create a second platform Admin. Isolated demo tenants included.",
         "Back returns to Tenants. The house stays listed after save.",
         "Plan / Suspend stay on the list (Plan) and do not require a host merchant.",
       ),
       steps(
         "Control plane → Tenants.",
         "Click the tenant. Venue settings open.",
+        "Users: add a location admin (or PIN floor staff). They are not sent in a circle to “add people on the platform.”",
         "Edit location, devices, menus, payments, QR, cash, or labor. Save.",
         "Tenants → back. The same org is still in the directory.",
       ),
       warn(
         "Tenants opens the real venue settings in place. Shared venue does not require a host merchant. Do not treat a training house as a demo seed.",
       ),
-      related("saas-billing", "saas-support", "empty-start", "laundry-test-venue", "single-vs-multi"),
+      related("saas-billing", "saas-support", "empty-start", "laundry-test-venue", "single-vs-multi", "invites-roles"),
     ],
   }),
   topic({

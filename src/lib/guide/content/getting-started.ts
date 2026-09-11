@@ -137,7 +137,7 @@ export const GETTING_STARTED_TOPICS: GuideTopic[] = [
         "Prime from the control plane, then PIN-only. Install Summex Station on each Android tablet and pair once while online. After that, cold start is the PIN pad — not /login. Printed receipts group lines by vendor; the guest still holds one check and one Quantum Payments tender.",
       ),
       steps(
-        "Back office: Log in at app.summex.app/login with username or email and password. Admin lands on the platform dashboard. A venue owner lands on that house — never the sales home.",
+        "Back office: Log in at app.summex.app/login with username or email and password. Admin lands on the platform dashboard. A location admin (venue owner) lands on that house — never the sales home, CRM, or other tenants.",
         "Prime each Android tablet once: install Summex Station, pair with the Devices code or QR (internet required). Thereafter the device is PIN-only.",
         "Floor: the station opens on app.summex.app/?station= or app.summex.app/station/order (ods, host) — never the sales home. Enter your 4-digit PIN. Switch user returns to the keypad without changing the device role.",
         "Clock in / out from Labor (and Employees). The PIN pad does not punch you. Signing out of POS does not clock you out.",
