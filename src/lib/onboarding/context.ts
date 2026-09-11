@@ -38,6 +38,8 @@ export function walkthroughLabel(key: WalkthroughKey): string {
       return "Owner";
     case "manager":
       return "Manager";
+    case "supervisor":
+      return "Supervisor";
     case "server":
       return "Server";
     case "host":

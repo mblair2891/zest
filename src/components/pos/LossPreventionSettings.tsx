@@ -20,6 +20,7 @@ const CAP_ROLES: EmployeeRole[] = [
   "bartender",
   "host",
   "cashier",
+  "supervisor",
   "manager",
 ];
 

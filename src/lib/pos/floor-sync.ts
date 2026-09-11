@@ -2,6 +2,7 @@ import { useEffect } from "react";
 import { uid } from "@/lib/utils";
 import { enqueueMutation, useNetworkStore } from "@/lib/pos/network-store";
 import { usePosStore } from "@/lib/pos/store";
+import { readStationDeviceRole } from "@/lib/pos/device-roles";
 import type { KitchenTicket, Order, OrderLine, Payment, Table, TicketStation } from "@/lib/pos/types";
 import type {
   FloorActor,
@@ -36,7 +37,12 @@ function actor(): FloorActor | undefined {
   try {
     const emp = usePosStore.getState().getCurrentEmployee?.();
     if (!emp) return undefined;
-    return { employeeId: emp.id, employeeName: emp.name };
+    return {
+      employeeId: emp.id,
+      employeeName: emp.name,
+      role: emp.role,
+      deviceRole: readStationDeviceRole() ?? undefined,
+    };
   } catch {
     return undefined;
   }
@@ -382,15 +388,15 @@ export async function persistAfterLocalMutation(kind: string, id?: string): Prom
       { locationId, check, table, actor: who },
       async () => {
         await upsertCheckFn({
-          data: { locationId, check, clientMutationId: uid("mut") },
+          data: { locationId, check, clientMutationId: uid("mut"), actor: who },
         });
         if (kind === "lines-flush" || kind === "lines") {
           await addCheckLinesFn({
-            data: { locationId, checkId: order.id, lines: check.lines },
+            data: { locationId, checkId: order.id, lines: check.lines, actor: who },
           });
         }
         if (table) {
-          await upsertTableStatusFn({ data: { locationId, table } });
+          await upsertTableStatusFn({ data: { locationId, table, actor: who } });
         }
       },
     );
@@ -417,7 +423,7 @@ export async function persistAfterLocalMutation(kind: string, id?: string): Prom
       "Tickets are live on ODS when this device is online",
       { locationId, check, tickets: floorTickets, table, actor: who },
       async () => {
-        await upsertCheckFn({ data: { locationId, check } });
+        await upsertCheckFn({ data: { locationId, check, actor: who } });
         await sendToStationsFn({
           data: {
             locationId,
@@ -445,7 +451,7 @@ export async function persistAfterLocalMutation(kind: string, id?: string): Prom
       "Payment posted on the shared check",
       { locationId, check, table, actor: who },
       async () => {
-        await upsertCheckFn({ data: { locationId, check } });
+        await upsertCheckFn({ data: { locationId, check, actor: who } });
         await recordCheckPaymentFn({
           data: {
             locationId,
@@ -454,6 +460,7 @@ export async function persistAfterLocalMutation(kind: string, id?: string): Prom
             checkStatus: order.status,
             closedAt: order.closedAt ?? null,
             table,
+            actor: who,
           },
         });
       },
@@ -509,7 +516,7 @@ export async function persistAfterLocalMutation(kind: string, id?: string): Prom
       "Table status is live across devices when online",
       { locationId, table: payload, tableId: payload.tableId, guestCount: payload.guestCount, actor: who },
       async () => {
-        await upsertTableStatusFn({ data: { locationId, table: payload } });
+        await upsertTableStatusFn({ data: { locationId, table: payload, actor: who } });
         const order = table?.orderId ? s.orders.find((o) => o.id === table.orderId) : undefined;
         if (order) {
           await upsertCheckFn({

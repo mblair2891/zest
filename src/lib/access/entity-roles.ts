@@ -5,6 +5,7 @@ export const ROLES_BY_VENUE: Record<VenueEntityId, EmployeeRole[]> = {
   restaurant: [
     "owner",
     "manager",
+    "supervisor",
     "server",
     "host",
     "bartender",
@@ -17,6 +18,7 @@ export const ROLES_BY_VENUE: Record<VenueEntityId, EmployeeRole[]> = {
   food_hall: [
     "owner",
     "manager",
+    "supervisor",
     "server",
     "host",
     "bartender",

@@ -76,6 +76,7 @@ import { PayrollExportWatcher } from "./PayrollExportWatcher";
 import { StaffingWatcher } from "./StaffingWatcher";
 import { useStationSessionStore } from "@/lib/pos/station-session";
 import { canChangeDevice, stationKindLabel, stationsAllowedForEmployee } from "@/lib/pos/station-access";
+import { viewForDevicePin } from "@/lib/access/pin-role";
 import { readStationDeviceRole } from "@/lib/pos/device-roles";
 import { EndShiftFlow } from "./EndShiftFlow";
 import { ClockInAfterPinDialog } from "./ClockInAfterPinDialog";
@@ -381,9 +382,17 @@ export function AppShell() {
     }
     const allowed = stationsAllowedForEmployee(emp, {
       training: locationIsTraining(),
+      demo: isProspectDemo() || isDevDemoClient(),
     });
     let kind = useStationSessionStore.getState().assignment.kind;
-    if (canChangeDevice(emp) && allowed.length && !allowed.includes(kind)) {
+    if (
+      canChangeDevice(emp, {
+        training: locationIsTraining(),
+        demo: isProspectDemo() || isDevDemoClient(),
+      }) &&
+      allowed.length &&
+      !allowed.includes(kind)
+    ) {
       kind = allowed[0]!;
       useStationSessionStore.getState().setAssignment({ kind });
     }
@@ -536,7 +545,10 @@ export function AppShell() {
           )}
 
           <ThisStationButton />
-          {canChangeDevice(emp) && <SplitScreenToggle />}
+          {canChangeDevice(emp, {
+            training: locationIsTraining(),
+            demo: isProspectDemo() || isDevDemoClient(),
+          }) && <SplitScreenToggle />}
           {emp &&
             (role === "server" ||
               role === "bartender" ||
@@ -739,7 +751,9 @@ export function AppShell() {
           </div>
         ) : (
         <main className="min-h-0 min-w-0 flex-1 overflow-hidden" data-demo={safeView}>
-          {urlStation ? (
+          {urlStation &&
+          emp &&
+          canAccessViewForEmployee(emp, viewForDevicePin(urlStation, emp.role)) ? (
             <DeviceModeView
               mode={stationAssignment.kind}
               operatorId={stationAssignment.operatorId}

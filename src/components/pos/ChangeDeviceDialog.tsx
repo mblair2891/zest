@@ -31,6 +31,9 @@ import {
   type DeviceRole,
 } from "@/lib/pos/device-roles";
 import { cn } from "@/lib/utils";
+import { locationIsTraining } from "@/lib/lifecycle/store";
+import { isProspectDemo } from "@/lib/demo/session";
+import { isDevDemoClient } from "@/lib/saas/flags";
 
 function entityName(
   id: string,
@@ -50,7 +53,10 @@ export function ThisStationButton({ compact }: { compact?: boolean }) {
   const hostName = usePosStore((s) => s.settings.name);
   const emp = usePosStore((s) => s.employees.find((e) => e.id === s.currentEmployeeId));
   const role = deviceRoleFromSessionMode(kind);
-  const manager = canChangeDevice(emp ?? null);
+  const manager = canChangeDevice(emp ?? null, {
+    training: locationIsTraining(),
+    demo: isProspectDemo() || isDevDemoClient(),
+  });
   const label = split
     ? "Split display"
     : `${DEVICE_ROLE_LABEL[role]}${compact ? "" : ` · ${entityName(operatorId, hostName, vendors)}`}`;
@@ -150,7 +156,10 @@ export function StationSwitcherDialog({
   const devices = usePosStore((s) => s.locationDevices ?? []);
 
   const current = pane === "a" ? paneA : pane === "b" ? paneB : assignment;
-  const manager = canChangeDevice(emp ?? null);
+  const manager = canChangeDevice(emp ?? null, {
+    training: locationIsTraining(),
+    demo: isProspectDemo() || isDevDemoClient(),
+  });
   const entities = useMemo(
     () => entitiesAllowedForEmployee(emp ?? null, vendors, hostName, { peerVenue }),
     [emp, vendors, hostName, peerVenue],

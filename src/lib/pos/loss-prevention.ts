@@ -222,6 +222,7 @@ export const AUDIT_MAX_ENTRIES = 5000;
 export const DEFAULT_DISCOUNT_CAPS: Record<EmployeeRole, DiscountCap> = {
   owner: { maxPercent: 100, maxCents: 0 },
   manager: { maxPercent: 50, maxCents: 0 },
+  supervisor: { maxPercent: 25, maxCents: 2500 },
   server: { maxPercent: 10, maxCents: 1000 },
   bartender: { maxPercent: 10, maxCents: 1000 },
   host: { maxPercent: 5, maxCents: 500 },

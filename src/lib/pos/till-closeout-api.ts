@@ -1,5 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 import { tenantMiddleware } from "@/lib/saas/tenant-middleware";
+import { assertPinAction, parsePinRole } from "@/lib/access/pin-role";
 import { parseTransferLines, type CountSubmitInput, type ExpectedSnapshot } from "./till-closeout";
 
 function loc(raw: unknown): string {
@@ -68,6 +69,7 @@ export const startTillCloseoutFn = createServerFn({ method: "POST" })
     deviceId: d.deviceId ? clip(d.deviceId, 80) : null,
   }))
   .handler(async ({ context, data }) => {
+    assertPinAction(parsePinRole(data.employee.role), "till.close.own");
     const { startTillCloseout } = await import("./till-closeout.server");
     return startTillCloseout(context.userId, data);
   });
@@ -158,6 +160,7 @@ export const managerTillQueueFn = createServerFn({ method: "POST" })
     toMs: d.toMs ? Number(d.toMs) : undefined,
   }))
   .handler(async ({ context, data }) => {
+    assertPinAction(parsePinRole(data.employeeRole), "till.approve");
     const { managerTillQueue } = await import("./till-closeout.server");
     return managerTillQueue(context.userId, data);
   });
@@ -178,6 +181,7 @@ export const acceptTillCloseoutFn = createServerFn({ method: "POST" })
     note: d.note ? clip(d.note, 240) : undefined,
   }))
   .handler(async ({ context, data }) => {
+    assertPinAction(parsePinRole(data.actor.role), "till.approve");
     const { acceptTillCloseout } = await import("./till-closeout.server");
     return acceptTillCloseout(context.userId, data);
   });

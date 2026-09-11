@@ -9,6 +9,7 @@ export const FLOOR_ROLES: EmployeeRole[] = [
   "kitchen",
   "busser",
   "cashier",
+  "supervisor",
 ];
 
 export const BACK_OFFICE_ROLES: EmployeeRole[] = [

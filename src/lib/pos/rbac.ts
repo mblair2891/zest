@@ -1,9 +1,11 @@
 import type { Employee, EmployeeRole, PosView } from "./types";
+import { PIN_VIEWS } from "@/lib/access/pin-role";
 
 /** Human labels for login chips & header */
 export const ROLE_LABEL: Record<EmployeeRole, string> = {
   owner: "Owner",
   manager: "Manager",
+  supervisor: "Supervisor",
   server: "Server",
   bartender: "Bartender",
   host: "Host stand",
@@ -16,13 +18,14 @@ export const ROLE_LABEL: Record<EmployeeRole, string> = {
 };
 
 export const ROLE_BLURB: Record<EmployeeRole, string> = {
-  owner: "Full location control, settings, staff, settlement",
-  manager: "Ops, floor, most settings — not org delete/billing",
-  server: "Assigned sections, checks, pay — no settings",
-  bartender: "Bar tickets, tabs, drink 86",
-  host: "Waitlist, reservations, seating",
-  kitchen: "ODS, Start/Bump, item 86",
-  busser: "Table turns",
+  owner: "Full location control, settings, staff, settlement — not platform CRM",
+  manager: "Venue back office, floor, Devices, Publish, closeout approve — not platform CRM",
+  supervisor: "Floor, expedite, voids/comp within limits, clock exceptions — not Publish",
+  server: "Assigned sections, one check, send, pay if allowed, own closeout",
+  bartender: "Bar well orders, drink send, own drawer, bar ODS if that station",
+  host: "Floor, seat, waitlist/reservations, to-go — not server till close",
+  kitchen: "ODS Start/Bump only — no pay, no drawer, no price edits",
+  busser: "Dirty → clean tables only — no orders, no pay",
   cashier: "Counter queue and pay",
   vendor_operator: "Own menu, tickets, reports — peer menus view-only unless host grants",
   accountant: "Reports and ledger, limited ops",
@@ -33,86 +36,23 @@ export const ROLE_BLURB: Record<EmployeeRole, string> = {
 export const ROLE_HOME: Record<EmployeeRole, PosView> = {
   owner: "hq",
   manager: "hq",
-  server: "hq",
-  bartender: "hq",
-  host: "hq",
-  kitchen: "hq",
-  busser: "hq",
-  cashier: "hq",
+  supervisor: "hq",
+  server: "floor",
+  bartender: "order",
+  host: "waitlist",
+  kitchen: "kitchen",
+  busser: "floor",
+  cashier: "order",
   vendor_operator: "hq",
   accountant: "hq",
   kiosk: "waitlist",
 };
 
 /**
- * Views each role may open. Owner = all.
- * Unknown views fall through to owner-only via canAccessView.
+ * Views each role may open. Owner = all venue tools, not platform CRM.
+ * Live stations list only this job’s screens.
  */
-const ROLE_VIEWS: Record<EmployeeRole, PosView[] | "all"> = {
-  owner: "all",
-  manager: [
-    "hq",
-    "floor",
-    "order",
-    "kitchen",
-    "bar",
-    "waitlist",
-    "takeout",
-    "online",
-    "hall",
-    "settlement",
-    "ledger",
-    "vendor_portal",
-    "integrations",
-    "reports",
-    "inventory",
-    "menu",
-    "labor",
-    "hr",
-    "inventory_ai",
-    "drink_ai",
-    "employees",
-    "customers",
-    "cash",
-    "settings",
-    "floor_editor",
-    "schedule",
-    "promos",
-    "catering",
-    "recipes",
-    "purchasing",
-    "payouts",
-    "delivery",
-    "campaigns",
-    "marketing",
-    "website",
-    "checklists",
-    "truck_pod",
-    "package",
-    "features",
-  ],
-  server: ["hq", "floor", "order", "takeout", "hall", "waitlist", "customers", "drink_ai", "online", "reports", "schedule", "labor", "hr"],
-  bartender: ["hq", "bar", "order", "takeout", "drink_ai", "customers", "inventory", "reports", "schedule", "labor", "hr"],
-  host: ["hq", "waitlist", "floor", "floor_editor", "customers", "online", "reports", "schedule", "labor", "hr"],
-  kitchen: ["hq", "kitchen", "recipes", "checklists", "inventory", "reports", "schedule", "labor", "hr"],
-  busser: ["hq", "floor", "schedule"],
-  cashier: ["hq", "order", "takeout", "cash", "online", "schedule", "labor", "hr"],
-  vendor_operator: [
-    "hq",
-    "vendor_portal",
-    "kitchen",
-    "bar",
-    "menu",
-    "employees",
-    "labor",
-    "hr",
-    "schedule",
-    "reports",
-    "ledger",
-  ],
-  accountant: ["hq", "reports", "ledger", "settlement", "cash", "hr", "labor"],
-  kiosk: ["waitlist", "order"],
-};
+const ROLE_VIEWS: Record<EmployeeRole, PosView[] | "all"> = PIN_VIEWS;
 
 export function canAccessView(role: EmployeeRole, view: PosView): boolean {
   const allowed = ROLE_VIEWS[role];
@@ -159,6 +99,7 @@ export function pickRoleRepresentatives<
   const order: EmployeeRole[] = [
     "owner",
     "manager",
+    "supervisor",
     "server",
     "host",
     "bartender",

@@ -27,6 +27,7 @@ export const TENANT_FLOOR_ROLES: EmployeeRole[] = [
   "kitchen",
   "busser",
   "cashier",
+  "supervisor",
   "manager",
   "owner",
   "vendor_operator",

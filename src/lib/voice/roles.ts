@@ -6,6 +6,7 @@ export type VoiceRoleKey = EmployeeRole;
 export const VOICE_ROLE_KEYS: VoiceRoleKey[] = [
   "owner",
   "manager",
+  "supervisor",
   "server",
   "host",
   "bartender",
@@ -20,6 +21,7 @@ export const VOICE_ROLE_KEYS: VoiceRoleKey[] = [
 export const VOICE_ROLE_LABEL: Record<VoiceRoleKey, string> = {
   owner: "Owner",
   manager: "Manager",
+  supervisor: "Supervisor",
   server: "Server",
   host: "Host stand",
   bartender: "Bartender",
@@ -35,6 +37,7 @@ export const VOICE_ROLE_LABEL: Record<VoiceRoleKey, string> = {
 export const DEFAULT_VOICE_BY_ROLE: Record<VoiceRoleKey, boolean> = {
   owner: true,
   manager: true,
+  supervisor: true,
   server: true,
   host: true,
   bartender: true,

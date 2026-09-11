@@ -40,16 +40,20 @@ export const STATION_GROUPS: Array<{
 
 const ALL_KINDS: SessionModeId[] = [...DEVICE_ROLE_KINDS];
 
-export function canChangeDevice(emp: Employee | null | undefined): boolean {
-  return emp?.role === "owner" || emp?.role === "manager";
+export function canChangeDevice(
+  emp: Employee | null | undefined,
+  opts?: { training?: boolean; demo?: boolean },
+): boolean {
+  if (emp?.role !== "owner" && emp?.role !== "manager") return false;
+  return Boolean(opts?.training || opts?.demo);
 }
 
 export function stationsAllowedForEmployee(
   emp: Employee | null | undefined,
-  _opts?: { training?: boolean },
+  opts?: { training?: boolean; demo?: boolean },
 ): SessionModeId[] {
-  if (emp?.role === "owner" || emp?.role === "manager") return ALL_KINDS;
-  return [];
+  if (!canChangeDevice(emp, opts)) return [];
+  return ALL_KINDS;
 }
 
 export function deviceRolesAllowedForEmployee(

@@ -245,6 +245,7 @@ export function demoSwitcherOptions(
   const order: EmployeeRole[] = [
     "owner",
     "manager",
+    "supervisor",
     "server",
     "host",
     "bartender",

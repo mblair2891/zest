@@ -1,8 +1,11 @@
 import { createServerFn } from "@tanstack/react-start";
 import { tenantMiddleware } from "@/lib/saas/tenant-middleware";
+import { assertPinAction, parsePinRole, type PinAction } from "@/lib/access/pin-role";
+import { parseStationQuery } from "@/lib/pos/device-roles";
 import type { TicketStation } from "./types";
 import type {
   AddLinesInput,
+  FloorActor,
   FloorCheck,
   FloorLine,
   FloorPayment,
@@ -24,6 +27,12 @@ function loc(raw: unknown): string {
 
 function clip(raw: unknown, max: number): string {
   return String(raw ?? "").trim().slice(0, max);
+}
+
+function assertFloorActor(actor: FloorActor | undefined, action: PinAction): void {
+  if (!actor?.role) return;
+  const role = parsePinRole(actor.role);
+  assertPinAction(role, action, { deviceRole: parseStationQuery(actor.deviceRole) });
 }
 
 export const listOpenFloorFn = createServerFn({ method: "POST" })
@@ -59,8 +68,10 @@ export const upsertCheckFn = createServerFn({ method: "POST" })
     locationId: loc(d.locationId),
     check: d.check as FloorCheck,
     clientMutationId: d.clientMutationId ? clip(d.clientMutationId, 80) : undefined,
+    actor: d.actor,
   }))
   .handler(async ({ context, data }) => {
+    assertFloorActor(data.actor, "orders.create");
     const { upsertCheck } = await import("./floor.server");
     return upsertCheck(context.userId, data);
   });
@@ -72,8 +83,10 @@ export const addCheckLinesFn = createServerFn({ method: "POST" })
     checkId: clip(d.checkId, 80),
     lines: Array.isArray(d.lines) ? (d.lines as FloorLine[]) : [],
     clientMutationId: d.clientMutationId ? clip(d.clientMutationId, 80) : undefined,
+    actor: d.actor,
   }))
   .handler(async ({ context, data }) => {
+    assertFloorActor(data.actor, "orders.create");
     const { addCheckLines } = await import("./floor.server");
     return addCheckLines(context.userId, data);
   });
@@ -89,6 +102,7 @@ export const sendToStationsFn = createServerFn({ method: "POST" })
     actor: d.actor,
   }))
   .handler(async ({ context, data }) => {
+    assertFloorActor(data.actor, "orders.send");
     const { sendToStations } = await import("./floor.server");
     return sendToStations(context.userId, data);
   });
@@ -102,6 +116,7 @@ export const odsStartFn = createServerFn({ method: "POST" })
     actor: d.actor,
   }))
   .handler(async ({ context, data }) => {
+    assertFloorActor(data.actor, "ods.start");
     const { odsStart } = await import("./floor.server");
     return odsStart(context.userId, data);
   });
@@ -115,6 +130,7 @@ export const odsBumpFn = createServerFn({ method: "POST" })
     actor: d.actor,
   }))
   .handler(async ({ context, data }) => {
+    assertFloorActor(data.actor, "ods.bump");
     const { odsBump } = await import("./floor.server");
     return odsBump(context.userId, data);
   });
@@ -128,6 +144,7 @@ export const odsReadyFn = createServerFn({ method: "POST" })
     actor: d.actor,
   }))
   .handler(async ({ context, data }) => {
+    assertFloorActor(data.actor, "ods.bump");
     const { odsReady } = await import("./floor.server");
     return odsReady(context.userId, data);
   });
@@ -141,6 +158,7 @@ export const odsRecallFn = createServerFn({ method: "POST" })
     actor: d.actor,
   }))
   .handler(async ({ context, data }) => {
+    assertFloorActor(data.actor, "ods.bump");
     const { odsRecall } = await import("./floor.server");
     return odsRecall(context.userId, data);
   });
@@ -155,8 +173,10 @@ export const recordCheckPaymentFn = createServerFn({ method: "POST" })
     closedAt: d.closedAt,
     table: d.table,
     clientMutationId: d.clientMutationId ? clip(d.clientMutationId, 80) : undefined,
+    actor: d.actor,
   }))
   .handler(async ({ context, data }) => {
+    assertFloorActor(data.actor, "payments.take");
     const { recordPayment } = await import("./floor.server");
     return recordPayment(context.userId, data);
   });
@@ -167,8 +187,17 @@ export const upsertTableStatusFn = createServerFn({ method: "POST" })
     locationId: loc(d.locationId),
     table: d.table as FloorTableStatus,
     clientMutationId: d.clientMutationId ? clip(d.clientMutationId, 80) : undefined,
+    actor: d.actor,
   }))
   .handler(async ({ context, data }) => {
+    const status = String(data.table?.status ?? "");
+    const action =
+      status === "dirty" || status === "available"
+        ? "table.bus"
+        : status === "seated" || status === "reserved"
+          ? "table.seat"
+          : "table.transfer";
+    assertFloorActor(data.actor, action);
     const { upsertTableStatus } = await import("./floor.server");
     return upsertTableStatus(context.userId, data);
   });

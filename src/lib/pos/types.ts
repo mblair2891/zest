@@ -1,6 +1,7 @@
 export type EmployeeRole =
   | "owner"
   | "manager"
+  | "supervisor"
   | "server"
   | "bartender"
   | "host"

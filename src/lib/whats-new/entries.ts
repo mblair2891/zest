@@ -6,6 +6,19 @@ import type { GuideUpdate } from "@/lib/guide/types";
  */
 export const WHATS_NEW_ENTRIES: GuideUpdate[] = [
   {
+    id: "upd_2026_10_67_pin_role_scope",
+    date: "2026-09-11",
+    title: "PIN sessions are role-scoped",
+    summary:
+      "After PIN, each job only gets the tools it needs. Live stations have no dropdown of every view.",
+    body: "Host, server, bartender, kitchen, busser, supervisor, and manager PINs each open that job’s screens only. Servers cannot bump ODS, edit menus, or open Devices. Kitchen is ODS only. Busser is dirty→clean. Supervisor has floor, expedite, voids/comp within limits, and clock exceptions — not Publish. Manager has venue back office, Devices, Publish, and closeout approve — not platform CRM. APIs reject actions the PIN cannot do. Help only explains allowed work. Change-device stays for managers in training/demo. Guide has one page per role.",
+    roles: ["server", "kitchen_bar", "owner_manager", "host_operator"],
+    surfaces: ["floor", "kitchen", "settings"],
+    audience: "all",
+    topicId: "roles-dashboards",
+    tags: ["pin", "roles", "permissions", "station"],
+  },
+  {
     id: "upd_2026_10_66_pin_clock_offer",
     date: "2026-09-11",
     title: "Optional clock-in after station PIN",

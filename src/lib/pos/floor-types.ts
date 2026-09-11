@@ -15,6 +15,8 @@ export type FloorLineStatus = "draft" | "sent" | "started" | "ready" | "delivere
 export type FloorActor = {
   employeeId: string;
   employeeName: string;
+  role?: string;
+  deviceRole?: string;
 };
 
 export type FloorLine = {
@@ -148,6 +150,7 @@ export type UpsertCheckInput = {
   locationId: string;
   check: Omit<FloorCheck, "locationId" | "updatedAt"> & { updatedAt?: number };
   clientMutationId?: string;
+  actor?: FloorActor;
 };
 
 export type AddLinesInput = {
@@ -155,6 +158,7 @@ export type AddLinesInput = {
   checkId: string;
   lines: FloorLine[];
   clientMutationId?: string;
+  actor?: FloorActor;
 };
 
 export type SendToStationsInput = {
@@ -181,10 +185,12 @@ export type RecordPaymentInput = {
   closedAt?: number | null;
   table?: FloorTableStatus;
   clientMutationId?: string;
+  actor?: FloorActor;
 };
 
 export type UpsertTableStatusInput = {
   locationId: string;
   table: FloorTableStatus;
   clientMutationId?: string;
+  actor?: FloorActor;
 };

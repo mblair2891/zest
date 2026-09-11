@@ -27,6 +27,7 @@ const ALL: CostPerm[] = [
 const ROLE: Record<EmployeeRole, CostPerm[] | "all"> = {
   owner: "all",
   manager: ALL,
+  supervisor: [],
   accountant: ["invoice:post", "po:approve", "alert:respond", "price:recommend"],
   vendor_operator: [
     "invoice:post",

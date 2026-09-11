@@ -1,6 +1,7 @@
 import { HELP_CHUNKS, HELP_PACK_VERSION } from "./guide-pack";
 import { selectHelpChunks, type HelpChunk } from "./retrieve";
 import { looksLikeTicketDump, scrubHelpQuestion } from "./scrub";
+import { helpBlocksAction, parsePinRole } from "@/lib/access/pin-role";
 
 export type HelpAskInput = {
   question: string;
@@ -40,6 +41,7 @@ const ROLE_GUIDE: Record<string, string[]> = {
   cashier: ["server"],
   bartender: ["kitchen_bar"],
   kitchen: ["kitchen_bar"],
+  supervisor: ["owner_manager"],
   vendor_operator: ["vendor_operator"],
   kiosk: ["server"],
   platform_admin: ["platform_admin"],
@@ -82,6 +84,18 @@ function fallbackAnswer(chunks: HelpChunk[], question: string, d: HelpAskInput):
   const top = chunks[0];
   const steps = top?.steps.slice(0, 8) ?? [];
   const sources = chunks.slice(0, 3).map((c) => c.title);
+  const pinBlock = helpBlocksAction(parsePinRole(d.role), question);
+  if (pinBlock && !d.platformAdmin) {
+    return {
+      steps: [],
+      note: pinBlock.note,
+      blocked: true,
+      whoCan: pinBlock.whoCan,
+      sources,
+      usedAi: false,
+      packVersion: HELP_PACK_VERSION,
+    };
+  }
   const blockedAsk = /settings|crm|pipeline|factory reset|tenant wipe|billing key/i.test(question);
   const canSettings = d.allowedViews.some((v) => /settings/i.test(v)) || d.platformAdmin;
   if (blockedAsk && !canSettings && !d.platformAdmin) {
@@ -178,6 +192,18 @@ export async function answerHelp(raw: HelpAskInput): Promise<HelpAnswer> {
     };
   }
   const includePlatform = Boolean(raw.platformAdmin);
+  const pinBlock = !includePlatform ? helpBlocksAction(parsePinRole(raw.role), question) : null;
+  if (pinBlock) {
+    return {
+      steps: [],
+      note: pinBlock.note,
+      blocked: true,
+      whoCan: pinBlock.whoCan,
+      sources: [],
+      usedAi: false,
+      packVersion: HELP_PACK_VERSION,
+    };
+  }
   const roles = guideRolesFor(raw.role, includePlatform);
   const chunks = selectHelpChunks(HELP_CHUNKS, question, roles, {
     includePlatform,

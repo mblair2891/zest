@@ -17,6 +17,11 @@ export type Permission =
   | "ledger:read"
   | "tickets:bump"
   | "item:86"
+  | "devices:manage"
+  | "publish"
+  | "till:close"
+  | "till:approve"
+  | "clock:exceptions"
   | "demo:admin"
   | "costs:invoice"
   | "costs:po"
@@ -39,6 +44,11 @@ const ALL: Permission[] = [
   "ledger:read",
   "tickets:bump",
   "item:86",
+  "devices:manage",
+  "publish",
+  "till:close",
+  "till:approve",
+  "clock:exceptions",
   "costs:invoice",
   "costs:po",
   "costs:receive",
@@ -48,12 +58,24 @@ const ALL: Permission[] = [
 const ROLE_PERMS: Record<EmployeeRole, Permission[] | "all"> = {
   owner: "all",
   manager: ALL.filter((p) => p !== "demo:admin"),
-  server: ["orders:create", "payments:take", "floor:write", "reports:read", "checks:mutate"],
-  host: ["waitlist:manage", "floor:write", "reports:read", "checks:mutate"],
-  bartender: ["orders:create", "tickets:bump", "item:86", "payments:take", "reports:read", "checks:mutate"],
-  kitchen: ["tickets:bump", "item:86", "reports:read"],
+  supervisor: [
+    "orders:create",
+    "payments:take",
+    "floor:write",
+    "tickets:bump",
+    "item:86",
+    "comps:approve",
+    "waitlist:manage",
+    "checks:mutate",
+    "clock:exceptions",
+    "till:approve",
+  ],
+  server: ["orders:create", "payments:take", "floor:write", "checks:mutate", "till:close"],
+  host: ["waitlist:manage", "floor:write", "orders:create", "payments:take", "checks:mutate"],
+  bartender: ["orders:create", "tickets:bump", "item:86", "payments:take", "checks:mutate", "till:close"],
+  kitchen: ["tickets:bump", "item:86"],
   busser: ["floor:write"],
-  cashier: ["orders:create", "payments:take", "checks:mutate"],
+  cashier: ["orders:create", "payments:take", "checks:mutate", "till:close"],
   vendor_operator: [
     "item:86",
     "tickets:bump",

@@ -3,7 +3,7 @@
 **Powered by Quantum Reach**
 
 White paper · for owners and operators  
-**Revision · 11 Sep 2026** — Written for prospective subscribers. Aligns with Operators Guide v2026.10.66. Staff stations are Android tablets.
+**Revision · 11 Sep 2026** — Written for prospective subscribers. Aligns with Operators Guide v2026.10.67. Staff stations are Android tablets.
 
 summex.app  
 Guest cards: **Quantum Payments** only
@@ -58,7 +58,7 @@ The guest never sees operator splits, device roles, or how the house is paid.
 
 ## 4. Floor and staff
 
-The tablet is a screen. **PIN** says who is working. Staff tablets run one app — **Summex Station**. First open scans the Devices QR or enters a one-time code. After that, power on is the PIN pad for that house and role. Guest QR stays on the guest’s phone.
+The tablet is a screen. **PIN** says who is working. Each PIN only opens the tools that job needs — host, server, bartender, kitchen, busser, supervisor, or manager. A live station is not a dropdown of every module. Staff tablets run one app — **Summex Station**. First open scans the Devices QR or enters a one-time code. After that, power on is the PIN pad for that house and role. Guest QR stays on the guest’s phone.
 
 | Station | What it is |
 |---|---|

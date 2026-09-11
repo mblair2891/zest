@@ -8,7 +8,7 @@ export function employeeToGuideRoles(
 ): GuideRole[] {
   if (!role) return [];
   const out: GuideRole[] = [];
-  if (role === "owner" || role === "manager") {
+  if (role === "owner" || role === "manager" || role === "supervisor") {
     out.push("owner_manager");
     if (venue === "food_hall" || venue === "truck_pod") {
       out.push("host_operator");
