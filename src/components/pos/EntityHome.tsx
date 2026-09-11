@@ -52,6 +52,7 @@ import {
   readStationDeviceRole,
 } from "@/lib/pos/device-roles";
 import { isNativeApp } from "@/lib/native-shell";
+import { readTenantPosContext } from "@/lib/saas/pos-context";
 
 const ICONS: Record<string, React.ComponentType<{ className?: string }>> = {
   restaurant: UtensilsCrossed,
@@ -166,7 +167,9 @@ export function EntityLogin({ entityId }: { entityId: VenueEntityId }) {
   const [staffId, setStaffId] = useState<string>("");
 
   const locId = usePosStore((s) => s.tenantLocationId);
+  const houseName = usePosStore((s) => s.settings?.name);
   const stationKind = useStationSessionStore((s) => s.assignment.kind);
+  const stationPad = isStationPinPath() || isNativeApp();
   useEffect(() => {
     if (isVenueEntityId(entityId) && activeEntityId !== entityId) {
       applyEntity(entityId);
@@ -183,9 +186,13 @@ export function EntityLogin({ entityId }: { entityId: VenueEntityId }) {
   if (!entity) {
     return (
       <div className="flex min-h-[100dvh] items-center justify-center bg-bg pt-[var(--grok-banner-h,0px)]">
-        <Link to={prospect ? "/login" : "/"} className="text-sm text-muted-foreground underline">
-          Unknown venue — back
-        </Link>
+        {stationPad ? (
+          <p className="text-sm text-muted-foreground">Unknown venue on this station.</p>
+        ) : (
+          <Link to={prospect ? "/login" : "/"} className="text-sm text-muted-foreground underline">
+            Unknown venue — back
+          </Link>
+        )}
       </div>
     );
   }
@@ -241,7 +248,7 @@ export function EntityLogin({ entityId }: { entityId: VenueEntityId }) {
       <TrainingBanner />
       <div className="flex items-center justify-end gap-2 px-4 pt-3">
         <HelpButton surface="pin" />
-        {!(isStationPinPath() || isNativeApp()) && (
+        {!stationPad && (
           <>
             <ThisStationButton />
             <SplitScreenToggle />
@@ -252,33 +259,39 @@ export function EntityLogin({ entityId }: { entityId: VenueEntityId }) {
         className="mx-auto flex w-full max-w-lg flex-1 flex-col justify-center px-4 py-8"
         data-demo={prospect ? "demo-pin-gate" : undefined}
       >
-        <Link
-          to={prospect ? "/login" : "/"}
-          className="mb-6 inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground"
-        >
-          <ArrowLeft className="h-4 w-4" />
-          {prospect ? "All demo sites" : "All venues"}
-        </Link>
+        {!stationPad && (
+          <Link
+            to={prospect ? "/login" : "/"}
+            className="mb-6 inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground"
+          >
+            <ArrowLeft className="h-4 w-4" />
+            {prospect ? "All demo sites" : "All venues"}
+          </Link>
+        )}
 
         <div className="mb-8 text-center">
           <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-primary text-primary-foreground shadow-lg shadow-primary/25">
             <Icon className="h-7 w-7" />
           </div>
           <h1 className="text-2xl font-semibold tracking-tight text-foreground">
-            {entity.venueName}
+            {stationPad
+              ? houseName || readTenantPosContext()?.locationName || entity.venueName
+              : entity.venueName}
           </h1>
-          <p className="mt-1.5 text-sm font-medium text-muted-foreground">
-            {entity.name}
-          </p>
-          <p className="mt-1 text-sm text-muted-foreground">{entity.blurb}</p>
+          {!stationPad && (
+            <>
+              <p className="mt-1.5 text-sm font-medium text-muted-foreground">
+                {entity.name}
+              </p>
+              <p className="mt-1 text-sm text-muted-foreground">{entity.blurb}</p>
+            </>
+          )}
           <p className="mt-3 text-sm font-medium">Floor login · 4-digit PIN</p>
           {(() => {
             const paired = readStationDeviceRole();
             const stationRole =
               paired ??
-              (isStationPinPath() || isNativeApp()
-                ? deviceRoleFromSessionMode(stationKind)
-                : null);
+              (stationPad ? deviceRoleFromSessionMode(stationKind) : null);
             if (!stationRole) return null;
             return (
               <p className="mt-2 text-sm text-foreground">
@@ -365,7 +378,7 @@ export function EntityLogin({ entityId }: { entityId: VenueEntityId }) {
           </p>
         )}
 
-        {!prospect && !(isStationPinPath() || isNativeApp()) && (
+        {!prospect && !stationPad && (
         <p className="mt-6 text-center text-xs text-muted-foreground">
           <Link to="/login" className="text-primary underline">
             Back office
@@ -375,7 +388,7 @@ export function EntityLogin({ entityId }: { entityId: VenueEntityId }) {
         </p>
         )}
 
-        {prospect && (
+        {prospect && !stationPad && (
           <div className="mt-6 flex flex-col gap-2 text-center text-xs text-muted-foreground">
             <Link to="/get-pricing" className="underline-offset-2 hover:underline">
               Start onboarding
@@ -386,7 +399,7 @@ export function EntityLogin({ entityId }: { entityId: VenueEntityId }) {
           </div>
         )}
 
-        {user && !demo && (
+        {user && !demo && !stationPad && (
           <Button
             className="mb-6 w-full"
             onClick={() => loginAsOwner(user.displayName || "Owner")}
@@ -395,7 +408,7 @@ export function EntityLogin({ entityId }: { entityId: VenueEntityId }) {
           </Button>
         )}
 
-        {demo && !prospect && (
+        {demo && !prospect && !stationPad && (
         <div className="mt-10">
           <p className="mb-3 text-center text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
             Quick login · {entity.shortName} staff

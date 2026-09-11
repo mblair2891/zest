@@ -1,7 +1,7 @@
 {
-  "url": "https://summex.app",
+  "url": "https://app.summex.app",
   "station": "",
   "cleartext": false,
   "sideload": false,
-  "_comment": "Play/store APK is generic: /station pair (Scan QR | Enter code). android-config is local debug only — never required for a store build."
+  "_comment": "Play/store APK is generic: https://app.summex.app/station (Scan QR | Enter code). Never marketing apex. android-config is local debug only — never required for a store build."
 }

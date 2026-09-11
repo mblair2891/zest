@@ -15,6 +15,7 @@ import { applyStationPublish, parseStationPublish } from "@/lib/pos/station-publ
 import { persistLocationSnapshot } from "@/lib/offline/location-snapshot";
 import { DEVICE_ROLE_BLURB, DEVICE_ROLE_LABEL } from "@/lib/pos/device-roles";
 import { requestKioskLock } from "@/lib/native-kiosk";
+import { usePosStore } from "@/lib/pos/store";
 
 function readBrowserId(): string {
   try {
@@ -76,8 +77,18 @@ export function StationPairScreen({
         ownerName: "Owner",
       });
       try {
+        const st = usePosStore.getState();
+        usePosStore.setState({
+          tenantLocationId: res.pair.locationId,
+          settings: { ...st.settings, name: res.pair.locationName },
+        });
         const pub = parseStationPublish(res.publish);
-        if (pub) applyStationPublish(pub);
+        if (pub) {
+          applyStationPublish(pub, {
+            locationId: res.pair.locationId,
+            locationName: res.pair.locationName,
+          });
+        }
         persistLocationSnapshot();
       } catch {
         /* snapshot is best-effort; PosApp hydrates next */

@@ -4,7 +4,7 @@
 
 **Application ID:** `app.summex.pos`  
 **App name:** Summex Station  
-**Default experience:** generic station shell at `https://summex.app/station` — pair first, then PIN. No venue is baked into the binary.
+**Default experience:** generic station shell at `https://app.summex.app/station` — pair first, then PIN. No venue is baked into the binary. Never the marketing site.
 
 **Privacy policy URL:** https://summex.app/privacy
 

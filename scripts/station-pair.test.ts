@@ -48,9 +48,23 @@ test("pair screen and Play APK never require a baked station role", () => {
   const cap = readFileSync("capacitor.config.ts", "utf8");
   assert.match(cap, /app\.summex\.pos/);
   assert.match(cap, /\/station/);
+  assert.match(cap, /app\.summex\.app/);
+  assert.doesNotMatch(cap, /summex\.app\/\?station/);
   const native = readFileSync("native/summex-native.json", "utf8");
   assert.match(native, /"sideload": false/);
   assert.match(native, /"station": ""/);
+  assert.match(native, /app\.summex\.app/);
+  const baked = readFileSync("android/app/src/main/assets/capacitor.config.json", "utf8");
+  assert.match(baked, /app\.summex\.pos/);
+  assert.match(baked, /app\.summex\.app\/station/);
+  assert.doesNotMatch(baked, /station=floor/);
+  assert.doesNotMatch(baked, /summex\.app\/\?/);
   const cfg = readFileSync("scripts/android-config.mjs", "utf8");
   assert.match(cfg, /Local debug only/);
+});
+
+test("station PIN pad does not send staff to marketing or /login", () => {
+  const pin = readFileSync("src/components/pos/EntityHome.tsx", "utf8");
+  assert.match(pin, /stationPad/);
+  assert.match(pin, /Floor login · 4-digit PIN/);
 });

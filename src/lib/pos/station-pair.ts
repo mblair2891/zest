@@ -95,7 +95,8 @@ export function isDurableStationStorageKey(key: string): boolean {
   return (
     key === STATION_PAIR_KEY ||
     key === "summex-station-publish-state-v1" ||
-    key === "summex-station-role-state-v1"
+    key === "summex-station-role-state-v1" ||
+    key === "summex-tenant-pos-v1"
   );
 }
 

@@ -1,5 +1,6 @@
 package app.summex.pos;
 
+import android.content.Intent;
 import android.graphics.Bitmap;
 import android.net.Uri;
 import android.webkit.WebResourceError;
@@ -9,8 +10,10 @@ import com.getcapacitor.Bridge;
 import com.getcapacitor.BridgeWebViewClient;
 
 /**
- * Keep staff POS on Summex hosts inside the WebView. Inject a Capacitor.triggerEvent
- * shim so a remote server.url does not black-screen when the bridge injects late.
+ * Keep staff POS on the console host inside the WebView. Guest QR / pay
+ * (table tents, ticket codes, venue sites) opens in the phone browser.
+ * Inject a Capacitor.triggerEvent shim so a remote server.url does not
+ * black-screen when the bridge injects late.
  */
 public class KioskWebViewClient extends BridgeWebViewClient {
     public KioskWebViewClient(Bridge bridge) {
@@ -20,6 +23,10 @@ public class KioskWebViewClient extends BridgeWebViewClient {
     @Override
     public boolean shouldOverrideUrlLoading(WebView view, WebResourceRequest request) {
         Uri url = request.getUrl();
+        if (isGuestUrl(url)) {
+            openInBrowser(view, url);
+            return true;
+        }
         if (isStaffHost(url.getHost())) {
             return false;
         }
@@ -46,7 +53,7 @@ public class KioskWebViewClient extends BridgeWebViewClient {
             ? error.getDescription().toString()
             : "offline";
         view.loadDataWithBaseURL(
-            "https://summex.app/",
+            "https://app.summex.app/",
             errorHtml(msg),
             "text/html",
             "utf-8",
@@ -54,10 +61,52 @@ public class KioskWebViewClient extends BridgeWebViewClient {
         );
     }
 
-    private static boolean isStaffHost(String host) {
+    private static void openInBrowser(WebView view, Uri url) {
+        if (view == null || url == null) return;
+        try {
+            Intent i = new Intent(Intent.ACTION_VIEW, url);
+            i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+            view.getContext().startActivity(i);
+        } catch (Exception ignored) {
+            /* lock-task may block the browser; guest QR is for guest phones */
+        }
+    }
+
+    /** Guest table / pay / venue sites — never the station WebView. */
+    static boolean isGuestUrl(Uri url) {
+        if (url == null) return false;
+        String host = url.getHost() == null ? "" : url.getHost().toLowerCase();
+        String path = url.getPath() == null ? "/" : url.getPath();
+        if (host.equals("sites.summex.app") || host.startsWith("sites.")) return true;
+        if (host.equals("www.summex.app") || host.equals("summex.app")) {
+            return !(path.equals("/station") || path.startsWith("/station/"));
+        }
+        if (path.startsWith("/table/")
+            || path.startsWith("/t/")
+            || path.startsWith("/order/")
+            || path.startsWith("/online")
+            || path.startsWith("/reserve")
+            || path.startsWith("/v/")) {
+            return true;
+        }
+        if (host.endsWith(".summex.app")
+            && !host.equals("app.summex.app")
+            && !host.equals("api.summex.app")
+            && !host.equals("sites.summex.app")) {
+            return true;
+        }
+        return false;
+    }
+
+    static boolean isStaffHost(String host) {
         if (host == null) return false;
         String h = host.toLowerCase();
-        return h.equals("summex.app") || h.endsWith(".summex.app") || h.equals("localhost") || h.endsWith(".local");
+        if (h.equals("app.summex.app")) return true;
+        if (h.equals("localhost") || h.endsWith(".local")) return true;
+        if (h.equals("10.0.2.2")) return true;
+        if (h.startsWith("10.") || h.startsWith("192.168.")) return true;
+        if (h.matches("^172\\.(1[6-9]|2[0-9]|3[0-1])\\..*")) return true;
+        return false;
     }
 
     private static String errorHtml(String detail) {
@@ -66,7 +115,7 @@ public class KioskWebViewClient extends BridgeWebViewClient {
             + "<style>html,body{height:100%;margin:0;background:#0a0c0b;color:#f7f6f3;"
             + "font-family:system-ui,sans-serif;display:grid;place-items:center;text-align:center;padding:1.5rem}"
             + "p{opacity:.8;max-width:22rem;line-height:1.45}</style></head><body>"
-            + "<div><p style=\"letter-spacing:.28em;font-weight:600\">SUMMEX</p>"
+            + "<div><p style=\"letter-spacing:.28em;font-weight:600\">SUMMEX STATION</p>"
             + "<p>This station could not reach Summex. Check the staff Wi‑Fi, then power the tablet again.</p>"
             + "<p style=\"font-size:.8rem;opacity:.55\">"
             + detail.replace("<", "&lt;").replace(">", "&gt;")

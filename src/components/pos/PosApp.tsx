@@ -380,7 +380,12 @@ function PosAppInner({ entityId }: { entityId?: string }) {
               const pub = parseStationPublish(setup.stationPublish) ?? parseStationPublish(
                 (access as { publish?: unknown }).publish,
               );
-              if (pub) applyStationPublish(pub);
+              if (pub) {
+                applyStationPublish(pub, {
+                  locationId: access.location.id,
+                  locationName: access.location.name,
+                });
+              }
             }
             usePosStore.getState().updateSettings?.({
               lifecycleStatus:
@@ -598,22 +603,28 @@ function PosAppInner({ entityId }: { entityId?: string }) {
   }
 
   if (tenantGate === "denied") {
+    const stationPad = isStationPinPath() || isNativeApp();
     return (
       <div className="flex min-h-[100dvh] flex-col items-center justify-center gap-3 bg-bg px-4 pt-[var(--grok-banner-h,0px)] text-center">
         <p className="text-sm text-muted-foreground">
-          {gateMsg ?? "You do not have access to this venue."}
+          {gateMsg ??
+            (stationPad
+              ? "This tablet is not paired. Scan the Devices QR or enter the code."
+              : "You do not have access to this venue.")}
         </p>
-        {!isStationPinPath() && !isNativeApp() && (
-          <Link to="/login" className="text-sm font-medium text-primary underline">
-            Sign in
-          </Link>
+        {!stationPad && (
+          <>
+            <Link to="/login" className="text-sm font-medium text-primary underline">
+              Sign in
+            </Link>
+            <Link to="/get-pricing" className="text-sm font-medium text-primary underline">
+              Start onboarding
+            </Link>
+            <Link to="/guide" className="text-sm text-muted-foreground underline">
+              Operators Guide
+            </Link>
+          </>
         )}
-        <Link to="/get-pricing" className="text-sm font-medium text-primary underline">
-          Start onboarding
-        </Link>
-        <Link to="/guide" className="text-sm text-muted-foreground underline">
-          Operators Guide
-        </Link>
       </div>
     );
   }

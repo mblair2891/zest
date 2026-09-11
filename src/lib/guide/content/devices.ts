@@ -79,7 +79,7 @@ export const DEVICE_TOPICS: GuideTopic[] = [
         "A floor tablet is a station, not a general-purpose phone. If someone can swipe to the launcher, they are not in service.",
       ),
       p(
-        "Install Summex Station once. The store binary has no venue baked in and does not require a debug station preset. Owner (back office password, not staff PIN): Devices → Add device → name + role. Show the one-time code or QR (pair token, venue, role). Codes expire; regenerate from the row. After pair, the tablet stores venue and role, receives the house snapshot, and is PIN only. Optional lock-task / pin-windows after pair. Publish updates idle devices and the next PIN login. Staff keep the last publish until Switch user. Never mid-ticket.",
+        "Install Summex Station once. The store binary opens the pair screen on the console host — no venue baked in, no debug station preset, never the sales site. Owner (back office password, not staff PIN): Devices → Add device → name + role. Show the one-time code or QR (pair token, venue, role). Codes expire; regenerate from the row. After pair, the tablet stores venue and role, receives the house snapshot, and is PIN only for that house. The PIN pad does not link to /login or the marketing home. Optional lock-task / pin-windows after pair. Publish updates idle devices and the next PIN login. Staff keep the last publish until Switch user. Never mid-ticket.",
       ),
       steps(
         "Install Summex Station on every staff Android tablet (same Play-ready APK for host, order, and ODS).",

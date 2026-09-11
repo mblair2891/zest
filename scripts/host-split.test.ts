@@ -59,4 +59,12 @@ test("leftover /login on apex goes to app.summex.app", () => {
     marketingToPlatformHref("/?station=order", "summex.app", "https:"),
     "https://app.summex.app/?station=order",
   );
+  assert.equal(
+    marketingToPlatformHref("/station", "summex.app", "https:"),
+    "https://app.summex.app/station",
+  );
+  assert.equal(
+    marketingToPlatformHref("/station?pair=ABCD12", "summex.app", "https:"),
+    "https://app.summex.app/station?pair=ABCD12",
+  );
 });

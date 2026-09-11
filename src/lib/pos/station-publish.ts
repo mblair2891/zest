@@ -104,10 +104,14 @@ export function isMidTicket(): boolean {
   }
 }
 
-export function applyStationPublish(record: StationPublishRecord): boolean {
+export function applyStationPublish(
+  record: StationPublishRecord,
+  opts?: { locationId?: string; locationName?: string },
+): boolean {
   const setup = record.setup;
   try {
     const pos = usePosStore.getState();
+    const locationId = (opts?.locationId || pos.tenantLocationId || "").trim();
     const catalog =
       setup.menuCatalog && typeof setup.menuCatalog === "object"
         ? (setup.menuCatalog as {
@@ -155,7 +159,9 @@ export function applyStationPublish(record: StationPublishRecord): boolean {
       settings.cashRoundIncrement = setup.cashRoundIncrement;
     }
     if (setup.cashRoundMode === "up") settings.cashRoundMode = "up";
+    if (opts?.locationName) settings.name = opts.locationName;
     patch.settings = settings;
+    if (locationId) patch.tenantLocationId = locationId;
     usePosStore.setState(patch as never);
     if (setup.laborByEntity) {
       try {
@@ -165,8 +171,11 @@ export function applyStationPublish(record: StationPublishRecord): boolean {
         /* optional */
       }
     }
-    const loc = pos.tenantLocationId || "";
-    writePublishState({ locationId: loc, appliedVersion: record.version, pending: null });
+    writePublishState({
+      locationId: locationId || pos.tenantLocationId || "",
+      appliedVersion: record.version,
+      pending: null,
+    });
     return true;
   } catch {
     return false;

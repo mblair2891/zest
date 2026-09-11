@@ -81,7 +81,7 @@ One APK: **Summex Station** (`app.summex.pos`). Staff tablets run Summex only. G
 
 ### Play (store) — generic, no venue in the binary
 
-Leave `native/summex-native.json` with empty `station` and `sideload: false`. The WebView opens `/station`. First run is **Scan QR** or **Enter code** from owner Devices. After pair: PIN pad only. Updates keep the pairing. Store builds never require `android-config`.
+Leave `native/summex-native.json` with empty `station` and `sideload: false`. The WebView opens `https://app.summex.app/station`. First run is **Scan QR** or **Enter code** from owner Devices. After pair: PIN pad only. Updates keep the pairing. Store builds never require `android-config`.
 
 ```bash
 npm run android:config:clear

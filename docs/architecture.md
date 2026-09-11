@@ -9,7 +9,7 @@ Summex is a multi-tenant hospitality SaaS: restaurants, food halls, truck pods, 
 | summex.app / www.summex.app | `/` | Marketing sales landing only (Get a price, Guide, Demo, White paper, Contact — no login) |
 | app.summex.app/login | `/login` | Username/password only → Admin dashboard or venue owner home |
 | app.summex.app/dashboard | `/dashboard` | Platform Admin control plane (CRM / pipeline / tenants) |
-| app.summex.app | `/station/:role`, `/?station=` | Staff stations and pair QR |
+| app.summex.app | `/station` (pair), `/station/:role` | Staff stations. Play APK opens `/station`. |
 | api.summex.app | `/api` | HTTP API (`/api/health`, `/api/auth/*`) |
 | sites.summex.app | `/sites/$slug` | Guest location sites (later: custom domains) |
 
@@ -24,7 +24,7 @@ Local preview is a single origin: hosts are simulated with path prefixes. `Host:
 | Marketing | `/`, `/pricing`, `/features`, `/blog`, `/get-pricing`, `/demo` | Public |
 | Quote | `/quote/$token` | Prospect (accept requires sign-in) |
 | Merchant login / dashboard | `app.summex.app/login`, `/dashboard` | Operators (password only). Apex `/login` redirects here. |
-| Staff station | `app.summex.app/station/:role`, `/?station=` | PIN pad — never the sales host |
+| Staff station | `app.summex.app/station` then `/station/:role` | Pair (QR or code), then PIN pad — never the sales host |
 | Control plane (legacy alias) | `/platform` → `/dashboard` | same |
 | Subscriber pipeline | `/pipeline` | Platform admin |
 | Onboarding | `/onboarding` resumes intake/quote/setup; `/setup/$token` is Stage B after contract |

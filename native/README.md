@@ -9,7 +9,7 @@ Staff tablets run **Summex only**. This Capacitor APK is a kiosk POS: lock-task 
 | | Play (store) | Sideload (local) |
 |---|---|---|
 | Config | `station` empty, `sideload: false` | `android-config` sets `sideload: true` + a role |
-| WebView | `https://summex.app/station` | LAN origin with `/station/{role}` |
+| WebView | `https://app.summex.app/station` | LAN origin with `/station/{role}` |
 | First run | Pair screen (Scan QR \| Enter code from Devices) | Same pair screen unless already primed |
 | Location in APK | Never | Never (role only, and only for LAN) |
 | After pair | PIN pad. Updates keep pairing. | PIN pad |
@@ -35,7 +35,7 @@ Edit `native/summex-native.json`:
 
 ```json
 {
-  "url": "https://summex.app",
+  "url": "https://app.summex.app",
   "station": "",
   "cleartext": false,
   "sideload": false
@@ -44,7 +44,7 @@ Edit `native/summex-native.json`:
 
 | Field | Meaning |
 |---|---|
-| `url` | Live origin (`https://summex.app` in production; LAN `http://192.168.x.x:8080` while developing) |
+| `url` | Live origin (`https://app.summex.app` in production; LAN `http://192.168.x.x:8080` while developing). Never the marketing apex. |
 | `station` | Sideload only: `order` / `ods` / `host`. Play leaves this empty. |
 | `sideload` | `true` only when baking a station role for local LAN. Store builds stay `false`. |
 | `cleartext` | `true` only for `http://` |

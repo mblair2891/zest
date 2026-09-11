@@ -4,8 +4,12 @@ import { resolve } from "node:path";
 
 /**
  * Summex Station native shell.
- * Play / store: generic /station (pair first). Sideload may bake a station role.
+ * Play / store: generic https://app.summex.app/station (pair first).
+ * Never marketing apex, never /login, never a baked station role.
+ * android-config is local debug only (LAN + optional /station/{role}).
  */
+
+const STORE_ORIGIN = "https://app.summex.app";
 
 type NativeFile = { url?: string; station?: string; cleartext?: boolean; sideload?: boolean };
 
@@ -19,15 +23,6 @@ function loadNativeFile(): NativeFile {
   }
 }
 
-const file = loadNativeFile();
-const baseUrl = (
-  process.env.SUMMEX_NATIVE_URL ||
-  file.url ||
-  "http://10.0.2.2:8080/apps"
-).replace(/\/$/, "");
-
-const stationRaw = (process.env.SUMMEX_STATION || file.station || "").trim();
-
 function nativeStationRole(raw: string): "order" | "ods" | "host" | "" {
   const s = raw.toLowerCase().replace(/[\s-]+/g, "_");
   if (s === "order" || s === "cashier" || s === "bar_pos" || s === "handheld") return "order";
@@ -37,16 +32,36 @@ function nativeStationRole(raw: string): "order" | "ods" | "host" | "" {
   return "";
 }
 
-// Play / store APK: generic /station (pair first). Sideload may bake a station role.
-let serverUrl = baseUrl;
+/** Staff WebView origin. Marketing apex is never the station host. */
+function staffOrigin(raw: string): string {
+  const trimmed = (raw || "").replace(/\/$/, "");
+  try {
+    const u = new URL(trimmed.includes("://") ? trimmed : `https://${trimmed}`);
+    const host = u.hostname.toLowerCase();
+    if (host === "summex.app" || host === "www.summex.app") return STORE_ORIGIN;
+    return `${u.protocol}//${u.host}`;
+  } catch {
+    return STORE_ORIGIN;
+  }
+}
+
+const file = loadNativeFile();
+const baseUrl = (
+  process.env.SUMMEX_NATIVE_URL ||
+  file.url ||
+  STORE_ORIGIN
+).replace(/\/$/, "");
+
+const stationRaw = (process.env.SUMMEX_STATION || file.station || "").trim();
 const sideload = process.env.SUMMEX_SIDELOAD === "1" || file.sideload === true;
 const station = nativeStationRole(stationRaw);
-const origin = (baseUrl.replace(/\/apps$/i, "") || baseUrl).replace(/\/$/, "") || "https://summex.app";
+const origin = staffOrigin(baseUrl.replace(/\/apps$/i, "") || baseUrl);
+
+// Play / store APK: generic /station (pair first). Sideload may bake a station role.
+let serverUrl = `${origin}/station`;
 if (sideload && station) {
   // Local debug only — never marketing apex, never /login.
   serverUrl = `${origin}/station/${encodeURIComponent(station)}`;
-} else {
-  serverUrl = `${origin}/station`;
 }
 
 const cleartext =
