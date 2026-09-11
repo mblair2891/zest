@@ -6,6 +6,19 @@ import type { GuideUpdate } from "@/lib/guide/types";
  */
 export const WHATS_NEW_ENTRIES: GuideUpdate[] = [
   {
+    id: "upd_2026_10_66_pin_clock_offer",
+    date: "2026-09-11",
+    title: "Optional clock-in after station PIN",
+    summary:
+      "After PIN, if you are off the clock and inside today’s allowed window, the tablet asks Clock in for this shift?",
+    body: "PIN and clock-in stay separate. After a successful station PIN, if that person is not clocked in and the current time is inside that entity’s allowed early/late clock-in window for today’s published shift, a modal offers Clock in or Not now. Clock in uses the same Labor punch rules (entity on the shift, early/late flags). Outside the window: no prompt — they can still work; Labor can red-flag. Already on the clock: no prompt. Not now does not punch. Never shown on password login or back office.",
+    roles: ["server", "kitchen_bar", "owner_manager", "host_operator"],
+    surfaces: ["floor", "labor"],
+    audience: "all",
+    topicId: "floor-pin-login",
+    tags: ["pin", "clock", "labor", "station"],
+  },
+  {
     id: "upd_2026_10_65_password_back_office",
     date: "2026-09-11",
     title: "Password login never shows the PIN pad",

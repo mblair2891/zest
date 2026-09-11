@@ -78,6 +78,7 @@ import { useStationSessionStore } from "@/lib/pos/station-session";
 import { canChangeDevice, stationKindLabel, stationsAllowedForEmployee } from "@/lib/pos/station-access";
 import { readStationDeviceRole } from "@/lib/pos/device-roles";
 import { EndShiftFlow } from "./EndShiftFlow";
+import { ClockInAfterPinDialog } from "./ClockInAfterPinDialog";
 import { TillTransferBanner } from "./TillTransferPanel";
 import { reportsBlockedForClose } from "@/lib/pos/till-closeout-store";
 import { HOST_SCOPE } from "@/lib/access/entity-grants";
@@ -441,6 +442,7 @@ export function AppShell() {
             </Button>
           </div>
         </header>
+        <ClockInAfterPinDialog />
         <div
           className="min-h-0 flex-1"
           data-demo={demoDevice === "kds_bar" ? "bar" : demoDevice === "expo" ? "expo" : "kitchen"}
@@ -831,6 +833,7 @@ export function AppShell() {
           <EndShiftFlow onDone={() => setCloseoutOpen(false)} />
         </div>
       )}
+      <ClockInAfterPinDialog />
       <TicketBumpWatcher />
       <NetworkWatcher />
     </div>

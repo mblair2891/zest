@@ -23,7 +23,7 @@ export const HR_TOPICS: GuideTopic[] = [
         "You belong to one employer entity. Another stall cannot open your file.",
       ),
       steps(
-        "PIN in. Open Labor to clock. Published shift windows apply unless a manager overrides.",
+        "PIN in on the station. If you are off the clock and inside today’s allowed clock-in window, accept Clock in for this shift? or tap Not now. Outside the window, open Labor to punch (manager override unchanged).",
         "Open HR only if your house uses it — request time-off or confirm availability.",
         "Complete packets you were sent. Do not skip I-9 sections or backdate them.",
       ),
@@ -90,7 +90,7 @@ export const HR_TOPICS: GuideTopic[] = [
       steps(
         "Labor → Schedule. Add shifts. Publish week.",
         "Labor → Rules. Set windows, approval, pay period, export timing.",
-        "Staff clock on Labor. Manager queue on Supervisor for red flags.",
+        "Staff clock on Labor, or from the optional prompt after station PIN when inside the window. Manager queue on Supervisor for red flags.",
         "Labor → Hours export or Reports → Payroll export: period status, Download or Send.",
       ),
       warn(

@@ -140,7 +140,7 @@ export const GETTING_STARTED_TOPICS: GuideTopic[] = [
         "Back office: Log in at app.summex.app/login with username or email and password. Admin lands on the platform dashboard (CRM / tenants). A location admin (venue owner) lands on that venue’s settings — Overview, Devices, Menus. Never the staff PIN pad, never /venue/food_hall, never the sales home, CRM, or other tenants.",
         "Prime each Android tablet once: install Summex Station, Scan QR or Enter code from Devices (internet required). Thereafter the device is PIN-only for that venue and role.",
         "Floor: Summex Station opens on the pair screen until paired, then the PIN pad — never the sales home. Enter your 4-digit PIN. Switch user returns to the keypad without changing the device role.",
-        "Clock in / out from Labor (and Employees). The PIN pad does not punch you. Signing out of POS does not clock you out.",
+        "Clock in / out from Labor. PIN and punch stay separate. After a station PIN, if you are off the clock and inside that entity’s allowed early/late window for today’s shift, the tablet asks Clock in for this shift? Clock in uses the same Labor punch rules. Not now skips the punch — clock in from Labor later. Outside the window there is no prompt; you can still work. Already on the clock: no prompt. Password /login never shows this.",
         "Server closeout is Cash (expected drawer, Z). That is not clock-out and not PIN login.",
         "Opening Settings from a floor PIN prompts back-office re-auth (password).",
         "Kiosk guest flows stay PIN-free. Platform Admin is password only — never a restaurant PIN.",
@@ -148,7 +148,7 @@ export const GETTING_STARTED_TOPICS: GuideTopic[] = [
       warn(
         "PIN ≠ clock ≠ closeout. There are no public demo tenants and no universal PIN. Training uses sandbox cards — not a live Visa.",
       ),
-      related("floor-pin-login", "device-roles", "empty-start", "role-walkthroughs", "navigation", "invites-roles"),
+      related("floor-pin-login", "shift-allowables", "device-roles", "empty-start", "role-walkthroughs", "navigation", "invites-roles"),
     ],
   }),
   topic({

@@ -259,6 +259,26 @@ export type ClockEval = {
 
 export type ShiftWindow = { id: string; start: number; end: number; published: boolean } | null;
 
+/** Allowed clock-in window vs shift start (early minutes before, late minutes after). */
+export function clockInWindowBounds(
+  shiftStart: number,
+  rules: Pick<EntityLaborRules, "clockInEarlyMinutes" | "clockInLateMinutes">,
+): { open: number; close: number } {
+  return {
+    open: shiftStart - rules.clockInEarlyMinutes * 60_000,
+    close: shiftStart + rules.clockInLateMinutes * 60_000,
+  };
+}
+
+export function isInsideClockInWindow(
+  now: number,
+  shiftStart: number,
+  rules: Pick<EntityLaborRules, "clockInEarlyMinutes" | "clockInLateMinutes">,
+): boolean {
+  const { open, close } = clockInWindowBounds(shiftStart, rules);
+  return now >= open && now <= close;
+}
+
 export function evaluateClockIn(
   now: number,
   shift: ShiftWindow,
@@ -285,8 +305,7 @@ export function evaluateClockIn(
     }
   }
   if (!shift) return { ok: true, flags, notify };
-  const earlyOpen = shift.start - rules.clockInEarlyMinutes * 60_000;
-  const lateClose = shift.start + rules.clockInLateMinutes * 60_000;
+  const { open: earlyOpen, close: lateClose } = clockInWindowBounds(shift.start, rules);
   if (now < earlyOpen) {
     const msg = `Too early — clock-in opens ${rules.clockInEarlyMinutes}m before shift`;
     if (rules.clockInEarlyAction === "block" && !(force && rules.managerOverride)) {

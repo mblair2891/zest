@@ -1,7 +1,7 @@
 # Operators Guide — authoring
 
-**Revision · 11 Sep 2026** — Password login is back office only; PIN is station-only.
-Guide v2026.10.65.
+**Revision · 11 Sep 2026** — Optional clock-in prompt after station PIN.
+Guide v2026.10.66.
 
 The in-app **Operators Guide** is the living product manual. It is not a
 separate PDF. Staff open it from **Guide** / **?** in the POS and platform
