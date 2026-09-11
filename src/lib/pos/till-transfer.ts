@@ -37,6 +37,21 @@ export type TillTransfer = {
   reverseOfId: string | null;
   reversedById: string | null;
   reversedByName: string | null;
+  /** Persist/print aliases of drawer id/name and denoms. Always kept in lockstep. */
+  fromSinkKey: string;
+  fromTillName: string;
+  toSinkKey: string;
+  toTillName: string;
+  requestedMix: DenomCounts | null;
+  handedMix: DenomCounts | null;
+  resolvedAt: number | null;
+  reverseId: string | null;
+  reprintCount: number;
+  printOk: boolean;
+  lastPrintedAt: number | null;
+  acceptedById: string | null;
+  acceptedByName: string | null;
+  updatedAt: number;
 };
 
 export type TillTransferAudit = {
@@ -47,7 +62,61 @@ export type TillTransferAudit = {
   actorName: string;
   action: string;
   detail: string;
+  kind: string;
+  employeeId: string;
+  employeeName: string;
 };
+
+function persistSlice(t: {
+  fromDrawerId: string;
+  fromDrawerName: string;
+  toDrawerId: string;
+  toDrawerName: string;
+  requestedDenoms: DenomCounts | null;
+  handedDenoms: DenomCounts | null;
+  requestedAt: number;
+  respondedAt: number | null;
+  reverseOfId: string | null;
+  reverseId?: string | null;
+  reprintCount?: number;
+  printOk?: boolean;
+  lastPrintedAt?: number | null;
+  acceptedById?: string | null;
+  acceptedByName?: string | null;
+}): Pick<
+  TillTransfer,
+  | "fromSinkKey"
+  | "fromTillName"
+  | "toSinkKey"
+  | "toTillName"
+  | "requestedMix"
+  | "handedMix"
+  | "resolvedAt"
+  | "reverseId"
+  | "reprintCount"
+  | "printOk"
+  | "lastPrintedAt"
+  | "acceptedById"
+  | "acceptedByName"
+  | "updatedAt"
+> {
+  return {
+    fromSinkKey: t.fromDrawerId,
+    fromTillName: t.fromDrawerName,
+    toSinkKey: t.toDrawerId,
+    toTillName: t.toDrawerName,
+    requestedMix: t.requestedDenoms,
+    handedMix: t.handedDenoms,
+    resolvedAt: t.respondedAt,
+    reverseId: t.reverseId ?? null,
+    reprintCount: t.reprintCount ?? 0,
+    printOk: t.printOk ?? false,
+    lastPrintedAt: t.lastPrintedAt ?? null,
+    acceptedById: t.acceptedById ?? null,
+    acceptedByName: t.acceptedByName ?? null,
+    updatedAt: t.respondedAt ?? t.requestedAt,
+  };
+}
 
 export type OpenTillRef = {
   drawerId: string;
@@ -173,6 +242,17 @@ export function requestTillTransfer(opts: {
       reverseOfId: null,
       reversedById: null,
       reversedByName: null,
+      ...persistSlice({
+        fromDrawerId: opts.from.drawerId,
+        fromDrawerName: opts.from.drawerName,
+        toDrawerId: opts.to.drawerId,
+        toDrawerName: opts.to.drawerName,
+        requestedDenoms: denoms && denomsHaveEntries(denoms) ? denoms : null,
+        handedDenoms: null,
+        requestedAt: opts.now ?? Date.now(),
+        respondedAt: null,
+        reverseOfId: null,
+      }),
     },
   };
 }
@@ -200,9 +280,16 @@ export function respondTillTransfer(opts: {
     return { ok: false, error: "Cannot transfer after close started." };
   }
   if (opts.action === "decline") {
+    const respondedAt = opts.now ?? Date.now();
     return {
       ok: true,
-      transfer: { ...t, status: "declined", respondedAt: opts.now ?? Date.now() },
+      transfer: {
+        ...t,
+        status: "declined",
+        respondedAt,
+        resolvedAt: respondedAt,
+        updatedAt: respondedAt,
+      },
     };
   }
   if (opts.availableFromCents != null && t.amountCents > opts.availableFromCents) {
@@ -212,13 +299,20 @@ export function respondTillTransfer(opts: {
   if (handed && denomsHaveEntries(handed) && countedFromDenoms(handed) !== t.amountCents) {
     return { ok: false, error: "Handed mix must equal the transfer total." };
   }
+  const handedOk = handed && denomsHaveEntries(handed) ? handed : null;
+  const respondedAt = opts.now ?? Date.now();
   return {
     ok: true,
     transfer: {
       ...t,
       status: "accepted",
-      handedDenoms: handed && denomsHaveEntries(handed) ? handed : null,
-      respondedAt: opts.now ?? Date.now(),
+      handedDenoms: handedOk,
+      handedMix: handedOk,
+      respondedAt,
+      resolvedAt: respondedAt,
+      acceptedById: opts.actor.id,
+      acceptedByName: opts.actor.name,
+      updatedAt: respondedAt,
     },
   };
 }
@@ -234,9 +328,16 @@ export function cancelTillTransfer(opts: {
   if (opts.actorId !== opts.transfer.toEmployeeId) {
     return { ok: false, error: "Only the requester can cancel while pending." };
   }
+  const respondedAt = opts.now ?? Date.now();
   return {
     ok: true,
-    transfer: { ...opts.transfer, status: "cancelled", respondedAt: opts.now ?? Date.now() },
+    transfer: {
+      ...opts.transfer,
+      status: "cancelled",
+      respondedAt,
+      resolvedAt: respondedAt,
+      updatedAt: respondedAt,
+    },
   };
 }
 
@@ -277,6 +378,19 @@ export function reverseTillTransfer(opts: {
     reverseOfId: t.id,
     reversedById: opts.manager.id,
     reversedByName: opts.manager.name,
+    ...persistSlice({
+      fromDrawerId: t.toDrawerId,
+      fromDrawerName: t.toDrawerName,
+      toDrawerId: t.fromDrawerId,
+      toDrawerName: t.fromDrawerName,
+      requestedDenoms: t.handedDenoms,
+      handedDenoms: t.handedDenoms,
+      requestedAt: now,
+      respondedAt: now,
+      reverseOfId: t.id,
+      acceptedById: opts.manager.id,
+      acceptedByName: opts.manager.name,
+    }),
   };
   return {
     ok: true,
@@ -285,6 +399,8 @@ export function reverseTillTransfer(opts: {
       status: "reversed",
       reversedById: opts.manager.id,
       reversedByName: opts.manager.name,
+      reverseId: reverse.id,
+      updatedAt: now,
     },
     reverse,
   };
@@ -296,6 +412,8 @@ export function formatDenomMix(counts: DenomCounts | null | undefined): string {
     .map((d) => `${denomQty(counts, d.id)}×${d.label}`)
     .join(" ");
 }
+
+export const formatMix = formatDenomMix;
 
 export function formatTransferLine(line: TillTransferLine): string {
   const amt = `$${(line.amountCents / 100).toFixed(2)}`;

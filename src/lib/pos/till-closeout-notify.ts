@@ -5,13 +5,6 @@ import { usePosStore } from "./store";
 import { useNotifyStore } from "./notify-store";
 import type { TillCloseRecord } from "./till-closeout";
 
-function splitList(raw: string): string[] {
-  return raw
-    .split(/[\n,;]+/)
-    .map((s) => s.trim())
-    .filter(Boolean);
-}
-
 export function tillReviewDeepLink(): string {
   try {
     if (typeof window === "undefined") return "";
@@ -26,14 +19,15 @@ export function tillMismatchMessage(row: TillCloseRecord, storeName: string): {
   body: string;
   sms: string;
 } {
-  const title = `Till over/short · ${row.tillName}`;
+  const tillName = row.drawerName;
+  const title = `Till over/short · ${tillName}`;
   const os = formatCurrency(row.overShortCents ?? 0);
-  const first = formatCurrency(row.firstTotalCents ?? 0);
-  const second = formatCurrency(row.secondCountedCents ?? row.countedCents ?? 0);
-  const expected = formatCurrency(row.sealed.expectedCents);
+  const first = formatCurrency(row.firstCountedCents ?? 0);
+  const second = formatCurrency(row.denomCountedCents ?? row.countedCents ?? 0);
+  const expected = formatCurrency(row.expected?.expectedCents ?? 0);
   const body = [
     storeName,
-    `Till ${row.tillName}`,
+    `Till ${tillName}`,
     `${row.employeeName} (${row.employeeId})`,
     `1st total ${first}`,
     `2nd denom ${second}`,
@@ -54,19 +48,19 @@ export function dispatchTillMismatchAlerts(row: TillCloseRecord): void {
   const msg = tillMismatchMessage(row, storeName);
   const link = tillReviewDeepLink();
 
-  if (cfg.tillNotifyInApp) {
+  if (cfg.notifyInApp) {
     useNotifyStore.getState().pushNotice({
-      kind: "till_over_short",
+      kind: "till_mismatch",
       title: msg.title,
       body: msg.body,
       serverId: row.employeeId,
       serverName: row.employeeName,
       audience: ["manager"],
-      tableLabel: row.tillName,
+      tableLabel: row.drawerName,
     });
   }
 
-  if (cfg.tillNotifyPush && typeof Notification !== "undefined" && Notification.permission === "granted") {
+  if (cfg.notifyPush && typeof Notification !== "undefined" && Notification.permission === "granted") {
     try {
       new Notification(msg.title, { body: msg.body });
     } catch {
@@ -75,11 +69,10 @@ export function dispatchTillMismatchAlerts(row: TillCloseRecord): void {
   }
 
   const phones = [
-    ...splitList(cfg.tillNotifyPhones).map((p) => p.replace(/[^\d+]/g, "")),
     ...(lp.onCallList || []).map((c) => c.phone.replace(/[^\d+]/g, "")),
   ].filter((p) => p.length >= 8);
 
-  if (cfg.tillNotifySms && phones.length) {
+  if (cfg.notifySms && phones.length) {
     void import("./approval-api")
       .then((m) =>
         m.notifyOnCallFn({
@@ -93,8 +86,8 @@ export function dispatchTillMismatchAlerts(row: TillCloseRecord): void {
       .catch(() => undefined);
   }
 
-  const emails = splitList(cfg.tillNotifyEmails);
-  if (cfg.tillNotifyEmail && emails.length) {
+  const emails = cfg.notifyEmails.filter((e) => e.includes("@"));
+  if (cfg.notifyEmail && emails.length) {
     void import("./till-closeout-api")
       .then((m) =>
         m.notifyTillMismatchFn({

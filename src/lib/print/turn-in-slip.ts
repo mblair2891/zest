@@ -52,9 +52,9 @@ export function assertCanPrintTurnIn(
 }
 
 export function dropBlockedForPrint(
-  row: Pick<TillCloseRecord, "slipPrintOk" | "dropPrintOverrideReason">,
+  row: Pick<TillCloseRecord, "slipPrintOk" | "printOverrideReason">,
 ): string | null {
-  if (row.slipPrintOk || row.dropPrintOverrideReason) return null;
+  if (row.slipPrintOk || row.printOverrideReason) return null;
   return "Count is saved. Reprint required before drop.";
 }
 
@@ -162,26 +162,26 @@ export function slipInputFromRecord(
     locationName: opts.locationName,
     submittedAt: row.submittedAt!,
     registerId: opts.registerId || row.deviceId || "register",
-    tillName: row.tillName,
-    tillId: row.drawerId || row.bankEmployeeId || row.sinkKey,
+    tillName: row.drawerName,
+    tillId: row.drawerId,
     shiftId: opts.shiftId || row.id,
     closeId: row.id,
     employeeName: row.employeeName,
     employeeId: row.employeeId,
-    witnessName: row.dualControlByName,
-    witnessId: row.dualControlById,
-    openingBankCents: row.sealed.openingBankCents,
+    witnessName: row.witnessEmployeeName ?? undefined,
+    witnessId: row.witnessEmployeeId ?? undefined,
+    openingBankCents: row.expected?.openingBankCents ?? 0,
     countedCents: row.countedCents ?? 0,
-    bankLeftCents: row.bankLeftCents ?? row.sealed.nextShiftBankCents,
+    bankLeftCents: row.bankLeftCents ?? row.nextShiftBankCents,
     turnInCents: row.turnInCents ?? 0,
     checksCents: row.checksCents,
     moneyOrdersCents: row.moneyOrdersCents,
-    bagNumber: row.bagNumber,
+    bagNumber: row.bagNumber ?? "",
     overShortCents: row.overShortCents ?? 0,
-    transferInCents: row.sealed.transferInCents ?? 0,
-    transferOutCents: row.sealed.transferOutCents ?? 0,
+    transferInCents: row.expected?.transfersInCents ?? 0,
+    transferOutCents: row.expected?.transfersOutCents ?? 0,
     reprint: opts.reprint,
-    managerReview: row.status === "pending_review" || row.status === "flagged",
+    managerReview: row.status === "pending_review" || row.status === "needs_review",
   };
 }
 
@@ -193,7 +193,7 @@ export function turnInPrintJob(opts: {
 }): PrintJob {
   return {
     id: uid("prn"),
-    kind: "turn_in",
+    kind: "till_turn_in",
     station: "receipt",
     locationId: opts.locationId,
     locationName: opts.locationName,

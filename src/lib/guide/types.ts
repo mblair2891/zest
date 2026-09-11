@@ -101,7 +101,9 @@ export interface GuideTopic {
 export type WhatsNewSurface =
   | "floor"
   | "kds"
+  | "kitchen"
   | "kiosk"
+  | "labor"
   | "reports"
   | "settings"
   | "platform";

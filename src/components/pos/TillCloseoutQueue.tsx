@@ -42,6 +42,7 @@ export function TillCloseoutQueue() {
   const [pullStr, setPullStr] = useState("");
   const [pullReason, setPullReason] = useState<(typeof COUNTERFEIT_REASONS)[number]>("counterfeit");
   const [flash, setFlash] = useState<string | null>(null);
+  const daily = useMemo(() => dailyOverShort(records), [records]);
 
   if (!isManagerCash(emp?.role)) return null;
 
@@ -183,8 +184,6 @@ export function TillCloseoutQueue() {
     if (s === "accepted" || s === "auto_accepted" || s === "dropped") return "success" as const;
     return "info" as const;
   };
-
-  const daily = useMemo(() => dailyOverShort(records), [records]);
 
   return (
     <div className="mb-4 rounded-2xl border border-border bg-surface p-4">

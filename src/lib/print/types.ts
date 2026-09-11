@@ -1,7 +1,14 @@
 import type { PrintStation, PrinterConfig, PrinterConnection, PrinterFamily } from "@/lib/pos/location-devices";
 import type { TillTurnInSlip } from "@/lib/pos/till-turn-in-slip";
 
-export type PrintJobKind = "ticket" | "receipt" | "test" | "drawer_kick" | "till_turn_in";
+export type PrintJobKind =
+  | "ticket"
+  | "receipt"
+  | "test"
+  | "drawer_kick"
+  | "till_turn_in"
+  | "turn_in"
+  | "till_transfer";
 
 export type PrintLine = {
   qty: number;
@@ -49,6 +56,9 @@ export type PrintJob = {
   qrCaption?: string;
   /** Bag companion after a successful till submit. Never set on a draft. */
   turnIn?: TillTurnInSlip;
+  slipLines?: string[];
+  reprintCopy?: boolean;
+  barcodeValue?: string;
   at: number;
 };
 

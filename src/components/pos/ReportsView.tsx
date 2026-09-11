@@ -91,16 +91,6 @@ function downloadCsv(name: string, csv: string) {
 
 export function ReportsView() {
   const emp = usePosStore((s) => s.employees.find((e) => e.id === s.currentEmployeeId));
-  if (emp && reportsBlockedForClose(emp.id)) {
-    return (
-      <div className="p-6">
-        <p className="text-sm">
-          Reports are closed while you count your till. Enter what you counted — do not use reports
-          to guess expected cash.
-        </p>
-      </div>
-    );
-  }
   const venue = usePosStore((s) => s.activeEntityId) as VenueEntityId;
   const vendors = usePosStore((s) => s.vendors);
   const grants = usePosStore((s) => s.entityPermissions);
@@ -127,6 +117,8 @@ export function ReportsView() {
     if (locId) void hydrateFloor(locId);
   }, [locId]);
 
+  const tillBlocked = Boolean(emp && reportsBlockedForClose(emp.id));
+
   const list = reportsFor(venue, emp?.role);
   const active = list.find((r) => r.id === reportId) ?? list[0];
   const metrics = useMemo(
@@ -141,6 +133,17 @@ export function ReportsView() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [range, customFrom, customTo, operatorId, emp?.id, emp?.role, emp?.operatorId, venue],
   );
+
+  if (tillBlocked) {
+    return (
+      <div className="p-6">
+        <p className="text-sm">
+          Reports are closed while you count your till. Enter what you counted — do not use reports
+          to guess expected cash.
+        </p>
+      </div>
+    );
+  }
 
   if (!canEmployee(emp, "reports:read")) {
     return (

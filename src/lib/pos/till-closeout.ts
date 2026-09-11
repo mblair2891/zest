@@ -86,6 +86,9 @@ export const TILL_DENOMS: TillDenom[] = [
 ];
 
 export type DenomCounts = Record<string, number>;
+/** Alias used by the count pad and transfer persist. */
+export type TillDenomQty = DenomCounts;
+export type TillEntryMode = "single_total" | "denomination";
 
 export type BankMixLine = { denomId: string; qty: number };
 
@@ -352,6 +355,11 @@ export function isBlindPhase(status: TillCloseStatus): boolean {
   return BLIND_STATUSES.includes(status);
 }
 
+/** After submit the cashier/manager may see expected and print the turn-in slip. */
+export function isRevealedStatus(status: TillCloseStatus): boolean {
+  return !isBlindPhase(status);
+}
+
 export function isCountLocked(status: TillCloseStatus): boolean {
   return LOCKED_STATUSES.includes(status);
 }
@@ -510,6 +518,8 @@ export function countedFromDenoms(counts: DenomCounts | null | undefined): numbe
   }
   return sum;
 }
+
+export const sumDenominations = countedFromDenoms;
 
 export function denomsHaveEntries(counts: DenomCounts | null | undefined): boolean {
   if (!counts) return false;
@@ -1131,6 +1141,8 @@ export function parseMoneyToCents(raw: string): number | null {
   if (!Number.isFinite(n)) return null;
   return Math.round(n * 100);
 }
+
+export const dollarsToCents = parseMoneyToCents;
 
 export const TILL_DRAFT_KEY = "summex-till-draft";
 

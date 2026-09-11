@@ -87,6 +87,15 @@ async function sendToAgent(req: AgentPrintRequest): Promise<boolean> {
  * Turn-in bag slip. Prefers the named receipt printer, then station receipt printers.
  * Agent printers must succeed; browser-only stations count as printed (preview).
  */
+export async function dispatchReceiptStationJob(
+  job: PrintJob,
+  devices: LocationDevice[] | undefined,
+  opts?: { printerId?: string | null; copies?: 1 | 2 },
+): Promise<{ ok: boolean; printed: number; copiesPrinted?: number; error?: string }> {
+  const res = await dispatchTurnInSlip(job, devices, opts);
+  return { ...res, copiesPrinted: res.printed };
+}
+
 export async function dispatchTurnInSlip(
   job: PrintJob,
   devices: LocationDevice[] | undefined,

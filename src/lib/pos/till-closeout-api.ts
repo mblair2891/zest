@@ -308,6 +308,35 @@ export const addTillCommentFn = createServerFn({ method: "POST" })
     return addTillComment(context.userId, data);
   });
 
+export const notifyTillMismatchFn = createServerFn({ method: "POST" })
+  .middleware([tenantMiddleware])
+  .validator((d: {
+    locationId: string;
+    emails: string[];
+    subject: string;
+    text: string;
+  }) => ({
+    locationId: loc(d.locationId),
+    emails: (Array.isArray(d.emails) ? d.emails : [])
+      .map((e) => String(e).trim())
+      .filter((e) => e.includes("@"))
+      .slice(0, 12),
+    subject: clip(d.subject, 160),
+    text: clip(d.text, 4000),
+  }))
+  .handler(async ({ data }) => {
+    const { sendEmail } = await import("@/lib/saas/email.server");
+    for (const to of data.emails) {
+      await sendEmail({
+        to,
+        subject: data.subject,
+        text: data.text,
+        kind: "till_mismatch",
+      });
+    }
+    return { ok: true as const };
+  });
+
 export const listTillAuditFn = createServerFn({ method: "POST" })
   .middleware([tenantMiddleware])
   .validator((d: {

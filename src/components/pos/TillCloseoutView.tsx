@@ -955,20 +955,18 @@ export function TillCloseoutView({
                   </div>
                 )}
 
-                {(bagReq || true) && (
-                  <label className="block text-sm">
-                    <span className="mb-1 block text-xs text-muted-foreground">
-                      {bagReq ? "Bag / drop number (required)" : "Bag / drop number (optional)"}
-                    </span>
-                    <Input
-                      value={bagNumber}
-                      onChange={(e) => {
-                        setBagNumber(e.target.value.slice(0, 40));
-                        saveDraftSoon(screen.closeoutId, { bagNumber: e.target.value.slice(0, 40) });
-                      }}
-                    />
-                  </label>
-                )}
+                <label className="block text-sm">
+                  <span className="mb-1 block text-xs text-muted-foreground">
+                    {bagReq ? "Bag / drop number (required)" : "Bag / drop number (optional)"}
+                  </span>
+                  <Input
+                    value={bagNumber}
+                    onChange={(e) => {
+                      setBagNumber(e.target.value.slice(0, 40));
+                      saveDraftSoon(screen.closeoutId, { bagNumber: e.target.value.slice(0, 40) });
+                    }}
+                  />
+                </label>
               </>
             )}
           </div>

@@ -72,6 +72,9 @@ function log(
     actorName: actor.name,
     action,
     detail,
+    kind: action,
+    employeeId: actor.id,
+    employeeName: actor.name,
   };
   set(() => ({ audit: [ev, ...get().audit].slice(0, 400) }));
 }

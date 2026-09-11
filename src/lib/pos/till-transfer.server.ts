@@ -1,6 +1,6 @@
 import { getSql } from "@/lib/db";
 import type { TillTransfer, TillTransferAudit } from "./till-transfer";
-import type { TillDenomQty } from "./till-closeout";
+import { parseDenomCounts, type TillDenomQty } from "./till-closeout";
 
 function num(v: unknown): number | null {
   if (v == null || v === "") return null;
@@ -8,39 +8,54 @@ function num(v: unknown): number | null {
   return Number.isFinite(n) ? n : null;
 }
 
+function mix(raw: unknown): TillDenomQty {
+  return parseDenomCounts(raw);
+}
+
 function rowToTransfer(r: Record<string, unknown>): TillTransfer {
+  const fromDrawerId = String(r.from_sink_key ?? r.from_drawer_id ?? "");
+  const fromDrawerName = String(r.from_till_name ?? r.from_drawer_name ?? "");
+  const toDrawerId = String(r.to_sink_key ?? r.to_drawer_id ?? "");
+  const toDrawerName = String(r.to_till_name ?? r.to_drawer_name ?? "");
+  const requested = mix(r.requested_mix ?? r.requested_denoms);
+  const handed = mix(r.handed_mix ?? r.handed_denoms);
+  const requestedAt = num(r.requested_at_ms) ?? 0;
+  const respondedAt = num(r.resolved_at_ms ?? r.responded_at_ms);
   return {
     id: String(r.id),
     locationId: String(r.location_id),
     status: String(r.status) as TillTransfer["status"],
-    fromSinkKey: String(r.from_sink_key),
-    fromTillName: String(r.from_till_name ?? ""),
+    amountCents: num(r.amount_cents) ?? 0,
+    fromDrawerId,
+    fromDrawerName,
     fromEmployeeId: String(r.from_employee_id ?? ""),
     fromEmployeeName: String(r.from_employee_name ?? ""),
-    toSinkKey: String(r.to_sink_key),
-    toTillName: String(r.to_till_name ?? ""),
+    toDrawerId,
+    toDrawerName,
     toEmployeeId: String(r.to_employee_id ?? ""),
     toEmployeeName: String(r.to_employee_name ?? ""),
-    amountCents: num(r.amount_cents) ?? 0,
-    requestedMix: (r.requested_mix && typeof r.requested_mix === "object"
-      ? r.requested_mix
-      : {}) as TillDenomQty,
-    handedMix: (r.handed_mix && typeof r.handed_mix === "object"
-      ? r.handed_mix
-      : {}) as TillDenomQty,
-    note: r.note ? String(r.note) : undefined,
-    requestedAt: num(r.requested_at_ms) ?? 0,
-    resolvedAt: num(r.resolved_at_ms) ?? undefined,
-    reverseOfId: r.reverse_of_id ? String(r.reverse_of_id) : undefined,
-    reverseId: r.reverse_id ? String(r.reverse_id) : undefined,
-    reversedById: r.reversed_by_id ? String(r.reversed_by_id) : undefined,
-    reversedByName: r.reversed_by_name ? String(r.reversed_by_name) : undefined,
+    requestedDenoms: requested,
+    handedDenoms: handed,
+    note: r.note ? String(r.note) : null,
+    requestedAt,
+    respondedAt,
+    reverseOfId: r.reverse_of_id ? String(r.reverse_of_id) : null,
+    reversedById: r.reversed_by_id ? String(r.reversed_by_id) : null,
+    reversedByName: r.reversed_by_name ? String(r.reversed_by_name) : null,
+    fromSinkKey: fromDrawerId,
+    fromTillName: fromDrawerName,
+    toSinkKey: toDrawerId,
+    toTillName: toDrawerName,
+    requestedMix: requested,
+    handedMix: handed,
+    resolvedAt: respondedAt,
+    reverseId: r.reverse_id ? String(r.reverse_id) : null,
     reprintCount: num(r.reprint_count) ?? 0,
     printOk: Boolean(r.print_ok),
-    lastPrintedAt: num(r.last_printed_at_ms) ?? undefined,
-    updatedAt: num(r.updated_at_ms) ?? 0,
-    acceptedById: r.accepted_by_id ? String(r.accepted_by_id) : undefined,
-    acceptedByName: r.accepted_by_name ? String(r.accepted_by_name) : undefined,
+    lastPrintedAt: num(r.last_printed_at_ms),
+    acceptedById: r.accepted_by_id ? String(r.accepted_by_id) : null,
+    acceptedByName: r.accepted_by_name ? String(r.accepted_by_name) : null,
+    updatedAt: num(r.updated_at_ms) ?? respondedAt ?? requestedAt,
   };
 }
 
