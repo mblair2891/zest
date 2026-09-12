@@ -23,6 +23,7 @@ export function TenantWorkspace() {
   const [openId, setOpenId] = useState<string | null>(null);
   const [detail, setDetail] = useState<TenantDrillIn | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [filter, setFilter] = useState<"all" | "demos" | "subscribers">("all");
 
   const openVenue = (_slug: string | null | undefined, orgId: string, loc?: string) => {
     void navigate({
@@ -69,8 +70,22 @@ export function TenantWorkspace() {
         </GuideLearnLink>
         <p className="text-xs text-muted-foreground">
           Click a tenant to open its back-office tabs (Overview, Settings, Devices, Menus, Payments, Users, Onboarding).
-          Shared building works with no host merchant. Demo rows are pairable training houses — they do not count in CRM.
+          Demo rows are isolated pairable houses — they do not count in CRM, pipeline, or revenue.
         </p>
+        <div className="ml-auto flex gap-1">
+          {(["all", "demos", "subscribers"] as const).map((id) => (
+            <button
+              key={id}
+              type="button"
+              onClick={() => setFilter(id)}
+              className={`h-8 rounded-lg px-3 text-xs font-medium ${
+                filter === id ? "bg-primary text-primary-foreground" : "border border-border text-muted-foreground"
+              }`}
+            >
+              {id === "all" ? "All" : id === "demos" ? "Demos" : "Subscribers"}
+            </button>
+          ))}
+        </div>
       </div>
       {error && <p className="px-4 py-2 text-sm text-danger">{error}</p>}
       <div className="flex min-h-0 flex-1">
@@ -99,7 +114,11 @@ export function TenantWorkspace() {
                 </tr>
               </thead>
               <tbody>
-                {rows.map((t) => (
+                {rows
+                  .filter((t) =>
+                    filter === "demos" ? t.isDemo : filter === "subscribers" ? !t.isDemo : true,
+                  )
+                  .map((t) => (
                   <tr
                     key={t.id}
                     role="link"

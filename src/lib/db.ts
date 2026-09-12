@@ -444,8 +444,8 @@ export function ensureDbReady(): Promise<void> {
       console.error("[db] demo purge skipped:", err);
     }
     try {
-      const { ensureSummitHallDemo } = await import("@/lib/saas/summit-hall-seed.server");
-      await ensureSummitHallDemo();
+      const { ensureIsolatedDemos } = await import("@/lib/demo/isolated-seed.server");
+      await ensureIsolatedDemos();
     } catch (err) {
       console.error("[db] Summit Hall isolated demo seed skipped:", err);
     }

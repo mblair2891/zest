@@ -45,10 +45,12 @@ test("Summit Hall staff PINs match the demo roster and skip 0000", () => {
   assert.equal(byPin["3333"]?.operatorId, SUMMIT_COPPER_OP_ID);
   assert.equal(byPin["4444"]?.role, "kitchen");
   assert.equal(byPin["4444"]?.operatorId, SUMMIT_HEARTH_OP_ID);
-  assert.equal(byPin["5555"]?.name, "Supervisor");
+  assert.equal(byPin["5555"]?.role, "busser");
   assert.equal(byPin["5555"]?.operatorId, null);
+  assert.equal(byPin["7777"]?.name, "Supervisor");
+  assert.equal(byPin["7777"]?.operatorId, null);
   assert.equal(byPin["9999"]?.role, "owner");
-  assert.equal(byPin["6666"]?.role, "busser");
+  assert.equal(byPin["6666"], undefined);
   assert.equal(SUMMIT_HALL_STAFF.some((s) => s.pin === "0000"), false);
   assert.equal(new Set(SUMMIT_HALL_STAFF.map((s) => s.pin)).size, SUMMIT_HALL_STAFF.length);
 });

@@ -250,7 +250,7 @@ export const GETTING_STARTED_TOPICS: GuideTopic[] = [
       steps(
         "Sign in at /login with your account password (Platform Admin is the only seeded password login).",
         "Tenants shows Summit Hall as Demo / pairable. Open it. Devices can add host, order, ODS kitchen, ODS bar — no hardware is pre-paired.",
-        "Floor PINs: Host 1111, Server 2222, Bartender 3333, Kitchen 4444, Supervisor 5555, Busser 6666, Manager 9999.",
+        "Floor PINs: Host 1111, Server 2222, Bartender 3333, Kitchen 4444, Busser 5555, Supervisor 7777, Manager 9999.",
         "Clock in is Labor, separate from PIN. No extra 0000 user.",
       ),
       warn(
@@ -277,7 +277,7 @@ export const GETTING_STARTED_TOPICS: GuideTopic[] = [
       ),
       steps(
         "Sign in as Platform Admin. Tenants → Summit Hall (Demo / pairable). Venue slug summit-hall.",
-        "Floor PINs (not clock-in, not owner password): Host 1111 · Server 2222 (Hearth FOH, both menus on one check) · Bartender 3333 (Copper) · Kitchen 4444 (Hearth ODS) · Supervisor 5555 · Manager 9999 · Busser 6666. No 0000.",
+        "Floor PINs (not clock-in, not owner password): Host 1111 · Server 2222 (Hearth FOH, both menus on one check) · Bartender 3333 (Copper) · Kitchen 4444 (Hearth ODS) · Busser 5555 · Supervisor 7777 · Manager 9999. No 0000.",
         "Devices: add Android stations (host | order | ODS kitchen | ODS bar). Nothing is pre-paired. Publish when ready.",
         "QR: table tents + ticket QR, reorder after a staff-opened check, pay/split. Full self-serve is off.",
         "Labor: Hearth vs food $ and Copper vs drink $ (owned lines). Independent schedules. PIN login and clock-in are both available and separate.",
@@ -285,7 +285,47 @@ export const GETTING_STARTED_TOPICS: GuideTopic[] = [
       warn(
         "Do not treat Summit Hall as a paying subscriber. Re-running the seed is idempotent: it does not factory-reset, does not delete Platform Admin, and does not wipe paired devices.",
       ),
-      related("partner-demo", "single-vs-multi", "type-food-hall", "empty-start", "table-qr", "android-kiosk"),
+      related("partner-demo", "isolated-demo-houses", "single-vs-multi", "type-food-hall", "empty-start", "table-qr", "android-kiosk"),
+    ],
+  }),
+  topic({
+    id: "isolated-demo-houses",
+    chapterId: "getting-started",
+    title: "Isolated demo houses",
+    summary:
+      "Four pairable demo tenants: Summit Hall, Harbor Lot, Ash Street Coffee, Redbird Chicken. Never CRM revenue.",
+    visibility: "platform",
+    roles: ["platform_admin"],
+    keywords: [
+      "demo",
+      "summit hall",
+      "harbor lot",
+      "ash street",
+      "redbird",
+      "entity switcher",
+      "operating as",
+      "pin",
+    ],
+    blocks: [
+      why(
+        "Sales and tablet priming use isolated demo tenants. They are flagged is_demo, excluded from pipeline, MRR, and subscriber counts. Live houses never get the entity switcher.",
+      ),
+      ul(
+        "Summit Hall — peer full-service. Hearth Kitchen + Copper Bar. No host merchant.",
+        "Harbor Lot — food-truck pod with a host merchant (Harbor Lot Hospitality) plus six trucks. Shared seating. One guest check.",
+        "Ash Street Coffee — single-operator counter. Queue / ticket. No floor map.",
+        "Redbird Chicken — single-operator drive-through. Order-taker, window, kitchen ODS. No dining room.",
+      ),
+      steps(
+        "Marketing /demo (also /demos) shows four cards. Entering a demo does not require CRM. PIN pad on the house — not owner password.",
+        "Platform Tenants → Demos lists all four. Open Devices to pair Android stations. Admin password stays back office.",
+        "Shared PIN cheat-sheet (roles omitted when they do not apply): 1111 Host / window · 2222 Cashier / counter / server · 3333 Cook / ODS · 4444 Runner / window · 5555 Busser · 7777 Supervisor · 9999 Manager.",
+        "On Summit Hall and Harbor Lot only: after PIN, Operating as switches the selling entity (menu, ODS, owned-lines reports, staff, inventory). Shared floor, devices, and the guest check stay the same. Hidden on single-entity demos and on every live subscriber.",
+      ),
+      warn(
+        "Do not document the entity switcher as a live product feature. Do not treat demo names as customers. Live peer venues still have no host merchant; live pods still have a real host merchant.",
+      ),
+      related("laundry-test-venue", "partner-demo", "device-roles", "login", "platform-tenants"),
     ],
   }),
   topic({

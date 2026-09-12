@@ -1,7 +1,7 @@
 # Operators Guide — authoring
 
-**Revision · 12 Sep 2026** — Peer venue onboarding without a host merchant.
-Guide v2026.10.77.
+**Revision · 12 Sep 2026** — Isolated demo houses (platform demo chapter).
+Guide v2026.10.78.
 
 The in-app **Operators Guide** is the living product manual. It is not a
 separate PDF. Staff open it from **Guide** / **?** in the POS and platform

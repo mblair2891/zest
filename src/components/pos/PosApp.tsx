@@ -266,13 +266,16 @@ function PosAppInner({ entityId }: { entityId?: string }) {
               access.location.operatingModel === "host_operators" ||
               access.location.operatingModel === "peer_venue",
             peerVenue: access.location.operatingModel === "peer_venue",
+            isDemo: Boolean(access.location.isDemo || access.openDemo || setup.demoIsolated),
+            demoIsolated: Boolean(access.location.isDemo || access.openDemo || setup.demoIsolated),
             address: access.location.address,
             entityPermissions: parseGrantMatrix(setup.entityPermissions),
             locationDevices: parseLocationDevices(setup.locationDevices),
             floorStaff: access.floorStaff,
             pinGate:
-            (isStationPinPath() || isNativeApp()) &&
-            (Boolean(access.floorStaff?.length) || Boolean(access.openDemo)),
+              Boolean(access.openDemo && !user) ||
+              ((isStationPinPath() || isNativeApp()) &&
+                (Boolean(access.floorStaff?.length) || Boolean(access.openDemo))),
             staff: staffRole
               ? {
                   role: staffRole,
@@ -314,6 +317,8 @@ function PosAppInner({ entityId }: { entityId?: string }) {
                   setup.cashRoundMode === "up" ? "up" : st.settings.cashRoundMode,
                 giftHouseIssuerEnabled:
                   setup.giftHouseIssuerEnabled ?? st.settings.giftHouseIssuerEnabled,
+                isDemo: Boolean(access.location.isDemo || access.openDemo || setup.demoIsolated),
+                demoIsolated: Boolean(access.location.isDemo || access.openDemo || setup.demoIsolated),
               },
             });
           } catch { /* optional */ }

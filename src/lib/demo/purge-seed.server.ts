@@ -9,6 +9,11 @@ import {
   SUMMIT_HALL_ORG_ID,
   SUMMIT_HALL_SLUG,
 } from "@/lib/saas/summit-hall";
+import {
+  ISOLATED_DEMO_LOCATION_IDS,
+  ISOLATED_DEMO_ORG_IDS,
+  ISOLATED_DEMO_SLUGS,
+} from "@/lib/demo/isolated-catalog";
 import { PARTNER_DEMO_EMAILS } from "./partner-demo";
 import { FLOOR_TEST_LOCATION_ID, FLOOR_TEST_ORG_ID } from "./floor-test";
 
@@ -114,9 +119,11 @@ async function purgeOnce(): Promise<{ removed: number }> {
   ]);
   orgIds.delete(REAL_LAUNDRY_ORG_ID);
   orgIds.delete(SUMMIT_HALL_ORG_ID);
+  for (const id of ISOLATED_DEMO_ORG_IDS) orgIds.delete(id);
   const locIds = new Set<string>([...locTagged.map((r) => r.id), ...DEMO_LOC_IDS]);
   locIds.delete(REAL_LAUNDRY_LOCATION_ID);
   locIds.delete(SUMMIT_HALL_LOCATION_ID);
+  for (const id of ISOLATED_DEMO_LOCATION_IDS) locIds.delete(id);
   const removed = orgIds.size;
 
   for (const locId of locIds) {

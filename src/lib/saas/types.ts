@@ -51,6 +51,8 @@ export type LocationSetup = {
   networkNotes?: string;
   networkChecklist?: import("./network-readiness").NetworkChecklist;
   lifecycleStatus?: "onboarding" | "awaiting_entities" | "training" | "scheduled_live" | "live";
+  /** Isolated demo house. Never a live subscriber. */
+  demoIsolated?: boolean;
   taxMode?: "venue_shared" | "per_entity";
   serviceStyle?: "full_service" | "counter" | "hybrid";
   hostEntityId?: string | null;
@@ -202,6 +204,7 @@ export type OrgRecord = {
   phone?: string | null;
   hqAddress?: string | null;
   taxId?: string | null;
+  isDemo?: boolean;
 };
 
 export type MembershipRecord = {
@@ -235,6 +238,7 @@ export type LocationRecord = {
   lifecycleStatus?: string;
   /** Public host label: {slug}.summex.app and /v/{slug}. */
   slug?: string | null;
+  isDemo?: boolean;
 };
 
 /** Public partner-demo location row for the temporary Login → picker path. */

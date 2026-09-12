@@ -71,9 +71,12 @@ export function KitchenView({ station, expo, operatorId }: Props) {
   const hostWide = emp?.role === "owner" || emp?.role === "manager";
   const paneOp =
     operatorId && operatorId !== HOST_SCOPE ? operatorId : null;
+  const demoScope = usePosStore((s) =>
+    s.settings.isDemo || s.settings.demoIsolated ? s.demoOperatingEntityId : null,
+  );
   const lockedVendor = paneOverride
     ? paneOp
-    : assignedOp ?? (!hostWide && roleOp ? roleOp : null);
+    : assignedOp ?? demoScope ?? (!hostWide && roleOp ? roleOp : null);
   const [vendorFilter, setVendorFilter] = useState<string | null>(lockedVendor);
   const [railPick, setRailPick] = useState<"all" | "kitchen" | "bar">("all");
   const railStation: KitchenRail = assignedStation || station;

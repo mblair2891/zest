@@ -16,7 +16,9 @@ export function metricsFromPosStore(opts: {
   const venue = (s.activeEntityId || "restaurant") as VenueEntityId;
   const emp = s.employees.find((e) => e.id === s.currentEmployeeId);
   const grants = s.entityPermissions;
-  let lockOp: string | null = opts.operatorId ?? null;
+  const demoScope =
+    s.settings.isDemo || s.settings.demoIsolated ? s.demoOperatingEntityId : null;
+  let lockOp: string | null = demoScope ?? opts.operatorId ?? null;
   if (emp?.role === "vendor_operator") {
     const want = opts.operatorId || emp.operatorId || null;
     lockOp =
@@ -34,7 +36,7 @@ export function metricsFromPosStore(opts: {
     range: opts.range,
     from: opts.from,
     to: opts.to,
-    isDemo: isProspectDemo(),
+    isDemo: isProspectDemo() || Boolean(s.settings.isDemo || s.settings.demoIsolated),
     operatorId: lockOp,
     serverId: lockSrv,
     settings: s.settings,

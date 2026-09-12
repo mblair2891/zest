@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useStationLayout } from "@/lib/ui/station-layout";
 import { FloorView } from "./FloorView";
 import {
@@ -117,7 +117,13 @@ export function OrderView() {
   const [noteOpen, setNoteOpen] = useState(false);
   const [noteDraft, setNoteDraft] = useState("");
   const [search, setSearch] = useState("");
-  const [vendorFilter, setVendorFilter] = useState<string | null>(null);
+  const demoScope = usePosStore((s) =>
+    s.settings.isDemo || s.settings.demoIsolated ? s.demoOperatingEntityId : null,
+  );
+  const [vendorFilter, setVendorFilter] = useState<string | null>(demoScope);
+  useEffect(() => {
+    if (demoScope) setVendorFilter(demoScope);
+  }, [demoScope]);
   const [payQrOpen, setPayQrOpen] = useState(false);
   const [opsOpen, setOpsOpen] = useState(false);
   const [checkOpen, setCheckOpen] = useState(false);

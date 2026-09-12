@@ -59,6 +59,7 @@ import { cn, formatTime } from "@/lib/utils";
 import { isDevDemoClient } from "@/lib/saas/flags";
 import { isProspectDemo } from "@/lib/demo/session";
 import { DemoDeviceSwitcher } from "@/components/demo/DemoDeviceSwitcher";
+import { DemoEntitySwitcher } from "@/components/demo/DemoEntitySwitcher";
 import { useDemoDeviceStore } from "@/lib/demo/device-session";
 import { useDemoLiveSync } from "@/lib/demo/live-sync";
 import { TrainingBanner } from "./TrainingBanner";
@@ -460,6 +461,7 @@ export function AppShell() {
             <SplitScreenToggle />
             <HelpButton surface="pos" compact />
             <VoiceCommandButton />
+            <DemoEntitySwitcher />
             <DemoDeviceSwitcher />
             <Button size="sm" variant="outline" onClick={isProspectDemo() ? switchDemoUser : () => logout()}>
               {isProspectDemo() ? "PIN / time clock" : "Switch user"}
@@ -543,6 +545,7 @@ export function AppShell() {
           )}
           {/* Package preview is desktop-only so Help stays visible on phones */}
 
+          <DemoEntitySwitcher className="hidden md:flex" />
           {isProspectDemo() && demoEntered && (
             <DemoDeviceSwitcher className="hidden md:flex" />
           )}

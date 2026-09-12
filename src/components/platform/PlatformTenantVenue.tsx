@@ -59,6 +59,7 @@ import {
   type PasswordDashKind,
 } from "@/lib/saas/password-dash";
 import { PasswordDashHome } from "@/components/platform/PasswordDashHome";
+import { DemoEntitySwitcher } from "@/components/demo/DemoEntitySwitcher";
 import { LedgerView } from "@/components/pos/LedgerView";
 import type { MembershipRole } from "@/lib/saas/types";
 
@@ -374,6 +375,8 @@ export function PlatformTenantVenue({
           giftHouseIssuerEnabled: peer
             ? false
             : (setup.giftHouseIssuerEnabled ?? st.settings.giftHouseIssuerEnabled),
+          isDemo: Boolean(access.location.isDemo || setup.demoIsolated),
+          demoIsolated: Boolean(access.location.isDemo || setup.demoIsolated),
           lifecycleStatus:
             (access.location.lifecycleStatus as
               | "training"
@@ -488,6 +491,7 @@ export function PlatformTenantVenue({
                   : ""}
               </p>
             </div>
+            <DemoEntitySwitcher className="hidden sm:flex" />
             {ops.length > 0 && (
               <div className="hidden flex-wrap gap-1 sm:flex">
                 {ops.map((o) => (

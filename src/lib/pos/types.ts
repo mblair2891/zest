@@ -201,6 +201,9 @@ export interface RestaurantSettings {
   hostMultiOperator?: boolean;
   /** Shared building with independent operators. No host merchant, menu, or gift product required. */
   peerVenue?: boolean;
+  /** Isolated demo house. Never a live subscriber. */
+  isDemo?: boolean;
+  demoIsolated?: boolean;
   /** Optional monthly shared venue costs (rent, utilities) in cents. */
   sharedVenueCostsCents?: number;
   operatingModel?: "single" | "host_operators" | "peer_venue";

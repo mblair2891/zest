@@ -6,6 +6,19 @@ import type { GuideUpdate } from "@/lib/guide/types";
  */
 export const WHATS_NEW_ENTRIES: GuideUpdate[] = [
   {
+    id: "upd_2026_10_78_isolated_demo_houses",
+    date: "2026-09-12",
+    title: "Isolated demo houses + Operating as switcher",
+    summary:
+      "Four pairable demo tenants. Operating as appears only on isolated demos with more than one entity — never on live subscribers.",
+    body: "Summit Hall (peer), Harbor Lot (host + six trucks), Ash Street Coffee (counter), Redbird Chicken (drive-through). Flagged is_demo — excluded from pipeline and revenue. Shared PIN cheat-sheet. After PIN on Summit Hall or Harbor Lot, Operating as flips the selling entity (menu, ODS, owned-lines, staff, inventory) without changing the shared floor or guest check. Hidden on live venues and on single-entity demos. Password login remains back office.",
+    roles: ["platform_admin"],
+    surfaces: ["platform", "floor"],
+    audience: "platform",
+    topicId: "isolated-demo-houses",
+    tags: ["demo", "devices", "pin"],
+  },
+  {
     id: "upd_2026_10_77_peer_venue_onboarding",
     date: "2026-09-12",
     title: "Peer venue onboarding — no host merchant",

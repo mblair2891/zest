@@ -85,8 +85,17 @@ export const SUMMIT_HALL_STAFF: readonly SummitStaffSpec[] = [
     homeView: "kitchen",
   },
   {
-    id: "emp_summit_supervisor",
+    id: "emp_summit_busser",
     pin: "5555",
+    name: "Busser",
+    role: "busser",
+    operatorId: null,
+    color: "#4A5568",
+    title: "Busser",
+  },
+  {
+    id: "emp_summit_supervisor",
+    pin: "7777",
     name: "Supervisor",
     role: "manager",
     operatorId: null,
@@ -101,15 +110,6 @@ export const SUMMIT_HALL_STAFF: readonly SummitStaffSpec[] = [
     operatorId: null,
     color: "#2C4A6E",
     title: "Manager",
-  },
-  {
-    id: "emp_summit_busser",
-    pin: "6666",
-    name: "Busser",
-    role: "busser",
-    operatorId: null,
-    color: "#4A5568",
-    title: "Busser",
   },
 ];
 
@@ -435,6 +435,13 @@ export function summitHallFloorPlan(): LocationFloorPlan {
 export function isSummitHallOrgId(id: string | null | undefined): boolean {
   return id === SUMMIT_HALL_ORG_ID;
 }
+
+export const SUMMIT_HALL_DEVICES = [
+  { id: "dev_summit_host", label: "Host stand", type: "host_stand" as const, fn: "host_stand" as const, operatorId: "host" },
+  { id: "dev_summit_order", label: "Order tablet", type: "tablet_pos" as const, fn: "floor_pos" as const, operatorId: "host" },
+  { id: "dev_summit_ods_kitchen", label: "Kitchen ODS", type: "kds" as const, fn: "kitchen_kds" as const, operatorId: SUMMIT_HEARTH_OP_ID },
+  { id: "dev_summit_ods_bar", label: "Bar ODS", type: "kds" as const, fn: "bar_kds" as const, operatorId: SUMMIT_COPPER_OP_ID },
+];
 
 export function isSummitHallLocationId(id: string | null | undefined): boolean {
   return id === SUMMIT_HALL_LOCATION_ID;

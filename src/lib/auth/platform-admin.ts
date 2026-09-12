@@ -84,8 +84,8 @@ export const ensureAdminExists = createServerFn({ method: "POST" }).handler(
         console.error("[auth] demo purge skipped:", err);
       }
       try {
-        const { ensureSummitHallDemo } = await import("@/lib/saas/summit-hall-seed.server");
-        await ensureSummitHallDemo();
+        const { ensureIsolatedDemos } = await import("@/lib/demo/isolated-seed.server");
+        await ensureIsolatedDemos();
       } catch (err) {
         console.error("[auth] Summit Hall isolated demo seed skipped:", err);
       }

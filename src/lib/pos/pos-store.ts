@@ -141,6 +141,9 @@ export interface PosStore {
   extraEntityShiftGrants: import("./types").ExtraEntityShiftGrant[];
   sectionOverrides: Record<string, string[]>;
   activeEntityId: VenueEntityId;
+  /** Demo-only operating entity. Null = house / all entities. Never used on live subscribers. */
+  demoOperatingEntityId: string | null;
+  setDemoOperatingEntity: (id: string | null) => void;
 
   login: (pin: string) => ActionResult;
   loginAs: (employeeId: string, opts?: { kind?: "pin" | "backoffice" }) => ActionResult;
@@ -505,6 +508,8 @@ export interface PosStore {
     address?: string;
     hallMode?: boolean;
     peerVenue?: boolean;
+    isDemo?: boolean;
+    demoIsolated?: boolean;
     staff?: { role: EmployeeRole; operatorId?: string | null; name: string };
     entityPermissions?: import("@/lib/access/entity-grants").EntityGrantRow[];
     locationDevices?: import("./location-devices").LocationDevice[];

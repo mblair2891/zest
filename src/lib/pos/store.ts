@@ -287,6 +287,7 @@ function initialState() {
 		extraEntityShiftGrants: [],
 		sectionOverrides: {},
 		activeEntityId: "restaurant" as const,
+		demoOperatingEntityId: null as string | null,
 		tenantLocationId: null,
 		entityPermissions: [],
 		locationDevices: [],
@@ -396,6 +397,14 @@ function checkTableAccess(get: any, table: any, action: any) {
 const usePosStoreRaw = create<PosStore>()(persist((set, get) => {
 	const store: PosStore = {
 	...initialState(),
+	setDemoOperatingEntity: (id) => {
+		const demo = Boolean(get().settings.isDemo || get().settings.demoIsolated);
+		if (!demo) {
+			set({ demoOperatingEntityId: null });
+			return;
+		}
+		set({ demoOperatingEntityId: id });
+	},
 	login: (pin) => {
 		const loc = get().tenantLocationId || get().activeEntityId || "loc";
 		const device = (get().locationDevices ?? []).find((d: any) => d.id === get().activeDeviceId);
@@ -4364,6 +4373,14 @@ const usePosStoreRaw = create<PosStore>()(persist((set, get) => {
 		if (already && (!staff || staff.role === "owner") && !opts.floorStaff?.length && !opts.pinGate) {
 			return get().loginAsOwner(ownerName);
 		}
+		set({
+			demoOperatingEntityId: null,
+			settings: {
+				...get().settings,
+				isDemo: Boolean(opts.isDemo || opts.demoIsolated),
+				demoIsolated: Boolean(opts.demoIsolated || opts.isDemo),
+			},
+		});
 		if (!already) {
 			const slice = starterPosSlice({
 				entityId,
@@ -4381,6 +4398,11 @@ const usePosStoreRaw = create<PosStore>()(persist((set, get) => {
 			});
 			set({
 				...slice,
+				settings: {
+					...slice.settings,
+					isDemo: Boolean(opts.isDemo || opts.demoIsolated),
+					demoIsolated: Boolean(opts.demoIsolated || opts.isDemo),
+				},
 				entityPermissions: opts.entityPermissions ?? [],
 				locationDevices: opts.locationDevices ?? [],
 				activeDeviceId: null,

@@ -32,7 +32,13 @@ export function MenuAdminView() {
   const locId = usePosStore((s) => s.tenantLocationId) || "";
   const host = isHostPrivileged(emp);
 
-  const menuItems = menuItemsAll.filter((m) => canViewMenu(emp, grants, m.vendorId));
+  const demoScope = usePosStore((s) =>
+    s.settings.isDemo || s.settings.demoIsolated ? s.demoOperatingEntityId : null,
+  );
+  const menuItems = menuItemsAll.filter((m) => {
+    if (demoScope && m.vendorId !== demoScope) return false;
+    return canViewMenu(emp, grants, m.vendorId);
+  });
   const ownVendorId = entityLoginScope(emp) ?? undefined;
   const canCreate = host || Boolean(ownVendorId && canEditMenu(emp, grants, ownVendorId));
 

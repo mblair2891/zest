@@ -10,11 +10,15 @@ import { HOST_SCOPE } from "@/lib/access/entity-grants";
 import { parseLaborRules } from "@/lib/labor/rules";
 import { defaultPackagesForMode } from "@/lib/pos/packages";
 import { hashPin } from "@/lib/pos/pin";
+import { makeClaimCode } from "@/lib/pos/location-devices";
+import { nextClaimExpiry } from "@/lib/pos/station-pair";
+import type { LocationDevice } from "@/lib/pos/location-devices";
 import type { LocationSetup } from "./types";
 import {
   SUMMIT_COPPER_OP_ID,
   SUMMIT_HALL_CATEGORIES,
   SUMMIT_HALL_COST_SETTINGS,
+  SUMMIT_HALL_DEVICES,
   SUMMIT_HALL_LOCATION_ID,
   SUMMIT_HALL_MENU,
   SUMMIT_HALL_NAME,
@@ -31,6 +35,27 @@ import {
 const globalRef = globalThis as typeof globalThis & {
   __summexSummitHallBoot__?: Promise<{ ok: true } | { ok: false; reason: string }>;
 };
+
+function mergeSummitDevices(existing?: LocationSetup["locationDevices"]): LocationDevice[] {
+  const prev = Array.isArray(existing) ? existing : [];
+  const byId = new Map(prev.map((d) => [d.id, d]));
+  return SUMMIT_HALL_DEVICES.map((d) => {
+    const old = byId.get(d.id);
+    const paired = old && (old.status === "online" || old.status === "offline" || old.serial);
+    return {
+      id: d.id,
+      locationId: SUMMIT_HALL_LOCATION_ID,
+      label: d.label,
+      type: d.type,
+      status: paired ? old!.status : "pending",
+      lastSeenAt: old?.lastSeenAt ?? Date.now(),
+      serial: old?.serial,
+      claimCode: paired ? old?.claimCode : old?.claimCode || makeClaimCode(),
+      claimExpiresAt: paired ? old?.claimExpiresAt : nextClaimExpiry(),
+      assignment: { operatorId: d.operatorId, function: d.fn },
+    };
+  });
+}
 
 function laborOwnedLines(extra?: Record<string, unknown>) {
   return parseLaborRules({
@@ -60,10 +85,12 @@ function locationSetup(existing?: Partial<LocationSetup>): LocationSetup {
     lifecycleStatus: "training",
     paymentsMode: "sandbox",
     skipTrainingRoster: true,
-    giftHouseIssuerEnabled: true,
+    giftHouseIssuerEnabled: false,
     giftTermAllowed: false,
     operatingModel: "peer_venue",
     peerVenue: true,
+    demoIsolated: true,
+    hostEntityId: null,
     qrMode: "hybrid",
     qrPolicy: SUMMIT_HALL_QR_POLICY,
     cashDiscountEnabled: true,
@@ -101,7 +128,7 @@ function locationSetup(existing?: Partial<LocationSetup>): LocationSetup {
       settings: { ...SUMMIT_HALL_COST_SETTINGS, targetCostPct: { ...SUMMIT_HALL_COST_SETTINGS.targetCostPct } },
       pos: [],
     },
-    locationDevices: existing?.locationDevices ?? [],
+    locationDevices: mergeSummitDevices(existing?.locationDevices),
     stationPublish: existing?.stationPublish,
     deviceRoleHistory: existing?.deviceRoleHistory,
     cashHandling: existing?.cashHandling,
@@ -230,6 +257,7 @@ async function upsertLocation(): Promise<void> {
       set name = ${SUMMIT_HALL_NAME},
           venue_type = ${"food_hall"},
           operating_model = ${"peer_venue"},
+          host_entity_id = ${null},
           host_brand_name = ${SUMMIT_HALL_NAME},
           enabled_packages = ${pkgs}::jsonb,
           setup = ${setup}::jsonb,

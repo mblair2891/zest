@@ -77,6 +77,7 @@ type LocRow = {
   setup?: unknown;
   lifecycle_status?: string | null;
   is_partner_demo?: boolean;
+  is_demo?: boolean;
   slug?: string | null;
 };
 
@@ -241,6 +242,7 @@ function parseSetup(raw: unknown): LocationSetup {
     skipTrainingRoster: "skipTrainingRoster" in o ? Boolean(o.skipTrainingRoster) : undefined,
     operatingModel: o.operatingModel != null ? parseLocationOperatingModel(o.operatingModel) : undefined,
     peerVenue: "peerVenue" in o ? Boolean(o.peerVenue) : undefined,
+    demoIsolated: "demoIsolated" in o ? Boolean(o.demoIsolated) : undefined,
     hostEntityId:
       o.hostEntityId == null || o.hostEntityId === ""
         ? null
@@ -318,6 +320,7 @@ function mapOrg(r: OrgRow): OrgRecord {
     phone: r.phone ?? null,
     hqAddress: r.hq_address ?? null,
     taxId: r.tax_id ?? null,
+    isDemo: Boolean((r as { is_demo?: boolean }).is_demo),
   };
 }
 
@@ -344,6 +347,7 @@ function mapLoc(r: LocRow): LocationRecord {
     setup: parseSetup(r.setup),
     lifecycleStatus: parseSetup(r.setup).lifecycleStatus || r.lifecycle_status || "training",
     slug: r.slug ? String(r.slug) : null,
+    isDemo: Boolean(r.is_demo),
   };
 }
 
@@ -1060,17 +1064,70 @@ export async function assertLocationAccess(
   };
 }
 
-/** Retired skip-password picker. Always empty. */
+/** Isolated demo houses listed for marketing cards — never CRM. */
 export async function listOpenDemoLocations(): Promise<{
   enabled: boolean;
   locations: OpenDemoLocation[];
 }> {
-  return { enabled: false, locations: [] };
+  const sql = await getSql();
+  const rows = await sql<{
+    id: string;
+    org_id: string;
+    name: string;
+    org_name: string;
+    venue_type: string;
+  }>`
+    select l.id, l.org_id, l.name, o.name as org_name, l.venue_type
+    from locations l
+    join organizations o on o.id = l.org_id
+    where coalesce(l.is_demo, false) = true or coalesce(o.is_demo, false) = true
+    order by l.name
+  `;
+  return {
+    enabled: true,
+    locations: rows.map((r) => ({
+      id: r.id,
+      orgId: r.org_id,
+      name: r.name,
+      orgName: r.org_name,
+      venueType: r.venue_type as OpenDemoLocation["venueType"],
+    })),
+  };
 }
 
-/** Retired unsigned POS bootstrap. Always denied. */
-export async function assertOpenDemoLocationAccess(_locationId: string): Promise<never> {
-  throw new ForbiddenError("Open demo locations are off");
+/** Unsigned POS bootstrap for isolated is_demo locations only. */
+export async function tryIsolatedDemoAccess(locationId: string): Promise<{
+  org: OrgRecord;
+  location: LocationRecord;
+  role: MembershipRole;
+  operatorId: string | null;
+} | null> {
+  const sql = await getSql();
+  const locs = await sql<LocRow>`select * from locations where id = ${locationId} limit 1`;
+  const loc = locs[0];
+  if (!loc) return null;
+  const orgs = await sql<OrgRow>`select * from organizations where id = ${loc.org_id} limit 1`;
+  const org = orgs[0];
+  if (!org) return null;
+  if (!loc.is_demo && !org.is_demo) return null;
+  return {
+    org: mapOrg(org),
+    location: mapLoc(loc),
+    role: "staff",
+    operatorId: null,
+  };
+}
+
+/** Retired unsigned POS bootstrap for non-isolated houses. */
+export async function assertOpenDemoLocationAccess(locationId: string): Promise<{
+  org: OrgRecord;
+  location: LocationRecord;
+  role: MembershipRole;
+  operatorId: string | null;
+}> {
+  const hit = await tryIsolatedDemoAccess(locationId);
+  if (!hit) throw new ForbiddenError("Open demo locations are off");
+  return hit;
 }
 
 export async function listTenants(userId: string) {

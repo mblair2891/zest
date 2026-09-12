@@ -32,9 +32,14 @@ export function EmployeesView() {
   const settings = usePosStore((s) => s.settings);
   const current = employees.find((e) => e.id === currentId) ?? null;
   const operatorScope = entityLoginScope(current);
-  const visibleEmployees = operatorScope
-    ? employees.filter((e) => e.operatorId === operatorScope || e.id === current?.id)
-    : employees;
+  const demoScope = usePosStore((s) =>
+    s.settings.isDemo || s.settings.demoIsolated ? s.demoOperatingEntityId : null,
+  );
+  const visibleEmployees = employees.filter((e) => {
+    if (operatorScope && e.operatorId !== operatorScope && e.id !== current?.id) return false;
+    if (demoScope && e.operatorId && e.operatorId !== demoScope) return false;
+    return true;
+  });
   const manage = canManageSections(current?.role) && !operatorScope;
   const canPin =
     current?.role === "owner" ||

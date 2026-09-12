@@ -679,20 +679,33 @@ export const getPosBootstrapFn = createServerFn({ method: "POST" })
   }))
   .handler(async ({ context, data }) => {
     const { operatorsAsVendors } = await import("./onboarding.server");
+    const { ensureTrainingFloor } = await import("@/lib/pos/training-roster.server");
     if (!context.userId) {
-      throw new Error("Sign in to open POS.");
+      const { tryIsolatedDemoAccess } = await import("./tenancy.server");
+      const demo = await tryIsolatedDemoAccess(data.locationId);
+      if (!demo) throw new Error("Sign in to open POS.");
+      const pack = await ensureTrainingFloor(data.locationId);
+      const operators = await operatorsAsVendors(data.locationId);
+      return {
+        ...demo,
+        location: { ...demo.location, setup: pack.setup, isDemo: true },
+        operators,
+        floorStaff: pack.staff,
+        openDemo: true as const,
+        trainingRoster: pack.seededRoster || pack.staff.some((s) => s.id.startsWith("emp_tr_")),
+      };
     }
     const { assertLocationAccess } = await import("./tenancy.server");
     const access = await assertLocationAccess(context.userId, data.locationId);
-    const { ensureTrainingFloor } = await import("@/lib/pos/training-roster.server");
     const pack = await ensureTrainingFloor(data.locationId);
     const operators = await operatorsAsVendors(data.locationId);
+    const isolated = Boolean(access.location.isDemo || access.org.isDemo || pack.setup.demoIsolated);
     return {
       ...access,
-      location: { ...access.location, setup: pack.setup },
+      location: { ...access.location, setup: pack.setup, isDemo: isolated },
       operators,
       floorStaff: pack.staff,
-      openDemo: false as const,
+      openDemo: isolated && !context.userId ? true : false,
       trainingRoster: pack.seededRoster || pack.staff.some((s) => s.id.startsWith("emp_tr_")),
     };
   });

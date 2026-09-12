@@ -159,11 +159,13 @@ export async function factoryReset(opts: {
 
   await reseedPlatformAdminBootstrap({ mustChangePassword: true });
   try {
-    const { resetSummitHallSeedLatch, ensureSummitHallDemo } = await import(
-      "./summit-hall-seed.server"
+    const { resetSummitHallSeedLatch } = await import("./summit-hall-seed.server");
+    const { resetIsolatedDemoLatch, ensureIsolatedDemos } = await import(
+      "@/lib/demo/isolated-seed.server"
     );
     resetSummitHallSeedLatch();
-    await ensureSummitHallDemo();
+    resetIsolatedDemoLatch();
+    await ensureIsolatedDemos();
   } catch (err) {
     console.error("[factory-reset] Summit Hall isolated demo seed skipped:", err);
   }
