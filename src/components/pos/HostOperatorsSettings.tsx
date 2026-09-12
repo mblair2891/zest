@@ -38,8 +38,8 @@ export function HostOperatorsSettings({ write }: { write: boolean }) {
     <div className="space-y-4" data-demo="host-operators">
       <p className="text-xs text-muted-foreground">
         {peerVenue
-          ? "Shared venue — no host merchant. Invite each operator; they complete their own Quantum Payments, menu, and payouts."
-          : "You are the subscriber host. Invite each operator; they complete their own details. Guest operators get entity-scoped ops. You keep payouts, routing, and host billing."}
+          ? "Shared venue — no host merchant and no host role. Venue admin is not a landlord brand. Invite each operator; they complete their own Quantum Payments, menu, and payouts."
+          : "Host owner/manager has full access to every tenant’s ops (devices, floor, menus, reports, costs, labor, payments split, grants). Tenant entity logins stay on their own slice. You keep payouts, routing, and host billing."}
       </p>
 
       <TenantInvitesPanel write={write} />

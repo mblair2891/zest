@@ -43,10 +43,17 @@ import { CostWorkspace } from "@/components/pos/CostWorkspace";
 import { LaborOpsView } from "@/components/pos/LaborOpsView";
 import { ReportsView } from "@/components/pos/ReportsView";
 import { OperatorOpsView } from "@/components/pos/OperatorOpsView";
+import { FloorView } from "@/components/pos/FloorView";
+import { FloorEditorView } from "@/components/pos/FloorEditorView";
+import { HostOperatorsSettings } from "@/components/pos/HostOperatorsSettings";
+import {
+  isHostOperatorsModel,
+  venueDashboardTabs,
+  type VenueDashModel,
+  type VenueDashTabId,
+} from "@/lib/saas/venue-dashboard-tabs";
 
-type VenueTab = "overview" | "settings" | "devices" | "menu" | "payments" | "people";
-type EntityTab = "overview" | "menu" | "costs" | "schedule" | "reports" | "staff";
-type Tab = VenueTab | EntityTab;
+type Tab = VenueDashTabId;
 
 function venueTypeOf(raw: string): VenueEntityId {
   return isVenueEntityId(raw) ? raw : "food_hall";
@@ -75,7 +82,10 @@ export function PlatformTenantVenue({
   const [activeLoc, setActiveLoc] = useState(locId || "");
   const [detail, setDetail] = useState<TenantDetailModel | null>(null);
   const [orgReadyId, setOrgReadyId] = useState("");
+  const [model, setModel] = useState<VenueDashModel>("single");
+  const posView = usePosStore((s) => s.view);
   const entityId = audience === "entity" ? scopedOperatorId || "" : "";
+  const hostHall = isHostOperatorsModel(model) && audience !== "entity";
   const hydrateKey = `${audience}:${orgId}:${activeLoc || locId || ""}:${entityId}`;
   const lastHydrated = useRef("");
 
@@ -266,6 +276,13 @@ export function PlatformTenantVenue({
         usePosStore.getState().loginAsOwner(displayName);
       }
       const peer = access.location.operatingModel === "peer_venue";
+      const hostOps = isHostOperatorsModel(access.location.operatingModel, peer);
+      const nextModel: VenueDashModel = peer
+        ? "peer_venue"
+        : hostOps
+          ? "host_operators"
+          : "single";
+      setModel(nextModel);
       const opsRows =
         access.operators?.map((o) => ({
           id: o.id,
@@ -282,13 +299,15 @@ export function PlatformTenantVenue({
       );
       const st = usePosStore.getState();
       usePosStore.setState({
-        view: audience === "entity" ? "menu" : "settings",
+        view: audience === "entity" ? "menu" : hostOps ? "hq" : "settings",
         settings: {
           ...st.settings,
           peerVenue: peer || st.settings.peerVenue,
-          operatingModel: peer
-            ? "peer_venue"
-            : st.settings.operatingModel,
+          operatingModel: nextModel,
+          hostMultiOperator: hostOps || st.settings.hostMultiOperator,
+          hostMayEditEntitySchedules: hostOps
+            ? true
+            : st.settings.hostMayEditEntitySchedules,
           qrMode: parseQrMode(setup.qrMode ?? st.settings.qrMode),
           qrPolicy: parseQrPolicy(setup.qrPolicy, setup.qrMode ?? st.settings.qrMode),
           cashDiscountEnabled: setup.cashDiscountEnabled ?? st.settings.cashDiscountEnabled,
@@ -414,9 +433,11 @@ export function PlatformTenantVenue({
               <p className="truncate text-[11px] text-muted-foreground">
                 {audience === "entity"
                   ? `${ops.find((o) => o.id === entityId)?.dba || "Entity"} · menu, costs, schedule, reports`
-                  : audience === "owner"
-                    ? "Venue settings · Overview, Devices, Menus, Publish"
-                    : "Venue settings · no host merchant required"}
+                  : hostHall
+                    ? "Host · devices, floor, all tenant menus, reports, costs, labor, payments, grants"
+                    : audience === "owner"
+                      ? "Venue settings · Overview, Devices, Menus, Publish"
+                      : "Venue settings · no host merchant required"}
               </p>
             </div>
             {ops.length > 0 && (
@@ -448,31 +469,14 @@ export function PlatformTenantVenue({
             </div>
           )}
           <div className="flex shrink-0 gap-1 overflow-x-auto border-b border-border px-3 py-2">
-            {(
-              audience === "entity"
-                ? ([
-                    ["overview", "Overview"],
-                    ["menu", "Menu"],
-                    ["costs", "Costs"],
-                    ["schedule", "Schedule"],
-                    ["reports", "Reports"],
-                    ["staff", "Staff & 86"],
-                  ] as const)
-                : (
-                    [
-                      ["overview", "Overview"],
-                      ["settings", "Settings"],
-                      ["devices", "Devices"],
-                      ["menu", "Menus"],
-                      ["payments", "Payments"],
-                      ["people", "Users"],
-                    ] as const
-                  ).filter(([id]) => audience === "platform" || id !== "people")
-            ).map(([id, label]) => (
+            {venueDashboardTabs({ audience, operatingModel: model }).map(([id, label]) => (
               <button
                 key={id}
                 type="button"
-                onClick={() => setTab(id)}
+                onClick={() => {
+                  setTab(id);
+                  if (id === "floor") usePosStore.getState().setView("floor");
+                }}
                 className={`h-9 shrink-0 rounded-lg px-3 text-xs font-medium ${
                   tab === id
                     ? "bg-primary text-primary-foreground"
@@ -494,7 +498,11 @@ export function PlatformTenantVenue({
                 title={title}
                 audience={audience}
                 entityId={entityId}
-                onOpen={setTab}
+                hostHall={hostHall}
+                onOpen={(id) => {
+                  setTab(id);
+                  if (id === "floor") usePosStore.getState().setView("floor");
+                }}
               />
             )}
             {ready && !error && tab === "settings" && audience !== "entity" && <SettingsView />}
@@ -517,14 +525,21 @@ export function PlatformTenantVenue({
                 operators={ops}
               />
             )}
-            {ready && !error && audience === "entity" && tab === "costs" && (
+            {ready && !error && tab === "floor" && audience !== "entity" && (
+              posView === "floor_editor" ? <FloorEditorView /> : <FloorView />
+            )}
+            {ready && !error && tab === "costs" && (audience === "entity" || hostHall) && (
               <CostWorkspace />
             )}
+            {ready && !error && tab === "labor" && hostHall && <LaborOpsView />}
             {ready && !error && audience === "entity" && tab === "schedule" && (
               <LaborOpsView />
             )}
-            {ready && !error && audience === "entity" && tab === "reports" && (
+            {ready && !error && tab === "reports" && (audience === "entity" || hostHall) && (
               <ReportsView />
+            )}
+            {ready && !error && tab === "grants" && hostHall && (
+              <HostOperatorsSettings write />
             )}
             {ready && !error && audience === "entity" && tab === "staff" && (
               <OperatorOpsView operatorId={entityId} />
@@ -540,12 +555,14 @@ function TenantOverview({
   title,
   audience,
   entityId,
+  hostHall,
   onOpen,
 }: {
   detail: TenantDetailModel | null;
   title: string;
   audience: "platform" | "owner" | "entity";
   entityId?: string;
+  hostHall?: boolean;
   onOpen: (tab: Tab) => void;
 }) {
   const hostName = hostMerchantName(detail?.host);
@@ -562,11 +579,13 @@ function TenantOverview({
         <p className="mt-1 text-xs text-muted-foreground">
           {entityDash
             ? "This selling entity only. You cannot edit another brand’s menu, payout, or labor. Floor staff can sell the other menu only if the venue grant allows it."
-            : peer
-              ? "Shared venue — no host merchant. Child brands below."
-              : hostName
-                ? `Host merchant · ${hostName}`
-                : "Location"}
+            : hostHall
+              ? "Host owner/manager: full access to every tenant’s ops — devices, floor, menus, reports, costs, labor, payments split, grants. Tenant logins stay on their own slice. Password login never opens a PIN pad."
+              : peer
+                ? "Shared venue — no host merchant and no host role. Venue admin is not a landlord brand."
+                : hostName
+                  ? `Host merchant · ${hostName}`
+                  : "Location"}
         </p>
       </div>
       {entities.length > 0 && (
@@ -601,6 +620,33 @@ function TenantOverview({
             </Button>
             <Button size="sm" variant="outline" onClick={() => onOpen("staff")}>
               Staff & 86
+            </Button>
+          </>
+        ) : hostHall ? (
+          <>
+            <Button size="sm" onClick={() => onOpen("devices")}>
+              Devices
+            </Button>
+            <Button size="sm" variant="outline" onClick={() => onOpen("floor")}>
+              Floor
+            </Button>
+            <Button size="sm" variant="outline" onClick={() => onOpen("menu")}>
+              Menus
+            </Button>
+            <Button size="sm" variant="outline" onClick={() => onOpen("reports")}>
+              Reports
+            </Button>
+            <Button size="sm" variant="outline" onClick={() => onOpen("costs")}>
+              Costs
+            </Button>
+            <Button size="sm" variant="outline" onClick={() => onOpen("labor")}>
+              Labor
+            </Button>
+            <Button size="sm" variant="outline" onClick={() => onOpen("payments")}>
+              Payments
+            </Button>
+            <Button size="sm" variant="outline" onClick={() => onOpen("grants")}>
+              Grants
             </Button>
           </>
         ) : (

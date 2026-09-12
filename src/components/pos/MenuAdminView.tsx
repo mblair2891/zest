@@ -104,7 +104,9 @@ export function MenuAdminView() {
           </>
         )}
         <p className="w-full text-xs text-muted-foreground">
-          Edit only what you own unless the host grants edit. Foreign items show a view-only badge.
+          {host
+            ? "Host can edit every tenant menu. Tenant entity logins stay on their own slice."
+            : "Edit only what you own unless the host grants edit. Foreign items show a view-only badge."}
         </p>
         {pendingPrice && (
           <p className="w-full text-xs text-primary">
@@ -139,6 +141,7 @@ export function MenuAdminView() {
               value={vendorId}
               onChange={(e) => setVendorId(e.target.value)}
             >
+              <option value="">{settings.name || "Host"}</option>
               {vendors.map((v) => (
                 <option key={v.id} value={v.id}>
                   {v.shortName}

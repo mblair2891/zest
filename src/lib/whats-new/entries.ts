@@ -6,6 +6,19 @@ import type { GuideUpdate } from "@/lib/guide/types";
  */
 export const WHATS_NEW_ENTRIES: GuideUpdate[] = [
   {
+    id: "upd_2026_10_73_host_tenant_ops",
+    date: "2026-09-11",
+    title: "Host login sees every tenant’s ops",
+    summary:
+      "On a host + tenant house, host owner/manager password login has devices, floor, all menus, reports, costs, labor, payments split, and grants. Tenant logins stay on their own slice.",
+    body: "Sign in at app.summex.app/login as the host owner or manager. You get the full host dashboard — Devices, floor, every tenant menu, reports, costs, labor, payments split, and grants. A tenant entity login still only sees that brand. Shared venue is unchanged: there is no host role, and venue admin is not a landlord merchant. Password login never opens the PIN pad.",
+    roles: ["owner_manager", "host_operator", "vendor_operator", "platform_admin"],
+    surfaces: ["settings"],
+    audience: "all",
+    topicId: "host-operator-settings",
+    tags: ["host", "tenants", "login", "grants"],
+  },
+  {
     id: "upd_2026_10_72_entity_admin",
     date: "2026-09-11",
     title: "Each selling entity has its own login",

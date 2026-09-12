@@ -226,7 +226,7 @@ export interface RestaurantSettings {
   tabAutoCloseMinutes?: number;
   ticketPrefix?: string;
   reservationCheckIn?: boolean;
-  /** Host may edit guest-entity schedules. Default false — oversight is view-only. */
+  /** Host owner/manager always edits tenant schedules. Kept for older snapshots. */
   hostMayEditEntitySchedules?: boolean;
   /** Kitchen/bar bump requires the station PIN again. Default false. */
   requirePinToBump?: boolean;

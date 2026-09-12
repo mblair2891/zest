@@ -3,7 +3,7 @@
 **Powered by Quantum Reach**
 
 White paper · for owners and operators  
-**Revision · 11 Sep 2026** — Written for prospective subscribers. Aligns with Operators Guide v2026.10.72. Staff stations are Android tablets. Each selling entity can have its own password login and dashboard.
+**Revision · 11 Sep 2026** — Written for prospective subscribers. Aligns with Operators Guide v2026.10.73. Staff stations are Android tablets. On a host + tenant house, host password login has full access to every tenant’s ops.
 
 summex.app  
 Guest cards: **Quantum Payments** only
@@ -68,7 +68,7 @@ The tablet is a screen. **PIN** says who is working. Each PIN only opens the too
 
 **Sections** keep servers on their part of the room unless a manager grants a table. Combine tables on the lowest number.
 
-**PIN is not clock-in and not closeout.** The location admin (venue owner) signs in with email and password at app.summex.app/login and lands on that house’s settings — Overview, Devices, Menus, Publish — never the staff PIN pad. Each selling entity can have its own entity admin: same email + temporary password at /login, scoped to that brand’s dashboard (menu, recipes, costs, schedule, reports, 86, staff PINs). They cannot edit the other brand’s menu, payout, or labor. Reports and labor % use owned lines. Floor staff who only need a PIN are added with name, PIN, role, and home entity. After a station PIN, if they are off the clock and inside that entity’s allowed clock-in window for today’s shift, the tablet asks whether to clock in — Clock in or Not now. Outside the window there is no prompt; they can still work. Clock in and out is Labor. End of shift is a **blind till count** — staff enter what is in the drawer; expected cash is hidden until they submit. After submit the station prints a turn-in slip for the drop bag. No fill-in close form. During the shift, staff can move cash **till to till** when one drawer is short on small bills; expected cash on each till updates so the blind count still balances.
+**PIN is not clock-in and not closeout.** Password login at app.summex.app/login never opens the staff PIN pad. On a host + tenant house, the host owner/manager lands on the host dashboard with every tenant’s ops (Devices, floor, menus, reports, costs, labor, payments split, grants). Each selling entity can have its own entity admin: same email + temporary password, scoped to that brand only. On a shared venue, venue admin is not a landlord merchant. Floor staff who only need a PIN are added with name, PIN, role, and home entity. After a station PIN, if they are off the clock and inside that entity’s allowed clock-in window for today’s shift, the tablet asks whether to clock in — Clock in or Not now. Outside the window there is no prompt; they can still work. Clock in and out is Labor. End of shift is a **blind till count** — staff enter what is in the drawer; expected cash is hidden until they submit. After submit the station prints a turn-in slip for the drop bag. No fill-in close form. During the shift, staff can move cash **till to till** when one drawer is short on small bills; expected cash on each till updates so the blind count still balances.
 
 **Kiosk and waitlist** sit beside the host stand. Guests order, join a wait, or check in. Staff keep the floor.
 
@@ -80,7 +80,8 @@ Staffing recs (cut / hold / add) never clock anyone out. The manager decides.
 
 A named building can hold two independent operators — a bar and a kitchen is the usual picture — without inventing a landlord brand.
 
-- Each operator owns their menu, tickets, recipes, staff, and schedule — and can sign in as that entity’s admin without a fake host merchant.
+- **Host + tenants:** the host owner/manager signs in with email and password and has full access to every tenant’s ops — devices, floor, menus, reports, costs, labor, payments split, grants. A tenant entity login sees only that brand.
+- **Shared venue (peers):** no host role. Venue admin is not a landlord merchant. Each operator owns their menu, tickets, recipes, staff, and schedule — and can sign in as that entity’s admin without a fake host merchant.
 - The guest still pays **one check**. Capture **splits** to each brand’s Quantum Payments merchant by who sold the line.
 - Gift is a **house ledger** (swipe, scan, or key) — not the card processor. Load on cash or card. Redeem inside Summex. If one brand issues and another fulfills, settlement moves between them.
 - Period close is the house book for cash, any host cut, and disputes. Live bank payout of leftovers is not claimed here.

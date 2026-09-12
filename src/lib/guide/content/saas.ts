@@ -158,8 +158,8 @@ export const SAAS_TOPICS: GuideTopic[] = [
       ),
       ul(
         "Single operator — one entity, one merchant, one menu.",
-        "Host + tenants — a host subscriber plus guest operators. The host may sell, issue gift, and take a cut. Each entity is its own Quantum Payments merchant.",
-        "Shared venue (peers) — a named building only. Two or more independent operators (bar operator, food operator). No host merchant, no host menu, no host gift product required. Venue admin holds floor, devices, guest branding, and who may see whom.",
+        "Host + tenants — a host subscriber plus guest operators. The host may sell, issue gift, and take a cut. Host owner/manager password login has full access to every tenant’s ops. Each entity is its own Quantum Payments merchant.",
+        "Shared venue (peers) — a named building only. Two or more independent operators (bar operator, food operator). No host merchant, no host menu, no host gift product, no host role. Venue admin is not a landlord brand. Venue admin holds floor, devices, guest branding, and who may see whom.",
       ),
       steps(
         "In Get-a-price or onboarding, pick the model that matches the building.",
@@ -187,7 +187,7 @@ export const SAAS_TOPICS: GuideTopic[] = [
       ),
       ul(
         "Platform Admin — tenants, pipeline, support. Not a restaurant owner. There is only one platform Admin; tenant Users cannot mint another.",
-        "Location admin (venue owner) — email and password at app.summex.app/login. Whole venue: Devices, floor, QR, printers, Publish, both entities (read + venue settings). Never CRM, pipeline, or other tenants.",
+        "Location admin (venue owner) — email and password at app.summex.app/login. On host + tenants: full access to every tenant’s ops (Devices, floor, all menus, reports, costs, labor, payments split, grants). On a shared venue: venue admin is not a landlord merchant — Devices, floor, QR, printers, Publish. Never CRM, pipeline, or other tenants.",
         "Entity admin — email and password at app.summex.app/login, scoped to one selling entity. Dashboard: menu, recipes, costs/invoices, schedule/payroll export, reports, 86, staff PINs for that entity. Cannot edit the other entity’s menu, payout, or labor. Reports and labor % use owned lines.",
         "Manager — users, devices, day-to-day; not SaaS billing.",
         "Staff / vendor PIN — limited location or stall tools on a station.",

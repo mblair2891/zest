@@ -418,7 +418,7 @@ export function SettingsView() {
         )}
         {hostMulti && (
           <span className="text-xs text-muted-foreground">
-            Subscriber host owns location and payouts. Guest operators get ops only.
+            Host owner/manager has full tenant ops. Tenant logins stay on their own slice.
           </span>
         )}
         <SetupAssistButton domain="location" />
@@ -870,8 +870,8 @@ export function SettingsView() {
         <div data-demo="host-operators">
         <p className="text-xs text-muted-foreground">
           {settings.peerVenue || settings.operatingModel === "peer_venue"
-            ? "Venue admin holds the floor, devices, guest branding, and who may see whom. There is no host merchant, host menu, or host gift product. Invite each operator — they complete their own Quantum Payments and menu."
-            : "The subscriber host configures settlement, host cut, payout destinations, the entity permission matrix, and device assignment. Guest operators cannot edit these. Open Payouts & settlement, or Operators / Tenants to invite operators."}
+            ? "Venue admin holds the floor, devices, guest branding, and who may see whom. There is no host merchant, host menu, or host gift product — venue admin is not a landlord brand. Invite each operator — they complete their own Quantum Payments and menu."
+            : "Host owner/manager password login has full access to every tenant’s ops: devices, floor, all entity menus, reports, costs, labor, payments split, and grants. Tenant entity logins stay on their own slice. Guest operators cannot edit host merchant or payout routing."}
         </p>
         <div className="mt-3 flex flex-wrap gap-2">
           <Button size="sm" variant="outline" onClick={() => setView("settlement")}>
@@ -882,22 +882,17 @@ export function SettingsView() {
           </Button>
         </div>
         <div className="mt-4 space-y-4">
-          <label className="flex items-start gap-2 text-sm">
-            <input
-              type="checkbox"
-              className="mt-0.5 h-4 w-4 rounded border-border"
-              checked={Boolean(settings.hostMayEditEntitySchedules)}
-              onChange={(e) => updateSettings({ hostMayEditEntitySchedules: e.target.checked })}
-            />
-            <span>
-              {settings.peerVenue || settings.operatingModel === "peer_venue"
-                ? "Venue admin may edit operator schedules"
-                : "Host may edit guest-entity schedules"}
-              <span className="mt-0.5 block text-xs text-muted-foreground">
-                Off by default. Venue admin still sees every entity’s week as oversight.
-              </span>
-            </span>
-          </label>
+          {settings.peerVenue || settings.operatingModel === "peer_venue" ? (
+            <p className="text-xs text-muted-foreground">
+              Shared venue has no host role. Each operator owns their labor. Venue
+              admin is not a landlord merchant.
+            </p>
+          ) : (
+            <p className="text-xs text-muted-foreground">
+              Host owner/manager can edit every tenant’s schedule, costs, and labor.
+              Tenant entity logins cannot.
+            </p>
+          )}
           <EntityPermissionsMatrix write={write} />
         </div>
         </div>

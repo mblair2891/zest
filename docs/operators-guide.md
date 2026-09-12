@@ -1,7 +1,7 @@
 # Operators Guide — authoring
 
-**Revision · 11 Sep 2026** — Each selling entity gets its own password login and dashboard.
-Guide v2026.10.72.
+**Revision · 11 Sep 2026** — Host password login sees every tenant’s ops.
+Guide v2026.10.73.
 
 The in-app **Operators Guide** is the living product manual. It is not a
 separate PDF. Staff open it from **Guide** / **?** in the POS and platform

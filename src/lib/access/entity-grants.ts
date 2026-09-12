@@ -269,15 +269,12 @@ export function canEditSchedule(
   emp: Pick<Employee, "role" | "operatorId"> | null | undefined,
   matrix: EntityGrantRow[] | null | undefined,
   targetOperatorId?: string | null,
-  hostMayEditEntitySchedules = false,
-  peerVenue = false,
+  _hostMayEditEntitySchedules = false,
+  _peerVenue = false,
 ): boolean {
-  if (isHostPrivileged(emp)) {
-    const target = resourceOperatorId(targetOperatorId);
-    if (peerVenue) return true;
-    if (target === HOST_SCOPE) return true;
-    return hostMayEditEntitySchedules || canEntityGrant(matrix, HOST_SCOPE, target, "edit_schedule");
-  }
+  // Host owner/manager password (and PIN) has full labor for every tenant.
+  // Peer venue admin is also location-scoped owner without a landlord merchant.
+  if (isHostPrivileged(emp)) return true;
   const subject = subjectIdForEmployee(emp);
   const target = resourceOperatorId(targetOperatorId);
   if (subject === target) return true;
