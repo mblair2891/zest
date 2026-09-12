@@ -8,6 +8,7 @@ export function DemoEntitySwitcher({ className }: { className?: string }) {
   const vendors = usePosStore((s) => s.vendors);
   const settings = usePosStore((s) => s.settings);
   const emp = usePosStore((s) => s.employees.find((e) => e.id === s.currentEmployeeId));
+  const sessionKind = usePosStore((s) => s.sessionKind);
   const scope = usePosStore((s) => s.demoOperatingEntityId);
   const setScope = usePosStore((s) => s.setDemoOperatingEntity);
   const show = showDemoEntitySwitcher({
@@ -17,7 +18,9 @@ export function DemoEntitySwitcher({ className }: { className?: string }) {
     entityCount: vendors.filter((v) => v.active).length,
   });
   if (!show) return null;
-  if (!emp) return null;
+  const onStationPin = sessionKind === "pin" && Boolean(emp);
+  const onTenantConsole = sessionKind === "backoffice" && Boolean(emp);
+  if (!onStationPin && !onTenantConsole) return null;
 
   const options = vendors.filter((v) => v.active && v.id !== HOST_SCOPE);
   if (options.length < 2) {
@@ -32,7 +35,11 @@ export function DemoEntitySwitcher({ className }: { className?: string }) {
   }
 
   return (
-    <label data-demo="entity-switcher" className={cn("flex min-w-0 flex-col items-stretch", className)}>
+    <label
+      data-demo="entity-switcher"
+      className={cn("relative z-10 flex min-w-0 flex-col items-stretch pointer-events-auto", className)}
+      onClick={(e) => e.stopPropagation()}
+    >
       <span className="text-[9px] font-semibold uppercase tracking-wide text-amber-800">
         Operating as
       </span>

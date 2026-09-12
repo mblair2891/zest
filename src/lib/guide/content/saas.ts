@@ -334,9 +334,9 @@ export const SAAS_TOPICS: GuideTopic[] = [
         "Platform Admin is the only identity that can see every tenant. Treat it as production access, not a demo login.",
       ),
       steps(
-        "Sign in as Admin (after the forced password change).",
+        "Sign in as Admin (after the forced password change). /dashboard is the SaaS home (CRM, pipeline, Tenants tile, platform settings).",
         "Pipeline lists prospects by status (Quote → Signed → Onboarding → Training → Live). Open one to quote, mark contract signed, or resend the owner invite.",
-        "Tenants lists organizations. Click a tenant to open venue settings (location, devices, menus per entity, payments, QR, cash, labor, users). Shared venue works with no host merchant. Back returns to Tenants.",
+        "Tenants tile opens /platform/tenants. Click a tenant to open that venue’s console (Overview, Settings, Devices, Menus, Payments, Users, Onboarding) — not the SaaS home. Shared venue works with no host merchant. Back returns to Tenants.",
         "Settings is sectioned: General, Security, CRM, Onboarding, Plans, Payments & gifts, Communications (SMS allotment, overage, AI cap), Flags, Compliance, Team, Danger zone. Save per section. No JSON editors.",
         "Support actions: resend an invite, open POS as that location context, review audit-style prospect events.",
         "Never seed a named customer. Isolated Summit Hall is the generic Demo row for tablet priming.",

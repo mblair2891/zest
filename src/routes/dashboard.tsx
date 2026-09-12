@@ -3,7 +3,6 @@ import { createFileRoute, redirect, useNavigate } from "@tanstack/react-router";
 import { useCurrentUserState } from "@/lib/auth/use-current-user";
 import { getSessionContextFn, listMyProspectsFn, setActiveContextFn } from "@/lib/saas/api";
 import type { SessionContext } from "@/lib/saas/types";
-import { LocationPicker } from "@/components/saas/LocationPicker";
 import { PlatformApp } from "@/components/pos/PlatformApp";
 import { prospectResumePath } from "@/lib/saas/prospect-resume";
 import { navigateToSanitizedPath } from "@/lib/auth/post-login-navigate";
@@ -136,17 +135,7 @@ function DashboardInner() {
     );
   }
 
-  if (!session.isPlatformAdmin) {
-    const loc =
-      session.locations.find((l) => l.id === session.active?.locationId) ??
-      session.locations[0];
-    if (!loc) {
-      return (
-        <div className="grid min-h-[100dvh] place-items-center bg-bg text-sm text-muted-foreground">
-          Opening your venue…
-        </div>
-      );
-    }
+  if (session.isPlatformAdmin) {
     return (
       <>
         {passwordUpdated && (
@@ -157,36 +146,21 @@ function DashboardInner() {
             Password updated. You are signed in.
           </div>
         )}
-        <PlatformTenantVenue
-          orgId={loc.orgId}
-          locId={loc.id}
-          audience={
-            loc.role === "accountant"
-              ? "accountant"
-              : loc.operatorId
-                ? "entity"
-                : "owner"
-          }
-          operatorId={loc.operatorId ?? undefined}
-          membershipRole={loc.role}
-        />
+        <PlatformApp initialSurface={search.surface} />
       </>
     );
   }
 
-  const needsPick =
-    session.locations.length > 1 &&
-    (!session.active?.locationId ||
-      !session.locations.some((l) => l.id === session.active?.locationId));
-
-  if (needsPick) {
+  const loc =
+    session.locations.find((l) => l.id === session.active?.locationId) ??
+    session.locations[0];
+  if (!loc) {
     return (
-      <div className="min-h-[100dvh] bg-bg pt-[var(--grok-banner-h,0px)]">
-        <LocationPicker session={session} onChosen={() => load()} />
+      <div className="grid min-h-[100dvh] place-items-center bg-bg text-sm text-muted-foreground">
+        Opening your venue…
       </div>
     );
   }
-
   return (
     <>
       {passwordUpdated && (
@@ -197,7 +171,19 @@ function DashboardInner() {
           Password updated. You are signed in.
         </div>
       )}
-      <PlatformApp initialSurface={search.surface} />
+      <PlatformTenantVenue
+        orgId={loc.orgId}
+        locId={loc.id}
+        audience={
+          loc.role === "accountant"
+            ? "accountant"
+            : loc.operatorId
+              ? "entity"
+              : "owner"
+        }
+        operatorId={loc.operatorId ?? undefined}
+        membershipRole={loc.role}
+      />
     </>
   );
 }

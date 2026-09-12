@@ -1,7 +1,7 @@
 # Operators Guide — authoring
 
-**Revision · 12 Sep 2026** — Order stations open by service style (floor first for full service).
-Guide v2026.10.79.
+**Revision · 12 Sep 2026** — Tenant detail is the venue console, not the SaaS home.
+Guide v2026.10.80.
 
 The in-app **Operators Guide** is the living product manual. It is not a
 separate PDF. Staff open it from **Guide** / **?** in the POS and platform

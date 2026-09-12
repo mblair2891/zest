@@ -96,9 +96,13 @@ export function PlatformApp({
 
   useEffect(() => {
     if (!initialSurface) return;
+    if (initialSurface === "tenants") {
+      void navigate({ to: "/platform/tenants" });
+      return;
+    }
     userPickedSurface.current = true;
     setSurface(initialSurface);
-  }, [initialSurface]);
+  }, [initialSurface, navigate]);
 
   useEffect(() => {
     const onSurface = (e: Event) => {
@@ -327,10 +331,10 @@ export function PlatformApp({
         <SummexMark className="h-8 w-8" />
         <div className="min-w-0 flex-1">
           <p className="truncate text-sm font-semibold leading-tight">
-            {platform.name} Platform
+            {adminNav ? "Summex Platform" : `${platform.name} Platform`}
           </p>
           <p className="truncate text-[11px] text-muted-foreground">
-            SaaS · {org.name} · {org.plan} plan
+            {adminNav ? "SaaS control plane" : `SaaS · ${org.name} · ${org.plan} plan`}
           </p>
         </div>
         <Badge variant="info">Platform</Badge>
@@ -390,8 +394,14 @@ export function PlatformApp({
       >
         {adminNav && surface !== "console" ? (
           <PlatformControlPlane
-            surface={surface}
-            onSurface={(s) => pickSurface(s)}
+            surface={surface === "tenants" ? "home" : surface}
+            onSurface={(s) => {
+              if (s === "tenants") {
+                void navigate({ to: "/platform/tenants" });
+                return;
+              }
+              pickSurface(s);
+            }}
           />
         ) : (
           <SaasConsoleView />

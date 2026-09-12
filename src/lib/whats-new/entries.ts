@@ -6,6 +6,19 @@ import type { GuideUpdate } from "@/lib/guide/types";
  */
 export const WHATS_NEW_ENTRIES: GuideUpdate[] = [
   {
+    id: "upd_2026_10_80_tenant_console",
+    date: "2026-09-12",
+    title: "Tenant detail is the venue console",
+    summary:
+      "/platform/tenants/:orgId is Overview, Settings, Devices, Menus, Payments, Users, Onboarding — not CRM tiles.",
+    body: "Platform dashboard (/dashboard, /platform) stays CRM, pipeline, the Tenants list, and platform settings. The Tenants tile opens /platform/tenants. Opening a tenant opens that house so Admin can pair tablets. Isolated demos show a Demo badge. Operating as is demo-only and does not replace the tabs. Password login remains back office. Peer venues may have a null host merchant.",
+    roles: ["platform_admin", "owner_manager"],
+    surfaces: ["platform", "settings"],
+    audience: "platform",
+    topicId: "platform-tenants",
+    tags: ["platform", "tenants", "devices"],
+  },
+  {
     id: "upd_2026_10_79_order_station_floor",
     date: "2026-09-12",
     title: "Full-service order stations open the floor",

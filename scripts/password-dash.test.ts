@@ -11,6 +11,16 @@ import {
 test("password kinds: platform, host, peer, entity owner/manager, accountant", () => {
   assert.equal(passwordDashKind({ isPlatformAdmin: true }), "platform_admin");
   assert.equal(
+    passwordDashKind({
+      isPlatformAdmin: true,
+      tenantConsole: true,
+      role: "owner",
+      operatingModel: "peer_venue",
+      peerVenue: true,
+    }),
+    "venue_admin",
+  );
+  assert.equal(
     passwordDashKind({ role: "owner", operatingModel: "host_operators" }),
     "host_owner",
   );

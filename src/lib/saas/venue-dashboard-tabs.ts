@@ -34,10 +34,24 @@ export function isHostOperatorsModel(
   return operatingModel === "host_operators";
 }
 
+/** Platform Admin opening /platform/tenants/:orgId — venue console, never SaaS home. */
+export function tenantConsoleTabs(): VenueDashTab[] {
+  return [
+    ["overview", "Overview"],
+    ["settings", "Settings"],
+    ["devices", "Devices"],
+    ["menu", "Menus"],
+    ["payments", "Payments"],
+    ["people", "Users"],
+    ["onboarding", "Onboarding"],
+  ];
+}
+
 export function venueDashboardTabs(opts: {
   audience: VenueDashAudience;
   operatingModel: VenueDashModel;
 }): VenueDashTab[] {
+  if (opts.audience === "platform") return tenantConsoleTabs();
   if (opts.audience === "entity") {
     return [
       ["overview", "Overview"],
@@ -71,8 +85,5 @@ export function venueDashboardTabs(opts: {
         ["people", "Users"],
         ["onboarding", "Onboarding"],
       ];
-  if (opts.audience === "platform") {
-    return [...base, ["people", "Users"]];
-  }
   return base;
 }

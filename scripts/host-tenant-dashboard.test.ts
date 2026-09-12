@@ -64,3 +64,25 @@ test("password venue shell never gates a PIN pad", () => {
   assert.match(venue, /passwordDashTabs/);
   assert.doesNotMatch(venue, /pinGate: true/);
 });
+
+test("platform tenant detail is venue console tabs, not SaaS home", () => {
+  const tabs = venueDashboardTabs({ audience: "platform", operatingModel: "peer_venue" });
+  const ids = tabs.map(([id]) => id);
+  assert.deepEqual(ids, [
+    "overview",
+    "settings",
+    "devices",
+    "menu",
+    "payments",
+    "people",
+    "onboarding",
+  ]);
+  const venue = readFileSync("src/components/platform/PlatformTenantVenue.tsx", "utf8");
+  assert.match(venue, /tenantConsoleTabs/);
+  assert.match(venue, /TenantVenueOverview/);
+  assert.match(venue, /tenantConsole: audience === "platform"/);
+  assert.match(venue, /to: "\/platform\/tenants"/);
+  assert.doesNotMatch(venue, /surface: "tenants"/);
+  const app = readFileSync("src/components/pos/PlatformApp.tsx", "utf8");
+  assert.match(app, /to: "\/platform\/tenants"/);
+});

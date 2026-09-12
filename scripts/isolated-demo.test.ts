@@ -1,5 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import { showDemoEntitySwitcher, demoEntityMatches } from "../src/lib/demo/entity-switch.ts";
 import {
   ISOLATED_DEMO_CARDS,
@@ -29,6 +30,13 @@ test("entity switcher is demo-only and needs two entities", () => {
   assert.equal(demoEntityMatches(null, "opr_food"), true);
   assert.equal(demoEntityMatches("opr_food", "opr_bar"), false);
   assert.equal(demoEntityMatches("opr_food", "opr_food"), true);
+});
+
+test("entity switcher is allowed on tenant console back office and station PIN, not unsigned", () => {
+  const src = readFileSync("src/components/demo/DemoEntitySwitcher.tsx", "utf8");
+  assert.match(src, /sessionKind === "pin"/);
+  assert.match(src, /sessionKind === "backoffice"/);
+  assert.match(src, /stopPropagation/);
 });
 
 test("isolated catalog has four demo houses", () => {

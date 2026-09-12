@@ -28,12 +28,14 @@ export type PasswordDashTile = {
 
 export function passwordDashKind(opts: {
   isPlatformAdmin?: boolean;
+  /** True on /platform/tenants/:orgId — never the SaaS CRM home. */
+  tenantConsole?: boolean;
   role?: MembershipRole | string | null;
   operatorId?: string | null;
   operatingModel?: string | null;
   peerVenue?: boolean;
 }): PasswordDashKind {
-  if (opts.isPlatformAdmin) return "platform_admin";
+  if (opts.isPlatformAdmin && !opts.tenantConsole) return "platform_admin";
   const role = String(opts.role || "").trim().toLowerCase();
   const op = opts.operatorId?.trim() || null;
   if (role === "accountant") return "accountant";

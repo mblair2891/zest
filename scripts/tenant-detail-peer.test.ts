@@ -6,6 +6,7 @@ import {
   buildTenantDetailModel,
   hostMerchantName,
 } from "../src/lib/saas/tenant-detail.ts";
+import { tenantConsoleTabs } from "../src/lib/saas/venue-dashboard-tabs.ts";
 
 function Overview({
   venueName,
@@ -60,6 +61,13 @@ test("peer_venue with no host does not throw when reading host", () => {
   assert.match(html, /Bar operator/);
   assert.match(html, /no host merchant/);
   assert.doesNotMatch(html, /Host merchant/);
+});
+
+test("tenant console tabs never include CRM or pipeline", () => {
+  const ids = tenantConsoleTabs().map(([id]) => id);
+  assert.ok(ids.includes("devices"));
+  assert.ok(ids.includes("people"));
+  assert.ok(!ids.includes("crm" as never));
 });
 
 test("host_operators still exposes a host merchant", () => {

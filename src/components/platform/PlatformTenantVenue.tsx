@@ -48,9 +48,11 @@ import { FloorEditorView } from "@/components/pos/FloorEditorView";
 import { HostOperatorsSettings } from "@/components/pos/HostOperatorsSettings";
 import {
   isHostOperatorsModel,
+  tenantConsoleTabs,
   type VenueDashModel,
   type VenueDashTabId,
 } from "@/lib/saas/venue-dashboard-tabs";
+import { TenantVenueOverview } from "@/components/platform/TenantVenueOverview";
 import {
   isEntityPasswordKind,
   passwordDashKind,
@@ -96,9 +98,12 @@ export function PlatformTenantVenue({
   const [orgReadyId, setOrgReadyId] = useState("");
   const [model, setModel] = useState<VenueDashModel>("single");
   const [packages, setPackages] = useState<string[]>([]);
+  const [lifecycle, setLifecycle] = useState("training");
+  const [houseIsDemo, setHouseIsDemo] = useState(false);
   const posView = usePosStore((s) => s.view);
   const kind: PasswordDashKind = passwordDashKind({
     isPlatformAdmin: audience === "platform",
+    tenantConsole: audience === "platform",
     role:
       membershipRole ||
       (audience === "accountant"
@@ -111,7 +116,8 @@ export function PlatformTenantVenue({
     peerVenue: model === "peer_venue",
   });
   const entityId = isEntityPasswordKind(kind) ? scopedOperatorId || "" : "";
-  const dashTabs = passwordDashTabs(kind);
+  const dashTabs =
+    audience === "platform" ? tenantConsoleTabs() : passwordDashTabs(kind);
   const tabIds = new Set(dashTabs.map(([id]) => id));
   const hydrateKey = `${audience}:${orgId}:${activeLoc || locId || ""}:${scopedOperatorId || ""}`;
   const lastHydrated = useRef("");
@@ -271,6 +277,8 @@ export function PlatformTenantVenue({
           access.location.operatingModel === "host_operators" ||
           access.location.operatingModel === "peer_venue",
         peerVenue: access.location.operatingModel === "peer_venue",
+        isDemo: Boolean(access.location.isDemo || access.org.isDemo || setup.demoIsolated),
+        demoIsolated: Boolean(access.location.isDemo || access.org.isDemo || setup.demoIsolated),
         address: access.location.address,
         entityPermissions: parseGrantMatrix(setup.entityPermissions),
         locationDevices: parseLocationDevices(setup.locationDevices),
@@ -300,6 +308,7 @@ export function PlatformTenantVenue({
         (audience === "entity" ? "Entity admin" : audience === "owner" ? "Owner" : "Platform admin");
       const dashKind = passwordDashKind({
         isPlatformAdmin: audience === "platform",
+        tenantConsole: audience === "platform",
         role:
           membershipRole ||
           (audience === "accountant"
@@ -349,6 +358,12 @@ export function PlatformTenantVenue({
           operators: opsRows,
         }),
       );
+      setLifecycle(
+        access.location.lifecycleStatus || setup.lifecycleStatus || "training",
+      );
+      setHouseIsDemo(
+        Boolean(access.location.isDemo || access.org.isDemo || setup.demoIsolated),
+      );
       const st = usePosStore.getState();
       usePosStore.setState({
         view: audience === "entity" ? "menu" : hostOps ? "hq" : "settings",
@@ -375,8 +390,8 @@ export function PlatformTenantVenue({
           giftHouseIssuerEnabled: peer
             ? false
             : (setup.giftHouseIssuerEnabled ?? st.settings.giftHouseIssuerEnabled),
-          isDemo: Boolean(access.location.isDemo || setup.demoIsolated),
-          demoIsolated: Boolean(access.location.isDemo || setup.demoIsolated),
+          isDemo: Boolean(access.location.isDemo || access.org.isDemo || setup.demoIsolated),
+          demoIsolated: Boolean(access.location.isDemo || access.org.isDemo || setup.demoIsolated),
           serviceStyle:
             setup.serviceStyle === "counter" ||
             setup.serviceStyle === "hybrid" ||
@@ -455,7 +470,7 @@ export function PlatformTenantVenue({
   }, [hydrateKey]);
 
   const back = () => {
-    void navigate({ to: "/dashboard", search: { surface: "tenants" } });
+    void navigate({ to: "/platform/tenants" });
   };
 
   const switchLoc = (id: string) => {
@@ -492,22 +507,22 @@ export function PlatformTenantVenue({
             <div className="min-w-0 flex-1">
               <p className="truncate text-sm font-semibold leading-tight">{title}</p>
               <p className="truncate text-[11px] text-muted-foreground">
-                {passwordDashTitle(kind)}
+                {audience === "platform"
+                  ? houseIsDemo
+                    ? "Venue console · isolated demo"
+                    : "Venue console"
+                  : passwordDashTitle(kind)}
                 {kind === "venue_admin" || kind === "venue_manager"
                   ? " · no host merchant"
                   : ""}
               </p>
             </div>
-            <DemoEntitySwitcher className="hidden sm:flex" />
-            {ops.length > 0 && (
-              <div className="hidden flex-wrap gap-1 sm:flex">
-                {ops.map((o) => (
-                  <Badge key={o.id} variant="secondary">
-                    {o.dba}
-                  </Badge>
-                ))}
-              </div>
-            )}
+            <DemoEntitySwitcher className="relative z-10 hidden max-w-[12rem] shrink-0 sm:flex" />
+            {houseIsDemo ? (
+              <Badge variant="info" className="shrink-0">
+                Demo
+              </Badge>
+            ) : null}
           </header>
           {locs.length > 1 && (
             <div className="flex gap-1 overflow-x-auto border-b border-border px-3 py-2">
@@ -527,7 +542,10 @@ export function PlatformTenantVenue({
               ))}
             </div>
           )}
-          <div className="flex shrink-0 gap-1 overflow-x-auto border-b border-border px-3 py-2">
+          <div
+            className="relative z-20 flex shrink-0 gap-1 overflow-x-auto border-b border-border bg-bg px-3 py-2"
+            data-demo="tenant-console-tabs"
+          >
             {dashTabs.map(([id, label]) => (
               <button
                 key={id}
@@ -552,15 +570,27 @@ export function PlatformTenantVenue({
             )}
             {error && <p className="text-sm text-danger">{error}</p>}
             {ready && !error && tab === "overview" && (
-              <PasswordDashHome
-                kind={kind}
-                enabledPackages={packages}
-                detail={detail}
-                onOpen={(id) => {
-                  setTab(id);
-                  if (id === "floor") usePosStore.getState().setView("floor");
-                }}
-              />
+              audience === "platform" ? (
+                <TenantVenueOverview
+                  detail={detail}
+                  lifecycle={lifecycle}
+                  isDemo={houseIsDemo}
+                  onOpen={(id) => {
+                    setTab(id);
+                    if (id === "floor") usePosStore.getState().setView("floor");
+                  }}
+                />
+              ) : (
+                <PasswordDashHome
+                  kind={kind}
+                  enabledPackages={packages}
+                  detail={detail}
+                  onOpen={(id) => {
+                    setTab(id);
+                    if (id === "floor") usePosStore.getState().setView("floor");
+                  }}
+                />
+              )
             )}
             {ready && !error && tab === "settings" && tabIds.has("settings") && <SettingsView />}
             {ready && !error && tab === "devices" && tabIds.has("devices") && (
