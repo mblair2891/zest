@@ -20,7 +20,7 @@ export const ORDER_TOPICS: GuideTopic[] = [
         "Assist suggests name, description, category, station, modifier groups, and common omit/add. Answer follow-ups only if asked (cash vs card price, operator on a host floor).",
         "Preview the card. Accept, edit, or dismiss. Nothing writes until Confirm.",
         "On a host venue, guest operators only create/edit their own entity. Host can still assign operator on new items.",
-        "86 an item from Menu or the 86 board so it greys out on Order.",
+        "86 or un-86 from Menu or the 86 board. That goes to every station immediately — Order greys out now. Adding items, prices, modifiers, and categories still wait for Publish, then the next PIN.",
       ),
       tip(
         "No AI key → category templates (burger, steak, pizza, salad, cocktail, …) still fill modifiers and omit/add. You confirm before save.",

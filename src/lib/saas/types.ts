@@ -76,6 +76,8 @@ export type LocationSetup = {
   floorPlan?: import("./location-catalog").LocationFloorPlan;
   /** Saved menu catalog. Always kept on go-live. */
   menuCatalog?: import("./location-catalog").LocationMenuCatalog;
+  /** Live 86 overlay. Broadcast immediately — not waiting for Publish. */
+  item86?: Record<string, boolean>;
   /** Saved recipes. Always kept on go-live. */
   recipes?: import("@/lib/costs/types").ItemRecipe[];
   /** Employer-of-record HR config keyed by entity id (`host` or operator id). */

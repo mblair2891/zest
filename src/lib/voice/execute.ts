@@ -1,6 +1,6 @@
 import { usePosStore } from "@/lib/pos/store";
 import { canEmployee } from "@/lib/access/permissions";
-import { canEditMenu } from "@/lib/access/entity-grants";
+import { can86Item } from "@/lib/pos/item-86";
 import { saveFrontSettingsFn } from "@/lib/front/api";
 import { isProspectDemo } from "@/lib/demo/session";
 import { intentAllowedForRole, parseVoiceIntent, type VoiceIntent } from "./intents";
@@ -77,7 +77,7 @@ export function previewVoiceCommand(transcript: string): VoiceExecuteResult {
       };
     }
     const item = hits[0]!.item;
-    if (!canEditMenu(emp, s.entityPermissions, item.vendorId)) {
+    if (!can86Item(emp, item, s.entityPermissions)) {
       return { ok: false, deny: true, message: "You cannot 86 another entity’s item", intent };
     }
     return {
@@ -167,7 +167,7 @@ export function commitVoicePending(pending: NonNullable<VoiceExecuteResult["pend
   if (pending.kind === "eighty_six" && pending.itemId) {
     const item = s.menuItems.find((m) => m.id === pending.itemId);
     if (!item) return { ok: false, message: "Item gone", intent };
-    if (!canEditMenu(emp, s.entityPermissions, item.vendorId)) {
+    if (!can86Item(emp, item, s.entityPermissions)) {
       return { ok: false, deny: true, message: "You cannot 86 another entity’s item", intent };
     }
     s.toggleItemAvailable(pending.itemId);

@@ -201,3 +201,24 @@ export const upsertTableStatusFn = createServerFn({ method: "POST" })
     const { upsertTableStatus } = await import("./floor.server");
     return upsertTableStatus(context.userId, data);
   });
+
+export const setItem86Fn = createServerFn({ method: "POST" })
+  .middleware([tenantMiddleware])
+  .validator((d: {
+    locationId: string;
+    itemId: string;
+    available: boolean;
+    vendorId?: string | null;
+    actor?: FloorActor;
+  }) => ({
+    locationId: loc(d.locationId),
+    itemId: clip(d.itemId, 80),
+    available: d.available !== false,
+    vendorId: d.vendorId ? clip(d.vendorId, 80) : null,
+    actor: d.actor,
+  }))
+  .handler(async ({ context, data }) => {
+    assertFloorActor(data.actor, "item.86");
+    const { setItem86 } = await import("./floor.server");
+    return setItem86(context.userId, data);
+  });

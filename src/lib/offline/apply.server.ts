@@ -122,6 +122,15 @@ export async function applyOfflineBatch(
       if (item.kind === "cash_ledger") {
         await applyCashLedger(sql, userId, item);
       }
+      if (item.kind === "item_86") {
+        const { setItem86 } = await import("@/lib/pos/floor.server");
+        await setItem86(userId, {
+          locationId: item.locationId,
+          itemId: String(item.payload.itemId ?? ""),
+          available: item.payload.available !== false,
+          vendorId: item.payload.vendorId ? String(item.payload.vendorId) : null,
+        });
+      }
       if (item.kind === "waitlist_add") {
         await applyWaitlist(item).catch(() => undefined);
       }

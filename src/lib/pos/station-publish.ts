@@ -1,6 +1,7 @@
 /**
  * Published location snapshot for paired station tablets.
  * Staff keep the last applied publish until PIN logout; PIN pad may refresh idle.
+ * 86 / un-86 is not a publish — it overlays live on every station.
  */
 import { usePosStore } from "@/lib/pos/store";
 import { parseQrPolicy } from "@/lib/pos/qr-policy";
@@ -128,7 +129,18 @@ export function applyStationPublish(
       ? tablesFromFloorPlan(setup.floorPlan as never)
       : pos.tables;
     const patch: Record<string, unknown> = {};
-    if (Array.isArray(catalog.items)) patch.menuItems = catalog.items;
+    if (Array.isArray(catalog.items)) {
+      const live: Record<string, boolean> = {};
+      for (const m of pos.menuItems) live[m.id] = m.available;
+      patch.menuItems = catalog.items.map((raw) => {
+        const item = raw as { id?: string; available?: boolean };
+        const id = String(item.id ?? "");
+        if (id && Object.prototype.hasOwnProperty.call(live, id)) {
+          return { ...(raw as object), available: live[id] };
+        }
+        return raw;
+      });
+    }
     if (Array.isArray(catalog.categories)) patch.categories = catalog.categories;
     if (Array.isArray(catalog.modifiers)) patch.modifierGroups = catalog.modifiers;
     if (tables.length) patch.tables = tables;

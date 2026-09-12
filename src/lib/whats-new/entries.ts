@@ -6,6 +6,19 @@ import type { GuideUpdate } from "@/lib/guide/types";
  */
 export const WHATS_NEW_ENTRIES: GuideUpdate[] = [
   {
+    id: "upd_2026_10_71_item_86_live",
+    date: "2026-09-11",
+    title: "86 hits every station now",
+    summary:
+      "86 and un-86 broadcast to all stations immediately. New items, prices, and modifiers still wait for Publish and the next PIN.",
+    body: "Tap 86 on Menu or the 86 board (or say it on voice). Every order tablet and ODS at the location greys that item out within seconds — no Publish, no Switch user. Un-86 brings it back the same way. Structural menu work (add/edit/delete items, categories, modifiers, prices) still needs Publish changes; logged-in staff keep the last catalog until the next PIN.",
+    roles: ["server", "kitchen_bar", "owner_manager", "host_operator"],
+    surfaces: ["floor", "kitchen"],
+    audience: "all",
+    topicId: "menu-modifiers",
+    tags: ["86", "menu", "publish", "station"],
+  },
+  {
     id: "upd_2026_10_70_receipt_choice",
     date: "2026-09-11",
     title: "After pay: Email, Print, or No receipt",

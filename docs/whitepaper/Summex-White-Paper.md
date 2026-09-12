@@ -3,7 +3,7 @@
 **Powered by Quantum Reach**
 
 White paper · for owners and operators  
-**Revision · 11 Sep 2026** — Written for prospective subscribers. Aligns with Operators Guide v2026.10.70. Staff stations are Android tablets. After pay: Email, Print, or No receipt.
+**Revision · 11 Sep 2026** — Written for prospective subscribers. Aligns with Operators Guide v2026.10.71. Staff stations are Android tablets. 86 hits every station immediately; menu structure still Publishes.
 
 summex.app  
 Guest cards: **Quantum Payments** only

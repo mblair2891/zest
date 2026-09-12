@@ -34,6 +34,7 @@ import type {
   UpsertCheckInput,
   UpsertTableStatusInput,
 } from "./floor-types";
+import { parseItem86 } from "./item-86";
 
 const OPEN_WINDOW_MS = 12 * 60 * 60 * 1000;
 const BUMP_RECALL_MS = 45 * 60 * 1000;
@@ -1104,7 +1105,45 @@ export async function listOpenFloor(
     events: mappedEvents,
     serverTime: now,
     operatorScoped: Boolean(scoped),
+    item86: parseItem86(ctx.setup?.item86),
   };
+}
+
+export async function setItem86(
+  userId: string,
+  input: {
+    locationId: string;
+    itemId: string;
+    available: boolean;
+    vendorId?: string | null;
+    actor?: FloorActor;
+  },
+): Promise<{ ok: true; item86: Record<string, boolean> }> {
+  const ctx = await loadFloorContext(userId, input.locationId);
+  const scoped = vendorOperatorId(ctx);
+  const vendor = clip(input.vendorId, 80) || HOST_SCOPE;
+  if (scoped && vendor !== scoped) {
+    throw new ForbiddenError("Not permitted for this operator");
+  }
+  const itemId = clip(input.itemId, 80);
+  if (!itemId) throw new ForbiddenError("Item is required");
+  const sql = await getSql();
+  const rows = await sql<{ setup: unknown }>`
+    select setup from locations where id = ${ctx.locationId} limit 1
+  `;
+  const prev =
+    rows[0]?.setup && typeof rows[0].setup === "object" && !Array.isArray(rows[0].setup)
+      ? (rows[0].setup as Record<string, unknown>)
+      : {};
+  const map = parseItem86(prev.item86);
+  map[itemId] = input.available !== false;
+  const next = { ...prev, item86: map };
+  await sql`
+    update locations
+    set setup = ${JSON.stringify(next)}::jsonb
+    where id = ${ctx.locationId}
+  `;
+  return { ok: true, item86: map };
 }
 
 export async function listStationTickets(

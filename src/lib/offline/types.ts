@@ -12,6 +12,7 @@ export type OutboxKind =
   | "loyalty"
   | "payout"
   | "menu_publish"
+  | "item_86"
   | "receipt_email"
   | "settings_patch"
   | "clock_punch";
@@ -76,6 +77,7 @@ export const OUTBOX_KIND_LABEL: Record<OutboxKind, string> = {
   loyalty: "Loyalty",
   payout: "Vendor payout",
   menu_publish: "Menu publish",
+  item_86: "86 board",
   receipt_email: "Email receipt",
   settings_patch: "Settings",
   clock_punch: "Time clock",

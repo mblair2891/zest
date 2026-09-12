@@ -24,9 +24,11 @@ import {
   odsStartFn,
   recordCheckPaymentFn,
   sendToStationsFn,
+  setItem86Fn,
   upsertCheckFn,
   upsertTableStatusFn,
 } from "./floor-api";
+import { applyItem86Overlay, parseItem86 } from "./item-86";
 
 const POLL_MS = 3000;
 const LOCAL_GRACE_MS = 20_000;
@@ -277,10 +279,13 @@ export function applyOpenFloor(floor: OpenFloor): void {
   const nextOrders = [...mergedOrders, ...localOnly];
   const activeStill = nextOrders.some((o) => o.id === s.activeOrderId);
   const prevById = new Map(s.tickets.map((t) => [t.id, t.status]));
+  const overlay = parseItem86(floor.item86);
+  const menuItems = applyItem86Overlay(s.menuItems, overlay);
   usePosStore.setState({
     orders: nextOrders,
     tickets: [...serverTickets, ...localTickets],
     tables,
+    menuItems,
     activeOrderId: activeStill ? s.activeOrderId : s.activeOrderId,
   });
   void notifyRemoteTicketChanges(prevById, serverTickets);
@@ -314,7 +319,7 @@ async function notifyRemoteTicketChanges(
 }
 
 async function runOrQueue(
-  kind: "order_upsert" | "ticket_upsert" | "ticket_bump" | "table_seat",
+  kind: "order_upsert" | "ticket_upsert" | "ticket_bump" | "table_seat" | "item_86",
   label: string,
   detail: string,
   payload: Record<string, unknown>,
@@ -372,6 +377,35 @@ export async function persistAfterLocalMutation(kind: string, id?: string): Prom
         lineDebounce.delete(id);
         void persistAfterLocalMutation("lines-flush", id);
       }, 400),
+    );
+    return;
+  }
+
+  if (kind === "86" && id) {
+    const item = s.menuItems.find((m) => m.id === id);
+    if (!item) return;
+    await runOrQueue(
+      "item_86",
+      item.available ? `Un-86 · ${item.name}` : `86 · ${item.name}`,
+      "86 board is live on every station at this location",
+      {
+        locationId,
+        itemId: item.id,
+        available: item.available,
+        vendorId: item.vendorId ?? null,
+        actor: who,
+      },
+      async () => {
+        await setItem86Fn({
+          data: {
+            locationId,
+            itemId: item.id,
+            available: item.available,
+            vendorId: item.vendorId ?? null,
+            actor: who,
+          },
+        });
+      },
     );
     return;
   }

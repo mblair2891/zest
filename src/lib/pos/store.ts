@@ -101,6 +101,7 @@ import {
   canEditMenu,
   upsertGrant,
 } from "@/lib/access/entity-grants";
+import { can86Item } from "./item-86";
 import {
   findStaffByPin,
   hashPin,
@@ -3427,11 +3428,14 @@ const usePosStoreRaw = create<PosStore>()(persist((set, get) => {
 		const emp = get().getCurrentEmployee();
 		const item = get().menuItems.find((m: any) => m.id === id);
 		if (!item) return;
-		if (!canEditMenu(emp, get().entityPermissions, item.vendorId)) return;
+		if (!can86Item(emp, item, get().entityPermissions)) return;
+		const available = !item.available;
 		set({ menuItems: get().menuItems.map((m: any) => m.id === id ? {
 			...m,
-			available: !m.available
+			available
 		} : m) });
+		get().audit(available ? "un86" : "86", item.name);
+		floorSync("86", id);
 	},
 	createCategory: ({ name, station }) => {
 		const emp = get().getCurrentEmployee();

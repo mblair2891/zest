@@ -30,6 +30,7 @@ import { parseHrMap } from "@/lib/hr/types";
 import { parseLaborMap } from "@/lib/labor/rules";
 import { parseOpsJobsConfig } from "@/lib/ops-jobs/config";
 import { parseQrPolicy } from "@/lib/pos/qr-policy";
+import { parseItem86 } from "@/lib/pos/item-86";
 import { parseLocationOperatingModel } from "./location-model";
 import { demoVenueIsolated } from "./tenant-users";
 
@@ -262,6 +263,7 @@ function parseSetup(raw: unknown): LocationSetup {
         : Math.min(10_000, Math.max(0, Math.round(Number(o.giftOperatorBreakageSplitBps) || 0))),
     floorPlan: parseFloorPlan(o.floorPlan),
     menuCatalog: parseMenuCatalog(o.menuCatalog),
+    item86: parseItem86(o.item86),
     recipes: parseRecipes(o.recipes),
     costPack:
       o.costPack && typeof o.costPack === "object"

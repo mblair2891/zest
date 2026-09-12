@@ -1,7 +1,7 @@
 # Operators Guide — authoring
 
-**Revision · 11 Sep 2026** — After pay: Email, Print, or No receipt.
-Guide v2026.10.70.
+**Revision · 11 Sep 2026** — 86 broadcasts now; menu structure waits for Publish.
+Guide v2026.10.71.
 
 The in-app **Operators Guide** is the living product manual. It is not a
 separate PDF. Staff open it from **Guide** / **?** in the POS and platform

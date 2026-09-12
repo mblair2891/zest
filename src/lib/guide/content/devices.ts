@@ -126,7 +126,7 @@ export const DEVICE_TOPICS: GuideTopic[] = [
         "Install Summex Station on every staff Android tablet (same Play-ready APK for host, order, and ODS).",
         "Owner: Devices → Add device (name + Order / Order Display / Host). Show the one-time code or QR.",
         "Tablet: Scan QR or Enter code. Snapshot is pushed. Thereafter power on → PIN. App updates do not wipe pairing.",
-        "After menu or floor edits: Publish changes. Logged-in staff keep running; next PIN login loads the new publish.",
+        "After menu or floor layout edits: Publish changes. Logged-in staff keep running; next PIN login loads the new publish. 86 / un-86 is not a publish — every station sees it immediately.",
         "Broken ODS → reassign a server tablet from Devices (Role dropdown). No new pair code.",
         "Unpair or Replace from the same Devices list when a tablet is lost or swapped.",
         "Training: on Samsung, confirm pin-windows when Summex asks. Set Summex as Home if the tablet offers it.",

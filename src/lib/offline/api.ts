@@ -32,6 +32,7 @@ function clipKind(raw: unknown): OutboxKind {
     "loyalty",
     "payout",
     "menu_publish",
+    "item_86",
     "receipt_email",
     "settings_patch",
     "clock_punch",

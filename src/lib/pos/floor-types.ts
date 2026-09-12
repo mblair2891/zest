@@ -144,6 +144,8 @@ export type OpenFloor = {
   events: FloorTicketEvent[];
   serverTime: number;
   operatorScoped: boolean;
+  /** Live 86 overlay (itemId → available). Applied immediately, not via Publish. */
+  item86?: Record<string, boolean>;
 };
 
 export type UpsertCheckInput = {

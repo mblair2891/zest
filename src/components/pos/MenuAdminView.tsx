@@ -63,7 +63,7 @@ export function MenuAdminView() {
     void saveMenuItemFn({
       data: { orgId, locationId: locId, action, operatorId },
     }).catch(() => undefined);
-    persistLocationCatalog("menu");
+    if (action !== "toggle") persistLocationCatalog("menu");
   };
 
   const add = () => {
