@@ -90,5 +90,5 @@ export function assertHostOrManageDevices(ctx: EntityWriteContext, targetOperato
   }
   const matrix = parseGrantMatrix(ctx.setup.entityPermissions);
   if (canEntityGrant(matrix, ctx.operatorId, targetOperatorId, "manage_devices")) return;
-  throw new ForbiddenError("Device assignment is host-managed");
+  throw new ForbiddenError("Device assignment is venue-managed");
 }

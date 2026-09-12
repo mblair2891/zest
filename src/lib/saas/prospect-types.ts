@@ -376,16 +376,24 @@ export type OnboardingLocationDraft = {
   /** True once the operator typed the slug (stop auto-fill from name). */
   slugEdited?: boolean;
   operatingModel: LocationOperatingModel;
+  /** Peer venues are always null. Single-operator may point at the one entity. */
+  hostEntityId?: string | null;
   operators: OperatorDraft[];
   tableCount: number;
   sectionNames: string;
   floorLater: boolean;
   menuMode: MenuMode;
-  devices: { pos: number; kds: number; handhelds: number };
+  devices: { pos: number; kds: number; handhelds: number; kiosk?: number; host?: number };
   networkReadyStatus?: import("./network-readiness").NetworkReadyStatus;
   networkCheckedAt?: string;
   networkNotes?: string;
   networkChecklist?: import("./network-readiness").NetworkChecklist;
+  serviceStyle?: "full_service" | "counter" | "hybrid";
+  cashRoundIncrement?: 0.25 | 0.5 | 1;
+  qrMode?: "full" | "reorder" | "pay_only" | "table_tent" | "off";
+  taxMode?: "venue_shared" | "per_entity";
+  kioskCount?: number;
+  hostCount?: number;
 };
 
 export type OnboardingInviteDraft = {

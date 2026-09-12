@@ -24,8 +24,8 @@ export function SubscriberWhitePaper() {
         summex.app · Guest cards: {PAYMENTS_BRAND} only
       </p>
       <p className="mt-2 text-xs text-muted-foreground">
-        Revision · 12 Sep 2026 — Aligns with Operators Guide v2026.10.76. Gift
-        lookup at summex.app/gift. Spent plastic can be reused.
+        Revision · 12 Sep 2026 — Aligns with Operators Guide v2026.10.77. Peer
+        venue onboarding has no host merchant. Gift lookup at summex.app/gift.
       </p>
       <p className="mt-6 text-sm leading-relaxed text-muted-foreground">
         For the owner considering Summex — a single shop, a full dining room, or a
@@ -59,7 +59,8 @@ export function SubscriberWhitePaper() {
             <strong className="text-ivory">A shared building (peers)</strong> — a
             named place only. Two or more independent operators. No landlord-brand
             POS, host menu, or house gift product is required. The building is not
-            a merchant. Untagged lines do not sell.
+            a merchant. The billing contact is not a merchant. Untagged lines do
+            not sell.
           </li>
         </ul>
         <p>
@@ -164,7 +165,13 @@ export function SubscriberWhitePaper() {
           is the usual picture — without inventing a landlord brand.
         </p>
         <ul>
-          <li>Each operator owns their menu, tickets, recipes, staff, and schedule.</li>
+          <li>
+            <strong className="text-ivory">Shared building:</strong> the billing
+            owner signs in at app.summex.app/login (never the PIN pad), finishes
+            a nine-step building wizard, and invites each operator. No Finix form
+            and no menu on the building.
+          </li>
+          <li>Each operator owns their menu, tickets, recipes, staff, Finix merchant, and schedule. An invite cannot edit a sibling.</li>
           <li>
             The guest still pays <strong className="text-ivory">one check</strong>.
             Capture splits to each brand’s {PAYMENTS_BRAND} merchant by who sold

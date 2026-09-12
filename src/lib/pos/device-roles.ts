@@ -4,31 +4,35 @@ import type { PosView } from "@/lib/pos/types";
 import { readStationPair } from "./station-pair";
 
 /** Native / station device roles. PIN identifies the person; this is the screen. */
-export const DEVICE_ROLES = ["order", "ods", "host"] as const;
+export const DEVICE_ROLES = ["order", "ods", "host", "kiosk"] as const;
 export type DeviceRole = (typeof DEVICE_ROLES)[number];
 
 export const DEVICE_ROLE_LABEL: Record<DeviceRole, string> = {
   order: "Order",
   ods: "Order Display",
   host: "Host",
+  kiosk: "Kiosk",
 };
 
 export const DEVICE_ROLE_BLURB: Record<DeviceRole, string> = {
   order: "Order entry on handhelds and bar stations. Pay and gift when the PIN allows.",
   ods: "Kitchen tickets only — Start and Bump. No menu, no pay.",
   host: "Floor map, seat, table status, and to-go order entry.",
+  kiosk: "Guest self-order. No staff PIN on the glass.",
 };
 
 const SESSION_FOR_ROLE: Record<DeviceRole, SessionModeId> = {
   order: "cashier",
   ods: "kitchen_kds",
   host: "host_stand",
+  kiosk: "kiosk",
 };
 
 const VIEW_FOR_ROLE: Record<DeviceRole, PosView> = {
   order: "order",
   ods: "kitchen",
   host: "floor",
+  kiosk: "waitlist",
 };
 
 const STATION_ALIASES: Record<string, DeviceRole> = {
@@ -48,10 +52,11 @@ const STATION_ALIASES: Record<string, DeviceRole> = {
   waitlist: "host",
   host_stand: "host",
   busser: "host",
+  kiosk: "kiosk",
 };
 
 export function isDeviceRole(v: string | null | undefined): v is DeviceRole {
-  return v === "order" || v === "ods" || v === "host";
+  return v === "order" || v === "ods" || v === "host" || v === "kiosk";
 }
 
 export function parseStationQuery(raw: string | null | undefined): DeviceRole | null {
@@ -82,9 +87,10 @@ export function deviceRoleFromSessionMode(kind: SessionModeId): DeviceRole {
     case "expo":
       return "ods";
     case "host_stand":
-    case "kiosk":
     case "busser":
       return "host";
+    case "kiosk":
+      return "kiosk";
     case "floor_pos":
     case "bar_pos":
     case "cashier":
@@ -99,6 +105,8 @@ export function functionForDeviceRole(role: DeviceRole): DeviceFunction {
       return "kitchen_kds";
     case "host":
       return "host_stand";
+    case "kiosk":
+      return "kiosk";
     default:
       return "floor_pos";
   }
@@ -110,6 +118,8 @@ export function typeForDeviceRole(role: DeviceRole): LocationDeviceType {
       return "kds";
     case "host":
       return "host_stand";
+    case "kiosk":
+      return "kiosk";
     default:
       return "tablet_pos";
   }
@@ -123,9 +133,10 @@ export function deviceRoleFromFunction(fn: DeviceFunction): DeviceRole {
     case "split":
       return "ods";
     case "host_stand":
-    case "kiosk":
     case "busser":
       return "host";
+    case "kiosk":
+      return "kiosk";
     case "floor_pos":
     case "bar_pos":
     case "cashier":

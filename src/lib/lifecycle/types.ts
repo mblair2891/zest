@@ -1,5 +1,6 @@
 export const LOCATION_LIFECYCLES = [
   "onboarding",
+  "awaiting_entities",
   "training",
   "scheduled_live",
   "live",
@@ -9,6 +10,7 @@ export type LocationLifecycle = (typeof LOCATION_LIFECYCLES)[number];
 
 export const LIFECYCLE_LABEL: Record<LocationLifecycle, string> = {
   onboarding: "Onboarding",
+  awaiting_entities: "Awaiting entities",
   training: "Training",
   scheduled_live: "Scheduled live",
   live: "Live",

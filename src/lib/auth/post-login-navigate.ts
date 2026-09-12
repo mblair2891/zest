@@ -61,6 +61,10 @@ export async function navigateToSanitizedPath(
     case "/pipeline":
       await navigate({ to: "/pipeline" });
       return;
+    case "/platform/tenants":
+    case "/platform/tenants/":
+      await navigate({ to: "/platform/tenants" });
+      return;
     case "/get-pricing": {
       const t = search.match(/^t=([A-Za-z0-9_-]{8,128})$/)?.[1];
       if (t) await navigate({ to: "/get-pricing", search: { t } });
@@ -100,6 +104,14 @@ export async function navigateToSanitizedPath(
       break;
   }
 
+  const tenantDetail = path.match(/^\/platform\/tenants\/([^/]+)$/);
+  if (tenantDetail?.[1]) {
+    await navigate({
+      to: "/platform/tenants/$orgId",
+      params: { orgId: tenantDetail[1] },
+    });
+    return;
+  }
   const quote = path.match(/^\/quote\/([^/]+)$/);
   if (quote?.[1]) {
     await navigate({ to: "/quote/$token", params: { token: quote[1] } });

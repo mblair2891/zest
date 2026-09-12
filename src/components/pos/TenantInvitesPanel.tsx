@@ -22,6 +22,8 @@ const STATUS_BADGE: Record<string, "secondary" | "info" | "warn" | "success" | "
   draft: "secondary",
   invited: "info",
   in_progress: "warn",
+  finix_pending: "warn",
+  ready: "success",
   complete: "success",
   expired: "danger",
 };

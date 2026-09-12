@@ -241,7 +241,8 @@ export interface RestaurantSettings {
   /** When true, gift cards may carry a term. Off by default — many states prohibit expiry. */
   giftTermAllowed?: boolean;
   /** Location lifecycle: training uses sandbox cards. */
-  lifecycleStatus?: "onboarding" | "training" | "scheduled_live" | "live";
+  lifecycleStatus?: "onboarding" | "awaiting_entities" | "training" | "scheduled_live" | "live";
+  quantumReaderId?: string;
   /** Practice orders move on-hand when true. */
   trainingTrackInventory?: boolean;
   /** AI ops report cadence. Off until the owner turns it on. */
@@ -389,6 +390,8 @@ export interface OrderLine {
   id: string;
   menuItemId: string;
   name: string;
+  /** Selling entity. Required. Alias of vendorId. */
+  entityId?: string;
   vendorId?: string;
   vendorName?: string;
   quantity: number;

@@ -5,6 +5,8 @@ export const TENANT_ONBOARD_STATUSES = [
   "draft",
   "invited",
   "in_progress",
+  "finix_pending",
+  "ready",
   "complete",
   "expired",
 ] as const;
@@ -30,6 +32,15 @@ export type TenantOnboardPayload = {
   payoutBankLast4: string;
   payoutLabel: string;
   schedulePrefs: string;
+  ein: string;
+  ownersNote: string;
+  bankName: string;
+  mcc: string;
+  menuIntake: "type" | "voice" | "upload";
+  tipMode: string;
+  closeoutMode: string;
+  tillMode: string;
+  invoiceOptIn: boolean;
 };
 
 export const EMPTY_TENANT_PAYLOAD: TenantOnboardPayload = {
@@ -45,6 +56,15 @@ export const EMPTY_TENANT_PAYLOAD: TenantOnboardPayload = {
   payoutBankLast4: "",
   payoutLabel: "",
   schedulePrefs: "",
+  ein: "",
+  ownersNote: "",
+  bankName: "",
+  mcc: "5812",
+  menuIntake: "type",
+  tipMode: "",
+  closeoutMode: "",
+  tillMode: "",
+  invoiceOptIn: false,
 };
 
 export type TenantInviteRow = {
@@ -74,6 +94,7 @@ export type TenantInvitePeek = {
   completed: boolean;
   locationId: string | null;
   operatorId: string;
+  peerVenue?: boolean;
 };
 
 export function parseTenantKind(raw: unknown): TenantKind {
@@ -84,6 +105,9 @@ export function parseTenantKind(raw: unknown): TenantKind {
 export function parseTenantPayload(raw: unknown): TenantOnboardPayload {
   const o = raw && typeof raw === "object" ? (raw as Record<string, unknown>) : {};
   const str = (k: string) => (typeof o[k] === "string" ? o[k] : "");
+  const menuIntake =
+    o.menuIntake === "voice" || o.menuIntake === "upload" ? o.menuIntake : "type";
+  const mccRaw = str("mcc").replace(/\D/g, "");
   return {
     legalName: str("legalName"),
     dba: str("dba"),
@@ -97,5 +121,14 @@ export function parseTenantPayload(raw: unknown): TenantOnboardPayload {
     payoutBankLast4: str("payoutBankLast4").replace(/\D/g, "").slice(-4),
     payoutLabel: str("payoutLabel"),
     schedulePrefs: str("schedulePrefs"),
+    ein: str("ein").replace(/\D/g, "").slice(0, 9),
+    ownersNote: str("ownersNote"),
+    bankName: str("bankName"),
+    mcc: mccRaw === "5813" || mccRaw === "7299" ? mccRaw : mccRaw === "5812" ? "5812" : str("mcc") || "5812",
+    menuIntake,
+    tipMode: str("tipMode"),
+    closeoutMode: str("closeoutMode"),
+    tillMode: str("tillMode"),
+    invoiceOptIn: Boolean(o.invoiceOptIn),
   };
 }

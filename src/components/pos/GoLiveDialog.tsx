@@ -40,10 +40,10 @@ export function GoLivePanel() {
         {schedule ? ` · scheduled ${formatDateTime(schedule.at)}` : ""}
       </p>
       <p className="mt-1 text-xs text-muted-foreground">
-        Training uses Quantum Payments sandbox and can run without a physical
-        reader (cash + sandbox). Live cards fail closed until an enrolled
-        Finix/Quantum reader supplied through Summex is on this location.
-        Menus, recipes, floorplan, staff, devices, and SKU catalog always stay.
+        Training is the real org with sandbox cards and practice tickets. Live
+        guest Visa is blocked until every selling entity has live Finix and at
+        least one reader enrolled. Type GO LIVE NOW, or schedule a datetime.
+        Choose keep vs erase practice tickets — menus and inventory stay.
       </p>
       <div className="mt-3 flex flex-wrap gap-2">
         <Button

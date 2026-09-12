@@ -5,7 +5,7 @@
 
 export const PAIR_TTL_MS = 24 * 60 * 60 * 1000;
 
-export type PairDeviceRole = "order" | "ods" | "host";
+export type PairDeviceRole = "order" | "ods" | "host" | "kiosk";
 
 export type StationPairPayload = {
   token: string;
@@ -21,6 +21,7 @@ function asRole(raw: string | null | undefined): PairDeviceRole | undefined {
   if (s === "order" || s === "cashier" || s === "bar_pos" || s === "handheld") return "order";
   if (s === "ods" || s === "kitchen" || s === "bar" || s === "kds" || s === "expo") return "ods";
   if (s === "host" || s === "floor" || s === "waitlist" || s === "host_stand") return "host";
+  if (s === "kiosk") return "kiosk";
   return undefined;
 }
 

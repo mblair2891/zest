@@ -5,9 +5,9 @@ export const DEVICE_TOPICS: GuideTopic[] = [
   topic({
     id: "device-roles",
     chapterId: "devices",
-    title: "Device roles: order, ODS, host",
+    title: "Device roles: order, ODS, host, kiosk",
     summary:
-      "Three screens: order-taking (handhelds + bar), kitchen ODS, host hybrid (floor map + to-go). PIN first — not /login.",
+      "Four screens: order-taking (handhelds + bar), kitchen ODS, host hybrid (floor map + to-go), guest kiosk. PIN first — not /login.",
     roles: "all",
     keywords: [
       "device role",
@@ -43,7 +43,7 @@ export const DEVICE_TOPICS: GuideTopic[] = [
         "Broken ODS → reassign a server tablet from Devices. Same pair code; staff PIN in again. Do not reinstall.",
       ),
       steps(
-        "Owner: Devices → Add device → Order / Order Display / Host. Show the one-time code or QR. Codes expire; regenerate from that row.",
+        "Owner: Devices → Add device → Order / ODS / Host / Kiosk. Show the one-time code or QR for the Android app pair screen. Codes expire; regenerate from that row.",
         "Tablet: first open of Summex Station → Scan QR or Enter code. Thereafter: power on → PIN keypad. That is not clock-in and not closeout.",
         "Paired row: Role dropdown (Order / Host / ODS, plus ODS kitchen or ODS bar when both exist, and Kiosk when the house has one). Confirm, then staff PIN in again. Apply now only if that tablet is on the PIN pad — never mid-check.",
         "Owner or manager: Change device to move this screen among Order / ODS / Host without a new account login.",

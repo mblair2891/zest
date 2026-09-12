@@ -3,6 +3,9 @@ import { createFileRoute, Link, Navigate } from "@tanstack/react-router";
 import { useCurrentUserState } from "@/lib/auth/use-current-user";
 import { getPlatformFlags } from "@/lib/auth/platform-admin";
 import { SetupOnboardingWizard } from "@/components/saas/SetupOnboardingWizard";
+import { VenueOwnerWizard } from "@/components/saas/VenueOwnerWizard";
+import { getProspectFn } from "@/lib/saas/api";
+import { usesVenueOwnerWizard } from "@/lib/saas/venue-wizard";
 
 export const Route = createFileRoute("/setup/$token")({
   component: SetupPage,
@@ -61,11 +64,36 @@ function SetupPage() {
         <h1 className="mt-2 text-3xl font-semibold tracking-tight">Onboarding</h1>
         <p className="mt-2 mb-8 max-w-xl text-sm text-muted-foreground">
           This is your venue setup, not the Summex control plane. Create the house,
-          invite selling entities if you share a building, then devices and payments.
-          Menus can wait. Training sandbox until you schedule go-live.
+          invite selling entities if you share a building. No Finix form and no menu
+          on the venue. Training sandbox until you schedule go-live.
         </p>
-        <SetupOnboardingWizard token={token} />
+        <VenueOwnerOrHost token={token} />
       </div>
     </div>
   );
+}
+
+function VenueOwnerOrHost({ token }: { token: string }) {
+  const [host, setHost] = useState<boolean | null>(null);
+  useEffect(() => {
+    let cancelled = false;
+    void getProspectFn({ data: { token } })
+      .then((d) => {
+        if (cancelled) return;
+        const model =
+          d.onboarding?.payload?.locations?.[0]?.operatingModel ?? d.answers?.operating?.model;
+        setHost(!usesVenueOwnerWizard(model));
+      })
+      .catch(() => {
+        if (!cancelled) setHost(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [token]);
+  if (host === null) {
+    return <p className="text-sm text-muted-foreground">Loading setup…</p>;
+  }
+  if (host) return <SetupOnboardingWizard token={token} />;
+  return <VenueOwnerWizard token={token} />;
 }

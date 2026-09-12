@@ -3,7 +3,7 @@
 **Powered by Quantum Reach**
 
 White paper · for owners and operators  
-**Revision · 12 Sep 2026** — Written for prospective subscribers. Aligns with Operators Guide v2026.10.76. Staff stations are Android tablets. Guests look up gift balance at summex.app/gift. Spent plastic can be reused.
+**Revision · 12 Sep 2026** — Written for prospective subscribers. Aligns with Operators Guide v2026.10.77. Peer venue onboarding has no host merchant. Staff stations are Android tablets. Guests look up gift balance at summex.app/gift. Spent plastic can be reused.
 
 summex.app  
 Guest cards: **Quantum Payments** only
@@ -24,7 +24,7 @@ You can run:
 
 - **One shop** — a restaurant, bar, café, or QSR. One brand owns the menu, the floor, and the money.
 - **Host + operators** — a house brand owns the floor and may sell; tenants sell on the same check.
-- **A shared building (peers)** — a named place only. Two or more independent operators. No landlord-brand POS, host menu, or house gift product is required. The building is not a merchant. Untagged lines do not sell.
+- **A shared building (peers)** — a named place only. Two or more independent operators. No landlord-brand POS, host menu, or house gift product is required. The building is not a merchant. Untagged lines do not sell. The billing contact is not a merchant.
 
 Software billing (Summex packages) is **separate** from guest card processing.
 
@@ -82,7 +82,7 @@ Staffing recs (cut / hold / add) never clock anyone out. The manager decides.
 A named building can hold two independent operators — a bar and a kitchen is the usual picture — without inventing a landlord brand.
 
 - **Host + tenants:** the host owner/manager signs in with email and password and has full access to every tenant’s ops — devices, floor, menus, reports, costs, labor, payments split, grants. A tenant entity login sees only that brand.
-- **Shared venue (peers):** no host role. Venue admin is not a landlord merchant. Each operator owns their menu, tickets, recipes, staff, and schedule — and can sign in as that entity’s admin without a fake host merchant.
+- **Shared venue (peers):** no host role. Venue admin is not a landlord merchant. After contract signed they sign in at app.summex.app/login (never the PIN pad) and finish a nine-step building wizard — then invite each operator. Each operator owns their menu, tickets, recipes, staff, Finix merchant, and schedule. An invite cannot edit a sibling.
 - The guest still pays **one check**. Capture **splits** to each brand’s Quantum Payments merchant by who sold the line.
 - Gift is a **house ledger** (swipe, scan, or key) — not the card processor. Load on cash or card. Redeem inside Summex. If one brand issues and another fulfills, settlement moves between them. Guests check the current balance at **summex.app/gift**. When a card is spent, a manager or venue admin can **reuse the plastic**: close the old ledger (kept in audit), same printed number, new card id at $0. The next load is a new issuance for the selling entity.
 - Period close is the house book for cash, any host cut, and disputes. Live bank payout of leftovers is not claimed here.

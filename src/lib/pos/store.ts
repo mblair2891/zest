@@ -2093,10 +2093,14 @@ const usePosStoreRaw = create<PosStore>()(persist((set, get) => {
 		const settings = get().settings;
 		const unit = isHappyHour(settings, /* @__PURE__ */ new Date()) && item.happyHourPriceCents != null ? item.happyHourPriceCents : item.priceCents;
 		const vendor = item.vendorId ? get().vendors.find((v: any) => v.id === item.vendorId) : void 0;
+		if ((settings.peerVenue || settings.operatingModel === "peer_venue") && !item.vendorId) {
+			return { ok: false, error: "Each line needs a selling entity. This building is not a merchant." };
+		}
 		const line = {
 			id: uid("ln"),
 			menuItemId: item.id,
 			name: item.name,
+			entityId: item.vendorId,
 			vendorId: item.vendorId,
 			vendorName: vendor?.shortName ?? vendor?.name,
 			quantity: opts.quantity ?? 1,

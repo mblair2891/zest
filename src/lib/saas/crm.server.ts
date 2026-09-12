@@ -650,16 +650,21 @@ export async function listTenantDirectory(userId: string): Promise<TenantDirecto
       l.setup && typeof l.setup === "object" ? (l.setup as Record<string, unknown>) : {};
     const raw = String(setup.lifecycleStatus ?? l.lifecycle_status ?? "training");
     const life =
-      raw === "onboarding" || raw === "training" || raw === "scheduled_live" || raw === "live"
+      raw === "onboarding" ||
+      raw === "awaiting_entities" ||
+      raw === "training" ||
+      raw === "scheduled_live" ||
+      raw === "live"
         ? raw
         : "training";
     const arr = lifeByOrg.get(l.org_id) ?? [];
     if (!arr.includes(life)) arr.push(life);
     lifeByOrg.set(l.org_id, arr);
   }
-  const order = ["onboarding", "training", "scheduled_live", "live"];
+  const order = ["onboarding", "awaiting_entities", "training", "scheduled_live", "live"];
   const label: Record<string, string> = {
     onboarding: "Onboarding",
+    awaiting_entities: "Awaiting entities",
     training: "Training",
     scheduled_live: "Scheduled live",
     live: "Live",
@@ -741,7 +746,11 @@ export async function getTenantDrillIn(userId: string, orgId: string): Promise<T
         status: l.status,
         slug: l.slug || null,
         lifecycleStatus:
-          life === "training" || life === "scheduled_live" || life === "live" || life === "onboarding"
+          life === "training" ||
+          life === "scheduled_live" ||
+          life === "live" ||
+          life === "onboarding" ||
+          life === "awaiting_entities"
             ? life
             : undefined,
       };

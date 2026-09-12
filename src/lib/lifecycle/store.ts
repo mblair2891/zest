@@ -60,7 +60,13 @@ function canOwner(): boolean {
 
 function parseLife(v: unknown, fallback: LocationLifecycle): LocationLifecycle {
   const s = String(v ?? "");
-  if (s === "onboarding" || s === "training" || s === "scheduled_live" || s === "live") {
+  if (
+    s === "onboarding" ||
+    s === "awaiting_entities" ||
+    s === "training" ||
+    s === "scheduled_live" ||
+    s === "live"
+  ) {
     return s;
   }
   return fallback;

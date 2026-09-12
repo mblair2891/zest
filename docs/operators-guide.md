@@ -1,7 +1,7 @@
 # Operators Guide — authoring
 
-**Revision · 12 Sep 2026** — Public gift lookup; reuse spent plastic.
-Guide v2026.10.76.
+**Revision · 12 Sep 2026** — Peer venue onboarding without a host merchant.
+Guide v2026.10.77.
 
 The in-app **Operators Guide** is the living product manual. It is not a
 separate PDF. Staff open it from **Guide** / **?** in the POS and platform

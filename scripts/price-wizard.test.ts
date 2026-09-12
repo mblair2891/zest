@@ -30,7 +30,7 @@ test("single operator never shows tenant add-on", () => {
 test("shared venue requires ≥2 entities and a per-entity line", () => {
   const w = emptyPriceWizard();
   w.shape = "peer_venue";
-  w.style = "hall";
+  w.style = "hybrid";
   w.entities = 2;
   w.modules.kds = true;
   const answers = wizardToIntake(w);
@@ -97,7 +97,8 @@ test("wizard step clamps to 1–7", () => {
 
 test("service styles are filtered by shape", () => {
   assert.equal(stylesForShape("single").includes("hall"), false);
-  assert.equal(stylesForShape("peer_venue").includes("counter"), false);
+  assert.equal(stylesForShape("peer_venue").includes("counter"), true);
+  assert.ok(stylesForShape("peer_venue").includes("hybrid"));
   assert.ok(stylesForShape("host_operators").includes("hall"));
 });
 

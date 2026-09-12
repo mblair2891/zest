@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Input } from "@/components/ui/input";
-import { Field, NativeSelect, WizardChrome } from "./WizardChrome";
+import { Field, NativeSelect, ToggleChip, WizardChrome } from "./WizardChrome";
 import {
   completeTenantOnboardFn,
   openTenantInviteFn,
@@ -8,15 +8,12 @@ import {
 } from "@/lib/saas/tenant-invite-api";
 import {
   EMPTY_TENANT_PAYLOAD,
-  TENANT_KIND_LABEL,
-  TENANT_KINDS,
   type TenantInvitePeek,
-  type TenantKind,
   type TenantOnboardPayload,
 } from "@/lib/saas/tenant-invite";
 import { QuantumPaymentsOnboardPanel } from "@/components/payments/QuantumPaymentsOnboardPanel";
 
-const LABELS = ["Business", "Stations", "Staff", "Payouts", "Schedule", "Review"];
+const LABELS = ["Legal", "MCC", "Menu", "Staff", "Payments", "Tips", "Review"];
 
 export function TenantOnboardWizard({
   token,
@@ -81,27 +78,32 @@ export function TenantOnboardWizard({
   if (done) {
     return (
       <div className="mx-auto max-w-lg py-16 text-center">
-        <p className="text-lg font-semibold">Onboarding complete</p>
+        <p className="text-lg font-semibold">This entity is in progress</p>
         <p className="mt-2 text-sm text-muted-foreground">
-          {peek.displayName} is on file for {peek.hostBrand}. The host still owns routing and
-          payouts. Sign in later for entity-scoped ops.
+          {peek.displayName} at {peek.hostBrand}. You cannot edit sibling menus or sibling
+          Quantum Payments. Live cards wait until this merchant is approved.
         </p>
       </div>
     );
   }
 
+  const total = 7;
   return (
     <WizardChrome
       title={`${peek.displayName} at ${peek.hostBrand}`}
-      subtitle="Complete your operator details. You cannot change host billing or other tenants."
+      subtitle={
+        peek.peerVenue
+          ? "This invite is scoped to your entity only. The building is not a merchant."
+          : "Complete your operator details. You cannot change host billing or other tenants."
+      }
       step={step}
-      total={6}
+      total={total}
       labels={LABELS}
       error={error}
       busy={busy}
       onBack={step > 1 ? () => setStep(step - 1) : undefined}
-      onNext={step < 6 ? () => void go(step + 1) : () => void submit()}
-      nextLabel={step < 6 ? "Continue" : "Submit"}
+      onNext={step < total ? () => void go(step + 1) : () => void submit()}
+      nextLabel={step < total ? "Continue" : "Submit"}
     >
       {step === 1 && (
         <div className="grid gap-3 sm:grid-cols-2">
@@ -133,52 +135,92 @@ export function TenantOnboardWizard({
               onChange={(e) => patch((p) => ({ ...p, pocPhone: e.target.value }))}
             />
           </Field>
+          <Field label="EIN">
+            <Input
+              value={payload.ein}
+              onChange={(e) => patch((p) => ({ ...p, ein: e.target.value }))}
+            />
+          </Field>
+          <Field label="Beneficial owners">
+            <Input
+              value={payload.ownersNote}
+              onChange={(e) => patch((p) => ({ ...p, ownersNote: e.target.value }))}
+            />
+          </Field>
         </div>
       )}
       {step === 2 && (
         <div className="space-y-3">
-          <Field label="Station type">
+          <Field label="MCC">
             <NativeSelect
-              value={payload.stationKind}
-              onChange={(v) => patch((p) => ({ ...p, stationKind: v as TenantKind }))}
+              value={payload.mcc}
+              onChange={(v) => patch((p) => ({ ...p, mcc: v }))}
             >
-              {TENANT_KINDS.map((k) => (
-                <option key={k} value={k}>
-                  {TENANT_KIND_LABEL[k]}
-                </option>
-              ))}
+              <option value="5812">5812 — eating places / food service</option>
+              <option value="5813">5813 — drinking places</option>
+              <option value="7299">Other</option>
             </NativeSelect>
           </Field>
-          <Field label="Stations you operate" hint="e.g. bar rail, expo, pizza oven">
+          <Field label="Bank (payout)">
             <Input
-              value={payload.stations}
-              onChange={(e) => patch((p) => ({ ...p, stations: e.target.value }))}
+              value={payload.bankName}
+              onChange={(e) => patch((p) => ({ ...p, bankName: e.target.value }))}
             />
           </Field>
-          <Field label="Menu ownership notes">
+          <Field label="Account last 4">
             <Input
+              value={payload.payoutBankLast4}
+              onChange={(e) => patch((p) => ({ ...p, payoutBankLast4: e.target.value }))}
+            />
+          </Field>
+        </div>
+      )}
+      {step === 3 && (
+        <div className="space-y-3">
+          <Field label="Menu intake">
+            <NativeSelect
+              value={payload.menuIntake}
+              onChange={(v) =>
+                patch((p) => ({ ...p, menuIntake: v as TenantOnboardPayload["menuIntake"] }))
+              }
+            >
+              <option value="type">Type it in</option>
+              <option value="voice">Voice notes</option>
+              <option value="upload">Document upload notes</option>
+            </NativeSelect>
+          </Field>
+          <Field label="Menu + modifiers + recipes">
+            <textarea
+              className="min-h-32 w-full rounded-lg border border-border bg-bg p-3 text-sm"
               value={payload.menuNotes}
               onChange={(e) => patch((p) => ({ ...p, menuNotes: e.target.value }))}
             />
           </Field>
         </div>
       )}
-      {step === 3 && (
-        <Field label="Staff list (optional)" hint="Names and roles. You can add PINs later in ops.">
-          <textarea
-            className="min-h-32 w-full rounded-lg border border-border bg-bg p-3 text-sm"
-            value={payload.staffNotes}
-            onChange={(e) => patch((p) => ({ ...p, staffNotes: e.target.value }))}
-          />
-        </Field>
-      )}
       {step === 4 && (
         <div className="space-y-3">
+          <Field label="Staff PINs + roles" hint="Names, 4-digit PINs, roles, schedule defaults. Hashed later in ops.">
+            <textarea
+              className="min-h-32 w-full rounded-lg border border-border bg-bg p-3 text-sm"
+              value={payload.staffNotes}
+              onChange={(e) => patch((p) => ({ ...p, staffNotes: e.target.value }))}
+            />
+          </Field>
+          <Field label="Schedule defaults">
+            <textarea
+              className="min-h-20 w-full rounded-lg border border-border bg-bg p-3 text-sm"
+              value={payload.schedulePrefs}
+              onChange={(e) => patch((p) => ({ ...p, schedulePrefs: e.target.value }))}
+            />
+          </Field>
+        </div>
+      )}
+      {step === 5 && (
+        <div className="space-y-3">
           <p className="text-sm text-muted-foreground">
-            This brand’s Quantum Payments account. Guests still pay one check under{" "}
-            {peek.hostBrand} — your merchandise (plus allocated tax/tip/service) lands
-            here. You can finish this wizard before approval; live cards wait until
-            this application is approved.
+            Finix sub-merchant application is required for this entity. Guests still pay one
+            check under {peek.hostBrand}. You cannot open a sibling merchant.
           </p>
           <QuantumPaymentsOnboardPanel
             kind="operator"
@@ -194,22 +236,45 @@ export function TenantOnboardWizard({
           </Field>
         </div>
       )}
-      {step === 5 && (
-        <Field label="Scheduling prefs (optional)">
-          <textarea
-            className="min-h-32 w-full rounded-lg border border-border bg-bg p-3 text-sm"
-            value={payload.schedulePrefs}
-            onChange={(e) => patch((p) => ({ ...p, schedulePrefs: e.target.value }))}
-          />
-        </Field>
-      )}
       {step === 6 && (
+        <div className="space-y-3">
+          <Field label="Tip mode for your people">
+            <Input
+              value={payload.tipMode}
+              onChange={(e) => patch((p) => ({ ...p, tipMode: e.target.value }))}
+              placeholder="Individual, pool, dual food/drink…"
+            />
+          </Field>
+          <Field label="Closeout">
+            <Input
+              value={payload.closeoutMode}
+              onChange={(e) => patch((p) => ({ ...p, closeoutMode: e.target.value }))}
+              placeholder="Blind till, server bank…"
+            />
+          </Field>
+          <Field label="Till mode">
+            <Input
+              value={payload.tillMode}
+              onChange={(e) => patch((p) => ({ ...p, tillMode: e.target.value }))}
+            />
+          </Field>
+          <ToggleChip
+            on={payload.invoiceOptIn}
+            label="Invoice / costing opt-in"
+            hint="Recipes and invoices for this entity only."
+            onClick={() => patch((p) => ({ ...p, invoiceOptIn: !p.invoiceOptIn }))}
+          />
+        </div>
+      )}
+      {step === 7 && (
         <dl className="space-y-2 rounded-2xl border border-border bg-surface p-4 text-sm">
           <Row k="Legal" v={payload.legalName || "—"} />
           <Row k="DBA" v={payload.dba || "—"} />
+          <Row k="EIN" v={payload.ein || "—"} />
+          <Row k="MCC" v={payload.mcc || "—"} />
           <Row k="POC" v={`${payload.pocName || "—"} · ${payload.pocEmail || peek.email}`} />
-          <Row k="Type" v={TENANT_KIND_LABEL[payload.stationKind]} />
-          <Row k="Stations" v={payload.stations || "—"} />
+          <Row k="Menu" v={payload.menuIntake} />
+          <Row k="Invoices" v={payload.invoiceOptIn ? "On" : "Off"} />
           <Row k="Payout" v={payload.payoutLabel || payload.payoutBankLast4 || "Quantum Payments application"} />
         </dl>
       )}

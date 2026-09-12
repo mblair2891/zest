@@ -209,7 +209,32 @@ export function parseOnboardingPayload(raw: unknown): OnboardingPayload {
           pos: Math.max(0, Math.floor(num(devices.pos, 0))),
           kds: Math.max(0, Math.floor(num(devices.kds, 0))),
           handhelds: Math.max(0, Math.floor(num(devices.handhelds, 0))),
+          kiosk: Math.max(0, Math.floor(num(devices.kiosk, 0))),
+          host: Math.max(0, Math.floor(num(devices.host, 0))),
         },
+        hostEntityId: model === "peer_venue" ? null : str(l.hostEntityId) || null,
+        serviceStyle:
+          str(l.serviceStyle) === "counter"
+            ? "counter"
+            : str(l.serviceStyle) === "hybrid"
+              ? "hybrid"
+              : "full_service",
+        cashRoundIncrement:
+          num(l.cashRoundIncrement, 0.25) === 1
+            ? 1
+            : num(l.cashRoundIncrement, 0.25) === 0.5
+              ? 0.5
+              : 0.25,
+        qrMode:
+          str(l.qrMode) === "reorder" ||
+          str(l.qrMode) === "pay_only" ||
+          str(l.qrMode) === "table_tent" ||
+          str(l.qrMode) === "off"
+            ? (str(l.qrMode) as "reorder" | "pay_only" | "table_tent" | "off")
+            : "full",
+        taxMode: str(l.taxMode) === "per_entity" ? "per_entity" : "venue_shared",
+        kioskCount: Math.max(0, Math.floor(num(l.kioskCount, 0))),
+        hostCount: Math.max(0, Math.floor(num(l.hostCount, 0))),
         networkReadyStatus: parseNetworkReadyStatus(l.networkReadyStatus),
         networkCheckedAt: str(l.networkCheckedAt) || undefined,
         networkNotes: str(l.networkNotes),

@@ -9,7 +9,7 @@ import type { TenantDirectoryRow, TenantDrillIn } from "@/lib/saas/crm-types";
 import { STAGE_LABEL } from "@/lib/saas/crm-types";
 import { formatCurrency, formatDateTime } from "@/lib/utils";
 import { LIFECYCLE_LABEL, type LocationLifecycle } from "@/lib/lifecycle/types";
-import { venuePosHref } from "@/lib/platform/venue-host";
+
 
 function lifecycleLabel(raw: string | undefined): string {
   if (!raw) return "Training";
@@ -24,11 +24,7 @@ export function TenantWorkspace() {
   const [detail, setDetail] = useState<TenantDrillIn | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  const openVenue = (slug: string | null | undefined, orgId: string, loc?: string) => {
-    if (slug) {
-      window.location.assign(venuePosHref(slug));
-      return;
-    }
+  const openVenue = (_slug: string | null | undefined, orgId: string, loc?: string) => {
     void navigate({
       to: "/platform/tenants/$orgId",
       params: { orgId },
@@ -72,8 +68,8 @@ export function TenantWorkspace() {
           Learn
         </GuideLearnLink>
         <p className="text-xs text-muted-foreground">
-          Click a tenant to open its venue URL. Settings stays on the row. Shared venue works with no host merchant.
-          Demo rows are pairable training houses — they do not count in CRM, pipeline, or subscribers.
+          Click a tenant to open its back-office tabs (Overview, Settings, Devices, Menus, Payments, Users, Onboarding).
+          Shared building works with no host merchant. Demo rows are pairable training houses — they do not count in CRM.
         </p>
       </div>
       {error && <p className="px-4 py-2 text-sm text-danger">{error}</p>}

@@ -32,19 +32,21 @@ function Overview({
 
 test("peer_venue with no host does not throw when reading host", () => {
   const model = buildTenantDetailModel({
-    venueName: "The Laundry",
+    venueName: "Shared Building",
     operatingModel: "peer_venue",
     peerVenue: true,
+    hostEntityId: null,
     operators: [
-      { id: "opr_diamond_house", dba: "Diamond House BBQ" },
-      { id: "opr_steam_distillery", dba: "Steam Distillery" },
+      { id: "opr_food", dba: "Food operator" },
+      { id: "opr_bar", dba: "Bar operator" },
     ],
   });
   assert.equal(model.host, null);
+  assert.equal(model.hostEntityId, null);
   assert.equal(hostMerchantName(model.host), null);
   assert.deepEqual(
     model.entities.map((e) => e.name),
-    ["Diamond House BBQ", "Steam Distillery"],
+    ["Food operator", "Bar operator"],
   );
   const html = renderToString(
     createElement(Overview, {
@@ -53,9 +55,9 @@ test("peer_venue with no host does not throw when reading host", () => {
       entities: model.entities,
     }),
   );
-  assert.match(html, /The Laundry/);
-  assert.match(html, /Diamond House BBQ/);
-  assert.match(html, /Steam Distillery/);
+  assert.match(html, /Shared Building/);
+  assert.match(html, /Food operator/);
+  assert.match(html, /Bar operator/);
   assert.match(html, /no host merchant/);
   assert.doesNotMatch(html, /Host merchant/);
 });

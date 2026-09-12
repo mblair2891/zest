@@ -73,6 +73,7 @@ type LocRow = {
   address?: string | null;
   host_brand_name?: string | null;
   operating_model?: string | null;
+  host_entity_id?: string | null;
   setup?: unknown;
   lifecycle_status?: string | null;
   is_partner_demo?: boolean;
@@ -208,6 +209,7 @@ function parseSetup(raw: unknown): LocationSetup {
       : undefined,
     lifecycleStatus:
       o.lifecycleStatus === "onboarding" ||
+      o.lifecycleStatus === "awaiting_entities" ||
       o.lifecycleStatus === "training" ||
       o.lifecycleStatus === "scheduled_live" ||
       o.lifecycleStatus === "live"
@@ -239,6 +241,15 @@ function parseSetup(raw: unknown): LocationSetup {
     skipTrainingRoster: "skipTrainingRoster" in o ? Boolean(o.skipTrainingRoster) : undefined,
     operatingModel: o.operatingModel != null ? parseLocationOperatingModel(o.operatingModel) : undefined,
     peerVenue: "peerVenue" in o ? Boolean(o.peerVenue) : undefined,
+    hostEntityId:
+      o.hostEntityId == null || o.hostEntityId === ""
+        ? null
+        : String(o.hostEntityId).slice(0, 80),
+    taxMode: o.taxMode === "per_entity" ? "per_entity" : o.taxMode === "venue_shared" ? "venue_shared" : undefined,
+    serviceStyle:
+      o.serviceStyle === "counter" || o.serviceStyle === "hybrid" || o.serviceStyle === "full_service"
+        ? o.serviceStyle
+        : undefined,
     cashDiscountEnabled: "cashDiscountEnabled" in o ? Boolean(o.cashDiscountEnabled) : undefined,
     cashDiscountPercent:
       o.cashDiscountPercent == null ? undefined : Number(o.cashDiscountPercent) || undefined,
@@ -328,6 +339,8 @@ function mapLoc(r: LocRow): LocationRecord {
         : r.operating_model === "host_operators"
           ? "host_operators"
           : "single",
+    hostEntityId:
+      r.operating_model === "peer_venue" ? null : r.host_entity_id ? String(r.host_entity_id) : null,
     setup: parseSetup(r.setup),
     lifecycleStatus: parseSetup(r.setup).lifecycleStatus || r.lifecycle_status || "training",
     slug: r.slug ? String(r.slug) : null,
@@ -725,6 +738,7 @@ export async function createLocationForOrg(
     address?: string;
     hostBrandName?: string;
     operatingModel?: "single" | "host_operators" | "peer_venue";
+    hostEntityId?: string | null;
     setup?: LocationSetup;
     enabledPackages?: PackageId[];
     skipLimit?: boolean;
@@ -766,9 +780,14 @@ export async function createLocationForOrg(
       : input.operatingModel === "host_operators"
         ? "host_operators"
         : "single";
+  const hostEntityId = model === "peer_venue" ? null : input.hostEntityId?.trim() || null;
   const setupObj: Record<string, unknown> = {
     ...(input.setup ?? {}),
-    lifecycleStatus: input.setup?.lifecycleStatus ?? "training",
+    lifecycleStatus: input.setup?.lifecycleStatus ?? "onboarding",
+    operatingModel: model,
+    peerVenue: model === "peer_venue",
+    hostEntityId,
+    giftHouseIssuerEnabled: model !== "peer_venue",
   };
   if (setupObj.cashDiscountPercent == null) {
     try {
@@ -785,14 +804,15 @@ export async function createLocationForOrg(
   await sql`
     insert into locations (
       id, org_id, name, venue_type, timezone, status, enabled_packages,
-      address, host_brand_name, operating_model, setup, slug
+      address, host_brand_name, operating_model, host_entity_id, setup, slug
     )
     values (
       ${id}, ${input.orgId}, ${input.name}, ${input.venueType}, ${tz}, 'active',
       ${JSON.stringify(enabled)}::jsonb,
       ${input.address?.trim() || ""},
-      ${input.hostBrandName?.trim() || null},
+      ${model === "peer_venue" ? null : input.hostBrandName?.trim() || null},
       ${model},
+      ${hostEntityId},
       ${setup}::jsonb,
       ${slug}
     )

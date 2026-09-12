@@ -14,6 +14,11 @@ import type {
 } from "./prospect-types";
 import { ONBOARDING_STEP_IDS } from "./prospect-types";
 import {
+  isVenueOwnerStepId,
+  venueWizardStepComplete,
+  type VenueOwnerStepId,
+} from "./venue-wizard";
+import {
   createLocationForOrg,
   createOrganizationForUser,
   ForbiddenError,
@@ -67,9 +72,17 @@ export async function saveOnboardingPayload(opts: {
 export async function applyOnboardingStep(opts: {
   userId: string;
   token: string;
-  step: OnboardingStepId;
+  step: OnboardingStepId | VenueOwnerStepId | string;
   payload?: unknown;
 }): Promise<Awaited<ReturnType<typeof getProspectDetail>>> {
+  if (isVenueOwnerStepId(opts.step)) {
+    return applyVenueOwnerStep({
+      userId: opts.userId,
+      token: opts.token,
+      step: opts.step,
+      payload: opts.payload,
+    });
+  }
   if (!(ONBOARDING_STEP_IDS as readonly string[]).includes(opts.step)) {
     throw new Error("Unknown onboarding step");
   }
@@ -130,10 +143,10 @@ export async function applyOnboardingStep(opts: {
     await applyLocationSetup(opts.userId, detail.id, payload);
   } else if (opts.step === "payments") {
     await applyLocationSetup(opts.userId, detail.id, payload);
-    const locationId = payload.locations[0]?.serverId;
-    if (locationId) {
+    const loc = payload.locations[0];
+    if (loc?.serverId && loc.operatingModel !== "peer_venue") {
       const { startHostPaymentsForUser } = await import("@/lib/payments/onboarding.server");
-      await startHostPaymentsForUser(opts.userId, locationId);
+      await startHostPaymentsForUser(opts.userId, loc.serverId);
     }
   } else if (opts.step === "network") {
     /* Warn-only. Always persist whatever status the subscriber recorded (including skipped/fail). */
@@ -320,8 +333,9 @@ async function applyLocations(userId: string, prospectId: string, payload: Onboa
             venue_type = ${venueType},
             timezone = ${loc.timezone},
             address = ${loc.address.trim()},
-            host_brand_name = ${loc.hostBrandName.trim() || loc.name.trim()},
+            host_brand_name = ${loc.operatingModel === "peer_venue" ? null : loc.hostBrandName.trim() || loc.name.trim()},
             operating_model = ${loc.operatingModel},
+            host_entity_id = ${loc.operatingModel === "peer_venue" ? null : loc.hostEntityId ?? null},
             setup = ${JSON.stringify(setup)}::jsonb,
             enabled_packages = ${JSON.stringify(quoted.packages)}::jsonb,
             slug = ${slug}
@@ -370,11 +384,23 @@ async function locationSetup(
     hostBrandName: loc.hostBrandName,
     operatingModel: loc.operatingModel,
     giftHouseIssuerEnabled: loc.operatingModel !== "peer_venue",
+    hostEntityId: loc.operatingModel === "peer_venue" ? null : loc.hostEntityId ?? null,
+    peerVenue: loc.operatingModel === "peer_venue",
+    taxMode: loc.taxMode ?? "venue_shared",
+    serviceStyle: loc.serviceStyle ?? "full_service",
+    cashRoundIncrement: loc.cashRoundIncrement ?? 0.25,
+    cashRoundMode: "up",
+    qrMode: loc.qrMode ?? "reorder",
     networkReadyStatus: loc.networkReadyStatus,
     networkCheckedAt: loc.networkCheckedAt,
     networkNotes: loc.networkNotes,
     networkChecklist: loc.networkChecklist,
-    lifecycleStatus: "training" as const,
+    lifecycleStatus:
+      loc.operatingModel === "peer_venue"
+        ? ("awaiting_entities" as const)
+        : loc.operatingModel === "single"
+          ? ("onboarding" as const)
+          : ("training" as const),
     cashDiscountEnabled: true,
     cashDiscountPercent: guestCardRatePercent,
   };
@@ -393,7 +419,13 @@ async function applyOperators(userId: string, prospectId: string, payload: Onboa
   const orgId = p[0]?.org_id;
   if (!orgId) throw new Error("Organization missing");
   for (const loc of payload.locations) {
-    if (loc.operatingModel !== "host_operators" && loc.operatingModel !== "peer_venue") continue;
+    if (
+      loc.operatingModel !== "host_operators" &&
+      loc.operatingModel !== "peer_venue" &&
+      loc.operatingModel !== "single"
+    ) {
+      continue;
+    }
     if (!loc.serverId) continue;
     const named = loc.operators.filter(
       (o) => o.legalName.trim() || o.dba.trim() || o.contactEmail.trim(),
@@ -461,6 +493,109 @@ async function applyInvites(userId: string, prospectId: string, payload: Onboard
       const msg = e instanceof Error ? e.message : "";
       if (msg.includes("Plan allows")) throw e;
       /* duplicate invite is fine */
+    }
+  }
+}
+
+async function applyVenueOwnerStep(opts: {
+  userId: string;
+  token: string;
+  step: VenueOwnerStepId;
+  payload?: unknown;
+}): Promise<Awaited<ReturnType<typeof getProspectDetail>>> {
+  let detail = await getProspectDetail({ userId: opts.userId, token: opts.token });
+  const admin = await isPlatformAdmin(opts.userId);
+  assertOnboardingUnlocked(detail.status, admin);
+  if (admin) {
+    throw new ForbiddenError(
+      "The venue owner completes onboarding. Resend their invite from Pipeline — do not fill their venue.",
+    );
+  }
+  if (!detail.ownerUserId) {
+    const { claimProspect } = await import("./prospects.server");
+    await claimProspect(opts.userId, opts.token);
+    detail = await getProspectDetail({ userId: opts.userId, token: opts.token });
+  }
+  if (detail.status === "contracted") {
+    const sql = await getSql();
+    await sql`
+      update prospects set status = 'onboarding', updated_at = now()
+      where id = ${detail.id} and status = 'contracted'
+    `;
+    await writeAudit({
+      actorUserId: opts.userId,
+      action: "status_changed",
+      payload: { prospectId: detail.id, from: "contracted", to: "onboarding" },
+    });
+    detail = await getProspectDetail({ userId: opts.userId, token: opts.token });
+  }
+
+  const run = detail.onboarding ?? (await ensureOnboardingRun(detail.id));
+  const payload = parseOnboardingPayload(opts.payload ?? run.payload);
+  const gate = venueWizardStepComplete(opts.step, payload);
+  if (!gate.ok) throw new Error(gate.error || "Complete this step first");
+
+  const loc = payload.locations[0];
+  if (loc) loc.hostEntityId = loc.operatingModel === "peer_venue" ? null : loc.hostEntityId ?? null;
+
+  if (opts.step === "building" || opts.step === "model" || opts.step === "entity_count") {
+    await applyOrg(opts.userId, detail.id, payload, detail.orgId);
+    await applyLocations(opts.userId, detail.id, payload);
+  } else if (
+    opts.step === "service" ||
+    opts.step === "cash" ||
+    opts.step === "qr" ||
+    opts.step === "tax" ||
+    opts.step === "devices_plan"
+  ) {
+    await applyLocationSetup(opts.userId, detail.id, payload);
+  } else if (opts.step === "entity_slots") {
+    await applyOperators(opts.userId, detail.id, payload);
+    await sendEntitySlotInvites(opts.userId, payload);
+  }
+
+  const sql = await getSql();
+  const steps = {
+    ...run.steps,
+    [opts.step]: { done: true, completedAt: new Date().toISOString() },
+  };
+  const refreshed = await getProspectDetail({ userId: opts.userId, token: opts.token });
+  await sql`
+    update onboarding_runs
+    set payload = ${JSON.stringify(payload)}::jsonb,
+        steps = ${JSON.stringify(steps)}::jsonb,
+        org_id = ${refreshed.orgId},
+        status = ${opts.step === "devices_plan" ? "awaiting_entities" : run.status},
+        updated_at = now()
+    where id = ${run.id}
+  `;
+  await writeAudit({
+    actorUserId: opts.userId,
+    orgId: refreshed.orgId,
+    action: "onboarding_step",
+    payload: { prospectId: detail.id, step: opts.step, venueOwner: true },
+  });
+  return getProspectDetail({ userId: opts.userId, token: opts.token });
+}
+
+async function sendEntitySlotInvites(userId: string, payload: OnboardingPayload) {
+  for (const loc of payload.locations) {
+    if (!loc.serverId) continue;
+    const sql = await getSql();
+    const ops = await sql<{ id: string; contact_email: string | null; contact_phone: string | null }>`
+      select id, contact_email, contact_phone from operators where location_id = ${loc.serverId}
+    `;
+    const { generateTenantInvite } = await import("./tenant-invite.server");
+    for (const op of ops) {
+      if (!op.contact_email && !op.contact_phone) continue;
+      try {
+        await generateTenantInvite(userId, op.id, {
+          email: Boolean(op.contact_email),
+          sms: Boolean(op.contact_phone),
+        });
+      } catch {
+        /* duplicate invite is fine */
+      }
     }
   }
 }

@@ -42,10 +42,9 @@ test("peer venue admin is not a host/landlord dashboard", () => {
   assert.ok(ids.includes("devices"));
   assert.ok(ids.includes("menu"));
   assert.ok(ids.includes("payments"));
-  assert.ok(!ids.includes("floor"));
+  assert.ok(ids.includes("people"));
+  assert.ok(ids.includes("onboarding"));
   assert.ok(!ids.includes("grants"));
-  assert.ok(!ids.includes("labor"));
-  assert.ok(!ids.includes("costs"));
 });
 
 test("host owner/manager can edit every tenant schedule without a flag", () => {

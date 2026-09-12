@@ -41,6 +41,8 @@ test("host owner tiles include Devices, Publish, reports; peer has no grants chr
   const peer = passwordDashTiles("venue_admin").map((t) => t.id);
   assert.ok(peer.includes("devices"));
   assert.ok(peer.includes("reports"));
+  assert.ok(peer.includes("onboarding"));
+  assert.ok(peer.includes("users"));
   assert.ok(!peer.includes("grants"));
 });
 

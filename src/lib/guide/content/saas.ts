@@ -73,16 +73,57 @@ export const SAAS_TOPICS: GuideTopic[] = [
       ),
       steps(
         "After quote accepted, Platform records contract signed. That emails the venue owner — not a control-plane login.",
-        "Owner logs in at app.summex.app/login, changes the one-time password, lands on their wizard.",
-        "Venue profile: legal/display name, address. Shared venue: invite each selling-entity POC (existing tenant link). Each entity finishes its own slice.",
-        "Devices and payments next. Menus can wait. POS stays empty until they add a menu.",
-        "Training sandbox until they schedule go-live. Platform sees Quote → Signed → Onboarding → Training → Live and can resend the invite.",
+        "Owner logs in at app.summex.app/login, changes the one-time password, lands on the venue onboarding wizard — never the PIN pad, never platform CRM.",
+        "Nine gated steps, save-and-resume: building name/address/timezone; peer vs single-operator; entity count (peer ≥ 2); service style; cash-discount rounding; QR mode; tax venue-shared vs per-entity; name each operator and invite their POC; shared device counts.",
+        "No Finix form on the venue. No menu on the venue. Finish → onboarding / awaiting entities.",
+        "Each operator completes their own legal packet, Finix application, menu, staff PINs, and tip/closeout. Training sandbox until the owner schedules go-live.",
         "Platform does not open or fill the subscriber wizard. Pipeline Resend invite is not impersonation.",
       ),
       tip(
         "You can save and return. Each step writes real rows (org, location, members) — not a mock. Network readiness is advisory.",
       ),
-      related("create-org", "single-vs-multi", "tenant-invites", "settlement", "network-readiness", "access-urls", "empty-start"),
+      related("create-org", "single-vs-multi", "peer-venue-setup", "tenant-invites", "settlement", "network-readiness", "access-urls", "empty-start"),
+    ],
+  }),
+  topic({
+    id: "peer-venue-setup",
+    chapterId: "saas",
+    title: "Peer venue setup (shared building)",
+    summary:
+      "A named building with independent selling entities and no host merchant. One guest check. Splits by line owner.",
+    roles: ["platform_admin", "owner_manager", "host_operator", "vendor_operator"],
+    keywords: [
+      "peer venue",
+      "shared building",
+      "no host merchant",
+      "entity onboarding",
+      "billing contact",
+      "android",
+    ],
+    blocks: [
+      why(
+        "Two operators in one building do not need a landlord brand. The venue owns the floor, devices, QR, cash rounding, and the SaaS bill. Each entity is its own merchant.",
+      ),
+      ul(
+        "Venue (building wrapper): name, address, timezone, floorplan, sections, devices, printers, QR policy, cash-discount rounding, waitlist/kiosk, shared check, billing contact, subscription. hostEntityId is null. No Finix identity. No menu. No house sales.",
+        "Entity (selling operator): legal/KYC, Finix merchant, payout, menu, recipes, modifiers, inventory, staff, schedule, tip/closeout, owned-lines P&L.",
+        "Device belongs to the venue. Role: order, ODS, host, or kiosk. Pair from Devices by QR or short code. Role can change after activate.",
+        "Line on a check requires an entity. Settlement, labor, gift redeem, and chargebacks use owned lines only.",
+        "Single-operator shop uses the same screens with entity count = 1.",
+        "Billing contact is not a merchant. Password login never hits the staff PIN pad.",
+      ),
+      steps(
+        "Get a price: Shared building — no host merchant. Entity count ≥ 2. Quote itemizes Finix/Quantum readers (qty × unit), setup, monthly modules. Android tablets only.",
+        "Quote accepted + contract signed. Email to the billing contact: app.summex.app/login, username, temp password, must-change-on-first-login. Lands on the venue wizard.",
+        "Venue owner finishes the nine steps and invites each operator POC.",
+        "Each operator: legal name, DBA, EIN, owners, bank, MCC (5812 / 5813 / other), required Finix application, menu, staff PINs, tip/closeout/till, optional invoices.",
+        "Status per entity: invited → in progress → payments pending → ready. Venue cannot mark training-ready until every entity is at least in progress. Card-live waits until every entity Finix is approved and at least one reader is enrolled.",
+        "Training = real org, sandbox cards, practice tickets. Go live now (type GO LIVE NOW) or schedule a datetime. Keep or erase practice tickets; menus and inventory stay.",
+      ),
+      warn(
+        "Do not invent a host merchant so two peers can share a floor. Do not send password sessions to the PIN pad. Staff stations are Android tablets — not iPad or browser POS.",
+      ),
+      related("onboarding-wizard", "single-vs-multi", "tenant-invites", "device-roles", "location-training", "login"),
     ],
   }),
   topic({

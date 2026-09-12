@@ -18,10 +18,10 @@ export const PRICE_WIZARD_STEPS = [
 
 export const PRICE_WIZARD_STEP_COUNT = PRICE_WIZARD_STEPS.length;
 
-export const SERVICE_STYLES = ["counter", "full_service", "bar_only", "mixed", "hall"] as const;
+export const SERVICE_STYLES = ["counter", "full_service", "hybrid", "bar_only", "mixed", "hall"] as const;
 export type ServiceStyle = (typeof SERVICE_STYLES)[number];
 
-export const QR_CHOICES = ["off", "full", "reorder", "pay_only"] as const;
+export const QR_CHOICES = ["off", "full", "reorder", "pay_only", "table_tent"] as const;
 export type QrChoice = (typeof QR_CHOICES)[number];
 
 export type WizardModuleId =
@@ -63,18 +63,19 @@ export type PriceWizardState = {
 export const HOUSE_SHAPE_LABEL: Record<HouseShape, string> = {
   single: "Single operator",
   host_operators: "Host + tenants",
-  peer_venue: "Shared venue (peers)",
+  peer_venue: "Shared building — no host merchant",
 };
 
 export const HOUSE_SHAPE_HINT: Record<HouseShape, string> = {
-  single: "One brand, one merchant, one menu.",
+  single: "One brand, one merchant, one menu. Venue plus exactly one entity.",
   host_operators: "Host subscriber plus tenant operators. Host may sell.",
-  peer_venue: "Two or more independent operators in one named building. No landlord POS.",
+  peer_venue: "Named building. Two or more independent operators. No landlord POS, Finix identity, or house menu.",
 };
 
 export const SERVICE_STYLE_LABEL: Record<ServiceStyle, string> = {
   counter: "Counter",
-  full_service: "Full service",
+  full_service: "Full service floor",
+  hybrid: "Hybrid",
   bar_only: "Bar-only",
   mixed: "Mixed dining + bar",
   hall: "Hall / stalls",
@@ -82,9 +83,10 @@ export const SERVICE_STYLE_LABEL: Record<ServiceStyle, string> = {
 
 export const QR_CHOICE_LABEL: Record<QrChoice, string> = {
   off: "No guest QR",
-  full: "Full — order and pay",
-  reorder: "Reorder after staff open a check",
-  pay_only: "Pay / split only",
+  full: "Complete self-serve — order and pay",
+  reorder: "Reorder-only after staff opened a check",
+  pay_only: "Pay-only",
+  table_tent: "Table-tent QR — pull open check, split, pay",
 };
 
 export const WIZARD_MODULE_META: {
@@ -132,8 +134,8 @@ export function emptyPriceWizard(): PriceWizardState {
 
 export function stylesForShape(shape: HouseShape | null): ServiceStyle[] {
   if (shape === "host_operators") return ["full_service", "mixed", "hall"];
-  if (shape === "peer_venue") return ["mixed", "hall", "bar_only"];
-  if (shape === "single") return ["counter", "full_service", "bar_only", "mixed"];
+  if (shape === "peer_venue") return ["full_service", "counter", "hybrid"];
+  if (shape === "single") return ["counter", "full_service", "hybrid", "bar_only", "mixed"];
   return [...SERVICE_STYLES];
 }
 
@@ -151,6 +153,9 @@ export function selectHouseShape(state: PriceWizardState, shape: HouseShape): Pr
 
 export function clampWizard(state: PriceWizardState): PriceWizardState {
   const next = { ...state, modules: { ...state.modules } };
+  if (next.shape === "peer_venue" && (next.style === "hall" || next.style === "mixed" || next.style === "bar_only")) {
+    next.style = "hybrid";
+  }
   const allowed = stylesForShape(next.shape);
   if (next.style && !allowed.includes(next.style)) next.style = null;
   if (next.shape === "single") next.entities = 1;
@@ -221,12 +226,12 @@ export function wizardToIntake(state: PriceWizardState): IntakeAnswers {
   a.operating = {
     model: shape,
     operatorsPerLocation: entities,
-    guestPaysHostCheck: shape !== "single",
-    barKitchenSplit: style === "mixed" || style === "hall" || style === "bar_only",
-    hostStand: s.modules.reservations || style === "full_service" || style === "mixed" || style === "hall",
+    guestPaysHostCheck: shape === "host_operators",
+    barKitchenSplit: style === "mixed" || style === "hall" || style === "bar_only" || style === "hybrid",
+    hostStand: s.modules.reservations || style === "full_service" || style === "mixed" || style === "hall" || style === "hybrid",
   };
   const mods: IntakeModules = {
-    tableService: s.modules.reservations || style === "full_service" || style === "mixed",
+    tableService: s.modules.reservations || style === "full_service" || style === "mixed" || style === "hybrid",
     counterQsr: style === "counter",
     kiosk: s.modules.kiosk || s.kiosks > 0,
     online: s.modules.qr !== "off",
@@ -287,7 +292,7 @@ export function answersToWizard(answers: IntakeAnswers): PriceWizardState {
   w.modules.kds = answers.modules.kds;
   w.modules.reservations = answers.modules.tableService || answers.operating.hostStand;
   const notes = answers.timeline.notes || "";
-  const qr = notes.match(/qr=(off|full|reorder|pay_only)/);
+  const qr = notes.match(/qr=(off|full|reorder|pay_only|table_tent)/);
   w.modules.qr = qr ? (qr[1] as QrChoice) : answers.modules.online ? "full" : "off";
   w.modules.kiosk = answers.modules.kiosk;
   w.modules.inventory = answers.modules.inventory;

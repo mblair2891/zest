@@ -50,7 +50,10 @@ export type LocationSetup = {
   networkCheckedAt?: string;
   networkNotes?: string;
   networkChecklist?: import("./network-readiness").NetworkChecklist;
-  lifecycleStatus?: "onboarding" | "training" | "scheduled_live" | "live";
+  lifecycleStatus?: "onboarding" | "awaiting_entities" | "training" | "scheduled_live" | "live";
+  taxMode?: "venue_shared" | "per_entity";
+  serviceStyle?: "full_service" | "counter" | "hybrid";
+  hostEntityId?: string | null;
   trainingTrackInventory?: boolean;
   aiReportSchedule?: "off" | "daily" | "weekly";
   aiReportEmail?: string;
@@ -226,6 +229,8 @@ export type LocationRecord = {
   address?: string;
   hostBrandName?: string | null;
   operatingModel?: LocationOperatingModel;
+  /** Null on peer venues — the building is not a merchant. */
+  hostEntityId?: string | null;
   setup?: LocationSetup;
   lifecycleStatus?: string;
   /** Public host label: {slug}.summex.app and /v/{slug}. */

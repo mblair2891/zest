@@ -72,12 +72,14 @@ function deriveStatus(row: {
   completed_at: unknown | null;
   opened_at: unknown | null;
 }): TenantOnboardStatus {
-  if (row.completed_at || row.onboard_status === "complete") return "complete";
+  if (row.onboard_status === "ready") return "ready";
+  if (row.onboard_status === "finix_pending") return "finix_pending";
+  if (row.completed_at || row.onboard_status === "complete") return "finix_pending";
   if (row.revoked_at) return "expired";
   if (row.expires_at && new Date(asIso(row.expires_at)).getTime() < Date.now()) return "expired";
   if (row.opened_at || row.onboard_status === "in_progress") return "in_progress";
   if (row.onboard_status === "invited") return "invited";
-  return "draft";
+  return "invited";
 }
 
 async function assertHostCanInvite(userId: string, orgId: string, locationId?: string | null) {
@@ -362,11 +364,12 @@ export async function peekTenantInvite(token: string): Promise<TenantInvitePeek 
     host_brand: string | null;
     location_id: string | null;
     operator_id: string;
+    operating_model: string | null;
   }>`
     select i.email, o.poc_name, o.dba, o.legal_name, o.station_kind,
            i.expires_at, i.revoked_at, i.completed_at,
            org.name as org_name, loc.host_brand_name as host_brand,
-           i.location_id, i.operator_id
+           i.location_id, i.operator_id, loc.operating_model
     from operator_invites i
     join operators o on o.id = i.operator_id
     join organizations org on org.id = i.org_id
@@ -388,6 +391,7 @@ export async function peekTenantInvite(token: string): Promise<TenantInvitePeek 
     completed: Boolean(r.completed_at),
     locationId: r.location_id,
     operatorId: r.operator_id,
+    peerVenue: r.operating_model === "peer_venue",
   };
 }
 
@@ -505,9 +509,20 @@ export async function completeTenantOnboard(
         staff_notes = ${payload.staffNotes || null},
         payout_bank_last4 = ${payload.payoutBankLast4 || null},
         onboard_payload = ${JSON.stringify(payload)}::jsonb,
-        onboard_status = ${"complete"}
+        onboard_status = ${"finix_pending"}
     where id = ${inv.operator_id}
   `;
+  try {
+    await sql`
+      update operators
+      set ein = ${payload.ein || null},
+          mcc = ${payload.mcc || null},
+          owners_note = ${payload.ownersNote || null}
+      where id = ${inv.operator_id}
+    `;
+  } catch {
+    /* columns land in 0039_peer_venue */
+  }
   await sql`
     update operator_invites set completed_at = now() where id = ${inv.id}
   `;

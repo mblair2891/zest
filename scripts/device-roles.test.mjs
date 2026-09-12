@@ -20,6 +20,7 @@ const STATION_ALIASES = {
   waitlist: "host",
   host_stand: "host",
   busser: "host",
+  kiosk: "kiosk",
 };
 
 function parseStationQuery(raw) {
@@ -32,6 +33,7 @@ test("canonical station roles", () => {
   assert.equal(parseStationQuery("order"), "order");
   assert.equal(parseStationQuery("ods"), "ods");
   assert.equal(parseStationQuery("host"), "host");
+  assert.equal(parseStationQuery("kiosk"), "kiosk");
 });
 
 test("native aliases map onto the three roles", () => {

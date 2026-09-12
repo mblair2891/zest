@@ -9,7 +9,7 @@ import { hashPassword } from "better-auth/crypto";
 import { getSql } from "@/lib/db";
 import { hashPin } from "@/lib/pos/pin";
 import { newId } from "./ids";
-import { ForbiddenError, isPlatformAdmin, writeAudit } from "./tenancy.server";
+import { ForbiddenError, isPlatformAdmin, requireMembership, writeAudit } from "./tenancy.server";
 import { generateOneTimePassword, usernameFromEmail } from "./subscriber-login";
 import {
   ENTITY_ADMIN_ROLE,
@@ -22,8 +22,12 @@ import {
   type TenantUserRow,
 } from "./tenant-users";
 
-async function requirePlatformAdmin(userId: string): Promise<void> {
-  if (!(await isPlatformAdmin(userId))) throw new ForbiddenError();
+async function requireVenueUsersAccess(userId: string, orgId: string): Promise<void> {
+  if (await isPlatformAdmin(userId)) return;
+  const access = await requireMembership(userId, orgId, ["owner", "manager"]);
+  if (access.operatorId) {
+    throw new ForbiddenError("Entity admins cannot manage venue users");
+  }
 }
 
 async function assertOrgLocation(
@@ -119,7 +123,7 @@ export async function listTenantUsers(
   orgId: string,
   locationId: string,
 ): Promise<TenantUserRow[]> {
-  await requirePlatformAdmin(actorId);
+  await requireVenueUsersAccess(actorId, orgId);
   await assertOrgLocation(orgId, locationId);
   const sql = await getSql();
 
@@ -217,7 +221,7 @@ export async function addLocationAdmin(
     role?: string;
   },
 ): Promise<{ userId: string; username: string; tempPassword: string; forceChange: boolean }> {
-  await requirePlatformAdmin(actorId);
+  await requireVenueUsersAccess(actorId, input.orgId);
   const loc = await assertOrgLocation(input.orgId, input.locationId);
   const email = input.email.trim().toLowerCase();
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) throw new Error("Valid email is required.");
@@ -369,7 +373,7 @@ export async function addFloorStaff(
     homeEntityId?: string | null;
   },
 ): Promise<{ id: string; pin: string }> {
-  await requirePlatformAdmin(actorId);
+  await requireVenueUsersAccess(actorId, input.orgId);
   await assertOrgLocation(input.orgId, input.locationId);
   const name = input.name.trim().slice(0, 80);
   if (!name) throw new Error("Name is required.");
@@ -428,7 +432,7 @@ export async function updateTenantUser(
     homeEntityId?: string | null;
   },
 ): Promise<{ ok: true }> {
-  await requirePlatformAdmin(actorId);
+  await requireVenueUsersAccess(actorId, input.orgId);
   await assertOrgLocation(input.orgId, input.locationId);
   const sql = await getSql();
 
@@ -528,7 +532,7 @@ export async function resetTenantUserSecret(
     pin?: string;
   },
 ): Promise<{ tempPassword?: string; pin?: string }> {
-  await requirePlatformAdmin(actorId);
+  await requireVenueUsersAccess(actorId, input.orgId);
   await assertOrgLocation(input.orgId, input.locationId);
   const sql = await getSql();
 

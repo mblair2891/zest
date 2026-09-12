@@ -21,7 +21,8 @@ export type VenueDashTabId =
   | "people"
   | "staff"
   | "schedule"
-  | "ledger";
+  | "ledger"
+  | "onboarding";
 
 export type VenueDashTab = [VenueDashTabId, string];
 
@@ -67,6 +68,8 @@ export function venueDashboardTabs(opts: {
         ["devices", "Devices"],
         ["menu", "Menus"],
         ["payments", "Payments"],
+        ["people", "Users"],
+        ["onboarding", "Onboarding"],
       ];
   if (opts.audience === "platform") {
     return [...base, ["people", "Users"]];

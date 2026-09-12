@@ -6,6 +6,19 @@ import type { GuideUpdate } from "@/lib/guide/types";
  */
 export const WHATS_NEW_ENTRIES: GuideUpdate[] = [
   {
+    id: "upd_2026_10_77_peer_venue_onboarding",
+    date: "2026-09-12",
+    title: "Peer venue onboarding — no host merchant",
+    summary:
+      "A named building with independent selling entities. Billing owner gets a nine-step wizard. Password login never hits the PIN pad.",
+    body: "Quote path: Shared building — no host merchant, entity count ≥ 2, readers itemized (qty × unit). Contract signed emails the billing contact at app.summex.app/login (temp password, must change). They land on the venue wizard: building, model, entity count, service style, cash rounding, QR, tax, operator slots, device counts. No Finix and no menu on the venue. Each operator invite is scoped to that entity — legal, EIN, MCC, required Finix application, menu, staff PINs, tip/closeout. Status invited → in progress → payments pending → ready. Training-ready waits for every entity in progress; live Visa waits for every Finix approved plus an enrolled reader. Devices: order / ODS / host / kiosk on Android tablets. hostEntityId is null on a peer venue and is valid.",
+    roles: ["platform_admin", "owner_manager", "host_operator", "vendor_operator"],
+    surfaces: ["platform", "settings"],
+    audience: "all",
+    topicId: "peer-venue-setup",
+    tags: ["onboarding", "peer venue", "devices", "payments"],
+  },
+  {
     id: "upd_2026_10_76_gift_lookup_reactivate",
     date: "2026-09-12",
     title: "Guests look up gift balance; spent cards reuse the plastic",

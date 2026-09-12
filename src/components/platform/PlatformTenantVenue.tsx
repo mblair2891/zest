@@ -38,6 +38,7 @@ import {
 import { LocationDeviceRegistry } from "@/components/pos/LocationDeviceRegistry";
 import { QuantumPaymentsSettings } from "@/components/pos/QuantumPaymentsSettings";
 import { TenantUsersPanel } from "@/components/platform/TenantUsersPanel";
+import { VenueOnboardingPanel } from "@/components/platform/VenueOnboardingPanel";
 import { CostWorkspace } from "@/components/pos/CostWorkspace";
 import { LaborOpsView } from "@/components/pos/LaborOpsView";
 import { ReportsView } from "@/components/pos/ReportsView";
@@ -109,17 +110,14 @@ export function PlatformTenantVenue({
     peerVenue: model === "peer_venue",
   });
   const entityId = isEntityPasswordKind(kind) ? scopedOperatorId || "" : "";
-  const dashTabs = [
-    ...passwordDashTabs(kind),
-    ...(audience === "platform" ? ([["people", "Users"]] as const) : []),
-  ];
+  const dashTabs = passwordDashTabs(kind);
   const tabIds = new Set(dashTabs.map(([id]) => id));
-  const hydrateKey = `${audience}:${orgId}:${activeLoc || locId || ""}:${entityId}`;
+  const hydrateKey = `${audience}:${orgId}:${activeLoc || locId || ""}:${scopedOperatorId || ""}`;
   const lastHydrated = useRef("");
 
   useEffect(() => {
-    if (locId) setActiveLoc(locId);
-  }, [locId]);
+    if (locId && locId !== activeLoc) setActiveLoc(locId);
+  }, [locId, activeLoc]);
 
   useEffect(() => {
     if (lastHydrated.current === hydrateKey && ready) return;
@@ -174,7 +172,7 @@ export function PlatformTenantVenue({
         setReady(true);
         return;
       }
-      setActiveLoc(loc.id);
+      if (loc.id !== activeLoc) setActiveLoc(loc.id);
       setTitle(loc.name || drillOrg.name);
       await setActiveContextFn({ data: { orgId, locationId: loc.id } }).catch(() => undefined);
       const access = await getPosBootstrapFn({ data: { locationId: loc.id } });
@@ -346,6 +344,7 @@ export function PlatformTenantVenue({
           venueName: access.location.name || loc.name || drillOrg.name,
           operatingModel: access.location.operatingModel,
           peerVenue: peer,
+          hostEntityId: access.location.hostEntityId ?? null,
           operators: opsRows,
         }),
       );
@@ -380,7 +379,8 @@ export function PlatformTenantVenue({
               | "training"
               | "live"
               | "scheduled_live"
-              | "onboarding") ||
+              | "onboarding"
+              | "awaiting_entities") ||
             setup.lifecycleStatus ||
             "training",
         },
@@ -434,7 +434,6 @@ export function PlatformTenantVenue({
       }
     })().catch((e) => {
       if (cancelled) return;
-      lastHydrated.current = "";
       setError(e instanceof Error ? e.message : "Could not open this venue");
       setReady(true);
     });
@@ -565,11 +564,18 @@ export function PlatformTenantVenue({
             {ready && !error && tab === "payments" && tabIds.has("payments") && (
               <QuantumPaymentsSettings write={kind === "entity_owner" || kind === "host_owner" || kind === "venue_admin" || audience === "platform"} />
             )}
-            {ready && !error && audience === "platform" && tab === "people" && (
+            {ready && !error && tab === "people" && tabIds.has("people") && (
               <TenantUsersPanel
                 orgId={orgReadyId || orgId}
                 locationId={activeLoc}
                 operators={ops}
+              />
+            )}
+            {ready && !error && tab === "onboarding" && tabIds.has("onboarding") && (
+              <VenueOnboardingPanel
+                orgId={orgReadyId || orgId}
+                locationId={activeLoc}
+                write={kind === "venue_admin" || kind === "host_owner" || audience === "platform"}
               />
             )}
             {ready && !error && tab === "floor" && tabIds.has("floor") && (

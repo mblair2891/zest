@@ -1,5 +1,4 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { SessionGate } from "@/components/pos/SessionGate";
 import { PlatformTenantVenue } from "@/components/platform/PlatformTenantVenue";
 
 export const Route = createFileRoute("/platform/tenants/$orgId")({
@@ -17,9 +16,5 @@ export const Route = createFileRoute("/platform/tenants/$orgId")({
 function TenantVenuePage() {
   const { orgId } = Route.useParams();
   const { loc } = Route.useSearch();
-  return (
-    <SessionGate>
-      <PlatformTenantVenue orgId={orgId} locId={loc} />
-    </SessionGate>
-  );
+  return <PlatformTenantVenue orgId={orgId} locId={loc} />;
 }

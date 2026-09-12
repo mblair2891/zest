@@ -22,7 +22,7 @@ export {
   type StationPairPayload,
 } from "./station-pair-payload";
 
-export type DeviceRole = "order" | "ods" | "host";
+export type DeviceRole = "order" | "ods" | "host" | "kiosk";
 
 export const STATION_PAIR_KEY = "summex-station-pair-v1";
 
@@ -43,7 +43,9 @@ function asRecord(raw: unknown): StationPairRecord | null {
   const locationId = String(o.locationId ?? "").trim();
   const stationRaw = String(o.station ?? "");
   const station: DeviceRole | null =
-    stationRaw === "order" || stationRaw === "ods" || stationRaw === "host" ? stationRaw : null;
+    stationRaw === "order" || stationRaw === "ods" || stationRaw === "host" || stationRaw === "kiosk"
+      ? stationRaw
+      : null;
   const venueRaw = String(o.venueType ?? "food_hall");
   const venueType = isVenueEntityId(venueRaw) ? venueRaw : "food_hall";
   if (!locationId || !station) return null;

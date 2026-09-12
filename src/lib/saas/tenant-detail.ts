@@ -19,6 +19,8 @@ export type TenantDetailModel = {
   operatingModel: "single" | "host_operators" | "peer_venue";
   /** Null on peer_venue (shared building, no landlord merchant). */
   host: TenantHostMerchant | null;
+  /** Always null on peer venues. Never read without a null check. */
+  hostEntityId: string | null;
   entities: TenantDetailEntity[];
 };
 
@@ -39,6 +41,7 @@ export function buildTenantDetailModel(opts: {
   venueName: string;
   operatingModel?: string | null;
   peerVenue?: boolean;
+  hostEntityId?: string | null;
   operators: Array<{ id: string; dba?: string | null; name?: string | null }>;
 }): TenantDetailModel {
   const peer = isPeerVenueModel(opts.operatingModel, opts.peerVenue);
@@ -49,6 +52,7 @@ export function buildTenantDetailModel(opts: {
       name: String(o.dba || o.name || "").trim(),
     }))
     .filter((e) => e.name.length > 0);
+  const hostEntityId = peer ? null : opts.hostEntityId?.trim() || null;
   return {
     venueName: opts.venueName.trim() || "Venue",
     operatingModel: peer ? "peer_venue" : hostOps ? "host_operators" : "single",
@@ -58,6 +62,12 @@ export function buildTenantDetailModel(opts: {
           name: opts.venueName.trim() || "Host",
           merchant: true,
         },
+    hostEntityId,
     entities,
   };
+}
+
+/** Safe for React children — never returns an object. */
+export function hostMerchantLabel(host: TenantHostMerchant | null | undefined): string {
+  return hostMerchantName(host) ?? "Shared building — no host merchant";
 }

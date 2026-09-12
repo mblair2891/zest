@@ -56,6 +56,8 @@ import { Route as ApiPaymentsWebhookRouteImport } from './routes/api/payments/we
 import { Route as AppVenueTypeRouteImport } from './routes/app.venue.$type'
 import { Route as DemoTypeTourRouteImport } from './routes/demo.$type.tour'
 import { Route as DemoTourFullRouteImport } from './routes/demo.tour.full'
+import { Route as PlatformTenantsRouteImport } from './routes/platform.tenants'
+import { Route as PlatformTenantsIndexRouteImport } from './routes/platform.tenants.index'
 import { Route as PlatformTenantsOrgIdRouteImport } from './routes/platform.tenants.$orgId'
 import { Route as WaitlistOptOutTokenRouteImport } from './routes/waitlist.opt-out.$token'
 import { Route as ApiPaymentsFinixWebhookRouteImport } from './routes/api/payments/finix/webhook'
@@ -295,10 +297,20 @@ const DemoTourFullRoute = DemoTourFullRouteImport.update({
   path: '/tour/full',
   getParentRoute: () => DemoRoute,
 } as any)
-const PlatformTenantsOrgIdRoute = PlatformTenantsOrgIdRouteImport.update({
-  id: '/tenants/$orgId',
-  path: '/tenants/$orgId',
+const PlatformTenantsRoute = PlatformTenantsRouteImport.update({
+  id: '/tenants',
+  path: '/tenants',
   getParentRoute: () => PlatformRoute,
+} as any)
+const PlatformTenantsIndexRoute = PlatformTenantsIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => PlatformTenantsRoute,
+} as any)
+const PlatformTenantsOrgIdRoute = PlatformTenantsOrgIdRouteImport.update({
+  id: '/$orgId',
+  path: '/$orgId',
+  getParentRoute: () => PlatformTenantsRoute,
 } as any)
 const WaitlistOptOutTokenRoute = WaitlistOptOutTokenRouteImport.update({
   id: '/waitlist/opt-out/$token',
@@ -359,6 +371,8 @@ export interface FileRoutesByFullPath {
   '/app/venue/$type': typeof AppVenueTypeRoute
   '/demo/$type/tour': typeof DemoTypeTourRoute
   '/demo/tour/full': typeof DemoTourFullRoute
+  '/platform/tenants': typeof PlatformTenantsRouteWithChildren
+  '/platform/tenants/': typeof PlatformTenantsIndexRoute
   '/platform/tenants/$orgId': typeof PlatformTenantsOrgIdRoute
   '/waitlist/opt-out/$token': typeof WaitlistOptOutTokenRoute
   '/api/payments/finix/webhook': typeof ApiPaymentsFinixWebhookRoute
@@ -410,6 +424,8 @@ export interface FileRoutesByTo {
   '/app/venue/$type': typeof AppVenueTypeRoute
   '/demo/$type/tour': typeof DemoTypeTourRoute
   '/demo/tour/full': typeof DemoTourFullRoute
+  '/platform/tenants': typeof PlatformTenantsRouteWithChildren
+  '/platform/tenants/': typeof PlatformTenantsIndexRoute
   '/platform/tenants/$orgId': typeof PlatformTenantsOrgIdRoute
   '/waitlist/opt-out/$token': typeof WaitlistOptOutTokenRoute
   '/api/payments/finix/webhook': typeof ApiPaymentsFinixWebhookRoute
@@ -463,6 +479,8 @@ export interface FileRoutesById {
   '/app/venue/$type': typeof AppVenueTypeRoute
   '/demo/$type/tour': typeof DemoTypeTourRoute
   '/demo/tour/full': typeof DemoTourFullRoute
+  '/platform/tenants': typeof PlatformTenantsRouteWithChildren
+  '/platform/tenants/': typeof PlatformTenantsIndexRoute
   '/platform/tenants/$orgId': typeof PlatformTenantsOrgIdRoute
   '/waitlist/opt-out/$token': typeof WaitlistOptOutTokenRoute
   '/api/payments/finix/webhook': typeof ApiPaymentsFinixWebhookRoute
@@ -517,6 +535,8 @@ export interface FileRouteTypes {
     | '/app/venue/$type'
     | '/demo/$type/tour'
     | '/demo/tour/full'
+    | '/platform/tenants'
+    | '/platform/tenants/'
     | '/platform/tenants/$orgId'
     | '/waitlist/opt-out/$token'
     | '/api/payments/finix/webhook'
@@ -568,6 +588,8 @@ export interface FileRouteTypes {
     | '/app/venue/$type'
     | '/demo/$type/tour'
     | '/demo/tour/full'
+    | '/platform/tenants'
+    | '/platform/tenants/'
     | '/platform/tenants/$orgId'
     | '/waitlist/opt-out/$token'
     | '/api/payments/finix/webhook'
@@ -620,6 +642,8 @@ export interface FileRouteTypes {
     | '/app/venue/$type'
     | '/demo/$type/tour'
     | '/demo/tour/full'
+    | '/platform/tenants'
+    | '/platform/tenants/'
     | '/platform/tenants/$orgId'
     | '/waitlist/opt-out/$token'
     | '/api/payments/finix/webhook'
@@ -1001,12 +1025,26 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DemoTourFullRouteImport
       parentRoute: typeof DemoRoute
     }
+    '/platform/tenants': {
+      id: '/platform/tenants'
+      path: '/tenants'
+      fullPath: '/platform/tenants'
+      preLoaderRoute: typeof PlatformTenantsRouteImport
+      parentRoute: typeof PlatformRoute
+    }
+    '/platform/tenants/': {
+      id: '/platform/tenants/'
+      path: '/'
+      fullPath: '/platform/tenants/'
+      preLoaderRoute: typeof PlatformTenantsIndexRouteImport
+      parentRoute: typeof PlatformTenantsRoute
+    }
     '/platform/tenants/$orgId': {
       id: '/platform/tenants/$orgId'
-      path: '/tenants/$orgId'
+      path: '/$orgId'
       fullPath: '/platform/tenants/$orgId'
       preLoaderRoute: typeof PlatformTenantsOrgIdRouteImport
-      parentRoute: typeof PlatformRoute
+      parentRoute: typeof PlatformTenantsRoute
     }
     '/waitlist/opt-out/$token': {
       id: '/waitlist/opt-out/$token'
@@ -1071,12 +1109,26 @@ const DemoRouteChildren: DemoRouteChildren = {
 
 const DemoRouteWithChildren = DemoRoute._addFileChildren(DemoRouteChildren)
 
-interface PlatformRouteChildren {
+interface PlatformTenantsRouteChildren {
+  PlatformTenantsIndexRoute: typeof PlatformTenantsIndexRoute
   PlatformTenantsOrgIdRoute: typeof PlatformTenantsOrgIdRoute
 }
 
-const PlatformRouteChildren: PlatformRouteChildren = {
+const PlatformTenantsRouteChildren: PlatformTenantsRouteChildren = {
+  PlatformTenantsIndexRoute: PlatformTenantsIndexRoute,
   PlatformTenantsOrgIdRoute: PlatformTenantsOrgIdRoute,
+}
+
+const PlatformTenantsRouteWithChildren = PlatformTenantsRoute._addFileChildren(
+  PlatformTenantsRouteChildren,
+)
+
+interface PlatformRouteChildren {
+  PlatformTenantsRoute: typeof PlatformTenantsRouteWithChildren
+}
+
+const PlatformRouteChildren: PlatformRouteChildren = {
+  PlatformTenantsRoute: PlatformTenantsRouteWithChildren,
 }
 
 const PlatformRouteWithChildren = PlatformRoute._addFileChildren(

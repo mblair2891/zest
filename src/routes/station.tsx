@@ -7,8 +7,8 @@ export const Route = createFileRoute("/station")({
   ssr: false,
   validateSearch: (
     s: Record<string, unknown>,
-  ): { station?: "order" | "ods" | "host"; loc?: string; pair?: string } => {
-    const out: { station?: "order" | "ods" | "host"; loc?: string; pair?: string } = {};
+  ): { station?: "order" | "ods" | "host" | "kiosk"; loc?: string; pair?: string } => {
+    const out: { station?: "order" | "ods" | "host" | "kiosk"; loc?: string; pair?: string } = {};
     const station = parseStationQuery(typeof s.station === "string" ? s.station : undefined);
     if (station) out.station = station;
     if (typeof s.loc === "string" && s.loc) out.loc = s.loc;
