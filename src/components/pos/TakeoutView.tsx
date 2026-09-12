@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { FloorView } from "./FloorView";
 import { Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -17,33 +18,34 @@ export function TakeoutView() {
   const orders = usePosStore((s) => s.orders);
   const settings = usePosStore((s) => s.settings);
   const openTakeout = usePosStore((s) => s.openTakeout);
-  const openBarTab = usePosStore((s) => s.openBarTab);
+  const beginBarTabPick = usePosStore((s) => s.beginBarTabPick);
+  const floorIntent = usePosStore((s) => s.floorIntent);
   const setActiveOrder = usePosStore((s) => s.setActiveOrder);
   const setView = usePosStore((s) => s.setView);
 
   const [open, setOpen] = useState(false);
   const [name, setName] = useState("");
-  const [mode, setMode] = useState<"takeout" | "tab">("takeout");
 
   const list = orders.filter(
     (o) =>
       o.status === "open" &&
-      (o.type === "takeout" || o.type === "delivery" || o.type === "bar_tab"),
+      (o.type === "takeout" || o.type === "delivery"),
   );
+
+  if (floorIntent === "bar_tab") {
+    return <FloorView />;
+  }
 
   return (
     <div className="flex h-full flex-col p-3">
       <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <h2 className="text-sm font-semibold">Takeout & tabs</h2>
+        <h2 className="text-sm font-semibold">To-go</h2>
         <div className="grid grid-cols-2 gap-2 sm:flex">
           <Button
             size="lg"
             className="station-touch min-h-12 flex-1 text-base"
             variant="outline"
-            onClick={() => {
-              setMode("tab");
-              setOpen(true);
-            }}
+            onClick={() => beginBarTabPick()}
           >
             <Plus className="h-4 w-4" />
             Bar tab
@@ -51,10 +53,7 @@ export function TakeoutView() {
           <Button
             size="lg"
             className="station-touch min-h-12 flex-1 text-base"
-            onClick={() => {
-              setMode("takeout");
-              setOpen(true);
-            }}
+            onClick={() => setOpen(true)}
           >
             <Plus className="h-4 w-4" />
             To-go
@@ -95,7 +94,7 @@ export function TakeoutView() {
         })}
         {list.length === 0 && (
           <p className="col-span-full py-16 text-center text-sm text-muted-foreground">
-            No open takeout orders or bar tabs
+            No open to-go orders
           </p>
         )}
       </div>
@@ -103,9 +102,7 @@ export function TakeoutView() {
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>
-              {mode === "takeout" ? "New takeout order" : "Open bar tab"}
-            </DialogTitle>
+            <DialogTitle>New to-go order</DialogTitle>
           </DialogHeader>
           <Input
             placeholder="Guest name"
@@ -117,8 +114,7 @@ export function TakeoutView() {
             <Button
               disabled={!name.trim()}
               onClick={() => {
-                if (mode === "takeout") openTakeout(name.trim());
-                else openBarTab(name.trim());
+                openTakeout(name.trim());
                 setName("");
                 setOpen(false);
               }}

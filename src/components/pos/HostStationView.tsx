@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { LayoutGrid, ShoppingBag } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { usePosStore } from "@/lib/pos/store";
@@ -17,6 +17,11 @@ export function HostStationView() {
   const setActiveOrder = usePosStore((s) => s.setActiveOrder);
   const [tab, setTab] = useState<"floor" | "togo">("floor");
   const layout = useStationLayout();
+  const floorIntent = usePosStore((s) => s.floorIntent);
+
+  useEffect(() => {
+    if (floorIntent === "bar_tab") setTab("floor");
+  }, [floorIntent]);
 
   if (activeOrderId && order) {
     return (

@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
 import { useStationLayout } from "@/lib/ui/station-layout";
+import { FloorView } from "./FloorView";
 import {
   Pause,
   Printer,
@@ -89,6 +90,7 @@ export function OrderView() {
   const setActiveOrder = usePosStore((s) => s.setActiveOrder);
   const addItem = usePosStore((s) => s.addItem);
   const tableAccess = usePosStore((s) => s.tableAccess);
+  const floorIntent = usePosStore((s) => s.floorIntent);
 
   const [modItem, setModItem] = useState<MenuItem | null>(null);
   const [modOpen, setModOpen] = useState(false);
@@ -149,6 +151,10 @@ export function OrderView() {
 
   const openOrders = orders.filter((o) => o.status === "open");
 
+  if (!order && floorIntent === "bar_tab") {
+    return <FloorView />;
+  }
+
   if (!order) {
     return (
       <div className="flex h-full flex-col items-center justify-center gap-4 p-6 text-center">
@@ -168,7 +174,7 @@ export function OrderView() {
           <Button
             size="lg"
             className="station-touch h-14 text-base"
-            onClick={() => usePosStore.getState().openBarTab("Bar")}
+            onClick={() => usePosStore.getState().beginBarTabPick()}
           >
             Bar tab
           </Button>

@@ -162,6 +162,7 @@ import {
   parseFloorStatusConfig,
   tableFlash,
 } from "./floor-status";
+import { canOpenBarTabOnStool, isBarRailSeat } from "./bar-tab";
 import { makeTableQrToken, parseQrMode, qrTokenMatchesLocation } from "./qr-table";
 import {
   parseQrPolicy,
@@ -272,6 +273,7 @@ function initialState() {
 		auditLog: [],
 		shift: emptyShift(),
 		view: "floor" as const,
+		floorIntent: null as null | "bar_tab",
 		activeOrderId: null,
 		activeTableId: null,
 		selectedCategoryId: CATEGORIES[0]?.id ?? null,
@@ -1008,6 +1010,90 @@ const usePosStoreRaw = create<PosStore>()(persist((set, get) => {
 	setView: (v) => {
 		if (get().view === v) return;
 		set({ view: v });
+	},
+	beginBarTabPick: () => {
+		set({ floorIntent: "bar_tab", activeOrderId: null, activeTableId: null });
+	},
+	clearFloorIntent: () => set({ floorIntent: null }),
+	openBarTabOnTable: (tableId) => {
+		const emp = get().getCurrentEmployee();
+		if (!emp) return { ok: false, error: "Not signed in" };
+		if (!canOpenBarTabOnStool(emp.role)) {
+			return { ok: false, error: "This PIN cannot open a bar tab." };
+		}
+		const table = get().tables.find((t: any) => t.id === tableId);
+		if (!table) return { ok: false, error: "Stool not found" };
+		if (!isBarRailSeat(table)) {
+			return { ok: false, error: "Bar tab opens on a stool or rail, not a dining table." };
+		}
+		const access = checkTableAccess(get, table, "order");
+		if (!access.ok && !access.viewOnly) {
+			return { ok: false, error: access.reason, access };
+		}
+		if (access.viewOnly) {
+			return { ok: false, error: access.reason ?? "Outside your section", access };
+		}
+		if (table.orderId) {
+			set({
+				activeTableId: tableId,
+				activeOrderId: table.orderId,
+				view: emp.role === "host" ? get().view : "order",
+				floorIntent: null,
+			});
+			return { ok: true };
+		}
+		if (!isEmptyTable(table.status)) {
+			return { ok: false, error: "That stool is not open." };
+		}
+		const order = {
+			id: uid("ord"),
+			number: nextOrderNumber(get().orders),
+			type: "bar_tab" as const,
+			tabName: table.label,
+			tableId,
+			guestCount: 1,
+			serverId: emp.id,
+			serverName: emp.name,
+			lines: [],
+			payments: [],
+			status: "open" as const,
+			discountPercent: 0,
+			discountCents: 0,
+			autoGratApplied: false,
+			serviceChargeCents: 0,
+			createdAt: Date.now(),
+		};
+		set({
+			orders: [...get().orders, order],
+			tables: get().tables.map((t: any) =>
+				t.id === tableId
+					? {
+							...t,
+							status: "sat_no_order",
+							statusSince: Date.now(),
+							orderId: order.id,
+							serverId: emp.id,
+							guestCount: 1,
+							seatedAt: Date.now(),
+							releasedAt: void 0,
+							releasedById: void 0,
+							releasedByName: void 0,
+						}
+					: t,
+			),
+			activeOrderId: order.id,
+			activeTableId: tableId,
+			view: emp.role === "host" ? get().view : "order",
+			floorIntent: null,
+			shift: {
+				...get().shift,
+				guestCount: get().shift.guestCount + 1,
+			},
+		});
+		get().audit("bar_tab", `Tab ${table.label} · #${order.number}`);
+		floorSync("check", order.id);
+		floorSync("table", tableId);
+		return { ok: true };
 	},
 	setCategory: (id) => set({ selectedCategoryId: id ?? null }),
 	setSelectedLine: (id) => set({ selectedLineId: id }),

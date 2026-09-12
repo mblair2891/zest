@@ -21,7 +21,6 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
 import { usePosStore } from "@/lib/pos/store";
 import { useNotifyStore } from "@/lib/pos/notify-store";
 import { usePlatformStore } from "@/lib/pos/platform-store";
@@ -58,6 +57,7 @@ import { GuideLearnLink } from "@/components/guide/GuideLearnLink";
 import { QrMark } from "./QrMark";
 import { canAccessView } from "@/lib/pos/rbac";
 import { useStationLayout } from "@/lib/ui/station-layout";
+import { barTabVisibleTables, isBarRailSeat } from "@/lib/pos/bar-tab";
 import {
   CHECK_HOLD_LABEL,
   CHECK_HOLD_REASONS,
@@ -88,8 +88,11 @@ export function FloorView() {
   const mergeTables = usePosStore((s) => s.mergeTables);
   const combineTables = usePosStore((s) => s.combineTables);
   const unmergeTable = usePosStore((s) => s.unmergeTable);
-  const openBarTab = usePosStore((s) => s.openBarTab);
   const setView = usePosStore((s) => s.setView);
+  const floorIntent = usePosStore((s) => s.floorIntent);
+  const beginBarTabPick = usePosStore((s) => s.beginBarTabPick);
+  const clearFloorIntent = usePosStore((s) => s.clearFloorIntent);
+  const openBarTabOnTable = usePosStore((s) => s.openBarTabOnTable);
   const setTableStatus = usePosStore((s) => s.setTableStatus);
   const deliverReadyTicketsForTable = usePosStore((s) => s.deliverReadyTicketsForTable);
   const tableAccess = usePosStore((s) => s.tableAccess);
@@ -124,8 +127,6 @@ export function FloorView() {
   const [transferFrom, setTransferFrom] = useState<string | null>(null);
   const [mergeMode, setMergeMode] = useState(false);
   const [mergePrimary, setMergePrimary] = useState<string | null>(null);
-  const [tabName, setTabName] = useState("");
-  const [tabOpen, setTabOpen] = useState(false);
   const [section, setSection] = useState<string>("__init");
   const [seatServerId, setSeatServerId] = useState<string>("");
   const [reassignId, setReassignId] = useState<string>("");
@@ -182,22 +183,25 @@ export function FloorView() {
   const canForceReassign = emp?.role === "owner" || emp?.role === "manager";
   const releasedPool = tables.filter((t) => t.releasedAt && !t.mergedIntoId);
 
-  const visible = tables.filter((t) => {
-    if (t.mergedIntoId) return false;
-    if (effectiveSection !== "All" && effectiveSection !== "Mine") {
-      if (t.section !== effectiveSection) return false;
-    }
-    if (effectiveSection === "Mine" && emp) {
-      const acc = tableAccess(t.id, "order");
-      if (!(acc.ok && !acc.viewOnly) && acc.code !== "grant") return false;
-    }
-    if (policy.hideUnassignedSections && locked && emp) {
-      const acc = tableAccess(t.id, "order");
-      const granted = !!activeGrantForTable(extraTableGrants, emp.id, t.id);
-      if (!acc.ok && !granted) return false;
-    }
-    return true;
-  });
+  const barPick = floorIntent === "bar_tab";
+  const visible = barPick
+    ? barTabVisibleTables({ tables, emp, sections: floorSections })
+    : tables.filter((t) => {
+        if (t.mergedIntoId) return false;
+        if (effectiveSection !== "All" && effectiveSection !== "Mine") {
+          if (t.section !== effectiveSection) return false;
+        }
+        if (effectiveSection === "Mine" && emp) {
+          const acc = tableAccess(t.id, "order");
+          if (!(acc.ok && !acc.viewOnly) && acc.code !== "grant") return false;
+        }
+        if (policy.hideUnassignedSections && locked && emp) {
+          const acc = tableAccess(t.id, "order");
+          const granted = !!activeGrantForTable(extraTableGrants, emp.id, t.id);
+          if (!acc.ok && !granted) return false;
+        }
+        return true;
+      });
 
   const counts = useMemo(() => {
     const c: Record<string, number> = {};
@@ -214,6 +218,14 @@ export function FloorView() {
   };
 
   const onTableClick = (t: Table) => {
+    if (barPick) {
+      const res = openBarTabOnTable(t.id);
+      if (!res.ok) {
+        if (res.access) showBlocked(t, res.error ?? "Blocked");
+        else alert(res.error);
+      }
+      return;
+    }
     if (selectMode) {
       setPicked((cur) =>
         cur.includes(t.id) ? cur.filter((id) => id !== t.id) : [...cur, t.id],
@@ -308,6 +320,7 @@ export function FloorView() {
         <GuideLearnLink topicId="floor-tables" compact>
           Learn
         </GuideLearnLink>
+        {!barPick && (
         <div className="flex flex-wrap gap-1">
           <Button
             size="sm"
@@ -330,6 +343,7 @@ export function FloorView() {
             By section
           </Button>
         </div>
+        )}
         <div className="flex flex-wrap gap-1">
           {floorScope === "entire" && (
             <Button
@@ -382,6 +396,22 @@ export function FloorView() {
         </div>
       </div>
 
+      {barPick && (
+        <div className="flex flex-wrap items-center gap-2 border-b border-border bg-surface-2 px-3 py-2">
+          <p className="min-w-0 flex-1 text-sm">
+            Tap a stool in your section to open or attach the tab. Status colors are unchanged.
+          </p>
+          <Button
+            size="lg"
+            variant="outline"
+            className="station-touch"
+            onClick={() => clearFloorIntent()}
+          >
+            Cancel
+          </Button>
+        </div>
+      )}
+
       {releasedPool.length > 0 && (
         <div
           className="flex flex-wrap items-center gap-2 border-b border-amber-700/30 bg-amber-50 px-3 py-2"
@@ -415,10 +445,15 @@ export function FloorView() {
         <div
           className={cn(
             "relative min-h-0 flex-1 overflow-auto p-3",
-            !layout.twoCol && "min-h-[45vh]",
+            (!layout.twoCol || layout.handheld) && "min-h-[45vh]",
           )}
         >
-          <div className="relative mx-auto aspect-[4/3] w-full max-w-4xl rounded-2xl border border-border bg-surface">
+          <div
+            className={cn(
+              "relative mx-auto aspect-[4/3] w-full max-w-4xl rounded-2xl border border-border bg-surface",
+              layout.handheld && "min-h-[22rem]",
+            )}
+          >
             <div className="pointer-events-none absolute inset-x-4 top-3 flex justify-between text-[10px] uppercase tracking-wider text-muted-foreground">
               <span>{effectiveSection === "All" || effectiveSection === "Mine" ? "Dining room" : effectiveSection}</span>
               <span>Bar →</span>
@@ -506,6 +541,9 @@ export function FloorView() {
                     flashing && "table-sla-flash",
                     integrityWarn && "ring-2 ring-amber-600",
                     outOfSection && "opacity-55",
+                    (barPick || layout.handheld) &&
+                      isBarRailSeat(t) &&
+                      "min-h-12 min-w-12",
                   )}
                 >
                   <span className="text-sm font-semibold tabular leading-none">
@@ -558,6 +596,11 @@ export function FloorView() {
                 </button>
               );
             })}
+            {barPick && visible.length === 0 && (
+              <p className="absolute inset-0 grid place-items-center p-6 text-center text-sm text-muted-foreground">
+                No stools in your section. Ask a manager to assign a bar section, or add barstools in the floor editor.
+              </p>
+            )}
           </div>
           <p className="mt-2 text-center text-xs text-muted-foreground">
             {selectMode
@@ -570,6 +613,8 @@ export function FloorView() {
                 ? transferFrom
                   ? "Tap destination table"
                   : "Tap table with a check to move"
+                : barPick
+                  ? "Tap a stool — empty opens a tab, occupied attaches the check"
                 : locked
                   ? "Color fill = status · top bar = section · locked tables need a grant"
                   : "Tap a table · drag onto another to combine · flashing = SLA"}
@@ -595,21 +640,26 @@ export function FloorView() {
                 Waitlist / host stand
               </Button>
             )}
+            {!barPick && (
             <Button
               className="w-full"
               size="lg"
-              onClick={() => setTabOpen(true)}
+              onClick={() => beginBarTabPick()}
             >
               <Plus className="h-4 w-4" />
-              Open bar tab
+              Bar tab
             </Button>
+            )}
             <Button
               className="w-full"
               variant="outline"
               size="lg"
-              onClick={() => setView("takeout")}
+              onClick={() => {
+                clearFloorIntent();
+                setView("takeout");
+              }}
             >
-              Takeout / pickup
+              To-go
             </Button>
             <Button
               className="w-full"
@@ -1123,35 +1173,6 @@ export function FloorView() {
             <Button onClick={confirmSeat}>
               <Users className="h-4 w-4" />
               Seat party
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      <Dialog open={tabOpen} onOpenChange={setTabOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Open bar tab</DialogTitle>
-          </DialogHeader>
-          <Input
-            placeholder="Guest name"
-            value={tabName}
-            onChange={(e) => setTabName(e.target.value)}
-            autoFocus
-          />
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setTabOpen(false)}>
-              Cancel
-            </Button>
-            <Button
-              disabled={!tabName.trim()}
-              onClick={() => {
-                openBarTab(tabName.trim());
-                setTabName("");
-                setTabOpen(false);
-              }}
-            >
-              Open tab
             </Button>
           </DialogFooter>
         </DialogContent>

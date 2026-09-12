@@ -109,6 +109,7 @@ export const ROLE_GUIDE_TOPICS: GuideTopic[] = [
       steps(
         "PIN in. Home is Floor or Order — not a list of every module. On an 8\" handheld the menu is full width; tap Check for the slide-over.",
         "Open a table in your section. Add food and drink to one check. Send.",
+        "Bar tab opens your assigned section stools — tap a stool. To-go does not use the floor.",
         "Pay when the house allows. Close your own till at end of shift.",
       ),
       warn("A server PIN cannot bump the kitchen rail or change Devices."),
@@ -129,11 +130,12 @@ export const ROLE_GUIDE_TOPICS: GuideTopic[] = [
       ),
       ul(
         "Bar well orders and drink send. Own drawer if assigned.",
+        "Bar tab opens your assigned section rail (color-coded stools). Tap a stool to open or attach the check. That is not seating the dining room.",
         "Bump bar ODS only when this tablet is an Order Display station.",
         "Cannot seat the dining room unless a host grant is on.",
       ),
       steps(
-        "PIN in on an order station to ring the well. On a bar ODS tablet, Start and Bump drinks.",
+        "PIN in on an order station to ring the well. Bar tab → pick a stool in your section, then ring. On a bar ODS tablet, Start and Bump drinks.",
         "Close your own drawer if the house assigned you one.",
       ),
       warn("A bartender PIN does not run the host stand."),

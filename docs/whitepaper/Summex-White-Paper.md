@@ -3,7 +3,7 @@
 **Powered by Quantum Reach**
 
 White paper · for owners and operators  
-**Revision · 11 Sep 2026** — Written for prospective subscribers. Aligns with Operators Guide v2026.10.68. Staff stations are Android tablets. Handheld portrait is a single column; manager screens scroll.
+**Revision · 11 Sep 2026** — Written for prospective subscribers. Aligns with Operators Guide v2026.10.69. Staff stations are Android tablets. Bar tab opens a stool on that person’s section.
 
 summex.app  
 Guest cards: **Quantum Payments** only

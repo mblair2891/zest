@@ -128,6 +128,8 @@ export interface PosStore {
   auditLog: AuditEntry[];
   shift: ShiftState;
   view: PosView;
+  /** Session-only: Bar tab opens the rail so staff pick a stool. Not persisted. */
+  floorIntent: null | "bar_tab";
   activeOrderId: string | null;
   activeTableId: string | null;
   selectedCategoryId: string | null;
@@ -192,6 +194,9 @@ export interface PosStore {
   clockToggle: (employeeId: string) => void;
   tick: () => void;
   setView: (v: PosView) => void;
+  beginBarTabPick: () => void;
+  clearFloorIntent: () => void;
+  openBarTabOnTable: (tableId: string) => ActionResult;
   setCategory: (id: string | null) => void;
   setSelectedLine: (id: string | null) => void;
   setActiveSeat: (n: number | null) => void;

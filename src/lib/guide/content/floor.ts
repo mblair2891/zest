@@ -26,10 +26,11 @@ export const FLOOR_TOPICS: GuideTopic[] = [
         "Tap an open table. Enter party size. Host stand can assign a server for that section.",
         "Combine tables: drag one onto another, or Select to combine. The group label is the lowest table number; seats add. Split group restores originals. Combined tables share status; the check sits on the group.",
         "Jump to Order to build items, or stay on Floor to watch status. Color fill is dining status; SLA flash if configured.",
+        "Bar tab: the map shows that PIN’s assigned section stools (manager / supervisor see all). Tap a stool to open or attach the check. To-go never uses the floor.",
         "Transfer / hold: offer the check to a named server (they must accept) or park it in a named hold — manager hold, walkout, bar tab, or left to close — with a reason. The check stays owned by that person or the house. There is no nameless unassigned pool.",
         "After pay, the table goes closed · needs bus. Busser or server marks it cleaned and it returns to empty. Marking a table empty while a check is still open does not drop the check — it moves to Left to close and flags the nightly pack (or requires a shift lead first, per settings). Empty + open check paints a warning color on the map.",
       ),
-      related("floor-status", "floor-editor", "table-qr", "sections", "checks-comps", "check-split-move", "kds", "loss-prevention"),
+      related("floor-status", "floor-editor", "table-qr", "sections", "checks-comps", "check-split-move", "counter-vs-table", "kds", "loss-prevention"),
     ],
   }),
   topic({
@@ -135,10 +136,11 @@ export const FLOOR_TOPICS: GuideTopic[] = [
       ul(
         "Table service — seat on Floor → Order → fire → pay on the table → bus.",
         "Counter / QSR — Takeout or Order without a table, name the ticket, pay (often before fire), kitchen bumps, guest is called.",
-        "Bar tab — named tab, items fire as you go, pay at the end. Still Quantum Payments for cards.",
+        "Bar tab — tap Bar tab, then pick a stool on your section rail. Empty stool opens a tab; occupied attaches the check. To-go stays off the floor. Still Quantum Payments for cards.",
       ),
       steps(
-        "For counter: open Takeout, name the guest, build the check, take payment, send.",
+        "For counter / to-go: open To-go, name the guest, build the check, take payment, send. To-go never sits on a stool.",
+        "For a bar tab: tap Bar tab. The floor shows that PIN’s assigned section(s) only (manager / supervisor see all). Tap a stool — do not skip seating.",
         "For table: never take a card on an unnamed counter ticket if the guest is seated — attach the table so ODS and the floor stay in sync.",
         "Hall / pod guests can still pay once at a host stand even if they ordered at several stalls.",
       ),

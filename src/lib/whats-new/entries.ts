@@ -6,6 +6,19 @@ import type { GuideUpdate } from "@/lib/guide/types";
  */
 export const WHATS_NEW_ENTRIES: GuideUpdate[] = [
   {
+    id: "upd_2026_10_69_bar_tab_stool",
+    date: "2026-09-11",
+    title: "Bar tab starts on a stool",
+    summary:
+      "Bartender and server Bar tab opens that person’s section rail. Tap a stool to open or attach the check. To-go stays off the floor.",
+    body: "Bar tab no longer skips seating. The floor shows that PIN’s assigned section(s) only, color-coded stools and rail. Empty stool opens a tab; occupied stool attaches the existing check. Status colors are the same as the rest of the floor. Manager and supervisor see every section. To-go still names a guest and never sits on a stool. On a handheld the rail scrolls and stools are large taps.",
+    roles: ["server", "kitchen_bar", "owner_manager", "host_operator"],
+    surfaces: ["floor"],
+    audience: "all",
+    topicId: "counter-vs-table",
+    tags: ["bar", "tab", "stool", "floor", "handheld"],
+  },
+  {
     id: "upd_2026_10_68_station_fit",
     date: "2026-09-11",
     title: "Handheld stations fit the device",

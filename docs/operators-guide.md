@@ -1,7 +1,7 @@
 # Operators Guide — authoring
 
-**Revision · 11 Sep 2026** — Handheld stations fit portrait; manager views scroll.
-Guide v2026.10.68.
+**Revision · 11 Sep 2026** — Bar tab opens the section rail; pick a stool.
+Guide v2026.10.69.
 
 The in-app **Operators Guide** is the living product manual. It is not a
 separate PDF. Staff open it from **Guide** / **?** in the POS and platform
