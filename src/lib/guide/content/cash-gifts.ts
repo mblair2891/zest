@@ -23,17 +23,18 @@ export const CASH_GIFT_TOPICS: GuideTopic[] = [
         "A straight 5% off $12 is $11.40 — ugly on a menu and slow in the drawer. Summex keeps the printed / Quantum Payments price clean and computes a cash price that always lands on a coin increment.",
       ),
       p(
-        "Menu items store the card amount as source of truth (e.g. $15.00). When the location enables a cash discount, cash tenders use per-line cash prices: discount the printed amount, then round UP to the next $0.25, $0.50, $0.75, or $1.00. If the result is already on the increment, it stays.",
+        "The guest card rate is Summex’s charge (typical 5.00%). It is not Finix’s 0.25%+$0.10 — that cost is internal. Platform Admin sets the default for new quotes and new venues. Each location overrides it (4.00%, 5.00%, or another). Host sets the rate for tenants on that floor. Menu items store the card amount. Cash is discounted by this location’s %, then rounded UP to $0.25, $0.50, $0.75, or $1.00.",
       ),
       ul(
         "$15.00 at 5%, increment $0.25 → cash $14.25 (already on a quarter).",
         "$12.00 at 5%, increment $0.25 → $11.40 rounds up to $11.50.",
         "$7.00 at 5%, increment $0.25 → $6.65 rounds up to $6.75.",
+        "Quotes and the check show this location’s rate (e.g. Card · 5.00%).",
       ),
       steps(
-        "Settings → Cash discount. Turn on Offer a cash discount.",
-        "Set the percent (typical 5) and Round up to ($0.25 default).",
-        "Menu tiles and the check show Card and Cash. Quantum Payments still captures the printed/card total.",
+        "Platform → Settings → Payments: Default guest card rate for new quotes and venues.",
+        "Location settings → Guest card rate & cash discount. Turn on Offer a cash discount. Set this location’s % (overrides the platform default). Keep Round up to ($0.25 default).",
+        "Menu tiles and the check show Card (with this location’s %) and Cash. Quantum Payments still captures the printed/card total.",
         "Pay → Cash uses the cash total. Pay → Card uses the printed total.",
         "Receipts and the paid screen show both amounts, plus “Cash discount applied” when cash was taken.",
       ),

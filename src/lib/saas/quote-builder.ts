@@ -53,6 +53,7 @@ export function buildIntakeQuote(opts: {
   draft?: boolean;
   sentAt?: string | null;
   expireDays?: number;
+  guestCardRatePercent?: number;
 }): QuoteSnapshot {
   const answers = opts.interview
     ? applyInterviewToIntake(opts.answers, opts.interview)
@@ -73,5 +74,6 @@ export function buildIntakeQuote(opts: {
     draft: opts.draft,
     sentAt: opts.sentAt,
     expireDays: opts.expireDays,
+    guestCardRatePercent: opts.guestCardRatePercent,
   });
 }

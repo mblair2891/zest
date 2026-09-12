@@ -1231,8 +1231,8 @@ function PaymentsSection({
   }, []);
   return (
     <SectionCard
-      title="Payments & gift defaults"
-      description="Quantum Payments mode and first-party gift liability defaults for new locations."
+      title="Payments & card rate"
+      description="Default guest card rate for new quotes and venues. Gift liability defaults. Quantum Payments mode."
       saving={saving}
       onSave={() => onSave(v)}
     >
@@ -1261,6 +1261,24 @@ function PaymentsSection({
             </option>
           ))}
         </SelectField>
+      </Field>
+      <Field
+        label="Default guest card rate (%)"
+        hint="Used for new quotes and new venues. Each location can override. This is Summex’s charge — not Finix’s 0.25% + $0.10."
+      >
+        <Input
+          inputMode="decimal"
+          value={String(v.guestCardRatePercent ?? 5)}
+          onChange={(e) => {
+            const n = Number(e.target.value);
+            setV({
+              ...v,
+              guestCardRatePercent: Number.isFinite(n)
+                ? Math.round(Math.min(30, Math.max(0, n)) * 100) / 100
+                : 5,
+            });
+          }}
+        />
       </Field>
       <Field label="Default chargeback fee">
         <Input

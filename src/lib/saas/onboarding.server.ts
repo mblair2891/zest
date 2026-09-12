@@ -287,7 +287,7 @@ async function applyLocations(userId: string, prospectId: string, payload: Onboa
   for (const loc of payload.locations) {
     if (!loc.name.trim()) throw new Error("Each location needs a name");
     const venueType = parseVenueType(loc.venueType);
-    const setup = locationSetup(payload, loc);
+    const setup = await locationSetup(payload, loc);
     if (!loc.serverId) {
       const hit = existingLocs.find(
         (e) => e.name.toLowerCase() === loc.name.trim().toLowerCase(),
@@ -346,10 +346,17 @@ async function applyLocations(userId: string, prospectId: string, payload: Onboa
   }
 }
 
-function locationSetup(
+async function locationSetup(
   payload: OnboardingPayload,
   loc: OnboardingPayload["locations"][0],
 ) {
+  let guestCardRatePercent = 5;
+  try {
+    const { loadGuestCardRatePercent } = await import("./platform-settings.server");
+    guestCardRatePercent = await loadGuestCardRatePercent();
+  } catch {
+    /* default 5 */
+  }
   return {
     tableCount: loc.tableCount,
     sectionNames: loc.sectionNames
@@ -368,6 +375,8 @@ function locationSetup(
     networkNotes: loc.networkNotes,
     networkChecklist: loc.networkChecklist,
     lifecycleStatus: "training" as const,
+    cashDiscountEnabled: true,
+    cashDiscountPercent: guestCardRatePercent,
   };
 }
 

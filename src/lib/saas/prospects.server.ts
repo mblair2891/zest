@@ -650,6 +650,8 @@ async function suggestedQuote(prospect: ProspectRecord) {
   const { loadBillingSettings } = await import("./platform-settings.server");
   const { version, rules } = await loadPricingRules();
   const billing = await loadBillingSettings();
+  const { loadGuestCardRatePercent } = await import("./platform-settings.server");
+  const guestCardRatePercent = await loadGuestCardRatePercent();
   return buildIntakeQuote({
     answers: prospect.answers,
     rules,
@@ -658,6 +660,7 @@ async function suggestedQuote(prospect: ProspectRecord) {
     rulesVersion: version,
     expireDays: billing.quoteExpireDays ?? rules.quoteExpireDays,
     draft: true,
+    guestCardRatePercent,
   });
 }
 
@@ -734,6 +737,8 @@ export async function saveQuoteDraft(opts: {
   if (!plan.active && prospect.quote?.planSlug !== plan.slug) {
     throw new Error("That plan is not active");
   }
+  const { loadGuestCardRatePercent } = await import("./platform-settings.server");
+  const guestCardRatePercent = await loadGuestCardRatePercent();
   const quote = buildIntakeQuote({
     answers: prospect.answers,
     rules,
@@ -747,6 +752,7 @@ export async function saveQuoteDraft(opts: {
     rulesVersion: version,
     expireDays: billing.quoteExpireDays ?? rules.quoteExpireDays,
     draft: prospect.status !== "quoted",
+    guestCardRatePercent,
     sentAt: prospect.status === "quoted" ? prospect.quote?.sentAt ?? new Date().toISOString() : null,
   });
   if (quoteIsSetupOnly(quote) || !quoteHasSoftwarePackage(quote)) {

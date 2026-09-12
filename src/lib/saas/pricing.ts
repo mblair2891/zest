@@ -37,6 +37,7 @@ import {
   recommendedCatalogPlan,
   tenantEntityCount,
 } from "./quote-catalog";
+import { DEFAULT_GUEST_CARD_RATE_PERCENT, processingNoteForRate } from "@/lib/pos/card-service";
 
 export const DEFAULT_PRICING_RULES: PricingRules = {
   planMonthlyCents: {
@@ -445,8 +446,7 @@ function line(
   };
 }
 
-export const PROCESSING_NOTE =
-  "Guest card processing is Quantum Payments (cash-discount settings apply). It is billed separately from software and is not mixed into the monthly software total unless you chose a bundled plan.";
+export const PROCESSING_NOTE = processingNoteForRate(DEFAULT_GUEST_CARD_RATE_PERCENT);
 
 export function applyInterviewToIntake(
   answers: IntakeAnswers,
@@ -592,6 +592,7 @@ export type GenerateQuoteOpts = {
   draft?: boolean;
   sentAt?: string | null;
   trialDays?: number;
+  guestCardRatePercent?: number;
 };
 
 export function generateQuote(
@@ -686,7 +687,7 @@ export function generateQuote(
     hostLocs > 0
       ? `Host + operator model: ~${operators} operator(s) across ${hostLocs} host location(s). Guest pays one check; capture splits to each brand’s Quantum merchant.`
       : "Single-operator location.",
-    PROCESSING_NOTE,
+    processingNoteForRate(opts?.guestCardRatePercent ?? DEFAULT_GUEST_CARD_RATE_PERCENT),
     commsIncludedNote(catalog.smsIncludedPerMonth),
     "Gift cards are first-party (Summex ledger), not Finix.",
     HARDWARE_LEAD,
@@ -729,7 +730,10 @@ export function generateQuote(
     sentAt: opts?.sentAt ?? null,
     expiresAt,
     featureList: featureListFromAnswers(answersWithReaders),
-    processingNote: PROCESSING_NOTE,
+    processingNote: processingNoteForRate(
+      opts?.guestCardRatePercent ?? DEFAULT_GUEST_CARD_RATE_PERCENT,
+    ),
+    guestCardRatePercent: opts?.guestCardRatePercent ?? DEFAULT_GUEST_CARD_RATE_PERCENT,
     commsNote: commsIncludedNote(catalog.smsIncludedPerMonth),
     terminalQty,
     lineItems: items,

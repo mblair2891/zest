@@ -6,6 +6,19 @@ import type { GuideUpdate } from "@/lib/guide/types";
  */
 export const WHATS_NEW_ENTRIES: GuideUpdate[] = [
   {
+    id: "upd_2026_10_75_guest_card_rate",
+    date: "2026-09-11",
+    title: "Each location has its own guest card rate",
+    summary:
+      "Platform sets the default (e.g. 5.00%) for new quotes and venues. Host or venue admin can override per location. Cash-discount rounding is unchanged.",
+    body: "Platform → Settings → Payments: Default guest card rate. That percent is Summex’s charge — not Finix’s 0.25%+$0.10. Each location (host or shared venue) can set 4.00% or 5.00% (or another). Host sets it for tenants on that floor. Quotes and the check show this location’s rate. Cash still discounts then rounds up to $0.25 / $0.50 / $1. Platform Reports show collected vs Finix cost vs 90/10 residual per location.",
+    roles: ["platform_admin", "owner_manager", "host_operator"],
+    surfaces: ["settings"],
+    audience: "all",
+    topicId: "cash-discount",
+    tags: ["cash discount", "card rate", "quotes", "finix"],
+  },
+  {
     id: "upd_2026_10_74_password_dashboards",
     date: "2026-09-11",
     title: "Each password login has its own dashboard",

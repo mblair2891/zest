@@ -200,6 +200,20 @@ export type OnboardingWorkspaceRow = {
   publicToken: string;
 };
 
+export type CardServiceLocationRow = {
+  locationId: string;
+  locationName: string;
+  orgName: string;
+  guestRatePercent: number;
+  cardVolumeCents: number;
+  cardCount: number;
+  collectedCents: number;
+  finixCostCents: number;
+  residualCents: number;
+  platformShareCents: number;
+  locationShareCents: number;
+};
+
 export type SaasReportSnapshot = {
   funnel: { stage: string; count: number }[];
   pipelineValueByStage: { stage: string; amountCents: number }[];
@@ -210,6 +224,8 @@ export type SaasReportSnapshot = {
   openTickets: number;
   pastDueOrgs: number;
   failedInvoices: number;
+  /** Platform only: collected guest rate vs Finix cost vs 90/10 residual. */
+  cardServiceByLocation?: CardServiceLocationRow[];
 };
 
 export const SUPPORT_MACROS: { id: string; title: string; body: string }[] = [

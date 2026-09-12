@@ -58,6 +58,53 @@ export function ReportsWorkspace() {
           ))}
         </ul>
       </section>
+      <section className="mb-4 rounded-2xl border border-border bg-surface p-4">
+        <p className="mb-1 text-sm font-medium">Guest card rate vs Finix cost</p>
+        <p className="mb-3 text-xs text-muted-foreground">
+          Collected at this location’s guest card rate (Summex’s charge). Finix
+          0.25%+$0.10 is internal cost. Residual splits 90 platform / 10 location.
+          Platform only — not a floor report.
+        </p>
+        {(data.cardServiceByLocation ?? []).length === 0 ? (
+          <p className="text-sm text-muted-foreground">No live locations yet.</p>
+        ) : (
+          <ul className="space-y-3">
+            {(data.cardServiceByLocation ?? []).map((row) => (
+              <li
+                key={row.locationId}
+                className="rounded-xl border border-border bg-bg px-3 py-2 text-sm"
+              >
+                <p className="font-medium">
+                  {row.orgName} · {row.locationName}
+                </p>
+                <p className="mt-0.5 text-xs text-muted-foreground">
+                  Guest rate {row.guestRatePercent.toFixed(2)}% · {row.cardCount} card
+                  {row.cardCount === 1 ? "" : "s"} · volume{" "}
+                  {formatCurrency(row.cardVolumeCents)}
+                </p>
+                <dl className="mt-2 grid grid-cols-2 gap-x-3 gap-y-1 text-xs sm:grid-cols-4">
+                  <div>
+                    <dt className="text-muted-foreground">Collected</dt>
+                    <dd className="tabular font-medium">{formatCurrency(row.collectedCents)}</dd>
+                  </div>
+                  <div>
+                    <dt className="text-muted-foreground">Finix cost</dt>
+                    <dd className="tabular font-medium">{formatCurrency(row.finixCostCents)}</dd>
+                  </div>
+                  <div>
+                    <dt className="text-muted-foreground">90% platform</dt>
+                    <dd className="tabular font-medium">{formatCurrency(row.platformShareCents)}</dd>
+                  </div>
+                  <div>
+                    <dt className="text-muted-foreground">10% location</dt>
+                    <dd className="tabular font-medium">{formatCurrency(row.locationShareCents)}</dd>
+                  </div>
+                </dl>
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
       <section className="rounded-2xl border border-border bg-surface p-4">
         <p className="mb-3 text-sm font-medium">Pipeline value by stage</p>
         <ul className="space-y-2">

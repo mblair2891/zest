@@ -33,6 +33,7 @@ import {
   printedItemPriceCents,
 } from "@/lib/pos/calculations";
 import { cashPolicyFromSettings } from "@/lib/pos/cash-discount";
+import { formatGuestCardRate } from "@/lib/pos/card-service";
 import { cn, formatCurrency } from "@/lib/utils";
 import { ModifierDialog } from "./ModifierDialog";
 import { PaymentDialog } from "./PaymentDialog";
@@ -510,7 +511,11 @@ export function OrderView() {
               </div>
             )}
             <div className="flex justify-between text-base font-semibold">
-              <span>{dual?.enabled ? "Card" : "Total"}</span>
+              <span>
+                {dual?.enabled
+                  ? `Card · ${formatGuestCardRate(cashPolicy?.percent ?? settings.cashDiscountPercent ?? 5)}%`
+                  : "Total"}
+              </span>
               <span className="tabular">
                 {formatCurrency(totals.totalCents)}
               </span>

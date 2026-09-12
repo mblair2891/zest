@@ -766,10 +766,18 @@ export async function createLocationForOrg(
       : input.operatingModel === "host_operators"
         ? "host_operators"
         : "single";
-  const setupObj = {
+  const setupObj: Record<string, unknown> = {
     ...(input.setup ?? {}),
     lifecycleStatus: input.setup?.lifecycleStatus ?? "training",
   };
+  if (setupObj.cashDiscountPercent == null) {
+    try {
+      const { loadGuestCardRatePercent } = await import("./platform-settings.server");
+      setupObj.cashDiscountPercent = await loadGuestCardRatePercent();
+    } catch {
+      setupObj.cashDiscountPercent = 5;
+    }
+  }
   const setup = JSON.stringify(setupObj);
   const slug = await uniqueVenueSlug(
     input.slug?.trim() || input.hostBrandName || input.name,

@@ -291,6 +291,8 @@ export type QuoteSnapshot = {
   expiresAt?: string | null;
   featureList?: string[];
   processingNote?: string;
+  /** Summex guest card rate (%) shown on the quote. Not Finix cost. */
+  guestCardRatePercent?: number;
   /** Email included. SMS allotment. AI in Ops pack. */
   commsNote?: string;
   terminalQty?: number;

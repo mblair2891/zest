@@ -1034,6 +1034,59 @@ export async function saasReport(userId: string): Promise<SaasReportSnapshot> {
       (select count(*)::int from saas_invoices where status = 'failed') as failed_inv
   `;
   const c = counts[0];
+  const { cardServiceRollup, parseGuestCardRatePercent, DEFAULT_GUEST_CARD_RATE_PERCENT } =
+    await import("@/lib/pos/card-service");
+  let platformDefault = DEFAULT_GUEST_CARD_RATE_PERCENT;
+  try {
+    const { loadGuestCardRatePercent } = await import("./platform-settings.server");
+    platformDefault = await loadGuestCardRatePercent();
+  } catch {
+    /* keep 5 */
+  }
+  const locRows = await sql<{
+    id: string;
+    name: string;
+    org_name: string;
+    setup: unknown;
+    card_cents: number;
+    card_count: number;
+  }>`
+    select
+      l.id,
+      l.name,
+      o.name as org_name,
+      l.setup,
+      coalesce(sum(p.amount_cents) filter (
+        where p.status = 'captured' and p.method = 'card'
+      ), 0)::int as card_cents,
+      coalesce(count(*) filter (
+        where p.status = 'captured' and p.method = 'card'
+      ), 0)::int as card_count
+    from locations l
+    join organizations o on o.id = l.org_id
+    left join summex_payments p on p.location_id = l.id
+    where coalesce(l.is_demo, false) = false
+      and coalesce(o.is_demo, false) = false
+    group by l.id, l.name, o.name, l.setup
+    order by o.name, l.name
+  `.catch(() => []);
+  const cardServiceByLocation = locRows.map((row) => {
+    const setup = row.setup && typeof row.setup === "object" ? (row.setup as Record<string, unknown>) : {};
+    const rate = parseGuestCardRatePercent(
+      setup.cashDiscountPercent ?? platformDefault,
+    );
+    const roll = cardServiceRollup({
+      cardVolumeCents: Number(row.card_cents) || 0,
+      cardCount: Number(row.card_count) || 0,
+      guestRatePercent: rate,
+    });
+    return {
+      locationId: row.id,
+      locationName: row.name,
+      orgName: row.org_name,
+      ...roll,
+    };
+  });
   return {
     funnel: ACCOUNT_STAGES.map((stage) => ({
       stage,
@@ -1050,6 +1103,7 @@ export async function saasReport(userId: string): Promise<SaasReportSnapshot> {
     openTickets: Number(c?.open_tix) || 0,
     pastDueOrgs: Number(c?.past_due) || 0,
     failedInvoices: Number(c?.failed_inv) || 0,
+    cardServiceByLocation,
   };
 }
 

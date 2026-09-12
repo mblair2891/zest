@@ -26,6 +26,7 @@ import { LocationDeviceRegistry } from "./LocationDeviceRegistry";
 import { EntityPermissionsMatrix } from "./EntityPermissionsMatrix";
 import { OperatorOpsView } from "./OperatorOpsView";
 import { saveLocationSettingsFn } from "@/lib/access/api";
+import { persistCashDiscount } from "@/lib/pos/persist-location-setup";
 import { isProspectDemo } from "@/lib/demo/session";
 import { useSaasStore } from "@/lib/pos/saas-store";
 import type { VenueEntityId } from "@/lib/pos/types";
@@ -290,6 +291,10 @@ export function SettingsView() {
           aiReportSchedule: s.aiReportSchedule ?? "off",
           aiReportEmail: s.aiReportEmail ?? "",
           opsJobs: s.opsJobs,
+          cashDiscountEnabled: s.cashDiscountEnabled,
+          cashDiscountPercent: s.cashDiscountPercent,
+          cashRoundIncrement: s.cashRoundIncrement,
+          cashRoundMode: s.cashRoundMode,
           devices: { pos: 0, kds: 0, handhelds: 0 },
           settlement: {
             periodType: "weekly",
@@ -654,24 +659,30 @@ export function SettingsView() {
         <Pack id="cash_discount" packs={packs}>
         <div>
           <div className="flex flex-wrap items-center justify-between gap-2">
-            <p className="text-sm font-medium">Cash discount</p>
+            <p className="text-sm font-medium">Guest card rate & cash discount</p>
             <GuideLearnLink topicId="cash-discount" compact>
               Learn
             </GuideLearnLink>
           </div>
           <p className="mt-1 text-xs text-muted-foreground">
-            Printed / card prices stay clean. Cash is discounted then rounded{" "}
+            This location’s guest card rate (Summex’s charge). Printed / card
+            prices stay clean. Cash is discounted then rounded{" "}
             <span className="font-medium text-foreground">up</span> to the
-            increment — no pennies. This location is responsible for local
-            cash-discount rules.
+            increment. Not Finix’s 0.25%+$0.10 — that cost is internal.
+            {sharedMulti
+              ? peerVenue
+                ? " Venue admin sets this for the floor. Not a host merchant."
+                : " Host sets this for every tenant on this floor. Entity logins cannot."
+              : ""}
           </p>
           <label className="mt-3 flex items-center gap-2 text-sm">
             <input
               type="checkbox"
               checked={!!settings.cashDiscountEnabled}
-              onChange={(e) =>
-                updateSettings({ cashDiscountEnabled: e.target.checked })
-              }
+              onChange={(e) => {
+                updateSettings({ cashDiscountEnabled: e.target.checked });
+                persistCashDiscount();
+              }}
               className="h-4 w-4 rounded border-border"
             />
             Offer a cash discount
@@ -679,20 +690,21 @@ export function SettingsView() {
           <div className="mt-3 grid grid-cols-2 gap-3">
             <label className="block text-sm">
               <span className="mb-1 block text-muted-foreground">
-                Discount (%)
+                Guest card rate (%)
               </span>
               <Input
                 inputMode="decimal"
                 disabled={!settings.cashDiscountEnabled}
                 value={String(settings.cashDiscountPercent ?? 5)}
-                onChange={(e) =>
+                onChange={(e) => {
+                  const n = parseFloat(e.target.value);
                   updateSettings({
-                    cashDiscountPercent: Math.max(
-                      0,
-                      parseFloat(e.target.value) || 0,
-                    ),
-                  })
-                }
+                    cashDiscountPercent: Number.isFinite(n)
+                      ? Math.round(Math.min(30, Math.max(0, n)) * 100) / 100
+                      : 5,
+                  });
+                }}
+                onBlur={() => persistCashDiscount()}
               />
             </label>
             <label className="block text-sm">
@@ -703,13 +715,14 @@ export function SettingsView() {
                 className="flex h-11 w-full rounded-lg border border-border bg-surface px-3 text-sm"
                 disabled={!settings.cashDiscountEnabled}
                 value={String(settings.cashRoundIncrement ?? 0.25)}
-                onChange={(e) =>
+                onChange={(e) => {
                   updateSettings({
                     cashRoundIncrement: Number(
                       e.target.value,
                     ) as CashRoundIncrement,
-                  })
-                }
+                  });
+                  persistCashDiscount();
+                }}
               >
                 {CASH_ROUND_INCREMENTS.map((n) => (
                   <option key={n} value={n}>
@@ -721,7 +734,8 @@ export function SettingsView() {
           </div>
           {settings.cashDiscountEnabled && (
             <p className="mt-3 text-xs text-muted-foreground">
-              Example: $12.00 card →{" "}
+              This location {Number(settings.cashDiscountPercent ?? 5).toFixed(2)}% ·
+              example $12.00 card →{" "}
               <span className="tabular text-foreground">
                 {formatCurrency(
                   cashPolicyFromSettings(settings)

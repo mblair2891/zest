@@ -149,6 +149,9 @@ export function QuoteSummary({
       <p className="text-xs text-muted-foreground">
         {quote.processingNote ||
           "Guest card processing is Quantum Payments, billed separately from software."}
+        {quote.guestCardRatePercent != null
+          ? ` This proposal: ${Number(quote.guestCardRatePercent).toFixed(2)}% guest card rate.`
+          : ""}
       </p>
 
       {quote.changeRequest && (

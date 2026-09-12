@@ -43,7 +43,7 @@ export const SETTINGS_SECTION_LABEL: Record<SettingsSectionId, string> = {
   crm: "CRM & pipeline",
   onboarding: "Onboarding",
   billing: "Plans & billing",
-  payments: "Payments & gift defaults",
+  payments: "Payments & card rate",
   communications: "Communications",
   flags: "Feature flags",
   compliance: "Data & compliance",
@@ -375,6 +375,8 @@ export type SavePlansPayload = z.infer<typeof savePlansPayloadSchema>;
 
 export const paymentsSettingsSchema = z.object({
   quantumPaymentsMode: z.enum(PAYMENTS_MODES).default("sandbox"),
+  /** Summex guest card rate (%) for new quotes and new venues. Not Finix's 0.25%+$0.10. */
+  guestCardRatePercent: z.number().min(0).max(30).default(5),
   chargebackFeeCents: int(0, 1_000_000).default(3500),
   giftIssuerMode: z.enum(GIFT_ISSUER_MODES).default("sale_point"),
   giftTermMonths: int(0, 120).default(0),

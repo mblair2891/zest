@@ -42,6 +42,32 @@ export function persistQrPolicy(): void {
   );
 }
 
+export function persistCashDiscount(): void {
+  const ctx = ids();
+  if (!ctx) return;
+  const prev = timers.get("cash-discount");
+  if (prev) clearTimeout(prev);
+  timers.set(
+    "cash-discount",
+    setTimeout(() => {
+      timers.delete("cash-discount");
+      const s = usePosStore.getState().settings;
+      void saveLocationSettingsFn({
+        data: {
+          orgId: ctx.orgId,
+          locationId: ctx.locationId,
+          setup: {
+            cashDiscountEnabled: s.cashDiscountEnabled,
+            cashDiscountPercent: s.cashDiscountPercent,
+            cashRoundIncrement: s.cashRoundIncrement,
+            cashRoundMode: s.cashRoundMode,
+          },
+        },
+      }).catch(() => undefined);
+    }, 400),
+  );
+}
+
 export function persistCashHandling(): void {
   const ctx = ids();
   if (!ctx) return;

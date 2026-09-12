@@ -1,4 +1,5 @@
 /** Cash discount with pretty printed prices and round-up increments. */
+import { DEFAULT_GUEST_CARD_RATE_PERCENT } from "./card-service";
 
 export const CASH_ROUND_INCREMENTS = [0.25, 0.5, 0.75, 1] as const;
 export type CashRoundIncrement = (typeof CASH_ROUND_INCREMENTS)[number];
@@ -13,7 +14,7 @@ export type CashDiscountPolicy = {
 
 export const DEFAULT_CASH_DISCOUNT = {
   cashDiscountEnabled: false,
-  cashDiscountPercent: 5,
+  cashDiscountPercent: DEFAULT_GUEST_CARD_RATE_PERCENT,
   cashRoundIncrement: 0.25 as CashRoundIncrement,
   cashRoundMode: "up" as CashRoundMode,
 };

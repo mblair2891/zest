@@ -116,6 +116,15 @@ export async function loadOnboardingSettings(): Promise<OnboardingSettings> {
   });
 }
 
+export async function loadGuestCardRatePercent(): Promise<number> {
+  const { parseGuestCardRatePercent } = await import("@/lib/pos/card-service");
+  const payments = paymentsSettingsSchema.parse({
+    ...DEFAULT_PAYMENTS,
+    ...((await readKey("payments")) as object),
+  });
+  return parseGuestCardRatePercent(payments.guestCardRatePercent);
+}
+
 export async function loadBillingSettings(): Promise<BillingSettings> {
   return billingSettingsSchema.parse({ ...DEFAULT_BILLING, ...(await readKey("billing") as object) });
 }

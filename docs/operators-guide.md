@@ -1,7 +1,7 @@
 # Operators Guide — authoring
 
-**Revision · 11 Sep 2026** — Each password login lands on that role’s dashboard.
-Guide v2026.10.74.
+**Revision · 11 Sep 2026** — Per-location guest card rate; platform default for new quotes.
+Guide v2026.10.75.
 
 The in-app **Operators Guide** is the living product manual. It is not a
 separate PDF. Staff open it from **Guide** / **?** in the POS and platform

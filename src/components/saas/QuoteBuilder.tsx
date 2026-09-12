@@ -20,6 +20,8 @@ import {
 import type { PricingRules, ProspectDetail } from "@/lib/saas/prospect-types";
 import type { PlanSlug } from "@/lib/saas/types";
 import { QuoteSummary } from "./QuoteSummary";
+import { loadPlatformSettingsFn } from "@/lib/saas/platform-settings-api";
+import { DEFAULT_GUEST_CARD_RATE_PERCENT, parseGuestCardRatePercent } from "@/lib/pos/card-service";
 
 export function QuoteBuilder({
   detail,
@@ -31,6 +33,9 @@ export function QuoteBuilder({
   const [plans, setPlans] = useState<Awaited<ReturnType<typeof listQuoteCatalogFn>>["plans"]>([]);
   const [trialDays, setTrialDays] = useState(14);
   const [rules, setRules] = useState<PricingRules>(DEFAULT_PRICING_RULES);
+  const [guestCardRatePercent, setGuestCardRatePercent] = useState(
+    DEFAULT_GUEST_CARD_RATE_PERCENT,
+  );
   const intakePlan = recommendedPlan(
     detail.answers,
     rules,
@@ -56,12 +61,13 @@ export function QuoteBuilder({
   const [msg, setMsg] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
-  const applyIntake = (r: PricingRules, catalogTrial: number) => {
+  const applyIntake = (r: PricingRules, catalogTrial: number, rate = guestCardRatePercent) => {
     const built = buildIntakeQuote({
       answers: detail.answers,
       rules: r,
       interview: detail.interviewRecommendation,
       trialDays: catalogTrial,
+      guestCardRatePercent: rate,
     });
     setPlanSlug(built.planSlug);
     setLocationCount(built.locationCount ?? 1);
@@ -72,17 +78,26 @@ export function QuoteBuilder({
   };
 
   useEffect(() => {
-    void Promise.all([listQuoteCatalogFn(), loadPricingRulesFn()]).then(([c, pr]) => {
+    void Promise.all([
+      listQuoteCatalogFn(),
+      loadPricingRulesFn(),
+      loadPlatformSettingsFn().catch(() => null),
+    ]).then(([c, pr, plat]) => {
       setPlans(c.plans);
       setTrialDays(c.trialDays);
       const parsed = parsePricingRules(pr.rules);
       setRules(parsed);
+      const rate =
+        plat?.payments?.guestCardRatePercent != null
+          ? parseGuestCardRatePercent(plat.payments.guestCardRatePercent)
+          : DEFAULT_GUEST_CARD_RATE_PERCENT;
+      setGuestCardRatePercent(rate);
       if (
         !detail.quote ||
         quoteIsSetupOnly(detail.quote) ||
         !quoteHasSoftwarePackage(detail.quote)
       ) {
-        applyIntake(parsed, c.trialDays);
+        applyIntake(parsed, c.trialDays, rate);
       }
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -100,8 +115,9 @@ export function QuoteBuilder({
       terminalQty,
       trialDays,
       draft: detail.status !== "quoted",
+      guestCardRatePercent,
     });
-  }, [detail.answers, detail.interviewRecommendation, detail.status, rules, planSlug, locationCount, setup, addOns, terminalQty, trialDays]);
+  }, [detail.answers, detail.interviewRecommendation, detail.status, rules, planSlug, locationCount, setup, addOns, terminalQty, trialDays, guestCardRatePercent]);
 
   const save = async (send: boolean) => {
     setBusy(true);
