@@ -24,8 +24,10 @@ test("entity_admin maps to vendor membership, labeled Entity admin", () => {
   assert.equal(parseTenantAdminScope("location"), "location");
   assert.equal(tenantLoginRoleForScope("entity"), "vendor");
   assert.equal(tenantLoginRoleForScope("location"), "owner");
-  assert.equal(loginRoleLabel("vendor"), "Entity admin");
-  assert.equal(loginRoleLabel("owner", "op_bar"), "Entity admin");
+  assert.equal(loginRoleLabel("vendor"), "Entity owner");
+  assert.equal(loginRoleLabel("owner", "op_bar"), "Entity owner");
+  assert.equal(loginRoleLabel("manager", "op_bar"), "Entity manager");
+  assert.equal(loginRoleLabel("accountant"), "Accountant");
   assert.equal(loginRoleLabel("owner"), "Location admin");
 });
 
@@ -79,22 +81,24 @@ test("Users tab copy is an add form, not a circle back to the platform", () => {
     return createElement(
       "div",
       { "data-demo": "tenant-users" },
-      hasAdd ? createElement("button", null, "Add location admin") : null,
+      hasAdd ? createElement("button", null, "Add password login") : null,
       createElement("p", null, TENANT_USERS_EMPTY),
     );
   }
   const html = renderToString(createElement(Empty, { hasAdd: true }));
-  assert.match(html, /Add location admin/);
+  assert.match(html, /Add password login/);
   assert.match(html, /No location admins or floor staff/);
   assert.doesNotMatch(html, new RegExp(TENANT_USERS_CIRCLE_COPY));
 
   const panel = readFileSync("src/components/platform/TenantUsersPanel.tsx", "utf8");
-  assert.match(panel, /Add location admin/);
-  assert.match(panel, /Add entity admin/);
+  assert.match(panel, /Add password login/);
+  assert.match(panel, /Entity owner/);
+  assert.match(panel, /Entity manager/);
+  assert.match(panel, /Accountant/);
   assert.match(panel, /Entity admin \(one selling entity\)/);
   assert.match(panel, /Add floor staff/);
   assert.match(panel, /Force password change on first login/);
-  assert.match(panel, /never PIN, never/);
+  assert.match(panel, /never a PIN pad/);
   assert.match(panel, /app.summex.app\/login/);
   assert.doesNotMatch(panel, /Add people on the platform/);
 
@@ -105,5 +109,6 @@ test("Users tab copy is an add form, not a circle back to the platform", () => {
   assert.doesNotMatch(venue, /Add people on the platform/);
 
   const dash = readFileSync("src/routes/dashboard.tsx", "utf8");
-  assert.match(dash, /audience=\{loc.operatorId \? "entity" : "owner"\}/);
+  assert.match(dash, /membershipRole=\{loc.role\}/);
+  assert.match(dash, /loc.role === "accountant"/);
 });

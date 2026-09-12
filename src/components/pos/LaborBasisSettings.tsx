@@ -1,6 +1,6 @@
 import { Input } from "@/components/ui/input";
 import { GuideLearnLink } from "@/components/guide/GuideLearnLink";
-import { HOST_SCOPE } from "@/lib/access/entity-grants";
+import { HOST_SCOPE, entityLoginScope } from "@/lib/access/entity-grants";
 import {
   REVENUE_BASES,
   REVENUE_BASIS_LABEL,
@@ -23,8 +23,7 @@ export function LaborBasisSettings({ write }: { write: boolean }) {
   const orgId = useSaasStore((s) => s.org.id);
   const locId = usePosStore((s) => s.tenantLocationId) || "";
   const emp = usePosStore((s) => s.employees.find((e) => e.id === s.currentEmployeeId));
-  const entityLock =
-    emp?.role === "vendor_operator" ? emp.operatorId || HOST_SCOPE : null;
+  const entityLock = entityLoginScope(emp);
   const multi =
     settings.peerVenue ||
     settings.operatingModel === "peer_venue" ||

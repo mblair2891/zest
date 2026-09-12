@@ -508,7 +508,12 @@ export interface PosStore {
   }) => ActionResult;
   tenantLocationId?: string | null;
   loginAsOwner: (name: string) => ActionResult;
-  loginAsEntityAdmin: (name: string, operatorId: string) => ActionResult;
+  loginAsBackOffice: (name: string, role: "owner" | "manager" | "accountant") => ActionResult;
+  loginAsEntityAdmin: (
+    name: string,
+    operatorId: string,
+    opts?: { seat?: "owner" | "manager" },
+  ) => ActionResult;
   resetDemo: () => void;
 }
 

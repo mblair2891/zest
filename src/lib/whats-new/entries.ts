@@ -6,6 +6,19 @@ import type { GuideUpdate } from "@/lib/guide/types";
  */
 export const WHATS_NEW_ENTRIES: GuideUpdate[] = [
   {
+    id: "upd_2026_10_74_password_dashboards",
+    date: "2026-09-11",
+    title: "Each password login has its own dashboard",
+    summary:
+      "Sign in at app.summex.app/login and land on tiles for that role. Platform Admin, host owner, venue admin, entity owner/manager, accountant. PIN staff stay on the station home.",
+    body: "Password login never opens the PIN pad. Platform Admin: CRM, pipeline, tenants, platform settings. Host owner (host + tenants): venue health, every entity, Devices, Publish, combined and per-entity reports. Venue admin on a shared venue is the same minus host-merchant chrome. Entity owner: that brand’s sales, labor %, 86, menu, invoices, schedule, payout, and payments. Entity manager: the same ops plus floor tools from back office — no billing. Accountant: reports, hours export, gift liability — no Devices, no 86. Tiles are subscribed modules only. Deep links use the same grants as the APIs.",
+    roles: ["platform_admin", "owner_manager", "host_operator", "vendor_operator"],
+    surfaces: ["settings"],
+    audience: "all",
+    topicId: "login",
+    tags: ["login", "dashboard", "tiles", "accountant"],
+  },
+  {
     id: "upd_2026_10_73_host_tenant_ops",
     date: "2026-09-11",
     title: "Host login sees every tenant’s ops",

@@ -23,7 +23,7 @@ import { computePayPeriod, hoursExportStatus, parseLaborRules } from "@/lib/labo
 import { hrPayrollExportFn } from "@/lib/hr/api";
 import { useSaasStore } from "@/lib/pos/saas-store";
 import { GuideLearnLink } from "@/components/guide/GuideLearnLink";
-import { HOST_SCOPE, canViewPayroll } from "@/lib/access/entity-grants";
+import { HOST_SCOPE, canViewPayroll, entityLoginScope } from "@/lib/access/entity-grants";
 import { isFloorRole } from "@/lib/pos/pin";
 import { buildPayrollRows, payrollCsv } from "@/lib/labor/payroll";
 import { EntityScheduleView } from "./EntityScheduleView";
@@ -73,8 +73,7 @@ export function LaborOpsView() {
   const sessionKind = usePosStore((s) => s.sessionKind);
   const settings = usePosStore((s) => s.settings);
   const floor = sessionKind === "pin" && isFloorRole(current?.role);
-  const entityLock =
-    current?.role === "vendor_operator" ? current.operatorId || HOST_SCOPE : null;
+  const entityLock = entityLoginScope(current);
   const [opFilter, setOpFilter] = useState(
     () => current?.operatorId || HOST_SCOPE,
   );

@@ -13,7 +13,7 @@ import { Button } from "@/components/ui/button";
 import { usePosStore } from "@/lib/pos/store";
 import { formatCurrency, formatDateTime } from "@/lib/utils";
 import { canEmployee } from "@/lib/access/permissions";
-import { HOST_SCOPE, canViewPayroll, canViewSalesReports } from "@/lib/access/entity-grants";
+import { HOST_SCOPE, canViewPayroll, canViewSalesReports, entityLoginScope } from "@/lib/access/entity-grants";
 import { useSaasStore } from "@/lib/pos/saas-store";
 import { hrPayrollExportFn } from "@/lib/hr/api";
 import { computePayPeriod, hoursExportStatus, parseLaborRules } from "@/lib/labor/rules";
@@ -127,7 +127,7 @@ export function ReportsView() {
         range,
         from: customFrom ? new Date(customFrom).getTime() : undefined,
         to: customTo ? new Date(customTo).getTime() + 86400000 - 1 : undefined,
-        operatorId: emp?.role === "vendor_operator" ? emp.operatorId : operatorId || null,
+        operatorId: entityLoginScope(emp) || operatorId || null,
         serverId: emp?.role === "server" ? emp.id : null,
       }),
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -1135,7 +1135,7 @@ function PayrollReportSlice() {
   const vendors = usePosStore((s) => s.vendors);
   const emp = usePosStore((s) => s.employees.find((e) => e.id === s.currentEmployeeId));
   const grants = usePosStore((s) => s.entityPermissions);
-  const lock = emp?.role === "vendor_operator" ? emp.operatorId || HOST_SCOPE : null;
+  const lock = entityLoginScope(emp);
   const employerId = lock || HOST_SCOPE;
   const employerName =
     employerId === HOST_SCOPE

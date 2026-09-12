@@ -1,4 +1,4 @@
-import { Building2, ClipboardList, CreditCard, LayoutDashboard, LifeBuoy, LineChart, Settings, Users } from "lucide-react";
+import { Building2, ClipboardList, CreditCard, LayoutDashboard, LayoutGrid, LifeBuoy, LineChart, Settings, Users } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ProspectPipelineView } from "@/components/saas/ProspectPipelineView";
 import { CrmWorkspace } from "./CrmWorkspace";
@@ -13,8 +13,10 @@ import {
   PLATFORM_SURFACE_LABEL,
   type PlatformSurface,
 } from "./surfaces";
+import { PasswordDashHome } from "./PasswordDashHome";
 
 const ICONS: Record<PlatformSurface, typeof Users> = {
+  home: LayoutGrid,
   crm: Users,
   pipeline: ClipboardList,
   tenants: Building2,
@@ -76,6 +78,15 @@ export function PlatformControlPlane({
             </button>
           ))}
         </div>
+        {surface === "home" && (
+          <div className="min-h-0 flex-1 overflow-auto p-4">
+            <PasswordDashHome
+              kind="platform_admin"
+              onOpen={() => undefined}
+              onPlatform={(id) => onSurface(id)}
+            />
+          </div>
+        )}
         {surface === "crm" && (
           <CrmWorkspace onOpenPipeline={() => onSurface("onboarding")} />
         )}

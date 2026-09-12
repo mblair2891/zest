@@ -160,6 +160,18 @@ export function isHostPrivileged(
   return !emp.operatorId || emp.operatorId === HOST_SCOPE;
 }
 
+/** Selling-entity password login (owner/manager/vendor). Null = whole venue. */
+export function entityLoginScope(
+  emp: Pick<Employee, "role" | "operatorId"> | null | undefined,
+): string | null {
+  if (!emp) return null;
+  if (isHostPrivileged(emp)) return null;
+  if (emp.role === "accountant" && !emp.operatorId) return null;
+  if (emp.operatorId && emp.operatorId !== HOST_SCOPE) return emp.operatorId;
+  if (emp.role === "vendor_operator") return emp.operatorId || HOST_SCOPE;
+  return null;
+}
+
 /** Login scope: host | bar operator | food operator | … */
 export function subjectIdForEmployee(
   emp: Pick<Employee, "role" | "operatorId"> | null | undefined,

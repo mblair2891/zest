@@ -4155,44 +4155,93 @@ const usePosStoreRaw = create<PosStore>()(persist((set, get) => {
 		});
 		return { ok: true };
 	},
-	loginAsEntityAdmin: (name: string, operatorId: string) => {
+	loginAsBackOffice: (name: string, role: "owner" | "manager" | "accountant") => {
+		if (role === "owner") return get().loginAsOwner(name);
+		const id = `emp_bo_${role}`;
+		const existing =
+			get().employees.find((e: any) => e.id === id) ??
+			get().employees.find((e: any) => e.role === role && e.active && !e.operatorId);
+		const emp = existing
+			? { ...existing, name: name.trim() || existing.name || role, role, clockedIn: true, clockInAt: Date.now(), active: true }
+			: {
+					id,
+					name: name.trim() || (role === "accountant" ? "Accountant" : "Manager"),
+					pin: "0000",
+					role,
+					color: "#2C4A6E",
+					clockedIn: true,
+					clockInAt: Date.now(),
+					tipsEarned: 0,
+					salesTotal: 0,
+					active: true,
+					homeSectionIds: [] as string[],
+					title: role === "accountant" ? "Accountant" : "Manager",
+				};
+		const employees = existing
+			? get().employees.map((e: any) => (e.id === existing.id ? { ...e, ...emp } : e))
+			: [emp, ...get().employees];
+		set({
+			employees,
+			currentEmployeeId: emp.id,
+			view: "hq",
+			activeOrderId: null,
+			activeTableId: null,
+			sessionKind: "backoffice",
+			backOfficeUnlocked: true,
+		});
+		return { ok: true };
+	},
+	loginAsEntityAdmin: (name: string, operatorId: string, opts) => {
 		const op = operatorId.trim();
 		if (!op) return { ok: false, error: "Selling entity is required" };
-		const id = `emp_entity_${op}`;
+		const manager = opts?.seat === "manager";
+		const role = manager ? ("manager" as const) : ("vendor_operator" as const);
+		const id = manager ? `emp_entity_mgr_${op}` : `emp_entity_${op}`;
 		const existing =
 			get().employees.find((e: any) => e.id === id) ??
 			get().employees.find(
-				(e: any) => e.role === "vendor_operator" && e.operatorId === op && e.active,
+				(e: any) =>
+					e.operatorId === op &&
+					e.active &&
+					(manager ? e.role === "manager" : e.role === "vendor_operator"),
 			);
 		if (existing && get().currentEmployeeId === existing.id && get().sessionKind === "backoffice") {
 			if (name.trim() && existing.name !== name.trim()) {
 				set({
 					employees: get().employees.map((e: any) =>
 						e.id === existing.id
-							? { ...e, name: name.trim(), operatorId: op, role: "vendor_operator" as const }
+							? {
+									...e,
+									name: name.trim(),
+									operatorId: op,
+									role,
+									extraViews: manager ? ["floor", "order"] : e.extraViews,
+								}
 							: e,
 					),
 				});
 			}
 			return { ok: true };
 		}
+		const title = manager ? "Entity manager" : "Entity owner";
 		const admin = existing
 			? {
 					...existing,
 					id: existing.id,
-					name: name.trim() || existing.name || "Entity admin",
-					role: "vendor_operator" as const,
+					name: name.trim() || existing.name || title,
+					role,
 					operatorId: op,
 					clockedIn: true,
 					clockInAt: Date.now(),
 					active: true,
-					title: existing.title || "Entity admin",
+					title,
+					extraViews: manager ? ["floor", "order"] : existing.extraViews,
 				}
 			: {
 					id,
-					name: name.trim() || "Entity admin",
+					name: name.trim() || title,
 					pin: "0000",
-					role: "vendor_operator" as const,
+					role,
 					operatorId: op,
 					color: "#2C4A6E",
 					clockedIn: true,
@@ -4201,7 +4250,8 @@ const usePosStoreRaw = create<PosStore>()(persist((set, get) => {
 					salesTotal: 0,
 					active: true,
 					homeSectionIds: [] as string[],
-					title: "Entity admin",
+					title,
+					extraViews: manager ? (["floor", "order"] as const) : undefined,
 				};
 		const employees = existing
 			? get().employees.map((e: any) => (e.id === existing.id ? { ...e, ...admin } : e))

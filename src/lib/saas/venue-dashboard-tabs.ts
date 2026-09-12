@@ -20,7 +20,8 @@ export type VenueDashTabId =
   | "grants"
   | "people"
   | "staff"
-  | "schedule";
+  | "schedule"
+  | "ledger";
 
 export type VenueDashTab = [VenueDashTabId, string];
 

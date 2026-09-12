@@ -1,4 +1,5 @@
 export const PLATFORM_SURFACES = [
+  "home",
   "crm",
   "pipeline",
   "tenants",
@@ -12,6 +13,7 @@ export const PLATFORM_SURFACES = [
 export type PlatformSurface = (typeof PLATFORM_SURFACES)[number];
 
 export const PLATFORM_SURFACE_LABEL: Record<PlatformSurface, string> = {
+  home: "Dashboard",
   crm: "CRM",
   pipeline: "Pipeline",
   tenants: "Tenants",

@@ -62,6 +62,6 @@ test("password venue shell never gates a PIN pad", () => {
   assert.match(venue, /pinGate: false/);
   assert.match(venue, /loginAsOwner/);
   assert.match(venue, /loginAsEntityAdmin/);
-  assert.match(venue, /venueDashboardTabs/);
+  assert.match(venue, /passwordDashTabs/);
   assert.doesNotMatch(venue, /pinGate: true/);
 });

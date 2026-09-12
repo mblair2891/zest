@@ -15,6 +15,7 @@ import {
   TENANT_USERS_EMPTY,
   floorRoleLabel,
   loginRoleLabel,
+  membershipRoleForPasswordSeat,
   parseTenantAdminScope,
   tenantConsoleLoginUrl,
   type TenantAdminScope,
@@ -46,6 +47,7 @@ export function TenantUsersPanel({
   const [forceChange, setForceChange] = useState(true);
   const [adminScope, setAdminScope] = useState<TenantAdminScope>("location");
   const [adminEntity, setAdminEntity] = useState("");
+  const [adminSeat, setAdminSeat] = useState<"owner" | "manager" | "accountant">("owner");
 
   const [staffName, setStaffName] = useState("");
   const [staffPin, setStaffPin] = useState("");
@@ -79,11 +81,15 @@ export function TenantUsersPanel({
         email: adminEmail,
         tempPassword: adminPass,
         forceChange,
-        operatorId: adminScope === "entity" ? adminEntity || null : null,
+        operatorId: adminScope === "entity" && adminSeat !== "accountant" ? adminEntity || null : adminScope === "entity" ? adminEntity || null : null,
+        role: membershipRoleForPasswordSeat({ scope: adminScope, seat: adminSeat }),
       },
     })
       .then((r) => {
-        const kind = adminScope === "entity" ? "Entity admin" : "Location admin";
+        const kind = loginRoleLabel(
+          membershipRoleForPasswordSeat({ scope: adminScope, seat: adminSeat }),
+          adminScope === "entity" ? adminEntity : null,
+        );
         setNotice(
           `${kind} added. They sign in at ${loginUrl} with ${adminEmail} — never PIN, never platform CRM. Temporary password: ${r.tempPassword}${
             r.forceChange ? " — they must change it on first login." : ""
@@ -157,11 +163,11 @@ export function TenantUsersPanel({
         onSubmit={addAdmin}
       >
         <p className="text-sm font-medium">
-          {adminScope === "entity" ? "Add entity admin" : "Add location admin"}
+          Add password login
         </p>
         <p className="text-xs text-muted-foreground">
-          Email and temporary password. After login they land on that dashboard — not
-          a PIN pad.
+          Email and temporary password. After login they land on that role’s dashboard
+          — never a PIN pad.
         </p>
         <Field label="Scope">
           <SelectField
@@ -176,7 +182,19 @@ export function TenantUsersPanel({
             <option value="entity">Entity admin (one selling entity)</option>
           </SelectField>
         </Field>
-        {adminScope === "entity" && (
+        <Field label="Seat">
+          <SelectField
+            value={adminSeat}
+            onChange={(v) =>
+              setAdminSeat(v === "manager" || v === "accountant" ? v : "owner")
+            }
+          >
+            <option value="owner">{adminScope === "entity" ? "Entity owner" : "Owner"}</option>
+            <option value="manager">{adminScope === "entity" ? "Entity manager" : "Manager"}</option>
+            <option value="accountant">Accountant</option>
+          </SelectField>
+        </Field>
+        {adminScope === "entity" && adminSeat !== "accountant" && (
           <Field label="Selling entity" hint="Required. They only manage this brand.">
             <SelectField value={adminEntity} onChange={setAdminEntity}>
               <option value="">Choose entity</option>
@@ -231,14 +249,10 @@ export function TenantUsersPanel({
             busy ||
             !adminName ||
             !adminEmail ||
-            (adminScope === "entity" && !adminEntity)
+            (adminScope === "entity" && adminSeat !== "accountant" && !adminEntity)
           }
         >
-          {busy
-            ? "Saving…"
-            : adminScope === "entity"
-              ? "Add entity admin"
-              : "Add location admin"}
+          {busy ? "Saving…" : "Add password login"}
         </Button>
       </form>
 

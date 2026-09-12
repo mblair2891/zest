@@ -8,7 +8,7 @@ import { formatCurrency } from "@/lib/utils";
 import { isHappyHour, printedItemPriceCents } from "@/lib/pos/calculations";
 import { SetupAssistButton } from "@/components/assist/SetupAssistDialog";
 import { GuideLearnLink } from "@/components/guide/GuideLearnLink";
-import { canEditMenu, canViewMenu, isHostPrivileged } from "@/lib/access/entity-grants";
+import { canEditMenu, canViewMenu, entityLoginScope, isHostPrivileged } from "@/lib/access/entity-grants";
 import { saveMenuItemFn } from "@/lib/access/api";
 import { isProspectDemo } from "@/lib/demo/session";
 import { useSaasStore } from "@/lib/pos/saas-store";
@@ -33,7 +33,7 @@ export function MenuAdminView() {
   const host = isHostPrivileged(emp);
 
   const menuItems = menuItemsAll.filter((m) => canViewMenu(emp, grants, m.vendorId));
-  const ownVendorId = emp?.role === "vendor_operator" ? emp.operatorId : undefined;
+  const ownVendorId = entityLoginScope(emp) ?? undefined;
   const canCreate = host || Boolean(ownVendorId && canEditMenu(emp, grants, ownVendorId));
 
   const [name, setName] = useState("");

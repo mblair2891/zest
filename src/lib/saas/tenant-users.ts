@@ -87,16 +87,27 @@ export function parseTenantFloorRole(raw: string): EmployeeRole {
 }
 
 export function loginRoleLabel(role: string, operatorId?: string | null): string {
+  if (role === "accountant") return "Accountant";
   if (role === "vendor" || role === "entity_admin" || role === "vendor_operator") {
-    return "Entity admin";
+    return "Entity owner";
   }
-  if ((role === "owner" || role === "venue_owner" || role === "manager") && operatorId) {
-    return "Entity admin";
-  }
+  if ((role === "owner" || role === "venue_owner") && operatorId) return "Entity owner";
+  if (role === "manager" && operatorId) return "Entity manager";
+  if (role === "manager") return "Location manager";
   if (role === "owner" || role === "venue_owner") return "Location admin";
   if (role === "platform_admin") return "Platform Admin";
   if (!role) return "Staff";
   return role.replaceAll("_", " ");
+}
+
+export function membershipRoleForPasswordSeat(opts: {
+  scope: TenantAdminScope;
+  seat: "owner" | "manager" | "accountant";
+}): MembershipRole {
+  if (opts.seat === "accountant") return "accountant";
+  if (opts.scope === "entity" && opts.seat === "owner") return ENTITY_ADMIN_ROLE;
+  if (opts.seat === "manager") return "manager";
+  return VENUE_OWNER_ROLE;
 }
 
 export function floorRoleLabel(role: string): string {

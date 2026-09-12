@@ -85,7 +85,7 @@ export function PlatformApp({
   );
   const { user, isPending } = useCurrentUserState();
   const [surface, setSurface] = useState<PlatformSurface | "console">(
-    () => initialSurface ?? "crm",
+    () => initialSurface ?? "home",
   );
   const [adminNav, setAdminNav] = useState(false);
   const userPickedSurface = useRef(Boolean(initialSurface));
@@ -136,7 +136,7 @@ export function PlatformApp({
         const list = await listTenantsFn();
         setTenants(list);
         if (!userPickedSurface.current && list.length === 0) {
-          setSurface("crm");
+          setSurface("home");
         }
       } catch {
         setTenants([]);
@@ -342,7 +342,7 @@ export function PlatformApp({
         </div>
         {adminNav && (
           <span className="hidden text-xs text-muted-foreground sm:inline">
-            CRM · pipeline · tenants
+            Dashboard · CRM · tenants
           </span>
         )}
         <ReplayWorkflowButton className="hidden md:inline-flex" />

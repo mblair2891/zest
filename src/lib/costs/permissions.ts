@@ -1,5 +1,5 @@
 import type { Employee, EmployeeRole } from "@/lib/pos/types";
-import { HOST_SCOPE } from "@/lib/access/entity-grants";
+import { HOST_SCOPE, entityLoginScope } from "@/lib/access/entity-grants";
 
 export type CostPerm =
   | "invoice:post"
@@ -59,6 +59,8 @@ export function canCost(
 
 export function costEntityScope(emp: Employee | null | undefined): string | null {
   if (!emp) return null;
+  const scoped = entityLoginScope(emp);
+  if (scoped) return scoped;
   if (emp.role === "owner" || emp.role === "manager" || emp.role === "accountant") {
     return null;
   }

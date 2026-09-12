@@ -160,8 +160,15 @@ function DashboardInner() {
         <PlatformTenantVenue
           orgId={loc.orgId}
           locId={loc.id}
-          audience={loc.operatorId ? "entity" : "owner"}
+          audience={
+            loc.role === "accountant"
+              ? "accountant"
+              : loc.operatorId
+                ? "entity"
+                : "owner"
+          }
           operatorId={loc.operatorId ?? undefined}
+          membershipRole={loc.role}
         />
       </>
     );

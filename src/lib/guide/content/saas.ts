@@ -187,8 +187,9 @@ export const SAAS_TOPICS: GuideTopic[] = [
       ),
       ul(
         "Platform Admin — tenants, pipeline, support. Not a restaurant owner. There is only one platform Admin; tenant Users cannot mint another.",
-        "Location admin (venue owner) — email and password at app.summex.app/login. On host + tenants: full access to every tenant’s ops (Devices, floor, all menus, reports, costs, labor, payments split, grants). On a shared venue: venue admin is not a landlord merchant — Devices, floor, QR, printers, Publish. Never CRM, pipeline, or other tenants.",
-        "Entity admin — email and password at app.summex.app/login, scoped to one selling entity. Dashboard: menu, recipes, costs/invoices, schedule/payroll export, reports, 86, staff PINs for that entity. Cannot edit the other entity’s menu, payout, or labor. Reports and labor % use owned lines.",
+        "Location admin / host owner — email and password at app.summex.app/login. Dashboard tiles for that role. Host + tenants: venue health, all entities, Devices, Publish, combined and per-entity reports. Shared venue: the same minus host-merchant chrome.",
+        "Entity owner vs entity manager — both password logins for one selling entity. Owner: sales, labor %, 86, menu, invoices, schedule, payout, and that brand’s payments. Manager: the same ops plus floor from back office; no billing.",
+        "Accountant — reports, hours export, gift liability. No Devices. No 86.",
         "Manager — users, devices, day-to-day; not SaaS billing.",
         "Staff / vendor PIN — limited location or stall tools on a station.",
         "PIN roles: Server, Bartender, Host (stand), Kitchen, Busser, Cashier. Floor staff can be added from Tenants → Users with name, PIN, role, and home entity. Password users never use a PIN to open the dashboard.",

@@ -18,6 +18,7 @@ import { isFourDigitPin } from "@/lib/pos/pin";
 import { setStaffPinFn } from "@/lib/labor/api";
 import { isProspectDemo } from "@/lib/demo/session";
 import { useSaasStore } from "@/lib/pos/saas-store";
+import { entityLoginScope } from "@/lib/access/entity-grants";
 
 export function EmployeesView() {
   const employees = usePosStore((s) => s.employees);
@@ -30,8 +31,7 @@ export function EmployeesView() {
   const revokeExtraTable = usePosStore((s) => s.revokeExtraTable);
   const settings = usePosStore((s) => s.settings);
   const current = employees.find((e) => e.id === currentId) ?? null;
-  const operatorScope =
-    current?.role === "vendor_operator" ? current.operatorId ?? null : null;
+  const operatorScope = entityLoginScope(current);
   const visibleEmployees = operatorScope
     ? employees.filter((e) => e.operatorId === operatorScope || e.id === current?.id)
     : employees;

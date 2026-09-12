@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { usePosStore } from "@/lib/pos/store";
+import { entityLoginScope } from "@/lib/access/entity-grants";
 import { LEDGER_TYPES, ledgerToCsv, type LedgerEntryType } from "@/lib/pos/ledger";
 import { formatCurrency, formatDateTime } from "@/lib/utils";
 import { GuideLearnLink } from "@/components/guide/GuideLearnLink";
@@ -11,7 +12,7 @@ export function LedgerView() {
   const entries = usePosStore((s) => s.ledgerEntries ?? []);
   const vendors = usePosStore((s) => s.vendors);
   const emp = usePosStore((s) => s.employees.find((e) => e.id === s.currentEmployeeId));
-  const lockedOp = emp?.role === "vendor_operator" ? emp.operatorId ?? null : null;
+  const lockedOp = entityLoginScope(emp);
   const [type, setType] = useState<LedgerEntryType | "all">("all");
   const [operatorId, setOperatorId] = useState<string>(lockedOp || "all");
   const [from, setFrom] = useState("");

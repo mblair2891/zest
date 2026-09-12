@@ -214,6 +214,7 @@ export async function addLocationAdmin(
     tempPassword?: string;
     forceChange?: boolean;
     operatorId?: string | null;
+    role?: string;
   },
 ): Promise<{ userId: string; username: string; tempPassword: string; forceChange: boolean }> {
   await requirePlatformAdmin(actorId);
@@ -243,7 +244,23 @@ export async function addLocationAdmin(
     `;
     if (!op[0]) throw new Error("Selling entity not found on this venue.");
   }
-  const memRole = entityId ? ENTITY_ADMIN_ROLE : VENUE_OWNER_ROLE;
+  let memRole: import("./types").MembershipRole = entityId
+    ? ENTITY_ADMIN_ROLE
+    : VENUE_OWNER_ROLE;
+  if (input.role) {
+    try {
+      memRole = parseTenantLoginRole(input.role);
+    } catch {
+      /* keep derived role */
+    }
+  }
+  if (memRole === "accountant") {
+    /* venue or entity accountant */
+  } else if (entityId && memRole === VENUE_OWNER_ROLE) {
+    memRole = ENTITY_ADMIN_ROLE;
+  } else if (!entityId && memRole === ENTITY_ADMIN_ROLE) {
+    memRole = VENUE_OWNER_ROLE;
+  }
   const byEmail = await sql<{ id: string }>`
     select id from "user" where lower(email) = ${email} limit 1
   `;
