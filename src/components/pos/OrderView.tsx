@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { useStationLayout } from "@/lib/ui/station-layout";
 import {
   Pause,
   Printer,
@@ -116,6 +117,8 @@ export function OrderView() {
   const [vendorFilter, setVendorFilter] = useState<string | null>(null);
   const [payQrOpen, setPayQrOpen] = useState(false);
   const [opsOpen, setOpsOpen] = useState(false);
+  const [checkOpen, setCheckOpen] = useState(false);
+  const layout = useStationLayout();
   const emp = usePosStore((s) => s.employees.find((e) => e.id === s.currentEmployeeId));
 
   const happy = isHappyHour(settings);
@@ -153,15 +156,18 @@ export function OrderView() {
         <p className="max-w-sm text-sm text-muted-foreground">
           Open a to-go check, bar tab, or an existing check below.
         </p>
-        <div className="flex flex-wrap justify-center gap-2">
+        <div className="grid w-full max-w-sm grid-cols-1 gap-3 sm:grid-cols-2">
           <Button
+            size="lg"
+            className="station-touch h-14 text-base"
             variant="outline"
             onClick={() => usePosStore.getState().openTakeout("To-go")}
           >
             To-go
           </Button>
           <Button
-            variant="outline"
+            size="lg"
+            className="station-touch h-14 text-base"
             onClick={() => usePosStore.getState().openBarTab("Bar")}
           >
             Bar tab
@@ -180,7 +186,7 @@ export function OrderView() {
                   key={o.id}
                   type="button"
                   onClick={() => setActiveOrder(o.id)}
-                  className="flex w-full items-center justify-between rounded-xl border border-border bg-surface px-3 py-2 text-left text-sm hover:border-border-strong"
+                  className="station-touch flex min-h-12 w-full items-center justify-between rounded-xl border border-border bg-surface px-3 py-2 text-left text-sm hover:border-border-strong"
                 >
                   <span>
                     #{o.number} {t ? `T${t.label}` : o.tabName ?? o.type}
@@ -325,18 +331,31 @@ export function OrderView() {
     setMgrOpen(true);
   };
 
-  return (
-    <div className="flex h-full min-h-0 flex-col lg:flex-row">
-      <aside className="flex max-h-[45vh] w-full shrink-0 flex-col border-b border-border bg-surface lg:max-h-none lg:w-[22rem] lg:border-b-0 lg:border-r xl:w-[26rem]">
+  const checkOverlay = !layout.twoCol;
+
+  const checkPane = (
+      <aside
+        className={cn(
+          "flex min-h-0 flex-col bg-surface",
+          checkOverlay
+            ? "h-full w-full"
+            : "h-full w-[min(22rem,40%)] shrink-0 border-r border-border",
+        )}
+      >
         <div className="flex items-center gap-2 border-b border-border px-3 py-2">
           <Button
             size="icon"
             variant="ghost"
+            className="station-touch"
             onClick={() => {
+              if (checkOverlay) {
+                setCheckOpen(false);
+                return;
+              }
               setActiveOrder(null);
               setView("order");
             }}
-            aria-label="Close check"
+            aria-label={checkOverlay ? "Hide check" : "Close check"}
           >
             <ChevronLeft className="h-4 w-4" />
           </Button>
@@ -362,6 +381,7 @@ export function OrderView() {
           <Button
             size="sm"
             variant={activeSeat === null ? "default" : "outline"}
+            className="station-touch"
             onClick={() => setActiveSeat(null)}
           >
             Shared
@@ -372,7 +392,7 @@ export function OrderView() {
               size="sm"
               variant={activeSeat === n ? "default" : "outline"}
               onClick={() => setActiveSeat(n)}
-              className="tabular"
+              className="station-touch tabular"
             >
               S{n}
             </Button>
@@ -552,10 +572,11 @@ export function OrderView() {
         {gateError && (
           <p className="px-3 py-1 text-xs text-danger">{gateError}</p>
         )}
-        <div className="grid grid-cols-4 gap-1 border-t border-border p-2">
+        <div className="grid grid-cols-2 gap-2 border-t border-border p-2 sm:grid-cols-4">
           <Button
             size="sm"
             variant="outline"
+            className="station-touch"
             disabled={!selectedLineId || frozen}
             onClick={askVoid}
           >
@@ -565,6 +586,7 @@ export function OrderView() {
           <Button
             size="sm"
             variant="outline"
+            className="station-touch"
             disabled={!selectedLineId || frozen}
             onClick={() => {
               setMgrAction("comp");
@@ -577,6 +599,7 @@ export function OrderView() {
           <Button
             size="sm"
             variant="outline"
+            className="station-touch"
             disabled={!selectedLineId}
             onClick={() =>
               selectedLineId &&
@@ -592,6 +615,7 @@ export function OrderView() {
           <Button
             size="sm"
             variant="outline"
+            className="station-touch"
             disabled={frozen}
             onClick={() => {
               if (discountNeedsManager(order, lp) && !canAuthorizeGate("discount", 0)) {
@@ -607,9 +631,10 @@ export function OrderView() {
           </Button>
         </div>
 
-        <div className="grid grid-cols-2 gap-1.5 border-t border-border p-2 sm:grid-cols-4">
+        <div className="grid grid-cols-2 gap-2 border-t border-border p-2">
           <Button
             variant="outline"
+            className="station-touch"
             onClick={() => {
               setNoteDraft(order.note ?? "");
               setNoteOpen(true);
@@ -619,13 +644,14 @@ export function OrderView() {
             Note
           </Button>
           {canEmployee(emp, "checks:mutate") && (
-            <Button variant="outline" onClick={() => setOpsOpen(true)}>
+            <Button variant="outline" className="station-touch" onClick={() => setOpsOpen(true)}>
               <Split className="h-4 w-4" />
               Split / move
             </Button>
           )}
           <Button
             variant="outline"
+            className="station-touch"
             onClick={() => {
               printCheck();
               if (table) setPayQrOpen(true);
@@ -634,13 +660,13 @@ export function OrderView() {
             <Printer className="h-4 w-4" />
             Check
           </Button>
-          <Button disabled={!unsent} onClick={() => sendOrder()}>
+          <Button className="station-touch" disabled={!unsent} onClick={() => sendOrder()}>
             <Send className="h-4 w-4" />
             Send
           </Button>
           {canEmployee(emp, "payments:take") && !odsNoPay && (
           <Button
-            className="col-span-full"
+            className="station-touch col-span-full min-h-12"
             size="lg"
             disabled={
               order.status !== "open" || !totals || totals.itemCount === 0
@@ -659,6 +685,16 @@ export function OrderView() {
           )}
         </div>
       </aside>
+  );
+
+  return (
+    <div
+      className={cn(
+        "relative flex h-full min-h-0",
+        checkOverlay ? "flex-col" : "flex-row",
+      )}
+    >
+      {!checkOverlay ? checkPane : null}
 
       <section className="flex min-h-0 min-w-0 flex-1 flex-col bg-bg">
         {orderLocked && table && (
@@ -742,7 +778,12 @@ export function OrderView() {
         </div>
 
         <div className="min-h-0 flex-1 overflow-y-auto p-2">
-          <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 xl:grid-cols-4">
+          <div
+            className={cn(
+              "grid gap-2",
+              checkOverlay ? "grid-cols-2" : "grid-cols-2 sm:grid-cols-3 xl:grid-cols-4",
+            )}
+          >
             {menuItems.length === 0 && (
               <div className="rounded-2xl border border-dashed border-border bg-surface p-5 text-center">
                 <p className="text-sm font-semibold">No menu yet</p>
@@ -799,6 +840,57 @@ export function OrderView() {
           </div>
         </div>
       </section>
+
+      {checkOverlay && (
+        <div className="grid grid-cols-3 gap-2 border-t border-border bg-surface p-2 safe-bottom">
+          <Button
+            size="lg"
+            variant="outline"
+            className="station-touch min-h-12"
+            onClick={() => setCheckOpen(true)}
+          >
+            Check
+            {order.lines.filter((l) => !l.voided).length > 0
+              ? ` · ${order.lines.filter((l) => !l.voided).length}`
+              : ""}
+          </Button>
+          <Button
+            size="lg"
+            className="station-touch min-h-12"
+            disabled={!unsent}
+            onClick={() => sendOrder()}
+          >
+            <Send className="h-4 w-4" />
+            Send
+          </Button>
+          {canEmployee(emp, "payments:take") && !odsNoPay ? (
+            <Button
+              size="lg"
+              className="station-touch min-h-12"
+              disabled={order.status !== "open" || !totals || totals.itemCount === 0}
+              onClick={() => setPayOpen(true)}
+            >
+              <CreditCard className="h-4 w-4" />
+              Pay
+            </Button>
+          ) : (
+            <Button
+              size="lg"
+              variant="outline"
+              className="station-touch min-h-12"
+              onClick={() => {
+                setActiveOrder(null);
+                setView("order");
+              }}
+            >
+              Close
+            </Button>
+          )}
+        </div>
+      )}
+      {checkOverlay && checkOpen && (
+        <div className="absolute inset-0 z-20 flex flex-col bg-surface">{checkPane}</div>
+      )}
 
       <ModifierDialog
         open={modOpen}

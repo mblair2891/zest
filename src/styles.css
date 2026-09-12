@@ -141,6 +141,22 @@
   }
 }
 
+/* Handheld / short station: large taps. Never shrink type to fit a dashboard. */
+[data-station-layout="handheld"] .kds-large-touch button,
+[data-station-layout="tablet"] .kds-large-touch button {
+  min-height: 3rem;
+}
+
+[data-station-layout="handheld"] .station-touch {
+  min-height: 3rem;
+  min-width: 3rem;
+}
+
+[data-station-layout="handheld"] {
+  /* Keep body type readable on an 8" portrait. Manager views scroll instead. */
+  font-size: 16px;
+}
+
 /* Public marketing landing — scoped so POS keeps the cream product chrome. */
 .mkt {
   --color-bg: #0a0a0a;

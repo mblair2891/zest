@@ -81,7 +81,7 @@ export const ROLE_GUIDE_TOPICS: GuideTopic[] = [
         "Help only explains seating, waitlist, and to-go — not Devices, Publish, or ODS bump.",
       ),
       steps(
-        "PIN in on a host station. Home is the host stand.",
+        "PIN in on a host station. Home is the host stand. Floor and To-go are two large buttons — not a dense toolbar.",
         "Seat from the floor map. Check in waitlist and reservations.",
         "Open to-go from Takeout. Pay if the house allows host tenders.",
       ),
@@ -107,7 +107,7 @@ export const ROLE_GUIDE_TOPICS: GuideTopic[] = [
         "Peer venue: you can sell both brands on one check. You cannot edit the other entity’s menu or schedule.",
       ),
       steps(
-        "PIN in. Home is Floor or Order — not a list of every module.",
+        "PIN in. Home is Floor or Order — not a list of every module. On an 8\" handheld the menu is full width; tap Check for the slide-over.",
         "Open a table in your section. Add food and drink to one check. Send.",
         "Pay when the house allows. Close your own till at end of shift.",
       ),

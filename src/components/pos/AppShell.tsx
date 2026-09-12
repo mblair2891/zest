@@ -77,6 +77,7 @@ import { StaffingWatcher } from "./StaffingWatcher";
 import { useStationSessionStore } from "@/lib/pos/station-session";
 import { canChangeDevice, stationKindLabel, stationsAllowedForEmployee } from "@/lib/pos/station-access";
 import { viewForDevicePin } from "@/lib/access/pin-role";
+import { useStationLayout } from "@/lib/ui/station-layout";
 import { readStationDeviceRole } from "@/lib/pos/device-roles";
 import { EndShiftFlow } from "./EndShiftFlow";
 import { ClockInAfterPinDialog } from "./ClockInAfterPinDialog";
@@ -217,6 +218,7 @@ export function AppShell() {
   const stationAssignment = useStationSessionStore((s) => s.assignment);
   const [panePick, setPanePick] = useState<null | "a" | "b">(null);
   const [closeoutOpen, setCloseoutOpen] = useState(false);
+  const stationLayout = useStationLayout();
   const tenantLocationId = usePosStore((s) => s.tenantLocationId);
   const kdsMode =
     isProspectDemo() &&
@@ -430,9 +432,22 @@ export function AppShell() {
     ? "pt-[calc(var(--grok-banner-h,0px)+3.25rem)]"
     : "pt-[var(--grok-banner-h,0px)]";
 
+  const floorChrome =
+    Boolean(urlStation) ||
+    splitEnabled ||
+    safeView === "order" ||
+    safeView === "floor" ||
+    safeView === "kitchen" ||
+    safeView === "bar" ||
+    safeView === "waitlist" ||
+    safeView === "takeout";
+
   if (kdsMode) {
     return (
-      <div className={cn("flex h-[100dvh] flex-col bg-bg text-foreground", shellPad)}>
+      <div
+        className={cn("flex h-[100dvh] flex-col bg-bg text-foreground", shellPad)}
+        data-station-layout={stationLayout.form}
+      >
         <LoginOnboardingHost />
         <TrainingBanner />
         <header className="flex h-14 shrink-0 items-center gap-2 border-b border-border bg-surface px-3">
@@ -467,7 +482,10 @@ export function AppShell() {
   }
 
   return (
-    <div className={cn("relative flex h-[100dvh] flex-col bg-bg text-foreground", shellPad)}>
+    <div
+      className={cn("relative flex h-[100dvh] flex-col bg-bg text-foreground", shellPad)}
+      data-station-layout={stationLayout.form}
+    >
       <LoginOnboardingHost />
       <LifecycleWatcher />
       <AiReportWatcher />
@@ -626,8 +644,8 @@ export function AppShell() {
       <TillTransferBanner />
 
       <div className="flex min-h-0 flex-1">
-        {!urlStation && (
-        <nav className="hidden h-full w-[11.5rem] shrink-0 flex-col gap-0.5 overflow-y-auto border-r border-border bg-surface p-2 lg:flex xl:w-52">
+        {!urlStation && stationLayout.counter && (
+        <nav className="flex h-full w-[11.5rem] shrink-0 flex-col gap-0.5 overflow-y-auto border-r border-border bg-surface p-2 xl:w-52">
           <p className="mb-1 px-2 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
             {ROLE_LABEL[role]} menu
           </p>
@@ -750,7 +768,13 @@ export function AppShell() {
             />
           </div>
         ) : (
-        <main className="min-h-0 min-w-0 flex-1 overflow-hidden" data-demo={safeView}>
+        <main
+          className={cn(
+            "min-h-0 min-w-0 flex-1",
+            floorChrome ? "overflow-hidden" : "overflow-y-auto overflow-x-auto",
+          )}
+          data-demo={safeView}
+        >
           {urlStation &&
           emp &&
           canAccessViewForEmployee(emp, viewForDevicePin(urlStation, emp.role)) ? (
@@ -810,8 +834,8 @@ export function AppShell() {
         )}
       </div>
 
-      {!urlStation && (
-      <nav className="flex shrink-0 gap-0.5 overflow-x-auto border-t border-border bg-surface px-1 py-1 safe-bottom md:hidden">
+      {!urlStation && !stationLayout.counter && (
+      <nav className="flex shrink-0 gap-0.5 overflow-x-auto border-t border-border bg-surface px-1 py-1 safe-bottom">
         {mobileItems.map((item) => {
           const Icon = item.icon;
           const reportsLocked = item.id === "reports" && emp && reportsBlockedForClose(emp.id);
@@ -822,7 +846,7 @@ export function AppShell() {
               disabled={Boolean(reportsLocked)}
               onClick={() => requestView(item.id)}
               className={cn(
-                "flex min-w-[4.25rem] flex-1 flex-col items-center gap-0.5 rounded-lg px-1 py-1.5 text-[10px]",
+                "station-touch flex min-h-12 min-w-[4.25rem] flex-1 flex-col items-center justify-center gap-0.5 rounded-lg px-1 py-1.5 text-[11px]",
                 safeView === item.id ? "text-primary" : "text-muted-foreground",
               )}
             >
@@ -834,7 +858,7 @@ export function AppShell() {
         <button
           type="button"
           onClick={() => openManual("intro")}
-          className="flex min-w-[4.25rem] flex-1 flex-col items-center gap-0.5 rounded-lg px-1 py-1.5 text-[10px] font-semibold text-primary"
+          className="station-touch flex min-h-12 min-w-[4.25rem] flex-1 flex-col items-center justify-center gap-0.5 rounded-lg px-1 py-1.5 text-[11px] font-semibold text-primary"
         >
           <BookOpen className="h-5 w-5" />
           Guide

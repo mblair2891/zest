@@ -33,29 +33,31 @@ export function TakeoutView() {
 
   return (
     <div className="flex h-full flex-col p-3">
-      <div className="mb-4 flex items-center justify-between">
+      <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <h2 className="text-sm font-semibold">Takeout & tabs</h2>
-        <div className="flex gap-2">
+        <div className="grid grid-cols-2 gap-2 sm:flex">
           <Button
-            size="sm"
+            size="lg"
+            className="station-touch min-h-12 flex-1 text-base"
             variant="outline"
             onClick={() => {
               setMode("tab");
               setOpen(true);
             }}
           >
-            <Plus className="h-3.5 w-3.5" />
+            <Plus className="h-4 w-4" />
             Bar tab
           </Button>
           <Button
-            size="sm"
+            size="lg"
+            className="station-touch min-h-12 flex-1 text-base"
             onClick={() => {
               setMode("takeout");
               setOpen(true);
             }}
           >
-            <Plus className="h-3.5 w-3.5" />
-            Takeout
+            <Plus className="h-4 w-4" />
+            To-go
           </Button>
         </div>
       </div>

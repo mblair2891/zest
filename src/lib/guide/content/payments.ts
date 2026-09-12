@@ -59,7 +59,7 @@ export const PAYMENT_TOPICS: GuideTopic[] = [
         "The check stays open until the balance is zero. Partial tenders are how a table splits cash and card without two checks.",
       ),
       steps(
-        "On the check, tap Pay. Choose card (Quantum Payments), cash, or gift card.",
+        "On the check, tap Pay. Choose card (Quantum Payments), cash, or gift card. On a handheld each tender is its own full-width row — not four icons in a strip.",
         "Card: amount (defaults to balance), tip suggestions. Sandbox may show last4 on the practice receipt. Live: present on the Quantum reader — never type PAN/CVV. One guest tender; each brand’s account is funded from the split. The printed receipt groups lines by vendor — still one document.",
         "Cash: enter tendered; change due is calculated. Cash view tracks the drawer.",
         "Gift: enter the first-party code. Redeem never calls an outside gift network. The fulfilling operator gets the merchandise; issuer liability decreases; issuer remits to the fulfiller if they differ.",

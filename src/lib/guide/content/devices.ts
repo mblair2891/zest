@@ -35,7 +35,7 @@ export const DEVICE_TOPICS: GuideTopic[] = [
         "Staff stations are Android tablets running one Play-ready app: Summex Station (`app.summex.pos`). First open is Scan QR or Enter code from Devices — never /login, never the marketing site. After pair, the PIN pad, optional lock-task. Guest QR and pay links stay on the guest’s own phone browser — not a staff station. iPad and browser POS are not a supported house setup.",
       ),
       ul(
-        "Order: handhelds + bar. PIN in, ring, send, take tenders the PIN allows.",
+        "Order: handhelds + bar. PIN in, ring, send, take tenders the PIN allows. On an 8\" portrait handheld the menu is full width; the check opens as a slide-over — not a skinny third column.",
         "ODS: kitchen tickets. Start / Bump. No pay path — cash and gift tenders are blocked on ODS.",
         "Host: floor map + to-go. Seat the room; ring takeout at the stand.",
         "A manager Change device switches among those three. PIN stays the person; the role is the screen.",
@@ -52,7 +52,48 @@ export const DEVICE_TOPICS: GuideTopic[] = [
       warn(
         "Do not send kitchen staff to /login. Do not clock anyone in from the PIN pad. Time clock is Labor. Server closeout is Cash.",
       ),
-      related("floor-pin-login", "login", "device-assignment", "station-switcher", "android-kiosk", "kds", "printers-kds", "loss-prevention"),
+      related("floor-pin-login", "login", "device-assignment", "station-switcher", "android-kiosk", "station-fit", "kds", "printers-kds", "loss-prevention"),
+    ],
+  }),
+  topic({
+    id: "station-fit",
+    chapterId: "devices",
+    title: "Handheld vs counter screens",
+    summary:
+      "Order, bar, host, and pay fit an 8\" portrait handheld. Manager dashboards scroll — they do not shrink.",
+    roles: "all",
+    keywords: [
+      "handheld",
+      "tablet",
+      "counter",
+      "portrait",
+      "landscape",
+      "touch",
+      "8 inch",
+      "layout",
+      "slide-over",
+    ],
+    openView: "order",
+    blocks: [
+      why(
+        "An 8\" Android in portrait is a different station than a 15\" counter. The same PIN and the same check — the layout must not squash into three skinny columns or shrink type to fake a laptop dashboard.",
+      ),
+      ul(
+        "Portrait handheld (typical 8\"): one column. Menu fills the screen. The check is a slide-over, not a third column. Tap targets are at least 48px.",
+        "Bar tab and To-go stay two large buttons — not a dense toolbar.",
+        "Pay: one tender per row (card, cash, gift, comp). PIN pad stays large.",
+        "Small tablet landscape: check + menu side by side. Still usable. No skinny nav column.",
+        "Counter: side menu + check + items. Manager back office on a phone scrolls. Fonts are not shrunk to fit ten columns.",
+      ),
+      steps(
+        "Hold the order handheld in portrait. Open a check. Ring items on the full-width menu. Tap Check to review, Send, or Pay.",
+        "Rotate a small tablet to landscape. Check stays beside the menu — you can still tap.",
+        "On a phone-sized owner login, open Reports or Settings and scroll. Do not pinch-zoom for tiny type.",
+      ),
+      tip(
+        "Host stand: Floor and To-go are two large buttons. Same on a handheld as on the counter.",
+      ),
+      related("device-roles", "android-kiosk", "tenders-tips", "role-server", "role-host-stand"),
     ],
   }),
   topic({
@@ -93,7 +134,7 @@ export const DEVICE_TOPICS: GuideTopic[] = [
       warn(
         "Do not put guest QR / pay on this APK. Table tents and ticket codes open in the guest’s browser.",
       ),
-      related("device-roles", "device-assignment", "floor-pin-login", "table-qr", "wifi-offline", "labor-basis"),
+      related("device-roles", "device-assignment", "station-fit", "floor-pin-login", "table-qr", "wifi-offline", "labor-basis"),
     ],
   }),
   topic({

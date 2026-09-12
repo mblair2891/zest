@@ -37,6 +37,7 @@ import { currentCashSink } from "@/lib/pos/cash-session";
 import { useStationSessionStore } from "@/lib/pos/station-session";
 import { deviceRoleFromSessionMode, parseStationQuery } from "@/lib/pos/device-roles";
 import { odsBlocksTender } from "@/lib/pos/loss-prevention";
+import { useStationLayout } from "@/lib/ui/station-layout";
 
 interface Props {
   open: boolean;
@@ -71,6 +72,7 @@ export function PaymentDialog({ open, onOpenChange }: Props) {
     }
   })();
   const odsBlocked = deviceRole === "ods";
+  const layout = useStationLayout();
 
   const [method, setMethod] = useState<PaymentMethod>(wanOnline ? "card" : "cash");
   const dual = useMemo(
@@ -343,7 +345,13 @@ export function PaymentDialog({ open, onOpenChange }: Props) {
         onOpenChange(o);
       }}
     >
-      <DialogContent className="max-w-md">
+      <DialogContent
+        className={cn(
+          layout.handheld
+            ? "h-[100dvh] w-full max-w-none translate-x-0 translate-y-0 left-0 top-0 rounded-none max-h-none"
+            : "max-w-md",
+        )}
+      >
         <DialogHeader>
           <DialogTitle className="flex items-center justify-between gap-2 pr-6">
             <span>
@@ -537,9 +545,64 @@ export function PaymentDialog({ open, onOpenChange }: Props) {
               value={method}
               onValueChange={(v) => setMethod(v as PaymentMethod)}
             >
+              {layout.handheld ? (
+                <div className="flex flex-col gap-2">
+                  <Button
+                    size="lg"
+                    className="station-touch min-h-12 w-full justify-start text-base"
+                    variant={method === "card" ? "default" : "outline"}
+                    disabled={!wanOnline}
+                    title={!wanOnline ? "Card requires connection" : undefined}
+                    onClick={() => setMethod("card")}
+                  >
+                    <CreditCard className="h-5 w-5" />
+                    Card
+                  </Button>
+                  <Button
+                    size="lg"
+                    className="station-touch min-h-12 w-full justify-start text-base"
+                    variant={method === "cash" ? "default" : "outline"}
+                    disabled={!cashAllowed || odsBlocked}
+                    title={
+                      odsBlocked
+                        ? "ODS cannot tender cash"
+                        : !cashAllowed && cashSink.type === "blocked"
+                          ? cashSink.reason
+                          : undefined
+                    }
+                    onClick={() => setMethod("cash")}
+                  >
+                    <Banknote className="h-5 w-5" />
+                    Cash
+                  </Button>
+                  {giftOk && (
+                    <Button
+                      size="lg"
+                      className="station-touch min-h-12 w-full justify-start text-base"
+                      variant={method === "gift_card" ? "default" : "outline"}
+                      disabled={odsBlocked}
+                      title={odsBlocked ? "ODS cannot tender gift" : undefined}
+                      onClick={() => setMethod("gift_card")}
+                    >
+                      <Gift className="h-5 w-5" />
+                      Gift
+                    </Button>
+                  )}
+                  <Button
+                    size="lg"
+                    className="station-touch min-h-12 w-full justify-start text-base"
+                    variant={method === "comp" ? "default" : "outline"}
+                    onClick={() => setMethod("comp")}
+                  >
+                    <Percent className="h-5 w-5" />
+                    Comp
+                  </Button>
+                </div>
+              ) : (
               <TabsList className={cn("grid w-full", giftOk ? "grid-cols-4" : "grid-cols-3")}>
                 <TabsTrigger value="card" disabled={!wanOnline} title={!wanOnline ? "Card requires connection" : undefined}>
                   <CreditCard className="h-3.5 w-3.5" />
+                  Card
                 </TabsTrigger>
                 <TabsTrigger
                   value="cash"
@@ -553,16 +616,20 @@ export function PaymentDialog({ open, onOpenChange }: Props) {
                   }
                 >
                   <Banknote className="h-3.5 w-3.5" />
+                  Cash
                 </TabsTrigger>
                 {giftOk && (
                 <TabsTrigger value="gift_card" disabled={odsBlocked} title={odsBlocked ? "ODS cannot tender gift" : undefined}>
                   <Gift className="h-3.5 w-3.5" />
+                  Gift
                 </TabsTrigger>
                 )}
                 <TabsTrigger value="comp">
                   <Percent className="h-3.5 w-3.5" />
+                  Comp
                 </TabsTrigger>
               </TabsList>
+              )}
 
               <div className="mt-4 space-y-3">
                 <div>

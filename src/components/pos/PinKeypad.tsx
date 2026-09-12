@@ -58,7 +58,7 @@ export function PinKeypad({
                 key="del"
                 type="button"
                 variant="ghost"
-                className="h-20 text-lg"
+                className="h-20 min-h-20 text-lg"
                 onClick={() => {
                   onClearError?.();
                   setPin((p) => p.slice(0, -1));
@@ -73,7 +73,7 @@ export function PinKeypad({
               key={key}
               type="button"
               variant="secondary"
-              className="h-20 text-2xl font-semibold tabular"
+              className="h-20 min-h-20 text-2xl font-semibold tabular"
               onClick={() => press(key)}
             >
               {key}

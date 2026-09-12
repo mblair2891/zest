@@ -57,6 +57,7 @@ import { SectionAccessDialog } from "./GrantTableDialog";
 import { GuideLearnLink } from "@/components/guide/GuideLearnLink";
 import { QrMark } from "./QrMark";
 import { canAccessView } from "@/lib/pos/rbac";
+import { useStationLayout } from "@/lib/ui/station-layout";
 import {
   CHECK_HOLD_LABEL,
   CHECK_HOLD_REASONS,
@@ -115,6 +116,7 @@ export function FloorView() {
   const canEdit = canEditFloorplan(emp?.role) && canAccessView(emp?.role ?? "server", "floor_editor");
   const isHostStand = emp?.role === "host";
 
+  const layout = useStationLayout();
   const [seatOpen, setSeatOpen] = useState(false);
   const [seatTarget, setSeatTarget] = useState<Table | null>(null);
   const [guests, setGuests] = useState(2);
@@ -404,8 +406,18 @@ export function FloorView() {
         </div>
       )}
 
-      <div className="flex min-h-0 flex-1 flex-col lg:flex-row">
-        <div className="relative min-h-[280px] flex-1 overflow-auto p-3">
+      <div
+        className={cn(
+          "flex min-h-0 flex-1",
+          layout.twoCol ? "flex-row" : "flex-col",
+        )}
+      >
+        <div
+          className={cn(
+            "relative min-h-0 flex-1 overflow-auto p-3",
+            !layout.twoCol && "min-h-[45vh]",
+          )}
+        >
           <div className="relative mx-auto aspect-[4/3] w-full max-w-4xl rounded-2xl border border-border bg-surface">
             <div className="pointer-events-none absolute inset-x-4 top-3 flex justify-between text-[10px] uppercase tracking-wider text-muted-foreground">
               <span>{effectiveSection === "All" || effectiveSection === "Mine" ? "Dining room" : effectiveSection}</span>
@@ -564,7 +576,14 @@ export function FloorView() {
           </p>
         </div>
 
-        <aside className="w-full shrink-0 border-t border-border bg-surface lg:w-72 lg:border-l lg:border-t-0">
+        <aside
+          className={cn(
+            "w-full shrink-0 overflow-y-auto border-border bg-surface",
+            layout.twoCol
+              ? "w-72 border-l"
+              : "max-h-[42vh] border-t",
+          )}
+        >
           <div className="space-y-3 p-3">
             {isHostStand && (
               <Button

@@ -6,6 +6,19 @@ import type { GuideUpdate } from "@/lib/guide/types";
  */
 export const WHATS_NEW_ENTRIES: GuideUpdate[] = [
   {
+    id: "upd_2026_10_68_station_fit",
+    date: "2026-09-11",
+    title: "Handheld stations fit the device",
+    summary:
+      "8\" portrait: one column, large taps, check in a slide-over. Pay is one tender per row. Manager screens scroll — they do not shrink.",
+    body: "Order, bar, host, and pay detect a short or narrow screen (typical 8\" Android in portrait). The menu is full width; the check list is a slide-over, not a skinny third column. Bar tab and To-go stay two large buttons. Each tender is its own row. The PIN pad stays large. A small tablet in landscape keeps check beside menu. Counter 15\" still has the side nav. Owner reports and settings on a phone scroll; type is not shrunk to fake a ten-column dashboard.",
+    roles: ["server", "kitchen_bar", "owner_manager", "host_operator"],
+    surfaces: ["floor", "kiosk", "reports"],
+    audience: "all",
+    topicId: "station-fit",
+    tags: ["handheld", "station", "layout", "pay"],
+  },
+  {
     id: "upd_2026_10_67_pin_role_scope",
     date: "2026-09-11",
     title: "PIN sessions are role-scoped",
