@@ -19,6 +19,7 @@ import { Route as DashboardRouteImport } from './routes/dashboard'
 import { Route as DemoRouteImport } from './routes/demo'
 import { Route as FeaturesRouteImport } from './routes/features'
 import { Route as GetPricingRouteImport } from './routes/get-pricing'
+import { Route as GiftRouteImport } from './routes/gift'
 import { Route as GuideRouteImport } from './routes/guide'
 import { Route as KioskRouteImport } from './routes/kiosk'
 import { Route as LoginRouteImport } from './routes/login'
@@ -107,6 +108,11 @@ const FeaturesRoute = FeaturesRouteImport.update({
 const GetPricingRoute = GetPricingRouteImport.update({
   id: '/get-pricing',
   path: '/get-pricing',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const GiftRoute = GiftRouteImport.update({
+  id: '/gift',
+  path: '/gift',
   getParentRoute: () => rootRouteImport,
 } as any)
 const GuideRoute = GuideRouteImport.update({
@@ -316,6 +322,7 @@ export interface FileRoutesByFullPath {
   '/demo': typeof DemoRouteWithChildren
   '/features': typeof FeaturesRoute
   '/get-pricing': typeof GetPricingRoute
+  '/gift': typeof GiftRoute
   '/guide': typeof GuideRoute
   '/kiosk': typeof KioskRoute
   '/login': typeof LoginRoute
@@ -366,6 +373,7 @@ export interface FileRoutesByTo {
   '/dashboard': typeof DashboardRoute
   '/features': typeof FeaturesRoute
   '/get-pricing': typeof GetPricingRoute
+  '/gift': typeof GiftRoute
   '/guide': typeof GuideRoute
   '/kiosk': typeof KioskRoute
   '/login': typeof LoginRoute
@@ -418,6 +426,7 @@ export interface FileRoutesById {
   '/demo': typeof DemoRouteWithChildren
   '/features': typeof FeaturesRoute
   '/get-pricing': typeof GetPricingRoute
+  '/gift': typeof GiftRoute
   '/guide': typeof GuideRoute
   '/kiosk': typeof KioskRoute
   '/login': typeof LoginRoute
@@ -471,6 +480,7 @@ export interface FileRouteTypes {
     | '/demo'
     | '/features'
     | '/get-pricing'
+    | '/gift'
     | '/guide'
     | '/kiosk'
     | '/login'
@@ -521,6 +531,7 @@ export interface FileRouteTypes {
     | '/dashboard'
     | '/features'
     | '/get-pricing'
+    | '/gift'
     | '/guide'
     | '/kiosk'
     | '/login'
@@ -572,6 +583,7 @@ export interface FileRouteTypes {
     | '/demo'
     | '/features'
     | '/get-pricing'
+    | '/gift'
     | '/guide'
     | '/kiosk'
     | '/login'
@@ -624,6 +636,7 @@ export interface RootRouteChildren {
   DemoRoute: typeof DemoRouteWithChildren
   FeaturesRoute: typeof FeaturesRoute
   GetPricingRoute: typeof GetPricingRoute
+  GiftRoute: typeof GiftRoute
   GuideRoute: typeof GuideRoute
   KioskRoute: typeof KioskRoute
   LoginRoute: typeof LoginRoute
@@ -727,6 +740,13 @@ declare module '@tanstack/react-router' {
       path: '/get-pricing'
       fullPath: '/get-pricing'
       preLoaderRoute: typeof GetPricingRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/gift': {
+      id: '/gift'
+      path: '/gift'
+      fullPath: '/gift'
+      preLoaderRoute: typeof GiftRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/guide': {
@@ -1085,6 +1105,7 @@ const rootRouteChildren: RootRouteChildren = {
   DemoRoute: DemoRouteWithChildren,
   FeaturesRoute: FeaturesRoute,
   GetPricingRoute: GetPricingRoute,
+  GiftRoute: GiftRoute,
   GuideRoute: GuideRoute,
   KioskRoute: KioskRoute,
   LoginRoute: LoginRoute,

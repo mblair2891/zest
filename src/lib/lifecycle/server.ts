@@ -102,7 +102,7 @@ async function erasePracticeOnServer(
   if (choices.gift_balances === "erase") {
     try {
       await sql.query(
-        `update gift_cards set balance_cents = 0, status = case when status = 'void' then status else 'active' end
+        `update gift_cards set balance_cents = 0, status = case when status in ('void','closed') then status else 'active' end
          where location_id = $1`,
         [locationId],
       );

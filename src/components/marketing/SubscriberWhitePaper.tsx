@@ -23,6 +23,10 @@ export function SubscriberWhitePaper() {
       <p className="mt-4 text-sm text-muted-foreground">
         summex.app · Guest cards: {PAYMENTS_BRAND} only
       </p>
+      <p className="mt-2 text-xs text-muted-foreground">
+        Revision · 12 Sep 2026 — Aligns with Operators Guide v2026.10.76. Gift
+        lookup at summex.app/gift. Spent plastic can be reused.
+      </p>
       <p className="mt-6 text-sm leading-relaxed text-muted-foreground">
         For the owner considering Summex — a single shop, a full dining room, or a
         building that more than one brand shares. How the house runs for guests
@@ -106,6 +110,12 @@ export function SubscriberWhitePaper() {
             reorder after staff open a check, pay and split. Guest UI is public —
             no staff PIN. After pay they stay on thank-you.
           </li>
+          <li>
+            <strong className="text-ivory">Gift balance, no login.</strong>{" "}
+            summex.app/gift. Full printed number, or last four plus the card PIN.
+            Current life only — load, redeem, void, date, venue, amount. No staff
+            names.
+          </li>
         </ul>
       </Section>
 
@@ -162,6 +172,10 @@ export function SubscriberWhitePaper() {
           </li>
           <li>
             Gift is a house ledger (swipe, scan, or key) — not the card processor.
+            Guests check the current balance at summex.app/gift. Spent plastic can
+            be reused: the old ledger stays in audit; the same printed number gets
+            a new card id at $0. The next load is a new issuance for the selling
+            entity.
           </li>
           <li>
             Period close is the house book for cash, any host cut, and disputes.

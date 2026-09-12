@@ -3,7 +3,7 @@
 **Powered by Quantum Reach**
 
 White paper · for owners and operators  
-**Revision · 11 Sep 2026** — Written for prospective subscribers. Aligns with Operators Guide v2026.10.75. Staff stations are Android tablets. Each location can set its own guest card rate.
+**Revision · 12 Sep 2026** — Written for prospective subscribers. Aligns with Operators Guide v2026.10.76. Staff stations are Android tablets. Guests look up gift balance at summex.app/gift. Spent plastic can be reused.
 
 summex.app  
 Guest cards: **Quantum Payments** only
@@ -51,6 +51,7 @@ The guest should not have to understand how the house is organized.
 - **Printed prices stay clean.** The card / printed amount is the menu (for example $15.00). There is not a second ugly cash menu.
 - **Cash discount, when you post one.** Cash is computed from the printed price at **this location’s guest card rate** (platform default 5.00%; the house can set 4.00% or another), then rounded **up** to a quarter (or the increment you choose). $12.00 printed at 5% becomes $11.50 cash. Quantum Payments still captures the printed amount on card. You own local posting rules; Summex does not rewrite legal copy per state.
 - **QR, as you set it.** Table tents, reorder after staff open a check, pay and split, a pay code on the ticket. Modes combine. Guest UI is public — no staff PIN. After pay they stay on thank-you.
+- **Gift balance, no login.** summex.app/gift. Full printed number, or last four plus the card PIN. Current life only — load, redeem, void, date, venue, amount. No staff names.
 
 The guest never sees operator splits, device roles, or how the house is paid.
 
@@ -83,7 +84,7 @@ A named building can hold two independent operators — a bar and a kitchen is t
 - **Host + tenants:** the host owner/manager signs in with email and password and has full access to every tenant’s ops — devices, floor, menus, reports, costs, labor, payments split, grants. A tenant entity login sees only that brand.
 - **Shared venue (peers):** no host role. Venue admin is not a landlord merchant. Each operator owns their menu, tickets, recipes, staff, and schedule — and can sign in as that entity’s admin without a fake host merchant.
 - The guest still pays **one check**. Capture **splits** to each brand’s Quantum Payments merchant by who sold the line.
-- Gift is a **house ledger** (swipe, scan, or key) — not the card processor. Load on cash or card. Redeem inside Summex. If one brand issues and another fulfills, settlement moves between them.
+- Gift is a **house ledger** (swipe, scan, or key) — not the card processor. Load on cash or card. Redeem inside Summex. If one brand issues and another fulfills, settlement moves between them. Guests check the current balance at **summex.app/gift**. When a card is spent, a manager or venue admin can **reuse the plastic**: close the old ledger (kept in audit), same printed number, new card id at $0. The next load is a new issuance for the selling entity.
 - Period close is the house book for cash, any host cut, and disputes. Live bank payout of leftovers is not claimed here.
 
 Untagged lines fail closed. The building does not become a third merchant.

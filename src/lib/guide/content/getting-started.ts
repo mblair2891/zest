@@ -163,7 +163,7 @@ export const GETTING_STARTED_TOPICS: GuideTopic[] = [
         "Summex is one application with two working surfaces. Mixing them up is the most common new-user stall.",
       ),
       ul(
-        "Marketing (summex.app / www) — Get a price, Guide, Demo, White paper, Contact, Terms, Privacy. No Log in, Go to console, Open POS, Replay workflow, dashboard, or tenant chrome. Operators type https://app.summex.app/login themselves. White paper is public architecture, not SaaS admin docs. Staff PIN pads do not show Terms or Privacy.",
+        "Marketing (summex.app / www) — Get a price, Guide, Demo, White paper, Contact, Terms, Privacy. Gift balance at /gift (no login, no sales chrome). No Log in, Go to console, Open POS, Replay workflow, dashboard, or tenant chrome. Operators type https://app.summex.app/login themselves. White paper is public architecture, not SaaS admin docs. Staff PIN pads do not show Terms or Privacy.",
         "Console (app.summex.app) — /login (username/password only, no Google/X), /dashboard, CRM, pipeline, tenants, onboarding, owner venue settings. Admin → platform dashboard. Venue owner → that house’s settings (not the PIN pad). PIN is Summex Station after pair, or /station/:role.",
         "POS — floor, order, ODS, cash, settlement, guests, after a location is open from a signed-in session.",
         "Operators Guide — public page at /guide (operations). Overlay inside the signed-in product. Exit on the public page returns to marketing home.",

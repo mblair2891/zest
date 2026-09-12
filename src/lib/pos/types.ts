@@ -569,6 +569,8 @@ export interface GiftCard {
   expiresAt?: number;
   breakageProcessedAt?: number;
   ledger?: GiftCardLedgerEntry[];
+  replacesId?: string;
+  replacedById?: string;
 }
 
 export interface GiftCardLedgerEntry {
@@ -596,7 +598,7 @@ export interface GiftTransfer {
   reason: GiftTransferReason;
 }
 
-export type GiftCardStatus = "active" | "frozen" | "void" | "zeroed";
+export type GiftCardStatus = "active" | "frozen" | "void" | "zeroed" | "closed";
 export type GiftCardSource =
   | "summex"
   | "import_square"

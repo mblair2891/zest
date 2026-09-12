@@ -65,8 +65,10 @@ function PrivacyPage() {
           <strong className="text-foreground">Guests.</strong> Only what the
           venue collects through the product: waitlist name, phone, and party
           size; QR order and pay for an open check; reservation last name
-          plus a short check-in code. We do not sell guest lists. We do not
-          build an advertising profile of diners.
+          plus a short check-in code; gift-card balance lookup at /gift (card
+          number or last four plus PIN — current balance and activity, no staff
+          names). We do not sell guest lists. We do not build an advertising
+          profile of diners.
         </p>
         <p>
           <strong className="text-foreground">Payments.</strong> PAN and CVV

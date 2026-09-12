@@ -6,6 +6,19 @@ import type { GuideUpdate } from "@/lib/guide/types";
  */
 export const WHATS_NEW_ENTRIES: GuideUpdate[] = [
   {
+    id: "upd_2026_10_76_gift_lookup_reactivate",
+    date: "2026-09-12",
+    title: "Guests look up gift balance; spent cards reuse the plastic",
+    summary:
+      "summex.app/gift — no login. Full number or last four + PIN. Manager/venue admin can close a spent life and issue a new id on the same printed number.",
+    body: "Guests open summex.app/gift (no login, no console chrome). Look up with the full card number, or last four plus the card PIN. They see the current balance and load / redeem / void activity — date, venue, amount. No staff names. Lookups are rate-limited. When a card is spent, a manager or venue admin reactivates it: balance must be $0, or force with a reason. The old ledger stays in audit and is closed. Same printed number, new card id, $0, empty guest history. The next load is a new issuance for the selling entity. Guest lookup only shows this life.",
+    roles: ["owner_manager", "server", "host_operator"],
+    surfaces: ["floor"],
+    audience: "all",
+    topicId: "gift-cards",
+    tags: ["gift", "lookup", "reactivate"],
+  },
+  {
     id: "upd_2026_10_75_guest_card_rate",
     date: "2026-09-11",
     title: "Each location has its own guest card rate",

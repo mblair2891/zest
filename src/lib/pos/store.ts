@@ -189,6 +189,7 @@ import {
 	isGiftExpired,
 	resolveGiftIssuer,
 } from "./gift-issuer";
+import { canReactivateGift } from "@/lib/gift/guest-view";
 
 function nextOrderNumber(orders: any) {
 	return orders.reduce((m: any, o: any) => Math.max(m, o.number), 100) + 1;
@@ -3092,7 +3093,7 @@ const usePosStoreRaw = create<PosStore>()(persist((set, get) => {
 			}
 		}
 		const c = (code || "").trim().toUpperCase() || `SUMMEX-${Math.random().toString(36).slice(2, 6).toUpperCase()}-${Math.floor(Math.random() * 9e3 + 1e3)}`;
-		if (get().giftCards.some((g: any) => g.code === c)) return {
+		if (get().giftCards.some((g: any) => g.code === c && g.status !== "closed")) return {
 			ok: false,
 			error: "Code already exists"
 		};
@@ -3253,12 +3254,12 @@ const usePosStoreRaw = create<PosStore>()(persist((set, get) => {
 	},
 	reloadGiftCard: (code, amountCents) => {
 		const needle = (code || "").replace(/[\s-]/g, "").toUpperCase();
-		const gc = get().giftCards.find((g: any) => g.code.replace(/[\s-]/g, "").toUpperCase() === needle && g.active);
+		const gc = get().giftCards.find((g: any) => g.code.replace(/[\s-]/g, "").toUpperCase() === needle && g.active && g.status !== "closed");
 		if (!gc) return {
 			ok: false,
 			error: "Only issued or imported cards can be reloaded"
 		};
-		if (gc.status === "frozen" || gc.status === "void") return { ok: false, error: "Card is not reloadable" };
+		if (gc.status === "frozen" || gc.status === "void" || gc.status === "closed") return { ok: false, error: "Card is not reloadable" };
 		if (amountCents <= 0) return {
 			ok: false,
 			error: "Amount required"
@@ -3281,10 +3282,16 @@ const usePosStoreRaw = create<PosStore>()(persist((set, get) => {
 		const emp = get().getCurrentEmployee();
 		const before = gc.balanceCents;
 		const after = before + amountCents;
+		const fresh = (gc.originalBalanceCents ?? 0) === 0 && Boolean(gc.replacesId);
+		const issuer = fresh ? defaultGiftIssuer(emp, get().settings, get().vendors) : null;
 		set({ giftCards: get().giftCards.map((g: any) => g.id === gc.id ? {
 			...g,
 			balanceCents: after,
+			originalBalanceCents: (g.originalBalanceCents ?? 0) + amountCents,
 			status: "active",
+			...(issuer
+				? { issuerId: issuer.id, issuerKind: issuer.kind, issuerName: issuer.name }
+				: {}),
 			ledger: [...(g.ledger ?? []), {
 				at: Date.now(),
 				kind: "reload",
@@ -3298,6 +3305,50 @@ const usePosStoreRaw = create<PosStore>()(persist((set, get) => {
 		get().audit("gift_issue", `Reload ${gc.code}`, { amountCents });
 		return { ok: true };
 	},
+	reactivateGiftCard: ({ code, force, reason }) => {
+		const needle = (code || "").replace(/[\s-]/g, "").toUpperCase();
+		const gc = get().giftCards.find(
+			(g: any) =>
+				g.code.replace(/[\s-]/g, "").toUpperCase() === needle && g.status !== "closed",
+		);
+		if (!gc) return { ok: false, error: "Card not found" };
+		const gate = canReactivateGift({
+			balanceCents: gc.balanceCents,
+			status: gc.status,
+			force,
+			reason,
+		});
+		if (!gate.ok) return { ok: false, error: gate.error };
+		const now = Date.now();
+		const newId = uid("gc");
+		const next = {
+			id: newId,
+			code: gc.code,
+			balanceCents: 0,
+			originalBalanceCents: 0,
+			active: true,
+			status: "zeroed" as const,
+			source: "summex" as const,
+			issuedAt: now,
+			issuerKind: "house" as const,
+			issuerId: HOUSE_ISSUER_ID,
+			issuerName: "Pending issuance",
+			replacesId: gc.id,
+			ledger: [] as typeof gc.ledger,
+		};
+		set({
+			giftCards: [
+				...get().giftCards.map((g: any) =>
+					g.id === gc.id
+						? { ...g, status: "closed", active: false, balanceCents: 0, replacedById: newId }
+						: g,
+				),
+				next,
+			],
+		});
+		get().audit("gift_adjust", `Reactivate ${gc.code} → ${newId}`, { reason: reason || "spent" });
+		return { ok: true, card: next };
+	},
 	setGiftCardStatus: (code, status, opts) => {
 		if (
 			lpCfg(get).giftAdjustManager &&
@@ -3308,7 +3359,7 @@ const usePosStoreRaw = create<PosStore>()(persist((set, get) => {
 			return { ok: false, error: "Gift deactivate / freeze needs a manager (or a granted shift lead)." };
 		}
 		const needle = (code || "").replace(/[\s-]/g, "").toUpperCase();
-		const gc = get().giftCards.find((g: any) => g.code.replace(/[\s-]/g, "").toUpperCase() === needle);
+		const gc = get().giftCards.find((g: any) => g.code.replace(/[\s-]/g, "").toUpperCase() === needle && g.status !== "closed");
 		if (!gc) return { ok: false, error: "Only issued or imported cards" };
 		const emp = get().getCurrentEmployee();
 		const entry = {

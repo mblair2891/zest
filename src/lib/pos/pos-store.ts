@@ -365,6 +365,11 @@ export interface PosStore {
   }) => ActionResult<{ card?: GiftCard; code?: string }>;
   processGiftBreakage: () => ActionResult<{ processed?: number }>;
   reloadGiftCard: (code: string, amountCents: number) => ActionResult;
+  reactivateGiftCard: (opts: {
+    code: string;
+    force?: boolean;
+    reason?: string;
+  }) => ActionResult<{ card?: GiftCard }>;
   setGiftCardStatus: (
     code: string,
     status: GiftCardStatus,

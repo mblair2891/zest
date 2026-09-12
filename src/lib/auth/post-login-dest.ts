@@ -82,6 +82,7 @@ export function isMarketingStayPath(path: string | null | undefined): boolean {
     p === "/privacy" ||
     p === "/contact" ||
     p === "/guide" ||
+    p === "/gift" ||
     p === "/get-pricing"
   );
 }

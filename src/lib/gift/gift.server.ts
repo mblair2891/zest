@@ -4,9 +4,29 @@ import { HOST_SCOPE } from "@/lib/access/entity-grants";
 import { loadEntityWriteContext, type EntityWriteContext } from "@/lib/access/assert-entity.server";
 import { ForbiddenError } from "@/lib/saas/tenancy.server";
 import { bindTenant } from "@/lib/saas/assert-tenant.server";
-import { giftLast4, hashGiftCode, maskGiftCode, normalizeGiftCode } from "./hash";
+import {
+  generateGiftPin,
+  giftLast4,
+  hashGiftCode,
+  hashGiftPan,
+  hashGiftPin,
+  isFullGiftPan,
+  maskGiftCode,
+  normalizeGiftCode,
+  normalizeGiftPin,
+} from "./hash";
+import {
+  canReactivateGift,
+  canReactivateGiftStaff,
+  guestKindFromLedger,
+  GUEST_GIFT_NEED_MORE,
+  GUEST_GIFT_NOT_FOUND,
+  type GuestGiftLookupResult,
+} from "./guest-view";
 import type { GiftCard, GiftCardStatus, GiftTransfer } from "@/lib/pos/types";
 import type { GiftLiabilityRow } from "@/lib/pos/gift-issuer";
+
+const CLOSED = "closed";
 
 const HOST_WRITE = new Set(["owner", "manager", "platform_admin"]);
 
@@ -31,6 +51,10 @@ type CardRow = {
   expires_at_ms: number | string | null;
   breakage_processed_at_ms: number | string | null;
   notes: string | null;
+  pan_hash?: string | null;
+  pin_hash?: string | null;
+  replaces_id?: string | null;
+  replaced_by_id?: string | null;
 };
 
 type LedRow = {
@@ -77,7 +101,58 @@ function mapCard(row: CardRow): GiftCard {
     expiresAt: row.expires_at_ms == null ? undefined : n(row.expires_at_ms),
     breakageProcessedAt:
       row.breakage_processed_at_ms == null ? undefined : n(row.breakage_processed_at_ms),
+    replacesId: row.replaces_id ?? undefined,
+    replacedById: row.replaced_by_id ?? undefined,
   };
+}
+
+async function currentByHash(locationId: string, code: string): Promise<CardRow | undefined> {
+  const sql = await getSql();
+  const hash = hashGiftCode(locationId, code);
+  const rows = await sql<CardRow>`
+    select * from gift_cards
+    where location_id = ${locationId}
+      and code_hash = ${hash}
+      and status is distinct from ${CLOSED}
+    order by issued_at_ms desc
+    limit 1
+  `;
+  return rows[0];
+}
+
+async function currentById(locationId: string, id: string): Promise<CardRow | undefined> {
+  const sql = await getSql();
+  const rows = await sql<CardRow>`
+    select * from gift_cards
+    where location_id = ${locationId}
+      and id = ${id}
+      and status is distinct from ${CLOSED}
+    limit 1
+  `;
+  return rows[0];
+}
+
+async function ensurePanPin(row: CardRow, plaintext: string): Promise<string | undefined> {
+  const sql = await getSql();
+  const last4 = giftLast4(plaintext);
+  const panH = hashGiftPan(plaintext);
+  let pinPlain: string | undefined;
+  let pinH = row.pin_hash ?? null;
+  if (!pinH) {
+    pinPlain = generateGiftPin();
+    pinH = hashGiftPin(last4, pinPlain);
+  }
+  if (!row.pan_hash || !row.pin_hash) {
+    await sql`
+      update gift_cards
+      set pan_hash = coalesce(pan_hash, ${panH}),
+          pin_hash = coalesce(pin_hash, ${pinH})
+      where id = ${row.id}
+    `;
+    row.pan_hash = row.pan_hash || panH;
+    row.pin_hash = row.pin_hash || pinH;
+  }
+  return pinPlain;
 }
 
 async function ctxFor(userId: string, locationId: string, orgId?: string): Promise<EntityWriteContext> {
@@ -156,13 +231,16 @@ export async function listGiftCards(
   const rows = vendor
     ? await sql<CardRow>`
         select * from gift_cards
-        where location_id = ${ctx.locationId} and issuer_id = ${ctx.operatorId}
+        where location_id = ${ctx.locationId}
+          and issuer_id = ${ctx.operatorId}
+          and status is distinct from ${CLOSED}
         order by issued_at_ms desc
         limit 500
       `
     : await sql<CardRow>`
         select * from gift_cards
         where location_id = ${ctx.locationId}
+          and status is distinct from ${CLOSED}
         order by issued_at_ms desc
         limit 500
       `;
@@ -193,18 +271,12 @@ export async function lookupGiftCard(
   userId: string,
   locationId: string,
   code: string,
-): Promise<{ card: GiftCard; ok: true } | { ok: false; error: string }> {
+): Promise<{ card: GiftCard; ok: true; pin?: string } | { ok: false; error: string }> {
   const ctx = await ctxFor(userId, locationId);
-  const sql = await getSql();
-  const hash = hashGiftCode(ctx.locationId, code);
-  const rows = await sql<CardRow>`
-    select * from gift_cards
-    where location_id = ${ctx.locationId} and code_hash = ${hash}
-    limit 1
-  `;
-  const row = rows[0];
+  const row = await currentByHash(ctx.locationId, code);
   if (!row) return { ok: false, error: "Card not found" };
-  return { ok: true, card: mapCard(row) };
+  const pin = await ensurePanPin(row, code);
+  return { ok: true, card: mapCard(row), pin };
 }
 
 export async function issueGiftCard(
@@ -223,7 +295,7 @@ export async function issueGiftCard(
     expiresAt?: number | null;
     clientMutationId?: string;
   },
-): Promise<{ ok: true; card: GiftCard; plaintextCode: string } | { ok: false; error: string }> {
+): Promise<{ ok: true; card: GiftCard; plaintextCode: string; pin: string } | { ok: false; error: string }> {
   const ctx = await ctxFor(userId, input.locationId);
   const denied = issuerDenied(ctx, input.issuerId);
   if (denied) return { ok: false, error: denied };
@@ -260,19 +332,27 @@ export async function issueGiftCard(
   const hash = hashGiftCode(ctx.locationId, plaintext);
   const sql = await getSql();
   const dup = await sql<{ id: string }>`
-    select id from gift_cards where location_id = ${ctx.locationId} and code_hash = ${hash} limit 1
+    select id from gift_cards
+    where location_id = ${ctx.locationId}
+      and code_hash = ${hash}
+      and status is distinct from ${CLOSED}
+    limit 1
   `;
   if (dup[0]) return { ok: false, error: "Code already exists" };
   const now = Date.now();
   const id = uid("gc");
   const last4 = giftLast4(plaintext);
+  const pin = generateGiftPin();
+  const panH = hashGiftPan(plaintext);
+  const pinH = hashGiftPin(last4, pin);
   await sql`
     insert into gift_cards (
-      id, location_id, org_id, code_hash, code_last4, issuer_kind, issuer_id, issuer_name,
+      id, location_id, org_id, code_hash, code_last4, pan_hash, pin_hash,
+      issuer_kind, issuer_id, issuer_name,
       balance_cents, original_balance_cents, status, source, issued_to_name,
       sold_by_employee_id, sold_by_operator_id, issued_at_ms, expires_at_ms, client_mutation_id
     ) values (
-      ${id}, ${ctx.locationId}, ${ctx.orgId}, ${hash}, ${last4},
+      ${id}, ${ctx.locationId}, ${ctx.orgId}, ${hash}, ${last4}, ${panH}, ${pinH},
       ${input.issuerKind}, ${input.issuerId}, ${input.issuerName},
       ${input.amountCents}, ${input.amountCents}, ${"active"}, ${"summex"},
       ${input.issuedToName ?? null}, ${input.soldByEmployeeId ?? null},
@@ -312,7 +392,7 @@ export async function issueGiftCard(
     });
   }
   const card = (await lookupById(ctx.locationId, id))!;
-  return { ok: true, card: { ...card, code: plaintext }, plaintextCode: plaintext };
+  return { ok: true, card: { ...card, code: plaintext }, plaintextCode: plaintext, pin };
 }
 
 async function lookupById(locationId: string, id: string): Promise<GiftCard | null> {
@@ -339,16 +419,11 @@ export async function redeemGiftCard(
   const ctx = await ctxFor(userId, input.locationId);
   if (input.amountCents <= 0) return { ok: false, error: "Amount required" };
   const sql = await getSql();
-  const hash = hashGiftCode(ctx.locationId, input.code);
-  const rows = await sql<CardRow>`
-    select * from gift_cards
-    where location_id = ${ctx.locationId} and code_hash = ${hash}
-    limit 1
-  `;
-  const row = rows[0];
+  const row = await currentByHash(ctx.locationId, input.code);
   if (!row) return { ok: false, error: "Invalid gift card" };
   if (row.status === "frozen") return { ok: false, error: "Card is frozen" };
   if (row.status === "void") return { ok: false, error: "Card is void" };
+  await ensurePanPin(row, input.code);
   const bal = n(row.balance_cents);
   if (bal < input.amountCents) {
     return { ok: false, error: `Balance only $${(bal / 100).toFixed(2)}` };
@@ -401,20 +476,14 @@ export async function setGiftStatus(
 ): Promise<{ ok: true; card: GiftCard } | { ok: false; error: string }> {
   const ctx = await ctxFor(userId, input.locationId);
   const sql = await getSql();
-  const rows = input.cardId
-    ? await sql<CardRow>`
-        select * from gift_cards where location_id = ${ctx.locationId} and id = ${input.cardId} limit 1
-      `
-    : await sql<CardRow>`
-        select * from gift_cards
-        where location_id = ${ctx.locationId} and code_hash = ${hashGiftCode(ctx.locationId, input.code || "")}
-        limit 1
-      `;
-  const row = rows[0];
+  const row = input.cardId
+    ? await currentById(ctx.locationId, input.cardId)
+    : await currentByHash(ctx.locationId, input.code || "");
   if (!row) return { ok: false, error: "Card not found" };
   const denied = issuerDenied(ctx, row.issuer_id);
   if (denied) return { ok: false, error: denied };
   const st = input.status;
+  if (st === "closed") return { ok: false, error: "Use reactivate to close a life" };
   await sql`
     update gift_cards set status = ${st}
     where id = ${row.id} and location_id = ${ctx.locationId}
@@ -441,40 +510,51 @@ export async function reloadGiftCard(
     cardId?: string;
     amountCents: number;
     tender?: "cash" | "card";
+    issuerId?: string;
+    issuerKind?: "house" | "operator";
+    issuerName?: string;
   },
 ): Promise<{ ok: true; card: GiftCard } | { ok: false; error: string }> {
   const ctx = await ctxFor(userId, input.locationId);
   if (input.amountCents <= 0) return { ok: false, error: "Amount required" };
   const sql = await getSql();
-  const rows = input.cardId
-    ? await sql<CardRow>`
-        select * from gift_cards where location_id = ${ctx.locationId} and id = ${input.cardId} limit 1
-      `
-    : await sql<CardRow>`
-        select * from gift_cards
-        where location_id = ${ctx.locationId} and code_hash = ${hashGiftCode(ctx.locationId, input.code || "")}
-        limit 1
-      `;
-  const row = rows[0];
+  const row = input.cardId
+    ? await currentById(ctx.locationId, input.cardId)
+    : await currentByHash(ctx.locationId, input.code || "");
   if (!row) return { ok: false, error: "Card not found" };
-  const denied = issuerDenied(ctx, row.issuer_id);
-  if (denied) return { ok: false, error: denied };
+  const freshLife = n(row.original_balance_cents) === 0 && Boolean(row.replaces_id);
+  if (freshLife && input.issuerId) {
+    const deniedNew = issuerDenied(ctx, input.issuerId);
+    if (deniedNew) return { ok: false, error: deniedNew };
+  } else {
+    const denied = issuerDenied(ctx, row.issuer_id);
+    if (denied) return { ok: false, error: denied };
+  }
   if (row.status === "frozen" || row.status === "void") {
     return { ok: false, error: "Card is not reloadable" };
   }
+  if (input.code) await ensurePanPin(row, input.code);
+  const issuerId = freshLife && input.issuerId ? input.issuerId : row.issuer_id;
+  const issuerKind =
+    freshLife && input.issuerKind
+      ? input.issuerKind
+      : row.issuer_kind === "operator"
+        ? "operator"
+        : "house";
+  const issuerName = freshLife && input.issuerName ? input.issuerName : row.issuer_name;
   if ((input.tender ?? "card") === "card") {
     const { captureCardPresent } = await import("@/lib/payments/facade.server");
-    const entityId = row.issuer_kind === "operator" ? row.issuer_id : HOST_SCOPE;
+    const entityId = issuerKind === "operator" ? issuerId : HOST_SCOPE;
     const cap = await captureCardPresent(userId, {
       orgId: ctx.orgId,
       locationId: ctx.locationId,
       amountCents: input.amountCents,
-      hostBrand: row.issuer_name,
+      hostBrand: issuerName,
       entities: [
         {
           entityId,
-          kind: row.issuer_kind === "operator" ? "operator" : "host",
-          displayName: row.issuer_name,
+          kind: issuerKind === "operator" ? "operator" : "host",
+          displayName: issuerName,
           merchandiseCents: input.amountCents,
           taxCents: 0,
           serviceCents: 0,
@@ -489,8 +569,13 @@ export async function reloadGiftCard(
   }
   const next = n(row.balance_cents) + input.amountCents;
   await sql`
-    update gift_cards set balance_cents = ${next}, original_balance_cents = original_balance_cents + ${input.amountCents},
-      status = ${"active"}
+    update gift_cards set
+      balance_cents = ${next},
+      original_balance_cents = original_balance_cents + ${input.amountCents},
+      status = ${"active"},
+      issuer_id = ${issuerId},
+      issuer_kind = ${issuerKind},
+      issuer_name = ${issuerName}
     where id = ${row.id} and location_id = ${ctx.locationId}
   `;
   await writeLedger({
@@ -499,10 +584,10 @@ export async function reloadGiftCard(
     cardId: row.id,
     kind: "issue",
     amountCents: input.amountCents,
-    issuerId: row.issuer_id,
-    issuerKind: row.issuer_kind,
+    issuerId,
+    issuerKind,
     actorId: ctx.userId,
-    note: "reload",
+    note: freshLife ? "Issuer liability — new issuance" : "reload",
     at: Date.now(),
   });
   return { ok: true, card: (await lookupById(ctx.locationId, row.id))! };
@@ -544,7 +629,11 @@ export async function importGiftCards(
     }
     const hash = hashGiftCode(ctx.locationId, code);
     const existing = await sql<CardRow>`
-      select * from gift_cards where location_id = ${ctx.locationId} and code_hash = ${hash} limit 1
+      select * from gift_cards
+      where location_id = ${ctx.locationId}
+        and code_hash = ${hash}
+        and status is distinct from ${CLOSED}
+      limit 1
     `;
     if (existing[0]) {
       if (!input.overwrite) {
@@ -578,13 +667,17 @@ export async function importGiftCards(
       continue;
     }
     const id = uid("gc");
+    const last4 = giftLast4(code);
+    const pin = generateGiftPin();
     await sql`
       insert into gift_cards (
-        id, location_id, org_id, code_hash, code_last4, issuer_kind, issuer_id, issuer_name,
+        id, location_id, org_id, code_hash, code_last4, pan_hash, pin_hash,
+        issuer_kind, issuer_id, issuer_name,
         balance_cents, original_balance_cents, status, source, issued_to_name, issued_to_email,
         notes, issued_at_ms
       ) values (
-        ${id}, ${ctx.locationId}, ${ctx.orgId}, ${hash}, ${giftLast4(code)},
+        ${id}, ${ctx.locationId}, ${ctx.orgId}, ${hash}, ${last4},
+        ${hashGiftPan(code)}, ${hashGiftPin(last4, pin)},
         ${input.issuerKind || "house"}, ${issuerId}, ${input.issuerName || "House"},
         ${row.balanceCents}, ${row.originalBalanceCents ?? row.balanceCents},
         ${row.status || (row.balanceCents > 0 ? "active" : "zeroed")},
@@ -623,6 +716,7 @@ export async function processGiftTerm(
     select * from gift_cards
     where location_id = ${ctx.locationId}
       and status <> ${"void"}
+      and status is distinct from ${CLOSED}
       and breakage_processed_at_ms is null
       and expires_at_ms is not null
       and expires_at_ms <= ${now}
@@ -701,7 +795,7 @@ export async function giftLiabilityReport(
       `;
   const map = new Map<string, GiftLiabilityRow>();
   for (const c of cards) {
-    if (c.status === "void") continue;
+    if (c.status === "void" || c.status === "closed") continue;
     const id = c.issuerId || HOST_SCOPE;
     let row = map.get(id);
     if (!row) {
@@ -731,4 +825,198 @@ export async function giftLiabilityReport(
     rows: [...map.values()].sort((a, b) => b.outstandingCents - a.outstandingCents),
     redemptionsCents: n(red[0]?.cents),
   };
+}
+
+export async function publicLookupGift(input: {
+  number: string;
+  pin?: string;
+}): Promise<GuestGiftLookupResult> {
+  const code = normalizeGiftCode(input.number);
+  const pin = normalizeGiftPin(input.pin || "");
+  if (!code) return { ok: false, error: GUEST_GIFT_NEED_MORE };
+  if (!isFullGiftPan(code) && pin.length < 4) {
+    return { ok: false, error: GUEST_GIFT_NEED_MORE };
+  }
+  const sql = await getSql();
+  type PubRow = CardRow & { venue_name: string | null };
+  let rows: PubRow[] = [];
+  const pan = hashGiftPan(code);
+  try {
+    rows = await sql<PubRow>`
+      select gc.*, loc.name as venue_name
+      from gift_cards gc
+      join locations loc on loc.id = gc.location_id
+      where gc.pan_hash = ${pan}
+        and gc.status is distinct from ${CLOSED}
+      limit 2
+    `;
+  } catch {
+    return { ok: false, error: GUEST_GIFT_NOT_FOUND };
+  }
+  if (!rows[0] && pin.length >= 4) {
+    const last4 = giftLast4(code);
+    const ph = hashGiftPin(last4, pin);
+    rows = await sql<PubRow>`
+      select gc.*, loc.name as venue_name
+      from gift_cards gc
+      join locations loc on loc.id = gc.location_id
+      where gc.code_last4 = ${last4}
+        and gc.pin_hash = ${ph}
+        and gc.status is distinct from ${CLOSED}
+      limit 3
+    `;
+    if (rows.length > 1) return { ok: false, error: "Enter the full card number." };
+  }
+  const row = rows[0];
+  if (!row) return { ok: false, error: GUEST_GIFT_NOT_FOUND };
+  if (pin.length >= 4 && row.pin_hash) {
+    const expected = hashGiftPin(row.code_last4, pin);
+    if (expected !== row.pin_hash) return { ok: false, error: GUEST_GIFT_NOT_FOUND };
+  }
+  const led = await sql<LedRow>`
+    select id, card_id, kind, amount_cents, issuer_id, issuer_kind,
+           counterparty_id, counterparty_kind, tender, check_id, actor_name, note, at_ms
+    from gift_ledger
+    where card_id = ${row.id}
+    order by at_ms desc
+    limit 80
+  `;
+  const venue = String(row.venue_name || "Venue").slice(0, 80);
+  const activity = led.flatMap((r) => {
+    const kind = guestKindFromLedger(r.kind, r.note);
+    if (!kind) return [];
+    return [
+      {
+        kind,
+        at: n(r.at_ms),
+        venueName: venue,
+        amountCents: n(r.amount_cents),
+      },
+    ];
+  });
+  const st = row.status;
+  const status =
+    st === "frozen" || st === "void" || st === "zeroed"
+      ? st
+      : ("active" as const);
+  return {
+    ok: true,
+    last4: row.code_last4,
+    balanceCents: n(row.balance_cents),
+    status,
+    onHold: st === "frozen",
+    activity,
+  };
+}
+
+export async function reactivateGiftCard(
+  userId: string,
+  input: {
+    locationId: string;
+    cardId?: string;
+    code?: string;
+    force?: boolean;
+    reason?: string;
+  },
+): Promise<{ ok: true; card: GiftCard; pin?: string } | { ok: false; error: string }> {
+  const ctx = await ctxFor(userId, input.locationId);
+  if (
+    !canReactivateGiftStaff({
+      role: ctx.role,
+      isPlatformAdmin: ctx.isPlatformAdmin,
+      operatorId: ctx.operatorId,
+    })
+  ) {
+    return { ok: false, error: "Manager or venue admin only." };
+  }
+  const sql = await getSql();
+  const row = input.cardId
+    ? await currentById(ctx.locationId, input.cardId)
+    : await currentByHash(ctx.locationId, input.code || "");
+  if (!row) return { ok: false, error: "Card not found" };
+  const reason = String(input.reason || "").trim();
+  const gate = canReactivateGift({
+    balanceCents: n(row.balance_cents),
+    status: row.status,
+    force: input.force,
+    reason,
+  });
+  if (!gate.ok) return gate;
+  const now = Date.now();
+  const bal = n(row.balance_cents);
+  const closeNote = reason || "spent";
+  if (bal > 0) {
+    await writeLedger({
+      locationId: ctx.locationId,
+      orgId: ctx.orgId,
+      cardId: row.id,
+      kind: "adjust",
+      amountCents: -bal,
+      issuerId: row.issuer_id,
+      issuerKind: row.issuer_kind,
+      actorId: ctx.userId,
+      note: `force close: ${closeNote}`,
+      at: now,
+    });
+  }
+  const newId = uid("gc");
+  await sql`
+    update gift_cards set
+      status = ${CLOSED},
+      balance_cents = 0,
+      replaced_by_id = ${newId},
+      closed_at_ms = ${now},
+      close_reason = ${closeNote}
+    where id = ${row.id} and location_id = ${ctx.locationId}
+  `;
+  await writeLedger({
+    locationId: ctx.locationId,
+    orgId: ctx.orgId,
+    cardId: row.id,
+    kind: "close",
+    amountCents: 0,
+    issuerId: row.issuer_id,
+    issuerKind: row.issuer_kind,
+    actorId: ctx.userId,
+    note: closeNote,
+    at: now,
+  });
+  let pinPlain: string | undefined;
+  if (input.code) {
+    pinPlain = await ensurePanPin(row, input.code);
+  }
+  let pinH = row.pin_hash ?? null;
+  if (!pinH) {
+    pinPlain = generateGiftPin();
+    pinH = hashGiftPin(row.code_last4, pinPlain);
+  }
+  const panH = row.pan_hash ?? (input.code ? hashGiftPan(input.code) : null);
+  await sql`
+    insert into gift_cards (
+      id, location_id, org_id, code_hash, code_last4, pan_hash, pin_hash,
+      issuer_kind, issuer_id, issuer_name,
+      balance_cents, original_balance_cents, status, source,
+      issued_at_ms, replaces_id
+    ) values (
+      ${newId}, ${ctx.locationId}, ${ctx.orgId}, ${row.code_hash}, ${row.code_last4},
+      ${panH}, ${pinH},
+      ${"house"}, ${HOST_SCOPE}, ${"Pending issuance"},
+      0, 0, ${"zeroed"}, ${"summex"},
+      ${now}, ${row.id}
+    )
+  `;
+  await writeLedger({
+    locationId: ctx.locationId,
+    orgId: ctx.orgId,
+    cardId: newId,
+    kind: "issue",
+    amountCents: 0,
+    issuerId: HOST_SCOPE,
+    issuerKind: "house",
+    actorId: ctx.userId,
+    note: "reactivate",
+    at: now,
+  });
+  const card = (await lookupById(ctx.locationId, newId))!;
+  return { ok: true, card, pin: pinPlain };
 }

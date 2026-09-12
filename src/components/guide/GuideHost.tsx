@@ -12,7 +12,11 @@ export function GuideHost() {
   const close = useGuideStore((s) => s.closeGuide);
   const searchRef = useRef<HTMLInputElement>(null);
   const pathname = useRouterState({ select: (s) => s.location.pathname });
-  const onGuidePage = pathname === "/guide" || pathname.startsWith("/guide/");
+  const onGuidePage =
+    pathname === "/guide" ||
+    pathname.startsWith("/guide/") ||
+    pathname === "/gift" ||
+    pathname.startsWith("/gift/");
 
   useEffect(() => {
     const done = () => undefined;

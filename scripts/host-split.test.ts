@@ -36,6 +36,7 @@ test("platform paths include login, dashboard, stations", () => {
   assert.equal(isPlatformPath("/get-pricing"), false);
   assert.equal(isPlatformPath("/terms"), false);
   assert.equal(isPlatformPath("/privacy"), false);
+  assert.equal(isPlatformPath("/gift"), false);
 });
 
 test("leftover /login on apex goes to app.summex.app", () => {
@@ -51,6 +52,7 @@ test("leftover /login on apex goes to app.summex.app", () => {
   assert.equal(marketingToPlatformHref("/", "summex.app", "https:"), null);
   assert.equal(marketingToPlatformHref("/terms", "summex.app", "https:"), null);
   assert.equal(marketingToPlatformHref("/privacy", "summex.app", "https:"), null);
+  assert.equal(marketingToPlatformHref("/gift", "summex.app", "https:"), null);
   assert.equal(
     marketingToPlatformHref("/dashboard", "summex.app", "https:"),
     "https://app.summex.app/dashboard",

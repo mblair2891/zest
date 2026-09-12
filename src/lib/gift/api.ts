@@ -106,12 +106,18 @@ export const reloadGiftCardFn = createServerFn({ method: "POST" })
     cardId?: string;
     amountCents: number;
     tender?: "cash" | "card";
+    issuerId?: string;
+    issuerKind?: "house" | "operator";
+    issuerName?: string;
   }) => ({
     locationId: loc(d.locationId),
     code: d.code ? String(d.code).slice(0, 40) : undefined,
     cardId: d.cardId ? String(d.cardId).slice(0, 80) : undefined,
     amountCents: Math.max(0, Math.round(Number(d.amountCents) || 0)),
     tender: d.tender === "cash" ? ("cash" as const) : ("card" as const),
+    issuerId: d.issuerId ? String(d.issuerId).slice(0, 80) : undefined,
+    issuerKind: d.issuerKind === "operator" ? ("operator" as const) : d.issuerKind === "house" ? ("house" as const) : undefined,
+    issuerName: d.issuerName ? String(d.issuerName).slice(0, 80) : undefined,
   }))
   .handler(async ({ context, data }) => {
     const { reloadGiftCard } = await import("./gift.server");
@@ -167,4 +173,45 @@ export const giftLiabilityReportFn = createServerFn({ method: "POST" })
   .handler(async ({ context, data }) => {
     const { giftLiabilityReport } = await import("./gift.server");
     return giftLiabilityReport(context.userId, data.locationId);
+  });
+
+export const reactivateGiftCardFn = createServerFn({ method: "POST" })
+  .middleware([tenantMiddleware])
+  .validator((d: {
+    locationId: string;
+    cardId?: string;
+    code?: string;
+    force?: boolean;
+    reason?: string;
+  }) => ({
+    locationId: loc(d.locationId),
+    cardId: d.cardId ? String(d.cardId).slice(0, 80) : undefined,
+    code: d.code ? String(d.code).slice(0, 40) : undefined,
+    force: Boolean(d.force),
+    reason: d.reason ? String(d.reason).slice(0, 280) : undefined,
+  }))
+  .handler(async ({ context, data }) => {
+    const { reactivateGiftCard } = await import("./gift.server");
+    return reactivateGiftCard(context.userId, data);
+  });
+
+export const publicLookupGiftFn = createServerFn({ method: "POST" })
+  .validator((d: { number?: string; pin?: string }) => ({
+    number: String(d.number ?? "").slice(0, 40),
+    pin: String(d.pin ?? "").slice(0, 8),
+  }))
+  .handler(async ({ data }) => {
+    const { GUEST_GIFT_RATE_LIMITED } = await import("./guest-view");
+    try {
+      const { getRequest } = await import("@tanstack/react-start/server");
+      const { clientKey, rateLimit } = await import("@/lib/saas/rate-limit.server");
+      const req = getRequest();
+      if (rateLimit(clientKey(req, "gift-lookup"), 10, 15 * 60_000)) {
+        return { ok: false as const, error: GUEST_GIFT_RATE_LIMITED };
+      }
+    } catch {
+      /* no request context in some tests */
+    }
+    const { publicLookupGift } = await import("./gift.server");
+    return publicLookupGift(data);
   });

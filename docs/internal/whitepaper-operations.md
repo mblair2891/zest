@@ -135,6 +135,8 @@ Gift is a **first-party Summex ledger** — swipe, scan, or key. It is not Finix
 - Redeem never calls an outside gift network. The fulfilling operator gets the merchandise; issuer liability decreases; issuer remits to the fulfiller if they differ.
 - House and operators may issue. Outstanding liability is tracked by issuer entity, with aging.
 - Adjust, freeze, and deactivate are manager events. Only issued or imported card IDs.
+- Guests look up the **current life** at summex.app/gift (full PAN or last four + PIN). Rate-limited. No staff PII.
+- **Reactivate spent plastic:** manager or venue admin. Balance $0, or force with a reason. Close the old ledger (audit). Same printed number → new card id, $0, empty guest history. Next load is a new issuance for the selling entity.
 
 ---
 

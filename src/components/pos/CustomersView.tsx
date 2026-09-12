@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Gift, Plus, Star, UserPlus, Upload, Snowflake, Ban } from "lucide-react";
+import { Gift, Plus, Star, UserPlus, Upload, Snowflake, Ban, RotateCcw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -33,6 +33,7 @@ import {
 import {
   importGiftCardsFn,
   issueGiftCardFn,
+  reactivateGiftCardFn,
   reloadGiftCardFn,
   setGiftStatusFn,
 } from "@/lib/gift/api";
@@ -88,6 +89,15 @@ export function CustomersView() {
     id: string;
     status: GiftCardStatus;
   } | null>(null);
+  const [reactivateOpen, setReactivateOpen] = useState(false);
+  const [reactivateTarget, setReactivateTarget] = useState<{
+    id: string;
+    code: string;
+    balanceCents: number;
+  } | null>(null);
+  const [reactivateForce, setReactivateForce] = useState(false);
+  const [reactivateReason, setReactivateReason] = useState("");
+  const [reactivateMgrOpen, setReactivateMgrOpen] = useState(false);
   const hasManagerAuth = usePosStore((s) => s.hasManagerAuth);
   const requestApproval = usePosStore((s) => s.requestApproval);
 
@@ -99,10 +109,11 @@ export function CustomersView() {
       (c.email ?? "").toLowerCase().includes(q.toLowerCase()),
   );
 
-  const outstanding = giftCards
+  const liveCards = giftCards.filter((g) => g.status !== "closed");
+  const outstanding = liveCards
     .filter((g) => g.active && g.status !== "void" && !g.breakageProcessedAt)
     .reduce((s, g) => s + g.balanceCents, 0);
-  const liability = liabilityByIssuer(giftCards, settings, vendors);
+  const liability = liabilityByIssuer(liveCards, settings, vendors);
 
   const tierOf = (pts: number) => {
     const sorted = [...loyalty.tiers].sort((a, b) => b.minPoints - a.minPoints);
@@ -299,7 +310,7 @@ export function CustomersView() {
         </div>
       )}
       <div className="mb-4 grid gap-2 sm:grid-cols-3">
-        {giftCards.map((g) => (
+        {liveCards.map((g) => (
           <div
             key={g.id}
             className="rounded-xl border border-border bg-surface p-3"
@@ -372,6 +383,26 @@ export function CustomersView() {
                 >
                   <Ban className="h-3 w-3" />
                   Void
+                </Button>
+              )}
+              {g.status !== "void" && (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="h-7 text-[11px]"
+                  onClick={() => {
+                    setReactivateTarget({
+                      id: g.id,
+                      code: g.code,
+                      balanceCents: g.balanceCents,
+                    });
+                    setReactivateForce(g.balanceCents > 0);
+                    setReactivateReason("");
+                    setReactivateOpen(true);
+                  }}
+                >
+                  <RotateCcw className="h-3 w-3" />
+                  Reactivate
                 </Button>
               )}
             </div>
@@ -567,7 +598,9 @@ export function CustomersView() {
                     amountCents: cents,
                     note: res.plaintextCode,
                   });
-                  setMsg(`Issued ${res.plaintextCode} for $${dollars.toFixed(2)} · issuer ${issuer.name} (liability, not merch)`);
+                  setMsg(
+                    `Issued ${res.plaintextCode} · PIN ${res.pin} for $${dollars.toFixed(2)} · issuer ${issuer.name} (liability, not merch). Guest lookup: summex.app/gift`,
+                  );
                   setGiftOpen(false);
                   return;
                 }
@@ -616,7 +649,14 @@ export function CustomersView() {
                 try {
                   if (locId) {
                     const res = await reloadGiftCardFn({
-                      data: { locationId: locId, code: reloadCode, amountCents: cents },
+                      data: {
+                        locationId: locId,
+                        code: reloadCode,
+                        amountCents: cents,
+                        issuerId: defaultIssuer.id,
+                        issuerKind: defaultIssuer.kind,
+                        issuerName: defaultIssuer.name,
+                      },
                     });
                     if (!res.ok) {
                       setMsg(res.error ?? "Failed");
@@ -856,6 +896,116 @@ export function CustomersView() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+      <Dialog
+        open={reactivateOpen}
+        onOpenChange={(o) => {
+          setReactivateOpen(o);
+          if (!o) setReactivateTarget(null);
+        }}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Reactivate spent plastic</DialogTitle>
+          </DialogHeader>
+          <p className="text-xs text-muted-foreground">
+            Closes this life (kept in audit) and opens a new card id on the same
+            printed number at $0. Guest lookup at summex.app/gift only shows the
+            new life. The next load is a new issuance for the selling entity.
+            Manager or venue admin only.
+          </p>
+          {reactivateTarget && reactivateTarget.balanceCents > 0 && (
+            <>
+              <p className="text-xs text-warn">
+                Balance is {formatCurrency(reactivateTarget.balanceCents)}. Force
+                with a reason, or spend it down first.
+              </p>
+              <label className="flex items-start gap-2 text-xs">
+                <input
+                  type="checkbox"
+                  className="mt-0.5 h-4 w-4 rounded border-border"
+                  checked={reactivateForce}
+                  onChange={(e) => setReactivateForce(e.target.checked)}
+                />
+                Force close remaining balance
+              </label>
+              <Input
+                placeholder="Reason (8+ characters)"
+                value={reactivateReason}
+                onChange={(e) => setReactivateReason(e.target.value)}
+              />
+            </>
+          )}
+          <DialogFooter>
+            <Button
+              onClick={() => {
+                if (!reactivateTarget) return;
+                if (reactivateTarget.balanceCents > 0) {
+                  if (!reactivateForce || reactivateReason.trim().length < 8) {
+                    setMsg("Force reactivate needs a reason (8+ characters).");
+                    return;
+                  }
+                }
+                setReactivateOpen(false);
+                setReactivateMgrOpen(true);
+              }}
+            >
+              Continue
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      <ManagerPinDialog
+        open={reactivateMgrOpen}
+        onOpenChange={setReactivateMgrOpen}
+        title="Reactivate gift card"
+        description="Closes the old ledger and issues a new id on the same plastic."
+        reasons={GIFT_ADJUST_REASONS}
+        gate="gift_adjust"
+        onRequestPending={(reason) => {
+          setMsg(reason ? "Held for manager approval." : "Could not queue");
+          setReactivateTarget(null);
+        }}
+        onVerified={() => {
+          const target = reactivateTarget;
+          if (!target) return;
+          void (async () => {
+            try {
+              if (locId) {
+                const res = await reactivateGiftCardFn({
+                  data: {
+                    locationId: locId,
+                    cardId: target.id,
+                    force: target.balanceCents > 0,
+                    reason: reactivateReason.trim() || undefined,
+                  },
+                });
+                if (!res.ok) {
+                  setMsg(res.error ?? "Failed");
+                  setReactivateTarget(null);
+                  return;
+                }
+                await hydrateGift(locId);
+                setMsg(
+                  res.pin
+                    ? `Reactivated ${target.code} · new PIN ${res.pin}. Next load is a new issuance.`
+                    : `Reactivated ${target.code}. Same PIN. Next load is a new issuance.`,
+                );
+              } else {
+                const res = usePosStore.getState().reactivateGiftCard({
+                  code: target.code,
+                  force: target.balanceCents > 0,
+                  reason: reactivateReason.trim() || undefined,
+                });
+                setMsg(res.ok ? `Reactivated ${target.code}` : res.error ?? "Failed");
+              }
+            } catch (e) {
+              setMsg(e instanceof Error ? e.message : "Failed");
+            } finally {
+              setReactivateTarget(null);
+            }
+          })();
+        }}
+      />
       <ManagerPinDialog
         open={giftMgrOpen}
         onOpenChange={setGiftMgrOpen}

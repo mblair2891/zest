@@ -88,6 +88,7 @@ test("sales home is never a post-login stay path", () => {
   assert.equal(isMarketingStayPath("/demo"), true);
   assert.equal(isMarketingStayPath("/terms"), true);
   assert.equal(isMarketingStayPath("/privacy"), true);
+  assert.equal(isMarketingStayPath("/gift"), true);
   assert.equal(isMarketingStayPath("/dashboard"), false);
   assert.equal(isMarketingStayPath("/venue/restaurant"), false);
 });

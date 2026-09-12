@@ -447,6 +447,7 @@ export const MARKETING_PATHS = [
   "/blog",
   "/get-pricing",
   "/guide",
+  "/gift",
   "/demo",
   "/whitepaper",
   "/terms",

@@ -275,7 +275,8 @@ export const CASH_GIFT_TOPICS: GuideTopic[] = [
     id: "gift-cards",
     chapterId: "cash-gifts",
     title: "First-party gift cards",
-    summary: "Issuer liability, redeem settlement, freeze/void/import — Summex ledger only.",
+    summary:
+      "Issuer liability, public lookup, reuse spent plastic — Summex ledger only.",
     roles: ["owner_manager", "server", "host_operator"],
     keywords: [
       "gift",
@@ -293,6 +294,11 @@ export const CASH_GIFT_TOPICS: GuideTopic[] = [
       "swipe",
       "scan",
       "finix",
+      "lookup",
+      "PIN",
+      "reactivate",
+      "reuse",
+      "summex.app/gift",
     ],
     openView: "customers",
     blocks: [
@@ -319,6 +325,8 @@ export const CASH_GIFT_TOPICS: GuideTopic[] = [
         "Settings → Gift cards: house issuer on/off, host-stand default issuer, term allowed (with disclaimer), operator residual split. Use the dropdowns — no JSON.",
         "Reports → Gift liability / Gift redemptions, or Settle → liability by issuer. Host: Process expired residual when a term is in force.",
         "Freeze if lost. Void if issued in error. Both need a manager PIN. Load needs cash or card on the same ticket. Import CSV is one-way from Square / Toast / Clover / Shopify / generic (those systems are not POS card processors).",
+        "Guests look up balance at summex.app/gift — no login. Full printed number, or last four plus the card PIN shown at issue. They see this life only: load, redeem, void, date, venue, amount. Lookups are rate-limited. Staff names never appear.",
+        "Spent plastic: manager or venue admin (not an entity-only login) Reactivate on Guests. Balance must be $0, or force with a written reason. The old ledger stays in audit and is closed. Same printed number, new card id, $0, empty guest history. The next load is a new issuance for the selling entity.",
       ),
       warn(
         "Turning on a term does not make expiry legal. Confirm state law with counsel — expiry may be illegal in some states. Imported cards are not kept in sync with the old system.",
