@@ -15,7 +15,9 @@ import {
   TENANT_USERS_EMPTY,
   floorRoleLabel,
   loginRoleLabel,
+  parseTenantAdminScope,
   tenantConsoleLoginUrl,
+  type TenantAdminScope,
   type TenantUserRow,
 } from "@/lib/saas/tenant-users";
 
@@ -42,6 +44,8 @@ export function TenantUsersPanel({
   const [adminEmail, setAdminEmail] = useState("");
   const [adminPass, setAdminPass] = useState("");
   const [forceChange, setForceChange] = useState(true);
+  const [adminScope, setAdminScope] = useState<TenantAdminScope>("location");
+  const [adminEntity, setAdminEntity] = useState("");
 
   const [staffName, setStaffName] = useState("");
   const [staffPin, setStaffPin] = useState("");
@@ -75,11 +79,13 @@ export function TenantUsersPanel({
         email: adminEmail,
         tempPassword: adminPass,
         forceChange,
+        operatorId: adminScope === "entity" ? adminEntity || null : null,
       },
     })
       .then((r) => {
+        const kind = adminScope === "entity" ? "Entity admin" : "Location admin";
         setNotice(
-          `Location admin added. They sign in at ${loginUrl} with ${adminEmail}. Temporary password: ${r.tempPassword}${
+          `${kind} added. They sign in at ${loginUrl} with ${adminEmail} — never PIN, never platform CRM. Temporary password: ${r.tempPassword}${
             r.forceChange ? " — they must change it on first login." : ""
           }`,
         );
@@ -87,6 +93,8 @@ export function TenantUsersPanel({
         setAdminEmail("");
         setAdminPass("");
         setForceChange(true);
+        setAdminScope("location");
+        setAdminEntity("");
         load();
       })
       .catch((err) => setError(errMessage(err)))
@@ -125,10 +133,10 @@ export function TenantUsersPanel({
       <div>
         <p className="text-sm font-semibold">Users</p>
         <p className="mt-1 text-xs text-muted-foreground">
-          Location admins sign in at {loginUrl} and only see this venue — not other
-          tenants or the control plane. Isolated demo houses included. Floor staff
-          who only need a PIN can be added here. You cannot create a second platform
-          Admin.
+          Location admin (whole venue) or Entity admin (one selling entity). Email and
+          temporary password; they sign in at app.summex.app/login only — never PIN,
+          never platform CRM. Isolated demo houses included. Floor staff who only
+          need a PIN can be added here. You cannot create a second platform Admin.
         </p>
       </div>
 
@@ -148,10 +156,38 @@ export function TenantUsersPanel({
         data-demo="tenant-add-admin"
         onSubmit={addAdmin}
       >
-        <p className="text-sm font-medium">Add location admin</p>
-        <p className="text-xs text-muted-foreground">
-          Role is location admin (venue owner). Email and temporary password.
+        <p className="text-sm font-medium">
+          {adminScope === "entity" ? "Add entity admin" : "Add location admin"}
         </p>
+        <p className="text-xs text-muted-foreground">
+          Email and temporary password. After login they land on that dashboard — not
+          a PIN pad.
+        </p>
+        <Field label="Scope">
+          <SelectField
+            value={adminScope}
+            onChange={(v) => {
+              const next = parseTenantAdminScope(v);
+              setAdminScope(next);
+              if (next === "location") setAdminEntity("");
+            }}
+          >
+            <option value="location">Location admin (whole venue)</option>
+            <option value="entity">Entity admin (one selling entity)</option>
+          </SelectField>
+        </Field>
+        {adminScope === "entity" && (
+          <Field label="Selling entity" hint="Required. They only manage this brand.">
+            <SelectField value={adminEntity} onChange={setAdminEntity}>
+              <option value="">Choose entity</option>
+              {operators.map((o) => (
+                <option key={o.id} value={o.id}>
+                  {o.dba}
+                </option>
+              ))}
+            </SelectField>
+          </Field>
+        )}
         <Field label="Name">
           <Input
             required
@@ -189,8 +225,20 @@ export function TenantUsersPanel({
           />
           Force password change on first login
         </label>
-        <Button type="submit" disabled={busy || !adminName || !adminEmail}>
-          {busy ? "Saving…" : "Add location admin"}
+        <Button
+          type="submit"
+          disabled={
+            busy ||
+            !adminName ||
+            !adminEmail ||
+            (adminScope === "entity" && !adminEntity)
+          }
+        >
+          {busy
+            ? "Saving…"
+            : adminScope === "entity"
+              ? "Add entity admin"
+              : "Add location admin"}
         </Button>
       </form>
 
@@ -260,7 +308,9 @@ export function TenantUsersPanel({
               ) : null}
               <span className="mt-0.5 block text-xs text-muted-foreground">
                 {u.kind === "login"
-                  ? `${loginRoleLabel(u.role)}${u.email ? ` · ${u.email}` : ""}`
+                  ? `${loginRoleLabel(u.role, u.homeEntityId)}${
+                      u.homeEntityName ? ` · ${u.homeEntityName}` : ""
+                    }${u.email ? ` · ${u.email}` : ""}`
                   : `Floor · ${floorRoleLabel(u.role)}${
                       u.homeEntityName ? ` · ${u.homeEntityName}` : ""
                     }`}
@@ -274,9 +324,22 @@ export function TenantUsersPanel({
                 disabled={busy}
                 onChange={(e) => {
                   const role = e.target.value;
+                  const homeEntityId =
+                    u.kind === "login" && role === "vendor"
+                      ? u.homeEntityId || operators[0]?.id || null
+                      : u.kind === "login" && role === "owner"
+                        ? null
+                        : undefined;
                   setBusy(true);
                   void updateTenantUserFn({
-                    data: { orgId, locationId, kind: u.kind, id: u.id, role },
+                    data: {
+                      orgId,
+                      locationId,
+                      kind: u.kind,
+                      id: u.id,
+                      role,
+                      homeEntityId,
+                    },
                   })
                     .then(() => load())
                     .catch((err) => setError(errMessage(err)))
@@ -289,6 +352,30 @@ export function TenantUsersPanel({
                   </option>
                 ))}
               </select>
+              {u.kind === "login" && (
+                <select
+                  className="h-10 rounded-lg border border-border bg-surface px-2 text-sm"
+                  value={u.homeEntityId || ""}
+                  disabled={busy}
+                  onChange={(e) => {
+                    const homeEntityId = e.target.value || null;
+                    setBusy(true);
+                    void updateTenantUserFn({
+                      data: { orgId, locationId, kind: u.kind, id: u.id, homeEntityId },
+                    })
+                      .then(() => load())
+                      .catch((err) => setError(errMessage(err)))
+                      .finally(() => setBusy(false));
+                  }}
+                >
+                  <option value="">Whole venue</option>
+                  {operators.map((o) => (
+                    <option key={o.id} value={o.id}>
+                      {o.dba}
+                    </option>
+                  ))}
+                </select>
+              )}
               <Button
                 type="button"
                 size="sm"

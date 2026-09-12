@@ -6,6 +6,10 @@ import type { MembershipRole } from "./types";
 import type { EmployeeRole } from "../pos/types";
 
 export const VENUE_OWNER_ROLE = "owner" as const;
+/** Password login scoped to one selling entity (membership.operator_id). */
+export const ENTITY_ADMIN_ROLE = "vendor" as const;
+
+export type TenantAdminScope = "location" | "entity";
 
 export const TENANT_LOGIN_ROLES: MembershipRole[] = [
   "owner",
@@ -57,11 +61,20 @@ export function isPlatformAdminEmail(email: string | null | undefined): boolean 
 export function parseTenantLoginRole(raw: string): MembershipRole {
   const v = raw.trim().toLowerCase();
   if (v === "venue_owner" || v === "location_admin") return "owner";
+  if (v === "entity_admin" || v === "vendor_operator") return ENTITY_ADMIN_ROLE;
   if (v === "platform_admin") {
     throw new Error("Cannot create a second platform Admin.");
   }
   if ((TENANT_LOGIN_ROLES as readonly string[]).includes(v)) return v as MembershipRole;
   throw new Error("That role is not allowed for a location user.");
+}
+
+export function parseTenantAdminScope(raw: string): TenantAdminScope {
+  return raw.trim().toLowerCase() === "entity" ? "entity" : "location";
+}
+
+export function tenantLoginRoleForScope(scope: TenantAdminScope): MembershipRole {
+  return scope === "entity" ? ENTITY_ADMIN_ROLE : VENUE_OWNER_ROLE;
 }
 
 export function parseTenantFloorRole(raw: string): EmployeeRole {
@@ -73,7 +86,13 @@ export function parseTenantFloorRole(raw: string): EmployeeRole {
   throw new Error("Choose a floor role.");
 }
 
-export function loginRoleLabel(role: string): string {
+export function loginRoleLabel(role: string, operatorId?: string | null): string {
+  if (role === "vendor" || role === "entity_admin" || role === "vendor_operator") {
+    return "Entity admin";
+  }
+  if ((role === "owner" || role === "venue_owner" || role === "manager") && operatorId) {
+    return "Entity admin";
+  }
   if (role === "owner" || role === "venue_owner") return "Location admin";
   if (role === "platform_admin") return "Platform Admin";
   if (!role) return "Staff";

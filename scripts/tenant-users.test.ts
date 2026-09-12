@@ -10,10 +10,24 @@ import {
   demoVenueIsolated,
   isPlatformAdminEmail,
   loginRoleLabel,
+  parseTenantAdminScope,
   parseTenantFloorRole,
   parseTenantLoginRole,
   tenantConsoleLoginUrl,
+  tenantLoginRoleForScope,
 } from "../src/lib/saas/tenant-users.ts";
+
+test("entity_admin maps to vendor membership, labeled Entity admin", () => {
+  assert.equal(parseTenantLoginRole("entity_admin"), "vendor");
+  assert.equal(parseTenantLoginRole("vendor_operator"), "vendor");
+  assert.equal(parseTenantAdminScope("entity"), "entity");
+  assert.equal(parseTenantAdminScope("location"), "location");
+  assert.equal(tenantLoginRoleForScope("entity"), "vendor");
+  assert.equal(tenantLoginRoleForScope("location"), "owner");
+  assert.equal(loginRoleLabel("vendor"), "Entity admin");
+  assert.equal(loginRoleLabel("owner", "op_bar"), "Entity admin");
+  assert.equal(loginRoleLabel("owner"), "Location admin");
+});
 
 test("venue_owner maps to location admin owner, never platform_admin", () => {
   assert.equal(parseTenantLoginRole("venue_owner"), "owner");
@@ -76,11 +90,20 @@ test("Users tab copy is an add form, not a circle back to the platform", () => {
 
   const panel = readFileSync("src/components/platform/TenantUsersPanel.tsx", "utf8");
   assert.match(panel, /Add location admin/);
+  assert.match(panel, /Add entity admin/);
+  assert.match(panel, /Entity admin \(one selling entity\)/);
   assert.match(panel, /Add floor staff/);
   assert.match(panel, /Force password change on first login/);
+  assert.match(panel, /never PIN, never/);
+  assert.match(panel, /app.summex.app\/login/);
   assert.doesNotMatch(panel, /Add people on the platform/);
 
   const venue = readFileSync("src/components/platform/PlatformTenantVenue.tsx", "utf8");
   assert.match(venue, /TenantUsersPanel/);
+  assert.match(venue, /loginAsEntityAdmin/);
+  assert.match(venue, /revenueBasis: "owned_lines"/);
   assert.doesNotMatch(venue, /Add people on the platform/);
+
+  const dash = readFileSync("src/routes/dashboard.tsx", "utf8");
+  assert.match(dash, /audience=\{loc.operatorId \? "entity" : "owner"\}/);
 });

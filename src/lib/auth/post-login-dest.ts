@@ -36,6 +36,7 @@ export type PostLoginDest =
  * After username/password sign-in: back office only. Never the staff PIN pad.
  * Platform Admin → control plane (CRM / tenants).
  * Location admin → /dashboard venue settings (Overview / Devices / Menus).
+ * Entity admin → /dashboard for that selling entity (menu, costs, schedule, reports).
  * Never `/venue/food_hall`. Never `/`. Never pipeline/CRM for a venue owner.
  */
 export function postLoginDestination(session: PostLoginSession): PostLoginDest {

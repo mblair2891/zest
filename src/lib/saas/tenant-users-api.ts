@@ -23,6 +23,7 @@ export const addLocationAdminFn = createServerFn({ method: "POST" })
       email: string;
       tempPassword?: string;
       forceChange?: boolean;
+      operatorId?: string | null;
     }) => ({
       orgId: String(d.orgId ?? "").trim(),
       locationId: String(d.locationId ?? "").trim(),
@@ -30,6 +31,7 @@ export const addLocationAdminFn = createServerFn({ method: "POST" })
       email: String(d.email ?? "").trim().slice(0, 160),
       tempPassword: d.tempPassword ? String(d.tempPassword).slice(0, 80) : "",
       forceChange: d.forceChange !== false,
+      operatorId: d.operatorId ? String(d.operatorId).trim().slice(0, 80) : null,
     }),
   )
   .handler(async ({ context, data }) => {

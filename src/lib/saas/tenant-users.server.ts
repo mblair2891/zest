@@ -1,6 +1,7 @@
 /**
  * Server-only: platform Tenants → Users.
- * Add location admin (email/password, venue owner) and optional PIN floor staff.
+ * Add location admin (whole venue) or entity admin (one selling entity).
+ * Email/password at app.summex.app/login — never PIN, never platform CRM.
  * Never a second platform Admin. Isolated demo tenants included for their members.
  */
 import { randomUUID } from "node:crypto";
@@ -11,6 +12,7 @@ import { newId } from "./ids";
 import { ForbiddenError, isPlatformAdmin, writeAudit } from "./tenancy.server";
 import { generateOneTimePassword, usernameFromEmail } from "./subscriber-login";
 import {
+  ENTITY_ADMIN_ROLE,
   VENUE_OWNER_ROLE,
   assertNotPlatformAdminRole,
   isPlatformAdminEmail,
@@ -130,8 +132,9 @@ export async function listTenantUsers(
     email: string | null;
     name: string | null;
     must_change: boolean | null;
+    operator_id: string | null;
   }>`
-    select m.id, m.user_id, m.role, m.status, m.location_id,
+    select m.id, m.user_id, m.role, m.status, m.location_id, m.operator_id,
            u.email, u.name, s.must_change_password as must_change
     from memberships m
     join "user" u on u.id = m.user_id
@@ -183,6 +186,8 @@ export async function listTenantUsers(
     status: m.status === "revoked" ? "disabled" : "active",
     mustChangePassword: Boolean(m.must_change),
     locationId: m.location_id,
+    homeEntityId: m.operator_id,
+    homeEntityName: m.operator_id ? (opName.get(m.operator_id) ?? m.operator_id) : null,
   }));
 
   const floor: TenantUserRow[] = staff.map((s) => ({
@@ -208,6 +213,7 @@ export async function addLocationAdmin(
     email: string;
     tempPassword?: string;
     forceChange?: boolean;
+    operatorId?: string | null;
   },
 ): Promise<{ userId: string; username: string; tempPassword: string; forceChange: boolean }> {
   await requirePlatformAdmin(actorId);
@@ -227,6 +233,17 @@ export async function addLocationAdmin(
   }
 
   const sql = await getSql();
+  const entityId = input.operatorId?.trim() || null;
+  if (entityId) {
+    const op = await sql<{ id: string }>`
+      select id from operators
+      where id = ${entityId} and org_id = ${input.orgId}
+        and (location_id is null or location_id = ${input.locationId})
+      limit 1
+    `;
+    if (!op[0]) throw new Error("Selling entity not found on this venue.");
+  }
+  const memRole = entityId ? ENTITY_ADMIN_ROLE : VENUE_OWNER_ROLE;
   const byEmail = await sql<{ id: string }>`
     select id from "user" where lower(email) = ${email} limit 1
   `;
@@ -283,16 +300,17 @@ export async function addLocationAdmin(
     await sql`
       update memberships
       set status = ${"active"},
-          role = ${VENUE_OWNER_ROLE},
-          location_id = ${input.locationId}
+          role = ${memRole},
+          location_id = ${input.locationId},
+          operator_id = ${entityId}
       where id = ${existing[0].id}
     `;
   } else {
     await sql`
-      insert into memberships (id, user_id, org_id, location_id, role, status)
+      insert into memberships (id, user_id, org_id, location_id, role, status, operator_id)
       values (
         ${newId("mem")}, ${userId}, ${input.orgId}, ${input.locationId},
-        ${VENUE_OWNER_ROLE}, ${"active"}
+        ${memRole}, ${"active"}, ${entityId}
       )
     `;
   }
@@ -314,7 +332,8 @@ export async function addLocationAdmin(
     payload: {
       email,
       locationId: input.locationId,
-      role: VENUE_OWNER_ROLE,
+      role: memRole,
+      operatorId: entityId,
       demo: loc.isDemo,
     },
   });
@@ -397,8 +416,14 @@ export async function updateTenantUser(
   const sql = await getSql();
 
   if (input.kind === "login") {
-    const rows = await sql<{ id: string; user_id: string; role: string; status: string }>`
-      select id, user_id, role, status from memberships
+    const rows = await sql<{
+      id: string;
+      user_id: string;
+      role: string;
+      status: string;
+      operator_id: string | null;
+    }>`
+      select id, user_id, role, status, operator_id from memberships
       where id = ${input.id} and org_id = ${input.orgId}
       limit 1
     `;
@@ -411,10 +436,31 @@ export async function updateTenantUser(
     if (nextRole) assertNotPlatformAdminRole(nextRole);
     const nextStatus =
       input.status === "disabled" ? "revoked" : input.status === "active" ? "active" : undefined;
+    let role = nextRole ?? row.role;
+    let operatorId =
+      input.homeEntityId === undefined ? row.operator_id : input.homeEntityId || null;
+    if (nextRole === VENUE_OWNER_ROLE) operatorId = null;
+    else if (!nextRole && input.homeEntityId !== undefined) {
+      role = operatorId ? ENTITY_ADMIN_ROLE : VENUE_OWNER_ROLE;
+    }
+    if (role === ENTITY_ADMIN_ROLE && !operatorId) {
+      throw new Error("Choose a selling entity for an entity admin.");
+    }
+    if (role === VENUE_OWNER_ROLE) operatorId = null;
+    if (operatorId) {
+      const op = await sql<{ id: string }>`
+        select id from operators
+        where id = ${operatorId} and org_id = ${input.orgId}
+          and (location_id is null or location_id = ${input.locationId})
+        limit 1
+      `;
+      if (!op[0]) throw new Error("Selling entity not found on this venue.");
+    }
     await sql`
       update memberships
-      set role = ${nextRole ?? row.role},
-          status = ${nextStatus ?? row.status}
+      set role = ${role},
+          status = ${nextStatus ?? row.status},
+          operator_id = ${operatorId}
       where id = ${row.id}
     `;
     return { ok: true };

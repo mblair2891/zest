@@ -508,6 +508,7 @@ export interface PosStore {
   }) => ActionResult;
   tenantLocationId?: string | null;
   loginAsOwner: (name: string) => ActionResult;
+  loginAsEntityAdmin: (name: string, operatorId: string) => ActionResult;
   resetDemo: () => void;
 }
 

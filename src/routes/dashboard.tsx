@@ -157,7 +157,12 @@ function DashboardInner() {
             Password updated. You are signed in.
           </div>
         )}
-        <PlatformTenantVenue orgId={loc.orgId} locId={loc.id} audience="owner" />
+        <PlatformTenantVenue
+          orgId={loc.orgId}
+          locId={loc.id}
+          audience={loc.operatorId ? "entity" : "owner"}
+          operatorId={loc.operatorId ?? undefined}
+        />
       </>
     );
   }

@@ -22,6 +22,9 @@ export function LaborBasisSettings({ write }: { write: boolean }) {
   const setLaborForEntity = useOpsStore((s) => s.setLaborForEntity);
   const orgId = useSaasStore((s) => s.org.id);
   const locId = usePosStore((s) => s.tenantLocationId) || "";
+  const emp = usePosStore((s) => s.employees.find((e) => e.id === s.currentEmployeeId));
+  const entityLock =
+    emp?.role === "vendor_operator" ? emp.operatorId || HOST_SCOPE : null;
   const multi =
     settings.peerVenue ||
     settings.operatingModel === "peer_venue" ||
@@ -33,7 +36,7 @@ export function LaborBasisSettings({ write }: { write: boolean }) {
   const entities = [
     ...(!peer ? [{ id: HOST_SCOPE, name: settings.name || "Host" }] : []),
     ...vendors.map((v) => ({ id: v.id, name: v.name })),
-  ];
+  ].filter((ent) => !entityLock || ent.id === entityLock);
   const fallback = defaultRevenueBasis(settings.operatingModel);
 
   const sharedCents = Number(settings.sharedVenueCostsCents ?? 0) || 0;
@@ -73,19 +76,26 @@ export function LaborBasisSettings({ write }: { write: boolean }) {
       </label>
       <ul className="space-y-3">
         {entities.map((ent) => {
-          const rules = parseLaborRules(laborByEntity[ent.id] ?? { revenueBasis: fallback });
+          const lockedOwned = Boolean(entityLock);
+          const rules = parseLaborRules(
+            laborByEntity[ent.id] ?? {
+              revenueBasis: lockedOwned ? "owned_lines" : fallback,
+            },
+          );
+          const basis = lockedOwned ? "owned_lines" : rules.revenueBasis;
+          const canWrite = write && !lockedOwned;
           return (
             <li key={ent.id} className="rounded-xl border border-border bg-bg px-3 py-3">
               <p className="text-sm font-medium">{ent.name}</p>
               <p className="mt-0.5 text-[11px] text-muted-foreground">
-                {laborBasisLabel(ent.name, rules.revenueBasis)}
+                {laborBasisLabel(ent.name, basis)}
               </p>
               <label className="mt-2 block text-xs text-muted-foreground">
                 Revenue basis
                 <select
                   className="mt-1 h-10 w-full rounded-lg border border-border bg-surface px-3 text-sm text-foreground"
-                  disabled={!write}
-                  value={rules.revenueBasis}
+                  disabled={!canWrite}
+                  value={basis}
                   onChange={(e) =>
                     setLaborForEntity(ent.id, { revenueBasis: e.target.value as RevenueBasis })
                   }
@@ -97,7 +107,7 @@ export function LaborBasisSettings({ write }: { write: boolean }) {
                   ))}
                 </select>
               </label>
-              {rules.revenueBasis === "custom_categories" && (
+              {basis === "custom_categories" && (
                 <div className="mt-2 flex flex-wrap gap-2">
                   {categories.map((c) => {
                     const on = rules.revenueCategoryIds.includes(c.id);
@@ -105,7 +115,7 @@ export function LaborBasisSettings({ write }: { write: boolean }) {
                       <label key={c.id} className="flex items-center gap-1 text-[11px]">
                         <input
                           type="checkbox"
-                          disabled={!write}
+                          disabled={!canWrite}
                           checked={on}
                           onChange={(e) => {
                             const next = e.target.checked
@@ -124,7 +134,7 @@ export function LaborBasisSettings({ write }: { write: boolean }) {
                 Shared cost allocation % (off if empty)
                 <Input
                   className="mt-1 h-8"
-                  disabled={!write}
+                  disabled={!canWrite}
                   inputMode="decimal"
                   placeholder="off"
                   value={rules.sharedCostAllocationPct ?? ""}
@@ -139,7 +149,7 @@ export function LaborBasisSettings({ write }: { write: boolean }) {
               <label className="mt-2 flex items-center gap-2 text-xs">
                 <input
                   type="checkbox"
-                  disabled={!write}
+                  disabled={!canWrite}
                   checked={rules.tipsInLabor}
                   onChange={(e) => setLaborForEntity(ent.id, { tipsInLabor: e.target.checked })}
                 />

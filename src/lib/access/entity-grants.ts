@@ -182,6 +182,7 @@ export function canViewMenu(
   if (isHostPrivileged(emp)) return true;
   const subject = subjectIdForEmployee(emp);
   const target = resourceOperatorId(targetOperatorId);
+  if (subject === target) return true;
   return canEntityGrant(matrix, subject, target, "view_menu");
 }
 

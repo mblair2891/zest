@@ -6,6 +6,19 @@ import type { GuideUpdate } from "@/lib/guide/types";
  */
 export const WHATS_NEW_ENTRIES: GuideUpdate[] = [
   {
+    id: "upd_2026_10_72_entity_admin",
+    date: "2026-09-11",
+    title: "Each selling entity has its own login",
+    summary:
+      "Tenants → Users adds Location admin (whole venue) or Entity admin (one brand). Email + temp password at app.summex.app/login — never PIN.",
+    body: "Entity admin lands on that brand’s dashboard: menu, recipes, costs/invoices, schedule and payroll export, reports, 86, and staff PINs for that entity. They cannot edit the other brand’s menu, payout, or labor. The other menu appears on the floor only if the venue grant allows selling it. Reports and labor % use owned lines for that entity. Location admin still gets Devices, floor, QR, printers, Publish, and both entities. Shared venue still does not invent a host merchant. Password login is never a PIN pad and never platform CRM.",
+    roles: ["platform_admin", "owner_manager", "vendor_operator", "host_operator"],
+    surfaces: ["settings"],
+    audience: "all",
+    topicId: "invites-roles",
+    tags: ["login", "entity admin", "users", "owned lines"],
+  },
+  {
     id: "upd_2026_10_71_item_86_live",
     date: "2026-09-11",
     title: "86 hits every station now",

@@ -4155,6 +4155,68 @@ const usePosStoreRaw = create<PosStore>()(persist((set, get) => {
 		});
 		return { ok: true };
 	},
+	loginAsEntityAdmin: (name: string, operatorId: string) => {
+		const op = operatorId.trim();
+		if (!op) return { ok: false, error: "Selling entity is required" };
+		const id = `emp_entity_${op}`;
+		const existing =
+			get().employees.find((e: any) => e.id === id) ??
+			get().employees.find(
+				(e: any) => e.role === "vendor_operator" && e.operatorId === op && e.active,
+			);
+		if (existing && get().currentEmployeeId === existing.id && get().sessionKind === "backoffice") {
+			if (name.trim() && existing.name !== name.trim()) {
+				set({
+					employees: get().employees.map((e: any) =>
+						e.id === existing.id
+							? { ...e, name: name.trim(), operatorId: op, role: "vendor_operator" as const }
+							: e,
+					),
+				});
+			}
+			return { ok: true };
+		}
+		const admin = existing
+			? {
+					...existing,
+					id: existing.id,
+					name: name.trim() || existing.name || "Entity admin",
+					role: "vendor_operator" as const,
+					operatorId: op,
+					clockedIn: true,
+					clockInAt: Date.now(),
+					active: true,
+					title: existing.title || "Entity admin",
+				}
+			: {
+					id,
+					name: name.trim() || "Entity admin",
+					pin: "0000",
+					role: "vendor_operator" as const,
+					operatorId: op,
+					color: "#2C4A6E",
+					clockedIn: true,
+					clockInAt: Date.now(),
+					tipsEarned: 0,
+					salesTotal: 0,
+					active: true,
+					homeSectionIds: [] as string[],
+					title: "Entity admin",
+				};
+		const employees = existing
+			? get().employees.map((e: any) => (e.id === existing.id ? { ...e, ...admin } : e))
+			: [admin, ...get().employees];
+		set({
+			employees,
+			currentEmployeeId: admin.id,
+			view: get().view && get().view !== "floor" ? get().view : "hq",
+			activeOrderId: null,
+			activeTableId: null,
+			sessionKind: "backoffice",
+			backOfficeUnlocked: true,
+		});
+		return { ok: true };
+	},
 	openTenantLocation: (opts) => {
 		const { entityId, venueName, ownerName, locationId } = opts;
 		const staff = opts.staff;

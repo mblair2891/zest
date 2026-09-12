@@ -129,7 +129,7 @@
       <h1>Summex</h1>
       <p class="sub">Hospitality operations, all in one system. Powered by Quantum Reach.</p>
       <p class="meta">summex.app · Guest cards: Quantum Payments only</p>
-      <p class="revision"><strong>Revision · 11 Sep 2026</strong> — Written for prospective subscribers. Aligns with Operators Guide v2026.10.71. Staff stations are Android tablets. 86 hits every station immediately; menu structure still Publishes.</p>
+      <p class="revision"><strong>Revision · 11 Sep 2026</strong> — Written for prospective subscribers. Aligns with Operators Guide v2026.10.72. Staff stations are Android tablets. Each selling entity can have its own password login and dashboard.</p>
     </header>
 
     <p class="note">This paper is for the owner considering Summex — a single shop, a full dining room, or a building that more than one brand shares. It is not a software specification, a rate card, or a bank offering.</p>
@@ -172,13 +172,13 @@
       </tbody>
     </table>
     <p><strong>Sections</strong> keep servers on their part of the room unless a manager grants a table. Combine tables on the lowest number.</p>
-    <p><strong>PIN is not clock-in and not closeout.</strong> The location admin (venue owner) signs in with email and password at app.summex.app/login and lands on that house’s settings — Overview, Devices, Menus — never the staff PIN pad. Floor staff who only need a PIN are added with name, PIN, role, and home entity. After a station PIN, if they are off the clock and inside that entity’s allowed clock-in window for today’s shift, the tablet asks whether to clock in — Clock in or Not now. Outside the window there is no prompt; they can still work. Clock in and out is Labor. End of shift is a <strong>blind till count</strong> — staff enter what is in the drawer; expected cash is hidden until they submit. After submit the station prints a turn-in slip for the drop bag. No fill-in close form. During the shift, staff can move cash <strong>till to till</strong> when one drawer is short on small bills; expected cash on each till updates so the blind count still balances.</p>
+    <p><strong>PIN is not clock-in and not closeout.</strong> The location admin (venue owner) signs in with email and password at app.summex.app/login and lands on that house’s settings — Overview, Devices, Menus, Publish — never the staff PIN pad. Each selling entity can have its own entity admin: same email + temporary password at /login, scoped to that brand’s dashboard (menu, recipes, costs, schedule, reports, 86, staff PINs). They cannot edit the other brand’s menu, payout, or labor. Reports and labor % use owned lines. Floor staff who only need a PIN are added with name, PIN, role, and home entity. After a station PIN, if they are off the clock and inside that entity’s allowed clock-in window for today’s shift, the tablet asks whether to clock in — Clock in or Not now. Outside the window there is no prompt; they can still work. Clock in and out is Labor. End of shift is a <strong>blind till count</strong> — staff enter what is in the drawer; expected cash is hidden until they submit. After submit the station prints a turn-in slip for the drop bag. No fill-in close form. During the shift, staff can move cash <strong>till to till</strong> when one drawer is short on small bills; expected cash on each till updates so the blind count still balances.</p>
     <p><strong>Kiosk and waitlist</strong> sit beside the host stand. Guests order, join a wait, or check in. Staff keep the floor. Staffing recs (cut / hold / add) never clock anyone out.</p>
 
     <h2>5. Multi-entity houses</h2>
     <p>A named building can hold two independent operators — a bar and a kitchen is the usual picture — without inventing a landlord brand.</p>
     <ul>
-      <li>Each operator owns their menu, tickets, recipes, staff, and schedule.</li>
+      <li>Each operator owns their menu, tickets, recipes, staff, and schedule — and can sign in as that entity’s admin without a fake host merchant.</li>
       <li>The guest still pays <strong>one check</strong>. Capture <strong>splits</strong> to each brand’s Quantum Payments merchant by who sold the line.</li>
       <li>Gift is a <strong>house ledger</strong> (swipe, scan, or key) — not the card processor. Load on cash or card. Redeem inside Summex. If one brand issues and another fulfills, settlement moves between them.</li>
       <li>Period close is the house book for cash, any host cut, and disputes. Live bank payout of leftovers is not claimed here.</li>

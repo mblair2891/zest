@@ -39,8 +39,14 @@ import {
 import { LocationDeviceRegistry } from "@/components/pos/LocationDeviceRegistry";
 import { QuantumPaymentsSettings } from "@/components/pos/QuantumPaymentsSettings";
 import { TenantUsersPanel } from "@/components/platform/TenantUsersPanel";
+import { CostWorkspace } from "@/components/pos/CostWorkspace";
+import { LaborOpsView } from "@/components/pos/LaborOpsView";
+import { ReportsView } from "@/components/pos/ReportsView";
+import { OperatorOpsView } from "@/components/pos/OperatorOpsView";
 
-type Tab = "overview" | "settings" | "devices" | "menu" | "payments" | "people";
+type VenueTab = "overview" | "settings" | "devices" | "menu" | "payments" | "people";
+type EntityTab = "overview" | "menu" | "costs" | "schedule" | "reports" | "staff";
+type Tab = VenueTab | EntityTab;
 
 function venueTypeOf(raw: string): VenueEntityId {
   return isVenueEntityId(raw) ? raw : "food_hall";
@@ -50,11 +56,13 @@ export function PlatformTenantVenue({
   orgId,
   locId,
   audience = "platform",
+  operatorId: scopedOperatorId,
 }: {
   orgId: string;
   locId?: string;
-  /** platform = Tenants drill-in. owner = location admin back office (never PIN). */
-  audience?: "platform" | "owner";
+  /** platform = Tenants drill-in. owner = location admin. entity = one selling entity. Never PIN. */
+  audience?: "platform" | "owner" | "entity";
+  operatorId?: string;
 }) {
   const navigate = useNavigate();
   const { user } = useCurrentUserState();
@@ -67,7 +75,8 @@ export function PlatformTenantVenue({
   const [activeLoc, setActiveLoc] = useState(locId || "");
   const [detail, setDetail] = useState<TenantDetailModel | null>(null);
   const [orgReadyId, setOrgReadyId] = useState("");
-  const hydrateKey = `${audience}:${orgId}:${activeLoc || locId || ""}`;
+  const entityId = audience === "entity" ? scopedOperatorId || "" : "";
+  const hydrateKey = `${audience}:${orgId}:${activeLoc || locId || ""}:${entityId}`;
   const lastHydrated = useRef("");
 
   useEffect(() => {
@@ -92,7 +101,7 @@ export function PlatformTenantVenue({
       let drillMembers: Array<{ id: string; name: string; email: string; role: string }> = [];
       let drillOps: Array<{ id: string; dba: string }> = [];
 
-      if (audience === "owner") {
+      if (audience === "owner" || audience === "entity") {
         const session = await getSessionContextFn();
         if (cancelled) return;
         const scoped = session.locations.filter((l) => l.orgId === orgId);
@@ -161,7 +170,9 @@ export function PlatformTenantVenue({
         venueType,
         locationName: access.location.name,
         orgName: access.org.name,
-        ownerName: user?.displayName || (audience === "owner" ? "Owner" : "Platform admin"),
+        ownerName:
+          user?.displayName ||
+          (audience === "entity" ? "Entity admin" : audience === "owner" ? "Owner" : "Platform admin"),
         slug: access.location.slug,
       });
       const saasOrg: SaasOrganization = {
@@ -200,14 +211,19 @@ export function PlatformTenantVenue({
           role: m.role === "owner" || m.role === "manager" ? m.role : "ops",
         })),
         locations: saasLocs,
-        adminName: user?.displayName || (audience === "owner" ? "Owner" : "Platform admin"),
-        adminRole: audience === "owner" ? "owner" : "platform_admin",
+        adminName:
+          user?.displayName ||
+          (audience === "entity" ? "Entity admin" : audience === "owner" ? "Owner" : "Platform admin"),
+        adminRole:
+          audience === "owner" ? "owner" : audience === "entity" ? "vendor" : "platform_admin",
       });
       useSaasStore.getState().setActiveLocation(loc.id);
       usePosStore.getState().openTenantLocation({
         entityId: venueType,
         venueName: access.location.name,
-        ownerName: user?.displayName || (audience === "owner" ? "Owner" : "Platform admin"),
+        ownerName:
+          user?.displayName ||
+          (audience === "entity" ? "Entity admin" : audience === "owner" ? "Owner" : "Platform admin"),
         locationId: access.location.id,
         menuMode,
         vendors: access.operators,
@@ -221,6 +237,14 @@ export function PlatformTenantVenue({
         entityPermissions: parseGrantMatrix(setup.entityPermissions),
         locationDevices: parseLocationDevices(setup.locationDevices),
         pinGate: false,
+        staff:
+          audience === "entity" && entityId
+            ? {
+                role: "vendor_operator",
+                operatorId: entityId,
+                name: user?.displayName || "Entity admin",
+              }
+            : undefined,
         settlement: {
           periodType:
             settlementRaw.periodType === "daily" ||
@@ -233,9 +257,14 @@ export function PlatformTenantVenue({
           hostName: access.location.hostBrandName || access.location.name,
         },
       });
-      usePosStore.getState().loginAsOwner(
-        user?.displayName || (audience === "owner" ? "Owner" : "Platform admin"),
-      );
+      const displayName =
+        user?.displayName ||
+        (audience === "entity" ? "Entity admin" : audience === "owner" ? "Owner" : "Platform admin");
+      if (audience === "entity" && entityId) {
+        usePosStore.getState().loginAsEntityAdmin(displayName, entityId);
+      } else {
+        usePosStore.getState().loginAsOwner(displayName);
+      }
       const peer = access.location.operatingModel === "peer_venue";
       const opsRows =
         access.operators?.map((o) => ({
@@ -253,7 +282,7 @@ export function PlatformTenantVenue({
       );
       const st = usePosStore.getState();
       usePosStore.setState({
-        view: "settings",
+        view: audience === "entity" ? "menu" : "settings",
         settings: {
           ...st.settings,
           peerVenue: peer || st.settings.peerVenue,
@@ -312,9 +341,19 @@ export function PlatformTenantVenue({
         /* optional */
       }
       const laborMap = parseLaborMap(setup.laborByEntity);
+      if (audience === "entity" && entityId) {
+        laborMap[entityId] = parseLaborRules({
+          ...(laborMap[entityId] ?? {}),
+          revenueBasis: "owned_lines",
+        });
+      }
       if (Object.keys(laborMap).length) {
         useOpsStore.setState({
-          labor: parseLaborRules(laborMap[HOST_SCOPE] ?? Object.values(laborMap)[0]),
+          labor: parseLaborRules(
+            (entityId && laborMap[entityId]) ||
+              laborMap[HOST_SCOPE] ||
+              Object.values(laborMap)[0],
+          ),
           laborByEntity: laborMap,
         });
       }
@@ -340,7 +379,7 @@ export function PlatformTenantVenue({
   };
 
   const switchLoc = (id: string) => {
-    if (audience === "owner") {
+    if (audience === "owner" || audience === "entity") {
       setActiveLoc(id);
       void setActiveContextFn({ data: { orgId, locationId: id } }).catch(() => undefined);
       return;
@@ -360,7 +399,7 @@ export function PlatformTenantVenue({
         >
           <header className="flex h-14 shrink-0 items-center gap-3 border-b border-border bg-surface px-3">
             <SummexMark className="h-8 w-8" />
-            {audience === "owner" ? (
+            {audience === "owner" || audience === "entity" ? (
               <Button size="sm" variant="ghost" onClick={() => void signOut("/login")}>
                 Sign out
               </Button>
@@ -373,9 +412,11 @@ export function PlatformTenantVenue({
             <div className="min-w-0 flex-1">
               <p className="truncate text-sm font-semibold leading-tight">{title}</p>
               <p className="truncate text-[11px] text-muted-foreground">
-                {audience === "owner"
-                  ? "Venue settings · Overview, Devices, Menus"
-                  : "Venue settings · no host merchant required"}
+                {audience === "entity"
+                  ? `${ops.find((o) => o.id === entityId)?.dba || "Entity"} · menu, costs, schedule, reports`
+                  : audience === "owner"
+                    ? "Venue settings · Overview, Devices, Menus, Publish"
+                    : "Venue settings · no host merchant required"}
               </p>
             </div>
             {ops.length > 0 && (
@@ -408,16 +449,25 @@ export function PlatformTenantVenue({
           )}
           <div className="flex shrink-0 gap-1 overflow-x-auto border-b border-border px-3 py-2">
             {(
-              (
-                [
-                  ["overview", "Overview"],
-                  ["settings", "Settings"],
-                  ["devices", "Devices"],
-                  ["menu", "Menus"],
-                  ["payments", "Payments"],
-                  ["people", "Users"],
-                ] as const
-              ).filter(([id]) => audience === "platform" || id !== "people")
+              audience === "entity"
+                ? ([
+                    ["overview", "Overview"],
+                    ["menu", "Menu"],
+                    ["costs", "Costs"],
+                    ["schedule", "Schedule"],
+                    ["reports", "Reports"],
+                    ["staff", "Staff & 86"],
+                  ] as const)
+                : (
+                    [
+                      ["overview", "Overview"],
+                      ["settings", "Settings"],
+                      ["devices", "Devices"],
+                      ["menu", "Menus"],
+                      ["payments", "Payments"],
+                      ["people", "Users"],
+                    ] as const
+                  ).filter(([id]) => audience === "platform" || id !== "people")
             ).map(([id, label]) => (
               <button
                 key={id}
@@ -442,11 +492,13 @@ export function PlatformTenantVenue({
               <TenantOverview
                 detail={detail}
                 title={title}
+                audience={audience}
+                entityId={entityId}
                 onOpen={setTab}
               />
             )}
-            {ready && !error && tab === "settings" && <SettingsView />}
-            {ready && !error && tab === "devices" && (
+            {ready && !error && tab === "settings" && audience !== "entity" && <SettingsView />}
+            {ready && !error && tab === "devices" && audience !== "entity" && (
               <LocationDeviceRegistry
                 orgId={orgReadyId}
                 locationId={activeLoc}
@@ -455,7 +507,7 @@ export function PlatformTenantVenue({
               />
             )}
             {ready && !error && tab === "menu" && <MenuAdminView />}
-            {ready && !error && tab === "payments" && (
+            {ready && !error && tab === "payments" && audience !== "entity" && (
               <QuantumPaymentsSettings write />
             )}
             {ready && !error && audience === "platform" && tab === "people" && (
@@ -464,6 +516,18 @@ export function PlatformTenantVenue({
                 locationId={activeLoc}
                 operators={ops}
               />
+            )}
+            {ready && !error && audience === "entity" && tab === "costs" && (
+              <CostWorkspace />
+            )}
+            {ready && !error && audience === "entity" && tab === "schedule" && (
+              <LaborOpsView />
+            )}
+            {ready && !error && audience === "entity" && tab === "reports" && (
+              <ReportsView />
+            )}
+            {ready && !error && audience === "entity" && tab === "staff" && (
+              <OperatorOpsView operatorId={entityId} />
             )}
           </main>
         </div>
@@ -474,25 +538,35 @@ export function PlatformTenantVenue({
 function TenantOverview({
   detail,
   title,
+  audience,
+  entityId,
   onOpen,
 }: {
   detail: TenantDetailModel | null;
   title: string;
+  audience: "platform" | "owner" | "entity";
+  entityId?: string;
   onOpen: (tab: Tab) => void;
 }) {
   const hostName = hostMerchantName(detail?.host);
   const entities = detail?.entities ?? [];
   const peer = detail?.operatingModel === "peer_venue";
+  const mine = entityId ? entities.find((e) => e.id === entityId) : null;
+  const entityDash = audience === "entity";
   return (
     <div className="mx-auto max-w-lg space-y-4" data-demo="platform-tenant-overview">
       <div>
-        <p className="text-lg font-semibold">{detail?.venueName || title}</p>
+        <p className="text-lg font-semibold">
+          {entityDash ? mine?.name || title : detail?.venueName || title}
+        </p>
         <p className="mt-1 text-xs text-muted-foreground">
-          {peer
-            ? "Shared venue — no host merchant. Child brands below."
-            : hostName
-              ? `Host merchant · ${hostName}`
-              : "Location"}
+          {entityDash
+            ? "This selling entity only. You cannot edit another brand’s menu, payout, or labor. Floor staff can sell the other menu only if the venue grant allows it."
+            : peer
+              ? "Shared venue — no host merchant. Child brands below."
+              : hostName
+                ? `Host merchant · ${hostName}`
+                : "Location"}
         </p>
       </div>
       {entities.length > 0 && (
@@ -500,6 +574,9 @@ function TenantOverview({
           {entities.map((e) => (
             <li key={e.id} className="rounded-xl border border-border bg-surface px-3 py-2 text-sm">
               <span className="font-medium">{e.name}</span>
+              {entityDash && e.id === entityId ? (
+                <span className="ml-2 text-xs text-muted-foreground">Yours</span>
+              ) : null}
             </li>
           ))}
         </ul>
@@ -508,21 +585,45 @@ function TenantOverview({
         <p className="text-sm text-muted-foreground">No child operators yet.</p>
       )}
       <div className="flex flex-wrap gap-2">
-        <Button size="sm" onClick={() => onOpen("settings")}>
-          Settings
-        </Button>
-        <Button size="sm" variant="outline" onClick={() => onOpen("devices")}>
-          Devices
-        </Button>
-        <Button size="sm" variant="outline" onClick={() => onOpen("menu")}>
-          Menus
-        </Button>
-        <Button size="sm" variant="outline" onClick={() => onOpen("payments")}>
-          Payments
-        </Button>
-        <Button size="sm" variant="outline" onClick={() => onOpen("people")}>
-          Users
-        </Button>
+        {entityDash ? (
+          <>
+            <Button size="sm" onClick={() => onOpen("menu")}>
+              Menu
+            </Button>
+            <Button size="sm" variant="outline" onClick={() => onOpen("costs")}>
+              Costs
+            </Button>
+            <Button size="sm" variant="outline" onClick={() => onOpen("schedule")}>
+              Schedule
+            </Button>
+            <Button size="sm" variant="outline" onClick={() => onOpen("reports")}>
+              Reports
+            </Button>
+            <Button size="sm" variant="outline" onClick={() => onOpen("staff")}>
+              Staff & 86
+            </Button>
+          </>
+        ) : (
+          <>
+            <Button size="sm" onClick={() => onOpen("settings")}>
+              Settings
+            </Button>
+            <Button size="sm" variant="outline" onClick={() => onOpen("devices")}>
+              Devices
+            </Button>
+            <Button size="sm" variant="outline" onClick={() => onOpen("menu")}>
+              Menus
+            </Button>
+            <Button size="sm" variant="outline" onClick={() => onOpen("payments")}>
+              Payments
+            </Button>
+            {audience === "platform" && (
+              <Button size="sm" variant="outline" onClick={() => onOpen("people")}>
+                Users
+              </Button>
+            )}
+          </>
+        )}
       </div>
     </div>
   );

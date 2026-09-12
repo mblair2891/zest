@@ -239,13 +239,12 @@ export const ROLE_GUIDE_TOPICS: GuideTopic[] = [
         "You cook or pour for a host brand. The guest pays the host. You are paid on the period.",
       ),
       ul(
-        "Your login is scoped to your entity (Operator A, Operator B, …) under the host location.",
-        "Full control of your menu, modifiers, 86, tickets/ODS, schedules, and your reports slice.",
-        "Peer menus are view-only unless the host grants edit_menu. You cannot change another operator’s settings.",
-        "Operator ops: your staff, time clock, and 86 board.",
-        "View-only settlement slice. Payout destinations are host-managed — you cannot edit banks, tax, or host branding.",
+        "Password login at app.summex.app/login (Entity admin). Never a PIN pad, never platform CRM. Scoped to your selling entity.",
+        "Dashboard: your menu, recipes, costs/invoices, schedule and payroll export, reports, 86, and staff PINs for this entity.",
+        "You cannot edit the other entity’s menu, payout, or labor. Reports and labor % use owned lines (what this entity is paid).",
+        "Peer menus are view-only on the floor unless the venue grant allows selling them. You cannot change another operator’s settings.",
         "A $35 dispute fee, when filed, splits by merchandise on that check.",
-        "Help button (header): ask how to do a task. Answers from this guide for your entity — not host payouts or platform CRM.",
+        "On a shared venue there is no fake host merchant. Help answers from this guide for your entity — not host payouts or platform CRM.",
       ),
       p(
         "Rehearse this model by onboarding a host + two operators. There is no seeded catalog.",
@@ -272,7 +271,8 @@ export const ROLE_GUIDE_TOPICS: GuideTopic[] = [
         "Bartender — bar well, drink send, own drawer, bar ODS if that station. Not seating the dining room unless granted.",
         "Kitchen — ODS Start/Bump only. No pay, no drawer, no price edits.",
         "Busser — dirty → clean only.",
-        "Vendor operator — own menu and tickets. Peer menus view-only unless the host grants.",
+        "Vendor operator / Entity admin — password login to that brand’s dashboard (menu, costs, schedule, reports, 86, staff PINs). Peer menus view-only on the floor unless the venue grant allows selling them. Cannot edit the other brand’s menu, payout, or labor.",
+        "Location admin — venue Devices, floor, QR, printers, Publish, both entities.",
         "Platform Admin — control plane after Sign in, not a restaurant PIN.",
       ),
       steps(
@@ -513,7 +513,7 @@ export const ROLE_GUIDE_TOPICS: GuideTopic[] = [
         "Tip-out and pools stay the existing rules. They do not mix into labor % unless you turn on tips in labor.",
       ),
       steps(
-        "Owner: Location settings → Labor basis. Confirm each operator is on owned lines.",
+        "Owner: Location settings → Labor basis. Confirm each operator is on owned lines. Entity admin reports and labor % always use owned lines for that brand.",
         "Publish if tablets should pick up the setting. Staff keep the last snapshot until Switch user.",
         "Read staffing recs and cost pictures with the basis in the line.",
       ),

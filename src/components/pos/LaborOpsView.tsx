@@ -73,9 +73,12 @@ export function LaborOpsView() {
   const sessionKind = usePosStore((s) => s.sessionKind);
   const settings = usePosStore((s) => s.settings);
   const floor = sessionKind === "pin" && isFloorRole(current?.role);
+  const entityLock =
+    current?.role === "vendor_operator" ? current.operatorId || HOST_SCOPE : null;
   const [opFilter, setOpFilter] = useState(
     () => current?.operatorId || HOST_SCOPE,
   );
+  const opScope = entityLock || opFilter;
   const [forceOverride, setForceOverride] = useState(false);
   const orgId = useSaasStore((s) => s.org.id);
   const locId = usePosStore((s) => s.tenantLocationId) || "";
@@ -159,7 +162,7 @@ export function LaborOpsView() {
           Published shifts · clock windows · approval · hours export to ADP/Intuit/CSV.
           Summex does not process payroll.
         </p>
-        {!floor && vendors.length > 0 && (
+        {!floor && vendors.length > 0 && !entityLock && (
           <select
             className="mt-2 h-8 rounded-md border border-border bg-bg px-2 text-xs"
             value={opFilter}
@@ -185,14 +188,21 @@ export function LaborOpsView() {
             (
               floor
                 ? ([["clock", "Time clock"], ["myshifts", "My shifts"]] as const)
-                : ([
-                    ["clock", "Time clock"],
-                    ["myshifts", "Schedule"],
-                    ["timecards", "Timecards"],
-                    ["alerts", "Supervisor"],
-                    ["settings", "Rules"],
-                    ["payroll", "Hours export"],
-                  ] as const)
+                : entityLock
+                  ? ([
+                      ["clock", "Time clock"],
+                      ["myshifts", "Schedule"],
+                      ["timecards", "Timecards"],
+                      ["payroll", "Hours export"],
+                    ] as const)
+                  : ([
+                      ["clock", "Time clock"],
+                      ["myshifts", "Schedule"],
+                      ["timecards", "Timecards"],
+                      ["alerts", "Supervisor"],
+                      ["settings", "Rules"],
+                      ["payroll", "Hours export"],
+                    ] as const)
             )
           ).map(([id, label]) => (
             <Button
@@ -274,7 +284,7 @@ export function LaborOpsView() {
                   if (!e.active) return false;
                   if (floor) return e.id === current?.id;
                   const op = e.operatorId || HOST_SCOPE;
-                  if (opFilter && op !== opFilter) return false;
+                  if (opScope && op !== opScope) return false;
                   return true;
                 })
                 .map((e) => {
@@ -736,7 +746,7 @@ export function LaborOpsView() {
               punches={punches}
               orgId={orgId}
               locationId={locId}
-              employerId={opFilter || current?.operatorId || HOST_SCOPE}
+              employerId={opScope || current?.operatorId || HOST_SCOPE}
               employerName={settings.name || "Host"}
               onFlash={setFlash}
             />
@@ -744,7 +754,7 @@ export function LaborOpsView() {
               punches={punches}
               employees={employees.filter((e) => {
                 const op = e.operatorId || HOST_SCOPE;
-                if (opFilter && op !== opFilter) return false;
+                if (opScope && op !== opScope) return false;
                 return canViewPayroll(current, grants, op);
               })}
               operatorName={(id) =>
@@ -752,7 +762,7 @@ export function LaborOpsView() {
                   ? settings.name || "Host"
                   : vendors.find((v) => v.id === id)?.shortName ?? id
               }
-              operatorId={opFilter}
+              operatorId={opScope}
             />
             <div className="rounded-2xl border border-border bg-surface p-4">
               <div className="mb-2 flex items-center gap-2 text-sm font-semibold">
