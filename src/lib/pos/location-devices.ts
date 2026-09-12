@@ -84,6 +84,8 @@ export type LocationDevice = {
   claimCode?: string;
   assignment: DeviceAssignment;
   print?: PrinterConfig;
+  /** Station tablet → guest receipt printer. Empty = venue default receipt printer. */
+  receiptPrinterId?: string | null;
   /** Owner asked the idle PIN pad to take the new role now. */
   applyRoleNow?: boolean;
   roleRevision?: number;
@@ -205,6 +207,12 @@ export function parseLocationDevice(raw: unknown): LocationDevice | null {
     claimCode: o.claimCode ? String(o.claimCode) : undefined,
     assignment,
     print: type === "printer" ? parsePrinterConfig(o.print ?? o) : undefined,
+    receiptPrinterId:
+      type === "printer"
+        ? undefined
+        : o.receiptPrinterId
+          ? String(o.receiptPrinterId).trim().slice(0, 80)
+          : null,
     applyRoleNow: o.applyRoleNow === true,
     roleRevision: Number(o.roleRevision) > 0 ? Math.round(Number(o.roleRevision)) : undefined,
     claimExpiresAt:

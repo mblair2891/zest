@@ -215,7 +215,7 @@ export const DEVICE_TOPICS: GuideTopic[] = [
         "Assign Prints: Guest receipt (thermal T20), Kitchen tickets (impact U220), Bar tickets, or Expo / bump chit. Entity = host or one operator.",
         "Bind the cash drawer kick to the receipt printer. Kitchen impact printers do not kick the till.",
         "LAN: enter IP (default port 9100). The house print agent on the hub talks raw sockets — browsers cannot.",
-        "Tap Test print. Send from POS prints kitchen/bar. Pay or Check prints the guest receipt and can kick the drawer.",
+        "Tap Test print. Send from POS prints kitchen/bar. After pay, Print sends ESC/POS to the receipt printer mapped on that station row (Devices). If none, the venue default receipt printer.",
       ),
       ul(
         "Production: Ethernet to the staff AP. Do not join the printer to guest Wi‑Fi or run it as its own hotspot.",

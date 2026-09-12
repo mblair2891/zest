@@ -190,6 +190,7 @@ export const saveLocationDeviceFn = createServerFn({ method: "POST" })
       serial?: string;
       assignment: { operatorId: string; function: DeviceFunction };
       print?: unknown;
+      receiptPrinterId?: string | null;
     };
   }) => {
     const type = DEVICE_TYPES.includes(d.device?.type) ? d.device.type : "other";
@@ -209,6 +210,12 @@ export const saveLocationDeviceFn = createServerFn({ method: "POST" })
           function: fn,
         },
         print: type === "printer" ? parsePrinterConfig(d.device?.print) : undefined,
+        receiptPrinterId:
+          type === "printer"
+            ? null
+            : d.device?.receiptPrinterId
+              ? String(d.device.receiptPrinterId).trim().slice(0, 80)
+              : null,
       },
     };
   })
@@ -242,6 +249,10 @@ export const saveLocationDeviceFn = createServerFn({ method: "POST" })
         : minted!.claimExpiresAt,
       assignment: data.device.assignment,
       print: data.device.print ?? existing?.print,
+      receiptPrinterId:
+        data.device.type === "printer"
+          ? existing?.receiptPrinterId ?? null
+          : (data.device.receiptPrinterId ?? existing?.receiptPrinterId ?? null),
       applyRoleNow: existing?.applyRoleNow,
       roleRevision: existing?.roleRevision,
     };

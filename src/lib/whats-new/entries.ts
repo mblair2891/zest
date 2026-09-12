@@ -6,6 +6,19 @@ import type { GuideUpdate } from "@/lib/guide/types";
  */
 export const WHATS_NEW_ENTRIES: GuideUpdate[] = [
   {
+    id: "upd_2026_10_70_receipt_choice",
+    date: "2026-09-11",
+    title: "After pay: Email, Print, or No receipt",
+    summary:
+      "Every tender that closes a check asks Email, Print, or No receipt. Print uses this station’s mapped printer.",
+    body: "Card, cash, gift, and comp all show the same three choices when the check is paid. Email sends via Resend; if email is down the station says so and offers print. Print is ESC/POS to the receipt printer mapped on that device row in Devices, or the venue default receipt printer. No receipt closes the check. A shared check is one guest document with lines grouped by vendor. Card-present on handhelds is the Finix/Quantum reader only — not Square or Stripe. Cash and gift still work without a reader.",
+    roles: ["server", "kitchen_bar", "owner_manager", "host_operator"],
+    surfaces: ["floor"],
+    audience: "all",
+    topicId: "receipts-by-vendor",
+    tags: ["receipt", "print", "email", "pay", "quantum"],
+  },
+  {
     id: "upd_2026_10_69_bar_tab_stool",
     date: "2026-09-11",
     title: "Bar tab starts on a stool",

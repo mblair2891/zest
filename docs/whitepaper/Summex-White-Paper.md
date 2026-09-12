@@ -3,7 +3,7 @@
 **Powered by Quantum Reach**
 
 White paper · for owners and operators  
-**Revision · 11 Sep 2026** — Written for prospective subscribers. Aligns with Operators Guide v2026.10.69. Staff stations are Android tablets. Bar tab opens a stool on that person’s section.
+**Revision · 11 Sep 2026** — Written for prospective subscribers. Aligns with Operators Guide v2026.10.70. Staff stations are Android tablets. After pay: Email, Print, or No receipt.
 
 summex.app  
 Guest cards: **Quantum Payments** only

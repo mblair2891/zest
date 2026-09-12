@@ -99,6 +99,13 @@ export const sendGuestReceiptFn = createServerFn({ method: "POST" })
       html: data.html || undefined,
       kind: "receipt_email",
     });
-    if (res.status === "failed") return { ok: false, status: "failed", error: "Could not send receipt" };
-    return { ok: true, status: res.status };
+    if (res.status === "sent") return { ok: true, status: "sent" };
+    if (res.status === "logged_only") {
+      return {
+        ok: false,
+        status: "logged_only",
+        error: "Email is down. Print the receipt instead.",
+      };
+    }
+    return { ok: false, status: "failed", error: "Email is down. Print the receipt instead." };
   });

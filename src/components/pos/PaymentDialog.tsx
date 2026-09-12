@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { CreditCard, Banknote, Gift, Percent } from "lucide-react";
+import { CreditCard, Banknote, Gift, Percent, Mail, Printer, Ban } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -24,7 +24,7 @@ import {
   guestCheckText,
 } from "@/lib/payments/check-by-vendor";
 import { GuestCheckByVendor } from "./GuestCheckByVendor";
-import { printFromPos } from "@/lib/print/from-store";
+import { printGuestReceipt } from "@/lib/print/from-store";
 import { redeemGiftCardFn } from "@/lib/gift/api";
 import { fulfillingIssuer } from "@/lib/pos/gift-issuer";
 import type { PaymentsStatus } from "@/lib/payments/types";
@@ -96,6 +96,8 @@ export function PaymentDialog({ open, onOpenChange }: Props) {
   const [payStatus, setPayStatus] = useState<PaymentsStatus | null>(null);
   const [receiptEmail, setReceiptEmail] = useState("");
   const [receiptMsg, setReceiptMsg] = useState<string | null>(null);
+  const [receiptChoice, setReceiptChoice] = useState<"choose" | "email">("choose");
+  const [receiptBusy, setReceiptBusy] = useState(false);
 
   const amountCents = amount
     ? Math.round(parseFloat(amount) * 100)
@@ -325,8 +327,66 @@ export function PaymentDialog({ open, onOpenChange }: Props) {
     setChange(null);
     setTip(0);
     setAmount("");
+    setReceiptChoice("choose");
+    setReceiptMsg(null);
+    setReceiptEmail("");
     onOpenChange(false);
     setView("floor");
+  };
+
+  const runPrintReceipt = async () => {
+    if (!order) return;
+    setReceiptBusy(true);
+    setReceiptMsg(null);
+    try {
+      const res = await printGuestReceipt(order.id);
+      if (!res.ok) {
+        setReceiptMsg(res.error || "Print failed");
+        setReceiptBusy(false);
+        return;
+      }
+      finish();
+    } catch {
+      setReceiptMsg("Print failed. Check the mapped receipt printer.");
+      setReceiptBusy(false);
+    }
+  };
+
+  const runEmailReceipt = async () => {
+    if (!order) return;
+    const loc =
+      usePosStore.getState().tenantLocationId ||
+      readTenantPosContext()?.locationId ||
+      "";
+    const view = buildGuestCheckView({
+      order,
+      settings,
+      hostName: settings.name,
+      operatorName: (id) =>
+        usePosStore.getState().vendors.find((v) => v.id === id)?.name ?? id,
+    });
+    setReceiptBusy(true);
+    setReceiptMsg(null);
+    try {
+      const r = await sendGuestReceiptFn({
+        data: {
+          locationId: loc,
+          to: receiptEmail,
+          subject: `${settings.name} receipt #${order.number}`,
+          text: guestCheckText(view),
+          html: guestCheckHtml(view),
+        },
+      });
+      if (!r.ok) {
+        setReceiptMsg(r.error || "Email is down. Print the receipt instead.");
+        setReceiptBusy(false);
+        return;
+      }
+      finish();
+    } catch {
+      setReceiptMsg("Email is down. Print the receipt instead.");
+      setReceiptBusy(false);
+    }
   };
 
   if (!order || !totals || !dual) return null;
@@ -341,6 +401,7 @@ export function PaymentDialog({ open, onOpenChange }: Props) {
           setError(null);
           setReceiptEmail("");
           setReceiptMsg(null);
+          setReceiptChoice("choose");
         }
         onOpenChange(o);
       }}
@@ -369,13 +430,14 @@ export function PaymentDialog({ open, onOpenChange }: Props) {
         </DialogHeader>
         {method === "card" && (payStatus?.mode === "sandbox" || sandbox) && (
           <p className="rounded-lg bg-warn/15 px-3 py-2 text-xs font-medium text-warn">
-            TRAINING — Quantum Payments sandbox. Not a live card capture. Cash still works.
+            TRAINING — Quantum Payments sandbox. Not a live card capture. Cash and gift still work without a reader.
           </p>
         )}
         {method === "card" && payStatus?.mode === "live" && (
           <p className="rounded-lg bg-primary/10 px-3 py-2 text-xs font-medium">
-            Live Quantum Payments · present the card on a supplied reader. Tablets are not
-            card terminals. {payStatus.liveReady ? "" : payStatus.message}
+            Live Quantum Payments · present the card on a Finix/Quantum reader. Handhelds
+            are not Square or Stripe terminals. Cash and gift work without a reader.{" "}
+            {payStatus.liveReady ? "" : payStatus.message}
           </p>
         )}
 
@@ -439,67 +501,87 @@ export function PaymentDialog({ open, onOpenChange }: Props) {
                   : ""}
               </p>
             )}
-            <div className="flex gap-2">
-              <Input
-                type="email"
-                placeholder="Email receipt"
-                value={receiptEmail}
-                onChange={(e) => setReceiptEmail(e.target.value)}
-              />
-              <Button
-                variant="outline"
-                disabled={!receiptEmail.trim()}
-                onClick={() => {
-                  const loc =
-                    usePosStore.getState().tenantLocationId ||
-                    readTenantPosContext()?.locationId ||
-                    "";
-                  const view = buildGuestCheckView({
-                    order,
-                    settings,
-                    hostName: settings.name,
-                    operatorName: (id) =>
-                      usePosStore.getState().vendors.find((v) => v.id === id)?.name ?? id,
-                  });
-                  void sendGuestReceiptFn({
-                    data: {
-                      locationId: loc,
-                      to: receiptEmail,
-                      subject: `${settings.name} receipt #${order.number}`,
-                      text: guestCheckText(view),
-                      html: guestCheckHtml(view),
-                    },
-                  })
-                    .then((r) =>
-                      setReceiptMsg(
-                        r.ok
-                          ? r.status === "logged_only"
-                            ? "Receipt queued"
-                            : "Receipt sent"
-                          : r.error || "Could not send",
-                      ),
-                    )
-                    .catch(() => setReceiptMsg("Could not send"));
-                }}
-              >
-                Send
-              </Button>
-            </div>
+            <p className="text-sm font-medium">Receipt</p>
+            {receiptChoice === "choose" && (
+              <div className="grid gap-2">
+                <Button
+                  size="lg"
+                  className="station-touch min-h-12 w-full"
+                  onClick={() => {
+                    setReceiptChoice("email");
+                    setReceiptMsg(null);
+                  }}
+                >
+                  <Mail className="h-5 w-5" />
+                  Email
+                </Button>
+                <Button
+                  size="lg"
+                  className="station-touch min-h-12 w-full"
+                  variant="outline"
+                  disabled={receiptBusy}
+                  onClick={() => void runPrintReceipt()}
+                >
+                  <Printer className="h-5 w-5" />
+                  Print
+                </Button>
+                <Button
+                  size="lg"
+                  className="station-touch min-h-12 w-full"
+                  variant="outline"
+                  onClick={finish}
+                >
+                  <Ban className="h-5 w-5" />
+                  No receipt
+                </Button>
+              </div>
+            )}
+            {receiptChoice === "email" && (
+              <div className="space-y-2 text-left">
+                <Input
+                  type="email"
+                  placeholder="Guest email"
+                  value={receiptEmail}
+                  onChange={(e) => setReceiptEmail(e.target.value)}
+                  autoFocus
+                />
+                <Button
+                  className="station-touch min-h-12 w-full"
+                  size="lg"
+                  disabled={!receiptEmail.trim() || receiptBusy}
+                  onClick={() => void runEmailReceipt()}
+                >
+                  Send email
+                </Button>
+                <Button
+                  className="w-full"
+                  variant="ghost"
+                  onClick={() => {
+                    setReceiptChoice("choose");
+                    setReceiptMsg(null);
+                  }}
+                >
+                  Back
+                </Button>
+              </div>
+            )}
             {receiptMsg ? (
-              <p className="text-xs text-muted-foreground" role="status">
+              <p className="text-sm text-danger" role="status">
                 {receiptMsg}
               </p>
             ) : null}
-            <Button
-              className="w-full"
-              variant="outline"
-              onClick={() => void printFromPos("receipt", order.id)}
-            >
-              Print guest check
-            </Button>
-            <Button className="w-full" size="lg" onClick={finish}>
-              Done
-            </Button>
+            {receiptMsg && /print/i.test(receiptMsg) && (
+              <Button
+                className="station-touch min-h-12 w-full"
+                size="lg"
+                variant="outline"
+                disabled={receiptBusy}
+                onClick={() => void runPrintReceipt()}
+              >
+                <Printer className="h-5 w-5" />
+                Print instead
+              </Button>
+            )}
             {order.tableId && (
               <Button
                 className="w-full"

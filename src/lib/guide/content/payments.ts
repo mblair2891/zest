@@ -33,7 +33,7 @@ export const PAYMENT_TOPICS: GuideTopic[] = [
         "One guest tender. Split capture to each brand’s merchant by merchandise owner. Tax, tip, and service allocate by merchandise share. Receipt, email, and QR check itemize by vendor, then totals — still one document.",
         "Software billing (SaaS invoices) is separate from guest cards.",
         "Gift load with a bank card charges the issuer brand’s account. Gift redeem stays on the Summex ledger.",
-        "Sandbox (default, including Training): practice cards, not a live Visa. Live: present the card on an enrolled Finix/Quantum reader supplied through Summex. Staff stations are Android tablets with Summex Station. Printers and drawers stay BYO. Customer-owned Square, Stripe, or bank terminals are not supported. Live cards fail closed without an enrolled reader.",
+        "Sandbox (default, including Training): practice cards, not a live Visa. Live: present the card on an enrolled Finix/Quantum reader supplied through Summex. Handhelds are not Square or Stripe terminals and never take PAN on the tablet. Cash and gift still work without a reader. Printers and drawers stay BYO. Live cards fail closed without an enrolled reader.",
         "A brand cannot take live cards until that brand’s application is approved. Training uses sandbox account ids. If the processor is down: take cash or keep the check open.",
       ),
       callout(
@@ -64,6 +64,7 @@ export const PAYMENT_TOPICS: GuideTopic[] = [
         "Cash: enter tendered; change due is calculated. Cash view tracks the drawer.",
         "Gift: enter the first-party code. Redeem never calls an outside gift network. The fulfilling operator gets the merchandise; issuer liability decreases; issuer remits to the fulfiller if they differ.",
         "To split tenders, pay less than the balance, then take the next tender on the same check.",
+        "After every tender that closes the check: Email, Print, or No receipt. Email sends via Resend; if email is down, the station says so and offers print. Print is ESC/POS on this station’s mapped receipt printer (else the venue default). No receipt closes the check. Shared check: one document, lines by vendor.",
         "House / other exist for room charge style paths — still not a second card processor.",
       ),
       shot(
@@ -73,7 +74,7 @@ export const PAYMENT_TOPICS: GuideTopic[] = [
       tip(
         "Tips on card follow the house rule (cash-at-close vs paycheck, and any tip pool) — they are not a second capture.",
       ),
-      related("quantum-payments", "cash-discount", "cash-handling", "gift-cards", "host-capture", "tip-pooling", "server-closeout"),
+      related("quantum-payments", "cash-discount", "cash-handling", "gift-cards", "host-capture", "receipts-by-vendor", "tip-pooling", "server-closeout"),
     ],
   }),
   topic({
@@ -131,8 +132,10 @@ export const PAYMENT_TOPICS: GuideTopic[] = [
         "Cash discount receipts show both printed/card and cash amounts when cash was taken.",
       ),
       steps(
-        "Close or print the check as usual.",
-        "Confirm lines sit under the selling operator. Untagged lines group with the host.",
+        "After pay, choose Email, Print, or No receipt. Same three choices for card, cash, gift, and comp.",
+        "Email: enter the guest address. Sent via Resend. If email is down, the station says so and offers print.",
+        "Print: ESC/POS on the printer mapped on this device row in Devices. If none, the venue default receipt printer.",
+        "Confirm lines sit under the selling operator — one guest receipt. Untagged lines group with the host.",
         "Do not ask the bar to “run it on their Square” for a second chit.",
       ),
       related("host-capture", "quantum-payments", "multi-operator-orders", "printers-kds", "tenders-tips"),

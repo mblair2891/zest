@@ -3,9 +3,10 @@ import { usePosStore } from "@/lib/pos/store";
 import type { KitchenTicket, Order } from "@/lib/pos/types";
 import { uid } from "@/lib/utils";
 import { dispatchPrintJob } from "./dispatch";
+import { currentStationDeviceId, resolveReceiptPrinter } from "./receipt-printer";
 import type { PrintJob, PrintLine } from "./types";
 import type { PrintStation } from "@/lib/pos/location-devices";
-import { entityIdForLine, splitTenderByEntity } from "@/lib/payments/entity-split";
+import { splitTenderByEntity } from "@/lib/payments/entity-split";
 import { parseQrPolicy, qrPrintOnTicket } from "@/lib/pos/qr-policy";
 import { ticketGuestUrl } from "@/lib/pos/qr-table";
 
@@ -154,27 +155,11 @@ export async function printFromPos(
         at: Date.now(),
       };
       jobs.push(guestJob);
-      if (allocations.length > 1) {
-        for (const sh of shares) {
-          jobs.push({
-            ...guestJob,
-            id: uid("prn"),
-            copy: "merchant",
-            operatorName: sh.displayName,
-            items: receiptLines(order).filter((l) => entityIdForLine(l) === sh.entityId),
-            allocations: [
-              {
-                name: sh.displayName,
-                merchandiseCents: sh.merchandiseCents,
-                feesCents: sh.taxCents + sh.serviceCents + sh.tipCents,
-                totalCents: sh.totalCents,
-              },
-            ],
-          });
-        }
-      }
     }
   }
+
+  const stationId = currentStationDeviceId();
+  const mappedReceipt = resolveReceiptPrinter(devices, stationId);
 
   for (const job of jobs) {
     const printers = (devices ?? []).filter(
@@ -183,9 +168,87 @@ export async function printFromPos(
     if (job.kind === "receipt" || printers.length > 0) {
       await dispatchPrintJob(job, devices, {
         forceBrowser: printers.length === 0 && job.kind === "receipt",
+        printerId: job.kind === "receipt" ? mappedReceipt?.id : undefined,
       });
     }
   }
+}
+
+/** Guest copy only — one document, lines grouped by vendor. ESC-POS on the station printer. */
+export async function printGuestReceipt(orderId: string): Promise<{
+  ok: boolean;
+  error?: string;
+  printerLabel?: string;
+}> {
+  const s = usePosStore.getState();
+  const order = s.orders.find((o) => o.id === orderId) ?? s.getActiveOrder?.();
+  if (!order) return { ok: false, error: "No check to print." };
+  const devices = s.locationDevices;
+  const printer = resolveReceiptPrinter(devices, currentStationDeviceId());
+  const locationId = s.tenantLocationId || "";
+  const locationName = s.settings.name || "Summex";
+  const table = order.tableId ? s.tables.find((tb) => tb.id === order.tableId) : undefined;
+  const tender = order.payments[order.payments.length - 1];
+  const totals = computeTotals(order, s.settings, {
+    tender: tender?.method === "cash" ? "cash" : "card",
+  });
+  const shares = splitTenderByEntity({
+    order,
+    settings: s.settings,
+    amountCents: totals.totalCents,
+    tipCents: totals.tipCents,
+    hostName: locationName,
+    operatorName: (id) => s.vendors.find((v) => v.id === id)?.name ?? id,
+  });
+  const job: PrintJob = {
+    id: uid("prn"),
+    kind: "receipt",
+    station: "receipt",
+    locationId,
+    locationName,
+    checkId: order.id,
+    checkNumber: order.number,
+    tableLabel: table?.label ?? order.tabName ?? order.type.replace("_", " "),
+    serverName: order.serverName,
+    copy: "guest",
+    items: receiptLines(order),
+    allocations: shares.map((sh) => ({
+      name: sh.displayName,
+      merchandiseCents: sh.merchandiseCents,
+      feesCents: sh.taxCents + sh.serviceCents + sh.tipCents,
+      totalCents: sh.totalCents,
+    })),
+    totals: {
+      subtotalCents: totals.subtotalCents,
+      taxCents: totals.taxCents,
+      tipCents: totals.tipCents,
+      giftCents: order.payments
+        .filter((p) => p.method === "gift_card")
+        .reduce((sum, p) => sum + p.amountCents, 0),
+      totalCents: totals.totalCents,
+      tender: tender
+        ? tender.method === "card"
+          ? `Card${tender.last4 ? ` ·${tender.last4}` : ""} · Quantum Payments`
+          : tender.method === "gift_card"
+            ? "Gift"
+            : tender.method === "cash"
+              ? "Cash"
+              : tender.method
+        : undefined,
+    },
+    at: Date.now(),
+  };
+  const res = await dispatchPrintJob(job, devices, {
+    printerId: printer?.id,
+    forceBrowser: !printer,
+  });
+  if (res.printed < 1) {
+    return {
+      ok: false,
+      error: "Printer did not accept the receipt. Check the mapped receipt printer.",
+    };
+  }
+  return { ok: true, printerLabel: printer?.label ?? "This browser" };
 }
 
 export async function printTableTents(): Promise<void> {

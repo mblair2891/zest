@@ -147,9 +147,16 @@ export async function dispatchTurnInSlip(
 export async function dispatchPrintJob(
   job: PrintJob,
   devices: LocationDevice[] | undefined,
-  opts?: { forceBrowser?: boolean },
-): Promise<{ printed: number; browser: boolean; agent: number }> {
-  const printers = printersForStation(devices, job.station, job.operatorId);
+  opts?: { forceBrowser?: boolean; printerId?: string | null },
+): Promise<{ printed: number; browser: boolean; agent: number; error?: string }> {
+  const named = opts?.printerId
+    ? (devices ?? []).find(
+        (d) => d.id === opts.printerId && d.type === "printer" && d.status !== "inactive",
+      )
+    : undefined;
+  const printers = named
+    ? [named]
+    : printersForStation(devices, job.station, job.operatorId);
   const html = ticketHtml(job);
   const bytes = escposBase64(job);
   let agent = 0;

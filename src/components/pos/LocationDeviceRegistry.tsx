@@ -113,6 +113,7 @@ export function LocationDeviceRegistry({
   const [printConnection, setPrintConnection] = useState<PrinterConnection>("browser");
   const [printTarget, setPrintTarget] = useState("");
   const [printStation, setPrintStation] = useState<PrintStation>("receipt");
+  const [receiptPrinterId, setReceiptPrinterId] = useState<string>("");
   const [busy, setBusy] = useState(false);
   const [claimInput, setClaimInput] = useState("");
   const [resolvedOrgId, setResolvedOrgId] = useState(orgId);
@@ -211,6 +212,7 @@ export function LocationDeviceRegistry({
     setPrintConnection(preset?.print?.connection ?? "browser");
     setPrintTarget(preset?.print?.target ?? "");
     setPrintStation(preset?.print?.station ?? "receipt");
+    setReceiptPrinterId(preset?.receiptPrinterId ?? "");
     setFormOpen(true);
   };
 
@@ -252,6 +254,7 @@ export function LocationDeviceRegistry({
                   station: printStation,
                 }
               : undefined,
+            receiptPrinterId: printer ? null : receiptPrinterId || null,
           },
         },
       });
@@ -637,6 +640,30 @@ export function LocationDeviceRegistry({
                 />
               </label>
             </div>
+          )}
+          {type !== "printer" && mode === "stations" && (
+            <label className="block text-xs text-muted-foreground">
+              Receipt printer
+              <select
+                className="mt-1 h-10 w-full rounded-xl border border-border bg-bg px-3 text-sm text-foreground"
+                value={receiptPrinterId}
+                onChange={(e) => setReceiptPrinterId(e.target.value)}
+              >
+                <option value="">Venue default receipt printer</option>
+                {devices
+                  .filter(
+                    (d) =>
+                      d.type === "printer" &&
+                      d.status !== "inactive" &&
+                      d.print?.station === "receipt",
+                  )
+                  .map((d) => (
+                    <option key={d.id} value={d.id}>
+                      {d.label}
+                    </option>
+                  ))}
+              </select>
+            </label>
           )}
           <div className="flex flex-wrap gap-2">
             <Button size="sm" disabled={busy} onClick={() => void save()}>
