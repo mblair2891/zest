@@ -851,7 +851,14 @@ export async function updateLocationSetupForUser(
   const loc = rows[0];
   if (!loc) throw new ForbiddenError("Location not found");
   const prev = parseSetup(loc.setup);
-  const next = parseSetup({ ...prev, ...input.setup });
+  const patch: Record<string, unknown> = {};
+  for (const [k, v] of Object.entries(input.setup as unknown as Record<string, unknown>)) {
+    if (v !== undefined) patch[k] = v;
+  }
+  const next = parseSetup({ ...prev, ...patch });
+  if (next.peerVenue || next.operatingModel === "peer_venue") {
+    next.hostEntityId = null;
+  }
   if (input.setup.laborByEntity) {
     next.laborByEntity = { ...(prev.laborByEntity ?? {}), ...input.setup.laborByEntity };
   }

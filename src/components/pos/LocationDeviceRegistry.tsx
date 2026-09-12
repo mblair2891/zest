@@ -178,7 +178,9 @@ export function LocationDeviceRegistry({
     } finally {
       setLoading(false);
     }
-  }, [resolvedOrgId, resolvedLocId, locationName]);
+    // locationName is a fallback label only — do not re-fetch when the house name types.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [resolvedOrgId, resolvedLocId]);
 
   useEffect(() => {
     void load();

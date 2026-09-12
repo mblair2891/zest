@@ -174,11 +174,13 @@ export function HrWorkspace() {
   ];
 
   const visibleTabs = tabs.filter((t) => t.show);
+  const visibleTabKey = visibleTabs.map((t) => t.id).join(",");
   useEffect(() => {
-    if (!visibleTabs.some((t) => t.id === tab)) {
-      setTab(visibleTabs[0]?.id ?? "settings");
+    const ids = visibleTabKey.split(",").filter(Boolean) as Tab[];
+    if (!ids.includes(tab)) {
+      setTab(ids[0] ?? "settings");
     }
-  }, [tab, visibleTabs]);
+  }, [tab, visibleTabKey]);
 
   if (isProspectDemo()) {
     return (

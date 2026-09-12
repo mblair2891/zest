@@ -65,6 +65,19 @@ test("password venue shell never gates a PIN pad", () => {
   assert.doesNotMatch(venue, /pinGate: true/);
 });
 
+test("peer venue settings is house-only and not the host payout tree", () => {
+  const venue = readFileSync("src/components/platform/PlatformTenantVenue.tsx", "utf8");
+  assert.match(venue, /VenueHouseSettings/);
+  assert.match(venue, /TabErrorBoundary/);
+  const house = readFileSync("src/components/platform/VenueHouseSettings.tsx", "utf8");
+  assert.match(house, /hostEntityId = null/);
+  assert.doesNotMatch(house, /QuantumPaymentsOnboardPanel/);
+  assert.doesNotMatch(house, /host-payouts/);
+  assert.doesNotMatch(house, /HrSettingsPack/);
+  const hostOps = readFileSync("src/components/pos/HostOperatorsSettings.tsx", "utf8");
+  assert.match(hostOps, /!peerVenue &&/);
+});
+
 test("platform tenant detail is venue console tabs, not SaaS home", () => {
   const tabs = venueDashboardTabs({ audience: "platform", operatingModel: "peer_venue" });
   const ids = tabs.map(([id]) => id);

@@ -62,7 +62,9 @@ export function MenuAdminView() {
     setEditing(item.id);
     setEditName(item.name);
     setEditPrice((pendingPrice.suggestedPriceCents / 100).toFixed(2));
-  }, [pendingPrice, menuItemsAll]);
+    // menuItemsAll is read from the store at effect time; pendingPrice is the trigger.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pendingPrice]);
 
   const persistWrite = (operatorId: string, action: "create" | "update" | "delete" | "toggle") => {
     if (isProspectDemo() || !orgId || !locId) return;

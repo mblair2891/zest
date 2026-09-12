@@ -74,6 +74,7 @@ export const PLATFORM_CRM_TOPICS: GuideTopic[] = [
         "Tenants tile and the sidebar Tenants item open /platform/tenants (the directory). Isolated demos — Summit Hall, Harbor Lot, Ash Street Coffee, Redbird Chicken — show a Demo badge. They are pairable and excluded from CRM, pipeline, and revenue.",
         "/platform/tenants/:orgId is that venue’s console, not the SaaS home. Tabs: Overview, Settings, Devices, Menus, Payments, Users, Onboarding. Overview is entities and training/live status — never CRM tiles.",
         "Devices: Add device, role (order | ODS | host | kiosk), QR + short code, role change after activate, Publish. Platform Admin and the venue billing owner can pair.",
+        "Settings on a peer venue is the building only (name, timezone, service style, cash rounding, QR, tax, sections, waitlist, publish). No host-merchant payout or Finix-on-venue. Entity Finix, menus, labor, and tips stay on each selling entity.",
         "Shared venue (peer) works with no host merchant. hostEntityId may be null. The screen shows the building plus selling entities.",
         "Users tab: add Location admin (whole venue) or Entity admin (one selling entity) — name, email, temporary password, force change on first login. They sign in at app.summex.app/login and only see that venue or that entity. Never PIN, never platform CRM. Optional: add floor staff who only have a PIN. You cannot create a second platform Admin.",
         "Operating as is demo-only on the tenant console and on the station PIN home. It does not replace the tab chrome.",

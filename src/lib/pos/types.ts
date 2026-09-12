@@ -209,6 +209,7 @@ export interface RestaurantSettings {
   operatingModel?: "single" | "host_operators" | "peer_venue";
   /** Venue service style. Drives the PIN home on an order station. */
   serviceStyle?: "full_service" | "counter" | "hybrid" | "drive_through";
+  taxMode?: "venue_shared" | "per_entity";
   onlineOrderingEnabled?: boolean;
   qrOrderingEnabled?: boolean;
   sectionPolicy?: SectionPolicy;

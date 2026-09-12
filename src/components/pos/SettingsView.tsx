@@ -295,11 +295,9 @@ export function SettingsView() {
           cashDiscountPercent: s.cashDiscountPercent,
           cashRoundIncrement: s.cashRoundIncrement,
           cashRoundMode: s.cashRoundMode,
-          devices: { pos: 0, kds: 0, handhelds: 0 },
-          settlement: {
-            periodType: "weekly",
-            hostCutPercent: 0,
-          },
+          ...(s.peerVenue || s.operatingModel === "peer_venue"
+            ? { peerVenue: true, operatingModel: "peer_venue" as const, hostEntityId: null }
+            : {}),
         },
       },
     }).catch(() => undefined);
@@ -1062,8 +1060,6 @@ function NetworkSettingsPanel() {
         locationId: locId,
         setup: {
           hostBrandName: settings.name,
-          devices: { pos: 0, kds: 0, handhelds: 0 },
-          settlement: { periodType: "weekly", hostCutPercent: 0 },
           networkReadyStatus: n.networkReadyStatus,
           networkCheckedAt: n.networkCheckedAt,
           networkNotes: n.networkNotes,

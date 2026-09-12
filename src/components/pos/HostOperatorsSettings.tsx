@@ -46,6 +46,7 @@ export function HostOperatorsSettings({ write }: { write: boolean }) {
 
       <EntityPermissionsMatrix write={write} />
 
+      {!peerVenue && (
       <section className="rounded-2xl border border-border bg-surface p-4" data-demo="host-payouts">
         <h3 className="mb-3 text-sm font-semibold">Payout destinations (host-managed)</h3>
         <div className="space-y-2">
@@ -75,6 +76,7 @@ export function HostOperatorsSettings({ write }: { write: boolean }) {
           )}
         </div>
       </section>
+      )}
 
       <section className="rounded-2xl border border-border bg-surface p-4">
         <h3 className="mb-3 text-sm font-semibold">Operators at this host</h3>

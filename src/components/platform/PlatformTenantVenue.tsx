@@ -53,6 +53,8 @@ import {
   type VenueDashTabId,
 } from "@/lib/saas/venue-dashboard-tabs";
 import { TenantVenueOverview } from "@/components/platform/TenantVenueOverview";
+import { VenueHouseSettings } from "@/components/platform/VenueHouseSettings";
+import { TabErrorBoundary } from "@/components/platform/TabErrorBoundary";
 import {
   isEntityPasswordKind,
   passwordDashKind,
@@ -127,10 +129,10 @@ export function PlatformTenantVenue({
   }, [locId, activeLoc]);
 
   useEffect(() => {
-    if (lastHydrated.current === hydrateKey && ready) return;
+    if (lastHydrated.current === hydrateKey) return;
     lastHydrated.current = hydrateKey;
     let cancelled = false;
-    setReady(false);
+    if (!ready) setReady(false);
     setError(null);
     void (async () => {
       type LocRow = { id: string; name: string; venueType: string; status?: string };
@@ -366,7 +368,7 @@ export function PlatformTenantVenue({
       );
       const st = usePosStore.getState();
       usePosStore.setState({
-        view: audience === "entity" ? "menu" : hostOps ? "hq" : "settings",
+        view: usePosStore.getState().view || (audience === "entity" ? "menu" : "hq"),
         settings: {
           ...st.settings,
           peerVenue: peer || st.settings.peerVenue,
@@ -399,6 +401,7 @@ export function PlatformTenantVenue({
             setup.serviceStyle === "drive_through"
               ? setup.serviceStyle
               : st.settings.serviceStyle,
+          taxMode: setup.taxMode === "per_entity" ? "per_entity" : setup.taxMode === "venue_shared" ? "venue_shared" : st.settings.taxMode,
           lifecycleStatus:
             (access.location.lifecycleStatus as
               | "training"
@@ -569,6 +572,7 @@ export function PlatformTenantVenue({
               <p className="text-sm text-muted-foreground">Opening venue…</p>
             )}
             {error && <p className="text-sm text-danger">{error}</p>}
+            <TabErrorBoundary tab={tab}>
             {ready && !error && tab === "overview" && (
               audience === "platform" ? (
                 <TenantVenueOverview
@@ -592,7 +596,13 @@ export function PlatformTenantVenue({
                 />
               )
             )}
-            {ready && !error && tab === "settings" && tabIds.has("settings") && <SettingsView />}
+            {ready && !error && tab === "settings" && tabIds.has("settings") && (
+              audience === "platform" || model === "peer_venue" ? (
+                <VenueHouseSettings />
+              ) : (
+                <SettingsView />
+              )
+            )}
             {ready && !error && tab === "devices" && tabIds.has("devices") && (
               <LocationDeviceRegistry
                 orgId={orgReadyId}
@@ -641,6 +651,7 @@ export function PlatformTenantVenue({
             {ready && !error && tab === "ledger" && tabIds.has("ledger") && (
               <LedgerView />
             )}
+            </TabErrorBoundary>
           </main>
         </div>
       </PosErrorBoundary>
