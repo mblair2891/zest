@@ -242,6 +242,7 @@ export function VenueOwnerWizard({ token }: { token: string }) {
               ["full_service", "Full service floor"],
               ["counter", "Counter"],
               ["hybrid", "Hybrid"],
+              ["drive_through", "Drive-through"],
             ] as const
           ).map(([id, label]) => (
             <ToggleChip

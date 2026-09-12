@@ -319,6 +319,19 @@ function PosAppInner({ entityId }: { entityId?: string }) {
                   setup.giftHouseIssuerEnabled ?? st.settings.giftHouseIssuerEnabled,
                 isDemo: Boolean(access.location.isDemo || access.openDemo || setup.demoIsolated),
                 demoIsolated: Boolean(access.location.isDemo || access.openDemo || setup.demoIsolated),
+                serviceStyle:
+                  setup.serviceStyle === "counter" ||
+                  setup.serviceStyle === "hybrid" ||
+                  setup.serviceStyle === "full_service" ||
+                  setup.serviceStyle === "drive_through"
+                    ? setup.serviceStyle
+                    : st.settings.serviceStyle,
+                operatingModel:
+                  setup.operatingModel === "host_operators" ||
+                  setup.operatingModel === "peer_venue" ||
+                  setup.operatingModel === "single"
+                    ? setup.operatingModel
+                    : st.settings.operatingModel,
               },
             });
           } catch { /* optional */ }
@@ -420,6 +433,19 @@ function PosAppInner({ entityId }: { entityId?: string }) {
               smsEnabled: setup.smsEnabled !== false,
               smsMonthlyCap: setup.smsMonthlyCap ?? null,
               cashHandling: setup.cashHandling,
+              serviceStyle:
+                setup.serviceStyle === "counter" ||
+                setup.serviceStyle === "hybrid" ||
+                setup.serviceStyle === "full_service" ||
+                setup.serviceStyle === "drive_through"
+                  ? setup.serviceStyle
+                  : usePosStore.getState().settings.serviceStyle,
+              operatingModel:
+                setup.operatingModel === "host_operators" ||
+                setup.operatingModel === "peer_venue" ||
+                setup.operatingModel === "single"
+                  ? setup.operatingModel
+                  : usePosStore.getState().settings.operatingModel,
             });
             if (access.location.id) {
               useCashSessionStore.getState().ensureLocation(access.location.id);

@@ -64,6 +64,9 @@ import {
   parseStationQuery,
 } from "@/lib/pos/device-roles";
 import { useStationSessionStore } from "@/lib/pos/station-session";
+import { stationHomeSurface } from "@/lib/pos/station-home";
+import { locationAllowsBarTabs } from "@/lib/pos/bar-tab";
+import { DriveThroughView } from "./DriveThroughView";
 
 export function OrderView() {
   const activeOrderId = usePosStore((s) => s.activeOrderId);
@@ -74,6 +77,7 @@ export function OrderView() {
   const vendors = usePosStore((s) => s.vendors);
   const settings = usePosStore((s) => s.settings);
   const tables = usePosStore((s) => s.tables);
+  const floorSections = usePosStore((s) => s.floorSections);
   const selectedCategoryId = usePosStore((s) => s.selectedCategoryId);
   const setCategory = usePosStore((s) => s.setCategory);
   const selectedLineId = usePosStore((s) => s.selectedLineId);
@@ -162,14 +166,50 @@ export function OrderView() {
     return <FloorView />;
   }
 
+  const stationRole = (() => {
+    try {
+      const q = parseStationQuery(new URLSearchParams(window.location.search).get("station"));
+      if (q) return q;
+      return deviceRoleFromSessionMode(useStationSessionStore.getState().assignment.kind);
+    } catch {
+      return null;
+    }
+  })();
+  const homeSurface = stationHomeSurface({
+    deviceRole: stationRole ?? "order",
+    employeeRole: emp?.role,
+    serviceStyle: settings.serviceStyle,
+    operatingModel: settings.operatingModel,
+    hasFloor: tables.length > 0 || floorSections.length > 0,
+  });
+
+  if (!order && (homeSurface === "floor" || homeSurface === "host")) {
+    return <FloorView />;
+  }
+
+  if (!order && homeSurface === "drive_through") {
+    return <DriveThroughView pane={stationRole === "host" ? "window" : "lane"} />;
+  }
+
   if (!order) {
+    const barOk = locationAllowsBarTabs(tables);
     return (
-      <div className="flex h-full flex-col items-center justify-center gap-4 p-6 text-center">
-        <p className="text-lg font-medium">No active order</p>
+      <div
+        className="flex h-full flex-col items-center justify-center gap-4 p-6 text-center"
+        data-demo="station-home-queue"
+      >
+        <p className="text-lg font-medium">Ticket queue</p>
         <p className="max-w-sm text-sm text-muted-foreground">
-          Open a to-go check, bar tab, or an existing check below.
+          Open a ticket or to-go check. This house has no dining floor.
         </p>
         <div className="grid w-full max-w-sm grid-cols-1 gap-3 sm:grid-cols-2">
+          <Button
+            size="lg"
+            className="station-touch h-14 text-base"
+            onClick={() => usePosStore.getState().openTakeout("Ticket")}
+          >
+            New ticket
+          </Button>
           <Button
             size="lg"
             className="station-touch h-14 text-base"
@@ -178,13 +218,16 @@ export function OrderView() {
           >
             To-go
           </Button>
-          <Button
-            size="lg"
-            className="station-touch h-14 text-base"
-            onClick={() => usePosStore.getState().beginBarTabPick()}
-          >
-            Bar tab
-          </Button>
+          {barOk && (
+            <Button
+              size="lg"
+              className="station-touch h-14 text-base sm:col-span-2"
+              variant="outline"
+              onClick={() => usePosStore.getState().beginBarTabPick()}
+            >
+              Bar tab
+            </Button>
+          )}
         </div>
         {openOrders.length > 0 && (
           <div className="mt-4 w-full max-w-md space-y-2">
@@ -237,15 +280,6 @@ export function OrderView() {
 
   const lp = parseLossPrevention(settings.lossPrevention);
   const frozen = order.status !== "open";
-  const stationRole = (() => {
-    try {
-      const q = parseStationQuery(new URLSearchParams(window.location.search).get("station"));
-      if (q) return q;
-      return deviceRoleFromSessionMode(useStationSessionStore.getState().assignment.kind);
-    } catch {
-      return null;
-    }
-  })();
   const odsNoPay = stationRole === "ods";
   const compAmt = mgrAction === "comp" ? lineUnit(selectedLineId ?? "") : 0;
   const lateCompDual =

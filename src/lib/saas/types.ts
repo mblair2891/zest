@@ -54,7 +54,7 @@ export type LocationSetup = {
   /** Isolated demo house. Never a live subscriber. */
   demoIsolated?: boolean;
   taxMode?: "venue_shared" | "per_entity";
-  serviceStyle?: "full_service" | "counter" | "hybrid";
+  serviceStyle?: "full_service" | "counter" | "hybrid" | "drive_through";
   hostEntityId?: string | null;
   trainingTrackInventory?: boolean;
   aiReportSchedule?: "off" | "daily" | "weekly";

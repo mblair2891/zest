@@ -218,7 +218,9 @@ export function parseOnboardingPayload(raw: unknown): OnboardingPayload {
             ? "counter"
             : str(l.serviceStyle) === "hybrid"
               ? "hybrid"
-              : "full_service",
+              : str(l.serviceStyle) === "drive_through"
+                ? "drive_through"
+                : "full_service",
         cashRoundIncrement:
           num(l.cashRoundIncrement, 0.25) === 1
             ? 1

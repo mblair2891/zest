@@ -57,7 +57,7 @@ import { GuideLearnLink } from "@/components/guide/GuideLearnLink";
 import { QrMark } from "./QrMark";
 import { canAccessView } from "@/lib/pos/rbac";
 import { useStationLayout } from "@/lib/ui/station-layout";
-import { barTabVisibleTables, isBarRailSeat } from "@/lib/pos/bar-tab";
+import { barTabVisibleTables, isBarRailSeat, locationAllowsBarTabs } from "@/lib/pos/bar-tab";
 import {
   CHECK_HOLD_LABEL,
   CHECK_HOLD_REASONS,
@@ -640,7 +640,7 @@ export function FloorView() {
                 Waitlist / host stand
               </Button>
             )}
-            {!barPick && (
+            {!barPick && locationAllowsBarTabs(tables) && (
             <Button
               className="w-full"
               size="lg"

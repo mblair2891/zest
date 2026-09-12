@@ -377,6 +377,13 @@ export function PlatformTenantVenue({
             : (setup.giftHouseIssuerEnabled ?? st.settings.giftHouseIssuerEnabled),
           isDemo: Boolean(access.location.isDemo || setup.demoIsolated),
           demoIsolated: Boolean(access.location.isDemo || setup.demoIsolated),
+          serviceStyle:
+            setup.serviceStyle === "counter" ||
+            setup.serviceStyle === "hybrid" ||
+            setup.serviceStyle === "full_service" ||
+            setup.serviceStyle === "drive_through"
+              ? setup.serviceStyle
+              : st.settings.serviceStyle,
           lifecycleStatus:
             (access.location.lifecycleStatus as
               | "training"

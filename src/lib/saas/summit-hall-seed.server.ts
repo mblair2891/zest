@@ -74,6 +74,7 @@ function locationSetup(existing?: Partial<LocationSetup>): LocationSetup {
     tableCount: plan.tables.length,
     sectionNames: ["Dining", "Bar"],
     floorLater: false,
+    serviceStyle: "full_service",
     menuMode: "categories",
     devices: { pos: 0, kds: 0, handhelds: 0 },
     settlement: { periodType: "weekly", hostCutPercent: 0 },

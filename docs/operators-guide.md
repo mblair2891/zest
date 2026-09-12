@@ -1,7 +1,7 @@
 # Operators Guide — authoring
 
-**Revision · 12 Sep 2026** — Isolated demo houses (platform demo chapter).
-Guide v2026.10.78.
+**Revision · 12 Sep 2026** — Order stations open by service style (floor first for full service).
+Guide v2026.10.79.
 
 The in-app **Operators Guide** is the living product manual. It is not a
 separate PDF. Staff open it from **Guide** / **?** in the POS and platform
@@ -64,7 +64,7 @@ accurate when the job path changes.
 10. Settlement & multi-operator splits / chargeback fee split
 11. Reports & AI insights (recommendations, human confirm). Scheduled AI ops jobs: hourly / nightly / weekly / pay period / monthly. Missing xAI key queues skipped — never invented insights. Never auto clock-out. Never invent Finix/Visa charges.
 12. Training vs Go live
-13. Devices: three roles — **order** (handhelds + bar), **ODS** (kitchen), **host** (floor map + to-go). PIN first, not `/login`. Change device among those three.
+13. Devices: four roles — **order**, **ODS**, **host**, **kiosk**. After PIN, venue service style picks the home: full-service / hybrid with sections → floorplan; counter → ticket/queue + to-go; drive-through → lane/window; hosted pad → lot map (trucks stay entity-scoped ODS). Host = floor + waitlist/seat. ODS = ticket rail. Kiosk = guest UI. Unpaired = pair/scan only. PIN first, not `/login`. Password owner login is back office. Change device among Order / ODS / Host.
 14. Printers: Ethernet on the AP LAN (not printer Wi‑Fi). Thermal receipts (Epson TM-T20). Impact kitchen (Epson TM-U220). Drawer kick on the receipt printer.
 15. Offline / hybrid
 16. Cash: single/shared drawer, server bank, multi-well (one drawer per well), host to-go drawer, **till-to-till transfer** (request from another open till; cash moves on accept; no manager required), **blind till close** (count first; expected hidden until submit; turn-in slip prints after submit for the drop bag — not a fill-in form; no force-balance). Closeout ≠ clock-out ≠ PIN.

@@ -69,6 +69,7 @@ type IsolatedSeed = {
   devices: SeedDevice[];
   floorPlan?: LocationFloorPlan;
   sectionNames: string[];
+  serviceStyle?: LocationSetup["serviceStyle"];
   qrMode: string;
   giftHouse: boolean;
   ticketPrefix?: string;
@@ -116,6 +117,9 @@ function setupOf(seed: IsolatedSeed, existing?: Partial<LocationSetup>): Locatio
     tableCount: seed.floorPlan?.tables.length ?? 0,
     sectionNames: seed.sectionNames,
     floorLater: !seed.floorPlan,
+    serviceStyle:
+      seed.serviceStyle ??
+      (seed.floorPlan ? "full_service" : "counter"),
     menuMode: "categories",
     devices: { pos: seed.devices.filter((d) => d.type === "tablet_pos").length, kds: seed.devices.filter((d) => d.type === "kds").length, handhelds: 0 },
     settlement: { periodType: "weekly", hostCutPercent: 0 },
@@ -382,6 +386,7 @@ function harborSeed(): IsolatedSeed {
     devices: HARBOR_DEVICES,
     floorPlan: harborFloorPlan(),
     sectionNames: ["Picnic"],
+    serviceStyle: "hybrid",
     qrMode: "hybrid",
     giftHouse: true,
     waitlist: true,
@@ -406,6 +411,7 @@ function ashSeed(): IsolatedSeed {
     items: ASH_MENU,
     devices: ASH_DEVICES,
     sectionNames: [],
+    serviceStyle: "counter",
     qrMode: "pay_only",
     giftHouse: true,
     ticketPrefix: "A",
@@ -429,6 +435,7 @@ function redbirdSeed(): IsolatedSeed {
     items: REDBIRD_MENU,
     devices: REDBIRD_DEVICES,
     sectionNames: [],
+    serviceStyle: "drive_through",
     qrMode: "off",
     giftHouse: true,
     ticketPrefix: "DT",

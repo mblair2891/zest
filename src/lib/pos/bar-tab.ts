@@ -1,6 +1,13 @@
 import type { Employee, EmployeeRole, FloorSection, Table } from "./types";
 import { employeeHomeSectionIds, hasHomeSection } from "./section-control";
 
+/** House has a rail — Bar tab is offered from the floor, not instead of it. */
+export function locationAllowsBarTabs(
+  tables: Pick<Table, "kind" | "shape" | "section">[],
+): boolean {
+  return tables.some((t) => isBarRailSeat(t));
+}
+
 /** Stool or bar rail — not a dining table. */
 export function isBarRailSeat(table: Pick<Table, "kind" | "shape" | "section">): boolean {
   const kind =

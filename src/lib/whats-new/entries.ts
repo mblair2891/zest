@@ -6,6 +6,19 @@ import type { GuideUpdate } from "@/lib/guide/types";
  */
 export const WHATS_NEW_ENTRIES: GuideUpdate[] = [
   {
+    id: "upd_2026_10_79_order_station_floor",
+    date: "2026-09-12",
+    title: "Full-service order stations open the floor",
+    summary:
+      "After PIN, the venue’s service style picks the home. Full-service and hybrid with sections open the floor plan — not To-go | Bar tab.",
+    body: "Paired order tablets follow the house: full service / hybrid with sections → color-coded floor (open a table, to-go, bar tab from the map). Counter → ticket/queue + to-go. Drive-through → lane on order, window on host. Hosted pad → lot map; each truck ODS stays that entity’s tickets. Host glass is floor + waitlist/seat. ODS is the ticket rail. Kiosk is guest UI. An unpaired tablet is Scan QR / Enter code only. Password owner login remains back office.",
+    roles: ["owner_manager", "server", "host_operator", "platform_admin"],
+    surfaces: ["floor"],
+    audience: "all",
+    topicId: "device-roles",
+    tags: ["devices", "floor", "pin"],
+  },
+  {
     id: "upd_2026_10_78_isolated_demo_houses",
     date: "2026-09-12",
     title: "Isolated demo houses + Operating as switcher",

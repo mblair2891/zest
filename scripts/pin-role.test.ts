@@ -94,6 +94,11 @@ test("device × PIN maps bartender on ODS to bar, not kitchen rail as server", (
   assert.equal(viewForDevicePin("ods", "server"), "kitchen");
 });
 
+test("bartender PIN may open the floor on a full-service order station", () => {
+  const views = pinRoleViews("bartender");
+  assert.equal(Array.isArray(views) && views.includes("floor"), true);
+});
+
 test("guide has one page per PIN role", () => {
   const roles = readFileSync("src/lib/guide/content/roles.ts", "utf8");
   for (const id of [

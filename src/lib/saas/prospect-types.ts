@@ -388,7 +388,7 @@ export type OnboardingLocationDraft = {
   networkCheckedAt?: string;
   networkNotes?: string;
   networkChecklist?: import("./network-readiness").NetworkChecklist;
-  serviceStyle?: "full_service" | "counter" | "hybrid";
+  serviceStyle?: "full_service" | "counter" | "hybrid" | "drive_through";
   cashRoundIncrement?: 0.25 | 0.5 | 1;
   qrMode?: "full" | "reorder" | "pay_only" | "table_tent" | "off";
   taxMode?: "venue_shared" | "per_entity";

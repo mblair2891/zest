@@ -249,7 +249,10 @@ function parseSetup(raw: unknown): LocationSetup {
         : String(o.hostEntityId).slice(0, 80),
     taxMode: o.taxMode === "per_entity" ? "per_entity" : o.taxMode === "venue_shared" ? "venue_shared" : undefined,
     serviceStyle:
-      o.serviceStyle === "counter" || o.serviceStyle === "hybrid" || o.serviceStyle === "full_service"
+      o.serviceStyle === "counter" ||
+      o.serviceStyle === "hybrid" ||
+      o.serviceStyle === "full_service" ||
+      o.serviceStyle === "drive_through"
         ? o.serviceStyle
         : undefined,
     cashDiscountEnabled: "cashDiscountEnabled" in o ? Boolean(o.cashDiscountEnabled) : undefined,

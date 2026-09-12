@@ -11,17 +11,20 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { usePosStore } from "@/lib/pos/store";
+import { locationAllowsBarTabs } from "@/lib/pos/bar-tab";
 import { computeTotals } from "@/lib/pos/calculations";
 import { formatCurrency, formatTime } from "@/lib/utils";
 
 export function TakeoutView() {
   const orders = usePosStore((s) => s.orders);
+  const tables = usePosStore((s) => s.tables);
   const settings = usePosStore((s) => s.settings);
   const openTakeout = usePosStore((s) => s.openTakeout);
   const beginBarTabPick = usePosStore((s) => s.beginBarTabPick);
   const floorIntent = usePosStore((s) => s.floorIntent);
   const setActiveOrder = usePosStore((s) => s.setActiveOrder);
   const setView = usePosStore((s) => s.setView);
+  const barOk = locationAllowsBarTabs(tables);
 
   const [open, setOpen] = useState(false);
   const [name, setName] = useState("");
@@ -41,6 +44,7 @@ export function TakeoutView() {
       <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <h2 className="text-sm font-semibold">To-go</h2>
         <div className="grid grid-cols-2 gap-2 sm:flex">
+          {barOk && (
           <Button
             size="lg"
             className="station-touch min-h-12 flex-1 text-base"
@@ -50,6 +54,7 @@ export function TakeoutView() {
             <Plus className="h-4 w-4" />
             Bar tab
           </Button>
+          )}
           <Button
             size="lg"
             className="station-touch min-h-12 flex-1 text-base"

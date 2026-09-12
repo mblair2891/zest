@@ -134,9 +134,10 @@ export const FLOOR_TOPICS: GuideTopic[] = [
         "The same POS covers a seated dining room and a counter. The difference is whether a table holds the check.",
       ),
       ul(
-        "Table service — seat on Floor → Order → fire → pay on the table → bus.",
-        "Counter / QSR — Takeout or Order without a table, name the ticket, pay (often before fire), kitchen bumps, guest is called.",
-        "Bar tab — tap Bar tab, then pick a stool on your section rail. Empty stool opens a tab; occupied attaches the check. To-go stays off the floor. Still Quantum Payments for cards.",
+        "Table service — PIN on an order station opens the floor first. Seat → Order → fire → pay on the table → bus. To-go and Bar tab are on that floor, not instead of it.",
+        "Counter / QSR — ticket/queue and to-go. No dining floor on the order glass.",
+        "Drive-through — lane on the order tablet, window on the host tablet. No dining room map.",
+        "Bar tab — from the floor, tap Bar tab, then pick a stool on your section rail. Empty stool opens a tab; occupied attaches the check. To-go stays off a stool. Still Quantum Payments for cards.",
       ),
       steps(
         "For counter / to-go: open To-go, name the guest, build the check, take payment, send. To-go never sits on a stool.",

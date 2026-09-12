@@ -5,8 +5,9 @@ import { homeViewForEmployee, homeViewForRole } from "./rbac";
 import {
 	deviceRoleFromSessionMode,
 	parseStationQuery,
-	viewForDeviceRole,
+	readStationDeviceRole,
 } from "./device-roles";
+import { stationHomeSurface, viewForStationHome } from "./station-home";
 import { useStationSessionStore } from "./station-session";
 import { applyPendingDeviceRoleOnPinLogin } from "./station-role-sync";
 import {
@@ -455,13 +456,18 @@ const usePosStoreRaw = create<PosStore>()(persist((set, get) => {
 			const raw = typeof window !== "undefined"
 				? new URLSearchParams(window.location.search).get("station")
 				: null;
-			const stationRole = parseStationQuery(raw);
-			if (stationRole) {
-				view = viewForDeviceRole(stationRole);
-			} else {
-				const kind = useStationSessionStore.getState().assignment?.kind;
-				if (kind) view = viewForDeviceRole(deviceRoleFromSessionMode(kind));
-			}
+			const stationRole =
+				parseStationQuery(raw) ??
+				readStationDeviceRole() ??
+				deviceRoleFromSessionMode(useStationSessionStore.getState().assignment?.kind ?? "floor_pos");
+			const surface = stationHomeSurface({
+				deviceRole: stationRole,
+				employeeRole: emp.role,
+				serviceStyle: get().settings.serviceStyle,
+				operatingModel: get().settings.operatingModel,
+				hasFloor: get().tables.length > 0 || get().floorSections.length > 0,
+			});
+			view = viewForStationHome(surface, emp.role);
 		} catch {
 			/* station role optional */
 		}

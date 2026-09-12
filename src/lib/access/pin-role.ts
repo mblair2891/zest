@@ -174,7 +174,7 @@ export const PIN_VIEWS: Record<EmployeeRole, PosView[] | "all"> = {
   ],
   host: ["hq", "floor", "waitlist", "takeout", "customers", "labor"],
   server: ["hq", "floor", "order", "takeout", "cash", "customers", "labor"],
-  bartender: ["hq", "order", "bar", "takeout", "cash", "labor", "drink_ai"],
+  bartender: ["hq", "floor", "order", "bar", "takeout", "cash", "labor", "drink_ai"],
   kitchen: ["kitchen", "labor"],
   busser: ["floor"],
   cashier: ["hq", "order", "takeout", "cash", "labor"],

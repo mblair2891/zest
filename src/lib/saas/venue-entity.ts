@@ -23,7 +23,12 @@ export const ENTITY_MCC = {
 } as const;
 export type EntityMcc = (typeof ENTITY_MCC)[keyof typeof ENTITY_MCC] | string;
 
-export const SERVICE_STYLES_VENUE = ["full_service", "counter", "hybrid"] as const;
+export const SERVICE_STYLES_VENUE = [
+  "full_service",
+  "counter",
+  "hybrid",
+  "drive_through",
+] as const;
 export type VenueServiceStyle = (typeof SERVICE_STYLES_VENUE)[number];
 
 export const CASH_ROUND_INCREMENTS = [0.25, 0.5, 1] as const;
@@ -172,8 +177,9 @@ export function parseVenueTaxMode(raw: unknown): VenueTaxMode {
 
 export function parseVenueServiceStyle(raw: unknown): VenueServiceStyle {
   const s = String(raw ?? "").trim().toLowerCase().replace(/[\s-]+/g, "_");
-  if (s === "counter") return "counter";
+  if (s === "counter" || s === "qsr" || s === "cafe") return "counter";
   if (s === "hybrid" || s === "mixed" || s === "hall") return "hybrid";
+  if (s === "drive_through" || s === "drive" || s === "dt") return "drive_through";
   return "full_service";
 }
 
