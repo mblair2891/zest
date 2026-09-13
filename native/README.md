@@ -86,7 +86,9 @@ On a Galaxy tablet that is **not** Device Owner:
 1. Install Summex Station. Set it as the Home app when Android asks (optional but recommended).
 2. Open Summex. The first lock-task request is **screen pinning** (Pin windows). Confirm.
 3. Status bar stays hidden. Back does not return to the launcher; it only walks WebView history.
-4. To unpin for a manager: the usual Samsung pin-windows gesture (often Recents + Back together) — only while training.
+4. Website deploys: manager / owner / Devices service PIN long-presses the discreet reload control 2 seconds. No unpin. After reload the tablet stays on pair or PIN — never `/login`.
+5. APK updates: manager **Exit kiosk** (confirm) stops lock-task and shows Android home, then reinstall or Play update. Staff PINs cannot exit.
+6. To unpin in training without Exit kiosk: the usual Samsung pin-windows gesture (often Recents + Back together).
 
 ## Production: Device Owner / Knox
 

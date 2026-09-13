@@ -198,6 +198,57 @@ public class MainActivity extends BridgeActivity {
         public void startLock() {
             runOnUiThread(() -> startKioskLock());
         }
+
+        @android.webkit.JavascriptInterface
+        public void reloadStation() {
+            runOnUiThread(() -> reloadStationWebView());
+        }
+
+        @android.webkit.JavascriptInterface
+        public void exitKiosk() {
+            runOnUiThread(() -> exitKioskLock());
+        }
+    }
+
+    /** Pairing lives in WebView localStorage — reload the station URL, never /login. */
+    void reloadStationWebView() {
+        WebView wv = webView();
+        if (wv == null) return;
+        String url = stationServerUrl();
+        if (url == null || url.isEmpty()) {
+            wv.reload();
+            return;
+        }
+        wv.loadUrl(url);
+    }
+
+    void exitKioskLock() {
+        lockPrimed = false;
+        try {
+            stopLockTask();
+        } catch (IllegalArgumentException | SecurityException ignored) {
+            /* not in lock-task */
+        }
+        try {
+            android.content.Intent home = new android.content.Intent(android.content.Intent.ACTION_MAIN);
+            home.addCategory(android.content.Intent.CATEGORY_HOME);
+            home.setFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK);
+            startActivity(home);
+        } catch (Exception ignored) {
+            /* no launcher */
+        }
+    }
+
+    String stationServerUrl() {
+        try {
+            if (getBridge() == null) return "https://app.summex.app/station";
+            String raw = getBridge().getServerUrl();
+            if (raw == null || raw.isEmpty()) return "https://app.summex.app/station";
+            if (raw.contains("/login")) return "https://app.summex.app/station";
+            return raw;
+        } catch (Exception e) {
+            return "https://app.summex.app/station";
+        }
     }
 
     private void startKioskLock() {

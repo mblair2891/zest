@@ -1,7 +1,7 @@
 # Operators Guide — authoring
 
-**Revision · 12 Sep 2026** — Tenant detail is the venue console, not the SaaS home.
-Guide v2026.10.80.
+**Revision · 13 Sep 2026** — Station reload for website deploys; APK updates unpin + reinstall.
+Guide v2026.10.81.
 
 The in-app **Operators Guide** is the living product manual. It is not a
 separate PDF. Staff open it from **Guide** / **?** in the POS and platform

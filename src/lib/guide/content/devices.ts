@@ -105,7 +105,7 @@ export const DEVICE_TOPICS: GuideTopic[] = [
     chapterId: "devices",
     title: "Tablets run Summex only",
     summary:
-      "One Play-ready APK: Summex Station. Pair with Devices QR or code, then PIN. Lock-task after pair. Guest QR stays on the guest’s phone.",
+      "One Play-ready APK: Summex Station. Pair, then PIN. Website deploys: manager long-press reload. APK updates: unpin and reinstall.",
     roles: ["owner_manager", "host_operator", "kitchen_bar", "platform_admin"],
     keywords: [
       "android",
@@ -114,6 +114,9 @@ export const DEVICE_TOPICS: GuideTopic[] = [
       "tablet",
       "lock task",
       "pin windows",
+      "reload",
+      "exit kiosk",
+      "service pin",
       "knox",
       "station",
       "launcher",
@@ -134,9 +137,16 @@ export const DEVICE_TOPICS: GuideTopic[] = [
         "Broken ODS → reassign a server tablet from Devices (Role dropdown). No new pair code.",
         "Unpair or Replace from the same Devices list when a tablet is lost or swapped.",
         "Training: on Samsung, confirm pin-windows when Summex asks. Set Summex as Home if the tablet offers it.",
+        "Website updates (new JS on app.summex.app): manager, owner, or the Devices service PIN long-presses the discreet reload control for 2 seconds. The WebView reloads. Stay on pair or PIN — never /login. No unpin.",
+        "APK updates (new Summex Station binary): manager Exit kiosk (confirm) to stop lock-task and show Android home, then uninstall/reinstall or Play update. Staff PINs cannot exit kiosk.",
+      ),
+      ul(
+        "Reload = website deploy. Pairing stays on the tablet. Next screen is pair or PIN.",
+        "Exit kiosk = leave lock-task. Confirm dialog. Manager / owner / Devices service PIN only.",
+        "Devices → Station service PIN: optional 4-digit PIN with the same reload/exit rights as manager.",
       ),
       warn(
-        "Do not put guest QR / pay on this APK. Table tents and ticket codes open in the guest’s browser.",
+        "Do not put guest QR / pay on this APK. Table tents and ticket codes open in the guest’s browser. Do not unpin for a website deploy — use reload.",
       ),
       related("device-roles", "device-assignment", "station-fit", "floor-pin-login", "table-qr", "wifi-offline", "labor-basis"),
     ],

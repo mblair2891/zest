@@ -247,6 +247,12 @@ function parseSetup(raw: unknown): LocationSetup {
       o.hostEntityId == null || o.hostEntityId === ""
         ? null
         : String(o.hostEntityId).slice(0, 80),
+    stationServicePinHash:
+      typeof o.stationServicePinHash === "string" && o.stationServicePinHash.length >= 16
+        ? o.stationServicePinHash.slice(0, 128)
+        : o.stationServicePinHash === "" || o.stationServicePinHash === null
+          ? ""
+          : undefined,
     taxMode: o.taxMode === "per_entity" ? "per_entity" : o.taxMode === "venue_shared" ? "venue_shared" : undefined,
     serviceStyle:
       o.serviceStyle === "counter" ||

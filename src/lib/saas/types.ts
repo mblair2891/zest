@@ -99,6 +99,8 @@ export type LocationSetup = {
   deviceRoleHistory?: import("@/lib/pos/location-devices").DeviceRoleChange[];
   /** Drawers, wells, server banks — location-configurable cash handling. */
   cashHandling?: import("@/lib/pos/cash-handling").CashHandlingConfig;
+  /** Hashed station service PIN (reload WebView / exit lock-task). */
+  stationServicePinHash?: string;
   /** Cost catalog (SKUs, invoices, suppliers, POs) — no image blobs. */
   costPack?: {
     skus: import("@/lib/costs/types").CostSku[];

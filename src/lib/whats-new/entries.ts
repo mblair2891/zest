@@ -6,6 +6,19 @@ import type { GuideUpdate } from "@/lib/guide/types";
  */
 export const WHATS_NEW_ENTRIES: GuideUpdate[] = [
   {
+    id: "upd_2026_10_81_station_reload",
+    date: "2026-09-13",
+    title: "Station reload and manager kiosk exit",
+    summary:
+      "Website deploys: manager long-press reload (2 seconds). APK updates: Exit kiosk, then reinstall. Staff PINs cannot exit.",
+    body: "On Summex Station, a manager, owner, or Devices service PIN long-presses the discreet reload control for two seconds. The WebView reloads the station URL. Pairing stays; the next screen is pair or PIN — never /login. Exit kiosk stops lock-task and shows Android home after a confirm. Staff PINs cannot exit. Optional station service PIN lives on Devices.",
+    roles: ["owner_manager", "platform_admin"],
+    surfaces: ["floor", "settings"],
+    audience: "all",
+    topicId: "android-kiosk",
+    tags: ["devices", "android", "kiosk"],
+  },
+  {
     id: "upd_2026_10_80_tenant_console",
     date: "2026-09-12",
     title: "Tenant detail is the venue console",

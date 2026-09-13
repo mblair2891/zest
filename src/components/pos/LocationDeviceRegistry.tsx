@@ -11,8 +11,10 @@ import {
   publishLocationFn,
   rotateDevicePairFn,
   saveLocationDeviceFn,
+  saveLocationSettingsFn,
   unpairLocationDeviceFn,
 } from "@/lib/access/api";
+import { hashPin, isFourDigitPin } from "@/lib/pos/pin";
 import { getSessionContextFn } from "@/lib/saas/api";
 import {
   DEVICE_FUNCTION_LABEL,
@@ -116,6 +118,8 @@ export function LocationDeviceRegistry({
   const [receiptPrinterId, setReceiptPrinterId] = useState<string>("");
   const [busy, setBusy] = useState(false);
   const [claimInput, setClaimInput] = useState("");
+  const [servicePin, setServicePin] = useState("");
+  const [servicePinMsg, setServicePinMsg] = useState<string | null>(null);
   const [resolvedOrgId, setResolvedOrgId] = useState(orgId);
   const [resolvedLocId, setResolvedLocId] = useState(locationId);
   const [resolvedName, setResolvedName] = useState(locationName);
@@ -404,6 +408,43 @@ export function LocationDeviceRegistry({
     }
   };
 
+  const saveServicePin = async (clear: boolean) => {
+    if (!resolvedOrgId || !resolvedLocId) return;
+    if (!clear && !isFourDigitPin(servicePin)) {
+      setServicePinMsg("Enter a 4-digit PIN.");
+      return;
+    }
+    setBusy(true);
+    setServicePinMsg(null);
+    try {
+      await saveLocationSettingsFn({
+        data: {
+          orgId: resolvedOrgId,
+          locationId: resolvedLocId,
+          setup: {
+            stationServicePinHash: clear ? "" : hashPin(servicePin, resolvedLocId),
+          },
+        },
+      });
+      try {
+        usePosStore.setState({
+          settings: {
+            ...usePosStore.getState().settings,
+            stationServicePinHash: clear ? "" : hashPin(servicePin, resolvedLocId),
+          },
+        });
+      } catch {
+        /* optional */
+      }
+      setServicePin("");
+      setServicePinMsg(clear ? "Service PIN cleared." : "Service PIN saved.");
+    } catch (e) {
+      setServicePinMsg(e instanceof Error ? e.message : "Could not save PIN");
+    } finally {
+      setBusy(false);
+    }
+  };
+
   const heading = mode === "hardware" ? "Hardware" : "Devices";
   const help =
     mode === "hardware"
@@ -453,6 +494,40 @@ export function LocationDeviceRegistry({
           {resolvedName || locationName} · persist on this location
         </p>
         {publishMsg && <p className="mt-1 text-xs text-primary">{publishMsg}</p>}
+      {mode === "stations" && (
+        <section
+          className="mt-4 rounded-2xl border border-border bg-surface p-4"
+          data-demo="station-service-pin"
+        >
+          <p className="text-sm font-medium">Station service PIN</p>
+          <p className="mt-1 text-xs text-muted-foreground">
+            Optional 4-digit PIN. Same as manager/owner: long-press reload 2 seconds (website
+            deploy, no unpin) or Exit kiosk. Staff PINs cannot exit lock-task.
+          </p>
+          <div className="mt-3 flex flex-wrap items-end gap-2">
+            <Input
+              className="max-w-[8rem] text-center tracking-[0.3em]"
+              inputMode="numeric"
+              autoComplete="off"
+              placeholder="••••"
+              value={servicePin}
+              onChange={(e) => setServicePin(e.target.value.replace(/\D/g, "").slice(0, 4))}
+            />
+            <Button size="sm" disabled={busy} onClick={() => void saveServicePin(false)}>
+              Save PIN
+            </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              disabled={busy}
+              onClick={() => void saveServicePin(true)}
+            >
+              Clear
+            </Button>
+          </div>
+          {servicePinMsg && <p className="mt-2 text-xs text-muted-foreground">{servicePinMsg}</p>}
+        </section>
+      )}
         {sessionLocs.length > 1 && (
           <label className="mt-2 block text-xs text-muted-foreground">
             Location

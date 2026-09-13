@@ -433,6 +433,7 @@ function PosAppInner({ entityId }: { entityId?: string }) {
               smsEnabled: setup.smsEnabled !== false,
               smsMonthlyCap: setup.smsMonthlyCap ?? null,
               cashHandling: setup.cashHandling,
+              stationServicePinHash: setup.stationServicePinHash || undefined,
               serviceStyle:
                 setup.serviceStyle === "counter" ||
                 setup.serviceStyle === "hybrid" ||

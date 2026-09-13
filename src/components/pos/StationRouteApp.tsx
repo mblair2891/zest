@@ -16,6 +16,7 @@ import {
 } from "@/lib/pos/station-pair";
 import { writePairedDeviceId } from "@/lib/pos/location-devices";
 import { requestKioskLock } from "@/lib/native-kiosk";
+import { StationKioskControls } from "@/components/pos/StationKioskControls";
 
 export type StationSearch = {
   station?: DeviceRole;
@@ -80,6 +81,7 @@ export function StationRouteApp({
   if (!ready) {
     return (
       <div className="flex min-h-[100dvh] items-center justify-center bg-bg pt-[var(--grok-banner-h,0px)] text-muted-foreground">
+        <StationKioskControls />
         <div className="text-center">
           <SummexMark className="mx-auto mb-3 h-10 w-10" />
           <p className="text-sm">Opening station…</p>
@@ -91,10 +93,13 @@ export function StationRouteApp({
   const loc = pair?.locationId;
   if (!loc) {
     return (
-      <StationPairScreen
-        initialCode={search.pair ? normalizeClaimCode(search.pair) : ""}
-        onPaired={onPaired}
-      />
+      <>
+        <StationKioskControls />
+        <StationPairScreen
+          initialCode={search.pair ? normalizeClaimCode(search.pair) : ""}
+          onPaired={onPaired}
+        />
+      </>
     );
   }
 
@@ -102,6 +107,7 @@ export function StationRouteApp({
 
   return (
     <SessionGate allowPrimedStation>
+      <StationKioskControls />
       <div data-station-role={roleFromPath || search.station || pair?.station || ""}>
         <PosApp entityId={entityId} />
       </div>

@@ -16,8 +16,11 @@ import com.getcapacitor.BridgeWebViewClient;
  * black-screen when the bridge injects late.
  */
 public class KioskWebViewClient extends BridgeWebViewClient {
+    private final Bridge kioskBridge;
+
     public KioskWebViewClient(Bridge bridge) {
         super(bridge);
+        this.kioskBridge = bridge;
     }
 
     @Override
@@ -43,6 +46,19 @@ public class KioskWebViewClient extends BridgeWebViewClient {
     public void onPageFinished(WebView view, String url) {
         super.onPageFinished(view, url);
         view.evaluateJavascript(MainActivity.CAP_SHIM, null);
+        if (view == null || url == null) return;
+        if (url.startsWith("data:") || url.startsWith("about:")) return;
+        if (!isLoginEscape(url)) return;
+        String station = "https://app.summex.app/station";
+        try {
+            if (kioskBridge != null && kioskBridge.getServerUrl() != null) {
+                station = kioskBridge.getServerUrl();
+            }
+        } catch (Exception ignored) {
+            /* default */
+        }
+        if (station.contains("/login")) station = "https://app.summex.app/station";
+        view.loadUrl(station);
     }
 
     @Override
@@ -98,6 +114,26 @@ public class KioskWebViewClient extends BridgeWebViewClient {
         return false;
     }
 
+    /** Station APK must not land on password login or marketing home. */
+    static boolean isLoginEscape(String url) {
+        if (url == null || url.isEmpty()) return false;
+        try {
+            Uri u = Uri.parse(url);
+            String path = u.getPath() == null ? "/" : u.getPath();
+            if (path.equals("/login") || path.startsWith("/login/")) return true;
+            if (path.equals("/signup") || path.startsWith("/signup/")) return true;
+            if (path.equals("/") || path.isEmpty()) {
+                String host = u.getHost() == null ? "" : u.getHost().toLowerCase();
+                return host.equals("app.summex.app")
+                    || host.equals("summex.app")
+                    || host.equals("www.summex.app");
+            }
+            return false;
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
     static boolean isStaffHost(String host) {
         if (host == null) return false;
         String h = host.toLowerCase();
@@ -117,6 +153,8 @@ public class KioskWebViewClient extends BridgeWebViewClient {
             + "p{opacity:.8;max-width:22rem;line-height:1.45}</style></head><body>"
             + "<div><p style=\"letter-spacing:.28em;font-weight:600\">SUMMEX STATION</p>"
             + "<p>This station could not reach Summex. Check the staff Wi‑Fi, then power the tablet again.</p>"
+            + "<p><button type=button onclick=\"try{SummexKiosk.reloadStation()}catch(e){location.reload()}\""
+            + " style=\"margin-top:1rem;padding:.6rem 1rem;border-radius:.6rem;border:0;background:#c4a574;color:#0a0c0b\">Try again</button></p>"
             + "<p style=\"font-size:.8rem;opacity:.55\">"
             + detail.replace("<", "&lt;").replace(">", "&gt;")
             + "</p></div></body></html>";
