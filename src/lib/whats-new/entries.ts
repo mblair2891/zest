@@ -6,6 +6,19 @@ import type { GuideUpdate } from "@/lib/guide/types";
  */
 export const WHATS_NEW_ENTRIES: GuideUpdate[] = [
   {
+    id: "upd_2026_10_84_station_caps",
+    date: "2026-09-13",
+    title: "Stations and PINs — device ∩ staff role",
+    summary:
+      "What you see after PIN is the intersection of the tablet’s role and your PIN. Kitchen on an order tablet is the clock sheet. Full-service order opens the floor; to-go and bar tab are actions.",
+    body: "Order / host / ODS / kiosk is the hardware envelope. Your PIN picks which of those actions you may use. Host stand: floor + waitlist, New to-go. Bar tabs on host only if Host may open bar tabs is on; on order tablets if Bar tabs on order devices is on. Server on a host tablet needs Servers may use the host stand. A manager PIN on ODS is still the rail — not order entry. Clock in/out does not open order entry. Password login stays back office.",
+    roles: ["owner_manager", "server", "kitchen_bar", "host_operator", "platform_admin"],
+    surfaces: ["floor"],
+    audience: "all",
+    topicId: "device-roles",
+    tags: ["devices", "pin", "host", "ods"],
+  },
+  {
     id: "upd_2026_10_83_host_togo",
     date: "2026-09-13",
     title: "Host stand can start to-go orders",

@@ -5,9 +5,9 @@ export const DEVICE_TOPICS: GuideTopic[] = [
   topic({
     id: "device-roles",
     chapterId: "devices",
-    title: "Device roles: order, ODS, host, kiosk",
+    title: "Stations and PINs",
     summary:
-      "Four screens. Device role owns the home. Staff PIN is a gate, not a home picker. Full-service order opens the floor — not a To-go | Bar tab counter.",
+      "Station UI is device role ∩ staff PIN. The tablet is the envelope; the PIN is which of those actions this person may use. Never the same home for every PIN.",
     roles: "all",
     keywords: [
       "device role",
@@ -26,7 +26,7 @@ export const DEVICE_TOPICS: GuideTopic[] = [
     openView: "settings",
     blocks: [
       why(
-        "The tablet is a screen, not a person. Device role owns the home screen. Staff PIN does not. The venue’s service style says which home that order glass opens — never a hard-coded food-hall counter.",
+        "The tablet is a screen, not a person. Station UI is the intersection of device role (what the hardware may do) and employee PIN (which of those capabilities this person may see). If either side denies an action, hide it or block with a short reason. Never give every PIN the same home.",
       ),
       p(
         "Every staff station is one of four roles: order, ODS, host, or kiosk. An unpaired or unprimed tablet shows Scan QR or Enter code only — never a fake two-button POS. After pair, the PIN pad. Password owner login is venue back office, never this PIN home.",
@@ -35,17 +35,17 @@ export const DEVICE_TOPICS: GuideTopic[] = [
         "Staff stations are Android tablets running one Play-ready app: Summex Station (`app.summex.pos`). First open is Scan QR or Enter code from Devices — never /login, never the marketing site. After pair, the PIN pad, optional lock-task. Guest QR and pay links stay on the guest’s own phone browser — not a staff station. iPad and browser POS are not a supported house setup.",
       ),
       ul(
-        "ODS: ticket rail only. Start / Bump, entity lanes. No to-go, no bar tab, no floor order entry.",
-        "Order + full service or hybrid with sections: floor first (tables color-coded by status). Open a table from the map. To-go and Bar tab (when the house has a rail) stay on the floor — they do not replace it.",
-        "Order + counter: ticket/queue and to-go. No dining floor.",
-        "Order + drive-through: lane on the order tablet, window on the host tablet. No dining floor.",
-        "Host: floor + waitlist/seat. New to-go is a persistent action (same pay/print as order-station to-go). Bar tab only if Host may open bar tabs is on.",
-        "Hosted pad (truck pod): host glass is the lot / picnic map. Each truck’s ODS is still that entity’s ticket rail.",
-        "Kiosk: guest UI. Not a staff POS.",
-        "Cook / kitchen / expo PIN on ODS → the rail. On an order or host tablet → clock sheet only, then use the kitchen display. Never to-go, bar tab, or a table order.",
-        "Server PIN on a host tablet → seat + to-go only if Servers may use the host stand is on; otherwise clock + use an order tablet. Bartender / cashier → order or host as this location allows. Bartender may also run a bar ODS tablet.",
-        "Host / supervisor / manager PIN → host or order. A manager changes this tablet’s role from venue Devices, not from a kitchen PIN.",
-        "Clock in and clock out is a separate control on every station. Completing clock does not open order entry.",
+        "Device envelope — Order: floor (full service / hybrid), queue (counter), window/lane (drive-through), to-go, bar tab if Bar tabs on order devices is on, clock, pay/close on their checks.",
+        "Device envelope — Host: floor + waitlist + seat, to-go, clock. Bar tabs only if Host may open bar tabs is on. Peer venues still have a host ROLE (the stand) with no host merchant.",
+        "Device envelope — ODS: Start/Bump only, lanes by entity, clock. No new order, no to-go, no pay. A manager PIN on ODS is still the rail — not order entry.",
+        "Device envelope — Kiosk: guest waitlist / QR / pay. Staff PINs do not operate kiosk. Manager service PIN may reload or exit.",
+        "PIN on a capable device — Host: host envelope. Server: order envelope; on a host tablet, seat + to-go only if Servers may use the host stand is on, otherwise clock + use an order tablet.",
+        "Bartender: drinks / bar tab on order; ODS is their bar lane only. Kitchen / cook / expo: ODS rail on ODS; on order or host, clock only — never to-go, bar tab, or a table order.",
+        "Busser: floor status cleaned if the venue allows; no ordering. Supervisor / manager: union of what this DEVICE allows, plus reload / exit kiosk. They do not gain order-entry on an ODS tablet.",
+        "Home after PIN — Full-service order + server/host/manager: floor first. To-go and bar tab are actions, not the home. Host + host/manager: floor + waitlist, with New to-go. ODS + kitchen/bartender/expo/manager: the rail.",
+        "Counter / drive-through stay queue / window (no dining floor). Kitchen PIN on an order tablet: clock sheet + message, not the two-button POS. Unpaired: Scan QR / Enter code only.",
+        "Clock in and clock out is a separate control. Completing clock does not open order entry unless this PIN already has that home on this tablet.",
+        "Venue settings (back office, not a JSON file): Servers may use the host stand; Host may open bar tabs; Bar tabs on order devices.",
         "A manager Change device (training/demo) switches among Order / ODS / Host. PIN stays the person; the role is the screen.",
         "Pair once (internet required). Pair QR payload is the one-time token plus venue and role. Bookmarks are app.summex.app/station. After that, power on → PIN pad for that venue and role, not the sales home. App updates keep the pairing. Store APKs do not need a baked station. Back-office username and password is for owners on a laptop, not the handheld.",
         "Broken ODS → reassign a server tablet from Devices. Same pair code; staff PIN in again. Do not reinstall.",

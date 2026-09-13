@@ -436,6 +436,7 @@ function PosAppInner({ entityId }: { entityId?: string }) {
               stationServicePinHash: setup.stationServicePinHash || undefined,
               hostMayOpenBarTabs: Boolean(setup.hostMayOpenBarTabs),
               serversAtHostStand: Boolean(setup.serversAtHostStand),
+              orderMayOpenBarTabs: setup.orderMayOpenBarTabs !== false,
               serviceStyle:
                 setup.serviceStyle === "counter" ||
                 setup.serviceStyle === "hybrid" ||

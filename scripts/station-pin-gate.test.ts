@@ -93,9 +93,9 @@ test("DeviceModeView gates before order glass", () => {
 
 test("operators guide: device role owns home, kitchen PIN is not server UI", () => {
   const devices = readFileSync("src/lib/guide/content/devices.ts", "utf8");
-  assert.match(devices, /Device role owns the home screen/);
-  assert.match(devices, /use the kitchen display/);
-  assert.match(devices, /Completing clock does not open order entry/);
+  assert.match(devices, /Stations and PINs/);
+  assert.match(devices, /intersection/);
+  assert.match(devices, /clock sheet/);
   const kitchen = readFileSync("src/lib/guide/content/roles.ts", "utf8");
   assert.match(kitchen, /clock sheet only/);
   assert.match(kitchen, /not the server UI/);
@@ -105,7 +105,7 @@ test("host stand: floor + waitlist home, persistent New to-go, bar tab not defau
   const host = readFileSync("src/components/pos/HostStationView.tsx", "utf8");
   assert.match(host, /New to-go order/);
   assert.match(host, /data-host-new-togo/);
-  assert.match(host, /hostMayOpenBarTabs/);
+  assert.match(host, /stationCan/);
   assert.match(host, /openTakeout\("To-go"\)/);
   assert.doesNotMatch(
     host.replace(/\s+/g, " "),

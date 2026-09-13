@@ -58,6 +58,7 @@ import { QrMark } from "./QrMark";
 import { canAccessView } from "@/lib/pos/rbac";
 import { useStationLayout } from "@/lib/ui/station-layout";
 import { barTabVisibleTables, isBarRailSeat, locationAllowsBarTabs } from "@/lib/pos/bar-tab";
+import { stationCan } from "@/lib/pos/station-pin-gate";
 import {
   CHECK_HOLD_LABEL,
   CHECK_HOLD_REASONS,
@@ -73,7 +74,13 @@ function pipelineLabel(status: string): string {
   return FLOOR_STATUS_LABEL[n];
 }
 
-export function FloorView({ hostStand = false }: { hostStand?: boolean }) {
+export function FloorView({
+  hostStand = false,
+  chromeActions = false,
+}: {
+  hostStand?: boolean;
+  chromeActions?: boolean;
+}) {
   const tables = usePosStore((s) => s.tables);
   const orders = usePosStore((s) => s.orders);
   const employees = usePosStore((s) => s.employees);
@@ -115,14 +122,21 @@ export function FloorView({ hostStand = false }: { hostStand?: boolean }) {
   const qrPolicy = parseQrPolicy(settings.qrPolicy, settings.qrMode);
   const demoType = getDemoType();
   const canStatus = canChangeTableStatus(emp?.role, floorCfg);
+  const cap = {
+    deviceRole: (hostStand ? "host" : "order") as "host" | "order",
+    employeeRole: emp?.role,
+    settings,
+  };
   const canSeat =
-    canSeatTable(emp?.role, floorCfg) ||
-    (hostStand && Boolean(settings.serversAtHostStand) && emp?.role === "server");
+    stationCan(cap, "seat") &&
+    (canSeatTable(emp?.role, floorCfg) ||
+      (hostStand && Boolean(settings.serversAtHostStand) && emp?.role === "server"));
   const canEdit = canEditFloorplan(emp?.role) && canAccessView(emp?.role ?? "server", "floor_editor");
   const isHostStand = hostStand || emp?.role === "host";
-  const showHostBarTab =
-    locationAllowsBarTabs(tables) &&
-    (hostStand ? Boolean(settings.hostMayOpenBarTabs) : true);
+  const showHostBarTab = stationCan(cap, "bar_tab") && locationAllowsBarTabs(tables);
+  const canTogoAction = stationCan(cap, "togo");
+  const canOrderEntry = stationCan(cap, "order_entry") || stationCan(cap, "pay");
+  const canBusClean = stationCan(cap, "bus_clean") || canStatus;
 
   const layout = useStationLayout();
   const [seatOpen, setSeatOpen] = useState(false);
@@ -645,7 +659,7 @@ export function FloorView({ hostStand = false }: { hostStand?: boolean }) {
                 Waitlist / host stand
               </Button>
             )}
-            {!barPick && showHostBarTab && (
+            {!chromeActions && !barPick && showHostBarTab && (
             <Button
               className="w-full"
               size="lg"
@@ -655,7 +669,7 @@ export function FloorView({ hostStand = false }: { hostStand?: boolean }) {
               Bar tab
             </Button>
             )}
-            {!hostStand && (
+            {!chromeActions && !hostStand && canTogoAction && (
             <Button
               className="w-full"
               variant="outline"
@@ -927,6 +941,8 @@ export function FloorView({ hostStand = false }: { hostStand?: boolean }) {
                 floorCfg={floorCfg}
                 canStatus={canStatus}
                 canSeat={canSeat}
+                canOrder={canOrderEntry}
+                canClean={canBusClean}
                 qrMode={qrMode}
                 demoType={demoType}
                 qrOpen={qrOpen}
@@ -948,6 +964,10 @@ export function FloorView({ hostStand = false }: { hostStand?: boolean }) {
                   setSeatOpen(true);
                 }}
                 onOpenCheck={() => {
+                  if (!canOrderEntry) {
+                    showBlocked(detailLive, "This PIN cannot open a table order.");
+                    return;
+                  }
                   const res = selectTable(detailLive.id);
                   if (!res.ok) {
                     showBlocked(detailLive, res.error ?? "Outside your section");
@@ -1197,8 +1217,10 @@ export function FloorView({ hostStand = false }: { hostStand?: boolean }) {
             setSeatTarget(t);
             setGuests(Math.min(t.seats, 2));
             setSeatOpen(true);
-          } else {
+          } else if (canOrderEntry) {
             selectTable(t.id);
+          } else {
+            setDetail(t);
           }
         }}
       />
@@ -1213,6 +1235,8 @@ function TableDetailBody({
   floorCfg,
   canStatus,
   canSeat,
+  canOrder = true,
+  canClean = true,
   qrMode,
   demoType,
   qrOpen,
@@ -1242,6 +1266,8 @@ function TableDetailBody({
   floorCfg: ReturnType<typeof parseFloorStatusConfig>;
   canStatus: boolean;
   canSeat: boolean;
+  canOrder?: boolean;
+  canClean?: boolean;
   qrMode: ReturnType<typeof parseQrMode>;
   demoType: string | null;
   qrOpen: boolean;
@@ -1303,7 +1329,7 @@ function TableDetailBody({
             Seat
           </Button>
         )}
-        {!empty && table.orderId && (
+        {!empty && table.orderId && canOrder && (
           <Button onClick={onOpenCheck}>Open check</Button>
         )}
         {onSplitGroup && (
@@ -1317,7 +1343,7 @@ function TableDetailBody({
             Mark delivered
           </Button>
         )}
-        {dirty && (
+        {dirty && canClean && (
           <Button variant="outline" onClick={onClean}>
             Mark cleaned
           </Button>

@@ -8,7 +8,7 @@ import {
 	readStationDeviceRole,
 } from "./device-roles";
 import { stationHomeSurface, viewForStationHome } from "./station-home";
-import { pinFitsDevice } from "./station-pin-gate";
+import { pinFitsDevice, stationCan } from "./station-pin-gate";
 import { useStationSessionStore } from "./station-session";
 import { applyPendingDeviceRoleOnPinLogin } from "./station-role-sync";
 import {
@@ -464,7 +464,7 @@ const usePosStoreRaw = create<PosStore>()(persist((set, get) => {
 			const fit = pinFitsDevice({
 				deviceRole: stationRole,
 				employeeRole: emp.role,
-				serversAtHostStand: Boolean(get().settings.serversAtHostStand),
+				settings: get().settings,
 			});
 			if (!fit.ok) {
 				view = "labor";
@@ -1040,8 +1040,16 @@ const usePosStoreRaw = create<PosStore>()(persist((set, get) => {
 	},
 	beginBarTabPick: () => {
 		try {
-			const device = readStationDeviceRole();
-			if (device === "host" && !get().settings.hostMayOpenBarTabs) return;
+			const device = readStationDeviceRole() ?? "order";
+			const emp = get().getCurrentEmployee();
+			if (
+				!stationCan(
+					{ deviceRole: device, employeeRole: emp?.role, settings: get().settings },
+					"bar_tab",
+				)
+			) {
+				return;
+			}
 		} catch {
 			/* optional */
 		}

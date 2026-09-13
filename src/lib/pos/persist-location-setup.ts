@@ -35,6 +35,7 @@ export function persistHostStandPolicy(): void {
           setup: {
             hostMayOpenBarTabs: Boolean(settings.hostMayOpenBarTabs),
             serversAtHostStand: Boolean(settings.serversAtHostStand),
+            orderMayOpenBarTabs: settings.orderMayOpenBarTabs !== false,
           },
         },
       }).catch(() => undefined);

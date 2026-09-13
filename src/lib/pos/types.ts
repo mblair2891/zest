@@ -240,6 +240,8 @@ export interface RestaurantSettings {
   hostMayOpenBarTabs?: boolean;
   /** Server PIN may run a host tablet (seat + to-go). Default off. */
   serversAtHostStand?: boolean;
+  /** Order tablets may open bar tabs. Default on. */
+  orderMayOpenBarTabs?: boolean;
   /** Kitchen/bar bump requires the station PIN again. Default false. */
   requirePinToBump?: boolean;
   /** Host policy: which access levels may use the mic. */

@@ -32,7 +32,7 @@ export function DeviceModeView({
   const fit = pinFitsDevice({
     deviceRole: role,
     employeeRole: emp?.role,
-    serversAtHostStand: Boolean(settings.serversAtHostStand),
+    settings,
   });
   if (!fit.ok) {
     return <StationClockGate fit={fit} />;
@@ -47,7 +47,7 @@ export function DeviceModeView({
   });
 
   if (role === "ods" || surface === "ods") {
-    if (mode === "bar_kds") {
+    if (emp?.role === "bartender" || mode === "bar_kds") {
       return <KitchenView station="bar" operatorId={operatorId} />;
     }
     if (mode === "expo") {
@@ -86,7 +86,7 @@ export function applySessionModeView(
   const fit = pinFitsDevice({
     deviceRole: role,
     employeeRole: emp.role,
-    serversAtHostStand: Boolean(s.settings.serversAtHostStand),
+    settings: s.settings,
   });
   if (!fit.ok) {
     setView("labor");

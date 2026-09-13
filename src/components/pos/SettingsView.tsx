@@ -274,6 +274,7 @@ export function SettingsView() {
           waitlistEnabled: s.waitlistEnabled,
           hostMayOpenBarTabs: Boolean(s.hostMayOpenBarTabs),
           serversAtHostStand: Boolean(s.serversAtHostStand),
+          orderMayOpenBarTabs: s.orderMayOpenBarTabs !== false,
           smsEnabled: s.smsEnabled !== false,
           smsMonthlyCap: s.smsMonthlyCap ?? null,
           reservationCheckIn: s.reservationCheckIn,

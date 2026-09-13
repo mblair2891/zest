@@ -8,14 +8,15 @@ import { OrderView } from "./OrderView";
 import { WaitlistView } from "./WaitlistView";
 import { cn } from "@/lib/utils";
 import { useStationLayout } from "@/lib/ui/station-layout";
-import { hostMayOpenBarTabs } from "@/lib/pos/station-pin-gate";
+import { stationCan } from "@/lib/pos/station-pin-gate";
 import { locationAllowsBarTabs } from "@/lib/pos/bar-tab";
+import { readStationDeviceRole } from "@/lib/pos/device-roles";
 
 type FloorTab = "floor" | "togo" | "waitlist";
 
 /**
- * Floor-first station glass. Host stand: floor + waitlist/seat, persistent New to-go.
- * Full-service order stations: floor + to-go from the map.
+ * Floor-first station glass. Host stand: floor + waitlist/seat, New to-go as an action.
+ * Full-service order: floor first; to-go and bar tab are actions, not the home.
  */
 export function HostStationView({
   showWaitlist = true,
@@ -35,9 +36,13 @@ export function HostStationView({
   const [tab, setTab] = useState<FloorTab>("floor");
   const layout = useStationLayout();
   const floorIntent = usePosStore((s) => s.floorIntent);
+  const emp = usePosStore((s) => s.employees.find((e) => e.id === s.currentEmployeeId));
   const hostStand = showWaitlist;
-  const barOnHost =
-    hostStand && hostMayOpenBarTabs(settings) && locationAllowsBarTabs(tables);
+  const deviceRole = hostStand ? "host" : (readStationDeviceRole() ?? "order");
+  const cap = { deviceRole, employeeRole: emp?.role, settings };
+  const canWaitlist = stationCan(cap, "waitlist");
+  const canTogo = stationCan(cap, "togo");
+  const canBar = stationCan(cap, "bar_tab") && locationAllowsBarTabs(tables);
   const openTogo = orders.filter(
     (o) => o.status === "open" && (o.type === "takeout" || o.type === "delivery"),
   ).length;
@@ -47,10 +52,10 @@ export function HostStationView({
   }, [floorIntent]);
 
   useEffect(() => {
-    if (view === "takeout") setTab("togo");
-    else if (view === "waitlist" && showWaitlist) setTab("waitlist");
+    if (view === "takeout" && canTogo) setTab("togo");
+    else if (view === "waitlist" && canWaitlist) setTab("waitlist");
     else if (view === "floor" || view === "order") setTab("floor");
-  }, [view, showWaitlist]);
+  }, [view, canWaitlist, canTogo]);
 
   const pick = (next: FloorTab) => {
     setTab(next);
@@ -108,7 +113,7 @@ export function HostStationView({
             <LayoutGrid className="h-5 w-5" />
             Floor
           </Button>
-          {showWaitlist && (
+          {canWaitlist && (
             <Button
               size="lg"
               className="station-touch min-h-12 flex-1 text-base"
@@ -119,30 +124,21 @@ export function HostStationView({
               Waitlist
             </Button>
           )}
-          {!hostStand && (
-            <Button
-              size="lg"
-              className="station-touch min-h-12 flex-1 text-base"
-              variant={tab === "togo" ? "default" : "outline"}
-              onClick={() => pick("togo")}
-            >
-              <ShoppingBag className="h-5 w-5" />
-              To-go
-            </Button>
-          )}
         </div>
-        {hostStand && (
+        {(canTogo || canBar) && (
           <div className={cn("flex gap-2", layout.handheld && "grid grid-cols-2")}>
-            <Button
-              size="lg"
-              className="station-touch min-h-12 flex-1 text-base"
-              data-host-new-togo
-              onClick={() => openTakeout("To-go")}
-            >
-              <Plus className="h-5 w-5" />
-              New to-go order
-            </Button>
-            {openTogo > 0 && (
+            {canTogo && (
+              <Button
+                size="lg"
+                className="station-touch min-h-12 flex-1 text-base"
+                data-host-new-togo
+                onClick={() => openTakeout("To-go")}
+              >
+                <Plus className="h-5 w-5" />
+                New to-go order
+              </Button>
+            )}
+            {canTogo && openTogo > 0 && (
               <Button
                 size="lg"
                 variant={tab === "togo" ? "default" : "outline"}
@@ -153,7 +149,7 @@ export function HostStationView({
                 Open {openTogo}
               </Button>
             )}
-            {barOnHost && (
+            {canBar && (
               <Button
                 size="lg"
                 variant="outline"
@@ -169,11 +165,6 @@ export function HostStationView({
             )}
           </div>
         )}
-        {!layout.handheld && !hostStand && (
-          <p className="ml-auto hidden text-xs text-muted-foreground sm:block">
-            Open a table, to-go, or bar tab from the floor
-          </p>
-        )}
       </div>
       <div className="min-h-0 flex-1 overflow-hidden">
         {tab === "waitlist" ? (
@@ -181,7 +172,7 @@ export function HostStationView({
         ) : tab === "togo" ? (
           <TakeoutView hostStand={hostStand} />
         ) : (
-          <FloorView hostStand={hostStand} />
+          <FloorView hostStand={hostStand} chromeActions />
         )}
       </div>
     </div>

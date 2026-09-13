@@ -255,9 +255,10 @@ export function VenueHouseSettings() {
       </section>
 
       <section className="rounded-2xl border border-border bg-surface p-4 space-y-3">
-        <p className="text-sm font-medium">Host stand</p>
+        <p className="text-sm font-medium">Stations and PINs</p>
         <p className="text-xs text-muted-foreground">
-          Home is floor + waitlist/seat. New to-go order is a persistent action — not the only home.
+          Device role is the tablet envelope. Staff PIN is which of those actions this person may use.
+          Host home is floor + waitlist/seat. New to-go is a persistent action — not the only home.
         </p>
         <label className="flex items-start gap-2 text-sm">
           <input
@@ -284,6 +285,19 @@ export function VenueHouseSettings() {
             }}
           />
           <span>Host may open bar tabs</span>
+        </label>
+        <label className="flex items-start gap-2 text-sm">
+          <input
+            type="checkbox"
+            className="mt-0.5 h-4 w-4 rounded border-border"
+            disabled={!write}
+            checked={settings.orderMayOpenBarTabs !== false}
+            onChange={(e) => {
+              updateSettings({ orderMayOpenBarTabs: e.target.checked });
+              persistHostStandPolicy();
+            }}
+          />
+          <span>Bar tabs on order devices</span>
         </label>
       </section>
 

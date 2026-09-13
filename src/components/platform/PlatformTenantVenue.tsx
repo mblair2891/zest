@@ -405,6 +405,7 @@ export function PlatformTenantVenue({
           stationServicePinHash: setup.stationServicePinHash || st.settings.stationServicePinHash,
           hostMayOpenBarTabs: Boolean(setup.hostMayOpenBarTabs),
           serversAtHostStand: Boolean(setup.serversAtHostStand),
+          orderMayOpenBarTabs: setup.orderMayOpenBarTabs !== false,
           lifecycleStatus:
             (access.location.lifecycleStatus as
               | "training"

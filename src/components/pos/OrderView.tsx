@@ -66,6 +66,7 @@ import {
 import { useStationSessionStore } from "@/lib/pos/station-session";
 import { stationHomeSurface } from "@/lib/pos/station-home";
 import { locationAllowsBarTabs } from "@/lib/pos/bar-tab";
+import { stationCan } from "@/lib/pos/station-pin-gate";
 import { DriveThroughView } from "./DriveThroughView";
 
 export function OrderView() {
@@ -192,7 +193,20 @@ export function OrderView() {
   }
 
   if (!order) {
-    const barOk = locationAllowsBarTabs(tables);
+    const barOk =
+      locationAllowsBarTabs(tables) &&
+      stationCan(
+        { deviceRole: stationRole ?? "order", employeeRole: emp?.role, settings },
+        "bar_tab",
+      );
+    const togoOk = stationCan(
+      { deviceRole: stationRole ?? "order", employeeRole: emp?.role, settings },
+      "togo",
+    );
+    const ticketOk = stationCan(
+      { deviceRole: stationRole ?? "order", employeeRole: emp?.role, settings },
+      "order_entry",
+    );
     return (
       <div
         className="flex h-full flex-col items-center justify-center gap-4 p-6 text-center"
@@ -203,6 +217,7 @@ export function OrderView() {
           Open a ticket or to-go check. This house has no dining floor.
         </p>
         <div className="grid w-full max-w-sm grid-cols-1 gap-3 sm:grid-cols-2">
+          {ticketOk && (
           <Button
             size="lg"
             className="station-touch h-14 text-base"
@@ -210,6 +225,8 @@ export function OrderView() {
           >
             New ticket
           </Button>
+          )}
+          {togoOk && (
           <Button
             size="lg"
             className="station-touch h-14 text-base"
@@ -218,6 +235,7 @@ export function OrderView() {
           >
             To-go
           </Button>
+          )}
           {barOk && (
             <Button
               size="lg"

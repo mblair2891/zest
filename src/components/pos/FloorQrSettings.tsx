@@ -223,7 +223,7 @@ export function FloorQrSettings({ write }: { write: boolean }) {
 
       <div className="space-y-2 rounded-xl border border-border bg-bg p-3">
         <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-          Host stand
+          Stations and PINs
         </p>
         <label className="flex items-start gap-2 text-sm">
           <input
@@ -258,6 +258,24 @@ export function FloorQrSettings({ write }: { write: boolean }) {
             Host may open bar tabs
             <span className="mt-0.5 block text-[11px] text-muted-foreground">
               Off: host home is floor + waitlist/seat. Bar tab is not the default. New to-go stays a persistent action.
+            </span>
+          </span>
+        </label>
+        <label className="flex items-start gap-2 text-sm">
+          <input
+            type="checkbox"
+            className="mt-0.5 h-4 w-4 rounded border-border"
+            disabled={!write}
+            checked={settings.orderMayOpenBarTabs !== false}
+            onChange={(e) => {
+              updateSettings({ orderMayOpenBarTabs: e.target.checked });
+              persistHostStandPolicy();
+            }}
+          />
+          <span>
+            Bar tabs on order devices
+            <span className="mt-0.5 block text-[11px] text-muted-foreground">
+              Off: order tablets hide Bar tab even if the house has a rail. On: bartender/server bar tab from the floor.
             </span>
           </span>
         </label>

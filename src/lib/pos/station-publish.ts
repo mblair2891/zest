@@ -26,6 +26,7 @@ export type StationPublishSetup = {
   cashRoundMode?: string;
   hostMayOpenBarTabs?: boolean;
   serversAtHostStand?: boolean;
+  orderMayOpenBarTabs?: boolean;
   sectionNames?: string[];
   laborByEntity?: object;
   sharedVenueCostsCents?: number;
@@ -178,6 +179,9 @@ export function applyStationPublish(
     }
     if ("serversAtHostStand" in setup) {
       settings.serversAtHostStand = Boolean(setup.serversAtHostStand);
+    }
+    if ("orderMayOpenBarTabs" in setup) {
+      settings.orderMayOpenBarTabs = setup.orderMayOpenBarTabs !== false;
     }
     if (opts?.locationName) settings.name = opts.locationName;
     patch.settings = settings;

@@ -70,7 +70,7 @@ export const GUIDE_CHAPTERS: GuideChapter[] = [
   {
     id: "devices",
     title: "Devices & offline",
-    summary: "Order / ODS / host roles. Device role owns home; PIN is a gate. AP-LAN printers, offline.",
+    summary: "Stations and PINs: device ∩ staff role. AP-LAN printers, offline.",
     order: 8,
   },
   {

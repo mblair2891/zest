@@ -12,6 +12,7 @@ import {
 } from "@/components/ui/dialog";
 import { usePosStore } from "@/lib/pos/store";
 import { locationAllowsBarTabs } from "@/lib/pos/bar-tab";
+import { stationCan } from "@/lib/pos/station-pin-gate";
 import { computeTotals } from "@/lib/pos/calculations";
 import { formatCurrency, formatTime } from "@/lib/utils";
 
@@ -24,9 +25,17 @@ export function TakeoutView({ hostStand = false }: { hostStand?: boolean }) {
   const floorIntent = usePosStore((s) => s.floorIntent);
   const setActiveOrder = usePosStore((s) => s.setActiveOrder);
   const setView = usePosStore((s) => s.setView);
+  const emp = usePosStore((s) => s.employees.find((e) => e.id === s.currentEmployeeId));
   const barOk =
     locationAllowsBarTabs(tables) &&
-    (hostStand ? Boolean(settings.hostMayOpenBarTabs) : true);
+    stationCan(
+      {
+        deviceRole: hostStand ? "host" : "order",
+        employeeRole: emp?.role,
+        settings,
+      },
+      "bar_tab",
+    );
 
   const [open, setOpen] = useState(false);
   const [name, setName] = useState("");

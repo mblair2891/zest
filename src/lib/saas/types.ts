@@ -37,6 +37,8 @@ export type LocationSetup = {
   hostMayOpenBarTabs?: boolean;
   /** Server PIN may run a host tablet (seat + to-go). Default off. */
   serversAtHostStand?: boolean;
+  /** Order tablets may open bar tabs. Default on. */
+  orderMayOpenBarTabs?: boolean;
   /** Waitlist + tenant-invite SMS. Off = no guest/invite texts; email still sends. */
   smsEnabled?: boolean;
   /** Hard cap this location, at or below platform included. Null = platform included. */
