@@ -24,6 +24,8 @@ export type StationPublishSetup = {
   cashDiscountPercent?: number;
   cashRoundIncrement?: number;
   cashRoundMode?: string;
+  hostMayOpenBarTabs?: boolean;
+  serversAtHostStand?: boolean;
   sectionNames?: string[];
   laborByEntity?: object;
   sharedVenueCostsCents?: number;
@@ -171,6 +173,12 @@ export function applyStationPublish(
       settings.cashRoundIncrement = setup.cashRoundIncrement;
     }
     if (setup.cashRoundMode === "up") settings.cashRoundMode = "up";
+    if ("hostMayOpenBarTabs" in setup) {
+      settings.hostMayOpenBarTabs = Boolean(setup.hostMayOpenBarTabs);
+    }
+    if ("serversAtHostStand" in setup) {
+      settings.serversAtHostStand = Boolean(setup.serversAtHostStand);
+    }
     if (opts?.locationName) settings.name = opts.locationName;
     patch.settings = settings;
     if (locationId) patch.tenantLocationId = locationId;

@@ -1,7 +1,7 @@
 # Operators Guide — authoring
 
-**Revision · 13 Sep 2026** — Station home follows device role, not every PIN.
-Guide v2026.10.82.
+**Revision · 13 Sep 2026** — Host stand: floor + waitlist; New to-go as an action.
+Guide v2026.10.83.
 
 The in-app **Operators Guide** is the living product manual. It is not a
 separate PDF. Staff open it from **Guide** / **?** in the POS and platform
@@ -64,7 +64,7 @@ accurate when the job path changes.
 10. Settlement & multi-operator splits / chargeback fee split
 11. Reports & AI insights (recommendations, human confirm). Scheduled AI ops jobs: hourly / nightly / weekly / pay period / monthly. Missing xAI key queues skipped — never invented insights. Never auto clock-out. Never invent Finix/Visa charges.
 12. Training vs Go live
-13. Devices: four roles — **order**, **ODS**, **host**, **kiosk**. **Device role owns the home; staff PIN does not.** ODS = ticket rail only (no to-go / bar tab / floor order). Order + full service → floor first; order + counter / drive-through → queue / window. Host = floor + waitlist/seat. Cook / kitchen / expo on ODS → rail; on order or host → clock sheet only, then use the kitchen display. Clock in/out is a separate control on every station and does not open order entry. Unpaired = pair/scan only. PIN first, not `/login`. Password owner login is back office. Manager changes device role from Devices, not from a kitchen PIN.
+13. Devices: four roles — **order**, **ODS**, **host**, **kiosk**. **Device role owns the home; staff PIN does not.** ODS = ticket rail only (no to-go / bar tab / floor order). Order + full service → floor first; order + counter / drive-through → queue / window. Host = floor + waitlist/seat; **New to-go** is a persistent action (same pay/print as order-station to-go). Bar tab is not the host default unless **Host may open bar tabs**. Server PIN on a host tablet needs **Servers may use the host stand**; otherwise clock + use an order tablet. Cook / kitchen / expo on ODS → rail; on order or host → clock sheet only (no to-go). Clock in/out is a separate control on every station and does not open order entry. Unpaired = pair/scan only. PIN first, not `/login`. Password owner login is back office. Manager changes device role from Devices, not from a kitchen PIN.
 14. Printers: Ethernet on the AP LAN (not printer Wi‑Fi). Thermal receipts (Epson TM-T20). Impact kitchen (Epson TM-U220). Drawer kick on the receipt printer.
 15. Offline / hybrid
 16. Cash: single/shared drawer, server bank, multi-well (one drawer per well), host to-go drawer, **till-to-till transfer** (request from another open till; cash moves on accept; no manager required), **blind till close** (count first; expected hidden until submit; turn-in slip prints after submit for the drop bag — not a fill-in form; no force-balance). Closeout ≠ clock-out ≠ PIN.

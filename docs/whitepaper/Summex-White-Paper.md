@@ -121,7 +121,7 @@ When the house is ready for more than service:
 3. The tablet pairs, then opens on the PIN pad.
 4. **Publish changes** pushes menu, floor, printers, and QR. Staff keep the last publish until they switch user. Never mid-check.
 
-The paired role is the home screen. Staff PIN is who is working, not which glass opens. A kitchen PIN on an order tablet stays on the clock sheet — use the kitchen display. A broken kitchen display is a role change on that tablet from Devices — same pair, staff PIN in again. Do not reinstall.
+The paired role is the home screen. Staff PIN is who is working, not which glass opens. A kitchen PIN on an order tablet stays on the clock sheet — use the kitchen display. The host stand is floor + waitlist/seat; New to-go is an action on that glass, not the only home. A broken kitchen display is a role change on that tablet from Devices — same pair, staff PIN in again. Do not reinstall.
 
 Printers live on the house network (Ethernet), not the printer’s own Wi‑Fi. Receipts thermal; kitchen impact; drawer kick on the receipt printer.
 

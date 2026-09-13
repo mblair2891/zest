@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { LayoutGrid, ShoppingBag, Users } from "lucide-react";
+import { LayoutGrid, Plus, ShoppingBag, Users } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { usePosStore } from "@/lib/pos/store";
 import { FloorView } from "./FloorView";
@@ -8,12 +8,14 @@ import { OrderView } from "./OrderView";
 import { WaitlistView } from "./WaitlistView";
 import { cn } from "@/lib/utils";
 import { useStationLayout } from "@/lib/ui/station-layout";
+import { hostMayOpenBarTabs } from "@/lib/pos/station-pin-gate";
+import { locationAllowsBarTabs } from "@/lib/pos/bar-tab";
 
 type FloorTab = "floor" | "togo" | "waitlist";
 
 /**
- * Floor-first station glass: map + to-go, optional waitlist/seat.
- * Used by host devices and by full-service / hybrid order stations.
+ * Floor-first station glass. Host stand: floor + waitlist/seat, persistent New to-go.
+ * Full-service order stations: floor + to-go from the map.
  */
 export function HostStationView({
   showWaitlist = true,
@@ -22,12 +24,23 @@ export function HostStationView({
 }) {
   const activeOrderId = usePosStore((s) => s.activeOrderId);
   const order = usePosStore((s) => s.orders.find((o) => o.id === s.activeOrderId));
+  const orders = usePosStore((s) => s.orders);
   const setActiveOrder = usePosStore((s) => s.setActiveOrder);
+  const openTakeout = usePosStore((s) => s.openTakeout);
+  const beginBarTabPick = usePosStore((s) => s.beginBarTabPick);
   const view = usePosStore((s) => s.view);
   const setView = usePosStore((s) => s.setView);
+  const settings = usePosStore((s) => s.settings);
+  const tables = usePosStore((s) => s.tables);
   const [tab, setTab] = useState<FloorTab>("floor");
   const layout = useStationLayout();
   const floorIntent = usePosStore((s) => s.floorIntent);
+  const hostStand = showWaitlist;
+  const barOnHost =
+    hostStand && hostMayOpenBarTabs(settings) && locationAllowsBarTabs(tables);
+  const openTogo = orders.filter(
+    (o) => o.status === "open" && (o.type === "takeout" || o.type === "delivery"),
+  ).length;
 
   useEffect(() => {
     if (floorIntent === "bar_tab") setTab("floor");
@@ -59,9 +72,11 @@ export function HostStationView({
             Back
           </Button>
           <p className="text-sm font-medium">
-            {order.type === "takeout" || order.type === "delivery" || order.type === "bar_tab"
-              ? "To-go / tab"
-              : "Check"}
+            {order.type === "takeout" || order.type === "delivery"
+              ? "To-go"
+              : order.type === "bar_tab"
+                ? "Bar tab"
+                : "Check"}
           </p>
         </div>
         <div className="min-h-0 flex-1">
@@ -71,50 +86,92 @@ export function HostStationView({
     );
   }
 
-  const cols = showWaitlist ? "grid-cols-3" : "grid-cols-2";
-
   return (
-    <div className="flex h-full min-h-0 flex-col" data-demo="station-home-floor">
+    <div
+      className="flex h-full min-h-0 flex-col"
+      data-demo="station-home-floor"
+      data-host-stand={hostStand ? "1" : undefined}
+    >
       <div
         className={cn(
           "border-b border-border p-2",
-          layout.handheld ? `grid ${cols} gap-2` : "flex items-center gap-2",
+          layout.handheld ? "flex flex-col gap-2" : "flex items-center gap-2",
         )}
       >
-        <Button
-          size="lg"
-          className="station-touch min-h-12 flex-1 text-base"
-          variant={tab === "floor" ? "default" : "outline"}
-          onClick={() => pick("floor")}
-        >
-          <LayoutGrid className="h-5 w-5" />
-          Floor
-        </Button>
-        {showWaitlist && (
+        <div className={cn("flex min-w-0 flex-1 gap-2", layout.handheld && "grid grid-cols-2")}>
           <Button
             size="lg"
             className="station-touch min-h-12 flex-1 text-base"
-            variant={tab === "waitlist" ? "default" : "outline"}
-            onClick={() => pick("waitlist")}
+            variant={tab === "floor" ? "default" : "outline"}
+            onClick={() => pick("floor")}
           >
-            <Users className="h-5 w-5" />
-            Waitlist
+            <LayoutGrid className="h-5 w-5" />
+            Floor
           </Button>
+          {showWaitlist && (
+            <Button
+              size="lg"
+              className="station-touch min-h-12 flex-1 text-base"
+              variant={tab === "waitlist" ? "default" : "outline"}
+              onClick={() => pick("waitlist")}
+            >
+              <Users className="h-5 w-5" />
+              Waitlist
+            </Button>
+          )}
+          {!hostStand && (
+            <Button
+              size="lg"
+              className="station-touch min-h-12 flex-1 text-base"
+              variant={tab === "togo" ? "default" : "outline"}
+              onClick={() => pick("togo")}
+            >
+              <ShoppingBag className="h-5 w-5" />
+              To-go
+            </Button>
+          )}
+        </div>
+        {hostStand && (
+          <div className={cn("flex gap-2", layout.handheld && "grid grid-cols-2")}>
+            <Button
+              size="lg"
+              className="station-touch min-h-12 flex-1 text-base"
+              data-host-new-togo
+              onClick={() => openTakeout("To-go")}
+            >
+              <Plus className="h-5 w-5" />
+              New to-go order
+            </Button>
+            {openTogo > 0 && (
+              <Button
+                size="lg"
+                variant={tab === "togo" ? "default" : "outline"}
+                className="station-touch min-h-12 text-base"
+                onClick={() => pick("togo")}
+              >
+                <ShoppingBag className="h-5 w-5" />
+                Open {openTogo}
+              </Button>
+            )}
+            {barOnHost && (
+              <Button
+                size="lg"
+                variant="outline"
+                className="station-touch min-h-12 text-base"
+                data-host-bar-tab
+                onClick={() => {
+                  pick("floor");
+                  beginBarTabPick();
+                }}
+              >
+                Bar tab
+              </Button>
+            )}
+          </div>
         )}
-        <Button
-          size="lg"
-          className="station-touch min-h-12 flex-1 text-base"
-          variant={tab === "togo" ? "default" : "outline"}
-          onClick={() => pick("togo")}
-        >
-          <ShoppingBag className="h-5 w-5" />
-          To-go
-        </Button>
-        {!layout.handheld && (
+        {!layout.handheld && !hostStand && (
           <p className="ml-auto hidden text-xs text-muted-foreground sm:block">
-            {showWaitlist
-              ? "Seat, waitlist, and to-go from the floor"
-              : "Open a table, to-go, or bar tab from the floor"}
+            Open a table, to-go, or bar tab from the floor
           </p>
         )}
       </div>
@@ -122,9 +179,9 @@ export function HostStationView({
         {tab === "waitlist" ? (
           <WaitlistView />
         ) : tab === "togo" ? (
-          <TakeoutView />
+          <TakeoutView hostStand={hostStand} />
         ) : (
-          <FloorView />
+          <FloorView hostStand={hostStand} />
         )}
       </div>
     </div>

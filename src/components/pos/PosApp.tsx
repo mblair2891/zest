@@ -434,6 +434,8 @@ function PosAppInner({ entityId }: { entityId?: string }) {
               smsMonthlyCap: setup.smsMonthlyCap ?? null,
               cashHandling: setup.cashHandling,
               stationServicePinHash: setup.stationServicePinHash || undefined,
+              hostMayOpenBarTabs: Boolean(setup.hostMayOpenBarTabs),
+              serversAtHostStand: Boolean(setup.serversAtHostStand),
               serviceStyle:
                 setup.serviceStyle === "counter" ||
                 setup.serviceStyle === "hybrid" ||

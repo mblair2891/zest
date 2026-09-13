@@ -29,7 +29,7 @@ import { ROLE_LABEL } from "@/lib/pos/rbac";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { GuideLearnLink } from "@/components/guide/GuideLearnLink";
-import { persistQrPolicy } from "@/lib/pos/persist-location-setup";
+import { persistHostStandPolicy, persistQrPolicy } from "@/lib/pos/persist-location-setup";
 
 const STATUS_ROLES: EmployeeRole[] = [
   "owner",
@@ -217,6 +217,48 @@ export function FloorQrSettings({ write }: { write: boolean }) {
           />
           <span className="mt-1 block text-[11px]">
             Signed check QR. Reprinted checks mint a fresh code. Default {DEFAULT_QR_POLICY.ticketQrTtlSec / 60} min.
+          </span>
+        </label>
+      </div>
+
+      <div className="space-y-2 rounded-xl border border-border bg-bg p-3">
+        <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+          Host stand
+        </p>
+        <label className="flex items-start gap-2 text-sm">
+          <input
+            type="checkbox"
+            className="mt-0.5 h-4 w-4 rounded border-border"
+            disabled={!write}
+            checked={Boolean(settings.serversAtHostStand)}
+            onChange={(e) => {
+              updateSettings({ serversAtHostStand: e.target.checked });
+              persistHostStandPolicy();
+            }}
+          />
+          <span>
+            Servers may use the host stand
+            <span className="mt-0.5 block text-[11px] text-muted-foreground">
+              Off: a server PIN on a host tablet is clock only — use an order tablet. On: seat + to-go.
+            </span>
+          </span>
+        </label>
+        <label className="flex items-start gap-2 text-sm">
+          <input
+            type="checkbox"
+            className="mt-0.5 h-4 w-4 rounded border-border"
+            disabled={!write}
+            checked={Boolean(settings.hostMayOpenBarTabs)}
+            onChange={(e) => {
+              updateSettings({ hostMayOpenBarTabs: e.target.checked });
+              persistHostStandPolicy();
+            }}
+          />
+          <span>
+            Host may open bar tabs
+            <span className="mt-0.5 block text-[11px] text-muted-foreground">
+              Off: host home is floor + waitlist/seat. Bar tab is not the default. New to-go stays a persistent action.
+            </span>
           </span>
         </label>
       </div>

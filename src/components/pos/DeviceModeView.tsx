@@ -32,6 +32,7 @@ export function DeviceModeView({
   const fit = pinFitsDevice({
     deviceRole: role,
     employeeRole: emp?.role,
+    serversAtHostStand: Boolean(settings.serversAtHostStand),
   });
   if (!fit.ok) {
     return <StationClockGate fit={fit} />;
@@ -85,6 +86,7 @@ export function applySessionModeView(
   const fit = pinFitsDevice({
     deviceRole: role,
     employeeRole: emp.role,
+    serversAtHostStand: Boolean(s.settings.serversAtHostStand),
   });
   if (!fit.ok) {
     setView("labor");

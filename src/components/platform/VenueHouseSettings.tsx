@@ -3,7 +3,7 @@ import { Input } from "@/components/ui/input";
 import { usePosStore } from "@/lib/pos/store";
 import { useSaasStore } from "@/lib/pos/saas-store";
 import { saveLocationSettingsFn, publishLocationFn } from "@/lib/access/api";
-import { persistCashDiscount, persistQrPolicy } from "@/lib/pos/persist-location-setup";
+import { persistCashDiscount, persistHostStandPolicy, persistQrPolicy } from "@/lib/pos/persist-location-setup";
 import { isProspectDemo } from "@/lib/demo/session";
 import { CASH_ROUND_INCREMENTS, SERVICE_STYLES_VENUE, TAX_MODES } from "@/lib/saas/venue-entity";
 import { parseQrMode } from "@/lib/pos/qr-table";
@@ -252,6 +252,39 @@ export function VenueHouseSettings() {
             ))}
           </ul>
         )}
+      </section>
+
+      <section className="rounded-2xl border border-border bg-surface p-4 space-y-3">
+        <p className="text-sm font-medium">Host stand</p>
+        <p className="text-xs text-muted-foreground">
+          Home is floor + waitlist/seat. New to-go order is a persistent action — not the only home.
+        </p>
+        <label className="flex items-start gap-2 text-sm">
+          <input
+            type="checkbox"
+            className="mt-0.5 h-4 w-4 rounded border-border"
+            disabled={!write}
+            checked={Boolean(settings.serversAtHostStand)}
+            onChange={(e) => {
+              updateSettings({ serversAtHostStand: e.target.checked });
+              persistHostStandPolicy();
+            }}
+          />
+          <span>Servers may use the host stand (seat + to-go)</span>
+        </label>
+        <label className="flex items-start gap-2 text-sm">
+          <input
+            type="checkbox"
+            className="mt-0.5 h-4 w-4 rounded border-border"
+            disabled={!write}
+            checked={Boolean(settings.hostMayOpenBarTabs)}
+            onChange={(e) => {
+              updateSettings({ hostMayOpenBarTabs: e.target.checked });
+              persistHostStandPolicy();
+            }}
+          />
+          <span>Host may open bar tabs</span>
+        </label>
       </section>
 
       <section className="rounded-2xl border border-border bg-surface p-4 space-y-3">

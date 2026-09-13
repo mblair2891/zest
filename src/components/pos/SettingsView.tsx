@@ -272,6 +272,8 @@ export function SettingsView() {
           ticketPrefix: s.ticketPrefix,
           kioskMode: s.kioskMode,
           waitlistEnabled: s.waitlistEnabled,
+          hostMayOpenBarTabs: Boolean(s.hostMayOpenBarTabs),
+          serversAtHostStand: Boolean(s.serversAtHostStand),
           smsEnabled: s.smsEnabled !== false,
           smsMonthlyCap: s.smsMonthlyCap ?? null,
           reservationCheckIn: s.reservationCheckIn,

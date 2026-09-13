@@ -31,7 +31,13 @@ test("Summit Hall PIN map: 2222 server on order is floor; 4444 kitchen is not", 
 
 test("server / bartender / cashier use order or host; bartender also ODS", () => {
   assert.equal(pinFitsDevice({ deviceRole: "order", employeeRole: "server" }).ok, true);
-  assert.equal(pinFitsDevice({ deviceRole: "host", employeeRole: "server" }).ok, true);
+  assert.equal(pinFitsDevice({ deviceRole: "host", employeeRole: "server" }).ok, false);
+  assert.equal(
+    pinFitsDevice({ deviceRole: "host", employeeRole: "server", serversAtHostStand: true }).ok,
+    true,
+  );
+  const denied = pinFitsDevice({ deviceRole: "host", employeeRole: "server" });
+  if (!denied.ok) assert.match(denied.hint, /order tablet/i);
   assert.equal(pinFitsDevice({ deviceRole: "ods", employeeRole: "server" }).ok, false);
   assert.equal(pinFitsDevice({ deviceRole: "order", employeeRole: "cashier" }).ok, true);
   assert.equal(pinFitsDevice({ deviceRole: "ods", employeeRole: "cashier" }).ok, false);
@@ -93,4 +99,28 @@ test("operators guide: device role owns home, kitchen PIN is not server UI", () 
   const kitchen = readFileSync("src/lib/guide/content/roles.ts", "utf8");
   assert.match(kitchen, /clock sheet only/);
   assert.match(kitchen, /not the server UI/);
+});
+
+test("host stand: floor + waitlist home, persistent New to-go, bar tab not default", () => {
+  const host = readFileSync("src/components/pos/HostStationView.tsx", "utf8");
+  assert.match(host, /New to-go order/);
+  assert.match(host, /data-host-new-togo/);
+  assert.match(host, /hostMayOpenBarTabs/);
+  assert.match(host, /openTakeout\("To-go"\)/);
+  assert.doesNotMatch(
+    host.replace(/\s+/g, " "),
+    /hostStand && \(\s*<Button[^>]*To-go/,
+  );
+  const kitchenHost = pinFitsDevice({ deviceRole: "host", employeeRole: "kitchen" });
+  assert.equal(kitchenHost.ok, false);
+  if (!kitchenHost.ok) assert.match(kitchenHost.hint, /to-go/i);
+  assert.equal(pinFitsDevice({ deviceRole: "host", employeeRole: "host" }).ok, true);
+  assert.equal(pinFitsDevice({ deviceRole: "host", employeeRole: "supervisor" }).ok, true);
+  assert.equal(pinFitsDevice({ deviceRole: "host", employeeRole: "manager" }).ok, true);
+  const hostGuide = readFileSync("src/lib/guide/content/roles.ts", "utf8");
+  assert.match(hostGuide, /New to-go order/);
+  assert.match(hostGuide, /Host may open bar tabs/);
+  assert.match(hostGuide, /Servers may use the host stand/);
+  const floorGuide = readFileSync("src/lib/guide/content/floor.ts", "utf8");
+  assert.match(floorGuide, /not the only home/);
 });

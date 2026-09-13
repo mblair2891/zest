@@ -6,6 +6,19 @@ import type { GuideUpdate } from "@/lib/guide/types";
  */
 export const WHATS_NEW_ENTRIES: GuideUpdate[] = [
   {
+    id: "upd_2026_10_83_host_togo",
+    date: "2026-09-13",
+    title: "Host stand can start to-go orders",
+    summary:
+      "Host home is floor + waitlist/seat. New to-go is a persistent action — not the only home. Bar tab stays off unless Host may open bar tabs is on.",
+    body: "Host, supervisor, and manager PINs on a host tablet open the floor and waitlist. Tap New to-go order for the same pay and print path as an order-station takeout check. Kitchen/cook PIN on a host tablet is clock only — no to-go. Server PIN may seat and start to-go only when Servers may use the host stand is on; otherwise clock and use an order tablet.",
+    roles: ["owner_manager", "server", "host_operator", "platform_admin"],
+    surfaces: ["floor"],
+    audience: "all",
+    topicId: "host-stand",
+    tags: ["host", "to-go", "pin", "floor"],
+  },
+  {
     id: "upd_2026_10_82_station_pin_gate",
     date: "2026-09-13",
     title: "Station home follows device role, not every PIN",

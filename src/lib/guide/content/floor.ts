@@ -152,22 +152,29 @@ export const FLOOR_TOPICS: GuideTopic[] = [
     id: "host-stand",
     chapterId: "floor",
     title: "Host stand (waitlist & seating)",
-    summary: "Walk-ins, quoted waits, reservations, handoff to the server.",
+    summary: "Floor + waitlist/seat home. New to-go from the stand. Bar tab only if the house turns it on.",
     roles: ["owner_manager", "server"],
-    keywords: ["host stand", "waitlist", "reservation", "seat", "quoted wait"],
+    keywords: ["host stand", "waitlist", "reservation", "seat", "quoted wait", "to-go", "bar tab"],
     openView: "waitlist",
     blocks: [
       why(
-        "The FOH host keeps the door honest so servers are not seating over each other. This is not the hall Host Venue role.",
+        "The FOH host keeps the door honest so servers are not seating over each other. This is not the hall Host Venue role. To-go is a persistent action — not the only home.",
+      ),
+      ul(
+        "After a host / supervisor / manager PIN, home is the floor map plus Waitlist / seat.",
+        "New to-go order starts a takeout check with the same pay and print path as the order station.",
+        "Do not treat to-go as the only home. Bar tab is hidden unless Location settings → Host may open bar tabs.",
+        "Kitchen / cook PIN: clock only. No to-go from this tablet.",
+        "Server PIN: seat + to-go only when Servers may use the host stand is on; otherwise clock and use an order tablet.",
       ),
       steps(
-        "Open Host / Waitlist. Add a walk-in with party size and quoted wait.",
+        "PIN in on the host tablet. Seat from the map. Add a walk-in with party size and quoted wait.",
         "When a table in the right section is empty, seat onto that table. Optionally assign the server for that section.",
-        "Tap a table to change status, preview QR, or jump to the check. Server PIN sessions can update status and open the order.",
-        "The assigned server owns the check. They may Release it to the offer pool; another server Accepts.",
+        "Tap New to-go order for pickup. Pay and print as usual.",
+        "The assigned server owns a seated check. They may Release it to the offer pool; another server Accepts.",
         "Respect section locks — a manager grant is required to seat across sections.",
       ),
-      related("floor-tables", "floor-status", "table-qr", "sections", "invites-roles"),
+      related("floor-tables", "floor-status", "table-qr", "sections", "invites-roles", "role-host-stand", "device-roles"),
     ],
   }),
   topic({
@@ -223,7 +230,7 @@ export const FLOOR_TOPICS: GuideTopic[] = [
         "Closed · needs bus — cleaned returns to empty",
       ),
       p(
-        "Host settings choose which steps are on, the color per status, flash minutes (0/blank = off), who may tap a status (server, host, manager), and who may seat (host stand, manager, or both).",
+        "Host settings choose which steps are on, the color per status, flash minutes (0/blank = off), who may tap a status (server, host, manager), and who may seat (host stand, manager, or both). Host stand also has Servers may use the host stand and Host may open bar tabs.",
       ),
       ul(
         "Auto: first drink send → drinks fired; food send → food fired; kitchen bump → delivered then dining unpaid; pay complete → closed · needs bus.",

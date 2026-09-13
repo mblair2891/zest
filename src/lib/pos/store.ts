@@ -464,6 +464,7 @@ const usePosStoreRaw = create<PosStore>()(persist((set, get) => {
 			const fit = pinFitsDevice({
 				deviceRole: stationRole,
 				employeeRole: emp.role,
+				serversAtHostStand: Boolean(get().settings.serversAtHostStand),
 			});
 			if (!fit.ok) {
 				view = "labor";
@@ -1038,6 +1039,12 @@ const usePosStoreRaw = create<PosStore>()(persist((set, get) => {
 		set({ view: v });
 	},
 	beginBarTabPick: () => {
+		try {
+			const device = readStationDeviceRole();
+			if (device === "host" && !get().settings.hostMayOpenBarTabs) return;
+		} catch {
+			/* optional */
+		}
 		set({ floorIntent: "bar_tab", activeOrderId: null, activeTableId: null });
 	},
 	clearFloorIntent: () => set({ floorIntent: null }),

@@ -403,6 +403,8 @@ export function PlatformTenantVenue({
               : st.settings.serviceStyle,
           taxMode: setup.taxMode === "per_entity" ? "per_entity" : setup.taxMode === "venue_shared" ? "venue_shared" : st.settings.taxMode,
           stationServicePinHash: setup.stationServicePinHash || st.settings.stationServicePinHash,
+          hostMayOpenBarTabs: Boolean(setup.hostMayOpenBarTabs),
+          serversAtHostStand: Boolean(setup.serversAtHostStand),
           lifecycleStatus:
             (access.location.lifecycleStatus as
               | "training"

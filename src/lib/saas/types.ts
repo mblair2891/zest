@@ -33,6 +33,10 @@ export type LocationSetup = {
   ticketPrefix?: string;
   kioskMode?: string;
   waitlistEnabled?: boolean;
+  /** Host stand may start a bar tab. Default off. */
+  hostMayOpenBarTabs?: boolean;
+  /** Server PIN may run a host tablet (seat + to-go). Default off. */
+  serversAtHostStand?: boolean;
   /** Waitlist + tenant-invite SMS. Off = no guest/invite texts; email still sends. */
   smsEnabled?: boolean;
   /** Hard cap this location, at or below platform included. Null = platform included. */

@@ -236,6 +236,10 @@ export interface RestaurantSettings {
   reservationCheckIn?: boolean;
   /** Host owner/manager always edits tenant schedules. Kept for older snapshots. */
   hostMayEditEntitySchedules?: boolean;
+  /** Host stand may start a bar tab. Default off — floor + waitlist/seat is home. */
+  hostMayOpenBarTabs?: boolean;
+  /** Server PIN may run a host tablet (seat + to-go). Default off. */
+  serversAtHostStand?: boolean;
   /** Kitchen/bar bump requires the station PIN again. Default false. */
   requirePinToBump?: boolean;
   /** Host policy: which access levels may use the mic. */

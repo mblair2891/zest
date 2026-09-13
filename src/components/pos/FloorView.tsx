@@ -73,7 +73,7 @@ function pipelineLabel(status: string): string {
   return FLOOR_STATUS_LABEL[n];
 }
 
-export function FloorView() {
+export function FloorView({ hostStand = false }: { hostStand?: boolean }) {
   const tables = usePosStore((s) => s.tables);
   const orders = usePosStore((s) => s.orders);
   const employees = usePosStore((s) => s.employees);
@@ -115,9 +115,14 @@ export function FloorView() {
   const qrPolicy = parseQrPolicy(settings.qrPolicy, settings.qrMode);
   const demoType = getDemoType();
   const canStatus = canChangeTableStatus(emp?.role, floorCfg);
-  const canSeat = canSeatTable(emp?.role, floorCfg);
+  const canSeat =
+    canSeatTable(emp?.role, floorCfg) ||
+    (hostStand && Boolean(settings.serversAtHostStand) && emp?.role === "server");
   const canEdit = canEditFloorplan(emp?.role) && canAccessView(emp?.role ?? "server", "floor_editor");
-  const isHostStand = emp?.role === "host";
+  const isHostStand = hostStand || emp?.role === "host";
+  const showHostBarTab =
+    locationAllowsBarTabs(tables) &&
+    (hostStand ? Boolean(settings.hostMayOpenBarTabs) : true);
 
   const layout = useStationLayout();
   const [seatOpen, setSeatOpen] = useState(false);
@@ -630,7 +635,7 @@ export function FloorView() {
           )}
         >
           <div className="space-y-3 p-3">
-            {isHostStand && (
+            {isHostStand && !hostStand && (
               <Button
                 className="w-full"
                 size="lg"
@@ -640,7 +645,7 @@ export function FloorView() {
                 Waitlist / host stand
               </Button>
             )}
-            {!barPick && locationAllowsBarTabs(tables) && (
+            {!barPick && showHostBarTab && (
             <Button
               className="w-full"
               size="lg"
@@ -650,6 +655,7 @@ export function FloorView() {
               Bar tab
             </Button>
             )}
+            {!hostStand && (
             <Button
               className="w-full"
               variant="outline"
@@ -661,6 +667,7 @@ export function FloorView() {
             >
               To-go
             </Button>
+            )}
             <Button
               className="w-full"
               variant={transferMode ? "default" : "outline"}

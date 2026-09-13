@@ -39,9 +39,20 @@ function orderOrHostPinAllowed(role: EmployeeRole): boolean {
   );
 }
 
+/** Location setting: host stand may start a bar tab. Default off. */
+export function hostMayOpenBarTabs(settings?: { hostMayOpenBarTabs?: boolean } | null): boolean {
+  return Boolean(settings?.hostMayOpenBarTabs);
+}
+
+/** Location setting: server PIN may run the host stand (seat + to-go). Default off. */
+export function serversMayUseHostStand(settings?: { serversAtHostStand?: boolean } | null): boolean {
+  return Boolean(settings?.serversAtHostStand);
+}
+
 export function pinFitsDevice(opts: {
   deviceRole: DeviceRole | null | undefined;
   employeeRole: EmployeeRole | null | undefined;
+  serversAtHostStand?: boolean;
 }): StationPinFit {
   const device = opts.deviceRole ?? "order";
   const role = opts.employeeRole;
@@ -70,6 +81,15 @@ export function pinFitsDevice(opts: {
       ok: false,
       message: "This tablet is a kitchen display.",
       hint: "Your PIN cannot run the rail. Use an order or host station. Clock in or out here if you need to punch.",
+    };
+  }
+
+  if (device === "host" && role === "server") {
+    if (opts.serversAtHostStand) return { ok: true };
+    return {
+      ok: false,
+      message: "This tablet is the host stand.",
+      hint: "Use an order tablet. Clock in or out here if you need to punch.",
     };
   }
 

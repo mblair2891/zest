@@ -18,6 +18,30 @@ function ids(): { orgId: string; locationId: string } | null {
   return { orgId, locationId };
 }
 
+export function persistHostStandPolicy(): void {
+  const ctx = ids();
+  if (!ctx) return;
+  const prev = timers.get("host-stand");
+  if (prev) clearTimeout(prev);
+  timers.set(
+    "host-stand",
+    setTimeout(() => {
+      timers.delete("host-stand");
+      const settings = usePosStore.getState().settings;
+      void saveLocationSettingsFn({
+        data: {
+          orgId: ctx.orgId,
+          locationId: ctx.locationId,
+          setup: {
+            hostMayOpenBarTabs: Boolean(settings.hostMayOpenBarTabs),
+            serversAtHostStand: Boolean(settings.serversAtHostStand),
+          },
+        },
+      }).catch(() => undefined);
+    }, 400),
+  );
+}
+
 export function persistQrPolicy(): void {
   const ctx = ids();
   if (!ctx) return;

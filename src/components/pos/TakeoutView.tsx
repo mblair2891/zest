@@ -15,7 +15,7 @@ import { locationAllowsBarTabs } from "@/lib/pos/bar-tab";
 import { computeTotals } from "@/lib/pos/calculations";
 import { formatCurrency, formatTime } from "@/lib/utils";
 
-export function TakeoutView() {
+export function TakeoutView({ hostStand = false }: { hostStand?: boolean }) {
   const orders = usePosStore((s) => s.orders);
   const tables = usePosStore((s) => s.tables);
   const settings = usePosStore((s) => s.settings);
@@ -24,7 +24,9 @@ export function TakeoutView() {
   const floorIntent = usePosStore((s) => s.floorIntent);
   const setActiveOrder = usePosStore((s) => s.setActiveOrder);
   const setView = usePosStore((s) => s.setView);
-  const barOk = locationAllowsBarTabs(tables);
+  const barOk =
+    locationAllowsBarTabs(tables) &&
+    (hostStand ? Boolean(settings.hostMayOpenBarTabs) : true);
 
   const [open, setOpen] = useState(false);
   const [name, setName] = useState("");

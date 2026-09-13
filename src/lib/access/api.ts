@@ -946,6 +946,8 @@ function publishSetupSlice(setup: LocationSetup) {
     cashDiscountPercent: setup.cashDiscountPercent,
     cashRoundIncrement: setup.cashRoundIncrement,
     cashRoundMode: setup.cashRoundMode,
+    hostMayOpenBarTabs: setup.hostMayOpenBarTabs,
+    serversAtHostStand: setup.serversAtHostStand,
     sectionNames: setup.sectionNames,
     laborByEntity: setup.laborByEntity,
     sharedVenueCostsCents: setup.sharedVenueCostsCents,
