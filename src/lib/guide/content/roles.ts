@@ -107,7 +107,7 @@ export const ROLE_GUIDE_TOPICS: GuideTopic[] = [
         "Peer venue: you can sell both brands on one check. You cannot edit the other entity’s menu or schedule.",
       ),
       steps(
-        "PIN in. Home is Floor or Order — not a list of every module. On an 8\" handheld the menu is full width; tap Check for the slide-over.",
+        "PIN in on an order or host station. Home is the device’s glass (floor on full service, queue on counter) — not a list of every module. On an 8\" handheld the menu is full width; tap Check for the slide-over.",
         "Open a table in your section. Add food and drink to one check. Send.",
         "Bar tab opens your assigned section stools — tap a stool. To-go does not use the floor.",
         "Pay when the house allows. Close your own till at end of shift.",
@@ -146,7 +146,8 @@ export const ROLE_GUIDE_TOPICS: GuideTopic[] = [
     id: "role-kitchen",
     chapterId: "roles",
     title: "Kitchen",
-    summary: "ODS only: Start and Bump. No payments, no drawer, no price edits.",
+    summary:
+      "On an ODS tablet: Start and Bump. On an order or host tablet: clock sheet only. No payments, no drawer, no table order.",
     roles: ["kitchen_bar"],
     keywords: ["kitchen", "ods", "bump", "ticket", "expo"],
     openView: "kitchen",
@@ -155,15 +156,21 @@ export const ROLE_GUIDE_TOPICS: GuideTopic[] = [
         "The rail is the source of truth for the line. Bump tells the floor the plate is up.",
       ),
       ul(
-        "Kitchen PIN is ODS only — Start and Bump.",
+        "Cook / kitchen / expo PIN on an ODS tablet: the ticket rail — Start and Bump, entity lanes.",
+        "That same PIN on an order or host tablet: clock sheet only, then use the kitchen display. Never to-go, a bar tab, or a table order.",
         "No payments, no cash drawer, no menu price edits.",
         "86 is own recipes, not another entity’s board.",
+        "A manager changes this tablet’s role from venue Devices — not from a kitchen PIN.",
       ),
       steps(
-        "PIN into Kitchen. You see this station’s tickets.",
+        "PIN into an ODS tablet. You see this station’s tickets.",
         "Start when you begin. Bump when ready. Do not take a card from the ODS.",
+        "If you PIN an order or host tablet by mistake: clock in or out if you need to punch, then use the kitchen display.",
       ),
-      related("role-bartender", "role-server", "recipes-prep", "printers-kds"),
+      warn(
+        "Kitchen PIN on an order tablet is not the server UI. Use the kitchen display.",
+      ),
+      related("role-bartender", "role-server", "recipes-prep", "printers-kds", "device-roles"),
     ],
   }),
   topic({
@@ -364,7 +371,7 @@ export const ROLE_GUIDE_TOPICS: GuideTopic[] = [
         "Back office: Sign in with username/email and password. Platform Admin, owners, managers, accountants, entity managers for settings, matrix, full reports, schedule admin, hours export, menu management.",
         "Prime once: Open POS from that signed-in session while online. After that the station is PIN-only — not /login.",
         "Floor PIN: 4-digit keypad on the station (order, ODS, or host). Servers, hosts, bartenders, kitchen, cashiers, expo. Fast Switch user. PIN hashed, scoped to location and entity.",
-        "PIN ≠ clock ≠ closeout. The pad logs you into the station. After PIN, if you are off the clock and inside that entity’s allowed clock-in window for today’s shift, a prompt offers Clock in for this shift? — Clock in or Not now. Outside the window: no prompt; Labor can still red-flag a later punch. Already on the clock: no prompt. Password login never shows it.",
+        "PIN ≠ clock ≠ closeout. The pad logs you into the station. Device role owns the home; the PIN does not. Clock in / Clock out is a separate control on every station — completing clock does not open order entry. After PIN, if you are off the clock and inside that entity’s allowed clock-in window for today’s shift, a prompt offers Clock in for this shift? — Clock in or Not now. Outside the window: no prompt; use Clock in on the station. Already on the clock: no prompt. Password login never shows it.",
         "Assigned device still requires the matching entity’s PIN (Operator A ODS rejects an Operator B PIN).",
         "Printed receipts group lines by vendor. The guest still holds one check.",
         "Kiosk guests never enter a PIN. Marketing pages never show a PIN pad or staff PINs. Platform Admin cannot use a restaurant PIN.",
@@ -372,7 +379,7 @@ export const ROLE_GUIDE_TOPICS: GuideTopic[] = [
       steps(
         "After a location exists, prime the tablet once from the control plane. Staff then use the production floor PIN pad. Each person has their own 4-digit PIN — there is no universal 0000.",
         "Tap Switch user to PIN in the next person without reassigning the tablet.",
-        "Clock in from Labor, or accept Clock in for this shift? after PIN when you are inside the allowed window. Not now does not punch.",
+        "Clock in from the station Clock in control, or accept Clock in for this shift? after PIN when you are inside the allowed window. Completing clock does not open order entry. Not now does not punch.",
         "Closeout is Cash — not PIN and not clock-out.",
         "Open Settings from a floor PIN — you are asked for back-office password.",
       ),

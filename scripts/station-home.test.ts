@@ -137,6 +137,8 @@ test("bar tab is only when the house has a rail", () => {
 test("paired order glass is not a hard-coded To-go | Bar tab POS", () => {
   const mode = readFileSync("src/components/pos/DeviceModeView.tsx", "utf8");
   assert.match(mode, /stationHomeSurface/);
+  assert.match(mode, /pinFitsDevice/);
+  assert.match(mode, /StationClockGate/);
   assert.match(mode, /HostStationView/);
   assert.match(mode, /DriveThroughView/);
   assert.doesNotMatch(

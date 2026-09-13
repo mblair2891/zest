@@ -203,7 +203,7 @@ export function parsePinRole(raw: string | null | undefined): EmployeeRole | nul
     .toLowerCase()
     .replace(/[\s-]+/g, "_");
   if ((PIN_ROLES as readonly string[]).includes(s)) return s as EmployeeRole;
-  if (s === "expo") return "kitchen";
+  if (s === "expo" || s === "cook" || s === "cooks" || s === "line") return "kitchen";
   if (s === "supervisor_manager") return "supervisor";
   return null;
 }
@@ -250,15 +250,15 @@ export function pinRoleViews(role: EmployeeRole): PosView[] | "all" {
   return PIN_VIEWS[role];
 }
 
-/** Screen this PIN is allowed to run on a paired device. */
+/** Screen this PIN is allowed to run on a paired device. Device role owns home. */
 export function viewForDevicePin(
   device: DeviceRole | null | undefined,
   role: EmployeeRole,
 ): PosView {
-  if (device === "host") return "waitlist";
   if (device === "ods") return role === "bartender" ? "bar" : "kitchen";
+  if (role === "kitchen") return "labor";
+  if (device === "host") return "waitlist";
   if (role === "host") return "waitlist";
-  if (role === "kitchen") return "kitchen";
   if (role === "busser") return "floor";
   return "order";
 }

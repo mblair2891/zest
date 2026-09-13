@@ -24,7 +24,7 @@ export const ROLE_BLURB: Record<EmployeeRole, string> = {
   server: "Assigned sections, one check, send, pay if allowed, own closeout",
   bartender: "Bar well orders, drink send, own drawer, bar ODS if that station",
   host: "Floor, seat, waitlist/reservations, to-go — not server till close",
-  kitchen: "ODS Start/Bump only — no pay, no drawer, no price edits",
+  kitchen: "ODS Start/Bump only — on order/host tablets, clock sheet only",
   busser: "Dirty → clean tables only — no orders, no pay",
   cashier: "Counter queue and pay",
   vendor_operator: "Own menu, tickets, reports — peer menus view-only unless host grants",

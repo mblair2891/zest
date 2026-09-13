@@ -1,6 +1,7 @@
 /**
- * After PIN, the paired station home is venue service style — not a hard-coded
- * counter with To-go | Bar tab. Device role still wins for ODS / host / kiosk.
+ * After PIN, the paired station home is the device role + venue service style.
+ * Staff PIN does not pick the home. Kitchen PIN on an order tablet is gated
+ * elsewhere (station-pin-gate) — never a To-go | Bar tab counter.
  */
 import type { DeviceRole } from "./device-roles";
 import type { EmployeeRole, PosView } from "./types";

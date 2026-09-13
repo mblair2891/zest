@@ -124,4 +124,5 @@ test("PIN pad does not punch; modal is station-only copy", () => {
   assert.match(modal, /Clock in/);
   assert.match(modal, /Not now/);
   assert.doesNotMatch(modal, /\/login/);
+  assert.doesNotMatch(modal, /setView/);
 });

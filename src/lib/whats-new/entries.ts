@@ -6,6 +6,19 @@ import type { GuideUpdate } from "@/lib/guide/types";
  */
 export const WHATS_NEW_ENTRIES: GuideUpdate[] = [
   {
+    id: "upd_2026_10_82_station_pin_gate",
+    date: "2026-09-13",
+    title: "Station home follows device role, not every PIN",
+    summary:
+      "The tablet’s role is the home screen. A kitchen PIN on an order tablet is the clock sheet — not to-go or a table order. Clock in/out is a separate control and does not open order entry.",
+    body: "Order Display stays the ticket rail. Full-service order tablets still open the floor for server, bartender, cashier, host, supervisor, and manager PINs. Cook / kitchen / expo on an order or host tablet: clock only, then use the kitchen display. Completing clock never opens the two-button POS. Managers change device role from Devices, not from a kitchen PIN.",
+    roles: ["owner_manager", "server", "kitchen_bar", "host_operator", "platform_admin"],
+    surfaces: ["floor"],
+    audience: "all",
+    topicId: "device-roles",
+    tags: ["devices", "pin", "ods", "clock"],
+  },
+  {
     id: "upd_2026_10_81_station_reload",
     date: "2026-09-13",
     title: "Station reload and manager kiosk exit",

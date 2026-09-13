@@ -3,7 +3,7 @@
 **Powered by Quantum Reach**
 
 White paper · for owners and operators  
-**Revision · 12 Sep 2026** — Written for prospective subscribers. Aligns with Operators Guide v2026.10.77. Peer venue onboarding has no host merchant. Staff stations are Android tablets. Guests look up gift balance at summex.app/gift. Spent plastic can be reused.
+**Revision · 13 Sep 2026** — Written for prospective subscribers. Aligns with Operators Guide v2026.10.82. Device role owns the station home; a kitchen PIN does not open order entry. Peer venue onboarding has no host merchant. Staff stations are Android tablets. Guests look up gift balance at summex.app/gift. Spent plastic can be reused.
 
 summex.app  
 Guest cards: **Quantum Payments** only
@@ -69,7 +69,7 @@ The tablet is a screen. **PIN** says who is working. Each PIN only opens the too
 
 **Sections** keep servers on their part of the room unless a manager grants a table. Combine tables on the lowest number.
 
-**PIN is not clock-in and not closeout.** Password login at app.summex.app/login never opens the staff PIN pad. Each password role lands on its own dashboard — tiles for subscribed modules. Platform Admin: CRM, pipeline, tenants, settings. Host owner: venue health, every entity, Devices, Publish, combined and per-entity reports. Venue admin on a shared venue is the same minus a host merchant. Entity owner vs manager: the manager can run floor tools from back office; the owner also gets that brand’s payments. Accountant: reports, hours export, gift liability — no Devices, no 86. PIN staff stay on the station home (host floor, server order, kitchen ODS). Floor staff who only need a PIN are added with name, PIN, role, and home entity. After a station PIN, if they are off the clock and inside that entity’s allowed clock-in window for today’s shift, the tablet asks whether to clock in — Clock in or Not now. Outside the window there is no prompt; they can still work. Clock in and out is Labor. End of shift is a **blind till count** — staff enter what is in the drawer; expected cash is hidden until they submit. After submit the station prints a turn-in slip for the drop bag. No fill-in close form. During the shift, staff can move cash **till to till** when one drawer is short on small bills; expected cash on each till updates so the blind count still balances.
+**PIN is not clock-in and not closeout.** Password login at app.summex.app/login never opens the staff PIN pad. Each password role lands on its own dashboard — tiles for subscribed modules. Platform Admin: CRM, pipeline, tenants, settings. Host owner: venue health, every entity, Devices, Publish, combined and per-entity reports. Venue admin on a shared venue is the same minus a host merchant. Entity owner vs manager: the manager can run floor tools from back office; the owner also gets that brand’s payments. Accountant: reports, hours export, gift liability — no Devices, no 86. PIN staff stay on the device-role home (order floor or queue, ODS rail, host stand). A kitchen PIN on an order tablet is the clock sheet, not server UI. Clock in / out is a separate control and does not open order entry. Floor staff who only need a PIN are added with name, PIN, role, and home entity. After a station PIN, if they are off the clock and inside that entity’s allowed clock-in window for today’s shift, the tablet asks whether to clock in — Clock in or Not now. Outside the window there is no prompt; they can still work. Clock in and out is Labor. End of shift is a **blind till count** — staff enter what is in the drawer; expected cash is hidden until they submit. After submit the station prints a turn-in slip for the drop bag. No fill-in close form. During the shift, staff can move cash **till to till** when one drawer is short on small bills; expected cash on each till updates so the blind count still balances.
 
 **Kiosk and waitlist** sit beside the host stand. Guests order, join a wait, or check in. Staff keep the floor.
 
@@ -121,7 +121,7 @@ When the house is ready for more than service:
 3. The tablet pairs, then opens on the PIN pad.
 4. **Publish changes** pushes menu, floor, printers, and QR. Staff keep the last publish until they switch user. Never mid-check.
 
-A broken kitchen display is a role change on that tablet — same pair, staff PIN in again. Do not reinstall.
+The paired role is the home screen. Staff PIN is who is working, not which glass opens. A kitchen PIN on an order tablet stays on the clock sheet — use the kitchen display. A broken kitchen display is a role change on that tablet from Devices — same pair, staff PIN in again. Do not reinstall.
 
 Printers live on the house network (Ethernet), not the printer’s own Wi‑Fi. Receipts thermal; kitchen impact; drawer kick on the receipt printer.
 

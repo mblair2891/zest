@@ -16,9 +16,9 @@ export const DEVICE_ROLE_LABEL: Record<DeviceRole, string> = {
 
 export const DEVICE_ROLE_BLURB: Record<DeviceRole, string> = {
   order:
-    "Order entry. Full-service and hybrid floors open the map first. Counter is ticket/queue. Drive-through is the lane. Pay and gift when the PIN allows.",
-  ods: "Kitchen tickets only — Start and Bump. No menu, no pay.",
-  host: "Floor map, waitlist/seat, table status, and to-go. Drive-through host is the window.",
+    "Order entry. Full-service and hybrid floors open the map first. Counter is ticket/queue. Drive-through is the lane. Kitchen PIN does not open this glass.",
+  ods: "Kitchen tickets only — Start and Bump. No menu, no pay, no to-go.",
+  host: "Floor map, waitlist/seat, table status, and to-go. Drive-through host is the window. Kitchen PIN does not open this glass.",
   kiosk: "Guest self-order. No staff PIN on the glass.",
 };
 

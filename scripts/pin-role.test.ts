@@ -92,6 +92,8 @@ test("device × PIN maps bartender on ODS to bar, not kitchen rail as server", (
   assert.equal(viewForDevicePin("ods", "bartender"), "bar");
   assert.equal(viewForDevicePin("ods", "kitchen"), "kitchen");
   assert.equal(viewForDevicePin("ods", "server"), "kitchen");
+  assert.equal(viewForDevicePin("order", "kitchen"), "labor");
+  assert.equal(viewForDevicePin("host", "kitchen"), "labor");
 });
 
 test("bartender PIN may open the floor on a full-service order station", () => {

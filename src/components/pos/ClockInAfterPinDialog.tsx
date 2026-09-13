@@ -107,8 +107,9 @@ export function ClockInAfterPinDialog() {
         <DialogHeader>
           <DialogTitle>Clock in for this shift?</DialogTitle>
           <DialogDescription>
-            PIN signed you onto this station. Clock-in is a separate punch in Labor.
-            You can skip and clock in from Labor later.
+            PIN signed you onto this station. Clock-in is a separate punch.
+            Completing clock does not open order entry. You can skip and use
+            Clock in on this station later.
           </DialogDescription>
         </DialogHeader>
         {error && <p className="text-sm text-danger">{error}</p>}

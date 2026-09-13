@@ -77,11 +77,11 @@ import { PayrollExportWatcher } from "./PayrollExportWatcher";
 import { StaffingWatcher } from "./StaffingWatcher";
 import { useStationSessionStore } from "@/lib/pos/station-session";
 import { canChangeDevice, stationKindLabel, stationsAllowedForEmployee } from "@/lib/pos/station-access";
-import { viewForDevicePin } from "@/lib/access/pin-role";
 import { useStationLayout } from "@/lib/ui/station-layout";
 import { readStationDeviceRole } from "@/lib/pos/device-roles";
 import { EndShiftFlow } from "./EndShiftFlow";
 import { ClockInAfterPinDialog } from "./ClockInAfterPinDialog";
+import { StationClockControl } from "./StationClockControl";
 import { TillTransferBanner } from "./TillTransferPanel";
 import { reportsBlockedForClose } from "@/lib/pos/till-closeout-store";
 import { HOST_SCOPE } from "@/lib/access/entity-grants";
@@ -458,6 +458,7 @@ export function AppShell() {
           <span className="text-xs text-muted-foreground">{settings.name}</span>
           <div className="ml-auto flex items-center gap-2">
             <ThisStationButton compact />
+            <StationClockControl compact />
             <SplitScreenToggle />
             <HelpButton surface="pos" compact />
             <VoiceCommandButton />
@@ -566,6 +567,7 @@ export function AppShell() {
           )}
 
           <ThisStationButton />
+          {emp && sessionKind === "pin" && <StationClockControl compact />}
           {canChangeDevice(emp, {
             training: locationIsTraining(),
             demo: isProspectDemo() || isDevDemoClient(),
@@ -778,9 +780,7 @@ export function AppShell() {
           )}
           data-demo={safeView}
         >
-          {urlStation &&
-          emp &&
-          canAccessViewForEmployee(emp, viewForDevicePin(urlStation, emp.role)) ? (
+          {urlStation && emp ? (
             <DeviceModeView
               mode={stationAssignment.kind}
               operatorId={stationAssignment.operatorId}

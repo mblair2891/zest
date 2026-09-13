@@ -16,14 +16,14 @@ export const HR_TOPICS: GuideTopic[] = [
         "Your employer (the host house or your operator) keeps employment files separate from the floor PIN.",
       ),
       ul(
-        "PIN on this station is not a time punch. Clock in and out on Labor.",
+        "PIN on this station is not a time punch. Clock in and out is a separate control on every station. Completing clock does not open order entry.",
         "If your employer enabled time-off, request it on HR. A manager approves or denies.",
         "Availability windows (if enabled) are your usual days. The published schedule is still Labor.",
         "Onboarding packets (W-4, I-9, state forms) arrive by email or as a download to sign. Return the signed PDF if the house is not using an e-sign vendor. I-9 copies are stored by section.",
         "You belong to one employer entity. Another stall cannot open your file.",
       ),
       steps(
-        "PIN in on the station. If you are off the clock and inside today’s allowed clock-in window, accept Clock in for this shift? or tap Not now. Outside the window, open Labor to punch (manager override unchanged).",
+        "PIN in on the station. If you are off the clock and inside today’s allowed clock-in window, accept Clock in for this shift? or tap Not now. Outside the window, use Clock in on the station (manager override unchanged).",
         "Open HR only if your house uses it — request time-off or confirm availability.",
         "Complete packets you were sent. Do not skip I-9 sections or backdate them.",
       ),

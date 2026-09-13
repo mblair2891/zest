@@ -8,6 +8,7 @@ import {
 	readStationDeviceRole,
 } from "./device-roles";
 import { stationHomeSurface, viewForStationHome } from "./station-home";
+import { pinFitsDevice } from "./station-pin-gate";
 import { useStationSessionStore } from "./station-session";
 import { applyPendingDeviceRoleOnPinLogin } from "./station-role-sync";
 import {
@@ -460,14 +461,22 @@ const usePosStoreRaw = create<PosStore>()(persist((set, get) => {
 				parseStationQuery(raw) ??
 				readStationDeviceRole() ??
 				deviceRoleFromSessionMode(useStationSessionStore.getState().assignment?.kind ?? "floor_pos");
-			const surface = stationHomeSurface({
+			const fit = pinFitsDevice({
 				deviceRole: stationRole,
 				employeeRole: emp.role,
-				serviceStyle: get().settings.serviceStyle,
-				operatingModel: get().settings.operatingModel,
-				hasFloor: get().tables.length > 0 || get().floorSections.length > 0,
 			});
-			view = viewForStationHome(surface, emp.role);
+			if (!fit.ok) {
+				view = "labor";
+			} else {
+				const surface = stationHomeSurface({
+					deviceRole: stationRole,
+					employeeRole: emp.role,
+					serviceStyle: get().settings.serviceStyle,
+					operatingModel: get().settings.operatingModel,
+					hasFloor: get().tables.length > 0 || get().floorSections.length > 0,
+				});
+				view = viewForStationHome(surface, emp.role);
+			}
 		} catch {
 			/* station role optional */
 		}

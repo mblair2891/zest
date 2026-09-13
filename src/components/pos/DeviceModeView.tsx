@@ -3,10 +3,12 @@ import { OrderView } from "./OrderView";
 import { HostStationView } from "./HostStationView";
 import { DriveThroughView } from "./DriveThroughView";
 import { CashView } from "./CashView";
+import { StationClockGate } from "./StationClockGate";
 import { KioskApp } from "@/components/kiosk/KioskApp";
 import { useStationSessionStore } from "@/lib/pos/station-session";
 import { deviceRoleFromSessionMode } from "@/lib/pos/device-roles";
 import { stationHomeSurface, viewForStationHome } from "@/lib/pos/station-home";
+import { pinFitsDevice } from "@/lib/pos/station-pin-gate";
 import { usePosStore } from "@/lib/pos/store";
 import type { SessionModeId } from "@/lib/lifecycle/types";
 import type { PosView } from "@/lib/pos/types";
@@ -26,6 +28,14 @@ export function DeviceModeView({
   const emp = usePosStore((s) => s.employees.find((e) => e.id === s.currentEmployeeId));
   const activeOrderId = usePosStore((s) => s.activeOrderId);
   const order = usePosStore((s) => s.orders.find((o) => o.id === s.activeOrderId));
+
+  const fit = pinFitsDevice({
+    deviceRole: role,
+    employeeRole: emp?.role,
+  });
+  if (!fit.ok) {
+    return <StationClockGate fit={fit} />;
+  }
 
   const surface = stationHomeSurface({
     deviceRole: role,
@@ -71,14 +81,23 @@ export function applySessionModeView(
   const role = deviceRoleFromSessionMode(mode);
   const s = usePosStore.getState();
   const emp = s.employees.find((e) => e.id === s.currentEmployeeId);
+  if (!emp) return;
+  const fit = pinFitsDevice({
+    deviceRole: role,
+    employeeRole: emp.role,
+  });
+  if (!fit.ok) {
+    setView("labor");
+    return;
+  }
   const surface = stationHomeSurface({
     deviceRole: role,
-    employeeRole: emp?.role,
+    employeeRole: emp.role,
     serviceStyle: s.settings.serviceStyle,
     operatingModel: s.settings.operatingModel,
     hasFloor: s.tables.length > 0 || s.floorSections.length > 0,
   });
-  setView(viewForStationHome(surface, emp?.role));
+  setView(viewForStationHome(surface, emp.role));
 }
 
 /** Used so cashier split can still show cash if wanted */
