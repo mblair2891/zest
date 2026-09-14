@@ -594,18 +594,37 @@ export const deactivateLocationDeviceFn = createServerFn({ method: "POST" })
     const prev = parseLocationDevices(ctx.setup.locationDevices);
     const existing = prev.find((x) => x.id === data.deviceId);
     assertHostOrManageDevices(ctx, existing?.assignment.operatorId || "host");
-    const status = data.active ? "pending" : "inactive";
+    const minted = data.active ? mintClaim() : null;
+    const nextStatus = data.active ? ("pending" as const) : ("inactive" as const);
     const devices = prev.map((d) =>
-      d.id === data.deviceId ? { ...d, status: status as LocationDevice["status"] } : d,
+      d.id === data.deviceId
+        ? {
+            ...d,
+            status: nextStatus,
+            serial: undefined,
+            claimCode: minted?.claimCode,
+            claimExpiresAt: minted?.claimExpiresAt,
+          }
+        : d,
     );
     const { getSql } = await import("@/lib/db");
     const sql = await getSql();
     try {
-      await sql`
-        update location_devices
-        set status = ${status}, last_seen_at = now()
-        where id = ${data.deviceId} and location_id = ${data.locationId}
-      `;
+      if (minted) {
+        await sql`
+          update location_devices
+          set status = ${"pending"}, serial = ${null}, claim_code = ${minted.claimCode},
+              claim_expires_at = ${expiryIso(minted.claimExpiresAt)}, last_seen_at = now()
+          where id = ${data.deviceId} and location_id = ${data.locationId}
+        `;
+      } else {
+        await sql`
+          update location_devices
+          set status = ${"inactive"}, serial = ${null}, claim_code = ${null},
+              claim_expires_at = ${null}, last_seen_at = now()
+          where id = ${data.deviceId} and location_id = ${data.locationId}
+        `;
+      }
     } catch {
       /* table may be empty until first save */
     }
@@ -1004,8 +1023,9 @@ export const getPairedStationFn = createServerFn({ method: "POST" })
       assigned_function: string | null;
     }>);
     const row = rows[0];
-    // Missing row = Delete (kick to pair). Inactive = Deactivate (PIN fails; slot stays).
-    if (!row) throw new Error("This tablet is not paired. Ask the owner for a new code.");
+    if (!row || row.status !== "online") {
+      throw new Error("This tablet is not paired. Ask the owner for a new code.");
+    }
     const { operatorsAsVendors } = await import("@/lib/saas/onboarding.server");
     const { ensureTrainingFloor } = await import("@/lib/pos/training-roster.server");
     const pack = await ensureTrainingFloor(data.locationId);
@@ -1083,6 +1103,16 @@ export const getPairedStationFn = createServerFn({ method: "POST" })
     };
   });
 
+export const getStationStateFn = createServerFn({ method: "POST" })
+  .validator((d: { locationId: string; deviceId: string }) => ({
+    locationId: String(d.locationId ?? "").trim().slice(0, 80),
+    deviceId: String(d.deviceId ?? "").trim().slice(0, 80),
+  }))
+  .handler(async ({ data }) => {
+    const { readStationPairState } = await import("@/lib/pos/station-state.server");
+    return readStationPairState(data);
+  });
+
 export const getStationPublishFn = createServerFn({ method: "POST" })
   .validator((d: { locationId: string; deviceId: string; sinceVersion?: number }) => ({
     locationId: loc(d.locationId),
@@ -1092,17 +1122,13 @@ export const getStationPublishFn = createServerFn({ method: "POST" })
   .handler(async ({ data }) => {
     const { getSql } = await import("@/lib/db");
     const sql = await getSql();
-    const row = await sql<{ id: string; status: string }>`
-      select id, status from location_devices
-      where location_id = ${data.locationId}
-        and (id = ${data.deviceId} or serial = ${data.deviceId})
-      limit 1
-    `.catch(() => [] as Array<{ id: string; status: string }>);
-    if (!row[0]) {
+    const { readStationPairState } = await import("@/lib/pos/station-state.server");
+    const live = await readStationPairState({
+      locationId: data.locationId,
+      deviceId: data.deviceId,
+    });
+    if (!live.ok) {
       return { revoked: true as const, upToDate: true as const, publish: null, device: null };
-    }
-    if (row[0].status === "inactive") {
-      return { upToDate: true as const, publish: null, device: null };
     }
     const rows = await sql<{ setup: unknown }>`
       select setup from locations where id = ${data.locationId} limit 1

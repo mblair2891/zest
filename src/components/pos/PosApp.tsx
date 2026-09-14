@@ -43,7 +43,8 @@ import {
   writePairedDeviceId,
 } from "@/lib/pos/location-devices";
 import { heartbeatLocationDeviceFn, getPairedStationFn, pairStationFn } from "@/lib/access/api";
-import { ejectDeletedStationPair, readStationPair } from "@/lib/pos/station-pair";
+import { readStationPair } from "@/lib/pos/station-pair";
+import { kickStationToPair } from "@/lib/pos/station-kick";
 import { applyStationPublish, parseStationPublish } from "@/lib/pos/station-publish";
 import { StationPublishWatcher } from "@/components/pos/StationPublishWatcher";
 import { KioskApp } from "@/components/kiosk/KioskApp";
@@ -575,17 +576,9 @@ function PosAppInner({ entityId }: { entityId?: string }) {
           const msg = e instanceof Error ? e.message : "";
           if (
             (pair?.deviceId || pair?.claimCode) &&
-            (/not paired/i.test(msg) || /no slot/i.test(msg))
+            (/not paired/i.test(msg) || /no slot/i.test(msg) || /deactivated/i.test(msg))
           ) {
-            ejectDeletedStationPair();
-            try {
-              usePosStore.getState().logout();
-            } catch {
-              /* */
-            }
-            if (typeof window !== "undefined") {
-              window.location.replace("/station");
-            }
+            kickStationToPair();
             return;
           }
           const primed = await loadPrimedLocation(locationId);

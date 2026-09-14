@@ -53,6 +53,7 @@ import {
 import { isNativeApp } from "@/lib/native-shell";
 import { readTenantPosContext } from "@/lib/saas/pos-context";
 import { readStationPair } from "@/lib/pos/station-pair";
+import { kickStationToPair } from "@/lib/pos/station-kick";
 import { verifyStationPinFn } from "@/lib/access/api";
 import {
   STATION_PIN_UNPAIRED,
@@ -221,6 +222,9 @@ export function EntityLogin({ entityId }: { entityId: VenueEntityId }) {
           .then((res) => {
             if (!res.ok) {
               setError(res.error);
+              if (res.code === "deactivated" || res.code === "unpaired") {
+                window.setTimeout(() => kickStationToPair(), 900);
+              }
               return;
             }
             const applied = usePosStore.getState().applyVerifiedStationPin(res.employee, next);

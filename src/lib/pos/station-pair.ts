@@ -93,8 +93,9 @@ export function clearStationPair(): void {
   }
 }
 
-/** Devices → Delete: drop local pair + snapshot so this tablet returns to the pair code field. */
+/** Drop local pair + publish/role so this tablet returns to the pair-code field. */
 export function ejectDeletedStationPair(): void {
+  const loc = readStationPair()?.locationId;
   clearStationPair();
   if (typeof window === "undefined") return;
   try {
@@ -102,6 +103,11 @@ export function ejectDeletedStationPair(): void {
     localStorage.removeItem("summex-station-role-state-v1");
   } catch {
     /* ignore */
+  }
+  if (loc) {
+    void import("@/lib/offline/idb")
+      .then((m) => m.idbClearLocation(loc))
+      .catch(() => undefined);
   }
 }
 

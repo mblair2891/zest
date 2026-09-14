@@ -6,6 +6,19 @@ import type { GuideUpdate } from "@/lib/guide/types";
  */
 export const WHATS_NEW_ENTRIES: GuideUpdate[] = [
   {
+    id: "upd_2026_10_90_deactivate_kick",
+    date: "2026-09-14",
+    title: "Deactivate kicks the tablet to the pair-code screen",
+    summary:
+      "Deactivate, Unpair, Replace, or Delete revokes the pair token immediately. An online tablet drops PIN and shows the pair-code field within a few seconds. Activate again issues a new code.",
+    body: "On Devices, Deactivate keeps the named slot but the pair token is dead. The station checks pairing every five seconds — no APK reinstall. A PIN on a deactivated tablet says “This station was deactivated — enter a new code,” not Invalid PIN. Reactivate mints a new code, same as Replace. Next power-on does not restore the PIN pad.",
+    roles: ["owner_manager", "host_operator", "platform_admin"],
+    surfaces: ["settings", "floor"],
+    audience: "all",
+    topicId: "device-assignment",
+    tags: ["devices", "deactivate", "pair"],
+  },
+  {
     id: "upd_2026_10_89_pair_code",
     date: "2026-09-14",
     title: "Pair a station with a typed code",

@@ -94,7 +94,7 @@ test("guide pairing is typed code, QR optional", () => {
   assert.match(devices, /Code invalid or expired/);
   assert.match(devices, /QR is optional/);
   const types = readFileSync("src/lib/guide/types.ts", "utf8");
-  assert.match(types, /2026\.10\.89/);
+  assert.match(types, /2026\.10\.90/);
 });
 
 test("station PIN pad does not send staff to marketing or /login", () => {

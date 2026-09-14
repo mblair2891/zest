@@ -1,6 +1,7 @@
 import { useEffect } from "react";
-import { getStationPublishFn } from "@/lib/access/api";
-import { ejectDeletedStationPair, readStationPair } from "@/lib/pos/station-pair";
+import { getStationPublishFn, getStationStateFn } from "@/lib/access/api";
+import { kickStationToPair } from "@/lib/pos/station-kick";
+import { readStationPair } from "@/lib/pos/station-pair";
 import {
   applyPendingIfIdle,
   isMidTicket,
@@ -13,7 +14,22 @@ import {
 } from "@/lib/pos/station-role-sync";
 import { usePosStore } from "@/lib/pos/store";
 
-/** Idle PIN pad pulls a new publish. Logged-in staff keep the last snapshot. */
+const STATE_POLL_MS = 5_000;
+const PUBLISH_POLL_MS = 20_000;
+
+function pollStationState(): void {
+  const pair = readStationPair();
+  const locationId = pair?.locationId || "";
+  const deviceId = pair?.deviceId || "";
+  if (!locationId || !deviceId) return;
+  void getStationStateFn({ data: { locationId, deviceId } })
+    .then((res) => {
+      if (res && !res.ok && res.revoked) kickStationToPair();
+    })
+    .catch(() => undefined);
+}
+
+/** Idle PIN pad pulls a new publish. Pair liveness every 5s. */
 export function StationPublishWatcher() {
   const currentEmployeeId = usePosStore((s) => s.currentEmployeeId);
   const locationId = usePosStore((s) => s.tenantLocationId);
@@ -28,7 +44,11 @@ export function StationPublishWatcher() {
   useEffect(() => {
     if (!locationId) return;
     let cancelled = false;
-    const tick = () => {
+    const stateTick = () => {
+      if (cancelled) return;
+      pollStationState();
+    };
+    const publishTick = () => {
       if (cancelled) return;
       const pair = readStationPair();
       const deviceId = pair?.deviceId || "";
@@ -40,13 +60,7 @@ export function StationPublishWatcher() {
         .then((res) => {
           if (cancelled) return;
           if ("revoked" in res && res.revoked) {
-            ejectDeletedStationPair();
-            try {
-              usePosStore.getState().logout();
-            } catch {
-              /* */
-            }
-            window.location.replace("/station");
+            kickStationToPair();
             return;
           }
           if (res.device) {
@@ -60,11 +74,14 @@ export function StationPublishWatcher() {
         })
         .catch(() => undefined);
     };
-    tick();
-    const id = window.setInterval(tick, 20_000);
+    stateTick();
+    publishTick();
+    const stateId = window.setInterval(stateTick, STATE_POLL_MS);
+    const pubId = window.setInterval(publishTick, PUBLISH_POLL_MS);
     return () => {
       cancelled = true;
-      window.clearInterval(id);
+      window.clearInterval(stateId);
+      window.clearInterval(pubId);
     };
   }, [locationId, currentEmployeeId]);
 

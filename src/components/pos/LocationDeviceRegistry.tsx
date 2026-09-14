@@ -57,12 +57,12 @@ import {
 } from "@/components/ui/dialog";
 import { GuideLearnLink } from "@/components/guide/GuideLearnLink";
 import {
-  ejectDeletedStationPair,
   formatClaimExpiry,
   normalizeClaimCode,
   pairQrImageSrc,
   readStationPair,
 } from "@/lib/pos/station-pair";
+import { kickStationToPair } from "@/lib/pos/station-kick";
 import {
   DEVICE_ROLE_LABEL,
   DEVICE_ROLES,
@@ -361,6 +361,13 @@ export function LocationDeviceRegistry({
     }
   };
 
+  const kickIfThisStation = (deviceId: string): boolean => {
+    const pair = readStationPair();
+    if (pair?.deviceId !== deviceId) return false;
+    kickStationToPair();
+    return true;
+  };
+
   const toggleActive = async (d: LocationDevice) => {
     setBusy(true);
     setError(null);
@@ -373,6 +380,7 @@ export function LocationDeviceRegistry({
           active: d.status === "inactive",
         },
       });
+      if (kickIfThisStation(d.id)) return;
       await load();
     } catch (e) {
       setError(e instanceof Error ? e.message : "Could not update device");
@@ -436,6 +444,7 @@ export function LocationDeviceRegistry({
       await unpairLocationDeviceFn({
         data: { orgId: resolvedOrgId, locationId: resolvedLocId, deviceId: d.id },
       });
+      if (kickIfThisStation(d.id)) return;
       await load();
     } catch (e) {
       setError(e instanceof Error ? e.message : "Could not unpair");
@@ -452,17 +461,7 @@ export function LocationDeviceRegistry({
         data: { orgId: resolvedOrgId, locationId: resolvedLocId, deviceId: d.id },
       });
       setConfirmDelete(null);
-      const pair = readStationPair();
-      if (pair?.deviceId === d.id) {
-        ejectDeletedStationPair();
-        try {
-          usePosStore.getState().logout();
-        } catch {
-          /* */
-        }
-        window.location.replace("/station");
-        return;
-      }
+      if (kickIfThisStation(d.id)) return;
       await load();
     } catch (e) {
       setError(e instanceof Error ? e.message : "Could not delete device");
@@ -478,6 +477,7 @@ export function LocationDeviceRegistry({
       await rotateDevicePairFn({
         data: { orgId: resolvedOrgId, locationId: resolvedLocId, deviceId: d.id },
       });
+      if (kickIfThisStation(d.id)) return;
       await load();
     } catch (e) {
       setError(e instanceof Error ? e.message : "Could not replace");
@@ -554,7 +554,7 @@ export function LocationDeviceRegistry({
   const help =
     mode === "hardware"
       ? "Register Quantum readers and Star/Epson printers. Assign kitchen, bar, receipt, or expo. Test print from this list."
-      : "Add a device, pick a role, then read the one-time code. Type it on the tablet (spaces and case do not matter). QR is optional — Show QR on the row. Codes expire — regenerate from the row. Claim this browser / Pair this browser are for laptop tests. Deactivate keeps the named slot. Delete removes it.";
+      : "Add a device, pick a role, then read the one-time code. Type it on the tablet (spaces and case do not matter). QR is optional — Show QR on the row. Deactivate, Unpair, Replace, or Delete revokes the pair token and kicks an online tablet to the pair-code screen within a few seconds. Activate again mints a new code. Claim this browser / Pair this browser are for laptop tests.";
   const addLabel = mode === "hardware" ? "Add terminal / printer" : "Add device";
   const pairedId = resolvedLocId ? readPairedDeviceId(resolvedLocId) : null;
   const thisBrowserId = resolvedLocId ? readOrCreateBrowserDeviceId(resolvedLocId) : "";

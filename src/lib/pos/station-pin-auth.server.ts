@@ -1,6 +1,7 @@
 import { getSql } from "@/lib/db";
 import { hashPin, isFourDigitPin } from "@/lib/pos/pin";
 import {
+  STATION_PIN_DEACTIVATED,
   STATION_PIN_INVALID,
   STATION_PIN_UNPAIRED,
   STATION_PIN_WRONG_VENUE,
@@ -35,8 +36,7 @@ export async function verifyStationPin(opts: {
   }>`
     select id, location_id, status
     from location_devices
-    where status <> ${"inactive"}
-      and (id = ${deviceId} or serial = ${deviceId})
+    where (id = ${deviceId} or serial = ${deviceId})
     limit 2
   `.catch(() => [] as Array<{ id: string; location_id: string; status: string }>);
 
@@ -44,6 +44,9 @@ export async function verifyStationPin(opts: {
     return { ok: false, error: STATION_PIN_UNPAIRED, code: "unpaired" };
   }
   const device = devices.find((d) => d.location_id === claimedLoc) ?? devices[0]!;
+  if (device.status !== "online") {
+    return { ok: false, error: STATION_PIN_DEACTIVATED, code: "deactivated" };
+  }
   if (claimedLoc && device.location_id !== claimedLoc) {
     return { ok: false, error: STATION_PIN_WRONG_VENUE, code: "wrong_venue" };
   }

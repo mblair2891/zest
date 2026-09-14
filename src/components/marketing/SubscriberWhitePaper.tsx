@@ -24,7 +24,7 @@ export function SubscriberWhitePaper() {
         summex.app · Guest cards: {PAYMENTS_BRAND} only
       </p>
       <p className="mt-2 text-xs text-muted-foreground">
-        Revision · 14 Sep 2026 — Aligns with Operators Guide v2026.10.89.
+        Revision · 14 Sep 2026 — Aligns with Operators Guide v2026.10.90.
         Station UI is device role ∩ staff PIN. Pair with a typed Devices code;
         QR is optional. Peer venues have no host merchant; the host stand is
         still a device role. Gift lookup at summex.app/gift.

@@ -3,7 +3,9 @@
  * Operating as, not a single selling entity.
  */
 export const STATION_PIN_UNPAIRED =
-  "This tablet is not paired. Scan the Devices QR or enter the code.";
+  "This tablet is not paired. Type the Devices code.";
+export const STATION_PIN_DEACTIVATED =
+  "This station was deactivated — enter a new code.";
 export const STATION_PIN_WRONG_VENUE = "This tablet is paired to a different venue.";
 export const STATION_PIN_INVALID = "Invalid PIN";
 
@@ -49,7 +51,7 @@ export type StationPinVerifyOk = {
 export type StationPinVerifyFail = {
   ok: false;
   error: string;
-  code: "unpaired" | "wrong_venue" | "invalid";
+  code: "unpaired" | "deactivated" | "wrong_venue" | "invalid";
 };
 
 export type StationPinVerifyResult = StationPinVerifyOk | StationPinVerifyFail;
