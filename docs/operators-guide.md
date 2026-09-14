@@ -1,7 +1,7 @@
 # Operators Guide — authoring
 
-**Revision · 14 Sep 2026** — Stations and PINs: device role ∩ staff PIN.
-Guide v2026.10.85.
+**Revision · 14 Sep 2026** — Users: venue admin can view and reset floor PINs.
+Guide v2026.10.86.
 
 The in-app **Operators Guide** is the living product manual. It is not a
 separate PDF. Staff open it from **Guide** / **?** in the POS and platform

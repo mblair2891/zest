@@ -60,7 +60,42 @@ export const ROLE_GUIDE_TOPICS: GuideTopic[] = [
       p(
         "Help button (header): ask how to do a task. Answers from this guide for owner/manager and this location — not a second guide browser.",
       ),
-      related("login", "invites-roles", "host-capture", "type-restaurant", "recipes-prep", "location-training", "hr-employment", "loss-prevention"),
+      related("login", "invites-roles", "venue-users", "host-capture", "type-restaurant", "recipes-prep", "location-training", "hr-employment", "loss-prevention"),
+    ],
+  }),
+  topic({
+    id: "venue-users",
+    chapterId: "roles",
+    title: "Users",
+    summary:
+      "Location owner, manager, and location admin list floor PINs, reset them, and disable staff. Kitchen/server/bartender cannot open this tab.",
+    roles: ["owner_manager", "host_operator", "platform_admin"],
+    keywords: ["users", "staff", "pin", "reset pin", "disable", "location admin"],
+    openView: "employees",
+    blocks: [
+      why(
+        "The house has to hand a 4-digit station PIN to a new hire and replace one that leaked. That is a venue-admin job, not a kitchen PIN.",
+      ),
+      ul(
+        "Who: location owner, manager, location admin. Platform Admin may view PINs on an isolated demo for support.",
+        "Who cannot: kitchen, server, bartender, and other floor PINs. They never see anyone else’s PIN.",
+        "Floor list: name, role, entity (if any), clock in/out, and the 4-digit PIN. Shown by default; Hide PINs if you want.",
+        "Reset PIN asks before overwrite, generates a new 4-digit code, and displays it immediately.",
+        "Disable leaves the row visible. That PIN no longer authenticates.",
+        "Password logins (owner email) sit on the same tab in a separate list. Account passwords are never shown.",
+        "Devices is a different tab: Add device still shows the pair QR or code. Users does not change pairing.",
+      ),
+      steps(
+        "Sign in at app.summex.app/login as location owner, manager, or location admin. Open Users.",
+        "Read the floor list. Each PIN is the station credential for that person.",
+        "To replace a PIN: Reset PIN → confirm. Write down the new code and give it to that person.",
+        "To take someone off the floor without deleting history: Disable. Enable later if they return.",
+        "Add floor staff with name, PIN, role, and home entity. Add password logins separately — they never use a PIN to open the dashboard.",
+      ),
+      warn(
+        "A floor PIN is not the owner password and not clock-in. Do not read PINs off a station to other staff. Devices pairing stays on Devices.",
+      ),
+      related("invites-roles", "floor-pin-login", "login", "device-roles", "role-owner"),
     ],
   }),
   topic({

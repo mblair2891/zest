@@ -7,7 +7,10 @@ import {
   TENANT_USERS_CIRCLE_COPY,
   TENANT_USERS_EMPTY,
   assertNotPlatformAdminRole,
+  canManageVenueUsers,
   demoVenueIsolated,
+  formatFloorPinForAdmin,
+  generateFloorPin,
   isPlatformAdminEmail,
   loginRoleLabel,
   parseTenantAdminScope,
@@ -16,6 +19,7 @@ import {
   tenantConsoleLoginUrl,
   tenantLoginRoleForScope,
 } from "../src/lib/saas/tenant-users.ts";
+import { PIN_VIEWS } from "../src/lib/access/pin-role.ts";
 
 test("entity_admin maps to vendor membership, labeled Entity admin", () => {
   assert.equal(parseTenantLoginRole("entity_admin"), "vendor");
@@ -100,7 +104,16 @@ test("Users tab copy is an add form, not a circle back to the platform", () => {
   assert.match(panel, /Force password change on first login/);
   assert.match(panel, /never a PIN pad/);
   assert.match(panel, /app.summex.app\/login/);
+  assert.match(panel, /Floor staff/);
+  assert.match(panel, /data-demo="floor-pin"/);
+  assert.match(panel, /Reset PIN/);
+  assert.match(panel, /Replace this PIN/);
+  assert.match(panel, /Password logins/);
+  assert.match(panel, /Account passwords are never shown/);
+  assert.match(panel, /Hide PINs/);
   assert.doesNotMatch(panel, /Add people on the platform/);
+  assert.doesNotMatch(panel, /better-auth/i);
+  assert.doesNotMatch(panel, /password_hash/);
 
   const venue = readFileSync("src/components/platform/PlatformTenantVenue.tsx", "utf8");
   assert.match(venue, /TenantUsersPanel/);
@@ -111,4 +124,52 @@ test("Users tab copy is an add form, not a circle back to the platform", () => {
   const dash = readFileSync("src/routes/dashboard.tsx", "utf8");
   assert.match(dash, /membershipRole=\{loc.role\}/);
   assert.match(dash, /loc.role === "accountant"/);
+});
+
+test("venue admin can view floor PINs; kitchen/server/bartender cannot", () => {
+  assert.equal(canManageVenueUsers({ membershipRole: "owner" }), true);
+  assert.equal(canManageVenueUsers({ membershipRole: "manager" }), true);
+  assert.equal(canManageVenueUsers({ isPlatformAdmin: true }), true);
+  assert.equal(canManageVenueUsers({ membershipRole: "owner", operatorId: "op_bar" }), false);
+  assert.equal(canManageVenueUsers({ membershipRole: "vendor" }), false);
+  assert.equal(formatFloorPinForAdmin("2222", false), "2222");
+  assert.equal(formatFloorPinForAdmin("2222", true), "••••");
+  assert.equal(formatFloorPinForAdmin(null, false), "Reset to view");
+  const pin = generateFloorPin(4);
+  assert.match(pin, /^\d{4}$/);
+  assert.notEqual(pin, "0000");
+  const kitchen = PIN_VIEWS.kitchen;
+  const server = PIN_VIEWS.server;
+  const bartender = PIN_VIEWS.bartender;
+  assert.equal(Array.isArray(kitchen) && kitchen.includes("employees"), false);
+  assert.equal(Array.isArray(server) && server.includes("employees"), false);
+  assert.equal(Array.isArray(bartender) && bartender.includes("employees"), false);
+});
+
+test("Devices tab still Add device with QR/code; Users does not pair", () => {
+  const devices = readFileSync("src/components/pos/LocationDeviceRegistry.tsx", "utf8");
+  assert.match(devices, /Add device/);
+  assert.match(devices, /pairQrImageSrc/);
+  const panel = readFileSync("src/components/platform/TenantUsersPanel.tsx", "utf8");
+  assert.doesNotMatch(panel, /Scan QR/);
+  assert.doesNotMatch(panel, /pairQrImageSrc/);
+  const venue = readFileSync("src/components/platform/PlatformTenantVenue.tsx", "utf8");
+  assert.match(venue, /LocationDeviceRegistry/);
+  assert.match(venue, /TenantUsersPanel/);
+});
+
+test("location owner and manager password dashboards include Users", () => {
+  const dash = readFileSync("src/lib/saas/password-dash.ts", "utf8");
+  const tabs = dash.slice(dash.indexOf("export function passwordDashTabs"));
+  assert.match(tabs, /case "host_manager":\s*case "venue_manager":[\s\S]*\["people", "Users"\]/);
+  assert.match(tabs, /case "venue_admin":[\s\S]*\["people", "Users"\]/);
+  assert.match(tabs, /case "host_owner":[\s\S]*\["people", "Users"\]/);
+});
+
+test("guide Users topic covers PIN list, reset confirm, disable", () => {
+  const roles = readFileSync("src/lib/guide/content/roles.ts", "utf8");
+  assert.match(roles, /id: "venue-users"/);
+  assert.match(roles, /Reset PIN asks before overwrite/);
+  assert.match(roles, /Disable leaves the row visible/);
+  assert.match(roles, /kitchen, server, bartender/i);
 });

@@ -160,7 +160,8 @@ export function SubscriberWhitePaper() {
         <p>
           <strong className="text-ivory">PIN is not clock-in and not closeout.</strong>{" "}
           Password login is back office — never the PIN home. Floor staff use a
-          4-digit PIN on a paired station. A kitchen PIN on an order tablet is the
+          4-digit PIN on a paired station. Location owner and manager see those
+          PINs on Users and can reset them; kitchen and server PINs cannot. A kitchen PIN on an order tablet is the
           clock sheet, not server UI. Completing clock does not open order entry.
           Server closeout is Cash. During the shift, staff can move cash till to
           till when one drawer is short on small bills; expected cash on each till

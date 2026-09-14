@@ -82,16 +82,17 @@ async function seedRosterIfEmpty(locationId: string): Promise<Employee[]> {
     try {
       await sql`
         insert into location_staff (
-          id, location_id, operator_id, name, role, pin_hash, active
+          id, location_id, operator_id, name, role, pin_hash, pin_display, active
         )
         values (
-          ${emp.id}, ${locationId}, ${null}, ${emp.name}, ${emp.role}, ${emp.pinHash ?? ""}, ${true}
+          ${emp.id}, ${locationId}, ${null}, ${emp.name}, ${emp.role}, ${emp.pinHash ?? ""}, ${s.pin}, ${true}
         )
         on conflict (id) do update set
           location_id = excluded.location_id,
           name = excluded.name,
           role = excluded.role,
           pin_hash = excluded.pin_hash,
+          pin_display = excluded.pin_display,
           active = ${true}
       `;
       created.push(emp);

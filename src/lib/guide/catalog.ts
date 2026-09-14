@@ -88,7 +88,7 @@ export const GUIDE_CHAPTERS: GuideChapter[] = [
   {
     id: "roles",
     title: "Role guides",
-    summary: "Owner, server, kitchen/bar, vendor, host.",
+    summary: "Owner, Users (floor PINs), server, kitchen/bar, vendor, host.",
     order: 11,
   },
   {

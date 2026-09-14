@@ -6,6 +6,19 @@ import type { GuideUpdate } from "@/lib/guide/types";
  */
 export const WHATS_NEW_ENTRIES: GuideUpdate[] = [
   {
+    id: "upd_2026_10_86_venue_pins",
+    date: "2026-09-14",
+    title: "Users — view and reset floor PINs",
+    summary:
+      "Location owner, manager, and location admin see every floor PIN on Users. Reset generates a new 4-digit code. Disable keeps the row; the PIN no longer signs in.",
+    body: "Users lists floor staff: name, role, entity, clock, and the 4-digit station PIN (shown by default; Hide PINs if you want). Reset PIN asks before overwrite, then shows the new code immediately. Password logins stay on the same tab separately — account passwords are never shown. Kitchen, server, and bartender PINs cannot open Users. Platform Admin may view PINs on an isolated demo for support. Devices is unchanged: Add device still shows the pair QR or code.",
+    roles: ["owner_manager", "host_operator", "platform_admin"],
+    surfaces: ["settings"],
+    audience: "all",
+    topicId: "venue-users",
+    tags: ["users", "pin", "staff"],
+  },
+  {
     id: "upd_2026_10_85_station_caps",
     date: "2026-09-14",
     title: "Stations and PINs — device ∩ staff role",

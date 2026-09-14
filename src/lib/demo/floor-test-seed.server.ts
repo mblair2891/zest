@@ -189,16 +189,17 @@ async function upsertStaff(locationId: string): Promise<void> {
     const pinHash = hashPin(s.pin, locationId);
     await sql`
       insert into location_staff (
-        id, location_id, operator_id, name, role, pin_hash, active
+        id, location_id, operator_id, name, role, pin_hash, pin_display, active
       )
       values (
-        ${s.id}, ${locationId}, ${null}, ${s.name}, ${s.role}, ${pinHash}, ${true}
+        ${s.id}, ${locationId}, ${null}, ${s.name}, ${s.role}, ${pinHash}, ${s.pin}, ${true}
       )
       on conflict (id) do update set
         location_id = excluded.location_id,
         name = excluded.name,
         role = excluded.role,
         pin_hash = excluded.pin_hash,
+        pin_display = excluded.pin_display,
         active = ${true}
     `;
   }

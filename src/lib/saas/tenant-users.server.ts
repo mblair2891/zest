@@ -15,6 +15,7 @@ import {
   ENTITY_ADMIN_ROLE,
   VENUE_OWNER_ROLE,
   assertNotPlatformAdminRole,
+  generateFloorPin,
   isPlatformAdminEmail,
   parseTenantFloorRole,
   parseTenantLoginRole,
@@ -162,6 +163,7 @@ export async function listTenantUsers(
     role: string;
     operator_id: string | null;
     active: boolean;
+    pin_display: string | null;
   }> = [];
   try {
     staff = await sql<{
@@ -170,14 +172,45 @@ export async function listTenantUsers(
       role: string;
       operator_id: string | null;
       active: boolean;
+      pin_display: string | null;
     }>`
-      select id, name, role, operator_id, active
+      select id, name, role, operator_id, active, pin_display
       from location_staff
       where location_id = ${locationId}
       order by created_at asc
     `;
   } catch {
-    staff = [];
+    try {
+      const fallback = await sql<{
+        id: string;
+        name: string;
+        role: string;
+        operator_id: string | null;
+        active: boolean;
+      }>`
+        select id, name, role, operator_id, active
+        from location_staff
+        where location_id = ${locationId}
+        order by created_at asc
+      `;
+      staff = fallback.map((s) => ({ ...s, pin_display: null }));
+    } catch {
+      staff = [];
+    }
+  }
+
+  const clocked = new Set<string>();
+  try {
+    const open = await sql<{ employee_id: string }>`
+      select distinct employee_id
+      from location_punches
+      where location_id = ${locationId}
+        and clock_out_at is null
+        and status = ${"open"}
+    `;
+    for (const row of open) clocked.add(row.employee_id);
+  } catch {
+    /* punches optional */
   }
 
   const login: TenantUserRow[] = members.map((m) => ({
@@ -203,6 +236,8 @@ export async function listTenantUsers(
     homeEntityId: s.operator_id,
     homeEntityName: s.operator_id ? (opName.get(s.operator_id) ?? s.operator_id) : null,
     locationId,
+    pin: s.pin_display || null,
+    clockedIn: clocked.has(s.id),
   }));
 
   return [...login, ...floor];
@@ -405,10 +440,10 @@ export async function addFloorStaff(
   const id = newId("emp");
   await sql`
     insert into location_staff (
-      id, location_id, operator_id, name, role, pin_hash, active
+      id, location_id, operator_id, name, role, pin_hash, pin_display, active
     )
     values (
-      ${id}, ${input.locationId}, ${home}, ${name}, ${role}, ${pinHash}, ${true}
+      ${id}, ${input.locationId}, ${home}, ${name}, ${role}, ${pinHash}, ${pin}, ${true}
     )
   `;
   await writeAudit({
@@ -586,17 +621,21 @@ export async function resetTenantUserSecret(
   `;
   if (!staff[0]) throw new Error("Staff not found.");
   if (!pin) {
-    for (let i = 0; i < 40; i += 1) {
-      const n = Math.floor(Math.random() * 10 ** len);
-      pin = String(n).padStart(len, "0");
-      const hash = hashPin(pin, input.locationId);
-      const hit = await sql<{ id: string }>`
-        select id from location_staff
-        where location_id = ${input.locationId} and pin_hash = ${hash} and id <> ${input.id}
-        limit 1
-      `;
-      if (!hit[0]) break;
+    const hashes = await sql<{ pin_hash: string | null }>`
+      select pin_hash from location_staff
+      where location_id = ${input.locationId} and id <> ${input.id}
+    `;
+    const taken = new Set<string>();
+    for (let i = 0; i < 80; i += 1) {
+      const candidate = generateFloorPin(len, taken);
+      taken.add(candidate);
+      const hash = hashPin(candidate, input.locationId);
+      if (!hashes.some((h) => h.pin_hash === hash)) {
+        pin = candidate;
+        break;
+      }
     }
+    if (!pin) pin = generateFloorPin(len);
   }
   const pinHash = hashPin(pin, input.locationId);
   const clash = await sql<{ id: string }>`
@@ -606,7 +645,9 @@ export async function resetTenantUserSecret(
   `;
   if (clash[0]) throw new Error("That PIN is already in use at this location.");
   await sql`
-    update location_staff set pin_hash = ${pinHash}, active = true where id = ${input.id}
+    update location_staff
+    set pin_hash = ${pinHash}, pin_display = ${pin}, active = true
+    where id = ${input.id}
   `;
   return { pin };
 }

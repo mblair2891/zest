@@ -1,7 +1,15 @@
-import { useCallback, useEffect, useState, type FormEvent } from "react";
+import { useCallback, useEffect, useMemo, useState, type FormEvent } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Field, SelectField } from "@/components/platform/settings-fields";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import {
   addFloorStaffFn,
   addLocationAdminFn,
@@ -14,6 +22,7 @@ import {
   TENANT_LOGIN_ROLES,
   TENANT_USERS_EMPTY,
   floorRoleLabel,
+  formatFloorPinForAdmin,
   loginRoleLabel,
   membershipRoleForPasswordSeat,
   parseTenantAdminScope,
@@ -53,6 +62,8 @@ export function TenantUsersPanel({
   const [staffPin, setStaffPin] = useState("");
   const [staffRole, setStaffRole] = useState("server");
   const [staffHome, setStaffHome] = useState("");
+  const [hidePins, setHidePins] = useState(false);
+  const [confirmReset, setConfirmReset] = useState<TenantUserRow | null>(null);
 
   const load = useCallback(() => {
     if (!orgId || !locationId) return;
@@ -134,15 +145,51 @@ export function TenantUsersPanel({
       .finally(() => setBusy(false));
   };
 
+  const floorRows = useMemo(
+    () => (rows ?? []).filter((u) => u.kind === "floor"),
+    [rows],
+  );
+  const loginRows = useMemo(
+    () => (rows ?? []).filter((u) => u.kind === "login"),
+    [rows],
+  );
+
+  const runReset = (u: TenantUserRow) => {
+    setBusy(true);
+    setNotice(null);
+    setError(null);
+    void resetTenantUserSecretFn({
+      data: { orgId, locationId, kind: u.kind, id: u.id },
+    })
+      .then((r) => {
+        if (u.kind === "login") {
+          setNotice(
+            r.tempPassword
+              ? `New temporary password for ${u.name}: ${r.tempPassword}. They must change it on next login. The old password is not shown — Summex does not display account passwords.`
+              : `Password reset for ${u.name}.`,
+          );
+        } else {
+          setNotice(`New PIN for ${u.name}: ${r.pin}. The old PIN no longer works.`);
+        }
+        load();
+      })
+      .catch((err) => setError(errMessage(err)))
+      .finally(() => {
+        setBusy(false);
+        setConfirmReset(null);
+      });
+  };
+
   return (
-    <div className="mx-auto max-w-lg space-y-5" data-demo="tenant-users">
+    <div className="mx-auto max-w-3xl space-y-5" data-demo="tenant-users">
       <div>
         <p className="text-sm font-semibold">Users</p>
         <p className="mt-1 text-xs text-muted-foreground">
-          Location admin (whole venue) or Entity admin (one selling entity). Email and
-          temporary password; they sign in at app.summex.app/login only — never PIN,
-          never platform CRM. Isolated demo houses included. Floor staff who only
-          need a PIN can be added here. You cannot create a second platform Admin.
+          Location owner, manager, and location admin. Floor PINs are the 4-digit
+          station credential — listed here, not a password. Kitchen, server, and
+          bartender PINs cannot open this tab. Password logins stay separate; account
+          passwords are never shown. Isolated demo: Platform Admin may view PINs for
+          support.
         </p>
       </div>
 
@@ -304,144 +351,260 @@ export function TenantUsersPanel({
         </Button>
       </form>
 
-      <ul className="space-y-2 text-sm">
-        {rows === null && <li className="text-muted-foreground">Loading users…</li>}
-        {rows?.length === 0 && (
-          <li className="text-muted-foreground">{TENANT_USERS_EMPTY}</li>
-        )}
-        {rows?.map((u) => (
-          <li
-            key={`${u.kind}-${u.id}`}
-            data-demo="tenant-user-row"
-            className="space-y-2 rounded-xl border border-border bg-surface px-3 py-2"
-          >
-            <div>
-              <span className="font-medium">{u.name}</span>
-              {u.status === "disabled" ? (
-                <span className="ml-2 text-xs text-muted-foreground">Disabled</span>
-              ) : null}
-              <span className="mt-0.5 block text-xs text-muted-foreground">
-                {u.kind === "login"
-                  ? `${loginRoleLabel(u.role, u.homeEntityId)}${
+      {rows === null && <p className="text-sm text-muted-foreground">Loading users…</p>}
+      {rows?.length === 0 && (
+        <p className="text-sm text-muted-foreground">{TENANT_USERS_EMPTY}</p>
+      )}
+
+      {rows && floorRows.length > 0 && (
+        <section className="space-y-2" data-demo="venue-floor-pins">
+          <div className="flex flex-wrap items-center gap-2">
+            <p className="text-sm font-medium">Floor staff</p>
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              onClick={() => setHidePins((v) => !v)}
+            >
+              {hidePins ? "Show PINs" : "Hide PINs"}
+            </Button>
+            <p className="text-xs text-muted-foreground">
+              4-digit station PIN. Default shown. Disable keeps the row; the PIN no longer signs in.
+            </p>
+          </div>
+          <ul className="space-y-2 text-sm">
+            {floorRows.map((u) => (
+              <li
+                key={`floor-${u.id}`}
+                data-demo="tenant-user-row"
+                data-user-kind="floor"
+                className="space-y-2 rounded-xl border border-border bg-surface px-3 py-2"
+              >
+                <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
+                  <span className="font-medium">{u.name}</span>
+                  {u.status === "disabled" ? (
+                    <span className="text-xs text-muted-foreground">Disabled</span>
+                  ) : null}
+                  <span className="text-xs text-muted-foreground">
+                    {floorRoleLabel(u.role)}
+                    {u.homeEntityName ? ` · ${u.homeEntityName}` : ""}
+                    {` · ${u.clockedIn ? "On clock" : "Off clock"}`}
+                  </span>
+                  <span
+                    className="ml-auto font-mono text-sm tabular-nums"
+                    data-demo="floor-pin"
+                  >
+                    PIN {formatFloorPinForAdmin(u.pin, hidePins)}
+                  </span>
+                </div>
+                <div className="flex flex-wrap items-center gap-2">
+                  <select
+                    className="h-10 rounded-lg border border-border bg-surface px-2 text-sm"
+                    value={u.role}
+                    disabled={busy}
+                    onChange={(e) => {
+                      const role = e.target.value;
+                      setBusy(true);
+                      void updateTenantUserFn({
+                        data: { orgId, locationId, kind: "floor", id: u.id, role },
+                      })
+                        .then(() => load())
+                        .catch((err) => setError(errMessage(err)))
+                        .finally(() => setBusy(false));
+                    }}
+                  >
+                    {TENANT_FLOOR_ROLES.map((r) => (
+                      <option key={r} value={r}>
+                        {floorRoleLabel(r)}
+                      </option>
+                    ))}
+                  </select>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    disabled={busy}
+                    data-demo="reset-floor-pin"
+                    onClick={() => setConfirmReset(u)}
+                  >
+                    Reset PIN
+                  </Button>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    disabled={busy}
+                    onClick={() => {
+                      setBusy(true);
+                      void updateTenantUserFn({
+                        data: {
+                          orgId,
+                          locationId,
+                          kind: "floor",
+                          id: u.id,
+                          status: u.status === "active" ? "disabled" : "active",
+                        },
+                      })
+                        .then(() => load())
+                        .catch((err) => setError(errMessage(err)))
+                        .finally(() => setBusy(false));
+                    }}
+                  >
+                    {u.status === "active" ? "Disable" : "Enable"}
+                  </Button>
+                </div>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+
+      {rows && loginRows.length > 0 && (
+        <section className="space-y-2" data-demo="venue-password-logins">
+          <p className="text-sm font-medium">Password logins</p>
+          <p className="text-xs text-muted-foreground">
+            Email sign-in at app.summex.app/login. Account passwords are never shown.
+          </p>
+          <ul className="space-y-2 text-sm">
+            {loginRows.map((u) => (
+              <li
+                key={`login-${u.id}`}
+                data-demo="tenant-user-row"
+                data-user-kind="login"
+                className="space-y-2 rounded-xl border border-border bg-surface px-3 py-2"
+              >
+                <div>
+                  <span className="font-medium">{u.name}</span>
+                  {u.status === "disabled" ? (
+                    <span className="ml-2 text-xs text-muted-foreground">Disabled</span>
+                  ) : null}
+                  <span className="mt-0.5 block text-xs text-muted-foreground">
+                    {`${loginRoleLabel(u.role, u.homeEntityId)}${
                       u.homeEntityName ? ` · ${u.homeEntityName}` : ""
-                    }${u.email ? ` · ${u.email}` : ""}`
-                  : `Floor · ${floorRoleLabel(u.role)}${
-                      u.homeEntityName ? ` · ${u.homeEntityName}` : ""
-                    }`}
-                {u.mustChangePassword ? " · must change password" : ""}
-              </span>
-            </div>
-            <div className="flex flex-wrap items-center gap-2">
-              <select
-                className="h-10 rounded-lg border border-border bg-surface px-2 text-sm"
-                value={u.role}
-                disabled={busy}
-                onChange={(e) => {
-                  const role = e.target.value;
-                  const homeEntityId =
-                    u.kind === "login" && role === "vendor"
-                      ? u.homeEntityId || operators[0]?.id || null
-                      : u.kind === "login" && role === "owner"
-                        ? null
-                        : undefined;
-                  setBusy(true);
-                  void updateTenantUserFn({
-                    data: {
-                      orgId,
-                      locationId,
-                      kind: u.kind,
-                      id: u.id,
-                      role,
-                      homeEntityId,
-                    },
-                  })
-                    .then(() => load())
-                    .catch((err) => setError(errMessage(err)))
-                    .finally(() => setBusy(false));
-                }}
-              >
-                {(u.kind === "login" ? TENANT_LOGIN_ROLES : TENANT_FLOOR_ROLES).map((r) => (
-                  <option key={r} value={r}>
-                    {u.kind === "login" ? loginRoleLabel(r) : floorRoleLabel(r)}
-                  </option>
-                ))}
-              </select>
-              {u.kind === "login" && (
-                <select
-                  className="h-10 rounded-lg border border-border bg-surface px-2 text-sm"
-                  value={u.homeEntityId || ""}
-                  disabled={busy}
-                  onChange={(e) => {
-                    const homeEntityId = e.target.value || null;
-                    setBusy(true);
-                    void updateTenantUserFn({
-                      data: { orgId, locationId, kind: u.kind, id: u.id, homeEntityId },
-                    })
-                      .then(() => load())
-                      .catch((err) => setError(errMessage(err)))
-                      .finally(() => setBusy(false));
-                  }}
-                >
-                  <option value="">Whole venue</option>
-                  {operators.map((o) => (
-                    <option key={o.id} value={o.id}>
-                      {o.dba}
-                    </option>
-                  ))}
-                </select>
-              )}
-              <Button
-                type="button"
-                size="sm"
-                variant="outline"
-                disabled={busy}
-                onClick={() => {
-                  setBusy(true);
-                  setNotice(null);
-                  void resetTenantUserSecretFn({
-                    data: { orgId, locationId, kind: u.kind, id: u.id },
-                  })
-                    .then((r) => {
-                      setNotice(
-                        r.tempPassword
-                          ? `New temporary password for ${u.name}: ${r.tempPassword}. They must change it on next login.`
-                          : `New PIN for ${u.name}: ${r.pin}`,
-                      );
-                      load();
-                    })
-                    .catch((err) => setError(errMessage(err)))
-                    .finally(() => setBusy(false));
-                }}
-              >
-                {u.kind === "login" ? "Reset password" : "Reset PIN"}
-              </Button>
-              <Button
-                type="button"
-                size="sm"
-                variant="outline"
-                disabled={busy}
-                onClick={() => {
-                  setBusy(true);
-                  void updateTenantUserFn({
-                    data: {
-                      orgId,
-                      locationId,
-                      kind: u.kind,
-                      id: u.id,
-                      status: u.status === "active" ? "disabled" : "active",
-                    },
-                  })
-                    .then(() => load())
-                    .catch((err) => setError(errMessage(err)))
-                    .finally(() => setBusy(false));
-                }}
-              >
-                {u.status === "active" ? "Disable" : "Enable"}
-              </Button>
-            </div>
-          </li>
-        ))}
-      </ul>
+                    }${u.email ? ` · ${u.email}` : ""}`}
+                    {u.mustChangePassword ? " · must change password" : ""}
+                  </span>
+                </div>
+                <div className="flex flex-wrap items-center gap-2">
+                  <select
+                    className="h-10 rounded-lg border border-border bg-surface px-2 text-sm"
+                    value={u.role}
+                    disabled={busy}
+                    onChange={(e) => {
+                      const role = e.target.value;
+                      const homeEntityId =
+                        role === "vendor"
+                          ? u.homeEntityId || operators[0]?.id || null
+                          : role === "owner"
+                            ? null
+                            : undefined;
+                      setBusy(true);
+                      void updateTenantUserFn({
+                        data: {
+                          orgId,
+                          locationId,
+                          kind: "login",
+                          id: u.id,
+                          role,
+                          homeEntityId,
+                        },
+                      })
+                        .then(() => load())
+                        .catch((err) => setError(errMessage(err)))
+                        .finally(() => setBusy(false));
+                    }}
+                  >
+                    {TENANT_LOGIN_ROLES.map((r) => (
+                      <option key={r} value={r}>
+                        {loginRoleLabel(r)}
+                      </option>
+                    ))}
+                  </select>
+                  <select
+                    className="h-10 rounded-lg border border-border bg-surface px-2 text-sm"
+                    value={u.homeEntityId || ""}
+                    disabled={busy}
+                    onChange={(e) => {
+                      const homeEntityId = e.target.value || null;
+                      setBusy(true);
+                      void updateTenantUserFn({
+                        data: { orgId, locationId, kind: "login", id: u.id, homeEntityId },
+                      })
+                        .then(() => load())
+                        .catch((err) => setError(errMessage(err)))
+                        .finally(() => setBusy(false));
+                    }}
+                  >
+                    <option value="">Whole venue</option>
+                    {operators.map((o) => (
+                      <option key={o.id} value={o.id}>
+                        {o.dba}
+                      </option>
+                    ))}
+                  </select>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    disabled={busy}
+                    onClick={() => runReset(u)}
+                  >
+                    Reset password
+                  </Button>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    disabled={busy}
+                    onClick={() => {
+                      setBusy(true);
+                      void updateTenantUserFn({
+                        data: {
+                          orgId,
+                          locationId,
+                          kind: "login",
+                          id: u.id,
+                          status: u.status === "active" ? "disabled" : "active",
+                        },
+                      })
+                        .then(() => load())
+                        .catch((err) => setError(errMessage(err)))
+                        .finally(() => setBusy(false));
+                    }}
+                  >
+                    {u.status === "active" ? "Disable" : "Enable"}
+                  </Button>
+                </div>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+
+      <Dialog open={Boolean(confirmReset)} onOpenChange={(o) => !o && setConfirmReset(null)}>
+        <DialogContent className="max-w-sm" showClose={false}>
+          <DialogHeader>
+            <DialogTitle>Replace this PIN?</DialogTitle>
+            <DialogDescription>
+              {confirmReset
+                ? `${confirmReset.name}’s current PIN will stop working immediately. A new 4-digit PIN is generated and shown here.`
+                : ""}
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={() => setConfirmReset(null)} disabled={busy}>
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              disabled={busy || !confirmReset}
+              onClick={() => confirmReset && runReset(confirmReset)}
+            >
+              {busy ? "Resetting…" : "Reset PIN"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

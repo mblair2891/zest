@@ -198,9 +198,9 @@ export const setStaffPinFn = createServerFn({ method: "POST" })
     const { getSql } = await import("@/lib/db");
     const sql = await getSql();
     await sql`
-      insert into location_staff (id, location_id, operator_id, name, role, pin_hash, active)
-      values (${data.staffId}, ${data.locationId}, ${target || HOST_SCOPE}, ${data.staffId}, 'staff', ${pinHash}, true)
-      on conflict (id) do update set pin_hash = excluded.pin_hash, operator_id = excluded.operator_id
+      insert into location_staff (id, location_id, operator_id, name, role, pin_hash, pin_display, active)
+      values (${data.staffId}, ${data.locationId}, ${target || HOST_SCOPE}, ${data.staffId}, 'staff', ${pinHash}, ${data.pin}, true)
+      on conflict (id) do update set pin_hash = excluded.pin_hash, pin_display = excluded.pin_display, operator_id = excluded.operator_id
     `;
     return { ok: true as const };
   });

@@ -69,6 +69,12 @@ test("entity owner has payments, manager has floor, accountant has no Devices or
   assert.ok(!acc.includes("devices"));
   assert.ok(!acc.includes("86"));
   assert.ok(!passwordDashTabs("accountant").some(([id]) => id === "devices"));
+  assert.ok(passwordDashTabs("venue_admin").some(([id]) => id === "people"));
+  assert.ok(passwordDashTabs("venue_manager").some(([id]) => id === "people"));
+  assert.ok(passwordDashTabs("host_owner").some(([id]) => id === "people"));
+  assert.ok(passwordDashTabs("host_manager").some(([id]) => id === "people"));
+  assert.ok(!passwordDashTabs("entity_owner").some(([id]) => id === "people"));
+  assert.ok(!passwordDashTabs("accountant").some(([id]) => id === "people"));
 });
 
 test("tiles hide unsubscribed modules", () => {

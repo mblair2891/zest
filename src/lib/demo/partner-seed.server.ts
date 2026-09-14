@@ -416,7 +416,7 @@ async function upsertFloorStaff(): Promise<void> {
     if (!hit[0]) {
       await sql`
         insert into location_staff (
-          id, location_id, operator_id, name, role, pin_hash, active
+          id, location_id, operator_id, name, role, pin_hash, pin_display, active
         )
         values (
           ${emp.id},
@@ -425,6 +425,7 @@ async function upsertFloorStaff(): Promise<void> {
           ${emp.name},
           ${emp.role},
           ${pinHash},
+          ${pin || null},
           ${true}
         )
       `;
@@ -436,6 +437,7 @@ async function upsertFloorStaff(): Promise<void> {
             name = ${emp.name},
             role = ${emp.role},
             pin_hash = ${pinHash},
+            pin_display = ${pin || null},
             active = ${true}
         where id = ${emp.id}
       `;

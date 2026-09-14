@@ -141,10 +141,49 @@ export type TenantUserRow = {
   homeEntityId?: string | null;
   homeEntityName?: string | null;
   locationId?: string | null;
+  /** Floor PIN for venue admin. Never a Better Auth password. */
+  pin?: string | null;
+  clockedIn?: boolean;
 };
 
 export function assertNotPlatformAdminRole(role: string): void {
   if (role.trim().toLowerCase() === "platform_admin") {
     throw new Error("Cannot create a second platform Admin.");
   }
+}
+
+/** Location owner / manager / location admin (and Platform Admin). Not kitchen/server/bartender. */
+export function canManageVenueUsers(opts: {
+  isPlatformAdmin?: boolean;
+  membershipRole?: string | null;
+  operatorId?: string | null;
+}): boolean {
+  if (opts.isPlatformAdmin) return true;
+  if (opts.operatorId) return false;
+  const r = String(opts.membershipRole || "").trim().toLowerCase();
+  return r === "owner" || r === "manager";
+}
+
+export function formatFloorPinForAdmin(
+  pin: string | null | undefined,
+  hide: boolean,
+): string {
+  const p = String(pin || "").replace(/\D/g, "");
+  if (!p) return "Reset to view";
+  return hide ? "••••" : p;
+}
+
+export function generateFloorPin(length = 4, taken?: Iterable<string>): string {
+  const len = Math.max(4, Math.min(8, Math.round(length) || 4));
+  const skip = new Set(
+    [...(taken ?? [])].map((p) => String(p).replace(/\D/g, "").padStart(len, "0")),
+  );
+  const zeros = "0".repeat(len);
+  for (let i = 0; i < 80; i += 1) {
+    const pin = String(Math.floor(Math.random() * 10 ** len)).padStart(len, "0");
+    if (pin === zeros) continue;
+    if (skip.has(pin)) continue;
+    return pin;
+  }
+  return len === 4 ? "1357" : "1".padEnd(len, "3");
 }
