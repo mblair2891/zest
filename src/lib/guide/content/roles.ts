@@ -83,7 +83,7 @@ export const ROLE_GUIDE_TOPICS: GuideTopic[] = [
         "Reset PIN asks before overwrite, generates a new 4-digit code, and displays it immediately.",
         "Disable leaves the row visible. That PIN no longer authenticates.",
         "Password logins (owner email) sit on the same tab in a separate list. Account passwords are never shown.",
-        "Devices is a different tab: Add device still shows the pair QR or code. Users does not change pairing.",
+        "Devices is a different tab: Add device still shows the pair QR or code. Delete a station slot lives on Devices, not Users.",
       ),
       steps(
         "Sign in at app.summex.app/login as location owner, manager, or location admin. Open Users.",

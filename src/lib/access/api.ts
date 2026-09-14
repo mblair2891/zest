@@ -990,7 +990,6 @@ export const getPairedStationFn = createServerFn({ method: "POST" })
       select id, location_id, status, serial, assigned_function
       from location_devices
       where location_id = ${data.locationId}
-        and status <> ${"inactive"}
         and (id = ${data.deviceId} or serial = ${data.deviceId})
       limit 1
     `.catch(() => [] as Array<{
@@ -1001,6 +1000,7 @@ export const getPairedStationFn = createServerFn({ method: "POST" })
       assigned_function: string | null;
     }>);
     const row = rows[0];
+    // Missing row = Delete (kick to pair). Inactive = Deactivate (PIN fails; slot stays).
     if (!row) throw new Error("This tablet is not paired. Ask the owner for a new code.");
     const { operatorsAsVendors } = await import("@/lib/saas/onboarding.server");
     const { ensureTrainingFloor } = await import("@/lib/pos/training-roster.server");
@@ -1088,14 +1088,18 @@ export const getStationPublishFn = createServerFn({ method: "POST" })
   .handler(async ({ data }) => {
     const { getSql } = await import("@/lib/db");
     const sql = await getSql();
-    const ok = await sql<{ n: number }>`
-      select 1 as n from location_devices
+    const row = await sql<{ id: string; status: string }>`
+      select id, status from location_devices
       where location_id = ${data.locationId}
-        and status <> ${"inactive"}
         and (id = ${data.deviceId} or serial = ${data.deviceId})
       limit 1
-    `.catch(() => [] as Array<{ n: number }>);
-    if (!ok[0]) return { upToDate: true as const, publish: null, device: null };
+    `.catch(() => [] as Array<{ id: string; status: string }>);
+    if (!row[0]) {
+      return { revoked: true as const, upToDate: true as const, publish: null, device: null };
+    }
+    if (row[0].status === "inactive") {
+      return { upToDate: true as const, publish: null, device: null };
+    }
     const rows = await sql<{ setup: unknown }>`
       select setup from locations where id = ${data.locationId} limit 1
     `;
@@ -1202,6 +1206,40 @@ export const unpairLocationDeviceFn = createServerFn({ method: "POST" })
       `;
     } catch {
       /* optional */
+    }
+    const { updateLocationSetupForUser } = await import("@/lib/saas/tenancy.server");
+    return updateLocationSetupForUser(context.userId, {
+      orgId: ctx.orgId,
+      locationId: data.locationId,
+      setup: { ...EMPTY_LOCATION_SETUP, ...ctx.setup, locationDevices: devices } as LocationSetup,
+    });
+  });
+
+export const deleteLocationDeviceFn = createServerFn({ method: "POST" })
+  .middleware([tenantMiddleware])
+  .validator((d: { orgId: string; locationId: string; deviceId: string }) => ({
+    orgId: String(d.orgId ?? "").trim(),
+    locationId: loc(d.locationId),
+    deviceId: String(d.deviceId ?? "").trim().slice(0, 80),
+  }))
+  .handler(async ({ context, data }) => {
+    const { loadEntityWriteContext, assertVenueDeviceAdmin } = await import(
+      "./assert-entity.server"
+    );
+    const orgId = data.orgId || context.organizationId || "";
+    const ctx = await loadEntityWriteContext(context.userId, orgId, data.locationId);
+    assertVenueDeviceAdmin(ctx);
+    const prev = parseLocationDevices(ctx.setup.locationDevices);
+    const devices = prev.filter((d) => d.id !== data.deviceId);
+    const { getSql } = await import("@/lib/db");
+    const sql = await getSql();
+    try {
+      await sql`
+        delete from location_devices
+        where id = ${data.deviceId} and location_id = ${data.locationId}
+      `;
+    } catch {
+      /* table optional */
     }
     const { updateLocationSetupForUser } = await import("@/lib/saas/tenancy.server");
     return updateLocationSetupForUser(context.userId, {

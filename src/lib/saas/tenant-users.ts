@@ -159,9 +159,19 @@ export function canManageVenueUsers(opts: {
   operatorId?: string | null;
 }): boolean {
   if (opts.isPlatformAdmin) return true;
-  if (opts.operatorId) return false;
+  const op = String(opts.operatorId || "").trim();
+  if (op && op !== "host") return false;
   const r = String(opts.membershipRole || "").trim().toLowerCase();
   return r === "owner" || r === "manager";
+}
+
+/** Devices → Delete. Same people as Users. Floor PINs cannot delete a slot. */
+export function canDeleteVenueDevice(opts: {
+  isPlatformAdmin?: boolean;
+  membershipRole?: string | null;
+  operatorId?: string | null;
+}): boolean {
+  return canManageVenueUsers(opts);
 }
 
 export function formatFloorPinForAdmin(

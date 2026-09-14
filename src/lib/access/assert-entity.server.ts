@@ -1,5 +1,6 @@
 import { getSql } from "@/lib/db";
 import { ForbiddenError, requireMembership } from "@/lib/saas/tenancy.server";
+import { canDeleteVenueDevice } from "@/lib/saas/tenant-users";
 import type { LocationSetup, MembershipRole } from "@/lib/saas/types";
 import { EMPTY_LOCATION_SETUP } from "@/lib/saas/types";
 import {
@@ -91,4 +92,18 @@ export function assertHostOrManageDevices(ctx: EntityWriteContext, targetOperato
   const matrix = parseGrantMatrix(ctx.setup.entityPermissions);
   if (canEntityGrant(matrix, ctx.operatorId, targetOperatorId, "manage_devices")) return;
   throw new ForbiddenError("Device assignment is venue-managed");
+}
+
+/** Delete a device slot — location owner / manager / Admin. Not a floor PIN. */
+export function assertVenueDeviceAdmin(ctx: EntityWriteContext): void {
+  if (
+    canDeleteVenueDevice({
+      isPlatformAdmin: ctx.isPlatformAdmin,
+      membershipRole: ctx.role,
+      operatorId: ctx.operatorId,
+    })
+  ) {
+    return;
+  }
+  throw new ForbiddenError("Only location owner, manager, or Admin can delete a device.");
 }

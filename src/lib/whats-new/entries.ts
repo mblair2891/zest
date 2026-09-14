@@ -6,6 +6,19 @@ import type { GuideUpdate } from "@/lib/guide/types";
  */
 export const WHATS_NEW_ENTRIES: GuideUpdate[] = [
   {
+    id: "upd_2026_10_88_device_delete",
+    date: "2026-09-14",
+    title: "Devices — Delete a station slot",
+    summary:
+      "Deactivate keeps the named tablet in the list (cannot PIN; pair token dead). Delete removes the slot after one confirm. Unpair and Replace keep the name if you still want that station.",
+    body: "Location owner, manager, or Admin: Devices → Delete. Confirm “Delete this device. The tablet must scan a new code.” The row is gone, the pair token is revoked, and an online tablet returns to Scan QR. Pending devices with a QR use that same one dialog. Floor PINs cannot delete. After delete, Add device can reuse the same name and role. Deactivate still keeps the slot. Replace / Unpair do not delete it.",
+    roles: ["owner_manager", "host_operator", "platform_admin"],
+    surfaces: ["settings"],
+    audience: "all",
+    topicId: "device-assignment",
+    tags: ["devices", "delete", "pair"],
+  },
+  {
     id: "upd_2026_10_87_station_pin_venue",
     date: "2026-09-14",
     title: "Paired station PIN uses the whole venue roster",

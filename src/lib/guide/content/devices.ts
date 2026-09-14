@@ -22,6 +22,9 @@ export const DEVICE_TOPICS: GuideTopic[] = [
       "change device",
       "station",
       "reassign",
+      "delete",
+      "deactivate",
+      "unpair",
     ],
     openView: "settings",
     blocks: [
@@ -49,6 +52,7 @@ export const DEVICE_TOPICS: GuideTopic[] = [
         "A manager Change device (training/demo) switches among Order / ODS / Host. PIN stays the person; the role is the screen.",
         "Pair once (internet required). Pair QR payload is the one-time token plus venue and role. Bookmarks are app.summex.app/station. After that, power on → PIN pad for that venue and role, not the sales home. App updates keep the pairing. Store APKs do not need a baked station. Back-office username and password is for owners on a laptop, not the handheld.",
         "Broken ODS → reassign a server tablet from Devices. Same pair code; staff PIN in again. Do not reinstall.",
+        "Devices: Deactivate keeps the named slot (cannot PIN; pair token dead). Unpair / Replace keep the name if you still want that station. Delete removes the slot — confirm “Delete this device. The tablet must scan a new code.” An online tablet returns to Scan QR. Location owner / manager / Admin only. Floor PINs cannot delete. After delete, Add device can reuse the same name and role.",
       ),
       steps(
         "Owner: Devices → Add device → Order / ODS / Host / Kiosk. Show the one-time code or QR for the Android app pair screen. Codes expire; regenerate from that row.",
@@ -56,6 +60,7 @@ export const DEVICE_TOPICS: GuideTopic[] = [
         "Paired row: Role dropdown (Order / Host / ODS, plus ODS kitchen or ODS bar when both exist, and Kiosk when the house has one). Confirm, then staff PIN in again. Apply now only if that tablet is on the PIN pad — never mid-check.",
         "Owner or manager: Change device to move this screen among Order / ODS / Host without a new account login.",
         "Switch user returns to the PIN pad. A Devices role change takes effect on the next PIN, same as Publish.",
+        "To retire a named station: Delete (one confirm). To keep the name and swap hardware: Replace or Unpair. To leave it in the list without PIN: Deactivate.",
       ),
       warn(
         "Do not send kitchen staff to /login. A kitchen PIN on an order tablet is not the server UI. Time clock is the Clock in / Clock out control — PIN is not a punch. Server closeout is Cash.",
@@ -139,7 +144,7 @@ export const DEVICE_TOPICS: GuideTopic[] = [
         "Tablet: Scan QR or Enter code. Snapshot is pushed. Thereafter power on → PIN. App updates do not wipe pairing.",
         "After menu or floor layout edits: Publish changes. Logged-in staff keep running; next PIN login loads the new publish. 86 / un-86 is not a publish — every station sees it immediately.",
         "Broken ODS → reassign a server tablet from Devices (Role dropdown). No new pair code.",
-        "Unpair or Replace from the same Devices list when a tablet is lost or swapped.",
+        "Unpair or Replace from the same Devices list when a tablet is lost or swapped — those keep the named slot. Delete removes the slot after one confirm (“Delete this device. The tablet must scan a new code.”). An online tablet returns to Scan QR. Pending devices with a QR use that same dialog. Location owner / manager / Admin only.",
         "Training: on Samsung, confirm pin-windows when Summex asks. Set Summex as Home if the tablet offers it.",
         "Website updates (new JS on app.summex.app): manager, owner, or the Devices service PIN long-presses the discreet reload control for 2 seconds. The WebView reloads. Stay on pair or PIN — never /login. No unpin.",
         "APK updates (new Summex Station binary): manager Exit kiosk (confirm) to stop lock-task and show Android home, then uninstall/reinstall or Play update. Staff PINs cannot exit kiosk.",
@@ -254,7 +259,7 @@ export const DEVICE_TOPICS: GuideTopic[] = [
     title: "Assign devices to any entity",
     summary: "Tablets, ODS, kiosks, and printers are location assets. Suggested assignment is a default — not a locked role.",
     roles: ["owner_manager", "host_operator", "vendor_operator", "kitchen_bar"],
-    keywords: ["device", "tablet", "ods", "kiosk", "assignment", "claim code"],
+    keywords: ["device", "tablet", "ods", "kiosk", "assignment", "claim code", "delete", "deactivate", "unpair"],
     openView: "settings",
     blocks: [
       why(
@@ -264,6 +269,9 @@ export const DEVICE_TOPICS: GuideTopic[] = [
         "Type: tablet POS, order display, kiosk, printer, host stand, other.",
         "Suggested assignment: operator (host or a guest entity) + function (floor POS, bar POS, kitchen ODS, bar ODS, expo, kiosk, host stand, cashier).",
         "Paired Devices row: Role dropdown reassigns that tablet (Order / Host / ODS). Broken ODS → reassign a server tablet from Devices. Same pair; next PIN. Printers and drawer kick stay on the station type or named printer.",
+        "Deactivate: the named slot stays in the list. The tablet cannot PIN. The pair token is dead.",
+        "Unpair / Replace: keep the named slot if you still want that station. Unpair clears the tablet binding. Replace issues a new QR or code.",
+        "Delete: confirm “Delete this device. The tablet must scan a new code.” Removes the row, revokes the pair token, drops the snapshot binding, and kicks an online tablet back to Scan QR. Pending devices with a QR use that same one dialog. Location owner / manager / Admin only. Floor PINs cannot delete. After delete, Add device can reuse the same name and role.",
         "This station (header): switch Host stand, Server POS, Expo, Cashier, Busser, Kiosk, or Order Display. Multi-op houses pick Host / Operator A / Operator B.",
         "PIN still identifies the person. Station switch is what this screen is showing. Last station is remembered on this tablet.",
         "ODS only shows tickets for that station and entity unless the host grants a broader view_tickets.",
@@ -271,6 +279,7 @@ export const DEVICE_TOPICS: GuideTopic[] = [
       steps(
         "Dashboard → Devices (or Settings → Devices): Add a named slot — name, type, entity, function (server, host, kitchen ODS, bar ODS, split, cashier, expo, busser, kiosk).",
         "Show the 6-character code and QR on that slot. On Summex Station: first run, enter the code or scan the QR. Pairing stays on the tablet through app updates.",
+        "Lost tablet you still want as that station: Replace (new QR) or Unpair. To take it off the floor without losing the name: Deactivate. To remove the slot: Delete → confirm “Delete this device. The tablet must scan a new code.”",
         "Production staff stations are Android tablets running Summex Station. A Chrome “Pair this browser” path may exist for development — it is not a supported house setup.",
         "This station (header or PIN pad) switches function and entity. Last station is remembered on this device.",
         "Large displays: Layout → Split. Each pane has its own station + entity (typical: kitchen | bar ODS). 50/50 or 70/30. Tap a pane title to fullscreen.",

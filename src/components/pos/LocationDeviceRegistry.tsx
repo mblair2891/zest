@@ -7,6 +7,7 @@ import {
   changePairedDeviceRoleFn,
   claimLocationDeviceFn,
   deactivateLocationDeviceFn,
+  deleteLocationDeviceFn,
   listLocationDevicesFn,
   publishLocationFn,
   rotateDevicePairFn,
@@ -16,6 +17,7 @@ import {
 } from "@/lib/access/api";
 import { hashPin, isFourDigitPin } from "@/lib/pos/pin";
 import { getSessionContextFn } from "@/lib/saas/api";
+import { canDeleteVenueDevice } from "@/lib/saas/tenant-users";
 import {
   DEVICE_FUNCTION_LABEL,
   DEVICE_TYPE_LABEL,
@@ -45,8 +47,22 @@ import {
 import { dispatchPrintJob, testPrintJob } from "@/lib/print/dispatch";
 import { usePosStore } from "@/lib/pos/store";
 import { formatTime } from "@/lib/utils";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { GuideLearnLink } from "@/components/guide/GuideLearnLink";
-import { formatClaimExpiry, pairQrImageSrc, stationPairHref } from "@/lib/pos/station-pair";
+import {
+  ejectDeletedStationPair,
+  formatClaimExpiry,
+  pairQrImageSrc,
+  readStationPair,
+  stationPairHref,
+} from "@/lib/pos/station-pair";
 import {
   DEVICE_ROLE_LABEL,
   DEVICE_ROLES,
@@ -117,6 +133,8 @@ export function LocationDeviceRegistry({
   const [printStation, setPrintStation] = useState<PrintStation>("receipt");
   const [receiptPrinterId, setReceiptPrinterId] = useState<string>("");
   const [busy, setBusy] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState<LocationDevice | null>(null);
+  const [canDeleteDevice, setCanDeleteDevice] = useState(false);
   const [claimInput, setClaimInput] = useState("");
   const [servicePin, setServicePin] = useState("");
   const [servicePinMsg, setServicePinMsg] = useState<string | null>(null);
@@ -134,20 +152,38 @@ export function LocationDeviceRegistry({
   }, [orgId, locationId, locationName]);
 
   useEffect(() => {
-    if (orgId && locationId) return;
     let cancelled = false;
     void getSessionContextFn()
       .then((ctx) => {
         if (cancelled) return;
         const locs = ctx.locations.map((l) => ({ id: l.id, name: l.name, orgId: l.orgId }));
-        setSessionLocs(locs);
-        const loc =
-          locs.find((l) => l.id === ctx.active?.locationId) ?? locs[0];
-        if (!loc) return;
-        const org = ctx.orgs.find((o) => o.id === loc.orgId) ?? ctx.orgs[0];
-        setResolvedLocId(loc.id);
-        setResolvedName(loc.name);
-        setResolvedOrgId(org?.id || loc.orgId);
+        const picked =
+          locs.find((l) => l.id === locationId) ??
+          locs.find((l) => l.id === ctx.active?.locationId) ??
+          locs[0];
+        if (!orgId || !locationId) {
+          setSessionLocs(locs);
+          if (picked) {
+            const org = ctx.orgs.find((o) => o.id === picked.orgId) ?? ctx.orgs[0];
+            setResolvedLocId(picked.id);
+            setResolvedName(picked.name);
+            setResolvedOrgId(org?.id || picked.orgId);
+          }
+        }
+        const loc = ctx.locations.find((l) => l.id === (locationId || picked?.id));
+        const org = ctx.orgs.find((o) => o.id === (orgId || loc?.orgId));
+        const mem = ctx.memberships.find(
+          (m) =>
+            m.orgId === (orgId || loc?.orgId) &&
+            (!m.locationId || m.locationId === (locationId || loc?.id)),
+        );
+        setCanDeleteDevice(
+          canDeleteVenueDevice({
+            isPlatformAdmin: ctx.isPlatformAdmin,
+            membershipRole: loc?.role ?? org?.role ?? mem?.role,
+            operatorId: loc?.operatorId ?? mem?.operatorId,
+          }),
+        );
       })
       .catch(() => undefined);
     return () => {
@@ -366,6 +402,33 @@ export function LocationDeviceRegistry({
     }
   };
 
+  const removeDevice = async (d: LocationDevice) => {
+    setBusy(true);
+    setError(null);
+    try {
+      await deleteLocationDeviceFn({
+        data: { orgId: resolvedOrgId, locationId: resolvedLocId, deviceId: d.id },
+      });
+      setConfirmDelete(null);
+      const pair = readStationPair();
+      if (pair?.deviceId === d.id) {
+        ejectDeletedStationPair();
+        try {
+          usePosStore.getState().logout();
+        } catch {
+          /* */
+        }
+        window.location.replace("/station");
+        return;
+      }
+      await load();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Could not delete device");
+    } finally {
+      setBusy(false);
+    }
+  };
+
   const replaceDevice = async (d: LocationDevice) => {
     setBusy(true);
     setError(null);
@@ -449,7 +512,7 @@ export function LocationDeviceRegistry({
   const help =
     mode === "hardware"
       ? "Register Quantum readers and Star/Epson printers. Assign kitchen, bar, receipt, or expo. Test print from this list."
-      : "Add a device, pick a role, then show the one-time code or QR (venue + role). Codes expire — regenerate from the row. After pair, the house snapshot is pushed. Publish updates idle PIN pads / next PIN login.";
+      : "Add a device, pick a role, then show the one-time code or QR (venue + role). Codes expire — regenerate from the row. Deactivate keeps the named slot (cannot PIN; pair token dead). Unpair / Replace keep the name. Delete removes the slot — the tablet must scan a new code.";
   const addLabel = mode === "hardware" ? "Add terminal / printer" : "Add device";
   const pairedId = resolvedLocId ? readPairedDeviceId(resolvedLocId) : null;
   const thisBrowserId = resolvedLocId ? readOrCreateBrowserDeviceId(resolvedLocId) : "";
@@ -958,6 +1021,18 @@ export function LocationDeviceRegistry({
                 >
                   Deactivate
                 </Button>
+                {canDeleteDevice && (
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    className="text-danger"
+                    disabled={busy}
+                    data-demo="delete-device"
+                    onClick={() => setConfirmDelete(d)}
+                  >
+                    Delete
+                  </Button>
+                )}
               </div>
             </li>
           ))}
@@ -978,19 +1053,57 @@ export function LocationDeviceRegistry({
                 <p className="text-sm">
                   {d.label} · {DEVICE_TYPE_LABEL[d.type]}
                 </p>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  disabled={busy}
-                  onClick={() => void toggleActive(d)}
-                >
-                  Reactivate
-                </Button>
+                <div className="flex gap-2">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    disabled={busy}
+                    onClick={() => void toggleActive(d)}
+                  >
+                    Reactivate
+                  </Button>
+                  {canDeleteDevice && (
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      className="text-danger"
+                      disabled={busy}
+                      data-demo="delete-device"
+                      onClick={() => setConfirmDelete(d)}
+                    >
+                      Delete
+                    </Button>
+                  )}
+                </div>
               </li>
             ))}
           </ul>
         </div>
       )}
+
+      <Dialog open={Boolean(confirmDelete)} onOpenChange={(o) => !o && setConfirmDelete(null)}>
+        <DialogContent className="max-w-sm" showClose={false}>
+          <DialogHeader>
+            <DialogTitle>Delete this device?</DialogTitle>
+            <DialogDescription>
+              Delete this device. The tablet must scan a new code.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={() => setConfirmDelete(null)} disabled={busy}>
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              variant="destructive"
+              disabled={busy || !confirmDelete}
+              onClick={() => confirmDelete && void removeDevice(confirmDelete)}
+            >
+              {busy ? "Deleting…" : "Delete"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

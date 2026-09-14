@@ -1,6 +1,6 @@
 import { useEffect } from "react";
 import { getStationPublishFn } from "@/lib/access/api";
-import { readStationPair } from "@/lib/pos/station-pair";
+import { ejectDeletedStationPair, readStationPair } from "@/lib/pos/station-pair";
 import {
   applyPendingIfIdle,
   isMidTicket,
@@ -39,6 +39,16 @@ export function StationPublishWatcher() {
       })
         .then((res) => {
           if (cancelled) return;
+          if ("revoked" in res && res.revoked) {
+            ejectDeletedStationPair();
+            try {
+              usePosStore.getState().logout();
+            } catch {
+              /* */
+            }
+            window.location.replace("/station");
+            return;
+          }
           if (res.device) {
             ingestServerDeviceRole(res.device, {
               staffOpen: Boolean(usePosStore.getState().currentEmployeeId),

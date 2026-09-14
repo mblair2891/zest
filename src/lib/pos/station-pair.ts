@@ -92,6 +92,18 @@ export function clearStationPair(): void {
   }
 }
 
+/** Devices → Delete: drop local pair + snapshot so this tablet returns to Scan QR. */
+export function ejectDeletedStationPair(): void {
+  clearStationPair();
+  if (typeof window === "undefined") return;
+  try {
+    localStorage.removeItem("summex-station-publish-state-v1");
+    localStorage.removeItem("summex-station-role-state-v1");
+  } catch {
+    /* ignore */
+  }
+}
+
 /** Pairing must survive APK updates and demo reset. Never bulk-delete this key. */
 export function isDurableStationStorageKey(key: string): boolean {
   return (

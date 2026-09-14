@@ -3,7 +3,7 @@
 **Powered by Quantum Reach**
 
 White paper · for owners and operators  
-**Revision · 14 Sep 2026** — Written for prospective subscribers. Aligns with Operators Guide v2026.10.85. Station UI is device role ∩ staff PIN. A kitchen PIN does not open order entry. Peer venues have no host merchant; the host stand is still a device role. Staff stations are Android tablets. Guests look up gift balance at summex.app/gift. Spent plastic can be reused.
+**Revision · 14 Sep 2026** — Written for prospective subscribers. Aligns with Operators Guide v2026.10.88. Station UI is device role ∩ staff PIN. A kitchen PIN does not open order entry. Peer venues have no host merchant; the host stand is still a device role. Staff stations are Android tablets. Devices Delete removes a named slot; Deactivate keeps it. Guests look up gift balance at summex.app/gift. Spent plastic can be reused.
 
 summex.app  
 Guest cards: **Quantum Payments** only
@@ -122,7 +122,7 @@ When the house is ready for more than service:
 3. The tablet pairs, then opens on the PIN pad — except a kiosk, which is guest UI with no staff PIN.
 4. **Publish changes** pushes menu, floor, printers, and QR. Staff keep the last publish until they switch user. Never mid-check.
 
-The paired role is the envelope. Staff PIN is which of those actions this person may use. Station UI is that intersection. A kitchen PIN on an order tablet stays on the clock sheet — use the kitchen display. The host stand is floor + waitlist/seat; New to-go is an action on that glass, not the only home. A shared venue has no host merchant; it still has a host stand. A broken kitchen display is a role change on that tablet from Devices — same pair, staff PIN in again. Do not reinstall.
+The paired role is the envelope. Staff PIN is which of those actions this person may use. Station UI is that intersection. A kitchen PIN on an order tablet stays on the clock sheet — use the kitchen display. The host stand is floor + waitlist/seat; New to-go is an action on that glass, not the only home. A shared venue has no host merchant; it still has a host stand. A broken kitchen display is a role change on that tablet from Devices — same pair, staff PIN in again. Do not reinstall. Deactivate keeps a named slot (cannot PIN). Unpair or Replace keep the name when you swap hardware. Delete removes the slot — the tablet must scan a new code.
 
 Printers live on the house network (Ethernet), not the printer’s own Wi‑Fi. Receipts thermal; kitchen impact; drawer kick on the receipt printer.
 

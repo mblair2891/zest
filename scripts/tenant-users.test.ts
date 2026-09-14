@@ -130,6 +130,7 @@ test("venue admin can view floor PINs; kitchen/server/bartender cannot", () => {
   assert.equal(canManageVenueUsers({ membershipRole: "owner" }), true);
   assert.equal(canManageVenueUsers({ membershipRole: "manager" }), true);
   assert.equal(canManageVenueUsers({ isPlatformAdmin: true }), true);
+  assert.equal(canManageVenueUsers({ membershipRole: "owner", operatorId: "host" }), true);
   assert.equal(canManageVenueUsers({ membershipRole: "owner", operatorId: "op_bar" }), false);
   assert.equal(canManageVenueUsers({ membershipRole: "vendor" }), false);
   assert.equal(formatFloorPinForAdmin("2222", false), "2222");
