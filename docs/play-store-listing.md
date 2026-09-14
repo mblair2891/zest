@@ -36,7 +36,7 @@ Business
 
 ## Screenshots needed
 
-1. Pair screen (Scan QR | Enter code)  
+1. Pair screen (type Devices code)  
 2. PIN pad  
 3. Order / floor  
 4. Kitchen Order Display  

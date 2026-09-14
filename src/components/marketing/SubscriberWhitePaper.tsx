@@ -24,10 +24,10 @@ export function SubscriberWhitePaper() {
         summex.app · Guest cards: {PAYMENTS_BRAND} only
       </p>
       <p className="mt-2 text-xs text-muted-foreground">
-        Revision · 14 Sep 2026 — Aligns with Operators Guide v2026.10.85.
-        Station UI is device role ∩ staff PIN. Peer venues have no host
-        merchant; the host stand is still a device role. Gift lookup at
-        summex.app/gift.
+        Revision · 14 Sep 2026 — Aligns with Operators Guide v2026.10.89.
+        Station UI is device role ∩ staff PIN. Pair with a typed Devices code;
+        QR is optional. Peer venues have no host merchant; the host stand is
+        still a device role. Gift lookup at summex.app/gift.
       </p>
       <p className="mt-6 text-sm leading-relaxed text-muted-foreground">
         For the owner considering Summex — a single shop, a full dining room, or a
@@ -254,7 +254,7 @@ export function SubscriberWhitePaper() {
       <Section n="8" title="Devices">
         <ol className="list-decimal space-y-2 pl-5">
           <li>Install Summex Station on an Android tablet (sideload now; Play later).</li>
-          <li>The owner adds a device (name and role) and shows a one-time code or QR.</li>
+          <li>The owner adds a device (name and role) and shows a one-time code (QR optional).</li>
           <li>The tablet pairs, then opens on the PIN pad — except a kiosk, which is guest UI with no staff PIN.</li>
           <li>
             Publish changes pushes menu, floor, printers, and QR. Never mid-check.

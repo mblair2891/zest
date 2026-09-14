@@ -5,6 +5,9 @@
 
 export const PAIR_TTL_MS = 24 * 60 * 60 * 1000;
 
+/** Bad or expired pair code. Owner regenerates on Devices. */
+export const STATION_PAIR_INVALID = "Code invalid or expired. Regenerate on Devices.";
+
 export type PairDeviceRole = "order" | "ods" | "host" | "kiosk";
 
 export type StationPairPayload = {

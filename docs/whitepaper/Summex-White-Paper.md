@@ -3,7 +3,7 @@
 **Powered by Quantum Reach**
 
 White paper · for owners and operators  
-**Revision · 14 Sep 2026** — Written for prospective subscribers. Aligns with Operators Guide v2026.10.88. Station UI is device role ∩ staff PIN. A kitchen PIN does not open order entry. Peer venues have no host merchant; the host stand is still a device role. Staff stations are Android tablets. Devices Delete removes a named slot; Deactivate keeps it. Guests look up gift balance at summex.app/gift. Spent plastic can be reused.
+**Revision · 14 Sep 2026** — Written for prospective subscribers. Aligns with Operators Guide v2026.10.89. Station UI is device role ∩ staff PIN. A kitchen PIN does not open order entry. Peer venues have no host merchant; the host stand is still a device role. Staff stations are Android tablets. Pair with a typed Devices code; QR is optional. Devices Delete removes a named slot; Deactivate keeps it. Guests look up gift balance at summex.app/gift. Spent plastic can be reused.
 
 summex.app  
 Guest cards: **Quantum Payments** only
@@ -59,7 +59,7 @@ The guest never sees operator splits, device roles, or how the house is paid.
 
 ## 4. Floor and staff
 
-The tablet is a screen. Station UI is **device role ∩ staff PIN**. The device is the envelope; the PIN is which of those actions this person may use. Never the same home for every PIN. Staff tablets run one app — **Summex Station**. First open scans the Devices QR or enters a one-time code. After that, power on is the PIN pad for that house and role — except a kiosk, which is guest UI with no staff PIN. Guest QR stays on the guest’s phone.
+The tablet is a screen. Station UI is **device role ∩ staff PIN**. The device is the envelope; the PIN is which of those actions this person may use. Never the same home for every PIN. Staff tablets run one app — **Summex Station**. First open: type the one-time Devices code and submit (no scan required). After that, power on is the PIN pad for that house and role — except a kiosk, which is guest UI with no staff PIN. Guest QR stays on the guest’s phone.
 
 | Station | What it is |
 |---|---|
@@ -118,7 +118,7 @@ When the house is ready for more than service:
 ## 8. Devices
 
 1. Install **Summex Station** on an Android tablet (sideload now; Play later).
-2. The owner adds a device (name and role) and shows a one-time code or QR.
+2. The owner adds a device (name and role) and shows a one-time code (QR optional).
 3. The tablet pairs, then opens on the PIN pad — except a kiosk, which is guest UI with no staff PIN.
 4. **Publish changes** pushes menu, floor, printers, and QR. Staff keep the last publish until they switch user. Never mid-check.
 

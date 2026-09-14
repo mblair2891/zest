@@ -59,9 +59,9 @@ import { GuideLearnLink } from "@/components/guide/GuideLearnLink";
 import {
   ejectDeletedStationPair,
   formatClaimExpiry,
+  normalizeClaimCode,
   pairQrImageSrc,
   readStationPair,
-  stationPairHref,
 } from "@/lib/pos/station-pair";
 import {
   DEVICE_ROLE_LABEL,
@@ -94,6 +94,48 @@ function functionOptions(mode: Mode): DeviceFunction[] {
 function inMode(d: LocationDevice, mode: Mode): boolean {
   const types = typeOptions(mode);
   return types.includes(d.type);
+}
+
+function DevicePairCode({
+  code,
+  expiresAt,
+  locId,
+  role,
+}: {
+  code: string;
+  expiresAt?: number;
+  locId: string;
+  role: DeviceRole;
+}) {
+  const [qrOpen, setQrOpen] = useState(false);
+  return (
+    <div className="mt-2">
+      <p className="font-mono text-3xl font-semibold tracking-[0.28em] text-foreground">
+        {code}
+      </p>
+      <p className="mt-0.5 text-[11px] text-muted-foreground">
+        One-time
+        {expiresAt ? ` · ${formatClaimExpiry(expiresAt)}` : ""}
+        {" · type this on the tablet"}
+      </p>
+      <button
+        type="button"
+        className="mt-1 text-[11px] text-muted-foreground underline-offset-2 hover:underline"
+        onClick={() => setQrOpen((v) => !v)}
+      >
+        {qrOpen ? "Hide QR" : "Show QR"}
+      </button>
+      {qrOpen ? (
+        <img
+          src={pairQrImageSrc(code, undefined, { venue: locId, role })}
+          alt={`Pair QR ${code}`}
+          width={144}
+          height={144}
+          className="mt-2 h-36 w-36 rounded-md border border-border bg-white p-1"
+        />
+      ) : null}
+    </div>
+  );
 }
 
 export function LocationDeviceRegistry({
@@ -512,7 +554,7 @@ export function LocationDeviceRegistry({
   const help =
     mode === "hardware"
       ? "Register Quantum readers and Star/Epson printers. Assign kitchen, bar, receipt, or expo. Test print from this list."
-      : "Add a device, pick a role, then show the one-time code or QR (venue + role). Codes expire — regenerate from the row. Deactivate keeps the named slot (cannot PIN; pair token dead). Unpair / Replace keep the name. Delete removes the slot — the tablet must scan a new code.";
+      : "Add a device, pick a role, then read the one-time code. Type it on the tablet (spaces and case do not matter). QR is optional — Show QR on the row. Codes expire — regenerate from the row. Claim this browser / Pair this browser are for laptop tests. Deactivate keeps the named slot. Delete removes it.";
   const addLabel = mode === "hardware" ? "Add terminal / printer" : "Add device";
   const pairedId = resolvedLocId ? readPairedDeviceId(resolvedLocId) : null;
   const thisBrowserId = resolvedLocId ? readOrCreateBrowserDeviceId(resolvedLocId) : "";
@@ -623,7 +665,7 @@ export function LocationDeviceRegistry({
               className="mt-1"
               placeholder="Claim code on the slot"
               value={claimInput}
-              onChange={(e) => setClaimInput(e.target.value.toUpperCase())}
+              onChange={(e) => setClaimInput(normalizeClaimCode(e.target.value))}
             />
           </label>
           <Button size="sm" disabled={busy || !claimInput.trim()} onClick={() => void claimSlot()}>
@@ -869,18 +911,6 @@ export function LocationDeviceRegistry({
               className="flex flex-wrap items-center justify-between gap-2 rounded-2xl border border-border bg-surface px-4 py-3"
             >
               <div className="flex min-w-0 items-start gap-3">
-                {mode === "stations" && d.claimCode && d.status !== "online" ? (
-                  <img
-                    src={pairQrImageSrc(d.claimCode, undefined, {
-                      venue: resolvedLocId,
-                      role: deviceRoleFromFunction(d.assignment.function),
-                    })}
-                    alt={`Pair QR ${d.claimCode}`}
-                    width={72}
-                    height={72}
-                    className="h-[72px] w-[72px] shrink-0 rounded-md border border-border bg-white p-1"
-                  />
-                ) : null}
                 <div className="min-w-0">
                 <p className="font-medium">
                   {d.label}
@@ -895,18 +925,12 @@ export function LocationDeviceRegistry({
                     : `${DEVICE_FUNCTION_LABEL[d.assignment.function]} · ${DEVICE_ROLE_LABEL[deviceRoleFromFunction(d.assignment.function)]}`}
                 </p>
                 {mode === "stations" && d.claimCode && d.status !== "online" ? (
-                  <p className="mt-1 font-mono text-sm tracking-[0.2em] text-foreground">
-                    {d.claimCode}
-                    <span className="ml-2 font-sans text-[11px] tracking-normal text-muted-foreground">
-                      One-time
-                      {d.claimExpiresAt ? ` · ${formatClaimExpiry(d.claimExpiresAt)}` : ""}
-                      {" · "}
-                      {stationPairHref(d.claimCode, undefined, {
-                        venue: resolvedLocId,
-                        role: deviceRoleFromFunction(d.assignment.function),
-                      }).replace(/^https?:\/\//, "")}
-                    </span>
-                  </p>
+                  <DevicePairCode
+                    code={d.claimCode}
+                    expiresAt={d.claimExpiresAt}
+                    locId={resolvedLocId}
+                    role={deviceRoleFromFunction(d.assignment.function)}
+                  />
                 ) : mode === "stations" && d.status === "online" ? (
                   <p className="mt-1 text-[11px] text-muted-foreground">Paired · PIN only</p>
                 ) : null}

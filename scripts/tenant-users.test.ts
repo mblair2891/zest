@@ -151,6 +151,7 @@ test("Devices tab still Add device with QR/code; Users does not pair", () => {
   const devices = readFileSync("src/components/pos/LocationDeviceRegistry.tsx", "utf8");
   assert.match(devices, /Add device/);
   assert.match(devices, /pairQrImageSrc/);
+  assert.match(devices, /Show QR/);
   const panel = readFileSync("src/components/platform/TenantUsersPanel.tsx", "utf8");
   assert.doesNotMatch(panel, /Scan QR/);
   assert.doesNotMatch(panel, /pairQrImageSrc/);

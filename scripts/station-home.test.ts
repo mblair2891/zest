@@ -162,7 +162,7 @@ test("paired order glass is not a hard-coded To-go | Bar tab POS", () => {
   assert.match(order, /station-home-queue/);
   assert.match(order, /homeSurface === "floor"/);
   const pair = readFileSync("src/components/pos/StationPairScreen.tsx", "utf8");
-  assert.match(pair, /Scan QR/);
+  assert.match(pair, /placeholder="K7VY5R"/);
   assert.doesNotMatch(pair, /To-go order/);
   assert.doesNotMatch(pair, /Bar tab/);
 });

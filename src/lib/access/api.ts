@@ -23,7 +23,11 @@ import {
   type LocationDevice,
   type LocationDeviceType,
 } from "@/lib/pos/location-devices";
-import { claimExpired, nextClaimExpiry } from "@/lib/pos/station-pair-payload";
+import {
+  STATION_PAIR_INVALID,
+  claimExpired,
+  nextClaimExpiry,
+} from "@/lib/pos/station-pair-payload";
 
 function mintClaim(): { claimCode: string; claimExpiresAt: number } {
   return { claimCode: makeClaimCode(), claimExpiresAt: nextClaimExpiry() };
@@ -657,7 +661,7 @@ export const claimLocationDeviceFn = createServerFn({ method: "POST" })
     } catch {
       /* table may be empty */
     }
-    if (!row || row.status === "inactive") throw new Error("No slot for that claim code");
+    if (!row || row.status === "inactive") throw new Error(STATION_PAIR_INVALID);
     const serial = data.browserDeviceId || row.serial;
     const next: LocationDevice = {
       ...row,
@@ -818,9 +822,9 @@ export const pairStationFn = createServerFn({ method: "POST" })
       }
     }
 
-    if (!hit) throw new Error("No station slot for that code. Check Devices.");
+    if (!hit) throw new Error(STATION_PAIR_INVALID);
     if (claimExpired(expiryMs(hit.claim_expires_at))) {
-      throw new Error("That code expired. Ask the owner to regenerate it on Devices.");
+      throw new Error(STATION_PAIR_INVALID);
     }
 
     const device = mapDeviceRow({
@@ -835,7 +839,7 @@ export const pairStationFn = createServerFn({ method: "POST" })
       assigned_function: hit.assigned_function,
       last_seen_at: hit.last_seen_at,
     });
-    if (!device) throw new Error("No station slot for that code. Check Devices.");
+    if (!device) throw new Error(STATION_PAIR_INVALID);
 
     try {
       await sql`

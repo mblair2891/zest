@@ -6,6 +6,19 @@ import type { GuideUpdate } from "@/lib/guide/types";
  */
 export const WHATS_NEW_ENTRIES: GuideUpdate[] = [
   {
+    id: "upd_2026_10_89_pair_code",
+    date: "2026-09-14",
+    title: "Pair a station with a typed code",
+    summary:
+      "The tablet first screen is a pair-code field and submit. No scan required. Devices shows the code large; QR is Show QR, collapsed by default.",
+    body: "Owner: Devices → Add device. Read the large one-time code (for example K7VY5R). On the tablet, type it and Pair. Case and spaces do not matter. A bad or expired code says “Code invalid or expired. Regenerate on Devices.” After a valid code, the PIN pad. Claim this browser / Pair this browser stay for laptop tests. QR is optional.",
+    roles: ["owner_manager", "host_operator", "platform_admin", "server", "kitchen_bar"],
+    surfaces: ["floor", "settings"],
+    audience: "all",
+    topicId: "android-kiosk",
+    tags: ["devices", "pair", "station"],
+  },
+  {
     id: "upd_2026_10_88_device_delete",
     date: "2026-09-14",
     title: "Devices — Delete a station slot",

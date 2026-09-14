@@ -14,6 +14,7 @@ import {
 
 export {
   PAIR_TTL_MS,
+  STATION_PAIR_INVALID,
   claimExpired,
   formatClaimExpiry,
   nextClaimExpiry,
@@ -92,7 +93,7 @@ export function clearStationPair(): void {
   }
 }
 
-/** Devices → Delete: drop local pair + snapshot so this tablet returns to Scan QR. */
+/** Devices → Delete: drop local pair + snapshot so this tablet returns to the pair code field. */
 export function ejectDeletedStationPair(): void {
   clearStationPair();
   if (typeof window === "undefined") return;

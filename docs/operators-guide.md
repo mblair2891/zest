@@ -1,7 +1,7 @@
 # Operators Guide — authoring
 
-**Revision · 14 Sep 2026** — Devices Delete removes the slot; Deactivate keeps it.
-Guide v2026.10.88.
+**Revision · 14 Sep 2026** — Pair stations with a typed code; QR optional.
+Guide v2026.10.89.
 
 The in-app **Operators Guide** is the living product manual. It is not a
 separate PDF. Staff open it from **Guide** / **?** in the POS and platform
@@ -64,7 +64,7 @@ accurate when the job path changes.
 10. Settlement & multi-operator splits / chargeback fee split
 11. Reports & AI insights (recommendations, human confirm). Scheduled AI ops jobs: hourly / nightly / weekly / pay period / monthly. Missing xAI key queues skipped — never invented insights. Never auto clock-out. Never invent Finix/Visa charges.
 12. Training vs Go live
-13. **Stations and PINs** — station UI is **device role ∩ staff PIN**. Order / ODS / host / kiosk is the hardware envelope. The PIN picks which of those actions this person may use. Full-service order + server/host/manager → floor first (to-go and bar tab are actions). Host + host/manager → floor + waitlist with New to-go. ODS → Start/Bump only (a manager PIN does not gain order-entry). Kitchen PIN on order/host → clock sheet, not the two-button POS. Settings: Servers may use the host stand; Host may open bar tabs; Bar tabs on order devices. Peer venues still have a host ROLE (the stand) with no host merchant. Clock in/out is a separate control and does not open order entry. Unpaired = pair/scan only. Password login is back office. PIN is station-only. **Devices:** Deactivate keeps the named slot (cannot PIN; pair token dead). Unpair / Replace keep the name if you still want that station. Delete removes the slot — confirm “Delete this device. The tablet must scan a new code.” An online tablet returns to Scan QR. Location owner / manager / Admin only. Floor PINs cannot delete. After delete, Add device can reuse the same name and role.
+13. **Stations and PINs** — station UI is **device role ∩ staff PIN**. Order / ODS / host / kiosk is the hardware envelope. The PIN picks which of those actions this person may use. Full-service order + server/host/manager → floor first (to-go and bar tab are actions). Host + host/manager → floor + waitlist with New to-go. ODS → Start/Bump only (a manager PIN does not gain order-entry). Kitchen PIN on order/host → clock sheet, not the two-button POS. Settings: Servers may use the host stand; Host may open bar tabs; Bar tabs on order devices. Peer venues still have a host ROLE (the stand) with no host merchant. Clock in/out is a separate control and does not open order entry. Unpaired = type the Devices pair code and submit (no scan required). Password login is back office. PIN is station-only. **Devices:** Deactivate keeps the named slot (cannot PIN; pair token dead). Unpair / Replace keep the name if you still want that station. Delete removes the slot — confirm “Delete this device. The tablet must scan a new code.” An online tablet returns to Scan QR. Location owner / manager / Admin only. Floor PINs cannot delete. After delete, Add device can reuse the same name and role.
 14. Printers: Ethernet on the AP LAN (not printer Wi‑Fi). Thermal receipts (Epson TM-T20). Impact kitchen (Epson TM-U220). Drawer kick on the receipt printer.
 15. Offline / hybrid
 16. Cash: single/shared drawer, server bank, multi-well (one drawer per well), host to-go drawer, **till-to-till transfer** (request from another open till; cash moves on accept; no manager required), **blind till close** (count first; expected hidden until submit; turn-in slip prints after submit for the drop bag — not a fill-in form; no force-balance). Closeout ≠ clock-out ≠ PIN.

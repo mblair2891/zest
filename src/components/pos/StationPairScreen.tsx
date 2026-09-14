@@ -5,6 +5,7 @@ import { SummexMark } from "@/components/brand/SummexMark";
 import { pairStationFn } from "@/lib/access/api";
 import { readOrCreateBrowserDeviceId } from "@/lib/pos/location-devices";
 import {
+  STATION_PAIR_INVALID,
   normalizeClaimCode,
   parsePairScan,
   writeStationPair,
@@ -47,9 +48,7 @@ export function StationPairScreen({
   initialCode?: string;
   onPaired: (row: StationPairRecord) => void;
 }) {
-  const [mode, setMode] = useState<"choose" | "code" | "scan">(
-    initialCode ? "code" : "choose",
-  );
+  const [scanOpen, setScanOpen] = useState(false);
   const [code, setCode] = useState(() => normalizeClaimCode(initialCode));
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -96,7 +95,12 @@ export function StationPairScreen({
       requestKioskLock();
       onPaired(res.pair);
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Could not pair this tablet.");
+      const msg = e instanceof Error ? e.message : "";
+      setError(
+        /expired|invalid|no station slot|no slot/i.test(msg)
+          ? STATION_PAIR_INVALID
+          : msg || "Could not pair this tablet.",
+      );
     } finally {
       setBusy(false);
     }
@@ -120,72 +124,56 @@ export function StationPairScreen({
       </p>
       <h1 className="mt-3 text-xl font-semibold tracking-tight">Pair this tablet</h1>
       <p className="mt-2 max-w-sm text-sm text-muted-foreground">
-        Scan the QR or enter the one-time code from Devices. After pair, this screen is PIN
-        only. Guest QR stays in the phone browser.
+        Type the one-time code from Devices (for example K7VY5R). No scan required. After
+        pair, this screen is PIN only.
       </p>
 
-      {mode === "choose" && (
-        <div className="mt-6 flex w-full max-w-sm flex-col gap-3">
-          <Button
-            type="button"
-            className="h-12 w-full"
-            onClick={() => {
-              setError(null);
-              setMode("scan");
-            }}
-          >
-            Scan QR
-          </Button>
-          <Button
-            type="button"
-            variant="outline"
-            className="h-12 w-full"
-            onClick={() => {
-              setError(null);
-              setMode("code");
-            }}
-          >
-            Enter code
-          </Button>
-        </div>
-      )}
+      <form
+        className="mt-6 w-full max-w-sm space-y-3"
+        onSubmit={(e) => {
+          e.preventDefault();
+          void submit(code);
+        }}
+      >
+        <Input
+          autoFocus
+          autoCapitalize="characters"
+          autoCorrect="off"
+          spellCheck={false}
+          inputMode="text"
+          enterKeyHint="go"
+          placeholder="K7VY5R"
+          aria-label="Venue pair code"
+          value={code}
+          onChange={(e) => setCode(normalizeClaimCode(e.target.value))}
+          className="h-14 text-center font-mono text-2xl tracking-[0.35em]"
+        />
+        {error && !scanOpen && <p className="text-sm text-danger">{error}</p>}
+        <Button type="submit" className="h-12 w-full" disabled={busy || code.length < 4}>
+          {busy ? "Pairing…" : "Pair"}
+        </Button>
+      </form>
 
-      {mode === "code" && (
-        <form
-          className="mt-6 w-full max-w-sm space-y-3"
-          onSubmit={(e) => {
-            e.preventDefault();
-            void submit(code);
+      {!scanOpen ? (
+        <Button
+          type="button"
+          variant="ghost"
+          className="mt-3 text-xs text-muted-foreground"
+          onClick={() => {
+            setError(null);
+            setScanOpen(true);
           }}
         >
-          <Input
-            autoFocus
-            autoCapitalize="characters"
-            autoCorrect="off"
-            spellCheck={false}
-            placeholder="Venue code"
-            value={code}
-            onChange={(e) => setCode(normalizeClaimCode(e.target.value))}
-            className="h-12 text-center font-mono text-lg tracking-[0.3em]"
-          />
-          {error && <p className="text-sm text-danger">{error}</p>}
-          <Button type="submit" className="h-12 w-full" disabled={busy || code.length < 4}>
-            {busy ? "Pairing…" : "Pair"}
-          </Button>
-          <Button type="button" variant="ghost" className="w-full" onClick={() => setMode("choose")}>
-            Back
-          </Button>
-        </form>
-      )}
-
-      {mode === "scan" && (
+          Scan QR (optional)
+        </Button>
+      ) : (
         <QrScanPanel
           busy={busy}
           error={error}
           onRaw={(raw) => void submit(raw)}
           onBack={() => {
             setError(null);
-            setMode("choose");
+            setScanOpen(false);
           }}
         />
       )}

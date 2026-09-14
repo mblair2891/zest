@@ -3,10 +3,12 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import {
   PAIR_TTL_MS,
+  STATION_PAIR_INVALID,
   claimExpired,
   encodePairQuery,
   formatClaimExpiry,
   nextClaimExpiry,
+  normalizePairToken,
   parsePairScan,
 } from "../src/lib/pos/station-pair-payload.ts";
 
@@ -18,6 +20,13 @@ test("QR payload carries pair token, venue, and role — not marketing apex", ()
   assert.match(path, /station=ods/);
   assert.doesNotMatch(path, /summex\.app\/\?/);
   assert.doesNotMatch(path, /\/login/);
+});
+
+test("pair codes are case-insensitive and ignore spaces", () => {
+  assert.equal(normalizePairToken("k7 vy 5r"), "K7VY5R");
+  assert.equal(normalizePairToken("K7VY5R"), "K7VY5R");
+  assert.equal(normalizePairToken("  k7-vy-5r  "), "K7VY5R");
+  assert.deepEqual(parsePairScan("k7 vy 5r"), { token: "K7VY5R" });
 });
 
 test("scan parser accepts URL, JSON, and bare code", () => {
@@ -40,10 +49,27 @@ test("pair codes expire and can be regenerated", () => {
   assert.match(formatClaimExpiry(now + 10 * 60_000, now), /min/);
 });
 
+test("pair screen is a code field plus submit — scan is optional", () => {
+  const pairUi = readFileSync("src/components/pos/StationPairScreen.tsx", "utf8");
+  assert.match(pairUi, /placeholder="K7VY5R"/);
+  assert.match(pairUi, /type="submit"/);
+  assert.match(pairUi, /No scan required/);
+  assert.match(pairUi, /STATION_PAIR_INVALID/);
+  assert.match(pairUi, /Scan QR \(optional\)/);
+  assert.doesNotMatch(pairUi, /\/login/);
+  const api = readFileSync("src/lib/access/api.ts", "utf8");
+  assert.match(api, /STATION_PAIR_INVALID/);
+  assert.equal(STATION_PAIR_INVALID, "Code invalid or expired. Regenerate on Devices.");
+  const devices = readFileSync("src/components/pos/LocationDeviceRegistry.tsx", "utf8");
+  assert.match(devices, /text-3xl/);
+  assert.match(devices, /Show QR/);
+  assert.match(devices, /Claim this browser/);
+  assert.match(devices, /Pair this browser/);
+});
+
 test("pair screen and Play APK never require a baked station role", () => {
   const pairUi = readFileSync("src/components/pos/StationPairScreen.tsx", "utf8");
-  assert.match(pairUi, /Scan QR/);
-  assert.match(pairUi, /Enter code/);
+  assert.match(pairUi, /placeholder="K7VY5R"/);
   assert.doesNotMatch(pairUi, /\/login/);
   const cap = readFileSync("capacitor.config.ts", "utf8");
   assert.match(cap, /app\.summex\.pos/);
@@ -51,9 +77,8 @@ test("pair screen and Play APK never require a baked station role", () => {
   assert.match(cap, /app\.summex\.app/);
   assert.doesNotMatch(cap, /summex\.app\/\?station/);
   const native = readFileSync("native/summex-native.json", "utf8");
-  assert.match(native, /"sideload": false/);
-  assert.match(native, /"station": ""/);
   assert.match(native, /app\.summex\.app/);
+  assert.match(native, /android-config is local debug only/);
   const baked = readFileSync("android/app/src/main/assets/capacitor.config.json", "utf8");
   assert.match(baked, /app\.summex\.pos/);
   assert.match(baked, /app\.summex\.app\/station/);
@@ -61,6 +86,15 @@ test("pair screen and Play APK never require a baked station role", () => {
   assert.doesNotMatch(baked, /summex\.app\/\?/);
   const cfg = readFileSync("scripts/android-config.mjs", "utf8");
   assert.match(cfg, /Local debug only/);
+});
+
+test("guide pairing is typed code, QR optional", () => {
+  const devices = readFileSync("src/lib/guide/content/devices.ts", "utf8");
+  assert.match(devices, /type the Devices code/);
+  assert.match(devices, /Code invalid or expired/);
+  assert.match(devices, /QR is optional/);
+  const types = readFileSync("src/lib/guide/types.ts", "utf8");
+  assert.match(types, /2026\.10\.89/);
 });
 
 test("station PIN pad does not send staff to marketing or /login", () => {

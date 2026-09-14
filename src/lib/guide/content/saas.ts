@@ -107,7 +107,7 @@ export const SAAS_TOPICS: GuideTopic[] = [
       ul(
         "Venue (building wrapper): name, address, timezone, floorplan, sections, devices, printers, QR policy, cash-discount rounding, waitlist/kiosk, shared check, billing contact, subscription. hostEntityId is null. No Finix identity. No menu. No house sales.",
         "Entity (selling operator): legal/KYC, Finix merchant, payout, menu, recipes, modifiers, inventory, staff, schedule, tip/closeout, owned-lines P&L.",
-        "Device belongs to the venue. Role: order, ODS, host, or kiosk. Pair from Devices by QR or short code. Role can change after activate. Deactivate keeps the named slot. Delete removes it (the tablet must scan a new code).",
+        "Device belongs to the venue. Role: order, ODS, host, or kiosk. Pair from Devices by typing the one-time code (QR optional). Role can change after activate. Deactivate keeps the named slot. Delete removes it (the tablet must type a new code).",
         "Line on a check requires an entity. Settlement, labor, gift redeem, and chargebacks use owned lines only.",
         "Single-operator shop uses the same screens with entity count = 1.",
         "Billing contact is not a merchant. Password login never hits the staff PIN pad.",

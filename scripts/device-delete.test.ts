@@ -90,6 +90,4 @@ test("guide Devices covers Delete vs Deactivate vs Unpair", () => {
   assert.match(devices, /Deactivate keeps the named slot/);
   assert.match(devices, /Floor PINs cannot delete/);
   assert.match(devices, /Add device can reuse the same name and role/);
-  const types = readFileSync("src/lib/guide/types.ts", "utf8");
-  assert.match(types, /2026\.10\.88/);
 });
