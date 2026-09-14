@@ -14,13 +14,15 @@ export const KIOSK_WAITLIST_TOPICS: GuideTopic[] = [
         "A kiosk is for the guest, not the PIN session. Chrome stays quiet. Buttons stay large.",
       ),
       ul(
-        "Open /kiosk (optional ?loc= for a location).",
+        "Pair the tablet as Kiosk from Devices, or open /kiosk (optional ?loc= for a location).",
+        "A paired kiosk skips the staff PIN pad. Guest waitlist / QR / pay only.",
+        "Staff PINs do not operate kiosk. Manager, supervisor, or the Devices service PIN may reload or exit lock-task.",
         "Modes in Settings: Order · Check-in / waitlist · Combined tabs.",
         "Combined home: Order | Check in | Waitlist.",
       ),
       steps(
         "Set kiosk mode and waitlist on Settings or Host stand.",
-        "Point the kiosk device at /kiosk.",
+        "Add a Kiosk device in Devices and pair the tablet, or point it at /kiosk.",
         "Staff keep POS open for Host stand, tickets, and notifications.",
       ),
       callout(

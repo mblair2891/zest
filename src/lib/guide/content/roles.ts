@@ -110,7 +110,7 @@ export const ROLE_GUIDE_TOPICS: GuideTopic[] = [
         "Peer venue: you can sell both brands on one check. You cannot edit the other entity’s menu or schedule.",
       ),
       steps(
-        "PIN in on an order or host station. Home is the device’s glass (floor on full service, queue on counter) — not a list of every module. On an 8\" handheld the menu is full width; tap Check for the slide-over.",
+        "PIN in on an order station. Full-service home is the floor — to-go and bar tab are actions, not the home. Counter is the ticket queue. On an 8\" handheld the menu is full width; tap Check for the slide-over.",
         "Open a table in your section. Add food and drink to one check. Send.",
         "Bar tab opens your assigned section stools — tap a stool. To-go does not use the floor.",
         "Pay when the house allows. Close your own till at end of shift.",
@@ -203,7 +203,7 @@ export const ROLE_GUIDE_TOPICS: GuideTopic[] = [
     blocks: [
       why("A busser turns tables. They do not ring or tender."),
       ul(
-        "After PIN: mark tables dirty then clean.",
+        "After PIN: mark tables dirty then clean when the venue allows that floor status.",
         "No orders, no payments, no ODS, no Devices.",
       ),
       steps(

@@ -46,6 +46,7 @@ import { heartbeatLocationDeviceFn, getPairedStationFn, pairStationFn } from "@/
 import { readStationPair } from "@/lib/pos/station-pair";
 import { applyStationPublish, parseStationPublish } from "@/lib/pos/station-publish";
 import { StationPublishWatcher } from "@/components/pos/StationPublishWatcher";
+import { KioskApp } from "@/components/kiosk/KioskApp";
 
 import { SESSION_MODES, type SessionModeId } from "@/lib/lifecycle/types";
 import {
@@ -673,6 +674,9 @@ function PosAppInner({ entityId }: { entityId?: string }) {
 
   if (entityId && isVenueEntityId(entityId)) {
     const stationPad = isStationPinPath() || isNativeApp();
+    if (readStationDeviceRole() === "kiosk") {
+      return <KioskApp />;
+    }
     if (!stationPad && user) {
       if (currentEmployeeId) return <AppShell />;
       return (
@@ -688,6 +692,9 @@ function PosAppInner({ entityId }: { entityId?: string }) {
   }
 
   if (!user && (isStationPinPath() || isNativeApp())) {
+    if (readStationDeviceRole() === "kiosk") {
+      return <KioskApp />;
+    }
     const fallbackEntity: VenueEntityId = "restaurant";
     return <EntityLogin entityId={fallbackEntity} />;
   }

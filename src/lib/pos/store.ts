@@ -8,7 +8,7 @@ import {
 	readStationDeviceRole,
 } from "./device-roles";
 import { stationHomeSurface, viewForStationHome } from "./station-home";
-import { pinFitsDevice, stationCan } from "./station-pin-gate";
+import { denyReason, pinFitsDevice, stationCan } from "./station-pin-gate";
 import { useStationSessionStore } from "./station-session";
 import { applyPendingDeviceRoleOnPinLogin } from "./station-role-sync";
 import {
@@ -475,6 +475,7 @@ const usePosStoreRaw = create<PosStore>()(persist((set, get) => {
 					serviceStyle: get().settings.serviceStyle,
 					operatingModel: get().settings.operatingModel,
 					hasFloor: get().tables.length > 0 || get().floorSections.length > 0,
+					settings: get().settings,
 				});
 				view = viewForStationHome(surface, emp.role);
 			}
@@ -1059,6 +1060,15 @@ const usePosStoreRaw = create<PosStore>()(persist((set, get) => {
 	openBarTabOnTable: (tableId) => {
 		const emp = get().getCurrentEmployee();
 		if (!emp) return { ok: false, error: "Not signed in" };
+		try {
+			const device = readStationDeviceRole() ?? "order";
+			const cap = { deviceRole: device, employeeRole: emp.role, settings: get().settings };
+			if (!stationCan(cap, "bar_tab")) {
+				return { ok: false, error: denyReason(cap, "bar_tab") ?? "This PIN cannot open a bar tab on this tablet." };
+			}
+		} catch {
+			/* station role optional */
+		}
 		if (!canOpenBarTabOnStool(emp.role)) {
 			return { ok: false, error: "This PIN cannot open a bar tab." };
 		}
@@ -2086,6 +2096,17 @@ const usePosStoreRaw = create<PosStore>()(persist((set, get) => {
 	openTakeout: (name) => {
 		const emp = get().getCurrentEmployee();
 		if (!emp) return "";
+		try {
+			const device = readStationDeviceRole() ?? "order";
+			if (device !== "kiosk") {
+				const cap = { deviceRole: device, employeeRole: emp.role, settings: get().settings };
+				if (!stationCan(cap, "togo") && !stationCan(cap, "order_entry")) {
+					return "";
+				}
+			}
+		} catch {
+			/* station role optional */
+		}
 		const order = {
 			id: uid("ord"),
 			number: nextOrderNumber(get().orders),

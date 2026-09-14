@@ -22,7 +22,7 @@ test("device role owns home: kitchen PIN on order/host is clock, not POS", () =>
 test("Summit Hall PIN map: 2222 server on order is floor; 4444 kitchen is not", () => {
   assert.equal(pinFitsDevice({ deviceRole: "order", employeeRole: "server" }).ok, true);
   assert.equal(pinFitsDevice({ deviceRole: "order", employeeRole: "kitchen" }).ok, false);
-  assert.equal(viewForDevicePin("order", "server"), "order");
+  assert.equal(viewForDevicePin("order", "server"), "floor");
   assert.equal(viewForDevicePin("order", "kitchen"), "labor");
   const store = readFileSync("src/lib/pos/store.ts", "utf8");
   assert.match(store, /pinFitsDevice/);
@@ -41,6 +41,7 @@ test("server / bartender / cashier use order or host; bartender also ODS", () =>
   assert.equal(pinFitsDevice({ deviceRole: "ods", employeeRole: "server" }).ok, false);
   assert.equal(pinFitsDevice({ deviceRole: "order", employeeRole: "cashier" }).ok, true);
   assert.equal(pinFitsDevice({ deviceRole: "ods", employeeRole: "cashier" }).ok, false);
+  assert.equal(pinFitsDevice({ deviceRole: "host", employeeRole: "cashier" }).ok, false);
   assert.equal(pinFitsDevice({ deviceRole: "order", employeeRole: "bartender" }).ok, true);
   assert.equal(pinFitsDevice({ deviceRole: "ods", employeeRole: "bartender" }).ok, true);
   assert.equal(viewForDevicePin("ods", "bartender"), "bar");

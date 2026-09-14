@@ -38,7 +38,7 @@ export const DEVICE_TOPICS: GuideTopic[] = [
         "Device envelope — Order: floor (full service / hybrid), queue (counter), window/lane (drive-through), to-go, bar tab if Bar tabs on order devices is on, clock, pay/close on their checks.",
         "Device envelope — Host: floor + waitlist + seat, to-go, clock. Bar tabs only if Host may open bar tabs is on. Peer venues still have a host ROLE (the stand) with no host merchant.",
         "Device envelope — ODS: Start/Bump only, lanes by entity, clock. No new order, no to-go, no pay. A manager PIN on ODS is still the rail — not order entry.",
-        "Device envelope — Kiosk: guest waitlist / QR / pay. Staff PINs do not operate kiosk. Manager service PIN may reload or exit.",
+        "Device envelope — Kiosk: guest waitlist / QR / pay. A paired kiosk skips the staff PIN pad. Staff PINs do not operate kiosk. Manager / supervisor / Devices service PIN may reload or exit.",
         "PIN on a capable device — Host: host envelope. Server: order envelope; on a host tablet, seat + to-go only if Servers may use the host stand is on, otherwise clock + use an order tablet.",
         "Bartender: drinks / bar tab on order; ODS is their bar lane only. Kitchen / cook / expo: ODS rail on ODS; on order or host, clock only — never to-go, bar tab, or a table order.",
         "Busser: floor status cleaned if the venue allows; no ordering. Supervisor / manager: union of what this DEVICE allows, plus reload / exit kiosk. They do not gain order-entry on an ODS tablet.",

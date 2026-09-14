@@ -182,6 +182,7 @@ export function OrderView() {
     serviceStyle: settings.serviceStyle,
     operatingModel: settings.operatingModel,
     hasFloor: tables.length > 0 || floorSections.length > 0,
+    settings,
   });
 
   if (!order && (homeSurface === "floor" || homeSurface === "host")) {

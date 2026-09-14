@@ -66,6 +66,7 @@ test("Summit Hall PIN × device matrix", () => {
     { pin: "9999", device: "ods", fit: true, has: ["ods"], not: ["order_entry", "togo"] },
     { pin: "7777", device: "order", fit: true, has: ["floor", "togo"], not: ["waitlist"] },
     { pin: "9999", device: "host", fit: true, has: ["floor", "waitlist", "togo"], not: ["ods"] },
+    { pin: "5555", device: "host", fit: true, has: ["floor", "bus_clean"], not: ["togo", "bar_tab", "order_entry"] },
   ];
 
   for (const row of cases) {
@@ -154,4 +155,29 @@ test("guide Stations and PINs describes the intersection", () => {
   assert.match(devices, /intersection/i);
   assert.match(devices, /Bar tabs on order devices/);
   assert.match(devices, /Servers may use the host stand/);
+  assert.match(devices, /skips the staff PIN pad/);
+});
+
+test("kiosk skips staff PIN; manager service PIN may exit", () => {
+  const app = readFileSync("src/components/pos/PosApp.tsx", "utf8");
+  assert.match(app, /readStationDeviceRole\(\) === "kiosk"/);
+  assert.match(app, /KioskApp/);
+  const mode = readFileSync("src/components/pos/DeviceModeView.tsx", "utf8");
+  const body = mode.slice(mode.indexOf("export function DeviceModeView"));
+  const kioskIdx = body.indexOf('if (role === "kiosk")');
+  const fitIdx = body.indexOf("pinFitsDevice(");
+  assert.ok(kioskIdx >= 0 && fitIdx > kioskIdx);
+});
+
+test("store blocks to-go and bar tab when the intersection denies", () => {
+  const store = readFileSync("src/lib/pos/store.ts", "utf8");
+  assert.match(store, /stationCan\(cap, "togo"\)/);
+  assert.match(store, /stationCan\(cap, "bar_tab"\)/);
+});
+
+test("cashier does not run the host stand", () => {
+  assert.equal(pinFitsDevice(cap("host", "cashier")).ok, false);
+  assert.equal(pinFitsDevice(cap("order", "cashier")).ok, true);
+  assert.equal(stationCan(cap("order", "cashier"), "floor"), false);
+  assert.equal(stationCan(cap("order", "cashier"), "togo"), true);
 });

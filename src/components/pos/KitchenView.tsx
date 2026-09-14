@@ -136,7 +136,7 @@ export function KitchenView({ station, expo, operatorId }: Props) {
   ).length;
 
   return (
-    <div className="kds-large-touch relative flex h-full flex-col">
+    <div className="kds-large-touch relative flex h-full flex-col" data-station-home="ods">
       <div className="flex flex-wrap items-center gap-2 border-b border-border px-3 py-2">
         <h2 className="text-sm font-semibold capitalize">
           {expo

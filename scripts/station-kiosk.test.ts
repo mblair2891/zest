@@ -29,9 +29,10 @@ test("reload hold is two seconds", () => {
   assert.equal(STATION_RELOAD_HOLD_MS, 2000);
 });
 
-test("only owner and manager PINs are station-service by role", () => {
+test("only owner, manager, and supervisor PINs are station-service by role", () => {
   assert.equal(employeeCanStationService("owner"), true);
   assert.equal(employeeCanStationService("manager"), true);
+  assert.equal(employeeCanStationService("supervisor"), true);
   assert.equal(employeeCanStationService("server"), false);
   assert.equal(employeeCanStationService("kitchen"), false);
   assert.equal(employeeCanStationService("host"), false);

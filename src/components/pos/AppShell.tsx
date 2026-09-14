@@ -295,27 +295,30 @@ export function AppShell() {
       setUnlockOpen(true);
       return;
     }
-    const cur = useStationSessionStore.getState().assignment.kind;
-    if (id === "kitchen") {
-      useStationSessionStore.getState().setAssignment({
-        kind: cur === "expo" ? "expo" : "kitchen_kds",
-      });
-    } else if (id === "bar") {
-      useStationSessionStore.getState().setAssignment({
-        kind: cur === "bar_pos" ? "bar_pos" : "bar_kds",
-      });
-    } else if (id === "order") {
-      useStationSessionStore.getState().setAssignment({
-        kind: cur === "bar_pos" ? "bar_pos" : "cashier",
-      });
-    } else if (id === "waitlist") {
-      useStationSessionStore.getState().setAssignment({
-        kind: cur === "kiosk" ? "kiosk" : "host_stand",
-      });
-    } else if (id === "floor") {
-      useStationSessionStore.getState().setAssignment({
-        kind: cur === "busser" ? "busser" : "floor_pos",
-      });
+    const pairedRole = readStationDeviceRole();
+    if (!pairedRole) {
+      const cur = useStationSessionStore.getState().assignment.kind;
+      if (id === "kitchen") {
+        useStationSessionStore.getState().setAssignment({
+          kind: cur === "expo" ? "expo" : "kitchen_kds",
+        });
+      } else if (id === "bar") {
+        useStationSessionStore.getState().setAssignment({
+          kind: cur === "bar_pos" ? "bar_pos" : "bar_kds",
+        });
+      } else if (id === "order") {
+        useStationSessionStore.getState().setAssignment({
+          kind: cur === "bar_pos" ? "bar_pos" : "cashier",
+        });
+      } else if (id === "waitlist") {
+        useStationSessionStore.getState().setAssignment({
+          kind: cur === "kiosk" ? "kiosk" : "host_stand",
+        });
+      } else if (id === "floor") {
+        useStationSessionStore.getState().setAssignment({
+          kind: cur === "busser" ? "busser" : "floor_pos",
+        });
+      }
     }
     setView(id);
   };

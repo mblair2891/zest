@@ -250,16 +250,49 @@ export function pinRoleViews(role: EmployeeRole): PosView[] | "all" {
   return PIN_VIEWS[role];
 }
 
-/** Screen this PIN is allowed to run on a paired device. Device role owns home. */
+/** Screen this PIN is allowed to run on a paired device. Device ∩ staff. */
 export function viewForDevicePin(
   device: DeviceRole | null | undefined,
   role: EmployeeRole,
 ): PosView {
-  if (device === "ods") return role === "bartender" ? "bar" : "kitchen";
+  if (device === "ods") {
+    if (role === "bartender") return "bar";
+    if (
+      role === "kitchen" ||
+      role === "manager" ||
+      role === "owner" ||
+      role === "supervisor" ||
+      role === "vendor_operator"
+    ) {
+      return "kitchen";
+    }
+    return "labor";
+  }
   if (role === "kitchen") return "labor";
-  if (device === "host") return "waitlist";
-  if (role === "host") return "waitlist";
-  if (role === "busser") return "floor";
+  if (device === "host") {
+    if (
+      role === "host" ||
+      role === "manager" ||
+      role === "supervisor" ||
+      role === "owner" ||
+      role === "busser"
+    ) {
+      return "floor";
+    }
+    return "labor";
+  }
+  if (device === "kiosk") return "waitlist";
+  if (
+    role === "busser" ||
+    role === "server" ||
+    role === "host" ||
+    role === "manager" ||
+    role === "supervisor" ||
+    role === "owner" ||
+    role === "bartender"
+  ) {
+    return "floor";
+  }
   return "order";
 }
 

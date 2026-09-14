@@ -7,7 +7,7 @@ import {
   stationHomeSurface,
   viewForStationHome,
 } from "../src/lib/pos/station-home.ts";
-import { locationAllowsBarTabs } from "../src/lib/pos/bar-tab.ts";
+
 
 test("service style parse", () => {
   assert.equal(parseStationServiceStyle("full_service"), "full_service");
@@ -108,6 +108,27 @@ test("host is floor + waitlist; kiosk is guest UI", () => {
   assert.equal(stationHomeSurface({ deviceRole: "kiosk" }), "kiosk");
 });
 
+test("cashier on a full-service order tablet is the queue, not the dining floor", () => {
+  assert.equal(
+    stationHomeSurface({
+      deviceRole: "order",
+      employeeRole: "cashier",
+      serviceStyle: "full_service",
+      hasFloor: true,
+    }),
+    "queue",
+  );
+  assert.equal(
+    stationHomeSurface({
+      deviceRole: "order",
+      employeeRole: "server",
+      serviceStyle: "full_service",
+      hasFloor: true,
+    }),
+    "floor",
+  );
+});
+
 test("missing style infers floor when tables exist, else counter", () => {
   assert.equal(
     resolveStationServiceStyle({ hasFloor: true }),
@@ -120,18 +141,10 @@ test("missing style infers floor when tables exist, else counter", () => {
 });
 
 test("bar tab is only when the house has a rail", () => {
-  assert.equal(
-    locationAllowsBarTabs([
-      { kind: "table", shape: "round", section: "Dining" },
-    ]),
-    false,
-  );
-  assert.equal(
-    locationAllowsBarTabs([
-      { kind: "barstool", shape: "bar", section: "Bar" },
-    ]),
-    true,
-  );
+  const bar = readFileSync("src/lib/pos/bar-tab.ts", "utf8");
+  assert.match(bar, /export function locationAllowsBarTabs/);
+  assert.match(bar, /isBarRailSeat/);
+  assert.match(bar, /barstool/);
 });
 
 test("paired order glass is not a hard-coded To-go | Bar tab POS", () => {

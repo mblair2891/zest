@@ -140,15 +140,16 @@ Gift is a **first-party Summex ledger** — swipe, scan, or key. It is not Finix
 
 ---
 
-## 8. Stations — order, ODS, host
+## 8. Stations — order, ODS, host, kiosk
 
-The tablet is a screen, not a person. **PIN** says who is working. The **device role** says what this screen is for.
+The tablet is a screen, not a person. Station UI is **device role ∩ staff PIN**. The **device role** is the hardware envelope. The **PIN** is which of those actions this person may use. If either side denies, hide the action or stay on the clock sheet.
 
 | Role | Screen |
 |---|---|
-| **Order** | Handhelds and bar POS — menu, checks, pay, gift |
-| **ODS** | Kitchen (and bar display) — tickets, Start / Bump. No menu, no pay. Cash and gift tenders are blocked on ODS. |
-| **Host** | Floor map, seat, table status, to-go at the stand |
+| **Order** | Full-service / hybrid floor first; counter queue; drive-through lane. To-go and bar tab are actions. Pay/close on their checks. |
+| **ODS** | Kitchen (and bar display) — tickets, Start / Bump. No new order, no to-go, no pay. A manager PIN does not gain order-entry. |
+| **Host** | Floor + waitlist/seat, New to-go. Bar tabs only if “Host may open bar tabs.” Peer venues still have this ROLE (the stand) with no host merchant. |
+| **Kiosk** | Guest waitlist / QR / pay. Skips the staff PIN pad. Manager service PIN may reload or exit. |
 
 A manager **Change device** switches among those three. PIN stays the person; the role is the screen.
 
@@ -158,7 +159,7 @@ A manager **Change device** switches among those three. PIN stays the person; th
 
 **Help** (header icon on PIN sessions, owner POS, and platform): ask how to do a task. Answers come from this Operators Guide for that role and location — numbered steps that match the screen (tap Floor, tap the table, Seat). Not a second manual. If the action is off for that login, Help says so and who can do it.
 
-**Prime, then PIN-only.** Pair once (internet required). After that, cold start is the PIN pad — not `/login`. Switch user returns to the keypad without changing the device role.
+**Prime, then PIN-only.** Pair once (internet required). After that, cold start is the PIN pad — not `/login` — except a kiosk, which is guest UI with no staff PIN. Switch user returns to the keypad without changing the device role.
 
 **PIN ≠ owner password ≠ clock-in ≠ closeout.** Back office (owners, managers, accountants) uses email and password. Floor staff use a 4-digit PIN, hashed and scoped to the location (and entity on a host floor). Clock in / out is Labor. Server closeout is Cash.
 

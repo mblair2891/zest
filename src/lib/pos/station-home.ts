@@ -1,10 +1,15 @@
 /**
- * After PIN, the paired station home is the device role + venue service style.
- * Staff PIN does not pick the home. Kitchen PIN on an order tablet is gated
- * elsewhere (station-pin-gate) — never a To-go | Bar tab counter.
+ * After PIN, home is device role ∩ staff role ∩ venue service style.
+ * Kitchen PIN on an order tablet is gated elsewhere (station-pin-gate).
  */
 import type { DeviceRole } from "./device-roles";
 import type { EmployeeRole, PosView } from "./types";
+
+type HomeSettings = {
+  hostMayOpenBarTabs?: boolean;
+  serversAtHostStand?: boolean;
+  orderMayOpenBarTabs?: boolean;
+};
 
 export const STATION_SERVICE_STYLES = [
   "full_service",
@@ -78,6 +83,7 @@ export function stationHomeSurface(opts: {
   serviceStyle?: string | null;
   operatingModel?: string | null;
   hasFloor?: boolean;
+  settings?: HomeSettings | null;
 }): StationHomeSurface {
   const device = opts.deviceRole ?? "order";
   if (device === "kiosk") return "kiosk";
@@ -89,6 +95,17 @@ export function stationHomeSurface(opts: {
     hasFloor: opts.hasFloor,
   });
 
+  const role = opts.employeeRole;
+  const canFloor =
+    !role ||
+    (role !== "kitchen" &&
+      role !== "cashier" &&
+      role !== "accountant" &&
+      role !== "kiosk");
+  const canQueue =
+    !role ||
+    (role !== "kitchen" && role !== "busser" && role !== "accountant" && role !== "kiosk");
+
   if (device === "host") {
     if (style === "drive_through") return "drive_through";
     return "host";
@@ -96,9 +113,13 @@ export function stationHomeSurface(opts: {
 
   if (style === "drive_through") return "drive_through";
   if (style === "counter") return "queue";
-  if (style === "full_service") return "floor";
-  if (style === "hybrid") return opts.hasFloor ? "floor" : "queue";
-  return opts.hasFloor ? "floor" : "queue";
+  if (style === "full_service" || (style === "hybrid" && opts.hasFloor)) {
+    if (canFloor) return "floor";
+    if (canQueue) return "queue";
+    return "floor";
+  }
+  if (style === "hybrid") return opts.hasFloor && canFloor ? "floor" : "queue";
+  return opts.hasFloor && canFloor ? "floor" : "queue";
 }
 
 /** PosView used for nav highlight. Bartender still lists order; the glass is the floor. */

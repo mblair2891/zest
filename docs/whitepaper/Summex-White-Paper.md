@@ -3,7 +3,7 @@
 **Powered by Quantum Reach**
 
 White paper · for owners and operators  
-**Revision · 13 Sep 2026** — Written for prospective subscribers. Aligns with Operators Guide v2026.10.82. Device role owns the station home; a kitchen PIN does not open order entry. Peer venue onboarding has no host merchant. Staff stations are Android tablets. Guests look up gift balance at summex.app/gift. Spent plastic can be reused.
+**Revision · 14 Sep 2026** — Written for prospective subscribers. Aligns with Operators Guide v2026.10.85. Station UI is device role ∩ staff PIN. A kitchen PIN does not open order entry. Peer venues have no host merchant; the host stand is still a device role. Staff stations are Android tablets. Guests look up gift balance at summex.app/gift. Spent plastic can be reused.
 
 summex.app  
 Guest cards: **Quantum Payments** only
@@ -59,13 +59,14 @@ The guest never sees operator splits, device roles, or how the house is paid.
 
 ## 4. Floor and staff
 
-The tablet is a screen. **PIN** says who is working. Each PIN only opens the tools that job needs — host, server, bartender, kitchen, busser, supervisor, or manager. A live station is not a dropdown of every module. Staff tablets run one app — **Summex Station**. First open scans the Devices QR or enters a one-time code. After that, power on is the PIN pad for that house and role. Guest QR stays on the guest’s phone.
+The tablet is a screen. Station UI is **device role ∩ staff PIN**. The device is the envelope; the PIN is which of those actions this person may use. Never the same home for every PIN. Staff tablets run one app — **Summex Station**. First open scans the Devices QR or enters a one-time code. After that, power on is the PIN pad for that house and role — except a kiosk, which is guest UI with no staff PIN. Guest QR stays on the guest’s phone.
 
 | Station | What it is |
 |---|---|
-| **Order** | Handhelds and bar — menu, checks, pay, gift |
-| **ODS** | Kitchen (and bar display) — tickets, Start and Bump. No menu, no pay |
-| **Host** | Floor map, seat, table status, to-go at the stand |
+| **Order** | Full-service floor first; counter queue; drive-through lane. To-go and bar tab are actions |
+| **ODS** | Kitchen (and bar display) — tickets, Start and Bump. No new order, no pay |
+| **Host** | Floor + waitlist/seat. New to-go at the stand. Peer venues still have this role |
+| **Kiosk** | Guest waitlist / QR / pay. Skips the staff PIN pad |
 
 **Sections** keep servers on their part of the room unless a manager grants a table. Combine tables on the lowest number.
 
@@ -82,7 +83,7 @@ Staffing recs (cut / hold / add) never clock anyone out. The manager decides.
 A named building can hold two independent operators — a bar and a kitchen is the usual picture — without inventing a landlord brand.
 
 - **Host + tenants:** the host owner/manager signs in with email and password and has full access to every tenant’s ops — devices, floor, menus, reports, costs, labor, payments split, grants. A tenant entity login sees only that brand.
-- **Shared venue (peers):** no host role. Venue admin is not a landlord merchant. After contract signed they sign in at app.summex.app/login (never the PIN pad) and finish a nine-step building wizard — then invite each operator. Each operator owns their menu, tickets, recipes, staff, Finix merchant, and schedule. An invite cannot edit a sibling.
+- **Shared venue (peers):** no host merchant. The host stand is still a device role. Venue admin is not a landlord merchant. After contract signed they sign in at app.summex.app/login (never the PIN pad) and finish a nine-step building wizard — then invite each operator. Each operator owns their menu, tickets, recipes, staff, Finix merchant, and schedule. An invite cannot edit a sibling.
 - The guest still pays **one check**. Capture **splits** to each brand’s Quantum Payments merchant by who sold the line.
 - Gift is a **house ledger** (swipe, scan, or key) — not the card processor. Load on cash or card. Redeem inside Summex. If one brand issues and another fulfills, settlement moves between them. Guests check the current balance at **summex.app/gift**. When a card is spent, a manager or venue admin can **reuse the plastic**: close the old ledger (kept in audit), same printed number, new card id at $0. The next load is a new issuance for the selling entity.
 - Period close is the house book for cash, any host cut, and disputes. Live bank payout of leftovers is not claimed here.
@@ -118,10 +119,10 @@ When the house is ready for more than service:
 
 1. Install **Summex Station** on an Android tablet (sideload now; Play later).
 2. The owner adds a device (name and role) and shows a one-time code or QR.
-3. The tablet pairs, then opens on the PIN pad.
+3. The tablet pairs, then opens on the PIN pad — except a kiosk, which is guest UI with no staff PIN.
 4. **Publish changes** pushes menu, floor, printers, and QR. Staff keep the last publish until they switch user. Never mid-check.
 
-The paired role is the envelope. Staff PIN is which of those actions this person may use. Station UI is that intersection. A kitchen PIN on an order tablet stays on the clock sheet — use the kitchen display. The host stand is floor + waitlist/seat; New to-go is an action on that glass, not the only home. A broken kitchen display is a role change on that tablet from Devices — same pair, staff PIN in again. Do not reinstall.
+The paired role is the envelope. Staff PIN is which of those actions this person may use. Station UI is that intersection. A kitchen PIN on an order tablet stays on the clock sheet — use the kitchen display. The host stand is floor + waitlist/seat; New to-go is an action on that glass, not the only home. A shared venue has no host merchant; it still has a host stand. A broken kitchen display is a role change on that tablet from Devices — same pair, staff PIN in again. Do not reinstall.
 
 Printers live on the house network (Ethernet), not the printer’s own Wi‑Fi. Receipts thermal; kitchen impact; drawer kick on the receipt printer.
 

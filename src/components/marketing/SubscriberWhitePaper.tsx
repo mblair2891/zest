@@ -24,8 +24,10 @@ export function SubscriberWhitePaper() {
         summex.app · Guest cards: {PAYMENTS_BRAND} only
       </p>
       <p className="mt-2 text-xs text-muted-foreground">
-        Revision · 12 Sep 2026 — Aligns with Operators Guide v2026.10.77. Peer
-        venue onboarding has no host merchant. Gift lookup at summex.app/gift.
+        Revision · 14 Sep 2026 — Aligns with Operators Guide v2026.10.85.
+        Station UI is device role ∩ staff PIN. Peer venues have no host
+        merchant; the host stand is still a device role. Gift lookup at
+        summex.app/gift.
       </p>
       <p className="mt-6 text-sm leading-relaxed text-muted-foreground">
         For the owner considering Summex — a single shop, a full dining room, or a
@@ -121,7 +123,12 @@ export function SubscriberWhitePaper() {
       </Section>
 
       <Section n="4" title="Floor and staff">
-        <p>The tablet is a screen. PIN says who is working.</p>
+        <p>
+          The tablet is a screen. Station UI is the intersection of{" "}
+          <strong className="text-ivory">device role</strong> (what the hardware
+          may do) and <strong className="text-ivory">staff PIN</strong> (which of
+          those actions this person may use). Never the same home for every PIN.
+        </p>
         <div className="my-6 overflow-x-auto">
           <table className="w-full text-left text-sm">
             <thead>
@@ -133,29 +140,34 @@ export function SubscriberWhitePaper() {
             <tbody className="text-muted-foreground">
               <tr className="border-t border-border">
                 <td className="py-2 pr-4 text-ivory">Order</td>
-                <td>Handhelds and bar — menu, checks, pay, gift</td>
+                <td>Full-service floor first; counter queue; drive-through lane. To-go and bar tab are actions.</td>
               </tr>
               <tr className="border-t border-border">
                 <td className="py-2 pr-4 text-ivory">ODS</td>
-                <td>Kitchen and bar display — tickets, Start and Bump. No pay</td>
+                <td>Kitchen and bar display — tickets, Start and Bump. No new order, no pay</td>
               </tr>
               <tr className="border-t border-border">
                 <td className="py-2 pr-4 text-ivory">Host</td>
-                <td>Floor map, seat, table status, to-go at the stand</td>
+                <td>Floor + waitlist/seat. New to-go at the stand. Peer venues still have this role — no host merchant required.</td>
+              </tr>
+              <tr className="border-t border-border">
+                <td className="py-2 pr-4 text-ivory">Kiosk</td>
+                <td>Guest waitlist / QR / pay. Skips the staff PIN pad. Manager service PIN may reload or exit.</td>
               </tr>
             </tbody>
           </table>
         </div>
         <p>
           <strong className="text-ivory">PIN is not clock-in and not closeout.</strong>{" "}
-          Owners use a back-office password. Floor staff use a 4-digit PIN. Clock
-          in and out is Labor. Server closeout is Cash. During the shift, staff can
-          move cash till to till when one drawer is short on small bills; expected
-          cash on each till updates so the blind count still balances.
+          Password login is back office — never the PIN home. Floor staff use a
+          4-digit PIN on a paired station. A kitchen PIN on an order tablet is the
+          clock sheet, not server UI. Completing clock does not open order entry.
+          Server closeout is Cash. During the shift, staff can move cash till to
+          till when one drawer is short on small bills; expected cash on each till
+          updates so the blind count still balances.
         </p>
         <p>
-          Kiosk and waitlist sit beside the host stand. Staffing recs never clock
-          anyone out.
+          Staffing recs never clock anyone out.
         </p>
       </Section>
 
@@ -242,14 +254,16 @@ export function SubscriberWhitePaper() {
         <ol className="list-decimal space-y-2 pl-5">
           <li>Install Summex Station on an Android tablet (sideload now; Play later).</li>
           <li>The owner adds a device (name and role) and shows a one-time code or QR.</li>
-          <li>The tablet pairs, then opens on the PIN pad.</li>
+          <li>The tablet pairs, then opens on the PIN pad — except a kiosk, which is guest UI with no staff PIN.</li>
           <li>
             Publish changes pushes menu, floor, printers, and QR. Never mid-check.
           </li>
         </ol>
         <p className="mt-4">
-          A broken kitchen display is a role change on that tablet — same pair,
-          staff PIN in again. Do not reinstall.
+          The paired role is the envelope. Staff PIN is which of those actions this
+          person may use. A kitchen PIN on an order tablet stays on the clock
+          sheet. A broken kitchen display is a role change on that tablet — same
+          pair, staff PIN in again. Do not reinstall.
         </p>
       </Section>
 

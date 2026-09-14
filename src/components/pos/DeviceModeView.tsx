@@ -29,6 +29,10 @@ export function DeviceModeView({
   const activeOrderId = usePosStore((s) => s.activeOrderId);
   const order = usePosStore((s) => s.orders.find((o) => o.id === s.activeOrderId));
 
+  if (role === "kiosk") {
+    return <KioskApp />;
+  }
+
   const fit = pinFitsDevice({
     deviceRole: role,
     employeeRole: emp?.role,
@@ -44,6 +48,7 @@ export function DeviceModeView({
     serviceStyle: settings.serviceStyle,
     operatingModel: settings.operatingModel,
     hasFloor: tables.length > 0 || sections.length > 0,
+    settings,
   });
 
   if (role === "ods" || surface === "ods") {
@@ -57,10 +62,6 @@ export function DeviceModeView({
       return <KitchenView station="kitchen" operatorId={operatorId} />;
     }
     return <KitchenView station="all" operatorId={operatorId} />;
-  }
-
-  if (role === "kiosk" || surface === "kiosk") {
-    return <KioskApp />;
   }
 
   if (surface === "drive_through") {
@@ -82,6 +83,10 @@ export function applySessionModeView(
   const role = deviceRoleFromSessionMode(mode);
   const s = usePosStore.getState();
   const emp = s.employees.find((e) => e.id === s.currentEmployeeId);
+  if (role === "kiosk") {
+    setView("waitlist");
+    return;
+  }
   if (!emp) return;
   const fit = pinFitsDevice({
     deviceRole: role,
@@ -98,6 +103,7 @@ export function applySessionModeView(
     serviceStyle: s.settings.serviceStyle,
     operatingModel: s.settings.operatingModel,
     hasFloor: s.tables.length > 0 || s.floorSections.length > 0,
+    settings: s.settings,
   });
   setView(viewForStationHome(surface, emp.role));
 }

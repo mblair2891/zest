@@ -10,7 +10,7 @@ export const STATION_RELOAD_HOLD_MS = 2000;
 export function employeeCanStationService(
   role: EmployeeRole | null | undefined,
 ): boolean {
-  return role === "owner" || role === "manager";
+  return role === "owner" || role === "manager" || role === "supervisor";
 }
 
 export function pinUnlocksStationService(opts: {

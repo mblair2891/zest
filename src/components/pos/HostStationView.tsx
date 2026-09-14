@@ -40,6 +40,7 @@ export function HostStationView({
   const hostStand = showWaitlist;
   const deviceRole = hostStand ? "host" : (readStationDeviceRole() ?? "order");
   const cap = { deviceRole, employeeRole: emp?.role, settings };
+  const canFloor = stationCan(cap, "floor");
   const canWaitlist = stationCan(cap, "waitlist");
   const canTogo = stationCan(cap, "togo");
   const canBar = stationCan(cap, "bar_tab") && locationAllowsBarTabs(tables);
@@ -52,10 +53,20 @@ export function HostStationView({
   }, [floorIntent]);
 
   useEffect(() => {
-    if (view === "takeout" && canTogo) setTab("togo");
-    else if (view === "waitlist" && canWaitlist) setTab("waitlist");
-    else if (view === "floor" || view === "order") setTab("floor");
-  }, [view, canWaitlist, canTogo]);
+    if (view === "takeout" && canTogo) {
+      setTab("togo");
+      return;
+    }
+    if (view === "waitlist" && canWaitlist) {
+      setTab("waitlist");
+      return;
+    }
+    if (!canFloor) {
+      setTab(canWaitlist ? "waitlist" : "togo");
+      return;
+    }
+    if (view === "floor" || view === "order") setTab("floor");
+  }, [view, canWaitlist, canTogo, canFloor]);
 
   const pick = (next: FloorTab) => {
     setTab(next);
@@ -104,6 +115,7 @@ export function HostStationView({
         )}
       >
         <div className={cn("flex min-w-0 flex-1 gap-2", layout.handheld && "grid grid-cols-2")}>
+          {canFloor && (
           <Button
             size="lg"
             className="station-touch min-h-12 flex-1 text-base"
@@ -113,6 +125,7 @@ export function HostStationView({
             <LayoutGrid className="h-5 w-5" />
             Floor
           </Button>
+          )}
           {canWaitlist && (
             <Button
               size="lg"

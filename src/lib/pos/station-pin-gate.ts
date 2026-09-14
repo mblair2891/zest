@@ -130,6 +130,7 @@ export function employeeEnvelope(
     ]);
   }
   if (role === "cashier") {
+    if (d !== "order") return new Set<StationAction>(["clock"]);
     return new Set<StationAction>(["clock", "order_entry", "togo", "pay"]);
   }
   if (role === "vendor_operator") {
@@ -188,7 +189,7 @@ export function pinFitsDevice(opts: StationCapInput & { serversAtHostStand?: boo
       hint: "Clock in or out here, then use the kitchen display. This PIN cannot open to-go, a bar tab, or a table order.",
     };
   }
-  if (device === "host" && role === "server") {
+  if (device === "host" && (role === "server" || role === "cashier")) {
     return {
       ok: false,
       message: "This tablet is the host stand.",

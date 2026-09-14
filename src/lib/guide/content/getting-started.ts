@@ -143,7 +143,7 @@ export const GETTING_STARTED_TOPICS: GuideTopic[] = [
         "Clock in / out is a separate control on every station. PIN and punch stay separate. Completing clock does not open order entry. After a station PIN, if you are off the clock and inside that entity’s allowed early/late window for today’s shift, the tablet asks Clock in for this shift? Clock in uses the same Labor punch rules. Not now skips the punch — use Clock in on the station later. Outside the window there is no prompt; you can still work. Already on the clock: no prompt. Password /login never shows this.",
         "Server closeout is Cash (expected drawer, Z). That is not clock-out and not PIN login.",
         "Opening Settings from a floor PIN prompts back-office re-auth (password).",
-        "Kiosk guest flows stay PIN-free. Platform Admin is password only — never a restaurant PIN.",
+        "Kiosk guest flows stay PIN-free. A paired kiosk skips the staff PIN pad. Platform Admin is password only — never a restaurant PIN.",
       ),
       warn(
         "PIN ≠ clock ≠ closeout. There are no public demo tenants and no universal PIN. Training uses sandbox cards — not a live Visa.",
