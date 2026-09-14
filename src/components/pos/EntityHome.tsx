@@ -19,6 +19,7 @@ import { PinKeypad } from "./PinKeypad";
 import { ThisStationButton, SplitScreenToggle } from "./ChangeDeviceDialog";
 import { HelpButton } from "@/components/help/HelpPanel";
 import { NetworkBanner, NetworkWatcher } from "./NetworkStatus";
+import { useNetworkStore } from "@/lib/pos/network-store";
 import { TrainingBanner } from "./TrainingBanner";
 import { useStationSessionStore } from "@/lib/pos/station-session";
 import { isBackOfficeRole } from "@/lib/pos/pin";
@@ -51,6 +52,11 @@ import {
 } from "@/lib/pos/device-roles";
 import { isNativeApp } from "@/lib/native-shell";
 import { readTenantPosContext } from "@/lib/saas/pos-context";
+import { readStationPair } from "@/lib/pos/station-pair";
+import { verifyStationPinFn } from "@/lib/access/api";
+import {
+  STATION_PIN_UNPAIRED,
+} from "@/lib/pos/station-pin-auth";
 
 const ICONS: Record<string, React.ComponentType<{ className?: string }>> = {
   restaurant: UtensilsCrossed,
@@ -199,6 +205,34 @@ export function EntityLogin({ entityId }: { entityId: VenueEntityId }) {
   const submitPin = (next: string) => {
     setError(null);
     setMsg(null);
+    if (stationPad && mode === "login") {
+      const pair = readStationPair();
+      if (!pair?.deviceId || !pair.locationId) {
+        setError(STATION_PIN_UNPAIRED);
+        return;
+      }
+      const online =
+        typeof navigator === "undefined" ||
+        (navigator.onLine && useNetworkStore.getState().wanOnline());
+      if (online) {
+        void verifyStationPinFn({
+          data: { pin: next, deviceId: pair.deviceId, locationId: pair.locationId },
+        })
+          .then((res) => {
+            if (!res.ok) {
+              setError(res.error);
+              return;
+            }
+            const applied = usePosStore.getState().applyVerifiedStationPin(res.employee, next);
+            if (!applied.ok) setError(applied.error ?? "Invalid PIN");
+          })
+          .catch(() => {
+            const res = login(next);
+            if (!res.ok) setError(res.error ?? "Invalid PIN");
+          });
+        return;
+      }
+    }
     if (prospect && mode !== "login") {
       if (!isDemoStaffPin(next) && next !== DEMO_STAFF_PIN) {
         setError(`Demo PIN is ${DEMO_STAFF_PIN}`);

@@ -6,6 +6,19 @@ import type { GuideUpdate } from "@/lib/guide/types";
  */
 export const WHATS_NEW_ENTRIES: GuideUpdate[] = [
   {
+    id: "upd_2026_10_87_station_pin_venue",
+    date: "2026-09-14",
+    title: "Paired station PIN uses the whole venue roster",
+    summary:
+      "Order and host tablets check PINs against every active staff member at the paired house — live, without Publish. Unpaired tablets say unpaired, not Invalid PIN.",
+    body: "After pair, PIN is who you are at that venue. Host, manager, busser, and a bartender from another selling entity all work on a house order or host tablet. Operating as does not change PIN auth. Reset a PIN on Users and it works on the station right away. A tablet that is not paired asks for the Devices QR or code.",
+    roles: ["owner_manager", "server", "kitchen_bar", "host_operator", "platform_admin"],
+    surfaces: ["floor"],
+    audience: "all",
+    topicId: "floor-pin-login",
+    tags: ["pin", "station", "devices"],
+  },
+  {
     id: "upd_2026_10_86_venue_pins",
     date: "2026-09-14",
     title: "Users — view and reset floor PINs",

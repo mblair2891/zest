@@ -146,6 +146,17 @@ export interface PosStore {
   setDemoOperatingEntity: (id: string | null) => void;
 
   login: (pin: string) => ActionResult;
+  applyVerifiedStationPin: (
+    employee: {
+      id: string;
+      name: string;
+      role: string;
+      operatorId?: string | null;
+      active?: boolean;
+      pinHash?: string;
+    },
+    pin: string,
+  ) => ActionResult;
   loginAs: (employeeId: string, opts?: { kind?: "pin" | "backoffice" }) => ActionResult;
   logout: () => void;
   sessionKind: "pin" | "backoffice";

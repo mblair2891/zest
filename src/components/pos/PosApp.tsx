@@ -196,23 +196,24 @@ function PosAppInner({ entityId }: { entityId?: string }) {
       const skipCloud =
         (typeof navigator !== "undefined" && navigator.onLine === false) ||
         !useNetworkStore.getState().wanOnline();
-      const pair = storedPair?.locationId === locationId ? storedPair : null;
+      const pair = storedPair;
       const fetchBoot = () => {
-        if (user) return getPosBootstrapFn({ data: { locationId } });
-        if (pair?.deviceId) {
+        const loc = pair?.locationId || locationId;
+        if (pair?.deviceId && loc) {
           return getPairedStationFn({
-            data: { locationId, deviceId: pair.deviceId },
+            data: { locationId: loc, deviceId: pair.deviceId },
           }) as unknown as ReturnType<typeof getPosBootstrapFn>;
         }
         if (pair?.claimCode) {
           return pairStationFn({
             data: {
               claimCode: pair.claimCode,
-              browserDeviceId: readOrCreateBrowserDeviceId(locationId),
+              browserDeviceId: readOrCreateBrowserDeviceId(loc || "station"),
             },
           }) as unknown as ReturnType<typeof getPosBootstrapFn>;
         }
-        return getPosBootstrapFn({ data: { locationId } });
+        if (user) return getPosBootstrapFn({ data: { locationId: loc } });
+        return getPosBootstrapFn({ data: { locationId: loc } });
       };
       const boot = skipCloud
         ? Promise.reject(new Error("offline"))

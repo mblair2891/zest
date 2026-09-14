@@ -45,28 +45,48 @@ export async function listLocationStaff(locationId: string): Promise<Employee[]>
       name: string;
       role: string;
       pin_hash: string | null;
+      pin_display: string | null;
       operator_id: string | null;
       active: boolean;
     }>`
-      select id, name, role, pin_hash, operator_id, active
+      select id, name, role, pin_hash, pin_display, operator_id, active
       from location_staff
       where location_id = ${locationId} and coalesce(active, true) = true
-    `;
+    `.catch(async () => {
+      const fallback = await sql<{
+        id: string;
+        name: string;
+        role: string;
+        pin_hash: string | null;
+        operator_id: string | null;
+        active: boolean;
+      }>`
+        select id, name, role, pin_hash, operator_id, active
+        from location_staff
+        where location_id = ${locationId} and coalesce(active, true) = true
+      `;
+      return fallback.map((r) => ({ ...r, pin_display: null as string | null }));
+    });
     const colors = ["#2C4A6E", "#1F7A4C", "#9A6700", "#5C5C5C", "#A61B1B", "#4A5568"];
-    return rows.map((r, i) => ({
-      id: r.id,
-      name: r.name,
-      pin: "",
-      pinHash: r.pin_hash ?? undefined,
-      role: (r.role as EmployeeRole) || "server",
-      color: colors[i % colors.length]!,
-      clockedIn: false,
-      tipsEarned: 0,
-      salesTotal: 0,
-      active: r.active !== false,
-      homeSectionIds: [],
-      operatorId: r.operator_id || undefined,
-    }));
+    return rows.map((r, i) => {
+      const display = String(r.pin_display || "").replace(/\D/g, "");
+      const repaired =
+        display.length === 4 ? hashPin(display, locationId) : r.pin_hash ?? undefined;
+      return {
+        id: r.id,
+        name: r.name,
+        pin: "",
+        pinHash: r.pin_hash || repaired,
+        role: (r.role as EmployeeRole) || "server",
+        color: colors[i % colors.length]!,
+        clockedIn: false,
+        tipsEarned: 0,
+        salesTotal: 0,
+        active: r.active !== false,
+        homeSectionIds: [],
+        operatorId: r.operator_id || undefined,
+      };
+    });
   } catch {
     return [];
   }

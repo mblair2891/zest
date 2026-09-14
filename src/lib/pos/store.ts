@@ -7,6 +7,8 @@ import {
 	parseStationQuery,
 	readStationDeviceRole,
 } from "./device-roles";
+import { readStationPair } from "./station-pair";
+import { stationPinAuthLocationId } from "./station-pin-auth";
 import { stationHomeSurface, viewForStationHome } from "./station-home";
 import { denyReason, pinFitsDevice, stationCan } from "./station-pin-gate";
 import { useStationSessionStore } from "./station-session";
@@ -139,7 +141,16 @@ import { laundryLocationDevices } from "./laundry-seed";
 
 function mergeFloorStaff(get: any, set: any, floorStaff: any) {
 	if (!Array.isArray(floorStaff) || floorStaff.length === 0) return;
-	const loc = get().tenantLocationId || "loc";
+	let pairLoc = "";
+	try {
+		pairLoc = readStationPair()?.locationId || "";
+	} catch {
+		pairLoc = "";
+	}
+	const loc = stationPinAuthLocationId({
+		pairLocationId: pairLoc,
+		tenantLocationId: get().tenantLocationId,
+	});
 	const byId = new Map(get().employees.map((e: any) => [e.id, e]));
 	for (const e of floorStaff) {
 		if (!e?.id) continue;
@@ -408,9 +419,17 @@ const usePosStoreRaw = create<PosStore>()(persist((set, get) => {
 		set({ demoOperatingEntityId: id });
 	},
 	login: (pin) => {
-		const loc = get().tenantLocationId || get().activeEntityId || "loc";
-		const device = (get().locationDevices ?? []).find((d: any) => d.id === get().activeDeviceId);
-		const deviceOp = device?.assignment?.operatorId ?? null;
+		let pairLoc = "";
+		try {
+			pairLoc = readStationPair()?.locationId || "";
+		} catch {
+			pairLoc = "";
+		}
+		const loc = stationPinAuthLocationId({
+			pairLocationId: pairLoc,
+			tenantLocationId: get().tenantLocationId,
+		});
+		/** House devices auth the whole venue roster — not Operating as, not device entity. */
 		if (get().stationPinLocked && !isDemoStaffPin(pin)) {
 			return { ok: false, error: "This station is locked. Ask a manager to unlock.", locked: true };
 		}
@@ -424,16 +443,13 @@ const usePosStoreRaw = create<PosStore>()(persist((set, get) => {
 		const emp = isDemoStaffPin(pin)
 			? (get().employees.find((e: any) => e.active && e.role === "owner")
 				?? get().employees.find((e: any) => e.active && e.role === "manager")
-				?? findStaffByPin(get().employees, pin, loc, deviceOp))
-			: findStaffByPin(get().employees, pin, loc, deviceOp);
+				?? findStaffByPin(get().employees, pin, loc, null))
+			: findStaffByPin(get().employees, pin, loc, null);
 		if (!emp) {
 			const fail = get().notePinFailure();
 			return {
 				ok: false,
-				error: fail.error
-					|| (deviceOp && deviceOp !== HOST_SCOPE
-						? "PIN not valid on this assigned device"
-						: "Invalid PIN"),
+				error: fail.error || "Invalid PIN",
 				locked: fail.locked,
 			};
 		}
@@ -501,6 +517,46 @@ const usePosStoreRaw = create<PosStore>()(persist((set, get) => {
 		});
 		get().audit("login", `${emp.name} (${emp.role}) · floor PIN`);
 		return { ok: true };
+	},
+	applyVerifiedStationPin: (row, pin) => {
+		if (!row?.id) return { ok: false, error: "Invalid PIN" };
+		let pairLoc = "";
+		try {
+			pairLoc = readStationPair()?.locationId || "";
+		} catch {
+			pairLoc = "";
+		}
+		const loc = stationPinAuthLocationId({
+			pairLocationId: pairLoc,
+			tenantLocationId: get().tenantLocationId,
+		});
+		const hashed = row.pinHash || hashPin(pin, loc);
+		const existing = get().employees.find((e: any) => e.id === row.id);
+		const emp = {
+			id: row.id,
+			name: row.name || existing?.name || "Staff",
+			pin: "",
+			pinHash: hashed,
+			role: (row.role || existing?.role || "server") as import("./types").EmployeeRole,
+			operatorId: row.operatorId || existing?.operatorId || undefined,
+			color: existing?.color || "#2C4A6E",
+			clockedIn: Boolean(existing?.clockedIn),
+			clockInAt: existing?.clockInAt,
+			tipsEarned: existing?.tipsEarned ?? 0,
+			salesTotal: existing?.salesTotal ?? 0,
+			active: row.active !== false,
+			homeSectionIds: existing?.homeSectionIds ?? [],
+			title: existing?.title,
+			homeView: existing?.homeView,
+			extraViews: existing?.extraViews,
+		};
+		set({
+			employees: existing
+				? get().employees.map((e: any) => (e.id === row.id ? { ...e, ...emp } : e))
+				: [emp, ...get().employees],
+			tenantLocationId: loc || get().tenantLocationId,
+		});
+		return get().login(pin);
 	},
 	loginAs: (employeeId, opts) => {
 		const emp = get().employees.find((e: any) => e.id === employeeId && e.active);
@@ -4574,7 +4630,9 @@ const usePosStoreRaw = create<PosStore>()(persist((set, get) => {
 		const p = persisted || {};
 		const entityId = p.activeEntityId || current.activeEntityId || "restaurant";
 		const fromPersist = p.employees || [];
-		const locKey = p.tenantLocationId || entityId || "loc";
+		const locKey = stationPinAuthLocationId({
+			tenantLocationId: p.tenantLocationId || current.tenantLocationId,
+		});
 		const tenantLoc = String(p.tenantLocationId || current.tenantLocationId || "");
 		const demoHallLoc =
 			!tenantLoc ||

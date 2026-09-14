@@ -408,9 +408,9 @@ export const ROLE_GUIDE_TOPICS: GuideTopic[] = [
       ul(
         "Back office: Sign in with username/email and password. Platform Admin, owners, managers, accountants, entity managers for settings, matrix, full reports, schedule admin, hours export, menu management.",
         "Prime once: Open POS from that signed-in session while online. After that the station is PIN-only — not /login.",
-        "Floor PIN: 4-digit keypad on the station (order, ODS, or host). Servers, hosts, bartenders, kitchen, cashiers, expo. Fast Switch user. PIN hashed, scoped to location and entity.",
+        "Floor PIN: 4-digit keypad on the station (order, ODS, or host). Servers, hosts, bartenders, kitchen, cashiers, expo. Fast Switch user. PIN is hashed to the paired venue — the whole house roster, including peer-entity staff on a house order or host tablet. Operating as does not change who can PIN in.",
         "PIN ≠ clock ≠ closeout. The pad logs you into the station. Device role owns the home; the PIN does not. Clock in / Clock out is a separate control on every station — completing clock does not open order entry. After PIN, if you are off the clock and inside that entity’s allowed clock-in window for today’s shift, a prompt offers Clock in for this shift? — Clock in or Not now. Outside the window: no prompt; use Clock in on the station. Already on the clock: no prompt. Password login never shows it.",
-        "Assigned device still requires the matching entity’s PIN (Operator A ODS rejects an Operator B PIN).",
+        "House order and host tablets accept every active PIN at that venue (Host, Manager, Busser, Copper Bar bartender on the same stand). A tablet that is not paired says so — it is not “Invalid PIN.”",
         "Printed receipts group lines by vendor. The guest still holds one check.",
         "Kiosk guests never enter a PIN. Marketing pages never show a PIN pad or staff PINs. Platform Admin cannot use a restaurant PIN.",
       ),

@@ -926,8 +926,8 @@ export const pairStationFn = createServerFn({ method: "POST" })
       },
       operators,
       floorStaff: pack2.staff,
-      role: "staff" as const,
-      operatorId: device.assignment.operatorId === "host" ? null : device.assignment.operatorId,
+      role: "station" as const,
+      operatorId: null as string | null,
       openDemo: false as const,
       trainingRoster: pack2.seededRoster || pack2.staff.some((s) => s.id.startsWith("emp_tr_")),
       publish,
@@ -954,6 +954,22 @@ function publishSetupSlice(setup: LocationSetup) {
     sharedVenueCostsCents: setup.sharedVenueCostsCents,
   };
 }
+
+/** Paired station PIN pad. No dashboard session. Loc comes from the device row. */
+export const verifyStationPinFn = createServerFn({ method: "POST" })
+  .validator((d: { pin: string; deviceId: string; locationId: string }) => ({
+    pin: String(d.pin ?? "").replace(/\D/g, "").slice(0, 8),
+    deviceId: String(d.deviceId ?? "").trim().slice(0, 80),
+    locationId: String(d.locationId ?? "").trim().slice(0, 80),
+  }))
+  .handler(async ({ data }) => {
+    const { rateLimit } = await import("@/lib/saas/rate-limit.server");
+    if (rateLimit(`station-pin:${data.deviceId || data.locationId}`, 40, 60_000)) {
+      throw new Error("Too many PIN attempts — wait a minute");
+    }
+    const { verifyStationPin } = await import("@/lib/pos/station-pin-auth.server");
+    return verifyStationPin(data);
+  });
 
 export const getPairedStationFn = createServerFn({ method: "POST" })
   .validator((d: { locationId: string; deviceId: string }) => ({
@@ -1055,7 +1071,7 @@ export const getPairedStationFn = createServerFn({ method: "POST" })
       },
       operators,
       floorStaff: pack.staff,
-      role: "staff" as const,
+      role: "station" as const,
       operatorId: null as string | null,
       openDemo: false as const,
       trainingRoster: pack.seededRoster || pack.staff.some((s) => s.id.startsWith("emp_tr_")),
