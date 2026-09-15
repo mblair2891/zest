@@ -12,7 +12,7 @@ export function locationAllowsBarTabs(
 export function isBarRailSeat(table: Pick<Table, "kind" | "shape" | "section">): boolean {
   const kind =
     table.kind ??
-    (table.shape === "bar" ? "barstool" : table.shape === "booth" ? "booth" : "table");
+    (table.shape === "bar" ? "barstool" : table.shape === "booth" ? "booth_4" : "table");
   if (kind === "barstool" || table.shape === "bar") return true;
   return /\bbar\b/i.test(table.section);
 }

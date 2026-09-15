@@ -41,7 +41,14 @@ export type TableStatus =
   | "paid"
   | "dirty";
 
-export type TableKind = "table" | "booth" | "barstool" | "other";
+export type TableKind =
+  | "table"
+  | "booth"
+  | "booth_4"
+  | "booth_u"
+  | "booth_l"
+  | "barstool"
+  | "other";
 
 export type QrMode = "full" | "hybrid" | "pay_only";
 export type {
@@ -376,6 +383,9 @@ export interface Table {
   h: number;
   shape: "rect" | "round" | "bar" | "booth" | "other";
   kind?: TableKind;
+  /** Degrees, 90° steps. Booth benches rotate with the fixture. */
+  rotation?: number;
+  sectionId?: string;
   status: TableStatus;
   orderId?: string;
   serverId?: string;

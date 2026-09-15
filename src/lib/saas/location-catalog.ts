@@ -12,6 +12,8 @@ export type FloorPlanTable = {
   h: number;
   shape: Table["shape"];
   kind?: TableKind;
+  rotation?: number;
+  sectionId?: string;
 };
 
 export type LocationFloorPlan = {
@@ -41,7 +43,15 @@ function num(v: unknown, fallback = 0): number {
 }
 
 const SHAPES = new Set(["rect", "round", "bar", "booth", "other"]);
-const KINDS = new Set(["table", "booth", "barstool", "other"]);
+const KINDS = new Set([
+  "table",
+  "booth",
+  "booth_4",
+  "booth_u",
+  "booth_l",
+  "barstool",
+  "other",
+]);
 
 export function parseFloorPlan(raw: unknown): LocationFloorPlan | undefined {
   const o = asObj(raw);
@@ -56,6 +66,7 @@ export function parseFloorPlan(raw: unknown): LocationFloorPlan | undefined {
     if (!id) continue;
     const shape = SHAPES.has(str(r.shape)) ? (str(r.shape) as FloorPlanTable["shape"]) : "round";
     const kind = KINDS.has(str(r.kind)) ? (str(r.kind) as TableKind) : undefined;
+    const rot = Math.round(num(r.rotation, 0) / 90) * 90;
     tables.push({
       id,
       label: str(r.label, id).slice(0, 40),
@@ -67,6 +78,8 @@ export function parseFloorPlan(raw: unknown): LocationFloorPlan | undefined {
       h: Math.min(40, Math.max(6, num(r.h, 12))),
       shape,
       kind,
+      rotation: ((rot % 360) + 360) % 360,
+      sectionId: str(r.sectionId).slice(0, 80) || undefined,
     });
   }
   const sections: FloorSection[] = [];
@@ -101,6 +114,8 @@ export function floorPlanFromPos(tables: Table[], sections: FloorSection[]): Loc
         h: t.h,
         shape: t.shape,
         kind: t.kind,
+        rotation: t.rotation,
+        sectionId: t.sectionId,
       })),
     sections: sections.map((s) => ({ ...s })),
   };
@@ -118,6 +133,8 @@ export function tablesFromFloorPlan(plan: LocationFloorPlan): Table[] {
     h: t.h,
     shape: t.shape,
     kind: t.kind,
+    rotation: t.rotation,
+    sectionId: t.sectionId,
     status: "empty",
   }));
 }

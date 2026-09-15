@@ -134,7 +134,9 @@ function playableSetup(prev: LocationSetup): { setup: LocationSetup; changed: bo
   if (!setup.floorPlan?.tables?.length) {
     const tables = starterTables().map((t) => ({
       ...t,
-      kind: t.shape === "bar" ? ("barstool" as const) : t.shape === "round" ? ("table" as const) : ("table" as const),
+      kind:
+        t.kind ??
+        (t.shape === "bar" ? ("barstool" as const) : t.shape === "booth" ? ("booth_4" as const) : ("table" as const)),
     }));
     setup.floorPlan = floorPlanFromPos(tables, DEFAULT_FLOOR_SECTIONS);
     setup.tableCount = tables.length;

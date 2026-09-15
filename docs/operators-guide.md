@@ -1,7 +1,7 @@
 # Operators Guide — authoring
 
-**Revision · 14 Sep 2026** — Deactivate kicks the station to the pair-code screen.
-Guide v2026.10.90.
+**Revision · 14 Sep 2026** — Floorplan booths: 4-top, U, and L.
+Guide v2026.10.91.
 
 The in-app **Operators Guide** is the living product manual. It is not a
 separate PDF. Staff open it from **Guide** / **?** in the POS and platform
@@ -55,7 +55,7 @@ accurate when the job path changes.
 1. What Summex is
 2. By establishment type
 3. Roles & floor PIN vs back-office password (separate from clock in/out and closeout)
-4. Floor, sections, table status, release/accept
+4. Floor, sections, table status, release/accept. Floorplan editor: Booth 4-top, Booth U, Booth L (banquette shapes, not fat rectangles). Live floor uses the same artwork; status fill is the table surface.
 5. Menu, modifiers, recipes/ingredients/prep
 6. Orders + Order Display System (Start / Bump / notify)
 7. Kiosk, waitlist, reservation check-in

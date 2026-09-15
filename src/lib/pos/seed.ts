@@ -907,9 +907,9 @@ export const TABLES: Table[] = [
   { id: "t7", label: "7", section: "Dining", seats: 6, x: 30, y: 32, w: 18, h: 14, shape: "rect", status: "available" },
   { id: "t8", label: "8", section: "Dining", seats: 4, x: 54, y: 34, w: 14, h: 12, shape: "round", status: "available" },
   { id: "t9", label: "9", section: "Dining", seats: 4, x: 72, y: 34, w: 14, h: 12, shape: "round", status: "available" },
-  { id: "t10", label: "10", section: "Dining", seats: 8, x: 12, y: 56, w: 22, h: 14, shape: "rect", status: "available" },
-  { id: "t11", label: "11", section: "Dining", seats: 8, x: 42, y: 56, w: 22, h: 14, shape: "rect", status: "available" },
-  { id: "t12", label: "12", section: "Booth", seats: 4, x: 70, y: 56, w: 16, h: 14, shape: "rect", status: "available" },
+  { id: "t10", label: "10", section: "Booth", seats: 6, x: 8, y: 54, w: 20, h: 18, shape: "booth", kind: "booth_u", rotation: 0, status: "available" },
+  { id: "t11", label: "11", section: "Booth", seats: 5, x: 34, y: 54, w: 18, h: 18, shape: "booth", kind: "booth_l", rotation: 90, status: "available" },
+  { id: "t12", label: "12", section: "Booth", seats: 4, x: 58, y: 52, w: 16, h: 20, shape: "booth", kind: "booth_4", rotation: 0, status: "available" },
   // Bar seats
   { id: "b1", label: "B1", section: "Bar", seats: 1, x: 8, y: 80, w: 8, h: 8, shape: "bar", status: "available" },
   { id: "b2", label: "B2", section: "Bar", seats: 1, x: 18, y: 80, w: 8, h: 8, shape: "bar", status: "available" },

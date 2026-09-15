@@ -198,8 +198,9 @@ export function starterTables(): Table[] {
     { id: "t2", label: "2", section: "Dining", seats: 2, x: 24, y: 12, w: 10, h: 10, shape: "round", status: "available" },
     { id: "t3", label: "3", section: "Dining", seats: 4, x: 42, y: 10, w: 14, h: 12, shape: "rect", status: "available" },
     { id: "t4", label: "4", section: "Dining", seats: 4, x: 62, y: 10, w: 14, h: 12, shape: "rect", status: "available" },
-    { id: "t5", label: "5", section: "Dining", seats: 4, x: 8, y: 36, w: 14, h: 12, shape: "rect", status: "available" },
-    { id: "t6", label: "6", section: "Dining", seats: 6, x: 30, y: 36, w: 18, h: 14, shape: "rect", status: "available" },
+    { id: "t5", label: "5", section: "Dining", seats: 4, x: 8, y: 34, w: 16, h: 20, shape: "booth", kind: "booth_4", rotation: 0, status: "available" },
+    { id: "t6", label: "6", section: "Dining", seats: 6, x: 30, y: 36, w: 20, h: 18, shape: "booth", kind: "booth_u", rotation: 0, status: "available" },
+    { id: "t7", label: "7", section: "Dining", seats: 5, x: 56, y: 36, w: 18, h: 18, shape: "booth", kind: "booth_l", rotation: 0, status: "available" },
   ];
   const bar: Table[] = [
     { id: "b1", label: "B1", section: "Bar", seats: 1, x: 10, y: 78, w: 8, h: 8, shape: "bar", status: "available" },

@@ -15,7 +15,7 @@ export const FLOOR_TOPICS: GuideTopic[] = [
         "The floor map is the live picture of the room. If table state is wrong, kitchen, payment, and turns all drift.",
       ),
       p(
-        "Each table is colored by dining status: empty, sat with no order, drinks fired, food fired, food delivered, dining unpaid, or closed and needs bus. A color bar on the top edge is the section (Dining, Booth, Bar, or a custom room). When a status sits past its flash minutes, the table pulses.",
+        "Each table is colored by dining status: empty, sat with no order, drinks fired, food fired, food delivered, dining unpaid, or closed and needs bus. Booths use the same colors on the table surface and a thin outline — benches stay upholstery so they still read as a booth. A color bar is the section. When a status sits past its flash minutes, the fixture pulses.",
       ),
       shot(
         "Floor map with section color bars and an Up badge on a table whose food was just bumped.",
@@ -181,9 +181,9 @@ export const FLOOR_TOPICS: GuideTopic[] = [
     id: "floor-editor",
     chapterId: "floor",
     title: "Floorplan editor",
-    summary: "Drag-and-drop rooms, tables, booths, and barstools. The live floor uses the same layout.",
+    summary: "Drag-and-drop rooms, tables, 4-top / U / L booths, and barstools. The live floor uses the same layout.",
     roles: ["owner_manager", "host_operator"],
-    keywords: ["floor editor", "drag", "resize", "booth", "barstool", "layout", "room"],
+    keywords: ["floor editor", "drag", "resize", "booth", "booth 4-top", "U booth", "L booth", "barstool", "layout", "room"],
     openView: "floor_editor",
     blocks: [
       why(
@@ -191,16 +191,17 @@ export const FLOOR_TOPICS: GuideTopic[] = [
       ),
       ul(
         "Owner, manager, and host stand draw the room. Entire location vs By section matches the runtime floor.",
-        "Place table, booth, barstool, or other. Drag to move. Corner handle resizes.",
-        "Properties: label, seats, room/section, shape, kind. Each seat gets a stable table QR token.",
+        "Place table, Booth 4-top, Booth U, Booth L, barstool, or other. Icons match the plan shape. Drag to move. Corner handle resizes. Rotate 90°.",
+        "Booth 4-top: two parallel benches + table (capacity 4). Booth U: three-sided banquette (default 6, 4–8). Booth L: two benches at 90° (default 5, 4–6). Seats stay attached — no orphan chairs.",
+        "Properties: label (table number), seats, room/section color, kind, rotation. Each fixture gets a stable table QR token.",
         "Rooms are sections. Multi-room houses switch rooms in the editor and on the live floor.",
         "Layout saves to the location (all paired tablets pick it up). Rotate a token if a sticker is compromised.",
       ),
       steps(
         "Open Floor → Floor editor (or Floor editor in nav).",
-        "Add a table, booth, or barstool. Drag it onto the canvas. Resize from the corner.",
+        "Add a table, Booth 4-top, Booth U, Booth L, or barstool. Drag it onto the canvas. Resize from the corner. Rotate 90°.",
         "Set label, seats, and room. Show QR and copy the guest link.",
-        "Return to Floor. The live map uses this layout and the status colors from Settings.",
+        "Return to Floor. The live map uses the same booth artwork. Status fill is the table surface plus a thin outline; benches stay a darker upholstery tone whether empty, sat, ordered, or dirty.",
       ),
       tip(
         "Go live always keeps the floorplan. Practice checks can be erased; tables stay where you drew them.",

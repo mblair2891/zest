@@ -1,5 +1,5 @@
 import { useRef, useState } from "react";
-import { Plus, Trash2, QrCode } from "lucide-react";
+import { Plus, Trash2, QrCode, RotateCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -12,15 +12,34 @@ import {
   swatchCss,
 } from "@/lib/pos/section-control";
 import type { TableKind } from "@/lib/pos/types";
+import {
+  BOOTH_DEFAULTS,
+  asBoothKind,
+  clampBoothSeats,
+  isBoothKind,
+  nextBoothRotation,
+  type BoothKind,
+} from "@/lib/pos/floor-booth";
+import { FloorBoothIcon, FloorBoothMark } from "@/components/pos/FloorBoothMark";
 import { tableGuestUrl } from "@/lib/pos/qr-table";
 import { getDemoType } from "@/lib/demo/session";
 import { GuideLearnLink } from "@/components/guide/GuideLearnLink";
 import { QrMark } from "./QrMark";
 import { persistLocationCatalog } from "@/lib/pos/persist-location-setup";
 
-const KINDS: { id: TableKind; label: string; shape: "rect" | "round" | "bar" | "booth" | "other"; w: number; h: number; seats: number }[] = [
+const KINDS: {
+  id: TableKind;
+  label: string;
+  shape: "rect" | "round" | "bar" | "booth" | "other";
+  w: number;
+  h: number;
+  seats: number;
+  booth?: BoothKind;
+}[] = [
   { id: "table", label: "Table", shape: "round", w: 12, h: 12, seats: 4 },
-  { id: "booth", label: "Booth", shape: "booth", w: 16, h: 12, seats: 4 },
+  { id: "booth_4", label: "Booth 4-top", shape: "booth", w: 16, h: 20, seats: 4, booth: "booth_4" },
+  { id: "booth_u", label: "Booth U", shape: "booth", w: 20, h: 18, seats: 6, booth: "booth_u" },
+  { id: "booth_l", label: "Booth L", shape: "booth", w: 18, h: 18, seats: 5, booth: "booth_l" },
   { id: "barstool", label: "Barstool", shape: "bar", w: 8, h: 8, seats: 1 },
   { id: "other", label: "Other", shape: "other", w: 12, h: 10, seats: 2 },
 ];
@@ -145,16 +164,21 @@ export function FloorEditorView() {
   const placeKind = (kind: (typeof KINDS)[number]) => {
     const dining =
       room !== "All" ? room : floorSections[0]?.name ?? "Dining";
+    const sec = floorSections.find((s) => s.name === dining);
     const count = tables.filter((t) => t.kind === kind.id || (!t.kind && kind.id === "table")).length;
+    const booth = kind.booth;
+    const seats = booth ? BOOTH_DEFAULTS[booth].seats : kind.seats;
     const id = add({
       x: 20 + (count % 5) * 12,
       y: 20 + Math.floor(count / 5) * 14,
       section: dining,
-      seats: kind.seats,
+      sectionId: sec?.id,
+      seats,
       shape: kind.shape,
       kind: kind.id,
       w: kind.w,
       h: kind.h,
+      rotation: 0,
       label:
         kind.id === "barstool"
           ? `B${tables.filter((t) => t.section === "Bar" || t.kind === "barstool").length + 1}`
@@ -222,7 +246,7 @@ export function FloorEditorView() {
         <div className="ml-auto flex flex-wrap gap-2">
           {KINDS.map((k) => (
             <Button key={k.id} size="sm" variant="outline" onClick={() => placeKind(k)}>
-              <Plus className="h-3.5 w-3.5" />
+              {k.booth ? <FloorBoothIcon kind={k.booth} /> : <Plus className="h-3.5 w-3.5" />}
               {k.label}
             </Button>
           ))}
@@ -240,7 +264,8 @@ export function FloorEditorView() {
           >
             {visible.map((t) => {
               const color = sectionColorForTable(t, floorSections);
-              const kind = t.kind ?? (t.shape === "bar" ? "barstool" : t.shape === "booth" ? "booth" : "table");
+              const booth = asBoothKind(t.kind, t.shape);
+              const kind = t.kind ?? (t.shape === "bar" ? "barstool" : booth ? booth : "table");
               return (
                 <button
                   key={t.id}
@@ -251,28 +276,45 @@ export function FloorEditorView() {
                     top: `${t.y}%`,
                     width: `${t.w}%`,
                     height: `${t.h}%`,
-                    boxShadow: `inset 0 3px 0 0 ${color}`,
+                    boxShadow: booth ? undefined : `inset 0 3px 0 0 ${color}`,
                   }}
                   className={cn(
-                    "absolute flex cursor-grab flex-col items-center justify-center border-2 bg-surface-2 text-center active:cursor-grabbing",
-                    t.shape === "round" || t.shape === "bar" || kind === "barstool"
-                      ? "rounded-full"
-                      : kind === "booth"
-                        ? "rounded-2xl"
-                        : "rounded-xl",
-                    selected === t.id
-                      ? "border-primary ring-2 ring-primary/40"
-                      : "border-border",
-                    (t.mergedChildIds?.length ?? 0) > 0 && "border-info",
+                    "absolute flex cursor-grab flex-col items-center justify-center text-center active:cursor-grabbing",
+                    booth
+                      ? "border-0 bg-transparent p-0"
+                      : cn(
+                          "border-2 bg-surface-2",
+                          t.shape === "round" || t.shape === "bar" || kind === "barstool"
+                            ? "rounded-full"
+                            : "rounded-xl",
+                          selected === t.id
+                            ? "border-primary ring-2 ring-primary/40"
+                            : "border-border",
+                        ),
+                    !booth && (t.mergedChildIds?.length ?? 0) > 0 && "border-info",
+                    booth && selected === t.id && "ring-2 ring-primary/40",
                   )}
                 >
-                  <span className="text-sm font-semibold">{t.label}</span>
-                  <span className="text-[10px] text-muted-foreground">
-                    {t.section}
-                  </span>
+                  {booth ? (
+                    <FloorBoothMark
+                      kind={booth}
+                      tableFill="#efe6d8"
+                      outline={selected === t.id ? "var(--primary)" : color}
+                      rotation={t.rotation ?? 0}
+                      label={t.label}
+                      sectionColor={color}
+                    />
+                  ) : (
+                    <>
+                      <span className="text-sm font-semibold">{t.label}</span>
+                      <span className="text-[10px] text-muted-foreground">
+                        {t.section}
+                      </span>
+                    </>
+                  )}
                   {selected === t.id && (
                     <span
-                      className="absolute bottom-0 right-0 h-3 w-3 cursor-nwse-resize rounded-sm bg-primary"
+                      className="absolute bottom-0 right-0 z-10 h-3 w-3 cursor-nwse-resize rounded-sm bg-primary"
                       onPointerDown={(e) => onResizeDown(e, t.id, t.w, t.h)}
                     />
                   )}
@@ -376,12 +418,20 @@ export function FloorEditorView() {
                 <Input
                   className="mt-1"
                   type="number"
+                  min={asBoothKind(selectedTable.kind, selectedTable.shape)
+                    ? BOOTH_DEFAULTS[asBoothKind(selectedTable.kind, selectedTable.shape)!].minSeats
+                    : 1}
+                  max={asBoothKind(selectedTable.kind, selectedTable.shape)
+                    ? BOOTH_DEFAULTS[asBoothKind(selectedTable.kind, selectedTable.shape)!].maxSeats
+                    : 20}
                   value={selectedTable.seats}
-                  onChange={(e) =>
+                  onChange={(e) => {
+                    const booth = asBoothKind(selectedTable.kind, selectedTable.shape);
+                    const raw = parseInt(e.target.value, 10) || 1;
                     update(selectedTable.id, {
-                      seats: Math.max(1, parseInt(e.target.value, 10) || 1),
-                    })
-                  }
+                      seats: booth ? clampBoothSeats(booth, raw) : Math.max(1, raw),
+                    });
+                  }}
                 />
               </label>
               <label className="block text-xs text-muted-foreground">
@@ -415,22 +465,46 @@ export function FloorEditorView() {
                       key={k.id}
                       size="sm"
                       variant={
-                        (selectedTable.kind ?? "table") === k.id
+                        (asBoothKind(selectedTable.kind, selectedTable.shape) ??
+                          selectedTable.kind ??
+                          "table") === k.id
                           ? "default"
                           : "outline"
                       }
-                      onClick={() =>
+                      onClick={() => {
+                        const booth = k.booth;
                         update(selectedTable.id, {
                           kind: k.id,
                           shape: k.shape,
-                        })
-                      }
+                          seats: booth
+                            ? clampBoothSeats(booth, selectedTable.seats)
+                            : selectedTable.seats,
+                          w: booth ? BOOTH_DEFAULTS[booth].w : selectedTable.w,
+                          h: booth ? BOOTH_DEFAULTS[booth].h : selectedTable.h,
+                        });
+                        persistLocationCatalog("floor");
+                      }}
                     >
+                      {k.booth ? <FloorBoothIcon kind={k.booth} /> : null}
                       {k.label}
                     </Button>
                   ))}
                 </div>
               </div>
+              <Button
+                size="sm"
+                variant="outline"
+                className="w-full"
+                onClick={() => {
+                  update(selectedTable.id, {
+                    rotation: nextBoothRotation(selectedTable.rotation),
+                  });
+                  persistLocationCatalog("floor");
+                }}
+              >
+                <RotateCw className="h-3.5 w-3.5" />
+                Rotate 90°
+              </Button>
               <div className="grid grid-cols-2 gap-2">
                 <label className="block text-xs text-muted-foreground">
                   W %
@@ -459,8 +533,9 @@ export function FloorEditorView() {
                   />
                 </label>
               </div>
+              {!isBoothKind(selectedTable.kind, selectedTable.shape) && (
               <div className="flex gap-1">
-                {(["rect", "round", "bar", "booth", "other"] as const).map((shape) => (
+                {(["rect", "round", "bar", "other"] as const).map((shape) => (
                   <Button
                     key={shape}
                     size="sm"
@@ -474,6 +549,7 @@ export function FloorEditorView() {
                   </Button>
                 ))}
               </div>
+              )}
               <div className="rounded-xl border border-border bg-bg p-2">
                 <div className="flex items-center justify-between gap-2">
                   <p className="text-xs font-medium">Table QR</p>
@@ -524,7 +600,7 @@ export function FloorEditorView() {
             </div>
           ) : (
             <p className="text-sm text-muted-foreground">
-              Select a seat to edit. Drag to move, corner to resize. Add table, booth, barstool, or other.
+              Select a fixture to edit. Drag to move, corner to resize, Rotate 90°. Booths keep benches attached.
             </p>
           )}
         </aside>

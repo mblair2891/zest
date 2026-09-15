@@ -3821,7 +3821,9 @@ const usePosStoreRaw = create<PosStore>()(persist((set, get) => {
 			w: partial.w ?? 12,
 			h: partial.h ?? 12,
 			shape: partial.shape ?? "round",
-			kind: partial.kind ?? (partial.shape === "bar" ? "barstool" : partial.shape === "booth" ? "booth" : "table"),
+			kind: partial.kind ?? (partial.shape === "bar" ? "barstool" : partial.shape === "booth" ? "booth_4" : "table"),
+			rotation: partial.rotation ?? 0,
+			sectionId: partial.sectionId,
 			status: "empty",
 			statusSince: Date.now(),
 			qrToken: makeTableQrToken(id, partial.label ?? String(n), get().tenantLocationId || undefined),
@@ -4724,7 +4726,9 @@ const usePosStoreRaw = create<PosStore>()(persist((set, get) => {
 					t.qrToken && qrTokenMatchesLocation(t.qrToken, locKey)
 						? t.qrToken
 						: makeTableQrToken(t.id, t.label, locKey),
-				kind: t.kind || (t.shape === "bar" ? "barstool" : "table"),
+				kind: t.kind || (t.shape === "bar" ? "barstool" : t.shape === "booth" ? "booth_4" : "table"),
+				rotation: t.rotation ?? 0,
+				sectionId: t.sectionId,
 			})),
 			floorSections: (p.floorSections && p.floorSections.length) ? p.floorSections : current.floorSections,
 			extraTableGrants: p.extraTableGrants || current.extraTableGrants || [],

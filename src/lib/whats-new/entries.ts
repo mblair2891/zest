@@ -6,6 +6,19 @@ import type { GuideUpdate } from "@/lib/guide/types";
  */
 export const WHATS_NEW_ENTRIES: GuideUpdate[] = [
   {
+    id: "upd_2026_10_91_floor_booths",
+    date: "2026-09-14",
+    title: "Booths on the floorplan — 4-top, U, and L",
+    summary:
+      "Place Booth 4-top, Booth U, or Booth L. They look like banquettes, not fat rectangles. Live host and server floors use the same artwork. Status color fills the table; benches stay upholstery.",
+    body: "Floor editor palette: Booth 4-top (two benches + table, 4 seats), Booth U (three-sided, 6 seats, 4–8), Booth L (two benches at 90°, 5 seats, 4–6). Drag, resize, rotate 90°. Seats stay on the booth. Label is the table number plus the section color. Empty / sat / drinks / food / delivered / dirty / overtime apply to the table surface and a thin outline — not a raw square.",
+    roles: ["owner_manager", "server", "host_operator", "platform_admin"],
+    surfaces: ["floor", "settings"],
+    audience: "all",
+    topicId: "floor-editor",
+    tags: ["floor", "booth", "editor"],
+  },
+  {
     id: "upd_2026_10_90_deactivate_kick",
     date: "2026-09-14",
     title: "Deactivate kicks the tablet to the pair-code screen",

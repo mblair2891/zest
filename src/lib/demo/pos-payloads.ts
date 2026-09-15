@@ -194,7 +194,9 @@ function demoTables(type: VenueEntityId, locationId: string): Table[] {
   return starterTables().map((t) => ({
     ...t,
     locationId,
-    kind: t.shape === "bar" ? "barstool" : t.shape === "booth" ? "booth" : "table",
+    kind:
+      t.kind ??
+      (t.shape === "bar" ? "barstool" : t.shape === "booth" ? "booth_4" : "table"),
     qrToken: makeTableQrToken(t.id, t.label),
     status: "empty" as const,
   }));

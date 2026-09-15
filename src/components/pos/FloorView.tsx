@@ -58,6 +58,8 @@ import { QrMark } from "./QrMark";
 import { canAccessView } from "@/lib/pos/rbac";
 import { useStationLayout } from "@/lib/ui/station-layout";
 import { barTabVisibleTables, isBarRailSeat, locationAllowsBarTabs } from "@/lib/pos/bar-tab";
+import { asBoothKind } from "@/lib/pos/floor-booth";
+import { FloorBoothMark } from "@/components/pos/FloorBoothMark";
 import { stationCan } from "@/lib/pos/station-pin-gate";
 import {
   CHECK_HOLD_LABEL,
@@ -508,7 +510,8 @@ export function FloorView({
                 !seatAcc.ok;
               const grant =
                 emp && activeGrantForTable(extraTableGrants, emp.id, t.id);
-              const kind = t.kind ?? (t.shape === "bar" ? "barstool" : t.shape === "booth" ? "booth" : "table");
+              const booth = asBoothKind(t.kind, t.shape);
+              const kind = t.kind ?? (t.shape === "bar" ? "barstool" : booth ? booth : "table");
               return (
                 <button
                   key={t.id}
@@ -539,17 +542,20 @@ export function FloorView({
                     top: `${t.y}%`,
                     width: `${t.w}%`,
                     height: `${t.h}%`,
-                    background: fill,
+                    background: booth ? "transparent" : fill,
                     color: ink,
-                    boxShadow: `inset 0 3px 0 0 ${secColor}`,
+                    boxShadow: booth ? undefined : `inset 0 3px 0 0 ${secColor}`,
                   }}
                   className={cn(
-                    "absolute flex flex-col items-center justify-center border-2 border-black/10 p-1 text-center transition hover:brightness-110 active:scale-[0.98]",
-                    t.shape === "round" || t.shape === "bar" || kind === "barstool"
-                      ? "rounded-full"
-                      : kind === "booth"
-                        ? "rounded-2xl"
-                        : "rounded-xl",
+                    "absolute flex flex-col items-center justify-center text-center transition hover:brightness-110 active:scale-[0.98]",
+                    booth
+                      ? "border-0 bg-transparent p-0"
+                      : cn(
+                          "border-2 border-black/10 p-1",
+                          t.shape === "round" || t.shape === "bar" || kind === "barstool"
+                            ? "rounded-full"
+                            : "rounded-xl",
+                        ),
                     (transferFrom === t.id ||
                       mergePrimary === t.id ||
                       picked.includes(t.id) ||
@@ -565,10 +571,28 @@ export function FloorView({
                       "min-h-12 min-w-12",
                   )}
                 >
+                  {booth ? (
+                    <FloorBoothMark
+                      kind={booth}
+                      tableFill={fill}
+                      outline={fill}
+                      rotation={t.rotation ?? 0}
+                      label={`${t.label}${merged}`}
+                      sectionColor={secColor}
+                    />
+                  ) : (
                   <span className="text-sm font-semibold tabular leading-none">
                     {t.label}
                     {merged}
                   </span>
+                  )}
+                  <div
+                    className={cn(
+                      "flex flex-col items-center",
+                      booth &&
+                        "pointer-events-none absolute inset-x-0 bottom-0.5 z-10",
+                    )}
+                  >
                   {foodUp && (
                     <span className="mt-0.5 rounded bg-primary px-1 text-[9px] font-bold uppercase tracking-wide text-primary-foreground">
                       Up
@@ -597,9 +621,11 @@ export function FloorView({
                   {outOfSection && isEmptyTable(t.status) && (
                     <Lock className="mt-0.5 h-3 w-3 text-muted-foreground" />
                   )}
+                  {!booth && (
                   <span className="mt-0.5 text-[10px] opacity-80">
                     {t.seats} top
                   </span>
+                  )}
                   {totals && (
                     <span className="mt-0.5 text-[10px] font-medium tabular">
                       {formatCurrency(totals.balanceCents || totals.totalCents)}
@@ -612,6 +638,7 @@ export function FloorView({
                       title={server.name}
                     />
                   )}
+                  </div>
                 </button>
               );
             })}
