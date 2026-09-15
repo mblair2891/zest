@@ -3,6 +3,7 @@ import { usePosStore } from "@/lib/pos/store";
 import { parseCashHandling, cashRoleFromSession } from "@/lib/pos/cash-handling";
 import { currentCashSink } from "@/lib/pos/cash-session";
 import { shouldCountCashOnCloseout } from "@/lib/pos/closeout";
+import { parsePaymentMethods } from "@/lib/pos/payment-methods";
 import { useStationSessionStore } from "@/lib/pos/station-session";
 import { isBlindPhase } from "@/lib/pos/till-closeout";
 import { useTillCloseoutStore } from "@/lib/pos/till-closeout-store";
@@ -15,7 +16,9 @@ import { TillCloseoutView } from "./TillCloseoutView";
  */
 export function EndShiftFlow({ onDone }: { onDone: () => void }) {
   const emp = usePosStore((s) => s.employees.find((e) => e.id === s.currentEmployeeId));
-  const cfg = parseCashHandling(usePosStore((s) => s.settings.cashHandling));
+  const settings = usePosStore((s) => s.settings);
+  const cfg = parseCashHandling(settings.cashHandling);
+  const cashOn = parsePaymentMethods(settings.paymentMethods).cash;
   const kind = useStationSessionStore((s) => s.assignment.kind);
   const sink = currentCashSink({
     cfg,
@@ -23,7 +26,9 @@ export function EndShiftFlow({ onDone }: { onDone: () => void }) {
     deviceRole: cashRoleFromSession(kind),
     deviceId: usePosStore.getState().activeDeviceId,
   });
-  const counting = emp ? shouldCountCashOnCloseout({ sink, emp, cfg }) : false;
+  const counting = emp
+    ? shouldCountCashOnCloseout({ sink, emp, cfg, cashEnabled: cashOn })
+    : false;
   const tillRec = useTillCloseoutStore((s) =>
     emp ? s.records.find((r) => r.employeeId === emp.id && r.status !== "voided") : undefined,
   );

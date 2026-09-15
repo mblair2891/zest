@@ -49,6 +49,7 @@ import {
 import { useCloseoutStore } from "@/lib/pos/closeout-store";
 import { dispatchPrintJob } from "@/lib/print/dispatch";
 import type { PrintJob } from "@/lib/print/types";
+import { parsePaymentMethods } from "@/lib/pos/payment-methods";
 
 const STEPS = [
   "Checks",
@@ -75,6 +76,7 @@ export function CloseoutView({
   const devices = usePosStore((s) => s.locationDevices ?? []);
   const kind = useStationSessionStore((s) => s.assignment.kind);
   const cfg = parseCashHandling(settings.cashHandling);
+  const payCfg = parsePaymentMethods(settings.paymentMethods);
   const laborPayout = useOpsStore((s) => s.labor.ccTipPayout);
   const laborPool = useOpsStore((s) => s.labor.tipPooling);
   const payout = resolveCcTipPayout(cfg.ccTipPayout, laborPayout);
@@ -108,7 +110,11 @@ export function CloseoutView({
   const openMine = emp
     ? ordersForServer(orders, emp.id).filter((o) => o.status === "open")
     : [];
-  const counting = skipCashCount ? false : emp ? shouldCountCashOnCloseout({ sink, emp, cfg }) : false;
+  const counting = skipCashCount
+    ? false
+    : emp
+      ? shouldCountCashOnCloseout({ sink, emp, cfg, cashEnabled: payCfg.cash })
+      : false;
   const blind = blindCountEnabled(cfg, counting);
   const cardTips =
     cardTipsAdj != null && cardTipsAdj !== ""
@@ -494,11 +500,15 @@ export function CloseoutView({
         )}
         {step === 2 && (
           <dl className="grid grid-cols-3 gap-3 text-sm">
-            {[
-              ["Card", sales.cardCents],
-              ["Cash", sales.cashCents],
-              ["Gift", sales.giftCents],
-            ].map(([k, v]) => (
+            {([
+              payCfg.card ? ["Card", sales.cardCents] : null,
+              payCfg.cash ? ["Cash", sales.cashCents] : null,
+              payCfg.giftCard ? ["Gift", sales.giftCents] : null,
+              payCfg.check ? ["Check", sales.checkCents] : null,
+              payCfg.houseAccount ? ["House account", sales.houseAccountCents] : null,
+              payCfg.other ? [payCfg.otherLabel || "Other", sales.otherCents] : null,
+              payCfg.comp ? ["Comp", sales.compsCents] : null,
+            ].filter(Boolean) as [string, number][]).map(([k, v]) => (
               <div key={String(k)} className="rounded-xl border border-border bg-surface p-3">
                 <dt className="text-xs text-muted-foreground">{k}</dt>
                 <dd className="mt-1 font-semibold tabular">{formatCurrency(v as number)}</dd>
@@ -510,7 +520,9 @@ export function CloseoutView({
           <div className="max-w-sm space-y-3">
             {skipCashCount || !counting ? (
               <p className="text-sm text-muted-foreground">
-                {skipCashCount
+                {!payCfg.cash
+                  ? "Cash is off at this venue. No drawer possession and no cash count."
+                  : skipCashCount
                   ? "Cash was counted on the till close. This step is sales and tips only — not a second drawer count."
                   : "Shared well — you are not the well closer. Skip drawer count. House close is a separate manager screen. Declare cash tips and tip-outs next."}
               </p>

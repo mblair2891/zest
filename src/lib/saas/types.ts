@@ -105,6 +105,8 @@ export type LocationSetup = {
   deviceRoleHistory?: import("@/lib/pos/location-devices").DeviceRoleChange[];
   /** Drawers, wells, server banks — location-configurable cash handling. */
   cashHandling?: import("@/lib/pos/cash-handling").CashHandlingConfig;
+  /** Venue payment methods (toggles). */
+  paymentMethods?: import("@/lib/pos/payment-methods").PaymentMethodsConfig;
   /** Hashed station service PIN (reload WebView / exit lock-task). */
   stationServicePinHash?: string;
   /** Cost catalog (SKUs, invoices, suppliers, POs) — no image blobs. */
@@ -142,6 +144,19 @@ export const EMPTY_LOCATION_SETUP: LocationSetup = {
   entityPermissions: [],
   locationDevices: [],
   paymentsMode: "inherit",
+  paymentMethods: {
+    cash: true,
+    card: true,
+    giftCard: true,
+    check: false,
+    houseAccount: false,
+    comp: true,
+    other: false,
+    otherLabel: "Other",
+    checkPhoto: false,
+    checkLast4: false,
+    checkManagerWitness: false,
+  },
 };
 export type MembershipRole =
   | "owner"

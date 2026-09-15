@@ -8,6 +8,7 @@ import { isProspectDemo } from "@/lib/demo/session";
 import { floorPlanFromPos } from "@/lib/saas/location-catalog";
 import { HOST_SCOPE } from "@/lib/access/entity-grants";
 import { parseLaborRules } from "@/lib/labor/rules";
+import { parsePaymentMethods } from "./payment-methods";
 
 const timers = new Map<string, ReturnType<typeof setTimeout>>();
 
@@ -74,6 +75,27 @@ export function confirmCashDiscountRecalc(): boolean {
     return false;
   }
   return true;
+}
+
+export function persistPaymentMethods(): void {
+  const ctx = ids();
+  if (!ctx) return;
+  const prev = timers.get("payment-methods");
+  if (prev) clearTimeout(prev);
+  timers.set(
+    "payment-methods",
+    setTimeout(() => {
+      timers.delete("payment-methods");
+      const s = usePosStore.getState().settings;
+      void saveLocationSettingsFn({
+        data: {
+          orgId: ctx.orgId,
+          locationId: ctx.locationId,
+          setup: { paymentMethods: parsePaymentMethods(s.paymentMethods) },
+        },
+      }).catch(() => undefined);
+    }, 400),
+  );
 }
 
 export function persistCashDiscount(): void {

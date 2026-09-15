@@ -77,6 +77,7 @@ export const CASH_GIFT_TOPICS: GuideTopic[] = [
       ),
       ul(
         "None: no cash tender, no drawer kick, no cash closeout. Clock only (plus ODS if the device allows).",
+        "Venue Payment methods → Cash off: no possession required for anyone at that venue. Take drawer is hidden. Banks unused. Closeout still lists sales and tips without a cash count.",
         "House drawer: exclusive (one PIN pops that drawer), shared (multiple PINs, one float, every tender stamped with who), or multi-drawer (one person may own more than one well). Taking possession binds staff ↔ drawer. Map each drawer to a station/printer. A device role change does not invent a drawer — a manager assigns it.",
         "Personal bank: opening float (venue default, often $0). Cash on that server’s checks goes to their bank unless All cash to house till is on. Optional: server may break large bills on a house drawer (loan / change slip).",
         "Possession: cannot tender cash until accepted. Custodian enters declared opening cash — true blind, no expected. Optional manager witness PIN. Handoff A→B: A counts out; B blind-counts in or accepts A’s counted-out total (venue toggle).",
@@ -144,7 +145,7 @@ export const CASH_GIFT_TOPICS: GuideTopic[] = [
         "On an order-taking device tap Closeout (not Labor, not the house Cash drawer close). House well/drawer close stays a separate manager/closer screen.",
       ),
       steps(
-        "On the order station tap Closeout from the short menu (not Labor, not PIN login). Take drawer / Closeout / Hand off appear only if this PIN’s assignment is not none.",
+        "On the order station tap Closeout from the short menu (not Labor, not PIN login). Take drawer / Hand off appear only if this PIN’s assignment is not none and Cash is on in Payment methods. If Cash is off, Closeout still opens for sales and tips — no drawer count.",
         "No open checks (or transfer them).",
         "If this station has a drawer or bank to count, the screen is Count your till. Helper: “Count all cash in the drawer twice. Enter what you counted. Do not use reports.”",
         "If dual-control is on, a second employee PIN witnesses first. They do not see expected cash.",
@@ -190,10 +191,13 @@ export const CASH_GIFT_TOPICS: GuideTopic[] = [
       p(
         "Reports → Server closeouts: declared cash, blind over/short, recommended vs actual by pool. Export CSV is payroll-ready later — Summex does not process payroll.",
       ),
+      p(
+        "Closeout tenders only list methods the house has on (card, cash, gift, check, house account, other). Disabled buckets are hidden. Comp appears only if Comp is on.",
+      ),
       warn(
         "Closeout is not clock-out. Labor still punches time. House drawer/well close is still Cash, not this wizard.",
       ),
-      related("cash-handling", "tenders-tips", "tip-pooling", "payroll-export", "reports", "floor-pin-login", "login"),
+      related("cash-handling", "tenders-tips", "venue-payment-methods", "tip-pooling", "payroll-export", "reports", "floor-pin-login", "login"),
     ],
   }),
   topic({
@@ -319,6 +323,7 @@ export const CASH_GIFT_TOPICS: GuideTopic[] = [
         "At term end, host processes residual: operator-issued remaining balance splits per location formula (default 50/50). House-issued remaining balance is retained by the house.",
       ),
       steps(
+        "If Gift is off in Settings → Payment methods, Issue / reload and Pay → Gift are hidden. No sell and no redeem.",
         "Open Guests. Issue a card: amount, issuer (defaults to selling point), cash or card tender. Card load still charges Quantum Payments; the gift balance is Summex ledger, not Finix.",
         "Pay → Gift: swipe, scan, or key the code. Example: Operator B (bar) issues $50 — liability is Operator B. Operator A sells food, redeem — Operator A merch, Operator B → Operator A remit.",
         "Settings → Gift cards: house issuer on/off, host-stand default issuer, term allowed (with disclaimer), operator residual split. Use the dropdowns — no JSON.",

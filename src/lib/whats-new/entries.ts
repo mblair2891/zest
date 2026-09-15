@@ -6,6 +6,19 @@ import type { GuideUpdate } from "@/lib/guide/types";
  */
 export const WHATS_NEW_ENTRIES: GuideUpdate[] = [
   {
+    id: "upd_2026_10_96_payment_methods",
+    date: "2026-09-14",
+    title: "Venue payment method toggles",
+    summary:
+      "Settings → Payment methods: checkboxes for cash, card, gift, check, house account, comp, and other. Disabled tenders are hidden on pay, QR, kiosk, and closeout.",
+    body: "Location owner/manager enables each tender the house accepts. At least one guest tender (cash, card, or gift) stays on. Cash off: no drawer possession. Card off: no reader prompts. Gift off: no sell or redeem. Check has optional photo / last-4 / manager witness. Quote and onboarding default cash + card + gift on, check off. Peer venue: methods are venue-level; operators cannot turn off card for their own lines if the house takes cards. Settings are toggles, not JSON.",
+    roles: ["owner_manager", "server", "host_operator", "platform_admin"],
+    surfaces: ["settings"],
+    audience: "all",
+    topicId: "venue-payment-methods",
+    tags: ["payments", "tender", "cash", "card", "gift", "closeout"],
+  },
+  {
     id: "upd_2026_10_95_cash_custody",
     date: "2026-09-14",
     title: "Drawer assignment, banks, blind closeout",

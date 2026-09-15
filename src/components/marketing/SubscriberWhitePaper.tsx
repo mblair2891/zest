@@ -24,11 +24,11 @@ export function SubscriberWhitePaper() {
         summex.app · Guest cards: {PAYMENTS_BRAND} only
       </p>
       <p className="mt-2 text-xs text-muted-foreground">
-        Revision · 14 Sep 2026 — Aligns with Operators Guide v2026.10.94.
-        Station UI is device role ∩ staff PIN. After PIN the tablet shows a
-        short role menu. Pair with a typed Devices code;
-        QR is optional. Peer venues have no host merchant; the host stand is
-        still a device role. Gift lookup at summex.app/gift.
+        Revision · 14 Sep 2026 — Aligns with Operators Guide v2026.10.96.
+        The house toggles which tenders it accepts. Station UI is device role ∩
+        staff PIN. After PIN the tablet shows a short role menu. Pair with a
+        typed Devices code; QR is optional. Peer venues have no host merchant;
+        the host stand is still a device role. Gift lookup at summex.app/gift.
       </p>
       <p className="mt-6 text-sm leading-relaxed text-muted-foreground">
         For the owner considering Summex — a single shop, a full dining room, or a

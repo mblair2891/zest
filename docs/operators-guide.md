@@ -1,7 +1,7 @@
 # Operators Guide — authoring
 
-**Revision · 14 Sep 2026** — Drawer assignment, banks, blind count, closeout.
-Guide v2026.10.95.
+**Revision · 14 Sep 2026** — Venue payment method toggles.
+Guide v2026.10.96.
 
 The in-app **Operators Guide** is the living product manual. It is not a
 separate PDF. Staff open it from **Guide** / **?** in the POS and platform

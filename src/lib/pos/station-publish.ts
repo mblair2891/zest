@@ -10,6 +10,7 @@ import { tablesFromFloorPlan } from "@/lib/saas/location-catalog";
 import { parseLocationDevices } from "@/lib/pos/location-devices";
 import { parseLaborMap } from "@/lib/labor/rules";
 import { useOpsStore } from "@/lib/pos/ops-store";
+import { parsePaymentMethods } from "./payment-methods";
 
 export const STATION_PUBLISH_STATE_KEY = "summex-station-publish-state-v1";
 
@@ -20,6 +21,7 @@ export type StationPublishSetup = {
   qrMode?: string;
   qrPolicy?: object;
   cashHandling?: object;
+  paymentMethods?: object;
   cashDiscountEnabled?: boolean;
   cashDiscountPercent?: number;
   cashRoundIncrement?: number;
@@ -158,6 +160,9 @@ export function applyStationPublish(
     }
     if (setup.cashHandling && typeof setup.cashHandling === "object") {
       settings.cashHandling = setup.cashHandling as typeof settings.cashHandling;
+    }
+    if (setup.paymentMethods && typeof setup.paymentMethods === "object") {
+      settings.paymentMethods = parsePaymentMethods(setup.paymentMethods);
     }
     if ("cashDiscountEnabled" in setup) {
       settings.cashDiscountEnabled = Boolean(setup.cashDiscountEnabled);

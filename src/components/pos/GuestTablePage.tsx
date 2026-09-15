@@ -7,6 +7,7 @@ import { cn, formatCurrency } from "@/lib/utils";
 import { parseTicketQrToken, qrTokenMatchesLocation } from "@/lib/pos/qr-table";
 import { isEmptyTable } from "@/lib/pos/floor-status";
 import { cashPolicyFromSettings } from "@/lib/pos/cash-discount";
+import { parsePaymentMethods } from "@/lib/pos/payment-methods";
 import { computeTotals, linePrintedCents, tipSuggestions } from "@/lib/pos/calculations";
 import { captureIsSandbox } from "@/lib/lifecycle/store";
 import type { MenuItem, Order, OrderLine, Table } from "@/lib/pos/types";
@@ -61,6 +62,16 @@ export function GuestTablePage({
   const guestSendOrder = usePosStore((s) => s.guestSendOrder);
   const guestPayOrder = usePosStore((s) => s.guestPayOrder);
   const policy = parseQrPolicy(settings.qrPolicy, settings.qrMode);
+
+  useEffect(() => {
+    const venuePay = parsePaymentMethods(settings.paymentMethods);
+    const giftOn =
+      venuePay.giftCard && (policy.payAllow === "gift" || policy.payAllow === "both");
+    const cardOn =
+      venuePay.card && (policy.payAllow === "card" || policy.payAllow === "both");
+    if (payMethod === "card" && !cardOn && giftOn) setPayMethod("gift_card");
+    if (payMethod === "gift_card" && !giftOn && cardOn) setPayMethod("card");
+  }, [settings.paymentMethods, policy.payAllow, payMethod]);
 
   useEffect(() => {
     let finished = false;
@@ -271,6 +282,15 @@ export function GuestTablePage({
       sandbox = captureIsSandbox();
     } catch {
       sandbox = true;
+    }
+    const venuePay = parsePaymentMethods(settings.paymentMethods);
+    if (payMethod === "card" && !venuePay.card) {
+      setMsg("Card is off at this venue. Ask staff or use gift if it is on.");
+      return;
+    }
+    if (payMethod === "gift_card" && !venuePay.giftCard) {
+      setMsg("Gift is off at this venue.");
+      return;
     }
     if (!sandbox && payMethod === "card") {
       setMsg(
@@ -560,8 +580,11 @@ function PayPanel({
 }) {
   const settings = usePosStore((s) => s.settings);
   const cardPolicy = cashPolicyFromSettings(settings);
-  const giftOn = policy.payAllow === "gift" || policy.payAllow === "both";
-  const cardOn = policy.payAllow === "card" || policy.payAllow === "both";
+  const venuePay = parsePaymentMethods(settings.paymentMethods);
+  const giftOn =
+    venuePay.giftCard && (policy.payAllow === "gift" || policy.payAllow === "both");
+  const cardOn =
+    venuePay.card && (policy.payAllow === "card" || policy.payAllow === "both");
   const seats = [
     ...new Set(
       order.lines.filter((l) => !l.voided && l.seat != null).map((l) => l.seat as number),
@@ -654,6 +677,7 @@ function PayPanel({
         <div className="flex gap-2">
           <Button
             size="sm"
+            className="min-h-12 flex-1"
             variant={payMethod === "card" ? "default" : "outline"}
             onClick={() => setPayMethod("card")}
           >
@@ -661,6 +685,7 @@ function PayPanel({
           </Button>
           <Button
             size="sm"
+            className="min-h-12 flex-1"
             variant={payMethod === "gift_card" ? "default" : "outline"}
             onClick={() => setPayMethod("gift_card")}
           >
@@ -675,12 +700,22 @@ function PayPanel({
           onChange={(e) => setGiftCode(e.target.value.toUpperCase())}
         />
       )}
-      <p className="text-sm tabular">
-        Charging {formatCurrency(charge + (policy.tip ? tip : 0))}
-      </p>
-      <Button className="w-full" onClick={onPay}>
-        {payMethod === "gift_card" ? "Redeem gift" : "Pay with Quantum Payments"}
-      </Button>
+      {!giftOn && !cardOn ? (
+        <p className="text-sm text-muted-foreground">
+          Pay at the stand — this QR does not take card or gift.
+        </p>
+      ) : (
+        <>
+          <p className="text-sm tabular">
+            Charging {formatCurrency(charge + (policy.tip ? tip : 0))}
+          </p>
+          <Button className="w-full min-h-12" onClick={onPay}>
+            {payMethod === "gift_card" && giftOn
+              ? "Redeem gift"
+              : "Pay with Quantum Payments"}
+          </Button>
+        </>
+      )}
     </div>
   );
 }

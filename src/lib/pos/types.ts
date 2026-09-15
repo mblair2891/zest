@@ -90,6 +90,7 @@ export type PaymentMethod =
   | "comp"
   | "house_account"
   | "room_charge"
+  | "check"
   | "other";
 
 export type PosView =
@@ -285,6 +286,8 @@ export interface RestaurantSettings {
   networkNotes?: string;
   networkChecklist?: import("@/lib/saas/network-readiness").NetworkChecklist;
   cashHandling?: import("./cash-handling").CashHandlingConfig;
+  /** Venue tenders the house accepts. Disabled methods are hidden on pay and closeout. */
+  paymentMethods?: import("./payment-methods").PaymentMethodsConfig;
   /** Location-configurable loss-prevention gates. */
   lossPrevention?: import("./loss-prevention").LossPreventionConfig;
 }

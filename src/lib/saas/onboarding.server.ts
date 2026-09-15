@@ -31,6 +31,7 @@ import {
 import { isReservedVenueSlug, normalizeVenueSlug } from "@/lib/platform/venue-host";
 import type { PackageId } from "@/lib/pos/packages";
 import type { PlanSlug } from "./types";
+import { DEFAULT_PAYMENT_METHODS } from "@/lib/pos/payment-methods";
 
 const UNLOCKED: ProspectStatusLike[] = ["contracted", "onboarding", "training", "live"];
 type ProspectStatusLike = string;
@@ -403,6 +404,7 @@ async function locationSetup(
           : ("training" as const),
     cashDiscountEnabled: true,
     cashDiscountPercent: guestCardRatePercent,
+    paymentMethods: { ...DEFAULT_PAYMENT_METHODS },
   };
 }
 

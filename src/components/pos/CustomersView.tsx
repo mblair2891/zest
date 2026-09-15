@@ -41,6 +41,7 @@ import { giftExpiresAt, resolveGiftIssuer } from "@/lib/pos/gift-issuer";
 import { ManagerPinDialog } from "./ManagerPinDialog";
 import { GIFT_ADJUST_REASONS } from "@/lib/pos/loss-prevention";
 import type { GiftCardStatus } from "@/lib/pos/types";
+import { parsePaymentMethods } from "@/lib/pos/payment-methods";
 
 export function CustomersView() {
   const customers = usePosStore((s) => s.customers);
@@ -133,10 +134,12 @@ export function CustomersView() {
         <GuideLearnLink topicId="gift-cards" compact>
           Learn
         </GuideLearnLink>
+        {parsePaymentMethods(settings.paymentMethods).giftCard && (
         <Button size="sm" variant="outline" onClick={() => setGiftOpen(true)}>
           <Gift className="h-3.5 w-3.5" />
           Issue / reload
         </Button>
+        )}
         <Button size="sm" variant="outline" onClick={() => setImportOpen(true)}>
           <Upload className="h-3.5 w-3.5" />
           Import
@@ -589,6 +592,7 @@ export function CustomersView() {
                         amountCents: cents,
                         locationId: locId,
                         devices: usePosStore.getState().locationDevices,
+                        paymentMethods: usePosStore.getState().settings.paymentMethods,
                       });
                     }
                   }

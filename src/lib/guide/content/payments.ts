@@ -35,6 +35,8 @@ export const PAYMENT_TOPICS: GuideTopic[] = [
         "Gift load with a bank card charges the issuer brand’s account. Gift redeem stays on the Summex ledger.",
         "Sandbox (default, including Training): practice cards, not a live Visa. Live: present the card on an enrolled Finix/Quantum reader supplied through Summex. Handhelds are not Square or Stripe terminals and never take PAN on the tablet. Cash and gift still work without a reader. Printers and drawers stay BYO. Live cards fail closed without an enrolled reader.",
         "A brand cannot take live cards until that brand’s application is approved. Training uses sandbox account ids. If the processor is down: take cash or keep the check open.",
+        "If Card is off in Settings → Payment methods, stations never prompt for a reader. Sandbox vs live still follows location lifecycle when card is on.",
+        "Per-entity cannot disable card for themselves if the venue takes cards. They only have their Finix merchant for their lines.",
       ),
       callout(
         "Sandbox vs live",
@@ -43,7 +45,7 @@ export const PAYMENT_TOPICS: GuideTopic[] = [
       warn(
         "Do not connect a second processor “just for events.” It is not available, and it would break one-check split capture on a multi-operator floor.",
       ),
-      related("tenders-tips", "host-capture", "receipts-by-vendor", "table-qr", "chargebacks", "wifi-offline", "gift-cards"),
+      related("tenders-tips", "venue-payment-methods", "host-capture", "receipts-by-vendor", "table-qr", "chargebacks", "wifi-offline", "gift-cards"),
     ],
   }),
   topic({
@@ -59,13 +61,13 @@ export const PAYMENT_TOPICS: GuideTopic[] = [
         "The check stays open until the balance is zero. Partial tenders are how a table splits cash and card without two checks.",
       ),
       steps(
-        "On the check, tap Pay. Choose card (Quantum Payments), cash, or gift card. On a handheld each tender is its own full-width row — not four icons in a strip.",
-        "Card: amount (defaults to balance), tip suggestions. Sandbox may show last4 on the practice receipt. Live: present on the Quantum reader — never type PAN/CVV. One guest tender; each brand’s account is funded from the split. The printed receipt groups lines by vendor — still one document.",
-        "Cash: enter tendered; change due is calculated. Cash view tracks the drawer.",
-        "Gift: enter the first-party code. Redeem never calls an outside gift network. The fulfilling operator gets the merchandise; issuer liability decreases; issuer remits to the fulfiller if they differ.",
-        "To split tenders, pay less than the balance, then take the next tender on the same check.",
+        "On the check, tap Pay. Only tenders the house has on appear — large full-width buttons, not a strip of greyed-out icons.",
+        "Card (if on): amount (defaults to balance), tip suggestions. Sandbox may show last4 on the practice receipt. Live: present on the Quantum reader — never type PAN/CVV. One guest tender; each brand’s account is funded from the split. The printed receipt groups lines by vendor — still one document.",
+        "Cash (if on): enter tendered; change due is calculated. Cash view tracks the drawer. Cash off: no Take drawer, no possession, no cash count.",
+        "Gift (if on): enter the first-party code. Redeem never calls an outside gift network. The fulfilling operator gets the merchandise; issuer liability decreases; issuer remits to the fulfiller if they differ. Gift off: no Issue/reload and no redeem.",
+        "Check, house account, comp, and Other appear only when those toggles are on. Comp needs a reason and is not a guest tender.",
+        "To split tenders, pay less than the balance, then take the next enabled tender on the same check.",
         "After every tender that closes the check: Email, Print, or No receipt. Email sends via Resend; if email is down, the station says so and offers print. Print is ESC/POS on this station’s mapped receipt printer (else the venue default). No receipt closes the check. Shared check: one document, lines by vendor.",
-        "House / other exist for room charge style paths — still not a second card processor.",
       ),
       shot(
         "Pay dialog — Quantum Payments card tab, tip chips, and remaining balance.",
@@ -74,7 +76,53 @@ export const PAYMENT_TOPICS: GuideTopic[] = [
       tip(
         "Tips on card follow the house rule (cash-at-close vs paycheck, and any tip pool) — they are not a second capture.",
       ),
-      related("quantum-payments", "cash-discount", "cash-handling", "gift-cards", "host-capture", "receipts-by-vendor", "tip-pooling", "server-closeout"),
+      related("venue-payment-methods", "quantum-payments", "cash-discount", "cash-handling", "gift-cards", "host-capture", "receipts-by-vendor", "tip-pooling", "server-closeout"),
+    ],
+  }),
+  topic({
+    id: "venue-payment-methods",
+    chapterId: "payments",
+    title: "Venue payment methods",
+    summary:
+      "Location owner/manager toggles which tenders the house accepts. Disabled methods are hidden everywhere. Not JSON.",
+    roles: ["owner_manager", "server", "host_operator"],
+    keywords: [
+      "payment methods",
+      "tender",
+      "cash off",
+      "card off",
+      "gift off",
+      "check",
+      "house account",
+      "comp",
+      "other",
+      "toggle",
+    ],
+    openView: "settings",
+    blocks: [
+      why(
+        "The house decides which tenders guests can use. A disabled method must not appear on pay, QR, kiosk, or closeout — staff should not hunt for a greyed-out button.",
+      ),
+      p(
+        "Settings → Payment methods. Checkboxes, not a JSON blob. Location owner or manager enables each tender: Cash, Card (Quantum Payments / Finix — live or sandbox by location lifecycle), Gift card (first-party ledger), Check, House account / charge to company, Comp (reason required; not a guest tender), Other with a custom label counted in closeout.",
+      ),
+      ul(
+        "At least one guest tender stays on: cash and/or card and/or gift. You cannot turn the last one off.",
+        "Disabled methods are hidden on station Pay, table QR pay, kiosk, and closeout expected buckets.",
+        "Cash off: no drawer possession for that venue’s staff. Take drawer / Open bank is hidden. Banks stay unused. Closeout still runs for sales and tips — no cash count.",
+        "Card off: no reader prompts. When card is on, training sandbox still follows the location lifecycle.",
+        "Gift off: no sell (Issue / reload) and no redeem.",
+        "Check: optional sub-toggles for photo, last 4, and manager witness PIN.",
+        "Quote and onboarding default cash + card + gift on; check off.",
+      ),
+      callout(
+        "Peer venue",
+        "Methods are venue-level. The guest pays once. Settlement by owned_lines is unchanged. An operator cannot turn off card for their own lines if the house takes cards — they only have their Finix merchant for their merchandise.",
+      ),
+      warn(
+        "Do not paste a JSON config for tenders. Use the checkboxes. Publish so paired stations pick the methods up.",
+      ),
+      related("tenders-tips", "quantum-payments", "cash-handling", "gift-cards", "server-closeout", "host-capture"),
     ],
   }),
   topic({
@@ -215,7 +263,7 @@ export const PAYMENT_TOPICS: GuideTopic[] = [
         "An owner considering Summex should read a product paper — not a stack spec. Processors and partners can share the same document.",
       ),
       p(
-        "Open White paper from the marketing header or footer (no login). Print from the browser for a PDF. Revision · 10 Sep 2026 matches Guide v2026.10.64. It is written for prospective subscribers: one guest check, floor, multi-entity, Android staff stations, 5% cash-discount processing story, plans from Get a price. No CRM, pipeline, factory reset, or how to log in. Internal operations notes stay off the public site.",
+        "Open White paper from the marketing header or footer (no login). Print from the browser for a PDF. Revision · 14 Sep 2026 matches Guide v2026.10.96. It is written for prospective subscribers: one guest check, floor, multi-entity, Android staff stations, venue payment-method toggles, 5% cash-discount processing story, plans from Get a price. No CRM, pipeline, factory reset, or how to log in. Internal operations notes stay off the public site.",
       ),
       steps(
         "Open White paper from the marketing header (White paper). That page is the paper — not Get a price.",

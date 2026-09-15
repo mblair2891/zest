@@ -124,7 +124,7 @@ export const SETTINGS_PACKS_BY_VENUE: Record<VenueEntityId, SettingsPackId[]> = 
 export const SETTINGS_PACK_LABEL: Record<SettingsPackId, string> = {
   profile: "Profile",
   tax: "Tax & service charge",
-  payments: "Quantum Payments / tenders",
+  payments: "Payment methods",
   cash_discount: "Cash discount",
   devices: "Devices, printers, ODS",
   staff: "Staff & roles",

@@ -15,6 +15,7 @@ import {
 } from "./cash-handling";
 import type { DeviceRole } from "./device-roles";
 import type { Employee, Order } from "./types";
+import { cashTendersOn } from "./payment-methods";
 
 /** Registered by till-closeout-store to avoid a store ↔ cash-session import cycle. */
 let tillCashBlocked: ((drawerId: string, bankEmployeeId?: string | null) => boolean) | null = null;
@@ -705,6 +706,7 @@ export function applyCashTender(opts: {
   refund?: boolean;
   locationId: string;
   devices?: import("./location-devices").LocationDevice[];
+  paymentMethods?: unknown;
 }): { ok: true; skimOver?: boolean } | { ok: false; error: string } {
   const sink = currentCashSink({
     cfg: opts.cfg,
@@ -714,6 +716,9 @@ export function applyCashTender(opts: {
     order: opts.order,
   });
   if (sink.type === "blocked") return { ok: false, error: sink.reason };
+  if (!cashTendersOn(opts.paymentMethods)) {
+    return { ok: false, error: "Cash is off at this venue." };
+  }
   if (!useCashSessionStore.getState().hasPossession(opts.emp.id)) {
     return {
       ok: false,

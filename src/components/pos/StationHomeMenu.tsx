@@ -5,6 +5,7 @@ import { useStationSessionStore } from "@/lib/pos/station-session";
 import { readStationDeviceRole } from "@/lib/pos/device-roles";
 import { deviceRoleFromSessionMode } from "@/lib/pos/device-roles";
 import { parseCashHandling } from "@/lib/pos/cash-handling";
+import { parsePaymentMethods } from "@/lib/pos/payment-methods";
 import { useCashSessionStore } from "@/lib/pos/cash-session";
 import { stationMenuItems, stationMenuTitle } from "@/lib/pos/station-menu";
 import { locationAllowsBarTabs } from "@/lib/pos/bar-tab";
@@ -41,6 +42,7 @@ export function StationHomeMenu() {
     roleDefaults: cashCfg.custodyByRole,
     employeeOverride: emp ? cashCfg.custodyByEmployeeId[emp.id] ?? null : null,
     hasPossession,
+    cashEnabled: parsePaymentMethods(settings.paymentMethods).cash,
   });
 
   const demoOverflow =

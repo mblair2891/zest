@@ -30,6 +30,7 @@ import {
   confirmCashDiscountRecalc,
   persistCashDiscount,
 } from "@/lib/pos/persist-location-setup";
+import { PaymentMethodsSettings } from "./PaymentMethodsSettings";
 import { isProspectDemo } from "@/lib/demo/session";
 import { useSaasStore } from "@/lib/pos/saas-store";
 import type { VenueEntityId } from "@/lib/pos/types";
@@ -297,6 +298,7 @@ export function SettingsView() {
           aiReportSchedule: s.aiReportSchedule ?? "off",
           aiReportEmail: s.aiReportEmail ?? "",
           opsJobs: s.opsJobs,
+          paymentMethods: s.paymentMethods,
           cashDiscountEnabled: s.cashDiscountEnabled,
           cashDiscountPercent: s.cashDiscountPercent,
           cashRoundIncrement: s.cashRoundIncrement,
@@ -458,6 +460,10 @@ export function SettingsView() {
         <HostOperatorsSettings write={write} />
       ) : (
       <fieldset disabled={!write} className="min-w-0 border-0 p-0">
+
+      <Pack id="payments" packs={packs}>
+        <PaymentMethodsSettings write={write} />
+      </Pack>
 
       <Pack id="profile" packs={packs}>
       <div className="grid gap-4">

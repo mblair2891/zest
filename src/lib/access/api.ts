@@ -965,6 +965,7 @@ function publishSetupSlice(setup: LocationSetup) {
     qrMode: setup.qrMode,
     qrPolicy: setup.qrPolicy,
     cashHandling: setup.cashHandling,
+    paymentMethods: setup.paymentMethods,
     cashDiscountEnabled: setup.cashDiscountEnabled,
     cashDiscountPercent: setup.cashDiscountPercent,
     cashRoundIncrement: setup.cashRoundIncrement,

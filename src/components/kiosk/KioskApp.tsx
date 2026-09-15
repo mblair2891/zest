@@ -8,6 +8,7 @@ import { usePosStore } from "@/lib/pos/store";
 import { usePlatformStore } from "@/lib/pos/platform-store";
 import { printedItemPriceCents } from "@/lib/pos/calculations";
 import { formatCurrency } from "@/lib/utils";
+import { parsePaymentMethods } from "@/lib/pos/payment-methods";
 import {
   bookReservationFn,
   checkInReservationFn,
@@ -339,8 +340,28 @@ function OrderPane() {
   const place = usePlatformStore((s) => s.placeOnlineOrder);
   const clear = usePlatformStore((s) => s.clearOnlineCart);
   const [done, setDone] = useState<string | null>(null);
+  const payCfg = parsePaymentMethods(settings.paymentMethods);
+  const kioskTenders = (
+    [
+      payCfg.card ? "card" : null,
+      payCfg.cash ? "cash" : null,
+      payCfg.giftCard ? "gift_card" : null,
+    ] as const
+  ).filter((m): m is "card" | "cash" | "gift_card" => Boolean(m));
+  const [kioskMethod, setKioskMethod] = useState<"card" | "cash" | "gift_card">(
+    kioskTenders[0] ?? "card",
+  );
   const items = menuItems.filter((e) => e.available).slice(0, 12);
   const total = cart.reduce((s, i) => s + i.unitPriceCents * i.qty, 0);
+  const activeKiosk = kioskTenders.includes(kioskMethod)
+    ? kioskMethod
+    : (kioskTenders[0] ?? "card");
+  const payLabel =
+    activeKiosk === "cash"
+      ? "Send — pay cash at pickup"
+      : activeKiosk === "gift_card"
+        ? "Pay with gift & send"
+        : "Pay with card & send";
 
   return (
     <div className="grid gap-6 lg:grid-cols-[1fr_18rem]">
@@ -362,9 +383,10 @@ function OrderPane() {
             <span className="mt-2 block text-base tabular text-muted-foreground">
               {(() => {
                 const dual = printedItemPriceCents(item.priceCents, settings);
-                return dual.showBoth
-                  ? `${formatCurrency(dual.cash)} cash · ${formatCurrency(dual.card)} card`
-                  : formatCurrency(dual.cash);
+                if (dual.showBoth && payCfg.cash && payCfg.card) {
+                  return `${formatCurrency(dual.cash)} cash · ${formatCurrency(dual.card)} card`;
+                }
+                return formatCurrency(payCfg.card && !payCfg.cash ? dual.card : dual.cash);
               })()}
             </span>
           </button>
@@ -386,6 +408,21 @@ function OrderPane() {
           {!cart.length && <li className="text-muted-foreground">Tap items to add</li>}
         </ul>
         <p className="mb-4 text-2xl font-semibold tabular">{formatCurrency(total)}</p>
+        {kioskTenders.length > 1 && (
+          <div className="mb-3 grid gap-2">
+            {kioskTenders.map((m) => (
+              <Button
+                key={m}
+                size="lg"
+                className="h-14 w-full text-base"
+                variant={activeKiosk === m ? "default" : "outline"}
+                onClick={() => setKioskMethod(m)}
+              >
+                {m === "card" ? "Card" : m === "cash" ? "Cash" : "Gift"}
+              </Button>
+            ))}
+          </div>
+        )}
         <Button
           className="mb-2 h-14 w-full text-base"
           disabled={!cart.length}
@@ -404,10 +441,16 @@ function OrderPane() {
               }
               pos.sendOrder();
             }
-            if (res.ok || isProspectDemo()) setDone("Order placed — pickup when ready");
+            if (res.ok || isProspectDemo()) {
+              setDone(
+                activeKiosk === "cash"
+                  ? "Order placed — pay cash at pickup"
+                  : "Order placed — pickup when ready",
+              );
+            }
           }}
         >
-          Pay & send to kitchen
+          {payLabel}
         </Button>
         <Button
           className="h-12 w-full"

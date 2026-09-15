@@ -31,6 +31,7 @@ import { getPosBootstrapFn } from "@/lib/saas/api";
 import { tablesFromCount, type TenantMenuMode } from "@/lib/pos/starter-seed";
 import { parseQrPolicy } from "@/lib/pos/qr-policy";
 import { parseQrMode } from "@/lib/pos/qr-table";
+import { parsePaymentMethods } from "@/lib/pos/payment-methods";
 import { EMPTY_LOCATION_SETUP } from "@/lib/saas/types";
 import { tablesFromFloorPlan } from "@/lib/saas/location-catalog";
 import { membershipToEmployeeRole } from "@/lib/access/membership-map";
@@ -320,6 +321,9 @@ function PosAppInner({ entityId }: { entityId?: string }) {
                   setup.cashRoundMode === "up" ? "up" : st.settings.cashRoundMode,
                 giftHouseIssuerEnabled:
                   setup.giftHouseIssuerEnabled ?? st.settings.giftHouseIssuerEnabled,
+                paymentMethods: parsePaymentMethods(
+                  setup.paymentMethods ?? st.settings.paymentMethods,
+                ),
                 isDemo: Boolean(access.location.isDemo || access.openDemo || setup.demoIsolated),
                 demoIsolated: Boolean(access.location.isDemo || access.openDemo || setup.demoIsolated),
                 serviceStyle:

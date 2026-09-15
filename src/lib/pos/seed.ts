@@ -15,6 +15,7 @@ import type {
 } from "./types";
 import { DEFAULT_SECTION_POLICY } from "./section-control";
 import { DEFAULT_CASH_DISCOUNT } from "./cash-discount";
+import { DEFAULT_PAYMENT_METHODS } from "./payment-methods";
 
 export const SETTINGS: RestaurantSettings = {
   name: "Summex",
@@ -48,6 +49,7 @@ export const SETTINGS: RestaurantSettings = {
   },
   sectionPolicy: { ...DEFAULT_SECTION_POLICY },
   ...DEFAULT_CASH_DISCOUNT,
+  paymentMethods: { ...DEFAULT_PAYMENT_METHODS },
   giftTermAllowed: false,
   giftTermDays: 730,
   giftOperatorBreakageSplitBps: 5000,

@@ -36,6 +36,9 @@ export type CloseoutSales = {
   cardCents: number;
   cashCents: number;
   giftCents: number;
+  checkCents: number;
+  houseAccountCents: number;
+  otherCents: number;
   cardTipsCents: number;
   cashTipsOnTendersCents: number;
   autoGratCents?: number;
@@ -100,6 +103,9 @@ export function summarizeServerSales(orders: Order[], employeeId: string): Close
   let cardCents = 0;
   let cashCents = 0;
   let giftCents = 0;
+  let checkCents = 0;
+  let houseAccountCents = 0;
+  let otherCents = 0;
   let cardTipsCents = 0;
   let cashTipsOnTendersCents = 0;
   let autoGratCents = 0;
@@ -131,6 +137,12 @@ export function summarizeServerSales(orders: Order[], employeeId: string): Close
         cashTipsOnTendersCents += p.tipCents || 0;
       } else if (p.method === "gift_card") {
         giftCents += p.amountCents;
+      } else if (p.method === "check") {
+        checkCents += p.amountCents;
+      } else if (p.method === "house_account") {
+        houseAccountCents += p.amountCents;
+      } else if (p.method === "other") {
+        otherCents += p.amountCents;
       }
     }
     const sc = Math.max(0, o.serviceChargeCents || 0);
@@ -148,6 +160,9 @@ export function summarizeServerSales(orders: Order[], employeeId: string): Close
     cardCents,
     cashCents,
     giftCents,
+    checkCents,
+    houseAccountCents,
+    otherCents,
     cardTipsCents,
     cashTipsOnTendersCents,
     autoGratCents,
@@ -205,8 +220,10 @@ export function shouldCountCashOnCloseout(opts: {
   sink: CashSink;
   emp: Pick<Employee, "id" | "role">;
   cfg: CashHandlingConfig;
+  cashEnabled?: boolean;
 }): boolean {
   const { sink, emp, cfg } = opts;
+  if (opts.cashEnabled === false) return false;
   if (sink.type === "blocked") return false;
   if (sink.type === "bank") return true;
   if (sink.type === "drawer") {

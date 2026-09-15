@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { CreditCard, Banknote, Gift, Percent, Mail, Printer, Ban } from "lucide-react";
+import { CreditCard, Banknote, Gift, Percent, Mail, Printer, Ban, FileText, Building2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -8,7 +8,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Tabs, TabsContent } from "@/components/ui/tabs";
 import { usePosStore } from "@/lib/pos/store";
 import { useNetworkStore } from "@/lib/pos/network-store";
 import { useMarketingStore } from "@/lib/pos/marketing-store";
@@ -38,6 +38,15 @@ import { useStationSessionStore } from "@/lib/pos/station-session";
 import { deviceRoleFromSessionMode, parseStationQuery } from "@/lib/pos/device-roles";
 import { odsBlocksTender } from "@/lib/pos/loss-prevention";
 import { useStationLayout } from "@/lib/ui/station-layout";
+import {
+  enabledPayMethods,
+  firstEnabledMethod,
+  methodEnabled,
+  methodLabel,
+  parsePaymentMethods,
+} from "@/lib/pos/payment-methods";
+import { isManagerCash } from "@/lib/pos/cash-handling";
+import { findStaffByPin } from "@/lib/pos/pin";
 
 interface Props {
   open: boolean;
@@ -53,7 +62,8 @@ export function PaymentDialog({ open, onOpenChange }: Props) {
   const setView = usePosStore((s) => s.setView);
   const emp = usePosStore((s) => s.employees.find((e) => e.id === s.currentEmployeeId));
   const canPay = canEmployee(emp, "payments:take");
-  const giftOk = canPay && settings.giftHouseIssuerEnabled !== false;
+  const payCfg = parsePaymentMethods(settings.paymentMethods);
+  const giftOk = canPay && payCfg.giftCard;
   const cashSink = currentCashSink({
     cfg: parseCashHandling(settings.cashHandling),
     emp: emp ?? null,
@@ -73,8 +83,14 @@ export function PaymentDialog({ open, onOpenChange }: Props) {
   })();
   const odsBlocked = deviceRole === "ods";
   const layout = useStationLayout();
+  const payMethods = enabledPayMethods(payCfg);
 
-  const [method, setMethod] = useState<PaymentMethod>(wanOnline ? "card" : "cash");
+  const [method, setMethod] = useState<PaymentMethod>(() =>
+    firstEnabledMethod(payCfg, wanOnline ? "card" : "cash"),
+  );
+  const [checkLast4, setCheckLast4] = useState("");
+  const [checkWitness, setCheckWitness] = useState("");
+  const [compReason, setCompReason] = useState("");
   const dual = useMemo(
     () => (order ? computeDualTotals(order, settings) : null),
     [order, settings],
@@ -99,6 +115,13 @@ export function PaymentDialog({ open, onOpenChange }: Props) {
   const [receiptChoice, setReceiptChoice] = useState<"choose" | "email">("choose");
   const [receiptBusy, setReceiptBusy] = useState(false);
 
+  useEffect(() => {
+    const cfg = parsePaymentMethods(settings.paymentMethods);
+    if (!methodEnabled(cfg, method)) {
+      setMethod(firstEnabledMethod(cfg, wanOnline ? "card" : "cash"));
+    }
+  }, [settings.paymentMethods, method, wanOnline]);
+
   const amountCents = amount
     ? Math.round(parseFloat(amount) * 100)
     : balance;
@@ -106,12 +129,18 @@ export function PaymentDialog({ open, onOpenChange }: Props) {
   const tips = tipSuggestions(balance);
 
   useEffect(() => {
-    if (!wanOnline && method === "card") setMethod("cash");
-  }, [wanOnline, method]);
+    if (!wanOnline && method === "card") {
+      const cfg = parsePaymentMethods(settings.paymentMethods);
+      setMethod(firstEnabledMethod(cfg, "cash"));
+    }
+  }, [wanOnline, method, settings.paymentMethods]);
 
   useEffect(() => {
-    if (!giftOk && method === "gift_card") setMethod(wanOnline ? "card" : "cash");
-  }, [giftOk, method, wanOnline]);
+    if (!giftOk && method === "gift_card") {
+      const cfg = parsePaymentMethods(settings.paymentMethods);
+      setMethod(firstEnabledMethod(cfg, wanOnline ? "card" : "cash"));
+    }
+  }, [giftOk, method, wanOnline, settings.paymentMethods]);
 
   useEffect(() => {
     if (!open) return;
@@ -138,9 +167,32 @@ export function PaymentDialog({ open, onOpenChange }: Props) {
   const pay = () => {
     void (async () => {
     setError(null);
+    if (!methodEnabled(payCfg, method)) {
+      setError("This tender is off at this venue.");
+      return;
+    }
     if (odsBlocksTender(deviceRole, method)) {
       setError("ODS cannot tender cash or gift. Use an order or host station.");
       return;
+    }
+    if (method === "comp" && !compReason.trim()) {
+      setError("Comp requires a reason.");
+      return;
+    }
+    if (method === "check" && payCfg.checkLast4 && checkLast4.replace(/\D/g, "").length < 4) {
+      setError("Enter the check last 4.");
+      return;
+    }
+    if (method === "check" && payCfg.checkManagerWitness) {
+      const w = findStaffByPin(
+        usePosStore.getState().employees,
+        checkWitness,
+        usePosStore.getState().tenantLocationId || "",
+      );
+      if (!w || !isManagerCash(w.role)) {
+        setError("Manager witness PIN required for check.");
+        return;
+      }
     }
     if (method === "cash") {
       const cfg = parseCashHandling(settings.cashHandling);
@@ -174,8 +226,8 @@ export function PaymentDialog({ open, onOpenChange }: Props) {
       }
     }
     if ((method === "card" || method === "room_charge") && !wanOnline) {
-      setError("Card requires connection. Take cash or keep the check open.");
-      setMethod("cash");
+      setError("Card requires connection. Take another enabled tender or keep the check open.");
+      setMethod(firstEnabledMethod(payCfg, "cash"));
       return;
     }
     let cardLast4 = method === "card" ? last4 || undefined : undefined;
@@ -635,91 +687,51 @@ export function PaymentDialog({ open, onOpenChange }: Props) {
               value={method}
               onValueChange={(v) => setMethod(v as PaymentMethod)}
             >
-              {layout.handheld ? (
-                <div className="flex flex-col gap-2">
-                  <Button
-                    size="lg"
-                    className="station-touch min-h-12 w-full justify-start text-base"
-                    variant={method === "card" ? "default" : "outline"}
-                    disabled={!wanOnline}
-                    title={!wanOnline ? "Card requires connection" : undefined}
-                    onClick={() => setMethod("card")}
-                  >
-                    <CreditCard className="h-5 w-5" />
-                    Card
-                  </Button>
-                  <Button
-                    size="lg"
-                    className="station-touch min-h-12 w-full justify-start text-base"
-                    variant={method === "cash" ? "default" : "outline"}
-                    disabled={!cashAllowed || odsBlocked}
-                    title={
-                      odsBlocked
-                        ? "ODS cannot tender cash"
-                        : !cashAllowed && cashSink.type === "blocked"
-                          ? cashSink.reason
-                          : undefined
-                    }
-                    onClick={() => setMethod("cash")}
-                  >
-                    <Banknote className="h-5 w-5" />
-                    Cash
-                  </Button>
-                  {giftOk && (
+              <div className="flex flex-col gap-2">
+                {payMethods.map((m) => {
+                  const Icon =
+                    m === "card"
+                      ? CreditCard
+                      : m === "cash"
+                        ? Banknote
+                        : m === "gift_card"
+                          ? Gift
+                          : m === "comp"
+                            ? Percent
+                            : m === "house_account"
+                              ? Building2
+                              : FileText;
+                  const blockedCash = m === "cash" && (!cashAllowed || odsBlocked);
+                  const blockedGift = m === "gift_card" && odsBlocked;
+                  const blockedCard = m === "card" && !wanOnline;
+                  return (
                     <Button
+                      key={m}
                       size="lg"
                       className="station-touch min-h-12 w-full justify-start text-base"
-                      variant={method === "gift_card" ? "default" : "outline"}
-                      disabled={odsBlocked}
-                      title={odsBlocked ? "ODS cannot tender gift" : undefined}
-                      onClick={() => setMethod("gift_card")}
+                      variant={method === m ? "default" : "outline"}
+                      disabled={blockedCash || blockedGift || blockedCard}
+                      title={
+                        blockedCard
+                          ? "Card requires connection"
+                          : blockedGift
+                            ? "ODS cannot tender gift"
+                            : blockedCash
+                              ? odsBlocked
+                                ? "ODS cannot tender cash"
+                                : cashSink.type === "blocked"
+                                  ? cashSink.reason
+                                  : undefined
+                              : undefined
+                      }
+                      onClick={() => setMethod(m)}
                     >
-                      <Gift className="h-5 w-5" />
-                      Gift
+                      <Icon className="h-5 w-5" />
+                      {methodLabel(payCfg, m)}
                     </Button>
-                  )}
-                  <Button
-                    size="lg"
-                    className="station-touch min-h-12 w-full justify-start text-base"
-                    variant={method === "comp" ? "default" : "outline"}
-                    onClick={() => setMethod("comp")}
-                  >
-                    <Percent className="h-5 w-5" />
-                    Comp
-                  </Button>
-                </div>
-              ) : (
-              <TabsList className={cn("grid w-full", giftOk ? "grid-cols-4" : "grid-cols-3")}>
-                <TabsTrigger value="card" disabled={!wanOnline} title={!wanOnline ? "Card requires connection" : undefined}>
-                  <CreditCard className="h-3.5 w-3.5" />
-                  Card
-                </TabsTrigger>
-                <TabsTrigger
-                  value="cash"
-                  disabled={!cashAllowed || odsBlocked}
-                  title={
-                    odsBlocked
-                      ? "ODS cannot tender cash"
-                      : !cashAllowed && cashSink.type === "blocked"
-                        ? cashSink.reason
-                        : undefined
-                  }
-                >
-                  <Banknote className="h-3.5 w-3.5" />
-                  Cash
-                </TabsTrigger>
-                {giftOk && (
-                <TabsTrigger value="gift_card" disabled={odsBlocked} title={odsBlocked ? "ODS cannot tender gift" : undefined}>
-                  <Gift className="h-3.5 w-3.5" />
-                  Gift
-                </TabsTrigger>
-                )}
-                <TabsTrigger value="comp">
-                  <Percent className="h-3.5 w-3.5" />
-                  Comp
-                </TabsTrigger>
-              </TabsList>
-              )}
+                  );
+                })}
+              </div>
 
               <div className="mt-4 space-y-3">
                 <div>
@@ -837,10 +849,48 @@ export function PaymentDialog({ open, onOpenChange }: Props) {
                   </p>
                 </TabsContent>
 
-                <TabsContent value="comp" className="mt-0">
+                <TabsContent value="comp" className="mt-0 space-y-2">
                   <p className="text-xs text-muted-foreground">
-                    Comps the payment amount as house. Manager approval
-                    recommended for large comps.
+                    Comp is not a guest tender. Reason required.
+                  </p>
+                  <Input
+                    placeholder="Reason"
+                    value={compReason}
+                    onChange={(e) => setCompReason(e.target.value)}
+                  />
+                </TabsContent>
+
+                <TabsContent value="check" className="mt-0 space-y-2">
+                  {payCfg.checkLast4 && (
+                    <Input
+                      placeholder="Check last 4"
+                      value={checkLast4}
+                      maxLength={4}
+                      inputMode="numeric"
+                      onChange={(e) => setCheckLast4(e.target.value.replace(/\D/g, "").slice(0, 4))}
+                    />
+                  )}
+                  {payCfg.checkManagerWitness && (
+                    <Input
+                      placeholder="Manager witness PIN"
+                      value={checkWitness}
+                      maxLength={4}
+                      inputMode="numeric"
+                      onChange={(e) => setCheckWitness(e.target.value.replace(/\D/g, "").slice(0, 4))}
+                    />
+                  )}
+                  {payCfg.checkPhoto && (
+                    <p className="text-xs text-muted-foreground">Photo optional — attach from the check bag later if needed.</p>
+                  )}
+                </TabsContent>
+
+                <TabsContent value="house_account" className="mt-0">
+                  <p className="text-xs text-muted-foreground">Charge to company / house account. Not a card capture.</p>
+                </TabsContent>
+
+                <TabsContent value="other" className="mt-0">
+                  <p className="text-xs text-muted-foreground">
+                    {payCfg.otherLabel || "Other"} — counted in closeout. Not Quantum Payments.
                   </p>
                 </TabsContent>
               </div>
@@ -869,6 +919,9 @@ export function PaymentDialog({ open, onOpenChange }: Props) {
               {!busy && method === "cash" && "Take cash"}
               {!busy && method === "gift_card" && "Redeem gift card"}
               {!busy && method === "comp" && "Apply comp"}
+              {!busy && method === "check" && "Take check"}
+              {!busy && method === "house_account" && "Charge house account"}
+              {!busy && method === "other" && `Take ${payCfg.otherLabel || "other"}`}
             </Button>
           </div>
         )}

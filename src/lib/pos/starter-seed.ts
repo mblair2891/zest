@@ -12,6 +12,7 @@ import type {
 import { DEFAULT_FLOOR_SECTIONS, DEFAULT_SECTION_POLICY } from "./section-control";
 import { DEFAULT_FLOOR_STATUS_CONFIG } from "./floor-status";
 import { DEFAULT_CASH_DISCOUNT } from "./cash-discount";
+import { DEFAULT_PAYMENT_METHODS } from "./payment-methods";
 import type { VenueEntityId } from "./types";
 
 export type TenantMenuMode = "empty" | "categories" | "csv_later" | "starter";
@@ -59,6 +60,7 @@ export function starterSettings(venueName: string): RestaurantSettings {
     kioskMode: "combined",
     sectionPolicy: { ...DEFAULT_SECTION_POLICY },
     ...DEFAULT_CASH_DISCOUNT,
+    paymentMethods: { ...DEFAULT_PAYMENT_METHODS },
   };
 }
 
