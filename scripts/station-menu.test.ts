@@ -20,6 +20,7 @@ test("menu source: host jobs, order jobs, max 6, hide denied", () => {
   assert.match(menu, /Bar tab/);
   assert.match(menu, /Clock in\/out/);
   assert.match(menu, /Closeout/);
+  assert.match(menu, /take_drawer/);
   assert.match(menu, /if \(device === "host"\)/);
   assert.match(menu, /if \(device === "ods"\) return \[\{ id: "clock"/);
   assert.match(menu, /add\("done", "Done"\)/);

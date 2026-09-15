@@ -5,6 +5,15 @@ import { usePosStore } from "@/lib/pos/store";
 import { persistCashHandling } from "@/lib/pos/persist-location-setup";
 import { GuideLearnLink } from "@/components/guide/GuideLearnLink";
 import {
+  CASH_CUSTODY_KINDS,
+  CASH_CUSTODY_LABEL,
+  DEFAULT_CUSTODY_BY_ROLE,
+  HOUSE_DRAWER_MODE_LABEL,
+  HOUSE_DRAWER_MODES,
+  type CashCustodyKind,
+  type HouseDrawerMode,
+} from "@/lib/pos/cash-custody";
+import {
   CASH_MODEL_BLURB,
   CASH_MODEL_LABEL,
   CASH_MODELS,
@@ -95,11 +104,120 @@ export function CashHandlingSettings({ write }: { write: boolean }) {
         </GuideLearnLink>
       </div>
       <p className="text-xs text-muted-foreground">
-        Location default plus per-station override. Mix models — host drawer for to-go, floor
-        server banks, one drawer per bar well. No JSON.
+        Each staff row has one assignment: house drawer, personal bank, or none. Kitchen is
+        always none. These are form controls — not a JSON blob.
       </p>
 
-      <Field label="Location default" hint={CASH_MODEL_BLURB[cfg.defaultModel]}>
+      <div>
+        <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+          Role defaults
+        </p>
+        <div className="grid gap-2 sm:grid-cols-2">
+          {(["bartender", "cashier", "host", "server", "busser", "manager"] as const).map((role) => (
+            <Field key={role} label={role}>
+              <select
+                className="h-9 w-full rounded-lg border border-border bg-bg px-2 text-sm"
+                disabled={!write}
+                value={cfg.custodyByRole[role] ?? DEFAULT_CUSTODY_BY_ROLE[role]}
+                onChange={(e) =>
+                  patch({
+                    custodyByRole: {
+                      ...cfg.custodyByRole,
+                      [role]: e.target.value as CashCustodyKind,
+                      kitchen: "none",
+                    },
+                  })
+                }
+              >
+                {CASH_CUSTODY_KINDS.map((k) => (
+                  <option key={k} value={k}>
+                    {CASH_CUSTODY_LABEL[k]}
+                  </option>
+                ))}
+              </select>
+            </Field>
+          ))}
+        </div>
+        <p className="mt-1 text-[11px] text-muted-foreground">Kitchen / cook / expo: none. Override a person on Staff.</p>
+      </div>
+
+      <Field label="House drawer mode" hint={HOUSE_DRAWER_MODE_LABEL[cfg.houseDrawerMode]}>
+        <select
+          className="h-9 w-full rounded-lg border border-border bg-bg px-2 text-sm"
+          disabled={!write}
+          value={cfg.houseDrawerMode}
+          onChange={(e) => patch({ houseDrawerMode: e.target.value as HouseDrawerMode })}
+        >
+          {HOUSE_DRAWER_MODES.map((m) => (
+            <option key={m} value={m}>
+              {HOUSE_DRAWER_MODE_LABEL[m]}
+            </option>
+          ))}
+        </select>
+      </Field>
+
+      <label className="flex items-center gap-2 text-sm">
+        <input
+          type="checkbox"
+          className="h-4 w-4 rounded border-border"
+          disabled={!write}
+          checked={cfg.allCashToHouseTill}
+          onChange={(e) => patch({ allCashToHouseTill: e.target.checked })}
+        />
+        All cash to house till (server banks do not keep table cash)
+      </label>
+      <label className="flex items-center gap-2 text-sm">
+        <input
+          type="checkbox"
+          className="h-4 w-4 rounded border-border"
+          disabled={!write}
+          checked={cfg.serverMayBreakBills}
+          onChange={(e) => patch({ serverMayBreakBills: e.target.checked })}
+        />
+        Server may break large bills on a house drawer (loan / change slip)
+      </label>
+      <label className="flex items-center gap-2 text-sm">
+        <input
+          type="checkbox"
+          className="h-4 w-4 rounded border-border"
+          disabled={!write}
+          checked={cfg.handoffAcceptPriorCount}
+          onChange={(e) => patch({ handoffAcceptPriorCount: e.target.checked })}
+        />
+        Handoff: B may accept A’s counted-out total (else B blind-counts in)
+      </label>
+      <label className="flex items-center gap-2 text-sm">
+        <input
+          type="checkbox"
+          className="h-4 w-4 rounded border-border"
+          disabled={!write}
+          checked={cfg.managerWitnessOnOpen}
+          onChange={(e) => patch({ managerWitnessOnOpen: e.target.checked })}
+        />
+        Manager witness PIN on take-drawer / open-bank
+      </label>
+      <label className="flex items-center gap-2 text-sm">
+        <input
+          type="checkbox"
+          className="h-4 w-4 rounded border-border"
+          disabled={!write}
+          checked={cfg.cannotClockOutInPossession}
+          onChange={(e) => patch({ cannotClockOutInPossession: e.target.checked })}
+        />
+        Cannot clock out while still in possession (manager override on Labor)
+      </label>
+      <label className="flex items-center gap-2 text-sm">
+        <input
+          type="checkbox"
+          className="h-4 w-4 rounded border-border"
+          disabled={!write}
+          checked={cfg.oneRecountBeforeLock}
+          onChange={(e) => patch({ oneRecountBeforeLock: e.target.checked })}
+        />
+        One recount before lock
+      </label>
+
+      <Field label="Location default model" hint={CASH_MODEL_BLURB[cfg.defaultModel]}>
         <select
           className="h-9 w-full rounded-lg border border-border bg-bg px-2 text-sm"
           disabled={!write}

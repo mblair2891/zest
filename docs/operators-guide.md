@@ -1,7 +1,7 @@
 # Operators Guide — authoring
 
-**Revision · 14 Sep 2026** — Cash is the entered price; card is marked up.
-Guide v2026.10.94.
+**Revision · 14 Sep 2026** — Drawer assignment, banks, blind count, closeout.
+Guide v2026.10.95.
 
 The in-app **Operators Guide** is the living product manual. It is not a
 separate PDF. Staff open it from **Guide** / **?** in the POS and platform
@@ -67,7 +67,7 @@ accurate when the job path changes.
 13. **Stations and PINs** — station UI is **device role ∩ staff PIN**. After PIN, the tablet shows a **short menu** of jobs this device × this PIN allows (2–6 large named buttons; hide what the intersection denies). One job per screen. Order tablet: My tables (map + status only), New table, To-go, Bar tab (if venue + role allow), Clock in/out, Closeout (server / manager). Host tablet: Floor / seat, Waitlist, To-go, Clock. ODS: rail + Clock — no POS hamburger. Kitchen PIN on order/host → Clock and Done, not the server UI. Pay / split is on the check. Live venues never show Operating as on the staff menu. Settings: Servers may use the host stand; Host may open bar tabs; Bar tabs on order devices. Peer venues still have a host ROLE (the stand) with no host merchant. Clock in/out does not open order entry. Unpaired = type the Devices pair code and submit (no scan required). Password login is back office. PIN is station-only. **Devices:** Deactivate / Unpair / Replace / Delete revoke the pair token immediately and kick an online tablet to the pair-code screen within a few seconds. Deactivate keeps the named slot; Activate again mints a new code. Unpair / Replace keep the name. Delete removes the slot — confirm “Delete this device. The tablet must scan a new code.” PIN on a deactivated tablet: “This station was deactivated — enter a new code.” Location owner / manager / Admin only. Floor PINs cannot delete. After delete, Add device can reuse the same name and role.
 14. Printers: Ethernet on the AP LAN (not printer Wi‑Fi). Thermal receipts (Epson TM-T20). Impact kitchen (Epson TM-U220). Drawer kick on the receipt printer.
 15. Offline / hybrid
-16. Cash: single/shared drawer, server bank, multi-well (one drawer per well), host to-go drawer, **till-to-till transfer** (request from another open till; cash moves on accept; no manager required), **blind till close** (count first; expected hidden until submit; turn-in slip prints after submit for the drop bag — not a fill-in form; no force-balance). Closeout ≠ clock-out ≠ PIN.
+16. Cash: each PIN has one assignment — **house drawer**, **personal bank**, or **none** (kitchen always none). Possession before cash tender (blind opening declare). Exclusive / shared / multi-drawer. Blind count hides expected until submit. Closeout order: no open checks → blind cash → non-cash recap → tip worksheet → mix-based tip-out recs → card tips cash-out vs payroll → drop or leave float. Physical bills stay with who took the tender; entity split is ledger-only. Closeout ≠ clock-out ≠ PIN.
 17. Tips: mix-based tip-out recs; CC tips cash-at-close vs paycheck; individual / tip-out / FOH / bar / team / dual pools; autograt vs service charge.
 18. Staffing recs (Location settings): recommend cut / hold / add only; never auto clock-out. Accept notifies to close out.
 19. Staff HR basics (clock vs PIN, time-off and availability if the employer enabled them)

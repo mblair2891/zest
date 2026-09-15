@@ -1,3 +1,12 @@
+import {
+  DEFAULT_CUSTODY_BY_ROLE,
+  parseCustodyByEmployee,
+  parseCustodyByRole,
+  parseHouseDrawerMode,
+  staffCustody,
+  type CashCustodyKind,
+  type HouseDrawerMode,
+} from "./cash-custody";
 import type { DeviceRole } from "./device-roles";
 import { deviceRoleFromSessionMode } from "./device-roles";
 import type { SessionModeId } from "@/lib/lifecycle/types";
@@ -248,6 +257,17 @@ export type CashHandlingConfig = {
   notifyEmail: boolean;
   notifyPush: boolean;
   notifyEmails: string[];
+  /** Role defaults: house_drawer | personal_bank | none. Kitchen is always none. */
+  custodyByRole: Record<string, CashCustodyKind>;
+  /** Per-person override. Kitchen still none. */
+  custodyByEmployeeId: Record<string, CashCustodyKind>;
+  houseDrawerMode: HouseDrawerMode;
+  allCashToHouseTill: boolean;
+  serverMayBreakBills: boolean;
+  handoffAcceptPriorCount: boolean;
+  managerWitnessOnOpen: boolean;
+  oneRecountBeforeLock: boolean;
+  cannotClockOutInPossession: boolean;
 };
 
 export const DEFAULT_PAID_REASONS = [
@@ -314,6 +334,15 @@ export const DEFAULT_CASH_HANDLING: CashHandlingConfig = {
   notifyEmail: DEFAULT_TILL_CLOSE.notifyEmail,
   notifyPush: DEFAULT_TILL_CLOSE.notifyPush,
   notifyEmails: [],
+  custodyByRole: { ...DEFAULT_CUSTODY_BY_ROLE },
+  custodyByEmployeeId: {},
+  houseDrawerMode: "exclusive",
+  allCashToHouseTill: false,
+  serverMayBreakBills: false,
+  handoffAcceptPriorCount: true,
+  managerWitnessOnOpen: false,
+  oneRecountBeforeLock: true,
+  cannotClockOutInPossession: true,
 };
 
 function asModel(raw: unknown): CashModel | null {
@@ -441,6 +470,15 @@ export function parseCashHandling(raw: unknown): CashHandlingConfig {
     notifyEmails: Array.isArray(o.notifyEmails)
       ? o.notifyEmails.map((x) => String(x).trim()).filter((x) => x.includes("@")).slice(0, 12)
       : [],
+    custodyByRole: parseCustodyByRole(o.custodyByRole),
+    custodyByEmployeeId: parseCustodyByEmployee(o.custodyByEmployeeId),
+    houseDrawerMode: parseHouseDrawerMode(o.houseDrawerMode),
+    allCashToHouseTill: Boolean(o.allCashToHouseTill),
+    serverMayBreakBills: Boolean(o.serverMayBreakBills),
+    handoffAcceptPriorCount: o.handoffAcceptPriorCount !== false,
+    managerWitnessOnOpen: Boolean(o.managerWitnessOnOpen),
+    oneRecountBeforeLock: o.oneRecountBeforeLock !== false,
+    cannotClockOutInPossession: o.cannotClockOutInPossession !== false,
   };
 }
 
@@ -480,9 +518,27 @@ export function resolveCashSink(opts: {
   const { cfg, emp } = opts;
   if (!emp) return { type: "blocked", reason: "Sign in to take cash." };
 
+  const custody = staffCustody({
+    role: emp.role,
+    roleDefaults: cfg.custodyByRole,
+    employeeOverride: cfg.custodyByEmployeeId[emp.id] ?? null,
+  });
+  if (custody === "none") {
+    return {
+      type: "blocked",
+      reason:
+        emp.role === "kitchen"
+          ? "This PIN is not assigned cash. Clock only — use the kitchen display."
+          : "This PIN is not assigned cash. No cash tender, drawer kick, or cash closeout.",
+    };
+  }
+
   const deviceSink = opts.deviceId ? cfg.deviceAssignment[opts.deviceId] : undefined;
   if (deviceSink === "none") {
     return { type: "blocked", reason: "This station is not assigned a drawer or bank." };
+  }
+  if (custody === "personal_bank" && !cfg.allCashToHouseTill) {
+    return { type: "bank", employeeId: emp.id };
   }
   if (deviceSink === "server_bank") return { type: "bank", employeeId: emp.id };
   if (deviceSink?.startsWith("drawer:")) {

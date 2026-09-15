@@ -29,6 +29,8 @@ export type StationJob =
   | "bar_tab"
   | "clock"
   | "closeout"
+  | "take_drawer"
+  | "hand_off"
   | "done"
   | null;
 

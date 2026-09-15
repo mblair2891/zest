@@ -8,9 +8,11 @@ import { FloorView } from "./FloorView";
 import { TakeoutView } from "./TakeoutView";
 import { WaitlistView } from "./WaitlistView";
 import { EndShiftFlow } from "./EndShiftFlow";
+import { CashPossessionView } from "./CashPossessionView";
 import { StationClockControl } from "./StationClockControl";
 import { CashView } from "./CashView";
 import { KioskApp } from "@/components/kiosk/KioskApp";
+import { useCashSessionStore } from "@/lib/pos/cash-session";
 import { useStationSessionStore } from "@/lib/pos/station-session";
 import { deviceRoleFromSessionMode } from "@/lib/pos/device-roles";
 import { stationHomeSurface, viewForStationHome } from "@/lib/pos/station-home";
@@ -159,7 +161,27 @@ export function DeviceModeView({
     if (job === "closeout") {
       return (
         <StationJobFrame title="Closeout" onBack={back}>
-          <EndShiftFlow onDone={() => setJob(null)} />
+          <EndShiftFlow
+            onDone={() => {
+              const id = usePosStore.getState().currentEmployeeId;
+              if (id) useCashSessionStore.getState().releasePossession(id);
+              setJob(null);
+            }}
+          />
+        </StationJobFrame>
+      );
+    }
+    if (job === "take_drawer") {
+      return (
+        <StationJobFrame title="Take drawer" onBack={back}>
+          <CashPossessionView mode="take" onDone={() => setJob(null)} />
+        </StationJobFrame>
+      );
+    }
+    if (job === "hand_off") {
+      return (
+        <StationJobFrame title="Hand off" onBack={back}>
+          <CashPossessionView mode="hand_off" onDone={() => setJob(null)} />
         </StationJobFrame>
       );
     }

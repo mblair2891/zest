@@ -4,6 +4,7 @@
  */
 import type { DeviceRole } from "./device-roles";
 import type { EmployeeRole } from "./types";
+import { staffCustody, takeDrawerLabel, type CashCustodyKind } from "./cash-custody";
 import { stationCan, type StationCapSettings } from "./station-pin-gate";
 import {
   resolveStationServiceStyle,
@@ -20,6 +21,8 @@ export const STATION_MENU_JOBS = [
   "bar_tab",
   "clock",
   "closeout",
+  "take_drawer",
+  "hand_off",
   "done",
 ] as const;
 export type StationMenuJob = (typeof STATION_MENU_JOBS)[number];
@@ -42,11 +45,16 @@ const CLOSEOUT_ROLES = new Set<EmployeeRole>([
 export function stationMenuItems(opts: {
   deviceRole: DeviceRole | null | undefined;
   employeeRole: EmployeeRole | null | undefined;
+  employeeId?: string | null;
   settings?: StationCapSettings | null;
   serviceStyle?: string | null;
   operatingModel?: string | null;
   hasFloor?: boolean;
   hasBarRail?: boolean;
+  custody?: CashCustodyKind | null;
+  hasPossession?: boolean;
+  roleDefaults?: Record<string, CashCustodyKind> | null;
+  employeeOverride?: CashCustodyKind | null;
 }): StationMenuItem[] {
   const device = opts.deviceRole ?? "order";
   const role = opts.employeeRole;
@@ -63,6 +71,15 @@ export function stationMenuItems(opts: {
     out.push({ id, label });
   };
 
+  const custody =
+    opts.custody ??
+    staffCustody({
+      role,
+      roleDefaults: opts.roleDefaults,
+      employeeOverride: opts.employeeOverride,
+    });
+  const cashJobs = custody !== "none" && device !== "ods" && device !== "kiosk";
+
   if (device === "kiosk") return [];
   if (device === "ods") return [{ id: "clock", label: "Clock in/out" }];
 
@@ -71,6 +88,8 @@ export function stationMenuItems(opts: {
     if (stationCan(cap, "waitlist")) add("waitlist", "Waitlist");
     if (stationCan(cap, "togo")) add("togo", "To-go");
     add("clock", "Clock in/out");
+    if (cashJobs && !opts.hasPossession) add("take_drawer", takeDrawerLabel(custody));
+    if (cashJobs && opts.hasPossession) add("closeout", "Closeout");
     return out;
   }
 
@@ -96,7 +115,16 @@ export function stationMenuItems(opts: {
   if (stationCan(cap, "togo")) add("togo", "To-go");
   if (stationCan(cap, "bar_tab") && opts.hasBarRail) add("bar_tab", "Bar tab");
   add("clock", "Clock in/out");
-  if (role && CLOSEOUT_ROLES.has(role) && device === "order") add("closeout", "Closeout");
+  if (cashJobs && !opts.hasPossession) add("take_drawer", takeDrawerLabel(custody));
+  if (
+    cashJobs &&
+    opts.hasPossession &&
+    role &&
+    CLOSEOUT_ROLES.has(role) &&
+    device === "order"
+  ) {
+    add("closeout", "Closeout");
+  }
   return out.slice(0, 6);
 }
 

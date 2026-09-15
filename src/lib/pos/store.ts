@@ -1016,6 +1016,19 @@ const usePosStoreRaw = create<PosStore>()(persist((set, get) => {
 			}
 			if (
 				clockingOut &&
+				cfg.cannotClockOutInPossession &&
+				emp &&
+				useCashSessionStore.getState().hasPossession(emp.id) &&
+				emp.role !== "manager" &&
+				emp.role !== "owner"
+			) {
+				return {
+					ok: false,
+					error: "Hand off or close out before clock-out. Manager override on Labor.",
+				};
+			}
+			if (
+				clockingOut &&
 				cfg.requireCloseoutBeforeClockOut &&
 				emp &&
 				(emp.role === "server" || emp.role === "bartender")

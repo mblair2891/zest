@@ -2,6 +2,11 @@ import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
 import { uid } from "@/lib/utils";
 import {
+  drawerAllowsAnotherHolder,
+  personAllowsAnotherDrawer,
+  type HouseDrawerMode,
+} from "./cash-custody";
+import {
   expectedCashCents,
   parseCashHandling,
   resolveCashSink,
@@ -69,6 +74,16 @@ export type DrawerSession = {
   closedAt?: number;
 };
 
+export type CashPossession = {
+  employeeId: string;
+  kind: "house_drawer" | "personal_bank";
+  drawerId: string | null;
+  declaredOpeningCents: number;
+  acceptedAt: number;
+  witnessId?: string | null;
+  handedFromId?: string | null;
+};
+
 export type BankSession = {
   employeeId: string;
   issuedAt: number;
@@ -93,6 +108,7 @@ type CashSessionState = {
   banks: Record<string, BankSession>;
   events: CashEvent[];
   floaterWellByEmployee: Record<string, string>;
+  possessions: Record<string, CashPossession>;
   ensureLocation: (locationId: string) => void;
   ensureDrawer: (drawerId: string, startCents: number) => DrawerSession;
   ensureBank: (employeeId: string, startCents: number) => BankSession;
@@ -156,6 +172,14 @@ type CashSessionState = {
     toEmployeeName?: string;
   }) => void;
   uncountedForEmployee: (employeeId: string, cfg: CashHandlingConfig) => string[];
+  acceptPossession: (
+    p: CashPossession,
+    mode?: HouseDrawerMode,
+  ) => { ok: true } | { ok: false; error: string };
+  releasePossession: (employeeId: string) => void;
+  hasPossession: (employeeId: string) => boolean;
+  possessionOf: (employeeId: string) => CashPossession | undefined;
+  holdersOfDrawer: (drawerId: string) => string[];
 };
 
 function emptyDrawer(drawerId: string, startCents: number): DrawerSession {
@@ -205,6 +229,7 @@ export const useCashSessionStore = create<CashSessionState>()(
       banks: {},
       events: [],
       floaterWellByEmployee: {},
+      possessions: {},
 
       ensureLocation: (locationId) => {
         const id = locationId || "loc";
@@ -215,6 +240,7 @@ export const useCashSessionStore = create<CashSessionState>()(
           banks: {},
           events: [],
           floaterWellByEmployee: {},
+          possessions: {},
         });
       },
 
@@ -607,6 +633,47 @@ export const useCashSessionStore = create<CashSessionState>()(
         }
         return out;
       },
+
+      acceptPossession: (p, mode: HouseDrawerMode = "exclusive") => {
+        if (p.kind === "house_drawer" && p.drawerId) {
+          const holders = Object.values(get().possessions).filter(
+            (x) => x.drawerId === p.drawerId && x.employeeId !== p.employeeId,
+          );
+          if (!drawerAllowsAnotherHolder(mode, holders.length)) {
+            return { ok: false, error: "That drawer already has a custodian (exclusive)." };
+          }
+          const mine = Object.values(get().possessions).filter(
+            (x) => x.employeeId === p.employeeId && x.drawerId && x.drawerId !== p.drawerId,
+          );
+          if (!personAllowsAnotherDrawer(mode, mine.length)) {
+            return {
+              ok: false,
+              error: "This PIN already holds a drawer. Enable multi-drawer to take another well.",
+            };
+          }
+        }
+        set({ possessions: { ...get().possessions, [p.employeeId]: p } });
+        if (p.kind === "personal_bank") {
+          get().ensureBank(p.employeeId, p.declaredOpeningCents);
+        }
+        if (p.kind === "house_drawer" && p.drawerId) {
+          get().ensureDrawer(p.drawerId, p.declaredOpeningCents);
+        }
+        return { ok: true };
+      },
+
+      releasePossession: (employeeId) => {
+        const next = { ...get().possessions };
+        delete next[employeeId];
+        set({ possessions: next });
+      },
+
+      hasPossession: (employeeId) => Boolean(get().possessions[employeeId]),
+      possessionOf: (employeeId) => get().possessions[employeeId],
+      holdersOfDrawer: (drawerId) =>
+        Object.values(get().possessions)
+          .filter((p) => p.drawerId === drawerId)
+          .map((p) => p.employeeId),
     }),
     {
       name: "summex-cash-session-v1",
@@ -618,6 +685,7 @@ export const useCashSessionStore = create<CashSessionState>()(
         banks: s.banks,
         events: s.events.slice(0, 200),
         floaterWellByEmployee: s.floaterWellByEmployee,
+        possessions: s.possessions,
       }),
     },
   ),
@@ -646,6 +714,15 @@ export function applyCashTender(opts: {
     order: opts.order,
   });
   if (sink.type === "blocked") return { ok: false, error: sink.reason };
+  if (!useCashSessionStore.getState().hasPossession(opts.emp.id)) {
+    return {
+      ok: false,
+      error:
+        sink.type === "bank"
+          ? "Open your bank first (declare opening cash)."
+          : "Take the drawer first (declare opening cash).",
+    };
+  }
   const blocked = tillCashBlocked?.(
     sink.type === "drawer" ? sink.drawer.id : `bank:${opts.emp.id}`,
     sink.type === "bank" ? opts.emp.id : null,

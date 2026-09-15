@@ -6,6 +6,19 @@ import type { GuideUpdate } from "@/lib/guide/types";
  */
 export const WHATS_NEW_ENTRIES: GuideUpdate[] = [
   {
+    id: "upd_2026_10_95_cash_custody",
+    date: "2026-09-14",
+    title: "Drawer assignment, banks, blind closeout",
+    summary:
+      "Each PIN has one cash assignment: house drawer, personal bank, or none. You cannot tender cash until you take possession. Kitchen never sees Take drawer.",
+    body: "Venue settings are form controls (role defaults, exclusive/shared/multi-drawer, all cash to house till, break bills, handoff, witness PIN). Staff row can override except kitchen. Take drawer / Open bank declares opening cash blind. Closeout: no open checks, blind count, non-cash recap, tip worksheet, mix-based tip-out recs, card tips cash-out vs payroll, then drop or leave float. Physical bills stay with who took the tender; entity split stays on the ledger.",
+    roles: ["owner_manager", "server", "kitchen_bar", "host_operator", "platform_admin"],
+    surfaces: ["settings"],
+    audience: "all",
+    topicId: "cash-handling",
+    tags: ["cash", "drawer", "closeout", "bank"],
+  },
+  {
     id: "upd_2026_10_94_cash_entered",
     date: "2026-09-14",
     title: "Cash is the price you type",

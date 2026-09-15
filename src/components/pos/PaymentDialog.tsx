@@ -33,7 +33,7 @@ import { readTenantPosContext } from "@/lib/saas/pos-context";
 import { canEmployee } from "@/lib/access/permissions";
 import { splitTenderByEntity } from "@/lib/payments/entity-split";
 import { cashRoleFromSession, parseCashHandling } from "@/lib/pos/cash-handling";
-import { currentCashSink } from "@/lib/pos/cash-session";
+import { currentCashSink, useCashSessionStore } from "@/lib/pos/cash-session";
 import { useStationSessionStore } from "@/lib/pos/station-session";
 import { deviceRoleFromSessionMode, parseStationQuery } from "@/lib/pos/device-roles";
 import { odsBlocksTender } from "@/lib/pos/loss-prevention";
@@ -153,6 +153,14 @@ export function PaymentDialog({ open, onOpenChange }: Props) {
       });
       if (sink.type === "blocked") {
         setError(sink.reason);
+        return;
+      }
+      if (emp && !useCashSessionStore.getState().hasPossession(emp.id)) {
+        setError(
+          sink.type === "bank"
+            ? "Open your bank first (declare opening cash)."
+            : "Take the drawer first (declare opening cash).",
+        );
         return;
       }
       const { useTillCloseoutStore } = await import("@/lib/pos/till-closeout-store");

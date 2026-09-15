@@ -19,6 +19,14 @@ import { setStaffPinFn } from "@/lib/labor/api";
 import { isProspectDemo } from "@/lib/demo/session";
 import { useSaasStore } from "@/lib/pos/saas-store";
 import { entityLoginScope } from "@/lib/access/entity-grants";
+import {
+  CASH_CUSTODY_KINDS,
+  CASH_CUSTODY_LABEL,
+  DEFAULT_CUSTODY_BY_ROLE,
+  type CashCustodyKind,
+} from "@/lib/pos/cash-custody";
+import { parseCashHandling } from "@/lib/pos/cash-handling";
+import { persistCashHandling } from "@/lib/pos/persist-location-setup";
 
 export function EmployeesView() {
   const employees = usePosStore((s) => s.employees);
@@ -162,6 +170,42 @@ export function EmployeesView() {
                       {locked && " · section-limited"}
                     </p>
                     {canPin && <ResetPinRow employeeId={e.id} pinLocked={!!e.pinLocked} />}
+                    {manage && (
+                      <label className="mt-2 block text-xs text-muted-foreground">
+                        Cash assignment
+                        <select
+                          className="mt-1 h-9 w-full rounded-lg border border-border bg-bg px-2 text-sm text-foreground"
+                          value={
+                            parseCashHandling(settings.cashHandling).custodyByEmployeeId[e.id] ??
+                            ""
+                          }
+                          disabled={e.role === "kitchen"}
+                          onChange={(ev) => {
+                            const cfg = parseCashHandling(settings.cashHandling);
+                            const custodyByEmployeeId = { ...cfg.custodyByEmployeeId };
+                            const v = ev.target.value as CashCustodyKind | "";
+                            if (!v) delete custodyByEmployeeId[e.id];
+                            else custodyByEmployeeId[e.id] = v;
+                            usePosStore.getState().updateSettings({
+                              cashHandling: { ...cfg, custodyByEmployeeId },
+                            });
+                            persistCashHandling();
+                          }}
+                        >
+                          <option value="">
+                            Role default (
+                            {CASH_CUSTODY_LABEL[DEFAULT_CUSTODY_BY_ROLE[e.role] ?? "none"]})
+                          </option>
+                          {CASH_CUSTODY_KINDS.filter((k) => e.role !== "kitchen" || k === "none").map(
+                            (k) => (
+                              <option key={k} value={k}>
+                                {CASH_CUSTODY_LABEL[k]}
+                              </option>
+                            ),
+                          )}
+                        </select>
+                      </label>
+                    )}
                   </div>
                   <Badge variant={e.clockedIn ? "success" : "secondary"}>
                     {e.clockedIn ? "In" : "Out"}
