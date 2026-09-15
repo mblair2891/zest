@@ -516,6 +516,11 @@ const usePosStoreRaw = create<PosStore>()(persist((set, get) => {
 			managerAuthRole: null,
 		});
 		get().audit("login", `${emp.name} (${emp.role}) · floor PIN`);
+		try {
+			useStationSessionStore.getState().setStationJob(null);
+		} catch {
+			/* */
+		}
 		return { ok: true };
 	},
 	applyVerifiedStationPin: (row, pin) => {
@@ -576,6 +581,11 @@ const usePosStoreRaw = create<PosStore>()(persist((set, get) => {
 	logout: () => {
 		const emp = get().getCurrentEmployee();
 		if (emp) get().audit("logout", emp.name);
+		try {
+			useStationSessionStore.getState().setStationJob(null);
+		} catch {
+			/* */
+		}
 		set({
 			currentEmployeeId: null,
 			view: "floor",

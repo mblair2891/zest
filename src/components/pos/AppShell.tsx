@@ -446,6 +446,8 @@ export function AppShell() {
     safeView === "waitlist" ||
     safeView === "takeout";
 
+  const stationPinShell = Boolean(urlStation) && sessionKind === "pin";
+
   if (kdsMode) {
     return (
       <div
@@ -483,6 +485,52 @@ export function AppShell() {
             operatorId={stationAssignment.operatorId}
           />
         </div>
+      </div>
+    );
+  }
+
+  if (stationPinShell) {
+    return (
+      <div
+        className={cn("flex h-[100dvh] flex-col bg-bg text-foreground", shellPad)}
+        data-station-layout={stationLayout.form}
+        data-station-pin-shell
+      >
+        <TrainingBanner />
+        <header className="flex h-14 shrink-0 items-center gap-2 border-b border-border bg-surface px-3">
+          <div className="min-w-0">
+            <p className="truncate text-sm font-semibold leading-tight">{settings.name}</p>
+            {emp && (
+              <p className="truncate text-[11px] text-muted-foreground">
+                {emp.name} · {staffTitle(emp)}
+              </p>
+            )}
+          </div>
+          <div className="ml-auto flex items-center gap-2">
+            <HelpButton surface="pos" compact />
+            <NetworkChip />
+            <Button
+              size="lg"
+              variant="outline"
+              className="station-touch h-12 min-w-[6.5rem] text-base"
+              onClick={() => logout()}
+              aria-label="Switch user"
+              data-demo="switch-user"
+            >
+              Switch user
+            </Button>
+          </div>
+        </header>
+        <ClockInAfterPinDialog />
+        <NetworkBanner />
+        <div className="min-h-0 flex-1 overflow-hidden">
+          <DeviceModeView
+            mode={stationAssignment.kind}
+            operatorId={stationAssignment.operatorId}
+          />
+        </div>
+        <TicketBumpWatcher />
+        <NetworkWatcher />
       </div>
     );
   }
@@ -549,7 +597,7 @@ export function AppShell() {
           )}
           {/* Package preview is desktop-only so Help stays visible on phones */}
 
-          <DemoEntitySwitcher className="hidden md:flex" />
+          {!urlStation && <DemoEntitySwitcher className="hidden md:flex" />}
           {isProspectDemo() && demoEntered && (
             <DemoDeviceSwitcher className="hidden md:flex" />
           )}

@@ -277,7 +277,7 @@ export const GETTING_STARTED_TOPICS: GuideTopic[] = [
       ),
       steps(
         "Sign in as Platform Admin. Tenants → Summit Hall (Demo / pairable). Venue slug summit-hall.",
-        "Floor PINs (not clock-in, not owner password): Host 1111 · Server 2222 (Hearth FOH, both menus on one check) · Bartender 3333 (Copper) · Kitchen 4444 (Hearth ODS) · Busser 5555 · Supervisor 7777 · Manager 9999. No 0000. 4444 on an order tablet is the clock sheet, not server UI. 4444 on an ODS tablet is the kitchen rail. 2222 on an order tablet is the floor.",
+        "Floor PINs (not clock-in, not owner password): Host 1111 · Server 2222 (Hearth FOH, both menus on one check) · Bartender 3333 (Copper) · Kitchen 4444 (Hearth ODS) · Busser 5555 · Supervisor 7777 · Manager 9999. No 0000. 4444 on an order tablet is the clock sheet, not server UI. 4444 on an ODS tablet is the kitchen rail. 2222 on an order tablet is the short role menu.",
         "Devices: add Android stations (host | order | ODS kitchen | ODS bar). Nothing is pre-paired. Publish when ready.",
         "QR: table tents + ticket QR, reorder after a staff-opened check, pay/split. Full self-serve is off.",
         "Labor: Hearth vs food $ and Copper vs drink $ (owned lines). Independent schedules. PIN login and clock-in are both available and separate.",
@@ -320,7 +320,7 @@ export const GETTING_STARTED_TOPICS: GuideTopic[] = [
         "Marketing /demo (also /demos) shows four cards. Entering a demo does not require CRM. PIN pad on the house — not owner password.",
         "Platform Tenants → Demos lists all four. Open Devices to pair Android stations. Admin password stays back office.",
         "Shared PIN cheat-sheet (roles omitted when they do not apply): 1111 Host / window · 2222 Cashier / counter / server · 3333 Cook / ODS · 4444 Runner / window · 5555 Busser · 7777 Supervisor · 9999 Manager.",
-        "On Summit Hall and Harbor Lot only: after PIN, Operating as switches the selling entity (menu, ODS, owned-lines reports, staff, inventory). Shared floor, devices, and the guest check stay the same. Hidden on single-entity demos and on every live subscriber.",
+        "On Summit Hall and Harbor Lot only: a manager More overflow after PIN holds Operating as (selling entity: menu, ODS, owned-lines reports, staff, inventory). Shared floor, devices, and the guest check stay the same. Hidden on the staff menu on live subscribers and on single-entity demos.",
       ),
       warn(
         "Do not document the entity switcher as a live product feature. Do not treat demo names as customers. Live peer venues still have no host merchant; live pods still have a real host merchant.",

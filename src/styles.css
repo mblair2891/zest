@@ -147,7 +147,8 @@
   min-height: 3rem;
 }
 
-[data-station-layout="handheld"] .station-touch {
+[data-station-layout="handheld"] .station-touch,
+[data-station-layout="tablet"] .station-touch {
   min-height: 3rem;
   min-width: 3rem;
 }

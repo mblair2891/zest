@@ -147,17 +147,14 @@ test("bar tab is only when the house has a rail", () => {
   assert.match(bar, /barstool/);
 });
 
-test("paired order glass is not a hard-coded To-go | Bar tab POS", () => {
+test("paired order glass is a short role menu, not a hard-coded To-go | Bar tab POS", () => {
   const mode = readFileSync("src/components/pos/DeviceModeView.tsx", "utf8");
   assert.match(mode, /stationHomeSurface/);
   assert.match(mode, /pinFitsDevice/);
   assert.match(mode, /StationClockGate/);
-  assert.match(mode, /HostStationView/);
+  assert.match(mode, /StationHomeMenu/);
   assert.match(mode, /DriveThroughView/);
-  assert.doesNotMatch(
-    mode.replace(/\s+/g, " "),
-    /if \(role === "host"\) \{\s*return <HostStationView \/>;\s*\}\s*return <OrderView \/>/,
-  );
+  assert.doesNotMatch(mode, /HostStationView/);
   const order = readFileSync("src/components/pos/OrderView.tsx", "utf8");
   assert.match(order, /station-home-queue/);
   assert.match(order, /homeSurface === "floor"/);

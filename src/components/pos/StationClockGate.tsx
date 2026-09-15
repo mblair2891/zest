@@ -1,4 +1,5 @@
 import { Clock3, CookingPot } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import type { StationPinFit } from "@/lib/pos/station-pin-gate";
 import { usePosStore } from "@/lib/pos/store";
 import { ROLE_LABEL } from "@/lib/pos/rbac";
@@ -34,11 +35,19 @@ export function StationClockGate({ fit }: { fit: Extract<StationPinFit, { ok: fa
             {clocked ? "on the clock" : "off the clock"}
           </p>
         )}
-        <div className="mt-5">
-          <StationClockControl size="lg" className="h-12 w-full" />
+        <div className="mt-5 space-y-3">
+          <StationClockControl size="lg" className="station-touch h-14 w-full text-base" />
+          <Button
+            size="lg"
+            variant="outline"
+            className="station-touch h-14 w-full text-base"
+            onClick={() => usePosStore.getState().logout()}
+          >
+            Done
+          </Button>
         </div>
         <p className="mt-3 text-xs text-muted-foreground">
-          Clock in and clock out do not open order entry. Switch user returns to the PIN pad.
+          Clock in and clock out do not open order entry. Done returns to the PIN pad.
         </p>
       </div>
     </div>

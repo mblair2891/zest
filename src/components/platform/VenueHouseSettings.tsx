@@ -258,7 +258,7 @@ export function VenueHouseSettings() {
         <p className="text-sm font-medium">Stations and PINs</p>
         <p className="text-xs text-muted-foreground">
           Device role is the tablet envelope. Staff PIN is which of those actions this person may use.
-          Host home is floor + waitlist/seat. New to-go is a persistent action — not the only home.
+          Host home is a short menu: Floor / seat, Waitlist, To-go, Clock. One job per screen.
         </p>
         <label className="flex items-start gap-2 text-sm">
           <input

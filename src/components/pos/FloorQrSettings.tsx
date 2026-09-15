@@ -257,7 +257,7 @@ export function FloorQrSettings({ write }: { write: boolean }) {
           <span>
             Host may open bar tabs
             <span className="mt-0.5 block text-[11px] text-muted-foreground">
-              Off: host home is floor + waitlist/seat. Bar tab is not the default. New to-go stays a persistent action.
+              Off: host menu is Floor / seat, Waitlist, To-go, Clock. Bar tab is not on the host menu.
             </span>
           </span>
         </label>

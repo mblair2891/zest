@@ -24,8 +24,9 @@ export function SubscriberWhitePaper() {
         summex.app · Guest cards: {PAYMENTS_BRAND} only
       </p>
       <p className="mt-2 text-xs text-muted-foreground">
-        Revision · 14 Sep 2026 — Aligns with Operators Guide v2026.10.92.
-        Station UI is device role ∩ staff PIN. Pair with a typed Devices code;
+        Revision · 14 Sep 2026 — Aligns with Operators Guide v2026.10.93.
+        Station UI is device role ∩ staff PIN. After PIN the tablet shows a
+        short role menu. Pair with a typed Devices code;
         QR is optional. Peer venues have no host merchant; the host stand is
         still a device role. Gift lookup at summex.app/gift.
       </p>
@@ -140,15 +141,15 @@ export function SubscriberWhitePaper() {
             <tbody className="text-muted-foreground">
               <tr className="border-t border-border">
                 <td className="py-2 pr-4 text-ivory">Order</td>
-                <td>Full-service floor first; counter queue; drive-through lane. To-go and bar tab are actions.</td>
+                <td>After PIN: My tables, New table, To-go, Bar tab, Clock, Closeout as allowed. Counter is New ticket. Drive-through is the lane.</td>
               </tr>
               <tr className="border-t border-border">
                 <td className="py-2 pr-4 text-ivory">ODS</td>
-                <td>Kitchen and bar display — tickets, Start and Bump. No new order, no pay</td>
+                <td>Kitchen and bar display — tickets, Start and Bump, plus Clock. No POS hamburger, no new order, no pay</td>
               </tr>
               <tr className="border-t border-border">
                 <td className="py-2 pr-4 text-ivory">Host</td>
-                <td>Floor + waitlist/seat. New to-go at the stand. Peer venues still have this role — no host merchant required.</td>
+                <td>After PIN: Floor / seat, Waitlist, To-go, Clock. Peer venues still have this role — no host merchant required.</td>
               </tr>
               <tr className="border-t border-border">
                 <td className="py-2 pr-4 text-ivory">Kiosk</td>
@@ -162,7 +163,7 @@ export function SubscriberWhitePaper() {
           Password login is back office — never the PIN home. Floor staff use a
           4-digit PIN on a paired station. Location owner and manager see those
           PINs on Users and can reset them; kitchen and server PINs cannot. A kitchen PIN on an order tablet is the
-          clock sheet, not server UI. Completing clock does not open order entry.
+          Clock and Done, not server UI. Completing clock does not open order entry.
           Server closeout is Cash. During the shift, staff can move cash till to
           till when one drawer is short on small bills; expected cash on each till
           updates so the blind count still balances.

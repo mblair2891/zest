@@ -185,7 +185,14 @@ export function OrderView() {
     settings,
   });
 
-  if (!order && (homeSurface === "floor" || homeSurface === "host")) {
+  const stationJob = (() => {
+    try {
+      return useStationSessionStore.getState().stationJob;
+    } catch {
+      return null;
+    }
+  })();
+  if (!order && !stationJob && (homeSurface === "floor" || homeSurface === "host")) {
     return <FloorView />;
   }
 
@@ -208,6 +215,7 @@ export function OrderView() {
       { deviceRole: stationRole ?? "order", employeeRole: emp?.role, settings },
       "order_entry",
     );
+    const jobOnlyTicket = stationJob === "new_ticket";
     return (
       <div
         className="flex h-full flex-col items-center justify-center gap-4 p-6 text-center"
@@ -227,7 +235,7 @@ export function OrderView() {
             New ticket
           </Button>
           )}
-          {togoOk && (
+          {!jobOnlyTicket && togoOk && (
           <Button
             size="lg"
             className="station-touch h-14 text-base"
@@ -237,7 +245,7 @@ export function OrderView() {
             To-go
           </Button>
           )}
-          {barOk && (
+          {!jobOnlyTicket && barOk && (
             <Button
               size="lg"
               className="station-touch h-14 text-base sm:col-span-2"

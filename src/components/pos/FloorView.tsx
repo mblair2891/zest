@@ -78,9 +78,15 @@ function pipelineLabel(status: string): string {
 export function FloorView({
   hostStand = false,
   chromeActions = false,
+  mapOnly = false,
+  preferMine,
 }: {
   hostStand?: boolean;
   chromeActions?: boolean;
+  /** Map + status only. Extra tools live on the station menu. */
+  mapOnly?: boolean;
+  /** My tables starts on Mine; New table / host floor starts on All. */
+  preferMine?: boolean;
 }) {
   const tables = usePosStore((s) => s.tables);
   const orders = usePosStore((s) => s.orders);
@@ -189,10 +195,11 @@ export function FloorView({
 
   const showMine =
     (emp?.role === "server" || locked) && (emp?.homeSectionIds?.length ?? 0) > 0;
+  const mineDefault = preferMine ?? showMine;
   const defaultSection =
     floorScope === "section"
       ? (sectionTabs[0]?.name ?? "All")
-      : showMine
+      : mineDefault && showMine
         ? "Mine"
         : "All";
   const effectiveSection = section === "__init" ? defaultSection : section;
@@ -337,13 +344,16 @@ export function FloorView({
         <h2 className="mr-2 text-sm font-semibold">
           Floor · {saasLoc?.code ?? loc?.code ?? settings.name}
         </h2>
+        {!mapOnly && (
         <GuideLearnLink topicId="floor-tables" compact>
           Learn
         </GuideLearnLink>
+        )}
         {!barPick && (
         <div className="flex flex-wrap gap-1">
           <Button
-            size="sm"
+            size={mapOnly ? "lg" : "sm"}
+            className={mapOnly ? "station-touch h-12" : undefined}
             variant={floorScope === "entire" ? "default" : "outline"}
             onClick={() => {
               setFloorScope("entire");
@@ -353,7 +363,8 @@ export function FloorView({
             Entire location
           </Button>
           <Button
-            size="sm"
+            size={mapOnly ? "lg" : "sm"}
+            className={mapOnly ? "station-touch h-12" : undefined}
             variant={floorScope === "section" ? "default" : "outline"}
             onClick={() => {
               setFloorScope("section");
@@ -367,7 +378,8 @@ export function FloorView({
         <div className="flex flex-wrap gap-1">
           {floorScope === "entire" && (
             <Button
-              size="sm"
+              size={mapOnly ? "lg" : "sm"}
+              className={mapOnly ? "station-touch h-12" : undefined}
               variant={effectiveSection === "All" ? "default" : "outline"}
               onClick={() => setSection("All")}
             >
@@ -376,7 +388,8 @@ export function FloorView({
           )}
           {floorScope === "entire" && showMine && (
             <Button
-              size="sm"
+              size={mapOnly ? "lg" : "sm"}
+              className={mapOnly ? "station-touch h-12" : undefined}
               variant={effectiveSection === "Mine" ? "default" : "outline"}
               onClick={() => setSection("Mine")}
             >
@@ -386,10 +399,10 @@ export function FloorView({
           {sectionTabs.map((s) => (
             <Button
               key={s.id}
-              size="sm"
+              size={mapOnly ? "lg" : "sm"}
               variant={effectiveSection === s.name ? "default" : "outline"}
               onClick={() => setSection(s.name)}
-              className="gap-1.5"
+              className={mapOnly ? "station-touch h-12 gap-1.5" : "gap-1.5"}
             >
               <span
                 className="h-2 w-2 rounded-full"
@@ -515,7 +528,7 @@ export function FloorView({
                   type="button"
                   onClick={() => onTableClick(t)}
                   onPointerDown={(e) => {
-                    if (mergeMode || transferMode || selectMode) return;
+                    if (mapOnly || mergeMode || transferMode || selectMode) return;
                     drag.current = { id: t.id, x: e.clientX, y: e.clientY };
                   }}
                   onPointerUp={(e) => {
@@ -630,12 +643,15 @@ export function FloorView({
                   : "Tap table with a check to move"
                 : barPick
                   ? "Tap a stool — empty opens a tab, occupied attaches the check"
+                : mapOnly
+                  ? "Tap a table · color fill = status"
                 : locked
                   ? "Color fill = status · top bar = section · locked tables need a grant"
                   : "Tap a table · drag onto another to combine · flashing = SLA"}
           </p>
         </div>
 
+        {!mapOnly && (
         <aside
           className={cn(
             "w-full shrink-0 overflow-y-auto border-border bg-surface",
@@ -900,6 +916,7 @@ export function FloorView({
             </div>
           </div>
         </aside>
+        )}
       </div>
 
       <Dialog

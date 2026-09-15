@@ -6,6 +6,19 @@ import type { GuideUpdate } from "@/lib/guide/types";
  */
 export const WHATS_NEW_ENTRIES: GuideUpdate[] = [
   {
+    id: "upd_2026_10_93_station_menu",
+    date: "2026-09-14",
+    title: "Station home is a short role menu",
+    summary:
+      "After PIN, the tablet shows 2–6 large named jobs this device × this PIN allows. One job per screen. Pay stays on the check.",
+    body: "Order tablet: My tables, New table, To-go, Bar tab (if the house and PIN allow), Clock in/out, Closeout (server / manager). Host tablet: Floor / seat, Waitlist, To-go, Clock. ODS stays the rail plus Clock — no POS hamburger. Kitchen PIN on an order tablet is Clock and Done. Floor is the map and table status only; the check opens after a table tap. Live venues never show Operating as. Isolated demos keep that switcher in a manager More overflow.",
+    roles: ["owner_manager", "server", "kitchen_bar", "host_operator", "platform_admin"],
+    surfaces: ["floor"],
+    audience: "all",
+    topicId: "device-roles",
+    tags: ["devices", "pin", "station", "tablet"],
+  },
+  {
     id: "upd_2026_10_92_seating_autosize",
     date: "2026-09-14",
     title: "Seating icons scale with the table",

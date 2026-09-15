@@ -19,9 +19,25 @@ export type StationSaved = {
   focusedPane: "a" | "b" | null;
 };
 
+export type StationJob =
+  | "my_tables"
+  | "pick_table"
+  | "new_ticket"
+  | "floor_seat"
+  | "waitlist"
+  | "togo"
+  | "bar_tab"
+  | "clock"
+  | "closeout"
+  | "done"
+  | null;
+
 type StationSessionState = StationSaved & {
   locationId: string;
   byLocation: Record<string, StationSaved>;
+  /** After-PIN job. Not persisted — each PIN starts at the short menu. */
+  stationJob: StationJob;
+  setStationJob: (job: StationJob) => void;
   ensureLocation: (locationId: string) => void;
   setAssignment: (next: Partial<StationAssignment>) => void;
   setSplit: (on: boolean) => void;
@@ -78,6 +94,8 @@ export const useStationSessionStore = create<StationSessionState>()(
       locationId: "",
       byLocation: {},
       ...DEFAULT_SAVED,
+      stationJob: null,
+      setStationJob: (stationJob) => set({ stationJob }),
 
       ensureLocation: (locationId) => {
         const id = locationId || "loc";

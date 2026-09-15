@@ -102,16 +102,12 @@ test("operators guide: device role owns home, kitchen PIN is not server UI", () 
   assert.match(kitchen, /not the server UI/);
 });
 
-test("host stand: floor + waitlist home, persistent New to-go, bar tab not default", () => {
-  const host = readFileSync("src/components/pos/HostStationView.tsx", "utf8");
-  assert.match(host, /New to-go order/);
-  assert.match(host, /data-host-new-togo/);
-  assert.match(host, /stationCan/);
-  assert.match(host, /openTakeout\("To-go"\)/);
-  assert.doesNotMatch(
-    host.replace(/\s+/g, " "),
-    /hostStand && \(\s*<Button[^>]*To-go/,
-  );
+test("host stand: short menu of floor, waitlist, to-go, clock — bar tab not on the menu", () => {
+  const menu = readFileSync("src/lib/pos/station-menu.ts", "utf8");
+  assert.match(menu, /Floor \/ seat/);
+  assert.match(menu, /Waitlist/);
+  assert.match(menu, /To-go/);
+  assert.match(menu, /if \(device === "host"\)/);
   const kitchenHost = pinFitsDevice({ deviceRole: "host", employeeRole: "kitchen" });
   assert.equal(kitchenHost.ok, false);
   if (!kitchenHost.ok) assert.match(kitchenHost.hint, /to-go/i);
@@ -119,9 +115,8 @@ test("host stand: floor + waitlist home, persistent New to-go, bar tab not defau
   assert.equal(pinFitsDevice({ deviceRole: "host", employeeRole: "supervisor" }).ok, true);
   assert.equal(pinFitsDevice({ deviceRole: "host", employeeRole: "manager" }).ok, true);
   const hostGuide = readFileSync("src/lib/guide/content/roles.ts", "utf8");
-  assert.match(hostGuide, /New to-go order/);
-  assert.match(hostGuide, /Host may open bar tabs/);
+  assert.match(hostGuide, /Floor \/ seat/);
   assert.match(hostGuide, /Servers may use the host stand/);
   const floorGuide = readFileSync("src/lib/guide/content/floor.ts", "utf8");
-  assert.match(floorGuide, /not the only home/);
+  assert.match(floorGuide, /short menu/);
 });
