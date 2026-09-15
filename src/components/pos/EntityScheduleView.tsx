@@ -46,8 +46,14 @@ export function EntityScheduleView() {
     }),
   );
   const [grantFor, setGrantFor] = useState<{ employeeId: string; day: number } | null>(null);
+  const demoScope = usePosStore((s) =>
+    s.settings.isDemo || s.settings.demoIsolated ? s.demoOperatingEntityId : null,
+  );
 
   const entityKey = entityIds.join(",");
+  useEffect(() => {
+    if (demoScope && entityKey.split(",").includes(demoScope)) setBoardEntity(demoScope);
+  }, [demoScope, entityKey]);
   useEffect(() => {
     if (entityIds.length && !entityIds.includes(boardEntity)) {
       setBoardEntity(

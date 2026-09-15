@@ -3,7 +3,7 @@
 **Powered by Quantum Reach**
 
 White paper · for owners and operators  
-**Revision · 14 Sep 2026** — Written for prospective subscribers. Aligns with Operators Guide v2026.10.96. The house toggles which tenders it accepts (cash, card, gift, check, house account, comp, other). Disabled methods are hidden on pay and closeout. Cash is the entered till price; card is marked up and rounded up. Station UI is device role ∩ staff PIN. After PIN the tablet shows a short role menu — not a dashboard. A kitchen PIN does not open order entry. Peer venues have no host merchant; the host stand is still a device role. Staff stations are Android tablets. Pair with a typed Devices code; QR is optional. Devices Delete removes a named slot; Deactivate keeps it. Guests look up gift balance at summex.app/gift. Spent plastic can be reused.
+**Revision · 15 Sep 2026** — Written for prospective subscribers. Aligns with Operators Guide v2026.10.97. The house toggles which tenders it accepts (cash, card, gift, check, house account, comp, other). Disabled methods are hidden on pay and closeout. Cash is the entered till price; card is marked up and rounded up. Station UI is device role ∩ staff PIN. After PIN the tablet shows a short role menu — not a dashboard. A kitchen PIN does not open order entry. Peer venues have no host merchant; the host stand is still a device role. Staff stations are Android tablets. Pair with a typed Devices code; QR is optional. Devices Delete removes a named slot; Deactivate keeps it. Guests look up gift balance at summex.app/gift. Spent plastic can be reused.
 
 summex.app  
 Guest cards: **Quantum Payments** only

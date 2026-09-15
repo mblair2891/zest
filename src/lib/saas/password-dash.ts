@@ -218,6 +218,8 @@ export function passwordDashTabs(kind: PasswordDashKind): Array<[VenueDashTabId,
         ["people", "Users"],
         ["floor", "Floor"],
         ["menu", "Menus"],
+        ["costs", "Costs"],
+        ["labor", "Labor"],
         ["reports", "Reports"],
         ["onboarding", "Onboarding"],
       ];
@@ -231,6 +233,8 @@ export function passwordDashTabs(kind: PasswordDashKind): Array<[VenueDashTabId,
         ["people", "Users"],
         ["onboarding", "Onboarding"],
         ["floor", "Floor"],
+        ["costs", "Costs"],
+        ["labor", "Labor"],
         ["reports", "Reports"],
       ];
     case "host_owner":

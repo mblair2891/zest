@@ -6,6 +6,19 @@ import type { GuideUpdate } from "@/lib/guide/types";
  */
 export const WHATS_NEW_ENTRIES: GuideUpdate[] = [
   {
+    id: "upd_2026_10_97_operating_as_overview",
+    date: "2026-09-15",
+    title: "Demo Operating as refreshes the tab; Overview Labor and Costs",
+    summary:
+      "On isolated demos, Operating as remounts Menus, Users, Reports, Labor, and Costs for that entity. Overview tiles always open a real screen.",
+    body: "Summit Hall / Harbor Lot: House is all entities (menus labeled by brand). Hearth vs Copper filters plates vs cocktails. Live subscribers never see the switcher. Overview Labor opens schedules, clock, and hours export; Costs opens invoices, recipes, and variance. If a module is not on the package you get “Not on this package” — never a blank page.",
+    roles: ["owner_manager", "host_operator", "platform_admin"],
+    surfaces: ["settings"],
+    audience: "demo",
+    topicId: "isolated-demo-houses",
+    tags: ["demo", "operating as", "labor", "costs", "overview"],
+  },
+  {
     id: "upd_2026_10_96_payment_methods",
     date: "2026-09-14",
     title: "Venue payment method toggles",

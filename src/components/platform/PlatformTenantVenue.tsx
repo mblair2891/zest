@@ -55,6 +55,10 @@ import {
 import { TenantVenueOverview } from "@/components/platform/TenantVenueOverview";
 import { VenueHouseSettings } from "@/components/platform/VenueHouseSettings";
 import { TabErrorBoundary } from "@/components/platform/TabErrorBoundary";
+import { PackageEmptyState } from "@/components/platform/PackageEmptyState";
+import { demoScopeRemountKey } from "@/lib/demo/entity-switch";
+import { useDemoOperatingEntityId } from "@/lib/demo/use-demo-operating-entity";
+import { allowsView } from "@/lib/pos/package-access";
 import {
   isEntityPasswordKind,
   passwordDashKind,
@@ -68,6 +72,20 @@ import { LedgerView } from "@/components/pos/LedgerView";
 import type { MembershipRole } from "@/lib/saas/types";
 
 type Tab = VenueDashTabId;
+
+function tabPackageView(tab: Tab): string | null {
+  if (tab === "costs") return "inventory";
+  if (tab === "labor" || tab === "schedule") return "labor";
+  if (tab === "reports") return "reports";
+  return null;
+}
+
+function tabOnPackage(tab: Tab, enabledPackages: string[]): boolean {
+  const view = tabPackageView(tab);
+  if (!view) return true;
+  if (!enabledPackages.length) return true;
+  return allowsView(view, enabledPackages, "location");
+}
 
 function venueTypeOf(raw: string): VenueEntityId {
   return isVenueEntityId(raw) ? raw : "food_hall";
@@ -103,6 +121,7 @@ export function PlatformTenantVenue({
   const [lifecycle, setLifecycle] = useState("training");
   const [houseIsDemo, setHouseIsDemo] = useState(false);
   const posView = usePosStore((s) => s.view);
+  const demoScope = useDemoOperatingEntityId();
   const kind: PasswordDashKind = passwordDashKind({
     isPlatformAdmin: audience === "platform",
     tenantConsole: audience === "platform",
@@ -576,7 +595,10 @@ export function PlatformTenantVenue({
               <p className="text-sm text-muted-foreground">Opening venue…</p>
             )}
             {error && <p className="text-sm text-danger">{error}</p>}
-            <TabErrorBoundary tab={tab}>
+            <TabErrorBoundary
+              tab={tab}
+              key={demoScopeRemountKey(tab, demoScope)}
+            >
             {ready && !error && tab === "overview" && (
               audience === "platform" ? (
                 <TenantVenueOverview
@@ -637,14 +659,32 @@ export function PlatformTenantVenue({
               posView === "floor_editor" ? <FloorEditorView /> : <FloorView />
             )}
             {ready && !error && tab === "costs" && tabIds.has("costs") && (
-              <CostWorkspace />
+              tabOnPackage("costs", packages) ? (
+                <CostWorkspace />
+              ) : (
+                <PackageEmptyState module="Costs" />
+              )
             )}
-            {ready && !error && tab === "labor" && tabIds.has("labor") && <LaborOpsView />}
+            {ready && !error && tab === "labor" && tabIds.has("labor") && (
+              tabOnPackage("labor", packages) ? (
+                <LaborOpsView />
+              ) : (
+                <PackageEmptyState module="Labor" />
+              )
+            )}
             {ready && !error && tab === "schedule" && tabIds.has("schedule") && (
-              <LaborOpsView />
+              tabOnPackage("schedule", packages) ? (
+                <LaborOpsView />
+              ) : (
+                <PackageEmptyState module="Labor" />
+              )
             )}
             {ready && !error && tab === "reports" && tabIds.has("reports") && (
-              <ReportsView />
+              tabOnPackage("reports", packages) ? (
+                <ReportsView />
+              ) : (
+                <PackageEmptyState module="Reports" />
+              )
             )}
             {ready && !error && tab === "grants" && tabIds.has("grants") && (
               <HostOperatorsSettings write />
@@ -654,6 +694,12 @@ export function PlatformTenantVenue({
             )}
             {ready && !error && tab === "ledger" && tabIds.has("ledger") && (
               <LedgerView />
+            )}
+            {ready && !error && tab !== "overview" && !tabIds.has(tab) && (
+              <PackageEmptyState
+                module="This section"
+                detail="This tile is not on this dashboard. Pick another Overview tile."
+              />
             )}
             </TabErrorBoundary>
           </main>

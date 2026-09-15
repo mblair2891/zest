@@ -1,7 +1,7 @@
 # Operators Guide — authoring
 
-**Revision · 14 Sep 2026** — Venue payment method toggles.
-Guide v2026.10.96.
+**Revision · 15 Sep 2026** — Demo Operating as refresh; overview Labor and Costs.
+Guide v2026.10.97.
 
 The in-app **Operators Guide** is the living product manual. It is not a
 separate PDF. Staff open it from **Guide** / **?** in the POS and platform

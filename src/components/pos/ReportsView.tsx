@@ -112,10 +112,20 @@ export function ReportsView() {
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   const locId = usePosStore((s) => s.tenantLocationId);
+  const demoScope = usePosStore((s) =>
+    s.settings.isDemo || s.settings.demoIsolated ? s.demoOperatingEntityId : null,
+  );
 
   useEffect(() => {
     if (locId) void hydrateFloor(locId);
   }, [locId]);
+
+  useEffect(() => {
+    if (demoScope) setOperatorId(demoScope);
+    else if (!entityLoginScope(emp)) setOperatorId("");
+    // emp identity is emp?.id / operatorId; full emp object is new each render.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [demoScope, emp?.id, emp?.operatorId]);
 
   const tillBlocked = Boolean(emp && reportsBlockedForClose(emp.id));
 
@@ -127,11 +137,11 @@ export function ReportsView() {
         range,
         from: customFrom ? new Date(customFrom).getTime() : undefined,
         to: customTo ? new Date(customTo).getTime() + 86400000 - 1 : undefined,
-        operatorId: entityLoginScope(emp) || operatorId || null,
+        operatorId: entityLoginScope(emp) || demoScope || operatorId || null,
         serverId: emp?.role === "server" ? emp.id : null,
       }),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [range, customFrom, customTo, operatorId, emp?.id, emp?.role, emp?.operatorId, venue],
+    [range, customFrom, customTo, operatorId, emp?.id, emp?.role, emp?.operatorId, venue, demoScope],
   );
 
   if (tillBlocked) {

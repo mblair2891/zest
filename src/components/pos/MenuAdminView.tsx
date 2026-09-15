@@ -261,6 +261,11 @@ export function MenuAdminView() {
                         ) : (
                           <>
                             <p className="truncate text-sm font-medium">{item.name}</p>
+                            {!demoScope && item.vendorId ? (
+                              <p className="truncate text-[11px] text-muted-foreground">
+                                {vendorName(item.vendorId)}
+                              </p>
+                            ) : null}
                             <p className="text-xs tabular text-muted-foreground">
                               {dual.showBoth
                                 ? `${formatCurrency(dual.cash)} cash · ${formatCurrency(dual.card)} card`

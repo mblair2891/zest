@@ -20,3 +20,23 @@ export function demoEntityMatches(
   if (!scopeId) return true;
   return String(ownerId ?? "") === scopeId;
 }
+
+export const DEMO_SCOPED_TABS = [
+  "menu",
+  "people",
+  "staff",
+  "reports",
+  "labor",
+  "costs",
+  "schedule",
+  "payments",
+  "ledger",
+] as const;
+
+export function demoScopeRemountKey(
+  tab: string,
+  scopeId: string | null | undefined,
+): string {
+  const scoped = (DEMO_SCOPED_TABS as readonly string[]).includes(tab);
+  return scoped ? `${tab}:${scopeId || "house"}` : `${tab}:venue`;
+}

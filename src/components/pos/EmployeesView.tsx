@@ -45,7 +45,7 @@ export function EmployeesView() {
   );
   const visibleEmployees = employees.filter((e) => {
     if (operatorScope && e.operatorId !== operatorScope && e.id !== current?.id) return false;
-    if (demoScope && e.operatorId && e.operatorId !== demoScope) return false;
+    if (demoScope && (e.operatorId || "") !== demoScope) return false;
     return true;
   });
   const manage = canManageSections(current?.role) && !operatorScope;

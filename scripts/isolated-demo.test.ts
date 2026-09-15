@@ -37,6 +37,7 @@ test("entity switcher is allowed on tenant console back office and station PIN, 
   assert.match(src, /sessionKind === "pin"/);
   assert.match(src, /sessionKind === "backoffice"/);
   assert.match(src, /stopPropagation/);
+  assert.match(src, /getState\(\)\.setDemoOperatingEntity/);
   const menu = readFileSync("src/components/pos/StationHomeMenu.tsx", "utf8");
   assert.match(menu, /demoOverflow/);
   assert.match(menu, /showDemoEntitySwitcher/);
@@ -44,6 +45,10 @@ test("entity switcher is allowed on tenant console back office and station PIN, 
   assert.match(shell, /data-station-pin-shell/);
   const pinShell = shell.split("data-station-pin-shell")[1]?.split("return (")[0] ?? "";
   assert.doesNotMatch(pinShell, /DemoEntitySwitcher/);
+  const venue = readFileSync("src/components/platform/PlatformTenantVenue.tsx", "utf8");
+  assert.match(venue, /demoScopeRemountKey/);
+  const menus = readFileSync("src/components/pos/MenuAdminView.tsx", "utf8");
+  assert.match(menus, /demoScope && m.vendorId !== demoScope/);
 });
 
 test("isolated catalog has four demo houses", () => {

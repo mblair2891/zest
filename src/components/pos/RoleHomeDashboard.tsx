@@ -143,6 +143,7 @@ export function RoleHomeDashboard() {
             )}
             <div className="flex flex-wrap gap-2">
               <Jump id="inventory" label="Costs" icon={Package} />
+              <Jump id="labor" label="Labor" icon={BarChart3} />
               <Jump id="floor" label="Floor" icon={LayoutGrid} />
               <Jump id="order" label="Order" icon={ClipboardList} />
               <Jump id="menu" label="Menu" icon={ClipboardList} />

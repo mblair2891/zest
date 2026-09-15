@@ -31,6 +31,8 @@ import {
 import { formatCurrency, formatDateTime } from "@/lib/utils";
 import { cn } from "@/lib/utils";
 import { RecipeAssistButton } from "@/components/recipes/RecipeAssistDialog";
+import { demoEntityMatches } from "@/lib/demo/entity-switch";
+import { useDemoOperatingEntityId } from "@/lib/demo/use-demo-operating-entity";
 
 export type CostTab =
   | "board"
@@ -53,10 +55,20 @@ const TABS: Array<[CostTab, string]> = [
   ["prices", "Price recs"],
 ];
 
+function visibleCostEntity(
+  emp: Parameters<typeof canSeeEntity>[0],
+  entityId: string,
+  demoScope: string | null,
+): boolean {
+  if (!demoEntityMatches(demoScope, entityId)) return false;
+  return canSeeEntity(emp, entityId);
+}
+
 export function CostWorkspace({ initialTab = "board" }: { initialTab?: CostTab }) {
   const [tab, setTab] = useState<CostTab>(initialTab);
   useEffect(() => setTab(initialTab), [initialTab]);
   const openEx = useCostStore((s) => s.exceptions.filter((e) => e.status === "open").length);
+  const demoScope = useDemoOperatingEntityId();
 
   return (
     <div className="flex h-full flex-col" data-demo="cost-control">
@@ -93,13 +105,13 @@ export function CostWorkspace({ initialTab = "board" }: { initialTab?: CostTab }
       </div>
       <div className="min-h-0 flex-1 overflow-y-auto p-3">
         {tab === "board" && <BoardPanel />}
-        {tab === "invoices" && <InvoicePanel />}
-        {tab === "recipes" && <RecipePanel />}
-        {tab === "counts" && <CountPanel />}
-        {tab === "alerts" && <AlertPanel />}
-        {tab === "suppliers" && <SupplierPanel />}
-        {tab === "orders" && <PoPanel />}
-        {tab === "prices" && <PricePanel />}
+        {tab === "invoices" && <InvoicePanel demoScope={demoScope} />}
+        {tab === "recipes" && <RecipePanel demoScope={demoScope} />}
+        {tab === "counts" && <CountPanel demoScope={demoScope} />}
+        {tab === "alerts" && <AlertPanel demoScope={demoScope} />}
+        {tab === "suppliers" && <SupplierPanel demoScope={demoScope} />}
+        {tab === "orders" && <PoPanel demoScope={demoScope} />}
+        {tab === "prices" && <PricePanel demoScope={demoScope} />}
       </div>
     </div>
   );
@@ -205,13 +217,13 @@ function Stat({ label, value }: { label: string; value: string }) {
   );
 }
 
-function InvoicePanel() {
+function InvoicePanel({ demoScope }: { demoScope: string | null }) {
   const emp = usePosStore((s) => s.employees.find((e) => e.id === s.currentEmployeeId) ?? null);
   const vendors = usePosStore((s) => s.vendors);
   const house = usePosStore((s) => s.settings.name);
   const skus = useCostStore((s) => s.skus);
   const invoicesAll = useCostStore((s) => s.invoices);
-  const invoices = invoicesAll.filter((i) => canSeeEntity(emp, i.entityId));
+  const invoices = invoicesAll.filter((i) => visibleCostEntity(emp, i.entityId, demoScope));
   const suppliers = useCostStore((s) => s.suppliers);
   const createDraft = useCostStore((s) => s.createInvoiceDraft);
   const mapLine = useCostStore((s) => s.mapInvoiceLine);
@@ -389,7 +401,7 @@ function InvoicePanel() {
                     }}
                   >
                     <option value="">Map SKU</option>
-                    {skus.filter((s) => canSeeEntity(emp, s.entityId)).map((s) => (
+                    {skus.filter((s) => visibleCostEntity(emp, s.entityId, demoScope)).map((s) => (
                       <option key={s.id} value={s.id}>
                         {s.name}
                       </option>
@@ -441,13 +453,13 @@ function InvoicePanel() {
   );
 }
 
-function RecipePanel() {
+function RecipePanel({ demoScope }: { demoScope: string | null }) {
   const menuItems = usePosStore((s) => s.menuItems);
   const emp = usePosStore((s) => s.employees.find((e) => e.id === s.currentEmployeeId) ?? null);
   const skus = useCostStore((s) => s.skus);
   const recipes = useCostStore((s) => s.recipes);
   const upsert = useCostStore((s) => s.upsertRecipe);
-  const scope = costEntityScope(emp);
+  const scope = demoScope || costEntityScope(emp);
   const [menuItemId, setMenuItemId] = useState(menuItems[0]?.id ?? "");
   const [skuId, setSkuId] = useState(skus[0]?.id ?? "");
   const [qty, setQty] = useState("45");
@@ -589,14 +601,14 @@ function RecipePanel() {
   );
 }
 
-function CountPanel() {
+function CountPanel({ demoScope }: { demoScope: string | null }) {
   const emp = usePosStore((s) => s.employees.find((e) => e.id === s.currentEmployeeId) ?? null);
   const skus = useCostStore((s) => s.skus);
   const runCount = useCostStore((s) => s.runCount);
   const logWaste = useCostStore((s) => s.logWaste);
   const waste = useCostStore((s) => s.waste);
   const [qty, setQty] = useState<Record<string, string>>({});
-  const visible = skus.filter((s) => canSeeEntity(emp, s.entityId));
+  const visible = skus.filter((s) => visibleCostEntity(emp, s.entityId, demoScope));
 
   return (
     <div className="space-y-4">
@@ -685,7 +697,7 @@ function WasteForm({
   );
 }
 
-function AlertPanel() {
+function AlertPanel({ demoScope }: { demoScope: string | null }) {
   const emp = usePosStore((s) => s.employees.find((e) => e.id === s.currentEmployeeId) ?? null);
   const exceptions = useCostStore((s) => s.exceptions);
   const respond = useCostStore((s) => s.respondException);
@@ -695,7 +707,7 @@ function AlertPanel() {
   const [note, setNote] = useState<Record<string, string>>({});
   const [code, setCode] = useState<Record<string, VarianceResponseCode>>({});
   const [err, setErr] = useState<string | null>(null);
-  const scope = costEntityScope(emp);
+  const scope = demoScope || costEntityScope(emp);
   const visibleEx = exceptions.filter((e) => !scope || e.entityId === scope);
 
   return (
@@ -798,7 +810,7 @@ function AlertPanel() {
   );
 }
 
-function SupplierPanel() {
+function SupplierPanel({ demoScope: _demoScope }: { demoScope: string | null }) {
   const emp = usePosStore((s) => s.employees.find((e) => e.id === s.currentEmployeeId) ?? null);
   const vendors = usePosStore((s) => s.vendors);
   const house = usePosStore((s) => s.settings.name);
@@ -873,7 +885,7 @@ function SupplierPanel() {
   );
 }
 
-function PoPanel() {
+function PoPanel({ demoScope: _demoScope }: { demoScope: string | null }) {
   const emp = usePosStore((s) => s.employees.find((e) => e.id === s.currentEmployeeId) ?? null);
   const house = usePosStore((s) => s.settings.name);
   const suppliers = useCostStore((s) => s.suppliers);
@@ -994,7 +1006,7 @@ function PoPanel() {
   );
 }
 
-function PricePanel() {
+function PricePanel({ demoScope: _demoScope }: { demoScope: string | null }) {
   const recs = useCostStore((s) => s.priceRecs);
   const generate = useCostStore((s) => s.generatePriceRecs);
   const accept = useCostStore((s) => s.acceptPriceRec);

@@ -10,7 +10,6 @@ export function DemoEntitySwitcher({ className }: { className?: string }) {
   const emp = usePosStore((s) => s.employees.find((e) => e.id === s.currentEmployeeId));
   const sessionKind = usePosStore((s) => s.sessionKind);
   const scope = usePosStore((s) => s.demoOperatingEntityId);
-  const setScope = usePosStore((s) => s.setDemoOperatingEntity);
   const show = showDemoEntitySwitcher({
     isDemo: settings.isDemo,
     demoIsolated: settings.demoIsolated,
@@ -44,9 +43,13 @@ export function DemoEntitySwitcher({ className }: { className?: string }) {
         Operating as
       </span>
       <select
+        key="demo-operating-as"
         className="max-w-[16rem] truncate rounded-md border border-amber-700/40 bg-amber-50 px-2 py-1 text-[11px] text-foreground"
         value={scope && options.some((o) => o.id === scope) ? scope : ""}
-        onChange={(e) => setScope(e.target.value || null)}
+        onChange={(e) => {
+          const next = e.target.value || null;
+          usePosStore.getState().setDemoOperatingEntity(next);
+        }}
         aria-label="Operating as selling entity"
       >
         <option value="">House (all entities)</option>

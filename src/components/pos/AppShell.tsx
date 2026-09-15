@@ -60,9 +60,11 @@ import { isDevDemoClient } from "@/lib/saas/flags";
 import { isProspectDemo } from "@/lib/demo/session";
 import { DemoDeviceSwitcher } from "@/components/demo/DemoDeviceSwitcher";
 import { DemoEntitySwitcher } from "@/components/demo/DemoEntitySwitcher";
+import { useDemoOperatingEntityId } from "@/lib/demo/use-demo-operating-entity";
 import { useDemoDeviceStore } from "@/lib/demo/device-session";
 import { useDemoLiveSync } from "@/lib/demo/live-sync";
 import { TrainingBanner } from "./TrainingBanner";
+import { PackageEmptyState } from "@/components/platform/PackageEmptyState";
 import { locationIsTraining } from "@/lib/lifecycle/store";
 import {
   ThisStationButton,
@@ -226,6 +228,7 @@ export function AppShell() {
     demoEntered &&
     (demoDevice === "kds_kitchen" || demoDevice === "kds_bar" || demoDevice === "expo");
   const view = usePosStore((s) => s.view);
+  const demoScope = useDemoOperatingEntityId();
   const setView = usePosStore((s) => s.setView);
   const logout = usePosStore((s) => s.logout);
   const leaveDemo = () => {
@@ -837,9 +840,19 @@ export function AppShell() {
               operatorId={stationAssignment.operatorId}
             />
           ) : (
-          <>
+          <div
+            key={
+              ["menu", "employees", "reports", "labor", "inventory", "schedule", "recipes", "purchasing"].includes(
+                safeView,
+              )
+                ? demoScope || "house"
+                : "venue"
+            }
+            className="h-full min-h-0"
+          >
           {safeView === "truck_pod" && <TruckPodView />}
-          {safeView === "labor" && <LaborOpsView />}
+          {safeView === "labor" &&
+            (pkgOk("labor") ? <LaborOpsView /> : <PackageEmptyState module="Labor" />)}
           {safeView === "hr" && <HrWorkspace />}
           {safeView === "inventory_ai" && <InventoryAiView />}
           {safeView === "drink_ai" && <DrinkAiView />}
@@ -874,7 +887,8 @@ export function AppShell() {
           {safeView === "campaigns" && <CampaignsView />}
           {safeView === "checklists" && <ChecklistsView />}
           {safeView === "reports" && <ReportsView />}
-          {safeView === "inventory" && <InventoryView />}
+          {safeView === "inventory" &&
+            (pkgOk("inventory") ? <InventoryView /> : <PackageEmptyState module="Costs" />)}
           {safeView === "menu" && <MenuAdminView />}
           {safeView === "employees" && <EmployeesView />}
           {safeView === "customers" && <CustomersView />}
@@ -882,7 +896,7 @@ export function AppShell() {
           {safeView === "website" && <MarketingHubView />}
           {safeView === "cash" && <CashView />}
           {safeView === "settings" && <SettingsView />}
-          </>
+          </div>
           )}
         </main>
         )}

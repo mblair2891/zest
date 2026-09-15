@@ -320,7 +320,7 @@ export const GETTING_STARTED_TOPICS: GuideTopic[] = [
         "Marketing /demo (also /demos) shows four cards. Entering a demo does not require CRM. PIN pad on the house — not owner password.",
         "Platform Tenants → Demos lists all four. Open Devices to pair Android stations. Admin password stays back office.",
         "Shared PIN cheat-sheet (roles omitted when they do not apply): 1111 Host / window · 2222 Cashier / counter / server · 3333 Cook / ODS · 4444 Runner / window · 5555 Busser · 7777 Supervisor · 9999 Manager.",
-        "On Summit Hall and Harbor Lot only: a manager More overflow after PIN holds Operating as (selling entity: menu, ODS, owned-lines reports, staff, inventory). Shared floor, devices, and the guest check stay the same. Hidden on the staff menu on live subscribers and on single-entity demos.",
+        "On Summit Hall and Harbor Lot only: Operating as (tenant console header, and a manager More overflow after PIN). Changing House / Hearth Kitchen / Copper Bar remounts the open tab. Menus: that entity’s items (House = all, labeled by entity). Users: that entity’s staff (House = all). Reports, labor, costs, payments: owned_lines for that entity; House = combined. Devices, Floor, and Settings stay venue-level. Live subscribers never see the switcher.",
       ),
       warn(
         "Do not document the entity switcher as a live product feature. Do not treat demo names as customers. Live peer venues still have no host merchant; live pods still have a real host merchant.",

@@ -17,6 +17,7 @@ import {
   resetTenantUserSecretFn,
   updateTenantUserFn,
 } from "@/lib/saas/tenant-users-api";
+import { useDemoOperatingEntityId } from "@/lib/demo/use-demo-operating-entity";
 import {
   TENANT_FLOOR_ROLES,
   TENANT_LOGIN_ROLES,
@@ -45,6 +46,7 @@ export function TenantUsersPanel({
   operators: Array<{ id: string; dba: string }>;
 }) {
   const loginUrl = tenantConsoleLoginUrl();
+  const demoScope = useDemoOperatingEntityId();
   const [rows, setRows] = useState<TenantUserRow[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
@@ -145,13 +147,18 @@ export function TenantUsersPanel({
       .finally(() => setBusy(false));
   };
 
+  const scopedRows = useMemo(() => {
+    const list = rows ?? [];
+    if (!demoScope) return list;
+    return list.filter((u) => (u.homeEntityId || "") === demoScope);
+  }, [rows, demoScope]);
   const floorRows = useMemo(
-    () => (rows ?? []).filter((u) => u.kind === "floor"),
-    [rows],
+    () => scopedRows.filter((u) => u.kind === "floor"),
+    [scopedRows],
   );
   const loginRows = useMemo(
-    () => (rows ?? []).filter((u) => u.kind === "login"),
-    [rows],
+    () => scopedRows.filter((u) => u.kind === "login"),
+    [scopedRows],
   );
 
   const runReset = (u: TenantUserRow) => {
@@ -352,7 +359,7 @@ export function TenantUsersPanel({
       </form>
 
       {rows === null && <p className="text-sm text-muted-foreground">Loading users…</p>}
-      {rows?.length === 0 && (
+      {rows && scopedRows.length === 0 && (
         <p className="text-sm text-muted-foreground">{TENANT_USERS_EMPTY}</p>
       )}
 

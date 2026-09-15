@@ -52,15 +52,20 @@ export function TenantVenueOverview({
         {(
           [
             ["devices", "Devices", "Pair tablets, roles, Publish"],
+            ["devices", "Publish", "Push catalog to stations"],
             ["settings", "Settings", "House, QR, cash, labor"],
+            ["floor", "Floor", "Map, QR, sections"],
             ["menu", "Menus", "Items by selling entity"],
             ["people", "Users", "Password logins and floor PINs"],
+            ["reports", "Reports", "Combined and per-entity owned lines"],
+            ["labor", "Labor", "Schedules, clock, hours export"],
+            ["costs", "Costs", "Invoices, recipes, variance"],
             ["payments", "Payments", "Quantum Payments by entity"],
             ["onboarding", "Onboarding", "Entity checklist and go-live"],
           ] as const
         ).map(([id, label, blurb]) => (
           <button
-            key={id}
+            key={`${id}-${label}`}
             type="button"
             onClick={() => onOpen(id)}
             className="min-h-14 rounded-2xl border border-border bg-surface px-4 py-3 text-left hover:border-primary/50"

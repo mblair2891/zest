@@ -417,7 +417,8 @@ const usePosStoreRaw = create<PosStore>()(persist((set, get) => {
 			set({ demoOperatingEntityId: null });
 			return;
 		}
-		set({ demoOperatingEntityId: id });
+		const next = id && String(id).trim() ? String(id).trim() : null;
+		set({ demoOperatingEntityId: next });
 	},
 	login: (pin) => {
 		let pairLoc = "";

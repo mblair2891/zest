@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   Clock,
   AlertTriangle,
@@ -42,6 +42,7 @@ import { LaborBasisSettings } from "./LaborBasisSettings";
 import { useCashSessionStore } from "@/lib/pos/cash-session";
 import { hasCompletedCloseoutToday, useCloseoutStore } from "@/lib/pos/closeout-store";
 import { useTillCloseoutStore } from "@/lib/pos/till-closeout-store";
+import { useDemoOperatingEntityId } from "@/lib/demo/use-demo-operating-entity";
 
 type Tab = "clock" | "myshifts" | "timecards" | "alerts" | "settings" | "payroll";
 
@@ -74,10 +75,12 @@ export function LaborOpsView() {
   const settings = usePosStore((s) => s.settings);
   const floor = sessionKind === "pin" && isFloorRole(current?.role);
   const entityLock = entityLoginScope(current);
-  const [opFilter, setOpFilter] = useState(
-    () => current?.operatorId || HOST_SCOPE,
-  );
-  const opScope = entityLock || opFilter;
+  const demoScope = useDemoOperatingEntityId();
+  const [opFilter, setOpFilter] = useState(() => current?.operatorId || "");
+  const opScope = demoScope || entityLock || opFilter;
+  useEffect(() => {
+    if (demoScope) setOpFilter(demoScope);
+  }, [demoScope]);
   const [forceOverride, setForceOverride] = useState(false);
   const orgId = useSaasStore((s) => s.org.id);
   const locId = usePosStore((s) => s.tenantLocationId) || "";
@@ -161,12 +164,13 @@ export function LaborOpsView() {
           Published shifts · clock windows · approval · hours export to ADP/Intuit/CSV.
           Summex does not process payroll.
         </p>
-        {!floor && vendors.length > 0 && !entityLock && (
+        {!floor && vendors.length > 0 && !entityLock && !demoScope && (
           <select
             className="mt-2 h-8 rounded-md border border-border bg-bg px-2 text-xs"
             value={opFilter}
             onChange={(e) => setOpFilter(e.target.value)}
           >
+            <option value="">House (all entities)</option>
             {!(settings.peerVenue || settings.operatingModel === "peer_venue") && (
               <option value={HOST_SCOPE}>{settings.name || "Host"}</option>
             )}
