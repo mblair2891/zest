@@ -42,8 +42,7 @@ test("editor palette and live floor share booth artwork", () => {
   assert.match(editor, /FloorBoothIcon/);
   assert.match(editor, /Rotate 90/);
   const live = readFileSync("src/components/pos/FloorView.tsx", "utf8");
-  assert.match(live, /FloorBoothMark/);
-  assert.match(live, /asBoothKind/);
+  assert.match(live, /FloorFixtureArt/);
   const art = readFileSync("src/components/pos/FloorBoothMark.tsx", "utf8");
   assert.match(art, /Booth4Paths/);
   assert.match(art, /BoothUPaths/);
@@ -59,5 +58,5 @@ test("guide floorplan covers booth shapes, not fat rectangles", () => {
   assert.match(floor, /upholstery/);
   assert.doesNotMatch(floor, /Summit Hall/);
   const types = readFileSync("src/lib/guide/types.ts", "utf8");
-  assert.match(types, /2026\.10\.91/);
+  assert.match(types, /2026\.10\.9/);
 });

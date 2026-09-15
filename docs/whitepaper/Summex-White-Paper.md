@@ -3,7 +3,7 @@
 **Powered by Quantum Reach**
 
 White paper · for owners and operators  
-**Revision · 14 Sep 2026** — Written for prospective subscribers. Aligns with Operators Guide v2026.10.91. Station UI is device role ∩ staff PIN. A kitchen PIN does not open order entry. Peer venues have no host merchant; the host stand is still a device role. Staff stations are Android tablets. Pair with a typed Devices code; QR is optional. Devices Delete removes a named slot; Deactivate keeps it. Guests look up gift balance at summex.app/gift. Spent plastic can be reused.
+**Revision · 14 Sep 2026** — Written for prospective subscribers. Aligns with Operators Guide v2026.10.92. Station UI is device role ∩ staff PIN. A kitchen PIN does not open order entry. Peer venues have no host merchant; the host stand is still a device role. Staff stations are Android tablets. Pair with a typed Devices code; QR is optional. Devices Delete removes a named slot; Deactivate keeps it. Guests look up gift balance at summex.app/gift. Spent plastic can be reused.
 
 summex.app  
 Guest cards: **Quantum Payments** only

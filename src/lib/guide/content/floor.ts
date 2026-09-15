@@ -183,7 +183,7 @@ export const FLOOR_TOPICS: GuideTopic[] = [
     title: "Floorplan editor",
     summary: "Drag-and-drop rooms, tables, 4-top / U / L booths, and barstools. The live floor uses the same layout.",
     roles: ["owner_manager", "host_operator"],
-    keywords: ["floor editor", "drag", "resize", "booth", "booth 4-top", "U booth", "L booth", "barstool", "layout", "room"],
+    keywords: ["floor editor", "drag", "resize", "booth", "booth 4-top", "U booth", "L booth", "barstool", "layout", "room", "chair", "seating"],
     openView: "floor_editor",
     blocks: [
       why(
@@ -192,7 +192,7 @@ export const FLOOR_TOPICS: GuideTopic[] = [
       ul(
         "Owner, manager, and host stand draw the room. Entire location vs By section matches the runtime floor.",
         "Place table, Booth 4-top, Booth U, Booth L, barstool, or other. Icons match the plan shape. Drag to move. Corner handle resizes. Rotate 90°.",
-        "Booth 4-top: two parallel benches + table (capacity 4). Booth U: three-sided banquette (default 6, 4–8). Booth L: two benches at 90° (default 5, 4–6). Seats stay attached — no orphan chairs.",
+        "Booth 4-top: two parallel benches + table (capacity 4). Booth U: three-sided banquette (default 6, 4–8). Booth L: two benches at 90° (default 5, 4–6). Seats stay attached — no orphan chairs. Chair, stool, and booth-bench marks scale with the fixture and the seat count (a 2-top is tighter than an 8-top). They stay proportional when you zoom. They do not cover the table number or eat the next table.",
         "Properties: label (table number), seats, room/section color, kind, rotation. Each fixture gets a stable table QR token.",
         "Rooms are sections. Multi-room houses switch rooms in the editor and on the live floor.",
         "Layout saves to the location (all paired tablets pick it up). Rotate a token if a sticker is compromised.",
@@ -201,7 +201,7 @@ export const FLOOR_TOPICS: GuideTopic[] = [
         "Open Floor → Floor editor (or Floor editor in nav).",
         "Add a table, Booth 4-top, Booth U, Booth L, or barstool. Drag it onto the canvas. Resize from the corner. Rotate 90°.",
         "Set label, seats, and room. Show QR and copy the guest link.",
-        "Return to Floor. The live map uses the same booth artwork. Status fill is the table surface plus a thin outline; benches stay a darker upholstery tone whether empty, sat, ordered, or dirty.",
+        "Return to Floor. The live map uses the same artwork and the same seating size. Status fill is the table surface plus a thin outline; benches stay a darker upholstery tone whether empty, sat, ordered, or dirty. Barstools on a rail space evenly; stool size follows rail depth.",
       ),
       tip(
         "Go live always keeps the floorplan. Practice checks can be erased; tables stay where you drew them.",

@@ -6,6 +6,19 @@ import type { GuideUpdate } from "@/lib/guide/types";
  */
 export const WHATS_NEW_ENTRIES: GuideUpdate[] = [
   {
+    id: "upd_2026_10_92_seating_autosize",
+    date: "2026-09-14",
+    title: "Seating icons scale with the table",
+    summary:
+      "Chairs, stools, and booth benches size from the fixture and the seat count. Zoom the floor and they stay proportional — they do not cover the table number or crowd the next table.",
+    body: "A 2-top gets tighter, larger chairs than an 8-top or U-booth. Marks clamp so a 2-top stays tappable and a 10-top is not a pile of dots. Booth 4-top / U / L benches grow with the booth body. Barstools on a rail space evenly; stool size follows rail depth. Editor and live floor use the same sizing.",
+    roles: ["owner_manager", "server", "host_operator", "platform_admin"],
+    surfaces: ["floor", "settings"],
+    audience: "all",
+    topicId: "floor-editor",
+    tags: ["floor", "booth", "editor"],
+  },
+  {
     id: "upd_2026_10_91_floor_booths",
     date: "2026-09-14",
     title: "Booths on the floorplan — 4-top, U, and L",

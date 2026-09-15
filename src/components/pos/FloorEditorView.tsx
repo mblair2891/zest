@@ -20,7 +20,8 @@ import {
   nextBoothRotation,
   type BoothKind,
 } from "@/lib/pos/floor-booth";
-import { FloorBoothIcon, FloorBoothMark } from "@/components/pos/FloorBoothMark";
+import { FloorBoothIcon } from "@/components/pos/FloorBoothMark";
+import { FloorFixtureArt } from "@/components/pos/FloorFixtureArt";
 import { tableGuestUrl } from "@/lib/pos/qr-table";
 import { getDemoType } from "@/lib/demo/session";
 import { GuideLearnLink } from "@/components/guide/GuideLearnLink";
@@ -264,8 +265,6 @@ export function FloorEditorView() {
           >
             {visible.map((t) => {
               const color = sectionColorForTable(t, floorSections);
-              const booth = asBoothKind(t.kind, t.shape);
-              const kind = t.kind ?? (t.shape === "bar" ? "barstool" : booth ? booth : "table");
               return (
                 <button
                   key={t.id}
@@ -276,42 +275,21 @@ export function FloorEditorView() {
                     top: `${t.y}%`,
                     width: `${t.w}%`,
                     height: `${t.h}%`,
-                    boxShadow: booth ? undefined : `inset 0 3px 0 0 ${color}`,
                   }}
                   className={cn(
-                    "absolute flex cursor-grab flex-col items-center justify-center text-center active:cursor-grabbing",
-                    booth
-                      ? "border-0 bg-transparent p-0"
-                      : cn(
-                          "border-2 bg-surface-2",
-                          t.shape === "round" || t.shape === "bar" || kind === "barstool"
-                            ? "rounded-full"
-                            : "rounded-xl",
-                          selected === t.id
-                            ? "border-primary ring-2 ring-primary/40"
-                            : "border-border",
-                        ),
-                    !booth && (t.mergedChildIds?.length ?? 0) > 0 && "border-info",
-                    booth && selected === t.id && "ring-2 ring-primary/40",
+                    "absolute cursor-grab border-0 bg-transparent p-0 text-center active:cursor-grabbing",
+                    selected === t.id && "ring-2 ring-primary/40",
+                    (t.mergedChildIds?.length ?? 0) > 0 && "ring-1 ring-info",
                   )}
                 >
-                  {booth ? (
-                    <FloorBoothMark
-                      kind={booth}
-                      tableFill="#efe6d8"
-                      outline={selected === t.id ? "var(--primary)" : color}
-                      rotation={t.rotation ?? 0}
-                      label={t.label}
-                      sectionColor={color}
-                    />
-                  ) : (
-                    <>
-                      <span className="text-sm font-semibold">{t.label}</span>
-                      <span className="text-[10px] text-muted-foreground">
-                        {t.section}
-                      </span>
-                    </>
-                  )}
+                  <FloorFixtureArt
+                    table={t}
+                    tableFill="#efe6d8"
+                    outline={selected === t.id ? "var(--primary)" : color}
+                    sectionColor={color}
+                    label={t.label}
+                    rotation={t.rotation ?? 0}
+                  />
                   {selected === t.id && (
                     <span
                       className="absolute bottom-0 right-0 z-10 h-3 w-3 cursor-nwse-resize rounded-sm bg-primary"
