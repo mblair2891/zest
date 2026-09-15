@@ -352,7 +352,7 @@ export const GETTING_STARTED_TOPICS: GuideTopic[] = [
         "Open Menu, Floor editor, Staff, Vendors, Settlement, or Settings.",
         "Tap Describe with AI (or Add by voice or text).",
         "Type a paragraph or tap the mic.",
-        "If cash discount is on, say whether the amount is the printed/card price or the cash price. Printed/card is what the menu stores.",
+        "If cash discount is on, a single price is assumed cash. Assist asks cash vs card only when the basis is unclear. The menu stores cash; card is computed.",
         "On a host venue, say which operator owns the item if it is unclear.",
         "Preview the structured card. Edit anything. Confirm — Summex writes the real record.",
       ),

@@ -7,7 +7,7 @@ export const CASH_GIFT_TOPICS: GuideTopic[] = [
     chapterId: "cash-gifts",
     title: "Cash discount & rounding",
     summary:
-      "Pretty menu prices stay on the card; cash is discounted and rounded up so staff never count pennies.",
+      "You type the cash (till) price. Card is marked up by the guest card rate, then rounded up.",
     roles: ["owner_manager", "server", "host_operator"],
     keywords: [
       "cash discount",
@@ -20,29 +20,29 @@ export const CASH_GIFT_TOPICS: GuideTopic[] = [
     openView: "settings",
     blocks: [
       why(
-        "A straight 5% off $12 is $11.40 — ugly on a menu and slow in the drawer. Summex keeps the printed / Quantum Payments price clean and computes a cash price that always lands on a coin increment.",
+        "The operator types what the till should take in cash. Card is never “that number minus a percent.” Card is cash marked up by the guest card rate, then rounded up so the guest amount lands on a coin increment.",
       ),
       p(
-        "The guest card rate is Summex’s charge (typical 5.00%). It is not Finix’s 0.25%+$0.10 — that cost is internal. Platform Admin sets the default for new quotes and new venues. Each location overrides it (4.00%, 5.00%, or another). Host sets the rate for tenants on that floor. Menu items store the card amount. Cash is discounted by this location’s %, then rounded UP to $0.25, $0.50, $0.75, or $1.00.",
+        "The guest card rate is Summex’s charge (typical 5.00%). It is not Finix’s 0.25%+$0.10 — that cost is internal. Platform Admin sets the default for new quotes and new venues. Each location overrides it (4.00%, 5.00%, or another). Host sets the rate for tenants on that floor. Menu items store the cash (till) amount. Card = cash × (1 + rate/100), then rounded UP to $0.25, $0.50, $0.75, or $1.00. If cash discount is off, cash and card are the same price.",
       ),
       ul(
-        "$15.00 at 5%, increment $0.25 → cash $14.25 (already on a quarter).",
-        "$12.00 at 5%, increment $0.25 → $11.40 rounds up to $11.50.",
-        "$7.00 at 5%, increment $0.25 → $6.65 rounds up to $6.75.",
-        "Quotes and the check show this location’s rate (e.g. Card · 5.00%).",
+        "$18.00 cash at 5%, increment $1.00 → card $19.00.",
+        "$12.00 cash at 5%, increment $0.25 → $12.60 rounds up to $12.75 card.",
+        "$15.00 cash at 5%, increment $0.25 → card $15.75 (already on a quarter).",
+        "Never take card-minus-percent as the till amount.",
       ),
       steps(
         "Platform → Settings → Payments: Default guest card rate for new quotes and venues.",
-        "Location settings → Guest card rate & cash discount. Turn on Offer a cash discount. Set this location’s % (overrides the platform default). Keep Round up to ($0.25 default).",
-        "Menu tiles and the check show Card (with this location’s %) and Cash. Quantum Payments still captures the printed/card total.",
-        "Pay → Cash uses the cash total. Pay → Card uses the printed total.",
-        "Receipts and the paid screen show both amounts, plus “Cash discount applied” when cash was taken.",
+        "Location settings → Guest card rate & cash discount. Turn on Offer a cash discount. Set this location’s % and Round up to. Confirm on save — card prices recompute from each item’s cash field. Publish so stations pick it up.",
+        "Menu add/edit: Cash price (printed / till). Card price is live and read-only. List row: $18.00 cash · $19.00 card when they differ.",
+        "Pay → Cash charges cash (no second round). Pay → Card charges card. The check can show both: Cash $18.00 · Card $19.00.",
+        "Splits and multi-entity lines compute per line from that line’s cash, then tender.",
       ),
       warn(
         "The house is responsible for local cash-discount rules. Summex does not change legal copy per state — confirm posting and signage with your counsel.",
       ),
       p(
-        "On a host venue, cash prices are the merchandise amounts used when allocating a cash tender to Operator A / Operator B. Card tenders still split on printed merchandise. Period settlement follows the tender that actually hit the check.",
+        "On a host venue, cash tenders split on cash merchandise; card tenders split on the computed card merchandise. Period settlement follows the tender that actually hit the check.",
       ),
       related("tenders-tips", "cash-handling", "quantum-payments", "settlement", "receipts-by-vendor"),
     ],

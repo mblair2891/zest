@@ -3,7 +3,12 @@ import { Input } from "@/components/ui/input";
 import { usePosStore } from "@/lib/pos/store";
 import { useSaasStore } from "@/lib/pos/saas-store";
 import { saveLocationSettingsFn, publishLocationFn } from "@/lib/access/api";
-import { persistCashDiscount, persistHostStandPolicy, persistQrPolicy } from "@/lib/pos/persist-location-setup";
+import {
+  confirmCashDiscountRecalc,
+  persistCashDiscount,
+  persistHostStandPolicy,
+  persistQrPolicy,
+} from "@/lib/pos/persist-location-setup";
 import { isProspectDemo } from "@/lib/demo/session";
 import { CASH_ROUND_INCREMENTS, SERVICE_STYLES_VENUE, TAX_MODES } from "@/lib/saas/venue-entity";
 import { parseQrMode } from "@/lib/pos/qr-table";
@@ -167,6 +172,7 @@ export function VenueHouseSettings() {
             disabled={!write}
             checked={!!settings.cashDiscountEnabled}
             onChange={(e) => {
+              if (!confirmCashDiscountRecalc()) return;
               updateSettings({ cashDiscountEnabled: e.target.checked });
               persistCashDiscount();
             }}
@@ -187,7 +193,10 @@ export function VenueHouseSettings() {
                   : 5,
               });
             }}
-            onBlur={() => persistCashDiscount()}
+            onBlur={() => {
+              if (!confirmCashDiscountRecalc()) return;
+              persistCashDiscount();
+            }}
           />
         </label>
         <label className="block text-sm">
@@ -197,6 +206,7 @@ export function VenueHouseSettings() {
             disabled={!write || !settings.cashDiscountEnabled}
             value={String(settings.cashRoundIncrement ?? 0.25)}
             onChange={(e) => {
+              if (!confirmCashDiscountRecalc()) return;
               updateSettings({
                 cashRoundIncrement: Number(e.target.value) as CashRoundIncrement,
               });

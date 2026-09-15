@@ -74,12 +74,15 @@ export function MenuAdminView() {
     if (action !== "toggle") persistLocationCatalog("menu");
   };
 
+  const addCashCents = Math.round(Number(price) * 100) || 0;
+  const addDual = printedItemPriceCents(addCashCents, settings);
+
   const add = () => {
     if (!name.trim() || !canCreate) return;
     const vid = ownVendorId || vendorId;
     const res = createMenuItem({
       name: name.trim(),
-      priceCents: Math.round(Number(price) * 100) || 0,
+      priceCents: addCashCents,
       categoryId: categoryId || categories[0]?.id || "",
       vendorId: vid,
     });
@@ -126,12 +129,22 @@ export function MenuAdminView() {
       {canCreate && (
         <div className="mb-4 grid gap-2 rounded-2xl border border-border bg-surface p-3 sm:grid-cols-4">
           <Input placeholder="Item name" value={name} onChange={(e) => setName(e.target.value)} />
-          <Input
-            placeholder="Price"
-            inputMode="decimal"
-            value={price}
-            onChange={(e) => setPrice(e.target.value)}
-          />
+          <label className="block">
+            <span className="mb-1 block text-[11px] text-muted-foreground">
+              Cash price (printed / till)
+            </span>
+            <Input
+              placeholder="18.00"
+              inputMode="decimal"
+              value={price}
+              onChange={(e) => setPrice(e.target.value)}
+            />
+            {addDual.showBoth ? (
+              <span className="mt-1 block text-[11px] text-muted-foreground">
+                Card price {formatCurrency(addDual.card)}
+              </span>
+            ) : null}
+          </label>
           <select
             className="h-10 rounded-xl border border-border bg-bg px-3 text-sm"
             value={categoryId}
@@ -197,6 +210,11 @@ export function MenuAdminView() {
               <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
                 {items.map((item) => {
                   const editable = canEditMenu(emp, grants, item.vendorId);
+                  const dual = printedItemPriceCents(item.priceCents, settings);
+                  const editDual = printedItemPriceCents(
+                    Math.round(Number(editPrice) * 100) || item.priceCents,
+                    settings,
+                  );
                   const foreign = ownVendorId && item.vendorId && item.vendorId !== ownVendorId;
                   return (
                     <div
@@ -210,11 +228,21 @@ export function MenuAdminView() {
                               value={editName}
                               onChange={(e) => setEditName(e.target.value)}
                             />
-                            <Input
-                              value={editPrice}
-                              inputMode="decimal"
-                              onChange={(e) => setEditPrice(e.target.value)}
-                            />
+                            <label className="block">
+                              <span className="mb-1 block text-[11px] text-muted-foreground">
+                                Cash price (printed / till)
+                              </span>
+                              <Input
+                                value={editPrice}
+                                inputMode="decimal"
+                                onChange={(e) => setEditPrice(e.target.value)}
+                              />
+                              {editDual.showBoth && (
+                                <span className="mt-1 block text-[11px] text-muted-foreground">
+                                  Card price {formatCurrency(editDual.card)}
+                                </span>
+                              )}
+                            </label>
                             <Button
                               size="sm"
                               onClick={() => {
@@ -234,15 +262,9 @@ export function MenuAdminView() {
                           <>
                             <p className="truncate text-sm font-medium">{item.name}</p>
                             <p className="text-xs tabular text-muted-foreground">
-                              {formatCurrency(item.priceCents)}
-                              {printedItemPriceCents(item.priceCents, settings).enabled && (
-                                <span className="ml-2">
-                                  cash{" "}
-                                  {formatCurrency(
-                                    printedItemPriceCents(item.priceCents, settings).cash,
-                                  )}
-                                </span>
-                              )}
+                              {dual.showBoth
+                                ? `${formatCurrency(dual.cash)} cash · ${formatCurrency(dual.card)} card`
+                                : formatCurrency(dual.cash)}
                               {item.happyHourPriceCents != null && (
                                 <span className="ml-2 text-success">
                                   HH {formatCurrency(item.happyHourPriceCents)}

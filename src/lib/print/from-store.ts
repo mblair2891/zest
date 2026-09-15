@@ -1,6 +1,7 @@
+import { cashPolicyFromSettings } from "@/lib/pos/cash-discount";
 import { computeTotals, linePrintedCents } from "@/lib/pos/calculations";
 import { usePosStore } from "@/lib/pos/store";
-import type { KitchenTicket, Order } from "@/lib/pos/types";
+import type { KitchenTicket, Order, RestaurantSettings } from "@/lib/pos/types";
 import { uid } from "@/lib/utils";
 import { dispatchPrintJob } from "./dispatch";
 import { currentStationDeviceId, resolveReceiptPrinter } from "./receipt-printer";
@@ -20,7 +21,10 @@ function linesFromTicket(t: KitchenTicket): PrintLine[] {
   }));
 }
 
-function receiptLines(order: Order): PrintLine[] {
+function receiptLines(order: Order, settings: RestaurantSettings): PrintLine[] {
+  const last = order.payments[order.payments.length - 1];
+  const policy =
+    last?.method === "cash" ? null : cashPolicyFromSettings(settings);
   return order.lines
     .filter((l) => !l.voided)
     .map((l) => ({
@@ -31,7 +35,7 @@ function receiptLines(order: Order): PrintLine[] {
       seat: l.seat,
       vendorId: l.vendorId,
       vendorName: l.vendorName,
-      amountCents: linePrintedCents(l),
+      amountCents: linePrintedCents(l, policy),
     }));
 }
 
@@ -130,7 +134,7 @@ export async function printFromPos(
         tableLabel: table?.label ?? order.tabName ?? order.type.replace("_", " "),
         serverName: order.serverName,
         copy: "guest",
-        items: receiptLines(order),
+        items: receiptLines(order, s.settings),
         allocations,
         qrUrl: ticketQr?.url,
         qrCaption: ticketQr ? "Scan to pay this check" : undefined,
@@ -211,7 +215,7 @@ export async function printGuestReceipt(orderId: string): Promise<{
     tableLabel: table?.label ?? order.tabName ?? order.type.replace("_", " "),
     serverName: order.serverName,
     copy: "guest",
-    items: receiptLines(order),
+    items: receiptLines(order, s.settings),
     allocations: shares.map((sh) => ({
       name: sh.displayName,
       merchandiseCents: sh.merchandiseCents,

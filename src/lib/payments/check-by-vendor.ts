@@ -1,3 +1,4 @@
+import { cashPolicyFromSettings } from "@/lib/pos/cash-discount";
 import { computeTotals, linePrintedCents } from "@/lib/pos/calculations";
 import type { Order, RestaurantSettings } from "@/lib/pos/types";
 import { formatCurrency } from "@/lib/utils";
@@ -49,13 +50,16 @@ export function buildGuestCheckView(opts: {
     opts.order.lines.filter((l) => !l.voided),
     opts.hostName,
   );
+  const lastPay = opts.order.payments[opts.order.payments.length - 1];
+  const policy =
+    lastPay?.method === "cash" ? null : cashPolicyFromSettings(opts.settings);
   const vendors: VendorCheckBlock[] = groups.map((g) => {
     const lines = g.lines
       .filter((l) => !l.comped)
       .map((l) => ({
         name: l.name,
         qty: l.quantity,
-        amountCents: linePrintedCents(l),
+        amountCents: linePrintedCents(l, policy),
         mods: l.modifiers?.map((m) => m.optionName) ?? [],
       }));
     return {
@@ -65,7 +69,9 @@ export function buildGuestCheckView(opts: {
       merchandiseCents: lines.reduce((s, l) => s + l.amountCents, 0),
     };
   });
-  const totals = computeTotals(opts.order, opts.settings, { tender: "card" });
+  const totals = computeTotals(opts.order, opts.settings, {
+    tender: lastPay?.method === "cash" ? "cash" : "card",
+  });
   const giftCents = opts.order.payments
     .filter((p) => p.method === "gift_card")
     .reduce((s, p) => s + p.amountCents, 0);

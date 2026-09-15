@@ -66,7 +66,7 @@ If card fee % and host cut are configured, additional `processor_fee`, `host_fee
 
 ## Cash discount
 
-Printed $12.00, 5% cash, round up to $0.25 → cash **$11.50**. Cash tender posts `capture` +$11.50 and `cash_discount_adjustment` −$0.50 (host). Allocations for that payment use **cash** merchandise shares.
+Cash $18.00 entered, 5% rate, round up to $1.00 → card **$19.00**. Cash tender posts `capture` +$18.00 and `cash_discount_adjustment` −$1.00 (host, card minus cash). Allocations for that payment use **cash** merchandise shares.
 
 ## Export
 

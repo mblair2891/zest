@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { SummexMark } from "@/components/brand/SummexMark";
 import { usePosStore } from "@/lib/pos/store";
 import { usePlatformStore } from "@/lib/pos/platform-store";
+import { printedItemPriceCents } from "@/lib/pos/calculations";
 import { formatCurrency } from "@/lib/utils";
 import {
   bookReservationFn,
@@ -332,6 +333,7 @@ function HomePane({
 
 function OrderPane() {
   const menuItems = usePosStore((s) => s.menuItems);
+  const settings = usePosStore((s) => s.settings);
   const cart = usePlatformStore((s) => s.onlineCart);
   const add = usePlatformStore((s) => s.addToOnlineCart);
   const place = usePlatformStore((s) => s.placeOnlineOrder);
@@ -358,7 +360,12 @@ function OrderPane() {
           >
             {item.name}
             <span className="mt-2 block text-base tabular text-muted-foreground">
-              {formatCurrency(item.priceCents)}
+              {(() => {
+                const dual = printedItemPriceCents(item.priceCents, settings);
+                return dual.showBoth
+                  ? `${formatCurrency(dual.cash)} cash · ${formatCurrency(dual.card)} card`
+                  : formatCurrency(dual.cash);
+              })()}
             </span>
           </button>
         ))}

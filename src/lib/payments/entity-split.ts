@@ -1,4 +1,5 @@
 import { HOST_SCOPE } from "@/lib/access/entity-grants";
+import { cashPolicyFromSettings } from "@/lib/pos/cash-discount";
 import { computeTotals, linePrintedCents } from "@/lib/pos/calculations";
 import type { Order, RestaurantSettings } from "@/lib/pos/types";
 
@@ -50,10 +51,11 @@ export function splitTenderByEntity(opts: {
 }): EntityCaptureShare[] {
   const nameOf = opts.operatorName ?? ((id: string) => id);
   const merchBy = new Map<string, number>();
+  const policy = cashPolicyFromSettings(opts.settings);
   for (const line of opts.order.lines) {
     if (line.voided || line.comped) continue;
     const id = entityIdForLine(line);
-    merchBy.set(id, (merchBy.get(id) ?? 0) + linePrintedCents(line));
+    merchBy.set(id, (merchBy.get(id) ?? 0) + linePrintedCents(line, policy));
   }
   const ids = [...merchBy.entries()].filter(([, v]) => v > 0).map(([id]) => id);
   if (!ids.length) {

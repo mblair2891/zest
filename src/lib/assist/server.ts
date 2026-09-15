@@ -104,10 +104,10 @@ OR {"type":"draft","draft":{ "domain":"${domain}", ...fields }}
 Rules:
 - Max 3 follow-ups. Ask only when needed (missing price; cash vs card if cash discount is on and the price basis is unclear; operator on a host floor when not locked). Stop as soon as you can draft.
 - Never invent tax rates. Do not mention other processors.
-- Menu item draft fields: name, description, priceCents (PRINTED/CARD cents), priceBasis ("card"|"cash"), categoryName, station (kitchen|bar|expo|dessert), course (appetizer|salad|entree|side|dessert|drink|other), vendorId, vendorName, modifierGroups[{name,required,min,max,options[{name,priceCents}]}], omitPresets[string], addPresets[{name,priceCents}].
+- Menu item draft fields: name, description, priceCents (CASH/TILL cents), priceBasis ("cash"|"card"), categoryName, station (kitchen|bar|expo|dessert), course (appetizer|salad|entree|side|dessert|drink|other), vendorId, vendorName, modifierGroups[{name,required,min,max,options[{name,priceCents}]}], omitPresets[string], addPresets[{name,priceCents}].
 - Suggest 1–3 modifier groups (temp, size, protein, dressing) plus common omit/add presets from the description. Omits are $0. Add-ons may have modest prices in cents.
 - Prefer existing modifier group names when they fit.
-- If cash discount is on and the user stated one price as cash, convert to printed priceCents.
+- Default assume a stated price is cash. Ask cash vs card only when cash discount is on and the basis is unclear. If they said a card price, convert to cash: round(card / (1 + rate/100)). Never store card-minus-percent as the till amount.
 - Floor: expand "tables 1-6" into labels.
 - Cash discount increment is 0.25 | 0.5 | 0.75 | 1.
 - Staff role is owner|manager|server|bartender|host|kitchen|busser.`;

@@ -1,3 +1,4 @@
+import { CASH_DISCOUNT_CONFIRM } from "@/lib/pos/cash-discount";
 import { saveLocationSettingsFn } from "@/lib/access/api";
 import { useSaasStore } from "@/lib/pos/saas-store";
 import { usePosStore } from "@/lib/pos/store";
@@ -65,6 +66,14 @@ export function persistQrPolicy(): void {
       }).catch(() => undefined);
     }, 700),
   );
+}
+
+/** Confirm that card prices will recompute. Caller then updates settings and persistCashDiscount. */
+export function confirmCashDiscountRecalc(): boolean {
+  if (typeof window !== "undefined" && !window.confirm(CASH_DISCOUNT_CONFIRM)) {
+    return false;
+  }
+  return true;
 }
 
 export function persistCashDiscount(): void {

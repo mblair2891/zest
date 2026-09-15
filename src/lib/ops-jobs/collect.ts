@@ -800,7 +800,7 @@ export function collectOpsJobFacts(
           "info",
           `Star: ${s.name} · $${(s.sales / 100).toFixed(0)} · margin ${margin == null ? "n/a" : margin.toFixed(0)}%${cashOn ? " (card price; cash discount on)" : ""}`,
           cashOn
-            ? "Margin uses printed/card price. Cash discount is a separate tender path."
+            ? "Margin uses cash (entered) price. Card is marked up at tender."
             : "Keep or promote. Price recs still require a human Save.",
           { pct: margin, amountCents: s.sales },
         ),

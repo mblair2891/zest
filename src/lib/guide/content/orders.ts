@@ -16,8 +16,8 @@ export const ORDER_TOPICS: GuideTopic[] = [
       ),
       steps(
         "Open Menu. Create categories (e.g. Starters, Mains, Bar).",
-        "Add or edit an item by hand, or tap Describe with AI / Assist. Type or speak a short description.",
-        "Assist suggests name, description, category, station, modifier groups, and common omit/add. Answer follow-ups only if asked (cash vs card price, operator on a host floor).",
+        "Add or edit an item by hand. The price field is Cash price (printed / till). If cash discount is on, Card price appears live next to it — read-only.",
+        "Or tap Describe with AI / Assist. Type or speak a short description. One price is assumed cash. Assist asks cash vs card only when the discount is on.",
         "Preview the card. Accept, edit, or dismiss. Nothing writes until Confirm.",
         "On a host venue, guest operators only create/edit their own entity. Host can still assign operator on new items.",
         "86 or un-86 from Menu or the 86 board. That goes to every station immediately — Order greys out now. Adding items, prices, modifiers, and categories still wait for Publish, then the next PIN.",

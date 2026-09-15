@@ -216,20 +216,22 @@ Contribution, split (hours / points / equal / sales / manual), include/exclude r
 
 Straight percentage discounts produce ugly menu prices ($11.40) and coin chaos.
 
-**Summex keeps the printed / card price as source of truth** (e.g. $12.00, $15.00). When a location enables a cash discount:
+**Cash is the entered till price** (source of truth). When a location enables a cash discount:
 
-1. `cashRaw = printed × (1 − percent/100)`
-2. `cashPrice` = round **up** to the next multiple of the increment ($0.25, $0.50, $0.75, or $1.00). Exact multiples stay.
+1. `cardRaw = cash × (1 + percent/100)`
+2. `cardPrice` = round **up** to the next multiple of the increment ($0.25, $0.50, $0.75, or $1.00). Exact multiples stay.
 
-Examples at 5%, increment $0.25:
+Never card-minus-percent for the till amount.
 
-| Printed / card | Raw 5% | Cash (round up) |
+Examples at 5%:
+
+| Cash (entered) | Increment | Card |
 |---|---|---|
-| $15.00 | $14.25 | $14.25 |
-| $12.00 | $11.40 | $11.50 |
-| $7.00 | $6.65 | $6.75 |
+| $18.00 | $1.00 | $19.00 |
+| $12.00 | $0.25 | $12.75 |
+| $15.00 | $0.25 | $15.75 |
 
-Quantum Payments still captures the **printed** amount. Cash tenders use per-line cash prices. On a host venue, cash merchandise is what settlement uses for a cash tender; card tenders still split on printed merchandise.
+Cash tenders charge cash (no second round). Card tenders charge card. On a host venue, cash tenders split on cash merchandise; card tenders split on computed card merchandise.
 
 The house is responsible for **local cash-discount posting rules**. Summex does not change legal copy per state.
 
@@ -344,7 +346,7 @@ Typical first-week work is configuration, not a six-month integration.
 
 The guest pays **one check** branded Host Venue, tendered on Quantum Payments. A drink line belongs to Operator A; a plate belongs to Operator B. Kitchen sees food tickets; bar sees drink tickets. Capture splits to each brand’s merchant. The receipt groups items under the vendor name. Period settlement and the system ledger allocate merchandise to each operator. A mixed $65 food / $35 drink check that is disputed posts a $35 fee as $22.75 / $12.25.
 
-Illustrative cash discount: **5%, round up to $0.25** (printed $12.00 card → $11.50 cash).
+Illustrative cash discount: **5%, round up to $1.00** ($18.00 cash → $19.00 card).
 
 ---
 

@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+import { readFileSync } from "node:fs";
 import { HOST_SCOPE } from "../src/lib/access/entity-grants.ts";
 import { parseLaborRules } from "../src/lib/labor/rules.ts";
 import {
@@ -67,6 +68,17 @@ test("Summit Hall recipes cover enough items for usage math", () => {
     }
     assert.ok(rec.entityId === SUMMIT_HEARTH_OP_ID || rec.entityId === SUMMIT_COPPER_OP_ID);
   }
+});
+
+test("Summit roast chicken is $18 cash; seed is 5% / $1.00 increment", () => {
+  const chicken = SUMMIT_HALL_MENU.find((m) => m.id === "itm_hearth_chicken");
+  assert.equal(chicken?.priceCents, 1800);
+  const seed = readFileSync("src/lib/saas/summit-hall-seed.server.ts", "utf8");
+  assert.match(seed, /cashRoundIncrement: 1/);
+  assert.match(seed, /cashDiscountPercent: 5/);
+  const math = readFileSync("src/lib/pos/cash-discount.ts", "utf8");
+  assert.match(math, /cashCents \* \(1 \+ percent \/ 100\)/);
+  assert.doesNotMatch(math, /1 - percent \/ 100/);
 });
 
 test("Summit Hall QR is table+ticket reorder/pay, not full self-serve", () => {

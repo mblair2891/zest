@@ -1,7 +1,7 @@
 # Operators Guide — authoring
 
-**Revision · 14 Sep 2026** — Station home is a short role menu.
-Guide v2026.10.93.
+**Revision · 14 Sep 2026** — Cash is the entered price; card is marked up.
+Guide v2026.10.94.
 
 The in-app **Operators Guide** is the living product manual. It is not a
 separate PDF. Staff open it from **Guide** / **?** in the POS and platform

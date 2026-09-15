@@ -1,4 +1,4 @@
-/** Cash discount with pretty printed prices and round-up increments. */
+/** Cash is the entered till price. Card is marked up, then rounded up. */
 import { DEFAULT_GUEST_CARD_RATE_PERCENT } from "./card-service";
 
 export const CASH_ROUND_INCREMENTS = [0.25, 0.5, 0.75, 1] as const;
@@ -47,10 +47,10 @@ export function cashPolicyFromSettings(
   };
 }
 
-/** Pre-round cash amount: printed × (1 − percent/100), nearest cent. */
-export function cashRawCents(printedCents: number, percent: number): number {
-  if (printedCents <= 0) return 0;
-  return Math.round(printedCents * (1 - percent / 100));
+/** Pre-round card amount: cash × (1 + percent/100), nearest cent. Never card-minus-percent. */
+export function cardRawCents(cashCents: number, percent: number): number {
+  if (cashCents <= 0) return 0;
+  return Math.round(cashCents * (1 + percent / 100));
 }
 
 /**
@@ -68,15 +68,25 @@ export function roundUpToIncrementCents(
   return cents + (incrementCents - rem);
 }
 
-/** Printed menu/card cents → cash cents (discount then round up). */
-export function cashPriceCents(
-  printedCents: number,
+/** Cash (entered) cents → card cents (markup then round up). */
+export function cardPriceCents(
+  cashCents: number,
   policy: Pick<CashDiscountPolicy, "percent" | "incrementCents" | "mode">,
 ): number {
-  const raw = cashRawCents(printedCents, policy.percent);
+  const raw = cardRawCents(cashCents, policy.percent);
   return roundUpToIncrementCents(raw, policy.incrementCents);
+}
+
+/** If someone quoted a card amount, invert the markup only (not the round-up). */
+export function cashFromCardCents(cardCents: number, percent: number): number {
+  if (cardCents <= 0) return 0;
+  if (!Number.isFinite(percent) || percent <= 0) return cardCents;
+  return Math.round(cardCents / (1 + percent / 100));
 }
 
 export function isCashRoundIncrement(v: number): v is CashRoundIncrement {
   return (CASH_ROUND_INCREMENTS as readonly number[]).includes(v);
 }
+
+export const CASH_DISCOUNT_CONFIRM =
+  "Card prices will recompute from each item’s cash price using this rate and round-up. Publish so stations pick this up.";

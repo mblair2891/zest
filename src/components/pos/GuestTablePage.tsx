@@ -6,6 +6,7 @@ import { usePosStore } from "@/lib/pos/store";
 import { cn, formatCurrency } from "@/lib/utils";
 import { parseTicketQrToken, qrTokenMatchesLocation } from "@/lib/pos/qr-table";
 import { isEmptyTable } from "@/lib/pos/floor-status";
+import { cashPolicyFromSettings } from "@/lib/pos/cash-discount";
 import { computeTotals, linePrintedCents, tipSuggestions } from "@/lib/pos/calculations";
 import { captureIsSandbox } from "@/lib/lifecycle/store";
 import type { MenuItem, Order, OrderLine, Table } from "@/lib/pos/types";
@@ -108,6 +109,7 @@ export function GuestTablePage({
   const resolvedTable = table ?? tableFromTicket;
   const order = orderFromTicket
     ?? (resolvedTable?.orderId ? orders.find((o) => o.id === resolvedTable.orderId) : undefined);
+  const cardPolicy = cashPolicyFromSettings(settings);
   const totals = order ? computeTotals(order, settings, { tender: "card" }) : null;
 
   const items = useMemo(() => {
@@ -153,7 +155,7 @@ export function GuestTablePage({
       if (!seats.length) return balance;
       const share = lines
         .filter((l) => !l.voided && !l.comped && l.seat != null && seats.includes(l.seat))
-        .reduce((s, l) => s + linePrintedCents(l), 0);
+        .reduce((s, l) => s + linePrintedCents(l, cardPolicy), 0);
       return Math.min(balance, Math.max(0, share));
     }
     if (policy.split === "by_item") {
@@ -161,7 +163,7 @@ export function GuestTablePage({
       if (!ids.length) return balance;
       const share = lines
         .filter((l) => !l.voided && ids.includes(l.id))
-        .reduce((s, l) => s + linePrintedCents(l), 0);
+        .reduce((s, l) => s + linePrintedCents(l, cardPolicy), 0);
       return Math.min(balance, Math.max(0, share));
     }
     return balance;
@@ -473,6 +475,8 @@ function GuestDone({
 }
 
 function VendorCheck({ order, hostName }: { order: Order; hostName: string }) {
+  const settings = usePosStore((s) => s.settings);
+  const cardPolicy = cashPolicyFromSettings(settings);
   const groups = groupLinesByEntity(
     order.lines.filter((l) => !l.voided),
     hostName,
@@ -497,7 +501,7 @@ function VendorCheck({ order, hostName }: { order: Order; hostName: string }) {
                   {l.quantity}× {l.name}
                   {l.seat ? ` · seat ${l.seat}` : ""}
                 </span>
-                <span className="tabular">{formatCurrency(linePrintedCents(l))}</span>
+                <span className="tabular">{formatCurrency(linePrintedCents(l, cardPolicy))}</span>
               </li>
             ))}
           </ul>
@@ -554,6 +558,8 @@ function PayPanel({
   setPickedSeats: (n: number[]) => void;
   onPay: () => void;
 }) {
+  const settings = usePosStore((s) => s.settings);
+  const cardPolicy = cashPolicyFromSettings(settings);
   const giftOn = policy.payAllow === "gift" || policy.payAllow === "both";
   const cardOn = policy.payAllow === "card" || policy.payAllow === "both";
   const seats = [
@@ -599,7 +605,7 @@ function PayPanel({
                   <span className="flex-1">
                     {l.quantity}× {l.name}
                   </span>
-                  <span className="tabular">{formatCurrency(linePrintedCents(l))}</span>
+                  <span className="tabular">{formatCurrency(linePrintedCents(l, cardPolicy))}</span>
                 </label>
               </li>
             ))}

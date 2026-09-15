@@ -1,7 +1,7 @@
 import type { Order, OrderLine, PaymentMethod, RestaurantSettings } from "./types";
 import {
   cashPolicyFromSettings,
-  cashPriceCents,
+  cardPriceCents,
   type CashDiscountPolicy,
 } from "./cash-discount";
 
@@ -23,28 +23,39 @@ export function lineUnitTotal(line: OrderLine): number {
   return line.unitPriceCents + mods;
 }
 
-/** Printed / card merchandise for a line (source of truth). */
-export function linePrintedCents(line: OrderLine): number {
+/** Cash / till merchandise for a line (entered price). No extra round. */
+export function lineCashCents(
+  line: OrderLine,
+  _policy?: CashDiscountPolicy | null,
+): number {
   if (line.voided || line.comped) return 0;
-  return lineUnitTotal(line) * line.quantity - line.discountCents;
+  return Math.max(0, lineUnitTotal(line) * line.quantity - line.discountCents);
 }
 
-/** Cash merchandise after discount + round-up; printed if policy off. */
-export function lineCashCents(
+/** Card merchandise: markup then round up per line when the policy is on. */
+export function lineCardCents(
   line: OrderLine,
   policy: CashDiscountPolicy | null,
 ): number {
   if (line.voided || line.comped) return 0;
-  if (!policy) return linePrintedCents(line);
-  const unitCash = cashPriceCents(lineUnitTotal(line), policy);
-  return Math.max(0, unitCash * line.quantity - line.discountCents);
+  if (!policy) return lineCashCents(line);
+  const unitCard = cardPriceCents(lineUnitTotal(line), policy);
+  return Math.max(0, unitCard * line.quantity - line.discountCents);
+}
+
+/** Card merch when policy is passed; otherwise the stored cash amount. */
+export function linePrintedCents(
+  line: OrderLine,
+  policy: CashDiscountPolicy | null = null,
+): number {
+  return policy ? lineCardCents(line, policy) : lineCashCents(line);
 }
 
 export function lineTotal(
   line: OrderLine,
   policy: CashDiscountPolicy | null = null,
 ): number {
-  return policy ? lineCashCents(line, policy) : linePrintedCents(line);
+  return policy ? lineCardCents(line, policy) : lineCashCents(line);
 }
 
 export type TenderLens = PaymentMethod | "card" | "cash";
@@ -53,8 +64,10 @@ export function policyForTender(
   settings: RestaurantSettings,
   tender?: TenderLens,
 ): CashDiscountPolicy | null {
-  if (tender !== "cash") return null;
-  return cashPolicyFromSettings(settings);
+  const policy = cashPolicyFromSettings(settings);
+  if (!policy) return null;
+  if (tender === "cash") return null;
+  return policy;
 }
 
 export function computeTotals(
@@ -152,13 +165,16 @@ export function tipSuggestions(balanceCents: number): number[] {
 }
 
 export function printedItemPriceCents(
-  printedCents: number,
+  cashCents: number,
   settings: RestaurantSettings,
-): { card: number; cash: number; enabled: boolean } {
+): { card: number; cash: number; enabled: boolean; showBoth: boolean } {
   const policy = cashPolicyFromSettings(settings);
+  const cash = cashCents;
+  const card = policy ? cardPriceCents(cash, policy) : cash;
   return {
-    card: printedCents,
-    cash: policy ? cashPriceCents(printedCents, policy) : printedCents,
+    card,
+    cash,
     enabled: Boolean(policy),
+    showBoth: Boolean(policy) && card !== cash,
   };
 }

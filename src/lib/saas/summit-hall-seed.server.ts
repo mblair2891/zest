@@ -96,7 +96,7 @@ function locationSetup(existing?: Partial<LocationSetup>): LocationSetup {
     qrPolicy: SUMMIT_HALL_QR_POLICY,
     cashDiscountEnabled: true,
     cashDiscountPercent: 5,
-    cashRoundIncrement: 0.25,
+    cashRoundIncrement: 1,
     cashRoundMode: "up",
     laborByEntity: {
       [SUMMIT_HEARTH_OP_ID]: laborOwnedLines(),

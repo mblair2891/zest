@@ -24,7 +24,7 @@ import {
   type AssistSource,
 } from "@/lib/assist/types";
 import { formatCurrency } from "@/lib/utils";
-import { cashPriceCents, cashPolicyFromSettings } from "@/lib/pos/cash-discount";
+import { cardPriceCents, cashPolicyFromSettings } from "@/lib/pos/cash-discount";
 import { saveMenuItemFn } from "@/lib/access/api";
 import { isProspectDemo } from "@/lib/demo/session";
 import { useSaasStore } from "@/lib/pos/saas-store";
@@ -381,7 +381,7 @@ function DraftFields({
   const settings = usePosStore((s) => s.settings);
   if (draft.domain === "menu_item") {
     const policy = cashPolicyFromSettings(settings);
-    const cash = policy ? cashPriceCents(draft.priceCents, policy) : draft.priceCents;
+    const card = policy ? cardPriceCents(draft.priceCents, policy) : draft.priceCents;
     return (
       <div className="grid gap-2">
         <Input
@@ -396,7 +396,7 @@ function DraftFields({
           hint={false}
         />
         <label className="text-xs text-muted-foreground">
-          Printed / card price
+          Cash price (printed / till)
           <Input
             className="mt-1"
             inputMode="decimal"
@@ -405,14 +405,15 @@ function DraftFields({
               onChange({
                 ...draft,
                 priceCents: Math.round((parseFloat(e.target.value) || 0) * 100),
+                priceBasis: "cash",
               })
             }
           />
         </label>
-        {policy && (
+        {policy && card !== draft.priceCents && (
           <p className="text-xs text-muted-foreground">
-            Card {formatCurrency(draft.priceCents)} · Cash {formatCurrency(cash)}
-            {draft.priceBasis === "cash" ? " · mapped from cash quote" : ""}
+            Card price {formatCurrency(card)}
+            {draft.priceBasis === "card" ? " · mapped from a card quote" : ""}
           </p>
         )}
         <div className="grid grid-cols-2 gap-2">

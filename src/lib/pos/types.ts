@@ -222,7 +222,7 @@ export interface RestaurantSettings {
   onlineOrderingEnabled?: boolean;
   qrOrderingEnabled?: boolean;
   sectionPolicy?: SectionPolicy;
-  /** Cash discount vs printed/card menu price. Default off. */
+  /** Cash discount: entered price is cash; card is marked up. Default off. */
   cashDiscountEnabled?: boolean;
   /** e.g. 5 for 5% */
   cashDiscountPercent?: number;

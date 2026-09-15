@@ -41,7 +41,7 @@ export const REPORT_CATALOG: ReportDef[] = [
     id: "payments-cash-discount",
     group: "payments",
     title: "Cash discount",
-    summary: "Discount cost vs printed/card prices.",
+    summary: "Discount cost vs computed card prices (cash is entered).",
     roles: ["owner", "manager", "accountant"],
   },
   {

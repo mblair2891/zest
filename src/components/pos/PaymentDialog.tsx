@@ -612,13 +612,13 @@ export function PaymentDialog({ open, onOpenChange }: Props) {
               </p>
               {dual.enabled && (
                 <p className="mt-1 text-xs text-muted-foreground">
-                  Card {formatCurrency(dual.card.totalCents)} · Cash{" "}
-                  {formatCurrency(dual.cash.totalCents)}
+                  Cash {formatCurrency(dual.cash.totalCents)} · Card{" "}
+                  {formatCurrency(dual.card.totalCents)}
                 </p>
               )}
               <p className="mt-1 text-[11px] text-muted-foreground">
                 {cashOn
-                  ? "Cash price is the printed amount, discounted and rounded up."
+                  ? "Cash is the entered till price. Card is marked up and rounded up."
                   : "Guest charge brand is the host. Card runs on Quantum Payments only."}
               </p>
             </div>

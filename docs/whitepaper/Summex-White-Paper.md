@@ -3,7 +3,7 @@
 **Powered by Quantum Reach**
 
 White paper · for owners and operators  
-**Revision · 14 Sep 2026** — Written for prospective subscribers. Aligns with Operators Guide v2026.10.93. Station UI is device role ∩ staff PIN. After PIN the tablet shows a short role menu — not a dashboard. A kitchen PIN does not open order entry. Peer venues have no host merchant; the host stand is still a device role. Staff stations are Android tablets. Pair with a typed Devices code; QR is optional. Devices Delete removes a named slot; Deactivate keeps it. Guests look up gift balance at summex.app/gift. Spent plastic can be reused.
+**Revision · 14 Sep 2026** — Written for prospective subscribers. Aligns with Operators Guide v2026.10.94. Cash is the entered till price; card is marked up and rounded up. Station UI is device role ∩ staff PIN. After PIN the tablet shows a short role menu — not a dashboard. A kitchen PIN does not open order entry. Peer venues have no host merchant; the host stand is still a device role. Staff stations are Android tablets. Pair with a typed Devices code; QR is optional. Devices Delete removes a named slot; Deactivate keeps it. Guests look up gift balance at summex.app/gift. Spent plastic can be reused.
 
 summex.app  
 Guest cards: **Quantum Payments** only
@@ -48,8 +48,8 @@ The guest should not have to understand how the house is organized.
 
 - **One check.** Food and drink from different operators still tender once, under the house name, on Quantum Payments.
 - **One receipt, itemized by vendor.** Lines group under the brand that sold them. The guest still holds one document.
-- **Printed prices stay clean.** The card / printed amount is the menu (for example $15.00). There is not a second ugly cash menu.
-- **Cash discount, when you post one.** Cash is computed from the printed price at **this location’s guest card rate** (platform default 5.00%; the house can set 4.00% or another), then rounded **up** to a quarter (or the increment you choose). $12.00 printed at 5% becomes $11.50 cash. Quantum Payments still captures the printed amount on card. You own local posting rules; Summex does not rewrite legal copy per state.
+- **Cash is the entered price.** The operator types the cash (till) amount. There is not a second ugly cash menu to maintain.
+- **Cash discount, when you post one.** Card is computed from cash at **this location’s guest card rate** (platform default 5.00%; the house can set 4.00% or another), then rounded **up** to a quarter (or the increment you choose). $18.00 cash at 5% with a $1.00 increment becomes $19.00 card. Cash pay charges cash; card pay charges card. Never card-minus-percent for the till. You own local posting rules; Summex does not rewrite legal copy per state.
 - **QR, as you set it.** Table tents, reorder after staff open a check, pay and split, a pay code on the ticket. Modes combine. Guest UI is public — no staff PIN. After pay they stay on thank-you.
 - **Gift balance, no login.** summex.app/gift. Full printed number, or last four plus the card PIN. Current life only — load, redeem, void, date, venue, amount. No staff names.
 
@@ -98,7 +98,7 @@ Untagged lines fail closed. The building does not become a third merchant.
 
 **Live cards require Quantum / Finix-class readers supplied through Summex** (drop-ship to the site). Customer-owned Square, Stripe, or bank terminals are not supported. Training can run on cash and sandbox cards. Live cards wait for an approved Quantum application and an enrolled reader.
 
-**Processing story for the house:** a **cash-discount program** on posted prices (platform default 5.00%; each location can set its own, e.g. 4.00%). Not a wholesale interchange table. Card captures the printed amount at that location’s guest card rate. Cash is the discounted, rounded price. Processor cost is internal — not the guest rate. This paper does not publish processor rate cards.
+**Processing story for the house:** a **cash-discount program** (platform default 5.00%; each location can set its own, e.g. 4.00%). Not a wholesale interchange table. The operator types cash. Card is cash marked up by that rate, then rounded up. Processor cost is internal — not the guest rate. This paper does not publish processor rate cards.
 
 Software invoices and guest cards are different bills.
 

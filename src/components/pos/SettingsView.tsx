@@ -26,7 +26,10 @@ import { LocationDeviceRegistry } from "./LocationDeviceRegistry";
 import { EntityPermissionsMatrix } from "./EntityPermissionsMatrix";
 import { OperatorOpsView } from "./OperatorOpsView";
 import { saveLocationSettingsFn } from "@/lib/access/api";
-import { persistCashDiscount } from "@/lib/pos/persist-location-setup";
+import {
+  confirmCashDiscountRecalc,
+  persistCashDiscount,
+} from "@/lib/pos/persist-location-setup";
 import { isProspectDemo } from "@/lib/demo/session";
 import { useSaasStore } from "@/lib/pos/saas-store";
 import type { VenueEntityId } from "@/lib/pos/types";
@@ -57,7 +60,7 @@ import { parseLaborRules } from "@/lib/labor/rules";
 import { saveFrontSettingsFn } from "@/lib/front/api";
 import {
   CASH_ROUND_INCREMENTS,
-  cashPriceCents,
+  cardPriceCents,
   cashPolicyFromSettings,
   type CashRoundIncrement,
 } from "@/lib/pos/cash-discount";
@@ -666,8 +669,8 @@ export function SettingsView() {
             </GuideLearnLink>
           </div>
           <p className="mt-1 text-xs text-muted-foreground">
-            This location’s guest card rate (Summex’s charge). Printed / card
-            prices stay clean. Cash is discounted then rounded{" "}
+            You type the cash (till) price. Card is that amount marked up by this
+            location’s guest card rate, then rounded{" "}
             <span className="font-medium text-foreground">up</span> to the
             increment. Not Finix’s 0.25%+$0.10 — that cost is internal.
             {sharedMulti
@@ -681,6 +684,7 @@ export function SettingsView() {
               type="checkbox"
               checked={!!settings.cashDiscountEnabled}
               onChange={(e) => {
+                if (!confirmCashDiscountRecalc()) return;
                 updateSettings({ cashDiscountEnabled: e.target.checked });
                 persistCashDiscount();
               }}
@@ -705,7 +709,10 @@ export function SettingsView() {
                       : 5,
                   });
                 }}
-                onBlur={() => persistCashDiscount()}
+                onBlur={() => {
+                  if (!confirmCashDiscountRecalc()) return;
+                  persistCashDiscount();
+                }}
               />
             </label>
             <label className="block text-sm">
@@ -717,6 +724,7 @@ export function SettingsView() {
                 disabled={!settings.cashDiscountEnabled}
                 value={String(settings.cashRoundIncrement ?? 0.25)}
                 onChange={(e) => {
+                  if (!confirmCashDiscountRecalc()) return;
                   updateSettings({
                     cashRoundIncrement: Number(
                       e.target.value,
@@ -736,15 +744,15 @@ export function SettingsView() {
           {settings.cashDiscountEnabled && (
             <p className="mt-3 text-xs text-muted-foreground">
               This location {Number(settings.cashDiscountPercent ?? 5).toFixed(2)}% ·
-              example $12.00 card →{" "}
+              example $18.00 cash →{" "}
               <span className="tabular text-foreground">
                 {formatCurrency(
                   cashPolicyFromSettings(settings)
-                    ? cashPriceCents(1200, cashPolicyFromSettings(settings)!)
-                    : 1200,
+                    ? cardPriceCents(1800, cashPolicyFromSettings(settings)!)
+                    : 1800,
                 )}
               </span>{" "}
-              cash.
+              card.
             </p>
           )}
         </div>

@@ -129,7 +129,7 @@ export const PAYMENT_TOPICS: GuideTopic[] = [
         "One document. Do not print a stall receipt as a second card run.",
         "Merchant copy (when more than one brand is on the check) lists that vendor’s share: merchandise, tax/tip/service, total. Guest still paid once.",
         "Kitchen and bar tickets still print only that station’s lines (impact TM-U220 for kitchen). Pay uses the same ownership map as ODS routing — do not change routing.",
-        "Cash discount receipts show both printed/card and cash amounts when cash was taken.",
+        "Cash discount receipts and the check can show both: Cash $18.00 · Card $19.00. Cash tender charges cash; card tender charges card.",
       ),
       steps(
         "After pay, choose Email, Print, or No receipt. Same three choices for card, cash, gift, and comp.",

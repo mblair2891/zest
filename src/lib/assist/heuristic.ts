@@ -1,3 +1,4 @@
+import { cashFromCardCents } from "@/lib/pos/cash-discount";
 import { applyMenuTemplate } from "./category-templates";
 import type {
   AssistContext,
@@ -154,8 +155,8 @@ function menuItem(text: string, ctx: AssistContext, messages: AssistMessage[]): 
   ) {
     questions.push({
       id: "price_basis",
-      prompt: `Is ${price / 100 === Math.round(price / 100) ? `$${price / 100}` : `$${(price / 100).toFixed(2)}`} the printed/card menu price or the cash price?`,
-      hint: "Printed/card stays on the menu. Cash is computed from it.",
+      prompt: `Is ${price / 100 === Math.round(price / 100) ? `$${price / 100}` : `$${(price / 100).toFixed(2)}`} the cash (till) price or the card price?`,
+      hint: "Cash is what you type. Card is marked up and rounded up. Default is cash.",
     });
   }
   if (
@@ -189,10 +190,10 @@ function menuItem(text: string, ctx: AssistContext, messages: AssistMessage[]): 
 
   const stated =
     dollarsToCents(reply(messages, "price") || text) ?? price ?? seed?.priceCents ?? 0;
-  const cashSaid = /\bcash\b/.test(basisAns) && !/\b(card|printed)\b/.test(basisAns);
+  const cardSaid = /\b(card|printed)\b/.test(basisAns) && !/\bcash\b/.test(basisAns);
   let priceCents = stated;
-  if (cashSaid && ctx.cashDiscountEnabled && ctx.cashDiscountPercent > 0) {
-    priceCents = Math.round(stated / (1 - ctx.cashDiscountPercent / 100));
+  if (cardSaid && ctx.cashDiscountEnabled && ctx.cashDiscountPercent > 0) {
+    priceCents = cashFromCardCents(stated, ctx.cashDiscountPercent);
   }
   const catName =
     reply(messages, "category") ||
@@ -213,7 +214,7 @@ function menuItem(text: string, ctx: AssistContext, messages: AssistMessage[]): 
       name,
       description: desc || seed?.description || "",
       priceCents,
-      priceBasis: cashSaid ? "cash" : "card",
+      priceBasis: cardSaid ? "card" : "cash",
       categoryName: catName,
       categoryId: catMatch?.id ?? ctx.categories.find((c) => c.name === catName)?.id,
       station: (seed?.station as MenuItemDraft["station"]) || station,

@@ -529,12 +529,14 @@ export function OrderView() {
                       </span>
                     </span>
                     <span className="shrink-0 text-right tabular text-sm">
-                      <span className="block">
-                        {formatCurrency(linePrintedCents(line))}
-                      </span>
-                      {cashPolicy && (
-                        <span className="block text-[10px] font-normal text-muted-foreground">
-                          Cash {formatCurrency(lineCashCents(line, cashPolicy))}
+                      {cashPolicy ? (
+                        <span className="block text-xs">
+                          Cash {formatCurrency(lineCashCents(line))} · Card{" "}
+                          {formatCurrency(linePrintedCents(line, cashPolicy))}
+                        </span>
+                      ) : (
+                        <span className="block">
+                          {formatCurrency(linePrintedCents(line))}
                         </span>
                       )}
                     </span>
@@ -900,11 +902,15 @@ export function OrderView() {
                         {!item.available ? " · 86" : ""}
                       </span>
                       <span className="text-right tabular text-sm font-semibold">
-                        <span className="block">{formatCurrency(dualPrice.card)}</span>
-                        {dualPrice.enabled && (
-                          <span className="block text-[10px] font-normal text-muted-foreground">
-                            Cash {formatCurrency(dualPrice.cash)}
+                        {dualPrice.showBoth ? (
+                          <span className="block text-xs font-medium">
+                            {formatCurrency(dualPrice.cash)} cash
+                            <span className="mt-0.5 block text-[10px] font-normal text-muted-foreground">
+                              {formatCurrency(dualPrice.card)} card
+                            </span>
                           </span>
+                        ) : (
+                          <span className="block">{formatCurrency(dualPrice.cash)}</span>
                         )}
                       </span>
                     </span>

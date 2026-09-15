@@ -1,8 +1,12 @@
 import type { Chargeback, Order, Payment, RestaurantSettings, SettlementPeriod, Vendor } from "./types";
-import { computeTotals, linePrintedCents, lineUnitTotal, policyForTender } from "./calculations";
+import {
+  computeTotals,
+  lineCardCents,
+  lineCashCents,
+} from "./calculations";
 import { allocatePaymentToVendors } from "./settlement";
 import { CHARGEBACK_FEE_CENTS } from "@/lib/platform/brand";
-import { cashPolicyFromSettings, cashPriceCents } from "./cash-discount";
+import { cashPolicyFromSettings } from "./cash-discount";
 
 /**
  * System ledger — first-party book for Quantum Payments / settlement.
@@ -162,11 +166,8 @@ export function entriesForPayment(opts: {
     if (policy) {
       for (const line of order.lines) {
         if (line.voided || line.comped) continue;
-        printedMerch += linePrintedCents(line);
-        cashMerch += Math.max(
-          0,
-          cashPriceCents(lineUnitTotal(line), policy) * line.quantity - line.discountCents,
-        );
+        printedMerch += lineCardCents(line, policy);
+        cashMerch += lineCashCents(line);
       }
     }
     out.push(

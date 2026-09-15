@@ -6,6 +6,19 @@ import type { GuideUpdate } from "@/lib/guide/types";
  */
 export const WHATS_NEW_ENTRIES: GuideUpdate[] = [
   {
+    id: "upd_2026_10_94_cash_entered",
+    date: "2026-09-14",
+    title: "Cash is the price you type",
+    summary:
+      "Menu items store the cash (till) price. Card is that amount plus the guest card rate, rounded up. Never card-minus-percent for the drawer.",
+    body: "Add/edit item: Cash price (printed / till), with a live Card price beside it. List row: $18.00 cash · $19.00 card when they differ. Voice add assumes cash; it only asks cash vs card when the discount is on. Pay cash charges cash; pay card charges card. The check can show both. Changing the rate or increment asks you to confirm, then Publish.",
+    roles: ["owner_manager", "server", "host_operator", "platform_admin"],
+    surfaces: ["settings"],
+    audience: "all",
+    topicId: "cash-discount",
+    tags: ["cash", "menu", "pricing"],
+  },
+  {
     id: "upd_2026_10_93_station_menu",
     date: "2026-09-14",
     title: "Station home is a short role menu",

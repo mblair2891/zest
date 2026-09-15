@@ -24,7 +24,7 @@ export function SubscriberWhitePaper() {
         summex.app · Guest cards: {PAYMENTS_BRAND} only
       </p>
       <p className="mt-2 text-xs text-muted-foreground">
-        Revision · 14 Sep 2026 — Aligns with Operators Guide v2026.10.93.
+        Revision · 14 Sep 2026 — Aligns with Operators Guide v2026.10.94.
         Station UI is device role ∩ staff PIN. After PIN the tablet shows a
         short role menu. Pair with a typed Devices code;
         QR is optional. Peer venues have no host merchant; the host stand is
@@ -100,14 +100,14 @@ export function SubscriberWhitePaper() {
             The guest still holds one document.
           </li>
           <li>
-            <strong className="text-ivory">Printed prices stay clean.</strong> The
-            card / printed amount is the menu (for example $15.00).
+            <strong className="text-ivory">Cash is the entered price.</strong> The
+            operator types the cash (till) amount.
           </li>
           <li>
             <strong className="text-ivory">Cash discount, when you post one.</strong>{" "}
-            Typically a <strong className="text-ivory">5% cash-discount program</strong>,
-            then rounded up to a quarter. $12.00 printed becomes $11.50 cash.{" "}
-            {PAYMENTS_BRAND} still captures the printed amount on card.
+            Typically a <strong className="text-ivory">5% cash-discount program</strong>.
+            Card is cash marked up, then rounded up. $18.00 cash at 5% with a $1.00
+            increment becomes $19.00 card. Cash pay charges cash; card pay charges card.
           </li>
           <li>
             <strong className="text-ivory">QR, as you set it.</strong> Table tents,
