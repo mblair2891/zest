@@ -7,6 +7,7 @@ export type LocationDeviceType =
   | "kiosk"
   | "printer"
   | "receipt_printer"
+  | "order_printer"
   | "kitchen_printer"
   | "bar_printer"
   | "label_printer"
@@ -58,6 +59,10 @@ export type PrinterConfig = {
   port?: number;
   modelPreset?: PrinterModelPreset;
   drawerKick?: PrinterDrawerKick;
+  /** Order printer: Kitchen, Bar, Expo, Window, Label… */
+  destinationName?: string;
+  /** Receipt printer: print pay QR when venue QR setting is on. Default on. */
+  printPayQr?: boolean;
   routes?: PrintRoute[];
   boundStationIds?: string[];
   lastPrintAt?: number;
@@ -125,10 +130,19 @@ export const PRINT_ROUTE_LABEL: Record<PrintRoute, string> = {
 export const PRINTER_DEVICE_TYPES: LocationDeviceType[] = [
   "printer",
   "receipt_printer",
+  "order_printer",
   "kitchen_printer",
   "bar_printer",
   "label_printer",
 ];
+
+/** Types shown in Add device. Kitchen/bar/label are destinations, not types. */
+export const PRINTER_UI_TYPES: LocationDeviceType[] = [
+  "receipt_printer",
+  "order_printer",
+];
+
+export const ORDER_DESTINATION_PRESETS = ["Kitchen", "Bar", "Expo", "Window", "Label"] as const;
 
 export function isPrinterType(type: string | null | undefined): boolean {
   return PRINTER_DEVICE_TYPES.includes(type as LocationDeviceType);
@@ -173,6 +187,7 @@ export const DEVICE_TYPES: LocationDeviceType[] = [
   "kiosk",
   "printer",
   "receipt_printer",
+  "order_printer",
   "kitchen_printer",
   "bar_printer",
   "label_printer",
@@ -191,11 +206,8 @@ export const STATION_DEVICE_TYPES: LocationDeviceType[] = [
 
 export const HARDWARE_DEVICE_TYPES: LocationDeviceType[] = [
   "terminal",
-  "printer",
   "receipt_printer",
-  "kitchen_printer",
-  "bar_printer",
-  "label_printer",
+  "order_printer",
 ];
 
 export const DEVICE_FUNCTIONS: DeviceFunction[] = [
@@ -230,9 +242,10 @@ export const DEVICE_TYPE_LABEL: Record<LocationDeviceType, string> = {
   kiosk: "Kiosk",
   printer: "Printer",
   receipt_printer: "Receipt printer",
-  kitchen_printer: "Kitchen printer",
-  bar_printer: "Bar printer",
-  label_printer: "Label printer",
+  order_printer: "Order printer",
+  kitchen_printer: "Order printer",
+  bar_printer: "Order printer",
+  label_printer: "Order printer",
   host_stand: "Host tablet",
   terminal: "Terminal",
   other: "Other",
@@ -273,6 +286,7 @@ export function parseLocationDevice(raw: unknown): LocationDevice | null {
       : DEVICE_TYPES.includes(typeRaw as LocationDeviceType)
         ? (typeRaw as LocationDeviceType)
         : "other";
+  const storedType = type;
   const print = isPrinterType(type) ? parsePrinterConfig(o.print ?? o) : undefined;
   if (isPrinterType(type)) type = printerTypeFromStation(type, print?.station);
   const assignment =
@@ -287,28 +301,31 @@ export function parseLocationDevice(raw: unknown): LocationDevice | null {
     o.status === "inactive"
       ? o.status
       : "pending";
-  return {
-    id,
-    locationId: String(o.locationId ?? "").trim(),
-    label,
-    type,
-    status,
-    lastSeenAt: Number(o.lastSeenAt) || Date.now(),
-    serial: o.serial ? String(o.serial) : undefined,
-    claimCode: isPrinterType(type) ? undefined : o.claimCode ? String(o.claimCode) : undefined,
-    assignment,
-    print,
-    receiptPrinterId:
-      isPrinterType(type)
-        ? undefined
-        : o.receiptPrinterId
-          ? String(o.receiptPrinterId).trim().slice(0, 80)
-          : null,
-    applyRoleNow: o.applyRoleNow === true,
-    roleRevision: Number(o.roleRevision) > 0 ? Math.round(Number(o.roleRevision)) : undefined,
-    claimExpiresAt:
-      Number(o.claimExpiresAt) > 0 ? Math.round(Number(o.claimExpiresAt)) : undefined,
-  };
+  return canonicalizePrinterDevice(
+    {
+      id,
+      locationId: String(o.locationId ?? "").trim(),
+      label,
+      type,
+      status,
+      lastSeenAt: Number(o.lastSeenAt) || Date.now(),
+      serial: o.serial ? String(o.serial) : undefined,
+      claimCode: isPrinterType(type) ? undefined : o.claimCode ? String(o.claimCode) : undefined,
+      assignment,
+      print,
+      receiptPrinterId:
+        isPrinterType(type)
+          ? undefined
+          : o.receiptPrinterId
+            ? String(o.receiptPrinterId).trim().slice(0, 80)
+            : null,
+      applyRoleNow: o.applyRoleNow === true,
+      roleRevision: Number(o.roleRevision) > 0 ? Math.round(Number(o.roleRevision)) : undefined,
+      claimExpiresAt:
+        Number(o.claimExpiresAt) > 0 ? Math.round(Number(o.claimExpiresAt)) : undefined,
+    },
+    storedType,
+  );
 }
 
 export function isPairedActivatedStation(d: LocationDevice): boolean {
@@ -316,31 +333,109 @@ export function isPairedActivatedStation(d: LocationDevice): boolean {
   return d.status === "online" || d.status === "offline";
 }
 
+export function isReceiptPrinterType(type: LocationDeviceType): boolean {
+  return type === "receipt_printer" || type === "printer";
+}
+
+export function isOrderPrinterType(type: LocationDeviceType): boolean {
+  return (
+    type === "order_printer" ||
+    type === "kitchen_printer" ||
+    type === "bar_printer" ||
+    type === "label_printer"
+  );
+}
+
 export function printerTypeFromStation(
   type: LocationDeviceType,
   station?: PrintStation,
 ): LocationDeviceType {
-  if (type === "receipt_printer" || type === "kitchen_printer" || type === "bar_printer" || type === "label_printer") {
-    return type;
+  if (type === "receipt_printer") return "receipt_printer";
+  if (isOrderPrinterType(type)) return "order_printer";
+  if (type === "printer") {
+    if (station && station !== "receipt") return "order_printer";
+    return "receipt_printer";
   }
-  if (station === "kitchen") return "kitchen_printer";
-  if (station === "bar") return "bar_printer";
-  if (station === "label") return "label_printer";
-  return "receipt_printer";
+  if (station === "receipt" || !station) return "receipt_printer";
+  return "order_printer";
 }
 
-export function stationFromPrinterType(type: LocationDeviceType): PrintStation {
-  if (type === "kitchen_printer") return "kitchen";
-  if (type === "bar_printer") return "bar";
-  if (type === "label_printer") return "label";
-  return "receipt";
+export function destinationFromLegacyType(
+  type: LocationDeviceType,
+  station?: PrintStation,
+): string {
+  if (type === "bar_printer" || station === "bar") return "Bar";
+  if (type === "label_printer" || station === "label") return "Label";
+  if (station === "expo") return "Expo";
+  if (type === "kitchen_printer" || station === "kitchen") return "Kitchen";
+  return "Kitchen";
 }
 
-export function defaultRoutesForPrinterType(type: LocationDeviceType): PrintRoute[] {
-  if (type === "kitchen_printer") return ["kitchen_tickets"];
-  if (type === "bar_printer") return ["bar_tickets"];
-  if (type === "label_printer") return ["labels"];
-  return ["receipts"];
+/** Kitchen / bar / label rows become order printers; generic printer → receipt. */
+export function canonicalizePrinterDevice(
+  d: LocationDevice,
+  storedType: LocationDeviceType = d.type,
+): LocationDevice {
+  if (!isPrinterType(storedType) && !isPrinterType(d.type)) return d;
+  const type = printerTypeFromStation(storedType, d.print?.station);
+  const print = d.print;
+  if (!print) return { ...d, type };
+  if (type === "receipt_printer") {
+    return {
+      ...d,
+      type,
+      print: {
+        ...print,
+        station: "receipt",
+        destinationName: undefined,
+        drawerKick: print.drawerKick ?? "attached",
+        printPayQr: print.printPayQr !== false,
+        routes: ["receipts"],
+      },
+    };
+  }
+  const destinationName =
+    (print.destinationName || "").trim() || destinationFromLegacyType(storedType, print.station);
+  const station = stationFromPrinterType("order_printer", destinationName);
+  const routes =
+    print.routes?.length && print.routes.some((r) => r !== "receipts")
+      ? print.routes
+      : defaultRoutesForPrinterType("order_printer", destinationName);
+  return {
+    ...d,
+    type: "order_printer",
+    print: {
+      ...print,
+      station,
+      destinationName,
+      drawerKick: "none",
+      printPayQr: undefined,
+      routes,
+    },
+  };
+}
+
+export function stationFromPrinterType(
+  type: LocationDeviceType,
+  destinationName?: string,
+): PrintStation {
+  if (type === "receipt_printer" || type === "printer") return "receipt";
+  const dest = String(destinationName ?? "").trim().toLowerCase();
+  if (/\bbar\b|well|drink/.test(dest) || type === "bar_printer") return "bar";
+  if (/\bexpo\b|pass|window/.test(dest)) return "expo";
+  if (/\blabel\b/.test(dest) || type === "label_printer") return "label";
+  return "kitchen";
+}
+
+export function defaultRoutesForPrinterType(
+  type: LocationDeviceType,
+  destinationName?: string,
+): PrintRoute[] {
+  if (type === "receipt_printer" || type === "printer") return ["receipts"];
+  const st = stationFromPrinterType(type, destinationName);
+  if (st === "bar") return ["bar_tickets"];
+  if (st === "label" || st === "expo") return ["labels"];
+  return ["kitchen_tickets"];
 }
 
 export function routeForPrintStation(station: PrintStation): PrintRoute {
@@ -401,9 +496,20 @@ export function parsePrinterConfig(raw: unknown): PrinterConfig | undefined {
     ? (connRaw as PrinterConnection)
     : "lan";
   const stRaw = String(o.station ?? o.printStation ?? "");
-  const station: PrintStation = PRINT_STATIONS.includes(stRaw as PrintStation)
+  let station: PrintStation = PRINT_STATIONS.includes(stRaw as PrintStation)
     ? (stRaw as PrintStation)
     : "receipt";
+  let destinationName = String(o.destinationName ?? o.destination ?? "").trim().slice(0, 40);
+  if (!destinationName) {
+    if (station === "kitchen") destinationName = "Kitchen";
+    else if (station === "bar") destinationName = "Bar";
+    else if (station === "expo") destinationName = "Expo";
+    else if (station === "label") destinationName = "Label";
+  }
+  if (destinationName && station === "receipt" && stRaw !== "receipt") {
+    station = stationFromPrinterType("order_printer", destinationName);
+  }
+  const printPayQr = o.printPayQr === false ? false : o.printPayQr === true ? true : undefined;
   const ip = String(o.ip ?? "").trim().slice(0, 45);
   const portNum = Number(o.port);
   const port = portNum > 0 && portNum < 65536 ? Math.round(portNum) : 9100;
@@ -437,6 +543,8 @@ export function parsePrinterConfig(raw: unknown): PrinterConfig | undefined {
     port,
     modelPreset: modelPreset ?? modelPresetFromFamily(family, station),
     drawerKick: drawerKick ?? (station === "receipt" ? "attached" : "none"),
+    destinationName: station === "receipt" ? undefined : destinationName || "Kitchen",
+    printPayQr: station === "receipt" ? printPayQr !== false : undefined,
     routes: routes.length ? routes : [routeForPrintStation(station)],
     boundStationIds: bound,
     lastPrintAt: Number(o.lastPrintAt) > 0 ? Math.round(Number(o.lastPrintAt)) : undefined,
@@ -448,18 +556,22 @@ export function pendingPrinterDevice(opts: {
   id: string;
   locationId: string;
   label: string;
-  kind: "receipt" | "kitchen" | "bar" | "label";
+  kind: "receipt" | "kitchen" | "bar" | "label" | "order";
   operatorId?: string;
+  destinationName?: string;
 }): LocationDevice {
-  const type: LocationDeviceType =
-    opts.kind === "kitchen"
-      ? "kitchen_printer"
-      : opts.kind === "bar"
-        ? "bar_printer"
-        : opts.kind === "label"
-          ? "label_printer"
-          : "receipt_printer";
-  const station = stationFromPrinterType(type);
+  const receipt = opts.kind === "receipt";
+  const type: LocationDeviceType = receipt ? "receipt_printer" : "order_printer";
+  const destinationName =
+    opts.destinationName ||
+    (opts.kind === "bar"
+      ? "Bar"
+      : opts.kind === "label"
+        ? "Label"
+        : opts.kind === "receipt"
+          ? undefined
+          : "Kitchen");
+  const station = receipt ? "receipt" : stationFromPrinterType(type, destinationName);
   return {
     id: opts.id,
     locationId: opts.locationId,
@@ -472,16 +584,18 @@ export function pendingPrinterDevice(opts: {
       function: defaultFunctionForType(type),
     },
     print: {
-      family: opts.kind === "kitchen" ? "epson" : "epson",
+      family: "epson",
       connection: "lan",
       target: "",
       station,
       link: "ethernet",
       ip: "",
       port: 9100,
-      modelPreset: opts.kind === "kitchen" ? "epson_tm_u220" : "epson_tm_t20",
-      drawerKick: opts.kind === "receipt" ? "attached" : "none",
-      routes: defaultRoutesForPrinterType(type),
+      modelPreset: station === "kitchen" ? "epson_tm_u220" : "epson_tm_t20",
+      drawerKick: receipt ? "attached" : "none",
+      destinationName: receipt ? undefined : destinationName,
+      printPayQr: receipt ? true : undefined,
+      routes: defaultRoutesForPrinterType(type, destinationName),
       boundStationIds: [],
     },
   };
@@ -498,14 +612,16 @@ export function defaultOnboardingPrinters(locationId: string): LocationDevice[] 
     pendingPrinterDevice({
       id: `prn_${locationId || "loc"}_kitchen`,
       locationId,
-      label: "Kitchen printer",
-      kind: "kitchen",
+      label: "Kitchen line",
+      kind: "order",
+      destinationName: "Kitchen",
     }),
     pendingPrinterDevice({
       id: `prn_${locationId || "loc"}_bar`,
       locationId,
-      label: "Bar printer",
-      kind: "bar",
+      label: "Bar line",
+      kind: "order",
+      destinationName: "Bar",
     }),
   ];
 }
@@ -526,6 +642,7 @@ export function defaultFunctionForType(type: LocationDeviceType): DeviceFunction
     case "printer":
     case "receipt_printer":
       return "cashier";
+    case "order_printer":
     case "kitchen_printer":
       return "kitchen_kds";
     case "bar_printer":

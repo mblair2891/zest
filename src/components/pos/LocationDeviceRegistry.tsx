@@ -22,9 +22,8 @@ import {
   DEVICE_FUNCTION_LABEL,
   DEVICE_TYPE_LABEL,
   HARDWARE_DEVICE_TYPES,
-  PRINT_ROUTE_LABEL,
-  PRINT_ROUTES,
-  PRINT_STATION_LABEL,
+  ORDER_DESTINATION_PRESETS,
+  PRINTER_UI_TYPES,
   PRINTER_LINK_LABEL,
   PRINTER_LINKS,
   PRINTER_MODEL_LABEL,
@@ -33,12 +32,16 @@ import {
   STATION_DEVICE_TYPES,
   defaultFunctionForType,
   defaultRoutesForPrinterType,
+  destinationFromLegacyType,
   familyFromModelPreset,
   functionForPrintStation,
+  isOrderPrinterType,
   isPairedActivatedStation,
   isPrinterDevice,
   isPrinterType,
+  isReceiptPrinterType,
   printerStatusLabel,
+  printerTypeFromStation,
   readOrCreateBrowserDeviceId,
   readPairedDeviceId,
   stationFromPrinterType,
@@ -47,12 +50,12 @@ import {
   type DeviceRoleChange,
   type LocationDevice,
   type LocationDeviceType,
-  type PrintRoute,
   type PrinterDrawerKick,
   type PrinterLink,
   type PrinterModelPreset,
 } from "@/lib/pos/location-devices";
 import { dispatchPrintJob, testPrintJob } from "@/lib/print/dispatch";
+import { parseQrPolicy, qrPrintOnTicket } from "@/lib/pos/qr-policy";
 import { usePosStore } from "@/lib/pos/store";
 import { formatTime } from "@/lib/utils";
 import {
@@ -92,13 +95,7 @@ const HARDWARE_FUNCTIONS: DeviceFunction[] = ["cashier", "expo", "floor_pos"];
 
 function typeOptions(mode: Mode): LocationDeviceType[] {
   if (mode === "hardware") return HARDWARE_DEVICE_TYPES;
-  return [
-    ...STATION_DEVICE_TYPES,
-    "receipt_printer",
-    "kitchen_printer",
-    "bar_printer",
-    "label_printer",
-  ];
+  return [...STATION_DEVICE_TYPES, ...PRINTER_UI_TYPES];
 }
 
 function functionOptions(mode: Mode): DeviceFunction[] {
@@ -176,7 +173,7 @@ export function LocationDeviceRegistry({
   const [editingId, setEditingId] = useState<string | null>(null);
   const [label, setLabel] = useState("");
   const [type, setType] = useState<LocationDeviceType>(
-    mode === "hardware" ? "printer" : "tablet_pos",
+    mode === "hardware" ? "receipt_printer" : "tablet_pos",
   );
   const [operatorId, setOperatorId] = useState(HOST_SCOPE);
   const [fn, setFn] = useState<DeviceFunction>(
@@ -189,7 +186,8 @@ export function LocationDeviceRegistry({
   const [printPort, setPrintPort] = useState("9100");
   const [printModel, setPrintModel] = useState<PrinterModelPreset>("epson_tm_t20");
   const [drawerKick, setDrawerKick] = useState<PrinterDrawerKick>("attached");
-  const [printRoutes, setPrintRoutes] = useState<PrintRoute[]>(["receipts"]);
+  const [destinationName, setDestinationName] = useState("Kitchen");
+  const [printPayQr, setPrintPayQr] = useState(true);
   const [boundStationIds, setBoundStationIds] = useState<string[]>([]);
   const [receiptPrinterId, setReceiptPrinterId] = useState<string>("");
   const [busy, setBusy] = useState(false);
@@ -299,7 +297,16 @@ export function LocationDeviceRegistry({
   const resetForm = (preset?: Partial<LocationDevice>) => {
     setEditingId(preset?.id ?? null);
     setLabel(preset?.label ?? "");
-    setType(preset?.type ?? (mode === "hardware" ? "printer" : "tablet_pos"));
+    const printerType =
+      preset?.type && isPrinterType(preset.type)
+        ? printerTypeFromStation(preset.type, preset.print?.station)
+        : null;
+    const orderType = printerType ? isOrderPrinterType(printerType) : false;
+    setType(
+      printerType ??
+        preset?.type ??
+        (mode === "hardware" ? "receipt_printer" : "tablet_pos"),
+    );
     setOperatorId(preset?.assignment?.operatorId ?? HOST_SCOPE);
     setFn(
       preset?.assignment?.function ??
@@ -310,25 +317,24 @@ export function LocationDeviceRegistry({
         ? deviceRoleFromFunction(preset.assignment.function)
         : "order",
     );
-    const printerType = preset?.type && isPrinterType(preset.type) ? preset.type : null;
     setPrintLink(preset?.print?.link ?? "ethernet");
     setPrintIp(preset?.print?.ip ?? (preset?.print?.target?.split(":")[0] ?? ""));
     setPrintPort(String(preset?.print?.port ?? 9100));
     setPrintModel(
       preset?.print?.modelPreset ??
-        (printerType === "kitchen_printer" ? "epson_tm_u220" : "epson_tm_t20"),
+        (orderType ? "epson_tm_u220" : "epson_tm_t20"),
     );
     setDrawerKick(
       preset?.print?.drawerKick ??
-        (printerType === "receipt_printer" || printerType === "printer" ? "attached" : "none"),
+        (printerType && isReceiptPrinterType(printerType) ? "attached" : "none"),
     );
-    setPrintRoutes(
-      preset?.print?.routes?.length
-        ? preset.print.routes
-        : printerType
-          ? defaultRoutesForPrinterType(printerType)
-          : ["receipts"],
+    setDestinationName(
+      preset?.print?.destinationName ||
+        (printerType
+          ? destinationFromLegacyType(preset?.type ?? printerType, preset?.print?.station)
+          : "Kitchen"),
     );
+    setPrintPayQr(preset?.print?.printPayQr !== false);
     setBoundStationIds(preset?.print?.boundStationIds ?? []);
     setReceiptPrinterId(preset?.receiptPrinterId ?? "");
     setFormOpen(true);
@@ -353,7 +359,7 @@ export function LocationDeviceRegistry({
           : type;
       const stationFn =
         printer
-          ? functionForPrintStation(stationFromPrinterType(type))
+          ? functionForPrintStation(stationFromPrinterType(type, destinationName))
           : mode === "stations"
             ? functionForDeviceRole(stationRole)
             : fn;
@@ -380,15 +386,19 @@ export function LocationDeviceRegistry({
                   family: familyFromModelPreset(printModel),
                   connection: "lan",
                   target,
-                  station: stationFromPrinterType(type),
+                  station: stationFromPrinterType(type, destinationName),
                   link: printLink,
                   ip,
                   port,
                   modelPreset: printModel,
-                  drawerKick,
-                  routes: printRoutes.length
-                    ? printRoutes
-                    : defaultRoutesForPrinterType(type),
+                  drawerKick: isReceiptPrinterType(type) ? drawerKick : "none",
+                  destinationName: isOrderPrinterType(type)
+                    ? destinationName.trim() || "Kitchen"
+                    : undefined,
+                  printPayQr: isReceiptPrinterType(type) ? printPayQr : undefined,
+                  routes: isReceiptPrinterType(type)
+                    ? ["receipts"]
+                    : defaultRoutesForPrinterType(type, destinationName),
                   boundStationIds,
                 }
               : undefined,
@@ -653,7 +663,7 @@ export function LocationDeviceRegistry({
   const help =
     mode === "hardware"
       ? "Register Quantum readers and Epson / ESC/POS printers. Wi-Fi or Ethernet, static IP (port 9100). Test print from this list."
-      : "Add a tablet or a printer from the same button. Tablets: pick Order / Host / ODS / Kiosk, then type the one-time code on the glass. Printers: name, Wi-Fi or Ethernet, static IP, routes, entity, and which stations send to it. Host and order tablets use the bound receipt printer; ODS does not need one. Deactivate or Delete works the same for both.";
+      : "Add a tablet or a printer from the same button. Tablets: pick Order / Host / ODS / Kiosk, then type the one-time code on the glass. Printers: Receipt printer or Order printer (Kitchen / Bar / Expo / Label are destinations, not types). Host and order tablets use the bound receipt printer; ODS does not need one.";
   const addLabel = mode === "hardware" ? "Add terminal / printer" : "Add device";
   const pairedId = resolvedLocId ? readPairedDeviceId(resolvedLocId) : null;
   const thisBrowserId = resolvedLocId ? readOrCreateBrowserDeviceId(resolvedLocId) : "";
@@ -812,9 +822,9 @@ export function LocationDeviceRegistry({
                   setType(next);
                   setFn(defaultFunctionForType(next));
                   if (isPrinterType(next)) {
-                    setPrintRoutes(defaultRoutesForPrinterType(next));
-                    setDrawerKick(next === "receipt_printer" ? "attached" : "none");
-                    setPrintModel(next === "kitchen_printer" ? "epson_tm_u220" : "epson_tm_t20");
+                    setDrawerKick(isReceiptPrinterType(next) ? "attached" : "none");
+                    setPrintModel(isOrderPrinterType(next) ? "epson_tm_u220" : "epson_tm_t20");
+                    if (isOrderPrinterType(next)) setDestinationName("Kitchen");
                   } else {
                     setStationRole(deviceRoleFromFunction(defaultFunctionForType(next)));
                   }
@@ -913,6 +923,7 @@ export function LocationDeviceRegistry({
                     onChange={(e) => setPrintPort(e.target.value.replace(/\D/g, "").slice(0, 5))}
                   />
                 </label>
+                {isReceiptPrinterType(type) && (
                 <label className="text-xs text-muted-foreground">
                   Cash drawer kick
                   <select
@@ -920,47 +931,69 @@ export function LocationDeviceRegistry({
                     value={drawerKick}
                     onChange={(e) => setDrawerKick(e.target.value as PrinterDrawerKick)}
                   >
-                    <option value="none">None</option>
-                    <option value="attached">Attached to this printer</option>
+                    <option value="none">No</option>
+                    <option value="attached">Yes — attached to this printer</option>
                   </select>
                 </label>
+                )}
+                {isOrderPrinterType(type) && (
+                <label className="text-xs text-muted-foreground sm:col-span-2">
+                  Destination
+                  <input
+                    list="order-destinations"
+                    className="mt-1 h-10 w-full rounded-xl border border-border bg-bg px-3 text-sm text-foreground"
+                    value={destinationName}
+                    onChange={(e) => setDestinationName(e.target.value)}
+                    placeholder="Kitchen, Bar, Expo, Window…"
+                  />
+                  <datalist id="order-destinations">
+                    {ORDER_DESTINATION_PRESETS.map((n) => (
+                      <option key={n} value={n} />
+                    ))}
+                  </datalist>
+                </label>
+                )}
               </div>
-              <fieldset className="space-y-1">
-                <legend className="text-xs text-muted-foreground">Routes</legend>
-                <div className="flex flex-wrap gap-3">
-                  {PRINT_ROUTES.map((r) => (
-                    <label key={r} className="flex items-center gap-2 text-sm">
-                      <input
-                        type="checkbox"
-                        className="h-4 w-4 rounded border-border"
-                        checked={printRoutes.includes(r)}
-                        onChange={(e) =>
-                          setPrintRoutes((prev) =>
-                            e.target.checked
-                              ? [...prev, r]
-                              : prev.filter((x) => x !== r),
-                          )
-                        }
-                      />
-                      {PRINT_ROUTE_LABEL[r]}
-                    </label>
-                  ))}
-                </div>
-              </fieldset>
+              {isReceiptPrinterType(type) && (
+                <label className="flex items-start gap-2 text-sm">
+                  <input
+                    type="checkbox"
+                    className="mt-0.5 h-4 w-4 rounded border-border"
+                    checked={printPayQr}
+                    onChange={(e) => setPrintPayQr(e.target.checked)}
+                  />
+                  <span>
+                    Print pay QR
+                    <span className="mt-0.5 block text-[11px] text-muted-foreground">
+                      {qrPrintOnTicket(
+                        parseQrPolicy(
+                          usePosStore.getState().settings.qrPolicy,
+                          usePosStore.getState().settings.qrMode,
+                        ),
+                      )
+                        ? "Venue QR is on. Uncheck to skip the pay code on this printer."
+                        : "Venue QR print-on-check is off. Turn it on in Floor / QR to print a pay code."}
+                    </span>
+                  </span>
+                </label>
+              )}
               <fieldset className="space-y-1">
                 <legend className="text-xs text-muted-foreground">
-                  Station bindings
+                  {isReceiptPrinterType(type)
+                    ? "Which order / host stations use it"
+                    : "Which stations may send to it"}
                 </legend>
                 <p className="text-[11px] text-muted-foreground">
-                  Which order / host / ODS devices send to this printer. Empty = venue default for
-                  its routes. ODS does not need a receipt printer.
+                  {isReceiptPrinterType(type)
+                    ? "Empty = venue default. ODS does not need a receipt printer."
+                    : "Empty = every order and host station. Entity filter above routes food vs drink on a peer venue."}
                 </p>
                 <div className="flex flex-col gap-1">
                   {devices
                     .filter((d) => !isPrinterDevice(d) && d.status !== "inactive")
                     .map((d) => {
                       const role = deviceRoleFromFunction(d.assignment.function);
-                      if (type === "receipt_printer" && (role === "ods" || role === "kiosk")) {
+                      if (isReceiptPrinterType(type) && (role === "ods" || role === "kiosk")) {
                         return null;
                       }
                       return (
@@ -1051,7 +1084,7 @@ export function LocationDeviceRegistry({
           </p>
           <p className="mt-1 text-sm text-muted-foreground">
             {mode === "hardware"
-              ? "Add a card terminal or receipt/kitchen printer so the house can find it."
+              ? "Add a card terminal, receipt printer, or order printer so the house can find it."
               : "Add a named slot for a Samsung tablet or wall display, or pair this browser now."}
           </p>
           <div className="mt-4 flex flex-wrap justify-center gap-2">
@@ -1086,10 +1119,11 @@ export function LocationDeviceRegistry({
                   )}
                 </p>
                 <p className="text-xs text-muted-foreground">
-                  {DEVICE_TYPE_LABEL[d.type]} · {entityName(d.assignment.operatorId)} ·{" "}
                   {isPrinterDevice(d) && d.print
-                    ? `${(d.print.routes ?? []).map((r) => PRINT_ROUTE_LABEL[r]).join(" / ") || PRINT_STATION_LABEL[d.print.station]} · ${d.print.modelPreset ? PRINTER_MODEL_LABEL[d.print.modelPreset] : ""} · ${d.print.link ? PRINTER_LINK_LABEL[d.print.link] : ""} ${d.print.ip || d.print.target || "(pending IP)"}`
-                    : `${DEVICE_FUNCTION_LABEL[d.assignment.function]} · ${DEVICE_ROLE_LABEL[deviceRoleFromFunction(d.assignment.function)]}`}
+                    ? `${DEVICE_TYPE_LABEL[printerTypeFromStation(d.type, d.print.station)]}${
+                        d.print.destinationName ? ` · ${d.print.destinationName}` : ""
+                      } · ${entityName(d.assignment.operatorId)} · ${d.print.modelPreset ? PRINTER_MODEL_LABEL[d.print.modelPreset] : ""} · ${d.print.link ? PRINTER_LINK_LABEL[d.print.link] : ""} ${d.print.ip || d.print.target || "(pending IP)"}`
+                    : `${DEVICE_TYPE_LABEL[d.type]} · ${entityName(d.assignment.operatorId)} · ${DEVICE_FUNCTION_LABEL[d.assignment.function]} · ${DEVICE_ROLE_LABEL[deviceRoleFromFunction(d.assignment.function)]}`}
                 </p>
                 {mode === "stations" && !isPrinterDevice(d) && d.claimCode && d.status !== "online" ? (
                   <DevicePairCode

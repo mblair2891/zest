@@ -13,12 +13,14 @@ import {
 import {
   DEVICE_FUNCTIONS,
   DEVICE_TYPES,
+  canonicalizePrinterDevice,
   isPairedActivatedStation,
   isPrinterType,
   makeClaimCode,
   parseLocationDevice,
   parseLocationDevices,
   parsePrinterConfig,
+  printerTypeFromStation,
   type DeviceFunction,
   type DeviceRoleChange,
   type LocationDevice,
@@ -198,7 +200,11 @@ export const saveLocationDeviceFn = createServerFn({ method: "POST" })
       receiptPrinterId?: string | null;
     };
   }) => {
-    const type = DEVICE_TYPES.includes(d.device?.type) ? d.device.type : "other";
+    const storedType = DEVICE_TYPES.includes(d.device?.type) ? d.device.type : "other";
+    const print = isPrinterType(storedType) ? parsePrinterConfig(d.device?.print) : undefined;
+    const type = isPrinterType(storedType)
+      ? printerTypeFromStation(storedType, print?.station)
+      : storedType;
     const fn = DEVICE_FUNCTIONS.includes(d.device?.assignment?.function)
       ? d.device.assignment.function
       : "floor_pos";
@@ -214,7 +220,7 @@ export const saveLocationDeviceFn = createServerFn({ method: "POST" })
           operatorId: String(d.device?.assignment?.operatorId ?? "host").trim().slice(0, 80) || "host",
           function: fn,
         },
-        print: isPrinterType(type) ? parsePrinterConfig(d.device?.print) : undefined,
+        print,
         receiptPrinterId:
           isPrinterType(type)
             ? null
@@ -237,7 +243,7 @@ export const saveLocationDeviceFn = createServerFn({ method: "POST" })
     const printer = isPrinterType(data.device.type);
     const minted = printer || existing?.claimCode ? null : mintClaim();
     const hasIp = Boolean(data.device.print?.target || data.device.print?.ip);
-    const nextDevice = {
+    const nextDevice = canonicalizePrinterDevice({
       id,
       locationId: data.locationId,
       label: data.device.label,
@@ -268,7 +274,7 @@ export const saveLocationDeviceFn = createServerFn({ method: "POST" })
           : (data.device.receiptPrinterId ?? existing?.receiptPrinterId ?? null),
       applyRoleNow: existing?.applyRoleNow,
       roleRevision: existing?.roleRevision,
-    };
+    });
     const devices = existing
       ? prev.map((x) => (x.id === id ? nextDevice : x))
       : [nextDevice, ...prev];

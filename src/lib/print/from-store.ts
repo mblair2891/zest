@@ -119,8 +119,11 @@ export async function printFromPos(
         totalCents: sh.totalCents,
       }));
       const policy = parseQrPolicy(s.settings.qrPolicy, s.settings.qrMode);
+      const receiptPrn = resolveReceiptPrinter(devices, currentStationDeviceId());
       const ticketQr =
-        qrPrintOnTicket(policy) && locationId
+        qrPrintOnTicket(policy) &&
+        receiptPrn?.print?.printPayQr !== false &&
+        locationId
           ? ticketGuestUrl(order.id, locationId, policy.ticketQrTtlSec)
           : null;
       const guestJob: PrintJob = {

@@ -211,7 +211,7 @@ export const DEVICE_TOPICS: GuideTopic[] = [
     chapterId: "devices",
     title: "Printers & ODS devices",
     summary:
-      "Ethernet on the house AP LAN. Thermal receipts (Epson TM-T20). Impact kitchen (Epson TM-U220). Drawer kick on the receipt printer.",
+      "Two printer types: Receipt (guest check, pay, gift, drawer kick) and Order (fire tickets to a line). Ethernet on the house AP LAN.",
     roles: ["owner_manager", "kitchen_bar", "platform_admin"],
     keywords: [
       "printer",
@@ -235,25 +235,25 @@ export const DEVICE_TOPICS: GuideTopic[] = [
         "Tickets and chits live on the staff network. Guest Wi‑Fi or the printer’s own Wi‑Fi hotspot will look “down” while the floor is fine. Ethernet to the house access-point LAN is the production path.",
       ),
       p(
-        "Devices → Add device. Type includes Receipt printer, Kitchen printer, Bar printer, and Label printer — same list as tablets. Form fields, not JSON: name, Wi-Fi or Ethernet, static IP (required for live print; pending IP is allowed on a slot), port (default 9100), Epson TM series or Generic ESC/POS, cash drawer kick none or attached, routes, entity filter, and which stations send to it.",
+        "Devices → Add device. Type is Receipt printer or Order printer — same list as tablets. Kitchen, bar, and label are destinations on an order printer, not extra types. Form fields, not JSON: name, Wi-Fi or Ethernet, static IP (required for live print; pending IP is allowed on a slot), port (default 9100), Epson TM series or Generic ESC/POS.",
       ),
       steps(
-        "Devices → Add device. Pick Receipt printer, Kitchen printer, Bar printer, or Label printer.",
-        "Name it. Connection: Ethernet (production) or Wi-Fi. Static IP + port 9100. Make/model: Epson TM-T20 / T88 / m30 (thermal) or TM-U220 (impact kitchen) or Generic ESC/POS.",
-        "Cash drawer kick: none, or attached to this printer (receipt printer). Kitchen and bar printers do not kick the till.",
-        "Routes: receipts, kitchen tickets, bar tickets, labels. Entity filter: all entities at the venue, or one selling entity on a peer venue.",
-        "Station bindings: which order / host / ODS devices send to it. Host stand and order tablets use the bound receipt printer. ODS does not need a receipt printer.",
+        "Devices → Add device. Pick Receipt printer or Order printer.",
+        "Name it. Connection: Ethernet (production) or Wi-Fi. Static IP + port 9100. Make/model: Epson TM-T20 / T88 / m30 (thermal) or TM-U220 (impact line tickets) or Generic ESC/POS.",
+        "Receipt printer: cash drawer kick yes/no; which order/host stations use it (empty = venue default); print pay QR when the venue QR setting is on. ODS does not need a receipt printer.",
+        "Order printer: destination name (Kitchen, Bar, Expo, Window, Label…); entity or all so a peer venue routes food vs drink; which stations may send to it (empty = every order/host station).",
         "Save. The printer lists next to tablets. Status: pending (no IP), idle, last-print, or unreachable. Test print. Deactivate / Delete work the same as tablets.",
       ),
       ul(
         "Production: Ethernet to the staff AP. Do not join the printer to guest Wi‑Fi or run it as its own hotspot.",
-        "Receipts: Epson TM-T20 thermal. Kitchen: Epson TM-U220 impact. TM-T88 / TM-m30 also work as thermal.",
-        "Drawer kick: only when Cash drawer kick = attached (usually the receipt printer).",
-        "Quote / onboarding and Summit Hall seed a receipt slot plus kitchen and bar ticket printers (IP can stay pending).",
+        "Receipts: Epson TM-T20 thermal. Order tickets: Epson TM-U220 impact. TM-T88 / TM-m30 also work as thermal.",
+        "Drawer kick: receipt printer only.",
+        "Existing kitchen / bar / label rows migrate to Order printer (label → destination Label).",
+        "Quote / onboarding and Summit Hall seed a receipt slot plus kitchen and bar order printers (IP can stay pending).",
         "Bring-your-own Android tablets run POS/ODS via Summex Station. Printers and drawers stay BYO.",
       ),
       warn(
-        "There is no separate “ODS appliance OS.” Hardware is not a locked role. Do not take live cards on a SYOH tablet keypad. Do not put kitchen printers on printer Wi‑Fi.",
+        "There is no Kitchen printer, Bar printer, or Label printer type. Those are destinations on an Order printer. Do not put order printers on the printer’s own Wi‑Fi.",
       ),
       related("wifi-offline", "kds", "device-roles", "cash-handling", "station-switcher"),
     ],
@@ -271,7 +271,7 @@ export const DEVICE_TOPICS: GuideTopic[] = [
         "Hardware is not branded to a stall. The host location owns the registry. Any Android tablet running Summex Station can run Operator A POS this week and Operator B ODS next week — This station switches the screen without a new login.",
       ),
       ul(
-        "Type: tablet POS, order display, kiosk, printer, host stand, other.",
+        "Type: tablet POS, order display, kiosk, host stand, receipt printer, or order printer.",
         "Suggested assignment: operator (host or a guest entity) + function (floor POS, bar POS, kitchen ODS, bar ODS, expo, kiosk, host stand, cashier).",
         "Paired Devices row: Role dropdown reassigns that tablet (Order / Host / ODS). Broken ODS → reassign a server tablet from Devices. Same pair; next PIN. Printers and drawer kick stay on the station type or named printer.",
         "Deactivate: the named slot stays in the list. Pair token is revoked immediately. An online tablet drops PIN and shows the pair-code field within a few seconds. PIN on that glass: “This station was deactivated — enter a new code,” not Invalid PIN. Activate again mints a new code (same as Replace). Next app open does not restore the PIN pad.",

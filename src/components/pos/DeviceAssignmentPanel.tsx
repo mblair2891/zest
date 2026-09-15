@@ -8,7 +8,8 @@ import {
   DEVICE_FUNCTION_LABEL,
   DEVICE_FUNCTIONS,
   DEVICE_TYPE_LABEL,
-  DEVICE_TYPES,
+  PRINTER_UI_TYPES,
+  STATION_DEVICE_TYPES,
   type DeviceFunction,
   type LocationDeviceType,
 } from "@/lib/pos/location-devices";
@@ -149,7 +150,9 @@ export function DeviceAssignmentPanel({ write }: { write: boolean }) {
             value={type}
             onChange={(e) => setType(e.target.value as LocationDeviceType)}
           >
-            {DEVICE_TYPES.map((t) => (
+            {[...STATION_DEVICE_TYPES, ...PRINTER_UI_TYPES]
+              .filter((t) => t !== "other")
+              .map((t) => (
               <option key={t} value={t}>
                 {DEVICE_TYPE_LABEL[t]}
               </option>

@@ -6,6 +6,19 @@ import type { GuideUpdate } from "@/lib/guide/types";
  */
 export const WHATS_NEW_ENTRIES: GuideUpdate[] = [
   {
+    id: "upd_2026_10_99_printer_kinds",
+    date: "2026-09-15",
+    title: "Printers are receipt or order only",
+    summary:
+      "Add device → Type is Receipt printer or Order printer. Kitchen, bar, and label are destinations on an order printer — not extra types.",
+    body: "Receipt printer: guest checks, pay, gift, optional drawer kick, which order/host stations use it, pay QR when the venue QR setting is on. Order printer: destination name (Kitchen, Bar, Expo, Window, Label), entity or all for peer food vs drink, which stations may send. Existing kitchen/bar/label rows migrate to order printer.",
+    roles: ["owner_manager", "host_operator", "platform_admin", "kitchen_bar"],
+    surfaces: ["settings"],
+    audience: "all",
+    topicId: "printers-kds",
+    tags: ["devices", "printers"],
+  },
+  {
     id: "upd_2026_10_98_device_printers",
     date: "2026-09-15",
     title: "Printers on the Devices tab",

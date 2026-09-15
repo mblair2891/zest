@@ -452,7 +452,7 @@ export const SUMMIT_HALL_DEVICES = [
   {
     id: "dev_summit_prn_kitchen",
     label: "Kitchen printer",
-    type: "kitchen_printer" as const,
+    type: "order_printer" as const,
     fn: "kitchen_kds" as const,
     operatorId: SUMMIT_HEARTH_OP_ID,
     kind: "kitchen" as const,
@@ -460,7 +460,7 @@ export const SUMMIT_HALL_DEVICES = [
   {
     id: "dev_summit_prn_bar",
     label: "Bar printer",
-    type: "bar_printer" as const,
+    type: "order_printer" as const,
     fn: "bar_kds" as const,
     operatorId: SUMMIT_COPPER_OP_ID,
     kind: "bar" as const,

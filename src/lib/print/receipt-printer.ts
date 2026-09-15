@@ -10,10 +10,10 @@ export function resolveReceiptPrinter(
   const all = (devices ?? []).filter((d) => isPrinterDevice(d) && d.status !== "inactive");
   const receipts = all.filter(
     (d) =>
-      d.print?.routes?.includes("receipts") ||
-      d.print?.station === "receipt" ||
       d.type === "receipt_printer" ||
-      d.type === "printer",
+      d.type === "printer" ||
+      d.print?.routes?.includes("receipts") ||
+      d.print?.station === "receipt",
   );
   const mappedId = stationDeviceId
     ? (devices ?? []).find((d) => d.id === stationDeviceId)?.receiptPrinterId
@@ -22,7 +22,13 @@ export function resolveReceiptPrinter(
     const mapped = all.find((d) => d.id === mappedId);
     if (mapped) return mapped;
   }
-  return receipts[0] ?? all[0];
+  if (stationDeviceId) {
+    const bound = receipts.find((d) =>
+      (d.print?.boundStationIds ?? []).includes(stationDeviceId),
+    );
+    if (bound) return bound;
+  }
+  return receipts[0];
 }
 
 export function currentStationDeviceId(): string | null {

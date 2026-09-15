@@ -3,7 +3,7 @@
 **Powered by Quantum Reach**
 
 White paper · for owners and operators  
-**Revision · 15 Sep 2026** — Written for prospective subscribers. Aligns with Operators Guide v2026.10.98. The house toggles which tenders it accepts (cash, card, gift, check, house account, comp, other). Disabled methods are hidden on pay and closeout. Cash is the entered till price; card is marked up and rounded up. Station UI is device role ∩ staff PIN. After PIN the tablet shows a short role menu — not a dashboard. A kitchen PIN does not open order entry. Peer venues have no host merchant; the host stand is still a device role. Staff stations are Android tablets. Pair with a typed Devices code; QR is optional. Devices Delete removes a named slot; Deactivate keeps it. Guests look up gift balance at summex.app/gift. Spent plastic can be reused.
+**Revision · 15 Sep 2026** — Written for prospective subscribers. Aligns with Operators Guide v2026.10.99. Printers are receipt or order only. The house toggles which tenders it accepts (cash, card, gift, check, house account, comp, other). Disabled methods are hidden on pay and closeout. Cash is the entered till price; card is marked up and rounded up. Station UI is device role ∩ staff PIN. After PIN the tablet shows a short role menu — not a dashboard. A kitchen PIN does not open order entry. Peer venues have no host merchant; the host stand is still a device role. Staff stations are Android tablets. Pair with a typed Devices code; QR is optional. Devices Delete removes a named slot; Deactivate keeps it. Guests look up gift balance at summex.app/gift. Spent plastic can be reused.
 
 summex.app  
 Guest cards: **Quantum Payments** only
@@ -124,7 +124,7 @@ When the house is ready for more than service:
 
 The paired role is the envelope. Staff PIN is which of those actions this person may use. Station UI is that intersection: after PIN, a short menu of named jobs (2–6 large taps), one job per screen. A kitchen PIN on an order tablet is Clock and Done — use the kitchen display. The host stand menu is Floor / seat, Waitlist, To-go, Clock. A shared venue has no host merchant; it still has a host stand. A broken kitchen display is a role change on that tablet from Devices — same pair, staff PIN in again. Do not reinstall. Deactivate keeps a named slot (cannot PIN). Unpair or Replace keep the name when you swap hardware. Delete removes the slot — the tablet must scan a new code.
 
-Printers live on the house network (Ethernet), not the printer’s own Wi‑Fi. Receipts thermal; kitchen impact; drawer kick on the receipt printer.
+Printers are two types on Devices: **Receipt printer** (guest check, pay, gift, drawer kick, pay QR) and **Order printer** (fire tickets to a named line — Kitchen, Bar, Expo, Window, Label — plus entity or all, and which stations may send). Ethernet on the house AP LAN, not the printer’s own Wi‑Fi. Receipts thermal; kitchen impact.
 
 ---
 

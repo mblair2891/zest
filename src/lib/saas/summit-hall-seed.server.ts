@@ -10,7 +10,7 @@ import { HOST_SCOPE } from "@/lib/access/entity-grants";
 import { parseLaborRules } from "@/lib/labor/rules";
 import { defaultPackagesForMode } from "@/lib/pos/packages";
 import { hashPin } from "@/lib/pos/pin";
-import { isPrinterType, makeClaimCode, pendingPrinterDevice } from "@/lib/pos/location-devices";
+import { canonicalizePrinterDevice, isPrinterType, makeClaimCode, pendingPrinterDevice } from "@/lib/pos/location-devices";
 import { nextClaimExpiry } from "@/lib/pos/station-pair";
 import type { LocationDevice } from "@/lib/pos/location-devices";
 import type { LocationSetup } from "./types";
@@ -53,7 +53,7 @@ function mergeSummitDevices(existing?: LocationSetup["locationDevices"]): Locati
       if (old?.print) slot.print = old.print;
       if (old?.status === "inactive") slot.status = "inactive";
       else if (old?.print?.ip || old?.print?.target) slot.status = old.status;
-      return slot;
+      return canonicalizePrinterDevice(slot, old?.type ?? d.type);
     }
     const paired = old && (old.status === "online" || old.status === "offline" || old.serial);
     return {
