@@ -1,4 +1,4 @@
-import type { LocationDevice } from "@/lib/pos/location-devices";
+import { isPrinterDevice, type LocationDevice } from "@/lib/pos/location-devices";
 import { readPairedDeviceId } from "@/lib/pos/location-devices";
 import { usePosStore } from "@/lib/pos/store";
 
@@ -7,8 +7,14 @@ export function resolveReceiptPrinter(
   devices: LocationDevice[] | undefined,
   stationDeviceId: string | null | undefined,
 ): LocationDevice | undefined {
-  const all = (devices ?? []).filter((d) => d.type === "printer" && d.status !== "inactive");
-  const receipts = all.filter((d) => d.print?.station === "receipt");
+  const all = (devices ?? []).filter((d) => isPrinterDevice(d) && d.status !== "inactive");
+  const receipts = all.filter(
+    (d) =>
+      d.print?.routes?.includes("receipts") ||
+      d.print?.station === "receipt" ||
+      d.type === "receipt_printer" ||
+      d.type === "printer",
+  );
   const mappedId = stationDeviceId
     ? (devices ?? []).find((d) => d.id === stationDeviceId)?.receiptPrinterId
     : null;

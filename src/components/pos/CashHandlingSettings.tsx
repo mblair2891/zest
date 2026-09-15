@@ -81,7 +81,10 @@ export function CashHandlingSettings({ write }: { write: boolean }) {
   const vendors = usePosStore((s) => s.vendors);
   const devices = usePosStore((s) => s.locationDevices ?? []);
   const cfg = parseCashHandling(settings.cashHandling);
-  const printers = devices.filter((d) => d.type === "printer" && d.status !== "inactive");
+  const printers = devices.filter(
+    (d) =>
+      (d.type === "printer" || d.type.endsWith("_printer")) && d.status !== "inactive",
+  );
   const stations = devices.filter(
     (d) => d.type === "tablet_pos" || d.type === "host_stand" || d.type === "other",
   );

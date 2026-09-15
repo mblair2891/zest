@@ -201,7 +201,7 @@ export function collectOpsJobFacts(
     }
   }
 
-  const printers = (pos.locationDevices ?? []).filter((d) => d.type === "printer");
+  const printers = (pos.locationDevices ?? []).filter((d) => d.type === "printer" || d.type.endsWith("_printer"));
   const lanPrinters = printers.filter((d) => d.print?.connection === "lan");
   const unreachable = lanPrinters.filter((d) => now - (d.lastSeenAt || 0) > PRINTER_STALE_MS);
   const lanPeers = net.peers ?? [];

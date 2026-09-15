@@ -441,6 +441,30 @@ export const SUMMIT_HALL_DEVICES = [
   { id: "dev_summit_order", label: "Order tablet", type: "tablet_pos" as const, fn: "floor_pos" as const, operatorId: "host" },
   { id: "dev_summit_ods_kitchen", label: "Kitchen ODS", type: "kds" as const, fn: "kitchen_kds" as const, operatorId: SUMMIT_HEARTH_OP_ID },
   { id: "dev_summit_ods_bar", label: "Bar ODS", type: "kds" as const, fn: "bar_kds" as const, operatorId: SUMMIT_COPPER_OP_ID },
+  {
+    id: "dev_summit_prn_receipt",
+    label: "Receipt printer",
+    type: "receipt_printer" as const,
+    fn: "cashier" as const,
+    operatorId: "host",
+    kind: "receipt" as const,
+  },
+  {
+    id: "dev_summit_prn_kitchen",
+    label: "Kitchen printer",
+    type: "kitchen_printer" as const,
+    fn: "kitchen_kds" as const,
+    operatorId: SUMMIT_HEARTH_OP_ID,
+    kind: "kitchen" as const,
+  },
+  {
+    id: "dev_summit_prn_bar",
+    label: "Bar printer",
+    type: "bar_printer" as const,
+    fn: "bar_kds" as const,
+    operatorId: SUMMIT_COPPER_OP_ID,
+    kind: "bar" as const,
+  },
 ];
 
 export function isSummitHallLocationId(id: string | null | undefined): boolean {

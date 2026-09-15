@@ -6,7 +6,7 @@ import { uid } from "@/lib/utils";
 import { dispatchPrintJob } from "./dispatch";
 import { currentStationDeviceId, resolveReceiptPrinter } from "./receipt-printer";
 import type { PrintJob, PrintLine } from "./types";
-import type { PrintStation } from "@/lib/pos/location-devices";
+import { isPrinterDevice, type PrintStation } from "@/lib/pos/location-devices";
 import { splitTenderByEntity } from "@/lib/payments/entity-split";
 import { parseQrPolicy, qrPrintOnTicket } from "@/lib/pos/qr-policy";
 import { ticketGuestUrl } from "@/lib/pos/qr-table";
@@ -167,7 +167,7 @@ export async function printFromPos(
 
   for (const job of jobs) {
     const printers = (devices ?? []).filter(
-      (d) => d.type === "printer" && d.status !== "inactive" && d.print?.station === job.station,
+      (d) => isPrinterDevice(d) && d.status !== "inactive" && d.print?.station === job.station,
     );
     if (job.kind === "receipt" || printers.length > 0) {
       await dispatchPrintJob(job, devices, {

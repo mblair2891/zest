@@ -30,8 +30,9 @@ import {
 } from "./tenancy.server";
 import { isReservedVenueSlug, normalizeVenueSlug } from "@/lib/platform/venue-host";
 import type { PackageId } from "@/lib/pos/packages";
-import type { PlanSlug } from "./types";
+import type { LocationSetup, PlanSlug } from "./types";
 import { DEFAULT_PAYMENT_METHODS } from "@/lib/pos/payment-methods";
+import { defaultOnboardingPrinters } from "@/lib/pos/location-devices";
 
 const UNLOCKED: ProspectStatusLike[] = ["contracted", "onboarding", "training", "live"];
 type ProspectStatusLike = string;
@@ -301,12 +302,15 @@ async function applyLocations(userId: string, prospectId: string, payload: Onboa
   for (const loc of payload.locations) {
     if (!loc.name.trim()) throw new Error("Each location needs a name");
     const venueType = parseVenueType(loc.venueType);
-    const setup = await locationSetup(payload, loc);
     if (!loc.serverId) {
       const hit = existingLocs.find(
         (e) => e.name.toLowerCase() === loc.name.trim().toLowerCase(),
       );
       if (hit) loc.serverId = hit.id;
+    }
+    const setup = (await locationSetup(payload, loc)) as LocationSetup;
+    if (!loc.serverId) {
+      setup.locationDevices = defaultOnboardingPrinters(loc.name.trim() || "loc");
     }
     const slugSource =
       loc.slug?.trim() || loc.hostBrandName.trim() || loc.name.trim();

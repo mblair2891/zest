@@ -6,6 +6,19 @@ import type { GuideUpdate } from "@/lib/guide/types";
  */
 export const WHATS_NEW_ENTRIES: GuideUpdate[] = [
   {
+    id: "upd_2026_10_98_device_printers",
+    date: "2026-09-15",
+    title: "Printers on the Devices tab",
+    summary:
+      "Add receipt, kitchen, bar, and label printers next to tablets. Form fields: IP, routes, entity, station bindings. Test print. Not JSON.",
+    body: "Devices → Add device includes printer types. Wi-Fi or Ethernet, static IP (port 9100), Epson TM series or Generic ESC/POS, drawer kick none or attached. Host and order tablets use the bound receipt printer; ODS does not need one. Status: pending / idle / last-print / unreachable. Delete and deactivate match tablets. Summit Hall and new quotes seed receipt + kitchen + bar slots (IP can stay pending).",
+    roles: ["owner_manager", "host_operator", "platform_admin"],
+    surfaces: ["settings"],
+    audience: "all",
+    topicId: "printers-kds",
+    tags: ["devices", "printers", "receipt", "kitchen", "drawer"],
+  },
+  {
     id: "upd_2026_10_97_operating_as_overview",
     date: "2026-09-15",
     title: "Demo Operating as refreshes the tab; Overview Labor and Costs",

@@ -6,7 +6,7 @@ import { getSql } from "@/lib/db";
 import { parseLaborRules } from "@/lib/labor/rules";
 import { defaultPackagesForMode } from "@/lib/pos/packages";
 import { hashPin } from "@/lib/pos/pin";
-import { makeClaimCode } from "@/lib/pos/location-devices";
+import { makeClaimCode, pendingPrinterDevice } from "@/lib/pos/location-devices";
 import { nextClaimExpiry } from "@/lib/pos/station-pair";
 import type { LocationDevice } from "@/lib/pos/location-devices";
 import type { LocationMode } from "@/lib/pos/saas-types";
@@ -91,6 +91,21 @@ function laborOwned() {
 }
 
 function asDevice(locId: string, d: SeedDevice, prev?: LocationDevice): LocationDevice {
+  if (d.type === "receipt_printer" || d.type === "kitchen_printer" || d.type === "bar_printer" || d.type === "label_printer" || d.type === "printer") {
+    const kind =
+      d.type === "kitchen_printer" ? "kitchen" : d.type === "bar_printer" ? "bar" : d.type === "label_printer" ? "label" : "receipt";
+    const slot = pendingPrinterDevice({
+      id: d.id,
+      locationId: locId,
+      label: d.label,
+      kind,
+      operatorId: d.operatorId,
+    });
+    if (prev?.print) slot.print = prev.print;
+    if (prev?.status === "inactive") slot.status = "inactive";
+    else if (prev?.print?.ip || prev?.print?.target) slot.status = prev.status;
+    return slot;
+  }
   const paired = prev && (prev.status === "online" || prev.status === "offline" || prev.serial);
   return {
     id: d.id,

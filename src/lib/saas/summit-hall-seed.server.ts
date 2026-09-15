@@ -10,7 +10,7 @@ import { HOST_SCOPE } from "@/lib/access/entity-grants";
 import { parseLaborRules } from "@/lib/labor/rules";
 import { defaultPackagesForMode } from "@/lib/pos/packages";
 import { hashPin } from "@/lib/pos/pin";
-import { makeClaimCode } from "@/lib/pos/location-devices";
+import { isPrinterType, makeClaimCode, pendingPrinterDevice } from "@/lib/pos/location-devices";
 import { nextClaimExpiry } from "@/lib/pos/station-pair";
 import type { LocationDevice } from "@/lib/pos/location-devices";
 import type { LocationSetup } from "./types";
@@ -41,6 +41,20 @@ function mergeSummitDevices(existing?: LocationSetup["locationDevices"]): Locati
   const byId = new Map(prev.map((d) => [d.id, d]));
   return SUMMIT_HALL_DEVICES.map((d) => {
     const old = byId.get(d.id);
+    if (isPrinterType(d.type) || "kind" in d) {
+      const kind = "kind" in d && d.kind ? d.kind : "receipt";
+      const slot = pendingPrinterDevice({
+        id: d.id,
+        locationId: SUMMIT_HALL_LOCATION_ID,
+        label: d.label,
+        kind,
+        operatorId: d.operatorId,
+      });
+      if (old?.print) slot.print = old.print;
+      if (old?.status === "inactive") slot.status = "inactive";
+      else if (old?.print?.ip || old?.print?.target) slot.status = old.status;
+      return slot;
+    }
     const paired = old && (old.status === "online" || old.status === "offline" || old.serial);
     return {
       id: d.id,

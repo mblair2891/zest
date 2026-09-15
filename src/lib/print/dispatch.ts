@@ -1,5 +1,11 @@
 import { HOST_SCOPE } from "@/lib/access/entity-grants";
-import type { LocationDevice, PrintStation } from "@/lib/pos/location-devices";
+import {
+  isPrinterDevice,
+  printerHasDrawerKick,
+  routeForPrintStation,
+  type LocationDevice,
+  type PrintStation,
+} from "@/lib/pos/location-devices";
 import { uid } from "@/lib/utils";
 import { escposBase64, buildDrawerKickBytes } from "./escpos";
 import { ticketHtml } from "./ticket-html";
@@ -24,18 +30,28 @@ export function printersForStation(
   devices: LocationDevice[] | undefined,
   station: PrintStation,
   operatorId?: string | null,
+  stationDeviceId?: string | null,
 ): LocationDevice[] {
-  const list = (devices ?? []).filter(
-    (d) =>
-      d.type === "printer" &&
-      d.status !== "inactive" &&
-      d.print?.station === station,
-  );
-  if (!operatorId || operatorId === HOST_SCOPE) return list;
-  const scoped = list.filter(
+  const route = routeForPrintStation(station);
+  const list = (devices ?? []).filter((d) => {
+    if (!isPrinterDevice(d) || d.status === "inactive") return false;
+    const routes = d.print?.routes?.length ? d.print.routes : null;
+    if (routes) return routes.includes(route);
+    return d.print?.station === station;
+  });
+  const bound = stationDeviceId
+    ? list.filter(
+        (d) =>
+          !d.print?.boundStationIds?.length ||
+          d.print.boundStationIds.includes(stationDeviceId),
+      )
+    : list;
+  const pool = bound.length ? bound : list;
+  if (!operatorId || operatorId === HOST_SCOPE) return pool;
+  const scoped = pool.filter(
     (d) => d.assignment.operatorId === HOST_SCOPE || d.assignment.operatorId === operatorId,
   );
-  return scoped.length ? scoped : list.filter((d) => d.assignment.operatorId === HOST_SCOPE);
+  return scoped.length ? scoped : pool.filter((d) => d.assignment.operatorId === HOST_SCOPE);
 }
 
 function printHtml(html: string): void {
@@ -102,7 +118,7 @@ export async function dispatchTurnInSlip(
   opts?: { printerId?: string | null; copies?: 1 | 2 },
 ): Promise<{ ok: boolean; printed: number; error?: string }> {
   const copies = opts?.copies === 2 ? 2 : 1;
-  const all = (devices ?? []).filter((d) => d.type === "printer" && d.status !== "inactive");
+  const all = (devices ?? []).filter((d) => isPrinterDevice(d) && d.status !== "inactive");
   const named = opts?.printerId ? all.find((d) => d.id === opts.printerId) : undefined;
   const receipts = printersForStation(devices, "receipt", job.operatorId);
   const targets = named ? [named] : receipts.length ? receipts : all.filter((d) => d.print?.station === "receipt");
@@ -151,7 +167,7 @@ export async function dispatchPrintJob(
 ): Promise<{ printed: number; browser: boolean; agent: number; error?: string }> {
   const named = opts?.printerId
     ? (devices ?? []).find(
-        (d) => d.id === opts.printerId && d.type === "printer" && d.status !== "inactive",
+        (d) => d.id === opts.printerId && isPrinterDevice(d) && d.status !== "inactive",
       )
     : undefined;
   const printers = named
@@ -225,11 +241,11 @@ export async function kickCashDrawer(opts: {
   devices: LocationDevice[] | undefined;
   printerId: string | null | undefined;
 }): Promise<boolean> {
-  const printers = (opts.devices ?? []).filter((d) => d.type === "printer" && d.status !== "inactive");
+  const printers = (opts.devices ?? []).filter((d) => isPrinterDevice(d) && d.status !== "inactive");
   const target = opts.printerId
     ? printers.find((d) => d.id === opts.printerId)
-    : printers.find((d) => d.print?.station === "receipt");
-  if (!target?.print || target.print.connection === "browser" || !target.print.target) {
+    : printers.find((d) => printerHasDrawerKick(d));
+  if (!target?.print || !printerHasDrawerKick(target) || target.print.connection === "browser" || !target.print.target) {
     return false;
   }
   const job: PrintJob = {

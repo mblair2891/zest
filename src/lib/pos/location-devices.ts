@@ -6,6 +6,10 @@ export type LocationDeviceType =
   | "kds"
   | "kiosk"
   | "printer"
+  | "receipt_printer"
+  | "kitchen_printer"
+  | "bar_printer"
+  | "label_printer"
   | "host_stand"
   | "terminal"
   | "other";
@@ -31,7 +35,17 @@ export type LocationDeviceStatus = "online" | "offline" | "pending" | "inactive"
 
 export type PrinterFamily = "star" | "epson" | "generic";
 export type PrinterConnection = "lan" | "bluetooth" | "browser";
-export type PrintStation = "kitchen" | "bar" | "receipt" | "expo";
+export type PrintStation = "kitchen" | "bar" | "receipt" | "expo" | "label";
+export type PrinterLink = "wifi" | "ethernet";
+export type PrinterModelPreset =
+  | "epson_tm_t20"
+  | "epson_tm_t88"
+  | "epson_tm_m30"
+  | "epson_tm_u220"
+  | "generic_escpos";
+export type PrinterDrawerKick = "none" | "attached";
+export type PrintRoute = "receipts" | "kitchen_tickets" | "bar_tickets" | "labels";
+export type PrinterReachability = "unreachable" | "idle" | "last_print";
 
 export type PrinterConfig = {
   family: PrinterFamily;
@@ -39,11 +53,34 @@ export type PrinterConfig = {
   /** LAN host:port (default :9100) or Bluetooth address. Empty for browser fallback. */
   target: string;
   station: PrintStation;
+  link?: PrinterLink;
+  ip?: string;
+  port?: number;
+  modelPreset?: PrinterModelPreset;
+  drawerKick?: PrinterDrawerKick;
+  routes?: PrintRoute[];
+  boundStationIds?: string[];
+  lastPrintAt?: number;
+  reachability?: PrinterReachability;
 };
 
 export const PRINTER_FAMILIES: PrinterFamily[] = ["star", "epson", "generic"];
 export const PRINTER_CONNECTIONS: PrinterConnection[] = ["lan", "bluetooth", "browser"];
-export const PRINT_STATIONS: PrintStation[] = ["kitchen", "bar", "receipt", "expo"];
+export const PRINT_STATIONS: PrintStation[] = ["kitchen", "bar", "receipt", "expo", "label"];
+export const PRINTER_LINKS: PrinterLink[] = ["ethernet", "wifi"];
+export const PRINTER_MODEL_PRESETS: PrinterModelPreset[] = [
+  "epson_tm_t20",
+  "epson_tm_t88",
+  "epson_tm_m30",
+  "epson_tm_u220",
+  "generic_escpos",
+];
+export const PRINT_ROUTES: PrintRoute[] = [
+  "receipts",
+  "kitchen_tickets",
+  "bar_tickets",
+  "labels",
+];
 
 export const PRINTER_FAMILY_LABEL: Record<PrinterFamily, string> = {
   star: "Star Micronics",
@@ -57,12 +94,49 @@ export const PRINTER_CONNECTION_LABEL: Record<PrinterConnection, string> = {
   browser: "This browser (window.print)",
 };
 
+export const PRINTER_LINK_LABEL: Record<PrinterLink, string> = {
+  ethernet: "Ethernet",
+  wifi: "Wi-Fi",
+};
+
+export const PRINTER_MODEL_LABEL: Record<PrinterModelPreset, string> = {
+  epson_tm_t20: "Epson TM-T20",
+  epson_tm_t88: "Epson TM-T88",
+  epson_tm_m30: "Epson TM-m30",
+  epson_tm_u220: "Epson TM-U220",
+  generic_escpos: "Generic ESC/POS",
+};
+
 export const PRINT_STATION_LABEL: Record<PrintStation, string> = {
   kitchen: "Kitchen tickets",
   bar: "Bar tickets",
   receipt: "Guest receipt",
   expo: "Expo / bump chit",
+  label: "Labels",
 };
+
+export const PRINT_ROUTE_LABEL: Record<PrintRoute, string> = {
+  receipts: "Receipts",
+  kitchen_tickets: "Kitchen tickets",
+  bar_tickets: "Bar tickets",
+  labels: "Labels",
+};
+
+export const PRINTER_DEVICE_TYPES: LocationDeviceType[] = [
+  "printer",
+  "receipt_printer",
+  "kitchen_printer",
+  "bar_printer",
+  "label_printer",
+];
+
+export function isPrinterType(type: string | null | undefined): boolean {
+  return PRINTER_DEVICE_TYPES.includes(type as LocationDeviceType);
+}
+
+export function isPrinterDevice(d: { type: string } | null | undefined): boolean {
+  return Boolean(d && isPrinterType(d.type));
+}
 
 export type DeviceRoleChange = {
   at: number;
@@ -98,6 +172,10 @@ export const DEVICE_TYPES: LocationDeviceType[] = [
   "kds",
   "kiosk",
   "printer",
+  "receipt_printer",
+  "kitchen_printer",
+  "bar_printer",
+  "label_printer",
   "host_stand",
   "terminal",
   "other",
@@ -111,7 +189,14 @@ export const STATION_DEVICE_TYPES: LocationDeviceType[] = [
   "other",
 ];
 
-export const HARDWARE_DEVICE_TYPES: LocationDeviceType[] = ["terminal", "printer"];
+export const HARDWARE_DEVICE_TYPES: LocationDeviceType[] = [
+  "terminal",
+  "printer",
+  "receipt_printer",
+  "kitchen_printer",
+  "bar_printer",
+  "label_printer",
+];
 
 export const DEVICE_FUNCTIONS: DeviceFunction[] = [
   "floor_pos",
@@ -140,11 +225,15 @@ export const STATION_DEVICE_FUNCTIONS: DeviceFunction[] = [
 ];
 
 export const DEVICE_TYPE_LABEL: Record<LocationDeviceType, string> = {
-  tablet_pos: "Tablet",
+  tablet_pos: "Order tablet",
   kds: "Order display",
   kiosk: "Kiosk",
   printer: "Printer",
-  host_stand: "Host stand",
+  receipt_printer: "Receipt printer",
+  kitchen_printer: "Kitchen printer",
+  bar_printer: "Bar printer",
+  label_printer: "Label printer",
+  host_stand: "Host tablet",
   terminal: "Terminal",
   other: "Other",
 };
@@ -178,12 +267,14 @@ export function parseLocationDevice(raw: unknown): LocationDevice | null {
   const label = String(o.label ?? o.name ?? "").trim();
   if (!id || !label) return null;
   const typeRaw = String(o.type ?? "other");
-  const type: LocationDeviceType =
+  let type: LocationDeviceType =
     typeRaw === "pos" || typeRaw === "handheld"
       ? "tablet_pos"
       : DEVICE_TYPES.includes(typeRaw as LocationDeviceType)
         ? (typeRaw as LocationDeviceType)
         : "other";
+  const print = isPrinterType(type) ? parsePrinterConfig(o.print ?? o) : undefined;
+  if (isPrinterType(type)) type = printerTypeFromStation(type, print?.station);
   const assignment =
     parseDeviceAssignment(o.assignment) ?? {
       operatorId: HOST_SCOPE,
@@ -204,11 +295,11 @@ export function parseLocationDevice(raw: unknown): LocationDevice | null {
     status,
     lastSeenAt: Number(o.lastSeenAt) || Date.now(),
     serial: o.serial ? String(o.serial) : undefined,
-    claimCode: o.claimCode ? String(o.claimCode) : undefined,
+    claimCode: isPrinterType(type) ? undefined : o.claimCode ? String(o.claimCode) : undefined,
     assignment,
-    print: type === "printer" ? parsePrinterConfig(o.print ?? o) : undefined,
+    print,
     receiptPrinterId:
-      type === "printer"
+      isPrinterType(type)
         ? undefined
         : o.receiptPrinterId
           ? String(o.receiptPrinterId).trim().slice(0, 80)
@@ -221,27 +312,202 @@ export function parseLocationDevice(raw: unknown): LocationDevice | null {
 }
 
 export function isPairedActivatedStation(d: LocationDevice): boolean {
-  if (d.type === "printer" || d.type === "terminal") return false;
+  if (isPrinterType(d.type) || d.type === "terminal") return false;
   return d.status === "online" || d.status === "offline";
+}
+
+export function printerTypeFromStation(
+  type: LocationDeviceType,
+  station?: PrintStation,
+): LocationDeviceType {
+  if (type === "receipt_printer" || type === "kitchen_printer" || type === "bar_printer" || type === "label_printer") {
+    return type;
+  }
+  if (station === "kitchen") return "kitchen_printer";
+  if (station === "bar") return "bar_printer";
+  if (station === "label") return "label_printer";
+  return "receipt_printer";
+}
+
+export function stationFromPrinterType(type: LocationDeviceType): PrintStation {
+  if (type === "kitchen_printer") return "kitchen";
+  if (type === "bar_printer") return "bar";
+  if (type === "label_printer") return "label";
+  return "receipt";
+}
+
+export function defaultRoutesForPrinterType(type: LocationDeviceType): PrintRoute[] {
+  if (type === "kitchen_printer") return ["kitchen_tickets"];
+  if (type === "bar_printer") return ["bar_tickets"];
+  if (type === "label_printer") return ["labels"];
+  return ["receipts"];
+}
+
+export function routeForPrintStation(station: PrintStation): PrintRoute {
+  if (station === "kitchen") return "kitchen_tickets";
+  if (station === "bar") return "bar_tickets";
+  if (station === "label" || station === "expo") return "labels";
+  return "receipts";
+}
+
+export function familyFromModelPreset(preset: PrinterModelPreset): PrinterFamily {
+  return preset === "generic_escpos" ? "generic" : "epson";
+}
+
+export function modelPresetFromFamily(family: PrinterFamily, station?: PrintStation): PrinterModelPreset {
+  if (family === "generic") return "generic_escpos";
+  if (station === "kitchen") return "epson_tm_u220";
+  return "epson_tm_t20";
+}
+
+export function printerHasDrawerKick(d: LocationDevice): boolean {
+  if (!isPrinterDevice(d) || !d.print) return false;
+  if (d.print.drawerKick === "attached") return true;
+  if (d.print.drawerKick === "none") return false;
+  return d.print.station === "receipt" || d.type === "receipt_printer" || d.type === "printer";
+}
+
+export function printerStatusLabel(
+  d: LocationDevice,
+): "pending" | "unreachable" | "idle" | "last-print" | LocationDeviceStatus {
+  if (!isPrinterDevice(d)) return d.status;
+  if (d.status === "inactive") return "inactive";
+  const ip = (d.print?.ip || d.print?.target || "").trim();
+  if (!ip) return "pending";
+  if (d.print?.reachability === "unreachable") return "unreachable";
+  if (d.print?.lastPrintAt) return "last-print";
+  return "idle";
 }
 
 export function parsePrinterConfig(raw: unknown): PrinterConfig | undefined {
   if (!raw || typeof raw !== "object") return undefined;
   const o = raw as Record<string, unknown>;
-  const familyRaw = String(o.family ?? o.printerFamily ?? "generic");
+  const presetRaw = String(o.modelPreset ?? "");
+  const modelPreset: PrinterModelPreset | undefined = PRINTER_MODEL_PRESETS.includes(
+    presetRaw as PrinterModelPreset,
+  )
+    ? (presetRaw as PrinterModelPreset)
+    : undefined;
+  const familyRaw = String(o.family ?? o.printerFamily ?? (modelPreset ? familyFromModelPreset(modelPreset) : "generic"));
   const family: PrinterFamily = PRINTER_FAMILIES.includes(familyRaw as PrinterFamily)
     ? (familyRaw as PrinterFamily)
     : "generic";
-  const connRaw = String(o.connection ?? o.printerConnection ?? "browser");
+  const linkRaw = String(o.link ?? "");
+  const link: PrinterLink | undefined = PRINTER_LINKS.includes(linkRaw as PrinterLink)
+    ? (linkRaw as PrinterLink)
+    : undefined;
+  const connRaw = String(o.connection ?? o.printerConnection ?? (link ? "lan" : "lan"));
   const connection: PrinterConnection = PRINTER_CONNECTIONS.includes(connRaw as PrinterConnection)
     ? (connRaw as PrinterConnection)
-    : "browser";
+    : "lan";
   const stRaw = String(o.station ?? o.printStation ?? "");
   const station: PrintStation = PRINT_STATIONS.includes(stRaw as PrintStation)
     ? (stRaw as PrintStation)
     : "receipt";
-  const target = String(o.target ?? o.printerTarget ?? o.ip ?? "").trim().slice(0, 120);
-  return { family, connection, station, target };
+  const ip = String(o.ip ?? "").trim().slice(0, 45);
+  const portNum = Number(o.port);
+  const port = portNum > 0 && portNum < 65536 ? Math.round(portNum) : 9100;
+  const targetRaw = String(o.target ?? o.printerTarget ?? "").trim().slice(0, 120);
+  const target =
+    targetRaw ||
+    (ip ? `${ip}:${port}` : "");
+  const ipFromTarget = !ip && target.includes(":") ? target.split(":")[0] : ip;
+  const routesRaw = Array.isArray(o.routes) ? o.routes : [];
+  const routes = routesRaw
+    .map((r) => String(r))
+    .filter((r): r is PrintRoute => PRINT_ROUTES.includes(r as PrintRoute));
+  const bound = Array.isArray(o.boundStationIds)
+    ? o.boundStationIds.map((x) => String(x).trim()).filter(Boolean).slice(0, 40)
+    : [];
+  const kickRaw = String(o.drawerKick ?? "");
+  const drawerKick: PrinterDrawerKick | undefined =
+    kickRaw === "attached" || kickRaw === "none" ? kickRaw : undefined;
+  const reachRaw = String(o.reachability ?? "");
+  const reachability: PrinterReachability | undefined =
+    reachRaw === "unreachable" || reachRaw === "idle" || reachRaw === "last_print"
+      ? reachRaw
+      : undefined;
+  return {
+    family,
+    connection,
+    station,
+    target,
+    link: link ?? (connection === "lan" ? "ethernet" : undefined),
+    ip: ipFromTarget || undefined,
+    port,
+    modelPreset: modelPreset ?? modelPresetFromFamily(family, station),
+    drawerKick: drawerKick ?? (station === "receipt" ? "attached" : "none"),
+    routes: routes.length ? routes : [routeForPrintStation(station)],
+    boundStationIds: bound,
+    lastPrintAt: Number(o.lastPrintAt) > 0 ? Math.round(Number(o.lastPrintAt)) : undefined,
+    reachability,
+  };
+}
+
+export function pendingPrinterDevice(opts: {
+  id: string;
+  locationId: string;
+  label: string;
+  kind: "receipt" | "kitchen" | "bar" | "label";
+  operatorId?: string;
+}): LocationDevice {
+  const type: LocationDeviceType =
+    opts.kind === "kitchen"
+      ? "kitchen_printer"
+      : opts.kind === "bar"
+        ? "bar_printer"
+        : opts.kind === "label"
+          ? "label_printer"
+          : "receipt_printer";
+  const station = stationFromPrinterType(type);
+  return {
+    id: opts.id,
+    locationId: opts.locationId,
+    label: opts.label,
+    type,
+    status: "pending",
+    lastSeenAt: Date.now(),
+    assignment: {
+      operatorId: opts.operatorId || HOST_SCOPE,
+      function: defaultFunctionForType(type),
+    },
+    print: {
+      family: opts.kind === "kitchen" ? "epson" : "epson",
+      connection: "lan",
+      target: "",
+      station,
+      link: "ethernet",
+      ip: "",
+      port: 9100,
+      modelPreset: opts.kind === "kitchen" ? "epson_tm_u220" : "epson_tm_t20",
+      drawerKick: opts.kind === "receipt" ? "attached" : "none",
+      routes: defaultRoutesForPrinterType(type),
+      boundStationIds: [],
+    },
+  };
+}
+
+export function defaultOnboardingPrinters(locationId: string): LocationDevice[] {
+  return [
+    pendingPrinterDevice({
+      id: `prn_${locationId || "loc"}_receipt`,
+      locationId,
+      label: "Receipt printer",
+      kind: "receipt",
+    }),
+    pendingPrinterDevice({
+      id: `prn_${locationId || "loc"}_kitchen`,
+      locationId,
+      label: "Kitchen printer",
+      kind: "kitchen",
+    }),
+    pendingPrinterDevice({
+      id: `prn_${locationId || "loc"}_bar`,
+      locationId,
+      label: "Bar printer",
+      kind: "bar",
+    }),
+  ];
 }
 
 export function parseLocationDevices(raw: unknown): LocationDevice[] {
@@ -258,6 +524,13 @@ export function defaultFunctionForType(type: LocationDeviceType): DeviceFunction
     case "host_stand":
       return "host_stand";
     case "printer":
+    case "receipt_printer":
+      return "cashier";
+    case "kitchen_printer":
+      return "kitchen_kds";
+    case "bar_printer":
+      return "bar_kds";
+    case "label_printer":
       return "expo";
     case "terminal":
       return "cashier";
@@ -309,6 +582,8 @@ export function functionForPrintStation(station: PrintStation): DeviceFunction {
     case "bar":
       return "bar_kds";
     case "expo":
+      return "expo";
+    case "label":
       return "expo";
     case "receipt":
     default:

@@ -14,6 +14,7 @@ import {
   DEVICE_FUNCTIONS,
   DEVICE_TYPES,
   isPairedActivatedStation,
+  isPrinterType,
   makeClaimCode,
   parseLocationDevice,
   parseLocationDevices,
@@ -213,9 +214,9 @@ export const saveLocationDeviceFn = createServerFn({ method: "POST" })
           operatorId: String(d.device?.assignment?.operatorId ?? "host").trim().slice(0, 80) || "host",
           function: fn,
         },
-        print: type === "printer" ? parsePrinterConfig(d.device?.print) : undefined,
+        print: isPrinterType(type) ? parsePrinterConfig(d.device?.print) : undefined,
         receiptPrinterId:
-          type === "printer"
+          isPrinterType(type)
             ? null
             : d.device?.receiptPrinterId
               ? String(d.device.receiptPrinterId).trim().slice(0, 80)
@@ -233,7 +234,9 @@ export const saveLocationDeviceFn = createServerFn({ method: "POST" })
     const prev = parseLocationDevices(ctx.setup.locationDevices);
     const id = data.device.id || `dev_${Math.random().toString(36).slice(2, 10)}`;
     const existing = prev.find((x) => x.id === id);
-    const minted = existing?.claimCode ? null : mintClaim();
+    const printer = isPrinterType(data.device.type);
+    const minted = printer || existing?.claimCode ? null : mintClaim();
+    const hasIp = Boolean(data.device.print?.target || data.device.print?.ip);
     const nextDevice = {
       id,
       locationId: data.locationId,
@@ -242,19 +245,25 @@ export const saveLocationDeviceFn = createServerFn({ method: "POST" })
       status:
         existing?.status === "inactive"
           ? ("pending" as const)
+          : printer
+            ? hasIp
+              ? ("offline" as const)
+              : ("pending" as const)
           : data.device.serial
             ? ("online" as const)
             : (existing?.status ?? ("pending" as const)),
       lastSeenAt: Date.now(),
       serial: data.device.serial || existing?.serial,
-      claimCode: existing?.claimCode || minted!.claimCode,
-      claimExpiresAt: existing?.claimCode
-        ? existing.claimExpiresAt
-        : minted!.claimExpiresAt,
+      claimCode: printer ? undefined : existing?.claimCode || minted!.claimCode,
+      claimExpiresAt: printer
+        ? undefined
+        : existing?.claimCode
+          ? existing.claimExpiresAt
+          : minted!.claimExpiresAt,
       assignment: data.device.assignment,
       print: data.device.print ?? existing?.print,
       receiptPrinterId:
-        data.device.type === "printer"
+        printer
           ? existing?.receiptPrinterId ?? null
           : (data.device.receiptPrinterId ?? existing?.receiptPrinterId ?? null),
       applyRoleNow: existing?.applyRoleNow,
