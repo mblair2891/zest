@@ -4,4 +4,6 @@
     <string name="title_activity_main">Summex Station</string>
     <string name="package_name">app.summex.pos</string>
     <string name="custom_url_scheme">app.summex.pos</string>
+    <string name="privacy_policy_url">https://www.summex.app/privacy</string>
+    <string name="legal_footer">Summex © Quantum Reach.</string>
 </resources>

@@ -17,9 +17,9 @@ Staff tablets run **Summex only**. This Capacitor APK is a kiosk POS: lock-task 
 Do **not** submit to Play from a sideload config. Clear before a store bundle:
 
 ```bash
-npm run android:config:clear
-npm run android:sync
-cd android && ./gradlew bundleRelease
+npm run android:bundle
+# → android/app/build/outputs/bundle/release/app-release.aab
+# Does not run android-config.mjs. Never bakes station=order.
 ```
 
 ## Requirements (build machine)

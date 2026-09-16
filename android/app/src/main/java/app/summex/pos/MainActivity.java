@@ -44,7 +44,7 @@ public class MainActivity extends BridgeActivity {
         installBridgeGuard();
         installKioskBridge();
         installBackGuard();
-        /* Lock-task is after pair — pair screen needs the camera. */
+        /* Lock-task is after pair. Pairing is typed code; camera is optional for QR. */
     }
 
     @Override

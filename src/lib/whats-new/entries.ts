@@ -6,6 +6,19 @@ import type { GuideUpdate } from "@/lib/guide/types";
  */
 export const WHATS_NEW_ENTRIES: GuideUpdate[] = [
   {
+    id: "upd_2026_10_105_play_aab",
+    date: "2026-09-16",
+    title: "Play Store station shell",
+    summary:
+      "Summex Station AAB is generic: pair code at https://app.summex.app/station. No baked order role. HTTPS only. Privacy in About.",
+    body: "applicationId stays app.summex.pos. npm run android:bundle writes android/app/build/outputs/bundle/release/app-release.aab. android-config.mjs is local debug only and does not run for Play. Camera is optional for QR; typed Devices code is enough. Privacy: https://www.summex.app/privacy.",
+    roles: ["owner_manager", "host_operator", "platform_admin"],
+    surfaces: ["settings"],
+    audience: "all",
+    topicId: "device-roles",
+    tags: ["station", "android", "play"],
+  },
+  {
     id: "upd_2026_10_104_branding_lock",
     date: "2026-09-16",
     title: "Summex product, Quantum Reach seller",

@@ -6,7 +6,7 @@ import { usePosStore } from "@/lib/pos/store";
 import { cn } from "@/lib/utils";
 import { useGuideStore } from "@/lib/guide/store";
 import { SummexBrandBlock } from "@/components/brand/SummexMark";
-import { COPYRIGHT_LINE } from "@/lib/platform/brand";
+import { COPYRIGHT_LINE, PRIVACY_URL } from "@/lib/platform/brand";
 
 export function LoginScreen() {
   const [pin, setPin] = useState("");
@@ -183,7 +183,12 @@ export function LoginScreen() {
             },
           )}
         </div>
-        <p className="mt-8 text-center text-[11px] text-muted-foreground">{COPYRIGHT_LINE}</p>
+        <p className="mt-8 text-center text-[11px] text-muted-foreground">
+          {COPYRIGHT_LINE}{" "}
+          <a href={PRIVACY_URL} className="underline" target="_blank" rel="noreferrer">
+            Privacy
+          </a>
+        </p>
       </div>
     </div>
   );

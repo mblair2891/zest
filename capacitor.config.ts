@@ -65,9 +65,10 @@ if (sideload && station) {
 }
 
 const cleartext =
-  process.env.SUMMEX_CLEARTEXT === "1" ||
-  file.cleartext === true ||
-  serverUrl.startsWith("http://");
+  sideload &&
+  (process.env.SUMMEX_CLEARTEXT === "1" ||
+    file.cleartext === true ||
+    serverUrl.startsWith("http://"));
 
 const config: CapacitorConfig = {
   appId: "app.summex.pos",
@@ -78,10 +79,10 @@ const config: CapacitorConfig = {
     url: serverUrl,
     cleartext,
     androidScheme: "https",
-    allowNavigation: ["summex.app", "*.summex.app"],
+    allowNavigation: ["summex.app", "*.summex.app", "www.summex.app"],
   },
   android: {
-    allowMixedContent: true,
+    allowMixedContent: false,
     backgroundColor: "#0a0c0b",
   },
   plugins: {

@@ -37,3 +37,8 @@ source.tar.gz
 .idea/
 .vscode/
 *.orig
+android/keystore.properties
+android/*.jks
+android/*.keystore
+*.jks
+*.keystore

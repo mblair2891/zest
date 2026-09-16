@@ -21,7 +21,7 @@ import {
   type StoreAppId,
 } from "@/lib/pos/app-store-catalog";
 import { isNativeApp } from "@/lib/native-shell";
-import { COPYRIGHT_LINE, SELLER_NAME } from "@/lib/platform/brand";
+import { COPYRIGHT_LINE, PRIVACY_URL, SELLER_NAME } from "@/lib/platform/brand";
 import { cn } from "@/lib/utils";
 
 const INSTALLED_KEY = "summex-appstore-installed-v1";
@@ -195,7 +195,12 @@ export function AppStoreView() {
               code, then PIN. No separate Play downloads required for web
               modules — the Android shell hosts this store and all stations.
             </div>
-            <p className="text-xs text-muted-foreground">{COPYRIGHT_LINE}</p>
+            <p className="text-xs text-muted-foreground">
+              {COPYRIGHT_LINE}{" "}
+              <a href={PRIVACY_URL} className="underline" target="_blank" rel="noreferrer">
+                Privacy
+              </a>
+            </p>
           </div>
         </div>
       </div>
@@ -387,7 +392,12 @@ export function AppStoreView() {
                 {" · "}
                 generic, no venue baked in.
               </p>
-              <p className="mt-3 text-xs text-muted-foreground">{COPYRIGHT_LINE}</p>
+              <p className="mt-3 text-xs text-muted-foreground">
+                {COPYRIGHT_LINE}{" "}
+                <a href={PRIVACY_URL} className="underline" target="_blank" rel="noreferrer">
+                  Privacy
+                </a>
+              </p>
             </div>
           </div>
         </section>

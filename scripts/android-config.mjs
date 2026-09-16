@@ -1,11 +1,16 @@
 #!/usr/bin/env node
 /**
- * Local debug only. Play / sideload store builds must NOT run this —
- * they open /station (pair QR or code). Usage:
+ * Local debug only. Play / store AAB must NOT run this —
+ * they open https://app.summex.app/station (pair code first).
  *   node scripts/android-config.mjs order|ods|host
  *   node scripts/android-config.mjs ods http://192.168.1.10:8080
  *   node scripts/android-config.mjs clear
+ * npm run android:bundle never invokes this file.
  */
+if (process.env.SUMMEX_PLAY_BUNDLE === "1") {
+  console.error("android-config.mjs is local debug only. Do not bake station=order into a Play AAB.");
+  process.exit(1);
+}
 import { readFileSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
 

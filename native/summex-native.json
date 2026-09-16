@@ -1,7 +1,7 @@
 {
   "url": "https://app.summex.app",
-  "station": "order",
+  "station": "",
   "cleartext": false,
-  "sideload": true,
-  "_comment": "Play/store APK is generic: https://app.summex.app/station (type the Devices code; QR optional). Never marketing apex. android-config is local debug only — never required for a store build."
+  "sideload": false,
+  "_comment": "Play/store default: https://app.summex.app/station (pair code first; QR optional). Never bake station=order. android-config.mjs is local debug only — npm run android:bundle must not run it."
 }

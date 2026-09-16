@@ -84,12 +84,13 @@ One APK: **Summex Station** (`app.summex.pos`). Staff tablets run Summex only. G
 Leave `native/summex-native.json` with empty `station` and `sideload: false`. The WebView opens `https://app.summex.app/station`. First run: type the one-time **Devices code** and submit (QR optional). After pair: PIN pad only. Updates keep the pairing. Store builds never require `android-config`.
 
 ```bash
-npm run android:config:clear
-npm run android:sync
-cd android && ./gradlew bundleRelease
+npm run android:bundle
+# → android/app/build/outputs/bundle/release/app-release.aab
 ```
 
-Do not submit to Play from this pass — packaging only. Listing copy: [`docs/play-store-listing.md`](docs/play-store-listing.md). Privacy: https://summex.app/privacy
+`android:bundle` does not run `android-config.mjs` and never bakes `station=order`. Upload signing: copy `android/keystore.example` to `android/keystore.properties` (gitignored). HTTPS only. Privacy: https://www.summex.app/privacy. Camera is optional; pair by typed Devices code.
+
+Do not submit to Play from this pass — packaging only. Listing copy: [`docs/play-store-listing.md`](docs/play-store-listing.md).
 
 ### Sideload (local LAN / training)
 

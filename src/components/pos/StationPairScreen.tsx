@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { SummexMark } from "@/components/brand/SummexMark";
-import { COPYRIGHT_LINE } from "@/lib/platform/brand";
+import { COPYRIGHT_LINE, PRIVACY_URL } from "@/lib/platform/brand";
 import { pairStationFn } from "@/lib/access/api";
 import { readOrCreateBrowserDeviceId } from "@/lib/pos/location-devices";
 import {
@@ -179,7 +179,12 @@ export function StationPairScreen({
         />
       )}
 
-      <p className="mt-8 text-xs text-muted-foreground">{COPYRIGHT_LINE}</p>
+      <p className="mt-8 text-xs text-muted-foreground">
+        {COPYRIGHT_LINE}{" "}
+        <a href={PRIVACY_URL} className="underline" target="_blank" rel="noreferrer">
+          Privacy
+        </a>
+      </p>
       <ul className="mt-4 max-w-sm space-y-1 text-left text-xs text-muted-foreground">
         {(Object.keys(DEVICE_ROLE_LABEL) as Array<keyof typeof DEVICE_ROLE_LABEL>).map((id) => (
           <li key={id}>

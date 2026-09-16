@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Allow LAN http:// during BYOD / pilot testing (cleartext). Tighten for prod. -->
+<!-- Play / store: HTTPS only. No cleartext. -->
 <network-security-config>
-    <base-config cleartextTrafficPermitted="true">
+    <base-config cleartextTrafficPermitted="false">
         <trust-anchors>
             <certificates src="system" />
         </trust-anchors>

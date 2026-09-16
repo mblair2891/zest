@@ -4,6 +4,7 @@ import { readFileSync } from "node:fs";
 import {
   COPYRIGHT_LINE,
   PAYMENTS_BRAND,
+  PRIVACY_URL,
   PRODUCT_NAME,
   SELLER_NAME,
 } from "../src/lib/platform/brand.ts";
@@ -13,6 +14,7 @@ test("brand lock: Summex product, Quantum Reach seller, Quantum Payments", () =>
   assert.equal(SELLER_NAME, "Quantum Reach");
   assert.equal(PAYMENTS_BRAND, "Quantum Payments");
   assert.equal(COPYRIGHT_LINE, "Summex © Quantum Reach.");
+  assert.equal(PRIVACY_URL, "https://www.summex.app/privacy");
 });
 
 test("Play About and legal footers use Summex © Quantum Reach", () => {

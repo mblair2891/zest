@@ -22,6 +22,7 @@
     "android:sync": "node scripts/patch-capacitor-java17.mjs && npx cap sync android",
     "android:open": "npx cap open android",
     "android:apk": "node scripts/patch-capacitor-java17.mjs && cd android && ./gradlew assembleDebug",
+    "android:bundle": "node scripts/android-bundle.mjs",
     "android:config": "node scripts/android-config.mjs",
     "android:config:kds": "node scripts/android-config.mjs ods",
     "android:config:ods": "node scripts/android-config.mjs ods",

@@ -1,7 +1,7 @@
 # Operators Guide — authoring
 
-**Revision · 16 Sep 2026** — Quantum Reach seller, Summex product.
-Guide v2026.10.104.
+**Revision · 16 Sep 2026** — Play Store AAB station shell.
+Guide v2026.10.105.
 
 The in-app **Operators Guide** is the living product manual. It is not a
 separate PDF. Staff open it from **Guide** / **?** in the POS and platform
@@ -136,7 +136,7 @@ Bookmarkable URL: `/guide?topic=my-topic`.
 - Each entity is its own Quantum Payments merchant. One guest check; receipt itemized by vendor; Finix pays each operator their share on capture.
 - Location models: single operator; host + tenants; shared venue (peers). Shared venue is a named building only — no host merchant, menu, or gift product required.
 - Gift cards: Summex house ledger — swipe, scan, or key. Not Finix.
-- Device roles: **order** | **ODS** | **host**. Android tablet running the Summex Station app (sideload now; Play later). iPad and browser POS are not a supported house setup. Guest QR pay/order stays on the guest’s phone. Owner adds a device (name + role), shows a one-time code/QR. After pair: PIN only. Publish pushes menu/floor/printers/QR. Staff keep the last publish until Switch user.
+- Device roles: **order** | **ODS** | **host**. Android tablet running the Summex Station app (`app.summex.pos`). Play AAB WebView is https://app.summex.app/station — pair code first (QR optional). HTTPS only. Privacy: https://www.summex.app/privacy. iPad and browser POS are not a supported house setup. Guest QR pay/order stays on the guest’s phone. Owner adds a device (name + role), shows a one-time code/QR. After pair: PIN only. Publish pushes menu/floor/printers/QR. Staff keep the last publish until Switch user.
 - Shared-venue labor: per entity **owned lines** (default) | all-check | selected categories. Steam vs beverage sales; Diamond vs food. Shared rent/utilities off until allocated. Tips stay out of labor % unless toggled.
 - Printers on the house AP LAN (Ethernet), not the printer’s own Wi‑Fi. Receipts: Epson TM-T20 thermal. Kitchen: Epson TM-U220 impact. Cash drawer kick is on the receipt printer.
 - HR: optional per entity (host or tenant employer). Packets + signed PDF fallback. Clock punches persist. Clock windows, shift approval, and pay-period timing drive hours export to ADP / Intuit / CSV — Summex does not process payroll. Platform never sees SSN.

@@ -76,9 +76,11 @@ test("pair screen and Play APK never require a baked station role", () => {
   assert.match(cap, /\/station/);
   assert.match(cap, /app\.summex\.app/);
   assert.doesNotMatch(cap, /summex\.app\/\?station/);
-  const native = readFileSync("native/summex-native.json", "utf8");
-  assert.match(native, /app\.summex\.app/);
-  assert.match(native, /android-config is local debug only/);
+  const native = JSON.parse(readFileSync("native/summex-native.json", "utf8"));
+  assert.equal(native.url, "https://app.summex.app");
+  assert.equal(native.station, "");
+  assert.equal(native.sideload, false);
+  assert.match(JSON.stringify(native), /android-config/);
   const baked = readFileSync("android/app/src/main/assets/capacitor.config.json", "utf8");
   assert.match(baked, /app\.summex\.pos/);
   assert.match(baked, /app\.summex\.app\/station/);
@@ -94,7 +96,7 @@ test("guide pairing is typed code, QR optional", () => {
   assert.match(devices, /Code invalid or expired/);
   assert.match(devices, /QR is optional/);
   const types = readFileSync("src/lib/guide/types.ts", "utf8");
-  assert.match(types, /2026\.10\.90/);
+  assert.match(types, /GUIDE_VERSION/);
 });
 
 test("station PIN pad does not send staff to marketing or /login", () => {

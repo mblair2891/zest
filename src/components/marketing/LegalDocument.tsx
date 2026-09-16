@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 import { Link } from "@tanstack/react-router";
 import { LandingFrame } from "@/components/marketing/LandingFrame";
-import { COPYRIGHT_LINE } from "@/lib/platform/brand";
+import { COPYRIGHT_LINE, PRIVACY_URL } from "@/lib/platform/brand";
 
 export const LEGAL_EFFECTIVE = "8 September 2026";
 
@@ -41,6 +41,10 @@ export function LegalDocument({
           <Link to={other.to} className="text-champagne hover:underline">
             {other.label}
           </Link>
+          . Privacy:{" "}
+          <a href={PRIVACY_URL} className="text-champagne hover:underline">
+            {PRIVACY_URL}
+          </a>
           . Questions:{" "}
           <a
             href="mailto:support@summex.app"

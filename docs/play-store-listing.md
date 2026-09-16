@@ -6,7 +6,7 @@
 **App name:** Summex Station  
 **Default experience:** generic station shell at `https://app.summex.app/station` — pair first, then PIN. No venue is baked into the binary. Never the marketing site.
 
-**Privacy policy URL:** https://summex.app/privacy
+**Privacy policy URL:** https://www.summex.app/privacy
 
 ## Short description (80 chars)
 
@@ -28,7 +28,7 @@ Guests pay and scan table QR codes in the ordinary browser — not this app. Car
 
 Requires network access to Summex for first pair and for live cards. Cached service can continue on the house Wi‑Fi when the uplink is down.
 
-Built by Michael Blair & Andy Baida.
+Summex © Quantum Reach.
 
 ## Category
 
@@ -52,10 +52,10 @@ Business
 ## Release (packaging only — do not upload yet)
 
 ```bash
-# Store binary is generic. Do not bake a station role.
-npm run android:config:clear
-npm run android:sync
-cd android && ./gradlew bundleRelease
+# Store binary is generic. Do not bake a station role. Does not run android-config.
+npm run android:bundle
+# → android/app/build/outputs/bundle/release/app-release.aab
+# Signing: copy android/keystore.example → android/keystore.properties (gitignored).
 ```
 
 Sideload (LAN / training) is a different path — see `native/README.md` and the root README.
