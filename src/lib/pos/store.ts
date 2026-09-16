@@ -68,6 +68,7 @@ import { applyCashTender, currentCashSink, useCashSessionStore } from "./cash-se
 import { hasCompletedCloseoutToday } from "./closeout-store";
 import { cashRoleFromSession, parseCashHandling } from "./cash-handling";
 import { methodEnabled, parsePaymentMethods } from "./payment-methods";
+import { giftSellBlockedReason, parseGiftLimits } from "./gift-limits";
 import {
   cardRequiresConnection,
   noteCashPayment,
@@ -3194,6 +3195,11 @@ const usePosStoreRaw = create<PosStore>()(persist((set, get) => {
 		if (!parsePaymentMethods(get().settings.paymentMethods).giftCard) {
 			return { ok: false, error: "Gift cards are off. No sell or redeem." };
 		}
+		{
+			const limits = parseGiftLimits(get().settings);
+			const cap = giftSellBlockedReason(amountCents, 0, limits);
+			if (cap) return { ok: false, error: cap };
+		}
 		if (amountCents <= 0) return {
 			ok: false,
 			error: "Amount required"
@@ -3427,6 +3433,9 @@ const usePosStoreRaw = create<PosStore>()(persist((set, get) => {
 			error: "Only issued or imported cards can be reloaded"
 		};
 		if (gc.status === "frozen" || gc.status === "void" || gc.status === "closed") return { ok: false, error: "Card is not reloadable" };
+		const limits = parseGiftLimits(get().settings);
+		const cap = giftSellBlockedReason(amountCents, gc.balanceCents, limits);
+		if (cap) return { ok: false, error: cap };
 		if (amountCents <= 0) return {
 			ok: false,
 			error: "Amount required"

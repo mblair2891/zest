@@ -15,6 +15,7 @@ export function QuantumPaymentsSettings({ write }: { write: boolean }) {
   const peerVenue = usePosStore(
     (s) => Boolean(s.settings.peerVenue || s.settings.operatingModel === "peer_venue"),
   );
+  const vendors = usePosStore((s) => s.vendors);
   const [status, setStatus] = useState<PaymentsStatus | null>(null);
   const [saving, setSaving] = useState(false);
 
@@ -128,11 +129,22 @@ export function QuantumPaymentsSettings({ write }: { write: boolean }) {
         </ul>
       )}
       {peerVenue || status?.operatingModel === "peer_venue" ? (
-        <p className="rounded-lg bg-surface-2 px-3 py-2 text-xs text-muted-foreground">
-          This is a shared venue. The building name is guest branding only — not a merchant.
-          Each operator completes their own Quantum Payments application. Live cards wait
-          until every selling entity is approved (sandbox is OK in training).
-        </p>
+        <div className="space-y-3">
+          <p className="rounded-lg bg-surface-2 px-3 py-2 text-xs text-muted-foreground">
+            This is a shared venue. The building has no Finix merchant. Each selling entity
+            completes its own Payments / KYC screen. Live cards wait until every selling
+            entity is approved (sandbox is OK in training).
+          </p>
+          {vendors.filter((v) => v.active).map((v) => (
+            <QuantumPaymentsOnboardPanel
+              key={v.id}
+              kind="operator"
+              operatorId={v.id}
+              locationId={locId}
+              legalName={v.name}
+            />
+          ))}
+        </div>
       ) : (
         <QuantumPaymentsOnboardPanel kind="host" locationId={locId} />
       )}

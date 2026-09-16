@@ -42,6 +42,7 @@ import { ManagerPinDialog } from "./ManagerPinDialog";
 import { GIFT_ADJUST_REASONS } from "@/lib/pos/loss-prevention";
 import type { GiftCardStatus } from "@/lib/pos/types";
 import { parsePaymentMethods } from "@/lib/pos/payment-methods";
+import { giftNeedsManagerPin, giftSellBlockedReason, parseGiftLimits } from "@/lib/pos/gift-limits";
 
 export function CustomersView() {
   const customers = usePosStore((s) => s.customers);
@@ -312,7 +313,7 @@ export function CustomersView() {
           </table>
         </div>
       )}
-      <div className="mb-4 grid gap-2 sm:grid-cols-3">
+      <div className="mb-4 grid gap-2 sm:grid-cols-3" data-demo="gift-admin">
         {liveCards.map((g) => (
           <div
             key={g.id}
@@ -504,7 +505,13 @@ export function CustomersView() {
             Cash or card collected at the drawer is not seller merchandise. It
             increases the issuer’s gift liability. Default issuer follows the
             selling point (bar → operator, host stand → configured entity, house
-            SKU → house).
+            SKU → house). Paired station + staff PIN only — not sold on the website.
+            No shipping.
+          </p>
+          <p className="text-xs text-muted-foreground" data-demo="gift-limits">
+            Max load / balance ${((settings.giftMaxBalanceCents ?? 50000) / 100).toFixed(2)} · max
+            sell per transaction ${((settings.giftMaxSellPerTxnCents ?? 50000) / 100).toFixed(2)}.
+            Cash-out of remainder {settings.giftCashOutRemainder ? "on" : "off except where required by law"}.
           </p>
           <p className="text-xs font-medium">Issue new</p>
           <Input
@@ -551,6 +558,18 @@ export function CustomersView() {
                 return;
               }
               const cents = Math.round(dollars * 100);
+              const limits = parseGiftLimits(settings);
+              const cap = giftSellBlockedReason(cents, 0, limits);
+              if (cap) {
+                setMsg(cap);
+                return;
+              }
+              if (giftNeedsManagerPin(cents, limits) && !hasManagerAuth()) {
+                setPendingGift({ code: "", id: "", status: "active" });
+                setGiftMgrOpen(true);
+                setMsg("High-value sell needs a manager PIN.");
+                return;
+              }
               const issuer = resolveGiftIssuer(issuerId, settings, vendors);
               void (async () => {
                 try {
@@ -649,6 +668,19 @@ export function CustomersView() {
             onClick={() => {
               const dollars = parseFloat(reloadAmt);
               const cents = Math.round(dollars * 100);
+              const needle = reloadCode.replace(/[\s-]/g, "").toUpperCase();
+              const existing = giftCards.find(
+                (g) => g.code.replace(/[\s-]/g, "").toUpperCase() === needle,
+              );
+              const cap = giftSellBlockedReason(
+                cents,
+                existing?.balanceCents ?? 0,
+                parseGiftLimits(settings),
+              );
+              if (cap) {
+                setMsg(cap);
+                return;
+              }
               void (async () => {
                 try {
                   if (locId) {
@@ -705,7 +737,8 @@ export function CustomersView() {
             <DialogTitle>Import gift cards into Summex</DialogTitle>
           </DialogHeader>
           <p className="text-xs text-muted-foreground">
-            One-way migration. After import, balances live only in Summex.
+            One-way migration of existing balances into the Summex ledger. Not resale of
+            third-party gift products. After import, balances live only in Summex.
           </p>
           <div className="grid grid-cols-2 gap-2">
             {IMPORT_PROVIDERS.map((p) => (

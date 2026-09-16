@@ -411,6 +411,15 @@ export function PlatformTenantVenue({
           giftHouseIssuerEnabled: peer
             ? false
             : (setup.giftHouseIssuerEnabled ?? st.settings.giftHouseIssuerEnabled),
+          entityKyc: setup.entityKyc ?? st.settings.entityKyc,
+          giftMaxLoadCents: setup.giftMaxLoadCents ?? st.settings.giftMaxLoadCents,
+          giftMaxBalanceCents: setup.giftMaxBalanceCents ?? st.settings.giftMaxBalanceCents,
+          giftMaxSellPerTxnCents:
+            setup.giftMaxSellPerTxnCents ?? st.settings.giftMaxSellPerTxnCents,
+          giftCashOutRemainder: setup.giftCashOutRemainder ?? st.settings.giftCashOutRemainder,
+          giftHighValueManagerPin:
+            setup.giftHighValueManagerPin ?? st.settings.giftHighValueManagerPin,
+          giftHighValueCents: setup.giftHighValueCents ?? st.settings.giftHighValueCents,
           isDemo: Boolean(access.location.isDemo || access.org.isDemo || setup.demoIsolated),
           demoIsolated: Boolean(access.location.isDemo || access.org.isDemo || setup.demoIsolated),
           serviceStyle:

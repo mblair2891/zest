@@ -1,7 +1,7 @@
 # Operators Guide — authoring
 
-**Revision · 15 Sep 2026** — Printers are receipt or order only.
-Guide v2026.10.99.
+**Revision · 16 Sep 2026** — Entity KYC, first-party gift caps, on-premise QR.
+Guide v2026.10.100.
 
 The in-app **Operators Guide** is the living product manual. It is not a
 separate PDF. Staff open it from **Guide** / **?** in the POS and platform

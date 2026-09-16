@@ -29,7 +29,7 @@ export const PAYMENT_TOPICS: GuideTopic[] = [
         "Every card tender runs through Quantum Payments. Each entity is its own merchant (Finix rail). The guest never sees Finix — they see Quantum Payments and one check. Capture splits to each brand. Receipts group lines by vendor. Integrations never offer Stripe, Square, Adyen, or other POS processors. Delivery, accounting, and hours-export partners (ADP, Intuit) stay — they are not card processors and Summex does not process payroll.",
       ),
       ul(
-        "Host and each tenant operator complete their own Quantum Payments merchant application. Guest UI never names Finix.",
+        "Host and each tenant operator complete their own Quantum Payments merchant application (legal name, DBA, EIN, owners, address, MCC, payout bank). Guest UI never names Finix. MCC 5813 (drinking place): on-premise retail only. Summex does not support online or shipped alcohol sales. 5812 restaurant and 5814 QSR where they apply. A shared venue has no Finix merchant on the building — one Payments / KYC screen per selling entity.",
         "One guest tender. Split capture to each brand’s merchant by merchandise owner. Tax, tip, and service allocate by merchandise share. Receipt, email, and QR check itemize by vendor, then totals — still one document.",
         "Software billing (SaaS invoices) is separate from guest cards.",
         "Gift load with a bank card charges the issuer brand’s account. Gift redeem stays on the Summex ledger.",
@@ -171,7 +171,7 @@ export const PAYMENT_TOPICS: GuideTopic[] = [
         "The guest should see who cooked or poured without a second checkout. The house still prints one document under the location name.",
       ),
       p(
-        "Pay, Check, email, and table QR all show one guest document. Lines group under the vendor heading, then subtotal / tax / tip / gift / tender. Example: Operator A — plate $18, side $6; Operator B — cocktail $14, beer $7; then totals. Card: one authorization, split to the vendors above. Quantum Payments is the tender line — guests never see Finix.",
+        "Pay, Check, email, and table QR all show one guest document. Lines group under the vendor heading with that vendor’s total, then grand total (subtotal / tax / tip / gift / tender). Example: Operator A — plate $18, side $6, Operator A total $24; Operator B — cocktail $14, beer $7, Operator B total $21; then grand total. Card: one authorization, split to the vendors above (owned_lines). Quantum Payments is the tender line — guests never see Finix.",
       ),
       ul(
         "One document. Do not print a stall receipt as a second card run.",
@@ -263,7 +263,7 @@ export const PAYMENT_TOPICS: GuideTopic[] = [
         "An owner considering Summex should read a product paper — not a stack spec. Processors and partners can share the same document.",
       ),
       p(
-        "Open White paper from the marketing header or footer (no login). Print from the browser for a PDF. Revision · 15 Sep 2026 matches Guide v2026.10.99. It is written for prospective subscribers: one guest check, floor, multi-entity, Android staff stations, venue payment-method toggles, 5% cash-discount processing story, plans from Get a price. No CRM, pipeline, factory reset, or how to log in. Internal operations notes stay off the public site.",
+        "Open White paper from the marketing header or footer (no login). Print from the browser for a PDF. Revision · 16 Sep 2026 matches Guide v2026.10.100. It is written for prospective subscribers: one guest check, floor, multi-entity, Android staff stations, venue payment-method toggles, 5% cash-discount processing story, plans from Get a price. Gift cards are not sold online. QR is on-premise. No CRM, pipeline, factory reset, or how to log in. Internal operations notes stay off the public site.",
       ),
       steps(
         "Open White paper from the marketing header (White paper). That page is the paper — not Get a price.",

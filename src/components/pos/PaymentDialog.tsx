@@ -25,8 +25,10 @@ import {
 } from "@/lib/payments/check-by-vendor";
 import { GuestCheckByVendor } from "./GuestCheckByVendor";
 import { printGuestReceipt } from "@/lib/print/from-store";
-import { redeemGiftCardFn } from "@/lib/gift/api";
-import { fulfillingIssuer } from "@/lib/pos/gift-issuer";
+import { issueGiftCardFn, lookupGiftCardFn, redeemGiftCardFn } from "@/lib/gift/api";
+import { defaultGiftIssuer, fulfillingIssuer } from "@/lib/pos/gift-issuer";
+import { giftNeedsManagerPin, giftSellBlockedReason, parseGiftLimits } from "@/lib/pos/gift-limits";
+import { ManagerPinDialog } from "./ManagerPinDialog";
 import type { PaymentsStatus } from "@/lib/payments/types";
 import { uid } from "@/lib/utils";
 import { readTenantPosContext } from "@/lib/saas/pos-context";
@@ -104,6 +106,13 @@ export function PaymentDialog({ open, onOpenChange }: Props) {
   const [tip, setTip] = useState(0);
   const [tendered, setTendered] = useState("");
   const [giftCode, setGiftCode] = useState("");
+  const [giftSellAmt, setGiftSellAmt] = useState("50");
+  const [giftSellTender, setGiftSellTender] = useState<"cash" | "card">("card");
+  const [giftNote, setGiftNote] = useState<string | null>(null);
+  const [giftMgrOpen, setGiftMgrOpen] = useState(false);
+  const issueGiftCard = usePosStore((s) => s.issueGiftCard);
+  const giftCards = usePosStore((s) => s.giftCards);
+  const hasManagerAuth = usePosStore((s) => s.hasManagerAuth);
   const [last4, setLast4] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [change, setChange] = useState<number | null>(null);
@@ -163,6 +172,109 @@ export function PaymentDialog({ open, onOpenChange }: Props) {
   });
   const cashPresets = [balance, balance + tip].filter(Boolean);
   const quickCash = [5, 10, 20, 50, 100].map((d) => d * 100);
+  const giftLimits = parseGiftLimits(settings);
+
+  const sellGiftOnStation = (opts?: { skipManager?: boolean }) => {
+    const dollars = parseFloat(giftSellAmt);
+    if (!Number.isFinite(dollars) || dollars <= 0) {
+      setGiftNote("Enter a valid amount");
+      return;
+    }
+    const cents = Math.round(dollars * 100);
+    const cap = giftSellBlockedReason(cents, 0, giftLimits);
+    if (cap) {
+      setGiftNote(cap);
+      return;
+    }
+    if (!opts?.skipManager && giftNeedsManagerPin(cents, giftLimits) && !hasManagerAuth()) {
+      setGiftMgrOpen(true);
+      setGiftNote("High-value sell needs a manager PIN.");
+      return;
+    }
+    const issuer = defaultGiftIssuer(emp ?? null, settings, usePosStore.getState().vendors);
+    void (async () => {
+      const loc =
+        usePosStore.getState().tenantLocationId ||
+        readTenantPosContext()?.locationId ||
+        "";
+      try {
+        if (loc && wanOnline) {
+          try {
+            const res = await issueGiftCardFn({
+              data: {
+                locationId: loc,
+                amountCents: cents,
+                issuerId: issuer.id,
+                issuerKind: issuer.kind,
+                issuerName: issuer.name,
+                tender: giftSellTender,
+                soldByEmployeeId: emp?.id,
+                soldByOperatorId: emp?.operatorId,
+              },
+            });
+            if (res.ok) {
+              setGiftNote(
+                `Sold ${res.plaintextCode} · $${dollars.toFixed(2)} · issuer ${issuer.name}. Not sold online.`,
+              );
+              return;
+            }
+            if (res.error?.includes("Max ")) {
+              setGiftNote(res.error);
+              return;
+            }
+          } catch {
+            /* isolated demo — local ledger */
+          }
+        }
+        const res = issueGiftCard({
+          amountCents: cents,
+          issuerId: issuer.id,
+          tender: giftSellTender,
+        });
+        if (res.ok && res.code) {
+          setGiftNote(`Sold ${res.code} · $${dollars.toFixed(2)}. Not sold online.`);
+        } else setGiftNote(res.error ?? "Could not sell gift card");
+      } catch (e) {
+        setGiftNote(e instanceof Error ? e.message : "Could not sell gift card");
+      }
+    })();
+  };
+
+  const checkGiftBalance = () => {
+    const code = giftCode.trim();
+    if (!code) {
+      setGiftNote("Enter a gift card code");
+      return;
+    }
+    const loc =
+      usePosStore.getState().tenantLocationId ||
+      readTenantPosContext()?.locationId ||
+      "";
+    void (async () => {
+      try {
+        if (loc && wanOnline) {
+          const res = await lookupGiftCardFn({ data: { locationId: loc, code } });
+          if (!res.ok) {
+            setGiftNote(res.error ?? "Card not found");
+            return;
+          }
+          setGiftNote(`Balance ${formatCurrency(res.card.balanceCents)} · ${res.card.status}`);
+          return;
+        }
+        const needle = code.replace(/[\s-]/g, "").toUpperCase();
+        const gc = giftCards.find(
+          (g) => g.code.replace(/[\s-]/g, "").toUpperCase() === needle,
+        );
+        if (!gc) {
+          setGiftNote("Card not found");
+          return;
+        }
+        setGiftNote(`Balance ${formatCurrency(gc.balanceCents)} · ${gc.status ?? "active"}`);
+      } catch (e) {
+        setGiftNote(e instanceof Error ? e.message : "Lookup failed");
+      }
+    })();
+  };
 
   const pay = () => {
     void (async () => {
@@ -452,6 +564,7 @@ export function PaymentDialog({ open, onOpenChange }: Props) {
   if (!order || !totals || !dual) return null;
 
   return (
+    <>
     <Dialog
       open={open}
       onOpenChange={(o) => {
@@ -838,15 +951,50 @@ export function PaymentDialog({ open, onOpenChange }: Props) {
                   </div>
                 </TabsContent>
 
-                <TabsContent value="gift_card" className="mt-0 space-y-2">
-                  <Input
-                    placeholder="Gift card code"
-                    value={giftCode}
-                    onChange={(e) => setGiftCode(e.target.value.toUpperCase())}
-                  />
+                <TabsContent value="gift_card" className="mt-0 space-y-3">
                   <p className="text-xs text-muted-foreground">
-                    Try GIFT-2500, GIFT-5000, or GIFT-1000
+                    First-party ledger. Sell and redeem on this paired station with a staff PIN.
+                    No public website purchase. No shipping. No third-party gift networks.
                   </p>
+                  <div className="space-y-2 rounded-lg border border-border p-2" data-demo="gift-sell">
+                    <p className="text-xs font-medium">Sell gift card</p>
+                    <Input
+                      placeholder="Amount USD"
+                      value={giftSellAmt}
+                      inputMode="decimal"
+                      onChange={(e) => setGiftSellAmt(e.target.value)}
+                    />
+                    <select
+                      className="h-10 w-full rounded-md border border-border bg-bg px-3 text-sm"
+                      value={giftSellTender}
+                      onChange={(e) => setGiftSellTender(e.target.value as "cash" | "card")}
+                    >
+                      <option value="card">Card (Quantum Payments)</option>
+                      <option value="cash">Cash</option>
+                    </select>
+                    <p className="text-[11px] text-muted-foreground">
+                      Max sell ${(giftLimits.maxSellPerTxnCents / 100).toFixed(2)} per transaction.
+                    </p>
+                    <Button size="sm" type="button" onClick={() => sellGiftOnStation()}>
+                      Sell gift card
+                    </Button>
+                  </div>
+                  <div className="space-y-2" data-demo="gift-redeem">
+                    <p className="text-xs font-medium">Redeem / balance check</p>
+                    <Input
+                      placeholder="Gift card code"
+                      value={giftCode}
+                      onChange={(e) => setGiftCode(e.target.value.toUpperCase())}
+                    />
+                    <Button size="sm" variant="outline" type="button" onClick={checkGiftBalance}>
+                      Check balance
+                    </Button>
+                  </div>
+                  {giftNote && (
+                    <p className="text-xs text-muted-foreground" role="status">
+                      {giftNote}
+                    </p>
+                  )}
                 </TabsContent>
 
                 <TabsContent value="comp" className="mt-0 space-y-2">
@@ -927,5 +1075,16 @@ export function PaymentDialog({ open, onOpenChange }: Props) {
         )}
       </DialogContent>
     </Dialog>
+    <ManagerPinDialog
+      open={giftMgrOpen}
+      onOpenChange={setGiftMgrOpen}
+      title="Manager PIN · gift sell"
+      description="High-value gift sell needs a manager PIN."
+      onVerified={() => {
+        setGiftMgrOpen(false);
+        sellGiftOnStation({ skipManager: true });
+      }}
+    />
+    </>
   );
 }

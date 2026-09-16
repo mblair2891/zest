@@ -486,8 +486,15 @@ export function OrderView() {
               return groups.map((group) => (
               <li key={group.entityId}>
                 {multi ? (
-                  <p className="px-1 pb-1 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-                    {group.displayName}
+                  <p className="flex justify-between px-1 pb-1 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                    <span>{group.displayName}</span>
+                    <span className="tabular">
+                      {formatCurrency(
+                        group.lines
+                          .filter((l) => !l.voided && !l.comped)
+                          .reduce((s, l) => s + linePrintedCents(l), 0),
+                      )}
+                    </span>
                   </p>
                 ) : null}
                 <ul className="space-y-1">

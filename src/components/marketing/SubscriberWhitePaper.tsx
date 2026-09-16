@@ -24,11 +24,13 @@ export function SubscriberWhitePaper() {
         summex.app · Guest cards: {PAYMENTS_BRAND} only
       </p>
       <p className="mt-2 text-xs text-muted-foreground">
-        Revision · 15 Sep 2026 — Aligns with Operators Guide v2026.10.98.
+        Revision · 16 Sep 2026 — Aligns with Operators Guide v2026.10.100.
         The house toggles which tenders it accepts. Station UI is device role ∩
         staff PIN. After PIN the tablet shows a short role menu. Pair with a
         typed Devices code; QR is optional. Peer venues have no host merchant;
-        the host stand is still a device role. Gift lookup at summex.app/gift.
+        the host stand is still a device role. Gift cards sell on a paired
+        station — not the public website. QR is on-premise. MCC 5813 is
+        on-premise retail only.
       </p>
       <p className="mt-6 text-sm leading-relaxed text-muted-foreground">
         For the owner considering Summex — a single shop, a full dining room, or a
@@ -97,7 +99,8 @@ export function SubscriberWhitePaper() {
           </li>
           <li>
             <strong className="text-ivory">One receipt, itemized by vendor.</strong>{" "}
-            The guest still holds one document.
+            Lines group under the brand that sold them, with a total per vendor,
+            then a grand total. The guest still holds one document.
           </li>
           <li>
             <strong className="text-ivory">Cash is the entered price.</strong> The
@@ -110,15 +113,17 @@ export function SubscriberWhitePaper() {
             increment becomes $19.00 card. Cash pay charges cash; card pay charges card.
           </li>
           <li>
-            <strong className="text-ivory">QR, as you set it.</strong> Table tents,
-            reorder after staff open a check, pay and split. Guest UI is public —
-            no staff PIN. After pay they stay on thank-you.
+            <strong className="text-ivory">QR, as you set it.</strong> On-premise
+            only — table tent or check QR. The guest is at the location. No
+            e-commerce cart, no alcohol delivery, no shipping. Reorder after staff
+            open a check, pay and split. Guest UI is public — no staff PIN. After
+            pay they stay on thank-you.
           </li>
           <li>
-            <strong className="text-ivory">Gift balance, no login.</strong>{" "}
-            summex.app/gift. Full printed number, or last four plus the card PIN.
-            Current life only — load, redeem, void, date, venue, amount. No staff
-            names.
+            <strong className="text-ivory">Gift cards, first-party ledger.</strong>{" "}
+            Sell and redeem on a paired station. Not sold on the website. Not
+            shipped. Guests look up balance at summex.app/gift. Default max load
+            / balance / sell per transaction is $500.
           </li>
         </ul>
       </Section>
@@ -193,10 +198,11 @@ export function SubscriberWhitePaper() {
           </li>
           <li>
             Gift is a house ledger (swipe, scan, or key) — not the card processor.
-            Guests check the current balance at summex.app/gift. Spent plastic can
-            be reused: the old ledger stays in audit; the same printed number gets
-            a new card id at $0. The next load is a new issuance for the selling
-            entity.
+            Sell on a paired station; the issuer holds cash until redeem.
+            Guests check the current balance at summex.app/gift. Cards are not sold
+            online. Spent plastic can be reused: the old ledger stays in audit; the
+            same printed number gets a new card id at $0. The next load is a new
+            issuance for the selling entity.
           </li>
           <li>
             Period close is the house book for cash, any host cut, and disputes.

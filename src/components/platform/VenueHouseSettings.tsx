@@ -224,6 +224,10 @@ export function VenueHouseSettings() {
 
       <section className="rounded-2xl border border-border bg-surface p-4 space-y-3">
         <p className="text-sm font-medium">QR</p>
+        <p className="text-xs text-muted-foreground">
+          On-premise only (table tent / check QR). The guest is at the location. No e-commerce
+          cart, no alcohol delivery, no shipping.
+        </p>
         <div className="grid gap-2">
           {QR_MODE_FLAGS.map((flag) => (
             <label key={flag} className="flex items-center gap-2 text-sm">

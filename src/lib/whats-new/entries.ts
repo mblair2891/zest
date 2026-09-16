@@ -6,6 +6,19 @@ import type { GuideUpdate } from "@/lib/guide/types";
  */
 export const WHATS_NEW_ENTRIES: GuideUpdate[] = [
   {
+    id: "upd_2026_10_100_underwriting_kyc_gift",
+    date: "2026-09-16",
+    title: "Payments KYC, gift caps, on-premise QR",
+    summary:
+      "Each selling entity has a Payments / KYC form (MCC 5812/5813/5814). Gift sell is capped. QR is on-premise. Guest check totals per vendor.",
+    body: "Entity Payments / KYC: legal name, DBA, EIN, owners, address, MCC, payout bank, Finix status. MCC 5813 copy: on-premise retail only — Summex does not support online or shipped alcohol. Shared venue: one screen per entity; the building has no Finix merchant. Gift: first-party ledger, station sell/redeem with staff PIN, default $500 max load/balance/txn, freeze/void, no website purchase. Guest check lists each vendor’s total then grand total. QR caption: the guest is at the location.",
+    roles: ["owner_manager", "host_operator", "platform_admin", "vendor_operator"],
+    surfaces: ["settings", "floor"],
+    audience: "all",
+    topicId: "quantum-payments",
+    tags: ["payments", "kyc", "gift", "qr", "underwriting"],
+  },
+  {
     id: "upd_2026_10_99_printer_kinds",
     date: "2026-09-15",
     title: "Printers are receipt or order only",

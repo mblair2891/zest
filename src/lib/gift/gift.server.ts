@@ -25,6 +25,7 @@ import {
 } from "./guest-view";
 import type { GiftCard, GiftCardStatus, GiftTransfer } from "@/lib/pos/types";
 import type { GiftLiabilityRow } from "@/lib/pos/gift-issuer";
+import { giftSellBlockedReason, parseGiftLimits, type GiftLimits } from "@/lib/pos/gift-limits";
 
 const CLOSED = "closed";
 
@@ -159,6 +160,17 @@ async function ctxFor(userId: string, locationId: string, orgId?: string): Promi
   const bound = await bindTenant(userId, { locationId, orgId });
   if (!bound.organizationId || !bound.locationId) throw new ForbiddenError("Location is required");
   return loadEntityWriteContext(userId, bound.organizationId, bound.locationId);
+}
+
+async function giftLimitsForLocation(locationId: string): Promise<GiftLimits> {
+  const sql = await getSql();
+  const rows = await sql<{ setup: unknown }>`
+    select setup from locations where id = ${locationId} limit 1
+  `;
+  const setup = rows[0]?.setup;
+  return parseGiftLimits(
+    setup && typeof setup === "object" ? (setup as Record<string, unknown>) : undefined,
+  );
 }
 
 function canManageIssuer(ctx: EntityWriteContext, issuerId: string): boolean {
@@ -300,6 +312,11 @@ export async function issueGiftCard(
   const denied = issuerDenied(ctx, input.issuerId);
   if (denied) return { ok: false, error: denied };
   if (input.amountCents <= 0) return { ok: false, error: "Amount required" };
+  {
+    const limits = await giftLimitsForLocation(ctx.locationId);
+    const cap = giftSellBlockedReason(input.amountCents, 0, limits);
+    if (cap) return { ok: false, error: cap };
+  }
   if (input.tender === "card") {
     const { captureCardPresent } = await import("@/lib/payments/facade.server");
     const entityId = input.issuerKind === "operator" ? input.issuerId : HOST_SCOPE;
@@ -532,6 +549,11 @@ export async function reloadGiftCard(
   }
   if (row.status === "frozen" || row.status === "void") {
     return { ok: false, error: "Card is not reloadable" };
+  }
+  {
+    const limits = await giftLimitsForLocation(ctx.locationId);
+    const cap = giftSellBlockedReason(input.amountCents, n(row.balance_cents), limits);
+    if (cap) return { ok: false, error: cap };
   }
   if (input.code) await ensurePanPin(row, input.code);
   const issuerId = freshLife && input.issuerId ? input.issuerId : row.issuer_id;

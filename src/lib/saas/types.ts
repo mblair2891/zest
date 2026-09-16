@@ -107,6 +107,14 @@ export type LocationSetup = {
   cashHandling?: import("@/lib/pos/cash-handling").CashHandlingConfig;
   /** Venue payment methods (toggles). */
   paymentMethods?: import("@/lib/pos/payment-methods").PaymentMethodsConfig;
+  /** Per-entity Payments / KYC drafts. */
+  entityKyc?: Record<string, import("@/lib/payments/entity-kyc").EntityKyc>;
+  giftMaxLoadCents?: number;
+  giftMaxBalanceCents?: number;
+  giftMaxSellPerTxnCents?: number;
+  giftCashOutRemainder?: boolean;
+  giftHighValueManagerPin?: boolean;
+  giftHighValueCents?: number;
   /** Hashed station service PIN (reload WebView / exit lock-task). */
   stationServicePinHash?: string;
   /** Cost catalog (SKUs, invoices, suppliers, POs) — no image blobs. */

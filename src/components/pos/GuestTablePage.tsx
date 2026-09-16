@@ -349,6 +349,9 @@ export function GuestTablePage({
           <p className="text-sm text-muted-foreground">
             {resolvedTable?.section ?? ""} · {settings.name}
           </p>
+          <p className="mt-1 text-xs text-muted-foreground">
+            You are at this location. Table tent / check QR only — not delivery, not shipping.
+          </p>
           <p className="mt-1 text-xs text-muted-foreground">{qrPolicySummary(policy)}</p>
         </div>
       </header>

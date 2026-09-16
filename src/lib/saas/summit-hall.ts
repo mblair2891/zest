@@ -451,7 +451,7 @@ export const SUMMIT_HALL_DEVICES = [
   },
   {
     id: "dev_summit_prn_kitchen",
-    label: "Kitchen printer",
+    label: "Order printer",
     type: "order_printer" as const,
     fn: "kitchen_kds" as const,
     operatorId: SUMMIT_HEARTH_OP_ID,

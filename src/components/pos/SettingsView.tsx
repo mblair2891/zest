@@ -237,6 +237,81 @@ function GiftCardSettingsPack({
               by the house.
             </span>
           </label>
+          <p className="text-xs text-muted-foreground">
+            First-party ledger only. No third-party gift networks, no open-loop Visa/MC
+            gift, no public website purchase, no shipping.
+          </p>
+          <label className="block text-sm">
+            <span className="mb-1 block text-muted-foreground">Max load / max balance per card ($)</span>
+            <Input
+              type="number"
+              value={String((settings.giftMaxBalanceCents ?? 50000) / 100)}
+              onChange={(e) => {
+                const cents = Math.max(100, Math.round((parseFloat(e.target.value) || 500) * 100));
+                save({ giftMaxLoadCents: cents, giftMaxBalanceCents: cents });
+              }}
+            />
+          </label>
+          <label className="block text-sm">
+            <span className="mb-1 block text-muted-foreground">Max sell per transaction ($)</span>
+            <Input
+              type="number"
+              value={String((settings.giftMaxSellPerTxnCents ?? 50000) / 100)}
+              onChange={(e) =>
+                save({
+                  giftMaxSellPerTxnCents: Math.max(
+                    100,
+                    Math.round((parseFloat(e.target.value) || 500) * 100),
+                  ),
+                })
+              }
+            />
+          </label>
+          <label className="flex items-start gap-2 text-sm">
+            <input
+              type="checkbox"
+              className="mt-0.5 h-4 w-4 rounded border-border"
+              checked={settings.giftCashOutRemainder === true}
+              onChange={(e) => save({ giftCashOutRemainder: e.target.checked })}
+            />
+            <span>
+              Allow cash-out of remainder
+              <span className="mt-0.5 block text-xs text-muted-foreground">
+                Off except where required by law.
+              </span>
+            </span>
+          </label>
+          <label className="flex items-start gap-2 text-sm">
+            <input
+              type="checkbox"
+              className="mt-0.5 h-4 w-4 rounded border-border"
+              checked={settings.giftHighValueManagerPin !== false}
+              onChange={(e) => save({ giftHighValueManagerPin: e.target.checked })}
+            />
+            <span>
+              High-value sell and rapid redeem need a manager PIN
+              <span className="mt-0.5 block text-xs text-muted-foreground">
+                Threshold below. Default $200.00.
+              </span>
+            </span>
+          </label>
+          {settings.giftHighValueManagerPin !== false && (
+            <label className="block text-sm">
+              <span className="mb-1 block text-muted-foreground">High-value threshold ($)</span>
+              <Input
+                type="number"
+                value={String((settings.giftHighValueCents ?? 20000) / 100)}
+                onChange={(e) =>
+                  save({
+                    giftHighValueCents: Math.max(
+                      100,
+                      Math.round((parseFloat(e.target.value) || 200) * 100),
+                    ),
+                  })
+                }
+              />
+            </label>
+          )}
         </fieldset>
       </div>
     </Pack>
@@ -295,6 +370,13 @@ export function SettingsView() {
           giftTermAllowed: s.giftTermAllowed === true,
           giftTermDays: s.giftTermDays ?? 730,
           giftOperatorBreakageSplitBps: s.giftOperatorBreakageSplitBps ?? 5000,
+          giftMaxLoadCents: s.giftMaxLoadCents ?? 50000,
+          giftMaxBalanceCents: s.giftMaxBalanceCents ?? 50000,
+          giftMaxSellPerTxnCents: s.giftMaxSellPerTxnCents ?? 50000,
+          giftCashOutRemainder: s.giftCashOutRemainder === true,
+          giftHighValueManagerPin: s.giftHighValueManagerPin !== false,
+          giftHighValueCents: s.giftHighValueCents ?? 20000,
+          entityKyc: s.entityKyc,
           aiReportSchedule: s.aiReportSchedule ?? "off",
           aiReportEmail: s.aiReportEmail ?? "",
           opsJobs: s.opsJobs,

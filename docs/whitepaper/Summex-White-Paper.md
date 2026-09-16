@@ -3,7 +3,7 @@
 **Powered by Quantum Reach**
 
 White paper · for owners and operators  
-**Revision · 15 Sep 2026** — Written for prospective subscribers. Aligns with Operators Guide v2026.10.99. Printers are receipt or order only. The house toggles which tenders it accepts (cash, card, gift, check, house account, comp, other). Disabled methods are hidden on pay and closeout. Cash is the entered till price; card is marked up and rounded up. Station UI is device role ∩ staff PIN. After PIN the tablet shows a short role menu — not a dashboard. A kitchen PIN does not open order entry. Peer venues have no host merchant; the host stand is still a device role. Staff stations are Android tablets. Pair with a typed Devices code; QR is optional. Devices Delete removes a named slot; Deactivate keeps it. Guests look up gift balance at summex.app/gift. Spent plastic can be reused.
+**Revision · 16 Sep 2026** — Written for prospective subscribers. Aligns with Operators Guide v2026.10.100. The house toggles which tenders it accepts (cash, card, gift, check, house account, comp, other). Disabled methods are hidden on pay and closeout. Cash is the entered till price; card is marked up and rounded up. Station UI is device role ∩ staff PIN. After PIN the tablet shows a short role menu — not a dashboard. A kitchen PIN does not open order entry. Peer venues have no host merchant; the host stand is still a device role. Staff stations are Android tablets. Pair with a typed Devices code; QR is optional. Devices Delete removes a named slot; Deactivate keeps it. Gift cards sell and redeem on a paired station — not on the public website, not shipped. Guests look up gift balance at summex.app/gift. QR is on-premise (table tent / check). Drinking-place MCC 5813 is on-premise retail only — no online or shipped alcohol.
 
 summex.app  
 Guest cards: **Quantum Payments** only
@@ -47,11 +47,11 @@ If the guest can tell that the house is stitched together from four vendors, Sum
 The guest should not have to understand how the house is organized.
 
 - **One check.** Food and drink from different operators still tender once, under the house name, on Quantum Payments.
-- **One receipt, itemized by vendor.** Lines group under the brand that sold them. The guest still holds one document.
+- **One receipt, itemized by vendor.** Lines group under the brand that sold them, with a total per vendor, then a grand total. The guest still holds one document.
 - **Cash is the entered price.** The operator types the cash (till) amount. There is not a second ugly cash menu to maintain.
 - **Cash discount, when you post one.** Card is computed from cash at **this location’s guest card rate** (platform default 5.00%; the house can set 4.00% or another), then rounded **up** to a quarter (or the increment you choose). $18.00 cash at 5% with a $1.00 increment becomes $19.00 card. Cash pay charges cash; card pay charges card. Never card-minus-percent for the till. You own local posting rules; Summex does not rewrite legal copy per state.
-- **QR, as you set it.** Table tents, reorder after staff open a check, pay and split, a pay code on the ticket. Modes combine. Guest UI is public — no staff PIN. After pay they stay on thank-you.
-- **Gift balance, no login.** summex.app/gift. Full printed number, or last four plus the card PIN. Current life only — load, redeem, void, date, venue, amount. No staff names.
+- **QR, as you set it.** On-premise only — table tent or check QR. The guest is at the location. No e-commerce cart, no alcohol delivery, no shipping a bottle. Reorder after staff open a check, pay and split, a pay code on the ticket. Modes combine. Guest UI is public — no staff PIN. After pay they stay on thank-you.
+- **Gift cards, first-party ledger.** Sell and redeem on a paired station with a staff PIN. Not sold on the website. Not shipped. No third-party gift networks and no open-loop Visa/MC gift. Guests look up balance at summex.app/gift (full printed number, or last four plus the card PIN). Current life only — load, redeem, void, date, venue, amount. No staff names. Default max load / balance / sell per transaction is $500.
 
 The guest never sees operator splits, device roles, or how the house is paid.
 
@@ -85,7 +85,7 @@ A named building can hold two independent operators — a bar and a kitchen is t
 - **Host + tenants:** the host owner/manager signs in with email and password and has full access to every tenant’s ops — devices, floor, menus, reports, costs, labor, payments split, grants. A tenant entity login sees only that brand.
 - **Shared venue (peers):** no host merchant. The host stand is still a device role. Venue admin is not a landlord merchant. After contract signed they sign in at app.summex.app/login (never the PIN pad) and finish a nine-step building wizard — then invite each operator. Each operator owns their menu, tickets, recipes, staff, Finix merchant, and schedule. An invite cannot edit a sibling.
 - The guest still pays **one check**. Capture **splits** to each brand’s Quantum Payments merchant by who sold the line.
-- Gift is a **house ledger** (swipe, scan, or key) — not the card processor. Load on cash or card. Redeem inside Summex. If one brand issues and another fulfills, settlement moves between them. Guests check the current balance at **summex.app/gift**. When a card is spent, a manager or venue admin can **reuse the plastic**: close the old ledger (kept in audit), same printed number, new card id at $0. The next load is a new issuance for the selling entity.
+- Gift is a **house ledger** (swipe, scan, or key) — not the card processor. Load on cash or card at the station. Redeem inside Summex. If one brand issues and another fulfills, the issuer holds cash until redeem; settlement follows owned_lines. Guests check the current balance at **summex.app/gift**. Cards are not sold online. When a card is spent, a manager or venue admin can **reuse the plastic**: close the old ledger (kept in audit), same printed number, new card id at $0. The next load is a new issuance for the selling entity.
 - Period close is the house book for cash, any host cut, and disputes. Live bank payout of leftovers is not claimed here.
 
 Untagged lines fail closed. The building does not become a third merchant.

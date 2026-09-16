@@ -156,11 +156,16 @@ export function TenantOnboardWizard({
               value={payload.mcc}
               onChange={(v) => patch((p) => ({ ...p, mcc: v }))}
             >
-              <option value="5812">5812 — eating places / food service</option>
-              <option value="5813">5813 — drinking places</option>
-              <option value="7299">Other</option>
+              <option value="5812">5812 — restaurant / eating place</option>
+              <option value="5813">5813 — drinking place</option>
+              <option value="5814">5814 — fast food / QSR</option>
             </NativeSelect>
           </Field>
+          {payload.mcc === "5813" && (
+            <p className="text-xs text-muted-foreground" data-demo="mcc-5813">
+              On-premise retail only. Summex does not support online or shipped alcohol sales.
+            </p>
+          )}
           <Field label="Bank (payout)">
             <Input
               value={payload.bankName}

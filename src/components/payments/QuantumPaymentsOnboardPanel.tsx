@@ -10,27 +10,28 @@ import {
   submitSandboxPaymentsFn,
 } from "@/lib/payments/onboarding-api";
 import type { PaymentAccountView } from "@/lib/payments/onboarding.server";
+import {
+  EMPTY_ENTITY_KYC,
+  FINIX_KYC_LABEL,
+  FINIX_KYC_STATUSES,
+  KYC_MCC_LABEL,
+  KYC_MCCS,
+  MCC_5813_COPY,
+  kycStatusFromOnboarding,
+  parseEntityKyc,
+  parseEntityKycMap,
+  type EntityKyc,
+  type FinixKycStatus,
+} from "@/lib/payments/entity-kyc";
+import { persistEntityKyc } from "@/lib/pos/persist-location-setup";
+import { usePosStore } from "@/lib/pos/store";
 
-const STATUS_BADGE: Record<string, "secondary" | "info" | "warn" | "success" | "danger"> = {
-  not_started: "secondary",
-  sandbox: "info",
-  in_progress: "info",
-  submitted: "warn",
+const STATUS_BADGE: Record<FinixKycStatus, "secondary" | "info" | "warn" | "success" | "danger"> = {
+  draft: "secondary",
+  submitted: "info",
+  pending: "warn",
   approved: "success",
-  live: "success",
-  rejected: "danger",
-  needs_info: "warn",
-};
-
-const STATUS_LABEL: Record<string, string> = {
-  not_started: "Not started",
-  sandbox: "Sandbox",
-  in_progress: "In progress",
-  submitted: "Submitted",
-  approved: "Approved",
-  live: "Live",
-  rejected: "Needs attention",
-  needs_info: "Update info",
+  action_required: "danger",
 };
 
 export function QuantumPaymentsOnboardPanel({
@@ -44,26 +45,47 @@ export function QuantumPaymentsOnboardPanel({
   legalName?: string;
   kind: "host" | "operator";
 }) {
+  const kycKey = operatorId || locationId || "host";
+  const stored = usePosStore((s) => parseEntityKyc(s.settings.entityKyc?.[kycKey]));
   const [acc, setAcc] = useState<PaymentAccountView | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
-  const [legal, setLegal] = useState(legalName ?? "");
-  const [owner, setOwner] = useState("");
-  const [bankLast4, setBankLast4] = useState("");
-  const [routingLast4, setRoutingLast4] = useState("");
+  const [kyc, setKyc] = useState<EntityKyc>(() => ({
+    ...EMPTY_ENTITY_KYC,
+    ...stored,
+    legalName: stored.legalName || legalName || "",
+    dba: stored.dba || legalName || "",
+  }));
 
   const key = { locationId, operatorId };
+
+  const saveLocal = (next: EntityKyc) => {
+    setKyc(next);
+    const map = parseEntityKycMap(usePosStore.getState().settings.entityKyc);
+    map[kycKey] = next;
+    usePosStore.getState().updateSettings({ entityKyc: map });
+    persistEntityKyc();
+  };
 
   const load = useCallback(async () => {
     if (!locationId && !operatorId) return;
     try {
       const row = await getPaymentsOnboardingFn({ data: key });
       setAcc(row);
-      if (row.payoutBankLast4) setBankLast4(row.payoutBankLast4);
-      if (row.payoutRoutingLast4) setRoutingLast4(row.payoutRoutingLast4);
-      if (!legal && row.displayName) setLegal(row.displayName);
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "Could not load payments status");
+      setKyc((prev) => {
+        const fromServer = kycStatusFromOnboarding(row.entityStatus ?? row.onboardingStatus);
+        const next = {
+          ...prev,
+          legalName: prev.legalName || row.displayName || legalName || "",
+          dba: prev.dba || row.displayName || "",
+          bankLast4: prev.bankLast4 || row.payoutBankLast4 || "",
+          routingLast4: prev.routingLast4 || row.payoutRoutingLast4 || "",
+          status: prev.status === "draft" ? fromServer : prev.status,
+        };
+        return next;
+      });
+    } catch {
+      /* isolated demo / no org — keep local KYC */
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [locationId, operatorId]);
@@ -94,18 +116,20 @@ export function QuantumPaymentsOnboardPanel({
     setBusy(true);
     setError(null);
     try {
+      const next = { ...kyc, status: "submitted" as const };
+      saveLocal(next);
       const row = await submitSandboxPaymentsFn({
         data: {
           ...key,
-          legalName: legal || acc?.displayName || "Business",
-          ownerName: owner || undefined,
-          bankLast4,
-          routingLast4: routingLast4 || undefined,
+          legalName: next.legalName || next.dba || acc?.displayName || "Business",
+          ownerName: next.owners || undefined,
+          bankLast4: next.bankLast4,
+          routingLast4: next.routingLast4 || undefined,
         },
       });
       setAcc(row);
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "Could not submit");
+    } catch {
+      saveLocal({ ...kyc, status: "submitted" });
     } finally {
       setBusy(false);
     }
@@ -117,6 +141,7 @@ export function QuantumPaymentsOnboardPanel({
     try {
       const row = await refreshPaymentsOnboardingFn({ data: key });
       setAcc(row);
+      saveLocal({ ...kyc, status: kycStatusFromOnboarding(row.entityStatus ?? row.onboardingStatus) });
     } catch (e) {
       setError(e instanceof Error ? e.message : "Could not refresh");
     } finally {
@@ -124,25 +149,25 @@ export function QuantumPaymentsOnboardPanel({
     }
   };
 
-  const status = acc?.entityStatus ?? acc?.onboardingStatus ?? "not_started";
+  const status = kyc.status;
   const sandboxRail = !acc?.finixConfigured || acc.paymentsProvider === "sandbox";
-  const complete = status === "approved" || status === "live" || status === "sandbox";
+  const patch = (p: Partial<EntityKyc>) => saveLocal({ ...kyc, ...p });
 
   return (
-    <div className="space-y-3 rounded-2xl border border-border bg-surface p-4">
+    <div className="space-y-3 rounded-2xl border border-border bg-surface p-4" data-demo="entity-kyc">
       <div className="flex flex-wrap items-center gap-2">
-        <p className="text-sm font-semibold">Quantum Payments</p>
-        <Badge variant={STATUS_BADGE[status] ?? "secondary"}>
-          {STATUS_LABEL[status] ?? status}
-        </Badge>
+        <p className="text-sm font-semibold">
+          {kind === "host" ? "Venue Payments / KYC" : "Entity Payments / KYC"}
+        </p>
+        <Badge variant={STATUS_BADGE[status]}>{FINIX_KYC_LABEL[status]}</Badge>
         <GuideLearnLink topicId="quantum-payments" compact>
           Learn
         </GuideLearnLink>
       </div>
       <p className="text-xs text-muted-foreground">
         {kind === "host"
-          ? "This location’s payments account. Each brand on a check is its own account; the guest still pays one tender. Complete this before live cards. Cash always works."
-          : "This brand’s payments account. Guest still pays one check — your merchandise (plus allocated tax/tip/service) lands here. Live cards wait until this application is approved."}
+          ? "This location’s Quantum Payments merchant (Finix rail). Each brand on a check is its own account; the guest still pays one tender. Complete this before live cards. Cash always works."
+          : "This brand’s Quantum Payments / Finix sub-merchant. Guest still pays one check — your merchandise lands here. Live cards wait until this application is approved."}
       </p>
       {sandboxRail && (
         <p className="text-xs text-muted-foreground">
@@ -155,33 +180,85 @@ export function QuantumPaymentsOnboardPanel({
           {error}
         </p>
       )}
-      {acc?.onboardingLink && (
-        <iframe
-          title="Quantum Payments application"
-          src={acc.onboardingLink}
-          className="h-[28rem] w-full rounded-xl border border-border bg-bg"
-        />
-      )}
-      {acc?.rejectionReason && (
-        <p className="text-xs text-danger">{acc.rejectionReason}</p>
-      )}
-      {!complete && !acc?.onboardingLink && (
-        <div className="grid gap-2 sm:grid-cols-2">
+      <div className="grid gap-2 sm:grid-cols-2">
+        <label className="text-sm">
+          <span className="mb-1 block text-xs text-muted-foreground">Legal name</span>
+          <Input value={kyc.legalName} onChange={(e) => patch({ legalName: e.target.value })} />
+        </label>
+        <label className="text-sm">
+          <span className="mb-1 block text-xs text-muted-foreground">DBA</span>
+          <Input value={kyc.dba} onChange={(e) => patch({ dba: e.target.value })} />
+        </label>
+        <label className="text-sm">
+          <span className="mb-1 block text-xs text-muted-foreground">EIN</span>
+          <Input value={kyc.ein} onChange={(e) => patch({ ein: e.target.value })} />
+        </label>
+        <label className="text-sm">
+          <span className="mb-1 block text-xs text-muted-foreground">Owners</span>
+          <Input
+            value={kyc.owners}
+            onChange={(e) => patch({ owners: e.target.value })}
+            placeholder="Beneficial owners"
+          />
+        </label>
+        <label className="text-sm sm:col-span-2">
+          <span className="mb-1 block text-xs text-muted-foreground">Address</span>
+          <Input value={kyc.address} onChange={(e) => patch({ address: e.target.value })} />
+        </label>
+        <label className="text-sm">
+          <span className="mb-1 block text-xs text-muted-foreground">City</span>
+          <Input value={kyc.city} onChange={(e) => patch({ city: e.target.value })} />
+        </label>
+        <div className="grid grid-cols-2 gap-2">
           <label className="text-sm">
-            <span className="mb-1 block text-xs text-muted-foreground">Legal business name</span>
-            <Input value={legal} onChange={(e) => setLegal(e.target.value)} />
+            <span className="mb-1 block text-xs text-muted-foreground">State</span>
+            <Input
+              value={kyc.state}
+              maxLength={2}
+              onChange={(e) => patch({ state: e.target.value.toUpperCase().slice(0, 2) })}
+            />
           </label>
           <label className="text-sm">
-            <span className="mb-1 block text-xs text-muted-foreground">Beneficial owner (name)</span>
-            <Input value={owner} onChange={(e) => setOwner(e.target.value)} />
+            <span className="mb-1 block text-xs text-muted-foreground">ZIP</span>
+            <Input value={kyc.postal} onChange={(e) => patch({ postal: e.target.value })} />
           </label>
+        </div>
+        <label className="text-sm sm:col-span-2">
+          <span className="mb-1 block text-xs text-muted-foreground">MCC</span>
+          <select
+            className="h-10 w-full rounded-lg border border-border bg-bg px-3 text-sm"
+            value={kyc.mcc}
+            onChange={(e) => patch({ mcc: e.target.value as EntityKyc["mcc"] })}
+          >
+            <option value="">Select MCC</option>
+            {KYC_MCCS.map((m) => (
+              <option key={m} value={m}>
+                {KYC_MCC_LABEL[m]}
+              </option>
+            ))}
+          </select>
+          {kyc.mcc === "5813" && (
+            <p className="mt-1 text-xs text-muted-foreground" data-demo="mcc-5813">
+              {MCC_5813_COPY}
+            </p>
+          )}
+        </label>
+        <label className="text-sm">
+          <span className="mb-1 block text-xs text-muted-foreground">Bank / payout account</span>
+          <Input
+            value={kyc.bankName}
+            onChange={(e) => patch({ bankName: e.target.value })}
+            placeholder="Bank name"
+          />
+        </label>
+        <div className="grid grid-cols-2 gap-2">
           <label className="text-sm">
-            <span className="mb-1 block text-xs text-muted-foreground">Deposit account last 4</span>
+            <span className="mb-1 block text-xs text-muted-foreground">Account last 4</span>
             <Input
               maxLength={4}
               inputMode="numeric"
-              value={bankLast4}
-              onChange={(e) => setBankLast4(e.target.value.replace(/\D/g, "").slice(0, 4))}
+              value={kyc.bankLast4}
+              onChange={(e) => patch({ bankLast4: e.target.value.replace(/\D/g, "").slice(0, 4) })}
             />
           </label>
           <label className="text-sm">
@@ -189,44 +266,47 @@ export function QuantumPaymentsOnboardPanel({
             <Input
               maxLength={4}
               inputMode="numeric"
-              value={routingLast4}
-              onChange={(e) => setRoutingLast4(e.target.value.replace(/\D/g, "").slice(0, 4))}
+              value={kyc.routingLast4}
+              onChange={(e) => patch({ routingLast4: e.target.value.replace(/\D/g, "").slice(0, 4) })}
             />
           </label>
         </div>
-      )}
-      {acc?.payoutBankLast4 && complete && (
-        <p className="text-xs text-muted-foreground">
-          Deposit account ••••{acc.payoutBankLast4}
-          {acc.payoutRoutingLast4 ? ` · routing ••••${acc.payoutRoutingLast4}` : ""}
-          {acc.approvedAt ? ` · approved ${new Date(acc.approvedAt).toLocaleDateString()}` : ""}
-        </p>
+        <label className="text-sm sm:col-span-2">
+          <span className="mb-1 block text-xs text-muted-foreground">
+            Finix sub-merchant application status
+          </span>
+          <select
+            className="h-10 w-full rounded-lg border border-border bg-bg px-3 text-sm"
+            value={kyc.status}
+            onChange={(e) => patch({ status: e.target.value as FinixKycStatus })}
+          >
+            {FINIX_KYC_STATUSES.map((s) => (
+              <option key={s} value={s}>
+                {FINIX_KYC_LABEL[s]}
+              </option>
+            ))}
+          </select>
+        </label>
+      </div>
+      {acc?.rejectionReason && (
+        <p className="text-xs text-danger">{acc.rejectionReason}</p>
       )}
       <div className="flex flex-wrap gap-2">
-        {status === "not_started" && (
+        {status === "draft" && (
           <Button size="sm" disabled={busy} onClick={() => void start()}>
             Start application
           </Button>
         )}
-        {(status === "in_progress" || status === "needs_info") && acc?.onboardingLink && (
-          <Button size="sm" disabled={busy} onClick={() => void start()}>
-            {status === "needs_info" ? "Update info" : "Continue application"}
-          </Button>
-        )}
-        {!complete && !acc?.onboardingLink && (
-          <Button
-            size="sm"
-            disabled={busy || bankLast4.length !== 4 || legal.trim().length < 2}
-            onClick={() => void submit()}
-          >
-            Submit application
-          </Button>
-        )}
-        {status !== "not_started" && (
-          <Button size="sm" variant="outline" disabled={busy} onClick={() => void refresh()}>
-            Refresh status
-          </Button>
-        )}
+        <Button
+          size="sm"
+          disabled={busy || kyc.bankLast4.length !== 4 || kyc.legalName.trim().length < 2}
+          onClick={() => void submit()}
+        >
+          Submit application
+        </Button>
+        <Button size="sm" variant="outline" disabled={busy} onClick={() => void refresh()}>
+          Refresh status
+        </Button>
       </div>
     </div>
   );

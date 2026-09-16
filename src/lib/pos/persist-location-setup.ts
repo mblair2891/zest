@@ -77,6 +77,27 @@ export function confirmCashDiscountRecalc(): boolean {
   return true;
 }
 
+export function persistEntityKyc(): void {
+  const ctx = ids();
+  if (!ctx) return;
+  const prev = timers.get("entity-kyc");
+  if (prev) clearTimeout(prev);
+  timers.set(
+    "entity-kyc",
+    setTimeout(() => {
+      timers.delete("entity-kyc");
+      const s = usePosStore.getState().settings;
+      void saveLocationSettingsFn({
+        data: {
+          orgId: ctx.orgId,
+          locationId: ctx.locationId,
+          setup: { entityKyc: s.entityKyc },
+        },
+      }).catch(() => undefined);
+    }, 400),
+  );
+}
+
 export function persistPaymentMethods(): void {
   const ctx = ids();
   if (!ctx) return;

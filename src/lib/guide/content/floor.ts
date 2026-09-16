@@ -256,7 +256,7 @@ export const FLOOR_TOPICS: GuideTopic[] = [
     openView: "settings",
     blocks: [
       why(
-        "The sticker on the table is a deep link to that seat at this location. Guests add to the open check. Capture is always Quantum Payments — one guest tender, split to each brand’s merchant when operators share the check.",
+        "The sticker on the table is a deep link to that seat at this location. The guest is at the location — table tent / check QR only. No e-commerce cart, no alcohol delivery SKU, no shipping a bottle. Guests add to the open check. Capture is always Quantum Payments — one guest tender, split to each brand’s merchant when operators share the check.",
       ),
       ul(
         "Full self-serve — scan table QR, open a check, order, pay. Opening a check notifies host/server.",
@@ -275,7 +275,7 @@ export const FLOOR_TOPICS: GuideTopic[] = [
         "Lines keep their operator. One tender. Receipt grouped by vendor. Finix splits by owner.",
       ),
       warn(
-        "Table tokens are location-scoped. Rotate if a sticker walks. Ticket QR expires; reprint for a fresh code. Live cards on QR still need an approved Quantum application — training uses sandbox.",
+        "On-premise only. The guest is at the location. Table tokens are location-scoped. Rotate if a sticker walks. Ticket QR expires; reprint for a fresh code. Live cards on QR still need an approved Quantum application — training uses sandbox. No delivery and no shipped alcohol.",
       ),
       related("floor-tables", "floor-status", "quantum-payments", "host-capture", "type-food-hall"),
     ],

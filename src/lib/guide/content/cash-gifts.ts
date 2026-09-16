@@ -279,7 +279,7 @@ export const CASH_GIFT_TOPICS: GuideTopic[] = [
     chapterId: "cash-gifts",
     title: "First-party gift cards",
     summary:
-      "Issuer liability, public lookup, reuse spent plastic — Summex ledger only.",
+      "Issuer liability, station sell/redeem, public lookup — Summex ledger only. Not sold online.",
     roles: ["owner_manager", "server", "host_operator"],
     keywords: [
       "gift",
@@ -309,13 +309,13 @@ export const CASH_GIFT_TOPICS: GuideTopic[] = [
         "Gift liability belongs to the issuing operator or the house — not to the drawer that collected cash, and not to a leftover Toast/Square gift SKU. One ledger means freeze/void actually work.",
       ),
       p(
-        "Gift is the Summex house ledger — not Finix, not Quantum Payments, not a card processor. Swipe the mag stripe, scan the barcode, or key the code. Balances live on the Summex server (hashed codes, issuer, ledger). The POS cache is a view of that ledger. There is no third-party gift network as system of record.",
+        "Gift is the Summex house ledger — not Finix, not Quantum Payments, not a card processor. Sell and redeem on a paired station with a staff PIN. Swipe the mag stripe, scan the barcode, or key the code. Balances live on the Summex server (hashed codes, issuer, ledger). The POS cache is a view of that ledger. There is no third-party gift network as system of record, no open-loop Visa/MC gift, and no public website purchase or shipping.",
       ),
       p(
         "Default issuer follows the selling point: bar sale → that bar operator; host stand sale → the configured entity; explicit house SKU → house. House issuer is optional location mode — you do not create a third legal company.",
       ),
       ul(
-        "Sale (cash or card) increases issuer gift liability. It is never booked as the seller’s operating merchandise. Bank-card load charges the issuer entity’s Quantum Payments merchant — redeem stays on the Summex ledger, not a Finix gift product. A shared venue does not require a house gift product.",
+        "Sale (cash or card) increases issuer gift liability. It is never booked as the seller’s operating merchandise. Bank-card load charges the issuer entity’s Quantum Payments merchant — redeem stays on the Summex ledger, not a Finix gift product. A shared venue does not require a house gift product. Issuer holds cash until redeem; redeem settlement follows owned_lines.",
         "The collecting drawer may hold cash; settlement tracks due-to-issuer remit when seller ≠ issuer.",
         "Guest redeems at any allowed operator. The fulfilling operator gets the merchandise sale. Issuer liability decreases. In-system settlement issuer → fulfiller (no-op if the same entity).",
         "An operator cannot freeze, void, reload, or import another issuer’s cards. Redeem by code is location-wide so any allowed drawer can take the card.",
@@ -324,16 +324,16 @@ export const CASH_GIFT_TOPICS: GuideTopic[] = [
       ),
       steps(
         "If Gift is off in Settings → Payment methods, Issue / reload and Pay → Gift are hidden. No sell and no redeem.",
-        "Open Guests. Issue a card: amount, issuer (defaults to selling point), cash or card tender. Card load still charges Quantum Payments; the gift balance is Summex ledger, not Finix.",
-        "Pay → Gift: swipe, scan, or key the code. Example: Operator B (bar) issues $50 — liability is Operator B. Operator A sells food, redeem — Operator A merch, Operator B → Operator A remit.",
-        "Settings → Gift cards: house issuer on/off, host-stand default issuer, term allowed (with disclaimer), operator residual split. Use the dropdowns — no JSON.",
+        "Station Pay → Gift: Sell gift card (amount + cash or card) or Redeem / Check balance. Also Guests → Issue / reload. Card load still charges Quantum Payments; the gift balance is Summex ledger, not Finix. Sell above the cap is blocked.",
+        "Pay → Gift: swipe, scan, or key the code. Receipt shows gift tender. Example: Operator B (bar) issues $50 — liability is Operator B. Operator A sells food, redeem — Operator A merch, Operator B → Operator A remit.",
+        "Settings → Gift cards: max load / max balance per card (default $500), max sell per transaction (default $500), cash-out of remainder off except where required by law, high-value sell / rapid redeem manager PIN (default $200). House issuer on/off, host-stand default issuer, term allowed (with disclaimer), operator residual split. Use the fields — no JSON. No “buy gift cards online.”",
         "Reports → Gift liability / Gift redemptions, or Settle → liability by issuer. Host: Process expired residual when a term is in force.",
-        "Freeze if lost. Void if issued in error. Both need a manager PIN. Load needs cash or card on the same ticket. Import CSV is one-way from Square / Toast / Clover / Shopify / generic (those systems are not POS card processors).",
+        "Freeze if lost. Void if issued in error. Both need a manager PIN. Load needs cash or card on the same ticket. Import CSV is a one-way migration of balances from Square / Toast / Clover / Shopify / generic — not resale of those products (those systems are not POS card processors).",
         "Guests look up balance at summex.app/gift — no login. Full printed number, or last four plus the card PIN shown at issue. They see this life only: load, redeem, void, date, venue, amount. Lookups are rate-limited. Staff names never appear.",
         "Spent plastic: manager or venue admin (not an entity-only login) Reactivate on Guests. Balance must be $0, or force with a written reason. The old ledger stays in audit and is closed. Same printed number, new card id, $0, empty guest history. The next load is a new issuance for the selling entity.",
       ),
       warn(
-        "Turning on a term does not make expiry legal. Confirm state law with counsel — expiry may be illegal in some states. Imported cards are not kept in sync with the old system.",
+        "Gift cards are not sold on the public website and are not shipped. Turning on a term does not make expiry legal. Confirm state law with counsel — expiry may be illegal in some states. Imported cards are not kept in sync with the old system.",
       ),
       related("tenders-tips", "settlement", "guests", "cash-handling", "quantum-payments", "loss-prevention", "white-paper"),
     ],

@@ -281,6 +281,19 @@ export interface RestaurantSettings {
   giftHouseIssuerEnabled?: boolean;
   /** Host stand / hostess default issuer (vendor id or "host"). */
   giftHostessDefaultIssuerId?: string;
+  /** Max load onto one card, cents. Default $500. */
+  giftMaxLoadCents?: number;
+  /** Max balance per card, cents. Default $500. */
+  giftMaxBalanceCents?: number;
+  /** Max sell in one transaction, cents. Default $500. */
+  giftMaxSellPerTxnCents?: number;
+  /** Cash-out of remainder. Off except where required by law. */
+  giftCashOutRemainder?: boolean;
+  /** High-value sell / rapid redeem needs manager PIN. */
+  giftHighValueManagerPin?: boolean;
+  giftHighValueCents?: number;
+  /** Per-entity Payments / KYC drafts (form fields). */
+  entityKyc?: Record<string, import("@/lib/payments/entity-kyc").EntityKyc>;
   networkReadyStatus?: import("@/lib/saas/network-readiness").NetworkReadyStatus;
   networkCheckedAt?: number;
   networkNotes?: string;

@@ -324,6 +324,15 @@ function PosAppInner({ entityId }: { entityId?: string }) {
                 paymentMethods: parsePaymentMethods(
                   setup.paymentMethods ?? st.settings.paymentMethods,
                 ),
+                entityKyc: setup.entityKyc ?? st.settings.entityKyc,
+                giftMaxLoadCents: setup.giftMaxLoadCents ?? st.settings.giftMaxLoadCents,
+                giftMaxBalanceCents: setup.giftMaxBalanceCents ?? st.settings.giftMaxBalanceCents,
+                giftMaxSellPerTxnCents:
+                  setup.giftMaxSellPerTxnCents ?? st.settings.giftMaxSellPerTxnCents,
+                giftCashOutRemainder: setup.giftCashOutRemainder ?? st.settings.giftCashOutRemainder,
+                giftHighValueManagerPin:
+                  setup.giftHighValueManagerPin ?? st.settings.giftHighValueManagerPin,
+                giftHighValueCents: setup.giftHighValueCents ?? st.settings.giftHighValueCents,
                 isDemo: Boolean(access.location.isDemo || access.openDemo || setup.demoIsolated),
                 demoIsolated: Boolean(access.location.isDemo || access.openDemo || setup.demoIsolated),
                 serviceStyle:
