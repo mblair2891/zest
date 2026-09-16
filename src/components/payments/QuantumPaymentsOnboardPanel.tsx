@@ -39,24 +39,30 @@ export function QuantumPaymentsOnboardPanel({
   operatorId,
   legalName,
   kind,
+  peerVenue = false,
 }: {
   locationId?: string;
   operatorId?: string;
   legalName?: string;
   kind: "host" | "operator";
+  /** Peer / no-host-merchant: never fetch or setState for a venue Finix application. */
+  peerVenue?: boolean;
 }) {
   const kycKey = operatorId || locationId || "host";
-  const stored = usePosStore((s) => parseEntityKyc(s.settings.entityKyc?.[kycKey]));
   const [acc, setAcc] = useState<PaymentAccountView | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
-  const [kyc, setKyc] = useState<EntityKyc>(() => ({
-    ...EMPTY_ENTITY_KYC,
-    ...stored,
-    legalName: stored.legalName || legalName || "",
-    dba: stored.dba || legalName || "",
-  }));
+  const [kyc, setKyc] = useState<EntityKyc>(() => {
+    const stored = parseEntityKyc(usePosStore.getState().settings.entityKyc?.[kycKey]);
+    return {
+      ...EMPTY_ENTITY_KYC,
+      ...stored,
+      legalName: stored.legalName || legalName || "",
+      dba: stored.dba || legalName || "",
+    };
+  });
 
+  const noVenueFinix = peerVenue && kind === "host";
   const key = { locationId, operatorId };
 
   const saveLocal = (next: EntityKyc) => {
@@ -68,13 +74,17 @@ export function QuantumPaymentsOnboardPanel({
   };
 
   const load = useCallback(async () => {
+    if (noVenueFinix) return;
+    if (!operatorId && peerVenue) return;
     if (!locationId && !operatorId) return;
     try {
-      const row = await getPaymentsOnboardingFn({ data: key });
+      const row = await getPaymentsOnboardingFn({
+        data: peerVenue ? { locationId, operatorId } : key,
+      });
       setAcc(row);
       setKyc((prev) => {
         const fromServer = kycStatusFromOnboarding(row.entityStatus ?? row.onboardingStatus);
-        const next = {
+        return {
           ...prev,
           legalName: prev.legalName || row.displayName || legalName || "",
           dba: prev.dba || row.displayName || "",
@@ -82,19 +92,20 @@ export function QuantumPaymentsOnboardPanel({
           routingLast4: prev.routingLast4 || row.payoutRoutingLast4 || "",
           status: prev.status === "draft" ? fromServer : prev.status,
         };
-        return next;
       });
     } catch {
       /* isolated demo / no org — keep local KYC */
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [locationId, operatorId]);
+  }, [locationId, operatorId, peerVenue, noVenueFinix]);
 
   useEffect(() => {
+    if (noVenueFinix) return;
     void load();
-  }, [load]);
+  }, [load, noVenueFinix]);
 
   const start = async () => {
+    if (noVenueFinix || (peerVenue && !operatorId)) return;
     setBusy(true);
     setError(null);
     try {
@@ -113,6 +124,7 @@ export function QuantumPaymentsOnboardPanel({
   };
 
   const submit = async () => {
+    if (noVenueFinix || (peerVenue && !operatorId)) return;
     setBusy(true);
     setError(null);
     try {
@@ -152,6 +164,15 @@ export function QuantumPaymentsOnboardPanel({
   const status = kyc.status;
   const sandboxRail = !acc?.finixConfigured || acc.paymentsProvider === "sandbox";
   const patch = (p: Partial<EntityKyc>) => saveLocal({ ...kyc, ...p });
+
+  if (noVenueFinix) {
+    return (
+      <p className="text-xs text-muted-foreground" data-demo="no-venue-finix">
+        This venue has no Finix merchant and no venue payout account. Open a selling
+        entity application instead.
+      </p>
+    );
+  }
 
   return (
     <div className="space-y-3 rounded-2xl border border-border bg-surface p-4" data-demo="entity-kyc">

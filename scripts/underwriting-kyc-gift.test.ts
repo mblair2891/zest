@@ -61,7 +61,8 @@ test("Payments / KYC form is fields, not JSON, with 5813 helper", () => {
   assert.match(panel, /data-demo="mcc-5813"/);
   assert.doesNotMatch(panel, /JSON\.stringify\(kyc/);
   const peer = readFileSync("src/components/pos/QuantumPaymentsSettings.tsx", "utf8");
-  assert.match(peer, /The building has no Finix merchant/);
+  assert.match(peer, /The building has no Finix merchant and no venue payout/);
+  assert.match(peer, /Open application/);
   assert.match(peer, /vendors\.filter/);
 });
 
