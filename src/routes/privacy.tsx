@@ -24,8 +24,9 @@ function PrivacyPage() {
     <LegalDocument kicker="LEGAL" title="Privacy Policy" page="privacy">
       <LegalSection title="1. Who we are">
         <p>
-          Quantum Reach operates Summex (hospitality software) and Quantum
-          Payments (the guest-card brand on the Finix rail). This policy
+          Quantum Reach is the company. It sells Summex (hospitality software)
+          and Quantum Payments (the guest-card brand on the Finix rail). Summex
+          is the product name, not the contracting legal entity. This policy
           explains how we handle personal information for subscriber
           businesses, their staff, and guests of those businesses. Payment
           card data is handled with Finix as processor and partner — Summex
@@ -242,7 +243,7 @@ function PrivacyPage() {
 
       <LegalSection title="13. Contact">
         <p>
-          Quantum Reach · Summex
+          Summex © Quantum Reach.
           <br />
           Email:{" "}
           <a

@@ -29,9 +29,9 @@ export const BUILDINGS: Building[] = [
 export const TENANTS: Tenant[] = [
   {
     id: "ten_hh",
-    name: "Summex",
-    slug: "summex",
-    legalName: "Summex LLC",
+    name: "Harbor House",
+    slug: "harbor-house",
+    legalName: "Harbor House Hospitality LLC",
     taxIdMasked: "**-***4821",
     color: "#94a3b8",
     bankAccount: {

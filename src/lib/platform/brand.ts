@@ -1,9 +1,12 @@
-/** User-facing product identity. */
+/** User-facing product identity. Summex is the product; Quantum Reach is the seller. */
 
 export const PRODUCT_NAME = "Summex";
-export const POWERED_BY = "Quantum Reach";
+export const SELLER_NAME = "Quantum Reach";
+export const POWERED_BY = SELLER_NAME;
 export const PRODUCT_TAGLINE = "Summex, powered by Quantum Reach";
 export const PAYMENTS_BRAND = "Quantum Payments";
+/** Play / About / legal footer. Never list Summex as the developer legal entity. */
+export const COPYRIGHT_LINE = "Summex © Quantum Reach.";
 /** Short definition for marketing and meta. */
 export const PRODUCT_DEFINITION =
   "Summex is the sum of excellence in hospitality operations — unifying floor, staff, and settlement; powered by Quantum Reach; guest cards via Quantum Payments.";

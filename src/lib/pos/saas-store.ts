@@ -28,7 +28,7 @@ import {
 
 const PLATFORM: PlatformCompany = {
   name: "Summex",
-  legalName: "Summex Platform LLC",
+  legalName: "Quantum Reach",
   proprietors: [
     { name: "Michael Blair", role: "Co-founder & Proprietor" },
     { name: "Andy Baida", role: "Co-founder & Proprietor" },

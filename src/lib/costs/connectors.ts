@@ -81,6 +81,6 @@ export function poPrintHtml(po: PurchaseOrder, house: string): string {
 <p>Purchase order ${po.id} · ${po.supplierName} · expected ${new Date(po.expectedDate).toLocaleDateString()}</p>
 <table><thead><tr><th>Item</th><th>Qty</th><th>Unit</th><th>Total</th></tr></thead><tbody>${rows}</tbody></table>
 <p>Total $${(po.totalCents / 100).toFixed(2)}</p>
-<p>Summex · powered by Quantum Reach</p>
+<p>Summex © Quantum Reach.</p>
 </body></html>`;
 }

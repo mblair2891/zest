@@ -6,6 +6,7 @@ import { usePosStore } from "@/lib/pos/store";
 import { cn } from "@/lib/utils";
 import { useGuideStore } from "@/lib/guide/store";
 import { SummexBrandBlock } from "@/components/brand/SummexMark";
+import { COPYRIGHT_LINE } from "@/lib/platform/brand";
 
 export function LoginScreen() {
   const [pin, setPin] = useState("");
@@ -88,7 +89,7 @@ export function LoginScreen() {
               App store · stations
             </span>
             <span className="mt-1 block text-[11px] leading-snug text-muted-foreground">
-              Install Floor, Kitchen ODS, Bar, Manager & more — Play-style hub
+              Pair with the Devices code, then PIN. Floor, Kitchen ODS, Bar, Manager.
             </span>
           </span>
         </Link>
@@ -182,6 +183,7 @@ export function LoginScreen() {
             },
           )}
         </div>
+        <p className="mt-8 text-center text-[11px] text-muted-foreground">{COPYRIGHT_LINE}</p>
       </div>
     </div>
   );

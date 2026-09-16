@@ -63,7 +63,7 @@ export function PublicLocationSite({ slug }: { slug: string }) {
         <div className="mx-auto flex max-w-4xl items-center justify-between gap-3">
           <div>
             <p className="text-xs uppercase tracking-widest opacity-70">
-              Powered by Summex
+              Summex © Quantum Reach.
             </p>
             <h1 className="text-xl font-bold">{loc?.name ?? site.seoTitle}</h1>
           </div>
@@ -195,7 +195,7 @@ export function PublicLocationSite({ slug }: { slug: string }) {
       <footer className="border-t px-4 py-6 text-center text-xs opacity-50"
         style={{ borderColor: `${theme.accent}22` }}
       >
-        {site.seoTitle} · Website by Summex · Michael Blair & Andy Baida
+        {site.seoTitle} · Summex © Quantum Reach.
       </footer>
     </div>
   );

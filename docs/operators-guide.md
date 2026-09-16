@@ -1,7 +1,7 @@
 # Operators Guide — authoring
 
-**Revision · 16 Sep 2026** — Order printer destinations include Kitchen.
-Guide v2026.10.103.
+**Revision · 16 Sep 2026** — Quantum Reach seller, Summex product.
+Guide v2026.10.104.
 
 The in-app **Operators Guide** is the living product manual. It is not a
 separate PDF. Staff open it from **Guide** / **?** in the POS and platform
@@ -132,7 +132,7 @@ Bookmarkable URL: `/guide?topic=my-topic`.
 
 ## Current facts (keep copy honest)
 
-- Brand: **Summex**, powered by **Quantum Reach**. Guest cards: **Quantum Payments** only (Finix rail). Guest UI never names Finix. Never Stripe/Square as a POS processor. Never Zest.
+- Brand: **Summex** (product), **Quantum Reach** (seller / company). Guest cards: **Quantum Payments** only (Finix rail). Footer: **Summex © Quantum Reach.** Never list Summex as the developer legal entity. Guest UI never names Finix. Never Stripe/Square as a POS processor. Never Zest. Station: pair code, then PIN.
 - Each entity is its own Quantum Payments merchant. One guest check; receipt itemized by vendor; Finix pays each operator their share on capture.
 - Location models: single operator; host + tenants; shared venue (peers). Shared venue is a named building only — no host merchant, menu, or gift product required.
 - Gift cards: Summex house ledger — swipe, scan, or key. Not Finix.

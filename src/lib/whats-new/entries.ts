@@ -6,6 +6,19 @@ import type { GuideUpdate } from "@/lib/guide/types";
  */
 export const WHATS_NEW_ENTRIES: GuideUpdate[] = [
   {
+    id: "upd_2026_10_104_branding_lock",
+    date: "2026-09-16",
+    title: "Summex product, Quantum Reach seller",
+    summary:
+      "Play, About, and legal footer: Summex © Quantum Reach. Station and store: pair code, then PIN.",
+    body: "Summex is the product. Quantum Reach is the company. Quantum Payments is the card rail. The footer never lists Summex as the developer legal entity. Unpaired tablets take the Devices pair code, then the PIN pad.",
+    roles: ["owner_manager", "host_operator", "platform_admin", "server", "kitchen_bar"],
+    surfaces: ["settings"],
+    audience: "all",
+    topicId: "intro",
+    tags: ["brand", "station", "legal"],
+  },
+  {
     id: "upd_2026_10_103_order_destinations",
     date: "2026-09-16",
     title: "Order printer destination includes Kitchen",

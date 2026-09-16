@@ -151,7 +151,7 @@ export function GuestGiftPage() {
         )}
       </main>
       <footer className="relative z-10 mx-auto max-w-lg px-4 pb-10 text-xs text-muted-foreground">
-        summex.app · Gift balance is the current card only
+        Summex © Quantum Reach. Gift balance is the current card only.
       </footer>
     </div>
   );

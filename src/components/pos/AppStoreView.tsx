@@ -21,6 +21,7 @@ import {
   type StoreAppId,
 } from "@/lib/pos/app-store-catalog";
 import { isNativeApp } from "@/lib/native-shell";
+import { COPYRIGHT_LINE, SELLER_NAME } from "@/lib/platform/brand";
 import { cn } from "@/lib/utils";
 
 const INSTALLED_KEY = "summex-appstore-installed-v1";
@@ -120,7 +121,7 @@ export function AppStoreView() {
               </h1>
               <p className="text-sm text-primary">{selected.tagline}</p>
               <p className="mt-1 text-xs text-muted-foreground">
-                Summex · {selected.roleHint ?? "Staff"} · {selected.age}
+                {SELLER_NAME} · {selected.roleHint ?? "Staff"} · {selected.age}
               </p>
               <div className="mt-3 flex flex-wrap gap-2">
                 {on ? (
@@ -178,22 +179,23 @@ export function AppStoreView() {
               <div className="rounded-xl border border-border bg-surface p-3 text-sm">
                 <p className="font-medium">Demo quick start</p>
                 <p className="mt-1 text-muted-foreground">
-                  Open → login as{" "}
+                  Pair with the Devices code, then PIN as{" "}
                   <span className="text-primary">{selected.roleHint}</span>{" "}
-                  (PIN{" "}
+                  (
                   <span className="font-mono text-foreground">
                     {selected.pinHint}
                   </span>
-                  ) on the POS screen.
+                  ) on this station.
                 </p>
               </div>
             )}
             <div className="flex items-start gap-2 rounded-xl border border-border bg-surface p-3 text-xs text-muted-foreground">
               <Shield className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
-              Station apps open inside Summex. No separate Play downloads required
-              for web modules — the Android shell hosts this store + all
-              stations.
+              Station apps open inside Summex Station. Pair with the Devices
+              code, then PIN. No separate Play downloads required for web
+              modules — the Android shell hosts this store and all stations.
             </div>
+            <p className="text-xs text-muted-foreground">{COPYRIGHT_LINE}</p>
           </div>
         </div>
       </div>
@@ -209,7 +211,7 @@ export function AppStoreView() {
             <h1 className="text-lg font-bold tracking-tight">Summex Store</h1>
             <p className="text-[11px] text-muted-foreground">
               {native ? "Android app · " : ""}
-              Station apps for your devices · Blair & Baida
+              Pair with the Devices code, then PIN
             </p>
           </div>
           <Badge variant="info">
@@ -385,6 +387,7 @@ export function AppStoreView() {
                 {" · "}
                 generic, no venue baked in.
               </p>
+              <p className="mt-3 text-xs text-muted-foreground">{COPYRIGHT_LINE}</p>
             </div>
           </div>
         </section>

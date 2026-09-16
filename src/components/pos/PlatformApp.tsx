@@ -157,8 +157,8 @@ export function PlatformApp({
         hydrateTenant({
           org: {
             id: "platform",
-            name: "Summex Platform",
-            legalName: "Summex Platform",
+            name: "Summex",
+            legalName: "Quantum Reach",
             plan: "platform_internal",
             seats: 9999,
             locationsIncluded: 999,

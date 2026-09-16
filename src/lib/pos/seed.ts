@@ -249,7 +249,7 @@ export const SETTLEMENT_CONFIG: SettlementConfig = {
   hostCutType: "percent_of_gross",
   hostCutPercent: 5,
   hostCutFixedCents: 0,
-  hostName: "Summex Host LLC",
+  hostName: "Harbor House Hospitality",
   taxRemittedBy: "host",
   tipPoolWithVendors: false,
   currentPeriodStart: (() => {

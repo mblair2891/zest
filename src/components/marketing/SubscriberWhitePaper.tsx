@@ -329,7 +329,7 @@ export function SubscriberWhitePaper() {
       </Section>
 
       <p className="mt-16 text-xs text-muted-foreground">
-        © {POWERED_BY} · {PRODUCT_NAME} · summex.app · Michael Blair & Andy Baida
+        Summex © Quantum Reach. summex.app
       </p>
     </article>
   );

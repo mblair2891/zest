@@ -2,7 +2,7 @@ import type { ReactNode } from "react";
 import { Link } from "@tanstack/react-router";
 import { MarketingAuthCtas } from "@/components/marketing/AuthCtas";
 import { SummexMark, SummexWordmark } from "@/components/brand/SummexMark";
-import { POWERED_BY, PRODUCT_NAME, PRODUCT_TAGLINE } from "@/lib/platform/brand";
+import { COPYRIGHT_LINE, PRODUCT_NAME, PRODUCT_TAGLINE } from "@/lib/platform/brand";
 import { cn } from "@/lib/utils";
 
 const NAV = [
@@ -81,8 +81,7 @@ export function LandingFrame({ children }: { children: ReactNode }) {
             </Link>
           </div>
           <p className="text-xs text-muted-foreground">
-            Powered by {POWERED_BY}
-            <span className="mt-1 block">Michael Blair & Andy Baida</span>
+            {COPYRIGHT_LINE}
           </p>
         </div>
       </footer>

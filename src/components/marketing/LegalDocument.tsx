@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import { Link } from "@tanstack/react-router";
 import { LandingFrame } from "@/components/marketing/LandingFrame";
+import { COPYRIGHT_LINE } from "@/lib/platform/brand";
 
 export const LEGAL_EFFECTIVE = "8 September 2026";
 
@@ -33,7 +34,7 @@ export function LegalDocument({
           {title}
         </h1>
         <p className="mt-3 text-sm text-muted-foreground">
-          Quantum Reach · Summex · Effective {LEGAL_EFFECTIVE}
+          {COPYRIGHT_LINE} Effective {LEGAL_EFFECTIVE}
         </p>
         <p className="mt-2 text-xs text-muted-foreground">
           Also see the{" "}

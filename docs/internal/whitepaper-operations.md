@@ -350,7 +350,8 @@ Illustrative cash discount: **5%, round up to $1.00** ($18.00 cash → $19.00 ca
 
 ---
 
-© Quantum Reach · Summex · summex.app  
+Summex © Quantum Reach. summex.app  
+
 Authors of the product: Michael Blair & Andy Baida  
 This document describes current product behavior and explicitly marked roadmap. It is not a rate sheet, a bank offering, or a compliance certificate. Operator procedures live in the Operators Guide.
 

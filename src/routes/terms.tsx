@@ -25,10 +25,11 @@ function TermsPage() {
       <LegalSection title="1. Agreement">
         <p>
           These Terms of Service (the “Terms”) are a contract between Quantum
-          Reach, operating the Summex products (“Quantum Reach,” “Summex,” “we,”
-          “us,” or “our”), and the subscriber business that uses the service
-          (“you,” “your,” or the “Subscriber”). If you accept on behalf of a
-          company, you represent that you have authority to bind that company.
+          Reach (“Quantum Reach,” “we,” “us,” or “our”), the company that sells
+          the Summex product, and the subscriber business that uses the service
+          (“you,” “your,” or the “Subscriber”). Summex is the product name, not
+          the contracting legal entity. If you accept on behalf of a company,
+          you represent that you have authority to bind that company.
         </p>
         <p>
           By signing a quote or order, creating an owner account, or using
@@ -323,7 +324,7 @@ function TermsPage() {
 
       <LegalSection title="19. Contact">
         <p>
-          Quantum Reach · Summex
+          Summex © Quantum Reach.
           <br />
           Email:{" "}
           <a

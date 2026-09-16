@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { SummexMark } from "@/components/brand/SummexMark";
+import { COPYRIGHT_LINE } from "@/lib/platform/brand";
 import { pairStationFn } from "@/lib/access/api";
 import { readOrCreateBrowserDeviceId } from "@/lib/pos/location-devices";
 import {
@@ -124,8 +125,8 @@ export function StationPairScreen({
       </p>
       <h1 className="mt-3 text-xl font-semibold tracking-tight">Pair this tablet</h1>
       <p className="mt-2 max-w-sm text-sm text-muted-foreground">
-        Type the one-time code from Devices (for example K7VY5R). No scan required. After
-        pair, this screen is PIN only.
+        Type the one-time pair code from Devices (for example K7VY5R). No scan required.
+        After pair, this screen is PIN only.
       </p>
 
       <form
@@ -178,7 +179,8 @@ export function StationPairScreen({
         />
       )}
 
-      <ul className="mt-8 max-w-sm space-y-1 text-left text-xs text-muted-foreground">
+      <p className="mt-8 text-xs text-muted-foreground">{COPYRIGHT_LINE}</p>
+      <ul className="mt-4 max-w-sm space-y-1 text-left text-xs text-muted-foreground">
         {(Object.keys(DEVICE_ROLE_LABEL) as Array<keyof typeof DEVICE_ROLE_LABEL>).map((id) => (
           <li key={id}>
             <span className="font-medium text-foreground">{DEVICE_ROLE_LABEL[id]}.</span>{" "}

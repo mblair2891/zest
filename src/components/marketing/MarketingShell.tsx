@@ -2,7 +2,7 @@ import type { ReactNode } from "react";
 import { Link } from "@tanstack/react-router";
 import { MarketingAuthCtas } from "@/components/marketing/AuthCtas";
 import { SummexLockup } from "@/components/brand/SummexMark";
-import { PRODUCT_TAGLINE } from "@/lib/platform/brand";
+import { COPYRIGHT_LINE } from "@/lib/platform/brand";
 
 const NAV = [
   { to: "/get-pricing" as const, label: "Get a price" },
@@ -41,7 +41,7 @@ export function MarketingShell({ children }: { children: ReactNode }) {
       {children}
       <footer className="border-t border-border">
         <div className="mx-auto flex max-w-5xl flex-wrap items-center justify-between gap-3 px-4 py-8 text-xs text-muted-foreground">
-          <p>{PRODUCT_TAGLINE} · summex.app</p>
+          <p>{COPYRIGHT_LINE}</p>
           <p className="flex flex-wrap gap-4">
             <Link to="/guide" className="hover:text-foreground">
               Guide
@@ -55,7 +55,6 @@ export function MarketingShell({ children }: { children: ReactNode }) {
             <Link to="/privacy" className="hover:text-foreground">
               Privacy
             </Link>
-            <span>By Michael Blair & Andy Baida</span>
           </p>
         </div>
       </footer>

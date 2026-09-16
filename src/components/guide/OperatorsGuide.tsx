@@ -411,7 +411,7 @@ export function OperatorsGuide({
               />
 
               <footer className="border-t border-border pt-4 text-[11px] text-muted-foreground">
-                Summex, powered by Quantum Reach · {GUIDE_TITLE} · Guest cards via
+                Summex © Quantum Reach. {GUIDE_TITLE} · Guest cards via
                 Quantum Payments. Press Esc to close · / to search.
               </footer>
             </article>

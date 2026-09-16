@@ -1,5 +1,5 @@
 import { formatCurrency } from "@/lib/utils";
-import { PRODUCT_NAME, POWERED_BY } from "@/lib/platform/brand";
+import { COPYRIGHT_LINE, PRODUCT_NAME, POWERED_BY } from "@/lib/platform/brand";
 import { planLabel, statusLabel } from "@/lib/saas/pricing";
 import type { ProspectDetail } from "@/lib/saas/prospect-types";
 
@@ -130,6 +130,7 @@ export function QuotePrintView({ detail }: { detail: ProspectDetail }) {
         bank readers are not supported.
         This snapshot does not change if the catalog changes later.
       </p>
+      <p className="mt-4 text-xs text-muted-foreground">{COPYRIGHT_LINE}</p>
     </article>
   );
 }
