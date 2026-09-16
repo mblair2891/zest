@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Play / store: HTTPS only. No cleartext. -->
+<!-- WebView HTTP is HTTPS only. RawPrint plugin uses java.net.Socket to
+     RFC1918:9100 (10/8, 192.168/16) — not WebView navigation. -->
 <network-security-config>
     <base-config cleartextTrafficPermitted="false">
         <trust-anchors>

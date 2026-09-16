@@ -74,8 +74,9 @@ test("guide printers topic is form fields on Devices", () => {
 test("print dispatch test path never uses window.print", () => {
   const dispatch = readFileSync("src/lib/print/dispatch.ts", "utf8");
   assert.match(dispatch, /dispatchRawTestPrint/);
-  assert.match(dispatch, /Never window\.print/);
-  assert.match(dispatch, /rawLanPrintFn/);
+  assert.match(dispatch, /sendNativeBytes/);
+  assert.match(dispatch, /Use a paired station or print agent/);
+  assert.doesNotMatch(dispatch, /window\.print\(/);
   const agent = readFileSync("scripts/print-agent.mjs", "utf8");
   assert.match(agent, /9100/);
   assert.match(agent, /never uses the OS print dialog/);

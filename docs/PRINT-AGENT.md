@@ -1,8 +1,11 @@
 # Local print agent (LAN ESC/POS)
 
-Browsers cannot open raw TCP 9100. Houses with Star / Epson / Citizen / Bixolon
-LAN printers run this small agent on the house hub **or a paired station**
-(the same PC, NUC, or tablet host that stays on the staff SSID).
+Paired **Summex Station** (Android) writes raw TCP 9100 from the native shell.
+The WebView is HTTPS and cannot open 9100 to the house LAN.
+
+Laptop Chrome still cannot TCP 9100. Those desks run this small agent on the
+house hub (the same PC or NUC that stays on the staff SSID). If neither the
+station plugin nor the agent succeeds: **Use a paired station or print agent.**
 
 ```sh
 node scripts/print-agent.mjs

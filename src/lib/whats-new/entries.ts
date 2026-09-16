@@ -6,6 +6,19 @@ import type { GuideUpdate } from "@/lib/guide/types";
  */
 export const WHATS_NEW_ENTRIES: GuideUpdate[] = [
   {
+    id: "upd_2026_10_106_station_raw_print",
+    date: "2026-09-16",
+    title: "Station prints raw 9100 on house Wi-Fi",
+    summary:
+      "Paired Android writes ESC/POS to the printer IP. Chrome uses a print agent. Test print never opens the OS dialog.",
+    body: "The station WebView is HTTPS and cannot open TCP 9100. Summex Station sends bytes from the native shell to 10/8 or 192.168/16 port 9100. Fire, receipt, and Test print succeed only if that write completes. On a laptop: registered print agent, else “Use a paired station or print agent.” Destinations: Kitchen, Bar, Expo, Window. Route by entity + destination.",
+    roles: ["owner_manager", "host_operator", "platform_admin", "kitchen_bar"],
+    surfaces: ["settings"],
+    audience: "all",
+    topicId: "printers-kds",
+    tags: ["printers", "station", "9100"],
+  },
+  {
     id: "upd_2026_10_105_play_aab",
     date: "2026-09-16",
     title: "Play Store station shell",

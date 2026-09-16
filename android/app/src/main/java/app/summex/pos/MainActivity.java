@@ -32,6 +32,7 @@ public class MainActivity extends BridgeActivity {
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
+        registerPlugin(RawPrintPlugin.class);
         super.onCreate(savedInstanceState);
         getWindow()
             .addFlags(

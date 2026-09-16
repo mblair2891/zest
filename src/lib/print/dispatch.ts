@@ -1,22 +1,25 @@
 import { HOST_SCOPE } from "@/lib/access/entity-grants";
 import {
   isPrinterDevice,
+  normalizeDestinationName,
   printerHasDrawerKick,
   routeForPrintStation,
+  stationFromPrinterType,
   type LocationDevice,
   type PrintStation,
 } from "@/lib/pos/location-devices";
 import { uid } from "@/lib/utils";
 import { escposBase64, buildDrawerKickBytes } from "./escpos";
-import { ticketHtml } from "./ticket-html";
 import { parseLanTarget } from "./printer-models";
-import { rawLanPrintFn } from "./api";
+import { sendNativeBytes } from "./capacitor-raw-print";
 import {
   DEFAULT_PRINT_AGENT_URL,
   type AgentPrintRequest,
   type PrintJob,
   type PrintTarget,
 } from "./types";
+
+export const PRINT_NEED_STATION_OR_AGENT = "Use a paired station or print agent.";
 
 export function printAgentUrl(): string {
   try {
@@ -28,19 +31,35 @@ export function printAgentUrl(): string {
   return DEFAULT_PRINT_AGENT_URL;
 }
 
+function printerMatchesStation(d: LocationDevice, station: PrintStation): boolean {
+  if (!isPrinterDevice(d) || d.status === "inactive") return false;
+  const dest = normalizeDestinationName(d.print?.destinationName);
+  const st = d.print?.station ?? stationFromPrinterType(d.type, dest);
+  const routes = d.print?.routes?.length ? d.print.routes : null;
+  const route = routeForPrintStation(station);
+  if (station === "receipt") {
+    return st === "receipt" || d.type === "receipt_printer" || d.type === "printer" || Boolean(routes?.includes("receipts"));
+  }
+  if (station === "bar") {
+    return st === "bar" || /^bar$/i.test(dest) || Boolean(routes?.includes("bar_tickets"));
+  }
+  if (station === "expo") {
+    return st === "expo" || /^expo$/i.test(dest);
+  }
+  if (st === "kitchen" || /^(kitchen|prep|window)$/i.test(dest) || Boolean(routes?.includes("kitchen_tickets"))) {
+    return true;
+  }
+  if (routes) return routes.includes(route);
+  return false;
+}
+
 export function printersForStation(
   devices: LocationDevice[] | undefined,
   station: PrintStation,
   operatorId?: string | null,
   stationDeviceId?: string | null,
 ): LocationDevice[] {
-  const route = routeForPrintStation(station);
-  const list = (devices ?? []).filter((d) => {
-    if (!isPrinterDevice(d) || d.status === "inactive") return false;
-    const routes = d.print?.routes?.length ? d.print.routes : null;
-    if (routes) return routes.includes(route);
-    return d.print?.station === station;
-  });
+  const list = (devices ?? []).filter((d) => printerMatchesStation(d, station));
   const bound = stationDeviceId
     ? list.filter(
         (d) =>
@@ -54,32 +73,6 @@ export function printersForStation(
     (d) => d.assignment.operatorId === HOST_SCOPE || d.assignment.operatorId === operatorId,
   );
   return scoped.length ? scoped : pool.filter((d) => d.assignment.operatorId === HOST_SCOPE);
-}
-
-function printHtml(html: string): void {
-  if (typeof document === "undefined") return;
-  const iframe = document.createElement("iframe");
-  iframe.setAttribute("aria-hidden", "true");
-  iframe.style.cssText = "position:fixed;right:0;bottom:0;width:0;height:0;border:0;";
-  document.body.appendChild(iframe);
-  const doc = iframe.contentDocument;
-  if (!doc) {
-    iframe.remove();
-    return;
-  }
-  doc.open();
-  doc.write(html);
-  doc.close();
-  const run = () => {
-    try {
-      iframe.contentWindow?.focus();
-      iframe.contentWindow?.print();
-    } finally {
-      window.setTimeout(() => iframe.remove(), 1500);
-    }
-  };
-  if (iframe.contentWindow?.document.readyState === "complete") run();
-  else iframe.onload = run;
 }
 
 async function sendToAgent(req: AgentPrintRequest): Promise<boolean> {
@@ -99,6 +92,15 @@ async function sendToAgent(req: AgentPrintRequest): Promise<boolean> {
   } finally {
     window.clearTimeout(t);
   }
+}
+
+/** Capacitor station first (raw 9100), then LAN print agent. Never the OS print dialog. */
+async function sendLanPayload(
+  lan: { host: string; port: number; target: string },
+  req: AgentPrintRequest,
+): Promise<boolean> {
+  if (await sendNativeBytes(lan.host, lan.port, req.escposBase64)) return true;
+  return sendToAgent(req);
 }
 
 /**
@@ -134,12 +136,14 @@ export async function dispatchTurnInSlip(
       for (const p of agentTargets) {
         const cfg = p.print;
         if (!cfg?.target) continue;
-        const ok = await sendToAgent({
+        const lan = parseLanTarget(cfg.ip, cfg.port, cfg.target);
+        if (!lan) continue;
+        const ok = await sendLanPayload(lan, {
           locationId: copyJob.locationId,
           printerId: p.id,
           family: cfg.family,
-          connection: cfg.connection,
-          target: cfg.target,
+          connection: "lan",
+          target: lan.target,
           job: copyJob,
           escposBase64: escposBase64(copyJob),
         });
@@ -152,8 +156,7 @@ export async function dispatchTurnInSlip(
         return { ok: false, printed, error: "Count is saved. Reprint required before drop." };
       }
     } else {
-      printHtml(ticketHtml(copyJob));
-      printed += 1;
+      return { ok: false, printed, error: PRINT_NEED_STATION_OR_AGENT };
     }
   }
   if (printed === 0) {
@@ -165,7 +168,7 @@ export async function dispatchTurnInSlip(
 export async function dispatchPrintJob(
   job: PrintJob,
   devices: LocationDevice[] | undefined,
-  opts?: { forceBrowser?: boolean; printerId?: string | null },
+  opts?: { printerId?: string | null },
 ): Promise<{ printed: number; browser: boolean; agent: number; error?: string }> {
   const named = opts?.printerId
     ? (devices ?? []).find(
@@ -175,13 +178,7 @@ export async function dispatchPrintJob(
   const printers = named
     ? [named]
     : printersForStation(devices, job.station, job.operatorId);
-  const html = ticketHtml(job);
   let agent = 0;
-
-  if (opts?.forceBrowser) {
-    printHtml(html);
-    return { printed: 1, browser: true, agent: 0 };
-  }
 
   for (const p of printers) {
     const cfg = p.print;
@@ -194,7 +191,7 @@ export async function dispatchPrintJob(
       paperWidthMm: cfg.paperWidthMm,
       cutter: cfg.cutter,
     });
-    const ok = await sendToAgent({
+    const ok = await sendLanPayload(lan, {
       locationId: job.locationId,
       printerId: p.id,
       family: cfg.family,
@@ -211,13 +208,13 @@ export async function dispatchPrintJob(
       printed: 0,
       browser: false,
       agent: 0,
-      error: "Could not reach the printer at IP:9100. Run the LAN print agent on the staff network.",
+      error: PRINT_NEED_STATION_OR_AGENT,
     };
   }
   return { printed: agent, browser: false, agent };
 }
 
-/** Test print: raw bytes to IP:9100. Never window.print / OS dialog. */
+/** Test print: raw bytes to IP:9100. Never the OS print dialog. */
 export async function dispatchRawTestPrint(
   job: PrintJob,
   device: LocationDevice,
@@ -236,7 +233,7 @@ export async function dispatchRawTestPrint(
     paperWidthMm: cfg?.paperWidthMm,
     cutter: cfg?.cutter,
   });
-  const viaAgent = await sendToAgent({
+  const ok = await sendLanPayload(lan, {
     locationId: job.locationId,
     printerId: device.id,
     family: cfg?.family ?? "generic",
@@ -245,29 +242,8 @@ export async function dispatchRawTestPrint(
     job,
     escposBase64: payload,
   });
-  if (viaAgent) return { ok: true, target: lan.target };
-  try {
-    const viaStation = await rawLanPrintFn({
-      data: { target: lan.target, ip: lan.host, port: lan.port, escposBase64: payload },
-    });
-    if (viaStation.ok) return { ok: true, target: lan.target };
-    return {
-      ok: false,
-      target: lan.target,
-      error:
-        viaStation.error ||
-        `Could not reach ${lan.target}. Run the LAN print agent on the hub or a paired station.`,
-    };
-  } catch (e) {
-    return {
-      ok: false,
-      target: lan.target,
-      error:
-        e instanceof Error
-          ? e.message
-          : `Could not reach ${lan.target}. Run the LAN print agent on the hub or a paired station.`,
-    };
-  }
+  if (ok) return { ok: true, target: lan.target };
+  return { ok: false, target: lan.target, error: PRINT_NEED_STATION_OR_AGENT };
 }
 
 export function testPrintJob(opts: {
@@ -318,12 +294,14 @@ export async function kickCashDrawer(opts: {
   const bytes = buildDrawerKickBytes();
   let bin = "";
   for (let i = 0; i < bytes.length; i += 1) bin += String.fromCharCode(bytes[i]!);
-  return sendToAgent({
+  const lan = parseLanTarget(target.print.ip, target.print.port, target.print.target);
+  if (!lan) return false;
+  return sendLanPayload(lan, {
     locationId: opts.locationId,
     printerId: target.id,
     family: target.print.family,
-    connection: target.print.connection,
-    target: target.print.target,
+    connection: "lan",
+    target: lan.target,
     job,
     escposBase64: btoa(bin),
   });

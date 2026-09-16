@@ -3,10 +3,10 @@ import { computeTotals, linePrintedCents } from "@/lib/pos/calculations";
 import { usePosStore } from "@/lib/pos/store";
 import type { KitchenTicket, Order, RestaurantSettings } from "@/lib/pos/types";
 import { uid } from "@/lib/utils";
-import { dispatchPrintJob } from "./dispatch";
+import { dispatchPrintJob, printersForStation } from "./dispatch";
 import { currentStationDeviceId, resolveReceiptPrinter } from "./receipt-printer";
 import type { PrintJob, PrintLine } from "./types";
-import { isPrinterDevice, type PrintStation } from "@/lib/pos/location-devices";
+import type { PrintStation } from "@/lib/pos/location-devices";
 import { splitTenderByEntity } from "@/lib/payments/entity-split";
 import { parseQrPolicy, qrPrintOnTicket } from "@/lib/pos/qr-policy";
 import { ticketGuestUrl } from "@/lib/pos/qr-table";
@@ -169,12 +169,9 @@ export async function printFromPos(
   const mappedReceipt = resolveReceiptPrinter(devices, stationId);
 
   for (const job of jobs) {
-    const printers = (devices ?? []).filter(
-      (d) => isPrinterDevice(d) && d.status !== "inactive" && d.print?.station === job.station,
-    );
+    const printers = printersForStation(devices, job.station, job.operatorId, stationId);
     if (job.kind === "receipt" || printers.length > 0) {
       await dispatchPrintJob(job, devices, {
-        forceBrowser: printers.length === 0 && job.kind === "receipt",
         printerId: job.kind === "receipt" ? mappedReceipt?.id : undefined,
       });
     }
@@ -247,15 +244,14 @@ export async function printGuestReceipt(orderId: string): Promise<{
   };
   const res = await dispatchPrintJob(job, devices, {
     printerId: printer?.id,
-    forceBrowser: !printer,
   });
   if (res.printed < 1) {
     return {
       ok: false,
-      error: "Printer did not accept the receipt. Check the mapped receipt printer.",
+      error: res.error || "Use a paired station or print agent.",
     };
   }
-  return { ok: true, printerLabel: printer?.label ?? "This browser" };
+  return { ok: true, printerLabel: printer?.label ?? "Station printer" };
 }
 
 export async function printTableTents(): Promise<void> {

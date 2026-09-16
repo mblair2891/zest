@@ -448,7 +448,8 @@ export function stationFromPrinterType(
   if (type === "receipt_printer" || type === "printer") return "receipt";
   const dest = String(destinationName ?? "").trim().toLowerCase();
   if (/\bbar\b|well|drink/.test(dest) || type === "bar_printer") return "bar";
-  if (/\bexpo\b|pass|window/.test(dest)) return "expo";
+  if (/\bexpo\b|pass/.test(dest)) return "expo";
+  if (/\bwindow\b/.test(dest)) return "kitchen";
   if (/\blabel\b/.test(dest) || type === "label_printer") return "label";
   return "kitchen";
 }
