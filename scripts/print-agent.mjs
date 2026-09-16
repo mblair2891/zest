@@ -2,7 +2,8 @@
 /**
  * Summex local print agent — LAN ESC/POS (Star / Epson / generic).
  *
- * Browsers cannot open TCP 9100. Run this on the house hub (same LAN as printers):
+ * Browsers cannot open TCP 9100. Run this on the house hub or a paired station
+ * (same LAN as printers):
  *
  *   node scripts/print-agent.mjs
  *
@@ -11,7 +12,7 @@
  *   POST /print   JSON { target, escposBase64, family, job }
  *
  * `target` is host or host:port (default port 9100).
- * POS sends jobs here; if the agent is down, the POS falls back to window.print.
+ * POS never uses the OS print dialog for LAN printers.
  */
 import http from "node:http";
 import net from "node:net";

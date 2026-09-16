@@ -26,14 +26,17 @@ import {
   PRINTER_UI_TYPES,
   PRINTER_LINK_LABEL,
   PRINTER_LINKS,
+  PRINTER_MODEL_GROUPS,
   PRINTER_MODEL_LABEL,
-  PRINTER_MODEL_PRESETS,
   STATION_DEVICE_FUNCTIONS,
   STATION_DEVICE_TYPES,
   defaultFunctionForType,
+  defaultPrinterModel,
   defaultRoutesForPrinterType,
   destinationFromLegacyType,
   familyFromModelPreset,
+  printerModelHint,
+  printerModelSpec,
   functionForPrintStation,
   isOrderPrinterType,
   isPairedActivatedStation,
@@ -54,7 +57,7 @@ import {
   type PrinterLink,
   type PrinterModelPreset,
 } from "@/lib/pos/location-devices";
-import { dispatchPrintJob, testPrintJob } from "@/lib/print/dispatch";
+import { dispatchRawTestPrint, testPrintJob } from "@/lib/print/dispatch";
 import { parseQrPolicy, qrPrintOnTicket } from "@/lib/pos/qr-policy";
 import { usePosStore } from "@/lib/pos/store";
 import { formatTime } from "@/lib/utils";
@@ -184,7 +187,7 @@ export function LocationDeviceRegistry({
   const [printLink, setPrintLink] = useState<PrinterLink>("ethernet");
   const [printIp, setPrintIp] = useState("");
   const [printPort, setPrintPort] = useState("9100");
-  const [printModel, setPrintModel] = useState<PrinterModelPreset>("epson_tm_t20");
+  const [printModel, setPrintModel] = useState<PrinterModelPreset>(defaultPrinterModel("receipt"));
   const [drawerKick, setDrawerKick] = useState<PrinterDrawerKick>("attached");
   const [destinationName, setDestinationName] = useState("Kitchen");
   const [printPayQr, setPrintPayQr] = useState(true);
@@ -321,8 +324,7 @@ export function LocationDeviceRegistry({
     setPrintIp(preset?.print?.ip ?? (preset?.print?.target?.split(":")[0] ?? ""));
     setPrintPort(String(preset?.print?.port ?? 9100));
     setPrintModel(
-      preset?.print?.modelPreset ??
-        (orderType ? "epson_tm_u220" : "epson_tm_t20"),
+      preset?.print?.modelPreset ?? defaultPrinterModel(orderType ? "order" : "receipt"),
     );
     setDrawerKick(
       preset?.print?.drawerKick ??
@@ -363,8 +365,9 @@ export function LocationDeviceRegistry({
           : mode === "stations"
             ? functionForDeviceRole(stationRole)
             : fn;
+      const spec = printerModelSpec(printModel);
       const ip = printIp.trim();
-      const port = Number(printPort) || 9100;
+      const port = Number(printPort) || spec.port;
       const target = ip ? `${ip}:${port}` : "";
       await saveLocationDeviceFn({
         data: {
@@ -391,6 +394,9 @@ export function LocationDeviceRegistry({
                   ip,
                   port,
                   modelPreset: printModel,
+                  emulation: spec.emulation,
+                  paperWidthMm: spec.paperWidthMm,
+                  cutter: spec.cutter,
                   drawerKick: isReceiptPrinterType(type) ? drawerKick : "none",
                   destinationName: isOrderPrinterType(type)
                     ? destinationName.trim() || "Kitchen"
@@ -434,12 +440,8 @@ export function LocationDeviceRegistry({
         locationName: hostName || locationName,
         station: d.print?.station ?? stationFromPrinterType(d.type),
       });
-      const noTarget = !d.print?.target && !d.print?.ip;
-      const result = await dispatchPrintJob(job, [d], {
-        forceBrowser: noTarget,
-        printerId: d.id,
-      });
-      const ok = result.printed > 0;
+      const result = await dispatchRawTestPrint(job, d);
+      const ok = result.ok;
       await saveLocationDeviceFn({
         data: {
           orgId: resolvedOrgId,
@@ -462,7 +464,9 @@ export function LocationDeviceRegistry({
         },
       });
       await load();
-      if (!ok) setError("Test print did not reach the printer.");
+      if (!ok) {
+        setError(result.error || "Test print did not reach the printer at IP:9100.");
+      }
     } catch (e) {
       setError(e instanceof Error ? e.message : "Test print failed");
     } finally {
@@ -662,7 +666,7 @@ export function LocationDeviceRegistry({
   const heading = mode === "hardware" ? "Hardware" : "Devices";
   const help =
     mode === "hardware"
-      ? "Register Quantum readers and Epson / ESC/POS printers. Wi-Fi or Ethernet, static IP (port 9100). Test print from this list."
+      ? "Register Quantum readers and hospitality printers (Star, Epson, Citizen, Bixolon, generic ESC/POS). Wi-Fi or Ethernet, static IP (port 9100). Test print sends raw bytes — never the OS dialog."
       : "Add a tablet or a printer from the same button. Tablets: pick Order / Host / ODS / Kiosk, then type the one-time code on the glass. Printers: Receipt printer or Order printer (Kitchen / Bar / Expo / Label are destinations, not types). Host and order tablets use the bound receipt printer; ODS does not need one.";
   const addLabel = mode === "hardware" ? "Add terminal / printer" : "Add device";
   const pairedId = resolvedLocId ? readPairedDeviceId(resolvedLocId) : null;
@@ -823,7 +827,7 @@ export function LocationDeviceRegistry({
                   setFn(defaultFunctionForType(next));
                   if (isPrinterType(next)) {
                     setDrawerKick(isReceiptPrinterType(next) ? "attached" : "none");
-                    setPrintModel(isOrderPrinterType(next) ? "epson_tm_u220" : "epson_tm_t20");
+                    setPrintModel(defaultPrinterModel(isOrderPrinterType(next) ? "order" : "receipt"));
                     if (isOrderPrinterType(next)) setDestinationName("Kitchen");
                   } else {
                     setStationRole(deviceRoleFromFunction(defaultFunctionForType(next)));
@@ -895,14 +899,25 @@ export function LocationDeviceRegistry({
                   <select
                     className="mt-1 h-10 w-full rounded-xl border border-border bg-bg px-3 text-sm text-foreground"
                     value={printModel}
-                    onChange={(e) => setPrintModel(e.target.value as PrinterModelPreset)}
+                    onChange={(e) => {
+                      const next = e.target.value as PrinterModelPreset;
+                      setPrintModel(next);
+                      setPrintPort(String(printerModelSpec(next).port));
+                    }}
                   >
-                    {PRINTER_MODEL_PRESETS.map((m) => (
-                      <option key={m} value={m}>
-                        {PRINTER_MODEL_LABEL[m]}
-                      </option>
+                    {PRINTER_MODEL_GROUPS.map((g) => (
+                      <optgroup key={g.id} label={g.label}>
+                        {g.models.map((m) => (
+                          <option key={m} value={m}>
+                            {PRINTER_MODEL_LABEL[m]}
+                          </option>
+                        ))}
+                      </optgroup>
                     ))}
                   </select>
+                  <span className="mt-0.5 block text-[11px] text-muted-foreground">
+                    {printerModelHint(printModel)}
+                  </span>
                 </label>
                 <label className="text-xs text-muted-foreground">
                   Static IP

@@ -2,6 +2,14 @@ import { formatCurrency } from "@/lib/utils";
 import type { PrintJob } from "./types";
 import { groupLinesByEntity } from "@/lib/payments/entity-split";
 import { formatTurnInSlipLines } from "@/lib/pos/till-turn-in-slip";
+import {
+  colsForPaperWidth,
+  printerModelSpec,
+  type PrinterCutter,
+  type PrinterEmulation,
+  type PrinterModelPreset,
+  type PrinterPaperMm,
+} from "./printer-models";
 
 const ENC = new TextEncoder();
 
@@ -33,8 +41,36 @@ const BOLD_ON = u8(0x1b, 0x45, 0x01);
 const BOLD_OFF = u8(0x1b, 0x45, 0x00);
 const DBL_ON = u8(0x1d, 0x21, 0x11);
 const DBL_OFF = u8(0x1d, 0x21, 0x00);
-const CUT = u8(0x1d, 0x56, 0x41, 0x10);
+const CUT_FULL = u8(0x1d, 0x56, 0x41, 0x10);
+const CUT_PARTIAL = u8(0x1d, 0x56, 0x42, 0x10);
+const CUT_STAR_LINE = u8(0x1b, 0x64, 0x03);
 const FEED = u8(0x0a);
+
+export type EscPosOptions = {
+  emulation?: PrinterEmulation;
+  paperWidthMm?: PrinterPaperMm;
+  cutter?: PrinterCutter;
+  modelPreset?: PrinterModelPreset;
+};
+
+function resolveOpts(opts?: EscPosOptions): {
+  emulation: PrinterEmulation;
+  width: number;
+  cutter: PrinterCutter;
+} {
+  const spec = opts?.modelPreset ? printerModelSpec(opts.modelPreset) : null;
+  const emulation = opts?.emulation ?? spec?.emulation ?? "escpos";
+  const paper = opts?.paperWidthMm ?? spec?.paperWidthMm ?? 80;
+  const cutter = opts?.cutter ?? spec?.cutter ?? "full";
+  return { emulation, width: colsForPaperWidth(paper), cutter };
+}
+
+function cutBytes(emulation: PrinterEmulation, cutter: PrinterCutter): Uint8Array {
+  if (cutter === "none") return concat([FEED, FEED, FEED, FEED]);
+  if (emulation === "star_line") return concat([FEED, FEED, CUT_STAR_LINE]);
+  if (cutter === "partial") return concat([FEED, CUT_PARTIAL]);
+  return concat([FEED, CUT_FULL]);
+}
 
 function line(left: string, right = "", width = 42): Uint8Array {
   const l = left.slice(0, width);
@@ -91,14 +127,15 @@ function buildTillTurnInEscPos(job: PrintJob): Uint8Array {
     }
     parts.push(FEED, code128(slip.closeId), qrPayload(slip.closeId), ALIGN_LT);
   }
-  parts.push(FEED, ALIGN_CT, text("Summex"), FEED, FEED, CUT);
+  parts.push(FEED, ALIGN_CT, text("Summex"), FEED, cutBytes("escpos", "full"));
   return concat(parts);
 }
 
-/** ESC/POS bytes for Star / Epson / generic thermal (cut + init). */
-export function buildEscPos(job: PrintJob): Uint8Array {
+/** ESC/POS or Star Line bytes for a hospitality printer (LAN 9100). */
+export function buildEscPos(job: PrintJob, opts?: EscPosOptions): Uint8Array {
   if (job.kind === "drawer_kick") return buildDrawerKickBytes();
   if (job.kind === "till_turn_in") return buildTillTurnInEscPos(job);
+  const { emulation, width, cutter } = resolveOpts(opts);
   const title =
     job.kind === "receipt"
       ? "RECEIPT"
@@ -121,58 +158,70 @@ export function buildEscPos(job: PrintJob): Uint8Array {
     FEED,
     BOLD_OFF,
     ALIGN_LT,
-    line(`#${job.checkNumber}`, job.tableLabel),
-    line(job.serverName, new Date(job.at).toLocaleTimeString()),
+    line(`#${job.checkNumber}`, job.tableLabel, width),
+    line(job.serverName, new Date(job.at).toLocaleTimeString(), width),
   ];
-  if (job.operatorName) parts.push(line(job.operatorName));
-  parts.push(text("-".repeat(42)), FEED);
+  if (job.operatorName) parts.push(line(job.operatorName, "", width));
+  parts.push(text("-".repeat(width)), FEED);
   const groups = groupLinesByEntity(job.items, job.locationName);
   for (const g of groups) {
     if (groups.length > 1) {
-      parts.push(BOLD_ON, line(g.displayName.toUpperCase()), BOLD_OFF);
+      parts.push(BOLD_ON, line(g.displayName.toUpperCase(), "", width), BOLD_OFF);
     }
     for (const it of g.lines) {
       const amt =
         typeof it.amountCents === "number" ? formatCurrency(it.amountCents) : "";
-      parts.push(BOLD_ON, line(`${it.qty}x ${it.name}`, amt), BOLD_OFF);
-      for (const m of it.mods ?? []) parts.push(line(`  ${m}`));
-      if (it.note) parts.push(line(`  * ${it.note}`));
-      if (it.seat != null) parts.push(line(`  seat ${it.seat}`));
+      parts.push(BOLD_ON, line(`${it.qty}x ${it.name}`, amt, width), BOLD_OFF);
+      for (const m of it.mods ?? []) parts.push(line(`  ${m}`, "", width));
+      if (it.note) parts.push(line(`  * ${it.note}`, "", width));
+      if (it.seat != null) parts.push(line(`  seat ${it.seat}`, "", width));
     }
   }
   if (job.totals) {
-    parts.push(text("-".repeat(42)), FEED);
-    parts.push(line("Subtotal", formatCurrency(job.totals.subtotalCents)));
-    parts.push(line("Tax", formatCurrency(job.totals.taxCents)));
-    if (job.totals.tipCents) parts.push(line("Tip", formatCurrency(job.totals.tipCents)));
-    if (job.totals.giftCents) parts.push(line("Gift", formatCurrency(job.totals.giftCents)));
-    parts.push(BOLD_ON, line("Total", formatCurrency(job.totals.totalCents)), BOLD_OFF);
-    if (job.totals.tender) parts.push(line(job.totals.tender));
+    parts.push(text("-".repeat(width)), FEED);
+    parts.push(line("Subtotal", formatCurrency(job.totals.subtotalCents), width));
+    parts.push(line("Tax", formatCurrency(job.totals.taxCents), width));
+    if (job.totals.tipCents) parts.push(line("Tip", formatCurrency(job.totals.tipCents), width));
+    if (job.totals.giftCents) parts.push(line("Gift", formatCurrency(job.totals.giftCents), width));
+    parts.push(BOLD_ON, line("Total", formatCurrency(job.totals.totalCents), width), BOLD_OFF);
+    if (job.totals.tender) parts.push(line(job.totals.tender, "", width));
     if (job.copy === "guest" && groups.length > 1) {
-      parts.push(line("Card: one authorization, split to the vendors above"));
+      parts.push(line("Card: one authorization, split to the vendors above", "", width));
     }
     if (job.copy === "merchant" && job.allocations && job.allocations.length) {
-      parts.push(text("-".repeat(42)), FEED);
-      parts.push(BOLD_ON, line((job.operatorName || "MERCHANT").toUpperCase() + " SHARE"), BOLD_OFF);
+      parts.push(text("-".repeat(width)), FEED);
+      parts.push(BOLD_ON, line((job.operatorName || "MERCHANT").toUpperCase() + " SHARE", "", width), BOLD_OFF);
       for (const a of job.allocations) {
-        parts.push(line(a.name, formatCurrency(a.totalCents)));
-        parts.push(line("  merch", formatCurrency(a.merchandiseCents)));
-        parts.push(line("  tax/tip/svc", formatCurrency(a.feesCents)));
+        parts.push(line(a.name, formatCurrency(a.totalCents), width));
+        parts.push(line("  merch", formatCurrency(a.merchandiseCents), width));
+        parts.push(line("  tax/tip/svc", formatCurrency(a.feesCents), width));
       }
-      parts.push(line("Guest still paid once"));
+      parts.push(line("Guest still paid once", "", width));
     }
   }
   if (job.qrUrl) {
     parts.push(FEED, ALIGN_CT, text(job.qrCaption || "Scan to pay this check"), FEED);
-    parts.push(text(job.qrUrl.slice(0, 42)), FEED);
+    parts.push(text(job.qrUrl.slice(0, width)), FEED);
   }
-  parts.push(FEED, ALIGN_CT, text("Quantum Payments · Summex"), FEED, FEED, CUT);
+  if (job.kind === "test") {
+    parts.push(
+      FEED,
+      ALIGN_CT,
+      text(`${emulation.toUpperCase()} · ${width} col`),
+      FEED,
+    );
+  }
+  parts.push(FEED, ALIGN_CT, text("Quantum Payments · Summex"), FEED, cutBytes(emulation, cutter));
   return concat(parts);
 }
 
-export function escposBase64(job: PrintJob): string {
-  const bytes = job.kind === "drawer_kick" ? buildDrawerKickBytes() : buildEscPos(job);
+export function bytesToBase64(bytes: Uint8Array): string {
   let bin = "";
   for (let i = 0; i < bytes.length; i += 1) bin += String.fromCharCode(bytes[i]!);
   return btoa(bin);
+}
+
+export function escposBase64(job: PrintJob, opts?: EscPosOptions): string {
+  const bytes = job.kind === "drawer_kick" ? buildDrawerKickBytes() : buildEscPos(job, opts);
+  return bytesToBase64(bytes);
 }

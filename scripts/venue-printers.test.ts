@@ -13,6 +13,10 @@ test("devices tab type dropdown includes printers", () => {
   assert.match(ui, /Cash drawer kick/);
   assert.match(ui, /Destination/);
   assert.match(ui, /Print pay QR/);
+  assert.match(ui, /PRINTER_MODEL_GROUPS/);
+  assert.match(ui, /dispatchRawTestPrint/);
+  assert.doesNotMatch(ui, /forceBrowser/);
+  assert.doesNotMatch(ui, /window\.print/);
   assert.match(ui, /Which order \/ host stations use it/);
   assert.match(ui, /Which stations may send to it/);
   assert.match(ui, /All entities at this venue/);
@@ -56,4 +60,17 @@ test("guide printers topic is form fields on Devices", () => {
   assert.match(guide, /Static IP/);
   assert.match(guide, /Order printer/);
   assert.match(guide, /ODS does not need a receipt printer/);
+  assert.match(guide, /Star SP700 \/ SP742/);
+  assert.match(guide, /Generic ESC\/POS/);
+  assert.match(guide, /raw bytes/);
+});
+
+test("print dispatch test path never uses window.print", () => {
+  const dispatch = readFileSync("src/lib/print/dispatch.ts", "utf8");
+  assert.match(dispatch, /dispatchRawTestPrint/);
+  assert.match(dispatch, /Never window\.print/);
+  assert.match(dispatch, /rawLanPrintFn/);
+  const agent = readFileSync("scripts/print-agent.mjs", "utf8");
+  assert.match(agent, /9100/);
+  assert.match(agent, /never uses the OS print dialog/);
 });

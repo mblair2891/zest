@@ -1,5 +1,48 @@
 import type { Employee, EmployeeRole, PosView } from "./types";
 import { HOST_SCOPE } from "@/lib/access/entity-grants";
+import {
+  DEFAULT_PRINTER_PORT,
+  PRINTER_FAMILIES,
+  PRINTER_FAMILY_LABEL,
+  PRINTER_MODEL_GROUPS,
+  PRINTER_MODEL_GROUP_LABEL,
+  PRINTER_MODEL_LABEL,
+  PRINTER_MODEL_PRESETS,
+  defaultPrinterModel,
+  familyFromModelPreset,
+  isPrinterModelPreset,
+  modelPresetFromFamily,
+  printerModelHint,
+  printerModelSpec,
+  type PrinterCutter,
+  type PrinterEmulation,
+  type PrinterFamily,
+  type PrinterModelPreset,
+  type PrinterPaperMm,
+} from "@/lib/print/printer-models";
+
+export {
+  DEFAULT_PRINTER_PORT,
+  PRINTER_FAMILIES,
+  PRINTER_FAMILY_LABEL,
+  PRINTER_MODEL_GROUPS,
+  PRINTER_MODEL_GROUP_LABEL,
+  PRINTER_MODEL_LABEL,
+  PRINTER_MODEL_PRESETS,
+  defaultPrinterModel,
+  familyFromModelPreset,
+  isPrinterModelPreset,
+  modelPresetFromFamily,
+  printerModelHint,
+  printerModelSpec,
+};
+export type {
+  PrinterCutter,
+  PrinterEmulation,
+  PrinterFamily,
+  PrinterModelPreset,
+  PrinterPaperMm,
+};
 
 export type LocationDeviceType =
   | "tablet_pos"
@@ -34,16 +77,9 @@ export type DeviceAssignment = {
 
 export type LocationDeviceStatus = "online" | "offline" | "pending" | "inactive";
 
-export type PrinterFamily = "star" | "epson" | "generic";
 export type PrinterConnection = "lan" | "bluetooth" | "browser";
 export type PrintStation = "kitchen" | "bar" | "receipt" | "expo" | "label";
 export type PrinterLink = "wifi" | "ethernet";
-export type PrinterModelPreset =
-  | "epson_tm_t20"
-  | "epson_tm_t88"
-  | "epson_tm_m30"
-  | "epson_tm_u220"
-  | "generic_escpos";
 export type PrinterDrawerKick = "none" | "attached";
 export type PrintRoute = "receipts" | "kitchen_tickets" | "bar_tickets" | "labels";
 export type PrinterReachability = "unreachable" | "idle" | "last_print";
@@ -51,13 +87,16 @@ export type PrinterReachability = "unreachable" | "idle" | "last_print";
 export type PrinterConfig = {
   family: PrinterFamily;
   connection: PrinterConnection;
-  /** LAN host:port (default :9100) or Bluetooth address. Empty for browser fallback. */
+  /** LAN host:port (default :9100). Empty until a static IP is set. */
   target: string;
   station: PrintStation;
   link?: PrinterLink;
   ip?: string;
   port?: number;
   modelPreset?: PrinterModelPreset;
+  emulation?: PrinterEmulation;
+  paperWidthMm?: PrinterPaperMm;
+  cutter?: PrinterCutter;
   drawerKick?: PrinterDrawerKick;
   /** Order printer: Kitchen, Bar, Expo, Window, Label… */
   destinationName?: string;
@@ -69,17 +108,9 @@ export type PrinterConfig = {
   reachability?: PrinterReachability;
 };
 
-export const PRINTER_FAMILIES: PrinterFamily[] = ["star", "epson", "generic"];
 export const PRINTER_CONNECTIONS: PrinterConnection[] = ["lan", "bluetooth", "browser"];
 export const PRINT_STATIONS: PrintStation[] = ["kitchen", "bar", "receipt", "expo", "label"];
 export const PRINTER_LINKS: PrinterLink[] = ["ethernet", "wifi"];
-export const PRINTER_MODEL_PRESETS: PrinterModelPreset[] = [
-  "epson_tm_t20",
-  "epson_tm_t88",
-  "epson_tm_m30",
-  "epson_tm_u220",
-  "generic_escpos",
-];
 export const PRINT_ROUTES: PrintRoute[] = [
   "receipts",
   "kitchen_tickets",
@@ -87,29 +118,15 @@ export const PRINT_ROUTES: PrintRoute[] = [
   "labels",
 ];
 
-export const PRINTER_FAMILY_LABEL: Record<PrinterFamily, string> = {
-  star: "Star Micronics",
-  epson: "Epson",
-  generic: "Generic ESC/POS",
-};
-
 export const PRINTER_CONNECTION_LABEL: Record<PrinterConnection, string> = {
   lan: "LAN (Ethernet / Wi‑Fi)",
   bluetooth: "Bluetooth",
-  browser: "This browser (window.print)",
+  browser: "LAN print agent (raw 9100)",
 };
 
 export const PRINTER_LINK_LABEL: Record<PrinterLink, string> = {
   ethernet: "Ethernet",
   wifi: "Wi-Fi",
-};
-
-export const PRINTER_MODEL_LABEL: Record<PrinterModelPreset, string> = {
-  epson_tm_t20: "Epson TM-T20",
-  epson_tm_t88: "Epson TM-T88",
-  epson_tm_m30: "Epson TM-m30",
-  epson_tm_u220: "Epson TM-U220",
-  generic_escpos: "Generic ESC/POS",
 };
 
 export const PRINT_STATION_LABEL: Record<PrintStation, string> = {
@@ -445,16 +462,6 @@ export function routeForPrintStation(station: PrintStation): PrintRoute {
   return "receipts";
 }
 
-export function familyFromModelPreset(preset: PrinterModelPreset): PrinterFamily {
-  return preset === "generic_escpos" ? "generic" : "epson";
-}
-
-export function modelPresetFromFamily(family: PrinterFamily, station?: PrintStation): PrinterModelPreset {
-  if (family === "generic") return "generic_escpos";
-  if (station === "kitchen") return "epson_tm_u220";
-  return "epson_tm_t20";
-}
-
 export function printerHasDrawerKick(d: LocationDevice): boolean {
   if (!isPrinterDevice(d) || !d.print) return false;
   if (d.print.drawerKick === "attached") return true;
@@ -478,15 +485,21 @@ export function parsePrinterConfig(raw: unknown): PrinterConfig | undefined {
   if (!raw || typeof raw !== "object") return undefined;
   const o = raw as Record<string, unknown>;
   const presetRaw = String(o.modelPreset ?? "");
-  const modelPreset: PrinterModelPreset | undefined = PRINTER_MODEL_PRESETS.includes(
-    presetRaw as PrinterModelPreset,
-  )
-    ? (presetRaw as PrinterModelPreset)
-    : undefined;
-  const familyRaw = String(o.family ?? o.printerFamily ?? (modelPreset ? familyFromModelPreset(modelPreset) : "generic"));
+  const modelPreset: PrinterModelPreset = isPrinterModelPreset(presetRaw)
+    ? presetRaw
+    : modelPresetFromFamily(
+        PRINTER_FAMILIES.includes(String(o.family ?? "") as PrinterFamily)
+          ? (o.family as PrinterFamily)
+          : "generic",
+        PRINT_STATIONS.includes(String(o.station ?? "") as PrintStation)
+          ? (o.station as PrintStation)
+          : undefined,
+      );
+  const spec = printerModelSpec(modelPreset);
+  const familyRaw = String(o.family ?? o.printerFamily ?? spec.family);
   const family: PrinterFamily = PRINTER_FAMILIES.includes(familyRaw as PrinterFamily)
     ? (familyRaw as PrinterFamily)
-    : "generic";
+    : spec.family;
   const linkRaw = String(o.link ?? "");
   const link: PrinterLink | undefined = PRINTER_LINKS.includes(linkRaw as PrinterLink)
     ? (linkRaw as PrinterLink)
@@ -512,7 +525,7 @@ export function parsePrinterConfig(raw: unknown): PrinterConfig | undefined {
   const printPayQr = o.printPayQr === false ? false : o.printPayQr === true ? true : undefined;
   const ip = String(o.ip ?? "").trim().slice(0, 45);
   const portNum = Number(o.port);
-  const port = portNum > 0 && portNum < 65536 ? Math.round(portNum) : 9100;
+  const port = portNum > 0 && portNum < 65536 ? Math.round(portNum) : spec.port;
   const targetRaw = String(o.target ?? o.printerTarget ?? "").trim().slice(0, 120);
   const target =
     targetRaw ||
@@ -534,14 +547,17 @@ export function parsePrinterConfig(raw: unknown): PrinterConfig | undefined {
       ? reachRaw
       : undefined;
   return {
-    family,
-    connection,
+    family: spec.family || family,
+    connection: connection === "browser" ? "lan" : connection,
     station,
     target,
-    link: link ?? (connection === "lan" ? "ethernet" : undefined),
+    link: link ?? (connection === "lan" || connection === "browser" ? "ethernet" : undefined),
     ip: ipFromTarget || undefined,
     port,
-    modelPreset: modelPreset ?? modelPresetFromFamily(family, station),
+    modelPreset,
+    emulation: spec.emulation,
+    paperWidthMm: spec.paperWidthMm,
+    cutter: spec.cutter,
     drawerKick: drawerKick ?? (station === "receipt" ? "attached" : "none"),
     destinationName: station === "receipt" ? undefined : destinationName || "Kitchen",
     printPayQr: station === "receipt" ? printPayQr !== false : undefined,
@@ -572,6 +588,8 @@ export function pendingPrinterDevice(opts: {
           ? undefined
           : "Kitchen");
   const station = receipt ? "receipt" : stationFromPrinterType(type, destinationName);
+  const modelPreset = defaultPrinterModel(receipt ? "receipt" : "order");
+  const spec = printerModelSpec(modelPreset);
   return {
     id: opts.id,
     locationId: opts.locationId,
@@ -584,14 +602,17 @@ export function pendingPrinterDevice(opts: {
       function: defaultFunctionForType(type),
     },
     print: {
-      family: "epson",
+      family: spec.family,
       connection: "lan",
       target: "",
       station,
       link: "ethernet",
       ip: "",
-      port: 9100,
-      modelPreset: station === "kitchen" ? "epson_tm_u220" : "epson_tm_t20",
+      port: spec.port,
+      modelPreset,
+      emulation: spec.emulation,
+      paperWidthMm: spec.paperWidthMm,
+      cutter: spec.cutter,
       drawerKick: receipt ? "attached" : "none",
       destinationName: receipt ? undefined : destinationName,
       printPayQr: receipt ? true : undefined,

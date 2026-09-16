@@ -6,6 +6,19 @@ import type { GuideUpdate } from "@/lib/guide/types";
  */
 export const WHATS_NEW_ENTRIES: GuideUpdate[] = [
   {
+    id: "upd_2026_10_102_printer_models",
+    date: "2026-09-16",
+    title: "Hospitality printer models and raw 9100 test",
+    summary:
+      "Make/model covers Star (SP700/SP742), Epson, Citizen, Bixolon, and generic ESC/POS. Test print sends raw bytes to IP:9100 — never the OS dialog.",
+    body: "Types stay Receipt printer or Order printer. Pick the model the house bought; the preset sets emulation (ESC/POS, StarPRNT, Star Line), paper width, cutter, and port 9100. Star SP742 is Star SP700/SP742 as an order printer (ESC/POS) or Star generic StarPRNT / Star Line Mode. Generic ESC/POS (80mm) is always the fallback. Test print goes to the LAN print agent or a paired station on the staff network.",
+    roles: ["owner_manager", "host_operator", "platform_admin", "kitchen_bar"],
+    surfaces: ["settings"],
+    audience: "all",
+    topicId: "printers-kds",
+    tags: ["devices", "printers", "star", "escpos", "9100"],
+  },
+  {
     id: "upd_2026_10_101_gift_cards_tab",
     date: "2026-09-16",
     title: "Gift cards tab, station sell and redeem",
