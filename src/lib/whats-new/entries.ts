@@ -6,6 +6,19 @@ import type { GuideUpdate } from "@/lib/guide/types";
  */
 export const WHATS_NEW_ENTRIES: GuideUpdate[] = [
   {
+    id: "upd_2026_10_103_order_destinations",
+    date: "2026-09-16",
+    title: "Order printer destination includes Kitchen",
+    summary:
+      "Destination is a production-line label: Kitchen, Bar, Expo, Window, Prep, Other — or add one. Default Kitchen. Receipt printers have no destination.",
+    body: "The Destination control is a full list, not a filtered Bar-only dropdown. Add destination / Rename so a house is not stuck with Bar. On a peer venue, Entity filter is Hearth vs Copper; Destination is which ticket printer on that side. Kitchen stays in the list when Operating as is House.",
+    roles: ["owner_manager", "host_operator", "platform_admin", "kitchen_bar"],
+    surfaces: ["settings"],
+    audience: "all",
+    topicId: "printers-kds",
+    tags: ["devices", "printers", "kitchen", "destination"],
+  },
+  {
     id: "upd_2026_10_102_printer_models",
     date: "2026-09-16",
     title: "Hospitality printer models and raw 9100 test",

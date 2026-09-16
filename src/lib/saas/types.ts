@@ -51,6 +51,8 @@ export type LocationSetup = {
   entityPermissions?: import("@/lib/access/entity-grants").EntityGrantRow[];
   /** Location device registry with entity + function assignment. */
   locationDevices?: import("@/lib/pos/location-devices").LocationDevice[];
+  /** Extra order-printer destinations beyond Kitchen / Bar / Expo / Window / Prep / Other. */
+  orderDestinations?: string[];
   voiceControlEnabledByRole?: Partial<Record<string, boolean>>;
   networkReadyStatus?: import("./network-readiness").NetworkReadyStatus;
   networkCheckedAt?: string;
@@ -151,6 +153,7 @@ export const EMPTY_LOCATION_SETUP: LocationSetup = {
   operatorPayouts: [],
   entityPermissions: [],
   locationDevices: [],
+  orderDestinations: [],
   paymentsMode: "inherit",
   paymentMethods: {
     cash: true,

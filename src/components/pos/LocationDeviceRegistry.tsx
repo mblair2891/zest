@@ -22,7 +22,7 @@ import {
   DEVICE_FUNCTION_LABEL,
   DEVICE_TYPE_LABEL,
   HARDWARE_DEVICE_TYPES,
-  ORDER_DESTINATION_PRESETS,
+  DEFAULT_ORDER_DESTINATION,
   PRINTER_UI_TYPES,
   PRINTER_LINK_LABEL,
   PRINTER_LINKS,
@@ -35,6 +35,9 @@ import {
   defaultRoutesForPrinterType,
   destinationFromLegacyType,
   familyFromModelPreset,
+  isPresetDestination,
+  mergeOrderDestinations,
+  normalizeDestinationName,
   printerModelHint,
   printerModelSpec,
   functionForPrintStation,
@@ -189,7 +192,12 @@ export function LocationDeviceRegistry({
   const [printPort, setPrintPort] = useState("9100");
   const [printModel, setPrintModel] = useState<PrinterModelPreset>(defaultPrinterModel("receipt"));
   const [drawerKick, setDrawerKick] = useState<PrinterDrawerKick>("attached");
-  const [destinationName, setDestinationName] = useState("Kitchen");
+  const [destinationName, setDestinationName] = useState(DEFAULT_ORDER_DESTINATION);
+  const [orderDestinations, setOrderDestinations] = useState<string[]>(() => mergeOrderDestinations());
+  const [addingDest, setAddingDest] = useState(false);
+  const [newDest, setNewDest] = useState("");
+  const [renamingDest, setRenamingDest] = useState(false);
+  const [renameDest, setRenameDest] = useState("");
   const [printPayQr, setPrintPayQr] = useState(true);
   const [boundStationIds, setBoundStationIds] = useState<string[]>([]);
   const [receiptPrinterId, setReceiptPrinterId] = useState<string>("");
@@ -264,6 +272,12 @@ export function LocationDeviceRegistry({
       setOperators(res.operators);
       setRoleHistory(res.roleHistory ?? []);
       setHostName(res.hostName || locationName || "Venue");
+      setOrderDestinations(
+        mergeOrderDestinations(
+          res.orderDestinations,
+          res.devices.map((d) => d.print?.destinationName ?? ""),
+        ),
+      );
       try {
         const next = res.devices.filter((d) => d.status !== "inactive");
         const prev = usePosStore.getState().locationDevices ?? [];
@@ -286,6 +300,79 @@ export function LocationDeviceRegistry({
   useEffect(() => {
     void load();
   }, [load]);
+
+  const destinationOptions = useMemo(
+    () =>
+      mergeOrderDestinations(
+        orderDestinations,
+        devices.map((d) => d.print?.destinationName ?? ""),
+        destinationName ? [destinationName] : [],
+      ),
+    [orderDestinations, devices, destinationName],
+  );
+
+  const persistOrderDestinations = async (next: string[]) => {
+    const merged = mergeOrderDestinations(next);
+    setOrderDestinations(merged);
+    if (!resolvedOrgId || !resolvedLocId) return;
+    await saveLocationSettingsFn({
+      data: {
+        orgId: resolvedOrgId,
+        locationId: resolvedLocId,
+        setup: { orderDestinations: merged.filter((n) => !isPresetDestination(n)) },
+      },
+    });
+  };
+
+  const addOrderDestination = async () => {
+    const name = normalizeDestinationName(newDest);
+    if (!name) return;
+    await persistOrderDestinations([...orderDestinations, name]);
+    setDestinationName(name);
+    setNewDest("");
+    setAddingDest(false);
+  };
+
+  const renameOrderDestination = async () => {
+    const from = normalizeDestinationName(destinationName);
+    const to = normalizeDestinationName(renameDest);
+    if (!from || !to || from.toLowerCase() === to.toLowerCase()) {
+      setRenamingDest(false);
+      return;
+    }
+    const extras = orderDestinations
+      .filter((n) => !isPresetDestination(n) && n.toLowerCase() !== from.toLowerCase())
+      .concat(isPresetDestination(to) ? [] : [to]);
+    await persistOrderDestinations(extras);
+    setDestinationName(to);
+    for (const d of devices) {
+      if (!isOrderPrinterType(d.type) || normalizeDestinationName(d.print?.destinationName) !== from) {
+        continue;
+      }
+      await saveLocationDeviceFn({
+        data: {
+          orgId: resolvedOrgId,
+          locationId: resolvedLocId,
+          device: {
+            id: d.id,
+            label: d.label,
+            type: d.type,
+            assignment: d.assignment,
+            print: {
+              family: d.print?.family ?? "generic",
+              connection: d.print?.connection ?? "lan",
+              target: d.print?.target ?? "",
+              station: d.print?.station ?? stationFromPrinterType(d.type, to),
+              ...d.print,
+              destinationName: to,
+            },
+          },
+        },
+      });
+    }
+    setRenamingDest(false);
+    await load();
+  };
 
   const visible = useMemo(
     () => devices.filter((d) => inMode(d, mode)),
@@ -334,8 +421,12 @@ export function LocationDeviceRegistry({
       preset?.print?.destinationName ||
         (printerType
           ? destinationFromLegacyType(preset?.type ?? printerType, preset?.print?.station)
-          : "Kitchen"),
+          : DEFAULT_ORDER_DESTINATION),
     );
+    setAddingDest(false);
+    setNewDest("");
+    setRenamingDest(false);
+    setRenameDest("");
     setPrintPayQr(preset?.print?.printPayQr !== false);
     setBoundStationIds(preset?.print?.boundStationIds ?? []);
     setReceiptPrinterId(preset?.receiptPrinterId ?? "");
@@ -399,7 +490,7 @@ export function LocationDeviceRegistry({
                   cutter: spec.cutter,
                   drawerKick: isReceiptPrinterType(type) ? drawerKick : "none",
                   destinationName: isOrderPrinterType(type)
-                    ? destinationName.trim() || "Kitchen"
+                    ? normalizeDestinationName(destinationName) || DEFAULT_ORDER_DESTINATION
                     : undefined,
                   printPayQr: isReceiptPrinterType(type) ? printPayQr : undefined,
                   routes: isReceiptPrinterType(type)
@@ -418,6 +509,12 @@ export function LocationDeviceRegistry({
           usePosStore.setState({ activeDeviceId: id });
         } catch {
           /* */
+        }
+      }
+      if (isOrderPrinterType(type)) {
+        const dest = normalizeDestinationName(destinationName) || DEFAULT_ORDER_DESTINATION;
+        if (!isPresetDestination(dest)) {
+          await persistOrderDestinations([...orderDestinations, dest]);
         }
       }
       setFormOpen(false);
@@ -667,7 +764,7 @@ export function LocationDeviceRegistry({
   const help =
     mode === "hardware"
       ? "Register Quantum readers and hospitality printers (Star, Epson, Citizen, Bixolon, generic ESC/POS). Wi-Fi or Ethernet, static IP (port 9100). Test print sends raw bytes — never the OS dialog."
-      : "Add a tablet or a printer from the same button. Tablets: pick Order / Host / ODS / Kiosk, then type the one-time code on the glass. Printers: Receipt printer or Order printer (Kitchen / Bar / Expo / Label are destinations, not types). Host and order tablets use the bound receipt printer; ODS does not need one.";
+      : "Add a tablet or a printer from the same button. Tablets: pick Order / Host / ODS / Kiosk, then type the one-time code on the glass. Printers: Receipt printer or Order printer. Order destination is the production line (Kitchen, Bar, Expo, Window, Prep, Other — or add one). Receipt printers have no destination. Host and order tablets use the bound receipt printer; ODS does not need one.";
   const addLabel = mode === "hardware" ? "Add terminal / printer" : "Add device";
   const pairedId = resolvedLocId ? readPairedDeviceId(resolvedLocId) : null;
   const thisBrowserId = resolvedLocId ? readOrCreateBrowserDeviceId(resolvedLocId) : "";
@@ -828,7 +925,7 @@ export function LocationDeviceRegistry({
                   if (isPrinterType(next)) {
                     setDrawerKick(isReceiptPrinterType(next) ? "attached" : "none");
                     setPrintModel(defaultPrinterModel(isOrderPrinterType(next) ? "order" : "receipt"));
-                    if (isOrderPrinterType(next)) setDestinationName("Kitchen");
+                    if (isOrderPrinterType(next)) setDestinationName(DEFAULT_ORDER_DESTINATION);
                   } else {
                     setStationRole(deviceRoleFromFunction(defaultFunctionForType(next)));
                   }
@@ -952,21 +1049,116 @@ export function LocationDeviceRegistry({
                 </label>
                 )}
                 {isOrderPrinterType(type) && (
-                <label className="text-xs text-muted-foreground sm:col-span-2">
-                  Destination
-                  <input
-                    list="order-destinations"
-                    className="mt-1 h-10 w-full rounded-xl border border-border bg-bg px-3 text-sm text-foreground"
-                    value={destinationName}
-                    onChange={(e) => setDestinationName(e.target.value)}
-                    placeholder="Kitchen, Bar, Expo, Window…"
-                  />
-                  <datalist id="order-destinations">
-                    {ORDER_DESTINATION_PRESETS.map((n) => (
-                      <option key={n} value={n} />
-                    ))}
-                  </datalist>
-                </label>
+                <div className="sm:col-span-2 space-y-2">
+                  <label className="text-xs text-muted-foreground">
+                    Destination
+                    <select
+                      className="mt-1 h-10 w-full rounded-xl border border-border bg-bg px-3 text-sm text-foreground"
+                      value={
+                        destinationOptions.includes(destinationName)
+                          ? destinationName
+                          : DEFAULT_ORDER_DESTINATION
+                      }
+                      onChange={(e) => {
+                        setDestinationName(e.target.value);
+                        setRenamingDest(false);
+                      }}
+                    >
+                      {destinationOptions.map((n) => (
+                        <option key={n} value={n}>
+                          {n}
+                        </option>
+                      ))}
+                    </select>
+                    <span className="mt-0.5 block text-[11px] text-muted-foreground">
+                      Production line this printer serves. Entity filter above is Hearth vs Copper on a peer venue — not the line. Kitchen stays in this list when Operating as is House.
+                    </span>
+                  </label>
+                  {addingDest ? (
+                    <div className="flex flex-wrap items-end gap-2">
+                      <label className="min-w-[10rem] flex-1 text-xs text-muted-foreground">
+                        New destination
+                        <Input
+                          className="mt-1"
+                          placeholder="e.g. Pastry"
+                          value={newDest}
+                          onChange={(e) => setNewDest(e.target.value)}
+                        />
+                      </label>
+                      <Button
+                        size="sm"
+                        type="button"
+                        disabled={!normalizeDestinationName(newDest)}
+                        onClick={() => void addOrderDestination()}
+                      >
+                        Add
+                      </Button>
+                      <Button
+                        size="sm"
+                        type="button"
+                        variant="ghost"
+                        onClick={() => {
+                          setAddingDest(false);
+                          setNewDest("");
+                        }}
+                      >
+                        Cancel
+                      </Button>
+                    </div>
+                  ) : renamingDest ? (
+                    <div className="flex flex-wrap items-end gap-2">
+                      <label className="min-w-[10rem] flex-1 text-xs text-muted-foreground">
+                        Rename destination
+                        <Input
+                          className="mt-1"
+                          value={renameDest}
+                          onChange={(e) => setRenameDest(e.target.value)}
+                        />
+                      </label>
+                      <Button
+                        size="sm"
+                        type="button"
+                        disabled={!normalizeDestinationName(renameDest)}
+                        onClick={() => void renameOrderDestination()}
+                      >
+                        Save name
+                      </Button>
+                      <Button
+                        size="sm"
+                        type="button"
+                        variant="ghost"
+                        onClick={() => setRenamingDest(false)}
+                      >
+                        Cancel
+                      </Button>
+                    </div>
+                  ) : (
+                    <div className="flex flex-wrap gap-2">
+                      <Button
+                        size="sm"
+                        type="button"
+                        variant="outline"
+                        onClick={() => {
+                          setAddingDest(true);
+                          setNewDest("");
+                        }}
+                      >
+                        Add destination
+                      </Button>
+                      <Button
+                        size="sm"
+                        type="button"
+                        variant="ghost"
+                        onClick={() => {
+                          setRenamingDest(true);
+                          setRenameDest(destinationName);
+                        }}
+                      >
+                        Rename
+                      </Button>
+                    </div>
+                  )}
+                </div>
                 )}
               </div>
               {isReceiptPrinterType(type) && (

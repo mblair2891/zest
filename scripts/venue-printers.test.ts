@@ -12,6 +12,9 @@ test("devices tab type dropdown includes printers", () => {
   assert.match(ui, /Static IP/);
   assert.match(ui, /Cash drawer kick/);
   assert.match(ui, /Destination/);
+  assert.match(ui, /Add destination/);
+  assert.match(ui, /DEFAULT_ORDER_DESTINATION/);
+  assert.doesNotMatch(ui, /datalist/);
   assert.match(ui, /Print pay QR/);
   assert.match(ui, /PRINTER_MODEL_GROUPS/);
   assert.match(ui, /dispatchRawTestPrint/);
@@ -47,6 +50,7 @@ test("summit hall seeds receipt, kitchen, and bar printer slots", () => {
   assert.match(seed, /type: "order_printer"/);
   assert.match(seed, /kind: "kitchen"/);
   assert.match(seed, /kind: "bar"/);
+  assert.match(seed, /destinationName: "Kitchen"/);
   const merge = readFileSync("src/lib/saas/summit-hall-seed.server.ts", "utf8");
   assert.match(merge, /pendingPrinterDevice/);
   assert.match(merge, /canonicalizePrinterDevice/);
@@ -63,6 +67,8 @@ test("guide printers topic is form fields on Devices", () => {
   assert.match(guide, /Star SP700 \/ SP742/);
   assert.match(guide, /Generic ESC\/POS/);
   assert.match(guide, /raw bytes/);
+  assert.match(guide, /default Kitchen/);
+  assert.match(guide, /Receipt printers have no destination/);
 });
 
 test("print dispatch test path never uses window.print", () => {

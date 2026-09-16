@@ -19,6 +19,7 @@ import {
   makeClaimCode,
   parseLocationDevice,
   parseLocationDevices,
+  parseOrderDestinations,
   parsePrinterConfig,
   printerTypeFromStation,
   type DeviceFunction,
@@ -589,6 +590,12 @@ export const listLocationDevicesFn = createServerFn({ method: "POST" })
       })),
       hostName: access.location.hostBrandName || access.location.name,
       roleHistory: history.slice(0, 40),
+      orderDestinations: parseOrderDestinations([
+        ...(Array.isArray(access.location.setup?.orderDestinations)
+          ? access.location.setup.orderDestinations
+          : []),
+        ...devices.map((d) => d.print?.destinationName ?? ""),
+      ]),
     };
   });
 

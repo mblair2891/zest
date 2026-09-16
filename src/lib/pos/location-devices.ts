@@ -1,5 +1,6 @@
 import type { Employee, EmployeeRole, PosView } from "./types";
 import { HOST_SCOPE } from "@/lib/access/entity-grants";
+import { DEFAULT_ORDER_DESTINATION } from "./order-destinations";
 import {
   DEFAULT_PRINTER_PORT,
   PRINTER_FAMILIES,
@@ -159,7 +160,15 @@ export const PRINTER_UI_TYPES: LocationDeviceType[] = [
   "order_printer",
 ];
 
-export const ORDER_DESTINATION_PRESETS = ["Kitchen", "Bar", "Expo", "Window", "Label"] as const;
+export {
+  DEFAULT_ORDER_DESTINATION,
+  ORDER_DESTINATION_PRESETS,
+  isPresetDestination,
+  mergeOrderDestinations,
+  normalizeDestinationName,
+  parseOrderDestinations,
+} from "./order-destinations";
+export type { OrderDestinationPreset } from "./order-destinations";
 
 export function isPrinterType(type: string | null | undefined): boolean {
   return PRINTER_DEVICE_TYPES.includes(type as LocationDeviceType);
@@ -559,7 +568,7 @@ export function parsePrinterConfig(raw: unknown): PrinterConfig | undefined {
     paperWidthMm: spec.paperWidthMm,
     cutter: spec.cutter,
     drawerKick: drawerKick ?? (station === "receipt" ? "attached" : "none"),
-    destinationName: station === "receipt" ? undefined : destinationName || "Kitchen",
+    destinationName: station === "receipt" ? undefined : destinationName || DEFAULT_ORDER_DESTINATION,
     printPayQr: station === "receipt" ? printPayQr !== false : undefined,
     routes: routes.length ? routes : [routeForPrintStation(station)],
     boundStationIds: bound,
@@ -586,7 +595,7 @@ export function pendingPrinterDevice(opts: {
         ? "Label"
         : opts.kind === "receipt"
           ? undefined
-          : "Kitchen");
+          : DEFAULT_ORDER_DESTINATION);
   const station = receipt ? "receipt" : stationFromPrinterType(type, destinationName);
   const modelPreset = defaultPrinterModel(receipt ? "receipt" : "order");
   const spec = printerModelSpec(modelPreset);

@@ -49,8 +49,15 @@ function mergeSummitDevices(existing?: LocationSetup["locationDevices"]): Locati
         label: d.label,
         kind,
         operatorId: d.operatorId,
+        destinationName: "destinationName" in d ? d.destinationName : undefined,
       });
-      if (old?.print) slot.print = old.print;
+      if (old?.print && slot.print) {
+        slot.print = {
+          ...slot.print,
+          ...old.print,
+          destinationName: old.print.destinationName || slot.print.destinationName,
+        };
+      }
       if (old?.status === "inactive") slot.status = "inactive";
       else if (old?.print?.ip || old?.print?.target) slot.status = old.status;
       return canonicalizePrinterDevice(slot, old?.type ?? d.type);

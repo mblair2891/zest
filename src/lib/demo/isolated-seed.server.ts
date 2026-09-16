@@ -118,7 +118,13 @@ function asDevice(locId: string, d: SeedDevice, prev?: LocationDevice): Location
       destinationName:
         kind === "bar" ? "Bar" : kind === "label" ? "Label" : kind === "receipt" ? undefined : "Kitchen",
     });
-    if (prev?.print) slot.print = prev.print;
+    if (prev?.print && slot.print) {
+      slot.print = {
+        ...slot.print,
+        ...prev.print,
+        destinationName: prev.print.destinationName || slot.print.destinationName,
+      };
+    }
     if (prev?.status === "inactive") slot.status = "inactive";
     else if (prev?.print?.ip || prev?.print?.target) slot.status = prev.status;
     return canonicalizePrinterDevice(slot, prev?.type ?? d.type);
