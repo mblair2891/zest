@@ -30,6 +30,7 @@ export const DEMO_SCOPED_TABS = [
   "costs",
   "schedule",
   "payments",
+  "gift",
   "ledger",
 ] as const;
 

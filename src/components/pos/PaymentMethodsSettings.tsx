@@ -84,9 +84,9 @@ export function PaymentMethodsSettings({ write }: { write: boolean }) {
           onChange={(e) => toggle("giftCard", e.target.checked)}
         />
         <span>
-          Gift card (first-party ledger)
+          Accept gift cards
           <span className="mt-0.5 block text-xs text-muted-foreground">
-            Off: no sell or redeem.
+            First-party in-person ledger. Off: no sell or redeem. Not sold online.
           </span>
         </span>
       </label>

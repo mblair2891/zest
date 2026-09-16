@@ -6,6 +6,19 @@ import type { GuideUpdate } from "@/lib/guide/types";
  */
 export const WHATS_NEW_ENTRIES: GuideUpdate[] = [
   {
+    id: "upd_2026_10_101_gift_cards_tab",
+    date: "2026-09-16",
+    title: "Gift cards tab, station sell and redeem",
+    summary:
+      "Venue console has a Gift cards tab next to Payments. Order and host stations sell and redeem after PIN when Accept gift cards is on.",
+    body: "Gift cards is a real tab: issue/sell log, redeem log, outstanding liability, lookup by code or last 4, freeze/void/audit, $500 load and sell caps. Payments has a Gift cards card that opens it. Settings → Payment methods: Accept gift cards. Station short menu Gift cards (order + host) sells face value and redeems on the open check. Pay still has Gift. First-party in-person only — no website purchase.",
+    roles: ["owner_manager", "server", "host_operator", "platform_admin", "vendor_operator"],
+    surfaces: ["settings", "floor"],
+    audience: "all",
+    topicId: "gift-cards",
+    tags: ["gift", "station", "payments"],
+  },
+  {
     id: "upd_2026_10_100_underwriting_kyc_gift",
     date: "2026-09-16",
     title: "Payments KYC, gift caps, on-premise QR",

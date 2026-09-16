@@ -1,7 +1,7 @@
 # Operators Guide — authoring
 
-**Revision · 16 Sep 2026** — Entity KYC, first-party gift caps, on-premise QR.
-Guide v2026.10.100.
+**Revision · 16 Sep 2026** — Gift cards tab; station sell and redeem.
+Guide v2026.10.101.
 
 The in-app **Operators Guide** is the living product manual. It is not a
 separate PDF. Staff open it from **Guide** / **?** in the POS and platform

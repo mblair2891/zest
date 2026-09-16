@@ -7,7 +7,7 @@ test("peer venue payments tab has no venue Finix application or host payout", ()
   assert.match(ui, /data-demo="peer-venue-payments"/);
   assert.match(ui, /The building has no Finix merchant and no venue payout/);
   assert.match(ui, /Open application/);
-  assert.match(ui, /Limits \/ freeze \/ void/);
+  assert.match(ui, /Gift cards/);
   assert.match(ui, /Finix splits by line owner/);
   assert.match(ui, /never setState from hostMerchant/);
   assert.match(ui, /venueLevel = peerVenue && !entityId/);

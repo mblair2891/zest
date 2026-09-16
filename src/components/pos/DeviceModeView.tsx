@@ -11,6 +11,7 @@ import { EndShiftFlow } from "./EndShiftFlow";
 import { CashPossessionView } from "./CashPossessionView";
 import { StationClockControl } from "./StationClockControl";
 import { CashView } from "./CashView";
+import { StationGiftJob } from "./StationGiftJob";
 import { KioskApp } from "@/components/kiosk/KioskApp";
 import { useCashSessionStore } from "@/lib/pos/cash-session";
 import { useStationSessionStore } from "@/lib/pos/station-session";
@@ -168,6 +169,13 @@ export function DeviceModeView({
               setJob(null);
             }}
           />
+        </StationJobFrame>
+      );
+    }
+    if (job === "gift") {
+      return (
+        <StationJobFrame title="Gift cards" onBack={back}>
+          <StationGiftJob />
         </StationJobFrame>
       );
     }

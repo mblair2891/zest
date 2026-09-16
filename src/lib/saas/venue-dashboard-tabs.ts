@@ -17,6 +17,7 @@ export type VenueDashTabId =
   | "labor"
   | "reports"
   | "payments"
+  | "gift"
   | "grants"
   | "people"
   | "staff"
@@ -46,6 +47,7 @@ export function tenantConsoleTabs(): VenueDashTab[] {
     ["labor", "Labor"],
     ["reports", "Reports"],
     ["payments", "Payments"],
+    ["gift", "Gift cards"],
     ["people", "Users"],
     ["onboarding", "Onboarding"],
   ];
@@ -64,6 +66,7 @@ export function venueDashboardTabs(opts: {
       ["schedule", "Schedule"],
       ["reports", "Reports"],
       ["staff", "Staff & 86"],
+      ["gift", "Gift cards"],
     ];
   }
   const hostHall = opts.operatingModel === "host_operators";
@@ -78,6 +81,7 @@ export function venueDashboardTabs(opts: {
         ["labor", "Labor"],
         ["reports", "Reports"],
         ["payments", "Payments"],
+        ["gift", "Gift cards"],
         ["grants", "Grants"],
       ]
     : [
@@ -90,6 +94,7 @@ export function venueDashboardTabs(opts: {
         ["labor", "Labor"],
         ["reports", "Reports"],
         ["payments", "Payments"],
+        ["gift", "Gift cards"],
         ["people", "Users"],
         ["onboarding", "Onboarding"],
       ];

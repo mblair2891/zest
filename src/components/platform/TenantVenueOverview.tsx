@@ -61,6 +61,7 @@ export function TenantVenueOverview({
             ["labor", "Labor", "Schedules, clock, hours export"],
             ["costs", "Costs", "Invoices, recipes, variance"],
             ["payments", "Payments", "Quantum Payments by entity"],
+            ["gift", "Gift cards", "Issue, redeem, freeze, limits"],
             ["onboarding", "Onboarding", "Entity checklist and go-live"],
           ] as const
         ).map(([id, label, blurb]) => (

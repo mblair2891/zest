@@ -37,6 +37,7 @@ import {
 } from "@/lib/saas/tenant-detail";
 import { LocationDeviceRegistry } from "@/components/pos/LocationDeviceRegistry";
 import { QuantumPaymentsSettings } from "@/components/pos/QuantumPaymentsSettings";
+import { GiftCardsAdminView } from "@/components/pos/GiftCardsAdminView";
 import { TenantUsersPanel } from "@/components/platform/TenantUsersPanel";
 import { VenueOnboardingPanel } from "@/components/platform/VenueOnboardingPanel";
 import { CostWorkspace } from "@/components/pos/CostWorkspace";
@@ -648,7 +649,15 @@ export function PlatformTenantVenue({
             )}
             {ready && !error && tab === "menu" && tabIds.has("menu") && <MenuAdminView />}
             {ready && !error && tab === "payments" && tabIds.has("payments") && (
-              <QuantumPaymentsSettings write={kind === "entity_owner" || kind === "host_owner" || kind === "venue_admin" || audience === "platform"} />
+              <QuantumPaymentsSettings
+                write={kind === "entity_owner" || kind === "host_owner" || kind === "venue_admin" || audience === "platform"}
+                onOpenGift={() => setTab("gift")}
+              />
+            )}
+            {ready && !error && tab === "gift" && tabIds.has("gift") && (
+              <GiftCardsAdminView
+                write={kind === "entity_owner" || kind === "host_owner" || kind === "venue_admin" || kind === "accountant" || audience === "platform"}
+              />
             )}
             {ready && !error && tab === "people" && tabIds.has("people") && (
               <TenantUsersPanel

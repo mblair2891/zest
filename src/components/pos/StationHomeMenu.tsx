@@ -43,6 +43,7 @@ export function StationHomeMenu() {
     employeeOverride: emp ? cashCfg.custodyByEmployeeId[emp.id] ?? null : null,
     hasPossession,
     cashEnabled: parsePaymentMethods(settings.paymentMethods).cash,
+    giftEnabled: parsePaymentMethods(settings.paymentMethods).giftCard,
   });
 
   const demoOverflow =

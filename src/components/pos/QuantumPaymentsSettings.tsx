@@ -28,7 +28,13 @@ import { formatCurrency } from "@/lib/utils";
  * application or payout form, and never setState from hostMerchant / payout /
  * Finix-on-venue in an effect.
  */
-export function QuantumPaymentsSettings({ write }: { write: boolean }) {
+export function QuantumPaymentsSettings({
+  write,
+  onOpenGift,
+}: {
+  write: boolean;
+  onOpenGift?: () => void;
+}) {
   const orgId = useSaasStore((s) => s.org.id);
   const locId = usePosStore((s) => s.tenantLocationId) || "";
   const peerVenue = usePosStore(
@@ -176,7 +182,7 @@ export function QuantumPaymentsSettings({ write }: { write: boolean }) {
             };
           })}
           onOpen={(id) => setPickedId(id)}
-          onGift={() => setView("customers")}
+          onGift={() => (onOpenGift ? onOpenGift() : setView("customers"))}
         />
       ) : entity && peerVenue ? (
         <div className="space-y-3">
@@ -266,7 +272,7 @@ function PeerVenuePaymentsHome({
           online.
         </p>
         <Button size="sm" variant="outline" className="mt-2" type="button" onClick={onGift}>
-          Limits / freeze / void
+          Gift cards
         </Button>
       </div>
       <div className="grid gap-2 sm:grid-cols-2">

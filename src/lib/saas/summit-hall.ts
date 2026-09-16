@@ -11,7 +11,7 @@ import {
   type ItemRecipe,
 } from "@/lib/costs/types";
 import type { QrPolicy } from "@/lib/pos/qr-policy";
-import type { EmployeeRole, MenuCategory, MenuItem } from "@/lib/pos/types";
+import type { EmployeeRole, GiftCard, MenuCategory, MenuItem } from "@/lib/pos/types";
 import type { LocationFloorPlan } from "./location-catalog";
 
 export const SUMMIT_HALL_ORG_ID = "org_summit_hall";
@@ -434,6 +434,47 @@ export function summitHallFloorPlan(): LocationFloorPlan {
 
 export function isSummitHallOrgId(id: string | null | undefined): boolean {
   return id === SUMMIT_HALL_ORG_ID;
+}
+
+/** Isolated demo cards for the Gift cards tab (House = both; entity view filters by issuer). */
+export function summitHallDemoGiftCards(now = Date.now()): GiftCard[] {
+  return [
+    {
+      id: "gc_summit_hearth",
+      code: "GIFT-HEAR",
+      balanceCents: 2500,
+      originalBalanceCents: 5000,
+      active: true,
+      status: "active",
+      source: "summex",
+      issuedToName: "Walk-in",
+      issuedAt: now - 86400000 * 9,
+      issuerKind: "operator",
+      issuerId: SUMMIT_HEARTH_OP_ID,
+      issuerName: "Hearth Kitchen",
+      ledger: [
+        { at: now - 86400000 * 9, kind: "issue", amountCents: 5000, beforeCents: 0, afterCents: 5000 },
+        { at: now - 86400000 * 2, kind: "redeem", amountCents: 2500, beforeCents: 5000, afterCents: 2500 },
+      ],
+    },
+    {
+      id: "gc_summit_copper",
+      code: "GIFT-COPP",
+      balanceCents: 4000,
+      originalBalanceCents: 4000,
+      active: true,
+      status: "active",
+      source: "summex",
+      issuedToName: "Guest tab",
+      issuedAt: now - 86400000 * 4,
+      issuerKind: "operator",
+      issuerId: SUMMIT_COPPER_OP_ID,
+      issuerName: "Copper Bar",
+      ledger: [
+        { at: now - 86400000 * 4, kind: "issue", amountCents: 4000, beforeCents: 0, afterCents: 4000 },
+      ],
+    },
+  ];
 }
 
 export const SUMMIT_HALL_DEVICES = [

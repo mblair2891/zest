@@ -23,6 +23,7 @@ export const STATION_MENU_JOBS = [
   "closeout",
   "take_drawer",
   "hand_off",
+  "gift",
   "done",
 ] as const;
 export type StationMenuJob = (typeof STATION_MENU_JOBS)[number];
@@ -56,6 +57,7 @@ export function stationMenuItems(opts: {
   roleDefaults?: Record<string, CashCustodyKind> | null;
   employeeOverride?: CashCustodyKind | null;
   cashEnabled?: boolean;
+  giftEnabled?: boolean;
 }): StationMenuItem[] {
   const device = opts.deviceRole ?? "order";
   const role = opts.employeeRole;
@@ -67,7 +69,7 @@ export function stationMenuItems(opts: {
   });
   const out: StationMenuItem[] = [];
   const add = (id: StationMenuJob, label: string) => {
-    if (out.length >= 6) return;
+    if (out.length >= 7) return;
     if (out.some((x) => x.id === id)) return;
     out.push({ id, label });
   };
@@ -93,6 +95,7 @@ export function stationMenuItems(opts: {
     if (stationCan(cap, "waitlist")) add("waitlist", "Waitlist");
     if (stationCan(cap, "togo")) add("togo", "To-go");
     add("clock", "Clock in/out");
+    if (opts.giftEnabled) add("gift", "Gift cards");
     if (cashJobs && !opts.hasPossession) add("take_drawer", takeDrawerLabel(custody));
     if (opts.cashEnabled === false) add("closeout", "Closeout");
     else if (cashJobs && opts.hasPossession) add("closeout", "Closeout");
@@ -121,6 +124,7 @@ export function stationMenuItems(opts: {
   if (stationCan(cap, "togo")) add("togo", "To-go");
   if (stationCan(cap, "bar_tab") && opts.hasBarRail) add("bar_tab", "Bar tab");
   add("clock", "Clock in/out");
+  if (opts.giftEnabled) add("gift", "Gift cards");
   if (cashJobs && !opts.hasPossession) add("take_drawer", takeDrawerLabel(custody));
   const closeoutOk =
     role &&
@@ -128,7 +132,7 @@ export function stationMenuItems(opts: {
     device === "order" &&
     (opts.cashEnabled === false || (cashJobs && opts.hasPossession));
   if (closeoutOk) add("closeout", "Closeout");
-  return out.slice(0, 6);
+  return out.slice(0, 7);
 }
 
 export function stationMenuTitle(device: DeviceRole | null | undefined): string {

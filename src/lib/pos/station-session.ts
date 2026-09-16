@@ -31,6 +31,7 @@ export type StationJob =
   | "closeout"
   | "take_drawer"
   | "hand_off"
+  | "gift"
   | "done"
   | null;
 

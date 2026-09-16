@@ -108,7 +108,7 @@ export function passwordDashTiles(kind: PasswordDashKind): PasswordDashTile[] {
     return [
       { id: "reports", tab: "reports", label: "Reports", blurb: "Sales and tenders", view: "reports" },
       { id: "export", tab: "labor", label: "Hours export", blurb: "ADP / Intuit / CSV", view: "labor" },
-      { id: "gift", tab: "ledger", label: "Gift liability", blurb: "Outstanding by issuer", view: "reports" },
+      { id: "gift", tab: "gift", label: "Gift cards", blurb: "Liability, freeze, void", view: "reports" },
     ];
   }
   if (kind === "entity_owner" || kind === "entity_manager") {
@@ -137,6 +137,12 @@ export function passwordDashTiles(kind: PasswordDashKind): PasswordDashTile[] {
         blurb: "This entity’s Quantum Payments",
         view: "settings",
       });
+      tiles.push({
+        id: "gift",
+        tab: "gift",
+        label: "Gift cards",
+        blurb: "This entity’s issued cards",
+      });
     }
     return tiles;
   }
@@ -152,6 +158,7 @@ export function passwordDashTiles(kind: PasswordDashKind): PasswordDashTile[] {
     { id: "menu", tab: "menu", label: "Menus", blurb: "All entity menus", view: "menu" },
     { id: "costs", tab: "costs", label: "Costs", blurb: "Invoices and recipes", view: "inventory" },
     { id: "labor", tab: "labor", label: "Labor", blurb: "Schedules and hours export", view: "labor" },
+    { id: "gift", tab: "gift", label: "Gift cards", blurb: "Sell, redeem, freeze, limits" },
   ];
   const billing: PasswordDashTile[] = [
     { id: "payments", tab: "payments", label: "Payments", blurb: "Split capture by brand", view: "settings" },
@@ -187,6 +194,7 @@ export function passwordDashTabs(kind: PasswordDashKind): Array<[VenueDashTabId,
         ["overview", "Overview"],
         ["reports", "Reports"],
         ["labor", "Exports"],
+        ["gift", "Gift cards"],
         ["ledger", "Gift liability"],
       ];
     case "entity_owner":
@@ -198,6 +206,7 @@ export function passwordDashTabs(kind: PasswordDashKind): Array<[VenueDashTabId,
         ["reports", "Reports"],
         ["staff", "Staff & 86"],
         ["payments", "Payments"],
+        ["gift", "Gift cards"],
       ];
     case "entity_manager":
       return [
@@ -221,6 +230,7 @@ export function passwordDashTabs(kind: PasswordDashKind): Array<[VenueDashTabId,
         ["costs", "Costs"],
         ["labor", "Labor"],
         ["reports", "Reports"],
+        ["gift", "Gift cards"],
         ["onboarding", "Onboarding"],
       ];
     case "venue_admin":
@@ -230,6 +240,7 @@ export function passwordDashTabs(kind: PasswordDashKind): Array<[VenueDashTabId,
         ["devices", "Devices"],
         ["menu", "Menus"],
         ["payments", "Payments"],
+        ["gift", "Gift cards"],
         ["people", "Users"],
         ["onboarding", "Onboarding"],
         ["floor", "Floor"],
@@ -246,6 +257,7 @@ export function passwordDashTabs(kind: PasswordDashKind): Array<[VenueDashTabId,
         ["floor", "Floor"],
         ["menu", "Menus"],
         ["payments", "Payments"],
+        ["gift", "Gift cards"],
         ["people", "Users"],
         ["onboarding", "Onboarding"],
         ["costs", "Costs"],

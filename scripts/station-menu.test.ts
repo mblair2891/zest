@@ -9,8 +9,8 @@ const mode = readFileSync("src/components/pos/DeviceModeView.tsx", "utf8");
 const shell = readFileSync("src/components/pos/AppShell.tsx", "utf8");
 const floor = readFileSync("src/components/pos/FloorView.tsx", "utf8");
 
-test("menu source: host jobs, order jobs, max 6, hide denied", () => {
-  assert.match(menu, /if \(out\.length >= 6\) return/);
+test("menu source: host jobs, order jobs, max 7, hide denied", () => {
+  assert.match(menu, /if \(out\.length >= 7\) return/);
   assert.match(menu, /My tables/);
   assert.match(menu, /New table/);
   assert.match(menu, /New ticket/);
@@ -21,6 +21,8 @@ test("menu source: host jobs, order jobs, max 6, hide denied", () => {
   assert.match(menu, /Clock in\/out/);
   assert.match(menu, /Closeout/);
   assert.match(menu, /take_drawer/);
+  assert.match(menu, /giftEnabled/);
+  assert.match(menu, /Gift cards/);
   assert.match(menu, /cashEnabled !== false/);
   assert.match(menu, /if \(device === "host"\)/);
   assert.match(menu, /if \(device === "ods"\) return \[\{ id: "clock"/);
