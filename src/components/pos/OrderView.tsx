@@ -68,6 +68,11 @@ import { stationHomeSurface } from "@/lib/pos/station-home";
 import { locationAllowsBarTabs } from "@/lib/pos/bar-tab";
 import { stationCan } from "@/lib/pos/station-pin-gate";
 import { DriveThroughView } from "./DriveThroughView";
+import {
+  ADD_RECEIPT_PRINTER,
+  currentStationDeviceId,
+  stationHasBoundReceiptPrinter,
+} from "@/lib/print/receipt-printer";
 
 export function OrderView() {
   const activeOrderId = usePosStore((s) => s.activeOrderId);
@@ -135,6 +140,12 @@ export function OrderView() {
   const [printMsg, setPrintMsg] = useState<string | null>(null);
   const layout = useStationLayout();
   const emp = usePosStore((s) => s.employees.find((e) => e.id === s.currentEmployeeId));
+  const locationDevices = usePosStore((s) => s.locationDevices);
+  const activeDeviceId = usePosStore((s) => s.activeDeviceId);
+  const hasBoundReceipt = stationHasBoundReceiptPrinter(
+    locationDevices,
+    activeDeviceId || currentStationDeviceId(),
+  );
 
   const happy = isHappyHour(settings);
   const table = tables.find((t) => t.id === order?.tableId);
@@ -409,11 +420,16 @@ export function OrderView() {
   const checkOverlay = !layout.twoCol;
 
   const runPrintCheck = () => {
+    if (!hasBoundReceipt) {
+      setPrintMsg(ADD_RECEIPT_PRINTER);
+      return;
+    }
     setPrintMsg(null);
     printCheck();
     void import("@/lib/print/from-store")
       .then((m) => m.printGuestCheck(order.id))
       .then((r) => {
+        if (!r.ok && r.error === ADD_RECEIPT_PRINTER && hasBoundReceipt) return;
         setPrintMsg(
           r.ok
             ? r.viaStation
@@ -481,6 +497,15 @@ export function OrderView() {
             : "h-full w-[min(22rem,40%)] shrink-0 border-r border-border",
         )}
       >
+        {!hasBoundReceipt && (
+          <div
+            className="border-b border-warn/40 bg-warn/15 px-3 py-1.5 text-center text-[11px] font-semibold text-warn"
+            role="status"
+            data-receipt-printer-banner
+          >
+            {ADD_RECEIPT_PRINTER}
+          </div>
+        )}
         <div className="flex items-center gap-2 border-b border-border px-3 py-2">
           <Button
             size="icon"
@@ -804,6 +829,7 @@ export function OrderView() {
           <Button
             variant="outline"
             className="station-touch"
+            disabled={!hasBoundReceipt}
             onClick={() => runPrintCheck()}
           >
             <Printer className="h-4 w-4" />
@@ -1001,6 +1027,15 @@ export function OrderView() {
 
       {checkOverlay && (
         <>
+          {!hasBoundReceipt && (
+            <div
+              className="border-t border-warn/40 bg-warn/15 px-3 py-1.5 text-center text-[11px] font-semibold text-warn"
+              role="status"
+              data-receipt-printer-banner
+            >
+              {ADD_RECEIPT_PRINTER}
+            </div>
+          )}
           <div
             className="max-h-[38%] min-h-[6.5rem] overflow-y-auto border-t border-border bg-surface px-2 py-1.5"
             data-live-check-strip
@@ -1020,6 +1055,7 @@ export function OrderView() {
             <Button
               size="lg"
               className="station-touch min-h-12"
+              disabled={!hasBoundReceipt}
               onClick={() => runPrintCheck()}
             >
               <Printer className="h-4 w-4" />

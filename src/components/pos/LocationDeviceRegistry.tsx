@@ -1239,7 +1239,7 @@ export function LocationDeviceRegistry({
                 </legend>
                 <p className="text-[11px] text-muted-foreground">
                   {isReceiptPrinterType(type)
-                    ? "Empty = venue default. ODS does not need a receipt printer."
+                    ? "Empty = every order and host station. ODS does not need a receipt printer."
                     : "Empty = every order and host station. Entity filter above routes food vs drink on a peer venue."}
                 </p>
                 <div className="flex flex-col gap-1">

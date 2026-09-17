@@ -1,7 +1,7 @@
 # Operators Guide — authoring
 
-**Revision · 17 Sep 2026** — Live check pad and guest check print.
-Guide v2026.10.111.
+**Revision · 17 Sep 2026** — Order pad bound receipt printer.
+Guide v2026.10.112.
 
 The in-app **Operators Guide** is the living product manual. It is not a
 separate PDF. Staff open it from **Guide** / **?** in the POS and platform

@@ -6,6 +6,19 @@ import type { GuideUpdate } from "@/lib/guide/types";
  */
 export const WHATS_NEW_ENTRIES: GuideUpdate[] = [
   {
+    id: "upd_2026_10_112_bound_receipt_printer",
+    date: "2026-09-17",
+    title: "Order pad sees the bound receipt printer",
+    summary:
+      "“Add a receipt printer” only when this station has no bound Receipt printer. Empty station list = every order and host.",
+    body: "If a Receipt printer exists and “stations that may send” includes this order/host role — or the list is empty — Print check is on. Unreachable from the cloud host does not hide the printer.",
+    roles: ["owner_manager", "server", "host_operator", "platform_admin"],
+    surfaces: ["settings"],
+    audience: "all",
+    topicId: "printers-kds",
+    tags: ["printers", "receipt", "order"],
+  },
+  {
     id: "upd_2026_10_111_live_check_pad",
     date: "2026-09-17",
     title: "Live check pad and Print check",

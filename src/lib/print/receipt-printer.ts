@@ -1,39 +1,64 @@
-import { isPrinterDevice, type LocationDevice } from "@/lib/pos/location-devices";
-import { readPairedDeviceId } from "@/lib/pos/location-devices";
+import { readPairedDeviceId, type LocationDevice } from "@/lib/pos/location-devices";
+import { readStationDeviceRole } from "@/lib/pos/device-roles";
+import { readStationPair } from "@/lib/pos/station-pair";
 import { usePosStore } from "@/lib/pos/store";
+import {
+  receiptPrinterServesStation as serves,
+  resolveReceiptPrinter as resolveBind,
+  stationHasBoundReceiptPrinter as hasBound,
+  type ReceiptBindDevice,
+} from "./receipt-bind";
 
-/** Printer mapped on this station row, else the first venue receipt printer. */
+export const ADD_RECEIPT_PRINTER = "Add a receipt printer";
+
+export function receiptPrinterServesStation(
+  printer: LocationDevice,
+  opts: {
+    stationDeviceId?: string | null;
+    role?: "order" | "ods" | "host" | "kiosk" | null;
+    devices?: LocationDevice[];
+  },
+): boolean {
+  return serves(printer as ReceiptBindDevice, {
+    stationDeviceId: opts.stationDeviceId,
+    role: opts.role,
+    devices: opts.devices as ReceiptBindDevice[] | undefined,
+  });
+}
+
+/** Printer mapped on this station row, else a venue receipt printer this order/host may use. */
 export function resolveReceiptPrinter(
   devices: LocationDevice[] | undefined,
   stationDeviceId: string | null | undefined,
 ): LocationDevice | undefined {
-  const all = (devices ?? []).filter((d) => isPrinterDevice(d) && d.status !== "inactive");
-  const receipts = all.filter(
-    (d) =>
-      d.type === "receipt_printer" ||
-      d.type === "printer" ||
-      d.print?.routes?.includes("receipts") ||
-      d.print?.station === "receipt",
+  const hit = resolveBind(
+    devices as ReceiptBindDevice[] | undefined,
+    stationDeviceId,
+    readStationDeviceRole(),
   );
-  const mappedId = stationDeviceId
-    ? (devices ?? []).find((d) => d.id === stationDeviceId)?.receiptPrinterId
-    : null;
-  if (mappedId) {
-    const mapped = all.find((d) => d.id === mappedId);
-    if (mapped) return mapped;
-  }
-  if (stationDeviceId) {
-    const bound = receipts.find((d) =>
-      (d.print?.boundStationIds ?? []).includes(stationDeviceId),
-    );
-    if (bound) return bound;
-  }
-  return receipts[0];
+  return hit ? devices?.find((d) => d.id === hit.id) : undefined;
+}
+
+export function stationHasBoundReceiptPrinter(
+  devices: LocationDevice[] | undefined,
+  stationDeviceId: string | null | undefined,
+): boolean {
+  return hasBound(
+    devices as ReceiptBindDevice[] | undefined,
+    stationDeviceId,
+    readStationDeviceRole(),
+  );
 }
 
 export function currentStationDeviceId(): string | null {
   const s = usePosStore.getState();
   if (s.activeDeviceId) return s.activeDeviceId;
+  try {
+    const pair = readStationPair();
+    if (pair?.deviceId) return pair.deviceId;
+  } catch {
+    /* */
+  }
   const loc = s.tenantLocationId || "";
   try {
     return loc ? readPairedDeviceId(loc) : null;

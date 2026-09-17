@@ -410,8 +410,8 @@ export async function printGuestCheck(orderId?: string): Promise<{
   if (!order) return { ok: false, error: "No check to print." };
   const devices = s.locationDevices;
   const printer = resolveReceiptPrinter(devices, currentStationDeviceId());
-  if (!printer?.print) {
-    return { ok: false, error: "Add a receipt printer. Guest checks do not print on the kitchen Star." };
+  if (!printer) {
+    return { ok: false, error: "Add a receipt printer" };
   }
   const locationId = s.tenantLocationId || "";
   const locationName = s.settings.name || "Summex";
@@ -420,8 +420,9 @@ export async function printGuestCheck(orderId?: string): Promise<{
   if (res.printed > 0) {
     return { ok: true, printerLabel: printer.label };
   }
-  const lan = parseLanTarget(printer.print.ip, printer.print.port, printer.print.target);
-  if (!lan) {
+  const cfg = printer.print;
+  const lan = cfg ? parseLanTarget(cfg.ip, cfg.port, cfg.target) : null;
+  if (!lan || !cfg) {
     return { ok: false, error: res.error || "Receipt printer needs a static IP." };
   }
   const queued = await enqueueKitchenJob(
@@ -430,10 +431,10 @@ export async function printGuestCheck(orderId?: string): Promise<{
     lan.host,
     lan.port,
     escposBase64(job, {
-      modelPreset: printer.print.modelPreset,
-      emulation: printer.print.emulation,
-      paperWidthMm: printer.print.paperWidthMm,
-      cutter: printer.print.cutter,
+      modelPreset: cfg.modelPreset,
+      emulation: cfg.emulation,
+      paperWidthMm: cfg.paperWidthMm,
+      cutter: cfg.cutter,
     }),
     "station",
   );

@@ -174,7 +174,7 @@ export const PAYMENT_TOPICS: GuideTopic[] = [
         "Print check (before tender) and the paid receipt are different. Print check is the guest’s itemized bill on the bound receipt printer — not the kitchen Star. Lines group under the selling entity (Hearth / Copper / …) with qty, cash price and card price when cash discount is on, subtotal per entity, grand cash total, grand card total, and “Not a receipt — pay server.” No guest split on that ticket — staff already split checks. After the guest pays: Email, Print paid receipt, or No receipt. Quantum Payments is the tender line — guests never see Finix.",
       ),
       ul(
-        "Print check is the primary action on Pay and on the order pad, before tender.",
+        "Print check is the primary action on Pay and on the order pad, before tender. Enabled when a Receipt printer exists for the venue and this order/host station is allowed (empty station list = every order and host). The pad banner “Add a receipt printer” only if this station has no bound receipt printer. Do not wait for the printer to look reachable from the cloud.",
         "One document. Do not print a stall receipt as a second card run.",
         "Merchant copy (when more than one brand is on the check) lists that vendor’s share: merchandise, tax/tip/service, total. Guest still paid once.",
         "Kitchen and bar tickets still print only that station’s lines (Star SP700 impact for kitchen). Pay uses the same ownership map as ODS routing — do not change routing.",

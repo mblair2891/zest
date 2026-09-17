@@ -25,6 +25,11 @@ import {
 } from "@/lib/payments/check-by-vendor";
 import { GuestCheckByVendor } from "./GuestCheckByVendor";
 import { printGuestCheck, printGuestReceipt } from "@/lib/print/from-store";
+import {
+  ADD_RECEIPT_PRINTER,
+  currentStationDeviceId,
+  stationHasBoundReceiptPrinter,
+} from "@/lib/print/receipt-printer";
 import { issueGiftCardFn, lookupGiftCardFn, redeemGiftCardFn } from "@/lib/gift/api";
 import { defaultGiftIssuer, fulfillingIssuer } from "@/lib/pos/gift-issuer";
 import { giftNeedsManagerPin, giftSellBlockedReason, parseGiftLimits } from "@/lib/pos/gift-limits";
@@ -87,6 +92,12 @@ export function PaymentDialog({ open, onOpenChange }: Props) {
   const odsBlocked = deviceRole === "ods";
   const layout = useStationLayout();
   const payMethods = enabledPayMethods(payCfg);
+  const locationDevices = usePosStore((s) => s.locationDevices);
+  const activeDeviceId = usePosStore((s) => s.activeDeviceId);
+  const hasBoundReceipt = stationHasBoundReceiptPrinter(
+    locationDevices,
+    activeDeviceId || currentStationDeviceId(),
+  );
 
   const [method, setMethod] = useState<PaymentMethod>(() =>
     firstEnabledMethod(payCfg, wanOnline ? "card" : "cash"),
@@ -780,10 +791,22 @@ export function PaymentDialog({ open, onOpenChange }: Props) {
                 and comps still work on this device. Card is not queued.
               </p>
             )}
+            {!hasBoundReceipt && (
+              <p
+                className="rounded-lg bg-warn/15 px-3 py-2 text-center text-xs font-semibold text-warn"
+                role="status"
+              >
+                {ADD_RECEIPT_PRINTER}
+              </p>
+            )}
             <Button
               size="lg"
               className="station-touch min-h-12 w-full"
-              disabled={checkPrintBusy || order.lines.filter((l) => !l.voided).length === 0}
+              disabled={
+                !hasBoundReceipt ||
+                checkPrintBusy ||
+                order.lines.filter((l) => !l.voided).length === 0
+              }
               onClick={() => {
                 setCheckPrintBusy(true);
                 setCheckPrintMsg(null);

@@ -9,6 +9,8 @@ test("order pad always shows live check lines; Print check is not the only view"
   assert.match(ui, /Print check/);
   assert.match(ui, /printGuestCheck/);
   assert.match(ui, /Tap the menu — lines land here/);
+  assert.match(ui, /hasBoundReceipt/);
+  assert.match(ui, /ADD_RECEIPT_PRINTER/);
 });
 
 test("pay screen prints guest check before tender", () => {
@@ -41,6 +43,7 @@ test("guide covers live pad, print check, impact, receipt path", () => {
   const devices = readFileSync("src/lib/guide/content/devices.ts", "utf8");
   assert.match(devices, /text-only 9-pin impact/);
   assert.match(devices, /Printed via \{station\}/);
+  assert.match(devices, /every order and host station/);
   const types = readFileSync("src/lib/guide/types.ts", "utf8");
-  assert.match(types, /2026\.10\.111/);
+  assert.match(types, /2026\.10\.112/);
 });
