@@ -59,6 +59,8 @@ export function stationMenuItems(opts: {
   employeeOverride?: CashCustodyKind | null;
   cashEnabled?: boolean;
   giftEnabled?: boolean;
+  /** Bound to a receipt printer: print check, tender, no sale. */
+  canPayStation?: boolean;
 }): StationMenuItem[] {
   const device = opts.deviceRole ?? "order";
   const role = opts.employeeRole;
@@ -96,7 +98,7 @@ export function stationMenuItems(opts: {
     if (stationCan(cap, "waitlist")) add("waitlist", "Waitlist");
     if (stationCan(cap, "togo")) add("togo", "To-go");
     add("clock", "Clock in/out");
-    add("no_sale", "No sale");
+    if (opts.canPayStation) add("no_sale", "No sale");
     if (opts.giftEnabled) add("gift", "Gift cards");
     if (cashJobs && !opts.hasPossession) add("take_drawer", takeDrawerLabel(custody));
     if (opts.cashEnabled === false) add("closeout", "Closeout");
@@ -126,7 +128,7 @@ export function stationMenuItems(opts: {
   if (stationCan(cap, "togo")) add("togo", "To-go");
   if (stationCan(cap, "bar_tab") && opts.hasBarRail) add("bar_tab", "Bar tab");
   add("clock", "Clock in/out");
-  add("no_sale", "No sale");
+  if (opts.canPayStation) add("no_sale", "No sale");
   if (opts.giftEnabled) add("gift", "Gift cards");
   if (cashJobs && !opts.hasPossession) add("take_drawer", takeDrawerLabel(custody));
   const closeoutOk =

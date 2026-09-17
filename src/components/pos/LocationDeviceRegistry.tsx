@@ -1234,12 +1234,12 @@ export function LocationDeviceRegistry({
               <fieldset className="space-y-1">
                 <legend className="text-xs text-muted-foreground">
                   {isReceiptPrinterType(type)
-                    ? "Which order / host stations use it"
+                    ? "Stations that may print and kick"
                     : "Which stations may send to it"}
                 </legend>
                 <p className="text-[11px] text-muted-foreground">
                   {isReceiptPrinterType(type)
-                    ? "Empty = every order and host station. ODS does not need a receipt printer."
+                    ? "Order and host only. Check the terminals with this receipt printer and drawer. Leave handhelds unchecked — they ring and fire; guests pay at a bound terminal or host stand. Empty = no station prints or kicks from this printer."
                     : "Empty = every order and host station. Entity filter above routes food vs drink on a peer venue."}
                 </p>
                 <div className="flex flex-col gap-1">
@@ -1283,7 +1283,7 @@ export function LocationDeviceRegistry({
                 value={receiptPrinterId}
                 onChange={(e) => setReceiptPrinterId(e.target.value)}
               >
-                <option value="">Venue default receipt printer</option>
+                <option value="">Not a pay station (ring and fire)</option>
                 {devices
                   .filter(
                     (d) =>

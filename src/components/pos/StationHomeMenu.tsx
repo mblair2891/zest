@@ -14,6 +14,7 @@ import { DemoEntitySwitcher } from "@/components/demo/DemoEntitySwitcher";
 import { showDemoEntitySwitcher } from "@/lib/demo/entity-switch";
 import { ROLE_LABEL } from "@/lib/pos/rbac";
 import { NoSaleControl } from "./NoSaleControl";
+import { currentStationDeviceId, stationHasBoundReceiptPrinter } from "@/lib/print/receipt-printer";
 
 /** After PIN: 2–6 large named jobs this device × PIN allows. */
 export function StationHomeMenu() {
@@ -30,6 +31,11 @@ export function StationHomeMenu() {
   const hasPossession = useCashSessionStore((s) =>
     emp ? Boolean(s.possessions[emp.id]) : false,
   );
+  const locationDevices = usePosStore((s) => s.locationDevices);
+  const canPayStation = stationHasBoundReceiptPrinter(
+    locationDevices,
+    currentStationDeviceId(),
+  );
 
   const items = stationMenuItems({
     deviceRole,
@@ -45,6 +51,7 @@ export function StationHomeMenu() {
     hasPossession,
     cashEnabled: parsePaymentMethods(settings.paymentMethods).cash,
     giftEnabled: parsePaymentMethods(settings.paymentMethods).giftCard,
+    canPayStation,
   });
 
   const demoOverflow =

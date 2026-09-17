@@ -62,13 +62,14 @@ export function printersForStation(
 ): LocationDevice[] {
   const list = (devices ?? []).filter((d) => printerMatchesStation(d, station));
   const bound = stationDeviceId
-    ? list.filter(
-        (d) =>
-          !d.print?.boundStationIds?.length ||
-          d.print.boundStationIds.includes(stationDeviceId),
-      )
+    ? list.filter((d) => {
+        const ids = d.print?.boundStationIds ?? [];
+        if (station === "receipt") return ids.includes(stationDeviceId);
+        return !ids.length || ids.includes(stationDeviceId);
+      })
     : list;
-  const pool = bound.length ? bound : list;
+  const pool =
+    station === "receipt" && stationDeviceId ? bound : bound.length ? bound : list;
   if (!operatorId || operatorId === HOST_SCOPE) return pool;
   const scoped = pool.filter(
     (d) => d.assignment.operatorId === HOST_SCOPE || d.assignment.operatorId === operatorId,

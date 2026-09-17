@@ -139,7 +139,7 @@ export const FLOOR_TOPICS: GuideTopic[] = [
         "The same POS covers a seated dining room and a counter. The difference is whether a table holds the check.",
       ),
       ul(
-        "Table service — PIN on an order station opens a short menu. My tables is the map only. Seat → Order → fire → pay on the table → bus. To-go and Bar tab are other jobs, not drawers on the map.",
+        "Table service — PIN on an order station opens a short menu. My tables is the map only. Seat → Order → fire. Pay / Print check / No sale only on a station bound to a Receipt printer. Handhelds ring and fire; pay at a named terminal or host stand. To-go and Bar tab are other jobs, not drawers on the map.",
         "Counter / QSR — ticket/queue and to-go. No dining floor on the order glass.",
         "Drive-through — lane on the order tablet, window on the host tablet. No dining room map.",
         "Bar tab — from the floor, tap Bar tab, then pick a stool on your section rail. Empty stool opens a tab; occupied attaches the check. To-go stays off a stool. Still Quantum Payments for cards.",

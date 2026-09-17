@@ -26,8 +26,8 @@ import {
 import { GuestCheckByVendor } from "./GuestCheckByVendor";
 import { printGuestCheck, printGuestReceipt } from "@/lib/print/from-store";
 import {
-  ADD_RECEIPT_PRINTER,
   currentStationDeviceId,
+  payAtCopy,
   stationHasBoundReceiptPrinter,
 } from "@/lib/print/receipt-printer";
 import { issueGiftCardFn, lookupGiftCardFn, redeemGiftCardFn } from "@/lib/gift/api";
@@ -98,6 +98,7 @@ export function PaymentDialog({ open, onOpenChange }: Props) {
     locationDevices,
     activeDeviceId || currentStationDeviceId(),
   );
+  const payHere = payAtCopy(locationDevices);
 
   const [method, setMethod] = useState<PaymentMethod>(() =>
     firstEnabledMethod(payCfg, wanOnline ? "card" : "cash"),
@@ -783,6 +784,16 @@ export function PaymentDialog({ open, onOpenChange }: Props) {
               </Button>
             )}
           </div>
+        ) : !hasBoundReceipt ? (
+          <div className="space-y-3">
+            <p
+              className="rounded-lg bg-warn/15 px-3 py-2 text-center text-sm font-semibold text-warn"
+              role="status"
+              data-pay-at
+            >
+              {payHere}
+            </p>
+          </div>
         ) : (
           <div className="space-y-4">
             {!wanOnline && (
@@ -791,19 +802,10 @@ export function PaymentDialog({ open, onOpenChange }: Props) {
                 and comps still work on this device. Card is not queued.
               </p>
             )}
-            {!hasBoundReceipt && (
-              <p
-                className="rounded-lg bg-warn/15 px-3 py-2 text-center text-xs font-semibold text-warn"
-                role="status"
-              >
-                {ADD_RECEIPT_PRINTER}
-              </p>
-            )}
             <Button
               size="lg"
               className="station-touch min-h-12 w-full"
               disabled={
-                !hasBoundReceipt ||
                 checkPrintBusy ||
                 order.lines.filter((l) => !l.voided).length === 0
               }

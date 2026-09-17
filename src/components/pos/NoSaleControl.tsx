@@ -17,6 +17,10 @@ import {
   noSaleNeedsManagerPin,
 } from "@/lib/pos/no-sale";
 import { cn } from "@/lib/utils";
+import {
+  currentStationDeviceId,
+  stationHasBoundReceiptPrinter,
+} from "@/lib/print/receipt-printer";
 
 export function NoSaleControl({
   className,
@@ -30,12 +34,18 @@ export function NoSaleControl({
   const emp = usePosStore((s) => s.employees.find((e) => e.id === s.currentEmployeeId));
   const cashCfg = parseCashHandling(usePosStore((s) => s.settings.cashHandling));
   const noSale = usePosStore((s) => s.noSale);
+  const locationDevices = usePosStore((s) => s.locationDevices);
+  const canPayStation = stationHasBoundReceiptPrinter(
+    locationDevices,
+    currentStationDeviceId(),
+  );
   const [open, setOpen] = useState(false);
   const [pinOpen, setPinOpen] = useState(false);
   const [reason, setReason] = useState<string>(STATION_NO_SALE_REASONS[0]);
   const [flash, setFlash] = useState<string | null>(null);
 
   const needsPin = noSaleNeedsManagerPin(emp?.role, cashCfg.noSaleAllowedRoles);
+  if (!canPayStation) return null;
 
   const run = (r: string, override?: { overrideEmployeeId?: string; overrideEmployeeName?: string }) => {
     const res = noSale(r, override);

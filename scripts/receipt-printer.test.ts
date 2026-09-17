@@ -1,6 +1,8 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import {
+  payAtCopy,
   receiptPrinterServesStation,
   resolveReceiptPrinter,
   stationHasBoundReceiptPrinter,
@@ -43,32 +45,34 @@ function tablet(id: string, fn: string, receiptPrinterId?: string | null): Recei
   };
 }
 
-test("empty bound list = every order and host station", () => {
+test("empty bound list is not a pay station", () => {
   const receipt = printer("prn_front", { bound: [] });
   const order = tablet("tab_order", "floor_pos");
   const host = tablet("tab_host", "host_stand");
   const ods = tablet("tab_ods", "kitchen_kds");
   const devices = [receipt, order, host, ods];
-  assert.equal(receiptPrinterServesStation(receipt, { stationDeviceId: order.id, devices }), true);
-  assert.equal(receiptPrinterServesStation(receipt, { stationDeviceId: host.id, devices }), true);
+  assert.equal(receiptPrinterServesStation(receipt, { stationDeviceId: order.id, devices }), false);
+  assert.equal(receiptPrinterServesStation(receipt, { stationDeviceId: host.id, devices }), false);
   assert.equal(receiptPrinterServesStation(receipt, { stationDeviceId: ods.id, devices }), false);
-  assert.equal(stationHasBoundReceiptPrinter(devices, order.id), true);
+  assert.equal(stationHasBoundReceiptPrinter(devices, order.id), false);
   assert.equal(stationHasBoundReceiptPrinter(devices, ods.id), false);
+  assert.match(payAtCopy(devices), /Pay at a register or host stand/);
 });
 
-test("bound list includes this order/host role", () => {
+test("bound list is this station id, not every order tablet", () => {
   const orderA = tablet("tab_a", "floor_pos");
   const orderB = tablet("tab_b", "floor_pos");
   const host = tablet("tab_host", "host_stand");
-  const receipt = printer("prn_front", { bound: [orderA.id] });
+  const receipt = printer("prn_front", { bound: [orderA.id, host.id] });
   const devices = [receipt, orderA, orderB, host];
   assert.equal(resolveReceiptPrinter(devices, orderA.id)?.id, "prn_front");
-  assert.equal(resolveReceiptPrinter(devices, orderB.id)?.id, "prn_front");
-  assert.equal(resolveReceiptPrinter(devices, host.id), undefined);
+  assert.equal(resolveReceiptPrinter(devices, orderB.id), undefined);
+  assert.equal(resolveReceiptPrinter(devices, host.id)?.id, "prn_front");
+  assert.match(payAtCopy(devices), /Pay at tab_a or tab_host/);
 });
 
 test("does not require reachable from the cloud host", () => {
-  const receipt = printer("prn_front", { bound: [] });
+  const receipt = printer("prn_front", { bound: ["tab_order"] });
   assert.equal(receipt.print?.reachability, "unreachable");
   const order = tablet("tab_order", "floor_pos");
   assert.equal(stationHasBoundReceiptPrinter([receipt, order], order.id), true);
@@ -82,17 +86,33 @@ test("uses the printer mapped on the station row", () => {
   assert.equal(hit?.id, "prn_bar");
 });
 
-test("falls back to venue default receipt printer", () => {
+test("unbound handheld does not inherit a kitchen or unbound receipt printer", () => {
   const kitchen = printer("prn_kds", { station: "kitchen", type: "order_printer" });
   const receipt = printer("prn_front");
   const station = tablet("tab_1", "floor_pos", null);
   const hit = resolveReceiptPrinter([kitchen, receipt, station], "tab_1");
-  assert.equal(hit?.id, "prn_front");
+  assert.equal(hit, undefined);
 });
 
-test("ignores a mapped id that is gone and uses default", () => {
+test("devices UI and pad: print and kick are explicit binds", () => {
+  const ui = readFileSync("src/components/pos/LocationDeviceRegistry.tsx", "utf8");
+  assert.match(ui, /Stations that may print and kick/);
+  assert.match(ui, /Leave handhelds unchecked/);
+  assert.match(ui, /Not a pay station/);
+  const pad = readFileSync("src/components/pos/OrderView.tsx", "utf8");
+  assert.match(pad, /data-pay-at/);
+  assert.match(pad, /payAtCopy/);
+  assert.match(pad, /hasBoundReceipt && canEmployee/);
+  const menu = readFileSync("src/lib/pos/station-menu.ts", "utf8");
+  assert.match(menu, /canPayStation/);
+  const store = readFileSync("src/lib/pos/store.ts", "utf8");
+  assert.match(store, /payAtCopy/);
+  assert.match(store, /guest_qr/);
+});
+
+test("gone mapped id does not fall back to an unbound receipt printer", () => {
   const receipt = printer("prn_front");
   const station = tablet("tab_1", "floor_pos", "prn_missing");
   const hit = resolveReceiptPrinter([receipt, station], "tab_1");
-  assert.equal(hit?.id, "prn_front");
+  assert.equal(hit, undefined);
 });

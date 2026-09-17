@@ -174,14 +174,14 @@ export const PAYMENT_TOPICS: GuideTopic[] = [
         "Print check (before tender) and the paid receipt are different. Print check is the guest’s itemized bill on the bound receipt printer — not the kitchen Star. Lines group under the selling entity (Hearth / Copper / …) with qty, cash price and card price when cash discount is on, subtotal per entity, grand cash total, grand card total, and “Not a receipt — pay server.” No guest split on that ticket — staff already split checks. After the guest pays: Email, Print paid receipt, or No receipt. Quantum Payments is the tender line — guests never see Finix.",
       ),
       ul(
-        "Print check is the primary action on Pay and on the order pad, before tender. Enabled when a Receipt printer exists for the venue and this order/host station is allowed (empty station list = every order and host). The pad banner “Add a receipt printer” only if this station has no bound receipt printer. Do not wait for the printer to look reachable from the cloud.",
+        "Print check, Pay, and No sale only on stations bound to a Receipt printer (Devices → Stations that may print and kick). Handhelds without a bind are ring-and-fire: add and send to kitchen/bar; the pad says Pay at [named terminal / host stand]. Bound terminals: Print check (entity itemized, cash + card totals) → guest pays → tender → optional paid receipt + drawer kick. Kitchen Star never prints a guest check and never kicks. QR reorder + pay on the guest phone is unchanged (no house drawer). Do not wait for the printer to look reachable from the cloud.",
         "One document. Do not print a stall receipt as a second card run.",
         "Merchant copy (when more than one brand is on the check) lists that vendor’s share: merchandise, tax/tip/service, total. Guest still paid once.",
         "Kitchen and bar tickets still print only that station’s lines (Star SP700 impact for kitchen). Pay uses the same ownership map as ODS routing — do not change routing.",
         "Cash discount receipts and the check can show both: Cash $18.00 · Card $19.00. Cash tender charges cash; card tender charges card.",
       ),
       steps(
-        "On Order or Pay, tap Print check before taking money. Confirm the receipt printer (192.168.0.112 in the house example) — not the kitchen Star.",
+        "On a bound terminal (Receipt printer → Stations that may print and kick), tap Print check before taking money. Confirm the receipt printer (192.168.0.112 in the house example) — not the kitchen Star. Handhelds without a bind send only; they show Pay at the named terminal.",
         "After pay, choose Email, Print, or No receipt. Same three choices for card, cash, gift, and comp.",
         "Email: enter the guest address. Sent via Resend. If email is down, the station says so and offers print.",
         "Print: ESC/POS on the printer mapped on this device row in Devices. If none, the venue default receipt printer.",

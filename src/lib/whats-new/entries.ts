@@ -6,6 +6,19 @@ import type { GuideUpdate } from "@/lib/guide/types";
  */
 export const WHATS_NEW_ENTRIES: GuideUpdate[] = [
   {
+    id: "upd_2026_10_115_pay_stations",
+    date: "2026-09-17",
+    title: "Pay and drawer only on bound terminals",
+    summary:
+      "Print check, Pay, and No sale only on stations checked under the Receipt printer. Handhelds ring and fire.",
+    body: "Devices → Receipt printer → Stations that may print and kick. Check the terminals with that printer and drawer. Leave handhelds unchecked. Unbound pads say Pay at [named terminal / host stand]. Bound terminals: Print check, tender, optional paid receipt and drawer kick. Kitchen Star never kicks or prints a guest check. QR pay on the guest phone is unchanged.",
+    roles: ["owner_manager", "server", "host_operator"],
+    surfaces: ["settings", "floor"],
+    audience: "all",
+    topicId: "printers-kds",
+    tags: ["pay", "printers", "handheld"],
+  },
+  {
     id: "upd_2026_10_114_no_sale",
     date: "2026-09-17",
     title: "No sale opens the drawer off-check",

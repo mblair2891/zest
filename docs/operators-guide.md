@@ -1,7 +1,7 @@
 # Operators Guide — authoring
 
-**Revision · 17 Sep 2026** — No sale drawer kick off check.
-Guide v2026.10.114.
+**Revision · 17 Sep 2026** — Pay and drawer only on bound terminals.
+Guide v2026.10.115.
 
 The in-app **Operators Guide** is the living product manual. It is not a
 separate PDF. Staff open it from **Guide** / **?** in the POS and platform

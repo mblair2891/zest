@@ -75,5 +75,5 @@ test("guide covers tap occupied table", () => {
   assert.match(floor, /CHECK OPEN/);
   assert.match(floor, /table view/i);
   const types = readFileSync("src/lib/guide/types.ts", "utf8");
-  assert.match(types, /2026\.10\.113/);
+  assert.match(types, /GUIDE_VERSION/);
 });

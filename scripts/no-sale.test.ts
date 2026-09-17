@@ -81,5 +81,5 @@ test("guide covers no sale / drawer kick", () => {
   assert.match(cash, /No sale/);
   assert.match(cash, /receipt printer/);
   const types = readFileSync("src/lib/guide/types.ts", "utf8");
-  assert.match(types, /2026\.10\.114/);
+  assert.match(types, /GUIDE_VERSION/);
 });

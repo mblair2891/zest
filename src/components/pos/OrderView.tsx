@@ -71,6 +71,7 @@ import { DriveThroughView } from "./DriveThroughView";
 import {
   ADD_RECEIPT_PRINTER,
   currentStationDeviceId,
+  payAtCopy,
   stationHasBoundReceiptPrinter,
 } from "@/lib/print/receipt-printer";
 import { NoSaleControl } from "./NoSaleControl";
@@ -147,6 +148,7 @@ export function OrderView() {
     locationDevices,
     activeDeviceId || currentStationDeviceId(),
   );
+  const payHere = payAtCopy(locationDevices);
 
   const happy = isHappyHour(settings);
   const table = tables.find((t) => t.id === order?.tableId);
@@ -506,8 +508,9 @@ export function OrderView() {
             className="border-b border-warn/40 bg-warn/15 px-3 py-1.5 text-center text-[11px] font-semibold text-warn"
             role="status"
             data-receipt-printer-banner
+            data-pay-at
           >
-            {ADD_RECEIPT_PRINTER}
+            {payHere}
           </div>
         )}
         <div className="flex items-center gap-2 border-b border-border px-3 py-2">
@@ -830,20 +833,21 @@ export function OrderView() {
               Split / move
             </Button>
           )}
+          {hasBoundReceipt && (
           <Button
             variant="outline"
             className="station-touch"
-            disabled={!hasBoundReceipt}
             onClick={() => runPrintCheck()}
           >
             <Printer className="h-4 w-4" />
             Print check
           </Button>
+          )}
           <Button className="station-touch" disabled={!unsent} onClick={() => sendOrder()}>
             <Send className="h-4 w-4" />
             Send
           </Button>
-          {canEmployee(emp, "payments:take") && !odsNoPay && (
+          {hasBoundReceipt && canEmployee(emp, "payments:take") && !odsNoPay && (
           <Button
             className="station-touch col-span-full min-h-12"
             size="lg"
@@ -861,6 +865,11 @@ export function OrderView() {
               ? ` · cash ${formatCurrency(dual.cash.balanceCents || dual.cash.totalCents)}`
               : ""}
           </Button>
+          )}
+          {!hasBoundReceipt && !odsNoPay && (
+            <p className="col-span-full px-1 text-center text-sm font-medium" data-pay-at>
+              {payHere}
+            </p>
           )}
         </div>
         {printMsg && (
@@ -1036,8 +1045,9 @@ export function OrderView() {
               className="border-t border-warn/40 bg-warn/15 px-3 py-1.5 text-center text-[11px] font-semibold text-warn"
               role="status"
               data-receipt-printer-banner
+              data-pay-at
             >
-              {ADD_RECEIPT_PRINTER}
+              {payHere}
             </div>
           )}
           <div
@@ -1056,15 +1066,16 @@ export function OrderView() {
             )}
           </div>
           <div className="grid grid-cols-2 gap-2 border-t border-border bg-surface p-2 safe-bottom">
+            {hasBoundReceipt && (
             <Button
               size="lg"
               className="station-touch min-h-12"
-              disabled={!hasBoundReceipt}
               onClick={() => runPrintCheck()}
             >
               <Printer className="h-4 w-4" />
               Print check
             </Button>
+            )}
             <Button
               size="lg"
               variant="outline"
@@ -1083,7 +1094,7 @@ export function OrderView() {
               <Send className="h-4 w-4" />
               Send
             </Button>
-            {canEmployee(emp, "payments:take") && !odsNoPay ? (
+            {hasBoundReceipt && canEmployee(emp, "payments:take") && !odsNoPay ? (
               <Button
                 size="lg"
                 className="station-touch min-h-12"

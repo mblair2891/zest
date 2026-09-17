@@ -1,10 +1,11 @@
-/** Venue receipt printer ↔ order/host station. Empty bound list = every order + host. */
+/** Venue receipt printer ↔ order/host station. Empty bound list = no pay station. */
 
 export type ReceiptBindRole = "order" | "ods" | "host" | "kiosk";
 
 export type ReceiptBindDevice = {
   id: string;
   type: string;
+  label?: string;
   status?: string;
   assignment?: { function?: string };
   receiptPrinterId?: string | null;
@@ -14,6 +15,8 @@ export type ReceiptBindDevice = {
     boundStationIds?: string[];
   };
 };
+
+export const PAY_AT_FALLBACK = "Pay at a register or host stand.";
 
 const RECEIPT_TYPES = new Set(["receipt_printer", "printer"]);
 
@@ -67,14 +70,32 @@ export function receiptPrinterServesStation(
     opts.role ??
     (row && !isPrinterType(row.type) ? roleFromFunction(row.assignment?.function) : "order");
   if (role === "ods" || role === "kiosk") return false;
+  if (row?.receiptPrinterId === printer.id) return true;
   const bound = printer.print?.boundStationIds ?? [];
-  if (!bound.length) return true;
   if (opts.stationDeviceId && bound.includes(opts.stationDeviceId)) return true;
-  return bound.some((id) => {
-    const d = devices.find((x) => x.id === id);
-    if (!d || isPrinterType(d.type)) return false;
-    return roleFromFunction(d.assignment?.function) === role;
+  return false;
+}
+
+/** Order/host tablets explicitly bound to a receipt printer (pay, print check, no sale). */
+export function payStationDevices(devices: ReceiptBindDevice[] | undefined): ReceiptBindDevice[] {
+  const list = devices ?? [];
+  return list.filter((d) => {
+    if (isPrinterType(d.type)) return false;
+    if (d.status === "inactive") return false;
+    const role = roleFromFunction(d.assignment?.function);
+    if (role === "ods" || role === "kiosk") return false;
+    return Boolean(resolveReceiptPrinter(list, d.id, role));
   });
+}
+
+export function payAtCopy(devices: ReceiptBindDevice[] | undefined): string {
+  const names = payStationDevices(devices)
+    .map((d) => String(d.label ?? "").trim())
+    .filter(Boolean);
+  if (!names.length) return PAY_AT_FALLBACK;
+  if (names.length === 1) return `Pay at ${names[0]}.`;
+  if (names.length === 2) return `Pay at ${names[0]} or ${names[1]}.`;
+  return `Pay at ${names.slice(0, -1).join(", ")}, or ${names[names.length - 1]}.`;
 }
 
 export function resolveReceiptPrinter(

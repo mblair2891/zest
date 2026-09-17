@@ -72,6 +72,7 @@ import {
   noSaleNeedsManagerPin,
 } from "./no-sale";
 import { resolveReceiptDrawer } from "../print/receipt-drawer";
+import { payAtCopy, stationHasBoundReceiptPrinter } from "../print/receipt-bind";
 import { readPairedDeviceId } from "./location-devices";
 import { methodEnabled, parsePaymentMethods } from "./payment-methods";
 import { giftSellBlockedReason, parseGiftLimits } from "./gift-limits";
@@ -2857,6 +2858,18 @@ const usePosStoreRaw = create<PosStore>()(persist((set, get) => {
 		const deviceRole = currentDeviceRole(get);
 		if (odsBlocksTender(deviceRole, method)) {
 			return { ok: false, error: "ODS cannot tender cash or gift. Use an order or host station." };
+		}
+		if (
+			emp.id !== "guest_qr" &&
+			(deviceRole === "order" || deviceRole === "host")
+		) {
+			let stationId = get().activeDeviceId || null;
+			try {
+				stationId = stationId || readStationPair()?.deviceId || null;
+			} catch { /* */ }
+			if (!stationHasBoundReceiptPrinter(get().locationDevices, stationId, deviceRole)) {
+				return { ok: false, error: payAtCopy(get().locationDevices) };
+			}
 		}
 		{
 			const pm = parsePaymentMethods(get().settings.paymentMethods);

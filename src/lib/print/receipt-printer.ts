@@ -3,6 +3,7 @@ import { readStationDeviceRole } from "@/lib/pos/device-roles";
 import { readStationPair } from "@/lib/pos/station-pair";
 import { usePosStore } from "@/lib/pos/store";
 import {
+  payAtCopy as payAtCopyBind,
   receiptPrinterServesStation as serves,
   resolveReceiptPrinter as resolveBind,
   stationHasBoundReceiptPrinter as hasBound,
@@ -26,7 +27,7 @@ export function receiptPrinterServesStation(
   });
 }
 
-/** Printer mapped on this station row, else a venue receipt printer this order/host may use. */
+/** Printer mapped on this station row, or listed under Stations that may print and kick. */
 export function resolveReceiptPrinter(
   devices: LocationDevice[] | undefined,
   stationDeviceId: string | null | undefined,
@@ -48,6 +49,10 @@ export function stationHasBoundReceiptPrinter(
     stationDeviceId,
     readStationDeviceRole(),
   );
+}
+
+export function payAtCopy(devices: LocationDevice[] | undefined): string {
+  return payAtCopyBind(devices as ReceiptBindDevice[] | undefined);
 }
 
 export function currentStationDeviceId(): string | null {

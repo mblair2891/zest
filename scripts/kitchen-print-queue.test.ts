@@ -113,5 +113,5 @@ test("guide covers queued QR/kiosk/online fire", () => {
   const online = readFileSync("src/lib/guide/content/orders.ts", "utf8");
   assert.match(online, /venue print job/);
   const types = readFileSync("src/lib/guide/types.ts", "utf8");
-  assert.match(types, /2026\.10\.109/);
+  assert.match(types, /GUIDE_VERSION/);
 });

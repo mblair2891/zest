@@ -45,5 +45,5 @@ test("guide covers live pad, print check, impact, receipt path", () => {
   assert.match(devices, /Printed via \{station\}/);
   assert.match(devices, /every order and host station/);
   const types = readFileSync("src/lib/guide/types.ts", "utf8");
-  assert.match(types, /2026\.10\.112/);
+  assert.match(types, /GUIDE_VERSION/);
 });
