@@ -46,7 +46,9 @@ import {
   isPrinterDevice,
   isPrinterType,
   isReceiptPrinterType,
-  printerStatusLabel,
+  isVenueStationOnline,
+  printerLanBadge,
+  printerLanBadgeLabel,
   printerTypeFromStation,
   readOrCreateBrowserDeviceId,
   readPairedDeviceId,
@@ -61,6 +63,10 @@ import {
   type PrinterModelPreset,
 } from "@/lib/pos/location-devices";
 import { dispatchRawTestPrint, testPrintJob } from "@/lib/print/dispatch";
+import {
+  enqueueStationPrintFn,
+  getStationPrintJobFn,
+} from "@/lib/print/api";
 import { parseQrPolicy, qrPrintOnTicket } from "@/lib/pos/qr-policy";
 import { usePosStore } from "@/lib/pos/store";
 import { formatTime } from "@/lib/utils";
@@ -537,8 +543,37 @@ export function LocationDeviceRegistry({
         locationName: hostName || locationName,
         station: d.print?.station ?? stationFromPrinterType(d.type),
       });
-      const result = await dispatchRawTestPrint(job, d);
-      const ok = result.ok;
+      const stationOnline = devices.some((x) => isVenueStationOnline(x));
+      const result = await dispatchRawTestPrint(job, d, {
+        stationOnline,
+        enqueueToStation: async (payload) => {
+          const q = await enqueueStationPrintFn({
+            data: {
+              orgId: resolvedOrgId,
+              locationId: resolvedLocId,
+              printerId: payload.printerId,
+              host: payload.host,
+              port: payload.port,
+              escposBase64: payload.escposBase64,
+              kind: "test",
+            },
+          });
+          if (!q.ok || !("jobId" in q) || !q.jobId) {
+            return { ok: false, error: !q.ok ? q.error : "Could not queue to station" };
+          }
+          const deadline = Date.now() + 12_000;
+          while (Date.now() < deadline) {
+            await new Promise((r) => window.setTimeout(r, 400));
+            const st = await getStationPrintJobFn({
+              data: { locationId: resolvedLocId, jobId: q.jobId },
+            });
+            if (st.status === "done") return { ok: st.ok === true, queued: false };
+          }
+          return { ok: true, queued: true };
+        },
+      });
+      const printed = result.ok && !result.queued;
+      const failHard = !result.ok && !stationOnline;
       await saveLocationDeviceFn({
         data: {
           orgId: resolvedOrgId,
@@ -554,15 +589,17 @@ export function LocationDeviceRegistry({
               connection: d.print?.connection ?? "lan",
               target: d.print?.target ?? "",
               station: d.print?.station ?? stationFromPrinterType(d.type),
-              lastPrintAt: ok ? Date.now() : d.print?.lastPrintAt,
-              reachability: ok ? "idle" : "unreachable",
+              lastPrintAt: printed ? Date.now() : d.print?.lastPrintAt,
+              reachability: failHard ? "unreachable" : "idle",
             },
           },
         },
       });
       await load();
-      if (!ok) {
-        setError(result.error || "Test print did not reach the printer at IP:9100.");
+      if (!result.ok) {
+        setError(result.error || "Use a paired station or print agent.");
+      } else if (result.queued) {
+        setError(null);
       }
     } catch (e) {
       setError(e instanceof Error ? e.message : "Test print failed");
@@ -1400,12 +1437,9 @@ export function LocationDeviceRegistry({
                 <Badge
                   variant={
                     isPrinterDevice(d)
-                      ? printerStatusLabel(d) === "last-print"
+                      ? printerLanBadge(d, devices) === "lan_via_station"
                         ? "success"
-                        : printerStatusLabel(d) === "unreachable" ||
-                            printerStatusLabel(d) === "pending"
-                          ? "warn"
-                          : "secondary"
+                        : "warn"
                       : d.status === "online"
                         ? "success"
                         : d.status === "pending"
@@ -1413,7 +1447,7 @@ export function LocationDeviceRegistry({
                           : "secondary"
                   }
                 >
-                  {isPrinterDevice(d) ? printerStatusLabel(d) : d.status}
+                  {isPrinterDevice(d) ? printerLanBadgeLabel(printerLanBadge(d, devices)) : d.status}
                 </Badge>
                 <span className="text-[11px] text-muted-foreground">
                   {d.lastSeenAt ? formatTime(d.lastSeenAt) : "—"}

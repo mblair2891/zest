@@ -53,6 +53,8 @@ export type LocationSetup = {
   locationDevices?: import("@/lib/pos/location-devices").LocationDevice[];
   /** Extra order-printer destinations beyond Kitchen / Bar / Expo / Window / Prep / Other. */
   orderDestinations?: string[];
+  /** Dashboard test/fire jobs for a paired station to print via Capacitor 9100. */
+  stationPrintQueue?: import("@/lib/print/station-print-queue").StationPrintQueued[];
   voiceControlEnabledByRole?: Partial<Record<string, boolean>>;
   networkReadyStatus?: import("./network-readiness").NetworkReadyStatus;
   networkCheckedAt?: string;
@@ -154,6 +156,7 @@ export const EMPTY_LOCATION_SETUP: LocationSetup = {
   entityPermissions: [],
   locationDevices: [],
   orderDestinations: [],
+  stationPrintQueue: [],
   paymentsMode: "inherit",
   paymentMethods: {
     cash: true,

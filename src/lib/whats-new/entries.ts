@@ -6,6 +6,19 @@ import type { GuideUpdate } from "@/lib/guide/types";
  */
 export const WHATS_NEW_ENTRIES: GuideUpdate[] = [
   {
+    id: "upd_2026_10_108_printer_lan_station",
+    date: "2026-09-17",
+    title: "Printer status via online station",
+    summary:
+      "Devices shows LAN via station when a paired tablet is online. Test print queues to that station. Not unreachable after a successful station print.",
+    body: "The dashboard cannot TCP 9100. If a station is online, Test print is queued and the tablet writes 9100. Badge: LAN via station (green) or no station on LAN (amber). Star SP700/SP742 stays impact.",
+    roles: ["owner_manager", "host_operator", "platform_admin", "kitchen_bar"],
+    surfaces: ["settings"],
+    audience: "all",
+    topicId: "printers-kds",
+    tags: ["printers", "station", "devices"],
+  },
+  {
     id: "upd_2026_10_107_sp700_impact",
     date: "2026-09-17",
     title: "Star SP700/SP742 impact tickets",

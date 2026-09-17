@@ -218,7 +218,16 @@ export async function dispatchPrintJob(
 export async function dispatchRawTestPrint(
   job: PrintJob,
   device: LocationDevice,
-): Promise<{ ok: boolean; error?: string; target?: string }> {
+  opts?: {
+    stationOnline?: boolean;
+    enqueueToStation?: (payload: {
+      host: string;
+      port: number;
+      escposBase64: string;
+      printerId: string;
+    }) => Promise<{ ok: boolean; queued?: boolean; error?: string }>;
+  },
+): Promise<{ ok: boolean; queued?: boolean; error?: string; target?: string }> {
   const cfg = device.print;
   const lan = parseLanTarget(cfg?.ip, cfg?.port, cfg?.target);
   if (!lan) {
@@ -243,6 +252,19 @@ export async function dispatchRawTestPrint(
     escposBase64: payload,
   });
   if (ok) return { ok: true, target: lan.target };
+  if (opts?.stationOnline && opts.enqueueToStation) {
+    const queued = await opts.enqueueToStation({
+      host: lan.host,
+      port: lan.port,
+      escposBase64: payload,
+      printerId: device.id,
+    });
+    if (queued.ok) return { ok: true, queued: queued.queued !== false, target: lan.target };
+    return { ok: false, target: lan.target, error: queued.error || PRINT_NEED_STATION_OR_AGENT };
+  }
+  if (opts?.stationOnline) {
+    return { ok: true, queued: true, target: lan.target };
+  }
   return { ok: false, target: lan.target, error: PRINT_NEED_STATION_OR_AGENT };
 }
 

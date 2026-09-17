@@ -479,16 +479,46 @@ export function printerHasDrawerKick(d: LocationDevice): boolean {
   return d.print.station === "receipt" || d.type === "receipt_printer" || d.type === "printer";
 }
 
+export const STATION_ONLINE_MS = 15 * 60_000;
+
+export function isVenueStationOnline(d: LocationDevice, now = Date.now()): boolean {
+  if (isPrinterType(d.type) || d.type === "terminal") return false;
+  if (d.status === "inactive") return false;
+  if (d.status !== "online") return false;
+  if (!d.lastSeenAt) return true;
+  return now - d.lastSeenAt < STATION_ONLINE_MS;
+}
+
+export type PrinterLanBadge = "pending" | "lan_via_station" | "no_station_on_lan";
+
+export function printerLanBadge(
+  printer: LocationDevice,
+  venueDevices: LocationDevice[],
+  now = Date.now(),
+): PrinterLanBadge {
+  if (!isPrinterDevice(printer) || printer.status === "inactive") return "pending";
+  const ip = (printer.print?.ip || printer.print?.target || "").trim();
+  if (!ip) return "pending";
+  if (venueDevices.some((d) => isVenueStationOnline(d, now))) return "lan_via_station";
+  return "no_station_on_lan";
+}
+
+export function printerLanBadgeLabel(badge: PrinterLanBadge): string {
+  if (badge === "lan_via_station") return "LAN via station";
+  if (badge === "no_station_on_lan") return "no station on LAN";
+  return "pending";
+}
+
 export function printerStatusLabel(
   d: LocationDevice,
-): "pending" | "unreachable" | "idle" | "last-print" | LocationDeviceStatus {
+  venueDevices: LocationDevice[] = [],
+): "pending" | "unreachable" | "idle" | "last-print" | "lan_via_station" | "no_station_on_lan" | LocationDeviceStatus {
   if (!isPrinterDevice(d)) return d.status;
   if (d.status === "inactive") return "inactive";
-  const ip = (d.print?.ip || d.print?.target || "").trim();
-  if (!ip) return "pending";
-  if (d.print?.reachability === "unreachable") return "unreachable";
-  if (d.print?.lastPrintAt) return "last-print";
-  return "idle";
+  const lan = printerLanBadge(d, venueDevices);
+  if (lan === "lan_via_station") return "lan_via_station";
+  if (lan === "no_station_on_lan") return "no_station_on_lan";
+  return "pending";
 }
 
 export function parsePrinterConfig(raw: unknown): PrinterConfig | undefined {
