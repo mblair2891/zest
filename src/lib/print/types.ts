@@ -8,6 +8,7 @@ export type PrintJobKind =
   | "guest_check"
   | "test"
   | "drawer_kick"
+  | "no_sale"
   | "till_turn_in"
   | "turn_in"
   | "till_transfer";

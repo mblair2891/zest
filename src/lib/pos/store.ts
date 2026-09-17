@@ -67,6 +67,12 @@ import {
 import { applyCashTender, currentCashSink, useCashSessionStore } from "./cash-session";
 import { hasCompletedCloseoutToday } from "./closeout-store";
 import { cashRoleFromSession, parseCashHandling } from "./cash-handling";
+import {
+  NO_DRAWER_ON_STATION,
+  noSaleNeedsManagerPin,
+} from "./no-sale";
+import { resolveReceiptDrawer } from "../print/receipt-drawer";
+import { readPairedDeviceId } from "./location-devices";
 import { methodEnabled, parsePaymentMethods } from "./payment-methods";
 import { giftSellBlockedReason, parseGiftLimits } from "./gift-limits";
 import {
@@ -1268,6 +1274,62 @@ const usePosStoreRaw = create<PosStore>()(persist((set, get) => {
 	getActiveOrder: () => {
 		const id = get().activeOrderId;
 		return get().orders.find((o: any) => o.id === id);
+	},
+	noSale: (reason, opts) => {
+		const emp = get().getCurrentEmployee();
+		if (!emp) return { ok: false, error: "Not signed in" };
+		const deviceRole = currentDeviceRole(get) ?? readStationDeviceRole();
+		if (deviceRole === "ods" || deviceRole === "kiosk") {
+			return { ok: false, error: NO_DRAWER_ON_STATION };
+		}
+		const trimmed = String(reason ?? "").trim();
+		if (!trimmed) return { ok: false, error: "Pick a reason." };
+		const cashCfg = parseCashHandling(get().settings.cashHandling);
+		const needsPin = noSaleNeedsManagerPin(emp.role, cashCfg.noSaleAllowedRoles);
+		if (needsPin && !opts?.overrideEmployeeId && !get().hasManagerAuth()) {
+			return { ok: false, error: "Manager PIN required.", code: "manager_pin" };
+		}
+		let stationId = get().activeDeviceId || null;
+		try {
+			stationId = stationId || readStationPair()?.deviceId || null;
+		} catch { /* */ }
+		if (!stationId && get().tenantLocationId) {
+			try {
+				stationId = readPairedDeviceId(get().tenantLocationId);
+			} catch { /* */ }
+		}
+		const drawer = resolveReceiptDrawer(get().locationDevices, stationId, deviceRole);
+		if (!drawer) return { ok: false, error: NO_DRAWER_ON_STATION };
+		const stationLabel =
+			(get().locationDevices ?? []).find((d: any) => d.id === stationId)?.label ||
+			drawer.label ||
+			"Station";
+		void import("@/lib/print/from-store").then((m) =>
+			m.performNoSale({
+				reason: trimmed,
+				printSlip: cashCfg.printNoSaleSlip,
+				printerId: drawer.id,
+			}),
+		);
+		try {
+			const sinkDrawer = cashCfg.drawers.find((d) => d.kickPrinterId === drawer.id) ?? cashCfg.drawers[0];
+			useCashSessionStore.getState().logNoSale({
+				employeeId: emp.id,
+				employeeName: emp.name,
+				drawerId: sinkDrawer?.id,
+				reason: trimmed,
+			});
+		} catch { /* optional till log */ }
+		get().audit("no_sale", trimmed, {
+			reason: trimmed,
+			deviceId: stationId ?? undefined,
+			deviceRole: deviceRole ?? undefined,
+			after: stationLabel,
+			amountCents: 0,
+			overrideEmployeeId: opts?.overrideEmployeeId,
+			overrideEmployeeName: opts?.overrideEmployeeName,
+		});
+		return { ok: true };
 	},
 	postLedger: (entries) => {
 		if (!entries.length) return;

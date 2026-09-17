@@ -6,6 +6,19 @@ import type { GuideUpdate } from "@/lib/guide/types";
  */
 export const WHATS_NEW_ENTRIES: GuideUpdate[] = [
   {
+    id: "upd_2026_10_114_no_sale",
+    date: "2026-09-17",
+    title: "No sale opens the drawer off-check",
+    summary:
+      "Order and host: No sale on the short menu, floor, or pad when no check is open. Bound receipt printer kicks. Kitchen Star never does.",
+    body: "Pick a reason (Change, Mistake, Manager). Audit logs who, station, and time. No drawer on this station if the receipt printer has no kick. Default allowed: bartender + manager; servers optional. Roles below that list need a manager PIN. Does not create a $0 check. Print no-sale slip is off unless the house turns it on — never a guest check.",
+    roles: ["owner_manager", "server", "host_operator"],
+    surfaces: ["floor", "settings"],
+    audience: "all",
+    topicId: "no-sale",
+    tags: ["cash", "drawer", "no-sale"],
+  },
+  {
     id: "upd_2026_10_113_table_tap_checks",
     date: "2026-09-17",
     title: "Tap a table with an open check",

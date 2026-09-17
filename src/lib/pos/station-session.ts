@@ -28,6 +28,7 @@ export type StationJob =
   | "togo"
   | "bar_tab"
   | "clock"
+  | "no_sale"
   | "closeout"
   | "take_drawer"
   | "hand_off"

@@ -13,6 +13,7 @@ import { StationClockControl } from "./StationClockControl";
 import { DemoEntitySwitcher } from "@/components/demo/DemoEntitySwitcher";
 import { showDemoEntitySwitcher } from "@/lib/demo/entity-switch";
 import { ROLE_LABEL } from "@/lib/pos/rbac";
+import { NoSaleControl } from "./NoSaleControl";
 
 /** After PIN: 2–6 large named jobs this device × PIN allows. */
 export function StationHomeMenu() {
@@ -75,6 +76,12 @@ export function StationHomeMenu() {
           {items.map((item) =>
             item.id === "clock" ? (
               <StationClockControl
+                key={item.id}
+                size="lg"
+                className="station-touch h-16 w-full text-lg font-semibold"
+              />
+            ) : item.id === "no_sale" ? (
+              <NoSaleControl
                 key={item.id}
                 size="lg"
                 className="station-touch h-16 w-full text-lg font-semibold"

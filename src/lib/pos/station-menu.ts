@@ -20,6 +20,7 @@ export const STATION_MENU_JOBS = [
   "togo",
   "bar_tab",
   "clock",
+  "no_sale",
   "closeout",
   "take_drawer",
   "hand_off",
@@ -69,7 +70,7 @@ export function stationMenuItems(opts: {
   });
   const out: StationMenuItem[] = [];
   const add = (id: StationMenuJob, label: string) => {
-    if (out.length >= 7) return;
+    if (out.length >= 9) return;
     if (out.some((x) => x.id === id)) return;
     out.push({ id, label });
   };
@@ -95,6 +96,7 @@ export function stationMenuItems(opts: {
     if (stationCan(cap, "waitlist")) add("waitlist", "Waitlist");
     if (stationCan(cap, "togo")) add("togo", "To-go");
     add("clock", "Clock in/out");
+    add("no_sale", "No sale");
     if (opts.giftEnabled) add("gift", "Gift cards");
     if (cashJobs && !opts.hasPossession) add("take_drawer", takeDrawerLabel(custody));
     if (opts.cashEnabled === false) add("closeout", "Closeout");
@@ -124,6 +126,7 @@ export function stationMenuItems(opts: {
   if (stationCan(cap, "togo")) add("togo", "To-go");
   if (stationCan(cap, "bar_tab") && opts.hasBarRail) add("bar_tab", "Bar tab");
   add("clock", "Clock in/out");
+  add("no_sale", "No sale");
   if (opts.giftEnabled) add("gift", "Gift cards");
   if (cashJobs && !opts.hasPossession) add("take_drawer", takeDrawerLabel(custody));
   const closeoutOk =
@@ -132,7 +135,7 @@ export function stationMenuItems(opts: {
     device === "order" &&
     (opts.cashEnabled === false || (cashJobs && opts.hasPossession));
   if (closeoutOk) add("closeout", "Closeout");
-  return out.slice(0, 7);
+  return out.slice(0, 9);
 }
 
 export function stationMenuTitle(device: DeviceRole | null | undefined): string {

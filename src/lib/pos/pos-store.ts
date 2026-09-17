@@ -218,6 +218,10 @@ export interface PosStore {
   setActiveOrder: (id: string | null) => ActionResult;
   getCurrentEmployee: () => Employee | null;
   getActiveOrder: () => Order | undefined;
+  noSale: (
+    reason: string,
+    opts?: { overrideEmployeeId?: string; overrideEmployeeName?: string },
+  ) => ActionResult;
   audit: (action: string, detail: string, meta?: AuditMeta) => void;
   updateSettings: (patch: Partial<RestaurantSettings>) => void;
   tableAccess: (

@@ -7,6 +7,11 @@ import {
   type CashCustodyKind,
   type HouseDrawerMode,
 } from "./cash-custody";
+import {
+  DEFAULT_NO_SALE_ROLES,
+  parseNoSaleAllowedRoles,
+  type NoSaleRole,
+} from "./no-sale";
 import type { DeviceRole } from "./device-roles";
 import { deviceRoleFromSessionMode } from "./device-roles";
 import type { SessionModeId } from "@/lib/lifecycle/types";
@@ -220,6 +225,10 @@ export type CashHandlingConfig = {
   issueBank: IssueBankWhen;
   openOnCashSale: OpenOnCashSale;
   noSaleOpen: NoSaleOpen;
+  /** Roles that may no-sale without a manager PIN. Default bartender + manager. */
+  noSaleAllowedRoles: NoSaleRole[];
+  /** Off by default. Never a guest check. */
+  printNoSaleSlip: boolean;
   skimOverCents: number;
   paidInOutReasons: string[];
   paidInOutRequireManagerPin: boolean;
@@ -300,6 +309,8 @@ export const DEFAULT_CASH_HANDLING: CashHandlingConfig = {
   issueBank: "first_cash_sale",
   openOnCashSale: "always",
   noSaleOpen: "assigned_user",
+  noSaleAllowedRoles: [...DEFAULT_NO_SALE_ROLES],
+  printNoSaleSlip: false,
   skimOverCents: 50000,
   paidInOutReasons: [...DEFAULT_PAID_REASONS],
   paidInOutRequireManagerPin: true,
@@ -425,6 +436,8 @@ export function parseCashHandling(raw: unknown): CashHandlingConfig {
     issueBank,
     openOnCashSale,
     noSaleOpen,
+    noSaleAllowedRoles: parseNoSaleAllowedRoles(o.noSaleAllowedRoles, noSaleOpen),
+    printNoSaleSlip: Boolean(o.printNoSaleSlip),
     skimOverCents: Math.max(0, Math.round(Number(o.skimOverCents) || 0)),
     paidInOutReasons: reasons.length ? reasons : [...DEFAULT_PAID_REASONS],
     paidInOutRequireManagerPin: o.paidInOutRequireManagerPin !== false,

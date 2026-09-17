@@ -50,6 +50,8 @@ export function ticketHtml(job: PrintJob): string {
       ? "Receipt"
       : job.kind === "drawer_kick"
         ? "Drawer"
+        : job.kind === "no_sale"
+          ? "No sale"
         : job.kind === "test"
           ? "Test print"
           : job.station === "bar"

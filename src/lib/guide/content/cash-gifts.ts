@@ -82,7 +82,7 @@ export const CASH_GIFT_TOPICS: GuideTopic[] = [
         "Personal bank: opening float (venue default, often $0). Cash on that server’s checks goes to their bank unless All cash to house till is on. Optional: server may break large bills on a house drawer (loan / change slip).",
         "Possession: cannot tender cash until accepted. Custodian enters declared opening cash — true blind, no expected. Optional manager witness PIN. Handoff A→B: A counts out; B blind-counts in or accepts A’s counted-out total (venue toggle).",
         "Blind count (open / handoff / close): denominations without expected. Then reveal declared vs expected vs over/short. One recount before lock. Over/short over $X needs manager approve. Cannot clock out while still in possession unless manager override.",
-        "Mid-shift: paid-out with reason; skim to safe decreases expected; no-sale kick is manager or counted; change/loan between bank and house drawer hits both ledgers.",
+        "Mid-shift: paid-out with reason; skim to safe decreases expected; No sale opens the bound receipt-printer drawer (never kitchen Star). Change/loan between bank and house drawer hits both ledgers.",
         "Peer / multi-entity: physical bills go to whoever took the tender. Entity split stays on the ledger (owned_lines). Do not sort cash by vendor at the table. Labor and tip-out recs still use owned_lines.",
       ),
       steps(
@@ -109,9 +109,42 @@ export const CASH_GIFT_TOPICS: GuideTopic[] = [
         "Only declared cash tips are settled in person. Card tips always export to payroll.",
       ),
       tip(
-        "House Wi-Fi still records cash if the internet is down. You are not blocked from closing a cash table during an ISP outage. Open on cash sale: always, never, or manager PIN. No-sale: off, manager, or assigned user.",
+        "House Wi-Fi still records cash if the internet is down. You are not blocked from closing a cash table during an ISP outage. Open on cash sale: always, never, or manager PIN.",
       ),
-      related("tenders-tips", "cash-discount", "settlement", "wifi-offline", "reports", "server-closeout", "printers-kds", "tip-pooling", "loss-prevention"),
+      related("tenders-tips", "cash-discount", "settlement", "wifi-offline", "reports", "server-closeout", "printers-kds", "tip-pooling", "loss-prevention", "no-sale"),
+    ],
+  }),
+  topic({
+    id: "no-sale",
+    chapterId: "cash-gifts",
+    title: "No sale / open drawer",
+    summary:
+      "Order and host: open the cash drawer with no check. Bound receipt printer only. Kitchen Star never kicks.",
+    roles: ["owner_manager", "server", "host_operator"],
+    keywords: ["no sale", "drawer kick", "open drawer", "change", "receipt printer"],
+    openView: "floor",
+    blocks: [
+      why(
+        "Making change or clearing a stuck drawer must not invent a $0 check and must not hide inside Pay.",
+      ),
+      ul(
+        "On an order or host station, No sale is on the short menu, the floor, and the pad when no check is open — not on Pay.",
+        "It sends a drawer kick on the bound Receipt printer (ESC/POS pulse). Kitchen Star never kicks.",
+        "If this station has no receipt printer with a drawer wired: “No drawer on this station.”",
+        "Every kick writes an audit row: who, station, time, reason (Change, Mistake, Manager). Never a silent kick.",
+        "Settings → Cash: No sale allowed for Server / Bartender / Host / Manager. Default bartender + manager; servers optional. A signed-in role below that list needs a manager PIN.",
+        "Print no-sale slip is off by default. When on, a short “NO SALE — not a receipt” slip prints on the receipt printer. Never a guest check.",
+      ),
+      steps(
+        "PIN in on order or host. No check open.",
+        "Tap No sale. Pick a reason. Confirm. The receipt drawer opens.",
+        "If your role is not on the allowed list, enter a manager PIN first.",
+        "If you see “No drawer on this station,” bind a Receipt printer with cash drawer kick to this order/host station.",
+      ),
+      warn(
+        "No sale does not create a check and does not print a guest check unless Print no-sale slip is on.",
+      ),
+      related("cash-handling", "printers-kds", "device-roles", "loss-prevention", "server-closeout"),
     ],
   }),
   topic({

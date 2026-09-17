@@ -61,6 +61,7 @@ import { useStationLayout } from "@/lib/ui/station-layout";
 import { barTabVisibleTables, isBarRailSeat, locationAllowsBarTabs } from "@/lib/pos/bar-tab";
 import { FloorFixtureArt } from "@/components/pos/FloorFixtureArt";
 import { stationCan } from "@/lib/pos/station-pin-gate";
+import { NoSaleControl } from "./NoSaleControl";
 import {
   CHECK_HOLD_LABEL,
   CHECK_HOLD_REASONS,
@@ -350,6 +351,7 @@ export function FloorView({
         <h2 className="mr-2 text-sm font-semibold">
           Floor · {saasLoc?.code ?? loc?.code ?? settings.name}
         </h2>
+        <NoSaleControl size={mapOnly ? "lg" : "sm"} className={mapOnly ? "h-12" : undefined} />
         {!mapOnly && (
         <GuideLearnLink topicId="floor-tables" compact>
           Learn

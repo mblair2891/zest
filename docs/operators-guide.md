@@ -1,7 +1,7 @@
 # Operators Guide — authoring
 
-**Revision · 17 Sep 2026** — Tap occupied table opens check list.
-Guide v2026.10.113.
+**Revision · 17 Sep 2026** — No sale drawer kick off check.
+Guide v2026.10.114.
 
 The in-app **Operators Guide** is the living product manual. It is not a
 separate PDF. Staff open it from **Guide** / **?** in the POS and platform

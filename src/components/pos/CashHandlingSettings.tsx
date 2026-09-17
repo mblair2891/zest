@@ -32,11 +32,15 @@ import {
   type CashSinkKind,
   type DrawerKind,
   type OpenOnCashSale,
-  type NoSaleOpen,
   type IssueBankWhen,
   type TipOutRole,
   type CcTipPayout,
 } from "@/lib/pos/cash-handling";
+import {
+  NO_SALE_ROLE_LABEL,
+  NO_SALE_ROLE_OPTIONS,
+  type NoSaleRole,
+} from "@/lib/pos/no-sale";
 import {
   TILL_COUNT_MODES,
   TILL_COUNT_MODE_LABEL,
@@ -456,18 +460,44 @@ export function CashHandlingSettings({ write }: { write: boolean }) {
             <option value="manager_pin">Manager PIN</option>
           </select>
         </Field>
-        <Field label="No-sale open">
-          <select
-            className="h-9 w-full rounded-lg border border-border bg-bg px-2 text-sm"
-            disabled={!write}
-            value={cfg.noSaleOpen}
-            onChange={(e) => patch({ noSaleOpen: e.target.value as NoSaleOpen })}
-          >
-            <option value="off">Off</option>
-            <option value="manager">Manager</option>
-            <option value="assigned_user">Assigned user</option>
-          </select>
+        <Field label="No sale allowed for">
+          <div className="flex flex-wrap gap-3 py-1 text-sm">
+            {NO_SALE_ROLE_OPTIONS.map((role) => {
+              const on = cfg.noSaleAllowedRoles.includes(role);
+              return (
+                <label key={role} className="flex items-center gap-1.5">
+                  <input
+                    type="checkbox"
+                    disabled={!write}
+                    checked={on}
+                    onChange={() => {
+                      const next = on
+                        ? cfg.noSaleAllowedRoles.filter((r) => r !== role)
+                        : [...cfg.noSaleAllowedRoles, role];
+                      patch({
+                        noSaleAllowedRoles: (next.length ? next : ["manager"]) as NoSaleRole[],
+                      });
+                    }}
+                  />
+                  {NO_SALE_ROLE_LABEL[role]}
+                </label>
+              );
+            })}
+          </div>
+          <p className="mt-1 text-[11px] text-muted-foreground">
+            Default bartender + manager. Servers optional. A role below this list needs a manager
+            PIN. Order and host stations — not Pay, not kitchen Star.
+          </p>
         </Field>
+        <label className="flex items-center justify-between gap-3 text-sm sm:col-span-2">
+          <span>Print no-sale slip</span>
+          <input
+            type="checkbox"
+            disabled={!write}
+            checked={cfg.printNoSaleSlip}
+            onChange={(e) => patch({ printNoSaleSlip: e.target.checked })}
+          />
+        </label>
         <Field label="Issue server bank">
           <select
             className="h-9 w-full rounded-lg border border-border bg-bg px-2 text-sm"

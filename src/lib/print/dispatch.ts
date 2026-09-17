@@ -10,6 +10,7 @@ import {
 } from "@/lib/pos/location-devices";
 import { uid } from "@/lib/utils";
 import { escposBase64, buildDrawerKickBytes } from "./escpos";
+import { receiptDrawerKickAllowed } from "./receipt-drawer";
 import { parseLanTarget } from "./printer-models";
 import { sendNativeBytes } from "./capacitor-raw-print";
 import {
@@ -305,7 +306,13 @@ export async function kickCashDrawer(opts: {
   const target = opts.printerId
     ? printers.find((d) => d.id === opts.printerId)
     : printers.find((d) => printerHasDrawerKick(d));
-  if (!target?.print || !printerHasDrawerKick(target) || target.print.connection === "browser" || !target.print.target) {
+  if (
+    !target?.print ||
+    !printerHasDrawerKick(target) ||
+    !receiptDrawerKickAllowed(target) ||
+    target.print.connection === "browser" ||
+    !target.print.target
+  ) {
     return false;
   }
   const job: PrintJob = {

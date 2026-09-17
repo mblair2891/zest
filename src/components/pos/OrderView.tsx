@@ -73,6 +73,7 @@ import {
   currentStationDeviceId,
   stationHasBoundReceiptPrinter,
 } from "@/lib/print/receipt-printer";
+import { NoSaleControl } from "./NoSaleControl";
 
 export function OrderView() {
   const activeOrderId = usePosStore((s) => s.activeOrderId);
@@ -267,6 +268,9 @@ export function OrderView() {
               Bar tab
             </Button>
           )}
+          <div className="sm:col-span-2">
+            <NoSaleControl className="h-14 w-full text-base" />
+          </div>
         </div>
         {openOrders.length > 0 && (
           <div className="mt-4 w-full max-w-md space-y-2">

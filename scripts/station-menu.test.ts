@@ -9,8 +9,9 @@ const mode = readFileSync("src/components/pos/DeviceModeView.tsx", "utf8");
 const shell = readFileSync("src/components/pos/AppShell.tsx", "utf8");
 const floor = readFileSync("src/components/pos/FloorView.tsx", "utf8");
 
-test("menu source: host jobs, order jobs, max 7, hide denied", () => {
-  assert.match(menu, /if \(out\.length >= 7\) return/);
+test("menu source: host jobs, order jobs, max 9, hide denied", () => {
+  assert.match(menu, /if \(out\.length >= 9\) return/);
+  assert.match(menu, /No sale/);
   assert.match(menu, /My tables/);
   assert.match(menu, /New table/);
   assert.match(menu, /New ticket/);

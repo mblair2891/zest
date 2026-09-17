@@ -4,8 +4,10 @@ import { isVenueStationOnline } from "@/lib/pos/location-devices";
 import { usePosStore } from "@/lib/pos/store";
 import type { KitchenTicket, Order, RestaurantSettings } from "@/lib/pos/types";
 import { uid } from "@/lib/utils";
-import { dispatchPrintJob, printersForStation } from "./dispatch";
+import { dispatchPrintJob, kickCashDrawer, printersForStation } from "./dispatch";
 import { currentStationDeviceId, resolveReceiptPrinter } from "./receipt-printer";
+import { NO_DRAWER_ON_STATION, receiptDrawerKickAllowed, resolveReceiptDrawer } from "./receipt-drawer";
+import { readStationDeviceRole } from "@/lib/pos/device-roles";
 import type { PrintJob, PrintLine } from "./types";
 import type { PrintStation } from "@/lib/pos/location-devices";
 import { splitTenderByEntity } from "@/lib/payments/entity-split";
@@ -447,6 +449,51 @@ export async function printGuestCheck(orderId?: string): Promise<{
     };
   }
   return { ok: false, error: res.error || "Use a paired station or print agent." };
+}
+
+/** Bound receipt drawer kick. Never a check. Never kitchen Star. */
+export async function performNoSale(opts: {
+  reason: string;
+  printSlip?: boolean;
+  printerId?: string;
+}): Promise<{ ok: boolean; error?: string; printerId?: string; printerLabel?: string }> {
+  const s = usePosStore.getState();
+  const devices = s.locationDevices ?? [];
+  const stationId = currentStationDeviceId();
+  const named = opts.printerId ? devices.find((d) => d.id === opts.printerId) : undefined;
+  const printer =
+    named && receiptDrawerKickAllowed(named)
+      ? named
+      : resolveReceiptDrawer(devices, stationId, readStationDeviceRole());
+  if (!printer) {
+    return { ok: false, error: NO_DRAWER_ON_STATION };
+  }
+  const locationId = s.tenantLocationId || "";
+  await kickCashDrawer({
+    locationId,
+    devices,
+    printerId: printer.id,
+  });
+  if (opts.printSlip) {
+    const emp = s.getCurrentEmployee?.();
+    const station = devices.find((d) => d.id === stationId);
+    const job: PrintJob = {
+      id: uid("ns"),
+      kind: "no_sale",
+      station: "receipt",
+      locationId,
+      locationName: s.settings.name || "Summex",
+      checkId: "no_sale",
+      checkNumber: "",
+      tableLabel: station?.label || "Station",
+      serverName: emp?.name || "",
+      items: [],
+      guestCheckNote: String(opts.reason || "").trim(),
+      at: Date.now(),
+    };
+    await dispatchPrintJob(job, devices, { printerId: printer.id });
+  }
+  return { ok: true, printerId: printer.id, printerLabel: printer.label ?? "Receipt printer" };
 }
 
 export async function printTableTents(): Promise<void> {

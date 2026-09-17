@@ -88,6 +88,28 @@ export function buildDrawerKickBytes(): Uint8Array {
   return concat([INIT, u8(0x1b, 0x70, 0x00, 0x19, 0xfa)]);
 }
 
+function buildNoSaleSlip(job: PrintJob, opts?: EscPosOptions): Uint8Array {
+  const { emulation, width, cutter } = resolveOpts(opts);
+  const when = new Date(job.at || Date.now()).toLocaleString();
+  return concat([
+    INIT,
+    ALIGN_CT,
+    BOLD_ON,
+    text("NO SALE"),
+    BOLD_OFF,
+    FEED,
+    text("Not a receipt"),
+    FEED,
+    ALIGN_LT,
+    line("Station", job.tableLabel || job.locationName, width),
+    line("Staff", job.serverName || "", width),
+    line("Reason", job.guestCheckNote || String(job.checkNumber || ""), width),
+    line("When", when, width),
+    FEED,
+    cutBytes(emulation, cutter),
+  ]);
+}
+
 function qrPayload(data: string): Uint8Array {
   const d = text(data.slice(0, 80));
   const storeLen = d.length + 3;
@@ -216,6 +238,7 @@ function buildGuestCheckEscPos(
 /** ESC/POS or Star Line bytes for a hospitality printer (LAN 9100). */
 export function buildEscPos(job: PrintJob, opts?: EscPosOptions): Uint8Array {
   if (job.kind === "drawer_kick") return buildDrawerKickBytes();
+  if (job.kind === "no_sale") return buildNoSaleSlip(job, opts);
   if (job.kind === "till_turn_in") return buildTillTurnInEscPos(job);
   const { emulation, width, cutter, impact } = resolveOpts(opts);
   if (impact && job.kind !== "guest_check" && job.kind !== "receipt") {
