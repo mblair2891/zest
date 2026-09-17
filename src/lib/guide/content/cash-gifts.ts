@@ -128,7 +128,7 @@ export const CASH_GIFT_TOPICS: GuideTopic[] = [
         "Making change or clearing a stuck drawer must not invent a $0 check and must not hide inside Pay.",
       ),
       ul(
-        "On a bound order or host terminal (Devices → Stations that may print and kick), No sale is on the short menu, the floor, and the pad when no check is open — not on Pay. Unbound handhelds do not show No sale.",
+        "On a terminal in Stations that may kick drawer, No sale is on the short menu, the floor, and the pad when no check is open — not on Pay. Handhelds do not show No sale.",
         "It sends a drawer kick on the bound Receipt printer (ESC/POS pulse). Kitchen Star never kicks.",
         "If this station has no receipt printer with a drawer wired: “No drawer on this station.”",
         "Every kick writes an audit row: who, station, time, reason (Change, Mistake, Manager). Never a silent kick.",

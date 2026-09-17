@@ -14,7 +14,7 @@ import { DemoEntitySwitcher } from "@/components/demo/DemoEntitySwitcher";
 import { showDemoEntitySwitcher } from "@/lib/demo/entity-switch";
 import { ROLE_LABEL } from "@/lib/pos/rbac";
 import { NoSaleControl } from "./NoSaleControl";
-import { currentStationDeviceId, stationHasBoundReceiptPrinter } from "@/lib/print/receipt-printer";
+import { currentStationDeviceId, stationMayKickDrawer } from "@/lib/print/receipt-printer";
 
 /** After PIN: 2–6 large named jobs this device × PIN allows. */
 export function StationHomeMenu() {
@@ -32,7 +32,7 @@ export function StationHomeMenu() {
     emp ? Boolean(s.possessions[emp.id]) : false,
   );
   const locationDevices = usePosStore((s) => s.locationDevices);
-  const canPayStation = stationHasBoundReceiptPrinter(
+  const canPayStation = stationMayKickDrawer(
     locationDevices,
     currentStationDeviceId(),
   );

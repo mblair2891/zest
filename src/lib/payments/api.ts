@@ -109,3 +109,32 @@ export const sendGuestReceiptFn = createServerFn({ method: "POST" })
     }
     return { ok: false, status: "failed", error: "Email is down. Print the receipt instead." };
   });
+
+export const sendGuestReceiptSmsFn = createServerFn({ method: "POST" })
+  .middleware([tenantMiddleware])
+  .validator((d: { locationId: string; to: string; text: string }) => ({
+    locationId: loc(d.locationId),
+    to: String(d.to ?? "").replace(/[^\d+]/g, "").slice(0, 20),
+    text: String(d.text || "").slice(0, 1400),
+  }))
+  .handler(async ({ context, data }): Promise<{ ok: boolean; error?: string }> => {
+    if (data.locationId) {
+      const { bindTenant } = await import("@/lib/saas/assert-tenant.server");
+      await bindTenant(context.userId, { locationId: data.locationId });
+    }
+    if (data.to.replace(/\D/g, "").length < 10) {
+      return { ok: false, error: "Enter a valid mobile number" };
+    }
+    const { sendSms } = await import("@/lib/front/messaging.server");
+    const res = await sendSms({
+      to: data.to,
+      body: data.text,
+      kind: "receipt_sms",
+      locationId: data.locationId,
+    });
+    if (res.ok) return { ok: true };
+    if ("blocked" in res && res.blocked) {
+      return { ok: false, error: res.reason || "SMS is not available." };
+    }
+    return { ok: false, error: "SMS is down. Email or print the receipt instead." };
+  });

@@ -3,10 +3,13 @@ import { readStationDeviceRole } from "@/lib/pos/device-roles";
 import { readStationPair } from "@/lib/pos/station-pair";
 import { usePosStore } from "@/lib/pos/store";
 import {
+  cashAtCopy as cashAtCopyBind,
   payAtCopy as payAtCopyBind,
   receiptPrinterServesStation as serves,
   resolveReceiptPrinter as resolveBind,
   stationHasBoundReceiptPrinter as hasBound,
+  stationMayKickDrawer as mayKick,
+  stationMayPrintReceipt as mayPrint,
   type ReceiptBindDevice,
 } from "./receipt-bind";
 
@@ -53,6 +56,32 @@ export function stationHasBoundReceiptPrinter(
 
 export function payAtCopy(devices: LocationDevice[] | undefined): string {
   return payAtCopyBind(devices as ReceiptBindDevice[] | undefined);
+}
+
+export function cashAtCopy(devices: LocationDevice[] | undefined): string {
+  return cashAtCopyBind(devices as ReceiptBindDevice[] | undefined);
+}
+
+export function stationMayKickDrawer(
+  devices: LocationDevice[] | undefined,
+  stationDeviceId: string | null | undefined,
+): boolean {
+  return mayKick(
+    devices as ReceiptBindDevice[] | undefined,
+    stationDeviceId,
+    readStationDeviceRole(),
+  );
+}
+
+export function stationMayPrintReceipt(
+  devices: LocationDevice[] | undefined,
+  stationDeviceId: string | null | undefined,
+): boolean {
+  return mayPrint(
+    devices as ReceiptBindDevice[] | undefined,
+    stationDeviceId,
+    readStationDeviceRole(),
+  );
 }
 
 export function currentStationDeviceId(): string | null {

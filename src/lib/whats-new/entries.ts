@@ -6,6 +6,19 @@ import type { GuideUpdate } from "@/lib/guide/types";
  */
 export const WHATS_NEW_ENTRIES: GuideUpdate[] = [
   {
+    id: "upd_2026_10_116_handheld_card",
+    date: "2026-09-17",
+    title: "Handheld card pay; cash on the terminal",
+    summary:
+      "Samsung-class handhelds take card (tip, sign, email/SMS/print). Cash, Print check, No sale, and drawer kick stay on bound terminals.",
+    body: "Devices: set station class Handheld vs Terminal. Assign a mobile Quantum reader to each handheld and a counter reader to each terminal. Receipt printer has two lists — stations that may print (handhelds optional for paid receipts) and stations that may kick drawer (terminals only). After card: Email, SMS, Printed receipt, or None. Printed from a handheld queues 9100 to the bound receipt printer, or Open on terminal flags the check so a register can Print receipt. QR pay on the guest phone is unchanged. Handheld cash is off unless the venue enables it.",
+    roles: ["owner_manager", "server", "host_operator"],
+    surfaces: ["settings", "floor"],
+    audience: "all",
+    topicId: "printers-kds",
+    tags: ["pay", "handheld", "card", "drawer"],
+  },
+  {
     id: "upd_2026_10_115_pay_stations",
     date: "2026-09-17",
     title: "Pay and drawer only on bound terminals",

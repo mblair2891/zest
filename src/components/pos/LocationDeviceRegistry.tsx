@@ -207,6 +207,10 @@ export function LocationDeviceRegistry({
   const [renameDest, setRenameDest] = useState("");
   const [printPayQr, setPrintPayQr] = useState(true);
   const [boundStationIds, setBoundStationIds] = useState<string[]>([]);
+  const [kickStationIds, setKickStationIds] = useState<string[]>([]);
+  const [stationClass, setStationClass] = useState<"handheld" | "terminal">("handheld");
+  const [cardReaderKind, setCardReaderKind] = useState<"mobile" | "counter">("mobile");
+  const [cardReaderId, setCardReaderId] = useState("");
   const [receiptPrinterId, setReceiptPrinterId] = useState<string>("");
   const [busy, setBusy] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState<LocationDevice | null>(null);
@@ -436,6 +440,22 @@ export function LocationDeviceRegistry({
     setRenameDest("");
     setPrintPayQr(preset?.print?.printPayQr !== false);
     setBoundStationIds(preset?.print?.boundStationIds ?? []);
+    setKickStationIds(preset?.print?.kickStationIds ?? preset?.print?.boundStationIds ?? []);
+    const klass =
+      preset?.stationClass === "terminal" || preset?.stationClass === "handheld"
+        ? preset.stationClass
+        : stationRole === "host"
+          ? "terminal"
+          : "handheld";
+    setStationClass(klass);
+    setCardReaderKind(
+      preset?.cardReaderKind === "counter" || preset?.cardReaderKind === "mobile"
+        ? preset.cardReaderKind
+        : klass === "terminal"
+          ? "counter"
+          : "mobile",
+    );
+    setCardReaderId(preset?.cardReaderId ?? "");
     setReceiptPrinterId(preset?.receiptPrinterId ?? "");
     setFormOpen(true);
   };
@@ -504,9 +524,13 @@ export function LocationDeviceRegistry({
                     ? ["receipts"]
                     : defaultRoutesForPrinterType(type, destinationName),
                   boundStationIds,
+                  kickStationIds,
                 }
               : undefined,
             receiptPrinterId: printer ? null : receiptPrinterId || null,
+            stationClass: printer ? null : stationClass,
+            cardReaderId: printer ? null : cardReaderId || null,
+            cardReaderKind: printer ? null : cardReaderKind,
           },
         },
       });
@@ -1234,12 +1258,12 @@ export function LocationDeviceRegistry({
               <fieldset className="space-y-1">
                 <legend className="text-xs text-muted-foreground">
                   {isReceiptPrinterType(type)
-                    ? "Stations that may print and kick"
+                    ? "Stations that may print"
                     : "Which stations may send to it"}
                 </legend>
                 <p className="text-[11px] text-muted-foreground">
                   {isReceiptPrinterType(type)
-                    ? "Order and host only. Check the terminals with this receipt printer and drawer. Leave handhelds unchecked — they ring and fire; guests pay at a bound terminal or host stand. Empty = no station prints or kicks from this printer."
+                    ? "Paid receipts (and Print check on terminals). Handhelds optional for receipts only. Empty = no station prints from this printer."
                     : "Empty = every order and host station. Entity filter above routes food vs drink on a peer venue."}
                 </p>
                 <div className="flex flex-col gap-1">
@@ -1270,12 +1294,82 @@ export function LocationDeviceRegistry({
                     })}
                 </div>
               </fieldset>
+              {isReceiptPrinterType(type) && (
+                <fieldset className="space-y-1">
+                  <legend className="text-xs text-muted-foreground">
+                    Stations that may kick drawer
+                  </legend>
+                  <p className="text-[11px] text-muted-foreground">
+                    Terminals only — cash, No sale, drawer kick. Leave handhelds unchecked.
+                  </p>
+                  <div className="flex flex-col gap-1">
+                    {devices
+                      .filter((d) => !isPrinterDevice(d) && d.status !== "inactive")
+                      .map((d) => {
+                        const role = deviceRoleFromFunction(d.assignment.function);
+                        if (role === "ods" || role === "kiosk") return null;
+                        return (
+                          <label key={`kick-${d.id}`} className="flex items-center gap-2 text-sm">
+                            <input
+                              type="checkbox"
+                              className="h-4 w-4 rounded border-border"
+                              checked={kickStationIds.includes(d.id)}
+                              onChange={(e) =>
+                                setKickStationIds((prev) =>
+                                  e.target.checked
+                                    ? [...prev, d.id]
+                                    : prev.filter((x) => x !== d.id),
+                                )
+                              }
+                            />
+                            {d.label} · {DEVICE_ROLE_LABEL[role]}
+                          </label>
+                        );
+                      })}
+                  </div>
+                </fieldset>
+              )}
             </div>
           )}
-          {!isPrinterType(type) &&
-            mode === "stations" &&
-            stationRole !== "ods" &&
-            stationRole !== "kiosk" && (
+          {!isPrinterType(type) && mode === "stations" && stationRole !== "ods" && stationRole !== "kiosk" && (
+            <div className="space-y-3">
+            <label className="block text-xs text-muted-foreground">
+              Station class
+              <select
+                className="mt-1 h-10 w-full rounded-xl border border-border bg-bg px-3 text-sm text-foreground"
+                value={stationClass}
+                onChange={(e) => {
+                  const next = e.target.value === "terminal" ? "terminal" : "handheld";
+                  setStationClass(next);
+                  setCardReaderKind(next === "terminal" ? "counter" : "mobile");
+                }}
+              >
+                <option value="handheld">Handheld (card, no drawer)</option>
+                <option value="terminal">Terminal (cash + drawer)</option>
+              </select>
+            </label>
+            <label className="block text-xs text-muted-foreground">
+              Card reader
+              <select
+                className="mt-1 h-10 w-full rounded-xl border border-border bg-bg px-3 text-sm text-foreground"
+                value={cardReaderKind}
+                onChange={(e) =>
+                  setCardReaderKind(e.target.value === "counter" ? "counter" : "mobile")
+                }
+              >
+                <option value="mobile">Mobile reader (handheld)</option>
+                <option value="counter">Counter reader (terminal)</option>
+              </select>
+            </label>
+            <label className="block text-xs text-muted-foreground">
+              Reader id
+              <input
+                className="mt-1 h-10 w-full rounded-xl border border-border bg-bg px-3 text-sm"
+                value={cardReaderId}
+                onChange={(e) => setCardReaderId(e.target.value)}
+                placeholder="Finix / Quantum reader"
+              />
+            </label>
             <label className="block text-xs text-muted-foreground">
               Receipt printer
               <select
@@ -1283,7 +1377,7 @@ export function LocationDeviceRegistry({
                 value={receiptPrinterId}
                 onChange={(e) => setReceiptPrinterId(e.target.value)}
               >
-                <option value="">Not a pay station (ring and fire)</option>
+                <option value="">No mapped receipt printer</option>
                 {devices
                   .filter(
                     (d) =>
@@ -1300,6 +1394,7 @@ export function LocationDeviceRegistry({
                   ))}
               </select>
             </label>
+            </div>
           )}
           <div className="flex flex-wrap gap-2">
             <Button size="sm" disabled={busy} onClick={() => void save()}>

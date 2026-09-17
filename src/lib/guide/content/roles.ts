@@ -145,7 +145,7 @@ export const ROLE_GUIDE_TOPICS: GuideTopic[] = [
         "Peer venue: you can sell both brands on one check. You cannot edit the other entity’s menu or schedule.",
       ),
       steps(
-        "PIN in on an order station. Full-service menu: My tables, New table, To-go, Bar tab (if the house has a rail), Clock, Closeout. No sale / Print check / Pay only if this station is bound to a Receipt printer. Handhelds ring and fire; pay at a named terminal or host stand. Counter is New ticket. On an 8\" handheld the item menu is full width; tap Check for the slide-over.",
+        "PIN in on an order station. Full-service menu: My tables, New table, To-go, Bar tab (if the house has a rail), Clock, Closeout. Handheld: card pay (flip to guest). Terminal: cash, Print check, No sale. Counter is New ticket. On an 8\" handheld the item menu is full width; tap Check for the slide-over.",
         "My tables is the map and status only. Tap a table to open the check. Pay / split is on that check.",
         "Bar tab opens your assigned section stools — tap a stool. To-go does not use the floor.",
         "Pay when the house allows. Closeout is on the short menu at end of shift — not clock-out.",

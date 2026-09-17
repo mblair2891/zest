@@ -1,7 +1,7 @@
 # Operators Guide — authoring
 
-**Revision · 17 Sep 2026** — Pay and drawer only on bound terminals.
-Guide v2026.10.115.
+**Revision · 17 Sep 2026** — Handheld card pay, terminal cash and print.
+Guide v2026.10.116.
 
 The in-app **Operators Guide** is the living product manual. It is not a
 separate PDF. Staff open it from **Guide** / **?** in the POS and platform

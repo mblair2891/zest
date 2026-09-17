@@ -265,6 +265,8 @@ export interface RestaurantSettings {
   /** Location lifecycle: training uses sandbox cards. */
   lifecycleStatus?: "onboarding" | "awaiting_entities" | "training" | "scheduled_live" | "live";
   quantumReaderId?: string;
+  /** Handhelds may take cash. Default off — cash stays on terminals with a drawer. */
+  handheldCashEnabled?: boolean;
   /** Practice orders move on-hand when true. */
   trainingTrackInventory?: boolean;
   /** AI ops report cadence. Off until the owner turns it on. */
@@ -516,6 +518,9 @@ export interface Order {
   holdOwner?: "user" | "house";
   pendingAcceptId?: string;
   pendingAcceptName?: string;
+  /** Handheld asked a terminal to print the paid receipt. */
+  receiptPendingAt?: number;
+  receiptPendingBy?: string;
 }
 
 export interface KitchenTicketItem {

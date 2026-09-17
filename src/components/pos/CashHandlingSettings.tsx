@@ -81,6 +81,7 @@ function Field({
 
 export function CashHandlingSettings({ write }: { write: boolean }) {
   const settings = usePosStore((s) => s.settings);
+  const updateSettings = usePosStore((s) => s.updateSettings);
   const employees = usePosStore((s) => s.employees);
   const vendors = usePosStore((s) => s.vendors);
   const devices = usePosStore((s) => s.locationDevices ?? []);
@@ -448,6 +449,15 @@ export function CashHandlingSettings({ write }: { write: boolean }) {
       )}
 
       <div className="grid gap-3 sm:grid-cols-2">
+        <label className="flex items-center justify-between gap-3 text-sm sm:col-span-2">
+          <span>Handhelds may take cash</span>
+          <input
+            type="checkbox"
+            disabled={!write}
+            checked={Boolean(settings.handheldCashEnabled)}
+            onChange={(e) => updateSettings({ handheldCashEnabled: e.target.checked })}
+          />
+        </label>
         <Field label="Open drawer on cash sale">
           <select
             className="h-9 w-full rounded-lg border border-border bg-bg px-2 text-sm"

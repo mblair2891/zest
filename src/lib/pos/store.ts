@@ -72,7 +72,7 @@ import {
   noSaleNeedsManagerPin,
 } from "./no-sale";
 import { resolveReceiptDrawer } from "../print/receipt-drawer";
-import { payAtCopy, stationHasBoundReceiptPrinter } from "../print/receipt-bind";
+import { cashAtCopy, stationMayKickDrawer } from "../print/receipt-bind";
 import { readPairedDeviceId } from "./location-devices";
 import { methodEnabled, parsePaymentMethods } from "./payment-methods";
 import { giftSellBlockedReason, parseGiftLimits } from "./gift-limits";
@@ -1266,6 +1266,35 @@ const usePosStoreRaw = create<PosStore>()(persist((set, get) => {
 			}
 		}
 		set({ activeOrderId: id, view: "order" });
+		return { ok: true };
+	},
+	flagReceiptPending: (orderId) => {
+		const emp = get().getCurrentEmployee();
+		const order = get().orders.find((o: any) => o.id === orderId);
+		if (!order) return { ok: false, error: "Check not found" };
+		set({
+			orders: get().orders.map((o: any) =>
+				o.id === orderId
+					? {
+							...o,
+							receiptPendingAt: Date.now(),
+							receiptPendingBy: emp?.name,
+						}
+					: o,
+			),
+		});
+		get().audit("receipt_pending", `Print receipt on terminal · #${order.number}`, {
+			orderId: order.id,
+			orderNumber: order.number,
+		});
+		return { ok: true };
+	},
+	clearReceiptPending: (orderId) => {
+		set({
+			orders: get().orders.map((o: any) =>
+				o.id === orderId ? { ...o, receiptPendingAt: undefined, receiptPendingBy: undefined } : o,
+			),
+		});
 		return { ok: true };
 	},
 	getCurrentEmployee: () => {
@@ -2861,14 +2890,16 @@ const usePosStoreRaw = create<PosStore>()(persist((set, get) => {
 		}
 		if (
 			emp.id !== "guest_qr" &&
+			method === "cash" &&
 			(deviceRole === "order" || deviceRole === "host")
 		) {
 			let stationId = get().activeDeviceId || null;
 			try {
 				stationId = stationId || readStationPair()?.deviceId || null;
 			} catch { /* */ }
-			if (!stationHasBoundReceiptPrinter(get().locationDevices, stationId, deviceRole)) {
-				return { ok: false, error: payAtCopy(get().locationDevices) };
+			const handheldCash = Boolean(get().settings.handheldCashEnabled);
+			if (!stationMayKickDrawer(get().locationDevices, stationId, deviceRole) && !handheldCash) {
+				return { ok: false, error: cashAtCopy(get().locationDevices) };
 			}
 		}
 		{

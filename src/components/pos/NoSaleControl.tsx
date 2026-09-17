@@ -19,7 +19,7 @@ import {
 import { cn } from "@/lib/utils";
 import {
   currentStationDeviceId,
-  stationHasBoundReceiptPrinter,
+  stationMayKickDrawer,
 } from "@/lib/print/receipt-printer";
 
 export function NoSaleControl({
@@ -35,7 +35,7 @@ export function NoSaleControl({
   const cashCfg = parseCashHandling(usePosStore((s) => s.settings.cashHandling));
   const noSale = usePosStore((s) => s.noSale);
   const locationDevices = usePosStore((s) => s.locationDevices);
-  const canPayStation = stationHasBoundReceiptPrinter(
+  const canPayStation = stationMayKickDrawer(
     locationDevices,
     currentStationDeviceId(),
   );

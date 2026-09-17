@@ -200,6 +200,9 @@ export const saveLocationDeviceFn = createServerFn({ method: "POST" })
       assignment: { operatorId: string; function: DeviceFunction };
       print?: unknown;
       receiptPrinterId?: string | null;
+      stationClass?: "handheld" | "terminal" | null;
+      cardReaderId?: string | null;
+      cardReaderKind?: "mobile" | "counter" | null;
     };
   }) => {
     const storedType = DEVICE_TYPES.includes(d.device?.type) ? d.device.type : "other";
@@ -229,6 +232,17 @@ export const saveLocationDeviceFn = createServerFn({ method: "POST" })
             : d.device?.receiptPrinterId
               ? String(d.device.receiptPrinterId).trim().slice(0, 80)
               : null,
+        stationClass:
+          d.device?.stationClass === "handheld" || d.device?.stationClass === "terminal"
+            ? d.device.stationClass
+            : null,
+        cardReaderId: d.device?.cardReaderId
+          ? String(d.device.cardReaderId).trim().slice(0, 80)
+          : null,
+        cardReaderKind:
+          d.device?.cardReaderKind === "mobile" || d.device?.cardReaderKind === "counter"
+            ? d.device.cardReaderKind
+            : null,
       },
     };
   })
@@ -274,6 +288,15 @@ export const saveLocationDeviceFn = createServerFn({ method: "POST" })
         printer
           ? existing?.receiptPrinterId ?? null
           : (data.device.receiptPrinterId ?? existing?.receiptPrinterId ?? null),
+      stationClass: printer
+        ? existing?.stationClass
+        : (data.device.stationClass ?? existing?.stationClass),
+      cardReaderId: printer
+        ? existing?.cardReaderId
+        : (data.device.cardReaderId ?? existing?.cardReaderId),
+      cardReaderKind: printer
+        ? existing?.cardReaderKind
+        : (data.device.cardReaderKind ?? existing?.cardReaderKind),
       applyRoleNow: existing?.applyRoleNow,
       roleRevision: existing?.roleRevision,
     });

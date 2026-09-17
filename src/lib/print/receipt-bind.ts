@@ -13,10 +13,14 @@ export type ReceiptBindDevice = {
     station?: string;
     routes?: string[];
     boundStationIds?: string[];
+    /** Terminals that may kick the cash drawer. Empty + missing = print list (legacy). */
+    kickStationIds?: string[];
   };
+  stationClass?: string | null;
 };
 
 export const PAY_AT_FALLBACK = "Pay at a register or host stand.";
+export const CASH_AT_FALLBACK = "Cash at a register or host stand.";
 
 const RECEIPT_TYPES = new Set(["receipt_printer", "printer"]);
 
@@ -76,7 +80,80 @@ export function receiptPrinterServesStation(
   return false;
 }
 
-/** Order/host tablets explicitly bound to a receipt printer (pay, print check, no sale). */
+function kickIdsForPrinter(printer: ReceiptBindDevice): string[] {
+  const kick = printer.print?.kickStationIds;
+  if (Array.isArray(kick)) return kick;
+  return printer.print?.boundStationIds ?? [];
+}
+
+/** Drawer kick / cash / Print check / No sale — terminals on the kick list. */
+export function receiptPrinterKicksForStation(
+  printer: ReceiptBindDevice,
+  opts: {
+    stationDeviceId?: string | null;
+    role?: ReceiptBindRole | null;
+    devices?: ReceiptBindDevice[];
+  },
+): boolean {
+  if (!isReceiptPrinterRow(printer)) return false;
+  const devices = opts.devices ?? [];
+  const row = opts.stationDeviceId ? devices.find((d) => d.id === opts.stationDeviceId) : undefined;
+  const role =
+    opts.role ??
+    (row && !isPrinterType(row.type) ? roleFromFunction(row.assignment?.function) : "order");
+  if (role === "ods" || role === "kiosk") return false;
+  if (row && parseClass(row) !== "terminal") return false;
+  const ids = kickIdsForPrinter(printer);
+  if (opts.stationDeviceId && ids.includes(opts.stationDeviceId)) return true;
+  return false;
+}
+
+function parseClass(row: ReceiptBindDevice): "handheld" | "terminal" {
+  if (row.stationClass === "terminal" || row.stationClass === "handheld") return row.stationClass;
+  const fn = row.assignment?.function;
+  if (row.type === "host_stand" || fn === "host_stand" || fn === "cashier") return "terminal";
+  return "handheld";
+}
+
+export function resolveReceiptKickPrinter(
+  devices: ReceiptBindDevice[] | undefined,
+  stationDeviceId: string | null | undefined,
+  role?: ReceiptBindRole | null,
+): ReceiptBindDevice | undefined {
+  const list = devices ?? [];
+  const receipts = list.filter(isReceiptPrinterRow);
+  const resolvedRole =
+    role ??
+    (() => {
+      const row = stationDeviceId ? list.find((d) => d.id === stationDeviceId) : undefined;
+      return row && !isPrinterType(row.type) ? roleFromFunction(row.assignment?.function) : undefined;
+    })();
+  return receipts.find((d) =>
+    receiptPrinterKicksForStation(d, {
+      stationDeviceId,
+      role: resolvedRole,
+      devices: list,
+    }),
+  );
+}
+
+export function stationMayPrintReceipt(
+  devices: ReceiptBindDevice[] | undefined,
+  stationDeviceId: string | null | undefined,
+  role?: ReceiptBindRole | null,
+): boolean {
+  return Boolean(resolveReceiptPrinter(devices, stationDeviceId, role));
+}
+
+export function stationMayKickDrawer(
+  devices: ReceiptBindDevice[] | undefined,
+  stationDeviceId: string | null | undefined,
+  role?: ReceiptBindRole | null,
+): boolean {
+  return Boolean(resolveReceiptKickPrinter(devices, stationDeviceId, role));
+}
+
+/** Terminals on a receipt printer kick list — cash, Print check, No sale. */
 export function payStationDevices(devices: ReceiptBindDevice[] | undefined): ReceiptBindDevice[] {
   const list = devices ?? [];
   return list.filter((d) => {
@@ -84,18 +161,22 @@ export function payStationDevices(devices: ReceiptBindDevice[] | undefined): Rec
     if (d.status === "inactive") return false;
     const role = roleFromFunction(d.assignment?.function);
     if (role === "ods" || role === "kiosk") return false;
-    return Boolean(resolveReceiptPrinter(list, d.id, role));
+    return Boolean(resolveReceiptKickPrinter(list, d.id, role));
   });
 }
 
 export function payAtCopy(devices: ReceiptBindDevice[] | undefined): string {
+  return cashAtCopy(devices);
+}
+
+export function cashAtCopy(devices: ReceiptBindDevice[] | undefined): string {
   const names = payStationDevices(devices)
     .map((d) => String(d.label ?? "").trim())
     .filter(Boolean);
-  if (!names.length) return PAY_AT_FALLBACK;
-  if (names.length === 1) return `Pay at ${names[0]}.`;
-  if (names.length === 2) return `Pay at ${names[0]} or ${names[1]}.`;
-  return `Pay at ${names.slice(0, -1).join(", ")}, or ${names[names.length - 1]}.`;
+  if (!names.length) return CASH_AT_FALLBACK;
+  if (names.length === 1) return `Cash at ${names[0]}.`;
+  if (names.length === 2) return `Cash at ${names[0]} or ${names[1]}.`;
+  return `Cash at ${names.slice(0, -1).join(", ")}, or ${names[names.length - 1]}.`;
 }
 
 export function resolveReceiptPrinter(

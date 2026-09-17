@@ -222,6 +222,8 @@ export interface PosStore {
     reason: string,
     opts?: { overrideEmployeeId?: string; overrideEmployeeName?: string },
   ) => ActionResult;
+  flagReceiptPending: (orderId: string) => ActionResult;
+  clearReceiptPending: (orderId: string) => ActionResult;
   audit: (action: string, detail: string, meta?: AuditMeta) => void;
   updateSettings: (patch: Partial<RestaurantSettings>) => void;
   tableAccess: (

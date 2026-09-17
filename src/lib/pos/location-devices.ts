@@ -105,6 +105,8 @@ export type PrinterConfig = {
   printPayQr?: boolean;
   routes?: PrintRoute[];
   boundStationIds?: string[];
+  /** Terminals that may kick this drawer. Missing = print list (legacy). */
+  kickStationIds?: string[];
   lastPrintAt?: number;
   reachability?: PrinterReachability;
 };
@@ -200,6 +202,10 @@ export type LocationDevice = {
   print?: PrinterConfig;
   /** Station tablet → guest receipt printer. Empty = venue default receipt printer. */
   receiptPrinterId?: string | null;
+  /** Handheld (card, no drawer) vs terminal (cash + kick). */
+  stationClass?: import("./station-class").StationClass;
+  cardReaderId?: string | null;
+  cardReaderKind?: import("./station-class").CardReaderKind;
   /** Owner asked the idle PIN pad to take the new role now. */
   applyRoleNow?: boolean;
   roleRevision?: number;
@@ -345,6 +351,15 @@ export function parseLocationDevice(raw: unknown): LocationDevice | null {
           : o.receiptPrinterId
             ? String(o.receiptPrinterId).trim().slice(0, 80)
             : null,
+      stationClass:
+        o.stationClass === "handheld" || o.stationClass === "terminal"
+          ? o.stationClass
+          : undefined,
+      cardReaderId: o.cardReaderId ? String(o.cardReaderId).trim().slice(0, 80) : undefined,
+      cardReaderKind:
+        o.cardReaderKind === "mobile" || o.cardReaderKind === "counter"
+          ? o.cardReaderKind
+          : undefined,
       applyRoleNow: o.applyRoleNow === true,
       roleRevision: Number(o.roleRevision) > 0 ? Math.round(Number(o.roleRevision)) : undefined,
       claimExpiresAt:
@@ -578,6 +593,9 @@ export function parsePrinterConfig(raw: unknown): PrinterConfig | undefined {
   const bound = Array.isArray(o.boundStationIds)
     ? o.boundStationIds.map((x) => String(x).trim()).filter(Boolean).slice(0, 40)
     : [];
+  const kick = Array.isArray(o.kickStationIds)
+    ? o.kickStationIds.map((x) => String(x).trim()).filter(Boolean).slice(0, 40)
+    : undefined;
   const kickRaw = String(o.drawerKick ?? "");
   const drawerKick: PrinterDrawerKick | undefined =
     kickRaw === "attached" || kickRaw === "none" ? kickRaw : undefined;
@@ -603,6 +621,7 @@ export function parsePrinterConfig(raw: unknown): PrinterConfig | undefined {
     printPayQr: station === "receipt" ? printPayQr !== false : undefined,
     routes: routes.length ? routes : [routeForPrintStation(station)],
     boundStationIds: bound,
+    kickStationIds: kick,
     lastPrintAt: Number(o.lastPrintAt) > 0 ? Math.round(Number(o.lastPrintAt)) : undefined,
     reachability,
   };
@@ -658,6 +677,7 @@ export function pendingPrinterDevice(opts: {
       printPayQr: receipt ? true : undefined,
       routes: defaultRoutesForPrinterType(type, destinationName),
       boundStationIds: [],
+      kickStationIds: [],
     },
   };
 }

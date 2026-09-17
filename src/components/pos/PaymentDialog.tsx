@@ -17,7 +17,12 @@ import { cn, formatCurrency } from "@/lib/utils";
 import type { PaymentMethod } from "@/lib/pos/types";
 import { GuideLearnLink } from "@/components/guide/GuideLearnLink";
 import { captureIsSandbox } from "@/lib/lifecycle/store";
-import { captureCardPresentFn, getPaymentsStatusFn, sendGuestReceiptFn } from "@/lib/payments/api";
+import {
+  captureCardPresentFn,
+  getPaymentsStatusFn,
+  sendGuestReceiptFn,
+  sendGuestReceiptSmsFn,
+} from "@/lib/payments/api";
 import {
   buildGuestCheckView,
   guestCheckHtml,
@@ -26,10 +31,12 @@ import {
 import { GuestCheckByVendor } from "./GuestCheckByVendor";
 import { printGuestCheck, printGuestReceipt } from "@/lib/print/from-store";
 import {
+  cashAtCopy,
   currentStationDeviceId,
-  payAtCopy,
-  stationHasBoundReceiptPrinter,
+  stationMayKickDrawer,
+  stationMayPrintReceipt,
 } from "@/lib/print/receipt-printer";
+import { parseStationClass } from "@/lib/pos/station-class";
 import { issueGiftCardFn, lookupGiftCardFn, redeemGiftCardFn } from "@/lib/gift/api";
 import { defaultGiftIssuer, fulfillingIssuer } from "@/lib/pos/gift-issuer";
 import { giftNeedsManagerPin, giftSellBlockedReason, parseGiftLimits } from "@/lib/pos/gift-limits";
@@ -65,6 +72,8 @@ export function PaymentDialog({ open, onOpenChange }: Props) {
   const settings = usePosStore((s) => s.settings);
   const takePayment = usePosStore((s) => s.takePayment);
   const printCheck = usePosStore((s) => s.printCheck);
+  const flagReceiptPending = usePosStore((s) => s.flagReceiptPending);
+  const clearReceiptPending = usePosStore((s) => s.clearReceiptPending);
   const wanOnline = useNetworkStore((s) => s.wanOnline());
   const clearTable = usePosStore((s) => s.clearTable);
   const setView = usePosStore((s) => s.setView);
@@ -72,14 +81,25 @@ export function PaymentDialog({ open, onOpenChange }: Props) {
   const canPay = canEmployee(emp, "payments:take");
   const payCfg = parsePaymentMethods(settings.paymentMethods);
   const giftOk = canPay && payCfg.giftCard;
+  const locationDevices = usePosStore((s) => s.locationDevices);
+  const activeDeviceId = usePosStore((s) => s.activeDeviceId);
   const cashSink = currentCashSink({
     cfg: parseCashHandling(settings.cashHandling),
     emp: emp ?? null,
     deviceRole: cashRoleFromSession(useStationSessionStore.getState().assignment.kind),
-    deviceId: usePosStore((s) => s.activeDeviceId),
+    deviceId: activeDeviceId,
     order: order ?? null,
   });
-  const cashAllowed = cashSink.type !== "blocked";
+  const stationId = activeDeviceId || currentStationDeviceId();
+  const stationRow = locationDevices.find((d) => d.id === stationId);
+  const stationClass = parseStationClass(stationRow?.stationClass, stationRow);
+  const mayKick = stationMayKickDrawer(locationDevices, stationId);
+  const mayPrintReceipt = stationMayPrintReceipt(locationDevices, stationId);
+  const mayPrintCheck = mayKick && mayPrintReceipt;
+  const handheldCash = Boolean(settings.handheldCashEnabled);
+  const cashAllowed =
+    cashSink.type !== "blocked" && (mayKick || (stationClass === "handheld" && handheldCash));
+  const cashHere = cashAtCopy(locationDevices);
   const deviceRole = (() => {
     try {
       const q = parseStationQuery(new URLSearchParams(window.location.search).get("station"));
@@ -91,14 +111,7 @@ export function PaymentDialog({ open, onOpenChange }: Props) {
   })();
   const odsBlocked = deviceRole === "ods";
   const layout = useStationLayout();
-  const payMethods = enabledPayMethods(payCfg);
-  const locationDevices = usePosStore((s) => s.locationDevices);
-  const activeDeviceId = usePosStore((s) => s.activeDeviceId);
-  const hasBoundReceipt = stationHasBoundReceiptPrinter(
-    locationDevices,
-    activeDeviceId || currentStationDeviceId(),
-  );
-  const payHere = payAtCopy(locationDevices);
+  const payMethods = enabledPayMethods(payCfg).filter((m) => (m === "cash" ? cashAllowed : true));
 
   const [method, setMethod] = useState<PaymentMethod>(() =>
     firstEnabledMethod(payCfg, wanOnline ? "card" : "cash"),
@@ -134,17 +147,20 @@ export function PaymentDialog({ open, onOpenChange }: Props) {
   const [payStatus, setPayStatus] = useState<PaymentsStatus | null>(null);
   const [receiptEmail, setReceiptEmail] = useState("");
   const [receiptMsg, setReceiptMsg] = useState<string | null>(null);
-  const [receiptChoice, setReceiptChoice] = useState<"choose" | "email">("choose");
+  const [receiptChoice, setReceiptChoice] = useState<"choose" | "email" | "sms">("choose");
+  const [receiptSms, setReceiptSms] = useState("");
   const [receiptBusy, setReceiptBusy] = useState(false);
   const [checkPrintMsg, setCheckPrintMsg] = useState<string | null>(null);
   const [checkPrintBusy, setCheckPrintBusy] = useState(false);
+  const [guestFace, setGuestFace] = useState(false);
+  const [signed, setSigned] = useState(false);
 
   useEffect(() => {
     const cfg = parsePaymentMethods(settings.paymentMethods);
-    if (!methodEnabled(cfg, method)) {
-      setMethod(firstEnabledMethod(cfg, wanOnline ? "card" : "cash"));
+    if (!methodEnabled(cfg, method) || (method === "cash" && !cashAllowed)) {
+      setMethod(firstEnabledMethod(cfg, wanOnline || !cashAllowed ? "card" : "cash"));
     }
-  }, [settings.paymentMethods, method, wanOnline]);
+  }, [settings.paymentMethods, method, wanOnline, cashAllowed]);
 
   const amountCents = amount
     ? Math.round(parseFloat(amount) * 100)
@@ -409,6 +425,7 @@ export function PaymentDialog({ open, onOpenChange }: Props) {
             amountCents: tend + tip,
             checkId: order?.id,
             hostBrand: settings.name,
+            readerId: stationRow?.cardReaderId || settings.quantumReaderId || undefined,
             clientMutationId: uid("mut"),
             sandboxLast4: payStatus?.mode === "sandbox" ? last4 || "4242" : undefined,
             entities,
@@ -532,6 +549,7 @@ export function PaymentDialog({ open, onOpenChange }: Props) {
         setReceiptBusy(false);
         return;
       }
+      clearReceiptPending(order.id);
       finish();
     } catch {
       setReceiptMsg("Print failed. Check the mapped receipt printer.");
@@ -572,6 +590,41 @@ export function PaymentDialog({ open, onOpenChange }: Props) {
       finish();
     } catch {
       setReceiptMsg("Email is down. Print the receipt instead.");
+      setReceiptBusy(false);
+    }
+  };
+
+  const runSmsReceipt = async () => {
+    if (!order) return;
+    const loc =
+      usePosStore.getState().tenantLocationId ||
+      readTenantPosContext()?.locationId ||
+      "";
+    const view = buildGuestCheckView({
+      order,
+      settings,
+      hostName: settings.name,
+      operatorName: (id) =>
+        usePosStore.getState().vendors.find((v) => v.id === id)?.name ?? id,
+    });
+    setReceiptBusy(true);
+    setReceiptMsg(null);
+    try {
+      const r = await sendGuestReceiptSmsFn({
+        data: {
+          locationId: loc,
+          to: receiptSms,
+          text: `${settings.name} receipt #${order.number}. ${guestCheckText(view).slice(0, 1200)}`,
+        },
+      });
+      if (!r.ok) {
+        setReceiptMsg(r.error || "SMS is down. Email or print the receipt instead.");
+        setReceiptBusy(false);
+        return;
+      }
+      finish();
+    } catch {
+      setReceiptMsg("SMS is down. Email or print the receipt instead.");
       setReceiptBusy(false);
     }
   };
@@ -708,12 +761,38 @@ export function PaymentDialog({ open, onOpenChange }: Props) {
                   size="lg"
                   className="station-touch min-h-12 w-full"
                   variant="outline"
+                  onClick={() => {
+                    setReceiptChoice("sms");
+                    setReceiptMsg(null);
+                  }}
+                >
+                  SMS
+                </Button>
+                {mayPrintReceipt && (
+                <Button
+                  size="lg"
+                  className="station-touch min-h-12 w-full"
+                  variant="outline"
                   disabled={receiptBusy}
                   onClick={() => void runPrintReceipt()}
                 >
                   <Printer className="h-5 w-5" />
-                  Print
+                  Printed receipt
                 </Button>
+                )}
+                {stationClass === "handheld" && (
+                  <Button
+                    size="lg"
+                    className="station-touch min-h-12 w-full"
+                    variant="outline"
+                    onClick={() => {
+                      flagReceiptPending(order.id);
+                      finish();
+                    }}
+                  >
+                    Open on terminal
+                  </Button>
+                )}
                 <Button
                   size="lg"
                   className="station-touch min-h-12 w-full"
@@ -721,7 +800,36 @@ export function PaymentDialog({ open, onOpenChange }: Props) {
                   onClick={finish}
                 >
                   <Ban className="h-5 w-5" />
-                  No receipt
+                  None
+                </Button>
+              </div>
+            )}
+            {receiptChoice === "sms" && (
+              <div className="space-y-2 text-left">
+                <Input
+                  type="tel"
+                  placeholder="Mobile number"
+                  value={receiptSms}
+                  onChange={(e) => setReceiptSms(e.target.value)}
+                  autoFocus
+                />
+                <Button
+                  className="station-touch min-h-12 w-full"
+                  size="lg"
+                  disabled={!receiptSms.trim() || receiptBusy}
+                  onClick={() => void runSmsReceipt()}
+                >
+                  Send SMS
+                </Button>
+                <Button
+                  className="w-full"
+                  variant="ghost"
+                  onClick={() => {
+                    setReceiptChoice("choose");
+                    setReceiptMsg(null);
+                  }}
+                >
+                  Back
                 </Button>
               </div>
             )}
@@ -784,15 +892,52 @@ export function PaymentDialog({ open, onOpenChange }: Props) {
               </Button>
             )}
           </div>
-        ) : !hasBoundReceipt ? (
-          <div className="space-y-3">
-            <p
-              className="rounded-lg bg-warn/15 px-3 py-2 text-center text-sm font-semibold text-warn"
-              role="status"
-              data-pay-at
-            >
-              {payHere}
+        ) : guestFace ? (
+          <div className="space-y-4" data-guest-pay-face>
+            <p className="text-center text-xs uppercase tracking-wide text-muted-foreground">
+              {settings.name}
             </p>
+            <p className="text-center text-3xl font-semibold tabular">
+              {formatCurrency(Math.min(amountCents, balance) + tip)}
+            </p>
+            <p className="text-center text-sm text-muted-foreground">Amount + tip</p>
+            <div className="flex flex-wrap justify-center gap-2">
+              {[0, ...tips].map((t, i) => (
+                <Button
+                  key={i}
+                  size="lg"
+                  variant={tip === t ? "default" : "outline"}
+                  onClick={() => setTip(t)}
+                  className="tabular station-touch"
+                >
+                  {t === 0 ? "No tip" : formatCurrency(t)}
+                </Button>
+              ))}
+            </div>
+            <label className="flex items-center gap-2 rounded-xl border border-border px-3 py-3 text-sm">
+              <input
+                type="checkbox"
+                checked={signed}
+                onChange={(e) => setSigned(e.target.checked)}
+              />
+              I authorize this card charge
+            </label>
+            {error && (
+              <p className="text-center text-sm text-danger" role="alert">
+                {error}
+              </p>
+            )}
+            <Button
+              className="w-full"
+              size="xl"
+              disabled={busy || !signed}
+              onClick={() => pay()}
+            >
+              {busy ? "Present card on Quantum reader…" : "Pay"}
+            </Button>
+            <Button variant="ghost" className="w-full" onClick={() => setGuestFace(false)}>
+              Back to staff
+            </Button>
           </div>
         ) : (
           <div className="space-y-4">
@@ -802,6 +947,7 @@ export function PaymentDialog({ open, onOpenChange }: Props) {
                 and comps still work on this device. Card is not queued.
               </p>
             )}
+            {mayPrintCheck && (
             <Button
               size="lg"
               className="station-touch min-h-12 w-full"
@@ -830,6 +976,12 @@ export function PaymentDialog({ open, onOpenChange }: Props) {
               <Printer className="h-5 w-5" />
               Print check
             </Button>
+            )}
+            {stationClass === "handheld" && !cashAllowed && (
+              <p className="text-center text-xs text-muted-foreground" data-cash-at>
+                {cashHere} Card on this handheld.
+              </p>
+            )}
             {checkPrintMsg && (
               <p className="text-center text-xs text-muted-foreground" role="status">
                 {checkPrintMsg}
@@ -1120,9 +1272,21 @@ export function PaymentDialog({ open, onOpenChange }: Props) {
               </span>
             </div>
 
-            <Button className="w-full" size="xl" onClick={pay} disabled={busy}>
+            <Button
+              className="w-full"
+              size="xl"
+              onClick={() => {
+                if (method === "card" && stationClass === "handheld" && !guestFace) {
+                  setGuestFace(true);
+                  return;
+                }
+                pay();
+              }}
+              disabled={busy}
+            >
               {busy && "Present card on Quantum reader…"}
-              {!busy && method === "card" && "Charge card"}
+              {!busy && method === "card" && stationClass === "handheld" && !guestFace && "Flip to guest"}
+              {!busy && method === "card" && !(stationClass === "handheld" && !guestFace) && "Charge card"}
               {!busy && method === "cash" && "Take cash"}
               {!busy && method === "gift_card" && "Redeem gift card"}
               {!busy && method === "comp" && "Apply comp"}
