@@ -252,14 +252,14 @@ export const DEVICE_TOPICS: GuideTopic[] = [
       ),
       ul(
         "Production: Ethernet to the staff AP. Do not join the printer to guest Wi‑Fi or run it as its own hotspot.",
-        "Star SP742 at 192.168.0.105:9100: Order printer, destination Kitchen (or Bar / Expo / Window), make/model Star SP700 / SP742. Fire from the paired station on house Wi-Fi — the tablet writes TCP 9100. Entity filter is Hearth vs Copper; Destination is the line on that side.",
+        "Star SP742 at 192.168.0.105:9100: Order printer, destination Kitchen (or Bar / Expo / Window), make/model Star SP700 / SP742. That preset is 9-pin impact (Star Line, 7x9, CP437, no thermal bitmap, SP700 cutter) — not TM-T20 ESC/POS. Fire from the paired station on house Wi-Fi — the tablet writes TCP 9100. Entity filter is Hearth vs Copper; Destination is the line on that side.",
         "Drawer kick: receipt printer only.",
         "Existing kitchen / bar / label rows migrate to Order printer (label → destination Label). Summit Hall kitchen order printer destination is Kitchen.",
         "Quote / onboarding and Summit Hall seed a receipt slot plus kitchen and bar order printers (IP can stay pending).",
         "Bring-your-own Android tablets run POS/ODS via Summex Station. Printers and drawers stay BYO.",
       ),
       warn(
-        "There is no Kitchen printer, Bar printer, or Label printer type. Those are destinations on an Order printer. Test print is raw TCP 9100 from the station or print agent — never window.print. Do not put order printers on the printer’s own Wi‑Fi.",
+        "There is no Kitchen printer, Bar printer, or Label printer type. Those are destinations on an Order printer. Star SP700/SP742 tickets are impact text (no GS bitmaps, no leading !). Test print is raw TCP 9100 from the station or print agent — never window.print. Do not put order printers on the printer’s own Wi‑Fi.",
       ),
       related("wifi-offline", "kds", "device-roles", "cash-handling", "station-switcher"),
     ],

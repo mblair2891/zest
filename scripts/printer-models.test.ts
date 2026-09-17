@@ -34,8 +34,11 @@ test("each preset sets emulation, paper, cutter, port 9100", () => {
     assert.ok(["full", "partial", "none"].includes(spec.cutter));
   }
   const sp700 = printerModelSpec("star_sp700");
-  assert.equal(sp700.emulation, "escpos");
+  assert.equal(sp700.emulation, "star_line");
+  assert.equal(sp700.mechanism, "impact");
+  assert.equal(sp700.paperWidthMm, 76);
   assert.equal(sp700.defaultFor, "order");
+  assert.equal(printerModelSpec("epson_tm_t20").mechanism, "thermal");
   const starLine = printerModelSpec("star_line");
   assert.equal(starLine.emulation, "star_line");
   assert.equal(defaultPrinterModel("order"), "star_sp700");

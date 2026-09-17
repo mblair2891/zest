@@ -4,12 +4,14 @@ import { groupLinesByEntity } from "@/lib/payments/entity-split";
 import { formatTurnInSlipLines } from "@/lib/pos/till-turn-in-slip";
 import {
   colsForPaperWidth,
+  isImpactPrinterModel,
   printerModelSpec,
   type PrinterCutter,
   type PrinterEmulation,
   type PrinterModelPreset,
   type PrinterPaperMm,
 } from "./printer-models";
+import { buildStarSp700Bytes } from "./star-impact";
 
 const ENC = new TextEncoder();
 
@@ -57,12 +59,14 @@ function resolveOpts(opts?: EscPosOptions): {
   emulation: PrinterEmulation;
   width: number;
   cutter: PrinterCutter;
+  impact: boolean;
 } {
   const spec = opts?.modelPreset ? printerModelSpec(opts.modelPreset) : null;
   const emulation = opts?.emulation ?? spec?.emulation ?? "escpos";
   const paper = opts?.paperWidthMm ?? spec?.paperWidthMm ?? 80;
   const cutter = opts?.cutter ?? spec?.cutter ?? "full";
-  return { emulation, width: colsForPaperWidth(paper), cutter };
+  const impact = isImpactPrinterModel(opts?.modelPreset) || spec?.mechanism === "impact";
+  return { emulation, width: colsForPaperWidth(paper), cutter, impact };
 }
 
 function cutBytes(emulation: PrinterEmulation, cutter: PrinterCutter): Uint8Array {
@@ -135,7 +139,27 @@ function buildTillTurnInEscPos(job: PrintJob): Uint8Array {
 export function buildEscPos(job: PrintJob, opts?: EscPosOptions): Uint8Array {
   if (job.kind === "drawer_kick") return buildDrawerKickBytes();
   if (job.kind === "till_turn_in") return buildTillTurnInEscPos(job);
-  const { emulation, width, cutter } = resolveOpts(opts);
+  const { emulation, width, cutter, impact } = resolveOpts(opts);
+  if (impact) {
+    return buildStarSp700Bytes({
+      locationName: job.locationName,
+      kind: job.kind,
+      station: job.station,
+      copy: job.copy,
+      checkNumber: job.checkNumber,
+      tableLabel: job.tableLabel,
+      serverName: job.serverName,
+      operatorName: job.operatorName,
+      items: job.items.map((it) => ({
+        qty: it.qty,
+        name: it.name,
+        mods: it.mods,
+        note: it.note,
+        seat: it.seat,
+      })),
+      at: job.at,
+    });
+  }
   const title =
     job.kind === "receipt"
       ? "RECEIPT"

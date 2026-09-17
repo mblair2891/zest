@@ -2,6 +2,7 @@
 
 export type PrinterFamily = "star" | "epson" | "citizen" | "bixolon" | "generic";
 export type PrinterEmulation = "escpos" | "star_line" | "starprnt";
+export type PrinterMechanism = "thermal" | "impact";
 export type PrinterPaperMm = 58 | 76 | 80;
 export type PrinterCutter = "full" | "partial" | "none";
 export type PrinterModelGroupId = "star" | "epson" | "citizen" | "bixolon" | "other";
@@ -35,6 +36,7 @@ export type PrinterModelSpec = {
   group: PrinterModelGroupId;
   family: PrinterFamily;
   emulation: PrinterEmulation;
+  mechanism: PrinterMechanism;
   paperWidthMm: PrinterPaperMm;
   cutter: PrinterCutter;
   port: 9100;
@@ -77,7 +79,8 @@ const SPECS: PrinterModelSpec[] = [
     label: "Star SP700 / SP742 / SP712 / SP717 (impact kitchen)",
     group: "star",
     family: "star",
-    emulation: "escpos",
+    emulation: "star_line",
+    mechanism: "impact",
     paperWidthMm: 76,
     cutter: "partial",
     port: 9100,
@@ -89,6 +92,7 @@ const SPECS: PrinterModelSpec[] = [
     group: "star",
     family: "star",
     emulation: "starprnt",
+    mechanism: "thermal",
     paperWidthMm: 80,
     cutter: "full",
     port: 9100,
@@ -99,6 +103,7 @@ const SPECS: PrinterModelSpec[] = [
     group: "star",
     family: "star",
     emulation: "starprnt",
+    mechanism: "thermal",
     paperWidthMm: 80,
     cutter: "full",
     port: 9100,
@@ -109,6 +114,7 @@ const SPECS: PrinterModelSpec[] = [
     group: "star",
     family: "star",
     emulation: "starprnt",
+    mechanism: "thermal",
     paperWidthMm: 80,
     cutter: "full",
     port: 9100,
@@ -119,6 +125,7 @@ const SPECS: PrinterModelSpec[] = [
     group: "star",
     family: "star",
     emulation: "starprnt",
+    mechanism: "thermal",
     paperWidthMm: 80,
     cutter: "full",
     port: 9100,
@@ -129,6 +136,7 @@ const SPECS: PrinterModelSpec[] = [
     group: "star",
     family: "star",
     emulation: "starprnt",
+    mechanism: "thermal",
     paperWidthMm: 58,
     cutter: "none",
     port: 9100,
@@ -139,6 +147,7 @@ const SPECS: PrinterModelSpec[] = [
     group: "star",
     family: "star",
     emulation: "star_line",
+    mechanism: "thermal",
     paperWidthMm: 80,
     cutter: "partial",
     port: 9100,
@@ -149,6 +158,7 @@ const SPECS: PrinterModelSpec[] = [
     group: "epson",
     family: "epson",
     emulation: "escpos",
+    mechanism: "thermal",
     paperWidthMm: 80,
     cutter: "full",
     port: 9100,
@@ -160,6 +170,7 @@ const SPECS: PrinterModelSpec[] = [
     group: "epson",
     family: "epson",
     emulation: "escpos",
+    mechanism: "thermal",
     paperWidthMm: 80,
     cutter: "full",
     port: 9100,
@@ -170,6 +181,7 @@ const SPECS: PrinterModelSpec[] = [
     group: "epson",
     family: "epson",
     emulation: "escpos",
+    mechanism: "thermal",
     paperWidthMm: 80,
     cutter: "full",
     port: 9100,
@@ -180,6 +192,7 @@ const SPECS: PrinterModelSpec[] = [
     group: "epson",
     family: "epson",
     emulation: "escpos",
+    mechanism: "thermal",
     paperWidthMm: 76,
     cutter: "none",
     port: 9100,
@@ -190,6 +203,7 @@ const SPECS: PrinterModelSpec[] = [
     group: "epson",
     family: "epson",
     emulation: "escpos",
+    mechanism: "thermal",
     paperWidthMm: 80,
     cutter: "full",
     port: 9100,
@@ -200,6 +214,7 @@ const SPECS: PrinterModelSpec[] = [
     group: "citizen",
     family: "citizen",
     emulation: "escpos",
+    mechanism: "thermal",
     paperWidthMm: 80,
     cutter: "full",
     port: 9100,
@@ -210,6 +225,7 @@ const SPECS: PrinterModelSpec[] = [
     group: "citizen",
     family: "citizen",
     emulation: "escpos",
+    mechanism: "thermal",
     paperWidthMm: 80,
     cutter: "full",
     port: 9100,
@@ -220,6 +236,7 @@ const SPECS: PrinterModelSpec[] = [
     group: "bixolon",
     family: "bixolon",
     emulation: "escpos",
+    mechanism: "thermal",
     paperWidthMm: 80,
     cutter: "full",
     port: 9100,
@@ -230,6 +247,7 @@ const SPECS: PrinterModelSpec[] = [
     group: "bixolon",
     family: "bixolon",
     emulation: "escpos",
+    mechanism: "thermal",
     paperWidthMm: 80,
     cutter: "full",
     port: 9100,
@@ -240,6 +258,7 @@ const SPECS: PrinterModelSpec[] = [
     group: "other",
     family: "generic",
     emulation: "escpos",
+    mechanism: "thermal",
     paperWidthMm: 80,
     cutter: "full",
     port: 9100,
@@ -250,6 +269,7 @@ const SPECS: PrinterModelSpec[] = [
     group: "other",
     family: "generic",
     emulation: "escpos",
+    mechanism: "thermal",
     paperWidthMm: 80,
     cutter: "full",
     port: 9100,
@@ -260,6 +280,7 @@ const SPECS: PrinterModelSpec[] = [
     group: "other",
     family: "generic",
     emulation: "escpos",
+    mechanism: "thermal",
     paperWidthMm: 80,
     cutter: "full",
     port: 9100,
@@ -270,6 +291,7 @@ const SPECS: PrinterModelSpec[] = [
     group: "other",
     family: "generic",
     emulation: "escpos",
+    mechanism: "thermal",
     paperWidthMm: 58,
     cutter: "full",
     port: 9100,
@@ -280,6 +302,7 @@ const SPECS: PrinterModelSpec[] = [
     group: "other",
     family: "generic",
     emulation: "escpos",
+    mechanism: "thermal",
     paperWidthMm: 80,
     cutter: "full",
     port: 9100,
@@ -352,7 +375,13 @@ export function colsForPaperWidth(mm: PrinterPaperMm): number {
 
 export function printerModelHint(preset: PrinterModelPreset): string {
   const s = printerModelSpec(preset);
-  return `${PRINTER_EMULATION_LABEL[s.emulation]} · ${s.paperWidthMm}mm · ${PRINTER_CUTTER_LABEL[s.cutter]} · port ${s.port}`;
+  const mech = s.mechanism === "impact" ? "impact 7x9" : "thermal";
+  return `${PRINTER_EMULATION_LABEL[s.emulation]} · ${mech} · ${s.paperWidthMm}mm · ${PRINTER_CUTTER_LABEL[s.cutter]} · port ${s.port}`;
+}
+
+export function isImpactPrinterModel(preset?: PrinterModelPreset | null): boolean {
+  if (!preset) return false;
+  return printerModelSpec(preset).mechanism === "impact";
 }
 
 export function parseLanTarget(

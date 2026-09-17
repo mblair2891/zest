@@ -6,6 +6,19 @@ import type { GuideUpdate } from "@/lib/guide/types";
  */
 export const WHATS_NEW_ENTRIES: GuideUpdate[] = [
   {
+    id: "upd_2026_10_107_sp700_impact",
+    date: "2026-09-17",
+    title: "Star SP700/SP742 impact tickets",
+    summary:
+      "Kitchen tickets on Star SP742 use 9-pin Star Line text, not Epson TM-T20 thermal commands.",
+    body: "Make/model Star SP700 / SP742 / SP712 is an impact profile: 7x9 font, code page 437, no raster or logos, single-wide body, double-height KITCHEN header only, SP700 auto-cut (not TM-T88). Fire and Test print use the same bytes on the station 9100 path. Epson TM-T20 / T88 / m30 stay thermal.",
+    roles: ["owner_manager", "host_operator", "platform_admin", "kitchen_bar"],
+    surfaces: ["settings"],
+    audience: "all",
+    topicId: "printers-kds",
+    tags: ["printers", "star", "kitchen"],
+  },
+  {
     id: "upd_2026_10_106_station_raw_print",
     date: "2026-09-16",
     title: "Station prints raw 9100 on house Wi-Fi",
