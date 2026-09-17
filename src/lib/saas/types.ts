@@ -53,8 +53,12 @@ export type LocationSetup = {
   locationDevices?: import("@/lib/pos/location-devices").LocationDevice[];
   /** Extra order-printer destinations beyond Kitchen / Bar / Expo / Window / Prep / Other. */
   orderDestinations?: string[];
-  /** Dashboard test/fire jobs for a paired station to print via Capacitor 9100. */
+  /** Venue print jobs (QR / kiosk / online / dashboard test) for a docked station or print agent. */
   stationPrintQueue?: import("@/lib/print/station-print-queue").StationPrintQueued[];
+  /** Optional shared secret for scripts/print-agent.mjs venue subscribe. */
+  printAgentToken?: string;
+  /** Epoch ms when the house print agent last polled the venue queue. */
+  printAgentSeenAt?: number;
   voiceControlEnabledByRole?: Partial<Record<string, boolean>>;
   networkReadyStatus?: import("./network-readiness").NetworkReadyStatus;
   networkCheckedAt?: string;

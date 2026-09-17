@@ -75,7 +75,7 @@ export function printersForStation(
   return scoped.length ? scoped : pool.filter((d) => d.assignment.operatorId === HOST_SCOPE);
 }
 
-async function sendToAgent(req: AgentPrintRequest): Promise<boolean> {
+async function sendToAgent(req: AgentPrintRequest | { target: string; escposBase64: string }): Promise<boolean> {
   const url = `${printAgentUrl()}/print`;
   const ctrl = new AbortController();
   const t = window.setTimeout(() => ctrl.abort(), 2500);
@@ -95,12 +95,20 @@ async function sendToAgent(req: AgentPrintRequest): Promise<boolean> {
 }
 
 /** Capacitor station first (raw 9100), then LAN print agent. Never the OS print dialog. */
+export async function deliverRawPrint(
+  host: string,
+  port: number,
+  escposBase64: string,
+): Promise<boolean> {
+  if (await sendNativeBytes(host, port, escposBase64)) return true;
+  return sendToAgent({ target: `${host}:${port}`, escposBase64 });
+}
+
 async function sendLanPayload(
   lan: { host: string; port: number; target: string },
   req: AgentPrintRequest,
 ): Promise<boolean> {
-  if (await sendNativeBytes(lan.host, lan.port, req.escposBase64)) return true;
-  return sendToAgent(req);
+  return deliverRawPrint(lan.host, lan.port, req.escposBase64);
 }
 
 /**

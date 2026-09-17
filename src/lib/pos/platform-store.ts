@@ -629,6 +629,22 @@ export const usePlatformStore = create<PlatformState>()(
               : x,
           ),
         });
+        try {
+          void import("@/lib/pos/floor-sync")
+            .then((m) => m.persistAfterLocalMutation("send", o.id))
+            .catch(() => {});
+        } catch {
+          /* tickets stay on the rail */
+        }
+        try {
+          const source =
+            o.channel === "kiosk" ? "kiosk" : o.channel === "qr" || o.type === "dine_in_qr" ? "qr" : "online";
+          void import("@/lib/print/from-store")
+            .then((m) => m.printFromPos("send", o.id, { source }))
+            .catch(() => {});
+        } catch {
+          /* queue is best-effort; tickets stay open */
+        }
         return { ok: true };
       },
 

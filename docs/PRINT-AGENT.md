@@ -7,9 +7,20 @@ Laptop Chrome still cannot TCP 9100. Those desks run this small agent on the
 house hub (the same PC or NUC that stays on the staff SSID). If neither the
 station plugin nor the agent succeeds: **Use a paired station or print agent.**
 
+QR, kiosk, online, and dashboard Test print cannot open 9100. They write a
+venue job. Subscribe this agent so a docked hub drains that queue (preferred
+alongside a docked host / ODS — not a handheld in the dining room):
+
 ```sh
+SUMMEX_PRINT_ORIGIN=https://app.summex.app \
+SUMMEX_LOCATION_ID=loc_your_location \
+SUMMEX_PRINT_AGENT_TOKEN=optional \
 node scripts/print-agent.mjs
 ```
+
+Without `SUMMEX_PRINT_ORIGIN`, the agent still accepts local `POST /print` from
+this browser. With origin + location id it also polls `/api/print/jobs` and
+writes 9100. Never `window.print`.
 
 Listens on `http://127.0.0.1:9105`.
 

@@ -2,31 +2,19 @@ import { createServerFn } from "@tanstack/react-start";
 import { tenantMiddleware } from "@/lib/saas/tenant-middleware";
 import { DEFAULT_PRINTER_PORT, parseLanTarget } from "./printer-models";
 import {
+  parseKitchenPrintSource,
   parseStationPrintQueue,
-  pruneStationPrintQueue,
+  type KitchenPrintSource,
   type StationPrintQueued,
 } from "./station-print-queue";
-import { parseLocationDevices } from "@/lib/pos/location-devices";
-
-async function patchLocationSetup(
-  locationId: string,
-  fn: (setup: Record<string, unknown>) => Record<string, unknown>,
-): Promise<Record<string, unknown> | null> {
-  const { getSql } = await import("@/lib/db");
-  const sql = await getSql();
-  const rows = await sql<{ setup: unknown }>`
-    select setup from locations where id = ${locationId} limit 1
-  `;
-  const prev =
-    rows[0]?.setup && typeof rows[0].setup === "object" && !Array.isArray(rows[0].setup)
-      ? { ...(rows[0].setup as Record<string, unknown>) }
-      : {};
-  const next = fn(prev);
-  await sql`
-    update locations set setup = ${JSON.stringify(next)}::jsonb where id = ${locationId}
-  `;
-  return next;
-}
+import {
+  PRINT_AGENT_WORKER,
+  assertPrintAgentAccess,
+  claimPrintJob,
+  completePrintJob,
+  countWaitingKitchenPrint,
+  enqueuePrintJob,
+} from "./queue.server";
 
 function writeTcp(host: string, port: number, buf: Buffer): Promise<void> {
   return import("node:net").then(
@@ -51,6 +39,10 @@ function writeTcp(host: string, port: number, buf: Buffer): Promise<void> {
         sock.on("close", () => resolve());
       }),
   );
+}
+
+function newPrintJobId(): string {
+  return `pq_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
 }
 
 /** Raw ESC/POS / Star Line bytes to IP:9100 from this host (LAN print agent alternative). */
@@ -81,17 +73,21 @@ export const rawLanPrintFn = createServerFn({ method: "POST" })
     }
   });
 
-export const enqueueStationPrintFn = createServerFn({ method: "POST" })
-  .middleware([tenantMiddleware])
-  .validator((d: {
-    orgId?: string;
-    locationId: string;
-    printerId: string;
-    host: string;
-    port?: number;
-    escposBase64: string;
-    kind?: string;
-  }) => ({
+function enqueueInput(d: {
+  orgId?: string;
+  locationId: string;
+  printerId: string;
+  host: string;
+  port?: number;
+  escposBase64: string;
+  kind?: string;
+  ticketId?: string;
+  checkId?: string;
+  source?: string;
+  preferDocked?: boolean;
+  deviceId?: string;
+}) {
+  return {
     orgId: String(d.orgId ?? "").trim(),
     locationId: String(d.locationId ?? "").trim().slice(0, 80),
     printerId: String(d.printerId ?? "").trim().slice(0, 80),
@@ -99,28 +95,61 @@ export const enqueueStationPrintFn = createServerFn({ method: "POST" })
     port: Number(d.port) > 0 ? Math.round(Number(d.port)) : 9100,
     escposBase64: String(d.escposBase64 ?? "").slice(0, 200_000),
     kind: String(d.kind ?? "test").slice(0, 40),
-  }))
+    ticketId: d.ticketId ? String(d.ticketId).slice(0, 80) : undefined,
+    checkId: d.checkId ? String(d.checkId).slice(0, 80) : undefined,
+    source: parseKitchenPrintSource(d.source),
+    preferDocked: d.preferDocked !== false,
+    deviceId: d.deviceId ? String(d.deviceId).trim().slice(0, 80) : "",
+  };
+}
+
+function toQueued(data: ReturnType<typeof enqueueInput>): StationPrintQueued {
+  const source: KitchenPrintSource | undefined = data.source;
+  const kind = data.kind || (source && source !== "station" ? "ticket" : "test");
+  return {
+    id: newPrintJobId(),
+    printerId: data.printerId,
+    host: data.host,
+    port: data.port,
+    escposBase64: data.escposBase64,
+    kind,
+    queuedAt: Date.now(),
+    ticketId: data.ticketId,
+    checkId: data.checkId,
+    source,
+    preferDocked: data.preferDocked,
+  };
+}
+
+export const enqueueStationPrintFn = createServerFn({ method: "POST" })
+  .middleware([tenantMiddleware])
+  .validator(enqueueInput)
   .handler(async ({ context, data }) => {
     if (!data.locationId || !data.printerId || !data.host || !data.escposBase64) {
       return { ok: false as const, error: "Printer target is required" };
     }
     const { assertLocationAccess } = await import("@/lib/saas/tenancy.server");
     await assertLocationAccess(context.userId, data.locationId);
-    const job: StationPrintQueued = {
-      id: `pq_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`,
-      printerId: data.printerId,
-      host: data.host,
-      port: data.port,
-      escposBase64: data.escposBase64,
-      kind: data.kind,
-      queuedAt: Date.now(),
-    };
-    await patchLocationSetup(data.locationId, (setup) => {
-      const queue = pruneStationPrintQueue(parseStationPrintQueue(setup.stationPrintQueue));
-      queue.unshift(job);
-      return { ...setup, stationPrintQueue: queue.slice(0, 12) };
+    return enqueuePrintJob(data.locationId, toQueued(data));
+  });
+
+/** Station pair (kiosk / host / ODS) — no owner session. */
+export const enqueueVenuePrintFn = createServerFn({ method: "POST" })
+  .validator(enqueueInput)
+  .handler(async ({ data }) => {
+    if (!data.locationId || !data.printerId || !data.host || !data.escposBase64) {
+      return { ok: false as const, error: "Printer target is required" };
+    }
+    if (!data.deviceId) {
+      return { ok: false as const, error: "Station pair is required" };
+    }
+    const { readStationPairState } = await import("@/lib/pos/station-state.server");
+    const live = await readStationPairState({
+      locationId: data.locationId,
+      deviceId: data.deviceId,
     });
-    return { ok: true as const, jobId: job.id };
+    if (!live.ok) return { ok: false as const, error: "Station not paired" };
+    return enqueuePrintJob(data.locationId, toQueued(data));
   });
 
 export const getStationPrintJobFn = createServerFn({ method: "POST" })
@@ -140,10 +169,37 @@ export const getStationPrintJobFn = createServerFn({ method: "POST" })
     return { status: "pending" as const };
   });
 
-export const claimStationPrintFn = createServerFn({ method: "POST" })
-  .validator((d: { locationId: string; deviceId: string }) => ({
+export const pendingKitchenPrintFn = createServerFn({ method: "POST" })
+  .validator((d: { locationId: string; deviceId?: string }) => ({
     locationId: String(d.locationId ?? "").trim().slice(0, 80),
     deviceId: String(d.deviceId ?? "").trim().slice(0, 80),
+  }))
+  .handler(async ({ data }) => {
+    if (!data.locationId) return { waiting: 0 };
+    if (data.deviceId) {
+      const { readStationPairState } = await import("@/lib/pos/station-state.server");
+      const live = await readStationPairState(data);
+      if (!live.ok) return { waiting: 0 };
+    } else {
+      try {
+        const { getSessionUser } = await import("@/lib/auth/verify.server");
+        const user = await getSessionUser();
+        if (!user) return { waiting: 0 };
+        const { assertLocationAccess } = await import("@/lib/saas/tenancy.server");
+        await assertLocationAccess(user.id, data.locationId);
+      } catch {
+        return { waiting: 0 };
+      }
+    }
+    const waiting = await countWaitingKitchenPrint(data.locationId);
+    return { waiting };
+  });
+
+export const claimStationPrintFn = createServerFn({ method: "POST" })
+  .validator((d: { locationId: string; deviceId: string; role?: string }) => ({
+    locationId: String(d.locationId ?? "").trim().slice(0, 80),
+    deviceId: String(d.deviceId ?? "").trim().slice(0, 80),
+    role: String(d.role ?? "").trim().slice(0, 40),
   }))
   .handler(async ({ data }) => {
     const { readStationPairState } = await import("@/lib/pos/station-state.server");
@@ -158,20 +214,30 @@ export const claimStationPrintFn = createServerFn({ method: "POST" })
         and (id = ${data.deviceId} or serial = ${data.deviceId})
         and status <> ${"inactive"}
     `.catch(() => undefined);
-    let claimed: StationPrintQueued | null = null;
-    const now = Date.now();
-    await patchLocationSetup(data.locationId, (setup) => {
-      const queue = pruneStationPrintQueue(parseStationPrintQueue(setup.stationPrintQueue), now);
-      const idx = queue.findIndex(
-        (j) => !j.doneAt && (!j.claimedBy || now - (j.claimedAt ?? 0) > 8_000),
-      );
-      if (idx >= 0) {
-        queue[idx] = { ...queue[idx]!, claimedBy: data.deviceId, claimedAt: now };
-        claimed = queue[idx]!;
-      }
-      return { ...setup, stationPrintQueue: queue };
+    const job = await claimPrintJob({
+      locationId: data.locationId,
+      workerId: data.deviceId,
+      role: data.role,
     });
-    return { job: claimed };
+    return { job };
+  });
+
+export const claimPrintAgentFn = createServerFn({ method: "POST" })
+  .validator((d: { locationId: string; token?: string; workerId?: string }) => ({
+    locationId: String(d.locationId ?? "").trim().slice(0, 80),
+    token: String(d.token ?? "").trim().slice(0, 120),
+    workerId: String(d.workerId ?? PRINT_AGENT_WORKER).trim().slice(0, 80) || PRINT_AGENT_WORKER,
+  }))
+  .handler(async ({ data }) => {
+    if (!(await assertPrintAgentAccess(data.locationId, data.token))) {
+      return { job: null as StationPrintQueued | null };
+    }
+    const job = await claimPrintJob({
+      locationId: data.locationId,
+      workerId: data.workerId,
+      role: PRINT_AGENT_WORKER,
+    });
+    return { job };
   });
 
 export const completeStationPrintFn = createServerFn({ method: "POST" })
@@ -185,30 +251,32 @@ export const completeStationPrintFn = createServerFn({ method: "POST" })
     const { readStationPairState } = await import("@/lib/pos/station-state.server");
     const live = await readStationPairState(data);
     if (!live.ok) return { ok: false as const };
-    const now = Date.now();
-    await patchLocationSetup(data.locationId, (setup) => {
-      const queue = pruneStationPrintQueue(parseStationPrintQueue(setup.stationPrintQueue), now);
-      const job = queue.find((j) => j.id === data.jobId);
-      if (job) {
-        job.doneAt = now;
-        job.ok = data.ok;
-        job.claimedBy = data.deviceId;
-      }
-      if (data.ok && job?.printerId) {
-        const devices = parseLocationDevices(setup.locationDevices).map((d) => {
-          if (d.id !== job.printerId || !d.print) return d;
-          return {
-            ...d,
-            print: {
-              ...d.print,
-              lastPrintAt: now,
-              reachability: "idle" as const,
-            },
-          };
-        });
-        return { ...setup, stationPrintQueue: queue, locationDevices: devices };
-      }
-      return { ...setup, stationPrintQueue: queue };
+    await completePrintJob({
+      locationId: data.locationId,
+      workerId: data.deviceId,
+      jobId: data.jobId,
+      ok: data.ok,
+    });
+    return { ok: true as const };
+  });
+
+export const completePrintAgentFn = createServerFn({ method: "POST" })
+  .validator((d: { locationId: string; token?: string; workerId?: string; jobId: string; ok: boolean }) => ({
+    locationId: String(d.locationId ?? "").trim().slice(0, 80),
+    token: String(d.token ?? "").trim().slice(0, 120),
+    workerId: String(d.workerId ?? PRINT_AGENT_WORKER).trim().slice(0, 80) || PRINT_AGENT_WORKER,
+    jobId: String(d.jobId ?? "").trim().slice(0, 80),
+    ok: Boolean(d.ok),
+  }))
+  .handler(async ({ data }) => {
+    if (!(await assertPrintAgentAccess(data.locationId, data.token))) {
+      return { ok: false as const };
+    }
+    await completePrintJob({
+      locationId: data.locationId,
+      workerId: data.workerId,
+      jobId: data.jobId,
+      ok: data.ok,
     });
     return { ok: true as const };
   });

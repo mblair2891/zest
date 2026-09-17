@@ -18,7 +18,7 @@ test("Devices printer row uses LAN via station, not unreachable when a station i
   assert.match(dispatch, /stationOnline/);
   const watcher = readFileSync("src/components/pos/StationPublishWatcher.tsx", "utf8");
   assert.match(watcher, /claimStationPrintFn/);
-  assert.match(watcher, /sendNativeBytes/);
+  assert.match(watcher, /deliverRawPrint/);
   const impact = readFileSync("src/lib/print/printer-models.ts", "utf8");
   assert.match(impact, /mechanism: "impact"/);
 });

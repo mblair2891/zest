@@ -273,11 +273,12 @@ export const FLOOR_TOPICS: GuideTopic[] = [
         "On Order, Check prints a ticket QR scoped to that check.",
         "Guest UI is public — no PIN, no CRM. After pay they stay on thank-you, not Sign in.",
         "Lines keep their operator. One tender. Receipt grouped by vendor. Finix splits by owner.",
+        "When the guest sends from QR, kitchen print is a venue job — a docked host, ODS, or print agent writes 9100. The guest phone never prints.",
       ),
       warn(
         "On-premise only. The guest is at the location. Table tokens are location-scoped. Rotate if a sticker walks. Ticket QR expires; reprint for a fresh code. Live cards on QR still need an approved Quantum application — training uses sandbox. No delivery and no shipped alcohol.",
       ),
-      related("floor-tables", "floor-status", "quantum-payments", "host-capture", "type-food-hall"),
+      related("floor-tables", "floor-status", "quantum-payments", "host-capture", "type-food-hall", "printers-kds"),
     ],
   }),
 ];

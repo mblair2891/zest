@@ -211,7 +211,7 @@ export const DEVICE_TOPICS: GuideTopic[] = [
     chapterId: "devices",
     title: "Printers & ODS devices",
     summary:
-      "Two printer types: Receipt and Order. Make/model preset sets emulation, paper, cutter, port 9100. Test print is raw bytes to the printer — never the OS dialog.",
+      "Two printer types: Receipt and Order. Make/model preset sets emulation, paper, cutter, port 9100. QR / kiosk / online fire a venue print job. Test print is raw bytes — never the OS dialog.",
     roles: ["owner_manager", "kitchen_bar", "platform_admin"],
     keywords: [
       "printer",
@@ -233,6 +233,10 @@ export const DEVICE_TOPICS: GuideTopic[] = [
       "9100",
       "ethernet",
       "drawer kick",
+      "qr",
+      "kiosk",
+      "online",
+      "print queue",
     ],
     openView: "settings",
     blocks: [
@@ -248,18 +252,18 @@ export const DEVICE_TOPICS: GuideTopic[] = [
         "Make/model: pick what the house bought. Star SP700 / SP742 / SP712 / SP717 is the default order (impact kitchen). Star Line Mode is the other Star generic. Epson TM-T20 / T88 / m30 thermal, TM-U220 impact. Citizen, Bixolon, SNBC/Ithaca, Seiko, POS-X/Rongta, Generic ESC/POS 80mm (always there), Generic 58mm for kiosk/narrow. The preset sets emulation, paper width, cutter, and port 9100.",
         "Receipt printer: cash drawer kick yes/no; which order/host stations use it (empty = venue default); print pay QR when the venue QR setting is on. ODS does not need a receipt printer.",
         "Order printer: Destination is the production line — Kitchen, Bar, Expo, Window, Prep, Other (default Kitchen). Add destination if the house has another line. Rename is allowed. Receipt printers have no destination field. Entity filter is Hearth vs Copper on a peer venue; Destination is which ticket printer on that side. Kitchen stays listed when Operating as is House.",
-        "Save. On a paired Android station, fire / Test print / receipt write raw bytes to IP:9100 from the native shell. Dashboard Test print queues to an online station on this venue. “Use a paired station or print agent” only when no station is online. Devices badge: LAN via station (green) or no station on LAN (amber) — not unreachable when a station is online and last print from that station succeeded. Never the OS print dialog.",
+        "Save. On a paired Android station, Send / receipt write raw bytes to IP:9100 from the native shell. QR, kiosk, online, and dashboard Test print write a venue print job — they cannot TCP 9100 from a guest phone or owner laptop. Online paired stations and the house print agent subscribe to that queue and send 9100. Prefer a docked host or ODS so kitchen still prints when servers are in the dining room. If no worker is online, the ticket stays open and every station shows “N kitchen tickets waiting to print.” “Use a paired station or print agent” only when no station is online. Devices badge: LAN via station (green) or no station on LAN (amber) — not unreachable when a station is online and last print from that station succeeded. Never the OS print dialog.",
       ),
       ul(
         "Production: Ethernet to the staff AP. Do not join the printer to guest Wi‑Fi or run it as its own hotspot.",
-        "Star SP742 at 192.168.0.105:9100: Order printer, destination Kitchen (or Bar / Expo / Window), make/model Star SP700 / SP742. That preset is 9-pin impact (Star Line, 7x9, CP437, no thermal bitmap, SP700 cutter) — not TM-T20 ESC/POS. Fire from the paired station on house Wi-Fi — the tablet writes TCP 9100. Entity filter is Hearth vs Copper; Destination is the line on that side.",
+        "Star SP742 at 192.168.0.105:9100: Order printer, destination Kitchen (or Bar / Expo / Window), make/model Star SP700 / SP742. That preset is 9-pin impact (Star Line, 7x9, CP437, no thermal bitmap, SP700 cutter) — not TM-T20 ESC/POS. Staff Send from a paired order tablet writes TCP 9100. QR / kiosk / online fire the same bytes via the venue queue to a docked host, ODS, or print agent. Entity filter is Hearth vs Copper; Destination is the line on that side.",
         "Drawer kick: receipt printer only.",
         "Existing kitchen / bar / label rows migrate to Order printer (label → destination Label). Summit Hall kitchen order printer destination is Kitchen.",
         "Quote / onboarding and Summit Hall seed a receipt slot plus kitchen and bar order printers (IP can stay pending).",
         "Bring-your-own Android tablets run POS/ODS via Summex Station. Printers and drawers stay BYO.",
       ),
       warn(
-        "There is no Kitchen printer, Bar printer, or Label printer type. Those are destinations on an Order printer. Star SP700/SP742 tickets are impact text (no GS bitmaps, no leading !). Test print is raw TCP 9100 from the station or print agent — never window.print. Do not put order printers on the printer’s own Wi‑Fi.",
+        "There is no Kitchen printer, Bar printer, or Label printer type. Those are destinations on an Order printer. Star SP700/SP742 tickets are impact text (no GS bitmaps, no leading !). Kitchen tickets never use window.print. QR, kiosk, and online do not print from the guest browser — they queue. Dock a host or ODS (or run the print agent on the house hub) so the queue drains. Do not put order printers on the printer’s own Wi‑Fi.",
       ),
       related("wifi-offline", "kds", "device-roles", "cash-handling", "station-switcher"),
     ],

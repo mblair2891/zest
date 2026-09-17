@@ -6,6 +6,19 @@ import type { GuideUpdate } from "@/lib/guide/types";
  */
 export const WHATS_NEW_ENTRIES: GuideUpdate[] = [
   {
+    id: "upd_2026_10_109_queued_kitchen_print",
+    date: "2026-09-17",
+    title: "Queued kitchen print for QR and online",
+    summary:
+      "QR, kiosk, online, and dashboard Test print write a venue job. Docked host/ODS or the print agent send 9100. No worker: ticket stays open with a station banner.",
+    body: "A guest phone cannot TCP 9100. Those fires enqueue the same Star/Epson bytes. Online paired stations subscribe; a docked host or ODS is preferred so kitchen still prints when servers are in the dining room. The house print agent can subscribe to the same queue. If nothing is online to print, the ticket stays open and every station shows “N kitchen tickets waiting to print.” Never the OS print dialog.",
+    roles: ["owner_manager", "host_operator", "platform_admin", "kitchen_bar", "server"],
+    surfaces: ["settings", "kitchen", "kiosk"],
+    audience: "all",
+    topicId: "printers-kds",
+    tags: ["printers", "qr", "kiosk", "online", "queue"],
+  },
+  {
     id: "upd_2026_10_108_printer_lan_station",
     date: "2026-09-17",
     title: "Printer status via online station",

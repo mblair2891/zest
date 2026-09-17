@@ -10,6 +10,11 @@ import type { PrintStation } from "@/lib/pos/location-devices";
 import { splitTenderByEntity } from "@/lib/payments/entity-split";
 import { parseQrPolicy, qrPrintOnTicket } from "@/lib/pos/qr-policy";
 import { ticketGuestUrl } from "@/lib/pos/qr-table";
+import { parseLanTarget } from "./printer-models";
+import { escposBase64 } from "./escpos";
+import { enqueueStationPrintFn, enqueueVenuePrintFn } from "./api";
+import { readStationPair } from "@/lib/pos/station-pair";
+import type { KitchenPrintSource } from "./station-print-queue";
 
 function linesFromTicket(t: KitchenTicket): PrintLine[] {
   return t.items.map((it) => ({
@@ -39,20 +44,57 @@ function receiptLines(order: Order, settings: RestaurantSettings): PrintLine[] {
     }));
 }
 
+async function enqueueKitchenJob(
+  job: PrintJob,
+  printerId: string,
+  host: string,
+  port: number,
+  payload: string,
+  source: KitchenPrintSource,
+): Promise<boolean> {
+  const pair = readStationPair();
+  const body = {
+    locationId: job.locationId,
+    printerId,
+    host,
+    port,
+    escposBase64: payload,
+    kind: "ticket" as const,
+    ticketId: job.ticketId,
+    checkId: job.checkId,
+    source,
+    preferDocked: true,
+    deviceId: pair?.deviceId || currentStationDeviceId() || "",
+  };
+  try {
+    if (body.deviceId) {
+      const q = await enqueueVenuePrintFn({ data: body });
+      if (q.ok) return true;
+    }
+    const q = await enqueueStationPrintFn({ data: body });
+    return q.ok === true;
+  } catch {
+    return false;
+  }
+}
+
 export async function printFromPos(
   kind: "send" | "bump" | "ready" | "receipt" | "test",
   id?: string,
+  opts?: { source?: KitchenPrintSource },
 ): Promise<void> {
   const s = usePosStore.getState();
   const locationId = s.tenantLocationId || "";
   const locationName = s.settings.name || "Summex";
   const devices = s.locationDevices;
   const jobs: PrintJob[] = [];
+  const source: KitchenPrintSource = opts?.source ?? "station";
+  const queueOnly = source === "qr" || source === "kiosk" || source === "online" || source === "dashboard";
 
   if (kind === "send") {
     const tickets = id
       ? s.tickets.filter(
-          (t) => t.orderId === id && t.status === "new" && Date.now() - (t.createdAt || 0) < 8000,
+          (t) => t.orderId === id && t.status === "new" && Date.now() - (t.createdAt || 0) < 12_000,
         )
       : [];
     for (const t of tickets) {
@@ -71,6 +113,8 @@ export async function printFromPos(
         operatorName: t.vendorName,
         items: linesFromTicket(t),
         at: Date.now(),
+        ticketId: t.id,
+        printSource: source,
       });
     }
   }
@@ -170,6 +214,25 @@ export async function printFromPos(
 
   for (const job of jobs) {
     const printers = printersForStation(devices, job.station, job.operatorId, stationId);
+    if (job.kind === "ticket" && (queueOnly || printers.length > 0)) {
+      for (const p of printers) {
+        const cfg = p.print;
+        const lan = parseLanTarget(cfg?.ip, cfg?.port, cfg?.target);
+        if (!lan || !cfg) continue;
+        const payload = escposBase64(job, {
+          modelPreset: cfg.modelPreset,
+          emulation: cfg.emulation,
+          paperWidthMm: cfg.paperWidthMm,
+          cutter: cfg.cutter,
+        });
+        if (!queueOnly) {
+          const local = await dispatchPrintJob(job, [p], { printerId: p.id });
+          if (local.printed > 0) continue;
+        }
+        await enqueueKitchenJob(job, p.id, lan.host, lan.port, payload, source);
+      }
+      continue;
+    }
     if (job.kind === "receipt" || printers.length > 0) {
       await dispatchPrintJob(job, devices, {
         printerId: job.kind === "receipt" ? mappedReceipt?.id : undefined,

@@ -36,6 +36,7 @@ import { Route as StationRouteImport } from './routes/station'
 import { Route as TermsRouteImport } from './routes/terms'
 import { Route as WhitepaperRouteImport } from './routes/whitepaper'
 import { Route as ApiHealthRouteImport } from './routes/api/health'
+import { Route as ApiPrintJobsRouteImport } from './routes/api/print/jobs'
 import { Route as BlogSlugRouteImport } from './routes/blog.$slug'
 import { Route as DemoIndexRouteImport } from './routes/demo.index'
 import { Route as DemoTypeRouteImport } from './routes/demo.$type'
@@ -198,6 +199,11 @@ const ApiHealthRoute = ApiHealthRouteImport.update({
   path: '/api/health',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPrintJobsRoute = ApiPrintJobsRouteImport.update({
+  id: '/api/print/jobs',
+  path: '/api/print/jobs',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const BlogSlugRoute = BlogSlugRouteImport.update({
   id: '/$slug',
   path: '/$slug',
@@ -357,6 +363,7 @@ export interface FileRoutesByFullPath {
   '/terms': typeof TermsRoute
   '/whitepaper': typeof WhitepaperRoute
   '/api/health': typeof ApiHealthRoute
+  '/api/print/jobs': typeof ApiPrintJobsRoute
   '/blog/$slug': typeof BlogSlugRoute
   '/demo/$type': typeof DemoTypeRouteWithChildren
   '/invite/$token': typeof InviteTokenRoute
@@ -411,6 +418,7 @@ export interface FileRoutesByTo {
   '/terms': typeof TermsRoute
   '/whitepaper': typeof WhitepaperRoute
   '/api/health': typeof ApiHealthRoute
+  '/api/print/jobs': typeof ApiPrintJobsRoute
   '/blog/$slug': typeof BlogSlugRoute
   '/demo/$type': typeof DemoTypeRouteWithChildren
   '/invite/$token': typeof InviteTokenRoute
@@ -467,6 +475,7 @@ export interface FileRoutesById {
   '/terms': typeof TermsRoute
   '/whitepaper': typeof WhitepaperRoute
   '/api/health': typeof ApiHealthRoute
+  '/api/print/jobs': typeof ApiPrintJobsRoute
   '/blog/$slug': typeof BlogSlugRoute
   '/demo/$type': typeof DemoTypeRouteWithChildren
   '/invite/$token': typeof InviteTokenRoute
@@ -524,6 +533,7 @@ export interface FileRouteTypes {
     | '/terms'
     | '/whitepaper'
     | '/api/health'
+    | '/api/print/jobs'
     | '/blog/$slug'
     | '/demo/$type'
     | '/invite/$token'
@@ -578,6 +588,7 @@ export interface FileRouteTypes {
     | '/terms'
     | '/whitepaper'
     | '/api/health'
+    | '/api/print/jobs'
     | '/blog/$slug'
     | '/demo/$type'
     | '/invite/$token'
@@ -633,6 +644,7 @@ export interface FileRouteTypes {
     | '/terms'
     | '/whitepaper'
     | '/api/health'
+    | '/api/print/jobs'
     | '/blog/$slug'
     | '/demo/$type'
     | '/invite/$token'
@@ -689,6 +701,7 @@ export interface RootRouteChildren {
   TermsRoute: typeof TermsRoute
   WhitepaperRoute: typeof WhitepaperRoute
   ApiHealthRoute: typeof ApiHealthRoute
+  ApiPrintJobsRoute: typeof ApiPrintJobsRoute
   InviteTokenRoute: typeof InviteTokenRoute
   OrderOrderIdRoute: typeof OrderOrderIdRoute
   QuoteTokenRoute: typeof QuoteTokenRoute
@@ -896,6 +909,13 @@ declare module '@tanstack/react-router' {
       path: '/api/health'
       fullPath: '/api/health'
       preLoaderRoute: typeof ApiHealthRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/print/jobs': {
+      id: '/api/print/jobs'
+      path: '/api/print/jobs'
+      fullPath: '/api/print/jobs'
+      preLoaderRoute: typeof ApiPrintJobsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/blog/$slug': {
@@ -1194,6 +1214,7 @@ const rootRouteChildren: RootRouteChildren = {
   TermsRoute: TermsRoute,
   WhitepaperRoute: WhitepaperRoute,
   ApiHealthRoute: ApiHealthRoute,
+  ApiPrintJobsRoute: ApiPrintJobsRoute,
   InviteTokenRoute: InviteTokenRoute,
   OrderOrderIdRoute: OrderOrderIdRoute,
   QuoteTokenRoute: QuoteTokenRoute,

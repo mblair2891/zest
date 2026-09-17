@@ -137,8 +137,9 @@ export const ORDER_TOPICS: GuideTopic[] = [
         "Default for ahead/curbside: wait until arrival.",
         "On arrival: scan table QR → I ordered ahead → claim code, or staff taps Guest arrived on the Online board.",
         "Kitchen receives the ticket according to the channel’s fire rule (immediate, on arrival, delay after order, delay after arrival).",
+        "That fire writes a venue print job. A docked host, ODS, or the house print agent sends raw 9100 — the guest phone never prints. If no worker is online, the ticket stays open and stations show “N kitchen tickets waiting to print.”",
       ),
-      related("kds", "kitchen-bar-routing", "tenders-tips"),
+      related("kds", "kitchen-bar-routing", "tenders-tips", "printers-kds"),
     ],
   }),
 ];

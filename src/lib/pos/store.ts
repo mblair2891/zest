@@ -85,7 +85,18 @@ function floorSync(kind: string, id?: string) {
 
 function printNow(kind: "send" | "bump" | "ready" | "receipt", id?: string) {
 	try {
-		void import("@/lib/print/from-store").then((m) => m.printFromPos(kind, id)).catch(() => {});
+		const role = readStationDeviceRole();
+		const source =
+			kind !== "send"
+				? "station"
+				: role === "kiosk"
+					? "kiosk"
+					: role === "order" || role === "ods" || role === "host"
+						? "station"
+						: "online";
+		void import("@/lib/print/from-store")
+			.then((m) => m.printFromPos(kind, id, { source }))
+			.catch(() => {});
 	} catch {
 		/* printing is best-effort */
 	}

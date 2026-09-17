@@ -13,10 +13,10 @@ import {
   ingestServerDeviceRole,
 } from "@/lib/pos/station-role-sync";
 import { usePosStore } from "@/lib/pos/store";
-import { isNativeApp } from "@/lib/native-shell";
-import { sendNativeBytes } from "@/lib/print/capacitor-raw-print";
+import { deliverRawPrint } from "@/lib/print/dispatch";
 import { claimStationPrintFn, completeStationPrintFn } from "@/lib/print/api";
 import { heartbeatLocationDeviceFn } from "@/lib/access/api";
+import { readStationDeviceRole } from "@/lib/pos/device-roles";
 
 const STATE_POLL_MS = 5_000;
 const PUBLISH_POLL_MS = 20_000;
@@ -32,12 +32,12 @@ function pollStationState(): void {
     })
     .catch(() => undefined);
   void heartbeatLocationDeviceFn({ data: { locationId, deviceId } }).catch(() => undefined);
-  if (!isNativeApp()) return;
-  void claimStationPrintFn({ data: { locationId, deviceId } })
+  const role = readStationDeviceRole() ?? pair?.station ?? "order";
+  void claimStationPrintFn({ data: { locationId, deviceId, role } })
     .then(async (res) => {
       const job = res.job;
       if (!job) return;
-      const ok = await sendNativeBytes(job.host, job.port, job.escposBase64);
+      const ok = await deliverRawPrint(job.host, job.port, job.escposBase64);
       await completeStationPrintFn({
         data: { locationId, deviceId, jobId: job.id, ok },
       });

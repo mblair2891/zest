@@ -1,5 +1,6 @@
 import type { PrintStation, PrinterConfig, PrinterConnection, PrinterFamily } from "@/lib/pos/location-devices";
 import type { TillTurnInSlip } from "@/lib/pos/till-turn-in-slip";
+import type { KitchenPrintSource } from "./station-print-queue";
 
 export type PrintJobKind =
   | "ticket"
@@ -60,6 +61,8 @@ export type PrintJob = {
   reprintCopy?: boolean;
   barcodeValue?: string;
   at: number;
+  ticketId?: string;
+  printSource?: KitchenPrintSource;
 };
 
 export type PrintTarget = {

@@ -21,6 +21,7 @@ import { HelpButton } from "@/components/help/HelpPanel";
 import { NetworkBanner, NetworkWatcher } from "./NetworkStatus";
 import { useNetworkStore } from "@/lib/pos/network-store";
 import { TrainingBanner } from "./TrainingBanner";
+import { PrintWaitingBanner } from "./PrintWaitingBanner";
 import { useStationSessionStore } from "@/lib/pos/station-session";
 import { isBackOfficeRole } from "@/lib/pos/pin";
 import { isProspectDemo } from "@/lib/demo/session";
@@ -280,6 +281,7 @@ export function EntityLogin({ entityId }: { entityId: VenueEntityId }) {
       <NetworkWatcher />
       <NetworkBanner />
       <TrainingBanner />
+      <PrintWaitingBanner />
       <div className="flex items-center justify-end gap-2 px-4 pt-3">
         <HelpButton surface="pin" />
         {!stationPad && (

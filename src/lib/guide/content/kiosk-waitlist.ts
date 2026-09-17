@@ -24,13 +24,14 @@ export const KIOSK_WAITLIST_TOPICS: GuideTopic[] = [
         "Set kiosk mode and waitlist on Settings or Host stand.",
         "Add a Kiosk device in Devices and pair the tablet, or point it at /kiosk.",
         "Staff keep POS open for Host stand, tickets, and notifications.",
+        "A kiosk order writes a kitchen print job. Docked host / ODS (or the print agent) send 9100 — the kiosk never uses the OS print dialog.",
       ),
       callout(
         "Partial",
         "Waitlist texts log on the Host stand when Twilio is not configured — they are not live carrier SMS. Reservation codes are unique per location per day.",
       ),
       cta("/kiosk", "Open guest kiosk"),
-      related("feature-waitlist", "feature-reservation-checkin", "type-restaurant", "type-qsr"),
+      related("feature-waitlist", "feature-reservation-checkin", "type-restaurant", "type-qsr", "printers-kds"),
     ],
   }),
   topic({
