@@ -304,20 +304,10 @@ export function LossPreventionSettings({ write }: { write: boolean }) {
         disabled={!write}
         onChange={(n) => patch({ integrityIdleMinutes: n })}
       />
-      <label className="flex items-center justify-between gap-3 text-sm">
-        <span>Empty table while check is open</span>
-        <select
-          disabled={!write}
-          className="h-9 rounded-md border border-border bg-bg px-2 text-sm"
-          value={cfg.integrityEmptyTable}
-          onChange={(e) =>
-            patch({ integrityEmptyTable: e.target.value === "require_lead" ? "require_lead" : "auto_hold" })
-          }
-        >
-          <option value="auto_hold">Auto-move to Left to close + flag</option>
-          <option value="require_lead">Require shift lead / manager, then hold</option>
-        </select>
-      </label>
+      <p className="text-sm text-muted-foreground">
+        Set Empty is blocked while open checks exist — void or close them first.
+        Leftover empty + open check still flags the nightly pack.
+      </p>
       <label className="flex items-center justify-between gap-3 text-sm">
         <span>House Z / night close</span>
         <select

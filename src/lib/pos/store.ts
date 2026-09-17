@@ -202,6 +202,8 @@ import {
   buildNightlyIntegrityPack,
   CHECK_HOLD_LABEL,
   isCheckHoldKind,
+  openChecksOnTable,
+  tableIsVacant,
 } from "./check-integrity";
 import { useNotifyStore } from "./notify-store";
 import { isDemoStaffPin } from "@/lib/demo/pin";
@@ -1357,34 +1359,88 @@ const usePosStoreRaw = create<PosStore>()(persist((set, get) => {
 		if (!table) return { ok: false, reason: "Table not found", code: "blocked_order" };
 		return checkTableAccess(get, table, action);
 	},
-	selectTable: (tableId) => {
+	selectTable: (tableId, orderId) => {
 		const table = get().tables.find((t: any) => t.id === tableId);
 		if (!table) return { ok: false, error: "Not found" };
 		const access = checkTableAccess(get, table, "order");
+		const checks = openChecksOnTable(table, get().orders);
+		const targetId =
+			(orderId && checks.some((c) => c.id === orderId) ? orderId : null) ||
+			(table.orderId && checks.some((c) => c.id === table.orderId) ? table.orderId : null) ||
+			checks[0]?.id ||
+			null;
 		if (!access.ok && !access.viewOnly) {
 			const viewAccess = checkTableAccess(get, table, "view");
-			if (viewAccess.ok && viewAccess.viewOnly && table.orderId) {
+			if (viewAccess.ok && viewAccess.viewOnly && targetId) {
 				set({
 					activeTableId: tableId,
-					activeOrderId: table.orderId,
+					activeOrderId: targetId,
 					view: "order"
 				});
 				return { ok: true, access: viewAccess };
 			}
 			return { ok: false, error: access.reason, access };
 		}
-		if (table.orderId) set({
+		if (targetId) {
+			set({
+				activeTableId: tableId,
+				activeOrderId: targetId,
+				view: "order"
+			});
+		}
+		return { ok: true, access };
+	},
+	newCheckOnTable: (tableId) => {
+		const emp = get().getCurrentEmployee();
+		if (!emp) return { ok: false, error: "Not signed in" };
+		const table = get().tables.find((t: any) => t.id === tableId);
+		if (!table) return { ok: false, error: "Not found" };
+		const access = checkTableAccess(get, table, "order");
+		if (!access.ok) return { ok: false, error: access.reason, access };
+		const order = {
+			id: uid("ord"),
+			number: nextOrderNumber(get().orders),
+			type: "dine_in",
+			tableId,
+			guestCount: table.guestCount || 1,
+			serverId: table.serverId || emp.id,
+			serverName:
+				get().employees.find((e: any) => e.id === (table.serverId || emp.id))?.name || emp.name,
+			lines: [],
+			payments: [],
+			status: "open",
+			discountPercent: 0,
+			discountCents: 0,
+			autoGratApplied: false,
+			serviceChargeCents: 0,
+			createdAt: Date.now()
+		};
+		const nextStatus = isEmptyTable(table.status) ? "sat_no_order" : table.status;
+		set({
+			orders: [...get().orders, order],
+			tables: get().tables.map((t: any) => t.id === tableId ? {
+				...t,
+				status: nextStatus,
+				statusSince: Date.now(),
+				orderId: order.id,
+				serverId: t.serverId || emp.id,
+				guestCount: t.guestCount || 1,
+				seatedAt: t.seatedAt || Date.now(),
+			} : t),
+			activeOrderId: order.id,
 			activeTableId: tableId,
-			activeOrderId: table.orderId,
 			view: "order"
 		});
-		return { ok: true, access };
+		get().audit("check", `New check #${order.number} on T${table.label}`);
+		floorSync("check", order.id);
+		floorSync("table", tableId);
+		return { ok: true };
 	},
 	seatTable: (tableId, guestCount, opts) => {
 		const emp = get().getCurrentEmployee();
 		if (!emp) return { ok: false, error: "Not signed in" };
 		const table = get().tables.find((t: any) => t.id === tableId);
-		if (!table || !isEmptyTable(table.status)) return { ok: false, error: "Table not available" };
+		if (!table || !tableIsVacant(table, get().orders)) return { ok: false, error: "Table not available" };
 		const access = checkTableAccess(get, table, "seat");
 		if (!access.ok) return { ok: false, error: access.reason, access };
 		const canAssign = emp.role === "owner" || emp.role === "manager" || emp.role === "host";
@@ -1444,8 +1500,10 @@ const usePosStoreRaw = create<PosStore>()(persist((set, get) => {
 		if (!emp) return { ok: false, error: "Not signed in" };
 		const table = get().tables.find((t: any) => t.id === tableId);
 		if (!table) return { ok: false, error: "Not found" };
-		if (!table.orderId) return { ok: false, error: "No open check" };
-		let order = get().orders.find((o: any) => o.id === table.orderId);
+		const checks = openChecksOnTable(table, get().orders);
+		let order =
+			(table.orderId ? checks.find((o) => o.id === table.orderId) : undefined) ??
+			checks[0];
 		if (!order || order.status !== "open") return { ok: false, error: "No open check" };
 		if (!order.serverId) {
 			set({
@@ -1623,47 +1681,13 @@ const usePosStoreRaw = create<PosStore>()(persist((set, get) => {
 	markClean: (tableId) => {
 		const table = get().tables.find((t: any) => t.id === tableId);
 		if (!table) return { ok: false, error: "Not found" };
-		const open = get().orders.find((o: any) =>
-			o.status === "open" && !o.holdKind && (o.id === table.orderId || o.tableId === tableId),
-		);
-		if (open) {
-			const cfg = lpCfg(get);
-			const emp = get().getCurrentEmployee();
-			const lead =
-				emp &&
-				(isManagerRole(emp.role) ||
-					canRoleApproveGate(emp.role, "void", 0, cfg) ||
-					get().hasManagerAuth());
-			if (cfg.integrityEmptyTable === "require_lead" && !lead) {
-				return {
-					ok: false,
-					error: "Open check on this table. A shift lead or manager must empty it — the check will move to Left to close.",
-				};
-			}
-			const held = get().holdCheck(open.id, "left_to_close", "Table marked empty", { house: true, clearTable: true });
-			if (!held.ok) return held;
-			set({
-				tables: get().tables.map((t: any) => t.id === tableId ? {
-					...t,
-					status: "empty",
-					statusSince: Date.now(),
-					orderId: void 0,
-					guestCount: void 0,
-					seatedAt: void 0,
-					releasedAt: void 0,
-					releasedById: void 0,
-					releasedByName: void 0,
-					pendingAcceptId: void 0,
-					pendingAcceptName: void 0,
-				} : t),
-			});
-			get().audit("integrity_ack", `T${table.label} emptied · #${open.number} → left to close`, {
-				orderId: open.id,
-				orderNumber: open.number,
-				reason: "Table marked empty",
-			});
-			floorSync("table", tableId);
-			return { ok: true };
+		const open = openChecksOnTable(table, get().orders);
+		if (open.length) {
+			return {
+				ok: false,
+				error: `This table has ${open.length} open check${open.length === 1 ? "" : "s"}. Void or close them before setting Empty.`,
+				code: "open_checks",
+			};
 		}
 		set({ tables: get().tables.map((t: any) => t.id === tableId ? {
 			...t,
@@ -1683,7 +1707,22 @@ const usePosStoreRaw = create<PosStore>()(persist((set, get) => {
 		return { ok: true };
 	},
 	clearTable: (tableId) => {
-		const childIds = get().tables.find((t: any) => t.id === tableId) ? get().tables.filter((t: any) => t.mergedIntoId === tableId).map((t: any) => t.id) : [];
+		const table = get().tables.find((t: any) => t.id === tableId);
+		const remaining = table ? openChecksOnTable(table, get().orders) : [];
+		if (table && remaining.length) {
+			const primary = remaining[0];
+			set({
+				tables: get().tables.map((t: any) => t.id === tableId ? {
+					...t,
+					orderId: primary.id,
+					serverId: primary.serverId ?? t.serverId,
+					guestCount: primary.guestCount ?? t.guestCount,
+				} : t),
+			});
+			floorSync("table", tableId);
+			return;
+		}
+		const childIds = table ? get().tables.filter((t: any) => t.mergedIntoId === tableId).map((t: any) => t.id) : [];
 		set({
 			extraTableGrants: get().extraTableGrants.filter((g: any) => !(g.scope === "seating" && (g.tableId === tableId || childIds.includes(g.tableId)))),
 			tables: get().tables.map((t: any) => {
@@ -1706,17 +1745,21 @@ const usePosStoreRaw = create<PosStore>()(persist((set, get) => {
 	transferTable: (fromId, toId) => {
 		const from = get().tables.find((t: any) => t.id === fromId);
 		const to = get().tables.find((t: any) => t.id === toId);
-		if (!from?.orderId) return {
+		const fromChecks = from ? openChecksOnTable(from, get().orders) : [];
+		const orderId =
+			(from?.orderId && fromChecks.some((c) => c.id === from.orderId) ? from.orderId : null) ||
+			fromChecks[0]?.id ||
+			null;
+		if (!from || !orderId) return {
 			ok: false,
 			error: "Source has no check"
 		};
-		if (!to || !isEmptyTable(to.status)) return {
+		if (!to || !tableIsVacant(to, get().orders)) return {
 			ok: false,
 			error: "Target not available"
 		};
 		const destAccess = checkTableAccess(get, to, "seat");
 		if (!destAccess.ok) return { ok: false, error: destAccess.reason, access: destAccess };
-		const orderId = from.orderId;
 		set({
 			tables: get().tables.map((t: any) => {
 				if (t.id === fromId) return {
@@ -2931,20 +2974,33 @@ const usePosStoreRaw = create<PosStore>()(persist((set, get) => {
 			shift.orderCount += 1;
 			if (order.tableId) {
 				const childIds = order.mergedTableIds ?? [];
-				tables = tables.map((t: any) => t.id === order.tableId || childIds.includes(t.id) ? {
-					...t,
-					status: "closed_not_cleaned",
-					statusSince: Date.now(),
-				} : t);
-				try {
-					const tb = get().tables.find((x: any) => x.id === order.tableId);
-					useNotifyStore.getState().pushNotice({
-						kind: "table_needs_bus",
-						title: `Bus · Table ${tb?.label ?? ""}`,
-						body: "Check closed — table needs clean",
-						tableLabel: tb?.label,
-					});
-				} catch { /* optional */ }
+				const nextOrders = get().orders.map((o: any) => o.id === updated.id ? updated : o);
+				const table = get().tables.find((x: any) => x.id === order.tableId);
+				const remaining = table ? openChecksOnTable(table, nextOrders) : [];
+				if (remaining.length) {
+					const primary = remaining[0];
+					tables = tables.map((t: any) => t.id === order.tableId ? {
+						...t,
+						orderId: primary.id,
+						status: tableStatusFromOrder(primary),
+						statusSince: Date.now(),
+					} : t);
+				} else {
+					tables = tables.map((t: any) => t.id === order.tableId || childIds.includes(t.id) ? {
+						...t,
+						status: "closed_not_cleaned",
+						statusSince: Date.now(),
+					} : t);
+					try {
+						const tb = get().tables.find((x: any) => x.id === order.tableId);
+						useNotifyStore.getState().pushNotice({
+							kind: "table_needs_bus",
+							title: `Bus · Table ${tb?.label ?? ""}`,
+							body: "Check closed — table needs clean",
+							tableLabel: tb?.label,
+						});
+					} catch { /* optional */ }
+				}
 			}
 		} else if (order.tableId) tables = tables.map((t: any) => t.orderId === order.id ? {
 			...t,
@@ -3902,6 +3958,15 @@ const usePosStoreRaw = create<PosStore>()(persist((set, get) => {
 		if (emp && !cfg.changeRoles.includes(emp.role) && emp.role !== "owner") return { ok: false, error: "Not allowed to change table status" };
 		const next = normalizeTableStatus(status);
 		if (next === "empty") {
+			const table = get().tables.find((t: any) => t.id === tableId);
+			const open = table ? openChecksOnTable(table, get().orders) : [];
+			if (open.length) {
+				return {
+					ok: false,
+					error: `This table has ${open.length} open check${open.length === 1 ? "" : "s"}. Void or close them before setting Empty.`,
+					code: "open_checks",
+				};
+			}
 			return get().markClean(tableId);
 		}
 		const root = groupRootId(get().tables, tableId);

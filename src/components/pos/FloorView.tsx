@@ -11,6 +11,7 @@ import {
   Pencil,
   Handshake,
   UserCheck,
+  Printer,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -25,7 +26,7 @@ import { usePosStore } from "@/lib/pos/store";
 import { useNotifyStore } from "@/lib/pos/notify-store";
 import { usePlatformStore } from "@/lib/pos/platform-store";
 import { useSaasStore } from "@/lib/pos/saas-store";
-import type { Table } from "@/lib/pos/types";
+import type { Employee, Order, RestaurantSettings, Table } from "@/lib/pos/types";
 import {
   FLOOR_PIPELINE,
   FLOOR_STATUS_LABEL,
@@ -44,7 +45,7 @@ import { parseQrPolicy, qrPolicySummary, qrTableTents } from "@/lib/pos/qr-polic
 import { printTableTents } from "@/lib/print/from-store";
 import { getDemoType } from "@/lib/demo/session";
 import { cn, formatCurrency, formatTime } from "@/lib/utils";
-import { computeTotals } from "@/lib/pos/calculations";
+import { computeDualTotals, computeTotals } from "@/lib/pos/calculations";
 import {
   activeGrantForTable,
   policyOf,
@@ -64,8 +65,10 @@ import {
   CHECK_HOLD_LABEL,
   CHECK_HOLD_REASONS,
   CHECK_HOLDS,
-  INTEGRITY_WARN_COLOR,
+  effectiveTablePipeline,
+  openChecksOnTable,
   tableEmptyWithOpenCheck,
+  tableIsVacant,
   type CheckHoldKind,
 } from "@/lib/pos/check-integrity";
 
@@ -90,6 +93,8 @@ export function FloorView({
 }) {
   const tables = usePosStore((s) => s.tables);
   const orders = usePosStore((s) => s.orders);
+  const tickets = usePosStore((s) => s.tickets);
+  const newCheckOnTable = usePosStore((s) => s.newCheckOnTable);
   const employees = usePosStore((s) => s.employees);
   const settings = usePosStore((s) => s.settings);
   const selectTable = usePosStore((s) => s.selectTable);
@@ -231,13 +236,14 @@ export function FloorView({
       });
 
   const counts = useMemo(() => {
-    const c: Record<string, number> = {};
+    const c: Record<string, number> = { check_open: 0 };
     for (const t of tables.filter((x) => !x.mergedIntoId)) {
-      const st = normalizeTableStatus(t.status);
+      const st = effectiveTablePipeline(t, orders, tickets, floorCfg);
       c[st] = (c[st] ?? 0) + 1;
+      if (openChecksOnTable(t, orders).length) c.check_open = (c.check_open ?? 0) + 1;
     }
     return c;
-  }, [tables]);
+  }, [tables, orders, tickets, floorCfg]);
 
   const showBlocked = (t: Table, reason: string) => {
     setBlockTable(t);
@@ -276,7 +282,7 @@ export function FloorView({
     }
     if (transferMode) {
       if (!transferFrom) {
-        if (!t.orderId) {
+        if (openChecksOnTable(t, orders).length === 0) {
           alert("Pick a table with an open check first");
           return;
         }
@@ -426,6 +432,11 @@ export function FloorView({
               {FLOOR_STATUS_LABEL[st]} {counts[st] ?? 0}
             </Badge>
           ))}
+          {(counts.check_open ?? 0) > 0 && (
+            <Badge variant="secondary" className="tabular bg-amber-700 text-white">
+              CHECK OPEN {counts.check_open}
+            </Badge>
+          )}
         </div>
       </div>
 
@@ -492,14 +503,15 @@ export function FloorView({
               <span>Bar →</span>
             </div>
             {visible.map((t) => {
-              const order = orders.find((o) => o.id === t.orderId);
+              const checks = openChecksOnTable(t, orders);
+              const order = checks[0] ?? orders.find((o) => o.id === t.orderId);
               const totals = order ? computeTotals(order, settings) : null;
               const server = employees.find((e) => e.id === t.serverId);
-              const st = normalizeTableStatus(t.status);
+              const st = effectiveTablePipeline(t, orders, tickets, floorCfg);
+              const checkOpen = checks.length > 0;
               const integrityWarn = tableEmptyWithOpenCheck(t, orders);
-              const fill = integrityWarn
-                ? INTEGRITY_WARN_COLOR
-                : st === "reserved"
+              const fill =
+                st === "reserved"
                   ? "#e8e6e1"
                   : floorCfg.colors[st] ?? "#ffffff";
               const ink = contrastInk(fill);
@@ -590,9 +602,9 @@ export function FloorView({
                       SLA
                     </span>
                   )}
-                  {integrityWarn && (
+                  {checkOpen && (
                     <span className="mt-0.5 rounded bg-amber-700 px-1 text-[9px] font-bold uppercase tracking-wide text-white">
-                      Check open
+                      CHECK OPEN
                     </span>
                   )}
                   {grant && (
@@ -605,7 +617,7 @@ export function FloorView({
                       Open
                     </span>
                   )}
-                  {outOfSection && isEmptyTable(t.status) && (
+                  {outOfSection && tableIsVacant(t, orders) && (
                     <Lock className="mt-0.5 h-3 w-3 text-muted-foreground" />
                   )}
                   {totals && (
@@ -854,9 +866,9 @@ export function FloorView({
               </p>
               <div className="max-h-48 space-y-2 overflow-y-auto">
                 {tables
-                  .filter((t) => t.orderId && !t.mergedIntoId)
+                  .filter((t) => !t.mergedIntoId && openChecksOnTable(t, orders).length > 0)
                   .map((t) => {
-                    const o = orders.find((x) => x.id === t.orderId);
+                    const o = openChecksOnTable(t, orders)[0] ?? orders.find((x) => x.id === t.orderId);
                     if (!o) return null;
                     const tot = computeTotals(o, settings);
                     const color = sectionColorForTable(t, floorSections);
@@ -897,7 +909,7 @@ export function FloorView({
                       </button>
                     );
                   })}
-                {tables.every((t) => !t.orderId) && (
+                {tables.every((t) => openChecksOnTable(t, orders).length === 0) && (
                   <p className="py-4 text-center text-xs text-muted-foreground">
                     No seated tables
                   </p>
@@ -941,16 +953,9 @@ export function FloorView({
               </DialogHeader>
               <TableDetailBody
                 table={detailLive}
-                order={orders.find((o) => o.id === detailLive.orderId)}
-                settingsName={settings.name}
-                totals={
-                  detailLive.orderId
-                    ? (() => {
-                        const o = orders.find((x) => x.id === detailLive.orderId);
-                        return o ? computeTotals(o, settings) : null;
-                      })()
-                    : null
-                }
+                openChecks={openChecksOnTable(detailLive, orders)}
+                settings={settings}
+                employees={employees}
                 floorCfg={floorCfg}
                 canStatus={canStatus}
                 canSeat={canSeat}
@@ -960,6 +965,36 @@ export function FloorView({
                 demoType={demoType}
                 qrOpen={qrOpen}
                 clock={clock}
+                onOpenCheck={(orderId) => {
+                  if (!canOrderEntry) {
+                    showBlocked(detailLive, "This PIN cannot open a table order.");
+                    return;
+                  }
+                  const res = selectTable(detailLive.id, orderId);
+                  if (!res.ok) {
+                    showBlocked(detailLive, res.error ?? "Outside your section");
+                    return;
+                  }
+                  setDetail(null);
+                }}
+                onNewCheck={() => {
+                  if (!canOrderEntry) {
+                    showBlocked(detailLive, "This PIN cannot open a table order.");
+                    return;
+                  }
+                  const res = newCheckOnTable(detailLive.id);
+                  if (!res.ok) {
+                    showBlocked(detailLive, res.error ?? "Could not open a check");
+                    return;
+                  }
+                  setDetail(null);
+                }}
+                onPrintAll={() => {
+                  const checks = openChecksOnTable(detailLive, orders);
+                  void import("@/lib/print/from-store").then(async (m) => {
+                    for (const c of checks) await m.printGuestCheck(c.id);
+                  });
+                }}
                 onSeat={() => {
                   const access = tableAccess(detailLive.id, "seat");
                   if (!access.ok) {
@@ -975,18 +1010,6 @@ export function FloorView({
                     ) ?? floorServers[0];
                   setSeatServerId(preferred?.id ?? "");
                   setSeatOpen(true);
-                }}
-                onOpenCheck={() => {
-                  if (!canOrderEntry) {
-                    showBlocked(detailLive, "This PIN cannot open a table order.");
-                    return;
-                  }
-                  const res = selectTable(detailLive.id);
-                  if (!res.ok) {
-                    showBlocked(detailLive, res.error ?? "Outside your section");
-                    return;
-                  }
-                  setDetail(null);
                 }}
                 onClean={() => {
                   const res = markClean(detailLive.id);
@@ -1015,7 +1038,7 @@ export function FloorView({
                   if (!res.ok) alert(res.error);
                 }}
                 canRelease={
-                  !!detailLive.orderId &&
+                  openChecksOnTable(detailLive, orders).length > 0 &&
                   !detailLive.releasedAt &&
                   (emp?.role === "server" ||
                     emp?.role === "bartender" ||
@@ -1226,7 +1249,10 @@ export function FloorView({
           if (!o) setBlockTable(null);
         }}
         onResolved={(t) => {
-          if (isEmptyTable(t.status)) {
+          if (openChecksOnTable(t, orders).length) {
+            if (canOrderEntry) selectTable(t.id);
+            else setDetail(t);
+          } else if (tableIsVacant(t, orders)) {
             setSeatTarget(t);
             setGuests(Math.min(t.seats, 2));
             setSeatOpen(true);
@@ -1243,8 +1269,9 @@ export function FloorView({
 
 function TableDetailBody({
   table,
-  order,
-  totals,
+  openChecks,
+  settings,
+  employees,
   floorCfg,
   canStatus,
   canSeat,
@@ -1256,6 +1283,8 @@ function TableDetailBody({
   clock,
   onSeat,
   onOpenCheck,
+  onNewCheck,
+  onPrintAll,
   onClean,
   onStatus,
   onToggleQr,
@@ -1273,9 +1302,9 @@ function TableDetailBody({
   onSplitGroup,
 }: {
   table: Table;
-  order: { number: number; status: string } | undefined;
-  totals: ReturnType<typeof computeTotals> | null;
-  settingsName: string;
+  openChecks: Order[];
+  settings: RestaurantSettings;
+  employees: Employee[];
   floorCfg: ReturnType<typeof parseFloorStatusConfig>;
   canStatus: boolean;
   canSeat: boolean;
@@ -1286,7 +1315,9 @@ function TableDetailBody({
   qrOpen: boolean;
   clock: number;
   onSeat: () => void;
-  onOpenCheck: () => void;
+  onOpenCheck: (orderId: string) => void;
+  onNewCheck: () => void;
+  onPrintAll: () => void;
   onClean: () => void;
   onStatus: (st: FloorPipelineStatus) => void;
   onToggleQr: () => void;
@@ -1303,30 +1334,77 @@ function TableDetailBody({
   onReassign?: () => void;
   onSplitGroup?: () => void;
 }) {
-  const st = normalizeTableStatus(table.status);
-  const empty = isEmptyTable(table.status);
-  const dirty = st === "closed_not_cleaned";
+  const stored = normalizeTableStatus(table.status);
+  const hasOpen = openChecks.length > 0;
+  const empty = !hasOpen && isEmptyTable(table.status);
+  const dirty = !hasOpen && stored === "closed_not_cleaned";
+  const occupiedNoCheck =
+    !hasOpen && !empty && stored !== "reserved" && stored !== "closed_not_cleaned";
   const flashing = tableFlash(table, floorCfg, clock || Date.now());
   const enabled = FLOOR_PIPELINE.filter((s) => floorCfg.enabled[s] !== false);
+  const headerServer =
+    serverName ||
+    employees.find((e) => e.id === table.serverId)?.name ||
+    openChecks[0]?.serverName;
 
   return (
     <div className="space-y-3" data-demo="table-detail">
       <div className="flex items-center justify-between gap-2 rounded-xl border border-border bg-bg px-3 py-2">
-        <span className="text-sm font-medium">{pipelineLabel(table.status)}</span>
+        <span className="text-sm font-medium">
+          {hasOpen ? "CHECK OPEN" : pipelineLabel(table.status)}
+        </span>
         {flashing && (
           <Badge variant="danger" className="uppercase">
             SLA flash
           </Badge>
         )}
       </div>
-      {order && totals && (
-        <p className="text-sm text-muted-foreground">
-          Check #{order.number}
-          {order.status !== "open" ? " · closed" : ""} ·{" "}
-          {formatCurrency(totals.balanceCents || totals.totalCents)}
-          {serverName ? ` · ${serverName}` : ""}
-          {table.pendingAcceptName ? ` · pending ${table.pendingAcceptName}` : ""}
-        </p>
+      {hasOpen && (
+        <div className="rounded-xl border border-border bg-bg px-3 py-2 text-sm" data-table-view>
+          <p className="text-xs text-muted-foreground">
+            T{table.label} · {table.section} · {table.guestCount || table.seats} covers
+            {headerServer ? ` · ${headerServer}` : ""}
+          </p>
+          <p className="mt-1 text-[11px] text-muted-foreground">
+            Tap a check to add, void, send, print check, or pay. Staff split stays on
+            that check — not Table QR.
+          </p>
+          <ul className="mt-2 space-y-1.5">
+            {openChecks.map((c) => {
+              const dual = computeDualTotals(c, settings);
+              const items = c.lines.filter((l) => !l.voided).reduce((n, l) => n + l.quantity, 0);
+              return (
+                <li key={c.id}>
+                  <button
+                    type="button"
+                    className="flex w-full items-center justify-between rounded-lg border border-border bg-surface px-2.5 py-2 text-left text-sm hover:border-border-strong"
+                    onClick={() => onOpenCheck(c.id)}
+                    data-open-check={c.id}
+                  >
+                    <span>
+                      <span className="font-medium">#{c.number}</span>
+                      <span className="mt-0.5 block text-[11px] text-muted-foreground">
+                        {c.serverName} · {items} item{items === 1 ? "" : "s"}
+                      </span>
+                    </span>
+                    <span className="text-right text-xs tabular">
+                      {dual.enabled ? (
+                        <>
+                          <span className="block">Cash {formatCurrency(dual.cash.totalCents)}</span>
+                          <span className="block text-muted-foreground">
+                            Card {formatCurrency(dual.card.totalCents)}
+                          </span>
+                        </>
+                      ) : (
+                        formatCurrency(dual.cash.totalCents)
+                      )}
+                    </span>
+                  </button>
+                </li>
+              );
+            })}
+          </ul>
+        </div>
       )}
       {table.releasedAt && (
         <p className="rounded-lg border border-amber-700/30 bg-amber-50 px-3 py-2 text-xs text-amber-950">
@@ -1342,8 +1420,19 @@ function TableDetailBody({
             Seat
           </Button>
         )}
-        {!empty && table.orderId && canOrder && (
-          <Button onClick={onOpenCheck}>Open check</Button>
+        {occupiedNoCheck && canOrder && (
+          <Button onClick={onNewCheck}>Resume</Button>
+        )}
+        {hasOpen && canOrder && (
+          <Button variant="outline" onClick={onNewCheck}>
+            New check on this table
+          </Button>
+        )}
+        {hasOpen && (
+          <Button variant="outline" onClick={onPrintAll}>
+            <Printer className="h-4 w-4" />
+            Print all open
+          </Button>
         )}
         {onSplitGroup && (
           <Button variant="outline" onClick={onSplitGroup}>
@@ -1351,7 +1440,7 @@ function TableDetailBody({
             Split group
           </Button>
         )}
-        {(st === "ordered_food" || st === "food_delivered" || st === "ordered_drinks") && (
+        {(stored === "ordered_food" || stored === "food_delivered" || stored === "ordered_drinks" || hasOpen) && (
           <Button variant="outline" onClick={() => onStatus("food_delivered")}>
             Mark delivered
           </Button>
@@ -1415,10 +1504,16 @@ function TableDetailBody({
               <Button
                 key={s}
                 size="sm"
-                variant={st === s ? "default" : "outline"}
+                variant={stored === s && !hasOpen ? "default" : "outline"}
+                disabled={s === "empty" && hasOpen}
+                title={
+                  s === "empty" && hasOpen
+                    ? "Void or close open checks before setting Empty"
+                    : undefined
+                }
                 onClick={() => onStatus(s)}
                 style={
-                  st === s
+                  stored === s && !hasOpen
                     ? undefined
                     : { borderColor: floorCfg.colors[s], background: floorCfg.colors[s], color: contrastInk(floorCfg.colors[s]) }
                 }

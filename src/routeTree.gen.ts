@@ -17,10 +17,10 @@ import { Route as ChangePasswordRouteImport } from './routes/change-password'
 import { Route as ContactRouteImport } from './routes/contact'
 import { Route as DashboardRouteImport } from './routes/dashboard'
 import { Route as DemoRouteImport } from './routes/demo'
+import { Route as DemosRouteImport } from './routes/demos'
 import { Route as FeaturesRouteImport } from './routes/features'
 import { Route as GetPricingRouteImport } from './routes/get-pricing'
 import { Route as GiftRouteImport } from './routes/gift'
-import { Route as DemosRouteImport } from './routes/demos'
 import { Route as GuideRouteImport } from './routes/guide'
 import { Route as KioskRouteImport } from './routes/kiosk'
 import { Route as LoginRouteImport } from './routes/login'
@@ -36,12 +36,12 @@ import { Route as StationRouteImport } from './routes/station'
 import { Route as TermsRouteImport } from './routes/terms'
 import { Route as WhitepaperRouteImport } from './routes/whitepaper'
 import { Route as ApiHealthRouteImport } from './routes/api/health'
-import { Route as ApiPrintJobsRouteImport } from './routes/api/print/jobs'
 import { Route as BlogSlugRouteImport } from './routes/blog.$slug'
 import { Route as DemoIndexRouteImport } from './routes/demo.index'
 import { Route as DemoTypeRouteImport } from './routes/demo.$type'
 import { Route as InviteTokenRouteImport } from './routes/invite.$token'
 import { Route as OrderOrderIdRouteImport } from './routes/order.$orderId'
+import { Route as PlatformTenantsRouteImport } from './routes/platform.tenants'
 import { Route as QuoteTokenRouteImport } from './routes/quote.$token'
 import { Route as SetupTokenRouteImport } from './routes/setup.$token'
 import { Route as SiteSlugRouteImport } from './routes/site.$slug'
@@ -55,10 +55,10 @@ import { Route as VenueTypeRouteImport } from './routes/venue.$type'
 import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
 import { Route as ApiBillingWebhookRouteImport } from './routes/api/billing/webhook'
 import { Route as ApiPaymentsWebhookRouteImport } from './routes/api/payments/webhook'
+import { Route as ApiPrintJobsRouteImport } from './routes/api/print/jobs'
 import { Route as AppVenueTypeRouteImport } from './routes/app.venue.$type'
 import { Route as DemoTypeTourRouteImport } from './routes/demo.$type.tour'
 import { Route as DemoTourFullRouteImport } from './routes/demo.tour.full'
-import { Route as PlatformTenantsRouteImport } from './routes/platform.tenants'
 import { Route as PlatformTenantsIndexRouteImport } from './routes/platform.tenants.index'
 import { Route as PlatformTenantsOrgIdRouteImport } from './routes/platform.tenants.$orgId'
 import { Route as WaitlistOptOutTokenRouteImport } from './routes/waitlist.opt-out.$token'
@@ -104,6 +104,11 @@ const DemoRoute = DemoRouteImport.update({
   path: '/demo',
   getParentRoute: () => rootRouteImport,
 } as any)
+const DemosRoute = DemosRouteImport.update({
+  id: '/demos',
+  path: '/demos',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const FeaturesRoute = FeaturesRouteImport.update({
   id: '/features',
   path: '/features',
@@ -117,11 +122,6 @@ const GetPricingRoute = GetPricingRouteImport.update({
 const GiftRoute = GiftRouteImport.update({
   id: '/gift',
   path: '/gift',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const DemosRoute = DemosRouteImport.update({
-  id: '/demos',
-  path: '/demos',
   getParentRoute: () => rootRouteImport,
 } as any)
 const GuideRoute = GuideRouteImport.update({
@@ -199,11 +199,6 @@ const ApiHealthRoute = ApiHealthRouteImport.update({
   path: '/api/health',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ApiPrintJobsRoute = ApiPrintJobsRouteImport.update({
-  id: '/api/print/jobs',
-  path: '/api/print/jobs',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const BlogSlugRoute = BlogSlugRouteImport.update({
   id: '/$slug',
   path: '/$slug',
@@ -228,6 +223,11 @@ const OrderOrderIdRoute = OrderOrderIdRouteImport.update({
   id: '/order/$orderId',
   path: '/order/$orderId',
   getParentRoute: () => rootRouteImport,
+} as any)
+const PlatformTenantsRoute = PlatformTenantsRouteImport.update({
+  id: '/tenants',
+  path: '/tenants',
+  getParentRoute: () => PlatformRoute,
 } as any)
 const QuoteTokenRoute = QuoteTokenRouteImport.update({
   id: '/quote/$token',
@@ -294,6 +294,11 @@ const ApiPaymentsWebhookRoute = ApiPaymentsWebhookRouteImport.update({
   path: '/api/payments/webhook',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPrintJobsRoute = ApiPrintJobsRouteImport.update({
+  id: '/api/print/jobs',
+  path: '/api/print/jobs',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AppVenueTypeRoute = AppVenueTypeRouteImport.update({
   id: '/venue/$type',
   path: '/venue/$type',
@@ -308,11 +313,6 @@ const DemoTourFullRoute = DemoTourFullRouteImport.update({
   id: '/tour/full',
   path: '/tour/full',
   getParentRoute: () => DemoRoute,
-} as any)
-const PlatformTenantsRoute = PlatformTenantsRouteImport.update({
-  id: '/tenants',
-  path: '/tenants',
-  getParentRoute: () => PlatformRoute,
 } as any)
 const PlatformTenantsIndexRoute = PlatformTenantsIndexRouteImport.update({
   id: '/',
@@ -344,10 +344,10 @@ export interface FileRoutesByFullPath {
   '/contact': typeof ContactRoute
   '/dashboard': typeof DashboardRoute
   '/demo': typeof DemoRouteWithChildren
+  '/demos': typeof DemosRoute
   '/features': typeof FeaturesRoute
   '/get-pricing': typeof GetPricingRoute
   '/gift': typeof GiftRoute
-  '/demos': typeof DemosRoute
   '/guide': typeof GuideRoute
   '/kiosk': typeof KioskRoute
   '/login': typeof LoginRoute
@@ -363,11 +363,11 @@ export interface FileRoutesByFullPath {
   '/terms': typeof TermsRoute
   '/whitepaper': typeof WhitepaperRoute
   '/api/health': typeof ApiHealthRoute
-  '/api/print/jobs': typeof ApiPrintJobsRoute
   '/blog/$slug': typeof BlogSlugRoute
   '/demo/$type': typeof DemoTypeRouteWithChildren
   '/invite/$token': typeof InviteTokenRoute
   '/order/$orderId': typeof OrderOrderIdRoute
+  '/platform/tenants': typeof PlatformTenantsRouteWithChildren
   '/quote/$token': typeof QuoteTokenRoute
   '/setup/$token': typeof SetupTokenRoute
   '/site/$slug': typeof SiteSlugRoute
@@ -382,13 +382,13 @@ export interface FileRoutesByFullPath {
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/billing/webhook': typeof ApiBillingWebhookRoute
   '/api/payments/webhook': typeof ApiPaymentsWebhookRoute
+  '/api/print/jobs': typeof ApiPrintJobsRoute
   '/app/venue/$type': typeof AppVenueTypeRoute
   '/demo/$type/tour': typeof DemoTypeTourRoute
   '/demo/tour/full': typeof DemoTourFullRoute
-  '/platform/tenants': typeof PlatformTenantsRouteWithChildren
-  '/platform/tenants/': typeof PlatformTenantsIndexRoute
   '/platform/tenants/$orgId': typeof PlatformTenantsOrgIdRoute
   '/waitlist/opt-out/$token': typeof WaitlistOptOutTokenRoute
+  '/platform/tenants/': typeof PlatformTenantsIndexRoute
   '/api/payments/finix/webhook': typeof ApiPaymentsFinixWebhookRoute
 }
 export interface FileRoutesByTo {
@@ -399,10 +399,10 @@ export interface FileRoutesByTo {
   '/change-password': typeof ChangePasswordRoute
   '/contact': typeof ContactRoute
   '/dashboard': typeof DashboardRoute
+  '/demos': typeof DemosRoute
   '/features': typeof FeaturesRoute
   '/get-pricing': typeof GetPricingRoute
   '/gift': typeof GiftRoute
-  '/demos': typeof DemosRoute
   '/guide': typeof GuideRoute
   '/kiosk': typeof KioskRoute
   '/login': typeof LoginRoute
@@ -418,7 +418,6 @@ export interface FileRoutesByTo {
   '/terms': typeof TermsRoute
   '/whitepaper': typeof WhitepaperRoute
   '/api/health': typeof ApiHealthRoute
-  '/api/print/jobs': typeof ApiPrintJobsRoute
   '/blog/$slug': typeof BlogSlugRoute
   '/demo/$type': typeof DemoTypeRouteWithChildren
   '/invite/$token': typeof InviteTokenRoute
@@ -437,13 +436,13 @@ export interface FileRoutesByTo {
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/billing/webhook': typeof ApiBillingWebhookRoute
   '/api/payments/webhook': typeof ApiPaymentsWebhookRoute
+  '/api/print/jobs': typeof ApiPrintJobsRoute
   '/app/venue/$type': typeof AppVenueTypeRoute
   '/demo/$type/tour': typeof DemoTypeTourRoute
   '/demo/tour/full': typeof DemoTourFullRoute
-  '/platform/tenants': typeof PlatformTenantsRouteWithChildren
-  '/platform/tenants/': typeof PlatformTenantsIndexRoute
   '/platform/tenants/$orgId': typeof PlatformTenantsOrgIdRoute
   '/waitlist/opt-out/$token': typeof WaitlistOptOutTokenRoute
+  '/platform/tenants': typeof PlatformTenantsIndexRoute
   '/api/payments/finix/webhook': typeof ApiPaymentsFinixWebhookRoute
 }
 export interface FileRoutesById {
@@ -456,10 +455,10 @@ export interface FileRoutesById {
   '/contact': typeof ContactRoute
   '/dashboard': typeof DashboardRoute
   '/demo': typeof DemoRouteWithChildren
+  '/demos': typeof DemosRoute
   '/features': typeof FeaturesRoute
   '/get-pricing': typeof GetPricingRoute
   '/gift': typeof GiftRoute
-  '/demos': typeof DemosRoute
   '/guide': typeof GuideRoute
   '/kiosk': typeof KioskRoute
   '/login': typeof LoginRoute
@@ -475,11 +474,11 @@ export interface FileRoutesById {
   '/terms': typeof TermsRoute
   '/whitepaper': typeof WhitepaperRoute
   '/api/health': typeof ApiHealthRoute
-  '/api/print/jobs': typeof ApiPrintJobsRoute
   '/blog/$slug': typeof BlogSlugRoute
   '/demo/$type': typeof DemoTypeRouteWithChildren
   '/invite/$token': typeof InviteTokenRoute
   '/order/$orderId': typeof OrderOrderIdRoute
+  '/platform/tenants': typeof PlatformTenantsRouteWithChildren
   '/quote/$token': typeof QuoteTokenRoute
   '/setup/$token': typeof SetupTokenRoute
   '/site/$slug': typeof SiteSlugRoute
@@ -494,13 +493,13 @@ export interface FileRoutesById {
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/billing/webhook': typeof ApiBillingWebhookRoute
   '/api/payments/webhook': typeof ApiPaymentsWebhookRoute
+  '/api/print/jobs': typeof ApiPrintJobsRoute
   '/app/venue/$type': typeof AppVenueTypeRoute
   '/demo/$type/tour': typeof DemoTypeTourRoute
   '/demo/tour/full': typeof DemoTourFullRoute
-  '/platform/tenants': typeof PlatformTenantsRouteWithChildren
-  '/platform/tenants/': typeof PlatformTenantsIndexRoute
   '/platform/tenants/$orgId': typeof PlatformTenantsOrgIdRoute
   '/waitlist/opt-out/$token': typeof WaitlistOptOutTokenRoute
+  '/platform/tenants/': typeof PlatformTenantsIndexRoute
   '/api/payments/finix/webhook': typeof ApiPaymentsFinixWebhookRoute
 }
 export interface FileRouteTypes {
@@ -514,10 +513,10 @@ export interface FileRouteTypes {
     | '/contact'
     | '/dashboard'
     | '/demo'
+    | '/demos'
     | '/features'
     | '/get-pricing'
     | '/gift'
-    | '/demos'
     | '/guide'
     | '/kiosk'
     | '/login'
@@ -533,11 +532,11 @@ export interface FileRouteTypes {
     | '/terms'
     | '/whitepaper'
     | '/api/health'
-    | '/api/print/jobs'
     | '/blog/$slug'
     | '/demo/$type'
     | '/invite/$token'
     | '/order/$orderId'
+    | '/platform/tenants'
     | '/quote/$token'
     | '/setup/$token'
     | '/site/$slug'
@@ -552,13 +551,13 @@ export interface FileRouteTypes {
     | '/api/auth/$'
     | '/api/billing/webhook'
     | '/api/payments/webhook'
+    | '/api/print/jobs'
     | '/app/venue/$type'
     | '/demo/$type/tour'
     | '/demo/tour/full'
-    | '/platform/tenants'
-    | '/platform/tenants/'
     | '/platform/tenants/$orgId'
     | '/waitlist/opt-out/$token'
+    | '/platform/tenants/'
     | '/api/payments/finix/webhook'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -569,10 +568,10 @@ export interface FileRouteTypes {
     | '/change-password'
     | '/contact'
     | '/dashboard'
+    | '/demos'
     | '/features'
     | '/get-pricing'
     | '/gift'
-    | '/demos'
     | '/guide'
     | '/kiosk'
     | '/login'
@@ -588,7 +587,6 @@ export interface FileRouteTypes {
     | '/terms'
     | '/whitepaper'
     | '/api/health'
-    | '/api/print/jobs'
     | '/blog/$slug'
     | '/demo/$type'
     | '/invite/$token'
@@ -607,13 +605,13 @@ export interface FileRouteTypes {
     | '/api/auth/$'
     | '/api/billing/webhook'
     | '/api/payments/webhook'
+    | '/api/print/jobs'
     | '/app/venue/$type'
     | '/demo/$type/tour'
     | '/demo/tour/full'
-    | '/platform/tenants'
-    | '/platform/tenants/'
     | '/platform/tenants/$orgId'
     | '/waitlist/opt-out/$token'
+    | '/platform/tenants'
     | '/api/payments/finix/webhook'
   id:
     | '__root__'
@@ -625,10 +623,10 @@ export interface FileRouteTypes {
     | '/contact'
     | '/dashboard'
     | '/demo'
+    | '/demos'
     | '/features'
     | '/get-pricing'
     | '/gift'
-    | '/demos'
     | '/guide'
     | '/kiosk'
     | '/login'
@@ -644,11 +642,11 @@ export interface FileRouteTypes {
     | '/terms'
     | '/whitepaper'
     | '/api/health'
-    | '/api/print/jobs'
     | '/blog/$slug'
     | '/demo/$type'
     | '/invite/$token'
     | '/order/$orderId'
+    | '/platform/tenants'
     | '/quote/$token'
     | '/setup/$token'
     | '/site/$slug'
@@ -663,13 +661,13 @@ export interface FileRouteTypes {
     | '/api/auth/$'
     | '/api/billing/webhook'
     | '/api/payments/webhook'
+    | '/api/print/jobs'
     | '/app/venue/$type'
     | '/demo/$type/tour'
     | '/demo/tour/full'
-    | '/platform/tenants'
-    | '/platform/tenants/'
     | '/platform/tenants/$orgId'
     | '/waitlist/opt-out/$token'
+    | '/platform/tenants/'
     | '/api/payments/finix/webhook'
   fileRoutesById: FileRoutesById
 }
@@ -682,10 +680,10 @@ export interface RootRouteChildren {
   ContactRoute: typeof ContactRoute
   DashboardRoute: typeof DashboardRoute
   DemoRoute: typeof DemoRouteWithChildren
+  DemosRoute: typeof DemosRoute
   FeaturesRoute: typeof FeaturesRoute
   GetPricingRoute: typeof GetPricingRoute
   GiftRoute: typeof GiftRoute
-  DemosRoute: typeof DemosRoute
   GuideRoute: typeof GuideRoute
   KioskRoute: typeof KioskRoute
   LoginRoute: typeof LoginRoute
@@ -701,7 +699,6 @@ export interface RootRouteChildren {
   TermsRoute: typeof TermsRoute
   WhitepaperRoute: typeof WhitepaperRoute
   ApiHealthRoute: typeof ApiHealthRoute
-  ApiPrintJobsRoute: typeof ApiPrintJobsRoute
   InviteTokenRoute: typeof InviteTokenRoute
   OrderOrderIdRoute: typeof OrderOrderIdRoute
   QuoteTokenRoute: typeof QuoteTokenRoute
@@ -716,6 +713,7 @@ export interface RootRouteChildren {
   ApiAuthSplatRoute: typeof ApiAuthSplatRoute
   ApiBillingWebhookRoute: typeof ApiBillingWebhookRoute
   ApiPaymentsWebhookRoute: typeof ApiPaymentsWebhookRoute
+  ApiPrintJobsRoute: typeof ApiPrintJobsRoute
   WaitlistOptOutTokenRoute: typeof WaitlistOptOutTokenRoute
   ApiPaymentsFinixWebhookRoute: typeof ApiPaymentsFinixWebhookRoute
 }
@@ -778,6 +776,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DemoRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/demos': {
+      id: '/demos'
+      path: '/demos'
+      fullPath: '/demos'
+      preLoaderRoute: typeof DemosRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/features': {
       id: '/features'
       path: '/features'
@@ -797,13 +802,6 @@ declare module '@tanstack/react-router' {
       path: '/gift'
       fullPath: '/gift'
       preLoaderRoute: typeof GiftRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/demos': {
-      id: '/demos'
-      path: '/demos'
-      fullPath: '/demos'
-      preLoaderRoute: typeof DemosRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/guide': {
@@ -911,13 +909,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiHealthRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/api/print/jobs': {
-      id: '/api/print/jobs'
-      path: '/api/print/jobs'
-      fullPath: '/api/print/jobs'
-      preLoaderRoute: typeof ApiPrintJobsRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/blog/$slug': {
       id: '/blog/$slug'
       path: '/$slug'
@@ -952,6 +943,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/order/$orderId'
       preLoaderRoute: typeof OrderOrderIdRouteImport
       parentRoute: typeof rootRouteImport
+    }
+    '/platform/tenants': {
+      id: '/platform/tenants'
+      path: '/tenants'
+      fullPath: '/platform/tenants'
+      preLoaderRoute: typeof PlatformTenantsRouteImport
+      parentRoute: typeof PlatformRoute
     }
     '/quote/$token': {
       id: '/quote/$token'
@@ -1044,6 +1042,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPaymentsWebhookRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/print/jobs': {
+      id: '/api/print/jobs'
+      path: '/api/print/jobs'
+      fullPath: '/api/print/jobs'
+      preLoaderRoute: typeof ApiPrintJobsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/app/venue/$type': {
       id: '/app/venue/$type'
       path: '/venue/$type'
@@ -1064,13 +1069,6 @@ declare module '@tanstack/react-router' {
       fullPath: '/demo/tour/full'
       preLoaderRoute: typeof DemoTourFullRouteImport
       parentRoute: typeof DemoRoute
-    }
-    '/platform/tenants': {
-      id: '/platform/tenants'
-      path: '/tenants'
-      fullPath: '/platform/tenants'
-      preLoaderRoute: typeof PlatformTenantsRouteImport
-      parentRoute: typeof PlatformRoute
     }
     '/platform/tenants/': {
       id: '/platform/tenants/'
@@ -1150,13 +1148,13 @@ const DemoRouteChildren: DemoRouteChildren = {
 const DemoRouteWithChildren = DemoRoute._addFileChildren(DemoRouteChildren)
 
 interface PlatformTenantsRouteChildren {
-  PlatformTenantsIndexRoute: typeof PlatformTenantsIndexRoute
   PlatformTenantsOrgIdRoute: typeof PlatformTenantsOrgIdRoute
+  PlatformTenantsIndexRoute: typeof PlatformTenantsIndexRoute
 }
 
 const PlatformTenantsRouteChildren: PlatformTenantsRouteChildren = {
-  PlatformTenantsIndexRoute: PlatformTenantsIndexRoute,
   PlatformTenantsOrgIdRoute: PlatformTenantsOrgIdRoute,
+  PlatformTenantsIndexRoute: PlatformTenantsIndexRoute,
 }
 
 const PlatformTenantsRouteWithChildren = PlatformTenantsRoute._addFileChildren(
@@ -1195,10 +1193,10 @@ const rootRouteChildren: RootRouteChildren = {
   ContactRoute: ContactRoute,
   DashboardRoute: DashboardRoute,
   DemoRoute: DemoRouteWithChildren,
+  DemosRoute: DemosRoute,
   FeaturesRoute: FeaturesRoute,
   GetPricingRoute: GetPricingRoute,
   GiftRoute: GiftRoute,
-  DemosRoute: DemosRoute,
   GuideRoute: GuideRoute,
   KioskRoute: KioskRoute,
   LoginRoute: LoginRoute,
@@ -1214,7 +1212,6 @@ const rootRouteChildren: RootRouteChildren = {
   TermsRoute: TermsRoute,
   WhitepaperRoute: WhitepaperRoute,
   ApiHealthRoute: ApiHealthRoute,
-  ApiPrintJobsRoute: ApiPrintJobsRoute,
   InviteTokenRoute: InviteTokenRoute,
   OrderOrderIdRoute: OrderOrderIdRoute,
   QuoteTokenRoute: QuoteTokenRoute,
@@ -1229,6 +1226,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiAuthSplatRoute: ApiAuthSplatRoute,
   ApiBillingWebhookRoute: ApiBillingWebhookRoute,
   ApiPaymentsWebhookRoute: ApiPaymentsWebhookRoute,
+  ApiPrintJobsRoute: ApiPrintJobsRoute,
   WaitlistOptOutTokenRoute: WaitlistOptOutTokenRoute,
   ApiPaymentsFinixWebhookRoute: ApiPaymentsFinixWebhookRoute,
 }

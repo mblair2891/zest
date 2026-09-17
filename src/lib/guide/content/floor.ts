@@ -15,7 +15,7 @@ export const FLOOR_TOPICS: GuideTopic[] = [
         "The floor map is the live picture of the room. If table state is wrong, kitchen, payment, and turns all drift.",
       ),
       p(
-        "Each table is colored by dining status: empty, sat with no order, drinks fired, food fired, food delivered, dining unpaid, or closed and needs bus. Booths use the same colors on the table surface and a thin outline — benches stay upholstery so they still read as a booth. A color bar is the section. When a status sits past its flash minutes, the fixture pulses.",
+        "Each table is colored by dining status: empty, sat with no order, drinks fired, food fired, food delivered, dining unpaid, or closed and needs bus. Open checks win over a stale Empty paint — CHECK OPEN counts on the legend. Booths use the same colors on the table surface and a thin outline — benches stay upholstery so they still read as a booth. A color bar is the section. When a status sits past its flash minutes, the fixture pulses.",
       ),
       shot(
         "Floor map with section color bars and an Up badge on a table whose food was just bumped.",
@@ -23,12 +23,17 @@ export const FLOOR_TOPICS: GuideTopic[] = [
       ),
       steps(
         "Open Floor. Entire location shows the whole map. By section shows one room at a time (tabs). Servers still have Mine.",
-        "Tap an open table. Enter party size. Host stand can assign a server for that section.",
+        "Tap a table. If any OPEN checks exist for that table, table view opens — not Empty / Seat. Header: table #, section, covers, server. Every open check is listed (#, server, cash total, card total, item count). Tap a check to add, void, send, print check, or pay on that check. Actions: New check on this table, Transfer / hold, Print all open, Table QR. Staff split stays on the check, not guest QR.",
+        "If there are no open checks but the table is sat, fired, unpaid, or needs bus: that status, plus Resume. Seat only when the table is truly vacant.",
+        "Empty + Seat only when there are zero open checks AND status is empty.",
         "Combine tables: drag one onto another, or Select to combine. The group label is the lowest table number; seats add. Split group restores originals. Combined tables share status; the check sits on the group.",
-        "Jump to Order to build items, or stay on Floor to watch status. Color fill is dining status; SLA flash if configured.",
+        "Jump to Order from a listed check, or stay on Floor to watch status. Map color follows the open checks. CHECK OPEN increments the legend — a table with a check is never counted as Empty.",
         "Bar tab: the map shows that PIN’s assigned section stools (manager / supervisor see all). Tap a stool to open or attach the check. To-go never uses the floor.",
         "Transfer / hold: offer the check to a named server (they must accept) or park it in a named hold — manager hold, walkout, bar tab, or left to close — with a reason. The check stays owned by that person or the house. There is no nameless unassigned pool.",
-        "After pay, the table goes closed · needs bus. Busser or server marks it cleaned and it returns to empty. Marking a table empty while a check is still open does not drop the check — it moves to Left to close and flags the nightly pack (or requires a shift lead first, per settings). Empty + open check paints a warning color on the map.",
+        "After pay, the table goes closed · needs bus. Busser or server marks it cleaned and it returns to empty. Set status → Empty is blocked while open checks exist — void or close them first.",
+      ),
+      warn(
+        "Do not Set Status → Empty while checks are open. Void or close them first. CHECK OPEN on the map means tap the table to get back to those checks.",
       ),
       related("floor-status", "floor-editor", "table-qr", "sections", "checks-comps", "check-split-move", "counter-vs-table", "kds", "loss-prevention"),
     ],
@@ -163,7 +168,7 @@ export const FLOOR_TOPICS: GuideTopic[] = [
       ul(
         "After a host / supervisor / manager PIN, the short menu is Floor / seat, Waitlist, To-go, Clock in/out.",
         "To-go starts a takeout check with the same pay and print path as the order station.",
-        "Floor / seat is the map and table status only. The check opens after a table tap. No ODS rail, no menu editor.",
+        "Floor / seat is the map and table status only. Tap a table with open checks to open table view and pick a check. Empty + Seat only when vacant. No ODS rail, no menu editor.",
         "Kitchen / cook PIN: Clock and Done only. No to-go from this tablet.",
         "Server PIN: Floor / seat + To-go only when Servers may use the host stand is on; otherwise clock and use an order tablet.",
       ),
@@ -235,7 +240,8 @@ export const FLOOR_TOPICS: GuideTopic[] = [
       ),
       ul(
         "Auto: first drink send → drinks fired; food send → food fired; kitchen bump → delivered then dining unpaid; pay complete → closed · needs bus.",
-        "Manual: tap a table on Floor and pick a status. Busser typically marks cleaned.",
+        "Open checks paint the table from the check, not stored Empty. CHECK OPEN increments the legend.",
+        "Manual: tap a table on Floor. Open checks show table view first; Set Empty is disabled until they are closed. Busser typically marks cleaned.",
         "When minutes are exceeded the table pulses and a staff notice fires. A status change clears the flash.",
       ),
       steps(
@@ -261,7 +267,7 @@ export const FLOOR_TOPICS: GuideTopic[] = [
       ul(
         "Full self-serve — scan table QR, open a check, order, pay. Opening a check notifies host/server.",
         "Reorder after open — QR adds items only if a staff-opened check already exists. Empty table: “see your server.” Never silently start a ticket.",
-        "Pay / split — QR pays the open check (card, gift, or both). Optional even / by-item / by-seat split and tip.",
+        "Pay / split — QR pays the open check (card, gift, or both). Optional even / by-item / by-seat split and tip. Staff split, void, send, print check, and pay stay on the selected check from Floor table view — Table QR is the guest tent, not the staff split path.",
         "Print QR on ticket — every guest check includes a signed pay code for that check id (short TTL; reprint refreshes).",
         "Table tents — printable QR per table (and seat). Print the sheet from Floor.",
         "Order allow: none / drinks / food / food and drinks. Age affirm when drinks are on.",

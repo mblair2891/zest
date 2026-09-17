@@ -6,6 +6,19 @@ import type { GuideUpdate } from "@/lib/guide/types";
  */
 export const WHATS_NEW_ENTRIES: GuideUpdate[] = [
   {
+    id: "upd_2026_10_113_table_tap_checks",
+    date: "2026-09-17",
+    title: "Tap a table with an open check",
+    summary:
+      "CHECK OPEN opens the table view — every open check — not Empty / Seat. Map color follows the checks.",
+    body: "If any open checks exist for that table, Floor opens table view: table #, section, covers, server, and each check (#, server, cash, card, items). Tap a check to add, void, send, print check, or pay. New check on this table, Transfer / hold, Print all open, Table QR. Staff split stays on the check, not guest QR. Empty + Seat only when there are zero open checks and status is empty. Set Empty is blocked while checks are open. CHECK OPEN counts on the legend.",
+    roles: ["owner_manager", "server", "host_operator"],
+    surfaces: ["floor"],
+    audience: "all",
+    topicId: "floor-tables",
+    tags: ["floor", "tables", "checks"],
+  },
+  {
     id: "upd_2026_10_112_bound_receipt_printer",
     date: "2026-09-17",
     title: "Order pad sees the bound receipt printer",

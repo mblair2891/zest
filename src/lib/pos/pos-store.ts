@@ -102,6 +102,7 @@ export type ActionResult<T = object> = {
   ok: boolean;
   error?: string;
   access?: SectionAccess;
+  code?: string;
 } & T;
 
 export interface PosStore {
@@ -223,7 +224,8 @@ export interface PosStore {
     tableId: string,
     action?: "view" | "order" | "seat",
   ) => SectionAccess;
-  selectTable: (tableId: string) => ActionResult<{ access?: SectionAccess }>;
+  selectTable: (tableId: string, orderId?: string) => ActionResult<{ access?: SectionAccess }>;
+  newCheckOnTable: (tableId: string) => ActionResult;
   seatTable: (
     tableId: string,
     guestCount: number,

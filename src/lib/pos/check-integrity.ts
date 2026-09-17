@@ -1,5 +1,11 @@
-import type { Employee, Order, Table } from "./types";
-import { isEmptyTable, normalizeTableStatus } from "./floor-status";
+import type { Employee, KitchenTicket, Order, Table } from "./types";
+import {
+  deriveTableStatus,
+  isEmptyTable,
+  normalizeTableStatus,
+  type FloorPipelineStatus,
+  type FloorStatusConfig,
+} from "./floor-status";
 import { findLateCompCashEvents, type LossPreventionConfig } from "./loss-prevention";
 
 export const CHECK_HOLDS = ["manager_hold", "walkout", "bar_tab", "left_to_close"] as const;
@@ -65,12 +71,48 @@ export function isCheckHoldKind(v: string | null | undefined): v is CheckHoldKin
   return !!v && (CHECK_HOLDS as readonly string[]).includes(v);
 }
 
-export function openCheckOnTable(table: Table, orders: Order[]): Order | undefined {
-  if (table.orderId) {
-    const o = orders.find((x) => x.id === table.orderId && x.status === "open");
-    if (o) return o;
+export function openChecksOnTable(table: Table, orders: Order[]): Order[] {
+  const seen = new Set<string>();
+  const out: Order[] = [];
+  for (const o of orders) {
+    if (o.status !== "open") continue;
+    if (o.holdKind) continue;
+    if (o.tableId === table.id || (table.orderId && o.id === table.orderId)) {
+      if (seen.has(o.id)) continue;
+      seen.add(o.id);
+      out.push(o);
+    }
   }
-  return orders.find((o) => o.status === "open" && o.tableId === table.id && !o.holdKind);
+  out.sort((a, b) => (a.createdAt ?? 0) - (b.createdAt ?? 0));
+  return out;
+}
+
+export function openCheckOnTable(table: Table, orders: Order[]): Order | undefined {
+  const all = openChecksOnTable(table, orders);
+  if (table.orderId) {
+    const primary = all.find((x) => x.id === table.orderId);
+    if (primary) return primary;
+  }
+  return all[0];
+}
+
+/** Map/legend status: open checks win over a stale Empty paint. */
+export function effectiveTablePipeline(
+  table: Table,
+  orders: Order[],
+  tickets: KitchenTicket[],
+  cfg: FloorStatusConfig,
+): FloorPipelineStatus | "reserved" {
+  const checks = openChecksOnTable(table, orders);
+  if (checks.length) {
+    return deriveTableStatus(openCheckOnTable(table, orders), tickets, cfg);
+  }
+  return normalizeTableStatus(table.status);
+}
+
+export function tableIsVacant(table: Table, orders: Order[]): boolean {
+  if (openChecksOnTable(table, orders).length) return false;
+  return isEmptyTable(table.status);
 }
 
 /** Empty or dirty table that still has an open check attached. */
