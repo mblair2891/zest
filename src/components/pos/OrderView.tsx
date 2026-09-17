@@ -870,7 +870,10 @@ export function OrderView() {
               : ""}
           </Button>
           )}
-          {order.receiptPendingAt && mayPrintReceipt && (
+          {mayPrintReceipt &&
+            (order.receiptPendingAt ||
+              order.status === "closed" ||
+              ((totals?.balanceCents ?? 1) <= 0 && order.payments.length > 0)) && (
             <Button
               variant="outline"
               className="station-touch col-span-full"

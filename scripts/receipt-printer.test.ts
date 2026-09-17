@@ -132,8 +132,12 @@ test("devices UI and pad: print vs kick lists", () => {
   assert.match(pad, /Flip to guest|mayPrintCheck/);
   const pay = readFileSync("src/components/pos/PaymentDialog.tsx", "utf8");
   assert.match(pay, /data-guest-pay-face/);
+  assert.match(pay, /data-guest-sign/);
   assert.match(pay, /Open on terminal/);
   assert.match(pay, /sendGuestReceiptSmsFn/);
+  const from = readFileSync("src/lib/print/from-store.ts", "utf8");
+  const start = from.indexOf("export async function printGuestReceipt");
+  assert.match(from.slice(start, start + 4500), /enqueueKitchenJob/);
   const menu = readFileSync("src/lib/pos/station-menu.ts", "utf8");
   assert.match(menu, /canPayStation/);
   const store = readFileSync("src/lib/pos/store.ts", "utf8");

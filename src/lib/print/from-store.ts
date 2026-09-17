@@ -388,16 +388,40 @@ export async function printGuestReceipt(orderId: string): Promise<{
     },
     at: Date.now(),
   };
-  const res = await dispatchPrintJob(job, devices, {
-    printerId: printer?.id,
-  });
-  if (res.printed < 1) {
-    return {
-      ok: false,
-      error: res.error || "Use a paired station or print agent.",
-    };
+  if (!printer) {
+    return { ok: false, error: "No receipt printer bound for print." };
   }
-  return { ok: true, printerLabel: printer?.label ?? "Station printer" };
+  const res = await dispatchPrintJob(job, devices, {
+    printerId: printer.id,
+  });
+  if (res.printed > 0) {
+    return { ok: true, printerLabel: printer.label };
+  }
+  const cfg = printer.print;
+  const lan = cfg ? parseLanTarget(cfg.ip, cfg.port, cfg.target) : null;
+  if (!lan || !cfg) {
+    return { ok: false, error: res.error || "Receipt printer needs a static IP." };
+  }
+  const queued = await enqueueKitchenJob(
+    job,
+    printer.id,
+    lan.host,
+    lan.port,
+    escposBase64(job, {
+      modelPreset: cfg.modelPreset,
+      emulation: cfg.emulation,
+      paperWidthMm: cfg.paperWidthMm,
+      cutter: cfg.cutter,
+    }),
+    "station",
+  );
+  if (queued) {
+    return { ok: true, printerLabel: printer.label };
+  }
+  return {
+    ok: false,
+    error: res.error || "Use a paired station or print agent.",
+  };
 }
 
 /** Pre-pay guest check on the bound receipt printer. Not kitchen. Not a paid receipt. */

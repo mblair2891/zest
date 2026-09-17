@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
 import { CreditCard, Banknote, Gift, Percent, Mail, Printer, Ban, FileText, Building2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -914,14 +914,10 @@ export function PaymentDialog({ open, onOpenChange }: Props) {
                 </Button>
               ))}
             </div>
-            <label className="flex items-center gap-2 rounded-xl border border-border px-3 py-3 text-sm">
-              <input
-                type="checkbox"
-                checked={signed}
-                onChange={(e) => setSigned(e.target.checked)}
-              />
-              I authorize this card charge
-            </label>
+            <GuestSignPad
+              onSigned={() => setSigned(true)}
+              onCleared={() => setSigned(false)}
+            />
             {error && (
               <p className="text-center text-sm text-danger" role="alert">
                 {error}
@@ -1277,6 +1273,7 @@ export function PaymentDialog({ open, onOpenChange }: Props) {
               size="xl"
               onClick={() => {
                 if (method === "card" && stationClass === "handheld" && !guestFace) {
+                  setSigned(false);
                   setGuestFace(true);
                   return;
                 }
@@ -1309,5 +1306,78 @@ export function PaymentDialog({ open, onOpenChange }: Props) {
       }}
     />
     </>
+  );
+}
+
+function GuestSignPad({
+  onSigned,
+  onCleared,
+}: {
+  onSigned: () => void;
+  onCleared: () => void;
+}) {
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const drawing = useRef(false);
+  const inked = useRef(false);
+
+  const pos = (e: ReactPointerEvent<HTMLCanvasElement>) => {
+    const c = canvasRef.current;
+    if (!c) return { x: 0, y: 0 };
+    const r = c.getBoundingClientRect();
+    return { x: e.clientX - r.left, y: e.clientY - r.top };
+  };
+
+  return (
+    <div className="space-y-2" data-guest-sign>
+      <p className="text-center text-xs text-muted-foreground">Sign</p>
+      <canvas
+        ref={canvasRef}
+        width={320}
+        height={120}
+        className="mx-auto h-28 w-full max-w-sm touch-none rounded-xl border border-border bg-bg"
+        onPointerDown={(e) => {
+          const c = canvasRef.current;
+          const ctx = c?.getContext("2d");
+          if (!c || !ctx) return;
+          drawing.current = true;
+          const p = pos(e);
+          ctx.beginPath();
+          ctx.moveTo(p.x, p.y);
+          c.setPointerCapture(e.pointerId);
+        }}
+        onPointerMove={(e) => {
+          if (!drawing.current) return;
+          const ctx = canvasRef.current?.getContext("2d");
+          if (!ctx) return;
+          const p = pos(e);
+          ctx.lineTo(p.x, p.y);
+          ctx.lineWidth = 2.5;
+          ctx.lineCap = "round";
+          ctx.strokeStyle = "#111";
+          ctx.stroke();
+          if (!inked.current) {
+            inked.current = true;
+            onSigned();
+          }
+        }}
+        onPointerUp={() => {
+          drawing.current = false;
+        }}
+      />
+      <Button
+        type="button"
+        variant="ghost"
+        className="w-full"
+        onClick={() => {
+          const c = canvasRef.current;
+          const ctx = c?.getContext("2d");
+          if (c && ctx) ctx.clearRect(0, 0, c.width, c.height);
+          inked.current = false;
+          onCleared();
+        }}
+      >
+        Clear sign
+      </Button>
+    </div>
   );
 }
