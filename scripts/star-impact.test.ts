@@ -39,6 +39,7 @@ test("SP700 impact ticket is 7x9 Star Line, not TM-T20", () => {
   assert.equal(hasSeq(bytes, [0x1b, 0x50]), true);
   assert.equal(hasSeq(bytes, [0x1b, 0x1d, 0x74, 0x00]), true);
   assert.equal(hasSeq(bytes, [0x1b, 0x64, 0x03]), true);
+  assert.equal(hasSeq(bytes, [0x1b, 0x45]), false);
   assert.equal(hasSeq(bytes, [0x1d, 0x21]), false);
   assert.equal(hasSeq(bytes, [0x1d, 0x56, 0x41]), false);
   assert.equal(hasSeq(bytes, [0x1d, 0x76]), false);
@@ -46,6 +47,27 @@ test("SP700 impact ticket is 7x9 Star Line, not TM-T20", () => {
   assert.match(text, /Summit Hall/);
   assert.match(text, /KITCHEN/);
   assert.match(text, /Server/);
-  assert.match(text, /1x Pan steak/);
+  assert.match(text, /1 Pan steak/);
   assert.doesNotMatch(text, /!Summit/);
+});
+
+test("kitchen ticket carries venue destination server time entity qty", () => {
+  const bytes = buildStarSp700Bytes({
+    locationName: "Summit Hall",
+    kind: "ticket",
+    station: "kitchen",
+    destinationName: "Kitchen",
+    checkNumber: 44,
+    tableLabel: "T2",
+    serverName: "Alex",
+    operatorName: "Hearth",
+    items: [{ qty: 2, name: "Pan steak" }],
+    at: Date.UTC(2026, 8, 17, 19, 4, 0),
+  });
+  const text = asciiOf(bytes);
+  assert.match(text, /Summit Hall/);
+  assert.match(text, /KITCHEN/);
+  assert.match(text, /Alex/);
+  assert.match(text, /Hearth/);
+  assert.match(text, /2 Pan steak/);
 });

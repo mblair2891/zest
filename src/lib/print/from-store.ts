@@ -1,5 +1,6 @@
 import { cashPolicyFromSettings } from "@/lib/pos/cash-discount";
-import { computeTotals, linePrintedCents } from "@/lib/pos/calculations";
+import { computeDualTotals, computeTotals, lineCardCents, lineCashCents, linePrintedCents } from "@/lib/pos/calculations";
+import { isVenueStationOnline } from "@/lib/pos/location-devices";
 import { usePosStore } from "@/lib/pos/store";
 import type { KitchenTicket, Order, RestaurantSettings } from "@/lib/pos/types";
 import { uid } from "@/lib/utils";
@@ -78,8 +79,55 @@ async function enqueueKitchenJob(
   }
 }
 
+function guestCheckJob(
+  order: Order,
+  s: ReturnType<typeof usePosStore.getState>,
+  locationId: string,
+  locationName: string,
+): PrintJob {
+  const table = order.tableId ? s.tables.find((tb) => tb.id === order.tableId) : undefined;
+  const dual = computeDualTotals(order, s.settings);
+  const policy = cashPolicyFromSettings(s.settings);
+  const items: PrintLine[] = order.lines
+    .filter((l) => !l.voided)
+    .map((l) => ({
+      qty: l.quantity,
+      name: l.name,
+      mods: l.modifiers.map((m) => m.optionName),
+      note: l.note,
+      seat: l.seat,
+      vendorId: l.vendorId,
+      vendorName: l.vendorName,
+      cashCents: lineCashCents(l),
+      cardCents: lineCardCents(l, policy),
+      amountCents: linePrintedCents(l, policy),
+    }));
+  return {
+    id: uid("prn"),
+    kind: "guest_check",
+    station: "receipt",
+    locationId,
+    locationName,
+    checkId: order.id,
+    checkNumber: order.number,
+    tableLabel: table?.label ?? order.tabName ?? order.type.replace("_", " "),
+    serverName: order.serverName,
+    copy: "guest",
+    items,
+    guestCheckNote: "Not a receipt — pay server",
+    totals: {
+      subtotalCents: dual.cash.subtotalCents,
+      taxCents: dual.cash.taxCents,
+      totalCents: dual.cash.totalCents,
+      cashTotalCents: dual.cash.totalCents,
+      cardTotalCents: dual.card.totalCents,
+    },
+    at: Date.now(),
+  };
+}
+
 export async function printFromPos(
-  kind: "send" | "bump" | "ready" | "receipt" | "test",
+  kind: "send" | "bump" | "ready" | "receipt" | "guest_check" | "test",
   id?: string,
   opts?: { source?: KitchenPrintSource },
 ): Promise<void> {
@@ -111,6 +159,7 @@ export async function printFromPos(
         serverName: t.serverName,
         operatorId: t.vendorId,
         operatorName: t.vendorName,
+        destinationName: station === "bar" ? "Bar" : "Kitchen",
         items: linesFromTicket(t),
         at: Date.now(),
         ticketId: t.id,
@@ -209,6 +258,11 @@ export async function printFromPos(
     }
   }
 
+  if (kind === "guest_check") {
+    const order = (id ? s.orders.find((o) => o.id === id) : null) ?? s.getActiveOrder?.();
+    if (order) jobs.push(guestCheckJob(order, s, locationId, locationName));
+  }
+
   const stationId = currentStationDeviceId();
   const mappedReceipt = resolveReceiptPrinter(devices, stationId);
 
@@ -233,10 +287,37 @@ export async function printFromPos(
       }
       continue;
     }
-    if (job.kind === "receipt" || printers.length > 0) {
-      await dispatchPrintJob(job, devices, {
-        printerId: job.kind === "receipt" ? mappedReceipt?.id : undefined,
+    if (job.kind === "receipt" || job.kind === "guest_check" || printers.length > 0) {
+      const local = await dispatchPrintJob(job, devices, {
+        printerId:
+          job.kind === "receipt" || job.kind === "guest_check" ? mappedReceipt?.id : undefined,
       });
+      if (
+        (job.kind === "guest_check" || job.kind === "receipt") &&
+        local.printed < 1 &&
+        mappedReceipt?.print
+      ) {
+        const lan = parseLanTarget(
+          mappedReceipt.print.ip,
+          mappedReceipt.print.port,
+          mappedReceipt.print.target,
+        );
+        if (lan) {
+          await enqueueKitchenJob(
+            job,
+            mappedReceipt.id,
+            lan.host,
+            lan.port,
+            escposBase64(job, {
+              modelPreset: mappedReceipt.print.modelPreset,
+              emulation: mappedReceipt.print.emulation,
+              paperWidthMm: mappedReceipt.print.paperWidthMm,
+              cutter: mappedReceipt.print.cutter,
+            }),
+            source,
+          );
+        }
+      }
     }
   }
 }
@@ -315,6 +396,56 @@ export async function printGuestReceipt(orderId: string): Promise<{
     };
   }
   return { ok: true, printerLabel: printer?.label ?? "Station printer" };
+}
+
+/** Pre-pay guest check on the bound receipt printer. Not kitchen. Not a paid receipt. */
+export async function printGuestCheck(orderId?: string): Promise<{
+  ok: boolean;
+  error?: string;
+  printerLabel?: string;
+  viaStation?: string;
+}> {
+  const s = usePosStore.getState();
+  const order = (orderId ? s.orders.find((o) => o.id === orderId) : null) ?? s.getActiveOrder?.();
+  if (!order) return { ok: false, error: "No check to print." };
+  const devices = s.locationDevices;
+  const printer = resolveReceiptPrinter(devices, currentStationDeviceId());
+  if (!printer?.print) {
+    return { ok: false, error: "Add a receipt printer. Guest checks do not print on the kitchen Star." };
+  }
+  const locationId = s.tenantLocationId || "";
+  const locationName = s.settings.name || "Summex";
+  const job = guestCheckJob(order, s, locationId, locationName);
+  const res = await dispatchPrintJob(job, devices, { printerId: printer.id });
+  if (res.printed > 0) {
+    return { ok: true, printerLabel: printer.label };
+  }
+  const lan = parseLanTarget(printer.print.ip, printer.print.port, printer.print.target);
+  if (!lan) {
+    return { ok: false, error: res.error || "Receipt printer needs a static IP." };
+  }
+  const queued = await enqueueKitchenJob(
+    job,
+    printer.id,
+    lan.host,
+    lan.port,
+    escposBase64(job, {
+      modelPreset: printer.print.modelPreset,
+      emulation: printer.print.emulation,
+      paperWidthMm: printer.print.paperWidthMm,
+      cutter: printer.print.cutter,
+    }),
+    "station",
+  );
+  if (queued) {
+    const via = (devices ?? []).find((d) => isVenueStationOnline(d));
+    return {
+      ok: true,
+      printerLabel: printer.label,
+      viaStation: via?.label || "station",
+    };
+  }
+  return { ok: false, error: res.error || "Use a paired station or print agent." };
 }
 
 export async function printTableTents(): Promise<void> {

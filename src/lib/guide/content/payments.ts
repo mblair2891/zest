@@ -171,15 +171,17 @@ export const PAYMENT_TOPICS: GuideTopic[] = [
         "The guest should see who cooked or poured without a second checkout. The house still prints one document under the location name.",
       ),
       p(
-        "Pay, Check, email, and table QR all show one guest document. Lines group under the vendor heading with that vendor’s total, then grand total (subtotal / tax / tip / gift / tender). Example: Operator A — plate $18, side $6, Operator A total $24; Operator B — cocktail $14, beer $7, Operator B total $21; then grand total. Card: one authorization, split to the vendors above (owned_lines). Quantum Payments is the tender line — guests never see Finix.",
+        "Print check (before tender) and the paid receipt are different. Print check is the guest’s itemized bill on the bound receipt printer — not the kitchen Star. Lines group under the selling entity (Hearth / Copper / …) with qty, cash price and card price when cash discount is on, subtotal per entity, grand cash total, grand card total, and “Not a receipt — pay server.” No guest split on that ticket — staff already split checks. After the guest pays: Email, Print paid receipt, or No receipt. Quantum Payments is the tender line — guests never see Finix.",
       ),
       ul(
+        "Print check is the primary action on Pay and on the order pad, before tender.",
         "One document. Do not print a stall receipt as a second card run.",
         "Merchant copy (when more than one brand is on the check) lists that vendor’s share: merchandise, tax/tip/service, total. Guest still paid once.",
-        "Kitchen and bar tickets still print only that station’s lines (impact TM-U220 for kitchen). Pay uses the same ownership map as ODS routing — do not change routing.",
+        "Kitchen and bar tickets still print only that station’s lines (Star SP700 impact for kitchen). Pay uses the same ownership map as ODS routing — do not change routing.",
         "Cash discount receipts and the check can show both: Cash $18.00 · Card $19.00. Cash tender charges cash; card tender charges card.",
       ),
       steps(
+        "On Order or Pay, tap Print check before taking money. Confirm the receipt printer (192.168.0.112 in the house example) — not the kitchen Star.",
         "After pay, choose Email, Print, or No receipt. Same three choices for card, cash, gift, and comp.",
         "Email: enter the guest address. Sent via Resend. If email is down, the station says so and offers print.",
         "Print: ESC/POS on the printer mapped on this device row in Devices. If none, the venue default receipt printer.",

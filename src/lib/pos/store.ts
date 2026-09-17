@@ -83,7 +83,7 @@ function floorSync(kind: string, id?: string) {
 	}
 }
 
-function printNow(kind: "send" | "bump" | "ready" | "receipt", id?: string) {
+function printNow(kind: "send" | "bump" | "ready" | "receipt" | "guest_check", id?: string) {
 	try {
 		const role = readStationDeviceRole();
 		const source =
@@ -2737,7 +2737,6 @@ const usePosStoreRaw = create<PosStore>()(persist((set, get) => {
 		});
 		floorSync("check", order.id);
 		if (order.tableId) floorSync("table", order.tableId);
-		printNow("receipt", order.id);
 	},
 	takePayment: ({ method, amountCents, tipCents = 0, tenderedCents, last4, giftCardCode, houseAccountId, serverGift, keepOpen }) => {
 		const order = get().getActiveOrder();

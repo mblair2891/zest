@@ -47,12 +47,13 @@ export const ORDER_TOPICS: GuideTopic[] = [
         "Online / order-ahead uses fire rules (immediate, on arrival, delay).",
       ),
       steps(
-        "On Order, build the check, then Send. Do not expect ODS to see unsent lines.",
+        "On Order, tap items. The open check stays beside or under the menu — qty, name, entity, cash and card when cash discount is on. Do not hunt a Check button just to see what you rang. Check still opens split / edit / send.",
+        "Send fires LAN 9100 from this station (or a queued docked host/ODS). Food → that entity’s order printer with destination Kitchen. Drinks → Bar destination / bar entity printer.",
         "Kitchen order display shows food tickets; Bar ODS shows beverage tickets. Host floors also split by operator.",
         "When this device is online, Send writes the tickets to the location — every POS and ODS at that location sees the same check within a few seconds. Refresh keeps it.",
         "Expo or the server marks Delivered when the table has the plate.",
       ),
-      related("kds", "menu-modifiers", "multi-operator-orders"),
+      related("kds", "menu-modifiers", "multi-operator-orders", "printers-kds", "receipts-by-vendor"),
     ],
   }),
   topic({

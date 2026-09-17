@@ -6,6 +6,19 @@ import type { GuideUpdate } from "@/lib/guide/types";
  */
 export const WHATS_NEW_ENTRIES: GuideUpdate[] = [
   {
+    id: "upd_2026_10_111_live_check_pad",
+    date: "2026-09-17",
+    title: "Live check pad and Print check",
+    summary:
+      "The open check stays on the order pad. Print check before tender on the receipt printer. Star kitchen tickets are text-only impact.",
+    body: "Each tap shows qty, name, entity, and cash + card when cash discount is on. Check still opens split/edit/send. Send: food → Kitchen order printer for that entity; drinks → Bar. Print check (pad and Pay, before tender) is the bound receipt printer: items by selling entity, cash and card totals, “Not a receipt — pay server.” No guest split on that ticket. After pay: tender then optional paid receipt. Star SP700/SP742 is 7x9 CP437, single pass, no GS graphics. Dashboard Test print: Printed via {station} when a tablet relays 9100.",
+    roles: ["owner_manager", "server", "kitchen_bar", "host_operator", "platform_admin"],
+    surfaces: ["settings", "kitchen"],
+    audience: "all",
+    topicId: "kitchen-bar-routing",
+    tags: ["order", "print", "star", "receipt"],
+  },
+  {
     id: "upd_2026_10_110_device_delete_stays",
     date: "2026-09-17",
     title: "Deleted devices stay gone",

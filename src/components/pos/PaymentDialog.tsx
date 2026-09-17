@@ -24,7 +24,7 @@ import {
   guestCheckText,
 } from "@/lib/payments/check-by-vendor";
 import { GuestCheckByVendor } from "./GuestCheckByVendor";
-import { printGuestReceipt } from "@/lib/print/from-store";
+import { printGuestCheck, printGuestReceipt } from "@/lib/print/from-store";
 import { issueGiftCardFn, lookupGiftCardFn, redeemGiftCardFn } from "@/lib/gift/api";
 import { defaultGiftIssuer, fulfillingIssuer } from "@/lib/pos/gift-issuer";
 import { giftNeedsManagerPin, giftSellBlockedReason, parseGiftLimits } from "@/lib/pos/gift-limits";
@@ -59,6 +59,7 @@ export function PaymentDialog({ open, onOpenChange }: Props) {
   const order = usePosStore((s) => s.orders.find((o) => o.id === s.activeOrderId));
   const settings = usePosStore((s) => s.settings);
   const takePayment = usePosStore((s) => s.takePayment);
+  const printCheck = usePosStore((s) => s.printCheck);
   const wanOnline = useNetworkStore((s) => s.wanOnline());
   const clearTable = usePosStore((s) => s.clearTable);
   const setView = usePosStore((s) => s.setView);
@@ -123,6 +124,8 @@ export function PaymentDialog({ open, onOpenChange }: Props) {
   const [receiptMsg, setReceiptMsg] = useState<string | null>(null);
   const [receiptChoice, setReceiptChoice] = useState<"choose" | "email">("choose");
   const [receiptBusy, setReceiptBusy] = useState(false);
+  const [checkPrintMsg, setCheckPrintMsg] = useState<string | null>(null);
+  const [checkPrintBusy, setCheckPrintBusy] = useState(false);
 
   useEffect(() => {
     const cfg = parsePaymentMethods(settings.paymentMethods);
@@ -575,6 +578,7 @@ export function PaymentDialog({ open, onOpenChange }: Props) {
           setReceiptEmail("");
           setReceiptMsg(null);
           setReceiptChoice("choose");
+          setCheckPrintMsg(null);
         }
         onOpenChange(o);
       }}
@@ -774,6 +778,36 @@ export function PaymentDialog({ open, onOpenChange }: Props) {
               <p className="rounded-xl border border-warn/40 bg-warn/15 px-3 py-2 text-xs text-foreground">
                 Card requires connection. Take cash or keep the check open. Gift
                 and comps still work on this device. Card is not queued.
+              </p>
+            )}
+            <Button
+              size="lg"
+              className="station-touch min-h-12 w-full"
+              disabled={checkPrintBusy || order.lines.filter((l) => !l.voided).length === 0}
+              onClick={() => {
+                setCheckPrintBusy(true);
+                setCheckPrintMsg(null);
+                printCheck();
+                void printGuestCheck(order.id)
+                  .then((r) => {
+                    setCheckPrintMsg(
+                      r.ok
+                        ? r.viaStation
+                          ? `Printed via ${r.viaStation}`
+                          : "Printed"
+                        : r.error || "Print failed",
+                    );
+                  })
+                  .catch(() => setCheckPrintMsg("Print failed"))
+                  .finally(() => setCheckPrintBusy(false));
+              }}
+            >
+              <Printer className="h-5 w-5" />
+              Print check
+            </Button>
+            {checkPrintMsg && (
+              <p className="text-center text-xs text-muted-foreground" role="status">
+                {checkPrintMsg}
               </p>
             )}
             <div className="rounded-xl border border-border bg-bg p-4 text-center">

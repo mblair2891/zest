@@ -132,6 +132,7 @@ export function OrderView() {
   const [payQrOpen, setPayQrOpen] = useState(false);
   const [opsOpen, setOpsOpen] = useState(false);
   const [checkOpen, setCheckOpen] = useState(false);
+  const [printMsg, setPrintMsg] = useState<string | null>(null);
   const layout = useStationLayout();
   const emp = usePosStore((s) => s.employees.find((e) => e.id === s.currentEmployeeId));
 
@@ -406,6 +407,70 @@ export function OrderView() {
   };
 
   const checkOverlay = !layout.twoCol;
+
+  const runPrintCheck = () => {
+    setPrintMsg(null);
+    printCheck();
+    void import("@/lib/print/from-store")
+      .then((m) => m.printGuestCheck(order.id))
+      .then((r) => {
+        setPrintMsg(
+          r.ok
+            ? r.viaStation
+              ? `Printed via ${r.viaStation}`
+              : "Printed"
+            : r.error || "Print failed",
+        );
+      })
+      .catch(() => setPrintMsg("Print failed"));
+  };
+
+  const liveLines = order.lines.filter((l) => !l.voided);
+  const liveCheckList = (
+    <ul className="space-y-1" data-live-check>
+      {liveLines.length === 0 && (
+        <li className="py-3 text-center text-xs text-muted-foreground">
+          Tap the menu — lines land here
+        </li>
+      )}
+      {groupLinesByEntity(liveLines, settings.name).map((group) => (
+        <li key={group.entityId}>
+          <p className="px-1 pb-0.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+            {group.displayName}
+          </p>
+          <ul className="space-y-0.5">
+            {group.lines.map((line) => (
+              <li
+                key={line.id}
+                className="flex items-start justify-between gap-2 rounded-lg px-1 py-0.5 text-sm"
+              >
+                <span className="min-w-0">
+                  <span className="font-medium">
+                    {line.quantity}× {line.name}
+                  </span>
+                  <span className="ml-1 text-[10px] text-muted-foreground">
+                    {line.vendorName || group.displayName}
+                  </span>
+                </span>
+                <span className="shrink-0 text-right tabular text-xs">
+                  {cashPolicy ? (
+                    <>
+                      {formatCurrency(lineCashCents(line))} cash
+                      <span className="block text-[10px] text-muted-foreground">
+                        {formatCurrency(linePrintedCents(line, cashPolicy))} card
+                      </span>
+                    </>
+                  ) : (
+                    formatCurrency(linePrintedCents(line))
+                  )}
+                </span>
+              </li>
+            ))}
+          </ul>
+        </li>
+      ))}
+    </ul>
+  );
 
   const checkPane = (
       <aside
@@ -739,13 +804,10 @@ export function OrderView() {
           <Button
             variant="outline"
             className="station-touch"
-            onClick={() => {
-              printCheck();
-              if (table) setPayQrOpen(true);
-            }}
+            onClick={() => runPrintCheck()}
           >
             <Printer className="h-4 w-4" />
-            Check
+            Print check
           </Button>
           <Button className="station-touch" disabled={!unsent} onClick={() => sendOrder()}>
             <Send className="h-4 w-4" />
@@ -771,6 +833,11 @@ export function OrderView() {
           </Button>
           )}
         </div>
+        {printMsg && (
+          <p className="px-3 pb-2 text-[11px] text-muted-foreground" role="status">
+            {printMsg}
+          </p>
+        )}
       </aside>
   );
 
@@ -933,51 +1000,74 @@ export function OrderView() {
       </section>
 
       {checkOverlay && (
-        <div className="grid grid-cols-3 gap-2 border-t border-border bg-surface p-2 safe-bottom">
-          <Button
-            size="lg"
-            variant="outline"
-            className="station-touch min-h-12"
-            onClick={() => setCheckOpen(true)}
+        <>
+          <div
+            className="max-h-[38%] min-h-[6.5rem] overflow-y-auto border-t border-border bg-surface px-2 py-1.5"
+            data-live-check-strip
           >
-            Check
-            {order.lines.filter((l) => !l.voided).length > 0
-              ? ` · ${order.lines.filter((l) => !l.voided).length}`
-              : ""}
-          </Button>
-          <Button
-            size="lg"
-            className="station-touch min-h-12"
-            disabled={!unsent}
-            onClick={() => sendOrder()}
-          >
-            <Send className="h-4 w-4" />
-            Send
-          </Button>
-          {canEmployee(emp, "payments:take") && !odsNoPay ? (
+            {liveCheckList}
+            {dual?.enabled && liveLines.length > 0 && (
+              <p className="mt-1 flex justify-between px-1 text-[11px] font-semibold">
+                <span>Cash {formatCurrency(dual.cash.totalCents)}</span>
+                <span>Card {formatCurrency(dual.card.totalCents)}</span>
+              </p>
+            )}
+            {printMsg && (
+              <p className="px-1 pt-1 text-[11px] text-muted-foreground">{printMsg}</p>
+            )}
+          </div>
+          <div className="grid grid-cols-2 gap-2 border-t border-border bg-surface p-2 safe-bottom">
             <Button
               size="lg"
               className="station-touch min-h-12"
-              disabled={order.status !== "open" || !totals || totals.itemCount === 0}
-              onClick={() => setPayOpen(true)}
+              onClick={() => runPrintCheck()}
             >
-              <CreditCard className="h-4 w-4" />
-              Pay
+              <Printer className="h-4 w-4" />
+              Print check
             </Button>
-          ) : (
             <Button
               size="lg"
               variant="outline"
               className="station-touch min-h-12"
-              onClick={() => {
-                setActiveOrder(null);
-                setView("order");
-              }}
+              onClick={() => setCheckOpen(true)}
             >
-              Close
+              Check
+              {liveLines.length > 0 ? ` · ${liveLines.length}` : ""}
             </Button>
-          )}
-        </div>
+            <Button
+              size="lg"
+              className="station-touch min-h-12"
+              disabled={!unsent}
+              onClick={() => sendOrder()}
+            >
+              <Send className="h-4 w-4" />
+              Send
+            </Button>
+            {canEmployee(emp, "payments:take") && !odsNoPay ? (
+              <Button
+                size="lg"
+                className="station-touch min-h-12"
+                disabled={order.status !== "open" || !totals || totals.itemCount === 0}
+                onClick={() => setPayOpen(true)}
+              >
+                <CreditCard className="h-4 w-4" />
+                Pay
+              </Button>
+            ) : (
+              <Button
+                size="lg"
+                variant="outline"
+                className="station-touch min-h-12"
+                onClick={() => {
+                  setActiveOrder(null);
+                  setView("order");
+                }}
+              >
+                Close
+              </Button>
+            )}
+          </div>
+        </>
       )}
       {checkOverlay && checkOpen && (
         <div className="absolute inset-0 z-20 flex flex-col bg-surface">{checkPane}</div>

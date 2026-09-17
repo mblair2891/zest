@@ -135,16 +135,95 @@ function buildTillTurnInEscPos(job: PrintJob): Uint8Array {
   return concat(parts);
 }
 
+function money(cents: number): string {
+  return formatCurrency(cents);
+}
+
+/** Pre-pay guest check on the receipt printer. Not a kitchen ticket. Not a paid receipt. */
+function buildGuestCheckEscPos(
+  job: PrintJob,
+  width: number,
+  emulation: PrinterEmulation,
+  cutter: PrinterCutter,
+): Uint8Array {
+  const dual = job.items.some(
+    (it) => typeof it.cashCents === "number" && typeof it.cardCents === "number" && it.cashCents !== it.cardCents,
+  );
+  const parts: Uint8Array[] = [
+    INIT,
+    ALIGN_CT,
+    BOLD_ON,
+    DBL_ON,
+    text(job.locationName.slice(0, width)),
+    FEED,
+    DBL_OFF,
+    text("GUEST CHECK"),
+    FEED,
+    BOLD_OFF,
+    ALIGN_LT,
+    line(job.tableLabel || "", `#${job.checkNumber}`, width),
+    line(job.serverName, new Date(job.at).toLocaleTimeString(), width),
+    text("-".repeat(width)),
+    FEED,
+  ];
+  const groups = groupLinesByEntity(job.items, job.locationName);
+  for (const g of groups) {
+    parts.push(BOLD_ON, line(g.displayName.toUpperCase(), "", width), BOLD_OFF);
+    let cashSub = 0;
+    let cardSub = 0;
+    for (const it of g.lines) {
+      const cash = it.cashCents ?? it.amountCents ?? 0;
+      const card = it.cardCents ?? it.amountCents ?? cash;
+      cashSub += cash;
+      cardSub += card;
+      if (dual) {
+        parts.push(line(`${it.qty} ${it.name}`, `${money(cash)} cash`, width));
+        parts.push(line("", `${money(card)} card`, width));
+      } else {
+        parts.push(line(`${it.qty} ${it.name}`, money(cash), width));
+      }
+      for (const m of it.mods ?? []) parts.push(line(`  ${m}`, "", width));
+    }
+    if (groups.length > 1) {
+      if (dual) {
+        parts.push(line(`${g.displayName} cash`, money(cashSub), width));
+        parts.push(line(`${g.displayName} card`, money(cardSub), width));
+      } else {
+        parts.push(line(`${g.displayName} sub`, money(cashSub), width));
+      }
+    }
+  }
+  parts.push(text("-".repeat(width)), FEED);
+  const cashTotal = job.totals?.cashTotalCents ?? job.totals?.totalCents ?? 0;
+  const cardTotal = job.totals?.cardTotalCents ?? job.totals?.totalCents ?? cashTotal;
+  if (dual) {
+    parts.push(BOLD_ON, line("CASH TOTAL", money(cashTotal), width), BOLD_OFF);
+    parts.push(BOLD_ON, line("CARD TOTAL", money(cardTotal), width), BOLD_OFF);
+  } else {
+    parts.push(BOLD_ON, line("TOTAL", money(cashTotal), width), BOLD_OFF);
+  }
+  parts.push(
+    FEED,
+    ALIGN_CT,
+    text(job.guestCheckNote || "Not a receipt — pay server"),
+    FEED,
+    ALIGN_LT,
+    cutBytes(emulation, cutter),
+  );
+  return concat(parts);
+}
+
 /** ESC/POS or Star Line bytes for a hospitality printer (LAN 9100). */
 export function buildEscPos(job: PrintJob, opts?: EscPosOptions): Uint8Array {
   if (job.kind === "drawer_kick") return buildDrawerKickBytes();
   if (job.kind === "till_turn_in") return buildTillTurnInEscPos(job);
   const { emulation, width, cutter, impact } = resolveOpts(opts);
-  if (impact) {
+  if (impact && job.kind !== "guest_check" && job.kind !== "receipt") {
     return buildStarSp700Bytes({
       locationName: job.locationName,
       kind: job.kind,
       station: job.station,
+      destinationName: job.destinationName,
       copy: job.copy,
       checkNumber: job.checkNumber,
       tableLabel: job.tableLabel,
@@ -159,6 +238,9 @@ export function buildEscPos(job: PrintJob, opts?: EscPosOptions): Uint8Array {
       })),
       at: job.at,
     });
+  }
+  if (job.kind === "guest_check") {
+    return buildGuestCheckEscPos(job, width, emulation, cutter);
   }
   const title =
     job.kind === "receipt"

@@ -180,6 +180,7 @@ export function LocationDeviceRegistry({
   const [roleHistory, setRoleHistory] = useState<DeviceRoleChange[]>([]);
   const [hostName, setHostName] = useState(locationName);
   const [error, setError] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [formOpen, setFormOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -537,6 +538,7 @@ export function LocationDeviceRegistry({
   const testPrinter = async (d: LocationDevice) => {
     setBusy(true);
     setError(null);
+    setNotice(null);
     try {
       const job = testPrintJob({
         locationId: resolvedLocId,
@@ -599,7 +601,10 @@ export function LocationDeviceRegistry({
       if (!result.ok) {
         setError(result.error || "Use a paired station or print agent.");
       } else if (result.queued) {
-        setError(null);
+        const via = devices.find((x) => isVenueStationOnline(x));
+        setNotice(`Printed via ${via?.label || "station"}`);
+      } else {
+        setNotice("Printed");
       }
     } catch (e) {
       setError(e instanceof Error ? e.message : "Test print failed");
@@ -932,6 +937,11 @@ export function LocationDeviceRegistry({
       {error && (
         <p className="rounded-xl border border-danger/40 bg-danger/10 px-3 py-2 text-sm text-danger">
           {error}
+        </p>
+      )}
+      {notice && (
+        <p className="rounded-xl border border-border bg-surface px-3 py-2 text-sm" role="status">
+          {notice}
         </p>
       )}
 

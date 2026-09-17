@@ -5,6 +5,7 @@ import type { KitchenPrintSource } from "./station-print-queue";
 export type PrintJobKind =
   | "ticket"
   | "receipt"
+  | "guest_check"
   | "test"
   | "drawer_kick"
   | "till_turn_in"
@@ -20,6 +21,8 @@ export type PrintLine = {
   vendorId?: string | null;
   vendorName?: string | null;
   amountCents?: number;
+  cashCents?: number;
+  cardCents?: number;
 };
 
 export type PrintAllocation = {
@@ -44,6 +47,7 @@ export type PrintJob = {
   copy?: "guest" | "merchant";
   items: PrintLine[];
   allocations?: PrintAllocation[];
+  destinationName?: string;
   totals?: {
     subtotalCents: number;
     taxCents: number;
@@ -51,7 +55,10 @@ export type PrintJob = {
     giftCents?: number;
     totalCents: number;
     tender?: string;
+    cashTotalCents?: number;
+    cardTotalCents?: number;
   };
+  guestCheckNote?: string;
   /** Guest pay QR (ticket-scoped). Printed when location enables print_qr_on_ticket. */
   qrUrl?: string;
   qrCaption?: string;
