@@ -172,7 +172,8 @@ export const PLATFORM_CRM_TOPICS: GuideTopic[] = [
       ),
       ul(
         "Deletes orgs, locations, operators, CRM, prospects, tickets, invoices, ledger, devices, and non-admin users.",
-        "Reseeds isolated Summit Hall (Demo). Does not count in CRM.",
+        "Reseeds isolated Summit Hall (Demo). Does not count in CRM. Confirm: “This restores demo stations and printers.”",
+        "Reseed demo (same Danger zone) restores demo stations and printers only — not a CRM wipe. Deleted pair codes stay dead; restored slots get new codes.",
         "Plans and software pricing catalog stay.",
         "Server-only. Floor PIN and location owners cannot run it.",
       ),
@@ -214,7 +215,7 @@ export const PLATFORM_CRM_TOPICS: GuideTopic[] = [
         "Feature flags — global defaults for new orgs. Per-plan overrides stay under Plans. HR modules are per employer entity, not a platform JSON blob.",
         "Data & compliance — waitlist phone and audit retention, privacy notes.",
         "Team — invite platform users (admin / sales / success / read only). Deactivate anyone except the last admin.",
-        "Danger zone — factory reset only if Security allows it. Type RESET.",
+        "Danger zone — factory reset only if Security allows it. Type RESET. Reseed demo restores demo stations and printers without wiping CRM.",
       ),
       steps(
         "Platform → Settings. Pick a section.",

@@ -6,6 +6,19 @@ import type { GuideUpdate } from "@/lib/guide/types";
  */
 export const WHATS_NEW_ENTRIES: GuideUpdate[] = [
   {
+    id: "upd_2026_10_110_device_delete_stays",
+    date: "2026-09-17",
+    title: "Deleted devices stay gone",
+    summary:
+      "Delete a tablet or printer and it stays gone after deploy. Isolated demos seed once. Live venues start empty. Factory reset / Reseed demo is the only restore.",
+    body: "Admin Delete is a hard remove plus a remembered id/name. Demo seed, Publish, and app boot skip those rows. Isolated Summit Hall seeds Host / Order / ODS / printers once; after that Devices is operator-owned. Live subscriber venues never get default stations. Pair codes for a deleted slot stay dead; an online tablet returns to enter-code. Factory reset or Reseed demo: “This restores demo stations and printers.”",
+    roles: ["owner_manager", "host_operator", "platform_admin"],
+    surfaces: ["settings"],
+    audience: "all",
+    topicId: "device-assignment",
+    tags: ["devices", "seed", "delete"],
+  },
+  {
     id: "upd_2026_10_109_queued_kitchen_print",
     date: "2026-09-17",
     title: "Queued kitchen print for QR and online",

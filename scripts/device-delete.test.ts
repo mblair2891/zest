@@ -22,6 +22,8 @@ test("Delete removes the row; Deactivate / Unpair / Replace keep the slot", () =
   assert.match(delBody, /delete from location_devices/);
   assert.match(delBody, /assertVenueDeviceAdmin/);
   assert.match(delBody, /prev\.filter\(\(d\) => d\.id !== data\.deviceId\)/);
+  assert.match(delBody, /rememberDeletedDevice/);
+  assert.match(delBody, /deletedLocationDevices/);
   assert.doesNotMatch(delBody, /status = \$\{"inactive"\}/);
 
   const deact = api.slice(api.indexOf("export const deactivateLocationDeviceFn"));
@@ -100,4 +102,6 @@ test("guide Devices covers Delete vs Deactivate vs Unpair", () => {
   assert.match(devices, /Deactivate keeps the named slot/);
   assert.match(devices, /Floor PINs cannot delete/);
   assert.match(devices, /Add device can reuse the same name and role/);
+  assert.match(devices, /seed does not resurrect/);
+  assert.match(devices, /This restores demo stations and printers/);
 });

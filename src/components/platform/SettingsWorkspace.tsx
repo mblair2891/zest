@@ -16,7 +16,8 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { GuideLearnLink } from "@/components/guide/GuideLearnLink";
-import { factoryResetFn, factoryResetStatusFn } from "@/lib/saas/crm-api";
+import { factoryResetFn, factoryResetStatusFn, reseedDemoDevicesFn } from "@/lib/saas/crm-api";
+import { RESTORE_DEMO_DEVICES_COPY } from "@/lib/pos/device-seed";
 import { isDurableStationStorageKey } from "@/lib/pos/station-pair";
 import {
   invitePlatformUserFn,
@@ -1811,6 +1812,10 @@ function DangerSection({
   const [acked, setAcked] = useState(false);
   const [busy, setBusy] = useState(false);
   const [resetErr, setResetErr] = useState<string | null>(null);
+  const [reseedAcked, setReseedAcked] = useState(false);
+  const [reseedBusy, setReseedBusy] = useState(false);
+  const [reseedErr, setReseedErr] = useState<string | null>(null);
+  const [reseedOk, setReseedOk] = useState(false);
 
   useEffect(() => {
     void factoryResetStatusFn()
@@ -1833,7 +1838,7 @@ function DangerSection({
       <p className="mt-2 text-sm text-muted-foreground">
         Irreversible. Deletes all orgs, locations, operators, CRM, prospects, pipeline,
         tickets, software invoices, ledger, devices, and staff except the platform Admin
-        login. Reseeds the isolated Summit Hall demo (not counted in CRM). After reset, sign in as Admin with the initial
+        login. Reseeds the isolated Summit Hall demo (not counted in CRM). {RESTORE_DEMO_DEVICES_COPY} After reset, sign in as Admin with the initial
         password — you must change it if first-login change is on.
       </p>
       <GuideLearnLink topicId="factory-reset" compact>
@@ -1879,7 +1884,10 @@ function DangerSection({
               checked={acked}
               onChange={(e) => setAcked(e.target.checked)}
             />
-            <span>I understand this cannot be undone and will wipe all tenant and CRM data.</span>
+            <span>
+              I understand this cannot be undone and will wipe all tenant and CRM data.{" "}
+              {RESTORE_DEMO_DEVICES_COPY}
+            </span>
           </label>
           <label className="block text-sm">
             <span className="mb-1 block text-muted-foreground">Type RESET to confirm</span>
@@ -1918,6 +1926,59 @@ function DangerSection({
           )}
         </form>
       )}
+      <div className="mt-8 border-t border-danger/30 pt-4">
+        <h3 className="text-base font-semibold">Reseed demo</h3>
+        <p className="mt-2 text-sm text-muted-foreground">
+          Isolated demo houses only (Summit Hall and the other training venues). Does not wipe CRM
+          or live subscribers. Deleted demo stations and printers come back with new pair codes.
+          Old pair codes stay dead.
+        </p>
+        <form
+          className="mt-4 space-y-3"
+          onSubmit={(e) => {
+            e.preventDefault();
+            if (!reseedAcked) {
+              setReseedErr("Check the confirmation box");
+              return;
+            }
+            setReseedBusy(true);
+            setReseedErr(null);
+            setReseedOk(false);
+            void reseedDemoDevicesFn({ data: { confirm: RESTORE_DEMO_DEVICES_COPY } })
+              .then(() => {
+                setReseedBusy(false);
+                setReseedOk(true);
+              })
+              .catch((err) => {
+                setReseedBusy(false);
+                setReseedErr(err instanceof Error ? err.message : "Reseed failed");
+              });
+          }}
+        >
+          <label className="flex items-start gap-2 text-sm">
+            <input
+              type="checkbox"
+              className="mt-0.5 h-4 w-4 rounded border-border"
+              checked={reseedAcked}
+              onChange={(e) => setReseedAcked(e.target.checked)}
+            />
+            <span>{RESTORE_DEMO_DEVICES_COPY}</span>
+          </label>
+          <Button type="submit" variant="outline" disabled={reseedBusy || !reseedAcked}>
+            {reseedBusy ? "Restoring…" : "Reseed demo"}
+          </Button>
+          {reseedOk && (
+            <p className="text-sm text-foreground" role="status">
+              {RESTORE_DEMO_DEVICES_COPY}
+            </p>
+          )}
+          {reseedErr && (
+            <p className="text-sm text-danger" role="alert">
+              {reseedErr}
+            </p>
+          )}
+        </form>
+      </div>
       <p className="mt-4 text-xs text-muted-foreground">
         Access is platform_admin only (password). Floor PIN is never used on this control plane.
       </p>

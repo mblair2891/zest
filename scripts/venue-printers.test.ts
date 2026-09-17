@@ -55,7 +55,8 @@ test("summit hall seeds receipt, kitchen, and bar printer slots", () => {
   assert.match(merge, /pendingPrinterDevice/);
   assert.match(merge, /canonicalizePrinterDevice/);
   const onboard = readFileSync("src/lib/saas/onboarding.server.ts", "utf8");
-  assert.match(onboard, /defaultOnboardingPrinters/);
+  assert.match(onboard, /locationDevices = \[\]/);
+  assert.doesNotMatch(onboard, /defaultOnboardingPrinters/);
 });
 
 test("guide printers topic is form fields on Devices", () => {

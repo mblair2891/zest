@@ -352,6 +352,24 @@ export const factoryResetFn = createServerFn({ method: "POST" })
     });
   });
 
+export const reseedDemoDevicesFn = createServerFn({ method: "POST" })
+  .middleware([tenantMiddleware])
+  .validator((d: { confirm?: string }) => ({
+    confirm: String(d.confirm ?? "").trim(),
+  }))
+  .handler(async ({ context, data }) => {
+    const { isPlatformAdmin } = await import("./tenancy.server");
+    if (!(await isPlatformAdmin(context.userId))) {
+      throw new Error("Platform admin only");
+    }
+    const { RESTORE_DEMO_DEVICES_COPY } = await import("@/lib/pos/device-seed");
+    if (data.confirm !== RESTORE_DEMO_DEVICES_COPY) {
+      throw new Error(RESTORE_DEMO_DEVICES_COPY);
+    }
+    const { forceReseedIsolatedDemoDevices } = await import("@/lib/demo/isolated-seed.server");
+    return forceReseedIsolatedDemoDevices();
+  });
+
 export const listSaasPlansFn = createServerFn({ method: "GET" })
   .middleware([tenantMiddleware])
   .handler(async ({ context }) => {

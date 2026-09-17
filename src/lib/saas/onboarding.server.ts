@@ -32,7 +32,7 @@ import { isReservedVenueSlug, normalizeVenueSlug } from "@/lib/platform/venue-ho
 import type { PackageId } from "@/lib/pos/packages";
 import type { LocationSetup, PlanSlug } from "./types";
 import { DEFAULT_PAYMENT_METHODS } from "@/lib/pos/payment-methods";
-import { defaultOnboardingPrinters } from "@/lib/pos/location-devices";
+
 
 const UNLOCKED: ProspectStatusLike[] = ["contracted", "onboarding", "training", "live"];
 type ProspectStatusLike = string;
@@ -310,7 +310,9 @@ async function applyLocations(userId: string, prospectId: string, payload: Onboa
     }
     const setup = (await locationSetup(payload, loc)) as LocationSetup;
     if (!loc.serverId) {
-      setup.locationDevices = defaultOnboardingPrinters(loc.name.trim() || "loc");
+      setup.locationDevices = [];
+      setup.devicesSeeded = true;
+      setup.deletedLocationDevices = [];
     }
     const slugSource =
       loc.slug?.trim() || loc.hostBrandName.trim() || loc.name.trim();

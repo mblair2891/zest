@@ -150,7 +150,7 @@ import {
   makeClaimCode,
   type LocationDevice,
 } from "./location-devices";
-import { laundryLocationDevices } from "./laundry-seed";
+
 
 function mergeFloorStaff(get: any, set: any, floorStaff: any) {
 	if (!Array.isArray(floorStaff) || floorStaff.length === 0) return;
@@ -4728,14 +4728,9 @@ const usePosStoreRaw = create<PosStore>()(persist((set, get) => {
 			};
 		});
 		const ent = venueById(entityId);
-		const locationDevices =
-			(p.locationDevices && p.locationDevices.length)
-				? p.locationDevices
-				: !demoHallLoc
-					? (p.locationDevices ?? current.locationDevices ?? [])
-				: entityId === "food_hall"
-					? laundryLocationDevices()
-					: current.locationDevices ?? [];
+		const locationDevices = Array.isArray(p.locationDevices)
+			? p.locationDevices
+			: current.locationDevices ?? [];
 		return {
 			...current,
 			...p,

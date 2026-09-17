@@ -11,6 +11,7 @@ import { PLATFORM_ADMIN_EMAIL } from "@/lib/platform/brand";
 import { defaultPackagesForMode } from "@/lib/pos/packages";
 import { hashPin } from "@/lib/pos/pin";
 import { LAUNDRY_EMPLOYEES, laundryLocationDevices } from "@/lib/pos/laundry-seed";
+import { parseLocationDevices } from "@/lib/pos/location-devices";
 import {
   PARTNER_DEMO_EMAILS,
   PARTNER_DEMO_LOCATION_ID,
@@ -144,7 +145,17 @@ async function upsertOrg(): Promise<void> {
 async function upsertLocation(): Promise<void> {
   const sql = await getSql();
   const pkgs = JSON.stringify(defaultPackagesForMode("food_hall"));
-  const devices = laundryLocationDevices(PARTNER_DEMO_LOCATION_ID);
+  const catalog = laundryLocationDevices(PARTNER_DEMO_LOCATION_ID);
+  const existing = await sql<{ id: string; setup: unknown }>`
+    select id, setup from locations where id = ${PARTNER_DEMO_LOCATION_ID} limit 1
+  `;
+  const prev =
+    existing[0]?.setup && typeof existing[0].setup === "object" && !Array.isArray(existing[0].setup)
+      ? (existing[0].setup as Record<string, unknown>)
+      : null;
+  const devices = existing[0]
+    ? parseLocationDevices(prev?.locationDevices)
+    : catalog;
   const setup = JSON.stringify({
     tableCount: 10,
     sectionNames: ["Dining", "Bar"],
@@ -159,10 +170,9 @@ async function upsertLocation(): Promise<void> {
     reservationCheckIn: true,
     lifecycleStatus: "live",
     locationDevices: devices,
+    devicesSeeded: true,
+    deletedLocationDevices: prev?.deletedLocationDevices ?? [],
   });
-  const existing = await sql<{ id: string }>`
-    select id from locations where id = ${PARTNER_DEMO_LOCATION_ID} limit 1
-  `;
   if (!existing[0]) {
     await sql`
       insert into locations (

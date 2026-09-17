@@ -13,6 +13,7 @@ import { hashPin } from "@/lib/pos/pin";
 import { canonicalizePrinterDevice, isPrinterType, makeClaimCode, pendingPrinterDevice } from "@/lib/pos/location-devices";
 import { nextClaimExpiry } from "@/lib/pos/station-pair";
 import type { LocationDevice } from "@/lib/pos/location-devices";
+import { mergeDemoDeviceCatalog, parseDeletedLocationDevices } from "@/lib/pos/device-seed";
 import type { LocationSetup } from "./types";
 import {
   SUMMIT_COPPER_OP_ID,
@@ -36,46 +37,49 @@ const globalRef = globalThis as typeof globalThis & {
   __summexSummitHallBoot__?: Promise<{ ok: true } | { ok: false; reason: string }>;
 };
 
-function mergeSummitDevices(existing?: LocationSetup["locationDevices"]): LocationDevice[] {
-  const prev = Array.isArray(existing) ? existing : [];
-  const byId = new Map(prev.map((d) => [d.id, d]));
+function catalogSummitDevices(): LocationDevice[] {
   return SUMMIT_HALL_DEVICES.map((d) => {
-    const old = byId.get(d.id);
     if (isPrinterType(d.type) || "kind" in d) {
       const kind = "kind" in d && d.kind ? d.kind : "receipt";
-      const slot = pendingPrinterDevice({
-        id: d.id,
-        locationId: SUMMIT_HALL_LOCATION_ID,
-        label: d.label,
-        kind,
-        operatorId: d.operatorId,
-        destinationName: "destinationName" in d ? d.destinationName : undefined,
-      });
-      if (old?.print && slot.print) {
-        slot.print = {
-          ...slot.print,
-          ...old.print,
-          destinationName: old.print.destinationName || slot.print.destinationName,
-        };
-      }
-      if (old?.status === "inactive") slot.status = "inactive";
-      else if (old?.print?.ip || old?.print?.target) slot.status = old.status;
-      return canonicalizePrinterDevice(slot, old?.type ?? d.type);
+      return canonicalizePrinterDevice(
+        pendingPrinterDevice({
+          id: d.id,
+          locationId: SUMMIT_HALL_LOCATION_ID,
+          label: d.label,
+          kind,
+          operatorId: d.operatorId,
+          destinationName: "destinationName" in d ? d.destinationName : undefined,
+        }),
+        d.type,
+      );
     }
-    const paired = old && (old.status === "online" || old.status === "offline" || old.serial);
     return {
       id: d.id,
       locationId: SUMMIT_HALL_LOCATION_ID,
       label: d.label,
       type: d.type,
-      status: paired ? old!.status : "pending",
-      lastSeenAt: old?.lastSeenAt ?? Date.now(),
-      serial: old?.serial,
-      claimCode: paired ? old?.claimCode : old?.claimCode || makeClaimCode(),
-      claimExpiresAt: paired ? old?.claimExpiresAt : nextClaimExpiry(),
+      status: "pending" as const,
+      lastSeenAt: Date.now(),
+      claimCode: makeClaimCode(),
+      claimExpiresAt: nextClaimExpiry(),
       assignment: { operatorId: d.operatorId, function: d.fn },
     };
   });
+}
+
+function mergeSummitDevices(
+  existing?: Partial<LocationSetup>,
+  opts?: { locationExists?: boolean; forceReseed?: boolean },
+): { devices: LocationDevice[]; deleted: ReturnType<typeof parseDeletedLocationDevices> } {
+  const merged = mergeDemoDeviceCatalog({
+    catalog: catalogSummitDevices(),
+    existing: Array.isArray(existing?.locationDevices) ? existing.locationDevices : [],
+    deleted: parseDeletedLocationDevices(existing?.deletedLocationDevices),
+    devicesSeeded: existing?.devicesSeeded === true,
+    locationExists: opts?.locationExists === true,
+    forceReseed: opts?.forceReseed === true,
+  });
+  return { devices: merged.devices, deleted: merged.deleted };
 }
 
 function laborOwnedLines(extra?: Record<string, unknown>) {
@@ -89,8 +93,12 @@ function laborOwnedLines(extra?: Record<string, unknown>) {
   });
 }
 
-function locationSetup(existing?: Partial<LocationSetup>): LocationSetup {
+function locationSetup(
+  existing?: Partial<LocationSetup>,
+  opts?: { locationExists?: boolean; forceReseed?: boolean },
+): LocationSetup {
   const plan = summitHallFloorPlan();
+  const devices = mergeSummitDevices(existing, opts);
   return {
     tableCount: plan.tables.length,
     sectionNames: ["Dining", "Bar"],
@@ -188,7 +196,9 @@ function locationSetup(existing?: Partial<LocationSetup>): LocationSetup {
       settings: { ...SUMMIT_HALL_COST_SETTINGS, targetCostPct: { ...SUMMIT_HALL_COST_SETTINGS.targetCostPct } },
       pos: [],
     },
-    locationDevices: mergeSummitDevices(existing?.locationDevices),
+    locationDevices: devices.devices,
+    deletedLocationDevices: devices.deleted,
+    devicesSeeded: true,
     stationPublish: existing?.stationPublish,
     deviceRoleHistory: existing?.deviceRoleHistory,
     cashHandling: existing?.cashHandling,
@@ -268,7 +278,22 @@ async function upsertOrg(): Promise<void> {
   }
 }
 
-async function upsertLocation(): Promise<void> {
+async function pruneDeletedDeviceRows(
+  locationId: string,
+  deleted: { id: string }[],
+): Promise<void> {
+  if (!deleted.length) return;
+  const sql = await getSql();
+  for (const row of deleted) {
+    if (!row.id) continue;
+    await sql`
+      delete from location_devices
+      where location_id = ${locationId} and id = ${row.id}
+    `.catch(() => undefined);
+  }
+}
+
+async function upsertLocation(opts?: { forceReseed?: boolean }): Promise<void> {
   const sql = await getSql();
   const org = await sql<{ id: string }>`
     select id from organizations
@@ -288,7 +313,12 @@ async function upsertLocation(): Promise<void> {
     existing[0]?.setup && typeof existing[0].setup === "object"
       ? (existing[0].setup as Partial<LocationSetup>)
       : undefined;
-  const setup = JSON.stringify(locationSetup(prev));
+  const nextSetup = locationSetup(prev, {
+    locationExists: Boolean(existing[0]) && !opts?.forceReseed,
+    forceReseed: opts?.forceReseed === true,
+  });
+  const setup = JSON.stringify(nextSetup);
+  await pruneDeletedDeviceRows(locId, nextSetup.deletedLocationDevices ?? []);
   if (!existing[0]) {
     await sql`
       insert into locations (
@@ -339,6 +369,26 @@ async function upsertLocation(): Promise<void> {
     `;
   } catch {
     /* optional */
+  }
+  for (const d of nextSetup.locationDevices ?? []) {
+    await sql`
+      insert into location_devices (
+        id, location_id, label, type, status, serial, claim_code,
+        assigned_operator_id, assigned_function, last_seen_at, claim_expires_at
+      )
+      values (
+        ${d.id}, ${locId}, ${d.label}, ${d.type}, ${d.status},
+        ${d.serial ?? null}, ${d.claimCode ?? null},
+        ${d.assignment.operatorId}, ${d.assignment.function},
+        ${new Date(d.lastSeenAt || Date.now()).toISOString()},
+        ${d.claimExpiresAt ? new Date(d.claimExpiresAt).toISOString() : null}
+      )
+      on conflict (id) do update set
+        label = excluded.label,
+        type = excluded.type,
+        assigned_operator_id = excluded.assigned_operator_id,
+        assigned_function = excluded.assigned_function
+    `.catch(() => undefined);
   }
 }
 
@@ -534,13 +584,19 @@ async function upsertShifts(): Promise<void> {
   }
 }
 
-async function seedOnce(): Promise<{ ok: true } | { ok: false; reason: string }> {
+async function seedOnce(opts?: { forceReseed?: boolean }): Promise<{ ok: true } | { ok: false; reason: string }> {
   await upsertOrg();
-  await upsertLocation();
+  await upsertLocation(opts);
   await upsertOperators();
   await upsertStaff();
   await upsertShifts();
   return { ok: true };
+}
+
+/** Factory reset / platform “reseed demo” only. Restores demo stations and printers. */
+export async function forceReseedSummitHallDevices(): Promise<{ ok: true } | { ok: false; reason: string }> {
+  resetSummitHallSeedLatch();
+  return seedOnce({ forceReseed: true });
 }
 
 export function resetSummitHallSeedLatch(): void {

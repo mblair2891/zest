@@ -51,6 +51,10 @@ export type LocationSetup = {
   entityPermissions?: import("@/lib/access/entity-grants").EntityGrantRow[];
   /** Location device registry with entity + function assignment. */
   locationDevices?: import("@/lib/pos/location-devices").LocationDevice[];
+  /** Isolated demo catalog applied once. After that Devices is operator-owned. */
+  devicesSeeded?: boolean;
+  /** Deleted station/printer ids+names. Seed, publish, and boot skip these. */
+  deletedLocationDevices?: import("@/lib/pos/device-seed").DeletedLocationDevice[];
   /** Extra order-printer destinations beyond Kitchen / Bar / Expo / Window / Prep / Other. */
   orderDestinations?: string[];
   /** Venue print jobs (QR / kiosk / online / dashboard test) for a docked station or print agent. */

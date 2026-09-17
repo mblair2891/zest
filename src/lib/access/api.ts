@@ -32,6 +32,7 @@ import {
   claimExpired,
   nextClaimExpiry,
 } from "@/lib/pos/station-pair-payload";
+import { parseDeletedLocationDevices, rememberDeletedDevice } from "@/lib/pos/device-seed";
 
 function mintClaim(): { claimCode: string; claimExpiresAt: number } {
   return { claimCode: makeClaimCode(), claimExpiresAt: nextClaimExpiry() };
@@ -1283,7 +1284,12 @@ export const deleteLocationDeviceFn = createServerFn({ method: "POST" })
     const ctx = await loadEntityWriteContext(context.userId, orgId, data.locationId);
     assertVenueDeviceAdmin(ctx);
     const prev = parseLocationDevices(ctx.setup.locationDevices);
+    const removed = prev.find((d) => d.id === data.deviceId);
     const devices = prev.filter((d) => d.id !== data.deviceId);
+    const deleted = rememberDeletedDevice(
+      parseDeletedLocationDevices(ctx.setup.deletedLocationDevices),
+      removed,
+    );
     const { getSql } = await import("@/lib/db");
     const sql = await getSql();
     try {
@@ -1298,7 +1304,13 @@ export const deleteLocationDeviceFn = createServerFn({ method: "POST" })
     return updateLocationSetupForUser(context.userId, {
       orgId: ctx.orgId,
       locationId: data.locationId,
-      setup: { ...EMPTY_LOCATION_SETUP, ...ctx.setup, locationDevices: devices } as LocationSetup,
+      setup: {
+        ...EMPTY_LOCATION_SETUP,
+        ...ctx.setup,
+        locationDevices: devices,
+        deletedLocationDevices: deleted,
+        devicesSeeded: true,
+      } as LocationSetup,
     });
   });
 

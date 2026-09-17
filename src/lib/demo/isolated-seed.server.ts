@@ -9,6 +9,7 @@ import { hashPin } from "@/lib/pos/pin";
 import { canonicalizePrinterDevice, makeClaimCode, pendingPrinterDevice } from "@/lib/pos/location-devices";
 import { nextClaimExpiry } from "@/lib/pos/station-pair";
 import type { LocationDevice } from "@/lib/pos/location-devices";
+import { mergeDemoDeviceCatalog, parseDeletedLocationDevices } from "@/lib/pos/device-seed";
 import type { LocationMode } from "@/lib/pos/saas-types";
 import type { EmployeeRole, MenuCategory, MenuItem } from "@/lib/pos/types";
 import type { LocationFloorPlan } from "@/lib/saas/location-catalog";
@@ -144,13 +145,26 @@ function asDevice(locId: string, d: SeedDevice, prev?: LocationDevice): Location
   };
 }
 
-function setupOf(seed: IsolatedSeed, existing?: Partial<LocationSetup>): LocationSetup {
+function catalogOf(seed: IsolatedSeed): LocationDevice[] {
+  return seed.devices.map((d) => asDevice(seed.locationId, d));
+}
+
+function setupOf(
+  seed: IsolatedSeed,
+  existing?: Partial<LocationSetup>,
+  opts?: { locationExists?: boolean; forceReseed?: boolean },
+): LocationSetup {
   const laborByEntity: Record<string, ReturnType<typeof parseLaborRules>> = {};
   for (const e of seed.entities) laborByEntity[e.id] = laborOwned();
   if (seed.hostEntityId) laborByEntity[seed.hostEntityId] = laborOwned();
-  const prevDevices = (existing?.locationDevices ?? []) as LocationDevice[];
-  const byId = new Map(prevDevices.map((d) => [d.id, d]));
-  const devices = seed.devices.map((d) => asDevice(seed.locationId, d, byId.get(d.id)));
+  const merged = mergeDemoDeviceCatalog({
+    catalog: catalogOf(seed),
+    existing: (existing?.locationDevices ?? []) as LocationDevice[],
+    deleted: parseDeletedLocationDevices(existing?.deletedLocationDevices),
+    devicesSeeded: existing?.devicesSeeded === true,
+    locationExists: opts?.locationExists === true,
+    forceReseed: opts?.forceReseed === true,
+  });
   return {
     tableCount: seed.floorPlan?.tables.length ?? 0,
     sectionNames: seed.sectionNames,
@@ -188,7 +202,9 @@ function setupOf(seed: IsolatedSeed, existing?: Partial<LocationSetup>): Locatio
       items: seed.items.map((m) => ({ ...m })),
       modifiers: [],
     },
-    locationDevices: devices,
+    locationDevices: merged.devices,
+    deletedLocationDevices: merged.deleted,
+    devicesSeeded: true,
     stationPublish: existing?.stationPublish,
     deviceRoleHistory: existing?.deviceRoleHistory,
     cashHandling: existing?.cashHandling,
@@ -238,7 +254,10 @@ async function upsertOrg(seed: IsolatedSeed): Promise<void> {
   }
 }
 
-async function upsertLocation(seed: IsolatedSeed): Promise<void> {
+async function upsertLocation(
+  seed: IsolatedSeed,
+  opts?: { forceReseed?: boolean },
+): Promise<void> {
   const sql = await getSql();
   const existing = await sql<{ id: string; setup: unknown }>`
     select id, setup from locations where id = ${seed.locationId} or slug = ${seed.slug} limit 1
@@ -247,7 +266,12 @@ async function upsertLocation(seed: IsolatedSeed): Promise<void> {
     existing[0]?.setup && typeof existing[0].setup === "object"
       ? (existing[0].setup as Partial<LocationSetup>)
       : undefined;
-  const setup = JSON.stringify(setupOf(seed, prev));
+  const setup = JSON.stringify(
+    setupOf(seed, prev, {
+      locationExists: Boolean(existing[0]) && !opts?.forceReseed,
+      forceReseed: opts?.forceReseed === true,
+    }),
+  );
   const pkgs = JSON.stringify(defaultPackagesForMode(seed.venueType));
   if (!existing[0]) {
     await sql`
@@ -369,8 +393,24 @@ async function upsertStaff(seed: IsolatedSeed): Promise<void> {
 
 async function upsertDeviceRows(seed: IsolatedSeed): Promise<void> {
   const sql = await getSql();
-  const setup = setupOf(seed);
-  for (const d of setup.locationDevices ?? []) {
+  const rows = await sql<{ setup: unknown }>`
+    select setup from locations where id = ${seed.locationId} limit 1
+  `;
+  const raw = rows[0]?.setup;
+  const setupObj =
+    raw && typeof raw === "object" && !Array.isArray(raw)
+      ? (raw as Partial<LocationSetup>)
+      : {};
+  const devices = (setupObj.locationDevices ?? []) as LocationDevice[];
+  const deleted = parseDeletedLocationDevices(setupObj.deletedLocationDevices);
+  for (const row of deleted) {
+    if (!row.id) continue;
+    await sql`
+      delete from location_devices
+      where location_id = ${seed.locationId} and id = ${row.id}
+    `.catch(() => undefined);
+  }
+  for (const d of devices) {
     try {
       await sql`
         insert into location_devices (
@@ -396,9 +436,9 @@ async function upsertDeviceRows(seed: IsolatedSeed): Promise<void> {
   }
 }
 
-async function seedOne(seed: IsolatedSeed): Promise<void> {
+async function seedOne(seed: IsolatedSeed, opts?: { forceReseed?: boolean }): Promise<void> {
   await upsertOrg(seed);
-  await upsertLocation(seed);
+  await upsertLocation(seed, opts);
   await upsertOperators(seed);
   await upsertStaff(seed);
   await upsertDeviceRows(seed);
@@ -481,13 +521,22 @@ function redbirdSeed(): IsolatedSeed {
   };
 }
 
-async function seedOnce(): Promise<{ ok: true } | { ok: false; reason: string }> {
-  const { ensureSummitHallDemo } = await import("@/lib/saas/summit-hall-seed.server");
-  await ensureSummitHallDemo();
-  await seedOne(harborSeed());
-  await seedOne(ashSeed());
-  await seedOne(redbirdSeed());
+async function seedOnce(opts?: { forceReseed?: boolean }): Promise<{ ok: true } | { ok: false; reason: string }> {
+  const { ensureSummitHallDemo, forceReseedSummitHallDevices } = await import(
+    "@/lib/saas/summit-hall-seed.server"
+  );
+  if (opts?.forceReseed) await forceReseedSummitHallDevices();
+  else await ensureSummitHallDemo();
+  await seedOne(harborSeed(), opts);
+  await seedOne(ashSeed(), opts);
+  await seedOne(redbirdSeed(), opts);
   return { ok: true };
+}
+
+/** Factory reset / platform “reseed demo” only. Restores demo stations and printers. */
+export async function forceReseedIsolatedDemoDevices(): Promise<{ ok: true } | { ok: false; reason: string }> {
+  resetIsolatedDemoLatch();
+  return seedOnce({ forceReseed: true });
 }
 
 export async function ensureIsolatedDemos(): Promise<{ ok: true } | { ok: false; reason: string }> {
