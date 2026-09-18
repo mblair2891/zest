@@ -31,9 +31,8 @@ import {
 import { GuestCheckByVendor } from "./GuestCheckByVendor";
 import { printGuestCheck, printGuestReceipt } from "@/lib/print/from-store";
 import {
-  cashAtCopy,
+  ADD_RECEIPT_PRINTER,
   currentStationDeviceId,
-  stationMayKickDrawer,
   stationMayPrintReceipt,
 } from "@/lib/print/receipt-printer";
 import { parseStationClass } from "@/lib/pos/station-class";
@@ -83,23 +82,11 @@ export function PaymentDialog({ open, onOpenChange }: Props) {
   const giftOk = canPay && payCfg.giftCard;
   const locationDevices = usePosStore((s) => s.locationDevices);
   const activeDeviceId = usePosStore((s) => s.activeDeviceId);
-  const cashSink = currentCashSink({
-    cfg: parseCashHandling(settings.cashHandling),
-    emp: emp ?? null,
-    deviceRole: cashRoleFromSession(useStationSessionStore.getState().assignment.kind),
-    deviceId: activeDeviceId,
-    order: order ?? null,
-  });
   const stationId = activeDeviceId || currentStationDeviceId();
   const stationRow = locationDevices.find((d) => d.id === stationId);
   const stationClass = parseStationClass(stationRow?.stationClass, stationRow);
-  const mayKick = stationMayKickDrawer(locationDevices, stationId);
   const mayPrintReceipt = stationMayPrintReceipt(locationDevices, stationId);
-  const mayPrintCheck = mayKick && mayPrintReceipt;
-  const handheldCash = Boolean(settings.handheldCashEnabled);
-  const cashAllowed =
-    cashSink.type !== "blocked" && (mayKick || (stationClass === "handheld" && handheldCash));
-  const cashHere = cashAtCopy(locationDevices);
+  const mayPrintCheck = mayPrintReceipt;
   const deviceRole = (() => {
     try {
       const q = parseStationQuery(new URLSearchParams(window.location.search).get("station"));
@@ -111,7 +98,7 @@ export function PaymentDialog({ open, onOpenChange }: Props) {
   })();
   const odsBlocked = deviceRole === "ods";
   const layout = useStationLayout();
-  const payMethods = enabledPayMethods(payCfg).filter((m) => (m === "cash" ? cashAllowed : true));
+  const payMethods = enabledPayMethods(payCfg);
 
   const [method, setMethod] = useState<PaymentMethod>(() =>
     firstEnabledMethod(payCfg, wanOnline ? "card" : "cash"),
@@ -157,10 +144,10 @@ export function PaymentDialog({ open, onOpenChange }: Props) {
 
   useEffect(() => {
     const cfg = parsePaymentMethods(settings.paymentMethods);
-    if (!methodEnabled(cfg, method) || (method === "cash" && !cashAllowed)) {
-      setMethod(firstEnabledMethod(cfg, wanOnline || !cashAllowed ? "card" : "cash"));
+    if (!methodEnabled(cfg, method)) {
+      setMethod(firstEnabledMethod(cfg, wanOnline ? "card" : "cash"));
     }
-  }, [settings.paymentMethods, method, wanOnline, cashAllowed]);
+  }, [settings.paymentMethods, method, wanOnline]);
 
   const amountCents = amount
     ? Math.round(parseFloat(amount) * 100)
@@ -943,7 +930,7 @@ export function PaymentDialog({ open, onOpenChange }: Props) {
                 and comps still work on this device. Card is not queued.
               </p>
             )}
-            {mayPrintCheck && (
+            {mayPrintCheck ? (
             <Button
               size="lg"
               className="station-touch min-h-12 w-full"
@@ -972,10 +959,9 @@ export function PaymentDialog({ open, onOpenChange }: Props) {
               <Printer className="h-5 w-5" />
               Print check
             </Button>
-            )}
-            {stationClass === "handheld" && !cashAllowed && (
-              <p className="text-center text-xs text-muted-foreground" data-cash-at>
-                {cashHere} Card on this handheld.
+            ) : (
+              <p className="text-center text-xs text-muted-foreground" data-add-receipt-printer>
+                {ADD_RECEIPT_PRINTER}
               </p>
             )}
             {checkPrintMsg && (
@@ -1021,7 +1007,7 @@ export function PaymentDialog({ open, onOpenChange }: Props) {
                             : m === "house_account"
                               ? Building2
                               : FileText;
-                  const blockedCash = m === "cash" && (!cashAllowed || odsBlocked);
+                  const blockedCash = m === "cash" && odsBlocked;
                   const blockedGift = m === "gift_card" && odsBlocked;
                   const blockedCard = m === "card" && !wanOnline;
                   return (
@@ -1037,11 +1023,7 @@ export function PaymentDialog({ open, onOpenChange }: Props) {
                           : blockedGift
                             ? "ODS cannot tender gift"
                             : blockedCash
-                              ? odsBlocked
-                                ? "ODS cannot tender cash"
-                                : cashSink.type === "blocked"
-                                  ? cashSink.reason
-                                  : undefined
+                              ? "ODS cannot tender cash"
                               : undefined
                       }
                       onClick={() => setMethod(m)}

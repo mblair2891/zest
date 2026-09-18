@@ -5,7 +5,7 @@ import { usePosStore } from "@/lib/pos/store";
 import type { KitchenTicket, Order, RestaurantSettings } from "@/lib/pos/types";
 import { uid } from "@/lib/utils";
 import { dispatchPrintJob, kickCashDrawer, printersForStation } from "./dispatch";
-import { ADD_RECEIPT_PRINTER, currentStationDeviceId, payAtCopy, resolveReceiptPrinter } from "./receipt-printer";
+import { ADD_RECEIPT_PRINTER, currentStationDeviceId, resolveReceiptPrinter } from "./receipt-printer";
 import { NO_DRAWER_ON_STATION, receiptDrawerKickAllowed, resolveReceiptDrawer } from "./receipt-drawer";
 import { readStationDeviceRole } from "@/lib/pos/device-roles";
 import type { PrintJob, PrintLine } from "./types";
@@ -406,7 +406,7 @@ export async function printGuestReceipt(orderId: string): Promise<{
     at: Date.now(),
   };
   if (!printer) {
-    return { ok: false, error: "No receipt printer bound for print." };
+    return { ok: false, error: ADD_RECEIPT_PRINTER };
   }
   const res = await dispatchPrintJob(job, devices, {
     printerId: printer.id,
@@ -454,13 +454,7 @@ export async function printGuestCheck(orderId?: string): Promise<{
   const devices = s.locationDevices;
   const printer = resolveReceiptPrinter(devices, currentStationDeviceId());
   if (!printer) {
-    const anyReceipt = (devices ?? []).some(
-      (d) =>
-        d.type === "receipt_printer" ||
-        d.print?.station === "receipt" ||
-        d.print?.routes?.includes("receipts"),
-    );
-    return { ok: false, error: anyReceipt ? payAtCopy(devices) : ADD_RECEIPT_PRINTER };
+    return { ok: false, error: ADD_RECEIPT_PRINTER };
   }
   const locationId = s.tenantLocationId || "";
   const locationName = s.settings.name || "Summex";

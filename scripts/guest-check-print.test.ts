@@ -13,6 +13,23 @@ test("order pad always shows live check lines; Print check is not the only view"
   assert.match(ui, /ADD_RECEIPT_PRINTER/);
 });
 
+test("cash ON is a pay tender even without a receipt printer", () => {
+  const pay = readFileSync("src/components/pos/PaymentDialog.tsx", "utf8");
+  assert.match(pay, /enabledPayMethods\(payCfg\)/);
+  assert.doesNotMatch(pay, /m === "cash" \? cashAllowed/);
+  assert.match(pay, /ADD_RECEIPT_PRINTER/);
+  assert.match(pay, /mayPrintReceipt/);
+  assert.match(pay, /TRAINING — Quantum Payments sandbox/);
+  assert.match(pay, /Cash and gift still work/);
+  const pad = readFileSync("src/components/pos/OrderView.tsx", "utf8");
+  assert.match(pad, /mayPrintCheck = hasBoundReceipt/);
+  assert.doesNotMatch(pad, /mayKick && mayPrintReceipt/);
+  const copy = readFileSync("src/lib/print/receipt-printer.ts", "utf8");
+  assert.match(copy, /Add a receipt printer in Devices/);
+  const store = readFileSync("src/lib/pos/store.ts", "utf8");
+  assert.doesNotMatch(store, /stationMayKickDrawer\(get\(\)\.locationDevices/);
+});
+
 test("pay screen prints guest check before tender", () => {
   const pay = readFileSync("src/components/pos/PaymentDialog.tsx", "utf8");
   assert.match(pay, /Print check/);

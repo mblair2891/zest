@@ -13,7 +13,7 @@ import {
   type ReceiptBindDevice,
 } from "./receipt-bind";
 
-export const ADD_RECEIPT_PRINTER = "Add a receipt printer";
+export const ADD_RECEIPT_PRINTER = "Add a receipt printer in Devices";
 
 export function receiptPrinterServesStation(
   printer: LocationDevice,

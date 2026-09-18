@@ -62,8 +62,8 @@ export const PAYMENT_TOPICS: GuideTopic[] = [
       ),
       steps(
         "On the check, tap Pay. Only tenders the house has on appear — large full-width buttons, not a strip of greyed-out icons.",
-        "Card (if on): amount (defaults to balance), tip suggestions. Sandbox may show last4 on the practice receipt. Live: present on the Quantum reader — never type PAN/CVV. One guest tender; each brand’s account is funded from the split. The printed receipt groups lines by vendor — still one document.",
-        "Cash (if on): enter tendered; change due is calculated. Cash view tracks the drawer. Cash off: no Take drawer, no possession, no cash count.",
+        "Card (if on): amount (defaults to balance), tip suggestions. Training / Quantum sandbox may fake the card and show last4 on the practice receipt. Live: present on the Quantum reader — never type PAN/CVV. One guest tender; each brand’s account is funded from the split. The printed receipt groups lines by vendor — still one document.",
+        "Cash (if on): Cash is a first-class button on Pay. It is not hidden because the house is in training/sandbox or because this station has no receipt printer. Enter tendered; change due is calculated. Cash still records on the check and till. Cash off: no Take drawer, no possession, no cash count.",
         "Gift (if on): enter the first-party code. Redeem never calls an outside gift network. The fulfilling operator gets the merchandise; issuer liability decreases; issuer remits to the fulfiller if they differ. Gift off: no Issue/reload and no redeem.",
         "Check, house account, comp, and Other appear only when those toggles are on. Comp needs a reason and is not a guest tender.",
         "To split tenders, pay less than the balance, then take the next enabled tender on the same check.",
@@ -109,8 +109,8 @@ export const PAYMENT_TOPICS: GuideTopic[] = [
       ul(
         "At least one guest tender stays on: cash and/or card and/or gift. You cannot turn the last one off.",
         "Disabled methods are hidden on station Pay, table QR pay, kiosk, and closeout expected buckets.",
-        "Cash off: no drawer possession for that venue’s staff. Take drawer / Open bank is hidden. Banks stay unused. Closeout still runs for sales and tips — no cash count.",
-        "Card off: no reader prompts. When card is on, training sandbox still follows the location lifecycle.",
+        "Cash on: Pay shows Cash. Missing receipt printer and training/sandbox do not remove it. Cash off: no drawer possession for that venue’s staff. Take drawer / Open bank is hidden. Banks stay unused. Closeout still runs for sales and tips — no cash count.",
+        "Card off: no reader prompts. When card is on, training sandbox still follows the location lifecycle. Sandbox may fake card; cash still posts.",
         "Gift off: no sell (Issue / reload) and no redeem.",
         "Check: optional sub-toggles for photo, last 4, and manager witness PIN.",
         "Quote and onboarding default cash + card + gift on; check off.",
@@ -171,17 +171,17 @@ export const PAYMENT_TOPICS: GuideTopic[] = [
         "The guest should see who cooked or poured without a second checkout. The house still prints one document under the location name.",
       ),
       p(
-        "Print check (before tender) and the paid receipt are different. Print check is the guest’s itemized bill on the bound receipt printer — not the kitchen Star. Lines group under the selling entity (Hearth / Copper / …) with qty, cash price and card price when cash discount is on, subtotal per entity, grand cash total, grand card total, and “Not a receipt — pay server.” No guest split on that ticket — staff already split checks. After the guest pays: Email, SMS, Printed receipt, or None. A handheld can queue the paid receipt to the bound receipt printer or Open on terminal so a register reprints. Quantum Payments is the tender line — guests never see Finix.",
+        "Print check (before tender) and the paid receipt are different. Print check appears on the order pad and on Pay when a Receipt printer is bound to this station (Epson TM-T20 at the venue IP:9100 from the paired tablet — house example 192.168.0.112). It is the guest’s itemized bill — not the kitchen Star. Lines group under the selling entity (Hearth / Copper / …) with qty, cash price and card price when cash discount is on, subtotal per entity, grand cash total, grand card total, and “Not a receipt — pay server.” No guest split on that ticket — staff already split checks. If no receipt printer is bound: “Add a receipt printer in Devices.” Cash, Card, and Gift still show. After the guest pays: Email, SMS, Printed receipt (same bound Epson), or None. A handheld can queue the paid receipt to the bound receipt printer or Open on terminal so a register reprints. Quantum Payments is the tender line — guests never see Finix.",
       ),
       ul(
-        "Two station classes. Handheld: ring, send, card-present on a paired Quantum mobile reader (flip to guest for amount, tip, sign). No cash, No sale, or drawer kick unless the venue enables handheld cash. After approved card: Email / SMS / Printed receipt / None. Printed queues the paid receipt to a bound receipt printer on the LAN, or Open on terminal flags the check so a register can Print receipt. Terminal (bound to receipt printer + drawer): everything a handheld can do, plus cash, Print check (pre-pay guest check, entity itemized, cash + card totals), No sale, paid receipt print, drawer kick. Kitchen Star never prints a guest check and never kicks. QR pay on the guest phone is unchanged.",
+        "Two station classes. Handheld: ring, send, card-present on a paired Quantum mobile reader (flip to guest for amount, tip, sign). Cash still shows on Pay when the venue Cash toggle is on. No sale and drawer kick stay on terminals with a bound receipt drawer. After approved card: Email / SMS / Printed receipt / None. Printed queues the paid receipt to a bound receipt printer on the LAN, or Open on terminal flags the check so a register can Print receipt. Terminal with a bound Epson: Print check (pre-pay guest check, entity itemized, cash + card totals), paid receipt, No sale, drawer kick. Kitchen Star never prints a guest check and never kicks. QR pay on the guest phone is unchanged.",
         "One document. Do not print a stall receipt as a second card run.",
         "Merchant copy (when more than one brand is on the check) lists that vendor’s share: merchandise, tax/tip/service, total. Guest still paid once.",
         "Kitchen and bar tickets still print only that station’s lines (Star SP700 impact for kitchen). Pay uses the same ownership map as ODS routing — do not change routing.",
         "Cash discount receipts and the check can show both: Cash $18.00 · Card $19.00. Cash tender charges cash; card tender charges card.",
       ),
       steps(
-        "On a terminal, tap Print check before cash. Confirm the receipt printer (192.168.0.112 in the house example) — not the kitchen Star. On a handheld, Flip to guest for card + tip + sign, then Email / SMS / Printed receipt (queues to .112) or Open on terminal.",
+        "On the pad or Pay, tap Print check before tender when this station has a bound Receipt printer. Confirm the Epson (192.168.0.112 in the house example) — not the kitchen Star. If the button is missing: Add a receipt printer in Devices. Tenders stay. On a handheld, Flip to guest for card + tip + sign, then Email / SMS / Printed receipt (queues to .112) or Open on terminal.",
         "After pay, choose Email, Print, or No receipt. Same three choices for card, cash, gift, and comp.",
         "Email: enter the guest address. Sent via Resend. If email is down, the station says so and offers print.",
         "Print: ESC/POS on the printer mapped on this device row in Devices. If none, the venue default receipt printer.",
@@ -265,7 +265,7 @@ export const PAYMENT_TOPICS: GuideTopic[] = [
         "An owner considering Summex should read a product paper — not a stack spec. Processors and partners can share the same document.",
       ),
       p(
-        "Open White paper from the marketing header or footer (no login). Print from the browser for a PDF. Revision · 17 Sep 2026 matches Guide v2026.10.108. It is written for prospective subscribers: one guest check, floor, multi-entity, Android staff stations, venue payment-method toggles, 5% cash-discount processing story, plans from Get a price. Gift cards are not sold online. QR is on-premise. No CRM, pipeline, factory reset, or how to log in. Internal operations notes stay off the public site.",
+        "Open White paper from the marketing header or footer (no login). Print from the browser for a PDF. Revision · 18 Sep 2026 matches Guide v2026.10.118. It is written for prospective subscribers: one guest check, floor, multi-entity, Android staff stations, venue payment-method toggles, 5% cash-discount processing story, plans from Get a price. Gift cards are not sold online. QR is on-premise. No CRM, pipeline, factory reset, or how to log in. Internal operations notes stay off the public site.",
       ),
       steps(
         "Open White paper from the marketing header (White paper). That page is the paper — not Get a price.",

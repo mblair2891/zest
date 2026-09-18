@@ -6,6 +6,19 @@ import type { GuideUpdate } from "@/lib/guide/types";
  */
 export const WHATS_NEW_ENTRIES: GuideUpdate[] = [
   {
+    id: "upd_2026_10_118_cash_print_check",
+    date: "2026-09-18",
+    title: "Cash on Pay; Print check on the Epson",
+    summary:
+      "If Cash is on in Payments, Pay shows Cash. Print check uses the bound receipt printer — not the kitchen Star.",
+    body: "Settings → Payments: Cash, Card, Gift, Check. Cash on is a first-class tender — training/sandbox and a missing receipt printer do not hide it. Training may fake card; cash still posts to the check and till. Print check (pad and Pay, before tender) when a Receipt printer is bound (Epson TM-T20 at the venue IP:9100 from the paired tablet). Guest check: items by entity, cash + card prices if cash discount is on, “Not a receipt — pay server.” After pay: optional Paid receipt on the same printer. No bound printer: “Add a receipt printer in Devices.” Cash / Card / Gift still show.",
+    roles: ["owner_manager", "server", "host_operator"],
+    surfaces: ["settings", "floor"],
+    audience: "all",
+    topicId: "tenders-tips",
+    tags: ["pay", "cash", "print", "receipt"],
+  },
+  {
     id: "upd_2026_10_117_group_destinations",
     date: "2026-09-18",
     title: "One kitchen slip per printer",

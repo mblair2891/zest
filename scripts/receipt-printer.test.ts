@@ -127,8 +127,8 @@ test("devices UI and pad: print vs kick lists", () => {
   assert.match(ui, /Leave handhelds unchecked/);
   assert.match(ui, /Handheld \(card, no drawer\)/);
   const pad = readFileSync("src/components/pos/OrderView.tsx", "utf8");
-  assert.match(pad, /data-cash-at/);
-  assert.match(pad, /cashAtCopy/);
+  assert.match(pad, /data-add-receipt-printer/);
+  assert.match(pad, /ADD_RECEIPT_PRINTER/);
   assert.match(pad, /Flip to guest|mayPrintCheck/);
   const pay = readFileSync("src/components/pos/PaymentDialog.tsx", "utf8");
   assert.match(pay, /data-guest-pay-face/);
@@ -141,8 +141,8 @@ test("devices UI and pad: print vs kick lists", () => {
   const menu = readFileSync("src/lib/pos/station-menu.ts", "utf8");
   assert.match(menu, /canPayStation/);
   const store = readFileSync("src/lib/pos/store.ts", "utf8");
-  assert.match(store, /cashAtCopy/);
   assert.match(store, /flagReceiptPending/);
+  assert.doesNotMatch(store, /stationMayKickDrawer\(get\(\)\.locationDevices/);
 });
 
 test("gone mapped id does not fall back to an unbound receipt printer", () => {

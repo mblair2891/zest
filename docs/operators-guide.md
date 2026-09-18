@@ -1,7 +1,7 @@
 # Operators Guide — authoring
 
-**Revision · 18 Sep 2026** — Menu group destinations; one kitchen slip per printer.
-Guide v2026.10.117.
+**Revision · 18 Sep 2026** — Cash tender on Pay; Print check on bound Epson.
+Guide v2026.10.118.
 
 The in-app **Operators Guide** is the living product manual. It is not a
 separate PDF. Staff open it from **Guide** / **?** in the POS and platform
@@ -57,7 +57,7 @@ accurate when the job path changes.
 3. Roles & floor PIN vs back-office password (separate from clock in/out and closeout)
 4. Floor, sections, table status, release/accept. Floorplan editor: Booth 4-top, Booth U, Booth L (banquette shapes, not fat rectangles). Chair / stool / booth-bench marks auto-size from the fixture and seat count. Live floor uses the same artwork and sizing; status fill is the table surface.
 5. Menu, modifiers, recipes/ingredients/prep
-6. Orders + Order Display System (Start / Bump / notify). Station order pad always shows the open check beside or under the menu — each tap adds qty, name, entity, cash and card (when cash discount is on). Check opens split/edit/send; it is not the only place lines appear. Send fires LAN 9100. Each menu group has an order destination (Kitchen, Bar, Expo, Window, Prep, Salad, Pizza, Dessert, Other, or a house name) and an optional order-printer override. Items that share destination + printer on one Send print as **one slip** (header, then qty + name + modifiers, one cut). Do not cut per menu group when those groups map to the same line. Do not cut per course unless **Separate course tickets** is on (default off for a single-line kitchen). Drinks → Bar if a bar printer exists, else the kitchen printer. Receipt printers never get kitchen fire. **Print check** (order pad and Pay, before tender) prints on the bound receipt printer: venue, table, server, check #, items by selling entity, cash and card totals, “Not a receipt — pay server.” No guest split on that ticket. After pay: existing tender + optional paid receipt.
+6. Orders + Order Display System (Start / Bump / notify). Station order pad always shows the open check beside or under the menu — each tap adds qty, name, entity, cash and card (when cash discount is on). Check opens split/edit/send; it is not the only place lines appear. Send fires LAN 9100. Each menu group has an order destination (Kitchen, Bar, Expo, Window, Prep, Salad, Pizza, Dessert, Other, or a house name) and an optional order-printer override. Items that share destination + printer on one Send print as **one slip** (header, then qty + name + modifiers, one cut). Do not cut per menu group when those groups map to the same line. Do not cut per course unless **Separate course tickets** is on (default off for a single-line kitchen). Drinks → Bar if a bar printer exists, else the kitchen printer. Receipt printers never get kitchen fire. **Pay:** Settings → Payments toggles Cash, Card, Gift, Check. If Cash is on, Cash is a first-class tender on the station Pay screen — not hidden because training/sandbox or because a receipt printer is missing. Training / Quantum sandbox may fake card; cash still records on the check and till. **Print check** (order pad and Pay, before tender) when a Receipt printer is bound to this station (Epson TM-T20 at the venue IP:9100 from the paired tablet): items grouped by entity, cash + card prices if cash discount is on, “Not a receipt — pay server.” Not the kitchen Star. If no receipt printer is bound: “Add a receipt printer in Devices” — Cash / Card / Gift still show. After the guest pays: optional **Paid receipt** on the same printer.
 7. Kiosk, waitlist, reservation check-in
 8. QR order/pay modes
 9. Quantum Payments, cash discount, gift cards

@@ -70,10 +70,8 @@ import { stationCan } from "@/lib/pos/station-pin-gate";
 import { DriveThroughView } from "./DriveThroughView";
 import {
   ADD_RECEIPT_PRINTER,
-  cashAtCopy,
   currentStationDeviceId,
   stationHasBoundReceiptPrinter,
-  stationMayKickDrawer,
   stationMayPrintReceipt,
 } from "@/lib/print/receipt-printer";
 import { NoSaleControl } from "./NoSaleControl";
@@ -148,10 +146,8 @@ export function OrderView() {
   const activeDeviceId = usePosStore((s) => s.activeDeviceId);
   const stationId = activeDeviceId || currentStationDeviceId();
   const hasBoundReceipt = stationHasBoundReceiptPrinter(locationDevices, stationId);
-  const mayKick = stationMayKickDrawer(locationDevices, stationId);
   const mayPrintReceipt = stationMayPrintReceipt(locationDevices, stationId);
-  const mayPrintCheck = mayKick && mayPrintReceipt;
-  const cashHere = cashAtCopy(locationDevices);
+  const mayPrintCheck = hasBoundReceipt && mayPrintReceipt;
 
   const happy = isHappyHour(settings);
   const table = tables.find((t) => t.id === order?.tableId);
@@ -430,7 +426,7 @@ export function OrderView() {
 
   const runPrintCheck = () => {
     if (!mayPrintCheck) {
-      setPrintMsg(cashHere);
+      setPrintMsg(ADD_RECEIPT_PRINTER);
       return;
     }
     setPrintMsg(null);
@@ -506,15 +502,14 @@ export function OrderView() {
             : "h-full w-[min(22rem,40%)] shrink-0 border-r border-border",
         )}
       >
-        {!mayKick && (
+        {!mayPrintCheck && (
           <div
             className="border-b border-border bg-surface-2 px-3 py-1.5 text-center text-[11px] text-muted-foreground"
             role="status"
             data-receipt-printer-banner
-            data-pay-at
-            data-cash-at
+            data-add-receipt-printer
           >
-            {cashHere} Card on this station.
+            {ADD_RECEIPT_PRINTER}
           </div>
         )}
         <div className="flex items-center gap-2 border-b border-border px-3 py-2">
@@ -889,9 +884,9 @@ export function OrderView() {
               Print receipt
             </Button>
           )}
-          {!mayKick && !odsNoPay && (
-            <p className="col-span-full px-1 text-center text-sm font-medium" data-pay-at data-cash-at>
-              {cashHere}
+          {!mayPrintCheck && !odsNoPay && (
+            <p className="col-span-full px-1 text-center text-sm font-medium" data-add-receipt-printer>
+              {ADD_RECEIPT_PRINTER}
             </p>
           )}
         </div>
@@ -1063,15 +1058,14 @@ export function OrderView() {
 
       {checkOverlay && (
         <>
-          {!mayKick && (
+          {!mayPrintCheck && (
             <div
               className="border-t border-border bg-surface-2 px-3 py-1.5 text-center text-[11px] text-muted-foreground"
               role="status"
               data-receipt-printer-banner
-              data-pay-at
-              data-cash-at
+              data-add-receipt-printer
             >
-              {cashHere} Card on this station.
+              {ADD_RECEIPT_PRINTER}
             </div>
           )}
           <div
