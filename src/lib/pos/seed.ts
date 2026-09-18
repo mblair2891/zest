@@ -262,14 +262,14 @@ export const SETTLEMENT_CONFIG: SettlementConfig = {
 };
 
 export const CATEGORIES: MenuCategory[] = [
-  { id: "cat_cocktails", name: "Cocktails", sort: 1, color: "#f87171", station: "bar" },
-  { id: "cat_beer", name: "Beer & Wine", sort: 2, color: "#fbbf24", station: "bar" },
-  { id: "cat_n/a", name: "Non-Alcoholic", sort: 3, color: "#34d399", station: "bar" },
-  { id: "cat_apps", name: "Starters", sort: 4, color: "#60a5fa", station: "kitchen" },
-  { id: "cat_salads", name: "Salads", sort: 5, color: "#4ade80", station: "kitchen" },
-  { id: "cat_mains", name: "Mains", sort: 6, color: "#a78bfa", station: "kitchen" },
-  { id: "cat_sides", name: "Sides", sort: 7, color: "#94a3b8", station: "kitchen" },
-  { id: "cat_dessert", name: "Dessert", sort: 8, color: "#f472b6", station: "kitchen" },
+  { id: "cat_cocktails", name: "Cocktails", sort: 1, color: "#f87171", station: "bar", destinationName: "Bar" },
+  { id: "cat_beer", name: "Beer & Wine", sort: 2, color: "#fbbf24", station: "bar", destinationName: "Bar" },
+  { id: "cat_n/a", name: "Non-Alcoholic", sort: 3, color: "#34d399", station: "bar", destinationName: "Bar" },
+  { id: "cat_apps", name: "Starters", sort: 4, color: "#60a5fa", station: "kitchen", destinationName: "Kitchen" },
+  { id: "cat_salads", name: "Salads", sort: 5, color: "#4ade80", station: "kitchen", destinationName: "Kitchen" },
+  { id: "cat_mains", name: "Mains", sort: 6, color: "#a78bfa", station: "kitchen", destinationName: "Kitchen" },
+  { id: "cat_sides", name: "Sides", sort: 7, color: "#94a3b8", station: "kitchen", destinationName: "Kitchen" },
+  { id: "cat_dessert", name: "Dessert", sort: 8, color: "#f472b6", station: "kitchen", destinationName: "Kitchen" },
 ];
 
 export const MODIFIER_GROUPS: ModifierGroup[] = [

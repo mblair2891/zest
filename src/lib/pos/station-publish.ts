@@ -29,6 +29,7 @@ export type StationPublishSetup = {
   hostMayOpenBarTabs?: boolean;
   serversAtHostStand?: boolean;
   orderMayOpenBarTabs?: boolean;
+  separateCourseTickets?: boolean;
   sectionNames?: string[];
   laborByEntity?: object;
   sharedVenueCostsCents?: number;
@@ -187,6 +188,9 @@ export function applyStationPublish(
     }
     if ("orderMayOpenBarTabs" in setup) {
       settings.orderMayOpenBarTabs = setup.orderMayOpenBarTabs !== false;
+    }
+    if ("separateCourseTickets" in setup) {
+      settings.separateCourseTickets = Boolean(setup.separateCourseTickets);
     }
     if (opts?.locationName) settings.name = opts.locationName;
     patch.settings = settings;

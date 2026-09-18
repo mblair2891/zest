@@ -23,6 +23,7 @@ import {
 } from "@/lib/voice/roles";
 import { HostOperatorsSettings } from "./HostOperatorsSettings";
 import { LocationDeviceRegistry } from "./LocationDeviceRegistry";
+import { MenuGroupDestinationsCard } from "./MenuGroupDestinationsCard";
 import { EntityPermissionsMatrix } from "./EntityPermissionsMatrix";
 import { OperatorOpsView } from "./OperatorOpsView";
 import { saveLocationSettingsFn } from "@/lib/access/api";
@@ -354,6 +355,7 @@ export function SettingsView() {
           hostMayOpenBarTabs: Boolean(s.hostMayOpenBarTabs),
           serversAtHostStand: Boolean(s.serversAtHostStand),
           orderMayOpenBarTabs: s.orderMayOpenBarTabs !== false,
+          separateCourseTickets: Boolean(s.separateCourseTickets),
           smsEnabled: s.smsEnabled !== false,
           smsMonthlyCap: s.smsMonthlyCap ?? null,
           reservationCheckIn: s.reservationCheckIn,
@@ -1063,6 +1065,7 @@ export function SettingsView() {
           </span>
         </span>
       </label>
+      <MenuGroupDestinationsCard write={write} />
       </Pack>
 
       <div className="mb-6 rounded-2xl border border-border bg-surface p-4">

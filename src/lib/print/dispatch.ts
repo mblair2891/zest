@@ -47,8 +47,9 @@ function printerMatchesStation(d: LocationDevice, station: PrintStation): boolea
   if (station === "expo") {
     return st === "expo" || /^expo$/i.test(dest);
   }
-  if (st === "kitchen" || /^(kitchen|prep|window)$/i.test(dest) || Boolean(routes?.includes("kitchen_tickets"))) {
-    return true;
+  if (station === "kitchen") {
+    const kitchenDest = !dest || /^kitchen$/i.test(dest);
+    return kitchenDest && (st === "kitchen" || Boolean(routes?.includes("kitchen_tickets")));
   }
   if (routes) return routes.includes(route);
   return false;

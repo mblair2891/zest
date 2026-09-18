@@ -6,6 +6,19 @@ import type { GuideUpdate } from "@/lib/guide/types";
  */
 export const WHATS_NEW_ENTRIES: GuideUpdate[] = [
   {
+    id: "upd_2026_10_117_group_destinations",
+    date: "2026-09-18",
+    title: "One kitchen slip per printer",
+    summary:
+      "Menu groups map to Kitchen / Bar / Expo (or a house line). Same destination + same printer on one Send is one ticket.",
+    body: "Settings and Menu: each group (Plates, Sandwich, Sides, Dessert, Cocktails, …) has an order destination and an optional order printer. Default single-line: every food group → Kitchen → the one Star. Drinks → Bar if a bar printer exists, else kitchen. Send prints header then all those lines, one cut. Map Dessert to a second destination/printer for two slips. Separate course tickets is off unless you turn it on. Receipt printers never get kitchen fire.",
+    roles: ["owner_manager", "server", "kitchen_bar", "host_operator"],
+    surfaces: ["settings", "kitchen"],
+    audience: "all",
+    topicId: "kitchen-bar-routing",
+    tags: ["print", "kitchen", "destination", "course"],
+  },
+  {
     id: "upd_2026_10_116_handheld_card",
     date: "2026-09-17",
     title: "Handheld card pay; cash on the terminal",

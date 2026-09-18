@@ -453,6 +453,7 @@ function PosAppInner({ entityId }: { entityId?: string }) {
               hostMayOpenBarTabs: Boolean(setup.hostMayOpenBarTabs),
               serversAtHostStand: Boolean(setup.serversAtHostStand),
               orderMayOpenBarTabs: setup.orderMayOpenBarTabs !== false,
+              separateCourseTickets: Boolean(setup.separateCourseTickets),
               serviceStyle:
                 setup.serviceStyle === "counter" ||
                 setup.serviceStyle === "hybrid" ||

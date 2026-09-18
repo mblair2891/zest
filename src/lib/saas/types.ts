@@ -55,8 +55,10 @@ export type LocationSetup = {
   devicesSeeded?: boolean;
   /** Deleted station/printer ids+names. Seed, publish, and boot skip these. */
   deletedLocationDevices?: import("@/lib/pos/device-seed").DeletedLocationDevice[];
-  /** Extra order-printer destinations beyond Kitchen / Bar / Expo / Window / Prep / Other. */
+  /** Extra order-printer destinations beyond Kitchen / Bar / Expo / Window / Prep / Salad / Pizza / Dessert / Other. */
   orderDestinations?: string[];
+  /** Cut a paper ticket per course when those lines share destination + printer. Default off. */
+  separateCourseTickets?: boolean;
   /** Venue print jobs (QR / kiosk / online / dashboard test) for a docked station or print agent. */
   stationPrintQueue?: import("@/lib/print/station-print-queue").StationPrintQueued[];
   /** Optional shared secret for scripts/print-agent.mjs venue subscribe. */
@@ -164,6 +166,7 @@ export const EMPTY_LOCATION_SETUP: LocationSetup = {
   entityPermissions: [],
   locationDevices: [],
   orderDestinations: [],
+  separateCourseTickets: false,
   stationPrintQueue: [],
   paymentsMode: "inherit",
   paymentMethods: {

@@ -1019,6 +1019,7 @@ function publishSetupSlice(setup: LocationSetup) {
     hostMayOpenBarTabs: setup.hostMayOpenBarTabs,
     serversAtHostStand: setup.serversAtHostStand,
     orderMayOpenBarTabs: setup.orderMayOpenBarTabs,
+    separateCourseTickets: setup.separateCourseTickets,
     sectionNames: setup.sectionNames,
     laborByEntity: setup.laborByEntity,
     sharedVenueCostsCents: setup.sharedVenueCostsCents,

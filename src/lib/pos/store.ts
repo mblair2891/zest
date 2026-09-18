@@ -74,6 +74,8 @@ import {
 import { resolveReceiptDrawer } from "../print/receipt-drawer";
 import { cashAtCopy, stationMayKickDrawer } from "../print/receipt-bind";
 import { readPairedDeviceId } from "./location-devices";
+import { destinationForGroup, ticketStationForDestination } from "./order-destinations";
+import { groupFireSlips } from "./fire-routing";
 import { methodEnabled, parsePaymentMethods } from "./payment-methods";
 import { giftSellBlockedReason, parseGiftLimits } from "./gift-limits";
 import {
@@ -2610,43 +2612,47 @@ const usePosStoreRaw = create<PosStore>()(persist((set, get) => {
 		const now = Date.now();
 		const toSend = order.lines.filter((l: any) => !l.voided && (!onlyUnsent || !l.sent) && (fireHeld || !l.held));
 		if (toSend.length === 0) return { ok: false, error: "Nothing to send" };
-		const byKey = /* @__PURE__ */ new Map();
-		for (const l of toSend) {
-			const key = `${l.station}|${l.vendorId ?? ""}|${l.course}`;
-			const arr = byKey.get(key) ?? [];
-			arr.push(l);
-			byKey.set(key, arr);
-		}
 		const table = order.tableId ? get().tables.find((t: any) => t.id === order.tableId) : void 0;
-		const newTickets = [];
-		for (const [, lines] of byKey) {
-			const first = lines[0];
-			const vendor = first.vendorId ? get().vendors.find((v: any) => v.id === first.vendorId) : void 0;
-			newTickets.push({
-				id: uid("kt"),
-				orderId: order.id,
-				orderNumber: order.number,
-				tableLabel: table?.label ?? order.tabName ?? order.type.replace("_", " "),
-				serverName: order.serverName,
-				serverId: order.serverId,
-				station: first.station,
-				vendorId: first.vendorId,
-				vendorName: vendor?.shortName ?? vendor?.name,
-				status: "new",
-				course: first.course,
-				createdAt: now,
-				elapsedSec: 0,
-				items: lines.map((l: any) => ({
-					lineId: l.id,
-					name: l.name,
-					quantity: l.quantity,
-					modifiers: l.modifiers.map((m: any) => m.optionName),
-					note: l.note,
-					course: l.course,
-					seat: l.seat
-				}))
-			});
-		}
+		const slips = groupFireSlips(
+			toSend.map((l: any) => ({
+				id: l.id,
+				name: l.name,
+				quantity: l.quantity,
+				modifiers: l.modifiers ?? [],
+				note: l.note,
+				seat: l.seat,
+				course: l.course,
+				station: l.station,
+				vendorId: l.vendorId,
+				vendorName: l.vendorName,
+				menuItemId: l.menuItemId,
+				categoryId: l.categoryId,
+			})),
+			{
+				categories: get().categories,
+				menuItems: get().menuItems,
+				devices: get().locationDevices ?? [],
+				separateCourseTickets: Boolean(get().settings.separateCourseTickets),
+			},
+		);
+		const newTickets = slips.map((slip) => ({
+			id: uid("kt"),
+			orderId: order.id,
+			orderNumber: order.number,
+			tableLabel: table?.label ?? order.tabName ?? order.type.replace("_", " "),
+			serverName: order.serverName,
+			serverId: order.serverId,
+			station: slip.station,
+			vendorId: slip.vendorId,
+			vendorName: slip.vendorName,
+			destinationName: slip.destinationName,
+			printerId: slip.printerId,
+			status: "new",
+			course: slip.course,
+			createdAt: now,
+			elapsedSec: 0,
+			items: slip.items,
+		}));
 		const sentIds = new Set(toSend.map((l: any) => l.id));
 		const updated = {
 			...order,
@@ -3836,11 +3842,16 @@ const usePosStoreRaw = create<PosStore>()(persist((set, get) => {
 		get().audit(available ? "un86" : "86", item.name);
 		floorSync("86", id);
 	},
-	createCategory: ({ name, station }) => {
+	createCategory: ({ name, station, destinationName, printerId }) => {
 		const emp = get().getCurrentEmployee();
 		if (emp?.role === "vendor_operator") return { id: "" };
 		const id = uid("cat");
 		const colors = ["#2C4A6E", "#1F7A4C", "#9A6700", "#A61B1B", "#5C5C5C"];
+		const dest = destinationForGroup({
+			name: name.trim() || "Category",
+			station: station ?? "kitchen",
+			destinationName,
+		});
 		set({
 			categories: [
 				...get().categories,
@@ -3849,12 +3860,33 @@ const usePosStoreRaw = create<PosStore>()(persist((set, get) => {
 					name: name.trim() || "Category",
 					sort: get().categories.length,
 					color: colors[get().categories.length % colors.length]!,
-					station: station ?? "kitchen",
+					station: ticketStationForDestination(dest),
+					destinationName: dest,
+					printerId: printerId || undefined,
 				},
 			],
 		});
 		get().audit("menu", `Category ${name}`);
 		return { id };
+	},
+	updateCategory: (id, patch) => {
+		const emp = get().getCurrentEmployee();
+		if (emp?.role === "vendor_operator") return;
+		const cat = get().categories.find((c: any) => c.id === id);
+		if (!cat) return;
+		const next = { ...cat, ...patch };
+		if (patch.destinationName != null || patch.station != null) {
+			next.destinationName = destinationForGroup(next);
+			next.station = ticketStationForDestination(next.destinationName);
+		}
+		if (patch.printerId === "") next.printerId = undefined;
+		set({
+			categories: get().categories.map((c: any) => (c.id === id ? next : c)),
+			menuItems: get().menuItems.map((m: any) =>
+				m.categoryId === id ? { ...m, station: next.station } : m,
+			),
+		});
+		get().audit("menu", `Category ${next.name}`);
 	},
 	createMenuItem: (input) => {
 		const emp = get().getCurrentEmployee();
@@ -3865,6 +3897,8 @@ const usePosStoreRaw = create<PosStore>()(persist((set, get) => {
 		const vendor = vendorId
 			? get().vendors.find((v: any) => v.id === vendorId)
 			: undefined;
+		const cat = get().categories.find((c: any) => c.id === input.categoryId);
+		const dest = destinationForGroup(cat, input.station);
 		set({
 			menuItems: [
 				...get().menuItems,
@@ -3874,7 +3908,7 @@ const usePosStoreRaw = create<PosStore>()(persist((set, get) => {
 					categoryId: input.categoryId,
 					priceCents: Math.max(0, Math.round(input.priceCents)),
 					course: input.course ?? "entree",
-					station: input.station ?? "kitchen",
+					station: input.station ?? ticketStationForDestination(dest),
 					description: input.description,
 					modifierGroupIds: input.modifierGroupIds ?? [],
 					available: true,

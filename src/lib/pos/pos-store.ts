@@ -408,7 +408,13 @@ export interface PosStore {
   createCategory: (input: {
     name: string;
     station?: TicketStation;
+    destinationName?: string;
+    printerId?: string;
   }) => { id: string };
+  updateCategory: (
+    id: string,
+    patch: Partial<Pick<MenuCategory, "name" | "station" | "destinationName" | "printerId" | "sort" | "color">>,
+  ) => void;
   createMenuItem: (input: {
     name: string;
     description?: string;

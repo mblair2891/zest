@@ -157,6 +157,8 @@ export function parseMenuCatalog(raw: unknown): LocationMenuCatalog | undefined 
       sort: Math.round(num(r.sort)),
       color: str(r.color, "#2C4A6E").slice(0, 20),
       station: r.station === "bar" || r.station === "expo" || r.station === "dessert" ? r.station : "kitchen",
+      destinationName: str(r.destinationName).slice(0, 40) || undefined,
+      printerId: str(r.printerId).slice(0, 80) || undefined,
     });
   }
   const items: MenuItem[] = [];

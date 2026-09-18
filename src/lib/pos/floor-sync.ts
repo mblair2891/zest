@@ -209,6 +209,8 @@ function floorTicketToKitchen(t: FloorTicket): KitchenTicket {
     station: t.station,
     vendorId: t.operatorId ?? undefined,
     vendorName: t.vendorName ?? undefined,
+    destinationName: t.destinationName,
+    printerId: t.printerId,
     status: t.status,
     course: t.course,
     createdAt: t.createdAt,

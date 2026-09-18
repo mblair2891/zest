@@ -107,6 +107,8 @@ export type FloorTicket = {
   station: TicketStation;
   operatorId: string | null;
   vendorName: string | null;
+  destinationName?: string;
+  printerId?: string;
   status: TicketStatus;
   course: Course;
   createdAt: number;

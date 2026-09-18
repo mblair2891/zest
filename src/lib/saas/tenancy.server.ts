@@ -198,6 +198,10 @@ function parseSetup(raw: unknown): LocationSetup {
       : [],
     entityPermissions: parseGrantMatrix(o.entityPermissions),
     locationDevices: parseLocationDevices(o.locationDevices),
+    orderDestinations: Array.isArray(o.orderDestinations)
+      ? o.orderDestinations.filter((x): x is string => typeof x === "string").map((x) => x.slice(0, 40))
+      : [],
+    separateCourseTickets: Boolean(o.separateCourseTickets),
     voiceControlEnabledByRole:
       o.voiceControlEnabledByRole && typeof o.voiceControlEnabledByRole === "object"
         ? (o.voiceControlEnabledByRole as Record<string, boolean>)

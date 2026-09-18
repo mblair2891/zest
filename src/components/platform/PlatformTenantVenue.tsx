@@ -435,6 +435,7 @@ export function PlatformTenantVenue({
           hostMayOpenBarTabs: Boolean(setup.hostMayOpenBarTabs),
           serversAtHostStand: Boolean(setup.serversAtHostStand),
           orderMayOpenBarTabs: setup.orderMayOpenBarTabs !== false,
+          separateCourseTickets: Boolean(setup.separateCourseTickets),
           lifecycleStatus:
             (access.location.lifecycleStatus as
               | "training"

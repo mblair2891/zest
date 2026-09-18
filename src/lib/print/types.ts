@@ -49,6 +49,8 @@ export type PrintJob = {
   items: PrintLine[];
   allocations?: PrintAllocation[];
   destinationName?: string;
+  /** Order printer override for this fire. Receipt printers never receive kitchen jobs. */
+  printerId?: string;
   totals?: {
     subtotalCents: number;
     taxCents: number;

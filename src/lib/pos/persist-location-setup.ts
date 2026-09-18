@@ -20,6 +20,29 @@ function ids(): { orgId: string; locationId: string } | null {
   return { orgId, locationId };
 }
 
+export function persistVenueRouting(): void {
+  const ctx = ids();
+  if (!ctx) return;
+  const prev = timers.get("venue-routing");
+  if (prev) clearTimeout(prev);
+  timers.set(
+    "venue-routing",
+    setTimeout(() => {
+      timers.delete("venue-routing");
+      const settings = usePosStore.getState().settings;
+      void saveLocationSettingsFn({
+        data: {
+          orgId: ctx.orgId,
+          locationId: ctx.locationId,
+          setup: {
+            separateCourseTickets: Boolean(settings.separateCourseTickets),
+          },
+        },
+      }).catch(() => undefined);
+    }, 400),
+  );
+}
+
 export function persistHostStandPolicy(): void {
   const ctx = ids();
   if (!ctx) return;

@@ -114,14 +114,14 @@ export const SUMMIT_HALL_STAFF: readonly SummitStaffSpec[] = [
 ];
 
 export const SUMMIT_HALL_CATEGORIES: MenuCategory[] = [
-  { id: "cat_hearth_plates", name: "Plates", sort: 0, color: "#9A6700", station: "kitchen" },
-  { id: "cat_hearth_sandwich", name: "Sandwich", sort: 1, color: "#B45309", station: "kitchen" },
-  { id: "cat_hearth_sides", name: "Sides", sort: 2, color: "#A16207", station: "kitchen" },
-  { id: "cat_hearth_dessert", name: "Dessert", sort: 3, color: "#854D0E", station: "kitchen" },
-  { id: "cat_copper_cocktails", name: "Cocktails", sort: 10, color: "#2C4A6E", station: "bar" },
-  { id: "cat_copper_beer", name: "Beer", sort: 11, color: "#1E3A5F", station: "bar" },
-  { id: "cat_copper_wine", name: "Wine", sort: 12, color: "#7F1D1D", station: "bar" },
-  { id: "cat_copper_na", name: "NA", sort: 13, color: "#0F766E", station: "bar" },
+  { id: "cat_hearth_plates", name: "Plates", sort: 0, color: "#9A6700", station: "kitchen", destinationName: "Kitchen" },
+  { id: "cat_hearth_sandwich", name: "Sandwich", sort: 1, color: "#B45309", station: "kitchen", destinationName: "Kitchen" },
+  { id: "cat_hearth_sides", name: "Sides", sort: 2, color: "#A16207", station: "kitchen", destinationName: "Kitchen" },
+  { id: "cat_hearth_dessert", name: "Dessert", sort: 3, color: "#854D0E", station: "kitchen", destinationName: "Kitchen" },
+  { id: "cat_copper_cocktails", name: "Cocktails", sort: 10, color: "#2C4A6E", station: "bar", destinationName: "Bar" },
+  { id: "cat_copper_beer", name: "Beer", sort: 11, color: "#1E3A5F", station: "bar", destinationName: "Bar" },
+  { id: "cat_copper_wine", name: "Wine", sort: 12, color: "#7F1D1D", station: "bar", destinationName: "Bar" },
+  { id: "cat_copper_na", name: "NA", sort: 13, color: "#0F766E", station: "bar", destinationName: "Bar" },
 ];
 
 function hearthItem(

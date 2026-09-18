@@ -15,6 +15,9 @@ test("order destinations always include Kitchen and default Kitchen", () => {
     "Expo",
     "Window",
     "Prep",
+    "Salad",
+    "Pizza",
+    "Dessert",
     "Other",
   ]);
   const merged = mergeOrderDestinations(["Bar"], ["Pastry"]);

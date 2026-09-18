@@ -70,6 +70,8 @@ test("guide printers topic is form fields on Devices", () => {
   assert.match(guide, /raw bytes/);
   assert.match(guide, /default Kitchen/);
   assert.match(guide, /Receipt printers have no destination/);
+  assert.match(guide, /Salad/);
+  assert.match(guide, /never receive kitchen fire|never get kitchen fire/);
 });
 
 test("print dispatch test path never uses window.print", () => {

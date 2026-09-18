@@ -81,10 +81,10 @@ export function starterOwner(name: string): Employee {
 }
 
 export const STARTER_CATEGORIES: MenuCategory[] = [
-  { id: "cat_starters", name: "Starters", sort: 0, color: "#2C4A6E", station: "kitchen" },
-  { id: "cat_mains", name: "Mains", sort: 1, color: "#5b9fd4", station: "kitchen" },
-  { id: "cat_sides", name: "Sides", sort: 2, color: "#94a3b8", station: "kitchen" },
-  { id: "cat_drinks", name: "Drinks", sort: 3, color: "#e5a320", station: "bar" },
+  { id: "cat_starters", name: "Starters", sort: 0, color: "#2C4A6E", station: "kitchen", destinationName: "Kitchen" },
+  { id: "cat_mains", name: "Mains", sort: 1, color: "#5b9fd4", station: "kitchen", destinationName: "Kitchen" },
+  { id: "cat_sides", name: "Sides", sort: 2, color: "#94a3b8", station: "kitchen", destinationName: "Kitchen" },
+  { id: "cat_drinks", name: "Drinks", sort: 3, color: "#e5a320", station: "bar", destinationName: "Bar" },
 ];
 
 export const STARTER_MODIFIERS: ModifierGroup[] = [

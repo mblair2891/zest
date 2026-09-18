@@ -18,6 +18,11 @@ import { escposBase64 } from "./escpos";
 import { enqueueStationPrintFn, enqueueVenuePrintFn } from "./api";
 import { readStationPair } from "@/lib/pos/station-pair";
 import type { KitchenPrintSource } from "./station-print-queue";
+import {
+  printStationForDestination,
+  resolveOrderPrinters,
+} from "@/lib/pos/fire-routing";
+import { DEFAULT_ORDER_DESTINATION } from "@/lib/pos/order-destinations";
 
 function linesFromTicket(t: KitchenTicket): PrintLine[] {
   return t.items.map((it) => ({
@@ -148,7 +153,9 @@ export async function printFromPos(
         )
       : [];
     for (const t of tickets) {
-      const station: PrintStation = t.station === "bar" ? "bar" : "kitchen";
+      const destinationName =
+        t.destinationName || (t.station === "bar" ? "Bar" : DEFAULT_ORDER_DESTINATION);
+      const station: PrintStation = printStationForDestination(destinationName);
       jobs.push({
         id: uid("prn"),
         kind: "ticket",
@@ -161,11 +168,12 @@ export async function printFromPos(
         serverName: t.serverName,
         operatorId: t.vendorId,
         operatorName: t.vendorName,
-        destinationName: station === "bar" ? "Bar" : "Kitchen",
+        destinationName,
         items: linesFromTicket(t),
         at: Date.now(),
         ticketId: t.id,
         printSource: source,
+        printerId: t.printerId,
       });
     }
   }
@@ -269,7 +277,16 @@ export async function printFromPos(
   const mappedReceipt = resolveReceiptPrinter(devices, stationId);
 
   for (const job of jobs) {
-    const printers = printersForStation(devices, job.station, job.operatorId, stationId);
+    const printers =
+      job.kind === "ticket"
+        ? resolveOrderPrinters({
+            devices,
+            destinationName: job.destinationName || DEFAULT_ORDER_DESTINATION,
+            printerId: job.printerId,
+            operatorId: job.operatorId,
+            stationDeviceId: stationId,
+          })
+        : printersForStation(devices, job.station, job.operatorId, stationId);
     if (job.kind === "ticket" && (queueOnly || printers.length > 0)) {
       for (const p of printers) {
         const cfg = p.print;

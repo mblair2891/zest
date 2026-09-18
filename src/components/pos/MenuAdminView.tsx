@@ -15,6 +15,8 @@ import { useSaasStore } from "@/lib/pos/saas-store";
 import { useCostStore } from "@/lib/costs/store";
 import { RecipeAssistButton } from "@/components/recipes/RecipeAssistDialog";
 import { persistLocationCatalog } from "@/lib/pos/persist-location-setup";
+import { isActiveOrderPrinter } from "@/lib/pos/fire-routing";
+import { destinationForGroup, mergeOrderDestinations } from "@/lib/pos/order-destinations";
 
 export function MenuAdminView() {
   const categories = usePosStore((s) => s.categories);
@@ -27,6 +29,13 @@ export function MenuAdminView() {
   const createMenuItem = usePosStore((s) => s.createMenuItem);
   const updateMenuItem = usePosStore((s) => s.updateMenuItem);
   const deleteMenuItem = usePosStore((s) => s.deleteMenuItem);
+  const updateCategory = usePosStore((s) => s.updateCategory);
+  const locationDevices = usePosStore((s) => s.locationDevices ?? []);
+  const orderPrinters = locationDevices.filter(isActiveOrderPrinter);
+  const destinations = mergeOrderDestinations(
+    orderPrinters.map((d) => d.print?.destinationName ?? ""),
+    categories.map((c) => c.destinationName ?? ""),
+  );
   const happy = isHappyHour(settings);
   const orgId = useSaasStore((s) => s.org.id);
   const locId = usePosStore((s) => s.tenantLocationId) || "";
@@ -197,16 +206,63 @@ export function MenuAdminView() {
         .sort((a, b) => a.sort - b.sort)
         .map((cat) => {
           const items = menuItems.filter((m) => m.categoryId === cat.id);
-          if (items.length === 0) return null;
+          const dest = destinationForGroup(cat);
           return (
             <section key={cat.id} className="mb-6">
-              <h3 className="mb-2 flex items-center gap-2 text-sm font-medium">
+              <h3 className="mb-2 flex flex-wrap items-center gap-2 text-sm font-medium">
                 <span
                   className="h-2.5 w-2.5 rounded-full"
                   style={{ background: cat.color }}
                 />
                 {cat.name}
+                {host && (
+                  <>
+                    <select
+                      className="h-8 rounded-lg border border-border bg-bg px-2 text-xs font-normal"
+                      value={dest}
+                      onChange={(e) => {
+                        updateCategory(cat.id, { destinationName: e.target.value });
+                        persistLocationCatalog("menu");
+                      }}
+                      aria-label={`${cat.name} order destination`}
+                    >
+                      {destinations.map((n) => (
+                        <option key={n} value={n}>
+                          {n}
+                        </option>
+                      ))}
+                    </select>
+                    <select
+                      className="h-8 max-w-[14rem] rounded-lg border border-border bg-bg px-2 text-xs font-normal"
+                      value={cat.printerId ?? ""}
+                      onChange={(e) => {
+                        updateCategory(cat.id, { printerId: e.target.value });
+                        persistLocationCatalog("menu");
+                      }}
+                      aria-label={`${cat.name} order printer`}
+                    >
+                      <option value="">Printer: default for {dest}</option>
+                      {orderPrinters.map((p) => (
+                        <option key={p.id} value={p.id}>
+                          {p.label}
+                          {p.print?.destinationName ? ` · ${p.print.destinationName}` : ""}
+                        </option>
+                      ))}
+                    </select>
+                  </>
+                )}
+                {!host && (
+                  <span className="text-xs font-normal text-muted-foreground">
+                    {dest}
+                    {cat.printerId
+                      ? ` · ${orderPrinters.find((p) => p.id === cat.printerId)?.label ?? "printer"}`
+                      : ""}
+                  </span>
+                )}
               </h3>
+              {items.length === 0 && (
+                <p className="mb-2 text-xs text-muted-foreground">No items in this group yet.</p>
+              )}
               <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
                 {items.map((item) => {
                   const editable = canEditMenu(emp, grants, item.vendorId);

@@ -41,6 +41,7 @@ import type {
 } from "./platform-types";
 import { usePosStore } from "./store";
 import type { KitchenTicket, OrderLine } from "./types";
+import { groupFireSlips } from "./fire-routing";
 
 export const DEFAULT_FULFILLMENT: OrderFulfillmentSettings = {
   defaultFireModeTakeout: "immediate",
@@ -570,45 +571,50 @@ export const usePlatformStore = create<PlatformState>()(
                     ? `Delivery #${o.number}`
                     : `#${o.number}`;
 
-        // Group by station from menu item
-        const byStation = new Map<string, typeof o.items>();
-        for (const line of o.items) {
-          const mi = menuById.get(line.menuItemId);
-          const station = mi?.station ?? "kitchen";
-          const arr = byStation.get(station) ?? [];
-          arr.push(line);
-          byStation.set(station, arr);
-        }
-
-        const newTickets: KitchenTicket[] = [];
-        for (const [station, lines] of byStation) {
-          const first = lines[0]!;
-          const mi = menuById.get(first.menuItemId);
-          newTickets.push({
-            id: uid("kt"),
-            orderId: o.id,
-            orderNumber: o.number,
-            tableLabel,
-            serverName: "Online",
-            station: station as KitchenTicket["station"],
-            vendorId: mi?.vendorId,
-            vendorName: mi?.vendorId
-              ? pos.vendors.find((v) => v.id === mi.vendorId)?.shortName
-              : undefined,
-            status: "new",
-            course: "entree",
-            createdAt: now,
-            elapsedSec: 0,
-            items: lines.map((l) => ({
-              lineId: uid("ol"),
-              name: l.name,
-              quantity: l.qty,
+        const slips = groupFireSlips(
+          o.items.map((line) => {
+            const mi = menuById.get(line.menuItemId);
+            return {
+              id: uid("ol"),
+              name: line.name,
+              quantity: line.qty,
               modifiers: [],
-              note: l.notes,
-              course: "entree" as const,
-            })),
-          });
-        }
+              note: line.notes,
+              course: mi?.course ?? "entree",
+              station: mi?.station ?? "kitchen",
+              vendorId: mi?.vendorId,
+              vendorName: mi?.vendorId
+                ? pos.vendors.find((v) => v.id === mi.vendorId)?.shortName
+                : undefined,
+              menuItemId: line.menuItemId,
+              categoryId: mi?.categoryId,
+            };
+          }),
+          {
+            categories: pos.categories,
+            menuItems: pos.menuItems,
+            devices: pos.locationDevices ?? [],
+            separateCourseTickets: Boolean(pos.settings.separateCourseTickets),
+          },
+        );
+
+        const newTickets: KitchenTicket[] = slips.map((slip) => ({
+          id: uid("kt"),
+          orderId: o.id,
+          orderNumber: o.number,
+          tableLabel,
+          serverName: "Online",
+          station: slip.station,
+          vendorId: slip.vendorId,
+          vendorName: slip.vendorName,
+          destinationName: slip.destinationName,
+          printerId: slip.printerId,
+          status: "new",
+          course: slip.course,
+          createdAt: now,
+          elapsedSec: 0,
+          items: slip.items,
+        }));
 
         usePosStore.setState({
           tickets: [...newTickets, ...pos.tickets],

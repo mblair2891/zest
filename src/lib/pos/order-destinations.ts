@@ -6,6 +6,9 @@ export const ORDER_DESTINATION_PRESETS = [
   "Expo",
   "Window",
   "Prep",
+  "Salad",
+  "Pizza",
+  "Dessert",
   "Other",
 ] as const;
 
@@ -44,4 +47,47 @@ export function mergeOrderDestinations(...lists: Array<readonly string[] | strin
 export function parseOrderDestinations(raw: unknown): string[] {
   if (!Array.isArray(raw)) return mergeOrderDestinations();
   return mergeOrderDestinations(raw.map((x) => String(x)));
+}
+
+/** ODS rail for a production line. Dessert/Salad/Pizza/Window/Prep stay on kitchen ODS. */
+export function ticketStationForDestination(
+  dest: string | null | undefined,
+): "kitchen" | "bar" | "expo" {
+  const key = normalizeDestinationName(dest).toLowerCase();
+  if (key === "bar") return "bar";
+  if (key === "expo") return "expo";
+  return "kitchen";
+}
+
+const DRINK_GROUP = /\b(cocktail|cocktails|beer|wine|drink|drinks|beverage|beverages|spirit|spirits|liquor|bar|na|n\/a|non-?alc)\b/i;
+
+/** Food groups → Kitchen. Drink-named or bar-station groups → Bar. */
+export function defaultDestinationForGroup(group: {
+  name?: string | null;
+  station?: string | null;
+}): string {
+  const st = String(group.station ?? "").toLowerCase();
+  if (st === "bar") return "Bar";
+  if (st === "expo") return "Expo";
+  if (DRINK_GROUP.test(String(group.name ?? ""))) return "Bar";
+  return DEFAULT_ORDER_DESTINATION;
+}
+
+export function destinationForGroup(
+  group:
+    | {
+        name?: string | null;
+        station?: string | null;
+        destinationName?: string | null;
+      }
+    | null
+    | undefined,
+  fallbackStation?: string | null,
+): string {
+  const named = normalizeDestinationName(group?.destinationName);
+  if (named) return named;
+  if (group) return defaultDestinationForGroup(group);
+  if (fallbackStation === "bar") return "Bar";
+  if (fallbackStation === "expo") return "Expo";
+  return DEFAULT_ORDER_DESTINATION;
 }

@@ -252,6 +252,11 @@ export interface RestaurantSettings {
   orderMayOpenBarTabs?: boolean;
   /** Kitchen/bar bump requires the station PIN again. Default false. */
   requirePinToBump?: boolean;
+  /**
+   * When true, Send cuts a paper ticket per course even if those lines share
+   * destination + printer. Default off (single-line kitchen: one slip).
+   */
+  separateCourseTickets?: boolean;
   /** Host policy: which access levels may use the mic. */
   voiceControlEnabledByRole?: Partial<Record<EmployeeRole, boolean>>;
   floorStatusConfig?: import("./floor-status").FloorStatusConfig;
@@ -343,6 +348,10 @@ export interface MenuCategory {
   sort: number;
   color: string;
   station: TicketStation;
+  /** Production line: Kitchen, Bar, Expo, Window, Prep, Salad, Pizza, Dessert, Other, or a house name. */
+  destinationName?: string;
+  /** Optional order-printer override. Empty = the printer that serves destinationName. */
+  printerId?: string;
 }
 
 export interface ModifierOption {
@@ -543,6 +552,8 @@ export interface KitchenTicket {
   station: TicketStation;
   vendorId?: string;
   vendorName?: string;
+  destinationName?: string;
+  printerId?: string;
   status: TicketStatus;
   course: Course;
   createdAt: number;
