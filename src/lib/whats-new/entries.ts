@@ -6,6 +6,19 @@ import type { GuideUpdate } from "@/lib/guide/types";
  */
 export const WHATS_NEW_ENTRIES: GuideUpdate[] = [
   {
+    id: "upd_2026_10_119_drawer_kick",
+    date: "2026-09-18",
+    title: "Cash kicks the Epson drawer",
+    summary:
+      "Terminal + bound TM-T20: cash 9100 includes the drawer pulse. Print check does not kick unless you turn that on.",
+    body: "Bar Order Station 1 (Terminal) with a bound Receipt printer: Print check writes raw 9100 to that Epson (example 192.168.0.112) from this tablet, or queues to any online station on the venue LAN. Cash tender sends ESC/POS pulse (pin 2 / pulse 1 default; Settings → Cash → pin 2 vs pin 5), then optional paid receipt. Print check before pay does not kick unless Kick drawer on Print check is on (default off). Dashboard Test print relays to an online station — never the OS print dialog. If 9100 succeeds and the drawer stays shut, check the DK cable; the pulse is in the payload. Kitchen Star never kicks.",
+    roles: ["owner_manager", "server", "host_operator"],
+    surfaces: ["settings", "floor"],
+    audience: "all",
+    topicId: "no-sale",
+    tags: ["cash", "drawer", "print", "epson"],
+  },
+  {
     id: "upd_2026_10_118_cash_print_check",
     date: "2026-09-18",
     title: "Cash on Pay; Print check on the Epson",

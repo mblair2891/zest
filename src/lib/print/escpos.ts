@@ -83,9 +83,17 @@ function line(left: string, right = "", width = 42): Uint8Array {
   return concat([text(l + " ".repeat(pad) + r), FEED]);
 }
 
-/** Printer-kick pulse. Star/Epson/generic ESC p (drawer 1). */
-export function buildDrawerKickBytes(): Uint8Array {
-  return concat([INIT, u8(0x1b, 0x70, 0x00, 0x19, 0xfa)]);
+export type DrawerKickPin = 2 | 5;
+
+/** Pin 2 = drawer connector pin 2 (ESC p m=0). Pin 5 = pin 5 (m=1). Pulse 1 is t1=0x19. */
+export function parseDrawerKickPin(raw: unknown): DrawerKickPin {
+  return Number(raw) === 5 ? 5 : 2;
+}
+
+/** Printer-kick pulse. Epson TM-T20 / generic ESC p. Default pin 2. */
+export function buildDrawerKickBytes(opts?: { pin?: DrawerKickPin }): Uint8Array {
+  const m = opts?.pin === 5 ? 0x01 : 0x00;
+  return concat([INIT, u8(0x1b, 0x70, m, 0x19, 0xfa)]);
 }
 
 function buildNoSaleSlip(job: PrintJob, opts?: EscPosOptions): Uint8Array {
@@ -232,12 +240,13 @@ function buildGuestCheckEscPos(
     ALIGN_LT,
     cutBytes(emulation, cutter),
   );
+  if (job.kickDrawer) parts.push(buildDrawerKickBytes({ pin: job.drawerKickPin }));
   return concat(parts);
 }
 
 /** ESC/POS or Star Line bytes for a hospitality printer (LAN 9100). */
 export function buildEscPos(job: PrintJob, opts?: EscPosOptions): Uint8Array {
-  if (job.kind === "drawer_kick") return buildDrawerKickBytes();
+  if (job.kind === "drawer_kick") return buildDrawerKickBytes({ pin: job.drawerKickPin });
   if (job.kind === "no_sale") return buildNoSaleSlip(job, opts);
   if (job.kind === "till_turn_in") return buildTillTurnInEscPos(job);
   const { emulation, width, cutter, impact } = resolveOpts(opts);
@@ -341,6 +350,7 @@ export function buildEscPos(job: PrintJob, opts?: EscPosOptions): Uint8Array {
     );
   }
   parts.push(FEED, ALIGN_CT, text("Quantum Payments · Summex"), FEED, cutBytes(emulation, cutter));
+  if (job.kickDrawer) parts.push(buildDrawerKickBytes({ pin: job.drawerKickPin }));
   return concat(parts);
 }
 
@@ -351,6 +361,9 @@ export function bytesToBase64(bytes: Uint8Array): string {
 }
 
 export function escposBase64(job: PrintJob, opts?: EscPosOptions): string {
-  const bytes = job.kind === "drawer_kick" ? buildDrawerKickBytes() : buildEscPos(job, opts);
+  const bytes =
+    job.kind === "drawer_kick"
+      ? buildDrawerKickBytes({ pin: job.drawerKickPin })
+      : buildEscPos(job, opts);
   return bytesToBase64(bytes);
 }

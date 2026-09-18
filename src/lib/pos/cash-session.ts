@@ -757,12 +757,14 @@ export function applyCashTender(opts: {
     orderId: opts.order?.id,
     refund: opts.refund,
   });
-  if (sink.type === "drawer" && opts.cfg.openOnCashSale === "always") {
+  if (sink.type === "drawer" && opts.cfg.openOnCashSale !== "never") {
     void import("@/lib/print/dispatch").then((m) =>
       m.kickCashDrawer({
         locationId: opts.locationId,
         devices: opts.devices,
         printerId: sink.drawer.kickPrinterId,
+        pin: opts.cfg.drawerKickPin === 5 ? 5 : 2,
+        deviceId: opts.deviceId,
       }),
     );
   }

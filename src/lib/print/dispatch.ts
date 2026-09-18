@@ -9,8 +9,8 @@ import {
   type PrintStation,
 } from "@/lib/pos/location-devices";
 import { uid } from "@/lib/utils";
-import { escposBase64, buildDrawerKickBytes } from "./escpos";
-import { receiptDrawerKickAllowed } from "./receipt-drawer";
+import { bytesToBase64, buildDrawerKickBytes, escposBase64, parseDrawerKickPin } from "./escpos";
+import { receiptDrawerKickAllowed, resolveReceiptDrawer } from "./receipt-drawer";
 import { parseLanTarget } from "./printer-models";
 import { sendNativeBytes } from "./capacitor-raw-print";
 import {
@@ -299,24 +299,37 @@ export function testPrintJob(opts: {
   };
 }
 
+function isKickableReceipt(d: LocationDevice | undefined): d is LocationDevice {
+  return Boolean(
+    d &&
+      d.print &&
+      printerHasDrawerKick(d) &&
+      receiptDrawerKickAllowed(d) &&
+      d.print.connection !== "browser",
+  );
+}
+
+/** Bound Epson receipt drawer. Kitchen Star never. Queues 9100 if this station cannot open TCP. */
 export async function kickCashDrawer(opts: {
   locationId: string;
   devices: LocationDevice[] | undefined;
-  printerId: string | null | undefined;
+  printerId?: string | null;
+  pin?: 2 | 5;
+  deviceId?: string | null;
 }): Promise<boolean> {
   const printers = (opts.devices ?? []).filter((d) => isPrinterDevice(d) && d.status !== "inactive");
-  const target = opts.printerId
-    ? printers.find((d) => d.id === opts.printerId)
-    : printers.find((d) => printerHasDrawerKick(d));
-  if (
-    !target?.print ||
-    !printerHasDrawerKick(target) ||
-    !receiptDrawerKickAllowed(target) ||
-    target.print.connection === "browser" ||
-    !target.print.target
-  ) {
-    return false;
-  }
+  const named = opts.printerId ? printers.find((d) => d.id === opts.printerId) : undefined;
+  const bound = resolveReceiptDrawer(opts.devices, opts.deviceId);
+  const target =
+    (isKickableReceipt(named) ? named : undefined) ||
+    (bound && isKickableReceipt(printers.find((d) => d.id === bound.id))
+      ? printers.find((d) => d.id === bound.id)
+      : undefined) ||
+    printers.find(isKickableReceipt);
+  if (!target?.print) return false;
+  const lan = parseLanTarget(target.print.ip, target.print.port, target.print.target);
+  if (!lan) return false;
+  const pin = parseDrawerKickPin(opts.pin);
   const job: PrintJob = {
     id: uid("kick"),
     kind: "drawer_kick",
@@ -329,21 +342,40 @@ export async function kickCashDrawer(opts: {
     serverName: "",
     items: [],
     at: Date.now(),
+    drawerKickPin: pin,
   };
-  const bytes = buildDrawerKickBytes();
-  let bin = "";
-  for (let i = 0; i < bytes.length; i += 1) bin += String.fromCharCode(bytes[i]!);
-  const lan = parseLanTarget(target.print.ip, target.print.port, target.print.target);
-  if (!lan) return false;
-  return sendLanPayload(lan, {
+  const payload = bytesToBase64(buildDrawerKickBytes({ pin }));
+  const ok = await sendLanPayload(lan, {
     locationId: opts.locationId,
     printerId: target.id,
     family: target.print.family,
     connection: "lan",
     target: lan.target,
     job,
-    escposBase64: btoa(bin),
+    escposBase64: payload,
   });
+  if (ok) return true;
+  try {
+    const { enqueueStationPrintFn, enqueueVenuePrintFn } = await import("./api");
+    const body = {
+      locationId: opts.locationId,
+      printerId: target.id,
+      host: lan.host,
+      port: lan.port,
+      escposBase64: payload,
+      kind: "test",
+      deviceId: opts.deviceId || "",
+      preferDocked: true,
+    };
+    if (body.deviceId) {
+      const q = await enqueueVenuePrintFn({ data: body });
+      if (q.ok) return true;
+    }
+    const q = await enqueueStationPrintFn({ data: body });
+    return q.ok === true;
+  } catch {
+    return false;
+  }
 }
 
 export function describeTarget(p: PrintTarget): string {

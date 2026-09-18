@@ -224,6 +224,10 @@ export type CashHandlingConfig = {
   serverBankStartingCents: number;
   issueBank: IssueBankWhen;
   openOnCashSale: OpenOnCashSale;
+  /** Epson DK connector. Pin 2 default (ESC p m=0). Pin 5 = m=1. */
+  drawerKickPin: 2 | 5;
+  /** Print check before tender does not kick unless this is on. Default off. */
+  kickOnPrintCheck: boolean;
   noSaleOpen: NoSaleOpen;
   /** Roles that may no-sale without a manager PIN. Default bartender + manager. */
   noSaleAllowedRoles: NoSaleRole[];
@@ -308,6 +312,8 @@ export const DEFAULT_CASH_HANDLING: CashHandlingConfig = {
   serverBankStartingCents: 5000,
   issueBank: "first_cash_sale",
   openOnCashSale: "always",
+  drawerKickPin: 2,
+  kickOnPrintCheck: false,
   noSaleOpen: "assigned_user",
   noSaleAllowedRoles: [...DEFAULT_NO_SALE_ROLES],
   printNoSaleSlip: false,
@@ -435,6 +441,8 @@ export function parseCashHandling(raw: unknown): CashHandlingConfig {
     serverBankStartingCents: Math.max(0, Math.round(Number(o.serverBankStartingCents) || 0)),
     issueBank,
     openOnCashSale,
+    drawerKickPin: Number(o.drawerKickPin) === 5 ? 5 : 2,
+    kickOnPrintCheck: Boolean(o.kickOnPrintCheck),
     noSaleOpen,
     noSaleAllowedRoles: parseNoSaleAllowedRoles(o.noSaleAllowedRoles, noSaleOpen),
     printNoSaleSlip: Boolean(o.printNoSaleSlip),

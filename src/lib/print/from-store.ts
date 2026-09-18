@@ -7,6 +7,7 @@ import { uid } from "@/lib/utils";
 import { dispatchPrintJob, kickCashDrawer, printersForStation } from "./dispatch";
 import { ADD_RECEIPT_PRINTER, currentStationDeviceId, resolveReceiptPrinter } from "./receipt-printer";
 import { NO_DRAWER_ON_STATION, receiptDrawerKickAllowed, resolveReceiptDrawer } from "./receipt-drawer";
+import { parseCashHandling } from "@/lib/pos/cash-handling";
 import { readStationDeviceRole } from "@/lib/pos/device-roles";
 import type { PrintJob, PrintLine } from "./types";
 import type { PrintStation } from "@/lib/pos/location-devices";
@@ -14,7 +15,7 @@ import { splitTenderByEntity } from "@/lib/payments/entity-split";
 import { parseQrPolicy, qrPrintOnTicket } from "@/lib/pos/qr-policy";
 import { ticketGuestUrl } from "@/lib/pos/qr-table";
 import { parseLanTarget } from "./printer-models";
-import { escposBase64 } from "./escpos";
+import { escposBase64, parseDrawerKickPin } from "./escpos";
 import { enqueueStationPrintFn, enqueueVenuePrintFn } from "./api";
 import { readStationPair } from "@/lib/pos/station-pair";
 import type { KitchenPrintSource } from "./station-print-queue";
@@ -452,13 +453,19 @@ export async function printGuestCheck(orderId?: string): Promise<{
   const order = (orderId ? s.orders.find((o) => o.id === orderId) : null) ?? s.getActiveOrder?.();
   if (!order) return { ok: false, error: "No check to print." };
   const devices = s.locationDevices;
-  const printer = resolveReceiptPrinter(devices, currentStationDeviceId());
+  const stationId = currentStationDeviceId();
+  const printer = resolveReceiptPrinter(devices, stationId);
   if (!printer) {
     return { ok: false, error: ADD_RECEIPT_PRINTER };
   }
   const locationId = s.tenantLocationId || "";
   const locationName = s.settings.name || "Summex";
-  const job = guestCheckJob(order, s, locationId, locationName);
+  const cash = parseCashHandling(s.settings.cashHandling);
+  const job: PrintJob = {
+    ...guestCheckJob(order, s, locationId, locationName),
+    kickDrawer: Boolean(cash.kickOnPrintCheck) && Boolean(resolveReceiptDrawer(devices, stationId)),
+    drawerKickPin: parseDrawerKickPin(cash.drawerKickPin),
+  };
   const res = await dispatchPrintJob(job, devices, { printerId: printer.id });
   if (res.printed > 0) {
     return { ok: true, printerLabel: printer.label };
@@ -514,6 +521,8 @@ export async function performNoSale(opts: {
     locationId,
     devices,
     printerId: printer.id,
+    pin: parseDrawerKickPin(parseCashHandling(s.settings.cashHandling).drawerKickPin),
+    deviceId: stationId,
   });
   if (opts.printSlip) {
     const emp = s.getCurrentEmployee?.();

@@ -89,7 +89,7 @@ export const CASH_GIFT_TOPICS: GuideTopic[] = [
         "Set role defaults and house drawer mode. Name drawers and bind each to a kick printer.",
         "Map each cash drawer to a station. On Staff, override a person if needed (not kitchen).",
         "On the order tablet after PIN: Take drawer or Open bank. Declare opening cash. Accept possession.",
-        "Tender cash. Shared well: two bartender PINs kick the same drawer; closeout still lists both.",
+        "Tender cash. On a Terminal with a bound Epson receipt printer, 9100 includes the drawer pulse (pin 2 default). Shared well: two bartender PINs kick the same drawer; closeout still lists both.",
         "Skim/drop, paid-out, till transfer (loan) as needed.",
         "Closeout on the short menu. Hand off if someone takes the till mid-shift.",
       ),
@@ -129,7 +129,7 @@ export const CASH_GIFT_TOPICS: GuideTopic[] = [
       ),
       ul(
         "On a terminal in Stations that may kick drawer, No sale is on the short menu, the floor, and the pad when no check is open — not on Pay. Handhelds do not show No sale.",
-        "It sends a drawer kick on the bound Receipt printer (ESC/POS pulse). Kitchen Star never kicks.",
+        "It sends a drawer kick on the bound Receipt printer (ESC/POS pulse, pin 2 / pulse 1 default; Settings → Cash → pin 2 vs pin 5). Kitchen Star never kicks. If 9100 succeeds and the drawer stays shut, check the DK cable.",
         "If this station has no receipt printer with a drawer wired: “No drawer on this station.”",
         "Every kick writes an audit row: who, station, time, reason (Change, Mistake, Manager). Never a silent kick.",
         "Settings → Cash: No sale allowed for Server / Bartender / Host / Manager. Default bartender + manager; servers optional. A signed-in role below that list needs a manager PIN.",

@@ -1006,6 +1006,7 @@ const usePosStoreRaw = create<PosStore>()(persist((set, get) => {
 								locationId: get().tenantLocationId || "",
 								devices: get().locationDevices,
 								printerId: drawer.kickPrinterId,
+								pin: cashCfg.drawerKickPin === 5 ? 5 : 2,
 							}),
 						);
 					}

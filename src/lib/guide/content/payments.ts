@@ -63,7 +63,7 @@ export const PAYMENT_TOPICS: GuideTopic[] = [
       steps(
         "On the check, tap Pay. Only tenders the house has on appear — large full-width buttons, not a strip of greyed-out icons.",
         "Card (if on): amount (defaults to balance), tip suggestions. Training / Quantum sandbox may fake the card and show last4 on the practice receipt. Live: present on the Quantum reader — never type PAN/CVV. One guest tender; each brand’s account is funded from the split. The printed receipt groups lines by vendor — still one document.",
-        "Cash (if on): Cash is a first-class button on Pay. It is not hidden because the house is in training/sandbox or because this station has no receipt printer. Enter tendered; change due is calculated. Cash still records on the check and till. Cash off: no Take drawer, no possession, no cash count.",
+        "Cash (if on): Cash is a first-class button on Pay. It is not hidden because the house is in training/sandbox or because this station has no receipt printer. Enter tendered; change due is calculated. Cash still records on the check and till. On a Terminal with a bound Epson receipt printer, cash 9100 includes the drawer pulse, then optional paid receipt. Cash off: no Take drawer, no possession, no cash count.",
         "Gift (if on): enter the first-party code. Redeem never calls an outside gift network. The fulfilling operator gets the merchandise; issuer liability decreases; issuer remits to the fulfiller if they differ. Gift off: no Issue/reload and no redeem.",
         "Check, house account, comp, and Other appear only when those toggles are on. Comp needs a reason and is not a guest tender.",
         "To split tenders, pay less than the balance, then take the next enabled tender on the same check.",
@@ -181,7 +181,7 @@ export const PAYMENT_TOPICS: GuideTopic[] = [
         "Cash discount receipts and the check can show both: Cash $18.00 · Card $19.00. Cash tender charges cash; card tender charges card.",
       ),
       steps(
-        "On the pad or Pay, tap Print check before tender when this station has a bound Receipt printer. Confirm the Epson (192.168.0.112 in the house example) — not the kitchen Star. If the button is missing: Add a receipt printer in Devices. Tenders stay. On a handheld, Flip to guest for card + tip + sign, then Email / SMS / Printed receipt (queues to .112) or Open on terminal.",
+        "On the pad or Pay, tap Print check before tender when this station has a bound Receipt printer. Confirm the Epson (192.168.0.112 in the house example) — not the kitchen Star. Print check does not kick the drawer unless Kick drawer on Print check is on (default off). Cash on that Terminal kicks via 9100 (pin 2 default). If the button is missing: Add a receipt printer in Devices. Tenders stay. On a handheld, Flip to guest for card + tip + sign, then Email / SMS / Printed receipt (queues to .112) or Open on terminal.",
         "After pay, choose Email, Print, or No receipt. Same three choices for card, cash, gift, and comp.",
         "Email: enter the guest address. Sent via Resend. If email is down, the station says so and offers print.",
         "Print: ESC/POS on the printer mapped on this device row in Devices. If none, the venue default receipt printer.",
@@ -265,7 +265,7 @@ export const PAYMENT_TOPICS: GuideTopic[] = [
         "An owner considering Summex should read a product paper — not a stack spec. Processors and partners can share the same document.",
       ),
       p(
-        "Open White paper from the marketing header or footer (no login). Print from the browser for a PDF. Revision · 18 Sep 2026 matches Guide v2026.10.118. It is written for prospective subscribers: one guest check, floor, multi-entity, Android staff stations, venue payment-method toggles, 5% cash-discount processing story, plans from Get a price. Gift cards are not sold online. QR is on-premise. No CRM, pipeline, factory reset, or how to log in. Internal operations notes stay off the public site.",
+        "Open White paper from the marketing header or footer (no login). Print from the browser for a PDF. Revision · 18 Sep 2026 matches Guide v2026.10.119. It is written for prospective subscribers: one guest check, floor, multi-entity, Android staff stations, venue payment-method toggles, 5% cash-discount processing story, plans from Get a price. Gift cards are not sold online. QR is on-premise. No CRM, pipeline, factory reset, or how to log in. Internal operations notes stay off the public site.",
       ),
       steps(
         "Open White paper from the marketing header (White paper). That page is the paper — not Get a price.",

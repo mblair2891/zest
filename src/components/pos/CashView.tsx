@@ -229,6 +229,8 @@ export function CashView() {
           locationId: locId,
           devices,
           printerId: sink.drawer.kickPrinterId,
+          pin: cfg.drawerKickPin === 5 ? 5 : 2,
+          deviceId: activeDeviceId,
         });
         if (kind === "no_sale") {
           useCashSessionStore.getState().logNoSale({

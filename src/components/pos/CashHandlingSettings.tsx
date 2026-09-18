@@ -458,7 +458,10 @@ export function CashHandlingSettings({ write }: { write: boolean }) {
             onChange={(e) => updateSettings({ handheldCashEnabled: e.target.checked })}
           />
         </label>
-        <Field label="Open drawer on cash sale">
+        <Field
+          label="Open drawer on cash sale"
+          hint="Terminal with a bound Receipt printer (Epson TM-T20) sends ESC/POS pulse on 9100. Kitchen Star never kicks."
+        >
           <select
             className="h-9 w-full rounded-lg border border-border bg-bg px-2 text-sm"
             disabled={!write}
@@ -470,6 +473,35 @@ export function CashHandlingSettings({ write }: { write: boolean }) {
             <option value="manager_pin">Manager PIN</option>
           </select>
         </Field>
+        <Field
+          label="Drawer kick pin"
+          hint="Epson DK connector. Pin 2 is pulse 1 default. Pin 5 if the house wired the other pin. If 9100 succeeds and the drawer stays shut, check the DK cable — the payload still includes the pulse."
+        >
+          <select
+            className="h-9 w-full rounded-lg border border-border bg-bg px-2 text-sm"
+            disabled={!write}
+            value={cfg.drawerKickPin === 5 ? "5" : "2"}
+            onChange={(e) => patch({ drawerKickPin: e.target.value === "5" ? 5 : 2 })}
+          >
+            <option value="2">Pin 2 (default)</option>
+            <option value="5">Pin 5</option>
+          </select>
+        </Field>
+        <label className="flex items-start gap-2 text-sm sm:col-span-2">
+          <input
+            type="checkbox"
+            className="mt-0.5 h-4 w-4 rounded border-border"
+            disabled={!write}
+            checked={Boolean(cfg.kickOnPrintCheck)}
+            onChange={(e) => patch({ kickOnPrintCheck: e.target.checked })}
+          />
+          <span>
+            Kick drawer on Print check
+            <span className="mt-0.5 block text-xs text-muted-foreground">
+              Off (default): Print check is paper only. Cash tender still kicks. Paid receipt after pay does not kick again.
+            </span>
+          </span>
+        </label>
         <Field label="No sale allowed for">
           <div className="flex flex-wrap gap-3 py-1 text-sm">
             {NO_SALE_ROLE_OPTIONS.map((role) => {

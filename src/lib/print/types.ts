@@ -73,6 +73,10 @@ export type PrintJob = {
   at: number;
   ticketId?: string;
   printSource?: KitchenPrintSource;
+  /** Append ESC/POS drawer pulse on a receipt/guest-check job. Default off. */
+  kickDrawer?: boolean;
+  /** Epson DK pin. 2 = ESC p m=0 (default). 5 = m=1. */
+  drawerKickPin?: 2 | 5;
 };
 
 export type PrintTarget = {
