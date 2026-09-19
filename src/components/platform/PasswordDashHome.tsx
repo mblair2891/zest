@@ -11,6 +11,7 @@ import {
 } from "@/lib/saas/password-dash";
 import type { VenueDashTabId } from "@/lib/saas/venue-dashboard-tabs";
 import type { TenantDetailModel } from "@/lib/saas/tenant-detail";
+import { VenueRegBanner } from "@/components/pos/VenueRegBanner";
 
 export function PasswordDashHome({
   kind,
@@ -46,6 +47,9 @@ export function PasswordDashHome({
         </div>
         <p className="mt-1 text-sm text-muted-foreground">{passwordDashBlurb(kind)}</p>
       </div>
+      {kind !== "platform_admin" && kind !== "accountant" ? (
+        <VenueRegBanner onReview={() => onOpen("settings")} />
+      ) : null}
 
       {kind !== "platform_admin" && kind !== "accountant" && (
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">

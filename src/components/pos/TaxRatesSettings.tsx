@@ -8,6 +8,9 @@ import {
   type TaxApplyTo,
   type TaxRateDef,
 } from "@/lib/pos/tax-rates";
+import { useTaxSuggestionStore } from "@/lib/pos/tax-suggestion";
+import { usePosStore } from "@/lib/pos/store";
+import { ackVenueBulletinFn } from "@/lib/saas/reg-bulletins-api";
 
 export function TaxRatesEditor({
   rates,
@@ -21,9 +24,57 @@ export function TaxRatesEditor({
   const patch = (id: string, next: Partial<TaxRateDef>) => {
     onChange(rates.map((r) => (r.id === id ? { ...r, ...next } : r)));
   };
+  const bulletinId = useTaxSuggestionStore((s) => s.bulletinId);
+  const suggestion = useTaxSuggestionStore((s) => s.suggestion);
+  const locId = usePosStore((s) => s.tenantLocationId);
+  const applySuggestion = () => {
+    if (!suggestion) return;
+    onChange([...rates, newTaxRate(suggestion)]);
+    if (locId && bulletinId) {
+      void ackVenueBulletinFn({
+        data: { locationId: locId, bulletinId, status: "saved" },
+      });
+    }
+    useTaxSuggestionStore.getState().clear();
+  };
+  const dismissSuggestion = () => {
+    if (locId && bulletinId) {
+      void ackVenueBulletinFn({
+        data: { locationId: locId, bulletinId, status: "dismissed" },
+      });
+    }
+    useTaxSuggestionStore.getState().clear();
+  };
   return (
     <div className="space-y-3" data-tax-rates>
       <p className="text-sm font-medium">Taxes</p>
+      {bulletinId ? (
+        <div
+          data-tax-suggestion
+          className="rounded-xl border border-primary/40 bg-primary/10 p-3 text-sm"
+        >
+          <p className="font-medium">Suggested rate from bulletin</p>
+          {suggestion ? (
+            <p className="mt-1 text-xs text-muted-foreground">
+              {suggestion.name} · {suggestion.percent}% — not on the list until you Save.
+            </p>
+          ) : (
+            <p className="mt-1 text-xs text-muted-foreground">
+              No rate was attached. Review your named rates. Nothing is changed until you Save.
+            </p>
+          )}
+          <div className="mt-2 flex flex-wrap gap-2">
+            {suggestion ? (
+              <Button type="button" size="sm" disabled={disabled} onClick={applySuggestion}>
+                Save suggested rate
+              </Button>
+            ) : null}
+            <Button type="button" size="sm" variant="outline" onClick={dismissSuggestion}>
+              Dismiss
+            </Button>
+          </div>
+        </div>
+      ) : null}
       <p className="text-xs text-muted-foreground">
         Named rates — not a JSON blob. Zero rates is no tax; guest checks print no tax line.
         Menu prices stay cash-source; tax is on top unless Inclusive is on. Stacked applies to

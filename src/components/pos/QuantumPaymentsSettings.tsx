@@ -21,6 +21,7 @@ import {
 import { parsePaymentMethods } from "@/lib/pos/payment-methods";
 import { parseGiftLimits } from "@/lib/pos/gift-limits";
 import { formatCurrency } from "@/lib/utils";
+import { jurisdictionIsReady } from "@/lib/pos/jurisdiction";
 
 /**
  * Venue / entity Payments.
@@ -72,6 +73,7 @@ export function QuantumPaymentsSettings({
     if (!write || isProspectDemo() || !orgId || !locId) return;
     if (paymentsMode === "live" && status?.lifecycleForcesSandbox) return;
     if (paymentsMode === "live" && !status?.readers.some((r) => r.serial)) return;
+    if (paymentsMode === "live" && !jurisdictionIsReady(usePosStore.getState().settings.jurisdiction)) return;
     setSaving(true);
     void saveLocationSettingsFn({
       data: { orgId, locationId: locId, setup: { paymentsMode } },
@@ -151,7 +153,8 @@ export function QuantumPaymentsSettings({
             disabled={
               !(status?.sellingMerchantsReady ?? status?.hostPaymentsApproved) ||
               status?.lifecycleForcesSandbox ||
-              !status?.readers.some((r) => r.serial)
+              !status?.readers.some((r) => r.serial) ||
+              !jurisdictionIsReady(usePosStore.getState().settings.jurisdiction)
             }
           >
             Live card-present
@@ -161,7 +164,9 @@ export function QuantumPaymentsSettings({
                 ? " (each selling entity must be approved)"
                 : !status?.readers.some((r) => r.serial)
                   ? " (enroll a Finix/Quantum reader)"
-                  : ""}
+                  : !jurisdictionIsReady(usePosStore.getState().settings.jurisdiction)
+                    ? " (set country, state, and city in Profile)"
+                    : ""}
           </option>
         </select>
       </label>

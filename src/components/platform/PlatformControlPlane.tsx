@@ -1,4 +1,4 @@
-import { Building2, ClipboardList, CreditCard, LayoutDashboard, LayoutGrid, LifeBuoy, LineChart, Settings, Users } from "lucide-react";
+import { Building2, ClipboardList, CreditCard, LayoutDashboard, LayoutGrid, LifeBuoy, LineChart, ScrollText, Settings, Users } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ProspectPipelineView } from "@/components/saas/ProspectPipelineView";
 import { CrmWorkspace } from "./CrmWorkspace";
@@ -8,6 +8,7 @@ import { BillingWorkspace } from "./BillingWorkspace";
 import { SupportWorkspace } from "./SupportWorkspace";
 import { ReportsWorkspace } from "./ReportsWorkspace";
 import { SettingsWorkspace } from "./SettingsWorkspace";
+import { BulletinsWorkspace } from "./BulletinsWorkspace";
 import {
   PLATFORM_SURFACES,
   PLATFORM_SURFACE_LABEL,
@@ -23,6 +24,7 @@ const ICONS: Record<PlatformSurface, typeof Users> = {
   onboarding: LayoutDashboard,
   billing: CreditCard,
   support: LifeBuoy,
+  bulletins: ScrollText,
   reports: LineChart,
   settings: Settings,
 };
@@ -95,6 +97,7 @@ export function PlatformControlPlane({
         {surface === "onboarding" && <OnboardingWorkspace />}
         {surface === "billing" && <BillingWorkspace />}
         {surface === "support" && <SupportWorkspace />}
+        {surface === "bulletins" && <BulletinsWorkspace />}
         {surface === "reports" && <ReportsWorkspace />}
         {surface === "settings" && <SettingsWorkspace />}
       </div>

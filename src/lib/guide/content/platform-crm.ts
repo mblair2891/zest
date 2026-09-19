@@ -273,4 +273,32 @@ export const PLATFORM_CRM_TOPICS: GuideTopic[] = [
       ),
     ],
   }),
+  topic({
+    id: "reg-bulletins",
+    chapterId: "platform",
+    title: "Jurisdiction reg bulletins",
+    summary:
+      "Author a bulletin in the SaaS console. Target all venues, a state, a city, or a district. Never writes tax rows.",
+    visibility: "platform",
+    roles: ["platform_admin"],
+    keywords: ["bulletin", "jurisdiction", "tax", "california", "reg", "avalara", "taxjar"],
+    blocks: [
+      why(
+        "Houses need a notice when a rate or rule changes. The platform writes the bulletin. The owner writes the tax list.",
+      ),
+      ul(
+        "Control plane → Reg bulletins. Title, body, effective date, severity (info / action required), scope (all / state / city / district).",
+        "Targeted venues: owner/manager dashboard banner. Action required also lists on the station update prompt. Email if Resend is configured.",
+        "Suggested rate is optional. Owner taps Review rates, then Save or Dismiss. Bulletins never write venue tax rows.",
+        "No daily crawler of every DOR. A later Avalara/TaxJar webhook would create the same bulletin + suggestion — not required now.",
+      ),
+      steps(
+        "Open Reg bulletins. Scope a CA bulletin to state CA.",
+        "Only venues with jurisdiction state CA see it (house example timezone America/Los_Angeles).",
+        "Confirm the venue tax list is unchanged until the owner Saves.",
+      ),
+      warn("Do not paste JSON into platform settings for this. Use the bulletin form."),
+      related("platform-tenants", "tax-jurisdiction"),
+    ],
+  }),
 ];

@@ -6,6 +6,7 @@ export const PLATFORM_SURFACES = [
   "onboarding",
   "billing",
   "support",
+  "bulletins",
   "reports",
   "settings",
 ] as const;
@@ -20,6 +21,7 @@ export const PLATFORM_SURFACE_LABEL: Record<PlatformSurface, string> = {
   onboarding: "Onboarding",
   billing: "Billing",
   support: "Support",
+  bulletins: "Reg bulletins",
   reports: "Reports",
   settings: "Settings",
 };

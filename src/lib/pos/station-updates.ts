@@ -199,11 +199,19 @@ function bulletText(e: GuideUpdate): string {
 export function stationFacingChangeBullets(opts?: {
   show?: boolean;
   limit?: number;
+  extra?: string[];
 }): string[] {
-  if (opts?.show === false) return [];
   const limit = Math.max(1, opts?.limit ?? 3);
   const out: string[] = [];
   const seen = new Set<string>();
+  for (const extra of opts?.extra ?? []) {
+    const line = String(extra ?? "").trim();
+    if (!line || seen.has(line)) continue;
+    seen.add(line);
+    out.push(line);
+    if (out.length >= limit) return out;
+  }
+  if (opts?.show === false) return out;
   for (const e of WHATS_NEW_ENTRIES) {
     if (!isStationFacingUpdate(e)) continue;
     const line = bulletText(e);

@@ -24,6 +24,7 @@ import {
   parseVenueTimezone,
 } from "@/lib/pos/venue-time";
 import { persistTaxRates } from "@/lib/pos/persist-location-setup";
+import { JurisdictionFields } from "@/components/pos/SettingsView";
 
 
 const STYLE_LABEL: Record<(typeof SERVICE_STYLES_VENUE)[number], string> = {
@@ -125,6 +126,7 @@ export function VenueHouseSettings() {
             }}
           />
         </label>
+        <JurisdictionFields write={write} />
         <label className="block text-sm">
           <span className="mb-1 block text-muted-foreground">Location timezone (IANA)</span>
           <select

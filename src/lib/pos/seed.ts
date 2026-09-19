@@ -31,6 +31,7 @@ export const SETTINGS: RestaurantSettings = {
   happyHourEnd: 18,
   happyHourDays: [1, 2, 3, 4, 5],
   timezone: "America/Los_Angeles",
+  jurisdiction: { country: "US", state: "CA", city: "Los Angeles", taxDistrict: "" },
   currency: "USD",
   receiptFooter: "Thanks for choosing Summex. Tip is never expected, always appreciated.",
   managerPin: "0000",

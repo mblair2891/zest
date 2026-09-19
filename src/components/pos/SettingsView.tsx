@@ -32,8 +32,15 @@ import {
   persistCashDiscount,
   persistTaxRates,
   persistStationUpdates,
+  persistJurisdiction,
   bumpConfigVersion,
 } from "@/lib/pos/persist-location-setup";
+import {
+  parseJurisdiction,
+  jurisdictionIsReady,
+  US_STATES,
+  DEFAULT_COUNTRY,
+} from "@/lib/pos/jurisdiction";
 import { parseStationUpdates, DEFAULT_FORCE_WINDOW } from "@/lib/pos/station-updates";
 import { TaxRatesEditor, ratesPatch } from "./TaxRatesSettings";
 import {
@@ -330,6 +337,88 @@ function GiftCardSettingsPack({
   );
 }
 
+export function JurisdictionFields({ write }: { write: boolean }) {
+  const settings = usePosStore((s) => s.settings);
+  const updateSettings = usePosStore((s) => s.updateSettings);
+  const j = parseJurisdiction(settings.jurisdiction);
+  const patch = (next: Partial<typeof j>) => {
+    updateSettings({ jurisdiction: { ...j, ...next } });
+    persistJurisdiction();
+  };
+  const ready = jurisdictionIsReady(j);
+  return (
+    <div className="space-y-3" data-venue-jurisdiction>
+      <p className="text-sm font-medium">Jurisdiction</p>
+      <p className="text-xs text-muted-foreground">
+        Country, state/province, and city are required before live cards. Optional tax district
+        for platform bulletins. Tax rates never change until you Save them.
+      </p>
+      {!ready && (
+        <p className="rounded-lg bg-warn/15 px-3 py-2 text-xs font-medium text-warn">
+          Set country, state, and city before live cards.
+        </p>
+      )}
+      <div className="grid gap-3 sm:grid-cols-2">
+        <label className="block text-sm">
+          <span className="mb-1 block text-muted-foreground">Country</span>
+          <select
+            disabled={!write}
+            className="h-9 w-full rounded-md border border-border bg-bg px-2 text-sm"
+            value={j.country || DEFAULT_COUNTRY}
+            onChange={(e) => patch({ country: e.target.value })}
+          >
+            <option value="US">United States</option>
+            <option value="CA">Canada</option>
+          </select>
+        </label>
+        <label className="block text-sm">
+          <span className="mb-1 block text-muted-foreground">State / province</span>
+          {j.country === "US" ? (
+            <select
+              disabled={!write}
+              className="h-9 w-full rounded-md border border-border bg-bg px-2 text-sm"
+              value={j.state}
+              onChange={(e) => patch({ state: e.target.value })}
+            >
+              <option value="">Select</option>
+              {US_STATES.map((s) => (
+                <option key={s.code} value={s.code}>
+                  {s.code} · {s.name}
+                </option>
+              ))}
+            </select>
+          ) : (
+            <Input
+              disabled={!write}
+              value={j.state}
+              onChange={(e) => patch({ state: e.target.value })}
+              placeholder="ON"
+            />
+          )}
+        </label>
+        <label className="block text-sm">
+          <span className="mb-1 block text-muted-foreground">City</span>
+          <Input
+            disabled={!write}
+            value={j.city}
+            onChange={(e) => patch({ city: e.target.value })}
+            placeholder="Los Angeles"
+          />
+        </label>
+        <label className="block text-sm">
+          <span className="mb-1 block text-muted-foreground">Tax district (optional)</span>
+          <Input
+            disabled={!write}
+            value={j.taxDistrict}
+            onChange={(e) => patch({ taxDistrict: e.target.value })}
+            placeholder="District or locality"
+          />
+        </label>
+      </div>
+    </div>
+  );
+}
+
 function timezoneOptions(current?: string): string[] {
   const cur = parseVenueTimezone(current);
   const list = [...VENUE_TIMEZONES] as string[];
@@ -440,6 +529,7 @@ export function SettingsView() {
         setup: {
           hostBrandName: s.name,
           timezone: s.timezone,
+          jurisdiction: parseJurisdiction(s.jurisdiction),
           configVersion: bumpConfigVersion(),
           taxRates: s.taxRates ?? [],
           entityTaxRates: s.entityTaxRates ?? {},
@@ -673,6 +763,7 @@ export function SettingsView() {
             }}
           />
         </label>
+        <JurisdictionFields write={write} />
         <label className="block text-sm">
           <span className="mb-1 block text-muted-foreground">Phone</span>
           <Input

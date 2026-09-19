@@ -46,6 +46,7 @@ export type HeartbeatRefresh = {
   appBuild?: string;
   configVersion?: number;
   snapshot?: StationPublishSetup | null;
+  regNotices?: string[];
 };
 
 type RefreshState = {
@@ -56,6 +57,7 @@ type RefreshState = {
   idleSince: number | null;
   forced: boolean;
   catchUp: boolean;
+  regNotices: string[];
   setSurface: (surface: StationPromptSurface) => void;
 };
 
@@ -67,6 +69,7 @@ export const useStationRefreshStore = create<RefreshState>((set) => ({
   idleSince: null,
   forced: false,
   catchUp: false,
+  regNotices: [],
   setSurface: (surface) => set({ surface }),
 }));
 
@@ -112,7 +115,10 @@ export function readVenueUpdatePolicy(): {
       catchUpMandatory,
       noSnooze: inWindow || (catchUp && catchUpMandatory),
       showChangeList: cfg.showChangeList,
-      bullets: stationFacingChangeBullets({ show: cfg.showChangeList }),
+      bullets: stationFacingChangeBullets({
+        show: cfg.showChangeList,
+        extra: useStationRefreshStore.getState().regNotices,
+      }),
     };
   } catch {
     return {
@@ -446,6 +452,11 @@ function noteMissedForceWindowIfNeeded(): void {
 
 export function ingestHeartbeat(res: HeartbeatRefresh | null | undefined): void {
   if (!res?.ok) return;
+  if (Array.isArray(res.regNotices)) {
+    useStationRefreshStore.setState({
+      regNotices: res.regNotices.map((n) => String(n).trim()).filter(Boolean).slice(0, 5),
+    });
+  }
   const build = String(res.appBuild ?? "").trim();
   const config = Math.max(0, Number(res.configVersion) || 0);
   const prevBuild = currentAppBuild();

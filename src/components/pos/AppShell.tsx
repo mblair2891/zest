@@ -64,6 +64,7 @@ import { useDemoOperatingEntityId } from "@/lib/demo/use-demo-operating-entity";
 import { useDemoDeviceStore } from "@/lib/demo/device-session";
 import { useDemoLiveSync } from "@/lib/demo/live-sync";
 import { TrainingBanner } from "./TrainingBanner";
+import { VenueRegBanner } from "./VenueRegBanner";
 import { StationUpdateBar } from "./StationUpdatePrompt";
 import { PrintWaitingBanner } from "./PrintWaitingBanner";
 import { PackageEmptyState } from "@/components/platform/PackageEmptyState";
@@ -461,6 +462,7 @@ export function AppShell() {
       >
         <LoginOnboardingHost />
         <TrainingBanner />
+        <VenueRegBanner />
         <StationUpdateBar />
         <PrintWaitingBanner />
         <header className="flex h-14 shrink-0 items-center gap-2 border-b border-border bg-surface px-3">
@@ -504,6 +506,7 @@ export function AppShell() {
         data-station-pin-shell
       >
         <TrainingBanner />
+        <VenueRegBanner />
         <StationUpdateBar />
         <PrintWaitingBanner />
         <header className="flex h-14 shrink-0 items-center gap-2 border-b border-border bg-surface px-3">
@@ -556,6 +559,7 @@ export function AppShell() {
       <PayrollExportWatcher />
       <StaffingWatcher />
       <TrainingBanner />
+      <VenueRegBanner />
       <StationUpdateBar />
       <PrintWaitingBanner />
       <BackOfficeUnlock

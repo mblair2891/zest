@@ -244,6 +244,8 @@ export interface RestaurantSettings {
   smsEnabled?: boolean;
   smsMonthlyCap?: number | null;
   timezone?: string;
+  /** Country, state, city, optional tax district. Required before live cards. */
+  jurisdiction?: import("./jurisdiction").VenueJurisdiction;
   /** Force-update window + changelog on station prompt. */
   stationUpdates?: import("./station-updates").StationUpdatesConfig;
   hoursNote?: string;

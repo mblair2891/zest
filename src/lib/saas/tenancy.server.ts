@@ -33,6 +33,7 @@ import { parseOpsJobsConfig } from "@/lib/ops-jobs/config";
 import { parseQrPolicy } from "@/lib/pos/qr-policy";
 import { parseTaxRates } from "@/lib/pos/tax-rates";
 import { parseStationUpdates } from "@/lib/pos/station-updates";
+import { parseJurisdiction, jurisdictionIsReady } from "@/lib/pos/jurisdiction";
 import { parseItem86 } from "@/lib/pos/item-86";
 import { parseLocationOperatingModel } from "./location-model";
 import { demoVenueIsolated } from "./tenant-users";
@@ -176,6 +177,7 @@ function parseSetup(raw: unknown): LocationSetup {
     },
     hostBrandName: typeof o.hostBrandName === "string" ? o.hostBrandName : "",
     timezone: typeof o.timezone === "string" ? o.timezone : "America/Los_Angeles",
+    jurisdiction: o.jurisdiction != null ? parseJurisdiction(o.jurisdiction) : undefined,
     hoursNote: typeof o.hoursNote === "string" ? o.hoursNote : "",
     tipPooling: Boolean(o.tipPooling),
     tabAutoCloseMinutes: Number(o.tabAutoCloseMinutes) || 0,
@@ -899,6 +901,9 @@ export async function updateLocationSetupForUser(
   const life = locationLifecycleStatus(next, loc.lifecycle_status);
   if (lifecycleForcesSandbox(life) && next.paymentsMode === "live") {
     next.paymentsMode = "sandbox";
+  }
+  if (next.paymentsMode === "live" && !jurisdictionIsReady(next.jurisdiction)) {
+    next.paymentsMode = prev.paymentsMode === "live" ? "sandbox" : prev.paymentsMode ?? "inherit";
   }
   await sql`
     update locations

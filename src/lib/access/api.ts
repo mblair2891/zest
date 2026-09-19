@@ -1447,11 +1447,19 @@ export const heartbeatLocationDeviceFn = createServerFn({ method: "POST" })
       data.sinceConfig > 0 && configVersion > data.sinceConfig
         ? publishSetupSlice(setup)
         : undefined;
+    let regNotices: string[] = [];
+    try {
+      const { actionRequiredNoticesForLocation } = await import("@/lib/saas/reg-bulletins.server");
+      regNotices = await actionRequiredNoticesForLocation(data.locationId);
+    } catch {
+      regNotices = [];
+    }
     return {
       ok: true as const,
       appBuild,
       configVersion,
       snapshot: snapshot ?? null,
+      regNotices,
     };
   });
 

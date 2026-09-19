@@ -6,6 +6,19 @@ import type { GuideUpdate } from "@/lib/guide/types";
  */
 export const WHATS_NEW_ENTRIES: GuideUpdate[] = [
   {
+    id: "upd_2026_10_131_reg_bulletins",
+    date: "2026-09-19",
+    title: "Jurisdiction and tax bulletins",
+    summary:
+      "Profile: country, state, city before live cards. Platform bulletins never write tax — Review rates, then Save or Dismiss.",
+    body: "Venue Settings → Profile stores jurisdiction (optional tax district). Required before live cards. A bulletin scoped to your state/city/district shows on the owner/manager dashboard. Action required also lists on the station update prompt. Email if Resend is on. Suggested rate is a suggestion only until you Save.",
+    roles: ["owner_manager", "host_operator"],
+    surfaces: ["settings"],
+    audience: "all",
+    topicId: "tax-jurisdiction",
+    tags: ["tax", "station", "pay"],
+  },
+  {
     id: "upd_2026_10_130_offline_catch_up",
     date: "2026-09-19",
     title: "Catch-up if the tablet missed the force window",

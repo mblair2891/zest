@@ -10,6 +10,7 @@ import { HOST_SCOPE } from "@/lib/access/entity-grants";
 import { parseLaborRules } from "@/lib/labor/rules";
 import { parsePaymentMethods } from "./payment-methods";
 import { parseStationUpdates } from "./station-updates";
+import { parseJurisdiction } from "./jurisdiction";
 
 const timers = new Map<string, ReturnType<typeof setTimeout>>();
 
@@ -214,6 +215,30 @@ export function persistTaxRates(): void {
             taxRate: s.taxRate,
             taxMode: s.taxMode,
             timezone: s.timezone,
+            configVersion: bumpConfigVersion(),
+          },
+        },
+      }).catch(() => undefined);
+    }, 400),
+  );
+}
+
+export function persistJurisdiction(): void {
+  const ctx = ids();
+  if (!ctx) return;
+  const prev = timers.get("jurisdiction");
+  if (prev) clearTimeout(prev);
+  timers.set(
+    "jurisdiction",
+    setTimeout(() => {
+      timers.delete("jurisdiction");
+      const s = usePosStore.getState().settings;
+      void saveLocationSettingsFn({
+        data: {
+          orgId: ctx.orgId,
+          locationId: ctx.locationId,
+          setup: {
+            jurisdiction: parseJurisdiction(s.jurisdiction),
             configVersion: bumpConfigVersion(),
           },
         },

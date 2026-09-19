@@ -27,6 +27,8 @@ export type LocationSetup = {
   cashRoundIncrement?: number;
   cashRoundMode?: string;
   timezone?: string;
+  /** Country, state, city, optional tax district. Required before live cards. */
+  jurisdiction?: import("@/lib/pos/jurisdiction").VenueJurisdiction;
   /** Force-update windows and station prompt changelog. */
   stationUpdates?: import("@/lib/pos/station-updates").StationUpdatesConfig;
   hoursNote?: string;

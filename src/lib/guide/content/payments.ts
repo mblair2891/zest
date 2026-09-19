@@ -35,6 +35,7 @@ export const PAYMENT_TOPICS: GuideTopic[] = [
         "Gift load with a bank card charges the issuer brand’s account. Gift redeem stays on the Summex ledger.",
         "Sandbox (default, including Training): practice cards, not a live Visa. Live: present the card on an enrolled Finix/Quantum reader supplied through Summex. Handhelds are not Square or Stripe terminals and never take PAN on the tablet. Cash and gift still work without a reader. Printers and drawers stay BYO. Live cards fail closed without an enrolled reader.",
         "A brand cannot take live cards until that brand’s application is approved. Training uses sandbox account ids. If the processor is down: take cash or keep the check open.",
+        "Venue Settings → Profile: country, state/province, city, optional tax district — required before live cards. Platform may send a jurisdiction bulletin. Action required: Review rates. Tax rows never change until the owner Saves (or Dismisses). No silent tax edits.",
         "If Card is off in Settings → Payment methods, stations never prompt for a reader. Sandbox vs live still follows location lifecycle when card is on.",
         "Per-entity cannot disable card for themselves if the venue takes cards. They only have their Finix merchant for their lines.",
       ),
@@ -45,7 +46,34 @@ export const PAYMENT_TOPICS: GuideTopic[] = [
       warn(
         "Do not connect a second processor “just for events.” It is not available, and it would break one-check split capture on a multi-operator floor.",
       ),
-      related("tenders-tips", "venue-payment-methods", "host-capture", "receipts-by-vendor", "table-qr", "chargebacks", "wifi-offline", "gift-cards"),
+      related("tenders-tips", "venue-payment-methods", "host-capture", "receipts-by-vendor", "table-qr", "chargebacks", "wifi-offline", "gift-cards", "tax-jurisdiction"),
+    ],
+  }),
+  topic({
+    id: "tax-jurisdiction",
+    chapterId: "payments",
+    title: "Jurisdiction and tax bulletins",
+    summary:
+      "Country, state, city (optional district) before live cards. Platform bulletins never write tax until you Save.",
+    roles: ["owner_manager", "host_operator"],
+    keywords: ["jurisdiction", "tax", "bulletin", "state", "california", "sales tax", "avalara"],
+    openView: "settings",
+    blocks: [
+      why(
+        "Live cards need to know where the house is. Tax rates stay under the owner’s finger — a bulletin is a notice, not a silent edit.",
+      ),
+      p(
+        "Venue Settings → Profile: country, state/province, city, optional tax district. Required before live cards. A platform bulletin targeted at your state, city, or district shows on the owner/manager dashboard. Action required also appears as a line on the station update prompt. Email sends if Resend is configured. Review rates opens Taxes with a suggested rate when the bulletin includes one. Save adds it. Dismiss leaves the list unchanged.",
+      ),
+      steps(
+        "Fill country, state, and city in Venue Settings → Profile before switching to live cards.",
+        "If a banner appears, read it. Action required: tap Review rates.",
+        "Save the suggested rate, or Dismiss. Tax rows never change on their own.",
+      ),
+      warn(
+        "No daily crawler of every department of revenue. First version is platform-authored targeting. A later tax API (Avalara/TaxJar) would use the same bulletin + suggestion flow — not required to ship.",
+      ),
+      related("quantum-payments", "receipts-by-vendor"),
     ],
   }),
   topic({
@@ -265,7 +293,7 @@ export const PAYMENT_TOPICS: GuideTopic[] = [
         "An owner considering Summex should read a product paper — not a stack spec. Processors and partners can share the same document.",
       ),
       p(
-        "Open White paper from the marketing header or footer (no login). Print from the browser for a PDF. Revision · 19 Sep 2026 matches Guide v2026.10.130. It is written for prospective subscribers: one guest check, floor, multi-entity, Android staff stations, venue payment-method toggles, 5% cash-discount processing story, plans from Get a price. Gift cards are not sold online. QR is on-premise. No CRM, pipeline, factory reset, or how to log in. Internal operations notes stay off the public site.",
+        "Open White paper from the marketing header or footer (no login). Print from the browser for a PDF. Revision · 19 Sep 2026 matches Guide v2026.10.131. It is written for prospective subscribers: one guest check, floor, multi-entity, Android staff stations, venue payment-method toggles, 5% cash-discount processing story, plans from Get a price. Gift cards are not sold online. QR is on-premise. No CRM, pipeline, factory reset, or how to log in. Internal operations notes stay off the public site.",
       ),
       steps(
         "Open White paper from the marketing header (White paper). That page is the paper — not Get a price.",
