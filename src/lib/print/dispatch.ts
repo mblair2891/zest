@@ -71,6 +71,7 @@ export function printersForStation(
     : list;
   const pool =
     station === "receipt" && stationDeviceId ? bound : bound.length ? bound : list;
+  if (station === "receipt") return pool;
   if (!operatorId || operatorId === HOST_SCOPE) return pool;
   const scoped = pool.filter(
     (d) => d.assignment.operatorId === HOST_SCOPE || d.assignment.operatorId === operatorId,

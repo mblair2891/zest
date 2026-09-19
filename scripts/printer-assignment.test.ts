@@ -64,26 +64,37 @@ test("to-go uses venue default receipt printer", () => {
   assert.equal(hit?.id, "prn_rec_b");
 });
 
-test("section with none uses station fallback", () => {
+test("section with none uses venue default, then any receipt printer", () => {
   const recA = receiptPrinter("prn_rec_a", { sectionIds: ["sec_a"] });
-  const recB = receiptPrinter("prn_rec_b", { boundStationIds: ["tab_1"] });
+  const recDef = receiptPrinter("prn_def", { venueDefault: true });
   const hit = resolveReceiptPrinterForCheck({
-    devices: [
-      recA,
-      recB,
-      {
-        id: "tab_1",
-        type: "tablet_pos",
-        receiptPrinterId: "prn_rec_b",
-        assignment: { function: "floor_pos" },
-      },
-    ],
-    stationDeviceId: "tab_1",
+    devices: [recA, recDef],
     table: { id: "t2", section: "Dining B", sectionId: "sec_b" },
     sections,
     orderType: "dine_in",
   });
-  assert.equal(hit?.id, "prn_rec_b");
+  assert.equal(hit?.id, "prn_def");
+  const any = resolveReceiptPrinterForCheck({
+    devices: [recA],
+    table: { id: "t3", section: "Dining", sectionId: "sec_dining" },
+    sections: [...sections, { id: "sec_dining", name: "Dining" }],
+    orderType: "dine_in",
+  });
+  assert.equal(any?.id, "prn_rec_a");
+});
+
+test("entity on a receipt printer does not block a house check", () => {
+  const rec = {
+    ...receiptPrinter("prn_112", { sectionIds: ["sec_a"] }),
+    assignment: { operatorId: "op_hearth", function: "cashier" },
+  };
+  const hit = resolveReceiptPrinterForCheck({
+    devices: [rec],
+    table: { id: "t1", section: "Dining A", sectionId: "sec_a" },
+    sections,
+    orderType: "dine_in",
+  });
+  assert.equal(hit?.id, "prn_112");
 });
 
 test("drinks from section B hit B's bar printer", () => {

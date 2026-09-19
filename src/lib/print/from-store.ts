@@ -1,6 +1,5 @@
 import { cashPolicyFromSettings } from "@/lib/pos/cash-discount";
 import { computeDualTotals, computeTotals, lineCardCents, lineCashCents, linePrintedCents } from "@/lib/pos/calculations";
-import { isVenueStationOnline } from "@/lib/pos/location-devices";
 import { usePosStore } from "@/lib/pos/store";
 import type { KitchenTicket, Order, RestaurantSettings } from "@/lib/pos/types";
 import { uid } from "@/lib/utils";
@@ -53,6 +52,9 @@ function receiptLines(order: Order, settings: RestaurantSettings): PrintLine[] {
     }));
 }
 
+export const NO_SECTION_RECEIPT =
+  "No receipt printer for this section — add one in Devices.";
+
 async function enqueueKitchenJob(
   job: PrintJob,
   printerId: string,
@@ -60,6 +62,7 @@ async function enqueueKitchenJob(
   port: number,
   payload: string,
   source: KitchenPrintSource,
+  kind: "ticket" | "receipt" | "test" = "ticket",
 ): Promise<boolean> {
   const pair = readStationPair();
   const body = {
@@ -68,7 +71,7 @@ async function enqueueKitchenJob(
     host,
     port,
     escposBase64: payload,
-    kind: "ticket" as const,
+    kind,
     ticketId: job.ticketId,
     checkId: job.checkId,
     source,
@@ -366,6 +369,7 @@ export async function printFromPos(
               cutter: mappedReceipt.print.cutter,
             }),
             source,
+            job.kind === "guest_check" || job.kind === "receipt" ? "receipt" : "ticket",
           );
         }
       }
@@ -469,6 +473,7 @@ export async function printGuestReceipt(orderId: string): Promise<{
       cutter: cfg.cutter,
     }),
     "station",
+    "receipt",
   );
   if (queued) {
     return { ok: true, printerLabel: printer.label };
@@ -479,12 +484,12 @@ export async function printGuestReceipt(orderId: string): Promise<{
   };
 }
 
-/** Pre-pay guest check on the bound receipt printer. Not kitchen. Not a paid receipt. */
+/** Pre-pay guest check on the section receipt printer. Never kitchen. Never a Star. */
 export async function printGuestCheck(orderId?: string): Promise<{
   ok: boolean;
   error?: string;
   printerLabel?: string;
-  viaStation?: string;
+  sentTo?: string;
 }> {
   const s = usePosStore.getState();
   const order = (orderId ? s.orders.find((o) => o.id === orderId) : null) ?? s.getActiveOrder?.();
@@ -492,6 +497,8 @@ export async function printGuestCheck(orderId?: string): Promise<{
   const devices = s.locationDevices;
   const stationId = currentStationDeviceId();
   const table = order.tableId ? s.tables.find((tb) => tb.id === order.tableId) : undefined;
+  const sectionName = String(table?.section ?? "").trim();
+  const noPrinter = sectionName ? NO_SECTION_RECEIPT : ADD_RECEIPT_PRINTER;
   const printer = resolveReceiptPrinter(devices, stationId, {
     table,
     tables: s.tables,
@@ -499,28 +506,31 @@ export async function printGuestCheck(orderId?: string): Promise<{
     sections: s.floorSections,
     orderType: order.type,
   });
-  if (!printer) {
-    return { ok: false, error: ADD_RECEIPT_PRINTER };
+  if (!printer || printer.print?.station === "kitchen" || printer.type === "order_printer") {
+    return { ok: false, error: noPrinter };
   }
+  const sentTo = sectionName ? `${sectionName} receipt printer` : printer.label || "receipt printer";
   const locationId = s.tenantLocationId || "";
   const locationName = s.settings.name || "Summex";
   const cash = parseCashHandling(s.settings.cashHandling);
   const job: PrintJob = {
     ...guestCheckJob(order, s, locationId, locationName),
+    kind: "guest_check",
+    station: "receipt",
     kickDrawer:
       Boolean(cash.kickOnPrintCheck) &&
       Boolean(resolveReceiptDrawer(devices, stationId)) &&
-      Boolean(printer.print && (printer.print.drawerKick !== "none")),
+      Boolean(printer.print && printer.print.drawerKick !== "none"),
     drawerKickPin: parseDrawerKickPin(cash.drawerKickPin),
   };
   const res = await dispatchPrintJob(job, devices, { printerId: printer.id });
   if (res.printed > 0) {
-    return { ok: true, printerLabel: printer.label };
+    return { ok: true, printerLabel: printer.label, sentTo };
   }
   const cfg = printer.print;
   const lan = cfg ? parseLanTarget(cfg.ip, cfg.port, cfg.target) : null;
   if (!lan || !cfg) {
-    return { ok: false, error: res.error || "Receipt printer needs a static IP." };
+    return { ok: false, error: noPrinter };
   }
   const queued = await enqueueKitchenJob(
     job,
@@ -534,16 +544,12 @@ export async function printGuestCheck(orderId?: string): Promise<{
       cutter: cfg.cutter,
     }),
     "station",
+    "receipt",
   );
   if (queued) {
-    const via = (devices ?? []).find((d) => isVenueStationOnline(d));
-    return {
-      ok: true,
-      printerLabel: printer.label,
-      viaStation: via?.label || "station",
-    };
+    return { ok: true, printerLabel: printer.label, sentTo };
   }
-  return { ok: false, error: res.error || "Use a paired station or print agent." };
+  return { ok: false, error: noPrinter };
 }
 
 /** Bound receipt drawer kick. Never a check. Never kitchen Star. */

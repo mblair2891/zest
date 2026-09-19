@@ -443,10 +443,8 @@ export function OrderView() {
         if (!r.ok && r.error === ADD_RECEIPT_PRINTER && hasBoundReceipt) return;
         setPrintMsg(
           r.ok
-            ? r.viaStation
-              ? `Printed via ${r.viaStation}`
-              : "Printed"
-            : r.error || "Print failed",
+            ? `Sending to ${r.sentTo || "receipt printer"}`
+            : r.error || ADD_RECEIPT_PRINTER,
         );
       })
       .catch(() => setPrintMsg("Print failed"));

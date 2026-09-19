@@ -6,6 +6,19 @@ import type { GuideUpdate } from "@/lib/guide/types";
  */
 export const WHATS_NEW_ENTRIES: GuideUpdate[] = [
   {
+    id: "upd_2026_10_122_table_print_check",
+    date: "2026-09-19",
+    title: "Print check on the table sheet",
+    summary:
+      "Each open check has a large Print check. Dining tables print on the Dining Epson — never the kitchen Star.",
+    body: "Table view: Print check on every open check row. Print all open is secondary. After tap: “Sending to Dining receipt printer” or “No receipt printer for this section — add one in Devices.” Never silent. Never kitchen tickets waiting. This station sends 9100 to that Epson immediately. Job is a guest check / receipt. Entity filter on the receipt printer does not block a house check. Fallback: venue default, then any receipt printer. Same button and route on Pay.",
+    roles: ["owner_manager", "server", "host_operator"],
+    surfaces: ["floor"],
+    audience: "all",
+    topicId: "floor-tables",
+    tags: ["print", "check", "floor", "receipt"],
+  },
+  {
     id: "upd_2026_10_121_printer_lan_heartbeat",
     date: "2026-09-19",
     title: "Printer LAN follows the tablet heartbeat",

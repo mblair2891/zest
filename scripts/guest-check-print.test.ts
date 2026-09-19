@@ -30,6 +30,24 @@ test("cash ON is a pay tender even without a receipt printer", () => {
   assert.doesNotMatch(store, /stationMayKickDrawer\(get\(\)\.locationDevices/);
 });
 
+test("table sheet Print check is on each row and never kitchen queue", () => {
+  const floor = readFileSync("src/components/pos/FloorView.tsx", "utf8");
+  assert.match(floor, /data-print-check/);
+  assert.match(floor, /Print check/);
+  assert.match(floor, /data-print-all-open/);
+  assert.match(floor, /Sending to \$\{/);
+  assert.match(floor, /NO_SECTION_RECEIPT/);
+  const from = readFileSync("src/lib/print/from-store.ts", "utf8");
+  assert.match(from, /NO_SECTION_RECEIPT/);
+  assert.match(from, /sentTo/);
+  const guestFn = from.slice(from.indexOf("export async function printGuestCheck"));
+  assert.match(guestFn, /"receipt"/);
+  assert.doesNotMatch(guestFn.slice(0, 2200), /kind: "ticket"/);
+  assert.match(guestFn, /station: "receipt"/);
+  const pay = readFileSync("src/components/pos/PaymentDialog.tsx", "utf8");
+  assert.match(pay, /Sending to \$\{r\.sentTo/);
+});
+
 test("pay screen prints guest check before tender", () => {
   const pay = readFileSync("src/components/pos/PaymentDialog.tsx", "utf8");
   assert.match(pay, /Print check/);

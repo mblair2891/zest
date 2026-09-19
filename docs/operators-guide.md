@@ -1,7 +1,7 @@
 # Operators Guide — authoring
 
-**Revision · 19 Sep 2026** — Printer LAN status follows station heartbeat.
-Guide v2026.10.121.
+**Revision · 19 Sep 2026** — Table sheet Print check to section receipt printer.
+Guide v2026.10.122.
 
 The in-app **Operators Guide** is the living product manual. It is not a
 separate PDF. Staff open it from **Guide** / **?** in the POS and platform

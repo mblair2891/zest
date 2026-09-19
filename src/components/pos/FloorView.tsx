@@ -44,7 +44,9 @@ import { parseQrMode, tableGuestUrl } from "@/lib/pos/qr-table";
 import { parseQrPolicy, qrPolicySummary, qrTableTents } from "@/lib/pos/qr-policy";
 import { printTableTents } from "@/lib/print/from-store";
 import { getDemoType } from "@/lib/demo/session";
+import { toast } from "sonner";
 import { cn, formatCurrency, formatTime } from "@/lib/utils";
+import { NO_SECTION_RECEIPT } from "@/lib/print/from-store";
 import { computeDualTotals, computeTotals } from "@/lib/pos/calculations";
 import {
   activeGrantForTable,
@@ -991,10 +993,33 @@ export function FloorView({
                   }
                   setDetail(null);
                 }}
+                onPrintCheck={(orderId) => {
+                  const section = detailLive.section?.trim() || "this section";
+                  void import("@/lib/print/from-store").then(async (m) => {
+                    const r = await m.printGuestCheck(orderId);
+                    if (r.ok) {
+                      toast.success(`Sending to ${r.sentTo || `${section} receipt printer`}`);
+                    } else {
+                      toast.error(r.error || NO_SECTION_RECEIPT);
+                    }
+                  });
+                }}
                 onPrintAll={() => {
                   const checks = openChecksOnTable(detailLive, orders);
+                  const section = detailLive.section?.trim() || "this section";
                   void import("@/lib/print/from-store").then(async (m) => {
-                    for (const c of checks) await m.printGuestCheck(c.id);
+                    let ok = 0;
+                    let err = "";
+                    for (const c of checks) {
+                      const r = await m.printGuestCheck(c.id);
+                      if (r.ok) ok += 1;
+                      else err = r.error || NO_SECTION_RECEIPT;
+                    }
+                    if (ok) {
+                      toast.success(`Sending to ${section} receipt printer`);
+                    }
+                    if (err) toast.error(err);
+                    if (!ok && !err) toast.error(NO_SECTION_RECEIPT);
                   });
                 }}
                 onSeat={() => {
@@ -1286,6 +1311,7 @@ function TableDetailBody({
   onSeat,
   onOpenCheck,
   onNewCheck,
+  onPrintCheck,
   onPrintAll,
   onClean,
   onStatus,
@@ -1319,6 +1345,7 @@ function TableDetailBody({
   onSeat: () => void;
   onOpenCheck: (orderId: string) => void;
   onNewCheck: () => void;
+  onPrintCheck: (orderId: string) => void;
   onPrintAll: () => void;
   onClean: () => void;
   onStatus: (st: FloorPipelineStatus) => void;
@@ -1368,20 +1395,23 @@ function TableDetailBody({
             {headerServer ? ` · ${headerServer}` : ""}
           </p>
           <p className="mt-1 text-[11px] text-muted-foreground">
-            Tap a check to add, void, send, print check, or pay. Staff split stays on
+            Print check on the row. Tap the check to add, void, send, or pay. Staff split stays on
             that check — not Table QR.
           </p>
-          <ul className="mt-2 space-y-1.5">
+          <ul className="mt-2 space-y-2">
             {openChecks.map((c) => {
               const dual = computeDualTotals(c, settings);
               const items = c.lines.filter((l) => !l.voided).reduce((n, l) => n + l.quantity, 0);
               return (
-                <li key={c.id}>
+                <li
+                  key={c.id}
+                  className="rounded-xl border border-border bg-surface p-2"
+                  data-open-check={c.id}
+                >
                   <button
                     type="button"
-                    className="flex w-full items-center justify-between rounded-lg border border-border bg-surface px-2.5 py-2 text-left text-sm hover:border-border-strong"
+                    className="flex w-full items-center justify-between rounded-lg px-1 py-1 text-left text-sm hover:bg-surface-2"
                     onClick={() => onOpenCheck(c.id)}
-                    data-open-check={c.id}
                   >
                     <span>
                       <span className="font-medium">#{c.number}</span>
@@ -1402,6 +1432,15 @@ function TableDetailBody({
                       )}
                     </span>
                   </button>
+                  <Button
+                    size="lg"
+                    className="station-touch mt-2 min-h-12 w-full"
+                    onClick={() => onPrintCheck(c.id)}
+                    data-print-check={c.id}
+                  >
+                    <Printer className="h-5 w-5" />
+                    Print check
+                  </Button>
                 </li>
               );
             })}
@@ -1431,8 +1470,7 @@ function TableDetailBody({
           </Button>
         )}
         {hasOpen && (
-          <Button variant="outline" onClick={onPrintAll}>
-            <Printer className="h-4 w-4" />
+          <Button variant="ghost" size="sm" onClick={onPrintAll} data-print-all-open>
             Print all open
           </Button>
         )}

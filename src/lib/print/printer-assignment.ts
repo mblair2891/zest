@@ -3,7 +3,7 @@
  * food tickets follow menu groups. Stations fire; they do not own routing.
  */
 
-import type { FloorSection, OrderType, Table } from "../pos/types";
+import type { FloorSection, OrderType } from "../pos/types";
 
 export type ReceiptLane = "section" | "no_section" | "venue_default";
 
@@ -26,7 +26,11 @@ export type PrinterAssignmentDevice = {
   };
 };
 
-export type TableRef = Pick<Table, "id" | "section" | "sectionId"> | null | undefined;
+export type TableRef = {
+  id?: string;
+  section?: string;
+  sectionId?: string;
+} | null | undefined;
 export type SectionRef = Pick<FloorSection, "id" | "name">;
 
 const RECEIPT_TYPES = new Set(["receipt_printer", "printer"]);
@@ -170,24 +174,28 @@ export function resolveReceiptPrinterForCheck(opts: {
   if (lane === "section" && sectionId) {
     const bySection = receipts.find((d) => printerServesSection(d, sectionId));
     if (bySection) return bySection;
+    const venue = receipts.find((d) => d.print?.venueDefault === true);
+    if (venue) return venue;
     const fallback = stationFallbackReceipt(receipts, list, opts.stationDeviceId);
     if (fallback) return fallback;
-    return sole(receipts);
+    return receipts[0];
   }
 
   if (lane === "no_section") {
     const byLane = receipts.find((d) => d.print?.serveNoSection === true);
     if (byLane) return byLane;
+    const venue = receipts.find((d) => d.print?.venueDefault === true);
+    if (venue) return venue;
     const fallback = stationFallbackReceipt(receipts, list, opts.stationDeviceId);
     if (fallback) return fallback;
-    return sole(receipts);
+    return receipts[0];
   }
 
   const venue = receipts.find((d) => d.print?.venueDefault === true);
   if (venue) return venue;
   const fallback = stationFallbackReceipt(receipts, list, opts.stationDeviceId);
   if (fallback) return fallback;
-  return sole(receipts);
+  return receipts[0];
 }
 
 /**

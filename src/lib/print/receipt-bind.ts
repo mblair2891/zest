@@ -1,5 +1,7 @@
 /** Venue receipt printer. Section map is source of truth; station bind is fallback. */
 
+import { resolveReceiptPrinterForCheck as resolveAssignedReceipt } from "./printer-assignment";
+
 export type ReceiptBindRole = "order" | "ods" | "host" | "kiosk";
 
 export type ReceiptBindDevice = {
@@ -52,47 +54,7 @@ export function isReceiptPrinterRow(d: ReceiptBindDevice): boolean {
   return d.print?.station === "receipt" || Boolean(d.print?.routes?.includes("receipts"));
 }
 
-function receiptLaneForOrder(opts: { orderType?: string | null; table?: TableRef }): "section" | "no_section" | "venue_default" {
-  const t = String(opts.orderType ?? "");
-  if (t === "takeout" || t === "delivery" || t === "online" || t === "kiosk") return "venue_default";
-  if (!opts.table) {
-    if (t === "bar_tab" || t === "dine_in") return "no_section";
-    return "venue_default";
-  }
-  return "section";
-}
-
-function sectionIdForTable(table: TableRef, sections: SectionRef[] | undefined): string | null {
-  if (!table) return null;
-  const sid = String(table.sectionId ?? "").trim();
-  if (sid) return sid;
-  const name = String(table.section ?? "").trim();
-  if (!name) return null;
-  const hit = (sections ?? []).find((s) => s.id === name || s.name === name);
-  return hit?.id ?? null;
-}
-
-function printerServesSection(d: ReceiptBindDevice, sectionId: string | null): boolean {
-  if (!sectionId) return d.print?.serveNoSection === true;
-  return Array.isArray(d.print?.sectionIds) && d.print!.sectionIds!.includes(sectionId);
-}
-
-function stationFallbackReceipt(
-  receipts: ReceiptBindDevice[],
-  devices: ReceiptBindDevice[],
-  stationDeviceId?: string | null,
-): ReceiptBindDevice | undefined {
-  if (!stationDeviceId) return undefined;
-  const row = devices.find((d) => d.id === stationDeviceId);
-  const mappedId = row?.receiptPrinterId?.trim();
-  if (mappedId) {
-    const mapped = receipts.find((d) => d.id === mappedId);
-    if (mapped) return mapped;
-  }
-  return receipts.find((d) => (d.print?.boundStationIds ?? []).includes(stationDeviceId));
-}
-
-/** Section map wins. Station bind is fallback when the section has none. */
+/** Section map: Dining table → Dining receipt printers. Venue default, then any receipt printer. */
 export function resolveReceiptPrinterForCheck(opts: {
   devices: ReceiptBindDevice[] | undefined;
   stationDeviceId?: string | null;
@@ -102,36 +64,7 @@ export function resolveReceiptPrinterForCheck(opts: {
   sections?: SectionRef[];
   orderType?: string | null;
 }): ReceiptBindDevice | undefined {
-  const list = opts.devices ?? [];
-  const receipts = list.filter(isReceiptPrinterRow);
-  if (!receipts.length) return undefined;
-  const table =
-    opts.table ??
-    (opts.tableId ? (opts.tables ?? []).find((t) => t?.id === opts.tableId) : undefined);
-  const lane = receiptLaneForOrder({ orderType: opts.orderType, table });
-  const sectionId = lane === "section" ? sectionIdForTable(table, opts.sections) : null;
-
-  if (lane === "section" && sectionId) {
-    const bySection = receipts.find((d) => printerServesSection(d, sectionId));
-    if (bySection) return bySection;
-    const fallback = stationFallbackReceipt(receipts, list, opts.stationDeviceId);
-    if (fallback) return fallback;
-    return receipts.length === 1 ? receipts[0] : undefined;
-  }
-
-  if (lane === "no_section") {
-    const byLane = receipts.find((d) => d.print?.serveNoSection === true);
-    if (byLane) return byLane;
-    const fallback = stationFallbackReceipt(receipts, list, opts.stationDeviceId);
-    if (fallback) return fallback;
-    return receipts.length === 1 ? receipts[0] : undefined;
-  }
-
-  const venue = receipts.find((d) => d.print?.venueDefault === true);
-  if (venue) return venue;
-  const fallback = stationFallbackReceipt(receipts, list, opts.stationDeviceId);
-  if (fallback) return fallback;
-  return receipts.length === 1 ? receipts[0] : undefined;
+  return resolveAssignedReceipt(opts) as ReceiptBindDevice | undefined;
 }
 
 export function roleFromFunction(fn: string | undefined): ReceiptBindRole {

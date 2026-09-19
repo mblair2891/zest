@@ -29,7 +29,8 @@ import {
   guestCheckText,
 } from "@/lib/payments/check-by-vendor";
 import { GuestCheckByVendor } from "./GuestCheckByVendor";
-import { printGuestCheck, printGuestReceipt } from "@/lib/print/from-store";
+import { toast } from "sonner";
+import { NO_SECTION_RECEIPT, printGuestCheck, printGuestReceipt } from "@/lib/print/from-store";
 import {
   ADD_RECEIPT_PRINTER,
   currentStationDeviceId,
@@ -953,13 +954,12 @@ export function PaymentDialog({ open, onOpenChange }: Props) {
                 printCheck();
                 void printGuestCheck(order.id)
                   .then((r) => {
-                    setCheckPrintMsg(
-                      r.ok
-                        ? r.viaStation
-                          ? `Printed via ${r.viaStation}`
-                          : "Printed"
-                        : r.error || "Print failed",
-                    );
+                    const msg = r.ok
+                      ? `Sending to ${r.sentTo || "receipt printer"}`
+                      : r.error || NO_SECTION_RECEIPT;
+                    setCheckPrintMsg(msg);
+                    if (r.ok) toast.success(msg);
+                    else toast.error(msg);
                   })
                   .catch(() => setCheckPrintMsg("Print failed"))
                   .finally(() => setCheckPrintBusy(false));
