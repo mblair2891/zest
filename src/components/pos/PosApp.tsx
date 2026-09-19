@@ -48,6 +48,7 @@ import { readStationPair } from "@/lib/pos/station-pair";
 import { kickStationToPair } from "@/lib/pos/station-kick";
 import { applyStationPublish, parseStationPublish } from "@/lib/pos/station-publish";
 import { StationPublishWatcher } from "@/components/pos/StationPublishWatcher";
+import { StationUpdatePrompt } from "@/components/pos/StationUpdatePrompt";
 import { KioskApp } from "@/components/kiosk/KioskApp";
 
 import { SESSION_MODES, type SessionModeId } from "@/lib/lifecycle/types";
@@ -837,6 +838,7 @@ export function PosApp({ entityId }: { entityId?: string }) {
   return (
     <PosErrorBoundary>
       <StationPublishWatcher />
+      <StationUpdatePrompt />
       <PosAppInner entityId={entityId} />
     </PosErrorBoundary>
   );

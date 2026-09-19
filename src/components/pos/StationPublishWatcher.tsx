@@ -20,7 +20,7 @@ import { readStationDeviceRole } from "@/lib/pos/device-roles";
 import {
   currentConfigVersion,
   ingestHeartbeat,
-  tryApplyStationRefresh,
+  tickStationUpdatePrompt,
 } from "@/lib/pos/station-refresh";
 
 const STATE_POLL_MS = 5_000;
@@ -64,7 +64,7 @@ export function StationPublishWatcher() {
     if (!currentEmployeeId) {
       applyPendingIfIdle();
       applyPendingDeviceRoleIfIdle({ staffOpen: false, midTicket: isMidTicket() });
-      tryApplyStationRefresh();
+      tickStationUpdatePrompt();
     }
   }, [currentEmployeeId]);
 
@@ -107,7 +107,7 @@ export function StationPublishWatcher() {
     const pubId = window.setInterval(publishTick, PUBLISH_POLL_MS);
     const idleId = window.setInterval(() => {
       if (cancelled) return;
-      tryApplyStationRefresh();
+      tickStationUpdatePrompt();
     }, IDLE_TICK_MS);
     return () => {
       cancelled = true;

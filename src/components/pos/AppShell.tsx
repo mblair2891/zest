@@ -63,7 +63,8 @@ import { DemoEntitySwitcher } from "@/components/demo/DemoEntitySwitcher";
 import { useDemoOperatingEntityId } from "@/lib/demo/use-demo-operating-entity";
 import { useDemoDeviceStore } from "@/lib/demo/device-session";
 import { useDemoLiveSync } from "@/lib/demo/live-sync";
-import { StationUpdateBanner, TrainingBanner } from "./TrainingBanner";
+import { TrainingBanner } from "./TrainingBanner";
+import { StationUpdateBar } from "./StationUpdatePrompt";
 import { PrintWaitingBanner } from "./PrintWaitingBanner";
 import { PackageEmptyState } from "@/components/platform/PackageEmptyState";
 import { locationIsTraining } from "@/lib/lifecycle/store";
@@ -460,7 +461,7 @@ export function AppShell() {
       >
         <LoginOnboardingHost />
         <TrainingBanner />
-        <StationUpdateBanner />
+        <StationUpdateBar />
         <PrintWaitingBanner />
         <header className="flex h-14 shrink-0 items-center gap-2 border-b border-border bg-surface px-3">
           <p className="text-sm font-semibold">
@@ -503,7 +504,7 @@ export function AppShell() {
         data-station-pin-shell
       >
         <TrainingBanner />
-        <StationUpdateBanner />
+        <StationUpdateBar />
         <PrintWaitingBanner />
         <header className="flex h-14 shrink-0 items-center gap-2 border-b border-border bg-surface px-3">
           <div className="min-w-0">
@@ -555,7 +556,7 @@ export function AppShell() {
       <PayrollExportWatcher />
       <StaffingWatcher />
       <TrainingBanner />
-      <StationUpdateBanner />
+      <StationUpdateBar />
       <PrintWaitingBanner />
       <BackOfficeUnlock
         open={unlockOpen}

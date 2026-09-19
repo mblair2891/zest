@@ -8,9 +8,13 @@ import {
   setStationSending,
 } from "../src/lib/pos/station-busy.ts";
 import {
-  UPDATE_READY_BANNER,
-  IDLE_MS,
-  decideStationRefresh,
+  UPDATE_READY_TITLE,
+  UPDATE_NOW_LABEL,
+  REMIND_LATER_LABEL,
+  FINISH_CHECK_TOAST,
+  SNOOZE_MS,
+  MAX_SNOOZES,
+  decideStationPrompt,
 } from "../src/lib/pos/station-refresh.ts";
 
 test("heartbeat returns appBuild and configVersion", () => {
@@ -39,77 +43,99 @@ test("busy flags block reload during pay, print, send", () => {
   assert.equal(stationCriticalBusy(), false);
 });
 
-test("idle PIN reloads immediately after 3s; Pay open waits", () => {
+test("prompt: modal, snooze, bar after 3, pay hides modal", () => {
+  assert.equal(SNOOZE_MS, 10 * 60 * 1000);
+  assert.equal(MAX_SNOOZES, 3);
   assert.equal(
-    decideStationRefresh({
+    decideStationPrompt({
       pending: "shell",
+      snoozed: false,
+      snoozeCount: 0,
       criticalBusy: false,
-      busy: false,
-      idleSurface: true,
-      idleMs: IDLE_MS,
+      isManager: false,
     }),
-    "reload",
+    "modal",
   );
   assert.equal(
-    decideStationRefresh({
-      pending: "config",
+    decideStationPrompt({
+      pending: "shell",
+      snoozed: true,
+      snoozeCount: 1,
       criticalBusy: false,
-      busy: false,
-      idleSurface: true,
-      idleMs: IDLE_MS,
+      isManager: false,
     }),
-    "apply-config",
+    "hidden",
   );
   assert.equal(
-    decideStationRefresh({
+    decideStationPrompt({
       pending: "shell",
+      snoozed: true,
+      snoozeCount: 1,
+      criticalBusy: false,
+      isManager: true,
+    }),
+    "manager-chip",
+  );
+  assert.equal(
+    decideStationPrompt({
+      pending: "shell",
+      snoozed: false,
+      snoozeCount: 3,
+      criticalBusy: false,
+      isManager: false,
+    }),
+    "bar",
+  );
+  assert.equal(
+    decideStationPrompt({
+      pending: "shell",
+      snoozed: false,
+      snoozeCount: 0,
       criticalBusy: true,
-      busy: true,
-      idleSurface: false,
-      idleMs: 0,
+      isManager: false,
     }),
-    "banner",
+    "hidden",
   );
   assert.equal(
-    decideStationRefresh({
-      pending: "shell",
+    decideStationPrompt({
+      pending: "config",
+      snoozed: false,
+      snoozeCount: 0,
       criticalBusy: false,
-      busy: true,
-      idleSurface: false,
-      idleMs: 0,
-      forceWhenSafe: true,
+      isManager: false,
     }),
-    "reload",
-  );
-  assert.equal(
-    decideStationRefresh({
-      pending: "shell",
-      criticalBusy: false,
-      busy: false,
-      idleSurface: true,
-      idleMs: 500,
-    }),
-    "wait-idle",
+    "modal",
   );
 });
 
-test("update-ready banner copy and idle apply are wired", () => {
-  assert.equal(UPDATE_READY_BANNER, "Update ready — will apply when you close this check");
-  const banner = readFileSync("src/components/pos/TrainingBanner.tsx", "utf8");
-  assert.match(banner, /data-station-update-ready/);
-  assert.match(banner, /UPDATE_READY_BANNER/);
+test("update prompt copy is wired; never reload without a tap", () => {
+  assert.equal(UPDATE_READY_TITLE, "A system update is ready.");
+  assert.equal(UPDATE_NOW_LABEL, "Update now");
+  assert.equal(REMIND_LATER_LABEL, "Remind me later");
+  assert.equal(FINISH_CHECK_TOAST, "Finish this check first");
+  const prompt = readFileSync("src/components/pos/StationUpdatePrompt.tsx", "utf8");
+  assert.match(prompt, /data-station-update-modal/);
+  assert.match(prompt, /data-station-update-now/);
+  assert.match(prompt, /data-station-remind-later/);
+  assert.match(prompt, /data-station-update-bar/);
+  assert.match(prompt, /FINISH_CHECK_TOAST/);
+  const refresh = readFileSync("src/lib/pos/station-refresh.ts", "utf8");
+  assert.match(refresh, /Never reload without a tap/);
+  assert.match(refresh, /applyStationUpdate/);
+  assert.match(refresh, /snoozeStationUpdate/);
+  assert.doesNotMatch(refresh, /tryApplyStationRefresh/);
   const watch = readFileSync("src/components/pos/StationPublishWatcher.tsx", "utf8");
   assert.match(watch, /ingestHeartbeat/);
-  assert.match(watch, /tryApplyStationRefresh/);
-  assert.match(watch, /IDLE_TICK_MS/);
+  assert.match(watch, /tickStationUpdatePrompt/);
   const print = readFileSync("src/lib/print/from-store.ts", "utf8");
   assert.match(print, /setStationPrintInFlight\(true\)/);
   const persist = readFileSync("src/lib/pos/persist-location-setup.ts", "utf8");
   assert.match(persist, /bumpConfigVersion/);
   const guide = readFileSync("src/lib/guide/content/devices.ts", "utf8");
-  assert.match(guide, /appBuild/);
-  assert.match(guide, /configVersion/);
+  assert.match(guide, /A system update is ready/);
+  assert.match(guide, /Remind me later/);
+  assert.match(guide, /Finish this check first/);
   assert.match(guide, /Do not force-stop, unpair, or install a new APK/);
   const types = readFileSync("src/lib/guide/types.ts", "utf8");
-  assert.match(types, /2026\.10\.127/);
+  assert.match(types, /2026\.10\.128/);
 });

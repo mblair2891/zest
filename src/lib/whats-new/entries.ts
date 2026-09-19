@@ -6,6 +6,19 @@ import type { GuideUpdate } from "@/lib/guide/types";
  */
 export const WHATS_NEW_ENTRIES: GuideUpdate[] = [
   {
+    id: "upd_2026_10_128_station_update_prompt",
+    date: "2026-09-19",
+    title: "Update now or remind me later",
+    summary:
+      "A new deploy shows “A system update is ready.” Update now loads the new UI. Remind me later hides it for 10 minutes. Pay cannot force reload until the check closes.",
+    body: "Heartbeat still carries appBuild and configVersion. The station never reloads by itself. Modal: Update now (WebView reload or snapshot refetch) or Remind me later (10 minutes; after three snoozes a persistent bar). Staff PIN may snooze. Manager/owner can Update now anytime. Mid-send, mid-pay, or Print check: toast “Finish this check first.” PIN pad and idle floor may show the modal immediately. No force-stop, unpair, or new APK.",
+    roles: ["owner_manager", "server", "kitchen_bar", "host_operator"],
+    surfaces: ["settings"],
+    audience: "all",
+    topicId: "android-kiosk",
+    tags: ["station", "reload", "update", "deploy"],
+  },
+  {
     id: "upd_2026_10_127_station_auto_reload",
     date: "2026-09-19",
     title: "Stations reload themselves on a website deploy",

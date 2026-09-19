@@ -1,22 +1,7 @@
 import { useLifecycleStore, locationIsTraining, operatorIsTraining } from "@/lib/lifecycle/store";
 import { LIFECYCLE_LABEL } from "@/lib/lifecycle/types";
 import { usePosStore } from "@/lib/pos/store";
-import { UPDATE_READY_BANNER, useStationRefreshStore } from "@/lib/pos/station-refresh";
 import { HOST_SCOPE } from "@/lib/access/entity-grants";
-
-export function StationUpdateBanner() {
-  const banner = useStationRefreshStore((s) => s.banner);
-  if (!banner) return null;
-  return (
-    <div
-      data-station-update-ready
-      className="shrink-0 border-b border-primary/40 bg-primary/10 px-3 py-1.5 text-center text-[11px] font-semibold text-foreground"
-      role="status"
-    >
-      {UPDATE_READY_BANNER}
-    </div>
-  );
-}
 
 export function TrainingBanner() {
   const status = useLifecycleStore((s) => s.status);

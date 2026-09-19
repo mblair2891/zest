@@ -1,6 +1,6 @@
 /**
- * Station activity flags for auto-reload safety.
- * Never reload mid-send, mid-pay, or while a guest-check print is in flight.
+ * Station activity flags for update-now safety.
+ * Never apply mid-send, mid-pay, or while a guest-check print is in flight.
  */
 
 let payOpen = false;

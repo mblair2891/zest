@@ -187,7 +187,7 @@ export function FloorView({
   useEffect(() => {
     void import("@/lib/pos/station-busy").then((m) => m.setStationFloorSheetOpen(Boolean(detailLive)));
     if (!detailLive) {
-      void import("@/lib/pos/station-refresh").then((m) => m.tryApplyStationRefresh());
+      void import("@/lib/pos/station-refresh").then((m) => m.tickStationUpdatePrompt());
     }
     return () => {
       void import("@/lib/pos/station-busy").then((m) => m.setStationFloorSheetOpen(false));

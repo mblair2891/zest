@@ -111,7 +111,7 @@ export function OrderView() {
   useEffect(() => {
     void import("@/lib/pos/station-busy").then((m) => m.setStationPayOpen(payOpen));
     if (!payOpen) {
-      void import("@/lib/pos/station-refresh").then((m) => m.tryApplyStationRefresh());
+      void import("@/lib/pos/station-refresh").then((m) => m.tickStationUpdatePrompt());
     }
     return () => {
       void import("@/lib/pos/station-busy").then((m) => m.setStationPayOpen(false));
