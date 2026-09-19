@@ -12,7 +12,7 @@ import type { PrintJob, PrintLine } from "./types";
 import type { PrintStation } from "@/lib/pos/location-devices";
 import { splitTenderByEntity } from "@/lib/payments/entity-split";
 import { parseQrPolicy, shouldPrintPayQr } from "@/lib/pos/qr-policy";
-import { ticketGuestUrl } from "@/lib/pos/qr-table";
+import { checkGuestUrl, tableGuestUrl } from "@/lib/pos/qr-table";
 import { parseVenueTimezone, venueNowMs } from "@/lib/pos/venue-time";
 import { parseLanTarget } from "./printer-models";
 import { escposBase64, parseDrawerKickPin } from "./escpos";
@@ -103,8 +103,23 @@ function locationIdForQr(s: ReturnType<typeof usePosStore.getState>, fallback: s
   );
 }
 
+function persistTableQrToken(tableId: string, token: string): void {
+  const s = usePosStore.getState();
+  const hit = s.tables.find((t) => t.id === tableId);
+  if (!hit || hit.qrToken === token) return;
+  usePosStore.setState({
+    tables: s.tables.map((t) => (t.id === tableId ? { ...t, qrToken: token } : t)),
+  });
+  try {
+    void import("@/lib/pos/floor-sync").then((m) => m.persistAfterLocalMutation("table", tableId));
+  } catch {
+    /* optional */
+  }
+}
+
 function payQrForCheck(
-  orderId: string,
+  order: { id: string; number: number; tableId?: string; tabName?: string; type?: string },
+  table: { id: string; label: string; qrToken?: string } | undefined,
   locationId: string,
   settings: RestaurantSettings,
   printPayQr?: boolean | null,
@@ -112,8 +127,14 @@ function payQrForCheck(
   const policy = parseQrPolicy(settings.qrPolicy, settings.qrMode);
   if (!shouldPrintPayQr(policy, printPayQr)) return {};
   const loc = locationId.trim() || "loc";
-  const ticket = ticketGuestUrl(orderId, loc, policy.ticketQrTtlSec);
-  return { qrUrl: ticket.url, qrCaption: "Scan to pay this check" };
+  if (table) {
+    const guest = checkGuestUrl(table, Number(order.number) || 0, loc);
+    if (guest.minted) persistTableQrToken(table.id, guest.token);
+    return { qrUrl: guest.url, qrCaption: "Scan to pay this check" };
+  }
+  const label = String(order.tabName || order.type || "check").replace("_", " ");
+  const url = tableGuestUrl({ label }, { pay: true, check: Number(order.number) || 0 });
+  return { qrUrl: url, qrCaption: "Scan to pay this check" };
 }
 
 function guestCheckJob(
@@ -141,7 +162,7 @@ function guestCheckJob(
       amountCents: linePrintedCents(l, policy),
     }));
   const loc = locationIdForQr(s, locationId);
-  const qr = payQrForCheck(order.id, loc, s.settings, printPayQr);
+  const qr = payQrForCheck(order, table, loc, s.settings, printPayQr);
   let cashSum = 0;
   let cardSum = 0;
   for (const it of items) {
@@ -267,7 +288,6 @@ export async function printFromPos(
         feesCents: sh.taxCents + sh.serviceCents + sh.tipCents,
         totalCents: sh.totalCents,
       }));
-      const policy = parseQrPolicy(s.settings.qrPolicy, s.settings.qrMode);
       const receiptPrn = resolveReceiptPrinter(devices, currentStationDeviceId(), {
         table,
         tables: s.tables,
@@ -275,9 +295,13 @@ export async function printFromPos(
         sections: s.floorSections,
         orderType: order.type,
       });
-      const ticketQr = shouldPrintPayQr(policy, receiptPrn?.print?.printPayQr) && locationId
-        ? ticketGuestUrl(order.id, locationId, policy.ticketQrTtlSec)
-        : null;
+      const ticketQr = payQrForCheck(
+        order,
+        table,
+        locationIdForQr(s, locationId),
+        s.settings,
+        receiptPrn?.print?.printPayQr,
+      );
       const guestJob: PrintJob = {
         id: uid("prn"),
         kind: "receipt",
@@ -291,8 +315,8 @@ export async function printFromPos(
         copy: "guest",
         items: receiptLines(order, s.settings),
         allocations,
-        qrUrl: ticketQr?.url,
-        qrCaption: ticketQr ? "Scan to pay this check" : undefined,
+        qrUrl: ticketQr.qrUrl,
+        qrCaption: ticketQr.qrCaption,
         timezone: parseVenueTimezone(s.settings.timezone),
         totals: {
           subtotalCents: totals.subtotalCents,
@@ -346,7 +370,8 @@ export async function printFromPos(
     for (const job of jobs) {
       if (job.kind !== "guest_check") continue;
       const qr = payQrForCheck(
-        job.checkId,
+        receiptOrder ?? { id: job.checkId, number: Number(job.checkNumber) || 0 },
+        receiptTable,
         locationIdForQr(s, locationId),
         s.settings,
         mappedReceipt.print?.printPayQr,
@@ -482,7 +507,7 @@ export async function printGuestReceipt(orderId: string): Promise<{
       totalCents: sh.totalCents,
     })),
     timezone: parseVenueTimezone(s.settings.timezone),
-    ...payQrForCheck(order.id, locationId, s.settings, printer?.print?.printPayQr),
+    ...payQrForCheck(order, table, locationIdForQr(s, locationId), s.settings, printer?.print?.printPayQr),
     totals: {
       subtotalCents: totals.subtotalCents,
       taxCents: totals.taxCents,

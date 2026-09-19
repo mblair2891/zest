@@ -50,11 +50,13 @@ export function tableQrSearch(opts?: {
   pay?: boolean;
   demoType?: string | null;
   seat?: number;
+  check?: number;
 }): string {
   const params = new URLSearchParams();
   if (opts?.pay) params.set("pay", "1");
   if (opts?.demoType) params.set("demo", opts.demoType);
   if (opts?.seat && opts.seat > 0) params.set("seat", String(opts.seat));
+  if (opts?.check && opts.check > 0) params.set("check", String(opts.check));
   const q = params.toString();
   return q ? `?${q}` : "";
 }
@@ -68,7 +70,7 @@ export function tablePayPath(
 
 export function tableGuestPath(
   table: { label: string; qrToken?: string },
-  opts?: { pay?: boolean; demoType?: string | null },
+  opts?: { pay?: boolean; demoType?: string | null; seat?: number; check?: number },
 ): string {
   return `${tableQrPath(table)}${tableQrSearch(opts)}`;
 }
@@ -88,7 +90,7 @@ function venueSlugNow(): string | null {
 
 export function tableGuestUrl(
   table: { label: string; qrToken?: string },
-  opts?: { pay?: boolean; demoType?: string | null; seat?: number },
+  opts?: { pay?: boolean; demoType?: string | null; seat?: number; check?: number },
 ): string {
   const path = tableGuestPath(table, opts);
   const slug = venueSlugNow();
@@ -128,6 +130,38 @@ export function parseTicketQrToken(
 
 export function ticketQrPath(token: string): string {
   return `/t/${encodeURIComponent(token)}`;
+}
+
+/**
+ * Public table token for guest QR. Stable from table id + label + venue.
+ * Remint when missing or minted for a different location. Never a demo/random token.
+ */
+export function ensureTablePublicToken(
+  table: { id: string; label: string; qrToken?: string },
+  locationId: string,
+): { token: string; minted: boolean } {
+  const loc = String(locationId ?? "").trim();
+  const existing = String(table.qrToken ?? "").trim().toLowerCase();
+  if (existing.startsWith("t") && existing.length >= 5) {
+    if (!loc || qrTokenMatchesLocation(existing, loc)) {
+      return { token: existing, minted: false };
+    }
+  }
+  return { token: makeTableQrToken(table.id, table.label, loc || undefined), minted: true };
+}
+
+/** Guest URL for this open check at this table (reorder + pay). No demo query. */
+export function checkGuestUrl(
+  table: { id: string; label: string; qrToken?: string },
+  checkNumber: number,
+  locationId: string,
+): { url: string; token: string; minted: boolean } {
+  const ensured = ensureTablePublicToken(table, locationId);
+  const url = tableGuestUrl(
+    { label: table.label, qrToken: ensured.token },
+    { pay: true, check: checkNumber },
+  );
+  return { url, token: ensured.token, minted: ensured.minted };
 }
 
 export function ticketGuestUrl(

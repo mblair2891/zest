@@ -84,7 +84,7 @@ test("guide covers pay QR, venue timezone, named taxes", () => {
   assert.match(roles, /named tax rates/);
   assert.match(roles, /IANA timezone/);
   const types = readFileSync("src/lib/guide/types.ts", "utf8");
-  assert.match(types, /2026\.10\.124/);
+  assert.match(types, /2026\.10\.125/);
 });
 
 test("guide covers live pad, print check, impact, receipt path", () => {
@@ -100,5 +100,5 @@ test("guide covers live pad, print check, impact, receipt path", () => {
   assert.match(devices, /table.s section/);
   const types = readFileSync("src/lib/guide/types.ts", "utf8");
   assert.match(types, /GUIDE_VERSION/);
-  assert.match(types, /2026\.10\.124/);
+  assert.match(types, /2026\.10\.125/);
 });

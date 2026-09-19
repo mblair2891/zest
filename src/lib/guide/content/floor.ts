@@ -270,7 +270,7 @@ export const FLOOR_TOPICS: GuideTopic[] = [
         "Full self-serve — scan table QR, open a check, order, pay. Opening a check notifies host/server.",
         "Reorder after open — QR adds items only if a staff-opened check already exists. Empty table: “see your server.” Never silently start a ticket.",
         "Pay / split — QR pays the open check (card, gift, or both). Optional even / by-item / by-seat split and tip. Staff split, void, send, print check, and pay stay on the selected check from Floor table view — Table QR is the guest tent, not the staff split path.",
-        "Print pay QR — Epson guest check (Print check / Print all open) includes a native thermal QR for that check when venue QR pay-or-reorder is on AND the receipt printer has Print pay QR checked (default on for TM-T20). The QR opens the public guest URL for that check (reorder + pay, no staff PIN). Reprint refreshes the short TTL. Star kitchen tickets never get a pay QR. Not a raster dumped as kitchen text.",
+        "Print pay QR — Epson guest check (Print check / Print all open) includes a native thermal QR when the receipt printer has Print pay QR checked (default on for TM-T20). The QR is the public guest URL for THIS open check: the table’s public token plus the check number (reorder + pay, no staff PIN). If the table has no token, Print check mints one and saves it on the table — never a random or demo token. Scan opens that table’s open check (e.g. check #105), not “Unknown table.” Star kitchen tickets never get a pay QR. Not a raster dumped as kitchen text.",
         "Table tents — printable QR per table (and seat). Print the sheet from Floor.",
         "Order allow: none / drinks / food / food and drinks. Age affirm when drinks are on.",
         "After pay: close the table for bus, or keep the check open so they can add more.",
@@ -278,7 +278,7 @@ export const FLOOR_TOPICS: GuideTopic[] = [
       steps(
         "Settings → Floor statuses, flash & QR. Turn on the flags that match the house.",
         "Print table tents from Floor, or copy a table QR from the table card / Floor editor.",
-        "On Order, Check prints a ticket QR scoped to that check.",
+        "On Order, Print check encodes the table’s public guest URL for that check number. Scan it on the guest phone — sites.summex.app or the app guest route — to open that table’s open check (reorder + pay).",
         "Guest UI is public — no PIN, no CRM. After pay they stay on thank-you, not Sign in.",
         "Lines keep their operator. One tender. Receipt grouped by vendor. Finix splits by owner.",
         "When the guest sends from QR, kitchen print is a venue job — a docked host, ODS, or print agent writes 9100. The guest phone never prints.",

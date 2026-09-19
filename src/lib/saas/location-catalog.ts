@@ -14,6 +14,7 @@ export type FloorPlanTable = {
   kind?: TableKind;
   rotation?: number;
   sectionId?: string;
+  qrToken?: string;
 };
 
 export type LocationFloorPlan = {
@@ -80,6 +81,7 @@ export function parseFloorPlan(raw: unknown): LocationFloorPlan | undefined {
       kind,
       rotation: ((rot % 360) + 360) % 360,
       sectionId: str(r.sectionId).slice(0, 80) || undefined,
+      qrToken: str(r.qrToken).slice(0, 32) || undefined,
     });
   }
   const sections: FloorSection[] = [];
@@ -116,6 +118,7 @@ export function floorPlanFromPos(tables: Table[], sections: FloorSection[]): Loc
         kind: t.kind,
         rotation: t.rotation,
         sectionId: t.sectionId,
+        qrToken: t.qrToken,
       })),
     sections: sections.map((s) => ({ ...s })),
   };
@@ -135,6 +138,7 @@ export function tablesFromFloorPlan(plan: LocationFloorPlan): Table[] {
     kind: t.kind,
     rotation: t.rotation,
     sectionId: t.sectionId,
+    qrToken: t.qrToken,
     status: "empty",
   }));
 }

@@ -231,7 +231,8 @@ function buildGuestCheckEscPos(
     parts.push(BOLD_ON, line(g.displayName.toUpperCase(), "", width), BOLD_OFF);
     let cashSub = 0;
     let cardSub = 0;
-    for (const it of g.lines) {
+    for (let i = 0; i < g.lines.length; i += 1) {
+      const it = g.lines[i]!;
       const cash = it.cashCents ?? it.amountCents ?? 0;
       const card = it.cardCents ?? it.amountCents ?? cash;
       cashSub += cash;
@@ -242,6 +243,7 @@ function buildGuestCheckEscPos(
         parts.push(line(`${it.qty} ${it.name}`, money(cash), width));
       }
       for (const m of it.mods ?? []) parts.push(line(`  ${m}`, "", width));
+      if (i < g.lines.length - 1) parts.push(FEED);
     }
     if (dual) {
       parts.push(line(`${g.displayName} cash`, money(cashSub), width));

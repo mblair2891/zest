@@ -12,10 +12,12 @@ function TableQrOrderPage() {
     typeof window === "undefined"
       ? {}
       : Object.fromEntries(new URLSearchParams(window.location.search));
+  const checkNumber = search.check ? Number(search.check) || undefined : undefined;
   return (
     <GuestTablePage
       label={label}
-      payOnly={search.pay === "1"}
+      checkNumber={checkNumber}
+      payOnly={search.pay === "1" || Boolean(checkNumber)}
       demoHint={typeof search.demo === "string" ? search.demo : undefined}
       seat={search.seat ? Number(search.seat) || undefined : undefined}
     />

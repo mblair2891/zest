@@ -6,6 +6,19 @@ import type { GuideUpdate } from "@/lib/guide/types";
  */
 export const WHATS_NEW_ENTRIES: GuideUpdate[] = [
   {
+    id: "upd_2026_10_125_guest_check_qr_token",
+    date: "2026-09-19",
+    title: "Guest check QR opens that table’s check",
+    summary:
+      "Print check QR is the table’s public guest URL plus the check number. Scan opens check #105 — not Unknown table.",
+    body: "Print check mints a public token on the table if it has none, saves it, and encodes that URL (check number + venue). The guest route on sites.summex.app / the app resolves the token to the open check(s) on that table — reorder + pay, no staff PIN. Never a random or demo token. 80mm Epson: each item is one line (qty + name, cash / card beside it) with a blank line between items. Entity header, entity subtotals, grand totals, footer, QR.",
+    roles: ["owner_manager", "server", "host_operator"],
+    surfaces: ["floor"],
+    audience: "all",
+    topicId: "table-qr",
+    tags: ["print", "qr", "check", "guest"],
+  },
+  {
     id: "upd_2026_10_124_guest_check_tz_qr_tax",
     date: "2026-09-19",
     title: "Guest check clock, pay QR, no phantom tax",

@@ -4,6 +4,11 @@ import { readFileSync } from "node:fs";
 import { buildEscPos, escposHasNativeQr } from "../src/lib/print/escpos.ts";
 import { buildStarSp700Bytes, starSp700HasThermalRaster } from "../src/lib/print/star-impact.ts";
 import { shouldPrintPayQr, parseQrPolicy } from "../src/lib/pos/qr-policy.ts";
+import {
+  ensureTablePublicToken,
+  makeTableQrToken,
+  tableGuestPath,
+} from "../src/lib/pos/qr-table.ts";
 import type { PrintJob } from "../src/lib/print/types.ts";
 
 const url = "https://app.summex.app/t/c.ord_abc.l8k2.ab12";
@@ -151,10 +156,60 @@ test("printer Print pay QR on emits QR even if venue flags are thin", () => {
 test("guest check source includes native QR and venue timezone", () => {
   const from = readFileSync("src/lib/print/from-store.ts", "utf8");
   assert.match(from, /shouldPrintPayQr/);
-  assert.match(from, /ticketGuestUrl/);
+  assert.match(from, /checkGuestUrl/);
+  assert.doesNotMatch(from, /ticketGuestUrl/);
   assert.match(from, /parseVenueTimezone/);
   const esc = readFileSync("src/lib/print/escpos.ts", "utf8");
   assert.match(esc, /qrPayload/);
   assert.match(esc, /payQrBlock/);
   assert.doesNotMatch(esc, /job\.qrUrl\.slice\(0, width\)/);
+});
+
+test("guest check QR is table public token plus check number, not a c. ticket token", () => {
+  const table = { id: "t_12", label: "12", qrToken: undefined as string | undefined };
+  const loc = "loc_venue_1";
+  const first = ensureTablePublicToken(table, loc);
+  assert.equal(first.minted, true);
+  assert.match(first.token, /^t/);
+  assert.doesNotMatch(first.token, /^c\./);
+  const path = tableGuestPath({ label: table.label, qrToken: first.token }, { pay: true, check: 105 });
+  assert.match(path, /^\/t\//);
+  assert.match(path, /check=105/);
+  assert.doesNotMatch(path, /demo=/);
+  const token = makeTableQrToken(table.id, table.label, loc);
+  const again = ensureTablePublicToken({ ...table, qrToken: token }, loc);
+  assert.equal(again.minted, false);
+  assert.equal(again.token, token);
+});
+
+test("three items have one price pair per line and a blank line between", () => {
+  const bytes = buildEscPos(
+    guestJob({
+      items: [
+        { qty: 1, name: "Burger", cashCents: 1000, cardCents: 1100, amountCents: 1000 },
+        { qty: 1, name: "Fries", cashCents: 400, cardCents: 450, amountCents: 400 },
+        { qty: 1, name: "Cola", cashCents: 300, cardCents: 350, amountCents: 300 },
+      ],
+    }),
+    { modelPreset: "epson_tm_t20" },
+  );
+  const txt = asText(bytes);
+  assert.match(txt, /1 Burger\s+\$10\.00 \/ \$11\.00/);
+  assert.match(txt, /1 Fries\s+\$4\.00 \/ \$4\.50/);
+  assert.match(txt, /1 Cola\s+\$3\.00 \/ \$3\.50/);
+  assert.doesNotMatch(txt, /\$10\.00 cash/);
+  const burger = txt.indexOf("Burger");
+  const fries = txt.indexOf("Fries");
+  const between = txt.slice(burger, fries);
+  assert.match(between, /\n\s*\n/);
+});
+
+test("guest route resolves table token and check number", () => {
+  const route = readFileSync("src/routes/t.$token.tsx", "utf8");
+  assert.match(route, /checkNumber/);
+  assert.match(route, /search\.check/);
+  const page = readFileSync("src/components/pos/GuestTablePage.tsx", "utf8");
+  assert.match(page, /openChecksOnTable/);
+  assert.match(page, /checkNumber/);
+  assert.doesNotMatch(page, /qrTokenMatchesLocation/);
 });

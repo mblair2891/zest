@@ -4,8 +4,9 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { usePosStore } from "@/lib/pos/store";
 import { cn, formatCurrency } from "@/lib/utils";
-import { parseTicketQrToken, qrTokenMatchesLocation } from "@/lib/pos/qr-table";
+import { parseTicketQrToken } from "@/lib/pos/qr-table";
 import { isEmptyTable } from "@/lib/pos/floor-status";
+import { openChecksOnTable } from "@/lib/pos/check-integrity";
 import { cashPolicyFromSettings } from "@/lib/pos/cash-discount";
 import { parsePaymentMethods } from "@/lib/pos/payment-methods";
 import { computeTotals, linePrintedCents, tipSuggestions } from "@/lib/pos/calculations";
@@ -28,6 +29,7 @@ export function GuestTablePage({
   label,
   token,
   checkToken,
+  checkNumber,
   payOnly,
   demoHint,
   seat,
@@ -35,6 +37,7 @@ export function GuestTablePage({
   label?: string;
   token?: string;
   checkToken?: string;
+  checkNumber?: number;
   payOnly?: boolean;
   demoHint?: string;
   seat?: number;
@@ -102,9 +105,6 @@ export function GuestTablePage({
       if (tenantLocationId && hit.locationId && hit.locationId !== tenantLocationId) {
         return null;
       }
-      if (tenantLocationId && !qrTokenMatchesLocation(token, tenantLocationId)) {
-        return null;
-      }
       return hit;
     }
     if (!label) return null;
@@ -118,8 +118,17 @@ export function GuestTablePage({
     ? tables.find((t) => t.id === orderFromTicket.tableId) ?? null
     : null;
   const resolvedTable = table ?? tableFromTicket;
-  const order = orderFromTicket
-    ?? (resolvedTable?.orderId ? orders.find((o) => o.id === resolvedTable.orderId) : undefined);
+  const openChecks = resolvedTable ? openChecksOnTable(resolvedTable, orders) : [];
+  const order =
+    orderFromTicket ??
+    (checkNumber
+      ? openChecks.find((o) => o.number === checkNumber)
+      : undefined) ??
+    (resolvedTable?.orderId
+      ? openChecks.find((o) => o.id === resolvedTable.orderId) ??
+        orders.find((o) => o.id === resolvedTable.orderId)
+      : undefined) ??
+    openChecks[0];
   const cardPolicy = cashPolicyFromSettings(settings);
   const totals = order ? computeTotals(order, settings, { tender: "card" }) : null;
 
@@ -345,6 +354,7 @@ export function GuestTablePage({
           <h1 className="mt-1 text-2xl font-black tracking-tight">
             Table {displayLabel}
             {seat ? ` · seat ${seat}` : ""}
+            {order ? ` · check #${order.number}` : ""}
           </h1>
           <p className="text-sm text-muted-foreground">
             {resolvedTable?.section ?? ""} · {settings.name}
