@@ -2,6 +2,7 @@ import { formatCurrency } from "@/lib/utils";
 import type { PrintJob } from "./types";
 import { groupLinesByEntity } from "@/lib/payments/entity-split";
 import { formatTurnInSlipLines } from "@/lib/pos/till-turn-in-slip";
+import { formatVenueStamp, formatVenueTime } from "@/lib/pos/venue-time";
 import {
   colsForPaperWidth,
   isImpactPrinterModel,
@@ -98,7 +99,7 @@ export function buildDrawerKickBytes(opts?: { pin?: DrawerKickPin }): Uint8Array
 
 function buildNoSaleSlip(job: PrintJob, opts?: EscPosOptions): Uint8Array {
   const { emulation, width, cutter } = resolveOpts(opts);
-  const when = new Date(job.at || Date.now()).toLocaleString();
+  const when = formatVenueStamp(job.at || Date.now(), job.timezone);
   return concat([
     INIT,
     ALIGN_CT,
@@ -118,19 +119,48 @@ function buildNoSaleSlip(job: PrintJob, opts?: EscPosOptions): Uint8Array {
   ]);
 }
 
-function qrPayload(data: string): Uint8Array {
-  const d = text(data.slice(0, 80));
+/** Epson native QR (GS ( k). Guest URLs need >80 chars. Never dump as kitchen text. */
+export function qrPayload(data: string): Uint8Array {
+  const d = text(data.slice(0, 512));
   const storeLen = d.length + 3;
   return concat([
     ALIGN_CT,
     u8(0x1d, 0x28, 0x6b, 0x04, 0x00, 0x31, 0x41, 0x32, 0x00),
-    u8(0x1d, 0x28, 0x6b, 0x03, 0x00, 0x31, 0x43, 0x04),
+    u8(0x1d, 0x28, 0x6b, 0x03, 0x00, 0x31, 0x43, 0x05),
     u8(0x1d, 0x28, 0x6b, 0x03, 0x00, 0x31, 0x45, 0x31),
     u8(0x1d, 0x28, 0x6b, storeLen & 0xff, (storeLen >> 8) & 0xff, 0x31, 0x50, 0x30),
     d,
     u8(0x1d, 0x28, 0x6b, 0x03, 0x00, 0x31, 0x51, 0x30),
     FEED,
   ]);
+}
+
+export function escposHasNativeQr(bytes: Uint8Array): boolean {
+  for (let i = 0; i < bytes.length - 6; i += 1) {
+    if (
+      bytes[i] === 0x1d &&
+      bytes[i + 1] === 0x28 &&
+      bytes[i + 2] === 0x6b &&
+      bytes[i + 5] === 0x31 &&
+      bytes[i + 6] === 0x50
+    ) {
+      return true;
+    }
+  }
+  return false;
+}
+
+function payQrBlock(job: PrintJob): Uint8Array[] {
+  const url = String(job.qrUrl ?? "").trim();
+  if (!url) return [];
+  return [
+    FEED,
+    ALIGN_CT,
+    text(job.qrCaption || "Scan to pay this check"),
+    FEED,
+    qrPayload(url),
+    ALIGN_LT,
+  ];
 }
 
 function code128(data: string): Uint8Array {
@@ -192,7 +222,7 @@ function buildGuestCheckEscPos(
     BOLD_OFF,
     ALIGN_LT,
     line(job.tableLabel || "", `#${job.checkNumber}`, width),
-    line(job.serverName, new Date(job.at).toLocaleTimeString(), width),
+    line(job.serverName, formatVenueTime(job.at, job.timezone), width),
     text("-".repeat(width)),
     FEED,
   ];
@@ -214,16 +244,18 @@ function buildGuestCheckEscPos(
       }
       for (const m of it.mods ?? []) parts.push(line(`  ${m}`, "", width));
     }
-    if (groups.length > 1) {
-      if (dual) {
-        parts.push(line(`${g.displayName} cash`, money(cashSub), width));
-        parts.push(line(`${g.displayName} card`, money(cardSub), width));
-      } else {
-        parts.push(line(`${g.displayName} sub`, money(cashSub), width));
-      }
+    if (dual) {
+      parts.push(line(`${g.displayName} cash`, money(cashSub), width));
+      parts.push(line(`${g.displayName} card`, money(cardSub), width));
+    } else {
+      parts.push(line(`${g.displayName} sub`, money(cashSub), width));
     }
   }
   parts.push(text("-".repeat(width)), FEED);
+  const taxLines = job.totals?.taxLines?.filter((t) => t.cents > 0) ?? [];
+  for (const t of taxLines) {
+    parts.push(line(t.name, money(t.cents), width));
+  }
   const cashTotal = job.totals?.cashTotalCents ?? job.totals?.totalCents ?? 0;
   const cardTotal = job.totals?.cardTotalCents ?? job.totals?.totalCents ?? cashTotal;
   if (dual) {
@@ -238,8 +270,9 @@ function buildGuestCheckEscPos(
     text(job.guestCheckNote || "Not a receipt — pay server"),
     FEED,
     ALIGN_LT,
-    cutBytes(emulation, cutter),
   );
+  parts.push(...payQrBlock(job));
+  parts.push(cutBytes(emulation, cutter));
   if (job.kickDrawer) parts.push(buildDrawerKickBytes({ pin: job.drawerKickPin }));
   return concat(parts);
 }
@@ -269,6 +302,7 @@ export function buildEscPos(job: PrintJob, opts?: EscPosOptions): Uint8Array {
         seat: it.seat,
       })),
       at: job.at,
+      timezone: job.timezone,
     });
   }
   if (job.kind === "guest_check") {
@@ -297,7 +331,7 @@ export function buildEscPos(job: PrintJob, opts?: EscPosOptions): Uint8Array {
     BOLD_OFF,
     ALIGN_LT,
     line(`#${job.checkNumber}`, job.tableLabel, width),
-    line(job.serverName, new Date(job.at).toLocaleTimeString(), width),
+    line(job.serverName, formatVenueTime(job.at, job.timezone), width),
   ];
   if (job.operatorName) parts.push(line(job.operatorName, "", width));
   parts.push(text("-".repeat(width)), FEED);
@@ -318,7 +352,12 @@ export function buildEscPos(job: PrintJob, opts?: EscPosOptions): Uint8Array {
   if (job.totals) {
     parts.push(text("-".repeat(width)), FEED);
     parts.push(line("Subtotal", formatCurrency(job.totals.subtotalCents), width));
-    parts.push(line("Tax", formatCurrency(job.totals.taxCents), width));
+    const named = job.totals.taxLines?.filter((t) => t.cents > 0) ?? [];
+    if (named.length) {
+      for (const t of named) parts.push(line(t.name, formatCurrency(t.cents), width));
+    } else if (job.totals.taxCents > 0) {
+      parts.push(line("Tax", formatCurrency(job.totals.taxCents), width));
+    }
     if (job.totals.tipCents) parts.push(line("Tip", formatCurrency(job.totals.tipCents), width));
     if (job.totals.giftCents) parts.push(line("Gift", formatCurrency(job.totals.giftCents), width));
     parts.push(BOLD_ON, line("Total", formatCurrency(job.totals.totalCents), width), BOLD_OFF);
@@ -337,10 +376,7 @@ export function buildEscPos(job: PrintJob, opts?: EscPosOptions): Uint8Array {
       parts.push(line("Guest still paid once", "", width));
     }
   }
-  if (job.qrUrl) {
-    parts.push(FEED, ALIGN_CT, text(job.qrCaption || "Scan to pay this check"), FEED);
-    parts.push(text(job.qrUrl.slice(0, width)), FEED);
-  }
+  if (job.kind !== "ticket") parts.push(...payQrBlock(job));
   if (job.kind === "test") {
     parts.push(
       FEED,

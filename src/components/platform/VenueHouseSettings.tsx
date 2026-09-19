@@ -16,6 +16,15 @@ import { parseQrPolicy, QR_FLAG_LABEL, QR_MODE_FLAGS, type QrModeFlag } from "@/
 import { canEmployee } from "@/lib/access/permissions";
 import { useState } from "react";
 import type { CashRoundIncrement } from "@/lib/pos/types";
+import { TaxRatesEditor, ratesPatch } from "@/components/pos/TaxRatesSettings";
+import {
+  DEFAULT_VENUE_TIMEZONE,
+  VENUE_TIMEZONES,
+  guessTimezoneFromAddress,
+  parseVenueTimezone,
+} from "@/lib/pos/venue-time";
+import { persistTaxRates } from "@/lib/pos/persist-location-setup";
+import { resolveVenueTaxRates } from "@/lib/pos/tax-rates";
 
 const STYLE_LABEL: Record<(typeof SERVICE_STYLES_VENUE)[number], string> = {
   full_service: "Full service floor",
@@ -106,18 +115,44 @@ export function VenueHouseSettings() {
             value={settings.address}
             disabled={!write}
             onChange={(e) => updateSettings({ address: e.target.value })}
+            onBlur={() => {
+              const guessed = guessTimezoneFromAddress(settings.address);
+              const cur = parseVenueTimezone(settings.timezone);
+              if (!settings.timezone || cur === DEFAULT_VENUE_TIMEZONE) {
+                updateSettings({ timezone: guessed });
+                persist({ timezone: guessed });
+              }
+            }}
           />
         </label>
         <label className="block text-sm">
-          <span className="mb-1 block text-muted-foreground">Timezone</span>
-          <Input
-            value={settings.timezone ?? "America/Los_Angeles"}
+          <span className="mb-1 block text-muted-foreground">Location timezone (IANA)</span>
+          <select
+            className="h-10 w-full rounded-lg border border-border bg-bg px-3 text-sm"
             disabled={!write}
+            value={parseVenueTimezone(settings.timezone)}
             onChange={(e) => {
               updateSettings({ timezone: e.target.value });
               persist({ timezone: e.target.value });
             }}
-          />
+          >
+            {(VENUE_TIMEZONES as readonly string[])
+              .concat(
+                settings.timezone &&
+                  !VENUE_TIMEZONES.includes(settings.timezone as (typeof VENUE_TIMEZONES)[number])
+                  ? [parseVenueTimezone(settings.timezone)]
+                  : [],
+              )
+              .filter((v, i, a) => a.indexOf(v) === i)
+              .map((tz) => (
+                <option key={tz} value={tz}>
+                  {tz}
+                </option>
+              ))}
+          </select>
+          <span className="mt-1 block text-[11px] text-muted-foreground">
+            Default from address; editable. Tickets and reports use this zone, not the tablet.
+          </span>
         </label>
       </section>
 
@@ -161,6 +196,21 @@ export function VenueHouseSettings() {
             ))}
           </select>
         </label>
+        <p className="text-xs text-muted-foreground">
+          {taxMode === "per_entity"
+            ? "Each selling entity may inherit these rates or override them."
+            : "Entities inherit these venue rates."}
+        </p>
+        <TaxRatesEditor
+          rates={resolveVenueTaxRates(settings)}
+          disabled={!write}
+          onChange={(next) => {
+            const patch = ratesPatch(next);
+            updateSettings(patch);
+            persist({ ...patch });
+            persistTaxRates();
+          }}
+        />
       </section>
 
       <section className="rounded-2xl border border-border bg-surface p-4 space-y-3">

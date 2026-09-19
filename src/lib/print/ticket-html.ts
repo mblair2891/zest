@@ -2,6 +2,7 @@ import { formatCurrency } from "@/lib/utils";
 import type { PrintJob } from "./types";
 import { groupLinesByEntity } from "@/lib/payments/entity-split";
 import { formatTurnInSlipLines } from "@/lib/pos/till-turn-in-slip";
+import { formatVenueTime } from "@/lib/pos/venue-time";
 
 function esc(s: string): string {
   return s
@@ -101,7 +102,19 @@ export function ticketHtml(job: PrintJob): string {
   const totals = job.totals
     ? `<div class="rule"></div>
        <div class="row"><span>Subtotal</span><span>${formatCurrency(job.totals.subtotalCents)}</span></div>
-       <div class="row"><span>Tax</span><span>${formatCurrency(job.totals.taxCents)}</span></div>
+       ${
+         (job.totals.taxLines ?? []).filter((t) => t.cents > 0).length
+           ? (job.totals.taxLines ?? [])
+               .filter((t) => t.cents > 0)
+               .map(
+                 (t) =>
+                   `<div class="row"><span>${esc(t.name)}</span><span>${formatCurrency(t.cents)}</span></div>`,
+               )
+               .join("")
+           : job.totals.taxCents > 0
+             ? `<div class="row"><span>Tax</span><span>${formatCurrency(job.totals.taxCents)}</span></div>`
+             : ""
+       }
        ${
          job.totals.tipCents
            ? `<div class="row"><span>Tip</span><span>${formatCurrency(job.totals.tipCents)}</span></div>`
@@ -140,7 +153,7 @@ export function ticketHtml(job: PrintJob): string {
   <h1>${esc(job.locationName)}</h1>
   <h2>${esc(title)}${job.copy === "merchant" ? " · merchant" : ""}</h2>
   <div class="row"><span>#${esc(String(job.checkNumber))}</span><span>${esc(job.tableLabel)}</span></div>
-  <div class="row"><span>${esc(job.serverName)}</span><span>${esc(new Date(job.at).toLocaleTimeString())}</span></div>
+  <div class="row"><span>${esc(job.serverName)}</span><span>${esc(formatVenueTime(job.at, job.timezone))}</span></div>
   ${job.operatorName ? `<div>${esc(job.operatorName)}</div>` : ""}
   <div class="rule"></div>
   ${items}

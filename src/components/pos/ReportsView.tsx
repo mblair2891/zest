@@ -461,7 +461,7 @@ export function ReportsView() {
                       className="text-left underline-offset-2 hover:underline"
                       onClick={() => setInsights(r.insights)}
                     >
-                      {new Date(r.at).toLocaleString()} · {r.delivered}
+                      {formatDateTime(r.at, usePosStore.getState().settings.timezone)} · {r.delivered}
                     </button>
                   </li>
                 ))}

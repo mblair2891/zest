@@ -348,7 +348,7 @@ export const ROLE_GUIDE_TOPICS: GuideTopic[] = [
         "A café does not need a dining-room map pack. A host hall does. The type badge on Settings is the pack you are editing.",
       ),
       ul(
-        "Every house: profile, tax, Quantum Payments tenders, cash discount, devices, staff, notifications, hours, staffing recs (cut/hold/add — never auto clock-out), scheduled AI ops jobs.",
+        "Every house: profile, Location IANA timezone (default from address; tickets, ODS, reports use it), named tax rates (not JSON — add Sales / Restaurant / City / Tourism; compound vs stacked; inclusive vs add-on; zero rates = no tax; entity may inherit or override), Quantum Payments tenders, cash discount, devices, staff, notifications, hours, staffing recs (cut/hold/add — never auto clock-out), scheduled AI ops jobs.",
         "Full-service: sections and floor control.",
         "Bar: tab auto-close.",
         "Counter / QSR / café / ghost: ticket prefix and expo.",

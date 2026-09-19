@@ -163,6 +163,33 @@ export function persistPaymentMethods(): void {
   );
 }
 
+export function persistTaxRates(): void {
+  const ctx = ids();
+  if (!ctx) return;
+  const prev = timers.get("tax-rates");
+  if (prev) clearTimeout(prev);
+  timers.set(
+    "tax-rates",
+    setTimeout(() => {
+      timers.delete("tax-rates");
+      const s = usePosStore.getState().settings;
+      void saveLocationSettingsFn({
+        data: {
+          orgId: ctx.orgId,
+          locationId: ctx.locationId,
+          setup: {
+            taxRates: s.taxRates ?? [],
+            entityTaxRates: s.entityTaxRates ?? {},
+            taxRate: s.taxRate,
+            taxMode: s.taxMode,
+            timezone: s.timezone,
+          },
+        },
+      }).catch(() => undefined);
+    }, 400),
+  );
+}
+
 export function persistCashDiscount(): void {
   const ctx = ids();
   if (!ctx) return;

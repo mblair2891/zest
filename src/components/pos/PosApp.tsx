@@ -348,6 +348,15 @@ function PosAppInner({ entityId }: { entityId?: string }) {
                   setup.operatingModel === "single"
                     ? setup.operatingModel
                     : st.settings.operatingModel,
+                timezone: setup.timezone || st.settings.timezone,
+                taxMode:
+                  setup.taxMode === "per_entity" || setup.taxMode === "venue_shared"
+                    ? setup.taxMode
+                    : st.settings.taxMode,
+                taxRates: Array.isArray(setup.taxRates) ? setup.taxRates : st.settings.taxRates,
+                entityTaxRates: setup.entityTaxRates ?? st.settings.entityTaxRates,
+                taxRate:
+                  typeof setup.taxRate === "number" ? setup.taxRate : st.settings.taxRate,
               },
             });
           } catch { /* optional */ }

@@ -74,6 +74,12 @@ export type LocationSetup = {
   /** Isolated demo house. Never a live subscriber. */
   demoIsolated?: boolean;
   taxMode?: "venue_shared" | "per_entity";
+  /** Named tax rates. Explicit [] = no tax. */
+  taxRates?: import("@/lib/pos/tax-rates").TaxRateDef[];
+  /** Per-entity override when taxMode is per_entity. */
+  entityTaxRates?: Record<string, import("@/lib/pos/tax-rates").TaxRateDef[]>;
+  /** Legacy single rate fraction. */
+  taxRate?: number;
   serviceStyle?: "full_service" | "counter" | "hybrid" | "drive_through";
   hostEntityId?: string | null;
   trainingTrackInventory?: boolean;

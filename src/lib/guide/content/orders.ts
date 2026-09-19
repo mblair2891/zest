@@ -111,6 +111,7 @@ export const ORDER_TOPICS: GuideTopic[] = [
         "The originating server’s device toasts, chimes, and vibrates (where the platform allows). The table pulses Up.",
         "Expo or the server marks Delivered on the floor. Recall if you bumped too early.",
         "Mute sound from the header bell. Multi-op: filter All operators or a single stall.",
+        "Each ticket stamp (and the paper kitchen ticket) shows venue local time from Settings → Location timezone — not UTC and not the tablet’s zone.",
       ),
       callout(
         "Tickets are live across devices when online",

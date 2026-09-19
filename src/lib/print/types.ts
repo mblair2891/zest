@@ -54,6 +54,7 @@ export type PrintJob = {
   totals?: {
     subtotalCents: number;
     taxCents: number;
+    taxLines?: { name: string; cents: number }[];
     tipCents?: number;
     giftCents?: number;
     totalCents: number;
@@ -62,9 +63,11 @@ export type PrintJob = {
     cardTotalCents?: number;
   };
   guestCheckNote?: string;
-  /** Guest pay QR (ticket-scoped). Printed when location enables print_qr_on_ticket. */
+  /** Guest pay QR (this check). Epson native GS (k). Never Star kitchen. */
   qrUrl?: string;
   qrCaption?: string;
+  /** IANA venue zone for the printed clock. New prints use venue now(). */
+  timezone?: string;
   /** Bag companion after a successful till submit. Never set on a draft. */
   turnIn?: TillTurnInSlip;
   slipLines?: string[];

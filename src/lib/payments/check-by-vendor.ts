@@ -27,6 +27,7 @@ export type GuestCheckView = {
   vendors: VendorCheckBlock[];
   subtotalCents: number;
   taxCents: number;
+  taxLines: { id: string; name: string; cents: number }[];
   tipCents: number;
   serviceCents: number;
   giftCents: number;
@@ -99,6 +100,7 @@ export function buildGuestCheckView(opts: {
     vendors,
     subtotalCents: totals.subtotalCents,
     taxCents: totals.taxCents,
+    taxLines: totals.taxLines,
     tipCents: totals.tipCents,
     serviceCents: totals.serviceChargeCents,
     giftCents,
@@ -139,7 +141,11 @@ export function guestCheckText(view: GuestCheckView): string {
   }
   lines.push("");
   lines.push(`Subtotal ${formatCurrency(view.subtotalCents)}`);
-  if (view.taxCents) lines.push(`Tax ${formatCurrency(view.taxCents)}`);
+  if (view.taxLines?.length) {
+    for (const t of view.taxLines) lines.push(`${t.name} ${formatCurrency(t.cents)}`);
+  } else if (view.taxCents) {
+    lines.push(`Tax ${formatCurrency(view.taxCents)}`);
+  }
   if (view.serviceCents) lines.push(`Service ${formatCurrency(view.serviceCents)}`);
   if (view.tipCents) lines.push(`Tip ${formatCurrency(view.tipCents)}`);
   if (view.giftCents) lines.push(`Gift ${formatCurrency(view.giftCents)}`);
@@ -175,7 +181,11 @@ export function guestCheckHtml(view: GuestCheckView): string {
     .join("");
   const extras = [
     ["Subtotal", view.subtotalCents],
-    view.taxCents ? ["Tax", view.taxCents] : null,
+    ...(view.taxLines?.length
+      ? view.taxLines.map((t) => [t.name, t.cents] as [string, number])
+      : view.taxCents
+        ? [["Tax", view.taxCents] as [string, number]]
+        : []),
     view.serviceCents ? ["Service", view.serviceCents] : null,
     view.tipCents ? ["Tip", view.tipCents] : null,
     view.giftCents ? ["Gift", view.giftCents] : null,

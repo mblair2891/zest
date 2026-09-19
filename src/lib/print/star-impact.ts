@@ -1,4 +1,5 @@
 /** Star SP700 / SP742 / SP712 9-pin impact (IFBD). Star Line text — not TM-T20 thermal. */
+import { formatVenueTime } from "@/lib/pos/venue-time";
 
 export const SP700_COLS = 42;
 
@@ -46,6 +47,7 @@ export type StarImpactJob = {
   operatorName?: string | null;
   items: Array<{ qty: number; name: string; mods?: string[]; note?: string; seat?: number }>;
   at: number;
+  timezone?: string;
 };
 
 function line(left: string, right = "", width = SP700_COLS): Uint8Array {
@@ -68,7 +70,7 @@ function destinationBanner(job: StarImpactJob): string {
 export function buildStarSp700Bytes(job: StarImpactJob): Uint8Array {
   const house = job.locationName.replace(/[^\x20-\x7e]/g, "?").slice(0, SP700_COLS);
   const dest = destinationBanner(job);
-  const time = new Date(job.at).toLocaleTimeString();
+  const time = formatVenueTime(job.at, job.timezone);
   const parts: Uint8Array[] = [
     INIT,
     ascii(house),

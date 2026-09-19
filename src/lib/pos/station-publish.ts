@@ -11,6 +11,7 @@ import { parseLocationDevices } from "@/lib/pos/location-devices";
 import { parseLaborMap } from "@/lib/labor/rules";
 import { useOpsStore } from "@/lib/pos/ops-store";
 import { parsePaymentMethods } from "./payment-methods";
+import { parseTaxRates } from "./tax-rates";
 
 export const STATION_PUBLISH_STATE_KEY = "summex-station-publish-state-v1";
 
@@ -30,6 +31,11 @@ export type StationPublishSetup = {
   serversAtHostStand?: boolean;
   orderMayOpenBarTabs?: boolean;
   separateCourseTickets?: boolean;
+  timezone?: string;
+  taxRates?: object[];
+  entityTaxRates?: Record<string, object[]>;
+  taxRate?: number;
+  taxMode?: string;
   sectionNames?: string[];
   laborByEntity?: object;
   sharedVenueCostsCents?: number;
@@ -191,6 +197,25 @@ export function applyStationPublish(
     }
     if ("separateCourseTickets" in setup) {
       settings.separateCourseTickets = Boolean(setup.separateCourseTickets);
+    }
+    if (typeof setup.timezone === "string" && setup.timezone.trim()) {
+      settings.timezone = setup.timezone.trim();
+    }
+    if (setup.taxRates != null) {
+      settings.taxRates = parseTaxRates(setup.taxRates) ?? [];
+    }
+    if (setup.entityTaxRates && typeof setup.entityTaxRates === "object") {
+      const next: NonNullable<typeof settings.entityTaxRates> = {};
+      for (const [id, rates] of Object.entries(setup.entityTaxRates)) {
+        next[id] = parseTaxRates(rates) ?? [];
+      }
+      settings.entityTaxRates = next;
+    }
+    if (typeof setup.taxRate === "number" && Number.isFinite(setup.taxRate)) {
+      settings.taxRate = setup.taxRate;
+    }
+    if (setup.taxMode === "per_entity" || setup.taxMode === "venue_shared") {
+      settings.taxMode = setup.taxMode;
     }
     if (opts?.locationName) settings.name = opts.locationName;
     patch.settings = settings;

@@ -6,6 +6,19 @@ import type { GuideUpdate } from "@/lib/guide/types";
  */
 export const WHATS_NEW_ENTRIES: GuideUpdate[] = [
   {
+    id: "upd_2026_10_123_pay_qr_tz_tax",
+    date: "2026-09-19",
+    title: "Pay QR, venue clock, named taxes",
+    summary:
+      "Epson guest checks print a pay QR for that check. Ticket time is the venue timezone. Taxes are named rates — Sales + Restaurant both print; no rates means no tax line.",
+    body: "Print check / Print all open: when venue QR pay-or-reorder is on and the receipt printer has Print pay QR (default on for TM-T20), the Epson guest check includes a native thermal QR that opens that check (reorder + pay, no staff PIN). Star kitchen tickets never get a pay QR. Venue Settings → Location: IANA timezone (default from address). Kitchen tickets, guest checks, paid receipts, ODS stamps, and report clocks use that zone — not UTC and not the tablet. New prints on an open check use venue now(). Venue Settings → Taxes: add named rates (Sales, Restaurant, City, Tourism). Each has a percent, applies to Food / Bev / Retail / Gift / Service / All, stacked vs compound, inclusive vs add-on (default add-on). Zero rates = no tax. An entity may inherit or override. Guest check: subtotal by entity, each tax line, cash total, card total. Menu prices stay cash-source; tax is on top unless inclusive is on.",
+    roles: ["owner_manager", "server", "host_operator", "kitchen_bar"],
+    surfaces: ["floor", "settings", "kitchen"],
+    audience: "all",
+    topicId: "receipts-by-vendor",
+    tags: ["print", "qr", "tax", "timezone"],
+  },
+  {
     id: "upd_2026_10_122_table_print_check",
     date: "2026-09-19",
     title: "Print check on the table sheet",

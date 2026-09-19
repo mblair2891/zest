@@ -30,7 +30,16 @@ import { saveLocationSettingsFn } from "@/lib/access/api";
 import {
   confirmCashDiscountRecalc,
   persistCashDiscount,
+  persistTaxRates,
 } from "@/lib/pos/persist-location-setup";
+import { TaxRatesEditor, ratesPatch } from "./TaxRatesSettings";
+import {
+  DEFAULT_VENUE_TIMEZONE,
+  VENUE_TIMEZONES,
+  guessTimezoneFromAddress,
+  parseVenueTimezone,
+} from "@/lib/pos/venue-time";
+import { resolveVenueTaxRates } from "@/lib/pos/tax-rates";
 import { PaymentMethodsSettings } from "./PaymentMethodsSettings";
 import { isProspectDemo } from "@/lib/demo/session";
 import { useSaasStore } from "@/lib/pos/saas-store";
@@ -319,6 +328,13 @@ function GiftCardSettingsPack({
   );
 }
 
+function timezoneOptions(current?: string): string[] {
+  const cur = parseVenueTimezone(current);
+  const list = [...VENUE_TIMEZONES] as string[];
+  if (cur && !list.includes(cur)) list.unshift(cur);
+  return list;
+}
+
 export function SettingsView() {
   const settings = usePosStore((s) => s.settings);
   const locId = usePosStore((s) => s.tenantLocationId) || "loc_kiosk";
@@ -346,6 +362,10 @@ export function SettingsView() {
         setup: {
           hostBrandName: s.name,
           timezone: s.timezone,
+          taxRates: s.taxRates ?? [],
+          entityTaxRates: s.entityTaxRates ?? {},
+          taxRate: s.taxRate,
+          taxMode: s.taxMode,
           hoursNote: s.hoursNote,
           tipPooling: s.tipPooling,
           tabAutoCloseMinutes: s.tabAutoCloseMinutes,
@@ -563,6 +583,14 @@ export function SettingsView() {
           <Input
             value={settings.address}
             onChange={(e) => updateSettings({ address: e.target.value })}
+            onBlur={() => {
+              const guessed = guessTimezoneFromAddress(settings.address);
+              const cur = parseVenueTimezone(settings.timezone);
+              if (!settings.timezone || cur === DEFAULT_VENUE_TIMEZONE) {
+                updateSettings({ timezone: guessed });
+                persistTaxRates();
+              }
+            }}
           />
         </label>
         <label className="block text-sm">
@@ -573,18 +601,6 @@ export function SettingsView() {
           />
         </label>
         <div className="grid grid-cols-2 gap-3">
-          <label className="block text-sm">
-            <span className="mb-1 block text-muted-foreground">Tax rate (%)</span>
-            <Input
-              inputMode="decimal"
-              value={(settings.taxRate * 100).toFixed(3)}
-              onChange={(e) =>
-                updateSettings({
-                  taxRate: (parseFloat(e.target.value) || 0) / 100,
-                })
-              }
-            />
-          </label>
           <label className="block text-sm">
             <span className="mb-1 block text-muted-foreground">Auto-grat (%)</span>
             <Input
@@ -741,12 +757,34 @@ export function SettingsView() {
           />
         </label>
         <label className="block text-sm">
-          <span className="mb-1 block text-muted-foreground">Timezone</span>
-          <Input
-            value={settings.timezone ?? "America/Los_Angeles"}
-            onChange={(e) => updateSettings({ timezone: e.target.value })}
-          />
+          <span className="mb-1 block text-muted-foreground">Location timezone (IANA)</span>
+          <select
+            className="h-9 w-full max-w-md rounded-md border border-border bg-bg px-2 text-sm"
+            value={parseVenueTimezone(settings.timezone)}
+            onChange={(e) => {
+              updateSettings({ timezone: e.target.value });
+              persistTaxRates();
+            }}
+          >
+            {timezoneOptions(settings.timezone).map((tz) => (
+              <option key={tz} value={tz}>
+                {tz}
+              </option>
+            ))}
+          </select>
+          <span className="mt-1 block text-[11px] text-muted-foreground">
+            Default from address; editable. Kitchen tickets, guest checks, paid receipts, ODS
+            stamps, and report clocks use this zone — not UTC and not the tablet.
+          </span>
         </label>
+        <TaxRatesEditor
+          rates={resolveVenueTaxRates(settings)}
+          disabled={!write}
+          onChange={(next) => {
+            updateSettings(ratesPatch(next));
+            persistTaxRates();
+          }}
+        />
       </div>
       </Pack>
 

@@ -31,6 +31,7 @@ import { parseHrMap } from "@/lib/hr/types";
 import { parseLaborMap } from "@/lib/labor/rules";
 import { parseOpsJobsConfig } from "@/lib/ops-jobs/config";
 import { parseQrPolicy } from "@/lib/pos/qr-policy";
+import { parseTaxRates } from "@/lib/pos/tax-rates";
 import { parseItem86 } from "@/lib/pos/item-86";
 import { parseLocationOperatingModel } from "./location-model";
 import { demoVenueIsolated } from "./tenant-users";
@@ -262,6 +263,18 @@ function parseSetup(raw: unknown): LocationSetup {
           ? ""
           : undefined,
     taxMode: o.taxMode === "per_entity" ? "per_entity" : o.taxMode === "venue_shared" ? "venue_shared" : undefined,
+    taxRates: Array.isArray(o.taxRates) ? parseTaxRates(o.taxRates) : undefined,
+    entityTaxRates:
+      o.entityTaxRates && typeof o.entityTaxRates === "object" && !Array.isArray(o.entityTaxRates)
+        ? Object.fromEntries(
+            Object.entries(o.entityTaxRates as Record<string, unknown>).map(([id, rates]) => [
+              id,
+              parseTaxRates(rates) ?? [],
+            ]),
+          )
+        : undefined,
+    taxRate:
+      o.taxRate == null || !Number.isFinite(Number(o.taxRate)) ? undefined : Number(o.taxRate),
     serviceStyle:
       o.serviceStyle === "counter" ||
       o.serviceStyle === "hybrid" ||

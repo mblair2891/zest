@@ -10,6 +10,9 @@ import { canEmployee } from "@/lib/access/permissions";
 import type { EmployeeRole } from "@/lib/pos/types";
 import { ROLE_LABEL } from "@/lib/pos/rbac";
 import { QuantumPaymentsOnboardPanel } from "@/components/payments/QuantumPaymentsOnboardPanel";
+import { TaxRatesEditor, ratesPatch } from "./TaxRatesSettings";
+import { persistTaxRates } from "@/lib/pos/persist-location-setup";
+import { resolveVenueTaxRates } from "@/lib/pos/tax-rates";
 
 /**
  * Narrow ops surface for a guest operator: staff, clock, 86, view-only settlement.
@@ -33,6 +36,8 @@ export function OperatorOpsView({
   const createEmployee = usePosStore((s) => s.createEmployee);
   const emp = usePosStore((s) => s.employees.find((e) => e.id === s.currentEmployeeId));
   const locId = usePosStore((s) => s.tenantLocationId);
+  const settings = usePosStore((s) => s.settings);
+  const updateSettings = usePosStore((s) => s.updateSettings);
   const lockedId = emp?.role === "vendor_operator" ? emp.operatorId : forcedId;
   const isGuest = emp?.role === "vendor_operator";
   const canStaff = canEmployee(emp, "staff:invite") || hostManaged;
@@ -116,6 +121,39 @@ export function OperatorOpsView({
       </div>
 
       <div className="min-h-0 flex-1 space-y-4 overflow-y-auto p-3">
+        {hostManaged && settings.taxMode === "per_entity" && (
+          <div className="rounded-2xl border border-border bg-surface p-4 space-y-3">
+            <p className="text-sm font-medium">Taxes</p>
+            <label className="flex items-center gap-2 text-sm">
+              <input
+                type="checkbox"
+                className="h-4 w-4 rounded border-border"
+                checked={!settings.entityTaxRates?.[vendor.id]}
+                onChange={(e) => {
+                  const entityTaxRates = { ...(settings.entityTaxRates ?? {}) };
+                  if (e.target.checked) delete entityTaxRates[vendor.id];
+                  else entityTaxRates[vendor.id] = resolveVenueTaxRates(settings);
+                  updateSettings({ entityTaxRates });
+                  persistTaxRates();
+                }}
+              />
+              Inherit venue rates
+            </label>
+            {settings.entityTaxRates?.[vendor.id] && (
+              <TaxRatesEditor
+                rates={settings.entityTaxRates[vendor.id] ?? []}
+                onChange={(next) => {
+                  const entityTaxRates = {
+                    ...(settings.entityTaxRates ?? {}),
+                    [vendor.id]: ratesPatch(next).taxRates,
+                  };
+                  updateSettings({ entityTaxRates });
+                  persistTaxRates();
+                }}
+              />
+            )}
+          </div>
+        )}
         <QuantumPaymentsOnboardPanel
           kind="operator"
           operatorId={vendor.id}

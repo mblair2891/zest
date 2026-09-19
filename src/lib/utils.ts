@@ -11,20 +11,38 @@ export function formatCurrency(cents: number): string {
   return `${sign}$${(abs / 100).toFixed(2)}`;
 }
 
-export function formatTime(ts: number): string {
-  return new Date(ts).toLocaleTimeString([], {
-    hour: "numeric",
-    minute: "2-digit",
-  });
+export function formatTime(ts: number, timeZone?: string): string {
+  try {
+    return new Date(ts).toLocaleTimeString([], {
+      hour: "numeric",
+      minute: "2-digit",
+      ...(timeZone ? { timeZone } : {}),
+    });
+  } catch {
+    return new Date(ts).toLocaleTimeString([], {
+      hour: "numeric",
+      minute: "2-digit",
+    });
+  }
 }
 
-export function formatDateTime(ts: number): string {
-  return new Date(ts).toLocaleString([], {
-    month: "short",
-    day: "numeric",
-    hour: "numeric",
-    minute: "2-digit",
-  });
+export function formatDateTime(ts: number, timeZone?: string): string {
+  try {
+    return new Date(ts).toLocaleString([], {
+      month: "short",
+      day: "numeric",
+      hour: "numeric",
+      minute: "2-digit",
+      ...(timeZone ? { timeZone } : {}),
+    });
+  } catch {
+    return new Date(ts).toLocaleString([], {
+      month: "short",
+      day: "numeric",
+      hour: "numeric",
+      minute: "2-digit",
+    });
+  }
 }
 
 export function uid(prefix = "id"): string {

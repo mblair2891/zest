@@ -570,7 +570,7 @@ export function AppShell() {
               {settings.name}
             </p>
             <p className="truncate text-[11px] text-muted-foreground">
-              {formatTime(clock)}
+              {formatTime(clock, settings.timezone)}
               {venue ? ` · ${venue.shortName}` : ""}
               {openOrders > 0 ? ` · ${openOrders} checks` : ""}
             </p>

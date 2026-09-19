@@ -35,6 +35,12 @@ export function GuestCheckByVendor({
           </p>
         </div>
       ))}
+      {view.taxLines?.map((t) => (
+        <div key={t.id} className="flex justify-between gap-2 text-xs text-muted-foreground">
+          <span>{t.name}</span>
+          <span className="tabular">{formatCurrency(t.cents)}</span>
+        </div>
+      ))}
       <div className="flex justify-between gap-2 border-t border-border pt-2 font-semibold">
         <span>Total</span>
         <span className="tabular">{formatCurrency(view.totalCents)}</span>

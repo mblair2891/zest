@@ -148,6 +148,22 @@ export function qrPrintOnTicket(policy: QrPolicy): boolean {
   return hasQrFlag(policy, "print_qr_on_ticket");
 }
 
+/** Venue QR pay-or-reorder is on (guest URL is useful on a check). */
+export function qrPayOrReorderOn(policy: QrPolicy): boolean {
+  return qrCanPay(policy) || qrCanReorder(policy);
+}
+
+/**
+ * Print the check-scoped pay QR on an Epson guest check / paid receipt.
+ * Venue pay-or-reorder AND this printer’s “Print pay QR” (default on).
+ */
+export function shouldPrintPayQr(
+  policy: QrPolicy,
+  printPayQr?: boolean | null,
+): boolean {
+  return qrPayOrReorderOn(policy) && printPayQr !== false;
+}
+
 export function qrTableTents(policy: QrPolicy): boolean {
   return hasQrFlag(policy, "table_tents");
 }

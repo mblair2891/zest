@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { usePosStore } from "@/lib/pos/store";
 import type { TicketStation, TicketStatus } from "@/lib/pos/types";
-import { cn } from "@/lib/utils";
+import { cn, formatTime } from "@/lib/utils";
 import { GuideLearnLink } from "@/components/guide/GuideLearnLink";
 import { HOST_SCOPE, canViewTickets } from "@/lib/access/entity-grants";
 import { stationForDeviceFunction } from "@/lib/pos/location-devices";
@@ -255,7 +255,7 @@ export function KitchenView({ station, expo, operatorId }: Props) {
                       </span>
                     </p>
                     <p className="text-xs text-muted-foreground">
-                      {t.serverName} ·{" "}
+                      {t.serverName} · {formatTime(t.createdAt, settings.timezone)} ·{" "}
                       <span className="capitalize">{t.course}</span>
                       {t.vendorName && (
                         <Badge variant="secondary" className="ml-1.5">

@@ -2408,6 +2408,7 @@ const usePosStoreRaw = create<PosStore>()(persist((set, get) => {
 			comped: false,
 			discountCents: 0,
 			taxExempt: !!item.taxExempt,
+			taxCategory: item.taxCategory,
 			createdAt: Date.now()
 		};
 		const updated = {

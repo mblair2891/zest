@@ -4,12 +4,21 @@ import {
   cardPriceCents,
   type CashDiscountPolicy,
 } from "./cash-discount";
+import {
+  computeTaxLines,
+  lineTaxCategory,
+  mergeTaxLines,
+  ratesForEntity,
+  type ComputedTaxLine,
+} from "./tax-rates";
+import { venueClockParts } from "./venue-time";
 
 export interface OrderTotals {
   subtotalCents: number;
   discountCents: number;
   taxableCents: number;
   taxCents: number;
+  taxLines: ComputedTaxLine[];
   serviceChargeCents: number;
   tipCents: number;
   paidCents: number;
@@ -96,12 +105,10 @@ export function computeTotals(
     percentDiscount + order.discountCents,
   );
   const afterDiscount = subtotalCents - discountCents;
+  const scale =
+    subtotalCents > 0 ? afterDiscount / subtotalCents : 0;
   const taxableAfter =
-    subtotalCents > 0
-      ? Math.round(taxableCents * (afterDiscount / subtotalCents))
-      : 0;
-
-  const taxCents = Math.round(taxableAfter * settings.taxRate);
+    subtotalCents > 0 ? Math.round(taxableCents * scale) : 0;
 
   let serviceChargeCents = order.serviceChargeCents;
   if (
@@ -111,12 +118,41 @@ export function computeTotals(
     serviceChargeCents = Math.round(afterDiscount * settings.autoGratPercent);
   }
 
+  const byEntity = new Map<string, typeof activeLines>();
+  for (const line of activeLines) {
+    if (line.comped) continue;
+    const id = String(line.vendorId ?? line.entityId ?? "") || "_venue";
+    const list = byEntity.get(id) ?? [];
+    list.push(line);
+    byEntity.set(id, list);
+  }
+  const taxGroups: ComputedTaxLine[][] = [];
+  let addOnTax = 0;
+  for (const [entityId, elines] of byEntity) {
+    const rates = ratesForEntity(settings, entityId === "_venue" ? null : entityId);
+    const bases: Parameters<typeof computeTaxLines>[0] = {};
+    for (const line of elines) {
+      if (line.taxExempt) continue;
+      const merch = Math.round(lineTotal(line, policy) * scale);
+      const cat = lineTaxCategory(line);
+      bases[cat] = (bases[cat] ?? 0) + merch;
+    }
+    if (serviceChargeCents > 0 && entityId === [...byEntity.keys()][0]) {
+      bases.service = (bases.service ?? 0) + serviceChargeCents;
+    }
+    const computed = computeTaxLines(bases, rates);
+    taxGroups.push(computed.lines);
+    addOnTax += computed.addOnCents;
+  }
+  const taxLines = mergeTaxLines(taxGroups);
+  const taxCents = taxLines.reduce((s, l) => s + l.cents, 0);
+
   const tipCents = order.payments.reduce((s, p) => s + p.tipCents, 0);
   const paidCents = order.payments.reduce(
     (s, p) => s + p.amountCents + p.tipCents,
     0,
   );
-  const computedTotal = afterDiscount + taxCents + serviceChargeCents;
+  const computedTotal = afterDiscount + addOnTax + serviceChargeCents;
   const totalCents =
     typeof order.dueOverrideCents === "number"
       ? Math.max(0, order.dueOverrideCents)
@@ -131,6 +167,7 @@ export function computeTotals(
     discountCents,
     taxableCents: taxableAfter,
     taxCents,
+    taxLines,
     serviceChargeCents,
     tipCents,
     paidCents,
@@ -154,9 +191,9 @@ export function computeDualTotals(
 
 export function isHappyHour(settings: RestaurantSettings, now = new Date()): boolean {
   if (!settings.happyHourEnabled) return false;
-  const day = now.getDay();
-  if (!settings.happyHourDays.includes(day)) return false;
-  const hour = now.getHours() + now.getMinutes() / 60;
+  const clock = venueClockParts(now, settings.timezone);
+  if (!settings.happyHourDays.includes(clock.weekday)) return false;
+  const hour = clock.hour + clock.minute / 60;
   return hour >= settings.happyHourStart && hour < settings.happyHourEnd;
 }
 

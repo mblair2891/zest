@@ -674,10 +674,17 @@ export function OrderView() {
                 </span>
               </div>
             )}
-            <div className="flex justify-between text-muted-foreground">
-              <span>Tax</span>
-              <span className="tabular">{formatCurrency(totals.taxCents)}</span>
-            </div>
+            {(totals.taxLines?.length
+              ? totals.taxLines
+              : totals.taxCents > 0
+                ? [{ id: "tax", name: "Tax", cents: totals.taxCents }]
+                : []
+            ).map((line) => (
+              <div key={line.id} className="flex justify-between text-muted-foreground">
+                <span>{line.name}</span>
+                <span className="tabular">{formatCurrency(line.cents)}</span>
+              </div>
+            ))}
             {totals.serviceChargeCents > 0 && (
               <div className="flex justify-between text-muted-foreground">
                 <span>{settings.serviceChargeLabel}</span>

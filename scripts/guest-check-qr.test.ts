@@ -1,0 +1,122 @@
+import test from "node:test";
+import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
+import { buildEscPos, escposHasNativeQr } from "../src/lib/print/escpos.ts";
+import { buildStarSp700Bytes, starSp700HasThermalRaster } from "../src/lib/print/star-impact.ts";
+import { shouldPrintPayQr, parseQrPolicy } from "../src/lib/pos/qr-policy.ts";
+import type { PrintJob } from "../src/lib/print/types.ts";
+
+const url = "https://app.summex.app/t/c.ord_abc.l8k2.ab12";
+
+function guestJob(partial?: Partial<PrintJob>): PrintJob {
+  return {
+    id: "prn1",
+    kind: "guest_check",
+    station: "receipt",
+    locationId: "loc1",
+    locationName: "House",
+    checkId: "ord_abc",
+    checkNumber: 12,
+    tableLabel: "12",
+    serverName: "Alex",
+    items: [
+      {
+        qty: 1,
+        name: "Burger",
+        vendorName: "Hearth",
+        cashCents: 1000,
+        cardCents: 1000,
+        amountCents: 1000,
+      },
+    ],
+    totals: {
+      subtotalCents: 1000,
+      taxCents: 88,
+      taxLines: [
+        { name: "Sales", cents: 65 },
+        { name: "Restaurant", cents: 23 },
+      ],
+      totalCents: 1088,
+      cashTotalCents: 1088,
+      cardTotalCents: 1088,
+    },
+    qrUrl: url,
+    qrCaption: "Scan to pay this check",
+    timezone: "America/New_York",
+    at: Date.UTC(2026, 5, 15, 16, 30, 0),
+    guestCheckNote: "Not a receipt — pay server",
+    ...partial,
+  };
+}
+
+function asText(bytes: Uint8Array): string {
+  return Buffer.from(bytes).toString("latin1");
+}
+
+test("Epson guest check uses native QR not kitchen text dump", () => {
+  const bytes = buildEscPos(guestJob(), { modelPreset: "epson_tm_t20" });
+  assert.equal(escposHasNativeQr(bytes), true);
+  const txt = asText(bytes);
+  assert.match(txt, /GUEST CHECK/);
+  assert.match(txt, /Sales/);
+  assert.match(txt, /Restaurant/);
+  assert.match(txt, /CASH TOTAL|TOTAL/);
+  assert.match(txt, /Scan to pay this check/);
+});
+
+test("zero tax rates omit tax lines", () => {
+  const bytes = buildEscPos(
+    guestJob({
+      totals: {
+        subtotalCents: 1000,
+        taxCents: 0,
+        taxLines: [],
+        totalCents: 1000,
+        cashTotalCents: 1000,
+        cardTotalCents: 1000,
+      },
+    }),
+    { modelPreset: "epson_tm_t20" },
+  );
+  const txt = asText(bytes);
+  assert.doesNotMatch(txt, /Sales/);
+  assert.doesNotMatch(txt, /Restaurant/);
+  assert.doesNotMatch(txt, /\nTax /);
+});
+
+test("Star kitchen ticket never gets a pay QR", () => {
+  const star = buildStarSp700Bytes({
+    locationName: "House",
+    kind: "ticket",
+    station: "kitchen",
+    destinationName: "Kitchen",
+    checkNumber: 12,
+    tableLabel: "12",
+    serverName: "Alex",
+    items: [{ qty: 1, name: "Burger" }],
+    at: Date.UTC(2026, 5, 15, 16, 30, 0),
+    timezone: "America/New_York",
+  });
+  assert.equal(starSp700HasThermalRaster(star), false);
+  assert.equal(escposHasNativeQr(star), false);
+});
+
+test("venue pay-or-reorder plus printer Print pay QR", () => {
+  const on = parseQrPolicy({ flags: ["pay_only", "reorder_after_open"] });
+  assert.equal(shouldPrintPayQr(on, true), true);
+  assert.equal(shouldPrintPayQr(on, undefined), true);
+  assert.equal(shouldPrintPayQr(on, false), false);
+  const off = parseQrPolicy({ flags: ["table_tents"] });
+  assert.equal(shouldPrintPayQr(off, true), false);
+});
+
+test("guest check source includes native QR and venue timezone", () => {
+  const from = readFileSync("src/lib/print/from-store.ts", "utf8");
+  assert.match(from, /shouldPrintPayQr/);
+  assert.match(from, /ticketGuestUrl/);
+  assert.match(from, /parseVenueTimezone/);
+  const esc = readFileSync("src/lib/print/escpos.ts", "utf8");
+  assert.match(esc, /qrPayload/);
+  assert.match(esc, /payQrBlock/);
+  assert.doesNotMatch(esc, /job\.qrUrl\.slice\(0, width\)/);
+});

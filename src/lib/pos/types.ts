@@ -193,7 +193,12 @@ export interface RestaurantSettings {
   name: string;
   address: string;
   phone: string;
+  /** Legacy single rate (fraction). Used only when taxRates is omitted. */
   taxRate: number;
+  /** Named rates. Explicit [] = no tax. Missing falls back to taxRate. */
+  taxRates?: import("./tax-rates").TaxRateDef[];
+  /** Per-entity override when taxMode is per_entity. Missing key = inherit venue. */
+  entityTaxRates?: Record<string, import("./tax-rates").TaxRateDef[]>;
   autoGratPercent: number;
   autoGratPartySize: number;
   happyHourEnabled: boolean;
@@ -383,6 +388,8 @@ export interface MenuItem {
   available: boolean;
   prepMinutes?: number;
   taxExempt?: boolean;
+  /** Defaults from station: bar → bev, else food. */
+  taxCategory?: import("./tax-rates").TaxApplyTo;
   trackStock?: boolean;
   stock?: number;
   online?: boolean;
@@ -459,6 +466,7 @@ export interface OrderLine {
   pendingAction?: "void" | "comp";
   discountCents: number;
   taxExempt: boolean;
+  taxCategory?: import("./tax-rates").TaxApplyTo;
   createdAt: number;
   firedAt?: number;
 }
@@ -690,6 +698,8 @@ export interface Vendor {
   stationLabel: string;
   /** Ticket routing: bar, kitchen, or both (item/category station). */
   stationType?: "bar" | "kitchen" | "both";
+  /** When false, entityTaxRates[id] on venue settings override venue rates. Default inherit. */
+  taxInherit?: boolean;
 }
 
 export type SettlementPeriodType =
