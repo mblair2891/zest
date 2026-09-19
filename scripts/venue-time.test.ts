@@ -27,3 +27,13 @@ test("formatVenueTime is venue zone not UTC", () => {
   assert.equal(parts.hour, 12);
   assert.equal(parts.minute, 30);
 });
+
+test("Pacific afternoon is AM/PM in America/Los_Angeles never UTC", () => {
+  const ts = Date.UTC(2026, 8, 19, 21, 30, 0);
+  const pacific = formatVenueTime(ts, "America/Los_Angeles");
+  const utc = formatVenueTime(ts, "UTC");
+  assert.equal(pacific, "2:30 PM");
+  assert.equal(utc, "9:30 PM");
+  assert.match(pacific, /PM/);
+  assert.doesNotMatch(pacific, /[^ -~]/);
+});

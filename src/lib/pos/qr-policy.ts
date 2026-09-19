@@ -155,13 +155,13 @@ export function qrPayOrReorderOn(policy: QrPolicy): boolean {
 
 /**
  * Print the check-scoped pay QR on an Epson guest check / paid receipt.
- * Venue pay-or-reorder AND this printer’s “Print pay QR” (default on).
+ * Printer “Print pay QR” is the gate (default on). Checkbox on + no QR is a bug.
  */
 export function shouldPrintPayQr(
-  policy: QrPolicy,
+  _policy: QrPolicy | null | undefined,
   printPayQr?: boolean | null,
 ): boolean {
-  return qrPayOrReorderOn(policy) && printPayQr !== false;
+  return printPayQr !== false;
 }
 
 export function qrTableTents(policy: QrPolicy): boolean {

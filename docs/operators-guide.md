@@ -1,7 +1,7 @@
 # Operators Guide — authoring
 
-**Revision · 19 Sep 2026** — Pay QR on guest check, venue timezone, named tax rates.
-Guide v2026.10.123.
+**Revision · 19 Sep 2026** — Guest check venue clock, pay QR, line sums, no phantom tax.
+Guide v2026.10.124.
 
 The in-app **Operators Guide** is the living product manual. It is not a
 separate PDF. Staff open it from **Guide** / **?** in the POS and platform

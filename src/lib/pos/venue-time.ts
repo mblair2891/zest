@@ -171,56 +171,51 @@ export function guessTimezoneFromAddress(address: string, fallback = DEFAULT_VEN
   return fallback;
 }
 
-function tzOpts(timeZone?: string): { timeZone?: string } {
-  const tz = timeZone ? parseVenueTimezone(timeZone) : "";
-  return tz ? { timeZone: tz } : {};
+function venueTz(timeZone?: string): string {
+  return parseVenueTimezone(timeZone);
 }
 
-/** Wall-clock time in the venue zone (not the tablet locale). */
+function asciiAmPm(raw: string): "AM" | "PM" {
+  const s = raw.replace(/[^A-Za-z]/g, "").toUpperCase();
+  return s.startsWith("P") ? "PM" : "AM";
+}
+
+function venueParts(ts: number, timeZone: string): Intl.DateTimeFormatPart[] {
+  const d = new Date(Number.isFinite(ts) ? ts : Date.now());
+  return new Intl.DateTimeFormat("en-US", {
+    timeZone,
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+    hour12: true,
+  }).formatToParts(d);
+}
+
+function part(parts: Intl.DateTimeFormatPart[], type: Intl.DateTimeFormatPartTypes, fallback = ""): string {
+  return parts.find((p) => p.type === type)?.value ?? fallback;
+}
+
+/** Wall-clock time in the venue IANA zone only. ASCII AM/PM. Never UTC, never server local. */
 export function formatVenueTime(ts: number, timeZone?: string): string {
-  try {
-    return new Date(ts).toLocaleTimeString("en-US", {
-      hour: "numeric",
-      minute: "2-digit",
-      ...tzOpts(timeZone),
-    });
-  } catch {
-    return new Date(ts).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
-  }
+  const tz = venueTz(timeZone);
+  const parts = venueParts(ts, tz);
+  const hour = part(parts, "hour", "12");
+  const minute = part(parts, "minute", "00");
+  return `${hour}:${minute} ${asciiAmPm(part(parts, "dayPeriod", "AM"))}`;
 }
 
 export function formatVenueDateTime(ts: number, timeZone?: string): string {
-  try {
-    return new Date(ts).toLocaleString("en-US", {
-      month: "short",
-      day: "numeric",
-      hour: "numeric",
-      minute: "2-digit",
-      ...tzOpts(timeZone),
-    });
-  } catch {
-    return new Date(ts).toLocaleString("en-US", {
-      month: "short",
-      day: "numeric",
-      hour: "numeric",
-      minute: "2-digit",
-    });
-  }
+  const tz = venueTz(timeZone);
+  const parts = venueParts(ts, tz);
+  return `${part(parts, "month", "Jan")} ${part(parts, "day", "1")}, ${part(parts, "hour", "12")}:${part(parts, "minute", "00")} ${asciiAmPm(part(parts, "dayPeriod", "AM"))}`;
 }
 
 export function formatVenueStamp(ts: number, timeZone?: string): string {
-  try {
-    return new Date(ts).toLocaleString("en-US", {
-      month: "short",
-      day: "numeric",
-      year: "numeric",
-      hour: "numeric",
-      minute: "2-digit",
-      ...tzOpts(timeZone),
-    });
-  } catch {
-    return new Date(ts).toLocaleString("en-US");
-  }
+  const tz = venueTz(timeZone);
+  const parts = venueParts(ts, tz);
+  return `${part(parts, "month", "Jan")} ${part(parts, "day", "1")}, ${part(parts, "year", "")} ${part(parts, "hour", "12")}:${part(parts, "minute", "00")} ${asciiAmPm(part(parts, "dayPeriod", "AM"))}`;
 }
 
 const WEEKDAY: Record<string, number> = {

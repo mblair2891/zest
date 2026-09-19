@@ -121,11 +121,12 @@ export function legacyTaxRates(taxRate: number): TaxRateDef[] {
 }
 
 /**
- * Venue rates. Explicit `[]` is no tax. Missing field falls back to taxRate.
+ * Venue rates. Named list only — never a default sales tax from taxRate.
+ * Missing or `[]` = no tax.
  */
 export function resolveVenueTaxRates(settings: Pick<RestaurantSettings, "taxRates" | "taxRate">): TaxRateDef[] {
-  if (Array.isArray(settings.taxRates)) return settings.taxRates.map((r) => newTaxRate(r));
-  return legacyTaxRates(settings.taxRate);
+  if (!Array.isArray(settings.taxRates) || settings.taxRates.length === 0) return [];
+  return settings.taxRates.map((r) => newTaxRate(r)).filter((r) => r.percent > 0);
 }
 
 export function ratesForEntity(

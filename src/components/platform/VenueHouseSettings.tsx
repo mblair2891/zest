@@ -24,7 +24,7 @@ import {
   parseVenueTimezone,
 } from "@/lib/pos/venue-time";
 import { persistTaxRates } from "@/lib/pos/persist-location-setup";
-import { resolveVenueTaxRates } from "@/lib/pos/tax-rates";
+
 
 const STYLE_LABEL: Record<(typeof SERVICE_STYLES_VENUE)[number], string> = {
   full_service: "Full service floor",
@@ -202,7 +202,7 @@ export function VenueHouseSettings() {
             : "Entities inherit these venue rates."}
         </p>
         <TaxRatesEditor
-          rates={resolveVenueTaxRates(settings)}
+          rates={settings.taxRates ?? []}
           disabled={!write}
           onChange={(next) => {
             const patch = ratesPatch(next);

@@ -22,25 +22,8 @@ export const SETTINGS: RestaurantSettings = {
   // proprietors Michael Blair & Andy Baida
   address: "42 Pier Avenue, Seaport District",
   phone: "(555) 014-2200",
-  taxRate: 0.0875,
-  taxRates: [
-    {
-      id: "tax_sales",
-      name: "Sales",
-      percent: 6.5,
-      appliesTo: "all" as const,
-      compound: "stacked" as const,
-      inclusive: false,
-    },
-    {
-      id: "tax_restaurant",
-      name: "Restaurant",
-      percent: 2.25,
-      appliesTo: "all" as const,
-      compound: "stacked" as const,
-      inclusive: false,
-    },
-  ],
+  taxRate: 0,
+  taxRates: [],
   autoGratPercent: 0.2,
   autoGratPartySize: 6,
   happyHourEnabled: true,

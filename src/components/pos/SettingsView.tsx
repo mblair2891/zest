@@ -39,7 +39,6 @@ import {
   guessTimezoneFromAddress,
   parseVenueTimezone,
 } from "@/lib/pos/venue-time";
-import { resolveVenueTaxRates } from "@/lib/pos/tax-rates";
 import { PaymentMethodsSettings } from "./PaymentMethodsSettings";
 import { isProspectDemo } from "@/lib/demo/session";
 import { useSaasStore } from "@/lib/pos/saas-store";
@@ -778,7 +777,7 @@ export function SettingsView() {
           </span>
         </label>
         <TaxRatesEditor
-          rates={resolveVenueTaxRates(settings)}
+          rates={settings.taxRates ?? []}
           disabled={!write}
           onChange={(next) => {
             updateSettings(ratesPatch(next));

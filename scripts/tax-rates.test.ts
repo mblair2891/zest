@@ -109,10 +109,15 @@ test("zero rates prints no tax", () => {
   assert.deepEqual(resolveVenueTaxRates({ taxRates: [], taxRate: 0.0875 }), []);
 });
 
-test("missing taxRates falls back to legacy taxRate", () => {
-  const rates = resolveVenueTaxRates({ taxRate: 0.0875 });
-  assert.equal(rates.length, 1);
-  assert.equal(rates[0]?.name, "Tax");
+test("missing taxRates does not apply a default sales tax", () => {
+  assert.deepEqual(resolveVenueTaxRates({ taxRate: 0.0875 }), []);
+  const tot = computeTotals(order([line({ name: "Burger", unitPriceCents: 1000 })]), {
+    ...settings([]),
+    taxRate: 0.0875,
+    taxRates: undefined,
+  });
+  assert.equal(tot.taxCents, 0);
+  assert.equal(tot.totalCents, 1000);
 });
 
 test("compound applies to running taxable", () => {

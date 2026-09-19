@@ -91,6 +91,18 @@ async function enqueueKitchenJob(
   }
 }
 
+export const GUEST_CHECK_FOOTER = "Not a receipt - pay server";
+
+function locationIdForQr(s: ReturnType<typeof usePosStore.getState>, fallback: string): string {
+  return (
+    fallback ||
+    s.tenantLocationId ||
+    readStationPair()?.locationId ||
+    s.settlementConfig?.locationId ||
+    "loc"
+  );
+}
+
 function payQrForCheck(
   orderId: string,
   locationId: string,
@@ -98,8 +110,9 @@ function payQrForCheck(
   printPayQr?: boolean | null,
 ): { qrUrl?: string; qrCaption?: string } {
   const policy = parseQrPolicy(settings.qrPolicy, settings.qrMode);
-  if (!shouldPrintPayQr(policy, printPayQr) || !locationId) return {};
-  const ticket = ticketGuestUrl(orderId, locationId, policy.ticketQrTtlSec);
+  if (!shouldPrintPayQr(policy, printPayQr)) return {};
+  const loc = locationId.trim() || "loc";
+  const ticket = ticketGuestUrl(orderId, loc, policy.ticketQrTtlSec);
   return { qrUrl: ticket.url, qrCaption: "Scan to pay this check" };
 }
 
@@ -127,12 +140,21 @@ function guestCheckJob(
       cardCents: lineCardCents(l, policy),
       amountCents: linePrintedCents(l, policy),
     }));
-  const qr = payQrForCheck(order.id, locationId, s.settings, printPayQr);
+  const loc = locationIdForQr(s, locationId);
+  const qr = payQrForCheck(order.id, loc, s.settings, printPayQr);
+  let cashSum = 0;
+  let cardSum = 0;
+  for (const it of items) {
+    cashSum += it.cashCents ?? it.amountCents ?? 0;
+    cardSum += it.cardCents ?? it.amountCents ?? it.cashCents ?? 0;
+  }
+  const taxLines = (dual.cash.taxLines ?? []).filter((t) => t.cents > 0);
+  const taxCents = taxLines.reduce((n, t) => n + t.cents, 0);
   return {
     id: uid("prn"),
     kind: "guest_check",
     station: "receipt",
-    locationId,
+    locationId: loc,
     locationName,
     checkId: order.id,
     checkNumber: order.number,
@@ -140,15 +162,15 @@ function guestCheckJob(
     serverName: order.serverName,
     copy: "guest",
     items,
-    guestCheckNote: "Not a receipt — pay server",
+    guestCheckNote: GUEST_CHECK_FOOTER,
     ...qr,
     totals: {
-      subtotalCents: dual.cash.subtotalCents,
-      taxCents: dual.cash.taxCents,
-      taxLines: dual.cash.taxLines,
-      totalCents: dual.cash.totalCents,
-      cashTotalCents: dual.cash.totalCents,
-      cardTotalCents: dual.card.totalCents,
+      subtotalCents: cashSum,
+      taxCents,
+      taxLines,
+      totalCents: cashSum + taxCents,
+      cashTotalCents: cashSum + taxCents,
+      cardTotalCents: cardSum + taxCents,
     },
     timezone: parseVenueTimezone(s.settings.timezone),
     at: venueNowMs(),
@@ -323,7 +345,12 @@ export async function printFromPos(
   if (kind === "guest_check" && mappedReceipt) {
     for (const job of jobs) {
       if (job.kind !== "guest_check") continue;
-      const qr = payQrForCheck(job.checkId, locationId, s.settings, mappedReceipt.print?.printPayQr);
+      const qr = payQrForCheck(
+        job.checkId,
+        locationIdForQr(s, locationId),
+        s.settings,
+        mappedReceipt.print?.printPayQr,
+      );
       job.qrUrl = qr.qrUrl;
       job.qrCaption = qr.qrCaption;
     }

@@ -54,7 +54,7 @@ test("pay screen prints guest check before tender", () => {
   assert.match(pay, /printGuestCheck/);
   const from = readFileSync("src/lib/print/from-store.ts", "utf8");
   assert.match(from, /kind: "guest_check"/);
-  assert.match(from, /Not a receipt — pay server/);
+  assert.match(from, /Not a receipt - pay server/);
   assert.match(from, /cashTotalCents/);
   assert.match(from, /resolveReceiptPrinter/);
   assert.doesNotMatch(from, /window\.print\(/);
@@ -75,8 +75,8 @@ test("dashboard test print reports Printed via station", () => {
 
 test("guide covers pay QR, venue timezone, named taxes", () => {
   const pay = readFileSync("src/lib/guide/content/payments.ts", "utf8");
-  assert.match(pay, /native thermal pay QR/);
-  assert.match(pay, /each named tax line/);
+  assert.match(pay, /native thermal QR/);
+  assert.match(pay, /CASH TOTAL is the sum of line cash prices/);
   const floor = readFileSync("src/lib/guide/content/floor.ts", "utf8");
   assert.match(floor, /Print pay QR/);
   assert.match(floor, /Star kitchen tickets never get a pay QR/);
@@ -84,7 +84,7 @@ test("guide covers pay QR, venue timezone, named taxes", () => {
   assert.match(roles, /named tax rates/);
   assert.match(roles, /IANA timezone/);
   const types = readFileSync("src/lib/guide/types.ts", "utf8");
-  assert.match(types, /2026\.10\.123/);
+  assert.match(types, /2026\.10\.124/);
 });
 
 test("guide covers live pad, print check, impact, receipt path", () => {
@@ -100,4 +100,5 @@ test("guide covers live pad, print check, impact, receipt path", () => {
   assert.match(devices, /table.s section/);
   const types = readFileSync("src/lib/guide/types.ts", "utf8");
   assert.match(types, /GUIDE_VERSION/);
+  assert.match(types, /2026\.10\.124/);
 });

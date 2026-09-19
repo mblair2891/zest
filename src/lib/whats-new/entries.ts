@@ -6,6 +6,19 @@ import type { GuideUpdate } from "@/lib/guide/types";
  */
 export const WHATS_NEW_ENTRIES: GuideUpdate[] = [
   {
+    id: "upd_2026_10_124_guest_check_tz_qr_tax",
+    date: "2026-09-19",
+    title: "Guest check clock, pay QR, no phantom tax",
+    summary:
+      "Print check uses the venue timezone with AM/PM. Print pay QR on prints a scannable Epson QR. Zero tax rates: cash and card totals are the line sums — no extra tax.",
+    body: "Guest check clock is the venue IANA zone (America/Los_Angeles here) with AM/PM — never UTC, never the tablet. If the receipt printer has Print pay QR on, the Epson slip includes a native QR of that check’s public URL. Checkbox on and no QR was a bug. Zero named rates: no tax line and no extra cents. CASH TOTAL is the sum of line cash prices; CARD TOTAL is the sum of line card prices. Cash discount is not applied again on the grand total. Footer is ASCII: Not a receipt - pay server. Each item has cash / card beside it.",
+    roles: ["owner_manager", "server", "host_operator"],
+    surfaces: ["floor"],
+    audience: "all",
+    topicId: "receipts-by-vendor",
+    tags: ["print", "qr", "tax", "timezone"],
+  },
+  {
     id: "upd_2026_10_123_pay_qr_tz_tax",
     date: "2026-09-19",
     title: "Pay QR, venue clock, named taxes",

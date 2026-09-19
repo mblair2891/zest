@@ -207,7 +207,7 @@ function buildGuestCheckEscPos(
   cutter: PrinterCutter,
 ): Uint8Array {
   const dual = job.items.some(
-    (it) => typeof it.cashCents === "number" && typeof it.cardCents === "number" && it.cashCents !== it.cardCents,
+    (it) => typeof it.cashCents === "number" && typeof it.cardCents === "number",
   );
   const parts: Uint8Array[] = [
     INIT,
@@ -222,7 +222,7 @@ function buildGuestCheckEscPos(
     BOLD_OFF,
     ALIGN_LT,
     line(job.tableLabel || "", `#${job.checkNumber}`, width),
-    line(job.serverName, formatVenueTime(job.at, job.timezone), width),
+    line(job.serverName, formatVenueTime(job.at, job.timezone || "America/Los_Angeles"), width),
     text("-".repeat(width)),
     FEED,
   ];
@@ -237,8 +237,7 @@ function buildGuestCheckEscPos(
       cashSub += cash;
       cardSub += card;
       if (dual) {
-        parts.push(line(`${it.qty} ${it.name}`, `${money(cash)} cash`, width));
-        parts.push(line("", `${money(card)} card`, width));
+        parts.push(line(`${it.qty} ${it.name}`, `${money(cash)} / ${money(card)}`, width));
       } else {
         parts.push(line(`${it.qty} ${it.name}`, money(cash), width));
       }
@@ -267,7 +266,7 @@ function buildGuestCheckEscPos(
   parts.push(
     FEED,
     ALIGN_CT,
-    text(job.guestCheckNote || "Not a receipt — pay server"),
+    text(job.guestCheckNote || "Not a receipt - pay server"),
     FEED,
     ALIGN_LT,
   );

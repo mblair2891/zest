@@ -44,7 +44,7 @@ function guestJob(partial?: Partial<PrintJob>): PrintJob {
     qrCaption: "Scan to pay this check",
     timezone: "America/New_York",
     at: Date.UTC(2026, 5, 15, 16, 30, 0),
-    guestCheckNote: "Not a receipt — pay server",
+    guestCheckNote: "Not a receipt - pay server",
     ...partial,
   };
 }
@@ -62,6 +62,46 @@ test("Epson guest check uses native QR not kitchen text dump", () => {
   assert.match(txt, /Restaurant/);
   assert.match(txt, /CASH TOTAL|TOTAL/);
   assert.match(txt, /Scan to pay this check/);
+  assert.match(txt, /Not a receipt - pay server/);
+  assert.doesNotMatch(txt, /Not a receipt \? pay server/);
+});
+
+test("guest check clock is Pacific AM/PM and cash/card sit beside the item", () => {
+  const ts = Date.UTC(2026, 8, 19, 21, 30, 0);
+  const bytes = buildEscPos(
+    guestJob({
+      timezone: "America/Los_Angeles",
+      at: ts,
+      items: [
+        {
+          qty: 1,
+          name: "Burger",
+          cashCents: 1000,
+          cardCents: 1100,
+          amountCents: 1000,
+        },
+      ],
+      totals: {
+        subtotalCents: 8500,
+        taxCents: 0,
+        taxLines: [],
+        totalCents: 8500,
+        cashTotalCents: 8500,
+        cardTotalCents: 9200,
+      },
+    }),
+    { modelPreset: "epson_tm_t20" },
+  );
+  const txt = asText(bytes);
+  assert.match(txt, /2:30 PM/);
+  assert.doesNotMatch(txt, /9:30 PM/);
+  assert.match(txt, /\$10\.00 \/ \$11\.00/);
+  assert.match(txt, /CASH TOTAL/);
+  assert.match(txt, /\$85\.00/);
+  assert.match(txt, /CARD TOTAL/);
+  assert.match(txt, /\$92\.00/);
+  assert.doesNotMatch(txt, /\nTax /);
+  assert.equal(escposHasNativeQr(bytes), true);
 });
 
 test("zero tax rates omit tax lines", () => {
@@ -101,13 +141,11 @@ test("Star kitchen ticket never gets a pay QR", () => {
   assert.equal(escposHasNativeQr(star), false);
 });
 
-test("venue pay-or-reorder plus printer Print pay QR", () => {
-  const on = parseQrPolicy({ flags: ["pay_only", "reorder_after_open"] });
-  assert.equal(shouldPrintPayQr(on, true), true);
-  assert.equal(shouldPrintPayQr(on, undefined), true);
-  assert.equal(shouldPrintPayQr(on, false), false);
-  const off = parseQrPolicy({ flags: ["table_tents"] });
-  assert.equal(shouldPrintPayQr(off, true), false);
+test("printer Print pay QR on emits QR even if venue flags are thin", () => {
+  const thin = parseQrPolicy({ flags: ["table_tents"] });
+  assert.equal(shouldPrintPayQr(thin, true), true);
+  assert.equal(shouldPrintPayQr(thin, undefined), true);
+  assert.equal(shouldPrintPayQr(thin, false), false);
 });
 
 test("guest check source includes native QR and venue timezone", () => {
