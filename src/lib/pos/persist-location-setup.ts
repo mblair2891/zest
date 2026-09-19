@@ -9,6 +9,7 @@ import { floorPlanFromPos } from "@/lib/saas/location-catalog";
 import { HOST_SCOPE } from "@/lib/access/entity-grants";
 import { parseLaborRules } from "@/lib/labor/rules";
 import { parsePaymentMethods } from "./payment-methods";
+import { parseStationUpdates } from "./station-updates";
 
 const timers = new Map<string, ReturnType<typeof setTimeout>>();
 
@@ -212,6 +213,31 @@ export function persistTaxRates(): void {
             entityTaxRates: s.entityTaxRates ?? {},
             taxRate: s.taxRate,
             taxMode: s.taxMode,
+            timezone: s.timezone,
+            configVersion: bumpConfigVersion(),
+          },
+        },
+      }).catch(() => undefined);
+    }, 400),
+  );
+}
+
+export function persistStationUpdates(): void {
+  const ctx = ids();
+  if (!ctx) return;
+  const prev = timers.get("station-updates");
+  if (prev) clearTimeout(prev);
+  timers.set(
+    "station-updates",
+    setTimeout(() => {
+      timers.delete("station-updates");
+      const s = usePosStore.getState().settings;
+      void saveLocationSettingsFn({
+        data: {
+          orgId: ctx.orgId,
+          locationId: ctx.locationId,
+          setup: {
+            stationUpdates: parseStationUpdates(s.stationUpdates),
             timezone: s.timezone,
             configVersion: bumpConfigVersion(),
           },

@@ -1,6 +1,7 @@
 /**
  * Station update prompt from heartbeat.
- * Never reload without a tap. appBuild → WebView reload. configVersion → snapshot refetch.
+ * Outside the force window, never reload without a tap.
+ * During the force window, idle stations apply after 60s if nobody taps.
  */
 import { create } from "zustand";
 import { usePosStore } from "@/lib/pos/store";
@@ -12,20 +13,29 @@ import {
   stationCriticalBusy,
   stationFloorSheetOpen,
 } from "@/lib/pos/station-busy";
+import {
+  FORCE_WINDOW_DURATION_MIN,
+  forceWindowStarts,
+  inForceUpdateWindow,
+  parseStationUpdates,
+  stationFacingChangeBullets,
+} from "@/lib/pos/station-updates";
 
 const BUILD_KEY = "summex-station-app-build";
 const CONFIG_KEY = "summex-station-config-version";
 const SNOOZE_KEY = "summex-station-update-snooze-v1";
 
 export const UPDATE_READY_TITLE = "A system update is ready.";
+export const UPDATE_REQUIRED_TITLE = "Update required";
 export const UPDATE_NOW_LABEL = "Update now";
 export const REMIND_LATER_LABEL = "Remind me later";
 export const FINISH_CHECK_TOAST = "Finish this check first";
 export const SNOOZE_MS = 10 * 60 * 1000;
 export const MAX_SNOOZES = 3;
+export const FORCE_IDLE_MS = 60_000;
 
 export type StationRefreshPending = "none" | "shell" | "config";
-export type StationPromptSurface = "hidden" | "modal" | "bar" | "manager-chip";
+export type StationPromptSurface = "hidden" | "modal" | "bar" | "manager-chip" | "forced";
 
 export type HeartbeatRefresh = {
   ok: boolean;
@@ -39,6 +49,8 @@ type RefreshState = {
   surface: StationPromptSurface;
   snoozeUntil: number;
   snoozeCount: number;
+  idleSince: number | null;
+  forced: boolean;
   setSurface: (surface: StationPromptSurface) => void;
 };
 
@@ -47,6 +59,8 @@ export const useStationRefreshStore = create<RefreshState>((set) => ({
   surface: "hidden",
   snoozeUntil: 0,
   snoozeCount: 0,
+  idleSince: null,
+  forced: false,
   setSurface: (surface) => set({ surface }),
 }));
 
@@ -56,12 +70,42 @@ export function decideStationPrompt(input: {
   snoozeCount: number;
   criticalBusy: boolean;
   isManager: boolean;
+  forced?: boolean;
 }): StationPromptSurface {
   if (input.pending === "none") return "hidden";
+  if (input.forced) {
+    if (input.criticalBusy) return "hidden";
+    return "forced";
+  }
   if (input.snoozed) return input.isManager ? "manager-chip" : "hidden";
   if (input.snoozeCount >= MAX_SNOOZES) return "bar";
   if (input.criticalBusy) return "hidden";
   return "modal";
+}
+
+export function readVenueUpdatePolicy(): {
+  forced: boolean;
+  showChangeList: boolean;
+  bullets: string[];
+} {
+  try {
+    const settings = usePosStore.getState().settings;
+    const cfg = parseStationUpdates(settings.stationUpdates);
+    const forced = inForceUpdateWindow({
+      atMs: Date.now(),
+      timeZone: settings.timezone || "",
+      windows: forceWindowStarts(cfg),
+      durationMin: FORCE_WINDOW_DURATION_MIN,
+    });
+    const showChangeList = cfg.showChangeList;
+    return {
+      forced,
+      showChangeList,
+      bullets: stationFacingChangeBullets({ show: showChangeList }),
+    };
+  } catch {
+    return { forced: false, showChangeList: true, bullets: stationFacingChangeBullets() };
+  }
 }
 
 function readStored(key: string): string {
@@ -194,27 +238,53 @@ function snoozeMatchesPending(): boolean {
   return false;
 }
 
+function touchIdleClock(): number {
+  const idle = stationIsIdleSurface();
+  const st = useStationRefreshStore.getState();
+  if (!idle) {
+    if (st.idleSince != null) useStationRefreshStore.setState({ idleSince: null });
+    return 0;
+  }
+  const since = st.idleSince ?? Date.now();
+  if (!st.idleSince) useStationRefreshStore.setState({ idleSince: since });
+  return Date.now() - since;
+}
+
 export function tickStationUpdatePrompt(): void {
   const st = useStationRefreshStore.getState();
   if (st.pending === "none") {
-    if (st.surface !== "hidden") useStationRefreshStore.setState({ surface: "hidden" });
+    if (st.surface !== "hidden" || st.forced) {
+      useStationRefreshStore.setState({ surface: "hidden", forced: false, idleSince: null });
+    }
     return;
+  }
+  const policy = readVenueUpdatePolicy();
+  if (policy.forced && !stationBlocksUpdateNow()) {
+    const idleMs = touchIdleClock();
+    if (stationIsIdleSurface() && idleMs >= FORCE_IDLE_MS) {
+      applyStationUpdate();
+      return;
+    }
+  } else if (st.idleSince != null && !policy.forced) {
+    useStationRefreshStore.setState({ idleSince: null });
   }
   const rec = snoozeMatchesPending() ? readSnooze() : null;
   const count = rec?.count ?? st.snoozeCount;
   const until = rec?.until ?? st.snoozeUntil;
-  const snoozed = until > Date.now();
+  const snoozed = !policy.forced && until > Date.now();
   const surface = decideStationPrompt({
     pending: st.pending,
     snoozed,
     snoozeCount: count,
     criticalBusy: stationCriticalBusy(),
     isManager: currentIsManager(),
+    forced: policy.forced,
   });
   useStationRefreshStore.setState({
     surface,
     snoozeCount: count,
     snoozeUntil: snoozed ? until : 0,
+    forced: policy.forced,
   });
 }
 
@@ -244,12 +314,13 @@ export function applyStationUpdate(): { ok: boolean; reason?: "busy" | "none" } 
       surface: "hidden",
       snoozeUntil: 0,
       snoozeCount: 0,
+      idleSince: null,
+      forced: false,
     });
     reloadStationShell();
     return { ok: true };
   }
   if (!pendingSnapshot) {
-    tickStationUpdatePrompt();
     return { ok: false, reason: "none" };
   }
   applyConfigSnapshot(pendingSnapshot);
@@ -261,6 +332,8 @@ export function applyStationUpdate(): { ok: boolean; reason?: "busy" | "none" } 
     surface: "hidden",
     snoozeUntil: 0,
     snoozeCount: 0,
+    idleSince: null,
+    forced: false,
   });
   return { ok: true };
 }
@@ -268,6 +341,7 @@ export function applyStationUpdate(): { ok: boolean; reason?: "busy" | "none" } 
 export function snoozeStationUpdate(): void {
   const st = useStationRefreshStore.getState();
   if (st.pending === "none") return;
+  if (readVenueUpdatePolicy().forced) return;
   const count = st.snoozeCount + 1;
   const until = Date.now() + SNOOZE_MS;
   const rec: SnoozeRecord = {

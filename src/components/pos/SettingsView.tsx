@@ -31,8 +31,10 @@ import {
   confirmCashDiscountRecalc,
   persistCashDiscount,
   persistTaxRates,
+  persistStationUpdates,
   bumpConfigVersion,
 } from "@/lib/pos/persist-location-setup";
+import { parseStationUpdates, DEFAULT_FORCE_WINDOW } from "@/lib/pos/station-updates";
 import { TaxRatesEditor, ratesPatch } from "./TaxRatesSettings";
 import {
   DEFAULT_VENUE_TIMEZONE,
@@ -335,6 +337,71 @@ function timezoneOptions(current?: string): string[] {
   return list;
 }
 
+function StationUpdatesSettings({ write }: { write: boolean }) {
+  const settings = usePosStore((s) => s.settings);
+  const updateSettings = usePosStore((s) => s.updateSettings);
+  const cfg = parseStationUpdates(settings.stationUpdates);
+  const tz = parseVenueTimezone(settings.timezone);
+  const patch = (next: Partial<typeof cfg>) => {
+    updateSettings({ stationUpdates: { ...cfg, ...next } });
+    persistStationUpdates();
+  };
+  return (
+    <div className="space-y-3" data-station-updates-settings>
+      <p className="text-sm font-medium">Updates</p>
+      <p className="text-xs text-muted-foreground">
+        Force-update window uses the venue timezone ({tz}). During the hour that starts at this
+        time, stations that are behind must Update now — no snooze. Idle tablets apply after 60
+        seconds. Outside the window, staff may Remind me later all shift.
+      </p>
+      <label className="block text-sm">
+        <span className="mb-1 block text-muted-foreground">Force-update window</span>
+        <input
+          type="time"
+          disabled={!write}
+          data-force-window-1
+          className="h-9 rounded-md border border-border bg-bg px-2 text-sm"
+          value={cfg.forceWindow1 || DEFAULT_FORCE_WINDOW}
+          onChange={(e) => patch({ forceWindow1: e.target.value || DEFAULT_FORCE_WINDOW })}
+        />
+      </label>
+      <label className="block text-sm">
+        <span className="mb-1 block text-muted-foreground">Optional second window</span>
+        <input
+          type="time"
+          disabled={!write}
+          data-force-window-2
+          className="h-9 rounded-md border border-border bg-bg px-2 text-sm"
+          value={cfg.forceWindow2}
+          onChange={(e) => patch({ forceWindow2: e.target.value })}
+        />
+        {cfg.forceWindow2 ? (
+          <button
+            type="button"
+            className="mt-1 text-[11px] text-primary underline"
+            disabled={!write}
+            onClick={() => patch({ forceWindow2: "" })}
+          >
+            Clear second window
+          </button>
+        ) : (
+          <span className="mt-1 block text-[11px] text-muted-foreground">Leave empty if unused.</span>
+        )}
+      </label>
+      <label className="flex items-center gap-2 text-sm">
+        <input
+          type="checkbox"
+          disabled={!write}
+          data-show-change-list
+          checked={cfg.showChangeList}
+          onChange={(e) => patch({ showChangeList: e.target.checked })}
+        />
+        Show change list on update prompt
+      </label>
+    </div>
+  );
+}
+
 export function SettingsView() {
   const settings = usePosStore((s) => s.settings);
   const locId = usePosStore((s) => s.tenantLocationId) || "loc_kiosk";
@@ -408,6 +475,7 @@ export function SettingsView() {
           cashDiscountPercent: s.cashDiscountPercent,
           cashRoundIncrement: s.cashRoundIncrement,
           cashRoundMode: s.cashRoundMode,
+          stationUpdates: parseStationUpdates(s.stationUpdates),
           ...(s.peerVenue || s.operatingModel === "peer_venue"
             ? { peerVenue: true, operatingModel: "peer_venue" as const, hostEntityId: null }
             : {}),
@@ -778,6 +846,7 @@ export function SettingsView() {
             stamps, and report clocks use this zone — not UTC and not the tablet.
           </span>
         </label>
+        <StationUpdatesSettings write={write} />
         <TaxRatesEditor
           rates={settings.taxRates ?? []}
           disabled={!write}

@@ -6,6 +6,19 @@ import type { GuideUpdate } from "@/lib/guide/types";
  */
 export const WHATS_NEW_ENTRIES: GuideUpdate[] = [
   {
+    id: "upd_2026_10_129_force_update_window",
+    date: "2026-09-19",
+    title: "Force-update window and change list",
+    summary:
+      "Venue Settings → Updates: 04:00 venue time (optional second window) requires Update now. Afternoon prompts still allow Remind me later. Optional station-facing change list on the prompt.",
+    body: "Outside the force window, staff may stay on the old UI all shift (Update now / Remind me later). During the window, if appBuild or configVersion is behind: modal “Update required” with only Update now. Idle stations apply after 60 seconds if nobody taps. Show change list on update prompt (default on) lists short print / pay / floor / PIN notes from the latest deploy — omitted when empty; never SaaS or platform notes.",
+    roles: ["owner_manager", "server", "kitchen_bar", "host_operator"],
+    surfaces: ["settings", "floor"],
+    audience: "all",
+    topicId: "android-kiosk",
+    tags: ["station", "update", "pin", "floor"],
+  },
+  {
     id: "upd_2026_10_128_station_update_prompt",
     date: "2026-09-19",
     title: "Update now or remind me later",

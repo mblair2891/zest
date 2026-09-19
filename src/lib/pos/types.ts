@@ -244,6 +244,8 @@ export interface RestaurantSettings {
   smsEnabled?: boolean;
   smsMonthlyCap?: number | null;
   timezone?: string;
+  /** Force-update window + changelog on station prompt. */
+  stationUpdates?: import("./station-updates").StationUpdatesConfig;
   hoursNote?: string;
   tipPooling?: boolean;
   tabAutoCloseMinutes?: number;

@@ -119,7 +119,7 @@ export const DEVICE_TOPICS: GuideTopic[] = [
     chapterId: "devices",
     title: "Tablets run Summex only",
     summary:
-      "One Play-ready APK: Summex Station. Pair, then PIN. Website deploys: Update now or Remind me later. APK updates: unpin and reinstall.",
+      "One Play-ready APK: Summex Station. Pair, then PIN. Website deploys: Update now or Remind me later, except during the venue force-update window. APK updates: unpin and reinstall.",
     roles: ["owner_manager", "host_operator", "kitchen_bar", "platform_admin"],
     keywords: [
       "android",
@@ -129,6 +129,8 @@ export const DEVICE_TOPICS: GuideTopic[] = [
       "lock task",
       "pin windows",
       "reload",
+      "force update",
+      "changelog",
       "exit kiosk",
       "service pin",
       "knox",
@@ -151,11 +153,11 @@ export const DEVICE_TOPICS: GuideTopic[] = [
         "Broken ODS → reassign a server tablet from Devices (Role dropdown). No new pair code.",
         "Unpair, Replace, or Deactivate from the same Devices list revokes the pair token and kicks an online tablet to the pair-code field within a few seconds. Unpair / Replace keep the named slot. Delete removes the slot after one confirm (“Delete this device. The tablet must scan a new code.”). Activate again mints a new code. Location owner / manager / Admin only.",
         "Training: on Samsung, confirm pin-windows when Summex asks. Set Summex as Home if the tablet offers it.",
-        "Website deploys (new JS on app.summex.app): the station modal “A system update is ready.” Update now reloads the WebView (appBuild) or refetches menus, printers, and taxes (configVersion). Remind me later hides it for 10 minutes; after three snoozes a small persistent bar stays until they update. Never reload without a tap. PIN pad and idle floor may show the modal immediately. Update now during send, pay, or Print check toasts “Finish this check first.” Staff PIN may snooze; manager/owner can Update now anytime (still blocked mid-check). Do not force-stop, unpair, or install a new APK for a website deploy.",
+        "Website deploys (new JS on app.summex.app): the station modal “A system update is ready.” Update now reloads the WebView (appBuild) or refetches menus, printers, and taxes (configVersion). Remind me later hides it for 10 minutes; after three snoozes a small persistent bar stays until they update. Staff may ignore optional updates all shift. Venue Settings → Updates: force-update window (default 04:00 venue IANA, optional second window). During that hour, if the station is behind: modal “Update required” with only Update now (no snooze). Idle stations apply after 60 seconds if nobody taps. Show change list on update prompt (default on) lists short station-facing notes (print, pay, floor, PIN) — omit the list when there are none; never SaaS/platform notes. Never reload without a tap outside the force window. PIN pad and idle floor may show the modal immediately. Update now during send, pay, or Print check toasts “Finish this check first.” Do not force-stop, unpair, or install a new APK for a website deploy.",
         "APK updates (new Summex Station binary): manager Exit kiosk (confirm) to stop lock-task and show Android home, then uninstall/reinstall or Play update. Staff PINs cannot exit kiosk.",
       ),
       ul(
-        "Website deploy = heartbeat appBuild change. Pairing stays. Update now reloads the WebView; next screen is pair or PIN. No new APK.",
+        "Website deploy = heartbeat appBuild change. Pairing stays. Update now reloads the WebView; next screen is pair or PIN. No new APK. Forced window is the only time staff cannot snooze.",
         "Exit kiosk = leave lock-task. Confirm dialog. Manager / owner / Devices service PIN only.",
         "Devices → Station service PIN: optional 4-digit PIN with the same reload/exit rights as manager.",
       ),

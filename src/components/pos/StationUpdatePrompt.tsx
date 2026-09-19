@@ -12,10 +12,12 @@ import { usePosStore } from "@/lib/pos/store";
 import {
   UPDATE_NOW_LABEL,
   UPDATE_READY_TITLE,
+  UPDATE_REQUIRED_TITLE,
   REMIND_LATER_LABEL,
   FINISH_CHECK_TOAST,
   applyStationUpdate,
   snoozeStationUpdate,
+  readVenueUpdatePolicy,
   useStationRefreshStore,
 } from "@/lib/pos/station-refresh";
 
@@ -49,7 +51,9 @@ export function StationUpdateBar() {
 
 export function StationUpdateModal() {
   const surface = useStationRefreshStore((s) => s.surface);
-  const open = surface === "modal";
+  const forced = surface === "forced";
+  const open = surface === "modal" || forced;
+  const bullets = open ? readVenueUpdatePolicy().bullets : [];
   return (
     <Dialog open={open} onOpenChange={() => { /* Update now or Remind me later only */ }}>
       <DialogContent
@@ -58,24 +62,36 @@ export function StationUpdateModal() {
         onPointerDownOutside={(e) => e.preventDefault()}
         onEscapeKeyDown={(e) => e.preventDefault()}
         data-station-update-modal
+        data-station-update-required={forced ? "1" : undefined}
       >
         <DialogHeader>
-          <DialogTitle>{UPDATE_READY_TITLE}</DialogTitle>
+          <DialogTitle>{forced ? UPDATE_REQUIRED_TITLE : UPDATE_READY_TITLE}</DialogTitle>
           <DialogDescription>
-            Update now loads the new station UI. Remind me later hides this for 10 minutes.
+            {forced
+              ? "This station must update now. Idle tablets apply after 60 seconds."
+              : "Update now loads the new station UI. Remind me later hides this for 10 minutes."}
           </DialogDescription>
         </DialogHeader>
+        {bullets.length > 0 ? (
+          <ul data-station-change-list className="list-disc space-y-1 pl-5 text-sm text-foreground">
+            {bullets.map((line) => (
+              <li key={line}>{line}</li>
+            ))}
+          </ul>
+        ) : null}
         <DialogFooter>
-          <Button
-            type="button"
-            variant="outline"
-            size="lg"
-            className="station-touch"
-            data-station-remind-later
-            onClick={() => snoozeStationUpdate()}
-          >
-            {REMIND_LATER_LABEL}
-          </Button>
+          {forced ? null : (
+            <Button
+              type="button"
+              variant="outline"
+              size="lg"
+              className="station-touch"
+              data-station-remind-later
+              onClick={() => snoozeStationUpdate()}
+            >
+              {REMIND_LATER_LABEL}
+            </Button>
+          )}
           <Button
             type="button"
             size="lg"

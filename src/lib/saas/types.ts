@@ -27,6 +27,8 @@ export type LocationSetup = {
   cashRoundIncrement?: number;
   cashRoundMode?: string;
   timezone?: string;
+  /** Force-update windows and station prompt changelog. */
+  stationUpdates?: import("@/lib/pos/station-updates").StationUpdatesConfig;
   hoursNote?: string;
   tipPooling?: boolean;
   tabAutoCloseMinutes?: number;

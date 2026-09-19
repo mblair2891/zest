@@ -32,6 +32,7 @@ import { parseLaborMap } from "@/lib/labor/rules";
 import { parseOpsJobsConfig } from "@/lib/ops-jobs/config";
 import { parseQrPolicy } from "@/lib/pos/qr-policy";
 import { parseTaxRates } from "@/lib/pos/tax-rates";
+import { parseStationUpdates } from "@/lib/pos/station-updates";
 import { parseItem86 } from "@/lib/pos/item-86";
 import { parseLocationOperatingModel } from "./location-model";
 import { demoVenueIsolated } from "./tenant-users";
@@ -275,6 +276,7 @@ function parseSetup(raw: unknown): LocationSetup {
         : undefined,
     taxRate:
       o.taxRate == null || !Number.isFinite(Number(o.taxRate)) ? undefined : Number(o.taxRate),
+    stationUpdates: o.stationUpdates != null ? parseStationUpdates(o.stationUpdates) : undefined,
     serviceStyle:
       o.serviceStyle === "counter" ||
       o.serviceStyle === "hybrid" ||

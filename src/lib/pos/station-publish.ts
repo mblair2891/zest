@@ -12,6 +12,7 @@ import { parseLaborMap } from "@/lib/labor/rules";
 import { useOpsStore } from "@/lib/pos/ops-store";
 import { parsePaymentMethods } from "./payment-methods";
 import { parseTaxRates } from "./tax-rates";
+import { parseStationUpdates } from "./station-updates";
 
 export const STATION_PUBLISH_STATE_KEY = "summex-station-publish-state-v1";
 
@@ -32,6 +33,7 @@ export type StationPublishSetup = {
   orderMayOpenBarTabs?: boolean;
   separateCourseTickets?: boolean;
   timezone?: string;
+  stationUpdates?: object;
   taxRates?: object[];
   entityTaxRates?: Record<string, object[]>;
   taxRate?: number;
@@ -200,6 +202,9 @@ export function applyStationPublish(
     }
     if (typeof setup.timezone === "string" && setup.timezone.trim()) {
       settings.timezone = setup.timezone.trim();
+    }
+    if (setup.stationUpdates != null) {
+      settings.stationUpdates = parseStationUpdates(setup.stationUpdates);
     }
     if (setup.taxRates != null) {
       settings.taxRates = parseTaxRates(setup.taxRates) ?? [];

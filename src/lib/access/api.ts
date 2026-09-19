@@ -1026,6 +1026,7 @@ function publishSetupSlice(setup: LocationSetup) {
     orderMayOpenBarTabs: setup.orderMayOpenBarTabs,
     separateCourseTickets: setup.separateCourseTickets,
     timezone: setup.timezone,
+    stationUpdates: setup.stationUpdates,
     taxRates: setup.taxRates,
     entityTaxRates: setup.entityTaxRates,
     taxRate: setup.taxRate,
