@@ -22,7 +22,9 @@ export type PosNoticeKind =
   | "ops_job"
   | "cost_variance"
   | "till_mismatch"
-  | "till_transfer";
+  | "till_transfer"
+  | "qr_pay"
+  | "qr_pay_partial";
 
 export interface PosNotice {
   id: string;
@@ -60,6 +62,7 @@ interface NotifyState {
     serverName?: string;
     audience?: string[];
     entityId?: string;
+    orderId?: string;
   }) => PosNotice;
   markRead: (id: string) => void;
   markAllRead: () => void;
@@ -134,6 +137,16 @@ export function noticeVisibleTo(
     return role === "bartender" || role === "cashier";
   }
   if (n.kind === "ops_job") {
+    return false;
+  }
+  if (n.kind === "qr_pay" || n.kind === "qr_pay_partial") {
+    if (n.serverId && emp.id === n.serverId) return true;
+    if (n.serverName && emp.name === n.serverName) return true;
+    if (n.audience?.includes("expo")) {
+      const kind = useStationSessionStore.getState().assignment?.kind ?? "";
+      if (kind === "expo" || kind === "kitchen_kds") return true;
+      if (role === "kitchen") return true;
+    }
     return false;
   }
   if (n.kind === "guest_checked_in" || n.kind === "waitlist_update") {
@@ -239,6 +252,7 @@ export const useNotifyStore = create<NotifyState>()(
           serverName: input.serverName,
           audience: input.audience,
           entityId: input.entityId,
+          orderId: input.orderId,
         };
         set({
           notices: [notice, ...get().notices].slice(0, MAX_NOTICES),

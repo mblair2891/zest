@@ -6,6 +6,19 @@ import type { GuideUpdate } from "@/lib/guide/types";
  */
 export const WHATS_NEW_ENTRIES: GuideUpdate[] = [
   {
+    id: "upd_2026_10_126_qr_pay_auto_status",
+    date: "2026-09-19",
+    title: "QR pay closes the table; status walks itself",
+    summary:
+      "Guest QR pay in full closes the check, notifies the server (Table N paid — QR), and sets Closed · needs bus. Floor status advances from seat → fire → deliver → unpaid → bus without extra taps.",
+    body: "Full QR pay: same ledger as staff Cash/Card; assigned server gets sound + vibrate + banner “Table N paid — QR”; expo only if that setting is on; table → Closed · needs bus (or Empty if busser status is off). Partial QR pay: check stays open, Dining · unpaid, “Table N partial QR pay $X.” Auto status (default on): seat → Sat · no order; first drink fire → Drinks fired; food fire → Food fired; all food delivered → Food delivered; all items delivered, check open → Dining · unpaid; paid in full → Closed · needs bus; cleaned → Empty. Turn individual steps off in Floor statuses. Manual Set status still overrides.",
+    roles: ["owner_manager", "server", "host_operator", "kitchen_bar"],
+    surfaces: ["floor"],
+    audience: "all",
+    topicId: "floor-status",
+    tags: ["qr", "pay", "floor", "status"],
+  },
+  {
     id: "upd_2026_10_125_guest_check_qr_token",
     date: "2026-09-19",
     title: "Guest check QR opens that table’s check",

@@ -328,14 +328,14 @@ export function GuestTablePage({
   };
 
   if (paid) {
-    const keep = policy.afterPay === "keep_open_for_reorder";
+    const stillOpen = order?.status === "open";
     return (
       <GuestDone
         title="Thank you"
         body={
-          keep
-            ? `Table ${displayLabel} is still open under ${settings.name}. Scan again to add more.`
-            : `Table ${displayLabel} is closed out under ${settings.name}. Staff will bus when you leave.`
+          stillOpen
+            ? `Table ${displayLabel} still has a balance under ${settings.name}. Scan again to pay the rest or add more.`
+            : `Table ${displayLabel} is closed · needs bus under ${settings.name}. Staff will clear the table.`
         }
         brand
       />

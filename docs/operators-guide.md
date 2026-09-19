@@ -1,7 +1,7 @@
 # Operators Guide — authoring
 
-**Revision · 19 Sep 2026** — Guest check QR is the table public token.
-Guide v2026.10.125.
+**Revision · 19 Sep 2026** — QR pay notify and automatic table status.
+Guide v2026.10.126.
 
 The in-app **Operators Guide** is the living product manual. It is not a
 separate PDF. Staff open it from **Guide** / **?** in the POS and platform

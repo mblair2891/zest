@@ -61,8 +61,14 @@ function shouldToast(
   if (
     notice.kind === "ticket_ready" ||
     notice.kind === "ticket_bumped" ||
-    notice.kind === "table_needs_bus"
+    notice.kind === "table_needs_bus" ||
+    notice.kind === "qr_pay" ||
+    notice.kind === "qr_pay_partial"
   ) {
+    if (notice.kind === "qr_pay" || notice.kind === "qr_pay_partial") {
+      if (originator || role === "owner" || role === "manager" || role === "host") return true;
+      return Boolean(notice.audience?.includes("expo") && (role === "kitchen" || view === "expo"));
+    }
     return FOH_ROLES.has(role);
   }
   return FOH_ROLES.has(role);
@@ -75,10 +81,12 @@ export function TicketBumpWatcher() {
   const currentEmployeeId = usePosStore((s) => s.currentEmployeeId);
   const emp = employees.find((e) => e.id === currentEmployeeId) ?? null;
   const pushFromTicket = useNotifyStore((s) => s.pushFromTicket);
+  const notices = useNotifyStore((s) => s.notices);
   const soundEnabled = useNotifyStore((s) => s.soundEnabled);
   const desktopEnabled = useNotifyStore((s) => s.desktopEnabled);
   const prev = useRef<Map<string, TicketStatus>>(new Map());
   const primed = useRef(false);
+  const seenNotice = useRef<Set<string>>(new Set());
 
   useEffect(() => {
     const next = new Map<string, TicketStatus>(
@@ -147,6 +155,32 @@ export function TicketBumpWatcher() {
     soundEnabled,
     desktopEnabled,
   ]);
+
+  useEffect(() => {
+    const empLite = emp
+      ? { id: emp.id, name: emp.name, role: emp.role }
+      : null;
+    for (const n of notices) {
+      if (n.kind !== "qr_pay" && n.kind !== "qr_pay_partial") continue;
+      if (seenNotice.current.has(n.id)) continue;
+      seenNotice.current.add(n.id);
+      if (!shouldToast(n, empLite, view)) continue;
+      toast.success(n.title, { description: n.body, duration: 8000 });
+      if (soundEnabled) playBumpChime();
+      hapticNotify();
+      if (
+        desktopEnabled &&
+        typeof Notification !== "undefined" &&
+        Notification.permission === "granted"
+      ) {
+        try {
+          new Notification(n.title, { body: n.body });
+        } catch {
+          /* ignore */
+        }
+      }
+    }
+  }, [notices, emp?.id, emp?.name, emp?.role, view, soundEnabled, desktopEnabled]);
 
   return (
     <Toaster

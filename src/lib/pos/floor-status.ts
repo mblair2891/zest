@@ -51,6 +51,10 @@ export type FloorStatusConfig = {
   /** Who may tap a status on the floor. */
   changeRoles: EmployeeRole[];
   seatingRole: "host" | "manager" | "host_or_manager";
+  /** Auto-advance from seat / fire / deliver / pay. Default on. */
+  autoStatus?: boolean;
+  /** Assigned server always hears QR pay. Expo only when this is on. */
+  notifyExpoOnQrPay?: boolean;
 };
 
 export const DEFAULT_FLOOR_STATUS_CONFIG: FloorStatusConfig = {
@@ -67,6 +71,8 @@ export const DEFAULT_FLOOR_STATUS_CONFIG: FloorStatusConfig = {
   flashMinutes: { ...DEFAULT_FLASH_MINUTES },
   changeRoles: ["owner", "manager", "host", "server", "busser"],
   seatingRole: "host_or_manager",
+  autoStatus: true,
+  notifyExpoOnQrPay: false,
 };
 
 export function parseFloorStatusConfig(raw: unknown): FloorStatusConfig {
@@ -103,7 +109,15 @@ export function parseFloorStatusConfig(raw: unknown): FloorStatusConfig {
     o.seatingRole === "host" || o.seatingRole === "manager" || o.seatingRole === "host_or_manager"
       ? o.seatingRole
       : base.seatingRole;
-  return { enabled, colors, flashMinutes, changeRoles, seatingRole };
+  return {
+    enabled,
+    colors,
+    flashMinutes,
+    changeRoles,
+    seatingRole,
+    autoStatus: o.autoStatus === false ? false : true,
+    notifyExpoOnQrPay: o.notifyExpoOnQrPay === true,
+  };
 }
 
 export function normalizeTableStatus(raw: string | undefined | null): FloorPipelineStatus | "reserved" {
@@ -195,39 +209,91 @@ export function tableFlash(
   return now - since >= mins * 60_000;
 }
 
-export function deriveTableStatus(
-  order: Order | undefined,
-  tickets: KitchenTicket[],
-  cfg: FloorStatusConfig,
-): FloorPipelineStatus {
-  if (!order || order.status === "voided" || order.status === "cancelled") return "empty";
-  if (order.status === "closed") return "closed_not_cleaned";
-  const lines = order.lines.filter((l) => !l.voided);
-  const drinks = lines.filter((l) => l.station === "bar" || l.course === "drink");
-  const food = lines.filter((l) => l.station !== "bar" && l.course !== "drink");
-  const foodTickets = tickets.filter((t) => t.orderId === order.id && t.station === "kitchen");
-  const drinkSent = drinks.some((l) => l.sent);
-  const foodSent = food.some((l) => l.sent);
-  const anyFoodReady = foodTickets.some((t) => t.status === "ready" || t.status === "bumped");
-  const allFoodBumped =
-    foodTickets.length > 0 && foodTickets.every((t) => t.status === "bumped") && foodSent;
+export const PIPELINE_RANK: Record<FloorPipelineStatus, number> = {
+  empty: 0,
+  sat_no_order: 1,
+  ordered_drinks: 2,
+  ordered_food: 3,
+  food_delivered: 4,
+  food_completed: 5,
+  closed_not_cleaned: 6,
+};
 
-  let raw: FloorPipelineStatus = "sat_no_order";
-  if (allFoodBumped) raw = "food_completed";
-  else if (anyFoodReady && foodSent) raw = "food_delivered";
-  else if (foodSent) raw = "ordered_food";
-  else if (drinkSent) raw = "ordered_drinks";
-  else raw = "sat_no_order";
+export function paidTableStatus(cfg: FloorStatusConfig): FloorPipelineStatus {
+  return cfg.enabled.closed_not_cleaned !== false ? "closed_not_cleaned" : "empty";
+}
 
+function pickEnabled(raw: FloorPipelineStatus, cfg: FloorStatusConfig): FloorPipelineStatus {
   const enabled = enabledPipeline(cfg);
   if (enabled.includes(raw)) return raw;
-  const orderPipe = ["sat_no_order", "ordered_drinks", "ordered_food", "food_delivered", "food_completed"] as const;
+  const orderPipe = [
+    "sat_no_order",
+    "ordered_drinks",
+    "ordered_food",
+    "food_delivered",
+    "food_completed",
+    "closed_not_cleaned",
+  ] as const;
   const idx = orderPipe.indexOf(raw as (typeof orderPipe)[number]);
   for (let i = idx; i >= 0; i--) {
     const c = orderPipe[i];
     if (c && enabled.includes(c)) return c;
   }
   return enabled.includes("sat_no_order") ? "sat_no_order" : enabled[0] ?? "empty";
+}
+
+export function deriveTableStatus(
+  order: Order | undefined,
+  tickets: KitchenTicket[],
+  cfg: FloorStatusConfig,
+): FloorPipelineStatus {
+  if (!order || order.status === "voided" || order.status === "cancelled") return "empty";
+  if (order.status === "closed") return pickEnabled(paidTableStatus(cfg), cfg);
+  const lines = order.lines.filter((l) => !l.voided);
+  const drinks = lines.filter((l) => l.station === "bar" || l.course === "drink");
+  const food = lines.filter((l) => l.station !== "bar" && l.course !== "drink");
+  const foodTickets = tickets.filter((t) => t.orderId === order.id && t.station === "kitchen");
+  const drinkTickets = tickets.filter((t) => t.orderId === order.id && t.station === "bar");
+  const drinkSent = drinks.some((l) => l.sent);
+  const foodSent = food.some((l) => l.sent);
+  const allFoodDelivered =
+    foodSent && foodTickets.length > 0 && foodTickets.every((t) => t.status === "bumped");
+  const allDrinksDelivered =
+    !drinkSent ||
+    (drinkTickets.length > 0 && drinkTickets.every((t) => t.status === "bumped"));
+  const allItemsDelivered =
+    (foodSent || drinkSent) &&
+    (!foodSent || allFoodDelivered) &&
+    allDrinksDelivered;
+
+  let raw: FloorPipelineStatus = "sat_no_order";
+  if (allItemsDelivered) raw = "food_completed";
+  else if (allFoodDelivered) raw = "food_delivered";
+  else if (foodSent) raw = "ordered_food";
+  else if (drinkSent) raw = "ordered_drinks";
+  else raw = "sat_no_order";
+
+  return pickEnabled(raw, cfg);
+}
+
+/**
+ * Auto-advance stored status from an event. Does not go backwards
+ * (manual SET STATUS still wins until a later event). Pay/clean may force.
+ */
+export function nextAutoTableStatus(opts: {
+  current: string | undefined;
+  derived: FloorPipelineStatus;
+  cfg: FloorStatusConfig;
+  force?: boolean;
+}): FloorPipelineStatus {
+  const derived = opts.derived;
+  if (opts.force) return derived;
+  const cur = normalizeTableStatus(opts.current);
+  if (cur === "reserved") return derived;
+  if (opts.cfg.autoStatus === false) return cur;
+  if (cur === derived) return derived;
+  if (PIPELINE_RANK[derived] >= PIPELINE_RANK[cur]) return derived;
+  return cur;
 }
 
 export const DEMO_FLASH_MINUTES: Record<FloorPipelineStatus, number | null> = {

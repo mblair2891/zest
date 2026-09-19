@@ -195,7 +195,9 @@ import {
   deriveTableStatus,
   FLOOR_STATUS_LABEL,
   isEmptyTable,
+  nextAutoTableStatus,
   normalizeTableStatus,
+  paidTableStatus,
   parseFloorStatusConfig,
   tableFlash,
 } from "./floor-status";
@@ -256,16 +258,28 @@ function ensureGuestCashier(get: any, set: any) {
 }
 function tableStatusFromOrder(order: any) {
 	if (!order) return "empty";
-	if (order.status !== "open") return "closed_not_cleaned";
+	const cfg = floorCfg();
+	if (order.status !== "open") return paidTableStatus(cfg);
 	const settings = usePosStore.getState().settings ?? SETTINGS;
 	const cardBal = computeTotals(order, settings, { tender: "card" }).balanceCents;
 	const cashBal = computeTotals(order, settings, { tender: "cash" }).balanceCents;
-	if (order.payments.length > 0 && (cardBal <= 0 || cashBal <= 0)) return "closed_not_cleaned";
+	if (order.payments.length > 0 && (cardBal <= 0 || cashBal <= 0)) return paidTableStatus(cfg);
 	const tickets = usePosStore.getState().tickets ?? [];
-	return deriveTableStatus(order, tickets, floorCfg());
+	return deriveTableStatus(order, tickets, cfg);
 }
-function stampStatus(t: any, status: any) {
-	const next = normalizeTableStatus(status);
+function stampStatus(t: any, status: any, opts?: { force?: boolean }) {
+	const cfg = floorCfg();
+	const derived = normalizeTableStatus(status);
+	if (derived === "reserved") {
+		if (t.status === "reserved") return t;
+		return { ...t, status: "reserved", statusSince: Date.now(), flashNotified: false };
+	}
+	const next = nextAutoTableStatus({
+		current: t.status,
+		derived,
+		cfg,
+		force: opts?.force,
+	});
 	if (normalizeTableStatus(t.status) === next) return t;
 	return { ...t, status: next, statusSince: Date.now(), flashNotified: false };
 }
@@ -3094,7 +3108,7 @@ const usePosStoreRaw = create<PosStore>()(persist((set, get) => {
 				} else {
 					tables = tables.map((t: any) => t.id === order.tableId || childIds.includes(t.id) ? {
 						...t,
-						status: "closed_not_cleaned",
+						status: paidTableStatus(floorCfg()),
 						statusSince: Date.now(),
 					} : t);
 					try {
@@ -4237,19 +4251,48 @@ const usePosStoreRaw = create<PosStore>()(persist((set, get) => {
 			totals.balanceCents,
 		);
 		const tip = policy.tip ? Math.max(0, opts?.tipCents ?? 0) : 0;
+		const full = amount >= totals.balanceCents;
 		const prev = get().currentEmployeeId;
 		ensureGuestCashier(get, set);
 		set({ currentEmployeeId: "guest_qr", activeOrderId: orderId });
-		const keepOpen = policy.afterPay === "keep_open_for_reorder";
 		const res = get().takePayment({
 			method,
 			amountCents: amount,
 			tipCents: tip,
 			last4: method === "card" ? "4242" : undefined,
 			giftCardCode: method === "gift_card" ? opts?.giftCode : undefined,
-			keepOpen,
+			keepOpen: !full,
 		});
 		set({ currentEmployeeId: prev });
+		if (res.ok) {
+			const table = order.tableId ? get().tables.find((t: any) => t.id === order.tableId) : undefined;
+			const label = table?.label ?? order.tabName ?? String(order.number);
+			const dollars = `$${(amount / 100).toFixed(2)}`;
+			try {
+				const cfg = floorCfg();
+				useNotifyStore.getState().pushNotice({
+					kind: full ? "qr_pay" : "qr_pay_partial",
+					title: full ? `Table ${label} paid — QR` : `Table ${label} partial QR pay ${dollars}`,
+					body: full
+						? `Check #${order.number} closed · QR`
+						: `Table ${label} partial QR pay ${dollars}`,
+					tableLabel: label,
+					serverId: order.serverId,
+					serverName: order.serverName,
+					audience: cfg.notifyExpoOnQrPay ? ["server", "expo"] : ["server"],
+					orderId,
+				});
+			} catch { /* optional */ }
+			if (!full && order.tableId) {
+				set({
+					tables: get().tables.map((t: any) =>
+						t.id === order.tableId
+							? stampStatus(t, "food_completed", { force: true })
+							: t,
+					),
+				});
+			}
+		}
 		return res;
 	},
 	removeFloorTable: (id) => {

@@ -29,7 +29,11 @@ import { ROLE_LABEL } from "@/lib/pos/rbac";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { GuideLearnLink } from "@/components/guide/GuideLearnLink";
-import { persistHostStandPolicy, persistQrPolicy } from "@/lib/pos/persist-location-setup";
+import {
+  persistFloorStatus,
+  persistHostStandPolicy,
+  persistQrPolicy,
+} from "@/lib/pos/persist-location-setup";
 
 const STATUS_ROLES: EmployeeRole[] = [
   "owner",
@@ -59,6 +63,7 @@ export function FloorQrSettings({ write }: { write: boolean }) {
 
   const patchCfg = (next: Partial<typeof cfg>) => {
     updateSettings({ floorStatusConfig: { ...cfg, ...next } });
+    persistFloorStatus();
   };
 
   return (
@@ -276,6 +281,47 @@ export function FloorQrSettings({ write }: { write: boolean }) {
             Bar tabs on order devices
             <span className="mt-0.5 block text-[11px] text-muted-foreground">
               Off: order tablets hide Bar tab even if the house has a rail. On: bartender/server bar tab from the floor.
+            </span>
+          </span>
+        </label>
+      </div>
+
+      <div className="space-y-2 rounded-xl border border-border bg-bg p-3">
+        <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+          Automatic table status
+        </p>
+        <label className="flex items-start gap-2 text-sm">
+          <input
+            type="checkbox"
+            className="mt-0.5 h-4 w-4 rounded border-border"
+            disabled={!write}
+            checked={cfg.autoStatus !== false}
+            onChange={(e) => patchCfg({ autoStatus: e.target.checked })}
+          />
+          <span>
+            Advance status from events
+            <span className="mt-0.5 block text-[11px] text-muted-foreground">
+              Default on. Seat → sat · no order. First drink fire → drinks fired. Food fire →
+              food fired. All food delivered → food delivered. All items delivered, check open →
+              dining · unpaid. Paid in full → closed · needs bus (or empty if that step is off).
+              Cleaned → empty. Do not tap Set status when the event already happened. Manual Set
+              status still overrides. Turn a row off below to skip that step.
+            </span>
+          </span>
+        </label>
+        <label className="flex items-start gap-2 text-sm">
+          <input
+            type="checkbox"
+            className="mt-0.5 h-4 w-4 rounded border-border"
+            disabled={!write}
+            checked={Boolean(cfg.notifyExpoOnQrPay)}
+            onChange={(e) => patchCfg({ notifyExpoOnQrPay: e.target.checked })}
+          />
+          <span>
+            Notify expo on QR pay
+            <span className="mt-0.5 block text-[11px] text-muted-foreground">
+              Assigned server always gets “Table N paid — QR” (sound + vibrate + banner). Turn
+              this on to also ping expo.
             </span>
           </span>
         </label>

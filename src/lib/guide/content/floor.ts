@@ -241,9 +241,10 @@ export const FLOOR_TOPICS: GuideTopic[] = [
         "Host settings choose which steps are on, the color per status, flash minutes (0/blank = off), who may tap a status (server, host, manager), and who may seat (host stand, manager, or both). Host stand also has Servers may use the host stand and Host may open bar tabs.",
       ),
       ul(
-        "Auto: first drink send → drinks fired; food send → food fired; kitchen bump → delivered then dining unpaid; pay complete → closed · needs bus.",
+        "Automatic table status is on by default. Venue can turn the whole auto off, or turn individual steps off in Settings → Floor statuses.",
+        "Host seats / table assigned → Sat · no order. First drink fire (no food yet) → Drinks fired. Food fire → Food fired (keeps drinks if both). All fired food marked delivered (server/expo) → Food delivered. All items delivered and the check still open → Dining · unpaid. Check paid in full (staff or QR) → Closed · needs bus (or Empty if that step is off). Busser / staff table cleaned → Empty.",
+        "Do not tap Set status when the event already happened. Manual Set status still overrides until a later event.",
         "Open checks paint the table from the check, not stored Empty. CHECK OPEN increments the legend.",
-        "Manual: tap a table on Floor. Open checks show table view first; Set Empty is disabled until they are closed. Busser typically marks cleaned.",
         "When minutes are exceeded the table pulses and a staff notice fires. A status change clears the flash.",
       ),
       steps(
@@ -271,9 +272,10 @@ export const FLOOR_TOPICS: GuideTopic[] = [
         "Reorder after open — QR adds items only if a staff-opened check already exists. Empty table: “see your server.” Never silently start a ticket.",
         "Pay / split — QR pays the open check (card, gift, or both). Optional even / by-item / by-seat split and tip. Staff split, void, send, print check, and pay stay on the selected check from Floor table view — Table QR is the guest tent, not the staff split path.",
         "Print pay QR — Epson guest check (Print check / Print all open) includes a native thermal QR when the receipt printer has Print pay QR checked (default on for TM-T20). The QR is the public guest URL for THIS open check: the table’s public token plus the check number (reorder + pay, no staff PIN). If the table has no token, Print check mints one and saves it on the table — never a random or demo token. Scan opens that table’s open check (e.g. check #105), not “Unknown table.” Star kitchen tickets never get a pay QR. Not a raster dumped as kitchen text.",
+        "QR pay in full: the check closes on the same ledger as staff Cash/Card. The assigned server’s station notifies — sound, vibrate, and banner “Table N paid — QR.” Expo is included only if Notify expo on QR pay is on. Floor goes Closed · needs bus (or Empty if that step is off). Partial QR pay: check stays open, Dining · unpaid, banner “Table N partial QR pay $X.”",
         "Table tents — printable QR per table (and seat). Print the sheet from Floor.",
         "Order allow: none / drinks / food / food and drinks. Age affirm when drinks are on.",
-        "After pay: close the table for bus, or keep the check open so they can add more.",
+        "QR pay in full always closes the check and flags Closed · needs bus. Partial QR pay leaves the check open.",
       ),
       steps(
         "Settings → Floor statuses, flash & QR. Turn on the flags that match the house.",

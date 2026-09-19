@@ -89,6 +89,27 @@ export function persistHostStandPolicy(): void {
   );
 }
 
+export function persistFloorStatus(): void {
+  const ctx = ids();
+  if (!ctx) return;
+  const prev = timers.get("floor-status");
+  if (prev) clearTimeout(prev);
+  timers.set(
+    "floor-status",
+    setTimeout(() => {
+      timers.delete("floor-status");
+      const settings = usePosStore.getState().settings;
+      void saveLocationSettingsFn({
+        data: {
+          orgId: ctx.orgId,
+          locationId: ctx.locationId,
+          setup: { floorStatusConfig: settings.floorStatusConfig },
+        },
+      }).catch(() => undefined);
+    }, 400),
+  );
+}
+
 export function persistQrPolicy(): void {
   const ctx = ids();
   if (!ctx) return;

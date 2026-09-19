@@ -80,6 +80,7 @@ export type LocationSetup = {
   entityTaxRates?: Record<string, import("@/lib/pos/tax-rates").TaxRateDef[]>;
   /** Legacy single rate fraction. */
   taxRate?: number;
+  floorStatusConfig?: import("@/lib/pos/floor-status").FloorStatusConfig;
   serviceStyle?: "full_service" | "counter" | "hybrid" | "drive_through";
   hostEntityId?: string | null;
   trainingTrackInventory?: boolean;
