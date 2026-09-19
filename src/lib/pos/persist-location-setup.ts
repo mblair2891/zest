@@ -20,6 +20,27 @@ function ids(): { orgId: string; locationId: string } | null {
   return { orgId, locationId };
 }
 
+export function persistPrinterAssignments(): void {
+  const ctx = ids();
+  if (!ctx) return;
+  const prev = timers.get("printer-assign");
+  if (prev) clearTimeout(prev);
+  timers.set(
+    "printer-assign",
+    setTimeout(() => {
+      timers.delete("printer-assign");
+      const devices = usePosStore.getState().locationDevices ?? [];
+      void saveLocationSettingsFn({
+        data: {
+          orgId: ctx.orgId,
+          locationId: ctx.locationId,
+          setup: { locationDevices: devices },
+        },
+      }).catch(() => undefined);
+    }, 400),
+  );
+}
+
 export function persistVenueRouting(): void {
   const ctx = ids();
   if (!ctx) return;

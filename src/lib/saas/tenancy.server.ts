@@ -24,6 +24,7 @@ import type {
 import { EMPTY_LOCATION_SETUP, MEMBERSHIP_ROLES, PLAN_SLUGS, VENUE_TYPES } from "./types";
 import { parseGrantMatrix } from "@/lib/access/entity-grants";
 import { parseLocationDevices } from "@/lib/pos/location-devices";
+import { seedDefaultPrinterAssignments } from "@/lib/print/printer-assignment";
 import { parseNetworkChecklist, parseNetworkReadyStatus } from "./network-readiness";
 import { parseFloorPlan, parseMenuCatalog, parseRecipes } from "./location-catalog";
 import { parseHrMap } from "@/lib/hr/types";
@@ -197,7 +198,10 @@ function parseSetup(raw: unknown): LocationSetup {
           .filter((p) => p.id)
       : [],
     entityPermissions: parseGrantMatrix(o.entityPermissions),
-    locationDevices: parseLocationDevices(o.locationDevices),
+    locationDevices: seedDefaultPrinterAssignments(
+      parseLocationDevices(o.locationDevices),
+      parseFloorPlan(o.floorPlan)?.sections ?? [],
+    ),
     orderDestinations: Array.isArray(o.orderDestinations)
       ? o.orderDestinations.filter((x): x is string => typeof x === "string").map((x) => x.slice(0, 40))
       : [],

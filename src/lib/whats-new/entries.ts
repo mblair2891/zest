@@ -6,6 +6,19 @@ import type { GuideUpdate } from "@/lib/guide/types";
  */
 export const WHATS_NEW_ENTRIES: GuideUpdate[] = [
   {
+    id: "upd_2026_10_120_printer_assignment",
+    date: "2026-09-19",
+    title: "Printers follow the room and the menu group",
+    summary:
+      "Receipt and bar printers are assigned to floor sections. Food printers are assigned to menu groups. Tablets fire; they do not own routing.",
+    body: "Devices: a receipt printer covers dining sections (and optionally bar tabs / no section). Print check and paid receipt for a table go to that section’s Epson. To-go / will-call use the venue default receipt printer. A station may still list a fallback if the section has none. Food groups (Plates, Sandwich, Sides, …) map to a destination and kitchen printer — same destination + same printer on one Send is one Star slip. Drinks fire to the bar printer for that table’s section; one bar printer maps every section. Terminal cash still kicks the receipt printer that printed that check. Dashboard Test print still relays through an online station.",
+    roles: ["owner_manager", "server", "kitchen_bar", "host_operator"],
+    surfaces: ["settings", "floor", "kitchen"],
+    audience: "all",
+    topicId: "printers-kds",
+    tags: ["print", "section", "menu", "bar"],
+  },
+  {
     id: "upd_2026_10_119_drawer_kick",
     date: "2026-09-18",
     title: "Cash kicks the Epson drawer",

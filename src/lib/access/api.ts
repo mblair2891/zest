@@ -33,6 +33,8 @@ import {
   nextClaimExpiry,
 } from "@/lib/pos/station-pair-payload";
 import { parseDeletedLocationDevices, rememberDeletedDevice } from "@/lib/pos/device-seed";
+import { parseFloorPlan } from "@/lib/saas/location-catalog";
+import { seedDefaultPrinterAssignments } from "@/lib/print/printer-assignment";
 
 function mintClaim(): { claimCode: string; claimExpiresAt: number } {
   return { claimCode: makeClaimCode(), claimExpiresAt: nextClaimExpiry() };
@@ -564,7 +566,10 @@ export const listLocationDevicesFn = createServerFn({ method: "POST" })
     } catch {
       tableRows = [];
     }
-    const setupDevices = parseLocationDevices(access.location.setup?.locationDevices);
+    const setupDevices = seedDefaultPrinterAssignments(
+      parseLocationDevices(access.location.setup?.locationDevices),
+      parseFloorPlan(access.location.setup?.floorPlan)?.sections ?? [],
+    );
     const byId = new Map<string, LocationDevice>();
     for (const d of setupDevices) byId.set(d.id, d);
     for (const d of tableRows) {

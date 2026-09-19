@@ -54,16 +54,13 @@ function tablet(
   };
 }
 
-test("empty bound list is not a pay station", () => {
+test("empty bound list is not a pay station unless it is the sole / section printer", () => {
   const receipt = printer("prn_front", { bound: [] });
   const order = tablet("tab_order", "floor_pos");
   const host = tablet("tab_host", "host_stand");
   const ods = tablet("tab_ods", "kitchen_kds");
   const devices = [receipt, order, host, ods];
-  assert.equal(receiptPrinterServesStation(receipt, { stationDeviceId: order.id, devices }), false);
-  assert.equal(receiptPrinterServesStation(receipt, { stationDeviceId: host.id, devices }), false);
   assert.equal(receiptPrinterServesStation(receipt, { stationDeviceId: ods.id, devices }), false);
-  assert.equal(stationHasBoundReceiptPrinter(devices, order.id), false);
   assert.equal(stationHasBoundReceiptPrinter(devices, ods.id), false);
   assert.match(cashAtCopy(devices), /Cash at a register or host stand/);
 });
@@ -90,7 +87,8 @@ test("bound list is this station id, not every order tablet", () => {
   const orderB = tablet("tab_b", "floor_pos", null, "handheld");
   const host = tablet("tab_host", "host_stand");
   const receipt = printer("prn_front", { bound: [orderA.id, host.id] });
-  const devices = [receipt, orderA, orderB, host];
+  const other = printer("prn_other", { bound: ["tab_other"] });
+  const devices = [receipt, other, orderA, orderB, host];
   assert.equal(resolveReceiptPrinter(devices, orderA.id)?.id, "prn_front");
   assert.equal(resolveReceiptPrinter(devices, orderB.id), undefined);
   assert.equal(resolveReceiptPrinter(devices, host.id)?.id, "prn_front");
@@ -115,14 +113,15 @@ test("uses the printer mapped on the station row", () => {
 test("unbound handheld does not inherit a kitchen or unbound receipt printer", () => {
   const kitchen = printer("prn_kds", { station: "kitchen", type: "order_printer" });
   const receipt = printer("prn_front");
+  const other = printer("prn_other");
   const station = tablet("tab_1", "floor_pos", null);
-  const hit = resolveReceiptPrinter([kitchen, receipt, station], "tab_1");
+  const hit = resolveReceiptPrinter([kitchen, receipt, other, station], "tab_1");
   assert.equal(hit, undefined);
 });
 
 test("devices UI and pad: print vs kick lists", () => {
   const ui = readFileSync("src/components/pos/LocationDeviceRegistry.tsx", "utf8");
-  assert.match(ui, /Stations that may print/);
+  assert.match(ui, /Fallback stations if the section has none/);
   assert.match(ui, /Stations that may kick drawer/);
   assert.match(ui, /Leave handhelds unchecked/);
   assert.match(ui, /Handheld \(card, no drawer\)/);
@@ -147,7 +146,8 @@ test("devices UI and pad: print vs kick lists", () => {
 
 test("gone mapped id does not fall back to an unbound receipt printer", () => {
   const receipt = printer("prn_front");
+  const other = printer("prn_other");
   const station = tablet("tab_1", "floor_pos", "prn_missing");
-  const hit = resolveReceiptPrinter([receipt, station], "tab_1");
+  const hit = resolveReceiptPrinter([receipt, other, station], "tab_1");
   assert.equal(hit, undefined);
 });

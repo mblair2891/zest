@@ -64,6 +64,10 @@ import {
 } from "@/lib/pos/location-devices";
 import { dispatchRawTestPrint, testPrintJob } from "@/lib/print/dispatch";
 import {
+  isBarOrderPrinter,
+  seedDefaultPrinterAssignments,
+} from "@/lib/print/printer-assignment";
+import {
   enqueueStationPrintFn,
   getStationPrintJobFn,
 } from "@/lib/print/api";
@@ -208,6 +212,10 @@ export function LocationDeviceRegistry({
   const [printPayQr, setPrintPayQr] = useState(true);
   const [boundStationIds, setBoundStationIds] = useState<string[]>([]);
   const [kickStationIds, setKickStationIds] = useState<string[]>([]);
+  const [sectionIds, setSectionIds] = useState<string[]>([]);
+  const [serveNoSection, setServeNoSection] = useState(false);
+  const [venueDefault, setVenueDefault] = useState(false);
+  const floorSections = usePosStore((s) => s.floorSections);
   const [stationClass, setStationClass] = useState<"handheld" | "terminal">("handheld");
   const [cardReaderKind, setCardReaderKind] = useState<"mobile" | "counter">("mobile");
   const [cardReaderId, setCardReaderId] = useState("");
@@ -279,7 +287,9 @@ export function LocationDeviceRegistry({
       const res = await listLocationDevicesFn({
         data: { orgId: resolvedOrgId, locationId: resolvedLocId },
       });
-      setDevices(res.devices);
+      const sections = usePosStore.getState().floorSections;
+      const seeded = seedDefaultPrinterAssignments(res.devices, sections);
+      setDevices(seeded);
       setOperators(res.operators);
       setRoleHistory(res.roleHistory ?? []);
       setHostName(res.hostName || locationName || "Venue");
@@ -290,7 +300,7 @@ export function LocationDeviceRegistry({
         ),
       );
       try {
-        const next = res.devices.filter((d) => d.status !== "inactive");
+        const next = seeded.filter((d) => d.status !== "inactive");
         const prev = usePosStore.getState().locationDevices ?? [];
         const same =
           prev.length === next.length &&
@@ -441,6 +451,37 @@ export function LocationDeviceRegistry({
     setPrintPayQr(preset?.print?.printPayQr !== false);
     setBoundStationIds(preset?.print?.boundStationIds ?? []);
     setKickStationIds(preset?.print?.kickStationIds ?? preset?.print?.boundStationIds ?? []);
+    const seeded = seedDefaultPrinterAssignments(
+      preset ? [preset as LocationDevice] : [],
+      usePosStore.getState().floorSections,
+    )[0];
+    const print = seeded?.print ?? preset?.print;
+    const allSectionIds = usePosStore.getState().floorSections.map((s) => s.id);
+    const existingReceipts = devices.filter(
+      (d) => isReceiptPrinterType(d.type) && d.status !== "inactive" && d.id !== preset?.id,
+    );
+    const existingBars = devices.filter((d) => isBarOrderPrinter(d) && d.id !== preset?.id);
+    const newReceipt = Boolean(!preset && printerType && isReceiptPrinterType(printerType));
+    const newBar = Boolean(
+      !preset &&
+        printerType &&
+        isOrderPrinterType(printerType) &&
+        normalizeDestinationName(print?.destinationName).toLowerCase() === "bar",
+    );
+    setSectionIds(
+      print?.sectionIds ??
+        (newReceipt && existingReceipts.length === 0
+          ? allSectionIds
+          : newBar && existingBars.length === 0
+            ? allSectionIds
+            : []),
+    );
+    setServeNoSection(
+      print?.serveNoSection === true ||
+        (newReceipt && existingReceipts.length === 0) ||
+        (newBar && existingBars.length === 0),
+    );
+    setVenueDefault(print?.venueDefault === true || (newReceipt && existingReceipts.length === 0));
     const klass =
       preset?.stationClass === "terminal" || preset?.stationClass === "handheld"
         ? preset.stationClass
@@ -487,6 +528,9 @@ export function LocationDeviceRegistry({
       const ip = printIp.trim();
       const port = Number(printPort) || spec.port;
       const target = ip ? `${ip}:${port}` : "";
+      const isBarDest =
+        isOrderPrinterType(type) &&
+        normalizeDestinationName(destinationName).toLowerCase() === "bar";
       await saveLocationDeviceFn({
         data: {
           orgId: resolvedOrgId,
@@ -525,6 +569,10 @@ export function LocationDeviceRegistry({
                     : defaultRoutesForPrinterType(type, destinationName),
                   boundStationIds,
                   kickStationIds,
+                  sectionIds: isReceiptPrinterType(type) || isBarDest ? sectionIds : undefined,
+                  serveNoSection:
+                    isReceiptPrinterType(type) || isBarDest ? serveNoSection : undefined,
+                  venueDefault: isReceiptPrinterType(type) ? venueDefault : undefined,
                 }
               : undefined,
             receiptPrinterId: printer ? null : receiptPrinterId || null,
@@ -1255,23 +1303,84 @@ export function LocationDeviceRegistry({
                   </span>
                 </label>
               )}
+              {(isReceiptPrinterType(type) ||
+                (isOrderPrinterType(type) &&
+                  normalizeDestinationName(destinationName).toLowerCase() === "bar")) && (
+                <fieldset className="space-y-1">
+                  <legend className="text-xs text-muted-foreground">Floor sections</legend>
+                  <p className="text-[11px] text-muted-foreground">
+                    {isReceiptPrinterType(type)
+                      ? "Print check and paid receipt for a table go to the receipt printer for that table’s section. Order / host tablets fire; they do not own routing."
+                      : "Drinks fire to the bar printer for that table’s section (or the well the tab belongs to). If this is the only bar printer, every section maps to it."}
+                  </p>
+                  <div className="flex flex-col gap-1">
+                    {floorSections.map((sec) => (
+                      <label key={sec.id} className="flex items-center gap-2 text-sm">
+                        <input
+                          type="checkbox"
+                          className="h-4 w-4 rounded border-border"
+                          checked={sectionIds.includes(sec.id)}
+                          onChange={(e) =>
+                            setSectionIds((prev) =>
+                              e.target.checked
+                                ? [...prev, sec.id]
+                                : prev.filter((x) => x !== sec.id),
+                            )
+                          }
+                        />
+                        {sec.name}
+                      </label>
+                    ))}
+                    {floorSections.length === 0 && (
+                      <p className="text-[11px] text-muted-foreground">
+                        Add rooms on Floor first, then assign this printer.
+                      </p>
+                    )}
+                    <label className="flex items-center gap-2 text-sm">
+                      <input
+                        type="checkbox"
+                        className="h-4 w-4 rounded border-border"
+                        checked={serveNoSection}
+                        onChange={(e) => setServeNoSection(e.target.checked)}
+                      />
+                      Bar tabs / no section
+                    </label>
+                    {isReceiptPrinterType(type) && (
+                      <label className="flex items-center gap-2 text-sm">
+                        <input
+                          type="checkbox"
+                          className="h-4 w-4 rounded border-border"
+                          checked={venueDefault}
+                          onChange={(e) => setVenueDefault(e.target.checked)}
+                        />
+                        Venue default (to-go / will-call)
+                      </label>
+                    )}
+                  </div>
+                </fieldset>
+              )}
+              {isOrderPrinterType(type) &&
+                normalizeDestinationName(destinationName).toLowerCase() !== "bar" && (
+                  <p className="text-[11px] text-muted-foreground">
+                    Food order printers are assigned on Menu groups (destination + printer). Same
+                    destination + same printer on one Send is one slip. Table section does not route
+                    food.
+                  </p>
+                )}
+              {isReceiptPrinterType(type) && (
               <fieldset className="space-y-1">
                 <legend className="text-xs text-muted-foreground">
-                  {isReceiptPrinterType(type)
-                    ? "Stations that may print"
-                    : "Which stations may send to it"}
+                  Fallback stations if the section has none
                 </legend>
                 <p className="text-[11px] text-muted-foreground">
-                  {isReceiptPrinterType(type)
-                    ? "Paid receipts (and Print check on terminals). Handhelds optional for receipts only. Empty = no station prints from this printer."
-                    : "Empty = every order and host station. Entity filter above routes food vs drink on a peer venue."}
+                  Existing “bound to this tablet” rows stay as fallback. Empty = section map only.
                 </p>
                 <div className="flex flex-col gap-1">
                   {devices
                     .filter((d) => !isPrinterDevice(d) && d.status !== "inactive")
                     .map((d) => {
                       const role = deviceRoleFromFunction(d.assignment.function);
-                      if (isReceiptPrinterType(type) && (role === "ods" || role === "kiosk")) {
+                      if (role === "ods" || role === "kiosk") {
                         return null;
                       }
                       return (
@@ -1294,6 +1403,7 @@ export function LocationDeviceRegistry({
                     })}
                 </div>
               </fieldset>
+              )}
               {isReceiptPrinterType(type) && (
                 <fieldset className="space-y-1">
                   <legend className="text-xs text-muted-foreground">
@@ -1371,13 +1481,13 @@ export function LocationDeviceRegistry({
               />
             </label>
             <label className="block text-xs text-muted-foreground">
-              Receipt printer
+              Fallback receipt printer
               <select
                 className="mt-1 h-10 w-full rounded-xl border border-border bg-bg px-3 text-sm text-foreground"
                 value={receiptPrinterId}
                 onChange={(e) => setReceiptPrinterId(e.target.value)}
               >
-                <option value="">No mapped receipt printer</option>
+                <option value="">None — use the table’s section printer</option>
                 {devices
                   .filter(
                     (d) =>
@@ -1393,6 +1503,10 @@ export function LocationDeviceRegistry({
                     </option>
                   ))}
               </select>
+              <span className="mt-0.5 block text-[11px] text-muted-foreground">
+                Used only when the table’s section has no receipt printer. Routing is by section, not
+                by this tablet.
+              </span>
             </label>
             </div>
           )}
@@ -1471,6 +1585,16 @@ export function LocationDeviceRegistry({
                   {isPrinterDevice(d) && d.print
                     ? `${DEVICE_TYPE_LABEL[printerTypeFromStation(d.type, d.print.station)]}${
                         d.print.destinationName ? ` · ${d.print.destinationName}` : ""
+                      }${
+                        isReceiptPrinterType(d.type) || isBarOrderPrinter(d)
+                          ? d.print.sectionIds?.length
+                            ? ` · ${d.print.sectionIds
+                                .map((id) => floorSections.find((s) => s.id === id)?.name ?? id)
+                                .join(", ")}`
+                            : " · no sections"
+                          : ""
+                      }${d.print.venueDefault ? " · venue default" : ""}${
+                        d.print.serveNoSection ? " · bar tabs" : ""
                       } · ${entityName(d.assignment.operatorId)} · ${d.print.modelPreset ? PRINTER_MODEL_LABEL[d.print.modelPreset] : ""} · ${d.print.link ? PRINTER_LINK_LABEL[d.print.link] : ""} ${d.print.ip || d.print.target || "(pending IP)"}`
                     : `${DEVICE_TYPE_LABEL[d.type]} · ${entityName(d.assignment.operatorId)} · ${DEVICE_FUNCTION_LABEL[d.assignment.function]} · ${DEVICE_ROLE_LABEL[deviceRoleFromFunction(d.assignment.function)]}`}
                 </p>

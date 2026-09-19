@@ -20,8 +20,10 @@ test("devices tab type dropdown includes printers", () => {
   assert.match(ui, /dispatchRawTestPrint/);
   assert.doesNotMatch(ui, /forceBrowser/);
   assert.doesNotMatch(ui, /window\.print/);
-  assert.match(ui, /Which order \/ host stations use it/);
-  assert.match(ui, /Which stations may send to it/);
+  assert.match(ui, /Floor sections/);
+  assert.match(ui, /Bar tabs \/ no section/);
+  assert.match(ui, /Fallback stations if the section has none/);
+  assert.match(ui, /Menu groups/);
   assert.match(ui, /All entities at this venue/);
   assert.doesNotMatch(ui, /Kitchen printer/);
   assert.doesNotMatch(ui, /Bar printer/);

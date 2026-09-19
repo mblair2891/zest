@@ -289,10 +289,14 @@ test("separate course tickets splits one printer by course", () => {
 test("send no longer groups kitchen fire by course or menu group", () => {
   const store = readFileSync("src/lib/pos/store.ts", "utf8");
   assert.match(store, /groupFireSlips/);
+  assert.match(store, /floorSections/);
   assert.doesNotMatch(store, /\$\{l\.station\}\|\$\{l\.vendorId/);
   const from = readFileSync("src/lib/print/from-store.ts", "utf8");
   assert.match(from, /resolveOrderPrinters/);
+  const fire = readFileSync("src/lib/pos/fire-routing.ts", "utf8");
+  assert.match(fire, /resolveBarPrinterForCheck/);
   const guide = readFileSync("src/lib/guide/content/orders.ts", "utf8");
   assert.match(guide, /Separate course tickets/);
   assert.match(guide, /one ticket/);
+  assert.match(guide, /table’s section/);
 });

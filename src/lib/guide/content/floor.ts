@@ -42,7 +42,7 @@ export const FLOOR_TOPICS: GuideTopic[] = [
     id: "sections",
     chapterId: "floor",
     title: "Sections, assignments, limits",
-    summary: "Color-coded sections, extra-table grants, and order limits.",
+    summary: "Color-coded sections, printer assignment, extra-table grants, and order limits.",
     roles: ["owner_manager", "server"],
     keywords: ["section", "assignment", "grant", "dining", "booth", "limits"],
     openView: "employees",
@@ -51,7 +51,8 @@ export const FLOOR_TOPICS: GuideTopic[] = [
         "Section control stops a server from seating or ordering a table that is not theirs — unless a manager grants it.",
       ),
       ul(
-        "Tables belong to sections. Staff are assigned to section(s) for the shift.",
+        "Tables belong to sections. Receipt printers and bar printers are assigned to those sections. Print check for a table uses that section’s Epson; drinks fire to that section’s bar printer.",
+        "Staff are assigned to section(s) for the shift.",
         "Server view prioritizes tables in assigned sections (Mine).",
         "Servers cannot enter orders on another section’s table.",
         "Servers cannot seat a table in another section.",
@@ -61,6 +62,7 @@ export const FLOOR_TOPICS: GuideTopic[] = [
         "Shift grants drop at clock-out. Seating grants drop when the table is cleared.",
       ),
       steps(
+        "Open Floor editor. Each room / section can name a receipt printer and a bar printer. Devices can assign the same printers to several sections.",
         "Open Staff. Tap section chips on a person (Dining / Booth / Bar).",
         "Host stand: seat a table, pick the server for that section.",
         "Server A: Floor → table → Transfer / hold → pick a server. Server B: accept from Pending accept.",
@@ -70,7 +72,7 @@ export const FLOOR_TOPICS: GuideTopic[] = [
       tip(
         "The floor paints a color bar on every table so the room is readable at a glance — including for a host walking the floor.",
       ),
-      related("floor-tables", "checks-comps", "invites-roles"),
+      related("floor-tables", "checks-comps", "invites-roles", "printers-kds", "kitchen-bar-routing"),
     ],
   }),
   topic({
@@ -139,7 +141,7 @@ export const FLOOR_TOPICS: GuideTopic[] = [
         "The same POS covers a seated dining room and a counter. The difference is whether a table holds the check.",
       ),
       ul(
-        "Table service — PIN on an order station opens a short menu. My tables is the map only. Seat → Order → fire. Pay / Print check / No sale only on a station bound to a Receipt printer. Handhelds ring and fire; pay at a named terminal or host stand. To-go and Bar tab are other jobs, not drawers on the map.",
+        "Table service — PIN on an order station opens a short menu. My tables is the map only. Seat → Order → fire. Print check follows the table’s section receipt printer. Handhelds ring and fire. Cash and drawer kick stay on a Terminal; that kick hits the Epson that printed the check. To-go and Bar tab are other jobs, not drawers on the map.",
         "Counter / QSR — ticket/queue and to-go. No dining floor on the order glass.",
         "Drive-through — lane on the order tablet, window on the host tablet. No dining room map.",
         "Bar tab — from the floor, tap Bar tab, then pick a stool on your section rail. Empty stool opens a tab; occupied attaches the check. To-go stays off a stool. Still Quantum Payments for cards.",

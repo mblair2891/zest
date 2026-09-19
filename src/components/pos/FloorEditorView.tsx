@@ -26,7 +26,14 @@ import { tableGuestUrl } from "@/lib/pos/qr-table";
 import { getDemoType } from "@/lib/demo/session";
 import { GuideLearnLink } from "@/components/guide/GuideLearnLink";
 import { QrMark } from "./QrMark";
-import { persistLocationCatalog } from "@/lib/pos/persist-location-setup";
+import { persistLocationCatalog, persistPrinterAssignments } from "@/lib/pos/persist-location-setup";
+import {
+  barPrinterForSection,
+  isBarOrderPrinter,
+  receiptPrinterForSection,
+  setSectionPrinter,
+} from "@/lib/print/printer-assignment";
+import { isReceiptPrinterType } from "@/lib/pos/location-devices";
 
 const KINDS: {
   id: TableKind;
@@ -54,6 +61,22 @@ export function FloorEditorView() {
   const rotateTableQr = usePosStore((s) => s.rotateTableQr);
   const upsertFloorSection = usePosStore((s) => s.upsertFloorSection);
   const removeFloorSection = usePosStore((s) => s.removeFloorSection);
+  const locationDevices = usePosStore((s) => s.locationDevices ?? []);
+  const receiptPrinters = locationDevices.filter(
+    (d) => d.status !== "inactive" && isReceiptPrinterType(d.type),
+  );
+  const barPrinters = locationDevices.filter((d) => isBarOrderPrinter(d));
+
+  const assignSectionPrinter = (sectionId: string, kind: "receipt" | "bar", printerId: string) => {
+    const next = setSectionPrinter(
+      usePosStore.getState().locationDevices ?? [],
+      sectionId,
+      kind,
+      printerId || null,
+    );
+    usePosStore.setState({ locationDevices: next });
+    persistPrinterAssignments();
+  };
   const [selected, setSelected] = useState<string | null>(null);
   const [newName, setNewName] = useState("");
   const [room, setRoom] = useState<string>("All");
@@ -329,6 +352,38 @@ export function FloorEditorView() {
                       <Trash2 className="h-3.5 w-3.5" />
                     </Button>
                   </div>
+                  <label className="mt-1.5 block text-[11px] text-muted-foreground">
+                    Receipt printer
+                    <select
+                      className="mt-0.5 h-8 w-full rounded-lg border border-border bg-bg px-2 text-xs text-foreground"
+                      value={receiptPrinterForSection(locationDevices, sec.id)?.id ?? ""}
+                      onChange={(e) => assignSectionPrinter(sec.id, "receipt", e.target.value)}
+                    >
+                      <option value="">None</option>
+                      {receiptPrinters.map((p) => (
+                        <option key={p.id} value={p.id}>
+                          {p.label}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  <label className="mt-1 block text-[11px] text-muted-foreground">
+                    Bar printer
+                    <select
+                      className="mt-0.5 h-8 w-full rounded-lg border border-border bg-bg px-2 text-xs text-foreground"
+                      value={barPrinterForSection(locationDevices, sec.id)?.id ?? ""}
+                      onChange={(e) => assignSectionPrinter(sec.id, "bar", e.target.value)}
+                    >
+                      <option value="">
+                        {barPrinters.length === 1 ? "All sections (only bar printer)" : "None"}
+                      </option>
+                      {barPrinters.map((p) => (
+                        <option key={p.id} value={p.id}>
+                          {p.label}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
                   <div className="mt-1.5 flex flex-wrap gap-1">
                     {SECTION_SWATCHES.map((sw) => (
                       <button
@@ -368,6 +423,7 @@ export function FloorEditorView() {
                     color: SECTION_SWATCHES[floorSections.length % 6].id,
                     sort: floorSections.length,
                   });
+                  persistPrinterAssignments();
                   setNewName("");
                 }}
               >

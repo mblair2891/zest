@@ -25,7 +25,7 @@ Any **POS, payments, devices, cash, tips, HR, or SaaS behavior change** MUST upd
 - Location models: single operator; host + tenants; **shared venue (peers)** — named building, no landlord-brand POS / host merchant / host gift required.
 - Gift cards: **Summex house ledger** — swipe / scan / key. Not Finix.
 - Device roles: **order** (handhelds + bar), **ODS** (kitchen), **host** (floor map + to-go). PIN first on the station — not `/login`.
-- Printers: Ethernet on the **AP LAN** (not printer Wi‑Fi). Thermal receipts (Epson TM-T20). Impact kitchen (Epson TM-U220). Drawer kick on the receipt printer.
+- Printers: Ethernet on the **AP LAN** (not printer Wi‑Fi). Thermal receipts (Epson TM-T20) assigned to **floor sections**. Food order printers assigned to **menu groups**. Bar order printers assigned to **floor sections**. Drawer kick on the receipt printer that printed that check.
 - Summex does not process payroll. Staffing recs never auto clock-out.
 
 Do not ship a behavior change without the matching topic, steps, and related links.

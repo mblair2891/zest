@@ -595,6 +595,7 @@ export const usePlatformStore = create<PlatformState>()(
             menuItems: pos.menuItems,
             devices: pos.locationDevices ?? [],
             separateCourseTickets: Boolean(pos.settings.separateCourseTickets),
+            orderType: o.type === "takeout" || o.type === "delivery" ? o.type : "online",
           },
         );
 

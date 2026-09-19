@@ -7,7 +7,6 @@ import {
   payAtCopy as payAtCopyBind,
   receiptPrinterServesStation as serves,
   resolveReceiptPrinter as resolveBind,
-  stationHasBoundReceiptPrinter as hasBound,
   stationMayKickDrawer as mayKick,
   stationMayPrintReceipt as mayPrint,
   type ReceiptBindDevice,
@@ -15,30 +14,50 @@ import {
 
 export const ADD_RECEIPT_PRINTER = "Add a receipt printer in Devices";
 
+export type ReceiptCheckContext = {
+  table?: import("./printer-assignment").TableRef;
+  tables?: import("./printer-assignment").TableRef[];
+  tableId?: string | null;
+  sections?: import("./printer-assignment").SectionRef[];
+  orderType?: string | null;
+};
+
 export function receiptPrinterServesStation(
   printer: LocationDevice,
   opts: {
     stationDeviceId?: string | null;
     role?: "order" | "ods" | "host" | "kiosk" | null;
     devices?: LocationDevice[];
+    table?: ReceiptCheckContext["table"];
+    tables?: ReceiptCheckContext["tables"];
+    tableId?: string | null;
+    sections?: ReceiptCheckContext["sections"];
+    orderType?: string | null;
   },
 ): boolean {
   return serves(printer as ReceiptBindDevice, {
     stationDeviceId: opts.stationDeviceId,
     role: opts.role,
     devices: opts.devices as ReceiptBindDevice[] | undefined,
+    table: opts.table,
+    tables: opts.tables,
+    tableId: opts.tableId,
+    sections: opts.sections,
+    orderType: opts.orderType,
   });
 }
 
-/** Printer mapped on this station row, or listed under Stations that may print and kick. */
+/** Section map first; station fallback if the section has none. */
 export function resolveReceiptPrinter(
   devices: LocationDevice[] | undefined,
   stationDeviceId: string | null | undefined,
+  check?: ReceiptCheckContext,
 ): LocationDevice | undefined {
   const hit = resolveBind(
     devices as ReceiptBindDevice[] | undefined,
     stationDeviceId,
     readStationDeviceRole(),
+    check,
   );
   return hit ? devices?.find((d) => d.id === hit.id) : undefined;
 }
@@ -46,12 +65,9 @@ export function resolveReceiptPrinter(
 export function stationHasBoundReceiptPrinter(
   devices: LocationDevice[] | undefined,
   stationDeviceId: string | null | undefined,
+  check?: ReceiptCheckContext,
 ): boolean {
-  return hasBound(
-    devices as ReceiptBindDevice[] | undefined,
-    stationDeviceId,
-    readStationDeviceRole(),
-  );
+  return Boolean(resolveReceiptPrinter(devices, stationDeviceId, check));
 }
 
 export function payAtCopy(devices: LocationDevice[] | undefined): string {
@@ -76,7 +92,9 @@ export function stationMayKickDrawer(
 export function stationMayPrintReceipt(
   devices: LocationDevice[] | undefined,
   stationDeviceId: string | null | undefined,
+  check?: ReceiptCheckContext,
 ): boolean {
+  if (check) return Boolean(resolveReceiptPrinter(devices, stationDeviceId, check));
   return mayPrint(
     devices as ReceiptBindDevice[] | undefined,
     stationDeviceId,

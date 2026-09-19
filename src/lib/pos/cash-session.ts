@@ -701,12 +701,14 @@ export function applyCashTender(opts: {
   emp: Employee;
   deviceRole: DeviceRole | null;
   deviceId?: string | null;
-  order?: Pick<Order, "type" | "id"> | null;
+  order?: Pick<Order, "type" | "id" | "tableId"> | null;
   amountCents: number;
   refund?: boolean;
   locationId: string;
   devices?: import("./location-devices").LocationDevice[];
   paymentMethods?: unknown;
+  table?: import("@/lib/print/printer-assignment").TableRef;
+  sections?: import("@/lib/print/printer-assignment").SectionRef[];
 }): { ok: true; skimOver?: boolean } | { ok: false; error: string } {
   const sink = currentCashSink({
     cfg: opts.cfg,
@@ -758,15 +760,24 @@ export function applyCashTender(opts: {
     refund: opts.refund,
   });
   if (sink.type === "drawer" && opts.cfg.openOnCashSale !== "never") {
-    void import("@/lib/print/dispatch").then((m) =>
-      m.kickCashDrawer({
+    void import("@/lib/print/dispatch").then(async (m) => {
+      const { resolveReceiptPrinterForCheck } = await import("@/lib/print/printer-assignment");
+      const sectionPrinter = resolveReceiptPrinterForCheck({
+        devices: opts.devices,
+        stationDeviceId: opts.deviceId,
+        table: opts.table,
+        tableId: opts.order?.tableId,
+        sections: opts.sections,
+        orderType: opts.order?.type,
+      });
+      return m.kickCashDrawer({
         locationId: opts.locationId,
         devices: opts.devices,
-        printerId: sink.drawer.kickPrinterId,
+        printerId: sectionPrinter?.id || sink.drawer.kickPrinterId,
         pin: opts.cfg.drawerKickPin === 5 ? 5 : 2,
         deviceId: opts.deviceId,
-      }),
-    );
+      });
+    });
   }
   const expected =
     sink.type === "drawer"

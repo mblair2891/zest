@@ -82,10 +82,19 @@ export function PaymentDialog({ open, onOpenChange }: Props) {
   const giftOk = canPay && payCfg.giftCard;
   const locationDevices = usePosStore((s) => s.locationDevices);
   const activeDeviceId = usePosStore((s) => s.activeDeviceId);
+  const tables = usePosStore((s) => s.tables);
+  const floorSections = usePosStore((s) => s.floorSections);
   const stationId = activeDeviceId || currentStationDeviceId();
   const stationRow = locationDevices.find((d) => d.id === stationId);
   const stationClass = parseStationClass(stationRow?.stationClass, stationRow);
-  const mayPrintReceipt = stationMayPrintReceipt(locationDevices, stationId);
+  const payTable = order?.tableId ? tables.find((t) => t.id === order.tableId) : undefined;
+  const mayPrintReceipt = stationMayPrintReceipt(locationDevices, stationId, {
+    table: payTable,
+    tables,
+    tableId: order?.tableId,
+    sections: floorSections,
+    orderType: order?.type,
+  });
   const mayPrintCheck = mayPrintReceipt;
   const deviceRole = (() => {
     try {

@@ -223,7 +223,13 @@ export async function printFromPos(
         totalCents: sh.totalCents,
       }));
       const policy = parseQrPolicy(s.settings.qrPolicy, s.settings.qrMode);
-      const receiptPrn = resolveReceiptPrinter(devices, currentStationDeviceId());
+      const receiptPrn = resolveReceiptPrinter(devices, currentStationDeviceId(), {
+        table,
+        tables: s.tables,
+        tableId: order.tableId,
+        sections: s.floorSections,
+        orderType: order.type,
+      });
       const ticketQr =
         qrPrintOnTicket(policy) &&
         receiptPrn?.print?.printPayQr !== false &&
@@ -275,7 +281,27 @@ export async function printFromPos(
   }
 
   const stationId = currentStationDeviceId();
-  const mappedReceipt = resolveReceiptPrinter(devices, stationId);
+  const receiptOrder =
+    kind === "receipt" || kind === "guest_check"
+      ? (id ? s.orders.find((o) => o.id === id) : null) ?? s.getActiveOrder?.()
+      : undefined;
+  const receiptTable = receiptOrder?.tableId
+    ? s.tables.find((tb) => tb.id === receiptOrder.tableId)
+    : undefined;
+  const checkCtx = receiptOrder
+    ? {
+        table: receiptTable,
+        tables: s.tables,
+        tableId: receiptOrder.tableId,
+        sections: s.floorSections,
+        orderType: receiptOrder.type,
+      }
+    : undefined;
+  const mappedReceipt = resolveReceiptPrinter(devices, stationId, checkCtx);
+  const fireOrder = kind === "send" ? (id ? s.orders.find((o) => o.id === id) : null) : undefined;
+  const fireTable = fireOrder?.tableId
+    ? s.tables.find((tb) => tb.id === fireOrder.tableId)
+    : undefined;
 
   for (const job of jobs) {
     const printers =
@@ -286,6 +312,11 @@ export async function printFromPos(
             printerId: job.printerId,
             operatorId: job.operatorId,
             stationDeviceId: stationId,
+            table: fireTable,
+            tables: s.tables,
+            tableId: fireOrder?.tableId,
+            sections: s.floorSections,
+            orderType: fireOrder?.type,
           })
         : printersForStation(devices, job.station, job.operatorId, stationId);
     if (job.kind === "ticket" && (queueOnly || printers.length > 0)) {
@@ -352,10 +383,16 @@ export async function printGuestReceipt(orderId: string): Promise<{
   const order = s.orders.find((o) => o.id === orderId) ?? s.getActiveOrder?.();
   if (!order) return { ok: false, error: "No check to print." };
   const devices = s.locationDevices;
-  const printer = resolveReceiptPrinter(devices, currentStationDeviceId());
+  const table = order.tableId ? s.tables.find((tb) => tb.id === order.tableId) : undefined;
+  const printer = resolveReceiptPrinter(devices, currentStationDeviceId(), {
+    table,
+    tables: s.tables,
+    tableId: order.tableId,
+    sections: s.floorSections,
+    orderType: order.type,
+  });
   const locationId = s.tenantLocationId || "";
   const locationName = s.settings.name || "Summex";
-  const table = order.tableId ? s.tables.find((tb) => tb.id === order.tableId) : undefined;
   const tender = order.payments[order.payments.length - 1];
   const totals = computeTotals(order, s.settings, {
     tender: tender?.method === "cash" ? "cash" : "card",
@@ -454,7 +491,14 @@ export async function printGuestCheck(orderId?: string): Promise<{
   if (!order) return { ok: false, error: "No check to print." };
   const devices = s.locationDevices;
   const stationId = currentStationDeviceId();
-  const printer = resolveReceiptPrinter(devices, stationId);
+  const table = order.tableId ? s.tables.find((tb) => tb.id === order.tableId) : undefined;
+  const printer = resolveReceiptPrinter(devices, stationId, {
+    table,
+    tables: s.tables,
+    tableId: order.tableId,
+    sections: s.floorSections,
+    orderType: order.type,
+  });
   if (!printer) {
     return { ok: false, error: ADD_RECEIPT_PRINTER };
   }
@@ -463,7 +507,10 @@ export async function printGuestCheck(orderId?: string): Promise<{
   const cash = parseCashHandling(s.settings.cashHandling);
   const job: PrintJob = {
     ...guestCheckJob(order, s, locationId, locationName),
-    kickDrawer: Boolean(cash.kickOnPrintCheck) && Boolean(resolveReceiptDrawer(devices, stationId)),
+    kickDrawer:
+      Boolean(cash.kickOnPrintCheck) &&
+      Boolean(resolveReceiptDrawer(devices, stationId)) &&
+      Boolean(printer.print && (printer.print.drawerKick !== "none")),
     drawerKickPin: parseDrawerKickPin(cash.drawerKickPin),
   };
   const res = await dispatchPrintJob(job, devices, { printerId: printer.id });

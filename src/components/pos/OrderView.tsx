@@ -145,12 +145,18 @@ export function OrderView() {
   const locationDevices = usePosStore((s) => s.locationDevices);
   const activeDeviceId = usePosStore((s) => s.activeDeviceId);
   const stationId = activeDeviceId || currentStationDeviceId();
-  const hasBoundReceipt = stationHasBoundReceiptPrinter(locationDevices, stationId);
-  const mayPrintReceipt = stationMayPrintReceipt(locationDevices, stationId);
-  const mayPrintCheck = hasBoundReceipt && mayPrintReceipt;
-
   const happy = isHappyHour(settings);
   const table = tables.find((t) => t.id === order?.tableId);
+  const receiptCheck = {
+    table,
+    tables,
+    tableId: order?.tableId,
+    sections: floorSections,
+    orderType: order?.type,
+  };
+  const hasBoundReceipt = stationHasBoundReceiptPrinter(locationDevices, stationId, receiptCheck);
+  const mayPrintReceipt = stationMayPrintReceipt(locationDevices, stationId, receiptCheck);
+  const mayPrintCheck = hasBoundReceipt && mayPrintReceipt;
   const dual = order ? computeDualTotals(order, settings) : null;
   const totals = dual?.card ?? null;
   const cashPolicy = cashPolicyFromSettings(settings);

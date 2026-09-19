@@ -107,6 +107,15 @@ export type PrinterConfig = {
   boundStationIds?: string[];
   /** Terminals that may kick this drawer. Missing = print list (legacy). */
   kickStationIds?: string[];
+  /**
+   * Floor sections this printer serves. Receipt + bar printers.
+   * Undefined = never assigned (seed may fill). Empty = owner cleared.
+   */
+  sectionIds?: string[];
+  /** Receipt / bar: bar tabs and checks with no table section. */
+  serveNoSection?: boolean;
+  /** Receipt: to-go / will-call / no table. */
+  venueDefault?: boolean;
   lastPrintAt?: number;
   reachability?: PrinterReachability;
 };
@@ -200,7 +209,7 @@ export type LocationDevice = {
   claimCode?: string;
   assignment: DeviceAssignment;
   print?: PrinterConfig;
-  /** Station tablet → guest receipt printer. Empty = venue default receipt printer. */
+  /** Station fallback receipt printer when the table’s section has none. */
   receiptPrinterId?: string | null;
   /** Handheld (card, no drawer) vs terminal (cash + kick). */
   stationClass?: import("./station-class").StationClass;
@@ -596,6 +605,13 @@ export function parsePrinterConfig(raw: unknown): PrinterConfig | undefined {
   const kick = Array.isArray(o.kickStationIds)
     ? o.kickStationIds.map((x) => String(x).trim()).filter(Boolean).slice(0, 40)
     : undefined;
+  const sectionIds = Array.isArray(o.sectionIds)
+    ? o.sectionIds.map((x) => String(x).trim()).filter(Boolean).slice(0, 40)
+    : undefined;
+  const serveNoSection =
+    o.serveNoSection === true ? true : o.serveNoSection === false ? false : undefined;
+  const venueDefault =
+    o.venueDefault === true ? true : o.venueDefault === false ? false : undefined;
   const kickRaw = String(o.drawerKick ?? "");
   const drawerKick: PrinterDrawerKick | undefined =
     kickRaw === "attached" || kickRaw === "none" ? kickRaw : undefined;
@@ -622,6 +638,9 @@ export function parsePrinterConfig(raw: unknown): PrinterConfig | undefined {
     routes: routes.length ? routes : [routeForPrintStation(station)],
     boundStationIds: bound,
     kickStationIds: kick,
+    sectionIds,
+    serveNoSection,
+    venueDefault: station === "receipt" ? venueDefault : undefined,
     lastPrintAt: Number(o.lastPrintAt) > 0 ? Math.round(Number(o.lastPrintAt)) : undefined,
     reachability,
   };

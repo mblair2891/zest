@@ -76,6 +76,7 @@ import { resolveReceiptDrawer } from "../print/receipt-drawer";
 import { readPairedDeviceId } from "./location-devices";
 import { destinationForGroup, ticketStationForDestination } from "./order-destinations";
 import { groupFireSlips } from "./fire-routing";
+import { assignNewSectionToSolePrinters } from "../print/printer-assignment";
 import { methodEnabled, parsePaymentMethods } from "./payment-methods";
 import { giftSellBlockedReason, parseGiftLimits } from "./gift-limits";
 import {
@@ -2634,6 +2635,11 @@ const usePosStoreRaw = create<PosStore>()(persist((set, get) => {
 				menuItems: get().menuItems,
 				devices: get().locationDevices ?? [],
 				separateCourseTickets: Boolean(get().settings.separateCourseTickets),
+				table,
+				tables: get().tables,
+				tableId: order.tableId,
+				sections: get().floorSections,
+				orderType: order.type,
 			},
 		);
 		const newTickets = slips.map((slip) => ({
@@ -3195,6 +3201,10 @@ const usePosStoreRaw = create<PosStore>()(persist((set, get) => {
 					locationId: get().tenantLocationId || "",
 					devices: get().locationDevices,
 					paymentMethods: get().settings.paymentMethods,
+					table: order.tableId
+						? get().tables.find((t: { id: string }) => t.id === order.tableId)
+						: undefined,
+					sections: get().floorSections,
 				});
 			} catch { /* cash session optional */ }
 		}
@@ -4432,9 +4442,17 @@ const usePosStoreRaw = create<PosStore>()(persist((set, get) => {
 	upsertFloorSection: (section) => {
 		const list = [...get().floorSections];
 		const i = list.findIndex((s) => s.id === section.id);
+		const nextId = section.id || uid("sec");
+		const isNew = i < 0;
 		if (i >= 0) list[i] = { ...list[i], ...section };
-		else list.push({ id: section.id || uid("sec"), name: section.name || "Section", color: section.color || "sec-1", sort: section.sort ?? list.length });
-		set({ floorSections: list.sort((a: any, b: any) => a.sort - b.sort) });
+		else list.push({ id: nextId, name: section.name || "Section", color: section.color || "sec-1", sort: section.sort ?? list.length });
+		const devices = isNew
+			? assignNewSectionToSolePrinters(get().locationDevices ?? [], nextId)
+			: get().locationDevices;
+		set({
+			floorSections: list.sort((a: any, b: any) => a.sort - b.sort),
+			...(isNew ? { locationDevices: devices } : {}),
+		});
 	},
 	removeFloorSection: (id) => {
 		if (get().floorSections.length <= 1) return { ok: false, error: "Keep at least one section" };

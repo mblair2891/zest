@@ -10,6 +10,12 @@ import {
   destinationForGroup,
   ticketStationForDestination,
 } from "@/lib/pos/order-destinations";
+import {
+  isBarOrderPrinter,
+  resolveBarPrinterForCheck,
+  type SectionRef,
+  type TableRef,
+} from "@/lib/print/printer-assignment";
 import type { Course, KitchenTicketItem, MenuCategory, MenuItem, TicketStation } from "@/lib/pos/types";
 
 export type FireLineInput = {
@@ -54,13 +60,6 @@ function printerDestination(d: LocationDevice): string {
   );
 }
 
-function boundOk(d: LocationDevice, stationDeviceId?: string | null): boolean {
-  const ids = d.print?.boundStationIds ?? [];
-  if (!ids.length) return true;
-  if (!stationDeviceId) return true;
-  return ids.includes(stationDeviceId);
-}
-
 function entityPool(
   list: LocationDevice[],
   operatorId?: string | null,
@@ -79,7 +78,8 @@ function matchDestination(list: LocationDevice[], destinationName: string): Loca
 
 /**
  * Order printers for a fire. Receipt printers never match.
- * Named override wins. Else exact destination. Bar with no bar printer → Kitchen.
+ * Food: menu group destination + printer. Bar: floor section.
+ * Named override wins. Bar with no bar printer → Kitchen.
  */
 export function resolveOrderPrinters(opts: {
   devices: LocationDevice[] | undefined;
@@ -87,20 +87,36 @@ export function resolveOrderPrinters(opts: {
   printerId?: string | null;
   operatorId?: string | null;
   stationDeviceId?: string | null;
+  table?: TableRef;
+  tables?: TableRef[];
+  tableId?: string | null;
+  sections?: SectionRef[];
+  orderType?: string | null;
 }): LocationDevice[] {
   const order = (opts.devices ?? []).filter(isActiveOrderPrinter);
   if (opts.printerId) {
     const named = order.find((d) => d.id === opts.printerId);
     if (named) return [named];
   }
-  const bound = order.filter((d) => boundOk(d, opts.stationDeviceId));
-  const pool = bound.length ? bound : order;
   const dest = normalizeDestinationName(opts.destinationName) || DEFAULT_ORDER_DESTINATION;
-  let hits = entityPool(matchDestination(pool, dest), opts.operatorId);
-  if (!hits.length && destKey(dest) === "bar") {
-    hits = entityPool(matchDestination(pool, DEFAULT_ORDER_DESTINATION), opts.operatorId);
+  if (destKey(dest) === "bar") {
+    const bar = resolveBarPrinterForCheck({
+      devices: opts.devices,
+      table: opts.table,
+      tables: opts.tables,
+      tableId: opts.tableId,
+      sections: opts.sections,
+      orderType: opts.orderType,
+    });
+    if (bar) {
+      const hit = order.find((d) => d.id === bar.id);
+      if (hit) return [hit];
+    }
+    const kitchen = entityPool(matchDestination(order, DEFAULT_ORDER_DESTINATION), opts.operatorId);
+    return kitchen;
   }
-  return hits;
+  const pool = order.filter((d) => !isBarOrderPrinter(d));
+  return entityPool(matchDestination(pool.length ? pool : order, dest), opts.operatorId);
 }
 
 export function resolveFireTarget(
@@ -110,6 +126,11 @@ export function resolveFireTarget(
     menuItems: MenuItem[];
     devices: LocationDevice[];
     stationDeviceId?: string | null;
+    table?: TableRef;
+    tables?: TableRef[];
+    tableId?: string | null;
+    sections?: SectionRef[];
+    orderType?: string | null;
   },
 ): { destinationName: string; printerId?: string; station: TicketStation } {
   const item = line.menuItemId
@@ -119,13 +140,19 @@ export function resolveFireTarget(
     (item?.categoryId ? ctx.categories.find((c) => c.id === item.categoryId) : undefined) ??
     (line.categoryId ? ctx.categories.find((c) => c.id === line.categoryId) : undefined);
   const destinationName = destinationForGroup(cat, item?.station ?? line.station);
-  const override = cat?.printerId?.trim() || "";
+  const barDest = destKey(destinationName) === "bar";
+  const override = barDest ? "" : cat?.printerId?.trim() || "";
   const printers = resolveOrderPrinters({
     devices: ctx.devices,
     destinationName,
     printerId: override || null,
     operatorId: line.vendorId,
     stationDeviceId: ctx.stationDeviceId,
+    table: ctx.table,
+    tables: ctx.tables,
+    tableId: ctx.tableId,
+    sections: ctx.sections,
+    orderType: ctx.orderType,
   });
   const printerId =
     override && printers.some((p) => p.id === override)
@@ -156,6 +183,11 @@ export function groupFireSlips(
     devices: LocationDevice[];
     separateCourseTickets?: boolean;
     stationDeviceId?: string | null;
+    table?: TableRef;
+    tables?: TableRef[];
+    tableId?: string | null;
+    sections?: SectionRef[];
+    orderType?: string | null;
   },
 ): FireSlip[] {
   const byKey = new Map<string, FireSlip>();

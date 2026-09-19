@@ -37,9 +37,11 @@ export function MenuGroupDestinationsCard({ write }: { write: boolean }) {
         </GuideLearnLink>
       </div>
       <p className="text-xs text-muted-foreground">
-        Each menu group fires to a production line and, optionally, a named order
-        printer. Groups that share destination and printer print as one slip.
-        Receipt printers never get kitchen fire.
+        Food groups assign an order destination and printer (Plates, Sandwich, Sides,
+        Dessert, Salad, Pizza, …). Same destination + same printer on one Send is one
+        slip; different group printers are separate slips (salad vs grill). Table
+        section does not route food. Drinks use the bar printer for that table’s
+        section. Receipt printers never get kitchen fire.
       </p>
       <label className="flex items-start gap-2 text-sm">
         <input
