@@ -6,6 +6,19 @@ import type { GuideUpdate } from "@/lib/guide/types";
  */
 export const WHATS_NEW_ENTRIES: GuideUpdate[] = [
   {
+    id: "upd_2026_10_127_station_auto_reload",
+    date: "2026-09-19",
+    title: "Stations reload themselves on a website deploy",
+    summary:
+      "Idle tablets pick up a new deploy within one heartbeat. Pay open waits until Pay closes. No force-stop, unpair, or new APK.",
+    body: "Each station heartbeat includes appBuild (Vercel deploy / git sha) and configVersion (Publish, menu, devices, taxes, timezone). New appBuild reloads the WebView. configVersion-only refetches menus, printers, and taxes. Never mid-send, mid-pay, or while Print check is in flight. Busy: “Update ready — will apply when you close this check,” then PIN, floor idle, Switch user, or after the check closes. Idle PIN pad or floor with no sheet for 3 seconds: apply now.",
+    roles: ["owner_manager", "server", "kitchen_bar", "host_operator"],
+    surfaces: ["settings"],
+    audience: "all",
+    topicId: "android-kiosk",
+    tags: ["station", "reload", "publish", "deploy"],
+  },
+  {
     id: "upd_2026_10_126_qr_pay_auto_status",
     date: "2026-09-19",
     title: "QR pay closes the table; status walks itself",

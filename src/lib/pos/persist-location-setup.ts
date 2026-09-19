@@ -12,6 +12,13 @@ import { parsePaymentMethods } from "./payment-methods";
 
 const timers = new Map<string, ReturnType<typeof setTimeout>>();
 
+export function bumpConfigVersion(): number {
+  const s = usePosStore.getState().settings;
+  const n = (Number(s.configVersion) || 0) + 1;
+  usePosStore.getState().updateSettings({ configVersion: n });
+  return n;
+}
+
 function ids(): { orgId: string; locationId: string } | null {
   if (isProspectDemo()) return null;
   const orgId = useSaasStore.getState().org.id;
@@ -34,7 +41,7 @@ export function persistPrinterAssignments(): void {
         data: {
           orgId: ctx.orgId,
           locationId: ctx.locationId,
-          setup: { locationDevices: devices },
+          setup: { locationDevices: devices, configVersion: bumpConfigVersion() },
         },
       }).catch(() => undefined);
     }, 400),
@@ -57,6 +64,7 @@ export function persistVenueRouting(): void {
           locationId: ctx.locationId,
           setup: {
             separateCourseTickets: Boolean(settings.separateCourseTickets),
+            configVersion: bumpConfigVersion(),
           },
         },
       }).catch(() => undefined);
@@ -127,6 +135,7 @@ export function persistQrPolicy(): void {
           setup: {
             qrMode: settings.qrMode,
             qrPolicy: settings.qrPolicy,
+            configVersion: bumpConfigVersion(),
           },
         },
       }).catch(() => undefined);
@@ -204,6 +213,7 @@ export function persistTaxRates(): void {
             taxRate: s.taxRate,
             taxMode: s.taxMode,
             timezone: s.timezone,
+            configVersion: bumpConfigVersion(),
           },
         },
       }).catch(() => undefined);
@@ -340,6 +350,7 @@ export async function flushLocationCatalog(
           items: pos.menuItems,
           modifiers: pos.modifierGroups,
         },
+        configVersion: bumpConfigVersion(),
         recipes: cost.recipes,
         costPack: {
           skus: cost.skus,

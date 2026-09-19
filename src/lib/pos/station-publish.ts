@@ -119,7 +119,7 @@ export function isMidTicket(): boolean {
 
 export function applyStationPublish(
   record: StationPublishRecord,
-  opts?: { locationId?: string; locationName?: string },
+  opts?: { locationId?: string; locationName?: string; skipPublishStamp?: boolean },
 ): boolean {
   const setup = record.setup;
   try {
@@ -229,11 +229,13 @@ export function applyStationPublish(
         /* optional */
       }
     }
-    writePublishState({
-      locationId: locationId || pos.tenantLocationId || "",
-      appliedVersion: record.version,
-      pending: null,
-    });
+    if (!opts?.skipPublishStamp) {
+      writePublishState({
+        locationId: locationId || pos.tenantLocationId || "",
+        appliedVersion: record.version,
+        pending: null,
+      });
+    }
     return true;
   } catch {
     return false;

@@ -48,6 +48,7 @@ import { isDevDemoClient } from "@/lib/saas/flags";
 import { partnerLaundryPosSlice } from "./laundry-seed";
 import { isPartnerDemoLocationId } from "@/lib/demo/partner-demo";
 import { demoPersistStorage } from "@/lib/demo/session";
+import { setStationSending } from "./station-busy";
 import { demoPosSlice, demoSaasOrg } from "@/lib/demo/pos-payloads";
 import {
 	groupMembers,
@@ -640,6 +641,7 @@ const usePosStoreRaw = create<PosStore>()(persist((set, get) => {
 		});
 		try {
 			void import("./station-publish").then((m) => m.applyPendingIfIdle());
+			void import("./station-refresh").then((m) => m.noteSwitchedUser());
 		} catch {
 			/* optional */
 		}
@@ -2622,13 +2624,19 @@ const usePosStoreRaw = create<PosStore>()(persist((set, get) => {
 		floorSync("lines", order.id);
 	},
 	sendOrder: (opts: any = {}) => {
+		setStationSending(true);
+		try {
 		const order = get().getActiveOrder();
-		if (!order) return { ok: false, error: "No active order" };
+		if (!order) {
+			return { ok: false, error: "No active order" };
+		}
 		const onlyUnsent = opts.onlyUnsent !== false;
 		const fireHeld = opts.fireHeld === true;
 		const now = Date.now();
 		const toSend = order.lines.filter((l: any) => !l.voided && (!onlyUnsent || !l.sent) && (fireHeld || !l.held));
-		if (toSend.length === 0) return { ok: false, error: "Nothing to send" };
+		if (toSend.length === 0) {
+			return { ok: false, error: "Nothing to send" };
+		}
 		const table = order.tableId ? get().tables.find((t: any) => t.id === order.tableId) : void 0;
 		const slips = groupFireSlips(
 			toSend.map((l: any) => ({
@@ -2694,6 +2702,9 @@ const usePosStoreRaw = create<PosStore>()(persist((set, get) => {
 		floorSync("send", order.id);
 		printNow("send", order.id);
 		return { ok: true };
+		} finally {
+			setStationSending(false);
+		}
 	},
 	fireCourse: (course) => {
 		const order = get().getActiveOrder();
@@ -3225,6 +3236,11 @@ const usePosStoreRaw = create<PosStore>()(persist((set, get) => {
 		}
 		floorSync("payment", order.id);
 		printNow("receipt", order.id);
+		if (updated.status === "closed") {
+			try {
+				void import("./station-refresh").then((m) => m.noteCheckClosed());
+			} catch { /* */ }
+		}
 		return {
 			ok: true,
 			changeCents

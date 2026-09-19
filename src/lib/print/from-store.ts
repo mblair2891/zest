@@ -18,6 +18,7 @@ import { parseLanTarget } from "./printer-models";
 import { escposBase64, parseDrawerKickPin } from "./escpos";
 import { enqueueStationPrintFn, enqueueVenuePrintFn } from "./api";
 import { readStationPair } from "@/lib/pos/station-pair";
+import { setStationPrintInFlight } from "@/lib/pos/station-busy";
 import type { KitchenPrintSource } from "./station-print-queue";
 import {
   printStationForDestination,
@@ -568,6 +569,20 @@ export async function printGuestReceipt(orderId: string): Promise<{
 
 /** Pre-pay guest check on the section receipt printer. Never kitchen. Never a Star. */
 export async function printGuestCheck(orderId?: string): Promise<{
+  ok: boolean;
+  error?: string;
+  printerLabel?: string;
+  sentTo?: string;
+}> {
+  setStationPrintInFlight(true);
+  try {
+    return await printGuestCheckInner(orderId);
+  } finally {
+    setStationPrintInFlight(false);
+  }
+}
+
+async function printGuestCheckInner(orderId?: string): Promise<{
   ok: boolean;
   error?: string;
   printerLabel?: string;

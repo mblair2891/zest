@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   Users,
   ArrowRightLeft,
@@ -183,6 +183,16 @@ export function FloorView({
   const detailLive = detail
     ? (tables.find((t) => t.id === detail.id) ?? detail)
     : null;
+
+  useEffect(() => {
+    void import("@/lib/pos/station-busy").then((m) => m.setStationFloorSheetOpen(Boolean(detailLive)));
+    if (!detailLive) {
+      void import("@/lib/pos/station-refresh").then((m) => m.tryApplyStationRefresh());
+    }
+    return () => {
+      void import("@/lib/pos/station-busy").then((m) => m.setStationFloorSheetOpen(false));
+    };
+  }, [detailLive]);
 
   const sectionTabs = useMemo(() => {
     const defined = [...floorSections].sort((a, b) => a.sort - b.sort);

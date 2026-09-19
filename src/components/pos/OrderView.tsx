@@ -108,6 +108,15 @@ export function OrderView() {
   const [modItem, setModItem] = useState<MenuItem | null>(null);
   const [modOpen, setModOpen] = useState(false);
   const [payOpen, setPayOpen] = useState(false);
+  useEffect(() => {
+    void import("@/lib/pos/station-busy").then((m) => m.setStationPayOpen(payOpen));
+    if (!payOpen) {
+      void import("@/lib/pos/station-refresh").then((m) => m.tryApplyStationRefresh());
+    }
+    return () => {
+      void import("@/lib/pos/station-busy").then((m) => m.setStationPayOpen(false));
+    };
+  }, [payOpen]);
   const [mgrOpen, setMgrOpen] = useState(false);
   const [mgrAction, setMgrAction] = useState<
     null | "void" | "comp" | "discount" | "reopen" | "tender_swap"

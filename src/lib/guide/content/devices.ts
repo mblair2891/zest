@@ -119,7 +119,7 @@ export const DEVICE_TOPICS: GuideTopic[] = [
     chapterId: "devices",
     title: "Tablets run Summex only",
     summary:
-      "One Play-ready APK: Summex Station. Pair, then PIN. Website deploys: manager long-press reload. APK updates: unpin and reinstall.",
+      "One Play-ready APK: Summex Station. Pair, then PIN. Website deploys: stations auto-reload from heartbeat. APK updates: unpin and reinstall.",
     roles: ["owner_manager", "host_operator", "kitchen_bar", "platform_admin"],
     keywords: [
       "android",
@@ -147,20 +147,20 @@ export const DEVICE_TOPICS: GuideTopic[] = [
         "Install Summex Station on every staff Android tablet (same Play-ready APK for host, order, and ODS).",
         "Owner: Devices → Add device (name + Order / Order Display / Host). Read the large one-time code. Show QR only if you want it.",
         "Tablet: type the code and submit. Snapshot is pushed. Thereafter power on → PIN. App updates do not wipe pairing. A bad or expired code: “Code invalid or expired. Regenerate on Devices.”",
-        "After menu or floor layout edits: Publish changes. Logged-in staff keep running; next PIN login loads the new publish. 86 / un-86 is not a publish — every station sees it immediately.",
+        "After menu or floor layout edits: Publish changes. Idle stations pick up configVersion on the next heartbeat (snapshot refetch). A website deploy changes appBuild and reloads the WebView when the tablet is idle. 86 / un-86 is not a publish — every station sees it immediately.",
         "Broken ODS → reassign a server tablet from Devices (Role dropdown). No new pair code.",
         "Unpair, Replace, or Deactivate from the same Devices list revokes the pair token and kicks an online tablet to the pair-code field within a few seconds. Unpair / Replace keep the named slot. Delete removes the slot after one confirm (“Delete this device. The tablet must scan a new code.”). Activate again mints a new code. Location owner / manager / Admin only.",
         "Training: on Samsung, confirm pin-windows when Summex asks. Set Summex as Home if the tablet offers it.",
-        "Website updates (new JS on app.summex.app): manager, owner, or the Devices service PIN long-presses the discreet reload control for 2 seconds. The WebView reloads. Stay on pair or PIN — never /login. No unpin.",
+        "Website deploys (new JS on app.summex.app): stations auto-reload from heartbeat. The response carries appBuild (Vercel deploy / git sha) and configVersion (Publish, menu, devices, taxes, timezone). A new appBuild reloads the WebView URL. A configVersion-only change refetches menus, printers, and taxes — no full reload. Never mid-send, mid-pay, or while Print check is in flight. Busy: banner “Update ready — will apply when you close this check,” then apply on PIN, floor idle, Switch user, or after the check closes. Idle PIN pad or floor with no table sheet for 3 seconds: apply immediately. Do not force-stop, unpair, or install a new APK for a website deploy.",
         "APK updates (new Summex Station binary): manager Exit kiosk (confirm) to stop lock-task and show Android home, then uninstall/reinstall or Play update. Staff PINs cannot exit kiosk.",
       ),
       ul(
-        "Reload = website deploy. Pairing stays on the tablet. Next screen is pair or PIN.",
+        "Website deploy = heartbeat appBuild change. Pairing stays. WebView reloads; next screen is pair or PIN. No new APK.",
         "Exit kiosk = leave lock-task. Confirm dialog. Manager / owner / Devices service PIN only.",
         "Devices → Station service PIN: optional 4-digit PIN with the same reload/exit rights as manager.",
       ),
       warn(
-        "Do not put guest QR / pay on this APK. Table tents and ticket codes open in the guest’s browser. Do not unpin for a website deploy — use reload.",
+        "Do not put guest QR / pay on this APK. Table tents and ticket codes open in the guest’s browser. Do not force-stop, unpair, or install a new APK for a website deploy — stations reload themselves.",
       ),
       related("device-roles", "device-assignment", "station-fit", "floor-pin-login", "table-qr", "wifi-offline", "labor-basis"),
     ],

@@ -122,6 +122,8 @@ export type LocationSetup = {
   sharedVenueCostsCents?: number;
   /** Last catalog push to paired station tablets. */
   stationPublish?: import("@/lib/pos/station-publish").StationPublishRecord;
+  /** Increments on Publish, menu, devices, taxes, timezone. Stations refetch snapshot. */
+  configVersion?: number;
   /** Who changed a paired tablet’s role, from → to, when. */
   deviceRoleHistory?: import("@/lib/pos/location-devices").DeviceRoleChange[];
   /** Drawers, wells, server banks — location-configurable cash handling. */

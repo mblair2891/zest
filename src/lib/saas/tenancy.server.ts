@@ -329,6 +329,10 @@ function parseSetup(raw: unknown): LocationSetup {
         ? undefined
         : Math.max(0, Math.round(Number(o.sharedVenueCostsCents) || 0)),
     stationPublish: parseStationPublishRow(o.stationPublish),
+    configVersion:
+      o.configVersion == null || !Number.isFinite(Number(o.configVersion))
+        ? undefined
+        : Math.max(0, Math.round(Number(o.configVersion))),
     employmentState:
       typeof o.employmentState === "string" && o.employmentState.trim()
         ? o.employmentState.trim().slice(0, 16)

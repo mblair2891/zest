@@ -31,6 +31,7 @@ import {
   confirmCashDiscountRecalc,
   persistCashDiscount,
   persistTaxRates,
+  bumpConfigVersion,
 } from "@/lib/pos/persist-location-setup";
 import { TaxRatesEditor, ratesPatch } from "./TaxRatesSettings";
 import {
@@ -361,6 +362,7 @@ export function SettingsView() {
         setup: {
           hostBrandName: s.name,
           timezone: s.timezone,
+          configVersion: bumpConfigVersion(),
           taxRates: s.taxRates ?? [],
           entityTaxRates: s.entityTaxRates ?? {},
           taxRate: s.taxRate,

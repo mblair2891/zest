@@ -1258,7 +1258,12 @@ export const publishLocationFn = createServerFn({ method: "POST" })
     await updateLocationSetupForUser(context.userId, {
       orgId: data.orgId || access.org.id,
       locationId: data.locationId,
-      setup: { ...EMPTY_LOCATION_SETUP, ...access.location.setup, stationPublish: record },
+      setup: {
+        ...EMPTY_LOCATION_SETUP,
+        ...access.location.setup,
+        stationPublish: record,
+        configVersion: version,
+      },
     });
     return { publish: record };
   });
@@ -1397,16 +1402,28 @@ export const rotateDevicePairFn = createServerFn({ method: "POST" })
     });
   });
 
+function stationAppBuild(): string {
+  const env = typeof process !== "undefined" ? process.env : {};
+  return String(
+    env.VERCEL_DEPLOYMENT_ID ||
+      env.VERCEL_GIT_COMMIT_SHA ||
+      env.GIT_SHA ||
+      "dev",
+  ).trim() || "dev";
+}
+
 export const heartbeatLocationDeviceFn = createServerFn({ method: "POST" })
   .middleware([tenantMiddleware])
-  .validator((d: { locationId: string; deviceId: string }) => ({
+  .validator((d: { locationId: string; deviceId: string; sinceConfig?: number }) => ({
     locationId: loc(d.locationId),
     deviceId: String(d.deviceId ?? "").trim().slice(0, 80),
+    sinceConfig: Math.max(0, Math.round(Number(d.sinceConfig) || 0)),
   }))
   .handler(async ({ context, data }) => {
-    if (!data.deviceId) return { ok: false as const };
+    if (!data.deviceId) return { ok: false as const, appBuild: stationAppBuild(), configVersion: 0 };
     const { assertLocationAccess } = await import("@/lib/saas/tenancy.server");
-    await assertLocationAccess(context.userId, data.locationId);
+    const { EMPTY_LOCATION_SETUP } = await import("@/lib/saas/types");
+    const access = await assertLocationAccess(context.userId, data.locationId);
     const { getSql } = await import("@/lib/db");
     const sql = await getSql();
     try {
@@ -1417,9 +1434,24 @@ export const heartbeatLocationDeviceFn = createServerFn({ method: "POST" })
           and status <> ${"inactive"}
       `;
     } catch {
-      return { ok: false as const };
+      return { ok: false as const, appBuild: stationAppBuild(), configVersion: 0 };
     }
-    return { ok: true as const };
+    const setup = { ...EMPTY_LOCATION_SETUP, ...access.location.setup };
+    const configVersion = Math.max(
+      0,
+      Number(setup.configVersion) || Number(setup.stationPublish?.version) || 0,
+    );
+    const appBuild = stationAppBuild();
+    const snapshot =
+      data.sinceConfig > 0 && configVersion > data.sinceConfig
+        ? publishSetupSlice(setup)
+        : undefined;
+    return {
+      ok: true as const,
+      appBuild,
+      configVersion,
+      snapshot: snapshot ?? null,
+    };
   });
 
 export const saveMenuItemFn = createServerFn({ method: "POST" })
