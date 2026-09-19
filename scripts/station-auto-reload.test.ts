@@ -10,6 +10,7 @@ import {
 import {
   UPDATE_READY_TITLE,
   UPDATE_REQUIRED_TITLE,
+  CATCH_UP_TITLE,
   UPDATE_NOW_LABEL,
   REMIND_LATER_LABEL,
   FINISH_CHECK_TOAST,
@@ -22,6 +23,7 @@ import {
   DEFAULT_FORCE_WINDOW,
   FORCE_WINDOW_DURATION_MIN,
   inForceUpdateWindow,
+  missedEndedForceWindow,
   parseStationUpdates,
   stationFacingChangeBullets,
 } from "../src/lib/pos/station-updates.ts";
@@ -77,6 +79,53 @@ test("04:00 venue window: afternoon may snooze; 04:15 is forced", () => {
   const parsed = parseStationUpdates(undefined);
   assert.equal(parsed.forceWindow1, "04:00");
   assert.equal(parsed.showChangeList, true);
+  assert.equal(parsed.catchUpMandatory, true);
+});
+
+test("missed 04:00 window: last seen 03:00, power on 10:00 is catch-up", () => {
+  const tz = "America/Los_Angeles";
+  const last0300 = Date.parse("2026-09-20T10:00:00.000Z");
+  const now1000 = Date.parse("2026-09-20T17:00:00.000Z");
+  const now0415 = Date.parse("2026-09-20T11:15:00.000Z");
+  const last0600 = Date.parse("2026-09-20T13:00:00.000Z");
+  assert.equal(
+    missedEndedForceWindow({
+      lastSeenMs: last0300,
+      nowMs: now1000,
+      timeZone: tz,
+      windows: ["04:00"],
+    }),
+    true,
+  );
+  assert.equal(
+    missedEndedForceWindow({
+      lastSeenMs: last0300,
+      nowMs: now0415,
+      timeZone: tz,
+      windows: ["04:00"],
+    }),
+    false,
+  );
+  assert.equal(
+    missedEndedForceWindow({
+      lastSeenMs: last0600,
+      nowMs: now1000,
+      timeZone: tz,
+      windows: ["04:00"],
+    }),
+    false,
+  );
+  assert.equal(
+    decideStationPrompt({
+      pending: "shell",
+      snoozed: false,
+      snoozeCount: 0,
+      criticalBusy: false,
+      isManager: false,
+      forced: true,
+    }),
+    "forced",
+  );
 });
 
 test("forced prompt has no snooze; optional afternoon still snoozes", () => {
@@ -116,6 +165,10 @@ test("change list is station-facing only; empty when off", () => {
 test("update prompt copy is wired; never reload without a tap outside force window", () => {
   assert.equal(UPDATE_READY_TITLE, "A system update is ready.");
   assert.equal(UPDATE_REQUIRED_TITLE, "Update required");
+  assert.equal(
+    CATCH_UP_TITLE,
+    "An update was waiting while this station was offline.",
+  );
   assert.equal(UPDATE_NOW_LABEL, "Update now");
   assert.equal(REMIND_LATER_LABEL, "Remind me later");
   assert.equal(FINISH_CHECK_TOAST, "Finish this check first");
@@ -127,15 +180,19 @@ test("update prompt copy is wired; never reload without a tap outside force wind
   assert.match(prompt, /data-station-remind-later/);
   assert.match(prompt, /data-station-change-list/);
   assert.match(prompt, /UPDATE_REQUIRED_TITLE/);
+  assert.match(prompt, /CATCH_UP_TITLE/);
+  assert.match(prompt, /data-station-catch-up/);
   const settings = readFileSync("src/components/pos/SettingsView.tsx", "utf8");
   assert.match(settings, /data-station-updates-settings/);
   assert.match(settings, /Show change list on update prompt/);
+  assert.match(settings, /Catch-up is mandatory/);
   const refresh = readFileSync("src/lib/pos/station-refresh.ts", "utf8");
   assert.match(refresh, /never reload without a tap/);
   assert.match(refresh, /FORCE_IDLE_MS/);
   const guide = readFileSync("src/lib/guide/content/devices.ts", "utf8");
   assert.match(guide, /Update required/);
   assert.match(guide, /force-update window/);
+  assert.match(guide, /An update was waiting while this station was offline/);
   const types = readFileSync("src/lib/guide/types.ts", "utf8");
-  assert.match(types, /2026\.10\.129/);
+  assert.match(types, /2026\.10\.130/);
 });

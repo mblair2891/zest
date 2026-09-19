@@ -13,6 +13,7 @@ import {
   UPDATE_NOW_LABEL,
   UPDATE_READY_TITLE,
   UPDATE_REQUIRED_TITLE,
+  CATCH_UP_TITLE,
   REMIND_LATER_LABEL,
   FINISH_CHECK_TOAST,
   applyStationUpdate,
@@ -51,9 +52,17 @@ export function StationUpdateBar() {
 
 export function StationUpdateModal() {
   const surface = useStationRefreshStore((s) => s.surface);
+  const catchUp = useStationRefreshStore((s) => s.catchUp);
   const forced = surface === "forced";
   const open = surface === "modal" || forced;
-  const bullets = open ? readVenueUpdatePolicy().bullets : [];
+  const policy = open ? readVenueUpdatePolicy() : { bullets: [] as string[], inWindow: false };
+  const bullets = policy.bullets;
+  const catchUpCopy = catchUp && !policy.inWindow;
+  const title = policy.inWindow
+    ? UPDATE_REQUIRED_TITLE
+    : catchUpCopy
+      ? CATCH_UP_TITLE
+      : UPDATE_READY_TITLE;
   return (
     <Dialog open={open} onOpenChange={() => { /* Update now or Remind me later only */ }}>
       <DialogContent
@@ -63,13 +72,16 @@ export function StationUpdateModal() {
         onEscapeKeyDown={(e) => e.preventDefault()}
         data-station-update-modal
         data-station-update-required={forced ? "1" : undefined}
+        data-station-catch-up={catchUpCopy ? "1" : undefined}
       >
         <DialogHeader>
-          <DialogTitle>{forced ? UPDATE_REQUIRED_TITLE : UPDATE_READY_TITLE}</DialogTitle>
+          <DialogTitle>{title}</DialogTitle>
           <DialogDescription>
-            {forced
+            {policy.inWindow
               ? "This station must update now. Idle tablets apply after 60 seconds."
-              : "Update now loads the new station UI. Remind me later hides this for 10 minutes."}
+              : catchUpCopy
+                ? "This station was off during the force-update window."
+                : "Update now loads the new station UI. Remind me later hides this for 10 minutes."}
           </DialogDescription>
         </DialogHeader>
         {bullets.length > 0 ? (

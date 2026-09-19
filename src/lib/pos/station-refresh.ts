@@ -17,6 +17,7 @@ import {
   FORCE_WINDOW_DURATION_MIN,
   forceWindowStarts,
   inForceUpdateWindow,
+  missedEndedForceWindow,
   parseStationUpdates,
   stationFacingChangeBullets,
 } from "@/lib/pos/station-updates";
@@ -24,9 +25,12 @@ import {
 const BUILD_KEY = "summex-station-app-build";
 const CONFIG_KEY = "summex-station-config-version";
 const SNOOZE_KEY = "summex-station-update-snooze-v1";
+const LAST_SEEN_KEY = "summex-station-last-heartbeat";
+const CATCH_UP_KEY = "summex-station-catch-up-v1";
 
 export const UPDATE_READY_TITLE = "A system update is ready.";
 export const UPDATE_REQUIRED_TITLE = "Update required";
+export const CATCH_UP_TITLE = "An update was waiting while this station was offline.";
 export const UPDATE_NOW_LABEL = "Update now";
 export const REMIND_LATER_LABEL = "Remind me later";
 export const FINISH_CHECK_TOAST = "Finish this check first";
@@ -51,6 +55,7 @@ type RefreshState = {
   snoozeCount: number;
   idleSince: number | null;
   forced: boolean;
+  catchUp: boolean;
   setSurface: (surface: StationPromptSurface) => void;
 };
 
@@ -61,6 +66,7 @@ export const useStationRefreshStore = create<RefreshState>((set) => ({
   snoozeCount: 0,
   idleSince: null,
   forced: false,
+  catchUp: false,
   setSurface: (surface) => set({ surface }),
 }));
 
@@ -84,27 +90,38 @@ export function decideStationPrompt(input: {
 }
 
 export function readVenueUpdatePolicy(): {
-  forced: boolean;
+  inWindow: boolean;
+  catchUpMandatory: boolean;
+  noSnooze: boolean;
   showChangeList: boolean;
   bullets: string[];
 } {
   try {
     const settings = usePosStore.getState().settings;
     const cfg = parseStationUpdates(settings.stationUpdates);
-    const forced = inForceUpdateWindow({
+    const inWindow = inForceUpdateWindow({
       atMs: Date.now(),
       timeZone: settings.timezone || "",
       windows: forceWindowStarts(cfg),
       durationMin: FORCE_WINDOW_DURATION_MIN,
     });
-    const showChangeList = cfg.showChangeList;
+    const catchUp = Boolean(useStationRefreshStore.getState().catchUp);
+    const catchUpMandatory = cfg.catchUpMandatory;
     return {
-      forced,
-      showChangeList,
-      bullets: stationFacingChangeBullets({ show: showChangeList }),
+      inWindow,
+      catchUpMandatory,
+      noSnooze: inWindow || (catchUp && catchUpMandatory),
+      showChangeList: cfg.showChangeList,
+      bullets: stationFacingChangeBullets({ show: cfg.showChangeList }),
     };
   } catch {
-    return { forced: false, showChangeList: true, bullets: stationFacingChangeBullets() };
+    return {
+      inWindow: false,
+      catchUpMandatory: true,
+      noSnooze: false,
+      showChangeList: true,
+      bullets: stationFacingChangeBullets(),
+    };
   }
 }
 
@@ -225,6 +242,42 @@ function writeSnooze(rec: SnoozeRecord): void {
   writeStored(SNOOZE_KEY, JSON.stringify(rec));
 }
 
+function readLastSeen(): number {
+  return Math.max(0, Number(readStored(LAST_SEEN_KEY)) || 0);
+}
+
+function writeLastSeen(ms: number): void {
+  writeStored(LAST_SEEN_KEY, String(ms));
+}
+
+function readCatchUpFlag(): { build: string; config: number } | null {
+  const raw = readStored(CATCH_UP_KEY);
+  if (!raw) return null;
+  try {
+    const o = JSON.parse(raw) as { build?: string; config?: number };
+    return { build: String(o.build ?? ""), config: Math.max(0, Number(o.config) || 0) };
+  } catch {
+    return null;
+  }
+}
+
+function writeCatchUpFlag(): void {
+  writeStored(CATCH_UP_KEY, JSON.stringify({ build: pendingBuild, config: pendingConfigVersion }));
+}
+
+function clearCatchUpFlag(): void {
+  writeStored(CATCH_UP_KEY, "");
+}
+
+function catchUpMatchesPending(): boolean {
+  const rec = readCatchUpFlag();
+  if (!rec) return false;
+  const st = useStationRefreshStore.getState();
+  if (st.pending === "shell") return Boolean(pendingBuild) && rec.build === pendingBuild;
+  if (st.pending === "config") return rec.config === pendingConfigVersion;
+  return false;
+}
+
 let pendingSnapshot: StationPublishSetup | null = null;
 let pendingConfigVersion = 0;
 let pendingBuild = "";
@@ -253,38 +306,47 @@ function touchIdleClock(): number {
 export function tickStationUpdatePrompt(): void {
   const st = useStationRefreshStore.getState();
   if (st.pending === "none") {
-    if (st.surface !== "hidden" || st.forced) {
-      useStationRefreshStore.setState({ surface: "hidden", forced: false, idleSince: null });
+    if (st.surface !== "hidden" || st.forced || st.catchUp) {
+      useStationRefreshStore.setState({
+        surface: "hidden",
+        forced: false,
+        catchUp: false,
+        idleSince: null,
+      });
     }
     return;
   }
+  const catchUp = st.catchUp || catchUpMatchesPending();
+  if (catchUp && !st.catchUp) useStationRefreshStore.setState({ catchUp: true });
   const policy = readVenueUpdatePolicy();
-  if (policy.forced && !stationBlocksUpdateNow()) {
+  const noSnooze = policy.inWindow || (catchUp && policy.catchUpMandatory);
+  if (policy.inWindow && !stationBlocksUpdateNow()) {
     const idleMs = touchIdleClock();
     if (stationIsIdleSurface() && idleMs >= FORCE_IDLE_MS) {
       applyStationUpdate();
       return;
     }
-  } else if (st.idleSince != null && !policy.forced) {
+  } else if (st.idleSince != null && !policy.inWindow) {
     useStationRefreshStore.setState({ idleSince: null });
   }
   const rec = snoozeMatchesPending() ? readSnooze() : null;
   const count = rec?.count ?? st.snoozeCount;
   const until = rec?.until ?? st.snoozeUntil;
-  const snoozed = !policy.forced && until > Date.now();
+  const snoozed = !noSnooze && until > Date.now();
   const surface = decideStationPrompt({
     pending: st.pending,
     snoozed,
     snoozeCount: count,
     criticalBusy: stationCriticalBusy(),
     isManager: currentIsManager(),
-    forced: policy.forced,
+    forced: noSnooze,
   });
   useStationRefreshStore.setState({
     surface,
     snoozeCount: count,
     snoozeUntil: snoozed ? until : 0,
-    forced: policy.forced,
+    forced: noSnooze,
+    catchUp,
   });
 }
 
@@ -316,7 +378,9 @@ export function applyStationUpdate(): { ok: boolean; reason?: "busy" | "none" } 
       snoozeCount: 0,
       idleSince: null,
       forced: false,
+      catchUp: false,
     });
+    clearCatchUpFlag();
     reloadStationShell();
     return { ok: true };
   }
@@ -334,14 +398,17 @@ export function applyStationUpdate(): { ok: boolean; reason?: "busy" | "none" } 
     snoozeCount: 0,
     idleSince: null,
     forced: false,
+    catchUp: false,
   });
+  clearCatchUpFlag();
   return { ok: true };
 }
 
 export function snoozeStationUpdate(): void {
   const st = useStationRefreshStore.getState();
   if (st.pending === "none") return;
-  if (readVenueUpdatePolicy().forced) return;
+  const policy = readVenueUpdatePolicy();
+  if (policy.noSnooze) return;
   const count = st.snoozeCount + 1;
   const until = Date.now() + SNOOZE_MS;
   const rec: SnoozeRecord = {
@@ -355,6 +422,28 @@ export function snoozeStationUpdate(): void {
   tickStationUpdatePrompt();
 }
 
+function noteMissedForceWindowIfNeeded(): void {
+  try {
+    const lastSeen = readLastSeen();
+    const settings = usePosStore.getState().settings;
+    const cfg = parseStationUpdates(settings.stationUpdates);
+    if (
+      missedEndedForceWindow({
+        lastSeenMs: lastSeen,
+        nowMs: Date.now(),
+        timeZone: settings.timezone || "",
+        windows: forceWindowStarts(cfg),
+        durationMin: FORCE_WINDOW_DURATION_MIN,
+      })
+    ) {
+      writeCatchUpFlag();
+      useStationRefreshStore.setState({ catchUp: true });
+    }
+  } catch {
+    /* optional */
+  }
+}
+
 export function ingestHeartbeat(res: HeartbeatRefresh | null | undefined): void {
   if (!res?.ok) return;
   const build = String(res.appBuild ?? "").trim();
@@ -366,19 +455,31 @@ export function ingestHeartbeat(res: HeartbeatRefresh | null | undefined): void 
   if (config && !prevConfig) writeStored(CONFIG_KEY, String(config));
 
   const knownBuild = currentAppBuild();
+  let behind = false;
 
   if (build && knownBuild && build !== knownBuild) {
     pendingBuild = build;
+    behind = true;
+    noteMissedForceWindowIfNeeded();
     markPending("shell");
+    writeLastSeen(Date.now());
     return;
   }
   if (config && prevConfig && config > prevConfig) {
     if (res.snapshot) pendingSnapshot = res.snapshot;
     pendingConfigVersion = config;
+    behind = true;
     const cur = useStationRefreshStore.getState().pending;
-    if (cur !== "shell") markPending("config");
-    else tickStationUpdatePrompt();
+    if (cur !== "shell") {
+      noteMissedForceWindowIfNeeded();
+      markPending("config");
+    } else tickStationUpdatePrompt();
   }
+  if (!behind && catchUpMatchesPending()) {
+    useStationRefreshStore.setState({ catchUp: true });
+    tickStationUpdatePrompt();
+  }
+  writeLastSeen(Date.now());
 }
 
 export function noteStationBecameIdle(): void {

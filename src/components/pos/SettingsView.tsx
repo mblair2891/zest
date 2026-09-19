@@ -352,7 +352,8 @@ function StationUpdatesSettings({ write }: { write: boolean }) {
       <p className="text-xs text-muted-foreground">
         Force-update window uses the venue timezone ({tz}). During the hour that starts at this
         time, stations that are behind must Update now — no snooze. Idle tablets apply after 60
-        seconds. Outside the window, staff may Remind me later all shift.
+        seconds. Outside the window, staff may Remind me later all shift. If the tablet was off
+        through the window, catch-up is mandatory by default.
       </p>
       <label className="block text-sm">
         <span className="mb-1 block text-muted-foreground">Force-update window</span>
@@ -397,6 +398,16 @@ function StationUpdatesSettings({ write }: { write: boolean }) {
           onChange={(e) => patch({ showChangeList: e.target.checked })}
         />
         Show change list on update prompt
+      </label>
+      <label className="flex items-center gap-2 text-sm">
+        <input
+          type="checkbox"
+          disabled={!write}
+          data-catch-up-mandatory
+          checked={cfg.catchUpMandatory}
+          onChange={(e) => patch({ catchUpMandatory: e.target.checked })}
+        />
+        Catch-up is mandatory
       </label>
     </div>
   );

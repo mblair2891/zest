@@ -6,6 +6,19 @@ import type { GuideUpdate } from "@/lib/guide/types";
  */
 export const WHATS_NEW_ENTRIES: GuideUpdate[] = [
   {
+    id: "upd_2026_10_130_offline_catch_up",
+    date: "2026-09-19",
+    title: "Catch-up if the tablet missed the force window",
+    summary:
+      "Off through 04:00: next heartbeat shows “An update was waiting while this station was offline.” Catch-up is mandatory (default on) — Update now, no snooze.",
+    body: "If the station was off, offline, or asleep through the venue force-update window and is still behind, the next successful heartbeat opens that catch-up modal. Update now is primary. Remind me later only outside the window when Catch-up is mandatory is off. Inside the window, or after a missed window with catch-up mandatory on, there is no snooze. Same station-facing change list as the live prompt.",
+    roles: ["owner_manager", "server", "kitchen_bar", "host_operator"],
+    surfaces: ["settings", "floor"],
+    audience: "all",
+    topicId: "android-kiosk",
+    tags: ["station", "update", "pin"],
+  },
+  {
     id: "upd_2026_10_129_force_update_window",
     date: "2026-09-19",
     title: "Force-update window and change list",

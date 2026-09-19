@@ -15,6 +15,8 @@ export type StationUpdatesConfig = {
   forceWindow2: string;
   /** List station-facing deploy notes on the update modal. Default on. */
   showChangeList: boolean;
+  /** After missing the force window, Update now is required. Default on. */
+  catchUpMandatory: boolean;
 };
 
 export function parseClockHm(raw: unknown): string | null {
@@ -38,6 +40,7 @@ export function parseStationUpdates(raw: unknown): StationUpdatesConfig {
     forceWindow1: w1,
     forceWindow2: w2,
     showChangeList: o.showChangeList !== false,
+    catchUpMandatory: o.catchUpMandatory !== false,
   };
 }
 
@@ -91,6 +94,62 @@ export function inForceUpdateWindow(input: {
   const nowMin = venueMinutesPastMidnight(input.atMs, input.timeZone);
   const dur = input.durationMin ?? FORCE_WINDOW_DURATION_MIN;
   return starts.some((hm) => inOneWindow(nowMin, hm, dur));
+}
+
+/** Venue-local calendar day YYYY-MM-DD. */
+export function venueYmd(atMs: number, timeZone: string): string {
+  const tz = parseVenueTimezone(timeZone);
+  try {
+    const parts = new Intl.DateTimeFormat("en-US", {
+      timeZone: tz,
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+    }).formatToParts(new Date(atMs));
+    const y = parts.find((p) => p.type === "year")?.value ?? "1970";
+    const mo = parts.find((p) => p.type === "month")?.value ?? "01";
+    const d = parts.find((p) => p.type === "day")?.value ?? "01";
+    return `${y}-${mo}-${d}`;
+  } catch {
+    return "1970-01-01";
+  }
+}
+
+/**
+ * True when a force window already ended today (or a wrap that ended this morning)
+ * and lastSeen was before that window ended — station was off/asleep through it.
+ */
+export function missedEndedForceWindow(input: {
+  lastSeenMs: number;
+  nowMs: number;
+  timeZone: string;
+  windows: string[];
+  durationMin?: number;
+}): boolean {
+  const starts = input.windows.map((w) => parseClockHm(w)).filter((w): w is string => Boolean(w));
+  if (!starts.length) return false;
+  const tz = input.timeZone;
+  const dur = input.durationMin ?? FORCE_WINDOW_DURATION_MIN;
+  const nowMin = venueMinutesPastMidnight(input.nowMs, tz);
+  const nowYmd = venueYmd(input.nowMs, tz);
+  const lastMs = Math.max(0, Number(input.lastSeenMs) || 0);
+  const lastMin = venueMinutesPastMidnight(lastMs, tz);
+  const lastYmd = venueYmd(lastMs, tz);
+  for (const hm of starts) {
+    const start = hmToMinutes(hm);
+    const end = start + Math.max(1, dur);
+    if (end <= 1440) {
+      if (nowMin < end) continue;
+      if (lastYmd < nowYmd) return true;
+      if (lastYmd === nowYmd && lastMin < end) return true;
+      continue;
+    }
+    const wrapEnd = end - 1440;
+    if (nowMin < wrapEnd) continue;
+    if (lastYmd < nowYmd) return true;
+    if (lastYmd === nowYmd && lastMin < wrapEnd) return true;
+  }
+  return false;
 }
 
 const STATION_TAGS = new Set([
