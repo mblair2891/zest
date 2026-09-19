@@ -47,8 +47,9 @@ import {
   isPrinterType,
   isReceiptPrinterType,
   isVenueStationOnline,
-  printerLanBadge,
+  printerLanVia,
   printerLanBadgeLabel,
+  stationPresenceStatus,
   printerTypeFromStation,
   readOrCreateBrowserDeviceId,
   readPairedDeviceId,
@@ -279,10 +280,12 @@ export function LocationDeviceRegistry({
     };
   }, [orgId, locationId]);
 
-  const load = useCallback(async () => {
+  const load = useCallback(async (opts?: { silent?: boolean }) => {
     if (!resolvedOrgId || !resolvedLocId) return;
-    setLoading(true);
-    setError(null);
+    if (!opts?.silent) {
+      setLoading(true);
+      setError(null);
+    }
     try {
       const res = await listLocationDevicesFn({
         data: { orgId: resolvedOrgId, locationId: resolvedLocId },
@@ -304,15 +307,20 @@ export function LocationDeviceRegistry({
         const prev = usePosStore.getState().locationDevices ?? [];
         const same =
           prev.length === next.length &&
-          prev.every((d, i) => d.id === next[i]?.id && d.status === next[i]?.status);
+          prev.every(
+            (d, i) =>
+              d.id === next[i]?.id &&
+              d.status === next[i]?.status &&
+              d.lastSeenAt === next[i]?.lastSeenAt,
+          );
         if (!same) usePosStore.setState({ locationDevices: next });
       } catch {
         /* POS store may not be hydrated on dashboard */
       }
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Could not load devices");
+      if (!opts?.silent) setError(e instanceof Error ? e.message : "Could not load devices");
     } finally {
-      setLoading(false);
+      if (!opts?.silent) setLoading(false);
     }
     // locationName is a fallback label only — do not re-fetch when the house name types.
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -320,6 +328,10 @@ export function LocationDeviceRegistry({
 
   useEffect(() => {
     void load();
+    const t = window.setInterval(() => {
+      void load({ silent: true });
+    }, 15_000);
+    return () => window.clearInterval(t);
   }, [load]);
 
   const destinationOptions = useMemo(
@@ -1663,24 +1675,7 @@ export function LocationDeviceRegistry({
                     </Button>
                   </>
                 )}
-                <Badge
-                  variant={
-                    isPrinterDevice(d)
-                      ? printerLanBadge(d, devices) === "lan_via_station"
-                        ? "success"
-                        : "warn"
-                      : d.status === "online"
-                        ? "success"
-                        : d.status === "pending"
-                          ? "warn"
-                          : "secondary"
-                  }
-                >
-                  {isPrinterDevice(d) ? printerLanBadgeLabel(printerLanBadge(d, devices)) : d.status}
-                </Badge>
-                <span className="text-[11px] text-muted-foreground">
-                  {d.lastSeenAt ? formatTime(d.lastSeenAt) : "—"}
-                </span>
+                <DevicePresenceBits d={d} devices={devices} />
                 {isPrinterDevice(d) && (
                   <Button
                     size="sm"
@@ -1806,5 +1801,30 @@ export function LocationDeviceRegistry({
         </DialogContent>
       </Dialog>
     </div>
+  );
+}
+
+function DevicePresenceBits({
+  d,
+  devices,
+}: {
+  d: LocationDevice;
+  devices: LocationDevice[];
+}) {
+  const lan = isPrinterDevice(d) ? printerLanVia(d, devices) : null;
+  const presence = lan ? null : stationPresenceStatus(d);
+  const live = lan ? lan.badge === "lan_via_station" : presence === "online";
+  const pending = lan ? false : presence === "pending";
+  const label = lan
+    ? printerLanBadgeLabel(lan.badge, lan.via?.label)
+    : presence;
+  const seen = lan ? lan.via?.lastSeenAt : d.lastSeenAt;
+  return (
+    <>
+      <Badge variant={live ? "success" : pending ? "warn" : "secondary"}>{label}</Badge>
+      <span className="text-[11px] text-muted-foreground">
+        {seen ? formatTime(seen) : "—"}
+      </span>
+    </>
   );
 }

@@ -4,8 +4,9 @@ import { readFileSync } from "node:fs";
 
 test("Devices printer row uses LAN via station, not unreachable when a station is online", () => {
   const ui = readFileSync("src/components/pos/LocationDeviceRegistry.tsx", "utf8");
-  assert.match(ui, /printerLanBadge/);
+  assert.match(ui, /printerLanVia/);
   assert.match(ui, /printerLanBadgeLabel/);
+  assert.match(ui, /stationPresenceStatus/);
   assert.match(ui, /enqueueStationPrintFn/);
   assert.match(ui, /isVenueStationOnline/);
   assert.doesNotMatch(ui, /reachability: ok \? "idle" : "unreachable"/);
@@ -13,6 +14,7 @@ test("Devices printer row uses LAN via station, not unreachable when a station i
   assert.match(types, /lan_via_station/);
   assert.match(types, /no_station_on_lan/);
   assert.match(types, /printerLanBadgeLabel/);
+  assert.match(types, /STATION_ONLINE_MS = 90_000/);
   const dispatch = readFileSync("src/lib/print/dispatch.ts", "utf8");
   assert.match(dispatch, /enqueueToStation/);
   assert.match(dispatch, /stationOnline/);

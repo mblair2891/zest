@@ -6,6 +6,19 @@ import type { GuideUpdate } from "@/lib/guide/types";
  */
 export const WHATS_NEW_ENTRIES: GuideUpdate[] = [
   {
+    id: "upd_2026_10_121_printer_lan_heartbeat",
+    date: "2026-09-19",
+    title: "Printer LAN follows the tablet heartbeat",
+    summary:
+      "Printers show LAN via the live station (90s). They go amber only when no order / host / ODS heartbeat is fresh.",
+    body: "Printers are not clients. If Bar Order Station 1 has a heartbeat, receipt (.112) and kitchen (.105) both show LAN via that station plus the heartbeat time. Power the tablet off and after 90 seconds those rows go amber (no station on LAN). Station online uses the same 90-second heartbeat — last seen yesterday is not green. Order tablets count: they send 9100.",
+    roles: ["owner_manager", "server", "kitchen_bar", "host_operator"],
+    surfaces: ["settings"],
+    audience: "all",
+    topicId: "printers-kds",
+    tags: ["print", "devices", "lan", "heartbeat"],
+  },
+  {
     id: "upd_2026_10_120_printer_assignment",
     date: "2026-09-19",
     title: "Printers follow the room and the menu group",

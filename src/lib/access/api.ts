@@ -518,8 +518,8 @@ function mapDeviceRow(r: {
       r.last_seen_at instanceof Date
         ? r.last_seen_at.getTime()
         : r.last_seen_at
-          ? Date.parse(String(r.last_seen_at))
-          : Date.now(),
+          ? Date.parse(String(r.last_seen_at)) || 0
+          : 0,
     assignment: {
       operatorId: r.assigned_operator_id || "host",
       function: r.assigned_function || "floor_pos",

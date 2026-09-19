@@ -503,41 +503,95 @@ export function printerHasDrawerKick(d: LocationDevice): boolean {
   return d.print.station === "receipt" || d.type === "receipt_printer" || d.type === "printer";
 }
 
-export const STATION_ONLINE_MS = 15 * 60_000;
+/** Fresh heartbeat window. Printers are not clients — they follow a station. */
+export const STATION_ONLINE_MS = 90_000;
 
-export function isVenueStationOnline(d: LocationDevice, now = Date.now()): boolean {
+/** Order / host / ODS tablets send 9100. Printers, kiosks, and card terminals do not. */
+export function isPrintWorkerStation(d: {
+  type: string;
+  status?: string;
+  assignment?: { function?: string };
+}): boolean {
   if (isPrinterType(d.type) || d.type === "terminal") return false;
   if (d.status === "inactive") return false;
-  if (d.status !== "online") return false;
-  if (!d.lastSeenAt) return true;
-  return now - d.lastSeenAt < STATION_ONLINE_MS;
+  if (d.type === "kiosk" || d.assignment?.function === "kiosk") return false;
+  return true;
+}
+
+export function hasFreshStationHeartbeat(
+  d: { lastSeenAt?: number | null },
+  now = Date.now(),
+): boolean {
+  const seen = Number(d.lastSeenAt ?? 0);
+  if (!seen) return false;
+  return now - seen < STATION_ONLINE_MS;
+}
+
+export function isVenueStationOnline(d: LocationDevice, now = Date.now()): boolean {
+  return isPrintWorkerStation(d) && hasFreshStationHeartbeat(d, now);
+}
+
+export function freshestPrintWorker(
+  devices: LocationDevice[] | undefined,
+  now = Date.now(),
+): LocationDevice | undefined {
+  let best: LocationDevice | undefined;
+  for (const d of devices ?? []) {
+    if (!isVenueStationOnline(d, now)) continue;
+    if (!best || (d.lastSeenAt ?? 0) > (best.lastSeenAt ?? 0)) best = d;
+  }
+  return best;
 }
 
 export type PrinterLanBadge = "pending" | "lan_via_station" | "no_station_on_lan";
+
+export function printerLanVia(
+  printer: LocationDevice,
+  venueDevices: LocationDevice[],
+  now = Date.now(),
+): { badge: PrinterLanBadge; via?: LocationDevice } {
+  if (!isPrinterDevice(printer) || printer.status === "inactive") return { badge: "pending" };
+  const ip = (printer.print?.ip || printer.print?.target || "").trim();
+  if (!ip) return { badge: "pending" };
+  const via = freshestPrintWorker(venueDevices, now);
+  if (via) return { badge: "lan_via_station", via };
+  return { badge: "no_station_on_lan" };
+}
 
 export function printerLanBadge(
   printer: LocationDevice,
   venueDevices: LocationDevice[],
   now = Date.now(),
 ): PrinterLanBadge {
-  if (!isPrinterDevice(printer) || printer.status === "inactive") return "pending";
-  const ip = (printer.print?.ip || printer.print?.target || "").trim();
-  if (!ip) return "pending";
-  if (venueDevices.some((d) => isVenueStationOnline(d, now))) return "lan_via_station";
-  return "no_station_on_lan";
+  return printerLanVia(printer, venueDevices, now).badge;
 }
 
-export function printerLanBadgeLabel(badge: PrinterLanBadge): string {
-  if (badge === "lan_via_station") return "LAN via station";
+export function printerLanBadgeLabel(badge: PrinterLanBadge, stationName?: string): string {
+  if (badge === "lan_via_station") {
+    const n = String(stationName ?? "").trim();
+    return n ? `LAN via ${n}` : "LAN via station";
+  }
   if (badge === "no_station_on_lan") return "no station on LAN";
   return "pending";
+}
+
+/** Station row: stored “online” without a fresh heartbeat is offline. */
+export function stationPresenceStatus(
+  d: LocationDevice,
+  now = Date.now(),
+): LocationDeviceStatus {
+  if (isPrinterDevice(d)) return d.status;
+  if (d.status === "inactive") return "inactive";
+  if (d.status === "pending") return "pending";
+  if (hasFreshStationHeartbeat(d, now)) return "online";
+  return "offline";
 }
 
 export function printerStatusLabel(
   d: LocationDevice,
   venueDevices: LocationDevice[] = [],
 ): "pending" | "unreachable" | "idle" | "last-print" | "lan_via_station" | "no_station_on_lan" | LocationDeviceStatus {
-  if (!isPrinterDevice(d)) return d.status;
+  if (!isPrinterDevice(d)) return stationPresenceStatus(d);
   if (d.status === "inactive") return "inactive";
   const lan = printerLanBadge(d, venueDevices);
   if (lan === "lan_via_station") return "lan_via_station";

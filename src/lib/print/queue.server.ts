@@ -51,8 +51,9 @@ export async function preferredPrintWorkerOnline(
   `.catch(() => []);
   const cutoff = now - STATION_ONLINE_MS;
   for (const r of rows) {
-    const seen = r.last_seen_at ? new Date(r.last_seen_at).getTime() : now;
-    if (seen < cutoff) continue;
+    if (!r.last_seen_at) continue;
+    const seen = new Date(r.last_seen_at).getTime();
+    if (!seen || seen < cutoff) continue;
     if (isPreferredPrintWorkerDevice(r.type, r.assigned_function)) return true;
   }
   const loc = await sql<{ setup: unknown }>`
@@ -68,9 +69,9 @@ export async function preferredPrintWorkerOnline(
   const devices = parseLocationDevices(setupObj?.locationDevices);
   return devices.some(
     (d) =>
-      d.status === "online" &&
       isPreferredPrintWorkerDevice(d.type, d.assignment?.function) &&
-      (!d.lastSeenAt || d.lastSeenAt >= cutoff),
+      Boolean(d.lastSeenAt) &&
+      d.lastSeenAt >= cutoff,
   );
 }
 

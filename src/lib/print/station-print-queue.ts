@@ -1,6 +1,6 @@
 /** Venue print jobs. Guest QR / kiosk / online cannot TCP 9100. */
 
-export const STATION_ONLINE_MS = 15 * 60_000;
+export { STATION_ONLINE_MS } from "@/lib/pos/location-devices";
 export const PRINT_TEST_TTL_MS = 120_000;
 export const PRINT_TICKET_TTL_MS = 8 * 60 * 60_000;
 export const PRINT_JOB_TTL_MS = PRINT_TEST_TTL_MS;
