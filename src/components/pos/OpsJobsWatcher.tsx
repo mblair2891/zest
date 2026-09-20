@@ -7,6 +7,7 @@ import { useOpsJobsStore } from "@/lib/ops-jobs/store";
 import { JOB_CADENCES, type JobCadence } from "@/lib/ops-jobs/types";
 import { useOpsStore } from "@/lib/pos/ops-store";
 import { usePosStore } from "@/lib/pos/store";
+import { runRegCalendarTickFn } from "@/lib/saas/reg-bulletins-api";
 
 /**
  * Fires scheduled AI ops jobs while a station is open.
@@ -41,6 +42,15 @@ export function OpsJobsWatcher() {
       }
     };
     void tick();
+    const calKey = `regcal:${new Date().toISOString().slice(0, 10)}`;
+    try {
+      if (typeof window !== "undefined" && window.localStorage.getItem("summex-reg-cal-tick") !== calKey) {
+        window.localStorage.setItem("summex-reg-cal-tick", calKey);
+        void runRegCalendarTickFn({ data: {} }).catch(() => undefined);
+      }
+    } catch {
+      /* private */
+    }
     const id = window.setInterval(() => void tick(), 60_000);
     return () => window.clearInterval(id);
   }, [locId]);

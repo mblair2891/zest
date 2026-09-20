@@ -6,6 +6,19 @@ import type { GuideUpdate } from "@/lib/guide/types";
  */
 export const WHATS_NEW_ENTRIES: GuideUpdate[] = [
   {
+    id: "upd_2026_10_132_reg_calendar",
+    date: "2026-09-19",
+    title: "State calendar and labor bulletins",
+    summary:
+      "Platform calendar flags July 1 / Jan 1 windows 45 days out. Draft from an official URL. Review labor (min wage, OT, tip credit) — Save applies, Dismiss keeps old rules.",
+    body: "No TaxJar and no silent law engine. Nightly job opens a platform review task. Admin publishes to matching venues. Owner/manager banner: Review taxes / Review labor, or schedule accept to the bulletin effective date. Wage and tax rows change only after Save.",
+    roles: ["owner_manager", "host_operator"],
+    surfaces: ["settings"],
+    audience: "all",
+    topicId: "tax-jurisdiction",
+    tags: ["tax", "labor", "station"],
+  },
+  {
     id: "upd_2026_10_131_reg_bulletins",
     date: "2026-09-19",
     title: "Jurisdiction and tax bulletins",

@@ -1,7 +1,7 @@
 # Operators Guide — authoring
 
-**Revision · 19 Sep 2026** — Jurisdiction reg bulletins for venues.
-Guide v2026.10.131.
+**Revision · 19 Sep 2026** — State calendar draft reg and labor bulletins.
+Guide v2026.10.132.
 
 The in-app **Operators Guide** is the living product manual. It is not a
 separate PDF. Staff open it from **Guide** / **?** in the POS and platform
@@ -138,7 +138,7 @@ Bookmarkable URL: `/guide?topic=my-topic`.
 - Each entity is its own Quantum Payments merchant. One guest check; receipt itemized by vendor; Finix pays each operator their share on capture.
 - Location models: single operator; host + tenants; shared venue (peers). Shared venue is a named building only — no host merchant, menu, or gift product required.
 - Gift cards: Summex house ledger — swipe, scan, or key. Not Finix.
-- Venue Settings → Profile: country, state/province, city, optional tax district — required before live cards. Platform jurisdiction bulletins never write tax rows; owner Review rates then Save or Dismiss.
+- Venue Settings → Profile: country, state/province, city, optional tax district — required before live cards. Platform calendar opens review tasks 45 days before typical windows. Bulletins never write tax or wage rows; owner Review taxes / Review labor then Save, Dismiss, or schedule to the effective date.
 - Device roles: **order** | **ODS** | **host**. Android tablet running the Summex Station app (`app.summex.pos`). Play AAB WebView is https://app.summex.app/station — pair code first (QR optional). HTTPS only. Privacy: https://www.summex.app/privacy. iPad and browser POS are not a supported house setup. Guest QR pay/order stays on the guest’s phone. Owner adds a device (name + role), shows a one-time code/QR. After pair: PIN only. Heartbeat carries **appBuild** and **configVersion**. A website deploy or Publish shows **A system update is ready.** Update now reloads the WebView (appBuild) or refetches menus, printers, and taxes (configVersion). Remind me later hides it for 10 minutes; after three snoozes a persistent bar stays until they update. Staff may ignore optional updates all shift. Venue Settings → Updates: force-update window default 04:00 venue IANA (optional second window). During that hour, behind stations get **Update required** with only Update now; idle tablets apply after 60 seconds. Off through the window: next heartbeat “An update was waiting while this station was offline.” Catch-up is mandatory (default on) — no snooze after a missed window. Show change list (default on) lists station-facing print / pay / floor / PIN notes — omit when empty; no SaaS notes. Never reload without a tap outside the force window. Update now during send/pay/print toasts “Finish this check first.” PIN pad and idle floor may show the modal immediately. Do not force-stop, unpair, or install a new APK for a website deploy. Publish pushes menu/floor/printers/QR. Staff keep the last publish until Switch user.
 - Shared-venue labor: per entity **owned lines** (default) | all-check | selected categories. Steam vs beverage sales; Diamond vs food. Shared rent/utilities off until allocated. Tips stay out of labor % unless toggled.
 - Printers on the house AP LAN (Ethernet), not the printer’s own Wi‑Fi. Receipts: Epson TM-T20 thermal. Kitchen: Epson TM-U220 impact. Cash drawer kick is on the receipt printer.

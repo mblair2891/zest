@@ -48,7 +48,10 @@ export function PasswordDashHome({
         <p className="mt-1 text-sm text-muted-foreground">{passwordDashBlurb(kind)}</p>
       </div>
       {kind !== "platform_admin" && kind !== "accountant" ? (
-        <VenueRegBanner onReview={() => onOpen("settings")} />
+        <VenueRegBanner
+          onReview={() => onOpen("settings")}
+          onReviewLabor={() => onOpen("labor")}
+        />
       ) : null}
 
       {kind !== "platform_admin" && kind !== "accountant" && (

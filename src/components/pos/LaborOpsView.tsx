@@ -39,6 +39,9 @@ import { closeoutNetsForPeriod } from "@/lib/pos/closeout";
 import { TipPoolingSettings } from "./TipPoolingSettings";
 import { StaffingRecsSettings } from "./StaffingRecsSettings";
 import { LaborBasisSettings } from "./LaborBasisSettings";
+import { useTaxSuggestionStore } from "@/lib/pos/tax-suggestion";
+import { laborSuggestionLabel } from "@/lib/saas/reg-calendar";
+import { ackVenueBulletinFn } from "@/lib/saas/reg-bulletins-api";
 import { useCashSessionStore } from "@/lib/pos/cash-session";
 import { hasCompletedCloseoutToday, useCloseoutStore } from "@/lib/pos/closeout-store";
 import { useTillCloseoutStore } from "@/lib/pos/till-closeout-store";
@@ -449,7 +452,44 @@ export function LaborOpsView() {
               <Settings2 className="h-4 w-4" />
               Labor rules (location settings)
             </div>
+            <LaborWageSuggestion />
             <LaborBasisSettings write />
+            <p className="text-xs font-semibold">Wage rules (this employer)</p>
+            <p className="text-xs text-muted-foreground">
+              Min wage, OT, and tip credit never change from a bulletin until you Save.
+            </p>
+            <Field
+              label="Min wage (dollars)"
+              value={rules.minWageCents == null ? "" : String(rules.minWageCents / 100)}
+              onChange={(v) =>
+                updateLabor({
+                  minWageCents: v.trim() === "" ? null : Math.round(Number(v) * 100) || 0,
+                })
+              }
+            />
+            <Field
+              label="OT daily hours (blank = off)"
+              value={rules.otDailyHours == null ? "" : String(rules.otDailyHours)}
+              onChange={(v) =>
+                updateLabor({ otDailyHours: v.trim() === "" ? null : parseInt(v, 10) || 0 })
+              }
+            />
+            <Field
+              label="OT weekly hours"
+              value={rules.otWeeklyHours == null ? "" : String(rules.otWeeklyHours)}
+              onChange={(v) =>
+                updateLabor({ otWeeklyHours: v.trim() === "" ? null : parseInt(v, 10) || 40 })
+              }
+            />
+            <Field
+              label="Tip credit (dollars)"
+              value={rules.tipCreditCents == null ? "" : String(rules.tipCreditCents / 100)}
+              onChange={(v) =>
+                updateLabor({
+                  tipCreditCents: v.trim() === "" ? null : Math.round(Number(v) * 100) || 0,
+                })
+              }
+            />
             <StaffingRecsSettings
               cfg={rules.staffingRecs}
               write
@@ -1011,6 +1051,59 @@ function PeriodExportCard({
         </Button>
         <Button size="sm" onClick={() => run(true)} disabled={st.status === "pending_approval"}>
           Send
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+function LaborWageSuggestion() {
+  const bulletinId = useTaxSuggestionStore((s) => s.bulletinId);
+  const labor = useTaxSuggestionStore((s) => s.labor);
+  const locId = usePosStore((s) => s.tenantLocationId);
+  const updateLabor = useOpsStore((s) => s.updateLabor);
+  if (!bulletinId || !labor) return null;
+  return (
+    <div data-labor-suggestion className="rounded-xl border border-primary/40 bg-primary/10 p-3 text-sm">
+      <p className="font-medium">Suggested wage rules from bulletin</p>
+      <p className="mt-1 text-xs text-muted-foreground">
+        {laborSuggestionLabel(labor)} — not applied until you Save.
+      </p>
+      <div className="mt-2 flex flex-wrap gap-2">
+        <Button
+          type="button"
+          size="sm"
+          onClick={() => {
+            updateLabor({
+              minWageCents: labor.minWageCents,
+              otDailyHours: labor.otDailyHours,
+              otWeeklyHours: labor.otWeeklyHours,
+              tipCreditCents: labor.tipCreditCents,
+            });
+            if (locId) {
+              void ackVenueBulletinFn({
+                data: { locationId: locId, bulletinId, status: "saved" },
+              });
+            }
+            useTaxSuggestionStore.getState().clear();
+          }}
+        >
+          Save wage rules
+        </Button>
+        <Button
+          type="button"
+          size="sm"
+          variant="outline"
+          onClick={() => {
+            if (locId) {
+              void ackVenueBulletinFn({
+                data: { locationId: locId, bulletinId, status: "dismissed" },
+              });
+            }
+            useTaxSuggestionStore.getState().clear();
+          }}
+        >
+          Dismiss
         </Button>
       </div>
     </div>

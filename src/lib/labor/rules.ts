@@ -80,6 +80,14 @@ export type EntityLaborRules = {
   sharedCostAllocationPct: number | null;
   /** When true, include attributed tips in labor $. Default off. */
   tipsInLabor: boolean;
+  /** Statutory wage floor in cents. Null = not set. Never auto-written by bulletins. */
+  minWageCents: number | null;
+  /** Daily OT threshold hours. Null = weekly only / not set. */
+  otDailyHours: number | null;
+  /** Weekly OT threshold hours. Null = not set. */
+  otWeeklyHours: number | null;
+  /** Tip credit against min wage, cents. Null = none. */
+  tipCreditCents: number | null;
 };
 
 export const DEFAULT_LABOR_RULES: EntityLaborRules = {
@@ -128,6 +136,10 @@ export const DEFAULT_LABOR_RULES: EntityLaborRules = {
   revenueCategoryIds: [],
   sharedCostAllocationPct: null,
   tipsInLabor: false,
+  minWageCents: null,
+  otDailyHours: null,
+  otWeeklyHours: 40,
+  tipCreditCents: null,
 };
 
 function int(raw: unknown, fallback: number, min = 0, max = 10_080): number {
@@ -230,6 +242,22 @@ export function parseLaborRules(raw: unknown): EntityLaborRules {
     revenueCategoryIds: parseCategoryIds(o.revenueCategoryIds),
     sharedCostAllocationPct: parseAllocationPct(o.sharedCostAllocationPct),
     tipsInLabor: bool(o.tipsInLabor, false),
+    minWageCents:
+      o.minWageCents == null || o.minWageCents === ""
+        ? d.minWageCents
+        : int(o.minWageCents, 0, 0, 100_000),
+    otDailyHours:
+      o.otDailyHours == null || o.otDailyHours === ""
+        ? d.otDailyHours
+        : int(o.otDailyHours, 8, 0, 24),
+    otWeeklyHours:
+      o.otWeeklyHours == null || o.otWeeklyHours === ""
+        ? d.otWeeklyHours
+        : int(o.otWeeklyHours, 40, 0, 80),
+    tipCreditCents:
+      o.tipCreditCents == null || o.tipCreditCents === ""
+        ? d.tipCreditCents
+        : int(o.tipCreditCents, 0, 0, 100_000),
   };
 }
 

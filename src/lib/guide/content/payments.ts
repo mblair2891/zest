@@ -67,8 +67,8 @@ export const PAYMENT_TOPICS: GuideTopic[] = [
       ),
       steps(
         "Fill country, state, and city in Venue Settings → Profile before switching to live cards.",
-        "If a banner appears, read it. Action required: tap Review rates.",
-        "Save the suggested rate, or Dismiss. Tax rows never change on their own.",
+        "If a banner appears, read it. Action required: Review taxes and/or Review labor.",
+        "Save the suggestion, Dismiss, or schedule accept to the bulletin effective date. Rows never change on their own.",
       ),
       warn(
         "No daily crawler of every department of revenue. First version is platform-authored targeting. A later tax API (Avalara/TaxJar) would use the same bulletin + suggestion flow — not required to ship.",
@@ -293,7 +293,7 @@ export const PAYMENT_TOPICS: GuideTopic[] = [
         "An owner considering Summex should read a product paper — not a stack spec. Processors and partners can share the same document.",
       ),
       p(
-        "Open White paper from the marketing header or footer (no login). Print from the browser for a PDF. Revision · 19 Sep 2026 matches Guide v2026.10.131. It is written for prospective subscribers: one guest check, floor, multi-entity, Android staff stations, venue payment-method toggles, 5% cash-discount processing story, plans from Get a price. Gift cards are not sold online. QR is on-premise. No CRM, pipeline, factory reset, or how to log in. Internal operations notes stay off the public site.",
+        "Open White paper from the marketing header or footer (no login). Print from the browser for a PDF. Revision · 19 Sep 2026 matches Guide v2026.10.132. It is written for prospective subscribers: one guest check, floor, multi-entity, Android staff stations, venue payment-method toggles, 5% cash-discount processing story, plans from Get a price. Gift cards are not sold online. QR is on-premise. No CRM, pipeline, factory reset, or how to log in. Internal operations notes stay off the public site.",
       ),
       steps(
         "Open White paper from the marketing header (White paper). That page is the paper — not Get a price.",
