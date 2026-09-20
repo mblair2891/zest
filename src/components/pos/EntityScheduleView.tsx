@@ -6,11 +6,13 @@ import { useOpsStore } from "@/lib/pos/ops-store";
 import { usePosStore } from "@/lib/pos/store";
 import { HOST_SCOPE, canEditSchedule, canViewSchedule, isHostPrivileged } from "@/lib/access/entity-grants";
 import { addDays, formatDayLabel, startOfWeek, weekDays, sameDay } from "@/lib/labor/week";
+import { computePayPeriod, parseLaborRules } from "@/lib/labor/rules";
 import {
   canPlaceEmployeeOnEntityBoard,
   defaultScheduleEntity,
   scheduleEntityIds,
 } from "@/lib/labor/schedule-entity";
+import type { ScheduledShift } from "@/lib/pos/ops-types";
 import { formatTime } from "@/lib/utils";
 import { isFloorRole } from "@/lib/pos/pin";
 import { isProspectDemo } from "@/lib/demo/session";
@@ -32,6 +34,12 @@ export function EntityScheduleView() {
   const upsert = useOpsStore((s) => s.upsertShift);
   const remove = useOpsStore((s) => s.removeShift);
   const publish = useOpsStore((s) => s.publishWeek);
+  const copyWeek = useOpsStore((s) => s.copyWeek);
+  const labor = useOpsStore((s) => s.labor);
+  const laborByEntity = useOpsStore((s) => s.laborByEntity);
+  const floorSections = usePosStore((s) => s.floorSections);
+  const [gridMode, setGridMode] = useState<"week" | "period">("week");
+  const [editId, setEditId] = useState<string | null>(null);
   const hostEdit = Boolean(settings.hostMayEditEntitySchedules);
   const peer = Boolean(settings.peerVenue || settings.operatingModel === "peer_venue");
   const floor = sessionKind === "pin" && isFloorRole(emp?.role);
@@ -83,6 +91,9 @@ export function EntityScheduleView() {
           published: r.published,
           role: r.role,
           locationId: locId,
+          station: r.station,
+          section: r.section,
+          breakMinutes: r.breakMinutes,
         }));
         useOpsStore.setState({
           shifts: [...keep, ...incoming],
@@ -134,16 +145,27 @@ export function EntityScheduleView() {
     });
   }, [employees, floor, boardEntity, extraGrants]);
 
-  const days = weekDays(weekStart);
+  const period = computePayPeriod(
+    weekStart + 3 * 86_400_000,
+    parseLaborRules(laborByEntity[boardEntity] ?? labor),
+  );
+  const days =
+    gridMode === "period"
+      ? Array.from(
+          { length: Math.max(1, Math.ceil((period.end - period.start) / 86_400_000)) },
+          (_, i) => period.start + i * 86_400_000,
+        ).filter((d) => d < period.end)
+      : weekDays(weekStart);
   const canEditBoard = !floor && canEditSchedule(emp, grants, boardEntity, hostEdit, peer);
 
   const persist = () => {
     if (isProspectDemo() || !orgId || !locId) return;
-    const weekEnd = addDays(weekStart, 7);
+    const from = days[0] ?? weekStart;
+    const to = (days[days.length - 1] ?? weekStart) + 86_400_000;
     const payload = useOpsStore
       .getState()
       .shifts.filter(
-        (s) => s.operatorId === boardEntity && s.start >= weekStart && s.start < weekEnd,
+        (s) => s.operatorId === boardEntity && s.start >= from && s.start < to,
       );
     void saveShiftsFn({
       data: { orgId, locationId: locId, shifts: payload },
@@ -216,19 +238,42 @@ export function EntityScheduleView() {
           </select>
         )}
         {!floor && (
-          <Button
-            size="sm"
-            onClick={() => {
-              publish(weekStart, boardEntity);
-              persist();
-            }}
-            disabled={!canEditBoard}
-          >
-            Publish week
-          </Button>
+          <>
+            <select
+              className="h-8 rounded-md border border-border bg-bg px-2 text-xs"
+              value={gridMode}
+              onChange={(e) => setGridMode(e.target.value as "week" | "period")}
+              aria-label="Grid"
+            >
+              <option value="week">Week</option>
+              <option value="period">Pay period</option>
+            </select>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => {
+                const n = copyWeek(addDays(weekStart, -7), weekStart, boardEntity);
+                persist();
+                void n;
+              }}
+              disabled={!canEditBoard}
+            >
+              Copy last week
+            </Button>
+            <Button
+              size="sm"
+              onClick={() => {
+                publish(weekStart, boardEntity);
+                persist();
+              }}
+              disabled={!canEditBoard}
+            >
+              Publish week
+            </Button>
+          </>
         )}
         <p className="text-[11px] text-muted-foreground">
-          Publish does not merge the other entity’s calendar.
+          Unpublished drafts do not appear on the clock. Publish does not merge the other entity’s calendar.
         </p>
       </div>
       <div className="min-h-0 flex-1 overflow-auto p-3">
@@ -285,34 +330,23 @@ export function EntityScheduleView() {
                         }}
                       >
                         {cell.map((s) => (
-                          <div
+                          <ShiftCard
                             key={s.id}
-                            className="mb-1 rounded-lg border border-border bg-surface px-1.5 py-1"
-                            draggable={canEditBoard}
-                            onDragStart={(e) => {
-                              e.dataTransfer.setData("text/shift", s.id);
-                              e.dataTransfer.effectAllowed = "move";
+                            shift={s}
+                            canEdit={canEditBoard}
+                            editing={editId === s.id}
+                            sections={floorSections}
+                            onToggle={() => setEditId(editId === s.id ? null : s.id)}
+                            onSave={(next) => {
+                              upsert({ ...s, ...next, operatorId: boardEntity });
+                              setEditId(null);
+                              persist();
                             }}
-                          >
-                            <p className="tabular">
-                              {formatTime(s.start)}–{formatTime(s.end)}
-                            </p>
-                            <Badge variant={s.published ? "success" : "warn"}>
-                              {s.published ? "Live" : "Draft"}
-                            </Badge>
-                            {canEditBoard && (
-                              <button
-                                type="button"
-                                className="ml-1 text-[10px] text-danger"
-                                onClick={() => {
-                                  remove(s.id);
-                                  persist();
-                                }}
-                              >
-                                Remove
-                              </button>
-                            )}
-                          </div>
+                            onRemove={() => {
+                              remove(s.id);
+                              persist();
+                            }}
+                          />
                         ))}
                         {canEditBoard && (
                           <Button size="sm" variant="ghost" onClick={() => addOn(person.id, d)}>
@@ -378,6 +412,154 @@ export function EntityScheduleView() {
             addOn(id, day);
           }}
         />
+      )}
+    </div>
+  );
+}
+
+function hm(ms: number): string {
+  const d = new Date(ms);
+  return `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
+}
+
+function applyHm(day: number, value: string): number {
+  const [h, m] = value.split(":").map((n) => Number(n));
+  const d = new Date(day);
+  d.setHours(Number.isFinite(h) ? h : 0, Number.isFinite(m) ? m : 0, 0, 0);
+  return d.getTime();
+}
+
+function ShiftCard({
+  shift,
+  canEdit,
+  editing,
+  sections,
+  onToggle,
+  onSave,
+  onRemove,
+}: {
+  shift: ScheduledShift;
+  canEdit: boolean;
+  editing: boolean;
+  sections: Array<{ id: string; name: string }>;
+  onToggle: () => void;
+  onSave: (next: Partial<ScheduledShift>) => void;
+  onRemove: () => void;
+}) {
+  const day = new Date(shift.start);
+  day.setHours(0, 0, 0, 0);
+  const dayMs = day.getTime();
+  const [start, setStart] = useState(hm(shift.start));
+  const [end, setEnd] = useState(hm(shift.end));
+  const [station, setStation] = useState(shift.station ?? "");
+  const [section, setSection] = useState(shift.section ?? "");
+  const [brk, setBrk] = useState(String(shift.breakMinutes ?? 0));
+  const [role, setRole] = useState(shift.role ?? "");
+  return (
+    <div
+      className="mb-1 rounded-lg border border-border bg-surface px-1.5 py-1"
+      draggable={canEdit && !editing}
+      onDragStart={(e) => {
+        e.dataTransfer.setData("text/shift", shift.id);
+        e.dataTransfer.effectAllowed = "move";
+      }}
+    >
+      <button type="button" className="w-full text-left" onClick={onToggle}>
+        <p className="tabular">
+          {formatTime(shift.start)}–{formatTime(shift.end)}
+        </p>
+        {(shift.station || shift.section) && (
+          <p className="text-[10px] text-muted-foreground">
+            {[shift.station, shift.section].filter(Boolean).join(" · ")}
+          </p>
+        )}
+        <Badge variant={shift.published ? "success" : "warn"}>
+          {shift.published ? "Live" : "Draft"}
+        </Badge>
+      </button>
+      {editing && canEdit && (
+        <div className="mt-1 space-y-1">
+          <label className="block text-[10px] text-muted-foreground">
+            Start
+            <input
+              type="time"
+              className="mt-0.5 h-7 w-full rounded border border-border bg-bg px-1 text-xs"
+              value={start}
+              onChange={(e) => setStart(e.target.value)}
+            />
+          </label>
+          <label className="block text-[10px] text-muted-foreground">
+            End
+            <input
+              type="time"
+              className="mt-0.5 h-7 w-full rounded border border-border bg-bg px-1 text-xs"
+              value={end}
+              onChange={(e) => setEnd(e.target.value)}
+            />
+          </label>
+          <label className="block text-[10px] text-muted-foreground">
+            Role
+            <input
+              className="mt-0.5 h-7 w-full rounded border border-border bg-bg px-1 text-xs"
+              value={role}
+              onChange={(e) => setRole(e.target.value)}
+            />
+          </label>
+          <label className="block text-[10px] text-muted-foreground">
+            Station
+            <input
+              className="mt-0.5 h-7 w-full rounded border border-border bg-bg px-1 text-xs"
+              value={station}
+              onChange={(e) => setStation(e.target.value)}
+              placeholder="optional"
+            />
+          </label>
+          <label className="block text-[10px] text-muted-foreground">
+            Section
+            <select
+              className="mt-0.5 h-7 w-full rounded border border-border bg-bg px-1 text-xs"
+              value={section}
+              onChange={(e) => setSection(e.target.value)}
+            >
+              <option value="">None</option>
+              {sections.map((sec) => (
+                <option key={sec.id} value={sec.name}>
+                  {sec.name}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="block text-[10px] text-muted-foreground">
+            Break (min)
+            <input
+              type="number"
+              min={0}
+              className="mt-0.5 h-7 w-full rounded border border-border bg-bg px-1 text-xs"
+              value={brk}
+              onChange={(e) => setBrk(e.target.value)}
+            />
+          </label>
+          <div className="flex gap-1">
+            <Button
+              size="sm"
+              onClick={() =>
+                onSave({
+                  start: applyHm(dayMs, start),
+                  end: applyHm(dayMs, end),
+                  station: station.trim() || undefined,
+                  section: section.trim() || undefined,
+                  breakMinutes: parseInt(brk, 10) || 0,
+                  role: role.trim() || undefined,
+                })
+              }
+            >
+              Save
+            </Button>
+            <button type="button" className="text-[10px] text-danger" onClick={onRemove}>
+              Remove
+            </button>
+          </div>
+        </div>
       )}
     </div>
   );

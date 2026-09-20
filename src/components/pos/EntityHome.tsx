@@ -23,7 +23,8 @@ import { useNetworkStore } from "@/lib/pos/network-store";
 import { TrainingBanner } from "./TrainingBanner";
 import { PrintWaitingBanner } from "./PrintWaitingBanner";
 import { useStationSessionStore } from "@/lib/pos/station-session";
-import { isBackOfficeRole } from "@/lib/pos/pin";
+import { findStaffByPin, isBackOfficeRole } from "@/lib/pos/pin";
+import { pinIsManager, punchClockByPin, punchClockForEmployee } from "@/lib/pos/station-clock";
 import { isProspectDemo } from "@/lib/demo/session";
 import { DEMO_STAFF_PIN, isDemoStaffPin } from "@/lib/demo/pin";
 import {
@@ -157,7 +158,7 @@ export function EntityLogin({ entityId }: { entityId: VenueEntityId }) {
   const login = usePosStore((s) => s.login);
   const loginAs = usePosStore((s) => s.loginAs);
   const applyEntity = usePosStore((s) => s.applyEntity);
-  const clockToggle = usePosStore((s) => s.clockToggle);
+
   const demo = isDevDemoClient();
   const prospect = isProspectDemo();
   const employees = usePosStore((s) => s.employees);
@@ -169,6 +170,11 @@ export function EntityLogin({ entityId }: { entityId: VenueEntityId }) {
     [employees],
   );
   const [staffId, setStaffId] = useState<string>("");
+  const [pendingForce, setPendingForce] = useState<{
+    mode: "clock_in" | "clock_out";
+    employeeId: string;
+    employeeName: string;
+  } | null>(null);
 
   const locId = usePosStore((s) => s.tenantLocationId);
   const houseName = usePosStore((s) => s.settings?.name);
@@ -204,9 +210,65 @@ export function EntityLogin({ entityId }: { entityId: VenueEntityId }) {
   const staff = employees.filter((e) => e.active);
   const Icon = ICONS[entity.id] ?? UtensilsCrossed;
 
+  const locForPin = locId || "";
+  const clockPad = stationPad || prospect;
+
+  const finishClock = (res: ReturnType<typeof punchClockByPin>, clockMode: "clock_in" | "clock_out") => {
+    if (!res.ok && res.forceRequired) {
+      setPendingForce({
+        mode: clockMode,
+        employeeId: res.employeeId ?? "",
+        employeeName: res.employeeName ?? "",
+      });
+      setError(res.error ?? "Outside grace — manager PIN to proceed");
+      return;
+    }
+    setPendingForce(null);
+    if (!res.ok) {
+      setError(res.error ?? "Clock failed");
+      return;
+    }
+    setMsg(`${res.employeeName} ${clockMode === "clock_in" ? "clocked in" : "clocked out"}`);
+  };
+
+  const submitClockPin = (next: string, clockMode: "clock_in" | "clock_out") => {
+    if (pendingForce) {
+      if (!pinIsManager(next, locForPin)) {
+        setError("Manager PIN required to override");
+        return;
+      }
+      finishClock(
+        punchClockForEmployee(pendingForce.employeeId, pendingForce.mode, { force: true }),
+        pendingForce.mode,
+      );
+      return;
+    }
+    if (prospect && (isDemoStaffPin(next) || next === DEMO_STAFF_PIN)) {
+      const emp = clockStaff.find((e) => e.id === staffId) ?? clockStaff[0];
+      if (!emp) {
+        setError("No staff on this demo house");
+        return;
+      }
+      finishClock(punchClockForEmployee(emp.id, clockMode), clockMode);
+      return;
+    }
+    finishClock(punchClockByPin(next, clockMode, { locationId: locForPin }), clockMode);
+  };
+
   const submitPin = (next: string) => {
     setError(null);
     setMsg(null);
+    if (mode === "clock_in" || mode === "clock_out") {
+      if (prospect && !isDemoStaffPin(next) && next !== DEMO_STAFF_PIN && !pendingForce) {
+        const emp = findStaffByPin(employees, next, locForPin, null);
+        if (!emp) {
+          setError(`Demo PIN is ${DEMO_STAFF_PIN}`);
+          return;
+        }
+      }
+      submitClockPin(next, mode);
+      return;
+    }
     if (stationPad && mode === "login") {
       const pair = readStationPair();
       if (!pair?.deviceId || !pair.locationId) {
@@ -238,25 +300,6 @@ export function EntityLogin({ entityId }: { entityId: VenueEntityId }) {
         return;
       }
     }
-    if (prospect && mode !== "login") {
-      if (!isDemoStaffPin(next) && next !== DEMO_STAFF_PIN) {
-        setError(`Demo PIN is ${DEMO_STAFF_PIN}`);
-        return;
-      }
-      const emp = clockStaff.find((e) => e.id === staffId) ?? clockStaff[0];
-      if (!emp) {
-        setError("No staff on this demo house");
-        return;
-      }
-      const shouldIn = mode === "clock_in";
-      if (shouldIn === !!emp.clockedIn) {
-        setMsg(`${emp.name} is already ${emp.clockedIn ? "clocked in" : "clocked out"}`);
-        return;
-      }
-      clockToggle(emp.id);
-      setMsg(`${emp.name} ${shouldIn ? "clocked in" : "clocked out"}`);
-      return;
-    }
     const res = login(next);
     if (!res.ok) {
       setError(res.error ?? "Invalid PIN");
@@ -265,7 +308,6 @@ export function EntityLogin({ entityId }: { entityId: VenueEntityId }) {
     if (!prospect) return;
     enterDemoOperator();
     const emp = usePosStore.getState().getCurrentEmployee();
-    if (emp && !emp.clockedIn) clockToggle(emp.id);
     if (isDemoStaffPin(next) || emp?.role === "owner" || emp?.role === "manager") {
       useDemoDeviceStore.getState().setStation("owner");
       useDemoDeviceStore.getState().setDisplayName("Owner / Manager");
@@ -322,7 +364,9 @@ export function EntityLogin({ entityId }: { entityId: VenueEntityId }) {
               <p className="mt-1 text-sm text-muted-foreground">{entity.blurb}</p>
             </>
           )}
-          <p className="mt-3 text-sm font-medium">Floor login · 4-digit PIN</p>
+          <p className="mt-3 text-sm font-medium">
+            {mode === "login" ? "Floor login · 4-digit PIN" : mode === "clock_in" ? "Clock in · 4-digit PIN" : "Clock out · 4-digit PIN"}
+          </p>
           {(() => {
             const paired = readStationDeviceRole();
             const stationRole =
@@ -339,7 +383,7 @@ export function EntityLogin({ entityId }: { entityId: VenueEntityId }) {
             );
           })()}
           <p className="mt-1 text-xs text-muted-foreground">
-            PIN signs you onto this station. Clock in / out is Labor — not this pad.
+            PIN signs you onto this station. Clock in and Clock out are their own keys on this pad — they do not open order entry.
           </p>
           {prospect && (
             <p className="mt-2 text-sm text-muted-foreground">
@@ -349,7 +393,7 @@ export function EntityLogin({ entityId }: { entityId: VenueEntityId }) {
           )}
         </div>
 
-        {prospect && (
+        {clockPad && (
           <div className="mb-5 grid grid-cols-3 gap-1 rounded-xl border border-border p-1">
             {(
               [
@@ -365,6 +409,7 @@ export function EntityLogin({ entityId }: { entityId: VenueEntityId }) {
                   setMode(id);
                   setError(null);
                   setMsg(null);
+                  setPendingForce(null);
                 }}
                 className={cn(
                   "rounded-lg px-2 py-2 text-xs font-semibold",
@@ -395,14 +440,30 @@ export function EntityLogin({ entityId }: { entityId: VenueEntityId }) {
           </label>
         )}
 
+        {pendingForce && (
+          <p className="mb-3 text-center text-sm text-amber-600">
+            Outside grace for {pendingForce.employeeName}. Enter a manager PIN to allow, or the house may block this punch.
+          </p>
+        )}
+
         <PinKeypad
-          title={prospect && mode !== "login" ? "Confirm with PIN" : undefined}
+          title={
+            pendingForce
+              ? "Manager PIN to override"
+              : mode !== "login"
+                ? "Confirm with PIN"
+                : undefined
+          }
           hint={
-            prospect
-              ? `Universal demo PIN ${DEMO_STAFF_PIN}`
-              : employees.some((e) => isTrainingRosterId(e.id)) && locationIsTraining()
-                ? TRAINING_PIN_HINT
-                : "Servers, kitchen, bar, host stand, cashiers"
+            pendingForce
+              ? "Manager or owner PIN"
+              : prospect
+                ? `Universal demo PIN ${DEMO_STAFF_PIN}`
+                : employees.some((e) => isTrainingRosterId(e.id)) && locationIsTraining()
+                  ? TRAINING_PIN_HINT
+                  : mode === "login"
+                    ? "Servers, kitchen, bar, host stand, cashiers"
+                    : "Your staff PIN — not a station login"
           }
           error={error}
           onComplete={submitPin}

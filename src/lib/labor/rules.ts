@@ -43,7 +43,11 @@ export type EntityLaborRules = {
   notifyLateClockIn: boolean;
   notifyEarlyClockOut: boolean;
   notifyLateClockOut: boolean;
+  notifyMissedPunch: boolean;
+  notifyNoScheduledShift: boolean;
   dailyCloseoutTime: string;
+  /** Period ends at this HH:mm in the venue timezone (morning after last day). */
+  payPeriodEndTime: string;
   payPeriodType: PayPeriodKind;
   payPeriodStartWeekday: number;
   payPeriodAnchorDate: string;
@@ -86,6 +90,8 @@ export type EntityLaborRules = {
   otDailyHours: number | null;
   /** Weekly OT threshold hours. Null = not set. */
   otWeeklyHours: number | null;
+  /** Seventh consecutive day → OT flag on export. Not a legal determination. */
+  otSeventhDay: boolean;
   /** Tip credit against min wage, cents. Null = none. */
   tipCreditCents: number | null;
 };
@@ -110,7 +116,10 @@ export const DEFAULT_LABOR_RULES: EntityLaborRules = {
   notifyLateClockIn: true,
   notifyEarlyClockOut: true,
   notifyLateClockOut: true,
+  notifyMissedPunch: true,
+  notifyNoScheduledShift: true,
   dailyCloseoutTime: "04:00",
+  payPeriodEndTime: "04:00",
   payPeriodType: "biweekly",
   payPeriodStartWeekday: 0,
   payPeriodAnchorDate: "",
@@ -139,6 +148,7 @@ export const DEFAULT_LABOR_RULES: EntityLaborRules = {
   minWageCents: null,
   otDailyHours: null,
   otWeeklyHours: 40,
+  otSeventhDay: false,
   tipCreditCents: null,
 };
 
@@ -216,7 +226,12 @@ export function parseLaborRules(raw: unknown): EntityLaborRules {
     notifyLateClockIn: bool(o.notifyLateClockIn, d.notifyLateClockIn),
     notifyEarlyClockOut: bool(o.notifyEarlyClockOut, d.notifyEarlyClockOut),
     notifyLateClockOut: bool(o.notifyLateClockOut, d.notifyLateClockOut),
+    notifyMissedPunch: bool(o.notifyMissedPunch, d.notifyMissedPunch),
+    notifyNoScheduledShift: bool(o.notifyNoScheduledShift, d.notifyNoScheduledShift),
     dailyCloseoutTime: String(o.dailyCloseoutTime ?? d.dailyCloseoutTime).slice(0, 8) || d.dailyCloseoutTime,
+    payPeriodEndTime:
+      String(o.payPeriodEndTime ?? o.dailyCloseoutTime ?? d.payPeriodEndTime).slice(0, 8) ||
+      d.payPeriodEndTime,
     payPeriodType,
     payPeriodStartWeekday: int(o.payPeriodStartWeekday ?? o.payPeriodEndDay, d.payPeriodStartWeekday, 0, 6),
     payPeriodAnchorDate: String(o.payPeriodAnchorDate ?? "").slice(0, 10),
@@ -254,6 +269,7 @@ export function parseLaborRules(raw: unknown): EntityLaborRules {
       o.otWeeklyHours == null || o.otWeeklyHours === ""
         ? d.otWeeklyHours
         : int(o.otWeeklyHours, 40, 0, 80),
+    otSeventhDay: bool(o.otSeventhDay, false),
     tipCreditCents:
       o.tipCreditCents == null || o.tipCreditCents === ""
         ? d.tipCreditCents
@@ -277,129 +293,14 @@ export function roundPunch(at: number, minutes: number): number {
   return Math.round(at / step) * step;
 }
 
-export type ClockEval = {
-  ok: boolean;
-  error?: string;
-  flags: string[];
-  notify: string[];
-  forceRequired?: boolean;
-};
-
-export type ShiftWindow = { id: string; start: number; end: number; published: boolean } | null;
-
-/** Allowed clock-in window vs shift start (early minutes before, late minutes after). */
-export function clockInWindowBounds(
-  shiftStart: number,
-  rules: Pick<EntityLaborRules, "clockInEarlyMinutes" | "clockInLateMinutes">,
-): { open: number; close: number } {
-  return {
-    open: shiftStart - rules.clockInEarlyMinutes * 60_000,
-    close: shiftStart + rules.clockInLateMinutes * 60_000,
-  };
-}
-
-export function isInsideClockInWindow(
-  now: number,
-  shiftStart: number,
-  rules: Pick<EntityLaborRules, "clockInEarlyMinutes" | "clockInLateMinutes">,
-): boolean {
-  const { open, close } = clockInWindowBounds(shiftStart, rules);
-  return now >= open && now <= close;
-}
-
-export function evaluateClockIn(
-  now: number,
-  shift: ShiftWindow,
-  rules: EntityLaborRules,
-  force: boolean,
-): ClockEval {
-  const flags: string[] = [];
-  const notify: string[] = [];
-  if (!shift || !shift.published) {
-    if (rules.allowClockWithNoShift && !rules.requireOverrideForNoShift) {
-      return { ok: true, flags: ["No published shift"], notify };
-    }
-    if (force && rules.managerOverride) {
-      return { ok: true, flags: ["No published shift — manager override"], notify };
-    }
-    if (rules.requireOverrideForNoShift || !rules.allowClockWithNoShift) {
-      return {
-        ok: false,
-        error: "No published shift — manager override required",
-        flags,
-        notify,
-        forceRequired: rules.managerOverride,
-      };
-    }
-  }
-  if (!shift) return { ok: true, flags, notify };
-  const { open: earlyOpen, close: lateClose } = clockInWindowBounds(shift.start, rules);
-  if (now < earlyOpen) {
-    const msg = `Too early — clock-in opens ${rules.clockInEarlyMinutes}m before shift`;
-    if (rules.clockInEarlyAction === "block" && !(force && rules.managerOverride)) {
-      return { ok: false, error: msg, flags, notify, forceRequired: rules.managerOverride };
-    }
-    flags.push(msg);
-    if (rules.notifyEarlyClockIn) notify.push(msg);
-  }
-  if (now > lateClose) {
-    const msg = `Late clock-in — more than ${rules.clockInLateMinutes}m after shift start`;
-    if (rules.clockInLateAction === "block" && !(force && rules.managerOverride)) {
-      return { ok: false, error: msg, flags, notify, forceRequired: rules.managerOverride };
-    }
-    flags.push(msg);
-    if (rules.notifyLateClockIn) notify.push(msg);
-  }
-  return { ok: true, flags, notify };
-}
-
-export function evaluateClockOut(
-  now: number,
-  shift: ShiftWindow,
-  lastTicketAt: number | undefined,
-  rules: EntityLaborRules,
-  force: boolean,
-): ClockEval & { autoApprove: boolean } {
-  const flags: string[] = [];
-  const notify: string[] = [];
-  if (shift) {
-    const earlyOpen = shift.end - rules.clockOutEarlyMinutes * 60_000;
-    const lateClose = shift.end + rules.clockOutLateMinutes * 60_000;
-    if (now < earlyOpen) {
-      const msg = `Early clock-out — more than ${rules.clockOutEarlyMinutes}m before shift end`;
-      if (rules.clockOutEarlyAction === "block" && !(force && rules.managerOverride)) {
-        return { ok: false, error: msg, flags, notify, autoApprove: false, forceRequired: rules.managerOverride };
-      }
-      flags.push(msg);
-      if (rules.notifyEarlyClockOut) notify.push(msg);
-    }
-    if (now > lateClose) {
-      const msg = `Late clock-out — more than ${rules.clockOutLateMinutes}m after shift end`;
-      if (rules.clockOutLateAction === "block" && !(force && rules.managerOverride)) {
-        return { ok: false, error: msg, flags, notify, autoApprove: false, forceRequired: rules.managerOverride };
-      }
-      flags.push(msg);
-      if (rules.notifyLateClockOut) notify.push(msg);
-    }
-  }
-  let autoApprove = false;
-  if (rules.approvalMode === "auto_shift_end" && shift) {
-    const mins = Math.round(Math.abs(now - shift.end) / 60_000);
-    autoApprove = mins <= rules.approvalWindowMinutes;
-    if (!autoApprove) flags.push(`Clock-out ${mins}m from shift end (auto-approve window ${rules.approvalWindowMinutes}m)`);
-  } else if (rules.approvalMode === "auto_last_ticket") {
-    if (lastTicketAt) {
-      const mins = Math.round(Math.abs(now - lastTicketAt) / 60_000);
-      autoApprove = mins <= rules.approvalWindowMinutes;
-      if (!autoApprove) {
-        flags.push(`Clock-out ${mins}m after last closed ticket (window ${rules.approvalWindowMinutes}m)`);
-      }
-    } else {
-      flags.push("No closed tickets on this shift — needs supervisor review");
-    }
-  }
-  return { ok: true, flags, notify, autoApprove };
-}
+export {
+  clockInWindowBounds,
+  evaluateClockIn,
+  evaluateClockOut,
+  isInsideClockInWindow,
+  type ClockEval,
+  type ShiftWindow,
+} from "./clock-eval";
 
 export function applyBreakDeduct(regularMinutes: number, rules: EntityLaborRules): number {
   if (!rules.breakDeductMinutes) return regularMinutes;
@@ -470,7 +371,12 @@ export function computePayPeriod(now: number, rules: EntityLaborRules): PayPerio
     start = (Number.isFinite(anchor) ? anchor : day) + n * span;
     end = start + span - 1;
   }
-  const payDate = startOfLocalDay(end + 1) + rules.payDateOffsetDays * 86_400_000;
+  const { h, m } = parseHm(rules.payPeriodEndTime || rules.dailyCloseoutTime || "04:00");
+  const morningAfter = startOfLocalDay(end + 1);
+  const close = new Date(morningAfter);
+  close.setHours(h, m, 0, 0);
+  end = close.getTime();
+  const payDate = startOfLocalDay(end) + rules.payDateOffsetDays * 86_400_000;
   return { start, end, payDate, startIso: iso(start), endIso: iso(end), payDateIso: iso(payDate) };
 }
 

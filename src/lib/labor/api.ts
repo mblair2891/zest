@@ -23,11 +23,21 @@ export const saveShiftsFn = createServerFn({ method: "POST" })
       end: number;
       published: boolean;
       role?: string;
+      station?: string;
+      section?: string;
+      breakMinutes?: number;
     }[];
   }) => ({
     orgId: String(d.orgId ?? "").trim(),
     locationId: loc(d.locationId),
-    shifts: Array.isArray(d.shifts) ? d.shifts.slice(0, 400) : [],
+    shifts: Array.isArray(d.shifts)
+      ? d.shifts.slice(0, 400).map((s) => ({
+          ...s,
+          station: s.station ? String(s.station).slice(0, 80) : "",
+          section: s.section ? String(s.section).slice(0, 80) : "",
+          breakMinutes: Math.max(0, Math.round(Number(s.breakMinutes) || 0)),
+        }))
+      : [],
   }))
   .handler(async ({ context, data }) => {
     const { loadEntityWriteContext } = await import("@/lib/access/assert-entity.server");
@@ -54,12 +64,14 @@ export const saveShiftsFn = createServerFn({ method: "POST" })
     for (const s of data.shifts) {
       await sql`
         insert into location_shifts (
-          id, location_id, operator_id, employee_id, start_at, end_at, published, role
+          id, location_id, operator_id, employee_id, start_at, end_at, published, role,
+          station, section, break_minutes
         )
         values (
           ${s.id}, ${data.locationId}, ${s.operatorId || HOST_SCOPE}, ${s.employeeId},
           ${new Date(s.start).toISOString()}, ${new Date(s.end).toISOString()},
-          ${s.published}, ${s.role ?? null}
+          ${s.published}, ${s.role ?? null},
+          ${s.station || null}, ${s.section || null}, ${s.breakMinutes || 0}
         )
         on conflict (id) do update set
           operator_id = excluded.operator_id,
@@ -67,7 +79,10 @@ export const saveShiftsFn = createServerFn({ method: "POST" })
           start_at = excluded.start_at,
           end_at = excluded.end_at,
           published = excluded.published,
-          role = excluded.role
+          role = excluded.role,
+          station = excluded.station,
+          section = excluded.section,
+          break_minutes = excluded.break_minutes
       `;
     }
     return { ok: true as const, count: data.shifts.length };
@@ -104,8 +119,12 @@ export const listShiftsFn = createServerFn({ method: "POST" })
           end_at: unknown;
           published: boolean;
           role: string | null;
+          station: string | null;
+          section: string | null;
+          break_minutes: number | null;
         }>`
-          select id, employee_id, operator_id, start_at, end_at, published, role
+          select id, employee_id, operator_id, start_at, end_at, published, role,
+                 station, section, break_minutes
           from location_shifts
           where location_id = ${data.locationId} and operator_id = ${data.operatorId}
           order by start_at asc
@@ -118,8 +137,12 @@ export const listShiftsFn = createServerFn({ method: "POST" })
           end_at: unknown;
           published: boolean;
           role: string | null;
+          station: string | null;
+          section: string | null;
+          break_minutes: number | null;
         }>`
-          select id, employee_id, operator_id, start_at, end_at, published, role
+          select id, employee_id, operator_id, start_at, end_at, published, role,
+                 station, section, break_minutes
           from location_shifts
           where location_id = ${data.locationId}
           order by start_at asc
@@ -132,6 +155,9 @@ export const listShiftsFn = createServerFn({ method: "POST" })
       end: new Date(r.end_at as string | number | Date).getTime() || 0,
       published: Boolean(r.published),
       role: r.role ?? "",
+      station: r.station ?? "",
+      section: r.section ?? "",
+      breakMinutes: r.break_minutes ?? 0,
     }));
   });
 

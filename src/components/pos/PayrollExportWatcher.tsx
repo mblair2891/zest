@@ -23,6 +23,7 @@ export function PayrollExportWatcher() {
   useEffect(() => {
     const tick = () => {
       if (isProspectDemo() || !orgId || !locId) return;
+      useOpsStore.getState().scanMissedPunches();
       const rules = parseLaborRules(labor);
       if (!rules.autoPayroll) return;
       const period = computePayPeriod(Date.now(), rules);

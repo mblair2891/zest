@@ -20,7 +20,6 @@ import type {
 import { HOST_SCOPE } from "@/lib/access/entity-grants";
 import { addDays, sameDay } from "@/lib/labor/week";
 import {
-  applyBreakDeduct,
   computePayPeriod,
   evaluateClockIn,
   evaluateClockOut,
@@ -30,6 +29,8 @@ import {
   DEFAULT_LABOR_RULES,
   type EntityLaborRules,
 } from "@/lib/labor/rules";
+import { consecutiveDaysWorked, splitWorkedMinutes } from "@/lib/labor/hours-split";
+import { copyWeekShifts, missedPublishedShifts, publishedShiftsForClock } from "@/lib/labor/schedule-entity";
 
 const DEFAULT_LABOR: LaborSettings = DEFAULT_LABOR_RULES;
 
@@ -530,8 +531,14 @@ interface OpsState {
   clockIn: (
     employeeId: string,
     employeeName: string,
-    opts?: { force?: boolean; homeOperatorId?: string },
+    opts?: {
+      force?: boolean;
+      homeOperatorId?: string;
+      clockOperatorId?: string | null;
+      grants?: Array<{ employeeId: string; workOperatorId: string }>;
+    },
   ) => { ok: boolean; error?: string; punchId?: string; forceRequired?: boolean; flags?: string[] };
+  scanMissedPunches: (now?: number) => number;
   clockOut: (
     employeeId: string,
     employeeName: string,
@@ -568,6 +575,7 @@ interface OpsState {
   upsertShift: (input: Omit<ScheduledShift, "id"> & { id?: string }) => ScheduledShift;
   removeShift: (id: string) => void;
   publishWeek: (weekStart: number, operatorId?: string | null) => void;
+  copyWeek: (fromWeekStart: number, toWeekStart: number, operatorId: string) => number;
 }
 
 function startOfDay(d = new Date()) {
@@ -642,6 +650,9 @@ export const useOpsStore = create<OpsState>()(
           published: Boolean(input.published),
           role: input.role,
           locationId: input.locationId,
+          station: input.station,
+          section: input.section,
+          breakMinutes: input.breakMinutes,
         };
         const shifts = get().shifts.some((s) => s.id === id)
           ? get().shifts.map((s) => (s.id === id ? next : s))
@@ -659,6 +670,18 @@ export const useOpsStore = create<OpsState>()(
           shifts,
           todayShifts: shifts.filter((s) => sameDay(s.start, Date.now())),
         });
+      },
+
+      copyWeek: (fromWeekStart, toWeekStart, operatorId) => {
+        const clones = copyWeekShifts(get().shifts, fromWeekStart, toWeekStart, operatorId);
+        let n = 0;
+        for (const row of clones) {
+          const { id: _drop, ...rest } = row as ScheduledShift;
+          void _drop;
+          get().upsertShift({ ...rest, published: false });
+          n += 1;
+        }
+        return n;
       },
 
       publishWeek: (weekStart, operatorId) => {
@@ -681,9 +704,14 @@ export const useOpsStore = create<OpsState>()(
         if (open) return { ok: false, error: "Already clocked in" };
 
         const homeOp = String(opts?.homeOperatorId || HOST_SCOPE);
-        const published = get().shifts.filter(
-          (s) => s.employeeId === employeeId && s.published && sameDay(s.start, Date.now()),
-        );
+        const published = publishedShiftsForClock({
+          shifts: get().shifts,
+          employeeId,
+          homeOperatorId: homeOp,
+          now: Date.now(),
+          grants: opts?.grants ?? [],
+          clockOperatorId: opts?.clockOperatorId,
+        });
         const hoursEntity =
           published.find((s) => {
             const now0 = Date.now();
@@ -697,7 +725,6 @@ export const useOpsStore = create<OpsState>()(
         const shift =
           published.find((s) => now >= s.start - labor.clockInEarlyMinutes * 60_000 && now <= s.end + labor.clockInLateMinutes * 60_000) ??
           published[0] ??
-          get().todayShifts.find((s) => s.employeeId === employeeId && s.published) ??
           null;
         const evalIn = evaluateClockIn(
           now,
@@ -706,6 +733,21 @@ export const useOpsStore = create<OpsState>()(
           force,
         );
         if (!evalIn.ok) {
+          if (evalIn.notify.length) {
+            set({
+              alerts: [
+                {
+                  id: uid("al"),
+                  at: now,
+                  punchId: "",
+                  employeeName,
+                  reason: evalIn.notify.join("; "),
+                  resolved: false,
+                },
+                ...get().alerts,
+              ],
+            });
+          }
           return { ok: false, error: evalIn.error, forceRequired: evalIn.forceRequired, flags: evalIn.flags };
         }
 
@@ -762,6 +804,21 @@ export const useOpsStore = create<OpsState>()(
             : null;
         const evalOut = evaluateClockOut(now, shift, lastTicket, labor, force);
         if (!evalOut.ok) {
+          if (evalOut.notify.length) {
+            set({
+              alerts: [
+                {
+                  id: uid("al"),
+                  at: now,
+                  punchId: punch.id,
+                  employeeName,
+                  reason: evalOut.notify.join("; "),
+                  resolved: false,
+                },
+                ...get().alerts,
+              ],
+            });
+          }
           return { ok: false, error: evalOut.error, forceRequired: evalOut.forceRequired, flags: evalOut.flags };
         }
 
@@ -771,8 +828,43 @@ export const useOpsStore = create<OpsState>()(
         const redFlag = !auto || evalOut.flags.length > 0;
         const redFlagReason = evalOut.flags[0];
         const worked = minutesBetween(punch.clockInAt, now);
-        const regularMinutes = applyBreakDeduct(Math.min(8 * 60, worked), labor);
-        const otMinutes = Math.max(0, worked - 8 * 60);
+        const dayKey = (ms: number) => {
+          const x = new Date(ms);
+          return `${x.getFullYear()}-${x.getMonth()}-${x.getDate()}`;
+        };
+        const weekStart = (() => {
+          const x = new Date(punch.clockInAt);
+          x.setHours(0, 0, 0, 0);
+          x.setDate(x.getDate() - x.getDay());
+          return x.getTime();
+        })();
+        const prior = get().punches.filter(
+          (p) =>
+            p.employeeId === employeeId &&
+            p.id !== punch.id &&
+            p.status !== "open" &&
+            p.status !== "rejected" &&
+            p.clockOutAt,
+        );
+        const priorMinutesThisDay = prior
+          .filter((p) => dayKey(p.clockInAt) === dayKey(punch.clockInAt))
+          .reduce((s, p) => s + (p.regularMinutes ?? 0) + (p.otMinutes ?? 0), 0);
+        const priorMinutesThisWeek = prior
+          .filter((p) => p.clockInAt >= weekStart)
+          .reduce((s, p) => s + (p.regularMinutes ?? 0) + (p.otMinutes ?? 0), 0);
+        const days = prior
+          .filter((p) => p.clockInAt >= weekStart)
+          .map((p) => Math.floor((p.clockInAt - weekStart) / 86_400_000));
+        days.push(Math.floor((punch.clockInAt - weekStart) / 86_400_000));
+        const split = splitWorkedMinutes({
+          workedMinutes: worked,
+          priorMinutesThisDay,
+          priorMinutesThisWeek,
+          consecutiveDaysWorked: consecutiveDaysWorked(days),
+          rules: labor,
+        });
+        const regularMinutes = split.regularMinutes;
+        const otMinutes = split.otMinutes;
 
         const updated: TimePunch = {
           ...punch,
@@ -785,6 +877,7 @@ export const useOpsStore = create<OpsState>()(
           redFlagReason,
           regularMinutes,
           otMinutes,
+          otFlags: split.flags,
           approvedAt: status === "auto_approved" ? now : undefined,
           approvedBy: status === "auto_approved" ? "system" : undefined,
         };
@@ -819,6 +912,43 @@ export const useOpsStore = create<OpsState>()(
         };
       },
 
+      scanMissedPunches: (now = Date.now()) => {
+        const laborDefault = parseLaborRules(get().labor);
+        const byEntity = get().laborByEntity;
+        const existing = new Set(
+          get()
+            .alerts.filter((a) => !a.resolved && a.reason.startsWith("Missed punch"))
+            .map((a) => a.punchId),
+        );
+        const added: SupervisorAlert[] = [];
+        const graceFor = (operatorId: string) =>
+          parseLaborRules(byEntity[operatorId] ?? laborDefault).clockInLateMinutes;
+        const notifyFor = (operatorId: string) =>
+          parseLaborRules(byEntity[operatorId] ?? laborDefault).notifyMissedPunch;
+        const missed = missedPublishedShifts({
+          shifts: get().shifts,
+          punches: get().punches,
+          now,
+          graceMinutes: 0,
+        }).filter((s) => now >= s.end + graceFor(s.operatorId) * 60_000);
+        for (const s of missed) {
+          if (!notifyFor(s.operatorId)) continue;
+          if (existing.has(s.id)) continue;
+          const name =
+            get().punches.find((p) => p.employeeId === s.employeeId)?.employeeName ?? s.employeeId;
+          added.push({
+            id: uid("al"),
+            at: now,
+            punchId: s.id,
+            employeeName: name,
+            reason: "Missed punch — published shift with no clock-in",
+            resolved: false,
+          });
+        }
+        if (added.length) set({ alerts: [...added, ...get().alerts] });
+        return added.length;
+      },
+
       approvePunch: (punchId, supervisorName) => {
         const next = get().punches.map((p) =>
           p.id === punchId
@@ -850,13 +980,22 @@ export const useOpsStore = create<OpsState>()(
             const clockInAt = patch.clockInAt ?? p.clockInAt;
             const clockOutAt = patch.clockOutAt ?? p.clockOutAt ?? Date.now();
             const mins = minutesBetween(clockInAt, clockOutAt);
+            const labor = parseLaborRules(get().laborByEntity[p.operatorId || HOST_SCOPE] ?? get().labor);
+            const split = splitWorkedMinutes({
+              workedMinutes: mins,
+              priorMinutesThisDay: 0,
+              priorMinutesThisWeek: 0,
+              consecutiveDaysWorked: 0,
+              rules: labor,
+            });
             return {
               ...p,
               ...patch,
               clockInAt,
               clockOutAt,
-              regularMinutes: Math.min(8 * 60, mins),
-              otMinutes: Math.max(0, mins - 8 * 60),
+              regularMinutes: split.regularMinutes,
+              otMinutes: split.otMinutes,
+              otFlags: split.flags,
               status: "corrected",
               redFlag: false,
               approvedBy: supervisorName,

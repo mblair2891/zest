@@ -6,6 +6,19 @@ import type { GuideUpdate } from "@/lib/guide/types";
  */
 export const WHATS_NEW_ENTRIES: GuideUpdate[] = [
   {
+    id: "upd_2026_10_133_entity_schedule_clock",
+    date: "2026-09-19",
+    title: "Entity scheduling, clock, and hours export",
+    summary:
+      "Each selling entity publishes its own week. Clock in / Clock out are PIN-pad keys. Approved punches lock for CSV/PDF — Summex does not process payroll.",
+    body: "Kitchen cannot publish bar shifts (and vice versa). Copy last week, then Publish — drafts stay off the clock. Grace windows: early/late in and out; outside grace, manager PIN or block. Approval: manual, auto vs shift end, or auto vs last closed ticket. Unapproved punches stay in Exceptions. Pay period weekly / biweekly / semimonthly with period-end time in venue timezone. Packet ready N days before pay date. Download CSV/PDF (regular vs OT flags from owner-entered venue rules) or send to a connected provider. No net pay, no tax filing, no paycheck.",
+    roles: ["owner_manager", "host_operator", "vendor_operator", "server", "kitchen_bar"],
+    surfaces: ["labor", "settings"],
+    audience: "all",
+    topicId: "shift-allowables",
+    tags: ["clock", "schedule", "payroll", "pin"],
+  },
+  {
     id: "upd_2026_10_132_reg_calendar",
     date: "2026-09-19",
     title: "State calendar and labor bulletins",

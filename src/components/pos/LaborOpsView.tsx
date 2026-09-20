@@ -25,7 +25,7 @@ import { useSaasStore } from "@/lib/pos/saas-store";
 import { GuideLearnLink } from "@/components/guide/GuideLearnLink";
 import { HOST_SCOPE, canViewPayroll, entityLoginScope } from "@/lib/access/entity-grants";
 import { isFloorRole } from "@/lib/pos/pin";
-import { buildPayrollRows, payrollCsv } from "@/lib/labor/payroll";
+import { buildPayrollRows, payrollCsv, payrollPdf } from "@/lib/labor/payroll";
 import { EntityScheduleView } from "./EntityScheduleView";
 import {
   parseCashHandling,
@@ -139,6 +139,8 @@ export function LaborOpsView() {
       const res = clockIn(id, name, {
         force,
         homeOperatorId: employees.find((e) => e.id === id)?.operatorId || HOST_SCOPE,
+        clockOperatorId: opScope || undefined,
+        grants: usePosStore.getState().extraEntityShiftGrants ?? [],
       });
       if (!res.ok) {
         setFlash(res.error ?? "Clock in failed");
@@ -481,6 +483,14 @@ export function LaborOpsView() {
                 updateLabor({ otWeeklyHours: v.trim() === "" ? null : parseInt(v, 10) || 40 })
               }
             />
+            <label className="flex items-center gap-2 text-xs">
+              <input
+                type="checkbox"
+                checked={rules.otSeventhDay}
+                onChange={(e) => updateLabor({ otSeventhDay: e.target.checked })}
+              />
+              Seventh consecutive day → OT flag (export / red flags only — not a legal determination)
+            </label>
             <Field
               label="Tip credit (dollars)"
               value={rules.tipCreditCents == null ? "" : String(rules.tipCreditCents / 100)}
@@ -539,10 +549,10 @@ export function LaborOpsView() {
             <label className="flex items-center gap-2 text-xs">
               <input
                 type="checkbox"
-                checked={rules.allowClockWithNoShift}
-                onChange={(e) => updateLabor({ allowClockWithNoShift: e.target.checked })}
+                checked={!rules.allowClockWithNoShift}
+                onChange={(e) => updateLabor({ allowClockWithNoShift: !e.target.checked })}
               />
-              Allow clock with no published shift
+              Clock only on a published shift
             </label>
             <label className="flex items-center gap-2 text-xs">
               <input
@@ -595,6 +605,8 @@ export function LaborOpsView() {
                 ["notifyLateClockIn", "Late clock in"],
                 ["notifyEarlyClockOut", "Early clock out"],
                 ["notifyLateClockOut", "Late clock out"],
+                ["notifyMissedPunch", "Missed punch"],
+                ["notifyNoScheduledShift", "No scheduled shift"],
               ] as const
             ).map(([k, label]) => (
               <label key={k} className="flex items-center gap-2 text-xs">
@@ -694,6 +706,11 @@ export function LaborOpsView() {
               value={String(rules.payDateOffsetDays)}
               onChange={(v) => updateLabor({ payDateOffsetDays: parseInt(v, 10) || 0 })}
             />
+            <Field
+              label="Period-end time (venue timezone, HH:mm)"
+              value={rules.payPeriodEndTime}
+              onChange={(v) => updateLabor({ payPeriodEndTime: v })}
+            />
             <label className="flex items-center gap-2 text-xs">
               <input
                 type="checkbox"
@@ -721,7 +738,7 @@ export function LaborOpsView() {
               onChange={(v) => updateLabor({ autoPayrollTime: v })}
             />
             <Field
-              label="Days before pay date"
+              label="Payroll packet ready (days before pay date)"
               value={String(rules.autoPayrollDaysBeforePay)}
               onChange={(v) => updateLabor({ autoPayrollDaysBeforePay: parseInt(v, 10) || 0 })}
             />
@@ -871,7 +888,7 @@ function PayrollTable({
   operatorId?: string | null;
 }) {
   const rows = buildPayrollRows({ punches, employees, operatorName, operatorId });
-  const download = () => {
+  const downloadCsv = () => {
     const blob = new Blob([payrollCsv(rows)], { type: "text/csv" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
@@ -880,13 +897,27 @@ function PayrollTable({
     a.click();
     URL.revokeObjectURL(url);
   };
+  const downloadPdf = () => {
+    const blob = payrollPdf(rows);
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "summex-hours.pdf";
+    a.click();
+    URL.revokeObjectURL(url);
+  };
   return (
     <div className="rounded-2xl border border-border bg-surface p-4">
       <div className="mb-2 flex items-center justify-between gap-2">
-        <p className="text-sm font-semibold">Hours, OT, tips</p>
-        <Button size="sm" variant="outline" onClick={download}>
-          CSV
-        </Button>
+        <p className="text-sm font-semibold">Hours, OT flags — not a paycheck</p>
+        <div className="flex gap-1">
+          <Button size="sm" variant="outline" onClick={downloadCsv}>
+            CSV
+          </Button>
+          <Button size="sm" variant="outline" onClick={downloadPdf}>
+            PDF
+          </Button>
+        </div>
       </div>
       <table className="w-full text-left text-xs">
         <thead>
@@ -895,6 +926,7 @@ function PayrollTable({
             <th>Entity</th>
             <th>Reg h</th>
             <th>OT</th>
+            <th>Flags</th>
             <th>Tips</th>
             <th>Sales</th>
           </tr>
@@ -908,6 +940,11 @@ function PayrollTable({
               <td className="tabular">
                 {r.otHours.toFixed(2)}
                 {r.otFlag ? " · OT" : ""}
+              </td>
+              <td>
+                {[r.otDaily ? "daily" : "", r.otWeekly ? "weekly" : "", r.otSeventh ? "7th" : ""]
+                  .filter(Boolean)
+                  .join(" · ") || "—"}
               </td>
               <td className="tabular">{formatCurrency(r.tipsCents)}</td>
               <td className="tabular">{formatCurrency(r.salesCents)}</td>

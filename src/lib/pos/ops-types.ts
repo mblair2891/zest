@@ -26,6 +26,9 @@ export interface ScheduledShift {
   published: boolean;
   role?: string;
   locationId?: string;
+  station?: string;
+  section?: string;
+  breakMinutes?: number;
 }
 
 export interface TimePunch {
@@ -47,6 +50,7 @@ export interface TimePunch {
   notes?: string;
   regularMinutes?: number;
   otMinutes?: number;
+  otFlags?: string[];
   operatorId?: string;
 }
 
