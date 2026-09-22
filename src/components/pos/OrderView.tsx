@@ -76,7 +76,15 @@ import {
 } from "@/lib/print/receipt-printer";
 import { NoSaleControl } from "./NoSaleControl";
 
-export function OrderView() {
+export function OrderView({
+  busyNight = false,
+  onSent,
+  onNeedFloor,
+}: {
+  busyNight?: boolean;
+  onSent?: () => void;
+  onNeedFloor?: () => void;
+} = {}) {
   const activeOrderId = usePosStore((s) => s.activeOrderId);
   const orders = usePosStore((s) => s.orders);
   const order = orders.find((o) => o.id === activeOrderId) ?? null;
@@ -145,6 +153,11 @@ export function OrderView() {
   useEffect(() => {
     if (demoScope) setVendorFilter(demoScope);
   }, [demoScope]);
+  useEffect(() => {
+    if (!busyNight || selectedCategoryId) return;
+    const first = categories.slice().sort((a, b) => a.sort - b.sort)[0];
+    if (first) setCategory(first.id);
+  }, [busyNight, selectedCategoryId, categories, setCategory]);
   const [payQrOpen, setPayQrOpen] = useState(false);
   const [opsOpen, setOpsOpen] = useState(false);
   const [checkOpen, setCheckOpen] = useState(false);
@@ -191,6 +204,20 @@ export function OrderView() {
   }, [menuItems, selectedCategoryId, search, vendorFilter]);
 
   const openOrders = orders.filter((o) => o.status === "open");
+
+  if (busyNight && !order) {
+    return (
+      <div className="grid h-full place-items-center p-6 text-center" data-busy-menu>
+        <div className="space-y-3">
+          <p className="text-lg font-semibold">No check yet</p>
+          <p className="text-sm text-muted-foreground">Seat a table on the floor, then add the first item.</p>
+          <Button className="station-touch h-16 px-8 text-lg" onClick={() => onNeedFloor?.()}>
+            Floor
+          </Button>
+        </div>
+      </div>
+    );
+  }
 
   if (!order && floorIntent === "bar_tab") {
     return <FloorView />;
@@ -505,6 +532,84 @@ export function OrderView() {
       ))}
     </ul>
   );
+
+  if (busyNight) {
+    const cats = categories.slice().sort((a, b) => a.sort - b.sort);
+    const fireSend = () => {
+      const res = sendOrder();
+      if (res?.ok) onSent?.();
+    };
+    return (
+      <div className="flex h-full min-h-0 flex-col bg-bg" data-busy-menu>
+        <div className="flex gap-2 overflow-x-auto p-2" data-menu-categories>
+          {cats.map((c) => (
+            <Button
+              key={c.id}
+              className="station-touch h-16 min-w-[7.5rem] shrink-0 text-lg font-semibold"
+              variant={selectedCategoryId === c.id ? "default" : "outline"}
+              onClick={() => {
+                setCategory(c.id);
+                setSearch("");
+              }}
+            >
+              {c.name}
+            </Button>
+          ))}
+        </div>
+        <div className="min-h-0 flex-1 overflow-y-auto p-2">
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+            {items.map((item) => {
+              const printed =
+                happy && item.happyHourPriceCents != null
+                  ? item.happyHourPriceCents
+                  : item.priceCents;
+              const dualPrice = printedItemPriceCents(printed, settings);
+              return (
+                <button
+                  key={item.id}
+                  type="button"
+                  disabled={!item.available || orderLocked}
+                  onClick={() => onMenuClick(item)}
+                  className={cn(
+                    "flex min-h-16 flex-col rounded-2xl border border-border bg-surface p-3 text-left active:scale-[0.98]",
+                    !item.available && "opacity-40",
+                  )}
+                >
+                  <span className="text-base font-semibold leading-snug">{item.name}</span>
+                  <span className="mt-auto pt-2 text-sm font-semibold tabular">
+                    {dualPrice.showBoth
+                      ? `${formatCurrency(dualPrice.cash)} / ${formatCurrency(dualPrice.card)}`
+                      : formatCurrency(dualPrice.cash)}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+        <div className="shrink-0 border-t border-border bg-surface" data-live-pad>
+          <div className="max-h-32 overflow-y-auto px-2 py-1">{liveCheckList}</div>
+          {dual && (
+            <p className="flex justify-between px-3 text-base font-semibold tabular">
+              <span>Cash {formatCurrency(dual.cash.totalCents)}</span>
+              <span>Card {formatCurrency(dual.enabled ? dual.card.totalCents : dual.cash.totalCents)}</span>
+            </p>
+          )}
+          <div className="p-2">
+            <Button
+              className="station-touch h-16 w-full text-xl font-semibold"
+              disabled={!unsent}
+              onClick={fireSend}
+              data-send
+            >
+              <Send className="h-5 w-5" />
+              Send
+            </Button>
+          </div>
+        </div>
+        <ModifierDialog open={modOpen} onOpenChange={setModOpen} item={modItem} />
+      </div>
+    );
+  }
 
   const checkPane = (
       <aside

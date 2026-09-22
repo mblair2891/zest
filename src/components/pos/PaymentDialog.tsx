@@ -65,9 +65,10 @@ import { findStaffByPin } from "@/lib/pos/pin";
 interface Props {
   open: boolean;
   onOpenChange: (o: boolean) => void;
+  initialMethod?: PaymentMethod;
 }
 
-export function PaymentDialog({ open, onOpenChange }: Props) {
+export function PaymentDialog({ open, onOpenChange, initialMethod }: Props) {
   const order = usePosStore((s) => s.orders.find((o) => o.id === s.activeOrderId));
   const settings = usePosStore((s) => s.settings);
   const takePayment = usePosStore((s) => s.takePayment);
@@ -111,8 +112,16 @@ export function PaymentDialog({ open, onOpenChange }: Props) {
   const payMethods = enabledPayMethods(payCfg);
 
   const [method, setMethod] = useState<PaymentMethod>(() =>
-    firstEnabledMethod(payCfg, wanOnline ? "card" : "cash"),
+    initialMethod && methodEnabled(payCfg, initialMethod)
+      ? initialMethod
+      : firstEnabledMethod(payCfg, wanOnline ? "card" : "cash"),
   );
+  useEffect(() => {
+    if (!open || !initialMethod) return;
+    if (methodEnabled(payCfg, initialMethod)) setMethod(initialMethod);
+    // Tender button sets initialMethod. payCfg is a fresh object each render.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, initialMethod]);
   const [checkLast4, setCheckLast4] = useState("");
   const [checkWitness, setCheckWitness] = useState("");
   const [compReason, setCompReason] = useState("");

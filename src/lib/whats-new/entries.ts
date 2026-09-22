@@ -6,6 +6,19 @@ import type { GuideUpdate } from "@/lib/guide/types";
  */
 export const WHATS_NEW_ENTRIES: GuideUpdate[] = [
   {
+    id: "upd_2026_10_134_busy_night_floor",
+    date: "2026-09-22",
+    title: "Busy-night floor has no chairs",
+    summary:
+      "Order and host tablets: Floor, Checks, Menu, Pay. Tables are status-colored blocks with the number only. Send returns to the floor.",
+    body: "No chair icons, stool rings, or seat marks on the live map. Booths stay 2-bench, U, or L. Color is the status. A thin flash means the SLA is on — no SLA text on the map. Tap a table for its open checks: Add, Send, Print check, Pay. Set status, new check, transfer, table QR, and mark delivered are under More. Seat, first item, and Send are three taps once the table sheet is open. One tap reopens a sat table. After Send you are back on the floor.",
+    roles: ["owner_manager", "server", "host_operator"],
+    surfaces: ["floor"],
+    audience: "all",
+    topicId: "floor-tables",
+    tags: ["floor", "order", "host", "menu"],
+  },
+  {
     id: "upd_2026_10_133_entity_schedule_clock",
     date: "2026-09-19",
     title: "Entity scheduling, clock, and hours export",

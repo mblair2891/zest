@@ -5,6 +5,7 @@ import { DriveThroughView } from "./DriveThroughView";
 import { StationClockGate } from "./StationClockGate";
 import { StationHomeMenu, StationJobFrame } from "./StationHomeMenu";
 import { FloorView } from "./FloorView";
+import { BusyNightStation } from "./BusyNightStation";
 import { TakeoutView } from "./TakeoutView";
 import { WaitlistView } from "./WaitlistView";
 import { EndShiftFlow } from "./EndShiftFlow";
@@ -91,6 +92,15 @@ export function DeviceModeView({
   }
 
   const pinMenu = sessionKind === "pin";
+  const busyNight =
+    pinMenu &&
+    (role === "order" || role === "host") &&
+    (surface === "floor" || surface === "host") &&
+    !job;
+
+  if (busyNight) {
+    return <BusyNightStation hostStand={role === "host" || surface === "host"} />;
+  }
 
   if (pinMenu && activeOrderId && order) {
     return (

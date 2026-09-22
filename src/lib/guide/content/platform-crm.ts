@@ -78,7 +78,7 @@ export const PLATFORM_CRM_TOPICS: GuideTopic[] = [
         "Shared venue (peer) works with no host merchant. hostEntityId may be null. The screen shows the building plus selling entities.",
         "Users tab: location owner / manager / location admin. Floor list shows name, role, entity, clock, and the 4-digit PIN (shown by default). Reset PIN confirms, then displays the new code. Disable keeps the row; that PIN no longer signs in. Password logins are separate — account passwords are never shown. Kitchen/server/bartender cannot open Users. Isolated demo: Platform Admin may view PINs for support. Add Location admin or Entity admin (email + temp password) or PIN floor staff. You cannot create a second platform Admin.",
         "Operating as is demo-only on the tenant console and in a manager More overflow on the station menu. Changing it remounts Menus / Users / Reports / Labor / Costs for that selling entity. It does not replace the tab chrome. Live subscribers never see it.",
-        "Password login is back office. After PIN, a full-service order tablet shows a short role menu — My tables opens the floor.",
+        "Password login is back office. After PIN, a full-service order tablet opens Floor, Checks, Menu, Pay.",
         "Plan / Suspend stay on the list and do not require a host merchant. Back returns to /platform/tenants.",
       ),
       steps(

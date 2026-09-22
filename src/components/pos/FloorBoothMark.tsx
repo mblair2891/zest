@@ -19,6 +19,7 @@ export function FloorBoothMark({
   w = 18,
   h = 18,
   seats = 4,
+  solid = false,
 }: {
   kind: BoothKind;
   tableFill: string;
@@ -32,6 +33,8 @@ export function FloorBoothMark({
   w?: number;
   h?: number;
   seats?: number;
+  /** Status block: booth silhouette in the status fill. No bench stitches or seat marks. */
+  solid?: boolean;
 }) {
   const scale = seatingScale({ w, h, seats });
   return (
@@ -43,28 +46,31 @@ export function FloorBoothMark({
         {kind === "booth_4" ? (
           <Booth4Paths
             tableFill={tableFill}
-            benchFill={benchFill}
+            benchFill={solid ? tableFill : benchFill}
             outline={outline}
             benchVy={scale.benchVy}
+            solid={solid}
           />
         ) : kind === "booth_u" ? (
           <BoothUPaths
             tableFill={tableFill}
-            benchFill={benchFill}
+            benchFill={solid ? tableFill : benchFill}
             outline={outline}
             benchVx={scale.benchVx}
             benchVy={scale.benchVy}
+            solid={solid}
           />
         ) : (
           <BoothLPaths
             tableFill={tableFill}
-            benchFill={benchFill}
+            benchFill={solid ? tableFill : benchFill}
             outline={outline}
             benchVx={scale.benchVx}
             benchVy={scale.benchVy}
+            solid={solid}
           />
         )}
-        {sectionColor ? (
+        {sectionColor && !solid ? (
           <rect x="38" y="2" width="24" height="4" rx="1.5" fill={sectionColor} />
         ) : null}
       </svg>
@@ -112,31 +118,39 @@ function Booth4Paths({
   benchFill,
   outline,
   benchVy,
+  solid = false,
 }: {
   tableFill: string;
   benchFill: string;
   outline: string;
   benchVy: number;
+  solid?: boolean;
 }) {
   const by = Math.min(28, Math.max(14, benchVy));
   const tableTop = by + 6;
   const tableH = Math.max(20, 100 - tableTop * 2);
   return (
     <>
-      <rect x="2" y="2" width="96" height="96" rx="10" fill="none" stroke={outline} strokeWidth="3" />
+      {solid ? null : (
+        <rect x="2" y="2" width="96" height="96" rx="10" fill="none" stroke={outline} strokeWidth="3" />
+      )}
       <rect x="8" y="5" width="84" height={by} rx="7" fill={benchFill} />
-      <rect x="12" y="9" width="76" height="2" rx="1" fill={BENCH_STITCH} opacity="0.45" />
+      {solid ? null : (
+        <rect x="12" y="9" width="76" height="2" rx="1" fill={BENCH_STITCH} opacity="0.45" />
+      )}
       <rect x="20" y={tableTop} width="60" height={tableH} rx="5" fill={tableFill} />
       <rect x="8" y={100 - 5 - by} width="84" height={by} rx="7" fill={benchFill} />
-      <rect
-        x="12"
-        y={100 - 9}
-        width="76"
-        height="2"
-        rx="1"
-        fill={BENCH_STITCH}
-        opacity="0.45"
-      />
+      {solid ? null : (
+        <rect
+          x="12"
+          y={100 - 9}
+          width="76"
+          height="2"
+          rx="1"
+          fill={BENCH_STITCH}
+          opacity="0.45"
+        />
+      )}
     </>
   );
 }
@@ -147,12 +161,14 @@ function BoothUPaths({
   outline,
   benchVx,
   benchVy,
+  solid = false,
 }: {
   tableFill: string;
   benchFill: string;
   outline: string;
   benchVx: number;
   benchVy: number;
+  solid?: boolean;
 }) {
   const bx = Math.min(30, Math.max(16, benchVx));
   const by = Math.min(30, Math.max(16, benchVy));
@@ -164,7 +180,9 @@ function BoothUPaths({
   const tableH = Math.max(22, innerB - 18);
   return (
     <>
-      <rect x="2" y="2" width="96" height="96" rx="10" fill="none" stroke={outline} strokeWidth="3" />
+      {solid ? null : (
+        <rect x="2" y="2" width="96" height="96" rx="10" fill="none" stroke={outline} strokeWidth="3" />
+      )}
       <path
         d={`M${bx * 0.45} 6 V${innerB} Q${bx * 0.45} ${innerB + by * 0.35} ${bx} ${innerB + by * 0.35} H${100 - bx} Q${100 - bx * 0.45} ${innerB + by * 0.35} ${100 - bx * 0.45} ${innerB} V6 H${innerR} V${innerB - 4} H${innerL} V6 Z`}
         fill={benchFill}
@@ -180,12 +198,14 @@ function BoothLPaths({
   outline,
   benchVx,
   benchVy,
+  solid = false,
 }: {
   tableFill: string;
   benchFill: string;
   outline: string;
   benchVx: number;
   benchVy: number;
+  solid?: boolean;
 }) {
   const bx = Math.min(30, Math.max(16, benchVx));
   const by = Math.min(30, Math.max(16, benchVy));
@@ -195,7 +215,9 @@ function BoothLPaths({
   const tableH = Math.max(22, 100 - by - tableY - 8);
   return (
     <>
-      <rect x="2" y="2" width="96" height="96" rx="10" fill="none" stroke={outline} strokeWidth="3" />
+      {solid ? null : (
+        <rect x="2" y="2" width="96" height="96" rx="10" fill="none" stroke={outline} strokeWidth="3" />
+      )}
       <path
         d={`M${bx * 0.45} 6 V${100 - by * 0.4} Q${bx * 0.45} ${100 - 4} ${bx} ${100 - 4} H${100 - 6} V${100 - by} H${bx} V6 Z`}
         fill={benchFill}

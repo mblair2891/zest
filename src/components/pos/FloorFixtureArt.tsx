@@ -8,6 +8,7 @@ import {
   seatingScale,
 } from "@/lib/pos/floor-seating";
 import { FloorBoothMark } from "@/components/pos/FloorBoothMark";
+import type { BoothKind } from "@/lib/pos/floor-booth";
 
 const CHAIR = "#6b5a4e";
 const STOOL = "#5c534c";
@@ -21,6 +22,7 @@ export function FloorFixtureArt({
   rotation = 0,
   className,
   children,
+  mode = "plan",
 }: {
   table: Pick<Table, "kind" | "shape" | "w" | "h" | "seats" | "rotation">;
   tableFill: string;
@@ -30,9 +32,28 @@ export function FloorFixtureArt({
   rotation?: number;
   className?: string;
   children?: ReactNode;
+  /** plan = editor capacity marks. status = solid fill, number only, no seats. */
+  mode?: "plan" | "status";
 }) {
   const booth = asBoothKind(table.kind, table.shape);
   const rot = rotation || table.rotation || 0;
+  if (mode === "status") {
+    return (
+      <StatusFixture
+        booth={booth}
+        bar={table.kind === "barstool" || table.shape === "bar"}
+        round={table.shape === "round"}
+        tableFill={tableFill}
+        rotation={rot}
+        label={label}
+        w={table.w}
+        h={table.h}
+        className={className}
+      >
+        {children}
+      </StatusFixture>
+    );
+  }
   if (booth) {
     return (
       <FloorBoothMark
@@ -102,6 +123,70 @@ export function FloorFixtureArt({
     >
       {children}
     </FloorTableArt>
+  );
+}
+
+/** Live floor: one status-colored shape. No chairs, stool rings, or seat hashes. */
+function StatusFixture({
+  booth,
+  bar,
+  round,
+  tableFill,
+  rotation,
+  label,
+  w,
+  h,
+  className,
+  children,
+}: {
+  booth: BoothKind | null;
+  bar: boolean;
+  round: boolean;
+  tableFill: string;
+  rotation: number;
+  label?: string;
+  w: number;
+  h: number;
+  className?: string;
+  children?: ReactNode;
+}) {
+  return (
+    <div
+      className={cn("relative h-full w-full", className)}
+      style={{ transform: `rotate(${rotation}deg)`, containerType: "size" }}
+      data-floor-status-shape={booth ?? (bar ? "stool" : round ? "round" : "rect")}
+      data-no-chairs=""
+    >
+      {booth ? (
+        <FloorBoothMark
+          kind={booth}
+          tableFill={tableFill}
+          outline={tableFill}
+          rotation={0}
+          solid
+          w={w}
+          h={h}
+          seats={4}
+        />
+      ) : (
+        <svg viewBox="0 0 100 100" className="pointer-events-none h-full w-full" aria-hidden>
+          {bar || round ? (
+            <ellipse cx="50" cy="50" rx="48" ry="48" fill={tableFill} />
+          ) : (
+            <rect x="2" y="2" width="96" height="96" rx="12" fill={tableFill} />
+          )}
+        </svg>
+      )}
+      {label ? (
+        <span
+          className="pointer-events-none absolute inset-0 grid place-items-center px-[8%] text-center font-bold leading-none tabular"
+          style={{ fontSize: "50cqmin", transform: `rotate(${-rotation}deg)` }}
+        >
+          {label}
+        </span>
+      ) : null}
+      {children}
+    </div>
   );
 }
 

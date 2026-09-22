@@ -146,7 +146,7 @@ export function SubscriberWhitePaper() {
             <tbody className="text-muted-foreground">
               <tr className="border-t border-border">
                 <td className="py-2 pr-4 text-ivory">Order</td>
-                <td>After PIN: My tables, New table, To-go, Bar tab, Clock, Closeout as allowed. Counter is New ticket. Drive-through is the lane.</td>
+                <td>After PIN on full service: Floor, Checks, Menu, Pay. The map is status color and the table number — no chairs. Counter is New ticket. Drive-through is the lane. Clock and closeout are under Checks.</td>
               </tr>
               <tr className="border-t border-border">
                 <td className="py-2 pr-4 text-ivory">ODS</td>
@@ -154,7 +154,7 @@ export function SubscriberWhitePaper() {
               </tr>
               <tr className="border-t border-border">
                 <td className="py-2 pr-4 text-ivory">Host</td>
-                <td>After PIN: Floor / seat, Waitlist, To-go, Clock. Peer venues still have this role — no host merchant required.</td>
+                <td>After PIN: Floor, Checks, Menu, Pay. Waitlist, to-go, and clock are under Checks. Peer venues still have this role — no host merchant required.</td>
               </tr>
               <tr className="border-t border-border">
                 <td className="py-2 pr-4 text-ivory">Kiosk</td>

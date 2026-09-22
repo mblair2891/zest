@@ -168,7 +168,7 @@ const SERVER: TourDefinition = w(
       id: "sv-floor",
       title: "Floor and sections",
       script:
-        "Color-coded sections. Seat only where you are assigned unless a manager grants a table. Tap CHECK OPEN to open that check — not Empty / Seat.",
+        "Color is the table fill. Seat only where you are assigned unless a manager grants a table. Tap the table — one tap — to open that check. Not Empty / Seat when a check is already open.",
       selector: "[data-demo='floor']",
       view: "floor",
       action: "seat",

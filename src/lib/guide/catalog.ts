@@ -76,7 +76,7 @@ export const GUIDE_CHAPTERS: GuideChapter[] = [
   {
     id: "kiosk",
     title: "Kiosk & host stand",
-    summary: "Guest kiosk, waitlist, reservation check-in. Host stand: Floor / seat, Waitlist, To-go, Clock.",
+    summary: "Guest kiosk, waitlist, reservation check-in. Host stand: Floor, Checks, Menu, Pay.",
     order: 9,
   },
   {

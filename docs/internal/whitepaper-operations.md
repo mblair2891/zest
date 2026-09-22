@@ -146,9 +146,9 @@ The tablet is a screen, not a person. Station UI is **device role ∩ staff PIN*
 
 | Role | Screen |
 |---|---|
-| **Order** | After PIN: short menu — My tables, New table, To-go, Bar tab, Clock, Closeout as allowed. Counter is New ticket. Drive-through is the lane. Pay/close on their checks. |
+| **Order** | After PIN on full service: Floor, Checks, Menu, Pay. Map is status color and the table number. Counter is New ticket. Drive-through is the lane. Clock and closeout are under Checks. |
 | **ODS** | Kitchen (and bar display) — tickets, Start / Bump, plus Clock. No POS hamburger, no new order, no to-go, no pay. A manager PIN does not gain order-entry. |
-| **Host** | After PIN: Floor / seat, Waitlist, To-go, Clock. No ODS rail, no menu editor. Peer venues still have this ROLE (the stand) with no host merchant. |
+| **Host** | After PIN: Floor, Checks, Menu, Pay. Waitlist, to-go, and clock are under Checks. No ODS rail, no menu editor. Peer venues still have this ROLE (the stand) with no host merchant. |
 | **Kiosk** | Guest waitlist / QR / pay. Skips the staff PIN pad. Manager service PIN may reload or exit. |
 
 A manager **Change device** switches among those three. PIN stays the person; the role is the screen.

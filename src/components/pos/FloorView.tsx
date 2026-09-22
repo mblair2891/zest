@@ -62,6 +62,7 @@ import { canAccessView } from "@/lib/pos/rbac";
 import { useStationLayout } from "@/lib/ui/station-layout";
 import { barTabVisibleTables, isBarRailSeat, locationAllowsBarTabs } from "@/lib/pos/bar-tab";
 import { FloorFixtureArt } from "@/components/pos/FloorFixtureArt";
+import { FloorMapCanvas, type FloorMapItem } from "@/components/pos/FloorMapCanvas";
 import { stationCan } from "@/lib/pos/station-pin-gate";
 import { NoSaleControl } from "./NoSaleControl";
 import {
@@ -86,6 +87,7 @@ export function FloorView({
   chromeActions = false,
   mapOnly = false,
   preferMine,
+  onBusyNav,
 }: {
   hostStand?: boolean;
   chromeActions?: boolean;
@@ -93,6 +95,8 @@ export function FloorView({
   mapOnly?: boolean;
   /** My tables starts on Mine; New table / host floor starts on All. */
   preferMine?: boolean;
+  /** Busy-night bar: Send returns to Floor; Add opens Menu; Pay opens Pay. */
+  onBusyNav?: (dest: "floor" | "menu" | "pay") => void;
 }) {
   const tables = usePosStore((s) => s.tables);
   const orders = usePosStore((s) => s.orders);
@@ -338,6 +342,7 @@ export function FloorView({
     setSeatOpen(false);
     setSeatTarget(null);
     setDetail(null);
+    if (mapOnly) onBusyNav?.("menu");
   };
 
   if (tables.length === 0) {
@@ -357,8 +362,27 @@ export function FloorView({
     );
   }
 
+  const mapItems: FloorMapItem[] = mapOnly
+    ? visible.map((t) => {
+        const st = effectiveTablePipeline(t, orders, tickets, floorCfg);
+        const fill = st === "reserved" ? "#e8e6e1" : (floorCfg.colors[st] ?? "#ffffff");
+        const orderAcc = tableAccess(t.id, "order");
+        const seatAcc = tableAccess(t.id, "seat");
+        const dim =
+          locked && !orderAcc.ok && orderAcc.code !== "view_only" && !seatAcc.ok;
+        return {
+          table: t,
+          fill,
+          ink: contrastInk(fill),
+          flashing: tableFlash(t, floorCfg, clock || Date.now()),
+          dim,
+        };
+      })
+    : [];
+
   return (
     <div className="flex h-full flex-col" data-demo="floor">
+      {!mapOnly && (
       <div className="flex flex-wrap items-center gap-2 border-b border-border px-3 py-2">
         <h2 className="mr-2 text-sm font-semibold">
           Floor · {saasLoc?.code ?? loc?.code ?? settings.name}
@@ -453,6 +477,7 @@ export function FloorView({
           )}
         </div>
       </div>
+      )}
 
       {barPick && (
         <div className="flex flex-wrap items-center gap-2 border-b border-border bg-surface-2 px-3 py-2">
@@ -500,6 +525,9 @@ export function FloorView({
           layout.twoCol ? "flex-row" : "flex-col",
         )}
       >
+        {mapOnly ? (
+          <FloorMapCanvas items={mapItems} onTableClick={onTableClick} />
+        ) : (
         <div
           className={cn(
             "relative min-h-0 flex-1 overflow-auto p-3",
@@ -676,6 +704,7 @@ export function FloorView({
                   : "Tap a table · drag onto another to combine · flashing = SLA"}
           </p>
         </div>
+        )}
 
         {!mapOnly && (
         <aside
@@ -954,7 +983,13 @@ export function FloorView({
           }
         }}
       >
-        <DialogContent className="max-h-[90dvh] overflow-y-auto">
+        <DialogContent
+          className={
+            mapOnly
+              ? "bottom-0 left-0 top-auto max-h-[85dvh] w-full max-w-none translate-x-0 translate-y-0 rounded-b-none rounded-t-3xl"
+              : "max-h-[90dvh] overflow-y-auto"
+          }
+        >
           {detailLive && (
             <>
               <DialogHeader>
@@ -1032,7 +1067,80 @@ export function FloorView({
                     if (!ok && !err) toast.error(NO_SECTION_RECEIPT);
                   });
                 }}
+                busy={mapOnly}
+                onAdd={(orderId) => {
+                  if (!canOrderEntry) {
+                    showBlocked(detailLive, "This PIN cannot open a table order.");
+                    return;
+                  }
+                  const res = selectTable(detailLive.id, orderId);
+                  if (!res.ok) {
+                    showBlocked(detailLive, res.error ?? "Outside your section");
+                    return;
+                  }
+                  setDetail(null);
+                  onBusyNav?.("menu");
+                }}
+                onSend={(orderId) => {
+                  if (!canOrderEntry) {
+                    showBlocked(detailLive, "This PIN cannot send.");
+                    return;
+                  }
+                  const res = selectTable(detailLive.id, orderId);
+                  if (!res.ok) {
+                    showBlocked(detailLive, res.error ?? "Outside your section");
+                    return;
+                  }
+                  const sent = usePosStore.getState().sendOrder();
+                  if (!sent?.ok) {
+                    toast.error(sent?.error || "Nothing to send");
+                    return;
+                  }
+                  setDetail(null);
+                  if (onBusyNav) onBusyNav("floor");
+                  else usePosStore.getState().setActiveOrder(null);
+                }}
+                onPay={(orderId) => {
+                  if (!canOrderEntry) {
+                    showBlocked(detailLive, "This PIN cannot take pay.");
+                    return;
+                  }
+                  const res = selectTable(detailLive.id, orderId);
+                  if (!res.ok) {
+                    showBlocked(detailLive, res.error ?? "Outside your section");
+                    return;
+                  }
+                  setDetail(null);
+                  if (onBusyNav) onBusyNav("pay");
+                }}
                 onSeat={() => {
+                  const access = tableAccess(detailLive.id, "seat");
+                  if (!access.ok) {
+                    showBlocked(detailLive, access.reason ?? "Outside your section");
+                    return;
+                  }
+                  if (mapOnly) {
+                    const covers = Math.max(1, Math.min(2, detailLive.seats || 2));
+                    const res = seatTable(detailLive.id, covers);
+                    if (!res.ok) {
+                      showBlocked(detailLive, res.error ?? "Cannot seat");
+                      return;
+                    }
+                    setDetail(null);
+                    onBusyNav?.("menu");
+                    return;
+                  }
+                  setSeatTarget(detailLive);
+                  setGuests(Math.min(detailLive.seats, 2));
+                  const sec = floorSections.find((s) => s.name === detailLive.section);
+                  const preferred =
+                    floorServers.find(
+                      (e) => sec && (e.homeSectionIds ?? []).includes(sec.id),
+                    ) ?? floorServers[0];
+                  setSeatServerId(preferred?.id ?? "");
+                  setSeatOpen(true);
+                }}
+                onPartySize={() => {
                   const access = tableAccess(detailLive.id, "seat");
                   if (!access.ok) {
                     showBlocked(detailLive, access.reason ?? "Outside your section");
@@ -1338,6 +1446,11 @@ function TableDetailBody({
   onReassignId,
   onReassign,
   onSplitGroup,
+  busy = false,
+  onAdd,
+  onSend,
+  onPay,
+  onPartySize,
 }: {
   table: Table;
   openChecks: Order[];
@@ -1372,7 +1485,17 @@ function TableDetailBody({
   onReassignId?: (id: string) => void;
   onReassign?: () => void;
   onSplitGroup?: () => void;
+  busy?: boolean;
+  onAdd?: (orderId: string) => void;
+  onSend?: (orderId: string) => void;
+  onPay?: (orderId: string) => void;
+  onPartySize?: () => void;
 }) {
+  const [pickedId, setPickedId] = useState(openChecks[0]?.id ?? "");
+  const picked = openChecks.find((c) => c.id === pickedId) ?? openChecks[0] ?? null;
+  useEffect(() => {
+    if (picked && picked.id !== pickedId) setPickedId(picked.id);
+  }, [picked, pickedId]);
   const stored = normalizeTableStatus(table.status);
   const hasOpen = openChecks.length > 0;
   const empty = !hasOpen && isEmptyTable(table.status);
@@ -1392,22 +1515,80 @@ function TableDetailBody({
         <span className="text-sm font-medium">
           {hasOpen ? "CHECK OPEN" : pipelineLabel(table.status)}
         </span>
-        {flashing && (
+        {!busy && flashing && (
           <Badge variant="danger" className="uppercase">
             SLA flash
           </Badge>
         )}
       </div>
+      {busy && (
+        <div className="grid grid-cols-2 gap-2" data-busy-actions>
+          {empty && canSeat && (
+            <Button
+              className="station-touch col-span-2 h-16 text-xl font-semibold"
+              onClick={onSeat}
+              data-seat-now
+            >
+              Seat
+            </Button>
+          )}
+          {occupiedNoCheck && canOrder && (
+            <Button className="station-touch col-span-2 h-16 text-xl font-semibold" onClick={onNewCheck}>
+              Resume
+            </Button>
+          )}
+          {dirty && canClean && (
+            <Button className="station-touch col-span-2 h-16 text-xl font-semibold" onClick={onClean}>
+              Mark cleaned
+            </Button>
+          )}
+          {hasOpen && picked && (
+            <>
+              <Button
+                className="station-touch h-16 text-lg font-semibold"
+                onClick={() => onAdd?.(picked.id)}
+                data-add
+              >
+                Add
+              </Button>
+              <Button
+                className="station-touch h-16 text-lg font-semibold"
+                disabled={!picked.lines.some((l) => !l.sent && !l.voided && !l.held)}
+                onClick={() => onSend?.(picked.id)}
+                data-send
+              >
+                Send
+              </Button>
+              <Button
+                className="station-touch h-16 text-lg font-semibold"
+                onClick={() => onPrintCheck(picked.id)}
+                data-print-check={picked.id}
+              >
+                Print check
+              </Button>
+              <Button
+                className="station-touch h-16 text-lg font-semibold"
+                onClick={() => onPay?.(picked.id)}
+                data-pay
+              >
+                Pay
+              </Button>
+            </>
+          )}
+        </div>
+      )}
       {hasOpen && (
         <div className="rounded-xl border border-border bg-bg px-3 py-2 text-sm" data-table-view>
           <p className="text-xs text-muted-foreground">
             T{table.label} · {table.section} · {table.guestCount || table.seats} covers
             {headerServer ? ` · ${headerServer}` : ""}
           </p>
+          {!busy && (
           <p className="mt-1 text-[11px] text-muted-foreground">
             Print check on the row. Tap the check to add, void, send, or pay. Staff split stays on
             that check — not Table QR.
           </p>
+          )}
           <ul className="mt-2 space-y-2">
             {openChecks.map((c) => {
               const dual = computeDualTotals(c, settings);
@@ -1421,7 +1602,7 @@ function TableDetailBody({
                   <button
                     type="button"
                     className="flex w-full items-center justify-between rounded-lg px-1 py-1 text-left text-sm hover:bg-surface-2"
-                    onClick={() => onOpenCheck(c.id)}
+                    onClick={() => (busy ? setPickedId(c.id) : onOpenCheck(c.id))}
                   >
                     <span>
                       <span className="font-medium">#{c.number}</span>
@@ -1442,6 +1623,7 @@ function TableDetailBody({
                       )}
                     </span>
                   </button>
+                  {!busy && (
                   <Button
                     size="lg"
                     className="station-touch mt-2 min-h-12 w-full"
@@ -1451,6 +1633,7 @@ function TableDetailBody({
                     <Printer className="h-5 w-5" />
                     Print check
                   </Button>
+                  )}
                 </li>
               );
             })}
@@ -1464,7 +1647,23 @@ function TableDetailBody({
           The check stays owned until accept. Not unassigned.
         </p>
       )}
+      <details
+        data-floor-more={busy ? "1" : undefined}
+        open={busy ? undefined : true}
+        className={busy ? "rounded-xl border border-border" : undefined}
+      >
+        {busy && (
+          <summary className="flex min-h-14 cursor-pointer list-none items-center px-4 text-lg font-semibold">
+            More
+          </summary>
+        )}
+        <div className={busy ? "space-y-3 border-t border-border p-3" : "space-y-3"}>
       <div className="flex flex-wrap gap-2">
+        {onPartySize && (
+          <Button variant="outline" onClick={onPartySize}>
+            Party size
+          </Button>
+        )}
         {empty && canSeat && (
           <Button onClick={onSeat}>
             <Users className="h-4 w-4" />
@@ -1593,6 +1792,8 @@ function TableDetailBody({
           </div>
         </div>
       )}
+        </div>
+      </details>
     </div>
   );
 }
