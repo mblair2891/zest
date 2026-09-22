@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate } from "@tanstack/react-router";
 import { SummexMark } from "@/components/brand/SummexMark";
+import { tabletShowsHouseLogo } from "@/lib/brand/logos";
 import {
   BarChart3,
   ClipboardList,
@@ -510,6 +511,14 @@ export function AppShell() {
         <StationUpdateBar />
         <PrintWaitingBanner />
         <header className="flex h-14 shrink-0 items-center gap-2 border-b border-border bg-surface px-3">
+          {tabletShowsHouseLogo(stationAssignment.kind) && settings.brandLogos?.location?.screenUrl ? (
+            <img
+              src={settings.brandLogos.location.screenUrl}
+              alt=""
+              data-location-logo
+              className="h-9 w-auto max-w-[7rem] object-contain"
+            />
+          ) : null}
           <div className="min-w-0">
             <p className="truncate text-sm font-semibold leading-tight">{settings.name}</p>
             {emp && (
@@ -573,6 +582,14 @@ export function AppShell() {
       <header className="flex h-14 shrink-0 items-center gap-2 overflow-x-auto border-b border-border bg-surface px-2 safe-top sm:gap-3 sm:px-3">
         <div className="flex min-w-0 items-center gap-2">
           <SummexMark className="h-8 w-8" />
+          {settings.brandLogos?.location?.screenUrl ? (
+            <img
+              src={settings.brandLogos.location.screenUrl}
+              alt=""
+              data-location-logo
+              className="h-9 w-auto max-w-[7rem] object-contain"
+            />
+          ) : null}
           <div className="min-w-0">
             <p className="truncate text-sm font-semibold leading-tight">
               {settings.name}

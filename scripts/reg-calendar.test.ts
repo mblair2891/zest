@@ -27,7 +27,7 @@ test("wage bulletin does not write labor until Save", () => {
 
 test("guide calendar copy", () => {
   const types = readFileSync("src/lib/guide/types.ts", "utf8");
-  assert.match(types, /2026\.10\.137/);
+  assert.match(types, /2026\.10\.138/);
   const plat = readFileSync("src/components/platform/BulletinsWorkspace.tsx", "utf8");
   assert.match(plat, /data-reg-calendar/);
   assert.match(plat, /AI draft from URL/);

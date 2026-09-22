@@ -350,6 +350,7 @@ function PosAppInner({ entityId }: { entityId?: string }) {
                     ? setup.operatingModel
                     : st.settings.operatingModel,
                 timezone: setup.timezone || st.settings.timezone,
+                brandLogos: setup.brandLogos ?? st.settings.brandLogos,
                 taxMode:
                   setup.taxMode === "per_entity" || setup.taxMode === "venue_shared"
                     ? setup.taxMode

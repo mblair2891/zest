@@ -13,6 +13,7 @@ import {
   type PrinterPaperMm,
 } from "./printer-models";
 import { buildStarSp700Bytes } from "./star-impact";
+import { entitySlipMark, escposRasterBytes, guestCheckHeader } from "@/lib/brand/logos";
 
 const ENC = new TextEncoder();
 
@@ -209,12 +210,13 @@ function buildGuestCheckEscPos(
   const dual = job.items.some(
     (it) => typeof it.cashCents === "number" && typeof it.cardCents === "number",
   );
+  const header = guestCheckHeader(job.locationName);
   const parts: Uint8Array[] = [
     INIT,
     ALIGN_CT,
     BOLD_ON,
     DBL_ON,
-    text(job.locationName.slice(0, width)),
+    text(header.text.slice(0, width)),
     FEED,
     text(String(job.checkNumber)),
     FEED,
@@ -230,7 +232,12 @@ function buildGuestCheckEscPos(
   ];
   const groups = groupLinesByEntity(job.items, job.locationName);
   for (const g of groups) {
-    parts.push(BOLD_ON, line(g.displayName.toUpperCase(), "", width), BOLD_OFF);
+    const mark = entitySlipMark(job.entityMarks?.[g.entityId], g.displayName);
+    if (mark.kind === "raster") {
+      const raster = escposRasterBytes(mark.raster);
+      if (raster) parts.push(ALIGN_CT, raster, FEED, ALIGN_LT);
+    }
+    parts.push(BOLD_ON, line(mark.name.toUpperCase(), "", width), BOLD_OFF);
     let cashSub = 0;
     let cardSub = 0;
     for (let i = 0; i < g.lines.length; i += 1) {
@@ -340,7 +347,14 @@ export function buildEscPos(job: PrintJob, opts?: EscPosOptions): Uint8Array {
   parts.push(text("-".repeat(width)), FEED);
   const groups = groupLinesByEntity(job.items, job.locationName);
   for (const g of groups) {
-    if (groups.length > 1) {
+    if (job.kind === "receipt") {
+      const mark = entitySlipMark(job.entityMarks?.[g.entityId], g.displayName);
+      if (mark.kind === "raster") {
+        const raster = escposRasterBytes(mark.raster);
+        if (raster) parts.push(ALIGN_CT, raster, FEED, ALIGN_LT);
+      }
+      parts.push(BOLD_ON, line(mark.name.toUpperCase(), "", width), BOLD_OFF);
+    } else if (groups.length > 1) {
       parts.push(BOLD_ON, line(g.displayName.toUpperCase(), "", width), BOLD_OFF);
     }
     for (const it of g.lines) {

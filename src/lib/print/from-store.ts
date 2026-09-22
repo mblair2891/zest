@@ -1,3 +1,4 @@
+import { entityMarksForPrint } from "@/lib/brand/logos";
 import { cashPolicyFromSettings } from "@/lib/pos/cash-discount";
 import { computeDualTotals, computeTotals, lineCardCents, lineCashCents, linePrintedCents } from "@/lib/pos/calculations";
 import { usePosStore } from "@/lib/pos/store";
@@ -185,6 +186,7 @@ function guestCheckJob(
     copy: "guest",
     items,
     guestCheckNote: GUEST_CHECK_FOOTER,
+    entityMarks: entityMarksForPrint(s.settings.brandLogos),
     ...qr,
     totals: {
       subtotalCents: cashSum,
@@ -315,6 +317,7 @@ export async function printFromPos(
         serverName: order.serverName,
         copy: "guest",
         items: receiptLines(order, s.settings),
+        entityMarks: entityMarksForPrint(s.settings.brandLogos),
         allocations,
         qrUrl: ticketQr.qrUrl,
         qrCaption: ticketQr.qrCaption,
@@ -501,6 +504,7 @@ export async function printGuestReceipt(orderId: string): Promise<{
     serverName: order.serverName,
     copy: "guest",
     items: receiptLines(order, s.settings),
+    entityMarks: entityMarksForPrint(s.settings.brandLogos),
     allocations: shares.map((sh) => ({
       name: sh.displayName,
       merchandiseCents: sh.merchandiseCents,

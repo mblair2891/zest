@@ -6,6 +6,19 @@ import type { GuideUpdate } from "@/lib/guide/types";
  */
 export const WHATS_NEW_ENTRIES: GuideUpdate[] = [
   {
+    id: "upd_2026_10_138_logos",
+    date: "2026-09-22",
+    title: "Location and entity logos",
+    summary:
+      "Upload one file for the building and one for each selling entity. The guest-check slip still opens with the building name.",
+    body: "PNG, JPG, or SVG, 2MB max. The building file is on the QR pay page, the order and host tablet header, location back office, and location emails. Each selling entity’s file sits above that entity’s items on the guest check and paid receipt, on that entity’s back office, and under the house name on the QR page. If the thermal version is not readable, the entity name prints and the graphic is skipped. Clear falls back to the name. Location admin edits the building. Entity admin edits their entity. Platform admin can replace or clear any slot. Kitchen tickets, the order display, and Summex chrome are unchanged.",
+    roles: ["owner_manager", "host_operator", "vendor_operator", "platform_admin"],
+    surfaces: ["settings", "floor"],
+    audience: "all",
+    topicId: "house-entity-logos",
+    tags: ["logo", "receipt", "qr", "brand"],
+  },
+  {
     id: "upd_2026_10_137_entity_checklists",
     date: "2026-09-22",
     title: "Delete one seller; two onboarding checklists",

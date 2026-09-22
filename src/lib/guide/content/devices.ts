@@ -352,4 +352,36 @@ export const DEVICE_TOPICS: GuideTopic[] = [
       related("device-roles", "device-assignment", "printers-kds", "kds", "floor-pin-login", "location-training"),
     ],
   }),
+  topic({
+    id: "house-entity-logos",
+    chapterId: "devices",
+    title: "Location and entity logos",
+    summary:
+      "One file for the building. One file for each selling entity. The guest-check slip header stays the building name.",
+    roles: ["owner_manager", "host_operator", "vendor_operator", "platform_admin"],
+    keywords: ["logo", "brand", "guest check", "qr", "svg", "png", "receipt"],
+    openView: "settings",
+    blocks: [
+      why(
+        "Guests should see the house on the phone and the tablet, and each seller on their part of the check. The 80mm slip stays readable in text.",
+      ),
+      ul(
+        "Location slot: one PNG, JPG, or SVG, 2MB max. It shows on the QR pay page, the order and host tablet header, location back office, and location emails and quotes.",
+        "Each selling entity has its own file. It shows next to that entity’s items on the guest check and paid receipt, on that entity’s back office, and on the QR page under the house name.",
+        "The guest-check header is the building name in text. Peer and hosted. No house graphic on the slip.",
+        "An entity mark prints as a small high-contrast image above that entity’s items when the receipt version is readable. If it is not, the entity name prints and the graphic is skipped.",
+        "Replace a file anytime. Saving bumps the station config so paired tablets pick it up. Clear falls back to the name.",
+        "Location admin edits the building slot. Entity admin edits that entity’s slot. Platform admin can replace or clear any slot.",
+        "Star tickets, order printers, the order display, the Play Store icon, and Summex chrome do not use these files.",
+      ),
+      steps(
+        "Location admin: Settings → Location logo. Upload one file or Clear.",
+        "Entity admin: Operator ops → Entity logo. Upload one file or Clear.",
+        "Platform admin: open the venue and set or clear the building and each selling entity.",
+        "Print a guest check. The top line is the building name. Each food block shows that entity’s mark or its name.",
+      ),
+      warn("Do not expect a logo on a kitchen ticket or the order display."),
+      related("printers-kds", "floor-tables", "peer-venue-setup"),
+    ],
+  }),
 ];

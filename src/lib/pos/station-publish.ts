@@ -13,6 +13,7 @@ import { useOpsStore } from "@/lib/pos/ops-store";
 import { parsePaymentMethods } from "./payment-methods";
 import { parseTaxRates } from "./tax-rates";
 import { parseStationUpdates } from "./station-updates";
+import { parseBrandLogoMap } from "@/lib/brand/logos";
 
 export const STATION_PUBLISH_STATE_KEY = "summex-station-publish-state-v1";
 
@@ -38,6 +39,7 @@ export type StationPublishSetup = {
   entityTaxRates?: Record<string, object[]>;
   taxRate?: number;
   taxMode?: string;
+  brandLogos?: object;
   sectionNames?: string[];
   laborByEntity?: object;
   sharedVenueCostsCents?: number;
@@ -221,6 +223,9 @@ export function applyStationPublish(
     }
     if (setup.taxMode === "per_entity" || setup.taxMode === "venue_shared") {
       settings.taxMode = setup.taxMode;
+    }
+    if (setup.brandLogos != null) {
+      settings.brandLogos = parseBrandLogoMap(setup.brandLogos);
     }
     if (opts?.locationName) settings.name = opts.locationName;
     patch.settings = settings;

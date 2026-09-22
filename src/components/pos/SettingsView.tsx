@@ -26,6 +26,7 @@ import { LocationDeviceRegistry } from "./LocationDeviceRegistry";
 import { MenuGroupDestinationsCard } from "./MenuGroupDestinationsCard";
 import { EntityPermissionsMatrix } from "./EntityPermissionsMatrix";
 import { OperatorOpsView } from "./OperatorOpsView";
+import { BrandLogoField } from "@/components/brand/BrandLogoField";
 import { saveLocationSettingsFn } from "@/lib/access/api";
 import {
   confirmCashDiscountRecalc,
@@ -748,6 +749,15 @@ export function SettingsView() {
             onChange={(e) => updateSettings({ name: e.target.value })}
           />
         </label>
+        {(emp?.role === "owner" || emp?.role === "manager") && locId && (
+          <BrandLogoField
+            locationId={locId}
+            operatorId=""
+            label="Location logo"
+            hint="QR pay page, order and host tablet header, this back office, and location emails. The guest-check slip prints the building name, not this file."
+            write={write}
+          />
+        )}
         <label className="block text-sm">
           <span className="mb-1 block text-muted-foreground">Address</span>
           <Input

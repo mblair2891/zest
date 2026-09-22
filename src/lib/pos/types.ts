@@ -225,6 +225,8 @@ export interface RestaurantSettings {
   taxMode?: "venue_shared" | "per_entity";
   /** Station snapshot generation. Heartbeat compares this. */
   configVersion?: number;
+  /** Building mark and one mark per selling entity. Screen + receipt only. */
+  brandLogos?: import("@/lib/brand/logos").BrandLogoMap;
   /** Hashed 4-digit PIN that may reload the station WebView / exit lock-task. */
   stationServicePinHash?: string;
   onlineOrderingEnabled?: boolean;

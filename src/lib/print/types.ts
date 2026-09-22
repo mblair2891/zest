@@ -78,6 +78,11 @@ export type PrintJob = {
   printSource?: KitchenPrintSource;
   /** Append ESC/POS drawer pulse on a receipt/guest-check job. Default off. */
   kickDrawer?: boolean;
+  /**
+   * Selling-entity receipt rasters keyed by entity id.
+   * Guest check and paid receipt only. Never the house mark. Never kitchen.
+   */
+  entityMarks?: Record<string, import("@/lib/brand/logos").ReceiptRaster>;
   /** Epson DK pin. 2 = ESC p m=0 (default). 5 = m=1. */
   drawerKickPin?: 2 | 5;
 };

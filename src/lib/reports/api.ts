@@ -134,11 +134,27 @@ export const deliverAiReportFn = createServerFn({ method: "POST" })
     }
     if (!data.to) return { status: "inbox" };
     const { sendEmail } = await import("@/lib/saas/email.server");
+    let html = data.html || "";
+    try {
+      const { locationMailBrand } = await import("@/lib/brand/logos.server");
+      const { locationMessageHtml } = await import("@/lib/brand/logos");
+      const brand = await locationMailBrand(data.locationId);
+      if (brand.screenUrl && !html) {
+        html = locationMessageHtml({
+          subject: data.subject,
+          text: data.text,
+          locationName: brand.name,
+          screenUrl: brand.screenUrl,
+        });
+      }
+    } catch {
+      html = data.html || "";
+    }
     const res = await sendEmail({
       to: data.to,
       subject: data.subject,
       text: data.text,
-      html: data.html || undefined,
+      html: html || undefined,
       kind: "ai_ops_report",
     });
     if (res.status === "sent") return { status: "sent" };

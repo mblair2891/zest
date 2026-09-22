@@ -13,6 +13,7 @@ import { QuantumPaymentsOnboardPanel } from "@/components/payments/QuantumPaymen
 import { TaxRatesEditor, ratesPatch } from "./TaxRatesSettings";
 import { persistTaxRates } from "@/lib/pos/persist-location-setup";
 import { resolveVenueTaxRates } from "@/lib/pos/tax-rates";
+import { BrandLogoField } from "@/components/brand/BrandLogoField";
 
 /**
  * Narrow ops surface for a guest operator: staff, clock, 86, view-only settlement.
@@ -73,6 +74,8 @@ export function OperatorOpsView({
     return { gross, checks, openTickets, items, lastPeriod, row, staff };
   }, [vendor, orders, tickets, menuItems, periods, employees]);
 
+  const logoWrite = Boolean(isGuest && vendor && emp?.operatorId === vendor.id);
+
   if (!vendor || !stats) {
     return (
       <div className="grid h-full place-items-center p-6 text-sm text-muted-foreground">
@@ -103,6 +106,17 @@ export function OperatorOpsView({
           <h2 className="text-sm font-semibold">Operator ops</h2>
           <Badge variant="info">{isGuest ? "Your stall" : "Host viewing operator"}</Badge>
         </div>
+        {logoWrite && locId && (
+          <div className="mt-3">
+            <BrandLogoField
+              locationId={locId}
+              operatorId={vendor.id}
+              label="Entity logo"
+              hint="Above this entity’s items on the guest check and paid receipt, on this back office, and under the house name on the QR page."
+              write
+            />
+          </div>
+        )}
         {!lockedId && (
           <div className="mt-2 flex flex-wrap gap-1">
             {vendors.map((v) => (

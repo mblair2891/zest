@@ -36,6 +36,7 @@ import { parseStationUpdates } from "@/lib/pos/station-updates";
 import { parseJurisdiction, jurisdictionIsReady } from "@/lib/pos/jurisdiction";
 import { parseItem86 } from "@/lib/pos/item-86";
 import { parseLocationOperatingModel } from "./location-model";
+import { parseBrandLogoMap } from "@/lib/brand/logos";
 import { demoVenueIsolated } from "./tenant-users";
 
 type OrgRow = {
@@ -337,6 +338,7 @@ function parseSetup(raw: unknown): LocationSetup {
       o.configVersion == null || !Number.isFinite(Number(o.configVersion))
         ? undefined
         : Math.max(0, Math.round(Number(o.configVersion))),
+    brandLogos: o.brandLogos != null ? parseBrandLogoMap(o.brandLogos) : undefined,
     employmentState:
       typeof o.employmentState === "string" && o.employmentState.trim()
         ? o.employmentState.trim().slice(0, 16)
@@ -896,7 +898,9 @@ export async function updateLocationSetupForUser(
   for (const [k, v] of Object.entries(input.setup as unknown as Record<string, unknown>)) {
     if (v !== undefined) patch[k] = v;
   }
+  delete patch.brandLogos;
   const next = parseSetup({ ...prev, ...patch });
+  next.brandLogos = prev.brandLogos;
   if (next.peerVenue || next.operatingModel === "peer_venue") {
     next.hostEntityId = null;
   }

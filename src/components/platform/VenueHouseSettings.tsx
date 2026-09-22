@@ -25,6 +25,7 @@ import {
 } from "@/lib/pos/venue-time";
 import { persistTaxRates } from "@/lib/pos/persist-location-setup";
 import { JurisdictionFields } from "@/components/pos/SettingsView";
+import { BrandLogoField } from "@/components/brand/BrandLogoField";
 
 
 const STYLE_LABEL: Record<(typeof SERVICE_STYLES_VENUE)[number], string> = {
@@ -52,6 +53,7 @@ export function VenueHouseSettings() {
   const updateSettings = usePosStore((s) => s.updateSettings);
   const write = canEmployee(emp, "settings:write");
   const peer = Boolean(settings.peerVenue || settings.operatingModel === "peer_venue");
+  const vendors = usePosStore((s) => s.vendors);
   const [publishMsg, setPublishMsg] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
@@ -101,6 +103,23 @@ export function VenueHouseSettings() {
 
       <section className="rounded-2xl border border-border bg-surface p-4 space-y-3">
         <p className="text-sm font-medium">Profile</p>
+        <BrandLogoField
+          locationId={locId}
+          operatorId=""
+          label="Location logo"
+          hint="QR pay page, order and host tablet header, location back office, and location emails. The slip header stays the building name."
+          write
+        />
+        {vendors.map((v) => (
+          <BrandLogoField
+            key={v.id}
+            locationId={locId}
+            operatorId={v.id}
+            label={`${v.name} logo`}
+            hint="Guest check and paid receipt, this entity’s back office, and the QR page under the house name."
+            write
+          />
+        ))}
         <label className="block text-sm">
           <span className="mb-1 block text-muted-foreground">Name</span>
           <Input

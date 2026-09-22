@@ -1,3 +1,4 @@
+import { locationMessageHtml } from "@/lib/brand/logos";
 import { PRODUCT_NAME } from "@/lib/platform/brand";
 import { formatCurrency } from "@/lib/utils";
 import { appPublicUrl } from "./flags";
@@ -50,7 +51,10 @@ function varsFor(prospect: ProspectRecord, extra?: Partial<Vars>): Vars {
   };
 }
 
-function htmlFromText(subject: string, text: string): string {
+function htmlFromText(subject: string, text: string, locationLogo?: string | null, locationName?: string): string {
+  if (locationLogo && locationName) {
+    return locationMessageHtml({ subject, text, locationName, screenUrl: locationLogo });
+  }
   const paras = text
     .split(/\n{2,}/)
     .map((p) => `<p style="margin:0 0 12px;line-height:1.5">${escapeHtml(p).replaceAll("\n", "<br/>")}</p>`)
@@ -125,11 +129,21 @@ export async function emailQuoteSent(prospect: ProspectRecord, quote: QuoteSnaps
   const v = varsFor({ ...prospect, quote }, ctx);
   const subject = apply(comms.quoteSentSubject, v);
   const text = apply(comms.quoteSentBody, v);
+  let locationLogo: string | null = null;
+  try {
+    if (prospect.orgId) {
+      const { orgScreenLogo } = await import("@/lib/brand/logos.server");
+      locationLogo = await orgScreenLogo(prospect.orgId);
+    }
+  } catch {
+    locationLogo = null;
+  }
+  const house = prospect.answers.company.dba || prospect.answers.company.legalName || "Location";
   await sendEmail({
     to,
     subject,
     text,
-    html: htmlFromText(subject, text),
+    html: locationLogo ? htmlFromText(subject, text, locationLogo, house) : htmlFromText(subject, text),
     kind: "quote_sent",
     prospectId: prospect.id,
   });

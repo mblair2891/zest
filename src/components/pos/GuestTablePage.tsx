@@ -352,6 +352,14 @@ export function GuestTablePage({
     <div className="min-h-[100dvh] bg-bg pt-[var(--grok-banner-h,0px)] text-foreground">
       <header className="border-b border-border bg-surface px-4 py-4">
         <div className="mx-auto max-w-lg">
+          {settings.brandLogos?.location?.screenUrl ? (
+            <img
+              src={settings.brandLogos.location.screenUrl}
+              alt=""
+              data-location-logo
+              className="mb-2 h-14 w-auto max-w-[12rem] object-contain"
+            />
+          ) : null}
           <Badge variant="info">{checkToken ? "Check QR" : "Table QR"}</Badge>
           <h1 className="mt-1 text-2xl font-black tracking-tight">
             Table {displayLabel}
@@ -361,6 +369,7 @@ export function GuestTablePage({
           <p className="text-sm text-muted-foreground">
             {resolvedTable?.section ?? ""} · {settings.name}
           </p>
+          <EntityMarks />
           <p className="mt-1 text-xs text-muted-foreground">
             You are at this location. Table tent / check QR only — not delivery, not shipping.
           </p>
@@ -487,6 +496,26 @@ export function GuestTablePage({
           </p>
         )}
       </main>
+    </div>
+  );
+}
+
+function EntityMarks() {
+  const logos = usePosStore((s) => s.settings.brandLogos);
+  const vendors = usePosStore((s) => s.vendors);
+  const marks = vendors.filter((v) => logos?.entities?.[v.id]?.screenUrl);
+  if (!marks.length) return null;
+  return (
+    <div className="mt-3 flex flex-wrap gap-3" data-entity-logos>
+      {marks.map((v) => (
+        <img
+          key={v.id}
+          src={logos?.entities?.[v.id]?.screenUrl}
+          alt={v.name}
+          data-entity-logo={v.id}
+          className="h-8 w-auto max-w-[6rem] object-contain"
+        />
+      ))}
     </div>
   );
 }
