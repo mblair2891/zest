@@ -1,14 +1,17 @@
+import { useState } from "react";
 import { Clock3, CookingPot } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import type { StationPinFit } from "@/lib/pos/station-pin-gate";
 import { usePosStore } from "@/lib/pos/store";
 import { ROLE_LABEL } from "@/lib/pos/rbac";
-import { StationClockControl } from "./StationClockControl";
+import { ClockedInChip } from "./ClockedInChip";
+import { EndShiftPunch } from "./EndShiftPunch";
 
 /** Invalid PIN × device: clock sheet only. Never to-go, bar tab, or table order. */
 export function StationClockGate({ fit }: { fit: Extract<StationPinFit, { ok: false }> }) {
   const emp = usePosStore((s) => s.employees.find((e) => e.id === s.currentEmployeeId));
   const clocked = Boolean(emp?.clockedIn);
+  const [ending, setEnding] = useState(false);
 
   return (
     <div
@@ -35,19 +38,37 @@ export function StationClockGate({ fit }: { fit: Extract<StationPinFit, { ok: fa
             {clocked ? "on the clock" : "off the clock"}
           </p>
         )}
-        <div className="mt-5 space-y-3">
-          <StationClockControl size="lg" className="station-touch h-14 w-full text-base" />
-          <Button
-            size="lg"
-            variant="outline"
-            className="station-touch h-14 w-full text-base"
-            onClick={() => usePosStore.getState().logout()}
-          >
-            Done
-          </Button>
+        <div className="mt-4">
+          <ClockedInChip />
         </div>
+        {ending ? (
+          <div className="mt-5">
+            <EndShiftPunch
+              onDone={() => usePosStore.getState().logout()}
+              onCancel={() => setEnding(false)}
+            />
+          </div>
+        ) : (
+          <div className="mt-5 space-y-3">
+            <Button
+              size="lg"
+              className="station-touch h-14 w-full text-base"
+              onClick={() => setEnding(true)}
+            >
+              Close out
+            </Button>
+            <Button
+              size="lg"
+              variant="outline"
+              className="station-touch h-14 w-full text-base"
+              onClick={() => usePosStore.getState().logout()}
+            >
+              Done
+            </Button>
+          </div>
+        )}
         <p className="mt-3 text-xs text-muted-foreground">
-          Clock in and clock out do not open order entry. Done returns to the PIN pad.
+          Close out punches out. It does not open order entry. Done returns to the PIN pad.
         </p>
       </div>
     </div>

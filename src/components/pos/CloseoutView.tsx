@@ -64,9 +64,12 @@ const STEPS = [
 
 export function CloseoutView({
   onDone,
+  onComplete,
   skipCashCount = false,
 }: {
   onDone: () => void;
+  /** Fired only after the closeout record is saved. Punches out. Cancel stays on onDone. */
+  onComplete?: () => void;
   skipCashCount?: boolean;
 }) {
   const emp = usePosStore((s) => s.employees.find((e) => e.id === s.currentEmployeeId));
@@ -435,7 +438,7 @@ export function CloseoutView({
       };
       void dispatchPrintJob(job, devices);
     }
-    onDone();
+    (onComplete ?? onDone)();
   };
 
   return (
@@ -701,7 +704,7 @@ export function CloseoutView({
         {step === 7 && (
           <div className="mx-auto max-w-xs">
             <p className="mb-3 text-center text-sm">
-              Confirm with your PIN. Not clock-out.
+              Confirm with your PIN. Clock-out follows this step.
               <span className="mt-1 block text-xs text-muted-foreground">
                 Own {formatCurrency(poolNet?.ownTipsCents ?? cardTips + declared)} · tip-outs{" "}
                 {formatCurrency(tipOutsCents)}

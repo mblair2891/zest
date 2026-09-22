@@ -9,11 +9,11 @@ import { parsePaymentMethods } from "@/lib/pos/payment-methods";
 import { useCashSessionStore } from "@/lib/pos/cash-session";
 import { stationMenuItems, stationMenuTitle } from "@/lib/pos/station-menu";
 import { locationAllowsBarTabs } from "@/lib/pos/bar-tab";
-import { StationClockControl } from "./StationClockControl";
 import { DemoEntitySwitcher } from "@/components/demo/DemoEntitySwitcher";
 import { showDemoEntitySwitcher } from "@/lib/demo/entity-switch";
 import { ROLE_LABEL } from "@/lib/pos/rbac";
 import { NoSaleControl } from "./NoSaleControl";
+import { ClockedInChip } from "./ClockedInChip";
 import { currentStationDeviceId, stationMayKickDrawer } from "@/lib/print/receipt-printer";
 
 /** After PIN: 2–6 large named jobs this device × PIN allows. */
@@ -78,16 +78,11 @@ export function StationHomeMenu() {
           {emp && (
             <p className="mt-0.5 text-sm text-muted-foreground">{ROLE_LABEL[emp.role]}</p>
           )}
+          <ClockedInChip className="mt-1 text-sm text-muted-foreground" />
         </div>
         <div className="grid grid-cols-1 gap-3">
           {items.map((item) =>
-            item.id === "clock" ? (
-              <StationClockControl
-                key={item.id}
-                size="lg"
-                className="station-touch h-16 w-full text-lg font-semibold"
-              />
-            ) : item.id === "no_sale" ? (
+            item.id === "no_sale" ? (
               <NoSaleControl
                 key={item.id}
                 size="lg"

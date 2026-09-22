@@ -65,11 +65,9 @@ test("cook / expo aliases are kitchen PIN", () => {
 });
 
 test("clock punch never opens order entry", () => {
-  const control = readFileSync("src/components/pos/StationClockControl.tsx", "utf8");
-  assert.match(control, /punchStationClock/);
-  assert.doesNotMatch(control, /setView/);
   const punch = readFileSync("src/lib/pos/station-clock.ts", "utf8");
   assert.match(punch, /punchStationClock/);
+  assert.match(punch, /punchOutAfterCloseout/);
   assert.doesNotMatch(punch, /setView/);
   const gate = readFileSync("src/components/pos/StationClockGate.tsx", "utf8");
   assert.match(gate, /data-station-clock-gate/);
@@ -80,7 +78,9 @@ test("clock punch never opens order entry", () => {
   assert.doesNotMatch(modal, /setView/);
   assert.match(modal, /does not open order entry/);
   const shell = readFileSync("src/components/pos/AppShell.tsx", "utf8");
-  assert.match(shell, /StationClockControl/);
+  assert.match(shell, /ClockedInChip/);
+  assert.doesNotMatch(shell, /StationClockControl/);
+  assert.match(readFileSync("src/lib/pos/station-clock.ts", "utf8"), /punchOutAfterCloseout/);
 });
 
 test("DeviceModeView gates before order glass", () => {

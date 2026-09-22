@@ -1,4 +1,5 @@
 import { useEffect } from "react";
+import { Button } from "@/components/ui/button";
 import { KitchenView } from "./KitchenView";
 import { OrderView } from "./OrderView";
 import { DriveThroughView } from "./DriveThroughView";
@@ -10,7 +11,9 @@ import { TakeoutView } from "./TakeoutView";
 import { WaitlistView } from "./WaitlistView";
 import { EndShiftFlow } from "./EndShiftFlow";
 import { CashPossessionView } from "./CashPossessionView";
-import { StationClockControl } from "./StationClockControl";
+import { ClockedInChip } from "./ClockedInChip";
+import { EndShiftPunch } from "./EndShiftPunch";
+import { closeoutIsPunchOnly } from "@/lib/pos/station-menu";
 import { CashView } from "./CashView";
 import { StationGiftJob } from "./StationGiftJob";
 import { KioskApp } from "@/components/kiosk/KioskApp";
@@ -70,6 +73,16 @@ export function DeviceModeView({
     settings,
   });
 
+  const punchOnly = closeoutIsPunchOnly(emp?.role, role);
+
+  if ((role === "ods" || surface === "ods") && job === "closeout") {
+    return (
+      <StationJobFrame title="End shift" onBack={() => setJob(null)}>
+        <EndShiftPunch onDone={() => setJob(null)} />
+      </StationJobFrame>
+    );
+  }
+
   if (role === "ods" || surface === "ods") {
     const rail =
       emp?.role === "bartender" || mode === "bar_kds" ? (
@@ -83,8 +96,11 @@ export function DeviceModeView({
       );
     return (
       <div className="flex h-full min-h-0 flex-col" data-station-home="ods">
-        <div className="flex shrink-0 items-center justify-end border-b border-border px-3 py-2">
-          <StationClockControl size="lg" className="station-touch h-12" />
+        <div className="flex shrink-0 items-center justify-end gap-3 border-b border-border px-3 py-2">
+          <ClockedInChip />
+          <Button type="button" size="lg" variant="outline" className="station-touch h-12" onClick={() => setJob("closeout")}>
+            Close out
+          </Button>
         </div>
         <div className="min-h-0 flex-1">{rail}</div>
       </div>
@@ -160,25 +176,20 @@ export function DeviceModeView({
         </StationJobFrame>
       );
     }
-    if (job === "clock") {
+    if (job === "clock" || job === "closeout") {
       return (
-        <StationJobFrame title="Clock in/out" onBack={back}>
-          <div className="flex h-full items-center justify-center p-6">
-            <StationClockControl size="lg" className="station-touch h-16 w-full max-w-sm text-lg" />
-          </div>
-        </StationJobFrame>
-      );
-    }
-    if (job === "closeout") {
-      return (
-        <StationJobFrame title="Closeout" onBack={back}>
-          <EndShiftFlow
-            onDone={() => {
-              const id = usePosStore.getState().currentEmployeeId;
-              if (id) useCashSessionStore.getState().releasePossession(id);
-              setJob(null);
-            }}
-          />
+        <StationJobFrame title={punchOnly ? "End shift" : "Close out"} onBack={back}>
+          {punchOnly ? (
+            <EndShiftPunch onDone={() => setJob(null)} />
+          ) : (
+            <EndShiftFlow
+              onDone={() => {
+                const id = usePosStore.getState().currentEmployeeId;
+                if (id) useCashSessionStore.getState().releasePossession(id);
+                setJob(null);
+              }}
+            />
+          )}
         </StationJobFrame>
       );
     }

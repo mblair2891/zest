@@ -60,8 +60,8 @@ export type PunchByPinResult = {
 };
 
 /**
- * Clock in / out from the PIN pad without signing into the station.
- * Completing clock does not open order entry.
+ * Clock in from the PIN pad without signing into the station.
+ * Completing clock does not open order entry. Clock out is Close out, not this function's pad.
  */
 export function punchClockByPin(
   pin: string,
@@ -118,6 +118,42 @@ export function pinIsManager(pin: string, locationId?: string | null): boolean {
   const loc = locationId || st.tenantLocationId || "";
   const emp = findStaffByPin(st.employees, pin, loc, null);
   return emp?.role === "owner" || emp?.role === "manager";
+}
+
+/**
+ * Clock-out after Close out has finished its till steps (or immediately for a role with no till).
+ * Does not open a session and does not require the pre-closeout gate — that gate already ran.
+ */
+export function punchOutAfterCloseout(
+  employeeId: string,
+  opts?: { force?: boolean },
+): PunchByPinResult {
+  const emp = usePosStore.getState().employees.find((e) => e.id === employeeId);
+  if (!emp) return { ok: false, error: "Unknown staff" };
+  const open = useOpsStore.getState().punches.find((p) => p.employeeId === emp.id && p.status === "open");
+  const isIn = Boolean(open) || Boolean(emp.clockedIn);
+  if (!isIn) {
+    return { ok: true, already: true, employeeId: emp.id, employeeName: emp.name };
+  }
+  const res = useOpsStore.getState().clockOut(emp.id, emp.name, { force: opts?.force });
+  if (!res.ok) {
+    return {
+      ok: false,
+      error: res.error ?? "Could not clock out.",
+      forceRequired: res.forceRequired,
+      employeeId: emp.id,
+      employeeName: emp.name,
+    };
+  }
+  const st = usePosStore.getState();
+  if (st.employees.some((e) => e.id === emp.id && e.clockedIn)) {
+    usePosStore.setState({
+      employees: st.employees.map((e) =>
+        e.id === emp.id ? { ...e, clockedIn: false, clockInAt: undefined } : e,
+      ),
+    });
+  }
+  return { ok: true, employeeId: emp.id, employeeName: emp.name };
 }
 
 /** Punch a known employee (manager override, shared demo PIN). Does not log them in. */

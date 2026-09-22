@@ -161,7 +161,7 @@ A manager **Change device** switches among those three. PIN stays the person; th
 
 **Prime, then PIN-only.** Pair once (internet required). After that, cold start is the PIN pad — not `/login` — except a kiosk, which is guest UI with no staff PIN. Switch user returns to the keypad without changing the device role.
 
-**PIN ≠ owner password ≠ clock-in ≠ closeout.** Back office (owners, managers, accountants) uses email and password. Floor staff use a 4-digit PIN, hashed and scoped to the location (and entity on a host floor). Clock in / out is Labor. Server closeout is Cash.
+**PIN ≠ owner password ≠ clock-in ≠ closeout.** Back office (owners, managers, accountants) uses email and password. Floor staff use a 4-digit PIN, hashed and scoped to the location (and entity on a host floor). Enter opens the station. Clock in on the pad only punches. Clock out is Close out (till count and tip-outs, then the punch; kitchen and busser End shift punches out only).
 
 Realtime **staffing recommendations** (cut / hold / add) run from location settings while the house is open. They never clock anyone out. Accept on a cut rec offers notify-to-close-out. The manager decides.
 
@@ -179,7 +179,7 @@ Card is Quantum Payments. Cash still has to land in the right drawer or bank.
 - Multi-well bar — **one drawer per well** (Well-2 never kicks Well-1)
 - Host to-go drawer plus floor banks
 
-Count is **blind**: staff enter what is in the drawer; expected, cash sales, and over/short stay hidden until submit. No paper form and no force-balance to $0. Over/short flags a manager queue — it is not an automatic accusation. Closeout is not clock-out and not PIN login. House well/drawer close is a separate closer screen from server sales & tips.
+Count is **blind**: staff enter what is in the drawer; expected, cash sales, and over/short stay hidden until submit. No paper form and no force-balance to $0. Over/short flags a manager queue — it is not an automatic accusation. Close out ends with the punch. It is not PIN login. House well/drawer close is a separate closer screen from server sales & tips.
 
 **Till-to-till transfer.** A till short on small bills can request cash from another currently open till. No manager is required to complete. Cash moves when the giving till accepts (not when requested). Both expected balances update (`+ transfers in − transfers out`) so the blind count still balances. Pending transfers must be accepted, declined, or cancelled before that till can start close. After accept, only a manager reverse (a paired opposite transfer) undoes it. Transfers never change sales totals.
 

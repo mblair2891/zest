@@ -67,6 +67,7 @@ import { FloorFixtureArt } from "@/components/pos/FloorFixtureArt";
 import { FloorMapCanvas, type FloorMapItem } from "@/components/pos/FloorMapCanvas";
 import { stationCan } from "@/lib/pos/station-pin-gate";
 import { NoSaleControl } from "./NoSaleControl";
+import { ClockedInChip } from "./ClockedInChip";
 import {
   CHECK_HOLD_LABEL,
   CHECK_HOLD_REASONS,
@@ -407,6 +408,7 @@ export function FloorView({
         <h2 className="mr-2 text-sm font-semibold">
           Floor · {saasLoc?.code ?? loc?.code ?? settings.name}
         </h2>
+        <ClockedInChip />
         <NoSaleControl size={mapOnly ? "lg" : "sm"} className={mapOnly ? "h-12" : undefined} />
         {!mapOnly && (
         <GuideLearnLink topicId="floor-tables" compact>
@@ -546,13 +548,18 @@ export function FloorView({
         )}
       >
         {mapOnly ? (
-          <FloorMapCanvas
-            items={mapItems}
-            onTableClick={onTableClick}
-            onCombine={(draggedId, ontoId) => {
-              withManager((pin) => joinParty(draggedId, ontoId, pin));
-            }}
-          />
+          <div className="relative min-h-0 flex-1">
+            <div className="pointer-events-none absolute left-3 top-3 z-10">
+              <ClockedInChip className="rounded-full bg-surface/95 px-2 py-1 text-[11px] font-medium text-foreground shadow-sm" />
+            </div>
+            <FloorMapCanvas
+              items={mapItems}
+              onTableClick={onTableClick}
+              onCombine={(draggedId, ontoId) => {
+                withManager((pin) => joinParty(draggedId, ontoId, pin));
+              }}
+            />
+          </div>
         ) : (
         <div
           className={cn(

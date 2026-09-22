@@ -86,8 +86,10 @@ import { canChangeDevice, stationKindLabel, stationsAllowedForEmployee } from "@
 import { useStationLayout } from "@/lib/ui/station-layout";
 import { readStationDeviceRole } from "@/lib/pos/device-roles";
 import { EndShiftFlow } from "./EndShiftFlow";
+import { EndShiftPunch } from "./EndShiftPunch";
+import { ClockedInChip } from "./ClockedInChip";
 import { ClockInAfterPinDialog } from "./ClockInAfterPinDialog";
-import { StationClockControl } from "./StationClockControl";
+import { closeoutIsPunchOnly } from "@/lib/pos/station-menu";
 import { TillTransferBanner } from "./TillTransferPanel";
 import { reportsBlockedForClose } from "@/lib/pos/till-closeout-store";
 import { HOST_SCOPE } from "@/lib/access/entity-grants";
@@ -458,7 +460,7 @@ export function AppShell() {
   if (kdsMode) {
     return (
       <div
-        className={cn("flex h-[100dvh] flex-col bg-bg text-foreground", shellPad)}
+        className={cn("relative flex h-[100dvh] flex-col bg-bg text-foreground", shellPad)}
         data-station-layout={stationLayout.form}
       >
         <LoginOnboardingHost />
@@ -473,7 +475,10 @@ export function AppShell() {
           <span className="text-xs text-muted-foreground">{settings.name}</span>
           <div className="ml-auto flex items-center gap-2">
             <ThisStationButton compact />
-            <StationClockControl compact />
+            <ClockedInChip />
+            <Button size="sm" variant="outline" onClick={() => setCloseoutOpen(true)}>
+              Close out
+            </Button>
             <SplitScreenToggle />
             <HelpButton surface="pos" compact />
             <VoiceCommandButton />
@@ -495,6 +500,11 @@ export function AppShell() {
             operatorId={stationAssignment.operatorId}
           />
         </div>
+        {closeoutOpen && (
+          <div className="absolute inset-0 z-30 bg-bg">
+            <EndShiftPunch onDone={() => setCloseoutOpen(false)} />
+          </div>
+        )}
       </div>
     );
   }
@@ -526,6 +536,7 @@ export function AppShell() {
                 {emp.name} · {staffTitle(emp)}
               </p>
             )}
+            <ClockedInChip />
           </div>
           <div className="ml-auto flex items-center gap-2">
             <HelpButton surface="pos" compact />
@@ -650,27 +661,23 @@ export function AppShell() {
           )}
 
           <ThisStationButton />
-          {emp && sessionKind === "pin" && <StationClockControl compact />}
+          {emp && sessionKind === "pin" && <ClockedInChip />}
           {canChangeDevice(emp, {
             training: locationIsTraining(),
             demo: isProspectDemo() || isDevDemoClient(),
           }) && <SplitScreenToggle />}
           {emp &&
-            (role === "server" ||
-              role === "bartender" ||
-              role === "cashier" ||
-              role === "host" ||
-              role === "manager" ||
-              role === "owner") &&
+            role !== "kiosk" &&
+            role !== "accountant" &&
             urlStation !== "ods" && (
               <Button
                 size="sm"
                 variant="outline"
                 onClick={() => setCloseoutOpen(true)}
-                title="End of shift — not clock-out"
+                title="End of shift"
               >
                 <ClipboardCheck className="h-3.5 w-3.5" />
-                End shift
+                Close out
               </Button>
             )}
           <HelpButton surface="pos" />
@@ -965,7 +972,11 @@ export function AppShell() {
 
       {closeoutOpen && (
         <div className="absolute inset-0 z-30 bg-bg">
-          <EndShiftFlow onDone={() => setCloseoutOpen(false)} />
+          {closeoutIsPunchOnly(emp?.role, urlStation === "ods" ? "ods" : null) ? (
+            <EndShiftPunch onDone={() => setCloseoutOpen(false)} />
+          ) : (
+            <EndShiftFlow onDone={() => setCloseoutOpen(false)} />
+          )}
         </div>
       )}
       <ClockInAfterPinDialog />

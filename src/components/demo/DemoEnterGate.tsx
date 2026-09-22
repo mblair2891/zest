@@ -1,6 +1,5 @@
 import { useMemo, useState } from "react";
 import { Link } from "@tanstack/react-router";
-import { Button } from "@/components/ui/button";
 import { SummexBrandBlock } from "@/components/brand/SummexMark";
 import { demoEntry } from "@/lib/demo/catalog";
 import { DEMO_STAFF_PIN, isDemoStaffPin } from "@/lib/demo/pin";
@@ -13,23 +12,26 @@ import {
 import { PinKeypad } from "@/components/pos/PinKeypad";
 import { usePosStore } from "@/lib/pos/store";
 import type { VenueEntityId } from "@/lib/pos/types";
-import { cn } from "@/lib/utils";
-
-type GateMode = "login" | "clock_in" | "clock_out";
 
 export function DemoEnterGate({ type }: { type: VenueEntityId }) {
   const entry = demoEntry(type);
   const employees = usePosStore((s) => s.employees);
   const clockToggle = usePosStore((s) => s.clockToggle);
-  const [mode, setMode] = useState<GateMode>("login");
   const [staffId, setStaffId] = useState<string>(employees[0]?.id ?? "");
   const [err, setErr] = useState<string | null>(null);
   const [msg, setMsg] = useState<string | null>(null);
+  const [shake, setShake] = useState(0);
 
   const staff = useMemo(
     () => employees.filter((e) => e.active && e.role !== "kiosk"),
     [employees],
   );
+
+  const badPin = () => {
+    setMsg(null);
+    setErr("Invalid PIN");
+    setShake((n) => n + 1);
+  };
 
   const completeLogin = () => {
     enterDemoOperator();
@@ -46,15 +48,21 @@ export function DemoEnterGate({ type }: { type: VenueEntityId }) {
     }
   };
 
-  const onPin = (pin: string) => {
+  const onEnter = (pin: string) => {
     setErr(null);
     setMsg(null);
-    if (!isDemoStaffPin(pin) && pin !== DEMO_STAFF_PIN) {
-      setErr(`Demo PIN is ${DEMO_STAFF_PIN}`);
+    if (pin.length !== 4 || (!isDemoStaffPin(pin) && pin !== DEMO_STAFF_PIN)) {
+      badPin();
       return;
     }
-    if (mode === "login") {
-      completeLogin();
+    completeLogin();
+  };
+
+  const onClockIn = (pin: string) => {
+    setErr(null);
+    setMsg(null);
+    if (pin.length !== 4 || (!isDemoStaffPin(pin) && pin !== DEMO_STAFF_PIN)) {
+      badPin();
       return;
     }
     const emp = staff.find((e) => e.id === staffId) ?? staff[0];
@@ -62,15 +70,12 @@ export function DemoEnterGate({ type }: { type: VenueEntityId }) {
       setErr("No staff on this demo house");
       return;
     }
-    const shouldIn = mode === "clock_in";
-    if (shouldIn === !!emp.clockedIn) {
-      setMsg(
-        `${emp.name} is already ${emp.clockedIn ? "clocked in" : "clocked out"}`,
-      );
+    if (emp.clockedIn) {
+      setMsg(`${emp.name} is already clocked in`);
       return;
     }
     clockToggle(emp.id);
-    setMsg(`${emp.name} ${shouldIn ? "clocked in" : "clocked out"}`);
+    setMsg(`${emp.name} clocked in`);
   };
 
   return (
@@ -84,62 +89,18 @@ export function DemoEnterGate({ type }: { type: VenueEntityId }) {
           {entry?.hostName ?? "Demo house"}
         </h1>
         <p className="mt-2 text-sm text-muted-foreground">
-          Staff PIN is <strong>{DEMO_STAFF_PIN}</strong> for every demo role.
-          Login opens Owner / Manager. Clock in and clock out are separate
-          from the session.
+          Staff PIN is <strong>{DEMO_STAFF_PIN}</strong>. Enter opens Owner / Manager.
+          Clock in only punches.
         </p>
-
-        <div className="mt-5 grid grid-cols-3 gap-1 rounded-xl border border-border p-1">
-          {(
-            [
-              ["login", "Login"],
-              ["clock_in", "Clock in"],
-              ["clock_out", "Clock out"],
-            ] as const
-          ).map(([id, label]) => (
-            <button
-              key={id}
-              type="button"
-              onClick={() => {
-                setMode(id);
-                setErr(null);
-                setMsg(null);
-              }}
-              className={cn(
-                "rounded-lg px-2 py-2 text-xs font-semibold",
-                mode === id ? "bg-primary text-primary-foreground" : "text-muted-foreground",
-              )}
-            >
-              {label}
-            </button>
-          ))}
-        </div>
-
-        {mode !== "login" && (
-          <label className="mt-4 block text-xs text-muted-foreground">
-            Staff
-            <select
-              className="mt-1 h-10 w-full rounded-lg border border-border bg-bg px-3 text-sm text-foreground"
-              value={staffId}
-              onChange={(e) => setStaffId(e.target.value)}
-            >
-              {staff.map((e) => (
-                <option key={e.id} value={e.id}>
-                  {e.title || e.name} · {e.role}
-                  {e.clockedIn ? " · in" : " · out"}
-                </option>
-              ))}
-            </select>
-          </label>
-        )}
 
         <div className="mt-5">
           <PinKeypad
-            title={mode === "login" ? "Enter PIN to start" : "Confirm with PIN"}
             hint={`Universal demo PIN ${DEMO_STAFF_PIN}`}
             error={err}
+            shakeToken={shake}
             onClearError={() => setErr(null)}
-            onComplete={onPin}
+            onComplete={() => {}}
+            station={{ onEnter, onClockIn }}
           />
         </div>
         {msg && (
@@ -147,6 +108,22 @@ export function DemoEnterGate({ type }: { type: VenueEntityId }) {
             {msg}
           </p>
         )}
+
+        <label className="mt-4 block text-xs text-muted-foreground">
+          Clock in as
+          <select
+            className="mt-1 h-10 w-full rounded-lg border border-border bg-bg px-3 text-sm text-foreground"
+            value={staffId}
+            onChange={(e) => setStaffId(e.target.value)}
+          >
+            {staff.map((e) => (
+              <option key={e.id} value={e.id}>
+                {e.title || e.name} · {e.role}
+                {e.clockedIn ? " · in" : " · out"}
+              </option>
+            ))}
+          </select>
+        </label>
 
         <div className="mt-6 flex flex-col gap-2 text-center text-xs text-muted-foreground">
           <Link

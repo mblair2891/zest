@@ -3,7 +3,6 @@ import { Button } from "@/components/ui/button";
 import { FloorView } from "./FloorView";
 import { OrderView } from "./OrderView";
 import { BusyPayPanel } from "./BusyPayPanel";
-import { StationClockControl } from "./StationClockControl";
 import { NoSaleControl } from "./NoSaleControl";
 import { usePosStore } from "@/lib/pos/store";
 import { useStationSessionStore } from "@/lib/pos/station-session";
@@ -121,13 +120,7 @@ export function BusyNightStation({ hostStand = false }: { hostStand?: boolean })
               <div className="mt-6 space-y-2 border-t border-border pt-4">
                 <p className="text-sm font-medium text-muted-foreground">Other jobs</p>
                 {other.map((item) =>
-                  item.id === "clock" ? (
-                    <StationClockControl
-                      key={item.id}
-                      size="lg"
-                      className="station-touch h-14 w-full text-lg"
-                    />
-                  ) : item.id === "no_sale" ? (
+                  item.id === "no_sale" ? (
                     <NoSaleControl key={item.id} size="lg" className="station-touch h-14 w-full text-lg" />
                   ) : item.id === "done" ? (
                     <Button

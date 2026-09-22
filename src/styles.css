@@ -99,6 +99,29 @@
   }
 }
 
+@keyframes pin-shake {
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+  20% {
+    transform: translateX(-10px);
+  }
+  40% {
+    transform: translateX(10px);
+  }
+  60% {
+    transform: translateX(-6px);
+  }
+  80% {
+    transform: translateX(5px);
+  }
+}
+
+.pin-shake {
+  animation: pin-shake 0.45s ease;
+}
+
 @keyframes table-sla-pulse-thin {
   0%,
   100% {

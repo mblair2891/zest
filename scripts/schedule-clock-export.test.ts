@@ -207,13 +207,23 @@ test("missed published shift with no punch is flagged after grace", () => {
   assert.equal(stillOpen.length, 0);
 });
 
-test("PIN pad Clock in / Clock out are own actions and do not open order entry", () => {
+test("PIN pad is Enter and Clock in and does not open order entry from a punch", () => {
   const pin = readFileSync("src/components/pos/EntityHome.tsx", "utf8");
+  const pad = readFileSync("src/components/pos/PinKeypad.tsx", "utf8");
   assert.match(pin, /PIN signs you onto this station/);
-  assert.match(pin, /\["clock_in", "Clock in"\]/);
-  assert.match(pin, /\["clock_out", "Clock out"\]/);
   assert.match(pin, /punchClockByPin/);
-  assert.doesNotMatch(pin, /Clock in \/ out is Labor — not this pad/);
+  assert.doesNotMatch(pin, /\["clock_out", "Clock out"\]/);
+  assert.doesNotMatch(pin, /Clock out · 4-digit PIN/);
+  assert.match(pad, /data-pin-keys="12"/);
+  assert.match(pad, /data-pin-key="enter"/);
+  assert.match(pad, /data-pin-key="clock-in"/);
+  assert.match(pad, /Clock in/);
+  assert.doesNotMatch(pad, /Clock out/);
+  const flow = readFileSync("src/components/pos/EndShiftFlow.tsx", "utf8");
+  assert.match(flow, /punchOutAfterCloseout/);
+  const punchOnly = readFileSync("src/components/pos/EndShiftPunch.tsx", "utf8");
+  assert.match(punchOnly, /End shift/);
+  assert.match(punchOnly, /punchOutAfterCloseout/);
   const clock = readFileSync("src/lib/pos/station-clock.ts", "utf8");
   assert.match(clock, /does not open order entry/);
   assert.doesNotMatch(clock, /setView/);

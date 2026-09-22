@@ -34,15 +34,26 @@ export type StationMenuItem = {
   label: string;
 };
 
-/** End-of-shift on the order tablet. Not host, kitchen, or busser. */
-const CLOSEOUT_ROLES = new Set<EmployeeRole>([
+/** Server and bartender (and other till roles) run blind count and tip-outs before the punch. */
+const TILL_CLOSE_ROLES = new Set<EmployeeRole>([
   "server",
   "bartender",
   "cashier",
+  "host",
   "manager",
   "owner",
   "supervisor",
 ]);
+
+/** Kitchen, busser, and the order display: Close out is End shift (punch only). */
+export function closeoutIsPunchOnly(
+  role: EmployeeRole | null | undefined,
+  device?: DeviceRole | null,
+): boolean {
+  if (device === "ods") return true;
+  if (role === "kitchen" || role === "busser") return true;
+  return !role || !TILL_CLOSE_ROLES.has(role);
+}
 
 export function stationMenuItems(opts: {
   deviceRole: DeviceRole | null | undefined;
@@ -91,24 +102,22 @@ export function stationMenuItems(opts: {
     device !== "kiosk";
 
   if (device === "kiosk") return [];
-  if (device === "ods") return [{ id: "clock", label: "Clock in/out" }];
+  if (device === "ods") return [{ id: "closeout", label: "Close out" }];
 
   if (device === "host") {
     if (stationCan(cap, "floor") || stationCan(cap, "seat")) add("floor_seat", "Floor / seat");
     if (stationCan(cap, "waitlist")) add("waitlist", "Waitlist");
     if (stationCan(cap, "togo")) add("togo", "To-go");
-    add("clock", "Clock in/out");
     if (opts.canPayStation) add("no_sale", "No sale");
     if (opts.giftEnabled) add("gift", "Gift cards");
     if (cashJobs && !opts.hasPossession) add("take_drawer", takeDrawerLabel(custody));
-    if (opts.cashEnabled === false) add("closeout", "Closeout");
-    else if (cashJobs && opts.hasPossession) add("closeout", "Closeout");
+    add("closeout", "Close out");
     return out;
   }
 
   const work = stationCan(cap, "floor") || stationCan(cap, "order_entry") || stationCan(cap, "togo") || stationCan(cap, "bar_tab");
   if (!work) {
-    add("clock", "Clock in/out");
+    add("closeout", "Close out");
     add("done", "Done");
     return out;
   }
@@ -127,16 +136,10 @@ export function stationMenuItems(opts: {
 
   if (stationCan(cap, "togo")) add("togo", "To-go");
   if (stationCan(cap, "bar_tab") && opts.hasBarRail) add("bar_tab", "Bar tab");
-  add("clock", "Clock in/out");
   if (opts.canPayStation) add("no_sale", "No sale");
   if (opts.giftEnabled) add("gift", "Gift cards");
   if (cashJobs && !opts.hasPossession) add("take_drawer", takeDrawerLabel(custody));
-  const closeoutOk =
-    role &&
-    CLOSEOUT_ROLES.has(role) &&
-    device === "order" &&
-    (opts.cashEnabled === false || (cashJobs && opts.hasPossession));
-  if (closeoutOk) add("closeout", "Closeout");
+  add("closeout", "Close out");
   return out.slice(0, 9);
 }
 

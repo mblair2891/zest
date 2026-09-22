@@ -102,5 +102,6 @@ test("guide pairing is typed code, QR optional", () => {
 test("station PIN pad does not send staff to marketing or /login", () => {
   const pin = readFileSync("src/components/pos/EntityHome.tsx", "utf8");
   assert.match(pin, /stationPad/);
-  assert.match(pin, /Floor login · 4-digit PIN/);
+  assert.match(pin, /4-digit PIN/);
+  assert.match(pin, /data-pin-key="enter"|station=\{\{ onEnter/);
 });

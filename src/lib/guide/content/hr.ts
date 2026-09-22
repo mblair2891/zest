@@ -16,14 +16,14 @@ export const HR_TOPICS: GuideTopic[] = [
         "Your employer (the host house or your operator) keeps employment files separate from the floor PIN.",
       ),
       ul(
-        "PIN on this station is not a time punch. Clock in and Clock out are their own keys on the station PIN pad. Completing clock does not open order entry.",
+        "PIN on this station is not a time punch. Enter opens the floor. Clock in on the pad only punches and does not open order entry. Clock out is Close out at the end of the shift.",
         "If your employer enabled time-off, request it on HR. A manager approves or denies.",
         "Availability windows (if enabled) are your usual days. The published schedule is still Labor.",
         "Onboarding packets (W-4, I-9, state forms) arrive by email or as a download to sign. Return the signed PDF if the house is not using an e-sign vendor. I-9 copies are stored by section.",
         "You belong to one employer entity. Another stall cannot open your file.",
       ),
       steps(
-        "On the PIN pad, tap Clock in or Clock out, then enter your PIN. Login is a different key and opens the station. If you already signed in and are off the clock inside today’s window, you may also accept Clock in for this shift? or tap Not now.",
+        "On the PIN pad, enter your PIN and tap Clock in to punch, or Enter to open the station. There is no Clock out key. If you Enter while off the clock and inside today’s window, you may accept Clock in for this shift? or tap Not now. Already clocked in, Enter goes to work and the floor shows clocked in HH:MM.",
         "Open HR only if your house uses it — request time-off or confirm availability.",
         "Complete packets you were sent. Do not skip I-9 sections or backdate them.",
       ),
@@ -80,7 +80,7 @@ export const HR_TOPICS: GuideTopic[] = [
       ul(
         "Ownership: kitchen cannot publish bar shifts and vice versa. Shared employees are assigned to one entity per shift (home entity, or an explicit extra-entity grant).",
         "Schedule grid: week or pay period. Role, entity, optional station or section, start, end, break. Copy last week. Publish week. Unpublished drafts do not appear on the clock.",
-        "Clock in / Clock out are their own actions on the station PIN pad — separate from POS login. Completing clock does not open order entry.",
+        "Clock in is its own key on the station PIN pad — separate from Enter. Completing clock in does not open order entry. Clock out is the last step of Close out.",
         "Grace (minutes): early clock-in, late clock-in, early clock-out, late clock-out. Outside grace: allow with manager PIN, or block (setting).",
         "Clock only on a published shift (default on). No scheduled shift is a red flag when that setting is on.",
         "Approval per entity: (1) manual — manager approves every punch; (2) auto if clock-out is within X minutes of scheduled end; (3) auto if clock-out is within X minutes of that employee’s last closed ticket. Unapproved punches stay in Exceptions. Approved punches lock for export.",
@@ -92,7 +92,7 @@ export const HR_TOPICS: GuideTopic[] = [
       steps(
         "Labor → Schedule. Add shifts for this entity. Copy last week if the grid repeats. Publish week — drafts stay off the clock.",
         "Labor → Rules. Set grace windows, block vs manager PIN, approval mode, pay period and period-end time, OT flags, packet-ready days.",
-        "Staff: PIN pad → Clock in or Clock out. Login is a different key. Manager PIN overrides outside grace when the house allows it.",
+        "Staff: PIN pad → Clock in (punch only) or Enter (open the station). Clock out is Close out. Manager PIN overrides outside grace when the house allows it.",
         "Supervisor: Exceptions hold unapproved punches. Approve to lock for export.",
         "Labor → Hours export: when the period ends, Download CSV/PDF or Send. Summex does not print a paycheck.",
       ),

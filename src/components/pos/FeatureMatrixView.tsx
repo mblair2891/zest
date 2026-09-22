@@ -139,7 +139,7 @@ const MATRIX: { domain: string; items: string[] }[] = [
     domain: "Labor & staff",
     items: [
       "PIN login roles",
-      "Clock in/out",
+      "Clock in on the pad; clock out at close out",
       "Scheduling",
       "Shift swaps",
       "Break tracking",

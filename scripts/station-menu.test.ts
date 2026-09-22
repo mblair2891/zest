@@ -19,14 +19,14 @@ test("menu source: host jobs, order jobs, max 9, hide denied", () => {
   assert.match(menu, /Waitlist/);
   assert.match(menu, /To-go/);
   assert.match(menu, /Bar tab/);
-  assert.match(menu, /Clock in\/out/);
-  assert.match(menu, /Closeout/);
+  assert.match(menu, /Close out/);
+  assert.doesNotMatch(menu, /Clock in\/out/);
   assert.match(menu, /take_drawer/);
   assert.match(menu, /giftEnabled/);
   assert.match(menu, /Gift cards/);
   assert.match(menu, /cashEnabled !== false/);
   assert.match(menu, /if \(device === "host"\)/);
-  assert.match(menu, /if \(device === "ods"\) return \[\{ id: "clock"/);
+  assert.match(menu, /if \(device === "ods"\) return \[\{ id: "closeout"/);
   assert.match(menu, /add\("done", "Done"\)/);
   assert.match(menu, /hasBarRail/);
   assert.doesNotMatch(home, /disabled/);
@@ -40,7 +40,9 @@ test("paired PIN glass: short menu, map-only floor, slim shell", () => {
   assert.match(mode, /mapOnly/);
   assert.match(mode, /preferMine=\{job === "my_tables"\}/);
   assert.match(mode, /data-station-home="ods"/);
-  assert.match(mode, /StationClockControl/);
+  assert.match(mode, /ClockedInChip/);
+  assert.match(mode, /EndShiftPunch/);
+  assert.match(mode, /closeoutIsPunchOnly/);
   assert.doesNotMatch(mode, /HostStationView/);
   assert.match(floor, /mapOnly/);
   assert.match(floor, /preferMine/);

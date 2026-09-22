@@ -173,9 +173,12 @@ function NumberPad({
 export function TillCloseoutView({
   onDone,
   onContinueTips,
+  onFinished,
 }: {
   onDone: () => void;
   onContinueTips?: () => void;
+  /** Till is saved and this role has no tip-out step. Punches out. */
+  onFinished?: () => void;
 }) {
   const emp = usePosStore((s) => s.employees.find((e) => e.id === s.currentEmployeeId));
   const staff = usePosStore((s) => s.employees);
@@ -763,8 +766,8 @@ export function TillCloseoutView({
           </div>
         </div>
         <div className="flex gap-2 border-t border-border p-3">
-          <Button variant="outline" onClick={onDone}>
-            Done
+          <Button variant="outline" onClick={onContinueTips ? onDone : (onFinished ?? onDone)}>
+            {onContinueTips ? "Done" : "Done · clock out"}
           </Button>
           {onContinueTips && (
             <Button className="ml-auto" onClick={onContinueTips}>

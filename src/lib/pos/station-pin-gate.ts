@@ -174,7 +174,7 @@ export function pinFitsDevice(opts: StationCapInput & { serversAtHostStand?: boo
     return {
       ok: false,
       message: "Sign in with a PIN.",
-      hint: "This station waits for a staff PIN. Clock in is a separate control.",
+      hint: "This station waits for a staff PIN. Clock in is the pad key. Clock out is Close out.",
     };
   }
   if (device === "kiosk") return { ok: true };
@@ -186,27 +186,27 @@ export function pinFitsDevice(opts: StationCapInput & { serversAtHostStand?: boo
     return {
       ok: false,
       message: "This tablet is not a kitchen display.",
-      hint: "Clock in or out here, then use the kitchen display. This PIN cannot open to-go, a bar tab, or a table order.",
+      hint: "Close out punches you out, then use the kitchen display. This PIN cannot open to-go, a bar tab, or a table order.",
     };
   }
   if (device === "host" && (role === "server" || role === "cashier")) {
     return {
       ok: false,
       message: "This tablet is the host stand.",
-      hint: "Use an order tablet. Clock in or out here if you need to punch.",
+      hint: "Use an order tablet. Close out here punches you out.",
     };
   }
   if (device === "ods") {
     return {
       ok: false,
       message: "This tablet is a kitchen display.",
-      hint: "Your PIN cannot run the rail. Use an order or host station. Clock in or out here if you need to punch.",
+      hint: "Your PIN cannot run the rail. Use an order or host station. Close out here punches you out.",
     };
   }
   return {
     ok: false,
     message: "This PIN cannot run this station.",
-    hint: "Clock in or out here. Ask a manager if you need a different station.",
+    hint: "Close out punches you out. Ask a manager if you need a different station.",
   };
 }
 

@@ -152,7 +152,7 @@ export const CASH_GIFT_TOPICS: GuideTopic[] = [
     chapterId: "cash-gifts",
     title: "Server closeout, blind count, mix-based tip-out",
     summary:
-      "End of shift on the order device: sales, tenders, blind cash count, declared tips, mix-based tip-out recs. Not PIN login and not clock-out.",
+      "End of shift on the order device: blind cash count, then tip-out recs, then the punch. Kitchen and busser skip the till and punch out from End shift.",
     roles: ["owner_manager", "server", "kitchen_bar", "host_operator"],
     keywords: [
       "closeout",
@@ -172,10 +172,10 @@ export const CASH_GIFT_TOPICS: GuideTopic[] = [
     openView: "cash",
     blocks: [
       why(
-        "PIN signs you into the floor. Clock-out punches time. Closeout is the third thing: this server’s sales, cash, and tip-outs for the shift.",
+        "Enter signs you into the floor. Clock in only punches. Close out is the end of the shift: this server’s sales, cash, and tip-outs, then the punch.",
       ),
       p(
-        "On an order-taking device tap Closeout (not Labor, not the house Cash drawer close). House well/drawer close stays a separate manager/closer screen.",
+        "On an order-taking device tap Close out (not the house Cash drawer close). House well/drawer close stays a separate manager/closer screen. The punch happens after the till steps.",
       ),
       steps(
         "On the order station tap Closeout from the short menu (not Labor, not PIN login). Take drawer / Hand off appear only if this PIN’s assignment is not none and Cash is on in Payment methods. If Cash is off, Closeout still opens for sales and tips — no drawer count.",
@@ -228,7 +228,7 @@ export const CASH_GIFT_TOPICS: GuideTopic[] = [
         "Closeout tenders only list methods the house has on (card, cash, gift, check, house account, other). Disabled buckets are hidden. Comp appears only if Comp is on.",
       ),
       warn(
-        "Closeout is not clock-out. Labor still punches time. House drawer/well close is still Cash, not this wizard.",
+        "Close out ends with the punch. House drawer/well close is still Cash, not this wizard. Kitchen and busser use End shift, which punches out and skips the till.",
       ),
       related("cash-handling", "tenders-tips", "venue-payment-methods", "tip-pooling", "payroll-export", "reports", "floor-pin-login", "login"),
     ],

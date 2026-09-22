@@ -6,6 +6,19 @@ import type { GuideUpdate } from "@/lib/guide/types";
  */
 export const WHATS_NEW_ENTRIES: GuideUpdate[] = [
   {
+    id: "upd_2026_10_140_pin_pad",
+    date: "2026-09-22",
+    title: "PIN pad is Enter and Clock in",
+    summary:
+      "Enter opens the floor. Clock in only punches. Clock out is Close out at the end of the shift.",
+    body: "The station pad is twelve keys: 1–9, Enter, 0, and Clock in. Enter starts that PIN’s station. Clock in punches and stays on the pad. A wrong PIN shakes and says Invalid PIN. There is no Clock out key and no Login / Clock in / Clock out switch. Already clocked in, Enter goes to work, and the floor shows clocked in HH:MM. Close out on the in-shift menu punches out after the till steps when the role has a till: servers and bartenders blind-count and confirm tip-out recs, then punch out. Kitchen and busser Close out is End shift, punch out only.",
+    roles: ["owner_manager", "server", "kitchen_bar", "host_operator"],
+    surfaces: ["floor", "labor"],
+    audience: "all",
+    topicId: "floor-pin-login",
+    tags: ["pin", "clock", "closeout"],
+  },
+  {
     id: "upd_2026_10_139_combine_tables",
     date: "2026-09-22",
     title: "Drag tables to combine, then separate",

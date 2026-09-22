@@ -169,10 +169,10 @@ export const FLOOR_TOPICS: GuideTopic[] = [
         "The FOH host keeps the door honest so servers are not seating over each other. This is not the hall Host Venue role. After PIN you pick one job.",
       ),
       ul(
-        "After a host / supervisor / manager PIN, the bar is Floor, Checks, Menu, Pay. Waitlist, To-go, and Clock in/out are under Checks → Other jobs.",
+        "After a host / supervisor / manager PIN, the bar is Floor, Checks, Menu, Pay. The short menu under Checks → Other jobs is Waitlist, To-go, and Close out. The floor shows clocked in HH:MM.",
         "To-go starts a takeout check with the same pay and print path as the order station.",
         "Floor is the map and table status only: colored blocks, number only, no chairs. Tap a table with open checks — one tap — for Add, Send, Print check, Pay. Empty + Seat only when vacant. No ODS rail, no menu editor.",
-        "Kitchen / cook PIN: Clock and Done only. No to-go from this tablet.",
+        "Kitchen / cook PIN: Close out (End shift) and Done only. No to-go from this tablet.",
         "Server PIN: Floor and To-go only when Servers may use the host stand is on; otherwise clock and use an order tablet.",
       ),
       steps(

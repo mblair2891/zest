@@ -1,12 +1,12 @@
 import type { PosView } from "@/lib/pos/types";
 
 /** Bump when shipping a docs/features batch so What’s New can watermark. */
-export const GUIDE_VERSION = "2026.10.139";
+export const GUIDE_VERSION = "2026.10.140";
 export const GUIDE_EDITION = "Operators Guide · training week";
 export const GUIDE_TITLE = "Operators Guide";
 /** Short public revision line (date + what changed). Keep in lockstep with the white paper. */
 export const GUIDE_REVISION =
-  "22 Sep 2026 — Drag tables together, then separate them from the sheet";
+  "22 Sep 2026 — PIN pad is Enter and Clock in; clock out is Close out";
 
 /**
  * Audience tabs in the guide. Distinct from POS PIN roles:

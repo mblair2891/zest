@@ -107,9 +107,9 @@ export function ClockInAfterPinDialog() {
         <DialogHeader>
           <DialogTitle>Clock in for this shift?</DialogTitle>
           <DialogDescription>
-            PIN signed you onto this station. Clock-in is a separate punch.
-            Completing clock does not open order entry. You can skip and use
-            Clock in on this station later.
+            PIN signed you onto this station. Clock-in is a separate punch and
+            does not open order entry. Not now leaves you on the floor. Clock in
+            on the pad only punches.
           </DialogDescription>
         </DialogHeader>
         {error && <p className="text-sm text-danger">{error}</p>}

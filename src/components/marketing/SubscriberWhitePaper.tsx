@@ -146,15 +146,15 @@ export function SubscriberWhitePaper() {
             <tbody className="text-muted-foreground">
               <tr className="border-t border-border">
                 <td className="py-2 pr-4 text-ivory">Order</td>
-                <td>After PIN on full service: Floor, Checks, Menu, Pay. The map is status color and the table number — no chairs. Counter is New ticket. Drive-through is the lane. Clock and closeout are under Checks.</td>
+                <td>After PIN on full service: Floor, Checks, Menu, Pay. The map is status color and the table number — no chairs. Counter is New ticket. Drive-through is the lane. Close out is under Checks. The floor shows clocked in HH:MM.</td>
               </tr>
               <tr className="border-t border-border">
                 <td className="py-2 pr-4 text-ivory">ODS</td>
-                <td>Kitchen and bar display — tickets, Start and Bump, plus Clock. No POS hamburger, no new order, no pay</td>
+                <td>Kitchen and bar display — tickets, Start and Bump, plus Close out (End shift). No POS hamburger, no new order, no pay</td>
               </tr>
               <tr className="border-t border-border">
                 <td className="py-2 pr-4 text-ivory">Host</td>
-                <td>After PIN: Floor, Checks, Menu, Pay. Waitlist, to-go, and clock are under Checks. Peer venues still have this role — no host merchant required.</td>
+                <td>After PIN: Floor, Checks, Menu, Pay. Waitlist, to-go, and Close out are under Checks. Peer venues still have this role — no host merchant required.</td>
               </tr>
               <tr className="border-t border-border">
                 <td className="py-2 pr-4 text-ivory">Kiosk</td>
@@ -167,9 +167,9 @@ export function SubscriberWhitePaper() {
           <strong className="text-ivory">PIN is not clock-in and not closeout.</strong>{" "}
           Password login is back office — never the PIN home. Floor staff use a
           4-digit PIN on a paired station. Location owner and manager see those
-          PINs on Users and can reset them; kitchen and server PINs cannot. A kitchen PIN on an order tablet is the
-          Clock and Done, not server UI. Completing clock does not open order entry.
-          Server closeout is Cash. During the shift, staff can move cash till to
+          PINs on Users and can reset them; kitchen and server PINs cannot. A kitchen PIN on an order tablet is
+          Close out and Done, not server UI. Enter opens the station. Clock in only punches.
+          Clock out is Close out. During the shift, staff can move cash till to
           till when one drawer is short on small bills; expected cash on each till
           updates so the blind count still balances.
         </p>
