@@ -433,6 +433,7 @@ export function PlatformTenantVenue({
           taxMode: setup.taxMode === "per_entity" ? "per_entity" : setup.taxMode === "venue_shared" ? "venue_shared" : st.settings.taxMode,
           timezone: setup.timezone || st.settings.timezone,
           brandLogos: setup.brandLogos ?? st.settings.brandLogos,
+          combineRequiresManager: setup.combineRequiresManager ?? st.settings.combineRequiresManager,
           taxRates: Array.isArray(setup.taxRates) ? setup.taxRates : st.settings.taxRates,
           entityTaxRates: setup.entityTaxRates ?? st.settings.entityTaxRates,
           taxRate: typeof setup.taxRate === "number" ? setup.taxRate : st.settings.taxRate,

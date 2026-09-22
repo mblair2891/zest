@@ -13,6 +13,7 @@ import { computeTotals, linePrintedCents, tipSuggestions } from "@/lib/pos/calcu
 import { captureIsSandbox } from "@/lib/lifecycle/store";
 import type { MenuItem, Order, OrderLine, Table } from "@/lib/pos/types";
 import { groupLinesByEntity } from "@/lib/payments/entity-split";
+import { partyHeader } from "@/lib/pos/table-combine";
 import {
   parseQrPolicy,
   qrCanOpenCheck,
@@ -161,7 +162,9 @@ export function GuestTablePage({
     policy.orderAllow !== "none" &&
     (qrCanOpenCheck(policy) || staffCheckOpen) &&
     !ticketExpired;
-  const displayLabel = resolvedTable?.label ?? label ?? token ?? "check";
+  const displayLabel = resolvedTable
+    ? partyHeader(tables, resolvedTable.id)
+    : (label ?? token ?? "check");
   const needAge = qrNeedsAgeAffirm(policy);
   const showMenu = canOrder && (!needAge || ageOk);
   const payOnlyView = payOnly || (!qrCanReorder(policy) && qrCanPay(policy));

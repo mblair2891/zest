@@ -194,5 +194,5 @@ test("update prompt copy is wired; never reload without a tap outside force wind
   assert.match(guide, /force-update window/);
   assert.match(guide, /An update was waiting while this station was offline/);
   const types = readFileSync("src/lib/guide/types.ts", "utf8");
-  assert.match(types, /2026\.10\.138/);
+  assert.match(types, /2026\.10\.139/);
 });

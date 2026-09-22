@@ -6,6 +6,19 @@ import type { GuideUpdate } from "@/lib/guide/types";
  */
 export const WHATS_NEW_ENTRIES: GuideUpdate[] = [
   {
+    id: "upd_2026_10_139_combine_tables",
+    date: "2026-09-22",
+    title: "Drag tables to combine, then separate",
+    summary:
+      "Drag one table onto another to join its party. Separate from the table sheet. Checks stay put unless you move them.",
+    body: "On the live floor, drag table A onto table B. One cluster shows B’s number largest and the joined numbers smaller, still with no chairs. Guest QR and the guest check read T1 + T3 + T5. Open checks stay on the table they were opened on. Move checks to primary is on the sheet and starts off. More → Separate removes one table or separates all. A table with an open check stays in the party until that check moves to another table in the party or is closed. Items are not deleted. Host, server, bartender, and manager can do this while clocked in. A manager PIN is required only when Combine requires manager is on.",
+    roles: ["owner_manager", "server", "host_operator"],
+    surfaces: ["floor"],
+    audience: "all",
+    topicId: "floor-tables",
+    tags: ["floor", "combine", "table"],
+  },
+  {
     id: "upd_2026_10_138_logos",
     date: "2026-09-22",
     title: "Location and entity logos",

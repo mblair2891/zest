@@ -113,7 +113,10 @@ export function persistFloorStatus(): void {
         data: {
           orgId: ctx.orgId,
           locationId: ctx.locationId,
-          setup: { floorStatusConfig: settings.floorStatusConfig },
+          setup: {
+            floorStatusConfig: settings.floorStatusConfig,
+            combineRequiresManager: Boolean(settings.combineRequiresManager),
+          },
         },
       }).catch(() => undefined);
     }, 400),

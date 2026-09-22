@@ -1,4 +1,5 @@
 import { entityMarksForPrint } from "@/lib/brand/logos";
+import { partyHeader } from "@/lib/pos/table-combine";
 import { cashPolicyFromSettings } from "@/lib/pos/cash-discount";
 import { computeDualTotals, computeTotals, lineCardCents, lineCashCents, linePrintedCents } from "@/lib/pos/calculations";
 import { usePosStore } from "@/lib/pos/store";
@@ -181,7 +182,9 @@ function guestCheckJob(
     locationName,
     checkId: order.id,
     checkNumber: order.number,
-    tableLabel: table?.label ?? order.tabName ?? order.type.replace("_", " "),
+    tableLabel: order.tableId
+      ? partyHeader(s.tables, order.tableId)
+      : (table?.label ?? order.tabName ?? order.type.replace("_", " ")),
     serverName: order.serverName,
     copy: "guest",
     items,
@@ -313,7 +316,9 @@ export async function printFromPos(
         locationName,
         checkId: order.id,
         checkNumber: order.number,
-        tableLabel: table?.label ?? order.tabName ?? order.type.replace("_", " "),
+        tableLabel: order.tableId
+          ? partyHeader(s.tables, order.tableId)
+          : (table?.label ?? order.tabName ?? order.type.replace("_", " ")),
         serverName: order.serverName,
         copy: "guest",
         items: receiptLines(order, s.settings),
@@ -500,7 +505,9 @@ export async function printGuestReceipt(orderId: string): Promise<{
     locationName,
     checkId: order.id,
     checkNumber: order.number,
-    tableLabel: table?.label ?? order.tabName ?? order.type.replace("_", " "),
+    tableLabel: order.tableId
+      ? partyHeader(s.tables, order.tableId)
+      : (table?.label ?? order.tabName ?? order.type.replace("_", " ")),
     serverName: order.serverName,
     copy: "guest",
     items: receiptLines(order, s.settings),

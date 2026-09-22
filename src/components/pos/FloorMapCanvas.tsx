@@ -10,6 +10,8 @@ export type FloorMapItem = {
   ink: string;
   flashing: boolean;
   dim: boolean;
+  /** Joined table numbers, drawn smaller on the same fill. */
+  joined?: string[];
 };
 
 /**
@@ -19,9 +21,12 @@ export type FloorMapItem = {
 export function FloorMapCanvas({
   items,
   onTableClick,
+  onCombine,
 }: {
   items: FloorMapItem[];
   onTableClick: (table: Table) => void;
+  /** Drag table A onto table B. A joins B. */
+  onCombine?: (draggedId: string, ontoId: string) => void;
 }) {
   const viewRef = useRef<HTMLDivElement>(null);
   const [view, setView] = useState({ w: 800, h: 600 });
@@ -39,6 +44,7 @@ export function FloorMapCanvas({
   } | null>(null);
   const suppress = useRef(false);
   const downOn = useRef<string | null>(null);
+  const tableDrag = useRef<{ id: string; x: number; y: number; moved: boolean } | null>(null);
 
   useEffect(() => {
     const el = viewRef.current;
@@ -90,6 +96,9 @@ export function FloorMapCanvas({
       oy: camRef.current.y,
       moved: false,
     };
+    tableDrag.current = downOn.current
+      ? { id: downOn.current, x: e.clientX, y: e.clientY, moved: false }
+      : null;
   };
 
   const onPointerMove = (e: ReactPointerEvent<HTMLDivElement>) => {
@@ -102,6 +111,14 @@ export function FloorMapCanvas({
       setCam((c) => ({ ...c, s: next }));
       suppress.current = true;
       return;
+    }
+    const td = tableDrag.current;
+    if (td) {
+      if (Math.hypot(e.clientX - td.x, e.clientY - td.y) > 12) td.moved = true;
+      if (td.moved) {
+        suppress.current = true;
+        return;
+      }
     }
     const d = dragRef.current;
     if (!d) return;
@@ -117,9 +134,18 @@ export function FloorMapCanvas({
     pts.current.delete(e.pointerId);
     if (pts.current.size < 2) pinchRef.current = null;
     const tapped = downOn.current;
-    const moved = dragRef.current?.moved || suppress.current;
+    const dragged = tableDrag.current;
+    tableDrag.current = null;
+    const moved = dragRef.current?.moved || dragged?.moved || suppress.current;
     dragRef.current = null;
     downOn.current = null;
+    if (dragged?.moved && onCombine) {
+      const el = document.elementFromPoint(e.clientX, e.clientY);
+      const dest = (el as HTMLElement | null)?.closest?.("[data-table-id]")?.getAttribute("data-table-id");
+      if (dest && dest !== dragged.id) onCombine(dragged.id, dest);
+      suppress.current = true;
+      return;
+    }
     if (tapped && !moved && pts.current.size === 0) {
       const item = items.find((i) => i.table.id === tapped);
       if (item) onTableClick(item.table);
@@ -185,6 +211,7 @@ export function FloorMapCanvas({
                 tableFill={item.fill}
                 outline={item.fill}
                 label={num}
+                joined={item.joined}
                 rotation={item.table.rotation ?? 0}
                 mode="status"
               />

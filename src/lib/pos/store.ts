@@ -54,11 +54,15 @@ import { demoPosSlice, demoSaasOrg } from "@/lib/demo/pos-payloads";
 import {
 	groupMembers,
 	groupRootId,
-	lowestGroupLabel,
-	nativeSeats,
-	pickLowestPrimary,
 	displayLabel,
 } from "./table-groups";
+import {
+	canCombineTables,
+	dragJoinParty,
+	moveChecksToPrimary,
+	separateAll,
+	separateMember,
+} from "./table-combine";
 import {
 	canMutateCheck,
 	cloneMovedLine,
@@ -456,6 +460,19 @@ function accessCtx(get: any) {
 function checkTableAccess(get: any, table: any, action: any) {
 	const ctx = accessCtx(get);
 	return canAccessTable({ ...ctx, table, action });
+}
+
+function floorCombineGate(get: () => { getCurrentEmployee: () => { role?: string; clockedIn?: boolean } | null | undefined; settings?: { combineRequiresManager?: boolean }; authorizeManager: (pin: string) => { ok?: boolean } }, pin?: string) {
+	const emp = get().getCurrentEmployee();
+	const role = emp?.role;
+	const manager = role === "manager" || role === "owner" || role === "supervisor";
+	const pinOk = manager || (pin ? Boolean(get().authorizeManager(pin)?.ok) : false);
+	return canCombineTables({
+		role,
+		clockedIn: Boolean(emp?.clockedIn),
+		combineRequiresManager: Boolean(get().settings?.combineRequiresManager),
+		managerPinOk: pinOk,
+	});
 }
 
 const usePosStoreRaw = create<PosStore>()(persist((set, get) => {
@@ -1933,148 +1950,99 @@ const usePosStoreRaw = create<PosStore>()(persist((set, get) => {
 		} catch { /* */ }
 		return { ok: true };
 	},
-	mergeTables: (primaryId, childId) => get().combineTables([primaryId, childId]),
-	combineTables: (tableIds) => {
-		const emp = get().getCurrentEmployee();
-		if (!emp) return { ok: false, error: "Not signed in" };
-		const unique = [...new Set(tableIds.filter(Boolean))];
-		if (unique.length < 2) return { ok: false, error: "Pick two or more tables" };
-		const tables = get().tables;
-		const roots = [...new Set(unique.map((id: any) => groupRootId(tables, id)))];
-		const members = roots.flatMap((id: any) => groupMembers(tables, id));
-		if (members.length < 2) return { ok: false, error: "Already one group" };
-		const winner = pickLowestPrimary(members);
-		const others = members.filter((t: any) => t.id !== winner.id);
-		const seats = members.reduce((s: any, t: any) => s + nativeSeats(t), 0);
-		const label = lowestGroupLabel(members);
-		const status = members.find((t: any) => t.orderId)?.status ?? winner.status;
-		const guestCount =
-			(members.reduce((s: any, t: any) => s + (t.guestCount ?? 0), 0) || winner.guestCount);
-		const serverId = winner.serverId ?? members.find((t: any) => t.serverId)?.serverId;
-		const orderIds = [...new Set(members.map((t: any) => t.orderId).filter(Boolean))];
-		let keepOrderId = winner.orderId ?? orderIds[0];
-		let orders = get().orders;
-		if (orderIds.length > 1 && keepOrderId) {
-			const keep = orders.find((o: any) => o.id === keepOrderId);
-			if (keep && keep.status === "open") {
-				const extras = orderIds.filter((id: any) => id !== keepOrderId);
-				for (const oid of extras) {
-					const src = orders.find((o: any) => o.id === oid);
-					if (!src || src.status !== "open") continue;
-					const gate = canMutateCheck(emp, src);
-					if (!gate.ok) return gate;
-					orders = orders.map((o: any) => {
-						if (o.id === keep.id) {
-							return {
-								...o,
-								lines: [...o.lines, ...src.lines.map(cloneMovedLine)],
-								guestCount: o.guestCount + src.guestCount,
-								tableId: winner.id,
-								mergedTableIds: [...new Set([...(o.mergedTableIds ?? []), ...(src.mergedTableIds ?? []), ...others.map((t: any) => t.id)])],
-							};
-						}
-						if (o.id === src.id) {
-							return { ...o, status: "cancelled", tableId: undefined, lines: [] };
-						}
-						return o;
-					});
-				}
-				keepOrderId = keep.id;
-			}
-		} else if (keepOrderId) {
-			orders = orders.map((o: any) => o.id === keepOrderId ? {
-				...o,
-				tableId: winner.id,
-				guestCount: Math.max(o.guestCount, guestCount || o.guestCount),
-				mergedTableIds: [...new Set([...(o.mergedTableIds ?? []), ...others.map((t: any) => t.id)])],
-			} : o);
-		}
-		const now = Date.now();
-		set({
-			orders,
-			tables: tables.map((t: any) => {
-				if (t.id === winner.id) {
-					return {
-						...t,
-						originalLabel: t.originalLabel ?? displayLabel(t),
-						originalSeats: t.originalSeats ?? nativeSeats(t),
-						label,
-						seats,
-						mergedIntoId: undefined,
-						mergedChildIds: others.map((c: any) => c.id),
-						orderId: keepOrderId,
-						guestCount: guestCount || t.guestCount,
-						serverId,
-						status,
-						statusSince: now,
-					};
-				}
-				if (others.some((c: any) => c.id === t.id)) {
-					return {
-						...t,
-						originalLabel: t.originalLabel ?? displayLabel(t),
-						originalSeats: t.originalSeats ?? nativeSeats(t),
-						mergedIntoId: winner.id,
-						mergedChildIds: undefined,
-						orderId: undefined,
-						status,
-						statusSince: now,
-						serverId,
-						guestCount: undefined,
-					};
-				}
-				return t;
-			}),
+	mergeTables: (primaryId, childId, managerPin?: string) =>
+		get().joinParty(childId, primaryId, managerPin),
+	joinParty: (draggedId, ontoId, managerPin?: string) => {
+		const gate = floorCombineGate(get, managerPin);
+		if (!gate.ok) return gate;
+		const res = dragJoinParty({
+			tables: get().tables,
+			orders: get().orders,
+			dragId: draggedId,
+			ontoId,
 		});
-		get().audit(
-			"table_combine",
-			`Group ${label} · ${members.map((m: any) => displayLabel(m)).join("+")} · ${seats} seats`,
-		);
-		if (keepOrderId) floorSync("check", keepOrderId);
-		floorSync("table", winner.id);
+		if (!res.ok) return res;
+		set({ tables: res.tables, orders: res.orders });
+		get().audit("table_combine", `Joined ${draggedId} onto ${ontoId}`);
+		floorSync("table", ontoId);
 		return { ok: true };
 	},
-	unmergeTable: (tableId) => {
-		const tables = get().tables;
-		const primaryId = groupRootId(tables, tableId);
-		const primary = tables.find((t: any) => t.id === primaryId);
-		if (!primary?.mergedChildIds?.length) return { ok: false, error: "Not a combined group" };
-		const children = primary.mergedChildIds;
-		const now = Date.now();
-		set({
-			tables: tables.map((t: any) => {
-				if (t.id === primaryId) {
-					return {
-						...t,
-						label: t.originalLabel ?? t.label,
-						seats: t.originalSeats ?? t.seats,
-						mergedChildIds: undefined,
-						originalLabel: undefined,
-						originalSeats: undefined,
-					};
-				}
-				if (children.includes(t.id)) {
-					return {
-						...t,
-						mergedIntoId: undefined,
-						label: t.originalLabel ?? t.label,
-						seats: t.originalSeats ?? t.seats,
-						originalLabel: undefined,
-						originalSeats: undefined,
-						status: "empty",
-						statusSince: now,
-						orderId: undefined,
-						serverId: undefined,
-						guestCount: undefined,
-						seatedAt: undefined,
-					};
-				}
-				return t;
-			}),
-			orders: get().orders.map((o: any) => o.id === primary.orderId ? { ...o, mergedTableIds: undefined } : o),
+	combineTables: (tableIds, managerPin?: string) => {
+		const gate = floorCombineGate(get, managerPin);
+		if (!gate.ok) return gate;
+		const unique = [...new Set(tableIds.filter(Boolean))];
+		if (unique.length < 2) return { ok: false, error: "Pick two or more tables" };
+		const primary = unique[0]!;
+		let tables = get().tables;
+		let orders = get().orders;
+		for (const id of unique.slice(1)) {
+			const res = dragJoinParty({ tables, orders, dragId: id, ontoId: primary });
+			if (!res.ok) return res;
+			tables = res.tables;
+			orders = res.orders;
+		}
+		set({ tables, orders });
+		get().audit("table_combine", `Party ${displayLabel(tables.find((t: any) => t.id === primary) ?? { label: primary } as any)}`);
+		floorSync("table", primary);
+		return { ok: true };
+	},
+	moveClusterChecksToPrimary: (primaryId, managerPin?: string) => {
+		const gate = floorCombineGate(get, managerPin);
+		if (!gate.ok) return gate;
+		const res = moveChecksToPrimary({
+			tables: get().tables,
+			orders: get().orders,
+			primaryId,
 		});
-		get().audit("table_split", `Split group ${primary.label}`);
-		if (primary.orderId) floorSync("check", primary.orderId);
+		if (!res.ok) return res;
+		set({ orders: res.orders });
+		get().audit("table_combine", "Moved checks to primary");
+		floorSync("table", primaryId);
+		return { ok: true };
+	},
+	separateJoined: (primaryId, removeId, transferToId?: string, managerPin?: string) => {
+		const gate = floorCombineGate(get, managerPin);
+		if (!gate.ok) return gate;
+		const res = separateMember({
+			tables: get().tables,
+			orders: get().orders,
+			primaryId,
+			removeId,
+			transferToId,
+		});
+		if (!res.ok) return res;
+		set({ tables: res.tables, orders: res.orders });
+		get().audit("table_split", `Removed ${removeId} from ${primaryId}`);
+		floorSync("table", primaryId);
+		return { ok: true };
+	},
+	unmergeTable: (tableId, managerPin?: string) => {
+		const gate = floorCombineGate(get, managerPin);
+		if (!gate.ok) return gate;
+		const res = separateAll({
+			tables: get().tables,
+			orders: get().orders,
+			primaryId: tableId,
+			moveChecksToPrimary: false,
+		});
+		if (!res.ok) return res;
+		set({ tables: res.tables, orders: res.orders });
+		get().audit("table_split", `Separated ${tableId}`);
+		floorSync("table", tableId);
+		return { ok: true };
+	},
+	separateAllJoined: (primaryId, moveChecks?: boolean, managerPin?: string) => {
+		const gate = floorCombineGate(get, managerPin);
+		if (!gate.ok) return gate;
+		const res = separateAll({
+			tables: get().tables,
+			orders: get().orders,
+			primaryId,
+			moveChecksToPrimary: Boolean(moveChecks),
+		});
+		if (!res.ok) return res;
+		set({ tables: res.tables, orders: res.orders });
+		get().audit("table_split", `Separated all from ${primaryId}`);
 		floorSync("table", primaryId);
 		return { ok: true };
 	},

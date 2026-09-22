@@ -272,9 +272,18 @@ export interface PosStore {
   rotateTableQr: (tableId: string) => ActionResult<{ token?: string }>;
   clearTable: (tableId: string) => void;
   transferTable: (fromId: string, toId: string) => ActionResult;
-  mergeTables: (primaryId: string, childId: string) => ActionResult;
-  combineTables: (tableIds: string[]) => ActionResult;
-  unmergeTable: (tableId: string) => ActionResult;
+  mergeTables: (primaryId: string, childId: string, managerPin?: string) => ActionResult;
+  joinParty: (draggedId: string, ontoId: string, managerPin?: string) => ActionResult;
+  combineTables: (tableIds: string[], managerPin?: string) => ActionResult;
+  moveClusterChecksToPrimary: (primaryId: string, managerPin?: string) => ActionResult;
+  separateJoined: (
+    primaryId: string,
+    removeId: string,
+    transferToId?: string,
+    managerPin?: string,
+  ) => ActionResult;
+  separateAllJoined: (primaryId: string, moveChecks?: boolean, managerPin?: string) => ActionResult;
+  unmergeTable: (tableId: string, managerPin?: string) => ActionResult;
   splitCheck: (
     orderId: string,
     spec: import("./check-ops").SplitSpec,

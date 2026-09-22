@@ -160,5 +160,5 @@ test("QR pay close and notify are wired", () => {
   assert.match(floor, /Table N paid — QR/);
   assert.match(floor, /Automatic table status is on by default/);
   const types = readFileSync("src/lib/guide/types.ts", "utf8");
-  assert.match(types, /2026\.10\.138/);
+  assert.match(types, /2026\.10\.139/);
 });

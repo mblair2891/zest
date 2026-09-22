@@ -19,6 +19,7 @@ export function FloorFixtureArt({
   outline,
   sectionColor,
   label,
+  joined,
   rotation = 0,
   className,
   children,
@@ -29,6 +30,8 @@ export function FloorFixtureArt({
   outline: string;
   sectionColor?: string;
   label?: string;
+  /** Smaller numbers on the same fill when tables are joined. */
+  joined?: string[];
   rotation?: number;
   className?: string;
   children?: ReactNode;
@@ -46,6 +49,7 @@ export function FloorFixtureArt({
         tableFill={tableFill}
         rotation={rot}
         label={label}
+        joined={joined}
         w={table.w}
         h={table.h}
         className={className}
@@ -134,6 +138,7 @@ function StatusFixture({
   tableFill,
   rotation,
   label,
+  joined,
   w,
   h,
   className,
@@ -145,6 +150,7 @@ function StatusFixture({
   tableFill: string;
   rotation: number;
   label?: string;
+  joined?: string[];
   w: number;
   h: number;
   className?: string;
@@ -179,10 +185,22 @@ function StatusFixture({
       )}
       {label ? (
         <span
-          className="pointer-events-none absolute inset-0 grid place-items-center px-[8%] text-center font-bold leading-none tabular"
-          style={{ fontSize: "50cqmin", transform: `rotate(${-rotation}deg)` }}
+          className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center px-[8%] text-center font-bold leading-none tabular"
+          style={{ transform: `rotate(${-rotation}deg)` }}
+          data-floor-cluster={joined?.length ? "1" : undefined}
         >
-          {label}
+          <span data-floor-primary style={{ fontSize: joined?.length ? "42cqmin" : "50cqmin" }}>
+            {label}
+          </span>
+          {joined && joined.length > 0 ? (
+            <span
+              data-floor-joined
+              className="mt-[4%] font-semibold leading-tight"
+              style={{ fontSize: "18cqmin" }}
+            >
+              {joined.join(" · ")}
+            </span>
+          ) : null}
         </span>
       ) : null}
       {children}

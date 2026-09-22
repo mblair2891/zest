@@ -208,6 +208,8 @@ export interface RestaurantSettings {
   currency: string;
   receiptFooter: string;
   managerPin: string;
+  /** When on, host / server / bartender need a manager PIN to combine or separate. Default off. */
+  combineRequiresManager?: boolean;
   serviceChargeLabel: string;
   multiTenantHallMode?: boolean;
   /** Host + multiple operators: one guest check, Quantum Payments under host brand */

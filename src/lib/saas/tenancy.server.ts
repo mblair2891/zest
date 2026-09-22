@@ -339,6 +339,7 @@ function parseSetup(raw: unknown): LocationSetup {
         ? undefined
         : Math.max(0, Math.round(Number(o.configVersion))),
     brandLogos: o.brandLogos != null ? parseBrandLogoMap(o.brandLogos) : undefined,
+    combineRequiresManager: "combineRequiresManager" in o ? Boolean(o.combineRequiresManager) : undefined,
     employmentState:
       typeof o.employmentState === "string" && o.employmentState.trim()
         ? o.employmentState.trim().slice(0, 16)

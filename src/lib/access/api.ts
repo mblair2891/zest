@@ -1035,6 +1035,7 @@ function publishSetupSlice(setup: LocationSetup) {
     laborByEntity: setup.laborByEntity,
     sharedVenueCostsCents: setup.sharedVenueCostsCents,
     brandLogos: setup.brandLogos,
+    combineRequiresManager: setup.combineRequiresManager,
   };
 }
 

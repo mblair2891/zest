@@ -40,6 +40,7 @@ export type StationPublishSetup = {
   taxRate?: number;
   taxMode?: string;
   brandLogos?: object;
+  combineRequiresManager?: boolean;
   sectionNames?: string[];
   laborByEntity?: object;
   sharedVenueCostsCents?: number;
@@ -226,6 +227,9 @@ export function applyStationPublish(
     }
     if (setup.brandLogos != null) {
       settings.brandLogos = parseBrandLogoMap(setup.brandLogos);
+    }
+    if ("combineRequiresManager" in setup) {
+      settings.combineRequiresManager = Boolean(setup.combineRequiresManager);
     }
     if (opts?.locationName) settings.name = opts.locationName;
     patch.settings = settings;

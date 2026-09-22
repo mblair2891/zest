@@ -47,6 +47,8 @@ import { getDemoType } from "@/lib/demo/session";
 import { toast } from "sonner";
 import { cn, formatCurrency, formatTime } from "@/lib/utils";
 import { NO_SECTION_RECEIPT } from "@/lib/print/from-store";
+import { clusterNumbers, partyHeader, tableToken } from "@/lib/pos/table-combine";
+import { displayLabel, groupMembers } from "@/lib/pos/table-groups";
 import { computeDualTotals, computeTotals } from "@/lib/pos/calculations";
 import {
   activeGrantForTable,
@@ -114,6 +116,12 @@ export function FloorView({
   const mergeTables = usePosStore((s) => s.mergeTables);
   const combineTables = usePosStore((s) => s.combineTables);
   const unmergeTable = usePosStore((s) => s.unmergeTable);
+  const joinParty = usePosStore((s) => s.joinParty);
+  const separateJoined = usePosStore((s) => s.separateJoined);
+  const separateAllJoined = usePosStore((s) => s.separateAllJoined);
+  const moveClusterChecksToPrimary = usePosStore((s) => s.moveClusterChecksToPrimary);
+  const [separateOpen, setSeparateOpen] = useState(false);
+  const [transferPick, setTransferPick] = useState<Record<string, string>>({});
   const setView = usePosStore((s) => s.setView);
   const floorIntent = usePosStore((s) => s.floorIntent);
   const beginBarTabPick = usePosStore((s) => s.beginBarTabPick);
@@ -362,6 +370,17 @@ export function FloorView({
     );
   }
 
+  const withManager = (run: (pin?: string) => { ok: boolean; error?: string }) => {
+    let res = run();
+    if (!res.ok && /manager pin/i.test(res.error || "")) {
+      const pin = window.prompt("Manager PIN");
+      if (!pin) return res;
+      res = run(pin);
+    }
+    if (!res.ok && res.error) alert(res.error);
+    return res;
+  };
+
   const mapItems: FloorMapItem[] = mapOnly
     ? visible.map((t) => {
         const st = effectiveTablePipeline(t, orders, tickets, floorCfg);
@@ -376,6 +395,7 @@ export function FloorView({
           ink: contrastInk(fill),
           flashing: tableFlash(t, floorCfg, clock || Date.now()),
           dim,
+          joined: clusterNumbers(tables, t.id).joined,
         };
       })
     : [];
@@ -526,7 +546,13 @@ export function FloorView({
         )}
       >
         {mapOnly ? (
-          <FloorMapCanvas items={mapItems} onTableClick={onTableClick} />
+          <FloorMapCanvas
+            items={mapItems}
+            onTableClick={onTableClick}
+            onCombine={(draggedId, ontoId) => {
+              withManager((pin) => joinParty(draggedId, ontoId, pin));
+            }}
+          />
         ) : (
         <div
           className={cn(
@@ -596,8 +622,7 @@ export function FloorView({
                     const btn = el?.closest("[data-table-id]") as HTMLElement | null;
                     const dest = btn?.dataset.tableId;
                     if (dest && dest !== d.id) {
-                      const res = mergeTables(d.id, dest);
-                      if (!res.ok) alert(res.error);
+                      withManager((pin) => mergeTables(dest, d.id, pin));
                     }
                   }}
                   data-table-id={t.id}
@@ -686,11 +711,11 @@ export function FloorView({
           </div>
           <p className="mt-2 text-center text-xs text-muted-foreground">
             {selectMode
-              ? "Tap tables to select, then Combine. Drag one table onto another to combine. Label = lowest number."
+              ? "Tap the party table first, then the tables that join it."
               : mergeMode
               ? mergePrimary
-                ? "Tap second table to combine (label = lowest number)"
-                : "Tap first table, then second"
+                ? "Tap the table that joins this party"
+                : "Tap the party table, then the table that joins it"
               : transferMode
                 ? transferFrom
                   ? "Tap destination table"
@@ -701,7 +726,7 @@ export function FloorView({
                   ? "Tap a table · color fill = status"
                 : locked
                   ? "Color fill = status · top bar = section · locked tables need a grant"
-                  : "Tap a table · drag onto another to combine · flashing = SLA"}
+                  : "Tap a table · drag one table onto another to join its party"}
           </p>
         </div>
         )}
@@ -1002,7 +1027,7 @@ export function FloorView({
               </DialogHeader>
               <TableDetailBody
                 table={detailLive}
-                openChecks={openChecksOnTable(detailLive, orders)}
+                openChecks={groupMembers(tables, detailLive.id).flatMap((t) => openChecksOnTable(t, orders))}
                 settings={settings}
                 employees={employees}
                 floorCfg={floorCfg}
@@ -1206,17 +1231,95 @@ export function FloorView({
                   if (!res.ok) alert(res.error);
                   else setReassignId("");
                 }}
-                onSplitGroup={
+                partyLabel={partyHeader(tables, detailLive.id)}
+                onMoveChecks={
                   (detailLive.mergedChildIds?.length ?? 0) > 0
                     ? () => {
-                        const res = unmergeTable(detailLive.id);
-                        if (!res.ok) alert(res.error);
-                        else setDetail(null);
+                        withManager((pin) => moveClusterChecksToPrimary(detailLive.id, pin));
                       }
+                    : undefined
+                }
+                onSplitGroup={
+                  (detailLive.mergedChildIds?.length ?? 0) > 0
+                    ? () => setSeparateOpen(true)
                     : undefined
                 }
               />
             </>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={separateOpen} onOpenChange={setSeparateOpen}>
+        <DialogContent data-separate-sheet>
+          <DialogHeader>
+            <DialogTitle>Separate</DialogTitle>
+          </DialogHeader>
+          {detailLive && (detailLive.mergedChildIds?.length ?? 0) > 0 ? (
+            <div className="space-y-3">
+              <p className="text-xs text-muted-foreground">
+                Joined tables leave this party. Items stay on their checks. A table with an open
+                check has to move that check onto another table in the party, or the check has to be closed.
+              </p>
+              {groupMembers(tables, detailLive.id)
+                .filter((t) => t.id !== detailLive.id)
+                .map((t) => {
+                  const token = tableToken(displayLabel(t));
+                  const checks = openChecksOnTable(t, orders);
+                  const others = groupMembers(tables, detailLive.id).filter((x) => x.id !== t.id);
+                  return (
+                    <div key={t.id} className="rounded-xl border border-border p-3" data-separate-row={token}>
+                      <p className="text-sm font-medium">Remove {token}</p>
+                      {checks.length > 0 ? (
+                        <label className="mt-2 block text-xs text-muted-foreground">
+                          Move open check to
+                          <select
+                            className="mt-1 h-9 w-full rounded-md border border-border bg-bg px-2 text-sm"
+                            value={transferPick[t.id] ?? ""}
+                            onChange={(e) => setTransferPick((cur) => ({ ...cur, [t.id]: e.target.value }))}
+                          >
+                            <option value="">Choose a table</option>
+                            {others.map((o) => (
+                              <option key={o.id} value={o.id}>
+                                {tableToken(displayLabel(o))}
+                              </option>
+                            ))}
+                          </select>
+                        </label>
+                      ) : (
+                        <p className="mt-1 text-xs text-muted-foreground">Goes back to empty.</p>
+                      )}
+                      <Button
+                        className="mt-2"
+                        size="sm"
+                        variant="outline"
+                        onClick={() => {
+                          const res = withManager((pin) =>
+                            separateJoined(detailLive.id, t.id, transferPick[t.id] || undefined, pin),
+                          );
+                          if (res.ok) setSeparateOpen(false);
+                        }}
+                      >
+                        Remove {token}
+                      </Button>
+                    </div>
+                  );
+                })}
+              <Button
+                variant="outline"
+                onClick={() => {
+                  const res = withManager((pin) => separateAllJoined(detailLive.id, false, pin));
+                  if (res.ok) {
+                    setSeparateOpen(false);
+                    setDetail(null);
+                  }
+                }}
+              >
+                Separate all
+              </Button>
+            </div>
+          ) : (
+            <p className="text-sm text-muted-foreground">This table is not a combined party.</p>
           )}
         </DialogContent>
       </Dialog>
@@ -1446,6 +1549,8 @@ function TableDetailBody({
   onReassignId,
   onReassign,
   onSplitGroup,
+  partyLabel,
+  onMoveChecks,
   busy = false,
   onAdd,
   onSend,
@@ -1485,6 +1590,8 @@ function TableDetailBody({
   onReassignId?: (id: string) => void;
   onReassign?: () => void;
   onSplitGroup?: () => void;
+  partyLabel?: string;
+  onMoveChecks?: () => void;
   busy?: boolean;
   onAdd?: (orderId: string) => void;
   onSend?: (orderId: string) => void;
@@ -1580,7 +1687,7 @@ function TableDetailBody({
       {hasOpen && (
         <div className="rounded-xl border border-border bg-bg px-3 py-2 text-sm" data-table-view>
           <p className="text-xs text-muted-foreground">
-            T{table.label} · {table.section} · {table.guestCount || table.seats} covers
+            {partyLabel || tableToken(table.label)} · {table.section} · {table.guestCount || table.seats} covers
             {headerServer ? ` · ${headerServer}` : ""}
           </p>
           {!busy && (
@@ -1683,10 +1790,15 @@ function TableDetailBody({
             Print all open
           </Button>
         )}
+        {onMoveChecks && (
+          <Button variant="outline" onClick={onMoveChecks} data-move-checks-primary>
+            Move checks to primary
+          </Button>
+        )}
         {onSplitGroup && (
-          <Button variant="outline" onClick={onSplitGroup}>
+          <Button variant="outline" onClick={onSplitGroup} data-separate-open>
             <Split className="h-4 w-4" />
-            Split group
+            Separate
           </Button>
         )}
         {(stored === "ordered_food" || stored === "food_delivered" || stored === "ordered_drinks" || hasOpen) && (

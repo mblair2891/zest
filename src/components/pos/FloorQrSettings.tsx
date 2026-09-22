@@ -73,10 +73,26 @@ export function FloorQrSettings({ write }: { write: boolean }) {
           Color-coded floor statuses, optional flash SLAs, and how table QR
           behaves for guests. Layout is drawn in Floor editor.
         </p>
-        <GuideLearnLink topicId="floor-status" compact>
+        <GuideLearnLink topicId="floor-tables" compact>
           Learn
         </GuideLearnLink>
       </div>
+      <label className="flex items-center gap-2 text-sm">
+        <input
+          type="checkbox"
+          checked={Boolean(settings.combineRequiresManager)}
+          disabled={!write}
+          onChange={(e) => {
+            updateSettings({ combineRequiresManager: e.target.checked });
+            persistFloorStatus();
+          }}
+        />
+        Combine requires manager
+      </label>
+      <p className="text-xs text-muted-foreground">
+        Off by default. Host, server, bartender, and manager can drag tables together. Turn this on
+        to ask for a manager PIN.
+      </p>
 
       <div>
         <p className="mb-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">

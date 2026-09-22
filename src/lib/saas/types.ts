@@ -128,6 +128,8 @@ export type LocationSetup = {
   stationPublish?: import("@/lib/pos/station-publish").StationPublishRecord;
   /** Increments on Publish, menu, devices, taxes, timezone, logo replace. Stations refetch snapshot. */
   configVersion?: number;
+  /** Floor combine/separate asks for a manager PIN. Default off. */
+  combineRequiresManager?: boolean;
   /** Screen + receipt derivatives. Original bytes stay in brand_logos. */
   brandLogos?: import("@/lib/brand/logos").BrandLogoMap;
   /** Who changed a paired tablet’s role, from → to, when. */
