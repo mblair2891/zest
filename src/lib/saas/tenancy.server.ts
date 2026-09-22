@@ -491,6 +491,12 @@ export async function requireMembership(
     throw new ForbiddenError("Demo venues are isolated from tenants");
   }
   if (!mem) throw new ForbiddenError();
+  if (mem.operator_id) {
+    const { sellingEntitySignInOpen } = await import("./entity-signin.server");
+    if (!(await sellingEntitySignInOpen(mem.operator_id))) {
+      throw new ForbiddenError("This selling entity is archived");
+    }
+  }
   if (locationId && mem.location_id && mem.location_id !== locationId) {
     throw new ForbiddenError();
   }

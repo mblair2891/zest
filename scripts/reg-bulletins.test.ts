@@ -41,7 +41,7 @@ test("bulletins never write tax rows; owner Save is required", () => {
 
 test("guide and platform form are wired", () => {
   const types = readFileSync("src/lib/guide/types.ts", "utf8");
-  assert.match(types, /2026\.10\.136/);
+  assert.match(types, /2026\.10\.137/);
   const settings = readFileSync("src/components/pos/SettingsView.tsx", "utf8");
   assert.match(settings, /data-venue-jurisdiction/);
   const plat = readFileSync("src/components/platform/BulletinsWorkspace.tsx", "utf8");

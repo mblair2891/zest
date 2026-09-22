@@ -1,6 +1,7 @@
 import { Building2, LayoutGrid, Plug, Users } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { hostMerchantName, type TenantDetailModel } from "@/lib/saas/tenant-detail";
+import { progressLine, seedLayeredOnboarding } from "@/lib/saas/onboarding-checklist";
 import type { VenueDashTabId } from "@/lib/saas/venue-dashboard-tabs";
 
 /**
@@ -28,6 +29,13 @@ export function TenantVenueOverview({
         : "Single operator";
   const life = (lifecycle || "training").replaceAll("_", " ");
   const entities = detail?.entities ?? [];
+  const peer = detail?.operatingModel === "peer_venue";
+  const checklist = progressLine(
+    seedLayeredOnboarding({
+      peer,
+      entities: entities.map((e) => ({ id: e.id, name: e.name })),
+    }),
+  );
 
   return (
     <div className="mx-auto max-w-3xl space-y-5" data-demo="platform-tenant-overview">
@@ -62,7 +70,7 @@ export function TenantVenueOverview({
             ["costs", "Costs", "Invoices, recipes, variance"],
             ["payments", "Payments", "Quantum Payments by entity"],
             ["gift", "Gift cards", "Issue, redeem, freeze, limits"],
-            ["onboarding", "Onboarding", "Entity checklist and go-live"],
+            ["onboarding", "Onboarding", checklist],
           ] as const
         ).map(([id, label, blurb]) => (
           <button

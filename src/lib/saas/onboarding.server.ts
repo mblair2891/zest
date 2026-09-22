@@ -615,17 +615,25 @@ export async function getLiveReadiness(orgId: string | null) {
 /** Public helper used by POS bootstrap. */
 export async function operatorsAsVendors(locationId: string) {
   const sql = await getSql();
-  const rows = await sql<{
+  type OpRow = {
     id: string;
     legal_name: string;
     dba: string | null;
     payout_bank_last4: string | null;
     station_types: unknown;
     station_kind: string | null;
-  }>`
+  };
+  const rows = await sql<OpRow>`
     select id, legal_name, dba, payout_bank_last4, station_types, station_kind
-    from operators where location_id = ${locationId} order by created_at
-  `;
+    from operators
+    where location_id = ${locationId} and archived_at is null
+    order by created_at
+  `.catch(() =>
+    sql<OpRow>`
+      select id, legal_name, dba, payout_bank_last4, station_types, station_kind
+      from operators where location_id = ${locationId} order by created_at
+    `,
+  );
   const palette = ["#2C4A6E", "#5C5C5C", "#1F7A4C", "#9A6700", "#A61B1B", "#4A5568"];
   return rows.map((r, i) => {
     const name = r.dba || r.legal_name;

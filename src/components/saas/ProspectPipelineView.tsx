@@ -26,6 +26,7 @@ import type {
 import { PROSPECT_STATUSES } from "@/lib/saas/prospect-types";
 import { PIPELINE_COLUMNS, PIPELINE_EXITS } from "@/lib/saas/pipeline-gates";
 import { formatCurrency } from "@/lib/utils";
+import { progressLine, seedLayeredOnboarding } from "@/lib/saas/onboarding-checklist";
 
 const BADGE: Record<string, "info" | "success" | "warn" | "danger" | "secondary"> = {
   prospect: "secondary",
@@ -179,10 +180,23 @@ function PipelineCard({
     row.monthlyCents != null && row.quoteSent
       ? formatCurrency(row.monthlyCents)
       : "Quote pending";
+  const peer = row.operatingModel === "peer_venue";
+  const checklist = progressLine(
+    seedLayeredOnboarding({
+      peer,
+      entities: peer
+        ? [
+            { id: "a", name: "Entity A" },
+            { id: "b", name: "Entity B" },
+          ]
+        : [{ id: "a", name: "Selling entity" }],
+    }),
+  );
   const meta = [
     row.email || null,
     row.locationCount ? `${row.locationCount} loc` : null,
     modelLabel(row.operatingModel),
+    checklist,
   ]
     .filter(Boolean)
     .join(" · ");

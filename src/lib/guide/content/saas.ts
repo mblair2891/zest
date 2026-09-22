@@ -111,6 +111,7 @@ export const SAAS_TOPICS: GuideTopic[] = [
         "Line on a check requires an entity. Settlement, labor, gift redeem, and chargebacks use owned lines only.",
         "Single-operator shop uses the same screens with entity count = 1.",
         "Billing contact is not a merchant. Password login never hits the staff PIN pad.",
+        "Two checklists, including a peer venue with no host. Location contact (name, email, phone) is required and is operational only. Location items: address, timezone, sections and floor, devices and printers, tenders, cash discount, taxes, Wi-Fi readiness, go-live window. Each selling entity has its own contact and items: legal name, menu, recipes (optional), staff and PINs, schedule, till rules, Finix merchant, payout, item routing, gift cards if they issue, and one order station. Statuses are not started, in progress, done, or blocked. A hosted venue finishes the location first, then sends invite links. On a peer venue the location contact and each entity contact finish in parallel. Go live stays closed until every entity’s merchant, menu, and one order station are done.",
       ),
       steps(
         "Get a price: Shared building — no host merchant. Entity count ≥ 2. Quote itemizes Finix/Quantum readers (qty × unit), setup, monthly modules. Android tablets only.",

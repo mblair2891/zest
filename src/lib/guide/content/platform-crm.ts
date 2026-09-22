@@ -20,7 +20,7 @@ export const PLATFORM_CRM_TOPICS: GuideTopic[] = [
         "Opportunities carry monthly amount, plan, probability, and close date.",
         "Activities are notes, calls, emails, tasks, and stage changes. Tasks have due dates.",
         "Get pricing / intake creates a prospect that syncs into CRM automatically.",
-        "Platform admin can Delete a CRM or pipeline record (lead confirm; extra confirm for a training venue; type-the-name for live). Factory reset stays the full wipe + Admin reseed.",
+        "Platform admin can Delete a CRM or pipeline record (lead confirm; extra confirm for a training venue; type-the-name for live). The same control deletes one selling entity: training or never-live with no card history is a hard delete of that entity’s menu, staff, devices, and checks. Live or any card history is Archive — hidden from the POS, kept for the ledger — after typing the entity name. A sibling entity stays and can still sign in. You cannot remove the last selling entity unless the whole venue is archived. Factory reset stays the full wipe.",
       ),
       steps(
         "Platform → CRM. Add lead, or wait for intake to appear.",
@@ -52,7 +52,7 @@ export const PLATFORM_CRM_TOPICS: GuideTopic[] = [
         "Prospect accepts or requests changes, or Admin records accept → Accepted.",
         "Record contract (checkbox + date) → Signed. That creates the venue-owner user and sends the login email.",
         "Resend invite from Pipeline or CRM. Platform does not impersonate the subscriber wizard.",
-        "Owner completes setup. Status becomes Training (sandbox) until they schedule go-live → Live.",
+        "Onboarding is two layers. Location: main contact, address, timezone, floor, devices, tenders, cash discount, taxes, Wi-Fi, go-live window. Each selling entity: its own contact, legal name, menu, staff, Finix merchant, payout, routing, and one order station. A hosted venue finishes the location first, then sends invite links. A peer venue has no host merchant; the location contact is operational only and cannot be skipped. Entity contacts finish in parallel. Checklist items are not started, in progress, done, or blocked. Go-live stays blocked while merchant, menu, or the order station is open.",
       ),
       callout("Go live", "Requires a real org and location. Never a demo seed."),
       related("platform-crm", "onboarding-wizard", "quote-contract"),
@@ -71,11 +71,11 @@ export const PLATFORM_CRM_TOPICS: GuideTopic[] = [
       why("Once a house is live it is a tenant — billed software, not a prospect card."),
       ul(
         "/dashboard and /platform are the SaaS home: CRM, pipeline, the Tenants tile, and platform settings. Those tiles never appear inside a tenant.",
-        "Tenants tile and the sidebar Tenants item open /platform/tenants (the directory). Isolated demos — Summit Hall, Harbor Lot, Ash Street Coffee, Redbird Chicken — show a Demo badge. They are pairable and excluded from CRM, pipeline, and revenue.",
+        "Tenants tile and the sidebar Tenants item open /platform/tenants (the directory). Isolated practice houses show a Demo badge. They are pairable and excluded from CRM, pipeline, and revenue.",
         "/platform/tenants/:orgId is that venue’s console, not the SaaS home. Tabs: Overview, Settings, Devices, Floor, Menus, Costs, Labor, Reports, Payments, Users, Onboarding. Overview tiles each open that tab — Labor is schedules/clock/hours export; Costs is invoices/recipes/variance. If a module is not subscribed: “Not on this package,” never a blank page. Isolated demos: Operating as remounts entity-scoped tabs.",
         "Devices: Add device, role (order | ODS | host | kiosk), large one-time code (QR optional / collapsed), role change after activate, Publish. Deactivate keeps the named slot (cannot PIN). Delete removes the slot after one confirm. Platform Admin and the venue billing owner can pair. Location owner / manager / Admin can delete.",
         "Settings on a peer venue is the building only (name, timezone, service style, cash rounding, QR, tax, sections, waitlist, publish). No host-merchant payout or Finix-on-venue. Entity Finix, menus, labor, and tips stay on each selling entity.",
-        "Shared venue (peer) works with no host merchant. hostEntityId may be null. The screen shows the building plus selling entities.",
+        "Shared venue (peer) works with no host merchant. The location contact is required and is not a Finix merchant. The screen shows that contact plus each selling entity’s contact and checklist. Deleting one operator leaves the other.",
         "Users tab: location owner / manager / location admin. Floor list shows name, role, entity, clock, and the 4-digit PIN (shown by default). Reset PIN confirms, then displays the new code. Disable keeps the row; that PIN no longer signs in. Password logins are separate — account passwords are never shown. Kitchen/server/bartender cannot open Users. Isolated demo: Platform Admin may view PINs for support. Add Location admin or Entity admin (email + temp password) or PIN floor staff. You cannot create a second platform Admin.",
         "Operating as is demo-only on the tenant console and in a manager More overflow on the station menu. Changing it remounts Menus / Users / Reports / Labor / Costs for that selling entity. It does not replace the tab chrome. Live subscribers never see it.",
         "Password login is back office. After PIN, a full-service order tablet opens Floor, Checks, Menu, Pay.",
@@ -146,7 +146,7 @@ export const PLATFORM_CRM_TOPICS: GuideTopic[] = [
       ul(
         "Funnel counts CRM accounts by stage.",
         "Pipeline value sums opportunity monthly amounts.",
-        "Live orgs and locations are real onboarded tenants. Isolated Demo houses (Summit Hall) are excluded from those counts.",
+        "Live orgs and locations are real onboarded tenants. Isolated Demo houses are excluded from those counts.",
         "Guest card rate vs Finix cost: per location, collected at that house’s guest rate, Finix 0.25%+$0.10 internal cost, residual split 90 platform / 10 location. Platform only.",
       ),
       related("platform-crm", "saas-lifecycle", "platform-tenants"),
@@ -162,7 +162,7 @@ export const PLATFORM_CRM_TOPICS: GuideTopic[] = [
     keywords: ["factory reset", "wipe", "danger zone", "bootstrap", "testing"],
     blocks: [
       why(
-        "Build and test cycles accumulate junk orgs. Factory reset returns the store to first-run: Platform Admin plus the isolated Summit Hall Demo.",
+        "Build and test cycles accumulate junk orgs. Factory reset returns the store to first-run: Platform Admin plus the isolated Demo house.",
       ),
       steps(
         "Platform → Settings → Danger zone.",
@@ -172,7 +172,7 @@ export const PLATFORM_CRM_TOPICS: GuideTopic[] = [
       ),
       ul(
         "Deletes orgs, locations, operators, CRM, prospects, tickets, invoices, ledger, devices, and non-admin users.",
-        "Reseeds isolated Summit Hall (Demo). Does not count in CRM. Confirm: “This restores demo stations and printers.”",
+        "Reseeds the isolated Demo house. It does not count in CRM. Confirm: “This restores demo stations and printers.”",
         "Reseed demo (same Danger zone) restores demo stations and printers only — not a CRM wipe. Deleted pair codes stay dead; restored slots get new codes.",
         "Plans and software pricing catalog stay.",
         "Server-only. Floor PIN and location owners cannot run it.",

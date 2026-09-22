@@ -1,7 +1,7 @@
 # Operators Guide — authoring
 
-**Revision · 22 Sep 2026** — Check numbers are T1-03, no date in the id.
-Guide v2026.10.136.
+**Revision · 22 Sep 2026** — Location checklist plus one checklist per selling entity.
+Guide v2026.10.137.
 
 The in-app **Operators Guide** is the living product manual. It is not a
 separate PDF. Staff open it from **Guide** / **?** in the POS and platform
@@ -82,7 +82,8 @@ Exit on the public page returns to marketing home (`/`).
 only when the viewer is signed in as `platform_admin`:
 
 - CRM / pipeline / quotes / email outbox
-- Host onboarding then tenant invite links
+- Host onboarding then tenant invite links. Onboarding is always two layers, including a peer venue: a location contact and checklist, then one contact and checklist per selling entity (not started / in progress / done / blocked). Go live stays closed until each entity’s merchant, menu, and one order station are done. A peer location contact is operational only — not a host merchant — and cannot be skipped.
+- Delete one selling entity from CRM or the venue page. Training / never-live with no card history removes that entity’s menu, staff, devices, and checks. Live or card history archives it (hidden from the POS, kept for the ledger) after the name is typed. A sibling entity stays and can still sign in. The last selling entity stays until the whole venue is archived.
 - Platform Settings (forms, not JSON)
 - Factory reset (danger)
 - Training status in the SaaS tenant view

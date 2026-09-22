@@ -94,6 +94,12 @@ export async function verifyStationPin(opts: {
   if (!hit) {
     return { ok: false, error: STATION_PIN_INVALID, code: "invalid" };
   }
+  if (hit.operator_id) {
+    const { sellingEntitySignInOpen } = await import("@/lib/saas/entity-signin.server");
+    if (!(await sellingEntitySignInOpen(hit.operator_id))) {
+      return { ok: false, error: STATION_PIN_INVALID, code: "invalid" };
+    }
+  }
 
   if (hit.pin_hash !== pinHash) {
     try {

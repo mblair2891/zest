@@ -22,7 +22,7 @@ import { useSaasStore } from "@/lib/pos/saas-store";
 import { isProspectDemo } from "@/lib/demo/session";
 import { formatDateTime } from "@/lib/utils";
 
-export function GoLivePanel() {
+export function GoLivePanel({ blockedReason }: { blockedReason?: string | null } = {}) {
   const emp = usePosStore((s) => s.employees.find((e) => e.id === s.currentEmployeeId));
   const status = useLifecycleStore((s) => s.status);
   const schedule = useLifecycleStore((s) => s.schedule);
@@ -45,9 +45,15 @@ export function GoLivePanel() {
         least one reader enrolled. Type GO LIVE NOW, or schedule a datetime.
         Choose keep vs erase practice tickets — menus and inventory stay.
       </p>
+      {blockedReason ? (
+        <p className="mt-2 text-sm text-danger" data-golive-blocked>
+          {blockedReason}
+        </p>
+      ) : null}
       <div className="mt-3 flex flex-wrap gap-2">
         <Button
           size="sm"
+          disabled={Boolean(blockedReason)}
           onClick={() => {
             setMode("now");
             setOpen(true);
@@ -58,6 +64,7 @@ export function GoLivePanel() {
         <Button
           size="sm"
           variant="outline"
+          disabled={Boolean(blockedReason)}
           onClick={() => {
             setMode("schedule");
             setOpen(true);

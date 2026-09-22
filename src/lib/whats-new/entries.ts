@@ -6,6 +6,19 @@ import type { GuideUpdate } from "@/lib/guide/types";
  */
 export const WHATS_NEW_ENTRIES: GuideUpdate[] = [
   {
+    id: "upd_2026_10_137_entity_checklists",
+    date: "2026-09-22",
+    title: "Delete one seller; two onboarding checklists",
+    summary:
+      "A training seller is removed after you type the name. A live seller, or one with card history, is archived. The other seller stays. Every venue has a location checklist and one checklist per selling entity.",
+    body: "Platform admin or the location owner can delete one selling entity. Onboarding, training, or never-live with no card history removes that entity’s menu, staff, devices, and checks. Live or card history archives it: hidden from the POS, kept for the ledger. Type the entity name to confirm. You cannot leave a venue with zero selling entities unless the whole venue is archived. A peer venue still needs a location contact (name, email, phone) — operational only, not a host merchant — plus each entity’s own contact and checklist. Checklist items are not started, in progress, done, or blocked. Go live stays closed until every entity’s merchant, menu, and one order station are done.",
+    roles: ["platform_admin", "owner_manager"],
+    surfaces: ["platform", "settings"],
+    audience: "all",
+    topicId: "peer-venue-setup",
+    tags: ["crm", "onboarding", "delete"],
+  },
+  {
     id: "upd_2026_10_136_check_table_seq",
     date: "2026-09-22",
     title: "Check numbers are table plus sequence",
