@@ -45,6 +45,21 @@ test("full-service demo seed publishes dining tables and the bar rail", () => {
   );
   assert.equal(kept?.version, 4);
 
+  const foreign = withSeededPublishedFloor(
+    {
+      version: 2,
+      publishedAt: 1,
+      publishedByName: "Owner",
+      setup: { floorPlan: { tables: [{ id: "t1" }, { id: "b1" }] } },
+    },
+    plan,
+  );
+  assert.equal(foreign?.version, 3);
+  assert.deepEqual(
+    (foreign?.setup.floorPlan as typeof plan).tables.map((t) => t.label),
+    ["1", "2", "B1", "B2"],
+  );
+
   const filled = withSeededPublishedFloor(
     {
       version: 2,
@@ -106,6 +121,9 @@ test("live floor uses the published snapshot, then the seeded plan, and keeps ho
   const app = readFileSync("src/components/pos/PosApp.tsx", "utf8");
   assert.match(app, /resolveServiceFloor/);
   assert.match(app, /autoPublishSeed: demoFullService && !keepOpenFloor/);
+  assert.match(app, /bundledStarter/);
+  assert.match(app, /summitHallFloorPlan/);
+  assert.match(app, /flushLocationCatalog\("floor"\)/);
   assert.match(app, /publishLocationFn/);
   const persist = readFileSync("src/lib/pos/persist-location-setup.ts", "utf8");
   assert.match(persist, /plan\.tables\.length/);

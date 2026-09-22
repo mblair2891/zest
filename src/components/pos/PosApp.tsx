@@ -36,6 +36,8 @@ import { EMPTY_LOCATION_SETUP } from "@/lib/saas/types";
 import { tablesFromFloorPlan } from "@/lib/saas/location-catalog";
 import { readFloorDraft, setFloorDraftBanner } from "@/lib/pos/live-floor";
 import { resolveServiceFloor } from "@/lib/pos/published-floor";
+import { flushLocationCatalog } from "@/lib/pos/persist-location-setup";
+import { summitHallFloorPlan } from "@/lib/saas/summit-hall";
 import { membershipToEmployeeRole } from "@/lib/access/membership-map";
 import { HOST_SCOPE, parseGrantMatrix } from "@/lib/access/entity-grants";
 import { parseLaborMap, parseLaborRules } from "@/lib/labor/rules";
@@ -550,7 +552,9 @@ function PosAppInner({ entityId }: { entityId?: string }) {
             const demoFullService =
               Boolean(setup.demoIsolated || access.location.isDemo) &&
               setup.serviceStyle === "full_service";
-            const keepOpenFloor = !station && cur.tables.length > 0;
+            const bundledStarter =
+              cur.tables.length > 0 && cur.tables.every((t) => /^(t|b)\d+$/.test(t.id));
+            const keepOpenFloor = !station && cur.tables.length > 0 && !bundledStarter;
             const resolved = resolveServiceFloor({
               publishedTables: keepOpenFloor ? null : publishedTables,
               seededTables: keepOpenFloor ? [] : seededTables,
@@ -558,7 +562,8 @@ function PosAppInner({ entityId }: { entityId?: string }) {
               currentTables: station ? [] : cur.tables,
               autoPublishSeed: demoFullService && !keepOpenFloor,
             });
-            const sections =
+            let nextTables = resolved.tables;
+            let sections =
               resolved.fromDraft && draft?.sections?.length
                 ? draft.sections
                 : publishedTables && publishedTables.length && pubPlan?.sections?.length
@@ -566,26 +571,35 @@ function PosAppInner({ entityId }: { entityId?: string }) {
                   : setup.floorPlan?.sections?.length
                     ? setup.floorPlan.sections
                     : cur.floorSections;
-            if (resolved.tables.length || sections.length) {
+            let autoPublish = resolved.autoPublish;
+            if (!nextTables.length && demoFullService) {
+              const plan = summitHallFloorPlan();
+              nextTables = tablesFromFloorPlan(plan);
+              sections = plan.sections;
+              autoPublish = true;
+            }
+            if (nextTables.length || sections.length) {
               usePosStore.setState({
                 floorSections: sections,
-                ...(resolved.tables.length ? { tables: resolved.tables } : {}),
+                ...(nextTables.length ? { tables: nextTables } : {}),
               });
             }
-            if (resolved.fromDraft) setFloorDraftBanner(true);
-            else if (resolved.tables.length) setFloorDraftBanner(false);
+            if (resolved.fromDraft && !autoPublish) setFloorDraftBanner(true);
+            else if (nextTables.length) setFloorDraftBanner(false);
             if (
-              resolved.autoPublish &&
+              autoPublish &&
               access.org.id &&
               access.location.id &&
               !floorAutoPublish.has(access.location.id)
             ) {
               floorAutoPublish.add(access.location.id);
-              void publishLocationFn({
-                data: { orgId: access.org.id, locationId: access.location.id },
-              }).catch(() => {
-                floorAutoPublish.delete(access.location.id);
-              });
+              const orgId = access.org.id;
+              const locationId = access.location.id;
+              void flushLocationCatalog("floor")
+                .then(() => publishLocationFn({ data: { orgId, locationId } }))
+                .catch(() => {
+                  floorAutoPublish.delete(locationId);
+                });
             }
           }
           if (setup.menuCatalog?.items?.length) {

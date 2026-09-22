@@ -16,6 +16,7 @@ import {
   unpairLocationDeviceFn,
 } from "@/lib/access/api";
 import { hashPin, isFourDigitPin } from "@/lib/pos/pin";
+import { flushLocationCatalog } from "@/lib/pos/persist-location-setup";
 import { noteChecklistSave, useChecklistLink } from "@/lib/saas/checklist-link";
 import { getSessionContextFn } from "@/lib/saas/api";
 import { canDeleteVenueDevice } from "@/lib/saas/tenant-users";
@@ -781,6 +782,7 @@ export function LocationDeviceRegistry({
     setError(null);
     setPublishMsg(null);
     try {
+      await flushLocationCatalog("floor");
       const res = await publishLocationFn({
         data: { orgId: resolvedOrgId, locationId: resolvedLocId },
       });

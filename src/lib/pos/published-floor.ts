@@ -5,13 +5,25 @@
  */
 import type { StationPublishRecord } from "./station-publish";
 
+function floorTableIds(plan: { tables?: unknown[] } | null | undefined): string[] {
+  if (!plan || !Array.isArray(plan.tables)) return [];
+  return plan.tables
+    .map((t) => (t && typeof t === "object" ? String((t as { id?: string }).id ?? "") : ""))
+    .filter(Boolean);
+}
+
 export function withSeededPublishedFloor(
   existing: StationPublishRecord | null | undefined,
   floorPlan: { tables: unknown[]; sections?: unknown[] } | null | undefined,
 ): StationPublishRecord | undefined {
   if (!floorPlan?.tables?.length) return existing ?? undefined;
-  const prev = existing?.setup?.floorPlan as { tables?: unknown[] } | undefined;
-  if (existing && Array.isArray(prev?.tables) && prev.tables.length > 0) return existing;
+  const prevIds = floorTableIds(existing?.setup?.floorPlan as { tables?: unknown[] } | undefined);
+  const seedIds = floorTableIds(floorPlan);
+  const same =
+    prevIds.length > 0 &&
+    prevIds.length === seedIds.length &&
+    seedIds.every((id) => prevIds.includes(id));
+  if (existing && same) return existing;
   return {
     version: (existing?.version ?? 0) + 1,
     publishedAt: Date.now(),

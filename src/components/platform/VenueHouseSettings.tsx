@@ -5,6 +5,7 @@ import { useSaasStore } from "@/lib/pos/saas-store";
 import { saveLocationSettingsFn, publishLocationFn } from "@/lib/access/api";
 import {
   confirmCashDiscountRecalc,
+  flushLocationCatalog,
   persistCashDiscount,
   persistHostStandPolicy,
   persistQrPolicy,
@@ -80,6 +81,7 @@ export function VenueHouseSettings() {
     setBusy(true);
     setPublishMsg(null);
     try {
+      await flushLocationCatalog("floor");
       const res = await publishLocationFn({
         data: { orgId, locationId: locId },
       });
