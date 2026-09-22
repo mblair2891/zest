@@ -6,6 +6,7 @@ import { SetupOnboardingWizard } from "@/components/saas/SetupOnboardingWizard";
 import { VenueOwnerWizard } from "@/components/saas/VenueOwnerWizard";
 import { getProspectFn } from "@/lib/saas/api";
 import { usesVenueOwnerWizard } from "@/lib/saas/venue-wizard";
+import { PlatformHomeLink } from "@/components/platform/PlatformHomeLink";
 
 export const Route = createFileRoute("/setup/$token")({
   component: SetupPage,
@@ -39,6 +40,9 @@ function SetupPage() {
   if (admin) {
     return (
       <div className="min-h-[100dvh] bg-bg pt-[var(--grok-banner-h,0px)]">
+        <header className="flex h-14 items-center border-b border-border bg-surface px-3">
+          <PlatformHomeLink />
+        </header>
         <div className="mx-auto max-w-xl px-4 py-16">
           <p className="text-xs font-semibold uppercase tracking-[0.2em] text-primary">
             Control plane
@@ -57,6 +61,9 @@ function SetupPage() {
   }
   return (
     <div className="min-h-[100dvh] bg-bg pt-[var(--grok-banner-h,0px)]">
+      <header className="flex h-14 items-center border-b border-border bg-surface px-3">
+        <PlatformHomeLink />
+      </header>
       <div className="mx-auto max-w-3xl px-4 py-10">
         <p className="text-xs font-semibold uppercase tracking-[0.2em] text-primary">
           Your venue

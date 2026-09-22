@@ -23,6 +23,7 @@ import {
   listTenantsFn,
 } from "@/lib/saas/api";
 import { PlatformControlPlane } from "@/components/platform/PlatformControlPlane";
+import { PlatformHomeLink } from "@/components/platform/PlatformHomeLink";
 import {
   parsePlatformSurface,
   type PlatformSurface,
@@ -329,6 +330,12 @@ export function PlatformApp({
       <LoginOnboardingHost />
       <header className="flex h-14 shrink-0 items-center gap-3 border-b border-border bg-surface px-3">
         <SummexMark className="h-8 w-8" />
+        <PlatformHomeLink
+          onHome={() => {
+            userPickedSurface.current = true;
+            setSurface("home");
+          }}
+        />
         <div className="min-w-0 flex-1">
           <p className="truncate text-sm font-semibold leading-tight">
             {adminNav ? "Summex Platform" : `${platform.name} Platform`}

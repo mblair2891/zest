@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { useCurrentUserState } from "@/lib/auth/use-current-user";
 import { getSessionContextFn } from "@/lib/saas/api";
 import { ProspectPipelineView } from "@/components/saas/ProspectPipelineView";
+import { PlatformHomeLink } from "@/components/platform/PlatformHomeLink";
 import { SessionGate } from "@/components/pos/SessionGate";
 
 export const Route = createFileRoute("/pipeline")({
@@ -51,10 +52,8 @@ function PipelineInner() {
 
   return (
     <div className="flex h-[100dvh] flex-col bg-bg pt-[var(--grok-banner-h,0px)]">
-      <header className="flex h-14 shrink-0 items-center gap-3 border-b border-border px-4">
-        <Link to="/dashboard" className="text-sm text-muted-foreground hover:text-foreground">
-          Dashboard
-        </Link>
+      <header className="flex h-14 shrink-0 items-center gap-3 border-b border-border bg-surface px-3">
+        <PlatformHomeLink />
         <h1 className="text-sm font-semibold">Platform pipeline</h1>
       </header>
       <main className="flex min-h-0 flex-1 flex-col overflow-hidden">

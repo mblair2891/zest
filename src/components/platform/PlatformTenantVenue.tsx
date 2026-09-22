@@ -71,6 +71,7 @@ import {
   type PasswordDashKind,
 } from "@/lib/saas/password-dash";
 import { PasswordDashHome } from "@/components/platform/PasswordDashHome";
+import { PlatformHomeLink } from "@/components/platform/PlatformHomeLink";
 import { DemoEntitySwitcher } from "@/components/demo/DemoEntitySwitcher";
 import { LedgerView } from "@/components/pos/LedgerView";
 import type { MembershipRole } from "@/lib/saas/types";
@@ -554,6 +555,11 @@ export function PlatformTenantVenue({
         >
           <header className="flex h-14 shrink-0 items-center gap-3 border-b border-border bg-surface px-3">
             <SummexMark className="h-8 w-8" />
+            <PlatformHomeLink
+              onHome={() => {
+                if (audience !== "platform") setTab("overview");
+              }}
+            />
             {audience === "owner" || audience === "entity" || audience === "accountant" ? (
               <Button size="sm" variant="ghost" onClick={() => void signOut("/login")}>
                 Sign out

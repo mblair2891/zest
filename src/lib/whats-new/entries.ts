@@ -6,6 +6,18 @@ import type { GuideUpdate } from "@/lib/guide/types";
  */
 export const WHATS_NEW_ENTRIES: GuideUpdate[] = [
   {
+    id: "upd_2026_10_151_platform_home",
+    date: "2026-09-22",
+    title: "Platform Home is on every console page",
+    summary: "Home in the platform top bar opens the dashboard, including from a tenant Floor tab.",
+    body: "CRM, pipeline, tenants, a tenant console, quote settings, onboarding, users, and settings show Home in the top bar. Home opens the platform dashboard. From a tenant Floor tab it returns there in one tap. The location POS, station, and kiosk keep their own shell.",
+    roles: ["platform_admin"],
+    surfaces: ["platform", "settings"],
+    audience: "platform",
+    topicId: "platform-admin",
+    tags: ["platform"],
+  },
+  {
     id: "upd_2026_10_150_live_walls",
     date: "2026-09-22",
     title: "Live floor walls stay dark on the wood",
