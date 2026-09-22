@@ -27,6 +27,7 @@ import {
   type LayeredOnboarding,
 } from "@/lib/saas/onboarding-checklist";
 import { useChecklistLink } from "@/lib/saas/checklist-link";
+import { useOnboardingStore } from "@/lib/saas/onboarding-state";
 import { usePosStore } from "@/lib/pos/store";
 
 export function VenueOnboardingPanel({
@@ -42,7 +43,9 @@ export function VenueOnboardingPanel({
 }) {
   const [rows, setRows] = useState<TenantInviteRow[] | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [layer, setLayer] = useState<LayeredOnboarding | null>(null);
+  const storedLayer = useOnboardingStore((s) => (s.locationId === locationId ? s.layer : null));
+  const hydrated = useOnboardingStore((s) => s.hydrated && s.locationId === locationId);
+  const [layer, setLayerState] = useState<LayeredOnboarding | null>(storedLayer);
   const [removed, setRemoved] = useState<string[]>([]);
   const [archivedIds, setArchivedIds] = useState<string[]>([]);
   const peer = usePosStore((s) => Boolean(s.settings.peerVenue || s.settings.operatingModel === "peer_venue"));
@@ -50,6 +53,21 @@ export function VenueOnboardingPanel({
   const applySerial = useChecklistLink((s) => s.applySerial);
   const applied = useChecklistLink((s) => s.applied);
   const openLink = useChecklistLink((s) => s.open);
+
+  const setLayer = useCallback((next: LayeredOnboarding | ((cur: LayeredOnboarding | null) => LayeredOnboarding | null)) => {
+    setLayerState((cur) => {
+      const resolved = typeof next === "function" ? next(cur) : next;
+      if (resolved && orgId && locationId) {
+        useOnboardingStore.getState().commit(locationId, resolved, orgId);
+      }
+      return resolved;
+    });
+  }, [orgId, locationId]);
+
+  useEffect(() => {
+    if (!hydrated) return;
+    setLayerState(storedLayer);
+  }, [hydrated, locationId, storedLayer]);
 
   useEffect(() => {
     if (!applied) return;
@@ -74,7 +92,7 @@ export function VenueOnboardingPanel({
       };
     });
     useChecklistLink.getState().clearApplied();
-  }, [applySerial, applied]);
+  }, [applySerial, applied, setLayer]);
 
   const openItem = (scope: "location" | "entity", entityId: string | undefined, item: CheckItem) => {
     const target = checklistTaskTarget(scope, item.id);
@@ -106,28 +124,29 @@ export function VenueOnboardingPanel({
   }, [load]);
 
   useEffect(() => {
-    if (!rows) return;
+    if (!rows || !hydrated) return;
     setLayer((cur) => {
-      if (!cur) {
-        return seedLayeredOnboarding({
+      const base =
+        cur ??
+        useOnboardingStore.getState().layer ??
+        seedLayeredOnboarding({
           peer,
           entities: rows
             .filter((r) => !removed.includes(r.operatorId))
             .map((r) => ({ id: r.operatorId, name: r.displayName || "Selling entity" })),
         });
-      }
-      const known = new Set(cur.entities.map((e) => e.id));
+      const known = new Set(base.entities.map((e) => e.id));
       const extra = rows.filter((r) => !known.has(r.operatorId) && !removed.includes(r.operatorId));
       return {
-        ...cur,
+        ...base,
         peer,
         entities: [
-          ...cur.entities.filter((e) => !removed.includes(e.id)),
+          ...base.entities.filter((e) => !removed.includes(e.id)),
           ...extra.map((r) => blankEntityChecklist(r.operatorId, r.displayName || "Selling entity")),
         ],
       };
     });
-  }, [rows, peer, removed]);
+  }, [rows, peer, removed, hydrated, setLayer]);
 
   const entities = (rows ?? [])
     .filter((r) => !removed.includes(r.operatorId))

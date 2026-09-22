@@ -15,10 +15,11 @@ import { CASH_ROUND_INCREMENTS, SERVICE_STYLES_VENUE, TAX_MODES } from "@/lib/sa
 import { parseQrMode } from "@/lib/pos/qr-table";
 import { parseQrPolicy, QR_FLAG_LABEL, QR_MODE_FLAGS, type QrModeFlag } from "@/lib/pos/qr-policy";
 import { canEmployee } from "@/lib/access/permissions";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import type { CashRoundIncrement } from "@/lib/pos/types";
 import { TaxRatesEditor, ratesPatch } from "@/components/pos/TaxRatesSettings";
 import { noteChecklistSave } from "@/lib/saas/checklist-link";
+import { saveLocationProfileChecklist, useOnboardingStore } from "@/lib/saas/onboarding-state";
 import {
   DEFAULT_VENUE_TIMEZONE,
   VENUE_TIMEZONES,
@@ -58,6 +59,17 @@ export function VenueHouseSettings() {
   const vendors = usePosStore((s) => s.vendors);
   const [publishMsg, setPublishMsg] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [profileMsg, setProfileMsg] = useState<string | null>(null);
+  const checklist = useOnboardingStore((s) => (s.locationId === locId ? s.layer : null));
+  const [contactName, setContactName] = useState(checklist?.location.contactName ?? "");
+  const [contactEmail, setContactEmail] = useState(checklist?.location.contactEmail ?? "");
+  const [contactPhone, setContactPhone] = useState(checklist?.location.contactPhone ?? "");
+  useEffect(() => {
+    if (!checklist) return;
+    setContactName(checklist.location.contactName);
+    setContactEmail(checklist.location.contactEmail);
+    setContactPhone(checklist.location.contactPhone);
+  }, [checklist]);
 
   const persist = (patch: Record<string, unknown>) => {
     if (!write || isProspectDemo() || !orgId || !locId) return;
@@ -132,7 +144,6 @@ export function VenueHouseSettings() {
             onChange={(e) => updateSettings({ name: e.target.value })}
             onBlur={() => {
               persist({ hostBrandName: settings.name });
-              noteChecklistSave({ tab: "settings", focus: "location-contact" });
             }}
           />
         </label>
@@ -144,7 +155,6 @@ export function VenueHouseSettings() {
             data-checklist-focus="address"
             onChange={(e) => updateSettings({ address: e.target.value })}
             onBlur={() => {
-              noteChecklistSave({ tab: "settings", focus: "address" });
               const guessed = guessTimezoneFromAddress(settings.address);
               const cur = parseVenueTimezone(settings.timezone);
               if (!settings.timezone || cur === DEFAULT_VENUE_TIMEZONE) {
@@ -165,7 +175,6 @@ export function VenueHouseSettings() {
             onChange={(e) => {
               updateSettings({ timezone: e.target.value });
               persist({ timezone: e.target.value });
-              noteChecklistSave({ tab: "settings", focus: "timezone" });
             }}
           >
             {(VENUE_TIMEZONES as readonly string[])
@@ -186,6 +195,49 @@ export function VenueHouseSettings() {
             Default from address; editable. Tickets and reports use this zone, not the tablet.
           </span>
         </label>
+        <label className="block text-sm">
+          <span className="mb-1 block text-muted-foreground">Main contact name</span>
+          <Input value={contactName} disabled={!write} onChange={(e) => setContactName(e.target.value)} />
+        </label>
+        <label className="block text-sm">
+          <span className="mb-1 block text-muted-foreground">Main contact email</span>
+          <Input value={contactEmail} disabled={!write} onChange={(e) => setContactEmail(e.target.value)} />
+        </label>
+        <label className="block text-sm">
+          <span className="mb-1 block text-muted-foreground">Main contact phone</span>
+          <Input value={contactPhone} disabled={!write} onChange={(e) => setContactPhone(e.target.value)} />
+        </label>
+        <Button
+          type="button"
+          disabled={!write || busy}
+          data-checklist-profile-save
+          onClick={() => {
+            const name = contactName.trim() || settings.name.trim();
+            const email = contactEmail.trim();
+            const phone = contactPhone.trim();
+            persist({
+              hostBrandName: settings.name,
+              address: settings.address,
+              timezone: parseVenueTimezone(settings.timezone),
+            });
+            void saveLocationProfileChecklist({
+              orgId,
+              locationId: locId,
+              peer,
+              filled: {
+                contact: Boolean(name && email && phone),
+                address: Boolean(settings.address.trim()),
+                timezone: Boolean(parseVenueTimezone(settings.timezone)),
+              },
+              contact: { name, email, phone },
+            }).then(() => {
+              setProfileMsg("Profile saved. Contact, address, and timezone update together on the checklist.");
+            });
+          }}
+        >
+          Save profile
+        </Button>
+        {profileMsg ? <p className="text-xs text-primary">{profileMsg}</p> : null}
       </section>
 
       <section className="rounded-2xl border border-border bg-surface p-4 space-y-3">

@@ -42,6 +42,7 @@ import { TenantUsersPanel } from "@/components/platform/TenantUsersPanel";
 import { VenueOnboardingPanel } from "@/components/platform/VenueOnboardingPanel";
 import { ChecklistReturnBar } from "@/components/platform/ChecklistReturnBar";
 import { useChecklistLink } from "@/lib/saas/checklist-link";
+import { rememberChecklistScope, useOnboardingStore } from "@/lib/saas/onboarding-state";
 import { CostWorkspace } from "@/components/pos/CostWorkspace";
 import { LaborOpsView } from "@/components/pos/LaborOpsView";
 import { ReportsView } from "@/components/pos/ReportsView";
@@ -511,6 +512,8 @@ export function PlatformTenantVenue({
         });
       }
       if (!cancelled) {
+        useOnboardingStore.getState().hydrate(loc.id, setup.onboardingChecklist);
+        rememberChecklistScope(access.org.id, loc.id);
         setOrgReadyId(access.org.id);
         setReady(true);
       }

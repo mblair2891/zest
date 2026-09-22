@@ -48,7 +48,14 @@ export type TableKind =
   | "booth_u"
   | "booth_l"
   | "barstool"
+  | "wall"
+  | "door"
+  | "window"
+  | "host_stand"
+  | "bar_top"
   | "other";
+
+export type BarTopShape = "straight" | "l" | "u" | "island" | "polyline";
 
 export type QrMode = "full" | "hybrid" | "pay_only";
 export type {
@@ -427,6 +434,10 @@ export interface Table {
   h: number;
   shape: "rect" | "round" | "bar" | "booth" | "other";
   kind?: TableKind;
+  /** Bar top outline. Stools snap to this rail. */
+  barShape?: BarTopShape;
+  /** Custom bar polyline, 0–100 inside the fixture box. */
+  points?: { x: number; y: number }[];
   /** Degrees, 90° steps. Booth benches rotate with the fixture. */
   rotation?: number;
   sectionId?: string;

@@ -311,6 +311,9 @@ export function FloorView({
   };
 
   const onTableClick = (t: Table) => {
+    if (t.kind === "wall" || t.kind === "door" || t.kind === "window" || t.kind === "host_stand" || t.kind === "bar_top") {
+      return;
+    }
     if (barPick) {
       const res = openBarTabOnTable(t.id);
       if (!res.ok) {

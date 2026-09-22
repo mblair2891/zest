@@ -2,6 +2,8 @@ import { useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointer
 import type { Table } from "@/lib/pos/types";
 import { floorFit, floorMapNumber, tablePixelBox } from "@/lib/pos/floor-fit";
 import { FloorFixtureArt } from "@/components/pos/FloorFixtureArt";
+import { FloorArchitectureMark } from "@/components/pos/FloorArchitectureMark";
+import { isArchitectureKind } from "@/lib/pos/floor-architecture";
 import { cn } from "@/lib/utils";
 
 function isBarSeat(table: Table): boolean {
@@ -200,9 +202,10 @@ export function FloorMapCanvas({
           transformOrigin: "0 0",
         }}
       >
-        {barSlab(items, fit.pxPerPct)}
+        {items.some((i) => i.table.kind === "bar_top") ? null : barSlab(items, fit.pxPerPct)}
         {items.map((item) => {
-          const bar = item.table.kind === "barstool" || item.table.shape === "bar";
+          const arch = isArchitectureKind(item.table.kind);
+          const bar = !arch && (item.table.kind === "barstool" || item.table.shape === "bar");
           const box = tablePixelBox(item.table, fit.pxPerPct, bar ? 40 : 72);
           const num = floorMapNumber(item.table.label);
           const fill = item.fill && item.fill !== "transparent" ? item.fill : "#f4efe6";
@@ -239,7 +242,9 @@ export function FloorMapCanvas({
                 item.dim && "ring-2 ring-black/30",
               )}
             >
-              {bar ? (
+              {arch ? (
+                <FloorArchitectureMark table={item.table} />
+              ) : bar ? (
                 <span className="pointer-events-none">{num}</span>
               ) : (
                 <FloorFixtureArt

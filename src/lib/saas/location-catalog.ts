@@ -12,6 +12,8 @@ export type FloorPlanTable = {
   h: number;
   shape: Table["shape"];
   kind?: TableKind;
+  barShape?: import("@/lib/pos/types").BarTopShape;
+  points?: { x: number; y: number }[];
   rotation?: number;
   sectionId?: string;
   qrToken?: string;
@@ -51,6 +53,11 @@ const KINDS = new Set([
   "booth_u",
   "booth_l",
   "barstool",
+  "wall",
+  "door",
+  "window",
+  "host_stand",
+  "bar_top",
   "other",
 ]);
 
@@ -67,18 +74,36 @@ export function parseFloorPlan(raw: unknown): LocationFloorPlan | undefined {
     if (!id) continue;
     const shape = SHAPES.has(str(r.shape)) ? (str(r.shape) as FloorPlanTable["shape"]) : "round";
     const kind = KINDS.has(str(r.kind)) ? (str(r.kind) as TableKind) : undefined;
+    const arch = kind === "wall" || kind === "door" || kind === "window" || kind === "host_stand" || kind === "bar_top";
+    const thin = kind === "wall" || kind === "door" || kind === "window";
     const rot = Math.round(num(r.rotation, 0) / 90) * 90;
+    const barShapeRaw = str(r.barShape);
+    const barShape =
+      barShapeRaw === "straight" || barShapeRaw === "l" || barShapeRaw === "u" || barShapeRaw === "island" || barShapeRaw === "polyline"
+        ? barShapeRaw
+        : undefined;
+    const points = Array.isArray(r.points)
+      ? r.points
+          .map((p) => {
+            const q = asObj(p);
+            if (!q) return null;
+            return { x: num(q.x), y: num(q.y) };
+          })
+          .filter((p): p is { x: number; y: number } => Boolean(p))
+      : undefined;
     tables.push({
       id,
       label: str(r.label, id).slice(0, 40),
       section: str(r.section, "Dining").slice(0, 40),
-      seats: Math.max(1, Math.round(num(r.seats, 4))),
+      seats: Math.max(arch ? 0 : 1, Math.round(num(r.seats, arch ? 0 : 4))),
       x: Math.min(90, Math.max(0, num(r.x))),
       y: Math.min(90, Math.max(0, num(r.y))),
-      w: Math.min(40, Math.max(6, num(r.w, 12))),
-      h: Math.min(40, Math.max(6, num(r.h, 12))),
+      w: Math.min(arch ? 100 : 40, Math.max(thin ? 2 : 6, num(r.w, 12))),
+      h: Math.min(arch ? 100 : 40, Math.max(thin ? 1.5 : 6, num(r.h, 12))),
       shape,
       kind,
+      barShape,
+      points,
       rotation: ((rot % 360) + 360) % 360,
       sectionId: str(r.sectionId).slice(0, 80) || undefined,
       qrToken: str(r.qrToken).slice(0, 32) || undefined,
@@ -116,6 +141,8 @@ export function floorPlanFromPos(tables: Table[], sections: FloorSection[]): Loc
         h: t.h,
         shape: t.shape,
         kind: t.kind,
+        barShape: t.barShape,
+        points: t.points,
         rotation: t.rotation,
         sectionId: t.sectionId,
         qrToken: t.qrToken,
@@ -136,6 +163,8 @@ export function tablesFromFloorPlan(plan: LocationFloorPlan): Table[] {
     h: t.h,
     shape: t.shape,
     kind: t.kind,
+    barShape: t.barShape,
+    points: t.points,
     rotation: t.rotation,
     sectionId: t.sectionId,
     qrToken: t.qrToken,

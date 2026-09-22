@@ -4099,6 +4099,8 @@ const usePosStoreRaw = create<PosStore>()(persist((set, get) => {
 			h: partial.h ?? 12,
 			shape: partial.shape ?? "round",
 			kind: partial.kind ?? (partial.shape === "bar" ? "barstool" : partial.shape === "booth" ? "booth_4" : "table"),
+			barShape: partial.barShape,
+			points: partial.points,
 			rotation: partial.rotation ?? 0,
 			sectionId: partial.sectionId,
 			status: "empty",

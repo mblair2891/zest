@@ -27,6 +27,7 @@ import { parseLocationDevices } from "@/lib/pos/location-devices";
 import { seedDefaultPrinterAssignments } from "@/lib/print/printer-assignment";
 import { parseNetworkChecklist, parseNetworkReadyStatus } from "./network-readiness";
 import { parseFloorPlan, parseMenuCatalog, parseRecipes } from "./location-catalog";
+import { parseLayeredOnboarding } from "./onboarding-checklist";
 import { parseHrMap } from "@/lib/hr/types";
 import { parseLaborMap } from "@/lib/labor/rules";
 import { parseOpsJobsConfig } from "@/lib/ops-jobs/config";
@@ -310,6 +311,7 @@ function parseSetup(raw: unknown): LocationSetup {
         ? undefined
         : Math.min(10_000, Math.max(0, Math.round(Number(o.giftOperatorBreakageSplitBps) || 0))),
     floorPlan: parseFloorPlan(o.floorPlan),
+    onboardingChecklist: parseLayeredOnboarding(o.onboardingChecklist) ?? undefined,
     menuCatalog: parseMenuCatalog(o.menuCatalog),
     item86: parseItem86(o.item86),
     recipes: parseRecipes(o.recipes),

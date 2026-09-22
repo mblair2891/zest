@@ -1,7 +1,7 @@
 # Operators Guide — authoring
 
-**Revision · 22 Sep 2026** — Demo full-service floor is published.
-Guide v2026.10.144.
+**Revision · 22 Sep 2026** — Checklist save persists; floor walls and bar.
+Guide v2026.10.145.
 
 The in-app **Operators Guide** is the living product manual. It is not a
 separate PDF. Staff open it from **Guide** / **?** in the POS and platform

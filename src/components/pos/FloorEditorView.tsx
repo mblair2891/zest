@@ -27,6 +27,13 @@ import { getDemoType } from "@/lib/demo/session";
 import { GuideLearnLink } from "@/components/guide/GuideLearnLink";
 import { QrMark } from "./QrMark";
 import { persistLocationCatalog, persistPrinterAssignments } from "@/lib/pos/persist-location-setup";
+import { FloorArchitectureMark } from "@/components/pos/FloorArchitectureMark";
+import {
+  isArchitectureKind,
+  snapPct,
+  snapStoolToRail,
+  type BarTopShape,
+} from "@/lib/pos/floor-architecture";
 import {
   barPrinterForSection,
   isBarOrderPrinter,
@@ -49,6 +56,11 @@ const KINDS: {
   { id: "booth_u", label: "Booth U", shape: "booth", w: 20, h: 18, seats: 6, booth: "booth_u" },
   { id: "booth_l", label: "Booth L", shape: "booth", w: 18, h: 18, seats: 5, booth: "booth_l" },
   { id: "barstool", label: "Barstool", shape: "bar", w: 8, h: 8, seats: 1 },
+  { id: "wall", label: "Wall", shape: "rect", w: 28, h: 2, seats: 0 },
+  { id: "door", label: "Door", shape: "rect", w: 8, h: 2, seats: 0 },
+  { id: "window", label: "Window", shape: "rect", w: 12, h: 2, seats: 0 },
+  { id: "host_stand", label: "Host stand", shape: "rect", w: 14, h: 10, seats: 0 },
+  { id: "bar_top", label: "Bar top", shape: "rect", w: 36, h: 16, seats: 0 },
   { id: "other", label: "Other", shape: "other", w: 12, h: 10, seats: 2 },
 ];
 
@@ -152,19 +164,39 @@ export function FloorEditorView() {
     if (resize.current) {
       const dw = ((e.clientX - resize.current.startX) / rect.width) * 100;
       const dh = ((e.clientY - resize.current.startY) / rect.height) * 100;
-      const nw = Math.min(40, Math.max(6, resize.current.origW + dw));
-      const nh = Math.min(40, Math.max(6, resize.current.origH + dh));
+      const target = tables.find((t) => t.id === resize.current?.id);
+      const thin = target && (target.kind === "wall" || target.kind === "door" || target.kind === "window");
+      const arch = isArchitectureKind(target?.kind);
+      const nw = Math.min(arch ? 100 : 40, Math.max(thin ? 2 : 6, resize.current.origW + dw));
+      const nh = thin
+        ? resize.current.origH
+        : Math.min(arch ? 100 : 40, Math.max(6, resize.current.origH + dh));
       update(resize.current.id, {
-        w: Math.round(nw * 10) / 10,
-        h: Math.round(nh * 10) / 10,
+        w: thin || arch ? snapPct(nw) : Math.round(nw * 10) / 10,
+        h: thin ? target?.h ?? nh : Math.round(nh * 10) / 10,
       });
       return;
     }
     if (!drag.current) return;
     const dx = ((e.clientX - drag.current.startX) / rect.width) * 100;
     const dy = ((e.clientY - drag.current.startY) / rect.height) * 100;
-    const nx = Math.min(90, Math.max(0, drag.current.origX + dx));
-    const ny = Math.min(90, Math.max(0, drag.current.origY + dy));
+    const target = tables.find((t) => t.id === drag.current?.id);
+    let nx = Math.min(90, Math.max(0, drag.current.origX + dx));
+    let ny = Math.min(90, Math.max(0, drag.current.origY + dy));
+    if (isArchitectureKind(target?.kind)) {
+      nx = snapPct(nx);
+      ny = snapPct(ny);
+    }
+    if (target?.kind === "barstool") {
+      const snapped = snapStoolToRail(
+        { x: nx, y: ny, w: target.w, h: target.h },
+        tables,
+      );
+      if (snapped && Math.hypot(snapped.x - nx, snapped.y - ny) < 8) {
+        nx = snapped.x;
+        ny = snapped.y;
+      }
+    }
     update(drag.current.id, { x: Math.round(nx * 10) / 10, y: Math.round(ny * 10) / 10 });
   };
 
@@ -206,7 +238,18 @@ export function FloorEditorView() {
       label:
         kind.id === "barstool"
           ? `B${tables.filter((t) => t.section === "Bar" || t.kind === "barstool").length + 1}`
-          : undefined,
+          : kind.id === "wall"
+            ? "Wall"
+            : kind.id === "door"
+              ? "Door"
+              : kind.id === "window"
+                ? "Window"
+                : kind.id === "host_stand"
+                  ? "Host"
+                  : kind.id === "bar_top"
+                    ? "Bar"
+                    : undefined,
+      barShape: kind.id === "bar_top" ? "straight" : undefined,
     });
     setSelected(id);
     persistLocationCatalog("floor");
@@ -305,6 +348,9 @@ export function FloorEditorView() {
                     (t.mergedChildIds?.length ?? 0) > 0 && "ring-1 ring-info",
                   )}
                 >
+                  {isArchitectureKind(t.kind) ? (
+                    <FloorArchitectureMark table={t} />
+                  ) : (
                   <FloorFixtureArt
                     table={t}
                     tableFill="#efe6d8"
@@ -313,6 +359,7 @@ export function FloorEditorView() {
                     label={t.label}
                     rotation={t.rotation ?? 0}
                   />
+                  )}
                   {selected === t.id && (
                     <span
                       className="absolute bottom-0 right-0 z-10 h-3 w-3 cursor-nwse-resize rounded-sm bg-primary"
@@ -447,6 +494,37 @@ export function FloorEditorView() {
                   }
                 />
               </label>
+              {selectedTable.kind === "bar_top" && (
+                <div>
+                  <p className="mb-1 text-xs text-muted-foreground">Bar shape</p>
+                  <div className="flex flex-wrap gap-1" data-bar-shape-picker>
+                    {(["straight", "l", "u", "island", "polyline"] as BarTopShape[]).map((shape) => (
+                      <Button
+                        key={shape}
+                        size="sm"
+                        variant={(selectedTable.barShape ?? "straight") === shape ? "default" : "outline"}
+                        onClick={() => {
+                          update(selectedTable.id, {
+                            barShape: shape,
+                            points:
+                              shape === "polyline"
+                                ? selectedTable.points ?? [
+                                    { x: 8, y: 70 },
+                                    { x: 40, y: 20 },
+                                    { x: 92, y: 70 },
+                                  ]
+                                : selectedTable.points,
+                          });
+                          persistLocationCatalog("floor");
+                        }}
+                      >
+                        {shape === "l" ? "L" : shape === "u" ? "U" : shape}
+                      </Button>
+                    ))}
+                  </div>
+                </div>
+              )}
+              {!isArchitectureKind(selectedTable.kind) && (
               <label className="block text-xs text-muted-foreground">
                 Seats
                 <Input
@@ -468,6 +546,7 @@ export function FloorEditorView() {
                   }}
                 />
               </label>
+              )}
               <label className="block text-xs text-muted-foreground">
                 Room / section
                 <select

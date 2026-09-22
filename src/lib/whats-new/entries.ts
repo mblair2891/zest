@@ -6,6 +6,19 @@ import type { GuideUpdate } from "@/lib/guide/types";
  */
 export const WHATS_NEW_ENTRIES: GuideUpdate[] = [
   {
+    id: "upd_2026_10_145_checklist_floor",
+    date: "2026-09-22",
+    title: "Checklist save sticks; floor can draw a room",
+    summary:
+      "Saving Location profile finishes contact, address, and timezone. The floor editor draws walls and a bar.",
+    body: "One screen can finish several onboarding tasks. Save on Location profile marks main contact, address, and timezone. A blank required field stays in progress. Status is stored on the venue, so leaving for the floor and coming back still shows Done. The floor editor adds walls, doors, windows, a host stand, and a bar top (Straight, L, U, island, or a custom line). Stools snap to the rail. The live wood map draws those pieces. Dining tables stay number-only. Publish writes the full layout.",
+    roles: ["owner_manager", "host_operator", "platform_admin"],
+    surfaces: ["settings", "floor"],
+    audience: "all",
+    topicId: "floor-editor",
+    tags: ["onboarding", "floor"],
+  },
+  {
     id: "upd_2026_10_144_demo_floor",
     date: "2026-09-22",
     title: "Full-service demo floor is published",

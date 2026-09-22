@@ -110,6 +110,8 @@ export type LocationSetup = {
   giftOperatorBreakageSplitBps?: number;
   /** Saved floor map (x/y/size). Always kept on go-live. */
   floorPlan?: import("./location-catalog").LocationFloorPlan;
+  /** Location + entity onboarding checklists. Reloaded on every visit. */
+  onboardingChecklist?: import("./onboarding-checklist").LayeredOnboarding;
   /** Saved menu catalog. Always kept on go-live. */
   menuCatalog?: import("./location-catalog").LocationMenuCatalog;
   /** Live 86 overlay. Broadcast immediately — not waiting for Publish. */

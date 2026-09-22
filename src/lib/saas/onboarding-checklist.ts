@@ -197,6 +197,94 @@ export function goLiveChecklistBlock(layer: LayeredOnboarding): string | null {
   return null;
 }
 
+export const LOCATION_PROFILE_IDS = ["contact", "address", "timezone"] as const;
+
+/** Tasks that share one screen. Location profile is contact + address + timezone. */
+export function tasksOnSameScreen(scope: "location" | "entity", itemId: string): string[] {
+  if (scope === "location" && (LOCATION_PROFILE_IDS as readonly string[]).includes(itemId)) {
+    return [...LOCATION_PROFILE_IDS];
+  }
+  return [itemId];
+}
+
+export function applyProfileToLayer(
+  layer: LayeredOnboarding,
+  filled: { contact: boolean; address: boolean; timezone: boolean },
+  contact?: { name?: string; email?: string; phone?: string },
+): LayeredOnboarding {
+  const status: Record<string, CheckItemStatus> = {
+    contact: filled.contact ? "done" : "in_progress",
+    address: filled.address ? "done" : "in_progress",
+    timezone: filled.timezone ? "done" : "in_progress",
+  };
+  return {
+    ...layer,
+    location: {
+      ...layer.location,
+      contactName: contact?.name ?? layer.location.contactName,
+      contactEmail: contact?.email ?? layer.location.contactEmail,
+      contactPhone: contact?.phone ?? layer.location.contactPhone,
+      items: layer.location.items.map((item) => {
+        const next = status[item.id];
+        if (!next || item.status === "blocked") return item;
+        return { ...item, status: next };
+      }),
+    },
+  };
+}
+
+function parseItems(raw: unknown, defs: Array<Pick<CheckItem, "id" | "label" | "required">>): CheckItem[] {
+  const rows = Array.isArray(raw) ? raw : [];
+  const byId = new Map<string, CheckItem>();
+  for (const row of rows) {
+    if (!row || typeof row !== "object") continue;
+    const r = row as Record<string, unknown>;
+    const id = String(r.id ?? "");
+    if (!id) continue;
+    byId.set(id, {
+      id,
+      label: String(r.label ?? id),
+      required: Boolean(r.required),
+      status: parseCheckStatus(r.status),
+      blocker: r.blocker ? String(r.blocker) : undefined,
+    });
+  }
+  return defs.map((d) => {
+    const stored = byId.get(d.id);
+    if (!stored) return { ...d, status: "not_started" as const };
+    return { ...d, status: stored.status, blocker: stored.blocker };
+  });
+}
+
+/** Reload stored statuses. Missing rows stay not started. Known rows keep Done. */
+export function parseLayeredOnboarding(raw: unknown): LayeredOnboarding | null {
+  if (!raw || typeof raw !== "object") return null;
+  const o = raw as Record<string, unknown>;
+  const loc = o.location && typeof o.location === "object" ? (o.location as Record<string, unknown>) : {};
+  const entitiesRaw = Array.isArray(o.entities) ? o.entities : [];
+  return {
+    peer: Boolean(o.peer),
+    location: {
+      contactName: String(loc.contactName ?? ""),
+      contactEmail: String(loc.contactEmail ?? ""),
+      contactPhone: String(loc.contactPhone ?? ""),
+      items: parseItems(loc.items, LOCATION_DEFS),
+    },
+    entities: entitiesRaw.map((row, i) => {
+      const r = row && typeof row === "object" ? (row as Record<string, unknown>) : {};
+      const id = String(r.id ?? `entity_${i + 1}`);
+      return {
+        id,
+        name: String(r.name ?? "Selling entity"),
+        contactName: String(r.contactName ?? ""),
+        contactEmail: String(r.contactEmail ?? ""),
+        contactPhone: String(r.contactPhone ?? ""),
+        items: parseItems(r.items, ENTITY_DEFS),
+      };
+    }),
+  };
+}
+
 export function setItemStatus(items: CheckItem[], id: string, status: CheckItemStatus): CheckItem[] {
   return items.map((i) => (i.id === id ? { ...i, status } : i));
 }
