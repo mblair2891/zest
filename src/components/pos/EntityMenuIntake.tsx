@@ -1,0 +1,433 @@
+import { useState } from "react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { VoiceTextarea } from "@/components/ui/voice-textarea";
+import { publishLocationFn, saveMenuItemFn } from "@/lib/access/api";
+import { extractMenuIntakeFn } from "@/lib/menu/intake-api";
+import {
+  applyIntakeAnswers,
+  buildMenuDraft,
+  bulkAcceptRows,
+  editIntakeRow,
+  rowsToCommit,
+  type IntakeSettings,
+  type MenuIntakeDraft,
+} from "@/lib/menu/intake";
+import { formatCurrency } from "@/lib/utils";
+import { isProspectDemo } from "@/lib/demo/session";
+import { flushLocationCatalog } from "@/lib/pos/persist-location-setup";
+import { usePosStore } from "@/lib/pos/store";
+import { noteChecklistSave } from "@/lib/saas/checklist-link";
+
+const MAX_FILE = 1_500_000;
+
+export function EntityMenuIntake(props: {
+  entityId: string;
+  entityName: string;
+  orgId: string;
+  locationId: string;
+  settings: IntakeSettings;
+}) {
+  const { entityId, entityName, orgId, locationId, settings } = props;
+  const [pasted, setPasted] = useState("");
+  const [file, setFile] = useState<{ name: string; base64: string } | null>(null);
+  const [draft, setDraft] = useState<MenuIntakeDraft | null>(null);
+  const [answers, setAnswers] = useState<Record<string, string>>({});
+  const [editing, setEditing] = useState<string | null>(null);
+  const [editName, setEditName] = useState("");
+  const [editGroup, setEditGroup] = useState("");
+  const [editDesc, setEditDesc] = useState("");
+  const [editCash, setEditCash] = useState("");
+  const [editMods, setEditMods] = useState("");
+  const [editAlcohol, setEditAlcohol] = useState<"yes" | "no" | "">("");
+  const [busy, setBusy] = useState(false);
+  const [message, setMessage] = useState("");
+
+  const onFile = (picked: File | undefined) => {
+    if (!picked) return;
+    if (picked.size > MAX_FILE) {
+      setMessage("Use a menu file under 1.5 MB.");
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = () => {
+      const result = String(reader.result || "");
+      const base64 = result.includes(",") ? result.split(",")[1] || "" : result;
+      setFile({ name: picked.name, base64 });
+      setMessage("");
+    };
+    reader.readAsDataURL(picked);
+  };
+
+  const analyze = async () => {
+    if (!entityId && !entityName) return;
+    setBusy(true);
+    setMessage("");
+    setAnswers({});
+    setEditing(null);
+    try {
+      const next = await extractMenuIntakeFn({
+        data: {
+          entityId,
+          text: pasted,
+          fileName: file?.name,
+          fileBase64: file?.base64,
+          locationId: locationId || undefined,
+          cashDiscountEnabled: settings.cashDiscountEnabled,
+          cashDiscountPercent: settings.cashDiscountPercent,
+          cashRoundIncrement: settings.cashRoundIncrement,
+        },
+      });
+      setDraft({
+        ...next,
+        entityId,
+        rows: next.rows.map((row) => ({ ...row, entityId })),
+      });
+    } catch {
+      if (pasted.trim()) {
+        setDraft(buildMenuDraft({ text: pasted, entityId, settings }));
+      } else {
+        setMessage("Reading the file failed. Paste the menu text on this screen.");
+      }
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const withAnswers = (current: MenuIntakeDraft) =>
+    applyIntakeAnswers(current, answers, settings);
+
+  const openEdit = (rowId: string) => {
+    if (!draft) return;
+    const row = draft.rows.find((r) => r.id === rowId);
+    if (!row) return;
+    setEditing(rowId);
+    setEditName(row.name);
+    setEditGroup(row.group);
+    setEditDesc(row.description);
+    setEditCash(row.cashCents != null ? (row.cashCents / 100).toFixed(2) : "");
+    setEditMods(row.modifiers.join(", "));
+    setEditAlcohol(row.alcohol === true ? "yes" : row.alcohol === false ? "no" : "");
+  };
+
+  const saveEdit = () => {
+    if (!draft || !editing) return;
+    const cents = Math.round(Number(editCash) * 100);
+    setDraft(
+      editIntakeRow(
+        withAnswers(draft),
+        editing,
+        {
+          name: editName,
+          group: editGroup,
+          description: editDesc,
+          cashCents: cents > 0 ? cents : null,
+          alcohol: editAlcohol === "yes" ? true : editAlcohol === "no" ? false : null,
+          modifiers: editMods
+            .split(",")
+            .map((s) => s.trim())
+            .filter(Boolean),
+        },
+        settings,
+      ),
+    );
+    setEditing(null);
+  };
+
+  const publish = async () => {
+    if (!draft) return;
+    setBusy(true);
+    setMessage("");
+    const ready = withAnswers(draft);
+    setDraft(ready);
+    const accepted = rowsToCommit(ready.rows, entityId);
+    let n = 0;
+    const skipped: string[] = [];
+    const committed = new Set<string>();
+    for (const row of accepted) {
+      const groupName = row.group.trim();
+      if (!groupName) {
+        skipped.push(row.name);
+        continue;
+      }
+      const state = usePosStore.getState();
+      let cat = state.categories.find(
+        (c) => c.name.trim().toLowerCase() === groupName.toLowerCase(),
+      );
+      if (!cat) {
+        const made = state.createCategory({
+          name: groupName,
+          station: row.station,
+          destinationName: row.station === "bar" ? "Bar" : "Kitchen",
+        });
+        cat = made.id
+          ? usePosStore.getState().categories.find((c) => c.id === made.id)
+          : undefined;
+      }
+      if (!cat) {
+        skipped.push(row.name);
+        continue;
+      }
+      let modifierGroupIds: string[] = [];
+      if (row.modifiers.length) {
+        const made = usePosStore.getState().createModifierGroup({
+          name: `${row.name} extras`.slice(0, 40),
+          required: false,
+          min: 0,
+          max: Math.max(1, row.modifiers.length),
+          options: row.modifiers.map((name) => ({ name: name.slice(0, 40), priceCents: 0 })),
+        });
+        if (made.id) modifierGroupIds = [made.id];
+      }
+      const item = usePosStore.getState().createMenuItem({
+        name: row.name,
+        description: row.description || undefined,
+        priceCents: row.cashCents ?? 0,
+        categoryId: cat.id,
+        station: row.station,
+        vendorId: entityId,
+        course: row.course,
+        modifierGroupIds,
+      });
+      if (item.id) {
+        n += 1;
+        committed.add(row.id);
+      } else skipped.push(row.name);
+    }
+    if (n === 0) {
+      setBusy(false);
+      setMessage(
+        skipped.length
+          ? "Those rows stayed in the draft. Add the menu group on this entity, then Save / Publish again."
+          : "Accept a row with a cash price, then Save / Publish.",
+      );
+      return;
+    }
+    try {
+      if (!isProspectDemo() && orgId && locationId) {
+        await flushLocationCatalog("menu");
+        void saveMenuItemFn({
+          data: { orgId, locationId, action: "create", operatorId: entityId },
+        }).catch(() => undefined);
+        await publishLocationFn({ data: { orgId, locationId } });
+      }
+      noteChecklistSave({ tab: "menu", focus: "menu" });
+      const held = skipped.length
+        ? ` ${skipped.length} rows stayed in the draft until their group exists.`
+        : "";
+      setMessage(
+        `Published ${n} items for ${entityName}. The order pad picks them up from this publish.${held}`,
+      );
+      if (!skipped.length) setDraft(null);
+      else {
+        setDraft({
+          ...ready,
+          rows: ready.rows.filter((r) => !committed.has(r.id)),
+          questions: ready.questions.filter((q) => !committed.has(q.rowId)),
+        });
+      }
+    } catch {
+      setMessage(
+        `${n} items are on this tablet’s menu for ${entityName}. Publish to stations did not finish — tap Save / Publish again.`,
+      );
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const live = draft ? withAnswers(draft) : null;
+  const acceptedCount = live ? rowsToCommit(live.rows, entityId).length : 0;
+
+  return (
+    <section
+      className="mb-4 rounded-2xl border border-border bg-surface p-3"
+      data-menu-intake={entityId || "house"}
+      data-menu-intake-entity={entityId || "house"}
+    >
+      <h3 className="text-sm font-semibold">Upload a menu · {entityName}</h3>
+      <p className="mt-1 text-xs text-muted-foreground">
+        PDF, photo, DOCX, or pasted text. This draft belongs to {entityName}. Cash price is the
+        till price. Card price follows this venue’s cash-discount rule. Save / Publish sends the
+        accepted rows to stations.
+      </p>
+      <div className="mt-3 grid gap-2">
+        <label className="text-[11px] text-muted-foreground">
+          Menu file
+          <input
+            className="mt-1 block w-full text-sm"
+            type="file"
+            accept=".pdf,.png,.jpg,.jpeg,.webp,.docx,image/*"
+            data-menu-intake-file
+            onChange={(e) => onFile(e.target.files?.[0])}
+          />
+        </label>
+        {file ? <p className="text-xs text-muted-foreground">{file.name}</p> : null}
+        <VoiceTextarea
+          rows={4}
+          value={pasted}
+          onChange={setPasted}
+          placeholder="Or paste the menu. Plates on its own line, then Smash Burger 14."
+          data-menu-intake-paste
+        />
+        <div>
+          <Button type="button" onClick={() => void analyze()} disabled={busy}>
+            {busy ? "Reading the menu…" : "Analyze"}
+          </Button>
+        </div>
+      </div>
+
+      {live && live.note ? (
+        <p className="mt-3 text-xs text-muted-foreground" data-menu-intake-note>
+          {live.note}
+        </p>
+      ) : null}
+
+      {live && live.questions.length > 0 ? (
+        <div className="mt-3 grid gap-2" data-menu-intake-questions>
+          <p className="text-xs font-medium">Answer on this screen. Type or speak.</p>
+          {live.questions.map((q) => (
+            <label key={q.id} className="block text-xs">
+              {q.prompt}
+              <VoiceTextarea
+                rows={2}
+                value={answers[q.id] ?? ""}
+                onChange={(value) => setAnswers((prev) => ({ ...prev, [q.id]: value }))}
+                hint={false}
+              />
+            </label>
+          ))}
+        </div>
+      ) : null}
+
+      {live && live.rows.length > 0 ? (
+        <div className="mt-3" data-menu-intake-draft>
+          <div className="mb-2 flex flex-wrap gap-2">
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              onClick={() => setDraft(bulkAcceptRows(withAnswers(draft!)))}
+            >
+              Accept all open rows
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              onClick={() => void publish()}
+              disabled={busy || acceptedCount === 0}
+              data-menu-intake-publish
+            >
+              Save / Publish{acceptedCount ? ` (${acceptedCount})` : ""}
+            </Button>
+            <span className="self-center text-[11px] text-muted-foreground">
+              {live.source === "ai" ? "Read with AI" : "Read from the page text"}
+            </span>
+          </div>
+          <ul className="grid gap-2">
+            {live.rows.map((row) => (
+              <li
+                key={row.id}
+                className="rounded-xl border border-border bg-bg p-2"
+                data-intake-row={row.id}
+                data-intake-entity={row.entityId}
+                data-intake-status={row.status}
+                data-intake-cash={row.cashCents ?? ""}
+              >
+                <div className="flex flex-wrap items-start justify-between gap-2">
+                  <div>
+                    <p className="text-sm font-medium">
+                      {row.group ? `${row.group} · ` : ""}
+                      {row.name}
+                    </p>
+                    {row.description ? (
+                      <p className="text-xs text-muted-foreground">{row.description}</p>
+                    ) : null}
+                    <p className="text-xs text-muted-foreground">
+                      Cash {row.cashCents != null ? formatCurrency(row.cashCents) : "—"}
+                      {row.cardCents != null ? ` · Card ${formatCurrency(row.cardCents)}` : ""}
+                      {" · "}
+                      {row.station === "bar" ? "Bar section" : "Kitchen printer"}
+                      {row.modifiers.length ? ` · ${row.modifiers.join(", ")}` : ""}
+                      {row.priceBasis === "ask" ? " · Confirm cash or card" : ""}
+                    </p>
+                  </div>
+                  <div className="flex flex-wrap gap-1">
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant={row.status === "accepted" ? "success" : "outline"}
+                      onClick={() =>
+                        setDraft(
+                          editIntakeRow(withAnswers(draft!), row.id, { status: "accepted" }, settings),
+                        )
+                      }
+                    >
+                      Accept
+                    </Button>
+                    <Button type="button" size="sm" variant="outline" onClick={() => openEdit(row.id)}>
+                      Edit
+                    </Button>
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant={row.status === "dropped" ? "secondary" : "ghost"}
+                      onClick={() =>
+                        setDraft(
+                          editIntakeRow(withAnswers(draft!), row.id, { status: "dropped" }, settings),
+                        )
+                      }
+                    >
+                      Drop
+                    </Button>
+                  </div>
+                </div>
+                {editing === row.id ? (
+                  <div className="mt-2 grid gap-2 sm:grid-cols-2">
+                    <Input value={editName} onChange={(e) => setEditName(e.target.value)} placeholder="Item name" />
+                    <Input value={editGroup} onChange={(e) => setEditGroup(e.target.value)} placeholder="Group" />
+                    <Input
+                      value={editCash}
+                      inputMode="decimal"
+                      onChange={(e) => setEditCash(e.target.value)}
+                      placeholder="Cash price"
+                    />
+                    <select
+                      className="h-10 rounded-xl border border-border bg-bg px-3 text-sm"
+                      value={editAlcohol}
+                      onChange={(e) => setEditAlcohol(e.target.value as "yes" | "no" | "")}
+                      aria-label={`Alcohol for ${row.name}`}
+                    >
+                      <option value="">Alcohol?</option>
+                      <option value="yes">Contains alcohol</option>
+                      <option value="no">No alcohol</option>
+                    </select>
+                    <Input
+                      className="sm:col-span-2"
+                      value={editDesc}
+                      onChange={(e) => setEditDesc(e.target.value)}
+                      placeholder="Description"
+                    />
+                    <Input
+                      className="sm:col-span-2"
+                      value={editMods}
+                      onChange={(e) => setEditMods(e.target.value)}
+                      placeholder="Extras, comma separated"
+                    />
+                    <Button type="button" size="sm" onClick={saveEdit}>
+                      Save row
+                    </Button>
+                  </div>
+                ) : null}
+              </li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
+      {message ? (
+        <p className="mt-3 text-xs text-primary" data-menu-intake-message>
+          {message}
+        </p>
+      ) : null}
+    </section>
+  );
+}

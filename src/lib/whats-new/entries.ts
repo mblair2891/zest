@@ -6,6 +6,19 @@ import type { GuideUpdate } from "@/lib/guide/types";
  */
 export const WHATS_NEW_ENTRIES: GuideUpdate[] = [
   {
+    id: "upd_2026_10_143_menu_upload",
+    date: "2026-09-22",
+    title: "Upload a menu into a draft",
+    summary:
+      "Each selling entity uploads a menu. Save / Publish is what the order pad receives.",
+    body: "On Menu, upload a PDF, photo, DOCX, or pasted text. Voice and a typed paragraph stay. The draft lists group, name, description, cash price, and the card price from the venue cash-discount rule. One unlabeled price asks cash or card on that screen. A missing price, group, or alcohol flag is a question on the same screen, typed or spoken. Accept, edit, or drop each row, or accept all open rows. Save / Publish writes the accepted rows onto that entity and publishes them for stations. Another entity’s menu stays as it was. Tax stays on the venue tax screen.",
+    roles: ["owner_manager", "host_operator", "vendor_operator", "kitchen_bar"],
+    surfaces: ["settings", "floor"],
+    audience: "all",
+    topicId: "menu-modifiers",
+    tags: ["menu", "upload"],
+  },
+  {
     id: "upd_2026_10_142_floor_kiosk",
     date: "2026-09-22",
     title: "Wood floor map and exit kiosk",

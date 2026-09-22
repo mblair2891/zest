@@ -1,5 +1,5 @@
 /** Cash is the entered till price. Card is marked up, then rounded up. */
-import { DEFAULT_GUEST_CARD_RATE_PERCENT } from "./card-service";
+import { DEFAULT_GUEST_CARD_RATE_PERCENT } from "./card-service.ts";
 
 export const CASH_ROUND_INCREMENTS = [0.25, 0.5, 0.75, 1] as const;
 export type CashRoundIncrement = (typeof CASH_ROUND_INCREMENTS)[number];

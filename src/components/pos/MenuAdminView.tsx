@@ -15,6 +15,7 @@ import { isProspectDemo } from "@/lib/demo/session";
 import { useSaasStore } from "@/lib/pos/saas-store";
 import { useCostStore } from "@/lib/costs/store";
 import { RecipeAssistButton } from "@/components/recipes/RecipeAssistDialog";
+import { EntityMenuIntake } from "@/components/pos/EntityMenuIntake";
 import { persistLocationCatalog } from "@/lib/pos/persist-location-setup";
 import { isActiveOrderPrinter } from "@/lib/pos/fire-routing";
 import { destinationForGroup, mergeOrderDestinations } from "@/lib/pos/order-destinations";
@@ -209,6 +210,16 @@ export function MenuAdminView() {
             </Button>
           )}
         </div>
+      )}
+
+      {canCreate && (
+        <EntityMenuIntake
+          entityId={menuScope || ownVendorId || vendorId}
+          entityName={vendorName(menuScope || ownVendorId || vendorId)}
+          orgId={orgId}
+          locationId={locId}
+          settings={settings}
+        />
       )}
 
       {categories.length === 0 && menuItems.length === 0 && (
