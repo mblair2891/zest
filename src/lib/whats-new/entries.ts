@@ -6,6 +6,18 @@ import type { GuideUpdate } from "@/lib/guide/types";
  */
 export const WHATS_NEW_ENTRIES: GuideUpdate[] = [
   {
+    id: "upd_2026_10_147_floor_rotate",
+    date: "2026-09-22",
+    title: "Floor pieces rotate by 90 degrees",
+    summary: "Rotate 90° turns the selected table, booth, or bar and stays after Publish.",
+    body: "In the floor editor, Rotate 90° steps the selected piece through 0, 90, 180, and 270 degrees around its center. The angle is saved with the layout. After Publish, the live map uses that same angle, including booth L/U and bar L/U. Reload the editor and the piece is still turned.",
+    roles: ["owner_manager", "host_operator"],
+    surfaces: ["floor"],
+    audience: "all",
+    topicId: "floor-editor",
+    tags: ["floor", "editor"],
+  },
+  {
     id: "upd_2026_10_146_exit_kiosk",
     date: "2026-09-22",
     title: "Exit kiosk from the PIN pad unpins",

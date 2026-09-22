@@ -199,7 +199,7 @@ export const FLOOR_TOPICS: GuideTopic[] = [
       ),
       ul(
         "Owner, manager, and host stand draw the room. Entire location vs By section matches the runtime floor.",
-        "Place table, Booth 4-top, Booth U, Booth L, barstool, wall, door, window, host stand, bar top, or other. Icons match the plan shape. Drag to move. Corner handle resizes. Walls snap and stretch by length. Bar top shape is Straight, L, U, island, or a custom polyline. Stool pills snap to that rail. Rotate 90°.",
+        "Place table, Booth 4-top, Booth U, Booth L, barstool, wall, door, window, host stand, bar top, or other. Icons match the plan shape. Drag to move. Corner handle resizes. Walls snap and stretch by length. Bar top shape is Straight, L, U, island, or a custom polyline. Stool pills snap to that rail. Rotate 90° turns the selected piece 0→90→180→270→0 around its center and saves that angle. Booth L/U and bar L/U use the same angle on the live map.",
         "Booth 4-top: two parallel benches + table (capacity 4). Booth U: three-sided banquette (default 6, 4–8). Booth L: two benches at 90° (default 5, 4–6). Seats stay attached — no orphan chairs. Chair, stool, and booth-bench marks scale with the fixture and the seat count (a 2-top is tighter than an 8-top). They stay proportional when you zoom. They do not cover the table number or eat the next table.",
         "Properties: label (table number), seats, room/section color, kind, rotation. Each fixture gets a stable table QR token.",
         "Rooms are sections. Multi-room houses switch rooms in the editor and on the live floor.",

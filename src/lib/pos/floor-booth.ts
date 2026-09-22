@@ -32,8 +32,10 @@ export function clampBoothSeats(kind: BoothKind, seats: number): number {
   return Math.min(d.maxSeats, Math.max(d.minSeats, n));
 }
 
+/** 0 → 90 → 180 → 270 → 0. Center stays put; only the stored angle changes. */
 export function nextBoothRotation(current: number | undefined): number {
-  return (((Math.round(Number(current) || 0) / 90) * 90 + 90) % 360 + 360) % 360;
+  const base = Math.round((Number(current) || 0) / 90) * 90;
+  return ((base + 90) % 360 + 360) % 360;
 }
 
 export function fixtureKind(

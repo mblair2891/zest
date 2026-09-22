@@ -39,7 +39,7 @@ export function FloorFixtureArt({
   mode?: "plan" | "status";
 }) {
   const booth = asBoothKind(table.kind, table.shape);
-  const rot = rotation || table.rotation || 0;
+  const rot = ((Number(rotation ?? table.rotation) || 0) % 360 + 360) % 360;
   if (mode === "status") {
     return (
       <StatusFixture
@@ -106,6 +106,7 @@ export function FloorFixtureArt({
         outline={outline}
         label={label}
         sectionColor={sectionColor}
+        rotation={rot}
         className={className}
       >
         {children}
@@ -159,7 +160,7 @@ function StatusFixture({
   return (
     <div
       className={cn("relative h-full w-full", className)}
-      style={{ transform: `rotate(${rotation}deg)`, containerType: "size" }}
+      style={{ transform: `rotate(${rotation}deg)`, transformOrigin: "center center", containerType: "size" }}
       data-floor-status-shape={booth ?? (bar ? "stool" : round ? "round" : "rect")}
       data-no-chairs=""
     >
@@ -245,7 +246,7 @@ function FloorTableArt({
   return (
     <div
       className={cn("relative h-full w-full", className)}
-      style={{ transform: `rotate(${rotation}deg)` }}
+      style={{ transform: `rotate(${rotation}deg)`, transformOrigin: "center center" }}
     >
       <svg viewBox="0 0 100 100" className="pointer-events-none h-full w-full" aria-hidden>
         {round ? (
@@ -315,6 +316,7 @@ function FloorStoolArt({
   outline,
   label,
   sectionColor,
+  rotation = 0,
   className,
   children,
 }: {
@@ -325,6 +327,7 @@ function FloorStoolArt({
   outline: string;
   label?: string;
   sectionColor?: string;
+  rotation?: number;
   className?: string;
   children?: ReactNode;
 }) {
@@ -337,7 +340,11 @@ function FloorStoolArt({
   const ry = (s.stoolVy / 2) * (horizontal ? 1 : scale);
   const centers = railStoolCenters(seats, along, horizontal);
   return (
-    <div className={cn("relative h-full w-full", className)}>
+    <div
+      className={cn("relative h-full w-full", className)}
+      data-floor-rotation={rotation}
+      style={{ transform: `rotate(${rotation}deg)`, transformOrigin: "center center" }}
+    >
       <svg viewBox="0 0 100 100" className="pointer-events-none h-full w-full" aria-hidden>
         {centers.map((c, i) => (
           <g key={i}>

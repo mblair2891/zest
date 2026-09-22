@@ -40,7 +40,7 @@ export function FloorBoothMark({
   return (
     <div
       className={cn("relative h-full w-full", className)}
-      style={{ transform: `rotate(${rotation}deg)` }}
+      style={{ transform: `rotate(${rotation}deg)`, transformOrigin: "center center" }}
     >
       <svg viewBox="0 0 100 100" className="pointer-events-none h-full w-full" aria-hidden>
         {kind === "booth_4" ? (

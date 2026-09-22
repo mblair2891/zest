@@ -26,7 +26,7 @@ import { tableGuestUrl } from "@/lib/pos/qr-table";
 import { getDemoType } from "@/lib/demo/session";
 import { GuideLearnLink } from "@/components/guide/GuideLearnLink";
 import { QrMark } from "./QrMark";
-import { persistLocationCatalog, persistPrinterAssignments } from "@/lib/pos/persist-location-setup";
+import { flushLocationCatalog, persistLocationCatalog, persistPrinterAssignments } from "@/lib/pos/persist-location-setup";
 import { FloorArchitectureMark } from "@/components/pos/FloorArchitectureMark";
 import {
   isArchitectureKind,
@@ -342,8 +342,9 @@ export function FloorEditorView() {
                     width: `${t.w}%`,
                     height: `${t.h}%`,
                   }}
+                  data-floor-rotation={((Number(t.rotation) || 0) % 360 + 360) % 360}
                   className={cn(
-                    "absolute cursor-grab border-0 bg-transparent p-0 text-center active:cursor-grabbing",
+                    "absolute cursor-grab overflow-visible border-0 bg-transparent p-0 text-center active:cursor-grabbing",
                     selected === t.id && "ring-2 ring-primary/40",
                     (t.mergedChildIds?.length ?? 0) > 0 && "ring-1 ring-info",
                   )}
@@ -608,11 +609,12 @@ export function FloorEditorView() {
                 size="sm"
                 variant="outline"
                 className="w-full"
+                data-floor-rotate
                 onClick={() => {
                   update(selectedTable.id, {
                     rotation: nextBoothRotation(selectedTable.rotation),
                   });
-                  persistLocationCatalog("floor");
+                  void flushLocationCatalog("floor");
                 }}
               >
                 <RotateCw className="h-3.5 w-3.5" />

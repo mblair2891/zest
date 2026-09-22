@@ -224,6 +224,7 @@ export function FloorMapCanvas({
                 }
                 onTableClick(item.table);
               }}
+              data-floor-rotation={((Number(item.table.rotation) || 0) % 360 + 360) % 360}
               style={{
                 left: bar ? box.left + box.width / 2 - 22 : box.left,
                 top: bar ? box.top + box.height / 2 - 16 : box.top,
@@ -232,6 +233,8 @@ export function FloorMapCanvas({
                 color: item.ink,
                 background: bar ? fill : undefined,
                 containerType: "size",
+                transform: bar ? `rotate(${(Number(item.table.rotation) || 0) % 360}deg)` : undefined,
+                transformOrigin: "center center",
               }}
               className={cn(
                 "absolute border-0 p-0",

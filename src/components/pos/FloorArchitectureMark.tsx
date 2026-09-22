@@ -4,6 +4,8 @@ import { barRailLocal, isArchitectureKind } from "@/lib/pos/floor-architecture";
 /** Walls, doors, windows, host stand, and the bar rail. No dining chairs. */
 export function FloorArchitectureMark({ table }: { table: Table }) {
   if (!isArchitectureKind(table.kind)) return null;
+  const rotation = ((Number(table.rotation) || 0) % 360 + 360) % 360;
+  const spin = { transform: `rotate(${rotation}deg)`, transformOrigin: "center center" } as const;
   if (table.kind === "bar_top") {
     const pts = barRailLocal(table.barShape ?? "straight", table.points);
     const d = pts.map((p, i) => `${i === 0 ? "M" : "L"} ${p.x} ${p.y}`).join(" ");
@@ -13,6 +15,8 @@ export function FloorArchitectureMark({ table }: { table: Table }) {
         className="h-full w-full"
         data-floor-bar="slab"
         data-floor-bar-shape={table.barShape ?? "straight"}
+        data-floor-rotation={rotation}
+        style={spin}
       >
         <path d={d} fill="none" stroke="#3d2914" strokeWidth={10} strokeLinecap="round" strokeLinejoin="round" />
         <text x="50" y="46" textAnchor="middle" fontSize="14" fill="#f4efe6" fontWeight={700}>
@@ -25,7 +29,9 @@ export function FloorArchitectureMark({ table }: { table: Table }) {
     return (
       <div
         data-floor-host="stand"
+        data-floor-rotation={rotation}
         className="flex h-full w-full items-center justify-center rounded-md bg-[#6b4a2a] text-[10px] font-bold text-[#f4efe6]"
+        style={spin}
       >
         Host
       </div>
@@ -36,7 +42,9 @@ export function FloorArchitectureMark({ table }: { table: Table }) {
   return (
     <div
       data-floor-arch={table.kind}
+      data-floor-rotation={rotation}
       className={`h-full w-full rounded-sm ${tone} ${table.kind === "door" ? "border-2 border-[#3d2914]" : ""}`}
+      style={spin}
     />
   );
 }
