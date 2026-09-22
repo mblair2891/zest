@@ -53,7 +53,7 @@ export interface AuditEntry {
   entityId?: string;
   ticketId?: string;
   orderId?: string;
-  orderNumber?: number;
+  orderNumber?: string | number;
   amountCents?: number;
   reason?: string;
   before?: string;
@@ -71,7 +71,7 @@ export type AuditMeta = {
   entityId?: string;
   ticketId?: string;
   orderId?: string;
-  orderNumber?: number;
+  orderNumber?: string | number;
   amountCents?: number;
   reason?: string;
   before?: string;
@@ -189,7 +189,7 @@ export interface PosStore {
     reason: string;
     amountCents: number;
     orderId?: string;
-    orderNumber?: number;
+    orderNumber?: string | number;
     lineId?: string;
     ticketId?: string;
     lineWasSent?: boolean;

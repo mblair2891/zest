@@ -55,7 +55,35 @@ export const ORDER_TOPICS: GuideTopic[] = [
         "When this device is online, Send writes the tickets to the location — every POS and ODS at that location sees the same check within a few seconds. Refresh keeps it.",
         "Expo or the server marks Delivered when the table has the plate.",
       ),
-      related("kds", "menu-modifiers", "multi-operator-orders", "printers-kds", "receipts-by-vendor", "sections"),
+      related("kds", "menu-modifiers", "multi-operator-orders", "printers-kds", "receipts-by-vendor", "sections", "check-numbers"),
+    ],
+  }),
+  topic({
+    id: "check-numbers",
+    chapterId: "orders",
+    title: "Check numbers",
+    summary: "Venue-day ticket id: date, table, and the day’s sequence. Same id on every slip.",
+    roles: ["owner_manager", "server", "kitchen_bar", "host_operator"],
+    keywords: ["check number", "ticket", "YYMMDD", "guest check", "star", "ods", "qr"],
+    openView: "order",
+    blocks: [
+      why(
+        "A forever number like #101 does not tell you the day or the table. The kitchen, the guest check, and the QR have to name the same check.",
+      ),
+      p(
+        "The number is assigned when the check opens, in the venue’s IANA timezone. It does not climb forever, and it is not a separate number per selling entity. One house check, one number. Format: YYMMDD-T{table}-{seq}. Example: 260922-T1-03 is 22 Sep 2026, table 1, the third check opened that venue day. To-go and any check with no table: YYMMDD-TO-{seq}. Bar tab: YYMMDD-BAR-{seq}. {seq} starts at 01 after local midnight and is shared by the whole venue that day.",
+      ),
+      ul(
+        "Two dining checks on table 1 the same day: 260922-T1-01 then 260922-T1-02, if they are the first two checks of the day. A to-go opened first uses 01, so the next table check is 02.",
+        "After local midnight the next new check is the new date and seq 01. A check still open from yesterday keeps the number it was opened with.",
+        "Guest check header, Star kitchen ticket, order display, pay QR, and reports use that same id.",
+      ),
+      steps(
+        "Open a table. The check number shows on the order pad as soon as the check exists.",
+        "Send. The Star ticket header is that number, not a second kitchen counter.",
+        "Print check. The Epson guest check header is the same number. The pay QR opens that check.",
+      ),
+      related("kitchen-bar-routing", "kds", "receipts-by-vendor", "floor-tables", "table-qr"),
     ],
   }),
   topic({

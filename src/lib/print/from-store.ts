@@ -119,7 +119,7 @@ function persistTableQrToken(tableId: string, token: string): void {
 }
 
 function payQrForCheck(
-  order: { id: string; number: number; tableId?: string; tabName?: string; type?: string },
+  order: { id: string; number: string | number; tableId?: string; tabName?: string; type?: string },
   table: { id: string; label: string; qrToken?: string } | undefined,
   locationId: string,
   settings: RestaurantSettings,
@@ -129,12 +129,12 @@ function payQrForCheck(
   if (!shouldPrintPayQr(policy, printPayQr)) return {};
   const loc = locationId.trim() || "loc";
   if (table) {
-    const guest = checkGuestUrl(table, Number(order.number) || 0, loc);
+    const guest = checkGuestUrl(table, order.number, loc);
     if (guest.minted) persistTableQrToken(table.id, guest.token);
     return { qrUrl: guest.url, qrCaption: "Scan to pay this check" };
   }
   const label = String(order.tabName || order.type || "check").replace("_", " ");
-  const url = tableGuestUrl({ label }, { pay: true, check: Number(order.number) || 0 });
+  const url = tableGuestUrl({ label }, { pay: true, check: order.number });
   return { qrUrl: url, qrCaption: "Scan to pay this check" };
 }
 
@@ -371,7 +371,7 @@ export async function printFromPos(
     for (const job of jobs) {
       if (job.kind !== "guest_check") continue;
       const qr = payQrForCheck(
-        receiptOrder ?? { id: job.checkId, number: Number(job.checkNumber) || 0 },
+        receiptOrder ?? { id: job.checkId, number: job.checkNumber },
         receiptTable,
         locationIdForQr(s, locationId),
         s.settings,

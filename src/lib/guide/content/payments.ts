@@ -293,7 +293,7 @@ export const PAYMENT_TOPICS: GuideTopic[] = [
         "An owner considering Summex should read a product paper — not a stack spec. Processors and partners can share the same document.",
       ),
       p(
-        "Open White paper from the marketing header or footer (no login). Print from the browser for a PDF. Revision · 22 Sep 2026 matches Guide v2026.10.134. It is written for prospective subscribers: one guest check, floor, multi-entity, Android staff stations, venue payment-method toggles, 5% cash-discount processing story, plans from Get a price. Gift cards are not sold online. QR is on-premise. No CRM, pipeline, factory reset, or how to log in. Internal operations notes stay off the public site.",
+        "Open White paper from the marketing header or footer (no login). Print from the browser for a PDF. Revision · 22 Sep 2026 matches Guide v2026.10.135. It is written for prospective subscribers: one guest check, floor, multi-entity, Android staff stations, venue payment-method toggles, 5% cash-discount processing story, plans from Get a price. Gift cards are not sold online. QR is on-premise. No CRM, pipeline, factory reset, or how to log in. Internal operations notes stay off the public site.",
       ),
       steps(
         "Open White paper from the marketing header (White paper). That page is the paper — not Get a price.",

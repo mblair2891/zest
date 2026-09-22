@@ -757,11 +757,11 @@ function ChargebackSection({
   onFile,
   onResolve,
 }: {
-  orders: { id: string; number: number; status: string; payments: { method: string }[] }[];
+  orders: { id: string; number: string | number; status: string; payments: { method: string }[] }[];
   chargebacks: {
     id: string;
     orderId: string;
-    orderNumber: number;
+    orderNumber: string | number;
     feeCents: number;
     status: string;
     allocations: { vendorName: string; merchCents: number; feeCents: number; shareBps: number }[];

@@ -501,7 +501,8 @@ export interface Payment {
 
 export interface Order {
   id: string;
-  number: number;
+  /** Daily venue id (260922-T1-03) or a legacy integer from before that format. */
+  number: string | number;
   type: OrderType;
   tableId?: string;
   tabName?: string;
@@ -559,7 +560,7 @@ export interface KitchenTicketItem {
 export interface KitchenTicket {
   id: string;
   orderId: string;
-  orderNumber: number;
+  orderNumber: string | number;
   tableLabel: string;
   serverName: string;
   serverId?: string;
@@ -768,7 +769,7 @@ export interface ChargebackAllocation {
 export interface Chargeback {
   id: string;
   orderId: string;
-  orderNumber: number;
+  orderNumber: string | number;
   amountCents: number;
   feeCents: number;
   status: ChargebackStatus;

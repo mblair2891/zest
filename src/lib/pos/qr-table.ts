@@ -50,13 +50,15 @@ export function tableQrSearch(opts?: {
   pay?: boolean;
   demoType?: string | null;
   seat?: number;
-  check?: number;
+  check?: string | number;
 }): string {
   const params = new URLSearchParams();
   if (opts?.pay) params.set("pay", "1");
   if (opts?.demoType) params.set("demo", opts.demoType);
   if (opts?.seat && opts.seat > 0) params.set("seat", String(opts.seat));
-  if (opts?.check && opts.check > 0) params.set("check", String(opts.check));
+  if (opts?.check != null && String(opts.check) !== "" && String(opts.check) !== "0") {
+    params.set("check", String(opts.check));
+  }
   const q = params.toString();
   return q ? `?${q}` : "";
 }
@@ -70,7 +72,7 @@ export function tablePayPath(
 
 export function tableGuestPath(
   table: { label: string; qrToken?: string },
-  opts?: { pay?: boolean; demoType?: string | null; seat?: number; check?: number },
+  opts?: { pay?: boolean; demoType?: string | null; seat?: number; check?: string | number },
 ): string {
   return `${tableQrPath(table)}${tableQrSearch(opts)}`;
 }
@@ -90,7 +92,7 @@ function venueSlugNow(): string | null {
 
 export function tableGuestUrl(
   table: { label: string; qrToken?: string },
-  opts?: { pay?: boolean; demoType?: string | null; seat?: number; check?: number },
+  opts?: { pay?: boolean; demoType?: string | null; seat?: number; check?: string | number },
 ): string {
   const path = tableGuestPath(table, opts);
   const slug = venueSlugNow();
@@ -153,7 +155,7 @@ export function ensureTablePublicToken(
 /** Guest URL for this open check at this table (reorder + pay). No demo query. */
 export function checkGuestUrl(
   table: { id: string; label: string; qrToken?: string },
-  checkNumber: number,
+  checkNumber: string | number,
   locationId: string,
 ): { url: string; token: string; minted: boolean } {
   const ensured = ensureTablePublicToken(table, locationId);

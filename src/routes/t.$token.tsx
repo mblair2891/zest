@@ -1,5 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { GuestTablePage } from "@/components/pos/GuestTablePage";
+import { readCheckParam } from "@/lib/pos/check-number";
 
 export const Route = createFileRoute("/t/$token")({
   ssr: false,
@@ -12,7 +13,7 @@ function TokenTablePage() {
     typeof window === "undefined"
       ? {}
       : Object.fromEntries(new URLSearchParams(window.location.search));
-  const checkNumber = search.check ? Number(search.check) || undefined : undefined;
+  const checkNumber = readCheckParam(search.check);
   if (token.startsWith("c.")) {
     return <GuestTablePage checkToken={token} checkNumber={checkNumber} payOnly />;
   }

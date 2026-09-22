@@ -37,7 +37,7 @@ export function GuestTablePage({
   label?: string;
   token?: string;
   checkToken?: string;
-  checkNumber?: number;
+  checkNumber?: string | number;
   payOnly?: boolean;
   demoHint?: string;
   seat?: number;
@@ -122,7 +122,7 @@ export function GuestTablePage({
   const order =
     orderFromTicket ??
     (checkNumber
-      ? openChecks.find((o) => o.number === checkNumber)
+      ? openChecks.find((o) => String(o.number) === String(checkNumber))
       : undefined) ??
     (resolvedTable?.orderId
       ? openChecks.find((o) => o.id === resolvedTable.orderId) ??

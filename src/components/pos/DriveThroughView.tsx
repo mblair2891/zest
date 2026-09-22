@@ -30,7 +30,7 @@ export function DriveThroughView({ pane }: { pane: "lane" | "window" }) {
       : lane;
 
   const newLane = () => {
-    const n = (settings.ticketPrefix || "DT") + String(nextLaneNumber(orders));
+    const n = (settings.ticketPrefix || "DT") + String(nextLaneNumber(orders, settings.ticketPrefix || "DT"));
     openTakeout(n);
     setView("order");
   };
@@ -100,6 +100,15 @@ export function DriveThroughView({ pane }: { pane: "lane" | "window" }) {
   );
 }
 
-function nextLaneNumber(orders: { number: number }[]): number {
-  return (orders.reduce((m, o) => Math.max(m, o.number), 0) || 0) + 1;
+function nextLaneNumber(
+  orders: { number: string | number; tabName?: string }[],
+  prefix: string,
+): number {
+  const re = new RegExp(`^${prefix.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}(\\d+)$`);
+  let max = 0;
+  for (const o of orders) {
+    const m = re.exec(String(o.tabName ?? ""));
+    if (m) max = Math.max(max, Number(m[1]));
+  }
+  return max + 1;
 }

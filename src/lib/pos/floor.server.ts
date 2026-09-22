@@ -73,7 +73,7 @@ type CheckRow = {
   org_id: string;
   table_id: string | null;
   tab_name: string | null;
-  number: number;
+  number: string | number;
   type: string;
   status: string;
   server_id: string;
@@ -122,7 +122,7 @@ type TicketRow = {
   id: string;
   location_id: string;
   check_id: string;
-  order_number: number;
+  order_number: string | number;
   table_label: string;
   server_name: string;
   server_id: string | null;
@@ -165,6 +165,12 @@ type TableRow = {
   seated_at_ms: number | string | null;
   status_since_ms: number | string;
 };
+
+function checkNo(v: unknown): string | number {
+  if (typeof v === "number" && Number.isFinite(v)) return v;
+  const s = String(v ?? "").trim();
+  return s || "0";
+}
 
 function n(v: unknown, fallback = 0): number {
   if (typeof v === "number" && Number.isFinite(v)) return v;
@@ -336,7 +342,7 @@ function mapTicket(row: TicketRow, now: number): FloorTicket {
     id: row.id,
     locationId: row.location_id,
     orderId: row.check_id,
-    orderNumber: n(row.order_number),
+    orderNumber: checkNo(row.order_number),
     tableLabel: row.table_label,
     serverName: row.server_name,
     serverId: row.server_id ?? undefined,
@@ -371,7 +377,7 @@ function mapCheck(
     locationId: row.location_id,
     tableId: row.table_id,
     tabName: row.tab_name,
-    number: n(row.number),
+    number: checkNo(row.number),
     type: asOrderType(row.type),
     status: asOrderStatus(row.status),
     serverId: row.server_id,

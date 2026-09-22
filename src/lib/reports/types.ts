@@ -87,7 +87,7 @@ export type LocationMetrics = {
   staff: {
     clocked: { role: string; count: number }[];
     byServer: { id: string; name: string; salesCents: number; tipsCents: number; checks: number }[];
-    agingOpen: { id: string; number: number; minutes: number; serverName: string }[];
+    agingOpen: { id: string; number: string | number; minutes: number; serverName: string }[];
   };
   tickets: {
     kitchenAvgSec: number;

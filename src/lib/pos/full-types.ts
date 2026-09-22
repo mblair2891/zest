@@ -259,7 +259,7 @@ export interface GuestFeedback {
   at: number;
   score: number;
   comment: string;
-  orderNumber?: number;
+  orderNumber?: string | number;
   channel: "table" | "online" | "sms";
 }
 

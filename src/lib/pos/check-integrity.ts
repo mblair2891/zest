@@ -50,7 +50,7 @@ export type IntegrityIssue = {
   tableId?: string;
   tableLabel?: string;
   orderId?: string;
-  orderNumber?: number;
+  orderNumber?: string | number;
   employeeId?: string;
   employeeName?: string;
   at: number;

@@ -69,7 +69,7 @@ export type PendingApproval = {
   requesterId: string;
   requesterName: string;
   orderId?: string;
-  orderNumber?: number;
+  orderNumber?: string | number;
   lineId?: string;
   ticketId?: string;
   amountCents: number;
@@ -594,7 +594,7 @@ export type LateCompCashKind = "late_comp_cash" | "stale_comp_cash";
 export type LateCompCashEvent = {
   id: string;
   orderId: string;
-  orderNumber: number;
+  orderNumber: string | number;
   employeeId: string;
   employeeName: string;
   kind: LateCompCashKind;
@@ -772,7 +772,7 @@ export type ExceptionRow = {
   approverName?: string;
   tender?: string;
   secondsCompToClose?: number;
-  orderNumber?: number;
+  orderNumber?: string | number;
 };
 
 export type AuditLike = {

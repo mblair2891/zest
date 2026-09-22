@@ -66,7 +66,7 @@ export type FloorCheck = {
   locationId: string;
   tableId: string | null;
   tabName: string | null;
-  number: number;
+  number: string | number;
   type: OrderType;
   status: OrderStatus;
   serverId: string;
@@ -100,7 +100,7 @@ export type FloorTicket = {
   id: string;
   locationId: string;
   orderId: string;
-  orderNumber: number;
+  orderNumber: string | number;
   tableLabel: string;
   serverName: string;
   serverId?: string;

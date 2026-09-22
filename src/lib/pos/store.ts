@@ -8,6 +8,7 @@ import {
 	readStationDeviceRole,
 } from "./device-roles";
 import { readStationPair } from "./station-pair";
+import { nextCheckNumber } from "./check-number";
 import { stationPinAuthLocationId } from "./station-pin-auth";
 import { stationHomeSurface, viewForStationHome } from "./station-home";
 import { denyReason, pinFitsDevice, stationCan } from "./station-pin-gate";
@@ -232,8 +233,18 @@ import {
 } from "./gift-issuer";
 import { canReactivateGift } from "@/lib/gift/guest-view";
 
-function nextOrderNumber(orders: any) {
-	return orders.reduce((m: any, o: any) => Math.max(m, o.number), 100) + 1;
+function allocateCheckNumber(
+	get: () => { orders: any[]; tables: any[]; settings?: { timezone?: string } },
+	spec: { type?: string; tableId?: string; orders?: any[]; atMs?: number },
+) {
+	const table = spec.tableId ? get().tables.find((t: any) => t.id === spec.tableId) : undefined;
+	return nextCheckNumber({
+		orders: spec.orders ?? get().orders,
+		atMs: spec.atMs ?? Date.now(),
+		timeZone: get().settings?.timezone,
+		type: spec.type,
+		tableLabel: table?.label,
+	});
 }
 function floorCfg() {
 	return parseFloorStatusConfig(usePosStore.getState().settings?.floorStatusConfig ?? DEFAULT_FLOOR_STATUS_CONFIG);
@@ -1220,7 +1231,7 @@ const usePosStoreRaw = create<PosStore>()(persist((set, get) => {
 		}
 		const order = {
 			id: uid("ord"),
-			number: nextOrderNumber(get().orders),
+			number: allocateCheckNumber(get, { type: "bar_tab", tableId }),
 			type: "bar_tab" as const,
 			tabName: table.label,
 			tableId,
@@ -1511,7 +1522,7 @@ const usePosStoreRaw = create<PosStore>()(persist((set, get) => {
 		if (!access.ok) return { ok: false, error: access.reason, access };
 		const order = {
 			id: uid("ord"),
-			number: nextOrderNumber(get().orders),
+			number: allocateCheckNumber(get, { type: "dine_in", tableId }),
 			type: "dine_in",
 			tableId,
 			guestCount: table.guestCount || 1,
@@ -1562,7 +1573,7 @@ const usePosStoreRaw = create<PosStore>()(persist((set, get) => {
 		const owner = assigned ?? emp;
 		const order = {
 			id: uid("ord"),
-			number: nextOrderNumber(get().orders),
+			number: allocateCheckNumber(get, { type: "dine_in", tableId }),
 			type: "dine_in",
 			tableId,
 			guestCount,
@@ -2080,7 +2091,11 @@ const usePosStoreRaw = create<PosStore>()(persist((set, get) => {
 			if (!moved.length && extra.dueOverrideCents == null) return;
 			const neu = {
 				id: uid("ord"),
-				number: nextOrderNumber([...get().orders, ...newOrders]),
+				number: allocateCheckNumber(get, {
+					type: order.type,
+					tableId: order.tableId,
+					orders: [...get().orders, ...newOrders],
+				}),
 				type: order.type,
 				tableId: order.tableId,
 				tabName: order.tabName,
@@ -2217,7 +2232,11 @@ const usePosStoreRaw = create<PosStore>()(persist((set, get) => {
 			const tableId = destTableId ?? source.tableId;
 			target = {
 				id: uid("ord"),
-				number: nextOrderNumber(orders),
+				number: allocateCheckNumber(get, {
+					type: source.type,
+					tableId,
+					orders,
+				}),
 				type: source.type,
 				tableId,
 				tabName: source.tabName,
@@ -2318,7 +2337,7 @@ const usePosStoreRaw = create<PosStore>()(persist((set, get) => {
 		if (!emp) return "";
 		const order = {
 			id: uid("ord"),
-			number: nextOrderNumber(get().orders),
+			number: allocateCheckNumber(get, { type: "bar_tab" }),
 			type: "bar_tab",
 			tabName: name,
 			guestCount,
@@ -2357,7 +2376,7 @@ const usePosStoreRaw = create<PosStore>()(persist((set, get) => {
 		}
 		const order = {
 			id: uid("ord"),
-			number: nextOrderNumber(get().orders),
+			number: allocateCheckNumber(get, { type: "takeout" }),
 			type: "takeout",
 			tabName: name,
 			guestCount: 1,
@@ -4165,7 +4184,7 @@ const usePosStoreRaw = create<PosStore>()(persist((set, get) => {
 		}
 		const order = {
 			id: uid("ord"),
-			number: nextOrderNumber(get().orders),
+			number: allocateCheckNumber(get, { type: "dine_in", tableId }),
 			type: "dine_in",
 			tableId,
 			guestCount: table.seats || 2,
