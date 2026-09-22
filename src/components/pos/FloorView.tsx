@@ -433,6 +433,7 @@ export function FloorView({
           table: t,
           fill,
           ink: contrastInk(fill),
+          hollow: st === "empty",
           flashing: tableFlash(t, floorCfg, clock || Date.now()),
           dim,
           joined: clusterNumbers(tables, t.id).joined,
@@ -667,10 +668,11 @@ export function FloorView({
         >
           <div
             className={cn(
-              "floor-wood relative mx-auto aspect-[4/3] w-full max-w-4xl rounded-2xl border border-border",
+              "relative mx-auto aspect-[4/3] w-full max-w-4xl rounded-2xl border border-border bg-white",
               layout.handheld && "min-h-[22rem]",
             )}
-            data-floor-map="wood"
+            data-floor-map="white"
+            data-floor-canvas="white"
             data-floor-chairs="0"
           >
             <div className="pointer-events-none absolute inset-x-4 top-3 flex justify-between text-[10px] uppercase tracking-wider text-muted-foreground">
@@ -794,6 +796,8 @@ export function FloorView({
                     label={`${t.label}${merged}`}
                     rotation={t.rotation ?? 0}
                     mode="status"
+                    hollow={st === "empty"}
+                    ink={ink}
                   />
                   <div className="pointer-events-none absolute inset-x-0 bottom-0.5 z-10 flex flex-col items-center">
                   {foodUp && (

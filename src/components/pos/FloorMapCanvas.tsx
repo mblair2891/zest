@@ -34,6 +34,8 @@ export type FloorMapItem = {
   table: Table;
   fill: string;
   ink: string;
+  /** Empty tables draw a dark ring and a clear center. */
+  hollow?: boolean;
   flashing: boolean;
   dim: boolean;
   /** Joined table numbers, drawn smaller on the same fill. */
@@ -184,8 +186,9 @@ export function FloorMapCanvas({
   return (
     <div
       ref={viewRef}
-      className="floor-wood relative min-h-0 flex-1 overflow-hidden"
+      className="relative min-h-0 flex-1 overflow-hidden bg-white"
       data-floor-map="status"
+      data-floor-canvas="white"
       data-floor-chairs="0"
       data-floor-table-count={items.length}
       style={{ touchAction: "none" }}
@@ -234,8 +237,8 @@ export function FloorMapCanvas({
                 top: bar ? box.top + box.height / 2 - 16 : box.top,
                 width: bar ? 44 : box.width,
                 height: bar ? 32 : box.height,
-                color: item.ink,
-                background: bar ? fill : undefined,
+                color: bar ? "#1a120c" : item.ink,
+                background: bar ? "#f4efe6" : undefined,
                 containerType: "size",
                 transform: bar ? `rotate(${(Number(item.table.rotation) || 0) % 360}deg)` : undefined,
                 transformOrigin: "center center",
@@ -244,7 +247,7 @@ export function FloorMapCanvas({
                 "absolute border-0 p-0",
                 item.table.kind === "bar_top" && "pointer-events-none",
                 bar
-                  ? "z-[2] flex items-center justify-center rounded-full text-sm font-bold tabular shadow-sm"
+                  ? "z-[2] flex items-center justify-center rounded-full border border-[#1a120c]/15 text-sm font-bold tabular shadow-sm"
                   : "bg-transparent",
                 item.flashing && "table-sla-flash-thin",
                 item.dim && "ring-2 ring-black/30",
@@ -276,6 +279,8 @@ export function FloorMapCanvas({
                   joined={item.joined}
                   rotation={item.table.rotation ?? 0}
                   mode="status"
+                  hollow={item.hollow}
+                  ink={item.ink}
                 />
               )}
             </button>

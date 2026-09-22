@@ -565,7 +565,8 @@ export function FloorEditorView() {
         <div className="relative min-h-[300px] flex-1 p-3">
           <div
             ref={boardRef}
-            className="relative mx-auto aspect-[4/3] w-full max-w-4xl touch-none rounded-2xl border border-border bg-surface"
+            className="relative mx-auto aspect-[4/3] w-full max-w-4xl touch-none rounded-2xl border border-border bg-white"
+            data-floor-canvas="white"
             onPointerMove={onPointerMove}
             onPointerUp={onPointerUp}
             onPointerCancel={onPointerUp}

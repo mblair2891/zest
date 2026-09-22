@@ -25,6 +25,8 @@ export function FloorFixtureArt({
   children,
   mode = "plan",
   onPointerDown,
+  hollow = false,
+  ink,
 }: {
   table: Pick<Table, "kind" | "shape" | "w" | "h" | "seats" | "rotation">;
   tableFill: string;
@@ -39,6 +41,9 @@ export function FloorFixtureArt({
   /** plan = editor capacity marks. status = solid fill, number only, no seats. */
   mode?: "plan" | "status";
   onPointerDown?: (event: ReactPointerEvent<HTMLDivElement>) => void;
+  /** Empty tables are a dark ring with a clear center. */
+  hollow?: boolean;
+  ink?: string;
 }) {
   const booth = asBoothKind(table.kind, table.shape);
   const rot = ((Number(rotation ?? table.rotation) || 0) % 360 + 360) % 360;
@@ -52,9 +57,9 @@ export function FloorFixtureArt({
         rotation={rot}
         label={label}
         joined={joined}
-        w={table.w}
-        h={table.h}
         className={className}
+        hollow={hollow}
+        ink={ink}
       >
         {children}
       </StatusFixture>
@@ -146,10 +151,10 @@ function StatusFixture({
   rotation,
   label,
   joined,
-  w,
-  h,
   className,
   children,
+  hollow = false,
+  ink,
 }: {
   booth: BoothKind | null;
   bar: boolean;
@@ -158,42 +163,50 @@ function StatusFixture({
   rotation: number;
   label?: string;
   joined?: string[];
-  w: number;
-  h: number;
   className?: string;
   children?: ReactNode;
+  hollow?: boolean;
+  ink?: string;
 }) {
+  const ring = "#1c1917";
+  const number = hollow ? ring : ink || "#0a0a0a";
+  const shape = booth ? "booth" : bar ? "stool" : round ? "round" : "rect";
   return (
     <div
       className={cn("relative h-full w-full", className)}
       style={{ transform: `rotate(${rotation}deg)`, transformOrigin: "center center", containerType: "size" }}
-      data-floor-status-shape={booth ?? (bar ? "stool" : round ? "round" : "rect")}
+      data-floor-status-shape={shape}
+      data-floor-fill={hollow ? "hollow" : "solid"}
       data-no-chairs=""
     >
-      {booth ? (
-        <FloorBoothMark
-          kind={booth}
-          tableFill={tableFill}
-          outline={tableFill}
-          rotation={0}
-          solid
-          w={w}
-          h={h}
-          seats={4}
-        />
-      ) : (
-        <svg viewBox="0 0 100 100" className="pointer-events-none h-full w-full" aria-hidden>
-          {bar || round ? (
-            <ellipse cx="50" cy="50" rx="48" ry="48" fill={tableFill} />
-          ) : (
-            <rect x="2" y="2" width="96" height="96" rx="12" fill={tableFill} />
-          )}
-        </svg>
-      )}
+      <svg viewBox="0 0 100 100" className="pointer-events-none h-full w-full" aria-hidden>
+        {round ? (
+          <ellipse
+            cx="50"
+            cy="50"
+            rx="46"
+            ry="46"
+            fill={hollow ? "none" : tableFill}
+            stroke={hollow ? ring : "none"}
+            strokeWidth={hollow ? 7 : 0}
+          />
+        ) : (
+          <rect
+            x="5"
+            y="5"
+            width="90"
+            height="90"
+            rx="16"
+            fill={hollow ? "none" : tableFill}
+            stroke={hollow ? ring : "none"}
+            strokeWidth={hollow ? 7 : 0}
+          />
+        )}
+      </svg>
       {label ? (
         <span
           className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center px-[8%] text-center font-bold leading-none tabular"
-          style={{ transform: `rotate(${-rotation}deg)` }}
+          style={{ transform: `rotate(${-rotation}deg)`, color: number }}
           data-floor-cluster={joined?.length ? "1" : undefined}
         >
           <span data-floor-primary style={{ fontSize: joined?.length ? "42cqmin" : "50cqmin" }}>

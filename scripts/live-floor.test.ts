@@ -22,9 +22,10 @@ test("published tables are drawn and an empty publish uses the draft", () => {
   assert.match(FLOOR_DRAFT_BANNER, /Publish floor to lock layout/);
 });
 
-test("live floor map is wood and does not drop tables for a blank pane", () => {
+test("live floor map is white and does not drop tables for a blank pane", () => {
   const canvas = readFileSync("src/components/pos/FloorMapCanvas.tsx", "utf8");
-  assert.match(canvas, /floor-wood/);
+  assert.match(canvas, /data-floor-canvas="white"/);
+  assert.doesNotMatch(canvas, /floor-wood/);
   assert.match(canvas, /data-floor-bar="slab"/);
   assert.match(canvas, /data-floor-table-count/);
   assert.doesNotMatch(canvas, /opacity-0/);

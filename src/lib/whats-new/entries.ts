@@ -6,6 +6,18 @@ import type { GuideUpdate } from "@/lib/guide/types";
  */
 export const WHATS_NEW_ENTRIES: GuideUpdate[] = [
   {
+    id: "upd_2026_10_153_white_floor",
+    date: "2026-09-22",
+    title: "White floor and hollow empty tables",
+    summary: "The floor workspace is white. Empty tables are rings. A sat table fills with its status color.",
+    body: "The floor editor and the live floor use a plain white workspace. An empty table is a dark ring with a clear center and the number inside. Any other status fills that circle or rounded square, and the number stays readable. The bar slab stays dark with light seat numbers. Walls, doors, and windows stay dark lines.",
+    roles: ["owner_manager", "server", "host_operator"],
+    surfaces: ["floor"],
+    audience: "all",
+    topicId: "floor-tables",
+    tags: ["floor"],
+  },
+  {
     id: "upd_2026_10_152_wall_snap",
     date: "2026-09-22",
     title: "Walls snap into clean corners",
