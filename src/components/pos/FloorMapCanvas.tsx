@@ -4,6 +4,30 @@ import { floorFit, floorMapNumber, tablePixelBox } from "@/lib/pos/floor-fit";
 import { FloorFixtureArt } from "@/components/pos/FloorFixtureArt";
 import { cn } from "@/lib/utils";
 
+function isBarSeat(table: Table): boolean {
+  return table.kind === "barstool" || table.shape === "bar";
+}
+
+/** One BAR rail behind the numbered seat pills. Seats stay labels, not chair art. */
+function barSlab(items: FloorMapItem[], pxPerPct: number) {
+  const seats = items.filter((i) => isBarSeat(i.table));
+  if (!seats.length) return null;
+  const boxes = seats.map((i) => tablePixelBox(i.table, pxPerPct, 40));
+  const left = Math.min(...boxes.map((b) => b.left)) - 12;
+  const top = Math.min(...boxes.map((b) => b.top)) - 28;
+  const right = Math.max(...boxes.map((b) => b.left + b.width)) + 12;
+  const bottom = Math.max(...boxes.map((b) => b.top + b.height)) + 14;
+  return (
+    <div
+      className="pointer-events-none absolute z-[1] flex items-start rounded-2xl bg-[#3d2914] px-3 pt-1 text-sm font-bold tracking-wide text-[#f4efe6]"
+      data-floor-bar="slab"
+      style={{ left, top, width: Math.max(72, right - left), height: Math.max(56, bottom - top) }}
+    >
+      BAR
+    </div>
+  );
+}
+
 export type FloorMapItem = {
   table: Table;
   fill: string;
@@ -157,9 +181,10 @@ export function FloorMapCanvas({
   return (
     <div
       ref={viewRef}
-      className="relative min-h-0 flex-1 overflow-hidden bg-bg"
+      className="floor-wood relative min-h-0 flex-1 overflow-hidden"
       data-floor-map="status"
       data-floor-chairs="0"
+      data-floor-table-count={items.length}
       style={{ touchAction: "none" }}
       onPointerDown={onPointerDown}
       onPointerMove={onPointerMove}
@@ -175,16 +200,20 @@ export function FloorMapCanvas({
           transformOrigin: "0 0",
         }}
       >
+        {barSlab(items, fit.pxPerPct)}
         {items.map((item) => {
-          const box = tablePixelBox(item.table, fit.pxPerPct, 64);
+          const bar = item.table.kind === "barstool" || item.table.shape === "bar";
+          const box = tablePixelBox(item.table, fit.pxPerPct, bar ? 40 : 72);
           const num = floorMapNumber(item.table.label);
+          const fill = item.fill && item.fill !== "transparent" ? item.fill : "#f4efe6";
           return (
             <button
               key={item.table.id}
               type="button"
               data-table-id={item.table.id}
               data-floor-label={num}
-              aria-label={`Table ${num}`}
+              data-floor-seat={bar ? "pill" : "table"}
+              aria-label={bar ? `Seat ${num}` : `Table ${num}`}
               onClick={() => {
                 if (suppress.current) {
                   suppress.current = false;
@@ -193,28 +222,36 @@ export function FloorMapCanvas({
                 onTableClick(item.table);
               }}
               style={{
-                left: box.left,
-                top: box.top,
-                width: box.width,
-                height: box.height,
+                left: bar ? box.left + box.width / 2 - 22 : box.left,
+                top: bar ? box.top + box.height / 2 - 16 : box.top,
+                width: bar ? 44 : box.width,
+                height: bar ? 32 : box.height,
                 color: item.ink,
+                background: bar ? fill : undefined,
                 containerType: "size",
               }}
               className={cn(
-                "absolute border-0 bg-transparent p-0",
+                "absolute border-0 p-0",
+                bar
+                  ? "z-[2] flex items-center justify-center rounded-full text-sm font-bold tabular shadow-sm"
+                  : "bg-transparent",
                 item.flashing && "table-sla-flash-thin",
-                item.dim && "opacity-55",
+                item.dim && "ring-2 ring-black/30",
               )}
             >
-              <FloorFixtureArt
-                table={item.table}
-                tableFill={item.fill}
-                outline={item.fill}
-                label={num}
-                joined={item.joined}
-                rotation={item.table.rotation ?? 0}
-                mode="status"
-              />
+              {bar ? (
+                <span className="pointer-events-none">{num}</span>
+              ) : (
+                <FloorFixtureArt
+                  table={{ ...item.table, kind: item.table.kind === "barstool" ? "table" : item.table.kind, shape: item.table.shape === "bar" ? "rect" : item.table.shape }}
+                  tableFill={fill}
+                  outline={fill}
+                  label={num}
+                  joined={item.joined}
+                  rotation={item.table.rotation ?? 0}
+                  mode="status"
+                />
+              )}
             </button>
           );
         })}

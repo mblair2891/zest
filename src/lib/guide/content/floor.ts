@@ -171,7 +171,7 @@ export const FLOOR_TOPICS: GuideTopic[] = [
       ul(
         "After a host / supervisor / manager PIN, the bar is Floor, Checks, Menu, Pay. The short menu under Checks → Other jobs is Waitlist, To-go, and Close out. The floor shows clocked in HH:MM.",
         "To-go starts a takeout check with the same pay and print path as the order station.",
-        "Floor is the map and table status only: colored blocks, number only, no chairs. Tap a table with open checks — one tap — for Add, Send, Print check, Pay. Empty + Seat only when vacant. No ODS rail, no menu editor.",
+        "Floor is a wood map, full bleed. Tables are solid rounded blocks or circles with a large number and no chairs. The bar is one BAR slab with B1…Bn seat pills. Status is the fill color. Top shows the staff name and local time, plus a tight icon row for messages, print, and switch user. Bottom left is Dine in | To go. The other corner is Tickets search. Tap a table with open checks — one tap — for Add, Send, Print check, Pay. Empty + Seat only when vacant. If the published floor has tables, they are drawn. If that snapshot is empty, the last saved draft is drawn and the banner says Publish floor to lock layout. A failed picture or a demo seed does not hide the tables.",
         "Kitchen / cook PIN: Close out (End shift) and Done only. No to-go from this tablet.",
         "Server PIN: Floor and To-go only when Servers may use the host stand is on; otherwise clock and use an order tablet.",
       ),

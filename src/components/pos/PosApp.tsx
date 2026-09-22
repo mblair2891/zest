@@ -34,6 +34,7 @@ import { parseQrMode } from "@/lib/pos/qr-table";
 import { parsePaymentMethods } from "@/lib/pos/payment-methods";
 import { EMPTY_LOCATION_SETUP } from "@/lib/saas/types";
 import { tablesFromFloorPlan } from "@/lib/saas/location-catalog";
+import { readFloorDraft, resolveLiveFloor, setFloorDraftBanner } from "@/lib/pos/live-floor";
 import { membershipToEmployeeRole } from "@/lib/access/membership-map";
 import { HOST_SCOPE, parseGrantMatrix } from "@/lib/access/entity-grants";
 import { parseLaborMap, parseLaborRules } from "@/lib/labor/rules";
@@ -524,19 +525,38 @@ function PosAppInner({ entityId }: { entityId?: string }) {
           } catch {
             /* ignore */
           }
-          if (setup.floorPlan?.tables?.length) {
+          {
             const cur = usePosStore.getState();
-            usePosStore.setState({
-              floorSections: setup.floorPlan.sections?.length
-                ? setup.floorPlan.sections
-                : cur.floorSections,
-              tables:
-                cur.tables.length === 0
-                  ? tablesFromFloorPlan(setup.floorPlan)
-                  : cur.tables,
-            });
-          } else if (setup.floorPlan?.sections?.length) {
-            usePosStore.setState({ floorSections: setup.floorPlan.sections });
+            const station = isStationPinPath() || isNativeApp();
+            const publishedTables = setup.floorPlan
+              ? setup.floorPlan.tables?.length
+                ? tablesFromFloorPlan(setup.floorPlan)
+                : []
+              : null;
+            const draft = readFloorDraft(access.location.id);
+            const resolved = station
+              ? resolveLiveFloor({
+                  publishedTables,
+                  draftTables: draft?.tables ?? [],
+                  currentTables: [],
+                })
+              : resolveLiveFloor({
+                  publishedTables: cur.tables.length ? null : publishedTables,
+                  draftTables: cur.tables.length ? [] : (draft?.tables ?? []),
+                  currentTables: cur.tables,
+                });
+            if (resolved.tables.length || setup.floorPlan?.sections?.length) {
+              usePosStore.setState({
+                floorSections: resolved.fromDraft && draft?.sections?.length
+                  ? draft.sections
+                  : setup.floorPlan?.sections?.length
+                    ? setup.floorPlan.sections
+                    : cur.floorSections,
+                ...(resolved.tables.length ? { tables: resolved.tables } : {}),
+              });
+            }
+            if (resolved.fromDraft) setFloorDraftBanner(true);
+            else if (publishedTables && publishedTables.length) setFloorDraftBanner(false);
           }
           if (setup.menuCatalog?.items?.length) {
             const cur = usePosStore.getState();

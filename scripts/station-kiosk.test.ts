@@ -83,6 +83,10 @@ test("native shell reloads station URL and can exit lock-task", () => {
   const main = readFileSync("android/app/src/main/java/app/summex/pos/MainActivity.java", "utf8");
   assert.match(main, /reloadStation/);
   assert.match(main, /exitKiosk/);
+  assert.match(main, /StationKioskPlugin/);
+  const plugin = readFileSync("android/app/src/main/java/app/summex/pos/StationKioskPlugin.java", "utf8");
+  assert.match(plugin, /StationKiosk/);
+  assert.match(plugin, /exitKioskLock/);
   assert.match(main, /stopLockTask/);
   assert.match(main, /CATEGORY_HOME/);
   assert.match(main, /loadUrl\(url\)/);
@@ -97,7 +101,10 @@ test("native shell reloads station URL and can exit lock-task", () => {
   const ui = readFileSync("src/components/pos/StationKioskControls.tsx", "utf8");
   assert.match(ui, /STATION_RELOAD_HOLD_MS/);
   assert.match(ui, /Exit kiosk/);
+  assert.match(ui, /data-exit-kiosk/);
+  assert.match(ui, /needPin\("exit"\)/);
   assert.match(ui, /Staff PINs cannot/);
+  assert.match(readFileSync("src/lib/native-kiosk.ts", "utf8"), /StationKiosk/);
   const devices = readFileSync("src/components/pos/LocationDeviceRegistry.tsx", "utf8");
   assert.match(devices, /station-service-pin/);
   const guide = readFileSync("src/lib/guide/content/devices.ts", "utf8");

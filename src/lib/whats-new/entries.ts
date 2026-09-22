@@ -6,6 +6,19 @@ import type { GuideUpdate } from "@/lib/guide/types";
  */
 export const WHATS_NEW_ENTRIES: GuideUpdate[] = [
   {
+    id: "upd_2026_10_142_floor_kiosk",
+    date: "2026-09-22",
+    title: "Wood floor map and exit kiosk",
+    summary:
+      "The live floor draws every published table on wood. Exit kiosk leaves lock-task after the service PIN.",
+    body: "A paired order tablet draws the published floor on a wood map: large table numbers, no chairs, and a BAR slab with numbered seat pills. If publish has no tables, the last saved draft shows with “Publish floor to lock layout.” Exit kiosk is on the station shell. A manager confirms and leaves lock-task for Android home or the PIN pad. Anyone else enters the manager or Devices service PIN first. Staff PINs cannot exit.",
+    roles: ["owner_manager", "server", "host_operator", "kitchen_bar"],
+    surfaces: ["floor", "kiosk"],
+    audience: "all",
+    topicId: "floor-tables",
+    tags: ["floor", "kiosk"],
+  },
+  {
     id: "upd_2026_10_141_checklist_links",
     date: "2026-09-22",
     title: "Checklist tasks open the screen",

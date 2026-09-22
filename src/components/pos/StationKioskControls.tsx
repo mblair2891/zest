@@ -33,6 +33,7 @@ export function StationKioskControls() {
   const privileged = employeeCanStationService(emp?.role);
   const unpaired = !locId;
   const [pinOpen, setPinOpen] = useState(false);
+  const [pinAction, setPinAction] = useState<"reload" | "exit">("reload");
   const [exitOpen, setExitOpen] = useState(false);
   const [pin, setPin] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -52,6 +53,7 @@ export function StationKioskControls() {
 
   const runExit = () => {
     exitStationKiosk();
+    usePosStore.getState().logout();
   };
 
   const needPin = (action: "reload" | "exit") => {
@@ -59,11 +61,15 @@ export function StationKioskControls() {
       runReload();
       return;
     }
-    if (privileged) {
-      if (action === "reload") runReload();
-      else setExitOpen(true);
+    if (privileged && action === "reload") {
+      runReload();
       return;
     }
+    if (privileged && action === "exit") {
+      setExitOpen(true);
+      return;
+    }
+    setPinAction(action);
     setPin("");
     setError(null);
     setPinOpen(true);
@@ -84,7 +90,7 @@ export function StationKioskControls() {
     }
     setPinOpen(false);
     setPin("");
-    if (action === "exit") setExitOpen(true);
+    if (action === "exit") runExit();
     else runReload();
   };
 
@@ -109,17 +115,14 @@ export function StationKioskControls() {
         className="pointer-events-none fixed inset-x-0 bottom-0 z-[60] flex items-end justify-between px-3 pb-3"
         data-demo="station-kiosk-controls"
       >
-        {privileged ? (
-          <button
-            type="button"
-            className="pointer-events-auto rounded-md px-2 py-1 text-[10px] uppercase tracking-wide text-muted-foreground/70"
-            onClick={() => needPin("exit")}
-          >
-            Exit kiosk
-          </button>
-        ) : (
-          <span />
-        )}
+        <button
+          type="button"
+          className="pointer-events-auto rounded-md px-2 py-1 text-[10px] uppercase tracking-wide text-muted-foreground/70"
+          data-exit-kiosk
+          onClick={() => needPin("exit")}
+        >
+          Exit kiosk
+        </button>
         <button
           type="button"
           aria-label="Reload station website"
@@ -148,7 +151,7 @@ export function StationKioskControls() {
             value={pin}
             onChange={(e) => setPin(e.target.value.replace(/\D/g, "").slice(0, 4))}
             onKeyDown={(e) => {
-              if (e.key === "Enter") submitPin("reload");
+              if (e.key === "Enter") submitPin(pinAction);
             }}
             placeholder="PIN"
             className="text-center text-lg tracking-[0.4em]"
@@ -161,7 +164,9 @@ export function StationKioskControls() {
             <Button variant="outline" onClick={() => submitPin("exit")}>
               Exit kiosk
             </Button>
-            <Button onClick={() => submitPin("reload")}>Reload</Button>
+            <Button onClick={() => submitPin(pinAction === "exit" ? "exit" : "reload")}>
+              {pinAction === "exit" ? "Exit kiosk" : "Reload"}
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

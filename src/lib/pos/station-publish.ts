@@ -7,6 +7,7 @@ import { usePosStore } from "@/lib/pos/store";
 import { parseQrPolicy } from "@/lib/pos/qr-policy";
 import { parseQrMode } from "@/lib/pos/qr-table";
 import { tablesFromFloorPlan } from "@/lib/saas/location-catalog";
+import { readFloorDraft, resolveLiveFloor, setFloorDraftBanner } from "@/lib/pos/live-floor";
 import { parseLocationDevices } from "@/lib/pos/location-devices";
 import { parseLaborMap } from "@/lib/labor/rules";
 import { useOpsStore } from "@/lib/pos/ops-store";
@@ -142,9 +143,18 @@ export function applyStationPublish(
       setup.floorPlan && typeof setup.floorPlan === "object"
         ? (setup.floorPlan as { tables?: unknown[]; sections?: unknown[] })
         : {};
-    const tables = Array.isArray(plan.tables) && plan.tables.length
-      ? tablesFromFloorPlan(setup.floorPlan as never)
-      : pos.tables;
+    const publishedTables = Array.isArray(plan.tables)
+      ? plan.tables.length
+        ? tablesFromFloorPlan(setup.floorPlan as never)
+        : []
+      : null;
+    const draft = readFloorDraft(locationId);
+    const resolved = resolveLiveFloor({
+      publishedTables,
+      draftTables: draft?.tables ?? [],
+      currentTables: pos.tables,
+    });
+    const tables = resolved.tables;
     const patch: Record<string, unknown> = {};
     if (Array.isArray(catalog.items)) {
       const live: Record<string, boolean> = {};
@@ -161,7 +171,10 @@ export function applyStationPublish(
     if (Array.isArray(catalog.categories)) patch.categories = catalog.categories;
     if (Array.isArray(catalog.modifiers)) patch.modifierGroups = catalog.modifiers;
     if (tables.length) patch.tables = tables;
-    if (Array.isArray(plan.sections)) patch.floorSections = plan.sections;
+    if (resolved.fromDraft && draft?.sections?.length) patch.floorSections = draft.sections;
+    else if (Array.isArray(plan.sections)) patch.floorSections = plan.sections;
+    if (resolved.fromDraft) setFloorDraftBanner(true);
+    else if (publishedTables && publishedTables.length) setFloorDraftBanner(false);
     if (setup.locationDevices != null) {
       patch.locationDevices = parseLocationDevices(setup.locationDevices);
     }

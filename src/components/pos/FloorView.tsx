@@ -12,6 +12,7 @@ import {
   Handshake,
   UserCheck,
   Printer,
+  LogOut,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -65,6 +66,9 @@ import { useStationLayout } from "@/lib/ui/station-layout";
 import { barTabVisibleTables, isBarRailSeat, locationAllowsBarTabs } from "@/lib/pos/bar-tab";
 import { FloorFixtureArt } from "@/components/pos/FloorFixtureArt";
 import { FloorMapCanvas, type FloorMapItem } from "@/components/pos/FloorMapCanvas";
+import { floorDraftBannerOn, FLOOR_DRAFT_BANNER, readFloorDraft, setFloorDraftBanner } from "@/lib/pos/live-floor";
+import { useStationSessionStore } from "@/lib/pos/station-session";
+import { NotificationBell } from "@/components/pos/NotificationCenter";
 import { stationCan } from "@/lib/pos/station-pin-gate";
 import { NoSaleControl } from "./NoSaleControl";
 import { ClockedInChip } from "./ClockedInChip";
@@ -141,6 +145,24 @@ export function FloorView({
   });
   const foodUpUntil = useNotifyStore((s) => s.foodUpUntil);
   const clock = usePosStore((s) => s.clock);
+  const locId = usePosStore((s) => s.tenantLocationId);
+  const logout = usePosStore((s) => s.logout);
+  const [draftBanner, setDraftBanner] = useState(false);
+  const [ticketQuery, setTicketQuery] = useState("");
+  useEffect(() => {
+    if (tables.length > 0) {
+      setDraftBanner(floorDraftBannerOn());
+      return;
+    }
+    const draft = readFloorDraft(locId || "");
+    if (!draft?.tables.length) return;
+    usePosStore.setState({
+      tables: draft.tables,
+      floorSections: draft.sections.length ? draft.sections : usePosStore.getState().floorSections,
+    });
+    setFloorDraftBanner(true);
+    setDraftBanner(true);
+  }, [tables.length, locId]);
 
   const emp = employees.find((e) => e.id === currentEmployeeId) ?? null;
   const policy = policyOf(settings.sectionPolicy);
@@ -260,6 +282,15 @@ export function FloorView({
         }
         return true;
       });
+  const ticketQ = ticketQuery.trim().toLowerCase();
+  const shown = ticketQ
+    ? visible.filter((t) => {
+        if (t.label.toLowerCase().includes(ticketQ)) return true;
+        return orders.some(
+          (o) => o.tableId === t.id && o.status === "open" && String(o.number).toLowerCase().includes(ticketQ),
+        );
+      })
+    : visible;
 
   const counts = useMemo(() => {
     const c: Record<string, number> = { check_open: 0 };
@@ -383,7 +414,7 @@ export function FloorView({
   };
 
   const mapItems: FloorMapItem[] = mapOnly
-    ? visible.map((t) => {
+    ? shown.map((t) => {
         const st = effectiveTablePipeline(t, orders, tickets, floorCfg);
         const fill = st === "reserved" ? "#e8e6e1" : (floorCfg.colors[st] ?? "#ffffff");
         const orderAcc = tableAccess(t.id, "order");
@@ -549,9 +580,43 @@ export function FloorView({
       >
         {mapOnly ? (
           <div className="relative min-h-0 flex-1">
-            <div className="pointer-events-none absolute left-3 top-3 z-10">
-              <ClockedInChip className="rounded-full bg-surface/95 px-2 py-1 text-[11px] font-medium text-foreground shadow-sm" />
+            <div className="pointer-events-none absolute inset-x-0 top-0 z-20 flex items-start justify-between gap-2 p-2">
+              <div className="pointer-events-auto min-w-0 rounded-xl bg-black/35 px-2 py-1 text-white">
+                <p className="truncate text-sm font-semibold leading-tight">{emp?.name ?? "Station"}</p>
+                <p className="text-[11px] tabular leading-tight">{formatTime(clock || Date.now(), settings.timezone)}</p>
+                <ClockedInChip className="text-[10px] text-white/80" />
+              </div>
+              <div className="pointer-events-auto flex items-center gap-1 rounded-xl bg-black/35 p-1 text-white">
+                <NotificationBell />
+                <button
+                  type="button"
+                  className="inline-flex h-9 w-9 items-center justify-center rounded-lg"
+                  aria-label="Print"
+                  onClick={() => {
+                    const btn = document.querySelector<HTMLButtonElement>("[data-print-check]");
+                    btn?.click();
+                  }}
+                >
+                  <Printer className="h-4 w-4" />
+                </button>
+                <button
+                  type="button"
+                  className="inline-flex h-9 w-9 items-center justify-center rounded-lg"
+                  aria-label="Switch user"
+                  onClick={() => logout()}
+                >
+                  <LogOut className="h-4 w-4" />
+                </button>
+              </div>
             </div>
+            {draftBanner && (
+              <p
+                className="pointer-events-none absolute left-1/2 top-16 z-20 -translate-x-1/2 rounded-full bg-black/55 px-3 py-1 text-xs font-medium text-white"
+                data-floor-draft-banner
+              >
+                {FLOOR_DRAFT_BANNER}
+              </p>
+            )}
             <FloorMapCanvas
               items={mapItems}
               onTableClick={onTableClick}
@@ -559,6 +624,31 @@ export function FloorView({
                 withManager((pin) => joinParty(draggedId, ontoId, pin));
               }}
             />
+            <div className="pointer-events-none absolute inset-x-0 bottom-0 z-20 flex items-end justify-between gap-2 p-2">
+              <div className="pointer-events-auto flex overflow-hidden rounded-xl bg-black/45 text-sm font-semibold text-white">
+                <button type="button" className="px-3 py-2" onClick={() => { setTicketQuery(""); clearFloorIntent(); }}>
+                  Dine in
+                </button>
+                <button
+                  type="button"
+                  className="border-l border-white/20 px-3 py-2"
+                  onClick={() => useStationSessionStore.getState().setStationJob("togo")}
+                >
+                  To go
+                </button>
+              </div>
+              <label className="pointer-events-auto flex items-center gap-1 rounded-xl bg-black/45 px-2 py-1 text-white">
+                <span className="text-[11px] font-medium">Tickets</span>
+                <input
+                  value={ticketQuery}
+                  onChange={(e) => setTicketQuery(e.target.value)}
+                  placeholder="Search"
+                  aria-label="Tickets search"
+                  className="h-8 w-24 bg-transparent text-sm outline-none placeholder:text-white/60"
+                  data-floor-ticket-search
+                />
+              </label>
+            </div>
           </div>
         ) : (
         <div

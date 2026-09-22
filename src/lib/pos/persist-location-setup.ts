@@ -6,6 +6,7 @@ import { useCostStore } from "@/lib/costs/store";
 import { useOpsStore } from "@/lib/pos/ops-store";
 import { isProspectDemo } from "@/lib/demo/session";
 import { floorPlanFromPos } from "@/lib/saas/location-catalog";
+import { writeFloorDraft } from "@/lib/pos/live-floor";
 import { HOST_SCOPE } from "@/lib/access/entity-grants";
 import { parseLaborRules } from "@/lib/labor/rules";
 import { parsePaymentMethods } from "./payment-methods";
@@ -389,6 +390,7 @@ export async function flushLocationCatalog(
   if (!ctx) return;
   const pos = usePosStore.getState();
   const plan = floorPlanFromPos(pos.tables, pos.floorSections);
+  writeFloorDraft(ctx.locationId, pos.tables, pos.floorSections);
   const cost = useCostStore.getState();
   await saveLocationSettingsFn({
     data: {

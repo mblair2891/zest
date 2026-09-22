@@ -1,7 +1,7 @@
 # Operators Guide — authoring
 
-**Revision · 22 Sep 2026** — Onboarding checklist tasks open their screens.
-Guide v2026.10.141.
+**Revision · 22 Sep 2026** — Wood floor map and exit kiosk.
+Guide v2026.10.142.
 
 The in-app **Operators Guide** is the living product manual. It is not a
 separate PDF. Staff open it from **Guide** / **?** in the POS and platform

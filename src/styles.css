@@ -99,6 +99,14 @@
   }
 }
 
+.floor-wood {
+  background-color: #a67c52;
+  background-image:
+    repeating-linear-gradient(90deg, rgba(74, 42, 18, 0.18) 0 2px, transparent 2px 18px),
+    repeating-linear-gradient(0deg, rgba(255, 228, 190, 0.07) 0 1px, transparent 1px 9px),
+    linear-gradient(165deg, #d7b07a 0%, #c4956a 38%, #a56b3c 100%);
+}
+
 @keyframes pin-shake {
   0%,
   100% {
