@@ -62,21 +62,21 @@ export const ORDER_TOPICS: GuideTopic[] = [
     id: "check-numbers",
     chapterId: "orders",
     title: "Check numbers",
-    summary: "Venue-day ticket id: date, table, and the day’s sequence. Same id on every slip.",
+    summary: "Table plus that table’s daily sequence. Same id on every slip. No date in the number.",
     roles: ["owner_manager", "server", "kitchen_bar", "host_operator"],
-    keywords: ["check number", "ticket", "YYMMDD", "guest check", "star", "ods", "qr"],
+    keywords: ["check number", "ticket", "T1-03", "guest check", "star", "ods", "qr"],
     openView: "order",
     blocks: [
       why(
-        "A forever number like #101 does not tell you the day or the table. The kitchen, the guest check, and the QR have to name the same check.",
+        "The kitchen, the guest check, and the QR have to name the same check. The date is already on the ticket clock, so it is not repeated in the number.",
       ),
       p(
-        "The number is assigned when the check opens, in the venue’s IANA timezone. It does not climb forever, and it is not a separate number per selling entity. One house check, one number. Format: YYMMDD-T{table}-{seq}. Example: 260922-T1-03 is 22 Sep 2026, table 1, the third check opened that venue day. To-go and any check with no table: YYMMDD-TO-{seq}. Bar tab: YYMMDD-BAR-{seq}. {seq} starts at 01 after local midnight and is shared by the whole venue that day.",
+        "The visible id is assigned when the check opens. Format: T{table}-{seq}. Example: T1-03 is the third check opened on table 1 that venue day. To-go and any check with no table: TO-03. Bar tab: BAR-03. {seq} starts at 01 after local midnight in the venue IANA timezone, and it counts per table (to-go and bar each have their own count). It is not a forever #101 and not a separate number per selling entity. One house check, one id. The order id and the open time stay the reporting keys.",
       ),
       ul(
-        "Two dining checks on table 1 the same day: 260922-T1-01 then 260922-T1-02, if they are the first two checks of the day. A to-go opened first uses 01, so the next table check is 02.",
-        "After local midnight the next new check is the new date and seq 01. A check still open from yesterday keeps the number it was opened with.",
-        "Guest check header, Star kitchen ticket, order display, pay QR, and reports use that same id.",
+        "Two dining checks on table 1 the same day print T1-01 then T1-02. A check on table 2 the same minute is T2-01. To-go is TO-01 even if the dining room already has checks.",
+        "After local midnight that table’s next new check is T1-01 again. A check still open from yesterday keeps T1-02 if that is the number it opened with.",
+        "The bold guest-check number, Star kitchen ticket, order display, pay QR, and the on-screen check use that same id. None of them print YYMMDD in the number.",
       ),
       steps(
         "Open a table. The check number shows on the order pad as soon as the check exists.",

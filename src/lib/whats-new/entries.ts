@@ -6,12 +6,12 @@ import type { GuideUpdate } from "@/lib/guide/types";
  */
 export const WHATS_NEW_ENTRIES: GuideUpdate[] = [
   {
-    id: "upd_2026_10_135_daily_check_numbers",
+    id: "upd_2026_10_136_check_table_seq",
     date: "2026-09-22",
-    title: "Check numbers reset each venue day",
+    title: "Check numbers are table plus sequence",
     summary:
-      "A check is 260922-T1-03 — the venue date, the table, and that day’s sequence. The same id is on the guest check, Star ticket, order display, and pay QR.",
-    body: "Not a forever #101, and not a separate number per selling entity. To-go is YYMMDD-TO-{seq}. Bar tabs are YYMMDD-BAR-{seq}. The sequence starts at 01 after local midnight in the venue timezone. A check still open past midnight keeps the number it was opened with. The next new check uses the new date.",
+      "A check prints as T1-03. To-go is TO-03. A bar tab is BAR-03. The date stays on the ticket clock, not in the number.",
+    body: "Each table (and to-go, and bar) starts at 01 after local midnight and counts only its own checks that day. Two checks on table 1 are T1-01 then T1-02. Table 2 can also be T2-01 the same hour. A check still open past midnight keeps the id it opened with. Kitchen ticket, guest check, order display, and pay QR use that same id. Reports keep the order id and the open time.",
     roles: ["owner_manager", "server", "kitchen_bar", "host_operator"],
     surfaces: ["floor", "kds"],
     audience: "all",

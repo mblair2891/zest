@@ -1,8 +1,10 @@
 /**
- * Venue-local daily check numbers.
- * YYMMDD-T{table}-{seq} · YYMMDD-TO-{seq} · YYMMDD-BAR-{seq}
- * {seq} is one counter per venue per calendar day in the venue IANA zone.
- * Assigned at open and never rewritten when the day rolls.
+ * Visible check id: table (or TO / BAR) plus a sequence.
+ * T1-03 · TO-03 · BAR-03
+ * No date in the id — the ticket clock already has the venue time.
+ * {seq} is per table, or per TO / BAR, for the venue-local calendar day.
+ * Assigned at open from createdAt. Not rewritten when the day rolls.
+ * Order id and createdAt stay the reporting keys.
  */
 function zone(timeZone?: string): string {
   const s = String(timeZone ?? "").trim() || "America/Los_Angeles";
@@ -34,12 +36,11 @@ function venueDayYmd(atMs: number, timeZone?: string): string {
 
 export type CheckNo = string | number;
 
-const DAILY = /^(\d{6})-(T[A-Za-z0-9]+|TO|BAR)-(\d+)$/;
+/** Current id, or the previous dated form (260922-T1-03) still accepted on QR. */
+const VISIBLE = /^(?:(\d{6})-)?((?:BAR|TO)|T[A-Za-z0-9]+)-(\d+)$/;
 
-export function venueDayPrefix(atMs: number, timeZone?: string): string {
-  const ymd = venueDayYmd(atMs, timeZone);
-  const [y, m, d] = ymd.split("-");
-  return `${(y || "1970").slice(2)}${m || "01"}${d || "01"}`;
+export function venueDayKey(atMs: number, timeZone?: string): string {
+  return venueDayYmd(atMs, timeZone);
 }
 
 export function tableToken(label: string | null | undefined): string {
@@ -58,55 +59,66 @@ export function checkChannel(type: string | undefined, tableLabel?: string | nul
   return "to";
 }
 
+export function checkStem(type: string | undefined, tableLabel?: string | null): string {
+  const channel = checkChannel(type, tableLabel);
+  if (channel === "bar") return "BAR";
+  if (channel === "to") return "TO";
+  return `T${tableToken(tableLabel)}`;
+}
+
 export function formatCheckNumber(opts: {
-  atMs: number;
-  timeZone?: string;
   channel: CheckChannel;
   tableLabel?: string | null;
   seq: number;
+  type?: string;
 }): string {
-  const day = venueDayPrefix(opts.atMs, opts.timeZone);
   const seq = String(Math.max(1, Math.floor(opts.seq))).padStart(2, "0");
-  if (opts.channel === "bar") return `${day}-BAR-${seq}`;
-  if (opts.channel === "to") return `${day}-TO-${seq}`;
-  return `${day}-T${tableToken(opts.tableLabel)}-${seq}`;
+  const stem =
+    opts.channel === "bar"
+      ? "BAR"
+      : opts.channel === "to"
+        ? "TO"
+        : `T${tableToken(opts.tableLabel)}`;
+  return `${stem}-${seq}`;
 }
 
-/** Seq already used on this venue day, or null if this number is not from that day. */
-export function checkSeqOnDay(number: unknown, dayPrefix: string): number | null {
-  const m = DAILY.exec(String(number ?? "").trim());
-  if (!m || m[1] !== dayPrefix) return null;
-  const n = Number(m[3]);
-  return Number.isFinite(n) ? n : null;
+export function parseCheckNumber(number: unknown): { stem: string; seq: number } | null {
+  const m = VISIBLE.exec(String(number ?? "").trim());
+  if (!m) return null;
+  const seq = Number(m[3]);
+  if (!Number.isFinite(seq)) return null;
+  return { stem: m[2]!, seq };
 }
 
 export function nextCheckNumber(opts: {
-  orders: { number?: unknown }[];
+  orders: { number?: unknown; createdAt?: number }[];
   atMs: number;
   timeZone?: string;
   type?: string;
   tableLabel?: string | null;
 }): string {
-  const day = venueDayPrefix(opts.atMs, opts.timeZone);
+  const day = venueDayKey(opts.atMs, opts.timeZone);
+  const stem = checkStem(opts.type, opts.tableLabel);
   let max = 0;
   for (const o of opts.orders) {
-    const n = checkSeqOnDay(o.number, day);
-    if (n != null && n > max) max = n;
+    if (o.createdAt == null) continue;
+    if (venueDayKey(o.createdAt, opts.timeZone) !== day) continue;
+    const parsed = parseCheckNumber(o.number);
+    if (!parsed || parsed.stem !== stem) continue;
+    if (parsed.seq > max) max = parsed.seq;
   }
   return formatCheckNumber({
-    atMs: opts.atMs,
-    timeZone: opts.timeZone,
     channel: checkChannel(opts.type, opts.tableLabel),
     tableLabel: opts.tableLabel,
     seq: max + 1,
   });
 }
 
-/** QR ?check= value. Keeps the daily id; still accepts a legacy integer. */
+/** QR ?check= value. Accepts T1-01, TO-01, BAR-01, a legacy dated id, or an integer. */
 export function readCheckParam(raw: unknown): CheckNo | undefined {
   const s = String(raw ?? "").trim();
   if (!s) return undefined;
-  if (DAILY.test(s)) return s;
+  if (VISIBLE.test(s)) return s;
   if (/^\d+$/.test(s)) {
     const n = Number(s);
     return n > 0 ? n : undefined;

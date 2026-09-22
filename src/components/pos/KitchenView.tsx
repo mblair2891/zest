@@ -251,7 +251,7 @@ export function KitchenView({ station, expo, operatorId }: Props) {
                     <p className="text-lg font-semibold">
                       {t.tableLabel}
                       <span className="ml-2 text-sm font-normal text-muted-foreground">
-                        #{t.orderNumber}
+                        {t.orderNumber}
                       </span>
                     </p>
                     <p className="text-xs text-muted-foreground">

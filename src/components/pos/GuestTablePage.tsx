@@ -122,7 +122,9 @@ export function GuestTablePage({
   const order =
     orderFromTicket ??
     (checkNumber
-      ? openChecks.find((o) => String(o.number) === String(checkNumber))
+      ? openChecks
+          .filter((o) => String(o.number) === String(checkNumber))
+          .sort((a, b) => (b.createdAt ?? 0) - (a.createdAt ?? 0))[0]
       : undefined) ??
     (resolvedTable?.orderId
       ? openChecks.find((o) => o.id === resolvedTable.orderId) ??

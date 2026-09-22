@@ -58,5 +58,5 @@ test("guide floorplan covers booth shapes, not fat rectangles", () => {
   assert.match(floor, /upholstery/);
   assert.doesNotMatch(floor, /Summit Hall/);
   const types = readFileSync("src/lib/guide/types.ts", "utf8");
-  assert.match(types, /2026\.10\.135/);
+  assert.match(types, /2026\.10\.136/);
 });

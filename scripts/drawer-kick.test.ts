@@ -91,5 +91,5 @@ test("guide: cash drawer kick on Epson, not kitchen Star", () => {
   const pay = readFileSync("src/lib/guide/content/payments.ts", "utf8");
   assert.match(pay, /does not kick the drawer unless/);
   const types = readFileSync("src/lib/guide/types.ts", "utf8");
-  assert.match(types, /2026\.10\.135/);
+  assert.match(types, /2026\.10\.136/);
 });

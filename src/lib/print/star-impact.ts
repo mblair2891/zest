@@ -82,7 +82,7 @@ export function buildStarSp700Bytes(job: StarImpactJob): Uint8Array {
     line(job.serverName || "Server", time),
   ];
   if (job.tableLabel || job.checkNumber) {
-    parts.push(line(job.tableLabel || "", `#${job.checkNumber}`));
+    parts.push(line(job.tableLabel || "", String(job.checkNumber)));
   }
   if (job.operatorName) parts.push(line(String(job.operatorName)));
   parts.push(ascii("-".repeat(SP700_COLS)), LF);

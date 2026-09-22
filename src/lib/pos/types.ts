@@ -501,7 +501,7 @@ export interface Payment {
 
 export interface Order {
   id: string;
-  /** Daily venue id (260922-T1-03) or a legacy integer from before that format. */
+  /** Visible id (T1-03, TO-03, BAR-03) or a legacy integer. */
   number: string | number;
   type: OrderType;
   tableId?: string;
