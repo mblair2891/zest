@@ -40,6 +40,8 @@ import { QuantumPaymentsSettings } from "@/components/pos/QuantumPaymentsSetting
 import { GiftCardsAdminView } from "@/components/pos/GiftCardsAdminView";
 import { TenantUsersPanel } from "@/components/platform/TenantUsersPanel";
 import { VenueOnboardingPanel } from "@/components/platform/VenueOnboardingPanel";
+import { ChecklistReturnBar } from "@/components/platform/ChecklistReturnBar";
+import { useChecklistLink } from "@/lib/saas/checklist-link";
 import { CostWorkspace } from "@/components/pos/CostWorkspace";
 import { LaborOpsView } from "@/components/pos/LaborOpsView";
 import { ReportsView } from "@/components/pos/ReportsView";
@@ -122,6 +124,7 @@ export function PlatformTenantVenue({
   const [lifecycle, setLifecycle] = useState("training");
   const [houseIsDemo, setHouseIsDemo] = useState(false);
   const posView = usePosStore((s) => s.view);
+  const checklistLink = useChecklistLink((s) => s.link);
   const demoScope = useDemoOperatingEntityId();
   const kind: PasswordDashKind = passwordDashKind({
     isPlatformAdmin: audience === "platform",
@@ -147,6 +150,17 @@ export function PlatformTenantVenue({
   useEffect(() => {
     if (locId && locId !== activeLoc) setActiveLoc(locId);
   }, [locId, activeLoc]);
+
+  useEffect(() => {
+    const focus = checklistLink?.focus;
+    if (!focus || checklistLink.tab !== tab) return;
+    const t = window.setTimeout(() => {
+      const el = document.querySelector<HTMLElement>(`[data-checklist-focus="${focus}"]`);
+      el?.scrollIntoView({ block: "center" });
+      el?.focus();
+    }, 60);
+    return () => window.clearTimeout(t);
+  }, [checklistLink?.focus, checklistLink?.tab, tab]);
 
   useEffect(() => {
     if (lastHydrated.current === hydrateKey) return;
@@ -608,6 +622,8 @@ export function PlatformTenantVenue({
             ))}
           </div>
           <main className="min-h-0 flex-1 overflow-auto p-4">
+            {checklistLink && <ChecklistReturnBar onReturn={(next) => setTab(next)} />}
+            <div className={checklistLink?.readOnly && tab !== "onboarding" ? "pointer-events-none" : undefined}>
             {!ready && (
               <p className="text-sm text-muted-foreground">Opening venue…</p>
             )}
@@ -673,13 +689,7 @@ export function PlatformTenantVenue({
                 operators={ops}
               />
             )}
-            {ready && !error && tab === "onboarding" && tabIds.has("onboarding") && (
-              <VenueOnboardingPanel
-                orgId={orgReadyId || orgId}
-                locationId={activeLoc}
-                write={kind === "venue_admin" || kind === "host_owner" || audience === "platform"}
-              />
-            )}
+
             {ready && !error && tab === "floor" && tabIds.has("floor") && (
               posView === "floor_editor" ? <FloorEditorView /> : <FloorView />
             )}
@@ -727,6 +737,17 @@ export function PlatformTenantVenue({
               />
             )}
             </TabErrorBoundary>
+            </div>
+            {ready && !error && tabIds.has("onboarding") && (
+              <div className={tab === "onboarding" ? undefined : "hidden"}>
+                <VenueOnboardingPanel
+                  orgId={orgReadyId || orgId}
+                  locationId={activeLoc}
+                  write={kind === "venue_admin" || kind === "host_owner" || audience === "platform"}
+                  onOpenTask={(next) => setTab(next as Tab)}
+                />
+              </div>
+            )}
           </main>
         </div>
       </PosErrorBoundary>

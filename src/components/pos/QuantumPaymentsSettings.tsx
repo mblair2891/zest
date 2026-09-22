@@ -22,6 +22,7 @@ import { parsePaymentMethods } from "@/lib/pos/payment-methods";
 import { parseGiftLimits } from "@/lib/pos/gift-limits";
 import { formatCurrency } from "@/lib/utils";
 import { jurisdictionIsReady } from "@/lib/pos/jurisdiction";
+import { noteChecklistSave, useChecklistLink } from "@/lib/saas/checklist-link";
 
 /**
  * Venue / entity Payments.
@@ -51,6 +52,10 @@ export function QuantumPaymentsSettings({
   const [status, setStatus] = useState<PaymentsStatus | null>(null);
   const [saving, setSaving] = useState(false);
   const [pickedId, setPickedId] = useState<string | null>(null);
+  const checklistPay = useChecklistLink((s) => (s.link?.tab === "payments" ? s.link : null));
+  useEffect(() => {
+    if (checklistPay?.entityId) setPickedId(checklistPay.entityId);
+  }, [checklistPay?.entityId, checklistPay?.itemId]);
 
   const selling = vendors.filter((v) => v.active);
   const entityId = demoScope || pickedId;
@@ -78,9 +83,10 @@ export function QuantumPaymentsSettings({
     void saveLocationSettingsFn({
       data: { orgId, locationId: locId, setup: { paymentsMode } },
     })
-      .then(() =>
-        getPaymentsStatusFn({ data: { locationId: locId } }).then(setStatus),
-      )
+      .then(() => {
+        noteChecklistSave({ tab: "payments", focus: "tenders" });
+        return getPaymentsStatusFn({ data: { locationId: locId } }).then(setStatus);
+      })
       .catch(() => undefined)
       .finally(() => setSaving(false));
   };
@@ -106,7 +112,14 @@ export function QuantumPaymentsSettings({
   const entity = entityId ? selling.find((v) => v.id === entityId) : null;
 
   return (
-    <section className="mb-4 space-y-3 rounded-2xl border border-border bg-surface p-4" data-demo="venue-payments">
+    <section
+      className="mb-4 space-y-3 rounded-2xl border border-border bg-surface p-4"
+      data-demo="venue-payments"
+      data-checklist-focus={
+        checklistPay?.focus && checklistPay.focus !== "legal-name" ? checklistPay.focus : undefined
+      }
+      tabIndex={-1}
+    >
       <div className="flex flex-wrap items-center gap-2">
         <h3 className="text-sm font-semibold">Quantum Payments</h3>
         <Badge variant={status?.mode === "live" && status.liveReady ? "success" : "warn"}>

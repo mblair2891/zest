@@ -105,7 +105,9 @@ export function CashHandlingSettings({ write }: { write: boolean }) {
   return (
     <div className="space-y-5">
       <div className="flex flex-wrap items-center gap-2">
-        <p className="text-sm font-medium">Cash handling</p>
+        <p className="text-sm font-medium" data-checklist-focus="till" tabIndex={-1}>
+          Cash handling
+        </p>
         <GuideLearnLink topicId="cash-handling" compact>
           Learn
         </GuideLearnLink>

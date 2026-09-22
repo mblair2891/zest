@@ -8,12 +8,14 @@ import {
   type VenueEntitySnap,
 } from "../src/lib/saas/entity-delete.ts";
 import {
+  checklistTaskTarget,
   goLiveChecklistBlock,
   peerContactBlock,
   progressLine,
   seedLayeredOnboarding,
   setItemStatus,
 } from "../src/lib/saas/onboarding-checklist.ts";
+import { noteChecklistSave, useChecklistLink } from "../src/lib/saas/checklist-link.ts";
 
 const trainingPeer = (): VenueEntitySnap => ({
   archived: false,
@@ -106,11 +108,62 @@ test("hard delete drops that entity’s menu and keeps the sibling item", () => 
   );
 });
 
+test("checklist task names deep-link; done waits for a save", () => {
+  const layer = seedLayeredOnboarding({
+    peer: false,
+    entities: [{ id: "bar", name: "Bar Co" }],
+  });
+  const printer = layer.location.items.find((i) => i.label === "Receipt printer");
+  assert.ok(printer);
+  assert.equal(checklistTaskTarget("location", printer!.id).tab, "devices");
+  assert.equal(checklistTaskTarget("location", "devices").focus, "receipt-printer");
+  const menu = layer.entities[0]?.items.find((i) => i.label === "Menu");
+  assert.ok(menu);
+  assert.equal(checklistTaskTarget("entity", menu!.id).tab, "menu");
+  assert.equal(checklistTaskTarget("entity", "menu").focus, "menu");
+
+  useChecklistLink.getState().open({
+    scope: "entity",
+    entityId: "bar",
+    itemId: "menu",
+    label: "Menu",
+    tab: "menu",
+    focus: "menu",
+    readOnly: false,
+  });
+  noteChecklistSave({ tab: "devices", focus: "receipt-printer" });
+  assert.equal(useChecklistLink.getState().link?.saved, false);
+  noteChecklistSave({ tab: "menu", focus: "menu" });
+  assert.equal(useChecklistLink.getState().link?.saved, true);
+  useChecklistLink.getState().back();
+  assert.equal(useChecklistLink.getState().link, null);
+  assert.equal(useChecklistLink.getState().applied, null);
+
+  useChecklistLink.getState().open({
+    scope: "location",
+    itemId: "devices",
+    label: "Receipt printer",
+    tab: "devices",
+    focus: "receipt-printer",
+    readOnly: true,
+    blocker: "Waiting on the ISP",
+  });
+  noteChecklistSave({ tab: "devices", focus: "receipt-printer" });
+  assert.equal(useChecklistLink.getState().link?.saved, false);
+  useChecklistLink.getState().done();
+  assert.equal(useChecklistLink.getState().applied, null);
+});
+
 test("onboarding panel renders both layers and delete confirm", () => {
   const ui = readFileSync("src/components/platform/VenueOnboardingPanel.tsx", "utf8");
   assert.match(ui, /Location contact/);
   assert.match(ui, /data-entity-checklist/);
+  assert.match(ui, /data-checklist-task/);
   assert.match(ui, /Type the entity name/);
+  const bar = readFileSync("src/components/platform/ChecklistReturnBar.tsx", "utf8");
+  assert.match(bar, /Back/);
+  assert.match(bar, /Done/);
+  assert.match(bar, /read-only/);
   const guide = readFileSync("src/lib/guide/content/platform-crm.ts", "utf8");
   assert.match(guide, /Archive/);
   assert.match(guide, /location contact/);

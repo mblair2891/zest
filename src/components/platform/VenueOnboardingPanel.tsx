@@ -15,24 +15,30 @@ import { deleteSellingEntityFn } from "@/lib/saas/entity-delete-api";
 import {
   CHECK_STATUSES,
   blankEntityChecklist,
+  checklistTaskTarget,
   goLiveChecklistBlock,
   locationContactComplete,
   progressLine,
   seedLayeredOnboarding,
+  setItemBlocker,
   setItemStatus,
+  type CheckItem,
   type CheckItemStatus,
   type LayeredOnboarding,
 } from "@/lib/saas/onboarding-checklist";
+import { useChecklistLink } from "@/lib/saas/checklist-link";
 import { usePosStore } from "@/lib/pos/store";
 
 export function VenueOnboardingPanel({
   orgId,
   locationId,
   write,
+  onOpenTask,
 }: {
   orgId: string;
   locationId: string;
   write: boolean;
+  onOpenTask?: (tab: string) => void;
 }) {
   const [rows, setRows] = useState<TenantInviteRow[] | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -41,6 +47,52 @@ export function VenueOnboardingPanel({
   const [archivedIds, setArchivedIds] = useState<string[]>([]);
   const peer = usePosStore((s) => Boolean(s.settings.peerVenue || s.settings.operatingModel === "peer_venue"));
   const readerId = usePosStore((s) => s.settings.quantumReaderId);
+  const applySerial = useChecklistLink((s) => s.applySerial);
+  const applied = useChecklistLink((s) => s.applied);
+  const openLink = useChecklistLink((s) => s.open);
+
+  useEffect(() => {
+    if (!applied) return;
+    setLayer((cur) => {
+      if (!cur) return cur;
+      if (applied.scope === "location") {
+        return {
+          ...cur,
+          location: {
+            ...cur.location,
+            items: setItemStatus(cur.location.items, applied.itemId, "done"),
+          },
+        };
+      }
+      return {
+        ...cur,
+        entities: cur.entities.map((e) =>
+          e.id === applied.entityId
+            ? { ...e, items: setItemStatus(e.items, applied.itemId, "done") }
+            : e,
+        ),
+      };
+    });
+    useChecklistLink.getState().clearApplied();
+  }, [applySerial, applied]);
+
+  const openItem = (scope: "location" | "entity", entityId: string | undefined, item: CheckItem) => {
+    const target = checklistTaskTarget(scope, item.id);
+    const readOnly = item.status === "blocked";
+    openLink({
+      scope,
+      entityId,
+      itemId: item.id,
+      label: item.label,
+      tab: target.tab,
+      focus: target.focus,
+      readOnly,
+      blocker: item.blocker,
+    });
+    if (entityId) usePosStore.getState().setDemoOperatingEntity(entityId);
+    if (target.tab === "floor") usePosStore.getState().setView("floor");
+    onOpenTask?.(target.tab);
+  };
 
   const load = useCallback(() => {
     if (!orgId) return;
@@ -208,10 +260,17 @@ export function VenueOnboardingPanel({
           <ChecklistItems
             items={layer.location.items}
             write={write}
+            onOpen={(item) => openItem("location", undefined, item)}
             onStatus={(id, status) =>
               setLayer({
                 ...layer,
                 location: { ...layer.location, items: setItemStatus(layer.location.items, id, status) },
+              })
+            }
+            onBlocker={(id, blocker) =>
+              setLayer({
+                ...layer,
+                location: { ...layer.location, items: setItemBlocker(layer.location.items, id, blocker) },
               })
             }
           />
@@ -286,11 +345,20 @@ export function VenueOnboardingPanel({
               <ChecklistItems
                 items={e.items}
                 write={write}
+                onOpen={(item) => openItem("entity", e.id, item)}
                 onStatus={(id, status) =>
                   setLayer({
                     ...layer,
                     entities: layer.entities.map((x) =>
                       x.id === e.id ? { ...x, items: setItemStatus(x.items, id, status) } : x,
+                    ),
+                  })
+                }
+                onBlocker={(id, blocker) =>
+                  setLayer({
+                    ...layer,
+                    entities: layer.entities.map((x) =>
+                      x.id === e.id ? { ...x, items: setItemBlocker(x.items, id, blocker) } : x,
                     ),
                   })
                 }
@@ -319,25 +387,34 @@ export function VenueOnboardingPanel({
 function ChecklistItems({
   items,
   write,
+  onOpen,
   onStatus,
+  onBlocker,
 }: {
-  items: { id: string; label: string; required: boolean; status: CheckItemStatus }[];
+  items: CheckItem[];
   write: boolean;
+  onOpen: (item: CheckItem) => void;
   onStatus: (id: string, status: CheckItemStatus) => void;
+  onBlocker: (id: string, blocker: string) => void;
 }) {
   return (
     <ul className="mt-3 space-y-2">
       {items.map((item) => (
-        <li key={item.id} className="flex flex-wrap items-center justify-between gap-2 text-sm">
-          <span>
+        <li key={item.id} className="flex flex-wrap items-center justify-between gap-2 text-sm" data-checklist-row={item.id}>
+          <button
+            type="button"
+            className="text-left font-medium text-link underline-offset-2 hover:underline"
+            data-checklist-task={item.id}
+            onClick={() => onOpen(item)}
+          >
             {item.label}
             {item.required ? "" : " (optional)"}
-          </span>
+          </button>
           <select
             className="h-9 rounded-md border border-border bg-bg px-2 text-xs"
             value={item.status}
             disabled={!write}
-            aria-label={item.label}
+            aria-label={`${item.label} status`}
             onChange={(e) => onStatus(item.id, e.target.value as CheckItemStatus)}
           >
             {CHECK_STATUSES.map((s) => (
@@ -346,6 +423,16 @@ function ChecklistItems({
               </option>
             ))}
           </select>
+          {item.status === "blocked" && (
+            <Input
+              className="w-full"
+              placeholder="Blocker reason"
+              aria-label={`${item.label} blocker`}
+              value={item.blocker ?? ""}
+              disabled={!write}
+              onChange={(e) => onBlocker(item.id, e.target.value)}
+            />
+          )}
         </li>
       ))}
     </ul>

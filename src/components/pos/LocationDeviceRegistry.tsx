@@ -16,6 +16,7 @@ import {
   unpairLocationDeviceFn,
 } from "@/lib/access/api";
 import { hashPin, isFourDigitPin } from "@/lib/pos/pin";
+import { noteChecklistSave, useChecklistLink } from "@/lib/saas/checklist-link";
 import { getSessionContextFn } from "@/lib/saas/api";
 import { canDeleteVenueDevice } from "@/lib/saas/tenant-users";
 import {
@@ -188,6 +189,22 @@ export function LocationDeviceRegistry({
   const [notice, setNotice] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [formOpen, setFormOpen] = useState(false);
+  const checklistFocus = useChecklistLink((s) => (s.link?.tab === "devices" ? s.link.focus : null));
+  useEffect(() => {
+    if (checklistFocus === "receipt-printer") {
+      setEditingId(null);
+      setLabel("");
+      setType("receipt_printer");
+      setFormOpen(true);
+    } else if (checklistFocus === "order-station") {
+      setEditingId(null);
+      setLabel("");
+      setType("tablet_pos");
+      setStationRole("order");
+      setFn("floor_pos");
+      setFormOpen(true);
+    }
+  }, [checklistFocus]);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [label, setLabel] = useState("");
   const [type, setType] = useState<LocationDeviceType>(
@@ -608,6 +625,10 @@ export function LocationDeviceRegistry({
           await persistOrderDestinations([...orderDestinations, dest]);
         }
       }
+      noteChecklistSave({
+        tab: "devices",
+        focus: isReceiptPrinterType(type) ? "receipt-printer" : "order-station",
+      });
       setFormOpen(false);
       setEditingId(null);
       setLabel("");
@@ -1044,6 +1065,7 @@ export function LocationDeviceRegistry({
               Type
               <select
                 className="mt-1 h-10 w-full rounded-xl border border-border bg-bg px-3 text-sm text-foreground"
+                data-checklist-focus={isPrinterType(type) ? "receipt-printer" : "order-station"}
                 value={
                   mode === "stations" && !isPrinterType(type)
                     ? typeForDeviceRole(stationRole)

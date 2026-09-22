@@ -157,7 +157,9 @@ export function LaborOpsView() {
       <div className="border-b border-border px-3 py-2">
         <div className="flex flex-wrap items-center gap-2">
           <Clock className="h-4 w-4 text-primary" />
-          <h2 className="text-sm font-semibold">Labor · schedule & time</h2>
+          <h2 className="text-sm font-semibold" data-checklist-focus="schedule" tabIndex={-1}>
+            Labor · schedule & time
+          </h2>
           <GuideLearnLink topicId="shift-allowables" compact>
             Learn
           </GuideLearnLink>

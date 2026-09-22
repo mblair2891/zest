@@ -18,6 +18,7 @@ import {
   type KeepEraseMap,
 } from "@/lib/lifecycle/types";
 import { usePosStore } from "@/lib/pos/store";
+import { useChecklistLink } from "@/lib/saas/checklist-link";
 import { useSaasStore } from "@/lib/pos/saas-store";
 import { isProspectDemo } from "@/lib/demo/session";
 import { formatDateTime } from "@/lib/utils";
@@ -28,12 +29,13 @@ export function GoLivePanel({ blockedReason }: { blockedReason?: string | null }
   const schedule = useLifecycleStore((s) => s.schedule);
   const cancel = useLifecycleStore((s) => s.cancelSchedule);
   const fire = useLifecycleStore((s) => s.fireScheduleIfDue);
+  const checklistLock = useChecklistLink((s) => Boolean(s.link?.readOnly && s.link.focus === "golive"));
   const [open, setOpen] = useState(false);
   const [mode, setMode] = useState<"now" | "schedule">("now");
   if (emp?.role !== "owner") return null;
 
   return (
-    <section className="rounded-2xl border border-border bg-surface p-4">
+    <section className="rounded-2xl border border-border bg-surface p-4" data-checklist-focus="golive" tabIndex={-1}>
       <h3 className="text-sm font-semibold">Go live</h3>
       <p className="mt-1 text-xs text-muted-foreground">
         Status: <strong className="capitalize">{status.replace("_", " ")}</strong>
@@ -53,7 +55,7 @@ export function GoLivePanel({ blockedReason }: { blockedReason?: string | null }
       <div className="mt-3 flex flex-wrap gap-2">
         <Button
           size="sm"
-          disabled={Boolean(blockedReason)}
+          disabled={Boolean(blockedReason) || checklistLock}
           onClick={() => {
             setMode("now");
             setOpen(true);
@@ -64,7 +66,7 @@ export function GoLivePanel({ blockedReason }: { blockedReason?: string | null }
         <Button
           size="sm"
           variant="outline"
-          disabled={Boolean(blockedReason)}
+          disabled={Boolean(blockedReason) || checklistLock}
           onClick={() => {
             setMode("schedule");
             setOpen(true);

@@ -10,6 +10,7 @@ import { SetupAssistButton } from "@/components/assist/SetupAssistDialog";
 import { GuideLearnLink } from "@/components/guide/GuideLearnLink";
 import { canEditMenu, canViewMenu, entityLoginScope, isHostPrivileged } from "@/lib/access/entity-grants";
 import { saveMenuItemFn } from "@/lib/access/api";
+import { noteChecklistSave, useChecklistLink } from "@/lib/saas/checklist-link";
 import { isProspectDemo } from "@/lib/demo/session";
 import { useSaasStore } from "@/lib/pos/saas-store";
 import { useCostStore } from "@/lib/costs/store";
@@ -44,8 +45,12 @@ export function MenuAdminView() {
   const demoScope = usePosStore((s) =>
     s.settings.isDemo || s.settings.demoIsolated ? s.demoOperatingEntityId : null,
   );
+  const checklistEntity = useChecklistLink((s) =>
+    s.link?.tab === "menu" ? s.link.entityId ?? null : null,
+  );
+  const menuScope = checklistEntity || demoScope;
   const menuItems = menuItemsAll.filter((m) => {
-    if (demoScope && m.vendorId !== demoScope) return false;
+    if (menuScope && m.vendorId !== menuScope) return false;
     return canViewMenu(emp, grants, m.vendorId);
   });
   const ownVendorId = entityLoginScope(emp) ?? undefined;
@@ -54,7 +59,10 @@ export function MenuAdminView() {
   const [name, setName] = useState("");
   const [price, setPrice] = useState("");
   const [categoryId, setCategoryId] = useState(categories[0]?.id ?? "");
-  const [vendorId, setVendorId] = useState(ownVendorId || vendors[0]?.id || "");
+  const [vendorId, setVendorId] = useState(checklistEntity || ownVendorId || vendors[0]?.id || "");
+  useEffect(() => {
+    if (checklistEntity) setVendorId(checklistEntity);
+  }, [checklistEntity]);
   const [editing, setEditing] = useState<string | null>(null);
   const [editName, setEditName] = useState("");
   const [editPrice, setEditPrice] = useState("");
@@ -95,7 +103,10 @@ export function MenuAdminView() {
       categoryId: categoryId || categories[0]?.id || "",
       vendorId: vid,
     });
-    if (res.id) persistWrite(vid || "", "create");
+    if (res.id) {
+      persistWrite(vid || "", "create");
+      noteChecklistSave({ tab: "menu", focus: "menu" });
+    }
     setName("");
     setPrice("");
   };
@@ -103,8 +114,12 @@ export function MenuAdminView() {
   return (
     <div className="h-full overflow-y-auto p-3" data-demo="menu-admin">
       <div className="mb-4 flex flex-wrap items-center gap-2">
-        <h2 className="text-sm font-semibold">
-          {ownVendorId ? "Menu · your items and peer view" : "Menu & 86 board"}
+        <h2 className="text-sm font-semibold" data-entity-menus={menuScope || "house"}>
+          {menuScope
+            ? `Menus · ${vendorName(menuScope)}`
+            : ownVendorId
+              ? "Menu · your items and peer view"
+              : "Menu & 86 board"}
         </h2>
         {happy && <Badge variant="success">Happy hour active</Badge>}
         {canCreate && (
@@ -137,7 +152,12 @@ export function MenuAdminView() {
 
       {canCreate && (
         <div className="mb-4 grid gap-2 rounded-2xl border border-border bg-surface p-3 sm:grid-cols-4">
-          <Input placeholder="Item name" value={name} onChange={(e) => setName(e.target.value)} />
+          <Input
+            placeholder="Item name"
+            value={name}
+            data-checklist-focus="menu"
+            onChange={(e) => setName(e.target.value)}
+          />
           <label className="block">
             <span className="mb-1 block text-[11px] text-muted-foreground">
               Cash price (printed / till)
@@ -219,10 +239,12 @@ export function MenuAdminView() {
                   <>
                     <select
                       className="h-8 rounded-lg border border-border bg-bg px-2 text-xs font-normal"
+                      data-checklist-focus="routing"
                       value={dest}
                       onChange={(e) => {
                         updateCategory(cat.id, { destinationName: e.target.value });
                         persistLocationCatalog("menu");
+                        noteChecklistSave({ tab: "menu", focus: "routing" });
                       }}
                       aria-label={`${cat.name} order destination`}
                     >

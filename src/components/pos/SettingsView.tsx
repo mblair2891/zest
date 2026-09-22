@@ -1413,7 +1413,7 @@ function NetworkSettingsPanel() {
   const syncing = useNetworkStore((s) => s.syncing);
 
   return (
-    <div className="mb-6 max-w-2xl rounded-2xl border border-border bg-surface p-4">
+    <div className="mb-6 max-w-2xl rounded-2xl border border-border bg-surface p-4" data-checklist-focus="wifi" tabIndex={-1}>
       <p className="text-sm font-medium">House network · WiFi first</p>
       <p className="mb-3 mt-1 text-xs text-muted-foreground">
         Summex does not need a private Ethernet drop at every station. One

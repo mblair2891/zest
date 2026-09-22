@@ -33,6 +33,7 @@ import { cn } from "@/lib/utils";
 import { RecipeAssistButton } from "@/components/recipes/RecipeAssistDialog";
 import { demoEntityMatches } from "@/lib/demo/entity-switch";
 import { useDemoOperatingEntityId } from "@/lib/demo/use-demo-operating-entity";
+import { useChecklistLink } from "@/lib/saas/checklist-link";
 
 export type CostTab =
   | "board"
@@ -69,6 +70,10 @@ export function CostWorkspace({ initialTab = "board" }: { initialTab?: CostTab }
   useEffect(() => setTab(initialTab), [initialTab]);
   const openEx = useCostStore((s) => s.exceptions.filter((e) => e.status === "open").length);
   const demoScope = useDemoOperatingEntityId();
+  const checklistRecipes = useChecklistLink((s) => s.link?.focus === "recipes");
+  useEffect(() => {
+    if (checklistRecipes) setTab("recipes");
+  }, [checklistRecipes]);
 
   return (
     <div className="flex h-full flex-col" data-demo="cost-control">
@@ -95,6 +100,7 @@ export function CostWorkspace({ initialTab = "board" }: { initialTab?: CostTab }
               size="sm"
               variant={tab === id ? "default" : "outline"}
               className="shrink-0"
+              data-checklist-focus={id === "recipes" ? "recipes" : undefined}
               onClick={() => setTab(id)}
             >
               {label}

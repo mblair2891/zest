@@ -2,6 +2,7 @@
  * Location checklist and one checklist per selling entity.
  * Statuses are real items, not a JSON editor.
  */
+import type { VenueDashTabId } from "@/lib/saas/venue-dashboard-tabs";
 
 export const CHECK_STATUSES = ["not_started", "in_progress", "done", "blocked"] as const;
 export type CheckItemStatus = (typeof CHECK_STATUSES)[number];
@@ -11,6 +12,14 @@ export type CheckItem = {
   label: string;
   required: boolean;
   status: CheckItemStatus;
+  /** Shown when the row is blocked. The task still opens, read-only. */
+  blocker?: string;
+};
+
+export type ChecklistTaskTarget = {
+  tab: VenueDashTabId;
+  /** Matches data-checklist-focus on the destination. */
+  focus?: string;
 };
 
 export type EntityChecklist = {
@@ -40,7 +49,7 @@ const LOCATION_DEFS: Array<Pick<CheckItem, "id" | "label" | "required">> = [
   { id: "address", label: "Address", required: true },
   { id: "timezone", label: "Timezone", required: true },
   { id: "floor", label: "Sections and floor", required: false },
-  { id: "devices", label: "Devices and printers", required: true },
+  { id: "devices", label: "Receipt printer", required: true },
   { id: "tenders", label: "Payment tenders", required: true },
   { id: "cash_discount", label: "Cash discount", required: false },
   { id: "taxes", label: "Taxes", required: true },
@@ -62,6 +71,43 @@ const ENTITY_DEFS: Array<Pick<CheckItem, "id" | "label" | "required">> = [
   { id: "gift", label: "Gift cards", required: false },
   { id: "order_station", label: "One order station", required: true },
 ];
+
+const LOCATION_TARGETS: Record<string, ChecklistTaskTarget> = {
+  contact: { tab: "settings", focus: "location-contact" },
+  address: { tab: "settings", focus: "address" },
+  timezone: { tab: "settings", focus: "timezone" },
+  floor: { tab: "floor", focus: "floor" },
+  devices: { tab: "devices", focus: "receipt-printer" },
+  tenders: { tab: "payments", focus: "tenders" },
+  cash_discount: { tab: "settings", focus: "cash-discount" },
+  taxes: { tab: "settings", focus: "taxes" },
+  wifi: { tab: "settings", focus: "wifi" },
+  golive_window: { tab: "onboarding", focus: "golive" },
+};
+
+const ENTITY_TARGETS: Record<string, ChecklistTaskTarget> = {
+  poc: { tab: "people", focus: "entity-contact" },
+  legal_name: { tab: "payments", focus: "legal-name" },
+  menu: { tab: "menu", focus: "menu" },
+  recipes: { tab: "costs", focus: "recipes" },
+  staff: { tab: "people", focus: "staff" },
+  schedule: { tab: "labor", focus: "schedule" },
+  till: { tab: "settings", focus: "till" },
+  merchant: { tab: "payments", focus: "finix" },
+  payout: { tab: "payments", focus: "payout" },
+  routing: { tab: "menu", focus: "routing" },
+  gift: { tab: "gift", focus: "gift" },
+  order_station: { tab: "devices", focus: "order-station" },
+};
+
+/** Where a checklist task name opens. Location Receipt printer → Devices. Entity Menu → Menus. */
+export function checklistTaskTarget(
+  scope: "location" | "entity",
+  itemId: string,
+): ChecklistTaskTarget {
+  const table = scope === "location" ? LOCATION_TARGETS : ENTITY_TARGETS;
+  return table[itemId] ?? { tab: scope === "location" ? "settings" : "menu" };
+}
 
 function blank(defs: Array<Pick<CheckItem, "id" | "label" | "required">>): CheckItem[] {
   return defs.map((d) => ({ ...d, status: "not_started" as const }));
@@ -153,4 +199,8 @@ export function goLiveChecklistBlock(layer: LayeredOnboarding): string | null {
 
 export function setItemStatus(items: CheckItem[], id: string, status: CheckItemStatus): CheckItem[] {
   return items.map((i) => (i.id === id ? { ...i, status } : i));
+}
+
+export function setItemBlocker(items: CheckItem[], id: string, blocker: string): CheckItem[] {
+  return items.map((i) => (i.id === id ? { ...i, blocker } : i));
 }

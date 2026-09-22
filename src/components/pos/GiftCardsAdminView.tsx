@@ -188,7 +188,9 @@ export function GiftCardsAdminView({ write = true }: { write?: boolean }) {
   return (
     <div className="mx-auto max-w-3xl space-y-4 p-1" data-demo="gift-cards-tab">
       <div className="flex flex-wrap items-center gap-2">
-        <h2 className="text-sm font-semibold">Gift cards</h2>
+        <h2 className="text-sm font-semibold" data-checklist-focus="gift" tabIndex={-1}>
+          Gift cards
+        </h2>
         <Badge variant={giftOn ? "success" : "secondary"}>{giftOn ? "Accepting" : "Off"}</Badge>
         <GuideLearnLink topicId="gift-cards" compact>
           Learn

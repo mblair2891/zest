@@ -17,6 +17,7 @@ import { canEmployee } from "@/lib/access/permissions";
 import { useState } from "react";
 import type { CashRoundIncrement } from "@/lib/pos/types";
 import { TaxRatesEditor, ratesPatch } from "@/components/pos/TaxRatesSettings";
+import { noteChecklistSave } from "@/lib/saas/checklist-link";
 import {
   DEFAULT_VENUE_TIMEZONE,
   VENUE_TIMEZONES,
@@ -125,8 +126,12 @@ export function VenueHouseSettings() {
           <Input
             value={settings.name}
             disabled={!write}
+            data-checklist-focus="location-contact"
             onChange={(e) => updateSettings({ name: e.target.value })}
-            onBlur={() => persist({ hostBrandName: settings.name })}
+            onBlur={() => {
+              persist({ hostBrandName: settings.name });
+              noteChecklistSave({ tab: "settings", focus: "location-contact" });
+            }}
           />
         </label>
         <label className="block text-sm">
@@ -134,8 +139,10 @@ export function VenueHouseSettings() {
           <Input
             value={settings.address}
             disabled={!write}
+            data-checklist-focus="address"
             onChange={(e) => updateSettings({ address: e.target.value })}
             onBlur={() => {
+              noteChecklistSave({ tab: "settings", focus: "address" });
               const guessed = guessTimezoneFromAddress(settings.address);
               const cur = parseVenueTimezone(settings.timezone);
               if (!settings.timezone || cur === DEFAULT_VENUE_TIMEZONE) {
@@ -151,10 +158,12 @@ export function VenueHouseSettings() {
           <select
             className="h-10 w-full rounded-lg border border-border bg-bg px-3 text-sm"
             disabled={!write}
+            data-checklist-focus="timezone"
             value={parseVenueTimezone(settings.timezone)}
             onChange={(e) => {
               updateSettings({ timezone: e.target.value });
               persist({ timezone: e.target.value });
+              noteChecklistSave({ tab: "settings", focus: "timezone" });
             }}
           >
             {(VENUE_TIMEZONES as readonly string[])
@@ -222,6 +231,7 @@ export function VenueHouseSettings() {
             ? "Each selling entity may inherit these rates or override them."
             : "Entities inherit these venue rates."}
         </p>
+        <div data-checklist-focus="taxes" tabIndex={-1}>
         <TaxRatesEditor
           rates={settings.taxRates ?? []}
           disabled={!write}
@@ -230,8 +240,10 @@ export function VenueHouseSettings() {
             updateSettings(patch);
             persist({ ...patch });
             persistTaxRates();
+            noteChecklistSave({ tab: "settings", focus: "taxes" });
           }}
         />
+        </div>
       </section>
 
       <section className="rounded-2xl border border-border bg-surface p-4 space-y-3">
@@ -241,11 +253,13 @@ export function VenueHouseSettings() {
             type="checkbox"
             className="h-4 w-4 rounded border-border"
             disabled={!write}
+            data-checklist-focus="cash-discount"
             checked={!!settings.cashDiscountEnabled}
             onChange={(e) => {
               if (!confirmCashDiscountRecalc()) return;
               updateSettings({ cashDiscountEnabled: e.target.checked });
               persistCashDiscount();
+              noteChecklistSave({ tab: "settings", focus: "cash-discount" });
             }}
           />
           Offer a cash discount

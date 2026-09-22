@@ -190,8 +190,10 @@ export function TenantUsersPanel({
   return (
     <div className="mx-auto max-w-3xl space-y-5" data-demo="tenant-users">
       <div>
-        <p className="text-sm font-semibold">Users</p>
-        <p className="mt-1 text-xs text-muted-foreground">
+        <p className="text-sm font-semibold" data-checklist-focus="staff" tabIndex={-1}>
+          Users
+        </p>
+        <p className="mt-1 text-xs text-muted-foreground" data-checklist-focus="entity-contact" tabIndex={-1}>
           Location owner, manager, and location admin. Floor PINs are the 4-digit
           station credential — listed here, not a password. Kitchen, server, and
           bartender PINs cannot open this tab. Password logins stay separate; account

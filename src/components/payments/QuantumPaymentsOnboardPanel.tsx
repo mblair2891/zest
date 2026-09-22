@@ -25,6 +25,7 @@ import {
 } from "@/lib/payments/entity-kyc";
 import { persistEntityKyc } from "@/lib/pos/persist-location-setup";
 import { usePosStore } from "@/lib/pos/store";
+import { noteChecklistSave } from "@/lib/saas/checklist-link";
 
 const STATUS_BADGE: Record<FinixKycStatus, "secondary" | "info" | "warn" | "success" | "danger"> = {
   draft: "secondary",
@@ -71,6 +72,9 @@ export function QuantumPaymentsOnboardPanel({
     map[kycKey] = next;
     usePosStore.getState().updateSettings({ entityKyc: map });
     persistEntityKyc();
+    noteChecklistSave({ tab: "payments", focus: "finix" });
+    noteChecklistSave({ tab: "payments", focus: "payout" });
+    noteChecklistSave({ tab: "payments", focus: "legal-name" });
   };
 
   const load = useCallback(async () => {
@@ -204,7 +208,11 @@ export function QuantumPaymentsOnboardPanel({
       <div className="grid gap-2 sm:grid-cols-2">
         <label className="text-sm">
           <span className="mb-1 block text-xs text-muted-foreground">Legal name</span>
-          <Input value={kyc.legalName} onChange={(e) => patch({ legalName: e.target.value })} />
+          <Input
+            value={kyc.legalName}
+            data-checklist-focus="legal-name"
+            onChange={(e) => patch({ legalName: e.target.value })}
+          />
         </label>
         <label className="text-sm">
           <span className="mb-1 block text-xs text-muted-foreground">DBA</span>

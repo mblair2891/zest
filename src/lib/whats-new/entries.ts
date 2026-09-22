@@ -6,6 +6,19 @@ import type { GuideUpdate } from "@/lib/guide/types";
  */
 export const WHATS_NEW_ENTRIES: GuideUpdate[] = [
   {
+    id: "upd_2026_10_141_checklist_links",
+    date: "2026-09-22",
+    title: "Checklist tasks open the screen",
+    summary:
+      "Tap a task name on the location or entity checklist to open that screen. Status stays until the screen saves.",
+    body: "Each onboarding row still has its status dropdown. The task name is the link. Receipt printer opens Devices. Menu opens that entity’s Menus. Floor, taxes, payments, users, Finix, and labor open the same way, with the field focused when the screen has one. Back and Done return to the checklist. Done marks the row done only after that screen saved. You can still set the status yourself. A blocked task still opens, read-only, and shows the blocker reason.",
+    roles: ["owner_manager", "platform_admin", "host_operator", "vendor_operator"],
+    surfaces: ["settings", "platform"],
+    audience: "all",
+    topicId: "platform-tenants",
+    tags: ["onboarding", "checklist"],
+  },
+  {
     id: "upd_2026_10_140_pin_pad",
     date: "2026-09-22",
     title: "PIN pad is Enter and Clock in",
