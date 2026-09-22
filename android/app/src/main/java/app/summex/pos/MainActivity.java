@@ -224,13 +224,23 @@ public class MainActivity extends BridgeActivity {
         wv.loadUrl(url);
     }
 
-    void exitKioskLock() {
+    /** @return true when Android left lock-task. False when the OS still has the task pinned. */
+    boolean exitKioskLock() {
         lockPrimed = false;
         try {
             stopLockTask();
         } catch (IllegalArgumentException | SecurityException ignored) {
-            /* not in lock-task */
+            /* not device-owner, or not in lock-task */
         }
+        boolean stillPinned = false;
+        try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                stillPinned = isInLockTaskMode();
+            }
+        } catch (Exception ignored) {
+            stillPinned = false;
+        }
+        showSystemBars();
         try {
             android.content.Intent home = new android.content.Intent(android.content.Intent.ACTION_MAIN);
             home.addCategory(android.content.Intent.CATEGORY_HOME);
@@ -238,6 +248,31 @@ public class MainActivity extends BridgeActivity {
             startActivity(home);
         } catch (Exception ignored) {
             /* no launcher */
+        }
+        try {
+            moveTaskToBack(true);
+        } catch (Exception ignored) {
+            /* task already gone */
+        }
+        if (!stillPinned) {
+            try {
+                finishAndRemoveTask();
+            } catch (Exception ignored) {
+                finish();
+            }
+        }
+        return !stillPinned;
+    }
+
+    private void showSystemBars() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            getWindow().setDecorFitsSystemWindows(true);
+            WindowInsetsController c = getWindow().getInsetsController();
+            if (c != null) {
+                c.show(WindowInsets.Type.statusBars() | WindowInsets.Type.navigationBars());
+            }
+        } else {
+            getWindow().getDecorView().setSystemUiVisibility(View.SYSTEM_UI_FLAG_VISIBLE);
         }
     }
 

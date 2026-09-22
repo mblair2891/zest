@@ -6,9 +6,12 @@
 import { registerPlugin } from "@capacitor/core";
 
 type StationKioskPlugin = {
-  exit: () => Promise<void>;
+  exit: () => Promise<{ unpinned?: boolean }>;
   reload: () => Promise<void>;
 };
+
+export const KIOSK_UNPIN_HINT =
+  "Pinning is on in Android settings — unpin from the recents/pin screen";
 
 const StationKiosk = registerPlugin<StationKioskPlugin>("StationKiosk");
 
@@ -51,21 +54,30 @@ export function reloadStationWebView(): void {
 }
 
 /**
- * Stop lock-task. The shell returns to Android home.
- * Caller logs the station back to the PIN pad if the WebView stays up.
+ * Stop lock-task and leave the station shell.
+ * Returns unpinned=false when Android keeps the task pinned (not device-owner).
+ * The activity still sends Home and drops immersive bars in that case.
  * Manager / service PIN is checked before this runs. Staff PINs never get here.
  */
-export function exitStationKiosk(): void {
-  void StationKiosk.exit().catch(() => {
+export async function exitStationKiosk(): Promise<{ unpinned: boolean }> {
+  let unpinned = false;
+  try {
+    const res = await StationKiosk.exit();
+    unpinned = Boolean(res?.unpinned);
+  } catch {
     try {
       bridge()?.exitKiosk?.();
     } catch {
       /* web / no native bridge */
     }
-  });
-  try {
-    bridge()?.exitKiosk?.();
-  } catch {
-    /* already attempted via the plugin */
   }
+  if (unpinned) {
+    try {
+      const { App } = await import("@capacitor/app");
+      await App.exitApp();
+    } catch {
+      /* activity already finished */
+    }
+  }
+  return { unpinned };
 }

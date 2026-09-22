@@ -6,6 +6,19 @@ import type { GuideUpdate } from "@/lib/guide/types";
  */
 export const WHATS_NEW_ENTRIES: GuideUpdate[] = [
   {
+    id: "upd_2026_10_146_exit_kiosk",
+    date: "2026-09-22",
+    title: "Exit kiosk from the PIN pad unpins",
+    summary:
+      "On the PIN pad, Exit kiosk is one manager-PIN dialog. A valid PIN leaves Android lock-task.",
+    body: "From a signed-in POS session, Exit kiosk ends the session and returns to the PIN pad. On the PIN pad, Exit kiosk opens one dialog: Manager / station PIN, with Cancel and one Exit kiosk button. A manager, owner, or Devices service PIN stops lock-task and leaves for Android home. A staff PIN stays pinned and toasts. If Android keeps the pin because the tablet is not device-owner, the station says to unpin from the recents screen and still leaves the Summex shell.",
+    roles: ["owner_manager", "server", "kitchen_bar", "host_operator"],
+    surfaces: ["kiosk"],
+    audience: "all",
+    topicId: "android-kiosk",
+    tags: ["kiosk", "pin"],
+  },
+  {
     id: "upd_2026_10_145_checklist_floor",
     date: "2026-09-22",
     title: "Checklist save sticks; floor can draw a room",

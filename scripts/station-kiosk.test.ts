@@ -104,6 +104,15 @@ test("native shell reloads station URL and can exit lock-task", () => {
   assert.match(ui, /data-exit-kiosk/);
   assert.match(ui, /needPin\("exit"\)/);
   assert.match(ui, /Staff PINs cannot/);
+  assert.match(ui, /Manager \/ station PIN/);
+  assert.match(ui, /data-exit-kiosk-dialog/);
+  assert.doesNotMatch(ui, /submitPin\("exit"\)/);
+  assert.match(ui, /KIOSK_UNPIN_HINT/);
+  const native = readFileSync("src/lib/native-kiosk.ts", "utf8");
+  assert.match(native, /exitApp/);
+  assert.match(native, /unpinned/);
+  assert.match(main, /isInLockTaskMode/);
+  assert.match(main, /moveTaskToBack/);
   assert.match(readFileSync("src/lib/native-kiosk.ts", "utf8"), /StationKiosk/);
   const devices = readFileSync("src/components/pos/LocationDeviceRegistry.tsx", "utf8");
   assert.match(devices, /station-service-pin/);

@@ -9,7 +9,9 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { toast } from "sonner";
 import { usePosStore } from "@/lib/pos/store";
+import { findStaffByPin } from "@/lib/pos/pin";
 import {
   employeeCanStationService,
   pinUnlocksStationService,
@@ -18,6 +20,7 @@ import {
 import {
   exitStationKiosk,
   hasNativeKioskBridge,
+  KIOSK_UNPIN_HINT,
   reloadStationWebView,
 } from "@/lib/native-kiosk";
 import { isNativeApp } from "@/lib/native-shell";
@@ -32,11 +35,11 @@ export function StationKioskControls() {
   const locId = usePosStore((s) => s.tenantLocationId);
   const privileged = employeeCanStationService(emp?.role);
   const unpaired = !locId;
-  const [pinOpen, setPinOpen] = useState(false);
-  const [pinAction, setPinAction] = useState<"reload" | "exit">("reload");
+  const [reloadOpen, setReloadOpen] = useState(false);
   const [exitOpen, setExitOpen] = useState(false);
   const [pin, setPin] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const signedIn = Boolean(emp);
   const hold = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
@@ -51,47 +54,73 @@ export function StationKioskControls() {
     reloadStationWebView();
   };
 
-  const runExit = () => {
-    exitStationKiosk();
-    usePosStore.getState().logout();
+  const leaveLock = async () => {
+    const result = await exitStationKiosk();
+    if (!result.unpinned) toast(KIOSK_UNPIN_HINT);
   };
 
   const needPin = (action: "reload" | "exit") => {
-    if (unpaired && action === "reload") {
-      runReload();
-      return;
-    }
-    if (privileged && action === "reload") {
-      runReload();
-      return;
-    }
-    if (privileged && action === "exit") {
+    if (action === "exit") {
+      if (signedIn) {
+        usePosStore.getState().logout();
+        return;
+      }
+      setPin("");
+      setError(null);
       setExitOpen(true);
       return;
     }
-    setPinAction(action);
+    if (unpaired || privileged) {
+      runReload();
+      return;
+    }
     setPin("");
     setError(null);
-    setPinOpen(true);
+    setReloadOpen(true);
   };
 
-  const submitPin = (action: "reload" | "exit") => {
+  const pinOk = () => {
     const st = usePosStore.getState();
-    const ok = pinUnlocksStationService({
+    return pinUnlocksStationService({
       pin,
       locationId: st.tenantLocationId || st.activeEntityId || "loc",
       employees: st.employees,
       managerPin: st.settings.managerPin,
       stationServicePinHash: st.settings.stationServicePinHash,
     });
-    if (!ok) {
-      setError("Manager, owner, or station service PIN only.");
+  };
+
+  const rejectPin = () => {
+    const st = usePosStore.getState();
+    const loc = st.tenantLocationId || st.activeEntityId || "loc";
+    const who = findStaffByPin(st.employees, pin, loc, null);
+    if (who && !employeeCanStationService(who.role)) {
+      toast("Staff PINs cannot exit");
+    } else {
+      toast("Invalid PIN");
+    }
+    setError("Manager or station PIN");
+  };
+
+  const submitExit = () => {
+    if (!pinOk()) {
+      rejectPin();
       return;
     }
-    setPinOpen(false);
+    setExitOpen(false);
     setPin("");
-    if (action === "exit") runExit();
-    else runReload();
+    void leaveLock();
+  };
+
+  const submitReload = () => {
+    if (!pinOk()) {
+      toast("Invalid PIN");
+      setError("Manager or station PIN");
+      return;
+    }
+    setReloadOpen(false);
+    setPin("");
+    runReload();
   };
 
   const startHold = () => {
@@ -136,13 +165,12 @@ export function StationKioskControls() {
         </button>
       </div>
 
-      <Dialog open={pinOpen} onOpenChange={setPinOpen}>
-        <DialogContent>
+      <Dialog open={exitOpen} onOpenChange={setExitOpen}>
+        <DialogContent data-exit-kiosk-dialog>
           <DialogHeader>
-            <DialogTitle>Station service</DialogTitle>
+            <DialogTitle>Manager / station PIN</DialogTitle>
             <DialogDescription>
-              Manager, owner, or the Devices service PIN. Staff PINs cannot reload or exit
-              lock-task.
+              Manager, owner, or the Devices service PIN. Staff PINs cannot exit.
             </DialogDescription>
           </DialogHeader>
           <Input
@@ -151,47 +179,46 @@ export function StationKioskControls() {
             value={pin}
             onChange={(e) => setPin(e.target.value.replace(/\D/g, "").slice(0, 4))}
             onKeyDown={(e) => {
-              if (e.key === "Enter") submitPin(pinAction);
+              if (e.key === "Enter") submitExit();
             }}
             placeholder="PIN"
             className="text-center text-lg tracking-[0.4em]"
           />
           {error && <p className="text-sm text-danger">{error}</p>}
-          <DialogFooter className="flex-col gap-2 sm:flex-row">
-            <Button variant="outline" onClick={() => setPinOpen(false)}>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setExitOpen(false)}>
               Cancel
             </Button>
-            <Button variant="outline" onClick={() => submitPin("exit")}>
-              Exit kiosk
-            </Button>
-            <Button onClick={() => submitPin(pinAction === "exit" ? "exit" : "reload")}>
-              {pinAction === "exit" ? "Exit kiosk" : "Reload"}
-            </Button>
+            <Button onClick={submitExit}>Exit kiosk</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
-      <Dialog open={exitOpen} onOpenChange={setExitOpen}>
+      <Dialog open={reloadOpen} onOpenChange={setReloadOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Exit kiosk?</DialogTitle>
+            <DialogTitle>Reload station</DialogTitle>
             <DialogDescription>
-              This stops lock-task and shows the Android home screen. Website updates only need
-              Reload — do not unpin. APK updates: unpin, then reinstall.
+              Manager, owner, or the Devices service PIN. Staff PINs cannot reload.
             </DialogDescription>
           </DialogHeader>
+          <Input
+            inputMode="numeric"
+            autoComplete="off"
+            value={pin}
+            onChange={(e) => setPin(e.target.value.replace(/\D/g, "").slice(0, 4))}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") submitReload();
+            }}
+            placeholder="PIN"
+            className="text-center text-lg tracking-[0.4em]"
+          />
+          {error && <p className="text-sm text-danger">{error}</p>}
           <DialogFooter>
-            <Button variant="outline" onClick={() => setExitOpen(false)}>
-              Stay
+            <Button variant="outline" onClick={() => setReloadOpen(false)}>
+              Cancel
             </Button>
-            <Button
-              onClick={() => {
-                setExitOpen(false);
-                runExit();
-              }}
-            >
-              Exit kiosk
-            </Button>
+            <Button onClick={submitReload}>Reload</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

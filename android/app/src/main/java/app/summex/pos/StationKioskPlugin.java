@@ -1,5 +1,6 @@
 package app.summex.pos;
 
+import com.getcapacitor.JSObject;
 import com.getcapacitor.Plugin;
 import com.getcapacitor.PluginCall;
 import com.getcapacitor.PluginMethod;
@@ -11,8 +12,10 @@ public class StationKioskPlugin extends Plugin {
     @PluginMethod
     public void exit(PluginCall call) {
         if (getActivity() instanceof MainActivity) {
-            ((MainActivity) getActivity()).exitKioskLock();
-            call.resolve();
+            boolean unpinned = ((MainActivity) getActivity()).exitKioskLock();
+            JSObject ret = new JSObject();
+            ret.put("unpinned", unpinned);
+            call.resolve(ret);
             return;
         }
         call.reject("Station shell is not running");
