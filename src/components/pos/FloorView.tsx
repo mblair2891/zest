@@ -67,7 +67,7 @@ import { barTabVisibleTables, isBarRailSeat, locationAllowsBarTabs } from "@/lib
 import { FloorFixtureArt } from "@/components/pos/FloorFixtureArt";
 import { FloorArchitectureMark } from "@/components/pos/FloorArchitectureMark";
 import { FloorMapCanvas, type FloorMapItem } from "@/components/pos/FloorMapCanvas";
-import { isArchitectureKind } from "@/lib/pos/floor-architecture";
+import { isArchitectureKind, wallEndExtensions } from "@/lib/pos/floor-architecture";
 import { floorDraftBannerOn, FLOOR_DRAFT_BANNER, readFloorDraft, setFloorDraftBanner } from "@/lib/pos/live-floor";
 import { useStationSessionStore } from "@/lib/pos/station-session";
 import { NotificationBell } from "@/components/pos/NotificationCenter";
@@ -723,7 +723,18 @@ export function FloorView({
                       height: `${t.h}%`,
                     }}
                   >
-                    <FloorArchitectureMark table={t} variant="live" />
+                    <FloorArchitectureMark
+                      table={t}
+                      variant="live"
+                      extend={
+                        t.kind === "wall"
+                          ? wallEndExtensions(
+                              t,
+                              visible.filter((w) => w.kind === "wall" && w.id !== t.id),
+                            )
+                          : undefined
+                      }
+                    />
                   </div>
                 );
               }

@@ -1,7 +1,7 @@
 # Operators Guide — authoring
 
-**Revision · 22 Sep 2026** — Platform Home returns to the dashboard.
-Guide v2026.10.151.
+**Revision · 22 Sep 2026** — Walls snap into clean corners.
+Guide v2026.10.152.
 
 The in-app **Operators Guide** is the living product manual. It is not a
 separate PDF. Staff open it from **Guide** / **?** in the POS and platform

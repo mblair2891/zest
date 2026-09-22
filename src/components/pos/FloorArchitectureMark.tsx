@@ -12,6 +12,7 @@ export function FloorArchitectureMark({
   onBarPointerDown,
   onShapePointerDown,
   children,
+  extend,
 }: {
   table: Table;
   selected?: boolean;
@@ -21,6 +22,8 @@ export function FloorArchitectureMark({
   onBarPointerDown?: (event: ReactPointerEvent<SVGPathElement>) => void;
   onShapePointerDown?: (event: ReactPointerEvent<HTMLDivElement>) => void;
   children?: ReactNode;
+  /** Plan units to draw past each centerline end when this wall shares a corner. */
+  extend?: { start: number; end: number };
 }) {
   if (!isArchitectureKind(table.kind)) return null;
   const rotation = ((Number(table.rotation) || 0) % 360 + 360) % 360;
@@ -95,6 +98,14 @@ export function FloorArchitectureMark({
         ? "bg-[#efe6d8]"
         : "bg-[#3d2914]";
   const doorEdge = table.kind === "door" ? (live ? "border-2 border-[#1a120c]" : "border-2 border-[#3d2914]") : "";
+  const grow = table.kind === "wall" ? (extend?.start ?? 0) + (extend?.end ?? 0) : 0;
+  const fillStyle =
+    grow > 0 && table.w > 0
+      ? {
+          left: `${((-(extend?.start ?? 0)) / table.w) * 100}%`,
+          width: `${((table.w + grow) / table.w) * 100}%`,
+        }
+      : undefined;
   return (
     <div
       data-floor-arch={table.kind}
@@ -105,7 +116,11 @@ export function FloorArchitectureMark({
       style={spin}
       onPointerDown={onShapePointerDown}
     >
-      <div className={`h-full w-full rounded-sm ${tone} ${doorEdge}`} />
+      <div
+        data-floor-wall-join={table.kind === "wall" && grow > 0 ? "1" : undefined}
+        className={cn("rounded-sm", tone, doorEdge, fillStyle ? "absolute top-0 h-full" : "h-full w-full")}
+        style={fillStyle}
+      />
       {caption ? (
         <span
           className="pointer-events-none absolute inset-0 flex items-center justify-center px-1 text-[9px] font-medium leading-none text-[#f4efe6]"

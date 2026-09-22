@@ -3,7 +3,7 @@ import type { Table } from "@/lib/pos/types";
 import { floorFit, floorMapNumber, planPixelBox, tablePixelBox } from "@/lib/pos/floor-fit";
 import { FloorFixtureArt } from "@/components/pos/FloorFixtureArt";
 import { FloorArchitectureMark } from "@/components/pos/FloorArchitectureMark";
-import { isArchitectureKind } from "@/lib/pos/floor-architecture";
+import { isArchitectureKind, wallEndExtensions } from "@/lib/pos/floor-architecture";
 import { cn } from "@/lib/utils";
 
 function isBarSeat(table: Table): boolean {
@@ -251,7 +251,20 @@ export function FloorMapCanvas({
               )}
             >
               {arch ? (
-                <FloorArchitectureMark table={item.table} variant="live" />
+                <FloorArchitectureMark
+                  table={item.table}
+                  variant="live"
+                  extend={
+                    item.table.kind === "wall"
+                      ? wallEndExtensions(
+                          item.table,
+                          items
+                            .map((i) => i.table)
+                            .filter((w) => w.kind === "wall" && w.id !== item.table.id),
+                        )
+                      : undefined
+                  }
+                />
               ) : bar ? (
                 <span className="pointer-events-none">{num}</span>
               ) : (

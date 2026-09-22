@@ -206,6 +206,127 @@ export function dragLengthEnd(
   };
 }
 
+/** On-screen snap for wall ends. About 8 inches on a typical plan. */
+export const WALL_SNAP_PX = 14;
+
+export type WallSnapBoard = { width: number; height: number };
+
+function distPx(a: PlanPoint, b: PlanPoint, board: WallSnapBoard): number {
+  const dx = ((a.x - b.x) / 100) * board.width;
+  const dy = ((a.y - b.y) / 100) * board.height;
+  return Math.hypot(dx, dy);
+}
+
+function closestOnSegment(p: PlanPoint, a: PlanPoint, b: PlanPoint): PlanPoint {
+  const dx = b.x - a.x;
+  const dy = b.y - a.y;
+  const len2 = dx * dx + dy * dy;
+  if (len2 < 1e-8) return { x: a.x, y: a.y };
+  const t = Math.min(1, Math.max(0, ((p.x - a.x) * dx + (p.y - a.y) * dy) / len2));
+  return { x: a.x + t * dx, y: a.y + t * dy };
+}
+
+/** Nearest other-wall endpoint, or a point along that wall for a T. */
+export function nearestWallSnap(
+  point: PlanPoint,
+  walls: Array<SpinBox & { id?: string }>,
+  selfId: string | undefined,
+  board: WallSnapBoard,
+  radiusPx = WALL_SNAP_PX,
+): PlanPoint | null {
+  if (board.width < 1 || board.height < 1) return null;
+  let best: PlanPoint | null = null;
+  let bestD = radiusPx;
+  for (const wall of walls) {
+    if (selfId && wall.id === selfId) continue;
+    const a = lengthEndWorld(wall, "start");
+    const b = lengthEndWorld(wall, "end");
+    for (const candidate of [a, b]) {
+      const d = distPx(point, candidate, board);
+      if (d <= bestD) {
+        best = candidate;
+        bestD = d;
+      }
+    }
+    const on = closestOnSegment(point, a, b);
+    if (distPx(on, a, board) <= 4 || distPx(on, b, board) <= 4) continue;
+    const d = distPx(point, on, board);
+    if (d <= bestD) {
+      best = on;
+      bestD = d;
+    }
+  }
+  return best;
+}
+
+/**
+ * Move one end onto `target` and keep the wall axis-aligned.
+ * The anchor shifts only on the thickness axis so the corner point is shared.
+ */
+export function placeWallEnd(
+  box: SpinBox,
+  end: "start" | "end",
+  target: PlanPoint,
+  limits?: { min?: number; max?: number },
+): { x: number; y: number; w: number; h: number } {
+  const min = limits?.min ?? 2;
+  const max = limits?.max ?? 100;
+  const deg = Number(box.rotation) || 0;
+  const { ux, uy } = spinAxes(deg);
+  const anchor = lengthEndWorld(box, end === "end" ? "start" : "end");
+  const toward = end === "end" ? 1 : -1;
+  const relX = target.x - anchor.x;
+  const relY = target.y - anchor.y;
+  const perp = relX * uy.x + relY * uy.y;
+  const anchor2 = { x: anchor.x + uy.x * perp, y: anchor.y + uy.y * perp };
+  let len = ((target.x - anchor2.x) * ux.x + (target.y - anchor2.y) * ux.y) * toward;
+  len = Math.min(max, Math.max(min, len));
+  const mid = {
+    x: anchor2.x + ux.x * toward * (len / 2),
+    y: anchor2.y + ux.y * toward * (len / 2),
+  };
+  return {
+    x: Math.round((mid.x - len / 2) * 10) / 10,
+    y: Math.round((mid.y - box.h / 2) * 10) / 10,
+    w: Math.round(len * 10) / 10,
+    h: box.h,
+  };
+}
+
+const JOIN_EPS = 0.25;
+
+function pointOnSegment(p: PlanPoint, a: PlanPoint, b: PlanPoint, eps: number): boolean {
+  const on = closestOnSegment(p, a, b);
+  return Math.hypot(p.x - on.x, p.y - on.y) <= eps;
+}
+
+/** How far to draw past each centerline end so a shared corner closes without a stub. */
+export function wallEndExtensions(
+  wall: SpinBox,
+  others: SpinBox[],
+): { start: number; end: number } {
+  const extendAt = (point: PlanPoint) => {
+    let extra = 0;
+    for (const other of others) {
+      const a = lengthEndWorld(other, "start");
+      const b = lengthEndWorld(other, "end");
+      const nearEnd =
+        Math.hypot(point.x - a.x, point.y - a.y) <= JOIN_EPS ||
+        Math.hypot(point.x - b.x, point.y - b.y) <= JOIN_EPS;
+      if (nearEnd) {
+        extra = Math.max(extra, other.h / 2);
+        continue;
+      }
+      if (pointOnSegment(point, a, b, JOIN_EPS)) extra = Math.max(extra, 0);
+    }
+    return extra;
+  };
+  return {
+    start: extendAt(lengthEndWorld(wall, "start")),
+    end: extendAt(lengthEndWorld(wall, "end")),
+  };
+}
+
 /** Resize from the local bottom-right corner. The opposite corner stays in world space. */
 export function dragRotatedCorner(
   box: SpinBox,

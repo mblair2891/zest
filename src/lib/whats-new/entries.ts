@@ -6,6 +6,18 @@ import type { GuideUpdate } from "@/lib/guide/types";
  */
 export const WHATS_NEW_ENTRIES: GuideUpdate[] = [
   {
+    id: "upd_2026_10_152_wall_snap",
+    date: "2026-09-22",
+    title: "Walls snap into clean corners",
+    summary: "Drag a wall end onto another wall and they meet as a closed corner. The live floor draws the same join.",
+    body: "Wall ends snap to a nearby wall end or to a point along another wall. The two walls share that point, so the corner closes. Pull the end past the snap and the walls separate. After Publish, the live floor draws that same corner.",
+    roles: ["owner_manager", "host_operator"],
+    surfaces: ["floor"],
+    audience: "all",
+    topicId: "floor-editor",
+    tags: ["floor", "editor"],
+  },
+  {
     id: "upd_2026_10_151_platform_home",
     date: "2026-09-22",
     title: "Platform Home is on every console page",

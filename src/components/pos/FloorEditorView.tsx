@@ -34,6 +34,10 @@ import {
   dragLegEnd,
   dragLengthEnd,
   dragRotatedCorner,
+  lengthEndWorld,
+  nearestWallSnap,
+  placeWallEnd,
+  wallEndExtensions,
   isArchitectureKind,
   legHandles,
   legLengthsOf,
@@ -334,7 +338,28 @@ export function FloorEditorView() {
       const active = resize.current;
       const pointer = { x: px, y: py };
       if (active.mode === "end" && active.end) {
-        update(active.id, dragLengthEnd(active.orig, active.end, pointer, { min: 2, max: 100, snap: 2 }));
+        const piece = tables.find((t) => t.id === active.id);
+        if (piece?.kind === "wall") {
+          const free = dragLengthEnd(active.orig, active.end, pointer, { min: 2, max: 100, snap: 0 });
+          const freeEnd = lengthEndWorld(
+            { ...free, rotation: active.orig.rotation },
+            active.end,
+          );
+          const hit = nearestWallSnap(
+            freeEnd,
+            tables.filter((t) => t.kind === "wall"),
+            active.id,
+            { width: rect.width, height: rect.height },
+          );
+          update(
+            active.id,
+            hit
+              ? placeWallEnd(active.orig, active.end, hit, { min: 2, max: 100 })
+              : dragLengthEnd(active.orig, active.end, pointer, { min: 2, max: 100, snap: 2 }),
+          );
+        } else {
+          update(active.id, dragLengthEnd(active.orig, active.end, pointer, { min: 2, max: 100, snap: 2 }));
+        }
         return;
       }
       const limit = active.arch ? 100 : 40;
@@ -617,6 +642,14 @@ export function FloorEditorView() {
                       selected={selected === t.id}
                       className={cn("pointer-events-auto cursor-grab", spinRing)}
                       onShapePointerDown={(e) => onPointerDown(e, t.id, t.x, t.y)}
+                      extend={
+                        t.kind === "wall"
+                          ? wallEndExtensions(
+                              t,
+                              tables.filter((w) => w.kind === "wall" && w.id !== t.id),
+                            )
+                          : undefined
+                      }
                     >
                       {selected === t.id && thin ? (
                         <LengthHandles
