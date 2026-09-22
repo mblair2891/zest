@@ -1,13 +1,14 @@
 import type { PointerEvent as ReactPointerEvent, ReactNode } from "react";
 import type { Table } from "@/lib/pos/types";
 import { cn } from "@/lib/utils";
-import { isArchitectureKind, planToLocal, storedBarPlan } from "@/lib/pos/floor-architecture";
+import { isArchitectureKind, liveArchCaption, planToLocal, storedBarPlan } from "@/lib/pos/floor-architecture";
 
 /** Walls, doors, windows, host stand, and the bar rail. No dining chairs. */
 export function FloorArchitectureMark({
   table,
   selected,
   className,
+  variant = "editor",
   onBarPointerDown,
   onShapePointerDown,
   children,
@@ -15,6 +16,8 @@ export function FloorArchitectureMark({
   table: Table;
   selected?: boolean;
   className?: string;
+  /** Live map uses the editor's dark brown so lines stay visible on the wood. */
+  variant?: "editor" | "live";
   onBarPointerDown?: (event: ReactPointerEvent<SVGPathElement>) => void;
   onShapePointerDown?: (event: ReactPointerEvent<HTMLDivElement>) => void;
   children?: ReactNode;
@@ -22,6 +25,9 @@ export function FloorArchitectureMark({
   if (!isArchitectureKind(table.kind)) return null;
   const rotation = ((Number(table.rotation) || 0) % 360 + 360) % 360;
   const spin = { transform: `rotate(${rotation}deg)`, transformOrigin: "center center" } as const;
+  const live = variant === "live";
+  const dark = "#3d2914";
+  const caption = live ? liveArchCaption(table) : null;
   if (table.kind === "bar_top") {
     const plan = storedBarPlan(table);
     const pts = planToLocal(plan, table);
@@ -35,6 +41,7 @@ export function FloorArchitectureMark({
         data-floor-rotation={rotation}
         data-bar-legs={(table.legLengths ?? []).join(",")}
         data-floor-bar-selected={selected ? "1" : "0"}
+        data-floor-arch-tone={live ? "dark" : "editor"}
         style={{ ...spin, pointerEvents: "none" }}
       >
         <path
@@ -50,7 +57,7 @@ export function FloorArchitectureMark({
         <path
           d={d}
           fill="none"
-          stroke={selected ? "var(--primary)" : "#3d2914"}
+          stroke={selected ? "var(--primary)" : dark}
           strokeWidth={14}
           strokeLinecap="round"
           strokeLinejoin="round"
@@ -68,6 +75,7 @@ export function FloorArchitectureMark({
         data-floor-host="stand"
         data-floor-rotation={rotation}
         data-floor-spin=""
+        data-floor-arch-tone={live ? "dark" : "editor"}
         className={cn("relative h-full w-full", className)}
         style={spin}
         onPointerDown={onShapePointerDown}
@@ -79,20 +87,33 @@ export function FloorArchitectureMark({
       </div>
     );
   }
-  const tone =
-    table.kind === "window" ? "bg-[#c9d7e0]" : table.kind === "door" ? "bg-[#efe6d8]" : "bg-[#3d2914]";
+  const tone = live
+    ? "bg-[#3d2914]"
+    : table.kind === "window"
+      ? "bg-[#c9d7e0]"
+      : table.kind === "door"
+        ? "bg-[#efe6d8]"
+        : "bg-[#3d2914]";
+  const doorEdge = table.kind === "door" ? (live ? "border-2 border-[#1a120c]" : "border-2 border-[#3d2914]") : "";
   return (
     <div
       data-floor-arch={table.kind}
       data-floor-rotation={rotation}
       data-floor-spin=""
+      data-floor-arch-tone={live ? "dark" : "editor"}
       className={cn("relative h-full w-full", className)}
       style={spin}
       onPointerDown={onShapePointerDown}
     >
-      <div
-        className={`h-full w-full rounded-sm ${tone} ${table.kind === "door" ? "border-2 border-[#3d2914]" : ""}`}
-      />
+      <div className={`h-full w-full rounded-sm ${tone} ${doorEdge}`} />
+      {caption ? (
+        <span
+          className="pointer-events-none absolute inset-0 flex items-center justify-center px-1 text-[9px] font-medium leading-none text-[#f4efe6]"
+          style={{ transform: `rotate(${-rotation}deg)` }}
+        >
+          {caption}
+        </span>
+      ) : null}
       {children}
     </div>
   );

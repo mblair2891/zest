@@ -1,7 +1,7 @@
 # Operators Guide — authoring
 
-**Revision · 22 Sep 2026** — Floor handles rotate with the piece.
-Guide v2026.10.149.
+**Revision · 22 Sep 2026** — Live floor walls stay dark on the wood.
+Guide v2026.10.150.
 
 The in-app **Operators Guide** is the living product manual. It is not a
 separate PDF. Staff open it from **Guide** / **?** in the POS and platform

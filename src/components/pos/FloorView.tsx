@@ -65,7 +65,9 @@ import { canAccessView } from "@/lib/pos/rbac";
 import { useStationLayout } from "@/lib/ui/station-layout";
 import { barTabVisibleTables, isBarRailSeat, locationAllowsBarTabs } from "@/lib/pos/bar-tab";
 import { FloorFixtureArt } from "@/components/pos/FloorFixtureArt";
+import { FloorArchitectureMark } from "@/components/pos/FloorArchitectureMark";
 import { FloorMapCanvas, type FloorMapItem } from "@/components/pos/FloorMapCanvas";
+import { isArchitectureKind } from "@/lib/pos/floor-architecture";
 import { floorDraftBannerOn, FLOOR_DRAFT_BANNER, readFloorDraft, setFloorDraftBanner } from "@/lib/pos/live-floor";
 import { useStationSessionStore } from "@/lib/pos/station-session";
 import { NotificationBell } from "@/components/pos/NotificationCenter";
@@ -665,9 +667,11 @@ export function FloorView({
         >
           <div
             className={cn(
-              "relative mx-auto aspect-[4/3] w-full max-w-4xl rounded-2xl border border-border bg-surface",
+              "floor-wood relative mx-auto aspect-[4/3] w-full max-w-4xl rounded-2xl border border-border",
               layout.handheld && "min-h-[22rem]",
             )}
+            data-floor-map="wood"
+            data-floor-chairs="0"
           >
             <div className="pointer-events-none absolute inset-x-4 top-3 flex justify-between text-[10px] uppercase tracking-wider text-muted-foreground">
               <span>{effectiveSection === "All" || effectiveSection === "Mine" ? "Dining room" : effectiveSection}</span>
@@ -705,6 +709,24 @@ export function FloorView({
                 !seatAcc.ok;
               const grant =
                 emp && activeGrantForTable(extraTableGrants, emp.id, t.id);
+              if (isArchitectureKind(t.kind)) {
+                return (
+                  <div
+                    key={t.id}
+                    data-floor-arch={t.kind}
+                    data-floor-rotation={((Number(t.rotation) || 0) % 360 + 360) % 360}
+                    className="pointer-events-none absolute overflow-visible"
+                    style={{
+                      left: `${t.x}%`,
+                      top: `${t.y}%`,
+                      width: `${t.w}%`,
+                      height: `${t.h}%`,
+                    }}
+                  >
+                    <FloorArchitectureMark table={t} variant="live" />
+                  </div>
+                );
+              }
               return (
                 <button
                   key={t.id}
@@ -760,6 +782,7 @@ export function FloorView({
                     sectionColor={secColor}
                     label={`${t.label}${merged}`}
                     rotation={t.rotation ?? 0}
+                    mode="status"
                   />
                   <div className="pointer-events-none absolute inset-x-0 bottom-0.5 z-10 flex flex-col items-center">
                   {foodUp && (

@@ -18,6 +18,20 @@ export function isBarTop(table: { kind?: string | null }): boolean {
   return table.kind === "bar_top";
 }
 
+export function isThinArchitecture(kind?: string | null): boolean {
+  return kind === "wall" || kind === "door" || kind === "window";
+}
+
+/** Generic editor names stay off the live segment. A house name can sit small on the line. */
+export function liveArchCaption(table: { kind?: string | null; label?: string | null }): string | null {
+  if (!isThinArchitecture(table.kind)) return null;
+  const label = String(table.label ?? "").trim();
+  if (!label) return null;
+  const generic = new Set(["wall", "door", "window", "host", "bar", "bar top"]);
+  if (generic.has(label.toLowerCase())) return null;
+  return label;
+}
+
 export function snapPct(n: number, step = 2): number {
   const s = step > 0 ? step : 2;
   return Math.round(n / s) * s;

@@ -59,13 +59,16 @@ export function floorFit(opts: {
   viewW: number;
   viewH: number;
   minTapPx?: number;
+  /** Seats and booths that must stay tappable. Thin walls stay at plan scale. */
+  tapRects?: PlanRect[];
 }): FloorFit {
   const minTap = opts.minTapPx ?? 64;
   const viewW = Math.max(1, opts.viewW);
   const viewH = Math.max(1, opts.viewH);
   const box = floorContentBox(opts.tables);
+  const tap = opts.tapRects && opts.tapRects.length > 0 ? opts.tapRects : opts.tables;
   let minPct = 100;
-  for (const t of opts.tables) {
+  for (const t of tap) {
     minPct = Math.min(minPct, Math.max(1, Number(t.w) || 1), Math.max(1, Number(t.h) || 1));
   }
   if (!opts.tables.length) minPct = 12;
@@ -81,6 +84,19 @@ export function floorFit(opts: {
     originX: (viewW - contentW) / 2 - box.x * pxPerPct,
     originY: (viewH - contentH) / 2 - box.y * pxPerPct,
     box,
+  };
+}
+
+/** Plan box in pixels. Walls and the bar slab use this so they stay on the published segment. */
+export function planPixelBox(
+  t: PlanRect,
+  pxPerPct: number,
+): { left: number; top: number; width: number; height: number } {
+  return {
+    left: t.x * pxPerPct,
+    top: t.y * pxPerPct,
+    width: Math.max(0.5, t.w) * pxPerPct,
+    height: Math.max(0.5, t.h) * pxPerPct,
   };
 }
 

@@ -209,7 +209,7 @@ export const FLOOR_TOPICS: GuideTopic[] = [
         "Open Floor → Floor editor (or Floor editor in nav).",
         "Add a table, Booth 4-top, Booth U, Booth L, or barstool. Drag it onto the canvas. Resize from the corner. Rotate 90°.",
         "Set label, seats, and room. Show QR and copy the guest link.",
-        "Return to Floor on an order or host tablet. The live wood map draws walls, doors, windows, the host stand, and the bar slab. Dining tables stay number-only, with no chair nubs. Status fill is the whole shape. Booths stay 2-bench, U, or L. Publish writes the full layout, so the editor and the live map show the same pieces.",
+        "Return to Floor on an order or host tablet. The live wood map draws walls, doors, windows, the host stand, and the bar slab as dark brown segments in the same place as the editor. A house name can sit small on the line. Dining tables stay number-only, with no chair nubs. Status fill is the whole shape. Booths stay 2-bench, U, or L. Publish writes the full layout, so the editor and the live map show the same pieces.",
       ),
       tip(
         "Go live always keeps the floorplan. Practice checks can be erased; tables stay where you drew them.",

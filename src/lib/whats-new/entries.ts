@@ -6,6 +6,18 @@ import type { GuideUpdate } from "@/lib/guide/types";
  */
 export const WHATS_NEW_ENTRIES: GuideUpdate[] = [
   {
+    id: "upd_2026_10_150_live_walls",
+    date: "2026-09-22",
+    title: "Live floor walls stay dark on the wood",
+    summary: "Published walls, doors, windows, and the bar slab draw as dark lines on the wood map.",
+    body: "The live floor is the wood grain map. Walls, doors, windows, and the bar slab use the same dark brown as the editor and sit on the published segment. A custom name can sit small on the line. Tables and booths stay status-colored with numbers, and the map draws no chairs.",
+    roles: ["owner_manager", "server", "host_operator"],
+    surfaces: ["floor"],
+    audience: "all",
+    topicId: "floor-editor",
+    tags: ["floor"],
+  },
+  {
     id: "upd_2026_10_149_floor_handles",
     date: "2026-09-22",
     title: "Floor handles rotate with the piece",

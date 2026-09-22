@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
 import type { Table } from "@/lib/pos/types";
-import { floorFit, floorMapNumber, tablePixelBox } from "@/lib/pos/floor-fit";
+import { floorFit, floorMapNumber, planPixelBox, tablePixelBox } from "@/lib/pos/floor-fit";
 import { FloorFixtureArt } from "@/components/pos/FloorFixtureArt";
 import { FloorArchitectureMark } from "@/components/pos/FloorArchitectureMark";
 import { isArchitectureKind } from "@/lib/pos/floor-architecture";
@@ -89,6 +89,7 @@ export function FloorMapCanvas({
     () =>
       floorFit({
         tables: items.map((i) => i.table),
+        tapRects: items.filter((i) => !isArchitectureKind(i.table.kind)).map((i) => i.table),
         viewW: view.w,
         viewH: view.h,
         minTapPx: 64,
@@ -206,7 +207,9 @@ export function FloorMapCanvas({
         {items.map((item) => {
           const arch = isArchitectureKind(item.table.kind);
           const bar = !arch && (item.table.kind === "barstool" || item.table.shape === "bar");
-          const box = tablePixelBox(item.table, fit.pxPerPct, bar ? 40 : 72);
+          const box = arch
+            ? planPixelBox(item.table, fit.pxPerPct)
+            : tablePixelBox(item.table, fit.pxPerPct, bar ? 40 : 72);
           const num = floorMapNumber(item.table.label);
           const fill = item.fill && item.fill !== "transparent" ? item.fill : "#f4efe6";
           return (
@@ -248,7 +251,7 @@ export function FloorMapCanvas({
               )}
             >
               {arch ? (
-                <FloorArchitectureMark table={item.table} />
+                <FloorArchitectureMark table={item.table} variant="live" />
               ) : bar ? (
                 <span className="pointer-events-none">{num}</span>
               ) : (
