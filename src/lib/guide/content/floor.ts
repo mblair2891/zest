@@ -15,7 +15,7 @@ export const FLOOR_TOPICS: GuideTopic[] = [
         "The floor map is the live picture of the room. If table state is wrong, kitchen, payment, and turns all drift.",
       ),
       p(
-        "On an order or host tablet the floor is status-colored blocks with the table number only — large, on the fill. No chair icons, stool rings, or seat marks. Booths stay booth-shaped (2-bench, U, L) and use the same status fill. Color is the status. If a status sits past its flash minutes, the block gets a thin flash. There is no SLA text on the map. Open checks still win over a stale Empty paint. CHECK OPEN is on the table sheet, not painted on the block.",
+        "On an order or host tablet the floor is status-colored blocks with the table number only — large, on the fill. No chair icons, stool rings, or seat marks. Booths stay booth-shaped (2-bench, U, L) and use the same status fill. Color is the status. If a status sits past its flash minutes, the block gets a thin flash. There is no SLA text on the map. Open checks still win over a stale Empty paint. CHECK OPEN is on the table sheet, not painted on the block. A full-service house publishes dining tables 1–N, bar seats B1–Bn with one BAR slab, and sections Dining and Bar. The live floor draws that published snapshot. When the snapshot is missing, the seeded floor shows and is published once. On a demo, Operating as changes menus and reports. The floor stays the house map. The editor and the live map show the same tables after Publish.",
       ),
       shot(
         "Floor map of solid status-colored tables and booths, each with a large table number and no chairs.",

@@ -23,7 +23,7 @@ import { AppShell } from "./AppShell";
 import { PosErrorBoundary } from "./PosErrorBoundary";
 import { initNativeShell } from "@/lib/native-shell";
 import { isVenueEntityId } from "@/lib/pos/entities";
-import type { VenueEntityId } from "@/lib/pos/types";
+import type { FloorSection, VenueEntityId } from "@/lib/pos/types";
 import { retireDemoSessions } from "@/lib/demo/session";
 import { useDemoDeviceStore } from "@/lib/demo/device-session";
 import { useCurrentUserState } from "@/lib/auth/use-current-user";
@@ -34,7 +34,8 @@ import { parseQrMode } from "@/lib/pos/qr-table";
 import { parsePaymentMethods } from "@/lib/pos/payment-methods";
 import { EMPTY_LOCATION_SETUP } from "@/lib/saas/types";
 import { tablesFromFloorPlan } from "@/lib/saas/location-catalog";
-import { readFloorDraft, resolveLiveFloor, setFloorDraftBanner } from "@/lib/pos/live-floor";
+import { readFloorDraft, setFloorDraftBanner } from "@/lib/pos/live-floor";
+import { resolveServiceFloor } from "@/lib/pos/published-floor";
 import { membershipToEmployeeRole } from "@/lib/access/membership-map";
 import { HOST_SCOPE, parseGrantMatrix } from "@/lib/access/entity-grants";
 import { parseLaborMap, parseLaborRules } from "@/lib/labor/rules";
@@ -44,7 +45,7 @@ import {
   readOrCreateBrowserDeviceId,
   writePairedDeviceId,
 } from "@/lib/pos/location-devices";
-import { heartbeatLocationDeviceFn, getPairedStationFn, pairStationFn } from "@/lib/access/api";
+import { heartbeatLocationDeviceFn, getPairedStationFn, pairStationFn, publishLocationFn } from "@/lib/access/api";
 import { readStationPair } from "@/lib/pos/station-pair";
 import { kickStationToPair } from "@/lib/pos/station-kick";
 import { applyStationPublish, parseStationPublish } from "@/lib/pos/station-publish";
@@ -112,6 +113,8 @@ const STORES = [
   useTillCloseoutStore,
   useTillTransferStore,
 ] as const;
+
+const floorAutoPublish = new Set<string>();
 
 function PosAppInner({ entityId }: { entityId?: string }) {
   const [ready, setReady] = useState(false);
@@ -528,35 +531,62 @@ function PosAppInner({ entityId }: { entityId?: string }) {
           {
             const cur = usePosStore.getState();
             const station = isStationPinPath() || isNativeApp();
-            const publishedTables = setup.floorPlan
-              ? setup.floorPlan.tables?.length
-                ? tablesFromFloorPlan(setup.floorPlan)
-                : []
+            const pub = parseStationPublish(setup.stationPublish);
+            const pubPlan =
+              pub?.setup?.floorPlan && typeof pub.setup.floorPlan === "object"
+                ? (pub.setup.floorPlan as { tables?: unknown[]; sections?: FloorSection[] })
+                : null;
+            const publishedTables = pubPlan
+              ? Array.isArray(pubPlan.tables)
+                ? pubPlan.tables.length
+                  ? tablesFromFloorPlan(pubPlan as never)
+                  : []
+                : null
               : null;
+            const seededTables = setup.floorPlan?.tables?.length
+              ? tablesFromFloorPlan(setup.floorPlan)
+              : [];
             const draft = readFloorDraft(access.location.id);
-            const resolved = station
-              ? resolveLiveFloor({
-                  publishedTables,
-                  draftTables: draft?.tables ?? [],
-                  currentTables: [],
-                })
-              : resolveLiveFloor({
-                  publishedTables: cur.tables.length ? null : publishedTables,
-                  draftTables: cur.tables.length ? [] : (draft?.tables ?? []),
-                  currentTables: cur.tables,
-                });
-            if (resolved.tables.length || setup.floorPlan?.sections?.length) {
-              usePosStore.setState({
-                floorSections: resolved.fromDraft && draft?.sections?.length
-                  ? draft.sections
+            const demoFullService =
+              Boolean(setup.demoIsolated || access.location.isDemo) &&
+              setup.serviceStyle === "full_service";
+            const keepOpenFloor = !station && cur.tables.length > 0;
+            const resolved = resolveServiceFloor({
+              publishedTables: keepOpenFloor ? null : publishedTables,
+              seededTables: keepOpenFloor ? [] : seededTables,
+              draftTables: keepOpenFloor ? [] : (draft?.tables ?? []),
+              currentTables: station ? [] : cur.tables,
+              autoPublishSeed: demoFullService && !keepOpenFloor,
+            });
+            const sections =
+              resolved.fromDraft && draft?.sections?.length
+                ? draft.sections
+                : publishedTables && publishedTables.length && pubPlan?.sections?.length
+                  ? pubPlan.sections
                   : setup.floorPlan?.sections?.length
                     ? setup.floorPlan.sections
-                    : cur.floorSections,
+                    : cur.floorSections;
+            if (resolved.tables.length || sections.length) {
+              usePosStore.setState({
+                floorSections: sections,
                 ...(resolved.tables.length ? { tables: resolved.tables } : {}),
               });
             }
             if (resolved.fromDraft) setFloorDraftBanner(true);
-            else if (publishedTables && publishedTables.length) setFloorDraftBanner(false);
+            else if (resolved.tables.length) setFloorDraftBanner(false);
+            if (
+              resolved.autoPublish &&
+              access.org.id &&
+              access.location.id &&
+              !floorAutoPublish.has(access.location.id)
+            ) {
+              floorAutoPublish.add(access.location.id);
+              void publishLocationFn({
+                data: { orgId: access.org.id, locationId: access.location.id },
+              }).catch(() => {
+                floorAutoPublish.delete(access.location.id);
+              });
+            }
           }
           if (setup.menuCatalog?.items?.length) {
             const cur = usePosStore.getState();

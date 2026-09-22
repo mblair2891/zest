@@ -311,7 +311,7 @@ export const GETTING_STARTED_TOPICS: GuideTopic[] = [
         "Sales and tablet priming use isolated demo tenants. They are flagged is_demo, excluded from pipeline, MRR, and subscriber counts. Live houses never get the entity switcher.",
       ),
       ul(
-        "Summit Hall — peer full-service. Hearth Kitchen + Copper Bar. No host merchant.",
+        "Summit Hall — peer full-service. Hearth Kitchen + Copper Bar. No host merchant. The order tablet draws the published floor: dining 1–N, bar seats B1–Bn, one BAR slab, sections Dining and Bar. Operating as leaves that house floor on the map.",
         "Harbor Lot — food-truck pod with a host merchant (Harbor Lot Hospitality) plus six trucks. Shared seating. One guest check.",
         "Ash Street Coffee — single-operator counter. Queue / ticket. No floor map.",
         "Redbird Chicken — single-operator drive-through. Order-taker, window, kitchen ODS. No dining room.",

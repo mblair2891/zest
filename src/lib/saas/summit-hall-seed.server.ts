@@ -14,6 +14,7 @@ import { canonicalizePrinterDevice, isPrinterType, makeClaimCode, pendingPrinter
 import { nextClaimExpiry } from "@/lib/pos/station-pair";
 import type { LocationDevice } from "@/lib/pos/location-devices";
 import { mergeDemoDeviceCatalog, parseDeletedLocationDevices } from "@/lib/pos/device-seed";
+import { withSeededPublishedFloor } from "@/lib/pos/published-floor";
 import type { LocationSetup } from "./types";
 import {
   SUMMIT_COPPER_OP_ID,
@@ -177,6 +178,7 @@ function locationSetup(
       }),
     },
     floorPlan: plan,
+    stationPublish: withSeededPublishedFloor(existing?.stationPublish, plan),
     menuCatalog: {
       categories: SUMMIT_HALL_CATEGORIES.map((c) => ({ ...c })),
       items: SUMMIT_HALL_MENU.map((m) => ({ ...m })),
@@ -199,7 +201,6 @@ function locationSetup(
     locationDevices: devices.devices,
     deletedLocationDevices: devices.deleted,
     devicesSeeded: true,
-    stationPublish: existing?.stationPublish,
     deviceRoleHistory: existing?.deviceRoleHistory,
     cashHandling: existing?.cashHandling,
   };

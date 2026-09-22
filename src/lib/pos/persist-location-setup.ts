@@ -392,15 +392,20 @@ export async function flushLocationCatalog(
   const plan = floorPlanFromPos(pos.tables, pos.floorSections);
   writeFloorDraft(ctx.locationId, pos.tables, pos.floorSections);
   const cost = useCostStore.getState();
+  const floorPatch = plan.tables.length
+    ? {
+        floorPlan: plan,
+        tableCount: plan.tables.length,
+        sectionNames: plan.sections.map((s) => s.name),
+        floorLater: false,
+      }
+    : {};
   await saveLocationSettingsFn({
     data: {
       orgId: ctx.orgId,
       locationId: ctx.locationId,
       setup: {
-        floorPlan: plan,
-        tableCount: plan.tables.length,
-        sectionNames: plan.sections.map((s) => s.name),
-        floorLater: plan.tables.length === 0,
+        ...floorPatch,
         menuCatalog: {
           categories: pos.categories,
           items: pos.menuItems,

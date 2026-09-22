@@ -10,6 +10,7 @@ import { canonicalizePrinterDevice, makeClaimCode, pendingPrinterDevice } from "
 import { nextClaimExpiry } from "@/lib/pos/station-pair";
 import type { LocationDevice } from "@/lib/pos/location-devices";
 import { mergeDemoDeviceCatalog, parseDeletedLocationDevices } from "@/lib/pos/device-seed";
+import { withSeededPublishedFloor } from "@/lib/pos/published-floor";
 import type { LocationMode } from "@/lib/pos/saas-types";
 import type { EmployeeRole, MenuCategory, MenuItem } from "@/lib/pos/types";
 import type { LocationFloorPlan } from "@/lib/saas/location-catalog";
@@ -197,6 +198,10 @@ function setupOf(
     cashRoundMode: "up",
     laborByEntity,
     floorPlan: seed.floorPlan,
+    stationPublish:
+      seed.serviceStyle === "full_service"
+        ? withSeededPublishedFloor(existing?.stationPublish, seed.floorPlan)
+        : existing?.stationPublish,
     menuCatalog: {
       categories: seed.categories.map((c) => ({ ...c })),
       items: seed.items.map((m) => ({ ...m })),
@@ -205,7 +210,6 @@ function setupOf(
     locationDevices: merged.devices,
     deletedLocationDevices: merged.deleted,
     devicesSeeded: true,
-    stationPublish: existing?.stationPublish,
     deviceRoleHistory: existing?.deviceRoleHistory,
     cashHandling: existing?.cashHandling,
   };

@@ -6,6 +6,19 @@ import type { GuideUpdate } from "@/lib/guide/types";
  */
 export const WHATS_NEW_ENTRIES: GuideUpdate[] = [
   {
+    id: "upd_2026_10_144_demo_floor",
+    date: "2026-09-22",
+    title: "Full-service demo floor is published",
+    summary:
+      "Summit Hall’s order tablet draws the published dining room and bar rail.",
+    body: "The isolated full-service demo publishes dining tables 1–N, bar seats B1–Bn with one BAR slab, and sections Dining and Bar. The live floor reads that snapshot. When the snapshot is missing, the seeded floor shows and is published once. Operating as still changes menus and reports. The floor stays the house map, so the editor and the live map show the same tables after Publish.",
+    roles: ["owner_manager", "server", "host_operator"],
+    surfaces: ["floor"],
+    audience: "all",
+    topicId: "floor-tables",
+    tags: ["floor", "demo"],
+  },
+  {
     id: "upd_2026_10_143_menu_upload",
     date: "2026-09-22",
     title: "Upload a menu into a draft",

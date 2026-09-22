@@ -291,6 +291,9 @@ export function FloorView({
         );
       })
     : visible;
+  /** House floor stays on the map. A section filter or Operating as that matches nothing still draws the venue tables. */
+  const houseTables = tables.filter((t) => !t.mergedIntoId);
+  const painted = shown.length > 0 ? shown : houseTables;
 
   const counts = useMemo(() => {
     const c: Record<string, number> = { check_open: 0 };
@@ -414,7 +417,7 @@ export function FloorView({
   };
 
   const mapItems: FloorMapItem[] = mapOnly
-    ? shown.map((t) => {
+    ? painted.map((t) => {
         const st = effectiveTablePipeline(t, orders, tickets, floorCfg);
         const fill = st === "reserved" ? "#e8e6e1" : (floorCfg.colors[st] ?? "#ffffff");
         const orderAcc = tableAccess(t.id, "order");
@@ -579,7 +582,7 @@ export function FloorView({
         )}
       >
         {mapOnly ? (
-          <div className="relative min-h-0 flex-1">
+          <div className="relative min-h-0 flex-1" data-floor-house="venue" data-floor-paint={painted.length}>
             <div className="pointer-events-none absolute inset-x-0 top-0 z-20 flex items-start justify-between gap-2 p-2">
               <div className="pointer-events-auto min-w-0 rounded-xl bg-black/35 px-2 py-1 text-white">
                 <p className="truncate text-sm font-semibold leading-tight">{emp?.name ?? "Station"}</p>
