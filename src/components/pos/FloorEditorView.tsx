@@ -32,6 +32,8 @@ import {
   boundsOf,
   defaultBarPlan,
   dragLegEnd,
+  dragLengthEnd,
+  dragRotatedCorner,
   isArchitectureKind,
   legHandles,
   legLengthsOf,
@@ -44,6 +46,7 @@ import {
   type BarTopShape,
   type LegHandle,
   type PlanPoint,
+  type SpinBox,
 } from "@/lib/pos/floor-architecture";
 import {
   barPrinterForSection,
@@ -92,6 +95,67 @@ function stoolsOnRail(
       return Math.hypot(snapped.x - t.x, snapped.y - t.y) < 8;
     })
     .map((t) => t.id);
+}
+
+function isThinPiece(kind?: string | null): boolean {
+  return kind === "wall" || kind === "door" || kind === "window";
+}
+
+function spinBoxOf(piece: { x: number; y: number; w: number; h: number; rotation?: number | null }): SpinBox {
+  return { x: piece.x, y: piece.y, w: piece.w, h: piece.h, rotation: Number(piece.rotation) || 0 };
+}
+
+function LengthHandles({
+  id,
+  rot,
+  onEnd,
+}: {
+  id: string;
+  rot: number;
+  onEnd: (event: React.PointerEvent, id: string, end: "start" | "end") => void;
+}) {
+  const vertical = rot % 180 === 90;
+  return (
+    <>
+      {(["start", "end"] as const).map((end) => (
+        <span
+          key={end}
+          data-floor-end={end}
+          role="button"
+          aria-label={end === "start" ? "Length start" : "Length end"}
+          className={cn(
+            "pointer-events-auto absolute z-20 h-3.5 w-3.5 -translate-x-1/2 -translate-y-1/2 rounded-full border border-white bg-neutral-950 shadow",
+            vertical ? "cursor-ns-resize" : "cursor-ew-resize",
+          )}
+          style={{ left: end === "start" ? "0%" : "100%", top: "50%" }}
+          onPointerDown={(event) => onEnd(event, id, end)}
+        />
+      ))}
+    </>
+  );
+}
+
+function CornerHandle({
+  id,
+  rot,
+  onCorner,
+}: {
+  id: string;
+  rot: number;
+  onCorner: (event: React.PointerEvent, id: string) => void;
+}) {
+  return (
+    <span
+      data-floor-resize
+      role="button"
+      aria-label="Resize"
+      className={cn(
+        "pointer-events-auto absolute bottom-0 right-0 z-20 h-3 w-3 rounded-sm bg-primary",
+        rot % 180 === 0 ? "cursor-nwse-resize" : "cursor-nesw-resize",
+      )}
+      onPointerDown={(event) => onCorner(event, id)}
+    />
+  );
 }
 
 const KINDS: {
@@ -157,16 +221,17 @@ export function FloorEditorView() {
   } | null>(null);
   const resize = useRef<{
     id: string;
-    startX: number;
-    startY: number;
-    origW: number;
-    origH: number;
+    mode: "corner" | "end";
+    end?: "start" | "end";
+    orig: SpinBox;
+    arch: boolean;
   } | null>(null);
   const legDrag = useRef<{
     id: string;
     handle: LegHandle;
     orig: PlanPoint[];
     stoolIds: string[];
+    box: SpinBox;
   } | null>(null);
   const boardRef = useRef<HTMLDivElement>(null);
   const demoType = getDemoType();
@@ -215,22 +280,25 @@ export function FloorEditorView() {
     setSelected(id);
   };
 
-  const onResizeDown = (
+  const startResize = (
     e: React.PointerEvent,
     id: string,
-    w: number,
-    h: number,
+    mode: "corner" | "end",
+    end?: "start" | "end",
   ) => {
     e.preventDefault();
     e.stopPropagation();
     e.currentTarget.setPointerCapture(e.pointerId);
+    const piece = tables.find((t) => t.id === id);
+    if (!piece) return;
     drag.current = null;
+    legDrag.current = null;
     resize.current = {
       id,
-      startX: e.clientX,
-      startY: e.clientY,
-      origW: w,
-      origH: h,
+      mode,
+      end,
+      orig: spinBoxOf(piece),
+      arch: isArchitectureKind(piece.kind),
     };
     setSelected(id);
   };
@@ -243,9 +311,7 @@ export function FloorEditorView() {
     if (legDrag.current) {
       const active = legDrag.current;
       const current = tables.find((t) => t.id === active.id);
-      const pointer = current
-        ? unrotatePointer({ x: px, y: py }, current, current.rotation)
-        : { x: px, y: py };
+      const pointer = unrotatePointer({ x: px, y: py }, active.box, active.box.rotation);
       const next = sealBarLoop(dragLegEnd(active.orig, active.handle, pointer), current?.barShape ?? undefined);
       const box = boundsOf(next);
       const lengths = legLengthsOf(next);
@@ -265,19 +331,23 @@ export function FloorEditorView() {
       return;
     }
     if (resize.current) {
-      const dw = ((e.clientX - resize.current.startX) / rect.width) * 100;
-      const dh = ((e.clientY - resize.current.startY) / rect.height) * 100;
-      const target = tables.find((t) => t.id === resize.current?.id);
-      const thin = target && (target.kind === "wall" || target.kind === "door" || target.kind === "window");
-      const arch = isArchitectureKind(target?.kind);
-      const nw = Math.min(arch ? 100 : 40, Math.max(thin ? 2 : 6, resize.current.origW + dw));
-      const nh = thin
-        ? resize.current.origH
-        : Math.min(arch ? 100 : 40, Math.max(6, resize.current.origH + dh));
-      update(resize.current.id, {
-        w: thin || arch ? snapPct(nw) : Math.round(nw * 10) / 10,
-        h: thin ? target?.h ?? nh : Math.round(nh * 10) / 10,
-      });
+      const active = resize.current;
+      const pointer = { x: px, y: py };
+      if (active.mode === "end" && active.end) {
+        update(active.id, dragLengthEnd(active.orig, active.end, pointer, { min: 2, max: 100, snap: 2 }));
+        return;
+      }
+      const limit = active.arch ? 100 : 40;
+      update(
+        active.id,
+        dragRotatedCorner(active.orig, pointer, {
+          minW: 6,
+          maxW: limit,
+          minH: 6,
+          maxH: limit,
+          snap: active.arch ? 2 : 0,
+        }),
+      );
       return;
     }
     if (!drag.current) return;
@@ -344,7 +414,7 @@ export function FloorEditorView() {
     const stoolIds = stoolsOnRail(tables, { ...bar, points: plan, legLengths: legLengthsOf(plan) });
     drag.current = null;
     resize.current = null;
-    legDrag.current = { id, handle, orig: plan, stoolIds };
+    legDrag.current = { id, handle, orig: plan, stoolIds, box: spinBoxOf(bar) };
     setSelected(id);
   };
 
@@ -478,6 +548,16 @@ export function FloorEditorView() {
             {visible.map((t) => {
               const color = sectionColorForTable(t, floorSections);
               const rot = ((Number(t.rotation) || 0) % 360 + 360) % 360;
+              const spinRing = cn(
+                selected === t.id && "ring-2 ring-primary/40",
+                (t.mergedChildIds?.length ?? 0) > 0 && "ring-1 ring-info",
+              );
+              const frame = {
+                left: `${t.x}%`,
+                top: `${t.y}%`,
+                width: `${t.w}%`,
+                height: `${t.h}%`,
+              };
               if (t.kind === "bar_top") {
                 const plan = storedBarPlan(t);
                 const local = planToLocal(plan, t);
@@ -488,17 +568,13 @@ export function FloorEditorView() {
                     data-floor-bar-hit="path"
                     data-floor-rotation={rot}
                     className="pointer-events-none absolute overflow-visible"
-                    style={{
-                      left: `${t.x}%`,
-                      top: `${t.y}%`,
-                      width: `${t.w}%`,
-                      height: `${t.h}%`,
-                    }}
+                    style={frame}
                   >
                     <div
+                      data-floor-spin=""
                       className="relative h-full w-full"
                       style={{
-                        transform: rot ? `rotate(${rot}deg)` : undefined,
+                        transform: `rotate(${rot}deg)`,
                         transformOrigin: "center center",
                         pointerEvents: "none",
                       }}
@@ -527,48 +603,54 @@ export function FloorEditorView() {
                   </div>
                 );
               }
+              const thin = isThinPiece(t.kind);
               return (
-                <button
+                <div
                   key={t.id}
-                  type="button"
-                  onPointerDown={(e) => onPointerDown(e, t.id, t.x, t.y)}
-                  style={{
-                    left: `${t.x}%`,
-                    top: `${t.y}%`,
-                    width: `${t.w}%`,
-                    height: `${t.h}%`,
-                  }}
                   data-floor-rotation={rot}
-                  className={cn(
-                    "absolute cursor-grab overflow-visible border-0 bg-transparent p-0 text-center active:cursor-grabbing",
-                    selected === t.id && "ring-2 ring-primary/40",
-                    (t.mergedChildIds?.length ?? 0) > 0 && "ring-1 ring-info",
-                  )}
+                  className="pointer-events-none absolute overflow-visible"
+                  style={frame}
                 >
                   {isArchitectureKind(t.kind) ? (
-                    <FloorArchitectureMark table={t} />
+                    <FloorArchitectureMark
+                      table={t}
+                      selected={selected === t.id}
+                      className={cn("pointer-events-auto cursor-grab", spinRing)}
+                      onShapePointerDown={(e) => onPointerDown(e, t.id, t.x, t.y)}
+                    >
+                      {selected === t.id && thin ? (
+                        <LengthHandles
+                          id={t.id}
+                          rot={rot}
+                          onEnd={(e, id, end) => startResize(e, id, "end", end)}
+                        />
+                      ) : null}
+                      {selected === t.id && !thin ? (
+                        <CornerHandle id={t.id} rot={rot} onCorner={(e, id) => startResize(e, id, "corner")} />
+                      ) : null}
+                    </FloorArchitectureMark>
                   ) : (
-                  <FloorFixtureArt
-                    table={t}
-                    tableFill="#efe6d8"
-                    outline={selected === t.id ? "var(--primary)" : color}
-                    sectionColor={color}
-                    label={t.label}
-                    rotation={t.rotation ?? 0}
-                  />
+                    <FloorFixtureArt
+                      table={t}
+                      tableFill="#efe6d8"
+                      outline={selected === t.id ? "var(--primary)" : color}
+                      sectionColor={color}
+                      label={t.label}
+                      rotation={rot}
+                      className={cn("pointer-events-auto cursor-grab", spinRing)}
+                      onPointerDown={(e) => onPointerDown(e, t.id, t.x, t.y)}
+                    >
+                      {selected === t.id ? (
+                        <CornerHandle id={t.id} rot={rot} onCorner={(e, id) => startResize(e, id, "corner")} />
+                      ) : null}
+                    </FloorFixtureArt>
                   )}
-                  {selected === t.id && (
-                    <span
-                      className="absolute bottom-0 right-0 z-10 h-3 w-3 cursor-nwse-resize rounded-sm bg-primary"
-                      onPointerDown={(e) => onResizeDown(e, t.id, t.w, t.h)}
-                    />
-                  )}
-                </button>
+                </div>
               );
             })}
           </div>
           <p className="mt-2 text-center text-xs text-muted-foreground">
-            Layout saves on this location as you drag. Corner handle resizes tables. A bar selects on its slab; drag an end handle to change that leg.
+            Layout saves on this location as you drag. Handles turn with the piece. A wall’s black ends lengthen that wall; a corner resizes a table or booth.
           </p>
         </div>
 

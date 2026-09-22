@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import type { PointerEvent as ReactPointerEvent, ReactNode } from "react";
 import { cn } from "@/lib/utils";
 import type { Table } from "@/lib/pos/types";
 import { asBoothKind } from "@/lib/pos/floor-booth";
@@ -24,6 +24,7 @@ export function FloorFixtureArt({
   className,
   children,
   mode = "plan",
+  onPointerDown,
 }: {
   table: Pick<Table, "kind" | "shape" | "w" | "h" | "seats" | "rotation">;
   tableFill: string;
@@ -37,6 +38,7 @@ export function FloorFixtureArt({
   children?: ReactNode;
   /** plan = editor capacity marks. status = solid fill, number only, no seats. */
   mode?: "plan" | "status";
+  onPointerDown?: (event: ReactPointerEvent<HTMLDivElement>) => void;
 }) {
   const booth = asBoothKind(table.kind, table.shape);
   const rot = ((Number(rotation ?? table.rotation) || 0) % 360 + 360) % 360;
@@ -71,6 +73,7 @@ export function FloorFixtureArt({
         h={table.h}
         seats={table.seats}
         className={className}
+        onPointerDown={onPointerDown}
       >
         {children}
       </FloorBoothMark>
@@ -90,6 +93,7 @@ export function FloorFixtureArt({
         sectionColor={sectionColor}
         rotation={rot}
         className={className}
+        onPointerDown={onPointerDown}
       >
         {children}
       </FloorTableArt>
@@ -108,6 +112,7 @@ export function FloorFixtureArt({
         sectionColor={sectionColor}
         rotation={rot}
         className={className}
+        onPointerDown={onPointerDown}
       >
         {children}
       </FloorStoolArt>
@@ -125,6 +130,7 @@ export function FloorFixtureArt({
       sectionColor={sectionColor}
       rotation={rot}
       className={className}
+      onPointerDown={onPointerDown}
     >
       {children}
     </FloorTableArt>
@@ -221,6 +227,7 @@ function FloorTableArt({
   rotation,
   className,
   children,
+  onPointerDown,
 }: {
   w: number;
   h: number;
@@ -233,6 +240,7 @@ function FloorTableArt({
   rotation: number;
   className?: string;
   children?: ReactNode;
+  onPointerDown?: (event: ReactPointerEvent<HTMLDivElement>) => void;
 }) {
   const s = seatingScale({ w, h, seats: Math.max(seats, 1) });
   const anchors =
@@ -245,8 +253,10 @@ function FloorTableArt({
   const th = Math.max(28, 100 - ty * 2);
   return (
     <div
+      data-floor-spin=""
       className={cn("relative h-full w-full", className)}
       style={{ transform: `rotate(${rotation}deg)`, transformOrigin: "center center" }}
+      onPointerDown={onPointerDown}
     >
       <svg viewBox="0 0 100 100" className="pointer-events-none h-full w-full" aria-hidden>
         {round ? (
@@ -319,6 +329,7 @@ function FloorStoolArt({
   rotation = 0,
   className,
   children,
+  onPointerDown,
 }: {
   w: number;
   h: number;
@@ -330,6 +341,7 @@ function FloorStoolArt({
   rotation?: number;
   className?: string;
   children?: ReactNode;
+  onPointerDown?: (event: ReactPointerEvent<HTMLDivElement>) => void;
 }) {
   const s = seatingScale({ w, h, seats });
   const horizontal = w >= h;
@@ -341,9 +353,11 @@ function FloorStoolArt({
   const centers = railStoolCenters(seats, along, horizontal);
   return (
     <div
+      data-floor-spin=""
       className={cn("relative h-full w-full", className)}
       data-floor-rotation={rotation}
       style={{ transform: `rotate(${rotation}deg)`, transformOrigin: "center center" }}
+      onPointerDown={onPointerDown}
     >
       <svg viewBox="0 0 100 100" className="pointer-events-none h-full w-full" aria-hidden>
         {centers.map((c, i) => (

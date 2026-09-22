@@ -6,6 +6,18 @@ import type { GuideUpdate } from "@/lib/guide/types";
  */
 export const WHATS_NEW_ENTRIES: GuideUpdate[] = [
   {
+    id: "upd_2026_10_149_floor_handles",
+    date: "2026-09-22",
+    title: "Floor handles rotate with the piece",
+    summary: "A wall at 90° has end handles on the vertical ends. Drag one and the wall lengthens that way.",
+    body: "Rotate 90° turns the piece and its handles together. A wall, door, or window shows a black handle on each end of the rotated piece. Drag a handle and that piece lengthens along its new direction. The selection outline follows the rotated shape. Tables, booths, and bar-leg handles spin the same way.",
+    roles: ["owner_manager", "host_operator"],
+    surfaces: ["floor"],
+    audience: "all",
+    topicId: "floor-editor",
+    tags: ["floor", "editor"],
+  },
+  {
     id: "upd_2026_10_148_bar_legs",
     date: "2026-09-22",
     title: "Bar selects on the slab; each leg drags alone",

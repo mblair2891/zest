@@ -131,6 +131,103 @@ function rotatePoint(p: PlanPoint, c: PlanPoint, deg: number): PlanPoint {
   return { x: c.x + dx * cos - dy * sin, y: c.y + dx * sin + dy * cos };
 }
 
+export type SpinBox = {
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+  rotation?: number | null;
+};
+
+function boxCenter(box: SpinBox): PlanPoint {
+  return { x: box.x + box.w / 2, y: box.y + box.h / 2 };
+}
+
+function spinAxes(deg: number): { ux: PlanPoint; uy: PlanPoint } {
+  const origin = { x: 0, y: 0 };
+  return {
+    ux: rotatePoint({ x: 1, y: 0 }, origin, deg),
+    uy: rotatePoint({ x: 0, y: 1 }, origin, deg),
+  };
+}
+
+/** World position of a thin piece's length-end (local left = start, local right = end). */
+export function lengthEndWorld(box: SpinBox, end: "start" | "end"): PlanPoint {
+  const c = boxCenter(box);
+  const { ux } = spinAxes(Number(box.rotation) || 0);
+  const half = box.w / 2;
+  const sign = end === "end" ? 1 : -1;
+  return { x: c.x + ux.x * half * sign, y: c.y + ux.y * half * sign };
+}
+
+/**
+ * Lengthen one end of a wall, door, or window along its spun axis.
+ * The other end stays put. Thickness (h) stays put.
+ */
+export function dragLengthEnd(
+  box: SpinBox,
+  end: "start" | "end",
+  pointer: PlanPoint,
+  limits?: { min?: number; max?: number; snap?: number },
+): { x: number; y: number; w: number; h: number } {
+  const min = limits?.min ?? 2;
+  const max = limits?.max ?? 100;
+  const snap = limits?.snap ?? 0;
+  const deg = Number(box.rotation) || 0;
+  const { ux } = spinAxes(deg);
+  const anchor = lengthEndWorld(box, end === "end" ? "start" : "end");
+  const toward = end === "end" ? 1 : -1;
+  let len = ((pointer.x - anchor.x) * ux.x + (pointer.y - anchor.y) * ux.y) * toward;
+  if (snap > 0) len = Math.round(len / snap) * snap;
+  len = Math.min(max, Math.max(min, len));
+  const mid = {
+    x: anchor.x + ux.x * toward * (len / 2),
+    y: anchor.y + ux.y * toward * (len / 2),
+  };
+  return {
+    x: Math.round((mid.x - len / 2) * 10) / 10,
+    y: Math.round((mid.y - box.h / 2) * 10) / 10,
+    w: Math.round(len * 10) / 10,
+    h: box.h,
+  };
+}
+
+/** Resize from the local bottom-right corner. The opposite corner stays in world space. */
+export function dragRotatedCorner(
+  box: SpinBox,
+  pointer: PlanPoint,
+  limits?: { minW?: number; maxW?: number; minH?: number; maxH?: number; snap?: number },
+): { x: number; y: number; w: number; h: number } {
+  const deg = Number(box.rotation) || 0;
+  const { ux, uy } = spinAxes(deg);
+  const c = boxCenter(box);
+  const anchor = {
+    x: c.x - ux.x * (box.w / 2) - uy.x * (box.h / 2),
+    y: c.y - ux.y * (box.w / 2) - uy.y * (box.h / 2),
+  };
+  const dx = pointer.x - anchor.x;
+  const dy = pointer.y - anchor.y;
+  let w = dx * ux.x + dy * ux.y;
+  let h = dx * uy.x + dy * uy.y;
+  const snap = limits?.snap ?? 0;
+  if (snap > 0) {
+    w = Math.round(w / snap) * snap;
+    h = Math.round(h / snap) * snap;
+  }
+  w = Math.min(limits?.maxW ?? 40, Math.max(limits?.minW ?? 6, w));
+  h = Math.min(limits?.maxH ?? 40, Math.max(limits?.minH ?? 6, h));
+  const mid = {
+    x: anchor.x + ux.x * (w / 2) + uy.x * (h / 2),
+    y: anchor.y + ux.y * (w / 2) + uy.y * (h / 2),
+  };
+  return {
+    x: Math.round((mid.x - w / 2) * 10) / 10,
+    y: Math.round((mid.y - h / 2) * 10) / 10,
+    w: Math.round(w * 10) / 10,
+    h: Math.round(h * 10) / 10,
+  };
+}
+
 /** Pointer in the bar's unrotated plan, matching the CSS spin around the box center. */
 export function unrotatePointer(
   pointer: PlanPoint,

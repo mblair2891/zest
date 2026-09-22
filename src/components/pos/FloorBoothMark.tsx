@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import type { PointerEvent as ReactPointerEvent, ReactNode } from "react";
 import { cn } from "@/lib/utils";
 import type { BoothKind } from "@/lib/pos/floor-booth";
 import { seatingScale } from "@/lib/pos/floor-seating";
@@ -20,6 +20,7 @@ export function FloorBoothMark({
   h = 18,
   seats = 4,
   solid = false,
+  onPointerDown,
 }: {
   kind: BoothKind;
   tableFill: string;
@@ -35,12 +36,15 @@ export function FloorBoothMark({
   seats?: number;
   /** Status block: booth silhouette in the status fill. No bench stitches or seat marks. */
   solid?: boolean;
+  onPointerDown?: (event: ReactPointerEvent<HTMLDivElement>) => void;
 }) {
   const scale = seatingScale({ w, h, seats });
   return (
     <div
+      data-floor-spin=""
       className={cn("relative h-full w-full", className)}
       style={{ transform: `rotate(${rotation}deg)`, transformOrigin: "center center" }}
+      onPointerDown={onPointerDown}
     >
       <svg viewBox="0 0 100 100" className="pointer-events-none h-full w-full" aria-hidden>
         {kind === "booth_4" ? (

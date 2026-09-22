@@ -1,16 +1,23 @@
-import type { PointerEvent as ReactPointerEvent } from "react";
+import type { PointerEvent as ReactPointerEvent, ReactNode } from "react";
 import type { Table } from "@/lib/pos/types";
+import { cn } from "@/lib/utils";
 import { isArchitectureKind, planToLocal, storedBarPlan } from "@/lib/pos/floor-architecture";
 
 /** Walls, doors, windows, host stand, and the bar rail. No dining chairs. */
 export function FloorArchitectureMark({
   table,
   selected,
+  className,
   onBarPointerDown,
+  onShapePointerDown,
+  children,
 }: {
   table: Table;
   selected?: boolean;
+  className?: string;
   onBarPointerDown?: (event: ReactPointerEvent<SVGPathElement>) => void;
+  onShapePointerDown?: (event: ReactPointerEvent<HTMLDivElement>) => void;
+  children?: ReactNode;
 }) {
   if (!isArchitectureKind(table.kind)) return null;
   const rotation = ((Number(table.rotation) || 0) % 360 + 360) % 360;
@@ -60,10 +67,15 @@ export function FloorArchitectureMark({
       <div
         data-floor-host="stand"
         data-floor-rotation={rotation}
-        className="flex h-full w-full items-center justify-center rounded-md bg-[#6b4a2a] text-[10px] font-bold text-[#f4efe6]"
+        data-floor-spin=""
+        className={cn("relative h-full w-full", className)}
         style={spin}
+        onPointerDown={onShapePointerDown}
       >
-        Host
+        <div className="flex h-full w-full items-center justify-center rounded-md bg-[#6b4a2a] text-[10px] font-bold text-[#f4efe6]">
+          Host
+        </div>
+        {children}
       </div>
     );
   }
@@ -73,8 +85,15 @@ export function FloorArchitectureMark({
     <div
       data-floor-arch={table.kind}
       data-floor-rotation={rotation}
-      className={`h-full w-full rounded-sm ${tone} ${table.kind === "door" ? "border-2 border-[#3d2914]" : ""}`}
+      data-floor-spin=""
+      className={cn("relative h-full w-full", className)}
       style={spin}
-    />
+      onPointerDown={onShapePointerDown}
+    >
+      <div
+        className={`h-full w-full rounded-sm ${tone} ${table.kind === "door" ? "border-2 border-[#3d2914]" : ""}`}
+      />
+      {children}
+    </div>
   );
 }
