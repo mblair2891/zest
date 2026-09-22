@@ -14,6 +14,7 @@ export type FloorPlanTable = {
   kind?: TableKind;
   barShape?: import("@/lib/pos/types").BarTopShape;
   points?: { x: number; y: number }[];
+  legLengths?: number[];
   rotation?: number;
   sectionId?: string;
   qrToken?: string;
@@ -104,6 +105,9 @@ export function parseFloorPlan(raw: unknown): LocationFloorPlan | undefined {
       kind,
       barShape,
       points,
+      legLengths: Array.isArray(r.legLengths)
+        ? r.legLengths.map((n) => Number(n)).filter((n) => Number.isFinite(n))
+        : undefined,
       rotation: ((rot % 360) + 360) % 360,
       sectionId: str(r.sectionId).slice(0, 80) || undefined,
       qrToken: str(r.qrToken).slice(0, 32) || undefined,
@@ -143,6 +147,7 @@ export function floorPlanFromPos(tables: Table[], sections: FloorSection[]): Loc
         kind: t.kind,
         barShape: t.barShape,
         points: t.points,
+        legLengths: t.legLengths,
         rotation: t.rotation,
         sectionId: t.sectionId,
         qrToken: t.qrToken,
@@ -165,6 +170,7 @@ export function tablesFromFloorPlan(plan: LocationFloorPlan): Table[] {
     kind: t.kind,
     barShape: t.barShape,
     points: t.points,
+    legLengths: t.legLengths,
     rotation: t.rotation,
     sectionId: t.sectionId,
     qrToken: t.qrToken,

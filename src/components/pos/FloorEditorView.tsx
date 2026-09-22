@@ -29,10 +29,21 @@ import { QrMark } from "./QrMark";
 import { flushLocationCatalog, persistLocationCatalog, persistPrinterAssignments } from "@/lib/pos/persist-location-setup";
 import { FloorArchitectureMark } from "@/components/pos/FloorArchitectureMark";
 import {
+  boundsOf,
+  defaultBarPlan,
+  dragLegEnd,
   isArchitectureKind,
+  legHandles,
+  legLengthsOf,
+  planToLocal,
+  sealBarLoop,
   snapPct,
   snapStoolToRail,
+  storedBarPlan,
+  unrotatePointer,
   type BarTopShape,
+  type LegHandle,
+  type PlanPoint,
 } from "@/lib/pos/floor-architecture";
 import {
   barPrinterForSection,
@@ -41,6 +52,47 @@ import {
   setSectionPrinter,
 } from "@/lib/print/printer-assignment";
 import { isReceiptPrinterType } from "@/lib/pos/location-devices";
+
+function barShapePlan(
+  shape: BarTopShape,
+  box: { x: number; y: number; w: number; h: number },
+): PlanPoint[] {
+  if (shape === "polyline") {
+    return [
+      { x: 8, y: 70 },
+      { x: 40, y: 20 },
+      { x: 92, y: 70 },
+    ].map((p) => ({
+      x: box.x + (p.x / 100) * box.w,
+      y: box.y + (p.y / 100) * box.h,
+    }));
+  }
+  return defaultBarPlan(shape, box.x, box.y, box.w, box.h);
+}
+
+function stoolsOnRail(
+  tables: { id: string; kind?: string | null; x: number; y: number; w: number; h: number }[],
+  bar: {
+    x: number;
+    y: number;
+    w: number;
+    h: number;
+    kind?: string | null;
+    rotation?: number | null;
+    barShape?: BarTopShape | null;
+    points?: PlanPoint[] | null;
+    legLengths?: number[] | null;
+  },
+): string[] {
+  return tables
+    .filter((t) => t.kind === "barstool")
+    .filter((t) => {
+      const snapped = snapStoolToRail(t, [bar]);
+      if (!snapped) return false;
+      return Math.hypot(snapped.x - t.x, snapped.y - t.y) < 8;
+    })
+    .map((t) => t.id);
+}
 
 const KINDS: {
   id: TableKind;
@@ -100,6 +152,8 @@ export function FloorEditorView() {
     startY: number;
     origX: number;
     origY: number;
+    origPoints: PlanPoint[] | null;
+    stoolOrig: Record<string, { x: number; y: number }>;
   } | null>(null);
   const resize = useRef<{
     id: string;
@@ -107,6 +161,12 @@ export function FloorEditorView() {
     startY: number;
     origW: number;
     origH: number;
+  } | null>(null);
+  const legDrag = useRef<{
+    id: string;
+    handle: LegHandle;
+    orig: PlanPoint[];
+    stoolIds: string[];
   } | null>(null);
   const boardRef = useRef<HTMLDivElement>(null);
   const demoType = getDemoType();
@@ -125,15 +185,32 @@ export function FloorEditorView() {
     x: number,
     y: number,
   ) => {
-    if (resize.current) return;
+    if (resize.current || legDrag.current) return;
     e.preventDefault();
+    e.stopPropagation();
     e.currentTarget.setPointerCapture(e.pointerId);
+    const piece = tables.find((t) => t.id === id);
+    const origPoints =
+      piece?.kind === "bar_top" && piece.legLengths && piece.legLengths.length > 0
+        ? storedBarPlan(piece).map((p) => ({ x: p.x, y: p.y }))
+        : null;
+    const stoolOrig: Record<string, { x: number; y: number }> = {};
+    if (piece?.kind === "bar_top") {
+      const plan = storedBarPlan(piece);
+      const ids = stoolsOnRail(tables, { ...piece, points: plan, legLengths: legLengthsOf(plan) });
+      for (const sid of ids) {
+        const stool = tables.find((t) => t.id === sid);
+        if (stool) stoolOrig[sid] = { x: stool.x, y: stool.y };
+      }
+    }
     drag.current = {
       id,
       startX: e.clientX,
       startY: e.clientY,
       origX: x,
       origY: y,
+      origPoints,
+      stoolOrig,
     };
     setSelected(id);
   };
@@ -161,6 +238,32 @@ export function FloorEditorView() {
   const onPointerMove = (e: React.PointerEvent) => {
     if (!boardRef.current) return;
     const rect = boardRef.current.getBoundingClientRect();
+    const px = ((e.clientX - rect.left) / rect.width) * 100;
+    const py = ((e.clientY - rect.top) / rect.height) * 100;
+    if (legDrag.current) {
+      const active = legDrag.current;
+      const current = tables.find((t) => t.id === active.id);
+      const pointer = current
+        ? unrotatePointer({ x: px, y: py }, current, current.rotation)
+        : { x: px, y: py };
+      const next = sealBarLoop(dragLegEnd(active.orig, active.handle, pointer), current?.barShape ?? undefined);
+      const box = boundsOf(next);
+      const lengths = legLengthsOf(next);
+      update(active.id, { points: next, legLengths: lengths, ...box });
+      const bar = {
+        ...(current ?? { x: box.x, y: box.y, w: box.w, h: box.h }),
+        points: next,
+        legLengths: lengths,
+        ...box,
+      };
+      for (const sid of active.stoolIds) {
+        const stool = tables.find((t) => t.id === sid);
+        if (!stool) continue;
+        const snapped = snapStoolToRail(stool, [bar]);
+        if (snapped) update(sid, snapped);
+      }
+      return;
+    }
     if (resize.current) {
       const dw = ((e.clientX - resize.current.startX) / rect.width) * 100;
       const dh = ((e.clientY - resize.current.startY) / rect.height) * 100;
@@ -197,13 +300,52 @@ export function FloorEditorView() {
         ny = snapped.y;
       }
     }
+    const appliedDx = nx - drag.current.origX;
+    const appliedDy = ny - drag.current.origY;
+    if (target?.kind === "bar_top") {
+      const patch: { x: number; y: number; points?: PlanPoint[]; legLengths?: number[] } = {
+        x: Math.round(nx * 10) / 10,
+        y: Math.round(ny * 10) / 10,
+      };
+      if (drag.current.origPoints) {
+        const next = drag.current.origPoints.map((p) => ({
+          x: Math.round((p.x + appliedDx) * 10) / 10,
+          y: Math.round((p.y + appliedDy) * 10) / 10,
+        }));
+        patch.points = next;
+        patch.legLengths = legLengthsOf(next);
+      }
+      update(drag.current.id, patch);
+      for (const [sid, origin] of Object.entries(drag.current.stoolOrig)) {
+        update(sid, {
+          x: Math.round((origin.x + appliedDx) * 10) / 10,
+          y: Math.round((origin.y + appliedDy) * 10) / 10,
+        });
+      }
+      return;
+    }
     update(drag.current.id, { x: Math.round(nx * 10) / 10, y: Math.round(ny * 10) / 10 });
   };
 
   const onPointerUp = () => {
-    if (drag.current || resize.current) persistLocationCatalog("floor");
+    if (drag.current || resize.current || legDrag.current) persistLocationCatalog("floor");
     drag.current = null;
     resize.current = null;
+    legDrag.current = null;
+  };
+
+  const startLeg = (e: React.PointerEvent, id: string, handle: LegHandle) => {
+    e.preventDefault();
+    e.stopPropagation();
+    e.currentTarget.setPointerCapture(e.pointerId);
+    const bar = tables.find((t) => t.id === id);
+    if (!bar) return;
+    const plan = storedBarPlan(bar);
+    const stoolIds = stoolsOnRail(tables, { ...bar, points: plan, legLengths: legLengthsOf(plan) });
+    drag.current = null;
+    resize.current = null;
+    legDrag.current = { id, handle, orig: plan, stoolIds };
+    setSelected(id);
   };
 
   const renameSection = (id: string, name: string) => {
@@ -224,9 +366,12 @@ export function FloorEditorView() {
     const count = tables.filter((t) => t.kind === kind.id || (!t.kind && kind.id === "table")).length;
     const booth = kind.booth;
     const seats = booth ? BOOTH_DEFAULTS[booth].seats : kind.seats;
+    const x = 20 + (count % 5) * 12;
+    const y = 20 + Math.floor(count / 5) * 14;
+    const barPoints = kind.id === "bar_top" ? barShapePlan("straight", { x, y, w: kind.w, h: kind.h }) : null;
     const id = add({
-      x: 20 + (count % 5) * 12,
-      y: 20 + Math.floor(count / 5) * 14,
+      x,
+      y,
       section: dining,
       sectionId: sec?.id,
       seats,
@@ -250,6 +395,7 @@ export function FloorEditorView() {
                     ? "Bar"
                     : undefined,
       barShape: kind.id === "bar_top" ? "straight" : undefined,
+      ...(barPoints ? { points: barPoints, legLengths: legLengthsOf(barPoints) } : {}),
     });
     setSelected(id);
     persistLocationCatalog("floor");
@@ -331,6 +477,56 @@ export function FloorEditorView() {
           >
             {visible.map((t) => {
               const color = sectionColorForTable(t, floorSections);
+              const rot = ((Number(t.rotation) || 0) % 360 + 360) % 360;
+              if (t.kind === "bar_top") {
+                const plan = storedBarPlan(t);
+                const local = planToLocal(plan, t);
+                const handles = selected === t.id ? legHandles(plan, t.barShape ?? "straight") : [];
+                return (
+                  <div
+                    key={t.id}
+                    data-floor-bar-hit="path"
+                    data-floor-rotation={rot}
+                    className="pointer-events-none absolute overflow-visible"
+                    style={{
+                      left: `${t.x}%`,
+                      top: `${t.y}%`,
+                      width: `${t.w}%`,
+                      height: `${t.h}%`,
+                    }}
+                  >
+                    <div
+                      className="relative h-full w-full"
+                      style={{
+                        transform: rot ? `rotate(${rot}deg)` : undefined,
+                        transformOrigin: "center center",
+                        pointerEvents: "none",
+                      }}
+                    >
+                      <FloorArchitectureMark
+                        table={{ ...t, rotation: 0 }}
+                        selected={selected === t.id}
+                        onBarPointerDown={(e) => onPointerDown(e, t.id, t.x, t.y)}
+                      />
+                      {handles.map((h) => {
+                        const p = local[h.index];
+                        if (!p) return null;
+                        return (
+                          <span
+                            key={`${h.index}-${h.anchor}`}
+                            data-bar-leg={h.index}
+                            role="button"
+                            aria-label={`Bar leg ${h.index + 1}`}
+                            className="pointer-events-auto absolute z-20 h-4 w-4 -translate-x-1/2 -translate-y-1/2 cursor-grab rounded-full border-2 border-white bg-primary shadow active:cursor-grabbing"
+                            style={{ left: `${p.x}%`, top: `${p.y}%` }}
+                            onPointerDown={(e) => startLeg(e, t.id, h)}
+                          />
+                        );
+                      })}
+                    </div>
+                  </div>
+                );
+              }
               return (
                 <button
                   key={t.id}
@@ -342,7 +538,7 @@ export function FloorEditorView() {
                     width: `${t.w}%`,
                     height: `${t.h}%`,
                   }}
-                  data-floor-rotation={((Number(t.rotation) || 0) % 360 + 360) % 360}
+                  data-floor-rotation={rot}
                   className={cn(
                     "absolute cursor-grab overflow-visible border-0 bg-transparent p-0 text-center active:cursor-grabbing",
                     selected === t.id && "ring-2 ring-primary/40",
@@ -372,7 +568,7 @@ export function FloorEditorView() {
             })}
           </div>
           <p className="mt-2 text-center text-xs text-muted-foreground">
-            Layout saves on this location as you drag. Corner handle resizes. Rooms are sections.
+            Layout saves on this location as you drag. Corner handle resizes tables. A bar selects on its slab; drag an end handle to change that leg.
           </p>
         </div>
 
@@ -505,17 +701,25 @@ export function FloorEditorView() {
                         size="sm"
                         variant={(selectedTable.barShape ?? "straight") === shape ? "default" : "outline"}
                         onClick={() => {
+                          const points = barShapePlan(shape, selectedTable);
+                          const lengths = legLengthsOf(points);
+                          const nextBar = {
+                            ...selectedTable,
+                            barShape: shape,
+                            points,
+                            legLengths: lengths,
+                          };
                           update(selectedTable.id, {
                             barShape: shape,
-                            points:
-                              shape === "polyline"
-                                ? selectedTable.points ?? [
-                                    { x: 8, y: 70 },
-                                    { x: 40, y: 20 },
-                                    { x: 92, y: 70 },
-                                  ]
-                                : selectedTable.points,
+                            points,
+                            legLengths: lengths,
                           });
+                          for (const stool of tables) {
+                            if (stool.kind !== "barstool") continue;
+                            if (!stoolsOnRail(tables, selectedTable).includes(stool.id)) continue;
+                            const snapped = snapStoolToRail(stool, [nextBar]);
+                            if (snapped) update(stool.id, snapped);
+                          }
                           persistLocationCatalog("floor");
                         }}
                       >
@@ -587,6 +791,8 @@ export function FloorEditorView() {
                       }
                       onClick={() => {
                         const booth = k.booth;
+                        const points =
+                          k.id === "bar_top" ? barShapePlan("straight", selectedTable) : undefined;
                         update(selectedTable.id, {
                           kind: k.id,
                           shape: k.shape,
@@ -595,6 +801,9 @@ export function FloorEditorView() {
                             : selectedTable.seats,
                           w: booth ? BOOTH_DEFAULTS[booth].w : selectedTable.w,
                           h: booth ? BOOTH_DEFAULTS[booth].h : selectedTable.h,
+                          ...(points
+                            ? { barShape: "straight" as const, points, legLengths: legLengthsOf(points) }
+                            : {}),
                         });
                         persistLocationCatalog("floor");
                       }}

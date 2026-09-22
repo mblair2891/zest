@@ -436,8 +436,10 @@ export interface Table {
   kind?: TableKind;
   /** Bar top outline. Stools snap to this rail. */
   barShape?: BarTopShape;
-  /** Custom bar polyline, 0–100 inside the fixture box. */
+  /** Bar centerline in plan percent. */
   points?: { x: number; y: number }[];
+  /** Length of each bar leg in plan percent. Published with the layout. */
+  legLengths?: number[];
   /** Degrees, 90° steps. Booth benches rotate with the fixture. */
   rotation?: number;
   sectionId?: string;

@@ -225,6 +225,7 @@ export function FloorMapCanvas({
                 onTableClick(item.table);
               }}
               data-floor-rotation={((Number(item.table.rotation) || 0) % 360 + 360) % 360}
+              data-floor-bar-hit={item.table.kind === "bar_top" ? "path" : undefined}
               style={{
                 left: bar ? box.left + box.width / 2 - 22 : box.left,
                 top: bar ? box.top + box.height / 2 - 16 : box.top,
@@ -238,6 +239,7 @@ export function FloorMapCanvas({
               }}
               className={cn(
                 "absolute border-0 p-0",
+                item.table.kind === "bar_top" && "pointer-events-none",
                 bar
                   ? "z-[2] flex items-center justify-center rounded-full text-sm font-bold tabular shadow-sm"
                   : "bg-transparent",

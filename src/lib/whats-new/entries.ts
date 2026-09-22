@@ -6,6 +6,18 @@ import type { GuideUpdate } from "@/lib/guide/types";
  */
 export const WHATS_NEW_ENTRIES: GuideUpdate[] = [
   {
+    id: "upd_2026_10_148_bar_legs",
+    date: "2026-09-22",
+    title: "Bar selects on the slab; each leg drags alone",
+    summary: "An L or U bar selects on the wood path. Drag one wing and the other keeps its length.",
+    body: "In the floor editor, a straight, L, U, or island bar selects on the wood slab. A click on open floor beside an L or U leaves the bar unselected. Each leg has an end handle. Drag that handle to lengthen or shorten that leg. The corner stays put. A straight bar has a handle at each end. Stool pills stay on the rail as a leg changes. Publish stores each leg’s length.",
+    roles: ["owner_manager", "host_operator"],
+    surfaces: ["floor"],
+    audience: "all",
+    topicId: "floor-editor",
+    tags: ["floor", "editor"],
+  },
+  {
     id: "upd_2026_10_147_floor_rotate",
     date: "2026-09-22",
     title: "Floor pieces rotate by 90 degrees",

@@ -1,7 +1,7 @@
 # Operators Guide — authoring
 
-**Revision · 22 Sep 2026** — Floor editor rotate 90 persists.
-Guide v2026.10.147.
+**Revision · 22 Sep 2026** — Bar selects on the slab; each leg drags alone.
+Guide v2026.10.148.
 
 The in-app **Operators Guide** is the living product manual. It is not a
 separate PDF. Staff open it from **Guide** / **?** in the POS and platform

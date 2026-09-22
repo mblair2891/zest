@@ -40,18 +40,218 @@ export function barRailLocal(shape: BarTopShape | undefined, points?: PlanPoint[
   return [{ x: 4, y: 50 }, { x: 96, y: 50 }];
 }
 
-export function railPlanPoints(table: {
+export type LegHandle = {
+  /** Vertex that moves. */
+  index: number;
+  /** Corner or other end that stays put. */
+  anchor: number;
+  /** Vertices that translate with the end so the next leg keeps its length. */
+  follow?: number[];
+};
+
+export const BAR_HIT_RADIUS = 2.4;
+
+export function defaultBarPlan(
+  shape: BarTopShape | undefined,
+  x: number,
+  y: number,
+  w: number,
+  h: number,
+): PlanPoint[] {
+  const local = barRailLocal(shape, null);
+  return local.map((p) => ({ x: x + (p.x / 100) * w, y: y + (p.y / 100) * h }));
+}
+
+/** Centerline in plan percent. Stored `points` are plan-space once leg lengths exist. */
+export function storedBarPlan(table: {
   x: number;
   y: number;
   w: number;
   h: number;
   barShape?: BarTopShape | null;
   points?: PlanPoint[] | null;
+  legLengths?: number[] | null;
 }): PlanPoint[] {
-  return barRailLocal(table.barShape ?? "straight", table.points).map((p) => ({
-    x: table.x + (p.x / 100) * table.w,
-    y: table.y + (p.y / 100) * table.h,
+  if (table.legLengths && table.legLengths.length > 0 && table.points && table.points.length >= 2) {
+    return table.points;
+  }
+  if (table.barShape === "polyline" && table.points && table.points.length >= 2 && !table.legLengths) {
+    return table.points.map((p) => ({
+      x: table.x + (p.x / 100) * table.w,
+      y: table.y + (p.y / 100) * table.h,
+    }));
+  }
+  return defaultBarPlan(table.barShape ?? "straight", table.x, table.y, table.w, table.h);
+}
+
+export function legLengthsOf(points: PlanPoint[]): number[] {
+  const out: number[] = [];
+  for (let i = 0; i < points.length - 1; i += 1) {
+    out.push(Math.hypot(points[i + 1]!.x - points[i]!.x, points[i + 1]!.y - points[i]!.y));
+  }
+  return out.map((n) => Math.round(n * 10) / 10);
+}
+
+export function boundsOf(points: PlanPoint[], pad = 2): { x: number; y: number; w: number; h: number } {
+  let minX = 100;
+  let minY = 100;
+  let maxX = 0;
+  let maxY = 0;
+  for (const p of points) {
+    minX = Math.min(minX, p.x);
+    minY = Math.min(minY, p.y);
+    maxX = Math.max(maxX, p.x);
+    maxY = Math.max(maxY, p.y);
+  }
+  minX = Math.max(0, minX - pad);
+  minY = Math.max(0, minY - pad);
+  maxX = Math.min(100, maxX + pad);
+  maxY = Math.min(100, maxY + pad);
+  return {
+    x: minX,
+    y: minY,
+    w: Math.max(6, maxX - minX),
+    h: Math.max(6, maxY - minY),
+  };
+}
+
+export function planToLocal(points: PlanPoint[], box: { x: number; y: number; w: number; h: number }): PlanPoint[] {
+  return points.map((p) => ({
+    x: ((p.x - box.x) / box.w) * 100,
+    y: ((p.y - box.y) / box.h) * 100,
   }));
+}
+
+function rotatePoint(p: PlanPoint, c: PlanPoint, deg: number): PlanPoint {
+  const rad = (deg * Math.PI) / 180;
+  const dx = p.x - c.x;
+  const dy = p.y - c.y;
+  const cos = Math.cos(rad);
+  const sin = Math.sin(rad);
+  return { x: c.x + dx * cos - dy * sin, y: c.y + dx * sin + dy * cos };
+}
+
+/** Pointer in the bar's unrotated plan, matching the CSS spin around the box center. */
+export function unrotatePointer(
+  pointer: PlanPoint,
+  box: { x: number; y: number; w: number; h: number },
+  rotation?: number | null,
+): PlanPoint {
+  const deg = Number(rotation) || 0;
+  if (!deg) return pointer;
+  const c = { x: box.x + box.w / 2, y: box.y + box.h / 2 };
+  return rotatePoint(pointer, c, -deg);
+}
+
+/** Island stores the first vertex again at the end. Keep that joint closed after a leg drag. */
+export function sealBarLoop(points: PlanPoint[], shape: BarTopShape | undefined): PlanPoint[] {
+  if (shape !== "island" || points.length < 3) return points;
+  const first = points[0]!;
+  const last = points[points.length - 1]!;
+  if (first.x === last.x && first.y === last.y) return points;
+  return points.map((p, i) => (i === points.length - 1 ? { x: first.x, y: first.y } : p));
+}
+
+/** Visual centerline, after the stored quarter-turn. */
+export function visualBarPlan(table: {
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+  rotation?: number | null;
+  barShape?: BarTopShape | null;
+  points?: PlanPoint[] | null;
+  legLengths?: number[] | null;
+}): PlanPoint[] {
+  const raw = storedBarPlan(table);
+  const deg = Number(table.rotation) || 0;
+  if (!deg) return raw;
+  const c = { x: table.x + table.w / 2, y: table.y + table.h / 2 };
+  return raw.map((p) => rotatePoint(p, c, deg));
+}
+
+export function hitsBar(px: number, py: number, points: PlanPoint[], radius = BAR_HIT_RADIUS): boolean {
+  let best = Infinity;
+  for (let i = 0; i < points.length - 1; i += 1) {
+    const hit = nearestOnSegment(px, py, points[i]!, points[i + 1]!);
+    if (hit.d < best) best = hit.d;
+  }
+  return best <= radius;
+}
+
+export function legHandles(points: PlanPoint[], shape: BarTopShape | undefined): LegHandle[] {
+  const n = points.length;
+  if (n < 2) return [];
+  if (shape === "straight" || n === 2) {
+    return [
+      { index: 0, anchor: 1 },
+      { index: 1, anchor: 0 },
+    ];
+  }
+  if (shape === "u" && n >= 4) {
+    return [
+      { index: 0, anchor: 1 },
+      { index: n - 1, anchor: n - 2 },
+      { index: 2, anchor: 1, follow: [3] },
+    ];
+  }
+  if (shape === "island" && n >= 5) {
+    const count = n - 1;
+    const handles: LegHandle[] = [];
+    for (let i = 0; i < count; i += 1) {
+      const end = (i + 1) % count;
+      const follow = (end + 1) % count;
+      handles.push({ index: end, anchor: i, follow: follow === i ? [] : [follow] });
+    }
+    return handles;
+  }
+  return [
+    { index: 0, anchor: 1 },
+    { index: n - 1, anchor: Math.max(0, n - 2) },
+  ];
+}
+
+/** Lengthen one leg along its own axis. The anchor corner does not move. */
+export function dragLegEnd(points: PlanPoint[], handle: LegHandle, pointer: PlanPoint): PlanPoint[] {
+  const anchor = points[handle.anchor];
+  const end = points[handle.index];
+  if (!anchor || !end) return points;
+  let dx = end.x - anchor.x;
+  let dy = end.y - anchor.y;
+  let span = Math.hypot(dx, dy);
+  if (span < 0.01) {
+    dx = 1;
+    dy = 0;
+    span = 1;
+  }
+  const ux = dx / span;
+  const uy = dy / span;
+  const proj = (pointer.x - anchor.x) * ux + (pointer.y - anchor.y) * uy;
+  const nextLen = Math.max(4, snapPct(proj));
+  const nx = anchor.x + ux * nextLen;
+  const ny = anchor.y + uy * nextLen;
+  const mx = nx - end.x;
+  const my = ny - end.y;
+  return points.map((p, i) => {
+    if (i === handle.index) return { x: Math.round(nx * 10) / 10, y: Math.round(ny * 10) / 10 };
+    if (handle.follow?.includes(i)) {
+      return { x: Math.round((p.x + mx) * 10) / 10, y: Math.round((p.y + my) * 10) / 10 };
+    }
+    return p;
+  });
+}
+
+export function railPlanPoints(table: {
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+  rotation?: number | null;
+  barShape?: BarTopShape | null;
+  points?: PlanPoint[] | null;
+  legLengths?: number[] | null;
+}): PlanPoint[] {
+  return visualBarPlan(table);
 }
 
 function nearestOnSegment(px: number, py: number, a: PlanPoint, b: PlanPoint): { x: number; y: number; d: number } {
@@ -73,8 +273,10 @@ export function snapStoolToRail(
     w: number;
     h: number;
     kind?: string | null;
+    rotation?: number | null;
     barShape?: BarTopShape | null;
     points?: PlanPoint[] | null;
+    legLengths?: number[] | null;
   }>,
 ): { x: number; y: number } | null {
   const rails = bars.filter((b) => b.kind === "bar_top");
