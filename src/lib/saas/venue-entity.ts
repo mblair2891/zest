@@ -28,6 +28,7 @@ export const SERVICE_STYLES_VENUE = [
   "counter",
   "hybrid",
   "drive_through",
+  "serverless_food",
 ] as const;
 export type VenueServiceStyle = (typeof SERVICE_STYLES_VENUE)[number];
 
@@ -180,6 +181,9 @@ export function parseVenueServiceStyle(raw: unknown): VenueServiceStyle {
   if (s === "counter" || s === "qsr" || s === "cafe") return "counter";
   if (s === "hybrid" || s === "mixed" || s === "hall") return "hybrid";
   if (s === "drive_through" || s === "drive" || s === "dt") return "drive_through";
+  if (s === "serverless_food" || s === "serverless" || s === "serverless_food_served_drinks") {
+    return "serverless_food";
+  }
   return "full_service";
 }
 

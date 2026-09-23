@@ -50,10 +50,11 @@ export function tableToken(label: string | null | undefined): string {
   return s || "0";
 }
 
-export type CheckChannel = "table" | "to" | "bar";
+export type CheckChannel = "table" | "to" | "bar" | "kiosk";
 
-/** Bar tabs use BAR. Seated dining uses the table. Everything else is to-go. */
+/** Bar tabs use BAR. Kiosk uses TKIOSK. Seated dining uses the table. Everything else is to-go. */
 export function checkChannel(type: string | undefined, tableLabel?: string | null): CheckChannel {
+  if (type === "kiosk") return "kiosk";
   if (type === "bar_tab") return "bar";
   if (type === "dine_in" && String(tableLabel ?? "").trim()) return "table";
   return "to";
@@ -61,6 +62,7 @@ export function checkChannel(type: string | undefined, tableLabel?: string | nul
 
 export function checkStem(type: string | undefined, tableLabel?: string | null): string {
   const channel = checkChannel(type, tableLabel);
+  if (channel === "kiosk") return "TKIOSK";
   if (channel === "bar") return "BAR";
   if (channel === "to") return "TO";
   return `T${tableToken(tableLabel)}`;
@@ -74,11 +76,13 @@ export function formatCheckNumber(opts: {
 }): string {
   const seq = String(Math.max(1, Math.floor(opts.seq))).padStart(2, "0");
   const stem =
-    opts.channel === "bar"
-      ? "BAR"
-      : opts.channel === "to"
-        ? "TO"
-        : `T${tableToken(opts.tableLabel)}`;
+    opts.channel === "kiosk" || opts.type === "kiosk"
+      ? "TKIOSK"
+      : opts.channel === "bar"
+        ? "BAR"
+        : opts.channel === "to"
+          ? "TO"
+          : `T${tableToken(opts.tableLabel)}`;
   return `${stem}-${seq}`;
 }
 

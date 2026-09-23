@@ -9,6 +9,12 @@ import {
 } from "./device-roles";
 import { readStationPair } from "./station-pair";
 import { nextCheckNumber } from "./check-number";
+import {
+	guestContactOk,
+	guestMayAddItem,
+	isServerlessFood,
+	nextPickupSms,
+} from "./serverless-food";
 import { stationPinAuthLocationId } from "./station-pin-auth";
 import { stationHomeSurface, viewForStationHome } from "./station-home";
 import { denyReason, pinFitsDevice, stationCan } from "./station-pin-gate";
@@ -98,6 +104,47 @@ function floorSync(kind: string, id?: string) {
 	} catch {
 		/* optional — POS still runs locally */
 	}
+}
+
+function queuePickupSms(notice: { to: string; body: string }, locationId: string) {
+	try {
+		void import("@/lib/front/api")
+			.then((m) =>
+				m.sendPickupSmsFn({
+					data: { to: notice.to, body: notice.body, locationId },
+				}),
+			)
+			.catch(() => {});
+	} catch {
+		/* SMS is best-effort; the pickup rail still shows */
+	}
+}
+
+function syncPickupSms(get: () => any, set: (partial: any) => void) {
+	const now = Date.now();
+	const settings = get().settings ?? {};
+	const tickets = get().tickets ?? [];
+	let changed = false;
+	const orders = get().orders.map((order: any) => {
+		const notice = nextPickupSms(order, tickets, settings, now);
+		if (!notice) return order;
+		changed = true;
+		queuePickupSms(notice, get().tenantLocationId || "");
+		try {
+			useNotifyStore.getState().pushNotice({
+				kind: "ticket_ready",
+				title: notice.kind === "reminder" ? "Pickup reminder" : "Order ready",
+				body: notice.body,
+				orderId: order.id,
+				serverId: order.serverId,
+				serverName: order.serverName,
+			});
+		} catch { /* */ }
+		return notice.kind === "reminder"
+			? { ...order, pickupReminderSmsAt: now }
+			: { ...order, pickupSmsAt: now };
+	});
+	if (changed) set({ orders });
 }
 
 function printNow(kind: "send" | "bump" | "ready" | "receipt" | "guest_check", id?: string) {
@@ -2658,8 +2705,9 @@ const usePosStoreRaw = create<PosStore>()(persist((set, get) => {
 			id: uid("kt"),
 			orderId: order.id,
 			orderNumber: order.number,
-			tableLabel: table?.label ?? order.tabName ?? order.type.replace("_", " "),
+			tableLabel: table?.label ?? (order.type === "kiosk" ? "KIOSK" : order.tabName ?? order.type.replace("_", " ")),
 			serverName: order.serverName,
+			guestName: order.guestName,
 			serverId: order.serverId,
 			station: slip.station,
 			vendorId: slip.vendorId,
@@ -3268,6 +3316,7 @@ const usePosStoreRaw = create<PosStore>()(persist((set, get) => {
 		}
 		floorSync("bump", ticketId);
 		printNow("bump", ticketId);
+		syncPickupSms(get, set);
 	},
 	recallTicket: (ticketId) => {
 		set({ tickets: get().tickets.map((t: any) => t.id === ticketId ? {
@@ -3294,6 +3343,7 @@ const usePosStoreRaw = create<PosStore>()(persist((set, get) => {
 		set({ tickets });
 		floorSync("ready", ticketId);
 		printNow("ready", ticketId);
+		syncPickupSms(get, set);
 		if (ticket?.orderId) {
 			const order = get().orders.find((o: any) => o.id === ticket.orderId);
 			if (order?.tableId) {
@@ -3327,6 +3377,7 @@ const usePosStoreRaw = create<PosStore>()(persist((set, get) => {
 			floorSync("bump", t.id);
 		}
 		floorSync("table", tableId);
+		syncPickupSms(get, set);
 	},
 	addWaitlist: (entry) => {
 		const id = entry.id || uid("wl");
@@ -4141,17 +4192,34 @@ const usePosStoreRaw = create<PosStore>()(persist((set, get) => {
 		floorSync("table", root);
 		return { ok: true };
 	},
-	guestOpenTable: (tableId) => {
+	guestOpenTable: (tableId, opts) => {
 		const policy = parseQrPolicy(get().settings.qrPolicy, get().settings.qrMode);
 		const table = get().tables.find((t: any) => t.id === tableId);
 		if (!table) return { ok: false, error: "Unknown table" };
+		const serverless = isServerlessFood(get().settings?.serviceStyle);
+		const contact = guestContactOk(opts?.name, opts?.phone);
 		if (table.orderId) {
 			const existing = get().orders.find((o: any) => o.id === table.orderId);
 			if (existing && existing.status === "open") {
+				if (serverless && (!existing.guestName || !existing.guestPhone)) {
+					if (!contact) return { ok: false, error: "Name and phone are required" };
+					set({
+						orders: get().orders.map((o: any) => o.id === existing.id ? {
+							...o,
+							guestName: String(opts?.name ?? "").trim(),
+							guestPhone: String(opts?.phone ?? "").trim(),
+							guestChannel: o.guestChannel ?? "table_qr",
+						} : o),
+						activeOrderId: existing.id,
+						activeTableId: tableId,
+					});
+					return { ok: true };
+				}
 				set({ activeOrderId: table.orderId, activeTableId: tableId });
 				return { ok: true };
 			}
 		}
+		if (serverless && !contact) return { ok: false, error: "Name and phone are required" };
 		if (!qrCanReorder(policy)) {
 			return { ok: false, error: "This table QR is pay only — ask staff to order" };
 		}
@@ -4165,7 +4233,10 @@ const usePosStoreRaw = create<PosStore>()(persist((set, get) => {
 			tableId,
 			guestCount: table.seats || 2,
 			serverId: "guest_qr",
-			serverName: "Guest QR",
+			serverName: contact ? String(opts?.name ?? "").trim() : "Guest QR",
+			guestName: contact ? String(opts?.name ?? "").trim() : undefined,
+			guestPhone: contact ? String(opts?.phone ?? "").trim() : undefined,
+			guestChannel: contact ? "table_qr" as const : undefined,
 			lines: [],
 			payments: [],
 			status: "open",
@@ -4207,11 +4278,20 @@ const usePosStoreRaw = create<PosStore>()(persist((set, get) => {
 		if (!qrItemAllowed(item, policy.orderAllow)) {
 			return { ok: false, error: "That item is not on the table QR menu" };
 		}
+		const vendor = item.vendorId
+			? get().vendors.find((v: any) => v.id === item.vendorId)
+			: undefined;
+		if (!guestMayAddItem(
+			{ station: item.station, taxCategory: item.taxCategory, vendorStation: vendor?.stationType },
+			get().settings,
+		)) {
+			return { ok: false, error: "Drinks are ordered with the server" };
+		}
 		ensureGuestCashier(get, set);
 		const prev = get().currentEmployeeId;
 		set({ currentEmployeeId: "guest_qr" });
 		if (opts?.seat != null) set({ activeSeat: opts.seat });
-		const opened = get().guestOpenTable(tableId);
+		const opened = get().guestOpenTable(tableId, { name: opts?.name, phone: opts?.phone });
 		if (!opened.ok) {
 			set({ currentEmployeeId: prev });
 			return opened;
@@ -4226,6 +4306,110 @@ const usePosStoreRaw = create<PosStore>()(persist((set, get) => {
 		set({ activeOrderId: table.orderId, activeTableId: tableId });
 		get().sendOrder();
 		return { ok: true };
+	},
+	openKioskOrder: (input) => {
+		const name = String(input?.name ?? "").trim();
+		const phone = String(input?.phone ?? "").trim();
+		if (!guestContactOk(name, phone)) return { ok: false, error: "Name and phone are required" };
+		const lines = Array.isArray(input?.lines) ? input.lines : [];
+		if (!lines.length) return { ok: false, error: "Add food first" };
+		for (const line of lines) {
+			const item = get().menuItems.find((m: any) => m.id === line.menuItemId);
+			if (!item || item.available === false) return { ok: false, error: "Item unavailable" };
+			const vendor = item.vendorId
+				? get().vendors.find((v: any) => v.id === item.vendorId)
+				: undefined;
+			if (!guestMayAddItem(
+				{ station: item.station, taxCategory: item.taxCategory, vendorStation: vendor?.stationType },
+				get().settings,
+			)) {
+				return { ok: false, error: "Drinks are ordered with the server" };
+			}
+		}
+		const prev = get().currentEmployeeId;
+		ensureGuestCashier(get, set);
+		const order = {
+			id: uid("ord"),
+			number: allocateCheckNumber(get, { type: "kiosk" }),
+			type: "kiosk",
+			tabName: "KIOSK",
+			guestCount: 1,
+			serverId: "guest_kiosk",
+			serverName: name,
+			guestName: name,
+			guestPhone: phone,
+			guestChannel: "kiosk" as const,
+			lines: [],
+			payments: [],
+			status: "open",
+			discountPercent: 0,
+			discountCents: 0,
+			autoGratApplied: false,
+			serviceChargeCents: 0,
+			createdAt: Date.now(),
+		};
+		set({
+			orders: [...get().orders, order],
+			activeOrderId: order.id,
+			currentEmployeeId: "guest_qr",
+		});
+		for (const line of lines) {
+			const qty = Math.max(1, Math.floor(Number(line.qty) || 1));
+			for (let n = 0; n < qty; n += 1) {
+				const added = get().addItem(line.menuItemId, { modifiers: line.modifiers });
+				if (!added.ok) {
+					set({ currentEmployeeId: prev });
+					return added;
+				}
+			}
+		}
+		const sent = get().sendOrder();
+		if (!sent.ok) {
+			set({ currentEmployeeId: prev });
+			return sent;
+		}
+		const tender = input?.tender;
+		if (tender === "cash") {
+			set({
+				orders: get().orders.map((o: any) => o.id === order.id ? { ...o, note: "Pay cash at counter" } : o),
+				currentEmployeeId: prev,
+			});
+			floorSync("send", order.id);
+			return { ok: true, orderId: order.id, number: order.number };
+		}
+		if (tender === "card" || tender === "gift_card") {
+			const method = tender === "gift_card" ? "gift_card" : "card";
+			const pm = parsePaymentMethods(get().settings.paymentMethods);
+			if (!methodEnabled(pm, method)) {
+				set({ currentEmployeeId: prev });
+				return { ok: true, orderId: order.id, number: order.number, error: "This tender is off at this venue." };
+			}
+			const fresh = get().orders.find((o: any) => o.id === order.id) ?? order;
+			const totals = computeTotals(fresh, get().settings, { tender: "card" });
+			set({ activeOrderId: order.id });
+			const paid = get().takePayment({
+				method,
+				amountCents: totals.balanceCents,
+				tipCents: 0,
+				last4: method === "card" ? "4242" : undefined,
+				giftCardCode: method === "gift_card" ? input?.giftCode : undefined,
+				keepOpen: false,
+			});
+			set({ currentEmployeeId: prev });
+			if (!paid.ok) return { ok: true, orderId: order.id, number: order.number, error: paid.error };
+			return { ok: true, orderId: order.id, number: order.number };
+		}
+		set({ currentEmployeeId: prev });
+		return { ok: true, orderId: order.id, number: order.number };
+	},
+	markPickedUp: (orderId) => {
+		set({
+			orders: get().orders.map((o: any) => o.id === orderId ? { ...o, pickedUpAt: Date.now() } : o),
+		});
+		return { ok: true };
+	},
+	sweepPickupReminders: () => {
+		syncPickupSms(get, set);
 	},
 	rotateTableQr: (tableId) => {
 		const table = get().tables.find((t: any) => t.id === tableId);

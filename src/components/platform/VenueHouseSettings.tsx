@@ -36,6 +36,7 @@ const STYLE_LABEL: Record<(typeof SERVICE_STYLES_VENUE)[number], string> = {
   counter: "Counter",
   hybrid: "Hybrid",
   drive_through: "Drive-through",
+  serverless_food: "Serverless food + served drinks",
 };
 
 const TAX_LABEL: Record<(typeof TAX_MODES)[number], string> = {
@@ -261,6 +262,56 @@ export function VenueHouseSettings() {
             ))}
           </select>
         </label>
+        {style === "serverless_food" && (
+          <div className="grid gap-3" data-serverless-food="">
+            <label className="flex items-center gap-2 text-sm">
+              <input
+                type="checkbox"
+                data-guest-may-order-drinks=""
+                disabled={!write}
+                checked={settings.guestMayOrderDrinks === true}
+                onChange={(e) => {
+                  updateSettings({ guestMayOrderDrinks: e.target.checked });
+                  persist({ guestMayOrderDrinks: e.target.checked });
+                }}
+              />
+              Guest may order drinks
+            </label>
+            <label className="block text-sm">
+              <span className="mb-1 block text-muted-foreground">Pickup label</span>
+              <Input
+                data-pickup-label=""
+                disabled={!write}
+                value={settings.pickupLabel ?? ""}
+                placeholder="counter"
+                onChange={(e) => {
+                  const pickupLabel = e.target.value.slice(0, 40);
+                  updateSettings({ pickupLabel });
+                  persist({ pickupLabel });
+                }}
+              />
+            </label>
+            <label className="block text-sm">
+              <span className="mb-1 block text-muted-foreground">
+                Remind by text after minutes, if they have not picked up
+              </span>
+              <Input
+                data-pickup-reminder=""
+                type="number"
+                min={0}
+                disabled={!write}
+                value={settings.pickupReminderMinutes ?? ""}
+                placeholder="Off"
+                onChange={(e) => {
+                  const raw = e.target.value.trim();
+                  const pickupReminderMinutes = raw === "" ? null : Math.max(0, Math.round(Number(raw) || 0));
+                  updateSettings({ pickupReminderMinutes });
+                  persist({ pickupReminderMinutes });
+                }}
+              />
+            </label>
+          </div>
+        )}
         <label className="block text-sm">
           <span className="mb-1 block text-muted-foreground">Tax mode</span>
           <select

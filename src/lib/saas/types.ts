@@ -85,7 +85,10 @@ export type LocationSetup = {
   /** Legacy single rate fraction. */
   taxRate?: number;
   floorStatusConfig?: import("@/lib/pos/floor-status").FloorStatusConfig;
-  serviceStyle?: "full_service" | "counter" | "hybrid" | "drive_through";
+  serviceStyle?: "full_service" | "counter" | "hybrid" | "drive_through" | "serverless_food";
+  guestMayOrderDrinks?: boolean;
+  pickupLabel?: string;
+  pickupReminderMinutes?: number | null;
   hostEntityId?: string | null;
   trainingTrackInventory?: boolean;
   aiReportSchedule?: "off" | "daily" | "weekly";

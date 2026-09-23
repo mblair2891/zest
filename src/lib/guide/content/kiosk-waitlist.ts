@@ -19,6 +19,7 @@ export const KIOSK_WAITLIST_TOPICS: GuideTopic[] = [
         "Staff PINs do not operate kiosk. Manager, supervisor, or the Devices service PIN may reload or exit lock-task.",
         "Modes in Settings: Order · Check-in / waitlist · Combined tabs.",
         "Combined home: Order | Check in | Waitlist.",
+        "Serverless food + served drinks locks the kiosk to name, phone, the kitchen food menu, and pay. Drinks stay off unless Guest may order drinks is on. Exit is the station PIN. The check number is TKIOSK plus the day’s sequence. The guest name prints on the kitchen ticket.",
       ),
       steps(
         "Set kiosk mode and waitlist on Settings or Host stand.",

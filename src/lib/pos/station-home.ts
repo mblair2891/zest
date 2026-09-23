@@ -16,6 +16,7 @@ export const STATION_SERVICE_STYLES = [
   "counter",
   "hybrid",
   "drive_through",
+  "serverless_food",
 ] as const;
 export type StationServiceStyle = (typeof STATION_SERVICE_STYLES)[number];
 
@@ -35,6 +36,13 @@ export function parseStationServiceStyle(raw: unknown): StationServiceStyle | nu
   if (!s) return null;
   if (s === "counter" || s === "qsr" || s === "cafe" || s === "café") return "counter";
   if (s === "hybrid" || s === "mixed" || s === "hall") return "hybrid";
+  if (
+    s === "serverless_food" ||
+    s === "serverless" ||
+    s === "serverless_food_served_drinks"
+  ) {
+    return "serverless_food";
+  }
   if (
     s === "drive_through" ||
     s === "drive" ||
@@ -113,7 +121,11 @@ export function stationHomeSurface(opts: {
 
   if (style === "drive_through") return "drive_through";
   if (style === "counter") return "queue";
-  if (style === "full_service" || (style === "hybrid" && opts.hasFloor)) {
+  if (
+    style === "full_service" ||
+    style === "serverless_food" ||
+    (style === "hybrid" && opts.hasFloor)
+  ) {
     if (canFloor) return "floor";
     if (canQueue) return "queue";
     return "floor";

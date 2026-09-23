@@ -140,6 +140,7 @@ export const ORDER_TOPICS: GuideTopic[] = [
         "Start when you begin prep (Preparing). Bump when the plate/drink is ready. Those actions persist on the location; the originating POS shows Ready without a refresh wait longer than a few seconds.",
         "The originating server’s device toasts, chimes, and vibrates (where the platform allows). The table pulses Up.",
         "Expo or the server marks Delivered on the floor. Recall if you bumped too early.",
+        "Serverless food: when every food item on the check is bumped, the guest gets a text, Name, order id is ready. Pick up at the pickup label. A later drink on the bar ticket does not send that text again. Expo or staff tap Picked up to clear the pickup rail. An optional second text waits the minutes set on the venue if they have not picked up.",
         "Mute sound from the header bell. Multi-op: filter All operators or a single stall.",
         "Each ticket stamp (and the paper kitchen ticket) shows venue local time from Settings → Location timezone — not UTC and not the tablet’s zone.",
       ),

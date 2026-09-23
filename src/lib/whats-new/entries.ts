@@ -6,6 +6,18 @@ import type { GuideUpdate } from "@/lib/guide/types";
  */
 export const WHATS_NEW_ENTRIES: GuideUpdate[] = [
   {
+    id: "upd_2026_10_158_serverless_food",
+    date: "2026-09-23",
+    title: "Serverless food, served drinks",
+    summary: "Guests order food by name and phone. The kitchen texts them when the food is bumped.",
+    body: "Service style Serverless food + served drinks lets a kiosk or table QR take a name, a phone, and the kitchen menu. Drinks stay with the server unless Guest may order drinks is on. The check is T plus the table, or TKIOSK, and the name prints on the kitchen ticket. When every food item is bumped, the guest gets a text to pick up at the house label. A drink added afterward goes to the bar and does not send that text again. Picked up clears the rail.",
+    roles: ["owner_manager", "host_operator", "server", "kitchen_bar"],
+    surfaces: ["kiosk", "floor", "kitchen"],
+    audience: "all",
+    topicId: "feature-kiosk",
+    tags: ["kiosk", "kitchen", "sms"],
+  },
+  {
     id: "upd_2026_10_157_floor_copy",
     date: "2026-09-22",
     title: "Copy floor objects by count",

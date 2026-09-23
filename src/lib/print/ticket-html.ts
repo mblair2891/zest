@@ -154,6 +154,7 @@ export function ticketHtml(job: PrintJob): string {
   <h2>${esc(title)}${job.copy === "merchant" ? " · merchant" : ""}</h2>
   <div class="row"><span>#${esc(String(job.checkNumber))}</span><span>${esc(job.tableLabel)}</span></div>
   <div class="row"><span>${esc(job.serverName)}</span><span>${esc(formatVenueTime(job.at, job.timezone))}</span></div>
+  ${job.guestName ? `<div>${esc(job.guestName)}</div>` : ""}
   ${job.operatorName ? `<div>${esc(job.operatorName)}</div>` : ""}
   <div class="rule"></div>
   ${items}

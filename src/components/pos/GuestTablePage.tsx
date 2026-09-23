@@ -23,6 +23,7 @@ import {
   qrNeedsAgeAffirm,
   qrPolicySummary,
 } from "@/lib/pos/qr-policy";
+import { guestContactOk, guestMayAddItem, isServerlessFood } from "@/lib/pos/serverless-food";
 
 type CartLine = { menuItemId: string; name: string; unitPriceCents: number; qty: number };
 
@@ -45,6 +46,7 @@ export function GuestTablePage({
 }) {
   const [ready, setReady] = useState(false);
   const [name, setName] = useState("");
+  const [phone, setPhone] = useState("");
   const [msg, setMsg] = useState<string | null>(null);
   const [cart, setCart] = useState<CartLine[]>([]);
   const [paid, setPaid] = useState(false);
@@ -135,11 +137,18 @@ export function GuestTablePage({
   const cardPolicy = cashPolicyFromSettings(settings);
   const totals = order ? computeTotals(order, settings, { tender: "card" }) : null;
 
+  const serverless = isServerlessFood(settings.serviceStyle);
   const items = useMemo(() => {
-    return menuItems.filter(
-      (e) => e.available && e.online !== false && qrItemAllowed(e, policy.orderAllow),
-    );
-  }, [menuItems, policy.orderAllow]);
+    return menuItems.filter((e) => {
+      if (!e.available || e.online === false || !qrItemAllowed(e, policy.orderAllow)) return false;
+      if (!serverless) return true;
+      const vendor = e.vendorId ? vendors.find((v) => v.id === e.vendorId) : undefined;
+      return guestMayAddItem(
+        { station: e.station, taxCategory: e.taxCategory, vendorStation: vendor?.stationType },
+        settings,
+      );
+    });
+  }, [menuItems, policy.orderAllow, serverless, vendors, settings]);
 
   const grouped = useMemo(() => {
     const map = new Map<string, MenuItem[]>();
@@ -261,10 +270,16 @@ export function GuestTablePage({
       setMsg("See your server");
       return;
     }
+    if (serverless && !guestContactOk(name, phone)) {
+      setMsg("Name and phone are required");
+      return;
+    }
     for (const line of cart) {
       for (let i = 0; i < line.qty; i++) {
         const res = guestAddToTable(resolvedTable.id, line.menuItemId, {
           seat: seat && seat > 0 ? seat : undefined,
+          name: serverless ? name : undefined,
+          phone: serverless ? phone : undefined,
         });
         if (!res.ok) {
           setMsg(res.error ?? "Could not add");
@@ -479,10 +494,21 @@ export function GuestTablePage({
               </p>
               <Input
                 className="mb-2"
+                data-qr-guest-name=""
                 placeholder="Name for the order"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
               />
+              {serverless && (
+                <Input
+                  className="mb-2"
+                  data-qr-guest-phone=""
+                  placeholder="Phone"
+                  inputMode="tel"
+                  value={phone}
+                  onChange={(e) => setPhone(e.target.value)}
+                />
+              )}
               <p className="mb-2 text-lg font-semibold tabular">
                 {formatCurrency(cartTotal)}
               </p>

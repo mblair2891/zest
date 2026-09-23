@@ -27,6 +27,8 @@ import { LoginOnboardingHost } from "@/components/onboarding/LoginOnboardingHost
 import { NetworkBanner, NetworkWatcher } from "@/components/pos/NetworkStatus";
 import { useDemoLiveSync } from "@/lib/demo/live-sync";
 import { useNetworkStore } from "@/lib/pos/network-store";
+import { guestMayAddItem, isServerlessFood } from "@/lib/pos/serverless-food";
+import type { MenuItem, SelectedModifier } from "@/lib/pos/types";
 
 type Pane = "home" | "order" | "waitlist" | "checkin" | "book";
 
@@ -116,14 +118,16 @@ export function KioskApp() {
     return () => window.clearInterval(t);
   }, [ready, loc]);
 
-  const mode: KioskMode = settings?.kioskMode ?? "combined";
-  const waitOn = !!settings?.waitlistEnabled;
+  const posSettings = usePosStore((s) => s.settings);
+  const serverless = isServerlessFood(posSettings.serviceStyle);
+  const mode: KioskMode = serverless ? "order" : (settings?.kioskMode ?? "combined");
+  const waitOn = serverless ? false : !!settings?.waitlistEnabled;
 
   useEffect(() => {
     if (!settings) return;
     if (mode === "order") setPane("order");
     else if (mode === "checkin") setPane("home");
-  }, [settings?.kioskMode]);
+  }, [settings?.kioskMode, mode]);
 
   const demoVenue = parseDemoType(demoType ?? undefined);
   if (isProspectDemo() && !demoEntered && demoVenue) {
@@ -143,6 +147,7 @@ export function KioskApp() {
   return (
     <div
       data-demo="kiosk-home"
+      data-kiosk-lock={serverless ? "serverless" : undefined}
       className="flex min-h-[100dvh] flex-col bg-bg pt-[var(--grok-banner-h,0px)] text-foreground"
     >
       {isProspectDemo() && demoEntered ? <LoginOnboardingHost /> : null}
@@ -161,7 +166,7 @@ export function KioskApp() {
             <HelpButton surface="kiosk" />
             <DemoDeviceSwitcher />
           </div>
-        ) : (
+        ) : serverless ? null : (
           <Link
             to="/login"
             className="text-xs text-muted-foreground underline-offset-2 hover:underline"
@@ -171,7 +176,7 @@ export function KioskApp() {
         )}
       </header>
 
-      {mode === "combined" && (
+      {mode === "combined" && !serverless && (
         <nav className="grid grid-cols-3 gap-px border-b border-border bg-border">
           <KioskTab
             active={pane === "order"}
@@ -203,7 +208,8 @@ export function KioskApp() {
             {error}
           </p>
         )}
-        {(pane === "home" || (mode === "checkin" && pane !== "checkin" && pane !== "book")) &&
+        {!serverless &&
+          (pane === "home" || (mode === "checkin" && pane !== "checkin" && pane !== "book")) &&
           mode !== "order" && (
             <HomePane
               waitOn={waitOn}
@@ -217,8 +223,8 @@ export function KioskApp() {
               showOrder={mode === "combined"}
             />
           )}
-        {pane === "order" && <OrderPane />}
-        {pane === "waitlist" && waitOn && (
+        {(pane === "order" || serverless) && <OrderPane />}
+        {!serverless && pane === "waitlist" && waitOn && (
           <WaitlistPane
             loc={loc}
             estimate={estimate}
@@ -229,13 +235,13 @@ export function KioskApp() {
             }}
           />
         )}
-        {pane === "checkin" && (
+        {!serverless && pane === "checkin" && (
           <CheckInPane
             loc={loc}
             onBack={() => setPane("home")}
           />
         )}
-        {pane === "book" && (
+        {!serverless && pane === "book" && (
           <BookPane loc={loc} onBack={() => setPane("checkin")} />
         )}
       </main>
@@ -334,12 +340,23 @@ function HomePane({
 
 function OrderPane() {
   const menuItems = usePosStore((s) => s.menuItems);
+  const modifierGroups = usePosStore((s) => s.modifierGroups);
+  const vendors = usePosStore((s) => s.vendors);
   const settings = usePosStore((s) => s.settings);
+  const openKioskOrder = usePosStore((s) => s.openKioskOrder);
   const cart = usePlatformStore((s) => s.onlineCart);
   const add = usePlatformStore((s) => s.addToOnlineCart);
   const place = usePlatformStore((s) => s.placeOnlineOrder);
   const clear = usePlatformStore((s) => s.clearOnlineCart);
   const [done, setDone] = useState<string | null>(null);
+  const [guestName, setGuestName] = useState("");
+  const [guestPhone, setGuestPhone] = useState("");
+  const [draft, setDraft] = useState<MenuItem | null>(null);
+  const [picks, setPicks] = useState<SelectedModifier[]>([]);
+  const [localCart, setLocalCart] = useState<
+    { menuItemId: string; name: string; unitPriceCents: number; qty: number; modifiers?: SelectedModifier[] }[]
+  >([]);
+  const serverless = isServerlessFood(settings.serviceStyle);
   const payCfg = parsePaymentMethods(settings.paymentMethods);
   const kioskTenders = (
     [
@@ -351,8 +368,39 @@ function OrderPane() {
   const [kioskMethod, setKioskMethod] = useState<"card" | "cash" | "gift_card">(
     kioskTenders[0] ?? "card",
   );
-  const items = menuItems.filter((e) => e.available).slice(0, 12);
-  const total = cart.reduce((s, i) => s + i.unitPriceCents * i.qty, 0);
+  const shownCart = serverless ? localCart : cart;
+  const total = shownCart.reduce((s, i) => s + i.unitPriceCents * i.qty, 0);
+  const addFood = (item: MenuItem, modifiers?: SelectedModifier[]) => {
+    setLocalCart((prev) => {
+      const key = `${item.id}:${(modifiers ?? []).map((m) => m.optionId).join(",")}`;
+      const hit = prev.find((l) => `${l.menuItemId}:${(l.modifiers ?? []).map((m) => m.optionId).join(",")}` === key);
+      if (hit) {
+        return prev.map((l) =>
+          l === hit ? { ...l, qty: l.qty + 1 } : l,
+        );
+      }
+      const extra = (modifiers ?? []).reduce((s, m) => s + m.priceCents, 0);
+      return [
+        ...prev,
+        {
+          menuItemId: item.id,
+          name: item.name,
+          unitPriceCents: item.priceCents + extra,
+          qty: 1,
+          modifiers,
+        },
+      ];
+    });
+  };
+  const items = menuItems.filter((e) => {
+    if (!e.available) return false;
+    if (!serverless) return true;
+    const vendor = e.vendorId ? vendors.find((v) => v.id === e.vendorId) : undefined;
+    return guestMayAddItem(
+      { station: e.station, taxCategory: e.taxCategory, vendorStation: vendor?.stationType },
+      settings,
+    );
+  }).slice(0, 24);
   const activeKiosk = kioskTenders.includes(kioskMethod)
     ? kioskMethod
     : (kioskTenders[0] ?? "card");
@@ -370,13 +418,23 @@ function OrderPane() {
           <button
             key={item.id}
             type="button"
-            onClick={() =>
+            onClick={() => {
+              const groups = modifierGroups.filter((g) => item.modifierGroupIds?.includes(g.id));
+              if (serverless && groups.length) {
+                setDraft(item);
+                setPicks([]);
+                return;
+              }
+              if (serverless) {
+                addFood(item);
+                return;
+              }
               add({
                 menuItemId: item.id,
                 name: item.name,
                 unitPriceCents: item.priceCents,
-              })
-            }
+              });
+            }}
             className="min-h-28 rounded-2xl border-2 border-border bg-surface p-4 text-left text-lg font-medium active:scale-[0.98]"
           >
             {item.name}
@@ -393,9 +451,70 @@ function OrderPane() {
         ))}
       </div>
       <aside className="h-fit rounded-2xl border border-border bg-surface p-5">
+        {serverless && (
+          <div className="mb-4 grid gap-2" data-kiosk-guest="">
+            <Input
+              data-kiosk-name=""
+              placeholder="Name"
+              value={guestName}
+              onChange={(e) => setGuestName(e.target.value)}
+            />
+            <Input
+              data-kiosk-phone=""
+              placeholder="Phone"
+              inputMode="tel"
+              value={guestPhone}
+              onChange={(e) => setGuestPhone(e.target.value)}
+            />
+          </div>
+        )}
+        {draft && serverless && (
+          <div className="mb-4 grid gap-2" data-kiosk-modifiers="">
+            <p className="text-sm font-medium">{draft.name}</p>
+            {modifierGroups
+              .filter((g) => draft.modifierGroupIds?.includes(g.id))
+              .map((g) => (
+                <div key={g.id} className="grid gap-1">
+                  <p className="text-xs text-muted-foreground">{g.name}</p>
+                  {g.options.map((opt) => (
+                    <Button
+                      key={opt.id}
+                      type="button"
+                      size="sm"
+                      variant={picks.some((p) => p.optionId === opt.id) ? "default" : "outline"}
+                      onClick={() =>
+                        setPicks((prev) => [
+                          ...prev.filter((p) => p.groupId !== g.id),
+                          {
+                            groupId: g.id,
+                            groupName: g.name,
+                            optionId: opt.id,
+                            optionName: opt.name,
+                            priceCents: opt.priceCents,
+                          },
+                        ])
+                      }
+                    >
+                      {opt.name}
+                    </Button>
+                  ))}
+                </div>
+              ))}
+            <Button
+              type="button"
+              onClick={() => {
+                addFood(draft, picks);
+                setDraft(null);
+                setPicks([]);
+              }}
+            >
+              Add {draft.name}
+            </Button>
+          </div>
+        )}
         <p className="mb-3 text-lg font-semibold">Cart</p>
         <ul className="mb-4 max-h-64 space-y-2 overflow-y-auto text-sm">
-          {cart.map((line, i) => (
+          {shownCart.map((line, i) => (
             <li key={i} className="flex justify-between">
               <span>
                 {line.qty}× {line.name}
@@ -405,7 +524,7 @@ function OrderPane() {
               </span>
             </li>
           ))}
-          {!cart.length && <li className="text-muted-foreground">Tap items to add</li>}
+          {!shownCart.length && <li className="text-muted-foreground">Tap items to add</li>}
         </ul>
         <p className="mb-4 text-2xl font-semibold tabular">{formatCurrency(total)}</p>
         {kioskTenders.length > 1 && (
@@ -418,15 +537,45 @@ function OrderPane() {
                 variant={activeKiosk === m ? "default" : "outline"}
                 onClick={() => setKioskMethod(m)}
               >
-                {m === "card" ? "Card" : m === "cash" ? "Cash" : "Gift"}
+                {m === "card" ? "Card" : m === "cash" ? "Cash at counter" : "Gift"}
               </Button>
             ))}
           </div>
         )}
         <Button
           className="mb-2 h-14 w-full text-base"
-          disabled={!cart.length}
+          data-kiosk-pay=""
+          disabled={!shownCart.length}
           onClick={() => {
+            if (serverless) {
+              const res = openKioskOrder({
+                name: guestName,
+                phone: guestPhone,
+                tender: activeKiosk,
+                lines: localCart.map((l) => ({
+                  menuItemId: l.menuItemId,
+                  qty: l.qty,
+                  modifiers: l.modifiers,
+                })),
+              });
+              if (!res.ok) {
+                setDone(res.error ?? "Could not send");
+                return;
+              }
+              setLocalCart([]);
+              setGuestName("");
+              setGuestPhone("");
+              setDone(
+                res.number
+                  ? `${res.number} · ${
+                      activeKiosk === "cash"
+                        ? "pay cash at the counter"
+                        : "pickup when we text you"
+                    }`
+                  : "Order placed",
+              );
+              return;
+            }
             const lines = cart.map((l) => ({ ...l }));
             const res = place({
               guestName: "Kiosk guest",
@@ -457,6 +606,7 @@ function OrderPane() {
           variant="outline"
           onClick={() => {
             clear();
+            setLocalCart([]);
             setDone(null);
           }}
         >

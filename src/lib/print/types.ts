@@ -43,6 +43,8 @@ export type PrintJob = {
   checkNumber: number | string;
   tableLabel: string;
   serverName: string;
+  /** Guest name on a kiosk or table-QR kitchen ticket. */
+  guestName?: string;
   operatorId?: string | null;
   operatorName?: string | null;
   copy?: "guest" | "merchant";

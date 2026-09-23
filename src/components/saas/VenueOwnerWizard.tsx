@@ -242,6 +242,7 @@ export function VenueOwnerWizard({ token }: { token: string }) {
               ["full_service", "Full service floor"],
               ["counter", "Counter"],
               ["hybrid", "Hybrid"],
+              ["serverless_food", "Serverless food + served drinks"],
               ["drive_through", "Drive-through"],
             ] as const
           ).map(([id, label]) => (

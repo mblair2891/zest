@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useStationTicketPolling } from "@/lib/pos/floor-sync";
 import { Check, RotateCcw, Play } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -42,6 +42,7 @@ export function KitchenView({ station, expo, operatorId }: Props) {
   const orders = usePosStore((s) => s.orders);
   const vendors = usePosStore((s) => s.vendors);
   const bumpTicket = usePosStore((s) => s.bumpTicket);
+  const markPickedUp = usePosStore((s) => s.markPickedUp);
   const recallTicket = usePosStore((s) => s.recallTicket);
   const startTicket = usePosStore((s) => s.startTicket);
   const readyTicket = usePosStore((s) => s.readyTicket);
@@ -50,6 +51,15 @@ export function KitchenView({ station, expo, operatorId }: Props) {
   const [bumpPinFor, setBumpPinFor] = useState<string | null>(null);
   const [bumpPinError, setBumpPinError] = useState<string | null>(null);
   const settings = usePosStore((s) => s.settings);
+  useEffect(() => {
+    const id = window.setInterval(() => {
+      usePosStore.getState().sweepPickupReminders();
+    }, 30_000);
+    return () => window.clearInterval(id);
+  }, []);
+  const pickupRail = orders.filter(
+    (o) => o.pickupSmsAt && !o.pickedUpAt && o.status !== "voided" && o.status !== "cancelled",
+  );
   const employees = usePosStore((s) => s.employees);
   const locId = usePosStore((s) => s.tenantLocationId) || "";
   const emp = usePosStore((s) => s.employees.find((e) => e.id === s.currentEmployeeId));
@@ -224,6 +234,26 @@ export function KitchenView({ station, expo, operatorId }: Props) {
           </Button>
         </div>
       </div>
+
+      {pickupRail.length > 0 && (
+        <div className="flex gap-2 overflow-x-auto border-b border-border px-3 py-2" data-pickup-rail="">
+          {pickupRail.map((o) => (
+            <div key={o.id} className="flex min-w-52 items-center gap-2 rounded-xl border border-border bg-surface px-3 py-2">
+              <div className="min-w-0">
+                <p className="truncate text-sm font-medium">
+                  {o.guestName || "Guest"} · {o.number}
+                </p>
+                <p className="truncate text-xs text-muted-foreground">
+                  Pick up at {settings.pickupLabel?.trim() || "counter"}
+                </p>
+              </div>
+              <Button size="sm" type="button" onClick={() => markPickedUp(o.id)}>
+                Picked up
+              </Button>
+            </div>
+          ))}
+        </div>
+      )}
 
       {list.length === 0 ? (
         <div className="flex flex-1 flex-col items-center justify-center text-muted-foreground">

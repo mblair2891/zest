@@ -343,6 +343,7 @@ export function buildEscPos(job: PrintJob, opts?: EscPosOptions): Uint8Array {
     line(String(job.checkNumber), job.tableLabel, width),
     line(job.serverName, formatVenueTime(job.at, job.timezone), width),
   ];
+  if (job.guestName) parts.push(line(job.guestName, "", width));
   if (job.operatorName) parts.push(line(job.operatorName, "", width));
   parts.push(text("-".repeat(width)), FEED);
   const groups = groupLinesByEntity(job.items, job.locationName);

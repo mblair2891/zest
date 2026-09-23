@@ -255,13 +255,29 @@ export interface PosStore {
   ) => ActionResult;
   markClean: (tableId: string) => ActionResult;
   setTableStatus: (tableId: string, status: TableStatus) => ActionResult;
-  guestOpenTable: (tableId: string) => ActionResult;
+  guestOpenTable: (
+    tableId: string,
+    opts?: { name?: string; phone?: string },
+  ) => ActionResult;
   guestAddToTable: (
     tableId: string,
     menuItemId: string,
-    opts?: { seat?: number },
+    opts?: { seat?: number; name?: string; phone?: string },
   ) => ActionResult;
   guestSendOrder: (tableId: string) => ActionResult;
+  openKioskOrder: (input: {
+    name: string;
+    phone: string;
+    lines: {
+      menuItemId: string;
+      qty?: number;
+      modifiers?: import("./types").SelectedModifier[];
+    }[];
+    tender?: "card" | "cash" | "gift_card";
+    giftCode?: string;
+  }) => ActionResult<{ orderId?: string; number?: string }>;
+  markPickedUp: (orderId: string) => ActionResult;
+  sweepPickupReminders: () => void;
   guestPayOrder: (
     orderId: string,
     opts?: {

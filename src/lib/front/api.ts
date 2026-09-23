@@ -61,6 +61,23 @@ export const estimateWaitFn = createServerFn({ method: "POST" })
     return estimateWaitMinutes({ ...data, settings });
   });
 
+export const sendPickupSmsFn = createServerFn({ method: "POST" })
+  .validator((d: { to: string; body: string; locationId?: string }) => ({
+    to: String(d.to ?? "").trim().slice(0, 32),
+    body: String(d.body ?? "").trim().slice(0, 320),
+    locationId: d.locationId ? String(d.locationId).slice(0, 80) : "",
+  }))
+  .handler(async ({ data }) => {
+    if (!data.to || !data.body) return { ok: false as const, provider: "blocked" as const };
+    const { sendSms } = await import("@/lib/front/messaging.server");
+    return sendSms({
+      to: data.to,
+      body: data.body,
+      kind: "pickup_ready",
+      locationId: data.locationId || null,
+    });
+  });
+
 export const joinWaitlistFn = createServerFn({ method: "POST" })
   .validator((d: {
     locationId: string;

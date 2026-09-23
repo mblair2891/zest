@@ -1,7 +1,7 @@
 # Operators Guide — authoring
 
-**Revision · 22 Sep 2026** — Copy floor objects by count.
-Guide v2026.10.157.
+**Revision · 23 Sep 2026** — Serverless food texts when the kitchen is done.
+Guide v2026.10.158.
 
 The in-app **Operators Guide** is the living product manual. It is not a
 separate PDF. Staff open it from **Guide** / **?** in the POS and platform

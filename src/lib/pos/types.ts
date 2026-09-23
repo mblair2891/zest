@@ -230,7 +230,13 @@ export interface RestaurantSettings {
   sharedVenueCostsCents?: number;
   operatingModel?: "single" | "host_operators" | "peer_venue";
   /** Venue service style. Drives the PIN home on an order station. */
-  serviceStyle?: "full_service" | "counter" | "hybrid" | "drive_through";
+  serviceStyle?: "full_service" | "counter" | "hybrid" | "drive_through" | "serverless_food";
+  /** Serverless food: guests may add bar drinks from kiosk and table QR. Default off. */
+  guestMayOrderDrinks?: boolean;
+  /** Pickup SMS place, such as counter or window 2. */
+  pickupLabel?: string;
+  /** Second SMS when the guest has not picked up. Empty or 0 is off. */
+  pickupReminderMinutes?: number | null;
   taxMode?: "venue_shared" | "per_entity";
   /** Station snapshot generation. Heartbeat compares this. */
   configVersion?: number;
@@ -529,6 +535,14 @@ export interface Order {
   type: OrderType;
   tableId?: string;
   tabName?: string;
+  /** Guest name on a kiosk or table-QR check. Prints on the kitchen ticket. */
+  guestName?: string;
+  guestPhone?: string;
+  guestChannel?: "kiosk" | "table_qr";
+  /** First pickup SMS, when every food item was bumped. */
+  pickupSmsAt?: number;
+  pickupReminderSmsAt?: number;
+  pickedUpAt?: number;
   guestCount: number;
   serverId: string;
   serverName: string;
@@ -586,6 +600,7 @@ export interface KitchenTicket {
   orderNumber: string | number;
   tableLabel: string;
   serverName: string;
+  guestName?: string;
   serverId?: string;
   station: TicketStation;
   vendorId?: string;

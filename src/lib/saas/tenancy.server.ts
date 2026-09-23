@@ -285,9 +285,16 @@ function parseSetup(raw: unknown): LocationSetup {
       o.serviceStyle === "counter" ||
       o.serviceStyle === "hybrid" ||
       o.serviceStyle === "full_service" ||
-      o.serviceStyle === "drive_through"
+      o.serviceStyle === "drive_through" ||
+      o.serviceStyle === "serverless_food"
         ? o.serviceStyle
         : undefined,
+    guestMayOrderDrinks: "guestMayOrderDrinks" in o ? Boolean(o.guestMayOrderDrinks) : undefined,
+    pickupLabel: typeof o.pickupLabel === "string" ? o.pickupLabel.slice(0, 40) : undefined,
+    pickupReminderMinutes:
+      o.pickupReminderMinutes == null || o.pickupReminderMinutes === ""
+        ? undefined
+        : Math.max(0, Math.round(Number(o.pickupReminderMinutes) || 0)),
     cashDiscountEnabled: "cashDiscountEnabled" in o ? Boolean(o.cashDiscountEnabled) : undefined,
     cashDiscountPercent:
       o.cashDiscountPercent == null ? undefined : Number(o.cashDiscountPercent) || undefined,
