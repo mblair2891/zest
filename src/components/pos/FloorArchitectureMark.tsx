@@ -1,7 +1,16 @@
 import type { PointerEvent as ReactPointerEvent, ReactNode } from "react";
 import type { Table } from "@/lib/pos/types";
 import { cn } from "@/lib/utils";
-import { isArchitectureKind, liveArchCaption, planToLocal, storedBarPlan } from "@/lib/pos/floor-architecture";
+import {
+  barClosedShape,
+  barDepthIn,
+  barSlabEdges,
+  isArchitectureKind,
+  liveArchCaption,
+  storedBarPlan,
+  type RoomInches,
+} from "@/lib/pos/floor-architecture";
+import { DEFAULT_ROOM } from "@/lib/pos/floor-dimensions";
 
 /** Walls, doors, windows, host stand, and the bar rail. No dining chairs. */
 export function FloorArchitectureMark({
@@ -13,7 +22,8 @@ export function FloorArchitectureMark({
   onShapePointerDown,
   children,
   extend,
-  pxPerIn = 2,
+  pxPerIn: _pxPerIn = 2,
+  room = DEFAULT_ROOM,
 }: {
   table: Table;
   selected?: boolean;
@@ -25,8 +35,9 @@ export function FloorArchitectureMark({
   children?: ReactNode;
   /** Plan units to draw past each centerline end when this wall shares a corner. */
   extend?: { start: number; end: number };
-  /** Layout pixels per inch, so the grab stroke is about 8 inches wide. */
+  /** Kept so callers can pass the room scale. The slab uses inches, not a hairline stroke. */
   pxPerIn?: number;
+  room?: RoomInches;
 }) {
   if (!isArchitectureKind(table.kind)) return null;
   const rotation = ((Number(table.rotation) || 0) % 360 + 360) % 360;
@@ -35,42 +46,40 @@ export function FloorArchitectureMark({
   const caption = live ? liveArchCaption(table) : null;
   if (table.kind === "bar_top") {
     const plan = storedBarPlan(table);
-    const pts = plan.length >= 2 ? planToLocal(plan, table) : [{ x: 4, y: 50 }, { x: 96, y: 50 }];
-    const d = pts.map((p, i) => `${i === 0 ? "M" : "L"} ${p.x} ${p.y}`).join(" ");
-    const hitPx = Math.max(12, pxPerIn * 8);
+    const depth = barDepthIn(table.widthIn);
+    const closed = barClosedShape(table.barShape, plan);
+    const { outer, inner } = barSlabEdges(plan, depth, room, closed);
+    const loc = (p: { x: number; y: number }) => `${p.x - table.x} ${p.y - table.y}`;
+    const chain = (pts: { x: number; y: number }[]) =>
+      pts.map((p, i) => `${i === 0 ? "M" : "L"} ${loc(p)}`).join(" ");
+    const d = closed
+      ? `${chain(outer)} Z ${chain(inner)} Z`
+      : `${chain(outer)} ${[...inner].reverse().map((p, i) => `${i === 0 ? "L" : "L"} ${loc(p)}`).join(" ")} Z`;
     return (
       <svg
-        viewBox="0 0 100 100"
+        viewBox={`0 0 ${Math.max(table.w, 0.4)} ${Math.max(table.h, 0.4)}`}
+        preserveAspectRatio="none"
         className="h-full w-full overflow-visible bg-transparent"
-        data-floor-bar="stroke"
+        data-floor-bar="slab"
         data-floor-bar-shape={table.barShape ?? "straight"}
+        data-floor-bar-depth={depth}
         data-floor-rotation={rotation}
         data-bar-legs={(table.legLengths ?? []).join(",")}
         data-floor-bar-selected={selected ? "1" : "0"}
-        data-floor-arch-tone="stroke"
+        data-floor-arch-tone="slab"
         style={{ ...spin, pointerEvents: "none", background: "transparent" }}
       >
         <path
           d={d}
-          fill="none"
-          stroke="transparent"
-          strokeWidth={hitPx}
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          vectorEffect="non-scaling-stroke"
-          style={{ pointerEvents: "stroke" }}
-          onPointerDown={onBarPointerDown}
-        />
-        <path
-          d={d}
-          fill="none"
+          fill="transparent"
+          fillRule={closed ? "evenodd" : "nonzero"}
           stroke="#111"
-          strokeWidth={4}
-          strokeLinecap="round"
-          strokeLinejoin="round"
+          strokeWidth={2}
+          strokeLinejoin="miter"
           vectorEffect="non-scaling-stroke"
           data-floor-bar-stroke="1"
-          style={{ pointerEvents: "none" }}
+          style={{ pointerEvents: "fill" }}
+          onPointerDown={onBarPointerDown}
         />
       </svg>
     );

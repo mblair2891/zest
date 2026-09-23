@@ -74,7 +74,7 @@ test("L bar wing drag keeps the other leg, and the empty box misses", () => {
   assert.match(editor, /startLeg\(/);
   assert.match(editor, /pointer-events-none absolute overflow-visible/);
   const mark = readFileSync("src/components/pos/FloorArchitectureMark.tsx", "utf8");
-  assert.match(mark, /pointerEvents: "stroke"/);
+  assert.match(mark, /pointerEvents: "fill"/);
   const live = readFileSync("src/components/pos/FloorMapCanvas.tsx", "utf8");
   assert.match(live, /data-floor-bar-hit/);
   assert.match(live, /item\.table\.kind === "bar_top" && "pointer-events-none"/);

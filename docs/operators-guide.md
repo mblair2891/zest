@@ -1,7 +1,7 @@
 # Operators Guide — authoring
 
-**Revision · 23 Sep 2026** — Serverless food texts when the kitchen is done.
-Guide v2026.10.158.
+**Revision · 23 Sep 2026** — Bar top is a hollow slab at room scale.
+Guide v2026.10.159.
 
 The in-app **Operators Guide** is the living product manual. It is not a
 separate PDF. Staff open it from **Guide** / **?** in the POS and platform

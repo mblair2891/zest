@@ -106,6 +106,245 @@ export function legLengthsOf(points: PlanPoint[]): number[] {
   return out.map((n) => Math.round(n * 10) / 10);
 }
 
+export const DEFAULT_BAR_DEPTH_IN = 24;
+
+export type RoomInches = { widthIn: number; depthIn: number };
+
+/** Counter depth in inches. A bounding-box height is not a rail width. */
+export function barDepthIn(widthIn?: number | null): number {
+  if (widthIn != null && widthIn >= 12 && widthIn <= 48) return Math.round(widthIn);
+  return DEFAULT_BAR_DEPTH_IN;
+}
+
+export function barLegsForShape(shape: BarTopShape | undefined): number[] {
+  if (shape === "l") return [12 * 12, 8 * 12];
+  if (shape === "u") return [6 * 12, 10 * 12, 6 * 12];
+  if (shape === "island") return [10 * 12, 6 * 12];
+  if (shape === "polyline") return [8 * 12, 6 * 12];
+  return [12 * 12];
+}
+
+export function legInches(points: PlanPoint[], room: RoomInches): number[] {
+  const out: number[] = [];
+  for (let i = 0; i < points.length - 1; i += 1) {
+    const a = points[i]!;
+    const b = points[i + 1]!;
+    const dx = ((b.x - a.x) / 100) * room.widthIn;
+    const dy = ((b.y - a.y) / 100) * room.depthIn;
+    out.push(Math.round(Math.hypot(dx, dy) * 10) / 10);
+  }
+  return out;
+}
+
+/** Centerline from real leg lengths. L and U share corners. Island closes. */
+export function planFromLegInches(
+  shape: BarTopShape | undefined,
+  origin: PlanPoint,
+  legsIn: number[],
+  room: RoomInches,
+): PlanPoint[] {
+  const dx = (inches: number) => (inches / room.widthIn) * 100;
+  const dy = (inches: number) => (inches / room.depthIn) * 100;
+  const x0 = origin.x;
+  const y0 = origin.y;
+  if (shape === "l") {
+    const a = legsIn[0] ?? 12 * 12;
+    const b = legsIn[1] ?? 8 * 12;
+    const corner = { x: x0 + dx(a), y: y0 };
+    return [origin, corner, { x: corner.x, y: corner.y + dy(b) }];
+  }
+  if (shape === "u") {
+    const left = legsIn[0] ?? 6 * 12;
+    const back = legsIn[1] ?? 10 * 12;
+    const right = legsIn[2] ?? 6 * 12;
+    const p1 = { x: x0, y: y0 };
+    const p0 = { x: x0, y: y0 + dy(left) };
+    const p2 = { x: x0 + dx(back), y: y0 };
+    return [p0, p1, p2, { x: p2.x, y: y0 + dy(right) }];
+  }
+  if (shape === "island") {
+    const w = legsIn[0] ?? 10 * 12;
+    const h = legsIn[1] ?? 6 * 12;
+    const p0 = origin;
+    const p1 = { x: x0 + dx(w), y: y0 };
+    const p2 = { x: p1.x, y: y0 + dy(h) };
+    const p3 = { x: x0, y: p2.y };
+    return [p0, p1, p2, p3, { ...p0 }];
+  }
+  if (shape === "polyline") {
+    const a = legsIn[0] ?? 8 * 12;
+    const b = legsIn[1] ?? 6 * 12;
+    return [
+      origin,
+      { x: x0 + dx(a) * 0.6, y: y0 + dy(b) * 0.45 },
+      { x: x0 + dx(a), y: y0 + dy(b) },
+    ];
+  }
+  const len = legsIn[0] ?? 12 * 12;
+  return [origin, { x: x0 + dx(len), y: y0 }];
+}
+
+function samePlanPoint(a: PlanPoint, b: PlanPoint): boolean {
+  return Math.hypot(a.x - b.x, a.y - b.y) < 0.05;
+}
+
+export function barClosedShape(shape: BarTopShape | undefined, points: PlanPoint[]): boolean {
+  if (shape === "island") return true;
+  return points.length > 3 && samePlanPoint(points[0]!, points[points.length - 1]!);
+}
+
+function inchesOffset(a: PlanPoint, b: PlanPoint, inches: number, room: RoomInches): PlanPoint {
+  const dx = ((b.x - a.x) / 100) * room.widthIn;
+  const dy = ((b.y - a.y) / 100) * room.depthIn;
+  const len = Math.hypot(dx, dy) || 1;
+  const ox = ((-dy / len) * inches / room.widthIn) * 100;
+  const oy = ((dx / len) * inches / room.depthIn) * 100;
+  return { x: ox, y: oy };
+}
+
+function addPoint(p: PlanPoint, v: PlanPoint): PlanPoint {
+  return { x: p.x + v.x, y: p.y + v.y };
+}
+
+function meetOffset(
+  a0: PlanPoint,
+  a1: PlanPoint,
+  offA: PlanPoint,
+  b0: PlanPoint,
+  b1: PlanPoint,
+  offB: PlanPoint,
+): PlanPoint {
+  const p = addPoint(a0, offA);
+  const r = { x: a1.x - a0.x, y: a1.y - a0.y };
+  const q = addPoint(b0, offB);
+  const s = { x: b1.x - b0.x, y: b1.y - b0.y };
+  const denom = r.x * s.y - r.y * s.x;
+  if (Math.abs(denom) < 1e-8) return { x: (p.x + q.x) / 2, y: (p.y + q.y) / 2 };
+  const t = ((q.x - p.x) * s.y - (q.y - p.y) * s.x) / denom;
+  return { x: p.x + t * r.x, y: p.y + t * r.y };
+}
+
+/** Parallel offset of the centerline, in plan percent, by a real inch distance. */
+export function offsetCenterline(
+  points: PlanPoint[],
+  inches: number,
+  room: RoomInches,
+  closed: boolean,
+): PlanPoint[] {
+  const looped = closed && points.length > 2 && samePlanPoint(points[0]!, points[points.length - 1]!);
+  const src = looped ? points.slice(0, -1) : points;
+  const n = src.length;
+  if (n < 2) return points.map((p) => ({ ...p }));
+  const segCount = closed ? n : n - 1;
+  const perps: PlanPoint[] = [];
+  for (let i = 0; i < segCount; i += 1) {
+    perps.push(inchesOffset(src[i]!, src[(i + 1) % n]!, inches, room));
+  }
+  const out: PlanPoint[] = [];
+  if (!closed) {
+    out.push(addPoint(src[0]!, perps[0]!));
+    for (let i = 1; i < n - 1; i += 1) {
+      out.push(
+        meetOffset(src[i - 1]!, src[i]!, perps[i - 1]!, src[i]!, src[i + 1]!, perps[i]!),
+      );
+    }
+    out.push(addPoint(src[n - 1]!, perps[segCount - 1]!));
+    return out;
+  }
+  for (let i = 0; i < n; i += 1) {
+    const prev = (i - 1 + n) % n;
+    out.push(
+      meetOffset(src[prev]!, src[i]!, perps[prev]!, src[i]!, src[(i + 1) % n]!, perps[i]!),
+    );
+  }
+  out.push({ ...out[0]! });
+  return out;
+}
+
+/** Outer and inner edges of the counter. Open bars are one band; islands are two loops. */
+export function barSlabEdges(
+  points: PlanPoint[],
+  depthIn: number,
+  room: RoomInches,
+  closed: boolean,
+): { outer: PlanPoint[]; inner: PlanPoint[] } {
+  const half = Math.max(1, depthIn) / 2;
+  return {
+    outer: offsetCenterline(points, half, room, closed),
+    inner: offsetCenterline(points, -half, room, closed),
+  };
+}
+
+export function slabBounds(
+  points: PlanPoint[],
+  depthIn: number,
+  room: RoomInches,
+  closed: boolean,
+): { x: number; y: number; w: number; h: number } {
+  const { outer, inner } = barSlabEdges(points, depthIn, room, closed);
+  const all = [...outer, ...inner];
+  let minX = 100;
+  let minY = 100;
+  let maxX = 0;
+  let maxY = 0;
+  for (const p of all) {
+    minX = Math.min(minX, p.x);
+    minY = Math.min(minY, p.y);
+    maxX = Math.max(maxX, p.x);
+    maxY = Math.max(maxY, p.y);
+  }
+  const pad = 0.4;
+  minX = Math.max(0, minX - pad);
+  minY = Math.max(0, minY - pad);
+  maxX = Math.min(100, maxX + pad);
+  maxY = Math.min(100, maxY + pad);
+  return {
+    x: Math.round(minX * 10) / 10,
+    y: Math.round(minY * 10) / 10,
+    w: Math.round(Math.max(0.8, maxX - minX) * 10) / 10,
+    h: Math.round(Math.max(0.8, maxY - minY) * 10) / 10,
+  };
+}
+
+/**
+ * Grow one leg to a real inch length. The shared corner stays.
+ * The other leg's length stays.
+ */
+export function resizeBarLeg(
+  points: PlanPoint[],
+  shape: BarTopShape | undefined,
+  legIndex: number,
+  inches: number,
+  room: RoomInches,
+): PlanPoint[] {
+  const handles = legHandles(points, shape);
+  const handle = handles.find(
+    (h) =>
+      (h.index === legIndex && h.anchor === legIndex + 1) ||
+      (h.index === legIndex + 1 && h.anchor === legIndex),
+  );
+  if (!handle) return points;
+  const anchor = points[handle.anchor];
+  const end = points[handle.index];
+  if (!anchor || !end) return points;
+  const dx = ((end.x - anchor.x) / 100) * room.widthIn;
+  const dy = ((end.y - anchor.y) / 100) * room.depthIn;
+  const span = Math.hypot(dx, dy) || 1;
+  const len = Math.max(12, inches);
+  const nx = anchor.x + ((dx / span) * len / room.widthIn) * 100;
+  const ny = anchor.y + ((dy / span) * len / room.depthIn) * 100;
+  const mx = nx - end.x;
+  const my = ny - end.y;
+  const moved = points.map((p, i) => {
+    if (i === handle.index) return { x: Math.round(nx * 10) / 10, y: Math.round(ny * 10) / 10 };
+    if (handle.follow?.includes(i)) {
+      return { x: Math.round((p.x + mx) * 10) / 10, y: Math.round((p.y + my) * 10) / 10 };
+    }
+    return p;
+  });
+  return sealBarLoop(moved, shape);
+}
+
 export function boundsOf(points: PlanPoint[], pad = 2): { x: number; y: number; w: number; h: number } {
   let minX = 100;
   let minY = 100;

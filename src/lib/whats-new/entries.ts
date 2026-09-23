@@ -6,6 +6,18 @@ import type { GuideUpdate } from "@/lib/guide/types";
  */
 export const WHATS_NEW_ENTRIES: GuideUpdate[] = [
   {
+    id: "upd_2026_10_159_bar_slab",
+    date: "2026-09-23",
+    title: "Bar top is a hollow slab",
+    summary: "The bar is a closed band with real leg lengths and a 24 in counter depth.",
+    body: "A bar top draws as a hollow slab: straight, L, U, island, or a polyline. Each leg is set in feet and inches, and an L shares one corner. Counter depth defaults to 24 in and is the width of the rail, not the box around it. Both edges are outlined in black and the inside stays clear. A 22 ft bar is 22 ft on the same scale as the tables. The live floor uses that slab.",
+    roles: ["owner_manager", "host_operator", "server"],
+    surfaces: ["floor"],
+    audience: "all",
+    topicId: "floor-editor",
+    tags: ["floor", "editor"],
+  },
+  {
     id: "upd_2026_10_158_serverless_food",
     date: "2026-09-23",
     title: "Serverless food, served drinks",

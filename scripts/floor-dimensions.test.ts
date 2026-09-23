@@ -121,9 +121,10 @@ test("bar fill white migrates and a dragged table measures to the wall", () => {
 
   const mark = readFileSync("src/components/pos/FloorArchitectureMark.tsx", "utf8");
   assert.match(mark, /stroke="#111"/);
-  assert.match(mark, /fill="none"/);
+  assert.match(mark, /fill="transparent"/);
   assert.match(mark, /vectorEffect="non-scaling-stroke"/);
   assert.match(mark, /data-floor-bar-stroke/);
+  assert.match(mark, /data-floor-bar="slab"/);
   assert.doesNotMatch(mark, />BAR</);
   const editor = readFileSync("src/components/pos/FloorEditorView.tsx", "utf8");
   assert.match(editor, /data-floor-measure/);

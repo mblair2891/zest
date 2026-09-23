@@ -26,15 +26,25 @@ function barSlab(
   const right = Math.max(...boxes.map((b) => b.left + b.width)) + 12;
   const bottom = Math.max(...boxes.map((b) => b.top + b.height)) + 14;
   const width = Math.max(72, right - left);
+  const depth = Math.max(12, pxPerIn * 24);
   const midY = (top + bottom) / 2;
   return (
     <svg
       className="pointer-events-none absolute z-[1] overflow-visible"
       data-floor-bar="slab"
       data-floor-bar-stroke="1"
-      style={{ left, top: midY - 2, width, height: 4 }}
+      data-floor-bar-depth={24}
+      style={{ left, top: midY - depth / 2, width, height: depth }}
     >
-      <line x1={0} y1={2} x2={width} y2={2} stroke="#111" strokeWidth={4} />
+      <rect
+        x={1}
+        y={1}
+        width={Math.max(1, width - 2)}
+        height={Math.max(1, depth - 2)}
+        fill="transparent"
+        stroke="#111"
+        strokeWidth={2}
+      />
     </svg>
   );
 }
@@ -264,6 +274,7 @@ export function FloorMapCanvas({
                 <FloorArchitectureMark
                   table={item.table}
                   variant="live"
+                  room={room}
                   pxPerIn={fit.pxPerIn}
                   extend={
                     item.table.kind === "wall"

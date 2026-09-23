@@ -108,6 +108,7 @@ export function FloorView({
   onBusyNav?: (dest: "floor" | "menu" | "pay") => void;
 }) {
   const tables = usePosStore((s) => s.tables);
+  const floorRoom = usePosStore((s) => s.floorRoom);
   const orders = usePosStore((s) => s.orders);
   const tickets = usePosStore((s) => s.tickets);
   const newCheckOnTable = usePosStore((s) => s.newCheckOnTable);
@@ -728,6 +729,7 @@ export function FloorView({
                     <FloorArchitectureMark
                       table={t}
                       variant="live"
+                      room={floorRoom}
                       extend={
                         t.kind === "wall"
                           ? wallEndExtensions(

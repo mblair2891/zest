@@ -18,7 +18,7 @@ export const DEFAULT_OBJECT_IN: Record<string, ObjectInches> = {
   door: { lengthIn: 36, widthIn: 6 },
   window: { lengthIn: 48, widthIn: 6 },
   host_stand: { lengthIn: 48, widthIn: 30 },
-  bar_top: { lengthIn: 144, widthIn: 30 },
+  bar_top: { lengthIn: 144, widthIn: 24 },
   other: { lengthIn: 36, widthIn: 30 },
 };
 

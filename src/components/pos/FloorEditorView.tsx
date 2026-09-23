@@ -53,14 +53,19 @@ import {
 import { planFloorCopies } from "@/lib/pos/floor-copy";
 import { FloorArchitectureMark } from "@/components/pos/FloorArchitectureMark";
 import {
-  boundsOf,
-  defaultBarPlan,
+  barClosedShape,
+  barDepthIn,
+  barLegsForShape,
   dragLegEnd,
   dragLengthEnd,
   dragRotatedCorner,
   lengthEndWorld,
+  legInches,
   nearestWallSnap,
   placeWallEnd,
+  planFromLegInches,
+  resizeBarLeg,
+  slabBounds,
   wallEndExtensions,
   isArchitectureKind,
   legHandles,
@@ -83,23 +88,6 @@ import {
   setSectionPrinter,
 } from "@/lib/print/printer-assignment";
 import { isReceiptPrinterType } from "@/lib/pos/location-devices";
-
-function barShapePlan(
-  shape: BarTopShape,
-  box: { x: number; y: number; w: number; h: number },
-): PlanPoint[] {
-  if (shape === "polyline") {
-    return [
-      { x: 8, y: 70 },
-      { x: 40, y: 20 },
-      { x: 92, y: 70 },
-    ].map((p) => ({
-      x: box.x + (p.x / 100) * box.w,
-      y: box.y + (p.y / 100) * box.h,
-    }));
-  }
-  return defaultBarPlan(shape, box.x, box.y, box.w, box.h);
-}
 
 function stoolsOnRail(
   tables: { id: string; kind?: string | null; x: number; y: number; w: number; h: number }[],
@@ -385,7 +373,8 @@ export function FloorEditorView() {
     if (patch.w != null || patch.h != null) {
       const roomNow = usePosStore.getState().floorRoom ?? DEFAULT_ROOM;
       const current = usePosStore.getState().tables.find((row) => row.id === id);
-      if (current) {
+      const barPiece = current?.kind === "bar_top" || patch.kind === "bar_top";
+      if (current && !barPiece) {
         const w = patch.w ?? current.w;
         const h = patch.h ?? current.h;
         patch = {
@@ -623,9 +612,10 @@ export function FloorEditorView() {
       const current = tables.find((t) => t.id === active.id);
       const pointer = unrotatePointer({ x: px, y: py }, active.box, active.box.rotation);
       const next = sealBarLoop(dragLegEnd(active.orig, active.handle, pointer), current?.barShape ?? undefined);
-      const box = boundsOf(next);
+      const depth = barDepthIn(current?.widthIn);
+      const box = slabBounds(next, depth, floorRoom, barClosedShape(current?.barShape, next));
       const lengths = legLengthsOf(next);
-      update(active.id, { points: next, legLengths: lengths, ...box });
+      update(active.id, { points: next, legLengths: lengths, ...box, widthIn: depth });
       const bar = {
         ...(current ?? { x: box.x, y: box.y, w: box.w, h: box.h }),
         points: next,
@@ -773,19 +763,25 @@ export function FloorEditorView() {
     const sized = sizePatch(spec.lengthIn, spec.widthIn, floorRoom, { round: kind.shape === "round" });
     const w = sized?.w ?? kind.w;
     const h = sized?.h ?? kind.h;
-    const barPoints = kind.id === "bar_top" ? barShapePlan("straight", { x, y, w, h }) : null;
+    const barDepth = 24;
+    const barOrigin = { x, y: y + 2 };
+    const barPoints =
+      kind.id === "bar_top"
+        ? planFromLegInches("straight", barOrigin, barLegsForShape("straight"), floorRoom)
+        : null;
+    const barBox = barPoints ? slabBounds(barPoints, barDepth, floorRoom, false) : null;
     const id = add({
-      x,
-      y,
+      x: barBox?.x ?? x,
+      y: barBox?.y ?? y,
       section: dining,
       sectionId: sec?.id,
       seats,
       shape: kind.shape,
       kind: kind.id,
-      w,
-      h,
-      lengthIn: sized?.lengthIn,
-      widthIn: sized?.widthIn,
+      w: barBox?.w ?? w,
+      h: barBox?.h ?? h,
+      lengthIn: kind.id === "bar_top" ? 12 * 12 : sized?.lengthIn,
+      widthIn: kind.id === "bar_top" ? barDepth : sized?.widthIn,
       rotation: 0,
       label:
         kind.id === "barstool"
@@ -1009,6 +1005,7 @@ export function FloorEditorView() {
                       <FloorArchitectureMark
                         table={{ ...t, rotation: 0 }}
                         selected={selected === t.id}
+                        room={floorRoom}
                         pxPerIn={fit.pxPerIn * cam.s}
                         onBarPointerDown={(e) => onPointerDown(e, t.id, t.x, t.y)}
                       />
@@ -1229,18 +1226,30 @@ export function FloorEditorView() {
                         size="sm"
                         variant={(selectedTable.barShape ?? "straight") === shape ? "default" : "outline"}
                         onClick={() => {
-                          const points = barShapePlan(shape, selectedTable);
+                          const origin = storedBarPlan(selectedTable)[0] ?? {
+                            x: selectedTable.x,
+                            y: selectedTable.y,
+                          };
+                          const depth = barDepthIn(selectedTable.widthIn);
+                          const legs = barLegsForShape(shape);
+                          const points = planFromLegInches(shape, origin, legs, floorRoom);
                           const lengths = legLengthsOf(points);
+                          const box = slabBounds(points, depth, floorRoom, shape === "island");
                           const nextBar = {
                             ...selectedTable,
+                            ...box,
                             barShape: shape,
                             points,
                             legLengths: lengths,
+                            widthIn: depth,
                           };
                           update(selectedTable.id, {
                             barShape: shape,
                             points,
                             legLengths: lengths,
+                            ...box,
+                            widthIn: depth,
+                            lengthIn: Math.max(...legs),
                           });
                           for (const stool of tables) {
                             if (stool.kind !== "barstool") continue;
@@ -1255,6 +1264,68 @@ export function FloorEditorView() {
                       </Button>
                     ))}
                   </div>
+                </div>
+              )}
+              {selectedTable.kind === "bar_top" && (
+                <div className="grid gap-2" data-bar-slab="">
+                  {legInches(storedBarPlan(selectedTable), floorRoom)
+                    .filter((inches) => inches > 1)
+                    .map((inches, index) => (
+                      <FeetInchesInput
+                        key={`leg-${index}`}
+                        label={index === 0 ? "Leg" : `Leg ${index + 1}`}
+                        totalIn={inches}
+                        testId={`bar-leg-${index}`}
+                        onCommit={(next) => {
+                          const plan = storedBarPlan(selectedTable);
+                          const depth = barDepthIn(selectedTable.widthIn);
+                          const points = resizeBarLeg(
+                            plan,
+                            selectedTable.barShape,
+                            index,
+                            next,
+                            floorRoom,
+                          );
+                          const box = slabBounds(
+                            points,
+                            depth,
+                            floorRoom,
+                            barClosedShape(selectedTable.barShape, points),
+                          );
+                          update(selectedTable.id, {
+                            points,
+                            legLengths: legLengthsOf(points),
+                            ...box,
+                            widthIn: depth,
+                            lengthIn: Math.round(Math.max(...legInches(points, floorRoom), next)),
+                          });
+                          persistLocationCatalog("floor");
+                        }}
+                      />
+                    ))}
+                  <label className="block text-xs text-muted-foreground" data-bar-depth="">
+                    Counter depth (in)
+                    <Input
+                      className="mt-1 h-8"
+                      inputMode="numeric"
+                      data-bar-depth-input=""
+                      defaultValue={barDepthIn(selectedTable.widthIn)}
+                      key={barDepthIn(selectedTable.widthIn)}
+                      onBlur={(e) => {
+                        const parsed = parsePositiveInches(Number(e.target.value), 48);
+                        if (parsed == null) return;
+                        const plan = storedBarPlan(selectedTable);
+                        const box = slabBounds(
+                          plan,
+                          parsed,
+                          floorRoom,
+                          barClosedShape(selectedTable.barShape, plan),
+                        );
+                        update(selectedTable.id, { widthIn: parsed, ...box });
+                        persistLocationCatalog("floor");
+                      }}
+                    />
+                  </label>
                 </div>
               )}
               {!isArchitectureKind(selectedTable.kind) && (
@@ -1323,26 +1394,31 @@ export function FloorEditorView() {
                         const sized = sizePatch(spec.lengthIn, spec.widthIn, floorRoom, {
                           round: k.shape === "round",
                         });
+                        const barOrigin = { x: selectedTable.x, y: selectedTable.y };
+                        const barLegs = barLegsForShape("straight");
                         const points =
                           k.id === "bar_top"
-                            ? barShapePlan("straight", {
-                                ...selectedTable,
-                                w: sized?.w ?? selectedTable.w,
-                                h: sized?.h ?? selectedTable.h,
-                              })
+                            ? planFromLegInches("straight", barOrigin, barLegs, floorRoom)
                             : undefined;
+                        const barBox = points ? slabBounds(points, 24, floorRoom, false) : null;
                         update(selectedTable.id, {
                           kind: k.id,
                           shape: k.shape,
                           seats: booth
                             ? clampBoothSeats(booth, selectedTable.seats)
                             : selectedTable.seats,
-                          ...(sized
-                            ? { w: sized.w, h: sized.h, lengthIn: sized.lengthIn, widthIn: sized.widthIn }
-                            : {}),
-                          ...(points
-                            ? { barShape: "straight" as const, points, legLengths: legLengthsOf(points) }
-                            : {}),
+                          ...(k.id === "bar_top" && barBox && points
+                            ? {
+                                ...barBox,
+                                lengthIn: barLegs[0],
+                                widthIn: 24,
+                                barShape: "straight" as const,
+                                points,
+                                legLengths: legLengthsOf(points),
+                              }
+                            : sized
+                              ? { w: sized.w, h: sized.h, lengthIn: sized.lengthIn, widthIn: sized.widthIn }
+                              : {}),
                         });
                         persistLocationCatalog("floor");
                       }}
@@ -1408,6 +1484,7 @@ export function FloorEditorView() {
                 <RotateCw className="h-3.5 w-3.5" />
                 Rotate 90°
               </Button>
+              {selectedTable.kind === "bar_top" ? null : (
               <ObjectSizeFields
                 table={selectedTable}
                 room={floorRoom}
@@ -1430,6 +1507,7 @@ export function FloorEditorView() {
                   persistLocationCatalog("floor");
                 }}
               />
+              )}
               {!isBoothKind(selectedTable.kind, selectedTable.shape) && (
               <div className="flex gap-1">
                 {(["rect", "round", "bar", "other"] as const).map((shape) => (
