@@ -1,7 +1,7 @@
 # Operators Guide — authoring
 
-**Revision · 22 Sep 2026** — White floor and hollow empty tables.
-Guide v2026.10.153.
+**Revision · 22 Sep 2026** — Floor sizes are feet and inches.
+Guide v2026.10.154.
 
 The in-app **Operators Guide** is the living product manual. It is not a
 separate PDF. Staff open it from **Guide** / **?** in the POS and platform

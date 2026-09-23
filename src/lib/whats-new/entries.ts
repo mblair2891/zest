@@ -6,6 +6,18 @@ import type { GuideUpdate } from "@/lib/guide/types";
  */
 export const WHATS_NEW_ENTRIES: GuideUpdate[] = [
   {
+    id: "upd_2026_10_154_floor_dimensions",
+    date: "2026-09-22",
+    title: "Floor sizes are feet and inches",
+    summary: "Set the room and each table in feet and inches. The live floor uses that scale.",
+    body: "The floor editor asks for the room width and depth in feet and inches. A selected table, booth, bar, wall, or host stand shows its length and width, or its diameter. A 4-top starts near 3 by 3 feet. Editing the size redraws it immediately. Changing the room keeps each object’s real size. The live floor draws that scale and does not print the measurements.",
+    roles: ["owner_manager", "host_operator"],
+    surfaces: ["floor"],
+    audience: "all",
+    topicId: "floor-editor",
+    tags: ["floor", "editor"],
+  },
+  {
     id: "upd_2026_10_153_white_floor",
     date: "2026-09-22",
     title: "White floor and hollow empty tables",

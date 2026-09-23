@@ -27,6 +27,17 @@ import { getDemoType } from "@/lib/demo/session";
 import { GuideLearnLink } from "@/components/guide/GuideLearnLink";
 import { QrMark } from "./QrMark";
 import { flushLocationCatalog, persistLocationCatalog, persistPrinterAssignments } from "@/lib/pos/persist-location-setup";
+import {
+  DEFAULT_OBJECT_IN,
+  DEFAULT_ROOM,
+  dimensionLabel,
+  formatFeetInches,
+  objectInches,
+  parseFeetInches,
+  parsePositiveInches,
+  sizePatch,
+  splitInches,
+} from "@/lib/pos/floor-dimensions";
 import { FloorArchitectureMark } from "@/components/pos/FloorArchitectureMark";
 import {
   boundsOf,
@@ -162,6 +173,144 @@ function CornerHandle({
   );
 }
 
+function ThicknessInput({
+  totalIn,
+  onCommit,
+}: {
+  totalIn: number;
+  onCommit: (inches: number) => void;
+}) {
+  const [text, setText] = useState(String(totalIn));
+  const [seen, setSeen] = useState(String(totalIn));
+  if (seen !== String(totalIn)) {
+    setSeen(String(totalIn));
+    setText(String(totalIn));
+  }
+  return (
+    <label className="block text-xs text-muted-foreground" data-floor-size="thickness">
+      Thickness (in)
+      <Input
+        className="mt-1 h-8"
+        inputMode="numeric"
+        value={text}
+        placeholder="optional"
+        onChange={(e) => {
+          setText(e.target.value);
+          if (e.target.value.trim() === "") return;
+          const parsed = parsePositiveInches(Number(e.target.value));
+          if (parsed != null) onCommit(parsed);
+        }}
+        onBlur={() => {
+          if (text.trim() === "" || parsePositiveInches(Number(text)) == null) setText(String(totalIn));
+        }}
+      />
+    </label>
+  );
+}
+
+function ObjectSizeFields({
+  table,
+  room,
+  onSize,
+}: {
+  table: { shape?: string | null; kind?: string | null; w: number; h: number; lengthIn?: number | null; widthIn?: number | null };
+  room: { widthIn: number; depthIn: number };
+  onSize: (lengthIn: number, widthIn: number) => void;
+}) {
+  const size = objectInches(table, room);
+  const round = table.shape === "round" || table.kind === "barstool";
+  const thin = table.kind === "wall" || table.kind === "door" || table.kind === "window";
+  return (
+    <div className="grid grid-cols-2 gap-2" data-floor-object-size="">
+      <FeetInchesInput
+        label={round ? "Diameter" : "Length"}
+        totalIn={size.lengthIn}
+        testId="length"
+        onCommit={(n) => onSize(n, round ? n : size.widthIn)}
+      />
+      {round ? (
+        <p className="self-end pb-2 text-[11px] text-muted-foreground">{formatFeetInches(size.lengthIn)} dia</p>
+      ) : thin ? (
+        <ThicknessInput totalIn={size.widthIn} onCommit={(n) => onSize(size.lengthIn, n)} />
+      ) : (
+        <FeetInchesInput
+          label="Width"
+          totalIn={size.widthIn}
+          testId="width"
+          onCommit={(n) => onSize(size.lengthIn, n)}
+        />
+      )}
+    </div>
+  );
+}
+
+function FeetInchesInput({
+  label,
+  totalIn,
+  onCommit,
+  testId,
+}: {
+  label: string;
+  totalIn: number;
+  onCommit: (total: number) => void;
+  testId?: string;
+}) {
+  const split = splitInches(totalIn);
+  const [feet, setFeet] = useState(String(split.feet));
+  const [inches, setInches] = useState(String(split.inches));
+  const syncKey = `${split.feet}:${split.inches}`;
+  const [seen, setSeen] = useState(syncKey);
+  if (seen !== syncKey) {
+    setSeen(syncKey);
+    setFeet(String(split.feet));
+    setInches(String(split.inches));
+  }
+  const commit = (nextFeet: string, nextInches: string) => {
+    const parsed = parseFeetInches(Number(nextFeet), Number(nextInches));
+    if (parsed == null) return;
+    if (parsed !== totalIn) onCommit(parsed);
+  };
+  return (
+    <label className="block text-xs text-muted-foreground" data-floor-size={testId}>
+      {label}
+      <span className="mt-1 flex items-center gap-1">
+        <Input
+          className="h-8 w-14"
+          inputMode="numeric"
+          value={feet}
+          onChange={(e) => {
+            setFeet(e.target.value);
+            commit(e.target.value, inches);
+          }}
+          onBlur={() => {
+            if (parseFeetInches(Number(feet), Number(inches)) == null) {
+              setFeet(String(split.feet));
+              setInches(String(split.inches));
+            }
+          }}
+        />
+        <span>'</span>
+        <Input
+          className="h-8 w-14"
+          inputMode="numeric"
+          value={inches}
+          onChange={(e) => {
+            setInches(e.target.value);
+            commit(feet, e.target.value);
+          }}
+          onBlur={() => {
+            if (parseFeetInches(Number(feet), Number(inches)) == null) {
+              setFeet(String(split.feet));
+              setInches(String(split.inches));
+            }
+          }}
+        />
+        <span>"</span>
+      </span>
+    </label>
+  );
+}
+
 const KINDS: {
   id: TableKind;
   label: string;
@@ -187,7 +336,25 @@ const KINDS: {
 export function FloorEditorView() {
   const tables = usePosStore((s) => s.tables);
   const floorSections = usePosStore((s) => s.floorSections);
-  const update = usePosStore((s) => s.updateTableLayout);
+  const updateLayout = usePosStore((s) => s.updateTableLayout);
+  const floorRoom = usePosStore((s) => s.floorRoom) ?? DEFAULT_ROOM;
+  const setFloorRoom = usePosStore((s) => s.setFloorRoom);
+  const update = (id: string, patch: Partial<import("@/lib/pos/types").Table>) => {
+    if (patch.w != null || patch.h != null) {
+      const roomNow = usePosStore.getState().floorRoom ?? DEFAULT_ROOM;
+      const current = usePosStore.getState().tables.find((row) => row.id === id);
+      if (current) {
+        const w = patch.w ?? current.w;
+        const h = patch.h ?? current.h;
+        patch = {
+          ...patch,
+          lengthIn: Math.max(1, Math.round((w / 100) * roomNow.widthIn)),
+          widthIn: Math.max(1, Math.round((h / 100) * roomNow.depthIn)),
+        };
+      }
+    }
+    updateLayout(id, patch);
+  };
   const add = usePosStore((s) => s.addFloorTable);
   const remove = usePosStore((s) => s.removeFloorTable);
   const rotateTableQr = usePosStore((s) => s.rotateTableQr);
@@ -463,7 +630,11 @@ export function FloorEditorView() {
     const seats = booth ? BOOTH_DEFAULTS[booth].seats : kind.seats;
     const x = 20 + (count % 5) * 12;
     const y = 20 + Math.floor(count / 5) * 14;
-    const barPoints = kind.id === "bar_top" ? barShapePlan("straight", { x, y, w: kind.w, h: kind.h }) : null;
+    const spec = DEFAULT_OBJECT_IN[kind.id] ?? DEFAULT_OBJECT_IN.table!;
+    const sized = sizePatch(spec.lengthIn, spec.widthIn, floorRoom, { round: kind.shape === "round" });
+    const w = sized?.w ?? kind.w;
+    const h = sized?.h ?? kind.h;
+    const barPoints = kind.id === "bar_top" ? barShapePlan("straight", { x, y, w, h }) : null;
     const id = add({
       x,
       y,
@@ -472,8 +643,10 @@ export function FloorEditorView() {
       seats,
       shape: kind.shape,
       kind: kind.id,
-      w: kind.w,
-      h: kind.h,
+      w,
+      h,
+      lengthIn: sized?.lengthIn,
+      widthIn: sized?.widthIn,
       rotation: 0,
       label:
         kind.id === "barstool"
@@ -563,10 +736,31 @@ export function FloorEditorView() {
 
       <div className="flex min-h-0 flex-1 flex-col lg:flex-row">
         <div className="relative min-h-[300px] flex-1 p-3">
+          <div className="mb-2 flex flex-wrap items-end gap-3" data-floor-room="">
+            <FeetInchesInput
+              label="Room width"
+              totalIn={floorRoom.widthIn}
+              testId="room-width"
+              onCommit={(widthIn) => {
+                setFloorRoom({ widthIn, depthIn: floorRoom.depthIn });
+                persistLocationCatalog("floor");
+              }}
+            />
+            <FeetInchesInput
+              label="Room depth"
+              totalIn={floorRoom.depthIn}
+              testId="room-depth"
+              onCommit={(depthIn) => {
+                setFloorRoom({ widthIn: floorRoom.widthIn, depthIn });
+                persistLocationCatalog("floor");
+              }}
+            />
+          </div>
           <div
             ref={boardRef}
-            className="relative mx-auto aspect-[4/3] w-full max-w-4xl touch-none rounded-2xl border border-border bg-white"
+            className="relative mx-auto w-full max-w-4xl touch-none rounded-2xl border border-border bg-white"
             data-floor-canvas="white"
+            style={{ aspectRatio: `${floorRoom.widthIn} / ${floorRoom.depthIn}` }}
             onPointerMove={onPointerMove}
             onPointerUp={onPointerUp}
             onPointerCancel={onPointerUp}
@@ -596,6 +790,14 @@ export function FloorEditorView() {
                     className="pointer-events-none absolute overflow-visible"
                     style={frame}
                   >
+                    {selected === t.id ? (
+                      <span
+                        data-floor-dim=""
+                        className="pointer-events-none absolute left-1/2 top-0 z-30 -translate-x-1/2 -translate-y-full whitespace-nowrap rounded bg-white px-1 text-[10px] font-medium text-neutral-900 shadow"
+                      >
+                        {dimensionLabel(t, floorRoom)}
+                      </span>
+                    ) : null}
                     <div
                       data-floor-spin=""
                       className="relative h-full w-full"
@@ -637,6 +839,14 @@ export function FloorEditorView() {
                   className="pointer-events-none absolute overflow-visible"
                   style={frame}
                 >
+                  {selected === t.id ? (
+                    <span
+                      data-floor-dim=""
+                      className="pointer-events-none absolute left-1/2 top-0 z-30 -translate-x-1/2 -translate-y-full whitespace-nowrap rounded bg-white px-1 text-[10px] font-medium text-neutral-900 shadow"
+                    >
+                      {dimensionLabel(t, floorRoom)}
+                    </span>
+                  ) : null}
                   {isArchitectureKind(t.kind) ? (
                     <FloorArchitectureMark
                       table={t}
@@ -907,16 +1117,27 @@ export function FloorEditorView() {
                       }
                       onClick={() => {
                         const booth = k.booth;
+                        const spec = DEFAULT_OBJECT_IN[k.id] ?? DEFAULT_OBJECT_IN.table!;
+                        const sized = sizePatch(spec.lengthIn, spec.widthIn, floorRoom, {
+                          round: k.shape === "round",
+                        });
                         const points =
-                          k.id === "bar_top" ? barShapePlan("straight", selectedTable) : undefined;
+                          k.id === "bar_top"
+                            ? barShapePlan("straight", {
+                                ...selectedTable,
+                                w: sized?.w ?? selectedTable.w,
+                                h: sized?.h ?? selectedTable.h,
+                              })
+                            : undefined;
                         update(selectedTable.id, {
                           kind: k.id,
                           shape: k.shape,
                           seats: booth
                             ? clampBoothSeats(booth, selectedTable.seats)
                             : selectedTable.seats,
-                          w: booth ? BOOTH_DEFAULTS[booth].w : selectedTable.w,
-                          h: booth ? BOOTH_DEFAULTS[booth].h : selectedTable.h,
+                          ...(sized
+                            ? { w: sized.w, h: sized.h, lengthIn: sized.lengthIn, widthIn: sized.widthIn }
+                            : {}),
                           ...(points
                             ? { barShape: "straight" as const, points, legLengths: legLengthsOf(points) }
                             : {}),
@@ -945,34 +1166,28 @@ export function FloorEditorView() {
                 <RotateCw className="h-3.5 w-3.5" />
                 Rotate 90°
               </Button>
-              <div className="grid grid-cols-2 gap-2">
-                <label className="block text-xs text-muted-foreground">
-                  W %
-                  <Input
-                    className="mt-1"
-                    type="number"
-                    value={selectedTable.w}
-                    onChange={(e) =>
-                      update(selectedTable.id, {
-                        w: Math.max(6, parseFloat(e.target.value) || 10),
-                      })
-                    }
-                  />
-                </label>
-                <label className="block text-xs text-muted-foreground">
-                  H %
-                  <Input
-                    className="mt-1"
-                    type="number"
-                    value={selectedTable.h}
-                    onChange={(e) =>
-                      update(selectedTable.id, {
-                        h: Math.max(6, parseFloat(e.target.value) || 10),
-                      })
-                    }
-                  />
-                </label>
-              </div>
+              <ObjectSizeFields
+                table={selectedTable}
+                room={floorRoom}
+                onSize={(lengthIn, widthIn) => {
+                  const patch = sizePatch(lengthIn, widthIn, floorRoom, {
+                    round: selectedTable.shape === "round",
+                  });
+                  if (!patch) return;
+                  const points =
+                    selectedTable.kind === "bar_top" && selectedTable.points && selectedTable.points.length >= 2
+                      ? selectedTable.points.map((p) => ({
+                          x: selectedTable.x + ((p.x - selectedTable.x) / Math.max(0.4, selectedTable.w)) * patch.w,
+                          y: selectedTable.y + ((p.y - selectedTable.y) / Math.max(0.4, selectedTable.h)) * patch.h,
+                        }))
+                      : undefined;
+                  update(selectedTable.id, {
+                    ...patch,
+                    ...(points ? { points, legLengths: legLengthsOf(points) } : {}),
+                  });
+                  persistLocationCatalog("floor");
+                }}
+              />
               {!isBoothKind(selectedTable.kind, selectedTable.shape) && (
               <div className="flex gap-1">
                 {(["rect", "round", "bar", "other"] as const).map((shape) => (

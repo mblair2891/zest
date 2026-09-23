@@ -8,6 +8,7 @@ import { parseQrPolicy } from "@/lib/pos/qr-policy";
 import { parseQrMode } from "@/lib/pos/qr-table";
 import { tablesFromFloorPlan } from "@/lib/saas/location-catalog";
 import { readFloorDraft, resolveLiveFloor, setFloorDraftBanner } from "@/lib/pos/live-floor";
+import { readFloorRoom } from "@/lib/pos/floor-dimensions";
 import { parseLocationDevices } from "@/lib/pos/location-devices";
 import { parseLaborMap } from "@/lib/labor/rules";
 import { useOpsStore } from "@/lib/pos/ops-store";
@@ -171,6 +172,8 @@ export function applyStationPublish(
     if (Array.isArray(catalog.categories)) patch.categories = catalog.categories;
     if (Array.isArray(catalog.modifiers)) patch.modifierGroups = catalog.modifiers;
     if (tables.length) patch.tables = tables;
+    const room = readFloorRoom((plan as { room?: unknown }).room);
+    if (room) patch.floorRoom = room;
     if (resolved.fromDraft && draft?.sections?.length) patch.floorSections = draft.sections;
     else if (Array.isArray(plan.sections)) patch.floorSections = plan.sections;
     if (resolved.fromDraft) setFloorDraftBanner(true);

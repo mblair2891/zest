@@ -311,6 +311,7 @@ export function PlatformTenantVenue({
         vendors: access.operators,
         tables,
         floorSections: setup.floorPlan?.sections,
+        floorRoom: setup.floorPlan?.room,
         hallMode:
           access.location.operatingModel === "host_operators" ||
           access.location.operatingModel === "peer_venue",

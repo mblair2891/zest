@@ -1,5 +1,6 @@
 import type { FloorSection, MenuCategory, MenuItem, ModifierGroup, Table, TableKind } from "@/lib/pos/types";
 import type { ItemRecipe } from "@/lib/costs/types";
+import { DEFAULT_ROOM, inchesFromPercent, readFloorRoom, type FloorRoom } from "../pos/floor-dimensions.ts";
 
 export type FloorPlanTable = {
   id: string;
@@ -16,6 +17,8 @@ export type FloorPlanTable = {
   points?: { x: number; y: number }[];
   legLengths?: number[];
   rotation?: number;
+  lengthIn?: number;
+  widthIn?: number;
   sectionId?: string;
   qrToken?: string;
 };
@@ -23,6 +26,7 @@ export type FloorPlanTable = {
 export type LocationFloorPlan = {
   tables: FloorPlanTable[];
   sections: FloorSection[];
+  room?: FloorRoom;
 };
 
 export type LocationMenuCatalog = {
@@ -92,15 +96,19 @@ export function parseFloorPlan(raw: unknown): LocationFloorPlan | undefined {
           })
           .filter((p): p is { x: number; y: number } => Boolean(p))
       : undefined;
+    const lengthIn = num(r.lengthIn, 0);
+    const widthIn = num(r.widthIn, 0);
     tables.push({
       id,
       label: str(r.label, id).slice(0, 40),
       section: str(r.section, "Dining").slice(0, 40),
       seats: Math.max(arch ? 0 : 1, Math.round(num(r.seats, arch ? 0 : 4))),
-      x: Math.min(90, Math.max(0, num(r.x))),
-      y: Math.min(90, Math.max(0, num(r.y))),
-      w: Math.min(arch ? 100 : 40, Math.max(thin ? 2 : 6, num(r.w, 12))),
-      h: Math.min(arch ? 100 : 40, Math.max(thin ? 1.5 : 6, num(r.h, 12))),
+      x: Math.min(100, Math.max(0, num(r.x))),
+      y: Math.min(100, Math.max(0, num(r.y))),
+      w: Math.min(100, Math.max(thin ? 0.4 : 0.4, num(r.w, 12))),
+      h: Math.min(100, Math.max(thin ? 0.4 : 0.4, num(r.h, 12))),
+      lengthIn: lengthIn > 0 ? lengthIn : undefined,
+      widthIn: widthIn > 0 ? widthIn : undefined,
       shape,
       kind,
       barShape,
@@ -127,11 +135,24 @@ export function parseFloorPlan(raw: unknown): LocationFloorPlan | undefined {
     });
   }
   if (!tables.length && !sections.length) return undefined;
-  return { tables, sections };
+  const room = readFloorRoom(o.room) ?? DEFAULT_ROOM;
+  for (const t of tables) {
+    if (!(t.lengthIn && t.lengthIn > 0)) t.lengthIn = inchesFromPercent(t.w, room.widthIn);
+    if (!(t.widthIn && t.widthIn > 0)) t.widthIn = inchesFromPercent(t.h, room.depthIn);
+    if (t.lengthIn > 0) t.w = Math.min(100, Math.max(0.4, (t.lengthIn / room.widthIn) * 100));
+    if (t.widthIn > 0) t.h = Math.min(100, Math.max(0.4, (t.widthIn / room.depthIn) * 100));
+  }
+  return { tables, sections, room };
 }
 
-export function floorPlanFromPos(tables: Table[], sections: FloorSection[]): LocationFloorPlan {
+export function floorPlanFromPos(
+  tables: Table[],
+  sections: FloorSection[],
+  room: FloorRoom = DEFAULT_ROOM,
+): LocationFloorPlan {
+  const planRoom = readFloorRoom(room) ?? DEFAULT_ROOM;
   return {
+    room: planRoom,
     tables: tables
       .filter((t) => !t.mergedIntoId)
       .map((t) => ({
@@ -149,6 +170,8 @@ export function floorPlanFromPos(tables: Table[], sections: FloorSection[]): Loc
         points: t.points,
         legLengths: t.legLengths,
         rotation: t.rotation,
+        lengthIn: t.lengthIn && t.lengthIn > 0 ? t.lengthIn : inchesFromPercent(t.w, planRoom.widthIn),
+        widthIn: t.widthIn && t.widthIn > 0 ? t.widthIn : inchesFromPercent(t.h, planRoom.depthIn),
         sectionId: t.sectionId,
         qrToken: t.qrToken,
       })),
@@ -172,6 +195,8 @@ export function tablesFromFloorPlan(plan: LocationFloorPlan): Table[] {
     points: t.points,
     legLengths: t.legLengths,
     rotation: t.rotation,
+    lengthIn: t.lengthIn,
+    widthIn: t.widthIn,
     sectionId: t.sectionId,
     qrToken: t.qrToken,
     status: "empty",

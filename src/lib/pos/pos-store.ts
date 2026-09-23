@@ -138,6 +138,8 @@ export interface PosStore {
   activeSeat: number | null;
   clock: number;
   floorSections: FloorSection[];
+  floorRoom: import("./floor-dimensions").FloorRoom;
+  setFloorRoom: (room: import("./floor-dimensions").FloorRoom) => void;
   extraTableGrants: ExtraTableGrant[];
   extraEntityShiftGrants: import("./types").ExtraEntityShiftGrant[];
   sectionOverrides: Record<string, string[]>;
@@ -538,6 +540,7 @@ export interface PosStore {
     vendors?: import("./types").Vendor[];
     tables?: import("./types").Table[];
     floorSections?: import("./types").FloorSection[];
+    floorRoom?: import("./floor-dimensions").FloorRoom;
     settlement?: Partial<import("./types").SettlementConfig>;
     address?: string;
     hallMode?: boolean;

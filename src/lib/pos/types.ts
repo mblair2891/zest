@@ -442,6 +442,10 @@ export interface Table {
   legLengths?: number[];
   /** Degrees, 90° steps. Booth benches rotate with the fixture. */
   rotation?: number;
+  /** Real length along the plan width, in inches. Diameter for a round table. */
+  lengthIn?: number;
+  /** Real size along the plan depth, in inches. Wall thickness. */
+  widthIn?: number;
   sectionId?: string;
   status: TableStatus;
   orderId?: string;

@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
 import type { Table } from "@/lib/pos/types";
-import { floorFit, floorMapNumber, planPixelBox, tablePixelBox } from "@/lib/pos/floor-fit";
+import { floorMapNumber } from "@/lib/pos/floor-fit";
+import { DEFAULT_ROOM, fitRoomToView, fixturePixelBox, objectInches } from "@/lib/pos/floor-dimensions";
+import { usePosStore } from "@/lib/pos/store";
 import { FloorFixtureArt } from "@/components/pos/FloorFixtureArt";
 import { FloorArchitectureMark } from "@/components/pos/FloorArchitectureMark";
 import { isArchitectureKind, wallEndExtensions } from "@/lib/pos/floor-architecture";
@@ -11,10 +13,14 @@ function isBarSeat(table: Table): boolean {
 }
 
 /** One BAR rail behind the numbered seat pills. Seats stay labels, not chair art. */
-function barSlab(items: FloorMapItem[], pxPerPct: number) {
+function barSlab(
+  items: FloorMapItem[],
+  room: { widthIn: number; depthIn: number },
+  pxPerIn: number,
+) {
   const seats = items.filter((i) => isBarSeat(i.table));
   if (!seats.length) return null;
-  const boxes = seats.map((i) => tablePixelBox(i.table, pxPerPct, 40));
+  const boxes = seats.map((i) => fixturePixelBox(i.table, room, pxPerIn));
   const left = Math.min(...boxes.map((b) => b.left)) - 12;
   const top = Math.min(...boxes.map((b) => b.top)) - 28;
   const right = Math.max(...boxes.map((b) => b.left + b.width)) + 12;
@@ -87,21 +93,32 @@ export function FloorMapCanvas({
     return () => ro.disconnect();
   }, []);
 
+  const room = usePosStore((s) => s.floorRoom) ?? DEFAULT_ROOM;
+  const minObjectIn = useMemo(() => {
+    const seats = items.filter((i) => !isArchitectureKind(i.table.kind));
+    if (!seats.length) return 0;
+    return Math.min(
+      ...seats.map((i) => {
+        const size = objectInches(i.table, room);
+        return Math.min(size.lengthIn, size.widthIn);
+      }),
+    );
+  }, [items, room]);
   const fit = useMemo(
     () =>
-      floorFit({
-        tables: items.map((i) => i.table),
-        tapRects: items.filter((i) => !isArchitectureKind(i.table.kind)).map((i) => i.table),
+      fitRoomToView({
+        room,
         viewW: view.w,
         viewH: view.h,
+        minObjectIn,
         minTapPx: 64,
       }),
-    [items, view.w, view.h],
+    [room, view.w, view.h, minObjectIn],
   );
 
   useEffect(() => {
     setCam({ s: 1, x: fit.originX, y: fit.originY });
-  }, [fit.originX, fit.originY, fit.pxPerPct]);
+  }, [fit.originX, fit.originY, fit.pxPerIn]);
 
   const onPointerDown = (e: ReactPointerEvent<HTMLDivElement>) => {
     suppress.current = false;
@@ -206,13 +223,11 @@ export function FloorMapCanvas({
           transformOrigin: "0 0",
         }}
       >
-        {items.some((i) => i.table.kind === "bar_top") ? null : barSlab(items, fit.pxPerPct)}
+        {items.some((i) => i.table.kind === "bar_top") ? null : barSlab(items, room, fit.pxPerIn)}
         {items.map((item) => {
           const arch = isArchitectureKind(item.table.kind);
           const bar = !arch && (item.table.kind === "barstool" || item.table.shape === "bar");
-          const box = arch
-            ? planPixelBox(item.table, fit.pxPerPct)
-            : tablePixelBox(item.table, fit.pxPerPct, bar ? 40 : 72);
+          const box = fixturePixelBox(item.table, room, fit.pxPerIn);
           const num = floorMapNumber(item.table.label);
           const fill = item.fill && item.fill !== "transparent" ? item.fill : "#f4efe6";
           return (

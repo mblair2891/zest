@@ -24,7 +24,7 @@ test("published wall stays a dark segment on the wood, in its plan box", () => {
   assert.match(mark, /bg-\[#3d2914\]/);
   assert.match(mark, /data-floor-arch-tone/);
   const canvas = readFileSync("src/components/pos/FloorMapCanvas.tsx", "utf8");
-  assert.match(canvas, /planPixelBox/);
+  assert.match(canvas, /fixturePixelBox/);
   assert.match(canvas, /variant="live"/);
   assert.match(canvas, /data-floor-canvas="white"/);
   assert.doesNotMatch(canvas, /floor-wood/);

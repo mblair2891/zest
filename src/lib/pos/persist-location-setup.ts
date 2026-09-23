@@ -389,7 +389,7 @@ export async function flushLocationCatalog(
   const ctx = ids();
   if (!ctx) return;
   const pos = usePosStore.getState();
-  const plan = floorPlanFromPos(pos.tables, pos.floorSections);
+  const plan = floorPlanFromPos(pos.tables, pos.floorSections, pos.floorRoom);
   writeFloorDraft(ctx.locationId, pos.tables, pos.floorSections);
   const cost = useCostStore.getState();
   const floorPatch = plan.tables.length

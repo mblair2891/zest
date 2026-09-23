@@ -30,6 +30,7 @@ import {
   SETTLEMENT_CONFIG,
   EXTRA_TABLE_GRANTS,
 } from "./seed";
+import { DEFAULT_ROOM, rescaleFixture, type FloorRoom } from "./floor-dimensions";
 import { computeTotals, isHappyHour, lineUnitTotal } from "./calculations";
 import { allocateChargebackFee, buildPeriodSettlement, CHARGEBACK_FEE_CENTS } from "./settlement";
 import {
@@ -351,6 +352,7 @@ function initialState() {
 		activeSeat: null,
 		clock: Date.now(),
 		floorSections: DEFAULT_FLOOR_SECTIONS.map((s: any) => ({ ...s })),
+		floorRoom: { ...DEFAULT_ROOM },
 		extraTableGrants: EXTRA_TABLE_GRANTS.map((g: any) => ({ ...g })),
 		extraEntityShiftGrants: [],
 		sectionOverrides: {},
@@ -4102,6 +4104,8 @@ const usePosStoreRaw = create<PosStore>()(persist((set, get) => {
 			barShape: partial.barShape,
 			points: partial.points,
 			legLengths: partial.legLengths,
+			lengthIn: partial.lengthIn,
+			widthIn: partial.widthIn,
 			rotation: partial.rotation ?? 0,
 			sectionId: partial.sectionId,
 			status: "empty",
@@ -4489,6 +4493,15 @@ const usePosStoreRaw = create<PosStore>()(persist((set, get) => {
 		});
 		get().audit("section_assign", `${employeeId} → ${sectionIds.join(",") || "none"}`);
 	},
+	setFloorRoom: (room: FloorRoom) => {
+		const prev = get().floorRoom ?? DEFAULT_ROOM;
+		if (room.widthIn === prev.widthIn && room.depthIn === prev.depthIn) return;
+		if (!(room.widthIn > 0) || !(room.depthIn > 0)) return;
+		set({
+			floorRoom: { widthIn: room.widthIn, depthIn: room.depthIn },
+			tables: get().tables.map((t: any) => rescaleFixture(t, prev, room)),
+		});
+	},
 	upsertFloorSection: (section) => {
 		const list = [...get().floorSections];
 		const i = list.findIndex((s) => s.id === section.id);
@@ -4774,6 +4787,9 @@ const usePosStoreRaw = create<PosStore>()(persist((set, get) => {
 	},
 	openTenantLocation: (opts) => {
 		const { entityId, venueName, ownerName, locationId } = opts;
+		if (opts.floorRoom && opts.floorRoom.widthIn > 0 && opts.floorRoom.depthIn > 0) {
+			set({ floorRoom: { widthIn: opts.floorRoom.widthIn, depthIn: opts.floorRoom.depthIn } });
+		}
 		const staff = opts.staff;
 		const already = get().tenantLocationId === locationId && get().activeEntityId === entityId;
 		if (isPartnerDemoLocationId(locationId)) {
@@ -4947,6 +4963,7 @@ const usePosStoreRaw = create<PosStore>()(persist((set, get) => {
 		activeTableId: s.activeTableId,
 		selectedCategoryId: s.selectedCategoryId,
 		floorSections: s.floorSections,
+		floorRoom: s.floorRoom,
 		extraTableGrants: s.extraTableGrants,
 		extraEntityShiftGrants: s.extraEntityShiftGrants ?? [],
 		activeEntityId: s.activeEntityId,
@@ -5058,6 +5075,7 @@ const usePosStoreRaw = create<PosStore>()(persist((set, get) => {
 				sectionId: t.sectionId,
 			})),
 			floorSections: (p.floorSections && p.floorSections.length) ? p.floorSections : current.floorSections,
+			floorRoom: p.floorRoom && p.floorRoom.widthIn > 0 && p.floorRoom.depthIn > 0 ? p.floorRoom : current.floorRoom,
 			extraTableGrants: p.extraTableGrants || current.extraTableGrants || [],
 			extraEntityShiftGrants: p.extraEntityShiftGrants || current.extraEntityShiftGrants || [],
 			chargebacks: p.chargebacks || current.chargebacks || [],

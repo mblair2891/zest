@@ -273,6 +273,7 @@ function PosAppInner({ entityId }: { entityId?: string }) {
             vendors: access.operators,
             tables,
             floorSections: setup.floorPlan?.sections,
+            floorRoom: setup.floorPlan?.room,
             hallMode:
               access.location.operatingModel === "host_operators" ||
               access.location.operatingModel === "peer_venue",
@@ -572,15 +573,22 @@ function PosAppInner({ entityId }: { entityId?: string }) {
                     ? setup.floorPlan.sections
                     : cur.floorSections;
             let autoPublish = resolved.autoPublish;
+            let room = setup.floorPlan?.room;
+            if (pubPlan && publishedTables && publishedTables.length && "room" in pubPlan) {
+              const publishedRoom = (pubPlan as { room?: { widthIn: number; depthIn: number } }).room;
+              if (publishedRoom && publishedRoom.widthIn > 0 && publishedRoom.depthIn > 0) room = publishedRoom;
+            }
             if (!nextTables.length && demoFullService) {
               const plan = summitHallFloorPlan();
               nextTables = tablesFromFloorPlan(plan);
               sections = plan.sections;
+              room = plan.room ?? room;
               autoPublish = true;
             }
             if (nextTables.length || sections.length) {
               usePosStore.setState({
                 floorSections: sections,
+                ...(room && room.widthIn > 0 && room.depthIn > 0 ? { floorRoom: room } : {}),
                 ...(nextTables.length ? { tables: nextTables } : {}),
               });
             }
