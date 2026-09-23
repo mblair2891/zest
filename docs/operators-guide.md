@@ -1,7 +1,7 @@
 # Operators Guide — authoring
 
-**Revision · 22 Sep 2026** — Bar is a black rail; editor shows clearances.
-Guide v2026.10.156.
+**Revision · 22 Sep 2026** — Copy floor objects by count.
+Guide v2026.10.157.
 
 The in-app **Operators Guide** is the living product manual. It is not a
 separate PDF. Staff open it from **Guide** / **?** in the POS and platform

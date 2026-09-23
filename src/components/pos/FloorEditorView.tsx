@@ -1,8 +1,15 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Plus, Trash2, QrCode, RotateCw } from "lucide-react";
+import { Plus, Trash2, QrCode, RotateCw, Copy } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { usePosStore } from "@/lib/pos/store";
 import { cn, uid } from "@/lib/utils";
 import { SetupAssistButton } from "@/components/assist/SetupAssistDialog";
@@ -43,6 +50,7 @@ import {
   sizePatch,
   splitInches,
 } from "@/lib/pos/floor-dimensions";
+import { planFloorCopies } from "@/lib/pos/floor-copy";
 import { FloorArchitectureMark } from "@/components/pos/FloorArchitectureMark";
 import {
   boundsOf,
@@ -411,6 +419,8 @@ export function FloorEditorView() {
     persistPrinterAssignments();
   };
   const [selected, setSelected] = useState<string | null>(null);
+  const [copyOpen, setCopyOpen] = useState(false);
+  const [copyCount, setCopyCount] = useState("1");
   const [newName, setNewName] = useState("");
   const [room, setRoom] = useState<string>("All");
   const [scope, setScope] = useState<"entire" | "section">("entire");
@@ -795,6 +805,47 @@ export function FloorEditorView() {
       ...(barPoints ? { points: barPoints, legLengths: legLengthsOf(barPoints) } : {}),
     });
     setSelected(id);
+    persistLocationCatalog("floor");
+  };
+
+  const copyCountOk = /^[1-9]\d*$/.test(copyCount.trim());
+
+  const applyCopies = () => {
+    if (!copyCountOk || !selected) return;
+    const count = Number(copyCount.trim());
+    const state = usePosStore.getState();
+    const source = state.tables.find((t) => t.id === selected);
+    if (!source) return;
+    const copies = planFloorCopies(
+      source,
+      state.tables.map((t) => t.label),
+      count,
+      state.floorRoom ?? DEFAULT_ROOM,
+    );
+    let last: string | null = null;
+    for (const copy of copies) {
+      last = state.addFloorTable({
+        label: copy.label,
+        section: copy.section,
+        sectionId: copy.sectionId,
+        seats: copy.seats,
+        x: copy.x,
+        y: copy.y,
+        w: copy.w,
+        h: copy.h,
+        shape: copy.shape,
+        kind: copy.kind,
+        barShape: copy.barShape,
+        points: copy.points ?? undefined,
+        legLengths: copy.legLengths ?? undefined,
+        lengthIn: copy.lengthIn,
+        widthIn: copy.widthIn,
+        fill: copy.fill,
+        rotation: copy.rotation ?? 0,
+      });
+    }
+    if (last) setSelected(last);
+    setCopyOpen(false);
     persistLocationCatalog("floor");
   };
 
@@ -1306,6 +1357,46 @@ export function FloorEditorView() {
                 size="sm"
                 variant="outline"
                 className="w-full"
+                data-floor-copy=""
+                onClick={() => {
+                  setCopyCount("1");
+                  setCopyOpen(true);
+                }}
+              >
+                <Copy className="h-3.5 w-3.5" />
+                Copy
+              </Button>
+              <Dialog open={copyOpen} onOpenChange={setCopyOpen}>
+                <DialogContent data-floor-copy-dialog="">
+                  <DialogHeader>
+                    <DialogTitle>How many copies?</DialogTitle>
+                  </DialogHeader>
+                  <Input
+                    data-floor-copy-count=""
+                    type="number"
+                    min={1}
+                    step={1}
+                    inputMode="numeric"
+                    value={copyCount}
+                    onChange={(e) => setCopyCount(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") applyCopies();
+                    }}
+                  />
+                  <DialogFooter>
+                    <Button type="button" variant="outline" onClick={() => setCopyOpen(false)}>
+                      Cancel
+                    </Button>
+                    <Button type="button" data-floor-copy-confirm="" disabled={!copyCountOk} onClick={applyCopies}>
+                      Copy
+                    </Button>
+                  </DialogFooter>
+                </DialogContent>
+              </Dialog>
+              <Button
+                size="sm"
+                variant="outline"
+                className="w-full"
                 data-floor-rotate
                 onClick={() => {
                   update(selectedTable.id, {
@@ -1406,7 +1497,7 @@ export function FloorEditorView() {
             </div>
           ) : (
             <p className="text-sm text-muted-foreground">
-              Select a fixture to edit. Drag to move, corner to resize, Rotate 90°. Booths keep benches attached.
+              Select a fixture to edit. Drag to move, corner to resize, Copy, Rotate 90°. Booths keep benches attached.
             </p>
           )}
         </aside>

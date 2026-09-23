@@ -6,6 +6,18 @@ import type { GuideUpdate } from "@/lib/guide/types";
  */
 export const WHATS_NEW_ENTRIES: GuideUpdate[] = [
   {
+    id: "upd_2026_10_157_floor_copy",
+    date: "2026-09-22",
+    title: "Copy floor objects by count",
+    summary: "Copy a selected piece and choose how many. Each copy gets the next number.",
+    body: "Select a table, booth, wall, or bar and choose Copy. Enter how many copies, at least one. Each copy keeps the same kind, size, rotation, and section, and sits about one foot right and one foot down from the last so they do not stack. New tables take the next free number, such as 18 then 19, or B10 then B11. Cancel leaves the original in place.",
+    roles: ["owner_manager", "host_operator"],
+    surfaces: ["floor"],
+    audience: "all",
+    topicId: "floor-editor",
+    tags: ["floor", "editor"],
+  },
+  {
     id: "upd_2026_10_156_bar_stroke",
     date: "2026-09-22",
     title: "Bar rail is a black stroke",
