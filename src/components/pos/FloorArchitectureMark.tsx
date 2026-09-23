@@ -13,6 +13,7 @@ export function FloorArchitectureMark({
   onShapePointerDown,
   children,
   extend,
+  pxPerIn = 2,
 }: {
   table: Table;
   selected?: boolean;
@@ -24,51 +25,53 @@ export function FloorArchitectureMark({
   children?: ReactNode;
   /** Plan units to draw past each centerline end when this wall shares a corner. */
   extend?: { start: number; end: number };
+  /** Layout pixels per inch, so the grab stroke is about 8 inches wide. */
+  pxPerIn?: number;
 }) {
   if (!isArchitectureKind(table.kind)) return null;
   const rotation = ((Number(table.rotation) || 0) % 360 + 360) % 360;
   const spin = { transform: `rotate(${rotation}deg)`, transformOrigin: "center center" } as const;
   const live = variant === "live";
-  const dark = "#3d2914";
   const caption = live ? liveArchCaption(table) : null;
   if (table.kind === "bar_top") {
     const plan = storedBarPlan(table);
-    const pts = planToLocal(plan, table);
+    const pts = plan.length >= 2 ? planToLocal(plan, table) : [{ x: 4, y: 50 }, { x: 96, y: 50 }];
     const d = pts.map((p, i) => `${i === 0 ? "M" : "L"} ${p.x} ${p.y}`).join(" ");
+    const hitPx = Math.max(12, pxPerIn * 8);
     return (
       <svg
         viewBox="0 0 100 100"
-        className="h-full w-full"
-        data-floor-bar="slab"
+        className="h-full w-full overflow-visible bg-transparent"
+        data-floor-bar="stroke"
         data-floor-bar-shape={table.barShape ?? "straight"}
         data-floor-rotation={rotation}
         data-bar-legs={(table.legLengths ?? []).join(",")}
         data-floor-bar-selected={selected ? "1" : "0"}
-        data-floor-arch-tone={live ? "dark" : "editor"}
-        style={{ ...spin, pointerEvents: "none" }}
+        data-floor-arch-tone="stroke"
+        style={{ ...spin, pointerEvents: "none", background: "transparent" }}
       >
         <path
           d={d}
           fill="none"
           stroke="transparent"
-          strokeWidth={28}
+          strokeWidth={hitPx}
           strokeLinecap="round"
           strokeLinejoin="round"
+          vectorEffect="non-scaling-stroke"
           style={{ pointerEvents: "stroke" }}
           onPointerDown={onBarPointerDown}
         />
         <path
           d={d}
           fill="none"
-          stroke={selected ? "var(--primary)" : dark}
-          strokeWidth={14}
+          stroke="#111"
+          strokeWidth={4}
           strokeLinecap="round"
           strokeLinejoin="round"
+          vectorEffect="non-scaling-stroke"
+          data-floor-bar-stroke="1"
           style={{ pointerEvents: "none" }}
         />
-        <text x="50" y="46" textAnchor="middle" fontSize="14" fill="#f4efe6" fontWeight={700} style={{ pointerEvents: "none" }}>
-          BAR
-        </text>
       </svg>
     );
   }

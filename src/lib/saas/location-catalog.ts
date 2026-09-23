@@ -1,6 +1,12 @@
 import type { FloorSection, MenuCategory, MenuItem, ModifierGroup, Table, TableKind } from "@/lib/pos/types";
 import type { ItemRecipe } from "@/lib/costs/types";
-import { DEFAULT_ROOM, inchesFromPercent, readFloorRoom, type FloorRoom } from "../pos/floor-dimensions.ts";
+import {
+  DEFAULT_ROOM,
+  inchesFromPercent,
+  normalizeBarFill,
+  readFloorRoom,
+  type FloorRoom,
+} from "../pos/floor-dimensions.ts";
 
 export type FloorPlanTable = {
   id: string;
@@ -19,6 +25,7 @@ export type FloorPlanTable = {
   rotation?: number;
   lengthIn?: number;
   widthIn?: number;
+  fill?: string;
   sectionId?: string;
   qrToken?: string;
 };
@@ -109,6 +116,7 @@ export function parseFloorPlan(raw: unknown): LocationFloorPlan | undefined {
       h: Math.min(100, Math.max(thin ? 0.4 : 0.4, num(r.h, 12))),
       lengthIn: lengthIn > 0 ? lengthIn : undefined,
       widthIn: widthIn > 0 ? widthIn : undefined,
+      fill: normalizeBarFill(kind, r.fill),
       shape,
       kind,
       barShape,
@@ -172,6 +180,7 @@ export function floorPlanFromPos(
         rotation: t.rotation,
         lengthIn: t.lengthIn && t.lengthIn > 0 ? t.lengthIn : inchesFromPercent(t.w, planRoom.widthIn),
         widthIn: t.widthIn && t.widthIn > 0 ? t.widthIn : inchesFromPercent(t.h, planRoom.depthIn),
+        fill: normalizeBarFill(t.kind, t.fill),
         sectionId: t.sectionId,
         qrToken: t.qrToken,
       })),
@@ -197,6 +206,7 @@ export function tablesFromFloorPlan(plan: LocationFloorPlan): Table[] {
     rotation: t.rotation,
     lengthIn: t.lengthIn,
     widthIn: t.widthIn,
+    fill: normalizeBarFill(t.kind, t.fill),
     sectionId: t.sectionId,
     qrToken: t.qrToken,
     status: "empty",

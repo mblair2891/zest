@@ -5,8 +5,12 @@ import {
   DEFAULT_ROOM,
   ROOM_FIT_MARGIN_PX,
   fitRoomToView,
+  fixtureEdgeBox,
   fixturePixelBox,
   formatFeetInches,
+  nearestObjectGap,
+  nearestRoomEdge,
+  normalizeBarFill,
   parseFeetInches,
   rescaleFixture,
   sizePatch,
@@ -88,4 +92,41 @@ test("a 4 foot table draws larger than a 3 foot table on a 40 by 30 room", () =>
   assert.ok(fitted.worldW > 900);
   assert.match(editor, /data-floor-fit-room/);
   assert.match(editor, /data-floor-fit="room"/);
+});
+
+test("bar fill white migrates and a dragged table measures to the wall", () => {
+  assert.equal(normalizeBarFill("bar_top", "#fff"), "transparent");
+  assert.equal(normalizeBarFill("bar_top", "#FFFFFF"), "transparent");
+  assert.equal(normalizeBarFill("table", "#fff"), "#fff");
+
+  const room = { widthIn: 40 * 12, depthIn: 30 * 12 };
+  const wall = { id: "w", kind: "wall", x: 0, y: 0, w: 1, h: 100, rotation: 0 };
+  const wallBox = fixtureEdgeBox(wall, room);
+  const table = {
+    id: "t",
+    kind: "table",
+    x: ((wallBox.right + 30) / room.widthIn) * 100,
+    y: 20,
+    w: 10,
+    h: 13.333,
+    rotation: 0,
+  };
+  const gap = nearestObjectGap(table, [wall, table], room);
+  assert.ok(gap);
+  assert.equal(gap.label, "wall");
+  assert.ok(Math.abs(gap.inches - 30) < 0.6);
+  assert.equal(formatFeetInches(gap.inches), `2' 6"`);
+  const edge = nearestRoomEdge(fixtureEdgeBox(table, room), room);
+  assert.ok(edge.inches >= 0);
+
+  const mark = readFileSync("src/components/pos/FloorArchitectureMark.tsx", "utf8");
+  assert.match(mark, /stroke="#111"/);
+  assert.match(mark, /fill="none"/);
+  assert.match(mark, /vectorEffect="non-scaling-stroke"/);
+  assert.match(mark, /data-floor-bar-stroke/);
+  assert.doesNotMatch(mark, />BAR</);
+  const editor = readFileSync("src/components/pos/FloorEditorView.tsx", "utf8");
+  assert.match(editor, /data-floor-measure/);
+  const live = readFileSync("src/components/pos/FloorMapCanvas.tsx", "utf8");
+  assert.doesNotMatch(live, /data-floor-measure/);
 });

@@ -34,6 +34,9 @@ import {
   dimensionLabel,
   fitRoomToView,
   formatFeetInches,
+  nearestObjectGap,
+  nearestRoomEdge,
+  fixtureEdgeBox,
   objectInches,
   parseFeetInches,
   parsePositiveInches,
@@ -172,6 +175,35 @@ function CornerHandle({
       )}
       onPointerDown={(event) => onCorner(event, id)}
     />
+  );
+}
+
+function MeasureGuides({
+  table,
+  tables,
+  room,
+}: {
+  table: { id: string; kind?: string | null; x: number; y: number; w: number; h: number; rotation?: number | null };
+  tables: Array<{ id: string; kind?: string | null; x: number; y: number; w: number; h: number; rotation?: number | null }>;
+  room: { widthIn: number; depthIn: number };
+}) {
+  const box = fixtureEdgeBox(table, room);
+  const edge = nearestRoomEdge(box, room);
+  const other = nearestObjectGap(table, tables, room);
+  return (
+    <div
+      data-floor-measure=""
+      className="pointer-events-none absolute left-1/2 top-full z-30 mt-1 flex -translate-x-1/2 flex-col items-center gap-0.5 whitespace-nowrap text-[10px] font-medium text-neutral-900"
+    >
+      <span className="rounded bg-white px-1 shadow">
+        {formatFeetInches(Math.max(0, edge.inches))} to {edge.side}
+      </span>
+      {other ? (
+        <span className="rounded bg-white px-1 shadow">
+          {formatFeetInches(Math.max(0, other.inches))} to {other.label}
+        </span>
+      ) : null}
+    </div>
   );
 }
 
@@ -913,6 +945,7 @@ export function FloorEditorView() {
                         {dimensionLabel(t, floorRoom)}
                       </span>
                     ) : null}
+                    {selected === t.id ? <MeasureGuides table={t} tables={tables} room={floorRoom} /> : null}
                     <div
                       data-floor-spin=""
                       className="relative h-full w-full"
@@ -925,6 +958,7 @@ export function FloorEditorView() {
                       <FloorArchitectureMark
                         table={{ ...t, rotation: 0 }}
                         selected={selected === t.id}
+                        pxPerIn={fit.pxPerIn * cam.s}
                         onBarPointerDown={(e) => onPointerDown(e, t.id, t.x, t.y)}
                       />
                       {handles.map((h) => {
@@ -962,6 +996,7 @@ export function FloorEditorView() {
                       {dimensionLabel(t, floorRoom)}
                     </span>
                   ) : null}
+                  {selected === t.id ? <MeasureGuides table={t} tables={tables} room={floorRoom} /> : null}
                   {isArchitectureKind(t.kind) ? (
                     <FloorArchitectureMark
                       table={t}

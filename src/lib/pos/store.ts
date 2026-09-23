@@ -4106,6 +4106,7 @@ const usePosStoreRaw = create<PosStore>()(persist((set, get) => {
 			legLengths: partial.legLengths,
 			lengthIn: partial.lengthIn,
 			widthIn: partial.widthIn,
+			fill: partial.fill,
 			rotation: partial.rotation ?? 0,
 			sectionId: partial.sectionId,
 			status: "empty",

@@ -446,6 +446,8 @@ export interface Table {
   lengthIn?: number;
   /** Real size along the plan depth, in inches. Wall thickness. */
   widthIn?: number;
+  /** Legacy paint. Bar tops migrate #fff to transparent and stroke the rail. */
+  fill?: string;
   sectionId?: string;
   status: TableStatus;
   orderId?: string;

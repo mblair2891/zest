@@ -174,6 +174,91 @@ export function fixturePixelBox(
   };
 }
 
+export function normalizeBarFill(kind: string | undefined, fill: unknown): string | undefined {
+  if (typeof fill !== "string" || !fill.trim()) return undefined;
+  const raw = fill.trim();
+  if (kind === "bar_top") {
+    const f = raw.toLowerCase();
+    if (f === "#fff" || f === "#ffffff" || f === "white") return "transparent";
+  }
+  return raw;
+}
+
+export type EdgeBox = { left: number; top: number; right: number; bottom: number };
+
+/** Axis-aligned footprint in room inches, after quarter-turns. */
+export function fixtureEdgeBox(
+  item: { x: number; y: number; w: number; h: number; rotation?: number | null },
+  room: FloorRoom,
+): EdgeBox {
+  const cx = ((item.x + item.w / 2) / 100) * room.widthIn;
+  const cy = ((item.y + item.h / 2) / 100) * room.depthIn;
+  const along = (item.w / 100) * room.widthIn;
+  const across = (item.h / 100) * room.depthIn;
+  const rot = ((Number(item.rotation) || 0) % 360 + 360) % 360;
+  const swap = rot === 90 || rot === 270;
+  const halfW = (swap ? across : along) / 2;
+  const halfH = (swap ? along : across) / 2;
+  return { left: cx - halfW, right: cx + halfW, top: cy - halfH, bottom: cy + halfH };
+}
+
+export function nearestRoomEdge(
+  box: EdgeBox,
+  room: FloorRoom,
+): { side: "left" | "right" | "top" | "bottom"; inches: number } {
+  const options = [
+    { side: "left" as const, inches: box.left },
+    { side: "right" as const, inches: room.widthIn - box.right },
+    { side: "top" as const, inches: box.top },
+    { side: "bottom" as const, inches: room.depthIn - box.bottom },
+  ];
+  return options.reduce((best, cur) => (cur.inches < best.inches ? cur : best));
+}
+
+export function edgeGap(a: EdgeBox, b: EdgeBox): number {
+  const dx = a.right < b.left ? b.left - a.right : b.right < a.left ? a.left - b.right : 0;
+  const dy = a.bottom < b.top ? b.top - a.bottom : b.bottom < a.top ? a.top - b.bottom : 0;
+  if (dx === 0 && dy === 0) return 0;
+  if (dx === 0) return dy;
+  if (dy === 0) return dx;
+  return Math.hypot(dx, dy);
+}
+
+export function measureLabelKind(kind?: string | null): string | null {
+  if (kind === "wall") return "wall";
+  if (kind === "door" || kind === "window") return "door";
+  if (kind === "bar_top") return "bar";
+  if (
+    kind === "table" ||
+    kind === "booth" ||
+    kind === "booth_4" ||
+    kind === "booth_u" ||
+    kind === "booth_l" ||
+    kind === "other" ||
+    kind === "host_stand"
+  ) {
+    return "table";
+  }
+  return null;
+}
+
+export function nearestObjectGap(
+  self: { id: string; kind?: string | null; x: number; y: number; w: number; h: number; rotation?: number | null },
+  others: Array<{ id: string; kind?: string | null; x: number; y: number; w: number; h: number; rotation?: number | null }>,
+  room: FloorRoom,
+): { label: string; inches: number } | null {
+  const a = fixtureEdgeBox(self, room);
+  let best: { label: string; inches: number } | null = null;
+  for (const other of others) {
+    if (other.id === self.id) continue;
+    const label = measureLabelKind(other.kind);
+    if (!label) continue;
+    const inches = edgeGap(a, fixtureEdgeBox(other, room));
+    if (!best || inches < best.inches) best = { label, inches };
+  }
+  return best;
+}
+
 export function dimensionLabel(
   item: { shape?: string | null; kind?: string | null; w: number; h: number; lengthIn?: number | null; widthIn?: number | null },
   room: FloorRoom,

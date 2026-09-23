@@ -6,6 +6,18 @@ import type { GuideUpdate } from "@/lib/guide/types";
  */
 export const WHATS_NEW_ENTRIES: GuideUpdate[] = [
   {
+    id: "upd_2026_10_156_bar_stroke",
+    date: "2026-09-22",
+    title: "Bar rail is a black stroke",
+    summary: "The bar is a black line you can grab. The editor shows distances while you move a piece.",
+    body: "A bar top draws as a black stroke along its straight, L, or U legs, with no fill. Drag a leg end to lengthen that leg. While a piece is selected or dragged, the editor shows the distance to the nearest room edge and to the nearest wall, table, bar, or door. The live floor draws the same rail and does not print those distances.",
+    roles: ["owner_manager", "host_operator", "server"],
+    surfaces: ["floor"],
+    audience: "all",
+    topicId: "floor-editor",
+    tags: ["floor", "editor"],
+  },
+  {
     id: "upd_2026_10_155_fit_room",
     date: "2026-09-22",
     title: "Fit room fills the floor workspace",
