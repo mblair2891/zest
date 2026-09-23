@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Plus, Trash2, QrCode, RotateCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -30,7 +30,9 @@ import { flushLocationCatalog, persistLocationCatalog, persistPrinterAssignments
 import {
   DEFAULT_OBJECT_IN,
   DEFAULT_ROOM,
+  ROOM_FIT_MARGIN_PX,
   dimensionLabel,
+  fitRoomToView,
   formatFeetInches,
   objectInches,
   parseFeetInches,
@@ -405,6 +407,101 @@ export function FloorEditorView() {
     box: SpinBox;
   } | null>(null);
   const boardRef = useRef<HTMLDivElement>(null);
+  const viewportRef = useRef<HTMLDivElement>(null);
+  const [view, setView] = useState({ w: 0, h: 0 });
+  const [cam, setCam] = useState({ s: 1, x: ROOM_FIT_MARGIN_PX, y: ROOM_FIT_MARGIN_PX });
+  const camRef = useRef(cam);
+  camRef.current = cam;
+  const panRef = useRef<{ x: number; y: number; ox: number; oy: number } | null>(null);
+  const pointersRef = useRef(new Map<number, { x: number; y: number }>());
+  const pinchRef = useRef<{ dist: number; scale: number } | null>(null);
+  const fit = useMemo(
+    () =>
+      fitRoomToView({
+        room: floorRoom,
+        viewW: Math.max(1, view.w),
+        viewH: Math.max(1, view.h),
+        marginPx: ROOM_FIT_MARGIN_PX,
+      }),
+    [floorRoom, view.w, view.h],
+  );
+  useEffect(() => {
+    const el = viewportRef.current;
+    if (!el) return;
+    const measure = () => {
+      const r = el.getBoundingClientRect();
+      if (r.width > 0 && r.height > 0) setView({ w: r.width, h: r.height });
+    };
+    measure();
+    const ro = new ResizeObserver(measure);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+  useEffect(() => {
+    setCam({ s: 1, x: fit.originX, y: fit.originY });
+  }, [fit.originX, fit.originY, fit.pxPerIn]);
+  useEffect(() => {
+    const el = viewportRef.current;
+    if (!el) return;
+    const onWheel = (event: WheelEvent) => {
+      event.preventDefault();
+      const rect = el.getBoundingClientRect();
+      const px = event.clientX - rect.left;
+      const py = event.clientY - rect.top;
+      const factor = event.deltaY < 0 ? 1.08 : 1 / 1.08;
+      setCam((c) => {
+        const s = Math.min(8, Math.max(0.25, c.s * factor));
+        const k = s / c.s;
+        return { s, x: px - (px - c.x) * k, y: py - (py - c.y) * k };
+      });
+    };
+    el.addEventListener("wheel", onWheel, { passive: false });
+    return () => el.removeEventListener("wheel", onWheel);
+  }, []);
+  const fitRoomView = () => setCam({ s: 1, x: fit.originX, y: fit.originY });
+  const onViewportPointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
+    pointersRef.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    if (pointersRef.current.size >= 2) {
+      const [a, b] = [...pointersRef.current.values()];
+      pinchRef.current = {
+        dist: Math.max(1, Math.hypot(a!.x - b!.x, a!.y - b!.y)),
+        scale: camRef.current.s,
+      };
+      panRef.current = null;
+      return;
+    }
+    panRef.current = { x: e.clientX, y: e.clientY, ox: camRef.current.x, oy: camRef.current.y };
+  };
+  const onViewportPointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (!pointersRef.current.has(e.pointerId)) return;
+    pointersRef.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    if (pointersRef.current.size >= 2 && pinchRef.current) {
+      const [a, b] = [...pointersRef.current.values()];
+      const dist = Math.max(1, Math.hypot(a!.x - b!.x, a!.y - b!.y));
+      const s = Math.min(8, Math.max(0.25, pinchRef.current.scale * (dist / pinchRef.current.dist)));
+      const rect = viewportRef.current?.getBoundingClientRect();
+      if (!rect) return;
+      const mx = (a!.x + b!.x) / 2 - rect.left;
+      const my = (a!.y + b!.y) / 2 - rect.top;
+      setCam((c) => {
+        const k = s / c.s;
+        return { s, x: mx - (mx - c.x) * k, y: my - (my - c.y) * k };
+      });
+      return;
+    }
+    const pan = panRef.current;
+    if (!pan) return;
+    setCam((c) => ({
+      ...c,
+      x: pan.ox + (e.clientX - pan.x),
+      y: pan.oy + (e.clientY - pan.y),
+    }));
+  };
+  const onViewportPointerUp = (e: React.PointerEvent<HTMLDivElement>) => {
+    pointersRef.current.delete(e.pointerId);
+    if (pointersRef.current.size < 2) pinchRef.current = null;
+    panRef.current = null;
+  };
   const demoType = getDemoType();
 
   const selectedTable = tables.find((t) => t.id === selected);
@@ -735,7 +832,7 @@ export function FloorEditorView() {
       </div>
 
       <div className="flex min-h-0 flex-1 flex-col lg:flex-row">
-        <div className="relative min-h-[300px] flex-1 p-3">
+        <div className="flex min-h-[300px] flex-1 flex-col p-3">
           <div className="mb-2 flex flex-wrap items-end gap-3" data-floor-room="">
             <FeetInchesInput
               label="Room width"
@@ -755,12 +852,30 @@ export function FloorEditorView() {
                 persistLocationCatalog("floor");
               }}
             />
+            <Button type="button" size="sm" variant="outline" data-floor-fit-room="" onClick={fitRoomView}>
+              Fit room
+            </Button>
           </div>
           <div
+            ref={viewportRef}
+            data-floor-viewport=""
+            className="relative min-h-0 flex-1 overflow-hidden rounded-2xl border border-border bg-white"
+            onPointerDown={onViewportPointerDown}
+            onPointerMove={onViewportPointerMove}
+            onPointerUp={onViewportPointerUp}
+            onPointerCancel={onViewportPointerUp}
+          >
+          <div
             ref={boardRef}
-            className="relative mx-auto w-full max-w-4xl touch-none rounded-2xl border border-border bg-white"
             data-floor-canvas="white"
-            style={{ aspectRatio: `${floorRoom.widthIn} / ${floorRoom.depthIn}` }}
+            data-floor-fit="room"
+            className="absolute left-0 top-0 border border-neutral-300 bg-white"
+            style={{
+              width: fit.worldW,
+              height: fit.worldH,
+              transform: `translate(${cam.x}px, ${cam.y}px) scale(${cam.s})`,
+              transformOrigin: "0 0",
+            }}
             onPointerMove={onPointerMove}
             onPointerUp={onPointerUp}
             onPointerCancel={onPointerUp}
@@ -893,8 +1008,9 @@ export function FloorEditorView() {
               );
             })}
           </div>
+        </div>
           <p className="mt-2 text-center text-xs text-muted-foreground">
-            Layout saves on this location as you drag. Handles turn with the piece. A wall’s black ends lengthen that wall; a corner resizes a table or booth.
+            Layout saves on this location as you drag. Handles turn with the piece. A wall’s black ends lengthen that wall; a corner resizes a table or booth. Scroll or pinch to zoom. Drag empty floor to pan. Fit room fills the workspace.
           </p>
         </div>
 

@@ -129,15 +129,23 @@ export function rescaleFixture<T extends Scaled>(item: T, from: FloorRoom, to: F
   return next;
 }
 
+/** Gap around the fitted room so the rectangle is not flush with the pane. */
+export const ROOM_FIT_MARGIN_PX = 16;
+
 export function fitRoomToView(opts: {
   room: FloorRoom;
   viewW: number;
   viewH: number;
   minObjectIn?: number;
   minTapPx?: number;
+  /** Inset so the room fills the pane with a margin. */
+  marginPx?: number;
 }): { pxPerIn: number; worldW: number; worldH: number; originX: number; originY: number } {
-  const viewW = Math.max(1, opts.viewW);
-  const viewH = Math.max(1, opts.viewH);
+  const fullW = Math.max(1, opts.viewW);
+  const fullH = Math.max(1, opts.viewH);
+  const margin = Math.max(0, opts.marginPx ?? 0);
+  const viewW = Math.max(1, fullW - margin * 2);
+  const viewH = Math.max(1, fullH - margin * 2);
   let pxPerIn = Math.min(viewW / opts.room.widthIn, viewH / opts.room.depthIn);
   const minObj = opts.minObjectIn ?? 0;
   const minTap = opts.minTapPx ?? 0;
@@ -148,8 +156,8 @@ export function fitRoomToView(opts: {
     pxPerIn,
     worldW,
     worldH,
-    originX: (viewW - worldW) / 2,
-    originY: (viewH - worldH) / 2,
+    originX: (fullW - worldW) / 2,
+    originY: (fullH - worldH) / 2,
   };
 }
 

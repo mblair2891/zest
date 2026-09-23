@@ -52,7 +52,7 @@ test("live order floor draws status blocks, not chairs", () => {
   assert.match(status, /solid/);
   const map = readFileSync("src/components/pos/FloorMapCanvas.tsx", "utf8");
   assert.match(map, /mode="status"/);
-  assert.match(map, /minTapPx: 64/);
+  assert.match(map, /marginPx: ROOM_FIT_MARGIN_PX/);
   assert.match(map, /data-floor-chairs="0"/);
   assert.doesNotMatch(map, /CHECK OPEN/);
   assert.doesNotMatch(map, /SLA/);

@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
 import type { Table } from "@/lib/pos/types";
 import { floorMapNumber } from "@/lib/pos/floor-fit";
-import { DEFAULT_ROOM, fitRoomToView, fixturePixelBox, objectInches } from "@/lib/pos/floor-dimensions";
+import { DEFAULT_ROOM, ROOM_FIT_MARGIN_PX, fitRoomToView, fixturePixelBox } from "@/lib/pos/floor-dimensions";
 import { usePosStore } from "@/lib/pos/store";
 import { FloorFixtureArt } from "@/components/pos/FloorFixtureArt";
 import { FloorArchitectureMark } from "@/components/pos/FloorArchitectureMark";
@@ -94,26 +94,15 @@ export function FloorMapCanvas({
   }, []);
 
   const room = usePosStore((s) => s.floorRoom) ?? DEFAULT_ROOM;
-  const minObjectIn = useMemo(() => {
-    const seats = items.filter((i) => !isArchitectureKind(i.table.kind));
-    if (!seats.length) return 0;
-    return Math.min(
-      ...seats.map((i) => {
-        const size = objectInches(i.table, room);
-        return Math.min(size.lengthIn, size.widthIn);
-      }),
-    );
-  }, [items, room]);
   const fit = useMemo(
     () =>
       fitRoomToView({
         room,
         viewW: view.w,
         viewH: view.h,
-        minObjectIn,
-        minTapPx: 64,
+        marginPx: ROOM_FIT_MARGIN_PX,
       }),
-    [room, view.w, view.h, minObjectIn],
+    [room, view.w, view.h],
   );
 
   useEffect(() => {

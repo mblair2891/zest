@@ -6,6 +6,18 @@ import type { GuideUpdate } from "@/lib/guide/types";
  */
 export const WHATS_NEW_ENTRIES: GuideUpdate[] = [
   {
+    id: "upd_2026_10_155_fit_room",
+    date: "2026-09-22",
+    title: "Fit room fills the floor workspace",
+    summary: "The room rectangle fills the editor and the tablet floor, with zoom and pan.",
+    body: "After the room width and depth are set, Fit room places that rectangle in the workspace with a small margin. Scroll or pinch to zoom, and drag empty floor to pan. Fit room returns to the fitted view. A tablet opens the published room fitted to the display the same way.",
+    roles: ["owner_manager", "host_operator", "server"],
+    surfaces: ["floor"],
+    audience: "all",
+    topicId: "floor-editor",
+    tags: ["floor", "editor"],
+  },
+  {
     id: "upd_2026_10_154_floor_dimensions",
     date: "2026-09-22",
     title: "Floor sizes are feet and inches",

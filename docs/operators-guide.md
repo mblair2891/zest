@@ -1,7 +1,7 @@
 # Operators Guide — authoring
 
-**Revision · 22 Sep 2026** — Floor sizes are feet and inches.
-Guide v2026.10.154.
+**Revision · 22 Sep 2026** — Fit room fills the floor workspace.
+Guide v2026.10.155.
 
 The in-app **Operators Guide** is the living product manual. It is not a
 separate PDF. Staff open it from **Guide** / **?** in the POS and platform
