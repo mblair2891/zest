@@ -354,7 +354,7 @@ export const ROLE_GUIDE_TOPICS: GuideTopic[] = [
         "Counter / QSR / café / ghost: ticket prefix and expo.",
         "Host + multi-operator: Host settings (tax, cash discount, Quantum Payments, payouts, entity permission matrix, device assignment) vs Operators (ops only). Guest operators never edit host merchant or payout routing.",
         "Kiosk / waitlist types: kiosk mode, waitlist, reservation check-in, SMS on/off and monthly cap (defaults to platform included; location may only go lower).",
-        "Peer venue and host + tenants: Revenue share rules (Staffing recs). A percent of drink net from one selling entity to another, by venue, section, or table. Location main contact or platform edits. A selling entity can view rules that pay them and cannot raise the percent. The guest check does not change.",
+        "Peer venue and host + tenants: Revenue share rules (Staffing recs). Each rule names the parties, the sales base, the rate, and optional section, table, service, hour, and source filters. Location main contact or platform edits the rate. A selling entity can view inbound and outbound rules and cannot change the rate. The guest check does not change.",
       ),
       steps(
         "PIN as owner or manager. Open Home → Location settings.",
@@ -563,7 +563,7 @@ export const ROLE_GUIDE_TOPICS: GuideTopic[] = [
         "Selected categories: pick the categories that count.",
         "Shared venue costs (rent, utilities): optional allocation % per entity. Off by default. Do not dump the same cost into both labor %.",
         "Tip-out and pools stay the existing rules. They do not mix into labor % unless you turn on tips in labor.",
-        "Labor uses share income is off by default. When on, only the food entity that receives drink share adds that income to labor sales. Bar labor stays on the bar’s own item sales.",
+        "Labor uses share income is off by default. When on, only the entity that receives the share adds that income to labor sales. The entity that pays stays on its own item sales.",
       ),
       steps(
         "Owner: Location settings → Labor basis. Confirm each operator is on owned lines. Leave Labor uses share income off unless food labor should include drink-share income. Entity admin reports and labor % always use owned lines for that brand, plus share income only when that switch is on.",

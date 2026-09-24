@@ -339,6 +339,9 @@ export function buildPeriodSettlement(
       to: periodEnd,
       toInclusive: true,
       timeZone: settings.timezone,
+      merchants: Object.fromEntries(
+        Object.entries(settings.entityKyc ?? {}).map(([id, kyc]) => [id, kyc.status === "approved"]),
+      ),
     }),
     status: "closed",
   };

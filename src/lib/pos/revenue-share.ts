@@ -1,40 +1,97 @@
 /**
- * Peer / hosted drink revenue share.
- * A second journal between selling entities. It does not change the guest
- * check, tax, or the Quantum Payments card split (that still follows who sold
- * the item).
+ * Location revenue-share rules between selling entities.
+ * A second journal. It does not change the guest check, tax on that check,
+ * or the Quantum Payments card split (the card still follows who sold the item).
  */
-import type { Employee, FloorSection, MenuItem, Order, OrderLine, Table } from "./types";
-import { lineCashCents } from "./calculations";
+import type { Employee, FloorSection, MenuItem, Order, OrderLine, RestaurantSettings, Table } from "./types";
+import { lineCardCents, lineCashCents } from "./calculations";
+import { cashPolicyFromSettings } from "./cash-discount";
+import { computeTaxLines, lineTaxCategory, ratesForEntity } from "./tax-rates";
 import { isHostPrivileged } from "@/lib/access/entity-grants";
 
-export type RevenueShareScope = "venue" | "sections" | "tables";
-export type RevenueShareTransferMode = "finix_split" | "book_entry";
+/** From-party: whoever sold the line. */
+export const ANY_SELLER = "*";
+
+export type ShareBasis = "drinks" | "food" | "all_items" | "menu_groups" | "items";
+export type ShareFlatPer = "none" | "check" | "cover";
+export type ShareCapPer = "none" | "check" | "day";
+export type ShareServiceStyle = "dine_in" | "to_go" | "kiosk" | "qr" | "bar_tab";
+export type ShareTicketSource = "server" | "kiosk" | "qr";
+export type RevenueShareTransferMode = "book_entry" | "finix_split" | "both";
+
+export const SHARE_BASIS_LABEL: Record<ShareBasis, string> = {
+  drinks: "Drink sales",
+  food: "Food sales",
+  all_items: "All item sales",
+  menu_groups: "Selected menu groups",
+  items: "Selected items",
+};
+
+export const SERVICE_STYLE_LABEL: Record<ShareServiceStyle, string> = {
+  dine_in: "Dine-in",
+  to_go: "To-go",
+  kiosk: "Kiosk",
+  qr: "QR",
+  bar_tab: "Bar tab",
+};
+
+export const TICKET_SOURCE_LABEL: Record<ShareTicketSource, string> = {
+  server: "Server",
+  kiosk: "Kiosk",
+  qr: "QR",
+};
+
+export const WEEKDAY_LABEL = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"] as const;
 
 export type RevenueShareRule = {
   id: string;
+  /** Lower number is considered first. */
+  priority: number;
+  /** When on, this rule can also pay a line an earlier rule already matched. */
+  allowStack: boolean;
   fromEntityId: string;
   toEntityId: string;
-  /** Percent of drink net. One decimal, greater than 0 through 100. */
+  basis: ShareBasis;
+  categoryIds: string[];
+  itemIds: string[];
+  includeTax: boolean;
+  includeCcTips: boolean;
+  includeCardMarkup: boolean;
+  /** 0 is valid when a flat amount is set. */
   percent: number;
-  scope: RevenueShareScope;
+  flatCents: number;
+  flatPer: ShareFlatPer;
+  /** 0 means no cap. */
+  capCents: number;
+  capPer: ShareCapPer;
+  /** Empty = every section. */
   sectionIds: string[];
+  /** Empty = every table, stool, and cluster. */
   tableIds: string[];
-  /** Inclusive start, YYYY-MM-DD in the venue calendar. */
+  /** Empty = every service style. */
+  serviceStyles: ShareServiceStyle[];
+  /** 0 Sunday … 6 Saturday. Empty = every day. */
+  daysOfWeek: number[];
+  /** HH:mm in the venue clock. Empty = no start. */
+  hoursStart: string;
+  /** HH:mm. Empty = no end. End before start wraps past midnight. */
+  hoursEnd: string;
+  /** Empty = every ticket source. */
+  ticketSources: ShareTicketSource[];
   effectiveOn: string;
-  /** Inclusive end. Empty means open-ended. */
   endsOn: string;
+  payout: RevenueShareTransferMode;
 };
 
 export type RevenueShareConfig = {
-  /** Card tips join drink net, allocated by merchandise. Default off. */
+  /** Legacy default for rules saved before per-rule tip toggle. */
   includeCcTips: boolean;
   /**
-   * Receiving entity’s labor sales include drink-share income.
+   * Receiving entity’s labor sales include share income.
    * The paying entity’s labor stays on its own item sales. Default off.
    */
   laborUsesShareIncome: boolean;
-  /** Instruction only. Does not move the guest card. */
+  /** Default payout instruction for rules. */
   transferMode: RevenueShareTransferMode;
   rules: RevenueShareRule[];
 };
@@ -48,8 +105,12 @@ export type RevenueShareLine = {
   fromEntityId: string;
   toEntityId: string;
   amountCents: number;
+  /** Net base the percent used (after the rule’s toggles). */
   drinkNetCents: number;
   percent: number;
+  basis: ShareBasis;
+  day: string;
+  payout: RevenueShareTransferMode;
   tableId: string;
   tableLabel: string;
   sectionId: string;
@@ -62,6 +123,7 @@ export type RevenueShareTransfer = {
   toEntityId: string;
   amountCents: number;
   mode: RevenueShareTransferMode;
+  finixReady: boolean;
   label: string;
 };
 
@@ -71,10 +133,20 @@ export type EntitySharePnl = {
   drinkShareExpenseCents: number;
 };
 
+export type ShareRuleDay = {
+  ruleId: string;
+  day: string;
+  fromEntityId: string;
+  toEntityId: string;
+  amountCents: number;
+  lineCount: number;
+};
+
 export type RevenueShareSnapshot = {
   lines: RevenueShareLine[];
   transfers: RevenueShareTransfer[];
   byEntity: EntitySharePnl[];
+  byRuleDay: ShareRuleDay[];
   includeCcTips: boolean;
   laborUsesShareIncome: boolean;
   transferMode: RevenueShareTransferMode;
@@ -100,12 +172,58 @@ export const DEFAULT_REVENUE_SHARE: RevenueShareConfig = {
 };
 
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
+const TIME_RE = /^(\d{2}):(\d{2})$/;
+const BASES: ShareBasis[] = ["drinks", "food", "all_items", "menu_groups", "items"];
+const FLATS: ShareFlatPer[] = ["none", "check", "cover"];
+const CAPS: ShareCapPer[] = ["none", "check", "day"];
+const STYLES: ShareServiceStyle[] = ["dine_in", "to_go", "kiosk", "qr", "bar_tab"];
+const SOURCES: ShareTicketSource[] = ["server", "kiosk", "qr"];
 
-export function transferInstruction(mode: RevenueShareTransferMode): string {
-  if (mode === "finix_split") {
-    return "Finix split instruction — a second journal between entities. The guest card still follows who sold the item.";
+export function transferInstruction(
+  mode: RevenueShareTransferMode,
+  bothMerchants = false,
+): string {
+  return payoutPlan(mode, bothMerchants).label;
+}
+
+export function payoutPlan(
+  mode: RevenueShareTransferMode,
+  bothMerchants: boolean,
+): { bookEntry: boolean; finixTransfer: boolean; finixReady: boolean; label: string } {
+  const wantFinix = mode === "finix_split" || mode === "both";
+  const finix = wantFinix && bothMerchants;
+  const book = mode === "book_entry" || mode === "both" || (wantFinix && !finix);
+  const guest = "The guest check and the card split still follow who sold the item.";
+  if (finix && book) {
+    return {
+      bookEntry: true,
+      finixTransfer: true,
+      finixReady: true,
+      label: `Book entry and Finix internal transfer. Both merchants are on file. ${guest}`,
+    };
   }
-  return "Book entry — settle this amount offline between entities. The guest card still follows who sold the item.";
+  if (finix) {
+    return {
+      bookEntry: false,
+      finixTransfer: true,
+      finixReady: true,
+      label: `Finix internal transfer. Both merchants are on file. ${guest}`,
+    };
+  }
+  if (wantFinix) {
+    return {
+      bookEntry: true,
+      finixTransfer: false,
+      finixReady: false,
+      label: `Book entry. Finix internal transfer waits until both selling entities have a merchant. ${guest}`,
+    };
+  }
+  return {
+    bookEntry: true,
+    finixTransfer: false,
+    finixReady: false,
+    label: `Book entry. Settle this amount offline between entities. ${guest}`,
+  };
 }
 
 export function canEditRevenueShare(
@@ -114,164 +232,176 @@ export function canEditRevenueShare(
   return isHostPrivileged(emp);
 }
 
-/** Location admin sees every rule. A selling entity sees rules that pay them or that they pay. */
+/** Location admin sees every rule. A selling entity sees inbound and outbound rules. */
 export function rulesVisibleToEntity(
   rules: RevenueShareRule[],
   entityId: string | null | undefined,
 ): RevenueShareRule[] {
   if (!entityId) return rules;
-  return rules.filter((r) => r.toEntityId === entityId || r.fromEntityId === entityId);
+  return rules.filter(
+    (r) => r.toEntityId === entityId || r.fromEntityId === entityId || r.fromEntityId === ANY_SELLER,
+  );
 }
 
-function idList(raw: unknown): string[] {
+export function ruleSummary(rule: RevenueShareRule, nameOf: (id: string) => string): string {
+  const from = rule.fromEntityId === ANY_SELLER ? "Whoever sold the item" : nameOf(rule.fromEntityId);
+  const rate = [
+    rule.percent > 0 ? `${rule.percent}%` : "",
+    rule.flatPer !== "none" && rule.flatCents > 0
+      ? `${(rule.flatCents / 100).toFixed(2)} ${rule.flatPer === "cover" ? "per cover" : "per check"}`
+      : "",
+  ]
+    .filter(Boolean)
+    .join(" + ");
+  const where = [
+    rule.sectionIds.length ? `${rule.sectionIds.length} section(s)` : "",
+    rule.tableIds.length ? `${rule.tableIds.length} table(s)` : "",
+    rule.serviceStyles.length ? rule.serviceStyles.map((s) => SERVICE_STYLE_LABEL[s]).join(", ") : "",
+    rule.hoursStart || rule.hoursEnd
+      ? `${rule.hoursStart || "open"}–${rule.hoursEnd || "close"}`
+      : "",
+  ]
+    .filter(Boolean)
+    .join(" · ");
+  return `${rate || "No rate"} of ${SHARE_BASIS_LABEL[rule.basis].toLowerCase()} · ${from} → ${nameOf(rule.toEntityId)}${where ? ` · ${where}` : ""}`;
+}
+
+function idList(raw: unknown, max = 80): string[] {
   if (!Array.isArray(raw)) return [];
   const out: string[] = [];
   for (const item of raw) {
     const id = String(item ?? "").trim().slice(0, 80);
     if (id && !out.includes(id)) out.push(id);
-    if (out.length >= 80) break;
+    if (out.length >= max) break;
   }
   return out;
 }
 
-function parseRule(raw: unknown): RevenueShareRule | null {
+function oneOf<T extends string>(raw: unknown, allowed: readonly T[], fallback: T): T {
+  const s = String(raw ?? "");
+  return (allowed as readonly string[]).includes(s) ? (s as T) : fallback;
+}
+
+function timeOrEmpty(raw: unknown): string {
+  const s = String(raw ?? "").trim();
+  return TIME_RE.test(s) ? s : "";
+}
+
+function payoutOf(raw: unknown, fallback: RevenueShareTransferMode): RevenueShareTransferMode {
+  if (raw === "finix_split" || raw === "both" || raw === "book_entry") return raw;
+  return fallback;
+}
+
+function parseRule(raw: unknown, legacyTips: boolean, payout: RevenueShareTransferMode): RevenueShareRule | null {
   if (!raw || typeof raw !== "object") return null;
   const o = raw as Record<string, unknown>;
   const id = String(o.id ?? "").trim().slice(0, 80);
   const fromEntityId = String(o.fromEntityId ?? "").trim().slice(0, 80);
   const toEntityId = String(o.toEntityId ?? "").trim().slice(0, 80);
-  const percent = Math.round(Number(o.percent) * 10) / 10;
-  const scope: RevenueShareScope =
-    o.scope === "sections" || o.scope === "tables" || o.scope === "venue" ? o.scope : "venue";
-  const effectiveOn = String(o.effectiveOn ?? "").trim();
-  const endsOn = String(o.endsOn ?? "").trim();
   if (!id || !fromEntityId || !toEntityId) return null;
-  if (!Number.isFinite(percent)) return null;
+  const percent = Math.round(Number(o.percent) * 10) / 10;
+  const legacyScope = o.scope === "sections" || o.scope === "tables" || o.scope === "venue" ? o.scope : "";
+  let sectionIds = idList(o.sectionIds);
+  let tableIds = idList(o.tableIds);
+  if (legacyScope === "venue") {
+    sectionIds = [];
+    tableIds = [];
+  } else if (legacyScope === "sections") {
+    tableIds = [];
+  } else if (legacyScope === "tables") {
+    sectionIds = [];
+  }
+  const days = idList(o.daysOfWeek, 7)
+    .map((d) => Number(d))
+    .filter((n) => Number.isInteger(n) && n >= 0 && n <= 6);
+  const basis = oneOf(o.basis, BASES, "drinks");
   return {
     id,
+    priority: Number.isFinite(Number(o.priority)) ? Math.round(Number(o.priority)) : 100,
+    allowStack: o.allowStack === true,
     fromEntityId,
     toEntityId,
-    percent,
-    scope,
-    sectionIds: scope === "sections" ? idList(o.sectionIds) : [],
-    tableIds: scope === "tables" ? idList(o.tableIds) : [],
-    effectiveOn,
-    endsOn: DATE_RE.test(endsOn) ? endsOn : "",
+    basis,
+    categoryIds: basis === "menu_groups" ? idList(o.categoryIds) : [],
+    itemIds: basis === "items" ? idList(o.itemIds) : [],
+    includeTax: o.includeTax === true,
+    includeCcTips: "includeCcTips" in o ? o.includeCcTips === true : legacyTips,
+    includeCardMarkup: o.includeCardMarkup === true,
+    percent: Number.isFinite(percent) ? Math.min(100, Math.max(0, percent)) : 0,
+    flatCents: Math.max(0, Math.round(Number(o.flatCents) || 0)),
+    flatPer: oneOf(o.flatPer, FLATS, "none"),
+    capCents: Math.max(0, Math.round(Number(o.capCents) || 0)),
+    capPer: oneOf(o.capPer, CAPS, "none"),
+    sectionIds,
+    tableIds,
+    serviceStyles: idList(o.serviceStyles).filter((s): s is ShareServiceStyle =>
+      (STYLES as string[]).includes(s),
+    ),
+    daysOfWeek: days,
+    hoursStart: timeOrEmpty(o.hoursStart),
+    hoursEnd: timeOrEmpty(o.hoursEnd),
+    ticketSources: idList(o.ticketSources).filter((s): s is ShareTicketSource =>
+      (SOURCES as string[]).includes(s),
+    ),
+    effectiveOn: String(o.effectiveOn ?? "").trim(),
+    endsOn: DATE_RE.test(String(o.endsOn ?? "").trim()) ? String(o.endsOn).trim() : "",
+    payout: payoutOf(o.payout, payout),
   };
 }
 
 export function parseRevenueShare(raw: unknown): RevenueShareConfig {
   const o = raw && typeof raw === "object" ? (raw as Record<string, unknown>) : {};
+  const transferMode = payoutOf(o.transferMode, "book_entry");
+  const legacyTips = o.includeCcTips === true;
   const rules: RevenueShareRule[] = [];
   if (Array.isArray(o.rules)) {
     for (const item of o.rules) {
-      const rule = parseRule(item);
+      const rule = parseRule(item, legacyTips, transferMode);
       if (rule) rules.push(rule);
-      if (rules.length >= 40) break;
+      if (rules.length >= 80) break;
     }
   }
   return {
-    includeCcTips: o.includeCcTips === true,
+    includeCcTips: legacyTips,
     laborUsesShareIncome: o.laborUsesShareIncome === true,
-    transferMode: o.transferMode === "finix_split" ? "finix_split" : "book_entry",
+    transferMode,
     rules,
   };
 }
 
-function dateEnd(rule: RevenueShareRule): string {
-  return rule.endsOn || "9999-12-31";
-}
-
-function datesOverlap(a: RevenueShareRule, b: RevenueShareRule): boolean {
-  return a.effectiveOn <= dateEnd(b) && b.effectiveOn <= dateEnd(a);
-}
-
-function sectionKeysForTable(table: ShareTableRef, sections: ShareSectionRef[]): string[] {
-  const keys = new Set<string>();
-  if (table.sectionId) keys.add(table.sectionId);
-  if (table.section) keys.add(table.section);
-  const hit = sections.find((s) => s.id === table.sectionId || s.name === table.section);
-  if (hit) {
-    keys.add(hit.id);
-    if (hit.name) keys.add(hit.name);
-  }
-  return [...keys];
-}
-
-function scopesOverlap(
-  a: RevenueShareRule,
-  b: RevenueShareRule,
-  tables: ShareTableRef[],
-  sections: ShareSectionRef[],
-): boolean {
-  if (a.scope === "venue" || b.scope === "venue") return true;
-  if (a.scope === "sections" && b.scope === "sections") {
-    return a.sectionIds.some((id) => b.sectionIds.includes(id));
-  }
-  if (a.scope === "tables" && b.scope === "tables") {
-    return a.tableIds.some((id) => b.tableIds.includes(id));
-  }
-  const sec = a.scope === "sections" ? a : b;
-  const tab = a.scope === "tables" ? a : b;
-  return tab.tableIds.some((id) => {
-    const table = tables.find((t) => t.id === id);
-    if (!table) return false;
-    const keys = sectionKeysForTable(table, sections);
-    return sec.sectionIds.some((sid) => keys.includes(sid));
-  });
-}
-
-export function rulesOverlap(
-  a: RevenueShareRule,
-  b: RevenueShareRule,
-  tables: ShareTableRef[] = [],
-  sections: ShareSectionRef[] = [],
-): boolean {
-  if (a.fromEntityId !== b.fromEntityId) return false;
-  if (!datesOverlap(a, b)) return false;
-  return scopesOverlap(a, b, tables, sections);
-}
-
 export function validateRevenueShareRules(
   rules: RevenueShareRule[],
-  tables: ShareTableRef[] = [],
-  sections: ShareSectionRef[] = [],
+  _tables: ShareTableRef[] = [],
+  _sections: ShareSectionRef[] = [],
 ): { ok: true } | { ok: false; error: string } {
-  for (const rule of rules) {
-    if (!rule.fromEntityId || !rule.toEntityId) {
-      return { ok: false, error: "Each rule needs a from entity and a to entity." };
-    }
+  const parsed = rules.map((r) => parseRule(r, false, r.payout || "book_entry")).filter((r) => r != null);
+  if (parsed.length !== rules.length) {
+    return { ok: false, error: "Each rule needs an id, a from entity, and a to entity." };
+  }
+  for (const rule of parsed) {
     if (rule.fromEntityId === rule.toEntityId) {
       return { ok: false, error: "From and to must be different entities." };
     }
-    if (!(rule.percent > 0 && rule.percent <= 100)) {
-      return { ok: false, error: "Percent must be greater than 0 and at most 100." };
+    if (rule.percent < 0 || rule.percent > 100) {
+      return { ok: false, error: "Percent must be from 0 through 100." };
+    }
+    if (rule.percent === 0 && (rule.flatPer === "none" || rule.flatCents <= 0)) {
+      return { ok: false, error: "Set a percent, a flat per check, or a flat per cover." };
     }
     if (!DATE_RE.test(rule.effectiveOn)) {
       return { ok: false, error: "Each rule needs an effective date." };
     }
-    if (rule.endsOn && !DATE_RE.test(rule.endsOn)) {
-      return { ok: false, error: "End date must be a calendar date." };
-    }
     if (rule.endsOn && rule.endsOn < rule.effectiveOn) {
       return { ok: false, error: "End date is before the effective date." };
     }
-    if (rule.scope === "sections" && rule.sectionIds.length === 0) {
-      return { ok: false, error: "Pick at least one section, or share the whole venue." };
+    if (rule.basis === "menu_groups" && rule.categoryIds.length === 0) {
+      return { ok: false, error: "Pick at least one menu group." };
     }
-    if (rule.scope === "tables" && rule.tableIds.length === 0) {
-      return { ok: false, error: "Pick at least one table, or share the whole venue." };
+    if (rule.basis === "items" && rule.itemIds.length === 0) {
+      return { ok: false, error: "Pick at least one item." };
     }
-  }
-  for (let i = 0; i < rules.length; i++) {
-    for (let j = i + 1; j < rules.length; j++) {
-      if (rulesOverlap(rules[i]!, rules[j]!, tables, sections)) {
-        return {
-          ok: false,
-          error:
-            "Two rules would share the same drink twice. Change the section, table, entity, or dates so they do not overlap.",
-        };
-      }
+    if ((rule.hoursStart && !TIME_RE.test(rule.hoursStart)) || (rule.hoursEnd && !TIME_RE.test(rule.hoursEnd))) {
+      return { ok: false, error: "Hours use 24-hour HH:mm." };
     }
   }
   return { ok: true };
@@ -291,6 +421,51 @@ export function venueYmd(ts: number, timeZone?: string): string {
   }
 }
 
+function venueParts(ts: number, timeZone?: string): { minutes: number; weekday: number } {
+  const zone = timeZone && timeZone.trim() ? timeZone.trim() : "UTC";
+  try {
+    const parts = new Intl.DateTimeFormat("en-US", {
+      timeZone: zone,
+      hour: "2-digit",
+      minute: "2-digit",
+      hourCycle: "h23",
+      weekday: "short",
+    }).formatToParts(new Date(ts));
+    const bag: Record<string, string> = {};
+    for (const p of parts) bag[p.type] = p.value;
+    let hour = Number(bag.hour);
+    if (hour === 24) hour = 0;
+    const minute = Number(bag.minute);
+    const weekday = WEEKDAY_LABEL.indexOf((bag.weekday ?? "Sun") as (typeof WEEKDAY_LABEL)[number]);
+    return {
+      minutes: (Number.isFinite(hour) ? hour : 0) * 60 + (Number.isFinite(minute) ? minute : 0),
+      weekday: weekday >= 0 ? weekday : 0,
+    };
+  } catch {
+    const d = new Date(ts);
+    return { minutes: d.getUTCHours() * 60 + d.getUTCMinutes(), weekday: d.getUTCDay() };
+  }
+}
+
+function hmToMin(hm: string): number | null {
+  const m = TIME_RE.exec(hm);
+  if (!m) return null;
+  const h = Number(m[1]);
+  const min = Number(m[2]);
+  if (h > 23 || min > 59) return null;
+  return h * 60 + min;
+}
+
+function inHours(nowMin: number, start: string, end: string): boolean {
+  const a = start ? hmToMin(start) : null;
+  const b = end ? hmToMin(end) : null;
+  if (a == null && b == null) return true;
+  if (a != null && b == null) return nowMin >= a;
+  if (a == null && b != null) return nowMin <= b;
+  if (a! <= b!) return nowMin >= a! && nowMin <= b!;
+  return nowMin >= a! || nowMin <= b!;
+}
+
 function sellingEntityId(line: OrderLine): string {
   return String(line.entityId || line.vendorId || "").trim();
 }
@@ -304,67 +479,134 @@ export function isDrinkLine(line: OrderLine, menuItems?: MenuItem[]): boolean {
   return line.station === "bar" && (line.course === "other" || !line.course);
 }
 
+export function isFoodLine(line: OrderLine, menuItems?: MenuItem[]): boolean {
+  if (line.voided || isDrinkLine(line, menuItems)) return false;
+  if (line.taxCategory === "retail" || line.taxCategory === "gift" || line.taxCategory === "service") {
+    return false;
+  }
+  const item = menuItems?.find((m) => m.id === line.menuItemId);
+  if (item?.taxCategory === "retail" || item?.taxCategory === "gift" || item?.taxCategory === "service") {
+    return false;
+  }
+  return true;
+}
+
+function serviceStyleOf(order: Order): ShareServiceStyle {
+  if (order.guestChannel === "table_qr") return "qr";
+  if (order.type === "kiosk" || order.guestChannel === "kiosk") return "kiosk";
+  if (order.type === "bar_tab") return "bar_tab";
+  if (order.type === "takeout" || order.type === "delivery" || order.type === "online") return "to_go";
+  return "dine_in";
+}
+
+function ticketSourceOf(order: Order): ShareTicketSource {
+  if (order.guestChannel === "table_qr") return "qr";
+  if (order.type === "kiosk" || order.guestChannel === "kiosk") return "kiosk";
+  return "server";
+}
+
 type Place = {
   tableId: string;
   tableLabel: string;
   sectionId: string;
   sectionName: string;
+  tableIds: string[];
+  sectionKeys: string[];
 };
 
-function placeOf(
-  order: Order,
-  tables: ShareTableRef[],
-  sections: ShareSectionRef[],
-): Place {
-  const table = order.tableId ? tables.find((t) => t.id === order.tableId) : undefined;
-  if (!table) {
+function sectionKeysForTable(table: ShareTableRef, sections: ShareSectionRef[]): string[] {
+  const keys = new Set<string>();
+  if (table.sectionId) keys.add(table.sectionId);
+  if (table.section) keys.add(table.section);
+  const hit = sections.find((s) => s.id === table.sectionId || s.name === table.section);
+  if (hit) {
+    keys.add(hit.id);
+    if (hit.name) keys.add(hit.name);
+  }
+  return [...keys];
+}
+
+function placeOf(order: Order, tables: ShareTableRef[], sections: ShareSectionRef[]): Place {
+  const ids = [order.tableId, ...(order.mergedTableIds ?? [])].filter((id): id is string => Boolean(id));
+  const found = ids
+    .map((id) => tables.find((t) => t.id === id))
+    .filter((t): t is ShareTableRef => Boolean(t));
+  const primary = found[0];
+  const sectionKeys = new Set<string>();
+  for (const table of found) {
+    for (const key of sectionKeysForTable(table, sections)) sectionKeys.add(key);
+  }
+  if (!primary) {
     return {
       tableId: "",
-      tableLabel: order.tabName?.trim() || "Bar tab",
+      tableLabel: order.tabName?.trim() || (order.type === "bar_tab" ? "Bar tab" : "No table"),
       sectionId: "",
       sectionName: "",
+      tableIds: ids,
+      sectionKeys: [...sectionKeys],
     };
   }
-  const keys = sectionKeysForTable(table, sections);
+  const keys = sectionKeysForTable(primary, sections);
   const section = sections.find((s) => keys.includes(s.id) || keys.includes(s.name));
   return {
-    tableId: table.id,
-    tableLabel: table.label?.trim() || table.id,
-    sectionId: section?.id || table.sectionId || "",
-    sectionName: section?.name || table.section || "",
+    tableId: primary.id,
+    tableLabel: primary.label?.trim() || primary.id,
+    sectionId: section?.id || primary.sectionId || "",
+    sectionName: section?.name || primary.section || "",
+    tableIds: ids,
+    sectionKeys: [...sectionKeys],
   };
 }
 
-function scopeMatches(rule: RevenueShareRule, place: Place): boolean {
-  if (rule.scope === "venue") return true;
-  if (rule.scope === "sections") {
-    const keys = [place.sectionId, place.sectionName].filter(Boolean);
-    return rule.sectionIds.some((id) => keys.includes(id));
-  }
-  if (rule.scope === "tables") {
-    return Boolean(place.tableId) && rule.tableIds.includes(place.tableId);
-  }
-  return false;
+function basisMatches(rule: RevenueShareRule, line: OrderLine, menuItems?: MenuItem[]): boolean {
+  if (rule.basis === "drinks") return isDrinkLine(line, menuItems);
+  if (rule.basis === "food") return isFoodLine(line, menuItems);
+  if (rule.basis === "all_items") return !line.voided;
+  if (rule.basis === "items") return rule.itemIds.includes(line.menuItemId);
+  const item = menuItems?.find((m) => m.id === line.menuItemId);
+  const cat = item?.categoryId || "";
+  return Boolean(cat) && rule.categoryIds.includes(cat);
 }
 
-function ruleApplies(rule: RevenueShareRule, ymd: string, entityId: string, place: Place): boolean {
-  if (rule.fromEntityId !== entityId) return false;
+function scopeMatches(rule: RevenueShareRule, order: Order, place: Place, at: number, timeZone?: string): boolean {
+  if (rule.sectionIds.length && !rule.sectionIds.some((id) => place.sectionKeys.includes(id))) return false;
+  if (rule.tableIds.length && !rule.tableIds.some((id) => place.tableIds.includes(id))) return false;
+  if (rule.serviceStyles.length && !rule.serviceStyles.includes(serviceStyleOf(order))) return false;
+  if (rule.ticketSources.length && !rule.ticketSources.includes(ticketSourceOf(order))) return false;
+  const clock = venueParts(at, timeZone);
+  if (rule.daysOfWeek.length && !rule.daysOfWeek.includes(clock.weekday)) return false;
+  if (!inHours(clock.minutes, rule.hoursStart, rule.hoursEnd)) return false;
+  return true;
+}
+
+function ruleMatches(
+  rule: RevenueShareRule,
+  order: Order,
+  line: OrderLine,
+  place: Place,
+  ymd: string,
+  at: number,
+  menuItems: MenuItem[] | undefined,
+  timeZone: string | undefined,
+): boolean {
+  const seller = sellingEntityId(line);
+  if (!seller) return false;
+  if (rule.fromEntityId === ANY_SELLER) {
+    if (seller === rule.toEntityId) return false;
+  } else if (rule.fromEntityId !== seller) {
+    return false;
+  }
   if (!DATE_RE.test(rule.effectiveOn) || ymd < rule.effectiveOn) return false;
   if (rule.endsOn && ymd > rule.endsOn) return false;
-  return scopeMatches(rule, place);
+  if (!basisMatches(rule, line, menuItems)) return false;
+  return scopeMatches(rule, order, place, at, timeZone);
 }
 
-function cardTipCents(order: Order): number {
-  return (order.payments ?? [])
+function cardTipByLine(order: Order): Map<string, number> {
+  const map = new Map<string, number>();
+  const tip = (order.payments ?? [])
     .filter((p) => p.method === "card" || p.method === "room_charge")
     .reduce((s, p) => s + (p.tipCents || 0), 0);
-}
-
-/** Card-tip cents allocated onto each merchandise line. Food lines are not drink net. */
-function cardTipByLine(order: Order, includeCcTips: boolean): Map<string, number> {
-  const map = new Map<string, number>();
-  if (!includeCcTips) return map;
-  const tip = cardTipCents(order);
   if (tip <= 0) return map;
   const lines = (order.lines ?? []).filter((l) => !l.voided && !l.comped && lineCashCents(l) > 0);
   const total = lines.reduce((s, l) => s + lineCashCents(l), 0);
@@ -379,61 +621,152 @@ function cardTipByLine(order: Order, includeCcTips: boolean): Map<string, number
   return map;
 }
 
+function lineBaseCents(
+  line: OrderLine,
+  rule: RevenueShareRule,
+  order: Order,
+  settings: RestaurantSettings | undefined,
+  tips: Map<string, number>,
+): number {
+  if (line.voided || line.comped) return 0;
+  const policy = rule.includeCardMarkup && settings ? cashPolicyFromSettings(settings) : null;
+  let base = policy ? lineCardCents(line, policy) : lineCashCents(line);
+  if (rule.includeTax && settings && base > 0) {
+    const rates = ratesForEntity(settings, sellingEntityId(line) || null);
+    const cat = lineTaxCategory(line);
+    base += computeTaxLines({ [cat]: base }, rates).addOnCents;
+  }
+  if (rule.includeCcTips) base += tips.get(line.id) ?? 0;
+  return Math.max(0, base);
+}
+
+type Draft = {
+  rule: RevenueShareRule;
+  order: Order;
+  line: OrderLine;
+  place: Place;
+  seller: string;
+  base: number;
+  amount: number;
+  at: number;
+  day: string;
+};
+
+function clampGroup(rows: Draft[], cap: number): void {
+  if (cap <= 0) return;
+  const sum = rows.reduce((s, r) => s + r.amount, 0);
+  let over = sum - cap;
+  if (over <= 0) return;
+  for (let i = rows.length - 1; i >= 0 && over > 0; i--) {
+    const row = rows[i]!;
+    const cut = Math.min(row.amount, over);
+    row.amount -= cut;
+    over -= cut;
+  }
+}
+
 export function shareLinesForOrders(opts: {
   orders: Order[];
   config: RevenueShareConfig | null | undefined;
   tables?: Array<ShareTableRef | Table>;
   sections?: Array<ShareSectionRef | FloorSection>;
   menuItems?: MenuItem[];
+  settings?: RestaurantSettings;
   from?: number;
   to?: number;
   toInclusive?: boolean;
   timeZone?: string;
+  merchants?: Record<string, boolean>;
 }): RevenueShareLine[] {
   const config = parseRevenueShare(opts.config);
   if (!config.rules.length) return [];
   const tables = (opts.tables ?? []) as ShareTableRef[];
   const sections = (opts.sections ?? []) as ShareSectionRef[];
-  const ordered = [...config.rules].sort(
-    (a, b) => a.effectiveOn.localeCompare(b.effectiveOn) || a.id.localeCompare(b.id),
+  const ordered = [...config.rules].sort((a, b) => a.priority - b.priority || a.id.localeCompare(b.id));
+  const orders = [...opts.orders].sort(
+    (a, b) => (a.closedAt ?? a.createdAt) - (b.closedAt ?? b.createdAt) || String(a.id).localeCompare(String(b.id)),
   );
-  const out: RevenueShareLine[] = [];
-  for (const order of opts.orders) {
+  const drafts: Draft[] = [];
+  for (const order of orders) {
     if (order.status !== "closed") continue;
     const at = order.closedAt ?? order.createdAt;
     if (opts.from != null && at < opts.from) continue;
     if (opts.to != null && (opts.toInclusive ? at > opts.to : at >= opts.to)) continue;
     const ymd = venueYmd(at, opts.timeZone);
     const place = placeOf(order, tables, sections);
-    const tips = cardTipByLine(order, config.includeCcTips);
+    const tips = cardTipByLine(order);
+    const matched: Draft[] = [];
     for (const line of order.lines ?? []) {
-      if (!isDrinkLine(line, opts.menuItems) || line.comped) continue;
-      const merch = lineCashCents(line);
-      const drinkNet = merch + (tips.get(line.id) ?? 0);
-      if (drinkNet <= 0) continue;
-      const entityId = sellingEntityId(line);
-      const rule = ordered.find((r) => ruleApplies(r, ymd, entityId, place));
-      if (!rule) continue;
-      const amountCents = Math.round((drinkNet * rule.percent) / 100);
-      if (amountCents <= 0) continue;
-      out.push({
-        id: `rs_${order.id}_${line.id}_${rule.id}`,
-        ruleId: rule.id,
-        checkId: order.id,
-        checkNumber: String(order.number ?? ""),
-        lineId: line.id,
-        fromEntityId: rule.fromEntityId,
-        toEntityId: rule.toEntityId,
-        amountCents,
-        drinkNetCents: drinkNet,
-        percent: rule.percent,
-        tableId: place.tableId,
-        tableLabel: place.tableLabel,
-        sectionId: place.sectionId,
-        sectionName: place.sectionName,
-        closedAt: at,
-      });
+      let claimed = false;
+      for (const rule of ordered) {
+        if (!ruleMatches(rule, order, line, place, ymd, at, opts.menuItems, opts.timeZone)) continue;
+        if (claimed && !rule.allowStack) continue;
+        const base = lineBaseCents(line, rule, order, opts.settings, tips);
+        if (base <= 0 && rule.flatPer === "none") continue;
+        const percentAmount = base > 0 && rule.percent > 0 ? Math.round((base * rule.percent) / 100) : 0;
+        matched.push({
+          rule,
+          order,
+          line,
+          place,
+          seller: sellingEntityId(line),
+          base,
+          amount: percentAmount,
+          at,
+          day: ymd,
+        });
+        claimed = true;
+      }
     }
+    const byRule = new Map<string, Draft[]>();
+    for (const row of matched) {
+      const list = byRule.get(row.rule.id) ?? [];
+      list.push(row);
+      byRule.set(row.rule.id, list);
+    }
+    for (const rows of byRule.values()) {
+      const rule = rows[0]!.rule;
+      if (rule.flatPer !== "none" && rule.flatCents > 0 && rows.length) {
+        const flat = rule.flatPer === "cover" ? rule.flatCents * Math.max(1, order.guestCount || 1) : rule.flatCents;
+        rows[0]!.amount += flat;
+      }
+      if (rule.capPer === "check" && rule.capCents > 0) clampGroup(rows, rule.capCents);
+      drafts.push(...rows);
+    }
+  }
+  const dayUsed = new Map<string, number>();
+  for (const row of drafts) {
+    if (row.rule.capPer === "day" && row.rule.capCents > 0) {
+      const key = `${row.rule.id}:${row.day}`;
+      const used = dayUsed.get(key) ?? 0;
+      const room = Math.max(0, row.rule.capCents - used);
+      row.amount = Math.min(row.amount, room);
+      dayUsed.set(key, used + row.amount);
+    }
+  }
+  const out: RevenueShareLine[] = [];
+  for (const row of drafts) {
+    if (row.amount <= 0) continue;
+    out.push({
+      id: `rs_${row.order.id}_${row.line.id}_${row.rule.id}`,
+      ruleId: row.rule.id,
+      checkId: row.order.id,
+      checkNumber: String(row.order.number ?? ""),
+      lineId: row.line.id,
+      fromEntityId: row.seller,
+      toEntityId: row.rule.toEntityId,
+      amountCents: row.amount,
+      drinkNetCents: row.base,
+      percent: row.rule.percent,
+      basis: row.rule.basis,
+      day: row.day,
+      payout: row.rule.payout,
+      tableId: row.place.tableId,
+      tableLabel: row.place.tableLabel,
+      sectionId: row.place.sectionId,
+      sectionName: row.place.sectionName,
+      closedAt: row.at,
+    });
   }
   return out;
 }
@@ -441,17 +774,21 @@ export function shareLinesForOrders(opts: {
 export function shareTransfers(
   lines: RevenueShareLine[],
   mode: RevenueShareTransferMode,
+  merchants: Record<string, boolean> = {},
 ): RevenueShareTransfer[] {
   const map = new Map<string, RevenueShareTransfer>();
-  const label = transferInstruction(mode);
   for (const line of lines) {
-    const key = `${line.fromEntityId}\u2192${line.toEntityId}`;
+    const payout = line.payout || mode;
+    const ready = Boolean(merchants[line.fromEntityId] && merchants[line.toEntityId]);
+    const plan = payoutPlan(payout, ready);
+    const key = `${line.fromEntityId}\u2192${line.toEntityId}:${payout}:${plan.finixReady}`;
     const cur = map.get(key) ?? {
       fromEntityId: line.fromEntityId,
       toEntityId: line.toEntityId,
       amountCents: 0,
-      mode,
-      label,
+      mode: payout,
+      finixReady: plan.finixReady,
+      label: plan.label,
     };
     cur.amountCents += line.amountCents;
     map.set(key, cur);
@@ -476,31 +813,55 @@ export function shareByEntity(lines: RevenueShareLine[], entityIds: string[]): E
   }));
 }
 
+export function shareByRuleDay(lines: RevenueShareLine[]): ShareRuleDay[] {
+  const map = new Map<string, ShareRuleDay>();
+  for (const line of lines) {
+    const key = `${line.ruleId}|${line.day}|${line.fromEntityId}|${line.toEntityId}`;
+    const cur = map.get(key) ?? {
+      ruleId: line.ruleId,
+      day: line.day,
+      fromEntityId: line.fromEntityId,
+      toEntityId: line.toEntityId,
+      amountCents: 0,
+      lineCount: 0,
+    };
+    cur.amountCents += line.amountCents;
+    cur.lineCount += 1;
+    map.set(key, cur);
+  }
+  return [...map.values()].sort(
+    (a, b) => a.day.localeCompare(b.day) || a.ruleId.localeCompare(b.ruleId),
+  );
+}
+
 export function revenueShareSnapshot(opts: {
   orders: Order[];
   config: RevenueShareConfig | null | undefined;
   tables?: Array<ShareTableRef | Table>;
   sections?: Array<ShareSectionRef | FloorSection>;
   menuItems?: MenuItem[];
+  settings?: RestaurantSettings;
   entityIds?: string[];
   from?: number;
   to?: number;
   toInclusive?: boolean;
   timeZone?: string;
+  merchants?: Record<string, boolean>;
 }): RevenueShareSnapshot {
   const config = parseRevenueShare(opts.config);
   const lines = shareLinesForOrders({ ...opts, config });
   return {
     lines,
-    transfers: shareTransfers(lines, config.transferMode),
+    transfers: shareTransfers(lines, config.transferMode, opts.merchants),
     byEntity: shareByEntity(lines, opts.entityIds ?? []),
+    byRuleDay: shareByRuleDay(lines),
     includeCcTips: config.includeCcTips,
     laborUsesShareIncome: config.laborUsesShareIncome,
     transferMode: config.transferMode,
   };
 }
 
-/** Food-side labor sales. The paying entity is unchanged even when the flag is on. */
+/** Receiving entity only. The paying entity’s own item sales stay put. */
 export function laborSalesIncludingShare(opts: {
   ownSalesCents: number;
   entityId: string;

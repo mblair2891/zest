@@ -6,6 +6,18 @@ import type { GuideUpdate } from "@/lib/guide/types";
  */
 export const WHATS_NEW_ENTRIES: GuideUpdate[] = [
   {
+    id: "upd_2026_10_161_share_rules",
+    date: "2026-09-24",
+    title: "Custom revenue share rules",
+    summary: "Each location rule names who pays, what sales, and where it applies.",
+    body: "Revenue share is no longer a single drink percent. Location settings → Revenue share rules. A rule can use drink sales, food sales, all items, menu groups, or selected items, with a percent and/or a flat per check or per cover. Tax, card tips, and card markup stay off unless that rule turns them on. Sections, tables, service style, hours, weekdays, and ticket source filter together. The lower priority number matches first. Allow stack is off, so the same dollar is not paid twice. Settle lists the journal by rule, by day, and by entity. Payout is a book entry, a Finix internal transfer when both merchants exist, or both. The guest check and the card split do not change. A selling entity can view inbound and outbound rules and cannot edit the rate.",
+    roles: ["owner_manager", "host_operator", "vendor_operator"],
+    surfaces: ["reports", "settings"],
+    audience: "all",
+    topicId: "revenue-share",
+    tags: ["settlement", "labor"],
+  },
+  {
     id: "upd_2026_10_160_drink_share",
     date: "2026-09-24",
     title: "Drink revenue share",

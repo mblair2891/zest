@@ -215,7 +215,8 @@ test("settlement report shows the $6 share and does not change the card split", 
     { tables, sections },
   );
   assert.equal(finix.revenueShare?.transferMode, "finix_split");
-  assert.match(finix.revenueShare?.transfers[0]?.label ?? "", /Finix split/);
+  assert.match(finix.revenueShare?.transfers[0]?.label ?? "", /Finix internal transfer/);
+  assert.equal(finix.revenueShare?.byRuleDay[0]?.amountCents, 600);
   const ledger = entriesForPeriodClose({
     ids: { orgId: "org", locationId: "loc" },
     period: shared,
@@ -276,10 +277,30 @@ test("comps and voids are not shared", () => {
   assert.equal(linesFor([comped, voided]).length, 0);
 });
 
-test("overlapping rules are refused; disjoint sections are allowed", () => {
-  const venue: RevenueShareRule = { ...diningRule, id: "rule_venue", scope: "venue", sectionIds: [] };
-  const overlap = validateRevenueShareRules([diningRule, venue], tables, sections);
-  assert.equal(overlap.ok, false);
+test("first match does not double-pay; stack does; disjoint sections stay separate", () => {
+  const venue: RevenueShareRule = {
+    ...diningRule,
+    id: "rule_venue",
+    scope: "venue",
+    sectionIds: [],
+    priority: 1,
+    percent: 10,
+  };
+  const later = { ...diningRule, priority: 2, allowStack: false };
+  const once = linesFor([dining], { ...config, rules: [venue, later] });
+  assert.equal(once.length, 1);
+  assert.equal(once[0]?.amountCents, 400);
+  assert.equal(once[0]?.ruleId, "rule_venue");
+
+  const stacked = linesFor([dining], {
+    ...config,
+    rules: [venue, { ...later, allowStack: true }],
+  });
+  assert.equal(stacked.length, 2);
+  assert.equal(
+    stacked.reduce((s, l) => s + l.amountCents, 0),
+    400 + 600,
+  );
 
   const barSection: RevenueShareRule = {
     ...diningRule,
@@ -287,9 +308,7 @@ test("overlapping rules are refused; disjoint sections are allowed", () => {
     scope: "sections",
     sectionIds: ["sec_bar"],
   };
-  const ok = validateRevenueShareRules([diningRule, barSection], tables, sections);
-  assert.equal(ok.ok, true);
-
+  assert.equal(validateRevenueShareRules([diningRule, barSection], tables, sections).ok, true);
   const barTable = check({
     id: "chk_rail",
     tableId: "stool1",
@@ -298,6 +317,7 @@ test("overlapping rules are refused; disjoint sections are allowed", () => {
   const both = linesFor([dining, barTable], { ...config, rules: [diningRule, barSection] });
   assert.equal(both.length, 1);
   assert.equal(both[0]?.checkId, "chk_dining");
+  assert.equal(validateRevenueShareRules([{ ...diningRule, toEntityId: "bar" }]).ok, false);
 });
 
 test("labor uses share income only on the receiving entity, and only when on", () => {
@@ -329,6 +349,80 @@ test("labor uses share income only on the receiving entity, and only when on", (
     }),
     4000,
   );
+});
+
+test("dining drinks share to food, late food shares to bar, bar tab ignores the dining rule", () => {
+  const ruleA: RevenueShareRule = {
+    ...diningRule,
+    id: "rule_a",
+    priority: 1,
+    fromEntityId: "bar",
+    toEntityId: "food",
+    basis: "drinks",
+    percent: 15,
+    sectionIds: ["sec_dining"],
+  };
+  const ruleB: RevenueShareRule = {
+    ...diningRule,
+    id: "rule_b",
+    priority: 2,
+    fromEntityId: "food",
+    toEntityId: "bar",
+    basis: "food",
+    percent: 5,
+    sectionIds: [],
+    scope: "venue",
+    hoursStart: "22:00",
+    hoursEnd: "",
+  };
+  const cocktail = check({
+    id: "chk_cocktail",
+    number: "T12-02",
+    tableId: "t12",
+    lines: [drink({ id: "ln_cocktail", unitPriceCents: 4000 })],
+  });
+  const lateCocktail = check({
+    id: "chk_late_cocktail",
+    tableId: "t12",
+    closedAt: Date.parse("2026-09-24T22:30:00Z"),
+    lines: [drink({ id: "ln_late_cocktail", unitPriceCents: 4000 })],
+  });
+  const nachos = check({
+    id: "chk_nachos",
+    number: "T12-03",
+    tableId: "t12",
+    closedAt: Date.parse("2026-09-24T22:30:00Z"),
+    lines: [
+      drink({
+        id: "ln_nachos",
+        name: "Nachos",
+        menuItemId: "nachos",
+        vendorId: "food",
+        entityId: "food",
+        unitPriceCents: 2000,
+        course: "entree",
+        station: "kitchen",
+      }),
+    ],
+  });
+  const tab = check({
+    id: "chk_tab",
+    number: "BAR-09",
+    type: "bar_tab",
+    tableId: undefined,
+    closedAt: Date.parse("2026-09-24T23:00:00Z"),
+    lines: [drink({ id: "ln_tab", unitPriceCents: 4000 })],
+  });
+  const lines = linesFor([cocktail, lateCocktail, nachos, tab], { ...config, rules: [ruleA, ruleB] });
+  const cocktailLines = lines.filter((l) => l.checkId === "chk_cocktail" || l.checkId === "chk_late_cocktail");
+  assert.equal(cocktailLines.length, 2);
+  assert.ok(cocktailLines.every((l) => l.toEntityId === "food" && l.amountCents === 600 && l.ruleId === "rule_a"));
+  const nachoLine = lines.find((l) => l.checkId === "chk_nachos");
+  assert.equal(nachoLine?.toEntityId, "bar");
+  assert.equal(nachoLine?.fromEntityId, "food");
+  assert.equal(nachoLine?.amountCents, 100);
+  assert.equal(nachoLine?.ruleId, "rule_b");
+  assert.equal(lines.filter((l) => l.checkId === "chk_tab").length, 0);
 });
 
 test("a selling entity can see rules that pay them and cannot edit the cut", () => {

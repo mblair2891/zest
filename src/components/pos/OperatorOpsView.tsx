@@ -7,6 +7,7 @@ import { usePosStore } from "@/lib/pos/store";
 import { vendorSubtotalOnOrder } from "@/lib/pos/settlement";
 import {
   parseRevenueShare,
+  ruleSummary,
   rulesVisibleToEntity,
   shareByEntity,
   shareLinesForOrders,
@@ -211,27 +212,22 @@ export function OperatorOpsView({
           <Tile label="Checks with your items" value={String(stats.checks)} />
           <Tile label="Open ODS tickets" value={String(stats.openTickets)} />
           <Tile label="Staff on this stall" value={String(stats.staff.length)} />
-          <Tile label="Drink share income" value={formatCurrency(stats.pnl?.drinkShareIncomeCents ?? 0)} />
-          <Tile label="Drink share expense" value={formatCurrency(stats.pnl?.drinkShareExpenseCents ?? 0)} />
+          <Tile label="Share income" value={formatCurrency(stats.pnl?.drinkShareIncomeCents ?? 0)} />
+          <Tile label="Share expense" value={formatCurrency(stats.pnl?.drinkShareExpenseCents ?? 0)} />
         </div>
         <div className="rounded-2xl border border-border bg-surface p-4">
           <h4 className="mb-1 text-sm font-semibold">Revenue share</h4>
           <p className="mb-2 text-xs text-muted-foreground">
-            View only. Location main contact sets the percent. This does not change the guest check or the card split.
+            View only. Location main contact sets the rate. This does not change the guest check or the card split.
           </p>
           {stats.rules.length === 0 ? (
-            <p className="text-sm text-muted-foreground">No rules pay this entity or are paid by it.</p>
+            <p className="text-sm text-muted-foreground">No inbound or outbound rules for this entity.</p>
           ) : (
             <ul className="space-y-1 text-sm">
               {stats.rules.map((rule) => (
                 <li key={rule.id}>
-                  {rule.percent}% of drink net · {rule.fromEntityId === vendor.id ? "You pay" : "You receive"} ·{" "}
-                  {rule.scope === "venue"
-                    ? "entire venue"
-                    : rule.scope === "sections"
-                      ? "selected sections"
-                      : "selected tables"}{" "}
-                  · from {rule.effectiveOn}
+                  {rule.fromEntityId === vendor.id ? "You pay" : "You receive"} ·{" "}
+                  {ruleSummary(rule, (id) => vendors.find((v) => v.id === id)?.name || id)}
                 </li>
               ))}
             </ul>
