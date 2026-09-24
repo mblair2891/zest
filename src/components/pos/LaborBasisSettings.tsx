@@ -12,6 +12,7 @@ import { parseLaborRules } from "@/lib/labor/rules";
 import { useOpsStore } from "@/lib/pos/ops-store";
 import { usePosStore } from "@/lib/pos/store";
 import { saveLocationSettingsFn } from "@/lib/access/api";
+import { canEditRevenueShare, parseRevenueShare } from "@/lib/pos/revenue-share";
 import { useSaasStore } from "@/lib/pos/saas-store";
 
 export function LaborBasisSettings({ write }: { write: boolean }) {
@@ -39,6 +40,8 @@ export function LaborBasisSettings({ write }: { write: boolean }) {
   const fallback = defaultRevenueBasis(settings.operatingModel);
 
   const sharedCents = Number(settings.sharedVenueCostsCents ?? 0) || 0;
+  const share = parseRevenueShare(settings.revenueShare);
+  const shareWrite = write && canEditRevenueShare(emp);
 
   return (
     <div className="space-y-3 rounded-2xl border border-border bg-surface p-4">
@@ -72,6 +75,32 @@ export function LaborBasisSettings({ write }: { write: boolean }) {
             }).catch(() => undefined);
           }}
         />
+      </label>
+      <label className="flex items-start gap-2 text-xs">
+        <input
+          type="checkbox"
+          className="mt-0.5"
+          disabled={!shareWrite}
+          checked={share.laborUsesShareIncome}
+          onChange={(e) => {
+            const revenueShare = { ...share, laborUsesShareIncome: e.target.checked };
+            usePosStore.setState({
+              settings: { ...usePosStore.getState().settings, revenueShare },
+            });
+            if (!orgId || !locId) return;
+            void saveLocationSettingsFn({
+              data: { orgId, locationId: locId, setup: { revenueShare } },
+            }).catch(() => undefined);
+          }}
+        />
+        <span>
+          Labor uses share income
+          <span className="mt-0.5 block text-[11px] text-muted-foreground">
+            Off by default. When on, only the entity that receives drink share adds
+            that income to labor sales. The entity that pays the share stays on its
+            own item sales.
+          </span>
+        </span>
       </label>
       <ul className="space-y-3">
         {entities.map((ent) => {

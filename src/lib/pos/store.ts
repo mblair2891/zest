@@ -4575,6 +4575,11 @@ const usePosStoreRaw = create<PosStore>()(persist((set, get) => {
 			get().getCurrentEmployee()?.name ?? "System",
 			get().chargebacks ?? [],
 			get().settings,
+			{
+				tables: get().tables,
+				sections: get().floorSections,
+				menuItems: get().menuItems,
+			},
 		);
 	},
 	fileChargeback: (orderId) => {

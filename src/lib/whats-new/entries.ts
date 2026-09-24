@@ -6,6 +6,18 @@ import type { GuideUpdate } from "@/lib/guide/types";
  */
 export const WHATS_NEW_ENTRIES: GuideUpdate[] = [
   {
+    id: "upd_2026_10_160_drink_share",
+    date: "2026-09-24",
+    title: "Drink revenue share",
+    summary: "A percent of drink net can move from the bar entity to the food entity.",
+    body: "Location settings → Revenue share rules, on a peer venue or a hosted hall. A rule names who pays, who receives, the percent of drink net after comps and voids, and whether it covers the whole venue, selected sections, or selected tables. A dining rule does not share a bar tab that has no dining table. Each qualifying drink writes a settlement line. The period can carry a Finix split instruction or a book entry. The guest check, tax, and the card split stay with whoever sold the item. Food P&L shows drink share income. Bar P&L shows drink share expense. Labor uses share income stays off unless you turn it on, and then only the receiving entity’s labor sales include it. A selling entity can view rules that pay them and cannot raise the percent.",
+    roles: ["owner_manager", "host_operator", "vendor_operator"],
+    surfaces: ["reports", "settings"],
+    audience: "all",
+    topicId: "revenue-share",
+    tags: ["settlement", "labor"],
+  },
+  {
     id: "upd_2026_10_159_bar_slab",
     date: "2026-09-23",
     title: "Bar top is a hollow slab",

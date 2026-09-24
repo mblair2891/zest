@@ -76,6 +76,7 @@ import { LossPreventionSettings } from "./LossPreventionSettings";
 import { OpsJobsSettings } from "./OpsJobsSettings";
 import { StaffingRecsSettings } from "./StaffingRecsSettings";
 import { LaborBasisSettings } from "./LaborBasisSettings";
+import { RevenueShareSettings } from "./RevenueShareSettings";
 import { useOpsStore } from "@/lib/pos/ops-store";
 import { parseLaborRules } from "@/lib/labor/rules";
 import { saveFrontSettingsFn } from "@/lib/front/api";
@@ -1077,6 +1078,7 @@ export function SettingsView() {
       </Pack>
 
       <Pack id="staffing" packs={packs}>
+        <RevenueShareSettings write={write} />
         <LaborBasisSettings write={write} />
         <StaffingRecsSettings
           cfg={parseLaborRules(labor).staffingRecs}

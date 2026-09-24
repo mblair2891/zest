@@ -1,18 +1,22 @@
 import type {
   Chargeback,
   ChargebackAllocation,
+  FloorSection,
+  MenuItem,
   Order,
   Payment,
   SettlementConfig,
   SettlementPeriod,
+  RestaurantSettings,
+  Table,
   Vendor,
   VendorPeriodRow,
 } from "./types";
 import { lineTotal, computeTotals, policyForTender } from "./calculations";
 import { SETTINGS } from "./seed";
 import { CHARGEBACK_FEE_CENTS } from "@/lib/platform/brand";
-import type { RestaurantSettings } from "./types";
 import type { CashDiscountPolicy } from "./cash-discount";
+import { revenueShareSnapshot, type ShareSectionRef, type ShareTableRef } from "./revenue-share";
 
 export { CHARGEBACK_FEE_CENTS };
 
@@ -216,6 +220,12 @@ export function allocateChargebackFee(
   });
 }
 
+export type ShareBuildContext = {
+  tables?: Array<ShareTableRef | Table>;
+  sections?: Array<ShareSectionRef | FloorSection>;
+  menuItems?: MenuItem[];
+};
+
 export function buildPeriodSettlement(
   config: SettlementConfig,
   vendors: Vendor[],
@@ -225,6 +235,7 @@ export function buildPeriodSettlement(
   closedBy: string,
   chargebacks: Chargeback[] = [],
   settings: RestaurantSettings = SETTINGS,
+  shareCtx: ShareBuildContext = {},
 ): SettlementPeriod {
   const aggs = aggregateVendorSales(orders, vendors, periodStart, periodEnd, settings);
   let guestCardPaidCents = 0;
@@ -317,6 +328,18 @@ export function buildPeriodSettlement(
     chargebackFeesTotalCents: cbTotal,
     guestCardPaidCents,
     rows,
+    revenueShare: revenueShareSnapshot({
+      orders,
+      config: settings.revenueShare,
+      tables: shareCtx.tables,
+      sections: shareCtx.sections,
+      menuItems: shareCtx.menuItems,
+      entityIds: vendors.map((v) => v.id),
+      from: periodStart,
+      to: periodEnd,
+      toInclusive: true,
+      timeZone: settings.timezone,
+    }),
     status: "closed",
   };
 }

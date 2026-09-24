@@ -1032,6 +1032,12 @@ function ReportBody({ id, m }: { id: ReportId; m: ReturnType<typeof metricsFromP
             <span>{o.name}</span>
             <span className="tabular">
               {formatCurrency(o.cents)} · {o.tickets} tickets
+              {(o.drinkShareIncomeCents ?? 0) > 0
+                ? ` · drink share income ${formatCurrency(o.drinkShareIncomeCents ?? 0)}`
+                : ""}
+              {(o.drinkShareExpenseCents ?? 0) > 0
+                ? ` · drink share expense ${formatCurrency(o.drinkShareExpenseCents ?? 0)}`
+                : ""}
             </span>
           </li>
         ))}
@@ -1061,6 +1067,12 @@ function ReportBody({ id, m }: { id: ReportId; m: ReturnType<typeof metricsFromP
                 {formatCurrency(o.cardShareCents ?? o.cents)} ticket share
                 {o.payoutCents != null
                   ? ` · ${formatCurrency(o.payoutCents)} Quantum payout`
+                  : ""}
+                {(o.drinkShareIncomeCents ?? 0) > 0
+                  ? ` · drink share income ${formatCurrency(o.drinkShareIncomeCents ?? 0)}`
+                  : ""}
+                {(o.drinkShareExpenseCents ?? 0) > 0
+                  ? ` · drink share expense ${formatCurrency(o.drinkShareExpenseCents ?? 0)}`
                   : ""}
               </span>
             </li>

@@ -5,6 +5,12 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { usePosStore } from "@/lib/pos/store";
 import { vendorSubtotalOnOrder } from "@/lib/pos/settlement";
+import {
+  parseRevenueShare,
+  rulesVisibleToEntity,
+  shareByEntity,
+  shareLinesForOrders,
+} from "@/lib/pos/revenue-share";
 import { formatCurrency, formatDateTime } from "@/lib/utils";
 import { canEmployee } from "@/lib/access/permissions";
 import type { EmployeeRole } from "@/lib/pos/types";
@@ -38,6 +44,8 @@ export function OperatorOpsView({
   const emp = usePosStore((s) => s.employees.find((e) => e.id === s.currentEmployeeId));
   const locId = usePosStore((s) => s.tenantLocationId);
   const settings = usePosStore((s) => s.settings);
+  const tables = usePosStore((s) => s.tables);
+  const sections = usePosStore((s) => s.floorSections);
   const updateSettings = usePosStore((s) => s.updateSettings);
   const lockedId = emp?.role === "vendor_operator" ? emp.operatorId : forcedId;
   const isGuest = emp?.role === "vendor_operator";
@@ -71,8 +79,19 @@ export function OperatorOpsView({
     const lastPeriod = periods.find((p) => p.rows.some((r) => r.vendorId === vendor.id));
     const row = lastPeriod?.rows.find((r) => r.vendorId === vendor.id);
     const staff = employees.filter((e) => e.active && e.operatorId === vendor.id);
-    return { gross, checks, openTickets, items, lastPeriod, row, staff };
-  }, [vendor, orders, tickets, menuItems, periods, employees]);
+    const share = parseRevenueShare(settings.revenueShare);
+    const lines = shareLinesForOrders({
+      orders: closed,
+      config: share,
+      tables,
+      sections,
+      menuItems,
+      timeZone: settings.timezone,
+    });
+    const pnl = shareByEntity(lines, [vendor.id]).find((row) => row.entityId === vendor.id);
+    const rules = rulesVisibleToEntity(share.rules, vendor.id);
+    return { gross, checks, openTickets, items, lastPeriod, row, staff, pnl, rules };
+  }, [vendor, orders, tickets, menuItems, periods, employees, settings, tables, sections]);
 
   const logoWrite = Boolean(isGuest && vendor && emp?.operatorId === vendor.id);
 
@@ -192,6 +211,31 @@ export function OperatorOpsView({
           <Tile label="Checks with your items" value={String(stats.checks)} />
           <Tile label="Open ODS tickets" value={String(stats.openTickets)} />
           <Tile label="Staff on this stall" value={String(stats.staff.length)} />
+          <Tile label="Drink share income" value={formatCurrency(stats.pnl?.drinkShareIncomeCents ?? 0)} />
+          <Tile label="Drink share expense" value={formatCurrency(stats.pnl?.drinkShareExpenseCents ?? 0)} />
+        </div>
+        <div className="rounded-2xl border border-border bg-surface p-4">
+          <h4 className="mb-1 text-sm font-semibold">Revenue share</h4>
+          <p className="mb-2 text-xs text-muted-foreground">
+            View only. Location main contact sets the percent. This does not change the guest check or the card split.
+          </p>
+          {stats.rules.length === 0 ? (
+            <p className="text-sm text-muted-foreground">No rules pay this entity or are paid by it.</p>
+          ) : (
+            <ul className="space-y-1 text-sm">
+              {stats.rules.map((rule) => (
+                <li key={rule.id}>
+                  {rule.percent}% of drink net · {rule.fromEntityId === vendor.id ? "You pay" : "You receive"} ·{" "}
+                  {rule.scope === "venue"
+                    ? "entire venue"
+                    : rule.scope === "sections"
+                      ? "selected sections"
+                      : "selected tables"}{" "}
+                  · from {rule.effectiveOn}
+                </li>
+              ))}
+            </ul>
+          )}
         </div>
 
         {stats.row && stats.lastPeriod && (

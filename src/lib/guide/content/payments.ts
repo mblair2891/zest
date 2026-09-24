@@ -241,9 +241,58 @@ export const PAYMENT_TOPICS: GuideTopic[] = [
       ),
       callout(
         "Capture vs period",
-        "Card: one guest authorization; Finix pays each approved merchant their share immediately. Period close is the house book for cash, host cut, fees, and chargebacks — not a second stall checkout. Connecting leftover ACH is out of scope for this guide.",
+        "Card: one guest authorization; Finix pays each approved merchant their share immediately. Period close is the house book for cash, host cut, fees, chargebacks, and any drink revenue share — not a second stall checkout. Connecting leftover ACH is out of scope for this guide.",
       ),
-      related("host-capture", "chargebacks", "system-ledger", "cash-handling", "single-vs-multi"),
+      p(
+        "Drink revenue share is a second journal on this period. It does not change what the guest pays, tax, or which merchant the card split follows. See Revenue share.",
+      ),
+      related("host-capture", "chargebacks", "system-ledger", "revenue-share", "cash-handling", "single-vs-multi"),
+    ],
+  }),
+  topic({
+    id: "revenue-share",
+    chapterId: "payments",
+    title: "Drink revenue share",
+    summary:
+      "A percent of drink net can move from the bar entity to the food entity. The guest check does not change.",
+    roles: ["owner_manager", "host_operator", "vendor_operator"],
+    keywords: [
+      "revenue share",
+      "drink share",
+      "bar",
+      "food",
+      "section",
+      "settlement",
+      "peer",
+      "hosted",
+    ],
+    openView: "settings",
+    blocks: [
+      why(
+        "On a shared floor the bar sells the drink and the food entity may be owed a cut of that pour when the guest is sitting in the dining room. That cut is between the two entities.",
+      ),
+      p(
+        "Location settings → Staffing recs → Revenue share rules. Peer venues and hosted halls. A rule names the from entity (usually the bar), the to entity (usually food), a percent of drink net, a scope, and an effective date. Drink net is the item total after comps and voids. Card tips stay out unless Include card tips in drink net is on. Default is off.",
+      ),
+      ul(
+        "Scope is the whole venue, selected sections, or selected tables. A dining-section rule does not touch a bar tab that has no dining table.",
+        "More than one rule is allowed when they cannot share the same drink twice. Overlapping section, table, venue, and dates on the same from-entity are refused.",
+        "Each qualifying drink line writes a share line: amount, from, to, check, table or section. End of day and the pay period show it on Settle, with a transfer instruction.",
+        "Finix split instruction or Book entry. Book entry means they settle that amount offline. Neither one changes the guest card. The card still follows who sold the item.",
+        "Food P&L shows drink share income. Bar P&L shows drink share expense.",
+        "Labor uses share income is off by default. When on, only the receiving entity adds that income to labor sales. The paying entity’s labor stays on its own item sales.",
+      ),
+      steps(
+        "Sign in as the location main contact or platform. Open Location settings → Staffing recs → Revenue share rules.",
+        "Add a rule. Example: from the bar entity, to the food entity, 15%, Dining section, effective today.",
+        "Save. A selling entity can open their own ops and read rules that pay them. They cannot change the percent.",
+        "Close a dining check with drinks. Settle shows the share. A bar-only tab shows no share from a dining rule.",
+        "Pick Book entry or Finix split instruction. Close the period. The instruction is on the period. The guest receipt is unchanged.",
+      ),
+      warn(
+        "Do not put this percent on the guest check, in tax, or in the Quantum Payments split. It is a house journal between entities.",
+      ),
+      related("settlement", "location-settings", "labor-basis", "host-capture", "system-ledger"),
     ],
   }),
   topic({
@@ -266,6 +315,7 @@ export const PAYMENT_TOPICS: GuideTopic[] = [
         "Card pay → one guest authorization; Finix split to each brand’s Quantum Payments merchant (guest still sees one check).",
         "Cash pay → capture plus an optional cash_discount_adjustment when discount is on.",
         "Check close → allocation to each operator by merchandise share.",
+        "Drink revenue share → revenue_share lines between entities (expense on the payer, income on the receiver). Not a guest tender.",
         "Period close → processor_fee, host_fee, sandbox payout (not live bank).",
         "File dispute → chargeback impact on host plus $35 chargeback_fee split by merchandise %.",
       ),
@@ -277,7 +327,7 @@ export const PAYMENT_TOPICS: GuideTopic[] = [
       warn(
         "This is a first-party ledger. It is not QuickBooks and not a live ACH rail. Period payouts are addressed on the book; live bank transfers wait for approved Quantum applications. See the Summex white paper.",
       ),
-      related("settlement", "chargebacks", "quantum-payments", "white-paper"),
+      related("settlement", "revenue-share", "chargebacks", "quantum-payments", "white-paper"),
     ],
   }),
   topic({
@@ -293,7 +343,7 @@ export const PAYMENT_TOPICS: GuideTopic[] = [
         "An owner considering Summex should read a product paper — not a stack spec. Processors and partners can share the same document.",
       ),
       p(
-        "Open White paper from the marketing header or footer (no login). Print from the browser for a PDF. Revision · 23 Sep 2026 matches Guide v2026.10.159. The bar top is a hollow slab at room scale, with each leg in feet and inches and a 24 in counter depth. Serverless food plus served drinks lets guests order food from the kiosk or table QR with a name and phone, and the kitchen texts them when every food item is bumped. Copy on the floor editor asks how many copies and places each new piece about one foot right and down, with the next free table number. The bar is a black stroke, and the editor shows clearances while a piece is selected. Fit room fills the workspace, and the tablet floor opens fitted to the display. Floor room and object sizes are feet and inches, and the live floor uses that scale. The floor workspace is white. Empty tables are hollow rings, and any other status fills with that color. Wall ends snap into a closed corner, and the live floor draws that join. Platform Home in the console top bar opens the dashboard. The live floor keeps published walls, doors, windows, and the bar slab as dark lines on the wood. Floor handles rotate with the piece, so a wall at 90° lengthens along its vertical ends. The floor editor selects a bar on its slab and stores each leg’s length. Floor editor Rotate 90° keeps that angle after Publish. Exit kiosk on the PIN pad asks for one manager PIN and leaves lock-task. Location profile save completes contact, address, and timezone together, and the floor editor publishes walls and the bar shape. A full-service demo publishes its dining room and bar rail, and the live floor draws that snapshot. Each selling entity uploads its menu as a draft, then publishes that entity’s items to the order pad. The live floor is a wood map. Exit kiosk leaves lock-task. The guest-check header is the building name in text. Location and entity logos are on the QR page and tablets. It is written for prospective subscribers: one guest check, floor, multi-entity, Android staff stations, venue payment-method toggles, 5% cash-discount processing story, plans from Get a price. Gift cards are not sold online. QR is on-premise. No CRM, pipeline, factory reset, or how to log in. Internal operations notes stay off the public site.",
+        "Open White paper from the marketing header or footer (no login). Print from the browser for a PDF. Revision · 24 Sep 2026 matches Guide v2026.10.160. A location can share a percent of drink net from one selling entity to another. The guest check, tax, and card split do not change. The bar top is a hollow slab at room scale, with each leg in feet and inches and a 24 in counter depth. Serverless food plus served drinks lets guests order food from the kiosk or table QR with a name and phone, and the kitchen texts them when every food item is bumped. Copy on the floor editor asks how many copies and places each new piece about one foot right and down, with the next free table number. The bar is a black stroke, and the editor shows clearances while a piece is selected. Fit room fills the workspace, and the tablet floor opens fitted to the display. Floor room and object sizes are feet and inches, and the live floor uses that scale. The floor workspace is white. Empty tables are hollow rings, and any other status fills with that color. Wall ends snap into a closed corner, and the live floor draws that join. Platform Home in the console top bar opens the dashboard. The live floor keeps published walls, doors, windows, and the bar slab as dark lines on the wood. Floor handles rotate with the piece, so a wall at 90° lengthens along its vertical ends. The floor editor selects a bar on its slab and stores each leg’s length. Floor editor Rotate 90° keeps that angle after Publish. Exit kiosk on the PIN pad asks for one manager PIN and leaves lock-task. Location profile save completes contact, address, and timezone together, and the floor editor publishes walls and the bar shape. A full-service demo publishes its dining room and bar rail, and the live floor draws that snapshot. Each selling entity uploads its menu as a draft, then publishes that entity’s items to the order pad. The live floor is a wood map. Exit kiosk leaves lock-task. The guest-check header is the building name in text. Location and entity logos are on the QR page and tablets. It is written for prospective subscribers: one guest check, floor, multi-entity, Android staff stations, venue payment-method toggles, 5% cash-discount processing story, plans from Get a price. Gift cards are not sold online. QR is on-premise. No CRM, pipeline, factory reset, or how to log in. Internal operations notes stay off the public site.",
       ),
       steps(
         "Open White paper from the marketing header (White paper). That page is the paper — not Get a price.",

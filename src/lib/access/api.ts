@@ -1034,6 +1034,7 @@ function publishSetupSlice(setup: LocationSetup) {
     sectionNames: setup.sectionNames,
     laborByEntity: setup.laborByEntity,
     sharedVenueCostsCents: setup.sharedVenueCostsCents,
+    revenueShare: setup.revenueShare,
     brandLogos: setup.brandLogos,
     combineRequiresManager: setup.combineRequiresManager,
   };

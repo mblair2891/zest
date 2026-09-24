@@ -114,6 +114,10 @@ export type LocationMetrics = {
       tickets: number;
       cardShareCents?: number;
       payoutCents?: number;
+      /** Drink share received from another entity. Not guest-check sales. */
+      drinkShareIncomeCents?: number;
+      /** Drink share paid to another entity. Not a guest-facing fee. */
+      drinkShareExpenseCents?: number;
     }[];
     hostCutCents: number;
     periodCount: number;

@@ -228,6 +228,11 @@ export interface RestaurantSettings {
   demoIsolated?: boolean;
   /** Optional monthly shared venue costs (rent, utilities) in cents. */
   sharedVenueCostsCents?: number;
+  /**
+   * Drink revenue share between selling entities. Second journal only.
+   * Does not change the guest check, tax, or the card split.
+   */
+  revenueShare?: import("./revenue-share").RevenueShareConfig;
   operatingModel?: "single" | "host_operators" | "peer_venue";
   /** Venue service style. Drives the PIN home on an order station. */
   serviceStyle?: "full_service" | "counter" | "hybrid" | "drive_through" | "serverless_food";
@@ -833,5 +838,9 @@ export interface SettlementPeriod {
   /** Guest card tenders this period — one authorization per check, not a sum of stall terminals. */
   guestCardPaidCents: number;
   rows: VendorPeriodRow[];
+  /**
+   * Drink share journal for this period. Not part of card payout or the guest check.
+   */
+  revenueShare?: import("./revenue-share").RevenueShareSnapshot;
   status: "open" | "closed" | "paid";
 }

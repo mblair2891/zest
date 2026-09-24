@@ -432,10 +432,16 @@ function PosAppInner({ entityId }: { entityId?: string }) {
                   laborByEntity: laborMap,
                 });
               }
-              if (setup.sharedVenueCostsCents != null) {
+              if (setup.sharedVenueCostsCents != null || setup.revenueShare != null) {
                 const st = usePosStore.getState();
                 usePosStore.setState({
-                  settings: { ...st.settings, sharedVenueCostsCents: setup.sharedVenueCostsCents },
+                  settings: {
+                    ...st.settings,
+                    ...(setup.sharedVenueCostsCents != null
+                      ? { sharedVenueCostsCents: setup.sharedVenueCostsCents }
+                      : {}),
+                    ...(setup.revenueShare != null ? { revenueShare: setup.revenueShare } : {}),
+                  },
                 });
               }
               const pub = parseStationPublish(setup.stationPublish) ?? parseStationPublish(

@@ -29,6 +29,7 @@ export const LEDGER_TYPES = [
   "refund",
   "void",
   "allocation",
+  "revenue_share",
   "host_fee",
   "processor_fee",
   "payout",
@@ -348,6 +349,44 @@ export function entriesForPeriodClose(opts: {
         }),
       );
     }
+  }
+  for (const line of period.revenueShare?.lines ?? []) {
+    if (line.amountCents <= 0) continue;
+    const meta = {
+      periodId: period.id,
+      checkNumber: line.checkNumber,
+      sectionName: line.sectionName,
+      tableLabel: line.tableLabel,
+      percent: line.percent,
+      drinkNetCents: line.drinkNetCents,
+      kind: "drink_share",
+    };
+    out.push(
+      row(ids, {
+        id: `led_${line.id}_from`,
+        idempotencyKey: `share:${line.id}:from`,
+        at,
+        type: "revenue_share",
+        amountCents: -Math.abs(line.amountCents),
+        orderId: line.checkId,
+        operatorId: line.fromEntityId,
+        party: "operator",
+        meta: { ...meta, role: "expense", counterpartyId: line.toEntityId },
+      }),
+    );
+    out.push(
+      row(ids, {
+        id: `led_${line.id}_to`,
+        idempotencyKey: `share:${line.id}:to`,
+        at,
+        type: "revenue_share",
+        amountCents: Math.abs(line.amountCents),
+        orderId: line.checkId,
+        operatorId: line.toEntityId,
+        party: "operator",
+        meta: { ...meta, role: "income", counterpartyId: line.fromEntityId },
+      }),
+    );
   }
   return out;
 }

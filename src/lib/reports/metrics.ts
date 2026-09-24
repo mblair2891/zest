@@ -8,6 +8,7 @@ import { cashPolicyFromSettings } from "@/lib/pos/cash-discount";
 import type {
   Chargeback,
   Employee,
+  FloorSection,
   InventoryItem,
   KitchenTicket,
   MenuCategory,
@@ -16,12 +17,14 @@ import type {
   Reservation,
   RestaurantSettings,
   SettlementPeriod,
+  Table,
   Vendor,
   VenueEntityId,
   WaitlistEntry,
 } from "@/lib/pos/types";
 import type { ShiftState } from "@/lib/pos/pos-store";
 import type { LocationMetrics, RangeKey } from "./types";
+import { parseRevenueShare, shareLinesForOrders } from "@/lib/pos/revenue-share";
 
 export type MetricsInput = {
   locationId: string;
@@ -47,6 +50,8 @@ export type MetricsInput = {
   chargebacks: Chargeback[];
   settlementPeriods: SettlementPeriod[];
   shift: ShiftState;
+  tables?: Table[];
+  sections?: FloorSection[];
 };
 
 function rangeBounds(
@@ -247,6 +252,29 @@ export function buildLocationMetrics(input: MetricsInput): LocationMetrics {
   const withCost = costItems.filter((c) => c.costCents != null).length;
   const coverage = costItems.length ? withCost / costItems.length : 0;
 
+  const shareCfg = parseRevenueShare(settings.revenueShare);
+  const shareLines = shareLinesForOrders({
+    orders: inRange.filter((o) => o.status === "closed"),
+    config: shareCfg,
+    tables: input.tables,
+    sections: input.sections,
+    menuItems: input.menuItems,
+    timeZone: settings.timezone,
+  });
+  const shareIncome: Record<string, number> = {};
+  const shareExpense: Record<string, number> = {};
+  for (const line of shareLines) {
+    shareIncome[line.toEntityId] = (shareIncome[line.toEntityId] ?? 0) + line.amountCents;
+    shareExpense[line.fromEntityId] = (shareExpense[line.fromEntityId] ?? 0) + line.amountCents;
+    for (const id of [line.fromEntityId, line.toEntityId]) {
+      if (op && id !== op) continue;
+      if (!byOperator[id]) {
+        const v = input.vendors.find((x) => x.id === id);
+        byOperator[id] = { id, name: v?.name ?? id, cents: 0, tickets: 0 };
+      }
+    }
+  }
+
   const cbs = input.chargebacks.filter((c) => c.filedAt >= from && c.filedAt <= to);
   const lastPeriod = [...input.settlementPeriods].sort((a, b) => b.closedAt - a.closedAt)[0];
   const hostCutCents = lastPeriod?.rows.reduce((s, r) => s + (r.hostCutCents || 0), 0) ?? 0;
@@ -344,6 +372,8 @@ export function buildLocationMetrics(input: MetricsInput): LocationMetrics {
             ...o,
             cardShareCents: row?.cardSalesCents,
             payoutCents: row?.netElectronicPayoutCents,
+            drinkShareIncomeCents: shareIncome[o.id] ?? 0,
+            drinkShareExpenseCents: shareExpense[o.id] ?? 0,
           };
         }),
       hostCutCents,

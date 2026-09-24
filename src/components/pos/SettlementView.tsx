@@ -14,6 +14,7 @@ import { liabilityByIssuer } from "@/lib/pos/gift-issuer";
 import { processGiftTermFn } from "@/lib/gift/api";
 import { hydrateGift } from "@/lib/gift/sync";
 import { queueOperatorPayoutsFn } from "@/lib/payments/onboarding-api";
+import { RevenueShareReport } from "./RevenueShareSettings";
 
 export function SettlementView() {
   const setView = usePosStore((s) => s.setView);
@@ -31,11 +32,14 @@ export function SettlementView() {
   const write = canEmployee(emp, "settlement:write");
   const [flash, setFlash] = useState<string | null>(null);
   const orders = usePosStore((s) => s.orders);
+  const settings = usePosStore((s) => s.settings);
+  const tables = usePosStore((s) => s.tables);
+  const sections = usePosStore((s) => s.floorSections);
   const live = useMemo(
     () => preview(),
-    // orders/config/vendors change → recompute open period
+    // orders/config/vendors/share rules change → recompute open period
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [orders, config, vendors, preview],
+    [orders, config, vendors, settings.revenueShare, tables, sections, preview],
   );
 
   if (emp?.role === "vendor_operator") {
@@ -360,6 +364,10 @@ export function SettlementView() {
                 rows={live.rows}
               />
               <SettlementTable rows={live.rows} />
+              <RevenueShareReport
+                snapshot={live.revenueShare}
+                names={(id) => vendors.find((v) => v.id === id)?.name || id}
+              />
               <div className="mt-4 rounded-xl border border-border bg-bg p-3">
                 <h4 className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                   Cash distribution (count-out)
@@ -469,6 +477,10 @@ export function SettlementView() {
                   rows={p.rows}
                 />
                 <SettlementTable rows={p.rows} />
+                <RevenueShareReport
+                  snapshot={p.revenueShare}
+                  names={(id) => vendors.find((v) => v.id === id)?.name || id}
+                />
                 <p className="mt-2 text-xs text-muted-foreground">
                   Host ({p.hostName}): {formatCurrency(p.hostCutTotalCents)} ·
                   Card fees: {formatCurrency(p.cardFeesTotalCents)} · Chargebacks:{" "}

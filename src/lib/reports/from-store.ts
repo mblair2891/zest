@@ -52,5 +52,7 @@ export function metricsFromPosStore(opts: {
     chargebacks: s.chargebacks ?? [],
     settlementPeriods: s.settlementPeriods ?? [],
     shift: s.shift,
+    tables: s.tables,
+    sections: s.floorSections,
   });
 }

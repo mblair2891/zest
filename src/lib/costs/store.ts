@@ -6,6 +6,11 @@ import { usePosStore } from "@/lib/pos/store";
 import { useOpsStore } from "@/lib/pos/ops-store";
 import { parseLaborRules } from "@/lib/labor/rules";
 import { laborBasisLabel, salesForLaborBasis } from "@/lib/labor/revenue-basis";
+import {
+  laborSalesIncludingShare,
+  parseRevenueShare,
+  shareLinesForOrders,
+} from "@/lib/pos/revenue-share";
 import { recordDecision, daypartOf } from "@/lib/ops-ai/learn-store";
 import { canCost, costEntityScope } from "./permissions";
 import { suggestPoLines } from "./ordering";
@@ -1265,13 +1270,33 @@ export const useCostStore = create<CostState>()(
           entityId === HOST_SCOPE
             ? pos.settings.name || "Host"
             : pos.vendors.find((v) => v.id === entityId)?.name || entityId;
-        const salesCents = salesForLaborBasis({
-          orders: pos.orders.filter((o) => (o.closedAt ?? o.createdAt) >= from),
+        const windowOrders = pos.orders.filter((o) => (o.closedAt ?? o.createdAt) >= from);
+        const share = parseRevenueShare(pos.settings.revenueShare);
+        const shareLines = shareLinesForOrders({
+          orders: windowOrders,
+          config: share,
+          tables: pos.tables,
+          sections: pos.floorSections,
+          menuItems: pos.menuItems,
+          timeZone: pos.settings.timezone,
+        });
+        const ownSalesCents = salesForLaborBasis({
+          orders: windowOrders,
           entityId,
           basis: laborRules.revenueBasis,
           categoryIds: laborRules.revenueCategoryIds,
           menuItems: pos.menuItems,
         });
+        const salesCents = laborSalesIncludingShare({
+          ownSalesCents,
+          entityId,
+          lines: shareLines,
+          laborUsesShareIncome: share.laborUsesShareIncome,
+        });
+        const shareNote =
+          share.laborUsesShareIncome && shareLines.some((l) => l.toEntityId === entityId)
+            ? " Includes drink share income."
+            : "";
         const cogsCents = get()
           .ledger.filter((e) => e.at >= from)
           .reduce((s, e) => s + e.amountCents, 0);
@@ -1311,7 +1336,7 @@ export const useCostStore = create<CostState>()(
         const guided =
           `COGS ${cogsPct == null ? "n/a" : `${cogsPct}%`} on $${(salesCents / 100).toFixed(0)} sales. ` +
           `Posted spend $${(cogsCents / 100).toFixed(0)}. Open variance items: ${openExceptions}. ` +
-          `Labor ${laborPct == null ? "n/a (no punches)" : `${laborPct}%`} (${laborBasisLabel(entityName, laborRules.revenueBasis)}). ` +
+          `Labor ${laborPct == null ? "n/a (no punches)" : `${laborPct}%`} (${laborBasisLabel(entityName, laborRules.revenueBasis)}).${shareNote} ` +
           `Recommendations stay human-confirmed.`;
         const picture: CostPicture = {
           generatedAt: now,

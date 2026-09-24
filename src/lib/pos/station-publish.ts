@@ -16,6 +16,7 @@ import { parsePaymentMethods } from "./payment-methods";
 import { parseTaxRates } from "./tax-rates";
 import { parseStationUpdates } from "./station-updates";
 import { parseBrandLogoMap } from "@/lib/brand/logos";
+import { parseRevenueShare } from "@/lib/pos/revenue-share";
 
 export const STATION_PUBLISH_STATE_KEY = "summex-station-publish-state-v1";
 
@@ -46,6 +47,7 @@ export type StationPublishSetup = {
   sectionNames?: string[];
   laborByEntity?: object;
   sharedVenueCostsCents?: number;
+  revenueShare?: object;
 };
 
 export type StationPublishRecord = {
@@ -246,6 +248,9 @@ export function applyStationPublish(
     }
     if ("combineRequiresManager" in setup) {
       settings.combineRequiresManager = Boolean(setup.combineRequiresManager);
+    }
+    if (setup.revenueShare != null) {
+      settings.revenueShare = parseRevenueShare(setup.revenueShare);
     }
     if (opts?.locationName) settings.name = opts.locationName;
     patch.settings = settings;

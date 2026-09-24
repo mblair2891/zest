@@ -129,6 +129,8 @@ export type LocationSetup = {
   laborByEntity?: Record<string, import("@/lib/labor/rules").EntityLaborRules>;
   /** Optional monthly shared venue costs (rent, utilities). Off until allocated per entity. */
   sharedVenueCostsCents?: number;
+  /** Drink net shared from one selling entity to another. Guest check unchanged. */
+  revenueShare?: import("@/lib/pos/revenue-share").RevenueShareConfig;
   /** Last catalog push to paired station tablets. */
   stationPublish?: import("@/lib/pos/station-publish").StationPublishRecord;
   /** Increments on Publish, menu, devices, taxes, timezone, logo replace. Stations refetch snapshot. */

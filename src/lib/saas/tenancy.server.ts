@@ -38,6 +38,7 @@ import { parseJurisdiction, jurisdictionIsReady } from "@/lib/pos/jurisdiction";
 import { parseItem86 } from "@/lib/pos/item-86";
 import { parseLocationOperatingModel } from "./location-model";
 import { parseBrandLogoMap } from "@/lib/brand/logos";
+import { parseRevenueShare, validateRevenueShareRules } from "@/lib/pos/revenue-share";
 import { demoVenueIsolated } from "./tenant-users";
 
 type OrgRow = {
@@ -342,6 +343,7 @@ function parseSetup(raw: unknown): LocationSetup {
       o.sharedVenueCostsCents == null
         ? undefined
         : Math.max(0, Math.round(Number(o.sharedVenueCostsCents) || 0)),
+    revenueShare: o.revenueShare != null ? parseRevenueShare(o.revenueShare) : undefined,
     stationPublish: parseStationPublishRow(o.stationPublish),
     configVersion:
       o.configVersion == null || !Number.isFinite(Number(o.configVersion))
@@ -916,6 +918,13 @@ export async function updateLocationSetupForUser(
   }
   if (input.setup.laborByEntity) {
     next.laborByEntity = { ...(prev.laborByEntity ?? {}), ...input.setup.laborByEntity };
+  }
+  if (input.setup.revenueShare) {
+    const share = parseRevenueShare(input.setup.revenueShare);
+    const plan = parseFloorPlan(next.floorPlan);
+    const check = validateRevenueShareRules(share.rules, plan?.tables ?? [], plan?.sections ?? []);
+    if (!check.ok) throw new Error(check.error);
+    next.revenueShare = share;
   }
   const { lifecycleForcesSandbox, locationLifecycleStatus } = await import("@/lib/payments/mode");
   const life = locationLifecycleStatus(next, loc.lifecycle_status);

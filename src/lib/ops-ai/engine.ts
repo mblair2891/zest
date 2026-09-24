@@ -6,6 +6,11 @@ import {
   laborBasisLabel,
   salesForLaborBasis,
 } from "@/lib/labor/revenue-basis";
+import {
+  laborSalesIncludingShare,
+  parseRevenueShare,
+  shareLinesForOrders,
+} from "@/lib/pos/revenue-share";
 import { metricsFromPosStore } from "@/lib/reports/from-store";
 import { HOST_SCOPE } from "@/lib/access/entity-grants";
 import { isProspectDemo } from "@/lib/demo/session";
@@ -83,22 +88,54 @@ function captureStaffingSnap() {
     entityId === HOST_SCOPE
       ? s.settings.name || "Host"
       : s.vendors.find((v) => v.id === entityId)?.name || entityId;
-  const sales = salesForLaborBasis({
-    orders: s.orders,
-    entityId,
-    basis: rules.revenueBasis,
-    categoryIds: rules.revenueCategoryIds,
+  const share = parseRevenueShare(s.settings.revenueShare);
+  const shareBase = {
+    config: share,
+    tables: s.tables,
+    sections: s.floorSections,
     menuItems: s.menuItems,
-  });
-  const last30 = salesForLaborBasis({
+    timeZone: s.settings.timezone,
+  };
+  const allShare = shareLinesForOrders({ ...shareBase, orders: s.orders });
+  const recentFrom = Date.now() - 30 * 60_000;
+  const recentTo = Date.now();
+  const recentShare = shareLinesForOrders({
+    ...shareBase,
     orders: s.orders,
-    entityId,
-    basis: rules.revenueBasis,
-    categoryIds: rules.revenueCategoryIds,
-    menuItems: s.menuItems,
-    from: Date.now() - 30 * 60_000,
-    to: Date.now(),
+    from: recentFrom,
+    to: recentTo,
   });
+  const sales = laborSalesIncludingShare({
+    ownSalesCents: salesForLaborBasis({
+      orders: s.orders,
+      entityId,
+      basis: rules.revenueBasis,
+      categoryIds: rules.revenueCategoryIds,
+      menuItems: s.menuItems,
+    }),
+    entityId,
+    lines: allShare,
+    laborUsesShareIncome: share.laborUsesShareIncome,
+  });
+  const last30 = laborSalesIncludingShare({
+    ownSalesCents: salesForLaborBasis({
+      orders: s.orders,
+      entityId,
+      basis: rules.revenueBasis,
+      categoryIds: rules.revenueCategoryIds,
+      menuItems: s.menuItems,
+      from: recentFrom,
+      to: recentTo,
+    }),
+    entityId,
+    lines: recentShare,
+    laborUsesShareIncome: share.laborUsesShareIncome,
+  });
+  const basisLabel =
+    laborBasisLabel(entityName, rules.revenueBasis) +
+    (share.laborUsesShareIncome && allShare.some((l) => l.toEntityId === entityId)
+      ? " · includes drink share income"
+      : "");
   const extraLabor = allocatedSharedCostCents(
     s.settings.sharedVenueCostsCents ?? 0,
     rules.sharedCostAllocationPct,
@@ -117,7 +154,7 @@ function captureStaffingSnap() {
     shiftOpenedAt: s.shift.openedAt,
     extraLaborCents: extraLabor,
     salesLast30mCents: last30,
-    basisLabel: laborBasisLabel(entityName, rules.revenueBasis),
+    basisLabel,
   });
 }
 

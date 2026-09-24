@@ -409,6 +409,7 @@ export function PlatformTenantVenue({
         settings: {
           ...st.settings,
           peerVenue: peer || st.settings.peerVenue,
+          revenueShare: setup.revenueShare ?? st.settings.revenueShare,
           operatingModel: nextModel,
           hostMultiOperator: hostOps || st.settings.hostMultiOperator,
           hostMayEditEntitySchedules: hostOps
