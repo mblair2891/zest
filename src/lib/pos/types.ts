@@ -445,8 +445,10 @@ export interface Table {
   h: number;
   shape: "rect" | "round" | "bar" | "booth" | "other";
   kind?: TableKind;
-  /** Bar top outline. Stools snap to this rail. */
+  /** Bar top outline. Stools snap against this rail's guest side. */
   barShape?: BarTopShape;
+  /** Bar top this stool was generated on. */
+  railBarId?: string;
   /** Bar centerline in plan percent. */
   points?: { x: number; y: number }[];
   /** Length of each bar leg in plan percent. Published with the layout. */

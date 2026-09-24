@@ -6,6 +6,18 @@ import type { GuideUpdate } from "@/lib/guide/types";
  */
 export const WHATS_NEW_ENTRIES: GuideUpdate[] = [
   {
+    id: "upd_2026_10_162_bar_stools",
+    date: "2026-09-24",
+    title: "Barstools against the rail",
+    summary: "Enter a count and the stools sit on the guest side of the bar, facing in.",
+    body: "Select a bar top in the floor editor and set Stools. A straight bar or an island takes one count. An L asks for each leg, and the corner seat stays off unless you check it. A U asks for left, rear, and right. Generate places hollow rings outside the black rail, flush to the stroke, facing the bar. They do not sit on the wood. Generating again asks before it replaces stools already on that bar. You can still drag a stool afterward; it snaps against the rail.",
+    roles: ["owner_manager", "host_operator"],
+    surfaces: ["floor"],
+    audience: "all",
+    topicId: "floor-editor",
+    tags: ["floor", "bar"],
+  },
+  {
     id: "upd_2026_10_161_share_rules",
     date: "2026-09-24",
     title: "Custom revenue share rules",

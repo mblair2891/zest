@@ -64,6 +64,7 @@ import {
   nearestWallSnap,
   placeWallEnd,
   planFromLegInches,
+  generateBarStools,
   resizeBarLeg,
   slabBounds,
   wallEndExtensions,
@@ -76,6 +77,7 @@ import {
   snapStoolToRail,
   storedBarPlan,
   unrotatePointer,
+  type BarStoolCounts,
   type BarTopShape,
   type LegHandle,
   type PlanPoint,
@@ -90,8 +92,9 @@ import {
 import { isReceiptPrinterType } from "@/lib/pos/location-devices";
 
 function stoolsOnRail(
-  tables: { id: string; kind?: string | null; x: number; y: number; w: number; h: number }[],
+  tables: { id: string; kind?: string | null; x: number; y: number; w: number; h: number; railBarId?: string }[],
   bar: {
+    id?: string;
     x: number;
     y: number;
     w: number;
@@ -101,12 +104,15 @@ function stoolsOnRail(
     barShape?: BarTopShape | null;
     points?: PlanPoint[] | null;
     legLengths?: number[] | null;
+    widthIn?: number | null;
   },
+  room: { widthIn: number; depthIn: number },
 ): string[] {
   return tables
     .filter((t) => t.kind === "barstool")
     .filter((t) => {
-      const snapped = snapStoolToRail(t, [bar]);
+      if (bar.id && t.railBarId === bar.id) return true;
+      const snapped = snapStoolToRail(t, [{ ...bar, kind: "bar_top" }], room);
       if (!snapped) return false;
       return Math.hypot(snapped.x - t.x, snapped.y - t.y) < 8;
     })
@@ -233,6 +239,30 @@ function ThicknessInput({
         onBlur={() => {
           if (text.trim() === "" || parsePositiveInches(Number(text)) == null) setText(String(totalIn));
         }}
+      />
+    </label>
+  );
+}
+
+function StoolCount({
+  label,
+  value,
+  onChange,
+}: {
+  label: string;
+  value: number;
+  onChange: (n: number) => void;
+}) {
+  return (
+    <label className="block text-xs text-muted-foreground">
+      {label}
+      <Input
+        className="mt-1 h-8"
+        inputMode="numeric"
+        data-stool-count={label}
+        value={value ? String(value) : ""}
+        placeholder="0"
+        onChange={(e) => onChange(Math.max(0, Math.min(40, Math.round(Number(e.target.value) || 0))))}
       />
     </label>
   );
@@ -414,6 +444,21 @@ export function FloorEditorView() {
   const [room, setRoom] = useState<string>("All");
   const [scope, setScope] = useState<"entire" | "section">("entire");
   const [showQr, setShowQr] = useState(false);
+  const [stoolCounts, setStoolCounts] = useState<BarStoolCounts>({
+    count: 0,
+    legA: 0,
+    legB: 0,
+    corner: false,
+    left: 0,
+    rear: 0,
+    right: 0,
+  });
+  const [stoolBar, setStoolBar] = useState<string | null>(null);
+  const [replaceStools, setReplaceStools] = useState(false);
+  if (selected !== stoolBar) {
+    setStoolBar(selected);
+    setReplaceStools(false);
+  }
   const drag = useRef<{
     id: string;
     startX: number;
@@ -561,7 +606,7 @@ export function FloorEditorView() {
     const stoolOrig: Record<string, { x: number; y: number }> = {};
     if (piece?.kind === "bar_top") {
       const plan = storedBarPlan(piece);
-      const ids = stoolsOnRail(tables, { ...piece, points: plan, legLengths: legLengthsOf(plan) });
+      const ids = stoolsOnRail(tables, { ...piece, points: plan, legLengths: legLengthsOf(plan) }, floorRoom);
       for (const sid of ids) {
         const stool = tables.find((t) => t.id === sid);
         if (stool) stoolOrig[sid] = { x: stool.x, y: stool.y };
@@ -681,14 +726,17 @@ export function FloorEditorView() {
       nx = snapPct(nx);
       ny = snapPct(ny);
     }
+    let stoolFacing: number | null = null;
     if (target?.kind === "barstool") {
       const snapped = snapStoolToRail(
         { x: nx, y: ny, w: target.w, h: target.h },
         tables,
+        floorRoom,
       );
       if (snapped && Math.hypot(snapped.x - nx, snapped.y - ny) < 8) {
         nx = snapped.x;
         ny = snapped.y;
+        stoolFacing = snapped.rotation;
       }
     }
     const appliedDx = nx - drag.current.origX;
@@ -715,7 +763,11 @@ export function FloorEditorView() {
       }
       return;
     }
-    update(drag.current.id, { x: Math.round(nx * 10) / 10, y: Math.round(ny * 10) / 10 });
+    update(drag.current.id, {
+      x: Math.round(nx * 10) / 10,
+      y: Math.round(ny * 10) / 10,
+      ...(stoolFacing != null ? { rotation: stoolFacing } : {}),
+    });
   };
 
   const onPointerUp = () => {
@@ -732,7 +784,7 @@ export function FloorEditorView() {
     const bar = tables.find((t) => t.id === id);
     if (!bar) return;
     const plan = storedBarPlan(bar);
-    const stoolIds = stoolsOnRail(tables, { ...bar, points: plan, legLengths: legLengthsOf(plan) });
+    const stoolIds = stoolsOnRail(tables, { ...bar, points: plan, legLengths: legLengthsOf(plan) }, floorRoom);
     drag.current = null;
     resize.current = null;
     legDrag.current = { id, handle, orig: plan, stoolIds, box: spinBoxOf(bar) };
@@ -747,6 +799,41 @@ export function FloorEditorView() {
         if (t.section === prev.name) update(t.id, { section: name });
       }
     }
+    persistLocationCatalog("floor");
+  };
+
+  const placeStools = (barId: string, confirmed: boolean) => {
+    const bar = tables.find((t) => t.id === barId);
+    if (!bar || bar.kind !== "bar_top") return;
+    const existingIds = stoolsOnRail(tables, bar, floorRoom);
+    const existing = tables.filter((t) => existingIds.includes(t.id));
+    if (existing.some((t) => t.orderId)) return;
+    if (existing.length > 0 && !confirmed) {
+      setReplaceStools(true);
+      return;
+    }
+    for (const id of existingIds) remove(id);
+    const poses = generateBarStools({ bar, room: floorRoom, counts: stoolCounts });
+    let n = 0;
+    for (const t of tables) {
+      if (t.kind !== "barstool" || existingIds.includes(t.id)) continue;
+      const match = /^B(\d+)$/.exec(t.label);
+      if (match) n = Math.max(n, Number(match[1]));
+    }
+    for (const pose of poses) {
+      n += 1;
+      add({
+        ...pose,
+        kind: "barstool",
+        shape: "bar",
+        seats: 1,
+        section: bar.section,
+        sectionId: bar.sectionId,
+        label: `B${n}`,
+        railBarId: bar.id,
+      });
+    }
+    setReplaceStools(false);
     persistLocationCatalog("floor");
   };
 
@@ -1253,8 +1340,8 @@ export function FloorEditorView() {
                           });
                           for (const stool of tables) {
                             if (stool.kind !== "barstool") continue;
-                            if (!stoolsOnRail(tables, selectedTable).includes(stool.id)) continue;
-                            const snapped = snapStoolToRail(stool, [nextBar]);
+                            if (!stoolsOnRail(tables, selectedTable, floorRoom).includes(stool.id)) continue;
+                            const snapped = snapStoolToRail(stool, [nextBar], floorRoom);
                             if (snapped) update(stool.id, snapped);
                           }
                           persistLocationCatalog("floor");
@@ -1326,6 +1413,71 @@ export function FloorEditorView() {
                       }}
                     />
                   </label>
+                  <div className="space-y-2" data-bar-stools="">
+                    <p className="text-xs text-muted-foreground">Stools</p>
+                    {(selectedTable.barShape ?? "straight") === "l" ? (
+                      <div className="grid grid-cols-2 gap-2">
+                        <StoolCount
+                          label="Leg A"
+                          value={stoolCounts.legA ?? 0}
+                          onChange={(legA) => setStoolCounts({ ...stoolCounts, legA })}
+                        />
+                        <StoolCount
+                          label="Leg B"
+                          value={stoolCounts.legB ?? 0}
+                          onChange={(legB) => setStoolCounts({ ...stoolCounts, legB })}
+                        />
+                        <label className="col-span-2 flex items-center gap-2 text-xs">
+                          <input
+                            type="checkbox"
+                            checked={Boolean(stoolCounts.corner)}
+                            onChange={(e) => setStoolCounts({ ...stoolCounts, corner: e.target.checked })}
+                          />
+                          Corner seat
+                        </label>
+                      </div>
+                    ) : (selectedTable.barShape ?? "straight") === "u" ? (
+                      <div className="grid grid-cols-3 gap-2">
+                        <StoolCount
+                          label="Left"
+                          value={stoolCounts.left ?? 0}
+                          onChange={(left) => setStoolCounts({ ...stoolCounts, left })}
+                        />
+                        <StoolCount
+                          label="Rear"
+                          value={stoolCounts.rear ?? 0}
+                          onChange={(rear) => setStoolCounts({ ...stoolCounts, rear })}
+                        />
+                        <StoolCount
+                          label="Right"
+                          value={stoolCounts.right ?? 0}
+                          onChange={(right) => setStoolCounts({ ...stoolCounts, right })}
+                        />
+                      </div>
+                    ) : (
+                      <StoolCount
+                        label={(selectedTable.barShape ?? "straight") === "island" ? "Around the island" : "Stools"}
+                        value={stoolCounts.count ?? 0}
+                        onChange={(count) => setStoolCounts({ ...stoolCounts, count })}
+                      />
+                    )}
+                    <Button type="button" size="sm" onClick={() => placeStools(selectedTable.id, false)}>
+                      Generate stools
+                    </Button>
+                    {replaceStools && (
+                      <p className="text-xs text-muted-foreground">
+                        Replace the stools already on this bar?
+                        <span className="mt-1 flex gap-2">
+                          <Button type="button" size="sm" onClick={() => placeStools(selectedTable.id, true)}>
+                            Replace
+                          </Button>
+                          <Button type="button" size="sm" variant="outline" onClick={() => setReplaceStools(false)}>
+                            Cancel
+                          </Button>
+                        </span>
+                      </p>
+                    )}
+                  </div>
                 </div>
               )}
               {!isArchitectureKind(selectedTable.kind) && (

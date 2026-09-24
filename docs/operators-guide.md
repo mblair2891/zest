@@ -1,7 +1,7 @@
 # Operators Guide — authoring
 
-**Revision · 24 Sep 2026** — Custom entity revenue share rules.
-Guide v2026.10.161.
+**Revision · 24 Sep 2026** — Barstools sit against the rail.
+Guide v2026.10.162.
 
 The in-app **Operators Guide** is the living product manual. It is not a
 separate PDF. Staff open it from **Guide** / **?** in the POS and platform

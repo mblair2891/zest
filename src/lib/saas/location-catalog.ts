@@ -28,6 +28,7 @@ export type FloorPlanTable = {
   fill?: string;
   sectionId?: string;
   qrToken?: string;
+  railBarId?: string;
 };
 
 export type LocationFloorPlan = {
@@ -127,6 +128,7 @@ export function parseFloorPlan(raw: unknown): LocationFloorPlan | undefined {
       rotation: ((rot % 360) + 360) % 360,
       sectionId: str(r.sectionId).slice(0, 80) || undefined,
       qrToken: str(r.qrToken).slice(0, 32) || undefined,
+      railBarId: str(r.railBarId).slice(0, 80) || undefined,
     });
   }
   const sections: FloorSection[] = [];
@@ -183,6 +185,7 @@ export function floorPlanFromPos(
         fill: normalizeBarFill(t.kind, t.fill),
         sectionId: t.sectionId,
         qrToken: t.qrToken,
+        railBarId: t.railBarId,
       })),
     sections: sections.map((s) => ({ ...s })),
   };
@@ -209,6 +212,7 @@ export function tablesFromFloorPlan(plan: LocationFloorPlan): Table[] {
     fill: normalizeBarFill(t.kind, t.fill),
     sectionId: t.sectionId,
     qrToken: t.qrToken,
+    railBarId: t.railBarId,
     status: "empty",
   }));
 }

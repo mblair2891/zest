@@ -735,36 +735,258 @@ function nearestOnSegment(px: number, py: number, a: PlanPoint, b: PlanPoint): {
   return { x, y, d: Math.hypot(px - x, py - y) };
 }
 
-/** Move a stool so its center sits on the nearest bar rail. Returns top-left. */
+/** Gap so the stool ring meets the black stroke instead of the wood. */
+export const STOOL_EDGE_GAP_IN = 2;
+export const DEFAULT_STOOL_DIAMETER_IN = 18;
+
+const STOOL_ROOM: RoomInches = { widthIn: 40 * 12, depthIn: 30 * 12 };
+
+/** Center of a stool, measured from the bar centerline out to the guest side. */
+export function stoolOffsetFromCenterIn(barDepth: number, stoolIn = DEFAULT_STOOL_DIAMETER_IN): number {
+  return Math.max(1, barDepth) / 2 + stoolIn / 2 + STOOL_EDGE_GAP_IN;
+}
+
+/** Degrees so a stool's front (local up) points along this plan vector. */
+export function stoolFacingDeg(towardX: number, towardY: number): number {
+  if (Math.hypot(towardX, towardY) < 1e-6) return 0;
+  const deg = (Math.atan2(towardX, -towardY) * 180) / Math.PI;
+  return Math.round(((deg % 360) + 360) % 360);
+}
+
+export type BarStoolCounts = {
+  /** Straight, polyline, or island. */
+  count?: number;
+  legA?: number;
+  legB?: number;
+  /** L only. Default off. */
+  corner?: boolean;
+  left?: number;
+  rear?: number;
+  right?: number;
+};
+
+export type StoolPose = {
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+  rotation: number;
+  lengthIn: number;
+  widthIn: number;
+};
+
+type RailBar = {
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+  kind?: string | null;
+  rotation?: number | null;
+  barShape?: BarTopShape | null;
+  points?: PlanPoint[] | null;
+  legLengths?: number[] | null;
+  widthIn?: number | null;
+};
+
+function clampCount(raw: number | undefined): number {
+  return Math.max(0, Math.min(40, Math.round(Number(raw) || 0)));
+}
+
+function segInches(a: PlanPoint, b: PlanPoint, room: RoomInches): number {
+  const dx = ((b.x - a.x) / 100) * room.widthIn;
+  const dy = ((b.y - a.y) / 100) * room.depthIn;
+  return Math.hypot(dx, dy);
+}
+
+function pointAlong(a: PlanPoint, b: PlanPoint, inches: number, room: RoomInches): PlanPoint {
+  const len = segInches(a, b, room) || 1;
+  const t = Math.min(1, Math.max(0, inches / len));
+  return { x: a.x + (b.x - a.x) * t, y: a.y + (b.y - a.y) * t };
+}
+
+function poseAt(center: PlanPoint, toward: PlanPoint, stoolIn: number, room: RoomInches): StoolPose {
+  const w = (stoolIn / room.widthIn) * 100;
+  const h = (stoolIn / room.depthIn) * 100;
+  return {
+    x: Math.round((center.x - w / 2) * 10) / 10,
+    y: Math.round((center.y - h / 2) * 10) / 10,
+    w: Math.round(w * 10) / 10,
+    h: Math.round(h * 10) / 10,
+    rotation: stoolFacingDeg(toward.x, toward.y),
+    lengthIn: stoolIn,
+    widthIn: stoolIn,
+  };
+}
+
+function spreadCount(total: number, lengths: number[]): number[] {
+  if (!lengths.length || total <= 0) return lengths.map(() => 0);
+  const sum = lengths.reduce((s, n) => s + n, 0) || 1;
+  const raw = lengths.map((len) => (total * len) / sum);
+  const base = raw.map((n) => Math.floor(n));
+  let left = total - base.reduce((s, n) => s + n, 0);
+  const order = raw
+    .map((n, i) => ({ i, frac: n - Math.floor(n) }))
+    .sort((a, b) => b.frac - a.frac);
+  for (const row of order) {
+    if (left <= 0) break;
+    base[row.i] = (base[row.i] ?? 0) + 1;
+    left -= 1;
+  }
+  return base;
+}
+
+function cornerAt(shape: BarTopShape | undefined, index: number, segCount: number, end: "start" | "end"): boolean {
+  if (shape === "l") {
+    if (index === 0) return end === "end";
+    if (index === 1) return end === "start";
+  }
+  if (shape === "u") {
+    if (index === 0) return end === "end";
+    if (index === 1) return true;
+    if (index === segCount - 1) return end === "start";
+  }
+  return false;
+}
+
+function samplesOnSegment(
+  a: PlanPoint,
+  b: PlanPoint,
+  count: number,
+  insetStartIn: number,
+  insetEndIn: number,
+  room: RoomInches,
+): PlanPoint[] {
+  if (count <= 0) return [];
+  const len = segInches(a, b, room);
+  let start = insetStartIn;
+  let end = len - insetEndIn;
+  if (end < start) {
+    const mid = len / 2;
+    start = mid;
+    end = mid;
+  }
+  const span = Math.max(0, end - start);
+  const out: PlanPoint[] = [];
+  for (let i = 0; i < count; i += 1) {
+    const dist = count === 1 ? start + span / 2 : start + (span * i) / (count - 1);
+    out.push(pointAlong(a, b, dist, room));
+  }
+  return out;
+}
+
+/** Guest-side stool centers for one bar. Not on the slab and not on the centerline. */
+export function generateBarStools(opts: {
+  bar: RailBar;
+  room: RoomInches;
+  counts: BarStoolCounts;
+  stoolIn?: number;
+}): StoolPose[] {
+  const stoolIn = opts.stoolIn && opts.stoolIn >= 12 ? opts.stoolIn : DEFAULT_STOOL_DIAMETER_IN;
+  const shape = opts.bar.barShape ?? "straight";
+  const plan = visualBarPlan(opts.bar);
+  if (plan.length < 2) return [];
+  const room = opts.room;
+  const depth = barDepthIn(opts.bar.widthIn);
+  const offsetIn = stoolOffsetFromCenterIn(depth, stoolIn);
+  const closed = barClosedShape(shape, plan);
+  const guest = offsetCenterline(plan, -offsetIn, room, closed);
+  const poses: StoolPose[] = [];
+  const segCount = Math.max(0, guest.length - 1);
+  if (shape === "island" || closed) {
+    const count = clampCount(opts.counts.count);
+    const lengths: number[] = [];
+    let total = 0;
+    for (let i = 0; i < segCount; i += 1) {
+      const len = segInches(guest[i]!, guest[i + 1]!, room);
+      lengths.push(len);
+      total += len;
+    }
+    for (let n = 0; n < count; n += 1) {
+      let dist = ((n + 0.5) / count) * total;
+      let seg = 0;
+      while (seg < lengths.length - 1 && dist > lengths[seg]!) {
+        dist -= lengths[seg]!;
+        seg += 1;
+      }
+      const a = guest[seg]!;
+      const b = guest[seg + 1]!;
+      const center = pointAlong(a, b, dist, room);
+      const toward = inchesOffset(plan[seg] ?? a, plan[seg + 1] ?? b, 1, room);
+      poses.push(poseAt(center, toward, stoolIn, room));
+    }
+    return poses;
+  }
+  const lengths = Array.from({ length: segCount }, (_, i) => segInches(plan[i]!, plan[i + 1]!, room));
+  let perSeg: number[] = [];
+  if (shape === "l") perSeg = [clampCount(opts.counts.legA), clampCount(opts.counts.legB)];
+  else if (shape === "u") {
+    perSeg = [clampCount(opts.counts.left), clampCount(opts.counts.rear), clampCount(opts.counts.right)];
+  } else perSeg = spreadCount(clampCount(opts.counts.count), lengths);
+  for (let i = 0; i < segCount; i += 1) {
+    const count = perSeg[i] ?? 0;
+    const a = guest[i];
+    const b = guest[i + 1];
+    const srcA = plan[i];
+    const srcB = plan[i + 1];
+    if (!a || !b || !srcA || !srcB || count <= 0) continue;
+    const free = stoolIn / 2;
+    const corner = depth / 2 + stoolIn / 2 + STOOL_EDGE_GAP_IN;
+    const insetStart = cornerAt(shape, i, segCount, "start") ? corner : free;
+    const insetEnd = cornerAt(shape, i, segCount, "end") ? corner : free;
+    const toward = inchesOffset(srcA, srcB, 1, room);
+    for (const center of samplesOnSegment(a, b, count, insetStart, insetEnd, room)) {
+      poses.push(poseAt(center, toward, stoolIn, room));
+    }
+  }
+  if (shape === "l" && opts.counts.corner && guest.length >= 3 && plan.length >= 3) {
+    const t1 = inchesOffset(plan[0]!, plan[1]!, 1, room);
+    const t2 = inchesOffset(plan[1]!, plan[2]!, 1, room);
+    poses.push(poseAt(guest[1]!, { x: t1.x + t2.x, y: t1.y + t2.y }, stoolIn, room));
+  }
+  return poses;
+}
+
+/** Move a stool so its ring sits against the guest side of the nearest rail. */
 export function snapStoolToRail(
   stool: { x: number; y: number; w: number; h: number },
-  bars: Array<{
-    x: number;
-    y: number;
-    w: number;
-    h: number;
-    kind?: string | null;
-    rotation?: number | null;
-    barShape?: BarTopShape | null;
-    points?: PlanPoint[] | null;
-    legLengths?: number[] | null;
-  }>,
-): { x: number; y: number } | null {
-  const rails = bars.filter((b) => b.kind === "bar_top");
-  if (!rails.length) return null;
+  bars: RailBar[],
+  room: RoomInches = STOOL_ROOM,
+): { x: number; y: number; rotation: number } | null {
+  const list = bars.filter((b) => b.kind === "bar_top");
+  if (!list.length) return null;
   const cx = stool.x + stool.w / 2;
   const cy = stool.y + stool.h / 2;
-  let best: { x: number; y: number; d: number } | null = null;
-  for (const bar of rails) {
-    const pts = railPlanPoints(bar);
-    for (let i = 0; i < pts.length - 1; i += 1) {
-      const hit = nearestOnSegment(cx, cy, pts[i]!, pts[i + 1]!);
-      if (!best || hit.d < best.d) best = hit;
+  const stoolIn = Math.max(
+    12,
+    Math.round((((stool.w / 100) * room.widthIn + (stool.h / 100) * room.depthIn) / 2) || DEFAULT_STOOL_DIAMETER_IN),
+  );
+  let best: { x: number; y: number; d: number; rotation: number } | null = null;
+  for (const bar of list) {
+    const plan = railPlanPoints(bar);
+    if (plan.length < 2) continue;
+    const closed = barClosedShape(bar.barShape ?? undefined, plan);
+    const guest = offsetCenterline(
+      plan,
+      -stoolOffsetFromCenterIn(barDepthIn(bar.widthIn), stoolIn),
+      room,
+      closed,
+    );
+    for (let i = 0; i < guest.length - 1; i += 1) {
+      const a = guest[i]!;
+      const b = guest[i + 1]!;
+      const hit = nearestOnSegment(cx, cy, a, b);
+      const srcA = plan[Math.min(i, plan.length - 2)]!;
+      const srcB = plan[Math.min(i + 1, plan.length - 1)]!;
+      const toward = inchesOffset(srcA, srcB, 1, room);
+      if (!best || hit.d < best.d) {
+        best = { x: hit.x, y: hit.y, d: hit.d, rotation: stoolFacingDeg(toward.x, toward.y) };
+      }
     }
   }
   if (!best) return null;
   return {
-    x: Math.min(92, Math.max(0, best.x - stool.w / 2)),
-    y: Math.min(92, Math.max(0, best.y - stool.h / 2)),
+    x: Math.round((best.x - stool.w / 2) * 10) / 10,
+    y: Math.round((best.y - stool.h / 2) * 10) / 10,
+    rotation: best.rotation,
   };
 }

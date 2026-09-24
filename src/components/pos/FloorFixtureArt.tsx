@@ -11,7 +11,6 @@ import { FloorBoothMark } from "@/components/pos/FloorBoothMark";
 import type { BoothKind } from "@/lib/pos/floor-booth";
 
 const CHAIR = "#6b5a4e";
-const STOOL = "#5c534c";
 
 export function FloorFixtureArt({
   table,
@@ -335,8 +334,8 @@ function FloorStoolArt({
   w,
   h,
   seats,
-  fill,
-  outline,
+  fill: _fill,
+  outline: _outline,
   label,
   sectionColor,
   rotation = 0,
@@ -372,7 +371,7 @@ function FloorStoolArt({
       style={{ transform: `rotate(${rotation}deg)`, transformOrigin: "center center" }}
       onPointerDown={onPointerDown}
     >
-      <svg viewBox="0 0 100 100" className="pointer-events-none h-full w-full" aria-hidden>
+      <svg viewBox="0 0 100 100" className="pointer-events-none h-full w-full" aria-hidden data-floor-stool="hollow">
         {centers.map((c, i) => (
           <g key={i}>
             <ellipse
@@ -380,11 +379,20 @@ function FloorStoolArt({
               cy={c.y}
               rx={rx}
               ry={ry}
-              fill={STOOL}
-              stroke={outline}
-              strokeWidth="2"
+              fill="none"
+              stroke="#111"
+              strokeWidth="2.5"
+              data-floor-stool-ring="1"
             />
-            <ellipse cx={c.x} cy={c.y} rx={rx * 0.55} ry={ry * 0.55} fill={fill} />
+            <line
+              x1={c.x}
+              y1={c.y - ry}
+              x2={c.x}
+              y2={c.y - ry * 0.45}
+              stroke="#111"
+              strokeWidth="2"
+              data-stool-front="1"
+            />
           </g>
         ))}
         {sectionColor ? (
