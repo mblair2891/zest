@@ -48,6 +48,7 @@ export type TableKind =
   | "booth_u"
   | "booth_l"
   | "barstool"
+  | "square_plain"
   | "wall"
   | "door"
   | "window"
@@ -56,6 +57,8 @@ export type TableKind =
   | "other";
 
 export type BarTopShape = "straight" | "l" | "u" | "island" | "polyline";
+/** Straight A/B is a flip. L and U are outside the bend or inside the well. */
+export type BarGuestSide = "a" | "b" | "outside" | "inside";
 
 export type QrMode = "full" | "hybrid" | "pay_only";
 export type {
@@ -449,6 +452,8 @@ export interface Table {
   barShape?: BarTopShape;
   /** Bar top this stool was generated on. */
   railBarId?: string;
+  /** Which edge of this bar the stools use. */
+  barSide?: BarGuestSide;
   /** Bar centerline in plan percent. */
   points?: { x: number; y: number }[];
   /** Length of each bar leg in plan percent. Published with the layout. */

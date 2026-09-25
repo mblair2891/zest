@@ -6,6 +6,18 @@ import type { GuideUpdate } from "@/lib/guide/types";
  */
 export const WHATS_NEW_ENTRIES: GuideUpdate[] = [
   {
+    id: "upd_2026_10_163_floor_icons",
+    date: "2026-09-25",
+    title: "Seat nubs and a BAR slab",
+    summary: "Tables show a few seat marks. Stools are B tiles on the side you pick.",
+    body: "Round and square tables keep a light or hollow top, a dark number, and four or six small seat nubs. Square no seats is a compact square without nubs. The bar is a medium-gray slab labeled BAR. Stools are rounded squares, B1 and on, flush on the edge you choose — guest side A or B on a straight bar, outside or inside on an L or U. An island goes around the perimeter. Changing the side asks before it moves stools that are already there. The live floor uses the same icons.",
+    roles: ["owner_manager", "host_operator", "server"],
+    surfaces: ["floor"],
+    audience: "all",
+    topicId: "floor-editor",
+    tags: ["floor", "bar"],
+  },
+  {
     id: "upd_2026_10_162_bar_stools",
     date: "2026-09-24",
     title: "Barstools against the rail",

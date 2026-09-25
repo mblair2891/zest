@@ -50,7 +50,9 @@ test("a 22 foot bar is 5.5 times a 4 foot table, and an L is a 24 inch hollow sl
 
   const mark = readFileSync("src/components/pos/FloorArchitectureMark.tsx", "utf8");
   assert.match(mark, /data-floor-bar="slab"/);
-  assert.match(mark, /fill="transparent"/);
+  assert.match(mark, /data-floor-bar-fill="slab"/);
+  assert.match(mark, /#b7b2aa/);
+  assert.match(mark, /data-floor-bar-label="BAR"/);
   assert.match(mark, /data-floor-bar-depth/);
   assert.doesNotMatch(mark, /strokeWidth=\{4\}/);
   const editor = readFileSync("src/components/pos/FloorEditorView.tsx", "utf8");

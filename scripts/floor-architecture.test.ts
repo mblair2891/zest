@@ -13,7 +13,7 @@ test("L bar rail and wall snap, stools snap to the rail", () => {
     [{ x: 10, y: 40, w: 40, h: 10, kind: "bar_top", barShape: "straight" }],
   );
   assert.ok(stool);
-  assert.ok(Math.abs(stool.y + 4 - 45) < 1.5);
+  assert.ok(Math.abs(stool.y + 4 - 45) > 1, "stool is off the centerline");
 
   const editor = readFileSync("src/components/pos/FloorEditorView.tsx", "utf8");
   assert.match(editor, /data-bar-shape-picker/);
@@ -21,7 +21,7 @@ test("L bar rail and wall snap, stools snap to the rail", () => {
   assert.match(editor, /FloorArchitectureMark/);
   const live = readFileSync("src/components/pos/FloorMapCanvas.tsx", "utf8");
   assert.match(live, /FloorArchitectureMark/);
-  assert.match(live, /data-floor-chairs="0"/);
+  assert.match(live, /data-floor-nubs="1"/);
   const catalog = readFileSync("src/lib/saas/location-catalog.ts", "utf8");
   assert.match(catalog, /barShape/);
   assert.match(catalog, /points/);

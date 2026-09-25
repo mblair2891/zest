@@ -27,7 +27,7 @@ test("seven stools sit outside a straight rail and face the bar", () => {
     counts: { count: 7 },
   });
   assert.equal(poses.length, 7);
-  const offset = stoolOffsetFromCenterIn(24, 18);
+  const offset = stoolOffsetFromCenterIn(24);
   const xs = poses.map((p) => center(p).x);
   assert.ok(Math.max(...xs) - Math.min(...xs) > 10);
   for (const pose of poses) {
@@ -36,12 +36,32 @@ test("seven stools sit outside a straight rail and face the bar", () => {
     const gap = ((plan[0]!.y - c.y) / 100) * room.depthIn;
     assert.ok(Math.abs(gap - offset) < 1.2, `offset ${gap} vs ${offset}`);
     assert.ok(gap > 12, "not in the 24 in slab");
-    assert.equal(pose.rotation, 180);
   }
   const art = readFileSync("src/components/pos/FloorFixtureArt.tsx", "utf8");
-  assert.match(art, /data-floor-stool="hollow"/);
-  assert.match(art, /fill="none"/);
-  assert.match(art, /data-stool-front/);
+  assert.match(art, /data-floor-stool="tile"/);
+  assert.match(art, /data-floor-stool-tile/);
+  assert.match(art, /data-floor-nub/);
+  const mark = readFileSync("src/components/pos/FloorArchitectureMark.tsx", "utf8");
+  assert.match(mark, /data-floor-bar-label="BAR"/);
+});
+
+test("side B puts every stool on the other edge of a straight bar", () => {
+  const plan = planFromLegInches("straight", { x: 20, y: 40 }, [18 * 12], room);
+  const poses = generateBarStools({
+    bar: { x: 0, y: 0, w: 100, h: 100, kind: "bar_top", barShape: "straight", points: plan, legLengths: [1], widthIn: 24 },
+    room,
+    counts: { count: 7 },
+    side: "b",
+  });
+  assert.equal(poses.length, 7);
+  const offset = stoolOffsetFromCenterIn(24);
+  for (const pose of poses) {
+    const c = center(pose);
+    assert.ok(c.y > plan[0]!.y);
+    const gap = ((c.y - plan[0]!.y) / 100) * room.depthIn;
+    assert.ok(Math.abs(gap - offset) < 1.2);
+    assert.ok(gap > 12);
+  }
 });
 
 test("an L bar puts 4 and 3 stools on the wings, clear of the wood", () => {
@@ -51,6 +71,7 @@ test("an L bar puts 4 and 3 stools on the wings, clear of the wood", () => {
     bar: { x: 0, y: 0, w: 100, h: 100, kind: "bar_top", barShape: "l", points: plan, legLengths: [1, 1], widthIn: 24 },
     room,
     counts: { legA: 4, legB: 3, corner: false },
+    side: "outside",
   });
   assert.equal(poses.length, 7);
   const onA = poses.filter((p) => center(p).y < plan[0]!.y);

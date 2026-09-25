@@ -208,7 +208,7 @@ export function FloorMapCanvas({
       className="relative min-h-0 flex-1 overflow-hidden bg-white"
       data-floor-map="status"
       data-floor-canvas="white"
-      data-floor-chairs="0"
+      data-floor-nubs="1"
       data-floor-table-count={items.length}
       style={{ touchAction: "none" }}
       onPointerDown={onPointerDown}
@@ -228,7 +228,7 @@ export function FloorMapCanvas({
         {items.some((i) => i.table.kind === "bar_top") ? null : barSlab(items, room, fit.pxPerIn)}
         {items.map((item) => {
           const arch = isArchitectureKind(item.table.kind);
-          const bar = !arch && (item.table.kind === "barstool" || item.table.shape === "bar");
+          const stool = !arch && (item.table.kind === "barstool" || item.table.shape === "bar");
           const box = fixturePixelBox(item.table, room, fit.pxPerIn);
           const num = floorMapNumber(item.table.label);
           const fill = item.fill && item.fill !== "transparent" ? item.fill : "#f4efe6";
@@ -238,8 +238,8 @@ export function FloorMapCanvas({
               type="button"
               data-table-id={item.table.id}
               data-floor-label={num}
-              data-floor-seat={bar ? "pill" : "table"}
-              aria-label={bar ? `Seat ${num}` : `Table ${num}`}
+              data-floor-seat={stool ? "tile" : "table"}
+              aria-label={stool ? `Seat ${num}` : `Table ${num}`}
               onClick={() => {
                 if (suppress.current) {
                   suppress.current = false;
@@ -250,22 +250,18 @@ export function FloorMapCanvas({
               data-floor-rotation={((Number(item.table.rotation) || 0) % 360 + 360) % 360}
               data-floor-bar-hit={item.table.kind === "bar_top" ? "path" : undefined}
               style={{
-                left: bar ? box.left + box.width / 2 - 22 : box.left,
-                top: bar ? box.top + box.height / 2 - 16 : box.top,
-                width: bar ? 44 : box.width,
-                height: bar ? 32 : box.height,
-                color: bar ? "#1a120c" : item.ink,
-                background: bar ? "#f4efe6" : undefined,
+                left: box.left,
+                top: box.top,
+                width: box.width,
+                height: box.height,
+                color: item.ink,
+                background: "transparent",
                 containerType: "size",
-                transform: bar ? `rotate(${(Number(item.table.rotation) || 0) % 360}deg)` : undefined,
-                transformOrigin: "center center",
               }}
               className={cn(
-                "absolute border-0 p-0",
+                "absolute border-0 bg-transparent p-0",
                 item.table.kind === "bar_top" && "pointer-events-none",
-                bar
-                  ? "z-[2] flex items-center justify-center rounded-full border border-[#1a120c]/15 text-sm font-bold tabular shadow-sm"
-                  : "bg-transparent",
+                stool && "z-[2]",
                 item.flashing && "table-sla-flash-thin",
                 item.dim && "ring-2 ring-black/30",
               )}
@@ -287,11 +283,18 @@ export function FloorMapCanvas({
                       : undefined
                   }
                 />
-              ) : bar ? (
-                <span className="pointer-events-none">{num}</span>
+              ) : stool ? (
+                <FloorFixtureArt
+                  table={item.table}
+                  tableFill={item.hollow ? "#f4efe6" : fill}
+                  outline="#1c1917"
+                  label={num}
+                  rotation={0}
+                  className="h-full w-full"
+                />
               ) : (
                 <FloorFixtureArt
-                  table={{ ...item.table, kind: item.table.kind === "barstool" ? "table" : item.table.kind, shape: item.table.shape === "bar" ? "rect" : item.table.shape }}
+                  table={item.table}
                   tableFill={fill}
                   outline={fill}
                   label={num}

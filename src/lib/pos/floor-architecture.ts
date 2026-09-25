@@ -737,7 +737,7 @@ function nearestOnSegment(px: number, py: number, a: PlanPoint, b: PlanPoint): {
 
 /** Gap so the stool ring meets the black stroke instead of the wood. */
 export const STOOL_EDGE_GAP_IN = 2;
-export const DEFAULT_STOOL_DIAMETER_IN = 18;
+export const DEFAULT_STOOL_DIAMETER_IN = 16;
 
 const STOOL_ROOM: RoomInches = { widthIn: 40 * 12, depthIn: 30 * 12 };
 
@@ -751,6 +751,18 @@ export function stoolFacingDeg(towardX: number, towardY: number): number {
   if (Math.hypot(towardX, towardY) < 1e-6) return 0;
   const deg = (Math.atan2(towardX, -towardY) * 180) / Math.PI;
   return Math.round(((deg % 360) + 360) % 360);
+}
+
+export type BarGuestSide = "a" | "b" | "outside" | "inside";
+
+/** -1 is side A / outside. +1 is side B / inside the well. Islands stay outside. */
+export function barGuestSign(
+  shape: BarTopShape | undefined,
+  side?: BarGuestSide | null,
+): 1 | -1 {
+  if (shape === "island") return -1;
+  if (shape === "l" || shape === "u") return side === "inside" ? 1 : -1;
+  return side === "b" ? 1 : -1;
 }
 
 export type BarStoolCounts = {
@@ -786,6 +798,7 @@ type RailBar = {
   points?: PlanPoint[] | null;
   legLengths?: number[] | null;
   widthIn?: number | null;
+  barSide?: BarGuestSide | null;
 };
 
 function clampCount(raw: number | undefined): number {
@@ -880,6 +893,7 @@ export function generateBarStools(opts: {
   room: RoomInches;
   counts: BarStoolCounts;
   stoolIn?: number;
+  side?: BarGuestSide | null;
 }): StoolPose[] {
   const stoolIn = opts.stoolIn && opts.stoolIn >= 12 ? opts.stoolIn : DEFAULT_STOOL_DIAMETER_IN;
   const shape = opts.bar.barShape ?? "straight";
@@ -888,8 +902,9 @@ export function generateBarStools(opts: {
   const room = opts.room;
   const depth = barDepthIn(opts.bar.widthIn);
   const offsetIn = stoolOffsetFromCenterIn(depth, stoolIn);
+  const sign = barGuestSign(shape, opts.side ?? opts.bar.barSide);
   const closed = barClosedShape(shape, plan);
-  const guest = offsetCenterline(plan, -offsetIn, room, closed);
+  const guest = offsetCenterline(plan, sign * offsetIn, room, closed);
   const poses: StoolPose[] = [];
   const segCount = Math.max(0, guest.length - 1);
   if (shape === "island" || closed) {
@@ -911,7 +926,7 @@ export function generateBarStools(opts: {
       const a = guest[seg]!;
       const b = guest[seg + 1]!;
       const center = pointAlong(a, b, dist, room);
-      const toward = inchesOffset(plan[seg] ?? a, plan[seg + 1] ?? b, 1, room);
+      const toward = inchesOffset(plan[seg] ?? a, plan[seg + 1] ?? b, -sign, room);
       poses.push(poseAt(center, toward, stoolIn, room));
     }
     return poses;
@@ -933,14 +948,14 @@ export function generateBarStools(opts: {
     const corner = depth / 2 + stoolIn / 2 + STOOL_EDGE_GAP_IN;
     const insetStart = cornerAt(shape, i, segCount, "start") ? corner : free;
     const insetEnd = cornerAt(shape, i, segCount, "end") ? corner : free;
-    const toward = inchesOffset(srcA, srcB, 1, room);
+    const toward = inchesOffset(srcA, srcB, -sign, room);
     for (const center of samplesOnSegment(a, b, count, insetStart, insetEnd, room)) {
       poses.push(poseAt(center, toward, stoolIn, room));
     }
   }
   if (shape === "l" && opts.counts.corner && guest.length >= 3 && plan.length >= 3) {
-    const t1 = inchesOffset(plan[0]!, plan[1]!, 1, room);
-    const t2 = inchesOffset(plan[1]!, plan[2]!, 1, room);
+    const t1 = inchesOffset(plan[0]!, plan[1]!, -sign, room);
+    const t2 = inchesOffset(plan[1]!, plan[2]!, -sign, room);
     poses.push(poseAt(guest[1]!, { x: t1.x + t2.x, y: t1.y + t2.y }, stoolIn, room));
   }
   return poses;
@@ -965,9 +980,10 @@ export function snapStoolToRail(
     const plan = railPlanPoints(bar);
     if (plan.length < 2) continue;
     const closed = barClosedShape(bar.barShape ?? undefined, plan);
+    const sign = barGuestSign(bar.barShape ?? undefined, bar.barSide);
     const guest = offsetCenterline(
       plan,
-      -stoolOffsetFromCenterIn(barDepthIn(bar.widthIn), stoolIn),
+      sign * stoolOffsetFromCenterIn(barDepthIn(bar.widthIn), stoolIn),
       room,
       closed,
     );
@@ -977,7 +993,7 @@ export function snapStoolToRail(
       const hit = nearestOnSegment(cx, cy, a, b);
       const srcA = plan[Math.min(i, plan.length - 2)]!;
       const srcB = plan[Math.min(i + 1, plan.length - 1)]!;
-      const toward = inchesOffset(srcA, srcB, 1, room);
+      const toward = inchesOffset(srcA, srcB, -sign, room);
       if (!best || hit.d < best.d) {
         best = { x: hit.x, y: hit.y, d: hit.d, rotation: stoolFacingDeg(toward.x, toward.y) };
       }

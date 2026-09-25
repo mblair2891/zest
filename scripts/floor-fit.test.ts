@@ -46,14 +46,14 @@ test("live order floor draws status blocks, not chairs", () => {
   const art = readFileSync("src/components/pos/FloorFixtureArt.tsx", "utf8");
   const status = art.split("function StatusFixture")[1]?.split("function FloorTableArt")[0] ?? "";
   assert.ok(status.length > 40);
-  assert.match(status, /data-no-chairs/);
+  assert.match(status, /data-floor-nubs/);
   assert.doesNotMatch(status, /seatAnchors/);
   assert.doesNotMatch(status, /CHAIR/);
   assert.match(status, /solid/);
   const map = readFileSync("src/components/pos/FloorMapCanvas.tsx", "utf8");
   assert.match(map, /mode="status"/);
   assert.match(map, /marginPx: ROOM_FIT_MARGIN_PX/);
-  assert.match(map, /data-floor-chairs="0"/);
+  assert.match(map, /data-floor-nubs="1"/);
   assert.doesNotMatch(map, /CHECK OPEN/);
   assert.doesNotMatch(map, /SLA/);
   const nav = readFileSync("src/components/pos/BusyNightStation.tsx", "utf8");

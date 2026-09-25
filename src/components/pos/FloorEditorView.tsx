@@ -18,7 +18,7 @@ import {
   sectionColorForTable,
   swatchCss,
 } from "@/lib/pos/section-control";
-import type { TableKind } from "@/lib/pos/types";
+import type { BarGuestSide, TableKind } from "@/lib/pos/types";
 import {
   BOOTH_DEFAULTS,
   asBoothKind,
@@ -381,6 +381,7 @@ const KINDS: {
   booth?: BoothKind;
 }[] = [
   { id: "table", label: "Table", shape: "round", w: 12, h: 12, seats: 4 },
+  { id: "square_plain", label: "Square no seats", shape: "rect", w: 10, h: 10, seats: 0 },
   { id: "booth_4", label: "Booth 4-top", shape: "booth", w: 16, h: 20, seats: 4, booth: "booth_4" },
   { id: "booth_u", label: "Booth U", shape: "booth", w: 20, h: 18, seats: 6, booth: "booth_u" },
   { id: "booth_l", label: "Booth L", shape: "booth", w: 18, h: 18, seats: 5, booth: "booth_l" },
@@ -455,9 +456,11 @@ export function FloorEditorView() {
   });
   const [stoolBar, setStoolBar] = useState<string | null>(null);
   const [replaceStools, setReplaceStools] = useState(false);
+  const [pendingSide, setPendingSide] = useState<BarGuestSide | null>(null);
   if (selected !== stoolBar) {
     setStoolBar(selected);
     setReplaceStools(false);
+    setPendingSide(null);
   }
   const drag = useRef<{
     id: string;
@@ -802,18 +805,26 @@ export function FloorEditorView() {
     persistLocationCatalog("floor");
   };
 
-  const placeStools = (barId: string, confirmed: boolean) => {
+  const placeStools = (barId: string, confirmed: boolean, side?: BarGuestSide) => {
     const bar = tables.find((t) => t.id === barId);
     if (!bar || bar.kind !== "bar_top") return;
     const existingIds = stoolsOnRail(tables, bar, floorRoom);
     const existing = tables.filter((t) => existingIds.includes(t.id));
     if (existing.some((t) => t.orderId)) return;
     if (existing.length > 0 && !confirmed) {
+      setPendingSide(side ?? null);
       setReplaceStools(true);
       return;
     }
+    const useSide = side ?? bar.barSide;
+    if (useSide) update(bar.id, { barSide: useSide });
     for (const id of existingIds) remove(id);
-    const poses = generateBarStools({ bar, room: floorRoom, counts: stoolCounts });
+    const poses = generateBarStools({
+      bar: { ...bar, barSide: useSide },
+      room: floorRoom,
+      counts: stoolCounts,
+      side: useSide,
+    });
     let n = 0;
     for (const t of tables) {
       if (t.kind !== "barstool" || existingIds.includes(t.id)) continue;
@@ -834,7 +845,21 @@ export function FloorEditorView() {
       });
     }
     setReplaceStools(false);
+    setPendingSide(null);
     persistLocationCatalog("floor");
+  };
+
+  const chooseSide = (barId: string, side: BarGuestSide) => {
+    const bar = tables.find((t) => t.id === barId);
+    if (!bar) return;
+    const existingIds = stoolsOnRail(tables, bar, floorRoom);
+    if (!existingIds.length) {
+      update(barId, { barSide: side });
+      persistLocationCatalog("floor");
+      return;
+    }
+    setPendingSide(side);
+    setReplaceStools(true);
   };
 
   const placeKind = (kind: (typeof KINDS)[number]) => {
@@ -1414,6 +1439,39 @@ export function FloorEditorView() {
                     />
                   </label>
                   <div className="space-y-2" data-bar-stools="">
+                    <p className="text-xs text-muted-foreground">Guest side</p>
+                    {(selectedTable.barShape ?? "straight") === "island" ? (
+                      <p className="text-xs">Around the perimeter.</p>
+                    ) : (selectedTable.barShape ?? "straight") === "l" ||
+                      (selectedTable.barShape ?? "straight") === "u" ? (
+                      <div className="flex gap-1" data-bar-side="">
+                        {(["outside", "inside"] as const).map((side) => (
+                          <Button
+                            key={side}
+                            type="button"
+                            size="sm"
+                            variant={(selectedTable.barSide ?? "outside") === side ? "default" : "outline"}
+                            onClick={() => chooseSide(selectedTable.id, side)}
+                          >
+                            {side === "outside" ? "Outside" : "Inside"}
+                          </Button>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="flex gap-1" data-bar-side="">
+                        {(["a", "b"] as const).map((side) => (
+                          <Button
+                            key={side}
+                            type="button"
+                            size="sm"
+                            variant={(selectedTable.barSide ?? "a") === side ? "default" : "outline"}
+                            onClick={() => chooseSide(selectedTable.id, side)}
+                          >
+                            Guest side {side.toUpperCase()}
+                          </Button>
+                        ))}
+                      </div>
+                    )}
                     <p className="text-xs text-muted-foreground">Stools</p>
                     {(selectedTable.barShape ?? "straight") === "l" ? (
                       <div className="grid grid-cols-2 gap-2">
@@ -1466,9 +1524,17 @@ export function FloorEditorView() {
                     </Button>
                     {replaceStools && (
                       <p className="text-xs text-muted-foreground">
-                        Replace the stools already on this bar?
+                        {pendingSide
+                          ? "Move the stools onto that side?"
+                          : "Replace the stools already on this bar?"}
                         <span className="mt-1 flex gap-2">
-                          <Button type="button" size="sm" onClick={() => placeStools(selectedTable.id, true)}>
+                          <Button
+                            type="button"
+                            size="sm"
+                            onClick={() =>
+                              placeStools(selectedTable.id, true, pendingSide ?? selectedTable.barSide)
+                            }
+                          >
                             Replace
                           </Button>
                           <Button type="button" size="sm" variant="outline" onClick={() => setReplaceStools(false)}>

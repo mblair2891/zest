@@ -45,6 +45,7 @@ export function fixtureKind(
   const booth = asBoothKind(kind, shape);
   if (booth) return booth;
   if (kind === "barstool" || shape === "bar") return "barstool";
+  if (kind === "square_plain") return "square_plain";
   if (kind === "other" || shape === "other") return "other";
   if (kind === "table") return "table";
   return "table";

@@ -674,7 +674,7 @@ export function FloorView({
             )}
             data-floor-map="white"
             data-floor-canvas="white"
-            data-floor-chairs="0"
+            data-floor-nubs="1"
           >
             <div className="pointer-events-none absolute inset-x-4 top-3 flex justify-between text-[10px] uppercase tracking-wider text-muted-foreground">
               <span>{effectiveSection === "All" || effectiveSection === "Mine" ? "Dining room" : effectiveSection}</span>

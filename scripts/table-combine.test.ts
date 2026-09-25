@@ -132,7 +132,7 @@ test("floor sheet offers separate and the map draws joined numbers", () => {
   assert.match(floor, /Separate all/);
   assert.match(map, /onCombine/);
   assert.match(art, /data-floor-joined/);
-  assert.match(art, /data-no-chairs/);
+  assert.match(art, /data-floor-nubs/);
   const guide = readFileSync("src/lib/guide/content/floor.ts", "utf8");
   assert.match(guide, /Move checks to primary/);
   assert.match(guide, /Combine requires manager/);

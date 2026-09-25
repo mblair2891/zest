@@ -2,15 +2,27 @@ import type { PointerEvent as ReactPointerEvent, ReactNode } from "react";
 import { cn } from "@/lib/utils";
 import type { Table } from "@/lib/pos/types";
 import { asBoothKind } from "@/lib/pos/floor-booth";
-import {
-  railStoolCenters,
-  seatAnchors,
-  seatingScale,
-} from "@/lib/pos/floor-seating";
+import { railStoolCenters, seatingScale } from "@/lib/pos/floor-seating";
 import { FloorBoothMark } from "@/components/pos/FloorBoothMark";
 import type { BoothKind } from "@/lib/pos/floor-booth";
 
-const CHAIR = "#6b5a4e";
+const NUB = "#6b5a4e";
+
+/** Four pips on a square, six on a round. Not chair drawings. */
+function nubPoints(round: boolean): Array<{ x: number; y: number }> {
+  if (round) {
+    return Array.from({ length: 6 }, (_, i) => {
+      const a = -Math.PI / 2 + (i * Math.PI * 2) / 6;
+      return { x: 50 + Math.cos(a) * 46, y: 50 + Math.sin(a) * 46 };
+    });
+  }
+  return [
+    { x: 50, y: 5 },
+    { x: 95, y: 50 },
+    { x: 50, y: 95 },
+    { x: 5, y: 50 },
+  ];
+}
 
 export function FloorFixtureArt({
   table,
@@ -59,6 +71,7 @@ export function FloorFixtureArt({
         className={className}
         hollow={hollow}
         ink={ink}
+        nubs={!booth && table.kind !== "square_plain" && table.kind !== "barstool" && table.shape !== "bar"}
       >
         {children}
       </StatusFixture>
@@ -154,6 +167,7 @@ function StatusFixture({
   children,
   hollow = false,
   ink,
+  nubs = false,
 }: {
   booth: BoothKind | null;
   bar: boolean;
@@ -166,6 +180,7 @@ function StatusFixture({
   children?: ReactNode;
   hollow?: boolean;
   ink?: string;
+  nubs?: boolean;
 }) {
   const ring = "#1c1917";
   const number = hollow ? ring : ink || "#0a0a0a";
@@ -176,7 +191,7 @@ function StatusFixture({
       style={{ transform: `rotate(${rotation}deg)`, transformOrigin: "center center", containerType: "size" }}
       data-floor-status-shape={shape}
       data-floor-fill={hollow ? "hollow" : "solid"}
-      data-no-chairs=""
+      data-floor-nubs={nubs ? "1" : "0"}
     >
       <svg viewBox="0 0 100 100" className="pointer-events-none h-full w-full" aria-hidden>
         {round ? (
@@ -201,6 +216,11 @@ function StatusFixture({
             strokeWidth={hollow ? 7 : 0}
           />
         )}
+        {nubs
+          ? nubPoints(round).map((p, i) => (
+              <circle key={i} cx={p.x} cy={p.y} r="3.2" fill={NUB} data-floor-nub="1" />
+            ))
+          : null}
       </svg>
       {label ? (
         <span
@@ -255,10 +275,6 @@ function FloorTableArt({
   onPointerDown?: (event: ReactPointerEvent<HTMLDivElement>) => void;
 }) {
   const s = seatingScale({ w, h, seats: Math.max(seats, 1) });
-  const anchors =
-    seats <= 0
-      ? []
-      : seatAnchors(seats, round, s.tableInsetVx * 0.55, s.tableInsetVy * 0.55);
   const tx = seats <= 0 ? 8 : s.tableInsetVx;
   const ty = seats <= 0 ? 8 : s.tableInsetVy;
   const tw = Math.max(28, 100 - tx * 2);
@@ -296,25 +312,8 @@ function FloorTableArt({
         {sectionColor ? (
           <rect x="38" y={ty - 1} width="24" height="4" rx="1.5" fill={sectionColor} />
         ) : null}
-        {anchors.map((a, i) => (
-          <g key={i} transform={`translate(${a.x} ${a.y}) rotate(${a.deg})`}>
-            <rect
-              x={-s.iconVx / 2}
-              y={-s.iconVy * 0.35}
-              width={s.iconVx}
-              height={s.iconVy * 0.7}
-              rx={Math.min(s.iconVx, s.iconVy) * 0.18}
-              fill={CHAIR}
-            />
-            <rect
-              x={-s.iconVx / 2}
-              y={-s.iconVy / 2}
-              width={s.iconVx}
-              height={s.iconVy * 0.22}
-              rx={Math.min(s.iconVx, s.iconVy) * 0.12}
-              fill={CHAIR}
-            />
-          </g>
+        {(seats > 0 ? nubPoints(round) : []).map((p, i) => (
+          <circle key={i} cx={p.x} cy={p.y} r="3.2" fill={NUB} data-floor-nub="1" />
         ))}
       </svg>
       {label ? (
@@ -371,29 +370,20 @@ function FloorStoolArt({
       style={{ transform: `rotate(${rotation}deg)`, transformOrigin: "center center" }}
       onPointerDown={onPointerDown}
     >
-      <svg viewBox="0 0 100 100" className="pointer-events-none h-full w-full" aria-hidden data-floor-stool="hollow">
+      <svg viewBox="0 0 100 100" className="pointer-events-none h-full w-full" aria-hidden data-floor-stool="tile">
         {centers.map((c, i) => (
-          <g key={i}>
-            <ellipse
-              cx={c.x}
-              cy={c.y}
-              rx={rx}
-              ry={ry}
-              fill="none"
-              stroke="#111"
-              strokeWidth="2.5"
-              data-floor-stool-ring="1"
-            />
-            <line
-              x1={c.x}
-              y1={c.y - ry}
-              x2={c.x}
-              y2={c.y - ry * 0.45}
-              stroke="#111"
-              strokeWidth="2"
-              data-stool-front="1"
-            />
-          </g>
+          <rect
+            key={i}
+            x={c.x - rx}
+            y={c.y - ry}
+            width={rx * 2}
+            height={ry * 2}
+            rx={Math.min(rx, ry) * 0.35}
+            fill="#f4efe6"
+            stroke="#1c1917"
+            strokeWidth="2.5"
+            data-floor-stool-tile="1"
+          />
         ))}
         {sectionColor ? (
           <rect x="38" y="2" width="24" height="4" rx="1.5" fill={sectionColor} />

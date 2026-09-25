@@ -1,7 +1,7 @@
 # Operators Guide — authoring
 
-**Revision · 24 Sep 2026** — Barstools sit against the rail.
-Guide v2026.10.162.
+**Revision · 25 Sep 2026** — Table nubs, BAR slab, and stool side.
+Guide v2026.10.163.
 
 The in-app **Operators Guide** is the living product manual. It is not a
 separate PDF. Staff open it from **Guide** / **?** in the POS and platform

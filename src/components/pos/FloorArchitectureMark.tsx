@@ -71,16 +71,31 @@ export function FloorArchitectureMark({
       >
         <path
           d={d}
-          fill="transparent"
+          fill="#b7b2aa"
           fillRule={closed ? "evenodd" : "nonzero"}
-          stroke="#111"
+          stroke="#222"
           strokeWidth={2}
           strokeLinejoin="miter"
           vectorEffect="non-scaling-stroke"
+          data-floor-bar-fill="slab"
           data-floor-bar-stroke="1"
           style={{ pointerEvents: "fill" }}
           onPointerDown={onBarPointerDown}
         />
+        {Math.min(table.w, table.h) >= 3.2 && Math.max(table.w, table.h) >= 8 ? (
+          <text
+            x={table.w / 2}
+            y={table.h / 2}
+            textAnchor="middle"
+            dominantBaseline="middle"
+            fill="#1c1917"
+            fontSize={Math.max(1.6, Math.min(table.h * 0.55, 4))}
+            fontWeight={700}
+            data-floor-bar-label="BAR"
+          >
+            BAR
+          </text>
+        ) : null}
       </svg>
     );
   }
