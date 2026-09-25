@@ -6,6 +6,18 @@ import type { GuideUpdate } from "@/lib/guide/types";
  */
 export const WHATS_NEW_ENTRIES: GuideUpdate[] = [
   {
+    id: "upd_2026_10_165_bar_label",
+    date: "2026-09-25",
+    title: "Bar name sits on the slab",
+    summary: "The bar is a black outline. BAR is on the longest leg, not in the well.",
+    body: "Editor and live floor draw the bar as a black outline with a clear center, the same idea as an empty table. BAR, or a custom name, is centered on the longest leg and clipped to that outline. Rotating the bar or changing a leg keeps the name on that leg, and the letters stay upright. A vertical leg stacks the letters. The well of an L or U stays empty.",
+    roles: ["owner_manager", "host_operator", "server"],
+    surfaces: ["floor"],
+    audience: "all",
+    topicId: "floor-editor",
+    tags: ["floor", "bar"],
+  },
+  {
     id: "upd_2026_10_164_floor_stroke",
     date: "2026-09-25",
     title: "Live floor lines are a hairline",

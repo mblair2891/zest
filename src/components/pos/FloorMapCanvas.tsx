@@ -43,8 +43,20 @@ function barSlab(
         height={Math.max(1, depth - 2)}
         fill="transparent"
         stroke="#111"
-        strokeWidth={2}
+        strokeWidth={1.5}
       />
+      <text
+        x={width / 2}
+        y={depth / 2}
+        textAnchor="middle"
+        dominantBaseline="middle"
+        fill="#111"
+        fontSize={Math.max(8, depth * 0.55)}
+        fontWeight={500}
+        data-floor-bar-label="BAR"
+      >
+        BAR
+      </text>
     </svg>
   );
 }

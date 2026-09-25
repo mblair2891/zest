@@ -368,6 +368,82 @@ export function boundsOf(points: PlanPoint[], pad = 2): { x: number; y: number; 
   };
 }
 
+/** Shown on the slab. A generic name stays BAR; a house name is used as typed. */
+export function barFaceLabel(label?: string | null): string {
+  const raw = String(label ?? "").trim();
+  if (!raw) return "BAR";
+  const generic = new Set(["bar", "bar top", "bartop", "bar_top"]);
+  if (generic.has(raw.toLowerCase())) return "BAR";
+  return raw;
+}
+
+function normDeg(deg: number): number {
+  let d = deg % 360;
+  if (d > 180) d -= 360;
+  if (d < -180) d += 360;
+  return d;
+}
+
+export type BarLabelPose = {
+  /** Longest leg. The label stays on this leg when lengths or rotation change. */
+  leg: number;
+  x: number;
+  y: number;
+  /** Clockwise degrees of the leg in plan, before the piece rotation. */
+  legDeg: number;
+  /** The leg runs up-down on screen, so the letters stack. */
+  stack: boolean;
+  /** Clip width, percent of the bounding-box width (the leg). */
+  alongPct: number;
+  /** Clip height, percent of the bounding-box height (the counter depth). */
+  thickPct: number;
+  leftPct: number;
+  topPct: number;
+};
+
+/**
+ * Label anchor: midpoint of the longest leg, clipped to the counter depth.
+ * `rotationDeg` is the on-screen spin. A leg that is vertical on screen stacks.
+ */
+export function barLabelPose(
+  points: PlanPoint[],
+  room: RoomInches,
+  box: { x: number; y: number; w: number; h: number },
+  depthIn: number,
+  rotationDeg = 0,
+): BarLabelPose | null {
+  const lengths = legInches(points, room);
+  if (!lengths.length || box.w <= 0 || box.h <= 0) return null;
+  let leg = 0;
+  for (let i = 1; i < lengths.length; i += 1) {
+    if ((lengths[i] ?? 0) > (lengths[leg] ?? 0)) leg = i;
+  }
+  if ((lengths[leg] ?? 0) < 1) return null;
+  const a = points[leg];
+  const b = points[leg + 1];
+  if (!a || !b) return null;
+  const x = (a.x + b.x) / 2;
+  const y = (a.y + b.y) / 2;
+  const dxIn = ((b.x - a.x) / 100) * room.widthIn;
+  const dyIn = ((b.y - a.y) / 100) * room.depthIn;
+  const legDeg = (Math.atan2(dyIn, dxIn) * 180) / Math.PI;
+  const screen = normDeg(legDeg + rotationDeg);
+  const fromHoriz = Math.abs(screen) > 90 ? 180 - Math.abs(screen) : Math.abs(screen);
+  const boxWIn = Math.max(1, (box.w / 100) * room.widthIn);
+  const boxHIn = Math.max(1, (box.h / 100) * room.depthIn);
+  return {
+    leg,
+    x,
+    y,
+    legDeg,
+    stack: fromHoriz > 45,
+    alongPct: ((lengths[leg] ?? 0) / boxWIn) * 100,
+    thickPct: (Math.max(1, depthIn) / boxHIn) * 100,
+    leftPct: ((x - box.x) / box.w) * 100,
+    topPct: ((y - box.y) / box.h) * 100,
+  };
+}
+
 export function planToLocal(points: PlanPoint[], box: { x: number; y: number; w: number; h: number }): PlanPoint[] {
   return points.map((p) => ({
     x: ((p.x - box.x) / box.w) * 100,

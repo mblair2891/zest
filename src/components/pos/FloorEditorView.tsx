@@ -1119,6 +1119,7 @@ export function FloorEditorView() {
                         selected={selected === t.id}
                         room={floorRoom}
                         pxPerIn={fit.pxPerIn * cam.s}
+                        spinDeg={rot}
                         onBarPointerDown={(e) => onPointerDown(e, t.id, t.x, t.y)}
                       />
                       {handles.map((h) => {

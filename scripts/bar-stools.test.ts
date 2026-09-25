@@ -42,7 +42,7 @@ test("seven stools sit outside a straight rail and face the bar", () => {
   assert.match(art, /data-floor-stool-tile/);
   assert.match(art, /data-floor-nub/);
   const mark = readFileSync("src/components/pos/FloorArchitectureMark.tsx", "utf8");
-  assert.match(mark, /data-floor-bar-label="BAR"/);
+  assert.match(mark, /data-floor-bar-label=/);
 });
 
 test("side B puts every stool on the other edge of a straight bar", () => {

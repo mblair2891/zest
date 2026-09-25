@@ -4,6 +4,8 @@ import { cn } from "@/lib/utils";
 import {
   barClosedShape,
   barDepthIn,
+  barFaceLabel,
+  barLabelPose,
   barSlabEdges,
   isArchitectureKind,
   liveArchCaption,
@@ -24,6 +26,7 @@ export function FloorArchitectureMark({
   extend,
   pxPerIn: _pxPerIn = 2,
   room = DEFAULT_ROOM,
+  spinDeg = 0,
 }: {
   table: Table;
   selected?: boolean;
@@ -38,6 +41,8 @@ export function FloorArchitectureMark({
   /** Kept so callers can pass the room scale. The slab uses inches, not a hairline stroke. */
   pxPerIn?: number;
   room?: RoomInches;
+  /** Spin already applied by a parent. The editor rotates the bar outside this mark. */
+  spinDeg?: number;
 }) {
   if (!isArchitectureKind(table.kind)) return null;
   const rotation = ((Number(table.rotation) || 0) % 360 + 360) % 360;
@@ -55,48 +60,95 @@ export function FloorArchitectureMark({
     const d = closed
       ? `${chain(outer)} Z ${chain(inner)} Z`
       : `${chain(outer)} ${[...inner].reverse().map((p, i) => `${i === 0 ? "L" : "L"} ${loc(p)}`).join(" ")} Z`;
+    const visual = ((rotation + spinDeg) % 360 + 360) % 360;
+    const pose = barLabelPose(plan, room, table, depth, visual);
+    const face = barFaceLabel(table.label);
+    const glyph = pose ? -(pose.legDeg + visual) : 0;
     return (
-      <svg
-        viewBox={`0 0 ${Math.max(table.w, 0.4)} ${Math.max(table.h, 0.4)}`}
-        preserveAspectRatio="none"
-        className="h-full w-full overflow-visible bg-transparent"
+      <div
+        className="relative h-full w-full overflow-visible bg-transparent"
         data-floor-bar="slab"
         data-floor-bar-shape={table.barShape ?? "straight"}
         data-floor-bar-depth={depth}
-        data-floor-rotation={rotation}
+        data-floor-rotation={visual}
         data-bar-legs={(table.legLengths ?? []).join(",")}
         data-floor-bar-selected={selected ? "1" : "0"}
-        data-floor-arch-tone="slab"
+        data-floor-arch-tone="outline"
         style={{ ...spin, pointerEvents: "none", background: "transparent" }}
       >
-        <path
-          d={d}
-          fill="#b7b2aa"
-          fillRule={closed ? "evenodd" : "nonzero"}
-          stroke="#222"
-          strokeWidth={2}
-          strokeLinejoin="miter"
-          vectorEffect="non-scaling-stroke"
-          data-floor-bar-fill="slab"
-          data-floor-bar-stroke="1"
-          style={{ pointerEvents: "fill" }}
-          onPointerDown={onBarPointerDown}
-        />
-        {Math.min(table.w, table.h) >= 3.2 && Math.max(table.w, table.h) >= 8 ? (
-          <text
-            x={table.w / 2}
-            y={table.h / 2}
-            textAnchor="middle"
-            dominantBaseline="middle"
-            fill="#1c1917"
-            fontSize={Math.max(1.6, Math.min(table.h * 0.55, 4))}
-            fontWeight={700}
-            data-floor-bar-label="BAR"
+        <svg
+          viewBox={`0 0 ${Math.max(table.w, 0.4)} ${Math.max(table.h, 0.4)}`}
+          preserveAspectRatio="none"
+          className="h-full w-full overflow-visible bg-transparent"
+        >
+          <path
+            d={d}
+            fill="transparent"
+            fillRule={closed ? "evenodd" : "nonzero"}
+            stroke="#111"
+            strokeWidth={1.5}
+            strokeLinejoin="miter"
+            vectorEffect="non-scaling-stroke"
+            data-floor-bar-fill="none"
+            data-floor-bar-stroke="1"
+            style={{ pointerEvents: "fill" }}
+            onPointerDown={onBarPointerDown}
+          />
+        </svg>
+        {pose ? (
+          <div
+            data-floor-bar-label={face}
+            data-floor-bar-leg={pose.leg}
+            data-floor-bar-stack={pose.stack ? "1" : "0"}
+            className="pointer-events-none absolute flex items-center justify-center overflow-hidden"
+            style={{
+              left: `calc(${pose.leftPct}% - ${pose.alongPct / 2}%)`,
+              top: `calc(${pose.topPct}% - ${pose.thickPct / 2}%)`,
+              width: `${pose.alongPct}%`,
+              height: `${pose.thickPct}%`,
+              transform: `rotate(${pose.legDeg}deg)`,
+              transformOrigin: "center center",
+              containerType: "size",
+            }}
           >
-            BAR
-          </text>
+            <div className="flex h-full w-full items-center justify-center">
+              {pose.stack ? (
+                <span className="flex items-center justify-center">
+                  {face.split("").map((ch, i) => (
+                    <span
+                      key={`${ch}-${i}`}
+                      style={{
+                        display: "inline-block",
+                        transform: `rotate(${glyph}deg)`,
+                        fontSize: "62cqh",
+                        fontWeight: 500,
+                        color: "#111",
+                        lineHeight: 1,
+                      }}
+                    >
+                      {ch}
+                    </span>
+                  ))}
+                </span>
+              ) : (
+                <span
+                  style={{
+                    transform: `rotate(${glyph}deg)`,
+                    fontSize: "58cqh",
+                    fontWeight: 500,
+                    color: "#111",
+                    letterSpacing: "0.06em",
+                    lineHeight: 1,
+                    whiteSpace: "nowrap",
+                  }}
+                >
+                  {face}
+                </span>
+              )}
+            </div>
+          </div>
         ) : null}
-      </svg>
+      </div>
     );
   }
   if (table.kind === "host_stand") {
