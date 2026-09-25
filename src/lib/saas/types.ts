@@ -103,6 +103,8 @@ export type LocationSetup = {
   skipTrainingRoster?: boolean;
   /** inherit = platform default (sandbox unless Platform → Payments is live). */
   paymentsMode?: "inherit" | "sandbox" | "live";
+  /** One card rail. Quantum Payments stays the guest brand. */
+  cardProcessor?: "finix" | "stripe" | "none";
   /** Processor reader id for live card-present (Quantum terminal serial). */
   quantumReaderId?: string;
   /** First-party gift policy (server ledger). */
@@ -193,6 +195,7 @@ export const EMPTY_LOCATION_SETUP: LocationSetup = {
   separateCourseTickets: false,
   stationPrintQueue: [],
   paymentsMode: "inherit",
+  cardProcessor: "finix",
   paymentMethods: {
     cash: true,
     card: true,

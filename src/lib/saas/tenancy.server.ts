@@ -252,6 +252,10 @@ function parseSetup(raw: unknown): LocationSetup {
       o.paymentsMode === "sandbox" || o.paymentsMode === "live" || o.paymentsMode === "inherit"
         ? o.paymentsMode
         : "inherit",
+    cardProcessor:
+      o.cardProcessor === "stripe" || o.cardProcessor === "none" || o.cardProcessor === "finix"
+        ? o.cardProcessor
+        : "finix",
     qrMode: typeof o.qrMode === "string" ? o.qrMode : undefined,
     qrPolicy: o.qrPolicy != null ? parseQrPolicy(o.qrPolicy, o.qrMode) : undefined,
     skipTrainingRoster: "skipTrainingRoster" in o ? Boolean(o.skipTrainingRoster) : undefined,

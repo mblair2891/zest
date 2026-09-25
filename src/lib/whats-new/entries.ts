@@ -6,6 +6,18 @@ import type { GuideUpdate } from "@/lib/guide/types";
  */
 export const WHATS_NEW_ENTRIES: GuideUpdate[] = [
   {
+    id: "upd_2026_10_166_card_processor",
+    date: "2026-09-25",
+    title: "One card processor per venue",
+    summary: "Quantum Payments stays the guest brand. Pick Finix, Stripe Terminal, or none.",
+    body: "Location settings → Card processor. Finix, Stripe Terminal, or None. Only one is active, so a check is not charged twice. None hides card on Pay and leaves cash. Stripe Terminal is the temporary reader path: training uses test mode, and live keys run only after the location is Live. When Finix merchants are approved, switch the dropdown to Finix. Guest check, tenders, cash discount, and entity lines stay the same.",
+    roles: ["owner_manager", "host_operator"],
+    surfaces: ["settings"],
+    audience: "all",
+    topicId: "quantum-payments",
+    tags: ["payments"],
+  },
+  {
     id: "upd_2026_10_165_bar_label",
     date: "2026-09-25",
     title: "Bar name sits on the slab",

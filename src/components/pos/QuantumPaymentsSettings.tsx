@@ -74,6 +74,21 @@ export function QuantumPaymentsSettings({
     };
   }, [locId]);
 
+  const cardProcessor = usePosStore((s) => s.settings.cardProcessor) ?? "finix";
+  const saveProcessor = (next: "finix" | "stripe" | "none") => {
+    if (!write || isProspectDemo() || !orgId || !locId) return;
+    setSaving(true);
+    usePosStore.getState().updateSettings({ cardProcessor: next });
+    void saveLocationSettingsFn({
+      data: { orgId, locationId: locId, setup: { cardProcessor: next } },
+    })
+      .then(() => {
+        noteChecklistSave({ tab: "payments", focus: "tenders" });
+      })
+      .catch(() => undefined)
+      .finally(() => setSaving(false));
+  };
+
   const saveMode = (paymentsMode: LocationPaymentsMode) => {
     if (!write || isProspectDemo() || !orgId || !locId) return;
     if (paymentsMode === "live" && status?.lifecycleForcesSandbox) return;
@@ -136,9 +151,31 @@ export function QuantumPaymentsSettings({
         </GuideLearnLink>
       </div>
       <p className="text-xs text-muted-foreground">
-        Quantum Payments. The guest pays once. Finix splits by line owner. No processor
-        marketplace — card is Quantum Payments only.
+        Guests see Quantum Payments and one check. This venue uses one card processor.
+        Cash and gift do not use that processor.
       </p>
+      <label className="block text-sm">
+        <span className="mb-1 block text-xs text-muted-foreground">Card processor</span>
+        <select
+          className="h-9 w-full rounded-lg border border-border bg-bg px-2 text-sm"
+          data-card-processor=""
+          disabled={!write || saving}
+          value={cardProcessor}
+          onChange={(e) => saveProcessor(e.target.value as "finix" | "stripe" | "none")}
+        >
+          <option value="finix">Finix</option>
+          <option value="stripe">Stripe Terminal</option>
+          <option value="none">None (cash and gift only)</option>
+        </select>
+      </label>
+      {cardProcessor === "none" ? (
+        <p className="text-xs text-muted-foreground">Card is off on Pay. Cash still works.</p>
+      ) : cardProcessor === "stripe" ? (
+        <p className="text-xs text-muted-foreground">
+          Training uses Stripe test mode. Live keys run only after this location is Live.
+          One processor — switching to Finix does not also charge Stripe.
+        </p>
+      ) : null}
       {status?.lifecycleForcesSandbox && (
         <p className="rounded-lg bg-warn/15 px-3 py-2 text-xs font-medium text-warn">
           TRAINING — live processor keys are ignored. Quantum Payments sandbox

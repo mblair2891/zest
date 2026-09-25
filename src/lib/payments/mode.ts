@@ -55,6 +55,18 @@ export function quantumWebhookSecret(): string | undefined {
   return readServerEnv("QUANTUM_PAYMENTS_WEBHOOK_SECRET");
 }
 
+export function stripeSecretKey(): string | undefined {
+  return readServerEnv("STRIPE_SECRET_KEY") || undefined;
+}
+
+export function stripePublishableKey(): string | undefined {
+  return readServerEnv("STRIPE_PUBLISHABLE_KEY") || undefined;
+}
+
+export function stripeWebhookSecret(): string | undefined {
+  return readServerEnv("STRIPE_WEBHOOK_SECRET") || undefined;
+}
+
 export function liveAdapterConfigured(): boolean {
   const finix =
     readServerEnv("FINIX_API_KEY") || readServerEnv("FINIX_APPLICATION_ID");

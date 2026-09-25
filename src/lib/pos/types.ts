@@ -344,6 +344,8 @@ export interface RestaurantSettings {
   cashHandling?: import("./cash-handling").CashHandlingConfig;
   /** Venue tenders the house accepts. Disabled methods are hidden on pay and closeout. */
   paymentMethods?: import("./payment-methods").PaymentMethodsConfig;
+  /** One card processor. None hides card and leaves cash and gift. */
+  cardProcessor?: "finix" | "stripe" | "none";
   /** Location-configurable loss-prevention gates. */
   lossPrevention?: import("./loss-prevention").LossPreventionConfig;
 }

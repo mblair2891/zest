@@ -11,8 +11,9 @@ import {
   parseLocationPaymentsMode,
   resolvePaymentsMode,
 } from "./mode";
+import { parseCardProcessor } from "./adapter";
 import { captureSandbox } from "./sandbox-adapter";
-import { captureLiveCardPresent } from "./stripe-terminal.server";
+import { captureLiveCardPresent, captureStripeTerminal } from "./stripe-terminal.server";
 import type { CardPresentInput, CardPresentResult, CardPresentSplit, PaymentsStatus } from "./types";
 import { newId } from "@/lib/saas/ids";
 import { HOST_SCOPE } from "@/lib/access/entity-grants";
@@ -247,7 +248,48 @@ export async function captureCardPresent(
   }
 
   const training = resolved.lifecycleForcesSandbox || resolved.mode === "sandbox";
+  const payload: CardPresentInput = {
+    ...input,
+    orgId: loc.org_id,
+    locationId: loc.id,
+    hostBrand,
+    entities,
+  };
+  const processor = parseCardProcessor(setup.cardProcessor);
+  if (processor === "none") {
+    return {
+      ok: false,
+      status: "unavailable",
+      sandbox: training,
+      error: "Card is off for this venue. Cash and gift still work.",
+    };
+  }
   const { assertEntitiesCanCapture, persistPaymentSplits } = await import("./onboarding.server");
+  if (processor === "stripe") {
+    const locationLive = !training && locationLifecycleStatus(setup, loc.lifecycle_status) === "live";
+    const readerId = pickReaderId(setup, input.readerId) || (locationLive ? null : "tmr_simulated");
+    const captured = await captureStripeTerminal({
+      input: payload,
+      merchantId,
+      readerId,
+      locationLive,
+      readerModel: input.readerId,
+    });
+    if (!captured.ok || !captured.paymentId) return { ...captured, splits: entities };
+    try {
+      await persistPaymentSplits({
+        paymentId: captured.paymentId,
+        orgId: loc.org_id,
+        locationId: loc.id,
+        entities,
+        accounts: [],
+        journalOnly: true,
+      });
+    } catch {
+      /* splits table may be applying */
+    }
+    return { ...captured, splits: entities };
+  }
   const gate = await assertEntitiesCanCapture({
     locationId: loc.id,
     orgId: loc.org_id,
@@ -263,14 +305,6 @@ export async function captureCardPresent(
       error: gate.error,
     };
   }
-
-  const payload: CardPresentInput = {
-    ...input,
-    orgId: loc.org_id,
-    locationId: loc.id,
-    hostBrand,
-    entities,
-  };
 
   const finish = async (result: CardPresentResult): Promise<CardPresentResult> => {
     if (!result.ok || !result.paymentId) return { ...result, splits: entities };

@@ -8,6 +8,7 @@ import {
   enabledPayMethods,
   methodLabel,
   parsePaymentMethods,
+  payConfigForProcessor,
 } from "@/lib/pos/payment-methods";
 import type { PaymentMethod } from "@/lib/pos/types";
 import { ADD_RECEIPT_PRINTER } from "@/lib/print/receipt-printer";
@@ -39,7 +40,9 @@ export function BusyPayPanel({ onNeedFloor }: { onNeedFloor: () => void }) {
 
   const dual = computeDualTotals(order, settings);
   const table = tables.find((t) => t.id === order.tableId);
-  const methods = enabledPayMethods(parsePaymentMethods(settings.paymentMethods)).filter((m) =>
+  const methods = enabledPayMethods(
+    payConfigForProcessor(parsePaymentMethods(settings.paymentMethods), settings.cardProcessor),
+  ).filter((m) =>
     STATION_TENDERS.has(m),
   );
 

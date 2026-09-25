@@ -63,6 +63,7 @@ import { Route as PlatformTenantsIndexRouteImport } from './routes/platform.tena
 import { Route as PlatformTenantsOrgIdRouteImport } from './routes/platform.tenants.$orgId'
 import { Route as WaitlistOptOutTokenRouteImport } from './routes/waitlist.opt-out.$token'
 import { Route as ApiPaymentsFinixWebhookRouteImport } from './routes/api/payments/finix/webhook'
+import { Route as ApiPaymentsStripeWebhookRouteImport } from './routes/api/payments/stripe/webhook'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -334,6 +335,11 @@ const ApiPaymentsFinixWebhookRoute = ApiPaymentsFinixWebhookRouteImport.update({
   path: '/api/payments/finix/webhook',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPaymentsStripeWebhookRoute = ApiPaymentsStripeWebhookRouteImport.update({
+  id: '/api/payments/stripe/webhook',
+  path: '/api/payments/stripe/webhook',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -390,6 +396,7 @@ export interface FileRoutesByFullPath {
   '/waitlist/opt-out/$token': typeof WaitlistOptOutTokenRoute
   '/platform/tenants/': typeof PlatformTenantsIndexRoute
   '/api/payments/finix/webhook': typeof ApiPaymentsFinixWebhookRoute
+  '/api/payments/stripe/webhook': typeof ApiPaymentsStripeWebhookRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -444,6 +451,7 @@ export interface FileRoutesByTo {
   '/waitlist/opt-out/$token': typeof WaitlistOptOutTokenRoute
   '/platform/tenants': typeof PlatformTenantsIndexRoute
   '/api/payments/finix/webhook': typeof ApiPaymentsFinixWebhookRoute
+  '/api/payments/stripe/webhook': typeof ApiPaymentsStripeWebhookRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -501,6 +509,7 @@ export interface FileRoutesById {
   '/waitlist/opt-out/$token': typeof WaitlistOptOutTokenRoute
   '/platform/tenants/': typeof PlatformTenantsIndexRoute
   '/api/payments/finix/webhook': typeof ApiPaymentsFinixWebhookRoute
+  '/api/payments/stripe/webhook': typeof ApiPaymentsStripeWebhookRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -559,6 +568,7 @@ export interface FileRouteTypes {
     | '/waitlist/opt-out/$token'
     | '/platform/tenants/'
     | '/api/payments/finix/webhook'
+    | '/api/payments/stripe/webhook'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -613,6 +623,7 @@ export interface FileRouteTypes {
     | '/waitlist/opt-out/$token'
     | '/platform/tenants'
     | '/api/payments/finix/webhook'
+    | '/api/payments/stripe/webhook'
   id:
     | '__root__'
     | '/'
@@ -669,6 +680,7 @@ export interface FileRouteTypes {
     | '/waitlist/opt-out/$token'
     | '/platform/tenants/'
     | '/api/payments/finix/webhook'
+    | '/api/payments/stripe/webhook'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -716,6 +728,7 @@ export interface RootRouteChildren {
   ApiPrintJobsRoute: typeof ApiPrintJobsRoute
   WaitlistOptOutTokenRoute: typeof WaitlistOptOutTokenRoute
   ApiPaymentsFinixWebhookRoute: typeof ApiPaymentsFinixWebhookRoute
+  ApiPaymentsStripeWebhookRoute: typeof ApiPaymentsStripeWebhookRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -1098,6 +1111,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPaymentsFinixWebhookRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/payments/stripe/webhook': {
+      id: '/api/payments/stripe/webhook'
+      path: '/api/payments/stripe/webhook'
+      fullPath: '/api/payments/stripe/webhook'
+      preLoaderRoute: typeof ApiPaymentsStripeWebhookRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -1229,6 +1249,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiPrintJobsRoute: ApiPrintJobsRoute,
   WaitlistOptOutTokenRoute: WaitlistOptOutTokenRoute,
   ApiPaymentsFinixWebhookRoute: ApiPaymentsFinixWebhookRoute,
+  ApiPaymentsStripeWebhookRoute: ApiPaymentsStripeWebhookRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

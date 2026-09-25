@@ -28,6 +28,7 @@ export type StationPublishSetup = {
   qrPolicy?: object;
   cashHandling?: object;
   paymentMethods?: object;
+  cardProcessor?: "finix" | "stripe" | "none";
   cashDiscountEnabled?: boolean;
   cashDiscountPercent?: number;
   cashRoundIncrement?: number;
@@ -193,6 +194,9 @@ export function applyStationPublish(
     }
     if (setup.paymentMethods && typeof setup.paymentMethods === "object") {
       settings.paymentMethods = parsePaymentMethods(setup.paymentMethods);
+    }
+    if (setup.cardProcessor === "stripe" || setup.cardProcessor === "none" || setup.cardProcessor === "finix") {
+      settings.cardProcessor = setup.cardProcessor;
     }
     if ("cashDiscountEnabled" in setup) {
       settings.cashDiscountEnabled = Boolean(setup.cashDiscountEnabled);

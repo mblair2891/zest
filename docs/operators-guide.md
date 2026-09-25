@@ -1,7 +1,7 @@
 # Operators Guide — authoring
 
-**Revision · 25 Sep 2026** — Bar is a hollow outline with the name on the slab.
-Guide v2026.10.165.
+**Revision · 25 Sep 2026** — Card processor is Finix, Stripe Terminal, or none.
+Guide v2026.10.166.
 
 The in-app **Operators Guide** is the living product manual. It is not a
 separate PDF. Staff open it from **Guide** / **?** in the POS and platform

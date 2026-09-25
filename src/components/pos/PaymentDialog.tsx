@@ -56,6 +56,7 @@ import {
   enabledPayMethods,
   firstEnabledMethod,
   methodEnabled,
+  payConfigForProcessor,
   methodLabel,
   parsePaymentMethods,
 } from "@/lib/pos/payment-methods";
@@ -80,7 +81,10 @@ export function PaymentDialog({ open, onOpenChange, initialMethod }: Props) {
   const setView = usePosStore((s) => s.setView);
   const emp = usePosStore((s) => s.employees.find((e) => e.id === s.currentEmployeeId));
   const canPay = canEmployee(emp, "payments:take");
-  const payCfg = parsePaymentMethods(settings.paymentMethods);
+  const payCfg = payConfigForProcessor(
+    parsePaymentMethods(settings.paymentMethods),
+    settings.cardProcessor,
+  );
   const giftOk = canPay && payCfg.giftCard;
   const locationDevices = usePosStore((s) => s.locationDevices);
   const activeDeviceId = usePosStore((s) => s.activeDeviceId);
@@ -162,11 +166,11 @@ export function PaymentDialog({ open, onOpenChange, initialMethod }: Props) {
   const [signed, setSigned] = useState(false);
 
   useEffect(() => {
-    const cfg = parsePaymentMethods(settings.paymentMethods);
+    const cfg = payConfigForProcessor(parsePaymentMethods(settings.paymentMethods), settings.cardProcessor);
     if (!methodEnabled(cfg, method)) {
       setMethod(firstEnabledMethod(cfg, wanOnline ? "card" : "cash"));
     }
-  }, [settings.paymentMethods, method, wanOnline]);
+  }, [settings.paymentMethods, settings.cardProcessor, method, wanOnline]);
 
   const amountCents = amount
     ? Math.round(parseFloat(amount) * 100)
@@ -176,17 +180,17 @@ export function PaymentDialog({ open, onOpenChange, initialMethod }: Props) {
 
   useEffect(() => {
     if (!wanOnline && method === "card") {
-      const cfg = parsePaymentMethods(settings.paymentMethods);
+      const cfg = payConfigForProcessor(parsePaymentMethods(settings.paymentMethods), settings.cardProcessor);
       setMethod(firstEnabledMethod(cfg, "cash"));
     }
-  }, [wanOnline, method, settings.paymentMethods]);
+  }, [wanOnline, method, settings.paymentMethods, settings.cardProcessor]);
 
   useEffect(() => {
     if (!giftOk && method === "gift_card") {
-      const cfg = parsePaymentMethods(settings.paymentMethods);
+      const cfg = payConfigForProcessor(parsePaymentMethods(settings.paymentMethods), settings.cardProcessor);
       setMethod(firstEnabledMethod(cfg, wanOnline ? "card" : "cash"));
     }
-  }, [giftOk, method, wanOnline, settings.paymentMethods]);
+  }, [giftOk, method, wanOnline, settings.paymentMethods, settings.cardProcessor]);
 
   useEffect(() => {
     if (!open) return;
@@ -424,6 +428,10 @@ export function PaymentDialog({ open, onOpenChange, initialMethod }: Props) {
       }
       setBusy(true);
       try {
+        if (settings.cardProcessor === "stripe") {
+          const { handoffStripeReader } = await import("@/lib/payments/stripe-terminal-native");
+          await handoffStripeReader(stationRow?.cardReaderId || settings.quantumReaderId || "tmr_simulated");
+        }
         const cap = await captureCardPresentFn({
           data: {
             orgId,

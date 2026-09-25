@@ -629,6 +629,8 @@ export async function persistPaymentSplits(opts: {
   locationId: string;
   entities: CardPresentSplit[];
   accounts: AccountRow[];
+  /** Stripe adapter records the same lines and does not also charge Finix. */
+  journalOnly?: boolean;
 }): Promise<{ transferId?: string; sandbox: boolean }[]> {
   const sql = await getSql();
   const shares = opts.entities.filter((s) => s.amountCents > 0);
@@ -646,7 +648,7 @@ export async function persistPaymentSplits(opts: {
   let parentXfer: { transferId?: string; sandbox: boolean } = {
     sandbox: true,
   };
-  if (parent?.merchantId) {
+  if (parent?.merchantId && !opts.journalOnly) {
     parentXfer = await createSplitTransfer({
       parentMerchantId: parent.merchantId,
       amountCents: total,

@@ -90,7 +90,7 @@ import { readPairedDeviceId } from "./location-devices";
 import { destinationForGroup, ticketStationForDestination } from "./order-destinations";
 import { groupFireSlips } from "./fire-routing";
 import { assignNewSectionToSolePrinters } from "../print/printer-assignment";
-import { methodEnabled, parsePaymentMethods } from "./payment-methods";
+import { methodEnabled, parsePaymentMethods, payConfigForProcessor } from "./payment-methods";
 import { giftSellBlockedReason, parseGiftLimits } from "./gift-limits";
 import {
   cardRequiresConnection,
@@ -2852,7 +2852,10 @@ const usePosStoreRaw = create<PosStore>()(persist((set, get) => {
 		const pay = order.payments.find((p: any) => p.id === paymentId);
 		if (!pay) return { ok: false, error: "Tender not found" };
 		{
-			const pm = parsePaymentMethods(get().settings.paymentMethods);
+			const pm = payConfigForProcessor(
+				parsePaymentMethods(get().settings.paymentMethods),
+				get().settings.cardProcessor,
+			);
 			if (!methodEnabled(pm, method)) {
 				return { ok: false, error: "This tender is off at this venue." };
 			}
@@ -2965,9 +2968,14 @@ const usePosStoreRaw = create<PosStore>()(persist((set, get) => {
 			return { ok: false, error: "ODS cannot tender cash or gift. Use an order or host station." };
 		}
 		{
-			const pm = parsePaymentMethods(get().settings.paymentMethods);
+			const pm = payConfigForProcessor(
+				parsePaymentMethods(get().settings.paymentMethods),
+				get().settings.cardProcessor,
+			);
 			if (!methodEnabled(pm, method)) {
-				return { ok: false, error: "This tender is off at this venue." };
+				return { ok: false, error: method === "card" && get().settings.cardProcessor === "none"
+					? "Card is off. Cash still works."
+					: "This tender is off at this venue." };
 			}
 		}
 		if ((method === "card" || method === "room_charge") && cardRequiresConnection()) {
@@ -4381,7 +4389,10 @@ const usePosStoreRaw = create<PosStore>()(persist((set, get) => {
 		}
 		if (tender === "card" || tender === "gift_card") {
 			const method = tender === "gift_card" ? "gift_card" : "card";
-			const pm = parsePaymentMethods(get().settings.paymentMethods);
+			const pm = payConfigForProcessor(
+				parsePaymentMethods(get().settings.paymentMethods),
+				get().settings.cardProcessor,
+			);
 			if (!methodEnabled(pm, method)) {
 				set({ currentEmployeeId: prev });
 				return { ok: true, orderId: order.id, number: order.number, error: "This tender is off at this venue." };
@@ -4430,7 +4441,10 @@ const usePosStoreRaw = create<PosStore>()(persist((set, get) => {
 		if (order.status !== "open") return { ok: false, error: "Check already closed" };
 		const method = opts?.method === "gift_card" ? "gift_card" : "card";
 		{
-			const pm = parsePaymentMethods(get().settings.paymentMethods);
+			const pm = payConfigForProcessor(
+				parsePaymentMethods(get().settings.paymentMethods),
+				get().settings.cardProcessor,
+			);
 			if (!methodEnabled(pm, method)) {
 				return { ok: false, error: "This tender is off at this venue." };
 			}

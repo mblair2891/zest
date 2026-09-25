@@ -8,7 +8,7 @@ import { usePosStore } from "@/lib/pos/store";
 import { usePlatformStore } from "@/lib/pos/platform-store";
 import { printedItemPriceCents } from "@/lib/pos/calculations";
 import { formatCurrency } from "@/lib/utils";
-import { parsePaymentMethods } from "@/lib/pos/payment-methods";
+import { parsePaymentMethods, payConfigForProcessor } from "@/lib/pos/payment-methods";
 import {
   bookReservationFn,
   checkInReservationFn,
@@ -357,7 +357,7 @@ function OrderPane() {
     { menuItemId: string; name: string; unitPriceCents: number; qty: number; modifiers?: SelectedModifier[] }[]
   >([]);
   const serverless = isServerlessFood(settings.serviceStyle);
-  const payCfg = parsePaymentMethods(settings.paymentMethods);
+  const payCfg = payConfigForProcessor(parsePaymentMethods(settings.paymentMethods), settings.cardProcessor);
   const kioskTenders = (
     [
       payCfg.card ? "card" : null,
