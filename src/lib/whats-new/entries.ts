@@ -6,6 +6,18 @@ import type { GuideUpdate } from "@/lib/guide/types";
  */
 export const WHATS_NEW_ENTRIES: GuideUpdate[] = [
   {
+    id: "upd_2026_10_164_floor_stroke",
+    date: "2026-09-25",
+    title: "Live floor lines are a hairline",
+    summary: "Empty tables are a thin ring. Numbers stay large, at a medium weight.",
+    body: "On the live floor, an empty table, booth, or stool is a hairline ring — about one pixel at the fitted zoom — with a clear center. The number is the same size and a medium weight, so it reads from a tablet without looking stamped. Any other status still fills the shape. Walls, doors, and windows are that same thin line. The bar stays a gray slab so the rail does not disappear. Stool tiles use the same thin ring as the tables.",
+    roles: ["owner_manager", "host_operator", "server"],
+    surfaces: ["floor"],
+    audience: "all",
+    topicId: "floor-tables",
+    tags: ["floor"],
+  },
+  {
     id: "upd_2026_10_163_floor_icons",
     date: "2026-09-25",
     title: "Seat nubs and a BAR slab",

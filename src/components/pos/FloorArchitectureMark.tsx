@@ -124,7 +124,50 @@ export function FloorArchitectureMark({
       : table.kind === "door"
         ? "bg-[#efe6d8]"
         : "bg-[#3d2914]";
-  const doorEdge = table.kind === "door" ? (live ? "border-2 border-[#1a120c]" : "border-2 border-[#3d2914]") : "";
+  const doorEdge = table.kind === "door" && !live ? "border-2 border-[#3d2914]" : "";
+  if (live && (table.kind === "wall" || table.kind === "door" || table.kind === "window")) {
+    const y = table.h / 2;
+    const x1 = -(extend?.start ?? 0);
+    const x2 = table.w + (extend?.end ?? 0);
+    return (
+      <div
+        data-floor-arch={table.kind}
+        data-floor-rotation={rotation}
+        data-floor-spin=""
+        data-floor-arch-tone="line"
+        data-floor-arch-stroke="hairline"
+        className={cn("relative h-full w-full", className)}
+        style={spin}
+        onPointerDown={onShapePointerDown}
+      >
+        <svg
+          viewBox={`0 0 ${Math.max(table.w, 0.4)} ${Math.max(table.h, 0.4)}`}
+          preserveAspectRatio="none"
+          className="h-full w-full overflow-visible"
+        >
+          <line
+            x1={x1}
+            y1={y}
+            x2={x2}
+            y2={y}
+            stroke="#1c1917"
+            strokeWidth={1.25}
+            vectorEffect="non-scaling-stroke"
+            strokeLinecap="square"
+          />
+        </svg>
+        {caption ? (
+          <span
+            className="pointer-events-none absolute inset-0 flex items-center justify-center px-1 text-[9px] font-medium leading-none text-[#44403c]"
+            style={{ transform: `rotate(${-rotation}deg)` }}
+          >
+            {caption}
+          </span>
+        ) : null}
+        {children}
+      </div>
+    );
+  }
   const grow = table.kind === "wall" ? (extend?.start ?? 0) + (extend?.end ?? 0) : 0;
   const fillStyle =
     grow > 0 && table.w > 0

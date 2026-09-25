@@ -38,6 +38,7 @@ export function FloorFixtureArt({
   onPointerDown,
   hollow = false,
   ink,
+  hairline = false,
 }: {
   table: Pick<Table, "kind" | "shape" | "w" | "h" | "seats" | "rotation">;
   tableFill: string;
@@ -52,9 +53,11 @@ export function FloorFixtureArt({
   /** plan = editor capacity marks. status = solid fill, number only, no seats. */
   mode?: "plan" | "status";
   onPointerDown?: (event: ReactPointerEvent<HTMLDivElement>) => void;
-  /** Empty tables are a dark ring with a clear center. */
+  /** Empty tables are a hairline ring with a clear center. */
   hollow?: boolean;
   ink?: string;
+  /** Live stool tiles: same 1.25px ring as empty tables. */
+  hairline?: boolean;
 }) {
   const booth = asBoothKind(table.kind, table.shape);
   const rot = ((Number(rotation ?? table.rotation) || 0) % 360 + 360) % 360;
@@ -130,6 +133,7 @@ export function FloorFixtureArt({
         rotation={rot}
         className={className}
         onPointerDown={onPointerDown}
+        hairline={hairline}
       >
         {children}
       </FloorStoolArt>
@@ -183,7 +187,7 @@ function StatusFixture({
   nubs?: boolean;
 }) {
   const ring = "#1c1917";
-  const number = hollow ? ring : ink || "#0a0a0a";
+  const number = hollow ? "#44403c" : ink || "#44403c";
   const shape = booth ? "booth" : bar ? "stool" : round ? "round" : "rect";
   return (
     <div
@@ -191,6 +195,7 @@ function StatusFixture({
       style={{ transform: `rotate(${rotation}deg)`, transformOrigin: "center center", containerType: "size" }}
       data-floor-status-shape={shape}
       data-floor-fill={hollow ? "hollow" : "solid"}
+      data-floor-stroke={hollow ? "hairline" : "none"}
       data-floor-nubs={nubs ? "1" : "0"}
     >
       <svg viewBox="0 0 100 100" className="pointer-events-none h-full w-full" aria-hidden>
@@ -202,7 +207,8 @@ function StatusFixture({
             ry="46"
             fill={hollow ? "none" : tableFill}
             stroke={hollow ? ring : "none"}
-            strokeWidth={hollow ? 7 : 0}
+            strokeWidth={hollow ? 1.25 : 0}
+            vectorEffect="non-scaling-stroke"
           />
         ) : (
           <rect
@@ -213,7 +219,8 @@ function StatusFixture({
             rx="16"
             fill={hollow ? "none" : tableFill}
             stroke={hollow ? ring : "none"}
-            strokeWidth={hollow ? 7 : 0}
+            strokeWidth={hollow ? 1.25 : 0}
+            vectorEffect="non-scaling-stroke"
           />
         )}
         {nubs
@@ -224,18 +231,19 @@ function StatusFixture({
       </svg>
       {label ? (
         <span
-          className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center px-[8%] text-center font-bold leading-none tabular"
+          className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center px-[8%] text-center font-medium leading-none tabular"
           style={{ transform: `rotate(${-rotation}deg)`, color: number }}
           data-floor-cluster={joined?.length ? "1" : undefined}
+          data-floor-weight="medium"
         >
-          <span data-floor-primary style={{ fontSize: joined?.length ? "42cqmin" : "50cqmin" }}>
+          <span data-floor-primary style={{ fontSize: joined?.length ? "42cqmin" : "50cqmin", fontWeight: 500 }}>
             {label}
           </span>
           {joined && joined.length > 0 ? (
             <span
               data-floor-joined
-              className="mt-[4%] font-semibold leading-tight"
-              style={{ fontSize: "18cqmin" }}
+              className="mt-[4%] font-medium leading-tight"
+              style={{ fontSize: "18cqmin", fontWeight: 500 }}
             >
               {joined.join(" · ")}
             </span>
@@ -341,6 +349,7 @@ function FloorStoolArt({
   className,
   children,
   onPointerDown,
+  hairline = false,
 }: {
   w: number;
   h: number;
@@ -353,6 +362,8 @@ function FloorStoolArt({
   className?: string;
   children?: ReactNode;
   onPointerDown?: (event: ReactPointerEvent<HTMLDivElement>) => void;
+  /** Live map: 1.25px ring, same weight as an empty table. */
+  hairline?: boolean;
 }) {
   const s = seatingScale({ w, h, seats });
   const horizontal = w >= h;
@@ -367,8 +378,9 @@ function FloorStoolArt({
       data-floor-spin=""
       className={cn("relative h-full w-full", className)}
       data-floor-rotation={rotation}
-      style={{ transform: `rotate(${rotation}deg)`, transformOrigin: "center center" }}
+      style={{ transform: `rotate(${rotation}deg)`, transformOrigin: "center center", containerType: "size" }}
       onPointerDown={onPointerDown}
+      data-floor-stroke={hairline ? "hairline" : undefined}
     >
       <svg viewBox="0 0 100 100" className="pointer-events-none h-full w-full" aria-hidden data-floor-stool="tile">
         {centers.map((c, i) => (
@@ -381,7 +393,8 @@ function FloorStoolArt({
             rx={Math.min(rx, ry) * 0.35}
             fill="#f4efe6"
             stroke="#1c1917"
-            strokeWidth="2.5"
+            strokeWidth={hairline ? 1.25 : 2.5}
+            vectorEffect={hairline ? "non-scaling-stroke" : undefined}
             data-floor-stool-tile="1"
           />
         ))}
@@ -390,7 +403,14 @@ function FloorStoolArt({
         ) : null}
       </svg>
       {label ? (
-        <span className="pointer-events-none absolute inset-0 flex items-center justify-center px-1 text-center text-[10px] font-semibold tabular leading-none">
+        <span
+          className={cn(
+            "pointer-events-none absolute inset-0 flex items-center justify-center px-1 text-center tabular leading-none",
+            hairline ? "font-medium text-[#44403c]" : "text-[10px] font-semibold",
+          )}
+          style={hairline ? { fontSize: "46cqmin", fontWeight: 500 } : undefined}
+          data-floor-weight={hairline ? "medium" : undefined}
+        >
           {label}
         </span>
       ) : null}

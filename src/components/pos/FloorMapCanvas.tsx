@@ -53,7 +53,7 @@ export type FloorMapItem = {
   table: Table;
   fill: string;
   ink: string;
-  /** Empty tables draw a dark ring and a clear center. */
+  /** Empty tables draw a hairline ring and a clear center. */
   hollow?: boolean;
   flashing: boolean;
   dim: boolean;
@@ -291,6 +291,7 @@ export function FloorMapCanvas({
                   label={num}
                   rotation={0}
                   className="h-full w-full"
+                  hairline
                 />
               ) : (
                 <FloorFixtureArt
