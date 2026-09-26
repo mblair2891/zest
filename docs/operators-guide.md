@@ -1,7 +1,7 @@
 # Operators Guide — authoring
 
-**Revision · 26 Sep 2026** — Menu Analyze reads any uploaded file.
-Guide v2026.10.169.
+**Revision · 26 Sep 2026** — Floor editor clears the slate and deletes a selection.
+Guide v2026.10.170.
 
 The in-app **Operators Guide** is the living product manual. It is not a
 separate PDF. Staff open it from **Guide** / **?** in the POS and platform

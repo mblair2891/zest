@@ -33,7 +33,20 @@ import { tableGuestUrl } from "@/lib/pos/qr-table";
 import { getDemoType } from "@/lib/demo/session";
 import { GuideLearnLink } from "@/components/guide/GuideLearnLink";
 import { QrMark } from "./QrMark";
-import { flushLocationCatalog, persistLocationCatalog, persistPrinterAssignments } from "@/lib/pos/persist-location-setup";
+import {
+  flushLocationCatalog,
+  persistClearedFloor,
+  persistLocationCatalog,
+  persistPrinterAssignments,
+} from "@/lib/pos/persist-location-setup";
+import {
+  CLEAR_SLATE_CONFIRM,
+  idsInMarquee,
+  multiDeleteConfirm,
+  nextSelection,
+  toggleSelection,
+  viewportBoxToPlan,
+} from "@/lib/pos/floor-select";
 import {
   DEFAULT_OBJECT_IN,
   DEFAULT_ROOM,
@@ -439,6 +452,28 @@ export function FloorEditorView() {
     persistPrinterAssignments();
   };
   const [selected, setSelected] = useState<string | null>(null);
+  const [selection, setSelection] = useState<string[]>([]);
+  const selectionRef = useRef<string[]>([]);
+  selectionRef.current = selection;
+  const [clearOpen, setClearOpen] = useState(false);
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  const [marqueeBox, setMarqueeBox] = useState<{
+    left: number;
+    top: number;
+    width: number;
+    height: number;
+  } | null>(null);
+  const marqueeRef = useRef<{
+    x: number;
+    y: number;
+    additive: boolean;
+    moved: boolean;
+  } | null>(null);
+  const spaceRef = useRef(false);
+  const selectOnly = (id: string | null) => {
+    setSelected(id);
+    setSelection(id ? [id] : []);
+  };
   const [copyOpen, setCopyOpen] = useState(false);
   const [copyCount, setCopyCount] = useState("1");
   const [newName, setNewName] = useState("");
@@ -538,6 +573,20 @@ export function FloorEditorView() {
     return () => el.removeEventListener("wheel", onWheel);
   }, []);
   const fitRoomView = () => setCam({ s: 1, x: fit.originX, y: fit.originY });
+  useEffect(() => {
+    const down = (event: KeyboardEvent) => {
+      if (event.code === "Space") spaceRef.current = true;
+    };
+    const up = (event: KeyboardEvent) => {
+      if (event.code === "Space") spaceRef.current = false;
+    };
+    window.addEventListener("keydown", down);
+    window.addEventListener("keyup", up);
+    return () => {
+      window.removeEventListener("keydown", down);
+      window.removeEventListener("keyup", up);
+    };
+  }, []);
   const onViewportPointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
     pointersRef.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
     if (pointersRef.current.size >= 2) {
@@ -547,6 +596,12 @@ export function FloorEditorView() {
         scale: camRef.current.s,
       };
       panRef.current = null;
+      return;
+    }
+    if (e.button === 0 && !spaceRef.current) {
+      marqueeRef.current = { x: e.clientX, y: e.clientY, additive: e.shiftKey, moved: false };
+      panRef.current = null;
+      e.currentTarget.setPointerCapture(e.pointerId);
       return;
     }
     panRef.current = { x: e.clientX, y: e.clientY, ox: camRef.current.x, oy: camRef.current.y };
@@ -568,6 +623,19 @@ export function FloorEditorView() {
       });
       return;
     }
+    const mark = marqueeRef.current;
+    if (mark && e.button === 0) {
+      if (Math.hypot(e.clientX - mark.x, e.clientY - mark.y) > 4) mark.moved = true;
+      const rect = viewportRef.current?.getBoundingClientRect();
+      if (!rect) return;
+      setMarqueeBox({
+        left: Math.min(mark.x, e.clientX) - rect.left,
+        top: Math.min(mark.y, e.clientY) - rect.top,
+        width: Math.abs(e.clientX - mark.x),
+        height: Math.abs(e.clientY - mark.y),
+      });
+      return;
+    }
     const pan = panRef.current;
     if (!pan) return;
     setCam((c) => ({
@@ -577,6 +645,36 @@ export function FloorEditorView() {
     }));
   };
   const onViewportPointerUp = (e: React.PointerEvent<HTMLDivElement>) => {
+    const mark = marqueeRef.current;
+    if (mark) {
+      if (!mark.moved) {
+        selectOnly(null);
+      } else {
+        const rect = viewportRef.current?.getBoundingClientRect();
+        if (rect && fit.worldW > 0) {
+          const plan = viewportBoxToPlan(
+            {
+              left: Math.min(mark.x, e.clientX) - rect.left,
+              top: Math.min(mark.y, e.clientY) - rect.top,
+              width: Math.abs(e.clientX - mark.x),
+              height: Math.abs(e.clientY - mark.y),
+            },
+            camRef.current,
+            fit.worldW,
+            fit.worldH,
+          );
+          const hit = idsInMarquee(
+            visible.map((t) => ({ id: t.id, x: t.x, y: t.y, w: t.w, h: t.h })),
+            plan,
+          );
+          const next = nextSelection(selectionRef.current, hit, mark.additive);
+          setSelection(next);
+          setSelected(next[next.length - 1] ?? null);
+        }
+      }
+      marqueeRef.current = null;
+      setMarqueeBox(null);
+    }
     pointersRef.current.delete(e.pointerId);
     if (pointersRef.current.size < 2) pinchRef.current = null;
     panRef.current = null;
@@ -598,6 +696,14 @@ export function FloorEditorView() {
     y: number,
   ) => {
     if (resize.current || legDrag.current) return;
+    if (e.shiftKey) {
+      e.preventDefault();
+      e.stopPropagation();
+      const next = toggleSelection(selectionRef.current, id);
+      setSelection(next);
+      setSelected(next.includes(id) ? id : (next[next.length - 1] ?? null));
+      return;
+    }
     e.preventDefault();
     e.stopPropagation();
     e.currentTarget.setPointerCapture(e.pointerId);
@@ -624,7 +730,7 @@ export function FloorEditorView() {
       origPoints,
       stoolOrig,
     };
-    setSelected(id);
+    selectOnly(id);
   };
 
   const startResize = (
@@ -647,7 +753,7 @@ export function FloorEditorView() {
       orig: spinBoxOf(piece),
       arch: isArchitectureKind(piece.kind),
     };
-    setSelected(id);
+    selectOnly(id);
   };
 
   const onPointerMove = (e: React.PointerEvent) => {
@@ -791,7 +897,7 @@ export function FloorEditorView() {
     drag.current = null;
     resize.current = null;
     legDrag.current = { id, handle, orig: plan, stoolIds, box: spinBoxOf(bar) };
-    setSelected(id);
+    selectOnly(id);
   };
 
   const renameSection = (id: string, name: string) => {
@@ -912,49 +1018,94 @@ export function FloorEditorView() {
       barShape: kind.id === "bar_top" ? "straight" : undefined,
       ...(barPoints ? { points: barPoints, legLengths: legLengthsOf(barPoints) } : {}),
     });
-    setSelected(id);
+    selectOnly(id);
     persistLocationCatalog("floor");
   };
 
   const copyCountOk = /^[1-9]\d*$/.test(copyCount.trim());
 
   const applyCopies = () => {
-    if (!copyCountOk || !selected) return;
+    const ids = selectionRef.current.length ? selectionRef.current : selected ? [selected] : [];
+    if (!copyCountOk || !ids.length) return;
     const count = Number(copyCount.trim());
     const state = usePosStore.getState();
-    const source = state.tables.find((t) => t.id === selected);
-    if (!source) return;
-    const copies = planFloorCopies(
-      source,
-      state.tables.map((t) => t.label),
-      count,
-      state.floorRoom ?? DEFAULT_ROOM,
-    );
+    const roomNow = state.floorRoom ?? DEFAULT_ROOM;
+    let labels = state.tables.map((t) => t.label);
     let last: string | null = null;
-    for (const copy of copies) {
-      last = state.addFloorTable({
-        label: copy.label,
-        section: copy.section,
-        sectionId: copy.sectionId,
-        seats: copy.seats,
-        x: copy.x,
-        y: copy.y,
-        w: copy.w,
-        h: copy.h,
-        shape: copy.shape,
-        kind: copy.kind,
-        barShape: copy.barShape,
-        points: copy.points ?? undefined,
-        legLengths: copy.legLengths ?? undefined,
-        lengthIn: copy.lengthIn,
-        widthIn: copy.widthIn,
-        fill: copy.fill,
-        rotation: copy.rotation ?? 0,
-      });
+    for (const id of ids) {
+      const source = state.tables.find((t) => t.id === id);
+      if (!source) continue;
+      const copies = planFloorCopies(source, labels, count, roomNow);
+      for (const copy of copies) {
+        labels = [...labels, copy.label];
+        last = state.addFloorTable({
+          label: copy.label,
+          section: copy.section,
+          sectionId: copy.sectionId,
+          seats: copy.seats,
+          x: copy.x,
+          y: copy.y,
+          w: copy.w,
+          h: copy.h,
+          shape: copy.shape,
+          kind: copy.kind,
+          barShape: copy.barShape,
+          points: copy.points ?? undefined,
+          legLengths: copy.legLengths ?? undefined,
+          lengthIn: copy.lengthIn,
+          widthIn: copy.widthIn,
+          fill: copy.fill,
+          rotation: copy.rotation ?? 0,
+        });
+      }
     }
-    if (last) setSelected(last);
+    if (last) selectOnly(last);
     setCopyOpen(false);
     persistLocationCatalog("floor");
+  };
+
+  const removeIds = (ids: string[]) => {
+    const blocked: string[] = [];
+    for (const id of ids) {
+      const res = remove(id);
+      if (!res.ok && res.error) blocked.push(res.error);
+    }
+    selectOnly(null);
+    if (blocked.length) alert(blocked[0]);
+    persistLocationCatalog("floor");
+  };
+
+  const deleteSelection = () => {
+    const ids = selectionRef.current;
+    if (!ids.length) return;
+    const ask = multiDeleteConfirm(ids.length);
+    if (ask) {
+      setDeleteOpen(true);
+      return;
+    }
+    removeIds(ids);
+  };
+
+  const deleteRef = useRef(deleteSelection);
+  deleteRef.current = deleteSelection;
+  useEffect(() => {
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key !== "Delete" && event.key !== "Backspace") return;
+      const tag = (event.target as HTMLElement | null)?.tagName;
+      if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT") return;
+      if (!selectionRef.current.length) return;
+      event.preventDefault();
+      deleteRef.current();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
+
+  const confirmClear = () => {
+    usePosStore.setState({ tables: [] });
+    selectOnly(null);
+    setClearOpen(false);
+    persistClearedFloor();
   };
 
   return (
@@ -1046,6 +1197,15 @@ export function FloorEditorView() {
             <Button type="button" size="sm" variant="outline" data-floor-fit-room="" onClick={fitRoomView}>
               Fit room
             </Button>
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              data-floor-clear=""
+              onClick={() => setClearOpen(true)}
+            >
+              Clear slate
+            </Button>
           </div>
           <div
             ref={viewportRef}
@@ -1056,6 +1216,18 @@ export function FloorEditorView() {
             onPointerUp={onViewportPointerUp}
             onPointerCancel={onViewportPointerUp}
           >
+          {marqueeBox ? (
+            <div
+              data-floor-marquee=""
+              className="pointer-events-none absolute z-20 border border-primary bg-primary/15"
+              style={{
+                left: marqueeBox.left,
+                top: marqueeBox.top,
+                width: marqueeBox.width,
+                height: marqueeBox.height,
+              }}
+            />
+          ) : null}
           <div
             ref={boardRef}
             data-floor-canvas="white"
@@ -1074,8 +1246,9 @@ export function FloorEditorView() {
             {visible.map((t) => {
               const color = sectionColorForTable(t, floorSections);
               const rot = ((Number(t.rotation) || 0) % 360 + 360) % 360;
+              const inSet = selection.includes(t.id);
               const spinRing = cn(
-                selected === t.id && "ring-2 ring-primary/40",
+                inSet && "ring-2 ring-primary/50",
                 (t.mergedChildIds?.length ?? 0) > 0 && "ring-1 ring-info",
               );
               const frame = {
@@ -1093,6 +1266,7 @@ export function FloorEditorView() {
                     key={t.id}
                     data-floor-bar-hit="path"
                     data-floor-rotation={rot}
+                    data-floor-selected={inSet ? "1" : undefined}
                     className="pointer-events-none absolute overflow-visible"
                     style={frame}
                   >
@@ -1146,6 +1320,7 @@ export function FloorEditorView() {
                 <div
                   key={t.id}
                   data-floor-rotation={rot}
+                  data-floor-selected={inSet ? "1" : undefined}
                   className="pointer-events-none absolute overflow-visible"
                   style={frame}
                 >
@@ -1779,26 +1954,58 @@ export function FloorEditorView() {
                 variant="destructive"
                 size="sm"
                 className="w-full"
-                onClick={() => {
-                  const res = remove(selectedTable.id);
-                  if (!res.ok) alert(res.error);
-                  else {
-                    setSelected(null);
-                    persistLocationCatalog("floor");
-                  }
-                }}
+                data-floor-delete=""
+                onClick={deleteSelection}
               >
                 <Trash2 className="h-3.5 w-3.5" />
-                Delete
+                {selection.length > 1 ? `Delete ${selection.length}` : "Delete"}
               </Button>
             </div>
           ) : (
             <p className="text-sm text-muted-foreground">
-              Select a fixture to edit. Drag to move, corner to resize, Copy, Rotate 90°. Booths keep benches attached.
+              Select a fixture to edit. Shift-click or drag a box to select several. Drag to move, corner to resize, Copy, Rotate 90°. Booths keep benches attached.
             </p>
           )}
         </aside>
       </div>
+      <Dialog open={clearOpen} onOpenChange={setClearOpen}>
+        <DialogContent data-floor-clear-dialog="">
+          <DialogHeader>
+            <DialogTitle>{CLEAR_SLATE_CONFIRM}</DialogTitle>
+          </DialogHeader>
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={() => setClearOpen(false)}>
+              Cancel
+            </Button>
+            <Button type="button" variant="destructive" data-floor-clear-confirm="" onClick={confirmClear}>
+              Remove all
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      <Dialog open={deleteOpen} onOpenChange={setDeleteOpen}>
+        <DialogContent data-floor-delete-dialog="">
+          <DialogHeader>
+            <DialogTitle>{multiDeleteConfirm(selection.length) ?? "Remove objects?"}</DialogTitle>
+          </DialogHeader>
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={() => setDeleteOpen(false)}>
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              variant="destructive"
+              data-floor-delete-confirm=""
+              onClick={() => {
+                setDeleteOpen(false);
+                removeIds(selectionRef.current);
+              }}
+            >
+              Delete
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

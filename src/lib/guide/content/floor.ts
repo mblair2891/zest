@@ -209,7 +209,7 @@ export const FLOOR_TOPICS: GuideTopic[] = [
       ),
       steps(
         "Open Floor → Floor editor (or Floor editor in nav).",
-        "Add a table, Booth 4-top, Booth U, Booth L, or barstool. Drag it onto the canvas. Resize from the corner. Copy asks how many, then places each one a foot right and down with the next number. Rotate 90°.",
+        "Add a table, Booth 4-top, Booth U, Booth L, or barstool. Drag it onto the canvas. Resize from the corner. Shift-click or drag a box to select several. Delete or Backspace removes them, and asks once when more than one is selected. Copy asks how many, then places that many of each selected piece a foot right and down with the next number. Clear slate removes every object in the room after you confirm. The room width, depth, and section list stay. The live floor stays as published until you Publish. Rotate 90°.",
         "Set label, seats, and room. Show QR and copy the guest link.",
         "Return to Floor on an order or host tablet. The editor and the live floor are a white workspace. Walls, doors, and windows sit where you drew them; on the live floor they are a hairline, and the host stand stays a block. The bar is a hollow outline with the name on the longest leg. A house name can sit small on the line. Empty dining tables are hairline rings with a medium-weight number inside and a few seat nubs. Any other status fills the circle or rounded square and keeps those nubs. Square no seats has none. Stool tiles use that same thin ring. Publish writes the full layout, so the editor and the live map show the same pieces.",
       ),

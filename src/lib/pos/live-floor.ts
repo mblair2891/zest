@@ -74,6 +74,15 @@ export function floorDraftBannerOn(): boolean {
   }
 }
 
+export function clearFloorDraft(): void {
+  if (typeof window === "undefined") return;
+  try {
+    localStorage.removeItem(FLOOR_DRAFT_KEY);
+  } catch {
+    /* private mode */
+  }
+}
+
 export function writeFloorDraft(
   locationId: string,
   tables: Table[],

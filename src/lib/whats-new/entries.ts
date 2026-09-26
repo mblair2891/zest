@@ -6,6 +6,18 @@ import type { GuideUpdate } from "@/lib/guide/types";
  */
 export const WHATS_NEW_ENTRIES: GuideUpdate[] = [
   {
+    id: "upd_2026_10_170_floor_select",
+    date: "2026-09-26",
+    title: "Clear the floor or delete a selection",
+    summary: "Clear slate empties the room. A box selects several pieces to delete.",
+    body: "In the floor editor, Clear slate asks before it removes walls, tables, the bar, and stools. Room width, depth, and the section list stay. Shift-click or drag a box to select more than one piece. Delete or Backspace removes them, and asks once when more than one is selected. Copy uses that set. The live floor stays as published until you Publish.",
+    roles: ["owner_manager", "host_operator"],
+    surfaces: ["floor"],
+    audience: "all",
+    topicId: "floor-editor",
+    tags: ["floor"],
+  },
+  {
     id: "upd_2026_10_169_menu_analyze",
     date: "2026-09-26",
     title: "Analyze reads the uploaded menu",
