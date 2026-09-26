@@ -27,7 +27,7 @@ export const uploadMenuFileFn = createServerFn({ method: "POST" })
       entityId: String(d.entityId ?? "").trim().slice(0, 80),
       fileName: String(d.fileName ?? "").trim().slice(0, 180),
       mime: String(d.mime ?? "").slice(0, 80),
-      bodyBase64: String(d.bodyBase64 ?? "").slice(0, 2_100_000),
+      bodyBase64: String(d.bodyBase64 ?? "").slice(0, 8_000_000),
     }),
   )
   .handler(async ({ context, data }) => {

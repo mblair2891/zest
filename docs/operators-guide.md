@@ -1,7 +1,7 @@
 # Operators Guide — authoring
 
-**Revision · 26 Sep 2026** — Menu file uploads before Analyze.
-Guide v2026.10.167.
+**Revision · 26 Sep 2026** — Menu files over 5 MB show a notice.
+Guide v2026.10.168.
 
 The in-app **Operators Guide** is the living product manual. It is not a
 separate PDF. Staff open it from **Guide** / **?** in the POS and platform

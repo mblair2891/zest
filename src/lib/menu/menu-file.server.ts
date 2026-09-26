@@ -3,8 +3,9 @@
  */
 import { getSql } from "@/lib/db";
 import { newId } from "@/lib/saas/ids";
+import { MENU_FILE_MAX_BYTES, MENU_FILE_MAX_LABEL } from "./intake.ts";
 
-const MAX_BYTES = 1_500_000;
+const MAX_BYTES = MENU_FILE_MAX_BYTES;
 
 export type StoredMenuFile = {
   id: string;
@@ -49,7 +50,11 @@ export async function saveMenuUpload(input: {
   if (!body) throw new Error("Upload a menu first");
   const bytes = Buffer.from(body, "base64");
   if (!bytes.byteLength || bytes.byteLength > MAX_BYTES) {
-    throw new Error(bytes.byteLength ? "Use a menu file under 1.5 MB." : "Upload a menu first");
+    throw new Error(
+      bytes.byteLength
+        ? `This file is too large. Maximum is ${MENU_FILE_MAX_LABEL}. Take a tighter photo or export a PDF.`
+        : "Upload a menu first",
+    );
   }
   const id = newId("mfile");
   const mime = mimeFor(fileName, input.mime);

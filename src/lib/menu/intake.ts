@@ -75,6 +75,29 @@ export function menuAnalyzeSource(opts: {
   return { kind: "refuse", error: "Upload a menu first" };
 }
 
+/** Photos, PDF, and DOCX. An 8 MB camera JPEG is over this and must say so. */
+export const MENU_FILE_MAX_BYTES = 5 * 1024 * 1024;
+export const MENU_FILE_MAX_LABEL = "5 MB";
+
+export function menuFileAllowed(name: string): boolean {
+  return /\.(pdf|png|jpe?g|webp|docx)$/i.test(name);
+}
+
+/** Null when the file can be kept. Otherwise the modal sentence. */
+export function menuFileRejection(file: { name: string; size: number }): string | null {
+  const name = String(file.name || "file").trim() || "file";
+  if (!menuFileAllowed(name)) {
+    return `This file is ${name}. Use a photo, PDF, or DOCX. Maximum is ${MENU_FILE_MAX_LABEL}.`;
+  }
+  if (file.size > MENU_FILE_MAX_BYTES) {
+    return `This file is ${formatMenuFileSize(file.size)}. Maximum is ${MENU_FILE_MAX_LABEL}. Take a tighter photo or export a PDF.`;
+  }
+  if (file.size <= 0) {
+    return `This file is empty. Maximum is ${MENU_FILE_MAX_LABEL}. Take a tighter photo or export a PDF.`;
+  }
+  return null;
+}
+
 export function formatMenuFileSize(bytes: number): string {
   const n = Math.max(0, Math.round(bytes));
   if (n < 1024) return `${n} B`;

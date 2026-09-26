@@ -9,6 +9,8 @@ import {
   formatMenuFileSize,
   menuAnalyzeSource,
   menuFileIsImage,
+  menuFileRejection,
+  MENU_FILE_MAX_BYTES,
   linesFromModelJson,
   pickIntakeLines,
   rowsToCommit,
@@ -203,4 +205,24 @@ test("a drink menu file is stored before Analyze, and a missing upload does not 
   assert.ok(draft.rows.some((row) => /margarita/i.test(row.name)));
   assert.ok(draft.rows.some((row) => /ipa/i.test(row.name)));
   assert.equal(draft.rows.every((row) => row.entityId === "bar"), true);
+});
+
+test("an 8 MB photo is refused with both sizes and does not stay selected", () => {
+  const eight = 8 * 1024 * 1024;
+  assert.ok(eight > MENU_FILE_MAX_BYTES);
+  const notice = menuFileRejection({ name: "drink-menu.jpg", size: eight });
+  assert.ok(notice);
+  assert.match(notice, /8\.0 MB/);
+  assert.match(notice, /Maximum is 5 MB/);
+  assert.match(notice, /tighter photo or export a PDF/);
+  assert.equal(menuFileRejection({ name: "menu.pdf", size: 200_000 }), null);
+  const kind = menuFileRejection({ name: "notes.txt", size: 400 });
+  assert.ok(kind);
+  assert.match(kind, /notes\.txt/);
+  assert.match(kind, /photo, PDF, or DOCX/);
+  const panel = readFileSync("src/components/pos/EntityMenuIntake.tsx", "utf8");
+  assert.match(panel, /data-menu-file-notice/);
+  assert.match(panel, /data-menu-file-notice-ok/);
+  assert.match(panel, /clearFileInput/);
+  assert.match(panel, /menuFileRejection/);
 });

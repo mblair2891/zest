@@ -6,6 +6,18 @@ import type { GuideUpdate } from "@/lib/guide/types";
  */
 export const WHATS_NEW_ENTRIES: GuideUpdate[] = [
   {
+    id: "upd_2026_10_168_menu_file_size",
+    date: "2026-09-26",
+    title: "Oversized menu files say why",
+    summary: "A file over 5 MB opens a notice. OK clears it so you can pick again.",
+    body: "Choose file on an entity menu still shows the name, size, and a photo thumbnail when the file fits. Over 5 MB, or a type that is not a photo, PDF, or DOCX, a notice names the size and the 5 MB maximum. OK dismisses it and clears the picker. Upload stays off until a file that fits is chosen.",
+    roles: ["owner_manager", "host_operator", "vendor_operator"],
+    surfaces: ["settings", "floor"],
+    audience: "all",
+    topicId: "menu-modifiers",
+    tags: ["menu"],
+  },
+  {
     id: "upd_2026_10_167_menu_upload",
     date: "2026-09-26",
     title: "Upload the menu file before Analyze",

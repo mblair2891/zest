@@ -5,6 +5,7 @@ import {
   buildMenuDraftFromLines,
   heuristicMenuLines,
   linesFromModelJson,
+  MENU_FILE_MAX_BYTES,
   menuAnalyzeSource,
   pickIntakeLines,
   type IntakeSettings,
@@ -12,7 +13,7 @@ import {
 } from "./intake.ts";
 import { extractMenuText } from "./intake-file.ts";
 
-const MAX_BYTES = 1_500_000;
+const MAX_BYTES = MENU_FILE_MAX_BYTES;
 
 function aiCredentials(): { key: string; base: string; model: string } | null {
   const xai = process.env.XAI_API_KEY?.trim();
@@ -86,7 +87,7 @@ ${opts.text.slice(0, 8000)}`,
   if (opts.imageDataUrl?.startsWith("data:image")) {
     userContent.push({
       type: "image_url",
-      image_url: { url: opts.imageDataUrl.slice(0, 1_500_000) },
+      image_url: { url: opts.imageDataUrl.slice(0, 8_000_000) },
     });
   }
   try {

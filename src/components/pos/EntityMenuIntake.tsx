@@ -1,6 +1,14 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { VoiceTextarea } from "@/components/ui/voice-textarea";
 import { publishLocationFn, saveMenuItemFn } from "@/lib/access/api";
@@ -13,6 +21,7 @@ import {
   formatMenuFileSize,
   menuAnalyzeSource,
   menuFileIsImage,
+  menuFileRejection,
   rowsToCommit,
   type IntakeSettings,
   type MenuIntakeDraft,
@@ -22,8 +31,6 @@ import { isProspectDemo } from "@/lib/demo/session";
 import { flushLocationCatalog } from "@/lib/pos/persist-location-setup";
 import { usePosStore } from "@/lib/pos/store";
 import { noteChecklistSave } from "@/lib/saas/checklist-link";
-
-const MAX_FILE = 1_500_000;
 
 export function EntityMenuIntake(props: {
   entityId: string;
@@ -54,11 +61,28 @@ export function EntityMenuIntake(props: {
   const [editAlcohol, setEditAlcohol] = useState<"yes" | "no" | "">("");
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("");
+  const [fileNotice, setFileNotice] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const clearFileInput = () => {
+    if (fileInputRef.current) fileInputRef.current.value = "";
+  };
+
+  const dismissFileNotice = () => {
+    setFileNotice(null);
+    setFile(null);
+    setFileId("");
+    clearFileInput();
+  };
 
   const onFile = (picked: File | undefined) => {
     if (!picked) return;
-    if (picked.size > MAX_FILE) {
-      setMessage("Use a menu file under 1.5 MB.");
+    const rejection = menuFileRejection({ name: picked.name, size: picked.size });
+    if (rejection) {
+      setFile(null);
+      setFileId("");
+      clearFileInput();
+      setFileNotice(rejection);
       return;
     }
     setFileId("");
@@ -318,6 +342,7 @@ export function EntityMenuIntake(props: {
         <label className="text-[11px] text-muted-foreground">
           Menu file
           <input
+            ref={fileInputRef}
             className="mt-1 block w-full text-sm"
             type="file"
             accept=".pdf,.png,.jpg,.jpeg,.webp,.docx,image/*"
@@ -526,6 +551,19 @@ export function EntityMenuIntake(props: {
           {message}
         </p>
       ) : null}
+      <Dialog open={fileNotice != null} onOpenChange={(open) => { if (!open) dismissFileNotice(); }}>
+        <DialogContent data-menu-file-notice>
+          <DialogHeader>
+            <DialogTitle>Menu file</DialogTitle>
+            <DialogDescription>{fileNotice}</DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button type="button" onClick={dismissFileNotice} data-menu-file-notice-ok>
+              OK
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </section>
   );
 }
