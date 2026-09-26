@@ -6,6 +6,18 @@ import type { GuideUpdate } from "@/lib/guide/types";
  */
 export const WHATS_NEW_ENTRIES: GuideUpdate[] = [
   {
+    id: "upd_2026_10_171_floor_arrange",
+    date: "2026-09-26",
+    title: "Place a count, reset numbers, snap to the grid",
+    summary: "Table, booth, and barstool ask how many. Reset numbers orders the room. Grid and align line a selection up.",
+    body: "Table, booth, and barstool ask How many? before they land. The first sits on your last click, or in the center, and the rest step about one foot so they do not stack. New tables take the next free number. New stools take the next free B number. Reset table numbers orders dining tables and booths from the top, left to right. A booth that already uses a B number stays out of that sequence. Stools on each bar become B1 and up along the rail. Grid, a foot-and-inch ruler, and snap (Off, Grid, or Objects) stay on the editor. Align Left, Right, Top, Bottom, or distribute the selection, including two tables to a wall in the set. The live floor stays as published until you Publish.",
+    roles: ["owner_manager", "host_operator"],
+    surfaces: ["floor"],
+    audience: "all",
+    topicId: "floor-editor",
+    tags: ["floor"],
+  },
+  {
     id: "upd_2026_10_170_floor_select",
     date: "2026-09-26",
     title: "Clear the floor or delete a selection",

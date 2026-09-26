@@ -64,6 +64,25 @@ import {
   splitInches,
 } from "@/lib/pos/floor-dimensions";
 import { planFloorCopies } from "@/lib/pos/floor-copy";
+import {
+  ADD_COUNT_TITLE,
+  RENUMBER_CONFIRM,
+  RENUMBER_LABEL,
+  alignSelection,
+  canvasCenterOrigin,
+  isAddCountKind,
+  nextFreeNumbers,
+  nextFreeStoolLabels,
+  originAtClick,
+  placeRow,
+  renumberPlan,
+  rulerMarks,
+  snapToGrid,
+  snapToObjects,
+  type AlignOp,
+  type GridSizeIn,
+  type SnapMode,
+} from "@/lib/pos/floor-arrange";
 import { FloorArchitectureMark } from "@/components/pos/FloorArchitectureMark";
 import {
   barClosedShape,
@@ -476,6 +495,17 @@ export function FloorEditorView() {
   };
   const [copyOpen, setCopyOpen] = useState(false);
   const [copyCount, setCopyCount] = useState("1");
+  const [addOpen, setAddOpen] = useState(false);
+  const [addCount, setAddCount] = useState("1");
+  const [pendingKind, setPendingKind] = useState<(typeof KINDS)[number] | null>(null);
+  const [renumberOpen, setRenumberOpen] = useState(false);
+  const [gridOn, setGridOn] = useState(false);
+  const [rulerOn, setRulerOn] = useState(false);
+  const [snapMode, setSnapMode] = useState<SnapMode>("off");
+  const [gridIn, setGridIn] = useState<GridSizeIn>(12);
+  const snapRef = useRef<{ mode: SnapMode; gridIn: number }>({ mode: "off", gridIn: 12 });
+  snapRef.current = { mode: snapMode, gridIn };
+  const placePointRef = useRef<{ x: number; y: number } | null>(null);
   const [newName, setNewName] = useState("");
   const [room, setRoom] = useState<string>("All");
   const [scope, setScope] = useState<"entire" | "section">("entire");
@@ -648,6 +678,12 @@ export function FloorEditorView() {
     const mark = marqueeRef.current;
     if (mark) {
       if (!mark.moved) {
+        const board = boardRef.current?.getBoundingClientRect();
+        if (board && board.width > 0 && board.height > 0) {
+          const x = ((e.clientX - board.left) / board.width) * 100;
+          const y = ((e.clientY - board.top) / board.height) * 100;
+          if (x >= 0 && x <= 100 && y >= 0 && y <= 100) placePointRef.current = { x, y };
+        }
         selectOnly(null);
       } else {
         const rect = viewportRef.current?.getBoundingClientRect();
@@ -831,7 +867,19 @@ export function FloorEditorView() {
     const target = tables.find((t) => t.id === drag.current?.id);
     let nx = Math.min(90, Math.max(0, drag.current.origX + dx));
     let ny = Math.min(90, Math.max(0, drag.current.origY + dy));
-    if (isArchitectureKind(target?.kind)) {
+    const snap = snapRef.current;
+    if (snap.mode === "grid") {
+      const snapped = snapToGrid(nx, ny, floorRoom, snap.gridIn);
+      nx = snapped.x;
+      ny = snapped.y;
+    } else if (snap.mode === "objects" && target) {
+      const others = tables
+        .filter((row) => row.id !== target.id && !row.mergedIntoId)
+        .map((row) => ({ x: row.x, y: row.y, w: row.w, h: row.h }));
+      const snapped = snapToObjects({ x: nx, y: ny, w: target.w, h: target.h }, others, floorRoom);
+      nx = snapped.x;
+      ny = snapped.y;
+    } else if (isArchitectureKind(target?.kind)) {
       nx = snapPct(nx);
       ny = snapPct(ny);
     }
@@ -1022,6 +1070,79 @@ export function FloorEditorView() {
     persistLocationCatalog("floor");
   };
 
+  const addCountOk = /^[1-9]\d*$/.test(addCount.trim());
+
+  const confirmAdd = () => {
+    if (!pendingKind || !addCountOk) return;
+    const count = Number(addCount.trim());
+    const state = usePosStore.getState();
+    const roomNow = state.floorRoom ?? DEFAULT_ROOM;
+    const spec = DEFAULT_OBJECT_IN[pendingKind.id] ?? DEFAULT_OBJECT_IN.table!;
+    const sized = sizePatch(spec.lengthIn, spec.widthIn, roomNow, { round: pendingKind.shape === "round" });
+    const w = sized?.w ?? pendingKind.w;
+    const h = sized?.h ?? pendingKind.h;
+    const click = placePointRef.current;
+    const origin = click ? originAtClick(click, w, h) : canvasCenterOrigin(w, h);
+    const spots = placeRow(origin, { w, h }, count, roomNow);
+    const existing = state.tables.map((row) => row.label);
+    const labels =
+      pendingKind.id === "barstool" ? nextFreeStoolLabels(existing, count) : nextFreeNumbers(existing, count);
+    const dining = room !== "All" ? room : floorSections[0]?.name ?? "Dining";
+    const sec = floorSections.find((section) => section.name === dining);
+    const booth = pendingKind.booth;
+    const seats = booth ? BOOTH_DEFAULTS[booth].seats : pendingKind.seats;
+    const ids: string[] = [];
+    spots.forEach((spot, index) => {
+      ids.push(
+        state.addFloorTable({
+          x: spot.x,
+          y: spot.y,
+          section: dining,
+          sectionId: sec?.id,
+          seats,
+          shape: pendingKind.shape,
+          kind: pendingKind.id,
+          w,
+          h,
+          lengthIn: sized?.lengthIn,
+          widthIn: sized?.widthIn,
+          rotation: 0,
+          label: labels[index],
+        }),
+      );
+    });
+    setSelection(ids);
+    setSelected(ids[ids.length - 1] ?? null);
+    placePointRef.current = null;
+    setAddOpen(false);
+    setPendingKind(null);
+    persistLocationCatalog("floor");
+  };
+
+  const confirmRenumber = () => {
+    const state = usePosStore.getState();
+    const bars = state.tables
+      .filter((row) => row.kind === "bar_top")
+      .map((row) => ({ id: row.id, x: row.x, y: row.y, points: storedBarPlan(row) }));
+    const patches = renumberPlan(state.tables, bars);
+    for (const patch of patches) update(patch.id, { label: patch.label });
+    setRenumberOpen(false);
+    persistLocationCatalog("floor");
+  };
+
+  const applyAlign = (op: AlignOp) => {
+    const ids = selectionRef.current;
+    const patches = alignSelection(usePosStore.getState().tables, ids, op);
+    for (const patch of patches) {
+      update(patch.id, {
+        x: patch.x,
+        y: patch.y,
+        ...(patch.points ? { points: patch.points, legLengths: patch.legLengths } : {}),
+      });
+    }
+    if (patches.length) persistLocationCatalog("floor");
+  };
+
   const copyCountOk = /^[1-9]\d*$/.test(copyCount.trim());
 
   const applyCopies = () => {
@@ -1165,7 +1286,20 @@ export function FloorEditorView() {
         </div>
         <div className="ml-auto flex flex-wrap gap-2">
           {KINDS.map((k) => (
-            <Button key={k.id} size="sm" variant="outline" onClick={() => placeKind(k)}>
+            <Button
+              key={k.id}
+              size="sm"
+              variant="outline"
+              onClick={() => {
+                if (isAddCountKind(k.id)) {
+                  setPendingKind(k);
+                  setAddCount("1");
+                  setAddOpen(true);
+                  return;
+                }
+                placeKind(k);
+              }}
+            >
               {k.booth ? <FloorBoothIcon kind={k.booth} /> : <Plus className="h-3.5 w-3.5" />}
               {k.label}
             </Button>
@@ -1206,6 +1340,97 @@ export function FloorEditorView() {
             >
               Clear slate
             </Button>
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              data-floor-renumber=""
+              onClick={() => setRenumberOpen(true)}
+            >
+              {RENUMBER_LABEL}
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              variant={gridOn ? "default" : "outline"}
+              data-floor-grid=""
+              aria-pressed={gridOn}
+              onClick={() => setGridOn((on) => !on)}
+            >
+              Grid
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              variant={rulerOn ? "default" : "outline"}
+              data-floor-ruler=""
+              aria-pressed={rulerOn}
+              onClick={() => setRulerOn((on) => !on)}
+            >
+              Ruler
+            </Button>
+            <label className="flex items-center gap-1 text-xs text-muted-foreground">
+              Snap
+              <select
+                data-floor-snap=""
+                className="h-8 rounded-md border border-border bg-bg px-2 text-xs text-foreground"
+                value={snapMode}
+                onChange={(event) => setSnapMode(event.target.value as SnapMode)}
+              >
+                <option value="off">Off</option>
+                <option value="grid">Grid</option>
+                <option value="objects">Objects</option>
+              </select>
+            </label>
+            <label className="flex items-center gap-1 text-xs text-muted-foreground">
+              Grid size
+              <select
+                data-floor-grid-size=""
+                className="h-8 rounded-md border border-border bg-bg px-2 text-xs text-foreground"
+                value={String(gridIn)}
+                onChange={(event) => setGridIn(Number(event.target.value) as GridSizeIn)}
+              >
+                <option value="6">6"</option>
+                <option value="12">1'</option>
+                <option value="24">2'</option>
+              </select>
+            </label>
+            {selection.length >= 2 ? (
+              <div className="flex flex-wrap gap-1">
+                <Button type="button" size="sm" variant="outline" data-floor-align="left" onClick={() => applyAlign("left")}>
+                  Left
+                </Button>
+                <Button type="button" size="sm" variant="outline" data-floor-align="right" onClick={() => applyAlign("right")}>
+                  Right
+                </Button>
+                <Button type="button" size="sm" variant="outline" data-floor-align="top" onClick={() => applyAlign("top")}>
+                  Top
+                </Button>
+                <Button type="button" size="sm" variant="outline" data-floor-align="bottom" onClick={() => applyAlign("bottom")}>
+                  Bottom
+                </Button>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  data-floor-align="distribute-h"
+                  disabled={selection.length < 3}
+                  onClick={() => applyAlign("distribute-h")}
+                >
+                  Distribute horizontal
+                </Button>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  data-floor-align="distribute-v"
+                  disabled={selection.length < 3}
+                  onClick={() => applyAlign("distribute-v")}
+                >
+                  Distribute vertical
+                </Button>
+              </div>
+            ) : null}
           </div>
           <div
             ref={viewportRef}
@@ -1243,6 +1468,55 @@ export function FloorEditorView() {
             onPointerUp={onPointerUp}
             onPointerCancel={onPointerUp}
           >
+            {gridOn ? (
+              <div
+                data-floor-grid-lines=""
+                className="pointer-events-none absolute inset-0"
+                style={{
+                  backgroundImage:
+                    "linear-gradient(to right, rgba(28,25,23,0.22) 1px, transparent 1px), linear-gradient(to bottom, rgba(28,25,23,0.22) 1px, transparent 1px)",
+                  backgroundSize: `${(gridIn / floorRoom.widthIn) * 100}% ${(gridIn / floorRoom.depthIn) * 100}%`,
+                }}
+              />
+            ) : null}
+            {rulerOn ? (
+              <div className="pointer-events-none absolute inset-0 z-10">
+                {rulerMarks(floorRoom.widthIn).map((mark) =>
+                  mark.label ? (
+                    <span
+                      key={`x-${mark.at}`}
+                      className="absolute top-0 -translate-x-1/2 whitespace-nowrap pt-0.5 text-[9px] leading-none text-neutral-500"
+                      style={{ left: `${mark.at}%` }}
+                    >
+                      {mark.label}
+                    </span>
+                  ) : (
+                    <span
+                      key={`x-${mark.at}`}
+                      className="absolute top-0 h-1.5 w-px bg-neutral-400"
+                      style={{ left: `${mark.at}%` }}
+                    />
+                  ),
+                )}
+                {rulerMarks(floorRoom.depthIn).map((mark) =>
+                  mark.label ? (
+                    <span
+                      key={`y-${mark.at}`}
+                      className="absolute left-0 -translate-y-1/2 whitespace-nowrap pl-0.5 text-[9px] leading-none text-neutral-500"
+                      style={{ top: `${mark.at}%` }}
+                    >
+                      {mark.label}
+                    </span>
+                  ) : (
+                    <span
+                      key={`y-${mark.at}`}
+                      className="absolute left-0 h-px w-1.5 bg-neutral-400"
+                      style={{ top: `${mark.at}%` }}
+                    />
+                  ),
+                )}
+              </div>
+            ) : null}
             {visible.map((t) => {
               const color = sectionColorForTable(t, floorSections);
               const rot = ((Number(t.rotation) || 0) % 360 + 360) % 360;
@@ -1968,6 +2242,54 @@ export function FloorEditorView() {
           )}
         </aside>
       </div>
+      <Dialog
+        open={addOpen}
+        onOpenChange={(open) => {
+          setAddOpen(open);
+          if (!open) setPendingKind(null);
+        }}
+      >
+        <DialogContent data-floor-add-count="">
+          <DialogHeader>
+            <DialogTitle>{ADD_COUNT_TITLE}</DialogTitle>
+          </DialogHeader>
+          <Input
+            data-floor-add-count-input=""
+            type="number"
+            min={1}
+            step={1}
+            inputMode="numeric"
+            value={addCount}
+            onChange={(event) => setAddCount(event.target.value)}
+            onKeyDown={(event) => {
+              if (event.key === "Enter") confirmAdd();
+            }}
+          />
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={() => setAddOpen(false)}>
+              Cancel
+            </Button>
+            <Button type="button" data-floor-add-count-confirm="" disabled={!addCountOk} onClick={confirmAdd}>
+              Place
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      <Dialog open={renumberOpen} onOpenChange={setRenumberOpen}>
+        <DialogContent data-floor-renumber-dialog="">
+          <DialogHeader>
+            <DialogTitle>{RENUMBER_CONFIRM}</DialogTitle>
+          </DialogHeader>
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={() => setRenumberOpen(false)}>
+              Cancel
+            </Button>
+            <Button type="button" data-floor-renumber-confirm="" onClick={confirmRenumber}>
+              Reset numbers
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
       <Dialog open={clearOpen} onOpenChange={setClearOpen}>
         <DialogContent data-floor-clear-dialog="">
           <DialogHeader>
