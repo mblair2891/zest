@@ -1,7 +1,7 @@
 # Operators Guide — authoring
 
-**Revision · 26 Sep 2026** — Floor editor places a count, resets numbers, and snaps to a grid.
-Guide v2026.10.171.
+**Revision · 26 Sep 2026** — Floor editor click keeps the zoom.
+Guide v2026.10.172.
 
 The in-app **Operators Guide** is the living product manual. It is not a
 separate PDF. Staff open it from **Guide** / **?** in the POS and platform

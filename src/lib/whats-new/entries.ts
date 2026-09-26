@@ -6,6 +6,18 @@ import type { GuideUpdate } from "@/lib/guide/types";
  */
 export const WHATS_NEW_ENTRIES: GuideUpdate[] = [
   {
+    id: "upd_2026_10_172_floor_zoom",
+    date: "2026-09-26",
+    title: "Clicking a piece keeps the floor zoom",
+    summary: "Select, drag, and resize leave the view alone. Zoom is the wheel, a pinch, the zoom buttons, or Fit room.",
+    body: "In the floor editor, clicking a table, dragging it, or pulling a handle does not change the zoom or the pan. The properties pane can open without refitting the room. Zoom in with the scroll wheel, a pinch, or Zoom in. Zoom out the same way. Fit room fills the workspace again. Space or the middle button still pans.",
+    roles: ["owner_manager", "host_operator"],
+    surfaces: ["floor"],
+    audience: "all",
+    topicId: "floor-editor",
+    tags: ["floor"],
+  },
+  {
     id: "upd_2026_10_171_floor_arrange",
     date: "2026-09-26",
     title: "Place a count, reset numbers, snap to the grid",

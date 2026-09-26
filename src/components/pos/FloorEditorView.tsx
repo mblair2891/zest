@@ -52,8 +52,10 @@ import {
   DEFAULT_ROOM,
   ROOM_FIT_MARGIN_PX,
   dimensionLabel,
+  cameraAfterFloorInput,
   fitRoomToView,
   formatFeetInches,
+  zoomFloorCamera,
   nearestObjectGap,
   nearestRoomEdge,
   fixtureEdgeBox,
@@ -556,6 +558,8 @@ export function FloorEditorView() {
   const [cam, setCam] = useState({ s: 1, x: ROOM_FIT_MARGIN_PX, y: ROOM_FIT_MARGIN_PX });
   const camRef = useRef(cam);
   camRef.current = cam;
+  const fittedKey = useRef<string | null>(null);
+  const [frame, setFrame] = useState<{ pxPerIn: number; worldW: number; worldH: number } | null>(null);
   const panRef = useRef<{ x: number; y: number; ox: number; oy: number } | null>(null);
   const pointersRef = useRef(new Map<number, { x: number; y: number }>());
   const pinchRef = useRef<{ dist: number; scale: number } | null>(null);
@@ -569,6 +573,7 @@ export function FloorEditorView() {
       }),
     [floorRoom, view.w, view.h],
   );
+  const draw = frame ?? fit;
   useEffect(() => {
     const el = viewportRef.current;
     if (!el) return;
@@ -582,8 +587,19 @@ export function FloorEditorView() {
     return () => ro.disconnect();
   }, []);
   useEffect(() => {
-    setCam({ s: 1, x: fit.originX, y: fit.originY });
-  }, [fit.originX, fit.originY, fit.pxPerIn]);
+    if (view.w <= 0 || view.h <= 0) return;
+    const key = `${floorRoom.widthIn}x${floorRoom.depthIn}`;
+    const input = fittedKey.current === null ? "open" : fittedKey.current === key ? "viewport" : "room";
+    const next = cameraAfterFloorInput(camRef.current, input, {
+      s: 1,
+      x: fit.originX,
+      y: fit.originY,
+    });
+    if (input === "viewport") return;
+    fittedKey.current = key;
+    setFrame({ pxPerIn: fit.pxPerIn, worldW: fit.worldW, worldH: fit.worldH });
+    setCam(next);
+  }, [view.w, view.h, floorRoom.widthIn, floorRoom.depthIn, fit.originX, fit.originY, fit.pxPerIn, fit.worldW, fit.worldH]);
   useEffect(() => {
     const el = viewportRef.current;
     if (!el) return;
@@ -593,16 +609,20 @@ export function FloorEditorView() {
       const px = event.clientX - rect.left;
       const py = event.clientY - rect.top;
       const factor = event.deltaY < 0 ? 1.08 : 1 / 1.08;
-      setCam((c) => {
-        const s = Math.min(8, Math.max(0.25, c.s * factor));
-        const k = s / c.s;
-        return { s, x: px - (px - c.x) * k, y: py - (py - c.y) * k };
-      });
+      setCam((c) => cameraAfterFloorInput(c, "wheel", zoomFloorCamera(c, factor, { x: px, y: py })));
     };
     el.addEventListener("wheel", onWheel, { passive: false });
     return () => el.removeEventListener("wheel", onWheel);
   }, []);
-  const fitRoomView = () => setCam({ s: 1, x: fit.originX, y: fit.originY });
+  const fitRoomView = () => {
+    setFrame({ pxPerIn: fit.pxPerIn, worldW: fit.worldW, worldH: fit.worldH });
+    setCam((c) => cameraAfterFloorInput(c, "fit", { s: 1, x: fit.originX, y: fit.originY }));
+  };
+  const zoomBy = (factor: number) => {
+    const rect = viewportRef.current?.getBoundingClientRect();
+    const origin = { x: (rect?.width ?? 0) / 2, y: (rect?.height ?? 0) / 2 };
+    setCam((c) => cameraAfterFloorInput(c, "control", zoomFloorCamera(c, factor, origin)));
+  };
   useEffect(() => {
     const down = (event: KeyboardEvent) => {
       if (event.code === "Space") spaceRef.current = true;
@@ -648,8 +668,8 @@ export function FloorEditorView() {
       const mx = (a!.x + b!.x) / 2 - rect.left;
       const my = (a!.y + b!.y) / 2 - rect.top;
       setCam((c) => {
-        const k = s / c.s;
-        return { s, x: mx - (mx - c.x) * k, y: my - (my - c.y) * k };
+        const k = s / (c.s || 1);
+        return cameraAfterFloorInput(c, "pinch", { s, x: mx - (mx - c.x) * k, y: my - (my - c.y) * k });
       });
       return;
     }
@@ -687,7 +707,7 @@ export function FloorEditorView() {
         selectOnly(null);
       } else {
         const rect = viewportRef.current?.getBoundingClientRect();
-        if (rect && fit.worldW > 0) {
+        if (rect && draw.worldW > 0) {
           const plan = viewportBoxToPlan(
             {
               left: Math.min(mark.x, e.clientX) - rect.left,
@@ -696,8 +716,8 @@ export function FloorEditorView() {
               height: Math.abs(e.clientY - mark.y),
             },
             camRef.current,
-            fit.worldW,
-            fit.worldH,
+            draw.worldW,
+            draw.worldH,
           );
           const hit = idsInMarquee(
             visible.map((t) => ({ id: t.id, x: t.x, y: t.y, w: t.w, h: t.h })),
@@ -1328,6 +1348,12 @@ export function FloorEditorView() {
                 persistLocationCatalog("floor");
               }}
             />
+            <Button type="button" size="sm" variant="outline" data-floor-zoom-out="" onClick={() => zoomBy(1 / 1.25)}>
+              Zoom out
+            </Button>
+            <Button type="button" size="sm" variant="outline" data-floor-zoom-in="" onClick={() => zoomBy(1.25)}>
+              Zoom in
+            </Button>
             <Button type="button" size="sm" variant="outline" data-floor-fit-room="" onClick={fitRoomView}>
               Fit room
             </Button>
@@ -1459,8 +1485,8 @@ export function FloorEditorView() {
             data-floor-fit="room"
             className="absolute left-0 top-0 border border-neutral-300 bg-white"
             style={{
-              width: fit.worldW,
-              height: fit.worldH,
+              width: draw.worldW,
+              height: draw.worldH,
               transform: `translate(${cam.x}px, ${cam.y}px) scale(${cam.s})`,
               transformOrigin: "0 0",
             }}
@@ -1566,7 +1592,7 @@ export function FloorEditorView() {
                         table={{ ...t, rotation: 0 }}
                         selected={selected === t.id}
                         room={floorRoom}
-                        pxPerIn={fit.pxPerIn * cam.s}
+                        pxPerIn={draw.pxPerIn * cam.s}
                         spinDeg={rot}
                         onBarPointerDown={(e) => onPointerDown(e, t.id, t.x, t.y)}
                       />
@@ -1655,7 +1681,7 @@ export function FloorEditorView() {
           </div>
         </div>
           <p className="mt-2 text-center text-xs text-muted-foreground">
-            Layout saves on this location as you drag. Handles turn with the piece. A wall’s black ends lengthen that wall; a corner resizes a table or booth. Scroll or pinch to zoom. Drag empty floor to pan. Fit room fills the workspace.
+            Layout saves on this location as you drag. Handles turn with the piece. A wall’s black ends lengthen that wall; a corner resizes a table or booth. Scroll, pinch, or the zoom buttons change the zoom. Clicking or dragging a piece keeps that view. Space or the middle button pans. Fit room fills the workspace.
           </p>
         </div>
 

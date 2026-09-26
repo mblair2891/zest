@@ -162,6 +162,49 @@ export function fitRoomToView(opts: {
   };
 }
 
+export type FloorCamera = { s: number; x: number; y: number };
+
+/** A click, drag, resize, or properties-pane reflow must not move the editor camera. */
+export type FloorCameraInput =
+  | "select"
+  | "move"
+  | "resize"
+  | "viewport"
+  | "open"
+  | "room"
+  | "fit"
+  | "wheel"
+  | "pinch"
+  | "control";
+
+const FLOOR_CAMERA_KEEP = new Set<FloorCameraInput>(["select", "move", "resize", "viewport"]);
+
+/** Keep the camera unless the input is an explicit zoom or the first fit. */
+export function cameraAfterFloorInput(
+  camera: FloorCamera,
+  input: FloorCameraInput,
+  next?: FloorCamera,
+): FloorCamera {
+  if (FLOOR_CAMERA_KEEP.has(input) || !next) return camera;
+  return next;
+}
+
+/** Scale about a point in the viewport. Wheel, pinch, and the zoom buttons use this. */
+export function zoomFloorCamera(
+  camera: FloorCamera,
+  factor: number,
+  origin: { x: number; y: number },
+  limits: { min: number; max: number } = { min: 0.25, max: 8 },
+): FloorCamera {
+  const s = Math.min(limits.max, Math.max(limits.min, camera.s * factor));
+  const k = camera.s > 0 ? s / camera.s : 1;
+  return {
+    s,
+    x: origin.x - (origin.x - camera.x) * k,
+    y: origin.y - (origin.y - camera.y) * k,
+  };
+}
+
 export function fixturePixelBox(
   item: { x: number; y: number; w: number; h: number },
   room: FloorRoom,
