@@ -80,6 +80,7 @@ import {
   placeRow,
   resetFloorNumbers,
   rulerMarks,
+  type ResetScope,
   snapToGrid,
   snapToObjects,
   type AlignOp,
@@ -503,6 +504,7 @@ export function FloorEditorView() {
   const [addCount, setAddCount] = useState("1");
   const [pendingKind, setPendingKind] = useState<(typeof KINDS)[number] | null>(null);
   const [renumberOpen, setRenumberOpen] = useState(false);
+  const [renumberScope, setRenumberScope] = useState<ResetScope>("tables");
   const [gridOn, setGridOn] = useState(false);
   const [rulerOn, setRulerOn] = useState(false);
   const [snapMode, setSnapMode] = useState<SnapMode>("off");
@@ -1172,7 +1174,7 @@ export function FloorEditorView() {
         section: row.section,
         sectionId: row.sectionId,
       }));
-    const plan = resetFloorNumbers(state.tables, bars, roomNow);
+    const plan = resetFloorNumbers(state.tables, bars, roomNow, renumberScope);
     for (const patch of plan.labels) update(patch.id, { label: patch.label });
     for (const move of plan.moves) {
       update(move.id, { x: move.x, y: move.y, rotation: move.rotation, railBarId: move.railBarId });
@@ -1420,7 +1422,10 @@ export function FloorEditorView() {
               size="sm"
               variant="outline"
               data-floor-renumber=""
-              onClick={() => setRenumberOpen(true)}
+              onClick={() => {
+                setRenumberScope("tables");
+                setRenumberOpen(true);
+              }}
             >
               {RENUMBER_LABEL}
             </Button>
@@ -2355,6 +2360,38 @@ export function FloorEditorView() {
           <DialogHeader>
             <DialogTitle>{RENUMBER_CONFIRM}</DialogTitle>
           </DialogHeader>
+          <fieldset className="space-y-2" data-floor-renumber-choice="">
+            <label className="flex items-center gap-2 text-sm">
+              <input
+                type="radio"
+                name="floor-renumber-scope"
+                data-floor-renumber-scope="tables"
+                checked={renumberScope === "tables"}
+                onChange={() => setRenumberScope("tables")}
+              />
+              Tables and booths only
+            </label>
+            <label className="flex items-center gap-2 text-sm">
+              <input
+                type="radio"
+                name="floor-renumber-scope"
+                data-floor-renumber-scope="stools"
+                checked={renumberScope === "stools"}
+                onChange={() => setRenumberScope("stools")}
+              />
+              Barstools only
+            </label>
+            <label className="flex items-center gap-2 text-sm">
+              <input
+                type="radio"
+                name="floor-renumber-scope"
+                data-floor-renumber-scope="both"
+                checked={renumberScope === "both"}
+                onChange={() => setRenumberScope("both")}
+              />
+              Both
+            </label>
+          </fieldset>
           <DialogFooter>
             <Button type="button" variant="outline" onClick={() => setRenumberOpen(false)}>
               Cancel

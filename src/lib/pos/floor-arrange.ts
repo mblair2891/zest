@@ -21,8 +21,10 @@ export const ADD_COUNT_TITLE = "How many?";
 
 export const RENUMBER_LABEL = "Reset table numbers";
 
-export const RENUMBER_CONFIRM =
-  "Reset table numbers? Dining tables and booths become 1 through N from the top, left to right. Each bar’s stools become B1 through Bn on their own capsules, along the outside edge.";
+export const RENUMBER_CONFIRM = "Reset table numbers";
+
+/** Which pieces a reset is allowed to relabel. Tables-only never touches a B number or the bar. */
+export type ResetScope = "tables" | "stools" | "both";
 
 export const GRID_SIZES_IN = [6, 12, 24] as const;
 export type GridSizeIn = (typeof GRID_SIZES_IN)[number];
@@ -342,17 +344,7 @@ function stoolsForBar(stools: readonly RenumberPiece[], bar: RenumberBar, bars: 
   });
 }
 
-/**
- * Dining tables and booths, top to bottom then left to right, become "1"…"N".
- * A booth that already uses a B number stays out of that sequence.
- * Each bar’s stools become B1…Bn along the outside edge, from the end a guest sits first.
- * The bar’s own label is not a stool number.
- */
-export function renumberPlan(
-  pieces: readonly RenumberPiece[],
-  bars: readonly RenumberBar[] = [],
-  room?: ArrangeRoom,
-): { id: string; label: string }[] {
+function diningLabels(pieces: readonly RenumberPiece[]): { id: string; label: string }[] {
   const patches: { id: string; label: string }[] = [];
   const dining = pieces
     .filter(diningEligible)
@@ -362,7 +354,16 @@ export function renumberPlan(
     const label = String(index + 1);
     if (piece.label !== label) patches.push({ id: piece.id, label });
   });
+  return patches;
+}
 
+/** Existing stool capsules only. B1…Bn per bar along the outside rail. No bar label, no new objects. */
+function stoolLabels(
+  pieces: readonly RenumberPiece[],
+  bars: readonly RenumberBar[],
+  room?: ArrangeRoom,
+): { id: string; label: string }[] {
+  const patches: { id: string; label: string }[] = [];
   const stools = pieces.filter((piece) => piece.kind === "barstool");
   const claimed = new Set<string>();
   for (const bar of bars) {
@@ -395,6 +396,20 @@ export function renumberPlan(
     });
 
   return patches;
+}
+
+/**
+ * Dining tables and booths, top to bottom then left to right, become "1"…"N".
+ * A booth that already uses a B number stays out of that sequence.
+ * Each bar’s stools become B1…Bn along the outside edge, from the end a guest sits first.
+ * The bar’s own label is not a stool number.
+ */
+export function renumberPlan(
+  pieces: readonly RenumberPiece[],
+  bars: readonly RenumberBar[] = [],
+  room?: ArrangeRoom,
+): { id: string; label: string }[] {
+  return [...diningLabels(pieces), ...stoolLabels(pieces, bars, room)];
 }
 
 export type StoolCreate = {
@@ -442,7 +457,10 @@ export function resetFloorNumbers(
   pieces: readonly RenumberPiece[],
   bars: readonly RenumberBar[],
   room: ArrangeRoom,
+  scope: ResetScope = "both",
 ): FloorReset {
+  if (scope === "tables") return { labels: diningLabels(pieces), moves: [], create: [] };
+  if (scope === "stools") return { labels: stoolLabels(pieces, bars, room), moves: [], create: [] };
   const moves: FloorReset["moves"] = [];
   const create: StoolCreate[] = [];
   const barLabels: { id: string; label: string }[] = [];

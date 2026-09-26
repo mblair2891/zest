@@ -6,6 +6,18 @@ import type { GuideUpdate } from "@/lib/guide/types";
  */
 export const WHATS_NEW_ENTRIES: GuideUpdate[] = [
   {
+    id: "upd_2026_10_174_reset_choice",
+    date: "2026-09-26",
+    title: "Reset numbers for tables or stools",
+    summary: "Choose tables and booths, barstools, or both. Cancel leaves the numbers alone.",
+    body: "Reset table numbers asks which set to renumber. Tables and booths only is the default. Dining tables and booths become 1 through N from the top, left to right. B numbers and the bar stay as they are. Barstools only relabels the stool capsules B1 and up along each rail. Tables stay as they are, and the numbers stay on the capsules. Both does the two together. Cancel changes nothing.",
+    roles: ["owner_manager", "host_operator"],
+    surfaces: ["floor"],
+    audience: "all",
+    topicId: "floor-editor",
+    tags: ["floor"],
+  },
+  {
     id: "upd_2026_10_173_stool_capsules",
     date: "2026-09-26",
     title: "Stool numbers stay on the capsules",

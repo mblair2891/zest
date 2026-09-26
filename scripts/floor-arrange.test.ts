@@ -148,6 +148,52 @@ test("an L resets to capsules B1 through B14, and path text leaves the slab", ()
   }
 });
 
+test("tables only leaves stools, stools only leaves dining", () => {
+  const pieces = [
+    { id: "t2", kind: "table", label: "9", x: 40, y: 10, w: 8, h: 8 },
+    { id: "t1", kind: "table", label: "2", x: 10, y: 10, w: 8, h: 8 },
+    { id: "booth", kind: "booth_4", label: "4", x: 5, y: 40, w: 8, h: 8 },
+    { id: "bbooth", kind: "booth_u", label: "B8", x: 20, y: 8, w: 8, h: 8 },
+    { id: "s2", kind: "barstool", label: "B9", x: 60, y: 70, w: 4, h: 4, railBarId: "bar" },
+    { id: "s1", kind: "barstool", label: "B4", x: 15, y: 70, w: 4, h: 4, railBarId: "bar" },
+  ];
+  const bar = {
+    id: "bar",
+    kind: "bar_top",
+    label: "B1 B2",
+    x: 10,
+    y: 68,
+    w: 60,
+    h: 8,
+    points: [
+      { x: 10, y: 72 },
+      { x: 70, y: 72 },
+    ],
+  };
+  const tablesOnly = resetFloorNumbers(pieces, [bar], room, "tables");
+  const dining = Object.fromEntries(tablesOnly.labels.map((row) => [row.id, row.label]));
+  assert.equal(dining.t1, "1");
+  assert.equal(dining.t2, "2");
+  assert.equal(dining.booth, "3");
+  assert.equal(dining.s1, undefined);
+  assert.equal(dining.s2, undefined);
+  assert.equal(dining.bbooth, undefined);
+  assert.equal(dining.bar, undefined);
+  assert.equal(tablesOnly.moves.length, 0);
+  assert.equal(tablesOnly.create.length, 0);
+
+  const stoolsOnly = resetFloorNumbers(pieces, [bar], room, "stools");
+  const stools = Object.fromEntries(stoolsOnly.labels.map((row) => [row.id, row.label]));
+  assert.equal(stools.s1, "B1");
+  assert.equal(stools.s2, "B2");
+  assert.equal(stools.t1, undefined);
+  assert.equal(stools.t2, undefined);
+  assert.equal(stools.booth, undefined);
+  assert.equal(stools.bar, undefined);
+  assert.equal(stoolsOnly.moves.length, 0);
+  assert.equal(stoolsOnly.create.length, 0);
+});
+
 test("grid snap and align two tables to a wall", () => {
   const step = (12 / room.widthIn) * 100;
   const raw = step * 2 + step * 0.4;
@@ -191,10 +237,12 @@ test("grid snap and align two tables to a wall", () => {
   assert.match(editor, /RENUMBER_LABEL/);
   assert.match(editor, /data-floor-renumber=""/);
   assert.match(editor, /RENUMBER_CONFIRM/);
-  assert.equal(
-    RENUMBER_CONFIRM,
-    "Reset table numbers? Dining tables and booths become 1 through N from the top, left to right. Each bar’s stools become B1 through Bn on their own capsules, along the outside edge.",
-  );
+  assert.equal(RENUMBER_CONFIRM, "Reset table numbers");
+  assert.match(editor, /Tables and booths only/);
+  assert.match(editor, /Barstools only/);
+  assert.match(editor, /data-floor-renumber-scope="tables"/);
+  assert.match(editor, /data-floor-renumber-scope="stools"/);
+  assert.match(editor, /data-floor-renumber-scope="both"/);
   assert.match(editor, /data-floor-grid=""/);
   assert.match(editor, /data-floor-ruler=""/);
   assert.match(editor, /data-floor-snap=""/);
