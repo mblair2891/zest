@@ -157,6 +157,10 @@ test("menu screen publishes accepted rows for the open entity", () => {
   assert.match(panel, /flushLocationCatalog\("menu"\)/);
   assert.match(panel, /data-menu-intake-publish/);
   assert.match(panel, /data-menu-upload/);
+  assert.match(panel, /Reading menu…/);
+  assert.match(panel, /data-menu-ai-error/);
+  assert.match(panel, /fileId: source.kind === "file" \? source.fileId/);
+  assert.match(panel, /entityId,/);
   assert.match(panel, /data-menu-file-name/);
   assert.match(panel, /data-menu-file-thumb/);
   assert.match(panel, /Upload a menu first/);
@@ -193,18 +197,93 @@ test("a drink menu file is stored before Analyze, and a missing upload does not 
       }),
     /Upload a menu first/,
   );
-  const stored = Buffer.from("(DRINKS) (Margarita 14) (House IPA 8)");
+  const prevX = process.env.XAI_API_KEY;
+  const prevO = process.env.OPENAI_API_KEY;
+  delete process.env.XAI_API_KEY;
+  delete process.env.OPENAI_API_KEY;
+  const jpeg = Buffer.from([0xff, 0xd8, 0xff, 0xd9]);
+  await assert.rejects(
+    () =>
+      extractMenuIntake({
+        entityId: "bar",
+        fileName: "drink-menu.jpg",
+        fileBase64: jpeg.toString("base64"),
+        storedFileId: "mfile_drinks",
+        settings: { cashDiscountEnabled: false },
+      }),
+    /AI is not configured/,
+  );
+  process.env.XAI_API_KEY = "test-key";
+  delete process.env.OPENAI_API_KEY;
   const draft = await extractMenuIntake({
     entityId: "bar",
-    fileName: "drink-menu.pdf",
-    fileBase64: stored.toString("base64"),
+    fileName: "drink-menu.jpg",
+    fileBase64: jpeg.toString("base64"),
     storedFileId: "mfile_drinks",
-    settings: { cashDiscountEnabled: false },
+    settings: { cashDiscountEnabled: true, cashDiscountPercent: 5, cashRoundIncrement: 0.25 },
+    aiFetch: async () =>
+      new Response(
+        JSON.stringify({
+          choices: [
+            {
+              message: {
+                content: JSON.stringify({
+                  items: [
+                    {
+                      group: "Cocktails",
+                      name: "Margarita",
+                      description: "Lime and tequila",
+                      price: "14.00",
+                      priceKind: "unknown",
+                      modifiers: ["salt rim"],
+                      alcohol: true,
+                      abv: "12%",
+                      size: "rocks",
+                      eightySix: "",
+                    },
+                    {
+                      group: "Beer",
+                      name: "House IPA",
+                      price: "8",
+                      priceKind: "unknown",
+                      alcohol: true,
+                      size: "16 oz",
+                    },
+                  ],
+                }),
+              },
+            },
+          ],
+        }),
+        { status: 200, headers: { "Content-Type": "application/json" } },
+      ),
   });
   assert.equal(menuAnalyzeSource({ fileId: "mfile_drinks" }).kind, "file");
-  assert.ok(draft.rows.some((row) => /margarita/i.test(row.name)));
-  assert.ok(draft.rows.some((row) => /ipa/i.test(row.name)));
-  assert.equal(draft.rows.every((row) => row.entityId === "bar"), true);
+  const marg = draft.rows.find((row) => /margarita/i.test(row.name));
+  assert.ok(marg);
+  assert.equal(marg.cashCents, 1400);
+  assert.equal(marg.priceBasis, "ask");
+  assert.equal(marg.abv, "12%");
+  assert.equal(marg.size, "rocks");
+  assert.equal(marg.entityId, "bar");
+  assert.ok(draft.rows.some((row) => /ipa/i.test(row.name) && row.cashCents === 800));
+  const failed = await extractMenuIntake({
+    entityId: "bar",
+    fileName: "drink-menu.jpg",
+    fileBase64: jpeg.toString("base64"),
+    storedFileId: "mfile_drinks",
+    settings: {},
+    aiFetch: async () =>
+      new Response(JSON.stringify({ error: { message: "model overloaded" } }), { status: 503 }),
+  }).then(
+    () => "",
+    (err: unknown) => (err instanceof Error ? err.message : ""),
+  );
+  if (prevX === undefined) delete process.env.XAI_API_KEY;
+  else process.env.XAI_API_KEY = prevX;
+  if (prevO === undefined) delete process.env.OPENAI_API_KEY;
+  else process.env.OPENAI_API_KEY = prevO;
+  assert.equal(failed, "model overloaded");
 });
 
 test("an 8 MB photo is refused with both sizes and does not stay selected", () => {

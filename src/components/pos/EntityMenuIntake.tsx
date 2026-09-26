@@ -15,7 +15,6 @@ import { publishLocationFn, saveMenuItemFn } from "@/lib/access/api";
 import { extractMenuIntakeFn, uploadMenuFileFn } from "@/lib/menu/intake-api";
 import {
   applyIntakeAnswers,
-  buildMenuDraft,
   bulkAcceptRows,
   editIntakeRow,
   formatMenuFileSize,
@@ -61,6 +60,7 @@ export function EntityMenuIntake(props: {
   const [editAlcohol, setEditAlcohol] = useState<"yes" | "no" | "">("");
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("");
+  const [aiError, setAiError] = useState("");
   const [fileNotice, setFileNotice] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -149,6 +149,7 @@ export function EntityMenuIntake(props: {
     }
     setBusy(true);
     setMessage("");
+    setAiError("");
     setAnswers({});
     setEditing(null);
     try {
@@ -163,19 +164,17 @@ export function EntityMenuIntake(props: {
           cashRoundIncrement: settings.cashRoundIncrement,
         },
       });
-      setDraft({
-        ...next,
-        entityId,
-        rows: next.rows.map((row) => ({ ...row, entityId })),
-      });
+      const rows = next.rows.map((row) => ({ ...row, entityId }));
+      setDraft({ ...next, entityId, rows });
+      if (rows.length === 0) setMessage(next.note || "No items found — try a sharper photo.");
     } catch (err) {
-      const msg = err instanceof Error ? err.message : "";
-      if (!pasted.trim()) {
-        if (!fileId || msg === "Upload a menu first") toast("Upload a menu first");
-        else setMessage("Reading the file failed. Paste the menu text on this screen.");
+      const msg = err instanceof Error && err.message ? err.message : "Reading the menu failed.";
+      setDraft(null);
+      if (msg === "Upload a menu first") {
+        toast(msg);
         return;
       }
-      setDraft(buildMenuDraft({ text: pasted, entityId, settings }));
+      setAiError(msg);
     } finally {
       setBusy(false);
     }
@@ -345,7 +344,7 @@ export function EntityMenuIntake(props: {
             ref={fileInputRef}
             className="mt-1 block w-full text-sm"
             type="file"
-            accept=".pdf,.png,.jpg,.jpeg,.webp,.docx,image/*"
+            accept=".pdf,.png,.jpg,.jpeg,.webp,.heic,.heif,.docx,image/*"
             data-menu-intake-file
             onChange={(e) => onFile(e.target.files?.[0])}
           />
@@ -387,7 +386,7 @@ export function EntityMenuIntake(props: {
             disabled={busy || uploading || (!pasted.trim() && !fileId)}
             data-menu-analyze
           >
-            {busy ? "Reading the menu…" : "Analyze"}
+            {busy ? "Reading menu…" : "Analyze"}
           </Button>
         </div>
         <VoiceTextarea
@@ -471,6 +470,9 @@ export function EntityMenuIntake(props: {
                       {" · "}
                       {row.station === "bar" ? "Bar section" : "Kitchen printer"}
                       {row.modifiers.length ? ` · ${row.modifiers.join(", ")}` : ""}
+                      {row.size ? ` · ${row.size}` : ""}
+                      {row.abv ? ` · ${row.abv} ABV` : ""}
+                      {row.eightySix ? ` · 86 ${row.eightySix}` : ""}
                       {row.priceBasis === "ask" ? " · Confirm cash or card" : ""}
                     </p>
                   </div>
@@ -545,6 +547,15 @@ export function EntityMenuIntake(props: {
             ))}
           </ul>
         </div>
+      ) : null}
+      {aiError ? (
+        <p
+          role="alert"
+          data-menu-ai-error
+          className="mt-3 rounded-md border border-red-300 bg-red-50 px-3 py-2 text-sm text-red-700"
+        >
+          {aiError}
+        </p>
       ) : null}
       {message ? (
         <p className="mt-3 text-xs text-primary" data-menu-intake-message>

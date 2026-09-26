@@ -16,7 +16,7 @@ export const ORDER_TOPICS: GuideTopic[] = [
       ),
       steps(
         "Open Menu for the selling entity. Choose a PDF, JPEG, PNG, or DOCX. The file name, size, and a thumbnail for a photo show on the form. A file over 5 MB, or a file that is not a photo, PDF, or DOCX, opens a notice with the size and the 5 MB maximum. OK closes it and clears the picker so you can choose again. Upload stays off until a file that fits is chosen. Upload stores that file on this entity. Analyze stays off until Upload finishes. Paste or voice does not use Upload. Analyze with no stored file says Upload a menu first and does not start a read.",
-        "Analyze builds a draft for that entity from the stored file, or from the pasted text: group, item name, description, cash price, and the card price from the venue cash-discount rule when the line is cash. One unlabeled price asks cash or card on this screen. Obvious extras become modifiers. Food groups guess the kitchen printer. Drink groups guess the bar section.",
+        "Analyze says Reading menu… and sends the stored file id and the entity id. A photo (JPEG, PNG, WebP, HEIC) is read as a page. A PDF uses its text, and a scan is read as page images. A DOCX uses its text. The draft is for this entity only: group, name, description, cash price when printed, modifiers, and for a drink the ABV or size and any 86 note. One price is marked cash or card unknown until you answer. Nothing is published until Save / Publish. If menu reading is not configured, a red banner says AI is not configured. A provider error is shown on the page. An empty read says No items found — try a sharper photo.",
         "If a price, a group, or an alcohol flag is missing, answer on this screen by typing or speaking. Tax stays on the venue tax screen.",
         "Review the draft. Accept, edit, or drop each row. Bulk accept marks every open row. Save / Publish writes the accepted rows onto that entity and publishes them for stations. The order pad shows those items. Another entity’s menu stays as it was.",
         "Add or edit one item by hand when you prefer. The price field is Cash price (printed / till). With cash discount on, Card price appears beside it.",
@@ -25,7 +25,7 @@ export const ORDER_TOPICS: GuideTopic[] = [
         "86 or un-86 from Menu or the 86 board. Stations see that immediately. New items, prices, modifiers, and categories reach stations after Publish, on the next PIN.",
       ),
       tip(
-        "A stored menu file still becomes a draft from the text on the page when AI is off. Analyze does not run on a file that was only chosen and not uploaded. Describe with AI still uses category templates (burger, steak, pizza, salad, cocktail, …) for one item. You confirm before that item saves.",
+        "Analyze does not run on a file that was only chosen and not uploaded. If AI is not configured, the banner says so and the draft is not invented. Describe with AI still uses category templates (burger, steak, pizza, salad, cocktail, …) for one item. You confirm before that item saves.",
       ),
       related("kitchen-bar-routing", "multi-operator-orders", "onboarding-wizard", "setup-by-voice"),
     ],

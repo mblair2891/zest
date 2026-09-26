@@ -36,6 +36,12 @@ export type IntakeLine = {
   modifiers: string[];
   /** null = not obvious — ask. */
   alcohol: boolean | null;
+  /** Drink strength when the page prints it. */
+  abv?: string;
+  /** Pour or package size when the page prints it. */
+  size?: string;
+  /** 86 / sold-out note printed on the item. */
+  eightySix?: string;
 };
 
 export type MenuIntakeRow = {
@@ -54,6 +60,9 @@ export type MenuIntakeRow = {
   course: IntakeCourse;
   station: "kitchen" | "bar";
   status: "pending" | "accepted" | "dropped";
+  abv?: string;
+  size?: string;
+  eightySix?: string;
 };
 
 export type MenuIntakeQuestion = {
@@ -78,9 +87,11 @@ export function menuAnalyzeSource(opts: {
 /** Photos, PDF, and DOCX. An 8 MB camera JPEG is over this and must say so. */
 export const MENU_FILE_MAX_BYTES = 5 * 1024 * 1024;
 export const MENU_FILE_MAX_LABEL = "5 MB";
+export const MENU_AI_MISSING = "AI is not configured";
+export const MENU_EMPTY_EXTRACT = "No items found — try a sharper photo.";
 
 export function menuFileAllowed(name: string): boolean {
-  return /\.(pdf|png|jpe?g|webp|docx)$/i.test(name);
+  return /\.(pdf|png|jpe?g|webp|heic|heif|docx)$/i.test(name);
 }
 
 /** Null when the file can be kept. Otherwise the modal sentence. */
@@ -243,6 +254,9 @@ export function linesFromModelJson(raw: unknown): IntakeLine[] | null {
       ? r.modifiers.map((m) => String(m ?? "").trim()).filter((m) => m.length > 1).slice(0, 8)
       : modifiersFromName(name);
     const alcohol = r.alcohol === undefined ? alcoholFlag(name, group) : asBool(r.alcohol);
+    const abv = String(r.abv ?? "").trim().slice(0, 24);
+    const size = String(r.size ?? "").trim().slice(0, 24);
+    const eightySix = String(r.eightySix ?? r.eighty_six ?? r.soldOut ?? "").trim().slice(0, 80);
     lines.push({
       group,
       name: name.replace(/\s*\([^)]*\)/g, "").trim() || name,
@@ -251,6 +265,9 @@ export function linesFromModelJson(raw: unknown): IntakeLine[] | null {
       labeled,
       modifiers: mods,
       alcohol,
+      abv: abv || undefined,
+      size: size || undefined,
+      eightySix: eightySix || undefined,
     });
   }
   return lines.length ? lines.slice(0, 80) : null;
@@ -333,14 +350,14 @@ function rowFromLine(
     const cash = policy ? cashFromCardCents(line.quotedCents, policy.percent) : line.quotedCents;
     cashCents = cash;
     cardCents = policy && cash ? cardPriceCents(cash, policy) : line.quotedCents;
-  } else if (line.labeled === "cash" || !policy) {
+  } else if (line.labeled === "cash") {
     priceBasis = "cash";
     cashCents = line.quotedCents;
     cardCents = policy ? cardPriceCents(line.quotedCents, policy) : line.quotedCents;
   } else {
     priceBasis = "ask";
     cashCents = line.quotedCents;
-    cardCents = cardPriceCents(line.quotedCents, policy);
+    cardCents = policy ? cardPriceCents(line.quotedCents, policy) : null;
   }
   return {
     id,
@@ -354,13 +371,16 @@ function rowFromLine(
     priceBasis,
     alcohol: line.alcohol,
     modifiers: line.modifiers,
+    abv: line.abv,
+    size: line.size,
+    eightySix: line.eightySix,
     course: route.course,
     station: route.station,
     status: "pending",
   };
 }
 
-function questionsFor(row: MenuIntakeRow, policy: CashDiscountPolicy | null): MenuIntakeQuestion[] {
+function questionsFor(row: MenuIntakeRow, _policy: CashDiscountPolicy | null): MenuIntakeQuestion[] {
   if (row.status === "dropped") return [];
   const q: MenuIntakeQuestion[] = [];
   if (row.priceBasis === "missing" || row.quotedCents == null) {
@@ -370,7 +390,7 @@ function questionsFor(row: MenuIntakeRow, policy: CashDiscountPolicy | null): Me
       kind: "price",
       prompt: `What is the cash price for ${row.name}?`,
     });
-  } else if (row.priceBasis === "ask" && policy) {
+  } else if (row.priceBasis === "ask") {
     q.push({
       id: `basis:${row.id}`,
       rowId: row.id,

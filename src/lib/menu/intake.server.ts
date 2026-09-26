@@ -5,21 +5,29 @@ import {
   buildMenuDraftFromLines,
   heuristicMenuLines,
   linesFromModelJson,
+  MENU_AI_MISSING,
+  MENU_EMPTY_EXTRACT,
   MENU_FILE_MAX_BYTES,
   menuAnalyzeSource,
   pickIntakeLines,
   type IntakeSettings,
   type MenuIntakeDraft,
 } from "./intake.ts";
-import { extractMenuText } from "./intake-file.ts";
+import { extractMenuText, pdfEmbeddedJpegs } from "./intake-file.ts";
 
 const MAX_BYTES = MENU_FILE_MAX_BYTES;
 
-function aiCredentials(): { key: string; base: string; model: string } | null {
+export function menuAiCredentials(): { key: string; base: string; model: string } | null {
   const xai = process.env.XAI_API_KEY?.trim();
   if (xai) return { key: xai, base: "https://api.x.ai/v1", model: "grok-4.5" };
+  const openai = process.env.OPENAI_API_KEY?.trim();
+  if (openai) return { key: openai, base: "https://api.openai.com/v1", model: "gpt-4o" };
   return null;
 }
+
+const MENU_SYSTEM = `You extract sellable menu items for this one selling entity. Ignore every other brand on the page. Return JSON only.
+{"items":[{"group":"","name":"","description":"","price":"14.00","priceKind":"cash"|"card"|"unknown","modifiers":[],"alcohol":true|false|null,"abv":"","size":"","eightySix":""}]}
+group is the category. price is dollars when printed. priceKind is unknown when the line shows only one price. modifiers are extras printed on that item. abv and size when a drink prints them. eightySix when the page says 86 or sold out. Omit tax. 80 items max.`;
 
 function extractJson(text: string): unknown {
   const trimmed = text.trim();
@@ -53,72 +61,71 @@ function mimeFor(fileName: string): string {
   const name = fileName.toLowerCase();
   if (name.endsWith(".png")) return "image/png";
   if (name.endsWith(".webp")) return "image/webp";
+  if (name.endsWith(".heic") || name.endsWith(".heif")) return "image/heic";
   if (name.endsWith(".jpg") || name.endsWith(".jpeg")) return "image/jpeg";
   return "image/jpeg";
 }
 
+function dataUrl(mime: string, bytes: Uint8Array): string {
+  return `data:${mime};base64,${Buffer.from(bytes).toString("base64")}`;
+}
+
+function providerMessage(status: number, json: unknown): string {
+  const body = json && typeof json === "object" ? (json as { error?: { message?: string } | string }) : {};
+  const err = body.error;
+  if (typeof err === "string" && err.trim()) return err.trim().slice(0, 300);
+  if (err && typeof err === "object" && typeof err.message === "string" && err.message.trim()) {
+    return err.message.trim().slice(0, 300);
+  }
+  return `Menu reading failed (${status})`;
+}
+
 async function readWithModel(opts: {
+  entityId: string;
   text: string;
-  imageDataUrl?: string;
+  images: string[];
   locationId?: string;
-}): Promise<unknown | null> {
-  const creds = aiCredentials();
-  if (!creds) return null;
-  if (!opts.text.trim() && !opts.imageDataUrl) return null;
-  try {
+  aiFetch?: typeof fetch;
+}): Promise<unknown> {
+  const creds = menuAiCredentials();
+  if (!creds) throw new Error(MENU_AI_MISSING);
+  if (!opts.aiFetch) {
     const { reserveAiCall } = await import("@/lib/comms/ai.server");
     const gate = await reserveAiCall({ locationId: opts.locationId, kind: "menu_intake" });
-    if (!gate.allow) return null;
-  } catch {
-    return null;
+    if (!gate.allow) {
+      throw new Error(gate.reason === "daily_cap" ? "AI daily limit reached" : MENU_AI_MISSING);
+    }
   }
   const userContent: unknown[] = [
     {
       type: "text",
-      text: `Extract this restaurant menu as JSON:
-{"items":[{"group":"","name":"","description":"","price":"14.00","priceKind":"cash"|"card"|"unknown","modifiers":[],"alcohol":true|false|null}]}
-price is dollars. priceKind cash when the page labels cash. priceKind card when the page labels card. priceKind unknown when the line shows one unlabeled price.
-modifiers are extras or add-ons printed on that item. alcohol true for beer, wine, and cocktails; false for food and non-alcoholic drinks; null when unclear.
-Tax stays on the venue tax screen — omit tax. Include only items printed on this menu. 80 items max.
-Menu text:
-${opts.text.slice(0, 8000)}`,
+      text: `Entity id: ${opts.entityId || "house"}. Extract sellable items for this entity only.\n${opts.text.slice(0, 12000)}`,
     },
   ];
-  if (opts.imageDataUrl?.startsWith("data:image")) {
-    userContent.push({
-      type: "image_url",
-      image_url: { url: opts.imageDataUrl.slice(0, 8_000_000) },
-    });
+  for (const url of opts.images.slice(0, 4)) {
+    userContent.push({ type: "image_url", image_url: { url: url.slice(0, 8_000_000) } });
   }
-  try {
-    const res = await fetch(`${creds.base}/chat/completions`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${creds.key}`,
-      },
-      body: JSON.stringify({
-        model: creds.model,
-        temperature: 0.1,
-        max_tokens: 1600,
-        messages: [
-          {
-            role: "system",
-            content:
-              "You extract a menu for one selling entity in Summex. Return JSON only. Cash is the till price. Omit tax. Skip items that are not on the page.",
-          },
-          { role: "user", content: userContent },
-        ],
-      }),
-    });
-    if (!res.ok) return null;
-    const body = (await res.json()) as {
-      choices?: { message?: { content?: string } }[];
-    };
-    return extractJson(body.choices?.[0]?.message?.content ?? "");
-  } catch {
-    return null;
-  }
+  const res = await (opts.aiFetch ?? fetch)(`${creds.base}/chat/completions`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${creds.key}`,
+    },
+    body: JSON.stringify({
+      model: creds.model,
+      temperature: 0.1,
+      max_tokens: 4000,
+      messages: [
+        { role: "system", content: MENU_SYSTEM },
+        { role: "user", content: userContent },
+      ],
+    }),
+  });
+  const json = (await res.json().catch(() => ({}))) as unknown;
+  if (!res.ok) throw new Error(providerMessage(res.status, json));
+  const content =
+    (json as { choices?: { message?: { content?: string } }[] }).choices?.[0]?.message?.content ?? "";
+  return extractJson(content) ?? { items: [] };
 }
 
 export async function extractMenuIntake(opts: {
@@ -130,6 +137,8 @@ export async function extractMenuIntake(opts: {
   storedFileId?: string;
   locationId?: string;
   settings: IntakeSettings;
+  /** Test double. Production uses fetch. */
+  aiFetch?: typeof fetch;
 }): Promise<MenuIntakeDraft> {
   const source = menuAnalyzeSource({ text: opts.text, fileId: opts.storedFileId });
   if (source.kind === "refuse") throw new Error(source.error);
@@ -140,33 +149,38 @@ export async function extractMenuIntake(opts: {
     bytes = decodeBase64(opts.fileBase64);
     if (!bytes.byteLength || bytes.byteLength > MAX_BYTES) throw new Error("Upload a menu first");
   }
+  const fileName = opts.fileName ?? "";
   const extracted = extractMenuText({
-    fileName: opts.fileName,
+    fileName,
     bytes,
     pasted: opts.text,
   });
-  const textLines = heuristicMenuLines(extracted.text);
-  const imageUrl =
-    extracted.image && opts.fileBase64
-      ? `data:${mimeFor(opts.fileName ?? "menu.jpg")};base64,${opts.fileBase64}`
-      : undefined;
-  const parsed = await readWithModel({
-    text: extracted.text,
-    imageDataUrl: imageUrl,
-    locationId: opts.locationId,
-  });
-  const picked = pickIntakeLines(textLines, linesFromModelJson(parsed));
-  let note: string | undefined;
-  if (picked.lines.length === 0 && extracted.image && !extracted.text.trim()) {
-    note = "Paste the menu text on this screen. A photo is read when AI is available for this location.";
-  } else if (picked.lines.length === 0 && (opts.fileName || "").toLowerCase().endsWith(".pdf")) {
-    note = "This PDF has no selectable text. Paste the menu, or upload a photo of the page.";
+  const images: string[] = [];
+  if (extracted.image && bytes) {
+    images.push(dataUrl(mimeFor(fileName), bytes));
+  } else if (bytes && (fileName.toLowerCase().endsWith(".pdf") || (bytes[0] === 0x25 && bytes[1] === 0x50))) {
+    const thin = extracted.text.trim().length < 40;
+    if (thin) {
+      for (const jpeg of pdfEmbeddedJpegs(bytes)) images.push(dataUrl("image/jpeg", jpeg));
+    }
   }
+  const textLines = heuristicMenuLines(extracted.text);
+  const parsed = await readWithModel({
+    entityId,
+    text: extracted.text,
+    images,
+    locationId: opts.locationId,
+    aiFetch: opts.aiFetch,
+  });
+  const aiLines = linesFromModelJson(parsed);
+  const picked = pickIntakeLines(textLines, aiLines);
+  const lines = picked.lines;
+  const note = lines.length === 0 ? MENU_EMPTY_EXTRACT : undefined;
   return buildMenuDraftFromLines({
-    lines: picked.lines,
+    lines,
     entityId,
     settings: opts.settings,
-    source: picked.source,
+    source: aiLines && aiLines.length ? "ai" : picked.source,
     note,
   });
 }

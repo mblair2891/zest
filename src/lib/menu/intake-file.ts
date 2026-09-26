@@ -12,7 +12,14 @@ export function extractMenuText(opts: {
   const name = (opts.fileName ?? "").toLowerCase();
   const pasted = opts.pasted?.trim() ?? "";
   if (!opts.bytes?.length) return { text: pasted, image: false };
-  if (name.endsWith(".png") || name.endsWith(".jpg") || name.endsWith(".jpeg") || name.endsWith(".webp")) {
+  if (
+    name.endsWith(".png") ||
+    name.endsWith(".jpg") ||
+    name.endsWith(".jpeg") ||
+    name.endsWith(".webp") ||
+    name.endsWith(".heic") ||
+    name.endsWith(".heif")
+  ) {
     return { text: pasted, image: true };
   }
   if (name.endsWith(".docx")) {
@@ -23,6 +30,32 @@ export function extractMenuText(opts: {
   }
   const asText = new TextDecoder().decode(opts.bytes);
   return { text: [asText, pasted].filter(Boolean).join("\n"), image: false };
+}
+
+/** JPEG streams embedded in a scan. Used when the PDF has almost no text. */
+export function pdfEmbeddedJpegs(bytes: Uint8Array, limit = 4): Uint8Array[] {
+  const out: Uint8Array[] = [];
+  let i = 0;
+  while (i < bytes.length - 3 && out.length < limit) {
+    if (bytes[i] !== 0xff || bytes[i + 1] !== 0xd8 || bytes[i + 2] !== 0xff) {
+      i += 1;
+      continue;
+    }
+    let j = i + 3;
+    let end = -1;
+    while (j < bytes.length - 1) {
+      if (bytes[j] === 0xff && bytes[j + 1] === 0xd9) {
+        end = j + 2;
+        break;
+      }
+      j += 1;
+    }
+    if (end < 0) break;
+    const slice = bytes.slice(i, end);
+    if (slice.byteLength > 4000) out.push(slice);
+    i = end;
+  }
+  return out;
 }
 
 function looksPdf(bytes: Uint8Array): boolean {

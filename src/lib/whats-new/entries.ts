@@ -6,6 +6,18 @@ import type { GuideUpdate } from "@/lib/guide/types";
  */
 export const WHATS_NEW_ENTRIES: GuideUpdate[] = [
   {
+    id: "upd_2026_10_169_menu_analyze",
+    date: "2026-09-26",
+    title: "Analyze reads the uploaded menu",
+    summary: "After Upload, Analyze sends that file. A missing AI setup shows on the page.",
+    body: "Analyze uses the stored file for that entity. Photos are read as a page. A PDF uses its text, and a scan is read as images. A DOCX uses its text. The draft lists group, name, description, price, modifiers, and drink size or ABV. One price stays cash-or-card unknown until you answer. Save / Publish is still what stations receive. If AI is not configured, a red banner says so. A provider error is shown. An empty read says to try a sharper photo.",
+    roles: ["owner_manager", "host_operator", "vendor_operator"],
+    surfaces: ["settings", "floor"],
+    audience: "all",
+    topicId: "menu-modifiers",
+    tags: ["menu"],
+  },
+  {
     id: "upd_2026_10_168_menu_file_size",
     date: "2026-09-26",
     title: "Oversized menu files say why",
