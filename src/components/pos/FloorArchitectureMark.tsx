@@ -6,6 +6,7 @@ import {
   barDepthIn,
   barFaceLabel,
   barLabelPose,
+  uprightCounterDeg,
   barSlabEdges,
   isArchitectureKind,
   liveArchCaption,
@@ -63,7 +64,7 @@ export function FloorArchitectureMark({
     const visual = ((rotation + spinDeg) % 360 + 360) % 360;
     const pose = barLabelPose(plan, room, table, depth, visual);
     const face = barFaceLabel(table.label);
-    const glyph = pose ? -(pose.legDeg + visual) : 0;
+    const glyph = pose ? uprightCounterDeg(pose.legDeg + visual) : 0;
     return (
       <div
         className="relative h-full w-full overflow-visible bg-transparent"
@@ -98,6 +99,7 @@ export function FloorArchitectureMark({
         {pose ? (
           <div
             data-floor-bar-label={face}
+            data-floor-label-upright="1"
             data-floor-bar-leg={pose.leg}
             data-floor-bar-stack={pose.stack ? "1" : "0"}
             className="pointer-events-none absolute flex items-center justify-center overflow-hidden"

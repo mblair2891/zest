@@ -76,8 +76,9 @@ import {
   nextFreeNumbers,
   nextFreeStoolLabels,
   originAtClick,
+  outsideWalkOrder,
   placeRow,
-  renumberPlan,
+  resetFloorNumbers,
   rulerMarks,
   snapToGrid,
   snapToObjects,
@@ -99,6 +100,7 @@ import {
   placeWallEnd,
   planFromLegInches,
   generateBarStools,
+  isStoolPathText,
   resizeBarLeg,
   slabBounds,
   wallEndExtensions,
@@ -999,14 +1001,25 @@ export function FloorEditorView() {
       counts: stoolCounts,
       side: useSide,
     });
-    let n = 0;
-    for (const t of tables) {
-      if (t.kind !== "barstool" || existingIds.includes(t.id)) continue;
-      const match = /^B(\d+)$/.exec(t.label);
-      if (match) n = Math.max(n, Number(match[1]));
-    }
-    for (const pose of poses) {
-      n += 1;
+    const walkBar = {
+      id: bar.id,
+      x: bar.x,
+      y: bar.y,
+      w: bar.w,
+      h: bar.h,
+      points: storedBarPlan(bar),
+      barShape: bar.barShape,
+      barSide: useSide ?? bar.barSide,
+      widthIn: bar.widthIn,
+    };
+    const order = outsideWalkOrder(
+      poses.map((pose) => ({ x: pose.x + pose.w / 2, y: pose.y + pose.h / 2 })),
+      walkBar,
+      floorRoom,
+    );
+    order.forEach((poseIndex, n) => {
+      const pose = poses[poseIndex];
+      if (!pose) return;
       add({
         ...pose,
         kind: "barstool",
@@ -1014,10 +1027,11 @@ export function FloorEditorView() {
         seats: 1,
         section: bar.section,
         sectionId: bar.sectionId,
-        label: `B${n}`,
+        label: `B${n + 1}`,
         railBarId: bar.id,
       });
-    }
+    });
+    if (isStoolPathText(bar.label)) update(bar.id, { label: "BAR" });
     setReplaceStools(false);
     setPendingSide(null);
     persistLocationCatalog("floor");
@@ -1141,11 +1155,46 @@ export function FloorEditorView() {
 
   const confirmRenumber = () => {
     const state = usePosStore.getState();
+    const roomNow = state.floorRoom ?? DEFAULT_ROOM;
     const bars = state.tables
       .filter((row) => row.kind === "bar_top")
-      .map((row) => ({ id: row.id, x: row.x, y: row.y, points: storedBarPlan(row) }));
-    const patches = renumberPlan(state.tables, bars);
-    for (const patch of patches) update(patch.id, { label: patch.label });
+      .map((row) => ({
+        id: row.id,
+        x: row.x,
+        y: row.y,
+        w: row.w,
+        h: row.h,
+        label: row.label,
+        points: storedBarPlan(row),
+        barShape: row.barShape,
+        barSide: row.barSide,
+        widthIn: row.widthIn,
+        section: row.section,
+        sectionId: row.sectionId,
+      }));
+    const plan = resetFloorNumbers(state.tables, bars, roomNow);
+    for (const patch of plan.labels) update(patch.id, { label: patch.label });
+    for (const move of plan.moves) {
+      update(move.id, { x: move.x, y: move.y, rotation: move.rotation, railBarId: move.railBarId });
+    }
+    for (const made of plan.create) {
+      state.addFloorTable({
+        label: made.label,
+        kind: "barstool",
+        shape: "bar",
+        seats: 1,
+        section: made.section,
+        sectionId: made.sectionId,
+        x: made.x,
+        y: made.y,
+        w: made.w,
+        h: made.h,
+        rotation: made.rotation,
+        lengthIn: made.lengthIn,
+        widthIn: made.widthIn,
+        railBarId: made.railBarId,
+      });
+    }
     setRenumberOpen(false);
     persistLocationCatalog("floor");
   };

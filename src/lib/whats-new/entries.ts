@@ -6,6 +6,18 @@ import type { GuideUpdate } from "@/lib/guide/types";
  */
 export const WHATS_NEW_ENTRIES: GuideUpdate[] = [
   {
+    id: "upd_2026_10_173_stool_capsules",
+    date: "2026-09-26",
+    title: "Stool numbers stay on the capsules",
+    summary: "Reset numbers dining tables 1 through N. Each bar’s stools are B1 and up, outside the slab.",
+    body: "Reset table numbers orders dining tables and booths from the top, left to right. A booth that already uses a B number stays out of that list. Each stool keeps its own capsule on the guest side of the bar. Walking the outside edge from the end a guest sits first, those stools become B1, B2, and so on. The digits stay upright. BAR, or the bar’s own name, stays on the longest leg. B numbers are not written along the slab. If they were, Reset puts them back on stool capsules.",
+    roles: ["owner_manager", "host_operator"],
+    surfaces: ["floor"],
+    audience: "all",
+    topicId: "floor-editor",
+    tags: ["floor"],
+  },
+  {
     id: "upd_2026_10_172_floor_zoom",
     date: "2026-09-26",
     title: "Clicking a piece keeps the floor zoom",

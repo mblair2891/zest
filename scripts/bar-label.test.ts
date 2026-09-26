@@ -4,6 +4,8 @@ import { readFileSync } from "node:fs";
 import {
   barFaceLabel,
   barLabelPose,
+  isStoolPathText,
+  uprightCounterDeg,
   planFromLegInches,
   slabBounds,
 } from "../src/lib/pos/floor-architecture.ts";
@@ -14,6 +16,14 @@ test("BAR sits on the longest leg, and a 90 degree turn keeps that leg", () => {
   assert.equal(barFaceLabel("Bar"), "BAR");
   assert.equal(barFaceLabel("bar top"), "BAR");
   assert.equal(barFaceLabel("Copper"), "Copper");
+  assert.equal(barFaceLabel("B1 B2 B14"), "BAR");
+  assert.equal(isStoolPathText("B12"), true);
+  assert.equal(isStoolPathText("Copper"), false);
+  for (const deg of [0, 90, 180, -90]) {
+    const net = deg + uprightCounterDeg(deg);
+    const wrapped = ((net % 360) + 360) % 360;
+    assert.ok(wrapped < 1 || wrapped > 359, `upright at ${deg}`);
+  }
 
   const plan = planFromLegInches("l", { x: 10, y: 20 }, [12 * 12, 8 * 12], room);
   const box = slabBounds(plan, 24, room, false);

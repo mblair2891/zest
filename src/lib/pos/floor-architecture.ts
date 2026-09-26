@@ -368,13 +368,26 @@ export function boundsOf(points: PlanPoint[], pad = 2): { x: number; y: number; 
   };
 }
 
-/** Shown on the slab. A generic name stays BAR; a house name is used as typed. */
+/** B1, or B1 B2 B3, painted as path text instead of stool capsules. */
+export function isStoolPathText(label?: string | null): boolean {
+  const raw = String(label ?? "").trim();
+  if (!raw) return false;
+  if (/^(?:B\d+)(?:[\s,]+B\d+)*$/i.test(raw)) return true;
+  return /^(?:B\d+)+$/i.test(raw);
+}
+
+/** Shown on the slab. A generic name stays BAR; a house name is used as typed. Stool numbers never sit on the path. */
 export function barFaceLabel(label?: string | null): string {
   const raw = String(label ?? "").trim();
-  if (!raw) return "BAR";
+  if (!raw || isStoolPathText(raw)) return "BAR";
   const generic = new Set(["bar", "bar top", "bartop", "bar_top"]);
   if (generic.has(raw.toLowerCase())) return "BAR";
   return raw;
+}
+
+/** Counter-rotation that cancels `containerDeg`, so digits stay upright (a 5 does not read as a 2). */
+export function uprightCounterDeg(containerDeg: number): number {
+  return -containerDeg;
 }
 
 function normDeg(deg: number): number {

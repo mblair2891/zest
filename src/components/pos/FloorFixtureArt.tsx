@@ -2,6 +2,7 @@ import type { PointerEvent as ReactPointerEvent, ReactNode } from "react";
 import { cn } from "@/lib/utils";
 import type { Table } from "@/lib/pos/types";
 import { asBoothKind } from "@/lib/pos/floor-booth";
+import { uprightCounterDeg } from "@/lib/pos/floor-architecture";
 import { railStoolCenters, seatingScale } from "@/lib/pos/floor-seating";
 import { FloorBoothMark } from "@/components/pos/FloorBoothMark";
 import type { BoothKind } from "@/lib/pos/floor-booth";
@@ -408,7 +409,12 @@ function FloorStoolArt({
             "pointer-events-none absolute inset-0 flex items-center justify-center px-1 text-center tabular leading-none",
             hairline ? "font-medium text-[#44403c]" : "text-[10px] font-semibold",
           )}
-          style={hairline ? { fontSize: "46cqmin", fontWeight: 500 } : undefined}
+          style={{
+            transform: `rotate(${uprightCounterDeg(rotation)}deg)`,
+            ...(hairline ? { fontSize: "46cqmin", fontWeight: 500 } : {}),
+          }}
+          data-floor-stool-label=""
+          data-floor-label-upright="1"
           data-floor-weight={hairline ? "medium" : undefined}
         >
           {label}

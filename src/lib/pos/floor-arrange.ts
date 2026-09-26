@@ -1,3 +1,16 @@
+import {
+  barClosedShape,
+  barDepthIn,
+  barGuestSign,
+  generateBarStools,
+  isStoolPathText,
+  legInches,
+  offsetCenterline,
+  snapStoolToRail,
+  stoolOffsetFromCenterIn,
+  type BarGuestSide,
+  type BarTopShape,
+} from "./floor-architecture.ts";
 import { COPY_OFFSET_IN } from "./floor-copy.ts";
 import { formatFeetInches } from "./floor-dimensions.ts";
 
@@ -9,7 +22,7 @@ export const ADD_COUNT_TITLE = "How many?";
 export const RENUMBER_LABEL = "Reset table numbers";
 
 export const RENUMBER_CONFIRM =
-  "Reset table numbers? Dining tables and booths become 1 through N from the top, left to right. Stools on each bar become B1 through Bn along the rail.";
+  "Reset table numbers? Dining tables and booths become 1 through N from the top, left to right. Each bar’s stools become B1 through Bn on their own capsules, along the outside edge.";
 
 export const GRID_SIZES_IN = [6, 12, 24] as const;
 export type GridSizeIn = (typeof GRID_SIZES_IN)[number];
@@ -170,8 +183,79 @@ export type RenumberBar = {
   id: string;
   x: number;
   y: number;
+  w?: number;
+  h?: number;
   points: ArrangePoint[];
+  label?: string;
+  barShape?: BarTopShape | null;
+  barSide?: BarGuestSide | null;
+  widthIn?: number | null;
+  section?: string;
+  sectionId?: string;
 };
+
+/** Guest rail, starting at the end a guest sits first (higher on the plan, then to the left). */
+export function outsideRail(bar: RenumberBar, room: ArrangeRoom): ArrangePoint[] {
+  const shape = bar.barShape ?? undefined;
+  const points = bar.points.length >= 2 ? bar.points : [{ x: bar.x, y: bar.y }, { x: bar.x + 10, y: bar.y }];
+  const closed = barClosedShape(shape, points);
+  const depth = barDepthIn(bar.widthIn);
+  const side = bar.barSide ?? (shape === "l" || shape === "u" ? "outside" : "a");
+  const sign = barGuestSign(shape, side);
+  const guest = offsetCenterline(points, sign * stoolOffsetFromCenterIn(depth), room, closed);
+  return orientSitFirst(guest);
+}
+
+function orientSitFirst(points: ArrangePoint[]): ArrangePoint[] {
+  if (points.length < 2) return points.map((point) => ({ ...point }));
+  const start = points[0]!;
+  const end = points[points.length - 1]!;
+  if (Math.hypot(start.x - end.x, start.y - end.y) < 0.15) {
+    const body = points.slice(0, -1);
+    let best = 0;
+    for (let i = 1; i < body.length; i += 1) {
+      const point = body[i]!;
+      const chosen = body[best]!;
+      if (point.y < chosen.y - 0.05 || (Math.abs(point.y - chosen.y) <= 0.05 && point.x < chosen.x)) best = i;
+    }
+    const spun = body.slice(best).concat(body.slice(0, best));
+    spun.push({ ...spun[0]! });
+    return spun;
+  }
+  const endFirst = end.y < start.y - 0.05 || (Math.abs(start.y - end.y) <= 0.05 && end.x < start.x);
+  return endFirst ? points.slice().reverse() : points.slice();
+}
+
+function polyDist(px: number, py: number, points: readonly ArrangePoint[]): number {
+  let best = Infinity;
+  for (let i = 0; i < points.length - 1; i += 1) {
+    const a = points[i]!;
+    const b = points[i + 1]!;
+    const dx = b.x - a.x;
+    const dy = b.y - a.y;
+    const len2 = dx * dx + dy * dy;
+    const t = len2 === 0 ? 0 : Math.max(0, Math.min(1, ((px - a.x) * dx + (py - a.y) * dy) / len2));
+    const d = Math.hypot(px - (a.x + t * dx), py - (a.y + t * dy));
+    if (d < best) best = d;
+  }
+  return best;
+}
+
+/** Indices of centers in sit-first order along the outside edge. */
+export function outsideWalkOrder(
+  centers: readonly { x: number; y: number }[],
+  bar: RenumberBar,
+  room: ArrangeRoom,
+): number[] {
+  const rail = outsideRail(bar, room);
+  return centers
+    .map((center, index) => ({
+      index,
+      along: rail.length >= 2 ? distanceAlong(rail, center.x, center.y) : center.x,
+    }))
+    .sort((a, b) => a.along - b.along || a.index - b.index)
+    .map((row) => row.index);
+}
 
 function bNumber(label: string): number | null {
   const match = label.trim().match(/^B(\d+)$/i);
@@ -249,15 +333,25 @@ function nearestBar(
   return best;
 }
 
+function stoolsForBar(stools: readonly RenumberPiece[], bar: RenumberBar, bars: readonly RenumberBar[]): RenumberPiece[] {
+  return stools.filter((stool) => {
+    if (stool.railBarId === bar.id) return true;
+    if (stool.railBarId) return false;
+    const near = nearestBar(stool, bars);
+    return near?.bar.id === bar.id && near.dist < 8;
+  });
+}
+
 /**
  * Dining tables and booths, top to bottom then left to right, become "1"…"N".
  * A booth that already uses a B number stays out of that sequence.
- * Stools on each bar become B1…Bn along the rail. Bars are visited from the
- * top of the room. A B number kept by a non-stool is skipped so it is unique.
+ * Each bar’s stools become B1…Bn along the outside edge, from the end a guest sits first.
+ * The bar’s own label is not a stool number.
  */
 export function renumberPlan(
   pieces: readonly RenumberPiece[],
   bars: readonly RenumberBar[] = [],
+  room?: ArrangeRoom,
 ): { id: string; label: string }[] {
   const patches: { id: string; label: string }[] = [];
   const dining = pieces
@@ -269,67 +363,185 @@ export function renumberPlan(
     if (piece.label !== label) patches.push({ id: piece.id, label });
   });
 
-  const frozen = new Set<number>();
-  for (const piece of pieces) {
-    if (piece.kind === "barstool") continue;
-    const kept = bNumber(piece.label);
-    if (kept != null) frozen.add(kept);
-  }
-
   const stools = pieces.filter((piece) => piece.kind === "barstool");
-  const byBar = new Map<string, { piece: RenumberPiece; along: number }[]>();
-  const unattached: RenumberPiece[] = [];
-  for (const stool of stools) {
-    const linked = stool.railBarId ? bars.find((bar) => bar.id === stool.railBarId) : undefined;
-    if (linked && linked.points.length >= 2) {
-      const list = byBar.get(linked.id) ?? [];
-      list.push({
-        piece: stool,
-        along: distanceAlong(linked.points, stool.x + stool.w / 2, stool.y + stool.h / 2),
-      });
-      byBar.set(linked.id, list);
-      continue;
-    }
-    const near = nearestBar(stool, bars);
-    if (near && near.dist < 8) {
-      const list = byBar.get(near.bar.id) ?? [];
-      list.push({ piece: stool, along: near.along });
-      byBar.set(near.bar.id, list);
-      continue;
-    }
-    unattached.push(stool);
+  const claimed = new Set<string>();
+  for (const bar of bars) {
+    const owned = stoolsForBar(stools, bar, bars).filter((stool) => !claimed.has(stool.id));
+    for (const stool of owned) claimed.add(stool.id);
+    const centers = owned.map((stool) => ({ x: stool.x + stool.w / 2, y: stool.y + stool.h / 2 }));
+    const order = room
+      ? outsideWalkOrder(centers, bar, room)
+      : owned
+          .map((stool, index) => ({
+            index,
+            along: distanceAlong(bar.points, stool.x + stool.w / 2, stool.y + stool.h / 2),
+          }))
+          .sort((a, b) => a.along - b.along || a.index - b.index)
+          .map((row) => row.index);
+    order.forEach((index, n) => {
+      const piece = owned[index];
+      if (!piece) return;
+      const label = `B${n + 1}`;
+      if (piece.label !== label) patches.push({ id: piece.id, label });
+    });
   }
-
-  const orderedBars = bars.slice().sort((a, b) => {
-    const ay = a.points.length ? Math.min(...a.points.map((p) => p.y)) : a.y;
-    const by = b.points.length ? Math.min(...b.points.map((p) => p.y)) : b.y;
-    const ax = a.points.length ? Math.min(...a.points.map((p) => p.x)) : a.x;
-    const bx = b.points.length ? Math.min(...b.points.map((p) => p.x)) : b.x;
-    return ay - by || ax - bx || a.id.localeCompare(b.id);
-  });
-
-  let cursor = 1;
-  const takeB = () => {
-    while (frozen.has(cursor)) cursor += 1;
-    const label = `B${cursor}`;
-    cursor += 1;
-    return label;
-  };
-  const assign = (piece: RenumberPiece) => {
-    const label = takeB();
-    if (piece.label !== label) patches.push({ id: piece.id, label });
-  };
-
-  for (const bar of orderedBars) {
-    const list = (byBar.get(bar.id) ?? []).slice().sort((a, b) => a.along - b.along || a.piece.x - b.piece.x);
-    for (const row of list) assign(row.piece);
-  }
+  const unattached = stools.filter((stool) => !claimed.has(stool.id));
   unattached
     .slice()
     .sort((a, b) => a.y - b.y || a.x - b.x || a.id.localeCompare(b.id))
-    .forEach(assign);
+    .forEach((piece, n) => {
+      const label = `B${n + 1}`;
+      if (piece.label !== label) patches.push({ id: piece.id, label });
+    });
 
   return patches;
+}
+
+export type StoolCreate = {
+  railBarId: string;
+  label: string;
+  section: string;
+  sectionId?: string;
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+  rotation: number;
+  lengthIn: number;
+  widthIn: number;
+};
+
+export type FloorReset = {
+  labels: { id: string; label: string }[];
+  moves: { id: string; x: number; y: number; rotation: number; railBarId: string }[];
+  create: StoolCreate[];
+};
+
+function splitCount(total: number, lengths: number[]): number[] {
+  if (!lengths.length || total <= 0) return lengths.map(() => 0);
+  const sum = lengths.reduce((sum, n) => sum + n, 0) || 1;
+  const raw = lengths.map((len) => (total * len) / sum);
+  const base = raw.map((n) => Math.floor(n));
+  let left = total - base.reduce((sum, n) => sum + n, 0);
+  const order = raw
+    .map((n, index) => ({ index, frac: n - Math.floor(n) }))
+    .sort((a, b) => b.frac - a.frac);
+  for (const row of order) {
+    if (left <= 0) break;
+    base[row.index] = (base[row.index] ?? 0) + 1;
+    left -= 1;
+  }
+  return base;
+}
+
+/**
+ * Dining 1…N. Each bar’s stools stay capsules, labeled B1…Bn from the outside
+ * end a guest sits first. Path-text B numbers on the slab become stool objects.
+ */
+export function resetFloorNumbers(
+  pieces: readonly RenumberPiece[],
+  bars: readonly RenumberBar[],
+  room: ArrangeRoom,
+): FloorReset {
+  const moves: FloorReset["moves"] = [];
+  const create: StoolCreate[] = [];
+  const barLabels: { id: string; label: string }[] = [];
+  const stools = pieces.filter((piece) => piece.kind === "barstool");
+  const placed = new Map<string, RenumberPiece>();
+
+  for (const bar of bars) {
+    if (isStoolPathText(bar.label)) barLabels.push({ id: bar.id, label: "BAR" });
+    const owned = stoolsForBar(stools, bar, bars);
+    if (owned.length === 0 && isStoolPathText(bar.label)) {
+      const count = bar.label?.match(/B\d+/gi)?.length ?? 0;
+      const shape = bar.barShape ?? undefined;
+      const lengths = legInches(bar.points, room);
+      const per = splitCount(count, lengths);
+      const side = bar.barSide ?? (shape === "l" || shape === "u" ? "outside" : "a");
+      const poses = generateBarStools({
+        bar: {
+          x: bar.x,
+          y: bar.y,
+          w: bar.w ?? 10,
+          h: bar.h ?? 10,
+          kind: "bar_top",
+          barShape: shape,
+          points: bar.points,
+          legLengths: lengths.map(() => 1),
+          widthIn: bar.widthIn,
+          barSide: side,
+        },
+        room,
+        counts:
+          shape === "l"
+            ? { legA: per[0] ?? 0, legB: per[1] ?? 0 }
+            : shape === "u"
+              ? { left: per[0] ?? 0, rear: per[1] ?? 0, right: per[2] ?? 0 }
+              : { count },
+        side,
+      });
+      const order = outsideWalkOrder(
+        poses.map((pose) => ({ x: pose.x + pose.w / 2, y: pose.y + pose.h / 2 })),
+        bar,
+        room,
+      );
+      order.forEach((poseIndex, n) => {
+        const pose = poses[poseIndex];
+        if (!pose) return;
+        create.push({
+          railBarId: bar.id,
+          label: `B${n + 1}`,
+          section: bar.section ?? "Bar",
+          sectionId: bar.sectionId,
+          x: pose.x,
+          y: pose.y,
+          w: pose.w,
+          h: pose.h,
+          rotation: pose.rotation,
+          lengthIn: pose.lengthIn,
+          widthIn: pose.widthIn,
+        });
+      });
+      continue;
+    }
+    const rail = outsideRail(bar, room);
+    for (const stool of owned) {
+      const cx = stool.x + stool.w / 2;
+      const cy = stool.y + stool.h / 2;
+      const onSlab = bar.points.length >= 2 && polyDist(cx, cy, bar.points) + 0.3 < polyDist(cx, cy, rail);
+      if (!onSlab) {
+        placed.set(stool.id, stool);
+        continue;
+      }
+      const snapped = snapStoolToRail(
+        stool,
+        [
+          {
+            x: bar.x,
+            y: bar.y,
+            w: bar.w ?? 10,
+            h: bar.h ?? 10,
+            kind: "bar_top",
+            barShape: bar.barShape,
+            barSide: bar.barSide ?? (bar.barShape === "l" || bar.barShape === "u" ? "outside" : "a"),
+            points: bar.points,
+            legLengths: [1],
+            widthIn: bar.widthIn,
+          },
+        ],
+        room,
+      );
+      if (!snapped) {
+        placed.set(stool.id, stool);
+        continue;
+      }
+      moves.push({ id: stool.id, x: snapped.x, y: snapped.y, rotation: snapped.rotation, railBarId: bar.id });
+      placed.set(stool.id, { ...stool, x: snapped.x, y: snapped.y, railBarId: bar.id });
+    }
+  }
+
+  const adjusted = pieces.map((piece) => placed.get(piece.id) ?? piece);
+  return { labels: [...barLabels, ...renumberPlan(adjusted, bars, room)], moves, create };
 }
 
 /** Snap a plan percent to the inch grid. */
