@@ -5,11 +5,12 @@ import {
   buildMenuDraftFromLines,
   heuristicMenuLines,
   linesFromModelJson,
+  menuAnalyzeSource,
   pickIntakeLines,
   type IntakeSettings,
   type MenuIntakeDraft,
-} from "./intake";
-import { extractMenuText } from "./intake-file";
+} from "./intake.ts";
+import { extractMenuText } from "./intake-file.ts";
 
 const MAX_BYTES = 1_500_000;
 
@@ -124,14 +125,19 @@ export async function extractMenuIntake(opts: {
   text?: string;
   fileName?: string;
   fileBase64?: string;
+  /** Set only after the file row is loaded. A client blob is not enough. */
+  storedFileId?: string;
   locationId?: string;
   settings: IntakeSettings;
 }): Promise<MenuIntakeDraft> {
+  const source = menuAnalyzeSource({ text: opts.text, fileId: opts.storedFileId });
+  if (source.kind === "refuse") throw new Error(source.error);
   const entityId = opts.entityId.trim().slice(0, 80);
   let bytes: Uint8Array | undefined;
-  if (opts.fileBase64 && opts.fileBase64.length <= 2_100_000) {
+  if (source.kind === "file") {
+    if (!opts.fileBase64) throw new Error("Upload a menu first");
     bytes = decodeBase64(opts.fileBase64);
-    if (bytes.byteLength > MAX_BYTES) bytes = undefined;
+    if (!bytes.byteLength || bytes.byteLength > MAX_BYTES) throw new Error("Upload a menu first");
   }
   const extracted = extractMenuText({
     fileName: opts.fileName,

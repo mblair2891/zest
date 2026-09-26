@@ -6,6 +6,18 @@ import type { GuideUpdate } from "@/lib/guide/types";
  */
 export const WHATS_NEW_ENTRIES: GuideUpdate[] = [
   {
+    id: "upd_2026_10_167_menu_upload",
+    date: "2026-09-26",
+    title: "Upload the menu file before Analyze",
+    summary: "Choose file shows the name. Upload stores it on the entity. Analyze waits for that.",
+    body: "On an entity menu, Choose file shows the file name, size, and a photo thumbnail. Upload saves the PDF, photo, or DOCX on that entity. Analyze runs only after Upload. Paste and voice skip Upload. Analyze with no stored file says Upload a menu first and does not start a read.",
+    roles: ["owner_manager", "host_operator", "vendor_operator"],
+    surfaces: ["settings", "floor"],
+    audience: "all",
+    topicId: "menu-modifiers",
+    tags: ["menu"],
+  },
+  {
     id: "upd_2026_10_166_card_processor",
     date: "2026-09-25",
     title: "One card processor per venue",

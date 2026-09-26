@@ -63,6 +63,29 @@ export type MenuIntakeQuestion = {
   prompt: string;
 };
 
+/** Paste and voice can analyze with no file. A chosen file must already be stored. */
+export function menuAnalyzeSource(opts: {
+  text?: string | null;
+  fileId?: string | null;
+}): { kind: "text"; text: string } | { kind: "file"; fileId: string } | { kind: "refuse"; error: string } {
+  const fileId = String(opts.fileId ?? "").trim();
+  if (fileId) return { kind: "file", fileId };
+  const text = String(opts.text ?? "").trim();
+  if (text) return { kind: "text", text };
+  return { kind: "refuse", error: "Upload a menu first" };
+}
+
+export function formatMenuFileSize(bytes: number): string {
+  const n = Math.max(0, Math.round(bytes));
+  if (n < 1024) return `${n} B`;
+  if (n < 1024 * 1024) return `${n < 10 * 1024 ? (n / 1024).toFixed(1) : Math.round(n / 1024)} KB`;
+  return `${(n / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+export function menuFileIsImage(name: string): boolean {
+  return /\.(png|jpe?g|webp|gif)$/i.test(name);
+}
+
 export type MenuIntakeDraft = {
   entityId: string;
   rows: MenuIntakeRow[];

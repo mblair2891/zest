@@ -1,14 +1,18 @@
 import { useState } from "react";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { VoiceTextarea } from "@/components/ui/voice-textarea";
 import { publishLocationFn, saveMenuItemFn } from "@/lib/access/api";
-import { extractMenuIntakeFn } from "@/lib/menu/intake-api";
+import { extractMenuIntakeFn, uploadMenuFileFn } from "@/lib/menu/intake-api";
 import {
   applyIntakeAnswers,
   buildMenuDraft,
   bulkAcceptRows,
   editIntakeRow,
+  formatMenuFileSize,
+  menuAnalyzeSource,
+  menuFileIsImage,
   rowsToCommit,
   type IntakeSettings,
   type MenuIntakeDraft,
@@ -30,7 +34,15 @@ export function EntityMenuIntake(props: {
 }) {
   const { entityId, entityName, orgId, locationId, settings } = props;
   const [pasted, setPasted] = useState("");
-  const [file, setFile] = useState<{ name: string; base64: string } | null>(null);
+  const [file, setFile] = useState<{
+    name: string;
+    size: number;
+    mime: string;
+    base64: string;
+    preview: string;
+  } | null>(null);
+  const [fileId, setFileId] = useState("");
+  const [uploading, setUploading] = useState(false);
   const [draft, setDraft] = useState<MenuIntakeDraft | null>(null);
   const [answers, setAnswers] = useState<Record<string, string>>({});
   const [editing, setEditing] = useState<string | null>(null);
@@ -49,18 +61,68 @@ export function EntityMenuIntake(props: {
       setMessage("Use a menu file under 1.5 MB.");
       return;
     }
+    setFileId("");
+    setMessage("");
     const reader = new FileReader();
     reader.onload = () => {
       const result = String(reader.result || "");
       const base64 = result.includes(",") ? result.split(",")[1] || "" : result;
-      setFile({ name: picked.name, base64 });
-      setMessage("");
+      if (!base64) {
+        setFile(null);
+        setMessage("That file was empty.");
+        return;
+      }
+      const preview = menuFileIsImage(picked.name) ? result : "";
+      setFile({
+        name: picked.name,
+        size: picked.size,
+        mime: picked.type || "",
+        base64,
+        preview,
+      });
     };
     reader.readAsDataURL(picked);
   };
 
+  const upload = async () => {
+    if (!file?.base64) return;
+    if (!locationId) {
+      setMessage("Open this entity on a location before uploading.");
+      return;
+    }
+    setUploading(true);
+    setMessage("");
+    try {
+      const saved = await uploadMenuFileFn({
+        data: {
+          orgId,
+          locationId,
+          entityId,
+          fileName: file.name,
+          mime: file.mime,
+          bodyBase64: file.base64,
+        },
+      });
+      setFileId(saved.id);
+      setFile((current) =>
+        current ? { ...current, name: saved.fileName, size: saved.byteSize } : current,
+      );
+      setMessage("Uploaded");
+    } catch (err) {
+      setFileId("");
+      setMessage(err instanceof Error ? err.message : "Upload failed.");
+    } finally {
+      setUploading(false);
+    }
+  };
+
   const analyze = async () => {
     if (!entityId && !entityName) return;
+    const source = menuAnalyzeSource({ text: pasted, fileId });
+    if (source.kind === "refuse") {
+      toast("Upload a menu first");
+      return;
+    }
     setBusy(true);
     setMessage("");
     setAnswers({});
@@ -69,9 +131,8 @@ export function EntityMenuIntake(props: {
       const next = await extractMenuIntakeFn({
         data: {
           entityId,
-          text: pasted,
-          fileName: file?.name,
-          fileBase64: file?.base64,
+          text: source.kind === "text" ? source.text : pasted,
+          fileId: source.kind === "file" ? source.fileId : undefined,
           locationId: locationId || undefined,
           cashDiscountEnabled: settings.cashDiscountEnabled,
           cashDiscountPercent: settings.cashDiscountPercent,
@@ -83,12 +144,14 @@ export function EntityMenuIntake(props: {
         entityId,
         rows: next.rows.map((row) => ({ ...row, entityId })),
       });
-    } catch {
-      if (pasted.trim()) {
-        setDraft(buildMenuDraft({ text: pasted, entityId, settings }));
-      } else {
-        setMessage("Reading the file failed. Paste the menu text on this screen.");
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "";
+      if (!pasted.trim()) {
+        if (!fileId || msg === "Upload a menu first") toast("Upload a menu first");
+        else setMessage("Reading the file failed. Paste the menu text on this screen.");
+        return;
       }
+      setDraft(buildMenuDraft({ text: pasted, entityId, settings }));
     } finally {
       setBusy(false);
     }
@@ -243,6 +306,7 @@ export function EntityMenuIntake(props: {
       className="mb-4 rounded-2xl border border-border bg-surface p-3"
       data-menu-intake={entityId || "house"}
       data-menu-intake-entity={entityId || "house"}
+      data-menu-file-id={fileId || undefined}
     >
       <h3 className="text-sm font-semibold">Upload a menu · {entityName}</h3>
       <p className="mt-1 text-xs text-muted-foreground">
@@ -261,7 +325,46 @@ export function EntityMenuIntake(props: {
             onChange={(e) => onFile(e.target.files?.[0])}
           />
         </label>
-        {file ? <p className="text-xs text-muted-foreground">{file.name}</p> : null}
+        {file ? (
+          <div className="flex items-center gap-3" data-menu-file-picked={file.name}>
+            {file.preview ? (
+              <img
+                src={file.preview}
+                alt=""
+                className="h-14 w-14 rounded-md border border-border object-cover"
+                data-menu-file-thumb
+              />
+            ) : null}
+            <div className="min-w-0 text-xs">
+              <p className="truncate font-medium" data-menu-file-name>
+                {file.name}
+              </p>
+              <p className="text-muted-foreground" data-menu-file-size>
+                {formatMenuFileSize(file.size)}
+                {fileId ? " · Uploaded" : uploading ? " · Uploading…" : ""}
+              </p>
+            </div>
+          </div>
+        ) : null}
+        <div className="flex flex-wrap gap-2">
+          <Button
+            type="button"
+            onClick={() => void upload()}
+            disabled={!file || uploading || busy || Boolean(fileId)}
+            data-menu-upload
+          >
+            {uploading ? "Uploading…" : "Upload"}
+          </Button>
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => void analyze()}
+            disabled={busy || uploading || (!pasted.trim() && !fileId)}
+            data-menu-analyze
+          >
+            {busy ? "Reading the menu…" : "Analyze"}
+          </Button>
+        </div>
         <VoiceTextarea
           rows={4}
           value={pasted}
@@ -269,11 +372,6 @@ export function EntityMenuIntake(props: {
           placeholder="Or paste the menu. Plates on its own line, then Smash Burger 14."
           data-menu-intake-paste
         />
-        <div>
-          <Button type="button" onClick={() => void analyze()} disabled={busy}>
-            {busy ? "Reading the menu…" : "Analyze"}
-          </Button>
-        </div>
       </div>
 
       {live && live.note ? (

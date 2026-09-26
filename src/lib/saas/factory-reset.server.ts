@@ -15,6 +15,7 @@ const WIPE_TABLES = [
   "reg_bulletins",
   "finix_webhook_events",
   "stripe_webhook_events",
+  "menu_uploads",
   "payment_accounts",
   "gift_ledger",
   "gift_cards",

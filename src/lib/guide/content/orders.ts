@@ -15,8 +15,8 @@ export const ORDER_TOPICS: GuideTopic[] = [
         "Routing, settlement, and allergens all hang off the menu. A missing modifier or operator tag shows up as a wrong ticket or a wrong payout.",
       ),
       steps(
-        "Open Menu for the selling entity. Upload a PDF, JPEG, PNG, or DOCX, or paste the menu. Voice and a typed paragraph stay on Describe with AI.",
-        "Analyze builds a draft for that entity: group, item name, description, cash price, and the card price from the venue cash-discount rule when the line is cash. One unlabeled price asks cash or card on this screen. Obvious extras become modifiers. Food groups guess the kitchen printer. Drink groups guess the bar section.",
+        "Open Menu for the selling entity. Choose a PDF, JPEG, PNG, or DOCX. The file name, size, and a thumbnail for a photo show on the form. Upload stores that file on this entity. Analyze stays off until Upload finishes. Paste or voice does not use Upload. Analyze with no stored file says Upload a menu first and does not start a read.",
+        "Analyze builds a draft for that entity from the stored file, or from the pasted text: group, item name, description, cash price, and the card price from the venue cash-discount rule when the line is cash. One unlabeled price asks cash or card on this screen. Obvious extras become modifiers. Food groups guess the kitchen printer. Drink groups guess the bar section.",
         "If a price, a group, or an alcohol flag is missing, answer on this screen by typing or speaking. Tax stays on the venue tax screen.",
         "Review the draft. Accept, edit, or drop each row. Bulk accept marks every open row. Save / Publish writes the accepted rows onto that entity and publishes them for stations. The order pad shows those items. Another entity’s menu stays as it was.",
         "Add or edit one item by hand when you prefer. The price field is Cash price (printed / till). With cash discount on, Card price appears beside it.",
@@ -25,7 +25,7 @@ export const ORDER_TOPICS: GuideTopic[] = [
         "86 or un-86 from Menu or the 86 board. Stations see that immediately. New items, prices, modifiers, and categories reach stations after Publish, on the next PIN.",
       ),
       tip(
-        "A menu file still becomes a draft from the text on the page when AI is off. Describe with AI still uses category templates (burger, steak, pizza, salad, cocktail, …) for one item. You confirm before that item saves.",
+        "A stored menu file still becomes a draft from the text on the page when AI is off. Analyze does not run on a file that was only chosen and not uploaded. Describe with AI still uses category templates (burger, steak, pizza, salad, cocktail, …) for one item. You confirm before that item saves.",
       ),
       related("kitchen-bar-routing", "multi-operator-orders", "onboarding-wizard", "setup-by-voice"),
     ],

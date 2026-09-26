@@ -6,10 +6,14 @@ import {
   applyIntakeAnswers,
   buildMenuDraft,
   buildMenuDraftFromLines,
+  formatMenuFileSize,
+  menuAnalyzeSource,
+  menuFileIsImage,
   linesFromModelJson,
   pickIntakeLines,
   rowsToCommit,
 } from "../src/lib/menu/intake.ts";
+import { extractMenuIntake } from "../src/lib/menu/intake.server.ts";
 
 const DISCOUNT = {
   cashDiscountEnabled: true,
@@ -150,6 +154,14 @@ test("menu screen publishes accepted rows for the open entity", () => {
   assert.match(panel, /publishLocationFn/);
   assert.match(panel, /flushLocationCatalog\("menu"\)/);
   assert.match(panel, /data-menu-intake-publish/);
+  assert.match(panel, /data-menu-upload/);
+  assert.match(panel, /data-menu-file-name/);
+  assert.match(panel, /data-menu-file-thumb/);
+  assert.match(panel, /Upload a menu first/);
+  assert.match(panel, /setBusy\(true\)/);
+  const analyze = panel.split("const analyze")[1] ?? "";
+  const beforeBusy = analyze.split("setBusy(true)")[0] ?? "";
+  assert.match(beforeBusy, /Upload a menu first/);
   const photo = extractMenuText({
     fileName: "menu.png",
     bytes: new Uint8Array([1, 2, 3]),
@@ -157,4 +169,38 @@ test("menu screen publishes accepted rows for the open entity", () => {
   });
   assert.equal(photo.image, true);
   assert.match(photo.text, /Burger 10/);
+});
+
+test("a drink menu file is stored before Analyze, and a missing upload does not succeed", async () => {
+  assert.equal(menuFileIsImage("drink-menu.jpg"), true);
+  assert.equal(formatMenuFileSize(48_200), "47 KB");
+  const picked = { name: "drink-menu.jpg", size: 48_200 };
+  assert.equal(picked.name, "drink-menu.jpg");
+  assert.equal(menuAnalyzeSource({ text: "", fileId: "" }).kind, "refuse");
+  await assert.rejects(
+    () => extractMenuIntake({ entityId: "bar", text: "", settings: {} }),
+    /Upload a menu first/,
+  );
+  await assert.rejects(
+    () =>
+      extractMenuIntake({
+        entityId: "bar",
+        fileName: "drink-menu.jpg",
+        fileBase64: Buffer.from("not a saved file").toString("base64"),
+        settings: {},
+      }),
+    /Upload a menu first/,
+  );
+  const stored = Buffer.from("(DRINKS) (Margarita 14) (House IPA 8)");
+  const draft = await extractMenuIntake({
+    entityId: "bar",
+    fileName: "drink-menu.pdf",
+    fileBase64: stored.toString("base64"),
+    storedFileId: "mfile_drinks",
+    settings: { cashDiscountEnabled: false },
+  });
+  assert.equal(menuAnalyzeSource({ fileId: "mfile_drinks" }).kind, "file");
+  assert.ok(draft.rows.some((row) => /margarita/i.test(row.name)));
+  assert.ok(draft.rows.some((row) => /ipa/i.test(row.name)));
+  assert.equal(draft.rows.every((row) => row.entityId === "bar"), true);
 });
