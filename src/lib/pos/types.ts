@@ -390,6 +390,10 @@ export interface MenuCategory {
   destinationName?: string;
   /** Optional order-printer override. Empty = the printer that serves destinationName. */
   printerId?: string;
+  /** Selling entity that owns this group, when it is not house-wide. */
+  vendorId?: string;
+  /** Well book group for a drink entity. The order pad lists it before specialty groups. */
+  wellBook?: boolean;
 }
 
 export interface ModifierOption {
@@ -429,6 +433,10 @@ export interface MenuItem {
   tenantId?: string;
   vendorId?: string;
   allergens?: string[];
+  /** Stable well-book build key. Specialty rows do not set this. */
+  wellKey?: string;
+  /** Hidden mixer or spirit. The order pad omits the build. */
+  wellHidden?: boolean;
 }
 
 export interface SelectedModifier {
@@ -759,6 +767,10 @@ export interface Vendor {
   stationType?: "bar" | "kitchen" | "both";
   /** When false, entityTaxRates[id] on venue settings override venue rates. Default inherit. */
   taxInherit?: boolean;
+  /** This entity sells drinks, even when station type is not bar. */
+  drinks?: boolean;
+  /** Optional well catalog. Off leaves the entity menu unchanged. */
+  wellBook?: import("./well-book").WellBookConfig;
 }
 
 export type SettlementPeriodType =

@@ -6,6 +6,18 @@ import type { GuideUpdate } from "@/lib/guide/types";
  */
 export const WHATS_NEW_ENTRIES: GuideUpdate[] = [
   {
+    id: "upd_2026_10_175_well_book",
+    date: "2026-09-27",
+    title: "Optional well book for a drink entity",
+    summary: "Turn on Wells for the bar. Rum and Coke is a well highball. A food menu stays as it is.",
+    body: "On Menu, a bar or any entity flagged as drinks can set Well book to On. That inserts a draft Wells group for that entity: six well spirits you can rename, a mixer list, and highball, rocks, shot, and tall. The well price, call upcharge, and premium upcharge sit on each build. Every build has an ounce recipe for costing. Hide a mixer and those builds leave the order pad. Upload a specialty menu beside the well rows. They stay unless you choose Replace well book. The order pad shows Wells, then the other groups. A food entity is unchanged.",
+    roles: ["owner_manager", "vendor_operator", "host_operator"],
+    surfaces: ["settings"],
+    audience: "all",
+    topicId: "menu-modifiers",
+    tags: ["menu"],
+  },
+  {
     id: "upd_2026_10_174_reset_choice",
     date: "2026-09-26",
     title: "Reset numbers for tables or stools",

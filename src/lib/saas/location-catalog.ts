@@ -1,4 +1,5 @@
 import type { FloorSection, MenuCategory, MenuItem, ModifierGroup, Table, TableKind } from "@/lib/pos/types";
+import { readWellBook, type WellBookConfig } from "../pos/well-book.ts";
 import type { ItemRecipe } from "@/lib/costs/types";
 import {
   DEFAULT_ROOM,
@@ -42,6 +43,7 @@ export type LocationMenuCatalog = {
   categories: MenuCategory[];
   items: MenuItem[];
   modifiers: ModifierGroup[];
+  wellBooks?: { vendorId: string; wellBook: WellBookConfig }[];
 };
 
 function asObj(raw: unknown): Record<string, unknown> | null {
@@ -245,13 +247,15 @@ export function parseMenuCatalog(raw: unknown): LocationMenuCatalog | undefined 
       station: r.station === "bar" || r.station === "expo" || r.station === "dessert" ? r.station : "kitchen",
       destinationName: str(r.destinationName).slice(0, 40) || undefined,
       printerId: str(r.printerId).slice(0, 80) || undefined,
+      vendorId: str(r.vendorId).slice(0, 80) || undefined,
+      wellBook: r.wellBook === true ? true : undefined,
     });
   }
   const items: MenuItem[] = [];
   for (const it of itemsRaw) {
     const r = asObj(it);
     if (!r) continue;
-    const id = str(r.id).slice(0, 80);
+    const id = str(r.id).slice(0, 160);
     if (!id) continue;
     items.push({
       id,
@@ -276,6 +280,8 @@ export function parseMenuCatalog(raw: unknown): LocationMenuCatalog | undefined 
       allergens: Array.isArray(r.allergens)
         ? r.allergens.filter((x): x is string => typeof x === "string").slice(0, 20)
         : undefined,
+      wellKey: str(r.wellKey).slice(0, 80) || undefined,
+      wellHidden: r.wellHidden === true ? true : undefined,
     });
   }
   const modifiers: ModifierGroup[] = [];
@@ -306,7 +312,19 @@ export function parseMenuCatalog(raw: unknown): LocationMenuCatalog | undefined 
     });
   }
   if (!items.length && !categories.length) return undefined;
-  return { categories, items, modifiers };
+  const wellBooks = Array.isArray(o.wellBooks)
+    ? o.wellBooks
+        .map((row) => {
+          const book = asObj(row);
+          if (!book) return null;
+          const vendorId = str(book.vendorId).slice(0, 80);
+          const wellBook = readWellBook(book.wellBook);
+          if (!vendorId || !wellBook) return null;
+          return { vendorId, wellBook };
+        })
+        .filter((row): row is { vendorId: string; wellBook: WellBookConfig } => Boolean(row))
+    : undefined;
+  return { categories, items, modifiers, ...(wellBooks?.length ? { wellBooks } : {}) };
 }
 
 export function parseRecipes(raw: unknown): ItemRecipe[] | undefined {

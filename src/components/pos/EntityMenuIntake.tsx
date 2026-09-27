@@ -29,6 +29,7 @@ import { formatCurrency } from "@/lib/utils";
 import { isProspectDemo } from "@/lib/demo/session";
 import { flushLocationCatalog } from "@/lib/pos/persist-location-setup";
 import { usePosStore } from "@/lib/pos/store";
+import { dropWellItems, specialtyBesideWell } from "@/lib/pos/well-book";
 import { noteChecklistSave } from "@/lib/saas/checklist-link";
 
 export function EntityMenuIntake(props: {
@@ -59,6 +60,7 @@ export function EntityMenuIntake(props: {
   const [editMods, setEditMods] = useState("");
   const [editAlcohol, setEditAlcohol] = useState<"yes" | "no" | "">("");
   const [busy, setBusy] = useState(false);
+  const [replaceWell, setReplaceWell] = useState(false);
   const [message, setMessage] = useState("");
   const [aiError, setAiError] = useState("");
   const [fileNotice, setFileNotice] = useState<string | null>(null);
@@ -226,12 +228,23 @@ export function EntityMenuIntake(props: {
     setMessage("");
     const ready = withAnswers(draft);
     setDraft(ready);
+    if (replaceWell) {
+      const live = usePosStore.getState();
+      usePosStore.setState({ menuItems: dropWellItems(live.menuItems, entityId) });
+    }
     const accepted = rowsToCommit(ready.rows, entityId);
     let n = 0;
     const skipped: string[] = [];
     const committed = new Set<string>();
     for (const row of accepted) {
       const groupName = row.group.trim();
+      if (
+        specialtyBesideWell(usePosStore.getState().menuItems, entityId, row.name, replaceWell) ===
+        "skip"
+      ) {
+        skipped.push(row.name);
+        continue;
+      }
       if (!groupName) {
         skipped.push(row.name);
         continue;
@@ -335,8 +348,17 @@ export function EntityMenuIntake(props: {
       <p className="mt-1 text-xs text-muted-foreground">
         PDF, photo, DOCX, or pasted text. This draft belongs to {entityName}. Cash price is the
         till price. Card price follows this venue’s cash-discount rule. Save / Publish sends the
-        accepted rows to stations.
+        accepted rows to stations. Well book rows stay unless you choose Replace well book.
       </p>
+      <label className="mt-2 flex items-center gap-2 text-xs">
+        <input
+          type="checkbox"
+          data-well-book-replace=""
+          checked={replaceWell}
+          onChange={(event) => setReplaceWell(event.target.checked)}
+        />
+        Replace well book
+      </label>
       <div className="mt-3 grid gap-2">
         <label className="text-[11px] text-muted-foreground">
           Menu file

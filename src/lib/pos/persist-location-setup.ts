@@ -430,6 +430,9 @@ export async function flushLocationCatalog(
           categories: pos.categories,
           items: pos.menuItems,
           modifiers: pos.modifierGroups,
+          wellBooks: pos.vendors.flatMap((vendor) =>
+            vendor.wellBook ? [{ vendorId: vendor.id, wellBook: vendor.wellBook }] : [],
+          ),
         },
         configVersion: bumpConfigVersion(),
         recipes: cost.recipes,

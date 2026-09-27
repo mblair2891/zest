@@ -8,6 +8,7 @@ import { parseQrPolicy } from "@/lib/pos/qr-policy";
 import { parseQrMode } from "@/lib/pos/qr-table";
 import { tablesFromFloorPlan } from "@/lib/saas/location-catalog";
 import { readFloorDraft, resolveLiveFloor, setFloorDraftBanner } from "@/lib/pos/live-floor";
+import { readWellBook } from "@/lib/pos/well-book";
 import { readFloorRoom } from "@/lib/pos/floor-dimensions";
 import { parseLocationDevices } from "@/lib/pos/location-devices";
 import { parseLaborMap } from "@/lib/labor/rules";
@@ -141,6 +142,7 @@ export function applyStationPublish(
             items?: unknown[];
             categories?: unknown[];
             modifiers?: unknown[];
+            wellBooks?: { vendorId?: string; wellBook?: unknown }[];
           })
         : {};
     const plan =
@@ -174,6 +176,13 @@ export function applyStationPublish(
     }
     if (Array.isArray(catalog.categories)) patch.categories = catalog.categories;
     if (Array.isArray(catalog.modifiers)) patch.modifierGroups = catalog.modifiers;
+    if (Array.isArray(catalog.wellBooks)) {
+      patch.vendors = pos.vendors.map((vendor) => {
+        const book = catalog.wellBooks?.find((row) => row.vendorId === vendor.id);
+        const wellBook = readWellBook(book?.wellBook);
+        return wellBook ? { ...vendor, wellBook } : vendor;
+      });
+    }
     if (tables.length) patch.tables = tables;
     const room = readFloorRoom((plan as { room?: unknown }).room);
     if (room) patch.floorRoom = room;

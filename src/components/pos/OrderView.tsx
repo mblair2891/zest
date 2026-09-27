@@ -33,6 +33,7 @@ import {
   printedItemPriceCents,
 } from "@/lib/pos/calculations";
 import { cashPolicyFromSettings } from "@/lib/pos/cash-discount";
+import { orderPadCategories } from "@/lib/pos/well-book";
 import { formatGuestCardRate } from "@/lib/pos/card-service";
 import { cn, formatCurrency } from "@/lib/utils";
 import { ModifierDialog } from "./ModifierDialog";
@@ -155,9 +156,9 @@ export function OrderView({
   }, [demoScope]);
   useEffect(() => {
     if (!busyNight || selectedCategoryId) return;
-    const first = categories.slice().sort((a, b) => a.sort - b.sort)[0];
+    const first = orderPadCategories(categories, menuItems, vendorFilter)[0];
     if (first) setCategory(first.id);
-  }, [busyNight, selectedCategoryId, categories, setCategory]);
+  }, [busyNight, selectedCategoryId, categories, menuItems, vendorFilter, setCategory]);
   const [payQrOpen, setPayQrOpen] = useState(false);
   const [opsOpen, setOpsOpen] = useState(false);
   const [checkOpen, setCheckOpen] = useState(false);
@@ -194,6 +195,7 @@ export function OrderView({
   const items = useMemo(() => {
     let list = menuItems;
     if (vendorFilter) list = list.filter((m) => m.vendorId === vendorFilter);
+    list = list.filter((m) => !m.wellHidden);
     if (selectedCategoryId)
       list = list.filter((m) => m.categoryId === selectedCategoryId);
     if (search.trim()) {
@@ -534,7 +536,7 @@ export function OrderView({
   );
 
   if (busyNight) {
-    const cats = categories.slice().sort((a, b) => a.sort - b.sort);
+    const cats = orderPadCategories(categories, menuItems, vendorFilter);
     const fireSend = () => {
       const res = sendOrder();
       if (res?.ok) onSent?.();
@@ -1084,10 +1086,7 @@ export function OrderView({
               >
                 All
               </Button>
-              {categories
-                .slice()
-                .sort((a, b) => a.sort - b.sort)
-                .map((c) => (
+              {orderPadCategories(categories, menuItems, vendorFilter).map((c) => (
                   <Button
                     key={c.id}
                     size="sm"

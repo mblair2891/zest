@@ -471,16 +471,20 @@ export function PlatformTenantVenue({
             "training",
         },
       });
-      if (setup.menuCatalog?.items?.length) {
+      const menuCatalog = setup.menuCatalog;
+      if (menuCatalog?.items?.length) {
         const cur = usePosStore.getState();
+        const wellBooks = menuCatalog.wellBooks;
         usePosStore.setState({
-          menuItems: setup.menuCatalog.items,
-          categories: setup.menuCatalog.categories.length
-            ? setup.menuCatalog.categories
-            : cur.categories,
-          modifierGroups: setup.menuCatalog.modifiers.length
-            ? setup.menuCatalog.modifiers
-            : cur.modifierGroups,
+          menuItems: menuCatalog.items,
+          categories: menuCatalog.categories.length ? menuCatalog.categories : cur.categories,
+          modifierGroups: menuCatalog.modifiers.length ? menuCatalog.modifiers : cur.modifierGroups,
+          vendors: Array.isArray(wellBooks)
+            ? cur.vendors.map((vendor) => {
+                const book = wellBooks.find((row) => row.vendorId === vendor.id);
+                return book?.wellBook ? { ...vendor, wellBook: book.wellBook } : vendor;
+              })
+            : cur.vendors,
         });
       }
       try {

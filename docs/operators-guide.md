@@ -1,7 +1,7 @@
 # Operators Guide — authoring
 
-**Revision · 26 Sep 2026** — Reset numbers can do tables or stools.
-Guide v2026.10.174.
+**Revision · 27 Sep 2026** — Drink entities can turn on a well book.
+Guide v2026.10.175.
 
 The in-app **Operators Guide** is the living product manual. It is not a
 separate PDF. Staff open it from **Guide** / **?** in the POS and platform

@@ -19,6 +19,8 @@ import { EntityMenuIntake } from "@/components/pos/EntityMenuIntake";
 import { persistLocationCatalog } from "@/lib/pos/persist-location-setup";
 import { isActiveOrderPrinter } from "@/lib/pos/fire-routing";
 import { destinationForGroup, mergeOrderDestinations } from "@/lib/pos/order-destinations";
+import { isDrinkEntity } from "@/lib/pos/well-book";
+import { WellBookCard } from "@/components/pos/WellBookCard";
 
 export function MenuAdminView() {
   const categories = usePosStore((s) => s.categories);
@@ -211,6 +213,19 @@ export function MenuAdminView() {
           )}
         </div>
       )}
+
+      {canCreate &&
+      isDrinkEntity(
+        vendors.find((vendor) => vendor.id === (menuScope || ownVendorId || vendorId)) ?? {
+          stationType: undefined,
+        },
+      ) ? (
+        <WellBookCard
+          vendor={
+            vendors.find((vendor) => vendor.id === (menuScope || ownVendorId || vendorId))!
+          }
+        />
+      ) : null}
 
       {canCreate && (
         <EntityMenuIntake

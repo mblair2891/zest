@@ -8,7 +8,7 @@ export const ORDER_TOPICS: GuideTopic[] = [
     title: "Menu, categories, modifiers",
     summary: "Build the item tree the floor and ODS will use.",
     roles: ["owner_manager", "server", "kitchen_bar", "vendor_operator", "host_operator"],
-    keywords: ["menu", "category", "modifier", "86", "item", "assist", "ai", "omit", "voice", "upload", "pdf", "docx", "draft", "publish"],
+    keywords: ["menu", "category", "modifier", "86", "item", "assist", "ai", "omit", "voice", "upload", "pdf", "docx", "draft", "publish", "well book", "wells", "highball"],
     openView: "menu",
     blocks: [
       why(
@@ -23,6 +23,7 @@ export const ORDER_TOPICS: GuideTopic[] = [
         "Or tap Describe with AI. Type or speak one item. One price is cash. Assist asks cash or card when the discount is on and the basis is open. Confirm writes that item.",
         "On a host venue, a guest operator works that operator’s entity. The host can assign the operator on a new item.",
         "86 or un-86 from Menu or the 86 board. Stations see that immediately. New items, prices, modifiers, and categories reach stations after Publish, on the next PIN.",
+        "A bar, or any entity flagged as drinks, has Well book Off or On. On inserts a draft Wells group owned by that entity: the well spirits (six names you can edit), the mixers, and highball, rocks, shot, and tall. Prices are the well price plus a call upcharge and a premium upcharge. Each build is an item with a recipe in ounces of spirit and mixer. Hide a mixer and those builds leave the order pad. A food entity is unchanged. Upload a specialty menu beside the well rows. Those rows stay unless you choose Replace well book. The order pad lists Wells, then the specialty groups.",
       ),
       tip(
         "Analyze does not run on a file that was only chosen and not uploaded. If AI is not configured, the banner says so and the draft is not invented. Describe with AI still uses category templates (burger, steak, pizza, salad, cocktail, …) for one item. You confirm before that item saves.",
