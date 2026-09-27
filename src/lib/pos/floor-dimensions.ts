@@ -205,6 +205,30 @@ export function zoomFloorCamera(
   };
 }
 
+/** Slide the room. Zoom stays put. */
+export function panFloorCamera(camera: FloorCamera, dx: number, dy: number): FloorCamera {
+  return { s: camera.s, x: camera.x + dx, y: camera.y + dy };
+}
+
+/**
+ * Two fingers: drag pans, a changing spread zooms about the midpoint.
+ * `start` is the camera and the first midpoint. `now` is the current midpoint.
+ */
+export function twoFingerCamera(
+  start: FloorCamera & { mx: number; my: number; dist: number },
+  now: { mx: number; my: number; dist: number },
+  limits: { min: number; max: number } = { min: 0.25, max: 8 },
+): FloorCamera {
+  const factor = start.dist > 0 ? now.dist / start.dist : 1;
+  const s = Math.min(limits.max, Math.max(limits.min, start.s * factor));
+  const k = start.s > 0 ? s / start.s : 1;
+  return {
+    s,
+    x: now.mx - (start.mx - start.x) * k,
+    y: now.my - (start.my - start.y) * k,
+  };
+}
+
 export function fixturePixelBox(
   item: { x: number; y: number; w: number; h: number },
   room: FloorRoom,

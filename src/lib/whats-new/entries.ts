@@ -6,6 +6,18 @@ import type { GuideUpdate } from "@/lib/guide/types";
  */
 export const WHATS_NEW_ENTRIES: GuideUpdate[] = [
   {
+    id: "upd_2026_10_178_floor_pan",
+    date: "2026-09-27",
+    title: "Drag empty floor to pan",
+    summary: "Click-hold on blank floor and drag to slide the room. A table drag still moves the table.",
+    body: "In the floor editor, click-hold on empty floor and drag to pan. A two-finger drag pans the same way. Space-drag pans too. A click that does not drag still selects. Dragging a table, booth, or wall moves that piece and leaves the zoom and the view where they are. Shift-drag still draws a selection box. Fit room, the scroll wheel, a pinch, and the zoom buttons are still how you zoom.",
+    roles: ["owner_manager", "host_operator"],
+    surfaces: ["floor"],
+    audience: "all",
+    topicId: "floor-editor",
+    tags: ["floor"],
+  },
+  {
     id: "upd_2026_10_177_menu_archive",
     date: "2026-09-27",
     title: "Match a re-analyze, archive sold items",

@@ -55,6 +55,8 @@ import {
   cameraAfterFloorInput,
   fitRoomToView,
   formatFeetInches,
+  panFloorCamera,
+  twoFingerCamera,
   zoomFloorCamera,
   nearestObjectGap,
   nearestRoomEdge,
@@ -564,9 +566,18 @@ export function FloorEditorView() {
   camRef.current = cam;
   const fittedKey = useRef<string | null>(null);
   const [frame, setFrame] = useState<{ pxPerIn: number; worldW: number; worldH: number } | null>(null);
-  const panRef = useRef<{ x: number; y: number; ox: number; oy: number } | null>(null);
+  const panRef = useRef<{
+    x: number;
+    y: number;
+    ox: number;
+    oy: number;
+    moved: boolean;
+    click: boolean;
+  } | null>(null);
   const pointersRef = useRef(new Map<number, { x: number; y: number }>());
-  const pinchRef = useRef<{ dist: number; scale: number } | null>(null);
+  const pinchRef = useRef<{ dist: number; scale: number; mx: number; my: number; ox: number; oy: number } | null>(
+    null,
+  );
   const fit = useMemo(
     () =>
       fitRoomToView({
@@ -641,24 +652,51 @@ export function FloorEditorView() {
       window.removeEventListener("keyup", up);
     };
   }, []);
+  const rememberEmptyClick = (e: React.PointerEvent<HTMLDivElement>) => {
+    const board = boardRef.current?.getBoundingClientRect();
+    if (board && board.width > 0 && board.height > 0) {
+      const x = ((e.clientX - board.left) / board.width) * 100;
+      const y = ((e.clientY - board.top) / board.height) * 100;
+      if (x >= 0 && x <= 100 && y >= 0 && y <= 100) placePointRef.current = { x, y };
+    }
+    selectOnly(null);
+  };
   const onViewportPointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
     pointersRef.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
     if (pointersRef.current.size >= 2) {
       const [a, b] = [...pointersRef.current.values()];
+      const rect = viewportRef.current?.getBoundingClientRect();
       pinchRef.current = {
         dist: Math.max(1, Math.hypot(a!.x - b!.x, a!.y - b!.y)),
         scale: camRef.current.s,
+        mx: rect ? (a!.x + b!.x) / 2 - rect.left : 0,
+        my: rect ? (a!.y + b!.y) / 2 - rect.top : 0,
+        ox: camRef.current.x,
+        oy: camRef.current.y,
       };
       panRef.current = null;
+      marqueeRef.current = null;
+      setMarqueeBox(null);
       return;
     }
-    if (e.button === 0 && !spaceRef.current) {
-      marqueeRef.current = { x: e.clientX, y: e.clientY, additive: e.shiftKey, moved: false };
+    if (e.button === 0 && e.shiftKey && !spaceRef.current) {
+      marqueeRef.current = { x: e.clientX, y: e.clientY, additive: true, moved: false };
       panRef.current = null;
       e.currentTarget.setPointerCapture(e.pointerId);
       return;
     }
-    panRef.current = { x: e.clientX, y: e.clientY, ox: camRef.current.x, oy: camRef.current.y };
+    if (e.button === 0 || e.button === 1 || spaceRef.current) {
+      panRef.current = {
+        x: e.clientX,
+        y: e.clientY,
+        ox: camRef.current.x,
+        oy: camRef.current.y,
+        moved: false,
+        click: e.button === 0 && !spaceRef.current,
+      };
+      marqueeRef.current = null;
+      e.currentTarget.setPointerCapture(e.pointerId);
+    }
   };
   const onViewportPointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
     if (!pointersRef.current.has(e.pointerId)) return;
@@ -666,15 +704,17 @@ export function FloorEditorView() {
     if (pointersRef.current.size >= 2 && pinchRef.current) {
       const [a, b] = [...pointersRef.current.values()];
       const dist = Math.max(1, Math.hypot(a!.x - b!.x, a!.y - b!.y));
-      const s = Math.min(8, Math.max(0.25, pinchRef.current.scale * (dist / pinchRef.current.dist)));
       const rect = viewportRef.current?.getBoundingClientRect();
       if (!rect) return;
       const mx = (a!.x + b!.x) / 2 - rect.left;
       const my = (a!.y + b!.y) / 2 - rect.top;
-      setCam((c) => {
-        const k = s / (c.s || 1);
-        return cameraAfterFloorInput(c, "pinch", { s, x: mx - (mx - c.x) * k, y: my - (my - c.y) * k });
-      });
+      const start = pinchRef.current;
+      setCam(() =>
+        twoFingerCamera(
+          { s: start.scale, x: start.ox, y: start.oy, mx: start.mx, my: start.my, dist: start.dist },
+          { mx, my, dist },
+        ),
+      );
       return;
     }
     const mark = marqueeRef.current;
@@ -692,23 +732,17 @@ export function FloorEditorView() {
     }
     const pan = panRef.current;
     if (!pan) return;
-    setCam((c) => ({
-      ...c,
-      x: pan.ox + (e.clientX - pan.x),
-      y: pan.oy + (e.clientY - pan.y),
-    }));
+    if (Math.hypot(e.clientX - pan.x, e.clientY - pan.y) > 4) pan.moved = true;
+    if (!pan.moved) return;
+    setCam(() => panFloorCamera({ s: camRef.current.s, x: pan.ox, y: pan.oy }, e.clientX - pan.x, e.clientY - pan.y));
   };
   const onViewportPointerUp = (e: React.PointerEvent<HTMLDivElement>) => {
+    const pan = panRef.current;
+    if (pan?.click && !pan.moved) rememberEmptyClick(e);
     const mark = marqueeRef.current;
     if (mark) {
       if (!mark.moved) {
-        const board = boardRef.current?.getBoundingClientRect();
-        if (board && board.width > 0 && board.height > 0) {
-          const x = ((e.clientX - board.left) / board.width) * 100;
-          const y = ((e.clientY - board.top) / board.height) * 100;
-          if (x >= 0 && x <= 100 && y >= 0 && y <= 100) placePointRef.current = { x, y };
-        }
-        selectOnly(null);
+        rememberEmptyClick(e);
       } else {
         const rect = viewportRef.current?.getBoundingClientRect();
         if (rect && draw.worldW > 0) {
@@ -1515,7 +1549,7 @@ export function FloorEditorView() {
           <div
             ref={viewportRef}
             data-floor-viewport=""
-            className="relative min-h-0 flex-1 overflow-hidden rounded-2xl border border-border bg-white"
+            className="relative min-h-0 flex-1 touch-none overflow-hidden rounded-2xl border border-border bg-white"
             onPointerDown={onViewportPointerDown}
             onPointerMove={onViewportPointerMove}
             onPointerUp={onViewportPointerUp}
@@ -1735,7 +1769,7 @@ export function FloorEditorView() {
           </div>
         </div>
           <p className="mt-2 text-center text-xs text-muted-foreground">
-            Layout saves on this location as you drag. Handles turn with the piece. A wall’s black ends lengthen that wall; a corner resizes a table or booth. Scroll, pinch, or the zoom buttons change the zoom. Clicking or dragging a piece keeps that view. Space or the middle button pans. Fit room fills the workspace.
+            Layout saves on this location as you drag. Handles turn with the piece. A wall’s black ends lengthen that wall; a corner resizes a table or booth. Scroll, pinch, or the zoom buttons change the zoom. Click-hold on empty floor and drag to slide the room. A two-finger drag does the same. Space-drag pans too. Click a piece to select it. Drag a piece to move it. The view stays. Fit room fills the workspace.
           </p>
         </div>
 
