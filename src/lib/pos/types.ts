@@ -345,7 +345,9 @@ export interface RestaurantSettings {
   /** Venue tenders the house accepts. Disabled methods are hidden on pay and closeout. */
   paymentMethods?: import("./payment-methods").PaymentMethodsConfig;
   /** One card processor. None hides card and leaves cash and gift. */
-  cardProcessor?: "finix" | "stripe" | "none";
+  cardProcessor?: "finix" | "stripe" | "square" | "none";
+  /** Manager toggle for production Square Terminal charges. */
+  squareLiveCards?: boolean;
   /** Location-configurable loss-prevention gates. */
   lossPrevention?: import("./loss-prevention").LossPreventionConfig;
 }
@@ -544,8 +546,10 @@ export interface Payment {
   houseAccountId?: string;
   at: number;
   employeeId: string;
-  /** Guest card processor — always Quantum Payments for card tenders */
-  processor?: "quantum_payments" | "zest_payments";
+  /** Guest card processor. Square stores the Terminal payment id. The check still groups lines by selling entity. */
+  processor?: "quantum_payments" | "zest_payments" | "square";
+  /** Square Terminal payment id. Absent on cash, gift, and Finix. */
+  squarePaymentId?: string;
   /** Guest-facing brand on the charge (host, never an operator) */
   chargeBrand?: string;
   /** True while location or operator is in Training — Quantum Payments sandbox */

@@ -18,7 +18,10 @@ import type { PaymentMethod } from "@/lib/pos/types";
 import { GuideLearnLink } from "@/components/guide/GuideLearnLink";
 import { captureIsSandbox } from "@/lib/lifecycle/store";
 import {
+  cancelSquareCheckoutFn,
   captureCardPresentFn,
+  squareCheckoutStatusFn,
+  startSquareCheckoutFn,
   getPaymentsStatusFn,
   sendGuestReceiptFn,
   sendGuestReceiptSmsFn,
@@ -384,6 +387,7 @@ export function PaymentDialog({ open, onOpenChange, initialMethod }: Props) {
       return;
     }
     let cardLast4 = method === "card" ? last4 || undefined : undefined;
+    let squarePaymentId: string | undefined;
     if (method === "card") {
       const ctx = readTenantPosContext();
       const locationId =
@@ -393,7 +397,7 @@ export function PaymentDialog({ open, onOpenChange, initialMethod }: Props) {
         setError("Card requires connection. Take cash or keep the check open.");
         return;
       }
-      if (payStatus && payStatus.mode === "live" && !payStatus.liveReady) {
+      if (settings.cardProcessor !== "square" && payStatus && payStatus.mode === "live" && !payStatus.liveReady) {
         setError(
           payStatus.message ||
             "Live cards require an enrolled Quantum reader supplied through Summex. Take cash or keep the check open.",
@@ -414,7 +418,65 @@ export function PaymentDialog({ open, onOpenChange, initialMethod }: Props) {
         : [];
       const merchants = payStatus?.entityMerchants ?? [];
       const training = Boolean(payStatus?.lifecycleForcesSandbox || payStatus?.mode === "sandbox");
-      if (!training && merchants.length) {
+      if (settings.cardProcessor === "square") {
+        setBusy(true);
+        setError("Waiting for the Square Terminal.");
+        try {
+          const paired =
+            stationRow?.squareDeviceId ||
+            locationDevices.find((device) => device.squareDeviceId)?.squareDeviceId;
+          const tableLabel = payTable?.label ? `table ${payTable.label}` : "no table";
+          const started = await startSquareCheckoutFn({
+            data: {
+              locationId,
+              amountCents: tend + tip,
+              checkId: order?.id,
+              referenceId: order?.id,
+              note: `Check ${order?.number ?? ""} · ${tableLabel}`,
+              deviceId: paired || undefined,
+              clientMutationId: uid("mut"),
+            },
+          });
+          if (!started.ok || !started.checkoutId) {
+            setError(started.error || "Could not start the Square Terminal. The check stays open.");
+            setBusy(false);
+            return;
+          }
+          let final = started;
+          const deadline = Date.now() + 90_000;
+          while (final.status !== "COMPLETED" && final.status !== "CANCELED" && final.status !== "FAILED") {
+            if (Date.now() > deadline) {
+              await cancelSquareCheckoutFn({
+                data: { locationId, checkoutId: started.checkoutId },
+              }).catch(() => undefined);
+              setError("Card timed out. The check stays open.");
+              setBusy(false);
+              return;
+            }
+            await new Promise((resolve) => setTimeout(resolve, 1500));
+            final = await squareCheckoutStatusFn({
+              data: { locationId, checkoutId: started.checkoutId },
+            });
+          }
+          if (final.status !== "COMPLETED" || !final.paymentId) {
+            setError(
+              final.status === "CANCELED"
+                ? "Card canceled. The check stays open."
+                : final.error || "Card failed. The check stays open.",
+            );
+            setBusy(false);
+            return;
+          }
+          squarePaymentId = final.paymentId;
+          cardLast4 = final.last4 || cardLast4;
+        } catch {
+          setError("Could not reach the Square Terminal. The check stays open.");
+          setBusy(false);
+          return;
+        }
+        setBusy(false);
+        setError(null);
+      } else if (!training && merchants.length) {
         const blocked = entities.find((e) => {
           const m = merchants.find((x) => x.entityId === e.entityId);
           return m ? !m.canCapture : true;
@@ -426,6 +488,7 @@ export function PaymentDialog({ open, onOpenChange, initialMethod }: Props) {
           return;
         }
       }
+      if (settings.cardProcessor !== "square") {
       setBusy(true);
       try {
         if (settings.cardProcessor === "stripe") {
@@ -459,6 +522,7 @@ export function PaymentDialog({ open, onOpenChange, initialMethod }: Props) {
         return;
       }
       setBusy(false);
+      }
     }
     let serverGift = false;
     if (method === "gift_card") {
@@ -507,6 +571,7 @@ export function PaymentDialog({ open, onOpenChange, initialMethod }: Props) {
             amountCents + tip
           : undefined,
       last4: cardLast4,
+      squarePaymentId,
       giftCardCode: method === "gift_card" ? giftCode : undefined,
       serverGift,
     });

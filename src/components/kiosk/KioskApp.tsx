@@ -358,9 +358,10 @@ function OrderPane() {
   >([]);
   const serverless = isServerlessFood(settings.serviceStyle);
   const payCfg = payConfigForProcessor(parsePaymentMethods(settings.paymentMethods), settings.cardProcessor);
+  const squareRail = settings.cardProcessor === "square";
   const kioskTenders = (
     [
-      payCfg.card ? "card" : null,
+      !squareRail && payCfg.card ? "card" : null,
       payCfg.cash ? "cash" : null,
       payCfg.giftCard ? "gift_card" : null,
     ] as const
@@ -404,8 +405,9 @@ function OrderPane() {
   const activeKiosk = kioskTenders.includes(kioskMethod)
     ? kioskMethod
     : (kioskTenders[0] ?? "card");
-  const payLabel =
-    activeKiosk === "cash"
+  const payLabel = squareRail && !kioskTenders.length
+    ? "Send — pay card on the Square Terminal"
+    : activeKiosk === "cash"
       ? "Send — pay cash at pickup"
       : activeKiosk === "gift_card"
         ? "Pay with gift & send"
@@ -527,6 +529,11 @@ function OrderPane() {
           {!shownCart.length && <li className="text-muted-foreground">Tap items to add</li>}
         </ul>
         <p className="mb-4 text-2xl font-semibold tabular">{formatCurrency(total)}</p>
+        {squareRail ? (
+          <p className="mb-3 text-xs text-muted-foreground" data-kiosk-square="">
+            Card is taken on the Square Terminal. Cash and gift stay here.
+          </p>
+        ) : null}
         {kioskTenders.length > 1 && (
           <div className="mb-3 grid gap-2">
             {kioskTenders.map((m) => (
@@ -551,7 +558,7 @@ function OrderPane() {
               const res = openKioskOrder({
                 name: guestName,
                 phone: guestPhone,
-                tender: activeKiosk,
+                tender: kioskTenders.length ? activeKiosk : undefined,
                 lines: localCart.map((l) => ({
                   menuItemId: l.menuItemId,
                   qty: l.qty,

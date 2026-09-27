@@ -1,7 +1,7 @@
 # Operators Guide — authoring
 
-**Revision · 27 Sep 2026** — Stool numbers stay on the capsule, and the bar start end is chosen.
-Guide v2026.10.179.
+**Revision · 27 Sep 2026** — Square Terminal is a temporary single-merchant card rail.
+Guide v2026.10.180.
 
 The in-app **Operators Guide** is the living product manual. It is not a
 separate PDF. Staff open it from **Guide** / **?** in the POS and platform

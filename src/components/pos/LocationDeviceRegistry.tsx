@@ -86,6 +86,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { GuideLearnLink } from "@/components/guide/GuideLearnLink";
+import { SquareTerminalPanel } from "@/components/pos/SquareTerminalPanel";
 import {
   formatClaimExpiry,
   normalizeClaimCode,
@@ -329,7 +330,9 @@ export function LocationDeviceRegistry({
             (d, i) =>
               d.id === next[i]?.id &&
               d.status === next[i]?.status &&
-              d.lastSeenAt === next[i]?.lastSeenAt,
+              d.lastSeenAt === next[i]?.lastSeenAt &&
+              d.squareDeviceId === next[i]?.squareDeviceId &&
+              d.squarePairStatus === next[i]?.squarePairStatus,
           );
         if (!same) usePosStore.setState({ locationDevices: next });
       } catch {
@@ -958,6 +961,13 @@ export function LocationDeviceRegistry({
           {resolvedName || locationName} · persist on this location
         </p>
         {publishMsg && <p className="mt-1 text-xs text-primary">{publishMsg}</p>}
+        <div className="mt-4">
+          <SquareTerminalPanel
+            locationId={resolvedLocId}
+            devices={devices}
+            onPaired={() => void load({ silent: true })}
+          />
+        </div>
       {mode === "stations" && (
         <section
           className="mt-4 rounded-2xl border border-border bg-surface p-4"

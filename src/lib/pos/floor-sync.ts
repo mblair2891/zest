@@ -128,6 +128,7 @@ function paymentToFloor(p: Payment): FloorPayment {
     at: p.at,
     employeeId: p.employeeId,
     processor: p.processor,
+    squarePaymentId: p.squarePaymentId,
     chargeBrand: p.chargeBrand,
     sandbox: p.sandbox,
   };
@@ -182,6 +183,7 @@ function floorCheckToOrder(check: FloorCheck): Order {
       at: p.at,
       employeeId: p.employeeId,
       processor: p.processor,
+      squarePaymentId: p.squarePaymentId,
       chargeBrand: p.chargeBrand,
       sandbox: p.sandbox,
     })),

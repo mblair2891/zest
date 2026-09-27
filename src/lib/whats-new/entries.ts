@@ -6,6 +6,18 @@ import type { GuideUpdate } from "@/lib/guide/types";
  */
 export const WHATS_NEW_ENTRIES: GuideUpdate[] = [
   {
+    id: "upd_2026_10_180_square_terminal",
+    date: "2026-09-27",
+    title: "Square Terminal, one merchant",
+    summary: "Payments can send card-present charges to one Square Terminal. Finix stays the other rail.",
+    body: "Payments → Card present rail chooses Quantum Payments (Finix) or Square Terminal. Square is one seller and one location, with no split on the charge. Devices → Card terminals creates a device code to enter on the Terminal. Pay → Card waits for that Terminal. Cancel, failure, or a timeout leaves the check open. The printed check still groups lines by selling entity. Switch the rail back to Quantum Payments and Square is not charged. On this rail, table QR says pay the server, or use cash or gift, and still opens the check. Gift, cash, and the drawer are unchanged.",
+    roles: ["owner_manager", "host_operator"],
+    surfaces: ["settings"],
+    audience: "all",
+    topicId: "quantum-payments",
+    tags: ["payments"],
+  },
+  {
     id: "upd_2026_10_179_stool_numbers",
     date: "2026-09-27",
     title: "Stool numbers start at the end you pick",

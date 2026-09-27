@@ -1,4 +1,6 @@
 import { getSql } from "@/lib/db";
+import { readServerEnv } from "@/lib/database-url";
+import { resolveCardPresentRail } from "@/lib/payments/square-terminal";
 import { defaultPackagesForMode, type PackageId } from "@/lib/pos/packages";
 import type { LocationMode } from "@/lib/pos/saas-types";
 import { appPublicUrl } from "./flags";
@@ -252,10 +254,11 @@ function parseSetup(raw: unknown): LocationSetup {
       o.paymentsMode === "sandbox" || o.paymentsMode === "live" || o.paymentsMode === "inherit"
         ? o.paymentsMode
         : "inherit",
-    cardProcessor:
-      o.cardProcessor === "stripe" || o.cardProcessor === "none" || o.cardProcessor === "finix"
-        ? o.cardProcessor
-        : "finix",
+    cardProcessor: resolveCardPresentRail(o.cardProcessor, {
+      finix: Boolean(readServerEnv("FINIX_API_KEY") || readServerEnv("FINIX_APPLICATION_ID")),
+      square: Boolean(readServerEnv("SQUARE_ACCESS_TOKEN")),
+    }),
+    squareLiveCards: o.squareLiveCards === true,
     qrMode: typeof o.qrMode === "string" ? o.qrMode : undefined,
     qrPolicy: o.qrPolicy != null ? parseQrPolicy(o.qrPolicy, o.qrMode) : undefined,
     skipTrainingRoster: "skipTrainingRoster" in o ? Boolean(o.skipTrainingRoster) : undefined,

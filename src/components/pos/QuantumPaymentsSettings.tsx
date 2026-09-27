@@ -75,7 +75,8 @@ export function QuantumPaymentsSettings({
   }, [locId]);
 
   const cardProcessor = usePosStore((s) => s.settings.cardProcessor) ?? "finix";
-  const saveProcessor = (next: "finix" | "stripe" | "none") => {
+  const squareLiveCards = usePosStore((s) => s.settings.squareLiveCards) === true;
+  const saveProcessor = (next: "finix" | "stripe" | "square" | "none") => {
     if (!write || isProspectDemo() || !orgId || !locId) return;
     setSaving(true);
     usePosStore.getState().updateSettings({ cardProcessor: next });
@@ -155,21 +156,61 @@ export function QuantumPaymentsSettings({
         Cash and gift do not use that processor.
       </p>
       <label className="block text-sm">
-        <span className="mb-1 block text-xs text-muted-foreground">Card processor</span>
+        <span className="mb-1 block text-xs text-muted-foreground">Card present rail</span>
         <select
           className="h-9 w-full rounded-lg border border-border bg-bg px-2 text-sm"
           data-card-processor=""
+          data-card-present-rail=""
           disabled={!write || saving}
           value={cardProcessor}
-          onChange={(e) => saveProcessor(e.target.value as "finix" | "stripe" | "none")}
+          onChange={(e) => saveProcessor(e.target.value as "finix" | "stripe" | "square" | "none")}
         >
-          <option value="finix">Finix</option>
+          <option value="finix">Quantum Payments (Finix)</option>
+          <option value="square">Square Terminal</option>
           <option value="stripe">Stripe Terminal</option>
           <option value="none">None (cash and gift only)</option>
         </select>
       </label>
+      <p className="text-xs text-muted-foreground">
+        Default is Finix when Finix keys exist, otherwise Square when Square keys exist, otherwise cash only.
+        Switching the rail does not charge the other processor.
+      </p>
       {cardProcessor === "none" ? (
         <p className="text-xs text-muted-foreground">Card is off on Pay. Cash still works.</p>
+      ) : cardProcessor === "square" ? (
+        <div className="space-y-2">
+          <p className="text-xs text-muted-foreground">
+            Square Terminal is a temporary single-merchant rail. Every card-present charge for this venue
+            uses that one Square location. Checks still group lines by selling entity. Operator settlement
+            is outside this charge. Pair the terminal under Devices. Gift and cash stay as they are.
+            Table QR does not charge a card on this rail.
+          </p>
+          <label className="flex items-center gap-2 text-sm">
+            <input
+              type="checkbox"
+              className="h-4 w-4 rounded border-border"
+              data-square-live-cards=""
+              disabled={!write || saving || status?.lifecycleForcesSandbox}
+              checked={squareLiveCards && !status?.lifecycleForcesSandbox}
+              onChange={(e) => {
+                if (!write || !orgId || !locId) return;
+                const next = e.target.checked;
+                setSaving(true);
+                usePosStore.getState().updateSettings({ squareLiveCards: next });
+                void saveLocationSettingsFn({
+                  data: { orgId, locationId: locId, setup: { squareLiveCards: next } },
+                })
+                  .catch(() => undefined)
+                  .finally(() => setSaving(false));
+              }}
+            />
+            Square live cards
+          </label>
+          <p className="text-xs text-muted-foreground">
+            Training uses the Square sandbox, or a simulated checkout when no terminal is paired.
+            Live cards run only after this toggle and a production Square environment.
+          </p>
+        </div>
       ) : cardProcessor === "stripe" ? (
         <p className="text-xs text-muted-foreground">
           Training uses Stripe test mode. Live keys run only after this location is Live.

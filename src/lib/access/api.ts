@@ -299,6 +299,10 @@ export const saveLocationDeviceFn = createServerFn({ method: "POST" })
       cardReaderKind: printer
         ? existing?.cardReaderKind
         : (data.device.cardReaderKind ?? existing?.cardReaderKind),
+      squareDeviceId: existing?.squareDeviceId,
+      squareDeviceCode: existing?.squareDeviceCode,
+      squareCodeId: existing?.squareCodeId,
+      squarePairStatus: existing?.squarePairStatus,
       applyRoleNow: existing?.applyRoleNow,
       roleRevision: existing?.roleRevision,
     });

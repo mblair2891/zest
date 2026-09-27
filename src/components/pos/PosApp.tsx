@@ -333,9 +333,13 @@ function PosAppInner({ entityId }: { entityId?: string }) {
                   setup.paymentMethods ?? st.settings.paymentMethods,
                 ),
                 cardProcessor:
-                  setup.cardProcessor === "stripe" || setup.cardProcessor === "none"
+                  setup.cardProcessor === "stripe" ||
+                  setup.cardProcessor === "none" ||
+                  setup.cardProcessor === "square" ||
+                  setup.cardProcessor === "finix"
                     ? setup.cardProcessor
                     : "finix",
+                squareLiveCards: setup.squareLiveCards === true,
                 entityKyc: setup.entityKyc ?? st.settings.entityKyc,
                 giftMaxLoadCents: setup.giftMaxLoadCents ?? st.settings.giftMaxLoadCents,
                 giftMaxBalanceCents: setup.giftMaxBalanceCents ?? st.settings.giftMaxBalanceCents,

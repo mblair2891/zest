@@ -215,6 +215,12 @@ export type LocationDevice = {
   stationClass?: import("./station-class").StationClass;
   cardReaderId?: string | null;
   cardReaderKind?: import("./station-class").CardReaderKind;
+  /** Square Terminal device id after the code is paired. */
+  squareDeviceId?: string;
+  /** Short code the operator types on the Terminal. */
+  squareDeviceCode?: string;
+  squareCodeId?: string;
+  squarePairStatus?: "unpaired" | "paired";
   /** Owner asked the idle PIN pad to take the new role now. */
   applyRoleNow?: boolean;
   roleRevision?: number;
@@ -368,6 +374,13 @@ export function parseLocationDevice(raw: unknown): LocationDevice | null {
       cardReaderKind:
         o.cardReaderKind === "mobile" || o.cardReaderKind === "counter"
           ? o.cardReaderKind
+          : undefined,
+      squareDeviceId: o.squareDeviceId ? String(o.squareDeviceId).trim().slice(0, 80) : undefined,
+      squareDeviceCode: o.squareDeviceCode ? String(o.squareDeviceCode).trim().slice(0, 16) : undefined,
+      squareCodeId: o.squareCodeId ? String(o.squareCodeId).trim().slice(0, 80) : undefined,
+      squarePairStatus:
+        o.squarePairStatus === "paired" || o.squarePairStatus === "unpaired"
+          ? o.squarePairStatus
           : undefined,
       applyRoleNow: o.applyRoleNow === true,
       roleRevision: Number(o.roleRevision) > 0 ? Math.round(Number(o.roleRevision)) : undefined,

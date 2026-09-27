@@ -56,7 +56,8 @@ export type FloorPayment = {
   houseAccountId?: string;
   at: number;
   employeeId: string;
-  processor?: "quantum_payments" | "zest_payments";
+  processor?: "quantum_payments" | "zest_payments" | "square";
+  squarePaymentId?: string;
   chargeBrand?: string;
   sandbox?: boolean;
 };

@@ -103,8 +103,10 @@ export type LocationSetup = {
   skipTrainingRoster?: boolean;
   /** inherit = platform default (sandbox unless Platform → Payments is live). */
   paymentsMode?: "inherit" | "sandbox" | "live";
-  /** One card rail. Quantum Payments stays the guest brand. */
-  cardProcessor?: "finix" | "stripe" | "none";
+  /** One card rail. Quantum Payments stays the guest brand on Finix. Square is the temporary terminal rail. */
+  cardProcessor?: "finix" | "stripe" | "square" | "none";
+  /** Manager toggle. Live Square cards also need SQUARE_ENVIRONMENT=production. */
+  squareLiveCards?: boolean;
   /** Processor reader id for live card-present (Quantum terminal serial). */
   quantumReaderId?: string;
   /** First-party gift policy (server ledger). */

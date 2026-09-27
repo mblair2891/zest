@@ -1,12 +1,12 @@
 import type { PosView } from "@/lib/pos/types";
 
 /** Bump when shipping a docs/features batch so What’s New can watermark. */
-export const GUIDE_VERSION = "2026.10.179";
+export const GUIDE_VERSION = "2026.10.180";
 export const GUIDE_EDITION = "Operators Guide · training week";
 export const GUIDE_TITLE = "Operators Guide";
 /** Short public revision line (date + what changed). Keep in lockstep with the white paper. */
 export const GUIDE_REVISION =
-  "27 Sep 2026 — Stool numbers stay on the capsule, and the bar start end is chosen";
+  "27 Sep 2026 — Square Terminal is a temporary single-merchant card rail";
 
 /**
  * Audience tabs in the guide. Distinct from POS PIN roles:

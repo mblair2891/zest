@@ -2952,7 +2952,7 @@ const usePosStoreRaw = create<PosStore>()(persist((set, get) => {
 		floorSync("check", order.id);
 		if (order.tableId) floorSync("table", order.tableId);
 	},
-	takePayment: ({ method, amountCents, tipCents = 0, tenderedCents, last4, giftCardCode, houseAccountId, serverGift, keepOpen }) => {
+	takePayment: ({ method, amountCents, tipCents = 0, tenderedCents, last4, squarePaymentId, giftCardCode, houseAccountId, serverGift, keepOpen }) => {
 		const order = get().getActiveOrder();
 		const emp = get().getCurrentEmployee();
 		if (!order || !emp) return {
@@ -2980,6 +2980,9 @@ const usePosStoreRaw = create<PosStore>()(persist((set, get) => {
 		}
 		if ((method === "card" || method === "room_charge") && cardRequiresConnection()) {
 			return { ok: false, error: "Card requires connection" };
+		}
+		if (method === "card" && get().settings.cardProcessor === "square" && !squarePaymentId) {
+			return { ok: false, error: "Card present waits for the Square Terminal." };
 		}
 		let changeCents = 0;
 		if (method === "cash") {
@@ -3109,12 +3112,17 @@ const usePosStoreRaw = create<PosStore>()(persist((set, get) => {
 			tenderedCents,
 			changeCents: method === "cash" ? changeCents : void 0,
 			last4,
+			squarePaymentId: method === "card" ? squarePaymentId : undefined,
 			giftCardCode,
 			houseAccountId,
 			at: Date.now(),
 			createdAt: Date.now(),
 			employeeId: emp.id,
-			processor: method === "card" || method === "room_charge" ? ("quantum_payments" as const) : undefined,
+			processor: method === "card" && squarePaymentId
+				? ("square" as const)
+				: method === "card" || method === "room_charge"
+					? ("quantum_payments" as const)
+					: undefined,
 			chargeBrand: get().settlementConfig.hostName || get().settings.name,
 			sandbox: optsSandbox(method, order, emp),
 			drawerId: cashDrawerId,
@@ -4413,6 +4421,16 @@ const usePosStoreRaw = create<PosStore>()(persist((set, get) => {
 			floorSync("send", order.id);
 			return { ok: true, orderId: order.id, number: order.number };
 		}
+		if (tender === "card" && get().settings.cardProcessor === "square") {
+			set({ currentEmployeeId: prev });
+			floorSync("send", order.id);
+			return {
+				ok: true,
+				orderId: order.id,
+				number: order.number,
+				error: "Pay card on the Square Terminal.",
+			};
+		}
 		if (tender === "card" || tender === "gift_card") {
 			const method = tender === "gift_card" ? "gift_card" : "card";
 			const pm = payConfigForProcessor(
@@ -4480,6 +4498,9 @@ const usePosStoreRaw = create<PosStore>()(persist((set, get) => {
 		}
 		if (method === "card" && policy.payAllow === "gift") {
 			return { ok: false, error: "Card is not on for table QR — use gift" };
+		}
+		if (method === "card" && get().settings.cardProcessor === "square") {
+			return { ok: false, error: "Pay the server, or use cash or gift." };
 		}
 		const totals = computeTotals(order, get().settings, { tender: method === "gift_card" ? "card" : "card" });
 		if (totals.balanceCents <= 0) return { ok: false, error: "Already paid" };

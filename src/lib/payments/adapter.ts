@@ -3,12 +3,21 @@
  * Finix, Stripe Terminal, or none. Never two card processors on one check.
  */
 
-export type CardProcessor = "finix" | "stripe" | "none";
+export type CardProcessor = "finix" | "stripe" | "square" | "none";
 
 export function parseCardProcessor(raw: unknown): CardProcessor {
   const s = String(raw ?? "finix").trim().toLowerCase();
+  if (s === "square" || s === "square_terminal" || s === "square-terminal") return "square";
   if (s === "stripe" || s === "stripe_terminal" || s === "stripe-terminal") return "stripe";
   if (s === "none" || s === "cash" || s === "off") return "none";
+  return "finix";
+}
+
+/** Which capture path a check may use. Square never falls through to Finix. */
+export function cardPresentDispatch(processor: CardProcessor): "none" | "square" | "stripe" | "finix" {
+  if (processor === "none") return "none";
+  if (processor === "square") return "square";
+  if (processor === "stripe") return "stripe";
   return "finix";
 }
 

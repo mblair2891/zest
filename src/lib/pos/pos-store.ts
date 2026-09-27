@@ -382,6 +382,7 @@ export interface PosStore {
     tipCents?: number;
     tenderedCents?: number;
     last4?: string;
+    squarePaymentId?: string;
     giftCardCode?: string;
     houseAccountId?: string;
     serverGift?: boolean;

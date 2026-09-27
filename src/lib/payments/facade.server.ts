@@ -11,7 +11,7 @@ import {
   parseLocationPaymentsMode,
   resolvePaymentsMode,
 } from "./mode";
-import { parseCardProcessor } from "./adapter";
+import { cardPresentDispatch, parseCardProcessor } from "./adapter";
 import { captureSandbox } from "./sandbox-adapter";
 import { captureLiveCardPresent, captureStripeTerminal } from "./stripe-terminal.server";
 import type { CardPresentInput, CardPresentResult, CardPresentSplit, PaymentsStatus } from "./types";
@@ -256,12 +256,21 @@ export async function captureCardPresent(
     entities,
   };
   const processor = parseCardProcessor(setup.cardProcessor);
-  if (processor === "none") {
+  const dispatch = cardPresentDispatch(processor);
+  if (dispatch === "none") {
     return {
       ok: false,
       status: "unavailable",
       sandbox: training,
       error: "Card is off for this venue. Cash and gift still work.",
+    };
+  }
+  if (dispatch === "square") {
+    return {
+      ok: false,
+      status: "unavailable",
+      sandbox: training,
+      error: "Card present uses the Square Terminal. Finix is not charged.",
     };
   }
   const { assertEntitiesCanCapture, persistPaymentSplits } = await import("./onboarding.server");

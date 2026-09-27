@@ -68,6 +68,86 @@ export const captureCardPresentFn = createServerFn({ method: "POST" })
     return captureCardPresent(context.userId, data);
   });
 
+export const createSquareDeviceCodeFn = createServerFn({ method: "POST" })
+  .middleware([tenantMiddleware])
+  .validator((d: { locationId: string; deviceRowId: string }) => ({
+    locationId: loc(d.locationId),
+    deviceRowId: String(d.deviceRowId ?? "").trim().slice(0, 80),
+  }))
+  .handler(async ({ context, data }) => {
+    const { createSquareDeviceCode } = await import("./square-terminal.server");
+    return createSquareDeviceCode({ userId: context.userId, ...data });
+  });
+
+export const refreshSquareDeviceCodeFn = createServerFn({ method: "POST" })
+  .middleware([tenantMiddleware])
+  .validator((d: { locationId: string; deviceRowId: string }) => ({
+    locationId: loc(d.locationId),
+    deviceRowId: String(d.deviceRowId ?? "").trim().slice(0, 80),
+  }))
+  .handler(async ({ context, data }) => {
+    const { refreshSquareDeviceCode } = await import("./square-terminal.server");
+    return refreshSquareDeviceCode({ userId: context.userId, ...data });
+  });
+
+export const squareTestPingFn = createServerFn({ method: "POST" })
+  .middleware([tenantMiddleware])
+  .validator((d: { locationId: string; deviceRowId: string; managerConfirm?: boolean }) => ({
+    locationId: loc(d.locationId),
+    deviceRowId: String(d.deviceRowId ?? "").trim().slice(0, 80),
+    managerConfirm: d.managerConfirm === true,
+  }))
+  .handler(async ({ context, data }) => {
+    const { squareTestPing } = await import("./square-terminal.server");
+    return squareTestPing({ userId: context.userId, ...data });
+  });
+
+export const startSquareCheckoutFn = createServerFn({ method: "POST" })
+  .middleware([tenantMiddleware])
+  .validator((d: {
+    locationId: string;
+    amountCents: number;
+    checkId?: string;
+    referenceId?: string;
+    note?: string;
+    deviceId?: string;
+    clientMutationId?: string;
+  }) => ({
+    locationId: loc(d.locationId),
+    amountCents: Math.max(0, Math.round(Number(d.amountCents) || 0)),
+    checkId: d.checkId ? String(d.checkId).slice(0, 80) : undefined,
+    referenceId: d.referenceId ? String(d.referenceId).slice(0, 40) : undefined,
+    note: d.note ? String(d.note).slice(0, 500) : undefined,
+    deviceId: d.deviceId ? String(d.deviceId).slice(0, 80) : undefined,
+    clientMutationId: d.clientMutationId ? String(d.clientMutationId).slice(0, 80) : undefined,
+  }))
+  .handler(async ({ context, data }) => {
+    const { startSquareCheckout } = await import("./square-terminal.server");
+    return startSquareCheckout({ userId: context.userId, ...data });
+  });
+
+export const squareCheckoutStatusFn = createServerFn({ method: "POST" })
+  .middleware([tenantMiddleware])
+  .validator((d: { locationId: string; checkoutId: string }) => ({
+    locationId: loc(d.locationId),
+    checkoutId: String(d.checkoutId ?? "").trim().slice(0, 80),
+  }))
+  .handler(async ({ context, data }) => {
+    const { squareCheckoutStatus } = await import("./square-terminal.server");
+    return squareCheckoutStatus({ userId: context.userId, ...data });
+  });
+
+export const cancelSquareCheckoutFn = createServerFn({ method: "POST" })
+  .middleware([tenantMiddleware])
+  .validator((d: { locationId: string; checkoutId: string }) => ({
+    locationId: loc(d.locationId),
+    checkoutId: String(d.checkoutId ?? "").trim().slice(0, 80),
+  }))
+  .handler(async ({ context, data }) => {
+    const { cancelSquareCheckout } = await import("./square-terminal.server");
+    return cancelSquareCheckout({ userId: context.userId, ...data });
+  });
+
 export const sendGuestReceiptFn = createServerFn({ method: "POST" })
   .middleware([tenantMiddleware])
   .validator((d: {

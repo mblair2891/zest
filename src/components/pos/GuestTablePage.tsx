@@ -412,6 +412,7 @@ export function GuestTablePage({
             {canPay && totals.balanceCents > 0 && (
               <PayPanel
                 policy={policy}
+                squareRail={settings.cardProcessor === "square"}
                 charge={charge}
                 tip={tip}
                 setTip={setTip}
@@ -616,6 +617,7 @@ function VendorCheck({ order, hostName }: { order: Order; hostName: string }) {
 
 function PayPanel({
   policy,
+  squareRail = false,
   charge,
   tip,
   setTip,
@@ -634,6 +636,7 @@ function PayPanel({
   onPay,
 }: {
   policy: ReturnType<typeof parseQrPolicy>;
+  squareRail?: boolean;
   charge: number;
   tip: number;
   setTip: (n: number) => void;
@@ -657,7 +660,9 @@ function PayPanel({
   const giftOn =
     venuePay.giftCard && (policy.payAllow === "gift" || policy.payAllow === "both");
   const cardOn =
-    venuePay.card && (policy.payAllow === "card" || policy.payAllow === "both");
+    !squareRail &&
+    venuePay.card &&
+    (policy.payAllow === "card" || policy.payAllow === "both");
   const seats = [
     ...new Set(
       order.lines.filter((l) => !l.voided && l.seat != null).map((l) => l.seat as number),
@@ -773,9 +778,16 @@ function PayPanel({
           onChange={(e) => setGiftCode(e.target.value.toUpperCase())}
         />
       )}
+      {squareRail ? (
+        <p className="text-sm text-muted-foreground" data-qr-card="server">
+          Pay the server, or use cash or gift. This QR still opens the check.
+        </p>
+      ) : null}
       {!giftOn && !cardOn ? (
         <p className="text-sm text-muted-foreground">
-          Pay at the stand — this QR does not take card or gift.
+          {squareRail
+            ? "Pay the server, or use cash or gift."
+            : "Pay at the stand — this QR does not take card or gift."}
         </p>
       ) : (
         <>

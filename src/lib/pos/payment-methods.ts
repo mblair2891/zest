@@ -92,7 +92,7 @@ export function togglePaymentMethod(
 /** None turns card off. Cash and gift follow their own toggles. */
 export function payConfigForProcessor(
   cfg: PaymentMethodsConfig,
-  processor: "finix" | "stripe" | "none" | null | undefined,
+  processor: "finix" | "stripe" | "square" | "none" | null | undefined,
 ): PaymentMethodsConfig {
   if (processor === "none") return { ...cfg, card: false };
   return cfg;
