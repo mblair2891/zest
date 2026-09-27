@@ -1,7 +1,7 @@
 {
   "url": "https://app.summex.app",
-  "station": "",
+  "station": "order",
   "cleartext": false,
-  "sideload": false,
+  "sideload": true,
   "_comment": "Play/store default: https://app.summex.app/station (pair code first; QR optional). Never bake station=order. android-config.mjs is local debug only — npm run android:bundle must not run it."
 }

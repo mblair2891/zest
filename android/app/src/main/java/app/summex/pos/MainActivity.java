@@ -1,6 +1,7 @@
 package app.summex.pos;
 
 import android.app.ActivityManager;
+import android.content.Context;
 import android.os.Build;
 import android.os.Bundle;
 import android.view.KeyEvent;
@@ -233,14 +234,9 @@ public class MainActivity extends BridgeActivity {
         } catch (IllegalArgumentException | SecurityException ignored) {
             /* not device-owner, or not in lock-task */
         }
-        boolean stillPinned = false;
-        try {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-                stillPinned = isInLockTaskMode();
-            }
-        } catch (Exception ignored) {
-            stillPinned = false;
-        }
+        ActivityManager am = (ActivityManager) getSystemService(Context.ACTIVITY_SERVICE);
+        boolean stillPinned = am != null
+            && am.getLockTaskModeState() != ActivityManager.LOCK_TASK_MODE_NONE;
         showSystemBars();
         try {
             android.content.Intent home = new android.content.Intent(android.content.Intent.ACTION_MAIN);
@@ -303,11 +299,7 @@ public class MainActivity extends BridgeActivity {
     }
 
     private boolean isLockActive() {
-        ActivityManager am = (ActivityManager) getSystemService(ACTIVITY_SERVICE);
-        if (am == null) return false;
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-            return am.getLockTaskModeState() != ActivityManager.LOCK_TASK_MODE_NONE;
-        }
-        return am.isInLockTaskMode();
+        ActivityManager am = (ActivityManager) getSystemService(Context.ACTIVITY_SERVICE);
+        return am != null && am.getLockTaskModeState() != ActivityManager.LOCK_TASK_MODE_NONE;
     }
 }

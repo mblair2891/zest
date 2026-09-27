@@ -111,7 +111,8 @@ test("native shell reloads station URL and can exit lock-task", () => {
   const native = readFileSync("src/lib/native-kiosk.ts", "utf8");
   assert.match(native, /exitApp/);
   assert.match(native, /unpinned/);
-  assert.match(main, /isInLockTaskMode/);
+  assert.match(main, /getLockTaskModeState\(\)/);
+  assert.doesNotMatch(main, /isInLockTaskMode\(\)/);
   assert.match(main, /moveTaskToBack/);
   assert.match(readFileSync("src/lib/native-kiosk.ts", "utf8"), /StationKiosk/);
   const devices = readFileSync("src/components/pos/LocationDeviceRegistry.tsx", "utf8");
