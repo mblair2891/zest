@@ -6,6 +6,18 @@ import type { GuideUpdate } from "@/lib/guide/types";
  */
 export const WHATS_NEW_ENTRIES: GuideUpdate[] = [
   {
+    id: "upd_2026_10_177_menu_archive",
+    date: "2026-09-27",
+    title: "Match a re-analyze, archive sold items",
+    summary: "A second read of the same cocktail asks Replace, Amend, or Keep both. Sold items archive instead of delete.",
+    body: "Analyze again and each draft row is compared with this entity’s live items by name and group. A match asks Replace, Amend, or Keep both. Replace all matches covers every one. The same item is not added twice, including a well drink. Delete removes an item only when it has no sale, comp, or void. Confirm first. An item that has been on a ticket can only be archived. Archived items leave the order pad and stay on old tickets. Filter the list by Active or Archived, and restore from Archived. Clear unmatched drafts drops draft rows only.",
+    roles: ["owner_manager", "vendor_operator", "host_operator"],
+    surfaces: ["settings"],
+    audience: "all",
+    topicId: "menu-modifiers",
+    tags: ["menu"],
+  },
+  {
     id: "upd_2026_10_176_menu_followup",
     date: "2026-09-27",
     title: "Menu follow-ups wait for Send",

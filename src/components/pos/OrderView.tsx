@@ -195,7 +195,7 @@ export function OrderView({
   const items = useMemo(() => {
     let list = menuItems;
     if (vendorFilter) list = list.filter((m) => m.vendorId === vendorFilter);
-    list = list.filter((m) => !m.wellHidden);
+    list = list.filter((m) => !m.wellHidden && !m.archived);
     if (selectedCategoryId)
       list = list.filter((m) => m.categoryId === selectedCategoryId);
     if (search.trim()) {

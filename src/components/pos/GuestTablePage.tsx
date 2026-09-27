@@ -140,7 +140,7 @@ export function GuestTablePage({
   const serverless = isServerlessFood(settings.serviceStyle);
   const items = useMemo(() => {
     return menuItems.filter((e) => {
-      if (!e.available || e.online === false || !qrItemAllowed(e, policy.orderAllow)) return false;
+      if (!e.available || e.archived || e.online === false || !qrItemAllowed(e, policy.orderAllow)) return false;
       if (!serverless) return true;
       const vendor = e.vendorId ? vendors.find((v) => v.id === e.vendorId) : undefined;
       return guestMayAddItem(

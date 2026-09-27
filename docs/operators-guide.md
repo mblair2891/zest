@@ -1,7 +1,7 @@
 # Operators Guide — authoring
 
-**Revision · 27 Sep 2026** — Menu follow-ups wait for Send.
-Guide v2026.10.176.
+**Revision · 27 Sep 2026** — Menu matches on re-analyze, and sold items archive.
+Guide v2026.10.177.
 
 The in-app **Operators Guide** is the living product manual. It is not a
 separate PDF. Staff open it from **Guide** / **?** in the POS and platform

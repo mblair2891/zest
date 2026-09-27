@@ -393,7 +393,7 @@ function OrderPane() {
     });
   };
   const items = menuItems.filter((e) => {
-    if (!e.available) return false;
+    if (!e.available || e.archived) return false;
     if (!serverless) return true;
     const vendor = e.vendorId ? vendors.find((v) => v.id === e.vendorId) : undefined;
     return guestMayAddItem(

@@ -314,12 +314,12 @@ export function dropWellItems<TItem extends { vendorId?: string; wellKey?: strin
 
 export function orderPadCategories<T extends { id: string; name: string; sort: number; wellBook?: boolean }>(
   categories: readonly T[],
-  items: readonly { categoryId: string; vendorId?: string; wellHidden?: boolean }[],
+  items: readonly { categoryId: string; vendorId?: string; wellHidden?: boolean; archived?: boolean }[],
   vendorId: string | null,
 ): T[] {
   const visible = new Set<string>();
   for (const item of items) {
-    if (item.wellHidden) continue;
+    if (item.wellHidden || item.archived) continue;
     if (vendorId && item.vendorId !== vendorId) continue;
     visible.add(item.categoryId);
   }

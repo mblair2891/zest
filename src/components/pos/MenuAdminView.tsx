@@ -2,7 +2,15 @@ import { useEffect, useState } from "react";
 import { Ban, Check, Pencil, Trash2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
+import { DELETE_ITEM_CONFIRM, itemHasHistory } from "@/lib/menu/catalog-match";
 import { usePosStore } from "@/lib/pos/store";
 import { formatCurrency } from "@/lib/utils";
 import { isHappyHour, printedItemPriceCents } from "@/lib/pos/calculations";
@@ -33,6 +41,12 @@ export function MenuAdminView() {
   const createMenuItem = usePosStore((s) => s.createMenuItem);
   const updateMenuItem = usePosStore((s) => s.updateMenuItem);
   const deleteMenuItem = usePosStore((s) => s.deleteMenuItem);
+  const archiveMenuItem = usePosStore((s) => s.archiveMenuItem);
+  const restoreMenuItem = usePosStore((s) => s.restoreMenuItem);
+  const orders = usePosStore((s) => s.orders);
+  const tickets = usePosStore((s) => s.tickets);
+  const [listMode, setListMode] = useState<"active" | "archived">("active");
+  const [deleteId, setDeleteId] = useState<string | null>(null);
   const updateCategory = usePosStore((s) => s.updateCategory);
   const locationDevices = usePosStore((s) => s.locationDevices ?? []);
   const orderPrinters = locationDevices.filter(isActiveOrderPrinter);
@@ -247,11 +261,35 @@ export function MenuAdminView() {
         </div>
       )}
 
+      <div className="mb-3 flex gap-2" data-menu-list-filter="">
+        <Button
+          type="button"
+          size="sm"
+          variant={listMode === "active" ? "default" : "outline"}
+          data-menu-list="active"
+          onClick={() => setListMode("active")}
+        >
+          Active
+        </Button>
+        <Button
+          type="button"
+          size="sm"
+          variant={listMode === "archived" ? "default" : "outline"}
+          data-menu-list="archived"
+          onClick={() => setListMode("archived")}
+        >
+          Archived
+        </Button>
+      </div>
+
       {categories
         .slice()
         .sort((a, b) => a.sort - b.sort)
         .map((cat) => {
-          const items = menuItems.filter((m) => m.categoryId === cat.id);
+          const items = menuItems.filter(
+            (m) => m.categoryId === cat.id && (listMode === "archived" ? m.archived : !m.archived),
+          );
+          if (!items.length) return null;
           const dest = destinationForGroup(cat);
           return (
             <section key={cat.id} className="mb-6">
@@ -430,14 +468,42 @@ export function MenuAdminView() {
                           >
                             <Pencil className="h-4 w-4" />
                           </Button>
+                          {item.archived ? (
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              data-menu-restore=""
+                              onClick={() => {
+                                restoreMenuItem(item.id);
+                                persistWrite(item.vendorId || "", "update");
+                              }}
+                            >
+                              Restore
+                            </Button>
+                          ) : (
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              data-menu-archive=""
+                              onClick={() => {
+                                archiveMenuItem(item.id);
+                                persistWrite(item.vendorId || "", "update");
+                              }}
+                            >
+                              Archive
+                            </Button>
+                          )}
                           <Button
                             size="icon"
                             variant="outline"
-                            onClick={() => {
-                              deleteMenuItem(item.id);
-                              persistWrite(item.vendorId || "", "delete");
-                            }}
-                            title="Remove"
+                            data-menu-delete=""
+                            disabled={itemHasHistory(item.id, orders, tickets)}
+                            onClick={() => setDeleteId(item.id)}
+                            title={
+                              itemHasHistory(item.id, orders, tickets)
+                                ? "Items with sales are archived"
+                                : "Delete"
+                            }
                           >
                             <Trash2 className="h-4 w-4" />
                           </Button>
@@ -450,6 +516,32 @@ export function MenuAdminView() {
             </section>
           );
         })}
+      <Dialog open={deleteId != null} onOpenChange={(open) => !open && setDeleteId(null)}>
+        <DialogContent data-menu-delete-dialog="">
+          <DialogHeader>
+            <DialogTitle>{DELETE_ITEM_CONFIRM}</DialogTitle>
+          </DialogHeader>
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={() => setDeleteId(null)}>
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              variant="destructive"
+              data-menu-delete-confirm=""
+              onClick={() => {
+                if (!deleteId) return;
+                const item = menuItemsAll.find((row) => row.id === deleteId);
+                const res = deleteMenuItem(deleteId);
+                if (res && "ok" in res && res.ok) persistWrite(item?.vendorId || "", "delete");
+                setDeleteId(null);
+              }}
+            >
+              Delete
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

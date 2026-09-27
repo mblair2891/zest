@@ -2423,7 +2423,7 @@ const usePosStoreRaw = create<PosStore>()(persist((set, get) => {
 			ok: false,
 			error: "No open order"
 		};
-		if (!item || !item.available) return {
+		if (!item || !item.available || item.archived) return {
 			ok: false,
 			error: "Item unavailable"
 		};
@@ -4013,10 +4013,35 @@ const usePosStoreRaw = create<PosStore>()(persist((set, get) => {
 	deleteMenuItem: (id) => {
 		const emp = get().getCurrentEmployee();
 		const item = get().menuItems.find((m: any) => m.id === id);
-		if (!item) return;
-		if (!canEditMenu(emp, get().entityPermissions, item.vendorId)) return;
+		if (!item) return { ok: false as const, error: "Missing item" };
+		if (!canEditMenu(emp, get().entityPermissions, item.vendorId)) return { ok: false as const, error: "Not allowed" };
+		const sold = get().orders.some((order: any) =>
+			(order.lines ?? []).some((line: any) => line.menuItemId === id),
+		) || get().tickets.some((ticket: any) =>
+			(ticket.items ?? []).some((line: any) => line.menuItemId === id),
+		);
+		if (sold) return { ok: false as const, error: "Archive items that have sales" };
 		set({ menuItems: get().menuItems.filter((m: any) => m.id !== id) });
 		get().audit("menu", `Removed ${item.name}`);
+		return { ok: true as const };
+	},
+	archiveMenuItem: (id) => {
+		const emp = get().getCurrentEmployee();
+		const item = get().menuItems.find((m: any) => m.id === id);
+		if (!item) return { ok: false as const };
+		if (!canEditMenu(emp, get().entityPermissions, item.vendorId)) return { ok: false as const };
+		set({ menuItems: get().menuItems.map((m: any) => (m.id === id ? { ...m, archived: true } : m)) });
+		get().audit("menu", `Archived ${item.name}`);
+		return { ok: true as const };
+	},
+	restoreMenuItem: (id) => {
+		const emp = get().getCurrentEmployee();
+		const item = get().menuItems.find((m: any) => m.id === id);
+		if (!item) return { ok: false as const };
+		if (!canEditMenu(emp, get().entityPermissions, item.vendorId)) return { ok: false as const };
+		set({ menuItems: get().menuItems.map((m: any) => (m.id === id ? { ...m, archived: false } : m)) });
+		get().audit("menu", `Restored ${item.name}`);
+		return { ok: true as const };
 	},
 	createModifierGroup: (input) => {
 		const id = uid("modg");
@@ -4325,7 +4350,7 @@ const usePosStoreRaw = create<PosStore>()(persist((set, get) => {
 		if (!lines.length) return { ok: false, error: "Add food first" };
 		for (const line of lines) {
 			const item = get().menuItems.find((m: any) => m.id === line.menuItemId);
-			if (!item || item.available === false) return { ok: false, error: "Item unavailable" };
+			if (!item || item.available === false || item.archived) return { ok: false, error: "Item unavailable" };
 			const vendor = item.vendorId
 				? get().vendors.find((v: any) => v.id === item.vendorId)
 				: undefined;

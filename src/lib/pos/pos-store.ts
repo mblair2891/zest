@@ -539,9 +539,11 @@ export interface PosStore {
   setActiveDeviceId: (id: string | null) => void;
   updateMenuItem: (
     id: string,
-    patch: Partial<Pick<MenuItem, "name" | "priceCents" | "description" | "available" | "vendorId" | "categoryId" | "station" | "course" | "modifierGroupIds">>,
+    patch: Partial<Pick<MenuItem, "name" | "priceCents" | "description" | "available" | "vendorId" | "categoryId" | "station" | "course" | "modifierGroupIds" | "archived">>,
   ) => void;
-  deleteMenuItem: (id: string) => void;
+  deleteMenuItem: (id: string) => { ok: boolean; error?: string } | void;
+  archiveMenuItem: (id: string) => { ok: boolean };
+  restoreMenuItem: (id: string) => { ok: boolean };
   applyEntity: (entityId: VenueEntityId) => ActionResult;
   /** DEV_DEMO only. Reloads The Laundry host + Steam Distillery + Diamond House BBQ. */
   loadLaundryTestVenue: () => ActionResult;

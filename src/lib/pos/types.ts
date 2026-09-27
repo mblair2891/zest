@@ -437,6 +437,8 @@ export interface MenuItem {
   wellKey?: string;
   /** Hidden mixer or spirit. The order pad omits the build. */
   wellHidden?: boolean;
+  /** Hidden from the pad. Stays on past tickets and costing. */
+  archived?: boolean;
 }
 
 export interface SelectedModifier {

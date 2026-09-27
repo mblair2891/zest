@@ -30,6 +30,12 @@ import { isProspectDemo } from "@/lib/demo/session";
 import { flushLocationCatalog } from "@/lib/pos/persist-location-setup";
 import { usePosStore } from "@/lib/pos/store";
 import { dropWellItems, specialtyBesideWell } from "@/lib/pos/well-book";
+import {
+  clearUnmatchedDrafts,
+  findMenuMatch,
+  mergeMenuMatch,
+  type MenuMatchChoice,
+} from "@/lib/menu/catalog-match";
 import { noteChecklistSave } from "@/lib/saas/checklist-link";
 
 export function EntityMenuIntake(props: {
@@ -53,6 +59,9 @@ export function EntityMenuIntake(props: {
   const [draft, setDraft] = useState<MenuIntakeDraft | null>(null);
   const [answers, setAnswers] = useState<Record<string, string>>({});
   const [pending, setPending] = useState<Record<string, string>>({});
+  const [matchChoice, setMatchChoice] = useState<Record<string, MenuMatchChoice>>({});
+  const catalogItems = usePosStore((s) => s.menuItems);
+  const catalogCategories = usePosStore((s) => s.categories);
   const [editing, setEditing] = useState<string | null>(null);
   const [editName, setEditName] = useState("");
   const [editGroup, setEditGroup] = useState("");
@@ -155,6 +164,7 @@ export function EntityMenuIntake(props: {
     setAiError("");
     setAnswers({});
     setPending({});
+    setMatchChoice({});
     setEditing(null);
     try {
       const next = await extractMenuIntakeFn({
@@ -186,6 +196,16 @@ export function EntityMenuIntake(props: {
 
   const withAnswers = (current: MenuIntakeDraft) =>
     applyIntakeAnswers(current, answers, settings);
+
+  const liveMatches = () =>
+    catalogItems
+      .filter((item) => item.vendorId === entityId)
+      .map((item) => ({
+        id: item.id,
+        name: item.name,
+        group: catalogCategories.find((cat) => cat.id === item.categoryId)?.name ?? "",
+        vendorId: item.vendorId,
+      }));
 
   const sendFollowUp = (id: string, shortcut?: string) => {
     const text = (shortcut ?? pending[id] ?? "").trim();
@@ -247,9 +267,17 @@ export function EntityMenuIntake(props: {
     const committed = new Set<string>();
     for (const row of accepted) {
       const groupName = row.group.trim();
+      const live = liveMatches();
+      const match = findMenuMatch({ name: row.name, group: row.group }, live, entityId);
+      const choice = matchChoice[row.id];
+      if (match && !choice) {
+        skipped.push(row.name);
+        continue;
+      }
       if (
+        choice !== "keep" &&
         specialtyBesideWell(usePosStore.getState().menuItems, entityId, row.name, replaceWell) ===
-        "skip"
+          "skip"
       ) {
         skipped.push(row.name);
         continue;
@@ -274,6 +302,51 @@ export function EntityMenuIntake(props: {
       }
       if (!cat) {
         skipped.push(row.name);
+        continue;
+      }
+      if (match && (choice === "replace" || choice === "amend")) {
+        const existing = usePosStore.getState().menuItems.find((item) => item.id === match.id);
+        const merged = mergeMenuMatch(
+          choice,
+          {
+            name: existing?.name ?? match.name,
+            description: existing?.description ?? "",
+            priceCents: existing?.priceCents ?? 0,
+            modifiers: [],
+          },
+          {
+            name: row.name,
+            description: row.description,
+            priceCents: row.cashCents,
+            modifiers: row.modifiers,
+          },
+        );
+        let modifierGroupIds = existing?.modifierGroupIds ?? [];
+        if (row.modifiers.length) {
+          const made = usePosStore.getState().createModifierGroup({
+            name: `${row.name} extras`.slice(0, 40),
+            required: false,
+            min: 0,
+            max: Math.max(1, row.modifiers.length),
+            options: row.modifiers.map((name) => ({ name: name.slice(0, 40), priceCents: 0 })),
+          });
+          if (made.id) {
+            modifierGroupIds = choice === "amend" ? [...modifierGroupIds, made.id] : [made.id];
+          }
+        } else if (choice === "replace") {
+          modifierGroupIds = [];
+        }
+        usePosStore.getState().updateMenuItem(match.id, {
+          name: merged.name,
+          description: merged.description || undefined,
+          priceCents: merged.priceCents,
+          categoryId: cat.id,
+          station: row.station,
+          modifierGroupIds,
+          archived: false,
+        });
+        n += 1;
+        committed.add(row.id);
         continue;
       }
       let modifierGroupIds: string[] = [];
@@ -344,6 +417,7 @@ export function EntityMenuIntake(props: {
   };
 
   const live = draft ? withAnswers(draft) : null;
+  const entityLive = liveMatches();
   const acceptedCount = live ? rowsToCommit(live.rows, entityId).length : 0;
 
   return (
@@ -505,6 +579,45 @@ export function EntityMenuIntake(props: {
             <Button
               type="button"
               size="sm"
+              variant="outline"
+              data-menu-match-replace-all=""
+              onClick={() => {
+                if (!draft) return;
+                const liveRows = liveMatches();
+                setMatchChoice((prev) => {
+                  const next = { ...prev };
+                  for (const row of draft.rows) {
+                    if (findMenuMatch({ name: row.name, group: row.group }, liveRows, entityId)) {
+                      next[row.id] = "replace";
+                    }
+                  }
+                  return next;
+                });
+              }}
+            >
+              Replace all matches.
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              data-menu-clear-drafts=""
+              onClick={() => {
+                if (!draft) return;
+                const kept = clearUnmatchedDrafts(draft.rows, liveMatches(), entityId);
+                const ids = new Set(kept.map((row) => row.id));
+                setDraft({
+                  ...draft,
+                  rows: kept,
+                  questions: draft.questions.filter((question) => ids.has(question.rowId)),
+                });
+              }}
+            >
+              Clear unmatched drafts
+            </Button>
+            <Button
+              type="button"
+              size="sm"
               onClick={() => void publish()}
               disabled={busy || acceptedCount === 0}
               data-menu-intake-publish
@@ -525,6 +638,35 @@ export function EntityMenuIntake(props: {
                 data-intake-status={row.status}
                 data-intake-cash={row.cashCents ?? ""}
               >
+                {(() => {
+                  const match = findMenuMatch({ name: row.name, group: row.group }, entityLive, entityId);
+                  if (!match) return null;
+                  return (
+                    <div className="mb-2 flex flex-wrap gap-1" data-menu-match={row.id}>
+                      <span className="self-center text-[11px] text-muted-foreground">
+                        Matches {match.name}
+                      </span>
+                      {(
+                        [
+                          ["replace", "Replace"],
+                          ["amend", "Amend"],
+                          ["keep", "Keep both"],
+                        ] as const
+                      ).map(([id, label]) => (
+                        <Button
+                          key={id}
+                          type="button"
+                          size="sm"
+                          variant={matchChoice[row.id] === id ? "default" : "outline"}
+                          data-menu-match-choice={id}
+                          onClick={() => setMatchChoice((prev) => ({ ...prev, [row.id]: id }))}
+                        >
+                          {label}
+                        </Button>
+                      ))}
+                    </div>
+                  );
+                })()}
                 <div className="flex flex-wrap items-start justify-between gap-2">
                   <div>
                     <p className="text-sm font-medium">

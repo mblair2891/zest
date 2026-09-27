@@ -282,6 +282,7 @@ export function parseMenuCatalog(raw: unknown): LocationMenuCatalog | undefined 
         : undefined,
       wellKey: str(r.wellKey).slice(0, 80) || undefined,
       wellHidden: r.wellHidden === true ? true : undefined,
+      archived: r.archived === true ? true : undefined,
     });
   }
   const modifiers: ModifierGroup[] = [];
