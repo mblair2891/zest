@@ -137,6 +137,39 @@ function dollarsToCents(raw: string): number | null {
   return Math.round(n * 100);
 }
 
+/** Dollar amount inside a follow-up, after the person presses Send. */
+export function parseFollowUpMoney(text: string): number | null {
+  const dollar = text.match(/\$\s*(\d+(?:\.\d{1,2})?)/);
+  if (dollar?.[1]) return dollarsToCents(dollar[1]);
+  const phrase = text.match(/\b(?:price|costs?)\s*(?:is|of|=|:)?\s*\$?\s*(\d+(?:\.\d{1,2})?)/i);
+  if (phrase?.[1]) return dollarsToCents(phrase[1]);
+  if (/^\s*\$?\d+(?:\.\d{1,2})?\s*$/.test(text)) return dollarsToCents(text);
+  return null;
+}
+
+/** Cash vs card from the full sentence. Both words together stay undecided. */
+export function parseFollowUpBasis(text: string): "cash" | "card" | null {
+  const raw = text.toLowerCase();
+  const cashPrice = /\bcash\s+price\b/.test(raw);
+  const cardPrice = /\bcard\s+price\b/.test(raw);
+  if (cashPrice && !cardPrice) return "cash";
+  if (cardPrice && !cashPrice) return "card";
+  const cash = /\bcash\b/.test(raw);
+  const card = /\bcard\b/.test(raw);
+  if (cash && !card) return "cash";
+  if (card && !cash) return "card";
+  return null;
+}
+
+function parseFollowUpAlcohol(text: string): boolean | null {
+  const raw = text.trim().toLowerCase();
+  if (/^(y|yes|yeah|yep|true)\b/.test(raw)) return true;
+  if (/^(n|no|nope|false)\b/.test(raw)) return false;
+  if (/\b(non-?alcoholic|no alcohol)\b/.test(raw)) return false;
+  if (/\b(contains alcohol|alcoholic)\b/.test(raw)) return true;
+  return null;
+}
+
 function uid(i: number): string {
   return `row_${i}`;
 }
@@ -435,32 +468,30 @@ export function applyIntakeAnswers(
   const policy = cashPolicyFromSettings(settings);
   const rows = draft.rows.map((row) => {
     let next = { ...row, modifiers: [...row.modifiers] };
-    const basis = (answers[`basis:${row.id}`] ?? "").trim().toLowerCase();
+    const basisText = (answers[`basis:${row.id}`] ?? "").trim();
     const price = (answers[`price:${row.id}`] ?? "").trim();
     const group = (answers[`group:${row.id}`] ?? "").trim();
-    const alcohol = (answers[`alcohol:${row.id}`] ?? "").trim().toLowerCase();
-    if (price) {
-      const cents = dollarsToCents(price);
-      if (cents) {
-        next.quotedCents = cents;
-        next.priceBasis = "cash";
-        next.cashCents = cents;
-        next.cardCents = policy ? cardPriceCents(cents, policy) : cents;
-      }
-    }
-    if (/\bcash\b/.test(basis) && !/\bcard\b/.test(basis) && next.quotedCents) {
-      next.priceBasis = "cash";
-      next.cashCents = next.quotedCents;
-      next.cardCents = policy ? cardPriceCents(next.quotedCents, policy) : next.quotedCents;
-    } else if (/\bcard\b/.test(basis) && next.quotedCents) {
+    const alcoholText = (answers[`alcohol:${row.id}`] ?? "").trim();
+    const said = parseFollowUpBasis(`${price} ${basisText}`);
+    const stated = parseFollowUpMoney(price) ?? parseFollowUpMoney(basisText);
+    if (said === "card" && (stated ?? next.quotedCents)) {
+      const quoted = stated ?? next.quotedCents!;
+      next.quotedCents = quoted;
       next.priceBasis = "card";
-      const cash = policy ? cashFromCardCents(next.quotedCents, policy.percent) : next.quotedCents;
+      const cash = policy ? cashFromCardCents(quoted, policy.percent) : quoted;
       next.cashCents = cash;
-      next.cardCents = policy && cash ? cardPriceCents(cash, policy) : next.quotedCents;
+      next.cardCents = policy && cash ? cardPriceCents(cash, policy) : quoted;
+    } else if ((said === "cash" || stated) && (stated ?? next.quotedCents)) {
+      const cents = said === "cash" ? (stated ?? next.quotedCents!) : stated!;
+      next.quotedCents = cents;
+      next.priceBasis = "cash";
+      next.cashCents = cents;
+      next.cardCents = policy ? cardPriceCents(cents, policy) : cents;
     }
     if (group) next.group = group.slice(0, 40);
-    if (/^(y|yes|yeah|true|alcohol)\b/.test(alcohol)) next.alcohol = true;
-    else if (/^(n|no|nope|false)\b/.test(alcohol)) next.alcohol = false;
+    const alcohol = parseFollowUpAlcohol(alcoholText);
+    if (alcohol === true) next.alcohol = true;
+    else if (alcohol === false) next.alcohol = false;
     next = routeRow(next);
     return next;
   });

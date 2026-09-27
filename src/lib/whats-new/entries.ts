@@ -6,6 +6,18 @@ import type { GuideUpdate } from "@/lib/guide/types";
  */
 export const WHATS_NEW_ENTRIES: GuideUpdate[] = [
   {
+    id: "upd_2026_10_176_menu_followup",
+    date: "2026-09-27",
+    title: "Menu follow-ups wait for Send",
+    summary: "Type the whole answer. Cash, card, or a price in the sentence does not submit until Send or Enter.",
+    body: "When a menu draft asks cash or card, a missing price, or a group, the answer is a text box. Voice is optional. The sentence stays in the box until you press Send or Enter. Cash price and Card price are buttons beside the box. After Send, “cash price is $15” sets cash to $15.00 and fills the card price from the venue discount. If that answers the question, it is not asked again.",
+    roles: ["owner_manager", "vendor_operator", "host_operator"],
+    surfaces: ["settings"],
+    audience: "all",
+    topicId: "menu-modifiers",
+    tags: ["menu"],
+  },
+  {
     id: "upd_2026_10_175_well_book",
     date: "2026-09-27",
     title: "Optional well book for a drink entity",

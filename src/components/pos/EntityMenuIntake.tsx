@@ -52,6 +52,7 @@ export function EntityMenuIntake(props: {
   const [uploading, setUploading] = useState(false);
   const [draft, setDraft] = useState<MenuIntakeDraft | null>(null);
   const [answers, setAnswers] = useState<Record<string, string>>({});
+  const [pending, setPending] = useState<Record<string, string>>({});
   const [editing, setEditing] = useState<string | null>(null);
   const [editName, setEditName] = useState("");
   const [editGroup, setEditGroup] = useState("");
@@ -153,6 +154,7 @@ export function EntityMenuIntake(props: {
     setMessage("");
     setAiError("");
     setAnswers({});
+    setPending({});
     setEditing(null);
     try {
       const next = await extractMenuIntakeFn({
@@ -184,6 +186,13 @@ export function EntityMenuIntake(props: {
 
   const withAnswers = (current: MenuIntakeDraft) =>
     applyIntakeAnswers(current, answers, settings);
+
+  const sendFollowUp = (id: string, shortcut?: string) => {
+    const text = (shortcut ?? pending[id] ?? "").trim();
+    if (!text) return;
+    setAnswers((prev) => ({ ...prev, [id]: text }));
+    setPending((prev) => ({ ...prev, [id]: "" }));
+  };
 
   const openEdit = (rowId: string) => {
     if (!draft) return;
@@ -428,17 +437,56 @@ export function EntityMenuIntake(props: {
 
       {live && live.questions.length > 0 ? (
         <div className="mt-3 grid gap-2" data-menu-intake-questions>
-          <p className="text-xs font-medium">Answer on this screen. Type or speak.</p>
+          <p className="text-xs font-medium">Answer in the box. Send or Enter submits it. Voice is optional.</p>
           {live.questions.map((q) => (
-            <label key={q.id} className="block text-xs">
-              {q.prompt}
+            <div key={q.id} className="grid gap-1 text-xs" data-intake-followup-row={q.id}>
+              <p>{q.prompt}</p>
               <VoiceTextarea
                 rows={2}
-                value={answers[q.id] ?? ""}
-                onChange={(value) => setAnswers((prev) => ({ ...prev, [q.id]: value }))}
+                value={pending[q.id] ?? ""}
+                onChange={(value) => setPending((prev) => ({ ...prev, [q.id]: value }))}
+                onKeyDown={(event) => {
+                  if (event.key === "Enter" && !event.shiftKey) {
+                    event.preventDefault();
+                    sendFollowUp(q.id);
+                  }
+                }}
                 hint={false}
+                data-intake-followup={q.id}
               />
-            </label>
+              <div className="flex flex-wrap gap-2">
+                {q.kind === "basis" ? (
+                  <>
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      data-intake-chip="cash"
+                      onClick={() => sendFollowUp(q.id, "cash")}
+                    >
+                      Cash price
+                    </Button>
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      data-intake-chip="card"
+                      onClick={() => sendFollowUp(q.id, "card")}
+                    >
+                      Card price
+                    </Button>
+                  </>
+                ) : null}
+                <Button
+                  type="button"
+                  size="sm"
+                  data-intake-followup-send={q.id}
+                  onClick={() => sendFollowUp(q.id)}
+                >
+                  Send
+                </Button>
+              </div>
+            </div>
           ))}
         </div>
       ) : null}

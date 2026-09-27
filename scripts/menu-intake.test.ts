@@ -4,6 +4,8 @@ import { readFileSync } from "node:fs";
 import { pdfToText, extractMenuText } from "../src/lib/menu/intake-file.ts";
 import {
   applyIntakeAnswers,
+  parseFollowUpBasis,
+  parseFollowUpMoney,
   buildMenuDraft,
   buildMenuDraftFromLines,
   formatMenuFileSize,
@@ -90,6 +92,20 @@ test("cash vs card, alcohol, and a labeled cash price", () => {
   assert.ok(ask.questions.some((q) => q.kind === "alcohol"));
   assert.ok(ask.questions.some((q) => q.kind === "basis"));
 
+  assert.equal(parseFollowUpMoney("cash price is $15"), 1500);
+  assert.equal(parseFollowUpBasis("cash price is $15"), "cash");
+  assert.equal(parseFollowUpBasis("cash or card"), null);
+  const typed = applyIntakeAnswers(
+    ask,
+    { [`basis:${ask.rows[0]!.id}`]: "cash price is $15" },
+    DISCOUNT,
+  );
+  assert.equal(typed.rows[0]?.priceBasis, "cash");
+  assert.equal(typed.rows[0]?.cashCents, 1500);
+  assert.ok((typed.rows[0]?.cardCents ?? 0) > 1500);
+  assert.equal(typed.questions.some((q) => q.kind === "basis"), false);
+  assert.equal(typed.questions.some((q) => q.kind === "price"), false);
+
   const card = applyIntakeAnswers(ask, { [`basis:${ask.rows[0]!.id}`]: "card" }, DISCOUNT);
   assert.equal(card.rows[0]?.priceBasis, "card");
   assert.ok(card.rows[0]?.cashCents != null && card.rows[0]!.cashCents < 1200);
@@ -156,6 +172,12 @@ test("menu screen publishes accepted rows for the open entity", () => {
   assert.match(panel, /publishLocationFn/);
   assert.match(panel, /flushLocationCatalog\("menu"\)/);
   assert.match(panel, /data-menu-intake-publish/);
+  assert.match(panel, /data-intake-followup=/);
+  assert.match(panel, /data-intake-followup-send=/);
+  assert.match(panel, /Cash price/);
+  assert.match(panel, /Card price/);
+  assert.match(panel, /setPending/);
+  assert.doesNotMatch(panel, /onChange=\{\(value\) => setAnswers/);
   assert.match(panel, /data-menu-upload/);
   assert.match(panel, /Reading menu…/);
   assert.match(panel, /data-menu-ai-error/);
