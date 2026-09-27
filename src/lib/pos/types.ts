@@ -466,6 +466,8 @@ export interface Table {
   railBarId?: string;
   /** Which edge of this bar the stools use. */
   barSide?: BarGuestSide;
+  /** 0 = polyline start, 1 = polyline end. Unset starts at the longest leg’s rightmost open end. */
+  stoolNumberFrom?: 0 | 1;
   /** Bar centerline in plan percent. */
   points?: { x: number; y: number }[];
   /** Length of each bar leg in plan percent. Published with the layout. */

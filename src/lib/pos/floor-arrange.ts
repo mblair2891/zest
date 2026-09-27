@@ -194,9 +194,64 @@ export type RenumberBar = {
   widthIn?: number | null;
   section?: string;
   sectionId?: string;
+  /** 0 = polyline start, 1 = polyline end. Unset uses the longest leg’s rightmost open end. */
+  stoolNumberFrom?: 0 | 1 | null;
 };
 
-/** Guest rail, starting at the end a guest sits first (higher on the plan, then to the left). */
+/**
+ * Open end that is B1 when the bar has not stored a choice.
+ * The rightmost vertex of the longest leg, when that vertex is an open end.
+ * A corner uses the other end of that leg when that end is open.
+ * A middle leg falls back to the rightmost open end. A closed island stays 0.
+ */
+export function defaultNumberFrom(bar: {
+  points: readonly ArrangePoint[];
+  barShape?: BarTopShape | null;
+}): 0 | 1 {
+  const points = bar.points;
+  if (points.length < 2) return 0;
+  if (barClosedShape(bar.barShape ?? undefined, points.slice())) return 0;
+  const last = points.length - 1;
+  let bestI = 0;
+  let bestLen = -1;
+  let bestRight = -Infinity;
+  for (let i = 0; i < last; i += 1) {
+    const a = points[i]!;
+    const b = points[i + 1]!;
+    const len = Math.hypot(b.x - a.x, b.y - a.y);
+    const right = Math.max(a.x, b.x);
+    if (len > bestLen + 1e-6 || (Math.abs(len - bestLen) <= 1e-6 && right > bestRight + 1e-6)) {
+      bestLen = len;
+      bestRight = right;
+      bestI = i;
+    }
+  }
+  const a = points[bestI]!;
+  const b = points[bestI + 1]!;
+  const aOpen = bestI === 0;
+  const bOpen = bestI + 1 === last;
+  let rightIndex = bestI;
+  if (b.x > a.x + 0.05) rightIndex = bestI + 1;
+  else if (a.x > b.x + 0.05) rightIndex = bestI;
+  else if (aOpen && !bOpen) rightIndex = bestI;
+  else if (bOpen && !aOpen) rightIndex = bestI + 1;
+  else rightIndex = b.y >= a.y ? bestI + 1 : bestI;
+  if (rightIndex === 0 || rightIndex === last) return rightIndex === 0 ? 0 : 1;
+  const other = rightIndex === bestI ? bestI + 1 : bestI;
+  if (other === 0 || other === last) return other === 0 ? 0 : 1;
+  const start = points[0]!;
+  const end = points[last]!;
+  if (end.x > start.x + 0.05) return 1;
+  if (start.x > end.x + 0.05) return 0;
+  return end.y >= start.y ? 1 : 0;
+}
+
+/** Stored start end, or the default open end. */
+export function numberFromEnd(bar: RenumberBar): 0 | 1 {
+  return bar.stoolNumberFrom === 0 || bar.stoolNumberFrom === 1 ? bar.stoolNumberFrom : defaultNumberFrom(bar);
+}
+
+/** Guest rail, starting at the chosen open end. Closed islands keep their stored loop. */
 export function outsideRail(bar: RenumberBar, room: ArrangeRoom): ArrangePoint[] {
   const shape = bar.barShape ?? undefined;
   const points = bar.points.length >= 2 ? bar.points : [{ x: bar.x, y: bar.y }, { x: bar.x + 10, y: bar.y }];
@@ -205,27 +260,8 @@ export function outsideRail(bar: RenumberBar, room: ArrangeRoom): ArrangePoint[]
   const side = bar.barSide ?? (shape === "l" || shape === "u" ? "outside" : "a");
   const sign = barGuestSign(shape, side);
   const guest = offsetCenterline(points, sign * stoolOffsetFromCenterIn(depth), room, closed);
-  return orientSitFirst(guest);
-}
-
-function orientSitFirst(points: ArrangePoint[]): ArrangePoint[] {
-  if (points.length < 2) return points.map((point) => ({ ...point }));
-  const start = points[0]!;
-  const end = points[points.length - 1]!;
-  if (Math.hypot(start.x - end.x, start.y - end.y) < 0.15) {
-    const body = points.slice(0, -1);
-    let best = 0;
-    for (let i = 1; i < body.length; i += 1) {
-      const point = body[i]!;
-      const chosen = body[best]!;
-      if (point.y < chosen.y - 0.05 || (Math.abs(point.y - chosen.y) <= 0.05 && point.x < chosen.x)) best = i;
-    }
-    const spun = body.slice(best).concat(body.slice(0, best));
-    spun.push({ ...spun[0]! });
-    return spun;
-  }
-  const endFirst = end.y < start.y - 0.05 || (Math.abs(start.y - end.y) <= 0.05 && end.x < start.x);
-  return endFirst ? points.slice().reverse() : points.slice();
+  if (closed) return guest;
+  return numberFromEnd(bar) === 1 ? guest.slice().reverse() : guest.slice();
 }
 
 function polyDist(px: number, py: number, points: readonly ArrangePoint[]): number {
@@ -243,7 +279,7 @@ function polyDist(px: number, py: number, points: readonly ArrangePoint[]): numb
   return best;
 }
 
-/** Indices of centers in sit-first order along the outside edge. */
+/** Indices of centers along the guest rail, from the chosen open end. */
 export function outsideWalkOrder(
   centers: readonly { x: number; y: number }[],
   bar: RenumberBar,
@@ -357,7 +393,46 @@ function diningLabels(pieces: readonly RenumberPiece[]): { id: string; label: st
   return patches;
 }
 
-/** Existing stool capsules only. B1…Bn per bar along the outside rail. No bar label, no new objects. */
+function labelOwnedStools(
+  owned: readonly RenumberPiece[],
+  bar: RenumberBar,
+  room?: ArrangeRoom,
+): { id: string; label: string }[] {
+  const centers = owned.map((stool) => ({ x: stool.x + stool.w / 2, y: stool.y + stool.h / 2 }));
+  const line = numberFromEnd(bar) === 1 && !barClosedShape(bar.barShape ?? undefined, bar.points)
+    ? bar.points.slice().reverse()
+    : bar.points;
+  const order = room
+    ? outsideWalkOrder(centers, bar, room)
+    : owned
+        .map((stool, index) => ({
+          index,
+          along: distanceAlong(line, stool.x + stool.w / 2, stool.y + stool.h / 2),
+        }))
+        .sort((a, b) => a.along - b.along || a.index - b.index)
+        .map((row) => row.index);
+  const patches: { id: string; label: string }[] = [];
+  order.forEach((index, n) => {
+    const piece = owned[index];
+    if (!piece) return;
+    const label = `B${n + 1}`;
+    if (piece.label !== label) patches.push({ id: piece.id, label });
+  });
+  return patches;
+}
+
+/** B1…Bn for stools on this bar only. Positions stay. Unattached stools are left alone. */
+export function relabelBarStools(
+  pieces: readonly RenumberPiece[],
+  bar: RenumberBar,
+  room: ArrangeRoom,
+  bars: readonly RenumberBar[] = [bar],
+): { id: string; label: string }[] {
+  const stools = pieces.filter((piece) => piece.kind === "barstool");
+  return labelOwnedStools(stoolsForBar(stools, bar, bars), bar, room);
+}
+
+/** Existing stool capsules only. B1…Bn per bar along the guest rail. No bar label, no new objects. */
 function stoolLabels(
   pieces: readonly RenumberPiece[],
   bars: readonly RenumberBar[],
@@ -369,22 +444,7 @@ function stoolLabels(
   for (const bar of bars) {
     const owned = stoolsForBar(stools, bar, bars).filter((stool) => !claimed.has(stool.id));
     for (const stool of owned) claimed.add(stool.id);
-    const centers = owned.map((stool) => ({ x: stool.x + stool.w / 2, y: stool.y + stool.h / 2 }));
-    const order = room
-      ? outsideWalkOrder(centers, bar, room)
-      : owned
-          .map((stool, index) => ({
-            index,
-            along: distanceAlong(bar.points, stool.x + stool.w / 2, stool.y + stool.h / 2),
-          }))
-          .sort((a, b) => a.along - b.along || a.index - b.index)
-          .map((row) => row.index);
-    order.forEach((index, n) => {
-      const piece = owned[index];
-      if (!piece) return;
-      const label = `B${n + 1}`;
-      if (piece.label !== label) patches.push({ id: piece.id, label });
-    });
+    patches.push(...labelOwnedStools(owned, bar, room));
   }
   const unattached = stools.filter((stool) => !claimed.has(stool.id));
   unattached
@@ -401,7 +461,7 @@ function stoolLabels(
 /**
  * Dining tables and booths, top to bottom then left to right, become "1"…"N".
  * A booth that already uses a B number stays out of that sequence.
- * Each bar’s stools become B1…Bn along the outside edge, from the end a guest sits first.
+ * Each bar’s stools become B1…Bn along the guest rail, from that bar’s start end.
  * The bar’s own label is not a stool number.
  */
 export function renumberPlan(
@@ -450,8 +510,9 @@ function splitCount(total: number, lengths: number[]): number[] {
 }
 
 /**
- * Dining 1…N. Each bar’s stools stay capsules, labeled B1…Bn from the outside
- * end a guest sits first. Path-text B numbers on the slab become stool objects.
+ * Dining 1…N. Each bar’s stools stay capsules, labeled B1…Bn from that bar’s
+ * start end. Path-text B numbers on the slab become stool objects. Seats stay
+ * put when only the start end changes.
  */
 export function resetFloorNumbers(
   pieces: readonly RenumberPiece[],

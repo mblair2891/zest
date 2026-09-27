@@ -6,6 +6,18 @@ import type { GuideUpdate } from "@/lib/guide/types";
  */
 export const WHATS_NEW_ENTRIES: GuideUpdate[] = [
   {
+    id: "upd_2026_10_179_stool_numbers",
+    date: "2026-09-27",
+    title: "Stool numbers start at the end you pick",
+    summary: "Each B number stays on its capsule. Number from picks which open end is B1.",
+    body: "A barstool’s B number sits inside the capsule. The slab keeps BAR, or the bar’s own name, and does not repeat B5 through B18 along the rail. Select the bar and Number from marks a dot on each open end. The walk starts at that end, around an L or U, so B1 is at the start and the last stool is at the far end. The default start is the rightmost end of the longest leg. Changing the start rewrites the B numbers only. The seats stay where they are. Reset table numbers, Barstools only, uses that same end.",
+    roles: ["owner_manager", "host_operator"],
+    surfaces: ["floor"],
+    audience: "all",
+    topicId: "floor-editor",
+    tags: ["floor"],
+  },
+  {
     id: "upd_2026_10_178_floor_pan",
     date: "2026-09-27",
     title: "Drag empty floor to pan",

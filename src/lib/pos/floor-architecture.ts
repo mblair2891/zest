@@ -380,9 +380,12 @@ export function isStoolPathText(label?: string | null): boolean {
 export function barFaceLabel(label?: string | null): string {
   const raw = String(label ?? "").trim();
   if (!raw || isStoolPathText(raw)) return "BAR";
+  const stripped = raw.replace(/\bB\d+\b/gi, " ").replace(/\s+/g, " ").trim();
+  const cleaned = stripped.replace(/^[\s,;/|–—.-]+|[\s,;/|–—.-]+$/g, "").replace(/\s+/g, " ").trim();
+  if (!cleaned) return "BAR";
   const generic = new Set(["bar", "bar top", "bartop", "bar_top"]);
-  if (generic.has(raw.toLowerCase())) return "BAR";
-  return raw;
+  if (generic.has(cleaned.toLowerCase())) return "BAR";
+  return cleaned;
 }
 
 /** Counter-rotation that cancels `containerDeg`, so digits stay upright (a 5 does not read as a 2). */

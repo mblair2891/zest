@@ -406,12 +406,14 @@ function FloorStoolArt({
       {label ? (
         <span
           className={cn(
-            "pointer-events-none absolute inset-0 flex items-center justify-center px-1 text-center tabular leading-none",
-            hairline ? "font-medium text-[#44403c]" : "text-[10px] font-semibold",
+            "pointer-events-none absolute inset-0 flex items-center justify-center overflow-hidden px-0.5 text-center tabular leading-none",
+            hairline ? "font-medium text-[#44403c]" : "font-semibold",
           )}
           style={{
             transform: `rotate(${uprightCounterDeg(rotation)}deg)`,
-            ...(hairline ? { fontSize: "46cqmin", fontWeight: 500 } : {}),
+            fontSize: hairline ? "40cqmin" : "38cqmin",
+            fontWeight: hairline ? 500 : 600,
+            whiteSpace: "nowrap",
           }}
           data-floor-stool-label=""
           data-floor-label-upright="1"

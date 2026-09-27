@@ -77,9 +77,11 @@ import {
   isAddCountKind,
   nextFreeNumbers,
   nextFreeStoolLabels,
+  defaultNumberFrom,
   originAtClick,
   outsideWalkOrder,
   placeRow,
+  relabelBarStools,
   resetFloorNumbers,
   rulerMarks,
   type ResetScope,
@@ -156,6 +158,14 @@ function stoolsOnRail(
       return Math.hypot(snapped.x - t.x, snapped.y - t.y) < 8;
     })
     .map((t) => t.id);
+}
+
+function openBarEndIndexes(
+  points: { x: number; y: number }[],
+  shape: BarTopShape | undefined,
+): number[] {
+  if (points.length < 2 || barClosedShape(shape, points)) return [];
+  return [0, points.length - 1];
 }
 
 function isThinPiece(kind?: string | null): boolean {
@@ -1047,6 +1057,7 @@ export function FloorEditorView() {
       barShape: bar.barShape,
       barSide: useSide ?? bar.barSide,
       widthIn: bar.widthIn,
+      stoolNumberFrom: bar.stoolNumberFrom,
     };
     const order = outsideWalkOrder(
       poses.map((pose) => ({ x: pose.x + pose.w / 2, y: pose.y + pose.h / 2 })),
@@ -1189,6 +1200,37 @@ export function FloorEditorView() {
     persistLocationCatalog("floor");
   };
 
+  const chooseNumberFrom = (barId: string, from: 0 | 1) => {
+    const state = usePosStore.getState();
+    const row = state.tables.find((item) => item.id === barId);
+    if (!row || row.kind !== "bar_top") return;
+    update(barId, { stoolNumberFrom: from });
+    const roomNow = state.floorRoom ?? DEFAULT_ROOM;
+    const bars = state.tables
+      .filter((item) => item.kind === "bar_top")
+      .map((item) => ({
+        id: item.id,
+        x: item.x,
+        y: item.y,
+        w: item.w,
+        h: item.h,
+        label: item.label,
+        points: storedBarPlan(item),
+        barShape: item.barShape,
+        barSide: item.barSide,
+        widthIn: item.widthIn,
+        section: item.section,
+        sectionId: item.sectionId,
+        stoolNumberFrom: item.id === barId ? from : item.stoolNumberFrom,
+      }));
+    const bar = bars.find((item) => item.id === barId);
+    if (!bar) return;
+    for (const patch of relabelBarStools(state.tables, bar, roomNow, bars)) {
+      update(patch.id, { label: patch.label });
+    }
+    persistLocationCatalog("floor");
+  };
+
   const confirmRenumber = () => {
     const state = usePosStore.getState();
     const roomNow = state.floorRoom ?? DEFAULT_ROOM;
@@ -1207,6 +1249,7 @@ export function FloorEditorView() {
         widthIn: row.widthIn,
         section: row.section,
         sectionId: row.sectionId,
+        stoolNumberFrom: row.stoolNumberFrom,
       }));
     const plan = resetFloorNumbers(state.tables, bars, roomNow, renumberScope);
     for (const patch of plan.labels) update(patch.id, { label: patch.label });
@@ -1649,6 +1692,11 @@ export function FloorEditorView() {
                 const plan = storedBarPlan(t);
                 const local = planToLocal(plan, t);
                 const handles = selected === t.id ? legHandles(plan, t.barShape ?? "straight") : [];
+                const numberEnds = selected === t.id ? openBarEndIndexes(plan, t.barShape) : [];
+                const numberFrom =
+                  t.stoolNumberFrom === 0 || t.stoolNumberFrom === 1
+                    ? t.stoolNumberFrom
+                    : defaultNumberFrom({ points: plan, barShape: t.barShape });
                 return (
                   <div
                     key={t.id}
@@ -1664,6 +1712,11 @@ export function FloorEditorView() {
                         className="pointer-events-none absolute left-1/2 top-0 z-30 -translate-x-1/2 -translate-y-full whitespace-nowrap rounded bg-white px-1 text-[10px] font-medium text-neutral-900 shadow"
                       >
                         {dimensionLabel(t, floorRoom)}
+                      </span>
+                    ) : null}
+                    {numberEnds.length ? (
+                      <span className="pointer-events-none absolute left-1/2 top-full z-30 mt-1 -translate-x-1/2 whitespace-nowrap rounded bg-white px-1 text-[10px] font-medium text-neutral-900 shadow">
+                        Number from
                       </span>
                     ) : null}
                     {selected === t.id ? <MeasureGuides table={t} tables={tables} room={floorRoom} /> : null}
@@ -1696,6 +1749,38 @@ export function FloorEditorView() {
                             className="pointer-events-auto absolute z-20 h-4 w-4 -translate-x-1/2 -translate-y-1/2 cursor-grab rounded-full border-2 border-white bg-primary shadow active:cursor-grabbing"
                             style={{ left: `${p.x}%`, top: `${p.y}%` }}
                             onPointerDown={(e) => startLeg(e, t.id, h)}
+                          />
+                        );
+                      })}
+                      {numberEnds.map((endIndex) => {
+                        const p = local[endIndex];
+                        const neighbor = local[endIndex === 0 ? 1 : local.length - 2];
+                        if (!p || !neighbor) return null;
+                        const fromEnd: 0 | 1 = endIndex === 0 ? 0 : 1;
+                        const boxW = (t.w / 100) * floorRoom.widthIn * draw.pxPerIn * cam.s || 1;
+                        const boxH = (t.h / 100) * floorRoom.depthIn * draw.pxPerIn * cam.s || 1;
+                        const vx = ((p.x - neighbor.x) / 100) * boxW;
+                        const vy = ((p.y - neighbor.y) / 100) * boxH;
+                        const vlen = Math.hypot(vx, vy) || 1;
+                        const ox = (vx / vlen) * 18;
+                        const oy = (vy / vlen) * 18;
+                        return (
+                          <button
+                            key={`from-${fromEnd}`}
+                            type="button"
+                            data-stool-number-from={fromEnd}
+                            data-stool-number-start={fromEnd === numberFrom ? "1" : undefined}
+                            aria-label="Number from this end"
+                            className={cn(
+                              "pointer-events-auto absolute z-30 h-3.5 w-3.5 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-neutral-900 shadow",
+                              fromEnd === numberFrom ? "bg-neutral-900" : "bg-white",
+                            )}
+                            style={{ left: `calc(${p.x}% + ${ox}px)`, top: `calc(${p.y}% + ${oy}px)` }}
+                            onPointerDown={(e) => {
+                              e.preventDefault();
+                              e.stopPropagation();
+                              chooseNumberFrom(t.id, fromEnd);
+                            }}
                           />
                         );
                       })}
@@ -2002,6 +2087,9 @@ export function FloorEditorView() {
                       }}
                     />
                   </label>
+                  {!barClosedShape(selectedTable.barShape, storedBarPlan(selectedTable)) ? (
+                    <p className="text-xs text-muted-foreground">Number from</p>
+                  ) : null}
                   <div className="space-y-2" data-bar-stools="">
                     <p className="text-xs text-muted-foreground">Guest side</p>
                     {(selectedTable.barShape ?? "straight") === "island" ? (

@@ -31,6 +31,7 @@ export type FloorPlanTable = {
   qrToken?: string;
   railBarId?: string;
   barSide?: import("@/lib/pos/types").BarGuestSide;
+  stoolNumberFrom?: 0 | 1;
 };
 
 export type LocationFloorPlan = {
@@ -137,6 +138,9 @@ export function parseFloorPlan(raw: unknown): LocationFloorPlan | undefined {
         r.barSide === "a" || r.barSide === "b" || r.barSide === "outside" || r.barSide === "inside"
           ? r.barSide
           : undefined,
+      stoolNumberFrom: r.stoolNumberFrom === 0 || r.stoolNumberFrom === 1 || r.stoolNumberFrom === "0" || r.stoolNumberFrom === "1"
+        ? (Number(r.stoolNumberFrom) as 0 | 1)
+        : undefined,
     });
   }
   const sections: FloorSection[] = [];
@@ -195,6 +199,7 @@ export function floorPlanFromPos(
         qrToken: t.qrToken,
         railBarId: t.railBarId,
         barSide: t.barSide,
+        ...(t.stoolNumberFrom === 0 || t.stoolNumberFrom === 1 ? { stoolNumberFrom: t.stoolNumberFrom } : {}),
       })),
     sections: sections.map((s) => ({ ...s })),
   };
@@ -223,6 +228,7 @@ export function tablesFromFloorPlan(plan: LocationFloorPlan): Table[] {
     qrToken: t.qrToken,
     railBarId: t.railBarId,
     barSide: t.barSide,
+    stoolNumberFrom: t.stoolNumberFrom,
     status: "empty",
   }));
 }

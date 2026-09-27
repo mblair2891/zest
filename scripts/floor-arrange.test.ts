@@ -7,11 +7,13 @@ import {
   RENUMBER_LABEL,
   alignSelection,
   canvasCenterOrigin,
+  defaultNumberFrom,
   distanceAlong,
   nextFreeNumbers,
   nextFreeStoolLabels,
   outsideRail,
   placeRow,
+  relabelBarStools,
   renumberPlan,
   resetFloorNumbers,
   rulerMarks,
@@ -54,8 +56,9 @@ test("reset numbers orders dining 1-n and stools along the rail", () => {
   assert.equal(labels.low, "3");
   assert.equal(labels.bbooth, undefined);
   assert.equal(labels.wall, undefined);
-  assert.equal(labels.near, "B1");
-  assert.equal(labels.far, "B2");
+  assert.equal(labels.near, "B2");
+  assert.equal(labels.far, "B1");
+  assert.equal(defaultNumberFrom(bars[0]!), 1);
 });
 
 function gap(px: number, py: number, points: { x: number; y: number }[]): number {
@@ -184,8 +187,8 @@ test("tables only leaves stools, stools only leaves dining", () => {
 
   const stoolsOnly = resetFloorNumbers(pieces, [bar], room, "stools");
   const stools = Object.fromEntries(stoolsOnly.labels.map((row) => [row.id, row.label]));
-  assert.equal(stools.s1, "B1");
-  assert.equal(stools.s2, "B2");
+  assert.equal(stools.s1, "B2");
+  assert.equal(stools.s2, "B1");
   assert.equal(stools.t1, undefined);
   assert.equal(stools.t2, undefined);
   assert.equal(stools.booth, undefined);
@@ -249,5 +252,83 @@ test("grid snap and align two tables to a wall", () => {
   assert.match(editor, /data-floor-grid-size=""/);
   assert.match(editor, /data-floor-align="left"/);
   assert.match(editor, /data-floor-align="distribute-h"/);
+  assert.match(editor, /Number from/);
+  assert.match(editor, /data-stool-number-from=/);
+  assert.match(editor, /data-stool-number-start=/);
   assert.doesNotMatch(editor, /publishLocationFn/);
+  const art = readFileSync("src/components/pos/FloorFixtureArt.tsx", "utf8");
+  const stoolArt = art.slice(art.indexOf("function FloorStoolArt"));
+  assert.match(stoolArt, /overflow-hidden/);
+  assert.match(stoolArt, /data-floor-stool-label/);
+  assert.match(stoolArt, /cqmin/);
+  const mark = readFileSync("src/components/pos/FloorArchitectureMark.tsx", "utf8");
+  assert.match(mark, /barFaceLabel\(table\.label\)/);
+  assert.equal((mark.match(/data-floor-bar-label=/g) ?? []).length, 1);
+  assert.doesNotMatch(mark, /B\$\{/);
+  const catalog = readFileSync("src/lib/saas/location-catalog.ts", "utf8");
+  assert.match(catalog, /stoolNumberFrom/);
+});
+
+test("an L numbers B1 at the far right and B18 at the top of the short leg", () => {
+  const plan = [
+    { x: 30, y: 18 },
+    { x: 30, y: 55 },
+    { x: 82, y: 55 },
+  ];
+  const box = slabBounds(plan, 24, room, false);
+  const bar = {
+    id: "bar",
+    kind: "bar_top",
+    label: "Copper",
+    x: box.x,
+    y: box.y,
+    w: box.w,
+    h: box.h,
+    points: plan,
+    barShape: "l" as const,
+    barSide: "outside" as const,
+    widthIn: 24,
+    legLengths: [1, 1],
+    section: "Bar",
+  };
+  assert.equal(defaultNumberFrom(bar), 1);
+  const classic = planFromLegInches("l", { x: 20, y: 30 }, [16 * 12, 10 * 12], room);
+  assert.equal(defaultNumberFrom({ points: classic, barShape: "l" }), 0);
+  const poses = generateBarStools({
+    bar,
+    room,
+    counts: { legA: 6, legB: 12 },
+    side: "outside",
+  });
+  assert.equal(poses.length, 18);
+  const stools = poses.map((pose, index) => ({
+    id: `s${index}`,
+    kind: "barstool",
+    label: `X${index}`,
+    x: pose.x,
+    y: pose.y,
+    w: pose.w,
+    h: pose.h,
+    railBarId: "bar",
+  }));
+  const placed = stools.map((stool) => ({ id: stool.id, x: stool.x, y: stool.y }));
+  const reset = resetFloorNumbers(stools, [bar], room, "stools");
+  assert.equal(reset.moves.length, 0);
+  assert.equal(reset.create.length, 0);
+  const labels = Object.fromEntries(reset.labels.map((row) => [row.id, row.label]));
+  const center = (stool: (typeof stools)[number]) => ({ x: stool.x + stool.w / 2, y: stool.y + stool.h / 2 });
+  const far = stools.reduce((a, b) => (center(a).x >= center(b).x ? a : b));
+  const top = stools.reduce((a, b) => (center(a).y <= center(b).y ? a : b));
+  assert.notEqual(far.id, top.id);
+  assert.equal(labels[far.id], "B1");
+  assert.equal(labels[top.id], "B18");
+  assert.deepEqual(stools.map((stool) => labels[stool.id]).sort((a, b) => Number(a!.slice(1)) - Number(b!.slice(1))), Array.from({ length: 18 }, (_, i) => `B${i + 1}`));
+  const flipped = relabelBarStools(stools, { ...bar, stoolNumberFrom: 0 }, room, [{ ...bar, stoolNumberFrom: 0 }]);
+  const next = Object.fromEntries(flipped.map((row) => [row.id, row.label]));
+  assert.equal(next[far.id], "B18");
+  assert.equal(next[top.id], "B1");
+  assert.deepEqual(
+    stools.map((stool) => ({ id: stool.id, x: stool.x, y: stool.y })),
+    placed,
+  );
 });

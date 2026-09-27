@@ -17,8 +17,12 @@ test("BAR sits on the longest leg, and a 90 degree turn keeps that leg", () => {
   assert.equal(barFaceLabel("bar top"), "BAR");
   assert.equal(barFaceLabel("Copper"), "Copper");
   assert.equal(barFaceLabel("B1 B2 B14"), "BAR");
+  assert.equal(barFaceLabel("Copper B5 B18"), "Copper");
+  assert.equal(barFaceLabel("B5–B18"), "BAR");
+  assert.equal(barFaceLabel("Rail B12"), "Rail");
   assert.equal(isStoolPathText("B12"), true);
   assert.equal(isStoolPathText("Copper"), false);
+  assert.equal(isStoolPathText("Copper B5"), false);
   for (const deg of [0, 90, 180, -90]) {
     const net = deg + uprightCounterDeg(deg);
     const wrapped = ((net % 360) + 360) % 360;

@@ -4195,6 +4195,7 @@ const usePosStoreRaw = create<PosStore>()(persist((set, get) => {
 			sectionId: partial.sectionId,
 			railBarId: partial.railBarId,
 			barSide: partial.barSide,
+			stoolNumberFrom: partial.stoolNumberFrom,
 			status: "empty",
 			statusSince: Date.now(),
 			qrToken: makeTableQrToken(id, partial.label ?? String(n), get().tenantLocationId || undefined),
