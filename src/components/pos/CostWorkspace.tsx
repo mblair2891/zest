@@ -7,6 +7,7 @@ import {
   Package,
   Truck,
 } from "lucide-react";
+import { OpsFinancePanel } from "./OpsFinancePanel";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -43,7 +44,8 @@ export type CostTab =
   | "alerts"
   | "suppliers"
   | "orders"
-  | "prices";
+  | "prices"
+  | "finance";
 
 const TABS: Array<[CostTab, string]> = [
   ["board", "Cost picture"],
@@ -54,6 +56,7 @@ const TABS: Array<[CostTab, string]> = [
   ["suppliers", "Suppliers"],
   ["orders", "POs"],
   ["prices", "Price recs"],
+  ["finance", "Ops finance"],
 ];
 
 function visibleCostEntity(
@@ -118,6 +121,7 @@ export function CostWorkspace({ initialTab = "board" }: { initialTab?: CostTab }
         {tab === "suppliers" && <SupplierPanel demoScope={demoScope} />}
         {tab === "orders" && <PoPanel demoScope={demoScope} />}
         {tab === "prices" && <PricePanel demoScope={demoScope} />}
+        {tab === "finance" && <OpsFinancePanel />}
       </div>
     </div>
   );

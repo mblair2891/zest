@@ -1,7 +1,7 @@
 # Operators Guide — authoring
 
-**Revision · 27 Sep 2026** — Square Terminal is a temporary single-merchant card rail.
-Guide v2026.10.180.
+**Revision · 30 Sep 2026** — Operations finance keeps each selling entity’s books.
+Guide v2026.10.181.
 
 The in-app **Operators Guide** is the living product manual. It is not a
 separate PDF. Staff open it from **Guide** / **?** in the POS and platform
@@ -146,6 +146,7 @@ Bookmarkable URL: `/guide?topic=my-topic`.
 - HR: optional per entity (host or tenant employer). Packets + signed PDF fallback. Clock punches persist. Each selling entity owns its schedule. Clock in / Clock out are their own PIN-pad actions (not POS login). Clock windows, shift approval, and pay-period timing drive hours export (CSV/PDF or ADP/Intuit) — Summex does not process payroll. Platform never sees SSN.
 - First location = the venue owner’s job after contract signed. Platform records the contract and emails the owner a one-time password. They never see CRM / pipeline / other tenants. Shared venue: owner invites each selling-entity POC. Training sandbox until they schedule go-live.
 - Training = practice + Quantum sandbox; optional inventory tracking. Go live now or schedule; owner keep/erase per data class; menus/recipes/staff/settings kept.
+- Operations finance: each selling entity owns its chart of accounts, vendors, inventory, and journals. A location rollup can view those books and cannot edit a peer. Training journals stay in the sandbox until go-live. Nightly and close of business post sales, tenders, tips, tax, gift liability, cash over/short, and revenue share. Payroll stays an export (ADP, Intuit, or CSV). Summex does not process payroll and does not connect a third-party POS.
 - PIN login ≠ clock in/out ≠ server closeout.
 - Gift: sale-point issuer or house; redeem settles internally; unredeemed liability on issuer; house cards house-keeps remainder.
 - Staffing recs never auto clock-out. Accept ≠ punch out.

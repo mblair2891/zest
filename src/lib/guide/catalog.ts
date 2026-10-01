@@ -12,6 +12,7 @@ import { KIOSK_WAITLIST_TOPICS } from "./content/kiosk-waitlist";
 import { TROUBLESHOOTING_TOPICS } from "./content/troubleshooting";
 import { PLATFORM_CRM_TOPICS } from "./content/platform-crm";
 import { COST_TOPICS } from "./content/costs";
+import { FINANCE_TOPICS } from "./content/finance";
 import { LIFECYCLE_TOPICS } from "./content/lifecycle";
 import { HR_TOPICS } from "./content/hr";
 import { OPS_JOBS_TOPICS } from "./content/ops-jobs";
@@ -86,22 +87,28 @@ export const GUIDE_CHAPTERS: GuideChapter[] = [
     order: 10,
   },
   {
+    id: "finance",
+    title: "Operations finance",
+    summary: "Entity ledger, AP, inventory, AvT, forecast, and controllable P&L.",
+    order: 11,
+  },
+  {
     id: "roles",
     title: "Role guides",
     summary: "Owner, Users (floor PINs), server, kitchen/bar, vendor, host.",
-    order: 11,
+    order: 12,
   },
   {
     id: "troubleshooting",
     title: "Troubleshooting",
     summary: "Common errors, contacts, audit, glossary.",
-    order: 12,
+    order: 13,
   },
   {
     id: "platform",
     title: "Platform (admin)",
     summary: "CRM, pipeline, tenants, billing, support.",
-    order: 13,
+    order: 14,
   },
 ];
 
@@ -128,6 +135,7 @@ export const GUIDE_NAV_TABS: GuideNavTab[] = [
       "devices",
       "kiosk",
       "costs",
+      "finance",
       "troubleshooting",
     ],
   },
@@ -156,6 +164,7 @@ export const GUIDE_TOPICS: GuideTopic[] = [
   ...LOSS_PREVENTION_TOPICS,
   ...DEVICE_TOPICS,
   ...COST_TOPICS,
+  ...FINANCE_TOPICS,
   ...KIOSK_WAITLIST_TOPICS,
   ...ROLE_GUIDE_TOPICS,
   ...HR_TOPICS,

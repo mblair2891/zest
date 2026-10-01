@@ -24,7 +24,7 @@ export function SubscriberWhitePaper() {
         summex.app · Guest cards: {PAYMENTS_BRAND} only
       </p>
       <p className="mt-2 text-xs text-muted-foreground">
-        Revision · 16 Sep 2026 — Aligns with Operators Guide v2026.10.100.
+        Revision · 30 Sep 2026 — Operations finance keeps each selling entity’s books. Aligns with Operators Guide v2026.10.181.
         The house toggles which tenders it accepts. Station UI is device role ∩
         staff PIN. After PIN the tablet shows a short role menu. Pair with a
         typed Devices code; QR is optional. Peer venues have no host merchant;
@@ -250,6 +250,13 @@ export function SubscriberWhitePaper() {
           <li>
             <strong className="text-ivory">Scheduling per entity.</strong> One operator’s
             week is not the other’s. Clock in is still the house tablet.
+          </li>
+          <li>
+            <strong className="text-ivory">Operations finance.</strong> Each selling
+            entity keeps a restaurant chart of accounts, payables, inventory, actual
+            versus theoretical, and a controllable P&amp;L. A location can view the
+            rollup and cannot edit a peer’s books. Training journals stay in a sandbox
+            until go-live. Summex does not connect another POS.
           </li>
           <li>
             <strong className="text-ivory">HR and payroll export.</strong> Hours to ADP,

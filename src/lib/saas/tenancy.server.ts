@@ -334,6 +334,10 @@ function parseSetup(raw: unknown): LocationSetup {
       o.costPack && typeof o.costPack === "object"
         ? (o.costPack as LocationSetup["costPack"])
         : undefined,
+    financeBooks:
+      o.financeBooks && typeof o.financeBooks === "object" && !Array.isArray(o.financeBooks)
+        ? (o.financeBooks as LocationSetup["financeBooks"])
+        : undefined,
     hrByEntity:
       o.hrByEntity && typeof o.hrByEntity === "object" && !Array.isArray(o.hrByEntity)
         ? parseHrMap(o.hrByEntity)

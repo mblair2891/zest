@@ -530,6 +530,16 @@ export const useCostStore = create<CostState>()(
         void import("@/lib/pos/persist-location-setup").then((m) =>
           m.persistLocationCatalog("costs"),
         );
+        const posted = get().invoices.find((row) => row.id === invoiceId);
+        if (posted) {
+          void import("@/lib/finance/from-pos").then((m) => {
+            try {
+              m.ingestPostedCostInvoice(posted);
+            } catch {
+              /* the cost post still stands */
+            }
+          });
+        }
         return { ok: true };
       },
 

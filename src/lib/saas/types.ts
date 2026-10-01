@@ -169,6 +169,8 @@ export type LocationSetup = {
     settings: import("@/lib/costs/types").CostSettings;
     pos?: import("@/lib/costs/types").PurchaseOrder[];
   };
+  /** Per-entity operations books. A location stores them. It does not merge peer journals. */
+  financeBooks?: Record<string, import("@/lib/finance/types").EntityBook>;
 };
 
 export const EMPTY_LOCATION_SETUP: LocationSetup = {

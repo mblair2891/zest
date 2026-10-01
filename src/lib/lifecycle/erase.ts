@@ -1,6 +1,7 @@
 import { usePosStore } from "@/lib/pos/store";
 import { useOpsStore } from "@/lib/pos/ops-store";
 import { useCostStore } from "@/lib/costs/store";
+import { useFinanceStore } from "@/lib/finance/store";
 import type { KeepEraseMap } from "./types";
 
 /** Always keep menus, recipes, floorplan, staff, devices, SKU defs, suppliers, settings. */
@@ -93,6 +94,13 @@ export function erasePracticeData(choices: KeepEraseMap): string[] {
       done.push("inventory_usage");
     } catch {
       /* optional */
+    }
+    try {
+      for (const entityId of Object.keys(useFinanceStore.getState().byEntity)) {
+        useFinanceStore.getState().resetEntity(entityId);
+      }
+    } catch {
+      /* finance books are optional */
     }
     usePosStore.setState({
       inventory: usePosStore.getState().inventory.map((i) => ({

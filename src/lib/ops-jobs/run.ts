@@ -67,6 +67,15 @@ export async function executeOpsJob(
     const existing = useOpsJobsStore.getState().inbox.find((r) => r.fireKey === key);
     if (existing) return existing;
   }
+  if (cadence === "nightly") {
+    void import("@/lib/finance/from-pos").then((m) => {
+      try {
+        m.postBooksForBusinessDate();
+      } catch {
+        /* nightly pack still runs */
+      }
+    });
+  }
   const facts = collectOpsJobFacts(cadence);
   const locId = pos.tenantLocationId || facts.location.id;
   let result: Awaited<ReturnType<typeof runOpsJobFn>>;

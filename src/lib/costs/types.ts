@@ -36,7 +36,7 @@ export type InvoiceStatus = "draft" | "extracted" | "mapped" | "posted" | "void"
 export type CountKind = "full" | "partial";
 export type ExceptionSeverity = "info" | "watch" | "urgent";
 export type ExceptionStatus = "open" | "responded";
-export type ExceptionKind = "purchase_vs_sales" | "count_variance" | "price_change";
+export type ExceptionKind = "purchase_vs_sales" | "count_variance" | "price_change" | "avt";
 
 export const VARIANCE_RESPONSE_CODES = [
   "event",

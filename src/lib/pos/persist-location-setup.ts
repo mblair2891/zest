@@ -3,6 +3,7 @@ import { saveLocationSettingsFn } from "@/lib/access/api";
 import { useSaasStore } from "@/lib/pos/saas-store";
 import { usePosStore } from "@/lib/pos/store";
 import { useCostStore } from "@/lib/costs/store";
+import { useFinanceStore } from "@/lib/finance/store";
 import { useOpsStore } from "@/lib/pos/ops-store";
 import { isProspectDemo } from "@/lib/demo/session";
 import { floorPlanFromPos } from "@/lib/saas/location-catalog";
@@ -390,7 +391,7 @@ export function persistClearedFloor(): void {
   }).catch(() => undefined);
 }
 
-export function persistLocationCatalog(kind: "floor" | "menu" | "recipes" | "costs"): void {
+export function persistLocationCatalog(kind: "floor" | "menu" | "recipes" | "costs" | "finance"): void {
   const key = kind;
   const prev = timers.get(key);
   if (prev) clearTimeout(prev);
@@ -404,7 +405,7 @@ export function persistLocationCatalog(kind: "floor" | "menu" | "recipes" | "cos
 }
 
 export async function flushLocationCatalog(
-  _kind: "floor" | "menu" | "recipes" | "costs",
+  _kind: "floor" | "menu" | "recipes" | "costs" | "finance",
 ): Promise<void> {
   const ctx = ids();
   if (!ctx) return;
@@ -445,6 +446,7 @@ export async function flushLocationCatalog(
           settings: cost.settings,
           pos: cost.pos,
         },
+        financeBooks: useFinanceStore.getState().byEntity,
       },
     },
   });

@@ -12,6 +12,7 @@ import { useNotifyStore } from "@/lib/pos/notify-store";
 import { useNetworkStore } from "@/lib/pos/network-store";
 import { useOpsLearnStore } from "@/lib/ops-ai/learn-store";
 import { useCostStore } from "@/lib/costs/store";
+import { useFinanceStore } from "@/lib/finance/store";
 import { useLifecycleStore } from "@/lib/lifecycle/store";
 import { useStationSessionStore } from "@/lib/pos/station-session";
 import { useCashSessionStore } from "@/lib/pos/cash-session";
@@ -635,6 +636,11 @@ function PosAppInner({ entityId }: { entityId?: string }) {
                 ? setup.menuCatalog.modifiers
                 : cur.modifierGroups,
             });
+          }
+          if (setup.financeBooks) {
+            useFinanceStore.getState().hydrate(setup.financeBooks, setup.lifecycleStatus === "live");
+          } else {
+            useFinanceStore.getState().setLive(setup.lifecycleStatus === "live");
           }
           if (setup.recipes?.length || setup.costPack) {
             const pack = setup.costPack;

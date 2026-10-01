@@ -1065,6 +1065,13 @@ export const useOpsStore = create<OpsState>()(
           punches,
           closeouts: [co, ...get().closeouts],
         });
+        void import("@/lib/finance/from-pos").then((m) => {
+          try {
+            m.postBooksForBusinessDate(co.dateKey);
+          } catch {
+            /* closeout still finishes */
+          }
+        });
         return co;
       },
 

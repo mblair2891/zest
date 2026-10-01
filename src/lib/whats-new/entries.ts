@@ -6,6 +6,18 @@ import type { GuideUpdate } from "@/lib/guide/types";
  */
 export const WHATS_NEW_ENTRIES: GuideUpdate[] = [
   {
+    id: "upd_2026_10_181_ops_finance",
+    date: "2026-09-30",
+    title: "Operations finance on each selling entity",
+    summary: "Chart of accounts, AP, inventory, AvT, and a daily P&L. Payroll stays an export.",
+    body: "Costs → Ops finance. Each selling entity has its own chart, vendors, inventory, and journals. Post close writes sales, tenders, tips, tax, gift liability, cash over/short, and revenue share. A location rollup can view those books and cannot edit a peer. Training journals stay in the sandbox until go-live. Receive an invoice to post AP and on-hand, and the unit cost updates the recipe. Actual versus theoretical flags land on the same exception list. Approved punches accrue labor. Hours and tips still export to ADP, Intuit, or CSV. Summex does not run payroll.",
+    roles: ["owner_manager", "host_operator", "vendor_operator"],
+    surfaces: ["reports"],
+    audience: "all",
+    topicId: "ops-finance",
+    tags: ["finance"],
+  },
+  {
     id: "upd_2026_10_180_square_terminal",
     date: "2026-09-27",
     title: "Square Terminal, one merchant",
