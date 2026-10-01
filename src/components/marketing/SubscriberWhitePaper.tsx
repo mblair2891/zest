@@ -24,7 +24,7 @@ export function SubscriberWhitePaper() {
         summex.app · Guest cards: {PAYMENTS_BRAND} only
       </p>
       <p className="mt-2 text-xs text-muted-foreground">
-        Revision · 30 Sep 2026 — Operations finance keeps each selling entity’s books. Aligns with Operators Guide v2026.10.181.
+        Revision · 30 Sep 2026 — Owner ops is each selling entity’s daily home. Aligns with Operators Guide v2026.10.182.
         The house toggles which tenders it accepts. Station UI is device role ∩
         staff PIN. After PIN the tablet shows a short role menu. Pair with a
         typed Devices code; QR is optional. Peer venues have no host merchant;
@@ -250,6 +250,12 @@ export function SubscriberWhitePaper() {
           <li>
             <strong className="text-ivory">Scheduling per entity.</strong> One operator’s
             week is not the other’s. Clock in is still the house tablet.
+          </li>
+          <li>
+            <strong className="text-ivory">Owner ops.</strong> The selling entity’s
+            home shows today’s sales, cash and card, comps, prime cost, labor, and
+            food and beverage cost. A peer sees only its own numbers. A price test
+            does not change the menu price.
           </li>
           <li>
             <strong className="text-ivory">Operations finance.</strong> Each selling

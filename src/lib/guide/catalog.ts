@@ -13,6 +13,7 @@ import { TROUBLESHOOTING_TOPICS } from "./content/troubleshooting";
 import { PLATFORM_CRM_TOPICS } from "./content/platform-crm";
 import { COST_TOPICS } from "./content/costs";
 import { FINANCE_TOPICS } from "./content/finance";
+import { OWNER_OPS_TOPICS } from "./content/owner-ops";
 import { LIFECYCLE_TOPICS } from "./content/lifecycle";
 import { HR_TOPICS } from "./content/hr";
 import { OPS_JOBS_TOPICS } from "./content/ops-jobs";
@@ -165,6 +166,7 @@ export const GUIDE_TOPICS: GuideTopic[] = [
   ...DEVICE_TOPICS,
   ...COST_TOPICS,
   ...FINANCE_TOPICS,
+  ...OWNER_OPS_TOPICS,
   ...KIOSK_WAITLIST_TOPICS,
   ...ROLE_GUIDE_TOPICS,
   ...HR_TOPICS,

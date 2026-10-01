@@ -12,7 +12,7 @@ import {
   shareLinesForOrders,
 } from "@/lib/pos/revenue-share";
 import { recordDecision, daypartOf } from "@/lib/ops-ai/learn-store";
-import { canCost, costEntityScope } from "./permissions";
+import { canCost, canSeeEntity, costEntityScope } from "./permissions";
 import { suggestPoLines } from "./ordering";
 import { CONNECTORS } from "./connectors";
 import { guessCategory, heuristicInvoiceExtract, invoiceFollowUps, normalizeVendorKey } from "./invoice-parse";
@@ -247,7 +247,12 @@ interface CostState {
     menuItemId: string;
     lines: ItemRecipe["lines"];
   }) => string;
-  runCount: (kind: CountKind, lines: Array<{ skuId: string; qty: number }>, note?: string) => void;
+  runCount: (
+    kind: CountKind,
+    lines: Array<{ skuId: string; qty: number }>,
+    note?: string,
+    entityId?: string,
+  ) => void;
   logWaste: (skuId: string, qty: number, reason: string) => void;
   scanVariance: (windowDays?: number) => VarianceException[];
   respondException: (
@@ -255,6 +260,19 @@ interface CostState {
     code: VarianceResponseCode,
     note: string,
   ) => { ok: boolean; error?: string };
+  markInvoicePaid: (invoiceId: string) => { ok: boolean; error?: string };
+  syncAvtFlags: (
+    rows: Array<{
+      id: string;
+      skuId: string;
+      item: string;
+      entityId: string;
+      expected: number;
+      actual: number;
+      gapCents: number;
+      businessDate: string;
+    }>,
+  ) => void;
   upsertSupplier: (input: Partial<CostSupplier> & { name: string }) => string;
   linkInvoiceVendor: (invoiceId: string, supplierId: string) => void;
   draftPoFromPar: (
@@ -615,14 +633,16 @@ export const useCostStore = create<CostState>()(
         return id;
       },
 
-      runCount: (kind, lines, note) => {
+      runCount: (kind, lines, note, entityId) => {
         const a = actor();
         if (!canCost(a.emp, "count")) return;
+        const target = entityId || a.entity || HOST_SCOPE;
+        if (!canSeeEntity(a.emp, target)) return;
         const now = Date.now();
         const count: InventoryCount = {
           id: uid("cnt"),
           at: now,
-          entityId: a.entity || HOST_SCOPE,
+          entityId: target,
           kind,
           byUserId: a.id,
           byName: a.name,
@@ -633,11 +653,13 @@ export const useCostStore = create<CostState>()(
           counts: [count, ...get().counts],
           skus: get().skus.map((s) => {
             const hit = lines.find((l) => l.skuId === s.id);
-            return hit ? { ...s, onHand: hit.qty } : s;
+            if (!hit || (s.entityId !== target && target !== HOST_SCOPE)) return s;
+            return { ...s, onHand: hit.qty };
           }),
         });
         get().audit("count", `${kind} · ${lines.length} SKUs`, count.entityId);
         get().scanVariance(7);
+        void import("@/lib/pos/persist-location-setup").then((m) => m.persistLocationCatalog("costs"));
       },
 
       logWaste: (skuId, qty, reason) => {
@@ -908,7 +930,62 @@ export const useCostStore = create<CostState>()(
         } catch {
           /* learning log optional */
         }
+        void import("@/lib/pos/persist-location-setup").then((m) => m.persistLocationCatalog("costs"));
         return { ok: true };
+      },
+
+      markInvoicePaid: (invoiceId) => {
+        const a = actor();
+        const inv = get().invoices.find((row) => row.id === invoiceId);
+        if (!inv) return { ok: false, error: "Invoice missing" };
+        if (!canSeeEntity(a.emp, inv.entityId)) {
+          return { ok: false, error: "That invoice is on another entity." };
+        }
+        if (inv.status === "void" || inv.status === "draft") {
+          return { ok: false, error: "Post the invoice before marking it paid." };
+        }
+        set({
+          invoices: get().invoices.map((row) =>
+            row.id === invoiceId ? { ...row, paidAt: Date.now() } : row,
+          ),
+        });
+        get().audit("invoice_post", `${inv.vendorName} ${inv.invoiceNumber} marked paid`, inv.entityId);
+        void import("@/lib/pos/persist-location-setup").then((m) => m.persistLocationCatalog("costs"));
+        return { ok: true };
+      },
+
+      syncAvtFlags: (rows) => {
+        const a = actor();
+        const existing = get().exceptions;
+        const additions: VarianceException[] = [];
+        for (const row of rows) {
+          if (!canSeeEntity(a.emp, row.entityId)) continue;
+          if (existing.some((item) => item.id === row.id)) continue;
+          additions.push({
+            id: row.id,
+            at: Date.now(),
+            kind: "avt",
+            severity: "watch",
+            skuId: row.skuId,
+            skuName: row.item,
+            entityId: row.entityId,
+            status: "open",
+            summary: `${row.item}: expected ${row.expected}, actual ${row.actual}. Record event, take-home, count error, or investigate. This is not an accusation.`,
+            evidence: {
+              windowStart: Date.parse(`${row.businessDate}T12:00:00Z`),
+              windowEnd: Date.parse(`${row.businessDate}T12:00:00Z`),
+              salesQty: row.expected,
+              receiptsQty: row.actual,
+              theoretical: row.expected,
+              expected: row.expected,
+              actual: row.actual,
+              opening: 0,
+            },
+          });
+        }
+        if (!additions.length) return;
+        set({ exceptions: [...additions, ...existing] });
+        void import("@/lib/pos/persist-location-setup").then((m) => m.persistLocationCatalog("costs"));
       },
 
       upsertSupplier: (input) => {

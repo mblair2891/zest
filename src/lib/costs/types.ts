@@ -155,6 +155,8 @@ export interface CostInvoice {
   fileName?: string;
   source: "upload" | "manual" | "ai";
   postedAt?: number;
+  /** Set when the owner marks the invoice paid. Not a check and not a bank payment. */
+  paidAt?: number;
   poId?: string;
   parseNote?: string;
   followUps?: InvoiceFollowUp[];

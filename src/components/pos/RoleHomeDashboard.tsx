@@ -27,6 +27,7 @@ import { OpsJobsInbox } from "./OpsJobsInbox";
 import { AccessPointsCard } from "./AccessPointsCard";
 import { ExceptionLiveFeed } from "./ExceptionLiveFeed";
 import { useCostStore } from "@/lib/costs/store";
+import { OwnerHomePanel } from "./OwnerHomePanel";
 
 function Jump({
   id,
@@ -117,6 +118,7 @@ export function RoleHomeDashboard() {
         {myVendor && <Badge variant="secondary">{myVendor.shortName}</Badge>}
       </div>
       <div className="min-h-0 flex-1 space-y-4 overflow-y-auto p-3">
+        {(role === "owner" || role === "manager" || role === "vendor_operator") && <OwnerHomePanel />}
         {(role === "owner" || role === "manager") && (
           <>
             <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">

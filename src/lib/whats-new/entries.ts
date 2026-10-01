@@ -6,6 +6,18 @@ import type { GuideUpdate } from "@/lib/guide/types";
  */
 export const WHATS_NEW_ENTRIES: GuideUpdate[] = [
   {
+    id: "upd_2026_10_182_owner_ops",
+    date: "2026-09-30",
+    title: "Owner ops on the selling entity home",
+    summary: "Today’s sales, prime cost, labor, AvT exceptions, and open invoices.",
+    body: "Home for an owner, manager, or selling entity shows today and this week: net sales, cash versus card, comps, prime cost, labor, food cost, and beverage cost. Checks, invoices, the schedule, and AvT exceptions are one tap away. A peer sees only its own numbers. Recipe sales set the theoretical use. A received invoice, a count, and waste set the actual. The list is the item, expected, actual, and the dollar gap. Mark event, take-home, count error, or investigate. Next week’s draft uses the last four of that weekday plus an event. The PIN clock stays the hours. Payroll stays an export. End of night shows system cash, the blind closeout count, over or short, and the deposit to record. Mark an invoice paid when it is settled. A higher price than the last invoice is flagged. Stars, plowhorses, puzzles, and dogs suggest a price test and leave the cash price as it is.",
+    roles: ["owner_manager", "host_operator", "vendor_operator"],
+    surfaces: ["reports"],
+    audience: "all",
+    topicId: "owner-ops",
+    tags: ["finance"],
+  },
+  {
     id: "upd_2026_10_181_ops_finance",
     date: "2026-09-30",
     title: "Operations finance on each selling entity",
