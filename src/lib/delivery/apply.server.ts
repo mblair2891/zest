@@ -2,12 +2,14 @@ import { patchLocationSetup } from "@/lib/print/queue.server";
 import {
   defaultDeliveryChannels,
   handleDeliveryWebhook,
+  normalizeDeliveryChannels,
   type DeliveryChannel,
   type DeliveryCheck,
   type HouseItem,
   type ItemMap,
   type WebhookResult,
 } from "./marketplace.ts";
+import { verifyDeliverySignature } from "./sign.server.ts";
 
 function asRecord(value: unknown): Record<string, unknown> | null {
   return value && typeof value === "object" && !Array.isArray(value) ? (value as Record<string, unknown>) : null;
@@ -46,9 +48,9 @@ async function loadCtx(locationId: string | undefined, body: unknown) {
     : await sql<{ id: string; setup: unknown }>`select id, setup from locations order by created_at asc limit 1`;
   const loc = rows[0];
   const setup = asRecord(loc?.setup) ?? {};
-  const channels = Array.isArray(setup.deliveryChannels)
-    ? (setup.deliveryChannels as DeliveryChannel[])
-    : defaultDeliveryChannels();
+  const channels = normalizeDeliveryChannels(
+    Array.isArray(setup.deliveryChannels) ? (setup.deliveryChannels as DeliveryChannel[]) : undefined,
+  );
   const catalog = asRecord(setup.menuCatalog);
   const menu = houseItems(setup.deliveryPublished).length
     ? houseItems(setup.deliveryPublished)
@@ -65,12 +67,29 @@ async function loadCtx(locationId: string | undefined, body: unknown) {
   };
 }
 
-export async function applyDeliveryWebhook(body: unknown, locationId?: string): Promise<WebhookResult> {
+export async function applyDeliveryWebhook(
+  body: unknown,
+  locationId?: string,
+  raw?: { body: string; signature: string | null },
+): Promise<WebhookResult> {
   let ctx: Awaited<ReturnType<typeof loadCtx>> | null = null;
   try {
     ctx = await loadCtx(locationId, body);
   } catch {
     ctx = null;
+  }
+  const secret = ctx?.channels.find((channel) => channel.vendor === "webhook")?.signingSecret ?? "";
+  if (raw && !verifyDeliverySignature(secret, raw.body, raw.signature)) {
+    return {
+      ok: false,
+      accepted: false,
+      check: null,
+      queued: false,
+      banner: null,
+      log: ["invalid signature"],
+      finixCalled: false,
+      error: "invalid signature",
+    };
   }
   let cardCalled = false;
   const result = handleDeliveryWebhook(body, {

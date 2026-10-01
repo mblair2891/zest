@@ -6,6 +6,18 @@ import type { GuideUpdate } from "@/lib/guide/types";
  */
 export const WHATS_NEW_ENTRIES: GuideUpdate[] = [
   {
+    id: "upd_2026_10_184_doordash_uber",
+    date: "2026-09-30",
+    title: "DoorDash and Uber Eats",
+    summary: "Two marketplace checks, Marketplace payable, and a signed webhook before partner keys.",
+    body: "Integrations → Delivery. DoorDash stores a developer id, key id, signing secret, store id, and sandbox or live. Uber Eats stores a client id, client secret, store id, and sandbox or live. Commission percent is display only. Empty partner fields leave the signed webhook live and show Waiting for partner keys. An order opens Dining Delivery-DoorDash or Delivery-UberEats with tender Marketplace payable. There is no second card. SKUs map to entity items. An unmapped line is an open item with a manager flag. The kitchen slip shows the channel order number and the due time, routed like to-go. Ready for pickup follows when every food line is bumped, and a phone can get the ready text. Publish the delivery menu on demand with an optional percent markup. 86 and un-86 push availability and leave the house item in place. Accept, reject, ready, picked up, and cancel with a reason go out when that vendor is configured. Expected payout is the ticket minus the commission. Owner ops splits house, DoorDash, and Uber Eats. Sold items still count in AvT.",
+    roles: ["owner_manager", "host_operator", "vendor_operator"],
+    surfaces: ["settings"],
+    audience: "all",
+    topicId: "delivery-channels",
+    tags: ["orders"],
+  },
+  {
     id: "upd_2026_10_183_delivery_channels",
     date: "2026-09-30",
     title: "Delivery channels",

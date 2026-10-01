@@ -300,6 +300,11 @@ export function KitchenView({ station, expo, operatorId }: Props) {
                         {t.specialInstructions ? ` · ${t.specialInstructions}` : ""}
                       </p>
                     ) : null}
+                    {t.items.some((item) => item.note?.includes("manager flag")) ? (
+                      <p className="text-xs font-medium text-amber-800" data-manager-flag>
+                        Manager flag
+                      </p>
+                    ) : null}
                     <p className="text-xs text-muted-foreground">
                       {t.serverName} · {formatTime(t.createdAt, settings.timezone)} ·{" "}
                       <span className="capitalize">{t.course}</span>

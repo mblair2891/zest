@@ -91,7 +91,7 @@ import { destinationForGroup, ticketStationForDestination } from "./order-destin
 import { groupFireSlips } from "./fire-routing";
 import {
 	applyHouse86,
-	defaultDeliveryChannels,
+	normalizeDeliveryChannels,
 	handleDeliveryWebhook,
 	planStatusPush,
 	type DeliveryCheck,
@@ -3959,9 +3959,7 @@ const usePosStoreRaw = create<PosStore>()(persist((set, get) => {
 			available
 		} : m);
 		set({ menuItems });
-		const channels = get().settings.deliveryChannels?.length
-			? get().settings.deliveryChannels
-			: defaultDeliveryChannels();
+		const channels = normalizeDeliveryChannels(get().settings.deliveryChannels);
 		const house: HouseItem[] = menuItems.map((m: any) => ({
 			id: m.id,
 			name: m.name,
@@ -3979,7 +3977,7 @@ const usePosStoreRaw = create<PosStore>()(persist((set, get) => {
 				at: Date.now(),
 				mode: "native",
 				payload,
-				log: `${payload.vendor}: unavailable`,
+				log: `${payload.vendor}: ${payload.status}`,
 			});
 		}
 		for (const line of pushed.logs) {
@@ -4524,20 +4522,20 @@ const usePosStoreRaw = create<PosStore>()(persist((set, get) => {
 	pushDeliveryStatus: (orderId, status: DeliveryStatus, reason = "") => {
 		const order = get().orders.find((o: any) => o.id === orderId);
 		if (!order?.marketplace) return { ok: false, error: "Not a delivery check" };
-		if (status === "cancelled" && !String(reason).trim()) return { ok: false, error: "Cancel needs a reason" };
-		const channels = get().settings.deliveryChannels?.length
-			? get().settings.deliveryChannels
-			: defaultDeliveryChannels();
+		if ((status === "cancelled" || status === "rejected") && !String(reason).trim()) {
+			return { ok: false, error: status === "rejected" ? "Reject needs a reason" : "Cancel needs a reason" };
+		}
+		const channels = normalizeDeliveryChannels(get().settings.deliveryChannels);
 		const channel = channels.find((row: { id: string; vendor: string }) => row.id === order.deliveryVendor || row.vendor === order.deliveryVendor) ?? channels[0];
 		const plan = channel ? planStatusPush(channel, status, reason) : { mode: "log" as const, payload: null, banner: null, log: "logged" };
 		set({
 			orders: get().orders.map((o: any) => o.id !== orderId ? o : {
 				...o,
 				deliveryStatus: status,
-				status: status === "cancelled" ? "cancelled" : status === "picked_up" ? "closed" : o.status,
+				status: status === "cancelled" || status === "rejected" ? "cancelled" : status === "picked_up" ? "closed" : o.status,
 				closedAt: status === "picked_up" ? Date.now() : o.closedAt,
 				pickedUpAt: status === "picked_up" ? Date.now() : o.pickedUpAt,
-				note: status === "cancelled" ? reason : o.note,
+				note: status === "cancelled" || status === "rejected" ? reason : o.note,
 			}),
 		});
 		useDeliverySession.getState().pushOutbox({ at: Date.now(), mode: plan.mode, payload: plan.payload, log: plan.log });
@@ -4585,6 +4583,7 @@ const usePosStoreRaw = create<PosStore>()(persist((set, get) => {
 			dueAt: check.dueAt,
 			specialInstructions: check.specialInstructions,
 			marketplace: true,
+			managerFlag: check.lines.some((line) => line.managerFlag),
 			deliveryStatus: check.status,
 			deliveryVendor: check.vendor,
 			expectedPayoutCents: check.expectedPayoutCents,
@@ -4681,9 +4680,7 @@ const usePosStoreRaw = create<PosStore>()(persist((set, get) => {
 	},
 	ingestDeliveryWebhook: (body: unknown) => {
 		let cardCalled = false;
-		const channels = get().settings.deliveryChannels?.length
-			? get().settings.deliveryChannels
-			: defaultDeliveryChannels();
+		const channels = normalizeDeliveryChannels(get().settings.deliveryChannels);
 		const vendors = get().vendors ?? [];
 		const food = vendors.find((v: { stationType?: string; drinks?: boolean }) => v.stationType !== "bar" && !v.drinks);
 		const result = handleDeliveryWebhook(body, {

@@ -349,7 +349,7 @@ export interface RestaurantSettings {
   cardProcessor?: "finix" | "stripe" | "square" | "none";
   /** Manager toggle for production Square Terminal charges. */
   squareLiveCards?: boolean;
-  /** Marketplace and courier channels. Empty keys leave only the tablet webhook live. */
+  /** DoorDash, Uber Eats, and the signed webhook. Empty partner keys leave the webhook live. */
   deliveryChannels?: import("@/lib/delivery/marketplace").DeliveryChannel[];
   /** Alcohol on a delivery ticket only when this is on and the channel item is mapped. */
   allowDeliveryAlcohol?: boolean;
@@ -626,6 +626,8 @@ export interface Order {
   dueAt?: string;
   specialInstructions?: string;
   marketplace?: boolean;
+  /** An unmapped marketplace line is an open item for a manager to see. */
+  managerFlag?: boolean;
   deliveryVendor?: string;
   deliveryStatus?: import("@/lib/delivery/marketplace").DeliveryStatus;
   expectedPayoutCents?: number;

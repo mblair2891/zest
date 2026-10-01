@@ -64,7 +64,8 @@ function MetricGrid({ title, row }: { title: string; row: OwnerMetrics }) {
         <Metric label="Bev cost" value={pct(row.bevCostPct)} />
       </div>
       <p className="mt-2 text-xs text-muted-foreground" data-owner-delivery>
-        Delivery {formatCurrency(row.deliverySalesCents)} · House {formatCurrency(row.houseSalesCents)}
+        House {formatCurrency(row.houseSalesCents)} · DoorDash {formatCurrency(row.doorDashSalesCents)} · Uber Eats{" "}
+        {formatCurrency(row.uberSalesCents)}
       </p>
     </section>
   );

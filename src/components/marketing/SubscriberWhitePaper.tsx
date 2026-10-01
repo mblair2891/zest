@@ -24,7 +24,7 @@ export function SubscriberWhitePaper() {
         summex.app · Guest cards: {PAYMENTS_BRAND} only
       </p>
       <p className="mt-2 text-xs text-muted-foreground">
-        Revision · 30 Sep 2026 — Delivery channels open a marketplace check. Aligns with Operators Guide v2026.10.183.
+        Revision · 30 Sep 2026 — DoorDash and Uber Eats open a marketplace check. Aligns with Operators Guide v2026.10.184.
         The house toggles which tenders it accepts. Station UI is device role ∩
         staff PIN. After PIN the tablet shows a short role menu. Pair with a
         typed Devices code; QR is optional. Peer venues have no host merchant;
@@ -252,9 +252,9 @@ export function SubscriberWhitePaper() {
             week is not the other’s. Clock in is still the house tablet.
           </li>
           <li>
-            <strong className="text-ivory">Delivery channels.</strong> A marketplace
-            order opens a check as Marketplace payable. No second card. The kitchen
-            ticket follows the to-go route.
+            <strong className="text-ivory">Delivery.</strong> DoorDash and Uber Eats
+            open a check as Marketplace payable. No second card. An unmapped line is
+            an open item with a manager flag. The kitchen ticket follows the to-go route.
           </li>
           <li>
             <strong className="text-ivory">Owner ops.</strong> The selling entity’s

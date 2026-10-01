@@ -28,6 +28,14 @@ function drink(line: OrderLine): boolean {
   return line.station === "bar" || line.course === "drink";
 }
 
+function marketplaceChannel(order: Order): OwnerSale["channel"] {
+  const marketplace = order.marketplace || order.payments.some((pay) => pay.method === "marketplace");
+  if (!marketplace) return "house";
+  if (order.deliveryVendor === "doordash" || order.diningOption === "Delivery-DoorDash") return "doordash";
+  if (order.deliveryVendor === "ubereats" || order.diningOption === "Delivery-UberEats") return "ubereats";
+  return "delivery";
+}
+
 export function collectOwnerFacts(args: {
   today: string;
   timeZone?: string;
@@ -71,7 +79,7 @@ export function collectOwnerFacts(args: {
         cashCents: Math.round(cashPay * share),
         cardCents: Math.round(cardPay * share),
         cashPriceCents: line.quantity > 0 ? Math.round(gross / line.quantity) : line.unitPriceCents,
-        channel: order.marketplace || order.payments.some((pay) => pay.method === "marketplace") ? "delivery" : "house",
+        channel: marketplaceChannel(order),
       });
     }
   }

@@ -718,6 +718,9 @@ export function DeliveryView() {
                     {status.replace("_", " ")}
                   </Button>
                 ))}
+                <Button size="sm" variant="outline" onClick={() => pushStatus(order.id, "rejected", "Store rejected")}>
+                  Reject
+                </Button>
                 <Button size="sm" variant="outline" onClick={() => pushStatus(order.id, "cancelled", "Store cancelled")}>
                   Cancel
                 </Button>

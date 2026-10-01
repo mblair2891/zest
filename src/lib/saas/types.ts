@@ -171,7 +171,7 @@ export type LocationSetup = {
   };
   /** Per-entity operations books. A location stores them. It does not merge peer journals. */
   financeBooks?: Record<string, import("@/lib/finance/types").EntityBook>;
-  /** DoorDash, Uber Eats, Grubhub, and the tablet webhook. */
+  /** DoorDash, Uber Eats, and the signed webhook. */
   deliveryChannels?: import("@/lib/delivery/marketplace").DeliveryChannel[];
   allowDeliveryAlcohol?: boolean;
   deliveryItemMaps?: import("@/lib/delivery/marketplace").ItemMap[];

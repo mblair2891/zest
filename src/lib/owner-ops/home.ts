@@ -17,8 +17,8 @@ export type OwnerSale = {
   cashCents: number;
   cardCents: number;
   cashPriceCents: number;
-  /** House sales omit this. Delivery channel sales set it. AvT still uses qty. */
-  channel?: "house" | "delivery";
+  /** House sales omit this. DoorDash and Uber Eats set their own channel. AvT still uses qty. */
+  channel?: "house" | "delivery" | "doordash" | "ubereats";
 };
 
 export type OwnerInvoiceLine = {
@@ -111,6 +111,8 @@ export type OwnerMetrics = {
   bevCostPct: number | null;
   deliverySalesCents: number;
   houseSalesCents: number;
+  doorDashSalesCents: number;
+  uberSalesCents: number;
 };
 
 export type AvtRow = {
@@ -257,12 +259,20 @@ function metrics(
   let bevCostCents = 0;
   let deliverySalesCents = 0;
   let houseSalesCents = 0;
+  let doorDashSalesCents = 0;
+  let uberSalesCents = 0;
   for (const row of windowSales) {
     netSalesCents += row.netCents;
     cashCents += row.cashCents;
     cardCents += row.cardCents;
     compCents += row.compCents;
-    if (row.channel === "delivery") deliverySalesCents += row.netCents;
+    if (row.channel === "doordash") {
+      doorDashSalesCents += row.netCents;
+      deliverySalesCents += row.netCents;
+    } else if (row.channel === "ubereats") {
+      uberSalesCents += row.netCents;
+      deliverySalesCents += row.netCents;
+    } else if (row.channel === "delivery") deliverySalesCents += row.netCents;
     else houseSalesCents += row.netCents;
     const recipe = recipes.find((item) => item.menuItemId === row.menuItemId);
     const cost = recipeCostCents(recipe, skus) * row.qty;
@@ -294,6 +304,8 @@ function metrics(
     bevCostPct: pct(bevCostCents, bevSalesCents),
     deliverySalesCents,
     houseSalesCents,
+    doorDashSalesCents,
+    uberSalesCents,
   };
 }
 

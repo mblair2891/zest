@@ -40,6 +40,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { usePosStore } from "@/lib/pos/store";
 import { useDeliverySession } from "@/lib/delivery/session";
+import { normalizeDeliveryChannels, waitingForPartnerKeys, WAITING_FOR_PARTNER_KEYS } from "@/lib/delivery/marketplace";
 import { claimDeliveryInboxFn } from "@/lib/delivery/api";
 import { usePlatformStore } from "@/lib/pos/platform-store";
 import type { EmployeeRole, PosView } from "@/lib/pos/types";
@@ -213,14 +214,17 @@ const BACK_OFFICE_VIEWS: PosView[] = [
 
 function DeliveryDownBanner() {
   const banner = useDeliverySession((s) => s.banner);
-  if (!banner) return null;
+  const channels = usePosStore((s) => s.settings.deliveryChannels);
+  const waiting = waitingForPartnerKeys(normalizeDeliveryChannels(channels));
+  const text = banner && banner !== WAITING_FOR_PARTNER_KEYS ? banner : waiting ? WAITING_FOR_PARTNER_KEYS : null;
+  if (!text) return null;
   return (
     <div
       data-delivery-banner
       role="status"
       className="border-b border-amber-700/40 bg-amber-50 px-3 py-2 text-sm text-amber-950"
     >
-      {banner}
+      {text}
     </div>
   );
 }

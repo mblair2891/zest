@@ -2,24 +2,38 @@ import { pickupReadyText } from "../pos/serverless-food.ts";
 
 /** Marketplace and courier channels. A marketplace check is not a card charge. */
 
-export type ChannelVendor = "doordash" | "ubereats" | "grubhub" | "webhook";
+export type ChannelVendor = "doordash" | "ubereats" | "webhook";
 export type ChannelKind = "marketplace" | "courier_dispatch";
-export type DeliveryStatus = "received" | "accepted" | "prep" | "ready" | "picked_up" | "cancelled";
+export type ChannelMode = "sandbox" | "live";
+export type DeliveryStatus = "received" | "accepted" | "prep" | "ready" | "picked_up" | "cancelled" | "rejected";
+
+export const WAITING_FOR_PARTNER_KEYS = "Waiting for partner keys.";
 
 export type DeliveryChannel = {
   id: string;
   vendor: ChannelVendor;
   kind: ChannelKind;
   label: string;
+  /** Display only. Expected payout subtracts this percent. The guest ticket does not change. */
   commissionPct: number;
-  sandboxKey: string;
-  liveKey: string;
   autoAccept: boolean;
   paused: boolean;
   down: boolean;
   smsOnReady: boolean;
-  priceMode: "percent" | "flat";
-  priceOverride: number;
+  /** Optional percent added when the delivery menu is published. */
+  markupPct: number;
+  mode: ChannelMode;
+  developerId: string;
+  keyId: string;
+  signingSecret: string;
+  storeId: string;
+  clientId: string;
+  clientSecret: string;
+  /** Legacy single key. Still counts as configured. */
+  sandboxKey?: string;
+  liveKey?: string;
+  priceMode?: "percent" | "flat";
+  priceOverride?: number;
   hours: { open: string; close: string } | null;
 };
 
@@ -45,6 +59,8 @@ export type DeliveryLine = {
   station: "kitchen" | "bar";
   course: string;
   entityId: string;
+  openItem?: boolean;
+  managerFlag?: boolean;
 };
 
 export type DeliveryCheck = {
@@ -103,36 +119,95 @@ export type IngestContext = {
 
 const TENDER_LABEL = "Marketplace payable";
 
+const BLANK_CREDS = {
+  developerId: "",
+  keyId: "",
+  signingSecret: "",
+  storeId: "",
+  clientId: "",
+  clientSecret: "",
+};
+
 export function defaultDeliveryChannels(): DeliveryChannel[] {
   const base = {
     commissionPct: 15,
-    sandboxKey: "",
-    liveKey: "",
     autoAccept: true,
     paused: false,
     down: false,
     smsOnReady: true,
-    priceMode: "percent" as const,
-    priceOverride: 0,
+    markupPct: 0,
+    mode: "sandbox" as const,
+    ...BLANK_CREDS,
     hours: { open: "11:00", close: "22:00" },
   };
   return [
     { ...base, id: "doordash", vendor: "doordash", kind: "marketplace", label: "DoorDash" },
     { ...base, id: "ubereats", vendor: "ubereats", kind: "marketplace", label: "Uber Eats" },
-    { ...base, id: "grubhub", vendor: "grubhub", kind: "marketplace", label: "Grubhub" },
     {
       ...base,
       id: "webhook",
       vendor: "webhook",
       kind: "marketplace",
-      label: "Tablet webhook",
+      label: "Signed webhook",
       commissionPct: 0,
     },
   ];
 }
 
+export function normalizeDeliveryChannels(raw: DeliveryChannel[] | undefined): DeliveryChannel[] {
+  const defaults = defaultDeliveryChannels();
+  const rows = (raw ?? []).filter(
+    (channel) => channel.vendor === "doordash" || channel.vendor === "ubereats" || channel.vendor === "webhook",
+  );
+  return defaults.map((base) => {
+    const found = rows.find((channel) => channel.id === base.id || channel.vendor === base.vendor);
+    if (!found) return base;
+    const markupPct =
+      typeof found.markupPct === "number"
+        ? found.markupPct
+        : found.priceMode === "percent"
+          ? found.priceOverride ?? 0
+          : 0;
+    return {
+      ...base,
+      ...found,
+      id: base.id,
+      vendor: base.vendor,
+      label: base.label,
+      kind: "marketplace" as const,
+      markupPct,
+      mode: found.mode === "live" ? "live" : "sandbox",
+      developerId: found.developerId ?? "",
+      keyId: found.keyId ?? "",
+      signingSecret: found.signingSecret ?? "",
+      storeId: found.storeId ?? "",
+      clientId: found.clientId ?? "",
+      clientSecret: found.clientSecret ?? "",
+    };
+  });
+}
+
+function filled(value: string | undefined): boolean {
+  return Boolean(value?.trim());
+}
+
+export function partnerConfigured(channel: DeliveryChannel): boolean {
+  if (channel.vendor === "doordash") {
+    return filled(channel.developerId) && filled(channel.keyId) && filled(channel.signingSecret) && filled(channel.storeId);
+  }
+  if (channel.vendor === "ubereats") {
+    return filled(channel.clientId) && filled(channel.clientSecret) && filled(channel.storeId);
+  }
+  return false;
+}
+
 export function channelHasKeys(channel: DeliveryChannel): boolean {
-  return Boolean(channel.sandboxKey.trim() || channel.liveKey.trim());
+  if (partnerConfigured(channel)) return true;
+  return Boolean((channel.sandboxKey ?? "").trim() || (channel.liveKey ?? "").trim());
+}
+
+export function waitingForPartnerKeys(channels: DeliveryChannel[]): boolean {
+  return !channels.some((channel) => channel.vendor !== "webhook" && channelHasKeys(channel));
 }
 
 export function nativeChannelsLive(channels: DeliveryChannel[]): boolean {
@@ -145,8 +220,8 @@ export function expectedPayoutCents(guestTotalCents: number, commissionPct: numb
 }
 
 export function channelPriceCents(priceCents: number, channel: DeliveryChannel): number {
-  if (channel.priceMode === "flat") return Math.max(0, Math.round(priceCents + channel.priceOverride));
-  return Math.max(0, Math.round(priceCents * (1 + channel.priceOverride / 100)));
+  const pct = channel.markupPct ?? (channel.priceMode === "percent" ? channel.priceOverride ?? 0 : 0);
+  return Math.max(0, Math.round(priceCents * (1 + pct / 100)));
 }
 
 export function publishDeliveryMenu(items: HouseItem[], channel: DeliveryChannel) {
@@ -172,27 +247,27 @@ export function applyHouse86(menu: HouseItem[], itemId: string, channels: Delive
   const payloads: Array<{
     vendor: ChannelVendor;
     itemId: string;
-    available: false;
-    status: "unavailable";
+    available: boolean;
+    status: "unavailable" | "available";
     houseDeleted: false;
   }> = [];
   const logs: string[] = [];
-  if (item && !item.available) {
+  if (item) {
     for (const channel of channels) {
-      if (channel.vendor === "webhook") {
-        logs.push(`${channel.label}: 86 logged`);
+      if (channel.vendor !== "doordash" && channel.vendor !== "ubereats") {
+        logs.push(`${channel.label}: availability logged`);
         continue;
       }
       if (channelHasKeys(channel)) {
         payloads.push({
           vendor: channel.vendor,
           itemId: item.id,
-          available: false,
-          status: "unavailable",
+          available: item.available,
+          status: item.available ? "available" : "unavailable",
           houseDeleted: false,
         });
       } else {
-        logs.push(`${channel.label}: 86 logged, no keys`);
+        logs.push(`${channel.label}: availability logged, no keys`);
       }
     }
   }
@@ -204,8 +279,13 @@ export function planStatusPush(
   status: DeliveryStatus,
   reason: string,
 ): { mode: "native" | "log" | "queue"; payload: Record<string, unknown> | null; banner: string | null; log: string } {
-  if (status === "cancelled" && !reason.trim()) {
-    return { mode: "log", payload: null, banner: null, log: "Cancel needs a reason" };
+  if ((status === "cancelled" || status === "rejected") && !reason.trim()) {
+    return {
+      mode: "log",
+      payload: null,
+      banner: null,
+      log: status === "rejected" ? "Reject needs a reason" : "Cancel needs a reason",
+    };
   }
   const payload = {
     vendor: channel.vendor,
@@ -221,7 +301,7 @@ export function planStatusPush(
       log: `${channel.label}: queued ${status}`,
     };
   }
-  if (channel.vendor !== "webhook" && channelHasKeys(channel)) {
+  if ((channel.vendor === "doordash" || channel.vendor === "ubereats") && channelHasKeys(channel)) {
     return { mode: "native", payload, banner: null, log: `${channel.label}: push ${status}` };
   }
   return { mode: "log", payload: null, banner: null, log: `${channel.label}: log ${status}` };
@@ -314,22 +394,6 @@ function parseUber(body: Record<string, unknown>): RawOrder | null {
   };
 }
 
-function parseGrubhub(body: Record<string, unknown>): RawOrder | null {
-  const order = body.order && typeof body.order === "object" ? (body.order as Record<string, unknown>) : null;
-  if (!order) return null;
-  const diner = order.diner && typeof order.diner === "object" ? (order.diner as Record<string, unknown>) : {};
-  return {
-    vendor: "grubhub",
-    channelId: "grubhub",
-    orderId: text(order.uuid || order.id),
-    guestName: text(diner.name),
-    phone: text(diner.phone),
-    dueAt: text(order.when_for),
-    instructions: text(order.special_instructions),
-    lines: linesFrom(order.lines, "menu_item_id", "name"),
-  };
-}
-
 function parseGeneric(body: Record<string, unknown>): RawOrder | null {
   const source = text(body.source).toLowerCase();
   if (source !== "otter" && source !== "deliverect" && source !== "webhook" && source !== "tablet") return null;
@@ -346,32 +410,29 @@ function parseGeneric(body: Record<string, unknown>): RawOrder | null {
   };
 }
 
+export function diningOptionFor(vendor: ChannelVendor, channelId: string): string {
+  if (vendor === "doordash") return "Delivery-DoorDash";
+  if (vendor === "ubereats") return "Delivery-UberEats";
+  if (channelId === "webhook") return "Delivery-webhook";
+  return `Delivery-${channelId}`;
+}
+
 export function parseInbound(body: unknown): RawOrder | { error: string } {
   if (!body || typeof body !== "object") return { error: "invalid json" };
   const record = body as Record<string, unknown>;
   const event = text(record.event_type || record.type).toLowerCase();
-  if (event.includes("ordercreate") || event === "orders.notification" || record.order) {
-    const door = parseDoorDash(record);
-    if (door && (event.includes("ordercreate") || door.lines.length || door.orderId)) {
-      if (event.includes("uber") || event === "orders.notification") {
-        const uber = parseUber(record);
-        if (uber) return uber;
-      }
-      if (event.includes("grubhub") || event === "order.created") {
-        const grub = parseGrubhub(record);
-        if (grub) return grub;
-      }
-      if (event.includes("ordercreate") || (door.lines.length && !event.includes("uber") && !event.includes("grubhub"))) {
-        return door;
-      }
-    }
-  }
   const generic = parseGeneric(record);
   if (generic) return generic;
+  if (event.includes("uber") || event === "orders.notification") {
+    const uber = parseUber(record);
+    if (uber?.orderId) return uber;
+  }
+  if (event.includes("ordercreate") || event === "") {
+    const door = parseDoorDash(record);
+    if (door?.orderId && (event.includes("ordercreate") || door.lines.length)) return door;
+  }
   const uber = parseUber(record);
-  if (uber?.orderId) return uber;
-  const grub = parseGrubhub(record);
-  if (grub?.orderId) return grub;
+  if (uber?.orderId && event.includes("uber")) return uber;
   return { error: "Unrecognized delivery order" };
 }
 
@@ -389,10 +450,9 @@ function mappedItem(line: RawLine, ctx: IngestContext): HouseItem | undefined {
   return ctx.menu.find((item) => item.id === line.externalId);
 }
 
-function foodByName(line: RawLine, ctx: IngestContext): HouseItem | undefined {
-  const name = line.name.toLowerCase();
-  const food = ctx.menu.filter((item) => !item.alcohol && (!ctx.foodEntityId || item.entityId === ctx.foodEntityId));
-  return food.find((item) => item.name.toLowerCase() === name);
+function flaggedNote(note: string, managerFlag: boolean): string {
+  if (!managerFlag) return note;
+  return note ? `${note} manager flag` : "manager flag";
 }
 
 export function formatKitchenTicket(check: {
@@ -439,32 +499,41 @@ export function handleDeliveryWebhook(body: unknown, ctx: IngestContext): Webhoo
   for (const raw of parsed.lines) {
     const mapped = mappedItem(raw, ctx);
     const alcohol = raw.alcohol || mapped?.alcohol === true;
-    if (alcohol) {
-      if (!ctx.allowDeliveryAlcohol || !mapped) {
-        dropped.push({ name: raw.name, reason: "alcohol" });
-        continue;
-      }
-    }
-    const item = mapped ?? (!alcohol ? foodByName(raw, ctx) : undefined);
-    if (!item) {
-      dropped.push({ name: raw.name, reason: "unmapped" });
+    if (alcohol && (!ctx.allowDeliveryAlcohol || !mapped)) {
+      dropped.push({ name: raw.name, reason: "alcohol" });
       continue;
     }
-    const entityId = item.entityId || ctx.foodEntityId;
+    if (!mapped) {
+      const note = flaggedNote([raw.name, raw.note].filter(Boolean).join(" "), true);
+      lines.push({
+        menuItemId: "",
+        name: "open item",
+        quantity: raw.quantity,
+        unitPriceCents: raw.priceCents,
+        note,
+        station: "kitchen",
+        course: "entree",
+        entityId: ctx.foodEntityId,
+        openItem: true,
+        managerFlag: true,
+      });
+      continue;
+    }
+    const entityId = mapped.entityId || ctx.foodEntityId;
     lines.push({
-      menuItemId: item.id,
-      name: item.name,
+      menuItemId: mapped.id,
+      name: mapped.name,
       quantity: raw.quantity,
-      unitPriceCents: raw.priceCents || item.priceCents,
+      unitPriceCents: raw.priceCents || mapped.priceCents,
       note: raw.note,
-      station: item.station,
-      course: item.course || (item.station === "bar" ? "drink" : "entree"),
+      station: mapped.station,
+      course: mapped.course || (mapped.station === "bar" ? "drink" : "entree"),
       entityId,
     });
   }
   const guestTotalCents = lines.reduce((sum, line) => sum + line.unitPriceCents * line.quantity, 0);
   const status: DeliveryStatus = channel.autoAccept ? "accepted" : "received";
-  const diningOption = `Delivery-${parsed.channelId === "webhook" ? "webhook" : parsed.channelId}`;
+  const diningOption = diningOptionFor(channel.vendor === "webhook" ? parsed.vendor : channel.vendor, parsed.channelId);
   const draft = {
     diningOption,
     guestName: parsed.guestName,
@@ -527,8 +596,9 @@ export function handleDeliveryWebhook(body: unknown, ctx: IngestContext): Webhoo
     queued = true;
     banner = `${channel.label} is down. Orders stay on the check. Outbound status is queued.`;
     log.push(banner);
-  } else if (channel.vendor !== "webhook" && !channelHasKeys(channel)) {
-    log.push(`${channel.label}: webhook only, no keys`);
+  } else if (waitingForPartnerKeys(ctx.channels)) {
+    banner = WAITING_FOR_PARTNER_KEYS;
+    log.push(banner);
   }
   const pushed = planStatusPush(channel.down ? channel : { ...channel, down: false }, status, "");
   log.push(pushed.log);
