@@ -17,6 +17,8 @@ export type OwnerSale = {
   cashCents: number;
   cardCents: number;
   cashPriceCents: number;
+  /** House sales omit this. Delivery channel sales set it. AvT still uses qty. */
+  channel?: "house" | "delivery";
 };
 
 export type OwnerInvoiceLine = {
@@ -107,6 +109,8 @@ export type OwnerMetrics = {
   laborPct: number | null;
   foodCostPct: number | null;
   bevCostPct: number | null;
+  deliverySalesCents: number;
+  houseSalesCents: number;
 };
 
 export type AvtRow = {
@@ -251,11 +255,15 @@ function metrics(
   let bevSalesCents = 0;
   let foodCostCents = 0;
   let bevCostCents = 0;
+  let deliverySalesCents = 0;
+  let houseSalesCents = 0;
   for (const row of windowSales) {
     netSalesCents += row.netCents;
     cashCents += row.cashCents;
     cardCents += row.cardCents;
     compCents += row.compCents;
+    if (row.channel === "delivery") deliverySalesCents += row.netCents;
+    else houseSalesCents += row.netCents;
     const recipe = recipes.find((item) => item.menuItemId === row.menuItemId);
     const cost = recipeCostCents(recipe, skus) * row.qty;
     if (row.kind === "bev") {
@@ -284,6 +292,8 @@ function metrics(
     laborPct: pct(laborCents, netSalesCents),
     foodCostPct: pct(foodCostCents, foodSalesCents),
     bevCostPct: pct(bevCostCents, bevSalesCents),
+    deliverySalesCents,
+    houseSalesCents,
   };
 }
 

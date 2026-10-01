@@ -71,6 +71,7 @@ export function collectOwnerFacts(args: {
         cashCents: Math.round(cashPay * share),
         cardCents: Math.round(cardPay * share),
         cashPriceCents: line.quantity > 0 ? Math.round(gross / line.quantity) : line.unitPriceCents,
+        channel: order.marketplace || order.payments.some((pay) => pay.method === "marketplace") ? "delivery" : "house",
       });
     }
   }

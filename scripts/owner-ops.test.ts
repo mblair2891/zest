@@ -213,7 +213,7 @@ test("owner ops guide names the home and stays off a full back office", () => {
   ]) {
     assert.match(guide, new RegExp(`id: "${id}"`));
   }
-  assert.match(version, /2026\.10\.182/);
+  assert.match(version, /2026\.10\.183/);
   assert.match(home, /does not process payroll/i);
   assert.match(home, /does not change the menu price/i);
   assert.doesNotMatch(home, /commissary|check run|\bACH\b|netPay|\bedi\b/i);

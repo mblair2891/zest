@@ -43,8 +43,15 @@ export type PrintJob = {
   checkNumber: number | string;
   tableLabel: string;
   serverName: string;
-  /** Guest name on a kiosk or table-QR kitchen ticket. */
+  /** Guest name on a kiosk, table-QR, or delivery kitchen ticket. */
   guestName?: string;
+  guestPhone?: string;
+  channelOrderId?: string;
+  dueAt?: string;
+  specialInstructions?: string;
+  diningOption?: string;
+  /** Marketplace payable. The slip does not ask for a card. */
+  marketplaceTender?: boolean;
   operatorId?: string | null;
   operatorName?: string | null;
   copy?: "guest" | "merchant";

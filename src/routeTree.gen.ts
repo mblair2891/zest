@@ -65,6 +65,7 @@ import { Route as WaitlistOptOutTokenRouteImport } from './routes/waitlist.opt-o
 import { Route as ApiPaymentsFinixWebhookRouteImport } from './routes/api/payments/finix/webhook'
 import { Route as ApiPaymentsStripeWebhookRouteImport } from './routes/api/payments/stripe/webhook'
 import { Route as ApiWebhooksSquareRouteImport } from './routes/api/webhooks/square'
+import { Route as ApiWebhooksDeliveryRouteImport } from './routes/api/webhooks/delivery'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -346,6 +347,11 @@ const ApiWebhooksSquareRoute = ApiWebhooksSquareRouteImport.update({
   path: '/api/webhooks/square',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiWebhooksDeliveryRoute = ApiWebhooksDeliveryRouteImport.update({
+  id: '/api/webhooks/delivery',
+  path: '/api/webhooks/delivery',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -404,6 +410,7 @@ export interface FileRoutesByFullPath {
   '/api/payments/finix/webhook': typeof ApiPaymentsFinixWebhookRoute
   '/api/payments/stripe/webhook': typeof ApiPaymentsStripeWebhookRoute
   '/api/webhooks/square': typeof ApiWebhooksSquareRoute
+  '/api/webhooks/delivery': typeof ApiWebhooksDeliveryRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -460,6 +467,7 @@ export interface FileRoutesByTo {
   '/api/payments/finix/webhook': typeof ApiPaymentsFinixWebhookRoute
   '/api/payments/stripe/webhook': typeof ApiPaymentsStripeWebhookRoute
   '/api/webhooks/square': typeof ApiWebhooksSquareRoute
+  '/api/webhooks/delivery': typeof ApiWebhooksDeliveryRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -519,6 +527,7 @@ export interface FileRoutesById {
   '/api/payments/finix/webhook': typeof ApiPaymentsFinixWebhookRoute
   '/api/payments/stripe/webhook': typeof ApiPaymentsStripeWebhookRoute
   '/api/webhooks/square': typeof ApiWebhooksSquareRoute
+  '/api/webhooks/delivery': typeof ApiWebhooksDeliveryRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -579,6 +588,7 @@ export interface FileRouteTypes {
     | '/api/payments/finix/webhook'
     | '/api/payments/stripe/webhook'
     | '/api/webhooks/square'
+    | '/api/webhooks/delivery'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -635,6 +645,7 @@ export interface FileRouteTypes {
     | '/api/payments/finix/webhook'
     | '/api/payments/stripe/webhook'
     | '/api/webhooks/square'
+    | '/api/webhooks/delivery'
   id:
     | '__root__'
     | '/'
@@ -693,6 +704,7 @@ export interface FileRouteTypes {
     | '/api/payments/finix/webhook'
     | '/api/payments/stripe/webhook'
     | '/api/webhooks/square'
+    | '/api/webhooks/delivery'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -742,6 +754,7 @@ export interface RootRouteChildren {
   ApiPaymentsFinixWebhookRoute: typeof ApiPaymentsFinixWebhookRoute
   ApiPaymentsStripeWebhookRoute: typeof ApiPaymentsStripeWebhookRoute
   ApiWebhooksSquareRoute: typeof ApiWebhooksSquareRoute
+  ApiWebhooksDeliveryRoute: typeof ApiWebhooksDeliveryRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -1138,6 +1151,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiWebhooksSquareRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/webhooks/delivery': {
+      id: '/api/webhooks/delivery'
+      path: '/api/webhooks/delivery'
+      fullPath: '/api/webhooks/delivery'
+      preLoaderRoute: typeof ApiWebhooksDeliveryRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -1271,6 +1291,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiPaymentsFinixWebhookRoute: ApiPaymentsFinixWebhookRoute,
   ApiPaymentsStripeWebhookRoute: ApiPaymentsStripeWebhookRoute,
   ApiWebhooksSquareRoute: ApiWebhooksSquareRoute,
+  ApiWebhooksDeliveryRoute: ApiWebhooksDeliveryRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

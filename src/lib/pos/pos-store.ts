@@ -277,6 +277,17 @@ export interface PosStore {
     giftCode?: string;
   }) => ActionResult<{ orderId?: string; number?: string }>;
   markPickedUp: (orderId: string) => ActionResult;
+  pushDeliveryStatus: (
+    orderId: string,
+    status: import("@/lib/delivery/marketplace").DeliveryStatus,
+    reason?: string,
+  ) => ActionResult & { finixCalled?: false; mode?: string };
+  materializeDeliveryCheck: (
+    check: import("@/lib/delivery/marketplace").DeliveryCheck,
+  ) => ActionResult & { orderId?: string; duplicate?: boolean; finixCalled?: false; kitchenTicket?: string };
+  ingestDeliveryWebhook: (
+    body: unknown,
+  ) => ActionResult & { accepted?: boolean; finixCalled?: false; queued?: boolean; kitchenTicket?: string; orderId?: string };
   sweepPickupReminders: () => void;
   guestPayOrder: (
     orderId: string,

@@ -24,7 +24,7 @@ export function SubscriberWhitePaper() {
         summex.app · Guest cards: {PAYMENTS_BRAND} only
       </p>
       <p className="mt-2 text-xs text-muted-foreground">
-        Revision · 30 Sep 2026 — Owner ops is each selling entity’s daily home. Aligns with Operators Guide v2026.10.182.
+        Revision · 30 Sep 2026 — Delivery channels open a marketplace check. Aligns with Operators Guide v2026.10.183.
         The house toggles which tenders it accepts. Station UI is device role ∩
         staff PIN. After PIN the tablet shows a short role menu. Pair with a
         typed Devices code; QR is optional. Peer venues have no host merchant;
@@ -250,6 +250,11 @@ export function SubscriberWhitePaper() {
           <li>
             <strong className="text-ivory">Scheduling per entity.</strong> One operator’s
             week is not the other’s. Clock in is still the house tablet.
+          </li>
+          <li>
+            <strong className="text-ivory">Delivery channels.</strong> A marketplace
+            order opens a check as Marketplace payable. No second card. The kitchen
+            ticket follows the to-go route.
           </li>
           <li>
             <strong className="text-ivory">Owner ops.</strong> The selling entity’s

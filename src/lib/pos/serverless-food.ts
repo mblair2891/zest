@@ -91,6 +91,8 @@ export type PickupOrder = {
   pickupSmsAt?: number | null;
   pickupReminderSmsAt?: number | null;
   pickedUpAt?: number | null;
+  /** False skips the ready text. Unset still sends when a phone is on the check. */
+  pickupSmsEnabled?: boolean | null;
   lines?: PickupLine[];
 };
 
@@ -132,6 +134,7 @@ export function nextPickupSms(
   },
   now: number,
 ): PickupNotice | null {
+  if (order.pickupSmsEnabled === false) return null;
   const phone = String(order.guestPhone ?? "").trim();
   if (!phone) return null;
   if (order.pickedUpAt) return null;

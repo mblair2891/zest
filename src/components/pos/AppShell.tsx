@@ -39,6 +39,8 @@ import {
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { usePosStore } from "@/lib/pos/store";
+import { useDeliverySession } from "@/lib/delivery/session";
+import { claimDeliveryInboxFn } from "@/lib/delivery/api";
 import { usePlatformStore } from "@/lib/pos/platform-store";
 import type { EmployeeRole, PosView } from "@/lib/pos/types";
 import {
@@ -208,6 +210,20 @@ const BACK_OFFICE_VIEWS: PosView[] = [
   "package",
   "integrations",
 ];
+
+function DeliveryDownBanner() {
+  const banner = useDeliverySession((s) => s.banner);
+  if (!banner) return null;
+  return (
+    <div
+      data-delivery-banner
+      role="status"
+      className="border-b border-amber-700/40 bg-amber-50 px-3 py-2 text-sm text-amber-950"
+    >
+      {banner}
+    </div>
+  );
+}
 
 export function AppShell() {
   useDemoLiveSync();
@@ -386,6 +402,25 @@ export function AppShell() {
   }, [tenantLocationId]);
 
   useEffect(() => {
+    if (!tenantLocationId) return;
+    let stop = false;
+    const pull = () => {
+      void claimDeliveryInboxFn({ data: { locationId: tenantLocationId } })
+        .then((rows) => {
+          if (stop || !Array.isArray(rows)) return;
+          for (const check of rows) usePosStore.getState().materializeDeliveryCheck(check);
+        })
+        .catch(() => undefined);
+    };
+    pull();
+    const timer = window.setInterval(pull, 20_000);
+    return () => {
+      stop = true;
+      window.clearInterval(timer);
+    };
+  }, [tenantLocationId]);
+
+  useEffect(() => {
     if (!emp) return;
     const urlRole = readStationDeviceRole();
     if (urlRole) {
@@ -465,6 +500,7 @@ export function AppShell() {
       >
         <LoginOnboardingHost />
         <TrainingBanner />
+        <DeliveryDownBanner />
         <VenueRegBanner />
         <StationUpdateBar />
         <PrintWaitingBanner />
@@ -517,6 +553,7 @@ export function AppShell() {
         data-station-pin-shell
       >
         <TrainingBanner />
+        <DeliveryDownBanner />
         <VenueRegBanner />
         <StationUpdateBar />
         <PrintWaitingBanner />
@@ -579,6 +616,7 @@ export function AppShell() {
       <PayrollExportWatcher />
       <StaffingWatcher />
       <TrainingBanner />
+      <DeliveryDownBanner />
       <VenueRegBanner />
       <StationUpdateBar />
       <PrintWaitingBanner />

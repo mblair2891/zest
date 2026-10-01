@@ -1,7 +1,7 @@
 # Operators Guide — authoring
 
-**Revision · 30 Sep 2026** — Owner ops is each selling entity’s daily home.
-Guide v2026.10.182.
+**Revision · 30 Sep 2026** — Delivery channels open a marketplace check.
+Guide v2026.10.183.
 
 The in-app **Operators Guide** is the living product manual. It is not a
 separate PDF. Staff open it from **Guide** / **?** in the POS and platform
@@ -147,7 +147,8 @@ Bookmarkable URL: `/guide?topic=my-topic`.
 - First location = the venue owner’s job after contract signed. Platform records the contract and emails the owner a one-time password. They never see CRM / pipeline / other tenants. Shared venue: owner invites each selling-entity POC. Training sandbox until they schedule go-live.
 - Training = practice + Quantum sandbox; optional inventory tracking. Go live now or schedule; owner keep/erase per data class; menus/recipes/staff/settings kept.
 - Operations finance: each selling entity owns its chart of accounts, vendors, inventory, and journals. A location rollup can view those books and cannot edit a peer. Training journals stay in the sandbox until go-live. Nightly and close of business post sales, tenders, tips, tax, gift liability, cash over/short, and revenue share. Payroll stays an export (ADP, Intuit, or CSV). Summex does not process payroll and does not connect a third-party POS.
-- Owner ops: the selling entity home shows today and this week — net sales, cash versus card, comps, prime cost, labor, food cost, and beverage cost. A peer sees only its own numbers. AvT exceptions list the item, expected, actual, and dollars. Mark event, take-home, count error, or investigate. Weekly count is optional. Next week’s draft uses the last four of that weekday plus an event; the PIN clock remains the hours. End of night is the closeout’s system cash, blind count, over or short, and deposit. Open invoices can be marked paid. A price above the last invoice is flagged. Menu classes suggest a price test and do not change the cash price.
+- Delivery channels: DoorDash, Uber Eats, Grubhub, and a tablet webhook. An inbound order opens a check, dining option Delivery- and the channel, tender Marketplace payable. No second card. Quantum Payments does not run on that check. Guest name, phone, channel order number, due time, and instructions print on the kitchen ticket. Food routes like to-go. Pickup rail can send the ready text. 86 pushes unavailable when a channel has keys and does not delete the house item. Expected payout is guest total minus the channel commission. Owner ops shows delivery sales beside house sales. AvT still counts the items. Empty keys leave the webhook live. A down channel queues and banners. The POS stays up.
+- Owner ops: the selling entity home shows today and this week — net sales, cash versus card, comps, prime cost, labor, food cost, and beverage cost. Delivery sales sit beside house sales. A peer sees only its own numbers. AvT exceptions list the item, expected, actual, and dollars. Mark event, take-home, count error, or investigate. Weekly count is optional. Next week’s draft uses the last four of that weekday plus an event; the PIN clock remains the hours. End of night is the closeout’s system cash, blind count, over or short, and deposit. Open invoices can be marked paid. A price above the last invoice is flagged. Menu classes suggest a price test and do not change the cash price.
 - PIN login ≠ clock in/out ≠ server closeout.
 - Gift: sale-point issuer or house; redeem settles internally; unredeemed liability on issuer; house cards house-keeps remainder.
 - Staffing recs never auto clock-out. Accept ≠ punch out.

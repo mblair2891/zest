@@ -101,7 +101,8 @@ export type PaymentMethod =
   | "house_account"
   | "room_charge"
   | "check"
-  | "other";
+  | "other"
+  | "marketplace";
 
 export type PosView =
   | "floor"
@@ -348,6 +349,13 @@ export interface RestaurantSettings {
   cardProcessor?: "finix" | "stripe" | "square" | "none";
   /** Manager toggle for production Square Terminal charges. */
   squareLiveCards?: boolean;
+  /** Marketplace and courier channels. Empty keys leave only the tablet webhook live. */
+  deliveryChannels?: import("@/lib/delivery/marketplace").DeliveryChannel[];
+  /** Alcohol on a delivery ticket only when this is on and the channel item is mapped. */
+  allowDeliveryAlcohol?: boolean;
+  deliveryItemMaps?: import("@/lib/delivery/marketplace").ItemMap[];
+  /** Last published delivery menu. The house catalog stays in place. */
+  deliveryPublished?: import("@/lib/delivery/marketplace").HouseItem[];
   /** Location-configurable loss-prevention gates. */
   lossPrevention?: import("./loss-prevention").LossPreventionConfig;
 }
@@ -612,6 +620,17 @@ export interface Order {
   /** Handheld asked a terminal to print the paid receipt. */
   receiptPendingAt?: number;
   receiptPendingBy?: string;
+  /** Delivery-{channel}. Marketplace orders are already paid by the channel. */
+  diningOption?: string;
+  channelOrderId?: string;
+  dueAt?: string;
+  specialInstructions?: string;
+  marketplace?: boolean;
+  deliveryVendor?: string;
+  deliveryStatus?: import("@/lib/delivery/marketplace").DeliveryStatus;
+  expectedPayoutCents?: number;
+  /** False skips the pickup text. Unset keeps the existing ready text. */
+  pickupSmsEnabled?: boolean;
 }
 
 export interface KitchenTicketItem {
@@ -631,6 +650,11 @@ export interface KitchenTicket {
   tableLabel: string;
   serverName: string;
   guestName?: string;
+  guestPhone?: string;
+  channelOrderId?: string;
+  dueAt?: string;
+  specialInstructions?: string;
+  diningOption?: string;
   serverId?: string;
   station: TicketStation;
   vendorId?: string;

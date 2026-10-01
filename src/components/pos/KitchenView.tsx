@@ -14,6 +14,7 @@ import { findStaffByPin } from "@/lib/pos/pin";
 import { isProspectDemo } from "@/lib/demo/session";
 import { isDemoStaffPin } from "@/lib/demo/pin";
 import { RecipeLookupButton } from "@/components/recipes/RecipeLookup";
+import { allFoodBumped } from "@/lib/pos/serverless-food";
 
 type KitchenRail = TicketStation | "all";
 
@@ -57,9 +58,11 @@ export function KitchenView({ station, expo, operatorId }: Props) {
     }, 30_000);
     return () => window.clearInterval(id);
   }, []);
-  const pickupRail = orders.filter(
-    (o) => o.pickupSmsAt && !o.pickedUpAt && o.status !== "voided" && o.status !== "cancelled",
-  );
+  const pickupRail = orders.filter((o) => {
+    if (o.pickedUpAt || o.status === "voided" || o.status === "cancelled") return false;
+    if (o.marketplace) return allFoodBumped(o, tickets) || Boolean(o.pickupSmsAt);
+    return Boolean(o.pickupSmsAt);
+  });
   const employees = usePosStore((s) => s.employees);
   const locId = usePosStore((s) => s.tenantLocationId) || "";
   const emp = usePosStore((s) => s.employees.find((e) => e.id === s.currentEmployeeId));
@@ -284,6 +287,19 @@ export function KitchenView({ station, expo, operatorId }: Props) {
                         {t.orderNumber}
                       </span>
                     </p>
+                    {t.guestName ? (
+                      <p className="text-xs text-muted-foreground">
+                        {t.guestName}
+                        {t.guestPhone ? ` · ${t.guestPhone}` : ""}
+                        {t.channelOrderId ? ` · ${t.channelOrderId}` : ""}
+                      </p>
+                    ) : null}
+                    {t.dueAt || t.specialInstructions ? (
+                      <p className="text-xs text-muted-foreground">
+                        {t.dueAt ? `Due ${t.dueAt}` : ""}
+                        {t.specialInstructions ? ` · ${t.specialInstructions}` : ""}
+                      </p>
+                    ) : null}
                     <p className="text-xs text-muted-foreground">
                       {t.serverName} · {formatTime(t.createdAt, settings.timezone)} ·{" "}
                       <span className="capitalize">{t.course}</span>

@@ -63,6 +63,9 @@ function MetricGrid({ title, row }: { title: string; row: OwnerMetrics }) {
         <Metric label="Food cost" value={pct(row.foodCostPct)} />
         <Metric label="Bev cost" value={pct(row.bevCostPct)} />
       </div>
+      <p className="mt-2 text-xs text-muted-foreground" data-owner-delivery>
+        Delivery {formatCurrency(row.deliverySalesCents)} · House {formatCurrency(row.houseSalesCents)}
+      </p>
     </section>
   );
 }

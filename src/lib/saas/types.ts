@@ -171,6 +171,19 @@ export type LocationSetup = {
   };
   /** Per-entity operations books. A location stores them. It does not merge peer journals. */
   financeBooks?: Record<string, import("@/lib/finance/types").EntityBook>;
+  /** DoorDash, Uber Eats, Grubhub, and the tablet webhook. */
+  deliveryChannels?: import("@/lib/delivery/marketplace").DeliveryChannel[];
+  allowDeliveryAlcohol?: boolean;
+  deliveryItemMaps?: import("@/lib/delivery/marketplace").ItemMap[];
+  deliveryPublished?: import("@/lib/delivery/marketplace").HouseItem[];
+  /** Inbound marketplace checks waiting for the POS to open. */
+  deliveryInbox?: Array<
+    import("@/lib/delivery/marketplace").DeliveryCheck & {
+      banner?: string | null;
+      queued?: boolean;
+    }
+  >;
+  deliveryBanner?: string | null;
 };
 
 export const EMPTY_LOCATION_SETUP: LocationSetup = {

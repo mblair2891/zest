@@ -154,7 +154,12 @@ export function ticketHtml(job: PrintJob): string {
   <h2>${esc(title)}${job.copy === "merchant" ? " · merchant" : ""}</h2>
   <div class="row"><span>#${esc(String(job.checkNumber))}</span><span>${esc(job.tableLabel)}</span></div>
   <div class="row"><span>${esc(job.serverName)}</span><span>${esc(formatVenueTime(job.at, job.timezone))}</span></div>
+  ${job.diningOption ? `<div>${esc(job.diningOption)}</div>` : ""}
   ${job.guestName ? `<div>${esc(job.guestName)}</div>` : ""}
+  ${job.guestPhone ? `<div>${esc(job.guestPhone)}</div>` : ""}
+  ${job.channelOrderId ? `<div>${esc(job.channelOrderId)}</div>` : ""}
+  ${job.dueAt ? `<div>${esc(job.dueAt)}</div>` : ""}
+  ${job.specialInstructions ? `<div>${esc(job.specialInstructions)}</div>` : ""}
   ${job.operatorName ? `<div>${esc(job.operatorName)}</div>` : ""}
   <div class="rule"></div>
   ${items}
@@ -167,7 +172,7 @@ export function ticketHtml(job: PrintJob): string {
          </div>`
       : ""
   }
-  <p class="muted">Quantum Payments · Summex</p>
+  ${job.marketplaceTender ? "" : `<p class="muted">Quantum Payments · Summex</p>`}
 </body>
 </html>`;
 }

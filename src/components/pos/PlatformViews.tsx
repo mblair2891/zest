@@ -685,6 +685,8 @@ function PurchasingViewLegacy() {
 export function DeliveryView() {
   const drivers = usePlatformStore((s) => s.drivers);
   const orders = usePlatformStore((s) => s.onlineOrders);
+  const marketplace = usePosStore((s) => s.orders.filter((order) => order.marketplace));
+  const pushStatus = usePosStore((s) => s.pushDeliveryStatus);
   const assign = usePlatformStore((s) => s.assignDriver);
   const deliveryOrders = orders.filter(
     (o) =>
@@ -694,6 +696,36 @@ export function DeliveryView() {
 
   return (
     <Shell title="Delivery dispatch">
+      <div className="mb-4 space-y-2" data-marketplace-orders>
+        <p className="text-xs font-medium uppercase text-muted-foreground">Marketplace checks</p>
+        {marketplace.length === 0 ? (
+          <p className="text-sm text-muted-foreground">No marketplace orders yet.</p>
+        ) : (
+          marketplace.map((order) => (
+            <div key={order.id} className="rounded-xl border border-border bg-surface p-3 text-sm">
+              <p className="font-medium">
+                {order.diningOption} · {order.guestName} · {order.channelOrderId}
+              </p>
+              <p className="text-xs text-muted-foreground">
+                Marketplace payable
+                {order.expectedPayoutCents != null ? ` · payout ${(order.expectedPayoutCents / 100).toFixed(2)}` : ""}
+                {order.dueAt ? ` · due ${order.dueAt}` : ""}
+              </p>
+              <p className="text-xs text-muted-foreground">{order.deliveryStatus}</p>
+              <div className="mt-2 flex flex-wrap gap-1">
+                {(["accepted", "prep", "ready", "picked_up"] as const).map((status) => (
+                  <Button key={status} size="sm" variant="outline" onClick={() => pushStatus(order.id, status, "")}>
+                    {status.replace("_", " ")}
+                  </Button>
+                ))}
+                <Button size="sm" variant="outline" onClick={() => pushStatus(order.id, "cancelled", "Store cancelled")}>
+                  Cancel
+                </Button>
+              </div>
+            </div>
+          ))
+        )}
+      </div>
       <div className="grid gap-3 lg:grid-cols-2">
         <div>
           <p className="mb-2 text-xs font-medium uppercase text-muted-foreground">

@@ -343,7 +343,12 @@ export function buildEscPos(job: PrintJob, opts?: EscPosOptions): Uint8Array {
     line(String(job.checkNumber), job.tableLabel, width),
     line(job.serverName, formatVenueTime(job.at, job.timezone), width),
   ];
+  if (job.diningOption) parts.push(line(job.diningOption, "", width));
   if (job.guestName) parts.push(line(job.guestName, "", width));
+  if (job.guestPhone) parts.push(line(job.guestPhone, "", width));
+  if (job.channelOrderId) parts.push(line(job.channelOrderId, "", width));
+  if (job.dueAt) parts.push(line(job.dueAt, "", width));
+  if (job.specialInstructions) parts.push(line(job.specialInstructions, "", width));
   if (job.operatorName) parts.push(line(job.operatorName, "", width));
   parts.push(text("-".repeat(width)), FEED);
   const groups = groupLinesByEntity(job.items, job.locationName);

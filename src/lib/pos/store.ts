@@ -89,6 +89,16 @@ import { resolveReceiptDrawer } from "../print/receipt-drawer";
 import { readPairedDeviceId } from "./location-devices";
 import { destinationForGroup, ticketStationForDestination } from "./order-destinations";
 import { groupFireSlips } from "./fire-routing";
+import {
+	applyHouse86,
+	defaultDeliveryChannels,
+	handleDeliveryWebhook,
+	planStatusPush,
+	type DeliveryCheck,
+	type DeliveryStatus,
+	type HouseItem,
+} from "../delivery/marketplace.ts";
+import { useDeliverySession } from "../delivery/session";
 import { assignNewSectionToSolePrinters } from "../print/printer-assignment";
 import { methodEnabled, parsePaymentMethods, payConfigForProcessor } from "./payment-methods";
 import { giftSellBlockedReason, parseGiftLimits } from "./gift-limits";
@@ -175,7 +185,7 @@ import {
 import { employeesForVenue, venueById } from "./entities";
 import { useSaasStore } from "./saas-store";
 import { starterPosSlice } from "./starter-seed";
-import type { VenueEntityId } from "./types";
+import type { Course, VenueEntityId } from "./types";
 import type { PosStore, PosStorePersist } from "./pos-store";
 import {
   HOST_SCOPE,
@@ -2963,6 +2973,9 @@ const usePosStoreRaw = create<PosStore>()(persist((set, get) => {
 			ok: false,
 			error: "Paid check is frozen. Reopen to change tenders."
 		};
+		if (order.marketplace || order.payments?.some((p: { method?: string }) => p.method === "marketplace")) {
+			return { ok: false, error: "This check is Marketplace payable. No second card." };
+		}
 		const deviceRole = currentDeviceRole(get);
 		if (odsBlocksTender(deviceRole, method)) {
 			return { ok: false, error: "ODS cannot tender cash or gift. Use an order or host station." };
@@ -3333,6 +3346,17 @@ const usePosStoreRaw = create<PosStore>()(persist((set, get) => {
 		floorSync("bump", ticketId);
 		printNow("bump", ticketId);
 		syncPickupSms(get, set);
+		if (ticket?.orderId) {
+			const delivery = get().orders.find((o: any) => o.id === ticket.orderId);
+			if (
+				delivery?.marketplace &&
+				delivery.deliveryStatus !== "ready" &&
+				delivery.deliveryStatus !== "picked_up" &&
+				delivery.deliveryStatus !== "cancelled"
+			) {
+				get().pushDeliveryStatus(delivery.id, "ready", "");
+			}
+		}
 	},
 	recallTicket: (ticketId) => {
 		set({ tickets: get().tickets.map((t: any) => t.id === ticketId ? {
@@ -3343,12 +3367,17 @@ const usePosStoreRaw = create<PosStore>()(persist((set, get) => {
 		floorSync("recall", ticketId);
 	},
 	startTicket: (ticketId) => {
+		const ticket = get().tickets.find((t: any) => t.id === ticketId);
 		set({ tickets: get().tickets.map((t: any) => t.id === ticketId ? {
 			...t,
 			status: "in_progress",
 			startedAt: t.startedAt ?? Date.now(),
 		} : t) });
 		floorSync("start", ticketId);
+		const order = ticket?.orderId ? get().orders.find((o: any) => o.id === ticket.orderId) : undefined;
+		if (order?.marketplace && (order.deliveryStatus === "accepted" || order.deliveryStatus === "received")) {
+			get().pushDeliveryStatus(order.id, "prep", "");
+		}
 	},
 	readyTicket: (ticketId) => {
 		const ticket = get().tickets.find((t: any) => t.id === ticketId);
@@ -3360,6 +3389,12 @@ const usePosStoreRaw = create<PosStore>()(persist((set, get) => {
 		floorSync("ready", ticketId);
 		printNow("ready", ticketId);
 		syncPickupSms(get, set);
+		if (ticket?.orderId) {
+			const delivery = get().orders.find((o: any) => o.id === ticket.orderId);
+			if (delivery?.marketplace && delivery.deliveryStatus !== "ready" && delivery.deliveryStatus !== "picked_up" && delivery.deliveryStatus !== "cancelled") {
+				get().pushDeliveryStatus(delivery.id, "ready", "");
+			}
+		}
 		if (ticket?.orderId) {
 			const order = get().orders.find((o: any) => o.id === ticket.orderId);
 			if (order?.tableId) {
@@ -3919,10 +3954,37 @@ const usePosStoreRaw = create<PosStore>()(persist((set, get) => {
 		if (!item) return;
 		if (!can86Item(emp, item, get().entityPermissions)) return;
 		const available = !item.available;
-		set({ menuItems: get().menuItems.map((m: any) => m.id === id ? {
+		const menuItems = get().menuItems.map((m: any) => m.id === id ? {
 			...m,
 			available
-		} : m) });
+		} : m);
+		set({ menuItems });
+		const channels = get().settings.deliveryChannels?.length
+			? get().settings.deliveryChannels
+			: defaultDeliveryChannels();
+		const house: HouseItem[] = menuItems.map((m: any) => ({
+			id: m.id,
+			name: m.name,
+			priceCents: m.priceCents,
+			available: m.available !== false,
+			alcohol: m.station === "bar" || m.taxCategory === "bev" || m.course === "drink",
+			entityId: m.vendorId || "",
+			station: m.station === "bar" ? "bar" : "kitchen",
+			course: m.course || "entree",
+		}));
+		const before = house.map((row) => (row.id === id ? { ...row, available: !available } : row));
+		const pushed = applyHouse86(before, id, channels);
+		for (const payload of pushed.payloads) {
+			useDeliverySession.getState().pushOutbox({
+				at: Date.now(),
+				mode: "native",
+				payload,
+				log: `${payload.vendor}: unavailable`,
+			});
+		}
+		for (const line of pushed.logs) {
+			useDeliverySession.getState().pushOutbox({ at: Date.now(), mode: "log", payload: null, log: line });
+		}
 		get().audit(available ? "un86" : "86", item.name);
 		floorSync("86", id);
 	},
@@ -4459,10 +4521,208 @@ const usePosStoreRaw = create<PosStore>()(persist((set, get) => {
 		set({ currentEmployeeId: prev });
 		return { ok: true, orderId: order.id, number: order.number };
 	},
-	markPickedUp: (orderId) => {
+	pushDeliveryStatus: (orderId, status: DeliveryStatus, reason = "") => {
+		const order = get().orders.find((o: any) => o.id === orderId);
+		if (!order?.marketplace) return { ok: false, error: "Not a delivery check" };
+		if (status === "cancelled" && !String(reason).trim()) return { ok: false, error: "Cancel needs a reason" };
+		const channels = get().settings.deliveryChannels?.length
+			? get().settings.deliveryChannels
+			: defaultDeliveryChannels();
+		const channel = channels.find((row: { id: string; vendor: string }) => row.id === order.deliveryVendor || row.vendor === order.deliveryVendor) ?? channels[0];
+		const plan = channel ? planStatusPush(channel, status, reason) : { mode: "log" as const, payload: null, banner: null, log: "logged" };
 		set({
-			orders: get().orders.map((o: any) => o.id === orderId ? { ...o, pickedUpAt: Date.now() } : o),
+			orders: get().orders.map((o: any) => o.id !== orderId ? o : {
+				...o,
+				deliveryStatus: status,
+				status: status === "cancelled" ? "cancelled" : status === "picked_up" ? "closed" : o.status,
+				closedAt: status === "picked_up" ? Date.now() : o.closedAt,
+				pickedUpAt: status === "picked_up" ? Date.now() : o.pickedUpAt,
+				note: status === "cancelled" ? reason : o.note,
+			}),
 		});
+		useDeliverySession.getState().pushOutbox({ at: Date.now(), mode: plan.mode, payload: plan.payload, log: plan.log });
+		if (plan.banner) useDeliverySession.getState().setBanner(plan.banner);
+		return { ok: true, finixCalled: false as const, mode: plan.mode };
+	},
+	materializeDeliveryCheck: (check: DeliveryCheck) => {
+		if (!check?.channelOrderId) return { ok: false, error: "No order", finixCalled: false as const };
+		const existing = get().orders.find((o: any) => o.channelOrderId === check.channelOrderId);
+		if (existing) return { ok: true, orderId: existing.id, duplicate: true, finixCalled: false as const };
+		const now = Date.now();
+		const id = uid("ord");
+		const number = allocateCheckNumber(get, { type: "delivery" });
+		const lines = check.lines.map((line) => ({
+			id: uid("ln"),
+			menuItemId: line.menuItemId,
+			name: line.name,
+			entityId: line.entityId,
+			vendorId: line.entityId,
+			quantity: line.quantity,
+			unitPriceCents: line.unitPriceCents,
+			modifiers: [],
+			note: line.note,
+			course: (line.course || "entree") as Course,
+			station: line.station || "kitchen",
+			sent: true,
+			held: false,
+			voided: false,
+			comped: false,
+			discountCents: 0,
+			taxExempt: false,
+			createdAt: now,
+			firedAt: now,
+		}));
+		const order = {
+			id,
+			number,
+			type: "delivery" as const,
+			diningOption: check.diningOption,
+			tabName: check.diningOption,
+			guestName: check.guestName,
+			guestPhone: check.guestPhone,
+			pickupSmsEnabled: check.smsOnReady,
+			channelOrderId: check.channelOrderId,
+			dueAt: check.dueAt,
+			specialInstructions: check.specialInstructions,
+			marketplace: true,
+			deliveryStatus: check.status,
+			deliveryVendor: check.vendor,
+			expectedPayoutCents: check.expectedPayoutCents,
+			guestCount: 1,
+			serverId: "marketplace",
+			serverName: check.diningOption,
+			lines,
+			payments: [{
+				id: uid("pay"),
+				method: "marketplace" as const,
+				amountCents: check.tender.amountCents,
+				tipCents: 0,
+				at: now,
+				employeeId: "marketplace",
+			}],
+			status: "open" as const,
+			discountPercent: 0,
+			discountCents: 0,
+			autoGratApplied: false,
+			serviceChargeCents: 0,
+			createdAt: now,
+			note: check.specialInstructions,
+		};
+		const slips = groupFireSlips(
+			lines.map((line) => ({
+				id: line.id,
+				name: line.name,
+				quantity: line.quantity,
+				modifiers: [],
+				note: line.note,
+				course: line.course as Course,
+				station: line.station,
+				vendorId: line.vendorId,
+				menuItemId: line.menuItemId,
+			})),
+			{
+				categories: get().categories,
+				menuItems: get().menuItems,
+				devices: get().locationDevices ?? [],
+				separateCourseTickets: Boolean(get().settings.separateCourseTickets),
+				tables: get().tables,
+				sections: get().floorSections,
+				orderType: "delivery",
+			},
+		);
+		const ticketSource = slips.length
+			? slips
+			: check.slips.map((slip) => ({
+				destinationName: slip.destinationName,
+				station: slip.station,
+				printerId: undefined as string | undefined,
+				vendorId: lines[0]?.vendorId,
+				vendorName: undefined as string | undefined,
+				course: (lines[0]?.course || "entree") as Course,
+				items: slip.items.map((item) => ({
+					lineId: lines.find((line) => line.name === item.name)?.id || uid("ln"),
+					name: item.name,
+					quantity: item.quantity,
+					modifiers: [] as string[],
+					note: item.note,
+					course: (lines[0]?.course || "entree") as Course,
+				})),
+			}));
+		const tickets = ticketSource.map((slip) => ({
+			id: uid("kt"),
+			orderId: id,
+			orderNumber: number,
+			tableLabel: check.diningOption,
+			serverName: check.diningOption,
+			guestName: check.guestName,
+			guestPhone: check.guestPhone,
+			channelOrderId: check.channelOrderId,
+			dueAt: check.dueAt,
+			specialInstructions: check.specialInstructions,
+			diningOption: check.diningOption,
+			serverId: "marketplace",
+			station: slip.station,
+			vendorId: slip.vendorId,
+			destinationName: slip.destinationName,
+			printerId: slip.printerId,
+			status: "new" as const,
+			course: slip.course,
+			createdAt: now,
+			elapsedSec: 0,
+			items: slip.items,
+		}));
+		set({
+			orders: [order, ...get().orders],
+			tickets: [...tickets, ...get().tickets],
+		});
+		printNow("send", id);
+		get().audit("send", `${check.diningOption} ${check.channelOrderId}`);
+		return { ok: true, orderId: id, finixCalled: false as const, kitchenTicket: check.kitchenTicket };
+	},
+	ingestDeliveryWebhook: (body: unknown) => {
+		let cardCalled = false;
+		const channels = get().settings.deliveryChannels?.length
+			? get().settings.deliveryChannels
+			: defaultDeliveryChannels();
+		const vendors = get().vendors ?? [];
+		const food = vendors.find((v: { stationType?: string; drinks?: boolean }) => v.stationType !== "bar" && !v.drinks);
+		const result = handleDeliveryWebhook(body, {
+			channels,
+			menu: get().menuItems.map((m: any) => ({
+				id: m.id,
+				name: m.name,
+				priceCents: m.priceCents,
+				available: m.available !== false,
+				alcohol: m.station === "bar" || m.taxCategory === "bev" || m.course === "drink",
+				entityId: m.vendorId || food?.id || vendors[0]?.id || "",
+				station: m.station === "bar" ? "bar" : "kitchen",
+				course: m.course || "entree",
+			})),
+			maps: get().settings.deliveryItemMaps ?? [],
+			foodEntityId: food?.id || vendors[0]?.id || "",
+			allowDeliveryAlcohol: get().settings.allowDeliveryAlcohol === true,
+			pickupLabel: get().settings.pickupLabel,
+			chargeCard: () => {
+				cardCalled = true;
+			},
+		});
+		if (result.banner) useDeliverySession.getState().setBanner(result.banner);
+		if (cardCalled || !result.check) {
+			return { ok: result.ok && !cardCalled, accepted: false, finixCalled: false as const, error: result.error, queued: result.queued };
+		}
+		const applied = get().materializeDeliveryCheck(result.check);
+		return { ...applied, accepted: true, queued: result.queued, kitchenTicket: result.check.kitchenTicket };
+	},
+	markPickedUp: (orderId) => {
+		const order = get().orders.find((o: any) => o.id === orderId);
+		set({
+			orders: get().orders.map((o: any) => o.id === orderId ? {
+				...o,
+				pickedUpAt: Date.now(),
+				deliveryStatus: o.marketplace ? "picked_up" : o.deliveryStatus,
+			} : o),
+		});
+		if (order?.marketplace) get().pushDeliveryStatus(orderId, "picked_up", "");
 		return { ok: true };
 	},
 	sweepPickupReminders: () => {
@@ -4483,6 +4743,9 @@ const usePosStoreRaw = create<PosStore>()(persist((set, get) => {
 		const order = get().orders.find((o: any) => o.id === orderId);
 		if (!order) return { ok: false, error: "Check not found" };
 		if (order.status !== "open") return { ok: false, error: "Check already closed" };
+		if (order.marketplace || order.payments?.some((p: { method?: string }) => p.method === "marketplace")) {
+			return { ok: false, error: "This check is Marketplace payable. No second card." };
+		}
 		const method = opts?.method === "gift_card" ? "gift_card" : "card";
 		{
 			const pm = payConfigForProcessor(

@@ -6,6 +6,18 @@ import type { GuideUpdate } from "@/lib/guide/types";
  */
 export const WHATS_NEW_ENTRIES: GuideUpdate[] = [
   {
+    id: "upd_2026_10_183_delivery_channels",
+    date: "2026-09-30",
+    title: "Delivery channels",
+    summary: "DoorDash, Uber Eats, Grubhub, and a tablet webhook open a Marketplace payable check.",
+    body: "Settings → Delivery channels. Each channel is Marketplace or Courier-dispatch. An inbound order opens a check with dining option Delivery- and that channel. The tender is Marketplace payable. There is no second card and Quantum Payments does not run. Guest name, phone, channel order number, due time, and special instructions print on the kitchen ticket. Food routes like a to-go ticket. The pickup rail can text the same ready message when food is bumped. Publish a delivery menu with a percent or flat override. 86 in the POS marks the item unavailable on a channel that has keys and leaves the house item in place. Pause and hours are per channel. Expected payout is the guest total minus the channel commission. Owner ops shows delivery sales beside house sales. Sold items still count in AvT. Empty keys leave only the tablet webhook live. A down channel queues and shows a banner. The POS stays open.",
+    roles: ["owner_manager", "host_operator", "vendor_operator"],
+    surfaces: ["settings"],
+    audience: "all",
+    topicId: "delivery-channels",
+    tags: ["orders"],
+  },
+  {
     id: "upd_2026_10_182_owner_ops",
     date: "2026-09-30",
     title: "Owner ops on the selling entity home",

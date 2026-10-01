@@ -238,6 +238,12 @@ export async function printFromPos(
         tableLabel: t.tableLabel,
         serverName: t.serverName,
         guestName: t.guestName,
+        guestPhone: t.guestPhone,
+        channelOrderId: t.channelOrderId,
+        dueAt: t.dueAt,
+        specialInstructions: t.specialInstructions,
+        diningOption: t.diningOption,
+        marketplaceTender: Boolean(s.orders.find((o) => o.id === t.orderId)?.marketplace),
         operatorId: t.vendorId,
         operatorName: t.vendorName,
         destinationName,
@@ -265,6 +271,12 @@ export async function printFromPos(
         tableLabel: t.tableLabel,
         serverName: t.serverName,
         guestName: t.guestName,
+        guestPhone: t.guestPhone,
+        channelOrderId: t.channelOrderId,
+        dueAt: t.dueAt,
+        specialInstructions: t.specialInstructions,
+        diningOption: t.diningOption,
+        marketplaceTender: Boolean(s.orders.find((o) => o.id === t.orderId)?.marketplace),
         operatorId: t.vendorId,
         operatorName: t.vendorName,
         items: linesFromTicket(t),
@@ -279,8 +291,9 @@ export async function printFromPos(
     if (order) {
       const table = order.tableId ? s.tables.find((tb) => tb.id === order.tableId) : undefined;
       const tender = order.payments[order.payments.length - 1];
+      const marketplace = Boolean(order.marketplace || tender?.method === "marketplace");
       const totals = computeTotals(order, s.settings, {
-        tender: tender?.method === "cash" ? "cash" : "card",
+        tender: marketplace || tender?.method === "cash" ? "cash" : "card",
       });
       const shares = splitTenderByEntity({
         order,
@@ -323,11 +336,12 @@ export async function printFromPos(
           : (table?.label ?? order.tabName ?? order.type.replace("_", " ")),
         serverName: order.serverName,
         copy: "guest",
+        marketplaceTender: marketplace,
         items: receiptLines(order, s.settings),
         entityMarks: entityMarksForPrint(s.settings.brandLogos),
         allocations,
-        qrUrl: ticketQr.qrUrl,
-        qrCaption: ticketQr.qrCaption,
+        qrUrl: marketplace ? undefined : ticketQr.qrUrl,
+        qrCaption: marketplace ? undefined : ticketQr.qrCaption,
         timezone: parseVenueTimezone(s.settings.timezone),
         totals: {
           subtotalCents: totals.subtotalCents,
@@ -338,7 +352,9 @@ export async function printFromPos(
             .filter((p) => p.method === "gift_card")
             .reduce((s, p) => s + p.amountCents, 0),
           totalCents: totals.totalCents,
-          tender: tender
+          tender: marketplace
+            ? "Marketplace payable"
+            : tender
             ? tender.method === "card"
               ? `Card${tender.last4 ? ` ·${tender.last4}` : ""} · Quantum Payments`
               : tender.method === "gift_card"
@@ -488,8 +504,9 @@ export async function printGuestReceipt(orderId: string): Promise<{
   const locationId = s.tenantLocationId || "";
   const locationName = s.settings.name || "Summex";
   const tender = order.payments[order.payments.length - 1];
+  const marketplace = Boolean(order.marketplace || tender?.method === "marketplace");
   const totals = computeTotals(order, s.settings, {
-    tender: tender?.method === "cash" ? "cash" : "card",
+    tender: marketplace || tender?.method === "cash" ? "cash" : "card",
   });
   const shares = splitTenderByEntity({
     order,
@@ -512,6 +529,7 @@ export async function printGuestReceipt(orderId: string): Promise<{
       : (table?.label ?? order.tabName ?? order.type.replace("_", " ")),
     serverName: order.serverName,
     copy: "guest",
+    marketplaceTender: marketplace,
     items: receiptLines(order, s.settings),
     entityMarks: entityMarksForPrint(s.settings.brandLogos),
     allocations: shares.map((sh) => ({
@@ -521,7 +539,9 @@ export async function printGuestReceipt(orderId: string): Promise<{
       totalCents: sh.totalCents,
     })),
     timezone: parseVenueTimezone(s.settings.timezone),
-    ...payQrForCheck(order, table, locationIdForQr(s, locationId), s.settings, printer?.print?.printPayQr),
+    ...(marketplace
+      ? {}
+      : payQrForCheck(order, table, locationIdForQr(s, locationId), s.settings, printer?.print?.printPayQr)),
     totals: {
       subtotalCents: totals.subtotalCents,
       taxCents: totals.taxCents,
@@ -531,7 +551,9 @@ export async function printGuestReceipt(orderId: string): Promise<{
         .filter((p) => p.method === "gift_card")
         .reduce((sum, p) => sum + p.amountCents, 0),
       totalCents: totals.totalCents,
-      tender: tender
+      tender: marketplace
+        ? "Marketplace payable"
+        : tender
         ? tender.method === "card"
           ? `Card${tender.last4 ? ` ·${tender.last4}` : ""} · Quantum Payments`
           : tender.method === "gift_card"

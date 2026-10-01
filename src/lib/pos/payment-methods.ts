@@ -148,5 +148,6 @@ export function methodLabel(cfg: PaymentMethodsConfig, method: PaymentMethod): s
   if (method === "check") return "Check";
   if (method === "comp") return "Comp";
   if (method === "cash") return "Cash";
+  if (method === "marketplace") return "Marketplace payable";
   return "Card";
 }

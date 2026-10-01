@@ -3,6 +3,7 @@ import { ESTABLISHMENT_TYPE_TOPICS } from "./content/establishment-types";
 import { SAAS_TOPICS } from "./content/saas";
 import { FLOOR_TOPICS } from "./content/floor";
 import { ORDER_TOPICS } from "./content/orders";
+import { DELIVERY_TOPICS } from "./content/delivery";
 import { PAYMENT_TOPICS } from "./content/payments";
 import { CASH_GIFT_TOPICS } from "./content/cash-gifts";
 import { LOSS_PREVENTION_TOPICS } from "./content/loss-prevention";
@@ -159,6 +160,7 @@ export const GUIDE_TOPICS: GuideTopic[] = [
   ...SAAS_TOPICS,
   ...FLOOR_TOPICS,
   ...ORDER_TOPICS,
+  ...DELIVERY_TOPICS,
   ...PAYMENT_TOPICS,
   ...CASH_GIFT_TOPICS,
   ...OPS_JOBS_TOPICS,

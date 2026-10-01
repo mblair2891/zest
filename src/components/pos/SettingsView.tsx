@@ -24,6 +24,7 @@ import {
 import { HostOperatorsSettings } from "./HostOperatorsSettings";
 import { LocationDeviceRegistry } from "./LocationDeviceRegistry";
 import { MenuGroupDestinationsCard } from "./MenuGroupDestinationsCard";
+import { DeliveryChannelsCard } from "./DeliveryChannelsCard";
 import { EntityPermissionsMatrix } from "./EntityPermissionsMatrix";
 import { OperatorOpsView } from "./OperatorOpsView";
 import { BrandLogoField } from "@/components/brand/BrandLogoField";
@@ -574,6 +575,10 @@ export function SettingsView() {
           aiReportEmail: s.aiReportEmail ?? "",
           opsJobs: s.opsJobs,
           paymentMethods: s.paymentMethods,
+          deliveryChannels: s.deliveryChannels,
+          allowDeliveryAlcohol: s.allowDeliveryAlcohol === true,
+          deliveryItemMaps: s.deliveryItemMaps,
+          deliveryPublished: s.deliveryPublished,
           cashDiscountEnabled: s.cashDiscountEnabled,
           cashDiscountPercent: s.cashDiscountPercent,
           cashRoundIncrement: s.cashRoundIncrement,
@@ -1288,6 +1293,7 @@ export function SettingsView() {
         </span>
       </label>
       <MenuGroupDestinationsCard write={write} />
+      <DeliveryChannelsCard write={write} />
       </Pack>
 
       <div className="mb-6 rounded-2xl border border-border bg-surface p-4">

@@ -27,6 +27,7 @@ import {
   type IntegrationCategory,
 } from "@/lib/pos/integrations-catalog";
 import { cn, formatCurrency, formatDateTime, formatTime } from "@/lib/utils";
+import { DeliveryChannelsCard } from "./DeliveryChannelsCard";
 
 const CATS: (IntegrationCategory | "all" | "connected")[] = [
   "all",
@@ -83,9 +84,11 @@ export function IntegrationsHubView() {
   const connectedCount = connections.filter(
     (c) => c.status === "connected",
   ).length;
+  const emp = usePosStore((s) => s.employees.find((row) => row.id === s.currentEmployeeId));
+  const write = emp?.role !== "vendor_operator";
 
   return (
-    <div className="flex h-full flex-col">
+    <div className="flex h-full flex-col overflow-auto">
       <div className="border-b border-border px-3 py-2">
         <div className="flex flex-wrap items-center gap-2">
           <Plug className="h-4 w-4 text-primary" />
@@ -106,6 +109,7 @@ export function IntegrationsHubView() {
             Sync all
           </Button>
         </div>
+        <DeliveryChannelsCard write={write} />
         <p className="mt-1 text-xs text-muted-foreground">
           Card processing is{" "}
           <span className="font-medium text-foreground">Summex Payments</span> —

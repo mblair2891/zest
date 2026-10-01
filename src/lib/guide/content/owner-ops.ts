@@ -15,7 +15,7 @@ export const OWNER_OPS_TOPICS: GuideTopic[] = [
         "Each selling entity opens on its own numbers for today and this week. A peer sees that entity only.",
       ),
       steps(
-        "Home shows net sales, cash versus card, comps, prime cost, labor, food cost, and beverage cost.",
+        "Home shows net sales, cash versus card, comps, prime cost, labor, food cost, and beverage cost. Delivery sales sit beside house sales. A marketplace item still counts in AvT.",
         "Checks, invoices, the schedule, and AvT exceptions are one tap from that home.",
         "A location owner can switch the entity. The cards stay on the entity that is selected.",
       ),
