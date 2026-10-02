@@ -71,7 +71,11 @@ function visibleCostEntity(
 export function CostWorkspace({ initialTab = "board" }: { initialTab?: CostTab }) {
   const [tab, setTab] = useState<CostTab>(initialTab);
   useEffect(() => setTab(initialTab), [initialTab]);
-  const openEx = useCostStore((s) => s.exceptions.filter((e) => e.status === "open").length);
+  const exceptionRows = useCostStore((s) => s.exceptions);
+  const openEx = useMemo(
+    () => exceptionRows.filter((e) => e.status === "open").length,
+    [exceptionRows],
+  );
   const demoScope = useDemoOperatingEntityId();
   const checklistRecipes = useChecklistLink((s) => s.link?.focus === "recipes");
   useEffect(() => {
@@ -141,9 +145,20 @@ function BoardPanel() {
   const build = useCostStore((s) => s.buildCostPicture);
   const scan = useCostStore((s) => s.scanVariance);
   const generate = useCostStore((s) => s.generatePriceRecs);
-  const exceptions = useCostStore((s) => s.exceptions.filter((e) => e.status === "open"));
+  const exceptionRows = useCostStore((s) => s.exceptions);
   const ledger = useCostStore((s) => s.ledger);
+  const invoices = useCostStore((s) => s.invoices);
+  const recipes = useCostStore((s) => s.recipes);
+  const exceptions = useMemo(
+    () => exceptionRows.filter((e) => e.status === "open"),
+    [exceptionRows],
+  );
   const [busy, setBusy] = useState(false);
+  const empty =
+    invoices.length === 0 &&
+    recipes.length === 0 &&
+    ledger.length === 0 &&
+    exceptions.length === 0;
 
   const spendByCat = useMemo(() => {
     const m: Record<string, number> = {};
@@ -175,6 +190,23 @@ function BoardPanel() {
           {busy ? "Reading…" : "Run cost picture"}
         </Button>
       </div>
+      {empty && (
+        <p
+          className="rounded-2xl border border-dashed border-border bg-surface px-4 py-8 text-center text-sm text-muted-foreground"
+          data-cost-empty=""
+        >
+          No invoices or recipes yet. Upload an invoice or attach a recipe when you have one.
+        </p>
+      )}
+      {invoices.length > 0 && (
+        <ul className="space-y-1 text-sm" data-cost-invoices="">
+          {invoices.map((invoice) => (
+            <li key={invoice.id} data-cost-invoice={invoice.id}>
+              {invoice.vendorName} · {invoice.invoiceNumber} · {invoice.status}
+            </li>
+          ))}
+        </ul>
+      )}
       {picture && (
         <div className="rounded-2xl border border-border bg-surface p-4">
           <Badge variant={picture.source === "ai" ? "info" : "secondary"}>
@@ -192,6 +224,7 @@ function BoardPanel() {
           </div>
         </div>
       )}
+      {!empty && (
       <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
         {COST_CATEGORIES.map((c) => (
           <div key={c} className="rounded-xl border border-border bg-surface px-3 py-2">
@@ -202,6 +235,7 @@ function BoardPanel() {
           </div>
         ))}
       </div>
+      )}
       {exceptions.length > 0 && (
         <div className="rounded-2xl border border-warn/40 bg-surface p-4">
           <p className="text-sm font-medium">Open exceptions</p>
@@ -326,19 +360,26 @@ function InvoicePanel({ demoScope }: { demoScope: string | null }) {
           <p className="text-xs text-muted-foreground">Owner, manager, accountant, or operator can post.</p>
         )}
         {err && <p className="text-sm text-danger">{err}</p>}
-        <ul className="space-y-1 text-xs">
+        {invoices.length === 0 ? (
+          <p className="text-xs text-muted-foreground" data-cost-invoices-empty="">
+            No invoices yet.
+          </p>
+        ) : (
+        <ul className="space-y-1 text-xs" data-cost-invoices="">
           {invoices.slice(0, 8).map((i) => (
             <li key={i.id}>
               <button
                 type="button"
                 className={cn("w-full rounded-lg px-2 py-1 text-left", i.id === active?.id && "bg-bg")}
                 onClick={() => setActiveId(i.id)}
+                data-cost-invoice={i.id}
               >
                 {i.vendorName} · {i.invoiceNumber} · {i.status}
               </button>
             </li>
           ))}
         </ul>
+        )}
       </div>
       {active && (
         <div className="space-y-3 rounded-2xl border border-border bg-surface p-4">

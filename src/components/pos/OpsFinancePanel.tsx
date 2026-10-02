@@ -90,7 +90,10 @@ export function OpsFinancePanel() {
   const live = useFinanceStore((s) => s.live) || pos.settings.lifecycleStatus === "live";
   const ensure = useFinanceStore((s) => s.ensure);
   const commit = useFinanceStore((s) => s.commit);
-  const vendors = pos.vendors.filter((vendor) => canSeeEntity(emp, vendor.id));
+  const vendors = useMemo(
+    () => pos.vendors.filter((vendor) => canSeeEntity(emp, vendor.id)),
+    [pos.vendors, emp],
+  );
   const [entityId, setEntityId] = useState(scope || vendors[0]?.id || "");
   const [rollup, setRollup] = useState(false);
   const [screen, setScreen] = useState<Screen>("pnl");
@@ -100,7 +103,10 @@ export function OpsFinancePanel() {
   const book = entityId ? books[entityId] ?? null : null;
 
   useEffect(() => {
-    if (!entityId && vendors[0]) setEntityId(scope || vendors[0].id);
+    if (entityId || !vendors[0]) return;
+    const next = scope || vendors[0].id;
+    if (!next || next === entityId) return;
+    setEntityId(next);
   }, [entityId, scope, vendors]);
 
   useEffect(() => {
