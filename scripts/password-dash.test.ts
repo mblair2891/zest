@@ -61,7 +61,11 @@ test("entity owner has payments, manager has floor, accountant has no Devices or
   const mgr = passwordDashTiles("entity_manager").map((t) => t.id);
   const acc = passwordDashTiles("accountant").map((t) => t.id);
   assert.ok(owner.includes("payments"));
-  assert.ok(!owner.includes("floor"));
+  assert.ok(owner.includes("floor"));
+  assert.equal(passwordDashTiles("entity_owner").find((t) => t.id === "86")?.tab, "menu");
+  assert.equal(passwordDashTiles("entity_owner").find((t) => t.id === "payout")?.tab, "reports");
+  assert.equal(passwordDashTabs("entity_owner").find(([id]) => id === "staff")?.[1], "Staff");
+  assert.ok(passwordDashTabs("entity_owner").some(([id]) => id === "floor"));
   assert.ok(mgr.includes("floor"));
   assert.ok(!mgr.includes("payments"));
   assert.ok(acc.includes("gift"));

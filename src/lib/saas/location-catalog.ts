@@ -149,11 +149,13 @@ export function parseFloorPlan(raw: unknown): LocationFloorPlan | undefined {
     if (!r) continue;
     const id = str(r.id).slice(0, 80);
     if (!id) continue;
+    const operatorId = str(r.operatorId).slice(0, 80);
     sections.push({
       id,
       name: str(r.name, id).slice(0, 40),
       color: str(r.color, "sec-1").slice(0, 20),
       sort: Math.round(num(r.sort)),
+      ...(operatorId ? { operatorId } : {}),
     });
   }
   if (!tables.length && !sections.length) return undefined;

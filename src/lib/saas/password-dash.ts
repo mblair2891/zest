@@ -82,9 +82,9 @@ export function passwordDashBlurb(kind: PasswordDashKind): string {
     case "venue_manager":
       return "Floor and ops from back office. Not a landlord merchant. Billing stays with venue admin.";
     case "entity_owner":
-      return "This selling entity only: sales, labor %, 86, menu, invoices, schedule, payout. Billing/payments for this brand.";
+      return "This selling entity only. Today’s sales, open checks, labor %, top items, and 86 count. Menu by category. Floor sections assigned here. Billing/payments for this brand.";
     case "entity_manager":
-      return "This selling entity only. Floor tools from back office. Billing/payments stay with the entity owner.";
+      return "This selling entity only. Same today home and this entity’s floor. Billing/payments stay with the entity owner.";
     case "accountant":
       return "Reports, hours export, and gift liability. No Devices. No 86.";
   }
@@ -115,21 +115,20 @@ export function passwordDashTiles(kind: PasswordDashKind): PasswordDashTile[] {
     const tiles: PasswordDashTile[] = [
       { id: "sales", tab: "reports", label: "Sales", blurb: "This entity’s owned lines", view: "reports" },
       { id: "labor", tab: "schedule", label: "Labor %", blurb: "Hours vs owned sales", view: "labor" },
-      { id: "86", tab: "staff", label: "86", blurb: "86 / un-86 this menu", view: "menu" },
+      { id: "86", tab: "menu", label: "86", blurb: "86 / un-86 on the item", view: "menu" },
       { id: "menu", tab: "menu", label: "Menu", blurb: "Items, prices, recipes", view: "menu" },
       { id: "invoices", tab: "costs", label: "Invoices", blurb: "Costs and recipes", view: "inventory" },
       { id: "schedule", tab: "schedule", label: "Schedule", blurb: "This entity’s week", view: "schedule" },
-      { id: "payout", tab: "staff", label: "Payout status", blurb: "Last period share", view: "settlement" },
-    ];
-    if (kind === "entity_manager") {
-      tiles.push({
+      { id: "payout", tab: "reports", label: "Payout status", blurb: "Last period share", view: "settlement" },
+      {
         id: "floor",
         tab: "floor",
         label: "Floor",
-        blurb: "Run the floor from back office",
+        blurb: "This entity’s sections and seating loans",
         view: "floor",
-      });
-    } else {
+      },
+    ];
+    if (kind === "entity_owner") {
       tiles.push({
         id: "payments",
         tab: "payments",
@@ -200,11 +199,12 @@ export function passwordDashTabs(kind: PasswordDashKind): Array<[VenueDashTabId,
     case "entity_owner":
       return [
         ["overview", "Overview"],
+        ["floor", "Floor"],
         ["menu", "Menu"],
         ["costs", "Costs"],
         ["schedule", "Schedule"],
         ["reports", "Reports"],
-        ["staff", "Staff & 86"],
+        ["staff", "Staff"],
         ["payments", "Payments"],
         ["gift", "Gift cards"],
       ];
@@ -216,7 +216,7 @@ export function passwordDashTabs(kind: PasswordDashKind): Array<[VenueDashTabId,
         ["costs", "Costs"],
         ["schedule", "Schedule"],
         ["reports", "Reports"],
-        ["staff", "Staff & 86"],
+        ["staff", "Staff"],
       ];
     case "host_manager":
     case "venue_manager":

@@ -12,6 +12,9 @@ import {
   defaultScheduleEntity,
   scheduleEntityIds,
 } from "@/lib/labor/schedule-entity";
+import { bulkShiftDrafts } from "@/lib/saas/entity-owner";
+import { FLOOR_ROLES } from "@/lib/pos/pin";
+import { ROLE_LABEL } from "@/lib/pos/rbac";
 import type { ScheduledShift } from "@/lib/pos/ops-types";
 import { formatTime } from "@/lib/utils";
 import { isFloorRole } from "@/lib/pos/pin";
@@ -54,6 +57,11 @@ export function EntityScheduleView() {
     }),
   );
   const [grantFor, setGrantFor] = useState<{ employeeId: string; day: number } | null>(null);
+  const [bulkStaff, setBulkStaff] = useState<string[]>([]);
+  const [bulkDays, setBulkDays] = useState<number[]>([]);
+  const [bulkStart, setBulkStart] = useState("11:00");
+  const [bulkEnd, setBulkEnd] = useState("19:00");
+  const [bulkRole, setBulkRole] = useState("server");
   const demoScope = usePosStore((s) =>
     s.settings.isDemo || s.settings.demoIsolated ? s.demoOperatingEntityId : null,
   );
@@ -201,6 +209,40 @@ export function EntityScheduleView() {
     persist();
   };
 
+  const placeBulk = () => {
+    if (!canEditBoard) return;
+    const drafts = bulkShiftDrafts({
+      employeeIds: bulkStaff,
+      dayStarts: bulkDays,
+      startHm: bulkStart,
+      endHm: bulkEnd,
+      role: bulkRole,
+      operatorId: boardEntity,
+    });
+    const grantsNow = usePosStore.getState().extraEntityShiftGrants ?? [];
+    for (const draft of drafts) {
+      const person = employees.find((e) => e.id === draft.employeeId);
+      if (!person) continue;
+      const allowed = canPlaceEmployeeOnEntityBoard({
+        homeOperatorId: person.operatorId || HOST_SCOPE,
+        boardOperatorId: boardEntity,
+        employeeId: person.id,
+        grants: grantsNow,
+      });
+      if (!allowed) continue;
+      upsert({
+        employeeId: draft.employeeId,
+        operatorId: draft.operatorId,
+        start: draft.start,
+        end: draft.end,
+        published: false,
+        role: draft.role,
+        locationId: locId,
+      });
+    }
+    persist();
+  };
+
   const moveShift = (shiftId: string, day: number) => {
     const s = shifts.find((x) => x.id === shiftId);
     if (!s || !canEditBoard) return;
@@ -276,6 +318,87 @@ export function EntityScheduleView() {
           Unpublished drafts do not appear on the clock. Publish does not merge the other entity’s calendar.
         </p>
       </div>
+      {canEditBoard && (
+        <div className="space-y-2 border-b border-border px-3 py-2" data-bulk-add="">
+          <p className="text-xs font-medium">Bulk add</p>
+          <div className="flex flex-wrap gap-2">
+            {staff.map((person) => (
+              <label key={person.id} className="flex items-center gap-1 text-xs">
+                <input
+                  type="checkbox"
+                  data-bulk-staff={person.id}
+                  checked={bulkStaff.includes(person.id)}
+                  onChange={(e) => {
+                    setBulkStaff((cur) =>
+                      e.target.checked ? [...cur, person.id] : cur.filter((id) => id !== person.id),
+                    );
+                  }}
+                />
+                {person.name}
+              </label>
+            ))}
+          </div>
+          <div className="flex flex-wrap gap-2">
+            {days.map((d) => (
+              <label key={d} className="flex items-center gap-1 text-xs">
+                <input
+                  type="checkbox"
+                  data-bulk-day={d}
+                  checked={bulkDays.includes(d)}
+                  onChange={(e) => {
+                    setBulkDays((cur) => (e.target.checked ? [...cur, d] : cur.filter((day) => day !== d)));
+                  }}
+                />
+                {formatDayLabel(d)}
+              </label>
+            ))}
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            <label className="text-xs text-muted-foreground">
+              Start
+              <input
+                type="time"
+                data-bulk-start=""
+                className="ml-1 h-8 rounded-md border border-border bg-bg px-2 text-xs"
+                value={bulkStart}
+                onChange={(e) => setBulkStart(e.target.value)}
+              />
+            </label>
+            <label className="text-xs text-muted-foreground">
+              End
+              <input
+                type="time"
+                data-bulk-end=""
+                className="ml-1 h-8 rounded-md border border-border bg-bg px-2 text-xs"
+                value={bulkEnd}
+                onChange={(e) => setBulkEnd(e.target.value)}
+              />
+            </label>
+            <select
+              data-bulk-role=""
+              className="h-8 rounded-md border border-border bg-bg px-2 text-xs"
+              value={bulkRole}
+              onChange={(e) => setBulkRole(e.target.value)}
+              aria-label="Bulk role"
+            >
+              {FLOOR_ROLES.map((role) => (
+                <option key={role} value={role}>
+                  {ROLE_LABEL[role]}
+                </option>
+              ))}
+            </select>
+            <Button
+              type="button"
+              size="sm"
+              data-bulk-place=""
+              disabled={bulkStaff.length === 0 || bulkDays.length === 0}
+              onClick={placeBulk}
+            >
+              Place shifts
+            </Button>
+          </div>
+        </div>
+      )}
       <div className="min-h-0 flex-1 overflow-auto p-3">
         <table className="min-w-full border-collapse text-left text-xs">
           <thead>

@@ -11,6 +11,7 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { DELETE_ITEM_CONFIRM, itemHasHistory } from "@/lib/menu/catalog-match";
+import { menuGroups } from "@/lib/saas/entity-owner";
 import { usePosStore } from "@/lib/pos/store";
 import { formatCurrency } from "@/lib/utils";
 import { isHappyHour, printedItemPriceCents } from "@/lib/pos/calculations";
@@ -46,6 +47,8 @@ export function MenuAdminView() {
   const orders = usePosStore((s) => s.orders);
   const tickets = usePosStore((s) => s.tickets);
   const [listMode, setListMode] = useState<"active" | "archived">("active");
+  const [categoryFilter, setCategoryFilter] = useState("all");
+  const [sheetId, setSheetId] = useState<string | null>(null);
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const updateCategory = usePosStore((s) => s.updateCategory);
   const locationDevices = usePosStore((s) => s.locationDevices ?? []);
@@ -261,6 +264,30 @@ export function MenuAdminView() {
         </div>
       )}
 
+      <div className="mb-3 flex flex-wrap gap-2" data-menu-category-filter="">
+        <Button
+          type="button"
+          size="sm"
+          variant={categoryFilter === "all" ? "default" : "outline"}
+          data-menu-category="all"
+          onClick={() => setCategoryFilter("all")}
+        >
+          All
+        </Button>
+        {menuGroups(menuItems, categories, { archived: listMode === "archived" }).map((group) => (
+          <Button
+            key={group.id}
+            type="button"
+            size="sm"
+            variant={categoryFilter === group.id ? "default" : "outline"}
+            data-menu-category={group.id}
+            onClick={() => setCategoryFilter(group.id)}
+          >
+            {group.name}
+          </Button>
+        ))}
+      </div>
+
       <div className="mb-3 flex gap-2" data-menu-list-filter="">
         <Button
           type="button"
@@ -286,6 +313,7 @@ export function MenuAdminView() {
         .slice()
         .sort((a, b) => a.sort - b.sort)
         .map((cat) => {
+          if (categoryFilter !== "all" && categoryFilter !== cat.id) return null;
           const items = menuItems.filter(
             (m) => m.categoryId === cat.id && (listMode === "archived" ? m.archived : !m.archived),
           );
@@ -401,7 +429,16 @@ export function MenuAdminView() {
                             </Button>
                           </div>
                         ) : (
-                          <>
+                          <button
+                            type="button"
+                            className="block w-full text-left"
+                            data-menu-item={item.id}
+                            onClick={() => {
+                              setSheetId(item.id);
+                              setEditName(item.name);
+                              setEditPrice((item.priceCents / 100).toFixed(2));
+                            }}
+                          >
                             <p className="truncate text-sm font-medium">{item.name}</p>
                             {!demoScope && item.vendorId ? (
                               <p className="truncate text-[11px] text-muted-foreground">
@@ -426,7 +463,7 @@ export function MenuAdminView() {
                                 {vendorName(item.vendorId)} — view only
                               </Badge>
                             )}
-                          </>
+                          </button>
                         )}
                       </div>
                       <Badge variant={item.available ? "success" : "danger"}>
@@ -516,6 +553,81 @@ export function MenuAdminView() {
             </section>
           );
         })}
+      <Dialog open={sheetId != null} onOpenChange={(open) => !open && setSheetId(null)}>
+        <DialogContent data-item-sheet="">
+          {(() => {
+            const sheet = menuItemsAll.find((m) => m.id === sheetId);
+            if (!sheet) return null;
+            const sheetEditable = canEditMenu(emp, grants, sheet.vendorId);
+            return (
+              <>
+                <DialogHeader>
+                  <DialogTitle>{sheet.name}</DialogTitle>
+                </DialogHeader>
+                {sheetEditable ? (
+                  <div className="grid gap-2">
+                    <label className="block text-xs text-muted-foreground">
+                      Name
+                      <Input className="mt-1" value={editName} onChange={(e) => setEditName(e.target.value)} />
+                    </label>
+                    <label className="block text-xs text-muted-foreground">
+                      Cash price
+                      <Input
+                        className="mt-1"
+                        inputMode="decimal"
+                        value={editPrice}
+                        onChange={(e) => setEditPrice(e.target.value)}
+                      />
+                    </label>
+                    <DialogFooter className="gap-2 sm:justify-start">
+                      <Button
+                        type="button"
+                        data-item-save=""
+                        onClick={() => {
+                          updateMenuItem(sheet.id, {
+                            name: editName.trim() || sheet.name,
+                            priceCents: Math.round(Number(editPrice) * 100) || sheet.priceCents,
+                          });
+                          persistWrite(sheet.vendorId || "", "update");
+                          if (pendingPrice?.menuItemId === sheet.id) clearPendingPrice();
+                          setSheetId(null);
+                        }}
+                      >
+                        Save
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        data-item-86=""
+                        onClick={() => {
+                          toggleItemAvailable(sheet.id);
+                          persistWrite(sheet.vendorId || "", "toggle");
+                        }}
+                      >
+                        {sheet.available ? "86" : "Un-86"}
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        data-item-archive=""
+                        onClick={() => {
+                          if (sheet.archived) restoreMenuItem(sheet.id);
+                          else archiveMenuItem(sheet.id);
+                          persistWrite(sheet.vendorId || "", "update");
+                        }}
+                      >
+                        {sheet.archived ? "Restore" : "Archive"}
+                      </Button>
+                    </DialogFooter>
+                  </div>
+                ) : (
+                  <p className="text-sm text-muted-foreground">View only.</p>
+                )}
+              </>
+            );
+          })()}
+        </DialogContent>
+      </Dialog>
       <Dialog open={deleteId != null} onOpenChange={(open) => !open && setDeleteId(null)}>
         <DialogContent data-menu-delete-dialog="">
           <DialogHeader>

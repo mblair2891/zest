@@ -24,7 +24,7 @@ export function SubscriberWhitePaper() {
         summex.app · Guest cards: {PAYMENTS_BRAND} only
       </p>
       <p className="mt-2 text-xs text-muted-foreground">
-        Revision · 2 Oct 2026 — System mail is from Summex noreply. Replies go to support@summex.app. If mail is not configured, the screen says email not sent. Aligns with Operators Guide v2026.10.188.
+        Revision · 2 Oct 2026 — An entity owner sees that entity’s name, then the venue. Today’s home is this entity’s sales, open checks, labor, top items, and 86 count. The menu is grouped by category, and 86 is on the item. The floor editor changes this entity’s sections and active seating loans. System mail is from Summex noreply. Replies go to support@summex.app. If mail is not configured, the screen says email not sent. Aligns with Operators Guide v2026.10.189.
         The house toggles which tenders it accepts. Station UI is device role ∩
         staff PIN. After PIN the tablet shows a short role menu. Pair with a
         typed Devices code; QR is optional. Peer venues have no host merchant;

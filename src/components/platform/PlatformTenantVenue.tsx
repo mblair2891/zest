@@ -72,6 +72,8 @@ import {
   type PasswordDashKind,
 } from "@/lib/saas/password-dash";
 import { PasswordDashHome } from "@/components/platform/PasswordDashHome";
+import { EntityTodayHome } from "@/components/platform/EntityTodayHome";
+import { entityLoginHeader } from "@/lib/saas/entity-owner";
 import { PlatformHomeLink } from "@/components/platform/PlatformHomeLink";
 import { DemoEntitySwitcher } from "@/components/demo/DemoEntitySwitcher";
 import { LedgerView } from "@/components/pos/LedgerView";
@@ -389,6 +391,17 @@ export function PlatformTenantVenue({
           dba: o.name || "",
         })) ?? drillOps;
       setOps(opsRows.filter((o) => o.dba));
+      const venueName = access.location.name || loc.name || drillOrg.name;
+      if (audience === "entity") {
+        const opId = entityId || scopedOperatorId || "";
+        const entityName =
+          access.operators?.find((o) => o.id === opId)?.name ||
+          opsRows.find((o) => o.id === opId)?.dba ||
+          "";
+        setTitle(entityLoginHeader(entityName, venueName));
+      } else {
+        setTitle(venueName);
+      }
       setDetail(
         buildTenantDetailModel({
           venueName: access.location.name || loc.name || drillOrg.name,
@@ -578,7 +591,9 @@ export function PlatformTenantVenue({
               </Button>
             )}
             <div className="min-w-0 flex-1">
-              <p className="truncate text-sm font-semibold leading-tight">{title}</p>
+              <p className="truncate text-sm font-semibold leading-tight" data-login-title={title}>
+                {title}
+              </p>
               <p className="truncate text-[11px] text-muted-foreground">
                 {audience === "platform"
                   ? houseIsDemo
@@ -669,6 +684,14 @@ export function PlatformTenantVenue({
                     if (id === "floor") usePosStore.getState().setView("floor");
                   }}
                 />
+              ) : isEntityPasswordKind(kind) ? (
+                <EntityTodayHome
+                  entityId={entityId}
+                  onOpen={(id) => {
+                    setTab(id);
+                    if (id === "floor") usePosStore.getState().setView("floor");
+                  }}
+                />
               ) : (
                 <PasswordDashHome
                   kind={kind}
@@ -751,7 +774,7 @@ export function PlatformTenantVenue({
               <HostOperatorsSettings write />
             )}
             {ready && !error && tab === "staff" && tabIds.has("staff") && (
-              <OperatorOpsView operatorId={entityId} />
+              <OperatorOpsView operatorId={entityId} peopleOnly />
             )}
             {ready && !error && tab === "ledger" && tabIds.has("ledger") && (
               <LedgerView />

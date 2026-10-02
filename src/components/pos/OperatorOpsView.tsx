@@ -16,6 +16,7 @@ import { formatCurrency, formatDateTime } from "@/lib/utils";
 import { canEmployee } from "@/lib/access/permissions";
 import type { EmployeeRole } from "@/lib/pos/types";
 import { ROLE_LABEL } from "@/lib/pos/rbac";
+import { FLOOR_ROLES } from "@/lib/pos/pin";
 import { QuantumPaymentsOnboardPanel } from "@/components/payments/QuantumPaymentsOnboardPanel";
 import { TaxRatesEditor, ratesPatch } from "./TaxRatesSettings";
 import { persistTaxRates } from "@/lib/pos/persist-location-setup";
@@ -29,9 +30,12 @@ import { BrandLogoField } from "@/components/brand/BrandLogoField";
 export function OperatorOpsView({
   operatorId: forcedId,
   hostManaged = false,
+  peopleOnly = false,
 }: {
   operatorId?: string;
   hostManaged?: boolean;
+  /** Password Staff tab: people, PINs, and roles. No 86 board. */
+  peopleOnly?: boolean;
 }) {
   const vendors = usePosStore((s) => s.vendors);
   const orders = usePosStore((s) => s.orders);
@@ -117,6 +121,58 @@ export function OperatorOpsView({
     setStaffName("");
     setStaffPin("");
   };
+
+  if (peopleOnly) {
+    return (
+      <div className="flex h-full flex-col" data-demo="operator-ops" data-staff-people="">
+        <div className="border-b border-border px-3 py-2">
+          <h2 className="text-sm font-semibold">Staff</h2>
+          <p className="text-xs text-muted-foreground">People, PINs, and roles for {vendor.name}.</p>
+        </div>
+        <div className="min-h-0 flex-1 space-y-4 overflow-y-auto p-3">
+          <ul className="divide-y divide-border text-sm">
+            {stats.staff.map((s) => (
+              <li key={s.id} className="flex items-center justify-between gap-2 py-2">
+                <span>
+                  {s.name}{" "}
+                  <span className="text-muted-foreground">
+                    · {ROLE_LABEL[s.role]} · {s.pinHash || s.pin ? "PIN set" : "No PIN"}
+                  </span>
+                </span>
+              </li>
+            ))}
+            {stats.staff.length === 0 && (
+              <li className="py-2 text-sm text-muted-foreground">No staff on this entity yet.</li>
+            )}
+          </ul>
+          {canStaff && (
+            <div className="grid gap-2 sm:grid-cols-4">
+              <Input placeholder="Name" value={staffName} onChange={(e) => setStaffName(e.target.value)} />
+              <select
+                className="h-10 rounded-xl border border-border bg-bg px-3 text-sm"
+                value={staffRole}
+                onChange={(e) => setStaffRole(e.target.value as EmployeeRole)}
+                aria-label="Role"
+              >
+                {FLOOR_ROLES.map((role) => (
+                  <option key={role} value={role}>
+                    {ROLE_LABEL[role]}
+                  </option>
+                ))}
+              </select>
+              <Input placeholder="PIN (optional)" value={staffPin} onChange={(e) => setStaffPin(e.target.value)} />
+              <Button type="button" onClick={addStaff} disabled={!staffName.trim()}>
+                Add staff
+              </Button>
+              {createdPin && (
+                <p className="text-xs text-muted-foreground sm:col-span-4">Created PIN {createdPin}.</p>
+              )}
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex h-full flex-col" data-demo="operator-ops">

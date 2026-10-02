@@ -61,7 +61,8 @@ import {
 import { SectionAccessDialog } from "./GrantTableDialog";
 import { GuideLearnLink } from "@/components/guide/GuideLearnLink";
 import { QrMark } from "./QrMark";
-import { canAccessView } from "@/lib/pos/rbac";
+import { canAccessView, canAccessViewForEmployee } from "@/lib/pos/rbac";
+import { entityFloorEditorId } from "@/lib/pos/entity-floor";
 import { useStationLayout } from "@/lib/ui/station-layout";
 import { barTabVisibleTables, isBarRailSeat, locationAllowsBarTabs } from "@/lib/pos/bar-tab";
 import { FloorFixtureArt } from "@/components/pos/FloorFixtureArt";
@@ -185,7 +186,11 @@ export function FloorView({
     stationCan(cap, "seat") &&
     (canSeatTable(emp?.role, floorCfg) ||
       (hostStand && Boolean(settings.serversAtHostStand) && emp?.role === "server"));
-  const canEdit = canEditFloorplan(emp?.role) && canAccessView(emp?.role ?? "server", "floor_editor");
+  const sessionKind = usePosStore((s) => s.sessionKind);
+  const entityEditor = entityFloorEditorId(emp, sessionKind);
+  const canEdit =
+    (canEditFloorplan(emp?.role) && canAccessView(emp?.role ?? "server", "floor_editor")) ||
+    (entityEditor != null && emp != null && canAccessViewForEmployee(emp, "floor_editor"));
   const isHostStand = hostStand || emp?.role === "host";
   const showHostBarTab = stationCan(cap, "bar_tab") && locationAllowsBarTabs(tables);
   const canTogoAction = stationCan(cap, "togo");

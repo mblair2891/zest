@@ -230,7 +230,7 @@ export const SAAS_TOPICS: GuideTopic[] = [
       ul(
         "Platform Admin — tenants, pipeline, support. Not a restaurant owner. There is only one platform Admin; tenant Users cannot mint another.",
         "Location admin / host owner — email and password at app.summex.app/login. Dashboard tiles for that role. Host + tenants: venue health, all entities, Devices, Publish, combined and per-entity reports. Shared venue: the same minus host-merchant chrome.",
-        "Entity owner vs entity manager — both password logins for one selling entity. Owner: sales, labor %, 86, menu, invoices, schedule, payout, and that brand’s payments. Manager: the same ops plus floor from back office; no billing.",
+        "Entity owner vs entity manager — both password logins for one selling entity. The header is the entity name, then the venue. Today’s home is this entity’s sales, open checks, labor, top items, and 86 count. Menu is grouped by category and 86 is on the item. Staff is people, PINs, and roles. The floor editor changes this entity’s sections and active seating loans. Owner also has that brand’s payments. Manager has no billing.",
         "Accountant — reports, hours export, gift liability. No Devices. No 86.",
         "Manager — users, devices, day-to-day; not SaaS billing.",
         "Staff / vendor PIN — limited location or stall tools on a station.",

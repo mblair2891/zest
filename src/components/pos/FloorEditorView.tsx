@@ -11,6 +11,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { usePosStore } from "@/lib/pos/store";
+import { entityFloorEditorId, floorEditMode, floorEditScope, placeSectionName } from "@/lib/pos/entity-floor";
 import { cn, uid } from "@/lib/utils";
 import { SetupAssistButton } from "@/components/assist/SetupAssistDialog";
 import {
@@ -457,10 +458,41 @@ const KINDS: {
 export function FloorEditorView() {
   const tables = usePosStore((s) => s.tables);
   const floorSections = usePosStore((s) => s.floorSections);
+  const employees = usePosStore((s) => s.employees);
+  const extraTableGrants = usePosStore((s) => s.extraTableGrants ?? []);
+  const sessionKind = usePosStore((s) => s.sessionKind);
+  const currentEmployeeId = usePosStore((s) => s.currentEmployeeId);
+  const vendors = usePosStore((s) => s.vendors);
+  const editorEmp = employees.find((e) => e.id === currentEmployeeId) ?? null;
+  const floorMode = floorEditMode(editorEmp, sessionKind);
+  const editEntityId = floorMode === "entity" ? entityFloorEditorId(editorEmp, sessionKind) : null;
+  const editScope = useMemo(
+    () =>
+      floorMode === "none"
+        ? { whole: false, sectionIds: [] as string[], tableIds: [] as string[] }
+        : floorEditScope({
+            entityId: floorMode === "whole" ? null : editEntityId,
+            sections: floorSections,
+            tables,
+            grants: extraTableGrants,
+            employees,
+          }),
+    [floorMode, editEntityId, floorSections, tables, extraTableGrants, employees],
+  );
+  const wholeFloor = floorMode === "whole";
+  const editableTableIds = wholeFloor ? null : new Set(editScope.tableIds);
+  const editableSectionIds = wholeFloor ? null : new Set(editScope.sectionIds);
+  const editableTableRef = useRef<Set<string> | null>(null);
+  editableTableRef.current = editableTableIds;
+  const pieceEditable = (id: string) => {
+    const allowed = editableTableRef.current;
+    return !allowed || allowed.has(id);
+  };
   const updateLayout = usePosStore((s) => s.updateTableLayout);
   const floorRoom = usePosStore((s) => s.floorRoom) ?? DEFAULT_ROOM;
   const setFloorRoom = usePosStore((s) => s.setFloorRoom);
   const update = (id: string, patch: Partial<import("@/lib/pos/types").Table>) => {
+    if (!pieceEditable(id)) return;
     if (patch.w != null || patch.h != null) {
       const roomNow = usePosStore.getState().floorRoom ?? DEFAULT_ROOM;
       const current = usePosStore.getState().tables.find((row) => row.id === id);
@@ -806,7 +838,7 @@ export function FloorEditorView() {
           const hit = idsInMarquee(
             visible.map((t) => ({ id: t.id, x: t.x, y: t.y, w: t.w, h: t.h })),
             plan,
-          );
+          ).filter((id) => pieceEditable(id));
           const next = nextSelection(selectionRef.current, hit, mark.additive);
           setSelection(next);
           setSelected(next[next.length - 1] ?? null);
@@ -836,6 +868,10 @@ export function FloorEditorView() {
     y: number,
   ) => {
     if (resize.current || legDrag.current) return;
+    if (!pieceEditable(id)) {
+      selectOnly(id);
+      return;
+    }
     if (e.shiftKey) {
       e.preventDefault();
       e.stopPropagation();
@@ -881,6 +917,7 @@ export function FloorEditorView() {
   ) => {
     e.preventDefault();
     e.stopPropagation();
+    if (!pieceEditable(id)) return;
     e.currentTarget.setPointerCapture(e.pointerId);
     const piece = tables.find((t) => t.id === id);
     if (!piece) return;
@@ -1041,6 +1078,7 @@ export function FloorEditorView() {
   const startLeg = (e: React.PointerEvent, id: string, handle: LegHandle) => {
     e.preventDefault();
     e.stopPropagation();
+    if (!pieceEditable(id)) return;
     e.currentTarget.setPointerCapture(e.pointerId);
     const bar = tables.find((t) => t.id === id);
     if (!bar) return;
@@ -1052,7 +1090,15 @@ export function FloorEditorView() {
     selectOnly(id);
   };
 
+  const ownedTarget = () =>
+    placeSectionName(
+      room,
+      floorSections,
+      wholeFloor ? null : [...(editableSectionIds ?? [])],
+    );
+
   const renameSection = (id: string, name: string) => {
+    if (editableSectionIds && !editableSectionIds.has(id)) return;
     const prev = floorSections.find((s) => s.id === id);
     upsertFloorSection({ id, name });
     if (prev && prev.name !== name) {
@@ -1147,9 +1193,13 @@ export function FloorEditorView() {
   };
 
   const placeKind = (kind: (typeof KINDS)[number]) => {
-    const dining =
-      room !== "All" ? room : floorSections[0]?.name ?? "Dining";
-    const sec = floorSections.find((s) => s.name === dining);
+    const target = ownedTarget();
+    if (!target) {
+      alert("Assign a section to this entity before adding tables.");
+      return;
+    }
+    const dining = target.name;
+    const sec = floorSections.find((s) => s.id === target.id) ?? floorSections.find((s) => s.name === dining);
     const count = tables.filter((t) => t.kind === kind.id || (!t.kind && kind.id === "table")).length;
     const booth = kind.booth;
     const seats = booth ? BOOTH_DEFAULTS[booth].seats : kind.seats;
@@ -1217,8 +1267,13 @@ export function FloorEditorView() {
     const existing = state.tables.map((row) => row.label);
     const labels =
       pendingKind.id === "barstool" ? nextFreeStoolLabels(existing, count) : nextFreeNumbers(existing, count);
-    const dining = room !== "All" ? room : floorSections[0]?.name ?? "Dining";
-    const sec = floorSections.find((section) => section.name === dining);
+    const target = ownedTarget();
+    if (!target) {
+      alert("Assign a section to this entity before adding tables.");
+      return;
+    }
+    const dining = target.name;
+    const sec = floorSections.find((section) => section.id === target.id) ?? floorSections.find((section) => section.name === dining);
     const booth = pendingKind.booth;
     const seats = booth ? BOOTH_DEFAULTS[booth].seats : pendingKind.seats;
     const ids: string[] = [];
@@ -1268,8 +1323,13 @@ export function FloorEditorView() {
       placePointRef.current,
     );
     if (!planned) return;
-    const dining = room !== "All" ? room : floorSections[0]?.name ?? "Dining";
-    const sec = floorSections.find((section) => section.name === dining);
+    const target = ownedTarget();
+    if (!target) {
+      alert("Assign a section to this entity before adding tables.");
+      return;
+    }
+    const dining = target.name;
+    const sec = floorSections.find((section) => section.id === target.id) ?? floorSections.find((section) => section.name === dining);
     const ids: string[] = [];
     for (const piece of planned) {
       ids.push(
@@ -1369,7 +1429,7 @@ export function FloorEditorView() {
     let last: string | null = null;
     for (const id of ids) {
       const source = state.tables.find((t) => t.id === id);
-      if (!source) continue;
+      if (!source || !pieceEditable(id)) continue;
       const copies = planFloorCopies(source, labels, count, roomNow);
       for (const copy of copies) {
         labels = [...labels, copy.label];
@@ -1401,7 +1461,8 @@ export function FloorEditorView() {
 
   const removeIds = (ids: string[]) => {
     const blocked: string[] = [];
-    for (const id of ids) {
+    const allowed = ids.filter((id) => pieceEditable(id));
+    for (const id of allowed) {
       const res = remove(id);
       if (!res.ok && res.error) blocked.push(res.error);
     }
@@ -1447,6 +1508,11 @@ export function FloorEditorView() {
     <div className="flex h-full min-h-0 flex-1 flex-col overflow-hidden" data-demo="floor-editor">
       <div className="flex max-h-36 shrink-0 flex-wrap items-center gap-2 overflow-y-auto border-b border-border px-3 py-2 lg:max-h-none lg:overflow-visible">
         <h2 className="text-sm font-semibold">Floor plan editor</h2>
+        {floorMode === "entity" && (
+          <p className="text-xs text-muted-foreground" data-floor-entity-scope="">
+            Editing this entity’s sections and active seating loans.
+          </p>
+        )}
         <Badge variant="secondary">Drag · resize · rooms</Badge>
         <GuideLearnLink topicId="floor-editor" compact>
           Learn
@@ -1530,6 +1596,7 @@ export function FloorEditorView() {
       <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden lg:flex-row">
         <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
           <div className="flex max-h-28 shrink-0 flex-wrap items-end gap-3 overflow-y-auto border-b border-border px-3 py-2 lg:max-h-none lg:overflow-visible" data-floor-room="">
+            {wholeFloor && (
             <FeetInchesInput
               label="Room width"
               totalIn={floorRoom.widthIn}
@@ -1539,6 +1606,8 @@ export function FloorEditorView() {
                 persistLocationCatalog("floor");
               }}
             />
+            )}
+            {wholeFloor && (
             <FeetInchesInput
               label="Room depth"
               totalIn={floorRoom.depthIn}
@@ -1548,6 +1617,7 @@ export function FloorEditorView() {
                 persistLocationCatalog("floor");
               }}
             />
+            )}
             <Button type="button" size="sm" variant="outline" data-floor-zoom-out="" onClick={() => zoomBy(1 / 1.25)}>
               Zoom out
             </Button>
@@ -1557,6 +1627,7 @@ export function FloorEditorView() {
             <Button type="button" size="sm" variant="outline" data-floor-fit-room="" onClick={fitRoomView}>
               Fit room
             </Button>
+            {wholeFloor && (
             <Button
               type="button"
               size="sm"
@@ -1566,6 +1637,8 @@ export function FloorEditorView() {
             >
               Clear slate
             </Button>
+            )}
+            {wholeFloor && (
             <Button
               type="button"
               size="sm"
@@ -1578,6 +1651,7 @@ export function FloorEditorView() {
             >
               {RENUMBER_LABEL}
             </Button>
+            )}
             <Button
               type="button"
               size="sm"
@@ -1892,7 +1966,17 @@ export function FloorEditorView() {
           <div>
             <p className="mb-2 text-sm font-medium">Rooms / sections</p>
             <ul className="space-y-2">
-              {floorSections.map((sec) => (
+              {floorSections.map((sec) => {
+                const secEditable = !editableSectionIds || editableSectionIds.has(sec.id);
+                if (!secEditable) {
+                  return (
+                    <li key={sec.id} className="rounded-xl border border-border p-2" data-section-locked={sec.id}>
+                      <p className="text-sm font-medium">{sec.name}</p>
+                      <p className="text-[11px] text-muted-foreground">Another entity’s section</p>
+                    </li>
+                  );
+                }
+                return (
                 <li key={sec.id} className="rounded-xl border border-border p-2">
                   <div className="flex items-center gap-2">
                     <Input
@@ -1912,6 +1996,27 @@ export function FloorEditorView() {
                       <Trash2 className="h-3.5 w-3.5" />
                     </Button>
                   </div>
+                  {wholeFloor && (
+                    <label className="mt-1.5 block text-[11px] text-muted-foreground">
+                      Selling entity
+                      <select
+                        className="mt-0.5 h-8 w-full rounded-lg border border-border bg-bg px-2 text-xs text-foreground"
+                        data-section-entity=""
+                        value={sec.operatorId || ""}
+                        onChange={(e) => {
+                          upsertFloorSection({ id: sec.id, operatorId: e.target.value || null });
+                          persistLocationCatalog("floor");
+                        }}
+                      >
+                        <option value="">Location</option>
+                        {vendors.map((v) => (
+                          <option key={v.id} value={v.id}>
+                            {v.name}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                  )}
                   <label className="mt-1.5 block text-[11px] text-muted-foreground">
                     Receipt printer
                     <select
@@ -1964,8 +2069,10 @@ export function FloorEditorView() {
                     ))}
                   </div>
                 </li>
-              ))}
+                );
+              })}
             </ul>
+            {wholeFloor && (
             <div className="mt-2 flex gap-2">
               <Input
                 className="h-8"
@@ -1990,9 +2097,17 @@ export function FloorEditorView() {
                 Add
               </Button>
             </div>
+            )}
           </div>
 
-          {selectedTable ? (
+          {selectedTable && !pieceEditable(selectedTable.id) ? (
+            <div className="space-y-2 border-t border-border pt-3" data-floor-locked="">
+              <p className="text-sm font-medium">{selectedTable.label}</p>
+              <p className="text-sm text-muted-foreground">
+                This table is on another entity’s section.
+              </p>
+            </div>
+          ) : selectedTable ? (
             <div className="space-y-3 border-t border-border pt-3">
               <p className="text-sm font-medium">
                 Edit {selectedTable.kind ?? "table"} {selectedTable.label}
@@ -2292,16 +2407,24 @@ export function FloorEditorView() {
                 <select
                   className="mt-1 h-10 w-full rounded-lg border border-border bg-bg px-3 text-sm"
                   value={selectedTable.section}
-                  onChange={(e) =>
-                    update(selectedTable.id, { section: e.target.value })
-                  }
+                  onChange={(e) => {
+                    const name = e.target.value;
+                    const next = floorSections.find((s) => s.name === name);
+                    update(selectedTable.id, { section: name, sectionId: next?.id });
+                  }}
                 >
-                  {floorSections.map((s) => (
+                  {(editableSectionIds
+                    ? floorSections.filter((s) => editableSectionIds.has(s.id))
+                    : floorSections
+                  ).map((s) => (
                     <option key={s.id} value={s.name}>
                       {s.name}
                     </option>
                   ))}
-                  {!floorSections.some(
+                  {!(editableSectionIds
+                    ? floorSections.filter((s) => editableSectionIds.has(s.id))
+                    : floorSections
+                  ).some(
                     (s) => s.name === selectedTable.section,
                   ) && (
                     <option value={selectedTable.section}>

@@ -154,6 +154,8 @@ export interface FloorSection {
   /** Swatch id from SECTION_SWATCHES (e.g. sec-1) */
   color: string;
   sort: number;
+  /** Selling entity that may edit this section. Empty = location contact only. */
+  operatorId?: string | null;
 }
 
 export interface ExtraTableGrant {

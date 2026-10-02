@@ -6,6 +6,18 @@ import type { GuideUpdate } from "@/lib/guide/types";
  */
 export const WHATS_NEW_ENTRIES: GuideUpdate[] = [
   {
+    id: "upd_2026_10_189_entity_owner",
+    date: "2026-10-02",
+    title: "Entity owner home, menu, and floor",
+    summary: "Entity login shows the brand, then the venue. Today’s home, menu categories, and this entity’s floor.",
+    body: "An entity owner sees that entity’s name, then the venue. Today’s home is this entity’s sales, open checks, labor, top items, and 86 count. The menu is grouped by category, and 86 is on the item. Staff is people, PINs, and roles. Schedule can place several people across the days you pick, then you still publish the week. The floor editor changes this entity’s sections and active seating loans. The location contact still edits the whole floor.",
+    roles: ["owner_manager", "vendor_operator", "host_operator"],
+    surfaces: ["floor", "labor", "reports"],
+    audience: "all",
+    topicId: "role-vendor",
+    tags: ["entity", "menu", "floor", "schedule"],
+  },
+  {
     id: "upd_2026_10_188_system_mail",
     date: "2026-10-02",
     title: "System mail is from Summex noreply",

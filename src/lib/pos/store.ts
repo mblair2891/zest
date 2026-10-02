@@ -5021,7 +5021,13 @@ const usePosStoreRaw = create<PosStore>()(persist((set, get) => {
 		const nextId = section.id || uid("sec");
 		const isNew = i < 0;
 		if (i >= 0) list[i] = { ...list[i], ...section };
-		else list.push({ id: nextId, name: section.name || "Section", color: section.color || "sec-1", sort: section.sort ?? list.length });
+		else list.push({
+			id: nextId,
+			name: section.name || "Section",
+			color: section.color || "sec-1",
+			sort: section.sort ?? list.length,
+			operatorId: section.operatorId ?? null,
+		});
 		const devices = isNew
 			? assignNewSectionToSolePrinters(get().locationDevices ?? [], nextId)
 			: get().locationDevices;
@@ -5236,22 +5242,21 @@ const usePosStoreRaw = create<PosStore>()(persist((set, get) => {
 					e.active &&
 					(manager ? e.role === "manager" : e.role === "vendor_operator"),
 			);
+		const entityViews = ["floor", "floor_editor", "menu", "schedule"] as const;
 		if (existing && get().currentEmployeeId === existing.id && get().sessionKind === "backoffice") {
-			if (name.trim() && existing.name !== name.trim()) {
-				set({
-					employees: get().employees.map((e: any) =>
-						e.id === existing.id
-							? {
-									...e,
-									name: name.trim(),
-									operatorId: op,
-									role,
-									extraViews: manager ? ["floor", "order"] : e.extraViews,
-								}
-							: e,
-					),
-				});
-			}
+			set({
+				employees: get().employees.map((e: any) =>
+					e.id === existing.id
+						? {
+								...e,
+								name: name.trim() || e.name,
+								operatorId: op,
+								role,
+								extraViews: [...entityViews],
+							}
+						: e,
+				),
+			});
 			return { ok: true };
 		}
 		const title = manager ? "Entity manager" : "Entity owner";
@@ -5266,7 +5271,7 @@ const usePosStoreRaw = create<PosStore>()(persist((set, get) => {
 					clockInAt: Date.now(),
 					active: true,
 					title,
-					extraViews: manager ? ["floor", "order"] : existing.extraViews,
+					extraViews: [...entityViews],
 				}
 			: {
 					id,
@@ -5282,7 +5287,7 @@ const usePosStoreRaw = create<PosStore>()(persist((set, get) => {
 					active: true,
 					homeSectionIds: [] as string[],
 					title,
-					extraViews: manager ? (["floor", "order"] as const) : undefined,
+					extraViews: [...entityViews],
 				};
 		const employees = existing
 			? get().employees.map((e: any) => (e.id === existing.id ? { ...e, ...admin } : e))
