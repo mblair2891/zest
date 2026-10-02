@@ -47,7 +47,7 @@ function HomeFallback({ error }: { error?: Error | null }) {
 }
 
 export function HomeRouteError({ error }: ErrorComponentProps) {
-  return <HomeFallback error={error} />;
+  return <HomeFallback error={error instanceof Error ? error : null} />;
 }
 
 type BoundaryState = { error: Error | null };
