@@ -29,6 +29,7 @@ import { defaultPackagesForMode } from "@/lib/pos/packages";
 import type { PackageId } from "@/lib/pos/packages";
 import type { SaasLocation, SaasOrganization } from "@/lib/pos/saas-types";
 import { useCurrentUserState } from "@/lib/auth/use-current-user";
+import { cn } from "@/lib/utils";
 import { parseQrPolicy } from "@/lib/pos/qr-policy";
 import { parseQrMode } from "@/lib/pos/qr-table";
 import {
@@ -636,9 +637,19 @@ export function PlatformTenantVenue({
               </button>
             ))}
           </div>
-          <main className="min-h-0 flex-1 overflow-auto p-4">
+          <main
+            className={cn(
+              "min-h-0 flex-1",
+              tab === "floor" ? "flex flex-col overflow-hidden" : "overflow-auto p-4",
+            )}
+          >
             {checklistLink && <ChecklistReturnBar onReturn={(next) => setTab(next)} />}
-            <div className={checklistLink?.readOnly && tab !== "onboarding" ? "pointer-events-none" : undefined}>
+            <div
+              className={cn(
+                checklistLink?.readOnly && tab !== "onboarding" && "pointer-events-none",
+                tab === "floor" && "flex min-h-0 flex-1 flex-col overflow-hidden",
+              )}
+            >
             {!ready && (
               <p className="text-sm text-muted-foreground">Opening venue…</p>
             )}

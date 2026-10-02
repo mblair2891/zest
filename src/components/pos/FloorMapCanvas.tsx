@@ -217,7 +217,7 @@ export function FloorMapCanvas({
   return (
     <div
       ref={viewRef}
-      className="relative min-h-0 flex-1 overflow-hidden bg-white"
+      className="absolute inset-0 overflow-hidden bg-white"
       data-floor-map="status"
       data-floor-canvas="white"
       data-floor-nubs="1"

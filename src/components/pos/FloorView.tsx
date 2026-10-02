@@ -67,6 +67,7 @@ import { barTabVisibleTables, isBarRailSeat, locationAllowsBarTabs } from "@/lib
 import { FloorFixtureArt } from "@/components/pos/FloorFixtureArt";
 import { FloorArchitectureMark } from "@/components/pos/FloorArchitectureMark";
 import { FloorMapCanvas, type FloorMapItem } from "@/components/pos/FloorMapCanvas";
+import { DEFAULT_ROOM, ROOM_FIT_MARGIN_PX, fitRoomToView } from "@/lib/pos/floor-dimensions";
 import { isArchitectureKind, wallEndExtensions } from "@/lib/pos/floor-architecture";
 import { floorDraftBannerOn, FLOOR_DRAFT_BANNER, readFloorDraft, setFloorDraftBanner } from "@/lib/pos/live-floor";
 import { useStationSessionStore } from "@/lib/pos/station-session";
@@ -394,6 +395,32 @@ export function FloorView({
     if (mapOnly) onBusyNav?.("menu");
   };
 
+  const liveViewRef = useRef<HTMLDivElement>(null);
+  const [liveView, setLiveView] = useState({ w: 0, h: 0 });
+  useEffect(() => {
+    if (mapOnly) return;
+    const el = liveViewRef.current;
+    if (!el) return;
+    const measure = () => {
+      const r = el.getBoundingClientRect();
+      if (r.width > 0 && r.height > 0) setLiveView({ w: r.width, h: r.height });
+    };
+    measure();
+    const ro = new ResizeObserver(measure);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [mapOnly, tables.length]);
+  const liveFit = useMemo(
+    () =>
+      fitRoomToView({
+        room: floorRoom ?? DEFAULT_ROOM,
+        viewW: Math.max(1, liveView.w),
+        viewH: Math.max(1, liveView.h),
+        marginPx: ROOM_FIT_MARGIN_PX,
+      }),
+    [floorRoom, liveView.w, liveView.h],
+  );
+
   if (tables.length === 0) {
     return (
       <div className="flex h-full flex-col items-center justify-center gap-3 p-8 text-center">
@@ -443,7 +470,7 @@ export function FloorView({
     : [];
 
   return (
-    <div className="flex h-full flex-col" data-demo="floor" data-checklist-focus="floor" tabIndex={-1}>
+    <div className="flex h-full min-h-0 flex-1 flex-col overflow-hidden" data-demo="floor" data-checklist-focus="floor" tabIndex={-1}>
       {!mapOnly && (
       <div className="flex flex-wrap items-center gap-2 border-b border-border px-3 py-2">
         <h2 className="mr-2 text-sm font-semibold">
@@ -584,12 +611,12 @@ export function FloorView({
 
       <div
         className={cn(
-          "flex min-h-0 flex-1",
+          "flex min-h-0 min-w-0 flex-1",
           layout.twoCol ? "flex-row" : "flex-col",
         )}
       >
         {mapOnly ? (
-          <div className="relative min-h-0 flex-1" data-floor-house="venue" data-floor-paint={painted.length}>
+          <div className="relative min-h-0 min-w-0 flex-1" data-floor-house="venue" data-floor-paint={painted.length}>
             <div className="pointer-events-none absolute inset-x-0 top-0 z-20 flex items-start justify-between gap-2 p-2">
               <div className="pointer-events-auto min-w-0 rounded-xl bg-black/35 px-2 py-1 text-white">
                 <p className="truncate text-sm font-semibold leading-tight">{emp?.name ?? "Station"}</p>
@@ -662,19 +689,20 @@ export function FloorView({
           </div>
         ) : (
         <div
-          className={cn(
-            "relative min-h-0 flex-1 overflow-auto p-3",
-            (!layout.twoCol || layout.handheld) && "min-h-[45vh]",
-          )}
+          ref={liveViewRef}
+          className="relative min-h-0 min-w-0 flex-1 overflow-hidden bg-white"
+          data-floor-map="white"
+          data-floor-canvas="white"
+          data-floor-nubs="1"
+          data-floor-fit="room"
         >
           <div
-            className={cn(
-              "relative mx-auto aspect-[4/3] w-full max-w-4xl rounded-2xl border border-border bg-white",
-              layout.handheld && "min-h-[22rem]",
-            )}
-            data-floor-map="white"
-            data-floor-canvas="white"
-            data-floor-nubs="1"
+            className="absolute left-0 top-0"
+            style={{
+              width: liveFit.worldW,
+              height: liveFit.worldH,
+              transform: `translate(${liveFit.originX}px, ${liveFit.originY}px)`,
+            }}
           >
             <div className="pointer-events-none absolute inset-x-4 top-3 flex justify-between text-[10px] uppercase tracking-wider text-muted-foreground">
               <span>{effectiveSection === "All" || effectiveSection === "Mine" ? "Dining room" : effectiveSection}</span>
@@ -852,7 +880,7 @@ export function FloorView({
               </p>
             )}
           </div>
-          <p className="mt-2 text-center text-xs text-muted-foreground">
+          <p className="pointer-events-none absolute inset-x-2 bottom-2 z-10 text-center text-xs text-muted-foreground">
             {selectMode
               ? "Tap the party table first, then the tables that join it."
               : mergeMode
@@ -877,7 +905,7 @@ export function FloorView({
         {!mapOnly && (
         <aside
           className={cn(
-            "w-full shrink-0 overflow-y-auto border-border bg-surface",
+            "min-h-0 w-full shrink-0 overflow-y-auto border-border bg-surface",
             layout.twoCol
               ? "w-72 border-l"
               : "max-h-[42vh] border-t",

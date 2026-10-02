@@ -6,6 +6,18 @@ import type { GuideUpdate } from "@/lib/guide/types";
  */
 export const WHATS_NEW_ENTRIES: GuideUpdate[] = [
   {
+    id: "upd_2026_10_186_floor_canvas",
+    date: "2026-10-02",
+    title: "Floor workspace fills the window",
+    summary: "The room canvas runs from under the toolbar to the bottom of the screen.",
+    body: "In the floor editor the workspace fills the window under the toolbar, across to the section panel and down to the bottom of the screen. Fit room scales the room into that full area. Zoom, pan, and a browser resize still work. The live floor uses the same fill on a tablet and on a desktop.",
+    roles: ["owner_manager", "host_operator", "server"],
+    surfaces: ["floor"],
+    audience: "all",
+    topicId: "floor-editor",
+    tags: ["floor"],
+  },
+  {
     id: "upd_2026_10_185_stool_open_end",
     date: "2026-10-02",
     title: "Stool numbers start at the open end",

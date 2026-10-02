@@ -1,7 +1,7 @@
 # Operators Guide — authoring
 
-**Revision · 2 Oct 2026** — Bar stool numbers start at the open end.
-Guide v2026.10.185.
+**Revision · 2 Oct 2026** — Floor workspace fills the window.
+Guide v2026.10.186.
 
 The in-app **Operators Guide** is the living product manual. It is not a
 separate PDF. Staff open it from **Guide** / **?** in the POS and platform

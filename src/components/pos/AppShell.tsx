@@ -492,7 +492,8 @@ export function AppShell() {
     safeView === "kitchen" ||
     safeView === "bar" ||
     safeView === "waitlist" ||
-    safeView === "takeout";
+    safeView === "takeout" ||
+    safeView === "floor_editor";
 
   const stationPinShell = Boolean(urlStation) && sessionKind === "pin";
 
@@ -926,7 +927,10 @@ export function AppShell() {
                 ? demoScope || "house"
                 : "venue"
             }
-            className="h-full min-h-0"
+            className={cn(
+              "min-h-0",
+              safeView === "floor_editor" || safeView === "floor" ? "flex h-full flex-col" : "h-full",
+            )}
           >
           {safeView === "truck_pod" && <TruckPodView />}
           {safeView === "labor" &&

@@ -1374,8 +1374,8 @@ export function FloorEditorView() {
   };
 
   return (
-    <div className="flex h-full flex-col" data-demo="floor-editor">
-      <div className="flex flex-wrap items-center gap-2 border-b border-border px-3 py-2">
+    <div className="flex h-full min-h-0 flex-1 flex-col overflow-hidden" data-demo="floor-editor">
+      <div className="flex max-h-36 shrink-0 flex-wrap items-center gap-2 overflow-y-auto border-b border-border px-3 py-2 lg:max-h-none lg:overflow-visible">
         <h2 className="text-sm font-semibold">Floor plan editor</h2>
         <Badge variant="secondary">Drag · resize · rooms</Badge>
         <GuideLearnLink topicId="floor-editor" compact>
@@ -1451,9 +1451,9 @@ export function FloorEditorView() {
         </div>
       </div>
 
-      <div className="flex min-h-0 flex-1 flex-col lg:flex-row">
-        <div className="flex min-h-[300px] flex-1 flex-col p-3">
-          <div className="mb-2 flex flex-wrap items-end gap-3" data-floor-room="">
+      <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden lg:flex-row">
+        <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
+          <div className="flex max-h-28 shrink-0 flex-wrap items-end gap-3 overflow-y-auto border-b border-border px-3 py-2 lg:max-h-none lg:overflow-visible" data-floor-room="">
             <FeetInchesInput
               label="Room width"
               totalIn={floorRoom.widthIn}
@@ -1588,7 +1588,7 @@ export function FloorEditorView() {
           <div
             ref={viewportRef}
             data-floor-viewport=""
-            className="relative min-h-0 flex-1 touch-none overflow-hidden rounded-2xl border border-border bg-white"
+            className="relative min-h-32 min-w-0 flex-1 touch-none overflow-hidden bg-white"
             onPointerDown={onViewportPointerDown}
             onPointerMove={onViewportPointerMove}
             onPointerUp={onViewportPointerUp}
@@ -1806,13 +1806,13 @@ export function FloorEditorView() {
               );
             })}
           </div>
-        </div>
-          <p className="mt-2 text-center text-xs text-muted-foreground">
-            Layout saves on this location as you drag. Handles turn with the piece. A wall’s black ends lengthen that wall; a corner resizes a table or booth. Scroll, pinch, or the zoom buttons change the zoom. Click-hold on empty floor and drag to slide the room. A two-finger drag does the same. Space-drag pans too. Click a piece to select it. Drag a piece to move it. The view stays. Fit room fills the workspace.
+          <p className="pointer-events-none absolute inset-x-3 bottom-2 z-30 text-center text-[11px] text-neutral-500">
+            Layout saves on this location as you drag. Scroll, pinch, or the zoom buttons change the zoom. Click-hold on empty floor pans. Drag a piece to move it. Fit room fills this workspace.
           </p>
         </div>
+        </div>
 
-        <aside className="w-full shrink-0 space-y-4 border-t border-border bg-surface p-3 lg:w-80 lg:border-l lg:border-t-0">
+        <aside className="max-h-[42vh] min-h-0 w-full shrink-0 space-y-4 overflow-y-auto border-t border-border bg-surface p-3 lg:max-h-none lg:w-80 lg:border-l lg:border-t-0">
           <div>
             <p className="mb-2 text-sm font-medium">Rooms / sections</p>
             <ul className="space-y-2">
