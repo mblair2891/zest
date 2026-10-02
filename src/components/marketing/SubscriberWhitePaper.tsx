@@ -24,7 +24,7 @@ export function SubscriberWhitePaper() {
         summex.app · Guest cards: {PAYMENTS_BRAND} only
       </p>
       <p className="mt-2 text-xs text-muted-foreground">
-        Revision · 2 Oct 2026 — The floor workspace fills the window under the toolbar. Aligns with Operators Guide v2026.10.186.
+        Revision · 2 Oct 2026 — Add tables asks for a quantity, a shape, and a size on each row. Aligns with Operators Guide v2026.10.187.
         The house toggles which tenders it accepts. Station UI is device role ∩
         staff PIN. After PIN the tablet shows a short role menu. Pair with a
         typed Devices code; QR is optional. Peer venues have no host merchant;

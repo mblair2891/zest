@@ -6,6 +6,18 @@ import type { GuideUpdate } from "@/lib/guide/types";
  */
 export const WHATS_NEW_ENTRIES: GuideUpdate[] = [
   {
+    id: "upd_2026_10_187_table_add",
+    date: "2026-10-02",
+    title: "Add tables asks quantity, shape, and size",
+    summary: "One dialog can place several sizes. Cancel places nothing.",
+    body: "+ Table opens Add tables. Each row is a quantity, a shape (round, square, or square no seats), and a size. A round table starts at 3 ft diameter. A square starts at 3 ft by 3 ft. Add another size adds a second row, so four rounds and two squares can land together. Place steps the copies so they do not stack and numbers them from the next free table number. Cancel places nothing.",
+    roles: ["owner_manager", "host_operator"],
+    surfaces: ["floor"],
+    audience: "all",
+    topicId: "floor-editor",
+    tags: ["floor"],
+  },
+  {
     id: "upd_2026_10_186_floor_canvas",
     date: "2026-10-02",
     title: "Floor workspace fills the window",

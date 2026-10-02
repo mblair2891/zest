@@ -11,6 +11,9 @@ import {
   distanceAlong,
   nextFreeNumbers,
   nextFreeStoolLabels,
+  planTableAdds,
+  TABLE_ADD_TITLE,
+  TABLE_SHAPE_DEFAULT_IN,
   outsideRail,
   placeRow,
   relabelBarStools,
@@ -37,6 +40,41 @@ test("six tables take the next free numbers and do not stack", () => {
     assert.equal(spots[i]!.y, spots[0]!.y);
     assert.notEqual(`${spots[i]!.x}|${spots[i]!.y}`, `${spots[0]!.x}|${spots[0]!.y}`);
   }
+});
+
+test("add tables places two sizes without stacking and keeps the next free numbers", () => {
+  assert.equal(TABLE_SHAPE_DEFAULT_IN.round.lengthIn, 36);
+  assert.equal(TABLE_SHAPE_DEFAULT_IN.square.lengthIn, 36);
+  assert.equal(TABLE_SHAPE_DEFAULT_IN.square.widthIn, 36);
+  const planned = planTableAdds(
+    [
+      { qty: 4, shape: "round", lengthIn: 48, widthIn: 48 },
+      { qty: 2, shape: "square", lengthIn: 36, widthIn: 36 },
+    ],
+    ["1", "2", "4"],
+    room,
+  );
+  assert.ok(planned);
+  assert.equal(planned!.length, 6);
+  assert.deepEqual(
+    planned!.map((row) => row.label),
+    ["3", "5", "6", "7", "8", "9"],
+  );
+  const rounds = planned!.filter((row) => row.shape === "round");
+  const squares = planned!.filter((row) => row.shape === "rect" && row.kind === "table");
+  assert.equal(rounds.length, 4);
+  assert.equal(squares.length, 2);
+  assert.ok(rounds.every((row) => row.lengthIn === 48 && row.widthIn === 48 && row.seats === 4));
+  assert.ok(squares.every((row) => row.lengthIn === 36 && row.widthIn === 36 && row.seats === 4));
+  for (let i = 0; i < planned!.length; i += 1) {
+    for (let j = i + 1; j < planned!.length; j += 1) {
+      const a = planned![i]!;
+      const b = planned![j]!;
+      const stacked = a.x < b.x + b.w && a.x + a.w > b.x && a.y < b.y + b.h && a.y + a.h > b.y;
+      assert.equal(stacked, false, `${a.label} overlaps ${b.label}`);
+    }
+  }
+  assert.equal(planTableAdds([{ qty: 0, shape: "round", lengthIn: 36, widthIn: 36 }], [], room), null);
 });
 
 test("reset numbers orders dining 1-n and stools along the rail", () => {
@@ -234,9 +272,16 @@ test("grid snap and align two tables to a wall", () => {
 
   const editor = readFileSync("src/components/pos/FloorEditorView.tsx", "utf8");
   assert.equal(ADD_COUNT_TITLE, "How many?");
+  assert.equal(TABLE_ADD_TITLE, "Add tables");
   assert.equal(RENUMBER_LABEL, "Reset table numbers");
   assert.match(editor, /ADD_COUNT_TITLE/);
   assert.match(editor, /data-floor-add-count=""/);
+  assert.match(editor, /TABLE_ADD_TITLE/);
+  assert.match(editor, /data-floor-table-add=""/);
+  assert.match(editor, /data-floor-table-add-size=""/);
+  assert.match(editor, /Add another size/);
+  assert.match(editor, /Square no seats/);
+  assert.match(editor, /data-floor-kind=\{k\.id\}/);
   assert.match(editor, /RENUMBER_LABEL/);
   assert.match(editor, /data-floor-renumber=""/);
   assert.match(editor, /RENUMBER_CONFIRM/);

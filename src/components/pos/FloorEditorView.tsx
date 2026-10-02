@@ -72,11 +72,15 @@ import {
   ADD_COUNT_TITLE,
   RENUMBER_CONFIRM,
   RENUMBER_LABEL,
+  TABLE_ADD_TITLE,
+  TABLE_SHAPE_DEFAULT_IN,
   alignSelection,
   canvasCenterOrigin,
   isAddCountKind,
   nextFreeNumbers,
   nextFreeStoolLabels,
+  planTableAdds,
+  type TableAddShape,
   inferBarStoolCounts,
   originAtClick,
   outsideWalkOrder,
@@ -344,6 +348,22 @@ function ObjectSizeFields({
   );
 }
 
+type TableAddRow = {
+  key: number;
+  qty: string;
+  shape: TableAddShape;
+  lengthIn: number;
+  widthIn: number;
+};
+
+let tableAddRowKey = 1;
+
+function freshTableAddRow(shape: TableAddShape = "round"): TableAddRow {
+  const spec = TABLE_SHAPE_DEFAULT_IN[shape];
+  tableAddRowKey += 1;
+  return { key: tableAddRowKey, qty: "1", shape, lengthIn: spec.lengthIn, widthIn: spec.widthIn };
+}
+
 function FeetInchesInput({
   label,
   totalIn,
@@ -506,6 +526,8 @@ export function FloorEditorView() {
   const [addOpen, setAddOpen] = useState(false);
   const [addCount, setAddCount] = useState("1");
   const [pendingKind, setPendingKind] = useState<(typeof KINDS)[number] | null>(null);
+  const [tableAddOpen, setTableAddOpen] = useState(false);
+  const [tableRows, setTableRows] = useState<TableAddRow[]>(() => [freshTableAddRow()]);
   const [renumberOpen, setRenumberOpen] = useState(false);
   const [renumberScope, setRenumberScope] = useState<ResetScope>("tables");
   const [gridOn, setGridOn] = useState(false);
@@ -1227,6 +1249,54 @@ export function FloorEditorView() {
     persistLocationCatalog("floor");
   };
 
+  const tableDrafts = tableRows.map((row) => ({
+    qty: Number(row.qty.trim()),
+    shape: row.shape,
+    lengthIn: row.lengthIn,
+    widthIn: row.shape === "round" ? row.lengthIn : row.widthIn,
+  }));
+  const tableAddOk = tableRows.every((row) => /^[1-9]\d*$/.test(row.qty.trim())) &&
+    planTableAdds(tableDrafts, tables.map((row) => row.label), floorRoom, placePointRef.current) != null;
+
+  const confirmTableAdd = () => {
+    const state = usePosStore.getState();
+    const roomNow = state.floorRoom ?? DEFAULT_ROOM;
+    const planned = planTableAdds(
+      tableDrafts,
+      state.tables.map((row) => row.label),
+      roomNow,
+      placePointRef.current,
+    );
+    if (!planned) return;
+    const dining = room !== "All" ? room : floorSections[0]?.name ?? "Dining";
+    const sec = floorSections.find((section) => section.name === dining);
+    const ids: string[] = [];
+    for (const piece of planned) {
+      ids.push(
+        state.addFloorTable({
+          x: piece.x,
+          y: piece.y,
+          section: dining,
+          sectionId: sec?.id,
+          seats: piece.seats,
+          shape: piece.shape,
+          kind: piece.kind,
+          w: piece.w,
+          h: piece.h,
+          lengthIn: piece.lengthIn,
+          widthIn: piece.widthIn,
+          rotation: 0,
+          label: piece.label,
+        }),
+      );
+    }
+    setSelection(ids);
+    setSelected(ids[ids.length - 1] ?? null);
+    placePointRef.current = null;
+    setTableAddOpen(false);
+    persistLocationCatalog("floor");
+  };
+
   const confirmRenumber = () => {
     const state = usePosStore.getState();
     const roomNow = state.floorRoom ?? DEFAULT_ROOM;
@@ -1434,7 +1504,13 @@ export function FloorEditorView() {
               key={k.id}
               size="sm"
               variant="outline"
+              data-floor-kind={k.id}
               onClick={() => {
+                if (k.id === "table") {
+                  setTableRows([freshTableAddRow("round")]);
+                  setTableAddOpen(true);
+                  return;
+                }
                 if (isAddCountKind(k.id)) {
                   setPendingKind(k);
                   setAddCount("1");
@@ -2434,6 +2510,125 @@ export function FloorEditorView() {
           )}
         </aside>
       </div>
+      <Dialog
+        open={tableAddOpen}
+        onOpenChange={setTableAddOpen}
+      >
+        <DialogContent
+          data-floor-table-add=""
+          className="flex max-h-[min(90dvh,40rem)] flex-col gap-3 overflow-hidden p-4 sm:p-6"
+        >
+          <DialogHeader className="shrink-0">
+            <DialogTitle>{TABLE_ADD_TITLE}</DialogTitle>
+          </DialogHeader>
+          <div className="min-h-0 flex-1 space-y-3 overflow-y-auto">
+            {tableRows.map((row, index) => (
+              <div key={row.key} className="space-y-2 rounded-xl border border-border p-2" data-floor-table-add-row="">
+                <div className="flex flex-wrap items-end gap-2">
+                  <label className="block text-xs text-muted-foreground">
+                    Quantity
+                    <Input
+                      className="mt-1 h-8 w-20"
+                      data-floor-table-qty=""
+                      inputMode="numeric"
+                      value={row.qty}
+                      onChange={(event) => {
+                        const qty = event.target.value;
+                        setTableRows((rows) => rows.map((item) => (item.key === row.key ? { ...item, qty } : item)));
+                      }}
+                    />
+                  </label>
+                  <label className="block text-xs text-muted-foreground">
+                    Shape
+                    <select
+                      className="mt-1 h-8 rounded-md border border-border bg-bg px-2 text-xs text-foreground"
+                      data-floor-table-shape=""
+                      value={row.shape}
+                      onChange={(event) => {
+                        const shape = event.target.value as TableAddShape;
+                        const spec = TABLE_SHAPE_DEFAULT_IN[shape];
+                        setTableRows((rows) =>
+                          rows.map((item) =>
+                            item.key === row.key
+                              ? { ...item, shape, lengthIn: spec.lengthIn, widthIn: spec.widthIn }
+                              : item,
+                          ),
+                        );
+                      }}
+                    >
+                      <option value="round">Round</option>
+                      <option value="square">Square</option>
+                      <option value="square_plain">Square no seats</option>
+                    </select>
+                  </label>
+                  {tableRows.length > 1 && (
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="ghost"
+                      onClick={() => setTableRows((rows) => rows.filter((item) => item.key !== row.key))}
+                    >
+                      Remove
+                    </Button>
+                  )}
+                </div>
+                {row.shape === "round" ? (
+                  <FeetInchesInput
+                    label="Diameter"
+                    totalIn={row.lengthIn}
+                    testId={`table-dia-${index}`}
+                    onCommit={(lengthIn) => {
+                      setTableRows((rows) =>
+                        rows.map((item) => (item.key === row.key ? { ...item, lengthIn, widthIn: lengthIn } : item)),
+                      );
+                    }}
+                  />
+                ) : (
+                  <div className="flex flex-wrap gap-3">
+                    <FeetInchesInput
+                      label="Width"
+                      totalIn={row.lengthIn}
+                      testId={`table-width-${index}`}
+                      onCommit={(lengthIn) => {
+                        setTableRows((rows) =>
+                          rows.map((item) => (item.key === row.key ? { ...item, lengthIn } : item)),
+                        );
+                      }}
+                    />
+                    <FeetInchesInput
+                      label="Depth"
+                      totalIn={row.widthIn}
+                      testId={`table-depth-${index}`}
+                      onCommit={(widthIn) => {
+                        setTableRows((rows) =>
+                          rows.map((item) => (item.key === row.key ? { ...item, widthIn } : item)),
+                        );
+                      }}
+                    />
+                  </div>
+                )}
+              </div>
+            ))}
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              data-floor-table-add-size=""
+              onClick={() => setTableRows((rows) => [...rows, freshTableAddRow(rows[rows.length - 1]?.shape ?? "round")])}
+            >
+              Add another size
+            </Button>
+          </div>
+          <DialogFooter className="shrink-0 flex-row justify-end">
+            <Button type="button" variant="outline" data-floor-table-add-cancel="" onClick={() => setTableAddOpen(false)}>
+              Cancel
+            </Button>
+            <Button type="button" data-floor-table-add-confirm="" disabled={!tableAddOk} onClick={confirmTableAdd}>
+              Place
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
       <Dialog
         open={addOpen}
         onOpenChange={(open) => {

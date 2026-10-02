@@ -13,10 +13,41 @@ import {
   type BarTopShape,
 } from "./floor-architecture.ts";
 import { COPY_OFFSET_IN } from "./floor-copy.ts";
-import { formatFeetInches } from "./floor-dimensions.ts";
+import { formatFeetInches, sizePatch } from "./floor-dimensions.ts";
 
-/** Kinds that ask “How many?” before they land on the plan. */
-export const ADD_COUNT_KINDS = ["table", "booth_4", "booth_u", "booth_l", "barstool"] as const;
+/** Kinds that ask “How many?” before they land on the plan. Tables use Add tables. */
+export const ADD_COUNT_KINDS = ["booth_4", "booth_u", "booth_l", "barstool"] as const;
+
+export const TABLE_ADD_TITLE = "Add tables";
+
+export type TableAddShape = "round" | "square" | "square_plain";
+
+/** Round is a diameter. Square and square no seats are width × depth. */
+export const TABLE_SHAPE_DEFAULT_IN: Record<TableAddShape, { lengthIn: number; widthIn: number }> = {
+  round: { lengthIn: 36, widthIn: 36 },
+  square: { lengthIn: 36, widthIn: 36 },
+  square_plain: { lengthIn: 36, widthIn: 36 },
+};
+
+export type TableAddDraft = {
+  qty: number;
+  shape: TableAddShape;
+  lengthIn: number;
+  widthIn: number;
+};
+
+export type PlannedTableAdd = {
+  label: string;
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+  lengthIn: number;
+  widthIn: number;
+  shape: "round" | "rect";
+  kind: "table" | "square_plain";
+  seats: number;
+};
 
 export const ADD_COUNT_TITLE = "How many?";
 
@@ -167,6 +198,86 @@ export function placeRow(
     }
   }
   return out;
+}
+
+function gapPercent(room: ArrangeRoom): { x: number; y: number } {
+  return {
+    x: room.widthIn > 0 ? (COPY_OFFSET_IN / room.widthIn) * 100 : 2.5,
+    y: room.depthIn > 0 ? (COPY_OFFSET_IN / room.depthIn) * 100 : 100 / 30,
+  };
+}
+
+function boxesTouch(
+  a: { x: number; y: number; w: number; h: number },
+  b: { x: number; y: number; w: number; h: number },
+): boolean {
+  return a.x < b.x + b.w - 0.05 && a.x + a.w > b.x + 0.05 && a.y < b.y + b.h - 0.05 && a.y + a.h > b.y + 0.05;
+}
+
+/**
+ * One row is one shape and size. Copies step past the previous piece plus about
+ * one foot so the boxes do not stack. Numbers fill the next free table numbers.
+ * Returns null when a count or size is not placeable.
+ */
+export function planTableAdds(
+  drafts: readonly TableAddDraft[],
+  existingLabels: readonly string[],
+  room: ArrangeRoom,
+  click?: ArrangePoint | null,
+): PlannedTableAdd[] | null {
+  const pieces: Array<Omit<PlannedTableAdd, "label" | "x" | "y">> = [];
+  for (const draft of drafts) {
+    const qty = Math.floor(Number(draft.qty));
+    if (!(qty >= 1)) return null;
+    const round = draft.shape === "round";
+    const patch = sizePatch(draft.lengthIn, round ? draft.lengthIn : draft.widthIn, room, { round });
+    if (!patch) return null;
+    const kind = draft.shape === "square_plain" ? "square_plain" : "table";
+    for (let i = 0; i < qty; i += 1) {
+      pieces.push({
+        w: patch.w,
+        h: patch.h,
+        lengthIn: patch.lengthIn,
+        widthIn: patch.widthIn,
+        shape: round ? "round" : "rect",
+        kind,
+        seats: kind === "square_plain" ? 0 : 4,
+      });
+    }
+  }
+  if (!pieces.length) return null;
+  const labels = nextFreeNumbers(existingLabels, pieces.length);
+  const gap = gapPercent(room);
+  const first = pieces[0]!;
+  const start = click ? originAtClick(click, first.w, first.h) : canvasCenterOrigin(first.w, first.h);
+  const placed: PlannedTableAdd[] = [];
+  let rowY = start.y;
+  let rowBottom = start.y;
+  let cursorX = start.x;
+  for (let i = 0; i < pieces.length; i += 1) {
+    const piece = pieces[i]!;
+    const maxX = Math.max(0, 100 - piece.w);
+    const maxY = Math.max(0, 100 - piece.h);
+    let x = i === 0 ? start.x : cursorX;
+    let y = i === 0 ? start.y : rowY;
+    if (i > 0 && x > maxX + 0.05) {
+      x = Math.min(maxX, Math.max(0, start.x));
+      y = rowBottom + gap.y;
+      rowY = y;
+    }
+    x = round1(Math.min(maxX, Math.max(0, x)));
+    y = round1(Math.min(maxY, Math.max(0, y)));
+    let guard = 0;
+    while (guard < 40 && placed.some((prev) => boxesTouch({ x, y, w: piece.w, h: piece.h }, prev))) {
+      y = round1(Math.min(maxY, y + Math.max(gap.y, 1)));
+      guard += 1;
+    }
+    placed.push({ ...piece, label: labels[i] ?? String(i + 1), x, y });
+    rowBottom = Math.max(rowBottom, y + piece.h);
+    cursorX = x + piece.w + gap.x;
+    rowY = y;
+  }
+  return placed;
 }
 
 const DINING_SKIP = new Set(["barstool", "wall", "door", "window", "host_stand", "bar_top"]);
