@@ -56,9 +56,9 @@ test("reset numbers orders dining 1-n and stools along the rail", () => {
   assert.equal(labels.low, "3");
   assert.equal(labels.bbooth, undefined);
   assert.equal(labels.wall, undefined);
-  assert.equal(labels.near, "B2");
-  assert.equal(labels.far, "B1");
-  assert.equal(defaultNumberFrom(bars[0]!), 1);
+  assert.equal(labels.near, "B1");
+  assert.equal(labels.far, "B2");
+  assert.equal(defaultNumberFrom(bars[0]!), 0);
 });
 
 function gap(px: number, py: number, points: { x: number; y: number }[]): number {
@@ -187,8 +187,8 @@ test("tables only leaves stools, stools only leaves dining", () => {
 
   const stoolsOnly = resetFloorNumbers(pieces, [bar], room, "stools");
   const stools = Object.fromEntries(stoolsOnly.labels.map((row) => [row.id, row.label]));
-  assert.equal(stools.s1, "B2");
-  assert.equal(stools.s2, "B1");
+  assert.equal(stools.s1, "B1");
+  assert.equal(stools.s2, "B2");
   assert.equal(stools.t1, undefined);
   assert.equal(stools.t2, undefined);
   assert.equal(stools.booth, undefined);
@@ -252,9 +252,10 @@ test("grid snap and align two tables to a wall", () => {
   assert.match(editor, /data-floor-grid-size=""/);
   assert.match(editor, /data-floor-align="left"/);
   assert.match(editor, /data-floor-align="distribute-h"/);
-  assert.match(editor, /Number from/);
-  assert.match(editor, /data-stool-number-from=/);
-  assert.match(editor, /data-stool-number-start=/);
+  assert.match(editor, /Reverse numbering/);
+  assert.match(editor, /data-stool-number-reverse=/);
+  assert.doesNotMatch(editor, /Number from/);
+  assert.doesNotMatch(editor, /data-stool-number-from=/);
   assert.doesNotMatch(editor, /publishLocationFn/);
   const art = readFileSync("src/components/pos/FloorFixtureArt.tsx", "utf8");
   const stoolArt = art.slice(art.indexOf("function FloorStoolArt"));
@@ -269,7 +270,7 @@ test("grid snap and align two tables to a wall", () => {
   assert.match(catalog, /stoolNumberFrom/);
 });
 
-test("an L numbers B1 at the far right and B18 at the top of the short leg", () => {
+test("an L numbers each leg from the open end toward the corner", () => {
   const plan = [
     { x: 30, y: 18 },
     { x: 30, y: 55 },
@@ -291,7 +292,7 @@ test("an L numbers B1 at the far right and B18 at the top of the short leg", () 
     legLengths: [1, 1],
     section: "Bar",
   };
-  assert.equal(defaultNumberFrom(bar), 1);
+  assert.equal(defaultNumberFrom(bar), 0);
   const classic = planFromLegInches("l", { x: 20, y: 30 }, [16 * 12, 10 * 12], room);
   assert.equal(defaultNumberFrom({ points: classic, barShape: "l" }), 0);
   const poses = generateBarStools({
@@ -320,15 +321,124 @@ test("an L numbers B1 at the far right and B18 at the top of the short leg", () 
   const far = stools.reduce((a, b) => (center(a).x >= center(b).x ? a : b));
   const top = stools.reduce((a, b) => (center(a).y <= center(b).y ? a : b));
   assert.notEqual(far.id, top.id);
-  assert.equal(labels[far.id], "B1");
-  assert.equal(labels[top.id], "B18");
-  assert.deepEqual(stools.map((stool) => labels[stool.id]).sort((a, b) => Number(a!.slice(1)) - Number(b!.slice(1))), Array.from({ length: 18 }, (_, i) => `B${i + 1}`));
-  const flipped = relabelBarStools(stools, { ...bar, stoolNumberFrom: 0 }, room, [{ ...bar, stoolNumberFrom: 0 }]);
+  assert.equal(labels[top.id], "B1");
+  assert.equal(labels[far.id], "B7");
+  const legA = stools.filter((stool) => Math.abs(center(stool).x - 34.6) < 2);
+  const nearA = legA.reduce((a, b) => (center(a).y >= center(b).y ? a : b));
+  assert.equal(labels[nearA.id], "B6");
+  const legB = stools.filter((stool) => center(stool).y > 46);
+  const nearB = legB.reduce((a, b) => (center(a).x <= center(b).x ? a : b));
+  assert.equal(labels[nearB.id], "B18");
+  assert.deepEqual(
+    stools.map((stool) => labels[stool.id]).sort((a, b) => Number(a!.slice(1)) - Number(b!.slice(1))),
+    Array.from({ length: 18 }, (_, i) => `B${i + 1}`),
+  );
+  const flipped = relabelBarStools(stools, { ...bar, stoolNumberFrom: 1 }, room, [{ ...bar, stoolNumberFrom: 1 }]);
   const next = Object.fromEntries(flipped.map((row) => [row.id, row.label]));
-  assert.equal(next[far.id], "B18");
-  assert.equal(next[top.id], "B1");
+  assert.equal(next[far.id], "B1");
+  assert.equal(next[top.id], "B13");
   assert.deepEqual(
     stools.map((stool) => ({ id: stool.id, x: stool.x, y: stool.y })),
     placed,
   );
+});
+
+test("a straight bar numbers B1 at the guest's left", () => {
+  const plan = planFromLegInches("straight", { x: 16, y: 40 }, [18 * 12], room);
+  const box = slabBounds(plan, 24, room, false);
+  const labeled = (side: "a" | "b", from?: 0 | 1) => {
+    const bar = {
+      id: "bar",
+      kind: "bar_top",
+      label: "BAR",
+      x: box.x,
+      y: box.y,
+      w: box.w,
+      h: box.h,
+      points: plan,
+      barShape: "straight" as const,
+      barSide: side,
+      widthIn: 24,
+      legLengths: [1],
+      stoolNumberFrom: from,
+      section: "Bar",
+    };
+    const poses = generateBarStools({ bar, room, counts: { count: 4 }, side });
+    const stools = poses.map((pose, index) => ({
+      id: `s${index}`,
+      kind: "barstool",
+      label: `X${index}`,
+      x: pose.x,
+      y: pose.y,
+      w: pose.w,
+      h: pose.h,
+      railBarId: "bar",
+    }));
+    const labels = Object.fromEntries(resetFloorNumbers(stools, [bar], room, "stools").labels.map((row) => [row.id, row.label]));
+    return stools
+      .slice()
+      .sort((a, b) => a.x + a.w / 2 - (b.x + b.w / 2))
+      .map((stool) => labels[stool.id]);
+  };
+  assert.deepEqual(labeled("a"), ["B1", "B2", "B3", "B4"]);
+  assert.deepEqual(labeled("b"), ["B4", "B3", "B2", "B1"]);
+  assert.deepEqual(labeled("a", 1), ["B4", "B3", "B2", "B1"]);
+  assert.deepEqual(labeled("b", 1), ["B1", "B2", "B3", "B4"]);
+});
+
+test("L-bar leg A puts B1 at the tip and B4 nearest the corner", () => {
+  const plan = planFromLegInches("l", { x: 18, y: 28 }, [14 * 12, 8 * 12], room);
+  const corner = plan[1]!;
+  const box = slabBounds(plan, 24, room, false);
+  const bar = {
+    id: "bar",
+    kind: "bar_top",
+    label: "BAR",
+    x: box.x,
+    y: box.y,
+    w: box.w,
+    h: box.h,
+    points: plan,
+    barShape: "l" as const,
+    barSide: "outside" as const,
+    widthIn: 24,
+    legLengths: [1, 1],
+    section: "Bar",
+  };
+  const poses = generateBarStools({
+    bar,
+    room,
+    counts: { legA: 4, legB: 3, corner: true },
+    side: "outside",
+  });
+  assert.equal(poses.length, 8);
+  const stools = poses.map((pose, index) => ({
+    id: `s${index}`,
+    kind: "barstool",
+    label: `X${index}`,
+    x: pose.x,
+    y: pose.y,
+    w: pose.w,
+    h: pose.h,
+    railBarId: "bar",
+  }));
+  const labels = Object.fromEntries(resetFloorNumbers(stools, [bar], room, "stools").labels.map((row) => [row.id, row.label]));
+  const center = (stool: (typeof stools)[number]) => ({ x: stool.x + stool.w / 2, y: stool.y + stool.h / 2 });
+  const onA = stools
+    .filter((stool) => center(stool).y < plan[0]!.y - 0.2 && center(stool).x <= corner.x + 0.5)
+    .sort((a, b) => center(a).x - center(b).x);
+  assert.equal(onA.length, 4);
+  assert.equal(labels[onA[0]!.id], "B1");
+  assert.equal(labels[onA[3]!.id], "B4");
+  assert.ok(center(onA[0]!).x < center(onA[3]!).x);
+  const onB = stools.filter((stool) => center(stool).x > corner.x + 0.4 && center(stool).y >= plan[0]!.y - 0.2);
+  assert.equal(onB.length, 3);
+  const tipB = onB.reduce((a, b) => (center(a).y >= center(b).y ? a : b));
+  const nearB = onB.reduce((a, b) => (center(a).y <= center(b).y ? a : b));
+  assert.equal(labels[tipB.id], "B5");
+  assert.equal(labels[nearB.id], "B7");
+  const seat = stools.find((stool) => center(stool).x > corner.x + 0.4 && center(stool).y < plan[0]!.y - 0.2);
+  assert.ok(seat);
+  assert.equal(labels[seat.id], "B8");
+  assert.notEqual(labels[seat.id], "B1");
 });

@@ -24,7 +24,7 @@ export function SubscriberWhitePaper() {
         summex.app · Guest cards: {PAYMENTS_BRAND} only
       </p>
       <p className="mt-2 text-xs text-muted-foreground">
-        Revision · 30 Sep 2026 — DoorDash and Uber Eats open a marketplace check. Aligns with Operators Guide v2026.10.184.
+        Revision · 2 Oct 2026 — Bar stool numbers start at the open end. Aligns with Operators Guide v2026.10.185.
         The house toggles which tenders it accepts. Station UI is device role ∩
         staff PIN. After PIN the tablet shows a short role menu. Pair with a
         typed Devices code; QR is optional. Peer venues have no host merchant;

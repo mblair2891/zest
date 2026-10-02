@@ -6,6 +6,18 @@ import type { GuideUpdate } from "@/lib/guide/types";
  */
 export const WHATS_NEW_ENTRIES: GuideUpdate[] = [
   {
+    id: "upd_2026_10_185_stool_open_end",
+    date: "2026-10-02",
+    title: "Stool numbers start at the open end",
+    summary: "Each leg runs from its free end toward the corner. A straight bar starts at the guest’s left.",
+    body: "On a straight bar, B1 is the stool at the guest’s left while they face the rail, then B2 and B3 toward the right. Reverse numbering flips that one bar and places the stools again. On an L or U, each leg starts at its free end. B1 is the first stool on the first leg. The numbers run toward the corner, and the next leg starts only after that leg is done, again from its free end. A corner seat is the last number on that corner, not B1. Changing a count places the stools again. Reset table numbers, Barstools only, uses that same order. The live floor shows those B numbers.",
+    roles: ["owner_manager", "host_operator"],
+    surfaces: ["floor"],
+    audience: "all",
+    topicId: "floor-editor",
+    tags: ["floor"],
+  },
+  {
     id: "upd_2026_10_184_doordash_uber",
     date: "2026-09-30",
     title: "DoorDash and Uber Eats",

@@ -9,6 +9,7 @@ import {
   snapStoolToRail,
   stoolOffsetFromCenterIn,
   type BarGuestSide,
+  type BarStoolCounts,
   type BarTopShape,
 } from "./floor-architecture.ts";
 import { COPY_OFFSET_IN } from "./floor-copy.ts";
@@ -194,64 +195,28 @@ export type RenumberBar = {
   widthIn?: number | null;
   section?: string;
   sectionId?: string;
-  /** 0 = polyline start, 1 = polyline end. Unset uses the longest leg’s rightmost open end. */
+  /** 1 reverses this bar. Unset starts at the guest’s left, or at the first leg’s open end. */
   stoolNumberFrom?: 0 | 1 | null;
 };
 
 /**
- * Open end that is B1 when the bar has not stored a choice.
- * The rightmost vertex of the longest leg, when that vertex is an open end.
- * A corner uses the other end of that leg when that end is open.
- * A middle leg falls back to the rightmost open end. A closed island stays 0.
+ * Unset numbering is not reversed.
+ * A straight bar starts at the guest’s left. An L or U starts at the first leg’s open end.
  */
 export function defaultNumberFrom(bar: {
   points: readonly ArrangePoint[];
   barShape?: BarTopShape | null;
 }): 0 | 1 {
-  const points = bar.points;
-  if (points.length < 2) return 0;
-  if (barClosedShape(bar.barShape ?? undefined, points.slice())) return 0;
-  const last = points.length - 1;
-  let bestI = 0;
-  let bestLen = -1;
-  let bestRight = -Infinity;
-  for (let i = 0; i < last; i += 1) {
-    const a = points[i]!;
-    const b = points[i + 1]!;
-    const len = Math.hypot(b.x - a.x, b.y - a.y);
-    const right = Math.max(a.x, b.x);
-    if (len > bestLen + 1e-6 || (Math.abs(len - bestLen) <= 1e-6 && right > bestRight + 1e-6)) {
-      bestLen = len;
-      bestRight = right;
-      bestI = i;
-    }
-  }
-  const a = points[bestI]!;
-  const b = points[bestI + 1]!;
-  const aOpen = bestI === 0;
-  const bOpen = bestI + 1 === last;
-  let rightIndex = bestI;
-  if (b.x > a.x + 0.05) rightIndex = bestI + 1;
-  else if (a.x > b.x + 0.05) rightIndex = bestI;
-  else if (aOpen && !bOpen) rightIndex = bestI;
-  else if (bOpen && !aOpen) rightIndex = bestI + 1;
-  else rightIndex = b.y >= a.y ? bestI + 1 : bestI;
-  if (rightIndex === 0 || rightIndex === last) return rightIndex === 0 ? 0 : 1;
-  const other = rightIndex === bestI ? bestI + 1 : bestI;
-  if (other === 0 || other === last) return other === 0 ? 0 : 1;
-  const start = points[0]!;
-  const end = points[last]!;
-  if (end.x > start.x + 0.05) return 1;
-  if (start.x > end.x + 0.05) return 0;
-  return end.y >= start.y ? 1 : 0;
+  if (bar.points.length < 2) return 0;
+  return 0;
 }
 
-/** Stored start end, or the default open end. */
+/** 1 when this bar’s Reverse numbering toggle is on. */
 export function numberFromEnd(bar: RenumberBar): 0 | 1 {
-  return bar.stoolNumberFrom === 0 || bar.stoolNumberFrom === 1 ? bar.stoolNumberFrom : defaultNumberFrom(bar);
+  return bar.stoolNumberFrom === 1 ? 1 : defaultNumberFrom(bar);
 }
 
-/** Guest rail, starting at the chosen open end. Closed islands keep their stored loop. */
+/** Guest rail beside the stools. Direction follows the centerline. */
 export function outsideRail(bar: RenumberBar, room: ArrangeRoom): ArrangePoint[] {
   const shape = bar.barShape ?? undefined;
   const points = bar.points.length >= 2 ? bar.points : [{ x: bar.x, y: bar.y }, { x: bar.x + 10, y: bar.y }];
@@ -259,9 +224,7 @@ export function outsideRail(bar: RenumberBar, room: ArrangeRoom): ArrangePoint[]
   const depth = barDepthIn(bar.widthIn);
   const side = bar.barSide ?? (shape === "l" || shape === "u" ? "outside" : "a");
   const sign = barGuestSign(shape, side);
-  const guest = offsetCenterline(points, sign * stoolOffsetFromCenterIn(depth), room, closed);
-  if (closed) return guest;
-  return numberFromEnd(bar) === 1 ? guest.slice().reverse() : guest.slice();
+  return offsetCenterline(points, sign * stoolOffsetFromCenterIn(depth), room, closed);
 }
 
 function polyDist(px: number, py: number, points: readonly ArrangePoint[]): number {
@@ -279,20 +242,205 @@ function polyDist(px: number, py: number, points: readonly ArrangePoint[]): numb
   return best;
 }
 
-/** Indices of centers along the guest rail, from the chosen open end. */
+/** A stool this close to an interior guest vertex is the corner seat, not a leg stool. */
+const CORNER_SEAT_IN = 8;
+
+function inchesBetween(a: ArrangePoint, b: ArrangePoint, room: ArrangeRoom): number {
+  const dx = ((b.x - a.x) / 100) * room.widthIn;
+  const dy = ((b.y - a.y) / 100) * room.depthIn;
+  return Math.hypot(dx, dy);
+}
+
+function projectInches(
+  center: ArrangePoint,
+  a: ArrangePoint,
+  b: ArrangePoint,
+  room: ArrangeRoom,
+): { d: number; along: number } {
+  const ax = (a.x / 100) * room.widthIn;
+  const ay = (a.y / 100) * room.depthIn;
+  const bx = (b.x / 100) * room.widthIn;
+  const by = (b.y / 100) * room.depthIn;
+  const x = (center.x / 100) * room.widthIn;
+  const y = (center.y / 100) * room.depthIn;
+  const dx = bx - ax;
+  const dy = by - ay;
+  const len2 = dx * dx + dy * dy;
+  const len = Math.sqrt(len2);
+  let t = 0;
+  if (len2 > 0) t = Math.max(0, Math.min(1, ((x - ax) * dx + (y - ay) * dy) / len2));
+  const qx = ax + t * dx;
+  const qy = ay + t * dy;
+  return { d: Math.hypot(x - qx, y - qy), along: t * len };
+}
+
+/**
+ * Guest facing the rail, in inch space (y down). Their left is a screen-left turn.
+ * True when that left end is the polyline start.
+ */
+function guestLeftIsStart(bar: RenumberBar, room: ArrangeRoom): boolean {
+  const points = bar.points.length >= 2 ? bar.points : [{ x: bar.x, y: bar.y }, { x: bar.x + 10, y: bar.y }];
+  const a = points[0]!;
+  const b = points[points.length - 1]!;
+  const tx = ((b.x - a.x) / 100) * room.widthIn;
+  const ty = ((b.y - a.y) / 100) * room.depthIn;
+  const len = Math.hypot(tx, ty) || 1;
+  const sign = barGuestSign(bar.barShape ?? undefined, bar.barSide);
+  const fx = (sign * ty) / len;
+  const fy = (sign * -tx) / len;
+  const lx = -fy;
+  const ly = fx;
+  return tx * lx + ty * ly <= 0;
+}
+
+type StoolPartition = {
+  legs: number[][];
+  corners: number[];
+};
+
+function partitionStools(
+  centers: readonly ArrangePoint[],
+  bar: RenumberBar,
+  room: ArrangeRoom,
+): StoolPartition {
+  const rail = outsideRail(bar, room);
+  const segCount = Math.max(0, rail.length - 1);
+  const legs: number[][] = Array.from({ length: segCount }, () => []);
+  const cornerHits: { index: number; vert: number }[] = [];
+  const interior = rail.slice(1, -1);
+  centers.forEach((center, index) => {
+    let bestVert = -1;
+    let bestVertD = Infinity;
+    interior.forEach((vertex, vert) => {
+      const d = inchesBetween(center, vertex, room);
+      if (d < bestVertD) {
+        bestVertD = d;
+        bestVert = vert;
+      }
+    });
+    if (bestVert >= 0 && bestVertD <= CORNER_SEAT_IN) {
+      cornerHits.push({ index, vert: bestVert });
+      return;
+    }
+    let seg = 0;
+    let bestD = Infinity;
+    for (let i = 0; i < segCount; i += 1) {
+      const hit = projectInches(center, rail[i]!, rail[i + 1]!, room);
+      if (hit.d < bestD) {
+        bestD = hit.d;
+        seg = i;
+      }
+    }
+    legs[seg]?.push(index);
+  });
+  cornerHits.sort((a, b) => a.vert - b.vert || a.index - b.index);
+  return { legs, corners: cornerHits.map((hit) => hit.index) };
+}
+
+/** True when B numbers on this leg run from the segment start toward its end. */
+function legRunsForward(index: number, segCount: number, reversed: boolean): boolean {
+  if (segCount <= 1) return !reversed;
+  if (index === 0) return true;
+  if (index === segCount - 1) return false;
+  return !reversed;
+}
+
+function sortLeg(
+  indexes: readonly number[],
+  centers: readonly ArrangePoint[],
+  rail: readonly ArrangePoint[],
+  seg: number,
+  forward: boolean,
+  room: ArrangeRoom,
+): number[] {
+  const a = rail[seg];
+  const b = rail[seg + 1];
+  if (!a || !b) return indexes.slice();
+  return indexes.slice().sort((i, j) => {
+    const ai = projectInches(centers[i]!, a, b, room).along;
+    const aj = projectInches(centers[j]!, a, b, room).along;
+    const delta = forward ? ai - aj : aj - ai;
+    if (Math.abs(delta) > 1e-4) return delta;
+    return i - j;
+  });
+}
+
+/**
+ * B1…Bn.
+ * Straight: guest’s left, then toward their right, unless Reverse numbering is on.
+ * L / U / polyline: each free end is the low number on that leg, running toward the corner.
+ * The next leg starts only after the previous leg. A corner seat is the last number.
+ * Reverse swaps which open end is B1 and still keeps the corner seat last.
+ */
 export function outsideWalkOrder(
   centers: readonly { x: number; y: number }[],
   bar: RenumberBar,
   room: ArrangeRoom,
 ): number[] {
+  const shape = bar.barShape ?? undefined;
+  const points = bar.points.length >= 2 ? bar.points : [{ x: bar.x, y: bar.y }, { x: bar.x + 10, y: bar.y }];
   const rail = outsideRail(bar, room);
-  return centers
-    .map((center, index) => ({
-      index,
-      along: rail.length >= 2 ? distanceAlong(rail, center.x, center.y) : center.x,
-    }))
-    .sort((a, b) => a.along - b.along || a.index - b.index)
-    .map((row) => row.index);
+  if (centers.length === 0) return [];
+  if (rail.length < 2) return centers.map((_, index) => index);
+  const reversed = numberFromEnd(bar) === 1;
+  if (barClosedShape(shape, points)) {
+    const order = centers
+      .map((center, index) => ({ index, along: distanceAlong(rail, center.x, center.y) }))
+      .sort((a, b) => a.along - b.along || a.index - b.index)
+      .map((row) => row.index);
+    return reversed ? order.reverse() : order;
+  }
+  const segCount = rail.length - 1;
+  const part = partitionStools(centers, bar, room);
+  if (segCount === 1) {
+    const forward = guestLeftIsStart(bar, room) ? !reversed : reversed;
+    return sortLeg(part.legs[0] ?? [], centers, rail, 0, forward, room);
+  }
+  const legIndexes = Array.from({ length: segCount }, (_, index) => index);
+  if (reversed) legIndexes.reverse();
+  const order: number[] = [];
+  for (const seg of legIndexes) {
+    const forward = legRunsForward(seg, segCount, reversed);
+    order.push(...sortLeg(part.legs[seg] ?? [], centers, rail, seg, forward, room));
+  }
+  order.push(...part.corners);
+  return order;
+}
+
+/** Counts already on the rail, so a count edit regenerates from the stools that are there. */
+export function inferBarStoolCounts(
+  centers: readonly { x: number; y: number }[],
+  bar: RenumberBar,
+  room: ArrangeRoom,
+): BarStoolCounts {
+  const shape = bar.barShape ?? "straight";
+  const part = partitionStools(centers, bar, room);
+  const base: BarStoolCounts = {
+    count: 0,
+    legA: 0,
+    legB: 0,
+    corner: false,
+    left: 0,
+    rear: 0,
+    right: 0,
+  };
+  if (shape === "l") {
+    return {
+      ...base,
+      legA: part.legs[0]?.length ?? 0,
+      legB: part.legs[1]?.length ?? 0,
+      corner: part.corners.length > 0,
+    };
+  }
+  if (shape === "u") {
+    return {
+      ...base,
+      left: part.legs[0]?.length ?? 0,
+      rear: part.legs[1]?.length ?? 0,
+      right: part.legs[2]?.length ?? 0,
+    };
+  }
+  return { ...base, count: centers.length };
 }
 
 function bNumber(label: string): number | null {
@@ -399,18 +547,7 @@ function labelOwnedStools(
   room?: ArrangeRoom,
 ): { id: string; label: string }[] {
   const centers = owned.map((stool) => ({ x: stool.x + stool.w / 2, y: stool.y + stool.h / 2 }));
-  const line = numberFromEnd(bar) === 1 && !barClosedShape(bar.barShape ?? undefined, bar.points)
-    ? bar.points.slice().reverse()
-    : bar.points;
-  const order = room
-    ? outsideWalkOrder(centers, bar, room)
-    : owned
-        .map((stool, index) => ({
-          index,
-          along: distanceAlong(line, stool.x + stool.w / 2, stool.y + stool.h / 2),
-        }))
-        .sort((a, b) => a.along - b.along || a.index - b.index)
-        .map((row) => row.index);
+  const order = outsideWalkOrder(centers, bar, room ?? { widthIn: 40 * 12, depthIn: 30 * 12 });
   const patches: { id: string; label: string }[] = [];
   order.forEach((index, n) => {
     const piece = owned[index];
@@ -421,7 +558,7 @@ function labelOwnedStools(
   return patches;
 }
 
-/** B1…Bn for stools on this bar only. Positions stay. Unattached stools are left alone. */
+/** B1…Bn for stools on this bar only, from each open end toward the corner. Positions stay. */
 export function relabelBarStools(
   pieces: readonly RenumberPiece[],
   bar: RenumberBar,
@@ -432,7 +569,7 @@ export function relabelBarStools(
   return labelOwnedStools(stoolsForBar(stools, bar, bars), bar, room);
 }
 
-/** Existing stool capsules only. B1…Bn per bar along the guest rail. No bar label, no new objects. */
+/** Existing stool capsules only. B1…Bn per bar from each open end toward the corner. */
 function stoolLabels(
   pieces: readonly RenumberPiece[],
   bars: readonly RenumberBar[],
@@ -461,7 +598,7 @@ function stoolLabels(
 /**
  * Dining tables and booths, top to bottom then left to right, become "1"…"N".
  * A booth that already uses a B number stays out of that sequence.
- * Each bar’s stools become B1…Bn along the guest rail, from that bar’s start end.
+ * Each bar’s stools become B1…Bn from each open end toward the corner.
  * The bar’s own label is not a stool number.
  */
 export function renumberPlan(
@@ -510,9 +647,9 @@ function splitCount(total: number, lengths: number[]): number[] {
 }
 
 /**
- * Dining 1…N. Each bar’s stools stay capsules, labeled B1…Bn from that bar’s
- * start end. Path-text B numbers on the slab become stool objects. Seats stay
- * put when only the start end changes.
+ * Dining 1…N. Each bar’s stools stay capsules, labeled B1…Bn from each open
+ * end toward the corner. Path-text B numbers on the slab become stool objects.
+ * Reverse numbering and a new count place the stools again.
  */
 export function resetFloorNumbers(
   pieces: readonly RenumberPiece[],

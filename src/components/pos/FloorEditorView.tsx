@@ -77,11 +77,10 @@ import {
   isAddCountKind,
   nextFreeNumbers,
   nextFreeStoolLabels,
-  defaultNumberFrom,
+  inferBarStoolCounts,
   originAtClick,
   outsideWalkOrder,
   placeRow,
-  relabelBarStools,
   resetFloorNumbers,
   rulerMarks,
   type ResetScope,
@@ -158,14 +157,6 @@ function stoolsOnRail(
       return Math.hypot(snapped.x - t.x, snapped.y - t.y) < 8;
     })
     .map((t) => t.id);
-}
-
-function openBarEndIndexes(
-  points: { x: number; y: number }[],
-  shape: BarTopShape | undefined,
-): number[] {
-  if (points.length < 2 || barClosedShape(shape, points)) return [];
-  return [0, points.length - 1];
 }
 
 function isThinPiece(kind?: string | null): boolean {
@@ -544,6 +535,29 @@ export function FloorEditorView() {
     setStoolBar(selected);
     setReplaceStools(false);
     setPendingSide(null);
+    const picked = tables.find((t) => t.id === selected);
+    if (picked?.kind === "bar_top") {
+      const ids = new Set(stoolsOnRail(tables, picked, floorRoom));
+      const onRail = tables.filter((t) => ids.has(t.id));
+      setStoolCounts(
+        inferBarStoolCounts(
+          onRail.map((stool) => ({ x: stool.x + stool.w / 2, y: stool.y + stool.h / 2 })),
+          {
+            id: picked.id,
+            x: picked.x,
+            y: picked.y,
+            w: picked.w,
+            h: picked.h,
+            points: storedBarPlan(picked),
+            barShape: picked.barShape,
+            barSide: picked.barSide,
+            widthIn: picked.widthIn,
+            stoolNumberFrom: picked.stoolNumberFrom,
+          },
+          floorRoom,
+        ),
+      );
+    }
   }
   const drag = useRef<{
     id: string;
@@ -1027,11 +1041,24 @@ export function FloorEditorView() {
     persistLocationCatalog("floor");
   };
 
-  const placeStools = (barId: string, confirmed: boolean, side?: BarGuestSide) => {
-    const bar = tables.find((t) => t.id === barId);
+  const placeStools = (
+    barId: string,
+    confirmed: boolean,
+    side?: BarGuestSide,
+    opts?: { counts?: BarStoolCounts; numberFrom?: 0 | 1 },
+  ) => {
+    const state = usePosStore.getState();
+    const roomNow = state.floorRoom ?? DEFAULT_ROOM;
+    let bar = state.tables.find((t) => t.id === barId);
     if (!bar || bar.kind !== "bar_top") return;
-    const existingIds = stoolsOnRail(tables, bar, floorRoom);
-    const existing = tables.filter((t) => existingIds.includes(t.id));
+    const numberFrom = opts?.numberFrom ?? bar.stoolNumberFrom;
+    if (opts?.numberFrom != null && opts.numberFrom !== bar.stoolNumberFrom) {
+      update(barId, { stoolNumberFrom: opts.numberFrom });
+      bar = { ...bar, stoolNumberFrom: opts.numberFrom };
+    }
+    const counts = opts?.counts ?? stoolCounts;
+    const existingIds = stoolsOnRail(state.tables, bar, roomNow);
+    const existing = state.tables.filter((t) => existingIds.includes(t.id));
     if (existing.some((t) => t.orderId)) return;
     if (existing.length > 0 && !confirmed) {
       setPendingSide(side ?? null);
@@ -1043,8 +1070,8 @@ export function FloorEditorView() {
     for (const id of existingIds) remove(id);
     const poses = generateBarStools({
       bar: { ...bar, barSide: useSide },
-      room: floorRoom,
-      counts: stoolCounts,
+      room: roomNow,
+      counts,
       side: useSide,
     });
     const walkBar = {
@@ -1057,12 +1084,12 @@ export function FloorEditorView() {
       barShape: bar.barShape,
       barSide: useSide ?? bar.barSide,
       widthIn: bar.widthIn,
-      stoolNumberFrom: bar.stoolNumberFrom,
+      stoolNumberFrom: numberFrom,
     };
     const order = outsideWalkOrder(
       poses.map((pose) => ({ x: pose.x + pose.w / 2, y: pose.y + pose.h / 2 })),
       walkBar,
-      floorRoom,
+      roomNow,
     );
     order.forEach((poseIndex, n) => {
       const pose = poses[poseIndex];
@@ -1197,37 +1224,6 @@ export function FloorEditorView() {
     placePointRef.current = null;
     setAddOpen(false);
     setPendingKind(null);
-    persistLocationCatalog("floor");
-  };
-
-  const chooseNumberFrom = (barId: string, from: 0 | 1) => {
-    const state = usePosStore.getState();
-    const row = state.tables.find((item) => item.id === barId);
-    if (!row || row.kind !== "bar_top") return;
-    update(barId, { stoolNumberFrom: from });
-    const roomNow = state.floorRoom ?? DEFAULT_ROOM;
-    const bars = state.tables
-      .filter((item) => item.kind === "bar_top")
-      .map((item) => ({
-        id: item.id,
-        x: item.x,
-        y: item.y,
-        w: item.w,
-        h: item.h,
-        label: item.label,
-        points: storedBarPlan(item),
-        barShape: item.barShape,
-        barSide: item.barSide,
-        widthIn: item.widthIn,
-        section: item.section,
-        sectionId: item.sectionId,
-        stoolNumberFrom: item.id === barId ? from : item.stoolNumberFrom,
-      }));
-    const bar = bars.find((item) => item.id === barId);
-    if (!bar) return;
-    for (const patch of relabelBarStools(state.tables, bar, roomNow, bars)) {
-      update(patch.id, { label: patch.label });
-    }
     persistLocationCatalog("floor");
   };
 
@@ -1692,11 +1688,6 @@ export function FloorEditorView() {
                 const plan = storedBarPlan(t);
                 const local = planToLocal(plan, t);
                 const handles = selected === t.id ? legHandles(plan, t.barShape ?? "straight") : [];
-                const numberEnds = selected === t.id ? openBarEndIndexes(plan, t.barShape) : [];
-                const numberFrom =
-                  t.stoolNumberFrom === 0 || t.stoolNumberFrom === 1
-                    ? t.stoolNumberFrom
-                    : defaultNumberFrom({ points: plan, barShape: t.barShape });
                 return (
                   <div
                     key={t.id}
@@ -1712,11 +1703,6 @@ export function FloorEditorView() {
                         className="pointer-events-none absolute left-1/2 top-0 z-30 -translate-x-1/2 -translate-y-full whitespace-nowrap rounded bg-white px-1 text-[10px] font-medium text-neutral-900 shadow"
                       >
                         {dimensionLabel(t, floorRoom)}
-                      </span>
-                    ) : null}
-                    {numberEnds.length ? (
-                      <span className="pointer-events-none absolute left-1/2 top-full z-30 mt-1 -translate-x-1/2 whitespace-nowrap rounded bg-white px-1 text-[10px] font-medium text-neutral-900 shadow">
-                        Number from
                       </span>
                     ) : null}
                     {selected === t.id ? <MeasureGuides table={t} tables={tables} room={floorRoom} /> : null}
@@ -1749,38 +1735,6 @@ export function FloorEditorView() {
                             className="pointer-events-auto absolute z-20 h-4 w-4 -translate-x-1/2 -translate-y-1/2 cursor-grab rounded-full border-2 border-white bg-primary shadow active:cursor-grabbing"
                             style={{ left: `${p.x}%`, top: `${p.y}%` }}
                             onPointerDown={(e) => startLeg(e, t.id, h)}
-                          />
-                        );
-                      })}
-                      {numberEnds.map((endIndex) => {
-                        const p = local[endIndex];
-                        const neighbor = local[endIndex === 0 ? 1 : local.length - 2];
-                        if (!p || !neighbor) return null;
-                        const fromEnd: 0 | 1 = endIndex === 0 ? 0 : 1;
-                        const boxW = (t.w / 100) * floorRoom.widthIn * draw.pxPerIn * cam.s || 1;
-                        const boxH = (t.h / 100) * floorRoom.depthIn * draw.pxPerIn * cam.s || 1;
-                        const vx = ((p.x - neighbor.x) / 100) * boxW;
-                        const vy = ((p.y - neighbor.y) / 100) * boxH;
-                        const vlen = Math.hypot(vx, vy) || 1;
-                        const ox = (vx / vlen) * 18;
-                        const oy = (vy / vlen) * 18;
-                        return (
-                          <button
-                            key={`from-${fromEnd}`}
-                            type="button"
-                            data-stool-number-from={fromEnd}
-                            data-stool-number-start={fromEnd === numberFrom ? "1" : undefined}
-                            aria-label="Number from this end"
-                            className={cn(
-                              "pointer-events-auto absolute z-30 h-3.5 w-3.5 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-neutral-900 shadow",
-                              fromEnd === numberFrom ? "bg-neutral-900" : "bg-white",
-                            )}
-                            style={{ left: `calc(${p.x}% + ${ox}px)`, top: `calc(${p.y}% + ${oy}px)` }}
-                            onPointerDown={(e) => {
-                              e.preventDefault();
-                              e.stopPropagation();
-                              chooseNumberFrom(t.id, fromEnd);
-                            }}
                           />
                         );
                       })}
@@ -2087,9 +2041,6 @@ export function FloorEditorView() {
                       }}
                     />
                   </label>
-                  {!barClosedShape(selectedTable.barShape, storedBarPlan(selectedTable)) ? (
-                    <p className="text-xs text-muted-foreground">Number from</p>
-                  ) : null}
                   <div className="space-y-2" data-bar-stools="">
                     <p className="text-xs text-muted-foreground">Guest side</p>
                     {(selectedTable.barShape ?? "straight") === "island" ? (
@@ -2124,24 +2075,47 @@ export function FloorEditorView() {
                         ))}
                       </div>
                     )}
+                    <label className="flex items-center gap-2 text-xs" data-stool-number-reverse="">
+                      <input
+                        type="checkbox"
+                        checked={selectedTable.stoolNumberFrom === 1}
+                        onChange={(e) => {
+                          const numberFrom: 0 | 1 = e.target.checked ? 1 : 0;
+                          placeStools(selectedTable.id, true, undefined, { numberFrom, counts: stoolCounts });
+                        }}
+                      />
+                      Reverse numbering
+                    </label>
                     <p className="text-xs text-muted-foreground">Stools</p>
                     {(selectedTable.barShape ?? "straight") === "l" ? (
                       <div className="grid grid-cols-2 gap-2">
                         <StoolCount
                           label="Leg A"
                           value={stoolCounts.legA ?? 0}
-                          onChange={(legA) => setStoolCounts({ ...stoolCounts, legA })}
+                          onChange={(legA) => {
+                            const counts = { ...stoolCounts, legA };
+                            setStoolCounts(counts);
+                            placeStools(selectedTable.id, true, undefined, { counts });
+                          }}
                         />
                         <StoolCount
                           label="Leg B"
                           value={stoolCounts.legB ?? 0}
-                          onChange={(legB) => setStoolCounts({ ...stoolCounts, legB })}
+                          onChange={(legB) => {
+                            const counts = { ...stoolCounts, legB };
+                            setStoolCounts(counts);
+                            placeStools(selectedTable.id, true, undefined, { counts });
+                          }}
                         />
                         <label className="col-span-2 flex items-center gap-2 text-xs">
                           <input
                             type="checkbox"
                             checked={Boolean(stoolCounts.corner)}
-                            onChange={(e) => setStoolCounts({ ...stoolCounts, corner: e.target.checked })}
+                            onChange={(e) => {
+                              const counts = { ...stoolCounts, corner: e.target.checked };
+                              setStoolCounts(counts);
+                              placeStools(selectedTable.id, true, undefined, { counts });
+                            }}
                           />
                           Corner seat
                         </label>
@@ -2151,24 +2125,40 @@ export function FloorEditorView() {
                         <StoolCount
                           label="Left"
                           value={stoolCounts.left ?? 0}
-                          onChange={(left) => setStoolCounts({ ...stoolCounts, left })}
+                          onChange={(left) => {
+                            const counts = { ...stoolCounts, left };
+                            setStoolCounts(counts);
+                            placeStools(selectedTable.id, true, undefined, { counts });
+                          }}
                         />
                         <StoolCount
                           label="Rear"
                           value={stoolCounts.rear ?? 0}
-                          onChange={(rear) => setStoolCounts({ ...stoolCounts, rear })}
+                          onChange={(rear) => {
+                            const counts = { ...stoolCounts, rear };
+                            setStoolCounts(counts);
+                            placeStools(selectedTable.id, true, undefined, { counts });
+                          }}
                         />
                         <StoolCount
                           label="Right"
                           value={stoolCounts.right ?? 0}
-                          onChange={(right) => setStoolCounts({ ...stoolCounts, right })}
+                          onChange={(right) => {
+                            const counts = { ...stoolCounts, right };
+                            setStoolCounts(counts);
+                            placeStools(selectedTable.id, true, undefined, { counts });
+                          }}
                         />
                       </div>
                     ) : (
                       <StoolCount
                         label={(selectedTable.barShape ?? "straight") === "island" ? "Around the island" : "Stools"}
                         value={stoolCounts.count ?? 0}
-                        onChange={(count) => setStoolCounts({ ...stoolCounts, count })}
+                        onChange={(count) => {
+                          const counts = { ...stoolCounts, count };
+                          setStoolCounts(counts);
+                          placeStools(selectedTable.id, true, undefined, { counts });
+                        }}
                       />
                     )}
                     <Button type="button" size="sm" onClick={() => placeStools(selectedTable.id, false)}>
