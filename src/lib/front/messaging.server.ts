@@ -1,4 +1,5 @@
 import { getSql } from "@/lib/db";
+import { emailFromAddress, noteUnsentEmail, resendPayload } from "@/lib/saas/email-notices";
 import { appPublicUrl } from "@/lib/saas/flags";
 import { newId } from "@/lib/saas/ids";
 
@@ -113,8 +114,7 @@ export async function sendEmail(opts: {
   kind: string;
   locationId?: string | null;
 }): Promise<{ ok: true; provider: string }> {
-  const key = readEnv("RESEND_API_KEY");
-  const from = readEnv("RESEND_FROM") || "Summex <noreply@summex.app>";
+  const key = readEnv("RESEND_API_KEY") || readEnv("EMAIL_API_KEY");
   if (key) {
     const res = await fetch("https://api.resend.com/emails", {
       method: "POST",
@@ -122,12 +122,14 @@ export async function sendEmail(opts: {
         Authorization: `Bearer ${key}`,
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({
-        from,
-        to: [opts.to],
-        subject: opts.subject,
-        text: opts.body,
-      }),
+      body: JSON.stringify(
+        resendPayload({
+          to: opts.to,
+          subject: opts.subject,
+          text: opts.body,
+          from: emailFromAddress(),
+        }),
+      ),
     });
     if (!res.ok) {
       const text = await res.text();
@@ -144,17 +146,17 @@ export async function sendEmail(opts: {
     });
     return { ok: true, provider: "resend" };
   }
+  noteUnsentEmail(opts.kind, opts.to, opts.subject, opts.body);
   await logMessage({
     channel: "email",
     to: opts.to,
     subject: opts.subject,
     body: opts.body,
-    provider: "sandbox",
+    provider: "not_sent",
     kind: opts.kind,
     locationId: opts.locationId,
   });
-  console.info("[email:sandbox]", opts.kind, opts.to, opts.subject);
-  return { ok: true, provider: "sandbox" };
+  return { ok: true, provider: "not_sent" };
 }
 
 export async function listRecentMessages(

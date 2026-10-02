@@ -19,9 +19,12 @@ import {
   isPlatformAdminEmail,
   parseTenantFloorRole,
   parseTenantLoginRole,
+  tenantConsoleLoginUrl,
   type TenantUserKind,
   type TenantUserRow,
 } from "./tenant-users";
+import { locationAdminMail, passwordResetMail, plainTextHtml } from "./email-notices";
+import type { SendEmailResult } from "./email.server";
 
 async function requireVenueUsersAccess(userId: string, orgId: string): Promise<void> {
   if (await isPlatformAdmin(userId)) return;
@@ -255,7 +258,13 @@ export async function addLocationAdmin(
     operatorId?: string | null;
     role?: string;
   },
-): Promise<{ userId: string; username: string; tempPassword: string; forceChange: boolean }> {
+): Promise<{
+  userId: string;
+  username: string;
+  tempPassword: string;
+  forceChange: boolean;
+  emailStatus: SendEmailResult["status"];
+}> {
   await requireVenueUsersAccess(actorId, input.orgId);
   const loc = await assertOrgLocation(input.orgId, input.locationId);
   const email = input.email.trim().toLowerCase();
@@ -334,7 +343,7 @@ export async function addLocationAdmin(
     )
     values (
       ${userId}, ${null}, ${username}, ${forceChange}, ${input.orgId}, ${input.locationId},
-      ${now}, ${now}, ${now}
+      ${null}, ${now}, ${now}
     )
     on conflict (user_id) do update set
       username = excluded.username,
@@ -394,7 +403,37 @@ export async function addLocationAdmin(
     },
   });
 
-  return { userId, username, tempPassword: password, forceChange };
+  const mail = locationAdminMail({
+    name,
+    username,
+    loginUrl: tenantConsoleLoginUrl(),
+    tempPassword: password,
+    forceChange,
+  });
+  let emailStatus: SendEmailResult["status"] = "logged_only";
+  try {
+    const { sendEmail } = await import("./email.server");
+    const result = await sendEmail({
+      to: email,
+      subject: mail.subject,
+      text: mail.text,
+      html: plainTextHtml(mail.text),
+      kind: "location_admin_created",
+    });
+    emailStatus = result.status;
+  } catch (err) {
+    console.warn("[location-admin-email]", err);
+    emailStatus = "failed";
+  }
+  if (emailStatus === "sent") {
+    await sql`
+      update subscriber_logins
+      set invite_sent_at = ${now}, updated_at = ${now}
+      where user_id = ${userId}
+    `;
+  }
+
+  return { userId, username, tempPassword: password, forceChange, emailStatus };
 }
 
 export async function addFloorStaff(
@@ -566,15 +605,24 @@ export async function resetTenantUserSecret(
     id: string;
     pin?: string;
   },
-): Promise<{ tempPassword?: string; pin?: string }> {
+): Promise<{ tempPassword?: string; pin?: string; emailStatus?: SendEmailResult["status"] }> {
   await requireVenueUsersAccess(actorId, input.orgId);
   await assertOrgLocation(input.orgId, input.locationId);
   const sql = await getSql();
 
   if (input.kind === "login") {
-    const rows = await sql<{ user_id: string; role: string }>`
-      select user_id, role from memberships
-      where id = ${input.id} and org_id = ${input.orgId}
+    const rows = await sql<{
+      user_id: string;
+      role: string;
+      email: string | null;
+      name: string | null;
+      username: string | null;
+    }>`
+      select m.user_id, m.role, u.email, u.name, s.username
+      from memberships m
+      join "user" u on u.id = m.user_id
+      left join subscriber_logins s on s.user_id = m.user_id
+      where m.id = ${input.id} and m.org_id = ${input.orgId}
       limit 1
     `;
     const row = rows[0];
@@ -606,7 +654,35 @@ export async function resetTenantUserSecret(
       action: "tenant_user_password_reset",
       payload: { membershipId: input.id },
     });
-    return { tempPassword: password };
+    const loginName = row.username || row.email || row.user_id;
+    const mail = passwordResetMail({
+      name: row.name || loginName,
+      username: loginName,
+      loginUrl: tenantConsoleLoginUrl(),
+      tempPassword: password,
+    });
+    let emailStatus: SendEmailResult["status"] = "logged_only";
+    const to = (row.email || "").trim().toLowerCase();
+    if (to.includes("@")) {
+      try {
+        const { sendEmail } = await import("./email.server");
+        const result = await sendEmail({
+          to,
+          subject: mail.subject,
+          text: mail.text,
+          html: plainTextHtml(mail.text),
+          kind: "password_reset",
+        });
+        emailStatus = result.status;
+      } catch (err) {
+        console.warn("[password-reset-email]", err);
+        emailStatus = "failed";
+      }
+    } else {
+      const { noteUnsentEmail } = await import("./email-notices");
+      noteUnsentEmail("password_reset", "missing", mail.subject, mail.text);
+    }
+    return { tempPassword: password, emailStatus };
   }
 
   const len = await pinLen();

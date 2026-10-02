@@ -609,7 +609,7 @@ async function sendTenantInviteSms(opts: {
       locationId: opts.locationId,
     });
     if (!r.ok) return "blocked";
-    return r.provider === "sandbox" ? "logged_only" : "sent";
+    return r.provider === "twilio" ? "sent" : "logged_only";
   } catch (err) {
     console.warn("[tenant-sms]", err);
     return "failed";

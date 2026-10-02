@@ -805,7 +805,7 @@ export async function saveQuoteDraft(opts: {
 export async function sendQuote(opts: {
   userId: string;
   prospectId: string;
-}): Promise<ProspectRecord> {
+}): Promise<ProspectRecord & { emailNotice: string }> {
   if (!(await isPlatformAdmin(opts.userId))) throw new ForbiddenError();
   const row = await getRow(opts.prospectId);
   if (!row) throw new Error("Prospect not found");
@@ -841,13 +841,16 @@ export async function sendQuote(opts: {
   });
   const next = mapProspect((await getRow(prospect.id))!);
   await syncCrm(next);
+  let emailNotice = "email not sent";
   try {
     const mail = await import("./quote-emails.server");
-    await mail.emailQuoteSent(next, quote);
+    const { emailStatusLabel } = await import("./email-notices");
+    const result = await mail.emailQuoteSent(next, quote);
+    emailNotice = emailStatusLabel(result?.status);
   } catch (err) {
     console.warn("[quote-sent-email]", err);
   }
-  return next;
+  return { ...next, emailNotice };
 }
 
 export async function requestQuoteChanges(opts: {
@@ -902,7 +905,7 @@ export async function listQuoteCatalog(userId: string) {
 export async function acceptQuote(opts: {
   userId: string | null;
   token: string;
-}): Promise<ProspectRecord> {
+}): Promise<ProspectRecord & { emailNotice: string }> {
   const row = await getRowByToken(opts.token.trim());
   if (!row) throw new Error("Prospect not found");
   const prospect = mapProspect(row);
@@ -930,19 +933,22 @@ export async function acceptQuote(opts: {
   });
   const next = mapProspect((await getRow(prospect.id))!);
   await syncCrm(next);
+  let emailNotice = "email not sent";
   try {
     const mail = await import("./quote-emails.server");
-    await mail.emailQuoteAccepted(next);
+    const { emailStatusLabel } = await import("./email-notices");
+    const result = await mail.emailQuoteAccepted(next);
+    emailNotice = emailStatusLabel(result?.status);
   } catch (err) {
     console.warn("[quote-accepted-email]", err);
   }
-  return next;
+  return { ...next, emailNotice };
 }
 
 export async function adminMarkQuoteAccepted(opts: {
   userId: string;
   prospectId: string;
-}): Promise<ProspectRecord> {
+}): Promise<ProspectRecord & { emailNotice: string }> {
   if (!(await isPlatformAdmin(opts.userId))) throw new ForbiddenError();
   const row = await getRow(opts.prospectId);
   if (!row) throw new Error("Prospect not found");

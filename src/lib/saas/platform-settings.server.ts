@@ -540,30 +540,37 @@ export async function invitePlatformUser(
   let emailSent = false;
   const comms = await loadCommunicationsSettings();
   const general = await loadGeneral();
-  const key = readServerEnv("RESEND_API_KEY")?.trim();
-  if (key) {
-    const subject = comms.inviteEmailSubject
+  const loginUrl = appPublicUrl();
+  const subject = comms.inviteEmailSubject
+    .replaceAll("{{platformName}}", general.displayName || PRODUCT_NAME)
+    .replaceAll("{{orgName}}", "Summex platform")
+    .replaceAll("{{ownerName}}", existing[0]?.name || email)
+    .replaceAll("{{inviteUrl}}", loginUrl)
+    .replaceAll("{{supportEmail}}", general.supportEmail || "support@summex.app");
+  const body = [
+    comms.inviteEmailBody
       .replaceAll("{{platformName}}", general.displayName || PRODUCT_NAME)
       .replaceAll("{{orgName}}", "Summex platform")
       .replaceAll("{{ownerName}}", existing[0]?.name || email)
-      .replaceAll("{{inviteUrl}}", appPublicUrl())
-      .replaceAll("{{supportEmail}}", general.supportEmail || "support@summex.app");
-    const body = comms.inviteEmailBody
-      .replaceAll("{{platformName}}", general.displayName || PRODUCT_NAME)
-      .replaceAll("{{orgName}}", "Summex platform")
-      .replaceAll("{{ownerName}}", existing[0]?.name || email)
-      .replaceAll("{{inviteUrl}}", appPublicUrl())
-      .replaceAll("{{supportEmail}}", general.supportEmail || "support@summex.app");
-    const from = readServerEnv("RESEND_FROM") || "Summex <noreply@summex.app>";
-    const res = await fetch("https://api.resend.com/emails", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${key}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({ from, to: [email], subject, text: body }),
+      .replaceAll("{{inviteUrl}}", loginUrl)
+      .replaceAll("{{supportEmail}}", general.supportEmail || "support@summex.app"),
+    tempPassword
+      ? `Log in: ${loginUrl}\nUsername: ${email}\nTemporary password: ${tempPassword}\nSign in and set a new password.`
+      : "",
+  ]
+    .filter(Boolean)
+    .join("\n\n");
+  try {
+    const { sendEmail } = await import("./email.server");
+    const result = await sendEmail({
+      to: email,
+      subject,
+      text: body,
+      kind: "platform_invite",
     });
-    emailSent = res.ok;
+    emailSent = result.status === "sent";
+  } catch (err) {
+    console.warn("[platform-invite-email]", err);
   }
   return { ok: true, emailSent, tempPassword };
 }

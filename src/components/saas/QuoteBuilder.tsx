@@ -133,8 +133,13 @@ export function QuoteBuilder({
           terminalQty,
         },
       });
-      if (send) await sendQuoteFn({ data: { prospectId: detail.id } });
-      setMsg(send ? "Quote sent with monthly package." : "Draft saved.");
+      if (send) {
+        const sent = await sendQuoteFn({ data: { prospectId: detail.id } });
+        const notice = sent.emailNotice === "email sent" ? "Email sent." : "Email not sent.";
+        setMsg(`Quote saved with the monthly package. ${notice}`);
+      } else {
+        setMsg("Draft saved.");
+      }
       onChanged();
     } catch (e) {
       setMsg(e instanceof Error ? e.message : "Could not save quote");
@@ -313,8 +318,9 @@ export function QuoteBuilder({
             onClick={() => {
               setBusy(true);
               void adminMarkQuoteAcceptedFn({ data: { prospectId: detail.id } })
-                .then(() => {
-                  setMsg("Marked accepted.");
+                .then((accepted) => {
+                  const notice = accepted.emailNotice === "email sent" ? "Email sent." : "Email not sent.";
+                  setMsg(`Marked accepted. ${notice}`);
                   onChanged();
                 })
                 .catch((e) => setMsg(e instanceof Error ? e.message : "Failed"))

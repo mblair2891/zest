@@ -2,7 +2,7 @@ import { locationMessageHtml } from "@/lib/brand/logos";
 import { PRODUCT_NAME } from "@/lib/platform/brand";
 import { formatCurrency } from "@/lib/utils";
 import { appPublicUrl } from "./flags";
-import { sendEmail } from "./email.server";
+import { sendEmail, type SendEmailResult } from "./email.server";
 import { loadCommunicationsSettings, loadGeneral } from "./platform-settings.server";
 import type { ProspectRecord, QuoteSnapshot } from "./prospect-types";
 
@@ -121,11 +121,14 @@ export async function emailNewQuoteRequestInternal(prospect: ProspectRecord): Pr
   });
 }
 
-export async function emailQuoteSent(prospect: ProspectRecord, quote: QuoteSnapshot): Promise<void> {
+export async function emailQuoteSent(
+  prospect: ProspectRecord,
+  quote: QuoteSnapshot,
+): Promise<SendEmailResult | null> {
   const comms = await loadCommunicationsSettings();
   const ctx = await contextVars();
   const to = prospect.answers.company.billingEmail || prospect.email;
-  if (!to) return;
+  if (!to) return null;
   const v = varsFor({ ...prospect, quote }, ctx);
   const subject = apply(comms.quoteSentSubject, v);
   const text = apply(comms.quoteSentBody, v);
@@ -139,7 +142,7 @@ export async function emailQuoteSent(prospect: ProspectRecord, quote: QuoteSnaps
     locationLogo = null;
   }
   const house = prospect.answers.company.dba || prospect.answers.company.legalName || "Location";
-  await sendEmail({
+  return sendEmail({
     to,
     subject,
     text,
@@ -149,15 +152,16 @@ export async function emailQuoteSent(prospect: ProspectRecord, quote: QuoteSnaps
   });
 }
 
-export async function emailQuoteAccepted(prospect: ProspectRecord): Promise<void> {
+export async function emailQuoteAccepted(prospect: ProspectRecord): Promise<SendEmailResult | null> {
   const comms = await loadCommunicationsSettings();
   const ctx = await contextVars();
   const v = varsFor(prospect, ctx);
   const prospectTo = prospect.answers.company.billingEmail || prospect.email;
   const subject = apply(comms.quoteAcceptedSubject, v);
   const text = apply(comms.quoteAcceptedBody, v);
+  let primary: SendEmailResult | null = null;
   if (prospectTo) {
-    await sendEmail({
+    primary = await sendEmail({
       to: prospectTo,
       subject,
       text,
@@ -176,6 +180,7 @@ export async function emailQuoteAccepted(prospect: ProspectRecord): Promise<void
       prospectId: prospect.id,
     });
   }
+  return primary;
 }
 
 export async function emailQuoteChangesRequested(

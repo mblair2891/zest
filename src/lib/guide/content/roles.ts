@@ -385,7 +385,7 @@ export const ROLE_GUIDE_TOPICS: GuideTopic[] = [
       steps(
         "Sign in as host owner/manager at app.summex.app/login. Open the host dashboard — Devices, Floor, Menus, Reports, Costs, Labor, Payments, Grants.",
         "Open Grants / Entity permissions. Defaults: view_menu on, edit_menu off for tenant-to-tenant, tickets/reports/settlement own-only, devices host-only. Host can still edit every tenant.",
-        "Invite a tenant. They get an entity admin email + temp password (force change) at /login — never a PIN.",
+        "Invite a tenant. They get an entity admin email from Summex noreply: login URL, username, and a temporary password (force change) at /login — never a PIN. Replies go to support@summex.app. If mail is not configured, the screen says email not sent.",
         "Sign in as that tenant. Only that brand’s slice is editable.",
         "Floor staff still PIN on the station. Password login never hits the PIN pad.",
       ),

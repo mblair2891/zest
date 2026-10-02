@@ -1,13 +1,15 @@
 /**
  * Server-only platform email. Never import from client bundles.
- * RESEND_API_KEY or EMAIL_API_KEY + EMAIL_FROM / RESEND_FROM.
- * Missing key → logged_only outbox row, no throw.
+ * From is MAIL_FROM (fallback Summex <noreply@mail.summex.app>). Reply-To is support@summex.app.
+ * RESEND_API_KEY or EMAIL_API_KEY. Missing key logs the message and returns logged_only — not sent.
  */
 import { getSql } from "@/lib/db";
 import { readServerEnv } from "@/lib/database-url";
-import { PRODUCT_NAME } from "@/lib/platform/brand";
+import { emailFromAddress, noteUnsentEmail, resendPayload } from "./email-notices";
 import { newId } from "./ids";
 import type { EmailOutboxRow } from "./platform-settings";
+
+export { emailFromAddress, DEFAULT_MAIL_FROM, SYSTEM_REPLY_TO, emailStatusLabel } from "./email-notices";
 
 export type SendEmailInput = {
   to: string;
@@ -26,14 +28,7 @@ export type SendEmailResult = {
 };
 
 function apiKey(): string | undefined {
-  return readServerEnv("RESEND_API_KEY")?.trim() || readServerEnv("EMAIL_API_KEY")?.trim();
-}
-
-export function emailFromAddress(fromName?: string): string {
-  const env = readServerEnv("EMAIL_FROM")?.trim() || readServerEnv("RESEND_FROM")?.trim();
-  if (env) return env;
-  const name = (fromName || PRODUCT_NAME).replace(/[<>]/g, "").trim() || PRODUCT_NAME;
-  return `${name} <noreply@summex.app>`;
+  return readServerEnv("RESEND_API_KEY") || readServerEnv("EMAIL_API_KEY");
 }
 
 export function isEmailConfigured(): boolean {
@@ -119,7 +114,7 @@ export async function sendEmail(opts: SendEmailInput): Promise<SendEmailResult> 
       error: null,
       sentAt: null,
     });
-    console.info("[email:outbox]", opts.kind, to, subject);
+    noteUnsentEmail(opts.kind, to, subject, text);
     return { ok: true, status: "logged_only", provider: null, id };
   }
 
@@ -130,13 +125,7 @@ export async function sendEmail(opts: SendEmailInput): Promise<SendEmailResult> 
         Authorization: `Bearer ${key}`,
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({
-        from: emailFromAddress(),
-        to: [to],
-        subject,
-        text,
-        ...(html ? { html } : {}),
-      }),
+      body: JSON.stringify(resendPayload({ to, subject, text, html, from: emailFromAddress() })),
     });
     if (!res.ok) {
       const errText = (await res.text()).slice(0, 180);

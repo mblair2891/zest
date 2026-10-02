@@ -34,6 +34,7 @@ export function TenantInvitesPanel({ write }: { write: boolean }) {
   const [rows, setRows] = useState<TenantInviteRow[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [copied, setCopied] = useState<string | null>(null);
+  const [mailNote, setMailNote] = useState<string | null>(null);
   const [name, setName] = useState("");
   const [kind, setKind] = useState<TenantKind>("bar");
   const [pocName, setPocName] = useState("");
@@ -90,6 +91,13 @@ export function TenantInvitesPanel({ write }: { write: boolean }) {
         data: { operatorId, email: sendEmail, sms: sendSms },
       });
       setCopied(r.inviteUrl);
+      setMailNote(
+        !sendEmail || r.emailStatus === "skipped" || r.emailStatus === "no_email"
+          ? null
+          : r.emailStatus === "sent"
+            ? "Email sent."
+            : "Email not sent.",
+      );
       await navigator.clipboard?.writeText(r.inviteUrl).catch(() => undefined);
       load();
     } catch (e) {
@@ -119,6 +127,7 @@ export function TenantInvitesPanel({ write }: { write: boolean }) {
       {copied && (
         <p className="break-all rounded-lg border border-border bg-surface-2 px-3 py-2 text-xs">
           Invite link (copied if the browser allowed): {copied}
+          {mailNote ? ` ${mailNote}` : ""}
         </p>
       )}
       <ul className="space-y-2">

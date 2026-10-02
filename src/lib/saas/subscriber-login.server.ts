@@ -164,10 +164,15 @@ export async function provisionSubscriberOwner(opts: {
       kind: "subscriber_owner_invite",
       prospectId: opts.prospect.id,
     });
-    sent = result.status === "sent" || result.status === "logged_only";
+    sent = result.status === "sent";
   } catch (err) {
     console.warn("[subscriber-invite-email]", err);
   }
+  await sql`
+    update subscriber_logins
+    set invite_sent_at = ${sent ? now : null}, updated_at = ${now}
+    where user_id = ${userId}
+  `;
 
   return { userId, username, sent };
 }

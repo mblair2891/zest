@@ -1464,7 +1464,10 @@ function CommunicationsSection({
           </SelectField>
         </Field>
       </div>
-      <Field label="From name" hint="Display name on quote emails. Address stays in the environment.">
+      <Field
+        label="Sign-off name"
+        hint="Name at the end of the message. The From address is always Summex noreply. Replies go to support@summex.app."
+      >
         <Input value={v.fromName} onChange={(e) => setV({ ...v, fromName: e.target.value })} />
       </Field>
       <Field label="Waitlist confirm template">
@@ -1557,8 +1560,8 @@ function CommunicationsSection({
         <p className="text-sm font-medium">Email outbox</p>
         <p className="mt-0.5 text-xs text-muted-foreground">
           {email
-            ? "Provider connected. Failed rows still land here."
-            : "No API key — quote mail is logged only (not delivered)."}
+            ? "Provider connected. A failed send is listed as email not sent."
+            : "No API key — email not sent. The message is logged here."}
         </p>
         <ul className="mt-2 max-h-56 space-y-1 overflow-y-auto text-xs">
           {outbox.length === 0 && (
@@ -1566,7 +1569,9 @@ function CommunicationsSection({
           )}
           {outbox.map((row) => (
             <li key={row.id} className="rounded-lg border border-border px-2 py-1.5">
-              <span className="font-medium">{row.status}</span>
+              <span className="font-medium">
+                {row.status === "sent" ? "email sent" : "email not sent"}
+              </span>
               {" · "}
               {row.kind}
               {" · "}
@@ -1689,10 +1694,10 @@ function TeamSection({
             .then((r) => {
               toast.success(
                 r.emailSent
-                  ? `Invite sent to ${email}`
+                  ? `Email sent to ${email}`
                   : r.tempPassword
-                    ? `User added. Temporary password: ${r.tempPassword}`
-                    : `User added (${email})`,
+                    ? `Email not sent. Temporary password: ${r.tempPassword}`
+                    : `Email not sent. User added (${email})`,
               );
               setEmail("");
               return loadPlatformSettingsFn();

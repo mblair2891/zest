@@ -1,7 +1,7 @@
 # Operators Guide — authoring
 
-**Revision · 2 Oct 2026** — Add tables asks quantity, shape, and size.
-Guide v2026.10.187.
+**Revision · 2 Oct 2026** — System mail is from Summex noreply.
+Guide v2026.10.188.
 
 The in-app **Operators Guide** is the living product manual. It is not a
 separate PDF. Staff open it from **Guide** / **?** in the POS and platform

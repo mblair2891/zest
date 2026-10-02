@@ -294,13 +294,24 @@ function ProspectAccountPage({
           {detail.quote?.monthlyCents != null ? ` · ${formatCurrency(detail.quote.monthlyCents)}/mo` : ""}
         </p>
       </div>
-      {msg && <p className="text-sm text-danger">{msg}</p>}
+      {msg && (
+        <p
+          className={`text-sm ${msg === "Email sent." || msg === "Email not sent." ? "text-muted-foreground" : "text-danger"}`}
+        >
+          {msg}
+        </p>
+      )}
 
       <div className="flex flex-wrap gap-2">
         {detail.status === "quoted" && (
           <Button
             size="sm"
-            onClick={() => void run(() => adminMarkQuoteAcceptedFn({ data: { prospectId: detail.id } }))}
+            onClick={() =>
+              void run(async () => {
+                const accepted = await adminMarkQuoteAcceptedFn({ data: { prospectId: detail.id } });
+                setMsg(accepted.emailNotice === "email sent" ? "Email sent." : "Email not sent.");
+              })
+            }
           >
             Record accept
           </Button>
@@ -341,7 +352,7 @@ function ProspectAccountPage({
         {detail.ownerInvite?.username && (
           <p className="w-full text-xs text-muted-foreground">
             Venue owner invite: {detail.ownerInvite.username}
-            {detail.ownerInvite.sentAt ? " · sent" : ""}
+            {detail.ownerInvite.sentAt ? " · email sent" : " · email not sent"}
             . They complete setup — platform does not fill menus or staff.
           </p>
         )}

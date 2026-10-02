@@ -103,10 +103,11 @@ export function TenantUsersPanel({
           membershipRoleForPasswordSeat({ scope: adminScope, seat: adminSeat }),
           adminScope === "entity" ? adminEntity : null,
         );
+        const mailed = r.emailStatus === "sent" ? "Email sent." : "Email not sent.";
         setNotice(
           `${kind} added. They sign in at ${loginUrl} with ${adminEmail} — never PIN, never platform CRM. Temporary password: ${r.tempPassword}${
             r.forceChange ? " — they must change it on first login." : ""
-          }`,
+          } ${mailed}`,
         );
         setAdminName("");
         setAdminEmail("");
@@ -170,10 +171,11 @@ export function TenantUsersPanel({
     })
       .then((r) => {
         if (u.kind === "login") {
+          const mailed = r.emailStatus === "sent" ? "Email sent." : "Email not sent.";
           setNotice(
             r.tempPassword
-              ? `New temporary password for ${u.name}: ${r.tempPassword}. They must change it on next login. The old password is not shown — Summex does not display account passwords.`
-              : `Password reset for ${u.name}.`,
+              ? `New temporary password for ${u.name}: ${r.tempPassword}. They must change it on next login. The old password is not shown — Summex does not display account passwords. ${mailed}`
+              : `Password reset for ${u.name}. ${mailed}`,
           );
         } else {
           setNotice(`New PIN for ${u.name}: ${r.pin}. The old PIN no longer works.`);

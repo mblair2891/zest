@@ -47,9 +47,9 @@ export const SAAS_TOPICS: GuideTopic[] = [
       steps(
         "Get pricing shows a live quote: Counter $0, Full service $149/loc, Multi-operator $299/loc + $49/tenant. Prospect toggles modules (ops pack $99, extra stations $19, kiosk $29, terminal lease $15). Request this quote snapshots those lines.",
         "Dollar amounts live in Settings → Plans & billing (Get a price catalog forms). Setup defaults to $0. Processing is a note, not software $. Quotes also show: Email included. SMS: 500/mo included, extra at cost. AI reports in Ops pack. PDF, email, and CRM use the same lines. Staff stations are Android tablets running Summex Station (sideload now; Play later). Printers, drawers, and gift MSR are BYO. Live cards require Finix/Quantum readers supplied through Summex (drop-ship to the site). Customer-owned Square/Stripe/bank terminals are not supported. iPad and browser POS are not a supported house setup.",
-        "Save draft, then Send quote. The account quote form scrolls — modules, monthly total, setup, and Send sit in that pane (Save/Send stay pinned at the bottom). Email and Print/PDF show monthly software, processing as a separate note (guest card rate from platform default, Quantum Payments, not mixed into software $), expires-on, Accept and Request changes.",
+        "Save draft, then Send quote. The account quote form scrolls — modules, monthly total, setup, and Send sit in that pane (Save/Send stay pinned at the bottom). Email and Print/PDF show monthly software, processing as a separate note (guest card rate from platform default, Quantum Payments, not mixed into software $), expires-on, Accept and Request changes. The message is from Summex noreply (MAIL_FROM, otherwise Summex <noreply@mail.summex.app>) and replies go to support@summex.app. If the mail key is missing, Send says email not sent and the message is only in the log. It does not say the email was sent.",
         "Merchant taps Accept, or Request changes, or Admin marks accepted. Status becomes accepted. Not a live tenant yet.",
-        "Platform Admin records the contract (checkbox + date) → Signed. That creates the venue-owner login and emails app.summex.app/login, username, and a one-time password. They must change it on first login. OVERRIDE + reason for an admin skip of the path.",
+        "Platform Admin records the contract (checkbox + date) → Signed. That creates the venue-owner login and emails app.summex.app/login, username, and a one-time password from Summex noreply. They must change it on first login. If the mail key is missing, the pipeline says email not sent. OVERRIDE + reason for an admin skip of the path.",
         "Do not create the org by hand unless you are skipping the commercial path for an internal site. Do not fill the subscriber’s menus or staff.",
       ),
       warn(
@@ -115,7 +115,7 @@ export const SAAS_TOPICS: GuideTopic[] = [
       ),
       steps(
         "Get a price: Shared building — no host merchant. Entity count ≥ 2. Quote itemizes Finix/Quantum readers (qty × unit), setup, monthly modules. Android tablets only.",
-        "Quote accepted + contract signed. Email to the billing contact: app.summex.app/login, username, temp password, must-change-on-first-login. Lands on the venue wizard.",
+        "Quote accepted + contract signed. Email to the billing contact from Summex noreply: app.summex.app/login, username, temp password, must-change-on-first-login. Replies go to support@summex.app. If the mail key is missing, the screen says email not sent. Lands on the venue wizard.",
         "Venue owner finishes the nine steps and invites each operator POC.",
         "Each operator: legal name, DBA, EIN, owners, bank, MCC (5812 / 5813 / other), required Finix application, menu, staff PINs, tip/closeout/till, optional invoices.",
         "Status per entity: invited → in progress → payments pending → ready. Venue cannot mark training-ready until every entity is at least in progress. Card-live waits until every entity Finix is approved and at least one reader is enrolled.",
@@ -143,7 +143,7 @@ export const SAAS_TOPICS: GuideTopic[] = [
         "Finish host onboarding (org, location, owner, plan, go-live). Status is host_ready / live.",
         "Host owner opens POS → Settings → Operators / Tenants.",
         "Add a tenant slot: display name, type (bar / kitchen / retail / other), POC email and phone.",
-        "Send invite (email and/or SMS). Copy the link if mail is logged-only.",
+        "Send invite (email and/or SMS). The email is from Summex noreply with reply-to support@summex.app. If the mail key is missing, the screen says email not sent and you still have the link. It does not say the email was sent.",
         "POC opens /tenant/…, sets a password, completes the wizard including the payout account (Quantum Payments application). Guests never see the processor name.",
         "Host sees onboard status and Quantum Payments status (pending / approved). Tenant cannot change host billing or other tenants. Live split payouts wait until the operator application is approved; they can still be ticketed on sandbox and cash.",
       ),

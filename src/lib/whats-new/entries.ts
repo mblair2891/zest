@@ -6,6 +6,18 @@ import type { GuideUpdate } from "@/lib/guide/types";
  */
 export const WHATS_NEW_ENTRIES: GuideUpdate[] = [
   {
+    id: "upd_2026_10_188_system_mail",
+    date: "2026-10-02",
+    title: "System mail is from Summex noreply",
+    summary: "Quotes, invites, location admins, and password resets use one From address. A missing mail key says email not sent.",
+    body: "System mail is from Summex <noreply@mail.summex.app> unless MAIL_FROM is set. Replies go to support@summex.app. A new location admin, a quote, a quote acceptance, an onboarding invite, a tenant invite, and a password reset all use that mailbox. The location-admin message includes the login URL, username, and temporary password. If the mail key is missing, the message is logged and the platform says email not sent. It does not say the email was sent.",
+    roles: ["platform_admin", "owner_manager", "host_operator"],
+    surfaces: ["platform", "settings"],
+    audience: "all",
+    topicId: "tenant-invites",
+    tags: ["email", "invites"],
+  },
+  {
     id: "upd_2026_10_187_table_add",
     date: "2026-10-02",
     title: "Add tables asks quantity, shape, and size",
