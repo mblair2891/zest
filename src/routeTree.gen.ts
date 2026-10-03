@@ -30,6 +30,7 @@ import { Route as PipelineRouteImport } from './routes/pipeline'
 import { Route as PlatformRouteImport } from './routes/platform'
 import { Route as PricingRouteImport } from './routes/pricing'
 import { Route as PrivacyRouteImport } from './routes/privacy'
+import { Route as RegisterRouteImport } from './routes/register'
 import { Route as ReserveRouteImport } from './routes/reserve'
 import { Route as SignupRouteImport } from './routes/signup'
 import { Route as StationRouteImport } from './routes/station'
@@ -170,6 +171,11 @@ const PricingRoute = PricingRouteImport.update({
 const PrivacyRoute = PrivacyRouteImport.update({
   id: '/privacy',
   path: '/privacy',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const RegisterRoute = RegisterRouteImport.update({
+  id: '/register',
+  path: '/register',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ReserveRoute = ReserveRouteImport.update({
@@ -376,6 +382,7 @@ export interface FileRoutesByFullPath {
   '/platform': typeof PlatformRouteWithChildren
   '/pricing': typeof PricingRoute
   '/privacy': typeof PrivacyRoute
+  '/register': typeof RegisterRoute
   '/reserve': typeof ReserveRoute
   '/signup': typeof SignupRoute
   '/station': typeof StationRouteWithChildren
@@ -434,6 +441,7 @@ export interface FileRoutesByTo {
   '/platform': typeof PlatformRouteWithChildren
   '/pricing': typeof PricingRoute
   '/privacy': typeof PrivacyRoute
+  '/register': typeof RegisterRoute
   '/reserve': typeof ReserveRoute
   '/signup': typeof SignupRoute
   '/station': typeof StationRouteWithChildren
@@ -493,6 +501,7 @@ export interface FileRoutesById {
   '/platform': typeof PlatformRouteWithChildren
   '/pricing': typeof PricingRoute
   '/privacy': typeof PrivacyRoute
+  '/register': typeof RegisterRoute
   '/reserve': typeof ReserveRoute
   '/signup': typeof SignupRoute
   '/station': typeof StationRouteWithChildren
@@ -554,6 +563,7 @@ export interface FileRouteTypes {
     | '/platform'
     | '/pricing'
     | '/privacy'
+    | '/register'
     | '/reserve'
     | '/signup'
     | '/station'
@@ -612,6 +622,7 @@ export interface FileRouteTypes {
     | '/platform'
     | '/pricing'
     | '/privacy'
+    | '/register'
     | '/reserve'
     | '/signup'
     | '/station'
@@ -670,6 +681,7 @@ export interface FileRouteTypes {
     | '/platform'
     | '/pricing'
     | '/privacy'
+    | '/register'
     | '/reserve'
     | '/signup'
     | '/station'
@@ -730,6 +742,7 @@ export interface RootRouteChildren {
   PlatformRoute: typeof PlatformRouteWithChildren
   PricingRoute: typeof PricingRoute
   PrivacyRoute: typeof PrivacyRoute
+  RegisterRoute: typeof RegisterRoute
   ReserveRoute: typeof ReserveRoute
   SignupRoute: typeof SignupRoute
   StationRoute: typeof StationRouteWithChildren
@@ -905,6 +918,13 @@ declare module '@tanstack/react-router' {
       path: '/privacy'
       fullPath: '/privacy'
       preLoaderRoute: typeof PrivacyRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/register': {
+      id: '/register'
+      path: '/register'
+      fullPath: '/register'
+      preLoaderRoute: typeof RegisterRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/reserve': {
@@ -1267,6 +1287,7 @@ const rootRouteChildren: RootRouteChildren = {
   PlatformRoute: PlatformRouteWithChildren,
   PricingRoute: PricingRoute,
   PrivacyRoute: PrivacyRoute,
+  RegisterRoute: RegisterRoute,
   ReserveRoute: ReserveRoute,
   SignupRoute: SignupRoute,
   StationRoute: StationRouteWithChildren,

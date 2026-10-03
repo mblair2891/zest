@@ -131,7 +131,7 @@ export const GETTING_STARTED_TOPICS: GuideTopic[] = [
         "A shared tablet is not a laptop. Servers should not type a password between tables. Owners should not export hours from a four-digit code.",
       ),
       p(
-        "Two login modes. Back office (owners, managers, accountants, entity managers) uses username or email and password at /login — no Google or X. Working staff on a shared tablet, ODS, or host stand use a 4-digit PIN. PINs are hashed, scoped to the location (and entity on a host floor), and never appear on the marketing site.",
+        "Two login modes. Back office (owners, managers, accountants, entity managers) uses username or email and password at /login — no Google or X. There is no public Create an account page. A platform admin or a location or entity admin creates the password account. /signup and /register open login. An invite email still lets that person set a password and sign in. Working staff on a shared tablet, ODS, or host stand use a 4-digit PIN. PINs are hashed, scoped to the location (and entity on a host floor), and never appear on the marketing site.",
       ),
       p(
         "Prime from the control plane, then PIN-only. Install Summex Station on each Android tablet and pair once while online. After that, cold start is the PIN pad — not /login. Printed receipts group lines by vendor; the guest still holds one check and one Quantum Payments tender.",
@@ -164,7 +164,7 @@ export const GETTING_STARTED_TOPICS: GuideTopic[] = [
       ),
       ul(
         "Marketing (summex.app / www) — Get a price, Guide, Demo, White paper, Contact, Terms, Privacy. Gift balance at /gift (no login, no sales chrome). No Log in, Go to console, Open POS, Replay workflow, dashboard, or tenant chrome. Operators type https://app.summex.app/login themselves. White paper is public architecture, not SaaS admin docs. Staff PIN pads do not show Terms or Privacy.",
-        "Console (app.summex.app) — /login (username/password only, no Google/X), /dashboard, CRM, pipeline, tenants, onboarding, owner venue settings. Admin → platform dashboard. Venue owner → that house’s settings (not the PIN pad). PIN is Summex Station after pair, or /station/:role.",
+        "Console (app.summex.app) — /login (username/password only, no Google/X, no Create an account). /signup and /register open login. /dashboard, CRM, pipeline, tenants, onboarding, owner venue settings. Admin → platform dashboard. Venue owner → that house’s settings (not the PIN pad). PIN is Summex Station after pair, or /station/:role.",
         "POS — floor, order, ODS, cash, settlement, guests, after a location is open from a signed-in session.",
         "Operators Guide — public page at /guide (operations). Overlay inside the signed-in product. Exit on the public page returns to marketing home.",
       ),

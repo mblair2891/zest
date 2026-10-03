@@ -286,12 +286,6 @@ export function PlatformApp({
             >
               Sign in
             </Link>
-            <Link
-              to="/signup"
-              className="flex w-full min-h-14 items-center justify-center rounded-2xl border border-border bg-surface px-4 py-3.5 text-sm font-semibold"
-            >
-              Create an account
-            </Link>
           </div>
 
           <Link

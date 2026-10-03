@@ -54,7 +54,8 @@ export function RedirectToSignIn({
     !raw ||
     raw === to ||
     raw.startsWith("/login") ||
-    raw.startsWith("/signup");
+    raw.startsWith("/signup") ||
+    raw.startsWith("/register");
   const safe = skip ? null : sanitizeNextPath(raw);
   return <Navigate to={to} search={safe ? { next: safe } : {}} replace />;
 }

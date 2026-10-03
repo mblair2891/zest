@@ -28,6 +28,8 @@ test("preview and local stay one origin", () => {
 
 test("platform paths include login, dashboard, stations", () => {
   assert.equal(isPlatformPath("/login"), true);
+  assert.equal(isPlatformPath("/signup"), true);
+  assert.equal(isPlatformPath("/register"), true);
   assert.equal(isPlatformPath("/dashboard"), true);
   assert.equal(isPlatformPath("/station/order"), true);
   assert.equal(isPlatformPath("/pipeline"), true);

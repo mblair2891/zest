@@ -52,10 +52,10 @@ function PricingPage() {
             Build a quote
           </Link>
           <Link
-            to="/signup"
+            to="/login"
             className="inline-flex h-12 items-center rounded-xl border border-border px-5 text-sm font-semibold"
           >
-            Create account
+            Sign in
           </Link>
         </div>
       </main>

@@ -15,8 +15,8 @@ Restart `npm run dev` after changing `VITE_*`.
 ## UI path (exact clicks)
 
 1. Open `/` — marketing homepage. You must **not** see PIN chips / Morgan Blair.
-2. **Get started** → `/signup`.
-3. Name, email, password → **Create account**. Session lands on `/dashboard`.
+2. There is no public signup. `/signup` and `/register` open `/login`.
+3. A platform admin or location admin creates the account (name, email, temporary password). That person signs in at `/login`. Session lands on `/dashboard`.
 4. First-run wizard (zero orgs):
    1. Organization name, e.g. `Harbor Bistro Group` → Continue
    2. Venue type **Full-service restaurant** → Create organization
@@ -37,7 +37,7 @@ Restart `npm run dev` after changing `VITE_*`.
 ## Second org (no invite)
 
 1. New browser profile (or clear site data).
-2. Sign up `owner2@example.com`, create a different org.
+2. Have an admin create `owner2@example.com`, then sign in and create a different org.
 3. That user never sees Harbor Bistro locations in `listMyOrganizations` / dashboard.
 
 ## Curl

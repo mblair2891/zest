@@ -1,7 +1,7 @@
 # Operators Guide — authoring
 
-**Revision · 2 Oct 2026** — Entity owner home, menu categories, and floor.
-Guide v2026.10.189.
+**Revision · 3 Oct 2026** — No public account signup.
+Guide v2026.10.190.
 
 The in-app **Operators Guide** is the living product manual. It is not a
 separate PDF. Staff open it from **Guide** / **?** in the POS and platform

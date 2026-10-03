@@ -6,6 +6,18 @@ import type { GuideUpdate } from "@/lib/guide/types";
  */
 export const WHATS_NEW_ENTRIES: GuideUpdate[] = [
   {
+    id: "upd_2026_10_190_no_public_signup",
+    date: "2026-10-03",
+    title: "No public account signup",
+    summary: "Login has no Create an account link. /signup and /register open login.",
+    body: "There is no public account signup. Login shows username, password, Operators Guide, and Back to Summex. /signup and /register open login. A platform admin or a location or entity admin creates the account. The invite email still opens for that person.",
+    roles: ["platform_admin", "owner_manager", "host_operator"],
+    surfaces: ["platform", "settings"],
+    audience: "all",
+    topicId: "login",
+    tags: ["login", "invites"],
+  },
+  {
     id: "upd_2026_10_189_entity_owner",
     date: "2026-10-02",
     title: "Entity owner home, menu, and floor",

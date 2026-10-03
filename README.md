@@ -73,7 +73,7 @@ See `.env.example`. Highlights:
 | `QUANTUM_PAYMENTS_SECRET_KEY` | Server-only live card-present adapter. Absent → live fails closed (cash still works) |
 | `QUANTUM_PAYMENTS_WEBHOOK_SECRET` | Optional live capture webhook (`/api/payments/webhook`) |
 
-Sign-in methods: **username or email + password** only. Social / OAuth (Google, X) is disabled.
+Sign-in methods: **username or email + password** only. Social / OAuth (Google, X) is disabled. There is no public Create an account page. `/signup` and `/register` open login. A platform admin or a location or entity admin creates the account. An invite email still opens for that person.
 
 ## Android — Play vs sideload
 

@@ -181,23 +181,14 @@ export function AuthScreen({
         </Link>
       </p>
 
-      <p className="text-center text-sm text-muted-foreground">
-        {mode === "signup" ? (
-          <>
-            Already have an account?{" "}
-            <Link to="/login" className="text-link underline-offset-2 hover:underline">
-              Log in
-            </Link>
-          </>
-        ) : (
-          <>
-            New operator?{" "}
-            <Link to="/signup" className="text-link underline-offset-2 hover:underline">
-              Create an account
-            </Link>
-          </>
-        )}
-      </p>
+      {mode === "signup" ? (
+        <p className="text-center text-sm text-muted-foreground">
+          Already have an account?{" "}
+          <Link to="/login" className="text-link underline-offset-2 hover:underline">
+            Log in
+          </Link>
+        </p>
+      ) : null}
     </div>
   );
 }

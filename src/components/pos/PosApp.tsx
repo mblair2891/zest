@@ -845,12 +845,6 @@ function PosAppInner({ entityId }: { entityId?: string }) {
               Sign in
             </Link>
             <Link
-              to="/signup"
-              className="flex h-12 items-center justify-center rounded-2xl border border-border bg-surface text-sm font-semibold"
-            >
-              Create an account
-            </Link>
-            <Link
               to="/guide"
               className="block text-sm text-muted-foreground underline"
             >

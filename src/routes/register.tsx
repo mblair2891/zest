@@ -1,7 +1,7 @@
 import { createFileRoute, redirect } from "@tanstack/react-router";
 
-/** Public registration is closed. Invite links still create the invited account. */
-export const Route = createFileRoute("/signup")({
+/** Public registration is closed. Same destination as /signup. */
+export const Route = createFileRoute("/register")({
   beforeLoad: () => {
     throw redirect({ to: "/login" });
   },

@@ -228,6 +228,7 @@ export const SAAS_TOPICS: GuideTopic[] = [
         "Account membership controls who can open the platform. PIN access level controls which POS tools appear after a station login.",
       ),
       ul(
+        "There is no public signup. A platform admin or a location or entity admin creates the password account. /signup and /register open login. An invite email still opens for that person.",
         "Platform Admin — tenants, pipeline, support. Not a restaurant owner. There is only one platform Admin; tenant Users cannot mint another.",
         "Location admin / host owner — email and password at app.summex.app/login. Dashboard tiles for that role. Host + tenants: venue health, all entities, Devices, Publish, combined and per-entity reports. Shared venue: the same minus host-merchant chrome.",
         "Entity owner vs entity manager — both password logins for one selling entity. The header is the entity name, then the venue. Today’s home is this entity’s sales, open checks, labor, top items, and 86 count. Menu is grouped by category and 86 is on the item. Staff is people, PINs, and roles. The floor editor changes this entity’s sections and active seating loans. Owner also has that brand’s payments. Manager has no billing.",

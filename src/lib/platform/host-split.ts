@@ -69,6 +69,7 @@ export function hostSplitActive(hostname: string): boolean {
 const PLATFORM_PREFIXES = [
   "/login",
   "/signup",
+  "/register",
   "/dashboard",
   "/platform",
   "/pipeline",
