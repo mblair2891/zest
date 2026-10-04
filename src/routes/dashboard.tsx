@@ -7,6 +7,7 @@ import { PlatformApp } from "@/components/pos/PlatformApp";
 import { prospectResumePath } from "@/lib/saas/prospect-resume";
 import { navigateToSanitizedPath } from "@/lib/auth/post-login-navigate";
 import { SessionGate } from "@/components/pos/SessionGate";
+import { RedirectToSignIn } from "@/lib/auth/gates";
 import {
   parsePlatformSurface,
   type PlatformSurface,
@@ -117,7 +118,7 @@ function DashboardInner() {
       </div>
     );
   }
-  if (!user) return null;
+  if (!user) return <RedirectToSignIn />;
 
   if (error) {
     return (

@@ -15,7 +15,10 @@ test("login shows wordmark, fields, log in, and guide — no helper copy", () =>
   assert.doesNotMatch(login, /Username or email and password/);
   assert.doesNotMatch(login, /4-digit PIN/);
   assert.doesNotMatch(login, /Back to Summex/);
+  assert.match(login, /pendingComponent:\s*LoginPending/);
   assert.match(login, /mode="signin"/);
+  assert.doesNotMatch(login, /return null/);
+  assert.match(login, /console\.error\("\[login\]/);
   assert.match(auth, /"Username or email"/);
   assert.match(auth, /placeholder="Password"/);
   assert.match(auth, /Operators Guide/);

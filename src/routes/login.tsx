@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { createFileRoute, redirect, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, redirect, useNavigate, type ErrorComponentProps } from "@tanstack/react-router";
 import { AuthScreen, AuthShell } from "@/components/saas/AuthScreen";
 import { ensureAdminExists } from "@/lib/auth/platform-admin";
 import { sanitizeNextPath } from "@/lib/auth/safe-next-path";
@@ -29,19 +29,68 @@ export const Route = createFileRoute("/login")({
       ...(passwordUpdated ? { passwordUpdated: true } : {}),
     };
   },
+  // Client-only route: the server match stays pending and otherwise paints an
+  // empty cream page. This fallback is that first paint.
+  pendingComponent: LoginPending,
+  errorComponent: LoginRouteError,
   component: LoginPage,
 });
+
+function LoginForm({
+  notice,
+  passwordUpdated,
+  disabled,
+  prepError,
+}: {
+  notice?: string | null;
+  passwordUpdated?: boolean;
+  disabled?: boolean;
+  prepError?: string | null;
+}) {
+  return (
+    <AuthShell title="Log in to Summex" brandSubline="powered by Quantum Reach">
+      {passwordUpdated && (
+        <p className="mb-4 text-center text-sm text-success" role="status">
+          Password updated. Log in with your new password.
+        </p>
+      )}
+      {notice ? (
+        <p className="mb-4 text-center text-sm text-danger" role="alert">
+          {notice}
+        </p>
+      ) : null}
+      <AuthScreen
+        mode="signin"
+        disabled={disabled}
+        prepError={prepError}
+      />
+    </AuthShell>
+  );
+}
+
+function LoginPending() {
+  return <LoginForm />;
+}
+
+function LoginRouteError({ error }: ErrorComponentProps) {
+  useEffect(() => {
+    console.error("[login] render failed", error);
+  }, [error]);
+  const message = error instanceof Error ? error.message : "Could not open sign-in.";
+  return <LoginForm notice={message} />;
+}
 
 function LoginPage() {
   const search = Route.useSearch();
   const navigate = useNavigate();
-  const { user, isPending } = useCurrentUserState();
+  const { user, isPending, error: sessionError } = useCurrentUserState();
   const [prepError, setPrepError] = useState<string | null>(null);
   const [ready, setReady] = useState(false);
   const [passwordUpdated, setPasswordUpdated] = useState(
     () => Boolean(search.passwordUpdated),
   );
   const [leaving, setLeaving] = useState(false);
+  const [navError, setNavError] = useState<string | null>(null);
 
   useEffect(() => {
     try {
@@ -66,9 +115,10 @@ function LoginPage() {
         }
         setReady(true);
       })
-      .catch(() => {
+      .catch((err) => {
+        console.error("[login] could not prepare sign-in", err);
         if (cancelled) return;
-        setPrepError("Database not ready");
+        setPrepError(err instanceof Error ? err.message : "Database not ready");
         setReady(true);
       });
     return () => {
@@ -77,7 +127,12 @@ function LoginPage() {
   }, []);
 
   useEffect(() => {
-    if (isPending || !user || leaving) return;
+    if (!sessionError) return;
+    console.error("[login] session failed", sessionError);
+  }, [sessionError]);
+
+  useEffect(() => {
+    if (isPending || !user || leaving || navError) return;
     setLeaving(true);
     void (async () => {
       try {
@@ -87,21 +142,15 @@ function LoginPage() {
           nextRaw: search.next,
           session,
         });
-      } catch {
-        await navigate({ to: "/dashboard" });
+      } catch (err) {
+        console.error("[login] could not open the console", err);
+        setNavError(err instanceof Error ? err.message : "Could not open the console.");
+        setLeaving(false);
       }
     })();
-  }, [user, isPending, leaving, navigate, search.next]);
+  }, [user, isPending, leaving, navError, navigate, search.next]);
 
-  if (isPending) {
-    return (
-      <AuthShell title="Log in to Summex" brandSubline="powered by Quantum Reach">
-        <p className="text-center text-sm text-muted-foreground">Checking session…</p>
-      </AuthShell>
-    );
-  }
-
-  if (user) {
+  if (user && !navError) {
     return (
       <AuthShell title="Log in to Summex" brandSubline="powered by Quantum Reach">
         <p className="text-center text-sm text-muted-foreground">Taking you in.</p>
@@ -110,17 +159,11 @@ function LoginPage() {
   }
 
   return (
-    <AuthShell title="Log in to Summex" brandSubline="powered by Quantum Reach">
-      {passwordUpdated && (
-        <p className="mb-4 text-center text-sm text-success" role="status">
-          Password updated. Log in with your new password.
-        </p>
-      )}
-      <AuthScreen
-        mode="signin"
-        disabled={!ready || Boolean(prepError)}
-        prepError={prepError}
-      />
-    </AuthShell>
+    <LoginForm
+      notice={navError}
+      passwordUpdated={passwordUpdated}
+      disabled={!ready}
+      prepError={prepError}
+    />
   );
 }

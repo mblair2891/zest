@@ -54,14 +54,16 @@ export function AuthScreen({
     try {
       const flags = await getPlatformFlags();
       mustChange = flags.mustChangePassword;
-    } catch {
+    } catch (err) {
+      console.error("[login] platform flags failed", err);
       flagsFailed = true;
     }
     const nextRaw = new URLSearchParams(window.location.search).get("next");
     let session = null;
     try {
       session = await getSessionContextFn();
-    } catch {
+    } catch (err) {
+      console.error("[login] session context failed", err);
       session = signedInAsAdmin
         ? { isPlatformAdmin: true, orgs: [], locations: [], active: null }
         : null;
@@ -72,8 +74,9 @@ export function AuthScreen({
         nextRaw,
         session,
       });
-    } catch {
-      await navigate({ to: "/dashboard" });
+    } catch (err) {
+      console.error("[login] post-sign-in navigation failed", err);
+      throw err instanceof Error ? err : new Error("Could not open the console.");
     }
   };
 
@@ -108,6 +111,7 @@ export function AuthScreen({
             ok = true;
             break;
           }
+          console.error("[login] sign-in rejected", err);
           lastErr = err.message ?? "Sign in failed";
         }
         if (!ok) throw new Error(lastErr ?? "Sign in failed");
@@ -121,6 +125,7 @@ export function AuthScreen({
         await goAfterAuth(signedInAsAdmin);
       }
     } catch (e) {
+      console.error("[login] sign-in failed", e);
       const msg = e instanceof Error ? e.message : "Auth failed";
       setError(mapAuthError(msg));
     } finally {
