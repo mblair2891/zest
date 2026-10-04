@@ -196,19 +196,24 @@ export function AuthScreen({
 export function AuthShell({
   title,
   subtitle,
+  brandSubline,
   children,
 }: {
   title: string;
-  subtitle: string;
+  subtitle?: string;
+  /** Overrides the line under the SUMMEX wordmark. */
+  brandSubline?: string;
   children: ReactNode;
 }) {
   return (
     <div className="flex min-h-[100dvh] flex-col bg-bg pt-[var(--grok-banner-h,0px)]">
       <div className="mx-auto flex w-full max-w-lg flex-1 flex-col justify-center px-4 py-10">
         <div className="mb-8 text-center">
-          <SummexBrandBlock className="mb-6" />
+          <SummexBrandBlock className="mb-6" subline={brandSubline} />
           <h1 className="text-2xl font-semibold tracking-tight">{title}</h1>
-          <p className="mt-2 text-sm text-muted-foreground">{subtitle}</p>
+          {subtitle ? (
+            <p className="mt-2 text-sm text-muted-foreground">{subtitle}</p>
+          ) : null}
         </div>
         {children}
       </div>

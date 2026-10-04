@@ -6,14 +6,20 @@ function read(path: string): string {
   return readFileSync(new URL(path, import.meta.url), "utf8");
 }
 
-test("login shows username, password, guide, and back — no create-account link", () => {
+test("login shows wordmark, fields, log in, and guide — no helper copy", () => {
   const login = read("../src/routes/login.tsx");
   const auth = read("../src/components/saas/AuthScreen.tsx");
-  assert.match(login, /Username or email and password/);
+  assert.match(login, /Log in to Summex/);
+  assert.match(login, /brandSubline="powered by Quantum Reach"/);
+  assert.doesNotMatch(login, /Summex, powered by Quantum Reach/);
+  assert.doesNotMatch(login, /Username or email and password/);
+  assert.doesNotMatch(login, /4-digit PIN/);
+  assert.doesNotMatch(login, /Back to Summex/);
   assert.match(login, /mode="signin"/);
-  assert.match(login, /Back to Summex/);
+  assert.match(auth, /"Username or email"/);
   assert.match(auth, /placeholder="Password"/);
   assert.match(auth, /Operators Guide/);
+  assert.match(auth, /: "Log in"/);
   assert.doesNotMatch(auth, /Create an account/);
   assert.doesNotMatch(auth, /to="\/signup"/);
   assert.doesNotMatch(login, /Create an account/);

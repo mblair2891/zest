@@ -79,8 +79,11 @@ export function SummexLockup({
 
 export function SummexBrandBlock({
   className,
+  subline = PRODUCT_TAGLINE,
 }: {
   className?: string;
+  /** Line under the wordmark. Login passes the short seller line. */
+  subline?: string;
 }) {
   return (
     <div className={cn("text-center", className)}>
@@ -88,9 +91,11 @@ export function SummexBrandBlock({
       <p className="mt-4 text-sm font-semibold tracking-[0.32em] text-foreground">
         {PRODUCT_NAME.toUpperCase()}
       </p>
-      <p className="mt-1.5 text-[11px] font-medium tracking-wide text-muted-foreground">
-        {PRODUCT_TAGLINE}
-      </p>
+      {subline ? (
+        <p className="mt-1.5 text-[11px] font-medium tracking-wide text-muted-foreground">
+          {subline}
+        </p>
+      ) : null}
     </div>
   );
 }

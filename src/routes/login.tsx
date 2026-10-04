@@ -6,10 +6,7 @@ import { sanitizeNextPath } from "@/lib/auth/safe-next-path";
 import { useCurrentUserState } from "@/lib/auth/use-current-user";
 import { getSessionContextFn } from "@/lib/saas/api";
 import { navigateAfterPasswordSignIn } from "@/lib/auth/post-login-navigate";
-import {
-  absoluteMarketingHref,
-  leftoverMarketingPlatformHref,
-} from "@/lib/platform/hosts";
+import { leftoverMarketingPlatformHref } from "@/lib/platform/hosts";
 
 function parsePasswordUpdated(s: Record<string, unknown>): boolean {
   return s.passwordUpdated === true || s.passwordUpdated === "1" || s.passwordUpdated === "true";
@@ -98,7 +95,7 @@ function LoginPage() {
 
   if (isPending) {
     return (
-      <AuthShell title="Log in to Summex" subtitle="Username or email and password.">
+      <AuthShell title="Log in to Summex" brandSubline="powered by Quantum Reach">
         <p className="text-center text-sm text-muted-foreground">Checking session…</p>
       </AuthShell>
     );
@@ -106,17 +103,14 @@ function LoginPage() {
 
   if (user) {
     return (
-      <AuthShell title="Log in to Summex" subtitle="Opening your console…">
+      <AuthShell title="Log in to Summex" brandSubline="powered by Quantum Reach">
         <p className="text-center text-sm text-muted-foreground">Taking you in.</p>
       </AuthShell>
     );
   }
 
   return (
-    <AuthShell
-      title="Log in to Summex"
-      subtitle="Username or email and password. No Google or X."
-    >
+    <AuthShell title="Log in to Summex" brandSubline="powered by Quantum Reach">
       {passwordUpdated && (
         <p className="mb-4 text-center text-sm text-success" role="status">
           Password updated. Log in with your new password.
@@ -127,14 +121,6 @@ function LoginPage() {
         disabled={!ready || Boolean(prepError)}
         prepError={prepError}
       />
-      <p className="mt-4 text-center text-xs text-muted-foreground">
-        Floor staff use a 4-digit PIN on the station — not this page.
-      </p>
-      <p className="mt-8 text-center text-sm text-muted-foreground">
-        <a href={absoluteMarketingHref("/")} className="underline-offset-2 hover:underline">
-          Back to Summex
-        </a>
-      </p>
     </AuthShell>
   );
 }
