@@ -12,9 +12,21 @@ import { GROK_PROVIDERS } from "./providers";
  * hook attaches that token when present; when deployed (cookie auth) no token
  * is stored, so nothing changes.
  */
+/**
+ * Same-origin auth. A build-time BETTER_AUTH_URL of www or the apex would
+ * post the password to the marketing host and store the session cookie there,
+ * so app.summex.app never sees it.
+ */
+function sameOriginAuthBase(): string | undefined {
+  if (typeof window === "undefined") return undefined;
+  return window.location.origin;
+}
+
 export const authClient = createAuthClient({
+  baseURL: sameOriginAuthBase(),
   plugins: [genericOAuthClient()],
   fetchOptions: {
+    credentials: "include",
     onRequest(ctx) {
       const token = getBearerToken();
       if (token) ctx.headers.set("Authorization", `Bearer ${token}`);

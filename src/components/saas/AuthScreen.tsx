@@ -10,6 +10,13 @@ import { SummexBrandBlock } from "@/components/brand/SummexMark";
 
 function mapAuthError(message: string): string {
   if (
+    /invalid email or password|invalid password|invalid email|user not found|credential account not found/i.test(
+      message,
+    )
+  ) {
+    return "Invalid username or password";
+  }
+  if (
     /invalid path|invalid origin|invalid callback|invalid redirect/i.test(
       message,
     )
@@ -93,28 +100,30 @@ export function AuthScreen({
         if (err) throw new Error(err.message ?? "Sign up failed");
       } else {
         const raw = email.trim();
-        const lower = raw.toLowerCase();
-        const isAdmin = lower === "admin" || lower === "admin@summex.local";
-        const candidates = isAdmin
-          ? ["admin@summex.local"]
-          : raw.includes("@")
-            ? [raw]
-            : [`${raw}@demo.summex.app`, raw];
-        let lastErr: string | null = null;
-        let ok = false;
-        for (const loginEmail of candidates) {
-          const { error: err } = await authClient.signIn.email({
-            email: loginEmail,
-            password,
-          });
-          if (!err) {
-            ok = true;
-            break;
-          }
-          console.error("[login] sign-in rejected", err);
-          lastErr = err.message ?? "Sign in failed";
+        if (!raw || !password) {
+          throw new Error("Invalid username or password");
         }
-        if (!ok) throw new Error(lastErr ?? "Sign in failed");
+        // Server resolves Admin and subscriber usernames to the stored email.
+        const { error: err } = await authClient.signIn.email({
+          email: raw,
+          password,
+        });
+        if (err) {
+          console.error("[login] sign-in rejected", {
+            message: err.message ?? "Sign in failed",
+            status: err.status,
+            code: err.code,
+          });
+          throw new Error(err.message ?? "Sign in failed");
+        }
+        const session = await authClient.getSession();
+        if (session.error || !session.data?.user) {
+          console.error("[login] session cookie was not stored", {
+            message: session.error?.message ?? "no session",
+            status: session.error?.status,
+          });
+          throw new Error("Sign-in could not complete. Refresh and try again.");
+        }
       }
       onAuthed?.();
       if (!onAuthed) {

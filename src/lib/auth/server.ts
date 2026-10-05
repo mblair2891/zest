@@ -90,8 +90,10 @@ export const authConfigured =
 // it derives the origin per-request from the (proxied) host, validated against the
 // preview allowlist, which makes the OAuth `redirect_uri` the concrete preview URL
 // the broker's preview client accepts.
-// Console host. Production: APP_URL=https://app.summex.app so session
-// cookies (`__Host-`) are set on the platform host, not the marketing apex.
+// APP_URL / BETTER_AUTH_URL are trusted, but they must not pin baseURL to a
+// single origin. A string baseURL of https://www.summex.app (or the apex)
+// mints callbacks and cookie scope for the marketing host, and the browser
+// drops that cookie on https://app.summex.app.
 const explicitBaseURL = env("BETTER_AUTH_URL") ?? env("APP_URL");
 // Explicit `string[]` (not a readonly tuple) — Better Auth's DynamicBaseURLConfig
 // requires a mutable `allowedHosts: string[]`.
@@ -120,12 +122,10 @@ const allowedHosts: string[] = [
   "[::1]",
   ...PRODUCTION_HOSTS,
 ];
-const baseURL = explicitBaseURL ?? {
-  // Include loopback + production hosts so dynamic baseURL resolves for
-  // email/password on www.summex.app (not only the preview wildcard).
+// Always dynamic so the request host (app.summex.app or www.summex.app)
+// is the base URL. fallback keeps direct auth.api calls resolvable.
+const baseURL = {
   allowedHosts,
-  // `auto` → trust both http:// and https:// expansions of allowedHosts
-  // (preview is https; local dev is http).
   protocol: "auto" as const,
   fallback: "https://app.summex.app",
 };
@@ -258,16 +258,19 @@ export const auth = betterAuth({
   // Local email/password — toggled only via `./email-password` (not a plugin).
   ...(emailAndPasswordEnabled ? { emailAndPassword: { enabled: true } } : {}),
 
-  // `__Host-` prefixed cookies: the browser REFUSES any same-named cookie that
-  // carries a `Domain` attribute, so a sibling `*.grok.me` app cannot "toss" a
-  // `Domain=.grok.me` session cookie onto this app. `__Host-` requires Secure +
-  // Path=/ + no Domain; Better Auth otherwise uses `__Secure-` (which permits
-  // Domain), so we drop its auto prefix (`useSecureCookies: false`) and set
-  // Secure + the names ourselves. (Browsers allow Secure cookies on
-  // `http://localhost`, so local dev still works.)
+  // `__Host-` cookies: the browser rejects the cookie if a Domain is set.
+  // Domain=www.summex.app or Domain=.summex.app is not stored for
+  // app.summex.app, so the session looks signed-in and then vanishes.
+  // Secure + SameSite=Lax + Path=/ and no Domain. useSecureCookies is false
+  // so Better Auth does not prepend `__Secure-` onto the `__Host-` name.
+  // Browsers allow Secure cookies on http://localhost.
   advanced: {
     useSecureCookies: false,
-    defaultCookieAttributes: { secure: true, sameSite: "lax", path: "/" },
+    defaultCookieAttributes: {
+      secure: true,
+      sameSite: "lax",
+      path: "/",
+    },
     cookies: {
       session_token: { name: SESSION_TOKEN_COOKIE },
       session_data: { name: "__Host-grok-auth.session_data" },
