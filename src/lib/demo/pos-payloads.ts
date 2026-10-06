@@ -205,17 +205,17 @@ function demoTables(type: VenueEntityId, locationId: string): Table[] {
 function demoSections(type: VenueEntityId): FloorSection[] {
   if (type === "ghost_kitchen") return [];
   if (type === "qsr" || type === "cafe") {
-    return [{ id: "sec_counter", name: "Counter", color: "sec-1", sort: 0 }];
+    return [{ id: "sec_counter", name: "Counter", color: "sec-1", sort: 0, operatorId: "host" }];
   }
   if (type === "bar_lounge") {
     return [
-      { id: "sec_bar", name: "Bar", color: "sec-3", sort: 0 },
-      { id: "sec_lounge", name: "Lounge", color: "sec-1", sort: 1 },
+      { id: "sec_bar", name: "Bar", color: "sec-3", sort: 0, operatorId: "host" },
+      { id: "sec_lounge", name: "Lounge", color: "sec-1", sort: 1, operatorId: "host" },
     ];
   }
   return [
-    { id: "sec_dining", name: "Dining", color: "sec-1", sort: 0 },
-    { id: "sec_bar", name: "Bar", color: "sec-3", sort: 1 },
+    { id: "sec_dining", name: "Dining", color: "sec-1", sort: 0, operatorId: "host" },
+    { id: "sec_bar", name: "Bar", color: "sec-3", sort: 1, operatorId: "host" },
   ];
 }
 

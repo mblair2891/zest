@@ -1,7 +1,7 @@
 # Operators Guide — authoring
 
-**Revision · 3 Oct 2026** — No public account signup.
-Guide v2026.10.190.
+**Revision · 6 Oct 2026** — Each floor room has an owner: a selling entity at this venue, or House.
+Guide v2026.10.191.
 
 The in-app **Operators Guide** is the living product manual. It is not a
 separate PDF. Staff open it from **Guide** / **?** in the POS and platform

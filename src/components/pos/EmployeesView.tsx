@@ -10,6 +10,7 @@ import {
   roleIsLocked,
   swatchCss,
 } from "@/lib/pos/section-control";
+import { staffMayTakeSection } from "@/lib/pos/room-owner";
 import { staffTitle } from "@/lib/pos/rbac";
 import { GrantTableDialog } from "./GrantTableDialog";
 import { SetupAssistButton } from "@/components/assist/SetupAssistDialog";
@@ -239,7 +240,11 @@ export function EmployeesView() {
                         No sections defined
                       </span>
                     )}
+                    {floorSections.every((sec) => !staffMayTakeSection(e, sec)) && floorSections.length > 0 ? (
+                      <span className="text-xs text-muted-foreground">No rooms for this owner</span>
+                    ) : null}
                     {floorSections.map((sec) => {
+                      if (!staffMayTakeSection(e, sec)) return null;
                       const on = (e.homeSectionIds ?? []).includes(sec.id);
                       return (
                         <button

@@ -230,6 +230,7 @@ test("floor edit is this entity’s sections plus seating loans", () => {
   assert.equal(floorEditMode({ role: "bartender", operatorId: "op_bar" }, "pin"), "none");
   assert.equal(placeSectionName("Kitchen", sections, ["sec_bar"])?.name, "Bar");
   assert.equal(placeSectionName("All", sections, []) , null);
+  assert.equal(sections[1]?.operatorId, "op_kitchen");
 });
 
 test("entity owner surfaces are wired", () => {

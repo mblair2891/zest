@@ -12,6 +12,14 @@ import {
 } from "@/components/ui/dialog";
 import { usePosStore } from "@/lib/pos/store";
 import { entityFloorEditorId, floorEditMode, floorEditScope, placeSectionName } from "@/lib/pos/entity-floor";
+import {
+  HOUSE_OWNER,
+  ownerDisplayName,
+  printerFollowsRoom,
+  publishOwnerBlock,
+  sectionOwnerId,
+  sectionOwnerIsSet,
+} from "@/lib/pos/room-owner";
 import { cn, uid } from "@/lib/utils";
 import { SetupAssistButton } from "@/components/assist/SetupAssistDialog";
 import {
@@ -1510,7 +1518,7 @@ export function FloorEditorView() {
         <h2 className="text-sm font-semibold">Floor plan editor</h2>
         {floorMode === "entity" && (
           <p className="text-xs text-muted-foreground" data-floor-entity-scope="">
-            Editing this entity’s sections and active seating loans.
+            Editing rooms this entity owns, plus active seating loans.
           </p>
         )}
         <Badge variant="secondary">Drag · resize · rooms</Badge>
@@ -1965,17 +1973,36 @@ export function FloorEditorView() {
         <aside className="max-h-[42vh] min-h-0 w-full shrink-0 space-y-4 overflow-y-auto border-t border-border bg-surface p-3 lg:max-h-none lg:w-80 lg:border-l lg:border-t-0">
           <div>
             <p className="mb-2 text-sm font-medium">Rooms / sections</p>
+            {wholeFloor && publishOwnerBlock(floorSections) ? (
+              <p className="mb-2 text-[11px] text-amber-900" data-owner-publish-block="">
+                {publishOwnerBlock(floorSections)}
+              </p>
+            ) : null}
             <ul className="space-y-2">
               {floorSections.map((sec) => {
                 const secEditable = !editableSectionIds || editableSectionIds.has(sec.id);
+                const ownerSet = sectionOwnerIsSet(sec);
+                const ownerValue = ownerSet ? sectionOwnerId(sec) : "";
+                const otherEntity =
+                  ownerSet && sectionOwnerId(sec) !== HOUSE_OWNER && sectionOwnerId(sec) !== editEntityId;
                 if (!secEditable) {
                   return (
                     <li key={sec.id} className="rounded-xl border border-border p-2" data-section-locked={sec.id}>
                       <p className="text-sm font-medium">{sec.name}</p>
-                      <p className="text-[11px] text-muted-foreground">Another entity’s section</p>
+                      <p className="text-[11px] text-muted-foreground">
+                        {otherEntity ? "Another entity’s section" : "House"}
+                      </p>
                     </li>
                   );
                 }
+                const receiptChoices = receiptPrinters.filter((p) =>
+                  printerFollowsRoom(p.assignment.operatorId, sec),
+                );
+                const currentReceipt = receiptPrinterForSection(locationDevices, sec.id);
+                const receiptValue =
+                  currentReceipt && printerFollowsRoom(currentReceipt.assignment.operatorId, sec)
+                    ? currentReceipt.id
+                    : "";
                 return (
                 <li key={sec.id} className="rounded-xl border border-border p-2">
                   <div className="flex items-center gap-2">
@@ -1996,41 +2023,77 @@ export function FloorEditorView() {
                       <Trash2 className="h-3.5 w-3.5" />
                     </Button>
                   </div>
-                  {wholeFloor && (
+                  {wholeFloor ? (
                     <label className="mt-1.5 block text-[11px] text-muted-foreground">
-                      Selling entity
+                      Owner
                       <select
                         className="mt-0.5 h-8 w-full rounded-lg border border-border bg-bg px-2 text-xs text-foreground"
                         data-section-entity=""
-                        value={sec.operatorId || ""}
+                        data-section-owner=""
+                        data-owner-set={ownerSet ? "1" : "0"}
+                        value={ownerValue}
                         onChange={(e) => {
-                          upsertFloorSection({ id: sec.id, operatorId: e.target.value || null });
+                          const next = e.target.value;
+                          if (!next) return;
+                          upsertFloorSection({ id: sec.id, operatorId: next });
+                          const section = { id: sec.id, operatorId: next };
+                          const devices = usePosStore.getState().locationDevices ?? [];
+                          const cleaned = devices.map((d) => {
+                            if (!isReceiptPrinterType(d.type) || d.status === "inactive") return d;
+                            if (printerFollowsRoom(d.assignment?.operatorId, section)) return d;
+                            const ids = d.print?.sectionIds;
+                            if (!ids?.includes(sec.id) || !d.print) return d;
+                            return {
+                              ...d,
+                              print: { ...d.print, sectionIds: ids.filter((id) => id !== sec.id) },
+                            };
+                          });
+                          usePosStore.setState({ locationDevices: cleaned });
                           persistLocationCatalog("floor");
+                          persistPrinterAssignments();
                         }}
                       >
-                        <option value="">Location</option>
+                        {!ownerSet ? <option value="">House</option> : null}
+                        <option value={HOUSE_OWNER}>House</option>
+                        {ownerSet &&
+                        ownerValue !== HOUSE_OWNER &&
+                        !vendors.some((v) => v.id === ownerValue) ? (
+                          <option value={ownerValue}>Selling entity</option>
+                        ) : null}
                         {vendors.map((v) => (
                           <option key={v.id} value={v.id}>
                             {v.name}
                           </option>
                         ))}
                       </select>
+                      {!ownerSet ? (
+                        <span className="mt-0.5 block">
+                          Not set. Choose House or a selling entity before publish.
+                        </span>
+                      ) : null}
                     </label>
+                  ) : (
+                    <p className="mt-1.5 text-[11px] text-muted-foreground" data-section-owner="">
+                      Owner: {ownerDisplayName(sec, vendors)}
+                    </p>
                   )}
                   <label className="mt-1.5 block text-[11px] text-muted-foreground">
                     Receipt printer
                     <select
                       className="mt-0.5 h-8 w-full rounded-lg border border-border bg-bg px-2 text-xs text-foreground"
-                      value={receiptPrinterForSection(locationDevices, sec.id)?.id ?? ""}
+                      value={receiptValue}
                       onChange={(e) => assignSectionPrinter(sec.id, "receipt", e.target.value)}
                     >
                       <option value="">None</option>
-                      {receiptPrinters.map((p) => (
+                      {receiptChoices.map((p) => (
                         <option key={p.id} value={p.id}>
                           {p.label}
                         </option>
                       ))}
                     </select>
+                    {receiptChoices.length === 0 ? (
+                      <span className="mt-0.5 block">No receipt printer for this owner.</span>
+                    ) : null}
                   </label>
                   <label className="mt-1 block text-[11px] text-muted-foreground">
                     Bar printer

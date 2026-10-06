@@ -545,6 +545,9 @@ export function PlatformTenantVenue({
     });
     return () => {
       cancelled = true;
+      // Dev Strict Mode replays this effect. If the cancelled run keeps the
+      // latch, the replay returns early and the venue stays on Opening venue.
+      if (lastHydrated.current === hydrateKey) lastHydrated.current = "";
     };
     // Hydrate once per org/location. User identity is read at run time.
     // eslint-disable-next-line react-hooks/exhaustive-deps

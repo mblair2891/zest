@@ -34,6 +34,7 @@ import {
 } from "@/lib/pos/station-pair-payload";
 import { parseDeletedLocationDevices, rememberDeletedDevice } from "@/lib/pos/device-seed";
 import { parseFloorPlan } from "@/lib/saas/location-catalog";
+import { publishOwnerBlock } from "@/lib/pos/room-owner";
 import { seedDefaultPrinterAssignments } from "@/lib/print/printer-assignment";
 
 function mintClaim(): { claimCode: string; claimExpiresAt: number } {
@@ -1255,6 +1256,8 @@ export const publishLocationFn = createServerFn({ method: "POST" })
       "@/lib/saas/tenancy.server"
     );
     const access = await assertLocationAccess(context.userId, data.locationId);
+    const ownerBlock = publishOwnerBlock(parseFloorPlan(access.location.setup?.floorPlan)?.sections ?? []);
+    if (ownerBlock) throw new Error(ownerBlock);
     const prev = access.location.setup?.stationPublish;
     const version = (prev?.version ?? 0) + 1;
     const record = {

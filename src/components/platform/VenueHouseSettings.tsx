@@ -3,6 +3,7 @@ import { Input } from "@/components/ui/input";
 import { usePosStore } from "@/lib/pos/store";
 import { useSaasStore } from "@/lib/pos/saas-store";
 import { saveLocationSettingsFn, publishLocationFn } from "@/lib/access/api";
+import { publishOwnerBlock } from "@/lib/pos/room-owner";
 import {
   confirmCashDiscountRecalc,
   flushLocationCatalog,
@@ -93,6 +94,12 @@ export function VenueHouseSettings() {
     if (!orgId || !locId) return;
     setBusy(true);
     setPublishMsg(null);
+    const ownerBlock = publishOwnerBlock(usePosStore.getState().floorSections);
+    if (ownerBlock) {
+      setPublishMsg(ownerBlock);
+      setBusy(false);
+      return;
+    }
     try {
       await flushLocationCatalog("floor");
       const res = await publishLocationFn({

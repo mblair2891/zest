@@ -154,7 +154,11 @@ export interface FloorSection {
   /** Swatch id from SECTION_SWATCHES (e.g. sec-1) */
   color: string;
   sort: number;
-  /** Selling entity that may edit this section. Empty = location contact only. */
+  /**
+   * Room owner. A selling entity id, or "host" for House (shared).
+   * Empty until the location contact sets it. Unset shows as House and blocks publish.
+   * A seating loan does not change this.
+   */
   operatorId?: string | null;
 }
 

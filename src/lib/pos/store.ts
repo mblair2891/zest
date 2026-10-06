@@ -181,7 +181,9 @@ import {
   canAccessTable,
   defaultHomeSectionsForRole,
   policyOf,
+  sectionForTable,
 } from "./section-control";
+import { orderEntityForRoom, staffMayTakeSection } from "./room-owner";
 import { employeesForVenue, venueById } from "./entities";
 import { useSaasStore } from "./saas-store";
 import { starterPosSlice } from "./starter-seed";
@@ -2437,8 +2439,8 @@ const usePosStoreRaw = create<PosStore>()(persist((set, get) => {
 			ok: false,
 			error: "Item unavailable"
 		};
+		const table = order.tableId ? get().tables.find((t: any) => t.id === order.tableId) : undefined;
 		if (order.tableId && get().currentEmployeeId !== "guest_qr") {
-			const table = get().tables.find((t: any) => t.id === order.tableId);
 			if (table) {
 				const access = checkTableAccess(get, table, "order");
 				if (!access.ok) return { ok: false, error: access.reason, access };
@@ -2450,13 +2452,23 @@ const usePosStoreRaw = create<PosStore>()(persist((set, get) => {
 		if ((settings.peerVenue || settings.operatingModel === "peer_venue") && !item.vendorId) {
 			return { ok: false, error: "Each line needs a selling entity. This building is not a merchant." };
 		}
+		let entityId = item.vendorId as string | undefined;
+		let vendorName = vendor?.shortName ?? vendor?.name;
+		if (!item.vendorId && table) {
+			const roomEntity = orderEntityForRoom(sectionForTable(table, get().floorSections));
+			if (roomEntity) {
+				const owner = get().vendors.find((v: any) => v.id === roomEntity);
+				entityId = roomEntity;
+				vendorName = owner?.shortName ?? owner?.name;
+			}
+		}
 		const line = {
 			id: uid("ln"),
 			menuItemId: item.id,
 			name: item.name,
-			entityId: item.vendorId,
-			vendorId: item.vendorId,
-			vendorName: vendor?.shortName ?? vendor?.name,
+			entityId,
+			vendorId: entityId,
+			vendorName,
 			quantity: opts.quantity ?? 1,
 			unitPriceCents: unit,
 			modifiers: opts.modifiers ?? [],
@@ -5001,10 +5013,18 @@ const usePosStoreRaw = create<PosStore>()(persist((set, get) => {
 		});
 	},
 	assignEmployeeSections: (employeeId, sectionIds) => {
+		const emp = get().employees.find((e: any) => e.id === employeeId);
+		const sections = get().floorSections;
+		const next = emp
+			? sectionIds.filter((id: string) => {
+				const sec = sections.find((s: any) => s.id === id);
+				return sec ? staffMayTakeSection(emp, sec) : false;
+			})
+			: [...sectionIds];
 		set({
-			employees: get().employees.map((e: any) => e.id === employeeId ? { ...e, homeSectionIds: [...sectionIds] } : e)
+			employees: get().employees.map((e: any) => e.id === employeeId ? { ...e, homeSectionIds: next } : e)
 		});
-		get().audit("section_assign", `${employeeId} → ${sectionIds.join(",") || "none"}`);
+		get().audit("section_assign", `${employeeId} → ${next.join(",") || "none"}`);
 	},
 	setFloorRoom: (room: FloorRoom) => {
 		const prev = get().floorRoom ?? DEFAULT_ROOM;

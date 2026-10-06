@@ -12,6 +12,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { VoiceTextarea } from "@/components/ui/voice-textarea";
 import { publishLocationFn, saveMenuItemFn } from "@/lib/access/api";
+import { publishOwnerBlock } from "@/lib/pos/room-owner";
 import { extractMenuIntakeFn, uploadMenuFileFn } from "@/lib/menu/intake-api";
 import {
   applyIntakeAnswers,
@@ -390,6 +391,11 @@ export function EntityMenuIntake(props: {
         void saveMenuItemFn({
           data: { orgId, locationId, action: "create", operatorId: entityId },
         }).catch(() => undefined);
+        const ownerBlock = publishOwnerBlock(usePosStore.getState().floorSections);
+        if (ownerBlock) {
+          setMessage(ownerBlock);
+          return;
+        }
         await publishLocationFn({ data: { orgId, locationId } });
       }
       noteChecklistSave({ tab: "menu", focus: "menu" });

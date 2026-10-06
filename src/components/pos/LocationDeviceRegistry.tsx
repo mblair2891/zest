@@ -17,6 +17,7 @@ import {
 } from "@/lib/access/api";
 import { hashPin, isFourDigitPin } from "@/lib/pos/pin";
 import { flushLocationCatalog } from "@/lib/pos/persist-location-setup";
+import { publishOwnerBlock } from "@/lib/pos/room-owner";
 import { noteChecklistSave, useChecklistLink } from "@/lib/saas/checklist-link";
 import { getSessionContextFn } from "@/lib/saas/api";
 import { canDeleteVenueDevice } from "@/lib/saas/tenant-users";
@@ -784,6 +785,12 @@ export function LocationDeviceRegistry({
     setBusy(true);
     setError(null);
     setPublishMsg(null);
+    const ownerBlock = publishOwnerBlock(usePosStore.getState().floorSections);
+    if (ownerBlock) {
+      setError(ownerBlock);
+      setBusy(false);
+      return;
+    }
     try {
       await flushLocationCatalog("floor");
       const res = await publishLocationFn({

@@ -426,8 +426,8 @@ export function summitHallFloorPlan(): LocationFloorPlan {
   return {
     tables: [...dining, ...bar],
     sections: [
-      { id: "sec_summit_dining", name: "Dining", color: "sec-1", sort: 0 },
-      { id: "sec_summit_bar", name: "Bar", color: "sec-3", sort: 1 },
+      { id: "sec_summit_dining", name: "Dining", color: "sec-1", sort: 0, operatorId: SUMMIT_HEARTH_OP_ID },
+      { id: "sec_summit_bar", name: "Bar", color: "sec-3", sort: 1, operatorId: SUMMIT_COPPER_OP_ID },
     ],
   };
 }

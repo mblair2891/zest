@@ -39,6 +39,7 @@ import { readFloorDraft, setFloorDraftBanner } from "@/lib/pos/live-floor";
 import { resolveServiceFloor } from "@/lib/pos/published-floor";
 import { flushLocationCatalog } from "@/lib/pos/persist-location-setup";
 import { summitHallFloorPlan } from "@/lib/saas/summit-hall";
+import { publishOwnerBlock } from "@/lib/pos/room-owner";
 import { membershipToEmployeeRole } from "@/lib/access/membership-map";
 import { HOST_SCOPE, parseGrantMatrix } from "@/lib/access/entity-grants";
 import { parseLaborMap, parseLaborRules } from "@/lib/labor/rules";
@@ -613,7 +614,8 @@ function PosAppInner({ entityId }: { entityId?: string }) {
               autoPublish &&
               access.org.id &&
               access.location.id &&
-              !floorAutoPublish.has(access.location.id)
+              !floorAutoPublish.has(access.location.id) &&
+              !publishOwnerBlock(sections)
             ) {
               floorAutoPublish.add(access.location.id);
               const orgId = access.org.id;

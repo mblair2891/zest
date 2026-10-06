@@ -1,7 +1,7 @@
 /**
  * Who may edit which floor sections. Location contact edits the whole floor.
- * An entity password login edits sections assigned to that entity, plus tables
- * with an active seating loan for that entity’s staff.
+ * An entity password login edits rooms that entity owns, plus tables with an
+ * active seating loan for that entity’s staff. A loan does not change the owner.
  * No @/ value imports so node:test can load this file.
  */
 
@@ -52,6 +52,7 @@ export type FloorEditScope = {
  * entityId null = whole floor. A set id edits sections with that operatorId
  * and tables on those sections (by sectionId or section name), plus seating
  * loans for staff whose operatorId is this entity. Shift grants do not edit.
+ * Loans add table ids only. They do not write section.operatorId.
  */
 export function floorEditScope(input: {
   entityId: string | null;

@@ -56,8 +56,10 @@ import {
   policyOf,
   roleIsLocked,
   sectionColorForTable,
+  sectionForTable,
   swatchCss,
 } from "@/lib/pos/section-control";
+import { staffMayTakeSection } from "@/lib/pos/room-owner";
 import { SectionAccessDialog } from "./GrantTableDialog";
 import { GuideLearnLink } from "@/components/guide/GuideLearnLink";
 import { QrMark } from "./QrMark";
@@ -268,6 +270,19 @@ export function FloorView({
   const floorServers = employees.filter(
     (e) => e.active && (e.role === "server" || e.role === "bartender"),
   );
+  const serversForSection = (sectionName: string | undefined) => {
+    if (!sectionName) return floorServers;
+    const sec = sectionForTable({ section: sectionName }, floorSections);
+    if (!sec) return floorServers;
+    return floorServers.filter((e) => staffMayTakeSection(e, sec));
+  };
+  const preferredServerId = (sectionName: string) => {
+    const sec = sectionForTable({ section: sectionName }, floorSections);
+    const eligible = floorServers.filter((e) => (sec ? staffMayTakeSection(e, sec) : true));
+    const preferred =
+      eligible.find((e) => sec && (e.homeSectionIds ?? []).includes(sec.id)) ?? eligible[0];
+    return preferred?.id ?? "";
+  };
   const canAssignServer = emp?.role === "owner" || emp?.role === "manager" || emp?.role === "host";
   const canForceReassign = emp?.role === "owner" || emp?.role === "manager";
   const releasedPool = tables.filter((t) => t.releasedAt && !t.mergedIntoId);
@@ -1333,12 +1348,7 @@ export function FloorView({
                   }
                   setSeatTarget(detailLive);
                   setGuests(Math.min(detailLive.seats, 2));
-                  const sec = floorSections.find((s) => s.name === detailLive.section);
-                  const preferred =
-                    floorServers.find(
-                      (e) => sec && (e.homeSectionIds ?? []).includes(sec.id),
-                    ) ?? floorServers[0];
-                  setSeatServerId(preferred?.id ?? "");
+                  setSeatServerId(preferredServerId(detailLive.section));
                   setSeatOpen(true);
                 }}
                 onPartySize={() => {
@@ -1349,12 +1359,7 @@ export function FloorView({
                   }
                   setSeatTarget(detailLive);
                   setGuests(Math.min(detailLive.seats, 2));
-                  const sec = floorSections.find((s) => s.name === detailLive.section);
-                  const preferred =
-                    floorServers.find(
-                      (e) => sec && (e.homeSectionIds ?? []).includes(sec.id),
-                    ) ?? floorServers[0];
-                  setSeatServerId(preferred?.id ?? "");
+                  setSeatServerId(preferredServerId(detailLive.section));
                   setSeatOpen(true);
                 }}
                 onClean={() => {
@@ -1372,7 +1377,9 @@ export function FloorView({
                   isHostStand ? () => { setDetail(null); setView("waitlist"); } : undefined
                 }
                 onRelease={() => {
-                  setOfferTo(floorServers.find((e) => e.id !== emp?.id)?.id ?? "");
+                  setOfferTo(
+                    serversForSection(detailLive.section).find((e) => e.id !== emp?.id)?.id ?? "",
+                  );
                   setOfferMode("staff");
                   setOfferHold("left_to_close");
                   setOfferReason(CHECK_HOLD_REASONS.left_to_close[0] ?? "Table needed");
@@ -1526,7 +1533,7 @@ export function FloorView({
                 onChange={(e) => setOfferTo(e.target.value)}
               >
                 <option value="">Choose</option>
-                {floorServers.map((s) => (
+                {serversForSection(detailLive?.section).map((s) => (
                   <option key={s.id} value={s.id}>
                     {s.name}
                   </option>
@@ -1629,7 +1636,7 @@ export function FloorView({
                 ))}
               </div>
             </div>
-            {canAssignServer && floorServers.length > 0 && (
+            {canAssignServer && serversForSection(seatTarget?.section).length > 0 && (
               <label className="block text-sm text-muted-foreground">
                 Assign server
                 <select
@@ -1638,7 +1645,7 @@ export function FloorView({
                   onChange={(e) => setSeatServerId(e.target.value)}
                 >
                   <option value="">Me ({emp?.name})</option>
-                  {floorServers.map((s) => (
+                  {serversForSection(seatTarget?.section).map((s) => (
                     <option key={s.id} value={s.id}>
                       {s.name}
                       {s.homeSectionIds?.length

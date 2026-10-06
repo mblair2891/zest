@@ -98,6 +98,6 @@ test("Summit Hall labor is owned_lines per selling entity", () => {
   assert.ok(HOST_SCOPE);
   const plan = summitHallFloorPlan();
   assert.ok(plan.tables.length >= 10);
-  assert.ok(plan.sections.some((s) => s.name === "Dining"));
-  assert.ok(plan.sections.some((s) => s.name === "Bar"));
+  assert.equal(plan.sections.find((s) => s.name === "Dining")?.operatorId, SUMMIT_HEARTH_OP_ID);
+  assert.equal(plan.sections.find((s) => s.name === "Bar")?.operatorId, SUMMIT_COPPER_OP_ID);
 });

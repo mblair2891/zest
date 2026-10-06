@@ -186,8 +186,8 @@ function floorPlan(): LocationFloorPlan {
   return {
     tables: [...dining, ...bar],
     sections: [
-      { id: "sec_laundry_dining", name: "Dining", color: "sec-1", sort: 0 },
-      { id: "sec_laundry_bar", name: "Bar", color: "sec-3", sort: 1 },
+      { id: "sec_laundry_dining", name: "Dining", color: "sec-1", sort: 0, operatorId: LAUNDRY_DIAMOND_OP_ID },
+      { id: "sec_laundry_bar", name: "Bar", color: "sec-3", sort: 1, operatorId: LAUNDRY_STEAM_OP_ID },
     ],
   };
 }

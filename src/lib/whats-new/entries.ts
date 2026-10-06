@@ -6,6 +6,18 @@ import type { GuideUpdate } from "@/lib/guide/types";
  */
 export const WHATS_NEW_ENTRIES: GuideUpdate[] = [
   {
+    id: "upd_2026_10_191_room_owner",
+    date: "2026-10-06",
+    title: "Each floor room has an owner",
+    summary: "Set a room to a selling entity or House before publish. An entity edits only its rooms, plus seating loans.",
+    body: "In the floor editor each room has an owner: a selling entity at this venue, or House. House is shared. Publish waits until every room is set. A room with no owner shows House until you set it. An entity owner edits only rooms they own, plus tables with an active seating loan. The location contact sets any room’s owner. Orders, receipt printers, and staff sections follow that owner. A loan does not change the owner.",
+    roles: ["owner_manager", "vendor_operator", "host_operator"],
+    surfaces: ["floor"],
+    audience: "all",
+    topicId: "sections",
+    tags: ["floor", "entity"],
+  },
+  {
     id: "upd_2026_10_190_no_public_signup",
     date: "2026-10-03",
     title: "No public account signup",

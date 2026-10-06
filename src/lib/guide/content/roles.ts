@@ -285,7 +285,7 @@ export const ROLE_GUIDE_TOPICS: GuideTopic[] = [
       ),
       ul(
         "Password login at app.summex.app/login (Entity admin). Never a PIN pad, never platform CRM. Scoped to your selling entity.",
-        "Dashboard: today’s sales, open checks, labor %, top items, and 86 count for this entity. The header is this entity’s name, then the venue. Menu is grouped by category. 86 is on the item, not a staff tab. Staff is people, PINs, and roles. Schedule can place a week of shifts at once. Floor edits this entity’s sections and active seating loans.",
+        "Dashboard: today’s sales, open checks, labor %, top items, and 86 count for this entity. The header is this entity’s name, then the venue. Menu is grouped by category. 86 is on the item, not a staff tab. Staff is people, PINs, and roles. Schedule can place a week of shifts at once. Floor edits rooms this entity owns, plus active seating loans. A loan does not change the owner.",
         "You cannot edit the other entity’s menu, payout, or labor. Reports and labor % use owned lines (what this entity is paid).",
         "Peer menus are view-only on the floor unless the venue grant allows selling them. You cannot change another operator’s settings.",
         "A $35 dispute fee, when filed, splits by merchandise on that check.",
@@ -317,7 +317,7 @@ export const ROLE_GUIDE_TOPICS: GuideTopic[] = [
         "Kitchen — ODS Start/Bump only. No pay, no drawer, no price edits.",
         "Busser — dirty → clean only.",
         "Password dashboards (never the PIN pad): Platform Admin · host owner · venue admin · entity owner · entity manager · accountant. Tiles are subscribed modules only. Deep links match API grants.",
-        "Entity owner — that brand’s name, then the venue. Today: sales, open checks, labor %, top items, 86 count. Menu by category. Floor sections assigned to this entity. Payments for this brand.",
+        "Entity owner — that brand’s name, then the venue. Today: sales, open checks, labor %, top items, 86 count. Menu by category. Floor rooms this entity owns, plus active seating loans. The location contact sets each room to a selling entity or House. A loan does not change the owner. Payments for this brand.",
         "Entity manager — same ops, including this entity’s floor, from back office. No billing/payments settings.",
         "Accountant — reports, hours export, gift liability. No Devices. No 86.",
         "Host owner (host + tenants) — venue health, every entity, Devices, Publish, combined and per-entity reports.",
