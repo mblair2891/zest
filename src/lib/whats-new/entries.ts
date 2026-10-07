@@ -6,6 +6,18 @@ import type { GuideUpdate } from "@/lib/guide/types";
  */
 export const WHATS_NEW_ENTRIES: GuideUpdate[] = [
   {
+    id: "upd_2026_10_195_entity_floor_publish",
+    date: "2026-10-07",
+    title: "Publish floor on a peer venue",
+    summary: "An entity owner publishes the rooms they own. Another entity’s rooms stay put.",
+    body: "On a peer venue with no host, the entity floor editor has Publish floor. Edits save as a draft, then Publish writes that entity’s rooms, tables, seat counts, and shapes. Refresh shows the same layout. Another entity’s tables stay as they were. A House room stays locked unless this login is the location contact. The location contact still publishes the whole floor.",
+    roles: ["owner_manager", "vendor_operator", "host_operator"],
+    surfaces: ["floor"],
+    audience: "all",
+    topicId: "floor-editor",
+    tags: ["floor", "entity"],
+  },
+  {
     id: "upd_2026_10_194_table_shape",
     date: "2026-10-07",
     title: "Tables show the shape only",

@@ -11,7 +11,11 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { usePosStore } from "@/lib/pos/store";
+import { useSaasStore } from "@/lib/pos/saas-store";
 import { entityFloorEditorId, floorEditMode, floorEditScope, placeSectionName } from "@/lib/pos/entity-floor";
+import { publishEntityFloorFn } from "@/lib/pos/entity-floor-api";
+import { floorPlanFromPos, tablesFromFloorPlan } from "@/lib/saas/location-catalog";
+import { clearFloorDraft, readFloorDraft, writeFloorDraft } from "@/lib/pos/live-floor";
 import {
   HOUSE_OWNER,
   lockedFloorMessage,
@@ -45,6 +49,7 @@ import { getDemoType } from "@/lib/demo/session";
 import { GuideLearnLink } from "@/components/guide/GuideLearnLink";
 import { QrMark } from "./QrMark";
 import {
+  cancelLocationCatalog,
   flushLocationCatalog,
   persistClearedFloor,
   persistLocationCatalog,
@@ -472,6 +477,10 @@ export function FloorEditorView() {
   const extraTableGrants = usePosStore((s) => s.extraTableGrants ?? []);
   const sessionKind = usePosStore((s) => s.sessionKind);
   const currentEmployeeId = usePosStore((s) => s.currentEmployeeId);
+  const peerVenue = usePosStore(
+    (s) => Boolean(s.settings.peerVenue || s.settings.operatingModel === "peer_venue"),
+  );
+  const tenantLocationId = usePosStore((s) => s.tenantLocationId) || "";
   const vendors = usePosStore((s) => s.vendors);
   const editorEmp = employees.find((e) => e.id === currentEmployeeId) ?? null;
   const floorMode = floorEditMode(editorEmp, sessionKind);
@@ -490,6 +499,18 @@ export function FloorEditorView() {
     [floorMode, editEntityId, floorSections, tables, extraTableGrants, employees],
   );
   const wholeFloor = floorMode === "whole";
+  const draftRestored = useRef(false);
+  useEffect(() => {
+    if (draftRestored.current) return;
+    if (floorMode !== "entity" || !editEntityId || !peerVenue || !tenantLocationId) return;
+    draftRestored.current = true;
+    const draft = readFloorDraft(tenantLocationId);
+    if (!draft || draft.entityId !== editEntityId) return;
+    usePosStore.setState({
+      tables: draft.tables,
+      ...(draft.sections.length ? { floorSections: draft.sections } : {}),
+    });
+  }, [floorMode, editEntityId, peerVenue, tenantLocationId]);
   const editableTableIds = wholeFloor ? null : new Set(editScope.tableIds);
   const editableSectionIds = wholeFloor ? null : new Set(editScope.sectionIds);
   const editableTableRef = useRef<Set<string> | null>(null);
@@ -595,6 +616,8 @@ export function FloorEditorView() {
   const [stoolBar, setStoolBar] = useState<string | null>(null);
   const [replaceStools, setReplaceStools] = useState(false);
   const [pendingSide, setPendingSide] = useState<BarGuestSide | null>(null);
+  const [publishing, setPublishing] = useState(false);
+  const [publishNote, setPublishNote] = useState("");
   if (selected !== stoolBar) {
     setStoolBar(selected);
     setReplaceStools(false);
@@ -1514,6 +1537,39 @@ export function FloorEditorView() {
     persistClearedFloor();
   };
 
+  const publishFloor = async () => {
+    if (!editEntityId || publishing) return;
+    const orgId = useSaasStore.getState().org.id;
+    const locId = usePosStore.getState().tenantLocationId || "";
+    if (!orgId || !locId) {
+      setPublishNote("Open this venue, then publish the floor.");
+      return;
+    }
+    setPublishing(true);
+    setPublishNote("");
+    cancelLocationCatalog("floor");
+    try {
+      const pos = usePosStore.getState();
+      const plan = floorPlanFromPos(pos.tables, pos.floorSections, pos.floorRoom);
+      writeFloorDraft(locId, pos.tables, pos.floorSections, editEntityId);
+      const saved = await publishEntityFloorFn({
+        data: { orgId, locationId: locId, entityId: editEntityId, floorPlan: plan },
+      });
+      cancelLocationCatalog("floor");
+      clearFloorDraft();
+      usePosStore.setState({
+        tables: tablesFromFloorPlan(saved.floorPlan),
+        floorSections: saved.floorPlan.sections,
+        ...(saved.floorPlan.room ? { floorRoom: saved.floorPlan.room } : {}),
+      });
+      setPublishNote("Floor published.");
+    } catch (err) {
+      setPublishNote(err instanceof Error ? err.message : "Could not publish the floor.");
+    } finally {
+      setPublishing(false);
+    }
+  };
+
   return (
     <div className="flex h-full min-h-0 flex-1 flex-col overflow-hidden" data-demo="floor-editor">
       <div className="flex max-h-36 shrink-0 flex-wrap items-center gap-2 overflow-y-auto border-b border-border px-3 py-2 lg:max-h-none lg:overflow-visible">
@@ -1521,6 +1577,7 @@ export function FloorEditorView() {
         {floorMode === "entity" && (
           <p className="text-xs text-muted-foreground" data-floor-entity-scope="">
             Editing rooms this entity owns, plus active seating loans.
+            {peerVenue ? " Publish floor saves those rooms." : ""}
           </p>
         )}
         <Badge variant="secondary">Drag · resize · rooms</Badge>
@@ -1662,6 +1719,24 @@ export function FloorEditorView() {
               {RENUMBER_LABEL}
             </Button>
             )}
+            {floorMode === "entity" && peerVenue ? (
+              <div className="ml-auto flex items-center gap-2">
+                <Button
+                  type="button"
+                  size="sm"
+                  data-floor-publish=""
+                  disabled={publishing}
+                  onClick={() => void publishFloor()}
+                >
+                  {publishing ? "Publishing…" : "Publish floor"}
+                </Button>
+                {publishNote ? (
+                  <p className="text-xs text-muted-foreground" data-floor-publish-note="">
+                    {publishNote}
+                  </p>
+                ) : null}
+              </div>
+            ) : null}
             <Button
               type="button"
               size="sm"
@@ -1967,7 +2042,10 @@ export function FloorEditorView() {
             })}
           </div>
           <p className="pointer-events-none absolute inset-x-3 bottom-2 z-30 text-center text-[11px] text-neutral-500">
-            Layout saves on this location as you drag. Scroll, pinch, or the zoom buttons change the zoom. Click-hold on empty floor pans. Drag a piece to move it. Fit room fills this workspace.
+            {floorMode === "entity" && peerVenue
+              ? "Edits stay in a draft until you Publish floor. Publish saves this entity’s rooms, tables, seat counts, and shapes. "
+              : "Layout saves on this location as you drag. "}
+            Scroll, pinch, or the zoom buttons change the zoom. Click-hold on empty floor pans. Drag a piece to move it. Fit room fills this workspace.
           </p>
         </div>
         </div>

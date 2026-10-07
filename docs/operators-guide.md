@@ -1,7 +1,7 @@
 # Operators Guide — authoring
 
-**Revision · 7 Oct 2026** — Tables on the floor editor and the live floor are the shape only: round, square, or booth. The seat count is a number on the table popup and in the side panel. Changing seats does not add marks. Barstools stay their own pieces.
-Guide v2026.10.194.
+**Revision · 7 Oct 2026** — On a peer venue with no host, an entity owner publishes the rooms that entity owns, including the tables in those rooms, the seat counts, and the shapes. Another entity’s rooms stay as they were. A House room stays locked unless this login is the location contact. The location contact still publishes the whole floor. Tables on the floor editor and the live floor are the shape only: round, square, or booth. The seat count is a number on the table popup and in the side panel. Changing seats does not add marks. Barstools stay their own pieces.
+Guide v2026.10.195.
 
 The in-app **Operators Guide** is the living product manual. It is not a
 separate PDF. Staff open it from **Guide** / **?** in the POS and platform

@@ -7,6 +7,7 @@ import { useFinanceStore } from "@/lib/finance/store";
 import { useOpsStore } from "@/lib/pos/ops-store";
 import { isProspectDemo } from "@/lib/demo/session";
 import { floorPlanFromPos } from "@/lib/saas/location-catalog";
+import { entityFloorEditorId } from "@/lib/pos/entity-floor";
 import { clearFloorDraft, writeFloorDraft } from "@/lib/pos/live-floor";
 import { HOST_SCOPE } from "@/lib/access/entity-grants";
 import { parseLaborRules } from "@/lib/labor/rules";
@@ -391,6 +392,19 @@ export function persistClearedFloor(): void {
   }).catch(() => undefined);
 }
 
+/** Drop a pending floor/menu autosave so Publish can clear the draft afterward. */
+export function cancelLocationCatalog(kind: "floor" | "menu" | "recipes" | "costs" | "finance"): void {
+  const prev = timers.get(kind);
+  if (prev) clearTimeout(prev);
+  timers.delete(kind);
+}
+
+function entityEditorId(): string | null {
+  const pos = usePosStore.getState();
+  const emp = pos.employees.find((e) => e.id === pos.currentEmployeeId) ?? null;
+  return entityFloorEditorId(emp, pos.sessionKind);
+}
+
 export function persistLocationCatalog(kind: "floor" | "menu" | "recipes" | "costs" | "finance"): void {
   const key = kind;
   const prev = timers.get(key);
@@ -411,7 +425,10 @@ export async function flushLocationCatalog(
   if (!ctx) return;
   const pos = usePosStore.getState();
   const plan = floorPlanFromPos(pos.tables, pos.floorSections, pos.floorRoom);
-  writeFloorDraft(ctx.locationId, pos.tables, pos.floorSections);
+  const editorId = entityEditorId();
+  writeFloorDraft(ctx.locationId, pos.tables, pos.floorSections, editorId);
+  // Entity floor edits stay in the draft. Publish floor writes that entity’s rooms.
+  if (_kind === "floor" && editorId) return;
   const cost = useCostStore.getState();
   const floorPatch = plan.tables.length
     ? {

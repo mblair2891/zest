@@ -12,6 +12,8 @@ export type FloorDraft = {
   tables: Table[];
   sections: FloorSection[];
   at: number;
+  /** Set when an entity floor editor wrote the draft. */
+  entityId?: string;
 };
 
 export function resolveLiveFloor<T extends { id: string }>(opts: {
@@ -48,6 +50,7 @@ export function readFloorDraft(locationId: string): FloorDraft | null {
       tables: o.tables,
       sections: Array.isArray(o.sections) ? o.sections : [],
       at: Number(o.at) || 0,
+      entityId: typeof o.entityId === "string" && o.entityId.trim() ? o.entityId : undefined,
     };
   } catch {
     return null;
@@ -87,14 +90,17 @@ export function writeFloorDraft(
   locationId: string,
   tables: Table[],
   sections: FloorSection[],
+  entityId?: string | null,
 ): void {
   if (typeof window === "undefined" || !tables.length) return;
   try {
+    const owner = String(entityId ?? "").trim();
     const row: FloorDraft = {
       locationId,
       tables,
       sections,
       at: Date.now(),
+      ...(owner ? { entityId: owner } : {}),
     };
     localStorage.setItem(FLOOR_DRAFT_KEY, JSON.stringify(row));
   } catch {
