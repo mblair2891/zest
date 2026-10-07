@@ -482,7 +482,7 @@ export interface Table {
   railBarId?: string;
   /** Which edge of this bar the stools use. */
   barSide?: BarGuestSide;
-  /** 1 reverses stool numbers on this bar. Unset starts a straight bar at the guest’s left, and an L or U at the first leg’s open end. */
+  /** 1 reverses stool numbers on this bar. Unset starts a straight bar at the guest’s left, and an L or U at the first open end. */
   stoolNumberFrom?: 0 | 1;
   /** Bar centerline in plan percent. */
   points?: { x: number; y: number }[];

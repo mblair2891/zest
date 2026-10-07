@@ -4,9 +4,12 @@ import { readFileSync } from "node:fs";
 import { floorEditScope } from "../src/lib/pos/entity-floor.ts";
 import {
   HOUSE_OWNER,
+  lockedFloorMessage,
   orderEntityForRoom,
+  ownerDisplayName,
   printerFollowsRoom,
   publishOwnerBlock,
+  sectionForPiece,
   sectionOwnerId,
   sectionOwnerIsSet,
   staffMayTakeSection,
@@ -113,6 +116,39 @@ test("publish keeps House and entity owners", () => {
   assert.equal(bar?.operatorId, "host");
   assert.equal(patio?.operatorId, undefined);
   assert.match(publishOwnerBlock(parsed?.sections ?? []) ?? "", /Patio/);
+});
+
+test("a locked table names the owning entity", () => {
+  const vendors = [{ id: "op_bbq", name: "Diamond House BBQ" }];
+  const sections = [
+    { id: "sec_dining", name: "Dining", operatorId: "op_bbq" },
+    { id: "sec_patio", name: "Patio", operatorId: "host" },
+    { id: "sec_open", name: "Garden" },
+  ];
+  const dining = sectionForPiece({ section: "Dining", sectionId: "sec_dining" }, sections);
+  const patio = sectionForPiece({ section: "Patio", sectionId: "sec_patio" }, sections);
+  const garden = sectionForPiece({ section: "Garden", sectionId: "sec_open" }, sections);
+  assert.equal(
+    lockedFloorMessage({ label: "1", kind: "table" }, ownerDisplayName(dining!, vendors)),
+    "Table 1 is on Diamond House BBQ.",
+  );
+  assert.equal(
+    lockedFloorMessage({ label: "2", kind: "table" }, ownerDisplayName(patio!, vendors)),
+    "Table 2 is on House.",
+  );
+  assert.equal(
+    lockedFloorMessage({ label: "3", kind: "table" }, ownerDisplayName(garden!, vendors)),
+    "Table 3 is on House.",
+  );
+  assert.equal(lockedFloorMessage({ label: "1", kind: "table" }, "House"), "Table 1 is on House.");
+  assert.doesNotMatch(
+    lockedFloorMessage({ label: "1", kind: "table" }, "Diamond House BBQ"),
+    /another entity/,
+  );
+  const editor = readFileSync("src/components/pos/FloorEditorView.tsx", "utf8");
+  assert.match(editor, /lockedFloorMessage/);
+  assert.match(editor, /data-floor-locked-copy/);
+  assert.doesNotMatch(editor, /another entity/);
 });
 
 test("floor editor owner dropdown and publish gate are wired", () => {

@@ -6,6 +6,18 @@ import type { GuideUpdate } from "@/lib/guide/types";
  */
 export const WHATS_NEW_ENTRIES: GuideUpdate[] = [
   {
+    id: "upd_2026_10_192_l_stool_lock",
+    date: "2026-10-07",
+    title: "L bar stools walk the rail",
+    summary: "B1 is an open end. The corner seat is in the middle. A locked table names its owner.",
+    body: "On an L bar, Generate stools walks from one open end, through the corner, to the other open end. B1 is that open end, never the corner. A corner seat, when it is on, sits in the middle of the sequence. Reverse numbering swaps which open end is B1. A straight bar still starts at one end, the guest’s left. An existing L keeps its B numbers until you generate stools again. Dragging a table or editing a label does not renumber them. Clicking a table this login cannot edit names the owner, for example Table 1 is on Diamond House BBQ. A House room says House.",
+    roles: ["owner_manager", "vendor_operator", "host_operator"],
+    surfaces: ["floor"],
+    audience: "all",
+    topicId: "floor-editor",
+    tags: ["floor", "entity"],
+  },
+  {
     id: "upd_2026_10_191_room_owner",
     date: "2026-10-06",
     title: "Each floor room has an owner",

@@ -1,7 +1,7 @@
 # Operators Guide — authoring
 
-**Revision · 6 Oct 2026** — Each floor room has an owner: a selling entity at this venue, or House.
-Guide v2026.10.191.
+**Revision · 7 Oct 2026** — On an L bar, stool numbers walk from one open end through the corner to the other open end. A corner seat is in the middle, not first. A locked table names its owner, such as Table 1 is on Diamond House BBQ. A House room says House.
+Guide v2026.10.192.
 
 The in-app **Operators Guide** is the living product manual. It is not a
 separate PDF. Staff open it from **Guide** / **?** in the POS and platform

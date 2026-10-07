@@ -14,9 +14,11 @@ import { usePosStore } from "@/lib/pos/store";
 import { entityFloorEditorId, floorEditMode, floorEditScope, placeSectionName } from "@/lib/pos/entity-floor";
 import {
   HOUSE_OWNER,
+  lockedFloorMessage,
   ownerDisplayName,
   printerFollowsRoom,
   publishOwnerBlock,
+  sectionForPiece,
   sectionOwnerId,
   sectionOwnerIsSet,
 } from "@/lib/pos/room-owner";
@@ -2165,9 +2167,14 @@ export function FloorEditorView() {
 
           {selectedTable && !pieceEditable(selectedTable.id) ? (
             <div className="space-y-2 border-t border-border pt-3" data-floor-locked="">
-              <p className="text-sm font-medium">{selectedTable.label}</p>
-              <p className="text-sm text-muted-foreground">
-                This table is on another entity’s section.
+              <p className="text-sm text-muted-foreground" data-floor-locked-copy="">
+                {lockedFloorMessage(
+                  selectedTable,
+                  ownerDisplayName(
+                    sectionForPiece(selectedTable, floorSections) ?? { operatorId: HOUSE_OWNER },
+                    vendors,
+                  ),
+                )}
               </p>
             </div>
           ) : selectedTable ? (

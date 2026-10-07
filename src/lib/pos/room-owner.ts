@@ -31,6 +31,42 @@ export function ownerDisplayName(
   return vendors.find((v) => v.id === id)?.name || "Selling entity";
 }
 
+export function sectionForPiece(
+  piece: { section?: string | null; sectionId?: string | null },
+  sections: { id: string; name?: string | null; operatorId?: string | null }[],
+): { id: string; name?: string | null; operatorId?: string | null } | null {
+  if (piece.sectionId) {
+    const byId = sections.find((section) => section.id === piece.sectionId);
+    if (byId) return byId;
+  }
+  const name = String(piece.section ?? "").trim();
+  if (!name) return null;
+  return sections.find((section) => section.name === name) ?? null;
+}
+
+/** "Table 1 is on Diamond House BBQ." House rooms say House. */
+export function lockedFloorMessage(
+  piece: { label?: string | null; kind?: string | null },
+  ownerName: string,
+): string {
+  const raw = String(piece.label ?? "").trim();
+  const kind = String(piece.kind ?? "table");
+  let title = raw;
+  if (kind === "barstool") {
+    title = /^b\d+$/i.test(raw) ? `B${raw.slice(1)}` : raw ? `Stool ${raw}` : "Stool";
+  } else if (kind === "bar_top") {
+    title = raw || "Bar";
+  } else if (kind.startsWith("booth")) {
+    title = !raw ? "Booth" : /^booth\b/i.test(raw) ? raw : `Booth ${raw}`;
+  } else if (!raw) {
+    title = "Table";
+  } else if (!/^table\b/i.test(raw)) {
+    title = `Table ${raw}`;
+  }
+  const owner = ownerName.trim() || "House";
+  return `${title} is on ${owner}.`;
+}
+
 export function roomsMissingOwner(
   sections: { id: string; name?: string; operatorId?: string | null }[],
 ): { id: string; name?: string; operatorId?: string | null }[] {
