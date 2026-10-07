@@ -110,6 +110,19 @@ export function seatAnchors(
   return out;
 }
 
+export type DiningTableOutline =
+  | { round: true; cx: number; cy: number; rx: number; ry: number }
+  | { round: false; x: number; y: number; width: number; height: number; rx: number };
+
+/**
+ * Dining-table silhouette shared by the floor editor and the live floor.
+ * Seat count is ignored: 4 and 6 draw the same circle or square.
+ */
+export function diningTableOutline(round: boolean, _seats = 0): DiningTableOutline {
+  if (round) return { round: true, cx: 50, cy: 50, rx: 46, ry: 46 };
+  return { round: false, x: 5, y: 5, width: 90, height: 90, rx: 16 };
+}
+
 /** Even spacing along a bar rail. Stool size already from rail depth. */
 export function railStoolCenters(
   seats: number,

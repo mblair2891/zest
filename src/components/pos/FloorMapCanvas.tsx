@@ -220,7 +220,7 @@ export function FloorMapCanvas({
       className="absolute inset-0 overflow-hidden bg-white"
       data-floor-map="status"
       data-floor-canvas="white"
-      data-floor-nubs="1"
+      data-floor-nubs="0"
       data-floor-table-count={items.length}
       style={{ touchAction: "none" }}
       onPointerDown={onPointerDown}

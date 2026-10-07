@@ -3,27 +3,9 @@ import { cn } from "@/lib/utils";
 import type { Table } from "@/lib/pos/types";
 import { asBoothKind } from "@/lib/pos/floor-booth";
 import { uprightCounterDeg } from "@/lib/pos/floor-architecture";
-import { railStoolCenters, seatingScale } from "@/lib/pos/floor-seating";
-import { FloorBoothMark } from "@/components/pos/FloorBoothMark";
+import { diningTableOutline, railStoolCenters, seatingScale } from "@/lib/pos/floor-seating";
+import { FloorBoothGlyph, FloorBoothMark } from "@/components/pos/FloorBoothMark";
 import type { BoothKind } from "@/lib/pos/floor-booth";
-
-const NUB = "#6b5a4e";
-
-/** Four pips on a square, six on a round. Not chair drawings. */
-function nubPoints(round: boolean): Array<{ x: number; y: number }> {
-  if (round) {
-    return Array.from({ length: 6 }, (_, i) => {
-      const a = -Math.PI / 2 + (i * Math.PI * 2) / 6;
-      return { x: 50 + Math.cos(a) * 46, y: 50 + Math.sin(a) * 46 };
-    });
-  }
-  return [
-    { x: 50, y: 5 },
-    { x: 95, y: 50 },
-    { x: 50, y: 95 },
-    { x: 5, y: 50 },
-  ];
-}
 
 export function FloorFixtureArt({
   table,
@@ -51,7 +33,7 @@ export function FloorFixtureArt({
   rotation?: number;
   className?: string;
   children?: ReactNode;
-  /** plan = editor capacity marks. status = solid fill, number only, no seats. */
+  /** plan = editor shape. status = the same shape, number only. Seat count is not drawn. */
   mode?: "plan" | "status";
   onPointerDown?: (event: ReactPointerEvent<HTMLDivElement>) => void;
   /** Empty tables are a hairline ring with a clear center. */
@@ -75,7 +57,8 @@ export function FloorFixtureArt({
         className={className}
         hollow={hollow}
         ink={ink}
-        nubs={!booth && table.kind !== "square_plain" && table.kind !== "barstool" && table.shape !== "bar"}
+        w={table.w}
+        h={table.h}
       >
         {children}
       </StatusFixture>
@@ -159,7 +142,7 @@ export function FloorFixtureArt({
   );
 }
 
-/** Live floor: one status-colored shape. No chairs, stool rings, or seat hashes. */
+/** Live floor: one status-colored shape. No chairs, stool rings, or seat dots. */
 function StatusFixture({
   booth,
   bar,
@@ -172,7 +155,8 @@ function StatusFixture({
   children,
   hollow = false,
   ink,
-  nubs = false,
+  w,
+  h,
 }: {
   booth: BoothKind | null;
   bar: boolean;
@@ -185,11 +169,13 @@ function StatusFixture({
   children?: ReactNode;
   hollow?: boolean;
   ink?: string;
-  nubs?: boolean;
+  w: number;
+  h: number;
 }) {
   const ring = "#1c1917";
   const number = hollow ? "#44403c" : ink || "#44403c";
   const shape = booth ? "booth" : bar ? "stool" : round ? "round" : "rect";
+  const mark = diningTableOutline(round);
   return (
     <div
       className={cn("relative h-full w-full", className)}
@@ -197,38 +183,44 @@ function StatusFixture({
       data-floor-status-shape={shape}
       data-floor-fill={hollow ? "hollow" : "solid"}
       data-floor-stroke={hollow ? "hairline" : "none"}
-      data-floor-nubs={nubs ? "1" : "0"}
+      data-floor-nubs="0"
     >
       <svg viewBox="0 0 100 100" className="pointer-events-none h-full w-full" aria-hidden>
-        {round ? (
+        {booth ? (
+          <FloorBoothGlyph
+            kind={booth}
+            tableFill={hollow ? "none" : tableFill}
+            benchFill={hollow ? "none" : tableFill}
+            outline={hollow ? ring : tableFill}
+            w={w}
+            h={h}
+            solid={!hollow}
+            hollow={hollow}
+          />
+        ) : round && mark.round ? (
           <ellipse
-            cx="50"
-            cy="50"
-            rx="46"
-            ry="46"
+            cx={mark.cx}
+            cy={mark.cy}
+            rx={mark.rx}
+            ry={mark.ry}
             fill={hollow ? "none" : tableFill}
             stroke={hollow ? ring : "none"}
             strokeWidth={hollow ? 1.25 : 0}
             vectorEffect="non-scaling-stroke"
           />
-        ) : (
+        ) : !mark.round ? (
           <rect
-            x="5"
-            y="5"
-            width="90"
-            height="90"
-            rx="16"
+            x={mark.x}
+            y={mark.y}
+            width={mark.width}
+            height={mark.height}
+            rx={mark.rx}
             fill={hollow ? "none" : tableFill}
             stroke={hollow ? ring : "none"}
             strokeWidth={hollow ? 1.25 : 0}
             vectorEffect="non-scaling-stroke"
           />
-        )}
-        {nubs
-          ? nubPoints(round).map((p, i) => (
-              <circle key={i} cx={p.x} cy={p.y} r="3.2" fill={NUB} data-floor-nub="1" />
-            ))
-          : null}
+        ) : null}
       </svg>
       {label ? (
         <span
@@ -257,8 +249,8 @@ function StatusFixture({
 }
 
 function FloorTableArt({
-  w,
-  h,
+  w: _w,
+  h: _h,
   seats,
   round,
   tableFill,
@@ -283,47 +275,41 @@ function FloorTableArt({
   children?: ReactNode;
   onPointerDown?: (event: ReactPointerEvent<HTMLDivElement>) => void;
 }) {
-  const s = seatingScale({ w, h, seats: Math.max(seats, 1) });
-  const tx = seats <= 0 ? 8 : s.tableInsetVx;
-  const ty = seats <= 0 ? 8 : s.tableInsetVy;
-  const tw = Math.max(28, 100 - tx * 2);
-  const th = Math.max(28, 100 - ty * 2);
+  const mark = diningTableOutline(round, seats);
   return (
     <div
       data-floor-spin=""
+      data-floor-nubs="0"
       className={cn("relative h-full w-full", className)}
       style={{ transform: `rotate(${rotation}deg)`, transformOrigin: "center center" }}
       onPointerDown={onPointerDown}
     >
       <svg viewBox="0 0 100 100" className="pointer-events-none h-full w-full" aria-hidden>
-        {round ? (
+        {mark.round ? (
           <ellipse
-            cx="50"
-            cy="50"
-            rx={tw / 2}
-            ry={th / 2}
+            cx={mark.cx}
+            cy={mark.cy}
+            rx={mark.rx}
+            ry={mark.ry}
             fill={tableFill}
             stroke={outline}
             strokeWidth="2.5"
           />
         ) : (
           <rect
-            x={tx}
-            y={ty}
-            width={tw}
-            height={th}
-            rx="8"
+            x={mark.x}
+            y={mark.y}
+            width={mark.width}
+            height={mark.height}
+            rx={mark.rx}
             fill={tableFill}
             stroke={outline}
             strokeWidth="2.5"
           />
         )}
         {sectionColor ? (
-          <rect x="38" y={ty - 1} width="24" height="4" rx="1.5" fill={sectionColor} />
+          <rect x="38" y="2" width="24" height="4" rx="1.5" fill={sectionColor} />
         ) : null}
-        {(seats > 0 ? nubPoints(round) : []).map((p, i) => (
-          <circle key={i} cx={p.x} cy={p.y} r="3.2" fill={NUB} data-floor-nub="1" />
-        ))}
       </svg>
       {label ? (
         <span

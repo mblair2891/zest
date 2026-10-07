@@ -6,6 +6,64 @@ import { seatingScale } from "@/lib/pos/floor-seating";
 const BENCH = "#4a3a34";
 const BENCH_STITCH = "#5c4a43";
 
+export function FloorBoothGlyph({
+  kind,
+  tableFill,
+  benchFill = BENCH,
+  outline,
+  w = 18,
+  h = 18,
+  solid = false,
+  hollow = false,
+}: {
+  kind: BoothKind;
+  tableFill: string;
+  benchFill?: string;
+  outline: string;
+  w?: number;
+  h?: number;
+  /** Status block: booth silhouette in the status fill. No bench stitches or seat marks. */
+  solid?: boolean;
+  /** Empty live table: the booth shape as a hairline, with no fill. */
+  hollow?: boolean;
+}) {
+  const scale = seatingScale({ w, h, seats: 4 });
+  return (
+    <>
+      {kind === "booth_4" ? (
+        <Booth4Paths
+          tableFill={tableFill}
+          benchFill={solid ? tableFill : benchFill}
+          outline={outline}
+          benchVy={scale.benchVy}
+          solid={solid}
+          hollow={hollow}
+        />
+      ) : kind === "booth_u" ? (
+        <BoothUPaths
+          tableFill={tableFill}
+          benchFill={solid ? tableFill : benchFill}
+          outline={outline}
+          benchVx={scale.benchVx}
+          benchVy={scale.benchVy}
+          solid={solid}
+          hollow={hollow}
+        />
+      ) : (
+        <BoothLPaths
+          tableFill={tableFill}
+          benchFill={solid ? tableFill : benchFill}
+          outline={outline}
+          benchVx={scale.benchVx}
+          benchVy={scale.benchVy}
+          solid={solid}
+          hollow={hollow}
+        />
+      )}
+    </>
+  );
+}
+
 export function FloorBoothMark({
   kind,
   tableFill,
@@ -18,7 +76,7 @@ export function FloorBoothMark({
   children,
   w = 18,
   h = 18,
-  seats = 4,
+  seats: _seats = 4,
   solid = false,
   onPointerDown,
 }: {
@@ -33,12 +91,12 @@ export function FloorBoothMark({
   children?: ReactNode;
   w?: number;
   h?: number;
+  /** Seat count stays on the table. The booth drawing does not use it. */
   seats?: number;
   /** Status block: booth silhouette in the status fill. No bench stitches or seat marks. */
   solid?: boolean;
   onPointerDown?: (event: ReactPointerEvent<HTMLDivElement>) => void;
 }) {
-  const scale = seatingScale({ w, h, seats });
   return (
     <div
       data-floor-spin=""
@@ -47,33 +105,15 @@ export function FloorBoothMark({
       onPointerDown={onPointerDown}
     >
       <svg viewBox="0 0 100 100" className="pointer-events-none h-full w-full" aria-hidden>
-        {kind === "booth_4" ? (
-          <Booth4Paths
-            tableFill={tableFill}
-            benchFill={solid ? tableFill : benchFill}
-            outline={outline}
-            benchVy={scale.benchVy}
-            solid={solid}
-          />
-        ) : kind === "booth_u" ? (
-          <BoothUPaths
-            tableFill={tableFill}
-            benchFill={solid ? tableFill : benchFill}
-            outline={outline}
-            benchVx={scale.benchVx}
-            benchVy={scale.benchVy}
-            solid={solid}
-          />
-        ) : (
-          <BoothLPaths
-            tableFill={tableFill}
-            benchFill={solid ? tableFill : benchFill}
-            outline={outline}
-            benchVx={scale.benchVx}
-            benchVy={scale.benchVy}
-            solid={solid}
-          />
-        )}
+        <FloorBoothGlyph
+          kind={kind}
+          tableFill={tableFill}
+          benchFill={benchFill}
+          outline={outline}
+          w={w}
+          h={h}
+          solid={solid}
+        />
         {sectionColor && !solid ? (
           <rect x="38" y="2" width="24" height="4" rx="1.5" fill={sectionColor} />
         ) : null}
@@ -123,16 +163,30 @@ function Booth4Paths({
   outline,
   benchVy,
   solid = false,
+  hollow = false,
 }: {
   tableFill: string;
   benchFill: string;
   outline: string;
   benchVy: number;
   solid?: boolean;
+  hollow?: boolean;
 }) {
   const by = Math.min(28, Math.max(14, benchVy));
   const tableTop = by + 6;
   const tableH = Math.max(20, 100 - tableTop * 2);
+  const hair = hollow
+    ? { fill: "none" as const, stroke: outline, strokeWidth: 1.25, vectorEffect: "non-scaling-stroke" as const }
+    : null;
+  if (hair) {
+    return (
+      <>
+        <rect x="8" y="5" width="84" height={by} rx="7" {...hair} />
+        <rect x="20" y={tableTop} width="60" height={tableH} rx="5" {...hair} />
+        <rect x="8" y={100 - 5 - by} width="84" height={by} rx="7" {...hair} />
+      </>
+    );
+  }
   return (
     <>
       {solid ? null : (
@@ -166,6 +220,7 @@ function BoothUPaths({
   benchVx,
   benchVy,
   solid = false,
+  hollow = false,
 }: {
   tableFill: string;
   benchFill: string;
@@ -173,6 +228,7 @@ function BoothUPaths({
   benchVx: number;
   benchVy: number;
   solid?: boolean;
+  hollow?: boolean;
 }) {
   const bx = Math.min(30, Math.max(16, benchVx));
   const by = Math.min(30, Math.max(16, benchVy));
@@ -182,6 +238,20 @@ function BoothUPaths({
   const tableX = innerL + 6;
   const tableW = Math.max(18, innerR - innerL - 12);
   const tableH = Math.max(22, innerB - 18);
+  const hair = hollow
+    ? { fill: "none" as const, stroke: outline, strokeWidth: 1.25, vectorEffect: "non-scaling-stroke" as const }
+    : null;
+  if (hair) {
+    return (
+      <>
+        <path
+          d={`M${bx * 0.45} 6 V${innerB} Q${bx * 0.45} ${innerB + by * 0.35} ${bx} ${innerB + by * 0.35} H${100 - bx} Q${100 - bx * 0.45} ${innerB + by * 0.35} ${100 - bx * 0.45} ${innerB} V6 H${innerR} V${innerB - 4} H${innerL} V6 Z`}
+          {...hair}
+        />
+        <rect x={tableX} y="12" width={tableW} height={tableH} rx="5" {...hair} />
+      </>
+    );
+  }
   return (
     <>
       {solid ? null : (
@@ -203,6 +273,7 @@ function BoothLPaths({
   benchVx,
   benchVy,
   solid = false,
+  hollow = false,
 }: {
   tableFill: string;
   benchFill: string;
@@ -210,6 +281,7 @@ function BoothLPaths({
   benchVx: number;
   benchVy: number;
   solid?: boolean;
+  hollow?: boolean;
 }) {
   const bx = Math.min(30, Math.max(16, benchVx));
   const by = Math.min(30, Math.max(16, benchVy));
@@ -217,6 +289,20 @@ function BoothLPaths({
   const tableY = 12;
   const tableW = Math.max(20, 100 - tableX - 8);
   const tableH = Math.max(22, 100 - by - tableY - 8);
+  const hair = hollow
+    ? { fill: "none" as const, stroke: outline, strokeWidth: 1.25, vectorEffect: "non-scaling-stroke" as const }
+    : null;
+  if (hair) {
+    return (
+      <>
+        <path
+          d={`M${bx * 0.45} 6 V${100 - by * 0.4} Q${bx * 0.45} ${100 - 4} ${bx} ${100 - 4} H${100 - 6} V${100 - by} H${bx} V6 Z`}
+          {...hair}
+        />
+        <rect x={tableX} y={tableY} width={tableW} height={tableH} rx="5" {...hair} />
+      </>
+    );
+  }
   return (
     <>
       {solid ? null : (

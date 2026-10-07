@@ -6,6 +6,18 @@ import type { GuideUpdate } from "@/lib/guide/types";
  */
 export const WHATS_NEW_ENTRIES: GuideUpdate[] = [
   {
+    id: "upd_2026_10_194_table_shape",
+    date: "2026-10-07",
+    title: "Tables show the shape only",
+    summary: "Round, square, or booth. The seat count is a number in the panel and on the table popup.",
+    body: "The floor editor and the live floor draw the table shape only. A round stays a circle, a square stays a square, and a booth stays the booth. There are no seat dots. Set a 4-top to 6 seats and the shape stays put. The side panel and the table popup show 6. Barstools stay their own pieces.",
+    roles: ["owner_manager", "vendor_operator", "host_operator", "server"],
+    surfaces: ["floor"],
+    audience: "all",
+    topicId: "floor-editor",
+    tags: ["floor"],
+  },
+  {
     id: "upd_2026_10_193_locked_section",
     date: "2026-10-07",
     title: "A locked table names its section owner",

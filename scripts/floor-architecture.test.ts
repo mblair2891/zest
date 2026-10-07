@@ -21,7 +21,7 @@ test("L bar rail and wall snap, stools snap to the rail", () => {
   assert.match(editor, /FloorArchitectureMark/);
   const live = readFileSync("src/components/pos/FloorMapCanvas.tsx", "utf8");
   assert.match(live, /FloorArchitectureMark/);
-  assert.match(live, /data-floor-nubs="1"/);
+  assert.match(live, /data-floor-nubs="0"/);
   const catalog = readFileSync("src/lib/saas/location-catalog.ts", "utf8");
   assert.match(catalog, /barShape/);
   assert.match(catalog, /points/);

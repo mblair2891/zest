@@ -40,7 +40,7 @@ test("seven stools sit outside a straight rail and face the bar", () => {
   const art = readFileSync("src/components/pos/FloorFixtureArt.tsx", "utf8");
   assert.match(art, /data-floor-stool="tile"/);
   assert.match(art, /data-floor-stool-tile/);
-  assert.match(art, /data-floor-nub/);
+  assert.doesNotMatch(art, /data-floor-nub="1"/);
   const mark = readFileSync("src/components/pos/FloorArchitectureMark.tsx", "utf8");
   assert.match(mark, /data-floor-bar-label=/);
 });

@@ -713,7 +713,7 @@ export function FloorView({
           className="relative min-h-0 min-w-0 flex-1 overflow-hidden bg-white"
           data-floor-map="white"
           data-floor-canvas="white"
-          data-floor-nubs="1"
+          data-floor-nubs="0"
           data-floor-fit="room"
         >
           <div
