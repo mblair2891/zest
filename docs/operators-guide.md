@@ -1,7 +1,7 @@
 # Operators Guide — authoring
 
-**Revision · 7 Oct 2026** — On an L bar, stool numbers walk from one open end through the corner to the other open end. A corner seat is in the middle, not first. A locked table names its owner, such as Table 1 is on Diamond House BBQ. A House room says House.
-Guide v2026.10.192.
+**Revision · 7 Oct 2026** — A locked table or fixture names the entity that owns its section, such as Table 1 is on Diamond House BBQ’s section. A House room says House (shared). That piece cannot be moved, resized, or deleted. The location contact can.
+Guide v2026.10.193.
 
 The in-app **Operators Guide** is the living product manual. It is not a
 separate PDF. Staff open it from **Guide** / **?** in the POS and platform

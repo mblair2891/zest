@@ -44,27 +44,34 @@ export function sectionForPiece(
   return sections.find((section) => section.name === name) ?? null;
 }
 
-/** "Table 1 is on Diamond House BBQ." House rooms say House. */
+function lockedPieceTitle(piece: { label?: string | null; kind?: string | null }): string {
+  const raw = String(piece.label ?? "").trim();
+  const kind = String(piece.kind ?? "table");
+  if (kind === "barstool") {
+    return /^b\d+$/i.test(raw) ? `B${raw.slice(1)}` : raw ? `Stool ${raw}` : "Stool";
+  }
+  if (kind === "bar_top") return raw || "Bar";
+  if (kind.startsWith("booth")) {
+    return !raw ? "Booth" : /^booth\b/i.test(raw) ? raw : `Booth ${raw}`;
+  }
+  if (kind === "wall" || kind === "door" || kind === "window" || kind === "host_stand") {
+    const named = raw && !/^(wall|door|window|host|host stand)$/i.test(raw);
+    if (named) return raw;
+    return kind === "host_stand" ? "Host stand" : kind.charAt(0).toUpperCase() + kind.slice(1);
+  }
+  if (!raw) return "Table";
+  if (/^table\b/i.test(raw)) return raw;
+  return `Table ${raw}`;
+}
+
+/** "Table 1 is on Diamond House BBQ’s section." A House room says House (shared). */
 export function lockedFloorMessage(
   piece: { label?: string | null; kind?: string | null },
   ownerName: string,
 ): string {
-  const raw = String(piece.label ?? "").trim();
-  const kind = String(piece.kind ?? "table");
-  let title = raw;
-  if (kind === "barstool") {
-    title = /^b\d+$/i.test(raw) ? `B${raw.slice(1)}` : raw ? `Stool ${raw}` : "Stool";
-  } else if (kind === "bar_top") {
-    title = raw || "Bar";
-  } else if (kind.startsWith("booth")) {
-    title = !raw ? "Booth" : /^booth\b/i.test(raw) ? raw : `Booth ${raw}`;
-  } else if (!raw) {
-    title = "Table";
-  } else if (!/^table\b/i.test(raw)) {
-    title = `Table ${raw}`;
-  }
   const owner = ownerName.trim() || "House";
-  return `${title} is on ${owner}.`;
+  const where = owner === "House" ? "House (shared)" : `${owner}’s section`;
+  return `${lockedPieceTitle(piece)} is on ${where}.`;
 }
 
 export function roomsMissingOwner(

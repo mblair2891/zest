@@ -285,7 +285,7 @@ export const ROLE_GUIDE_TOPICS: GuideTopic[] = [
       ),
       ul(
         "Password login at app.summex.app/login (Entity admin). Never a PIN pad, never platform CRM. Scoped to your selling entity.",
-        "Dashboard: today’s sales, open checks, labor %, top items, and 86 count for this entity. The header is this entity’s name, then the venue. Menu is grouped by category. 86 is on the item, not a staff tab. Staff is people, PINs, and roles. Schedule can place a week of shifts at once. Floor edits rooms this entity owns, plus active seating loans. A loan does not change the owner. A table this login cannot edit names that room’s owner, such as Table 1 is on Diamond House BBQ. A House room says House.",
+        "Dashboard: today’s sales, open checks, labor %, top items, and 86 count for this entity. The header is this entity’s name, then the venue. Menu is grouped by category. 86 is on the item, not a staff tab. Staff is people, PINs, and roles. Schedule can place a week of shifts at once. Floor edits rooms this entity owns, plus active seating loans. A loan does not change the owner. A table or fixture this login cannot edit names that section’s owner, such as Table 1 is on Diamond House BBQ’s section. A House room says House (shared). It cannot be moved, resized, or deleted. The location contact can.",
         "You cannot edit the other entity’s menu, payout, or labor. Reports and labor % use owned lines (what this entity is paid).",
         "Peer menus are view-only on the floor unless the venue grant allows selling them. You cannot change another operator’s settings.",
         "A $35 dispute fee, when filed, splits by merchandise on that check.",

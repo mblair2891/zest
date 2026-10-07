@@ -128,27 +128,32 @@ test("a locked table names the owning entity", () => {
   const dining = sectionForPiece({ section: "Dining", sectionId: "sec_dining" }, sections);
   const patio = sectionForPiece({ section: "Patio", sectionId: "sec_patio" }, sections);
   const garden = sectionForPiece({ section: "Garden", sectionId: "sec_open" }, sections);
-  assert.equal(
-    lockedFloorMessage({ label: "1", kind: "table" }, ownerDisplayName(dining!, vendors)),
-    "Table 1 is on Diamond House BBQ.",
-  );
-  assert.equal(
-    lockedFloorMessage({ label: "2", kind: "table" }, ownerDisplayName(patio!, vendors)),
-    "Table 2 is on House.",
-  );
+  const entityB = lockedFloorMessage({ label: "1", kind: "table" }, ownerDisplayName(dining!, vendors));
+  assert.equal(entityB, "Table 1 is on Diamond House BBQ’s section.");
+  assert.match(entityB, /Diamond House BBQ/);
+  assert.doesNotMatch(entityB, /another entity/i);
+  const house = lockedFloorMessage({ label: "2", kind: "table" }, ownerDisplayName(patio!, vendors));
+  assert.equal(house, "Table 2 is on House (shared).");
+  assert.match(house, /House/);
   assert.equal(
     lockedFloorMessage({ label: "3", kind: "table" }, ownerDisplayName(garden!, vendors)),
-    "Table 3 is on House.",
+    "Table 3 is on House (shared).",
   );
-  assert.equal(lockedFloorMessage({ label: "1", kind: "table" }, "House"), "Table 1 is on House.");
-  assert.doesNotMatch(
-    lockedFloorMessage({ label: "1", kind: "table" }, "Diamond House BBQ"),
-    /another entity/,
+  assert.equal(
+    lockedFloorMessage({ label: "Wall", kind: "wall" }, "Diamond House BBQ"),
+    "Wall is on Diamond House BBQ’s section.",
   );
   const editor = readFileSync("src/components/pos/FloorEditorView.tsx", "utf8");
   assert.match(editor, /lockedFloorMessage/);
   assert.match(editor, /data-floor-locked-copy/);
   assert.doesNotMatch(editor, /another entity/);
+  const down = editor.slice(editor.indexOf("const onPointerDown"), editor.indexOf("const startResize"));
+  const resize = editor.slice(editor.indexOf("const startResize"), editor.indexOf("const onPointerMove"));
+  const remove = editor.slice(editor.indexOf("const removeIds"), editor.indexOf("const deleteSelection"));
+  assert.match(down, /!pieceEditable\(id\)/);
+  assert.match(resize, /!pieceEditable\(id\)\) return/);
+  assert.match(remove, /pieceEditable\(id\)/);
+  assert.match(editor, /wholeFloor \? null/);
 });
 
 test("floor editor owner dropdown and publish gate are wired", () => {
