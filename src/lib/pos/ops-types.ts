@@ -29,6 +29,8 @@ export interface ScheduledShift {
   station?: string;
   section?: string;
   breakMinutes?: number;
+  /** Set when this draft was placed from a named pattern. Copy week drops it. */
+  patternId?: string;
 }
 
 export interface TimePunch {

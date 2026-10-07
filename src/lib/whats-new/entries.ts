@@ -6,6 +6,18 @@ import type { GuideUpdate } from "@/lib/guide/types";
  */
 export const WHATS_NEW_ENTRIES: GuideUpdate[] = [
   {
+    id: "upd_2026_10_196_set_shifts",
+    date: "2026-10-07",
+    title: "Set shifts, then assign staff",
+    summary: "Save a named pattern with no one on it. Assign staff later. Those shifts land as drafts.",
+    body: "Set shifts saves a named pattern with days, a start, an end, and a role, and no one on it. Open is Mon–Thu, 11:00 AM–7:00 PM, Server. Assign staff later for a date range or a number of weeks. Those shifts land on the grid as drafts. Publish week still puts them on the clock. Editing the pattern leaves placed shifts as they are until you choose Update placed. Someone from another entity still needs a grant. The pattern stays empty after the week ends.",
+    roles: ["owner_manager", "vendor_operator", "host_operator"],
+    surfaces: ["labor"],
+    audience: "all",
+    topicId: "entity-schedule-payroll",
+    tags: ["schedule", "labor"],
+  },
+  {
     id: "upd_2026_10_195_entity_floor_publish",
     date: "2026-10-07",
     title: "Publish floor on a peer venue",

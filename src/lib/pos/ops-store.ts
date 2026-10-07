@@ -653,6 +653,7 @@ export const useOpsStore = create<OpsState>()(
           station: input.station,
           section: input.section,
           breakMinutes: input.breakMinutes,
+          patternId: input.patternId || undefined,
         };
         const shifts = get().shifts.some((s) => s.id === id)
           ? get().shifts.map((s) => (s.id === id ? next : s))
@@ -676,8 +677,9 @@ export const useOpsStore = create<OpsState>()(
         const clones = copyWeekShifts(get().shifts, fromWeekStart, toWeekStart, operatorId);
         let n = 0;
         for (const row of clones) {
-          const { id: _drop, ...rest } = row as ScheduledShift;
+          const { id: _drop, patternId: _pat, ...rest } = row as ScheduledShift;
           void _drop;
+          void _pat;
           get().upsertShift({ ...rest, published: false });
           n += 1;
         }

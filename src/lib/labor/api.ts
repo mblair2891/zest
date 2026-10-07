@@ -3,6 +3,7 @@ import { tenantMiddleware } from "@/lib/saas/tenant-middleware";
 import { HOST_SCOPE, canEditSchedule, canViewPayroll, canViewSchedule } from "@/lib/access/entity-grants";
 import { parseGrantMatrix } from "@/lib/access/entity-grants";
 import { hashPin } from "@/lib/pos/pin";
+import { saveShiftPattern } from "@/lib/labor/shift-patterns";
 
 function loc(raw: unknown): string {
   const s = String(raw ?? "").trim();
@@ -26,6 +27,7 @@ export const saveShiftsFn = createServerFn({ method: "POST" })
       station?: string;
       section?: string;
       breakMinutes?: number;
+      patternId?: string;
     }[];
   }) => ({
     orgId: String(d.orgId ?? "").trim(),
@@ -36,6 +38,7 @@ export const saveShiftsFn = createServerFn({ method: "POST" })
           station: s.station ? String(s.station).slice(0, 80) : "",
           section: s.section ? String(s.section).slice(0, 80) : "",
           breakMinutes: Math.max(0, Math.round(Number(s.breakMinutes) || 0)),
+          patternId: s.patternId ? String(s.patternId).slice(0, 80) : "",
         }))
       : [],
   }))
@@ -65,13 +68,14 @@ export const saveShiftsFn = createServerFn({ method: "POST" })
       await sql`
         insert into location_shifts (
           id, location_id, operator_id, employee_id, start_at, end_at, published, role,
-          station, section, break_minutes
+          station, section, break_minutes, pattern_id
         )
         values (
           ${s.id}, ${data.locationId}, ${s.operatorId || HOST_SCOPE}, ${s.employeeId},
           ${new Date(s.start).toISOString()}, ${new Date(s.end).toISOString()},
           ${s.published}, ${s.role ?? null},
-          ${s.station || null}, ${s.section || null}, ${s.breakMinutes || 0}
+          ${s.station || null}, ${s.section || null}, ${s.breakMinutes || 0},
+          ${s.patternId || null}
         )
         on conflict (id) do update set
           operator_id = excluded.operator_id,
@@ -82,7 +86,8 @@ export const saveShiftsFn = createServerFn({ method: "POST" })
           role = excluded.role,
           station = excluded.station,
           section = excluded.section,
-          break_minutes = excluded.break_minutes
+          break_minutes = excluded.break_minutes,
+          pattern_id = excluded.pattern_id
       `;
     }
     return { ok: true as const, count: data.shifts.length };
@@ -122,9 +127,10 @@ export const listShiftsFn = createServerFn({ method: "POST" })
           station: string | null;
           section: string | null;
           break_minutes: number | null;
+          pattern_id: string | null;
         }>`
           select id, employee_id, operator_id, start_at, end_at, published, role,
-                 station, section, break_minutes
+                 station, section, break_minutes, pattern_id
           from location_shifts
           where location_id = ${data.locationId} and operator_id = ${data.operatorId}
           order by start_at asc
@@ -140,9 +146,10 @@ export const listShiftsFn = createServerFn({ method: "POST" })
           station: string | null;
           section: string | null;
           break_minutes: number | null;
+          pattern_id: string | null;
         }>`
           select id, employee_id, operator_id, start_at, end_at, published, role,
-                 station, section, break_minutes
+                 station, section, break_minutes, pattern_id
           from location_shifts
           where location_id = ${data.locationId}
           order by start_at asc
@@ -158,7 +165,176 @@ export const listShiftsFn = createServerFn({ method: "POST" })
       station: r.station ?? "",
       section: r.section ?? "",
       breakMinutes: r.break_minutes ?? 0,
+      patternId: r.pattern_id ?? "",
     }));
+  });
+
+function readPatternDays(raw: unknown): number[] {
+  let value = raw;
+  if (typeof value === "string") {
+    try {
+      value = JSON.parse(value) as unknown;
+    } catch {
+      return [];
+    }
+  }
+  if (!Array.isArray(value)) return [];
+  return [
+    ...new Set(
+      value.map((n) => Number(n)).filter((n) => Number.isInteger(n) && n >= 0 && n <= 6),
+    ),
+  ].sort((a, b) => a - b);
+}
+
+function scheduleActor(ctx: { role: string; operatorId: string }): {
+  role: "vendor_operator" | "owner" | "manager";
+  operatorId: string | undefined;
+} {
+  const role =
+    ctx.role === "vendor"
+      ? "vendor_operator"
+      : ctx.role === "owner"
+        ? "owner"
+        : "manager";
+  return {
+    role,
+    operatorId: ctx.operatorId === HOST_SCOPE ? undefined : ctx.operatorId,
+  };
+}
+
+export const listShiftPatternsFn = createServerFn({ method: "POST" })
+  .middleware([tenantMiddleware])
+  .validator((d: { orgId: string; locationId: string; operatorId: string }) => ({
+    orgId: String(d.orgId ?? "").trim(),
+    locationId: loc(d.locationId),
+    operatorId: String(d.operatorId ?? "").trim(),
+  }))
+  .handler(async ({ context, data }) => {
+    const { loadEntityWriteContext } = await import("@/lib/access/assert-entity.server");
+    const { ForbiddenError } = await import("@/lib/saas/tenancy.server");
+    const ctx = await loadEntityWriteContext(context.userId, data.orgId, data.locationId);
+    const matrix = parseGrantMatrix(ctx.setup.entityPermissions);
+    if (!canViewSchedule(scheduleActor(ctx), matrix, data.operatorId || ctx.operatorId)) {
+      throw new ForbiddenError("Cannot view this schedule");
+    }
+    const { getSql } = await import("@/lib/db");
+    const sql = await getSql();
+    const rows = await sql<{
+      id: string;
+      operator_id: string;
+      name: string;
+      days: unknown;
+      start_hm: string;
+      end_hm: string;
+      role: string;
+    }>`
+      select id, operator_id, name, days, start_hm, end_hm, role
+      from location_shift_patterns
+      where location_id = ${data.locationId} and operator_id = ${data.operatorId}
+      order by name asc
+    `;
+    return rows.map((r) => ({
+      id: r.id,
+      operatorId: r.operator_id,
+      name: r.name,
+      days: readPatternDays(r.days),
+      startHm: r.start_hm,
+      endHm: r.end_hm,
+      role: r.role,
+    }));
+  });
+
+export const saveShiftPatternFn = createServerFn({ method: "POST" })
+  .middleware([tenantMiddleware])
+  .validator((d: {
+    orgId: string;
+    locationId: string;
+    pattern: {
+      id: string;
+      operatorId: string;
+      name: string;
+      days: number[];
+      startHm: string;
+      endHm: string;
+      role: string;
+    };
+  }) => ({
+    orgId: String(d.orgId ?? "").trim(),
+    locationId: loc(d.locationId),
+    pattern: {
+      id: String(d.pattern?.id ?? "").trim().slice(0, 80),
+      operatorId: String(d.pattern?.operatorId ?? "").trim().slice(0, 80),
+      name: String(d.pattern?.name ?? "").trim().slice(0, 40),
+      days: Array.isArray(d.pattern?.days) ? d.pattern.days.map((n) => Number(n)).slice(0, 7) : [],
+      startHm: String(d.pattern?.startHm ?? "").trim().slice(0, 8),
+      endHm: String(d.pattern?.endHm ?? "").trim().slice(0, 8),
+      role: String(d.pattern?.role ?? "").trim().slice(0, 40),
+    },
+  }))
+  .handler(async ({ context, data }) => {
+    const saved = saveShiftPattern(data.pattern);
+    if ("error" in saved) throw new Error(saved.error);
+    const { loadEntityWriteContext } = await import("@/lib/access/assert-entity.server");
+    const { ForbiddenError } = await import("@/lib/saas/tenancy.server");
+    const ctx = await loadEntityWriteContext(context.userId, data.orgId, data.locationId);
+    const matrix = parseGrantMatrix(ctx.setup.entityPermissions);
+    const hostEdit = Boolean((ctx.setup as { hostMayEditEntitySchedules?: boolean }).hostMayEditEntitySchedules);
+    const peerVenue = Boolean(
+      (ctx.setup as { peerVenue?: boolean; operatingModel?: string }).peerVenue ||
+        (ctx.setup as { operatingModel?: string }).operatingModel === "peer_venue",
+    );
+    if (!canEditSchedule(scheduleActor(ctx), matrix, saved.operatorId, hostEdit, peerVenue)) {
+      throw new ForbiddenError("Cannot edit this entity’s schedule");
+    }
+    const { getSql } = await import("@/lib/db");
+    const sql = await getSql();
+    await sql`
+      insert into location_shift_patterns (
+        id, location_id, operator_id, name, days, start_hm, end_hm, role
+      )
+      values (
+        ${saved.id}, ${data.locationId}, ${saved.operatorId}, ${saved.name},
+        ${JSON.stringify(saved.days)}::jsonb, ${saved.startHm}, ${saved.endHm}, ${saved.role}
+      )
+      on conflict (id) do update set
+        operator_id = excluded.operator_id,
+        name = excluded.name,
+        days = excluded.days,
+        start_hm = excluded.start_hm,
+        end_hm = excluded.end_hm,
+        role = excluded.role
+    `;
+    return saved;
+  });
+
+export const deleteShiftPatternFn = createServerFn({ method: "POST" })
+  .middleware([tenantMiddleware])
+  .validator((d: { orgId: string; locationId: string; operatorId: string; id: string }) => ({
+    orgId: String(d.orgId ?? "").trim(),
+    locationId: loc(d.locationId),
+    operatorId: String(d.operatorId ?? "").trim().slice(0, 80),
+    id: String(d.id ?? "").trim().slice(0, 80),
+  }))
+  .handler(async ({ context, data }) => {
+    const { loadEntityWriteContext } = await import("@/lib/access/assert-entity.server");
+    const { ForbiddenError } = await import("@/lib/saas/tenancy.server");
+    const ctx = await loadEntityWriteContext(context.userId, data.orgId, data.locationId);
+    const matrix = parseGrantMatrix(ctx.setup.entityPermissions);
+    const hostEdit = Boolean((ctx.setup as { hostMayEditEntitySchedules?: boolean }).hostMayEditEntitySchedules);
+    const peerVenue = Boolean(
+      (ctx.setup as { peerVenue?: boolean; operatingModel?: string }).peerVenue ||
+        (ctx.setup as { operatingModel?: string }).operatingModel === "peer_venue",
+    );
+    if (!canEditSchedule(scheduleActor(ctx), matrix, data.operatorId, hostEdit, peerVenue)) {
+      throw new ForbiddenError("Cannot edit this entity’s schedule");
+    }
+    const { getSql } = await import("@/lib/db");
+    const sql = await getSql();
+    await sql`
+      delete from location_shift_patterns
+      where id = ${data.id} and location_id = ${data.locationId} and operator_id = ${data.operatorId}
+    `;
+    return { ok: true as const };
   });
 
 export const payrollReportFn = createServerFn({ method: "POST" })

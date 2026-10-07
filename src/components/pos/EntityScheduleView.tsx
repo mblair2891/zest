@@ -19,7 +19,22 @@ import type { ScheduledShift } from "@/lib/pos/ops-types";
 import { formatTime } from "@/lib/utils";
 import { isFloorRole } from "@/lib/pos/pin";
 import { isProspectDemo } from "@/lib/demo/session";
-import { listShiftsFn, saveShiftsFn } from "@/lib/labor/api";
+import {
+  deleteShiftPatternFn,
+  listShiftPatternsFn,
+  listShiftsFn,
+  saveShiftPatternFn,
+  saveShiftsFn,
+} from "@/lib/labor/api";
+import {
+  formatPatternDays,
+  formatShiftHm,
+  placePatternShifts,
+  rangeFromWeeks,
+  rewritePlacedFromPattern,
+  saveShiftPattern,
+  type ShiftPattern,
+} from "@/lib/labor/shift-patterns";
 import { useSaasStore } from "@/lib/pos/saas-store";
 import { GrantEntityShiftDialog } from "./GrantEntityShiftDialog";
 
@@ -62,6 +77,22 @@ export function EntityScheduleView() {
   const [bulkStart, setBulkStart] = useState("11:00");
   const [bulkEnd, setBulkEnd] = useState("19:00");
   const [bulkRole, setBulkRole] = useState("server");
+  const [patterns, setPatterns] = useState<ShiftPattern[]>([]);
+  const [patternId, setPatternId] = useState<string | null>(null);
+  const [patternName, setPatternName] = useState("");
+  const [patternDays, setPatternDays] = useState<number[]>([1, 2, 3, 4]);
+  const [patternStart, setPatternStart] = useState("11:00");
+  const [patternEnd, setPatternEnd] = useState("19:00");
+  const [patternRole, setPatternRole] = useState("server");
+  const [updatePlaced, setUpdatePlaced] = useState(false);
+  const [assignStaff, setAssignStaff] = useState<string[]>([]);
+  const [assignMode, setAssignMode] = useState<"weeks" | "range">("weeks");
+  const [assignWeeks, setAssignWeeks] = useState(1);
+  const [assignWeekStart, setAssignWeekStart] = useState(() => addDays(startOfWeek(), 7));
+  const [assignFrom, setAssignFrom] = useState("");
+  const [assignTo, setAssignTo] = useState("");
+  const [patternNote, setPatternNote] = useState("");
+  const patternDayNames = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
   const demoScope = usePosStore((s) =>
     s.settings.isDemo || s.settings.demoIsolated ? s.demoOperatingEntityId : null,
   );
@@ -102,6 +133,7 @@ export function EntityScheduleView() {
           station: r.station,
           section: r.section,
           breakMinutes: r.breakMinutes,
+          patternId: r.patternId || undefined,
         }));
         useOpsStore.setState({
           shifts: [...keep, ...incoming],
@@ -112,6 +144,13 @@ export function EntityScheduleView() {
           }),
         });
       })
+      .catch(() => undefined);
+  }, [orgId, locId, boardEntity]);
+
+  useEffect(() => {
+    if (!orgId || !locId || !boardEntity || isProspectDemo()) return;
+    void listShiftPatternsFn({ data: { orgId, locationId: locId, operatorId: boardEntity } })
+      .then((rows) => setPatterns(rows))
       .catch(() => undefined);
   }, [orgId, locId, boardEntity]);
 
@@ -242,6 +281,152 @@ export function EntityScheduleView() {
     }
     persist();
   };
+
+  const saveShiftRows = (rows: ScheduledShift[]) => {
+    if (isProspectDemo() || !orgId || !locId || rows.length === 0) return;
+    for (let i = 0; i < rows.length; i += 400) {
+      const slice = rows.slice(i, i + 400);
+      void saveShiftsFn({ data: { orgId, locationId: locId, shifts: slice } }).catch(() => undefined);
+    }
+  };
+
+  const resetPatternForm = () => {
+    setPatternId(null);
+    setPatternName("");
+    setPatternDays([1, 2, 3, 4]);
+    setPatternStart("11:00");
+    setPatternEnd("19:00");
+    setPatternRole("server");
+    setUpdatePlaced(false);
+    setPatternNote("");
+  };
+
+  const selectPattern = (pattern: ShiftPattern) => {
+    setPatternId(pattern.id);
+    setPatternName(pattern.name);
+    setPatternDays(pattern.days);
+    setPatternStart(pattern.startHm);
+    setPatternEnd(pattern.endHm);
+    setPatternRole(pattern.role);
+    setUpdatePlaced(false);
+    setPatternNote("");
+  };
+
+  const savePattern = () => {
+    if (!canEditBoard) return;
+    const id = patternId ?? `pat_${crypto.randomUUID()}`;
+    const rewrite = updatePlaced && Boolean(patternId);
+    const saved = saveShiftPattern({
+      id,
+      operatorId: boardEntity,
+      name: patternName,
+      days: patternDays,
+      startHm: patternStart,
+      endHm: patternEnd,
+      role: patternRole,
+    });
+    if ("error" in saved) {
+      setPatternNote(saved.error);
+      return;
+    }
+    setPatterns((cur) => [...cur.filter((p) => p.id !== saved.id), saved].sort((a, b) => a.name.localeCompare(b.name)));
+    setPatternId(saved.id);
+    setUpdatePlaced(false);
+    setPatternNote("Pattern saved. No staff on this pattern.");
+    if (!isProspectDemo() && orgId && locId) {
+      void saveShiftPatternFn({ data: { orgId, locationId: locId, pattern: saved } }).catch(() => undefined);
+    }
+    if (!rewrite) return;
+    const next = rewritePlacedFromPattern(saved, useOpsStore.getState().shifts, true);
+    useOpsStore.setState({
+      shifts: next,
+      todayShifts: next.filter((s) => sameDay(s.start, Date.now())),
+    });
+    saveShiftRows(next.filter((s) => s.patternId === saved.id));
+  };
+
+  const removePattern = () => {
+    if (!patternId || !canEditBoard) return;
+    const id = patternId;
+    setPatterns((cur) => cur.filter((p) => p.id !== id));
+    resetPatternForm();
+    if (!isProspectDemo() && orgId && locId) {
+      void deleteShiftPatternFn({
+        data: { orgId, locationId: locId, operatorId: boardEntity, id },
+      }).catch(() => undefined);
+    }
+  };
+
+  const placePattern = () => {
+    if (!canEditBoard) return;
+    const pattern = patterns.find((p) => p.id === patternId);
+    if (!pattern) {
+      setPatternNote("Save the pattern, then assign staff.");
+      return;
+    }
+    let fromMs = 0;
+    let toMs = 0;
+    if (assignMode === "weeks") {
+      const range = rangeFromWeeks(assignWeekStart, assignWeeks);
+      fromMs = range.fromMs;
+      toMs = range.toMs;
+    } else {
+      if (!assignFrom || !assignTo) {
+        setPatternNote("Pick a start and an end date.");
+        return;
+      }
+      const from = new Date(`${assignFrom}T00:00:00`);
+      const to = new Date(`${assignTo}T00:00:00`);
+      if (Number.isNaN(from.getTime()) || Number.isNaN(to.getTime()) || to.getTime() < from.getTime()) {
+        setPatternNote("The end date is after the start.");
+        return;
+      }
+      to.setDate(to.getDate() + 1);
+      fromMs = from.getTime();
+      toMs = to.getTime();
+    }
+    const grantsNow = usePosStore.getState().extraEntityShiftGrants ?? [];
+    const allowed: string[] = [];
+    for (const id of assignStaff) {
+      const person = employees.find((e) => e.id === id);
+      if (!person) continue;
+      const ok = canPlaceEmployeeOnEntityBoard({
+        homeOperatorId: person.operatorId || HOST_SCOPE,
+        boardOperatorId: boardEntity,
+        employeeId: person.id,
+        grants: grantsNow,
+      });
+      if (ok) allowed.push(person.id);
+    }
+    const placed = placePatternShifts({
+      pattern,
+      employeeIds: assignStaff,
+      fromMs,
+      toMs,
+      allowedEmployeeIds: allowed,
+    });
+    if (placed.drafts.length === 0) {
+      setPatternNote(
+        placed.needsGrant.length > 0
+          ? "Someone from another entity still needs a grant."
+          : "No shifts in that range.",
+      );
+      return;
+    }
+    const written: ScheduledShift[] = [];
+    for (const draft of placed.drafts) {
+      written.push(upsert({ ...draft, locationId: locId }));
+    }
+    const first = written[0];
+    if (first) setWeekStart(startOfWeek(new Date(first.start)));
+    saveShiftRows(written);
+    const grantNote =
+      placed.needsGrant.length > 0 ? " Someone from another entity still needs a grant." : "";
+    setPatternNote(`Drafts are on the grid. Publish week before they show on the clock.${grantNote}`);
+  };
+
+  const editingPattern = Boolean(patternId && patterns.some((p) => p.id === patternId));
+  const selectedPattern = patterns.find((p) => p.id === patternId);
 
   const moveShift = (shiftId: string, day: number) => {
     const s = shifts.find((x) => x.id === shiftId);
@@ -397,6 +582,234 @@ export function EntityScheduleView() {
               Place shifts
             </Button>
           </div>
+        </div>
+      )}
+      {canEditBoard && (
+        <div className="space-y-2 border-b border-border px-3 py-2" data-set-shifts="">
+          <p className="text-xs font-medium">Set shifts</p>
+          <p className="text-[11px] text-muted-foreground">
+            A pattern has no one on it until you assign staff. Placed shifts stay drafts until Publish week.
+          </p>
+          <div className="flex flex-wrap gap-2">
+            <Button type="button" size="sm" variant="outline" data-pattern-new="" onClick={resetPatternForm}>
+              New pattern
+            </Button>
+            {patterns.map((pattern) => (
+              <button
+                key={pattern.id}
+                type="button"
+                data-shift-pattern={pattern.id}
+                onClick={() => selectPattern(pattern)}
+                className={`rounded-lg border px-2 py-1 text-left text-xs ${
+                  pattern.id === patternId ? "border-foreground bg-surface" : "border-border bg-bg"
+                }`}
+              >
+                <span className="font-medium">{pattern.name}</span>
+                <span className="block text-[10px] text-muted-foreground" data-pattern-empty={pattern.id}>
+                  No staff on this pattern.
+                </span>
+              </button>
+            ))}
+          </div>
+          {selectedPattern && (
+            <p className="text-xs" data-pattern-summary="">
+              {selectedPattern.name} · {formatPatternDays(selectedPattern.days)} ·{" "}
+              {formatShiftHm(selectedPattern.startHm)}–{formatShiftHm(selectedPattern.endHm)} ·{" "}
+              {ROLE_LABEL[selectedPattern.role as keyof typeof ROLE_LABEL] ?? selectedPattern.role}
+            </p>
+          )}
+          <div className="flex flex-wrap items-center gap-2">
+            <label className="text-xs text-muted-foreground">
+              Name
+              <input
+                data-pattern-name=""
+                className="ml-1 h-8 rounded-md border border-border bg-bg px-2 text-xs"
+                value={patternName}
+                onChange={(e) => setPatternName(e.target.value)}
+                placeholder="Open"
+                aria-label="Pattern name"
+              />
+            </label>
+            {patternDayNames.map((label, day) => (
+              <label key={label} className="flex items-center gap-1 text-xs">
+                <input
+                  type="checkbox"
+                  data-pattern-day={day}
+                  checked={patternDays.includes(day)}
+                  onChange={(e) => {
+                    setPatternDays((cur) =>
+                      e.target.checked ? [...cur, day].sort((a, b) => a - b) : cur.filter((d) => d !== day),
+                    );
+                  }}
+                />
+                {label}
+              </label>
+            ))}
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            <label className="text-xs text-muted-foreground">
+              Start
+              <input
+                type="time"
+                data-pattern-start=""
+                className="ml-1 h-8 rounded-md border border-border bg-bg px-2 text-xs"
+                value={patternStart}
+                onChange={(e) => setPatternStart(e.target.value)}
+              />
+            </label>
+            <label className="text-xs text-muted-foreground">
+              End
+              <input
+                type="time"
+                data-pattern-end=""
+                className="ml-1 h-8 rounded-md border border-border bg-bg px-2 text-xs"
+                value={patternEnd}
+                onChange={(e) => setPatternEnd(e.target.value)}
+              />
+            </label>
+            <select
+              data-pattern-role=""
+              className="h-8 rounded-md border border-border bg-bg px-2 text-xs"
+              value={patternRole}
+              onChange={(e) => setPatternRole(e.target.value)}
+              aria-label="Pattern role"
+            >
+              {FLOOR_ROLES.map((role) => (
+                <option key={role} value={role}>
+                  {ROLE_LABEL[role]}
+                </option>
+              ))}
+            </select>
+            <Button type="button" size="sm" data-pattern-save="" onClick={savePattern}>
+              Save pattern
+            </Button>
+            {editingPattern && (
+              <Button type="button" size="sm" variant="outline" data-pattern-remove="" onClick={removePattern}>
+                Remove pattern
+              </Button>
+            )}
+            {editingPattern && (
+              <label className="flex items-center gap-1 text-xs">
+                <input
+                  type="checkbox"
+                  data-pattern-update-placed=""
+                  checked={updatePlaced}
+                  onChange={(e) => setUpdatePlaced(e.target.checked)}
+                />
+                Update placed
+              </label>
+            )}
+          </div>
+          {editingPattern && (
+            <p className="text-[11px] text-muted-foreground">
+              Update placed changes hours and role on shifts already placed from this pattern, on the days still
+              in the pattern. Publish state stays.
+            </p>
+          )}
+          <div className="flex flex-wrap gap-2">
+            {staff.map((person) => (
+              <label key={person.id} className="flex items-center gap-1 text-xs">
+                <input
+                  type="checkbox"
+                  data-pattern-staff={person.id}
+                  checked={assignStaff.includes(person.id)}
+                  onChange={(e) => {
+                    setAssignStaff((cur) =>
+                      e.target.checked ? [...cur, person.id] : cur.filter((id) => id !== person.id),
+                    );
+                  }}
+                />
+                {person.name}
+              </label>
+            ))}
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            <select
+              className="h-8 rounded-md border border-border bg-bg px-2 text-xs"
+              value={assignMode}
+              data-pattern-span=""
+              aria-label="Assign span"
+              onChange={(e) => setAssignMode(e.target.value as "weeks" | "range")}
+            >
+              <option value="weeks">Weeks</option>
+              <option value="range">Date range</option>
+            </select>
+            {assignMode === "weeks" ? (
+              <>
+                <Button
+                  type="button"
+                  size="icon"
+                  variant="outline"
+                  aria-label="Previous assign week"
+                  onClick={() => setAssignWeekStart(addDays(assignWeekStart, -7))}
+                >
+                  <ChevronLeft className="h-4 w-4" />
+                </Button>
+                <span className="text-xs text-muted-foreground">{formatDayLabel(assignWeekStart)}</span>
+                <Button
+                  type="button"
+                  size="icon"
+                  variant="outline"
+                  aria-label="Next assign week"
+                  onClick={() => setAssignWeekStart(addDays(assignWeekStart, 7))}
+                >
+                  <ChevronRight className="h-4 w-4" />
+                </Button>
+                <label className="text-xs text-muted-foreground">
+                  Weeks
+                  <input
+                    type="number"
+                    min={1}
+                    max={26}
+                    data-pattern-weeks=""
+                    className="ml-1 h-8 w-16 rounded-md border border-border bg-bg px-2 text-xs"
+                    value={assignWeeks}
+                    onChange={(e) => {
+                      const n = Math.round(Number(e.target.value));
+                      setAssignWeeks(Math.min(26, Math.max(1, Number.isFinite(n) ? n : 1)));
+                    }}
+                  />
+                </label>
+              </>
+            ) : (
+              <>
+                <label className="text-xs text-muted-foreground">
+                  From
+                  <input
+                    type="date"
+                    data-pattern-from=""
+                    className="ml-1 h-8 rounded-md border border-border bg-bg px-2 text-xs"
+                    value={assignFrom}
+                    onChange={(e) => setAssignFrom(e.target.value)}
+                  />
+                </label>
+                <label className="text-xs text-muted-foreground">
+                  To
+                  <input
+                    type="date"
+                    data-pattern-to=""
+                    className="ml-1 h-8 rounded-md border border-border bg-bg px-2 text-xs"
+                    value={assignTo}
+                    onChange={(e) => setAssignTo(e.target.value)}
+                  />
+                </label>
+              </>
+            )}
+            <Button
+              type="button"
+              size="sm"
+              data-pattern-place=""
+              disabled={!editingPattern || assignStaff.length === 0}
+              onClick={placePattern}
+            >
+              Place
+            </Button>
+          </div>
+          {patternNote && (
+            <p className="text-[11px] text-muted-foreground" data-pattern-note="">
+              {patternNote}
+            </p>
+          )}
         </div>
       )}
       <div className="min-h-0 flex-1 overflow-auto p-3">

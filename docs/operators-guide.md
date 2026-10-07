@@ -1,7 +1,7 @@
 # Operators Guide — authoring
 
-**Revision · 7 Oct 2026** — On a peer venue with no host, an entity owner publishes the rooms that entity owns, including the tables in those rooms, the seat counts, and the shapes. Another entity’s rooms stay as they were. A House room stays locked unless this login is the location contact. The location contact still publishes the whole floor. Tables on the floor editor and the live floor are the shape only: round, square, or booth. The seat count is a number on the table popup and in the side panel. Changing seats does not add marks. Barstools stay their own pieces.
-Guide v2026.10.195.
+**Revision · 7 Oct 2026** — Set shifts saves a named pattern with days, a start, an end, and a role, and no one on it. Assign staff later for a date range or a number of weeks. Those shifts land as drafts. Publish week still puts them on the clock. Editing the pattern leaves placed shifts as they are until you choose Update placed. Someone from another entity still needs a grant. On a peer venue with no host, an entity owner publishes the rooms that entity owns, including the tables in those rooms, the seat counts, and the shapes. Another entity’s rooms stay as they were. A House room stays locked unless this login is the location contact. The location contact still publishes the whole floor. Tables on the floor editor and the live floor are the shape only: round, square, or booth. The seat count is a number on the table popup and in the side panel. Changing seats does not add marks. Barstools stay their own pieces.
+Guide v2026.10.196.
 
 The in-app **Operators Guide** is the living product manual. It is not a
 separate PDF. Staff open it from **Guide** / **?** in the POS and platform

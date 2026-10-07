@@ -439,7 +439,7 @@ export const ROLE_GUIDE_TOPICS: GuideTopic[] = [
       ),
       ul(
         "Scheduling has an entity switcher. Default is the entity the logged-in manager belongs to. Venue admin can view both boards — they are never one merged calendar. Kitchen cannot publish bar shifts and vice versa.",
-        "Grid: week or pay period. Role, entity, optional station or section, start, end, break. Copy last week. Bulk add picks several people already on this board, the days, a start and end, and a role, then places those shifts. Someone from another entity still needs a grant. Publish week publishes that entity only. Unpublished drafts do not appear on the clock.",
+        "Grid: week or pay period. Role, entity, optional station or section, start, end, break. Copy last week. Bulk add picks several people already on this board, the days, a start and end, and a role, then places those shifts. Set shifts saves a named pattern with days, a start, an end, and a role, and no one on it. Open is Mon–Thu, 11:00 AM–7:00 PM, Server. Assign staff later for a date range or a number of weeks. Those shifts land as drafts. Publish week still puts them on the clock. Editing the pattern leaves placed shifts as they are until you choose Update placed. Someone from another entity still needs a grant. Publish week publishes that entity only. Unpublished drafts do not appear on the clock.",
         "Shared employees: one entity per shift. You cannot drop a bar person onto the kitchen board without an explicit “work for other entity this shift” grant. A kitchen clock cannot take a published bar shift.",
         "Clock in is a PIN-pad action, separate from Enter. Clock out is Close out. Hours post to the entity on the shift.",
         "Approved punches lock for export. Unapproved punches stay in Exceptions.",
@@ -449,6 +449,7 @@ export const ROLE_GUIDE_TOPICS: GuideTopic[] = [
       steps(
         "Open Schedule. Confirm the switcher is your home entity (bar operator or food operator).",
         "Add a shift for that entity’s staff (role, times, optional station/section/break). Copy last week if the grid repeats. Publish week — the other entity’s board is unchanged.",
+        "Set shifts: name the pattern, pick the days, start, end, and role, then Save. The pattern stays empty. Later pick that pattern, the staff, and a date range or a number of weeks, then Place. Publish week before those drafts show on the clock. Update placed is optional and rewrites hours and role only on days still in the pattern.",
         "To put a bar-operator person on the food operator tonight: venue admin grants work for other entity this shift, then drop them on that entity’s day.",
         "Staff: PIN pad → Clock in, or Enter if already on the clock. Clock out is Close out. Hours land on the shift’s entity. Kitchen pad cannot punch a bar shift.",
       ),
