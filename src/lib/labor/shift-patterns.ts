@@ -191,11 +191,12 @@ export function placePatternShifts(input: {
 
 /**
  * Update placed rewrites hours and role on shifts from this pattern whose weekday is still in the pattern.
- * Published state and the employee stay. Shifts on a dropped day stay as they are.
+ * A shift whose day left the pattern is removed. Published state and the employee stay on the rows that remain.
  * updatePlaced false returns the same shifts.
  */
 export function rewritePlacedFromPattern<
   T extends {
+    id?: string;
     patternId?: string;
     start: number;
     end: number;
@@ -208,9 +209,13 @@ export function rewritePlacedFromPattern<
   const startHm = parseHm(pattern.startHm) ?? { h: 11, m: 0 };
   const endHm = parseHm(pattern.endHm) ?? { h: 19, m: 0 };
   const daySet = new Set(pattern.days);
-  return shifts.map((s) => {
-    if (s.patternId !== pattern.id) return s;
-    if (!daySet.has(new Date(s.start).getDay())) return s;
+  const next: T[] = [];
+  for (const s of shifts) {
+    if (s.patternId !== pattern.id) {
+      next.push(s);
+      continue;
+    }
+    if (!daySet.has(new Date(s.start).getDay())) continue;
     const startAt = new Date(s.start);
     startAt.setHours(startHm.h, startHm.m, 0, 0);
     const endAt = new Date(s.start);
@@ -218,6 +223,7 @@ export function rewritePlacedFromPattern<
     const start = startAt.getTime();
     let end = endAt.getTime();
     if (end <= start) end = start + 8 * 3_600_000;
-    return { ...s, start, end, role: pattern.role, published: s.published, employeeId: s.employeeId };
-  });
+    next.push({ ...s, start, end, role: pattern.role, published: s.published, employeeId: s.employeeId });
+  }
+  return next;
 }

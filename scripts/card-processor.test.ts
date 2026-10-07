@@ -101,10 +101,13 @@ test("none hides card and leaves cash; stripe test reader completes the check", 
   assert.equal(stripeReaderAllowed("generic tablet", "tap_to_pay"), false);
 
   const facade = readFileSync("src/lib/payments/facade.server.ts", "utf8");
-  assert.match(facade, /processor === "none"/);
+  assert.match(facade, /dispatch === "none"/);
   assert.match(facade, /processor === "stripe"/);
   assert.match(facade, /journalOnly: true/);
-  assert.match(facade, /captureLiveCardPresent/);
+  assert.match(facade, /captureStripeTerminal/);
+  assert.match(facade, /captureFinixCardPresent/);
+  assert.doesNotMatch(facade, /captureLiveCardPresent/);
+  assert.doesNotMatch(facade, /api\.stripe\.com/);
   const hook = readFileSync("src/routes/api/payments/stripe/webhook.ts", "utf8");
   assert.match(hook, /\/api\/payments\/stripe\/webhook/);
   assert.match(hook, /applyStripeWebhookEvent/);

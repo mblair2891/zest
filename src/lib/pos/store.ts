@@ -7,7 +7,7 @@ import {
 	parseStationQuery,
 	readStationDeviceRole,
 } from "./device-roles";
-import { readStationPair } from "./station-pair";
+import { readStationPair, rememberStationPin } from "./station-pair";
 import { nextCheckNumber } from "./check-number";
 import {
 	guestContactOk,
@@ -646,6 +646,11 @@ const usePosStoreRaw = create<PosStore>()(persist((set, get) => {
 			managerAuthRole: null,
 		});
 		get().audit("login", `${emp.name} (${emp.role}) · floor PIN`);
+		try {
+			if (readStationPair()?.deviceId) rememberStationPin(pin);
+		} catch {
+			/* pair optional */
+		}
 		try {
 			useStationSessionStore.getState().setStationJob(null);
 		} catch {

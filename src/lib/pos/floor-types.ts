@@ -149,6 +149,20 @@ export type OpenFloor = {
   operatorScoped: boolean;
   /** Live 86 overlay (itemId → available). Applied immediately, not via Publish. */
   item86?: Record<string, boolean>;
+  /** Open clock punches at this location. A paired PIN tablet polls these with the floor. */
+  punches?: FloorPunch[];
+};
+
+export type FloorPunch = {
+  id: string;
+  employeeId: string;
+  employeeName: string;
+  operatorId: string;
+  clockInAt: number;
+  clockOutAt: number | null;
+  status: string;
+  regularMinutes: number;
+  otMinutes: number;
 };
 
 export type UpsertCheckInput = {

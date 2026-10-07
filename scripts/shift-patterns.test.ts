@@ -93,8 +93,13 @@ test("Open saves with no staff, then two people land on next week as drafts", ()
   );
   const thursdayAfter = narrower.find(
     (d) => d.employeeId === thursday.employeeId && new Date(d.start).getDay() === 4,
-  )!;
-  assert.equal(thursdayAfter.end, thursday.end);
+  );
+  assert.equal(thursdayAfter, undefined);
+  const monday = narrower.find(
+    (d) => d.employeeId === thursday.employeeId && new Date(d.start).getDay() === 1,
+  );
+  assert.ok(monday);
+  assert.equal(monday.end - monday.start, 9 * 3_600_000);
 
   const afterWeek = range.toMs;
   assert.ok(afterWeek > placed.drafts[placed.drafts.length - 1]!.end);

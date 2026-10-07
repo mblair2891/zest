@@ -21,6 +21,7 @@ import { isFloorRole } from "@/lib/pos/pin";
 import { isProspectDemo } from "@/lib/demo/session";
 import {
   deleteShiftPatternFn,
+  deleteShiftsFn,
   listShiftPatternsFn,
   listShiftsFn,
   saveShiftPatternFn,
@@ -337,12 +338,21 @@ export function EntityScheduleView() {
       void saveShiftPatternFn({ data: { orgId, locationId: locId, pattern: saved } }).catch(() => undefined);
     }
     if (!rewrite) return;
-    const next = rewritePlacedFromPattern(saved, useOpsStore.getState().shifts, true);
+    const before = useOpsStore.getState().shifts;
+    const next = rewritePlacedFromPattern(saved, before, true);
+    const dropped = before.filter(
+      (s) => s.patternId === saved.id && !next.some((row) => row.id === s.id),
+    );
     useOpsStore.setState({
       shifts: next,
       todayShifts: next.filter((s) => sameDay(s.start, Date.now())),
     });
     saveShiftRows(next.filter((s) => s.patternId === saved.id));
+    if (dropped.length && !isProspectDemo() && orgId && locId) {
+      void deleteShiftsFn({
+        data: { orgId, locationId: locId, ids: dropped.map((s) => s.id) },
+      }).catch(() => undefined);
+    }
   };
 
   const removePattern = () => {
@@ -879,8 +889,13 @@ export function EntityScheduleView() {
                               persist();
                             }}
                             onRemove={() => {
-                              remove(s.id);
-                              persist();
+                              const id = s.id;
+                              remove(id);
+                              if (!isProspectDemo() && orgId && locId) {
+                                void deleteShiftsFn({
+                                  data: { orgId, locationId: locId, ids: [id] },
+                                }).catch(() => undefined);
+                              }
                             }}
                           />
                         ))}

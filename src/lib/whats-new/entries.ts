@@ -6,6 +6,18 @@ import type { GuideUpdate } from "@/lib/guide/types";
  */
 export const WHATS_NEW_ENTRIES: GuideUpdate[] = [
   {
+    id: "upd_2026_10_197_live_paths",
+    date: "2026-10-07",
+    title: "Owner login, menu, shifts, PIN floor, and cards",
+    summary: "Signing creates the owner login. An entity menu and a removed shift stay. A PIN tablet shares the floor. A live card uses that entity’s merchant.",
+    body: "Signing the contract creates the venue owner’s back-office username and a one-time password. That password is not a floor PIN. An entity login saves its own menu items. A refresh shows the name and the price. Another entity’s items and house payouts stay as they were. Remove on the schedule deletes that shift. Update placed also removes a shift for a day that left the pattern. A paired tablet with a valid PIN shares this location’s open checks, bumps, 86s, and clock punches with the other paired tablets. Password login still opens the back office. A live card on the Finix rail uses that selling entity’s merchant. Stripe runs only when the rail is Stripe.",
+    roles: ["owner_manager", "vendor_operator", "host_operator", "server", "kitchen_bar"],
+    surfaces: ["labor", "floor", "kds", "settings"],
+    audience: "all",
+    topicId: "floor-pin-login",
+    tags: ["login", "menu", "schedule", "floor", "payments"],
+  },
+  {
     id: "upd_2026_10_196_set_shifts",
     date: "2026-10-07",
     title: "Set shifts, then assign staff",

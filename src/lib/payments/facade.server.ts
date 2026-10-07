@@ -13,7 +13,8 @@ import {
 } from "./mode";
 import { cardPresentDispatch, parseCardProcessor } from "./adapter";
 import { captureSandbox } from "./sandbox-adapter";
-import { captureLiveCardPresent, captureStripeTerminal } from "./stripe-terminal.server";
+import { captureStripeTerminal } from "./stripe-terminal.server";
+import { captureFinixCardPresent } from "./finix-card.server";
 import type { CardPresentInput, CardPresentResult, CardPresentSplit, PaymentsStatus } from "./types";
 import { newId } from "@/lib/saas/ids";
 import { HOST_SCOPE } from "@/lib/access/entity-grants";
@@ -315,7 +316,10 @@ export async function captureCardPresent(
     };
   }
 
-  const finish = async (result: CardPresentResult): Promise<CardPresentResult> => {
+  const finish = async (
+    result: CardPresentResult,
+    journalOnly = false,
+  ): Promise<CardPresentResult> => {
     if (!result.ok || !result.paymentId) return { ...result, splits: entities };
     try {
       await persistPaymentSplits({
@@ -324,6 +328,7 @@ export async function captureCardPresent(
         locationId: loc.id,
         entities,
         accounts: gate.accounts,
+        journalOnly,
       });
     } catch {
       /* splits table may be applying */
@@ -355,5 +360,26 @@ export async function captureCardPresent(
         "Live cards require an enrolled Finix/Quantum reader supplied through Summex. Customer-owned bank readers are not supported. Use cash or keep the check open.",
     };
   }
-  return finish(await captureLiveCardPresent({ input: payload, merchantId, readerId }));
+  const entityMerchant =
+    gate.accounts.find((a) => a.kind === "operator" && a.finix_merchant_id)?.finix_merchant_id ||
+    gate.accounts.find((a) => a.finix_merchant_id)?.finix_merchant_id ||
+    merchantId;
+  const splits = gate.accounts
+    .filter((a) => a.finix_merchant_id && a.finix_merchant_id !== entityMerchant)
+    .map((a) => {
+      const share = entities.find((e) =>
+        a.kind === "host" ? e.kind === "host" : e.entityId === a.operator_id,
+      );
+      return { merchantId: a.finix_merchant_id as string, amountCents: share?.amountCents ?? 0 };
+    })
+    .filter((s) => s.amountCents > 0);
+  return finish(
+    await captureFinixCardPresent({
+      input: payload,
+      merchantId: entityMerchant,
+      readerId,
+      splits,
+    }),
+    true,
+  );
 }

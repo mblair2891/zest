@@ -1,4 +1,5 @@
 import type { TimePunch } from "@/lib/pos/ops-types";
+import { stationFloorFields } from "@/lib/pos/station-pair";
 
 /** Fire-and-forget clock punch to the location (entity-scoped). */
 export function persistPunchToServer(punch: TimePunch): void {
@@ -11,10 +12,13 @@ export function persistPunchToServer(punch: TimePunch): void {
       const orgId = useSaasStore.getState().org.id;
       const locationId = usePosStore.getState().tenantLocationId;
       if (!orgId || !locationId) return;
+      const station = stationFloorFields();
       return upsertPunchFn({
         data: {
           orgId,
           locationId,
+          stationDeviceId: station?.stationDeviceId,
+          stationPin: station?.stationPin,
           punch: {
             id: punch.id,
             employeeId: punch.employeeId,

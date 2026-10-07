@@ -388,9 +388,14 @@ export function EntityMenuIntake(props: {
     try {
       if (!isProspectDemo() && orgId && locationId) {
         await flushLocationCatalog("menu");
-        void saveMenuItemFn({
-          data: { orgId, locationId, action: "create", operatorId: entityId },
-        }).catch(() => undefined);
+        const mine = usePosStore
+          .getState()
+          .menuItems.filter((row) => (row.vendorId || "") === entityId);
+        for (const row of mine) {
+          await saveMenuItemFn({
+            data: { orgId, locationId, action: "update", operatorId: entityId, item: row },
+          });
+        }
         const ownerBlock = publishOwnerBlock(usePosStore.getState().floorSections);
         if (ownerBlock) {
           setMessage(ownerBlock);

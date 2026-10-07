@@ -1,5 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 import { tenantMiddleware } from "@/lib/saas/tenant-middleware";
+import { floorSessionMiddleware } from "./floor-session";
 import { assertPinAction, parsePinRole, type PinAction } from "@/lib/access/pin-role";
 import { parseStationQuery } from "@/lib/pos/device-roles";
 import type { TicketStation } from "./types";
@@ -35,45 +36,88 @@ function assertFloorActor(actor: FloorActor | undefined, action: PinAction): voi
   assertPinAction(role, action, { deviceRole: parseStationQuery(actor.deviceRole) });
 }
 
+function stationInput(d: { stationDeviceId?: string; stationPin?: string }): {
+  stationDeviceId: string;
+  stationPin: string;
+} {
+  return {
+    stationDeviceId: clip(d.stationDeviceId, 80),
+    stationPin: String(d.stationPin ?? "").replace(/\D/g, "").slice(0, 8),
+  };
+}
+
+async function stationOrUser(
+  userId: string | null,
+  data: { locationId: string; stationDeviceId?: string; stationPin?: string },
+) {
+  if (userId) return { userId, grant: null as null };
+  const { authorizeStationFloor } = await import("./station-pin-auth.server");
+  const { UnauthorizedError } = await import("@/lib/auth/verify.server");
+  const result = await authorizeStationFloor({
+    pin: data.stationPin || "",
+    deviceId: data.stationDeviceId || "",
+    locationId: data.locationId,
+  });
+  if (!result.ok) {
+    const err = new UnauthorizedError();
+    if (result.error) err.message = result.error;
+    throw err;
+  }
+  return { userId: "", grant: result.grant };
+}
+
 export const listOpenFloorFn = createServerFn({ method: "POST" })
-  .middleware([tenantMiddleware])
-  .validator((d: { locationId: string }) => ({
+  .middleware([floorSessionMiddleware])
+  .validator((d: { locationId: string; stationDeviceId?: string; stationPin?: string }) => ({
     locationId: loc(d.locationId),
+    ...stationInput(d),
   }))
   .handler(async ({ context, data }): Promise<OpenFloor> => {
     const { listOpenFloor } = await import("./floor.server");
-    return listOpenFloor(context.userId, data.locationId);
+    const caller = await stationOrUser(context.userId, data);
+    return listOpenFloor(caller.userId, data.locationId, caller.grant);
   });
 
 export const listStationTicketsFn = createServerFn({ method: "POST" })
-  .middleware([tenantMiddleware])
-  .validator((d: { locationId: string; station: TicketStation; operatorId?: string | null }) => ({
+  .middleware([floorSessionMiddleware])
+  .validator((d: {
+    locationId: string;
+    station: TicketStation;
+    operatorId?: string | null;
+    stationDeviceId?: string;
+    stationPin?: string;
+  }) => ({
     locationId: loc(d.locationId),
     station: clip(d.station, 24) as TicketStation,
     operatorId: d.operatorId ? clip(d.operatorId, 80) : null,
+    ...stationInput(d),
   }))
   .handler(async ({ context, data }) => {
     const { listStationTickets } = await import("./floor.server");
+    const caller = await stationOrUser(context.userId, data);
     return listStationTickets(
-      context.userId,
+      caller.userId,
       data.locationId,
       data.station,
       data.operatorId,
+      caller.grant,
     );
   });
 
 export const upsertCheckFn = createServerFn({ method: "POST" })
-  .middleware([tenantMiddleware])
-  .validator((d: UpsertCheckInput) => ({
+  .middleware([floorSessionMiddleware])
+  .validator((d: UpsertCheckInput & { stationDeviceId?: string; stationPin?: string }) => ({
     locationId: loc(d.locationId),
     check: d.check as FloorCheck,
     clientMutationId: d.clientMutationId ? clip(d.clientMutationId, 80) : undefined,
     actor: d.actor,
+    ...stationInput(d),
   }))
   .handler(async ({ context, data }) => {
     assertFloorActor(data.actor, "orders.create");
     const { upsertCheck } = await import("./floor.server");
-    return upsertCheck(context.userId, data);
+    const caller = await stationOrUser(context.userId, data);
+    return upsertCheck(caller.userId, data, caller.grant);
   });
 
 export const addCheckLinesFn = createServerFn({ method: "POST" })
@@ -122,17 +166,19 @@ export const odsStartFn = createServerFn({ method: "POST" })
   });
 
 export const odsBumpFn = createServerFn({ method: "POST" })
-  .middleware([tenantMiddleware])
-  .validator((d: OdsActionInput) => ({
+  .middleware([floorSessionMiddleware])
+  .validator((d: OdsActionInput & { stationDeviceId?: string; stationPin?: string }) => ({
     locationId: loc(d.locationId),
     ticketId: clip(d.ticketId, 80),
     clientMutationId: d.clientMutationId ? clip(d.clientMutationId, 80) : undefined,
     actor: d.actor,
+    ...stationInput(d),
   }))
   .handler(async ({ context, data }) => {
     assertFloorActor(data.actor, "ods.bump");
     const { odsBump } = await import("./floor.server");
-    return odsBump(context.userId, data);
+    const caller = await stationOrUser(context.userId, data);
+    return odsBump(caller.userId, data, caller.grant);
   });
 
 export const odsReadyFn = createServerFn({ method: "POST" })
@@ -203,22 +249,26 @@ export const upsertTableStatusFn = createServerFn({ method: "POST" })
   });
 
 export const setItem86Fn = createServerFn({ method: "POST" })
-  .middleware([tenantMiddleware])
+  .middleware([floorSessionMiddleware])
   .validator((d: {
     locationId: string;
     itemId: string;
     available: boolean;
     vendorId?: string | null;
     actor?: FloorActor;
+    stationDeviceId?: string;
+    stationPin?: string;
   }) => ({
     locationId: loc(d.locationId),
     itemId: clip(d.itemId, 80),
     available: d.available !== false,
     vendorId: d.vendorId ? clip(d.vendorId, 80) : null,
     actor: d.actor,
+    ...stationInput(d),
   }))
   .handler(async ({ context, data }) => {
     assertFloorActor(data.actor, "item.86");
     const { setItem86 } = await import("./floor.server");
-    return setItem86(context.userId, data);
+    const caller = await stationOrUser(context.userId, data);
+    return setItem86(caller.userId, data, caller.grant);
   });

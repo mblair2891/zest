@@ -302,6 +302,56 @@ export async function createTransfer(opts: {
   return { ok: true, transferId: id, sandbox: false };
 }
 
+/**
+ * Live card-present authorization on the selling entity’s Finix merchant.
+ * Uses FINIX_API_KEY. Does not call Stripe.
+ */
+export async function authorizeCardPresent(opts: {
+  merchantId: string;
+  amountCents: number;
+  readerId: string;
+  idempotencyId?: string;
+  splits?: Array<{ merchantId: string; amountCents: number }>;
+}): Promise<{ ok: boolean; id?: string; last4?: string | null; error?: string }> {
+  const merchantId = opts.merchantId.trim();
+  if (!finixConfigured() || !merchantId) {
+    return { ok: false, error: "Live Quantum Payments is not configured" };
+  }
+  if (merchantId.includes("sandbox")) {
+    return { ok: false, error: "Sandbox merchant cannot take a live card" };
+  }
+  const others = (opts.splits ?? []).filter(
+    (s) => s.merchantId && s.merchantId !== merchantId && s.amountCents > 0 && !s.merchantId.includes("sandbox"),
+  );
+  const body: Record<string, unknown> = {
+    amount: Math.max(0, Math.round(opts.amountCents)),
+    currency: "USD",
+    merchant: merchantId,
+    device: opts.readerId,
+  };
+  if (opts.idempotencyId) body.idempotency_id = opts.idempotencyId.slice(0, 80);
+  if (others.length) {
+    body.split_transfers = others.map((s) => ({
+      merchant: s.merchantId,
+      amount: s.amountCents,
+    }));
+  }
+  const res = await finixFetch("POST", "/authorizations", body);
+  if (!res.ok) {
+    const msg =
+      typeof (res.json as { message?: string }).message === "string"
+        ? (res.json as { message: string }).message
+        : "Card capture could not start. Use cash or keep the check open.";
+    return { ok: false, error: msg.slice(0, 240) };
+  }
+  const id = typeof res.json.id === "string" ? res.json.id : "";
+  const last4raw =
+    (res.json as { card_present_details?: { last4?: string }; last_four?: string }).card_present_details
+      ?.last4 || (res.json as { last_four?: string }).last_four;
+  const last4 = last4raw ? String(last4raw).replace(/\D/g, "").slice(-4) || null : null;
+  return { ok: true, id, last4 };
+}
+
 /** One guest authorization; Finix sends each vendor merchant their share. */
 export async function createSplitTransfer(opts: {
   parentMerchantId: string;

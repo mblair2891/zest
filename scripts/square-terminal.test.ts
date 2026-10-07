@@ -120,7 +120,7 @@ test("the webhook verifies a signature and ignores unknown events", () => {
 test("Square pay does not call Finix, and QR does not charge a card", () => {
   const facade = readFileSync("src/lib/payments/facade.server.ts", "utf8");
   const squareAt = facade.indexOf('if (dispatch === "square")');
-  const finixAt = facade.lastIndexOf("captureLiveCardPresent(");
+  const finixAt = facade.lastIndexOf("captureFinixCardPresent(");
   assert.ok(squareAt > 0 && finixAt > squareAt);
   const squareServer = readFileSync("src/lib/payments/square-terminal.server.ts", "utf8");
   assert.doesNotMatch(squareServer, /captureLiveCardPresent|finix/i);

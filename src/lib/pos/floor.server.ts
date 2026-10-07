@@ -1,9 +1,11 @@
 import { getSql, type Sql } from "@/lib/db";
 import { ForbiddenError } from "@/lib/saas/tenancy.server";
+import { EMPTY_LOCATION_SETUP, type LocationSetup } from "@/lib/saas/types";
 import {
   loadEntityWriteContext,
   type EntityWriteContext,
 } from "@/lib/access/assert-entity.server";
+import type { StationFloorGrant } from "./station-pin-auth.server";
 import { HOST_SCOPE } from "@/lib/access/entity-grants";
 import { uid } from "@/lib/utils";
 import type {
@@ -243,13 +245,38 @@ function parseTicketItems(raw: unknown): FloorTicketItem[] {
   );
 }
 
+function setupOf(raw: unknown): LocationSetup {
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return { ...EMPTY_LOCATION_SETUP };
+  return { ...EMPTY_LOCATION_SETUP, ...(raw as LocationSetup) };
+}
+
 export async function loadFloorContext(
   userId: string,
   locationId: string,
+  station?: StationFloorGrant | null,
 ): Promise<EntityWriteContext> {
   const loc = clip(locationId, 80);
   if (!loc) throw new ForbiddenError("Location is required");
   const sql = await getSql();
+  if (station) {
+    if (station.locationId !== loc) throw new ForbiddenError("Location mismatch");
+    const rows = await sql<{ id: string; org_id: string; setup: unknown }>`
+      select id, org_id, setup from locations
+      where id = ${loc}
+      limit 1
+    `;
+    const row = rows[0];
+    if (!row || row.org_id !== station.orgId) throw new ForbiddenError("Location not found");
+    return {
+      userId: `station:${station.deviceId}`,
+      orgId: row.org_id,
+      locationId: loc,
+      role: "staff",
+      isPlatformAdmin: false,
+      operatorId: HOST_SCOPE,
+      setup: setupOf(row.setup),
+    };
+  }
   const rows = await sql<{ id: string; org_id: string }>`
     select id, org_id from locations
     where id = ${loc}
@@ -757,8 +784,9 @@ async function setLineStatusForTicket(
 export async function upsertCheck(
   userId: string,
   input: UpsertCheckInput,
+  station?: StationFloorGrant | null,
 ): Promise<{ ok: true; checkId: string }> {
-  const ctx = await loadFloorContext(userId, input.locationId);
+  const ctx = await loadFloorContext(userId, input.locationId, station);
   const sql = await getSql();
   const now = Date.now();
   const check: FloorCheck = {
@@ -908,8 +936,9 @@ export async function odsReady(
 export async function odsBump(
   userId: string,
   input: OdsActionInput,
+  station?: StationFloorGrant | null,
 ): Promise<{ ok: true; status: TicketStatus }> {
-  const ctx = await loadFloorContext(userId, input.locationId);
+  const ctx = await loadFloorContext(userId, input.locationId, station);
   const sql = await getSql();
   const now = Date.now();
   const ticket = await loadTicketOrThrow(sql, ctx, input.ticketId);
@@ -1033,8 +1062,9 @@ export async function upsertTableStatus(
 export async function listOpenFloor(
   userId: string,
   locationId: string,
+  station?: StationFloorGrant | null,
 ): Promise<OpenFloor> {
-  const ctx = await loadFloorContext(userId, locationId);
+  const ctx = await loadFloorContext(userId, locationId, station);
   const sql = await getSql();
   const now = Date.now();
   const since = now - OPEN_WINDOW_MS;
@@ -1103,6 +1133,42 @@ export async function listOpenFloor(
       at: n(e.at_ms),
     }));
 
+  let punches: OpenFloor["punches"] = [];
+  try {
+    const punchRows = await sql<{
+      id: string;
+      employee_id: string;
+      employee_name: string;
+      employer_id: string | null;
+      clock_in_at: unknown;
+      clock_out_at: unknown;
+      status: string;
+      regular_minutes: number | null;
+      ot_minutes: number | null;
+    }>`
+      select id, employee_id, employee_name, employer_id, clock_in_at, clock_out_at,
+             status, regular_minutes, ot_minutes
+      from location_punches
+      where location_id = ${ctx.locationId}
+        and clock_out_at is null
+      order by clock_in_at desc
+      limit 200
+    `;
+    punches = punchRows.map((p) => ({
+      id: p.id,
+      employeeId: p.employee_id,
+      employeeName: p.employee_name,
+      operatorId: p.employer_id || HOST_SCOPE,
+      clockInAt: new Date(p.clock_in_at as string | number | Date).getTime() || now,
+      clockOutAt: null,
+      status: p.status || "open",
+      regularMinutes: p.regular_minutes ?? 0,
+      otMinutes: p.ot_minutes ?? 0,
+    }));
+  } catch {
+    punches = [];
+  }
+
   return {
     locationId: ctx.locationId,
     checks: floorChecks,
@@ -1112,6 +1178,7 @@ export async function listOpenFloor(
     serverTime: now,
     operatorScoped: Boolean(scoped),
     item86: parseItem86(ctx.setup?.item86),
+    punches,
   };
 }
 
@@ -1124,8 +1191,9 @@ export async function setItem86(
     vendorId?: string | null;
     actor?: FloorActor;
   },
+  station?: StationFloorGrant | null,
 ): Promise<{ ok: true; item86: Record<string, boolean> }> {
-  const ctx = await loadFloorContext(userId, input.locationId);
+  const ctx = await loadFloorContext(userId, input.locationId, station);
   const scoped = vendorOperatorId(ctx);
   const vendor = clip(input.vendorId, 80) || HOST_SCOPE;
   if (scoped && vendor !== scoped) {
@@ -1157,8 +1225,9 @@ export async function listStationTickets(
   locationId: string,
   station: TicketStation,
   operatorId?: string | null,
+  floorGrant?: StationFloorGrant | null,
 ): Promise<{ locationId: string; station: TicketStation; tickets: FloorTicket[] }> {
-  const ctx = await loadFloorContext(userId, locationId);
+  const ctx = await loadFloorContext(userId, locationId, floorGrant);
   const sql = await getSql();
   const now = Date.now();
   const st = asStation(station);

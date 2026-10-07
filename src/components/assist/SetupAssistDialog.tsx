@@ -239,12 +239,17 @@ export function SetupAssistDialog({
       const orgId = useSaasStore.getState().org.id;
       const locId = usePosStore.getState().tenantLocationId || "";
       if (!isProspectDemo() && orgId && locId) {
+        const operatorId = next.vendorId || "";
+        const item =
+          usePosStore.getState().menuItems.find((row) => row.id === next.itemId) ??
+          usePosStore.getState().menuItems.find((row) => row.vendorId === operatorId && row.name === next.name);
         void saveMenuItemFn({
           data: {
             orgId,
             locationId: locId,
             action: next.itemId ? "update" : "create",
-            operatorId: next.vendorId || "",
+            operatorId,
+            item,
           },
         }).catch(() => undefined);
       }

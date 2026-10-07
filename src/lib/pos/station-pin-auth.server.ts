@@ -125,3 +125,38 @@ export async function verifyStationPin(opts: {
     },
   };
 }
+
+export type StationFloorGrant = {
+  locationId: string;
+  orgId: string;
+  deviceId: string;
+  employeeId: string;
+  employeeName: string;
+};
+
+/** Paired device plus a valid PIN. Scoped to that device’s location. No password session. */
+export async function authorizeStationFloor(opts: {
+  pin: string;
+  deviceId: string;
+  locationId: string;
+}): Promise<{ ok: true; grant: StationFloorGrant } | { ok: false; error: string }> {
+  const verified = await verifyStationPin(opts);
+  if (!verified.ok) return { ok: false, error: verified.error };
+  const locationId = String(opts.locationId ?? "").trim().slice(0, 80);
+  const sql = await getSql();
+  const rows = await sql<{ org_id: string }>`
+    select org_id from locations where id = ${locationId} limit 1
+  `;
+  const orgId = rows[0]?.org_id;
+  if (!orgId) return { ok: false, error: "Location not found" };
+  return {
+    ok: true,
+    grant: {
+      locationId,
+      orgId,
+      deviceId: String(opts.deviceId ?? "").trim().slice(0, 80),
+      employeeId: verified.employee.id,
+      employeeName: verified.employee.name,
+    },
+  };
+}

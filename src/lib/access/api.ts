@@ -1480,20 +1480,43 @@ export const saveMenuItemFn = createServerFn({ method: "POST" })
     locationId: string;
     action: "create" | "update" | "delete" | "toggle";
     operatorId: string;
-    item?: Record<string, unknown>;
+    item?: unknown;
   }) => ({
     orgId: String(d.orgId ?? "").trim(),
     locationId: loc(d.locationId),
     action: d.action,
     operatorId: String(d.operatorId ?? "").trim().slice(0, 80),
-    item: d.item && typeof d.item === "object" ? d.item : {},
+    item:
+      d.item && typeof d.item === "object" && !Array.isArray(d.item)
+        ? (d.item as Record<string, unknown>)
+        : {},
   }))
   .handler(async ({ context, data }) => {
     const { loadEntityWriteContext, assertEntityResourceWrite } = await import(
       "./assert-entity.server"
     );
+    const { ForbiddenError } = await import("@/lib/saas/tenancy.server");
     const ctx = await loadEntityWriteContext(context.userId, data.orgId, data.locationId);
-    const grant: EntityGrantKey = data.action === "toggle" ? "edit_menu" : "edit_menu";
+    const grant: EntityGrantKey = "edit_menu";
     assertEntityResourceWrite(ctx, data.operatorId, grant);
+    const { applyEntityMenuWrite, withMenuCatalog } = await import("@/lib/pos/menu-catalog-write");
+    const merged = applyEntityMenuWrite(
+      ctx.setup.menuCatalog,
+      data.action,
+      data.operatorId,
+      data.item,
+    );
+    if (!merged.ok) throw new ForbiddenError(merged.error);
+    const { getSql } = await import("@/lib/db");
+    const sql = await getSql();
+    const next = withMenuCatalog(
+      { ...ctx.setup } as unknown as Record<string, unknown>,
+      merged.catalog,
+    );
+    await sql`
+      update locations
+      set setup = ${JSON.stringify(next)}::jsonb
+      where id = ${ctx.locationId} and org_id = ${ctx.orgId}
+    `;
     return { ok: true as const, operatorId: data.operatorId, action: data.action };
   });

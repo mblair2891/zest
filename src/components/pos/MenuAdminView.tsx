@@ -103,10 +103,18 @@ export function MenuAdminView() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pendingPrice]);
 
-  const persistWrite = (operatorId: string, action: "create" | "update" | "delete" | "toggle") => {
-    if (isProspectDemo() || !orgId || !locId) return;
+  const persistWrite = (
+    operatorId: string,
+    action: "create" | "update" | "delete" | "toggle",
+    itemId?: string,
+  ) => {
+    if (isProspectDemo() || !orgId || !locId || !operatorId) return;
+    const live = itemId
+      ? usePosStore.getState().menuItems.find((row) => row.id === itemId)
+      : undefined;
+    const item = live ?? (itemId ? { id: itemId, vendorId: operatorId } : undefined);
     void saveMenuItemFn({
-      data: { orgId, locationId: locId, action, operatorId },
+      data: { orgId, locationId: locId, action, operatorId, item },
     }).catch(() => undefined);
     if (action !== "toggle") persistLocationCatalog("menu");
   };
@@ -124,7 +132,7 @@ export function MenuAdminView() {
       vendorId: vid,
     });
     if (res.id) {
-      persistWrite(vid || "", "create");
+      persistWrite(vid || "", "create", res.id);
       noteChecklistSave({ tab: "menu", focus: "menu" });
     }
     setName("");
@@ -420,7 +428,7 @@ export function MenuAdminView() {
                                   name: editName.trim() || item.name,
                                   priceCents: Math.round(Number(editPrice) * 100) || item.priceCents,
                                 });
-                                persistWrite(item.vendorId || "", "update");
+                                persistWrite(item.vendorId || "", "update", item.id);
                                 if (pendingPrice?.menuItemId === item.id) clearPendingPrice();
                                 setEditing(null);
                               }}
@@ -476,7 +484,7 @@ export function MenuAdminView() {
                             variant="outline"
                             onClick={() => {
                               toggleItemAvailable(item.id);
-                              persistWrite(item.vendorId || "", "toggle");
+                              persistWrite(item.vendorId || "", "toggle", item.id);
                             }}
                             title={item.available ? "86 item" : "Restore"}
                           >
@@ -512,7 +520,7 @@ export function MenuAdminView() {
                               data-menu-restore=""
                               onClick={() => {
                                 restoreMenuItem(item.id);
-                                persistWrite(item.vendorId || "", "update");
+                                persistWrite(item.vendorId || "", "update", item.id);
                               }}
                             >
                               Restore
@@ -524,7 +532,7 @@ export function MenuAdminView() {
                               data-menu-archive=""
                               onClick={() => {
                                 archiveMenuItem(item.id);
-                                persistWrite(item.vendorId || "", "update");
+                                persistWrite(item.vendorId || "", "update", item.id);
                               }}
                             >
                               Archive
@@ -588,7 +596,7 @@ export function MenuAdminView() {
                             name: editName.trim() || sheet.name,
                             priceCents: Math.round(Number(editPrice) * 100) || sheet.priceCents,
                           });
-                          persistWrite(sheet.vendorId || "", "update");
+                          persistWrite(sheet.vendorId || "", "update", sheet.id);
                           if (pendingPrice?.menuItemId === sheet.id) clearPendingPrice();
                           setSheetId(null);
                         }}
@@ -601,7 +609,7 @@ export function MenuAdminView() {
                         data-item-86=""
                         onClick={() => {
                           toggleItemAvailable(sheet.id);
-                          persistWrite(sheet.vendorId || "", "toggle");
+                          persistWrite(sheet.vendorId || "", "toggle", sheet.id);
                         }}
                       >
                         {sheet.available ? "86" : "Un-86"}
@@ -613,7 +621,7 @@ export function MenuAdminView() {
                         onClick={() => {
                           if (sheet.archived) restoreMenuItem(sheet.id);
                           else archiveMenuItem(sheet.id);
-                          persistWrite(sheet.vendorId || "", "update");
+                          persistWrite(sheet.vendorId || "", "update", sheet.id);
                         }}
                       >
                         {sheet.archived ? "Restore" : "Archive"}
@@ -645,7 +653,7 @@ export function MenuAdminView() {
                 if (!deleteId) return;
                 const item = menuItemsAll.find((row) => row.id === deleteId);
                 const res = deleteMenuItem(deleteId);
-                if (res && "ok" in res && res.ok) persistWrite(item?.vendorId || "", "delete");
+                if (res && "ok" in res && res.ok) persistWrite(item?.vendorId || "", "delete", deleteId);
                 setDeleteId(null);
               }}
             >

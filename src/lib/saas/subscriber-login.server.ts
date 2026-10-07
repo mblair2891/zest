@@ -124,17 +124,19 @@ export async function provisionSubscriberOwner(opts: {
   const password = generateOneTimePassword();
   await upsertCredential(sql, userId, password);
 
+  // user_id is the primary key. The prospect unique index is partial
+  // (prospect_id IS NOT NULL), so ON CONFLICT (prospect_id) cannot infer it.
   await sql`
     insert into subscriber_logins (
       user_id, prospect_id, username, must_change_password, invite_sent_at, created_at, updated_at
     )
     values (${userId}, ${opts.prospect.id}, ${username}, ${true}, ${now}, ${now}, ${now})
-    on conflict (prospect_id) do update set
-      user_id = ${userId},
+    on conflict (user_id) do update set
+      prospect_id = excluded.prospect_id,
       username = excluded.username,
       must_change_password = true,
-      invite_sent_at = ${now},
-      updated_at = ${now}
+      invite_sent_at = excluded.invite_sent_at,
+      updated_at = excluded.updated_at
   `;
 
   await sql`

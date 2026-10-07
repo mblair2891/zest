@@ -3,6 +3,8 @@ import { uid } from "@/lib/utils";
 import { enqueueMutation, useNetworkStore } from "@/lib/pos/network-store";
 import { usePosStore } from "@/lib/pos/store";
 import { readStationDeviceRole } from "@/lib/pos/device-roles";
+import { stationFloorFields } from "@/lib/pos/station-pair";
+import { useOpsStore } from "@/lib/pos/ops-store";
 import type { KitchenTicket, Order, OrderLine, Payment, Table, TicketStation } from "@/lib/pos/types";
 import type {
   FloorActor,
@@ -34,6 +36,11 @@ const POLL_MS = 3000;
 const LOCAL_GRACE_MS = 20_000;
 
 const lineDebounce = new Map<string, ReturnType<typeof setTimeout>>();
+
+function withStation<T extends Record<string, unknown>>(data: T): T {
+  const extra = stationFloorFields();
+  return extra ? { ...data, ...extra } : data;
+}
 
 function actor(): FloorActor | undefined {
   try {
@@ -292,6 +299,30 @@ export function applyOpenFloor(floor: OpenFloor): void {
     menuItems,
     activeOrderId: activeStill ? s.activeOrderId : s.activeOrderId,
   });
+  if (floor.punches) {
+    const ops = useOpsStore.getState();
+    const serverIds = new Set(floor.punches.map((p) => p.id));
+    const localPunches = ops.punches.filter(
+      (p) => !serverIds.has(p.id) && now - (p.clockInAt || 0) < LOCAL_GRACE_MS,
+    );
+    useOpsStore.setState({
+      punches: [
+        ...floor.punches.map((p) => ({
+          id: p.id,
+          employeeId: p.employeeId,
+          employeeName: p.employeeName,
+          operatorId: p.operatorId,
+          clockInAt: p.clockInAt,
+          clockOutAt: p.clockOutAt ?? undefined,
+          status: p.status === "open" ? ("open" as const) : ("auto_approved" as const),
+          redFlag: false,
+          regularMinutes: p.regularMinutes,
+          otMinutes: p.otMinutes,
+        })),
+        ...localPunches,
+      ],
+    });
+  }
   void notifyRemoteTicketChanges(prevById, serverTickets);
 }
 
@@ -347,7 +378,7 @@ export async function hydrateFloor(locationId: string): Promise<void> {
   if (!locationId) return;
   if (!useNetworkStore.getState().wanOnline()) return;
   try {
-    const floor = await listOpenFloorFn({ data: { locationId } });
+    const floor = await listOpenFloorFn({ data: withStation({ locationId }) });
     applyOpenFloor(floor);
   } catch {
     /* stay on cache */
@@ -401,13 +432,13 @@ export async function persistAfterLocalMutation(kind: string, id?: string): Prom
       },
       async () => {
         await setItem86Fn({
-          data: {
+          data: withStation({
             locationId,
             itemId: item.id,
             available: item.available,
             vendorId: item.vendorId ?? null,
             actor: who,
-          },
+          }),
         });
       },
     );
@@ -426,7 +457,7 @@ export async function persistAfterLocalMutation(kind: string, id?: string): Prom
       { locationId, check, table, actor: who },
       async () => {
         await upsertCheckFn({
-          data: { locationId, check, clientMutationId: uid("mut"), actor: who },
+          data: withStation({ locationId, check, clientMutationId: uid("mut"), actor: who }),
         });
         if (kind === "lines-flush" || kind === "lines") {
           await addCheckLinesFn({
@@ -461,7 +492,7 @@ export async function persistAfterLocalMutation(kind: string, id?: string): Prom
       "Tickets are live on ODS when this device is online",
       { locationId, check, tickets: floorTickets, table, actor: who },
       async () => {
-        await upsertCheckFn({ data: { locationId, check, actor: who } });
+        await upsertCheckFn({ data: withStation({ locationId, check, actor: who }) });
         await sendToStationsFn({
           data: {
             locationId,
@@ -489,7 +520,7 @@ export async function persistAfterLocalMutation(kind: string, id?: string): Prom
       "Payment posted on the shared check",
       { locationId, check, table, actor: who },
       async () => {
-        await upsertCheckFn({ data: { locationId, check, actor: who } });
+        await upsertCheckFn({ data: withStation({ locationId, check, actor: who }) });
         await recordCheckPaymentFn({
           data: {
             locationId,
@@ -523,7 +554,7 @@ export async function persistAfterLocalMutation(kind: string, id?: string): Prom
         if (kind === "start") await odsStartFn({ data });
         else if (kind === "ready") await odsReadyFn({ data });
         else if (kind === "recall") await odsRecallFn({ data });
-        else await odsBumpFn({ data });
+        else await odsBumpFn({ data: withStation(data) });
       },
     );
     return;
@@ -558,7 +589,10 @@ export async function persistAfterLocalMutation(kind: string, id?: string): Prom
         const order = table?.orderId ? s.orders.find((o) => o.id === table.orderId) : undefined;
         if (order) {
           await upsertCheckFn({
-            data: { locationId, check: orderToFloorCheck(order, locationId, s.tickets) },
+            data: withStation({
+              locationId,
+              check: orderToFloorCheck(order, locationId, s.tickets),
+            }),
           });
         }
       },
@@ -593,7 +627,7 @@ export function useStationTicketPolling(
       if (cancelled) return;
       if (!useNetworkStore.getState().wanOnline()) return;
       void listStationTicketsFn({
-        data: { locationId, station, operatorId: operatorId ?? null },
+        data: withStation({ locationId, station, operatorId: operatorId ?? null }),
       })
         .then((res) => {
           if (cancelled) return;

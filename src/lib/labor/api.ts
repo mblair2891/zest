@@ -1,5 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 import { tenantMiddleware } from "@/lib/saas/tenant-middleware";
+import { floorSessionMiddleware } from "@/lib/pos/floor-session";
 import { HOST_SCOPE, canEditSchedule, canViewPayroll, canViewSchedule } from "@/lib/access/entity-grants";
 import { parseGrantMatrix } from "@/lib/access/entity-grants";
 import { hashPin } from "@/lib/pos/pin";
@@ -91,6 +92,54 @@ export const saveShiftsFn = createServerFn({ method: "POST" })
       `;
     }
     return { ok: true as const, count: data.shifts.length };
+  });
+
+export const deleteShiftsFn = createServerFn({ method: "POST" })
+  .middleware([tenantMiddleware])
+  .validator((d: { orgId: string; locationId: string; ids: string[] }) => ({
+    orgId: String(d.orgId ?? "").trim(),
+    locationId: loc(d.locationId),
+    ids: Array.isArray(d.ids)
+      ? [...new Set(d.ids.map((id) => String(id ?? "").trim().slice(0, 80)).filter(Boolean))].slice(0, 400)
+      : [],
+  }))
+  .handler(async ({ context, data }) => {
+    if (!data.ids.length) return { ok: true as const, count: 0 };
+    const { loadEntityWriteContext } = await import("@/lib/access/assert-entity.server");
+    const { ForbiddenError } = await import("@/lib/saas/tenancy.server");
+    const ctx = await loadEntityWriteContext(context.userId, data.orgId, data.locationId);
+    const matrix = parseGrantMatrix(ctx.setup.entityPermissions);
+    const hostEdit = Boolean((ctx.setup as { hostMayEditEntitySchedules?: boolean }).hostMayEditEntitySchedules);
+    const peerVenue = Boolean(
+      (ctx.setup as { peerVenue?: boolean; operatingModel?: string }).peerVenue ||
+        (ctx.setup as { operatingModel?: string }).operatingModel === "peer_venue",
+    );
+    const emp = {
+      role: ctx.role === "vendor" ? ("vendor_operator" as const) : ctx.role === "owner" || ctx.role === "manager" ? ctx.role : ("manager" as const),
+      operatorId: ctx.operatorId === HOST_SCOPE ? undefined : ctx.operatorId,
+    };
+    const { getSql } = await import("@/lib/db");
+    const sql = await getSql();
+    let count = 0;
+    for (const id of data.ids) {
+      const rows = await sql<{ operator_id: string | null }>`
+        select operator_id from location_shifts
+        where id = ${id} and location_id = ${data.locationId}
+        limit 1
+      `;
+      const row = rows[0];
+      if (!row) continue;
+      const target = row.operator_id || HOST_SCOPE;
+      if (!canEditSchedule(emp, matrix, target, hostEdit, peerVenue)) {
+        throw new ForbiddenError("Cannot edit this entity’s schedule");
+      }
+      await sql`
+        delete from location_shifts
+        where id = ${id} and location_id = ${data.locationId}
+      `;
+      count += 1;
+    }
+    return { ok: true as const, count };
   });
 
 export const listShiftsFn = createServerFn({ method: "POST" })
@@ -408,11 +457,13 @@ export const setStaffPinFn = createServerFn({ method: "POST" })
   });
 
 export const upsertPunchFn = createServerFn({ method: "POST" })
-  .middleware([tenantMiddleware])
+  .middleware([floorSessionMiddleware])
   .validator(
     (d: {
       orgId: string;
       locationId: string;
+      stationDeviceId?: string;
+      stationPin?: string;
       punch: {
         id: string;
         employeeId: string;
@@ -427,6 +478,8 @@ export const upsertPunchFn = createServerFn({ method: "POST" })
     }) => ({
       orgId: String(d.orgId ?? "").trim(),
       locationId: loc(d.locationId),
+      stationDeviceId: String(d.stationDeviceId ?? "").trim().slice(0, 80),
+      stationPin: String(d.stationPin ?? "").replace(/\D/g, "").slice(0, 8),
       punch: {
         id: String(d.punch.id ?? "").slice(0, 80),
         employeeId: String(d.punch.employeeId ?? "").slice(0, 80),
@@ -441,15 +494,37 @@ export const upsertPunchFn = createServerFn({ method: "POST" })
     }),
   )
   .handler(async ({ context, data }) => {
-    const { loadEntityWriteContext } = await import("@/lib/access/assert-entity.server");
-    const ctx = await loadEntityWriteContext(context.userId, data.orgId, data.locationId);
-    const employerId = data.punch.employerId || ctx.operatorId || HOST_SCOPE;
-    if (ctx.role === "vendor" && ctx.operatorId !== employerId && ctx.operatorId !== HOST_SCOPE) {
-      const { ForbiddenError } = await import("@/lib/saas/tenancy.server");
-      throw new ForbiddenError("Clock is scoped to your employer entity");
-    }
     const { getSql } = await import("@/lib/db");
     const sql = await getSql();
+    let orgId = data.orgId;
+    let locationId = data.locationId;
+    let employerId = data.punch.employerId || HOST_SCOPE;
+    if (context.userId) {
+      const { loadEntityWriteContext } = await import("@/lib/access/assert-entity.server");
+      const ctx = await loadEntityWriteContext(context.userId, data.orgId, data.locationId);
+      employerId = data.punch.employerId || ctx.operatorId || HOST_SCOPE;
+      if (ctx.role === "vendor" && ctx.operatorId !== employerId && ctx.operatorId !== HOST_SCOPE) {
+        const { ForbiddenError } = await import("@/lib/saas/tenancy.server");
+        throw new ForbiddenError("Clock is scoped to your employer entity");
+      }
+      orgId = ctx.orgId;
+      locationId = ctx.locationId;
+    } else {
+      const { authorizeStationFloor } = await import("@/lib/pos/station-pin-auth.server");
+      const { UnauthorizedError } = await import("@/lib/auth/verify.server");
+      const grant = await authorizeStationFloor({
+        pin: data.stationPin,
+        deviceId: data.stationDeviceId,
+        locationId: data.locationId,
+      });
+      if (!grant.ok) {
+        const err = new UnauthorizedError();
+        if (grant.error) err.message = grant.error;
+        throw err;
+      }
+      orgId = grant.grant.orgId;
+      locationId = grant.grant.locationId;
+    }
     const inAt = new Date(data.punch.clockInAt).toISOString();
     const outAt = data.punch.clockOutAt ? new Date(data.punch.clockOutAt).toISOString() : null;
     await sql`
@@ -457,7 +532,7 @@ export const upsertPunchFn = createServerFn({ method: "POST" })
         id, org_id, location_id, employer_id, employee_id, employee_name,
         clock_in_at, clock_out_at, regular_minutes, ot_minutes, status, updated_at
       ) values (
-        ${data.punch.id}, ${ctx.orgId}, ${ctx.locationId}, ${employerId},
+        ${data.punch.id}, ${orgId}, ${locationId}, ${employerId},
         ${data.punch.employeeId}, ${data.punch.employeeName},
         ${inAt}, ${outAt}, ${data.punch.regularMinutes}, ${data.punch.otMinutes},
         ${data.punch.status}, now()

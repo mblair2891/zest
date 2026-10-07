@@ -26,6 +26,7 @@ export {
 export type DeviceRole = "order" | "ods" | "host" | "kiosk";
 
 export const STATION_PAIR_KEY = "summex-station-pair-v1";
+const STATION_PIN_KEY = "summex-station-pin-v1";
 
 export type StationPairRecord = {
   locationId: string;
@@ -84,6 +85,40 @@ export function writeStationPair(row: StationPairRecord): void {
   }
 }
 
+export function rememberStationPin(pin: string): void {
+  if (typeof window === "undefined") return;
+  const digits = String(pin ?? "").replace(/\D/g, "").slice(0, 8);
+  if (digits.length < 4) return;
+  try {
+    sessionStorage.setItem(STATION_PIN_KEY, digits);
+  } catch {
+    /* private mode */
+  }
+}
+
+export function clearStationPin(): void {
+  if (typeof window === "undefined") return;
+  try {
+    sessionStorage.removeItem(STATION_PIN_KEY);
+  } catch {
+    /* ignore */
+  }
+}
+
+/** Device id plus the PIN entered on this paired tablet. Omitted when the pad is locked. */
+export function stationFloorFields(): { stationDeviceId: string; stationPin: string } | null {
+  if (typeof window === "undefined") return null;
+  const pair = readStationPair();
+  let pin = "";
+  try {
+    pin = sessionStorage.getItem(STATION_PIN_KEY) || "";
+  } catch {
+    pin = "";
+  }
+  if (!pair?.deviceId || !pair.locationId || pin.length < 4) return null;
+  return { stationDeviceId: pair.deviceId, stationPin: pin };
+}
+
 export function clearStationPair(): void {
   if (typeof window === "undefined") return;
   try {
@@ -91,6 +126,7 @@ export function clearStationPair(): void {
   } catch {
     /* ignore */
   }
+  clearStationPin();
 }
 
 /** Drop local pair + publish/role so this tablet returns to the pair-code field. */

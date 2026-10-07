@@ -1,7 +1,7 @@
 # Feature status
 
 **Date:** 7 Oct 2026  
-**Tree:** `main` after `d062a8b` (Operators Guide v2026.10.196).  
+**Tree:** live-path fixes on `main` (Operators Guide v2026.10.197).  
 **How this was read:** routes under `src/routes`, `createServerFn` handlers, `migrations/`, Operators Guide topics in `src/lib/guide/content`, and the server functions those screens call. A live venue was not clicked.
 
 **100% means all three:** a screen, a save that writes Postgres (a table or `locations.setup`), and a read that loads that same row again. A refresh would still show the result. A button that only updates the browser, a seed, or a handler that returns without writing is not complete.
@@ -18,6 +18,16 @@
 
 **Location and entity admins added from Users.** `TenantUsersPanel` calls `addLocationAdminFn` and `addFloorStaffFn`. `addLocationAdmin` stores the password on the auth account and upserts `subscriber_logins` on `user_id` (`src/lib/saas/tenant-users.server.ts`). `listTenantUsersFn` reads them back. An entity admin is the same row with `memberships.operator_id` set. The venue header uses `entityLoginHeader` (`src/lib/saas/entity-owner.ts`): entity name, then the venue.
 
+**Venue owner login after the contract is signed.** `markContractSigned` calls `provisionSubscriberOwner` (`src/lib/saas/subscriber-login.server.ts`). The insert uses `on conflict (user_id)`, the primary key. The partial unique index on `prospect_id` is not the conflict target. Users → Add location admin is the other insert and is unchanged. Signing writes the `subscriber_logins` row the back office reads.
+
+**Entity menu save.** `saveMenuItemFn` (`src/lib/access/api.ts`) merges that entity’s item with `applyEntityMenuWrite` (`src/lib/pos/menu-catalog-write.ts`) and updates `locations.setup.menuCatalog` only. `PosApp` copies that catalog back on load. A row that already belongs to another entity is refused. House payouts are other keys on setup and are not written here.
+
+**Shift delete.** Remove on the grid calls `deleteShiftsFn` (`src/lib/labor/api.ts`), which deletes that `location_shifts` row when `canEditSchedule` allows it, and does not upsert the deleted id. `rewritePlacedFromPattern` drops a shift whose day left the pattern. Save with Update placed deletes those rows. `listShiftsFn` does not restore them.
+
+**PIN station floor.** `listOpenFloorFn`, `upsertCheckFn`, `odsBumpFn`, `setItem86Fn`, and `upsertPunchFn` use `floorSessionMiddleware` (`src/lib/pos/floor-session.ts`). With no password, `authorizeStationFloor` checks the paired device and the PIN for that location (`src/lib/pos/station-pin-auth.server.ts`). The poll sends `stationFloorFields`. `listOpenFloor` returns open checks, tickets, the 86 map, and open punches, so another paired tablet at that location sees the check, the bump, the 86, and the punch. Password login still uses membership for the back office. `recordCheckPaymentFn` and live card capture still require a password session.
+
+**Live Finix card.** The default processor is `finix`. Live capture calls `captureFinixCardPresent` (`src/lib/payments/finix-card.server.ts`), which authorizes with `FINIX_API_KEY` and the entity `finix_merchant_id` (`authorizeCardPresent` in `src/lib/payments/finix.ts`). That path does not call `api.stripe.com` or `quantumSecretKey`. Stripe Terminal still runs only when `cardProcessor` is `stripe`, through `captureStripeTerminal`. Square still returns before either rail. Finix keys alone do not take the empty-Quantum-secret branch.
+
 **Floor PIN on a paired tablet.** `pairStationFn` sets `location_devices` online. Users writes `location_staff.pin_hash` and `pin_display` (`migrations/0013_schedule_payroll.sql`, `0040_staff_pin_display.sql`). `verifyStationPin` (`src/lib/pos/station-pin-auth.server.ts`) accepts that PIN when the device status is `online`. `listTenantUsers` shows the PIN again after refresh. Enter is not clock-in.
 
 **Peer venue with no host.** `operating_model = 'peer_venue'` clears `host_entity_id` (`migrations/0039_peer_venue.sql`). Onboarding stores `peerVenue` and does not start a host merchant (`src/lib/saas/onboarding.server.ts`). `assertEntitiesCanCapture` rejects a host share: the venue name is not a selling merchant (`src/lib/payments/onboarding.server.ts`). A line still needs a selling entity (`assertPeerLineOwner`).
@@ -26,7 +36,7 @@
 
 **Peer-venue entity floor publish.** On a peer venue the entity editor shows Publish floor and calls `publishEntityFloorFn`. `publishEntityFloor` (`src/lib/pos/entity-floor-publish.server.ts`) merges only that entity’s rooms into `locations.setup.floorPlan` and the station floor snapshot. It refuses a host id, another entity’s login, and a venue that is not peer. Another entity’s rooms and House rooms stay as stored. Refresh loads the merged plan.
 
-**86 on a signed-in session.** `toggleItemAvailable` calls `setItem86Fn`, which writes `locations.setup.item86` (`src/lib/pos/floor.server.ts`). `listOpenFloor` returns that map and `applyItem86Overlay` paints the menu (`src/lib/pos/floor-sync.ts`). A signed-in refresh shows the 86.
+**86.** `toggleItemAvailable` calls `setItem86Fn`, which writes `locations.setup.item86` (`src/lib/pos/floor.server.ts`). `listOpenFloor` returns that map and `applyItem86Overlay` paints the menu (`src/lib/pos/floor-sync.ts`). A password session and a paired tablet with a valid PIN both write it. The next poll shows it.
 
 **Menu edits by a location owner or manager.** `MenuAdminView` updates the local menu, then `persistLocationCatalog("menu")` writes `locations.setup.menuCatalog` through `saveLocationSettingsFn`. `PosApp` copies `setup.menuCatalog` back in on load. Archive is a flag on the item in that catalog, not a hard delete.
 
@@ -36,7 +46,7 @@
 
 **Printer and station records.** `LocationDeviceRegistry` calls `saveLocationDeviceFn`, which writes `location_devices` and `locations.setup.locationDevices` (`src/lib/access/api.ts`). The list reads that setup back. A receipt printer, an order printer, and a paired tablet are the same device record.
 
-**Operators Guide.** `/guide` renders `OperatorsGuide` from `src/lib/guide`. It is the published manual (v2026.10.196), not a record the venue saves.
+**Operators Guide.** `/guide` renders `OperatorsGuide` from `src/lib/guide`. It is the published manual (v2026.10.197), not a record the venue saves.
 
 ---
 
@@ -44,17 +54,17 @@
 
 **Quote and invite email.** `sendEmail` (`src/lib/saas/email.server.ts`) posts to Resend when `RESEND_API_KEY` or `EMAIL_API_KEY` is set. With no key it inserts `email_outbox` as `logged_only`. The quote row is still saved. The screen says email not sent.
 
-**Menu and catalog saves by an entity login.** `saveMenuItemFn` checks `edit_menu` and returns `{ ok: true }` without writing the item (`src/lib/access/api.ts`). The real catalog write is `saveLocationSettingsFn`, and `assertHostOrgWrite` rejects a vendor membership (`src/lib/access/assert-host.server.ts`: “Guest operators cannot change host settings or payouts”). The item changes in the browser. A refresh loads the previous `menuCatalog`. This is the file that stops an entity owner’s menu.
+**Entity catalog flush through host settings.** `persistLocationCatalog("menu")` still calls `saveLocationSettingsFn`, and `assertHostOrgWrite` rejects a vendor membership. The durable entity write is `saveMenuItemFn` into `menuCatalog` (see Complete). House payouts stay on that host path.
 
 **Entity floor on a hosted venue (a host merchant exists).** Entity autosave in `flushLocationCatalog` returns after `writeFloorDraft` when the editor is an entity (`src/lib/pos/persist-location-setup.ts`). Publish floor is rendered only for a peer venue. On a hosted venue the draft stays in this browser. A refresh that does not restore that draft shows the last published plan.
 
 **New room before a floor flush.** Add room calls `upsertFloorSection` and then `persistPrinterAssignments` (`FloorEditorView`). That save writes `locationDevices` only (`src/lib/pos/persist-location-setup.ts`). The room trash control calls `removeFloorSection` and does not write `floorPlan`. A refresh before a later floor flush drops the new room and restores a removed one.
 
-**Schedule delete, and Update placed on a dropped day.** There is no `delete from location_shifts` on the schedule save path. Demo purge, factory reset, and entity delete are the deletes. `removeShift` filters the browser list, and `persist` upserts only the shifts still in the visible window (`EntityScheduleView`). `listShiftsFn` loads the old row again. Update placed rewrites hours and role on days still in the pattern. It does not remove a shift for a day that left the pattern, because that would need the missing delete. Publish week in pay-period mode still marks the calendar week in the browser, then `persist` upserts only the pay-period window. A day of that week outside the period stays unpublished on the server.
+**Publish week in pay-period mode.** Publish week marks the calendar week in the browser, then `persist` upserts only the pay-period window. A day of that week outside the period stays unpublished on the server. Remove and Update placed on a dropped day do delete the `location_shifts` row.
 
-**Clock-in.** `upsertPunchFn` inserts `location_punches` (`src/lib/labor/api.ts`). HR payroll export reads that table. The station clock keeps punches in the local ops store. Nothing loads `location_punches` back onto the pad, and `listLocationStaff` reports `clockedIn: false`. The write also requires a password session (see Broken).
+**Clock-in on a pad that has not entered a PIN.** `upsertPunchFn` inserts `location_punches`. A paired tablet with a valid PIN writes that row, and `listOpenFloor` returns open punches so another paired tablet’s poll shows them. `listLocationStaff` still reports `clockedIn: false`. A station that never stored a PIN does not load punches. The station clock still reads `publishedShiftsForClock` on the local ops store, and `listShiftsFn` runs from the schedule screen.
 
-**ODS and the shared floor.** `pos_checks`, `pos_check_items`, `pos_tickets`, and `pos_table_status` are real (`migrations/0022_pos_floor.sql`). `odsStart` / `odsBump` update `pos_tickets`. `listOpenFloor` returns open checks plus checks closed or updated in the last 12 hours (`OPEN_WINDOW_MS`), capped at 400. With a password session on both browsers, a bump is visible to the other poll. Without that session the write never lands (see Broken). Same-browser refresh still shows the local store.
+**ODS start, ready, and recall.** `odsBump` and the open-floor poll work from a paired PIN. `odsStartFn`, `odsReadyFn`, and `odsRecallFn` still use `tenantMiddleware`, so those three actions need a password session. A bump from a PIN tablet is on `pos_tickets`, and the next poll sees it. `listOpenFloor` still returns open checks plus checks closed or updated in the last 12 hours, capped at 400.
 
 **Reports.** `ReportsView` uses `metricsFromPosStore` (`src/lib/reports/from-store.ts`). There is no report query. A signed-in fresh browser sees about 12 hours of checks after floor hydrate, not older history. Chargebacks are an array on the POS store (`fileChargeback` in `src/lib/pos/store.ts`), not a table, so another browser does not see them.
 
@@ -62,7 +72,7 @@
 
 **Gift cards when the server call fails.** Signed-in issue and redeem use Postgres. If issue throws, the pay screen falls back to the local gift list. That balance is not on `/gift` and not on another browser. Offline redeem uses the same local list.
 
-**Quantum Payments sandbox, and the live rails as they are wired.** Training (any lifecycle other than `live`) forces sandbox (`lifecycleForcesSandbox` in `src/lib/payments/mode.ts`). Sandbox capture inserts `summex_payments` and does not charge a card. Square is a separate checkout (`startSquareCheckout`, `square_checkouts` in `migrations/0050_square_terminal.sql`) and does not fall through to Finix. Stripe Terminal, when `cardProcessor` is `stripe`, uses `STRIPE_SECRET_KEY` and does not also charge Finix. See Broken for what the default Finix rail does with a live card.
+**Quantum Payments sandbox, Square, and Stripe as separate rails.** Training (any lifecycle other than `live`) forces sandbox (`lifecycleForcesSandbox` in `src/lib/payments/mode.ts`). Sandbox capture inserts `summex_payments` and does not charge a card. Square is a separate checkout (`startSquareCheckout`, `square_checkouts` in `migrations/0050_square_terminal.sql`) and does not fall through to Finix. Stripe Terminal, when `cardProcessor` is `stripe`, uses `STRIPE_SECRET_KEY` and journals the split. The default live rail is Finix (see Complete).
 
 **Settlement leftovers.** Period close writes the in-app ledger (`src/lib/pos/settlement.ts`) with a last4 label. `queueOperatorPayouts` can call Finix only after that merchant is live-approved; otherwise it no-ops. It is not a payout of leftover host cut and fees.
 
@@ -80,19 +90,9 @@ Public signup is not an unfinished screen. `/signup` and `/register` redirect to
 
 ## 4. Broken
 
-These paths are wired and fail when someone uses them.
+The five paths named on 7 Oct 2026 are fixed in this tree: contract-signed owner login, entity menu save, shift delete, a PIN floor (open check, bump, 86, punch), and the live Finix card rail. See Complete.
 
-**Contract-signed venue owner cannot get a login row.** `provisionSubscriberOwner` (`src/lib/saas/subscriber-login.server.ts`) inserts `subscriber_logins` with `on conflict (prospect_id)`. `migrations/0037_tenant_users.sql` dropped the full unique index and left a partial one (`prospect_id` where it is not null). Postgres will not infer that index for `ON CONFLICT (prospect_id)` without the matching `WHERE`. `markContractSigned` calls this with no catch (`src/lib/saas/prospects.server.ts`), so signing the contract does not finish the owner login. Users → Add location admin is a different insert and is not this statement. The login form itself works for an account that already has `subscriber_logins` and a password.
-
-**Entity owner menu save does not survive refresh.** Covered under Partial. On use, Save returns success from `saveMenuItemFn` and the catalog write is rejected for a vendor login. Refresh shows the old menu.
-
-**Deleting a shift does not survive refresh.** Remove on the grid updates the browser only. The next `listShiftsFn` restores the row. Publish week and Place do survive refresh.
-
-**A PIN-only tablet does not share the floor, ODS, 86, or clock.** `listOpenFloorFn`, `upsertCheckFn`, `odsBumpFn`, `setItem86Fn`, and `upsertPunchFn` all use `tenantMiddleware`, which requires a password session (`src/lib/auth/middleware.ts` throws when signed out). A tablet that only has a pair code and a PIN has no session. The local store updates. The server call fails, the offline flush rejects a null user, and another tablet’s poll never sees the check, the bump, the 86, or the punch. `enqueueVenuePrintFn` and `verifyStationPin` do not use that middleware, so pair, PIN, and a queued print job are not this failure.
-
-**Default live card rail does not charge Finix.** `cardProcessor` defaults to `finix` (`src/lib/payments/adapter.ts`). In live mode `captureCardPresent` calls `captureLiveCardPresent` (`src/lib/payments/stripe-terminal.server.ts`), which POSTs `payment_intents` and `terminal/readers/{id}/process_payment_intent` to `https://api.stripe.com` with `quantumSecretKey()` (`QUANTUM_PAYMENTS_SECRET_KEY` or `SUMMEX_PAYMENTS_SECRET_KEY`). `liveAdapterConfigured()` is also true when only `FINIX_API_KEY` or `FINIX_APPLICATION_ID` is set, and the charge then returns “Live Quantum Payments is not configured” because the Quantum secret is empty. Finix `createSplitTransfer` runs after a successful capture, or returns a fake transfer id when Finix is off. Guest copy still says Quantum Payments.
-
-Peer-venue Publish floor, the location-contact whole-floor publish, and Set shifts Place were read against the current handlers and do not fail in the way the older gap notes described.
+What is still short of a full live house is under Partial. Live card capture and `recordCheckPaymentFn` still require a password session. ODS start, ready, and recall still require a password session. Offline flush of a signed-out queue still rejects a null user. `captureLiveCardPresent` remains in `stripe-terminal.server.ts` and is not on the default path.
 
 ---
 
@@ -103,8 +103,8 @@ A training house can take cash and a sandbox card. A live guest card still stops
 1. **Lifecycle is `live`.** Anything else, including a missing status, forces sandbox (`lifecycleForcesSandbox` in `src/lib/payments/mode.ts`).
 2. **The platform or location payments mode is live.** Default is sandbox unless `SUMMEX_PAYMENTS_MODE=live` or the location override is `live`.
 3. **Each selling entity that is on the check has an approved merchant.** `assertEntitiesCanCapture` requires `approved` or `live` and a `finix_merchant_id`. A peer venue has no host merchant. A host share on a peer check is rejected.
-4. **A secret the live call will actually send.** The default rail calls Stripe with `QUANTUM_PAYMENTS_SECRET_KEY` or `SUMMEX_PAYMENTS_SECRET_KEY`. Finix application keys alone do not take the card. The Stripe dropdown needs `STRIPE_SECRET_KEY` and a live key only after the location is Live. Square needs `SQUARE_ENVIRONMENT=production`, `squareLiveCards`, a token, and a paired terminal (`square-terminal.server.ts`).
+4. **Finix credentials and the selling entity’s merchant.** The default live rail uses `FINIX_API_KEY` (with `FINIX_APPLICATION_ID`, or a user:pass key) and that entity’s `finix_merchant_id`. A Quantum secret is not the default rail. The Stripe dropdown needs `STRIPE_SECRET_KEY` and a live key only after the location is Live. Square needs `SQUARE_ENVIRONMENT=production`, `squareLiveCards`, a token, and a paired terminal (`square-terminal.server.ts`).
 5. **An enrolled reader id on the live Finix/Quantum path.** No reader returns `requires_terminal`.
-6. **The check is paid from a browser that has a password session** if the payment is recorded through the floor APIs. A PIN-only tablet does not have that session, so the shared check write fails even when the processor would have approved.
+6. **Recording the payment still needs a password session.** `recordCheckPaymentFn` and `captureCardPresent` use `tenantMiddleware`. A PIN tablet can write the open check, the bump, the 86, and the punch. Paying the check through those two functions still needs the back-office session.
 
 Sandbox approval, a last4 on file, and a training lifecycle do not take a live Visa.
