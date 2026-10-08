@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
-import { resolveServiceFloor, withSeededPublishedFloor } from "../src/lib/pos/published-floor.ts";
+import { clearedFloorSetup, resolveServiceFloor, withSeededPublishedFloor } from "../src/lib/pos/published-floor.ts";
 
 const plan = {
   tables: [
@@ -114,6 +114,38 @@ test("live floor uses the published snapshot, then the seeded plan, and keeps ho
   });
   assert.deepEqual(rows.tables.map((t) => t.id), ["live"]);
 
+  const cleared = resolveServiceFloor({
+    publishedTables: [],
+    seededTables: [{ id: "t1" }, { id: "b1" }],
+    draftTables: [],
+    currentTables: [],
+    autoPublishSeed: true,
+  });
+  assert.deepEqual(cleared.tables, []);
+  assert.equal(cleared.autoPublish, false);
+
+  const setup = clearedFloorSetup(
+    {
+      configVersion: 4,
+      menuCatalog: { items: [{ id: "burger" }] },
+      floorPlan: { tables: [{ id: "t1" }], sections: [{ id: "dining", name: "Dining" }] },
+      stationPublish: {
+        version: 2,
+        publishedByName: "Owner",
+        setup: { menuCatalog: { items: [{ id: "burger" }] }, floorPlan: { tables: [{ id: "t1" }] } },
+      },
+    },
+    { sections: [{ name: "Dining" }, { name: "Bar" }], room: { widthIn: 240, depthIn: 180 } },
+  );
+  const plan = setup.floorPlan as { tables: unknown[]; sections: { name: string }[] };
+  assert.equal(plan.tables.length, 0);
+  assert.deepEqual(plan.sections.map((section) => section.name), ["Dining", "Bar"]);
+  assert.equal(setup.tableCount, 0);
+  const snap = setup.stationPublish as { version: number; setup: { menuCatalog: { items: { id: string }[] }; floorPlan: { tables: unknown[] } } };
+  assert.equal(snap.version, 3);
+  assert.equal(snap.setup.floorPlan.tables.length, 0);
+  assert.equal(snap.setup.menuCatalog.items[0]?.id, "burger");
+
   const floor = readFileSync("src/components/pos/FloorView.tsx", "utf8");
   assert.match(floor, /data-floor-house="venue"/);
   assert.match(floor, /painted/);
@@ -123,6 +155,7 @@ test("live floor uses the published snapshot, then the seeded plan, and keeps ho
   assert.match(app, /autoPublishSeed: demoFullService && !keepOpenFloor/);
   assert.match(app, /bundledStarter/);
   assert.match(app, /summitHallFloorPlan/);
+  assert.match(app, /if \(publishedEmpty\) nextTables = \[\]/);
   assert.match(app, /flushLocationCatalog\("floor"\)/);
   assert.match(app, /publishLocationFn/);
   const persist = readFileSync("src/lib/pos/persist-location-setup.ts", "utf8");

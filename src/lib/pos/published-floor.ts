@@ -47,22 +47,28 @@ export function resolveServiceFloor<T extends { id: string }>(opts: {
   if (opts.publishedTables && opts.publishedTables.length > 0) {
     return { tables: opts.publishedTables, fromDraft: false, autoPublish: false };
   }
-  const snapshotMissing = opts.publishedTables == null || opts.publishedTables.length === 0;
-  if (snapshotMissing && opts.seededTables.length > 0 && opts.draftTables.length === 0) {
+  // [] is a published empty floor. Do not put the seeded plan back.
+  if (opts.publishedTables && opts.publishedTables.length === 0) {
+    if (opts.draftTables.length > 0) {
+      return { tables: opts.draftTables, fromDraft: true, autoPublish: false };
+    }
+    if (opts.currentTables.length > 0) {
+      return { tables: opts.currentTables, fromDraft: false, autoPublish: false };
+    }
+    return { tables: [], fromDraft: false, autoPublish: false };
+  }
+  if (opts.seededTables.length > 0 && opts.draftTables.length === 0) {
     return {
       tables: opts.seededTables,
       fromDraft: !opts.autoPublishSeed,
       autoPublish: Boolean(opts.autoPublishSeed),
     };
   }
-  if (opts.publishedTables && opts.publishedTables.length === 0 && opts.draftTables.length > 0) {
+  if (opts.draftTables.length > 0) {
     return { tables: opts.draftTables, fromDraft: true, autoPublish: false };
   }
   if (opts.currentTables.length > 0) {
     return { tables: opts.currentTables, fromDraft: false, autoPublish: false };
-  }
-  if (opts.draftTables.length > 0) {
-    return { tables: opts.draftTables, fromDraft: true, autoPublish: false };
   }
   if (opts.seededTables.length > 0) {
     return {
@@ -72,4 +78,50 @@ export function resolveServiceFloor<T extends { id: string }>(opts: {
     };
   }
   return { tables: [], fromDraft: false, autoPublish: false };
+}
+
+/** Empty the published floor and the station snapshot. Sections and other snapshot keys stay. */
+export function clearedFloorSetup(
+  setup: Record<string, unknown>,
+  plan: { sections?: Array<{ name?: string }>; room?: unknown },
+): Record<string, unknown> {
+  const emptyPlan = {
+    tables: [] as unknown[],
+    sections: plan.sections ?? [],
+    ...(plan.room ? { room: plan.room } : {}),
+  };
+  const sectionNames = emptyPlan.sections
+    .map((section) => String(section?.name ?? "").trim())
+    .filter(Boolean);
+  const prevRaw = setup.stationPublish;
+  const prev =
+    prevRaw && typeof prevRaw === "object" && !Array.isArray(prevRaw)
+      ? (prevRaw as Record<string, unknown>)
+      : {};
+  const prevSetupRaw = prev.setup;
+  const prevSetup =
+    prevSetupRaw && typeof prevSetupRaw === "object" && !Array.isArray(prevSetupRaw)
+      ? (prevSetupRaw as Record<string, unknown>)
+      : {};
+  const version = Math.max(0, Math.round(Number(prev.version) || 0)) + 1;
+  return {
+    ...setup,
+    floorPlan: emptyPlan,
+    tableCount: 0,
+    sectionNames,
+    floorLater: false,
+    configVersion: Math.max(0, Math.round(Number(setup.configVersion) || 0)) + 1,
+    stationPublish: {
+      ...prev,
+      version,
+      publishedAt: Date.now(),
+      publishedByName:
+        typeof prev.publishedByName === "string" && prev.publishedByName ? prev.publishedByName : "Owner",
+      setup: {
+        ...prevSetup,
+        floorPlan: emptyPlan,
+        sectionNames,
+      },
+    },
+  };
 }

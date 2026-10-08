@@ -6,6 +6,18 @@ import type { GuideUpdate } from "@/lib/guide/types";
  */
 export const WHATS_NEW_ENTRIES: GuideUpdate[] = [
   {
+    id: "upd_2026_10_200_clear_slate",
+    date: "2026-10-07",
+    title: "Clear slate is on the view bar",
+    summary: "Clear slate asks, then removes the pieces on the floor being edited. Rooms stay. Publish keeps the canvas empty.",
+    body: "Clear slate is on the floor view bar. It asks before it removes every table, booth, stool, wall, and bar on the floor being edited. Rooms stay. An entity owner clears only the rooms they own. The location contact clears the whole floor. Publish floor saves the empty canvas. A refresh does not restore the pieces.",
+    roles: ["owner_manager", "vendor_operator", "host_operator"],
+    surfaces: ["floor"],
+    audience: "all",
+    topicId: "floor-editor",
+    tags: ["floor"],
+  },
+  {
     id: "upd_2026_10_199_dockable_bars",
     date: "2026-10-07",
     title: "Two dockable floor bars",

@@ -12,7 +12,7 @@ import {
 } from "@/components/ui/dialog";
 import { usePosStore } from "@/lib/pos/store";
 import { useSaasStore } from "@/lib/pos/saas-store";
-import { entityFloorEditorId, floorEditMode, floorEditScope, placeSectionName } from "@/lib/pos/entity-floor";
+import { entityFloorEditorId, floorEditMode, floorEditScope, placeSectionName, tablesAfterClearSlate } from "@/lib/pos/entity-floor";
 import { publishEntityFloorFn } from "@/lib/pos/entity-floor-api";
 import { floorPlanFromPos, tablesFromFloorPlan } from "@/lib/saas/location-catalog";
 import { clearFloorDraft, readFloorDraft, writeFloorDraft } from "@/lib/pos/live-floor";
@@ -1558,10 +1558,25 @@ export function FloorEditorView() {
   }, []);
 
   const confirmClear = () => {
-    usePosStore.setState({ tables: [] });
+    const pos = usePosStore.getState();
+    const next = tablesAfterClearSlate(pos.tables, {
+      whole: wholeFloor,
+      entityId: wholeFloor ? null : editEntityId,
+      sections: pos.floorSections,
+    });
+    usePosStore.setState({ tables: next });
     selectOnly(null);
     setClearOpen(false);
-    persistClearedFloor();
+    cancelLocationCatalog("floor");
+    if (wholeFloor) {
+      persistClearedFloor();
+      return;
+    }
+    if (editEntityId && tenantLocationId) {
+      if (next.length) writeFloorDraft(tenantLocationId, next, pos.floorSections, editEntityId);
+      else clearFloorDraft();
+    }
+    persistLocationCatalog("floor");
   };
 
   const publishFloor = async () => {
@@ -1784,6 +1799,16 @@ export function FloorEditorView() {
           ))}
         </div>
         <div className={horizontal ? "flex shrink-0 flex-nowrap items-center gap-1" : "flex w-full flex-col flex-nowrap items-stretch gap-1"}>
+          <Button
+            type="button"
+            size="sm"
+            variant="outline"
+            className="h-7 shrink-0 px-2 text-xs"
+            data-floor-clear=""
+            onClick={() => setClearOpen(true)}
+          >
+            Clear slate
+          </Button>
           {floorMode === "entity" && peerVenue ? (
             <Button
               type="button"
@@ -2172,15 +2197,6 @@ export function FloorEditorView() {
               ) : null}
               {wholeFloor ? (
                 <div className="flex flex-wrap gap-1">
-                  <Button
-                    type="button"
-                    size="sm"
-                    variant="outline"
-                    data-floor-clear=""
-                    onClick={() => setClearOpen(true)}
-                  >
-                    Clear slate
-                  </Button>
                   <Button
                     type="button"
                     size="sm"
@@ -3174,6 +3190,11 @@ export function FloorEditorView() {
           <DialogHeader>
             <DialogTitle>{CLEAR_SLATE_CONFIRM}</DialogTitle>
           </DialogHeader>
+          <p className="text-sm text-muted-foreground">
+            {wholeFloor
+              ? "This removes every table, booth, stool, wall, and bar. Rooms stay."
+              : "This removes pieces in rooms this entity owns. Other rooms stay."}
+          </p>
           <DialogFooter>
             <Button type="button" variant="outline" onClick={() => setClearOpen(false)}>
               Cancel

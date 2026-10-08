@@ -92,9 +92,15 @@ export function floorEditScope(input: {
 }
 
 type MergeSection = { id: string; name: string; operatorId?: string | null };
-type MergeTable = { id: string; section?: string; sectionId?: string | null };
+type MergeTable = {
+  id: string;
+  section?: string | null;
+  sectionId?: string | null;
+  kind?: string | null;
+  railBarId?: string | null;
+};
 
-function ownedIndex(sections: MergeSection[], entityId: string) {
+function ownedIndex(sections: readonly MergeSection[], entityId: string) {
   const owned = sections.filter((section) => section.operatorId === entityId);
   return {
     ids: new Set(owned.map((section) => section.id)),
@@ -102,10 +108,48 @@ function ownedIndex(sections: MergeSection[], entityId: string) {
   };
 }
 
+export type ClearSlateTable = {
+  id: string;
+  kind?: string | null;
+  section?: string | null;
+  sectionId?: string | null;
+  railBarId?: string | null;
+};
+
+/**
+ * Location contact clears every piece. An entity clears pieces in rooms it owns,
+ * plus stools bound to a bar in those rooms. Other rooms, loans, and the section
+ * list stay. Rooms are not in this list.
+ */
+export function tablesAfterClearSlate<T extends ClearSlateTable>(
+  tables: readonly T[],
+  input: {
+    whole: boolean;
+    entityId: string | null;
+    sections: ReadonlyArray<{ id: string; name: string; operatorId?: string | null }>;
+  },
+): T[] {
+  if (input.whole) return [];
+  const entityId = String(input.entityId ?? "").trim();
+  if (!entityId) return [...tables];
+  const drop = new Set<string>();
+  for (const table of tables) {
+    if (tableInOwnedRooms(table, input.sections, entityId)) drop.add(table.id);
+  }
+  for (const table of tables) {
+    const rail = String(table.railBarId ?? "").trim();
+    if (!rail || !drop.has(rail) || drop.has(table.id)) continue;
+    const sectionId = String(table.sectionId ?? "").trim();
+    const name = String(table.section ?? "").trim();
+    if (!sectionId && !name) drop.add(table.id);
+  }
+  return tables.filter((table) => !drop.has(table.id));
+}
+
 /** A table is in this entity’s rooms by section id, or by name when the id is blank. */
 function tableInOwnedRooms(
   table: MergeTable,
-  sections: MergeSection[],
+  sections: readonly MergeSection[],
   entityId: string,
 ): boolean {
   const { ids, names } = ownedIndex(sections, entityId);
@@ -196,7 +240,18 @@ export function mergeEntityFloor<T extends MergeTable, S extends MergeSection, R
     used.add(table.id);
   }
 
-  return { tables, sections: nextSections, room: input.stored.room };
+  const present = new Set(tables.map((table) => table.id));
+  const kept = tables.filter((table) => {
+    const rail = String(table.railBarId ?? "").trim();
+    if (!rail || present.has(rail)) return true;
+    const bar = storedTables.find((row) => row.id === rail);
+    if (!bar || !tableInOwnedRooms(bar, storedSections, entityId)) return true;
+    const sectionId = String(table.sectionId ?? "").trim();
+    const name = String(table.section ?? "").trim();
+    return Boolean(sectionId || name);
+  });
+
+  return { tables: kept, sections: nextSections, room: input.stored.room };
 }
 
 /** Section a new piece lands in. Null when this entity has no assigned section. */

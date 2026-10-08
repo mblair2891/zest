@@ -594,18 +594,20 @@ function PosAppInner({ entityId }: { entityId?: string }) {
               const publishedRoom = (pubPlan as { room?: { widthIn: number; depthIn: number } }).room;
               if (publishedRoom && publishedRoom.widthIn > 0 && publishedRoom.depthIn > 0) room = publishedRoom;
             }
-            if (!nextTables.length && demoFullService) {
+            const publishedEmpty = publishedTables !== null && publishedTables.length === 0 && !resolved.fromDraft;
+            if (publishedEmpty) nextTables = [];
+            if (!nextTables.length && demoFullService && !publishedEmpty) {
               const plan = summitHallFloorPlan();
               nextTables = tablesFromFloorPlan(plan);
               sections = plan.sections;
               room = plan.room ?? room;
               autoPublish = true;
             }
-            if (nextTables.length || sections.length) {
+            if (nextTables.length || sections.length || publishedEmpty) {
               usePosStore.setState({
                 floorSections: sections,
                 ...(room && room.widthIn > 0 && room.depthIn > 0 ? { floorRoom: room } : {}),
-                ...(nextTables.length ? { tables: nextTables } : {}),
+                ...(nextTables.length || publishedEmpty ? { tables: nextTables } : {}),
               });
             }
             if (resolved.fromDraft && !autoPublish) setFloorDraftBanner(true);

@@ -1,5 +1,6 @@
 import { CASH_DISCOUNT_CONFIRM } from "@/lib/pos/cash-discount";
 import { saveLocationSettingsFn } from "@/lib/access/api";
+import { clearLocationFloorFn } from "@/lib/pos/floor-clear-api";
 import { useSaasStore } from "@/lib/pos/saas-store";
 import { usePosStore } from "@/lib/pos/store";
 import { useCostStore } from "@/lib/costs/store";
@@ -372,22 +373,18 @@ export function persistLaborRules(): void {
   );
 }
 
-/** Editor clear: empty object list, same room and sections. Does not publish. */
+/** Location contact clear: empty object list, same rooms, written to the station snapshot. */
 export function persistClearedFloor(): void {
   const ctx = ids();
   if (!ctx) return;
   const pos = usePosStore.getState();
   const plan = floorPlanFromPos([], pos.floorSections, pos.floorRoom);
   clearFloorDraft();
-  void saveLocationSettingsFn({
+  void clearLocationFloorFn({
     data: {
       orgId: ctx.orgId,
       locationId: ctx.locationId,
-      setup: {
-        floorPlan: plan,
-        tableCount: 0,
-        sectionNames: plan.sections.map((s) => s.name),
-      },
+      floorPlan: plan,
     },
   }).catch(() => undefined);
 }

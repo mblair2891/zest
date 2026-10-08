@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
-import { mergeEntityFloor } from "../src/lib/pos/entity-floor.ts";
+import { mergeEntityFloor, tablesAfterClearSlate } from "../src/lib/pos/entity-floor.ts";
 import { parseFloorPlan } from "../src/lib/saas/location-catalog.ts";
 
 const room = { widthIn: 504, depthIn: 336 };
@@ -132,6 +132,56 @@ test("publish drops a deleted bar and the stools bound to it", () => {
   assert.equal(merged.tables.find((table) => table.id === "loose")?.label, "B9");
   assert.equal(merged.tables.find((table) => table.id === "bOther")?.label, "B2");
   assert.equal(merged.tables.find((table) => table.id === "t2")?.sectionId, "sec_b");
+});
+
+test("clear slate keeps rooms and only the pieces an entity does not own", () => {
+  const sections = stored.sections;
+  const tables = [
+    ...stored.tables,
+    { id: "wall", kind: "wall", section: "Grill", sectionId: "sec_a" },
+    { id: "booth", kind: "booth_4", section: "Grill", sectionId: "sec_a" },
+    { id: "bar", kind: "bar_top", section: "Grill", sectionId: "sec_a" },
+    { id: "b1", kind: "barstool", railBarId: "bar", section: "Grill", sectionId: "sec_a" },
+    { id: "bLoose", kind: "barstool", railBarId: "bar", section: "Bar", sectionId: "sec_b" },
+    { id: "bBare", kind: "barstool", railBarId: "bar" },
+  ];
+  const entity = tablesAfterClearSlate(tables, { whole: false, entityId: "ent_a", sections });
+  assert.equal(entity.find((table) => table.id === "t1"), undefined);
+  assert.equal(entity.find((table) => table.id === "wall"), undefined);
+  assert.equal(entity.find((table) => table.id === "booth"), undefined);
+  assert.equal(entity.find((table) => table.id === "bar"), undefined);
+  assert.equal(entity.find((table) => table.id === "b1"), undefined);
+  assert.equal(entity.find((table) => table.id === "bLoose")?.sectionId, "sec_b");
+  assert.equal(entity.find((table) => table.id === "bBare"), undefined);
+  assert.equal(entity.find((table) => table.id === "t2")?.sectionId, "sec_b");
+  assert.equal(entity.find((table) => table.id === "loan")?.sectionId, "sec_b");
+  assert.equal(entity.find((table) => table.id === "t3")?.sectionId, "sec_h");
+  assert.deepEqual(sections.map((section) => section.id), ["sec_a", "sec_b", "sec_h", "sec_u"]);
+
+  const whole = tablesAfterClearSlate(tables, { whole: true, entityId: null, sections });
+  assert.deepEqual(whole, []);
+
+  const merged = mergeEntityFloor({
+    stored: { ...stored, tables },
+    draft: { sections, tables: entity },
+    entityId: "ent_a",
+  });
+  assert.equal(merged.tables.find((table) => table.id === "t1"), undefined);
+  assert.equal(merged.tables.find((table) => table.id === "bar"), undefined);
+  assert.equal(merged.tables.find((table) => table.id === "bBare"), undefined);
+  assert.equal(merged.tables.find((table) => table.id === "bLoose")?.sectionId, "sec_b");
+  assert.equal(merged.tables.find((table) => table.id === "t2")?.sectionId, "sec_b");
+  assert.equal(merged.sections.length, sections.length);
+  assert.equal(merged.room, room);
+
+  const editor = readFileSync("src/components/pos/FloorEditorView.tsx", "utf8");
+  const viewBar = editor.slice(editor.indexOf('data-floor-bar="view"'), editor.indexOf("const renderFloorDock"));
+  assert.match(viewBar, /data-floor-clear=""/);
+  assert.match(viewBar, /Clear slate/);
+  assert.match(editor, /tablesAfterClearSlate/);
+  assert.match(editor, /persistClearedFloor/);
+  assert.match(readFileSync("src/lib/pos/persist-location-setup.ts", "utf8"), /clearLocationFloorFn/);
+  assert.match(readFileSync("src/lib/pos/floor-clear.server.ts", "utf8"), /tables: \[\]/);
 });
 
 test("entity floor editor publishes its rooms and still leaves the host publish alone", () => {

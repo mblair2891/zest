@@ -305,11 +305,14 @@ test("grid snap and align two tables to a wall", () => {
   assert.match(piecesBar, /square_plain" \? "Square"/);
   assert.doesNotMatch(piecesBar, /Floor plan editor/);
   assert.doesNotMatch(piecesBar, /Publish floor/);
+  assert.doesNotMatch(piecesBar, /Clear slate/);
   assert.doesNotMatch(piecesBar, /flex-wrap/);
   assert.match(viewBar, /Floor plan editor/);
   assert.match(viewBar, /whitespace-nowrap/);
   assert.match(viewBar, /Drag-resize/);
   assert.match(viewBar, /Add by voice"/);
+  assert.match(viewBar, /Clear slate/);
+  assert.match(viewBar, /data-floor-clear=""/);
   assert.match(viewBar, /Publish floor/);
   assert.match(viewBar, /data-floor-publish/);
   assert.match(viewBar, /flex-nowrap/);
@@ -328,6 +331,8 @@ test("grid snap and align two tables to a wall", () => {
   assert.match(editor, /data-floor-room/);
   const guide = readFileSync("src/lib/guide/content/floor.ts", "utf8");
   assert.match(guide, /The floor editor opens with two bars/);
+  assert.match(guide, /Clear slate is on the view bar/);
+  assert.match(guide, /An entity owner clears only rooms they own/);
   assert.match(guide, /Reset layout puts both bars back on top/);
   assert.match(guide, /Trash on a bar top also deletes the barstools bound to that bar/);
   assert.match(editor, /Reverse numbering/);
