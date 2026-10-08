@@ -76,6 +76,7 @@ import {
   twoFingerCamera,
   zoomFloorCamera,
   floorClearanceReadout,
+  dragDistanceLines,
   objectInches,
   parseFeetInches,
   parsePositiveInches,
@@ -265,6 +266,51 @@ function CornerHandle({
       )}
       onPointerDown={(event) => onCorner(event, id)}
     />
+  );
+}
+
+function DistanceLines({
+  table,
+  tables,
+  room,
+}: {
+  table: { id: string; kind?: string | null; x: number; y: number; w: number; h: number; rotation?: number | null };
+  tables: Array<{ id: string; kind?: string | null; x: number; y: number; w: number; h: number; rotation?: number | null }>;
+  room: { widthIn: number; depthIn: number };
+}) {
+  const lines = dragDistanceLines(table, tables, room);
+  if (!lines.length) return null;
+  return (
+    <div data-floor-distance-lines="" className="pointer-events-none absolute inset-0 z-30">
+      <svg className="absolute inset-0 h-full w-full overflow-visible" aria-hidden="true">
+        {lines.map((line) => (
+          <line
+            key={line.id}
+            x1={`${line.x1}%`}
+            y1={`${line.y1}%`}
+            x2={`${line.x2}%`}
+            y2={`${line.y2}%`}
+            stroke="#1c1917"
+            strokeWidth={1}
+          />
+        ))}
+      </svg>
+      {lines.map((line) => (
+        <span
+          key={`${line.id}-label`}
+          data-floor-distance-target={line.target}
+          data-floor-distance-label={line.label}
+          className="absolute z-30 whitespace-nowrap rounded bg-white px-1 text-[10px] font-medium text-neutral-900 shadow"
+          style={{
+            left: `${(line.x1 + line.x2) / 2}%`,
+            top: `${(line.y1 + line.y2) / 2}%`,
+            transform: line.side === "left" || line.side === "right" ? "translate(-50%, -120%)" : "translate(6px, -50%)",
+          }}
+        >
+          {line.label}
+        </span>
+      ))}
+    </div>
   );
 }
 
@@ -603,6 +649,7 @@ export function FloorEditorView() {
     persistPrinterAssignments();
   };
   const [selected, setSelected] = useState<string | null>(null);
+  const [movingId, setMovingId] = useState<string | null>(null);
   const [selection, setSelection] = useState<string[]>([]);
   const selectionRef = useRef<string[]>([]);
   selectionRef.current = selection;
@@ -1054,6 +1101,7 @@ export function FloorEditorView() {
     if (!piece) return;
     drag.current = null;
     legDrag.current = null;
+    setMovingId(null);
     resize.current = {
       id,
       mode,
@@ -1134,6 +1182,7 @@ export function FloorEditorView() {
       return;
     }
     if (!drag.current) return;
+    setMovingId(drag.current.id);
     const dx = ((e.clientX - drag.current.startX) / rect.width) * 100;
     const dy = ((e.clientY - drag.current.startY) / rect.height) * 100;
     const target = tables.find((t) => t.id === drag.current?.id);
@@ -1251,6 +1300,7 @@ export function FloorEditorView() {
     drag.current = null;
     resize.current = null;
     legDrag.current = null;
+    setMovingId(null);
   };
 
   const startLeg = (e: React.PointerEvent, id: string, handle: LegHandle) => {
@@ -1264,6 +1314,7 @@ export function FloorEditorView() {
     const stoolIds = stoolsOnRail(tables, { ...bar, points: plan, legLengths: legLengthsOf(plan) }, floorRoom);
     drag.current = null;
     resize.current = null;
+    setMovingId(null);
     legDrag.current = { id, handle, orig: plan, stoolIds, box: spinBoxOf(bar) };
     selectOnly(id);
   };
@@ -2318,6 +2369,13 @@ export function FloorEditorView() {
                 </div>
               );
             })}
+            {movingId
+              ? (() => {
+                  const moving = tables.find((row) => row.id === movingId);
+                  if (!moving) return null;
+                  return <DistanceLines table={moving} tables={visible} room={floorRoom} />;
+                })()
+              : null}
           </div>
           </div>
           <p className="pointer-events-none absolute inset-x-3 bottom-2 z-30 text-center text-[11px] text-neutral-500">

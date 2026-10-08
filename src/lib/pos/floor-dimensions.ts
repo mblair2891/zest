@@ -384,6 +384,212 @@ export function floorClearanceReadout(
   return { flush: false, lines };
 }
 
+export type DragDistanceTarget = "wall" | "door" | "window" | "bar" | "table" | "booth" | "couch" | "stool" | "piece";
+
+export type DragDistanceLine = {
+  id: string;
+  target: DragDistanceTarget;
+  side: "left" | "right" | "top" | "bottom";
+  label: string;
+  inches: number;
+  /** Room percent. A touching edge is a zero-length line labeled 0. */
+  x1: number;
+  y1: number;
+  x2: number;
+  y2: number;
+};
+
+const DISTANCE_SIDES = ["left", "right", "top", "bottom"] as const;
+
+function pctX(inches: number, room: FloorRoom): number {
+  return room.widthIn > 0 ? (inches / room.widthIn) * 100 : 0;
+}
+
+function pctY(inches: number, room: FloorRoom): number {
+  return room.depthIn > 0 ? (inches / room.depthIn) * 100 : 0;
+}
+
+function rangesFace(a0: number, a1: number, b0: number, b1: number): boolean {
+  return Math.min(a1, b1) - Math.max(a0, b0) > 0.5;
+}
+
+function spanMid(a0: number, a1: number, b0: number, b1: number): number {
+  return (Math.max(a0, b0) + Math.min(a1, b1)) / 2;
+}
+
+/** Inches to `other` when it sits on `side` and the spans face. Null otherwise. */
+function gapOnSide(self: EdgeBox, other: EdgeBox, side: (typeof DISTANCE_SIDES)[number]): number | null {
+  if (side === "left") {
+    if (other.right > self.left + 0.05) return null;
+    if (!rangesFace(self.top, self.bottom, other.top, other.bottom)) return null;
+    return self.left - other.right;
+  }
+  if (side === "right") {
+    if (other.left < self.right - 0.05) return null;
+    if (!rangesFace(self.top, self.bottom, other.top, other.bottom)) return null;
+    return other.left - self.right;
+  }
+  if (side === "top") {
+    if (other.bottom > self.top + 0.05) return null;
+    if (!rangesFace(self.left, self.right, other.left, other.right)) return null;
+    return self.top - other.bottom;
+  }
+  if (other.top < self.bottom - 0.05) return null;
+  if (!rangesFace(self.left, self.right, other.left, other.right)) return null;
+  return other.top - self.bottom;
+}
+
+function archRank(kind: "wall" | "door" | "window"): number {
+  if (kind === "window") return 0;
+  if (kind === "door") return 1;
+  return 2;
+}
+
+function pieceTarget(kind?: string | null): DragDistanceTarget | null {
+  if (kind === "bar_top") return "bar";
+  if (kind === "couch") return "couch";
+  if (kind === "barstool") return "stool";
+  if (kind === "booth" || kind === "booth_4" || kind === "booth_u" || kind === "booth_l") return "booth";
+  if (kind === "table" || kind === "square_plain") return "table";
+  if (kind === "host_stand" || kind === "other") return "piece";
+  return null;
+}
+
+function pieceSeparation(
+  a: EdgeBox,
+  b: EdgeBox,
+): { inches: number; side: DragDistanceLine["side"]; x1: number; y1: number; x2: number; y2: number } {
+  const yOverlap = Math.min(a.bottom, b.bottom) - Math.max(a.top, b.top);
+  const xOverlap = Math.min(a.right, b.right) - Math.max(a.left, b.left);
+  if (yOverlap > 0 && b.left >= a.right - 0.05) {
+    const y = spanMid(a.top, a.bottom, b.top, b.bottom);
+    const inches = Math.max(0, b.left - a.right);
+    const x2 = inches === 0 ? a.right : b.left;
+    return { inches, side: "right", x1: a.right, y1: y, x2, y2: y };
+  }
+  if (yOverlap > 0 && a.left >= b.right - 0.05) {
+    const y = spanMid(a.top, a.bottom, b.top, b.bottom);
+    const inches = Math.max(0, a.left - b.right);
+    const x2 = inches === 0 ? a.left : b.right;
+    return { inches, side: "left", x1: a.left, y1: y, x2, y2: y };
+  }
+  if (xOverlap > 0 && b.top >= a.bottom - 0.05) {
+    const x = spanMid(a.left, a.right, b.left, b.right);
+    const inches = Math.max(0, b.top - a.bottom);
+    const y2 = inches === 0 ? a.bottom : b.top;
+    return { inches, side: "bottom", x1: x, y1: a.bottom, x2: x, y2 };
+  }
+  if (xOverlap > 0 && a.top >= b.bottom - 0.05) {
+    const x = spanMid(a.left, a.right, b.left, b.right);
+    const inches = Math.max(0, a.top - b.bottom);
+    const y2 = inches === 0 ? a.top : b.bottom;
+    return { inches, side: "top", x1: x, y1: a.top, x2: x, y2 };
+  }
+  if (xOverlap > 0.05 && yOverlap > 0.05) {
+    const x = spanMid(a.left, a.right, b.left, b.right);
+    const y = spanMid(a.top, a.bottom, b.top, b.bottom);
+    return { inches: 0, side: "right", x1: x, y1: y, x2: x, y2: y };
+  }
+  const ax = b.left >= a.right ? a.right : b.right <= a.left ? a.left : (a.left + a.right) / 2;
+  const ay = b.top >= a.bottom ? a.bottom : b.bottom <= a.top ? a.top : (a.top + a.bottom) / 2;
+  const bx = a.right <= b.left ? b.left : a.left >= b.right ? b.right : (b.left + b.right) / 2;
+  const by = a.bottom <= b.top ? b.top : a.top >= b.bottom ? b.bottom : (b.top + b.bottom) / 2;
+  const side: DragDistanceLine["side"] =
+    Math.abs(bx - ax) >= Math.abs(by - ay) ? (bx >= ax ? "right" : "left") : by >= ay ? "bottom" : "top";
+  return { inches: Math.hypot(bx - ax, by - ay), side, x1: ax, y1: ay, x2: bx, y2: by };
+}
+
+function toPctLine(
+  room: FloorRoom,
+  line: { x1: number; y1: number; x2: number; y2: number },
+): Pick<DragDistanceLine, "x1" | "y1" | "x2" | "y2"> {
+  return { x1: pctX(line.x1, room), y1: pctY(line.y1, room), x2: pctX(line.x2, room), y2: pctY(line.y2, room) };
+}
+
+/**
+ * Dimension lines for a piece that is being dragged.
+ * One line to the nearest wall, door, or window on each facing side,
+ * plus one line to the nearest other piece. Touching reads 0.
+ */
+export function dragDistanceLines(
+  self: ArchPiece,
+  others: readonly ArchPiece[],
+  room: FloorRoom,
+): DragDistanceLine[] {
+  if (!(room.widthIn > 0) || !(room.depthIn > 0)) return [];
+  const selfBox = fixtureEdgeBox(self, room);
+  const lines: DragDistanceLine[] = [];
+  for (const side of DISTANCE_SIDES) {
+    let best: { id: string; kind: "wall" | "door" | "window"; inches: number; box: EdgeBox; rank: number } | null =
+      null;
+    for (const other of others) {
+      if (other.id === self.id) continue;
+      const kind = other.kind === "wall" || other.kind === "door" || other.kind === "window" ? other.kind : null;
+      if (!kind) continue;
+      const box = fixtureEdgeBox(other, room);
+      const gap = gapOnSide(selfBox, box, side);
+      if (gap == null) continue;
+      const inches = gap < 0.05 ? 0 : gap;
+      const rank = archRank(kind);
+      if (
+        !best ||
+        inches < best.inches - 0.25 ||
+        (Math.abs(inches - best.inches) <= 0.25 && rank < best.rank)
+      ) {
+        best = { id: other.id, kind, inches, box, rank };
+      }
+    }
+    if (!best) continue;
+    const along =
+      side === "left" || side === "right"
+        ? spanMid(selfBox.top, selfBox.bottom, best.box.top, best.box.bottom)
+        : spanMid(selfBox.left, selfBox.right, best.box.left, best.box.right);
+    const from =
+      side === "left" ? selfBox.left : side === "right" ? selfBox.right : side === "top" ? selfBox.top : selfBox.bottom;
+    const toward =
+      best.inches === 0
+        ? from
+        : side === "left"
+          ? best.box.right
+          : side === "right"
+            ? best.box.left
+            : side === "top"
+              ? best.box.bottom
+              : best.box.top;
+    const inchesLine =
+      side === "left" || side === "right"
+        ? { x1: from, y1: along, x2: toward, y2: along }
+        : { x1: along, y1: from, x2: along, y2: toward };
+    lines.push({
+      id: `arch-${side}-${best.id}`,
+      target: best.kind,
+      side,
+      label: clearanceLabel(best.inches),
+      inches: best.inches,
+      ...toPctLine(room, inchesLine),
+    });
+  }
+  let nearest: { id: string; target: DragDistanceTarget; sep: ReturnType<typeof pieceSeparation> } | null = null;
+  for (const other of others) {
+    if (other.id === self.id) continue;
+    const target = pieceTarget(other.kind);
+    if (!target) continue;
+    const sep = pieceSeparation(selfBox, fixtureEdgeBox(other, room));
+    if (!nearest || sep.inches < nearest.sep.inches) nearest = { id: other.id, target, sep };
+  }
+  if (nearest) {
+    lines.push({
+      id: `piece-${nearest.id}`,
+      target: nearest.target,
+      side: nearest.sep.side,
+      label: clearanceLabel(nearest.sep.inches),
+      inches: nearest.sep.inches,
+      ...toPctLine(room, nearest.sep),
+    });
+  }
+  return lines;
+}
+
 export function dimensionLabel(
   item: { shape?: string | null; kind?: string | null; w: number; h: number; lengthIn?: number | null; widthIn?: number | null },
   room: FloorRoom,

@@ -6,6 +6,18 @@ import type { GuideUpdate } from "@/lib/guide/types";
  */
 export const WHATS_NEW_ENTRIES: GuideUpdate[] = [
   {
+    id: "upd_2026_10_209_distance_lines",
+    date: "2026-10-08",
+    title: "Distance lines while moving a piece",
+    summary: "Dragging a piece draws lines to the nearest wall, door, window, and other piece. They disappear on drop.",
+    body: "While a piece is dragged, the editor draws a line to the nearest wall, door, or window on each side that faces one, and a line to the nearest other piece. Each line is labeled in feet and inches. A touching edge reads 0. The lines disappear when the piece is dropped. Publish floor does not move the piece.",
+    roles: ["owner_manager", "vendor_operator", "host_operator"],
+    surfaces: ["floor"],
+    audience: "all",
+    topicId: "floor-editor",
+    tags: ["floor"],
+  },
+  {
     id: "upd_2026_10_208_flush_wall_line",
     date: "2026-10-08",
     title: "Pieces sit flush on the wall line",
