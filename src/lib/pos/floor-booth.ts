@@ -26,6 +26,29 @@ export function asBoothKind(kind?: string | null, shape?: Table["shape"]): Booth
   return null;
 }
 
+/** Table top inside the benches, in the booth's 0–100 box. The number sits here. */
+export function boothTableBox(
+  kind: BoothKind,
+  scale: { benchVx: number; benchVy: number },
+): { x: number; y: number; w: number; h: number } {
+  if (kind === "booth_4") {
+    const by = Math.min(28, Math.max(14, scale.benchVy));
+    const y = by + 6;
+    return { x: 20, y, w: 60, h: Math.max(20, 100 - y * 2) };
+  }
+  if (kind === "booth_u") {
+    const bx = Math.min(30, Math.max(16, scale.benchVx));
+    const by = Math.min(30, Math.max(16, scale.benchVy));
+    const x = bx + 6;
+    return { x, y: 12, w: Math.max(18, 100 - bx * 2 - 12), h: Math.max(22, 100 - by - 18) };
+  }
+  const bx = Math.min(30, Math.max(16, scale.benchVx));
+  const by = Math.min(30, Math.max(16, scale.benchVy));
+  const x = bx + 6;
+  const y = 12;
+  return { x, y, w: Math.max(20, 100 - x - 8), h: Math.max(22, 100 - by - y - 8) };
+}
+
 export function clampBoothSeats(kind: BoothKind, seats: number): number {
   const d = BOOTH_DEFAULTS[kind];
   const n = Math.round(Number(seats) || d.seats);

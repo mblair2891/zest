@@ -280,8 +280,8 @@ test("duplicate seating numbers name both pieces and empty labels stay open", ()
   assert.match(guide, /distance label reads 0/);
   assert.match(guide, /Empty labels are allowed/);
   const types = readFileSync("src/lib/guide/types.ts", "utf8");
-  assert.match(types, /2026\.10\.210/);
-  assert.match(types, /Live floor walls match the editor/);
+  assert.match(types, /2026\.10\.211/);
+  assert.match(types, /Booth numbers match table labels/);
   assert.match(editor, /data-floor-clearance=\{readout\.flush \? "0" : undefined\}/);
   assert.match(editor, /floorClearanceReadout/);
 });

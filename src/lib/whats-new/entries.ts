@@ -6,6 +6,18 @@ import type { GuideUpdate } from "@/lib/guide/types";
  */
 export const WHATS_NEW_ENTRIES: GuideUpdate[] = [
   {
+    id: "upd_2026_10_211_booth_numbers",
+    date: "2026-10-08",
+    title: "Booth numbers match table labels",
+    summary: "Booth numbers use the same type size as table numbers and sit in the open center.",
+    body: "Booth numbers use the same type size as table numbers. They sit in the open center, not stretched to the bench. The editor and the live floor both do this.",
+    roles: ["owner_manager", "vendor_operator", "host_operator"],
+    surfaces: ["floor"],
+    audience: "all",
+    topicId: "floor-editor",
+    tags: ["floor"],
+  },
+  {
     id: "upd_2026_10_210_live_walls",
     date: "2026-10-08",
     title: "Live floor walls match the editor",

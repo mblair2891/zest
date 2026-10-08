@@ -1,10 +1,71 @@
 import type { PointerEvent as ReactPointerEvent, ReactNode } from "react";
 import { cn } from "@/lib/utils";
-import type { BoothKind } from "@/lib/pos/floor-booth";
+import { boothTableBox, type BoothKind } from "@/lib/pos/floor-booth";
 import { seatingScale } from "@/lib/pos/floor-seating";
 
 const BENCH = "#4a3a34";
 const BENCH_STITCH = "#5c4a43";
+
+/**
+ * Booth number. Same type size as a table number, in the open center.
+ * Editor uses the table's 11px. Live uses 50cqmin of this opening, not of the whole booth.
+ */
+export function BoothNumber({
+  kind,
+  w = 18,
+  h = 18,
+  rotation = 0,
+  label,
+  joined,
+  ink,
+  surface = "editor",
+}: {
+  kind: BoothKind;
+  w?: number;
+  h?: number;
+  rotation?: number;
+  label: string;
+  joined?: string[];
+  ink?: string;
+  surface?: "editor" | "live";
+}) {
+  const box = boothTableBox(kind, seatingScale({ w, h, seats: 4 }));
+  const live = surface === "live";
+  return (
+    <span
+      data-floor-booth-label=""
+      data-floor-label-place="open"
+      className="pointer-events-none absolute flex flex-col items-center justify-center overflow-hidden text-center leading-none"
+      style={{
+        left: `${box.x}%`,
+        top: `${box.y}%`,
+        width: `${box.w}%`,
+        height: `${box.h}%`,
+        transform: `rotate(${-rotation}deg)`,
+        containerType: live ? "size" : undefined,
+        color: ink,
+      }}
+    >
+      <span
+        data-floor-primary
+        data-floor-weight={live ? "medium" : undefined}
+        className={live ? "font-medium tabular leading-none" : "text-[11px] font-semibold tabular leading-none"}
+        style={
+          live
+            ? { fontSize: joined?.length ? "42cqmin" : "50cqmin", fontWeight: 500, whiteSpace: "nowrap" }
+            : { whiteSpace: "nowrap" }
+        }
+      >
+        {label}
+      </span>
+      {live && joined && joined.length > 0 ? (
+        <span data-floor-joined className="font-medium leading-tight" style={{ fontSize: "18cqmin", fontWeight: 500 }}>
+          {joined.join(" · ")}
+        </span>
+      ) : null}
+    </span>
+  );
+}
 
 export function FloorBoothGlyph({
   kind,
@@ -119,12 +180,7 @@ export function FloorBoothMark({
         ) : null}
       </svg>
       {label ? (
-        <span
-          className="pointer-events-none absolute inset-0 flex items-center justify-center px-1 text-center text-[11px] font-semibold tabular leading-none"
-          style={{ transform: `rotate(${-rotation}deg)` }}
-        >
-          {label}
-        </span>
+        <BoothNumber kind={kind} w={w} h={h} rotation={rotation} label={label} surface="editor" />
       ) : null}
       {children}
     </div>
@@ -173,8 +229,7 @@ function Booth4Paths({
   hollow?: boolean;
 }) {
   const by = Math.min(28, Math.max(14, benchVy));
-  const tableTop = by + 6;
-  const tableH = Math.max(20, 100 - tableTop * 2);
+  const table = boothTableBox("booth_4", { benchVx: 0, benchVy });
   const hair = hollow
     ? { fill: "none" as const, stroke: outline, strokeWidth: 1.25, vectorEffect: "non-scaling-stroke" as const }
     : null;
@@ -182,7 +237,7 @@ function Booth4Paths({
     return (
       <>
         <rect x="8" y="5" width="84" height={by} rx="7" {...hair} />
-        <rect x="20" y={tableTop} width="60" height={tableH} rx="5" {...hair} />
+        <rect x={table.x} y={table.y} width={table.w} height={table.h} rx="5" {...hair} />
         <rect x="8" y={100 - 5 - by} width="84" height={by} rx="7" {...hair} />
       </>
     );
@@ -196,7 +251,7 @@ function Booth4Paths({
       {solid ? null : (
         <rect x="12" y="9" width="76" height="2" rx="1" fill={BENCH_STITCH} opacity="0.45" />
       )}
-      <rect x="20" y={tableTop} width="60" height={tableH} rx="5" fill={tableFill} />
+      <rect x={table.x} y={table.y} width={table.w} height={table.h} rx="5" fill={tableFill} />
       <rect x="8" y={100 - 5 - by} width="84" height={by} rx="7" fill={benchFill} />
       {solid ? null : (
         <rect
@@ -235,9 +290,7 @@ function BoothUPaths({
   const innerL = bx;
   const innerR = 100 - bx;
   const innerB = 100 - by;
-  const tableX = innerL + 6;
-  const tableW = Math.max(18, innerR - innerL - 12);
-  const tableH = Math.max(22, innerB - 18);
+  const table = boothTableBox("booth_u", { benchVx, benchVy });
   const hair = hollow
     ? { fill: "none" as const, stroke: outline, strokeWidth: 1.25, vectorEffect: "non-scaling-stroke" as const }
     : null;
@@ -248,7 +301,7 @@ function BoothUPaths({
           d={`M${bx * 0.45} 6 V${innerB} Q${bx * 0.45} ${innerB + by * 0.35} ${bx} ${innerB + by * 0.35} H${100 - bx} Q${100 - bx * 0.45} ${innerB + by * 0.35} ${100 - bx * 0.45} ${innerB} V6 H${innerR} V${innerB - 4} H${innerL} V6 Z`}
           {...hair}
         />
-        <rect x={tableX} y="12" width={tableW} height={tableH} rx="5" {...hair} />
+        <rect x={table.x} y={table.y} width={table.w} height={table.h} rx="5" {...hair} />
       </>
     );
   }
@@ -261,7 +314,7 @@ function BoothUPaths({
         d={`M${bx * 0.45} 6 V${innerB} Q${bx * 0.45} ${innerB + by * 0.35} ${bx} ${innerB + by * 0.35} H${100 - bx} Q${100 - bx * 0.45} ${innerB + by * 0.35} ${100 - bx * 0.45} ${innerB} V6 H${innerR} V${innerB - 4} H${innerL} V6 Z`}
         fill={benchFill}
       />
-      <rect x={tableX} y="12" width={tableW} height={tableH} rx="5" fill={tableFill} />
+      <rect x={table.x} y={table.y} width={table.w} height={table.h} rx="5" fill={tableFill} />
     </>
   );
 }
@@ -285,10 +338,7 @@ function BoothLPaths({
 }) {
   const bx = Math.min(30, Math.max(16, benchVx));
   const by = Math.min(30, Math.max(16, benchVy));
-  const tableX = bx + 6;
-  const tableY = 12;
-  const tableW = Math.max(20, 100 - tableX - 8);
-  const tableH = Math.max(22, 100 - by - tableY - 8);
+  const table = boothTableBox("booth_l", { benchVx, benchVy });
   const hair = hollow
     ? { fill: "none" as const, stroke: outline, strokeWidth: 1.25, vectorEffect: "non-scaling-stroke" as const }
     : null;
@@ -299,7 +349,7 @@ function BoothLPaths({
           d={`M${bx * 0.45} 6 V${100 - by * 0.4} Q${bx * 0.45} ${100 - 4} ${bx} ${100 - 4} H${100 - 6} V${100 - by} H${bx} V6 Z`}
           {...hair}
         />
-        <rect x={tableX} y={tableY} width={tableW} height={tableH} rx="5" {...hair} />
+        <rect x={table.x} y={table.y} width={table.w} height={table.h} rx="5" {...hair} />
       </>
     );
   }
@@ -312,7 +362,7 @@ function BoothLPaths({
         d={`M${bx * 0.45} 6 V${100 - by * 0.4} Q${bx * 0.45} ${100 - 4} ${bx} ${100 - 4} H${100 - 6} V${100 - by} H${bx} V6 Z`}
         fill={benchFill}
       />
-      <rect x={tableX} y={tableY} width={tableW} height={tableH} rx="5" fill={tableFill} />
+      <rect x={table.x} y={table.y} width={table.w} height={table.h} rx="5" fill={tableFill} />
     </>
   );
 }

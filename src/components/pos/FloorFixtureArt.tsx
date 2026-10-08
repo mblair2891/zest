@@ -4,7 +4,7 @@ import type { Table } from "@/lib/pos/types";
 import { asBoothKind } from "@/lib/pos/floor-booth";
 import { uprightCounterDeg } from "@/lib/pos/floor-architecture";
 import { diningTableOutline, railStoolCenters, seatingScale } from "@/lib/pos/floor-seating";
-import { FloorBoothGlyph, FloorBoothMark } from "@/components/pos/FloorBoothMark";
+import { BoothNumber, FloorBoothGlyph, FloorBoothMark } from "@/components/pos/FloorBoothMark";
 import { FloorCouchGlyph, FloorCouchMark } from "@/components/pos/FloorCouchMark";
 import type { BoothKind } from "@/lib/pos/floor-booth";
 
@@ -249,7 +249,18 @@ function StatusFixture({
           />
         ) : null}
       </svg>
-      {label ? (
+      {label && booth ? (
+        <BoothNumber
+          kind={booth}
+          w={w}
+          h={h}
+          rotation={rotation}
+          label={label}
+          joined={joined}
+          ink={number}
+          surface="live"
+        />
+      ) : label ? (
         <span
           className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center px-[8%] text-center font-medium leading-none tabular"
           style={{ transform: `rotate(${-rotation}deg)`, color: number }}
