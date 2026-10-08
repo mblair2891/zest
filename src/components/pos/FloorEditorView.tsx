@@ -2627,7 +2627,7 @@ export function FloorEditorView() {
                     {(selectedTable.barShape ?? "straight") === "l" ? (
                       <div className="grid grid-cols-2 gap-2">
                         <StoolCount
-                          label="Leg A (long)"
+                          label="Long leg"
                           value={stoolCounts.legA ?? 0}
                           onChange={(legA) => {
                             const counts = { ...stoolCounts, legA };
@@ -2636,7 +2636,7 @@ export function FloorEditorView() {
                           }}
                         />
                         <StoolCount
-                          label="Leg B (short)"
+                          label="Short leg"
                           value={stoolCounts.legB ?? 0}
                           onChange={(legB) => {
                             const counts = { ...stoolCounts, legB };
