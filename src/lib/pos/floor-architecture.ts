@@ -460,6 +460,83 @@ export function barLabelPose(
   };
 }
 
+/** Longer L leg is Long (Leg A). Equal lengths: the first leg is Long and the second is Short. */
+export function lLegIndexes(lengths: readonly number[]): { longIdx: 0 | 1; shortIdx: 0 | 1 } | null {
+  if (lengths.length < 2) return null;
+  const longIdx: 0 | 1 = (lengths[1] ?? 0) > (lengths[0] ?? 0) ? 1 : 0;
+  return { longIdx, shortIdx: longIdx === 0 ? 1 : 0 };
+}
+
+export type BarLegRole = "Long" | "Short";
+
+export type BarLegLabelPose = BarLabelPose & { role: BarLegRole };
+
+function poseOnLeg(
+  points: PlanPoint[],
+  room: RoomInches,
+  box: { x: number; y: number; w: number; h: number },
+  depthIn: number,
+  rotationDeg: number,
+  leg: number,
+  alongT: number,
+): BarLabelPose | null {
+  const lengths = legInches(points, room);
+  if (!lengths.length || box.w <= 0 || box.h <= 0) return null;
+  if ((lengths[leg] ?? 0) < 1) return null;
+  const a = points[leg];
+  const b = points[leg + 1];
+  if (!a || !b) return null;
+  const t = Math.max(0, Math.min(1, alongT));
+  const x = a.x + (b.x - a.x) * t;
+  const y = a.y + (b.y - a.y) * t;
+  const dxIn = ((b.x - a.x) / 100) * room.widthIn;
+  const dyIn = ((b.y - a.y) / 100) * room.depthIn;
+  const legDeg = (Math.atan2(dyIn, dxIn) * 180) / Math.PI;
+  const screen = normDeg(legDeg + rotationDeg);
+  const fromHoriz = Math.abs(screen) > 90 ? 180 - Math.abs(screen) : Math.abs(screen);
+  const boxWIn = Math.max(1, (box.w / 100) * room.widthIn);
+  const boxHIn = Math.max(1, (box.h / 100) * room.depthIn);
+  const wordIn = Math.min(lengths[leg] ?? 0, 42);
+  return {
+    leg,
+    x,
+    y,
+    legDeg,
+    stack: fromHoriz > 45,
+    alongPct: (wordIn / boxWIn) * 100,
+    thickPct: (Math.max(1, depthIn) / boxHIn) * 100,
+    leftPct: ((x - box.x) / box.w) * 100,
+    topPct: ((y - box.y) / box.h) * 100,
+  };
+}
+
+/**
+ * Canvas words for an L. Long sits on the longer leg, Short on the shorter leg.
+ * Each word is toward that leg’s open end, clear of the corner and of the bar name.
+ */
+export function barLegLabelPoses(
+  points: PlanPoint[],
+  room: RoomInches,
+  box: { x: number; y: number; w: number; h: number },
+  depthIn: number,
+  rotationDeg = 0,
+): BarLegLabelPose[] {
+  if (points.length !== 3) return [];
+  const roles = lLegIndexes(legInches(points, room));
+  if (!roles) return [];
+  const specs: { leg: 0 | 1; role: BarLegRole }[] = [
+    { leg: roles.longIdx, role: "Long" },
+    { leg: roles.shortIdx, role: "Short" },
+  ];
+  const out: BarLegLabelPose[] = [];
+  for (const spec of specs) {
+    const alongT = spec.leg === 0 ? 0.28 : 0.72;
+    const pose = poseOnLeg(points, room, box, depthIn, rotationDeg, spec.leg, alongT);
+    if (pose) out.push({ ...pose, role: spec.role });
+  }
+  return out;
+}
+
 export function planToLocal(points: PlanPoint[], box: { x: number; y: number; w: number; h: number }): PlanPoint[] {
   return points.map((p) => ({
     x: ((p.x - box.x) / box.w) * 100,
@@ -1025,7 +1102,14 @@ export function generateBarStools(opts: {
   }
   const lengths = Array.from({ length: segCount }, (_, i) => segInches(plan[i]!, plan[i + 1]!, room));
   let perSeg: number[] = [];
-  if (shape === "l") perSeg = [clampCount(opts.counts.legA), clampCount(opts.counts.legB)];
+  if (shape === "l") {
+    const roles = lLegIndexes(lengths);
+    perSeg = [0, 0];
+    const longIdx = roles?.longIdx ?? 0;
+    const shortIdx = roles?.shortIdx ?? 1;
+    perSeg[longIdx] = clampCount(opts.counts.legA);
+    perSeg[shortIdx] = clampCount(opts.counts.legB);
+  }
   else if (shape === "u") {
     perSeg = [clampCount(opts.counts.left), clampCount(opts.counts.rear), clampCount(opts.counts.right)];
   } else perSeg = spreadCount(clampCount(opts.counts.count), lengths);

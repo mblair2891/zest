@@ -6,6 +6,7 @@ import {
   barDepthIn,
   barFaceLabel,
   barLabelPose,
+  barLegLabelPoses,
   uprightCounterDeg,
   barSlabEdges,
   isArchitectureKind,
@@ -63,6 +64,7 @@ export function FloorArchitectureMark({
       : `${chain(outer)} ${[...inner].reverse().map((p, i) => `${i === 0 ? "L" : "L"} ${loc(p)}`).join(" ")} Z`;
     const visual = ((rotation + spinDeg) % 360 + 360) % 360;
     const pose = barLabelPose(plan, room, table, depth, visual);
+    const legLabels = table.barShape === "l" ? barLegLabelPoses(plan, room, table, depth, visual) : [];
     const face = barFaceLabel(table.label);
     const glyph = pose ? uprightCounterDeg(pose.legDeg + visual) : 0;
     return (
@@ -150,6 +152,37 @@ export function FloorArchitectureMark({
             </div>
           </div>
         ) : null}
+        {legLabels.map((legPose) => {
+          const legGlyph = uprightCounterDeg(legPose.legDeg + visual);
+          return (
+            <div
+              key={legPose.role}
+              data-floor-bar-leg-label={legPose.role}
+              data-floor-bar-leg={legPose.leg}
+              className="pointer-events-none absolute flex items-center justify-center"
+              style={{
+                left: `${legPose.leftPct}%`,
+                top: `${legPose.topPct}%`,
+                transform: `translate(-50%, -50%) rotate(${legPose.legDeg}deg)`,
+                transformOrigin: "center center",
+              }}
+            >
+              <span
+                style={{
+                  transform: `rotate(${legGlyph}deg)`,
+                  fontSize: 11,
+                  fontWeight: 600,
+                  color: "#111",
+                  letterSpacing: "0.04em",
+                  lineHeight: 1,
+                  whiteSpace: "nowrap",
+                }}
+              >
+                {legPose.role}
+              </span>
+            </div>
+          );
+        })}
       </div>
     );
   }

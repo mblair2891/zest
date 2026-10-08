@@ -6,6 +6,18 @@ import type { GuideUpdate } from "@/lib/guide/types";
  */
 export const WHATS_NEW_ENTRIES: GuideUpdate[] = [
   {
+    id: "upd_2026_10_201_bar_legs",
+    date: "2026-10-07",
+    title: "L bar legs read Long and Short",
+    summary: "Each L leg is labeled Long or Short. Stool numbers walk from the short open end to the long open end.",
+    body: "On an L bar the canvas labels each leg Long and Short. The counts stay Leg A (long) and Leg B (short). Generate stools walks one way. With Reverse numbering off, B1 is the short open end, the corner is the last short stool, and the long leg continues to the long open end. Four short and fourteen long read B1, B4, B5, and B18. Reverse numbering starts at the long open end and ends at the short open end. A corner seat sits between the legs. Publish floor saves the labels and the B numbers. A straight bar still starts at the guest’s left.",
+    roles: ["owner_manager", "vendor_operator", "host_operator"],
+    surfaces: ["floor"],
+    audience: "all",
+    topicId: "floor-editor",
+    tags: ["floor"],
+  },
+  {
     id: "upd_2026_10_200_clear_slate",
     date: "2026-10-07",
     title: "Clear slate is on the view bar",

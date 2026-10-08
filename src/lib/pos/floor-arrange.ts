@@ -5,6 +5,7 @@ import {
   generateBarStools,
   isStoolPathText,
   legInches,
+  lLegIndexes,
   offsetCenterline,
   snapStoolToRail,
   stoolOffsetFromCenterIn,
@@ -344,13 +345,13 @@ export type RenumberBar = {
   widthIn?: number | null;
   section?: string;
   sectionId?: string;
-  /** 1 reverses this bar. Unset starts at the guest’s left, or at the first open end. */
+  /** 1 reverses this bar. Unset starts at the guest’s left, or at the short open end of an L. */
   stoolNumberFrom?: 0 | 1 | null;
 };
 
 /**
  * Unset numbering is not reversed.
- * A straight bar starts at the guest’s left. An L or U starts at the first open end.
+ * A straight bar starts at the guest’s left. An L starts at the short open end. A U starts at the first open end.
  */
 export function defaultNumberFrom(bar: {
   points: readonly ArrangePoint[];
@@ -509,9 +510,10 @@ function sortLeg(
 /**
  * B1…Bn along the guest rail.
  * Straight: one end, the guest’s left, then toward their right, unless Reverse numbering is on.
- * L, U, and any open multi-leg rail: one walk from an open end, through each corner, to the other open end.
- * A corner seat is in the middle of that sequence, never first.
- * Reverse numbering flips which open end is B1.
+ * L: one walk. Short open end, toward the corner, then the long leg from the corner to the long open end.
+ * A corner seat sits between those legs and is never first. Each leg is sorted in one direction.
+ * Reverse numbering reverses that whole walk, so B1 is the long open end.
+ * U and any other open multi-leg rail: one walk from the polyline start, through each corner, to the other open end.
  */
 export function outsideWalkOrder(
   centers: readonly { x: number; y: number }[],
@@ -529,6 +531,16 @@ export function outsideWalkOrder(
     const part = partitionStools(centers, bar, room);
     const forward = guestLeftIsStart(bar, room) ? !reversed : reversed;
     return sortLeg(part.legs[0] ?? [], centers, rail, 0, forward, room);
+  }
+  if (shape === "l" && segCount === 2) {
+    const roles = lLegIndexes(legInches(points, room));
+    const longIdx = roles?.longIdx ?? 0;
+    const shortIdx = roles?.shortIdx ?? 1;
+    const part = partitionStools(centers, bar, room);
+    const shortOrder = sortLeg(part.legs[shortIdx] ?? [], centers, rail, shortIdx, shortIdx === 0, room);
+    const longOrder = sortLeg(part.legs[longIdx] ?? [], centers, rail, longIdx, longIdx === 1, room);
+    const order = [...shortOrder, ...part.corners, ...longOrder];
+    return reversed ? order.reverse() : order;
   }
   const order = centers
     .map((center, index) => ({ index, along: distanceAlong(rail, center.x, center.y) }))
@@ -555,10 +567,13 @@ export function inferBarStoolCounts(
     right: 0,
   };
   if (shape === "l") {
+    const roles = lLegIndexes(legInches(bar.points, room));
+    const longIdx = roles?.longIdx ?? 0;
+    const shortIdx = roles?.shortIdx ?? 1;
     return {
       ...base,
-      legA: part.legs[0]?.length ?? 0,
-      legB: part.legs[1]?.length ?? 0,
+      legA: part.legs[longIdx]?.length ?? 0,
+      legB: part.legs[shortIdx]?.length ?? 0,
       corner: part.corners.length > 0,
     };
   }
@@ -688,7 +703,7 @@ function labelOwnedStools(
   return patches;
 }
 
-/** B1…Bn for stools on this bar only. An L walks from one open end through the corner. Positions stay. */
+/** B1…Bn for stools on this bar only. An L walks from the short open end to the long open end. Positions stay. */
 export function relabelBarStools(
   pieces: readonly RenumberPiece[],
   bar: RenumberBar,
@@ -699,7 +714,7 @@ export function relabelBarStools(
   return labelOwnedStools(stoolsForBar(stools, bar, bars), bar, room);
 }
 
-/** Existing stool capsules only. An L walks from one open end through the corner to the other. */
+/** Existing stool capsules only. An L walks from the short open end through the corner to the long open end. */
 function stoolLabels(
   pieces: readonly RenumberPiece[],
   bars: readonly RenumberBar[],
@@ -728,7 +743,7 @@ function stoolLabels(
 /**
  * Dining tables and booths, top to bottom then left to right, become "1"…"N".
  * A booth that already uses a B number stays out of that sequence.
- * Each bar’s stools become B1…Bn. An L walks from one open end through the corner.
+ * Each bar’s stools become B1…Bn. An L walks from the short open end through the corner.
  * The bar’s own label is not a stool number.
  */
 export function renumberPlan(

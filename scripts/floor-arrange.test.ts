@@ -168,7 +168,7 @@ test("an L resets to capsules B1 through B14, and path text leaves the slab", ()
   };
   const b1 = stools.find((stool) => labels[stool.id] === "B1")!;
   const b14 = stools.find((stool) => labels[stool.id] === "B14")!;
-  assert.ok(alongOf(b1.id) < alongOf(b14.id));
+  assert.ok(alongOf(b1.id) > alongOf(b14.id));
   for (const stool of stools) {
     const cx = stool.x + stool.w / 2;
     const cy = stool.y + stool.h / 2;
@@ -335,6 +335,12 @@ test("grid snap and align two tables to a wall", () => {
   assert.match(guide, /An entity owner clears only rooms they own/);
   assert.match(guide, /Reset layout puts both bars back on top/);
   assert.match(guide, /Trash on a bar top also deletes the barstools bound to that bar/);
+  assert.match(guide, /labels each leg Long and Short/);
+  assert.match(guide, /Leg A \(long\) and Leg B \(short\)/);
+  assert.match(guide, /B1 is the short open end/);
+  assert.match(guide, /B18 at the long open end/);
+  assert.match(guide, /B1 at the long open end/);
+  assert.match(guide, /Publish floor saves the leg labels and the B numbers/);
   assert.match(editor, /Reverse numbering/);
   assert.match(editor, /data-stool-number-reverse=/);
   assert.doesNotMatch(editor, /Number from/);
@@ -348,7 +354,12 @@ test("grid snap and align two tables to a wall", () => {
   const mark = readFileSync("src/components/pos/FloorArchitectureMark.tsx", "utf8");
   assert.match(mark, /barFaceLabel\(table\.label\)/);
   assert.equal((mark.match(/data-floor-bar-label=/g) ?? []).length, 1);
+  assert.match(mark, /barLegLabelPoses/);
+  assert.match(mark, /data-floor-bar-leg-label=/);
+  assert.match(mark, /barShape === "l"/);
   assert.doesNotMatch(mark, /B\$\{/);
+  assert.match(editor, /Leg A \(long\)/);
+  assert.match(editor, /Leg B \(short\)/);
   const catalog = readFileSync("src/lib/saas/location-catalog.ts", "utf8");
   assert.match(catalog, /stoolNumberFrom/);
 });
@@ -377,7 +388,7 @@ test("trash on a bar deletes stools bound to that bar and leaves the rest", () =
   assert.deepEqual(idsRemovedWithBars(tables, ["bar"], () => false), []);
 });
 
-test("an L walks from one open end through the corner to the other", () => {
+test("an L walks from the short open end through the corner to the long open end", () => {
   const plan = [
     { x: 30, y: 18 },
     { x: 30, y: 55 },
@@ -405,7 +416,7 @@ test("an L walks from one open end through the corner to the other", () => {
   const poses = generateBarStools({
     bar,
     room,
-    counts: { legA: 6, legB: 12 },
+    counts: { legA: 12, legB: 6 },
     side: "outside",
   });
   assert.equal(poses.length, 18);
@@ -448,6 +459,121 @@ test("an L walks from one open end through the corner to the other", () => {
     stools.map((stool) => ({ id: stool.id, x: stool.x, y: stool.y })),
     placed,
   );
+});
+
+test("4 short and 14 long walk one direction, and reverse starts at the long open end", () => {
+  const plan = planFromLegInches("l", { x: 12, y: 22 }, [20 * 12, 8 * 12], room);
+  const corner = plan[1]!;
+  const box = slabBounds(plan, 24, room, false);
+  const bar = {
+    id: "bar",
+    kind: "bar_top",
+    label: "Copper",
+    x: box.x,
+    y: box.y,
+    w: box.w,
+    h: box.h,
+    points: plan,
+    barShape: "l" as const,
+    barSide: "outside" as const,
+    widthIn: 24,
+    legLengths: [20, 8],
+    section: "Bar",
+  };
+  const poses = generateBarStools({
+    bar,
+    room,
+    counts: { legA: 14, legB: 4, corner: false },
+    side: "outside",
+  });
+  assert.equal(poses.length, 18);
+  const stools = poses.map((pose, index) => ({
+    id: `s${index}`,
+    kind: "barstool",
+    label: `X${index}`,
+    x: pose.x,
+    y: pose.y,
+    w: pose.w,
+    h: pose.h,
+    railBarId: "bar",
+  }));
+  const center = (stool: (typeof stools)[number]) => ({ x: stool.x + stool.w / 2, y: stool.y + stool.h / 2 });
+  const onLong = stools
+    .filter((stool) => center(stool).y < plan[0]!.y - 0.2 && center(stool).x <= corner.x + 0.5)
+    .sort((a, b) => center(a).x - center(b).x);
+  const onShort = stools
+    .filter((stool) => center(stool).x > corner.x + 0.4 && center(stool).y >= plan[0]!.y - 0.2)
+    .sort((a, b) => center(b).y - center(a).y);
+  assert.equal(onLong.length, 14);
+  assert.equal(onShort.length, 4);
+  const labeled = (from?: 0 | 1) => {
+    const labels = Object.fromEntries(
+      resetFloorNumbers(stools, [{ ...bar, stoolNumberFrom: from }], room, "stools").labels.map((row) => [row.id, row.label]),
+    );
+    return labels;
+  };
+  const off = labeled(0);
+  assert.equal(off[onShort[0]!.id], "B1");
+  assert.equal(off[onShort[3]!.id], "B4");
+  assert.equal(off[onLong[onLong.length - 1]!.id], "B5");
+  assert.equal(off[onLong[0]!.id], "B18");
+  const offLong = onLong.map((stool) => Number(off[stool.id]!.slice(1)));
+  assert.deepEqual(offLong, Array.from({ length: 14 }, (_, i) => 18 - i));
+  const offShort = onShort.map((stool) => Number(off[stool.id]!.slice(1)));
+  assert.deepEqual(offShort, [1, 2, 3, 4]);
+  assert.equal(offLong.includes(13) && offLong[offLong.indexOf(18) + 1] === 13, false);
+  assert.equal(Math.abs(offLong.indexOf(18) - offLong.indexOf(13)) === 1, false);
+
+  const on = labeled(1);
+  assert.equal(on[onLong[0]!.id], "B1");
+  assert.equal(on[onLong[onLong.length - 1]!.id], "B14");
+  assert.equal(on[onShort[3]!.id], "B15");
+  assert.equal(on[onShort[0]!.id], "B18");
+  const onLongNums = onLong.map((stool) => Number(on[stool.id]!.slice(1)));
+  assert.deepEqual(onLongNums, Array.from({ length: 14 }, (_, i) => i + 1));
+  assert.equal(onLongNums.includes(18), false);
+  assert.equal(Math.abs(onLongNums.indexOf(13) - onLongNums.indexOf(18)) === 1, false);
+
+  const swapped = planFromLegInches("l", { x: 12, y: 22 }, [8 * 12, 20 * 12], room);
+  const swapCorner = swapped[1]!;
+  const swapBox = slabBounds(swapped, 24, room, false);
+  const swapBar = { ...bar, x: swapBox.x, y: swapBox.y, w: swapBox.w, h: swapBox.h, points: swapped, legLengths: [8, 20] };
+  const swapPoses = generateBarStools({
+    bar: swapBar,
+    room,
+    counts: { legA: 14, legB: 4, corner: false },
+    side: "outside",
+  });
+  assert.equal(swapPoses.length, 18);
+  const swapStools = swapPoses.map((pose, index) => ({
+    id: `s${index}`,
+    kind: "barstool",
+    label: `X${index}`,
+    x: pose.x,
+    y: pose.y,
+    w: pose.w,
+    h: pose.h,
+    railBarId: "bar",
+  }));
+  const swapCenter = (stool: (typeof swapStools)[number]) => ({ x: stool.x + stool.w / 2, y: stool.y + stool.h / 2 });
+  const swapShort = swapStools
+    .filter((stool) => swapCenter(stool).y < swapped[0]!.y - 0.2 && swapCenter(stool).x <= swapCorner.x + 0.5)
+    .sort((a, b) => swapCenter(a).x - swapCenter(b).x);
+  const swapLong = swapStools
+    .filter((stool) => swapCenter(stool).x > swapCorner.x + 0.4 && swapCenter(stool).y >= swapped[0]!.y - 0.2)
+    .sort((a, b) => swapCenter(a).y - swapCenter(b).y);
+  assert.equal(swapShort.length, 4);
+  assert.equal(swapLong.length, 14);
+  const swapLabels = Object.fromEntries(
+    resetFloorNumbers(swapStools, [swapBar], room, "stools").labels.map((row) => [row.id, row.label]),
+  );
+  assert.equal(swapLabels[swapShort[0]!.id], "B1");
+  assert.equal(swapLabels[swapShort[3]!.id], "B4");
+  assert.equal(swapLabels[swapLong[0]!.id], "B5");
+  assert.equal(swapLabels[swapLong[13]!.id], "B18");
+  const swapLongNums = swapLong.map((stool) => Number(swapLabels[stool.id]!.slice(1)));
+  assert.deepEqual(swapLongNums, Array.from({ length: 14 }, (_, i) => i + 5));
+  assert.equal(Math.abs(swapLongNums.indexOf(18) - swapLongNums.indexOf(13)) === 1, false);
 });
 
 test("a straight bar numbers B1 at the guest's left", () => {
@@ -493,7 +619,7 @@ test("a straight bar numbers B1 at the guest's left", () => {
   assert.deepEqual(labeled("b", 1), ["B1", "B2", "B3", "B4"]);
 });
 
-test("L-bar leg A puts B1 at the tip and B4 nearest the corner", () => {
+test("an L with a corner seat numbers the short leg, then the seat, then the long leg", () => {
   const plan = planFromLegInches("l", { x: 18, y: 28 }, [14 * 12, 8 * 12], room);
   const corner = plan[1]!;
   const box = slabBounds(plan, 24, room, false);
@@ -535,22 +661,24 @@ test("L-bar leg A puts B1 at the tip and B4 nearest the corner", () => {
     .filter((stool) => center(stool).y < plan[0]!.y - 0.2 && center(stool).x <= corner.x + 0.5)
     .sort((a, b) => center(a).x - center(b).x);
   assert.equal(onA.length, 4);
-  assert.equal(labels[onA[0]!.id], "B1");
-  assert.equal(labels[onA[3]!.id], "B4");
+  assert.equal(labels[onA[0]!.id], "B8");
+  assert.equal(labels[onA[3]!.id], "B5");
   assert.ok(center(onA[0]!).x < center(onA[3]!).x);
   const onB = stools.filter((stool) => center(stool).x > corner.x + 0.4 && center(stool).y >= plan[0]!.y - 0.2);
   assert.equal(onB.length, 3);
   const tipB = onB.reduce((a, b) => (center(a).y >= center(b).y ? a : b));
   const nearB = onB.reduce((a, b) => (center(a).y <= center(b).y ? a : b));
-  assert.equal(labels[tipB.id], "B8");
-  assert.equal(labels[nearB.id], "B6");
+  assert.equal(labels[tipB.id], "B1");
+  assert.equal(labels[nearB.id], "B3");
   const seat = stools.find((stool) => center(stool).x > corner.x + 0.4 && center(stool).y < plan[0]!.y - 0.2);
   assert.ok(seat);
-  assert.equal(labels[seat!.id], "B5");
+  assert.equal(labels[seat!.id], "B4");
   assert.notEqual(labels[seat!.id], "B1");
+  const longNums = onA.map((stool) => Number(labels[stool.id]!.slice(1)));
+  for (let i = 1; i < longNums.length; i += 1) assert.equal(longNums[i], longNums[i - 1]! - 1);
 });
 
-test("an L with 4 stools starts at an open end and keeps the corner out of B1", () => {
+test("an L with 4 stools starts at the short open end and keeps the corner out of B1", () => {
   const plan = planFromLegInches("l", { x: 18, y: 28 }, [14 * 12, 8 * 12], room);
   const corner = plan[1]!;
   const box = slabBounds(plan, 24, room, false);
@@ -597,18 +725,20 @@ test("an L with 4 stools starts at an open end and keeps the corner out of B1", 
   assert.equal(onA.length, 2);
   assert.equal(onB.length, 1);
   assert.ok(seat);
-  assert.equal(labels[onA[0]!.id], "B1");
-  assert.equal(labels[seat!.id], "B3");
+  assert.equal(labels[onB[0]!.id], "B1");
+  assert.equal(labels[seat!.id], "B2");
   assert.notEqual(labels[seat!.id], "B1");
-  assert.equal(labels[onB[0]!.id], "B4");
+  assert.equal(labels[onA[1]!.id], "B3");
+  assert.equal(labels[onA[0]!.id], "B4");
   assert.ok(center(onA[0]!).x < center(onA[1]!).x);
   const untouched = stools.map((stool) => ({ id: stool.id, label: stool.label, x: stool.x, y: stool.y }));
   assert.deepEqual(untouched, before);
   const flipped = relabelBarStools(stools, { ...bar, stoolNumberFrom: 1 }, room, [{ ...bar, stoolNumberFrom: 1 }]);
   const next = Object.fromEntries(flipped.map((row) => [row.id, row.label]));
-  assert.equal(next[onB[0]!.id], "B1");
-  assert.equal(next[onA[0]!.id], "B4");
-  assert.equal(next[seat!.id], "B2");
+  assert.equal(next[onA[0]!.id], "B1");
+  assert.equal(next[onA[1]!.id], "B2");
+  assert.equal(next[seat!.id], "B3");
+  assert.equal(next[onB[0]!.id], "B4");
   assert.notEqual(next[seat!.id], "B1");
   const editor = readFileSync("src/components/pos/FloorEditorView.tsx", "utf8");
   const place = editor.slice(editor.indexOf("const placeStools"), editor.indexOf("const chooseSide"));

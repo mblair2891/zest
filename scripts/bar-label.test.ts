@@ -4,6 +4,8 @@ import { readFileSync } from "node:fs";
 import {
   barFaceLabel,
   barLabelPose,
+  barLegLabelPoses,
+  lLegIndexes,
   isStoolPathText,
   uprightCounterDeg,
   planFromLegInches,
@@ -68,4 +70,31 @@ test("the bar mark is a hollow outline with the label on a leg", () => {
   assert.match(mark, /data-floor-bar-leg=/);
   assert.match(mark, /data-floor-bar-stack=/);
   assert.match(mark, /barLabelPose/);
+  assert.match(mark, /data-floor-bar-leg-label=/);
+  assert.match(mark, /barShape === "l"/);
+});
+
+test("an L labels the longer leg Long and the shorter leg Short", () => {
+  const longFirst = planFromLegInches("l", { x: 10, y: 20 }, [14 * 12, 8 * 12], room);
+  const box = slabBounds(longFirst, 24, room, false);
+  assert.deepEqual(lLegIndexes([14 * 12, 8 * 12]), { longIdx: 0, shortIdx: 1 });
+  assert.deepEqual(lLegIndexes([8 * 12, 14 * 12]), { longIdx: 1, shortIdx: 0 });
+  assert.deepEqual(lLegIndexes([10 * 12, 10 * 12]), { longIdx: 0, shortIdx: 1 });
+  const poses = barLegLabelPoses(longFirst, room, box, 24, 0);
+  assert.deepEqual(
+    poses.map((pose) => pose.role),
+    ["Long", "Short"],
+  );
+  assert.equal(poses[0]!.leg, 0);
+  assert.equal(poses[1]!.leg, 1);
+  const corner = longFirst[1]!;
+  for (const pose of poses) {
+    assert.ok(Math.hypot(pose.x - corner.x, pose.y - corner.y) > 4, pose.role);
+  }
+  const shortFirst = planFromLegInches("l", { x: 10, y: 20 }, [8 * 12, 14 * 12], room);
+  const shortBox = slabBounds(shortFirst, 24, room, false);
+  const flipped = barLegLabelPoses(shortFirst, room, shortBox, 24, 0);
+  assert.equal(flipped.find((pose) => pose.role === "Long")?.leg, 1);
+  assert.equal(flipped.find((pose) => pose.role === "Short")?.leg, 0);
+  assert.equal(barLegLabelPoses(planFromLegInches("straight", { x: 10, y: 20 }, [12 * 12], room), room, box, 24).length, 0);
 });
