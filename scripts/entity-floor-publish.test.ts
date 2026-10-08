@@ -110,6 +110,30 @@ test("moving a table into another room does not publish that move", () => {
   assert.equal(merged.tables.find((table) => table.id === "t2")?.x, 20);
 });
 
+test("publish drops a deleted bar and the stools bound to it", () => {
+  const withBar = {
+    ...stored,
+    tables: [
+      ...stored.tables,
+      { id: "bar", label: "BAR", kind: "bar_top", section: "Grill", sectionId: "sec_a", x: 8, y: 8, w: 40, h: 8, seats: 0, shape: "rect" as const, railBarId: undefined },
+      { id: "b1", label: "B1", kind: "barstool", railBarId: "bar", section: "Grill", sectionId: "sec_a", x: 8, y: 16, w: 4, h: 4, seats: 1, shape: "rect" as const },
+      { id: "loose", label: "B9", kind: "barstool", section: "Grill", sectionId: "sec_a", x: 70, y: 16, w: 4, h: 4, seats: 1, shape: "rect" as const },
+      { id: "bOther", label: "B2", kind: "barstool", railBarId: "barB", section: "Bar", sectionId: "sec_b", x: 20, y: 30, w: 4, h: 4, seats: 1, shape: "rect" as const },
+    ],
+  };
+  const draftTables = withBar.tables.filter((table) => table.id !== "bar" && table.id !== "b1");
+  const merged = mergeEntityFloor({
+    stored: withBar,
+    draft: { sections: withBar.sections, tables: draftTables },
+    entityId: "ent_a",
+  });
+  assert.equal(merged.tables.find((table) => table.id === "bar"), undefined);
+  assert.equal(merged.tables.find((table) => table.id === "b1"), undefined);
+  assert.equal(merged.tables.find((table) => table.id === "loose")?.label, "B9");
+  assert.equal(merged.tables.find((table) => table.id === "bOther")?.label, "B2");
+  assert.equal(merged.tables.find((table) => table.id === "t2")?.sectionId, "sec_b");
+});
+
 test("entity floor editor publishes its rooms and still leaves the host publish alone", () => {
   const editor = readFileSync("src/components/pos/FloorEditorView.tsx", "utf8");
   const persist = readFileSync("src/lib/pos/persist-location-setup.ts", "utf8");

@@ -106,6 +106,7 @@ import {
   type ResetScope,
   snapToGrid,
   snapToObjects,
+  idsRemovedWithBars,
   type AlignOp,
   type GridSizeIn,
   type SnapMode,
@@ -1493,9 +1494,10 @@ export function FloorEditorView() {
   };
 
   const removeIds = (ids: string[]) => {
+    const tablesNow = usePosStore.getState().tables;
+    const ordered = idsRemovedWithBars(tablesNow, ids, pieceEditable);
     const blocked: string[] = [];
-    const allowed = ids.filter((id) => pieceEditable(id));
-    for (const id of allowed) {
+    for (const id of ordered) {
       const res = remove(id);
       if (!res.ok && res.error) blocked.push(res.error);
     }
@@ -1572,23 +1574,26 @@ export function FloorEditorView() {
 
   return (
     <div className="flex h-full min-h-0 flex-1 flex-col overflow-hidden" data-demo="floor-editor">
-      <div className="flex max-h-36 shrink-0 flex-wrap items-center gap-2 overflow-y-auto border-b border-border px-3 py-2 lg:max-h-none lg:overflow-visible">
-        <h2 className="text-sm font-semibold">Floor plan editor</h2>
-        {floorMode === "entity" && (
-          <p className="text-xs text-muted-foreground" data-floor-entity-scope="">
-            Editing rooms this entity owns, plus active seating loans.
-            {peerVenue ? " Publish floor saves those rooms." : ""}
-          </p>
-        )}
-        <Badge variant="secondary">Drag · resize · rooms</Badge>
-        <GuideLearnLink topicId="floor-editor" compact>
-          Learn
-        </GuideLearnLink>
-        <SetupAssistButton domain="floor" label="Add by voice or text" />
-        <div className="flex flex-wrap gap-1">
+      <div
+        data-floor-toolbar=""
+        className="flex h-10 shrink-0 flex-nowrap items-center gap-1 overflow-x-auto overflow-y-hidden border-b border-border bg-bg px-2"
+      >
+        <div className="flex shrink-0 items-center gap-1">
+          <h2 className="shrink-0 whitespace-nowrap text-sm font-semibold">Floor plan editor</h2>
+          <Badge variant="secondary" className="shrink-0 whitespace-nowrap">
+            Drag-resize
+          </Badge>
+          <GuideLearnLink topicId="floor-editor" compact>
+            Learn
+          </GuideLearnLink>
+          <SetupAssistButton domain="floor" label="Add by voice or text" />
+        </div>
+        <div className="flex min-w-0 flex-1 flex-nowrap items-center gap-1 overflow-x-auto overflow-y-hidden">
+        <div className="flex shrink-0 flex-nowrap gap-1">
           <Button
             size="sm"
             variant={scope === "entire" ? "default" : "outline"}
+            className="h-7 shrink-0 px-2 text-xs"
             onClick={() => {
               setScope("entire");
               setRoom("All");
@@ -1599,6 +1604,7 @@ export function FloorEditorView() {
           <Button
             size="sm"
             variant={scope === "section" ? "default" : "outline"}
+            className="h-7 shrink-0 px-2 text-xs"
             onClick={() => {
               setScope("section");
               setRoom(floorSections[0]?.name ?? "All");
@@ -1610,6 +1616,7 @@ export function FloorEditorView() {
           <Button
             size="sm"
             variant={room === "All" ? "default" : "outline"}
+            className="h-7 shrink-0 px-2 text-xs"
             onClick={() => setRoom("All")}
           >
             All rooms
@@ -1621,7 +1628,7 @@ export function FloorEditorView() {
               size="sm"
               variant={room === s.name ? "default" : "outline"}
               onClick={() => setRoom(s.name)}
-              className="gap-1.5"
+              className="h-7 shrink-0 gap-1 px-2 text-xs"
             >
               <span
                 className="h-2 w-2 rounded-full"
@@ -1631,13 +1638,14 @@ export function FloorEditorView() {
             </Button>
           ))}
         </div>
-        <div className="ml-auto flex flex-wrap gap-2">
+        <div className="flex shrink-0 flex-nowrap gap-1">
           {KINDS.map((k) => (
             <Button
               key={k.id}
               size="sm"
               variant="outline"
               data-floor-kind={k.id}
+              className="h-7 shrink-0 px-2 text-xs"
               onClick={() => {
                 if (k.id === "table") {
                   setTableRows([freshTableAddRow("round")]);
@@ -1654,172 +1662,86 @@ export function FloorEditorView() {
               }}
             >
               {k.booth ? <FloorBoothIcon kind={k.booth} /> : <Plus className="h-3.5 w-3.5" />}
-              {k.label}
+              {k.id === "square_plain" ? "Square" : k.label}
             </Button>
           ))}
+        </div>
+        </div>
+        <div className="flex shrink-0 flex-nowrap items-center gap-1">
+          {floorMode === "entity" && peerVenue ? (
+            <Button
+              type="button"
+              size="sm"
+              data-floor-publish=""
+              className="h-7 shrink-0 px-2 text-xs"
+              disabled={publishing}
+              onClick={() => void publishFloor()}
+            >
+              {publishing ? "Publishing…" : "Publish floor"}
+            </Button>
+          ) : null}
+          <Button type="button" size="sm" variant="outline" className="h-7 shrink-0 px-2 text-xs" data-floor-zoom-out="" onClick={() => zoomBy(1 / 1.25)}>
+            Zoom out
+          </Button>
+          <Button type="button" size="sm" variant="outline" className="h-7 shrink-0 px-2 text-xs" data-floor-zoom-in="" onClick={() => zoomBy(1.25)}>
+            Zoom in
+          </Button>
+          <Button type="button" size="sm" variant="outline" className="h-7 shrink-0 px-2 text-xs" data-floor-fit-room="" onClick={fitRoomView}>
+            Fit room
+          </Button>
+          <Button
+            type="button"
+            size="sm"
+            variant={gridOn ? "default" : "outline"}
+            className="h-7 shrink-0 px-2 text-xs"
+            data-floor-grid=""
+            aria-pressed={gridOn}
+            onClick={() => setGridOn((on) => !on)}
+          >
+            Grid
+          </Button>
+          <Button
+            type="button"
+            size="sm"
+            variant={rulerOn ? "default" : "outline"}
+            className="h-7 shrink-0 px-2 text-xs"
+            data-floor-ruler=""
+            aria-pressed={rulerOn}
+            onClick={() => setRulerOn((on) => !on)}
+          >
+            Ruler
+          </Button>
+          <label className="flex shrink-0 items-center gap-1 whitespace-nowrap text-xs text-muted-foreground">
+            Snap
+            <select
+              data-floor-snap=""
+              className="h-7 rounded-md border border-border bg-bg px-1.5 text-xs text-foreground"
+              value={snapMode}
+              onChange={(event) => setSnapMode(event.target.value as SnapMode)}
+            >
+              <option value="off">Off</option>
+              <option value="grid">Grid</option>
+              <option value="objects">Objects</option>
+            </select>
+          </label>
+          <label className="flex shrink-0 items-center gap-1 whitespace-nowrap text-xs text-muted-foreground">
+            Grid size
+            <select
+              data-floor-grid-size=""
+              className="h-7 rounded-md border border-border bg-bg px-1.5 text-xs text-foreground"
+              value={String(gridIn)}
+              onChange={(event) => setGridIn(Number(event.target.value) as GridSizeIn)}
+            >
+              <option value="6">6"</option>
+              <option value="12">1'</option>
+              <option value="24">2'</option>
+            </select>
+          </label>
         </div>
       </div>
 
       <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden lg:flex-row">
         <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
-          <div className="flex max-h-28 shrink-0 flex-wrap items-end gap-3 overflow-y-auto border-b border-border px-3 py-2 lg:max-h-none lg:overflow-visible" data-floor-room="">
-            {wholeFloor && (
-            <FeetInchesInput
-              label="Room width"
-              totalIn={floorRoom.widthIn}
-              testId="room-width"
-              onCommit={(widthIn) => {
-                setFloorRoom({ widthIn, depthIn: floorRoom.depthIn });
-                persistLocationCatalog("floor");
-              }}
-            />
-            )}
-            {wholeFloor && (
-            <FeetInchesInput
-              label="Room depth"
-              totalIn={floorRoom.depthIn}
-              testId="room-depth"
-              onCommit={(depthIn) => {
-                setFloorRoom({ widthIn: floorRoom.widthIn, depthIn });
-                persistLocationCatalog("floor");
-              }}
-            />
-            )}
-            <Button type="button" size="sm" variant="outline" data-floor-zoom-out="" onClick={() => zoomBy(1 / 1.25)}>
-              Zoom out
-            </Button>
-            <Button type="button" size="sm" variant="outline" data-floor-zoom-in="" onClick={() => zoomBy(1.25)}>
-              Zoom in
-            </Button>
-            <Button type="button" size="sm" variant="outline" data-floor-fit-room="" onClick={fitRoomView}>
-              Fit room
-            </Button>
-            {wholeFloor && (
-            <Button
-              type="button"
-              size="sm"
-              variant="outline"
-              data-floor-clear=""
-              onClick={() => setClearOpen(true)}
-            >
-              Clear slate
-            </Button>
-            )}
-            {wholeFloor && (
-            <Button
-              type="button"
-              size="sm"
-              variant="outline"
-              data-floor-renumber=""
-              onClick={() => {
-                setRenumberScope("tables");
-                setRenumberOpen(true);
-              }}
-            >
-              {RENUMBER_LABEL}
-            </Button>
-            )}
-            {floorMode === "entity" && peerVenue ? (
-              <div className="ml-auto flex items-center gap-2">
-                <Button
-                  type="button"
-                  size="sm"
-                  data-floor-publish=""
-                  disabled={publishing}
-                  onClick={() => void publishFloor()}
-                >
-                  {publishing ? "Publishing…" : "Publish floor"}
-                </Button>
-                {publishNote ? (
-                  <p className="text-xs text-muted-foreground" data-floor-publish-note="">
-                    {publishNote}
-                  </p>
-                ) : null}
-              </div>
-            ) : null}
-            <Button
-              type="button"
-              size="sm"
-              variant={gridOn ? "default" : "outline"}
-              data-floor-grid=""
-              aria-pressed={gridOn}
-              onClick={() => setGridOn((on) => !on)}
-            >
-              Grid
-            </Button>
-            <Button
-              type="button"
-              size="sm"
-              variant={rulerOn ? "default" : "outline"}
-              data-floor-ruler=""
-              aria-pressed={rulerOn}
-              onClick={() => setRulerOn((on) => !on)}
-            >
-              Ruler
-            </Button>
-            <label className="flex items-center gap-1 text-xs text-muted-foreground">
-              Snap
-              <select
-                data-floor-snap=""
-                className="h-8 rounded-md border border-border bg-bg px-2 text-xs text-foreground"
-                value={snapMode}
-                onChange={(event) => setSnapMode(event.target.value as SnapMode)}
-              >
-                <option value="off">Off</option>
-                <option value="grid">Grid</option>
-                <option value="objects">Objects</option>
-              </select>
-            </label>
-            <label className="flex items-center gap-1 text-xs text-muted-foreground">
-              Grid size
-              <select
-                data-floor-grid-size=""
-                className="h-8 rounded-md border border-border bg-bg px-2 text-xs text-foreground"
-                value={String(gridIn)}
-                onChange={(event) => setGridIn(Number(event.target.value) as GridSizeIn)}
-              >
-                <option value="6">6"</option>
-                <option value="12">1'</option>
-                <option value="24">2'</option>
-              </select>
-            </label>
-            {selection.length >= 2 ? (
-              <div className="flex flex-wrap gap-1">
-                <Button type="button" size="sm" variant="outline" data-floor-align="left" onClick={() => applyAlign("left")}>
-                  Left
-                </Button>
-                <Button type="button" size="sm" variant="outline" data-floor-align="right" onClick={() => applyAlign("right")}>
-                  Right
-                </Button>
-                <Button type="button" size="sm" variant="outline" data-floor-align="top" onClick={() => applyAlign("top")}>
-                  Top
-                </Button>
-                <Button type="button" size="sm" variant="outline" data-floor-align="bottom" onClick={() => applyAlign("bottom")}>
-                  Bottom
-                </Button>
-                <Button
-                  type="button"
-                  size="sm"
-                  variant="outline"
-                  data-floor-align="distribute-h"
-                  disabled={selection.length < 3}
-                  onClick={() => applyAlign("distribute-h")}
-                >
-                  Distribute horizontal
-                </Button>
-                <Button
-                  type="button"
-                  size="sm"
-                  variant="outline"
-                  data-floor-align="distribute-v"
-                  disabled={selection.length < 3}
-                  onClick={() => applyAlign("distribute-v")}
-                >
-                  Distribute vertical
-                </Button>
-              </div>
-            ) : null}
-          </div>
           <div
             ref={viewportRef}
             data-floor-viewport=""
@@ -2051,6 +1973,104 @@ export function FloorEditorView() {
         </div>
 
         <aside className="max-h-[42vh] min-h-0 w-full shrink-0 space-y-4 overflow-y-auto border-t border-border bg-surface p-3 lg:max-h-none lg:w-80 lg:border-l lg:border-t-0">
+          {floorMode === "entity" ? (
+            <p className="text-xs text-muted-foreground" data-floor-entity-scope="">
+              Editing rooms this entity owns, plus active seating loans.
+              {peerVenue ? " Publish floor saves those rooms." : ""}
+            </p>
+          ) : null}
+          {publishNote ? (
+            <p className="text-xs text-muted-foreground" data-floor-publish-note="">
+              {publishNote}
+            </p>
+          ) : null}
+          {wholeFloor || selection.length >= 2 ? (
+            <div className="space-y-2" data-floor-room="">
+              {wholeFloor ? (
+                <div className="flex flex-wrap gap-2">
+                  <FeetInchesInput
+                    label="Room width"
+                    totalIn={floorRoom.widthIn}
+                    testId="room-width"
+                    onCommit={(widthIn) => {
+                      setFloorRoom({ widthIn, depthIn: floorRoom.depthIn });
+                      persistLocationCatalog("floor");
+                    }}
+                  />
+                  <FeetInchesInput
+                    label="Room depth"
+                    totalIn={floorRoom.depthIn}
+                    testId="room-depth"
+                    onCommit={(depthIn) => {
+                      setFloorRoom({ widthIn: floorRoom.widthIn, depthIn });
+                      persistLocationCatalog("floor");
+                    }}
+                  />
+                </div>
+              ) : null}
+              {wholeFloor ? (
+                <div className="flex flex-wrap gap-1">
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    data-floor-clear=""
+                    onClick={() => setClearOpen(true)}
+                  >
+                    Clear slate
+                  </Button>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    data-floor-renumber=""
+                    onClick={() => {
+                      setRenumberScope("tables");
+                      setRenumberOpen(true);
+                    }}
+                  >
+                    {RENUMBER_LABEL}
+                  </Button>
+                </div>
+              ) : null}
+              {selection.length >= 2 ? (
+                <div className="flex flex-wrap gap-1">
+                  <Button type="button" size="sm" variant="outline" data-floor-align="left" onClick={() => applyAlign("left")}>
+                    Left
+                  </Button>
+                  <Button type="button" size="sm" variant="outline" data-floor-align="right" onClick={() => applyAlign("right")}>
+                    Right
+                  </Button>
+                  <Button type="button" size="sm" variant="outline" data-floor-align="top" onClick={() => applyAlign("top")}>
+                    Top
+                  </Button>
+                  <Button type="button" size="sm" variant="outline" data-floor-align="bottom" onClick={() => applyAlign("bottom")}>
+                    Bottom
+                  </Button>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    data-floor-align="distribute-h"
+                    disabled={selection.length < 3}
+                    onClick={() => applyAlign("distribute-h")}
+                  >
+                    Distribute horizontal
+                  </Button>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    data-floor-align="distribute-v"
+                    disabled={selection.length < 3}
+                    onClick={() => applyAlign("distribute-v")}
+                  >
+                    Distribute vertical
+                  </Button>
+                </div>
+              ) : null}
+            </div>
+          ) : null}
           <div>
             <p className="mb-2 text-sm font-medium">Rooms / sections</p>
             {wholeFloor && publishOwnerBlock(floorSections) ? (

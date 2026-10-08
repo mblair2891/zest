@@ -1,7 +1,7 @@
 # Feature status
 
 **Date:** 7 Oct 2026  
-**Tree:** live-path fixes on `main` (Operators Guide v2026.10.197).  
+**Tree:** live-path fixes on `main` (Operators Guide v2026.10.198).  
 **How this was read:** routes under `src/routes`, `createServerFn` handlers, `migrations/`, Operators Guide topics in `src/lib/guide/content`, and the server functions those screens call. A live venue was not clicked.
 
 **100% means all three:** a screen, a save that writes Postgres (a table or `locations.setup`), and a read that loads that same row again. A refresh would still show the result. A button that only updates the browser, a seed, or a handler that returns without writing is not complete.
@@ -46,7 +46,7 @@
 
 **Printer and station records.** `LocationDeviceRegistry` calls `saveLocationDeviceFn`, which writes `location_devices` and `locations.setup.locationDevices` (`src/lib/access/api.ts`). The list reads that setup back. A receipt printer, an order printer, and a paired tablet are the same device record.
 
-**Operators Guide.** `/guide` renders `OperatorsGuide` from `src/lib/guide`. It is the published manual (v2026.10.197), not a record the venue saves.
+**Operators Guide.** `/guide` renders `OperatorsGuide` from `src/lib/guide`. It is the published manual (v2026.10.198), not a record the venue saves.
 
 ---
 

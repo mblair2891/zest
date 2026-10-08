@@ -6,6 +6,18 @@ import type { GuideUpdate } from "@/lib/guide/types";
  */
 export const WHATS_NEW_ENTRIES: GuideUpdate[] = [
   {
+    id: "upd_2026_10_198_floor_toolbar",
+    date: "2026-10-07",
+    title: "Floor toolbar is one row",
+    summary: "The title stays visible. Publish floor sits on that row. Trash on a bar removes its stools.",
+    body: "The floor toolbar is one row under the page tabs. Floor plan editor stays fully visible. Publish floor sits on that row. Trash on a bar top also deletes the stools bound to that bar. A stool with no rail stays. Publish floor saves the removal, and a refresh does not bring the bar or those stools back.",
+    roles: ["owner_manager", "vendor_operator", "host_operator"],
+    surfaces: ["floor"],
+    audience: "all",
+    topicId: "floor-editor",
+    tags: ["floor"],
+  },
+  {
     id: "upd_2026_10_197_live_paths",
     date: "2026-10-07",
     title: "Owner login, menu, shifts, PIN floor, and cards",

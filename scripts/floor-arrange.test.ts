@@ -18,9 +18,11 @@ import {
   placeRow,
   relabelBarStools,
   renumberPlan,
+  idsRemovedWithBars,
   resetFloorNumbers,
   rulerMarks,
   snapToGrid,
+  stoolsBoundToBar,
 } from "../src/lib/pos/floor-arrange.ts";
 import { generateBarStools, planFromLegInches, slabBounds } from "../src/lib/pos/floor-architecture.ts";
 
@@ -297,6 +299,25 @@ test("grid snap and align two tables to a wall", () => {
   assert.match(editor, /data-floor-grid-size=""/);
   assert.match(editor, /data-floor-align="left"/);
   assert.match(editor, /data-floor-align="distribute-h"/);
+  const toolbar = editor.slice(editor.indexOf("data-floor-toolbar"), editor.indexOf("data-floor-viewport"));
+  assert.match(toolbar, /flex-nowrap/);
+  assert.match(toolbar, /whitespace-nowrap/);
+  assert.match(toolbar, /Floor plan editor/);
+  assert.match(toolbar, /Drag-resize/);
+  assert.match(toolbar, /Publish floor/);
+  assert.match(toolbar, /data-floor-publish/);
+  assert.match(toolbar, /square_plain" \? "Square"/);
+  assert.doesNotMatch(toolbar, /flex-wrap/);
+  assert.doesNotMatch(toolbar, /max-h-/);
+  assert.doesNotMatch(toolbar, /absolute/);
+  assert.equal((editor.match(/data-floor-publish=""/g) ?? []).length, 1);
+  assert.equal((editor.match(/data-floor-zoom-in=""/g) ?? []).length, 1);
+  assert.match(editor, /idsRemovedWithBars/);
+  assert.match(editor, /data-floor-entity-scope/);
+  assert.match(editor, /data-floor-room/);
+  const guide = readFileSync("src/lib/guide/content/floor.ts", "utf8");
+  assert.match(guide, /The floor toolbar is one row/);
+  assert.match(guide, /Trash on a bar top also deletes the barstools bound to that bar/);
   assert.match(editor, /Reverse numbering/);
   assert.match(editor, /data-stool-number-reverse=/);
   assert.doesNotMatch(editor, /Number from/);
@@ -313,6 +334,30 @@ test("grid snap and align two tables to a wall", () => {
   assert.doesNotMatch(mark, /B\$\{/);
   const catalog = readFileSync("src/lib/saas/location-catalog.ts", "utf8");
   assert.match(catalog, /stoolNumberFrom/);
+});
+
+test("trash on a bar deletes stools bound to that bar and leaves the rest", () => {
+  const tables = [
+    { id: "bar", kind: "bar_top" },
+    { id: "b1", kind: "barstool", railBarId: "bar" },
+    { id: "b2", kind: "barstool", railBarId: "bar" },
+    { id: "loose", kind: "barstool" },
+    { id: "other", kind: "barstool", railBarId: "bar2" },
+    { id: "bar2", kind: "bar_top" },
+    { id: "t1", kind: "table" },
+  ];
+  assert.deepEqual(stoolsBoundToBar(tables, "bar"), ["b1", "b2"]);
+  assert.deepEqual(stoolsBoundToBar(tables, "bar2"), ["other"]);
+  assert.deepEqual(stoolsBoundToBar(tables, ""), []);
+  assert.deepEqual(idsRemovedWithBars(tables, ["bar"], () => true), ["b1", "b2", "bar"]);
+  assert.deepEqual(idsRemovedWithBars(tables, ["loose"], () => true), ["loose"]);
+  assert.deepEqual(idsRemovedWithBars(tables, ["t1"], () => true), ["t1"]);
+  const openBar = tables.map((row) => (row.id === "bar" ? { ...row, orderId: "chk" } : row));
+  assert.deepEqual(idsRemovedWithBars(openBar, ["bar"], () => true), ["bar"]);
+  const openStool = tables.map((row) => (row.id === "b1" ? { ...row, orderId: "chk" } : row));
+  assert.deepEqual(idsRemovedWithBars(openStool, ["bar"], () => true), ["b2", "bar"]);
+  assert.deepEqual(idsRemovedWithBars(tables, ["bar"], (id) => id !== "b2"), ["b1", "bar"]);
+  assert.deepEqual(idsRemovedWithBars(tables, ["bar"], () => false), []);
 });
 
 test("an L walks from one open end through the corner to the other", () => {

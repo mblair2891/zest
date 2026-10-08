@@ -15,6 +15,44 @@ import {
 import { COPY_OFFSET_IN } from "./floor-copy.ts";
 import { formatFeetInches, sizePatch } from "./floor-dimensions.ts";
 
+/** Stools generated onto this bar. A stool with no rail, or another bar’s rail, is not bound. */
+export function stoolsBoundToBar(
+  tables: readonly { id: string; kind?: string | null; railBarId?: string | null }[],
+  barId: string,
+): string[] {
+  const id = barId.trim();
+  if (!id) return [];
+  return tables.filter((row) => row.kind === "barstool" && row.railBarId === id).map((row) => row.id);
+}
+
+/**
+ * Trash on a bar also removes stools whose rail is that bar.
+ * An open check on the bar leaves its stools. An open check or a locked stool stays.
+ * Stools are listed before the bar.
+ */
+export function idsRemovedWithBars(
+  tables: readonly { id: string; kind?: string | null; railBarId?: string | null; orderId?: string | null }[],
+  ids: readonly string[],
+  editable: (id: string) => boolean,
+): string[] {
+  const allowed = ids.filter((id) => editable(id));
+  const drop = new Set(allowed);
+  for (const id of allowed) {
+    const piece = tables.find((row) => row.id === id);
+    if (piece?.kind !== "bar_top" || piece.orderId) continue;
+    for (const stoolId of stoolsBoundToBar(tables, id)) {
+      const stool = tables.find((row) => row.id === stoolId);
+      if (!stool || stool.orderId || !editable(stoolId)) continue;
+      drop.add(stoolId);
+    }
+  }
+  return [...drop].sort((a, b) => {
+    const barA = tables.find((row) => row.id === a)?.kind === "bar_top" ? 1 : 0;
+    const barB = tables.find((row) => row.id === b)?.kind === "bar_top" ? 1 : 0;
+    return barA - barB;
+  });
+}
+
 /** Kinds that ask “How many?” before they land on the plan. Tables use Add tables. */
 export const ADD_COUNT_KINDS = ["booth_4", "booth_u", "booth_l", "barstool"] as const;
 
