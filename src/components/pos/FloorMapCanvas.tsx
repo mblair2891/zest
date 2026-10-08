@@ -6,6 +6,7 @@ import { usePosStore } from "@/lib/pos/store";
 import { FloorFixtureArt } from "@/components/pos/FloorFixtureArt";
 import { FloorArchitectureMark } from "@/components/pos/FloorArchitectureMark";
 import { isArchitectureKind, wallEndExtensions } from "@/lib/pos/floor-architecture";
+import { openingGaps } from "@/lib/pos/floor-room";
 import { cn } from "@/lib/utils";
 
 function isBarSeat(table: Table): boolean {
@@ -294,6 +295,7 @@ export function FloorMapCanvas({
                         )
                       : undefined
                   }
+                  gaps={openingGaps(item.table, items.map((i) => i.table), room)}
                 />
               ) : stool ? (
                 <FloorFixtureArt

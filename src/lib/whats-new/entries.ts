@@ -6,6 +6,18 @@ import type { GuideUpdate } from "@/lib/guide/types";
  */
 export const WHATS_NEW_ENTRIES: GuideUpdate[] = [
   {
+    id: "upd_2026_10_204_room_walls",
+    date: "2026-10-07",
+    title: "Room walls sit inside the canvas",
+    summary: "Apply draws the room inside the canvas. A door, a window, or a snip stays after publish.",
+    body: "The canvas is the workspace and is larger than the room. Room width and depth are in feet. Apply draws four walls inside the canvas, centered, with a margin so the walls are not the canvas border. Pieces already on the floor stay. A piece can sit on a room edge and a table can touch a wall. Door and Window drop onto a wall and cut that wall. Drag the cut along the wall. Length sets the opening. Select a wall and Snip, then click the cut point. That segment can be deleted or dragged, so the room can become an L or a notch. A snip does not delete tables. Publish floor saves the walls, the openings, and the snips. A refresh shows the same room outline. Fit room frames the walls, not the blank canvas margin.",
+    roles: ["owner_manager", "vendor_operator", "host_operator"],
+    surfaces: ["floor"],
+    audience: "all",
+    topicId: "floor-editor",
+    tags: ["floor"],
+  },
+  {
     id: "upd_2026_10_203_couch",
     date: "2026-10-07",
     title: "Floor editor has a couch",

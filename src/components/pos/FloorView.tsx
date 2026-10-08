@@ -72,6 +72,7 @@ import { FloorArchitectureMark } from "@/components/pos/FloorArchitectureMark";
 import { FloorMapCanvas, type FloorMapItem } from "@/components/pos/FloorMapCanvas";
 import { DEFAULT_ROOM, ROOM_FIT_MARGIN_PX, fitRoomToView } from "@/lib/pos/floor-dimensions";
 import { isArchitectureKind, wallEndExtensions } from "@/lib/pos/floor-architecture";
+import { openingGaps } from "@/lib/pos/floor-room";
 import { floorDraftBannerOn, FLOOR_DRAFT_BANNER, readFloorDraft, setFloorDraftBanner } from "@/lib/pos/live-floor";
 import { useStationSessionStore } from "@/lib/pos/station-session";
 import { NotificationBell } from "@/components/pos/NotificationCenter";
@@ -786,6 +787,7 @@ export function FloorView({
                             )
                           : undefined
                       }
+                      gaps={openingGaps(t, visible, floorRoom)}
                     />
                   </div>
                 );

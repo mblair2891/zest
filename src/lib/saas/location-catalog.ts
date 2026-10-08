@@ -32,6 +32,8 @@ export type FloorPlanTable = {
   railBarId?: string;
   barSide?: import("@/lib/pos/types").BarGuestSide;
   stoolNumberFrom?: 0 | 1;
+  planRole?: "outline" | "snip" | "opening";
+  openingOf?: string;
 };
 
 export type LocationFloorPlan = {
@@ -60,6 +62,12 @@ function str(v: unknown, fallback = ""): string {
 function num(v: unknown, fallback = 0): number {
   const n = Number(v);
   return Number.isFinite(n) ? n : fallback;
+}
+
+function freeCoord(v: unknown): number {
+  const n = num(v);
+  if (!Number.isFinite(n)) return 0;
+  return Math.min(2000, Math.max(-2000, n));
 }
 
 const SHAPES = new Set(["rect", "round", "bar", "booth", "other"]);
@@ -112,14 +120,17 @@ export function parseFloorPlan(raw: unknown): LocationFloorPlan | undefined {
       : undefined;
     const lengthIn = num(r.lengthIn, 0);
     const widthIn = num(r.widthIn, 0);
+    const planRole =
+      r.planRole === "outline" || r.planRole === "snip" || r.planRole === "opening" ? r.planRole : undefined;
+    const openingOf = str(r.openingOf).slice(0, 80) || undefined;
     tables.push({
       id,
       label: str(r.label, id).slice(0, 40),
       section: str(r.section, "Dining").slice(0, 40),
       seats: Math.max(arch ? 0 : 1, Math.round(num(r.seats, arch ? 0 : 4))),
-      x: Math.min(100, Math.max(0, num(r.x))),
-      y: Math.min(100, Math.max(0, num(r.y))),
-      w: Math.min(100, Math.max(thin ? 0.4 : 0.4, num(r.w, 12))),
+      x: thin ? freeCoord(r.x) : Math.min(100, Math.max(0, num(r.x))),
+      y: thin ? freeCoord(r.y) : Math.min(100, Math.max(0, num(r.y))),
+      w: Math.min(thin ? 2000 : 100, Math.max(0.4, num(r.w, 12))),
       h: Math.min(100, Math.max(thin ? 0.4 : 0.4, num(r.h, 12))),
       lengthIn: lengthIn > 0 ? lengthIn : undefined,
       widthIn: widthIn > 0 ? widthIn : undefined,
@@ -142,6 +153,8 @@ export function parseFloorPlan(raw: unknown): LocationFloorPlan | undefined {
       stoolNumberFrom: r.stoolNumberFrom === 0 || r.stoolNumberFrom === 1 || r.stoolNumberFrom === "0" || r.stoolNumberFrom === "1"
         ? (Number(r.stoolNumberFrom) as 0 | 1)
         : undefined,
+      planRole,
+      openingOf,
     });
   }
   const sections: FloorSection[] = [];
@@ -164,7 +177,9 @@ export function parseFloorPlan(raw: unknown): LocationFloorPlan | undefined {
   for (const t of tables) {
     if (!(t.lengthIn && t.lengthIn > 0)) t.lengthIn = inchesFromPercent(t.w, room.widthIn);
     if (!(t.widthIn && t.widthIn > 0)) t.widthIn = inchesFromPercent(t.h, room.depthIn);
-    if (t.lengthIn > 0) t.w = Math.min(100, Math.max(0.4, (t.lengthIn / room.widthIn) * 100));
+    const kindThin = t.kind === "wall" || t.kind === "door" || t.kind === "window";
+    const spun = kindThin && ((t.rotation ?? 0) % 180) !== 0;
+    if (t.lengthIn > 0) t.w = Math.min(spun ? 2000 : 100, Math.max(0.4, (t.lengthIn / room.widthIn) * 100));
     if (t.widthIn > 0) t.h = Math.min(100, Math.max(0.4, (t.widthIn / room.depthIn) * 100));
   }
   return { tables, sections, room };
@@ -203,6 +218,8 @@ export function floorPlanFromPos(
         railBarId: t.railBarId,
         barSide: t.barSide,
         ...(t.stoolNumberFrom === 0 || t.stoolNumberFrom === 1 ? { stoolNumberFrom: t.stoolNumberFrom } : {}),
+        ...(t.planRole === "outline" || t.planRole === "snip" || t.planRole === "opening" ? { planRole: t.planRole } : {}),
+        ...(t.openingOf ? { openingOf: t.openingOf } : {}),
       })),
     sections: sections.map((s) => ({ ...s })),
   };
@@ -232,6 +249,8 @@ export function tablesFromFloorPlan(plan: LocationFloorPlan): Table[] {
     railBarId: t.railBarId,
     barSide: t.barSide,
     stoolNumberFrom: t.stoolNumberFrom,
+    planRole: t.planRole,
+    openingOf: t.openingOf,
     status: "empty",
   }));
 }

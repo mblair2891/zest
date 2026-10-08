@@ -495,6 +495,10 @@ export interface Table {
   lengthIn?: number;
   /** Real size along the plan depth, in inches. Wall thickness. */
   widthIn?: number;
+  /** Generated room wall, a snipped segment, or a door/window cut. */
+  planRole?: "outline" | "snip" | "opening";
+  /** Wall this door or window cuts. */
+  openingOf?: string;
   /** Legacy paint. Bar tops migrate #fff to transparent and stroke the rail. */
   fill?: string;
   sectionId?: string;

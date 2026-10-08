@@ -84,6 +84,17 @@ import {
   sizePatch,
   splitInches,
 } from "@/lib/pos/floor-dimensions";
+import {
+  CANVAS_MARGIN_IN,
+  applyRoomWalls,
+  clampPieceToRoom,
+  nearestWall,
+  openingGaps,
+  openingOnWall,
+  resizeOpening,
+  slideOpening,
+  snipWall,
+} from "@/lib/pos/floor-room";
 import { planFloorCopies } from "@/lib/pos/floor-copy";
 import {
   ADD_COUNT_TITLE,
@@ -625,6 +636,9 @@ export function FloorEditorView() {
   const [rulerOn, setRulerOn] = useState(false);
   const [snapMode, setSnapMode] = useState<SnapMode>("off");
   const [gridIn, setGridIn] = useState<GridSizeIn>(12);
+  const [snipId, setSnipId] = useState<string | null>(null);
+  const [roomWidthFt, setRoomWidthFt] = useState(() => String(Math.round(floorRoom.widthIn / 12)));
+  const [roomDepthFt, setRoomDepthFt] = useState(() => String(Math.round(floorRoom.depthIn / 12)));
   const snapRef = useRef<{ mode: SnapMode; gridIn: number }>({ mode: "off", gridIn: 12 });
   snapRef.current = { mode: snapMode, gridIn };
   const placePointRef = useRef<{ x: number; y: number } | null>(null);
@@ -744,10 +758,11 @@ export function FloorEditorView() {
     if (view.w <= 0 || view.h <= 0) return;
     const key = `${floorRoom.widthIn}x${floorRoom.depthIn}`;
     const input = fittedKey.current === null ? "open" : fittedKey.current === key ? "viewport" : "room";
+    const marginPx = CANVAS_MARGIN_IN * fit.pxPerIn;
     const next = cameraAfterFloorInput(camRef.current, input, {
       s: 1,
-      x: fit.originX,
-      y: fit.originY,
+      x: fit.originX - marginPx,
+      y: fit.originY - marginPx,
     });
     if (input === "viewport") return;
     fittedKey.current = key;
@@ -769,8 +784,42 @@ export function FloorEditorView() {
     return () => el.removeEventListener("wheel", onWheel);
   }, []);
   const fitRoomView = () => {
+    const marginPx = CANVAS_MARGIN_IN * fit.pxPerIn;
     setFrame({ pxPerIn: fit.pxPerIn, worldW: fit.worldW, worldH: fit.worldH });
-    setCam((c) => cameraAfterFloorInput(c, "fit", { s: 1, x: fit.originX, y: fit.originY }));
+    setCam((c) => cameraAfterFloorInput(c, "fit", { s: 1, x: fit.originX - marginPx, y: fit.originY - marginPx }));
+  };
+  useEffect(() => {
+    setRoomWidthFt(String(Math.round(floorRoom.widthIn / 12)));
+    setRoomDepthFt(String(Math.round(floorRoom.depthIn / 12)));
+  }, [floorRoom.widthIn, floorRoom.depthIn]);
+  const applyRoomOutline = () => {
+    const widthIn = Math.round(Number(roomWidthFt)) * 12;
+    const depthIn = Math.round(Number(roomDepthFt)) * 12;
+    if (!(widthIn >= 12) || !(depthIn >= 12) || widthIn > 500 * 12 || depthIn > 500 * 12) return;
+    setFloorRoom({ widthIn, depthIn });
+    const state = usePosStore.getState();
+    const roomNow = state.floorRoom ?? { widthIn, depthIn };
+    const section = floorSections[0];
+    const next = applyRoomWalls(state.tables, roomNow, (wall) => ({
+      id: uid("t"),
+      label: "Wall",
+      section: section?.name ?? "Dining",
+      sectionId: section?.id,
+      seats: 0,
+      status: "empty" as const,
+      shape: "rect" as const,
+      kind: "wall" as const,
+      planRole: "outline" as const,
+      x: wall.x,
+      y: wall.y,
+      w: wall.w,
+      h: wall.h,
+      rotation: wall.rotation,
+      lengthIn: wall.lengthIn,
+      widthIn: wall.widthIn,
+    }));
+    usePosStore.setState({ tables: next });
+    persistLocationCatalog("floor");
   };
   const zoomBy = (factor: number) => {
     const rect = viewportRef.current?.getBoundingClientRect();
@@ -943,8 +992,26 @@ export function FloorEditorView() {
     }
     e.preventDefault();
     e.stopPropagation();
-    e.currentTarget.setPointerCapture(e.pointerId);
     const piece = tables.find((t) => t.id === id);
+    if (snipId && snipId === id && piece?.kind === "wall") {
+      const board = boardRef.current?.getBoundingClientRect();
+      if (board && board.width > 0 && board.height > 0) {
+        const point = {
+          x: ((e.clientX - board.left) / board.width) * 100,
+          y: ((e.clientY - board.top) / board.height) * 100,
+        };
+        const next = snipWall(usePosStore.getState().tables, id, point, floorRoom, () => uid("t"));
+        if (next) {
+          usePosStore.setState({ tables: next });
+          setSnipId(null);
+          selectOnly(null);
+          persistLocationCatalog("floor");
+        }
+      }
+      return;
+    }
+    if (snipId && snipId !== id) setSnipId(null);
+    e.currentTarget.setPointerCapture(e.pointerId);
     const origPoints =
       piece?.kind === "bar_top" && piece.legLengths && piece.legLengths.length > 0
         ? storedBarPlan(piece).map((p) => ({ x: p.x, y: p.y }))
@@ -1067,8 +1134,22 @@ export function FloorEditorView() {
     const dx = ((e.clientX - drag.current.startX) / rect.width) * 100;
     const dy = ((e.clientY - drag.current.startY) / rect.height) * 100;
     const target = tables.find((t) => t.id === drag.current?.id);
-    let nx = Math.min(90, Math.max(0, drag.current.origX + dx));
-    let ny = Math.min(90, Math.max(0, drag.current.origY + dy));
+    if (target?.openingOf) {
+      const wall = tables.find((row) => row.id === target.openingOf && row.kind === "wall");
+      if (wall) {
+        const next = slideOpening(target, wall, floorRoom, { x: px, y: py });
+        if (next) update(drag.current.id, next);
+        return;
+      }
+    }
+    const dining = Boolean(target) && !isArchitectureKind(target?.kind);
+    let nx = drag.current.origX + dx;
+    let ny = drag.current.origY + dy;
+    if (dining && target) {
+      const clamped = clampPieceToRoom(nx, ny, target.w, target.h);
+      nx = clamped.x;
+      ny = clamped.y;
+    }
     const snap = snapRef.current;
     if (snap.mode === "grid") {
       const snapped = snapToGrid(nx, ny, floorRoom, snap.gridIn);
@@ -1084,6 +1165,11 @@ export function FloorEditorView() {
     } else if (isArchitectureKind(target?.kind)) {
       nx = snapPct(nx);
       ny = snapPct(ny);
+    }
+    if (dining && target && target.kind !== "barstool") {
+      const clamped = clampPieceToRoom(nx, ny, target.w, target.h);
+      nx = clamped.x;
+      ny = clamped.y;
     }
     let stoolFacing: number | null = null;
     if (target?.kind === "barstool") {
@@ -1261,6 +1347,37 @@ export function FloorEditorView() {
     }
     const dining = target.name;
     const sec = floorSections.find((s) => s.id === target.id) ?? floorSections.find((s) => s.name === dining);
+    if (kind.id === "door" || kind.id === "window") {
+      const walls = tables.filter((row) => row.kind === "wall");
+      const point = placePointRef.current ?? { x: 50, y: 50 };
+      const hit = walls.length ? nearestWall(point, walls, floorRoom) : null;
+      if (hit) {
+        const lengthIn = kind.id === "door" ? 36 : 48;
+        const opening = openingOnWall(hit.wall, floorRoom, { t: hit.t, lengthIn });
+        if (opening) {
+          const id = add({
+            x: opening.x,
+            y: opening.y,
+            w: opening.w,
+            h: opening.h,
+            rotation: opening.rotation,
+            lengthIn: opening.lengthIn,
+            widthIn: opening.widthIn,
+            section: dining,
+            sectionId: sec?.id,
+            seats: 0,
+            shape: "rect",
+            kind: kind.id,
+            label: kind.id === "door" ? "Door" : "Window",
+            planRole: "opening",
+            openingOf: hit.wall.id,
+          });
+          selectOnly(id);
+          persistLocationCatalog("floor");
+          return;
+        }
+      }
+    }
     const count = tables.filter((t) => t.kind === kind.id || (!t.kind && kind.id === "table")).length;
     const booth = kind.booth;
     const seats = booth ? BOOTH_DEFAULTS[booth].seats : kind.seats;
@@ -1918,6 +2035,7 @@ export function FloorEditorView() {
     );
   };
 
+  const canvasMarginPx = CANVAS_MARGIN_IN * draw.pxPerIn;
   return (
     <div ref={shellRef} className="relative flex h-full min-h-0 flex-1 flex-col overflow-hidden" data-demo="floor-editor">
       {renderFloorDock("top")}
@@ -1947,15 +2065,24 @@ export function FloorEditorView() {
             />
           ) : null}
           <div
-            ref={boardRef}
             data-floor-canvas="white"
-            data-floor-fit="room"
-            className="absolute left-0 top-0 border border-neutral-300 bg-white"
+            className="absolute left-0 top-0 bg-neutral-100"
             style={{
-              width: draw.worldW,
-              height: draw.worldH,
+              width: draw.worldW + canvasMarginPx * 2,
+              height: draw.worldH + canvasMarginPx * 2,
               transform: `translate(${cam.x}px, ${cam.y}px) scale(${cam.s})`,
               transformOrigin: "0 0",
+            }}
+          >
+          <div
+            ref={boardRef}
+            data-floor-fit="room"
+            className="absolute border border-neutral-300 bg-white"
+            style={{
+              left: canvasMarginPx,
+              top: canvasMarginPx,
+              width: draw.worldW,
+              height: draw.worldH,
             }}
             onPointerMove={onPointerMove}
             onPointerUp={onPointerUp}
@@ -2088,7 +2215,8 @@ export function FloorEditorView() {
                   key={t.id}
                   data-floor-rotation={rot}
                   data-floor-selected={inSet ? "1" : undefined}
-                  className="pointer-events-none absolute overflow-visible"
+                  data-floor-opening={t.openingOf || undefined}
+                  className={cn("pointer-events-none absolute overflow-visible", t.openingOf && "z-10")}
                   style={frame}
                 >
                   {selected === t.id ? (
@@ -2114,6 +2242,7 @@ export function FloorEditorView() {
                             )
                           : undefined
                       }
+                      gaps={openingGaps(t, tables, floorRoom)}
                     >
                       {selected === t.id && thin ? (
                         <LengthHandles
@@ -2153,11 +2282,12 @@ export function FloorEditorView() {
               );
             })}
           </div>
+          </div>
           <p className="pointer-events-none absolute inset-x-3 bottom-2 z-30 text-center text-[11px] text-neutral-500">
             {floorMode === "entity" && peerVenue
               ? "Edits stay in a draft until you Publish floor. Publish saves this entity’s rooms, tables, seat counts, and shapes. "
               : "Layout saves on this location as you drag. "}
-            Scroll, pinch, or the zoom buttons change the zoom. Click-hold on empty floor pans. Drag a piece to move it. Fit room fills this workspace.
+            Scroll, pinch, or the zoom buttons change the zoom. Click-hold on empty floor pans. Drag a piece to move it. Fit room frames the walls.
           </p>
         </div>
         </div>
@@ -2189,25 +2319,30 @@ export function FloorEditorView() {
           {wholeFloor || selection.length >= 2 ? (
             <div className="space-y-2" data-floor-room="">
               {wholeFloor ? (
-                <div className="flex flex-wrap gap-2">
-                  <FeetInchesInput
-                    label="Room width"
-                    totalIn={floorRoom.widthIn}
-                    testId="room-width"
-                    onCommit={(widthIn) => {
-                      setFloorRoom({ widthIn, depthIn: floorRoom.depthIn });
-                      persistLocationCatalog("floor");
-                    }}
-                  />
-                  <FeetInchesInput
-                    label="Room depth"
-                    totalIn={floorRoom.depthIn}
-                    testId="room-depth"
-                    onCommit={(depthIn) => {
-                      setFloorRoom({ widthIn: floorRoom.widthIn, depthIn });
-                      persistLocationCatalog("floor");
-                    }}
-                  />
+                <div className="flex flex-wrap items-end gap-2">
+                  <label className="flex flex-col gap-1 text-xs">
+                    <span>Width (ft)</span>
+                    <Input
+                      data-floor-room-width=""
+                      inputMode="numeric"
+                      value={roomWidthFt}
+                      onChange={(e) => setRoomWidthFt(e.target.value)}
+                      className="h-8 w-24"
+                    />
+                  </label>
+                  <label className="flex flex-col gap-1 text-xs">
+                    <span>Depth (ft)</span>
+                    <Input
+                      data-floor-room-depth=""
+                      inputMode="numeric"
+                      value={roomDepthFt}
+                      onChange={(e) => setRoomDepthFt(e.target.value)}
+                      className="h-8 w-24"
+                    />
+                  </label>
+                  <Button type="button" size="sm" data-floor-room-apply="" onClick={applyRoomOutline}>
+                    Apply
+                  </Button>
                 </div>
               ) : null}
               {wholeFloor ? (
@@ -2904,11 +3039,39 @@ export function FloorEditorView() {
                 <RotateCw className="h-3.5 w-3.5" />
                 Rotate 90°
               </Button>
+              {selectedTable.kind === "wall" ? (
+                <Button
+                  type="button"
+                  size="sm"
+                  variant={snipId === selectedTable.id ? "default" : "outline"}
+                  className="w-full"
+                  data-floor-snip=""
+                  onClick={() => setSnipId((current) => (current === selectedTable.id ? null : selectedTable.id))}
+                >
+                  Snip
+                </Button>
+              ) : null}
+              {snipId === selectedTable.id ? (
+                <p className="text-xs text-muted-foreground" data-floor-snip-hint="">
+                  Click the wall where it should split.
+                </p>
+              ) : null}
               {selectedTable.kind === "bar_top" ? null : (
               <ObjectSizeFields
                 table={selectedTable}
                 room={floorRoom}
                 onSize={(lengthIn, widthIn) => {
+                  if (selectedTable.openingOf) {
+                    const wall = tables.find((row) => row.id === selectedTable.openingOf && row.kind === "wall");
+                    if (wall) {
+                      const patch = resizeOpening(selectedTable, wall, floorRoom, lengthIn);
+                      if (patch) {
+                        update(selectedTable.id, patch);
+                        persistLocationCatalog("floor");
+                      }
+                      return;
+                    }
+                  }
                   const patch = sizePatch(lengthIn, widthIn, floorRoom, {
                     round: selectedTable.shape === "round",
                   });

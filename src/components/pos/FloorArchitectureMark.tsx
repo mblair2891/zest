@@ -14,6 +14,7 @@ import {
   type RoomInches,
 } from "@/lib/pos/floor-architecture";
 import { DEFAULT_ROOM } from "@/lib/pos/floor-dimensions";
+import { spansAlong } from "@/lib/pos/floor-room";
 
 /** Walls, doors, windows, host stand, and the bar rail. No dining chairs. */
 export function FloorArchitectureMark({
@@ -25,6 +26,7 @@ export function FloorArchitectureMark({
   onShapePointerDown,
   children,
   extend,
+  gaps,
   pxPerIn: _pxPerIn = 2,
   room = DEFAULT_ROOM,
   spinDeg = 0,
@@ -37,6 +39,8 @@ export function FloorArchitectureMark({
   onBarPointerDown?: (event: ReactPointerEvent<SVGPathElement>) => void;
   onShapePointerDown?: (event: ReactPointerEvent<HTMLDivElement>) => void;
   children?: ReactNode;
+  /** Length units skipped where a door or window cuts this wall. */
+  gaps?: { start: number; end: number }[];
   /** Plan units to draw past each centerline end when this wall shares a corner. */
   extend?: { start: number; end: number };
   /** Kept so callers can pass the room scale. The slab uses inches, not a hairline stroke. */
@@ -50,6 +54,8 @@ export function FloorArchitectureMark({
   const spin = { transform: `rotate(${rotation}deg)`, transformOrigin: "center center" } as const;
   const live = variant === "live";
   const caption = live ? liveArchCaption(table) : null;
+  const openingAttr = table.openingOf || undefined;
+  const gapList = (gaps ?? []).filter((gap) => gap.end > gap.start + 0.02);
   if (table.kind === "bar_top") {
     const plan = storedBarPlan(table);
     const depth = barDepthIn(table.widthIn);
@@ -183,6 +189,7 @@ export function FloorArchitectureMark({
     const y = table.h / 2;
     const x1 = -(extend?.start ?? 0);
     const x2 = table.w + (extend?.end ?? 0);
+    const liveSpans = table.kind === "wall" && gapList.length ? spansAlong(x1, x2, gapList) : null;
     return (
       <div
         data-floor-arch={table.kind}
@@ -190,6 +197,7 @@ export function FloorArchitectureMark({
         data-floor-spin=""
         data-floor-arch-tone="line"
         data-floor-arch-stroke="hairline"
+        data-floor-opening={openingAttr}
         className={cn("relative h-full w-full", className)}
         style={spin}
         onPointerDown={onShapePointerDown}
@@ -199,16 +207,32 @@ export function FloorArchitectureMark({
           preserveAspectRatio="none"
           className="h-full w-full overflow-visible"
         >
-          <line
-            x1={x1}
-            y1={y}
-            x2={x2}
-            y2={y}
-            stroke="#1c1917"
-            strokeWidth={1.25}
-            vectorEffect="non-scaling-stroke"
-            strokeLinecap="square"
-          />
+          {liveSpans ? (
+            liveSpans.map((span, index) => (
+              <line
+                key={`${span.start}-${index}`}
+                x1={span.start}
+                y1={y}
+                x2={span.end}
+                y2={y}
+                stroke="#1c1917"
+                strokeWidth={1.25}
+                vectorEffect="non-scaling-stroke"
+                strokeLinecap="square"
+              />
+            ))
+          ) : (
+            <line
+              x1={x1}
+              y1={y}
+              x2={x2}
+              y2={y}
+              stroke="#1c1917"
+              strokeWidth={1.25}
+              vectorEffect="non-scaling-stroke"
+              strokeLinecap="square"
+            />
+          )}
         </svg>
         {caption ? (
           <span
@@ -230,21 +254,40 @@ export function FloorArchitectureMark({
           width: `${((table.w + grow) / table.w) * 100}%`,
         }
       : undefined;
+  const editorSpans =
+    table.kind === "wall" && gapList.length && table.w > 0
+      ? spansAlong(-(extend?.start ?? 0), table.w + (extend?.end ?? 0), gapList)
+      : null;
   return (
     <div
       data-floor-arch={table.kind}
       data-floor-rotation={rotation}
       data-floor-spin=""
       data-floor-arch-tone={live ? "dark" : "editor"}
+      data-floor-opening={openingAttr}
       className={cn("relative h-full w-full", className)}
       style={spin}
       onPointerDown={onShapePointerDown}
     >
-      <div
-        data-floor-wall-join={table.kind === "wall" && grow > 0 ? "1" : undefined}
-        className={cn("rounded-sm", tone, doorEdge, fillStyle ? "absolute top-0 h-full" : "h-full w-full")}
-        style={fillStyle}
-      />
+      {editorSpans ? (
+        editorSpans.map((span, index) => (
+          <div
+            key={`${span.start}-${index}`}
+            data-floor-wall-join={table.kind === "wall" && grow > 0 ? "1" : undefined}
+            className={cn("absolute top-0 h-full rounded-sm", tone, doorEdge)}
+            style={{
+              left: `${(span.start / table.w) * 100}%`,
+              width: `${((span.end - span.start) / table.w) * 100}%`,
+            }}
+          />
+        ))
+      ) : (
+        <div
+          data-floor-wall-join={table.kind === "wall" && grow > 0 ? "1" : undefined}
+          className={cn("rounded-sm", tone, doorEdge, fillStyle ? "absolute top-0 h-full" : "h-full w-full")}
+          style={fillStyle}
+        />
+      )}
       {caption ? (
         <span
           className="pointer-events-none absolute inset-0 flex items-center justify-center px-1 text-[9px] font-medium leading-none text-[#f4efe6]"
