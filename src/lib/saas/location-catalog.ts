@@ -69,6 +69,7 @@ const KINDS = new Set([
   "booth_4",
   "booth_u",
   "booth_l",
+  "couch",
   "barstool",
   "wall",
   "door",

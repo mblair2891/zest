@@ -13,6 +13,7 @@ export const DEFAULT_OBJECT_IN: Record<string, ObjectInches> = {
   booth_4: { lengthIn: 60, widthIn: 48 },
   booth_u: { lengthIn: 84, widthIn: 72 },
   booth_l: { lengthIn: 72, widthIn: 72 },
+  couch: { lengthIn: 84, widthIn: 32 },
   barstool: { lengthIn: 16, widthIn: 16 },
   square_plain: { lengthIn: 30, widthIn: 30 },
   wall: { lengthIn: 120, widthIn: 6 },
@@ -302,6 +303,7 @@ export function measureLabelKind(kind?: string | null): string | null {
     kind === "booth_4" ||
     kind === "booth_u" ||
     kind === "booth_l" ||
+    kind === "couch" ||
     kind === "other" ||
     kind === "host_stand"
   ) {

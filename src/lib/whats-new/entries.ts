@@ -6,6 +6,18 @@ import type { GuideUpdate } from "@/lib/guide/types";
  */
 export const WHATS_NEW_ENTRIES: GuideUpdate[] = [
   {
+    id: "upd_2026_10_203_couch",
+    date: "2026-10-07",
+    title: "Floor editor has a couch",
+    summary: "Couch sits next to the booths. It is a low sofa with a seat count, and the live floor keeps that shape.",
+    body: "The pieces bar has Couch, with a couch icon, next to the booths. Dropping it places a low sofa with no seat dots. The side panel seat count starts at 3. Resize from the ends. Rotate 90 turns it. The couch stays in the room it is placed in. Publish floor saves the sofa, the seat count, and the angle. The live floor shows that same shape and the table number, still with no dots. Booths stay as they are.",
+    roles: ["owner_manager", "vendor_operator", "host_operator"],
+    surfaces: ["floor"],
+    audience: "all",
+    topicId: "floor-editor",
+    tags: ["floor"],
+  },
+  {
     id: "upd_2026_10_202_stool_fields",
     date: "2026-10-07",
     title: "Stool counts are Long leg and Short leg",

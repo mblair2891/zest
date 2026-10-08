@@ -5,6 +5,7 @@ import { asBoothKind } from "@/lib/pos/floor-booth";
 import { uprightCounterDeg } from "@/lib/pos/floor-architecture";
 import { diningTableOutline, railStoolCenters, seatingScale } from "@/lib/pos/floor-seating";
 import { FloorBoothGlyph, FloorBoothMark } from "@/components/pos/FloorBoothMark";
+import { FloorCouchGlyph, FloorCouchMark } from "@/components/pos/FloorCouchMark";
 import type { BoothKind } from "@/lib/pos/floor-booth";
 
 export function FloorFixtureArt({
@@ -43,11 +44,13 @@ export function FloorFixtureArt({
   hairline?: boolean;
 }) {
   const booth = asBoothKind(table.kind, table.shape);
+  const couch = table.kind === "couch";
   const rot = ((Number(rotation ?? table.rotation) || 0) % 360 + 360) % 360;
   if (mode === "status") {
     return (
       <StatusFixture
         booth={booth}
+        couch={couch}
         bar={table.kind === "barstool" || table.shape === "bar"}
         round={table.shape === "round"}
         tableFill={tableFill}
@@ -62,6 +65,21 @@ export function FloorFixtureArt({
       >
         {children}
       </StatusFixture>
+    );
+  }
+  if (couch) {
+    return (
+      <FloorCouchMark
+        tableFill={tableFill}
+        outline={outline}
+        rotation={rot}
+        label={label}
+        sectionColor={sectionColor}
+        className={className}
+        onPointerDown={onPointerDown}
+      >
+        {children}
+      </FloorCouchMark>
     );
   }
   if (booth) {
@@ -145,6 +163,7 @@ export function FloorFixtureArt({
 /** Live floor: one status-colored shape. No chairs, stool rings, or seat dots. */
 function StatusFixture({
   booth,
+  couch,
   bar,
   round,
   tableFill,
@@ -159,6 +178,7 @@ function StatusFixture({
   h,
 }: {
   booth: BoothKind | null;
+  couch: boolean;
   bar: boolean;
   round: boolean;
   tableFill: string;
@@ -174,7 +194,7 @@ function StatusFixture({
 }) {
   const ring = "#1c1917";
   const number = hollow ? "#44403c" : ink || "#44403c";
-  const shape = booth ? "booth" : bar ? "stool" : round ? "round" : "rect";
+  const shape = couch ? "couch" : booth ? "booth" : bar ? "stool" : round ? "round" : "rect";
   const mark = diningTableOutline(round);
   return (
     <div
@@ -186,7 +206,14 @@ function StatusFixture({
       data-floor-nubs="0"
     >
       <svg viewBox="0 0 100 100" className="pointer-events-none h-full w-full" aria-hidden>
-        {booth ? (
+        {couch ? (
+          <FloorCouchGlyph
+            fill={hollow ? "none" : tableFill}
+            outline={hollow ? ring : tableFill}
+            solid={!hollow}
+            hollow={hollow}
+          />
+        ) : booth ? (
           <FloorBoothGlyph
             kind={booth}
             tableFill={hollow ? "none" : tableFill}

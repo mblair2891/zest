@@ -43,6 +43,7 @@ import {
   type BoothKind,
 } from "@/lib/pos/floor-booth";
 import { FloorBoothIcon } from "@/components/pos/FloorBoothMark";
+import { FloorCouchIcon } from "@/components/pos/FloorCouchMark";
 import { FloorFixtureArt } from "@/components/pos/FloorFixtureArt";
 import { tableGuestUrl } from "@/lib/pos/qr-table";
 import { getDemoType } from "@/lib/demo/session";
@@ -474,6 +475,7 @@ const KINDS: {
   { id: "booth_4", label: "Booth 4-top", shape: "booth", w: 16, h: 20, seats: 4, booth: "booth_4" },
   { id: "booth_u", label: "Booth U", shape: "booth", w: 20, h: 18, seats: 6, booth: "booth_u" },
   { id: "booth_l", label: "Booth L", shape: "booth", w: 18, h: 18, seats: 5, booth: "booth_l" },
+  { id: "couch", label: "Couch", shape: "rect", w: 18, h: 9, seats: 3 },
   { id: "barstool", label: "Barstool", shape: "bar", w: 8, h: 8, seats: 1 },
   { id: "wall", label: "Wall", shape: "rect", w: 28, h: 2, seats: 0 },
   { id: "door", label: "Door", shape: "rect", w: 8, h: 2, seats: 0 },
@@ -1720,7 +1722,13 @@ export function FloorEditorView() {
                 placeKind(k);
               }}
             >
-              {k.booth ? <FloorBoothIcon kind={k.booth} /> : <Plus className="h-3.5 w-3.5" />}
+              {k.booth ? (
+                <FloorBoothIcon kind={k.booth} />
+              ) : k.id === "couch" ? (
+                <FloorCouchIcon />
+              ) : (
+                <Plus className="h-3.5 w-3.5" />
+              )}
               {k.id === "square_plain" ? "Square" : k.label}
             </Button>
           ))}
@@ -2129,7 +2137,14 @@ export function FloorEditorView() {
                       className={cn("pointer-events-auto cursor-grab", spinRing)}
                       onPointerDown={(e) => onPointerDown(e, t.id, t.x, t.y)}
                     >
-                      {selected === t.id ? (
+                      {selected === t.id && t.kind === "couch" ? (
+                        <LengthHandles
+                          id={t.id}
+                          rot={rot}
+                          onEnd={(e, id, end) => startResize(e, id, "end", end)}
+                        />
+                      ) : null}
+                      {selected === t.id && t.kind !== "couch" ? (
                         <CornerHandle id={t.id} rot={rot} onCorner={(e, id) => startResize(e, id, "corner")} />
                       ) : null}
                     </FloorFixtureArt>
@@ -2828,7 +2843,7 @@ export function FloorEditorView() {
                         persistLocationCatalog("floor");
                       }}
                     >
-                      {k.booth ? <FloorBoothIcon kind={k.booth} /> : null}
+                      {k.booth ? <FloorBoothIcon kind={k.booth} /> : k.id === "couch" ? <FloorCouchIcon /> : null}
                       {k.label}
                     </Button>
                   ))}
@@ -2913,7 +2928,7 @@ export function FloorEditorView() {
                 }}
               />
               )}
-              {!isBoothKind(selectedTable.kind, selectedTable.shape) && (
+              {!isBoothKind(selectedTable.kind, selectedTable.shape) && selectedTable.kind !== "couch" && (
               <div className="flex gap-1">
                 {(["rect", "round", "bar", "other"] as const).map((shape) => (
                   <Button

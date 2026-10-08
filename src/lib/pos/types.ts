@@ -47,6 +47,7 @@ export type TableKind =
   | "booth_4"
   | "booth_u"
   | "booth_l"
+  | "couch"
   | "barstool"
   | "square_plain"
   | "wall"
