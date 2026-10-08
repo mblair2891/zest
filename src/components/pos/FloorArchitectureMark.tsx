@@ -8,6 +8,8 @@ import {
   barLabelPose,
   uprightCounterDeg,
   barSlabEdges,
+  doorSwingHeightPct,
+  doorSwingSign,
   isArchitectureKind,
   liveArchCaption,
   storedBarPlan,
@@ -34,7 +36,7 @@ export function FloorArchitectureMark({
   table: Table;
   selected?: boolean;
   className?: string;
-  /** Live map uses the editor's dark brown so lines stay visible on the wood. */
+  /** Live and the editor share the same wall, door, and window paint. */
   variant?: "editor" | "live";
   onBarPointerDown?: (event: ReactPointerEvent<SVGPathElement>) => void;
   onShapePointerDown?: (event: ReactPointerEvent<HTMLDivElement>) => void;
@@ -177,66 +179,46 @@ export function FloorArchitectureMark({
       </div>
     );
   }
-  const tone = live
-    ? "bg-[#3d2914]"
-    : table.kind === "window"
-      ? "bg-[#c9d7e0]"
-      : table.kind === "door"
-        ? "bg-[#efe6d8]"
-        : "bg-[#3d2914]";
-  const doorEdge = table.kind === "door" && !live ? "border-2 border-[#3d2914]" : "";
-  if (live && (table.kind === "wall" || table.kind === "door" || table.kind === "window")) {
-    const y = table.h / 2;
-    const x1 = -(extend?.start ?? 0);
-    const x2 = table.w + (extend?.end ?? 0);
-    const liveSpans = table.kind === "wall" && gapList.length ? spansAlong(x1, x2, gapList) : null;
+  if (table.kind === "door") {
+    const swingH = doorSwingHeightPct(table, room);
+    const swingSign = doorSwingSign(rotation, table.x + table.w / 2, table.y + table.h / 2);
     return (
       <div
-        data-floor-arch={table.kind}
+        data-floor-arch="door"
+        data-floor-door="gap"
         data-floor-rotation={rotation}
         data-floor-spin=""
-        data-floor-arch-tone="line"
-        data-floor-arch-stroke="hairline"
+        data-floor-arch-tone="editor"
         data-floor-opening={openingAttr}
-        className={cn("relative h-full w-full", className)}
+        className={cn("relative h-full w-full overflow-visible bg-transparent", className)}
         style={spin}
         onPointerDown={onShapePointerDown}
       >
         <svg
-          viewBox={`0 0 ${Math.max(table.w, 0.4)} ${Math.max(table.h, 0.4)}`}
-          preserveAspectRatio="none"
-          className="h-full w-full overflow-visible"
+          data-floor-door-swing=""
+          data-floor-door-swing-sign={swingSign}
+          viewBox="0 0 100 100"
+          preserveAspectRatio="xMinYMin meet"
+          className="pointer-events-none absolute left-0 overflow-visible"
+          style={{
+            top: "50%",
+            width: "100%",
+            height: `${swingH}%`,
+            transform: swingSign < 0 ? "scaleY(-1)" : undefined,
+            transformOrigin: "top left",
+          }}
         >
-          {liveSpans ? (
-            liveSpans.map((span, index) => (
-              <line
-                key={`${span.start}-${index}`}
-                x1={span.start}
-                y1={y}
-                x2={span.end}
-                y2={y}
-                stroke="#1c1917"
-                strokeWidth={1.25}
-                vectorEffect="non-scaling-stroke"
-                strokeLinecap="square"
-              />
-            ))
-          ) : (
-            <line
-              x1={x1}
-              y1={y}
-              x2={x2}
-              y2={y}
-              stroke="#1c1917"
-              strokeWidth={1.25}
-              vectorEffect="non-scaling-stroke"
-              strokeLinecap="square"
-            />
-          )}
+          <path
+            d="M 0 0 L 0 100 M 100 0 A 100 100 0 0 1 0 100"
+            fill="none"
+            stroke="#3d2914"
+            strokeWidth={2}
+            vectorEffect="non-scaling-stroke"
+          />
         </svg>
         {caption ? (
           <span
-            className="pointer-events-none absolute inset-0 flex items-center justify-center px-1 text-[9px] font-medium leading-none text-[#44403c]"
+            className="pointer-events-none absolute inset-0 flex items-center justify-center px-1 text-[9px] font-medium leading-none text-[#3d2914]"
             style={{ transform: `rotate(${-rotation}deg)` }}
           >
             {caption}
@@ -246,6 +228,7 @@ export function FloorArchitectureMark({
       </div>
     );
   }
+  const tone = table.kind === "window" ? "bg-[#c9d7e0]" : "bg-[#3d2914]";
   const grow = table.kind === "wall" ? (extend?.start ?? 0) + (extend?.end ?? 0) : 0;
   const fillStyle =
     grow > 0 && table.w > 0
@@ -263,9 +246,9 @@ export function FloorArchitectureMark({
       data-floor-arch={table.kind}
       data-floor-rotation={rotation}
       data-floor-spin=""
-      data-floor-arch-tone={live ? "dark" : "editor"}
+      data-floor-arch-tone="editor"
       data-floor-opening={openingAttr}
-      className={cn("relative h-full w-full", className)}
+      className={cn("relative h-full w-full overflow-visible", className)}
       style={spin}
       onPointerDown={onShapePointerDown}
     >
@@ -273,24 +256,34 @@ export function FloorArchitectureMark({
         editorSpans.map((span, index) => (
           <div
             key={`${span.start}-${index}`}
-            data-floor-wall-join={table.kind === "wall" && grow > 0 ? "1" : undefined}
-            className={cn("absolute top-0 h-full rounded-sm", tone, doorEdge)}
+            data-floor-wall="outline"
+            data-floor-wall-join={grow > 0 ? "1" : undefined}
+            className={cn("absolute top-0 h-full rounded-sm", tone)}
             style={{
               left: `${(span.start / table.w) * 100}%`,
               width: `${((span.end - span.start) / table.w) * 100}%`,
             }}
           />
         ))
+      ) : table.kind === "window" ? (
+        <div
+          data-floor-window="pane"
+          className={cn("h-full w-full rounded-sm", tone)}
+        />
       ) : (
         <div
-          data-floor-wall-join={table.kind === "wall" && grow > 0 ? "1" : undefined}
-          className={cn("rounded-sm", tone, doorEdge, fillStyle ? "absolute top-0 h-full" : "h-full w-full")}
+          data-floor-wall="outline"
+          data-floor-wall-join={grow > 0 ? "1" : undefined}
+          className={cn("rounded-sm", tone, fillStyle ? "absolute top-0 h-full" : "h-full w-full")}
           style={fillStyle}
         />
       )}
       {caption ? (
         <span
-          className="pointer-events-none absolute inset-0 flex items-center justify-center px-1 text-[9px] font-medium leading-none text-[#f4efe6]"
+          className={cn(
+            "pointer-events-none absolute inset-0 flex items-center justify-center px-1 text-[9px] font-medium leading-none",
+            table.kind === "window" ? "text-[#3d2914]" : "text-[#f4efe6]",
+          )}
           style={{ transform: `rotate(${-rotation}deg)` }}
         >
           {caption}

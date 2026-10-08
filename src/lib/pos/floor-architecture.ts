@@ -22,6 +22,31 @@ export function isThinArchitecture(kind?: string | null): boolean {
   return kind === "wall" || kind === "door" || kind === "window";
 }
 
+/**
+ * Which way a door leaf opens, in the door's own box before CSS rotation.
+ * +1 keeps local +y (down). −1 flips the arc with scaleY(-1) so it stays a quarter circle.
+ * The arc opens into the room: down from a top wall, up from a bottom wall, right from a left wall, left from a right wall.
+ */
+export function doorSwingSign(rotation: number, cx: number, cy: number): 1 | -1 {
+  const rot = ((Number(rotation) % 360) + 360) % 360;
+  const quarter = Math.round(rot / 90) % 4;
+  const intoPositive = quarter === 1 || quarter === 3 ? cx < 50 : cy < 50;
+  // Local +y points down, left, up, then right as the quarter goes 0, 90, 180, 270.
+  const localPlusMatches = quarter === 0 || quarter === 3 ? intoPositive : !intoPositive;
+  return localPlusMatches ? 1 : -1;
+}
+
+/** Swing box height as a percent of the thin door box, so the arc is square in inches. */
+export function doorSwingHeightPct(
+  box: { w: number; h: number },
+  room: { widthIn: number; depthIn: number },
+): number {
+  const alongIn = (Math.max(0, box.w) / 100) * room.widthIn;
+  const thickIn = (Math.max(0, box.h) / 100) * room.depthIn;
+  if (!(alongIn > 0) || !(thickIn > 0)) return 100;
+  return (alongIn / thickIn) * 100;
+}
+
 /** Generic editor names stay off the live segment. A house name can sit small on the line. */
 export function liveArchCaption(table: { kind?: string | null; label?: string | null }): string | null {
   if (!isThinArchitecture(table.kind)) return null;

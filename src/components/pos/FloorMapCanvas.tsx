@@ -269,10 +269,11 @@ export function FloorMapCanvas({
                 height: box.height,
                 color: item.ink,
                 background: "transparent",
-                containerType: "size",
+                // Size containment clips overflow. A door swing has to leave the thin box.
+                ...(arch ? {} : { containerType: "size" as const }),
               }}
               className={cn(
-                "absolute border-0 bg-transparent p-0",
+                "absolute overflow-visible border-0 bg-transparent p-0",
                 item.table.kind === "bar_top" && "pointer-events-none",
                 stool && "z-[2]",
                 item.flashing && "table-sla-flash-thin",

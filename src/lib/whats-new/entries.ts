@@ -6,6 +6,18 @@ import type { GuideUpdate } from "@/lib/guide/types";
  */
 export const WHATS_NEW_ENTRIES: GuideUpdate[] = [
   {
+    id: "upd_2026_10_210_live_walls",
+    date: "2026-10-08",
+    title: "Live floor walls match the editor",
+    summary: "Outer walls, windows, and doors on the live floor use the same outline as the editor.",
+    body: "The live floor draws the same outer walls as the editor: the same path, the same weight, and the same color. A window is a break in that wall with a light pane, not a wall stroke. A door is a gap with a swing mark. A refresh keeps those positions.",
+    roles: ["owner_manager", "vendor_operator", "host_operator"],
+    surfaces: ["floor"],
+    audience: "all",
+    topicId: "floor-editor",
+    tags: ["floor"],
+  },
+  {
     id: "upd_2026_10_209_distance_lines",
     date: "2026-10-08",
     title: "Distance lines while moving a piece",
