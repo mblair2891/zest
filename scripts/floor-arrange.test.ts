@@ -336,6 +336,9 @@ test("grid snap and align two tables to a wall", () => {
   assert.match(guide, /Reset layout puts both bars back on top/);
   assert.match(guide, /Trash on a bar top also deletes the barstools bound to that bar/);
   assert.match(guide, /Long leg and Short leg/);
+  assert.match(guide, /length fields read Long leg and Short leg/);
+  assert.match(guide, /Typing a longer value into Short leg swaps the labels/);
+  assert.match(guide, /A straight bar keeps one length field/);
   assert.match(guide, /The bar does not print those words/);
   assert.doesNotMatch(guide, /canvas labels each leg/);
   assert.doesNotMatch(guide, /labels each leg Long/);

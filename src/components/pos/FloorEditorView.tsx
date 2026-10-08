@@ -143,6 +143,7 @@ import { FloorArchitectureMark } from "@/components/pos/FloorArchitectureMark";
 import {
   barClosedShape,
   barDepthIn,
+  barLegLengthLabel,
   barLegsForShape,
   dragLegEnd,
   dragLengthEnd,
@@ -2709,21 +2710,24 @@ export function FloorEditorView() {
               )}
               {selectedTable.kind === "bar_top" && (
                 <div className="grid gap-2" data-bar-slab="">
-                  {legInches(storedBarPlan(selectedTable), floorRoom)
-                    .filter((inches) => inches > 1)
-                    .map((inches, index) => (
+                  {(() => {
+                    const legs = legInches(storedBarPlan(selectedTable), floorRoom)
+                      .map((inches, index) => ({ inches, index }))
+                      .filter((leg) => leg.inches > 1);
+                    const visible = legs.map((leg) => leg.inches);
+                    return legs.map((leg, visibleIndex) => (
                       <FeetInchesInput
-                        key={`leg-${index}`}
-                        label={index === 0 ? "Leg" : `Leg ${index + 1}`}
-                        totalIn={inches}
-                        testId={`bar-leg-${index}`}
+                        key={`leg-${leg.index}`}
+                        label={barLegLengthLabel(selectedTable.barShape, visible, visibleIndex)}
+                        totalIn={leg.inches}
+                        testId={`bar-leg-${leg.index}`}
                         onCommit={(next) => {
                           const plan = storedBarPlan(selectedTable);
                           const depth = barDepthIn(selectedTable.widthIn);
                           const points = resizeBarLeg(
                             plan,
                             selectedTable.barShape,
-                            index,
+                            leg.index,
                             next,
                             floorRoom,
                           );
@@ -2743,7 +2747,8 @@ export function FloorEditorView() {
                           persistLocationCatalog("floor");
                         }}
                       />
-                    ))}
+                    ));
+                  })()}
                   <label className="block text-xs text-muted-foreground" data-bar-depth="">
                     Counter depth (in)
                     <Input

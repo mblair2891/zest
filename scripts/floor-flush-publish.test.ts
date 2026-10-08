@@ -273,6 +273,6 @@ test("duplicate seating numbers name both pieces and empty labels stay open", ()
   assert.match(guide, /sit flush against a wall, a door, or a window/);
   assert.match(guide, /Empty labels are allowed/);
   const types = readFileSync("src/lib/guide/types.ts", "utf8");
-  assert.match(types, /2026\.10\.206/);
-  assert.match(types, /Sandbox card on a PAX D135/);
+  assert.match(types, /2026\.10\.207/);
+  assert.match(types, /Bar length fields read Long leg and Short leg/);
 });

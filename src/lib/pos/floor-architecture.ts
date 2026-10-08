@@ -467,6 +467,29 @@ export function lLegIndexes(lengths: readonly number[]): { longIdx: 0 | 1; short
   return { longIdx, shortIdx: longIdx === 0 ? 1 : 0 };
 }
 
+/**
+ * Side-panel names for bar length fields. Long leg is the longer run.
+ * A longer value typed into Short leg takes the Long leg name on the next paint.
+ * These words are not drawn on the bar.
+ */
+export function barLegLengthLabel(
+  shape: BarTopShape | undefined,
+  lengths: readonly number[],
+  index: number,
+): string {
+  if ((shape === "l" || shape === "u") && lengths.length >= 2) {
+    let longIdx = 0;
+    if (lengths.length === 2) longIdx = lLegIndexes(lengths)?.longIdx ?? 0;
+    else {
+      for (let i = 1; i < lengths.length; i += 1) {
+        if ((lengths[i] ?? 0) > (lengths[longIdx] ?? 0)) longIdx = i;
+      }
+    }
+    return index === longIdx ? "Long leg" : "Short leg";
+  }
+  return index === 0 ? "Leg" : `Leg ${index + 1}`;
+}
+
 export function planToLocal(points: PlanPoint[], box: { x: number; y: number; w: number; h: number }): PlanPoint[] {
   return points.map((p) => ({
     x: ((p.x - box.x) / box.w) * 100,

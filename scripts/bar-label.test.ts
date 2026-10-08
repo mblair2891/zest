@@ -4,7 +4,9 @@ import { readFileSync } from "node:fs";
 import {
   barFaceLabel,
   barLabelPose,
+  barLegLengthLabel,
   lLegIndexes,
+  legInches,
   isStoolPathText,
   uprightCounterDeg,
   planFromLegInches,
@@ -79,4 +81,30 @@ test("the longer L run is the long leg", () => {
   assert.deepEqual(lLegIndexes([14 * 12, 8 * 12]), { longIdx: 0, shortIdx: 1 });
   assert.deepEqual(lLegIndexes([8 * 12, 14 * 12]), { longIdx: 1, shortIdx: 0 });
   assert.deepEqual(lLegIndexes([10 * 12, 10 * 12]), { longIdx: 0, shortIdx: 1 });
+});
+
+test("L bar length fields name 12 ft Long leg and 8 ft Short leg", () => {
+  const plan = planFromLegInches("l", { x: 10, y: 20 }, [12 * 12, 8 * 12], room);
+  const lengths = legInches(plan, room).filter((inches) => inches > 1);
+  assert.equal(lengths.length, 2);
+  assert.ok(Math.abs(lengths[0]! - 12 * 12) < 1);
+  assert.ok(Math.abs(lengths[1]! - 8 * 12) < 1);
+  assert.equal(barLegLengthLabel("l", lengths, 0), "Long leg");
+  assert.equal(barLegLengthLabel("l", lengths, 1), "Short leg");
+  const typedLongerShort = [lengths[0]!, 15 * 12];
+  assert.equal(barLegLengthLabel("l", typedLongerShort, 0), "Short leg");
+  assert.equal(barLegLengthLabel("l", typedLongerShort, 1), "Long leg");
+  assert.equal(barLegLengthLabel("straight", [12 * 12], 0), "Leg");
+  const u = [6 * 12, 10 * 12, 6 * 12];
+  assert.equal(barLegLengthLabel("u", u, 1), "Long leg");
+  assert.equal(barLegLengthLabel("u", u, 0), "Short leg");
+  assert.equal(barLegLengthLabel("u", u, 2), "Short leg");
+  const editor = readFileSync("src/components/pos/FloorEditorView.tsx", "utf8");
+  assert.match(editor, /barLegLengthLabel/);
+  assert.doesNotMatch(editor, /index === 0 \? "Leg"/);
+  assert.match(editor, /label="Long leg"/);
+  assert.match(editor, /label="Short leg"/);
+  const mark = readFileSync("src/components/pos/FloorArchitectureMark.tsx", "utf8");
+  assert.doesNotMatch(mark, /Long/);
+  assert.doesNotMatch(mark, /Short/);
 });

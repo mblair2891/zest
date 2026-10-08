@@ -6,6 +6,18 @@ import type { GuideUpdate } from "@/lib/guide/types";
  */
 export const WHATS_NEW_ENTRIES: GuideUpdate[] = [
   {
+    id: "upd_2026_10_207_bar_leg_lengths",
+    date: "2026-10-08",
+    title: "Bar length fields read Long leg and Short leg",
+    summary: "On an L or U bar the longer run is Long leg. A straight bar keeps one length field.",
+    body: "On an L or U bar the length fields read Long leg and Short leg, the same words as the L stool counts. Long leg is the longer run. Typing a longer value into Short leg swaps the labels so the longer value reads Long leg. A straight bar keeps one length field. The bar does not print those words. Stool counts on an L still say Long leg and Short leg.",
+    roles: ["owner_manager", "vendor_operator", "host_operator"],
+    surfaces: ["floor"],
+    audience: "all",
+    topicId: "floor-editor",
+    tags: ["floor"],
+  },
+  {
     id: "upd_2026_10_206_pax_d135",
     date: "2026-10-08",
     title: "Sandbox card on a PAX D135",
