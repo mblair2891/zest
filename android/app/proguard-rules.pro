@@ -19,3 +19,23 @@
 # If you keep the line number information, uncomment this to
 # hide the original source file name.
 #-renamesourcefileattribute SourceFile
+
+-dontwarn retrofit.**
+-keep class retrofit.** { *; }
+-keepattributes Signature
+-keepattributes Exceptions
+-keepattributes RuntimeVisibleAnnotations
+-keepattributes RuntimeInvisibleAnnotations
+-keepattributes RuntimeVisibleParameterAnnotations
+-keepattributes RuntimeInvisibleParameterAnnotations
+-keepattributes *Annotation*
+-keep class okhttp3.** { *; }
+-keep interface okhttp3.** { *; }
+-dontwarn okhttp3.**
+-dontwarn java.nio.file.*
+-keep class com.google.gson.stream.** { *; }
+-dontwarn com.finix.mpos.sdk.**
+-keep class com.finix.mpos.sdk.** { *; }
+-keep class com.finix.mpos.models.** { *; }
+-keep class com.finix.common.networking.models.** { *; }
+-dontwarn java.lang.invoke.StringConcatFactory

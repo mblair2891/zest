@@ -109,6 +109,8 @@ export type LocationSetup = {
   squareLiveCards?: boolean;
   /** Processor reader id for live card-present (Quantum terminal serial). */
   quantumReaderId?: string;
+  /** Sandbox PAX D135 readers. One serial belongs to one selling entity. */
+  paxReaders?: import("@/lib/payments/pax-d135").PaxReader[];
   /** First-party gift policy (server ledger). */
   giftHouseIssuerEnabled?: boolean;
   giftHostessDefaultIssuerId?: string;

@@ -36,6 +36,7 @@ public class MainActivity extends BridgeActivity {
         registerPlugin(RawPrintPlugin.class);
         registerPlugin(StationKioskPlugin.class);
         registerPlugin(StripeTerminalPlugin.class);
+        registerPlugin(PaxD135Plugin.class);
         super.onCreate(savedInstanceState);
         getWindow()
             .addFlags(

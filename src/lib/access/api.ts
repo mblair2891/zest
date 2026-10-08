@@ -1042,6 +1042,8 @@ function publishSetupSlice(setup: LocationSetup) {
     revenueShare: setup.revenueShare,
     brandLogos: setup.brandLogos,
     combineRequiresManager: setup.combineRequiresManager,
+    paxReaders: setup.paxReaders,
+    cardProcessor: setup.cardProcessor,
   };
 }
 

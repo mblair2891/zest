@@ -88,6 +88,8 @@ import {
 } from "@/components/ui/dialog";
 import { GuideLearnLink } from "@/components/guide/GuideLearnLink";
 import { SquareTerminalPanel } from "@/components/pos/SquareTerminalPanel";
+import { listPaxReadersFn, registerPaxReaderFn } from "@/lib/payments/api";
+import type { PaxReader } from "@/lib/payments/pax-d135";
 import {
   formatClaimExpiry,
   normalizeClaimCode,
@@ -188,6 +190,10 @@ export function LocationDeviceRegistry({
   >([]);
   const [roleHistory, setRoleHistory] = useState<DeviceRoleChange[]>([]);
   const [hostName, setHostName] = useState(locationName);
+  const [cardReaders, setCardReaders] = useState<PaxReader[]>([]);
+  const [paxSerial, setPaxSerial] = useState("");
+  const [paxEntityId, setPaxEntityId] = useState("");
+  const [paxMsg, setPaxMsg] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -316,6 +322,14 @@ export function LocationDeviceRegistry({
       setOperators(res.operators);
       setRoleHistory(res.roleHistory ?? []);
       setHostName(res.hostName || locationName || "Venue");
+      if (mode === "stations") {
+        try {
+          const listed = await listPaxReadersFn({ data: { locationId: resolvedLocId } });
+          setCardReaders(listed.readers ?? []);
+        } catch {
+          /* device list still stands if readers cannot load */
+        }
+      }
       setOrderDestinations(
         mergeOrderDestinations(
           res.orderDestinations,
@@ -346,7 +360,7 @@ export function LocationDeviceRegistry({
     }
     // locationName is a fallback label only — do not re-fetch when the house name types.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [resolvedOrgId, resolvedLocId]);
+  }, [resolvedOrgId, resolvedLocId, mode]);
 
   useEffect(() => {
     void load();
@@ -1032,6 +1046,107 @@ export function LocationDeviceRegistry({
           </label>
         )}
       </div>
+
+      {mode === "stations" && (
+        <section className="space-y-3 rounded-2xl border border-border bg-surface p-4" data-pax-readers="">
+          <div className="flex flex-wrap items-start justify-between gap-2">
+            <div>
+              <p className="text-sm font-medium">Card readers</p>
+              <p className="mt-1 text-xs text-muted-foreground">
+                Add a PAX D135 for one selling entity. The station app connects in sandbox.
+                Live card readers are not available in this build. Cash still works with no reader.
+              </p>
+            </div>
+            <GuideLearnLink topicId="pax-card-reader">Learn</GuideLearnLink>
+          </div>
+          {cardReaders.length === 0 ? (
+            <p className="text-xs text-muted-foreground">No card reader on this location yet.</p>
+          ) : (
+            <ul className="space-y-1 text-sm">
+              {cardReaders.map((reader) => (
+                <li key={reader.id} data-pax-registered={reader.serial}>
+                  {reader.serial} · {reader.entityName || reader.entityId} · {reader.finixDeviceId}
+                </li>
+              ))}
+            </ul>
+          )}
+          <div className="flex flex-wrap items-end gap-2">
+            <label className="min-w-[10rem] flex-1 text-xs text-muted-foreground">
+              Serial
+              <Input
+                className="mt-1"
+                data-pax-serial=""
+                placeholder="Reader serial"
+                value={paxSerial}
+                onChange={(e) => setPaxSerial(e.target.value)}
+              />
+            </label>
+            <label className="min-w-[12rem] flex-1 text-xs text-muted-foreground">
+              Selling entity
+              <select
+                className="mt-1 h-10 w-full rounded-md border border-border bg-bg px-3 text-sm"
+                data-pax-entity=""
+                value={paxEntityId}
+                onChange={(e) => setPaxEntityId(e.target.value)}
+              >
+                <option value="">Pick the selling entity</option>
+                <option value={HOST_SCOPE}>{hostName}</option>
+                {operators
+                  .filter((op) => op.id !== HOST_SCOPE)
+                  .map((op) => (
+                    <option key={op.id} value={op.id}>
+                      {op.name}
+                    </option>
+                  ))}
+              </select>
+            </label>
+            <Button
+              size="sm"
+              data-pax-add=""
+              disabled={busy || !paxSerial.trim() || !paxEntityId}
+              onClick={() => {
+                void (async () => {
+                  if (!resolvedLocId) return;
+                  setBusy(true);
+                  setPaxMsg(null);
+                  const entityName =
+                    paxEntityId === HOST_SCOPE
+                      ? hostName
+                      : operators.find((op) => op.id === paxEntityId)?.name || paxEntityId;
+                  try {
+                    const res = await registerPaxReaderFn({
+                      data: {
+                        locationId: resolvedLocId,
+                        serial: paxSerial,
+                        entityId: paxEntityId,
+                        entityName,
+                      },
+                    });
+                    if (!res.ok) {
+                      setPaxMsg(res.error);
+                      return;
+                    }
+                    setPaxSerial("");
+                    setPaxMsg(`${res.reader.serial} is registered to ${res.reader.entityName || res.reader.entityId}.`);
+                    await load({ silent: true });
+                  } catch (e) {
+                    setPaxMsg(e instanceof Error ? e.message : "The reader was not registered.");
+                  } finally {
+                    setBusy(false);
+                  }
+                })();
+              }}
+            >
+              Add card reader
+            </Button>
+          </div>
+          {paxMsg && (
+            <p className="text-xs text-muted-foreground" role="status">
+              {paxMsg}
+            </p>
+          )}
+        </section>
+      )}
 
       {mode === "stations" && (
         <div className="flex flex-wrap items-end gap-2 rounded-2xl border border-border bg-surface p-3">

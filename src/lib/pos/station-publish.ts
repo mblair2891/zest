@@ -18,6 +18,7 @@ import { parseTaxRates } from "./tax-rates";
 import { parseStationUpdates } from "./station-updates";
 import { parseBrandLogoMap } from "@/lib/brand/logos";
 import { parseRevenueShare } from "@/lib/pos/revenue-share";
+import { parsePaxReaders, type PaxReader } from "@/lib/payments/pax-d135";
 
 export const STATION_PUBLISH_STATE_KEY = "summex-station-publish-state-v1";
 
@@ -30,6 +31,7 @@ export type StationPublishSetup = {
   cashHandling?: object;
   paymentMethods?: object;
   cardProcessor?: "finix" | "stripe" | "square" | "none";
+  paxReaders?: PaxReader[];
   cashDiscountEnabled?: boolean;
   cashDiscountPercent?: number;
   cashRoundIncrement?: number;
@@ -211,6 +213,9 @@ export function applyStationPublish(
       setup.cardProcessor === "finix"
     ) {
       settings.cardProcessor = setup.cardProcessor;
+    }
+    if (setup.paxReaders != null) {
+      settings.paxReaders = parsePaxReaders(setup.paxReaders);
     }
     if ("cashDiscountEnabled" in setup) {
       settings.cashDiscountEnabled = Boolean(setup.cashDiscountEnabled);

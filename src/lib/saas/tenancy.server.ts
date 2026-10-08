@@ -38,6 +38,7 @@ import { parseTaxRates } from "@/lib/pos/tax-rates";
 import { parseStationUpdates } from "@/lib/pos/station-updates";
 import { parseJurisdiction, jurisdictionIsReady } from "@/lib/pos/jurisdiction";
 import { parseItem86 } from "@/lib/pos/item-86";
+import { parsePaxReaders } from "@/lib/payments/pax-d135";
 import { parseLocationOperatingModel } from "./location-model";
 import { parseBrandLogoMap } from "@/lib/brand/logos";
 import { parseRevenueShare, validateRevenueShareRules } from "@/lib/pos/revenue-share";
@@ -310,6 +311,7 @@ function parseSetup(raw: unknown): LocationSetup {
       o.cashRoundIncrement == null ? undefined : Number(o.cashRoundIncrement) || undefined,
     cashRoundMode: typeof o.cashRoundMode === "string" ? o.cashRoundMode : undefined,
     quantumReaderId: typeof o.quantumReaderId === "string" ? o.quantumReaderId.slice(0, 80) : undefined,
+    paxReaders: parsePaxReaders(o.paxReaders),
     giftHouseIssuerEnabled:
       "giftHouseIssuerEnabled" in o ? Boolean(o.giftHouseIssuerEnabled) : undefined,
     giftHostessDefaultIssuerId:

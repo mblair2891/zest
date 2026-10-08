@@ -3,6 +3,43 @@ import type { GuideTopic } from "../types";
 
 export const DEVICE_TOPICS: GuideTopic[] = [
   topic({
+    id: "pax-card-reader",
+    chapterId: "devices",
+    title: "PAX D135 card reader",
+    summary:
+      "Devices → Add card reader stores one PAX D135 on one selling entity. A paired Android station takes a sandbox card. Cash does not need the reader.",
+    roles: ["owner_manager", "server", "host_operator", "vendor_operator"],
+    keywords: ["pax", "d135", "card reader", "serial", "sandbox", "bluetooth", "connected"],
+    openView: "settings",
+    blocks: [
+      why(
+        "A card on a paired Android station uses the reader registered to the selling entity on the check. Cash still closes the check when no reader is nearby.",
+      ),
+      steps(
+        "Open location Devices. Add card reader. Enter the serial and pick the selling entity. That reader belongs to that entity only.",
+        "On the station, open Pay → Card. The status line shows the reader. Scan lists names that start with PAX D135_. Pick the one whose serial matches the registered reader.",
+        "The first connection says Setting up reader until the reader finishes. Then the status is Connected. Battery shows when the reader reports it.",
+        "Charge card sends one sandbox sale. The check stores the transfer and the last four. Print the receipt the same way as cash.",
+      ),
+      ul(
+        "Sandbox only, while the location is not live. Live cards are refused in this build.",
+        "Bluetooth off, or no reader in range: no charge.",
+        "A serial that is not registered to this location is refused.",
+        "A reader registered to another selling entity than the check is refused.",
+        "Still setting up: no charge.",
+        "A disconnect or a timeout leaves the check unpaid. Try again.",
+        "A paid check is not charged a second time.",
+        "A decline, a cancel, or a chip error leaves the check open.",
+        "A sandbox reader at a live location is refused, and a live reader in sandbox is refused.",
+        "The station app talks to the reader. The browser does not. Cash works with no reader.",
+      ),
+      warn(
+        "Do not register the same serial on two selling entities. Pick the operator on the check.",
+      ),
+      related("device-roles", "quantum-payments", "tenders-tips", "android-kiosk"),
+    ],
+  }),
+  topic({
     id: "device-roles",
     chapterId: "devices",
     title: "Stations and PINs",

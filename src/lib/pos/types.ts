@@ -314,6 +314,8 @@ export interface RestaurantSettings {
   /** Location lifecycle: training uses sandbox cards. */
   lifecycleStatus?: "onboarding" | "awaiting_entities" | "training" | "scheduled_live" | "live";
   quantumReaderId?: string;
+  /** Sandbox PAX D135 readers published to this station. */
+  paxReaders?: import("@/lib/payments/pax-d135").PaxReader[];
   /** Handhelds may take cash. Default off — cash stays on terminals with a drawer. */
   handheldCashEnabled?: boolean;
   /** Practice orders move on-hand when true. */
@@ -569,6 +571,8 @@ export interface Payment {
   processor?: "quantum_payments" | "zest_payments" | "square";
   /** Square Terminal payment id. Absent on cash, gift, and Finix. */
   squarePaymentId?: string;
+  /** Finix transfer id from a PAX D135 sandbox sale. */
+  finixTransferId?: string;
   /** Guest-facing brand on the charge (host, never an operator) */
   chargeBrand?: string;
   /** True while location or operator is in Training — Quantum Payments sandbox */

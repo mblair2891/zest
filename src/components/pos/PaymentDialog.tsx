@@ -23,9 +23,22 @@ import {
   squareCheckoutStatusFn,
   startSquareCheckoutFn,
   getPaymentsStatusFn,
+  listPaxReadersFn,
+  paxReaderSessionFn,
+  recordPaxSaleFn,
   sendGuestReceiptFn,
   sendGuestReceiptSmsFn,
 } from "@/lib/payments/api";
+import {
+  PAX_MSG,
+  checkAlreadyCaptured,
+  checkSellingEntityId,
+  decidePaxPick,
+  paxScanRows,
+  runAndroidPaxSale,
+  type PaxReader,
+  type PaxScanRow,
+} from "@/lib/payments/pax-d135";
 import {
   buildGuestCheckView,
   guestCheckHtml,
@@ -153,6 +166,13 @@ export function PaymentDialog({ open, onOpenChange, initialMethod }: Props) {
   const giftCards = usePosStore((s) => s.giftCards);
   const hasManagerAuth = usePosStore((s) => s.hasManagerAuth);
   const [last4, setLast4] = useState("");
+  const [usePax, setUsePax] = useState(false);
+  const [paxPhase, setPaxPhase] = useState<"idle" | "scanning" | "setting_up" | "connected" | "bluetooth">("idle");
+  const [paxStatus, setPaxStatus] = useState<string>(PAX_MSG.notConnected);
+  const [paxBattery, setPaxBattery] = useState<number | null>(null);
+  const [paxRows, setPaxRows] = useState<PaxScanRow[]>([]);
+  const [paxReader, setPaxReader] = useState<PaxReader | null>(null);
+  const [paxReaders, setPaxReaders] = useState<PaxReader[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [change, setChange] = useState<number | null>(null);
   const [done, setDone] = useState(false);
@@ -180,6 +200,153 @@ export function PaymentDialog({ open, onOpenChange, initialMethod }: Props) {
     : balance;
 
   const tips = tipSuggestions(balance);
+
+  useEffect(() => {
+    let cancelled = false;
+    void import("@/lib/payments/pax-d135-native")
+      .then((mod) => {
+        if (cancelled) return;
+        setUsePax(
+          mod.paxReaderOnThisStation() &&
+            settings.cardProcessor !== "square" &&
+            settings.cardProcessor !== "none",
+        );
+      })
+      .catch(() => {
+        if (!cancelled) setUsePax(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [settings.cardProcessor]);
+
+  useEffect(() => {
+    if (!open || !usePax) return;
+    const loc = usePosStore.getState().tenantLocationId || readTenantPosContext()?.locationId || "";
+    if (!loc) return;
+    let cancelled = false;
+    void listPaxReadersFn({ data: { locationId: loc } })
+      .then((res) => {
+        if (cancelled) return;
+        const published = usePosStore.getState().settings.paxReaders ?? [];
+        const merged = new Map<string, PaxReader>();
+        for (const reader of [...published, ...(res.readers ?? [])]) merged.set(reader.serial, reader);
+        setPaxReaders([...merged.values()]);
+      })
+      .catch(() => {
+        if (!cancelled) setPaxReaders(usePosStore.getState().settings.paxReaders ?? []);
+      });
+    const listener = import("@/lib/payments/pax-d135-native").then((mod) => {
+      if (cancelled) return null;
+      return mod.paxPlugin.addListener("status", (status) => {
+        if (status.state === "setting_up") {
+          setPaxPhase("setting_up");
+          setPaxStatus(PAX_MSG.settingUp);
+        } else if (status.state === "connected") {
+          setPaxPhase("connected");
+          setPaxStatus(PAX_MSG.connected);
+        }
+        if (typeof status.batteryPercent === "number") setPaxBattery(status.batteryPercent);
+      });
+    });
+    return () => {
+      cancelled = true;
+      void listener.then((handle) => handle?.remove());
+    };
+  }, [open, usePax]);
+
+  const scanPax = () => {
+    void (async () => {
+      setError(null);
+      setPaxPhase("scanning");
+      setPaxRows([]);
+      setPaxReader(null);
+      setPaxBattery(null);
+      try {
+        const { paxPlugin } = await import("@/lib/payments/pax-d135-native");
+        const scanned = await paxPlugin.scan();
+        const rows = paxScanRows(scanned.devices ?? [], paxReaders);
+        if (!scanned.ok || rows.length === 0) {
+          setPaxPhase("bluetooth");
+          setPaxStatus(scanned.message || PAX_MSG.bluetooth);
+          setPaxRows([]);
+          return;
+        }
+        setPaxRows(rows);
+        setPaxPhase("idle");
+        setPaxStatus(PAX_MSG.notConnected);
+      } catch {
+        setPaxPhase("bluetooth");
+        setPaxStatus(PAX_MSG.bluetooth);
+      }
+    })();
+  };
+
+  const pickPax = (row: PaxScanRow) => {
+    void (async () => {
+      if (!order) return;
+      const locationLive = Boolean(payStatus && payStatus.mode === "live" && !payStatus.lifecycleForcesSandbox);
+      const decision = decidePaxPick({
+        row,
+        readers: paxReaders,
+        sellingEntityId: checkSellingEntityId(order.lines),
+        locationLive,
+      });
+      if (!decision.ok) {
+        setPaxReader(null);
+        setPaxPhase("idle");
+        setError(decision.message);
+        setPaxStatus(decision.message);
+        return;
+      }
+      const loc = usePosStore.getState().tenantLocationId || readTenantPosContext()?.locationId || "";
+      setError(null);
+      setPaxReader(decision.reader);
+      setPaxPhase("setting_up");
+      setPaxStatus(PAX_MSG.settingUp);
+      setBusy(true);
+      try {
+        const session = await paxReaderSessionFn({
+          data: { locationId: loc, serial: decision.reader.serial, entityId: decision.reader.entityId },
+        });
+        if (!session.ok) {
+          setPaxReader(null);
+          setPaxPhase("idle");
+          setError(session.error);
+          setPaxStatus(session.error);
+          setBusy(false);
+          return;
+        }
+        const { paxPlugin } = await import("@/lib/payments/pax-d135-native");
+        const connected = await paxPlugin.connect({
+          name: row.name,
+          address: row.address,
+          merchantId: session.merchantId,
+          deviceId: session.deviceId,
+          userId: session.userId,
+          password: session.password,
+          env: "SB",
+        });
+        if (!connected.ok) {
+          setPaxReader(null);
+          setPaxPhase("bluetooth");
+          setPaxStatus(connected.message || PAX_MSG.bluetooth);
+          setError(connected.message || PAX_MSG.bluetooth);
+          setBusy(false);
+          return;
+        }
+        setPaxPhase("connected");
+        setPaxStatus(PAX_MSG.connected);
+        setPaxBattery(typeof connected.batteryPercent === "number" ? connected.batteryPercent : null);
+      } catch {
+        setPaxReader(null);
+        setPaxPhase("bluetooth");
+        setPaxStatus(PAX_MSG.bluetooth);
+        setError(PAX_MSG.bluetooth);
+      }
+      setBusy(false);
+    })();
+  };
 
   useEffect(() => {
     if (!wanOnline && method === "card") {
@@ -388,6 +555,8 @@ export function PaymentDialog({ open, onOpenChange, initialMethod }: Props) {
     }
     let cardLast4 = method === "card" ? last4 || undefined : undefined;
     let squarePaymentId: string | undefined;
+    let finixTransferId: string | undefined;
+    let paxJournal: { readerId: string; merchantId: string; locationId: string; orgId: string } | null = null;
     if (method === "card") {
       const ctx = readTenantPosContext();
       const locationId =
@@ -397,7 +566,7 @@ export function PaymentDialog({ open, onOpenChange, initialMethod }: Props) {
         setError("Card requires connection. Take cash or keep the check open.");
         return;
       }
-      if (settings.cardProcessor !== "square" && payStatus && payStatus.mode === "live" && !payStatus.liveReady) {
+      if (!usePax && settings.cardProcessor !== "square" && payStatus && payStatus.mode === "live" && !payStatus.liveReady) {
         setError(
           payStatus.message ||
             "Live cards require an enrolled Quantum reader supplied through Summex. Take cash or keep the check open.",
@@ -476,6 +645,51 @@ export function PaymentDialog({ open, onOpenChange, initialMethod }: Props) {
         }
         setBusy(false);
         setError(null);
+      } else if (usePax) {
+        if (!order) {
+          setError("No order");
+          return;
+        }
+        setBusy(true);
+        try {
+          const { androidPaxBridge } = await import("@/lib/payments/pax-d135-native");
+          const locationLive = Boolean(payStatus && payStatus.mode === "live" && !payStatus.lifecycleForcesSandbox);
+          const sale = await runAndroidPaxSale({
+            checkId: order.id,
+            amountCents: tend + tip,
+            tipCents: 0,
+            locationLive,
+            reader: paxReader,
+            sellingEntityId: checkSellingEntityId(order.lines),
+            alreadyCaptured: checkAlreadyCaptured({
+              checkId: order.id,
+              status: order.status,
+              payments: order.payments,
+            }),
+            settingUp: paxPhase === "setting_up",
+            connected: paxPhase === "connected",
+            bluetoothOff: paxPhase === "bluetooth",
+            bridge: androidPaxBridge(),
+          });
+          if (!sale.ok) {
+            setError(sale.message);
+            setBusy(false);
+            return;
+          }
+          cardLast4 = sale.last4 || undefined;
+          finixTransferId = sale.transferId;
+          paxJournal = {
+            readerId: paxReader?.finixDeviceId || "",
+            merchantId: paxReader?.finixMerchantId || "",
+            locationId,
+            orgId,
+          };
+        } catch {
+          setError(PAX_MSG.unread);
+          setBusy(false);
+          return;
+        }
+        setBusy(false);
       } else if (!training && merchants.length) {
         const blocked = entities.find((e) => {
           const m = merchants.find((x) => x.entityId === e.entityId);
@@ -488,7 +702,7 @@ export function PaymentDialog({ open, onOpenChange, initialMethod }: Props) {
           return;
         }
       }
-      if (settings.cardProcessor !== "square") {
+      if (settings.cardProcessor !== "square" && !usePax) {
       setBusy(true);
       try {
         if (settings.cardProcessor === "stripe") {
@@ -572,12 +786,31 @@ export function PaymentDialog({ open, onOpenChange, initialMethod }: Props) {
           : undefined,
       last4: cardLast4,
       squarePaymentId,
+      finixTransferId,
       giftCardCode: method === "gift_card" ? giftCode : undefined,
       serverGift,
     });
     if (!res.ok) {
       setError(res.error ?? "Payment failed");
       return;
+    }
+    if (finixTransferId && paxJournal && order) {
+      try {
+        await recordPaxSaleFn({
+          data: {
+            locationId: paxJournal.locationId,
+            orgId: paxJournal.orgId,
+            checkId: order.id,
+            transferId: finixTransferId,
+            last4: cardLast4 ?? null,
+            amountCents: Math.min(amountCents, balance) + tip,
+            readerId: paxJournal.readerId,
+            merchantId: paxJournal.merchantId,
+          },
+        });
+      } catch {
+        /* The check already stores the transfer. Do not send another sale. */
+      }
     }
     if (method === "gift_card") {
       useMarketingStore.getState().logGiftTxn({
@@ -1180,7 +1413,29 @@ export function PaymentDialog({ open, onOpenChange, initialMethod }: Props) {
                       not queued.
                     </p>
                   )}
-                  {(payStatus?.mode === "sandbox" || sandbox) && (
+                  {usePax && (
+                    <div className="space-y-2 rounded-lg border border-border p-3" data-pax-reader="">
+                      <p className="text-sm font-medium" data-pax-status="">
+                        {paxStatus}
+                        {paxPhase === "connected" && paxBattery != null ? ` · Battery ${paxBattery}%` : ""}
+                      </p>
+                      <Button type="button" size="sm" variant="outline" disabled={busy} onClick={scanPax}>
+                        Scan
+                      </Button>
+                      {paxRows.map((row) => (
+                        <button
+                          key={row.serial}
+                          type="button"
+                          data-pax-serial={row.serial}
+                          className="block w-full rounded-lg border border-border px-3 py-2 text-left text-sm"
+                          onClick={() => pickPax(row)}
+                        >
+                          {row.name}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                  {(payStatus?.mode === "sandbox" || sandbox) && !usePax && (
                     <Input
                       placeholder="Last 4 (sandbox receipt only)"
                       value={last4}

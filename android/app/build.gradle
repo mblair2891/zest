@@ -61,6 +61,7 @@ dependencies {
     androidTestImplementation "androidx.test.ext:junit:$androidxJunitVersion"
     androidTestImplementation "androidx.test.espresso:espresso-core:$androidxEspressoCoreVersion"
     implementation project(':capacitor-cordova-android-plugins')
+    implementation "com.finix:pax-mpos-sdk-android:3.7.0"
 }
 
 apply from: 'capacitor.build.gradle'

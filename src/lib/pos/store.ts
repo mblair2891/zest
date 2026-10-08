@@ -1,6 +1,7 @@
 import { create, type StoreApi, type UseBoundStore } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
 import { uid } from "@/lib/utils";
+import { PAX_MSG } from "@/lib/payments/pax-d135";
 import { homeViewForEmployee, homeViewForRole } from "./rbac";
 import {
 	deviceRoleFromSessionMode,
@@ -2979,7 +2980,7 @@ const usePosStoreRaw = create<PosStore>()(persist((set, get) => {
 		floorSync("check", order.id);
 		if (order.tableId) floorSync("table", order.tableId);
 	},
-	takePayment: ({ method, amountCents, tipCents = 0, tenderedCents, last4, squarePaymentId, giftCardCode, houseAccountId, serverGift, keepOpen }) => {
+	takePayment: ({ method, amountCents, tipCents = 0, tenderedCents, last4, squarePaymentId, finixTransferId, giftCardCode, houseAccountId, serverGift, keepOpen }) => {
 		const order = get().getActiveOrder();
 		const emp = get().getCurrentEmployee();
 		if (!order || !emp) return {
@@ -3013,6 +3014,15 @@ const usePosStoreRaw = create<PosStore>()(persist((set, get) => {
 		}
 		if (method === "card" && get().settings.cardProcessor === "square" && !squarePaymentId) {
 			return { ok: false, error: "Card present waits for the Square Terminal." };
+		}
+		if (
+			method === "card" &&
+			(order.payments ?? []).some(
+				(p: { method?: string; finixTransferId?: string }) =>
+					p.method === "card" && String(p.finixTransferId ?? "").trim(),
+			)
+		) {
+			return { ok: false, error: PAX_MSG.alreadyPaid };
 		}
 		let changeCents = 0;
 		if (method === "cash") {
@@ -3143,6 +3153,7 @@ const usePosStoreRaw = create<PosStore>()(persist((set, get) => {
 			changeCents: method === "cash" ? changeCents : void 0,
 			last4,
 			squarePaymentId: method === "card" ? squarePaymentId : undefined,
+			finixTransferId: method === "card" && finixTransferId ? finixTransferId : undefined,
 			giftCardCode,
 			houseAccountId,
 			at: Date.now(),

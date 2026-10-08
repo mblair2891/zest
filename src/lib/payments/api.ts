@@ -18,6 +18,65 @@ export const getPaymentsStatusFn = createServerFn({ method: "POST" })
     return getPaymentsStatus(context.userId, data.locationId);
   });
 
+export const listPaxReadersFn = createServerFn({ method: "POST" })
+  .middleware([tenantMiddleware])
+  .validator((d: { locationId: string }) => ({ locationId: loc(d.locationId) }))
+  .handler(async ({ context, data }) => {
+    const { listPaxReaders } = await import("./pax-d135.server");
+    return { readers: await listPaxReaders(context.userId, data.locationId) };
+  });
+
+export const registerPaxReaderFn = createServerFn({ method: "POST" })
+  .middleware([tenantMiddleware])
+  .validator((d: { locationId: string; serial: string; entityId: string; entityName?: string }) => ({
+    locationId: loc(d.locationId),
+    serial: String(d.serial ?? "").replace(/\s+/g, "").slice(0, 40),
+    entityId: String(d.entityId ?? "").trim().slice(0, 80),
+    entityName: String(d.entityName ?? "").trim().slice(0, 80),
+  }))
+  .handler(async ({ context, data }) => {
+    const { registerPaxReader } = await import("./pax-d135.server");
+    return registerPaxReader(context.userId, data);
+  });
+
+export const paxReaderSessionFn = createServerFn({ method: "POST" })
+  .middleware([tenantMiddleware])
+  .validator((d: { locationId: string; serial: string; entityId: string }) => ({
+    locationId: loc(d.locationId),
+    serial: String(d.serial ?? "").replace(/\s+/g, "").slice(0, 40),
+    entityId: String(d.entityId ?? "").trim().slice(0, 80),
+  }))
+  .handler(async ({ context, data }) => {
+    const { paxReaderSession } = await import("./pax-d135.server");
+    return paxReaderSession(context.userId, data);
+  });
+
+export const recordPaxSaleFn = createServerFn({ method: "POST" })
+  .middleware([tenantMiddleware])
+  .validator((d: {
+    locationId: string;
+    orgId: string;
+    checkId: string;
+    transferId: string;
+    last4?: string | null;
+    amountCents: number;
+    readerId: string;
+    merchantId: string;
+  }) => ({
+    locationId: loc(d.locationId),
+    orgId: String(d.orgId ?? "").trim().slice(0, 80),
+    checkId: String(d.checkId ?? "").trim().slice(0, 80),
+    transferId: String(d.transferId ?? "").trim().slice(0, 80),
+    last4: d.last4 ? String(d.last4).replace(/\D/g, "").slice(-4) : null,
+    amountCents: Math.max(0, Math.round(Number(d.amountCents) || 0)),
+    readerId: String(d.readerId ?? "").trim().slice(0, 80),
+    merchantId: String(d.merchantId ?? "").trim().slice(0, 80),
+  }))
+  .handler(async ({ context, data }) => {
+    const { recordPaxSale } = await import("./pax-d135.server");
+    return recordPaxSale(context.userId, data);
+  });
+
 export const captureCardPresentFn = createServerFn({ method: "POST" })
   .middleware([tenantMiddleware])
   .validator((d: {

@@ -6,6 +6,18 @@ import type { GuideUpdate } from "@/lib/guide/types";
  */
 export const WHATS_NEW_ENTRIES: GuideUpdate[] = [
   {
+    id: "upd_2026_10_206_pax_d135",
+    date: "2026-10-08",
+    title: "Sandbox card on a PAX D135",
+    summary: "A paired Android station takes a sandbox card on a registered PAX D135. Live cards stay off in this build.",
+    body: "Devices → Add card reader stores the serial on one selling entity. Pay → Card scans names that start with PAX D135_. The first connection says Setting up reader, then Connected. A sandbox sale saves the transfer and the last four. Cash still works with no reader. A decline, a cancel, a chip error, a disconnect, or a timeout leaves the check open. A paid check is not charged again. Live cards are refused in this build.",
+    roles: ["owner_manager", "server", "host_operator", "vendor_operator"],
+    surfaces: ["settings"],
+    audience: "all",
+    topicId: "pax-card-reader",
+    tags: ["payments", "devices"],
+  },
+  {
     id: "upd_2026_10_205_flush_publish",
     date: "2026-10-07",
     title: "Pieces sit flush and publish keeps them",

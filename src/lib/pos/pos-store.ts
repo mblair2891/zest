@@ -394,6 +394,7 @@ export interface PosStore {
     tenderedCents?: number;
     last4?: string;
     squarePaymentId?: string;
+    finixTransferId?: string;
     giftCardCode?: string;
     houseAccountId?: string;
     serverGift?: boolean;

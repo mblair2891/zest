@@ -88,6 +88,14 @@ export function finixConfigured(): boolean {
   return Boolean(credentials());
 }
 
+/** Sandbox SDK login for the station app. Live keys are not returned in this build. */
+export function finixSandboxLogin(): { userId: string; password: string } | null {
+  if (env() === "live") return null;
+  const creds = credentials();
+  if (!creds) return null;
+  return { userId: creds.user, password: creds.pass };
+}
+
 export function finixWebhookSecret(): string | undefined {
   return readServerEnv("FINIX_WEBHOOK_SECRET");
 }
@@ -393,6 +401,39 @@ export async function createSplitTransfer(opts: {
   }
   const id = typeof res.json.id === "string" ? res.json.id : sandboxId("TR");
   return { ok: true, transferId: id, sandbox: false };
+}
+
+/**
+ * Register a PAX D135 under a sandbox merchant. Model is PAX_D135.
+ * This build does not create a live device.
+ */
+export async function createPaxD135Device(opts: {
+  merchantId: string;
+  serial: string;
+  name: string;
+}): Promise<{ ok: true; id: string } | { ok: false; error: string }> {
+  if (env() === "live") {
+    return { ok: false, error: "Live card readers are not available in this build." };
+  }
+  const merchantId = opts.merchantId.trim();
+  if (!finixConfigured() || !merchantId || merchantId.includes("sandbox")) {
+    return {
+      ok: false,
+      error: "This selling entity does not have a sandbox merchant yet.",
+    };
+  }
+  const { paxDeviceRequest } = await import("./pax-d135");
+  const body = paxDeviceRequest(opts.serial, opts.name);
+  const res = await finixFetch("POST", `/merchants/${encodeURIComponent(merchantId)}/devices`, body);
+  const id = typeof res.json.id === "string" ? res.json.id : "";
+  if (!res.ok || !id.startsWith("DV")) {
+    const msg =
+      typeof (res.json as { message?: string }).message === "string"
+        ? (res.json as { message: string }).message
+        : "The reader was not registered.";
+    return { ok: false, error: msg.slice(0, 200) };
+  }
+  return { ok: true, id };
 }
 
 export function mapWebhookType(type: string): PaymentsOnboardingStatus | null {
