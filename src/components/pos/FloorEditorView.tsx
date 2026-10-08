@@ -75,9 +75,7 @@ import {
   panFloorCamera,
   twoFingerCamera,
   zoomFloorCamera,
-  nearestObjectGap,
-  nearestRoomEdge,
-  fixtureEdgeBox,
+  floorClearanceReadout,
   objectInches,
   parseFeetInches,
   parsePositiveInches,
@@ -279,22 +277,21 @@ function MeasureGuides({
   tables: Array<{ id: string; kind?: string | null; x: number; y: number; w: number; h: number; rotation?: number | null }>;
   room: { widthIn: number; depthIn: number };
 }) {
-  const box = fixtureEdgeBox(table, room);
-  const edge = nearestRoomEdge(box, room);
-  const other = nearestObjectGap(table, tables, room);
+  const readout = floorClearanceReadout(table, tables, room);
   return (
     <div
       data-floor-measure=""
       className="pointer-events-none absolute left-1/2 top-full z-30 mt-1 flex -translate-x-1/2 flex-col items-center gap-0.5 whitespace-nowrap text-[10px] font-medium text-neutral-900"
     >
-      <span className="rounded bg-white px-1 shadow">
-        {formatFeetInches(Math.max(0, edge.inches))} to {edge.side}
-      </span>
-      {other ? (
-        <span className="rounded bg-white px-1 shadow">
-          {formatFeetInches(Math.max(0, other.inches))} to {other.label}
+      {readout.lines.map((line, index) => (
+        <span
+          key={`${index}-${line}`}
+          data-floor-clearance={readout.flush ? "0" : undefined}
+          className="rounded bg-white px-1 shadow"
+        >
+          {line}
         </span>
-      ) : null}
+      ))}
     </div>
   );
 }

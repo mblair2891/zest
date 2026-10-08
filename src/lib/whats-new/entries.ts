@@ -6,6 +6,18 @@ import type { GuideUpdate } from "@/lib/guide/types";
  */
 export const WHATS_NEW_ENTRIES: GuideUpdate[] = [
   {
+    id: "upd_2026_10_208_flush_wall_line",
+    date: "2026-10-08",
+    title: "Pieces sit flush on the wall line",
+    summary: "A table, couch, booth, or stool can touch a wall, door, or window. The distance reads 0.",
+    body: "A table, couch, booth, or stool sits on the wall line. There is no clearance. Dragging onto a wall, a door, or a window snaps flush, and the distance label reads 0 on the left and the right. Publish floor does not move the piece. A refresh keeps it flush.",
+    roles: ["owner_manager", "vendor_operator", "host_operator"],
+    surfaces: ["floor"],
+    audience: "all",
+    topicId: "floor-editor",
+    tags: ["floor"],
+  },
+  {
     id: "upd_2026_10_207_bar_leg_lengths",
     date: "2026-10-08",
     title: "Bar length fields read Long leg and Short leg",

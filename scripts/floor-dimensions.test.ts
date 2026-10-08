@@ -8,6 +8,7 @@ import {
   fixtureEdgeBox,
   fixturePixelBox,
   formatFeetInches,
+  clearanceLabel,
   nearestObjectGap,
   nearestRoomEdge,
   normalizeBarFill,
@@ -116,6 +117,9 @@ test("bar fill white migrates and a dragged table measures to the wall", () => {
   assert.equal(gap.label, "wall");
   assert.ok(Math.abs(gap.inches - 30) < 0.6);
   assert.equal(formatFeetInches(gap.inches), `2' 6"`);
+  assert.equal(clearanceLabel(gap.inches), `2' 6"`);
+  assert.equal(clearanceLabel(0), "0");
+  assert.equal(clearanceLabel(0.2), "0");
   const edge = nearestRoomEdge(fixtureEdgeBox(table, room), room);
   assert.ok(edge.inches >= 0);
 

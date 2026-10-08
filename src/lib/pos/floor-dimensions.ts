@@ -329,6 +329,61 @@ export function nearestObjectGap(
   return best;
 }
 
+type ArchPiece = {
+  id: string;
+  kind?: string | null;
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+  rotation?: number | null;
+};
+
+/** Gap to the spun face of a wall, door, or window. A window stays a window. */
+export function nearestArchitectureGap(
+  self: ArchPiece,
+  others: readonly ArchPiece[],
+  room: FloorRoom,
+): { label: "wall" | "door" | "window"; inches: number } | null {
+  const a = fixtureEdgeBox(self, room);
+  let best: { label: "wall" | "door" | "window"; inches: number } | null = null;
+  for (const other of others) {
+    if (other.id === self.id) continue;
+    const label = other.kind === "wall" || other.kind === "door" || other.kind === "window" ? other.kind : null;
+    if (!label) continue;
+    const inches = edgeGap(a, fixtureEdgeBox(other, room));
+    if (!best || inches < best.inches) best = { label, inches };
+  }
+  return best;
+}
+
+/** Touching is the bare 0. Any other gap stays feet and inches. */
+export function clearanceLabel(inches: number): string {
+  if (Math.round(Math.max(0, inches)) === 0) return "0";
+  return formatFeetInches(inches);
+}
+
+/**
+ * Distance lines for the selected piece.
+ * A table, couch, booth, or stool that meets a wall, door, or window reads 0.
+ * That 0 is the spun face, not the room edge and not the unrotated layout box.
+ */
+export function floorClearanceReadout(
+  self: ArchPiece,
+  others: readonly ArchPiece[],
+  room: FloorRoom,
+): { flush: boolean; lines: string[] } {
+  const arch = nearestArchitectureGap(self, others, room);
+  if (arch && Math.round(Math.max(0, arch.inches)) === 0) {
+    return { flush: true, lines: ["0"] };
+  }
+  const edge = nearestRoomEdge(fixtureEdgeBox(self, room), room);
+  const lines = [`${formatFeetInches(Math.max(0, edge.inches))} to ${edge.side}`];
+  const other = nearestObjectGap(self, [...others], room);
+  if (other) lines.push(`${formatFeetInches(Math.max(0, other.inches))} to ${other.label}`);
+  return { flush: false, lines };
+}
+
 export function dimensionLabel(
   item: { shape?: string | null; kind?: string | null; w: number; h: number; lengthIn?: number | null; widthIn?: number | null },
   room: FloorRoom,
