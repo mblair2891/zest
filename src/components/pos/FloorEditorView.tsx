@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useRef, useState } from "react";
-import { Plus, Trash2, QrCode, RotateCw, Copy } from "lucide-react";
+import { useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
+import { Copy, GripVertical, Plus, QrCode, RotateCw, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -111,6 +111,18 @@ import {
   type GridSizeIn,
   type SnapMode,
 } from "@/lib/pos/floor-arrange";
+import {
+  FLOOR_TOOLBAR_STORAGE_KEY,
+  barsOnDock,
+  defaultFloorToolbarLayout,
+  dockUnderPoint,
+  floatFloorBar,
+  parseFloorToolbarLayout,
+  pinFloorBar,
+  serializeFloorToolbarLayout,
+  type FloorBarId,
+  type FloorDock,
+} from "@/lib/pos/floor-toolbars";
 import { FloorArchitectureMark } from "@/components/pos/FloorArchitectureMark";
 import {
   barClosedShape,
@@ -512,6 +524,19 @@ export function FloorEditorView() {
       ...(draft.sections.length ? { floorSections: draft.sections } : {}),
     });
   }, [floorMode, editEntityId, peerVenue, tenantLocationId]);
+  const shellRef = useRef<HTMLDivElement>(null);
+  const [toolbarLayout, setToolbarLayout] = useState(defaultFloorToolbarLayout);
+  const [toolbarReady, setToolbarReady] = useState(false);
+  const [toolbarDragging, setToolbarDragging] = useState(false);
+  const [toolbarHover, setToolbarHover] = useState<Exclude<FloorDock, "float"> | null>(null);
+  useEffect(() => {
+    setToolbarLayout(parseFloorToolbarLayout(window.localStorage.getItem(FLOOR_TOOLBAR_STORAGE_KEY)));
+    setToolbarReady(true);
+  }, []);
+  useEffect(() => {
+    if (!toolbarReady) return;
+    window.localStorage.setItem(FLOOR_TOOLBAR_STORAGE_KEY, serializeFloorToolbarLayout(toolbarLayout));
+  }, [toolbarLayout, toolbarReady]);
   const editableTableIds = wholeFloor ? null : new Set(editScope.tableIds);
   const editableSectionIds = wholeFloor ? null : new Set(editScope.sectionIds);
   const editableTableRef = useRef<Set<string> | null>(null);
@@ -1572,13 +1597,134 @@ export function FloorEditorView() {
     }
   };
 
-  return (
-    <div className="flex h-full min-h-0 flex-1 flex-col overflow-hidden" data-demo="floor-editor">
+  const dockAt = (clientX: number, clientY: number) => {
+    const shell = shellRef.current;
+    if (!shell) return null;
+    const docks = (["top", "left", "right"] as const).flatMap((dock) => {
+      const node = shell.querySelector(`[data-floor-dock="${dock}"]`);
+      if (!(node instanceof HTMLElement)) return [];
+      const rect = node.getBoundingClientRect();
+      return [{ dock, left: rect.left, top: rect.top, right: rect.right, bottom: rect.bottom }];
+    });
+    return dockUnderPoint({ x: clientX, y: clientY }, docks);
+  };
+
+  const onToolbarGripDown = (event: ReactPointerEvent<HTMLButtonElement>, id: FloorBarId) => {
+    event.preventDefault();
+    event.stopPropagation();
+    const shell = shellRef.current;
+    if (!shell) return;
+    const shellBox = shell.getBoundingClientRect();
+    const gripBox = event.currentTarget.getBoundingClientRect();
+    const offsetX = event.clientX - gripBox.left;
+    const offsetY = event.clientY - gripBox.top;
+    const startX = event.clientX;
+    const startY = event.clientY;
+    let moved = false;
+    const placeAt = (clientX: number, clientY: number) => ({
+      x: Math.round(Math.max(0, Math.min(clientX - shellBox.left - offsetX, Math.max(0, shellBox.width - 80)))),
+      y: Math.round(Math.max(0, Math.min(clientY - shellBox.top - offsetY, Math.max(0, shellBox.height - 36)))),
+    });
+    const onMove = (ev: PointerEvent) => {
+      if (!moved && Math.hypot(ev.clientX - startX, ev.clientY - startY) < 4) return;
+      moved = true;
+      setToolbarDragging(true);
+      const next = placeAt(ev.clientX, ev.clientY);
+      setToolbarLayout((cur) => floatFloorBar(cur, id, next.x, next.y));
+      setToolbarHover(dockAt(ev.clientX, ev.clientY));
+    };
+    const onUp = (ev: PointerEvent) => {
+      window.removeEventListener("pointermove", onMove);
+      window.removeEventListener("pointerup", onUp);
+      setToolbarDragging(false);
+      setToolbarHover(null);
+      if (!moved) return;
+      const dock = dockAt(ev.clientX, ev.clientY);
+      const next = placeAt(ev.clientX, ev.clientY);
+      setToolbarLayout((cur) => (dock ? pinFloorBar(cur, id, dock) : floatFloorBar(cur, id, next.x, next.y)));
+    };
+    window.addEventListener("pointermove", onMove);
+    window.addEventListener("pointerup", onUp);
+  };
+
+  const renderFloorBar = (id: FloorBarId) => {
+    const place = toolbarLayout[id];
+    const horizontal = place.dock === "top" || place.dock === "float";
+    const frameClass = [
+      "flex shrink-0 gap-1 border-b border-border bg-bg px-1",
+      horizontal
+        ? "h-10 flex-row flex-nowrap items-center overflow-hidden"
+        : "w-max flex-col flex-nowrap items-stretch overflow-y-auto py-1",
+      place.dock === "float" ? "absolute z-40 rounded-lg border border-border shadow-lg" : "",
+    ].join(" ");
+    const bodyClass = horizontal
+      ? "flex min-w-0 flex-1 flex-nowrap items-center gap-1 overflow-x-auto overflow-y-hidden"
+      : "flex w-full flex-col flex-nowrap items-stretch gap-1";
+    const grip = (
+      <button
+        type="button"
+        data-floor-bar-grip=""
+        aria-label={id === "pieces" ? "Move pieces bar" : "Move view bar"}
+        className="flex h-7 w-5 shrink-0 cursor-grab items-center justify-center rounded text-muted-foreground touch-none hover:bg-surface-2"
+        onPointerDown={(event) => onToolbarGripDown(event, id)}
+      >
+        <GripVertical className="h-4 w-4" />
+      </button>
+    );
+    if (id === "pieces") {
+      return (
+        <div
+          data-floor-toolbar=""
+          data-floor-bar="pieces"
+          data-floor-bar-dock={place.dock}
+          className={frameClass}
+          style={place.dock === "float" ? { left: place.x, top: place.y } : undefined}
+        >
+          {grip}
+          <div className={bodyClass}>
+        <div className={horizontal ? "flex shrink-0 flex-nowrap gap-1" : "flex w-full flex-col flex-nowrap gap-1"}>
+          {KINDS.map((k) => (
+            <Button
+              key={k.id}
+              size="sm"
+              variant="outline"
+              data-floor-kind={k.id}
+              className="h-7 shrink-0 px-2 text-xs"
+              onClick={() => {
+                if (k.id === "table") {
+                  setTableRows([freshTableAddRow("round")]);
+                  setTableAddOpen(true);
+                  return;
+                }
+                if (isAddCountKind(k.id)) {
+                  setPendingKind(k);
+                  setAddCount("1");
+                  setAddOpen(true);
+                  return;
+                }
+                placeKind(k);
+              }}
+            >
+              {k.booth ? <FloorBoothIcon kind={k.booth} /> : <Plus className="h-3.5 w-3.5" />}
+              {k.id === "square_plain" ? "Square" : k.label}
+            </Button>
+          ))}
+        </div>
+          </div>
+        </div>
+      );
+    }
+    return (
       <div
         data-floor-toolbar=""
-        className="flex h-10 shrink-0 flex-nowrap items-center gap-1 overflow-x-auto overflow-y-hidden border-b border-border bg-bg px-2"
+        data-floor-bar="view"
+        data-floor-bar-dock={place.dock}
+        className={frameClass}
+        style={place.dock === "float" ? { left: place.x, top: place.y } : undefined}
       >
-        <div className="flex shrink-0 items-center gap-1">
+        {grip}
+        <div className={bodyClass}>
+        <div className={horizontal ? "flex shrink-0 flex-nowrap items-center gap-1" : "flex w-full flex-col flex-nowrap items-stretch gap-1"}>
           <h2 className="shrink-0 whitespace-nowrap text-sm font-semibold">Floor plan editor</h2>
           <Badge variant="secondary" className="shrink-0 whitespace-nowrap">
             Drag-resize
@@ -1586,10 +1732,9 @@ export function FloorEditorView() {
           <GuideLearnLink topicId="floor-editor" compact>
             Learn
           </GuideLearnLink>
-          <SetupAssistButton domain="floor" label="Add by voice or text" />
+          <SetupAssistButton domain="floor" label="Add by voice" />
         </div>
-        <div className="flex min-w-0 flex-1 flex-nowrap items-center gap-1 overflow-x-auto overflow-y-hidden">
-        <div className="flex shrink-0 flex-nowrap gap-1">
+        <div className={horizontal ? "flex shrink-0 flex-nowrap gap-1" : "flex w-full flex-col flex-nowrap gap-1"}>
           <Button
             size="sm"
             variant={scope === "entire" ? "default" : "outline"}
@@ -1638,36 +1783,7 @@ export function FloorEditorView() {
             </Button>
           ))}
         </div>
-        <div className="flex shrink-0 flex-nowrap gap-1">
-          {KINDS.map((k) => (
-            <Button
-              key={k.id}
-              size="sm"
-              variant="outline"
-              data-floor-kind={k.id}
-              className="h-7 shrink-0 px-2 text-xs"
-              onClick={() => {
-                if (k.id === "table") {
-                  setTableRows([freshTableAddRow("round")]);
-                  setTableAddOpen(true);
-                  return;
-                }
-                if (isAddCountKind(k.id)) {
-                  setPendingKind(k);
-                  setAddCount("1");
-                  setAddOpen(true);
-                  return;
-                }
-                placeKind(k);
-              }}
-            >
-              {k.booth ? <FloorBoothIcon kind={k.booth} /> : <Plus className="h-3.5 w-3.5" />}
-              {k.id === "square_plain" ? "Square" : k.label}
-            </Button>
-          ))}
-        </div>
-        </div>
-        <div className="flex shrink-0 flex-nowrap items-center gap-1">
+        <div className={horizontal ? "flex shrink-0 flex-nowrap items-center gap-1" : "flex w-full flex-col flex-nowrap items-stretch gap-1"}>
           {floorMode === "entity" && peerVenue ? (
             <Button
               type="button"
@@ -1738,9 +1854,43 @@ export function FloorEditorView() {
             </select>
           </label>
         </div>
+        </div>
       </div>
+    );
+  };
 
-      <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden lg:flex-row">
+  const renderFloorDock = (dock: "top" | "left" | "right") => {
+    const ids = barsOnDock(toolbarLayout, dock);
+    const empty = ids.length === 0;
+    return (
+      <div
+        data-floor-dock={dock === "top" ? "top" : dock === "left" ? "left" : "right"}
+        className={[
+          "flex shrink-0",
+          dock === "top" ? "w-full flex-col" : "h-full min-h-0 flex-col",
+          !empty && dock !== "top" ? "w-max overflow-y-auto" : "",
+          empty && !toolbarDragging ? (dock === "top" ? "h-1" : "w-1") : "",
+          empty && toolbarDragging && dock === "top" ? "min-h-12 border-y border-dashed border-primary/50" : "",
+          empty && toolbarDragging && dock !== "top" ? "w-14 border-x border-dashed border-primary/50" : "",
+          toolbarHover === dock ? "bg-primary/15" : "",
+        ].join(" ")}
+      >
+        {empty && toolbarDragging ? (
+          <span className="px-2 py-1 text-[10px] uppercase tracking-wide text-muted-foreground">{dock}</span>
+        ) : null}
+        {ids.map((barId) => (
+          <div key={barId}>{renderFloorBar(barId)}</div>
+        ))}
+      </div>
+    );
+  };
+
+  return (
+    <div ref={shellRef} className="relative flex h-full min-h-0 flex-1 flex-col overflow-hidden" data-demo="floor-editor">
+      {renderFloorDock("top")}
+      <div className="flex min-h-0 min-w-0 flex-1 overflow-hidden">
+        {renderFloorDock("left")}
+        <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden lg:flex-row">
         <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
           <div
             ref={viewportRef}
@@ -1973,6 +2123,18 @@ export function FloorEditorView() {
         </div>
 
         <aside className="max-h-[42vh] min-h-0 w-full shrink-0 space-y-4 overflow-y-auto border-t border-border bg-surface p-3 lg:max-h-none lg:w-80 lg:border-l lg:border-t-0">
+          <div className="flex items-center justify-between gap-2">
+            <p className="text-sm font-medium">Floor bars</p>
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              data-floor-toolbar-reset=""
+              onClick={() => setToolbarLayout(defaultFloorToolbarLayout())}
+            >
+              Reset layout
+            </Button>
+          </div>
           {floorMode === "entity" ? (
             <p className="text-xs text-muted-foreground" data-floor-entity-scope="">
               Editing rooms this entity owns, plus active seating loans.
@@ -2800,7 +2962,14 @@ export function FloorEditorView() {
             </p>
           )}
         </aside>
+        </div>
+        {renderFloorDock("right")}
       </div>
+      {barsOnDock(toolbarLayout, "float").map((barId) => (
+        <div key={barId} className="pointer-events-none absolute inset-0 z-40">
+          <div className="pointer-events-auto">{renderFloorBar(barId)}</div>
+        </div>
+      ))}
       <Dialog
         open={tableAddOpen}
         onOpenChange={setTableAddOpen}

@@ -1,12 +1,12 @@
 import type { PosView } from "@/lib/pos/types";
 
 /** Bump when shipping a docs/features batch so What’s New can watermark. */
-export const GUIDE_VERSION = "2026.10.198";
+export const GUIDE_VERSION = "2026.10.199";
 export const GUIDE_EDITION = "Operators Guide · training week";
 export const GUIDE_TITLE = "Operators Guide";
 /** Short public revision line (date + what changed). Keep in lockstep with the white paper. */
 export const GUIDE_REVISION =
-  "7 Oct 2026 — Floor toolbar is one row, and deleting a bar removes its stools";
+  "7 Oct 2026 — Floor editor has two dockable bars";
 
 /**
  * Audience tabs in the guide. Distinct from POS PIN roles:

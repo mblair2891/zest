@@ -6,6 +6,18 @@ import type { GuideUpdate } from "@/lib/guide/types";
  */
 export const WHATS_NEW_ENTRIES: GuideUpdate[] = [
   {
+    id: "upd_2026_10_199_dockable_bars",
+    date: "2026-10-07",
+    title: "Two dockable floor bars",
+    summary: "Pieces stay on one line. Drag a grip to undock a bar. Reset layout puts both bars back on top.",
+    body: "The floor editor opens with two bars. The pieces bar is one line: Table, Square, booths, Barstool, Wall, Door, Window, Host stand, Bar top, and Other. The view bar holds Floor plan editor, the room, and Publish floor. Drag a grip to undock a bar and move it. Drop it on the top, left, or right dock to pin it. That spot stays on this browser after a refresh. Reset layout puts both bars back on top, with pieces on the first line. Trash on a bar still deletes the stools bound to it.",
+    roles: ["owner_manager", "vendor_operator", "host_operator"],
+    surfaces: ["floor"],
+    audience: "all",
+    topicId: "floor-editor",
+    tags: ["floor"],
+  },
+  {
     id: "upd_2026_10_198_floor_toolbar",
     date: "2026-10-07",
     title: "Floor toolbar is one row",
