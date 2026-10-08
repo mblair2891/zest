@@ -103,7 +103,7 @@ export function parseFloorPlan(raw: unknown): LocationFloorPlan | undefined {
     const kind = KINDS.has(str(r.kind)) ? (str(r.kind) as TableKind) : undefined;
     const arch = kind === "wall" || kind === "door" || kind === "window" || kind === "host_stand" || kind === "bar_top";
     const thin = kind === "wall" || kind === "door" || kind === "window";
-    const rot = Math.round(num(r.rotation, 0) / 90) * 90;
+    const rot = ((num(r.rotation, 0) % 360) + 360) % 360;
     const barShapeRaw = str(r.barShape);
     const barShape =
       barShapeRaw === "straight" || barShapeRaw === "l" || barShapeRaw === "u" || barShapeRaw === "island" || barShapeRaw === "polyline"
@@ -128,8 +128,8 @@ export function parseFloorPlan(raw: unknown): LocationFloorPlan | undefined {
       label: str(r.label, id).slice(0, 40),
       section: str(r.section, "Dining").slice(0, 40),
       seats: Math.max(arch ? 0 : 1, Math.round(num(r.seats, arch ? 0 : 4))),
-      x: thin ? freeCoord(r.x) : Math.min(100, Math.max(0, num(r.x))),
-      y: thin ? freeCoord(r.y) : Math.min(100, Math.max(0, num(r.y))),
+      x: freeCoord(r.x),
+      y: freeCoord(r.y),
       w: Math.min(thin ? 2000 : 100, Math.max(0.4, num(r.w, 12))),
       h: Math.min(100, Math.max(thin ? 0.4 : 0.4, num(r.h, 12))),
       lengthIn: lengthIn > 0 ? lengthIn : undefined,
@@ -174,13 +174,10 @@ export function parseFloorPlan(raw: unknown): LocationFloorPlan | undefined {
   }
   if (!tables.length && !sections.length) return undefined;
   const room = readFloorRoom(o.room) ?? DEFAULT_ROOM;
+  // x, y, w, and h are the layout. A bar's length is a leg, not the box, so inches must not resize it.
   for (const t of tables) {
     if (!(t.lengthIn && t.lengthIn > 0)) t.lengthIn = inchesFromPercent(t.w, room.widthIn);
     if (!(t.widthIn && t.widthIn > 0)) t.widthIn = inchesFromPercent(t.h, room.depthIn);
-    const kindThin = t.kind === "wall" || t.kind === "door" || t.kind === "window";
-    const spun = kindThin && ((t.rotation ?? 0) % 180) !== 0;
-    if (t.lengthIn > 0) t.w = Math.min(spun ? 2000 : 100, Math.max(0.4, (t.lengthIn / room.widthIn) * 100));
-    if (t.widthIn > 0) t.h = Math.min(100, Math.max(0.4, (t.widthIn / room.depthIn) * 100));
   }
   return { tables, sections, room };
 }

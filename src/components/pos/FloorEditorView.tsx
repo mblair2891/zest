@@ -118,7 +118,11 @@ import {
   type ResetScope,
   snapToGrid,
   snapToObjects,
+  snapFlushToArchitecture,
+  duplicateSeatLabels,
+  duplicateSeatMessage,
   idsRemovedWithBars,
+  type SeatLabelClash,
   type AlignOp,
   type GridSizeIn,
   type SnapMode,
@@ -606,6 +610,7 @@ export function FloorEditorView() {
   selectionRef.current = selection;
   const [clearOpen, setClearOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
+  const [duplicate, setDuplicate] = useState<SeatLabelClash | null>(null);
   const [marqueeBox, setMarqueeBox] = useState<{
     left: number;
     top: number;
@@ -1157,7 +1162,14 @@ export function FloorEditorView() {
       ny = snapped.y;
     } else if (snap.mode === "objects" && target) {
       const others = tables
-        .filter((row) => row.id !== target.id && !row.mergedIntoId)
+        .filter(
+          (row) =>
+            row.id !== target.id &&
+            !row.mergedIntoId &&
+            row.kind !== "wall" &&
+            row.kind !== "door" &&
+            row.kind !== "window",
+        )
         .map((row) => ({ x: row.x, y: row.y, w: row.w, h: row.h }));
       const snapped = snapToObjects({ x: nx, y: ny, w: target.w, h: target.h }, others, floorRoom);
       nx = snapped.x;
@@ -1171,8 +1183,27 @@ export function FloorEditorView() {
       nx = clamped.x;
       ny = clamped.y;
     }
+    let flushed = false;
+    if (target) {
+      const edges = tables.filter(
+        (row) =>
+          row.id !== target.id &&
+          !row.mergedIntoId &&
+          (row.kind === "wall" || row.kind === "door" || row.kind === "window"),
+      );
+      const flush = snapFlushToArchitecture(
+        { x: nx, y: ny, w: target.w, h: target.h, rotation: target.rotation, kind: target.kind },
+        edges,
+        floorRoom,
+      );
+      if (flush) {
+        nx = flush.x;
+        ny = flush.y;
+        flushed = true;
+      }
+    }
     let stoolFacing: number | null = null;
-    if (target?.kind === "barstool") {
+    if (target?.kind === "barstool" && !flushed) {
       const snapped = snapStoolToRail(
         { x: nx, y: ny, w: target.w, h: target.h },
         tables,
@@ -1186,10 +1217,12 @@ export function FloorEditorView() {
     }
     const appliedDx = nx - drag.current.origX;
     const appliedDy = ny - drag.current.origY;
+    const quant = flushed ? 10000 : 10;
+    const place = (n: number) => Math.round(n * quant) / quant;
     if (target?.kind === "bar_top") {
       const patch: { x: number; y: number; points?: PlanPoint[]; legLengths?: number[] } = {
-        x: Math.round(nx * 10) / 10,
-        y: Math.round(ny * 10) / 10,
+        x: place(nx),
+        y: place(ny),
       };
       if (drag.current.origPoints) {
         const next = drag.current.origPoints.map((p) => ({
@@ -1209,8 +1242,8 @@ export function FloorEditorView() {
       return;
     }
     update(drag.current.id, {
-      x: Math.round(nx * 10) / 10,
-      y: Math.round(ny * 10) / 10,
+      x: place(nx),
+      y: place(ny),
       ...(stoolFacing != null ? { rotation: stoolFacing } : {}),
     });
   };
@@ -1700,8 +1733,15 @@ export function FloorEditorView() {
 
   const publishFloor = async () => {
     if (!editEntityId || publishing) return;
+    const pos = usePosStore.getState();
+    const clash = duplicateSeatLabels(pos.tables);
+    if (clash) {
+      setDuplicate(clash);
+      return;
+    }
+    setDuplicate(null);
     const orgId = useSaasStore.getState().org.id;
-    const locId = usePosStore.getState().tenantLocationId || "";
+    const locId = pos.tenantLocationId || "";
     if (!orgId || !locId) {
       setPublishNote("Open this venue, then publish the floor.");
       return;
@@ -1710,7 +1750,6 @@ export function FloorEditorView() {
     setPublishNote("");
     cancelLocationCatalog("floor");
     try {
-      const pos = usePosStore.getState();
       const plan = floorPlanFromPos(pos.tables, pos.floorSections, pos.floorRoom);
       writeFloorDraft(locId, pos.tables, pos.floorSections, editEntityId);
       const saved = await publishEntityFloorFn({
@@ -3379,6 +3418,21 @@ export function FloorEditorView() {
             </Button>
             <Button type="button" variant="destructive" data-floor-clear-confirm="" onClick={confirmClear}>
               Remove all
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      <Dialog open={duplicate != null} onOpenChange={(open) => { if (!open) setDuplicate(null); }}>
+        <DialogContent data-floor-duplicate="">
+          <DialogHeader>
+            <DialogTitle>Two pieces share a number</DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-muted-foreground" data-floor-duplicate-copy="">
+            {duplicate ? duplicateSeatMessage(duplicate) : ""}
+          </p>
+          <DialogFooter>
+            <Button type="button" onClick={() => setDuplicate(null)}>
+              Change a number
             </Button>
           </DialogFooter>
         </DialogContent>

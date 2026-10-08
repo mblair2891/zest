@@ -14,7 +14,7 @@ import {
   type BarTopShape,
 } from "./floor-architecture.ts";
 import { COPY_OFFSET_IN } from "./floor-copy.ts";
-import { formatFeetInches, sizePatch } from "./floor-dimensions.ts";
+import { fixtureEdgeBox, formatFeetInches, sizePatch } from "./floor-dimensions.ts";
 
 /** Stools generated onto this bar. A stool with no rail, or another bar’s rail, is not bound. */
 export function stoolsBoundToBar(
@@ -105,6 +105,19 @@ export type SnapMode = "off" | "grid" | "objects";
 export type AlignOp = "left" | "right" | "top" | "bottom" | "distribute-h" | "distribute-v";
 
 export const OBJECT_SNAP_IN = 6;
+
+const SEATING_KINDS = new Set([
+  "table",
+  "square_plain",
+  "booth",
+  "booth_4",
+  "booth_u",
+  "booth_l",
+  "couch",
+  "barstool",
+]);
+
+const OPENING_KINDS = new Set(["wall", "door", "window"]);
 
 export type ArrangeRoom = { widthIn: number; depthIn: number };
 
@@ -965,6 +978,115 @@ export function snapToObjects(
     x: round1(moving.x + (bestDxAbs <= tx ? bestDx : 0)),
     y: round1(moving.y + (bestDyAbs <= ty ? bestDy : 0)),
   };
+}
+
+type FlushBox = {
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+  rotation?: number | null;
+  kind?: string | null;
+};
+
+/**
+ * Seat a table, couch, booth, or stool on the visual face of a wall, door, or window.
+ * The target is the spun edge, so a rotated opening does not leave a gap.
+ */
+export function snapFlushToArchitecture(
+  moving: FlushBox,
+  others: readonly FlushBox[],
+  room: ArrangeRoom,
+  thresholdIn = OBJECT_SNAP_IN,
+): ArrangePoint | null {
+  const kind = moving.kind ?? "table";
+  if (!SEATING_KINDS.has(kind)) return null;
+  if (!(room.widthIn > 0) || !(room.depthIn > 0)) return null;
+  const box = fixtureEdgeBox(moving, room);
+  let bestDx = 0;
+  let bestDxAbs = Infinity;
+  let bestDy = 0;
+  let bestDyAbs = Infinity;
+  for (const other of others) {
+    if (!other.kind || !OPENING_KINDS.has(other.kind)) continue;
+    const edge = fixtureEdgeBox(other, room);
+    const yNear = box.bottom >= edge.top - thresholdIn && edge.bottom >= box.top - thresholdIn;
+    const xNear = box.right >= edge.left - thresholdIn && edge.right >= box.left - thresholdIn;
+    if (yNear) {
+      const options = [edge.left - box.right, edge.right - box.left];
+      for (const delta of options) {
+        const abs = Math.abs(delta);
+        if (abs <= thresholdIn && abs < bestDxAbs) {
+          bestDxAbs = abs;
+          bestDx = delta;
+        }
+      }
+    }
+    if (xNear) {
+      const options = [edge.top - box.bottom, edge.bottom - box.top];
+      for (const delta of options) {
+        const abs = Math.abs(delta);
+        if (abs <= thresholdIn && abs < bestDyAbs) {
+          bestDyAbs = abs;
+          bestDy = delta;
+        }
+      }
+    }
+  }
+  if (bestDxAbs > thresholdIn && bestDyAbs > thresholdIn) return null;
+  const x = moving.x + (bestDxAbs <= thresholdIn ? (bestDx / room.widthIn) * 100 : 0);
+  const y = moving.y + (bestDyAbs <= thresholdIn ? (bestDy / room.depthIn) * 100 : 0);
+  return {
+    x: Math.round(x * 10000) / 10000,
+    y: Math.round(y * 10000) / 10000,
+  };
+}
+
+export type SeatLabelClash = {
+  a: { id: string; label: string; kind?: string; section?: string };
+  b: { id: string; label: string; kind?: string; section?: string };
+};
+
+function seatKindName(kind?: string | null): string {
+  if (kind === "couch") return "Couch";
+  if (kind === "barstool") return "Stool";
+  if (kind === "booth" || kind === "booth_4" || kind === "booth_u" || kind === "booth_l") return "Booth";
+  return "Table";
+}
+
+/** Two seating pieces with the same non-empty number. Blank labels are not a clash. */
+export function duplicateSeatLabels(
+  tables: readonly {
+    id: string;
+    label?: string | null;
+    kind?: string | null;
+    section?: string | null;
+    mergedIntoId?: string | null;
+  }[],
+): SeatLabelClash | null {
+  const seen = new Map<string, SeatLabelClash["a"]>();
+  for (const table of tables) {
+    if (table.mergedIntoId) continue;
+    const kind = table.kind ?? "table";
+    if (!SEATING_KINDS.has(kind)) continue;
+    const label = String(table.label ?? "").trim();
+    if (!label) continue;
+    const section = String(table.section ?? "").trim();
+    const named = { id: table.id, label, kind, ...(section ? { section } : {}) };
+    const prev = seen.get(label);
+    if (prev) return { a: prev, b: named };
+    seen.set(label, named);
+  }
+  return null;
+}
+
+function seatPieceName(piece: { label: string; kind?: string; section?: string }): string {
+  const base = `${seatKindName(piece.kind)} ${piece.label}`;
+  return piece.section ? `${base} in ${piece.section}` : base;
+}
+
+export function duplicateSeatMessage(clash: SeatLabelClash): string {
+  return `${seatPieceName(clash.a)} and ${seatPieceName(clash.b)} share a number. Change one before publishing.`;
 }
 
 export type AlignPatch = {

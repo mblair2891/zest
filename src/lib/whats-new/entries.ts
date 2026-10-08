@@ -6,6 +6,18 @@ import type { GuideUpdate } from "@/lib/guide/types";
  */
 export const WHATS_NEW_ENTRIES: GuideUpdate[] = [
   {
+    id: "upd_2026_10_205_flush_publish",
+    date: "2026-10-07",
+    title: "Pieces sit flush and publish keeps them",
+    summary: "A table, couch, booth, or stool can meet a wall, door, or window. Publish leaves every piece where it was.",
+    body: "A table, couch, booth, or stool can sit flush against a wall, a door, or a window. Dragging onto that edge snaps to it. Publish floor writes positions. It does not move, resize, or reorder any piece. Bar, stools, tables, and couch stay where they were. A refresh shows the same coordinates. If two seating pieces in the venue share a number, a popup names both and blocks publish until one is changed. Empty labels are allowed.",
+    roles: ["owner_manager", "vendor_operator", "host_operator"],
+    surfaces: ["floor"],
+    audience: "all",
+    topicId: "floor-editor",
+    tags: ["floor"],
+  },
+  {
     id: "upd_2026_10_204_room_walls",
     date: "2026-10-07",
     title: "Room walls sit inside the canvas",
