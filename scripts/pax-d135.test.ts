@@ -11,7 +11,10 @@ import {
   paxDeviceRequest,
   paxScanRows,
   placePaxReader,
+  readerAssignOptions,
+  readerAssignmentBlock,
   rememberCapturedCheck,
+  renamePaxReader,
   resetPaxSaleGuards,
   runAndroidPaxSale,
   type PaxReader,
@@ -19,6 +22,7 @@ import {
 
 const reader: PaxReader = {
   id: "pax_1",
+  name: "Bar 1",
   serial: "ABC123",
   entityId: "ent_bbq",
   entityName: "BBQ",
@@ -190,6 +194,7 @@ test("device body is PAX_D135 and a reader belongs to one entity", () => {
   assert.equal(body.integration_mode, "PAYMENT_APP");
   const placed = placePaxReader({
     readers: [],
+    name: "Bar 1",
     serial: "ABC123",
     entityId: "ent_bbq",
     entityName: "BBQ",
@@ -202,6 +207,7 @@ test("device body is PAX_D135 and a reader belongs to one entity", () => {
   if (placed.ok) {
     const taken = placePaxReader({
       readers: placed.readers,
+      name: "Patio",
       serial: "ABC123",
       entityId: "other",
       entityName: "Other",
@@ -215,6 +221,7 @@ test("device body is PAX_D135 and a reader belongs to one entity", () => {
   }
   const live = placePaxReader({
     readers: [],
+    name: "Bar 1",
     serial: "ABC123",
     entityId: "ent_bbq",
     entityName: "BBQ",
@@ -252,7 +259,89 @@ test("the PAX path does not use Web Bluetooth or Stripe", () => {
   const devices = readFileSync("src/components/pos/LocationDeviceRegistry.tsx", "utf8");
   assert.match(devices, /Add card reader/);
   assert.match(devices, /data-pax-add/);
+  assert.match(devices, /data-pax-name=""/);
+  assert.match(devices, /data-pax-assign=""/);
+  assert.match(devices, /data-pax-reader-name=""/);
+  assert.match(devices, /\{option\.name\}/);
+  assert.doesNotMatch(devices, /placeholder="Finix \/ Quantum reader"/);
+  const renameBody = server.slice(
+    server.indexOf("export async function renamePaxReaderRecord"),
+    server.indexOf("export async function paxReaderSession"),
+  );
+  assert.doesNotMatch(renameBody, /createPaxD135Device|finixFetch/);
+  const guideDevices = readFileSync("src/lib/guide/content/devices.ts", "utf8");
+  const guidePay = readFileSync("src/lib/guide/content/payments.ts", "utf8");
+  assert.match(guideDevices, /for example Bar 1/);
+  assert.match(guideDevices, /dropdown of those names/);
+  assert.match(guideDevices, /One reader is assigned to one tablet/);
+  assert.match(guidePay, /for example Bar 1/);
+  assert.match(guidePay, /dropdown of those names/);
   const store = readFileSync("src/lib/pos/store.ts", "utf8");
   assert.match(store, /finixTransferId/);
   assert.match(store, /PAX_MSG\.alreadyPaid/);
+});
+
+test("a reader named Bar 1 shows in the assign list and keeps its serial", () => {
+  const blank = placePaxReader({
+    readers: [],
+    name: "  ",
+    serial: "SN9",
+    entityId: "ent_bbq",
+    entityName: "BBQ",
+    locationLive: false,
+    deviceId: "DV9",
+    merchantId: "MU9",
+    id: "pax_bar",
+  });
+  assert.equal(blank.ok, false);
+  const placed = placePaxReader({
+    readers: [],
+    name: "Bar 1",
+    serial: "SN9",
+    entityId: "ent_bbq",
+    entityName: "BBQ",
+    locationLive: false,
+    deviceId: "DV9",
+    merchantId: "MU9",
+    id: "pax_bar",
+  });
+  assert.equal(placed.ok, true);
+  if (!placed.ok) return;
+  assert.equal(placed.reader.name, "Bar 1");
+  assert.equal(placed.reader.serial, "SN9");
+  assert.equal(placed.reader.finixDeviceId, "DV9");
+  const options = readerAssignOptions({
+    readers: placed.readers,
+    devices: [],
+    tabletId: "tab_host",
+  });
+  assert.deepEqual(options, [{ serial: "SN9", name: "Bar 1" }]);
+  const taken = readerAssignmentBlock({
+    readers: placed.readers,
+    devices: [
+      { id: "tab_order", label: "Order 1", cardReaderId: "SN9" },
+      { id: "tab_host", label: "Host", cardReaderId: null },
+    ],
+    tabletId: "tab_host",
+    serial: "SN9",
+  });
+  assert.equal(taken, "Bar 1 is already assigned to Order 1.");
+  const hidden = readerAssignOptions({
+    readers: placed.readers,
+    devices: [{ id: "tab_order", label: "Order 1", cardReaderId: "SN9" }],
+    tabletId: "tab_host",
+  });
+  assert.equal(hidden.length, 0);
+  const kept = readerAssignOptions({
+    readers: placed.readers,
+    devices: [{ id: "tab_order", label: "Order 1", cardReaderId: "SN9" }],
+    tabletId: "tab_order",
+  });
+  assert.equal(kept[0]?.name, "Bar 1");
+  const renamed = renamePaxReader({ readers: placed.readers, id: "pax_bar", name: "Patio" });
+  assert.equal(renamed.ok, true);
+  if (!renamed.ok) return;
+  assert.equal(renamed.reader.name, "Patio");
+  assert.equal(renamed.reader.serial, "SN9");
+  assert.equal(renamed.reader.finixDeviceId, "DV9");
 });

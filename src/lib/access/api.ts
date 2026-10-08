@@ -307,6 +307,16 @@ export const saveLocationDeviceFn = createServerFn({ method: "POST" })
       applyRoleNow: existing?.applyRoleNow,
       roleRevision: existing?.roleRevision,
     });
+    if (!printer && nextDevice.cardReaderId) {
+      const { parsePaxReaders, readerAssignmentBlock } = await import("@/lib/payments/pax-d135");
+      const blocked = readerAssignmentBlock({
+        readers: parsePaxReaders(ctx.setup.paxReaders),
+        devices: prev,
+        tabletId: id,
+        serial: nextDevice.cardReaderId,
+      });
+      if (blocked) throw new Error(blocked);
+    }
     const devices = existing
       ? prev.map((x) => (x.id === id ? nextDevice : x))
       : [nextDevice, ...prev];

@@ -16,7 +16,7 @@ export const DEVICE_TOPICS: GuideTopic[] = [
         "A card on a paired Android station uses the reader registered to the selling entity on the check. Cash still closes the check when no reader is nearby.",
       ),
       steps(
-        "Open location Devices. Add card reader. Enter the serial and pick the selling entity. That reader belongs to that entity only.",
+        "Open location Devices. Add card reader asks for a name, the serial, and the selling entity. The name is required, for example Bar 1. That reader belongs to that entity only. The devices list shows the name, then the serial.",
         "On the station, open Pay → Card. The status line shows the reader. Scan lists names that start with PAX D135_. Pick the one whose serial matches the registered reader.",
         "The first connection says Setting up reader until the reader finishes. Then the status is Connected. Battery shows when the reader reports it.",
         "Charge card sends one sandbox sale. The check stores the transfer and the last four. Print the receipt the same way as cash.",
@@ -32,6 +32,8 @@ export const DEVICE_TOPICS: GuideTopic[] = [
         "A decline, a cancel, or a chip error leaves the check open.",
         "A sandbox reader at a live location is refused, and a live reader in sandbox is refused.",
         "The station app talks to the reader. The browser does not. Cash works with no reader.",
+        "Assigning a reader to a tablet uses a dropdown of those names. One reader is assigned to one tablet.",
+        "Renaming a reader keeps the same registered device and the same serial.",
       ),
       warn(
         "Do not register the same serial on two selling entities. Pick the operator on the check.",
@@ -322,7 +324,7 @@ export const DEVICE_TOPICS: GuideTopic[] = [
       ul(
         "Type: tablet POS, order display, kiosk, host stand, receipt printer, or order printer.",
         "Suggested assignment: operator (host or a guest entity) + function (floor POS, bar POS, kitchen ODS, bar ODS, expo, kiosk, host stand, cashier).",
-        "Paired Devices row: Role dropdown reassigns that tablet (Order / Host / ODS). Broken ODS → reassign a server tablet from Devices. Same pair; next PIN. Printers and drawer kick stay on the station type or named printer.",
+        "Paired Devices row: Role dropdown reassigns that tablet (Order / Host / ODS). Broken ODS → reassign a server tablet from Devices. Same pair; next PIN. Printers and drawer kick stay on the station type or named printer. Assigning a reader to a tablet uses a dropdown of those names. One reader is assigned to one tablet. The devices list shows the name, then the serial.",
         "Deactivate: the named slot stays in the list. Pair token is revoked immediately. An online tablet drops PIN and shows the pair-code field within a few seconds. PIN on that glass: “This station was deactivated — enter a new code,” not Invalid PIN. Activate again mints a new code (same as Replace). Next app open does not restore the PIN pad.",
         "Unpair / Replace: keep the named slot if you still want that station. Unpair clears the tablet binding. Replace issues a new QR or code.",
         "Delete: confirm “Delete this device. The tablet must scan a new code.” Removes the row, revokes the pair token, drops the snapshot binding, and kicks an online tablet back to the pair-code field. The slot stays gone across deploy and seed. Pending devices with a code use that same one dialog. Location owner / manager / Admin only. Floor PINs cannot delete. After delete, Add device can reuse the same name and role.",

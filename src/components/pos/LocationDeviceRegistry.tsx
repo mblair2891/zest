@@ -88,8 +88,8 @@ import {
 } from "@/components/ui/dialog";
 import { GuideLearnLink } from "@/components/guide/GuideLearnLink";
 import { SquareTerminalPanel } from "@/components/pos/SquareTerminalPanel";
-import { listPaxReadersFn, registerPaxReaderFn } from "@/lib/payments/api";
-import type { PaxReader } from "@/lib/payments/pax-d135";
+import { listPaxReadersFn, registerPaxReaderFn, renamePaxReaderFn } from "@/lib/payments/api";
+import { readerAssignOptions, readerAssignmentBlock, type PaxReader } from "@/lib/payments/pax-d135";
 import {
   formatClaimExpiry,
   normalizeClaimCode,
@@ -191,9 +191,12 @@ export function LocationDeviceRegistry({
   const [roleHistory, setRoleHistory] = useState<DeviceRoleChange[]>([]);
   const [hostName, setHostName] = useState(locationName);
   const [cardReaders, setCardReaders] = useState<PaxReader[]>([]);
+  const [paxName, setPaxName] = useState("");
   const [paxSerial, setPaxSerial] = useState("");
   const [paxEntityId, setPaxEntityId] = useState("");
   const [paxMsg, setPaxMsg] = useState<string | null>(null);
+  const [renamingReaderId, setRenamingReaderId] = useState<string | null>(null);
+  const [renameDraft, setRenameDraft] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -557,6 +560,19 @@ export function LocationDeviceRegistry({
         opts?.id ||
         editingId ||
         (opts?.asBrowser ? readOrCreateBrowserDeviceId(resolvedLocId) : "");
+      const printerGate = isPrinterType(type);
+      if (!printerGate && cardReaderId) {
+        const blocked = readerAssignmentBlock({
+          readers: cardReaders,
+          devices,
+          tabletId: id,
+          serial: cardReaderId,
+        });
+        if (blocked) {
+          setError(blocked);
+          return;
+        }
+      }
       const name =
         label.trim() ||
         (opts?.asBrowser ? "This browser" : mode === "hardware" ? "Printer" : "Device");
@@ -1062,15 +1078,84 @@ export function LocationDeviceRegistry({
           {cardReaders.length === 0 ? (
             <p className="text-xs text-muted-foreground">No card reader on this location yet.</p>
           ) : (
-            <ul className="space-y-1 text-sm">
+            <ul className="space-y-2 text-sm">
               {cardReaders.map((reader) => (
-                <li key={reader.id} data-pax-registered={reader.serial}>
-                  {reader.serial} · {reader.entityName || reader.entityId} · {reader.finixDeviceId}
+                <li key={reader.id} data-pax-registered={reader.serial} className="flex flex-wrap items-center gap-2">
+                  {renamingReaderId === reader.id ? (
+                    <>
+                      <Input
+                        className="h-8 max-w-[12rem]"
+                        data-pax-rename-input=""
+                        value={renameDraft}
+                        onChange={(e) => setRenameDraft(e.target.value)}
+                      />
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        disabled={busy || !renameDraft.trim()}
+                        onClick={() => {
+                          void (async () => {
+                            if (!resolvedLocId) return;
+                            setBusy(true);
+                            setPaxMsg(null);
+                            try {
+                              const res = await renamePaxReaderFn({
+                                data: { locationId: resolvedLocId, id: reader.id, name: renameDraft },
+                              });
+                              if (!res.ok) {
+                                setPaxMsg(res.error);
+                                return;
+                              }
+                              setRenamingReaderId(null);
+                              setPaxMsg(`${res.reader.name} still uses serial ${res.reader.serial}.`);
+                              await load({ silent: true });
+                            } catch (e) {
+                              setPaxMsg(e instanceof Error ? e.message : "The name was not saved.");
+                            } finally {
+                              setBusy(false);
+                            }
+                          })();
+                        }}
+                      >
+                        Save name
+                      </Button>
+                    </>
+                  ) : (
+                    <>
+                      <span data-pax-reader-name="">{reader.name}</span>
+                      <span className="text-muted-foreground" data-pax-reader-serial="">
+                        {reader.serial}
+                      </span>
+                      <span className="text-muted-foreground">· {reader.entityName || reader.entityId}</span>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        data-pax-rename=""
+                        disabled={busy}
+                        onClick={() => {
+                          setRenamingReaderId(reader.id);
+                          setRenameDraft(reader.name);
+                        }}
+                      >
+                        Rename
+                      </Button>
+                    </>
+                  )}
                 </li>
               ))}
             </ul>
           )}
           <div className="flex flex-wrap items-end gap-2">
+            <label className="min-w-[10rem] flex-1 text-xs text-muted-foreground">
+              Name
+              <Input
+                className="mt-1"
+                data-pax-name=""
+                placeholder="Bar 1"
+                value={paxName}
+                onChange={(e) => setPaxName(e.target.value)}
+              />
+            </label>
             <label className="min-w-[10rem] flex-1 text-xs text-muted-foreground">
               Serial
               <Input
@@ -1103,7 +1188,7 @@ export function LocationDeviceRegistry({
             <Button
               size="sm"
               data-pax-add=""
-              disabled={busy || !paxSerial.trim() || !paxEntityId}
+              disabled={busy || !paxName.trim() || !paxSerial.trim() || !paxEntityId}
               onClick={() => {
                 void (async () => {
                   if (!resolvedLocId) return;
@@ -1117,6 +1202,7 @@ export function LocationDeviceRegistry({
                     const res = await registerPaxReaderFn({
                       data: {
                         locationId: resolvedLocId,
+                        name: paxName,
                         serial: paxSerial,
                         entityId: paxEntityId,
                         entityName,
@@ -1126,8 +1212,9 @@ export function LocationDeviceRegistry({
                       setPaxMsg(res.error);
                       return;
                     }
+                    setPaxName("");
                     setPaxSerial("");
-                    setPaxMsg(`${res.reader.serial} is registered to ${res.reader.entityName || res.reader.entityId}.`);
+                    setPaxMsg(`${res.reader.name} · ${res.reader.serial} is registered to ${res.reader.entityName || res.reader.entityId}.`);
                     await load({ silent: true });
                   } catch (e) {
                     setPaxMsg(e instanceof Error ? e.message : "The reader was not registered.");
@@ -1640,13 +1727,28 @@ export function LocationDeviceRegistry({
               </select>
             </label>
             <label className="block text-xs text-muted-foreground">
-              Reader id
-              <input
-                className="mt-1 h-10 w-full rounded-xl border border-border bg-bg px-3 text-sm"
+              Assigned reader
+              <select
+                className="mt-1 h-10 w-full rounded-xl border border-border bg-bg px-3 text-sm text-foreground"
+                data-pax-assign=""
                 value={cardReaderId}
                 onChange={(e) => setCardReaderId(e.target.value)}
-                placeholder="Finix / Quantum reader"
-              />
+              >
+                <option value="">No reader</option>
+                {readerAssignOptions({
+                  readers: cardReaders,
+                  devices,
+                  tabletId: editingId,
+                }).map((option) => (
+                  <option key={option.serial} value={option.serial}>
+                    {option.name}
+                  </option>
+                ))}
+                {cardReaderId &&
+                !cardReaders.some((reader) => reader.serial === cardReaderId) ? (
+                  <option value={cardReaderId}>{cardReaderId}</option>
+                ) : null}
+              </select>
             </label>
             <label className="block text-xs text-muted-foreground">
               Fallback receipt printer

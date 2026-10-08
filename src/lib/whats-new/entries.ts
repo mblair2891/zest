@@ -6,6 +6,18 @@ import type { GuideUpdate } from "@/lib/guide/types";
  */
 export const WHATS_NEW_ENTRIES: GuideUpdate[] = [
   {
+    id: "upd_2026_10_212_named_readers",
+    date: "2026-10-08",
+    title: "Named card readers",
+    summary: "Add card reader asks for a name. A tablet picks that name. One reader stays on one tablet.",
+    body: "Add card reader asks for a name, the serial, and the selling entity. The name is required, for example Bar 1. The devices list shows the name, then the serial. Assigning a reader to a tablet uses a dropdown of those names. One reader is assigned to one tablet. Renaming a reader does not change the Finix device.",
+    roles: ["owner_manager", "server", "host_operator", "vendor_operator"],
+    surfaces: ["settings"],
+    audience: "all",
+    topicId: "pax-card-reader",
+    tags: ["payments", "devices"],
+  },
+  {
     id: "upd_2026_10_211_booth_numbers",
     date: "2026-10-08",
     title: "Booth numbers match table labels",

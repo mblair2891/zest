@@ -12,6 +12,8 @@ export type PaxReaderEnv = "sandbox" | "live";
 
 export type PaxReader = {
   id: string;
+  /** Operator name, for example Bar 1. The Finix device id stays put when this changes. */
+  name: string;
   serial: string;
   entityId: string;
   entityName: string;
@@ -49,6 +51,8 @@ export const PAX_MSG = {
   unread: "The card could not be read. The check stays open.",
   liveRegister: "Live card readers are not available in this build.",
   serialTaken: "This reader already belongs to another selling entity.",
+  nameRequired: "Enter a name for the reader.",
+  nameTaken: "That name is already on a reader.",
 } as const;
 
 const capturedChecks = new Set<string>();
@@ -68,6 +72,11 @@ export function checkCapturedLocally(checkId: string): boolean {
 
 export function normalizePaxSerial(raw: string): string {
   return String(raw ?? "").replace(/\s+/g, "").trim();
+}
+
+/** Display name on Devices. Not the Finix device name. */
+export function normalizeReaderName(raw: string): string {
+  return String(raw ?? "").replace(/\s+/g, " ").trim().slice(0, 40);
 }
 
 export function serialFromPaxName(name: string): string | null {
@@ -94,6 +103,7 @@ export function parsePaxReaders(raw: unknown): PaxReader[] {
     if (!serial || !entityId || !finixDeviceId.startsWith("DV")) continue;
     out.push({
       id: String(o.id ?? `pax_${serial}`).slice(0, 80),
+      name: normalizeReaderName(String(o.name ?? "")) || serial,
       serial,
       entityId,
       entityName: String(o.entityName ?? "").trim().slice(0, 80),
@@ -207,6 +217,7 @@ export function decidePaxPick(input: {
 
 export function placePaxReader(input: {
   readers: PaxReader[];
+  name: string;
   serial: string;
   entityId: string;
   entityName: string;
@@ -218,11 +229,17 @@ export function placePaxReader(input: {
   if (input.locationLive) return { ok: false, message: PAX_MSG.liveRegister };
   const serial = normalizePaxSerial(input.serial);
   const entityId = input.entityId.trim();
+  const name = normalizeReaderName(input.name);
+  if (!name) return { ok: false, message: PAX_MSG.nameRequired };
   if (!serial) return { ok: false, message: "Enter the reader serial." };
   if (!entityId) return { ok: false, message: "Pick the selling entity." };
   if (!input.deviceId.startsWith("DV")) {
     return { ok: false, message: "The reader was not registered." };
   }
+  const nameTaken = input.readers.some(
+    (r) => r.serial !== serial && r.name.toLowerCase() === name.toLowerCase(),
+  );
+  if (nameTaken) return { ok: false, message: PAX_MSG.nameTaken };
   const existing = readerForSerial(input.readers, serial);
   if (existing && existing.entityId !== entityId) {
     return { ok: false, message: PAX_MSG.serialTaken };
@@ -230,6 +247,7 @@ export function placePaxReader(input: {
   if (existing) return { ok: true, readers: input.readers, reader: existing };
   const reader: PaxReader = {
     id: input.id.slice(0, 80),
+    name,
     serial,
     entityId,
     entityName: input.entityName.trim().slice(0, 80),
@@ -239,6 +257,64 @@ export function placePaxReader(input: {
     env: "sandbox",
   };
   return { ok: true, readers: [...input.readers, reader], reader };
+}
+
+/** Change the Devices name. The Finix device id and the serial stay. */
+export function renamePaxReader(input: {
+  readers: PaxReader[];
+  id: string;
+  name: string;
+}): { ok: true; readers: PaxReader[]; reader: PaxReader } | { ok: false; message: string } {
+  const name = normalizeReaderName(input.name);
+  if (!name) return { ok: false, message: PAX_MSG.nameRequired };
+  const current = input.readers.find((r) => r.id === input.id);
+  if (!current) return { ok: false, message: PAX_MSG.notRegistered };
+  const nameTaken = input.readers.some(
+    (r) => r.id !== current.id && r.name.toLowerCase() === name.toLowerCase(),
+  );
+  if (nameTaken) return { ok: false, message: PAX_MSG.nameTaken };
+  if (current.name === name) return { ok: true, readers: input.readers, reader: current };
+  const reader: PaxReader = { ...current, name, finixDeviceId: current.finixDeviceId, serial: current.serial };
+  return {
+    ok: true,
+    readers: input.readers.map((r) => (r.id === current.id ? reader : r)),
+    reader,
+  };
+}
+
+export function readerAssignOptions(input: {
+  readers: PaxReader[];
+  devices: { id: string; label?: string; cardReaderId?: string | null }[];
+  tabletId: string | null;
+}): { serial: string; name: string }[] {
+  const taken = new Set<string>();
+  for (const device of input.devices) {
+    if (input.tabletId && device.id === input.tabletId) continue;
+    const serial = normalizePaxSerial(String(device.cardReaderId ?? ""));
+    if (serial) taken.add(serial);
+  }
+  return input.readers
+    .filter((reader) => !taken.has(reader.serial))
+    .map((reader) => ({ serial: reader.serial, name: reader.name }));
+}
+
+/** One reader on one tablet. Empty when this tablet may keep the serial. */
+export function readerAssignmentBlock(input: {
+  readers: PaxReader[];
+  devices: { id: string; label?: string; cardReaderId?: string | null }[];
+  tabletId: string;
+  serial: string;
+}): string | null {
+  const serial = normalizePaxSerial(input.serial);
+  if (!serial) return null;
+  const other = input.devices.find(
+    (device) =>
+      device.id !== input.tabletId && normalizePaxSerial(String(device.cardReaderId ?? "")) === serial,
+  );
+  if (!other) return null;
+  const reader = readerForSerial(input.readers, serial);
+  const name = reader?.name || serial;
+  return `${name} is already assigned to ${other.label || "another tablet"}.`;
 }
 
 export type PaxSdkCode =

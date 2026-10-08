@@ -17,6 +17,7 @@ import {
   parsePaxReaders,
   placePaxReader,
   readerForSerial,
+  renamePaxReader,
   type PaxReader,
 } from "./pax-d135";
 
@@ -53,7 +54,7 @@ export async function listPaxReaders(userId: string, locationId: string): Promis
 
 export async function registerPaxReader(
   userId: string,
-  input: { locationId: string; serial: string; entityId: string; entityName: string },
+  input: { locationId: string; name: string; serial: string; entityId: string; entityName: string },
 ): Promise<{ ok: true; reader: PaxReader } | { ok: false; error: string }> {
   const loc = await loadLoc(input.locationId);
   await requireMembership(userId, loc.org_id, undefined, input.locationId);
@@ -89,6 +90,7 @@ export async function registerPaxReader(
 
   const placed = placePaxReader({
     readers: parsePaxReaders(setup.paxReaders),
+    name: input.name,
     serial,
     entityId,
     entityName: input.entityName,
@@ -106,6 +108,29 @@ export async function registerPaxReader(
     setup: { ...setup, paxReaders: placed.readers },
   });
   return { ok: true, reader: placed.reader };
+}
+
+/** Local name only. Does not call Finix and does not change the device id or serial. */
+export async function renamePaxReaderRecord(
+  userId: string,
+  input: { locationId: string; id: string; name: string },
+): Promise<{ ok: true; reader: PaxReader } | { ok: false; error: string }> {
+  const loc = await loadLoc(input.locationId);
+  await requireMembership(userId, loc.org_id, undefined, input.locationId);
+  const setup = setupOf(loc.setup);
+  const renamed = renamePaxReader({
+    readers: parsePaxReaders(setup.paxReaders),
+    id: input.id,
+    name: input.name,
+  });
+  if (!renamed.ok) return { ok: false, error: renamed.message };
+  const { updateLocationSetupForUser } = await import("@/lib/saas/tenancy.server");
+  await updateLocationSetupForUser(userId, {
+    orgId: loc.org_id,
+    locationId: loc.id,
+    setup: { ...setup, paxReaders: renamed.readers },
+  });
+  return { ok: true, reader: renamed.reader };
 }
 
 export async function paxReaderSession(
