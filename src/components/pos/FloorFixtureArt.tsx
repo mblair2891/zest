@@ -196,6 +196,7 @@ function StatusFixture({
   const number = hollow ? "#44403c" : ink || "#44403c";
   const shape = couch ? "couch" : booth ? "booth" : bar ? "stool" : round ? "round" : "rect";
   const mark = diningTableOutline(round);
+  const tableRect = !couch && !booth && !bar && !round;
   return (
     <div
       className={cn("relative h-full w-full", className)}
@@ -205,7 +206,13 @@ function StatusFixture({
       data-floor-stroke={hollow ? "hairline" : "none"}
       data-floor-nubs="0"
     >
-      <svg viewBox="0 0 100 100" className="pointer-events-none h-full w-full" aria-hidden>
+      <svg
+        viewBox="0 0 100 100"
+        preserveAspectRatio={tableRect ? "none" : "xMidYMid meet"}
+        data-floor-table-box={tableRect ? "rect" : round && !bar ? "round" : undefined}
+        className="pointer-events-none h-full w-full"
+        aria-hidden
+      >
         {couch ? (
           <FloorCouchGlyph
             fill={hollow ? "none" : tableFill}
@@ -322,7 +329,13 @@ function FloorTableArt({
       style={{ transform: `rotate(${rotation}deg)`, transformOrigin: "center center" }}
       onPointerDown={onPointerDown}
     >
-      <svg viewBox="0 0 100 100" className="pointer-events-none h-full w-full" aria-hidden>
+      <svg
+        viewBox="0 0 100 100"
+        preserveAspectRatio={mark.round ? "xMidYMid meet" : "none"}
+        data-floor-table-box={mark.round ? "round" : "rect"}
+        className="pointer-events-none h-full w-full"
+        aria-hidden
+      >
         {mark.round ? (
           <ellipse
             cx={mark.cx}

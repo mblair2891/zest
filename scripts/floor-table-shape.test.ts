@@ -2,6 +2,8 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { diningTableOutline, seatingScale } from "../src/lib/pos/floor-seating.ts";
+import { DEFAULT_ROOM, fixturePixelBox, sizePatch } from "../src/lib/pos/floor-dimensions.ts";
+import { floorPlanFromPos, parseFloorPlan, tablesFromFloorPlan } from "../src/lib/saas/location-catalog.ts";
 
 test("a 4-top and a 6-top share one shape and have no seat dots", () => {
   assert.deepEqual(diningTableOutline(true, 4), diningTableOutline(true, 6));
@@ -57,4 +59,57 @@ test("a 4-top and a 6-top share one shape and have no seat dots", () => {
   assert.match(guide, /no seat dots/i);
   assert.match(guide, /side panel/);
   assert.match(guide, /Barstools stay their own pieces/);
+});
+
+test("a 4 ft by 2 ft table is a rectangle and publish keeps that size", () => {
+  const room = DEFAULT_ROOM;
+  const patch = sizePatch(4 * 12, 2 * 12, room);
+  assert.ok(patch);
+  assert.equal(patch.lengthIn, 48);
+  assert.equal(patch.widthIn, 24);
+  const px = fixturePixelBox({ x: 10, y: 12, w: patch.w, h: patch.h }, room, 2);
+  assert.ok(Math.abs(px.width / px.height - 2) < 0.02, `drawn ratio ${px.width / px.height}`);
+  assert.ok(px.width > px.height);
+
+  const art = readFileSync("src/components/pos/FloorFixtureArt.tsx", "utf8");
+  assert.match(art, /preserveAspectRatio=\{mark\.round \? "xMidYMid meet" : "none"\}/);
+  assert.match(art, /preserveAspectRatio=\{tableRect \? "none" : "xMidYMid meet"\}/);
+  assert.match(art, /data-floor-table-box=\{mark\.round \? "round" : "rect"\}/);
+  assert.match(art, /data-floor-table-box=\{tableRect \? "rect" : round && !bar \? "round" : undefined\}/);
+  assert.match(art, /text-\[11px\] font-semibold/);
+  assert.match(art, /fontSize: joined\?\.length \? "42cqmin" : "50cqmin"/);
+  const editor = readFileSync("src/components/pos/FloorEditorView.tsx", "utf8");
+  assert.match(editor, /diningRect \? "Width" : "Length"/);
+  assert.match(editor, /diningRect \? "Depth" : "Width"/);
+
+  const table = {
+    id: "t4x2",
+    label: "1",
+    section: "Dining",
+    seats: 4,
+    status: "empty" as const,
+    shape: "rect" as const,
+    kind: "table" as const,
+    x: 10,
+    y: 12,
+    w: patch.w,
+    h: patch.h,
+    lengthIn: 48,
+    widthIn: 24,
+    rotation: 0,
+  };
+  const parsed = parseFloorPlan(floorPlanFromPos([table], [], room));
+  assert.ok(parsed);
+  const back = tablesFromFloorPlan(parsed).find((row) => row.id === "t4x2");
+  assert.ok(back);
+  assert.equal(back.w, table.w);
+  assert.equal(back.h, table.h);
+  assert.equal(back.lengthIn, 48);
+  assert.equal(back.widthIn, 24);
+  assert.notEqual(back.w, back.h);
+
+  const guide = readFileSync("src/lib/guide/content/floor.ts", "utf8");
+  assert.match(guide, /4 ft by 2 ft table draws as a rectangle/);
+  assert.match(guide, /The number stays centered and the same size/);
+  assert.match(guide, /Publish does not change the size/);
 });

@@ -413,10 +413,14 @@ function ObjectSizeFields({
   const size = objectInches(table, room);
   const round = table.shape === "round" || table.kind === "barstool";
   const thin = table.kind === "wall" || table.kind === "door" || table.kind === "window";
+  const diningRect =
+    !round &&
+    !thin &&
+    (table.kind === "table" || table.kind === "square_plain" || (table.shape === "rect" && !table.kind));
   return (
     <div className="grid grid-cols-2 gap-2" data-floor-object-size="">
       <FeetInchesInput
-        label={round ? "Diameter" : "Length"}
+        label={round ? "Diameter" : diningRect ? "Width" : "Length"}
         totalIn={size.lengthIn}
         testId="length"
         onCommit={(n) => onSize(n, round ? n : size.widthIn)}
@@ -427,7 +431,7 @@ function ObjectSizeFields({
         <ThicknessInput totalIn={size.widthIn} onCommit={(n) => onSize(size.lengthIn, n)} />
       ) : (
         <FeetInchesInput
-          label="Width"
+          label={diningRect ? "Depth" : "Width"}
           totalIn={size.widthIn}
           testId="width"
           onCommit={(n) => onSize(size.lengthIn, n)}

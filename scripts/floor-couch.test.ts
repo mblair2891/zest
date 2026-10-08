@@ -146,6 +146,6 @@ test("the pieces bar puts Couch beside the booths, and the live floor draws the 
   assert.match(guide, /seat count starts at 3/);
   assert.match(guide, /Resize the sofa from the ends/);
   const types = readFileSync("src/lib/guide/types.ts", "utf8");
-  assert.match(types, /2026\.10\.212/);
-  assert.match(types, /Named card readers/);
+  assert.match(types, /2026\.10\.213/);
+  assert.match(types, /Rectangle tables/);
 });

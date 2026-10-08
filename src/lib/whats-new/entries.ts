@@ -6,6 +6,18 @@ import type { GuideUpdate } from "@/lib/guide/types";
  */
 export const WHATS_NEW_ENTRIES: GuideUpdate[] = [
   {
+    id: "upd_2026_10_213_rectangle_tables",
+    date: "2026-10-08",
+    title: "Tables draw to width and depth",
+    summary: "A 4 ft by 2 ft table is a rectangle on the editor and the live floor.",
+    body: "A table uses the width and depth entered. A 4 ft by 2 ft table draws as a rectangle, not a square. The number stays centered and the same size. The editor and the live floor both do this. Publish does not change the size.",
+    roles: ["owner_manager", "vendor_operator", "host_operator"],
+    surfaces: ["floor"],
+    audience: "all",
+    topicId: "floor-editor",
+    tags: ["floor"],
+  },
+  {
     id: "upd_2026_10_212_named_readers",
     date: "2026-10-08",
     title: "Named card readers",

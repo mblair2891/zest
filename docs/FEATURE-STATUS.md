@@ -1,7 +1,7 @@
 # Feature status
 
 **Date:** 8 Oct 2026  
-**Tree:** named card readers (Operators Guide v2026.10.212).  
+**Tree:** rectangle tables (Operators Guide v2026.10.213).  
 **How this was read:** routes under `src/routes`, `createServerFn` handlers, `migrations/`, Operators Guide topics in `src/lib/guide/content`, and the server functions those screens call. A live venue was not clicked.
 
 **100% means all three:** a screen, a save that writes Postgres (a table or `locations.setup`), and a read that loads that same row again. A refresh would still show the result. A button that only updates the browser, a seed, or a handler that returns without writing is not complete.
@@ -46,7 +46,7 @@
 
 **Printer and station records.** `LocationDeviceRegistry` calls `saveLocationDeviceFn`, which writes `location_devices` and `locations.setup.locationDevices` (`src/lib/access/api.ts`). The list reads that setup back. A receipt printer, an order printer, and a paired tablet are the same device record.
 
-**Operators Guide.** `/guide` renders `OperatorsGuide` from `src/lib/guide`. It is the published manual (v2026.10.212), not a record the venue saves.
+**Operators Guide.** `/guide` renders `OperatorsGuide` from `src/lib/guide`. It is the published manual (v2026.10.213), not a record the venue saves.
 
 **Android card reader.** Location Devices → Add card reader stores a PAX D135 serial on one selling entity. Pay → Card on a paired Android station scans that reader in sandbox and saves the transfer and last four on the check. Cash does not need a reader. Live cards are refused in this build. A physical reader was not attached for this pass.
 
