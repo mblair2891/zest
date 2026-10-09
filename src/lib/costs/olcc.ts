@@ -196,6 +196,28 @@ function stem(word: string): string {
   return word.endsWith("s") && word.length > 3 ? word.slice(0, -1) : word;
 }
 
+/**
+ * The full monthly book, narrowed by name, item code, or size.
+ * An empty query returns every stored row. This is not the one-item recipe match.
+ */
+export function searchOlccPrices(prices: readonly OlccPrice[], query: string): OlccPrice[] {
+  const q = fold(query);
+  if (!q) return prices.slice();
+  const codeQuery = q.replace(/ /g, "");
+  const needles = q.endsWith("s") && q.length > 3 ? [q, q.slice(0, -1)] : [q];
+  const out: OlccPrice[] = [];
+  for (const row of prices) {
+    if (staysOnDistributor(row.category) || staysOnDistributor(row.name)) continue;
+    const name = fold(row.name);
+    const size = fold(row.size);
+    const code = fold(row.itemCode).replace(/ /g, "");
+    const hit =
+      needles.some((needle) => name.includes(needle) || size.includes(needle)) || code.includes(codeQuery);
+    if (hit) out.push(row);
+  }
+  return out;
+}
+
 /** Match a recipe spirit such as "Tito's 750" to one item code. Ambiguous names do not match. */
 export function matchOlccSpirit(query: string, prices: readonly OlccPrice[]): OlccPrice | null {
   if (staysOnDistributor(query)) return null;
@@ -271,8 +293,43 @@ export type SpiritOrderLine = {
   bottlePriceCents: number;
   casePriceCents: number;
   storeSearchUrl: string;
-  source: "par" | "recipe";
+  source: "par" | "recipe" | "catalog";
 };
+
+/** Append one catalog row onto the added list. A repeat item code is left as it is. */
+export function addOlccRowToOrder(
+  house: readonly SpiritOrderLine[],
+  added: readonly SpiritOrderLine[],
+  row: OlccPrice,
+  zip: string,
+): SpiritOrderLine[] {
+  const key = row.itemCode.trim().toLowerCase();
+  if (!key) return added.slice();
+  const taken = (line: SpiritOrderLine) => line.itemCode.trim().toLowerCase() === key;
+  if (house.some(taken) || added.some(taken)) return added.slice();
+  return [
+    ...added,
+    {
+      name: row.name,
+      itemCode: row.itemCode,
+      size: row.size,
+      qty: 1,
+      bottlePriceCents: row.bottlePriceCents,
+      casePriceCents: row.casePriceCents,
+      storeSearchUrl: oregonStoreSearchUrl({ itemCode: row.itemCode, name: row.name }, zip),
+      source: "catalog",
+    },
+  ];
+}
+
+/** House pick-list lines first, then catalog rows that are not already on that list. */
+export function spiritOrderWithAdditions(
+  house: readonly SpiritOrderLine[],
+  added: readonly SpiritOrderLine[],
+): SpiritOrderLine[] {
+  const keys = new Set(house.map((line) => line.itemCode.trim().toLowerCase()).filter(Boolean));
+  return [...house, ...added.filter((line) => !keys.has(line.itemCode.trim().toLowerCase()))];
+}
 
 export function oregonStoreSearchUrl(item: { itemCode?: string; name: string }, zip: string): string {
   const product = (item.itemCode || item.name).trim();

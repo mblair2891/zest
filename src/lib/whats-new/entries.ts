@@ -6,6 +6,18 @@ import type { GuideUpdate } from "@/lib/guide/types";
  */
 export const WHATS_NEW_ENTRIES: GuideUpdate[] = [
   {
+    id: "upd_2026_10_225_olcc_price_list",
+    date: "2026-10-09",
+    title: "Full OLCC spirits price list",
+    summary: "The house liquor store lists the current monthly OLCC prices. Search, then add a row to the order.",
+    body: "On the house OLCC store, the full current monthly price list loads. Search by name, item code, or size. Each row shows the name, the size, the bottle price, and the case price. Add a row to the order. Store search stays on that row. The short pick list stays under it. Refresh replaces the list with the current month. A failed pull says so.",
+    roles: ["owner_manager", "host_operator", "vendor_operator"],
+    surfaces: ["settings"],
+    audience: "all",
+    topicId: "suppliers",
+    tags: ["costs", "suppliers"],
+  },
+  {
     id: "upd_2026_10_224_address_suggest",
     date: "2026-10-09",
     title: "Address suggestions",

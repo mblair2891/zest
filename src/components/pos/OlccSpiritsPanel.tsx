@@ -1,13 +1,19 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { refreshOlccPricesFn } from "@/lib/costs/api";
 import {
+  addOlccRowToOrder,
   buildSpiritOrderList,
   isOregonState,
-  matchOlccSpirit,
   olccRefreshPlan,
+  oregonStoreSearchUrl,
+  searchOlccPrices,
+  spiritOrderWithAdditions,
   zipFromAddress,
   type OlccBook,
+  type OlccPrice,
+  type SpiritOrderLine,
 } from "@/lib/costs/olcc";
 import { useCostStore } from "@/lib/costs/store";
 import { persistLocationCatalog } from "@/lib/pos/persist-location-setup";
@@ -15,14 +21,17 @@ import { parseJurisdiction } from "@/lib/pos/jurisdiction";
 import { usePosStore } from "@/lib/pos/store";
 import { formatCurrency } from "@/lib/utils";
 
+const NO_PRICES: OlccPrice[] = [];
+
 function saveBook(book: OlccBook) {
   useCostStore.setState({ olcc: book });
   persistLocationCatalog("costs");
 }
 
 /**
- * Oregon spirits buy list. The links open Oregon Liquor Search.
- * Nothing here checks out or sends an order to the OLCC.
+ * Oregon spirits buy list on the house store.
+ * The catalog is the full monthly price list. The short pick list sits under it.
+ * The links open Oregon Liquor Search. Nothing here sends an order to the OLCC.
  */
 export function OlccSpiritsPanel() {
   const state = usePosStore((s) => parseJurisdiction(s.settings.jurisdiction).state);
@@ -32,6 +41,8 @@ export function OlccSpiritsPanel() {
   const recipes = useCostStore((s) => s.recipes);
   const house = usePosStore((s) => s.settings.name);
   const [note, setNote] = useState("");
+  const [query, setQuery] = useState("");
+  const [added, setAdded] = useState<SpiritOrderLine[]>([]);
   const oregon = isOregonState(state);
 
   useEffect(() => {
@@ -58,11 +69,9 @@ export function OlccSpiritsPanel() {
     };
   }, [oregon, olcc]);
 
-  if (!oregon) return null;
-
   const zip = zipFromAddress(address);
-  const prices = olcc?.prices ?? [];
-  const titos = matchOlccSpirit("Tito's 750", prices);
+  const prices = olcc?.prices ?? NO_PRICES;
+  const catalog = useMemo(() => searchOlccPrices(prices, query), [prices, query]);
   const lines = buildSpiritOrderList({
     state,
     zip,
@@ -70,6 +79,9 @@ export function OlccSpiritsPanel() {
     skus,
     recipes,
   });
+  const order = spiritOrderWithAdditions(lines, added);
+
+  if (!oregon) return null;
 
   const refresh = () => {
     const plan = olccRefreshPlan(new Date(), null);
@@ -93,8 +105,12 @@ export function OlccSpiritsPanel() {
       .catch(() => setNote("The OLCC price list did not load."));
   };
 
+  const addRow = (row: OlccPrice) => {
+    setAdded((prev) => addOlccRowToOrder(lines, prev, row, zip));
+  };
+
   const printList = () => {
-    const rows = lines
+    const rows = order
       .map(
         (line) =>
           `<tr><td>${line.qty}</td><td>${line.name}</td><td>${line.size}</td><td>${line.itemCode}</td><td>${(line.bottlePriceCents / 100).toFixed(2)}</td></tr>`,
@@ -109,33 +125,87 @@ export function OlccSpiritsPanel() {
     w.print();
   };
 
+  const month = olcc?.shownAsOf || olcc?.forMonth || "";
+
   return (
     <section className="rounded-2xl border border-border bg-surface p-4" data-olcc-spirits="">
       <h3 className="text-sm font-semibold">Oregon spirits</h3>
       <p className="mt-1 text-xs text-muted-foreground">
-        Distilled spirits only. Beer and wine stay on the distributor path. No order is sent to the OLCC. Print the
-        pick list, upload the store receipt, and confirm the lines that arrived.
+        Distilled spirits only. Beer and wine stay on the distributor path. No order is sent to the OLCC. The price
+        list is the full current month. Print the pick list, upload the store receipt, and confirm the lines that
+        arrived.
       </p>
-      {titos ? (
-        <p className="mt-2 text-sm" data-olcc-bottle={titos.itemCode}>
-          Tito&apos;s 750 · {formatCurrency(titos.bottlePriceCents)} bottle · item {titos.itemCode}
-        </p>
+      {prices.length ? (
+        <>
+          <p className="mt-2 text-sm" data-olcc-book-count={prices.length}>
+            {prices.length.toLocaleString()} items{month ? ` · ${month}` : ""}
+          </p>
+          <Input
+            className="mt-2"
+            value={query}
+            placeholder="Name, item code, or size"
+            data-olcc-search=""
+            onChange={(e) => setQuery(e.target.value)}
+          />
+          {query.trim() && !catalog.length ? (
+            <p className="mt-2 text-xs text-muted-foreground">No items match that search.</p>
+          ) : null}
+          <ul className="mt-2 max-h-80 space-y-1 overflow-y-auto" data-olcc-catalog="">
+            {catalog.map((row) => (
+              <li
+                key={row.itemCode}
+                className="flex flex-wrap items-center gap-2 rounded-xl border border-border px-2 py-2 text-sm"
+                data-olcc-row={row.itemCode}
+              >
+                <span className="font-medium" data-olcc-name={row.name}>
+                  {row.name}
+                </span>
+                <span data-olcc-size={row.size}>{row.size}</span>
+                <span data-olcc-bottle={row.bottlePriceCents}>{formatCurrency(row.bottlePriceCents)} bottle</span>
+                <span data-olcc-case={row.casePriceCents}>{formatCurrency(row.casePriceCents)} case</span>
+                <Button type="button" size="sm" variant="outline" data-olcc-add={row.itemCode} onClick={() => addRow(row)}>
+                  Add
+                </Button>
+                <a
+                  className="text-xs underline"
+                  href={oregonStoreSearchUrl(row, zip)}
+                  target="_blank"
+                  rel="noreferrer"
+                  data-olcc-store-search={row.itemCode}
+                >
+                  Store search
+                </a>
+              </li>
+            ))}
+          </ul>
+        </>
       ) : (
-        <p className="mt-2 text-xs text-muted-foreground">Bottle prices appear after the monthly list loads.</p>
+        <p className="mt-2 text-xs text-muted-foreground" data-olcc-catalog-empty="">
+          The monthly price list has not loaded.
+        </p>
       )}
       <div className="mt-2 flex flex-wrap gap-2">
         <Button type="button" size="sm" variant="outline" data-olcc-refresh="" onClick={refresh}>
           Refresh price list
         </Button>
-        <Button type="button" size="sm" variant="outline" data-olcc-print="" onClick={printList} disabled={!lines.length}>
+        <Button type="button" size="sm" variant="outline" data-olcc-print="" onClick={printList} disabled={!order.length}>
           Print list
         </Button>
       </div>
-      {note ? <p className="mt-2 text-xs text-primary">{note}</p> : null}
-      {lines.length ? (
-        <ul className="mt-3 space-y-2 text-sm" data-olcc-order-list="">
-          {lines.map((line) => (
-            <li key={`${line.itemCode}-${line.name}`} className="flex flex-wrap items-center gap-2" data-olcc-line={line.itemCode || line.name}>
+      {note ? (
+        <p className="mt-2 text-xs text-primary" data-olcc-note="">
+          {note}
+        </p>
+      ) : null}
+      <h4 className="mt-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Pick list</h4>
+      {order.length ? (
+        <ul className="mt-2 space-y-2 text-sm" data-olcc-order-list="">
+          {order.map((line) => (
+            <li
+              key={`${line.source}-${line.itemCode}-${line.name}`}
+              className="flex flex-wrap items-center gap-2"
+              data-olcc-line={line.itemCode || line.name}
+            >
               <span>
                 {line.qty} × {line.name}
                 {line.size ? ` · ${line.size}` : ""}

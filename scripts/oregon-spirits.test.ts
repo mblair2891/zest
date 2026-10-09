@@ -2,12 +2,15 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import {
+  addOlccRowToOrder,
   buildSpiritOrderList,
   fetchOlccMonth,
   matchOlccSpirit,
   olccRefreshPlan,
   oregonStoreSearchUrl,
   parseOlccRows,
+  searchOlccPrices,
+  spiritOrderWithAdditions,
   spiritPourCostCents,
   staysOnDistributor,
 } from "../src/lib/costs/olcc.ts";
@@ -32,6 +35,30 @@ const TITO_1750 = {
   size: "1.75 L",
   priceperunit: "45.95",
   pricepercase: "551.4",
+};
+
+const TITO_375 = {
+  ...TITO_ROW,
+  itemcode: "8488A",
+  size: "375 ML",
+  priceperunit: "14.95",
+  pricepercase: "179.4",
+};
+
+const TITO_50 = {
+  ...TITO_ROW,
+  itemcode: "8488D",
+  size: "50 ML",
+  priceperunit: "2.95",
+  pricepercase: "177.00",
+};
+
+const TITO_1000 = {
+  ...TITO_ROW,
+  itemcode: "8488E",
+  size: "1 L",
+  priceperunit: "32.95",
+  pricepercase: "395.4",
 };
 
 const OTHER_VODKA = {
@@ -123,6 +150,59 @@ test("Tito's 750 uses the OLCC bottle price", () => {
   const standard = matchOlccSpirit("Tito's", prices);
   assert.equal(standard?.itemCode, "8488B");
   assert.equal(matchOlccSpirit("vodka", prices), null);
+});
+
+test("Tito search returns several sizes, and adding one keeps the house lines", () => {
+  const prices = parseOlccRows([
+    TITO_ROW,
+    TITO_1750,
+    TITO_375,
+    TITO_50,
+    TITO_1000,
+    OTHER_VODKA,
+    BEER_ROW,
+    WINE_ROW,
+  ]);
+  const hits = searchOlccPrices(prices, "Tito");
+  assert.ok(hits.length >= 4);
+  assert.equal(new Set(hits.map((row) => row.size)).size, hits.length);
+  for (const row of hits) {
+    assert.match(row.name, /TITO/i);
+    assert.ok(row.bottlePriceCents > 0);
+    assert.ok(row.casePriceCents > 0);
+  }
+  assert.equal(searchOlccPrices(prices, "8488C")[0]?.itemCode, "8488C");
+  assert.equal(searchOlccPrices(prices, "8488C")[0]?.size, "1.75 L");
+  assert.ok(searchOlccPrices(prices, "375 ML").some((row) => row.itemCode === "8488A"));
+  assert.equal(searchOlccPrices(prices, "Tito's").length, hits.length);
+  assert.equal(searchOlccPrices(prices, "").length, prices.length);
+  assert.equal(searchOlccPrices(prices, "lager").length, 0);
+  assert.equal(searchOlccPrices(prices, "Pinot").length, 0);
+
+  const house = buildSpiritOrderList({
+    state: "OR",
+    zip: "97201",
+    prices,
+    skus: [
+      { name: "Tito's 750", category: "liquor", onHand: 0, par: 2 },
+      { name: "Other Plain Vodka", category: "liquor", onHand: 0, par: 1 },
+    ],
+    recipes: [],
+  });
+  assert.equal(house.length, 2);
+  const bigger = searchOlccPrices(prices, "1.75").find((row) => row.itemCode === "8488C");
+  assert.ok(bigger);
+  const added = addOlccRowToOrder(house, [], bigger, "97201");
+  const order = spiritOrderWithAdditions(house, added);
+  assert.equal(order.length, 3);
+  assert.equal(order[0]?.itemCode, house[0]?.itemCode);
+  assert.equal(order[1]?.itemCode, house[1]?.itemCode);
+  assert.equal(order[2]?.itemCode, "8488C");
+  assert.equal(order[2]?.bottlePriceCents, 4595);
+  assert.equal(order[2]?.casePriceCents, 55140);
+  assert.match(order[2]!.storeSearchUrl, /oregonliquorsearch\.com/);
+  assert.match(order[2]!.storeSearchUrl, /productSearchParam=8488C/);
+  assert.equal(addOlccRowToOrder(house, added, bigger, "97201").length, 1);
 });
 
 test("beer and wine stay on the SKU cost", () => {
@@ -219,7 +299,20 @@ test("no checkout call exists, and a non-Oregon screen does not render the list"
   const section = panel.indexOf("data-olcc-spirits");
   assert.ok(gate > 0 && section > gate);
   assert.match(panel, /data-olcc-store-search/);
-  assert.match(panel, /Tito's 750/);
+  assert.match(panel, /data-olcc-search/);
+  assert.match(panel, /data-olcc-catalog/);
+  assert.match(panel, /data-olcc-row/);
+  assert.match(panel, /data-olcc-bottle/);
+  assert.match(panel, /data-olcc-case/);
+  assert.match(panel, /data-olcc-add/);
+  assert.match(panel, /searchOlccPrices\(prices, query\)/);
+  assert.match(panel, /addOlccRowToOrder/);
+  assert.match(panel, /The OLCC price list did not load/);
+  assert.doesNotMatch(panel, /matchOlccSpirit/);
+  assert.doesNotMatch(panel, /\.slice\(\s*0\s*,\s*2\s*\)/);
+  const catalogAt = panel.indexOf("data-olcc-catalog");
+  const listAt = panel.indexOf("data-olcc-order-list");
+  assert.ok(catalogAt > 0 && listAt > catalogAt);
   const suppliers = readFileSync("src/components/pos/SuppliersView.tsx", "utf8");
   assert.match(suppliers, /<OlccSpiritsPanel \/>/);
   assert.match(suppliers, /data-olcc-stores/);
