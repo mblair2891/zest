@@ -1,10 +1,12 @@
 import { useState } from "react";
 import { Input } from "@/components/ui/input";
+import { StreetSuggest } from "@/components/pos/StreetSuggest";
 import { saveVenueProfileFn } from "@/lib/access/api";
 import { useCurrentUserState } from "@/lib/auth/use-current-user";
 import { useOnboardingStore } from "@/lib/saas/onboarding-state";
 import { canEditVenueProfile, sameContactEmail } from "@/lib/saas/venue-profile";
-import { parseJurisdiction, US_STATES } from "@/lib/pos/jurisdiction";
+import { applyAddressPick, type AddressSuggestion } from "@/lib/pos/address-suggest";
+import { commitPlaceText, parseJurisdiction, US_STATES } from "@/lib/pos/jurisdiction";
 import { usePosStore } from "@/lib/pos/store";
 import { parseVenueTimezone, VENUE_TIMEZONES } from "@/lib/pos/venue-time";
 
@@ -34,7 +36,9 @@ export function VenueProfileSettings(props: {
     houseAdmin: false,
     locationContact,
   });
-  const state = parseJurisdiction(settings.jurisdiction).state;
+  const jurisdiction = parseJurisdiction(settings.jurisdiction);
+  const state = jurisdiction.state;
+  const city = jurisdiction.city;
   const timezone = parseVenueTimezone(settings.timezone);
   const note = canEdit
     ? "State Oregon lists liquor stores on Suppliers."
@@ -45,15 +49,20 @@ export function VenueProfileSettings(props: {
   const writeLocal = (patch: {
     name?: string;
     address?: string;
+    city?: string;
     timezone?: string;
     state?: string;
   }) => {
     if (!canEdit) return;
     const current = usePosStore.getState().settings;
     const jurisdiction =
-      patch.state == null
+      patch.city == null && patch.state == null
         ? current.jurisdiction
-        : parseJurisdiction({ ...current.jurisdiction, state: patch.state });
+        : parseJurisdiction({
+            ...current.jurisdiction,
+            ...(patch.city != null ? { city: patch.city } : {}),
+            ...(patch.state != null ? { state: patch.state } : {}),
+          });
     usePosStore.setState({
       settings: {
         ...current,
@@ -68,14 +77,18 @@ export function VenueProfileSettings(props: {
   const persist = async (over?: {
     name?: string;
     address?: string;
+    city?: string;
     timezone?: string;
     state?: string;
   }) => {
     if (!canEdit || !props.orgId || !props.locationId) return;
     const current = usePosStore.getState().settings;
-    const name = (over?.name ?? current.name).trim();
+    const name = commitPlaceText(over?.name ?? current.name).slice(0, 120);
     if (!name) return;
-    const address = over?.address ?? current.address;
+    const address = commitPlaceText(over?.address ?? current.address).slice(0, 240);
+    const city = commitPlaceText(
+      over?.city ?? parseJurisdiction(current.jurisdiction).city,
+    ).slice(0, 80);
     const zone = parseVenueTimezone(over?.timezone ?? current.timezone);
     const nextState = over?.state ?? parseJurisdiction(current.jurisdiction).state;
     setMsg(null);
@@ -86,6 +99,7 @@ export function VenueProfileSettings(props: {
           locationId: props.locationId,
           name,
           address,
+          city,
           timezone: zone,
           state: nextState,
         },
@@ -93,6 +107,22 @@ export function VenueProfileSettings(props: {
     } catch (e) {
       setMsg(e instanceof Error ? e.message : "Could not save the venue.");
     }
+  };
+
+  const onPick = (pick: AddressSuggestion) => {
+    const next = applyAddressPick(pick);
+    writeLocal({
+      address: next.street,
+      city: next.city,
+      state: next.state,
+      timezone: next.timezone,
+    });
+    void persist({
+      address: next.street,
+      city: next.city,
+      state: next.state,
+      timezone: next.timezone,
+    });
   };
 
   return (
@@ -118,12 +148,23 @@ export function VenueProfileSettings(props: {
           />
         </label>
         <label className="block text-sm">
-          <span className="mb-1 block text-muted-foreground">Address</span>
-          <Input
+          <span className="mb-1 block text-muted-foreground">Street</span>
+          <StreetSuggest
             value={settings.address}
             disabled={!canEdit}
-            data-venue-address
-            onChange={(e) => writeLocal({ address: e.target.value })}
+            checklistFocus="address"
+            onChange={(street) => writeLocal({ address: street })}
+            onPick={onPick}
+            onCommit={() => void persist()}
+          />
+        </label>
+        <label className="block text-sm">
+          <span className="mb-1 block text-muted-foreground">City</span>
+          <Input
+            value={city}
+            disabled={!canEdit}
+            data-venue-city
+            onChange={(e) => writeLocal({ city: e.target.value })}
             onBlur={() => void persist()}
           />
         </label>

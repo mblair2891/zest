@@ -34,6 +34,7 @@ import {
 } from "@/lib/pos/station-pair-payload";
 import { parseDeletedLocationDevices, rememberDeletedDevice } from "@/lib/pos/device-seed";
 import { parseFloorPlan } from "@/lib/saas/location-catalog";
+import { commitPlaceText } from "@/lib/pos/jurisdiction";
 import { publishOwnerBlock } from "@/lib/pos/room-owner";
 import { seedDefaultPrinterAssignments } from "@/lib/print/printer-assignment";
 
@@ -84,19 +85,31 @@ export const saveVenueProfileFn = createServerFn({ method: "POST" })
     locationId: string;
     name: string;
     address: string;
+    city: string;
     timezone: string;
     state: string;
   }) => ({
     orgId: String(d.orgId ?? "").trim(),
     locationId: loc(d.locationId),
-    name: String(d.name ?? "").trim().slice(0, 120),
-    address: String(d.address ?? "").trim().slice(0, 240),
+    name: commitPlaceText(d.name).slice(0, 120),
+    address: commitPlaceText(d.address).slice(0, 240),
+    city: commitPlaceText(d.city).slice(0, 80),
     timezone: String(d.timezone ?? "").trim().slice(0, 80),
     state: String(d.state ?? "").trim().slice(0, 32),
   }))
   .handler(async ({ context, data }) => {
     const { saveVenueProfileForUser } = await import("@/lib/saas/tenancy.server");
     return saveVenueProfileForUser(context.userId, data);
+  });
+
+export const suggestAddressesFn = createServerFn({ method: "POST" })
+  .middleware([tenantMiddleware])
+  .validator((d: { query: string }) => ({
+    query: String(d.query ?? "").slice(0, 120),
+  }))
+  .handler(async ({ data }) => {
+    const { suggestAddresses } = await import("@/lib/pos/address-suggest.server");
+    return suggestAddresses(data.query);
   });
 
 export const saveOperatorPayoutFn = createServerFn({ method: "POST" })

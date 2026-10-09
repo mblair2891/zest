@@ -356,7 +356,8 @@ export const ROLE_GUIDE_TOPICS: GuideTopic[] = [
         "Host + multi-operator: Host settings (tax, cash discount, Quantum Payments, payouts, entity permission matrix, device assignment) vs Operators (ops only). Guest operators never edit host merchant or payout routing.",
         "Kiosk / waitlist types: kiosk mode, waitlist, reservation check-in, SMS on/off and monthly cap (defaults to platform included; location may only go lower).",
         "Peer venue and host + tenants: Revenue share rules (Staffing recs). Each rule names the parties, the sales base, the rate, and optional section, table, service, hour, and source filters. Location main contact or platform edits the rate. A selling entity can view inbound and outbound rules and cannot change the rate. The guest check does not change.",
-        "Peer venue with no host: an entity admin opens Settings and sees the venue name, address, state, timezone, and which entities sit in it. The location contact can edit those. Another entity admin can view them. State Oregon lists liquor stores on Suppliers. A hosted venue keeps settings on the host. An entity admin there can view them and cannot change them.",
+        "Peer venue with no host: an entity admin opens Settings and sees the venue name, street, city, state, timezone, and which entities sit in it. The location contact can edit those. Another entity admin can view them. State Oregon lists liquor stores on Suppliers. A hosted venue keeps settings on the host. An entity admin there can view them and cannot change them.",
+        "City, name, and street keep their spaces. Grants Pass stays Grants Pass. The street field suggests addresses as you type. Pick one and it fills street, city, state, and timezone. Staff can still type over any field. Save stores those values. A refresh still shows Grants Pass as two words.",
       ),
       steps(
         "PIN as owner or manager. Open Home → Location settings.",
@@ -381,7 +382,7 @@ export const ROLE_GUIDE_TOPICS: GuideTopic[] = [
       ul(
         "Host owner/manager (password at app.summex.app/login): Devices, floor, every tenant menu, reports, costs, labor, payments split, grants, payout destinations, settlement, host cut, entity permission matrix. Full tenant ops data — not a PIN pad.",
         "Tenant entity login: own menu, recipes, costs/invoices, schedule/payroll export, reports, 86, staff PINs for that entity only. Cannot edit another tenant’s menu, payout, or labor.",
-        "Shared venue: no host role. Venue admin is not a landlord merchant. Each operator completes their own Quantum Payments and menu. An entity admin gets Settings for the venue name, address, state, and timezone, and the list of entities in the building. The location contact can edit those. Another entity admin can view them. State Oregon lists liquor stores on Suppliers.",
+        "Shared venue: no host role. Venue admin is not a landlord merchant. Each operator completes their own Quantum Payments and menu. An entity admin gets Settings for the venue name, street, city, state, and timezone, and the list of entities in the building. The location contact can edit those. Another entity admin can view them. State Oregon lists liquor stores on Suppliers. City, name, and street keep their spaces. The street field suggests addresses as you type.",
         "Hosted venue: settings stay on the host. An entity admin can view the venue name, address, state, and timezone, and cannot change them.",
         "Devices: house assets, not locked roles. Host enrolls tablets. Any device switches via This station (Operator B bar ODS, Operator A floor POS, host kiosk, or split ODS).",
       ),

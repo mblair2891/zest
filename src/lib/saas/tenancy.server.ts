@@ -36,7 +36,7 @@ import { parseOpsJobsConfig } from "@/lib/ops-jobs/config";
 import { parseQrPolicy } from "@/lib/pos/qr-policy";
 import { parseTaxRates } from "@/lib/pos/tax-rates";
 import { parseStationUpdates } from "@/lib/pos/station-updates";
-import { parseJurisdiction, jurisdictionIsReady, normalizeState } from "@/lib/pos/jurisdiction";
+import { parseJurisdiction, jurisdictionIsReady, normalizeState, commitPlaceText } from "@/lib/pos/jurisdiction";
 import { parseVenueTimezone } from "@/lib/pos/venue-time";
 import { canEditVenueProfile, sameContactEmail } from "./venue-profile";
 import { parseItem86 } from "@/lib/pos/item-86";
@@ -972,6 +972,7 @@ export async function saveVenueProfileForUser(
     locationId: string;
     name: string;
     address: string;
+    city: string;
     timezone: string;
     state: string;
   },
@@ -1024,13 +1025,15 @@ export async function saveVenueProfileForUser(
   ) {
     throw new ForbiddenError("The location contact edits the venue.");
   }
-  const name = input.name.trim().slice(0, 120);
+  const name = commitPlaceText(input.name).slice(0, 120);
   if (!name) throw new Error("Venue name is required");
-  const address = input.address.trim().slice(0, 240);
+  const address = commitPlaceText(input.address).slice(0, 240);
+  const city = commitPlaceText(input.city).slice(0, 80);
   const timezone = parseVenueTimezone(input.timezone || prev.timezone || loc.timezone || "");
   const jurisdiction = parseJurisdiction({
     ...(prev.jurisdiction ?? {}),
     state: normalizeState(input.state),
+    city,
   });
   const next = parseSetup({
     ...prev,

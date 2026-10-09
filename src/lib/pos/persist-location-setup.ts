@@ -1,5 +1,5 @@
 import { CASH_DISCOUNT_CONFIRM } from "@/lib/pos/cash-discount";
-import { saveLocationSettingsFn } from "@/lib/access/api";
+import { saveLocationSettingsFn, saveVenueProfileFn } from "@/lib/access/api";
 import { clearLocationFloorFn } from "@/lib/pos/floor-clear-api";
 import { useSaasStore } from "@/lib/pos/saas-store";
 import { usePosStore } from "@/lib/pos/store";
@@ -14,7 +14,8 @@ import { HOST_SCOPE } from "@/lib/access/entity-grants";
 import { parseLaborRules } from "@/lib/labor/rules";
 import { parsePaymentMethods } from "./payment-methods";
 import { parseStationUpdates } from "./station-updates";
-import { parseJurisdiction } from "./jurisdiction";
+import { commitPlaceText, parseJurisdiction } from "./jurisdiction";
+import { parseVenueTimezone } from "./venue-time";
 
 const timers = new Map<string, ReturnType<typeof setTimeout>>();
 
@@ -228,6 +229,27 @@ export function persistTaxRates(): void {
       }).catch(() => undefined);
     }, 400),
   );
+}
+
+/** Name, street, city, state, and timezone. Internal spaces stay. */
+export function persistVenueProfile(): void {
+  const ctx = ids();
+  if (!ctx) return;
+  const s = usePosStore.getState().settings;
+  const j = parseJurisdiction(s.jurisdiction);
+  const name = commitPlaceText(s.name).slice(0, 120);
+  if (!name) return;
+  void saveVenueProfileFn({
+    data: {
+      orgId: ctx.orgId,
+      locationId: ctx.locationId,
+      name,
+      address: commitPlaceText(s.address).slice(0, 240),
+      city: commitPlaceText(j.city).slice(0, 80),
+      timezone: parseVenueTimezone(s.timezone),
+      state: j.state,
+    },
+  }).catch(() => undefined);
 }
 
 export function persistJurisdiction(): void {

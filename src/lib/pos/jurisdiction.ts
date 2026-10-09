@@ -73,6 +73,19 @@ export function normPlace(raw: unknown): string {
   return String(raw ?? "").trim().replace(/\s+/g, " ");
 }
 
+/**
+ * While typing, a trailing space stays. "Grants " is not collapsed to "Grants".
+ * Internal spaces stay. "Grants Pass" stays "Grants Pass".
+ */
+export function livePlace(raw: unknown): string {
+  return String(raw ?? "").replace(/[^\S\n]+/g, " ").slice(0, 240);
+}
+
+/** Save trims the ends only. The space inside "Grants Pass" stays. */
+export function commitPlaceText(raw: unknown): string {
+  return livePlace(raw).trim();
+}
+
 export function normalizeState(raw: unknown): string {
   const s = normPlace(raw).toUpperCase();
   if (!s) return "";
@@ -88,7 +101,7 @@ export function parseJurisdiction(raw: unknown): VenueJurisdiction {
   return {
     country: country.slice(0, 2),
     state: normalizeState(o.state),
-    city: normPlace(o.city).slice(0, 80),
+    city: livePlace(o.city).slice(0, 80),
     taxDistrict: normPlace(o.taxDistrict).slice(0, 80),
   };
 }
@@ -96,7 +109,7 @@ export function parseJurisdiction(raw: unknown): VenueJurisdiction {
 /** Country, state, and city are required before live cards. */
 export function jurisdictionIsReady(raw: unknown): boolean {
   const j = parseJurisdiction(raw);
-  return Boolean(j.country && j.state && j.city);
+  return Boolean(j.country && j.state && j.city.trim());
 }
 
 export type BulletinScopeKind = "all" | "state" | "city" | "district";

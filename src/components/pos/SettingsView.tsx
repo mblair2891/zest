@@ -35,8 +35,11 @@ import {
   persistTaxRates,
   persistStationUpdates,
   persistJurisdiction,
+  persistVenueProfile,
   bumpConfigVersion,
 } from "@/lib/pos/persist-location-setup";
+import { StreetSuggest } from "./StreetSuggest";
+import { applyAddressPick } from "@/lib/pos/address-suggest";
 import {
   parseJurisdiction,
   jurisdictionIsReady,
@@ -46,9 +49,7 @@ import {
 import { parseStationUpdates, DEFAULT_FORCE_WINDOW } from "@/lib/pos/station-updates";
 import { TaxRatesEditor, ratesPatch } from "./TaxRatesSettings";
 import {
-  DEFAULT_VENUE_TIMEZONE,
   VENUE_TIMEZONES,
-  guessTimezoneFromAddress,
   parseVenueTimezone,
 } from "@/lib/pos/venue-time";
 import { PaymentMethodsSettings } from "./PaymentMethodsSettings";
@@ -408,8 +409,10 @@ export function JurisdictionFields({ write }: { write: boolean }) {
           <Input
             disabled={!write}
             value={j.city}
+            data-venue-city
             onChange={(e) => patch({ city: e.target.value })}
-            placeholder="Los Angeles"
+            onBlur={() => persistVenueProfile()}
+            placeholder="Grants Pass"
           />
         </label>
         <label className="block text-sm">
@@ -764,7 +767,9 @@ export function SettingsView() {
           <span className="mb-1 block text-muted-foreground">Name</span>
           <Input
             value={settings.name}
+            data-venue-name
             onChange={(e) => updateSettings({ name: e.target.value })}
+            onBlur={() => persistVenueProfile()}
           />
         </label>
         {(emp?.role === "owner" || emp?.role === "manager") && locId && (
@@ -777,18 +782,25 @@ export function SettingsView() {
           />
         )}
         <label className="block text-sm">
-          <span className="mb-1 block text-muted-foreground">Address</span>
-          <Input
+          <span className="mb-1 block text-muted-foreground">Street</span>
+          <StreetSuggest
             value={settings.address}
-            onChange={(e) => updateSettings({ address: e.target.value })}
-            onBlur={() => {
-              const guessed = guessTimezoneFromAddress(settings.address);
-              const cur = parseVenueTimezone(settings.timezone);
-              if (!settings.timezone || cur === DEFAULT_VENUE_TIMEZONE) {
-                updateSettings({ timezone: guessed });
-                persistTaxRates();
-              }
+            disabled={!write}
+            onChange={(street) => updateSettings({ address: street })}
+            onPick={(pick) => {
+              const next = applyAddressPick(pick);
+              updateSettings({
+                address: next.street,
+                timezone: next.timezone,
+                jurisdiction: parseJurisdiction({
+                  ...usePosStore.getState().settings.jurisdiction,
+                  city: next.city,
+                  state: next.state,
+                }),
+              });
+              persistVenueProfile();
             }}
+            onCommit={() => persistVenueProfile()}
           />
         </label>
         <JurisdictionFields write={write} />

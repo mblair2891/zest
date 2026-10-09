@@ -6,6 +6,18 @@ import type { GuideUpdate } from "@/lib/guide/types";
  */
 export const WHATS_NEW_ENTRIES: GuideUpdate[] = [
   {
+    id: "upd_2026_10_224_address_suggest",
+    date: "2026-10-09",
+    title: "Address suggestions",
+    summary: "Grants Pass keeps its space. A street suggestion fills city, state, and timezone.",
+    body: "City, name, and street keep their spaces. Grants Pass stays Grants Pass. The street field suggests addresses as you type. Pick one and it fills street, city, state, and timezone. Staff can still type over any field. Save stores those values. A refresh still shows Grants Pass as two words.",
+    roles: ["owner_manager", "host_operator", "vendor_operator"],
+    surfaces: ["settings"],
+    audience: "all",
+    topicId: "location-settings",
+    tags: ["settings"],
+  },
+  {
     id: "upd_2026_10_223_venue_settings",
     date: "2026-10-09",
     title: "Peer venue settings",

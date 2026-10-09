@@ -10,7 +10,11 @@ import {
   persistCashDiscount,
   persistHostStandPolicy,
   persistQrPolicy,
+  persistVenueProfile,
 } from "@/lib/pos/persist-location-setup";
+import { StreetSuggest } from "@/components/pos/StreetSuggest";
+import { applyAddressPick } from "@/lib/pos/address-suggest";
+import { parseJurisdiction } from "@/lib/pos/jurisdiction";
 import { isProspectDemo } from "@/lib/demo/session";
 import { CASH_ROUND_INCREMENTS, SERVICE_STYLES_VENUE, TAX_MODES } from "@/lib/saas/venue-entity";
 import { parseQrMode } from "@/lib/pos/qr-table";
@@ -21,12 +25,7 @@ import type { CashRoundIncrement } from "@/lib/pos/types";
 import { TaxRatesEditor, ratesPatch } from "@/components/pos/TaxRatesSettings";
 import { noteChecklistSave } from "@/lib/saas/checklist-link";
 import { saveLocationProfileChecklist, useOnboardingStore } from "@/lib/saas/onboarding-state";
-import {
-  DEFAULT_VENUE_TIMEZONE,
-  VENUE_TIMEZONES,
-  guessTimezoneFromAddress,
-  parseVenueTimezone,
-} from "@/lib/pos/venue-time";
+import { VENUE_TIMEZONES, parseVenueTimezone } from "@/lib/pos/venue-time";
 import { persistTaxRates } from "@/lib/pos/persist-location-setup";
 import { JurisdictionFields } from "@/components/pos/SettingsView";
 import { BrandLogoField } from "@/components/brand/BrandLogoField";
@@ -151,25 +150,37 @@ export function VenueHouseSettings() {
             data-checklist-focus="location-contact"
             onChange={(e) => updateSettings({ name: e.target.value })}
             onBlur={() => {
-              persist({ hostBrandName: settings.name });
+              persist({ hostBrandName: usePosStore.getState().settings.name });
+              persistVenueProfile();
             }}
           />
         </label>
         <label className="block text-sm">
-          <span className="mb-1 block text-muted-foreground">Address</span>
-          <Input
+          <span className="mb-1 block text-muted-foreground">Street</span>
+          <StreetSuggest
             value={settings.address}
             disabled={!write}
-            data-checklist-focus="address"
-            onChange={(e) => updateSettings({ address: e.target.value })}
-            onBlur={() => {
-              const guessed = guessTimezoneFromAddress(settings.address);
-              const cur = parseVenueTimezone(settings.timezone);
-              if (!settings.timezone || cur === DEFAULT_VENUE_TIMEZONE) {
-                updateSettings({ timezone: guessed });
-                persist({ timezone: guessed });
-              }
+            checklistFocus="address"
+            onChange={(street) => updateSettings({ address: street })}
+            onPick={(pick) => {
+              const next = applyAddressPick(pick);
+              updateSettings({
+                address: next.street,
+                timezone: next.timezone,
+                jurisdiction: parseJurisdiction({
+                  ...usePosStore.getState().settings.jurisdiction,
+                  city: next.city,
+                  state: next.state,
+                }),
+              });
+              persist({
+                hostBrandName: usePosStore.getState().settings.name,
+                timezone: next.timezone,
+                jurisdiction: usePosStore.getState().settings.jurisdiction,
+              });
+              persistVenueProfile();
             }}
+            onCommit={() => persistVenueProfile()}
           />
         </label>
         <JurisdictionFields write={write} />
