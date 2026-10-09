@@ -6,6 +6,18 @@ import type { GuideUpdate } from "@/lib/guide/types";
  */
 export const WHATS_NEW_ENTRIES: GuideUpdate[] = [
   {
+    id: "upd_2026_10_222_olcc_stores",
+    date: "2026-10-09",
+    title: "Liquor stores on Suppliers",
+    summary: "Oregon lists OLCC stores by name, city, and phone. The house store stays after a refresh.",
+    body: "On Suppliers, the Liquor stores block sits under the add form. When the venue state is Oregon, it lists each OLCC store by name, city, and phone. Staff pick the house store. That store is the spirits supplier. The price list and store search sit on it. The pick stays after a refresh. When the venue state is not Oregon, the block says set the venue state to Oregon.",
+    roles: ["owner_manager", "host_operator", "vendor_operator"],
+    surfaces: ["settings"],
+    audience: "all",
+    topicId: "suppliers",
+    tags: ["costs", "suppliers"],
+  },
+  {
     id: "upd_2026_10_221_update_links",
     date: "2026-10-09",
     title: "Update links",

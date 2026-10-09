@@ -1,6 +1,6 @@
 /**
  * Public OLCC liquor store list: the layer behind the official liquor store map.
- * Name, address, and phone only. This module never places an order.
+ * Name, city, and phone. This module never places an order.
  */
 
 import { isOregonState } from "./olcc.ts";

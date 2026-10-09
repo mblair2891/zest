@@ -127,7 +127,14 @@ export function linkInvoiceToSupplier<T extends { id: string; supplierId?: strin
   );
 }
 
-export function houseStoreSupplier(store: OlccStore, id: string): CostSupplier {
+function withoutHousePick(supplier: CostSupplier): CostSupplier {
+  if (!supplier.houseStore && supplier.houseStorePickedAt == null) return supplier;
+  const next: CostSupplier = { ...supplier, houseStore: false };
+  delete next.houseStorePickedAt;
+  return next;
+}
+
+export function houseStoreSupplier(store: OlccStore, id: string, pickedAt = Date.now()): CostSupplier {
   const built = buildSupplier(
     {
       name: store.name,
@@ -147,6 +154,7 @@ export function houseStoreSupplier(store: OlccStore, id: string): CostSupplier {
     address: store.address,
     olccStoreNumber: store.storeNumber,
     houseStore: true,
+    houseStorePickedAt: pickedAt,
     active: true,
   };
 }
@@ -156,12 +164,11 @@ export function applyHouseStore(
   suppliers: CostSupplier[],
   store: OlccStore,
   newId: string,
+  pickedAt = Date.now(),
 ): CostSupplier[] {
   let found = false;
   const next = suppliers.map((supplier) => {
-    if (supplier.olccStoreNumber !== store.storeNumber) {
-      return supplier.houseStore ? { ...supplier, houseStore: false } : supplier;
-    }
+    if (supplier.olccStoreNumber !== store.storeNumber) return withoutHousePick(supplier);
     found = true;
     return {
       ...supplier,
@@ -172,6 +179,7 @@ export function applyHouseStore(
       beverage: "spirits" as const,
       category: "Spirits",
       houseStore: true,
+      houseStorePickedAt: pickedAt,
       active: true,
       notes: supplier.notes?.trim() ? supplier.notes : HOUSE_STORE_NOTE,
       contacts: [
@@ -184,5 +192,17 @@ export function applyHouseStore(
     };
   });
   if (found) return next;
-  return [houseStoreSupplier(store, newId), ...next.map((supplier) => ({ ...supplier, houseStore: false }))];
+  return [houseStoreSupplier(store, newId, pickedAt), ...next.map(withoutHousePick)];
+}
+
+/**
+ * After a refresh, the location catalog is the supplier list.
+ * An empty catalog leaves the in-memory list, including a house store picked before the save returned.
+ */
+export function suppliersKeptAfterRefresh(
+  saved: readonly CostSupplier[] | null | undefined,
+  local: readonly CostSupplier[],
+): CostSupplier[] {
+  const pack = Array.isArray(saved) ? saved.map((row) => ({ ...row })) : [];
+  return pack.length ? pack : [...local];
 }

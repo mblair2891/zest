@@ -12,6 +12,7 @@ import { useNotifyStore } from "@/lib/pos/notify-store";
 import { useNetworkStore } from "@/lib/pos/network-store";
 import { useOpsLearnStore } from "@/lib/ops-ai/learn-store";
 import { useCostStore } from "@/lib/costs/store";
+import { suppliersKeptAfterRefresh } from "@/lib/costs/suppliers";
 import { parseOlccBook } from "@/lib/costs/olcc";
 import { useFinanceStore } from "@/lib/finance/store";
 import { useLifecycleStore } from "@/lib/lifecycle/store";
@@ -649,6 +650,8 @@ function PosAppInner({ entityId }: { entityId?: string }) {
           }
           if (setup.recipes?.length || setup.costPack) {
             const pack = setup.costPack;
+            const localSuppliers = useCostStore.getState().suppliers;
+            const suppliers = suppliersKeptAfterRefresh(pack?.suppliers, localSuppliers);
             useCostStore.setState({
               recipes: setup.recipes?.length
                 ? setup.recipes
@@ -656,9 +659,7 @@ function PosAppInner({ entityId }: { entityId?: string }) {
               ...(pack
                 ? {
                     skus: pack.skus?.length ? pack.skus : useCostStore.getState().skus,
-                    suppliers: pack.suppliers?.length
-                      ? pack.suppliers
-                      : useCostStore.getState().suppliers,
+                    suppliers,
                     invoices: pack.invoices ?? useCostStore.getState().invoices,
                     maps: pack.maps ?? useCostStore.getState().maps,
                     exceptions: pack.exceptions ?? useCostStore.getState().exceptions,
@@ -666,7 +667,7 @@ function PosAppInner({ entityId }: { entityId?: string }) {
                     pos: pack.pos?.length ? pack.pos : useCostStore.getState().pos,
                     ...(pack.olcc !== undefined ? { olcc: parseOlccBook(pack.olcc) } : {}),
                   }
-                : {}),
+                : { suppliers }),
             });
           }
           try {

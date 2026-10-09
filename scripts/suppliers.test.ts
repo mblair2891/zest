@@ -9,6 +9,7 @@ import {
   linkInvoiceToSupplier,
   supplierSendsOrder,
   supplierTypeLabel,
+  suppliersKeptAfterRefresh,
 } from "../src/lib/costs/suppliers.ts";
 
 const FEATURES = {
@@ -104,11 +105,15 @@ test("an Oregon location lists liquor stores and the house store receives an inv
   assert.equal(locationShowsOlccStores("Oregon"), true);
   assert.equal(locationShowsOlccStores("WA"), false);
   assert.equal(locationShowsOlccStores("Washington"), false);
+  assert.equal(locationShowsOlccStores(""), false);
+  assert.equal(locationShowsOlccStores(undefined), false);
   const stores = parseOlccStorePayload(FEATURES);
   assert.equal(stores[0]?.name, "Astoria Liquor");
   assert.equal(stores[1]?.name, "Heppner Liquor Store");
   assert.equal(stores[1]?.address, "217 N Main Street, Heppner");
   assert.equal(stores[1]?.phone, "(541) 676-9159");
+  assert.equal(stores[1]?.city, "Heppner");
+  assert.equal(stores[0]?.city, "Astoria");
   const heppner = stores[1]!;
   const astoria = stores[0]!;
   const first = applyHouseStore([], heppner, "sup_house");
@@ -167,10 +172,54 @@ test("Suppliers is a section, and Costs still links an invoice to any supplier",
   assert.match(view, /data-supplier-kind/);
   assert.match(view, /data-supplier-beverage/);
   assert.match(view, /data-olcc-stores/);
-  assert.match(view, /oregon \? <OlccStores/);
+  assert.match(view, /data-olcc-set-state/);
+  assert.match(view, /Set the venue state to Oregon\./);
+  assert.match(view, /data-olcc-city=\{store\.city\}/);
+  assert.match(view, /data-olcc-phone=\{store\.phone\}/);
+  assert.doesNotMatch(view, /oregon \? <OlccStores/);
+  const formAt = view.indexOf("<SupplierForm");
+  const storesAt = view.indexOf("data-olcc-stores");
+  const listAt = view.indexOf("<SupplierList");
+  assert.ok(formAt >= 0 && storesAt > formAt && listAt > storesAt);
   assert.match(view, /data-set-house-store/);
   assert.match(view, /<OlccSpiritsPanel \/>/);
   assert.match(shell, /id: "suppliers", label: "Suppliers"/);
   assert.match(venue, /tab === "suppliers"/);
   assert.match(venue, /<SuppliersView \/>/);
+});
+
+test("picking a house store keeps it after refresh", () => {
+  const stores = parseOlccStorePayload(FEATURES);
+  const heppner = stores.find((row) => row.city === "Heppner");
+  const astoria = stores.find((row) => row.city === "Astoria");
+  assert.ok(heppner && astoria);
+  const picked = applyHouseStore([], heppner, "sup_house", 1_000);
+  const saved = JSON.parse(JSON.stringify({ suppliers: picked })) as { suppliers: typeof picked };
+  const restored = suppliersKeptAfterRefresh(saved.suppliers, []);
+  const house = restored.find((row) => row.houseStore);
+  assert.ok(house);
+  assert.equal(house.olccStoreNumber, heppner.storeNumber);
+  assert.equal(house.name, "Heppner Liquor Store");
+  assert.match(house.address ?? "", /Heppner/);
+  assert.equal(house.phone, "(541) 676-9159");
+  assert.equal(house?.beverage, "spirits");
+  assert.equal(house?.kind, "beverage");
+  assert.equal(supplierSendsOrder(house), false);
+
+  const beforeSave = suppliersKeptAfterRefresh([], picked);
+  assert.equal(beforeSave.find((row) => row.houseStore)?.olccStoreNumber, heppner.storeNumber);
+
+  const later = applyHouseStore(picked, astoria, "sup_astoria", 2_000);
+  const fromServer = suppliersKeptAfterRefresh(later, picked);
+  assert.equal(fromServer.filter((row) => row.houseStore).length, 1);
+  assert.equal(fromServer.find((row) => row.houseStore)?.olccStoreNumber, astoria.storeNumber);
+  const staleLocal = suppliersKeptAfterRefresh(picked, later);
+  assert.equal(staleLocal.find((row) => row.houseStore)?.olccStoreNumber, heppner.storeNumber);
+
+  const store = readFileSync("src/lib/costs/store.ts", "utf8");
+  const start = store.indexOf("setHouseStore: (store) => {");
+  const pick = store.slice(start, store.indexOf("linkInvoiceVendor:", start));
+  assert.match(pick, /flushLocationCatalog\("costs"\)/);
+  const app = readFileSync("src/components/pos/PosApp.tsx", "utf8");
+  assert.match(app, /suppliersKeptAfterRefresh\(pack\?\.suppliers, localSuppliers\)/);
 });

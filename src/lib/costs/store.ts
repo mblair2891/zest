@@ -1094,7 +1094,7 @@ export const useCostStore = create<CostState>()(
       setHouseStore: (store) => {
         const next = applyHouseStore(get().suppliers, store, uid("sup"));
         set({ suppliers: next });
-        saveCosts();
+        void import("@/lib/pos/persist-location-setup").then((m) => m.flushLocationCatalog("costs"));
         return next.find((supplier) => supplier.olccStoreNumber === store.storeNumber)?.id ?? "";
       },
 

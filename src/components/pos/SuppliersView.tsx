@@ -56,8 +56,17 @@ export function SuppliersView() {
       </div>
       <div className="min-h-0 flex-1 space-y-3 overflow-y-auto p-3">
         <SupplierForm canEdit={canEdit} entityId={costEntityScope(emp)} />
+        <section className="rounded-2xl border border-border bg-surface p-4" data-olcc-stores="">
+          <h3 className="text-sm font-semibold">Liquor stores</h3>
+          {oregon ? (
+            <OlccStores canEdit={canEdit} suppliers={suppliers} />
+          ) : (
+            <p className="mt-1 text-xs text-muted-foreground" data-olcc-set-state="">
+              Set the venue state to Oregon.
+            </p>
+          )}
+        </section>
         <SupplierList canEdit={canEdit} />
-        {oregon ? <OlccStores canEdit={canEdit} suppliers={suppliers} /> : null}
       </div>
     </div>
   );
@@ -694,10 +703,9 @@ function OlccStores({
   }, [stores, query]);
 
   return (
-    <section className="rounded-2xl border border-border bg-surface p-4" data-olcc-stores="">
-      <h3 className="text-sm font-semibold">OLCC liquor stores</h3>
+    <div>
       <p className="mt-1 text-xs text-muted-foreground">
-        Store name, address, and phone from the public OLCC store list. Pick the house store. That store is the
+        Store name, city, and phone from the public OLCC store list. Pick the house store. That store is the
         spirits supplier. The price list and Oregon Liquor Search stay on it. Print the pick list. No order is sent.
       </p>
       <Input
@@ -720,8 +728,13 @@ function OlccStores({
               <span>
                 <span className="font-medium">{store.name}</span>
                 <span className="block text-xs text-muted-foreground">
-                  {store.address}
-                  {store.phone ? ` · ${store.phone}` : ""}
+                  <span data-olcc-city={store.city}>{store.city || "City not listed"}</span>
+                  {store.phone ? (
+                    <>
+                      {" · "}
+                      <span data-olcc-phone={store.phone}>{store.phone}</span>
+                    </>
+                  ) : null}
                 </span>
               </span>
               {current ? (
@@ -745,6 +758,6 @@ function OlccStores({
       {stores.length > 0 && shown.length === 0 ? (
         <p className="mt-2 text-xs text-muted-foreground">No stores match.</p>
       ) : null}
-    </section>
+    </div>
   );
 }

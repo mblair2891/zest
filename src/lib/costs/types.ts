@@ -312,6 +312,8 @@ export interface CostSupplier {
   olccStoreNumber?: string;
   /** The house spirits supplier. No order is sent. */
   houseStore?: boolean;
+  /** When this row was picked as the house store. A newer pick wins on refresh. */
+  houseStorePickedAt?: number;
 }
 
 export type OrderMatchFlag = "match" | "short" | "extra" | "price";
