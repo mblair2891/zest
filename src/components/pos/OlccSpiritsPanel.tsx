@@ -113,8 +113,8 @@ export function OlccSpiritsPanel() {
     <section className="rounded-2xl border border-border bg-surface p-4" data-olcc-spirits="">
       <h3 className="text-sm font-semibold">Oregon spirits</h3>
       <p className="mt-1 text-xs text-muted-foreground">
-        Distilled spirits only. Beer and wine stay on the distributor path. No order is sent to the OLCC. The invoice
-        photo is still what receives the bottles. Staff buy this list at the store.
+        Distilled spirits only. Beer and wine stay on the distributor path. No order is sent to the OLCC. Print the
+        pick list, upload the store receipt, and confirm the lines that arrived.
       </p>
       {titos ? (
         <p className="mt-2 text-sm" data-olcc-bottle={titos.itemCode}>

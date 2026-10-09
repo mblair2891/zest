@@ -12,7 +12,7 @@ import type {
 } from "./types.ts";
 
 export const HOUSE_STORE_NOTE =
-  "House OLCC liquor store. No order is sent. The invoice photo still receives the bottles.";
+  "House OLCC liquor store. Print the pick list. No order is sent. Upload the store receipt and confirm the lines that arrived.";
 
 const BEVERAGE_LINES: BeverageLine[] = ["beer", "wine", "spirits"];
 

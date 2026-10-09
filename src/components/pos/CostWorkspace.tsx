@@ -957,7 +957,7 @@ function PoPanel({ demoScope: _demoScope }: { demoScope: string | null }) {
                 Send email / CSV
               </Button>
             )}
-            {(p.status === "sent" || p.status === "partial") && canCost(emp, "po:receive") && (
+            {(p.status === "sent" || p.status === "partial") && !p.matchRequired && canCost(emp, "po:receive") && (
               <Button
                 size="sm"
                 onClick={() =>
@@ -972,6 +972,11 @@ function PoPanel({ demoScope: _demoScope }: { demoScope: string | null }) {
               >
                 Receive remaining
               </Button>
+            )}
+            {p.matchRequired && !p.matchedAt && (
+              <p className="text-xs text-muted-foreground">
+                Match the invoice on Suppliers. Nothing is received until that match is confirmed.
+              </p>
             )}
           </div>
         </div>

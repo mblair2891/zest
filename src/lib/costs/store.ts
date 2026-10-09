@@ -37,6 +37,14 @@ import {
   deactivateSupplier,
   supplierSendsOrder,
 } from "./suppliers";
+import {
+  buildSupplierOrderLines,
+  compareOrderToInvoice,
+  orderPrintHtml,
+  receiveConfirmedLines,
+  type InvoiceReadLine,
+  type SupplierOrderDraft,
+} from "./order-match";
 import type {
   CostAudit,
   CostAuditAction,
@@ -53,6 +61,7 @@ import type {
   ItemRecipe,
   PendingPriceEdit,
   PriceRecommendation,
+  OrderMatchLine,
   PurchaseOrder,
   VarianceException,
   VarianceResponseCode,
@@ -305,6 +314,17 @@ interface CostState {
     error?: string;
   };
   receivePo: (id: string, received: Array<{ skuId: string; qty: number }>) => { ok: boolean; error?: string };
+  placeSupplierOrder: (
+    supplierId: string,
+    drafts: SupplierOrderDraft[],
+  ) => { ok: boolean; poId?: string; html?: string; error?: string };
+  attachOrderInvoice: (
+    poId: string,
+    lines: InvoiceReadLine[],
+    fileName?: string,
+  ) => { ok: boolean; lines?: OrderMatchLine[]; error?: string };
+  setOrderMatchLine: (poId: string, lineId: string, patch: Partial<Pick<OrderMatchLine, "decision" | "confirmQty" | "confirmPriceCents" | "item" | "size">>) => void;
+  confirmOrderMatch: (poId: string) => { ok: boolean; received?: number; error?: string };
   matchInvoiceToPo: (invoiceId: string, poId: string) => string[];
   generatePriceRecs: (windowDays?: number) => PriceRecommendation[];
   acceptPriceRec: (id: string) => PendingPriceEdit | null;
@@ -1199,6 +1219,195 @@ export const useCostStore = create<CostState>()(
         };
       },
 
+      placeSupplierOrder: (supplierId, drafts) => {
+        const a = actor();
+        if (!canCost(a.emp, "po:create")) {
+          return { ok: false, error: "No permission to create an order" };
+        }
+        const sup = get().suppliers.find((s) => s.id === supplierId);
+        if (!sup) return { ok: false, error: "Supplier missing" };
+        if (sup.active === false) return { ok: false, error: "This supplier is inactive." };
+        const built = buildSupplierOrderLines(drafts);
+        if (!built.ok) return built;
+        const pickList = !supplierSendsOrder(sup);
+        const now = Date.now();
+        const po: PurchaseOrder = {
+          id: uid("po"),
+          supplierId,
+          supplierName: sup.name,
+          entityId: a.entity || HOST_SCOPE,
+          status: "sent",
+          lines: built.lines,
+          expectedDate: now + sup.leadDays * 86400000,
+          createdAt: now,
+          createdById: a.id,
+          createdByName: a.name,
+          sentAt: now,
+          sendDetail: pickList
+            ? "Pick list printed. No order is sent."
+            : "Printed. Nothing is received until the invoice is matched.",
+          totalCents: built.totalCents,
+          matchRequired: true,
+          pickList,
+        };
+        set({ pos: [po, ...get().pos] });
+        get().audit("po_send", po.sendDetail ?? po.supplierName, po.entityId);
+        saveCosts();
+        const house = usePosStore.getState().settings.name || "House";
+        return { ok: true, poId: po.id, html: orderPrintHtml(po, house) };
+      },
+
+      attachOrderInvoice: (poId, lines, fileName) => {
+        const po = get().pos.find((p) => p.id === poId);
+        if (!po) return { ok: false, error: "Order missing" };
+        if (po.matchedAt) return { ok: false, error: "This order is already matched." };
+        if (!lines.length) return { ok: false, error: "Could not read any invoice lines." };
+        const match = compareOrderToInvoice(po.lines, lines);
+        if (!match.length) return { ok: false, error: "Could not read any invoice lines." };
+        set({
+          pos: get().pos.map((p) =>
+            p.id === poId ? { ...p, matchLines: match, invoiceFileName: fileName || p.invoiceFileName } : p,
+          ),
+        });
+        saveCosts();
+        return { ok: true, lines: match };
+      },
+
+      setOrderMatchLine: (poId, lineId, patch) => {
+        set({
+          pos: get().pos.map((p) => {
+            if (p.id !== poId || !p.matchLines) return p;
+            return {
+              ...p,
+              matchLines: p.matchLines.map((line) => (line.id === lineId ? { ...line, ...patch } : line)),
+            };
+          }),
+        });
+      },
+
+      confirmOrderMatch: (poId) => {
+        const a = actor();
+        if (!canCost(a.emp, "po:receive") && !canCost(a.emp, "invoice:post")) {
+          return { ok: false, error: "No permission to receive" };
+        }
+        const po = get().pos.find((p) => p.id === poId);
+        if (!po) return { ok: false, error: "Order missing" };
+        if (po.matchedAt) return { ok: false, error: "This order is already matched." };
+        if (!po.matchLines?.length) return { ok: false, error: "Match the invoice first." };
+        const now = Date.now();
+        const applied = receiveConfirmedLines(get().skus, po.matchLines, {
+          now,
+          makeSku: (line) => ({
+            id: uid("sku"),
+            name: line.item,
+            category: guessCategory(line.item),
+            entityId: po.entityId,
+            unit: /case|keg|\bcs\b/i.test(line.size) ? "case" : "bottle",
+            packSize: 1,
+            packLabel: line.size || "ea",
+            onHand: 0,
+            par: 0,
+            parMin: 0,
+            parMax: 0,
+            costCents: line.confirmPriceCents,
+            supplierId: po.supplierId,
+            leadDays: 2,
+          }),
+        });
+        const receivedByIndex = new Map<number, { qty: number; price: number }>();
+        for (const line of applied.received) {
+          if (line.orderIndex == null) continue;
+          const prev = receivedByIndex.get(line.orderIndex);
+          receivedByIndex.set(line.orderIndex, {
+            qty: (prev?.qty ?? 0) + line.confirmQty,
+            price: line.confirmPriceCents,
+          });
+        }
+        const lines = po.lines.map((line, index) => {
+          const add = receivedByIndex.get(index);
+          if (!add) return line;
+          return { ...line, receivedQty: line.receivedQty + add.qty, unitCostCents: add.price };
+        });
+        const any = applied.received.length > 0;
+        const allIn = lines.length > 0 && lines.every((line) => line.receivedQty >= line.qty);
+        const invoiceId = uid("inv");
+        const invoiceLines: CostInvoiceLine[] = applied.received.map((line) => {
+          const sku = applied.skus.find(
+            (row) => (line.skuId && row.id === line.skuId) || row.name.toLowerCase() === line.item.toLowerCase(),
+          );
+          return {
+            id: uid("inl"),
+            rawName: line.item,
+            qty: line.confirmQty,
+            unitCostCents: line.confirmPriceCents,
+            packSize: line.size || undefined,
+            skuId: sku?.id,
+            category: sku?.category ?? guessCategory(line.item),
+            entityId: po.entityId,
+          };
+        });
+        const ledger: CostLedgerEntry[] = invoiceLines.map((line) => ({
+          id: uid("gl"),
+          at: now,
+          category: line.category,
+          entityId: line.entityId,
+          amountCents: Math.round(line.qty * line.unitCostCents),
+          invoiceId,
+          skuId: line.skuId,
+          memo: `${po.supplierName} · ${line.rawName}`,
+        }));
+        const invoice: CostInvoice | null = invoiceLines.length
+          ? {
+              id: invoiceId,
+              vendorName: po.supplierName,
+              supplierId: po.supplierId,
+              invoiceNumber: po.invoiceFileName?.replace(/\.[a-z0-9]+$/i, "") || `RCV-${po.id.slice(-6)}`,
+              date: now,
+              status: "posted",
+              entityId: po.entityId,
+              lines: invoiceLines,
+              fileName: po.invoiceFileName,
+              source: "upload",
+              postedAt: now,
+              poId: po.id,
+              parseNote: "Received from the confirmed invoice lines.",
+            }
+          : null;
+        set({
+          skus: applied.skus,
+          ledger: invoice ? [...ledger, ...get().ledger] : get().ledger,
+          invoices: invoice ? [invoice, ...get().invoices] : get().invoices,
+          pos: get().pos.map((p) =>
+            p.id === poId
+              ? {
+                  ...p,
+                  lines,
+                  matchLines: po.matchLines,
+                  matchedAt: now,
+                  invoiceId: invoice?.id ?? p.invoiceId,
+                  status: allIn ? "received" : any ? "partial" : p.status,
+                }
+              : p,
+          ),
+        });
+        get().audit(
+          "po_receive",
+          `${po.supplierName} · ${applied.received.length} confirmed · ${applied.rejected.filter((line) => line.decision === "reject").length} rejected`,
+          po.entityId,
+        );
+        saveCosts();
+        if (invoice) {
+          void import("@/lib/finance/from-pos").then((m) => {
+            try {
+              m.ingestPostedCostInvoice(invoice);
+            } catch {
+              /* the receive still stands */
+            }
+          });
+        }
+        return { ok: true, received: applied.received.length };
+      },
+
       receivePo: (id, received) => {
         const a = actor();
         if (!canCost(a.emp, "po:receive")) {
@@ -1206,6 +1415,14 @@ export const useCostStore = create<CostState>()(
         }
         const po = get().pos.find((p) => p.id === id);
         if (!po) return { ok: false, error: "PO missing" };
+        if (po.matchRequired) {
+          return {
+            ok: false,
+            error: po.matchedAt
+              ? "This order was received from the invoice match."
+              : "Nothing is received until the invoice is matched.",
+          };
+        }
         const now = Date.now();
         const flags: string[] = [];
         set({

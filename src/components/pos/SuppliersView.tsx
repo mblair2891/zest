@@ -4,18 +4,26 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { GuideLearnLink } from "@/components/guide/GuideLearnLink";
-import { listOlccStoresFn } from "@/lib/costs/api";
+import { listOlccStoresFn, parseCostInvoiceFn } from "@/lib/costs/api";
+import { extractPdfStrings } from "@/lib/costs/invoice-parse";
 import { locationShowsOlccStores, type OlccStore } from "@/lib/costs/olcc-stores";
+import {
+  readInvoiceLines,
+  type InvoiceReadLine,
+  type SupplierOrderDraft,
+} from "@/lib/costs/order-match";
 import { canCost, costEntityScope } from "@/lib/costs/permissions";
 import { useCostStore } from "@/lib/costs/store";
 import {
   buildSupplier,
   supplierIsActive,
+  supplierSendsOrder,
   supplierTypeLabel,
 } from "@/lib/costs/suppliers";
-import type { BeverageLine, OrderMethod, SupplierKind } from "@/lib/costs/types";
+import type { BeverageLine, OrderMatchFlag, OrderMethod, SupplierKind } from "@/lib/costs/types";
 import { parseJurisdiction } from "@/lib/pos/jurisdiction";
 import { usePosStore } from "@/lib/pos/store";
+import { formatCurrency } from "@/lib/utils";
 import { OlccSpiritsPanel } from "./OlccSpiritsPanel";
 
 const FIELD = "h-9 w-full rounded-xl border border-border bg-bg px-2 text-sm";
@@ -324,8 +332,15 @@ function SupplierCard({
       {supplier.notes ? <p className="mt-1 text-sm">{supplier.notes}</p> : null}
       {supplier.houseStore ? (
         <p className="mt-2 text-xs text-muted-foreground">
-          No order is sent. Costs still receives an invoice photo for the bottles.
+          Print the pick list. No order is sent. Upload the store receipt and confirm each line.
         </p>
+      ) : null}
+      {active ? (
+        <SupplierOrder
+          supplierId={supplier.id}
+          pickList={!supplierSendsOrder(supplier)}
+          canEdit={canEdit}
+        />
       ) : null}
       {canEdit && active && onDeactivate ? (
         <Button
@@ -357,6 +372,285 @@ function SupplierCard({
         </div>
       ) : null}
     </article>
+  );
+}
+
+const MATCH_LABEL: Record<OrderMatchFlag, string> = {
+  match: "Match",
+  short: "Short",
+  extra: "Extra",
+  price: "Price difference",
+};
+
+function SupplierOrder({
+  supplierId,
+  pickList,
+  canEdit,
+}: {
+  supplierId: string;
+  pickList: boolean;
+  canEdit: boolean;
+}) {
+  const emp = usePosStore((s) => s.employees.find((e) => e.id === s.currentEmployeeId) ?? null);
+  const orders = useCostStore((s) => s.pos.filter((po) => po.supplierId === supplierId && po.matchRequired));
+  const place = useCostStore((s) => s.placeSupplierOrder);
+  const attach = useCostStore((s) => s.attachOrderInvoice);
+  const setLine = useCostStore((s) => s.setOrderMatchLine);
+  const confirm = useCostStore((s) => s.confirmOrderMatch);
+  const canReceive = canCost(emp, "po:receive") || canCost(emp, "invoice:post");
+  const [item, setItem] = useState("");
+  const [size, setSize] = useState("");
+  const [qty, setQty] = useState("1");
+  const [price, setPrice] = useState("");
+  const [drafts, setDrafts] = useState<SupplierOrderDraft[]>([]);
+  const [note, setNote] = useState("");
+  const [activeId, setActiveId] = useState<string | null>(null);
+  const active = orders.find((po) => po.id === (activeId ?? orders[0]?.id)) ?? orders[0];
+
+  const addLine = () => {
+    const expectedPriceCents = Math.round((parseFloat(price) || 0) * 100);
+    const next: SupplierOrderDraft = {
+      name: item.trim(),
+      size: size.trim(),
+      qty: parseFloat(qty) || 0,
+      expectedPriceCents,
+    };
+    if (!next.name || !next.size || !(next.qty > 0) || !(expectedPriceCents >= 0) || price.trim() === "") {
+      setNote("Item, size, quantity, and expected price are required.");
+      return;
+    }
+    setDrafts((rows) => [...rows, next]);
+    setItem("");
+    setSize("");
+    setQty("1");
+    setPrice("");
+    setNote("");
+  };
+
+  const printOrder = () => {
+    const result = place(supplierId, drafts);
+    if (!result.ok || !result.html) {
+      setNote(result.error ?? "Could not print the order.");
+      return;
+    }
+    setDrafts([]);
+    setActiveId(result.poId ?? null);
+    setNote(pickList ? "Pick list printed. Status is sent. No order is sent." : "Printed. Status is sent.");
+    const page = window.open("", "_blank");
+    if (page) {
+      page.document.write(result.html);
+      page.document.close();
+      page.focus();
+      page.print();
+    }
+  };
+
+  const readFile = async (file: File) => {
+    if (!active) {
+      setNote("Print the order before uploading the invoice.");
+      return;
+    }
+    const name = file.name;
+    const lower = name.toLowerCase();
+    const isCsv = file.type.includes("csv") || lower.endsWith(".csv") || file.type.startsWith("text/");
+    const isPdf = file.type.includes("pdf") || lower.endsWith(".pdf");
+    const isImage = file.type.startsWith("image/");
+    const text = await new Promise<string>((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onerror = () => reject(new Error("Could not read the file."));
+      if (isImage) {
+        reader.onload = () => resolve(String(reader.result ?? ""));
+        reader.readAsDataURL(file);
+        return;
+      }
+      if (isPdf) {
+        reader.onload = () => resolve(extractPdfStrings(String(reader.result ?? "")));
+        reader.readAsDataURL(file);
+        return;
+      }
+      reader.onload = () => resolve(String(reader.result ?? ""));
+      reader.readAsText(file);
+    });
+    let lines: InvoiceReadLine[] = [];
+    if (isImage || (isPdf && !readInvoiceLines(text).length)) {
+      try {
+        const extract = await parseCostInvoiceFn({
+          data: isImage
+            ? { text: name, fileName: name, imageDataUrl: text }
+            : { text: text || name, fileName: name },
+        });
+        lines = extract.lines.map((line) => ({
+          name: line.name,
+          size: line.packSize || line.unit || "",
+          qty: line.qty,
+          unitCostCents: line.unitCostCents,
+        }));
+      } catch {
+        lines = readInvoiceLines(text);
+      }
+    } else if (isCsv || isPdf || text.includes(",")) {
+      lines = readInvoiceLines(text);
+    } else {
+      lines = readInvoiceLines(text);
+    }
+    const result = attach(active.id, lines, name);
+    setNote(result.ok ? "Invoice read. Confirm or correct each line." : result.error ?? "Could not read the invoice.");
+  };
+
+  return (
+    <div className="mt-3 space-y-3 border-t border-border pt-3" data-supplier-order={supplierId}>
+      <p className="text-sm font-medium">{pickList ? "Pick list" : "Order"}</p>
+      <p className="text-xs text-muted-foreground">
+        {pickList
+          ? "Item, size, quantity, and expected price. Print the pick list. Status is sent. No order is sent. Nothing is received until the receipt is matched."
+          : "Item, size, quantity, and expected price. Print it. Status is sent. Nothing is received until the invoice is matched."}
+      </p>
+      {canEdit && (
+        <div className="grid gap-2 sm:grid-cols-2">
+          <Input value={item} placeholder="Item" data-order-item="" onChange={(e) => setItem(e.target.value)} />
+          <Input value={size} placeholder="Size" data-order-size="" onChange={(e) => setSize(e.target.value)} />
+          <Input value={qty} placeholder="Quantity" data-order-qty="" onChange={(e) => setQty(e.target.value)} />
+          <Input
+            value={price}
+            placeholder="Expected price"
+            data-order-price=""
+            onChange={(e) => setPrice(e.target.value)}
+          />
+          <Button type="button" size="sm" variant="outline" data-order-add="" onClick={addLine}>
+            Add line
+          </Button>
+          <Button type="button" size="sm" data-order-print="" disabled={!drafts.length} onClick={printOrder}>
+            {pickList ? "Print pick list" : "Print order"}
+          </Button>
+        </div>
+      )}
+      {drafts.length > 0 && (
+        <ul className="text-xs text-muted-foreground">
+          {drafts.map((line, index) => (
+            <li key={`${line.name}-${index}`}>
+              {line.qty} × {line.name} · {line.size} · {formatCurrency(line.expectedPriceCents)}
+            </li>
+          ))}
+        </ul>
+      )}
+      {orders.length > 0 && (
+        <label className="block text-xs text-muted-foreground">
+          Printed orders
+          <select
+            className={`${FIELD} mt-1`}
+            data-order-status={active?.status ?? ""}
+            value={active?.id ?? ""}
+            onChange={(e) => setActiveId(e.target.value)}
+          >
+            {orders.map((po) => (
+              <option key={po.id} value={po.id}>
+                {po.status}
+                {po.pickList ? " · pick list" : ""} · {po.lines.length} lines
+              </option>
+            ))}
+          </select>
+        </label>
+      )}
+      {active && !active.matchedAt && (
+        <label className="block text-xs text-muted-foreground">
+          {pickList ? "Store receipt" : "Invoice photo, PDF, or file"}
+          <input
+            type="file"
+            accept="image/*,.pdf,.csv,text/plain,text/csv"
+            className="mt-1 block text-xs"
+            data-order-invoice=""
+            onChange={(e) => {
+              const file = e.target.files?.[0];
+              if (file) void readFile(file);
+            }}
+          />
+        </label>
+      )}
+      {active?.matchLines && active.matchLines.length > 0 && (
+        <ul className="space-y-2">
+          {active.matchLines.map((line) => (
+            <li key={line.id} className="rounded-xl border border-border p-2 text-sm" data-match-line={line.id}>
+              <p className="font-medium">{line.item}</p>
+              <p className="text-xs text-muted-foreground">
+                {line.size ? `${line.size} · ` : ""}
+                Order {line.orderQty} @ {formatCurrency(line.orderPriceCents)} · Invoice {line.invoiceQty} @{" "}
+                {formatCurrency(line.invoicePriceCents)}
+              </p>
+              <div className="mt-1 flex flex-wrap gap-1">
+                {line.flags.map((flag) => (
+                  <Badge key={flag} variant={flag === "match" ? "success" : "warn"} data-match-flag={flag}>
+                    {MATCH_LABEL[flag]}
+                  </Badge>
+                ))}
+              </div>
+              {!active.matchedAt && (
+                <div className="mt-2 flex flex-wrap items-center gap-2">
+                  <Input
+                    className="h-8 w-20"
+                    value={String(line.confirmQty)}
+                    data-match-qty=""
+                    onChange={(e) =>
+                      setLine(active.id, line.id, { confirmQty: parseFloat(e.target.value) || 0 })
+                    }
+                  />
+                  <Input
+                    className="h-8 w-24"
+                    value={(line.confirmPriceCents / 100).toFixed(2)}
+                    data-match-price=""
+                    onChange={(e) =>
+                      setLine(active.id, line.id, {
+                        confirmPriceCents: Math.round((parseFloat(e.target.value) || 0) * 100),
+                      })
+                    }
+                  />
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant={line.decision === "confirm" ? "default" : "outline"}
+                    data-match-confirm=""
+                    onClick={() => setLine(active.id, line.id, { decision: "confirm" })}
+                  >
+                    Confirm
+                  </Button>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant={line.decision === "reject" ? "default" : "outline"}
+                    data-match-reject=""
+                    onClick={() => setLine(active.id, line.id, { decision: "reject" })}
+                  >
+                    Reject
+                  </Button>
+                </div>
+              )}
+            </li>
+          ))}
+        </ul>
+      )}
+      {active && !active.matchedAt && active.matchLines && active.matchLines.length > 0 && canReceive && (
+        <Button
+          type="button"
+          size="sm"
+          data-order-receive=""
+          onClick={() => {
+            const lines = active.matchLines ?? [];
+            if (lines.some((line) => line.decision === "pending")) {
+              setNote("Confirm or reject each line.");
+              return;
+            }
+            const result = confirm(active.id);
+            setNote(
+              result.ok
+                ? `Received ${result.received ?? 0} line${result.received === 1 ? "" : "s"}. Rejected lines stay out of inventory.`
+                : result.error ?? "Could not receive.",
+            );
+          }}
+        >
+          Receive confirmed lines
+        </Button>
+      )}
+      {note ? <p className="text-xs text-primary">{note}</p> : null}
+    </div>
   );
 }
 
@@ -404,7 +698,7 @@ function OlccStores({
       <h3 className="text-sm font-semibold">OLCC liquor stores</h3>
       <p className="mt-1 text-xs text-muted-foreground">
         Store name, address, and phone from the public OLCC store list. Pick the house store. That store is the
-        spirits supplier. The price list and Oregon Liquor Search stay on it. No order is sent.
+        spirits supplier. The price list and Oregon Liquor Search stay on it. Print the pick list. No order is sent.
       </p>
       <Input
         className="mt-2"

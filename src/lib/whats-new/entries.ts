@@ -6,6 +6,18 @@ import type { GuideUpdate } from "@/lib/guide/types";
  */
 export const WHATS_NEW_ENTRIES: GuideUpdate[] = [
   {
+    id: "upd_2026_10_220_supplier_order",
+    date: "2026-10-09",
+    title: "Supplier order and invoice match",
+    summary: "Print a supplier order. Nothing is received until the invoice is matched and confirmed.",
+    body: "On a supplier, build an order with the item, size, quantity, and expected price. Print it. Status is sent. Nothing is received until the invoice is matched. Upload the invoice as a photo, PDF, or file. Each line is read and compared: match, short, extra, and a price difference. Staff confirm or correct each line. Confirm receives the bottles or cases at the confirmed cost. A rejected line is not received. The Oregon house liquor store uses the same path: print the pick list, upload the store receipt, and confirm. No order is sent.",
+    roles: ["owner_manager", "host_operator", "vendor_operator"],
+    surfaces: ["settings"],
+    audience: "all",
+    topicId: "suppliers",
+    tags: ["costs", "suppliers"],
+  },
+  {
     id: "upd_2026_10_219_suppliers",
     date: "2026-10-09",
     title: "Suppliers",

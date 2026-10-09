@@ -314,9 +314,31 @@ export interface CostSupplier {
   houseStore?: boolean;
 }
 
+export type OrderMatchFlag = "match" | "short" | "extra" | "price";
+
+/** One invoice line set beside the printed order. Confirm is what gets received. */
+export interface OrderMatchLine {
+  id: string;
+  item: string;
+  size: string;
+  skuId?: string;
+  /** Index on the order. Null when the invoice has a line the order does not. */
+  orderIndex: number | null;
+  orderQty: number;
+  invoiceQty: number;
+  orderPriceCents: number;
+  invoicePriceCents: number;
+  flags: OrderMatchFlag[];
+  decision: "pending" | "confirm" | "reject";
+  confirmQty: number;
+  confirmPriceCents: number;
+}
+
 export interface PurchaseOrderLine {
   skuId: string;
   name: string;
+  /** Bottle, case, keg, or other pack. */
+  size?: string;
   qty: number;
   unitCostCents: number;
   receivedQty: number;
@@ -342,6 +364,14 @@ export interface PurchaseOrder {
   overrideOpenException?: boolean;
   invoiceId?: string;
   totalCents: number;
+  /** Printed on the supplier. Inventory waits for the invoice match. */
+  matchRequired?: boolean;
+  /** House liquor store. The print is a pick list. No order is sent. */
+  pickList?: boolean;
+  matchLines?: OrderMatchLine[];
+  /** Set when staff confirm the match. Receive does not run twice. */
+  matchedAt?: number;
+  invoiceFileName?: string;
 }
 
 export interface PriceRecommendation {
