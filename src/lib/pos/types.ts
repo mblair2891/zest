@@ -501,6 +501,10 @@ export interface Table {
   planRole?: "outline" | "snip" | "opening";
   /** Wall this door or window cuts. */
   openingOf?: string;
+  /** Hinge jamb along the door. Unset draws from the left jamb. */
+  doorHand?: "left" | "right";
+  /** Leaf into the room, or out of it. Unset opens in. */
+  doorSwing?: "in" | "out";
   /** Legacy paint. Bar tops migrate #fff to transparent and stroke the rail. */
   fill?: string;
   sectionId?: string;

@@ -36,6 +36,78 @@ export function doorSwingSign(rotation: number, cx: number, cy: number): 1 | -1 
   return localPlusMatches ? 1 : -1;
 }
 
+export type DoorHand = "left" | "right";
+export type DoorSwingWay = "in" | "out";
+
+export function doorHandOf(value: unknown): DoorHand {
+  return value === "right" ? "right" : "left";
+}
+
+export function doorSwingWayOf(value: unknown): DoorSwingWay {
+  return value === "out" ? "out" : "in";
+}
+
+export type DoorSwingPose = {
+  hand: DoorHand;
+  swing: DoorSwingWay;
+  /** 1 keeps local +y. −1 mirrors the arc across the wall centerline. */
+  sign: 1 | -1;
+  /** Hinge on the left or right end of the unrotated door. */
+  hinge: DoorHand;
+  intoRoom: boolean;
+};
+
+/** Hand picks the jamb. Swing in uses the into-the-room sign. Swing out flips it. */
+export function doorSwingPose(door: {
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+  rotation?: number | null;
+  doorHand?: string | null;
+  doorSwing?: string | null;
+}): DoorSwingPose {
+  const hand = doorHandOf(door.doorHand);
+  const swing = doorSwingWayOf(door.doorSwing);
+  const into = doorSwingSign(Number(door.rotation) || 0, door.x + door.w / 2, door.y + door.h / 2);
+  const sign: 1 | -1 = swing === "out" ? (into === 1 ? -1 : 1) : into;
+  return { hand, swing, sign, hinge: hand, intoRoom: swing === "in" };
+}
+
+/** CSS transform for the quarter-circle. Right hand mirrors across the far jamb. */
+export function doorSwingTransform(pose: { hand: DoorHand; sign: 1 | -1 }): string | undefined {
+  const parts: string[] = [];
+  if (pose.hand === "right") parts.push("scaleX(-1)");
+  if (pose.sign < 0) parts.push("scaleY(-1)");
+  return parts.length ? parts.join(" ") : undefined;
+}
+
+/** Hinge on the wall centerline, in the door's own box before CSS rotation. */
+export function doorHingeLocal(door: { w: number; h: number; doorHand?: string | null }): { x: number; y: number } {
+  return { x: doorHandOf(door.doorHand) === "right" ? door.w : 0, y: door.h / 2 };
+}
+
+/** Hinge in plan percent. CSS rotation is clockwise around the door center. */
+export function doorHingePlan(door: {
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+  rotation?: number | null;
+  doorHand?: string | null;
+}): { x: number; y: number } {
+  const local = doorHingeLocal(door);
+  const quarter = Math.round((((Number(door.rotation) || 0) % 360) + 360) % 360 / 90) % 4;
+  const cx = door.x + door.w / 2;
+  const cy = door.y + door.h / 2;
+  const dx = local.x - door.w / 2;
+  const dy = local.y - door.h / 2;
+  if (quarter === 1) return { x: cx - dy, y: cy + dx };
+  if (quarter === 2) return { x: cx - dx, y: cy - dy };
+  if (quarter === 3) return { x: cx + dy, y: cy - dx };
+  return { x: cx + dx, y: cy + dy };
+}
+
 /** Swing box height as a percent of the thin door box, so the arc is square in inches. */
 export function doorSwingHeightPct(
   box: { w: number; h: number },

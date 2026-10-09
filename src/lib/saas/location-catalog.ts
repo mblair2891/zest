@@ -34,6 +34,8 @@ export type FloorPlanTable = {
   stoolNumberFrom?: 0 | 1;
   planRole?: "outline" | "snip" | "opening";
   openingOf?: string;
+  doorHand?: "left" | "right";
+  doorSwing?: "in" | "out";
 };
 
 export type LocationFloorPlan = {
@@ -123,6 +125,8 @@ export function parseFloorPlan(raw: unknown): LocationFloorPlan | undefined {
     const planRole =
       r.planRole === "outline" || r.planRole === "snip" || r.planRole === "opening" ? r.planRole : undefined;
     const openingOf = str(r.openingOf).slice(0, 80) || undefined;
+    const doorHand = r.doorHand === "left" || r.doorHand === "right" ? r.doorHand : undefined;
+    const doorSwing = r.doorSwing === "in" || r.doorSwing === "out" ? r.doorSwing : undefined;
     tables.push({
       id,
       label: str(r.label, id).slice(0, 40),
@@ -155,6 +159,8 @@ export function parseFloorPlan(raw: unknown): LocationFloorPlan | undefined {
         : undefined,
       planRole,
       openingOf,
+      doorHand,
+      doorSwing,
     });
   }
   const sections: FloorSection[] = [];
@@ -217,6 +223,8 @@ export function floorPlanFromPos(
         ...(t.stoolNumberFrom === 0 || t.stoolNumberFrom === 1 ? { stoolNumberFrom: t.stoolNumberFrom } : {}),
         ...(t.planRole === "outline" || t.planRole === "snip" || t.planRole === "opening" ? { planRole: t.planRole } : {}),
         ...(t.openingOf ? { openingOf: t.openingOf } : {}),
+        ...(t.doorHand === "left" || t.doorHand === "right" ? { doorHand: t.doorHand } : {}),
+        ...(t.doorSwing === "in" || t.doorSwing === "out" ? { doorSwing: t.doorSwing } : {}),
       })),
     sections: sections.map((s) => ({ ...s })),
   };
@@ -248,6 +256,8 @@ export function tablesFromFloorPlan(plan: LocationFloorPlan): Table[] {
     stoolNumberFrom: t.stoolNumberFrom,
     planRole: t.planRole,
     openingOf: t.openingOf,
+    doorHand: t.doorHand,
+    doorSwing: t.doorSwing,
     status: "empty",
   }));
 }

@@ -6,6 +6,18 @@ import type { GuideUpdate } from "@/lib/guide/types";
  */
 export const WHATS_NEW_ENTRIES: GuideUpdate[] = [
   {
+    id: "upd_2026_10_216_door_swing",
+    date: "2026-10-09",
+    title: "Door hand and swing",
+    summary: "A selected door sets the hinge side and whether the arc opens in or out.",
+    body: "A selected door has Hand: left or right, and Swing: in or out. The arc draws from that hinge, into the room or out of it. The editor and the live floor both do this. Publish does not move the door.",
+    roles: ["owner_manager", "vendor_operator", "host_operator"],
+    surfaces: ["floor"],
+    audience: "all",
+    topicId: "floor-editor",
+    tags: ["floor"],
+  },
+  {
     id: "upd_2026_10_215_exterior_wall",
     date: "2026-10-08",
     title: "Every piece sits on the exterior wall",

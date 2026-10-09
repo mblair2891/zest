@@ -9,7 +9,8 @@ import {
   uprightCounterDeg,
   barSlabEdges,
   doorSwingHeightPct,
-  doorSwingSign,
+  doorSwingPose,
+  doorSwingTransform,
   isArchitectureKind,
   liveArchCaption,
   storedBarPlan,
@@ -181,7 +182,7 @@ export function FloorArchitectureMark({
   }
   if (table.kind === "door") {
     const swingH = doorSwingHeightPct(table, room);
-    const swingSign = doorSwingSign(rotation, table.x + table.w / 2, table.y + table.h / 2);
+    const pose = doorSwingPose(table);
     return (
       <div
         data-floor-arch="door"
@@ -190,21 +191,26 @@ export function FloorArchitectureMark({
         data-floor-spin=""
         data-floor-arch-tone="editor"
         data-floor-opening={openingAttr}
+        data-floor-door-hand={pose.hand}
+        data-floor-door-swing-way={pose.swing}
         className={cn("relative h-full w-full overflow-visible bg-transparent", className)}
         style={spin}
         onPointerDown={onShapePointerDown}
       >
         <svg
           data-floor-door-swing=""
-          data-floor-door-swing-sign={swingSign}
+          data-floor-door-swing-sign={pose.sign}
+          data-floor-door-hinge={pose.hinge}
+          data-floor-door-into={pose.intoRoom ? "1" : "0"}
           viewBox="0 0 100 100"
           preserveAspectRatio="xMinYMin meet"
-          className="pointer-events-none absolute left-0 overflow-visible"
+          className="pointer-events-none absolute overflow-visible"
           style={{
             top: "50%",
+            left: pose.hand === "right" ? "100%" : 0,
             width: "100%",
             height: `${swingH}%`,
-            transform: swingSign < 0 ? "scaleY(-1)" : undefined,
+            transform: doorSwingTransform(pose),
             transformOrigin: "top left",
           }}
         >

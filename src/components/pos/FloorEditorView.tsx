@@ -1519,6 +1519,7 @@ export function FloorEditorView() {
             label: kind.id === "door" ? "Door" : "Window",
             planRole: "opening",
             openingOf: hit.wall.id,
+            ...(kind.id === "door" ? { doorHand: "left" as const, doorSwing: "in" as const } : {}),
           });
           selectOnly(id);
           persistLocationCatalog("floor");
@@ -1777,6 +1778,8 @@ export function FloorEditorView() {
           widthIn: copy.widthIn,
           fill: copy.fill,
           rotation: copy.rotation ?? 0,
+          doorHand: copy.doorHand,
+          doorSwing: copy.doorSwing,
         });
       }
     }
@@ -3220,6 +3223,52 @@ export function FloorEditorView() {
                 <p className="text-xs text-muted-foreground" data-floor-snip-hint="">
                   Click the wall where it should split.
                 </p>
+              ) : null}
+              {selectedTable.kind === "door" ? (
+                <div className="space-y-2" data-floor-door-swing-edit="">
+                  <div>
+                    <p className="mb-1 text-xs text-muted-foreground">Hand</p>
+                    <div className="flex gap-1">
+                      {(["left", "right"] as const).map((hand) => (
+                        <Button
+                          key={hand}
+                          type="button"
+                          size="sm"
+                          variant={(selectedTable.doorHand ?? "left") === hand ? "default" : "outline"}
+                          data-floor-door-hand={hand}
+                          className="capitalize"
+                          onClick={() => {
+                            update(selectedTable.id, { doorHand: hand });
+                            persistLocationCatalog("floor");
+                          }}
+                        >
+                          {hand}
+                        </Button>
+                      ))}
+                    </div>
+                  </div>
+                  <div>
+                    <p className="mb-1 text-xs text-muted-foreground">Swing</p>
+                    <div className="flex gap-1">
+                      {(["in", "out"] as const).map((swing) => (
+                        <Button
+                          key={swing}
+                          type="button"
+                          size="sm"
+                          variant={(selectedTable.doorSwing ?? "in") === swing ? "default" : "outline"}
+                          data-floor-door-swing-pick={swing}
+                          className="capitalize"
+                          onClick={() => {
+                            update(selectedTable.id, { doorSwing: swing });
+                            persistLocationCatalog("floor");
+                          }}
+                        >
+                          {swing}
+                        </Button>
+                      ))}
+                    </div>
+                  </div>
+                </div>
               ) : null}
               {selectedTable.kind === "bar_top" ? null : (
               <ObjectSizeFields
