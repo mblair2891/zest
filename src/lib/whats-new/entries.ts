@@ -6,6 +6,18 @@ import type { GuideUpdate } from "@/lib/guide/types";
  */
 export const WHATS_NEW_ENTRIES: GuideUpdate[] = [
   {
+    id: "upd_2026_10_227_same_type",
+    date: "2026-10-09",
+    title: "Same-type spirit options",
+    summary: "An OLCC order line offers other bottles of the same type, at the same size when it can.",
+    body: "On an OLCC order line, other bottles of the same type are offered. Vodka offers vodka. Bourbon offers bourbon. The same size is used when it can. Each option shows the name, the size, and the bottle price. Staff can swap the line or keep it. A missing house-store line still offers the nearest store, and these same-type options. No order is sent.",
+    roles: ["owner_manager", "host_operator", "vendor_operator"],
+    surfaces: ["settings"],
+    audience: "all",
+    topicId: "suppliers",
+    tags: ["costs", "suppliers"],
+  },
+  {
     id: "upd_2026_10_226_olcc_stock",
     date: "2026-10-09",
     title: "House store stock check",

@@ -3,15 +3,19 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import {
   addOlccRowToOrder,
+  applySpiritSwaps,
   buildSpiritOrderList,
   fetchOlccMonth,
   matchOlccSpirit,
   olccRefreshPlan,
   oregonStoreSearchUrl,
   parseOlccRows,
+  sameBottleSize,
+  sameTypeOptions,
   searchOlccPrices,
   spiritOrderWithAdditions,
   spiritPourCostCents,
+  spiritType,
   staysOnDistributor,
 } from "../src/lib/costs/olcc.ts";
 import {
@@ -323,12 +327,33 @@ test("no checkout call exists, and a non-Oregon screen does not render the list"
   assert.match(panel, /data-olcc-use-store/);
   assert.match(panel, /data-olcc-remove/);
   assert.match(panel, /data-olcc-kept/);
+  assert.match(panel, /data-olcc-same-type/);
+  assert.match(panel, /data-olcc-option=/);
+  assert.match(panel, /data-olcc-option-name/);
+  assert.match(panel, /data-olcc-option-size/);
+  assert.match(panel, /data-olcc-option-bottle/);
+  assert.match(panel, /data-olcc-swap/);
+  assert.match(panel, /data-olcc-keep/);
+  assert.match(panel, /sameTypeOptions/);
+  assert.match(panel, /applySpiritSwaps/);
+  assert.match(olcc, /export function sameTypeOptions/);
+  assert.match(olcc, /export function applySpiritSwaps/);
+  const listAt = panel.indexOf("data-olcc-order-list");
+  const sameOnList = panel.indexOf("data-olcc-same-type");
+  const offerAt = panel.indexOf("data-olcc-offer");
+  const removeAt = panel.indexOf("data-olcc-remove");
+  const sameOnOffer = panel.indexOf("data-olcc-same-type", removeAt);
+  assert.ok(listAt > 0 && sameOnList > listAt);
+  assert.ok(offerAt > 0 && removeAt > offerAt && sameOnOffer > removeAt);
+  const keepStart = panel.indexOf("const keepLine");
+  const keepEnd = panel.indexOf("const printList");
+  assert.match(panel.slice(keepStart, keepEnd), /setKeptChoice/);
+  assert.doesNotMatch(panel.slice(keepStart, keepEnd), /setSwaps/);
   assert.match(panel, /olccPickListHtml\(house, staying\)/);
   assert.match(panel, /The house store stock check did not load/);
   assert.doesNotMatch(panel, /matchOlccSpirit/);
   assert.doesNotMatch(panel, /\.slice\(\s*0\s*,\s*2\s*\)/);
   const catalogAt = panel.indexOf("data-olcc-catalog");
-  const listAt = panel.indexOf("data-olcc-order-list");
   assert.ok(catalogAt > 0 && listAt > catalogAt);
   const suppliers = readFileSync("src/components/pos/SuppliersView.tsx", "utf8");
   assert.match(suppliers, /<OlccSpiritsPanel \/>/);
@@ -412,6 +437,167 @@ test("a finished order keeps house lines and offers the nearest store or remove"
   assert.match(printed, /Grape Street/);
   assert.doesNotMatch(printed, /0000Z/);
   assert.doesNotMatch(printed, /RARE BOTTLE/);
+});
+
+test("Tito's 750 offers other vodkas in that size, and a swap changes the line", () => {
+  const prices = parseOlccRows([
+    TITO_ROW,
+    TITO_1750,
+    TITO_50,
+    OTHER_VODKA,
+    {
+      ...TITO_ROW,
+      itemcode: "7777B",
+      description: "GREY GOOSE VODKA",
+      size: "750 ML",
+      priceperunit: "29.95",
+      pricepercase: "359.40",
+    },
+    {
+      ...TITO_ROW,
+      itemcode: "7777C",
+      description: "GREY GOOSE VODKA",
+      size: "1.75 L",
+      priceperunit: "54.95",
+      pricepercase: "659.40",
+    },
+    {
+      ...TITO_ROW,
+      itemcode: "5555B",
+      description: "HOUSE BOURBON",
+      category: "BOURBON",
+      size: "750 ML",
+      priceperunit: "22.00",
+      pricepercase: "264.00",
+    },
+    {
+      ...TITO_ROW,
+      itemcode: "5556B",
+      description: "OTHER BOURBON",
+      category: "BOURBON",
+      size: "750 ML",
+      priceperunit: "18.00",
+      pricepercase: "216.00",
+    },
+    {
+      ...TITO_ROW,
+      itemcode: "5555C",
+      description: "HOUSE BOURBON",
+      category: "BOURBON",
+      size: "1.75 L",
+      priceperunit: "40.00",
+      pricepercase: "480.00",
+    },
+  ]);
+  prices.push({
+    itemCode: "1111",
+    name: "VODKA WINE COOLER",
+    size: "750 ML",
+    proof: "",
+    category: "WINE",
+    bottlePriceCents: 1200,
+    casePriceCents: 14400,
+    asOf: "2026-09-01",
+  });
+  const tito = prices.find((row) => row.itemCode === "8488B");
+  assert.ok(tito);
+  assert.equal(spiritType(tito.category, tito.name), "vodka");
+  assert.equal(spiritType("BOURBON", "HOUSE BOURBON"), "bourbon");
+  assert.equal(sameBottleSize("750 ML", "750ml"), true);
+  assert.equal(sameBottleSize("1.75 L", "1750 ML"), true);
+  const options = sameTypeOptions({ itemCode: "8488B", name: tito.name, size: "750 ML" }, prices);
+  assert.ok(options.length >= 2);
+  for (const option of options) {
+    assert.equal(spiritType(option.category, option.name), "vodka");
+    assert.equal(sameBottleSize(option.size, "750 ML"), true);
+    assert.notEqual(option.itemCode, "8488B");
+    assert.ok(option.name.length > 0);
+    assert.ok(option.size.length > 0);
+    assert.ok(option.bottlePriceCents > 0);
+  }
+  const grey = options.find((row) => row.itemCode === "7777B");
+  assert.ok(grey);
+  assert.equal(grey.name, "GREY GOOSE VODKA");
+  assert.equal(grey.size, "750 ML");
+  assert.equal(grey.bottlePriceCents, 2995);
+  assert.equal(options.some((row) => row.itemCode === "7777C" || row.itemCode === "8488C"), false);
+  assert.equal(options.some((row) => row.itemCode === "5555B" || row.itemCode === "1111"), false);
+  const bourbon = sameTypeOptions({ itemCode: "5555B", name: "HOUSE BOURBON", size: "750 ML" }, prices);
+  assert.deepEqual(bourbon.map((row) => row.itemCode), ["5556B"]);
+  assert.equal(bourbon[0]?.bottlePriceCents, 1800);
+  const otherSizes = sameTypeOptions(
+    { itemCode: "8488D", name: "TITO HANDMADE TEXAS VODKA", size: "50 ML" },
+    prices,
+  );
+  assert.ok(otherSizes.some((row) => row.itemCode === "7777C"));
+  assert.equal(otherSizes.every((row) => spiritType(row.category, row.name) === "vodka"), true);
+  assert.equal(otherSizes.some((row) => sameBottleSize(row.size, "50 ML")), false);
+
+  const house = buildSpiritOrderList({
+    state: "OR",
+    zip: "97526",
+    prices,
+    skus: [{ name: "Tito's 750", category: "liquor", onHand: 0, par: 2 }],
+    recipes: [],
+  });
+  const line = house.find((row) => row.itemCode === "8488B");
+  assert.ok(line);
+  const swapped = applySpiritSwaps(house, { "8488B": grey }, "97526");
+  const next = swapped.find((row) => row.itemCode === "7777B");
+  assert.ok(next);
+  assert.equal(next.name, grey.name);
+  assert.equal(next.size, "750 ML");
+  assert.equal(next.bottlePriceCents, 2995);
+  assert.equal(next.qty, line.qty);
+  assert.equal(swapped.some((row) => row.itemCode === "8488B"), false);
+  assert.match(next.storeSearchUrl, /productSearchParam=7777B/);
+
+  const review = reviewOlccOrder({
+    lines: [
+      {
+        itemCode: "8488B",
+        name: tito.name,
+        size: "750 ML",
+        qty: line.qty,
+        bottlePriceCents: tito.bottlePriceCents,
+        casePriceCents: tito.casePriceCents,
+      },
+    ],
+    house: {
+      storeNumber: "1278",
+      name: "Shop Smart",
+      city: "Grants Pass",
+      address: "3500 Merlin Rd",
+      phone: "541-476-4551",
+    },
+    byItem: {
+      "8488B": [
+        {
+          storeNumber: "1076",
+          city: "Grants Pass",
+          address: "210 SE 8th St",
+          zip: "97526",
+          phone: "541-479-3729",
+          qty: 4,
+        },
+      ],
+    },
+    directory: [
+      {
+        storeNumber: "1076",
+        name: "Grape Street",
+        city: "Grants Pass",
+        address: "210 SE 8th St",
+        phone: "541-479-3729",
+      },
+    ],
+  });
+  assert.equal(review.staying.length, 0);
+  assert.equal(review.offers.length, 1);
+  assert.equal(review.offers[0]?.nearest?.storeNumber, "1076");
+  assert.equal(review.offers[0]?.nearest?.name, "Grape Street");
+  assert.equal(dropOlccOffer(review.offers, "8488B").length, 0);
+  assert.ok(sameTypeOptions(review.offers[0]!, prices).some((row) => row.itemCode === "7777B"));
 });
 
 test("stock check reads the house store from liquor search", async () => {

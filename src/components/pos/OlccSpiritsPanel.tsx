@@ -8,6 +8,8 @@ import {
   isOregonState,
   olccRefreshPlan,
   oregonStoreSearchUrl,
+  applySpiritSwaps,
+  sameTypeOptions,
   searchOlccPrices,
   spiritOrderWithAdditions,
   zipFromAddress,
@@ -55,6 +57,8 @@ export function OlccSpiritsPanel() {
   const [checked, setChecked] = useState(false);
   const [staying, setStaying] = useState<OlccKeptLine[]>([]);
   const [offers, setOffers] = useState<OlccStockOffer[]>([]);
+  const [swaps, setSwaps] = useState<Record<string, OlccPrice>>({});
+  const [keptChoice, setKeptChoice] = useState<Record<string, true>>({});
   const oregon = isOregonState(state);
 
   useEffect(() => {
@@ -91,7 +95,7 @@ export function OlccSpiritsPanel() {
     skus,
     recipes,
   });
-  const order = spiritOrderWithAdditions(lines, added);
+  const order = applySpiritSwaps(spiritOrderWithAdditions(lines, added), swaps, zip);
 
   if (!oregon) return null;
 
@@ -180,6 +184,20 @@ export function OlccSpiritsPanel() {
 
   const removeOffer = (itemCode: string) => {
     setOffers((prev) => dropOlccOffer(prev, itemCode));
+  };
+
+  const swapLine = (shownCode: string, next: OlccPrice) => {
+    setSwaps((prev) => {
+      const source =
+        Object.entries(prev).find(([, row]) => row.itemCode.toLowerCase() === shownCode.toLowerCase())?.[0] ??
+        shownCode;
+      return { ...prev, [source]: next };
+    });
+    clearCheck();
+  };
+
+  const keepLine = (itemCode: string) => {
+    setKeptChoice((prev) => ({ ...prev, [itemCode]: true }));
   };
 
   const printList = () => {
@@ -290,6 +308,13 @@ export function OlccSpiritsPanel() {
               >
                 Store search
               </a>
+              <SameTypeChoices
+                line={line}
+                prices={prices}
+                hidden={Boolean(keptChoice[line.itemCode])}
+                onSwap={(next) => swapLine(line.itemCode, next)}
+                onKeep={() => keepLine(line.itemCode)}
+              />
             </li>
           ))}
         </ul>
@@ -336,6 +361,13 @@ export function OlccSpiritsPanel() {
                       Remove
                     </Button>
                   </span>
+                  <SameTypeChoices
+                    line={offer}
+                    prices={prices}
+                    hidden={Boolean(keptChoice[offer.itemCode])}
+                    onSwap={(next) => swapLine(offer.itemCode, next)}
+                    onKeep={() => keepLine(offer.itemCode)}
+                  />
                 </li>
               ))}
             </ul>
@@ -343,6 +375,42 @@ export function OlccSpiritsPanel() {
         </div>
       ) : null}
     </section>
+  );
+}
+
+function SameTypeChoices({
+  line,
+  prices,
+  hidden,
+  onSwap,
+  onKeep,
+}: {
+  line: { itemCode: string; name: string; size: string };
+  prices: readonly OlccPrice[];
+  hidden: boolean;
+  onSwap: (next: OlccPrice) => void;
+  onKeep: () => void;
+}) {
+  const options = sameTypeOptions(line, prices);
+  if (!options.length || hidden) return null;
+  return (
+    <div className="mt-1 w-full" data-olcc-same-type={line.itemCode}>
+      <ul className="max-h-36 space-y-1 overflow-y-auto">
+        {options.map((option) => (
+          <li key={option.itemCode} className="flex flex-wrap items-center gap-2 text-xs" data-olcc-option={option.itemCode}>
+            <span data-olcc-option-name={option.name}>{option.name}</span>
+            <span data-olcc-option-size={option.size}>{option.size}</span>
+            <span data-olcc-option-bottle={option.bottlePriceCents}>{formatCurrency(option.bottlePriceCents)} bottle</span>
+            <Button type="button" size="sm" variant="outline" data-olcc-swap={option.itemCode} onClick={() => onSwap(option)}>
+              Swap
+            </Button>
+          </li>
+        ))}
+      </ul>
+      <Button type="button" size="sm" variant="outline" className="mt-1" data-olcc-keep={line.itemCode} onClick={onKeep}>
+        Keep
+      </Button>
+    </div>
   );
 }
 

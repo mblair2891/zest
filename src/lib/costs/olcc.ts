@@ -218,6 +218,74 @@ export function searchOlccPrices(prices: readonly OlccPrice[], query: string): O
   return out;
 }
 
+const SPIRIT_TYPES = [
+  "bourbon",
+  "rye",
+  "scotch",
+  "irish",
+  "canadian",
+  "tequila",
+  "mezcal",
+  "cognac",
+  "brandy",
+  "gin",
+  "rum",
+  "vodka",
+  "liqueur",
+  "cordial",
+  "whiskey",
+  "whisky",
+] as const;
+
+/** Vodka stays vodka. Bourbon stays bourbon, even when the category also says whiskey. */
+export function spiritType(category: string, name = ""): string {
+  const fromCategory = spiritWord(category);
+  if (fromCategory) return fromCategory;
+  return spiritWord(name);
+}
+
+function spiritWord(raw: string): string {
+  const text = fold(raw);
+  if (!text) return "";
+  for (const word of SPIRIT_TYPES) {
+    if (text.split(" ").includes(word) || text.includes(word)) {
+      return word === "whisky" ? "whiskey" : word;
+    }
+  }
+  return "";
+}
+
+/** Same bottle size. 750 ML matches 750ml. 1.75 L matches 1750 ML. */
+export function sameBottleSize(a: string, b: string): boolean {
+  const marked = /(\d+(?:\.\d+)?)\s*(ml|l|oz)\b/i;
+  if (marked.test(a) && marked.test(b)) return bottleMl(a) === bottleMl(b);
+  const left = fold(a);
+  const right = fold(b);
+  return left.length > 0 && left === right;
+}
+
+/**
+ * Other bottles of the same type. Same size when any exist.
+ * The current item is left out. Beer and wine are left out.
+ */
+export function sameTypeOptions(
+  line: { itemCode: string; name?: string; size?: string },
+  prices: readonly OlccPrice[],
+): OlccPrice[] {
+  const self = prices.find((row) => row.itemCode.toLowerCase() === line.itemCode.trim().toLowerCase());
+  const type = spiritType(self?.category ?? "", line.name || self?.name || "");
+  if (!type) return [];
+  const size = line.size || self?.size || "";
+  const others = prices.filter((row) => {
+    if (row.itemCode.toLowerCase() === line.itemCode.trim().toLowerCase()) return false;
+    if (staysOnDistributor(row.category) || staysOnDistributor(row.name)) return false;
+    return spiritType(row.category, row.name) === type;
+  });
+  const sized = others.filter((row) => sameBottleSize(row.size, size));
+  const picked = sized.length ? sized : others;
+  return picked.slice().sort((a, b) => a.name.localeCompare(b.name) || a.bottlePriceCents - b.bottlePriceCents);
+}
+
 /** Match a recipe spirit such as "Tito's 750" to one item code. Ambiguous names do not match. */
 export function matchOlccSpirit(query: string, prices: readonly OlccPrice[]): OlccPrice | null {
   if (staysOnDistributor(query)) return null;
@@ -320,6 +388,37 @@ export function addOlccRowToOrder(
       source: "catalog",
     },
   ];
+}
+
+/** Replace one order line with another bottle. Quantity stays. A duplicate item is left as it is. */
+export function applySpiritSwaps(
+  lines: readonly SpiritOrderLine[],
+  swaps: Readonly<Record<string, OlccPrice>>,
+  zip: string,
+): SpiritOrderLine[] {
+  const used = new Set<string>();
+  const out: SpiritOrderLine[] = [];
+  for (const line of lines) {
+    const next = swaps[line.itemCode];
+    const itemCode = (next?.itemCode || line.itemCode).trim();
+    const key = itemCode.toLowerCase();
+    if (!key || used.has(key)) continue;
+    used.add(key);
+    if (!next) {
+      out.push(line);
+      continue;
+    }
+    out.push({
+      ...line,
+      name: next.name,
+      itemCode: next.itemCode,
+      size: next.size,
+      bottlePriceCents: next.bottlePriceCents,
+      casePriceCents: next.casePriceCents,
+      storeSearchUrl: oregonStoreSearchUrl({ itemCode: next.itemCode, name: next.name }, zip),
+    });
+  }
+  return out;
 }
 
 /** House pick-list lines first, then catalog rows that are not already on that list. */
