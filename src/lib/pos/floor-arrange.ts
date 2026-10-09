@@ -117,6 +117,9 @@ const SEATING_KINDS = new Set([
   "barstool",
 ]);
 
+/** Pieces that may sit on a wall. Walls, doors, and windows are the edges, not the pieces. */
+const FLUSH_KINDS = new Set([...SEATING_KINDS, "host_stand", "bar_top", "other"]);
+
 const OPENING_KINDS = new Set(["wall", "door", "window"]);
 
 export type ArrangeRoom = { widthIn: number; depthIn: number };
@@ -987,11 +990,42 @@ type FlushBox = {
   h: number;
   rotation?: number | null;
   kind?: string | null;
+  /**
+   * Drawn footprint in room percent, before spin.
+   * A bar passes its slab. The layout box stays the value that moves.
+   */
+  edge?: { x: number; y: number; w: number; h: number };
 };
 
+/** Spun footprint. An override edge rotates around the layout center, matching the editor. */
+function flushFootprint(moving: FlushBox, room: ArrangeRoom): { left: number; top: number; right: number; bottom: number } {
+  if (!moving.edge) return fixtureEdgeBox(moving, room);
+  const src = moving.edge;
+  const rot = ((Number(moving.rotation) || 0) % 360 + 360) % 360;
+  const frameCx = ((moving.x + moving.w / 2) / 100) * room.widthIn;
+  const frameCy = ((moving.y + moving.h / 2) / 100) * room.depthIn;
+  const corners = [
+    { x: (src.x / 100) * room.widthIn, y: (src.y / 100) * room.depthIn },
+    { x: ((src.x + src.w) / 100) * room.widthIn, y: (src.y / 100) * room.depthIn },
+    { x: ((src.x + src.w) / 100) * room.widthIn, y: ((src.y + src.h) / 100) * room.depthIn },
+    { x: (src.x / 100) * room.widthIn, y: ((src.y + src.h) / 100) * room.depthIn },
+  ];
+  const rad = (rot * Math.PI) / 180;
+  const cos = Math.cos(rad);
+  const sin = Math.sin(rad);
+  const spun = corners.map((p) => {
+    const dx = p.x - frameCx;
+    const dy = p.y - frameCy;
+    return { x: frameCx + dx * cos + dy * sin, y: frameCy + dx * sin + dy * cos };
+  });
+  const xs = spun.map((p) => p.x);
+  const ys = spun.map((p) => p.y);
+  return { left: Math.min(...xs), right: Math.max(...xs), top: Math.min(...ys), bottom: Math.max(...ys) };
+}
+
 /**
- * Seat a table, couch, booth, or stool on the visual face of a wall, door, or window.
- * The target is the spun edge, so a rotated opening does not leave a gap.
+ * Sit a table, rectangle, booth, couch, stool, host stand, or bar on the visual face
+ * of a wall, door, or window. The target is the spun edge, so no type keeps a gap.
  */
 export function snapFlushToArchitecture(
   moving: FlushBox,
@@ -1000,9 +1034,11 @@ export function snapFlushToArchitecture(
   thresholdIn = OBJECT_SNAP_IN,
 ): ArrangePoint | null {
   const kind = moving.kind ?? "table";
-  if (!SEATING_KINDS.has(kind)) return null;
+  if (!FLUSH_KINDS.has(kind)) return null;
   if (!(room.widthIn > 0) || !(room.depthIn > 0)) return null;
-  const box = fixtureEdgeBox(moving, room);
+  const box = flushFootprint(moving, room);
+  // Wall thickness is 6 in. A spun edge on the room line can land a hair past that.
+  const limit = thresholdIn + 0.05;
   let bestDx = 0;
   let bestDxAbs = Infinity;
   let bestDy = 0;
@@ -1010,13 +1046,13 @@ export function snapFlushToArchitecture(
   for (const other of others) {
     if (!other.kind || !OPENING_KINDS.has(other.kind)) continue;
     const edge = fixtureEdgeBox(other, room);
-    const yNear = box.bottom >= edge.top - thresholdIn && edge.bottom >= box.top - thresholdIn;
-    const xNear = box.right >= edge.left - thresholdIn && edge.right >= box.left - thresholdIn;
+    const yNear = box.bottom >= edge.top - limit && edge.bottom >= box.top - limit;
+    const xNear = box.right >= edge.left - limit && edge.right >= box.left - limit;
     if (yNear) {
       const options = [edge.left - box.right, edge.right - box.left];
       for (const delta of options) {
         const abs = Math.abs(delta);
-        if (abs <= thresholdIn && abs < bestDxAbs) {
+        if (abs <= limit && abs < bestDxAbs) {
           bestDxAbs = abs;
           bestDx = delta;
         }
@@ -1026,16 +1062,16 @@ export function snapFlushToArchitecture(
       const options = [edge.top - box.bottom, edge.bottom - box.top];
       for (const delta of options) {
         const abs = Math.abs(delta);
-        if (abs <= thresholdIn && abs < bestDyAbs) {
+        if (abs <= limit && abs < bestDyAbs) {
           bestDyAbs = abs;
           bestDy = delta;
         }
       }
     }
   }
-  if (bestDxAbs > thresholdIn && bestDyAbs > thresholdIn) return null;
-  const x = moving.x + (bestDxAbs <= thresholdIn ? (bestDx / room.widthIn) * 100 : 0);
-  const y = moving.y + (bestDyAbs <= thresholdIn ? (bestDy / room.depthIn) * 100 : 0);
+  if (bestDxAbs > limit && bestDyAbs > limit) return null;
+  const x = moving.x + (bestDxAbs <= limit ? (bestDx / room.widthIn) * 100 : 0);
+  const y = moving.y + (bestDyAbs <= limit ? (bestDy / room.depthIn) * 100 : 0);
   return {
     x: Math.round(x * 10000) / 10000,
     y: Math.round(y * 10000) / 10000,

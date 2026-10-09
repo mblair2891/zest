@@ -87,6 +87,7 @@ import {
   CANVAS_MARGIN_IN,
   applyRoomWalls,
   clampPieceToRoom,
+  clampSpunPiece,
   nearestWall,
   openingGaps,
   openingOnWall,
@@ -156,6 +157,7 @@ import {
   isStoolPathText,
   resizeBarLeg,
   slabBounds,
+  slabOuterBounds,
   wallEndExtensions,
   isArchitectureKind,
   legHandles,
@@ -278,7 +280,7 @@ function DistanceLines({
   tables: Array<{ id: string; kind?: string | null; x: number; y: number; w: number; h: number; rotation?: number | null }>;
   room: { widthIn: number; depthIn: number };
 }) {
-  const lines = dragDistanceLines(table, tables, room);
+  const lines = dragDistanceLines(pieceForMeasure(table, room), tables, room);
   if (!lines.length) return null;
   return (
     <div data-floor-distance-lines="" className="pointer-events-none absolute inset-0 z-30">
@@ -314,16 +316,44 @@ function DistanceLines({
   );
 }
 
+type MeasurePiece = {
+  id: string;
+  kind?: string | null;
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+  rotation?: number | null;
+  widthIn?: number | null;
+  barShape?: BarTopShape | null;
+  points?: { x: number; y: number }[] | null;
+  legLengths?: number[] | null;
+};
+
+/** Distance uses the drawn bar slab, so a flush counter reads 0. */
+function pieceForMeasure<T extends MeasurePiece>(table: T, room: { widthIn: number; depthIn: number }): T {
+  if (table.kind !== "bar_top") return table;
+  const plan = storedBarPlan(table);
+  const edge = slabOuterBounds(
+    plan,
+    barDepthIn(table.widthIn),
+    room,
+    barClosedShape(table.barShape ?? undefined, plan),
+  );
+  if (!(edge.w > 0) || !(edge.h > 0)) return table;
+  return { ...table, x: edge.x, y: edge.y, w: edge.w, h: edge.h };
+}
+
 function MeasureGuides({
   table,
   tables,
   room,
 }: {
-  table: { id: string; kind?: string | null; x: number; y: number; w: number; h: number; rotation?: number | null };
-  tables: Array<{ id: string; kind?: string | null; x: number; y: number; w: number; h: number; rotation?: number | null }>;
+  table: MeasurePiece;
+  tables: MeasurePiece[];
   room: { widthIn: number; depthIn: number };
 }) {
-  const readout = floorClearanceReadout(table, tables, room);
+  const readout = floorClearanceReadout(pieceForMeasure(table, room), tables, room);
   return (
     <div
       data-floor-measure=""
@@ -1199,11 +1229,21 @@ export function FloorEditorView() {
     const dining = Boolean(target) && !isArchitectureKind(target?.kind);
     let nx = drag.current.origX + dx;
     let ny = drag.current.origY + dy;
+    const hold = (x: number, y: number) => {
+      if (!target) return { x, y };
+      const rot = ((Number(target.rotation) || 0) % 360 + 360) % 360;
+      if (rot === 90 || rot === 270) {
+        return clampSpunPiece({ x, y, w: target.w, h: target.h, rotation: rot }, floorRoom);
+      }
+      return clampPieceToRoom(x, y, target.w, target.h);
+    };
     if (dining && target) {
-      const clamped = clampPieceToRoom(nx, ny, target.w, target.h);
+      const clamped = hold(nx, ny);
       nx = clamped.x;
       ny = clamped.y;
     }
+    const approachX = nx;
+    const approachY = ny;
     const snap = snapRef.current;
     if (snap.mode === "grid") {
       const snapped = snapToGrid(nx, ny, floorRoom, snap.gridIn);
@@ -1228,7 +1268,7 @@ export function FloorEditorView() {
       ny = snapPct(ny);
     }
     if (dining && target && target.kind !== "barstool") {
-      const clamped = clampPieceToRoom(nx, ny, target.w, target.h);
+      const clamped = hold(nx, ny);
       nx = clamped.x;
       ny = clamped.y;
     }
@@ -1240,11 +1280,35 @@ export function FloorEditorView() {
           !row.mergedIntoId &&
           (row.kind === "wall" || row.kind === "door" || row.kind === "window"),
       );
-      const flush = snapFlushToArchitecture(
-        { x: nx, y: ny, w: target.w, h: target.h, rotation: target.rotation, kind: target.kind },
-        edges,
-        floorRoom,
-      );
+      const barEdgeAt = (x: number, y: number) => {
+        if (target.kind !== "bar_top" || !drag.current) return undefined;
+        const base = drag.current.origPoints;
+        const plan = base
+          ? base.map((p) => ({
+              x: p.x + (x - drag.current!.origX),
+              y: p.y + (y - drag.current!.origY),
+            }))
+          : storedBarPlan(target).map((p) => ({ x: p.x + (x - target.x), y: p.y + (y - target.y) }));
+        return slabOuterBounds(plan, barDepthIn(target.widthIn), floorRoom, barClosedShape(target.barShape, plan));
+      };
+      const flushAt = (x: number, y: number) => {
+        const edge = barEdgeAt(x, y);
+        return snapFlushToArchitecture(
+          {
+            x,
+            y,
+            w: target.w,
+            h: target.h,
+            rotation: target.rotation,
+            kind: target.kind,
+            ...(edge ? { edge } : {}),
+          },
+          edges,
+          floorRoom,
+        );
+      };
+      let flush = flushAt(nx, ny);
+      if (!flush && (nx !== approachX || ny !== approachY)) flush = flushAt(approachX, approachY);
       if (flush) {
         nx = flush.x;
         ny = flush.y;
@@ -1275,8 +1339,8 @@ export function FloorEditorView() {
       };
       if (drag.current.origPoints) {
         const next = drag.current.origPoints.map((p) => ({
-          x: Math.round((p.x + appliedDx) * 10) / 10,
-          y: Math.round((p.y + appliedDy) * 10) / 10,
+          x: Math.round((p.x + appliedDx) * quant) / quant,
+          y: Math.round((p.y + appliedDy) * quant) / quant,
         }));
         patch.points = next;
         patch.legLengths = legLengthsOf(next);
@@ -1284,8 +1348,8 @@ export function FloorEditorView() {
       update(drag.current.id, patch);
       for (const [sid, origin] of Object.entries(drag.current.stoolOrig)) {
         update(sid, {
-          x: Math.round((origin.x + appliedDx) * 10) / 10,
-          y: Math.round((origin.y + appliedDy) * 10) / 10,
+          x: Math.round((origin.x + appliedDx) * quant) / quant,
+          y: Math.round((origin.y + appliedDy) * quant) / quant,
         });
       }
       return;

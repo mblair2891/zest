@@ -6,6 +6,18 @@ import type { GuideUpdate } from "@/lib/guide/types";
  */
 export const WHATS_NEW_ENTRIES: GuideUpdate[] = [
   {
+    id: "upd_2026_10_215_exterior_wall",
+    date: "2026-10-08",
+    title: "Every piece sits on the exterior wall",
+    summary: "A table, booth, couch, stool, host stand, and bar can sit flush on an outer wall.",
+    body: "A table, rectangle, booth, couch, stool, host stand, and bar can sit with an edge on an exterior wall. No type keeps a gap. Dragging onto that wall snaps flush. Distance reads 0. Publish does not move it.",
+    roles: ["owner_manager", "vendor_operator", "host_operator"],
+    surfaces: ["floor"],
+    audience: "all",
+    topicId: "floor-editor",
+    tags: ["floor"],
+  },
+  {
     id: "upd_2026_10_214_movable_openings",
     date: "2026-10-08",
     title: "Movable doors and windows",

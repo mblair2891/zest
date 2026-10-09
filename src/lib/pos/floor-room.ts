@@ -1,4 +1,4 @@
-import type { FloorRoom } from "./floor-dimensions.ts";
+import { fixtureEdgeBox, type FloorRoom } from "./floor-dimensions.ts";
 
 /** Blank margin around the room, in inches. The canvas is the room plus this on every side. */
 export const CANVAS_MARGIN_IN = 4 * 12;
@@ -111,6 +111,32 @@ export function clampPieceToRoom(x: number, y: number, w: number, h: number): { 
   return {
     x: Math.min(maxX, Math.max(0, x)),
     y: Math.min(maxY, Math.max(0, y)),
+  };
+}
+
+/**
+ * Keep the spun footprint inside the room.
+ * A quarter-turned booth or couch can still put an edge on the exterior wall.
+ */
+export function clampSpunPiece(
+  piece: { x: number; y: number; w: number; h: number; rotation?: number | null },
+  room: FloorRoom,
+): { x: number; y: number } {
+  if (!(room.widthIn > 0) || !(room.depthIn > 0)) return { x: piece.x, y: piece.y };
+  const box = fixtureEdgeBox(piece, room);
+  const wide = box.right - box.left;
+  const tall = box.bottom - box.top;
+  let dx = 0;
+  let dy = 0;
+  if (wide >= room.widthIn) dx = -box.left;
+  else if (box.left < 0) dx = -box.left;
+  else if (box.right > room.widthIn) dx = room.widthIn - box.right;
+  if (tall >= room.depthIn) dy = -box.top;
+  else if (box.top < 0) dy = -box.top;
+  else if (box.bottom > room.depthIn) dy = room.depthIn - box.bottom;
+  return {
+    x: piece.x + (dx / room.widthIn) * 100,
+    y: piece.y + (dy / room.depthIn) * 100,
   };
 }
 

@@ -13,7 +13,8 @@ import {
   duplicateSeatMessage,
   snapFlushToArchitecture,
 } from "../src/lib/pos/floor-arrange.ts";
-import { openingOnWall, outlineWalls } from "../src/lib/pos/floor-room.ts";
+import { clampPieceToRoom, clampSpunPiece, openingOnWall, outlineWalls } from "../src/lib/pos/floor-room.ts";
+import { planFromLegInches, slabOuterBounds } from "../src/lib/pos/floor-architecture.ts";
 import { floorPlanFromPos, parseFloorPlan, tablesFromFloorPlan } from "../src/lib/saas/location-catalog.ts";
 
 const room = { widthIn: 40 * 12, depthIn: 30 * 12 };
@@ -280,8 +281,11 @@ test("duplicate seating numbers name both pieces and empty labels stay open", ()
   assert.match(guide, /distance label reads 0/);
   assert.match(guide, /Empty labels are allowed/);
   const types = readFileSync("src/lib/guide/types.ts", "utf8");
-  assert.match(types, /2026\.10\.214/);
-  assert.match(types, /Movable doors and windows/);
+  assert.match(types, /2026\.10\.215/);
+  assert.match(types, /Every piece sits on the exterior wall/);
+  assert.match(guide, /exterior wall/);
+  assert.match(guide, /No type keeps a gap/);
+  assert.match(guide, /Distance reads 0/);
   assert.match(editor, /data-floor-clearance=\{readout\.flush \? "0" : undefined\}/);
   assert.match(editor, /floorClearanceReadout/);
 });
@@ -424,4 +428,162 @@ test("a couch on the right window and a piece on the left wall read 0 and stay f
   const again = tablesFromFloorPlan(parseFloorPlan(parsed)!);
   assert.equal(again.find((piece) => piece.id === "c1")?.x, couchPlaced.x);
   assert.equal(again.find((piece) => piece.id === "t1")?.x, tablePlaced.x);
+});
+
+test("a table, a rectangle, a booth, and a couch sit on the exterior wall and publish keeps them", () => {
+  const left = outlineWalls(room).find((wall) => wall.edge === "left");
+  const right = outlineWalls(room).find((wall) => wall.edge === "right");
+  const top = outlineWalls(room).find((wall) => wall.edge === "top");
+  assert.ok(left && right && top);
+  const leftBox = fixtureEdgeBox(left, room);
+  const rightBox = fixtureEdgeBox(right, room);
+  const topBox = fixtureEdgeBox(top, room);
+  const wall = { ...left, id: "wall-l", kind: "wall" as const };
+
+  const specs = [
+    { id: "table", kind: "table" as const, wIn: 36, hIn: 36, shape: "round" as const, seats: 4 },
+    { id: "rect", kind: "table" as const, wIn: 48, hIn: 24, shape: "rect" as const, seats: 4 },
+    { id: "booth", kind: "booth_4" as const, wIn: 60, hIn: 48, shape: "booth" as const, seats: 4 },
+    { id: "couch", kind: "couch" as const, wIn: 84, hIn: 32, shape: "rect" as const, seats: 3 },
+    { id: "stool", kind: "barstool" as const, wIn: 16, hIn: 16, shape: "rect" as const, seats: 1 },
+    { id: "host", kind: "host_stand" as const, wIn: 48, hIn: 30, shape: "rect" as const, seats: 0 },
+  ];
+  const placed = specs.map((spec, index) => {
+    const piece = {
+      id: spec.id,
+      x: ((leftBox.right + 4) / room.widthIn) * 100,
+      y: 12 + index * 10,
+      w: (spec.wIn / room.widthIn) * 100,
+      h: (spec.hIn / room.depthIn) * 100,
+      rotation: 0,
+      kind: spec.kind,
+    };
+    const snapped = snapFlushToArchitecture(piece, [wall], room);
+    assert.ok(snapped, spec.id);
+    const after = fixtureEdgeBox({ ...piece, ...snapped }, room);
+    assert.ok(Math.abs(after.left - leftBox.right) < 0.05, `${spec.id} gap ${after.left - leftBox.right}`);
+    const readout = floorClearanceReadout({ ...piece, ...snapped }, [wall], room);
+    assert.deepEqual(readout.lines, ["0"], spec.id);
+    assert.equal(clearanceLabel(nearestArchitectureGap({ ...piece, ...snapped }, [wall], room)?.inches ?? 1), "0");
+    return { spec, piece: { ...piece, ...snapped } };
+  });
+
+  assert.equal(
+    snapFlushToArchitecture({ ...placed[0]!.piece, kind: "wall" }, [wall], room),
+    null,
+  );
+  assert.equal(
+    snapFlushToArchitecture({ ...placed[0]!.piece, kind: "door" }, [wall], room),
+    null,
+  );
+
+  const couchW = (84 / room.widthIn) * 100;
+  const couchH = (32 / room.depthIn) * 100;
+  const pinned = clampPieceToRoom(100, 40, couchW, couchH);
+  const pinnedGap = rightBox.left - fixtureEdgeBox({ x: pinned.x, y: 40, w: couchW, h: couchH, rotation: 90 }, room).right;
+  assert.ok(pinnedGap > 6, `rotated couch kept a ${pinnedGap} in gap`);
+  const spun = clampSpunPiece({ x: 100, y: 40, w: couchW, h: couchH, rotation: 90 }, room);
+  const couchSnap = snapFlushToArchitecture(
+    { x: spun.x, y: 40, w: couchW, h: couchH, rotation: 90, kind: "couch" },
+    [{ ...right, kind: "wall" }],
+    room,
+  );
+  assert.ok(couchSnap);
+  const couchAfter = fixtureEdgeBox({ x: couchSnap.x, y: 40, w: couchW, h: couchH, rotation: 90 }, room);
+  assert.ok(Math.abs(couchAfter.right - rightBox.left) < 0.05);
+
+  const originY = ((topBox.bottom + 4 + 12) / room.depthIn) * 100;
+  const plan = planFromLegInches("straight", { x: 18, y: originY }, [12 * 12], room);
+  const edge = slabOuterBounds(plan, 24, room, false);
+  const frame = { x: edge.x - 0.4, y: edge.y - 0.4, w: edge.w + 0.8, h: edge.h + 0.8 };
+  const barSnap = snapFlushToArchitecture(
+    { ...frame, rotation: 0, kind: "bar_top", edge },
+    [{ ...top, kind: "wall" }],
+    room,
+  );
+  assert.ok(barSnap);
+  const shiftY = barSnap.y - frame.y;
+  const barTop = ((edge.y + shiftY) / 100) * room.depthIn;
+  assert.ok(Math.abs(barTop - topBox.bottom) < 0.05, `bar gap ${barTop - topBox.bottom}`);
+  const barPoints = plan.map((p) => ({ x: p.x, y: p.y + shiftY }));
+  const barRead = floorClearanceReadout(
+    { id: "bar", x: edge.x, y: edge.y + shiftY, w: edge.w, h: edge.h, kind: "bar_top" },
+    [{ ...top, id: "wall-t", kind: "wall" }],
+    room,
+  );
+  assert.deepEqual(barRead.lines, ["0"]);
+
+  const sections = [{ id: "dining", name: "Dining", color: "sec-1", sort: 0 }];
+  const pieces = [
+    ...placed.map(({ spec, piece }) => ({
+      ...piece,
+      label: spec.id === "host" ? "Host" : spec.id === "stool" ? "B1" : "1",
+      section: "Dining",
+      sectionId: "dining",
+      seats: spec.seats,
+      shape: spec.shape,
+      status: "empty" as const,
+      lengthIn: spec.wIn,
+      widthIn: spec.hIn,
+    })),
+    {
+      id: "couch-turn",
+      label: "2",
+      section: "Dining",
+      sectionId: "dining",
+      seats: 3,
+      x: couchSnap.x,
+      y: 40,
+      w: couchW,
+      h: couchH,
+      shape: "rect" as const,
+      kind: "couch" as const,
+      rotation: 90,
+      status: "empty" as const,
+      lengthIn: 84,
+      widthIn: 32,
+    },
+    {
+      id: "bar",
+      label: "BAR",
+      section: "Dining",
+      sectionId: "dining",
+      seats: 0,
+      x: barSnap.x,
+      y: barSnap.y,
+      w: frame.w,
+      h: frame.h,
+      shape: "rect" as const,
+      kind: "bar_top" as const,
+      barShape: "straight" as const,
+      points: barPoints,
+      legLengths: [144],
+      rotation: 0,
+      status: "empty" as const,
+      lengthIn: 144,
+      widthIn: 24,
+    },
+  ];
+  const parsed = parseFloorPlan(floorPlanFromPos(pieces, sections, room));
+  assert.ok(parsed);
+  const back = tablesFromFloorPlan(parsed);
+  for (const piece of pieces) {
+    const row = back.find((item) => item.id === piece.id);
+    assert.ok(row, piece.id);
+    assert.equal(row.x, piece.x, piece.id);
+    assert.equal(row.y, piece.y, piece.id);
+    assert.equal(row.rotation ?? 0, piece.rotation ?? 0, piece.id);
+  }
+  const barBack = back.find((row) => row.id === "bar");
+  assert.deepEqual(barBack?.points, barPoints);
+  const again = tablesFromFloorPlan(parseFloorPlan(parsed)!);
+  assert.equal(again.find((row) => row.id === "table")?.x, placed[0]!.piece.x);
+  assert.equal(again.find((row) => row.id === "booth")?.x, placed.find((row) => row.spec.id === "booth")!.piece.x);
+  assert.equal(again.find((row) => row.id === "couch")?.y, placed.find((row) => row.spec.id === "couch")!.piece.y);
+  assert.equal(again.find((row) => row.id === "bar")?.y, barSnap.y);
+
+  const editor = readFileSync("src/components/pos/FloorEditorView.tsx", "utf8");
+  assert.match(editor, /clampSpunPiece/);
+  assert.match(editor, /slabOuterBounds/);
+  assert.match(editor, /pieceForMeasure/);
 });

@@ -300,6 +300,34 @@ export function barSlabEdges(
   };
 }
 
+/** Slab footprint in room percent, with no pad and no clamp. This is the edge that meets a wall. */
+export function slabOuterBounds(
+  points: PlanPoint[],
+  depthIn: number,
+  room: RoomInches,
+  closed: boolean,
+): { x: number; y: number; w: number; h: number } {
+  const { outer, inner } = barSlabEdges(points, depthIn, room, closed);
+  const all = [...outer, ...inner];
+  if (!all.length) return { x: 0, y: 0, w: 0, h: 0 };
+  let minX = Infinity;
+  let minY = Infinity;
+  let maxX = -Infinity;
+  let maxY = -Infinity;
+  for (const p of all) {
+    minX = Math.min(minX, p.x);
+    minY = Math.min(minY, p.y);
+    maxX = Math.max(maxX, p.x);
+    maxY = Math.max(maxY, p.y);
+  }
+  return {
+    x: minX,
+    y: minY,
+    w: Math.max(0, maxX - minX),
+    h: Math.max(0, maxY - minY),
+  };
+}
+
 export function slabBounds(
   points: PlanPoint[],
   depthIn: number,
