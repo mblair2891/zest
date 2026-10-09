@@ -14,6 +14,16 @@ import {
   spiritPourCostCents,
   staysOnDistributor,
 } from "../src/lib/costs/olcc.ts";
+import {
+  dropOlccOffer,
+  fetchOlccItemStock,
+  keepOlccOffer,
+  olccPickListHtml,
+  parseOlccStockPage,
+  pickListByStore,
+  reviewOlccOrder,
+  type StockFetch,
+} from "../src/lib/costs/olcc-stock.ts";
 import { recipeCostCents } from "../src/lib/costs/theoretical.ts";
 import type { CostSku, ItemRecipe } from "../src/lib/costs/types.ts";
 
@@ -308,6 +318,13 @@ test("no checkout call exists, and a non-Oregon screen does not render the list"
   assert.match(panel, /searchOlccPrices\(prices, query\)/);
   assert.match(panel, /addOlccRowToOrder/);
   assert.match(panel, /The OLCC price list did not load/);
+  assert.match(panel, /data-olcc-done/);
+  assert.match(panel, /data-olcc-offer/);
+  assert.match(panel, /data-olcc-use-store/);
+  assert.match(panel, /data-olcc-remove/);
+  assert.match(panel, /data-olcc-kept/);
+  assert.match(panel, /olccPickListHtml\(house, staying\)/);
+  assert.match(panel, /The house store stock check did not load/);
   assert.doesNotMatch(panel, /matchOlccSpirit/);
   assert.doesNotMatch(panel, /\.slice\(\s*0\s*,\s*2\s*\)/);
   const catalogAt = panel.indexOf("data-olcc-catalog");
@@ -321,4 +338,118 @@ test("no checkout call exists, and a non-Oregon screen does not render the list"
   const orders = readFileSync("src/components/pos/CostWorkspace.tsx", "utf8");
   assert.doesNotMatch(orders, /<OlccSpiritsPanel/);
   assert.doesNotMatch(orders, /\["suppliers", "Suppliers"\]/);
+  const stock = readFileSync("src/lib/costs/olcc-stock.ts", "utf8");
+  assert.doesNotMatch(stock, /checkout|placeOrder|addToCart/i);
+  assert.match(stock, /oregonliquorsearch\.com/);
+});
+
+const STOCK_PAGE = `<title>Product Details | Oregon Liquor Search</title>
+<table class="list">
+<tr onclick="agencyNumber=1278">
+<td class="store-no"><span class="link">1278</span></td>
+<td>GRANTS PASS</td>
+<td>3500 Merlin Rd</td>
+<td class="zip">97526</td>
+<td class="phone">541-476-4551</td>
+<td>Mon-Sun 7-10</td>
+<td class="qty">14</td>
+</tr>
+<tr>
+<td class="store-no"><span class="link">1076</span></td>
+<td>GRANTS PASS</td>
+<td>210 SE 8th St</td>
+<td class="zip">97526</td>
+<td class="phone">541-479-3729</td>
+<td>Mon-Sat 9-8</td>
+<td class="qty">144</td>
+</tr>
+</table>`;
+
+test("a finished order keeps house lines and offers the nearest store or remove", () => {
+  const rows = parseOlccStockPage(STOCK_PAGE);
+  assert.equal(rows[0]?.storeNumber, "1278");
+  assert.equal(rows[0]?.qty, 14);
+  assert.equal(rows[1]?.storeNumber, "1076");
+  assert.equal(rows[1]?.qty, 144);
+  const house = {
+    storeNumber: "1278",
+    name: "Shop Smart",
+    city: "Grants Pass",
+    address: "3500 Merlin Rd",
+    phone: "541-476-4551",
+  };
+  const review = reviewOlccOrder({
+    lines: [
+      { itemCode: "8488B", name: "TITO HANDMADE VODKA", size: "750 ML", qty: 1, bottlePriceCents: 2495, casePriceCents: 29940 },
+      { itemCode: "9999A", name: "OTHER PLAIN VODKA", size: "750 ML", qty: 1, bottlePriceCents: 1000, casePriceCents: 12000 },
+      { itemCode: "0000Z", name: "RARE BOTTLE", size: "750 ML", qty: 1, bottlePriceCents: 5000, casePriceCents: 0 },
+    ],
+    house,
+    byItem: {
+      "8488B": rows,
+      "9999A": rows.filter((row) => row.storeNumber !== "1278"),
+      "0000Z": [],
+    },
+    directory: [
+      house,
+      { storeNumber: "1076", name: "Grape Street", city: "Grants Pass", address: "210 SE 8th St", phone: "541-479-3729" },
+    ],
+  });
+  assert.equal(review.staying.map((line) => line.itemCode).join(), "8488B");
+  assert.equal(review.staying[0]?.storeNumber, "1278");
+  assert.equal(review.offers[0]?.itemCode, "9999A");
+  assert.equal(review.offers[0]?.nearest?.storeNumber, "1076");
+  assert.equal(review.offers[0]?.nearest?.name, "Grape Street");
+  assert.equal(review.offers[1]?.nearest, null);
+  const kept = keepOlccOffer(review.staying, review.offers[0]!);
+  const open = dropOlccOffer(dropOlccOffer(review.offers, "9999A"), "0000Z");
+  assert.equal(open.length, 0);
+  assert.equal(pickListByStore(kept).length, 2);
+  const printed = olccPickListHtml("House", kept);
+  assert.match(printed, /8488B/);
+  assert.match(printed, /9999A/);
+  assert.match(printed, /Shop Smart/);
+  assert.match(printed, /Grape Street/);
+  assert.doesNotMatch(printed, /0000Z/);
+  assert.doesNotMatch(printed, /RARE BOTTLE/);
+});
+
+test("stock check reads the house store from liquor search", async () => {
+  const fetchImpl: StockFetch = async (input, init) => {
+    const url = String(input);
+    assert.match(url, /^https:\/\/www\.oregonliquorsearch\.com\//);
+    const header = (name: string) => init?.headers?.[name] ?? init?.headers?.[name.toLowerCase()] ?? null;
+    if (url.includes("WelcomeController")) {
+      return {
+        ok: false,
+        status: 302,
+        headers: { get: (name) => (name.toLowerCase() === "set-cookie" ? "JSESSIONID=abc; Path=/" : null) },
+        text: async () => "",
+      };
+    }
+    if (init?.method === "POST") {
+      assert.match(init.body ?? "", /productSearchParam=8488B/);
+      assert.match(init.body ?? "", /locationSearchParam=1278/);
+      assert.match(init.body ?? "", /radiusSearchParam=60/);
+      assert.equal(header("Cookie"), "JSESSIONID=abc");
+      return {
+        ok: false,
+        status: 302,
+        headers: {
+          get: (name) =>
+            name.toLowerCase() === "location"
+              ? "https://www.oregonliquorsearch.com/servlet/FrontController?view=productlocation&action=search&productRowNum=1&column=Distance"
+              : null,
+        },
+        text: async () => "",
+      };
+    }
+    assert.match(url, /view=productlocation/);
+    assert.equal(header("Cookie"), "JSESSIONID=abc");
+    return { ok: true, status: 200, headers: { get: () => null }, text: async () => STOCK_PAGE };
+  };
+  const page = await fetchOlccItemStock("8488B", "1278", fetchImpl);
+  assert.equal(page.rows[0]?.storeNumber, "1278");
+  assert.equal(page.rows[0]?.qty, 14);
+  assert.equal(page.rows[1]?.storeNumber, "1076");
 });

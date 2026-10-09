@@ -6,6 +6,18 @@ import type { GuideUpdate } from "@/lib/guide/types";
  */
 export const WHATS_NEW_ENTRIES: GuideUpdate[] = [
   {
+    id: "upd_2026_10_226_olcc_stock",
+    date: "2026-10-09",
+    title: "House store stock check",
+    summary: "Finish the spirits order. A line the house store lacks offers the nearest store or remove.",
+    body: "When the order is done, the house liquor store is checked. A line it has stays. A line it does not have offers the nearest store that has it, or remove. Staff pick. No order is sent. Print is the pick list, split by store if they kept a second store.",
+    roles: ["owner_manager", "host_operator", "vendor_operator"],
+    surfaces: ["settings"],
+    audience: "all",
+    topicId: "suppliers",
+    tags: ["costs", "suppliers"],
+  },
+  {
     id: "upd_2026_10_225_olcc_price_list",
     date: "2026-10-09",
     title: "Full OLCC spirits price list",

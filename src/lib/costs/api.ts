@@ -108,6 +108,35 @@ export const refreshOlccPricesFn = createServerFn({ method: "POST" })
     return { prices };
   });
 
+/** Read which stores have these bottles. Does not place an order. */
+export const checkOlccHouseStockFn = createServerFn({ method: "POST" })
+  .middleware([optionalAuthMiddleware])
+  .validator((d: { houseStoreNumber?: string; lines?: { itemCode?: string }[] }) => ({
+    houseStoreNumber: String(d.houseStoreNumber ?? "").replace(/\D/g, "").slice(0, 8),
+    lines: (Array.isArray(d.lines) ? d.lines : [])
+      .slice(0, 40)
+      .map((line) => ({ itemCode: String(line?.itemCode ?? "").replace(/[^a-z0-9]/gi, "").slice(0, 16) }))
+      .filter((line) => line.itemCode),
+  }))
+  .handler(async ({ context, data }) => {
+    const { rateLimit } = await import("@/lib/saas/rate-limit.server");
+    const key = `olcc-stock:${context.userId ?? "anon"}`;
+    if (rateLimit(key, 6, 60_000)) {
+      throw new Error("Too many stock checks — wait a minute");
+    }
+    if (!data.houseStoreNumber) throw new Error("Pick the house store first");
+    const { fetchOlccOrderStock } = await import("./olcc-stock");
+    const byItem = await fetchOlccOrderStock(data.lines, data.houseStoreNumber);
+    let directory: { storeNumber: string; name: string; city: string; address: string; phone: string }[] = [];
+    try {
+      const { fetchOlccStores } = await import("./olcc-stores");
+      directory = await fetchOlccStores();
+    } catch {
+      directory = [];
+    }
+    return { byItem, directory };
+  });
+
 export const sendVarianceAlertFn = createServerFn({ method: "POST" })
   .middleware([optionalAuthMiddleware])
   .validator((d: { to: string; subject: string; text: string }) => ({

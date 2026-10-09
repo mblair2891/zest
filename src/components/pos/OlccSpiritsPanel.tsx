@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { refreshOlccPricesFn } from "@/lib/costs/api";
+import { checkOlccHouseStockFn, refreshOlccPricesFn } from "@/lib/costs/api";
 import {
   addOlccRowToOrder,
   buildSpiritOrderList,
@@ -15,6 +15,14 @@ import {
   type OlccPrice,
   type SpiritOrderLine,
 } from "@/lib/costs/olcc";
+import {
+  dropOlccOffer,
+  keepOlccOffer,
+  olccPickListHtml,
+  reviewOlccOrder,
+  type OlccKeptLine,
+  type OlccStockOffer,
+} from "@/lib/costs/olcc-stock";
 import { useCostStore } from "@/lib/costs/store";
 import { persistLocationCatalog } from "@/lib/pos/persist-location-setup";
 import { parseJurisdiction } from "@/lib/pos/jurisdiction";
@@ -39,10 +47,14 @@ export function OlccSpiritsPanel() {
   const olcc = useCostStore((s) => s.olcc);
   const skus = useCostStore((s) => s.skus);
   const recipes = useCostStore((s) => s.recipes);
+  const houseSupplier = useCostStore((s) => s.suppliers.find((supplier) => supplier.houseStore));
   const house = usePosStore((s) => s.settings.name);
   const [note, setNote] = useState("");
   const [query, setQuery] = useState("");
   const [added, setAdded] = useState<SpiritOrderLine[]>([]);
+  const [checked, setChecked] = useState(false);
+  const [staying, setStaying] = useState<OlccKeptLine[]>([]);
+  const [offers, setOffers] = useState<OlccStockOffer[]>([]);
   const oregon = isOregonState(state);
 
   useEffect(() => {
@@ -105,18 +117,73 @@ export function OlccSpiritsPanel() {
       .catch(() => setNote("The OLCC price list did not load."));
   };
 
+  const clearCheck = () => {
+    setChecked(false);
+    setStaying([]);
+    setOffers([]);
+  };
+
   const addRow = (row: OlccPrice) => {
     setAdded((prev) => addOlccRowToOrder(lines, prev, row, zip));
+    clearCheck();
+  };
+
+  const houseStore = {
+    storeNumber: houseSupplier?.olccStoreNumber ?? "",
+    name: houseSupplier?.name || "House store",
+    city: cityFromAddress(houseSupplier?.address ?? ""),
+    address: houseSupplier?.address ?? "",
+    phone: houseSupplier?.phone ?? "",
+  };
+
+  const finishOrder = () => {
+    if (!houseStore.storeNumber) {
+      setNote("Pick the house store first.");
+      return;
+    }
+    if (!order.length) return;
+    setNote("Checking the house store…");
+    void checkOlccHouseStockFn({
+      data: {
+        houseStoreNumber: houseStore.storeNumber,
+        lines: order.filter((line) => line.itemCode).map((line) => ({ itemCode: line.itemCode })),
+      },
+    })
+      .then((res) => {
+        const review = reviewOlccOrder({
+          lines: order.map((line) => ({
+            itemCode: line.itemCode,
+            name: line.name,
+            size: line.size,
+            qty: line.qty,
+            bottlePriceCents: line.bottlePriceCents,
+            casePriceCents: line.casePriceCents,
+          })),
+          house: houseStore,
+          byItem: res.byItem,
+          directory: res.directory,
+        });
+        setStaying(review.staying);
+        setOffers(review.offers);
+        setChecked(true);
+        setNote("");
+      })
+      .catch(() => setNote("The house store stock check did not load."));
+  };
+
+  const chooseStore = (itemCode: string) => {
+    const offer = offers.find((row) => row.itemCode === itemCode);
+    if (!offer) return;
+    setStaying((prev) => keepOlccOffer(prev, offer));
+    setOffers((prev) => dropOlccOffer(prev, itemCode));
+  };
+
+  const removeOffer = (itemCode: string) => {
+    setOffers((prev) => dropOlccOffer(prev, itemCode));
   };
 
   const printList = () => {
-    const rows = order
-      .map(
-        (line) =>
-          `<tr><td>${line.qty}</td><td>${line.name}</td><td>${line.size}</td><td>${line.itemCode}</td><td>${(line.bottlePriceCents / 100).toFixed(2)}</td></tr>`,
-      )
-      .join("");
-    const html = `<!doctype html><title>${house} spirits</title><body><h1>${house} spirits</h1><p>Buy these at the store. This list does not place an order.</p><table><tr><th>Qty</th><th>Item</th><th>Size</th><th>Code</th><th>Bottle</th></tr>${rows}</table></body>`;
+    const html = olccPickListHtml(house, staying);
     const w = window.open("", "_blank");
     if (!w) return;
     w.document.write(html);
@@ -132,8 +199,8 @@ export function OlccSpiritsPanel() {
       <h3 className="text-sm font-semibold">Oregon spirits</h3>
       <p className="mt-1 text-xs text-muted-foreground">
         Distilled spirits only. Beer and wine stay on the distributor path. No order is sent to the OLCC. The price
-        list is the full current month. Print the pick list, upload the store receipt, and confirm the lines that
-        arrived.
+        list is the full current month. When the order is done, the house store is checked. Print the lines you
+        kept, upload the store receipt, and confirm the lines that arrived.
       </p>
       {prices.length ? (
         <>
@@ -188,7 +255,10 @@ export function OlccSpiritsPanel() {
         <Button type="button" size="sm" variant="outline" data-olcc-refresh="" onClick={refresh}>
           Refresh price list
         </Button>
-        <Button type="button" size="sm" variant="outline" data-olcc-print="" onClick={printList} disabled={!order.length}>
+        <Button type="button" size="sm" variant="outline" data-olcc-done="" onClick={finishOrder} disabled={!order.length}>
+          Done
+        </Button>
+        <Button type="button" size="sm" variant="outline" data-olcc-print="" onClick={printList} disabled={!staying.length}>
           Print list
         </Button>
       </div>
@@ -226,6 +296,57 @@ export function OlccSpiritsPanel() {
       ) : (
         <p className="mt-2 text-xs text-muted-foreground">No spirits are below par.</p>
       )}
+      {checked ? (
+        <div className="mt-3" data-olcc-stock="">
+          {staying.length ? (
+            <ul className="space-y-2 text-sm">
+              {staying.map((line) => (
+                <li key={`kept-${line.itemCode}`} data-olcc-kept={line.itemCode} data-olcc-kept-store={line.storeNumber}>
+                  {line.qty} × {line.name}
+                  {line.size ? ` · ${line.size}` : ""} · {line.storeName}
+                  {line.storeCity ? `, ${line.storeCity}` : ""} has it
+                </li>
+              ))}
+            </ul>
+          ) : null}
+          {offers.length ? (
+            <ul className="mt-2 space-y-2 text-sm">
+              {offers.map((offer) => (
+                <li key={`offer-${offer.itemCode}`} className="rounded-xl border border-border px-2 py-2" data-olcc-offer={offer.itemCode}>
+                  <span>
+                    {offer.qty} × {offer.name}
+                    {offer.size ? ` · ${offer.size}` : ""}
+                  </span>
+                  {offer.nearest ? (
+                    <span className="mt-1 block text-xs" data-olcc-nearest={offer.nearest.storeNumber}>
+                      {offer.nearest.name}
+                      {offer.nearest.city ? `, ${offer.nearest.city}` : ""}
+                      {offer.nearest.address ? ` · ${offer.nearest.address}` : ""}
+                    </span>
+                  ) : (
+                    <span className="mt-1 block text-xs text-muted-foreground">No nearby store has this.</span>
+                  )}
+                  <span className="mt-1 flex flex-wrap gap-2">
+                    {offer.nearest ? (
+                      <Button type="button" size="sm" variant="outline" data-olcc-use-store={offer.itemCode} onClick={() => chooseStore(offer.itemCode)}>
+                        Use this store
+                      </Button>
+                    ) : null}
+                    <Button type="button" size="sm" variant="outline" data-olcc-remove={offer.itemCode} onClick={() => removeOffer(offer.itemCode)}>
+                      Remove
+                    </Button>
+                  </span>
+                </li>
+              ))}
+            </ul>
+          ) : null}
+        </div>
+      ) : null}
     </section>
   );
+}
+
+function cityFromAddress(address: string): string {
+  const parts = address.split(",").map((part) => part.trim()).filter(Boolean);
+  return parts.length > 1 ? parts[parts.length - 1]! : "";
 }
