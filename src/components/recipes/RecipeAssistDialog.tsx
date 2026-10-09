@@ -20,6 +20,8 @@ import { recipeForMenuItem } from "@/lib/recipes/normalize";
 import { costEntityScope } from "@/lib/costs/permissions";
 import type { RecipeExtract, RecipeLine } from "@/lib/costs/types";
 import { recipeCostCents } from "@/lib/costs/theoretical";
+import { pricesForRecipeCost } from "@/lib/costs/olcc";
+import { parseJurisdiction } from "@/lib/pos/jurisdiction";
 import { formatCurrency } from "@/lib/utils";
 
 export function RecipeAssistButton({
@@ -57,6 +59,8 @@ export function RecipeAssistDialog({
   const emp = usePosStore((s) => s.employees.find((e) => e.id === s.currentEmployeeId) ?? null);
   const menuItems = usePosStore((s) => s.menuItems);
   const skus = useCostStore((s) => s.skus);
+  const olcc = useCostStore((s) => s.olcc);
+  const jurisdiction = usePosStore((s) => s.settings.jurisdiction);
   const recipes = useCostStore((s) => s.recipes);
   const upsert = useCostStore((s) => s.upsertRecipe);
   const [ai, setAi] = useState<boolean | null>(null);
@@ -168,6 +172,7 @@ export function RecipeAssistDialog({
         }
       : undefined,
     skus,
+    pricesForRecipeCost(parseJurisdiction(jurisdiction).state, olcc),
   );
 
   return (

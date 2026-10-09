@@ -6,6 +6,18 @@ import type { GuideUpdate } from "@/lib/guide/types";
  */
 export const WHATS_NEW_ENTRIES: GuideUpdate[] = [
   {
+    id: "upd_2026_10_218_oregon_spirits",
+    date: "2026-10-09",
+    title: "Oregon spirits price list",
+    summary: "In Oregon, a spirit uses the OLCC bottle price. Staff open a store search and buy it themselves.",
+    body: "Only when the location state is Oregon. Distilled spirits only. Beer and wine stay on the distributor path. No order is sent to OLCC. The invoice photo is still what receives the bottles. The OLCC monthly price list is pulled from Oregon open data. The list stores item code, name, size, proof, category, bottle price, and case price. It refreshes on the 1st, and again on the 20th for next-month prices. A recipe spirit matches an item code. Cost on the recipe uses the bottle price. A spirits order list is built from par and recipes. Each line opens Oregon Liquor Search for that item and the location zip, so staff see which store has it. Summex does not place the order. The list can be printed. Staff buy it at the store.",
+    roles: ["owner_manager", "host_operator", "vendor_operator"],
+    surfaces: ["settings"],
+    audience: "all",
+    topicId: "cost-ordering",
+    tags: ["costs", "ordering"],
+  },
+  {
     id: "upd_2026_10_217_recipe_guess",
     date: "2026-10-09",
     title: "Menu upload recipe guess",

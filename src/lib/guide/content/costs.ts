@@ -19,7 +19,7 @@ export const COST_TOPICS: GuideTopic[] = [
         "Follow-ups only when the file is ambiguous (unit size, which recipe item, which entity). Confirm, then Post receipt + GL to that entity’s inventory and cost ledger.",
         "Recipes: oz/ml of each SKU per sale. Menu items without a recipe are prompted to attach. Vodka drinks decrement vodka by recipe oz × that entity’s tickets.",
         "Scan exceptions. Manager records a required response (event, take-home, breakage, mis-ring, theft review). Not an accusation.",
-        "PAR POs: draft from min/max, send email/CSV (API stub available). Receive partial. Match to invoice.",
+        "PAR POs: draft from min/max, send email/CSV (API stub available). Receive partial. Match to invoice. In Oregon, distilled spirits are a separate buy list. Beer and wine stay on this distributor PO.",
         "Price recs: Accept opens Menu with the suggested price prefilled. You still Save.",
       ),
       ul(
@@ -60,7 +60,7 @@ export const COST_TOPICS: GuideTopic[] = [
       ul(
         "Recipes save to the location so every paired tablet can look them up. Go live keeps recipes.",
         "One recipe can link to a menu item (and more ids). Entity-scoped for host vs operators.",
-        "Theoretical cost = ingredient qty × latest SKU cost. Feeds price recs (human Save on Menu).",
+        "Theoretical cost = ingredient qty × latest SKU cost. In Oregon, a matched spirit uses the OLCC bottle price. Feeds price recs (human Save on Menu).",
         "Sales × recipe qty feeds variance when the costs module is on. Voids default off; comps default on (Settings → Scheduled AI ops jobs).",
       ),
       related("cost-control", "cost-variance", "role-server", "role-kitchen-bar", "menu-modifiers"),
@@ -131,7 +131,7 @@ export const COST_TOPICS: GuideTopic[] = [
     title: "Suppliers, POs, price recs",
     summary: "PAR drafts, email/CSV or API stub, receive, human-confirmed price changes.",
     roles: ["owner_manager", "host_operator", "vendor_operator"],
-    keywords: ["supplier", "po", "par", "price", "margin"],
+    keywords: ["supplier", "po", "par", "price", "margin", "oregon", "olcc", "spirits"],
     openView: "purchasing",
     blocks: [
       why("Ordering without PAR and variance checks restocks the leak."),
@@ -139,6 +139,8 @@ export const COST_TOPICS: GuideTopic[] = [
         "Suppliers: contacts, account #, terms, entity scope, email or API stub connector.",
         "Draft PAR PO. Approve if over the $ threshold. Send email/CSV; print/PDF via browser.",
         "Receive remaining (partial OK). Price changes vs last PO raise an info exception.",
+        "When the location state is Oregon, distilled spirits use the OLCC monthly price list. The list stores item code, name, size, proof, category, bottle price, and case price. It refreshes on the 1st, and again on the 20th for next-month prices. A recipe spirit matches an item code. Cost on the recipe uses the bottle price. Beer and wine stay on the distributor path.",
+        "A spirits order list is built from par and recipes. Each line opens Oregon Liquor Search for that item and the location zip, so staff see which store has it. Summex does not place the order. The list can be printed. Staff buy it at the store. No order is sent to OLCC. The invoice photo is still what receives the bottles.",
         "Price recs from recipe cost vs target % (raise, lower, adjust pour, 86). Accept → Menu save.",
       ),
       tip("Operator B can own liquor suppliers; Operator A food; host paper. Permissions gate create / approve / receive."),

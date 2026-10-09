@@ -12,6 +12,8 @@ import { usePosStore } from "@/lib/pos/store";
 import { useCostStore } from "@/lib/costs/store";
 import { recipeForMenuItem, lineName, normalizeRecipe } from "@/lib/recipes/normalize";
 import { recipeCostCents } from "@/lib/costs/theoretical";
+import { pricesForRecipeCost } from "@/lib/costs/olcc";
+import { parseJurisdiction } from "@/lib/pos/jurisdiction";
 import { canSeeEntity } from "@/lib/costs/permissions";
 import { formatCurrency } from "@/lib/utils";
 import { cn } from "@/lib/utils";
@@ -96,6 +98,8 @@ export function RecipeLookupDialog({
   const emp = usePosStore((s) => s.employees.find((e) => e.id === s.currentEmployeeId) ?? null);
   const recipes = useCostStore((s) => s.recipes);
   const skus = useCostStore((s) => s.skus);
+  const olcc = useCostStore((s) => s.olcc);
+  const jurisdiction = usePosStore((s) => s.settings.jurisdiction);
   const menuItems = usePosStore((s) => s.menuItems);
   const raw = recipeForMenuItem(recipes, menuItemId);
   if (!raw) {
@@ -125,7 +129,11 @@ export function RecipeLookupDialog({
   }
   const prep = isPrepRole(emp?.role);
   const item = menuItems.find((m) => m.id === menuItemId);
-  const cost = recipeCostCents(rec, skus);
+  const cost = recipeCostCents(
+    rec,
+    skus,
+    pricesForRecipeCost(parseJurisdiction(jurisdiction).state, olcc),
+  );
   const pct =
     item && item.priceCents > 0 && cost > 0
       ? Math.round((cost / item.priceCents) * 1000) / 10

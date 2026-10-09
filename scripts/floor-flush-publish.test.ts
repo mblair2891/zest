@@ -281,8 +281,8 @@ test("duplicate seating numbers name both pieces and empty labels stay open", ()
   assert.match(guide, /distance label reads 0/);
   assert.match(guide, /Empty labels are allowed/);
   const types = readFileSync("src/lib/guide/types.ts", "utf8");
-  assert.match(types, /2026\.10\.217/);
-  assert.match(types, /Menu upload recipe guess/);
+  assert.match(types, /2026\.10\.218/);
+  assert.match(types, /Oregon spirits price list/);
   assert.match(guide, /exterior wall/);
   assert.match(guide, /No type keeps a gap/);
   assert.match(guide, /Distance reads 0/);

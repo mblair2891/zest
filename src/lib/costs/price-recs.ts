@@ -1,4 +1,5 @@
 import type { MenuItem } from "@/lib/pos/types";
+import type { OlccPrice } from "./olcc";
 import { recipeCostCents } from "./theoretical";
 import type {
   CostCategory,
@@ -16,6 +17,7 @@ export function buildPriceRecommendations(opts: {
   sales: Record<string, number>;
   settings: CostSettings;
   now: number;
+  olccPrices?: readonly OlccPrice[] | null;
 }): PriceRecommendation[] {
   const recs: PriceRecommendation[] = [];
   const byMenu = new Map<string, ItemRecipe>();
@@ -27,7 +29,7 @@ export function buildPriceRecommendations(opts: {
     if (!item.available) continue;
     const recipe = byMenu.get(item.id);
     if (!recipe || !recipe.lines.length) continue;
-    const cost = recipeCostCents(recipe, opts.skus);
+    const cost = recipeCostCents(recipe, opts.skus, opts.olccPrices);
     if (cost <= 0 || item.priceCents <= 0) continue;
     const pct = (cost / item.priceCents) * 100;
     const sku = opts.skus.find((s) =>

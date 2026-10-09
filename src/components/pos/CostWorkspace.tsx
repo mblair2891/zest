@@ -21,6 +21,9 @@ import { parseCostInvoiceFn, costPictureFn, sendCostPoEmailFn } from "@/lib/cost
 import { downloadText, poPrintHtml } from "@/lib/costs/connectors";
 import { extractPdfStrings, heuristicInvoiceExtract } from "@/lib/costs/invoice-parse";
 import { recipeCostCents } from "@/lib/costs/theoretical";
+import { pricesForRecipeCost } from "@/lib/costs/olcc";
+import { parseJurisdiction } from "@/lib/pos/jurisdiction";
+import { OlccSpiritsPanel } from "./OlccSpiritsPanel";
 import {
   COST_CATEGORIES,
   COST_CATEGORY_LABEL,
@@ -507,7 +510,9 @@ function InvoicePanel({ demoScope }: { demoScope: string | null }) {
 function RecipePanel({ demoScope }: { demoScope: string | null }) {
   const menuItems = usePosStore((s) => s.menuItems);
   const emp = usePosStore((s) => s.employees.find((e) => e.id === s.currentEmployeeId) ?? null);
+  const jurisdiction = usePosStore((s) => s.settings.jurisdiction);
   const skus = useCostStore((s) => s.skus);
+  const olcc = useCostStore((s) => s.olcc);
   const recipes = useCostStore((s) => s.recipes);
   const upsert = useCostStore((s) => s.upsertRecipe);
   const scope = demoScope || costEntityScope(emp);
@@ -607,7 +612,11 @@ function RecipePanel({ demoScope }: { demoScope: string | null }) {
       </div>
       <div className="space-y-2">
         {visible.map((r) => {
-          const cost = recipeCostCents(r, skus);
+          const cost = recipeCostCents(
+            r,
+            skus,
+            pricesForRecipeCost(parseJurisdiction(jurisdiction).state, olcc),
+          );
           const mi = menuItems.find((m) =>
             (r.menuItemIds?.length ? r.menuItemIds : [r.menuItemId]).includes(m.id),
           );
@@ -950,6 +959,7 @@ function PoPanel({ demoScope: _demoScope }: { demoScope: string | null }) {
 
   return (
     <div className="space-y-3">
+      <OlccSpiritsPanel />
       <div className="flex flex-wrap gap-2">
         {suppliers.map((s) => (
           <Button

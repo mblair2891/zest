@@ -1,7 +1,8 @@
-import type { Order } from "@/lib/pos/types";
+import type { Order } from "../pos/types.ts";
 import type { CostSku, ItemRecipe } from "./types";
-import { recipeMenuIds } from "@/lib/recipes/normalize";
-import { suggestSku } from "@/lib/recipes/match-sku";
+import { recipeMenuIds } from "../recipes/normalize.ts";
+import { suggestSku } from "../recipes/match-sku.ts";
+import { matchOlccSpirit, spiritPourCostCents, staysOnDistributor, type OlccPrice } from "./olcc.ts";
 
 export type TheoreticalSalesRules = {
   /** Default false — voided lines do not consume. */
@@ -77,19 +78,44 @@ export function theoreticalUse(opts: {
   return use;
 }
 
+function onDistributorPath(lineName: string, sku: CostSku | undefined): boolean {
+  if (staysOnDistributor(lineName)) return true;
+  if (!sku) return false;
+  return (
+    sku.category === "beer" ||
+    sku.category === "wine" ||
+    staysOnDistributor(sku.category) ||
+    staysOnDistributor(sku.name)
+  );
+}
+
+/**
+ * Plate cost. When an Oregon price book is passed, a matched spirit uses the
+ * bottle price. Beer and wine stay on the SKU cost.
+ */
 export function recipeCostCents(
   recipe: ItemRecipe | undefined,
   skus: CostSku[],
+  olccPrices?: readonly OlccPrice[] | null,
 ): number {
   if (!recipe) return 0;
   const skuById = new Map(skus.map((s) => [s.id, s]));
   let cents = 0;
   const factor = 1 + Math.max(0, recipe.wasteFactor);
   const yieldQty = recipe.yieldQty > 0 ? recipe.yieldQty : 1;
+  const prices = olccPrices?.length ? olccPrices : undefined;
   for (const line of recipe.lines) {
     const sku =
       (line.skuId ? skuById.get(line.skuId) : undefined) ??
       suggestSku(line.name || "", skus);
+    if (!onDistributorPath(line.name, sku) && prices) {
+      const hit = matchOlccSpirit(line.name || sku?.name || "", prices);
+      if (hit) {
+        const pour = spiritPourCostCents({ qty: line.qty, unit: line.unit }, hit);
+        cents += (pour / yieldQty) * factor;
+        continue;
+      }
+    }
     if (!sku || !sku.costCents) continue;
     const packs = toPackUnits(sku, line.qty, line.unit) / yieldQty;
     cents += packs * sku.costCents * factor;

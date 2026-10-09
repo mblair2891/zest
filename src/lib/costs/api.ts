@@ -77,6 +77,23 @@ export const sendCostPoEmailFn = createServerFn({ method: "POST" })
     });
   });
 
+/** Read one month of the public OLCC price list. Does not place an order. */
+export const refreshOlccPricesFn = createServerFn({ method: "POST" })
+  .middleware([optionalAuthMiddleware])
+  .validator((d: { asOf?: string }) => ({
+    asOf: String(d.asOf ?? "").slice(0, 10),
+  }))
+  .handler(async ({ context, data }) => {
+    const { rateLimit } = await import("@/lib/saas/rate-limit.server");
+    const key = `olcc:${context.userId ?? "anon"}`;
+    if (rateLimit(key, 8, 60_000)) {
+      throw new Error("Too many price list reads — wait a minute");
+    }
+    const { fetchOlccMonth } = await import("./olcc");
+    const prices = await fetchOlccMonth(data.asOf);
+    return { prices };
+  });
+
 export const sendVarianceAlertFn = createServerFn({ method: "POST" })
   .middleware([optionalAuthMiddleware])
   .validator((d: { to: string; subject: string; text: string }) => ({

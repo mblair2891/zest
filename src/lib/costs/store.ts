@@ -3,6 +3,7 @@ import { persist, createJSONStorage } from "zustand/middleware";
 import { uid } from "@/lib/utils";
 import { HOST_SCOPE } from "@/lib/access/entity-grants";
 import { usePosStore } from "@/lib/pos/store";
+import { parseJurisdiction } from "@/lib/pos/jurisdiction";
 import { useOpsStore } from "@/lib/pos/ops-store";
 import { parseLaborRules } from "@/lib/labor/rules";
 import { laborBasisLabel, salesForLaborBasis } from "@/lib/labor/revenue-basis";
@@ -28,6 +29,7 @@ import {
 import { parseVarianceResponseCode } from "./types";
 import { useNotifyStore } from "@/lib/pos/notify-store";
 import { buildPriceRecommendations } from "./price-recs";
+import { pricesForRecipeCost, type OlccBook } from "./olcc";
 import type {
   CostAudit,
   CostAuditAction,
@@ -227,6 +229,8 @@ interface CostState {
   priceRecs: PriceRecommendation[];
   audits: CostAudit[];
   settings: CostSettings;
+  /** Oregon spirits price book. Kept off localStorage; the location cost pack holds it. */
+  olcc: OlccBook | null;
   pendingPriceEdit: PendingPriceEdit | null;
   lastPicture: CostPicture | null;
 
@@ -320,6 +324,7 @@ export const useCostStore = create<CostState>()(
       priceRecs: [],
       audits: [],
       settings: DEFAULT_SETTINGS,
+      olcc: null,
       pendingPriceEdit: null,
       lastPicture: null,
 
@@ -1248,6 +1253,10 @@ export const useCostStore = create<CostState>()(
           sales,
           settings: get().settings,
           now,
+          olccPrices: pricesForRecipeCost(
+            parseJurisdiction(pos.settings.jurisdiction).state,
+            get().olcc,
+          ),
         });
         set({
           priceRecs: [...recs, ...get().priceRecs.filter((r) => r.status !== "open")].slice(
@@ -1481,5 +1490,9 @@ export function recipePlateCost(menuItemId: string): number {
   const r = s.recipes.find((x) =>
     (x.menuItemIds?.length ? x.menuItemIds : [x.menuItemId]).includes(menuItemId),
   );
-  return recipeCostCents(r, s.skus);
+  return recipeCostCents(
+    r,
+    s.skus,
+    pricesForRecipeCost(parseJurisdiction(usePosStore.getState().settings.jurisdiction).state, s.olcc),
+  );
 }

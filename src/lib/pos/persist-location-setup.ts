@@ -459,6 +459,7 @@ export async function flushLocationCatalog(
           exceptions: cost.exceptions,
           settings: cost.settings,
           pos: cost.pos,
+          olcc: cost.olcc,
         },
         financeBooks: useFinanceStore.getState().byEntity,
       },

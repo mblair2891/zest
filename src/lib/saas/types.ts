@@ -170,6 +170,8 @@ export type LocationSetup = {
     exceptions: import("@/lib/costs/types").VarianceException[];
     settings: import("@/lib/costs/types").CostSettings;
     pos?: import("@/lib/costs/types").PurchaseOrder[];
+    /** One month of Oregon spirits prices. Omitted outside Oregon. */
+    olcc?: import("@/lib/costs/olcc").OlccBook | null;
   };
   /** Per-entity operations books. A location stores them. It does not merge peer journals. */
   financeBooks?: Record<string, import("@/lib/finance/types").EntityBook>;

@@ -12,6 +12,7 @@ import { useNotifyStore } from "@/lib/pos/notify-store";
 import { useNetworkStore } from "@/lib/pos/network-store";
 import { useOpsLearnStore } from "@/lib/ops-ai/learn-store";
 import { useCostStore } from "@/lib/costs/store";
+import { parseOlccBook } from "@/lib/costs/olcc";
 import { useFinanceStore } from "@/lib/finance/store";
 import { useLifecycleStore } from "@/lib/lifecycle/store";
 import { useStationSessionStore } from "@/lib/pos/station-session";
@@ -663,6 +664,7 @@ function PosAppInner({ entityId }: { entityId?: string }) {
                     exceptions: pack.exceptions ?? useCostStore.getState().exceptions,
                     settings: pack.settings ?? useCostStore.getState().settings,
                     pos: pack.pos?.length ? pack.pos : useCostStore.getState().pos,
+                    ...(pack.olcc !== undefined ? { olcc: parseOlccBook(pack.olcc) } : {}),
                   }
                 : {}),
             });
