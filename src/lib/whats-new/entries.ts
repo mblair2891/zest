@@ -6,6 +6,18 @@ import type { GuideUpdate } from "@/lib/guide/types";
  */
 export const WHATS_NEW_ENTRIES: GuideUpdate[] = [
   {
+    id: "upd_2026_10_214_movable_openings",
+    date: "2026-10-08",
+    title: "Movable doors and windows",
+    summary: "Drag a window onto another wall. A 4 ft by 2 ft table stays a rectangle.",
+    body: "A table draws from the width and depth entered. A 4 ft by 2 ft table is a rectangle in the editor and on the live floor. A round stays round. The number stays the same size. A door or window snaps to a wall, but it is not locked to that segment. Drag it onto another wall and it follows. Length still sets the opening. Publish does not move it.",
+    roles: ["owner_manager", "vendor_operator", "host_operator"],
+    surfaces: ["floor"],
+    audience: "all",
+    topicId: "floor-editor",
+    tags: ["floor"],
+  },
+  {
     id: "upd_2026_10_213_rectangle_tables",
     date: "2026-10-08",
     title: "Tables draw to width and depth",

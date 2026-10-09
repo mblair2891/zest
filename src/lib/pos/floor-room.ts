@@ -271,6 +271,55 @@ export function slideOpening(
   return { x: box.x, y: box.y };
 }
 
+/** A door or window snaps when the pointer is about a foot from a wall. Farther than that, it is free. */
+export const OPENING_SNAP_IN = 12;
+
+/**
+ * Slide along the nearest wall, or leave that segment and follow another.
+ * Length stays. A pointer away from every wall is not locked to the old segment.
+ */
+export function moveOpening(
+  opening: SpinBox & { openingOf?: string | null },
+  walls: Array<SpinBox & { id: string; widthIn?: number | null }>,
+  room: FloorRoom,
+  pointer: RoomPoint,
+): {
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+  rotation: number;
+  lengthIn: number;
+  widthIn: number;
+  openingOf?: string;
+  planRole: "opening";
+} {
+  const lengthIn = opening.lengthIn && opening.lengthIn > 0 ? opening.lengthIn : (opening.w / 100) * room.widthIn;
+  let best: { wall: (typeof walls)[number]; t: number; distIn: number } | null = null;
+  for (const wall of walls) {
+    const hit = project(wall, room, pointer);
+    if (hit.distIn > OPENING_SNAP_IN) continue;
+    if (!boxAt(wall, room, hit.t, lengthIn)) continue;
+    const bias = wall.id === opening.openingOf ? -0.5 : 0;
+    const score = hit.distIn + bias;
+    if (!best || score < best.distIn) best = { wall, t: hit.t, distIn: score };
+  }
+  if (best) {
+    const placed = openingOnWall(best.wall, room, { t: best.t, lengthIn });
+    if (placed) return placed;
+  }
+  return {
+    x: round4(pointer.x - opening.w / 2),
+    y: round4(pointer.y - opening.h / 2),
+    w: opening.w,
+    h: opening.h,
+    rotation: ((Number(opening.rotation) || 0) % 360 + 360) % 360,
+    lengthIn,
+    widthIn: opening.widthIn && opening.widthIn > 0 ? opening.widthIn : WALL_THICK_IN,
+    planRole: "opening",
+  };
+}
+
 export function resizeOpening(
   opening: SpinBox,
   wall: SpinBox & { widthIn?: number | null },

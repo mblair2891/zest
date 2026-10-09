@@ -90,8 +90,8 @@ import {
   nearestWall,
   openingGaps,
   openingOnWall,
+  moveOpening,
   resizeOpening,
-  slideOpening,
   snipWall,
 } from "@/lib/pos/floor-room";
 import { planFloorCopies } from "@/lib/pos/floor-copy";
@@ -1190,13 +1190,11 @@ export function FloorEditorView() {
     const dx = ((e.clientX - drag.current.startX) / rect.width) * 100;
     const dy = ((e.clientY - drag.current.startY) / rect.height) * 100;
     const target = tables.find((t) => t.id === drag.current?.id);
-    if (target?.openingOf) {
-      const wall = tables.find((row) => row.id === target.openingOf && row.kind === "wall");
-      if (wall) {
-        const next = slideOpening(target, wall, floorRoom, { x: px, y: py });
-        if (next) update(drag.current.id, next);
-        return;
-      }
+    if (target && (target.kind === "door" || target.kind === "window")) {
+      const walls = tables.filter((row) => row.kind === "wall");
+      const next = moveOpening(target, walls, floorRoom, { x: px, y: py });
+      update(drag.current.id, next.openingOf ? next : { ...next, openingOf: undefined });
+      return;
     }
     const dining = Boolean(target) && !isArchitectureKind(target?.kind);
     let nx = drag.current.origX + dx;

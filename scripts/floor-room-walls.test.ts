@@ -7,6 +7,7 @@ import {
   CANVAS_MARGIN_IN,
   applyRoomWalls,
   clampPieceToRoom,
+  moveOpening,
   openingOnWall,
   outlineWalls,
   resizeOpening,
@@ -200,6 +201,70 @@ test("a door cuts a wall, snip keeps the table, and publish restores the outline
   assert.equal(backLeft.rotation, 90);
   assert.ok(Math.abs(backLeft.w - left.w) < 0.2);
   assert.equal(round.find((row) => row.id === "t1")?.x, table.x);
+});
+
+test("a window leaves its wall and stays on the wall it is dragged to", () => {
+  const walls = outlineWalls(room);
+  const right = walls.find((wall) => wall.edge === "right");
+  const top = walls.find((wall) => wall.edge === "top");
+  assert.ok(right && top);
+  const rightWall = wallPiece(right, "wall-r");
+  const topWall = wallPiece(top, "wall-t");
+  const placed = openingOnWall(rightWall, room, { t: 0.45, lengthIn: 48 });
+  assert.ok(placed);
+  const window = {
+    id: "win",
+    kind: "window" as const,
+    label: "Window",
+    section: "Dining",
+    seats: 0,
+    status: "empty" as const,
+    shape: "rect" as const,
+    ...placed,
+  };
+  assert.equal(window.openingOf, "wall-r");
+  assert.equal(window.lengthIn, 48);
+
+  const along = moveOpening(window, [rightWall, topWall], room, { x: 100, y: 70 });
+  assert.equal(along.openingOf, "wall-r");
+  assert.equal(along.lengthIn, 48);
+
+  const moved = moveOpening(window, [rightWall, topWall], room, { x: 28, y: 0 });
+  assert.equal(moved.openingOf, "wall-t");
+  assert.equal(moved.lengthIn, 48);
+  assert.equal(moved.rotation, 0);
+  assert.notEqual(moved.x, window.x);
+  const topGaps = wallGaps(topWall, [{ ...window, ...moved }], room);
+  assert.equal(topGaps.length, 1);
+  const rightGaps = wallGaps(rightWall, [{ ...window, ...moved }], room);
+  assert.equal(rightGaps.length, 0);
+
+  const loose = moveOpening(window, [rightWall, topWall], room, { x: 50, y: 50 });
+  assert.equal(loose.openingOf, undefined);
+  assert.equal(loose.lengthIn, 48);
+
+  const carried = { ...window, ...moved };
+  const parsed = parseFloorPlan(floorPlanFromPos([rightWall, topWall, carried], [], room));
+  assert.ok(parsed);
+  const back = tablesFromFloorPlan(parsed).find((row) => row.id === "win");
+  assert.ok(back);
+  assert.equal(back.x, carried.x);
+  assert.equal(back.y, carried.y);
+  assert.equal(back.w, carried.w);
+  assert.equal(back.h, carried.h);
+  assert.equal(back.rotation, 0);
+  assert.equal(back.lengthIn, 48);
+  assert.equal(back.openingOf, "wall-t");
+
+  const editor = readFileSync("src/components/pos/FloorEditorView.tsx", "utf8");
+  assert.match(editor, /moveOpening\(target, walls, floorRoom/);
+  assert.doesNotMatch(editor, /slideOpening\(target, wall/);
+  const guide = readFileSync("src/lib/guide/content/floor.ts", "utf8");
+  assert.match(guide, /not locked to that segment/);
+  assert.match(guide, /Drag it onto another wall and it follows/);
+  assert.match(guide, /Length still sets the opening/);
+  assert.match(guide, /Publish does not move it/);
+  assert.match(guide, /A round stays round/);
 });
 
 test("fit room frames the walls and the editor keeps publish off the location contact button", () => {
