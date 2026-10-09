@@ -11,13 +11,16 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { VoiceTextarea } from "@/components/ui/voice-textarea";
+import { useCostStore } from "@/lib/costs/store";
 import { publishLocationFn, saveMenuItemFn } from "@/lib/access/api";
 import { publishOwnerBlock } from "@/lib/pos/room-owner";
 import { extractMenuIntakeFn, uploadMenuFileFn } from "@/lib/menu/intake-api";
 import {
   applyIntakeAnswers,
   bulkAcceptRows,
+  chooseRecipe,
   editIntakeRow,
+  editRecipePour,
   formatMenuFileSize,
   menuAnalyzeSource,
   menuFileIsImage,
@@ -25,12 +28,14 @@ import {
   rowsToCommit,
   type IntakeSettings,
   type MenuIntakeDraft,
+  type MenuIntakeRow,
 } from "@/lib/menu/intake";
 import { formatCurrency } from "@/lib/utils";
 import { isProspectDemo } from "@/lib/demo/session";
 import { flushLocationCatalog } from "@/lib/pos/persist-location-setup";
 import { usePosStore } from "@/lib/pos/store";
-import { dropWellItems, specialtyBesideWell } from "@/lib/pos/well-book";
+import { dropWellItems, formatWellPour, specialtyBesideWell } from "@/lib/pos/well-book";
+import { formatRecipeGuess, recipeLinesToStore } from "@/lib/menu/recipe-guess";
 import {
   clearUnmatchedDrafts,
   findMenuMatch,
@@ -38,6 +43,25 @@ import {
   type MenuMatchChoice,
 } from "@/lib/menu/catalog-match";
 import { noteChecklistSave } from "@/lib/saas/checklist-link";
+
+function saveChosenRecipe(entityId: string, menuItemId: string, row: MenuIntakeRow) {
+  const lines = recipeLinesToStore(row.recipe);
+  if (!lines || !menuItemId) return;
+  const cost = useCostStore.getState();
+  const existing = cost.recipes.find(
+    (recipe) => recipe.menuItemId === menuItemId && (recipe.entityId || "") === (entityId || ""),
+  );
+  cost.upsertRecipe({
+    id: existing?.id,
+    menuItemId,
+    name: row.name,
+    entityId,
+    station: row.station === "bar" ? "bar" : "kitchen",
+    lines: lines.map((line) => ({ name: line.name, qty: line.qty, unit: line.unit })),
+    yieldQty: 1,
+    yieldUnit: "portion",
+  });
+}
 
 export function EntityMenuIntake(props: {
   entityId: string;
@@ -346,6 +370,7 @@ export function EntityMenuIntake(props: {
           modifierGroupIds,
           archived: false,
         });
+        saveChosenRecipe(entityId, match.id, row);
         n += 1;
         committed.add(row.id);
         continue;
@@ -372,6 +397,7 @@ export function EntityMenuIntake(props: {
         modifierGroupIds,
       });
       if (item.id) {
+        saveChosenRecipe(entityId, item.id, row);
         n += 1;
         committed.add(row.id);
       } else skipped.push(row.name);
@@ -729,6 +755,67 @@ export function EntityMenuIntake(props: {
                     </Button>
                   </div>
                 </div>
+                {row.recipe?.status === "known" ? (
+                  <div className="mt-2 grid gap-1" data-recipe-known={row.id}>
+                    <p className="text-xs">Well pour {formatWellPour(row.recipe.lines)}</p>
+                    <label className="max-w-[10rem] text-[11px] text-muted-foreground">
+                      Pour (oz)
+                      <Input
+                        className="mt-1"
+                        inputMode="decimal"
+                        data-recipe-pour={row.id}
+                        value={String(row.recipe.pourOz ?? "")}
+                        onChange={(event) => {
+                          if (!draft) return;
+                          setDraft(editRecipePour(withAnswers(draft), row.id, Number(event.target.value)));
+                        }}
+                      />
+                    </label>
+                  </div>
+                ) : null}
+                {row.recipe?.status === "guess" ? (
+                  <div className="mt-2 grid gap-1" data-recipe-guess={row.id}>
+                    <p className="text-xs">Recipe guess: {formatRecipeGuess(row.recipe.lines)}</p>
+                    <p className="text-[11px] text-muted-foreground">
+                      Nothing is saved until you choose. Discard keeps the item and stores no recipe.
+                    </p>
+                    <div className="flex gap-1">
+                      <Button
+                        type="button"
+                        size="sm"
+                        data-recipe-approve={row.id}
+                        onClick={() => {
+                          if (!draft) return;
+                          setDraft(chooseRecipe(withAnswers(draft), row.id, "approved"));
+                        }}
+                      >
+                        Approve
+                      </Button>
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        data-recipe-discard={row.id}
+                        onClick={() => {
+                          if (!draft) return;
+                          setDraft(chooseRecipe(withAnswers(draft), row.id, "discarded"));
+                        }}
+                      >
+                        Discard
+                      </Button>
+                    </div>
+                  </div>
+                ) : null}
+                {row.recipe?.status === "approved" ? (
+                  <p className="mt-2 text-xs" data-recipe-approved={row.id}>
+                    Recipe kept for Save / Publish: {formatRecipeGuess(row.recipe.lines)}
+                  </p>
+                ) : null}
+                {row.recipe?.status === "discarded" ? (
+                  <p className="mt-2 text-xs text-muted-foreground" data-recipe-discarded={row.id}>
+                    No recipe stored.
+                  </p>
+                ) : null}
                 {editing === row.id ? (
                   <div className="mt-2 grid gap-2 sm:grid-cols-2">
                     <Input value={editName} onChange={(e) => setEditName(e.target.value)} placeholder="Item name" />

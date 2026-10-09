@@ -97,8 +97,9 @@ export function WellBookCard({ vendor }: { vendor: Vendor }) {
         </Button>
       </div>
       <p className="mt-1 text-xs text-muted-foreground">
-        On inserts a draft Wells group for this entity: well spirits, mixers, and highball, rocks, shot, and tall.
-        Each build keeps an ounce recipe. Specialty upload sits beside these rows.
+        On inserts a draft Wells group for this entity: well spirits, mixers, and highball, double, rocks, shot, and
+        tall. Rum and Coke is 1.5 oz rum and cola. A double is 3 oz rum and cola. You can still edit the pour.
+        Specialty upload sits beside these rows.
       </p>
       {draft.enabled ? (
         <div className="mt-3 grid gap-3">
@@ -160,6 +161,34 @@ export function WellBookCard({ vendor }: { vendor: Vendor }) {
                 </li>
               ))}
             </ul>
+          </div>
+          <div className="grid gap-2 sm:grid-cols-2">
+            <label className="text-xs">
+              Standard pour (oz)
+              <Input
+                className="mt-1"
+                inputMode="decimal"
+                data-well-pour=""
+                value={String(draft.pourOz ?? 1.5)}
+                onChange={(event) => {
+                  const n = Number(event.target.value);
+                  setDraft({ ...draft, pourOz: Number.isFinite(n) ? n : draft.pourOz });
+                }}
+              />
+            </label>
+            <label className="text-xs">
+              Double pour (oz)
+              <Input
+                className="mt-1"
+                inputMode="decimal"
+                data-well-double-pour=""
+                value={String(draft.doublePourOz ?? 3)}
+                onChange={(event) => {
+                  const n = Number(event.target.value);
+                  setDraft({ ...draft, doublePourOz: Number.isFinite(n) ? n : draft.doublePourOz });
+                }}
+              />
+            </label>
           </div>
           <div className="grid gap-2 sm:grid-cols-3">
             <label className="text-xs">

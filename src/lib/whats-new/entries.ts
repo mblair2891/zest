@@ -6,6 +6,18 @@ import type { GuideUpdate } from "@/lib/guide/types";
  */
 export const WHATS_NEW_ENTRIES: GuideUpdate[] = [
   {
+    id: "upd_2026_10_217_recipe_guess",
+    date: "2026-10-09",
+    title: "Menu upload recipe guess",
+    summary: "An uploaded menu proposes a recipe. Approve or discard. Rum and Coke is 1.5 oz rum and cola.",
+    body: "An uploaded menu, photo or file, reads each item name and description. AI proposes a recipe: ingredients and amounts. The user reviews each guess: approve or discard. Discard keeps the menu item and stores no recipe. Approve saves the recipe on that item. Nothing is saved until the user chooses. A standard well drink fills itself. Rum and Coke is 1.5 oz rum and cola. A double is 3 oz rum and cola. The same rule covers gin, vodka, whiskey, tequila, and bourbon with cola, soda, tonic, juice, or ginger ale. The user can still edit the pour. The menu can add a non-alcoholic drink: cola, diet cola, lemon-lime, orange soda, root beer, orange juice, cranberry, pineapple, lemonade, iced tea, coffee, soda water, or still water. There is no alcohol line. The recipe is the drink itself. These can be modifiers on a cocktail or sold alone.",
+    roles: ["owner_manager", "vendor_operator", "kitchen_bar"],
+    surfaces: ["settings"],
+    audience: "all",
+    topicId: "menu-modifiers",
+    tags: ["menu", "recipes"],
+  },
+  {
     id: "upd_2026_10_216_door_swing",
     date: "2026-10-09",
     title: "Door hand and swing",

@@ -30,6 +30,7 @@ import { isActiveOrderPrinter } from "@/lib/pos/fire-routing";
 import { destinationForGroup, mergeOrderDestinations } from "@/lib/pos/order-destinations";
 import { isDrinkEntity } from "@/lib/pos/well-book";
 import { WellBookCard } from "@/components/pos/WellBookCard";
+import { NaDrinkAdd } from "@/components/pos/NaDrinkAdd";
 
 export function MenuAdminView() {
   const categories = usePosStore((s) => s.categories);
@@ -251,6 +252,8 @@ export function MenuAdminView() {
           }
         />
       ) : null}
+
+      {canCreate ? <NaDrinkAdd entityId={menuScope || ownVendorId || vendorId} /> : null}
 
       {canCreate && (
         <EntityMenuIntake

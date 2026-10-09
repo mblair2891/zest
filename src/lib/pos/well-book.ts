@@ -4,9 +4,9 @@ export const WELL_GROUP = "Wells";
 
 export const DEFAULT_SPIRITS = ["Vodka", "Gin", "Rum", "Tequila", "Whiskey", "Bourbon"] as const;
 
-export const DEFAULT_MIXERS = ["Coke", "Diet Coke", "Sprite", "Ginger ale", "Soda", "Tonic"] as const;
+export const DEFAULT_MIXERS = ["cola", "soda", "tonic", "juice", "ginger ale"] as const;
 
-export const WELL_STYLES = ["highball", "rocks", "shot", "tall"] as const;
+export const WELL_STYLES = ["highball", "double", "rocks", "shot", "tall"] as const;
 export type WellStyle = (typeof WELL_STYLES)[number];
 
 export type WellSpirit = { id: string; name: string };
@@ -19,14 +19,28 @@ export type WellBookConfig = {
   wellCents: number;
   callUpchargeCents: number;
   premiumUpchargeCents: number;
+  /** Standard mixed pour, in ounces of spirit. Cola and the other mixers are not measured in ounces. */
+  pourOz?: number;
+  /** Double mixed pour, in ounces of spirit. */
+  doublePourOz?: number;
 };
 
+export const STANDARD_POUR_OZ = 1.5;
+export const DOUBLE_POUR_OZ = 3;
+
 export const POUR_OZ: Record<WellStyle, { spiritOz: number; mixerOz: number }> = {
-  highball: { spiritOz: 1.5, mixerOz: 4 },
+  highball: { spiritOz: STANDARD_POUR_OZ, mixerOz: 1 },
+  double: { spiritOz: DOUBLE_POUR_OZ, mixerOz: 1 },
   rocks: { spiritOz: 2, mixerOz: 0 },
-  shot: { spiritOz: 1.5, mixerOz: 0 },
-  tall: { spiritOz: 1.5, mixerOz: 6 },
+  shot: { spiritOz: STANDARD_POUR_OZ, mixerOz: 0 },
+  tall: { spiritOz: STANDARD_POUR_OZ, mixerOz: 1 },
 };
+
+function pourAmount(raw: unknown, fallback: number): number {
+  const n = Number(raw);
+  if (!Number.isFinite(n) || n <= 0 || n > 12) return fallback;
+  return Math.round(n * 100) / 100;
+}
 
 export function readWellBook(raw: unknown): WellBookConfig | undefined {
   if (!raw || typeof raw !== "object") return undefined;
@@ -61,6 +75,8 @@ export function readWellBook(raw: unknown): WellBookConfig | undefined {
     wellCents: Math.max(0, Math.round(Number(row.wellCents) || 0)),
     callUpchargeCents: Math.max(0, Math.round(Number(row.callUpchargeCents) || 0)),
     premiumUpchargeCents: Math.max(0, Math.round(Number(row.premiumUpchargeCents) || 0)),
+    pourOz: pourAmount(row.pourOz, STANDARD_POUR_OZ),
+    doublePourOz: pourAmount(row.doublePourOz, DOUBLE_POUR_OZ),
   };
 }
 
@@ -80,7 +96,70 @@ export function defaultWellBook(): WellBookConfig {
     wellCents: 800,
     callUpchargeCents: 200,
     premiumUpchargeCents: 400,
+    pourOz: STANDARD_POUR_OZ,
+    doublePourOz: DOUBLE_POUR_OZ,
   };
+}
+
+/** Recipe name for a mixer. Coke on the menu is cola in the recipe. */
+export function wellMixerIngredient(mixer: string): string {
+  const name = mixer.trim().toLowerCase().replace(/\s+/g, " ");
+  if (name === "coke" || name === "coca-cola" || name === "coca cola" || name === "cola") return "cola";
+  if (name === "gingerale") return "ginger ale";
+  if (name === "diet coke") return "diet cola";
+  return name;
+}
+
+/** Printed mixer. Cola is named Coke on a Rum and Coke. */
+export function wellMixerLabel(mixer: string): string {
+  return wellMixerIngredient(mixer) === "cola" ? "Coke" : mixer.trim();
+}
+
+export function spiritPourOz(style: WellStyle, config: Pick<WellBookConfig, "pourOz" | "doublePourOz">): number {
+  const standard = pourAmount(config.pourOz, STANDARD_POUR_OZ);
+  const doubled = pourAmount(config.doublePourOz, DOUBLE_POUR_OZ);
+  if (style === "double") return doubled;
+  if (style === "rocks") return POUR_OZ.rocks.spiritOz;
+  if (style === "shot") return POUR_OZ.shot.spiritOz;
+  return standard;
+}
+
+export type WellPourLine = { name: string; qty: number; unit: "oz" | "each" };
+
+export function wellPourLines(spirit: string, mixer: string | null, spiritOz: number): WellPourLine[] {
+  const spiritLine: WellPourLine = { name: spirit.trim().toLowerCase(), qty: spiritOz, unit: "oz" };
+  if (!mixer) return [spiritLine];
+  return [spiritLine, { name: wellMixerIngredient(mixer), qty: 1, unit: "each" }];
+}
+
+/** "1.5 oz rum and cola" or "3 oz rum and cola". */
+export function formatWellPour(lines: readonly { name: string; qty: number; unit: string }[]): string {
+  const spirit = lines.find((line) => line.unit === "oz");
+  const mixer = lines.find((line) => line.unit !== "oz");
+  const qty = spirit ? String(spirit.qty) : "";
+  if (spirit && mixer) return `${qty} oz ${spirit.name} and ${mixer.name}`;
+  if (spirit) return `${qty} oz ${spirit.name}`;
+  return lines.map((line) => line.name).filter(Boolean).join(", ");
+}
+
+const WELL_SPIRIT_WORDS = ["bourbon", "tequila", "whiskey", "whisky", "vodka", "gin", "rum"] as const;
+
+/** A named highball or double. Rocks and shots stay on the well book, not this fill. */
+export function knownWellPour(name: string): { lines: WellPourLine[]; phrase: string } | null {
+  const raw = name.trim().toLowerCase().replace(/&/g, " and ").replace(/[^a-z0-9\s]/g, " ").replace(/\s+/g, " ");
+  if (!raw || /\b(rocks|shot|neat|tall)\b/.test(raw)) return null;
+  const doubled = /\b(double|dbl)\b/.test(raw);
+  const spirit = WELL_SPIRIT_WORDS.find((word) => new RegExp(`\\b${word}\\b`).test(raw));
+  if (!spirit) return null;
+  let mixer = "";
+  if (/\bginger\s*ale\b/.test(raw)) mixer = "ginger ale";
+  else if (/\b(coca\s*cola|coke|cola)\b/.test(raw)) mixer = "cola";
+  else if (/\btonic\b/.test(raw)) mixer = "tonic";
+  else if (/\bjuice\b/.test(raw)) mixer = "juice";
+  else if (/\bsoda\b/.test(raw)) mixer = "soda";
+  if (!mixer) return null;
+  const lines = wellPourLines(spirit === "whisky" ? "whiskey" : spirit, mixer, doubled ? DOUBLE_POUR_OZ : STANDARD_POUR_OZ);
+  return { lines, phrase: formatWellPour(lines) };
 }
 
 export type WellDraft = {
@@ -90,12 +169,14 @@ export type WellDraft = {
   description: string;
   priceCents: number;
   hidden: boolean;
-  recipe: { name: string; qty: number; unit: "oz" }[];
+  recipe: WellPourLine[];
 };
 
 export function wellBuildName(spirit: string, mixer: string | null, style: WellStyle): string {
-  if (style === "highball" && mixer) return `${spirit} and ${mixer}`;
-  if (style === "tall" && mixer) return `${spirit} and ${mixer} tall`;
+  const shown = mixer ? wellMixerLabel(mixer) : null;
+  if (style === "double" && shown) return `Double ${spirit} and ${shown}`;
+  if (style === "highball" && shown) return `${spirit} and ${shown}`;
+  if (style === "tall" && shown) return `${spirit} and ${shown} tall`;
   if (style === "rocks") return `${spirit} rocks`;
   return `${spirit} shot`;
 }
@@ -109,6 +190,7 @@ export function buildWellDraft(config: WellBookConfig): WellDraft[] {
     if (!spiritName) continue;
     for (const style of WELL_STYLES) {
       const pour = POUR_OZ[style];
+      const spiritOz = spiritPourOz(style, config);
       if (pour.mixerOz > 0) {
         for (const mixer of config.mixers) {
           const mixerName = mixer.name.trim();
@@ -120,10 +202,7 @@ export function buildWellDraft(config: WellBookConfig): WellDraft[] {
             description: `Well ${style}`,
             priceCents: Math.max(0, Math.round(config.wellCents)),
             hidden: Boolean(mixer.hidden),
-            recipe: [
-              { name: spiritName, qty: pour.spiritOz, unit: "oz" },
-              { name: mixerName, qty: pour.mixerOz, unit: "oz" },
-            ],
+            recipe: wellPourLines(spiritName, mixerName, spiritOz),
           });
         }
       } else {
@@ -134,7 +213,7 @@ export function buildWellDraft(config: WellBookConfig): WellDraft[] {
           description: `Well ${style}`,
           priceCents: Math.max(0, Math.round(config.wellCents)),
           hidden: false,
-          recipe: [{ name: spiritName, qty: pour.spiritOz, unit: "oz" }],
+          recipe: wellPourLines(spiritName, null, spiritOz),
         });
       }
     }

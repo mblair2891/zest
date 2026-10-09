@@ -50,6 +50,9 @@ export const COST_TOPICS: GuideTopic[] = [
       steps(
         "Menu or Costs → Recipes → Describe recipe. Type, speak, or upload a card/PDF.",
         "Preview ingredients, steps, allergens, glassware. Map SKUs when the catalog has a match. Confirm — never auto-save.",
+        "An uploaded menu, photo or file, reads each item name and description. AI proposes a recipe: ingredients and amounts. Review each guess: approve or discard. Discard keeps the menu item and stores no recipe. Approve saves the recipe on that item. Nothing is saved until you choose.",
+        "A standard well drink fills itself. Rum and Coke is 1.5 oz rum and cola. A double is 3 oz rum and cola. The same rule covers gin, vodka, whiskey, tequila, and bourbon with cola, soda, tonic, juice, or ginger ale. You can still edit the pour.",
+        "The menu can add a non-alcoholic drink: cola, diet cola, lemon-lime, orange soda, root beer, orange juice, cranberry, pineapple, lemonade, iced tea, coffee, soda water, or still water. There is no alcohol line. The recipe is the drink itself. These can be modifiers on a cocktail or sold alone.",
         "No API key: templates (margarita, burger, salad) plus the manual yield form still work.",
         "Order: book icon on a tile, or Recipe / ingredients on a selected line. Server sees names + allergens. Bartender/cook sees quantities and steps in large type.",
         "ODS tickets show the same Recipe control for the cook.",

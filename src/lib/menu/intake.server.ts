@@ -26,8 +26,8 @@ export function menuAiCredentials(): { key: string; base: string; model: string 
 }
 
 const MENU_SYSTEM = `You extract sellable menu items for this one selling entity. Ignore every other brand on the page. Return JSON only.
-{"items":[{"group":"","name":"","description":"","price":"14.00","priceKind":"cash"|"card"|"unknown","modifiers":[],"alcohol":true|false|null,"abv":"","size":"","eightySix":""}]}
-group is the category. price is dollars when printed. priceKind is unknown when the line shows only one price. modifiers are extras printed on that item. abv and size when a drink prints them. eightySix when the page says 86 or sold out. Omit tax. 80 items max.`;
+{"items":[{"group":"","name":"","description":"","price":"14.00","priceKind":"cash"|"card"|"unknown","modifiers":[],"alcohol":true|false|null,"abv":"","size":"","eightySix":"","recipe":[{"name":"","qty":1,"unit":"oz"}]}]}
+group is the category. price is dollars when printed. priceKind is unknown when the line shows only one price. modifiers are extras printed on that item. abv and size when a drink prints them. eightySix when the page says 86 or sold out. recipe is the ingredients and amounts you can read from that item's name and description. Use oz, each, or the printed unit. Omit recipe when the name is a standard well such as Rum and Coke, a double of that well, or the same drink with gin, vodka, whiskey, tequila, or bourbon and cola, soda, tonic, juice, or ginger ale. Omit tax. 80 items max.`;
 
 function extractJson(text: string): unknown {
   const trimmed = text.trim();

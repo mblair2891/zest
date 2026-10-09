@@ -10,6 +10,13 @@ import {
   cashPolicyFromSettings,
   type CashDiscountPolicy,
 } from "../pos/cash-discount.ts";
+import {
+  proposeItemRecipe,
+  recipeLinesFromUnknown,
+  setKnownPour,
+  type ItemRecipeGuess,
+  type RecipeGuessLine,
+} from "./recipe-guess.ts";
 
 export type IntakeCourse =
   | "appetizer"
@@ -42,6 +49,8 @@ export type IntakeLine = {
   size?: string;
   /** 86 / sold-out note printed on the item. */
   eightySix?: string;
+  /** Ingredients the model proposed. A known well ignores these. */
+  recipeLines?: RecipeGuessLine[];
 };
 
 export type MenuIntakeRow = {
@@ -63,6 +72,8 @@ export type MenuIntakeRow = {
   abv?: string;
   size?: string;
   eightySix?: string;
+  /** Present when a guess or a known well pour was proposed. Not written until chosen. */
+  recipe?: ItemRecipeGuess;
 };
 
 export type MenuIntakeQuestion = {
@@ -290,6 +301,7 @@ export function linesFromModelJson(raw: unknown): IntakeLine[] | null {
     const abv = String(r.abv ?? "").trim().slice(0, 24);
     const size = String(r.size ?? "").trim().slice(0, 24);
     const eightySix = String(r.eightySix ?? r.eighty_six ?? r.soldOut ?? "").trim().slice(0, 80);
+    const recipeLines = recipeLinesFromUnknown(r.recipe ?? r.ingredients);
     lines.push({
       group,
       name: name.replace(/\s*\([^)]*\)/g, "").trim() || name,
@@ -301,6 +313,7 @@ export function linesFromModelJson(raw: unknown): IntakeLine[] | null {
       abv: abv || undefined,
       size: size || undefined,
       eightySix: eightySix || undefined,
+      recipeLines,
     });
   }
   return lines.length ? lines.slice(0, 80) : null;
@@ -410,6 +423,11 @@ function rowFromLine(
     course: route.course,
     station: route.station,
     status: "pending",
+    recipe: proposeItemRecipe({
+      name: line.name,
+      description: line.description,
+      modelLines: line.recipeLines,
+    }),
   };
 }
 
@@ -522,6 +540,13 @@ export function editIntakeRow(
     if (edit.description != null) next.description = edit.description.slice(0, 240);
     if ("alcohol" in edit) next.alcohol = edit.alcohol ?? null;
     if (edit.status) next.status = edit.status;
+    const renamed = edit.name != null && edit.name !== row.name;
+    const redescribed = edit.description != null && edit.description !== row.description;
+    if ((renamed || redescribed) && next.recipe?.status !== "approved") {
+      const proposed = proposeItemRecipe({ name: next.name, description: next.description });
+      if (proposed) next.recipe = proposed;
+      else delete next.recipe;
+    }
     if ("cashCents" in edit) {
       if (edit.cashCents && edit.cashCents > 0) {
         next.quotedCents = edit.cashCents;
@@ -545,6 +570,32 @@ export function bulkAcceptRows(draft: MenuIntakeDraft): MenuIntakeDraft {
   return {
     ...draft,
     rows: draft.rows.map((r) => (r.status === "dropped" ? r : { ...r, status: "accepted" })),
+  };
+}
+
+/** Approve or discard a guess. A known well pour is not a guess and stays. */
+export function chooseRecipe(
+  draft: MenuIntakeDraft,
+  rowId: string,
+  choice: "approved" | "discarded",
+): MenuIntakeDraft {
+  return {
+    ...draft,
+    rows: draft.rows.map((row) => {
+      if (row.id !== rowId || !row.recipe || row.recipe.status === "known") return row;
+      return { ...row, recipe: { ...row.recipe, status: choice } };
+    }),
+  };
+}
+
+/** Edit the spirit ounces on a known well. Other rows stay as they are. */
+export function editRecipePour(draft: MenuIntakeDraft, rowId: string, oz: number): MenuIntakeDraft {
+  return {
+    ...draft,
+    rows: draft.rows.map((row) => {
+      if (row.id !== rowId || row.recipe?.status !== "known") return row;
+      return { ...row, recipe: setKnownPour(row.recipe, oz) };
+    }),
   };
 }
 

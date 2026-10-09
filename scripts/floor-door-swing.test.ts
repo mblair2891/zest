@@ -120,6 +120,6 @@ test("a door left and in opens into the room from the left jamb, and right and o
   assert.match(guide, /Publish does not move the door/);
   assert.match(guide, /gap with a swing mark/);
   const types = readFileSync("src/lib/guide/types.ts", "utf8");
-  assert.match(types, /2026\.10\.216/);
-  assert.match(types, /Door hand and swing/);
+  assert.match(types, /2026\.10\.217/);
+  assert.match(types, /Menu upload recipe guess/);
 });
