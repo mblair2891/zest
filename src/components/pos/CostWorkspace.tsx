@@ -5,7 +5,6 @@ import {
   ClipboardList,
   FileUp,
   Package,
-  Truck,
 } from "lucide-react";
 import { OpsFinancePanel } from "./OpsFinancePanel";
 import { Badge } from "@/components/ui/badge";
@@ -22,8 +21,8 @@ import { downloadText, poPrintHtml } from "@/lib/costs/connectors";
 import { extractPdfStrings, heuristicInvoiceExtract } from "@/lib/costs/invoice-parse";
 import { recipeCostCents } from "@/lib/costs/theoretical";
 import { pricesForRecipeCost } from "@/lib/costs/olcc";
+import { supplierSendsOrder } from "@/lib/costs/suppliers";
 import { parseJurisdiction } from "@/lib/pos/jurisdiction";
-import { OlccSpiritsPanel } from "./OlccSpiritsPanel";
 import {
   COST_CATEGORIES,
   COST_CATEGORY_LABEL,
@@ -45,7 +44,6 @@ export type CostTab =
   | "recipes"
   | "counts"
   | "alerts"
-  | "suppliers"
   | "orders"
   | "prices"
   | "finance";
@@ -56,7 +54,6 @@ const TABS: Array<[CostTab, string]> = [
   ["recipes", "Recipes"],
   ["counts", "Counts & waste"],
   ["alerts", "Exceptions"],
-  ["suppliers", "Suppliers"],
   ["orders", "POs"],
   ["prices", "Price recs"],
   ["finance", "Ops finance"],
@@ -125,22 +122,12 @@ export function CostWorkspace({ initialTab = "board" }: { initialTab?: CostTab }
         {tab === "recipes" && <RecipePanel demoScope={demoScope} />}
         {tab === "counts" && <CountPanel demoScope={demoScope} />}
         {tab === "alerts" && <AlertPanel demoScope={demoScope} />}
-        {tab === "suppliers" && <SupplierPanel demoScope={demoScope} />}
         {tab === "orders" && <PoPanel demoScope={demoScope} />}
         {tab === "prices" && <PricePanel demoScope={demoScope} />}
         {tab === "finance" && <OpsFinancePanel />}
       </div>
     </div>
   );
-}
-
-function entityLabel(
-  id: string,
-  vendors: { id: string; shortName: string; name: string }[],
-  house: string,
-) {
-  if (id === HOST_SCOPE) return house || "Host";
-  return vendors.find((v) => v.id === id)?.shortName ?? id;
 }
 
 function BoardPanel() {
@@ -396,12 +383,14 @@ function InvoicePanel({ demoScope }: { demoScope: string | null }) {
             <select
               className="mt-1 h-9 w-full rounded-xl border border-border bg-bg px-2 text-sm"
               value={active.supplierId ?? ""}
+              data-invoice-supplier=""
               onChange={(e) => linkVendor(active.id, e.target.value)}
             >
               <option value="">Unlinked</option>
               {suppliers.map((s) => (
                 <option key={s.id} value={s.id}>
                   {s.name}
+                  {s.active === false ? " (inactive)" : ""}
                 </option>
               ))}
             </select>
@@ -870,81 +859,6 @@ function AlertPanel({ demoScope }: { demoScope: string | null }) {
   );
 }
 
-function SupplierPanel({ demoScope: _demoScope }: { demoScope: string | null }) {
-  const emp = usePosStore((s) => s.employees.find((e) => e.id === s.currentEmployeeId) ?? null);
-  const vendors = usePosStore((s) => s.vendors);
-  const house = usePosStore((s) => s.settings.name);
-  const suppliers = useCostStore((s) => s.suppliers);
-  const skus = useCostStore((s) => s.skus);
-  const upsert = useCostStore((s) => s.upsertSupplier);
-  const upsertSku = useCostStore((s) => s.upsertSku);
-  const [name, setName] = useState("");
-  const [email, setEmail] = useState("");
-  const scope = costEntityScope(emp);
-
-  return (
-    <div className="space-y-3">
-      <div className="flex flex-wrap gap-2 rounded-2xl border border-border bg-surface p-4">
-        <Input placeholder="Supplier name" value={name} onChange={(e) => setName(e.target.value)} />
-        <Input placeholder="Order email" value={email} onChange={(e) => setEmail(e.target.value)} />
-        <Button
-          onClick={() => {
-            if (!name.trim()) return;
-            upsert({
-              name: name.trim(),
-              contacts: email ? [{ name: "Orders", email }] : [],
-              entityIds: scope ? [scope] : [],
-            });
-            setName("");
-            setEmail("");
-          }}
-        >
-          Add supplier
-        </Button>
-      </div>
-      {suppliers.map((s) => (
-        <div key={s.id} className="rounded-2xl border border-border bg-surface p-4">
-          <div className="flex flex-wrap items-center gap-2">
-            <Truck className="h-4 w-4 text-muted-foreground" />
-            <p className="font-medium">{s.name}</p>
-            <Badge variant="secondary">{s.connectorId === "api_stub" ? "API stub" : "Email/CSV"}</Badge>
-            <span className="text-xs text-muted-foreground">
-              {s.terms} · {s.accountNumber || "no account #"} · {s.contacts[0]?.email}
-            </span>
-          </div>
-          <p className="mt-1 text-xs text-muted-foreground">
-            Scope:{" "}
-            {s.entityIds.length
-              ? s.entityIds.map((id) => entityLabel(id, vendors, house)).join(", ")
-              : "House-wide"}
-          </p>
-          <ul className="mt-2 text-xs text-muted-foreground">
-            {skus
-              .filter((k) => k.supplierId === s.id)
-              .map((k) => (
-                <li key={k.id}>
-                  {k.name} · last {formatCurrency(k.costCents)} · par {k.par} ·{" "}
-                  {k.supplierSku ?? "no supplier SKU"}
-                </li>
-              ))}
-          </ul>
-          <Button
-            size="sm"
-            variant="outline"
-            className="mt-2"
-            onClick={() => {
-              const first = skus.find((k) => !k.supplierId);
-              if (first) upsertSku({ ...first, supplierId: s.id });
-            }}
-          >
-            Attach unassigned SKU
-          </Button>
-        </div>
-      ))}
-    </div>
-  );
-}
-
 function PoPanel({ demoScope: _demoScope }: { demoScope: string | null }) {
   const emp = usePosStore((s) => s.employees.find((e) => e.id === s.currentEmployeeId) ?? null);
   const house = usePosStore((s) => s.settings.name);
@@ -959,9 +873,8 @@ function PoPanel({ demoScope: _demoScope }: { demoScope: string | null }) {
 
   return (
     <div className="space-y-3">
-      <OlccSpiritsPanel />
       <div className="flex flex-wrap gap-2">
-        {suppliers.map((s) => (
+        {suppliers.filter(supplierSendsOrder).map((s) => (
           <Button
             key={s.id}
             size="sm"

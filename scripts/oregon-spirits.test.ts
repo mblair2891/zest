@@ -220,6 +220,10 @@ test("no checkout call exists, and a non-Oregon screen does not render the list"
   assert.ok(gate > 0 && section > gate);
   assert.match(panel, /data-olcc-store-search/);
   assert.match(panel, /Tito's 750/);
+  const suppliers = readFileSync("src/components/pos/SuppliersView.tsx", "utf8");
+  assert.match(suppliers, /<OlccSpiritsPanel \/>/);
+  assert.match(suppliers, /oregon \? <OlccStores/);
   const orders = readFileSync("src/components/pos/CostWorkspace.tsx", "utf8");
-  assert.match(orders, /<OlccSpiritsPanel \/>/);
+  assert.doesNotMatch(orders, /<OlccSpiritsPanel/);
+  assert.doesNotMatch(orders, /\["suppliers", "Suppliers"\]/);
 });

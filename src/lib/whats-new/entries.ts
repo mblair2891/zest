@@ -6,6 +6,18 @@ import type { GuideUpdate } from "@/lib/guide/types";
  */
 export const WHATS_NEW_ENTRIES: GuideUpdate[] = [
   {
+    id: "upd_2026_10_219_suppliers",
+    date: "2026-10-09",
+    title: "Suppliers",
+    summary: "Suppliers is its own section. In Oregon, the house liquor store is the spirits supplier.",
+    body: "Suppliers sits beside Costs. Add a food or beverage supplier with a contact, phone, email, account number, order method, and notes. A beverage supplier is beer, wine, or spirits. Deactivate keeps past invoices. When the location state is Oregon, Suppliers lists OLCC liquor stores by name, address, and phone. Staff pick the house store. That store is the spirits supplier. The price list and Oregon Liquor Search stay on that supplier. No order is sent. The invoice photo still receives the bottles. A location outside Oregon does not get this list.",
+    roles: ["owner_manager", "host_operator", "vendor_operator"],
+    surfaces: ["settings"],
+    audience: "all",
+    topicId: "suppliers",
+    tags: ["costs", "suppliers"],
+  },
+  {
     id: "upd_2026_10_218_oregon_spirits",
     date: "2026-10-09",
     title: "Oregon spirits price list",

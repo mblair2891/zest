@@ -45,6 +45,7 @@ import { ChecklistReturnBar } from "@/components/platform/ChecklistReturnBar";
 import { useChecklistLink } from "@/lib/saas/checklist-link";
 import { rememberChecklistScope, useOnboardingStore } from "@/lib/saas/onboarding-state";
 import { CostWorkspace } from "@/components/pos/CostWorkspace";
+import { SuppliersView } from "@/components/pos/SuppliersView";
 import { LaborOpsView } from "@/components/pos/LaborOpsView";
 import { ReportsView } from "@/components/pos/ReportsView";
 import { OperatorOpsView } from "@/components/pos/OperatorOpsView";
@@ -83,6 +84,7 @@ type Tab = VenueDashTabId;
 
 function tabPackageView(tab: Tab): string | null {
   if (tab === "costs") return "inventory";
+  if (tab === "suppliers") return "suppliers";
   if (tab === "labor" || tab === "schedule") return "labor";
   if (tab === "reports") return "reports";
   return null;
@@ -750,6 +752,13 @@ export function PlatformTenantVenue({
                 <CostWorkspace />
               ) : (
                 <PackageEmptyState module="Costs" />
+              )
+            )}
+            {ready && !error && tab === "suppliers" && tabIds.has("suppliers") && (
+              tabOnPackage("suppliers", packages) ? (
+                <SuppliersView />
+              ) : (
+                <PackageEmptyState module="Suppliers" />
               )
             )}
             {ready && !error && tab === "labor" && tabIds.has("labor") && (

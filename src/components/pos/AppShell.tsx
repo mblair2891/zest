@@ -99,6 +99,7 @@ import { HOST_SCOPE } from "@/lib/access/entity-grants";
 import { KitchenView } from "./KitchenView";
 import { ReportsView } from "./ReportsView";
 import { InventoryView } from "./InventoryView";
+import { SuppliersView } from "./SuppliersView";
 import { EmployeesView } from "./EmployeesView";
 import { MenuAdminView } from "./MenuAdminView";
 import { CustomersView } from "./CustomersView";
@@ -172,6 +173,7 @@ const NAV: {
   { id: "integrations", label: "Integrations", icon: Plug },
   { id: "reports", label: "Reports", icon: BarChart3 },
   { id: "inventory", label: "Costs", icon: Package },
+  { id: "suppliers", label: "Suppliers", icon: Truck },
   { id: "menu", label: "Menu", icon: BookOpen },
   { id: "labor", label: "Labor", icon: Clock3 },
   { id: "hr", label: "HR", icon: IdCard },
@@ -921,7 +923,7 @@ export function AppShell() {
           ) : (
           <div
             key={
-              ["menu", "employees", "reports", "labor", "inventory", "schedule", "recipes", "purchasing"].includes(
+              ["menu", "employees", "reports", "labor", "inventory", "suppliers", "schedule", "recipes", "purchasing"].includes(
                 safeView,
               )
                 ? demoScope || "house"
@@ -971,6 +973,8 @@ export function AppShell() {
           {safeView === "reports" && <ReportsView />}
           {safeView === "inventory" &&
             (pkgOk("inventory") ? <InventoryView /> : <PackageEmptyState module="Costs" />)}
+          {safeView === "suppliers" &&
+            (pkgOk("suppliers") ? <SuppliersView /> : <PackageEmptyState module="Suppliers" />)}
           {safeView === "menu" && <MenuAdminView />}
           {safeView === "employees" && <EmployeesView />}
           {safeView === "customers" && <CustomersView />}

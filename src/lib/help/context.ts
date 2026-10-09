@@ -22,6 +22,8 @@ const VIEW_LABEL: Partial<Record<PosView, string>> = {
   employees: "Users",
   menu: "Menu",
   reports: "Reports",
+  inventory: "Costs",
+  suppliers: "Suppliers",
   labor: "Labor",
   hr: "HR",
   settlement: "Settle",

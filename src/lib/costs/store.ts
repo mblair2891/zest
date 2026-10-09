@@ -30,6 +30,13 @@ import { parseVarianceResponseCode } from "./types";
 import { useNotifyStore } from "@/lib/pos/notify-store";
 import { buildPriceRecommendations } from "./price-recs";
 import { pricesForRecipeCost, type OlccBook } from "./olcc";
+import type { OlccStore } from "./olcc-stores";
+import {
+  applyHouseStore,
+  buildSupplier,
+  deactivateSupplier,
+  supplierSendsOrder,
+} from "./suppliers";
 import type {
   CostAudit,
   CostAuditAction,
@@ -198,6 +205,10 @@ function seedSuppliers(): CostSupplier[] {
   ];
 }
 
+function saveCosts() {
+  void import("@/lib/pos/persist-location-setup").then((m) => m.persistLocationCatalog("costs"));
+}
+
 function postedReceipts(invoices: CostInvoice[]): ReceiptEvent[] {
   const out: ReceiptEvent[] = [];
   for (const inv of invoices) {
@@ -278,6 +289,8 @@ interface CostState {
     }>,
   ) => void;
   upsertSupplier: (input: Partial<CostSupplier> & { name: string }) => string;
+  setSupplierActive: (id: string, active: boolean) => void;
+  setHouseStore: (store: OlccStore) => string;
   linkInvoiceVendor: (invoiceId: string, supplierId: string) => void;
   draftPoFromPar: (
     supplierId: string,
@@ -1003,7 +1016,29 @@ export const useCostStore = create<CostState>()(
               s.id === existing.id ? { ...s, ...input, id: existing.id } : s,
             ),
           });
+          saveCosts();
           return existing.id;
+        }
+        if (input.kind === "food" || input.kind === "beverage") {
+          const built = buildSupplier(
+            {
+              name: input.name,
+              kind: input.kind,
+              beverage: input.beverage,
+              contactName: input.contactName,
+              phone: input.phone,
+              email: input.email ?? input.contacts?.[0]?.email,
+              accountNumber: input.accountNumber,
+              orderMethod: input.orderMethod,
+              notes: input.notes,
+              entityIds: input.entityIds,
+            },
+            uid("sup"),
+          );
+          if (!built.ok) return "";
+          set({ suppliers: [built.supplier, ...get().suppliers] });
+          saveCosts();
+          return built.supplier.id;
         }
         const id = uid("sup");
         const row: CostSupplier = {
@@ -1021,7 +1056,26 @@ export const useCostStore = create<CostState>()(
           apiEndpoint: input.apiEndpoint,
         };
         set({ suppliers: [row, ...get().suppliers] });
+        saveCosts();
         return id;
+      },
+
+      setSupplierActive: (id, active) => {
+        set({
+          suppliers: active
+            ? get().suppliers.map((supplier) =>
+                supplier.id === id ? { ...supplier, active: true } : supplier,
+              )
+            : deactivateSupplier(get().suppliers, id),
+        });
+        saveCosts();
+      },
+
+      setHouseStore: (store) => {
+        const next = applyHouseStore(get().suppliers, store, uid("sup"));
+        set({ suppliers: next });
+        saveCosts();
+        return next.find((supplier) => supplier.olccStoreNumber === store.storeNumber)?.id ?? "";
       },
 
       linkInvoiceVendor: (invoiceId, supplierId) => {
@@ -1039,6 +1093,10 @@ export const useCostStore = create<CostState>()(
         }
         const sup = get().suppliers.find((s) => s.id === supplierId);
         if (!sup) return { ok: false, error: "Supplier missing" };
+        if (sup.active === false) return { ok: false, error: "This supplier is inactive." };
+        if (!supplierSendsOrder(sup)) {
+          return { ok: false, error: "No order is sent to the house liquor store." };
+        }
         const entityId = opts?.entityId || a.entity || HOST_SCOPE;
         const { lines, blocked } = suggestPoLines({
           skus: get().skus,
@@ -1110,6 +1168,10 @@ export const useCostStore = create<CostState>()(
           return { ok: false, error: "Needs approval before send" };
         }
         const sup = get().suppliers.find((s) => s.id === po.supplierId);
+        if (sup?.active === false) return { ok: false, error: "This supplier is inactive." };
+        if (sup && !supplierSendsOrder(sup)) {
+          return { ok: false, error: "No order is sent to the house liquor store." };
+        }
         const conn = CONNECTORS[sup?.connectorId ?? "email_csv"];
         const email = opts?.email || sup?.contacts[0]?.email;
         const result = conn.send(po, email);

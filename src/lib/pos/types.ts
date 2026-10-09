@@ -114,6 +114,7 @@ export type PosView =
   | "takeout"
   | "reports"
   | "inventory"
+  | "suppliers"
   | "employees"
   | "menu"
   | "customers"

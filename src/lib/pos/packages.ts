@@ -114,7 +114,7 @@ export const SUMMEX_PACKAGES: SummexPackage[] = [
     tagline: "Invoices, recipes, variance, PAR, purchase orders",
     priceMonthly: 49,
     modes: ["all"],
-    views: ["inventory", "recipes", "purchasing"],
+    views: ["inventory", "suppliers", "recipes", "purchasing"],
   },
   {
     id: "reports_cash",

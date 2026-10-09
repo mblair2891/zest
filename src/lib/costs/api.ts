@@ -77,6 +77,20 @@ export const sendCostPoEmailFn = createServerFn({ method: "POST" })
     });
   });
 
+/** Public OLCC liquor stores: name, address, and phone. Does not place an order. */
+export const listOlccStoresFn = createServerFn({ method: "GET" })
+  .middleware([optionalAuthMiddleware])
+  .handler(async ({ context }) => {
+    const { rateLimit } = await import("@/lib/saas/rate-limit.server");
+    const key = `olcc-stores:${context.userId ?? "anon"}`;
+    if (rateLimit(key, 8, 60_000)) {
+      throw new Error("Too many store list reads — wait a minute");
+    }
+    const { fetchOlccStores } = await import("./olcc-stores");
+    const stores = await fetchOlccStores();
+    return { stores };
+  });
+
 /** Read one month of the public OLCC price list. Does not place an order. */
 export const refreshOlccPricesFn = createServerFn({ method: "POST" })
   .middleware([optionalAuthMiddleware])

@@ -68,6 +68,7 @@ export function TenantVenueOverview({
             ["reports", "Reports", "Combined and per-entity owned lines"],
             ["labor", "Labor", "Schedules, clock, hours export"],
             ["costs", "Costs", "Invoices, recipes, variance"],
+            ["suppliers", "Suppliers", "Food, beverage, and the house liquor store"],
             ["payments", "Payments", "Quantum Payments by entity"],
             ["gift", "Gift cards", "Issue, redeem, freeze, limits"],
             ["onboarding", "Onboarding", checklist],

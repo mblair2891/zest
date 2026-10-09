@@ -281,6 +281,9 @@ export interface CostSupplierContact {
   phone?: string;
 }
 
+export type SupplierKind = "food" | "beverage";
+export type BeverageLine = "beer" | "wine" | "spirits";
+
 export interface CostSupplier {
   id: string;
   name: string;
@@ -294,6 +297,21 @@ export interface CostSupplier {
   minOrderCents: number;
   leadDays: number;
   apiEndpoint?: string;
+  /** Food, or beverage (beer, wine, or spirits). */
+  kind?: SupplierKind;
+  beverage?: BeverageLine;
+  /** Person who takes the order. */
+  contactName?: string;
+  phone?: string;
+  email?: string;
+  address?: string;
+  notes?: string;
+  /** False keeps the row and every invoice that names it. */
+  active?: boolean;
+  /** Set when this row is an OLCC liquor store. */
+  olccStoreNumber?: string;
+  /** The house spirits supplier. No order is sent. */
+  houseStore?: boolean;
 }
 
 export interface PurchaseOrderLine {
