@@ -97,7 +97,7 @@ export const GETTING_STARTED_TOPICS: GuideTopic[] = [
         "A new server should see sections → order → send → pay on the real floor, not a slide deck.",
       ),
       p(
-        "After you sign in (and after Latest updates, if any), Summex offers a walkthrough for your access level. Steps spotlight live screens. Next, Back, Skip tour, or Replay later.",
+        "After you sign in, Latest updates lists the last 10 changes for your access. Each line opens the screen that change belongs to. A floor change opens Floor. A supplier change opens Suppliers. A menu change opens Menu. A payment change opens Payments. A line stays text, and is left off the list, when this PIN cannot open that screen. Silence until the next update still hides the list. Then Summex offers a walkthrough for your access level. Steps spotlight live screens. Next, Back, Skip tour, or Replay later.",
       ),
       ul(
         "Owner / manager — Home, settings, staff, floor, reports, settlement.",

@@ -9,6 +9,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import type { UpdateScreen } from "@/lib/guide/update-screen";
 import type { GuideUpdate } from "@/lib/guide/types";
 import { cn } from "@/lib/utils";
 
@@ -28,10 +29,12 @@ export function LatestUpdatesModal({
   open,
   entries,
   onClose,
+  onOpen,
 }: {
   open: boolean;
-  entries: GuideUpdate[];
+  entries: Array<{ update: GuideUpdate; screen: UpdateScreen | null }>;
   onClose: (silenceUntilNext: boolean) => void;
+  onOpen: (screen: UpdateScreen) => void;
 }) {
   const [silence, setSilence] = useState(true);
 
@@ -64,15 +67,32 @@ export function LatestUpdatesModal({
         </DialogHeader>
 
         <ul className="max-h-[min(52vh,28rem)] space-y-3 overflow-y-auto pr-1">
-          {entries.map((u) => (
+          {entries.map(({ update: u, screen }) => (
             <li
               key={u.id}
               className="rounded-xl border border-border bg-bg px-3.5 py-3"
+              data-update={u.id}
             >
               <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
                 {formatDate(u.date)}
               </p>
-              <h3 className="mt-0.5 text-sm font-semibold text-foreground">{u.title}</h3>
+              {screen ? (
+                <button
+                  type="button"
+                  className="mt-0.5 text-left text-sm font-semibold text-foreground underline decoration-border underline-offset-2"
+                  data-update-link={screen.view}
+                  data-update-tab={screen.tab ?? ""}
+                  onClick={() => {
+                    onOpen(screen);
+                    onClose(silence);
+                  }}
+                >
+                  {u.title}
+                  <span className="mt-0.5 block text-xs font-medium text-primary">Open {screen.label}</span>
+                </button>
+              ) : (
+                <h3 className="mt-0.5 text-sm font-semibold text-foreground">{u.title}</h3>
+              )}
               <p className="mt-1 text-sm leading-relaxed text-muted-foreground">
                 {u.body ?? u.summary}
               </p>

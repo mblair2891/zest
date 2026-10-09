@@ -3,7 +3,10 @@ import { useRouterState } from "@tanstack/react-router";
 import { LatestUpdatesModal } from "./LatestUpdatesModal";
 import { WalkthroughOffer } from "./WalkthroughOffer";
 import { useGuideStore } from "@/lib/guide/store";
+import { useUpdateJump } from "@/lib/guide/update-jump";
+import { updatesForAccess } from "@/lib/guide/update-screen";
 import { updatesForContext } from "@/lib/guide/updates";
+import { canAccessView } from "@/lib/pos/rbac";
 import {
   isOnboardingSurface,
   useOnboardingContext,
@@ -69,13 +72,19 @@ export function LoginOnboardingHost() {
   const demoEntered = useDemoDeviceStore((s) => s.entered);
 
   const roles = ctx.guideRoles.length ? ctx.guideRoles : ("all" as const);
-  const entries = updatesForContext(
+  const roleFeed = updatesForContext(
     {
       roles,
       entityType: ctx.entityType,
       includePlatform: ctx.isPlatformAdmin,
       isDemo: ctx.isDemo,
     },
+    40,
+  );
+  const pinRole = ctx.employeeRole;
+  const entries = updatesForAccess(
+    roleFeed,
+    (view) => (pinRole ? canAccessView(pinRole, view) : true),
     10,
   );
 
@@ -168,7 +177,7 @@ export function LoginOnboardingHost() {
       role: ctx.employeeRole,
       guideRoles: ctx.guideRoles,
       silenceUntilNext,
-      lastSeenId: entries[0]?.id,
+      lastSeenId: roleFeed[0]?.id,
     });
     if (forceWhatsNew) {
       setPhase("idle");
@@ -218,6 +227,10 @@ export function LoginOnboardingHost() {
         open={phase === "updates" && entries.length > 0 && !tourRunning}
         entries={entries}
         onClose={closeUpdates}
+        onOpen={(screen) => {
+          usePosStore.getState().setView(screen.view);
+          useUpdateJump.getState().go(screen);
+        }}
       />
       {ctx.walkthroughKey && (
         <WalkthroughOffer

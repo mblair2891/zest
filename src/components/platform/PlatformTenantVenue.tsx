@@ -43,6 +43,7 @@ import { TenantUsersPanel } from "@/components/platform/TenantUsersPanel";
 import { VenueOnboardingPanel } from "@/components/platform/VenueOnboardingPanel";
 import { ChecklistReturnBar } from "@/components/platform/ChecklistReturnBar";
 import { useChecklistLink } from "@/lib/saas/checklist-link";
+import { useUpdateJump } from "@/lib/guide/update-jump";
 import { rememberChecklistScope, useOnboardingStore } from "@/lib/saas/onboarding-state";
 import { CostWorkspace } from "@/components/pos/CostWorkspace";
 import { SuppliersView } from "@/components/pos/SuppliersView";
@@ -132,6 +133,8 @@ export function PlatformTenantVenue({
   const [houseIsDemo, setHouseIsDemo] = useState(false);
   const posView = usePosStore((s) => s.view);
   const checklistLink = useChecklistLink((s) => s.link);
+  const updateJumpSerial = useUpdateJump((s) => s.serial);
+  const updateJump = useUpdateJump((s) => s.screen);
   const demoScope = useDemoOperatingEntityId();
   const kind: PasswordDashKind = passwordDashKind({
     isPlatformAdmin: audience === "platform",
@@ -157,6 +160,14 @@ export function PlatformTenantVenue({
   useEffect(() => {
     if (locId && locId !== activeLoc) setActiveLoc(locId);
   }, [locId, activeLoc]);
+
+  useEffect(() => {
+    const next = updateJump?.tab;
+    if (!next || !tabIds.has(next)) return;
+    setTab(next);
+    // serial is the click. tabIds is the console this login can open.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [updateJumpSerial]);
 
   useEffect(() => {
     const focus = checklistLink?.focus;

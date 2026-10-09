@@ -21,7 +21,7 @@ export const TROUBLESHOOTING_TOPICS: GuideTopic[] = [
         "Can’t seat a table? Section lock. Ask a manager for a grant.",
         "Empty POS, no menu? You are on a live empty start. Add items or finish onboarding.",
         "Forced password screen? Platform Admin must set a new password once. It cannot be the initial password.",
-        "Latest updates on every login? After you sign in, check Silence until the next update. Replay workflow from Guide is separate. The public /guide page does not list a changelog.",
+        "Latest updates on every login? After you sign in, check Silence until the next update. Each line opens its screen when this PIN can open it. A floor change opens Floor, a supplier change opens Suppliers, a menu change opens Menu, and a payment change opens Payments. Replay workflow from Guide is separate. The public /guide page does not list a changelog.",
         "Scheduled ops job says Skipped? No xAI key — that is correct. The inbox keeps house fact rows; nothing was invented. Do not treat it as a theft verdict.",
       ),
       steps(

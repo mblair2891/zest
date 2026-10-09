@@ -6,6 +6,18 @@ import type { GuideUpdate } from "@/lib/guide/types";
  */
 export const WHATS_NEW_ENTRIES: GuideUpdate[] = [
   {
+    id: "upd_2026_10_221_update_links",
+    date: "2026-10-09",
+    title: "Update links",
+    summary: "The login list opens the screen each change belongs to.",
+    body: "The login updates list is the last 10 changes for your access. A floor change opens Floor. A supplier change opens Suppliers. A menu change opens Menu. A payment change opens Payments. There is no link when you cannot open that screen, and that update is left off the list. Silence until the next update still hides the list.",
+    roles: ["owner_manager", "server", "kitchen_bar", "host_operator", "vendor_operator"],
+    surfaces: "all",
+    audience: "all",
+    topicId: "using-guide",
+    tags: ["guide"],
+  },
+  {
     id: "upd_2026_10_220_supplier_order",
     date: "2026-10-09",
     title: "Supplier order and invoice match",

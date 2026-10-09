@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { usePosStore } from "@/lib/pos/store";
@@ -65,6 +65,7 @@ import {
 import { formatCurrency, formatTime } from "@/lib/utils";
 import { SetupAssistButton } from "@/components/assist/SetupAssistDialog";
 import { GuideLearnLink } from "@/components/guide/GuideLearnLink";
+import { useUpdateJump } from "@/lib/guide/update-jump";
 import { HOUSE_ISSUER_ID, listGiftIssuers } from "@/lib/pos/gift-issuer";
 import { FloorQrSettings } from "./FloorQrSettings";
 import { NetworkReadinessPanel } from "@/components/saas/NetworkReadinessPanel";
@@ -130,7 +131,10 @@ function Pack({
 }) {
   if (!packs.includes(id)) return null;
   return (
-    <section className="mb-6 max-w-2xl rounded-2xl border border-border bg-surface p-4">
+    <section
+      className="mb-6 max-w-2xl rounded-2xl border border-border bg-surface p-4"
+      data-settings-pack={id}
+    >
       <p className="mb-3 text-sm font-medium">{SETTINGS_PACK_LABEL[id]}</p>
       {children}
     </section>
@@ -519,6 +523,14 @@ export function SettingsView() {
   const sharedMulti = hostMulti || peerVenue;
   const [hostTab, setHostTab] = useState<"host" | "operators">("host");
   const packs = settingsPacksForVenue(entityId);
+  const updateJumpSerial = useUpdateJump((s) => s.serial);
+  const updateJumpTab = useUpdateJump((s) => s.screen?.tab);
+  useEffect(() => {
+    if (updateJumpTab !== "payments") return;
+    document.querySelector<HTMLElement>("[data-settings-pack='payments']")?.scrollIntoView({
+      block: "start",
+    });
+  }, [updateJumpSerial, updateJumpTab]);
   const updateSettings = usePosStore((s) => s.updateSettings);
   const labor = useOpsStore((s) => s.labor);
   const updateLabor = useOpsStore((s) => s.updateLabor);
