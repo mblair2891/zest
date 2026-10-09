@@ -77,6 +77,28 @@ export const saveLocationSettingsFn = createServerFn({ method: "POST" })
     });
   });
 
+export const saveVenueProfileFn = createServerFn({ method: "POST" })
+  .middleware([tenantMiddleware])
+  .validator((d: {
+    orgId: string;
+    locationId: string;
+    name: string;
+    address: string;
+    timezone: string;
+    state: string;
+  }) => ({
+    orgId: String(d.orgId ?? "").trim(),
+    locationId: loc(d.locationId),
+    name: String(d.name ?? "").trim().slice(0, 120),
+    address: String(d.address ?? "").trim().slice(0, 240),
+    timezone: String(d.timezone ?? "").trim().slice(0, 80),
+    state: String(d.state ?? "").trim().slice(0, 32),
+  }))
+  .handler(async ({ context, data }) => {
+    const { saveVenueProfileForUser } = await import("@/lib/saas/tenancy.server");
+    return saveVenueProfileForUser(context.userId, data);
+  });
+
 export const saveOperatorPayoutFn = createServerFn({ method: "POST" })
   .middleware([tenantMiddleware])
   .validator((d: {

@@ -36,7 +36,9 @@ import { parseOpsJobsConfig } from "@/lib/ops-jobs/config";
 import { parseQrPolicy } from "@/lib/pos/qr-policy";
 import { parseTaxRates } from "@/lib/pos/tax-rates";
 import { parseStationUpdates } from "@/lib/pos/station-updates";
-import { parseJurisdiction, jurisdictionIsReady } from "@/lib/pos/jurisdiction";
+import { parseJurisdiction, jurisdictionIsReady, normalizeState } from "@/lib/pos/jurisdiction";
+import { parseVenueTimezone } from "@/lib/pos/venue-time";
+import { canEditVenueProfile, sameContactEmail } from "./venue-profile";
 import { parseItem86 } from "@/lib/pos/item-86";
 import { parsePaxReaders } from "@/lib/payments/pax-d135";
 import { parseLocationOperatingModel } from "./location-model";
@@ -953,6 +955,103 @@ export async function updateLocationSetupForUser(
         host_brand_name = ${next.hostBrandName || loc.host_brand_name},
         timezone = ${next.timezone || loc.timezone}
     where id = ${input.locationId}
+  `;
+  const after = await sql<LocRow>`select * from locations where id = ${input.locationId} limit 1`;
+  return mapLoc(after[0]!);
+}
+
+/**
+ * Name, address, state, and timezone only.
+ * The location contact on a peer venue may write. Another entity admin may not.
+ * A house owner, manager, or platform admin may write. Operating model stays as it is.
+ */
+export async function saveVenueProfileForUser(
+  userId: string,
+  input: {
+    orgId: string;
+    locationId: string;
+    name: string;
+    address: string;
+    timezone: string;
+    state: string;
+  },
+): Promise<LocationRecord> {
+  const access = await requireMembership(
+    userId,
+    input.orgId,
+    ["owner", "manager", "vendor", "platform_admin"],
+    input.locationId,
+  );
+  const sql = await getSql();
+  const rows = await sql<{
+    name: string;
+    timezone: string | null;
+    operating_model: string | null;
+    setup: unknown;
+    contact_email: string | null;
+  }>`
+    select name, timezone, operating_model, setup, contact_email
+    from locations
+    where id = ${input.locationId} and org_id = ${input.orgId}
+    limit 1
+  `;
+  const loc = rows[0];
+  if (!loc) throw new ForbiddenError("Location not found");
+  const prev = parseSetup(loc.setup);
+  const peer =
+    loc.operating_model === "peer_venue" ||
+    prev.operatingModel === "peer_venue" ||
+    prev.peerVenue === true;
+  const entityAdmin = Boolean(access.operatorId) || access.role === "vendor";
+  const user = await loadUser(userId);
+  const checklistEmail = prev.onboardingChecklist?.location.contactEmail ?? "";
+  const locationContact =
+    sameContactEmail(user?.email, loc.contact_email) ||
+    sameContactEmail(user?.email, checklistEmail);
+  const houseAdmin =
+    !entityAdmin &&
+    (access.isPlatformAdmin ||
+      access.role === "owner" ||
+      access.role === "manager" ||
+      access.role === "platform_admin");
+  if (
+    !canEditVenueProfile({
+      peerVenue: peer,
+      entityAdmin,
+      houseAdmin,
+      locationContact,
+    })
+  ) {
+    throw new ForbiddenError("The location contact edits the venue.");
+  }
+  const name = input.name.trim().slice(0, 120);
+  if (!name) throw new Error("Venue name is required");
+  const address = input.address.trim().slice(0, 240);
+  const timezone = parseVenueTimezone(input.timezone || prev.timezone || loc.timezone || "");
+  const jurisdiction = parseJurisdiction({
+    ...(prev.jurisdiction ?? {}),
+    state: normalizeState(input.state),
+  });
+  const next = parseSetup({
+    ...prev,
+    hostBrandName: name,
+    timezone,
+    jurisdiction,
+    configVersion: (prev.configVersion ?? 0) + 1,
+  });
+  if (peer) {
+    next.peerVenue = true;
+    next.operatingModel = "peer_venue";
+    next.hostEntityId = null;
+  }
+  await sql`
+    update locations
+    set name = ${name},
+        address = ${address},
+        timezone = ${timezone},
+        host_brand_name = ${name},
+        setup = ${JSON.stringify(next)}::jsonb
+    where id = ${input.locationId} and org_id = ${input.orgId}
   `;
   const after = await sql<LocRow>`select * from locations where id = ${input.locationId} limit 1`;
   return mapLoc(after[0]!);

@@ -201,6 +201,7 @@ export function passwordDashTabs(kind: PasswordDashKind): Array<[VenueDashTabId,
     case "entity_owner":
       return [
         ["overview", "Overview"],
+        ["settings", "Settings"],
         ["floor", "Floor"],
         ["menu", "Menu"],
         ["costs", "Costs"],
@@ -214,6 +215,7 @@ export function passwordDashTabs(kind: PasswordDashKind): Array<[VenueDashTabId,
     case "entity_manager":
       return [
         ["overview", "Overview"],
+        ["settings", "Settings"],
         ["floor", "Floor"],
         ["menu", "Menu"],
         ["costs", "Costs"],

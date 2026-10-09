@@ -61,6 +61,8 @@ import {
 } from "@/lib/saas/venue-dashboard-tabs";
 import { TenantVenueOverview } from "@/components/platform/TenantVenueOverview";
 import { VenueHouseSettings } from "@/components/platform/VenueHouseSettings";
+import { VenueProfileSettings } from "@/components/platform/VenueProfileSettings";
+import { parseJurisdiction } from "@/lib/pos/jurisdiction";
 import { TabErrorBoundary } from "@/components/platform/TabErrorBoundary";
 import { PackageEmptyState } from "@/components/platform/PackageEmptyState";
 import { demoScopeRemountKey } from "@/lib/demo/entity-switch";
@@ -476,12 +478,15 @@ export function PlatformTenantVenue({
               ? setup.serviceStyle
               : st.settings.serviceStyle,
           taxMode: setup.taxMode === "per_entity" ? "per_entity" : setup.taxMode === "venue_shared" ? "venue_shared" : st.settings.taxMode,
-          timezone: setup.timezone || st.settings.timezone,
+          timezone: setup.timezone || access.location.timezone || st.settings.timezone,
           brandLogos: setup.brandLogos ?? st.settings.brandLogos,
           combineRequiresManager: setup.combineRequiresManager ?? st.settings.combineRequiresManager,
           taxRates: Array.isArray(setup.taxRates) ? setup.taxRates : st.settings.taxRates,
           entityTaxRates: setup.entityTaxRates ?? st.settings.entityTaxRates,
           taxRate: typeof setup.taxRate === "number" ? setup.taxRate : st.settings.taxRate,
+          name: access.location.name || st.settings.name,
+          address: access.location.address ?? st.settings.address,
+          jurisdiction: parseJurisdiction(setup.jurisdiction),
           stationServicePinHash: setup.stationServicePinHash || st.settings.stationServicePinHash,
           hostMayOpenBarTabs: Boolean(setup.hostMayOpenBarTabs),
           serversAtHostStand: Boolean(setup.serversAtHostStand),
@@ -721,7 +726,14 @@ export function PlatformTenantVenue({
               )
             )}
             {ready && !error && tab === "settings" && tabIds.has("settings") && (
-              audience === "platform" || model === "peer_venue" ? (
+              isEntityPasswordKind(kind) ? (
+                <VenueProfileSettings
+                  orgId={orgReadyId || orgId}
+                  locationId={activeLoc}
+                  peerVenue={model === "peer_venue"}
+                  entities={ops.map((o) => ({ id: o.id, name: o.dba }))}
+                />
+              ) : audience === "platform" || model === "peer_venue" ? (
                 <VenueHouseSettings />
               ) : (
                 <SettingsView />

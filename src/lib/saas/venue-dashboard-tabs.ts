@@ -63,6 +63,7 @@ export function venueDashboardTabs(opts: {
   if (opts.audience === "entity") {
     return [
       ["overview", "Overview"],
+      ["settings", "Settings"],
       ["floor", "Floor"],
       ["menu", "Menu"],
       ["costs", "Costs"],

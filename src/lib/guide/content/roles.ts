@@ -287,6 +287,7 @@ export const ROLE_GUIDE_TOPICS: GuideTopic[] = [
         "Password login at app.summex.app/login (Entity admin). Never a PIN pad, never platform CRM. Scoped to your selling entity.",
         "Dashboard: today’s sales, open checks, labor %, top items, and 86 count for this entity. The header is this entity’s name, then the venue. Menu is grouped by category. 86 is on the item, not a staff tab. Staff is people, PINs, and roles. Schedule can place a week of shifts at once. Floor edits rooms this entity owns, plus active seating loans. A loan does not change the owner. A table or fixture this login cannot edit names that section’s owner, such as Table 1 is on Diamond House BBQ’s section. A House room says House (shared). It cannot be moved, resized, or deleted. The location contact can.",
         "You cannot edit the other entity’s menu, payout, or labor. Reports and labor % use owned lines (what this entity is paid).",
+        "On a peer venue with no host, Settings shows the venue name, address, state, and timezone, and which entities sit in it. The location contact can edit those. Another entity admin can view them. State Oregon lists liquor stores on Suppliers. A hosted venue keeps settings on the host. An entity admin there can view them and cannot change them.",
         "Peer menus are view-only on the floor unless the venue grant allows selling them. You cannot change another operator’s settings.",
         "A $35 dispute fee, when filed, splits by merchandise on that check.",
         "On a shared venue there is no fake host merchant. Help answers from this guide for your entity — not host payouts or platform CRM.",
@@ -317,7 +318,7 @@ export const ROLE_GUIDE_TOPICS: GuideTopic[] = [
         "Kitchen — ODS Start/Bump only. No pay, no drawer, no price edits.",
         "Busser — dirty → clean only.",
         "Password dashboards (never the PIN pad): Platform Admin · host owner · venue admin · entity owner · entity manager · accountant. Tiles are subscribed modules only. Deep links match API grants.",
-        "Entity owner — that brand’s name, then the venue. Today: sales, open checks, labor %, top items, 86 count. Menu by category. Floor rooms this entity owns, plus active seating loans. The location contact sets each room to a selling entity or House. A loan does not change the owner. Payments for this brand.",
+        "Entity owner — that brand’s name, then the venue. Today: sales, open checks, labor %, top items, 86 count. Menu by category. Floor rooms this entity owns, plus active seating loans. The location contact sets each room to a selling entity or House. A loan does not change the owner. Payments for this brand. Settings shows the venue name, address, state, and timezone. On a peer venue the location contact can edit those. Another entity admin can view them. A hosted venue keeps settings on the host.",
         "Entity manager — same ops, including this entity’s floor, from back office. No billing/payments settings.",
         "Accountant — reports, hours export, gift liability. No Devices. No 86.",
         "Host owner (host + tenants) — venue health, every entity, Devices, Publish, combined and per-entity reports.",
@@ -339,9 +340,9 @@ export const ROLE_GUIDE_TOPICS: GuideTopic[] = [
     id: "location-settings",
     chapterId: "roles",
     title: "Location settings by type",
-    summary: "Owner and manager configure only the packs that apply to this house.",
-    roles: ["owner_manager", "host_operator"],
-    keywords: ["settings", "location", "hours", "cash discount", "kiosk", "settlement"],
+    summary: "Owner, manager, and the peer location contact configure the packs that apply to this house.",
+    roles: ["owner_manager", "host_operator", "vendor_operator"],
+    keywords: ["settings", "location", "hours", "cash discount", "kiosk", "settlement", "peer", "oregon"],
     openView: "settings",
     blocks: [
       why(
@@ -355,6 +356,7 @@ export const ROLE_GUIDE_TOPICS: GuideTopic[] = [
         "Host + multi-operator: Host settings (tax, cash discount, Quantum Payments, payouts, entity permission matrix, device assignment) vs Operators (ops only). Guest operators never edit host merchant or payout routing.",
         "Kiosk / waitlist types: kiosk mode, waitlist, reservation check-in, SMS on/off and monthly cap (defaults to platform included; location may only go lower).",
         "Peer venue and host + tenants: Revenue share rules (Staffing recs). Each rule names the parties, the sales base, the rate, and optional section, table, service, hour, and source filters. Location main contact or platform edits the rate. A selling entity can view inbound and outbound rules and cannot change the rate. The guest check does not change.",
+        "Peer venue with no host: an entity admin opens Settings and sees the venue name, address, state, timezone, and which entities sit in it. The location contact can edit those. Another entity admin can view them. State Oregon lists liquor stores on Suppliers. A hosted venue keeps settings on the host. An entity admin there can view them and cannot change them.",
       ),
       steps(
         "PIN as owner or manager. Open Home → Location settings.",
@@ -379,7 +381,8 @@ export const ROLE_GUIDE_TOPICS: GuideTopic[] = [
       ul(
         "Host owner/manager (password at app.summex.app/login): Devices, floor, every tenant menu, reports, costs, labor, payments split, grants, payout destinations, settlement, host cut, entity permission matrix. Full tenant ops data — not a PIN pad.",
         "Tenant entity login: own menu, recipes, costs/invoices, schedule/payroll export, reports, 86, staff PINs for that entity only. Cannot edit another tenant’s menu, payout, or labor.",
-        "Shared venue: no host role. Venue admin is not a landlord merchant. Each operator completes their own Quantum Payments and menu.",
+        "Shared venue: no host role. Venue admin is not a landlord merchant. Each operator completes their own Quantum Payments and menu. An entity admin gets Settings for the venue name, address, state, and timezone, and the list of entities in the building. The location contact can edit those. Another entity admin can view them. State Oregon lists liquor stores on Suppliers.",
+        "Hosted venue: settings stay on the host. An entity admin can view the venue name, address, state, and timezone, and cannot change them.",
         "Devices: house assets, not locked roles. Host enrolls tablets. Any device switches via This station (Operator B bar ODS, Operator A floor POS, host kiosk, or split ODS).",
       ),
       steps(

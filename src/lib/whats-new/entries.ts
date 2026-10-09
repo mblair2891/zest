@@ -6,6 +6,18 @@ import type { GuideUpdate } from "@/lib/guide/types";
  */
 export const WHATS_NEW_ENTRIES: GuideUpdate[] = [
   {
+    id: "upd_2026_10_223_venue_settings",
+    date: "2026-10-09",
+    title: "Peer venue settings",
+    summary: "An entity admin in a peer venue sees the venue name, address, state, and timezone.",
+    body: "An entity admin in a peer venue with no host gets a Settings tab. It shows the venue name, address, state, and timezone, and which entities sit in it. The location contact can edit those. Another entity admin can view them. State Oregon lists liquor stores on Suppliers. A hosted venue keeps settings on the host. An entity admin there can view them and cannot change them.",
+    roles: ["owner_manager", "host_operator", "vendor_operator"],
+    surfaces: ["settings"],
+    audience: "all",
+    topicId: "location-settings",
+    tags: ["settings"],
+  },
+  {
     id: "upd_2026_10_222_olcc_stores",
     date: "2026-10-09",
     title: "Liquor stores on Suppliers",
