@@ -42,6 +42,7 @@ export function QuantumPaymentsOnboardPanel({
   legalName,
   kind,
   peerVenue = false,
+  onAccount,
 }: {
   locationId?: string;
   operatorId?: string;
@@ -49,6 +50,7 @@ export function QuantumPaymentsOnboardPanel({
   kind: "host" | "operator";
   /** Peer / no-host-merchant: never fetch or setState for a venue Finix application. */
   peerVenue?: boolean;
+  onAccount?: () => void;
 }) {
   const kycKey = operatorId || locationId || "host";
   const [acc, setAcc] = useState<PaymentAccountView | null>(null);
@@ -100,6 +102,7 @@ export function QuantumPaymentsOnboardPanel({
           status: prev.status === "draft" ? fromServer : prev.status,
         };
       });
+      onAccount?.();
     } catch {
       /* isolated demo / no org — keep local KYC */
     }
@@ -182,6 +185,7 @@ export function QuantumPaymentsOnboardPanel({
       });
       setAcc(row);
       setMerchantId(row.merchantId ?? "");
+      onAccount?.();
     } catch (e) {
       setError(e instanceof Error ? e.message : "Could not save Finix Merchant ID");
     } finally {

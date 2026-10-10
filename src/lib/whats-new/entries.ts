@@ -6,6 +6,18 @@ import type { GuideUpdate } from "@/lib/guide/types";
  */
 export const WHATS_NEW_ENTRIES: GuideUpdate[] = [
   {
+    id: "upd_2026_10_235_training_payments",
+    date: "2026-10-10",
+    title: "Training can send Finix sandbox payments",
+    summary: "A training location shows Live when the entity has a merchant id and Finix keys.",
+    body: "A location can stay in training and send a card. Payments shows Live when the entity has a Finix Merchant ID and the Finix keys are present. Sandbox keys send the charge to the Finix sandbox. Live keys do not take real money while the location is in training. The location stays in training until the owner marks it live.",
+    roles: ["owner_manager", "host_operator", "vendor_operator"],
+    surfaces: ["settings"],
+    audience: "all",
+    topicId: "quantum-payments",
+    tags: ["payments", "training"],
+  },
+  {
     id: "upd_2026_10_234_entity_settings",
     date: "2026-10-10",
     title: "Entity settings",

@@ -20,7 +20,7 @@ export function TrainingBanner() {
     >
       {tenant
         ? "Training — this operator is in practice mode (sandbox cards)"
-        : `TRAINING — practice mode · ${LIFECYCLE_LABEL[status]} · Quantum Payments sandbox`}
+        : `TRAINING — practice mode · ${LIFECYCLE_LABEL[status]} · sandbox cards until go live`}
     </div>
   );
 }

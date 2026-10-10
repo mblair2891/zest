@@ -39,7 +39,7 @@ export function finixOrigin(mode: FinixMode): string {
     : "https://finix.sandbox-payments-api.com";
 }
 
-/** Live keys run only when this location is live. Training stays on sandbox. */
+/** Live keys run only when this location is live. Training uses sandbox keys. */
 export function finixModeForLocation(locationLive: boolean): FinixMode {
   return locationLive ? "live" : "sandbox";
 }

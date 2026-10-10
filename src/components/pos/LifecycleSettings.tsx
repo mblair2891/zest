@@ -44,8 +44,8 @@ export function LifecycleSettings() {
         </GuideLearnLink>
       </div>
       <p className="text-xs text-muted-foreground">
-        After onboard, the house is in Training: full POS, Quantum Payments sandbox,
-        practice settlement. Go live when the floor is ready.
+        After onboard, the house is in Training. A card can use sandbox keys. The
+        location stays in training until you mark it live.
       </p>
       <label className="flex items-start gap-2 text-sm">
         <input

@@ -31,6 +31,8 @@ export type PaymentsStatus = {
   locationOverride: LocationPaymentsMode;
   platformDefault: PaymentsMode;
   lifecycleForcesSandbox: boolean;
+  /** True when a selling entity has a Finix merchant id and Finix keys are present. */
+  railLive: boolean;
   liveConfigured: boolean;
   liveReady: boolean;
   hostPaymentsApproved?: boolean;

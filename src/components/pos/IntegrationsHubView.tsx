@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { usePosStore } from "@/lib/pos/store";
 import { getPaymentsStatusFn } from "@/lib/payments/api";
+import { paymentsRailLabel } from "@/lib/payments/training-rail";
 import type { PaymentsStatus } from "@/lib/payments/types";
 import {
   Plug,
@@ -443,20 +444,17 @@ function SummexPaymentsPanel() {
       .then(setSt)
       .catch(() => setSt(null));
   }, [locId]);
-  const live = st?.mode === "live";
+  const railLabel = paymentsRailLabel(st);
   return (
     <div className="rounded-2xl border border-primary/30 bg-primary/5 p-4">
       <div className="mb-3 flex flex-wrap items-center gap-2">
         <ShieldCheck className="h-4 w-4 text-primary" />
         <h3 className="text-sm font-semibold">Quantum Payments</h3>
-        <Badge variant={live && st?.liveReady ? "success" : "warn"}>
-          {st?.lifecycleForcesSandbox
-            ? "Sandbox · training"
-            : live
-              ? st?.liveReady
-                ? "Live"
-                : "Live · not ready"
-              : "Sandbox"}
+        <Badge
+          variant={railLabel === "Live" ? "success" : "warn"}
+          data-payments-rail={railLabel === "Live" ? "live" : "sandbox"}
+        >
+          {railLabel}
         </Badge>
       </div>
       <p className="mb-3 text-xs text-muted-foreground">
@@ -481,7 +479,7 @@ function SummexPaymentsPanel() {
           <p className="flex items-center gap-1.5 text-[10px] uppercase tracking-wide text-muted-foreground">
             <Landmark className="h-3 w-3" /> Capture
           </p>
-          <p className="text-sm font-semibold">{live ? "Split capture" : "Sandbox book"}</p>
+          <p className="text-sm font-semibold">{railLabel === "Live" ? "Split capture" : "Sandbox book"}</p>
           <p className="text-[11px] text-muted-foreground">
             One guest tender · each brand’s account
           </p>

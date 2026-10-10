@@ -22,6 +22,7 @@ import { parsePaymentMethods } from "@/lib/pos/payment-methods";
 import { parseGiftLimits } from "@/lib/pos/gift-limits";
 import { formatCurrency } from "@/lib/utils";
 import { jurisdictionIsReady } from "@/lib/pos/jurisdiction";
+import { paymentsRailLabel } from "@/lib/payments/training-rail";
 import { noteChecklistSave, useChecklistLink } from "@/lib/saas/checklist-link";
 
 /**
@@ -126,6 +127,13 @@ export function QuantumPaymentsSettings({
     .reduce((s, g) => s + g.balanceCents, 0);
 
   const entity = entityId ? selling.find((v) => v.id === entityId) : null;
+  const railLabel = paymentsRailLabel(status);
+  const refreshStatus = () => {
+    if (!locId) return;
+    void getPaymentsStatusFn({ data: { locationId: locId } })
+      .then(setStatus)
+      .catch(() => undefined);
+  };
 
   return (
     <section
@@ -138,14 +146,11 @@ export function QuantumPaymentsSettings({
     >
       <div className="flex flex-wrap items-center gap-2">
         <h3 className="text-sm font-semibold">Quantum Payments</h3>
-        <Badge variant={status?.mode === "live" && status.liveReady ? "success" : "warn"}>
-          {status?.lifecycleForcesSandbox
-            ? "Sandbox · training"
-            : status?.mode === "live"
-              ? status.liveReady
-                ? "Live"
-                : "Live · not ready"
-              : "Sandbox"}
+        <Badge
+          variant={railLabel === "Live" ? "success" : "warn"}
+          data-payments-rail={railLabel === "Live" ? "live" : "sandbox"}
+        >
+          {railLabel}
         </Badge>
         <GuideLearnLink topicId="quantum-payments" compact>
           Learn
@@ -218,9 +223,10 @@ export function QuantumPaymentsSettings({
         </p>
       ) : null}
       {status?.lifecycleForcesSandbox && (
-        <p className="rounded-lg bg-warn/15 px-3 py-2 text-xs font-medium text-warn">
-          TRAINING — live processor keys are ignored. Quantum Payments sandbox
-          only until this location goes live.
+        <p className="rounded-lg bg-warn/15 px-3 py-2 text-xs font-medium text-warn" data-payments-training>
+          {status.railLive
+            ? "This location stays in training. Cards use sandbox keys and this entity’s merchant. Live keys are not used until the owner marks the location live."
+            : "TRAINING — live processor keys are ignored until this location has a merchant id and Finix keys. The location stays in training until the owner marks it live."}
         </p>
       )}
       <label className="block text-sm">
@@ -293,6 +299,7 @@ export function QuantumPaymentsSettings({
             locationId={locId}
             legalName={entity.name}
             peerVenue
+            onAccount={refreshStatus}
           />
           <p className="text-xs text-muted-foreground">
             Reader enrollment: live cards need a Finix/Quantum reader on Devices. Training
@@ -305,7 +312,7 @@ export function QuantumPaymentsSettings({
           account. Open a selling entity to complete its Payments / KYC application.
         </p>
       ) : (
-        <QuantumPaymentsOnboardPanel kind="host" locationId={locId} />
+        <QuantumPaymentsOnboardPanel kind="host" locationId={locId} onAccount={refreshStatus} />
       )}
 
       {status && status.readers.length > 0 && (

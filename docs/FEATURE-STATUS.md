@@ -1,7 +1,7 @@
 # Feature status
 
 **Date:** 10 Oct 2026  
-**Tree:** Entity Settings lets that entity edit its legal name, DBA, logo, default tip percents, menu display name, and staff PIN length. Those save on the entity. Venue name, address, and timezone stay with the location contact (Operators Guide v2026.10.234).  
+**Tree:** A location can stay in training and send a card when the selling entity has a Finix Merchant ID and sandbox keys. Payments shows Live. Live keys do not take real money until the owner marks the location live (Operators Guide v2026.10.235).  
 **How this was read:** routes under `src/routes`, `createServerFn` handlers, `migrations/`, Operators Guide topics in `src/lib/guide/content`, and the server functions those screens call. A live venue was not clicked.
 
 **100% means all three:** a screen, a save that writes Postgres (a table or `locations.setup`), and a read that loads that same row again. A refresh would still show the result. A button that only updates the browser, a seed, or a handler that returns without writing is not complete.
@@ -46,7 +46,7 @@
 
 **Printer and station records.** `LocationDeviceRegistry` calls `saveLocationDeviceFn`, which writes `location_devices` and `locations.setup.locationDevices` (`src/lib/access/api.ts`). The list reads that setup back. A receipt printer, an order printer, and a paired tablet are the same device record.
 
-**Operators Guide.** `/guide` renders `OperatorsGuide` from `src/lib/guide`. It is the published manual (v2026.10.234), not a record the venue saves.
+**Operators Guide.** `/guide` renders `OperatorsGuide` from `src/lib/guide`. It is the published manual (v2026.10.235), not a record the venue saves.
 
 **Entity settings.** Entity admin Settings (`EntityOwnedSettings`) loads `loadEntitySettingsFn` and saves `saveEntitySettingsFn` onto that operator: legal name, DBA, menu display name, tip percents, and staff PIN length (`operators`, migration `0053_entity_settings.sql`). The logo uses the entity slot. Venue name, address, and timezone stay on the location and stay read-only for an entity admin who is not the location contact. The location contact can change the entity fields. A refresh reads the operator row again. Payment and tax are not on this screen.
 
@@ -76,7 +76,7 @@
 
 **Gift cards when the server call fails.** Signed-in issue and redeem use Postgres. If issue throws, the pay screen falls back to the local gift list. That balance is not on `/gift` and not on another browser. Offline redeem uses the same local list.
 
-**Quantum Payments sandbox, Square, and Stripe as separate rails.** Training (any lifecycle other than `live`) forces sandbox (`lifecycleForcesSandbox` in `src/lib/payments/mode.ts`). Sandbox capture inserts `summex_payments` and does not charge a card. Square is a separate checkout (`startSquareCheckout`, `square_checkouts` in `migrations/0050_square_terminal.sql`) and does not fall through to Finix. Stripe Terminal, when `cardProcessor` is `stripe`, uses `STRIPE_SECRET_KEY` and journals the split. The default live rail is Finix (see Complete).
+**Quantum Payments sandbox, Square, and Stripe as separate rails.** A training location sends a card on sandbox keys through `finixCaptureRoute` in `src/lib/payments/training-rail.ts`. Payments shows Live when the entity has a Finix merchant id and Finix keys are present (`paymentsTabIsLive`). Live keys do not capture while the location is in training. The location stays training until the owner marks it live. Square is a separate checkout (`startSquareCheckout`, `square_checkouts` in `migrations/0050_square_terminal.sql`) and does not fall through to Finix. Stripe Terminal, when `cardProcessor` is `stripe`, uses `STRIPE_SECRET_KEY` and journals the split. The default live rail is Finix (see Complete).
 
 **Settlement leftovers.** Period close writes the in-app ledger (`src/lib/pos/settlement.ts`) with a last4 label. `queueOperatorPayouts` can call Finix only after that merchant is live-approved; otherwise it no-ops. It is not a payout of leftover host cut and fees.
 
@@ -104,7 +104,7 @@ What is still short of a full live house is under Partial. Live card capture and
 
 A training house can take cash and a sandbox card. A live guest card still stops on these gates in code:
 
-1. **Lifecycle is `live`.** Anything else, including a missing status, forces sandbox (`lifecycleForcesSandbox` in `src/lib/payments/mode.ts`).
+1. **Lifecycle is `live` for a real-money capture.** Training can send a sandbox-key charge. Live keys stay unused until the owner marks the location live (`finixCaptureRoute`).
 2. **The platform or location payments mode is live.** Default is sandbox unless `SUMMEX_PAYMENTS_MODE=live` or the location override is `live`.
 3. **Each selling entity that is on the check has an approved merchant.** `assertEntitiesCanCapture` requires `approved` or `live` and a `finix_merchant_id`. A peer venue has no host merchant. A host share on a peer check is rejected.
 4. **Finix credentials and the selling entity’s merchant.** The live rail uses `FINIX_LIVE_USERNAME`, `FINIX_LIVE_PASSWORD`, `FINIX_LIVE_APPLICATION_ID`, and `FINIX_LIVE_WEBHOOK_SECRET` with that entity’s `finix_merchant_id`, and only when the location is live. Sandbox uses `FINIX_USERNAME`, `FINIX_PASSWORD`, `FINIX_APPLICATION_ID`, and `FINIX_WEBHOOK_SECRET`. A missing key names that key. A Quantum secret is not this rail. The Stripe dropdown needs `STRIPE_SECRET_KEY` and a live key only after the location is Live. Square needs `SQUARE_ENVIRONMENT=production`, `squareLiveCards`, a token, and a paired terminal (`square-terminal.server.ts`).

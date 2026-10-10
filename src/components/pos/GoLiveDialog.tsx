@@ -42,9 +42,9 @@ export function GoLivePanel({ blockedReason }: { blockedReason?: string | null }
         {schedule ? ` · scheduled ${formatDateTime(schedule.at)}` : ""}
       </p>
       <p className="mt-1 text-xs text-muted-foreground">
-        Training is the real org with sandbox cards and practice tickets. Live
-        guest Visa is blocked until every selling entity has live Finix and at
-        least one reader enrolled. Type GO LIVE NOW, or schedule a datetime.
+        Training is the real org. Sandbox keys can send a card. Live keys do not
+        take real money until you mark this location live. Type GO LIVE NOW, or
+        schedule a datetime.
         Choose keep vs erase practice tickets — menus and inventory stay.
       </p>
       {blockedReason ? (

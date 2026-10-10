@@ -15,6 +15,7 @@ import { cardPresentDispatch, parseCardProcessor } from "./adapter";
 import { captureStripeTerminal } from "./stripe-terminal.server";
 import { captureFinixCardPresent } from "./finix-card.server";
 import { missingFinixKeyMessage, readFinixCreds } from "./finix-keys";
+import { finixCaptureRoute, paymentsTabIsLive } from "./training-rail";
 import { liveCardGate, parentMerchantForCapture } from "./finix-events";
 import type { CardPresentInput, CardPresentResult, CardPresentSplit, PaymentsStatus } from "./types";
 import { newId } from "@/lib/saas/ids";
@@ -130,9 +131,11 @@ export async function getPaymentsStatus(
     hostApproved = false;
   }
   let entityMerchants: PaymentsStatus["entityMerchants"] = [];
+  let merchantIds: Array<string | null> = [];
   try {
     const { listPaymentAccountsForLocation } = await import("./onboarding.server");
     const accounts = await listPaymentAccountsForLocation(userId, locationId);
+    merchantIds = accounts.map((a) => a.merchantId);
     entityMerchants = accounts.map((a) => ({
       entityId: a.kind === "host" ? HOST_SCOPE : (a.operatorId || HOST_SCOPE),
       displayName: a.displayName,
@@ -143,6 +146,11 @@ export async function getPaymentsStatus(
   } catch {
     entityMerchants = [];
   }
+  const railLive = paymentsTabIsLive({
+    merchantIds,
+    sandboxKeys: readFinixCreds("sandbox").ok,
+    liveKeys: readFinixCreds("live").ok,
+  });
   const peerVenue = loc.operating_model === "peer_venue";
   const opMerchants = (entityMerchants ?? []).filter((m) => m.kind === "operator");
   const sellingReady = peerVenue
@@ -168,9 +176,11 @@ export async function getPaymentsStatus(
             ? "Live mode is on, but no Finix/Quantum reader is enrolled. Live cards fail closed. Use cash or keep the check open. Customer-owned bank readers are not supported."
             : "Live mode is selected, but live keys are not configured. Use cash or keep the check open.";
   if (resolved.lifecycleForcesSandbox) {
-    message = peerVenue
-      ? "Location is not live yet — Quantum Payments sandbox. Each operator uses a sandbox payments account. The venue is not a merchant. Guest still pays one check."
-      : "Location is not live yet — Quantum Payments sandbox. Each brand uses a sandbox payments account. Guest still pays one check.";
+    message = railLive
+      ? "This location stays in training. Cards use sandbox keys and this entity’s merchant. Live keys are not used until the owner marks the location live."
+      : peerVenue
+        ? "Location is not live yet — Quantum Payments sandbox. Each operator uses a sandbox payments account. The venue is not a merchant. Guest still pays one check."
+        : "Location is not live yet — Quantum Payments sandbox. Each brand uses a sandbox payments account. Guest still pays one check.";
   }
   return {
     locationId,
@@ -178,6 +188,7 @@ export async function getPaymentsStatus(
     locationOverride,
     platformDefault,
     lifecycleForcesSandbox: resolved.lifecycleForcesSandbox,
+    railLive,
     liveConfigured,
     liveReady,
     hostPaymentsApproved: hostApproved,
@@ -361,16 +372,30 @@ export async function captureCardPresent(
     };
   }
 
-  if (resolved.mode === "sandbox") {
-    const creds = readFinixCreds("sandbox");
-    if (!creds.ok) {
-      return {
-        ok: false,
-        status: "unavailable",
-        sandbox: true,
-        error: missingFinixKeyMessage(creds.missing),
-      };
-    }
+  const locationIsLive = locationLifecycleStatus(setup, loc.lifecycle_status) === "live";
+  const sandboxCreds = readFinixCreds("sandbox");
+  const liveCreds = readFinixCreds("live");
+  const route = finixCaptureRoute({
+    locationLive: locationIsLive,
+    paymentsMode: resolved.mode,
+    sandboxKeys: sandboxCreds.ok,
+    liveKeys: liveCreds.ok,
+  });
+  if (!route.ok) {
+    const error =
+      route.reason === "live-keys-while-training"
+        ? "Live keys run only when the location is live"
+        : route.reason === "missing-live"
+          ? missingFinixKeyMessage(liveCreds.ok ? "FINIX_LIVE_USERNAME" : liveCreds.missing)
+          : missingFinixKeyMessage(sandboxCreds.ok ? "FINIX_USERNAME" : sandboxCreds.missing);
+    return {
+      ok: false,
+      status: "unavailable",
+      sandbox: route.reason !== "missing-live",
+      error,
+    };
+  }
+  if (route.mode === "sandbox") {
     return finish(
       await captureFinixCardPresent({
         input: payload,
@@ -383,8 +408,6 @@ export async function captureCardPresent(
       true,
     );
   }
-
-  const liveCreds = readFinixCreds("live");
   if (!liveCreds.ok) {
     return {
       ok: false,
