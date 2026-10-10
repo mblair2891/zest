@@ -8,6 +8,7 @@ import { randomUUID } from "node:crypto";
 import { hashPassword } from "better-auth/crypto";
 import { getSql } from "@/lib/db";
 import { hashPin } from "@/lib/pos/pin";
+import { parsePinLength } from "@/lib/saas/entity-settings";
 import { newId } from "./ids";
 import { ForbiddenError, isPlatformAdmin, requireMembership, writeAudit } from "./tenancy.server";
 import { generateOneTimePassword, usernameFromEmail } from "./subscriber-login";
@@ -452,20 +453,7 @@ export async function addFloorStaff(
   const name = input.name.trim().slice(0, 80);
   if (!name) throw new Error("Name is required.");
   const role = parseTenantFloorRole(input.role);
-  const len = await pinLen();
-  const pin = String(input.pin ?? "").replace(/\D/g, "");
-  if (!new RegExp(`^\\d{${len}}$`).test(pin)) {
-    throw new Error(`PIN must be ${len} digits.`);
-  }
-  const pinHash = hashPin(pin, input.locationId);
   const sql = await getSql();
-  const taken = await sql<{ id: string }>`
-    select id from location_staff
-    where location_id = ${input.locationId} and pin_hash = ${pinHash}
-    limit 1
-  `;
-  if (taken[0]) throw new Error("That PIN is already in use at this location.");
-
   const home = input.homeEntityId?.trim() || null;
   if (home) {
     const op = await sql<{ id: string }>`
@@ -475,6 +463,25 @@ export async function addFloorStaff(
     `;
     if (!op[0]) throw new Error("Home entity not found on this tenant.");
   }
+  let len = await pinLen();
+  if (home) {
+    const sized = await sql<{ pin_length: number | null }>`
+      select pin_length from operators where id = ${home} limit 1
+    `.catch(() => [] as { pin_length: number | null }[]);
+    const entityLen = parsePinLength(sized[0]?.pin_length);
+    if (entityLen) len = entityLen;
+  }
+  const pin = String(input.pin ?? "").replace(/\D/g, "");
+  if (!new RegExp(`^\\d{${len}}$`).test(pin)) {
+    throw new Error(`PIN must be ${len} digits.`);
+  }
+  const pinHash = hashPin(pin, input.locationId);
+  const taken = await sql<{ id: string }>`
+    select id from location_staff
+    where location_id = ${input.locationId} and pin_hash = ${pinHash}
+    limit 1
+  `;
+  if (taken[0]) throw new Error("That PIN is already in use at this location.");
 
   const id = newId("emp");
   await sql`

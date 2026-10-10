@@ -6,6 +6,18 @@ import type { GuideUpdate } from "@/lib/guide/types";
  */
 export const WHATS_NEW_ENTRIES: GuideUpdate[] = [
   {
+    id: "upd_2026_10_234_entity_settings",
+    date: "2026-10-10",
+    title: "Entity settings",
+    summary: "An entity admin edits legal name, DBA, logo, tips, menu name, and PIN length on that entity.",
+    body: "Entity Settings shows the fields that belong to the entity. The entity admin can edit legal name, DBA, logo, default tip percents, menu display name, and staff PIN length. Save stores them on that entity. Venue name, address, and timezone stay read-only, with a note that the location contact can change them. The location contact sees the entity fields and can change them. Empty fields show a placeholder. Payment and tax are not on this screen.",
+    roles: ["owner_manager", "host_operator", "vendor_operator"],
+    surfaces: ["settings"],
+    audience: "all",
+    topicId: "location-settings",
+    tags: ["settings", "entity"],
+  },
+  {
     id: "upd_2026_10_233_liquor_stock_check",
     date: "2026-10-10",
     title: "Liquor order stock check",

@@ -29,6 +29,7 @@ import { VENUE_TIMEZONES, parseVenueTimezone } from "@/lib/pos/venue-time";
 import { persistTaxRates } from "@/lib/pos/persist-location-setup";
 import { JurisdictionFields } from "@/components/pos/SettingsView";
 import { BrandLogoField } from "@/components/brand/BrandLogoField";
+import { EntityOwnedSettings } from "@/components/platform/EntityOwnedSettings";
 
 
 const STYLE_LABEL: Record<(typeof SERVICE_STYLES_VENUE)[number], string> = {
@@ -139,7 +140,18 @@ export function VenueHouseSettings() {
             operatorId={v.id}
             label={`${v.name} logo`}
             hint="Guest check and paid receipt, this entity’s back office, and the QR page under the house name."
-            write
+            write={write}
+          />
+        ))}
+        {vendors.map((v) => (
+          <EntityOwnedSettings
+            key={`entity-${v.id}`}
+            orgId={orgId}
+            locationId={locId}
+            operatorId={v.id}
+            write={write}
+            heading={v.name}
+            showLogo={false}
           />
         ))}
         <label className="block text-sm">

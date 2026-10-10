@@ -61,6 +61,7 @@ import {
 } from "@/lib/saas/venue-dashboard-tabs";
 import { TenantVenueOverview } from "@/components/platform/TenantVenueOverview";
 import { VenueHouseSettings } from "@/components/platform/VenueHouseSettings";
+import { EntityOwnedSettings } from "@/components/platform/EntityOwnedSettings";
 import { VenueProfileSettings } from "@/components/platform/VenueProfileSettings";
 import { parseJurisdiction } from "@/lib/pos/jurisdiction";
 import { TabErrorBoundary } from "@/components/platform/TabErrorBoundary";
@@ -727,12 +728,23 @@ export function PlatformTenantVenue({
             )}
             {ready && !error && tab === "settings" && tabIds.has("settings") && (
               isEntityPasswordKind(kind) ? (
+                <div className="space-y-8">
                 <VenueProfileSettings
                   orgId={orgReadyId || orgId}
                   locationId={activeLoc}
                   peerVenue={model === "peer_venue"}
                   entities={ops.map((o) => ({ id: o.id, name: o.dba }))}
                 />
+                {entityId ? (
+                  <EntityOwnedSettings
+                    orgId={orgReadyId || orgId}
+                    locationId={activeLoc}
+                    operatorId={entityId}
+                    write
+                    heading={ops.find((o) => o.id === entityId)?.dba || "This entity"}
+                  />
+                ) : null}
+                </div>
               ) : audience === "platform" || model === "peer_venue" ? (
                 <VenueHouseSettings />
               ) : (

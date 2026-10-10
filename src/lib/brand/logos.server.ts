@@ -3,6 +3,7 @@
  * Screen + receipt go on the location setup and bump configVersion.
  */
 import { getSql } from "@/lib/db";
+import { userCanEditEntitySettings } from "@/lib/saas/entity-settings.server";
 import { ForbiddenError, isPlatformAdmin } from "@/lib/saas/tenancy.server";
 import {
   SCREEN_MAX_CHARS,
@@ -74,7 +75,9 @@ export async function saveBrandLogo(
 ): Promise<{ configVersion: number; brandLogos: BrandLogoMap }> {
   const slot = String(input.operatorId || "").trim();
   const who = await actorFor(userId, input.locationId);
-  if (!canWriteLogoSlot(who.actor, who.operatorId, slot)) {
+  const entityOverride =
+    Boolean(slot) && (await userCanEditEntitySettings(userId, input.locationId, slot));
+  if (!canWriteLogoSlot(who.actor, who.operatorId, slot) && !entityOverride) {
     throw new ForbiddenError("You can edit only your logo slot");
   }
   const mime = normalizeLogoMime(input.mime);
@@ -113,7 +116,9 @@ export async function clearBrandLogo(
 ): Promise<{ configVersion: number; brandLogos: BrandLogoMap }> {
   const slot = String(input.operatorId || "").trim();
   const who = await actorFor(userId, input.locationId);
-  if (!canWriteLogoSlot(who.actor, who.operatorId, slot)) {
+  const entityOverride =
+    Boolean(slot) && (await userCanEditEntitySettings(userId, input.locationId, slot));
+  if (!canWriteLogoSlot(who.actor, who.operatorId, slot) && !entityOverride) {
     throw new ForbiddenError("You can edit only your logo slot");
   }
   const sql = await getSql();

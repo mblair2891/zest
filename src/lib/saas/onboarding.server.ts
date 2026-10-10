@@ -619,12 +619,13 @@ export async function operatorsAsVendors(locationId: string) {
     id: string;
     legal_name: string;
     dba: string | null;
+    menu_display_name?: string | null;
     payout_bank_last4: string | null;
     station_types: unknown;
     station_kind: string | null;
   };
   const rows = await sql<OpRow>`
-    select id, legal_name, dba, payout_bank_last4, station_types, station_kind
+    select id, legal_name, dba, menu_display_name, payout_bank_last4, station_types, station_kind
     from operators
     where location_id = ${locationId} and archived_at is null
     order by created_at
@@ -636,7 +637,8 @@ export async function operatorsAsVendors(locationId: string) {
   );
   const palette = ["#2C4A6E", "#5C5C5C", "#1F7A4C", "#9A6700", "#A61B1B", "#4A5568"];
   return rows.map((r, i) => {
-    const name = r.dba || r.legal_name;
+    const menuName = String(r.menu_display_name || "").trim();
+    const name = menuName || r.dba || r.legal_name;
     const stations = Array.isArray(r.station_types) ? r.station_types : [];
     const kind = r.station_kind === "bar" || r.station_kind === "kitchen" ? r.station_kind : null;
     const stationType: "bar" | "kitchen" | "both" | undefined =

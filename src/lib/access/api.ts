@@ -156,6 +156,44 @@ export const saveOperatorPayoutFn = createServerFn({ method: "POST" })
     });
   });
 
+export const loadEntitySettingsFn = createServerFn({ method: "POST" })
+  .middleware([tenantMiddleware])
+  .validator((d: { orgId: string; locationId: string; operatorId: string }) => ({
+    orgId: String(d.orgId ?? "").trim(),
+    locationId: loc(d.locationId),
+    operatorId: String(d.operatorId ?? "").trim().slice(0, 80),
+  }))
+  .handler(async ({ context, data }) => {
+    const { loadEntitySettingsForUser } = await import("@/lib/saas/entity-settings.server");
+    return loadEntitySettingsForUser(context.userId, data);
+  });
+
+export const saveEntitySettingsFn = createServerFn({ method: "POST" })
+  .middleware([tenantMiddleware])
+  .validator((d: {
+    orgId: string;
+    locationId: string;
+    operatorId: string;
+    legalName: string;
+    dba: string;
+    menuDisplayName: string;
+    tipPercents: unknown;
+    pinLength: unknown;
+  }) => ({
+    orgId: String(d.orgId ?? "").trim(),
+    locationId: loc(d.locationId),
+    operatorId: String(d.operatorId ?? "").trim().slice(0, 80),
+    legalName: String(d.legalName ?? "").slice(0, 120),
+    dba: String(d.dba ?? "").slice(0, 120),
+    menuDisplayName: String(d.menuDisplayName ?? "").slice(0, 80),
+    tipPercents: Array.isArray(d.tipPercents) ? d.tipPercents.slice(0, 4) : [],
+    pinLength: d.pinLength == null || String(d.pinLength).trim() === "" ? null : d.pinLength,
+  }))
+  .handler(async ({ context, data }) => {
+    const { saveEntitySettingsForUser } = await import("@/lib/saas/entity-settings.server");
+    return saveEntitySettingsForUser(context.userId, data);
+  });
+
 export const getLocationAccessFn = createServerFn({ method: "POST" })
   .middleware([tenantMiddleware])
   .validator((d: { orgId: string; locationId?: string }) => ({
