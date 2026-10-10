@@ -6,6 +6,18 @@ import type { GuideUpdate } from "@/lib/guide/types";
  */
 export const WHATS_NEW_ENTRIES: GuideUpdate[] = [
   {
+    id: "upd_2026_10_236_well_menu",
+    date: "2026-10-10",
+    title: "Well menu is a spirit plus a mixer",
+    summary: "The well lists spirits. Single or double, then a mixer, builds the drink.",
+    body: "The well menu lists spirits only. Tap a spirit, choose single or double, then a mixer. That drink is added to the check. A named cocktail such as Sex on the Beach stays its own item. Spirit-only items, mixer-only items, and vodka and coke lines are not listed. The popup uses large targets so one thumb can reach it on a tablet.",
+    roles: ["owner_manager", "server", "kitchen_bar", "host_operator", "vendor_operator"],
+    surfaces: ["settings"],
+    audience: "all",
+    topicId: "menu-modifiers",
+    tags: ["menu", "ordering"],
+  },
+  {
     id: "upd_2026_10_235_training_payments",
     date: "2026-10-10",
     title: "Training can send Finix sandbox payments",

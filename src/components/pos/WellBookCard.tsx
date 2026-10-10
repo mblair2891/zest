@@ -97,9 +97,10 @@ export function WellBookCard({ vendor }: { vendor: Vendor }) {
         </Button>
       </div>
       <p className="mt-1 text-xs text-muted-foreground">
-        On inserts a draft Wells group for this entity: well spirits, mixers, and highball, double, rocks, shot, and
-        tall. Rum and Coke is 1.5 oz rum and cola. A double is 3 oz rum and cola. You can still edit the pour.
-        Specialty upload sits beside these rows.
+        On lists these spirits on the order pad. Tap a spirit, choose single or double, then a mixer.
+        That builds the drink and adds it to the check. A named cocktail stays its own item. Spirit-only
+        and mixer-only rows are not listed. Rum and Coke is 1.5 oz rum and cola when it is built. A double
+        is 3 oz rum and cola. You can still edit the pour.
       </p>
       {draft.enabled ? (
         <div className="mt-3 grid gap-3">

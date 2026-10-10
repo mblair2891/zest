@@ -10,6 +10,7 @@ import {
   type HouseItem,
 } from "@/lib/delivery/marketplace";
 import { GuideLearnLink } from "@/components/guide/GuideLearnLink";
+import { omitWellBuildFromList } from "@/lib/pos/well-book";
 
 function channelsOf(raw: DeliveryChannel[] | undefined): DeliveryChannel[] {
   return normalizeDeliveryChannels(raw);
@@ -26,7 +27,7 @@ export function DeliveryChannelsCard({ write }: { write: boolean }) {
     save(channels.map((channel) => (channel.id === id ? { ...channel, ...partial } : channel)));
 
   const publish = () => {
-    const menu: HouseItem[] = menuItems.map((item) => ({
+    const menu: HouseItem[] = menuItems.filter((item) => !omitWellBuildFromList(item)).map((item) => ({
       id: item.id,
       name: item.name,
       priceCents: item.priceCents,

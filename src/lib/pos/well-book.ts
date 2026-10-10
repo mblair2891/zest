@@ -265,8 +265,119 @@ export type WellRecipeDraft = {
   lines: { name: string; qty: number; unit: string }[];
 };
 
-function wellCategoryId(entityId: string): string {
+export function wellCategoryId(entityId: string): string {
   return `well-cat-${entityId}`;
+}
+
+export function isWellSpiritKey(key: string | null | undefined): boolean {
+  return String(key ?? "").startsWith("pick|");
+}
+
+/** A generated well build (spirit + mixer, rocks, or shot). Not a listed menu row. */
+export function isWellBuildKey(key: string | null | undefined): boolean {
+  const value = String(key ?? "");
+  return value.length > 0 && !value.startsWith("pick|");
+}
+
+export type WellPour = "single" | "double";
+
+export function wellBuildKey(spiritId: string, mixerId: string, pour: WellPour): string {
+  return `${spiritId}|${mixerId}|${pour === "double" ? "double" : "highball"}`;
+}
+
+/** Vodka and Coke style names, and generated builds, stay off menus. Named cocktails stay. */
+export function omitWellBuildFromList(item: { wellKey?: string | null; name?: string }): boolean {
+  if (isWellBuildKey(item.wellKey) || isWellSpiritKey(item.wellKey)) return true;
+  if (item.name && knownWellPour(item.name)) return true;
+  return false;
+}
+
+export function visibleWellMixers(config: WellBookConfig): WellMixer[] {
+  return config.mixers.filter((mixer) => mixer.name.trim() && !mixer.hidden);
+}
+
+export type WellSpiritTile = {
+  kind: "spirit";
+  id: string;
+  spiritId: string;
+  entityId: string;
+  name: string;
+  priceCents: number;
+  categoryId: string;
+};
+
+export type WellPadTile<T> = { kind: "item"; item: T } | WellSpiritTile;
+
+/**
+ * Order pad rows. An enabled well book contributes spirit names only.
+ * The built drink is added later from single or double plus a mixer.
+ */
+export function orderPadTiles<
+  T extends {
+    id: string;
+    name: string;
+    categoryId: string;
+    vendorId?: string;
+    wellKey?: string;
+    wellHidden?: boolean;
+    archived?: boolean;
+    priceCents: number;
+  },
+>(opts: {
+  items: readonly T[];
+  vendors: readonly { id: string; wellBook?: WellBookConfig }[];
+  vendorFilter: string | null;
+  categoryId: string | null;
+  search: string;
+}): WellPadTile<T>[] {
+  const q = opts.search.trim().toLowerCase();
+  const out: WellPadTile<T>[] = [];
+  for (const item of opts.items) {
+    if (item.archived || item.wellHidden) continue;
+    if (omitWellBuildFromList(item)) continue;
+    if (opts.vendorFilter && item.vendorId !== opts.vendorFilter) continue;
+    if (opts.categoryId && item.categoryId !== opts.categoryId) continue;
+    if (q && !item.name.toLowerCase().includes(q)) continue;
+    out.push({ kind: "item", item });
+  }
+  for (const vendor of opts.vendors) {
+    const config = vendor.wellBook;
+    if (!config?.enabled) continue;
+    if (opts.vendorFilter && vendor.id !== opts.vendorFilter) continue;
+    if (!visibleWellMixers(config).length) continue;
+    const categoryId = wellCategoryId(vendor.id);
+    if (opts.categoryId && opts.categoryId !== categoryId) continue;
+    for (const spirit of config.spirits) {
+      const name = spirit.name.trim();
+      if (!name) continue;
+      if (q && !name.toLowerCase().includes(q)) continue;
+      out.push({
+        kind: "spirit",
+        id: `well-spirit-${vendor.id}-${spirit.id}`,
+        spiritId: spirit.id,
+        entityId: vendor.id,
+        name,
+        priceCents: Math.max(0, Math.round(config.wellCents)),
+        categoryId,
+      });
+    }
+  }
+  out.sort((a, b) => {
+    const an = a.kind === "item" ? a.item.name : a.name;
+    const bn = b.kind === "item" ? b.item.name : b.name;
+    return an.localeCompare(bn);
+  });
+  return out;
+}
+
+export function findWellDrink<T extends { wellKey?: string; vendorId?: string; available?: boolean }>(
+  items: readonly T[],
+  opts: { entityId: string; spiritId: string; mixerId: string; pour: WellPour },
+): T | undefined {
+  const key = wellBuildKey(opts.spiritId, opts.mixerId, opts.pour);
+  return items.find(
+    (item) => item.vendorId === opts.entityId && item.wellKey === key && item.available !== false,
+  );
 }
 
 function wellItemId(entityId: string, key: string): string {
@@ -346,7 +457,7 @@ export function syncWellCatalog<TItem extends WellCatalogItem, TCat extends Well
       available: !draft.hidden,
       modifierGroupIds: [group.id],
       wellKey: draft.key,
-      wellHidden: draft.hidden,
+      wellHidden: true,
     } as TItem;
   });
   const recipes: WellRecipeDraft[] = drafts
@@ -391,16 +502,21 @@ export function dropWellItems<TItem extends { vendorId?: string; wellKey?: strin
   return items.filter((item) => !(item.vendorId === entityId && item.wellKey));
 }
 
-export function orderPadCategories<T extends { id: string; name: string; sort: number; wellBook?: boolean }>(
+export function orderPadCategories<T extends { id: string; name: string; sort: number; wellBook?: boolean; vendorId?: string }>(
   categories: readonly T[],
-  items: readonly { categoryId: string; vendorId?: string; wellHidden?: boolean; archived?: boolean }[],
+  items: readonly { categoryId: string; vendorId?: string; wellHidden?: boolean; archived?: boolean; wellKey?: string }[],
   vendorId: string | null,
 ): T[] {
   const visible = new Set<string>();
   for (const item of items) {
-    if (item.wellHidden || item.archived) continue;
+    if (item.wellHidden || item.archived || isWellBuildKey(item.wellKey)) continue;
     if (vendorId && item.vendorId !== vendorId) continue;
     visible.add(item.categoryId);
+  }
+  for (const cat of categories) {
+    if (!cat.wellBook) continue;
+    if (vendorId && cat.vendorId !== vendorId) continue;
+    visible.add(cat.id);
   }
   return categories
     .filter((cat) => visible.has(cat.id))

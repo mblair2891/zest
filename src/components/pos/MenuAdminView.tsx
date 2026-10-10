@@ -28,7 +28,7 @@ import { EntityMenuIntake } from "@/components/pos/EntityMenuIntake";
 import { persistLocationCatalog } from "@/lib/pos/persist-location-setup";
 import { isActiveOrderPrinter } from "@/lib/pos/fire-routing";
 import { destinationForGroup, mergeOrderDestinations } from "@/lib/pos/order-destinations";
-import { isDrinkEntity } from "@/lib/pos/well-book";
+import { isDrinkEntity, omitWellBuildFromList } from "@/lib/pos/well-book";
 import { WellBookCard } from "@/components/pos/WellBookCard";
 import { NaDrinkAdd } from "@/components/pos/NaDrinkAdd";
 
@@ -326,7 +326,10 @@ export function MenuAdminView() {
         .map((cat) => {
           if (categoryFilter !== "all" && categoryFilter !== cat.id) return null;
           const items = menuItems.filter(
-            (m) => m.categoryId === cat.id && (listMode === "archived" ? m.archived : !m.archived),
+            (m) =>
+              m.categoryId === cat.id &&
+              (listMode === "archived" ? m.archived : !m.archived) &&
+              !omitWellBuildFromList(m),
           );
           if (!items.length) return null;
           const dest = destinationForGroup(cat);

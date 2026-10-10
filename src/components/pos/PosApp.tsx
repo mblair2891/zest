@@ -58,6 +58,7 @@ import { applyStationPublish, parseStationPublish } from "@/lib/pos/station-publ
 import { StationPublishWatcher } from "@/components/pos/StationPublishWatcher";
 import { StationUpdatePrompt } from "@/components/pos/StationUpdatePrompt";
 import { KioskApp } from "@/components/kiosk/KioskApp";
+import { readWellBook } from "@/lib/pos/well-book";
 
 import { SESSION_MODES, type SessionModeId } from "@/lib/lifecycle/types";
 import {
@@ -633,6 +634,7 @@ function PosAppInner({ entityId }: { entityId?: string }) {
           }
           if (setup.menuCatalog?.items?.length) {
             const cur = usePosStore.getState();
+            const wellBooks = setup.menuCatalog.wellBooks;
             usePosStore.setState({
               menuItems: setup.menuCatalog.items,
               categories: setup.menuCatalog.categories.length
@@ -641,6 +643,13 @@ function PosAppInner({ entityId }: { entityId?: string }) {
               modifierGroups: setup.menuCatalog.modifiers.length
                 ? setup.menuCatalog.modifiers
                 : cur.modifierGroups,
+              vendors: Array.isArray(wellBooks)
+                ? cur.vendors.map((vendor) => {
+                    const book = wellBooks.find((row) => row.vendorId === vendor.id);
+                    const wellBook = readWellBook(book?.wellBook);
+                    return wellBook ? { ...vendor, wellBook } : vendor;
+                  })
+                : cur.vendors,
             });
           }
           if (setup.financeBooks) {

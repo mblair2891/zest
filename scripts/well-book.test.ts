@@ -4,12 +4,15 @@ import { readFileSync } from "node:fs";
 import {
   buildWellDraft,
   defaultWellBook,
+  findWellDrink,
   formatWellPour,
   isDrinkEntity,
   knownWellPour,
   orderPadCategories,
+  orderPadTiles,
   specialtyBesideWell,
   syncWellCatalog,
+  visibleWellMixers,
 } from "../src/lib/pos/well-book.ts";
 
 const roomItems = [
@@ -41,7 +44,8 @@ test("a drink entity well book adds Rum and Coke and leaves food alone", () => {
   assert.ok(rum);
   assert.equal(rum.vendorId, "bar");
   assert.equal(rum.description, "Well highball");
-  assert.equal(rum.wellHidden, false);
+  assert.equal(rum.wellHidden, true);
+  assert.equal(rum.available, true);
   const recipe = synced.recipes.find((row) => row.menuItemId === rum.id);
   assert.ok(recipe);
   assert.equal(formatWellPour(recipe.lines), "1.5 oz rum and cola");
@@ -81,24 +85,73 @@ test("a drink entity well book adds Rum and Coke and leaves food alone", () => {
 
   const coke = config.mixers.find((mixer) => mixer.name === "cola");
   assert.ok(coke);
+  const hiddenBook = {
+    ...config,
+    mixers: config.mixers.map((mixer) =>
+      mixer.id === coke.id ? { ...mixer, hidden: true } : mixer,
+    ),
+  };
   const hidden = syncWellCatalog({
     entityId: "bar",
-    config: {
-      ...config,
-      mixers: config.mixers.map((mixer) =>
-        mixer.id === coke.id ? { ...mixer, hidden: true } : mixer,
-      ),
-    },
+    config: hiddenBook,
     items: synced.items,
     categories: synced.categories,
     modifiers: synced.modifiers,
   });
   const gone = hidden.items.find((item) => item.name === "Rum and Coke");
   assert.equal(gone?.wellHidden, true);
-  const pad = hidden.items.filter((item) => item.vendorId === "bar" && !item.wellHidden);
-  assert.equal(pad.some((item) => item.name === "Rum and Coke"), false);
-  assert.equal(pad.some((item) => item.name === "Double Rum and Coke"), false);
-  assert.equal(pad.some((item) => item.name === "Rum rocks"), true);
+  const pad = orderPadTiles({
+    items: [
+      ...hidden.items,
+      {
+        id: "beach",
+        name: "Sex on the Beach",
+        categoryId: "cocktails",
+        priceCents: 1200,
+        vendorId: "bar",
+      },
+    ],
+    vendors: [{ id: "bar", wellBook: hiddenBook }],
+    vendorFilter: "bar",
+    categoryId: null,
+    search: "",
+  });
+  const names = pad.map((row) => (row.kind === "item" ? row.item.name : row.name));
+  assert.equal(names.includes("Rum and Coke"), false);
+  assert.equal(names.includes("Double Rum and Coke"), false);
+  assert.equal(names.includes("Vodka and Coke"), false);
+  assert.equal(names.includes("Rum rocks"), false);
+  assert.equal(names.includes("Rum shot"), false);
+  assert.equal(names.includes("Sex on the Beach"), true);
+  assert.equal(names.includes("Rum"), true);
+  assert.equal(names.includes("Vodka"), true);
+  assert.equal(names.includes("cola"), false);
+  assert.equal(visibleWellMixers(hiddenBook).some((mixer) => mixer.id === coke.id), false);
+  const wellId = hidden.categories.find((cat) => cat.name === "Wells")?.id ?? "";
+  const wellNames = orderPadTiles({
+    items: pad.flatMap((row) => (row.kind === "item" ? [row.item] : [])),
+    vendors: [{ id: "bar", wellBook: hiddenBook }],
+    vendorFilter: "bar",
+    categoryId: wellId,
+    search: "",
+  }).map((row) => (row.kind === "item" ? row.item.name : row.name));
+  assert.equal(wellNames.includes("Sex on the Beach"), false);
+  assert.equal(wellNames.includes("Vodka"), true);
+  assert.equal(wellNames.some((name) => / and |coke|rocks|shot/i.test(name)), false);
+  const drink = findWellDrink(hidden.items, {
+    entityId: "bar",
+    spiritId: "spirit-3",
+    mixerId: "mixer-2",
+    pour: "single",
+  });
+  assert.equal(drink?.name, "Rum and soda");
+  const doubledDrink = findWellDrink(synced.items, {
+    entityId: "bar",
+    spiritId: "spirit-3",
+    mixerId: "mixer-1",
+    pour: "double",
+  });
+  assert.equal(doubledDrink?.name, "Double Rum and Coke");
   const groups = orderPadCategories(hidden.categories, hidden.items, "bar");
   assert.equal(groups[0]?.name, "Wells");
   assert.equal(orderPadCategories(hidden.categories, hidden.items, "food").some((cat) => cat.name === "Wells"), false);
@@ -124,4 +177,15 @@ test("menu screen offers well book only as a drink-entity control", () => {
   assert.match(card, /data-well-double-pour=""/);
   assert.match(intake, /data-well-book-replace=""/);
   assert.match(intake, /specialtyBesideWell/);
+  const popup = readFileSync("src/components/pos/WellSpiritDialog.tsx", "utf8");
+  const order = readFileSync("src/components/pos/OrderView.tsx", "utf8");
+  assert.match(popup, /data-well-spirit-popup/);
+  assert.match(popup, /data-well-pour="single"/);
+  assert.match(popup, /data-well-pour="double"/);
+  assert.match(popup, /data-well-mixer=/);
+  assert.match(order, /findWellDrink/);
+  assert.match(order, /orderPadTiles/);
+  const pos = readFileSync("src/components/pos/PosApp.tsx", "utf8");
+  assert.match(pos, /readWellBook/);
+  assert.match(pos, /wellBooks/);
 });

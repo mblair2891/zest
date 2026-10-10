@@ -33,7 +33,8 @@ import {
   printedItemPriceCents,
 } from "@/lib/pos/calculations";
 import { cashPolicyFromSettings } from "@/lib/pos/cash-discount";
-import { orderPadCategories } from "@/lib/pos/well-book";
+import { findWellDrink, orderPadCategories, orderPadTiles, visibleWellMixers, type WellPour } from "@/lib/pos/well-book";
+import { WellSpiritDialog } from "./WellSpiritDialog";
 import { formatGuestCardRate } from "@/lib/pos/card-service";
 import { cn, formatCurrency } from "@/lib/utils";
 import { ModifierDialog } from "./ModifierDialog";
@@ -116,6 +117,8 @@ export function OrderView({
 
   const [modItem, setModItem] = useState<MenuItem | null>(null);
   const [modOpen, setModOpen] = useState(false);
+  const [wellSpirit, setWellSpirit] = useState<{ spiritId: string; entityId: string; name: string } | null>(null);
+  const [wellPour, setWellPour] = useState<WellPour | null>(null);
   const [payOpen, setPayOpen] = useState(false);
   useEffect(() => {
     void import("@/lib/pos/station-busy").then((m) => m.setStationPayOpen(payOpen));
@@ -192,18 +195,55 @@ export function OrderView({
     setSearch("");
   };
 
-  const items = useMemo(() => {
-    let list = menuItems;
-    if (vendorFilter) list = list.filter((m) => m.vendorId === vendorFilter);
-    list = list.filter((m) => !m.wellHidden && !m.archived);
-    if (selectedCategoryId)
-      list = list.filter((m) => m.categoryId === selectedCategoryId);
-    if (search.trim()) {
-      const q = search.toLowerCase();
-      list = list.filter((m) => m.name.toLowerCase().includes(q));
-    }
-    return list.sort((a, b) => a.name.localeCompare(b.name));
-  }, [menuItems, selectedCategoryId, search, vendorFilter]);
+  const tiles = useMemo(
+    () =>
+      orderPadTiles({
+        items: menuItems,
+        vendors,
+        vendorFilter,
+        categoryId: selectedCategoryId,
+        search,
+      }),
+    [menuItems, vendors, vendorFilter, selectedCategoryId, search],
+  );
+  const wellMixers = wellSpirit
+    ? visibleWellMixers(
+        vendors.find((vendor) => vendor.id === wellSpirit.entityId)?.wellBook ?? {
+          enabled: false,
+          spirits: [],
+          mixers: [],
+          wellCents: 0,
+          callUpchargeCents: 0,
+          premiumUpchargeCents: 0,
+        },
+      )
+    : [];
+  const closeWell = () => {
+    setWellSpirit(null);
+    setWellPour(null);
+  };
+  const chooseWellMixer = (mixerId: string) => {
+    if (!wellSpirit || !wellPour) return;
+    const drink = findWellDrink(menuItems, {
+      entityId: wellSpirit.entityId,
+      spiritId: wellSpirit.spiritId,
+      mixerId,
+      pour: wellPour,
+    });
+    if (drink) addItem(drink.id);
+    closeWell();
+  };
+  const wellPopup = (
+    <WellSpiritDialog
+      spiritName={wellSpirit?.name ?? null}
+      spiritId={wellSpirit?.spiritId ?? null}
+      pour={wellPour}
+      mixers={wellMixers}
+      onPour={setWellPour}
+      onMixer={chooseWellMixer}
+      onClose={closeWell}
+    />
+  );
 
   const openOrders = orders.filter((o) => o.status === "open");
 
@@ -560,7 +600,28 @@ export function OrderView({
         </div>
         <div className="min-h-0 flex-1 overflow-y-auto p-2">
           <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
-            {items.map((item) => {
+            {tiles.map((tile) => {
+              if (tile.kind === "spirit") {
+                return (
+                  <button
+                    key={tile.id}
+                    type="button"
+                    disabled={orderLocked}
+                    data-well-spirit={tile.spiritId}
+                    onClick={() => {
+                      setWellSpirit({ spiritId: tile.spiritId, entityId: tile.entityId, name: tile.name });
+                      setWellPour(null);
+                    }}
+                    className="flex min-h-16 flex-col rounded-2xl border border-border bg-surface p-3 text-left active:scale-[0.98]"
+                  >
+                    <span className="text-base font-semibold leading-snug">{tile.name}</span>
+                    <span className="mt-auto pt-2 text-sm font-semibold tabular">
+                      {formatCurrency(tile.priceCents)}
+                    </span>
+                  </button>
+                );
+              }
+              const item = tile.item;
               const printed =
                 happy && item.happyHourPriceCents != null
                   ? item.happyHourPriceCents
@@ -609,6 +670,7 @@ export function OrderView({
           </div>
         </div>
         <ModifierDialog open={modOpen} onOpenChange={setModOpen} item={modItem} />
+        {wellPopup}
       </div>
     );
   }
@@ -1130,7 +1192,38 @@ export function OrderView({
                 </Button>
               </div>
             )}
-            {items.map((item) => {
+            {tiles.map((tile) => {
+              if (tile.kind === "spirit") {
+                const dualPrice = printedItemPriceCents(tile.priceCents, settings);
+                return (
+                  <button
+                    key={tile.id}
+                    type="button"
+                    disabled={orderLocked}
+                    data-well-spirit={tile.spiritId}
+                    onClick={() => {
+                      setWellSpirit({ spiritId: tile.spiritId, entityId: tile.entityId, name: tile.name });
+                      setWellPour(null);
+                    }}
+                    className="flex min-h-[5.5rem] w-full flex-col rounded-2xl border border-border bg-surface p-3 text-left transition hover:border-border-strong active:scale-[0.98]"
+                  >
+                    <span className="text-sm font-medium leading-snug">{tile.name}</span>
+                    <span className="mt-auto pt-2 text-right tabular text-sm font-semibold">
+                      {dualPrice.showBoth ? (
+                        <span className="block text-xs font-medium">
+                          {formatCurrency(dualPrice.cash)} cash
+                          <span className="mt-0.5 block text-[10px] font-normal text-muted-foreground">
+                            {formatCurrency(dualPrice.card)} card
+                          </span>
+                        </span>
+                      ) : (
+                        <span className="block">{formatCurrency(dualPrice.cash)}</span>
+                      )}
+                    </span>
+                  </button>
+                );
+              }
+              const item = tile.item;
               const vendor = vendors.find((v) => v.id === item.vendorId);
               const printed =
                 happy && item.happyHourPriceCents != null
@@ -1271,6 +1364,7 @@ export function OrderView({
         onOpenChange={setModOpen}
         item={modItem}
       />
+      {wellPopup}
       <PaymentDialog open={payOpen} onOpenChange={setPayOpen} />
       <ManagerPinDialog
         open={mgrOpen}
