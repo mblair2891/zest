@@ -6,6 +6,18 @@ import type { GuideUpdate } from "@/lib/guide/types";
  */
 export const WHATS_NEW_ENTRIES: GuideUpdate[] = [
   {
+    id: "upd_2026_10_238_tip_buttons",
+    date: "2026-10-10",
+    title: "Card tip buttons",
+    summary: "Card pay shows 18%, 20%, 25%, and Custom on one row.",
+    body: "On card pay, four tip buttons sit on one row: 18%, 20%, 25%, and Custom. A percent adds that tip to the total before the card is presented. Custom opens a keypad for a dollar amount or a percent. No tip stays available.",
+    roles: ["owner_manager", "server", "host_operator", "vendor_operator"],
+    surfaces: ["settings"],
+    audience: "all",
+    topicId: "tenders-tips",
+    tags: ["payments", "tipping"],
+  },
+  {
     id: "upd_2026_10_237_d135_scan",
     date: "2026-10-10",
     title: "D135 scan asks before it looks",

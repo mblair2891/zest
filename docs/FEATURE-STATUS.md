@@ -1,7 +1,7 @@
 # Feature status
 
 **Date:** 10 Oct 2026  
-**Tree:** Scan for reader asks for Nearby devices and Location, then lists a paired PAX D135. Bluetooth is off, or no reader is in range, only when Bluetooth is off or no reader is on nearby (Operators Guide v2026.10.237).  
+**Tree:** Card pay shows 18%, 20%, 25%, and Custom on one thumb row. A percent adds that tip to the total before the card is presented. Custom opens a keypad for a dollar amount or a percent. No tip stays available (Operators Guide v2026.10.238).  
 **How this was read:** routes under `src/routes`, `createServerFn` handlers, `migrations/`, Operators Guide topics in `src/lib/guide/content`, and the server functions those screens call. A live venue was not clicked.
 
 **100% means all three:** a screen, a save that writes Postgres (a table or `locations.setup`), and a read that loads that same row again. A refresh would still show the result. A button that only updates the browser, a seed, or a handler that returns without writing is not complete.
@@ -46,7 +46,7 @@
 
 **Printer and station records.** `LocationDeviceRegistry` calls `saveLocationDeviceFn`, which writes `location_devices` and `locations.setup.locationDevices` (`src/lib/access/api.ts`). The list reads that setup back. A receipt printer, an order printer, and a paired tablet are the same device record.
 
-**Operators Guide.** `/guide` renders `OperatorsGuide` from `src/lib/guide`. It is the published manual (v2026.10.237), not a record the venue saves.
+**Operators Guide.** `/guide` renders `OperatorsGuide` from `src/lib/guide`. It is the published manual (v2026.10.238), not a record the venue saves.
 
 **Entity settings.** Entity admin Settings (`EntityOwnedSettings`) loads `loadEntitySettingsFn` and saves `saveEntitySettingsFn` onto that operator: legal name, DBA, menu display name, tip percents, and staff PIN length (`operators`, migration `0053_entity_settings.sql`). The logo uses the entity slot. Venue name, address, and timezone stay on the location and stay read-only for an entity admin who is not the location contact. The location contact can change the entity fields. A refresh reads the operator row again. Payment and tax are not on this screen.
 

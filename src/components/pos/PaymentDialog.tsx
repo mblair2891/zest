@@ -12,7 +12,9 @@ import { Tabs, TabsContent } from "@/components/ui/tabs";
 import { usePosStore } from "@/lib/pos/store";
 import { useNetworkStore } from "@/lib/pos/network-store";
 import { useMarketingStore } from "@/lib/pos/marketing-store";
+import { CardTipRow } from "@/components/pos/CardTipRow";
 import { computeDualTotals, tipSuggestions } from "@/lib/pos/calculations";
+import { tipCentsForChoice, type CardTipChoice } from "@/lib/pos/card-tip";
 import { cn, formatCurrency } from "@/lib/utils";
 import type { PaymentMethod } from "@/lib/pos/types";
 import { GuideLearnLink } from "@/components/guide/GuideLearnLink";
@@ -156,6 +158,7 @@ export function PaymentDialog({ open, onOpenChange, initialMethod }: Props) {
     : (totals?.balanceCents ?? 0);
   const [amount, setAmount] = useState("");
   const [tip, setTip] = useState(0);
+  const [cardTip, setCardTip] = useState<CardTipChoice>({ kind: "none" });
   const [tendered, setTendered] = useState("");
   const [giftCode, setGiftCode] = useState("");
   const [giftSellAmt, setGiftSellAmt] = useState("50");
@@ -201,6 +204,11 @@ export function PaymentDialog({ open, onOpenChange, initialMethod }: Props) {
     : balance;
 
   const tips = tipSuggestions(balance);
+  const tenderBase = Number.isFinite(amountCents)
+    ? Math.min(Math.max(0, amountCents), Math.max(0, balance))
+    : Math.max(0, balance);
+  const payTip = method === "card" ? tipCentsForChoice(cardTip, tenderBase) : tip;
+  const cardTotal = tenderBase + (method === "comp" ? 0 : payTip);
 
   useEffect(() => {
     let cancelled = false;
@@ -377,7 +385,7 @@ export function PaymentDialog({ open, onOpenChange, initialMethod }: Props) {
     operatorId: order?.lines.find((l) => l.vendorId)?.vendorId,
     vendorIds: order?.lines.map((l) => l.vendorId).filter(Boolean) as string[],
   });
-  const cashPresets = [balance, balance + tip].filter(Boolean);
+  const cashPresets = [balance, balance + payTip].filter(Boolean);
   const quickCash = [5, 10, 20, 50, 100].map((d) => d * 100);
   const giftLimits = parseGiftLimits(settings);
 
@@ -575,7 +583,7 @@ export function PaymentDialog({ open, onOpenChange, initialMethod }: Props) {
             order,
             settings,
             amountCents: tend,
-            tipCents: tip,
+            tipCents: payTip,
             hostName: settings.name,
             operatorName: (id) =>
               usePosStore.getState().vendors.find((v) => v.id === id)?.name ?? id,
@@ -594,7 +602,7 @@ export function PaymentDialog({ open, onOpenChange, initialMethod }: Props) {
           const started = await startSquareCheckoutFn({
             data: {
               locationId,
-              amountCents: tend + tip,
+              amountCents: tend + payTip,
               checkId: order?.id,
               referenceId: order?.id,
               note: `Check ${order?.number ?? ""} · ${tableLabel}`,
@@ -652,7 +660,7 @@ export function PaymentDialog({ open, onOpenChange, initialMethod }: Props) {
           const locationLive = Boolean(payStatus && payStatus.mode === "live" && !payStatus.lifecycleForcesSandbox);
           const sale = await runAndroidPaxSale({
             checkId: order.id,
-            amountCents: tend + tip,
+            amountCents: tend + payTip,
             tipCents: 0,
             locationLive,
             reader: paxReader,
@@ -709,7 +717,7 @@ export function PaymentDialog({ open, onOpenChange, initialMethod }: Props) {
           data: {
             orgId,
             locationId,
-            amountCents: tend + tip,
+            amountCents: tend + payTip,
             checkId: order?.id,
             hostBrand: settings.name,
             readerId: stationRow?.cardReaderId || settings.quantumReaderId || undefined,
@@ -756,7 +764,7 @@ export function PaymentDialog({ open, onOpenChange, initialMethod }: Props) {
             data: {
               locationId: loc,
               code: giftCode,
-              amountCents: Math.min(amountCents, balance) + tip,
+              amountCents: Math.min(amountCents, balance) + payTip,
               fulfillerId: fulfiller.id,
               fulfillerKind: fulfiller.kind,
               checkId: order?.id,
@@ -781,11 +789,11 @@ export function PaymentDialog({ open, onOpenChange, initialMethod }: Props) {
     const res = takePayment({
       method,
       amountCents: Math.min(amountCents, balance),
-      tipCents: tip,
+      tipCents: payTip,
       tenderedCents:
         method === "cash"
           ? Math.round(parseFloat(tendered || "0") * 100) ||
-            amountCents + tip
+            amountCents + payTip
           : undefined,
       last4: cardLast4,
       squarePaymentId,
@@ -806,7 +814,7 @@ export function PaymentDialog({ open, onOpenChange, initialMethod }: Props) {
             checkId: order.id,
             transferId: finixTransferId,
             last4: cardLast4 ?? null,
-            amountCents: Math.min(amountCents, balance) + tip,
+            amountCents: Math.min(amountCents, balance) + payTip,
             readerId: paxJournal.readerId,
             merchantId: paxJournal.merchantId,
           },
@@ -819,7 +827,7 @@ export function PaymentDialog({ open, onOpenChange, initialMethod }: Props) {
       useMarketingStore.getState().logGiftTxn({
         giftCardId: giftCode,
         type: "redeem",
-        amountCents: Math.min(amountCents, balance) + tip,
+        amountCents: Math.min(amountCents, balance) + payTip,
         note: giftCode,
       });
     }
@@ -831,6 +839,7 @@ export function PaymentDialog({ open, onOpenChange, initialMethod }: Props) {
       setDone(true);
     } else {
       setTip(0);
+      setCardTip({ kind: "none" });
       setAmount("");
       setTendered("");
     }
@@ -845,6 +854,7 @@ export function PaymentDialog({ open, onOpenChange, initialMethod }: Props) {
     setDone(false);
     setChange(null);
     setTip(0);
+    setCardTip({ kind: "none" });
     setAmount("");
     setReceiptChoice("choose");
     setReceiptMsg(null);
@@ -954,6 +964,8 @@ export function PaymentDialog({ open, onOpenChange, initialMethod }: Props) {
         if (!o) {
           setDone(false);
           setChange(null);
+          setTip(0);
+          setCardTip({ kind: "none" });
           setError(null);
           setReceiptEmail("");
           setReceiptMsg(null);
@@ -1047,7 +1059,7 @@ export function PaymentDialog({ open, onOpenChange, initialMethod }: Props) {
                   : order.payments[order.payments.length - 1]?.method === "gift_card"
                     ? "gift"
                     : ""}
-              . Tip recorded: {formatCurrency(tip)}
+              . Tip recorded: {formatCurrency(payTip)}
             </p>
             {dual.enabled && (
               <p className="text-xs text-muted-foreground">
@@ -1212,23 +1224,16 @@ export function PaymentDialog({ open, onOpenChange, initialMethod }: Props) {
             <p className="text-center text-xs uppercase tracking-wide text-muted-foreground">
               {settings.name}
             </p>
-            <p className="text-center text-3xl font-semibold tabular">
-              {formatCurrency(Math.min(amountCents, balance) + tip)}
+            <p className="text-center text-3xl font-semibold tabular" data-card-charge-total="">
+              {formatCurrency(cardTotal)}
             </p>
             <p className="text-center text-sm text-muted-foreground">Amount + tip</p>
-            <div className="flex flex-wrap justify-center gap-2">
-              {[0, ...tips].map((t, i) => (
-                <Button
-                  key={i}
-                  size="lg"
-                  variant={tip === t ? "default" : "outline"}
-                  onClick={() => setTip(t)}
-                  className="tabular station-touch"
-                >
-                  {t === 0 ? "No tip" : formatCurrency(t)}
-                </Button>
-              ))}
-            </div>
+            <CardTipRow
+              baseCents={tenderBase}
+              tipCents={payTip}
+              choice={cardTip}
+              onChoice={setCardTip}
+            />
             <GuestSignPad
               onSigned={() => setSigned(true)}
               onCleared={() => setSigned(false)}
@@ -1302,12 +1307,28 @@ export function PaymentDialog({ open, onOpenChange, initialMethod }: Props) {
               </p>
             )}
             <div className="rounded-xl border border-border bg-bg p-4 text-center">
-              <p className="text-xs uppercase tracking-wide text-muted-foreground">
-                {cashOn ? "Cash due" : "Card due"} · {settings.name}
-              </p>
-              <p className="text-3xl font-semibold tabular">
-                {formatCurrency(balance)}
-              </p>
+              {method === "card" ? (
+                <>
+                  <p className="text-xs uppercase tracking-wide text-muted-foreground">
+                    Total · {settings.name}
+                  </p>
+                  <p className="text-3xl font-semibold tabular" data-card-charge-total="">
+                    {formatCurrency(cardTotal)}
+                  </p>
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    Check {formatCurrency(tenderBase)} · Tip {formatCurrency(payTip)}
+                  </p>
+                </>
+              ) : (
+                <>
+                  <p className="text-xs uppercase tracking-wide text-muted-foreground">
+                    {cashOn ? "Cash due" : "Card due"} · {settings.name}
+                  </p>
+                  <p className="text-3xl font-semibold tabular">
+                    {formatCurrency(balance)}
+                  </p>
+                </>
+              )}
               {dual.enabled && (
                 <p className="mt-1 text-xs text-muted-foreground">
                   Cash {formatCurrency(dual.cash.totalCents)} · Card{" "}
@@ -1386,12 +1407,17 @@ export function PaymentDialog({ open, onOpenChange, initialMethod }: Props) {
                     device.
                   </p>
                 )}
-                {method !== "comp" && (
+                {method === "card" ? (
+                  <CardTipRow
+                    baseCents={tenderBase}
+                    tipCents={payTip}
+                    choice={cardTip}
+                    onChoice={setCardTip}
+                  />
+                ) : method !== "comp" ? (
                   <div>
                     <label className="mb-1.5 block text-xs text-muted-foreground">
-                      {method === "card"
-                        ? "Tip (from the reader / processor — not typed)"
-                        : "Tip"}
+                      Tip
                     </label>
                     <div className="flex flex-wrap gap-2">
                       {[0, ...tips].map((t, i) => (
@@ -1412,7 +1438,7 @@ export function PaymentDialog({ open, onOpenChange, initialMethod }: Props) {
                       ))}
                     </div>
                   </div>
-                )}
+                ) : null}
 
                 <TabsContent value="card" className="mt-0 space-y-2">
                   {!wanOnline && (
@@ -1472,7 +1498,7 @@ export function PaymentDialog({ open, onOpenChange, initialMethod }: Props) {
                   </label>
                   <Input
                     inputMode="decimal"
-                    placeholder={((amountCents + tip) / 100).toFixed(2)}
+                    placeholder={((amountCents + payTip) / 100).toFixed(2)}
                     value={tendered}
                     onChange={(e) => setTendered(e.target.value)}
                   />
@@ -1600,7 +1626,7 @@ export function PaymentDialog({ open, onOpenChange, initialMethod }: Props) {
             >
               <span className="text-muted-foreground">Charging</span>
               <span className="text-lg font-semibold tabular">
-                {formatCurrency(Math.min(amountCents, balance) + tip)}
+                {formatCurrency(cardTotal)}
               </span>
             </div>
 

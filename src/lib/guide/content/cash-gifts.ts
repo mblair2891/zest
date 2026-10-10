@@ -256,6 +256,9 @@ export const CASH_GIFT_TOPICS: GuideTopic[] = [
       why(
         "Houses pool tips in different ways: keep your own, tip-out by food/drink mix, FOH share, bar wells, one team pool, or food vs drink dual pools. Summex calculates the policy you set.",
       ),
+      p(
+        "Card pay shows 18%, 20%, 25%, and Custom on one row. A percent adds that tip to the total before the card is presented. Custom opens a keypad for a dollar amount or a percent. No tip stays available. That tip is what the pool uses. It is not a second capture.",
+      ),
       warn(
         "Pooling and tip-credit rules vary by state. Summex calculates your configured policy only — it is not legal advice, not a payroll processor, and does not file taxes.",
       ),
