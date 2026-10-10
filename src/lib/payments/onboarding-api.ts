@@ -101,6 +101,17 @@ export const queueOperatorPayoutsFn = createServerFn({ method: "POST" })
     return queueOperatorPayouts(context.userId, data.locationId, data.shares);
   });
 
+export const getFinixWebhookDeskFn = createServerFn({ method: "GET" })
+  .middleware([tenantMiddleware])
+  .handler(async ({ context }) => {
+    const { ForbiddenError, isPlatformAdmin } = await import("@/lib/saas/tenancy.server");
+    if (!(await isPlatformAdmin(context.userId))) {
+      throw new ForbiddenError("Platform admin only");
+    }
+    const { loadFinixWebhookDesk } = await import("./finix-webhook.server");
+    return loadFinixWebhookDesk();
+  });
+
 export const getProcessorRailStatusFn = createServerFn({ method: "POST" })
   .middleware([tenantMiddleware])
   .handler(async () => {

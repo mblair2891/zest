@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { toast, Toaster } from "sonner";
 import {
   AlertTriangle,
@@ -71,6 +71,7 @@ import {
 } from "@/lib/saas/platform-settings";
 import { signOut } from "@/lib/auth/client";
 import { cn } from "@/lib/utils";
+import type { FinixWebhookDesk } from "@/lib/payments/finix-webhook-log";
 import {
   ChipList,
   Field,
@@ -150,6 +151,7 @@ export function SettingsWorkspace() {
             <button
               key={id}
               type="button"
+              data-settings-section={id}
               onClick={() => setSection(id)}
               className={cn(
                 "flex h-10 items-center gap-2 rounded-lg px-2 text-left text-sm",
@@ -177,6 +179,7 @@ export function SettingsWorkspace() {
             <button
               key={id}
               type="button"
+              data-settings-section={id}
               onClick={() => setSection(id)}
               className={cn(
                 "h-9 shrink-0 rounded-lg px-3 text-xs font-medium",
@@ -1221,7 +1224,20 @@ function PaymentsSection({
 }) {
   const [v, setV] = useState(initial);
   const [rail, setRail] = useState<{ configured: boolean; environment: string } | null>(null);
+  const [desk, setDesk] = useState<FinixWebhookDesk | null>(null);
+  const [deskErr, setDeskErr] = useState<string | null>(null);
   useEffect(() => setV(initial), [initial]);
+  const loadDesk = useCallback(() => {
+    void import("@/lib/payments/onboarding-api").then((m) =>
+      m
+        .getFinixWebhookDeskFn()
+        .then((next) => {
+          setDesk(next);
+          setDeskErr(null);
+        })
+        .catch((e) => setDeskErr(e instanceof Error ? e.message : "Could not load the webhook log")),
+    );
+  }, []);
   useEffect(() => {
     void import("@/lib/payments/onboarding-api").then((m) =>
       m
@@ -1229,7 +1245,10 @@ function PaymentsSection({
         .then(setRail)
         .catch(() => setRail({ configured: false, environment: "sandbox" })),
     );
-  }, []);
+    loadDesk();
+    const timer = window.setInterval(loadDesk, 2000);
+    return () => window.clearInterval(timer);
+  }, [loadDesk]);
   return (
     <SectionCard
       title="Payments & card rate"
@@ -1246,6 +1265,65 @@ function PaymentsSection({
           {rail ? ` · ${rail.environment}` : ""}
         </p>
       </Field>
+      <div className="space-y-1.5">
+        <p className="text-sm font-medium">Finix webhook URL</p>
+        <div className="flex gap-2">
+          <Input
+            readOnly
+            value={desk?.url ?? ""}
+            data-finix-webhook-url
+            aria-label="Finix webhook URL"
+            className="font-mono text-xs"
+            placeholder="Loading webhook URL…"
+          />
+          <Button
+            type="button"
+            variant="outline"
+            data-finix-webhook-copy
+            disabled={!desk?.url}
+            onClick={() => {
+              const url = desk?.url;
+              if (!url) return;
+              void navigator.clipboard.writeText(url).then(
+                () => toast.success("Webhook URL copied"),
+                () => toast.error("Could not copy. Select the URL."),
+              );
+            }}
+          >
+            Copy
+          </Button>
+        </div>
+        <p className="text-xs text-muted-foreground">
+          Paste this in Finix. The path is /api/payments/finix/webhook.
+        </p>
+      </div>
+      <div>
+        <div className="flex items-center justify-between gap-2">
+          <p className="text-sm font-medium">Webhook log</p>
+          <Button type="button" variant="ghost" size="sm" data-finix-webhook-refresh onClick={loadDesk}>
+            Refresh
+          </Button>
+        </div>
+        <p className="mt-0.5 text-xs text-muted-foreground">
+          Each incoming event lists its type and a short result. A rejected delivery is listed too.
+        </p>
+        {deskErr && <p className="mt-1 text-xs text-danger">{deskErr}</p>}
+        <ul className="mt-2 max-h-56 space-y-1 overflow-y-auto text-xs" data-finix-webhook-log>
+          {desk && desk.events.length === 0 && (
+            <li className="text-muted-foreground" data-finix-webhook-empty>
+              No events yet.
+            </li>
+          )}
+          {desk?.events.map((row) => (
+            <li key={row.id} className="rounded-lg border border-border px-2 py-1.5" data-finix-webhook-row>
+              <span className="font-medium">{row.eventType}</span>
+              {" · "}
+              {row.result}
+              <span className="mt-0.5 block text-muted-foreground">{row.at.replace("T", " ").slice(0, 19)}</span>
+            </li>
+          ))}
+        </ul>
+      </div>
       <Field
         label="Default Quantum Payments mode"
         hint="Sandbox is default. Live needs an approved host application, server-only keys, and a supplied reader. Locations can inherit or override. Training always sandboxes. Never a Stripe/Square POS picker."

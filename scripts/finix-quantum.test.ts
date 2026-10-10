@@ -19,6 +19,11 @@ import {
   readFinixCreds,
   verifyFinixSignature,
 } from "../src/lib/payments/finix-keys.ts";
+import {
+  finixWebhookEventType,
+  finixWebhookResultLabel,
+  finixWebhookUrlFromOrigin,
+} from "../src/lib/payments/finix-webhook-log.ts";
 
 const SANDBOX_KEYS = [
   "FINIX_USERNAME",
@@ -356,9 +361,38 @@ test("the station notice fires when a paid Quantum transfer closes an open check
   const webhook = readFileSync("src/routes/api/payments/finix/webhook.ts", "utf8");
   assert.match(webhook, /invalid signature/);
   assert.match(webhook, /FINIX_WEBHOOK_SECRET/);
+  assert.match(webhook, /recordFinixWebhookAttempt/);
   assert.doesNotMatch(webhook, /finixConfigured\(\)/);
   const rail = readFileSync("src/lib/payments/finix-webhook.server.ts", "utf8");
   assert.match(rail, /status = \$\{"closed"\}/);
   assert.match(rail, /status = \$\{"failed"\}/);
   assert.match(rail, /quantum_paid/);
+  assert.match(rail, /finix_webhook_log/);
+  const settings = readFileSync("src/components/platform/SettingsWorkspace.tsx", "utf8");
+  assert.match(settings, /data-finix-webhook-url/);
+  assert.match(settings, /data-finix-webhook-copy/);
+  assert.match(settings, /data-finix-webhook-log/);
+});
+
+test("the webhook URL includes the full path and a test event keeps its type", () => {
+  assert.equal(
+    finixWebhookUrlFromOrigin("https://app.summex.app"),
+    "https://app.summex.app/api/payments/finix/webhook",
+  );
+  assert.equal(
+    finixWebhookUrlFromOrigin("http://127.0.0.1:8080/"),
+    "http://127.0.0.1:8080/api/payments/finix/webhook",
+  );
+  const parsed = finixWebhookEventType(
+    JSON.stringify({ id: "evt_test", type: "transfer.updated", entity: "transfer" }),
+  );
+  assert.equal(parsed.eventType, "transfer.updated");
+  assert.equal(parsed.eventId, "evt_test");
+  assert.equal(finixWebhookEventType("not-json").eventType, "unparsed");
+  assert.equal(finixWebhookResultLabel({ closed: true, duplicate: true }), "closed");
+  assert.equal(finixWebhookResultLabel({ failed: true }), "failed");
+  assert.equal(finixWebhookResultLabel({ duplicate: true }), "duplicate");
+  const guide = readFileSync("src/lib/guide/content/payments.ts", "utf8");
+  assert.match(guide, /\/api\/payments\/finix\/webhook/);
+  assert.match(guide, /visibility: "platform"/);
 });

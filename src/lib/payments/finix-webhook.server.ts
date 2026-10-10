@@ -3,8 +3,14 @@
  * for the assigned server. Failed transfers leave the check open.
  */
 import { getSql } from "@/lib/db";
+import { readServerEnv } from "@/lib/database-url";
 import { newId } from "@/lib/saas/ids";
 import { parseFinixWebhook, transferClosesCheck, type ParsedFinixEvent } from "./finix-events";
+import {
+  finixWebhookUrlFromOrigin,
+  originFromHeaders,
+  type FinixWebhookDesk,
+} from "./finix-webhook-log";
 
 type PayRow = {
   id: string;
@@ -170,4 +176,68 @@ export async function applyFinixRailEvent(event: unknown): Promise<{
     `;
   }
   return { closed: true, notified: true, failed: false };
+}
+
+/** Append one delivery. Failures are listed too. A log error does not change the HTTP result. */
+export async function recordFinixWebhookAttempt(row: {
+  eventType: string;
+  result: string;
+  eventId?: string | null;
+}): Promise<void> {
+  try {
+    const sql = await getSql();
+    await sql`
+      insert into finix_webhook_log (id, event_type, result, event_id)
+      values (
+        ${newId("fwlog")},
+        ${row.eventType.slice(0, 80) || "unknown"},
+        ${row.result.slice(0, 160) || "received"},
+        ${row.eventId ? row.eventId.slice(0, 80) : null}
+      )
+    `;
+  } catch (err) {
+    console.error("[finix] webhook log failed", err instanceof Error ? err.message : err);
+  }
+}
+
+/** URL this server is listening on, plus the recent delivery log. */
+export async function loadFinixWebhookDesk(): Promise<FinixWebhookDesk> {
+  let origin: string | null = null;
+  try {
+    const { getRequest } = await import("@tanstack/react-start/server");
+    origin = originFromHeaders(getRequest().headers);
+  } catch {
+    origin = null;
+  }
+  if (!origin) {
+    origin = (
+      readServerEnv("APP_URL") ||
+      readServerEnv("BETTER_AUTH_URL") ||
+      "http://127.0.0.1:8080"
+    ).replace(/\/$/, "");
+  }
+  const sql = await getSql();
+  const rows = await sql<{
+    id: string;
+    event_type: string;
+    result: string;
+    created_at: Date | string;
+  }>`
+    select id, event_type, result, created_at
+    from finix_webhook_log
+    order by created_at desc
+    limit 40
+  `;
+  return {
+    url: finixWebhookUrlFromOrigin(origin),
+    events: rows.map((row) => ({
+      id: row.id,
+      eventType: row.event_type,
+      result: row.result,
+      at:
+        row.created_at instanceof Date
+          ? row.created_at.toISOString()
+          : String(row.created_at ?? ""),
+    })),
+  };
 }

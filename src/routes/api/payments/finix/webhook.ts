@@ -10,10 +10,24 @@ export const Route = createFileRoute("/api/payments/finix/webhook")({
     handlers: {
       POST: async ({ request }) => {
         const payload = await request.text();
+        const { finixWebhookEventType, finixWebhookResultLabel } = await import(
+          "@/lib/payments/finix-webhook-log"
+        );
+        const { recordFinixWebhookAttempt } = await import("@/lib/payments/finix-webhook.server");
+        const parsed = finixWebhookEventType(payload);
+        const log = (result: string) =>
+          recordFinixWebhookAttempt({
+            eventType: parsed.eventType,
+            result,
+            eventId: parsed.eventId,
+          });
+
         const sandboxSecret = finixWebhookSecret("sandbox");
         const liveSecret = finixWebhookSecret("live");
         if (!sandboxSecret && !liveSecret) {
-          return new Response(missingFinixKeyMessage("FINIX_WEBHOOK_SECRET"), { status: 503 });
+          const result = missingFinixKeyMessage("FINIX_WEBHOOK_SECRET");
+          await log(result);
+          return new Response(result, { status: 503 });
         }
         const header =
           request.headers.get("x-finix-signature") ||
@@ -23,23 +37,31 @@ export const Route = createFileRoute("/api/payments/finix/webhook")({
           (sandboxSecret ? verifyFinixSignature(payload, header, sandboxSecret) : false) ||
           (liveSecret ? verifyFinixSignature(payload, header, liveSecret) : false);
         if (!signed) {
+          await log("invalid signature");
           return new Response("invalid signature", { status: 400 });
         }
-        let event: {
-          id?: string;
-          type?: string;
-          entity?: string;
-          entity_id?: string;
-          data?: { id?: string; onboarding_state?: string };
-        };
-        try {
-          event = JSON.parse(payload) as typeof event;
-        } catch {
+        if (!parsed.json || typeof parsed.json !== "object") {
+          await log("invalid json");
           return new Response("invalid json", { status: 400 });
         }
-        const { applyFinixWebhook } = await import("@/lib/payments/onboarding.server");
-        const result = await applyFinixWebhook(event);
-        return Response.json({ received: true, ...result });
+        try {
+          const { applyFinixWebhook } = await import("@/lib/payments/onboarding.server");
+          const result = await applyFinixWebhook(
+            parsed.json as {
+              id?: string;
+              type?: string;
+              entity?: string;
+              entity_id?: string;
+              data?: { id?: string; onboarding_state?: string };
+            },
+          );
+          await log(finixWebhookResultLabel(result));
+          return Response.json({ received: true, ...result });
+        } catch (err) {
+          const message = err instanceof Error ? err.message.slice(0, 160) : "failed";
+          await log(message || "failed");
+          return new Response("failed", { status: 500 });
+        }
       },
     },
   },

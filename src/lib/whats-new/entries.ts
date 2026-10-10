@@ -6,6 +6,18 @@ import type { GuideUpdate } from "@/lib/guide/types";
  */
 export const WHATS_NEW_ENTRIES: GuideUpdate[] = [
   {
+    id: "upd_2026_10_230_finix_webhook",
+    date: "2026-10-09",
+    title: "Finix webhook URL",
+    summary: "Payments shows the webhook URL. Copy it. Incoming events list the type and a short result.",
+    body: "Settings → Payments shows the Finix webhook URL this server is listening on. The path is /api/payments/finix/webhook. Copy puts that full URL on the clipboard. Each incoming event is listed with its type and a short result. A paid transfer, a failed transfer, a duplicate, a bad signature, and a missing key all appear. A bad signature is still rejected.",
+    roles: ["platform_admin"],
+    surfaces: ["platform"],
+    audience: "platform",
+    topicId: "finix-webhook",
+    tags: ["payments", "finix"],
+  },
+  {
     id: "upd_2026_10_229_finix_quantum",
     date: "2026-10-09",
     title: "Quantum Payments on Finix",

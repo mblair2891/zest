@@ -13,6 +13,7 @@ const WIPE_TABLES = [
   "reg_review_tasks",
   "reg_bulletin_acks",
   "reg_bulletins",
+  "finix_webhook_log",
   "finix_webhook_events",
   "stripe_webhook_events",
   "menu_uploads",
