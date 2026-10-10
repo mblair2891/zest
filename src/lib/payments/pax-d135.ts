@@ -33,6 +33,7 @@ export type PaxScanRow = {
 
 export const PAX_MSG = {
   bluetooth: "Bluetooth is off, or no reader is in range.",
+  permissions: "Allow Nearby devices and Location, then scan again.",
   notRegistered: "This reader is not registered to this location.",
   wrongEntity: "This reader is registered to another selling entity.",
   settingUp: "Setting up reader",
@@ -79,11 +80,33 @@ export function normalizeReaderName(raw: string): string {
   return String(raw ?? "").replace(/\s+/g, " ").trim().slice(0, 40);
 }
 
+/** A reader name starts with PAX D135 and then a serial, for example PAX D135_ABC123. */
 export function serialFromPaxName(name: string): string | null {
   const trimmed = String(name ?? "").trim();
-  if (!trimmed.startsWith(PAX_NAME_PREFIX)) return null;
-  const serial = normalizePaxSerial(trimmed.slice(PAX_NAME_PREFIX.length));
+  const mark = PAX_NAME_PREFIX.replace(/_+$/, "");
+  if (!trimmed.startsWith(mark)) return null;
+  const rest = trimmed.slice(mark.length);
+  if (!rest || !/^[\s_\-:]/.test(rest)) return null;
+  const serial = normalizePaxSerial(rest.replace(/^[\s_\-:]+/, ""));
   return serial || null;
+}
+
+/**
+ * Status after Scan for reader.
+ * The Bluetooth-off line is only for an adapter that is off, or a finished scan with no D135.
+ */
+export function paxScanPresentation(
+  scanned: { ok: boolean; message?: string; devices?: { name: string; address: string }[] },
+  readers: PaxReader[],
+): { phase: "idle" | "bluetooth"; message: string; rows: PaxScanRow[] } {
+  const rows = paxScanRows(scanned.devices ?? [], readers);
+  if (rows.length > 0) {
+    return { phase: "idle", message: PAX_MSG.notConnected, rows };
+  }
+  if (scanned.message && scanned.message !== PAX_MSG.bluetooth) {
+    return { phase: "idle", message: scanned.message, rows: [] };
+  }
+  return { phase: "bluetooth", message: PAX_MSG.bluetooth, rows: [] };
 }
 
 export function isPaxD135Name(name: string): boolean {
@@ -405,7 +428,7 @@ export async function runAndroidPaxSale(input: {
     return { ok: false, message: PAX_MSG.wrongEntity, charged: false };
   }
   if (!input.connected) {
-    return { ok: false, message: PAX_MSG.bluetooth, charged: false };
+    return { ok: false, message: PAX_MSG.notConnected, charged: false };
   }
   const result = await input.bridge.sale({
     amountCents: input.amountCents,

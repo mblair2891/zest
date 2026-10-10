@@ -17,13 +17,13 @@ export const DEVICE_TOPICS: GuideTopic[] = [
       ),
       steps(
         "Open location Devices. Add card reader asks for a name, the serial, and the selling entity. The name is required, for example Bar 1. That reader belongs to that entity only. The devices list shows the name, then the serial.",
-        "On the station, open Pay → Card. The status line shows the reader. Scan lists names that start with PAX D135_. Pick the one whose serial matches the registered reader.",
-        "The first connection says Setting up reader until the reader finishes. Then the status is Connected. Battery shows when the reader reports it.",
+        "On the station, open Pay → Card and tap Scan for reader. The station asks for Nearby devices and Location if they are missing, after it checks that Bluetooth is on. The list shows readers named PAX D135, including one already paired in Android settings. Pick the one whose serial matches the registered reader.",
+        "The first connection says Setting up reader until the reader finishes its key download. Then the status is Connected. Battery shows when the reader reports it.",
         "Charge card sends one sandbox sale. The check stores the transfer and the last four. Print the receipt the same way as cash.",
       ),
       ul(
         "Sandbox only, while the location is not live. Live cards are refused in this build.",
-        "Bluetooth off, or no reader in range: no charge.",
+        "Bluetooth is off, or no reader is in range, only when Bluetooth is off or no PAX D135 is on nearby. That line is not shown when Bluetooth is on and Nearby devices and Location are allowed.",
         "A serial that is not registered to this location is refused.",
         "A reader registered to another selling entity than the check is refused.",
         "Still setting up: no charge.",

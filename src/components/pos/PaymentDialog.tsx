@@ -34,7 +34,7 @@ import {
   checkAlreadyCaptured,
   checkSellingEntityId,
   decidePaxPick,
-  paxScanRows,
+  paxScanPresentation,
   runAndroidPaxSale,
   type PaxReader,
   type PaxScanRow,
@@ -266,19 +266,13 @@ export function PaymentDialog({ open, onOpenChange, initialMethod }: Props) {
       try {
         const { paxPlugin } = await import("@/lib/payments/pax-d135-native");
         const scanned = await paxPlugin.scan();
-        const rows = paxScanRows(scanned.devices ?? [], paxReaders);
-        if (!scanned.ok || rows.length === 0) {
-          setPaxPhase("bluetooth");
-          setPaxStatus(scanned.message || PAX_MSG.bluetooth);
-          setPaxRows([]);
-          return;
-        }
-        setPaxRows(rows);
-        setPaxPhase("idle");
-        setPaxStatus(PAX_MSG.notConnected);
+        const presented = paxScanPresentation(scanned, paxReaders);
+        setPaxRows(presented.rows);
+        setPaxPhase(presented.phase);
+        setPaxStatus(presented.message);
       } catch {
-        setPaxPhase("bluetooth");
-        setPaxStatus(PAX_MSG.bluetooth);
+        setPaxPhase("idle");
+        setPaxStatus(PAX_MSG.permissions);
       }
     })();
   };
@@ -329,10 +323,11 @@ export function PaymentDialog({ open, onOpenChange, initialMethod }: Props) {
           env: "SB",
         });
         if (!connected.ok) {
+          const message = connected.message || PAX_MSG.disconnect;
           setPaxReader(null);
-          setPaxPhase("bluetooth");
-          setPaxStatus(connected.message || PAX_MSG.bluetooth);
-          setError(connected.message || PAX_MSG.bluetooth);
+          setPaxPhase(message === PAX_MSG.bluetooth ? "bluetooth" : "idle");
+          setPaxStatus(message);
+          setError(message);
           setBusy(false);
           return;
         }
@@ -341,9 +336,9 @@ export function PaymentDialog({ open, onOpenChange, initialMethod }: Props) {
         setPaxBattery(typeof connected.batteryPercent === "number" ? connected.batteryPercent : null);
       } catch {
         setPaxReader(null);
-        setPaxPhase("bluetooth");
-        setPaxStatus(PAX_MSG.bluetooth);
-        setError(PAX_MSG.bluetooth);
+        setPaxPhase("idle");
+        setPaxStatus(PAX_MSG.disconnect);
+        setError(PAX_MSG.disconnect);
       }
       setBusy(false);
     })();
@@ -1433,7 +1428,7 @@ export function PaymentDialog({ open, onOpenChange, initialMethod }: Props) {
                         {paxPhase === "connected" && paxBattery != null ? ` · Battery ${paxBattery}%` : ""}
                       </p>
                       <Button type="button" size="sm" variant="outline" disabled={busy} onClick={scanPax}>
-                        Scan
+                        Scan for reader
                       </Button>
                       {paxRows.map((row) => (
                         <button

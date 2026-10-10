@@ -9,6 +9,7 @@ import {
   decidePaxPick,
   envBlock,
   paxDeviceRequest,
+  paxScanPresentation,
   paxScanRows,
   placePaxReader,
   readerAssignOptions,
@@ -54,6 +55,44 @@ test("registered D135 appears in the scan list", () => {
   assert.equal(rows[0]?.serial, "ABC123");
   assert.equal(rows[0]?.registered, true);
   assert.equal(rows[0]?.name, "PAX D135_ABC123");
+});
+
+test("a paired D135 is listed and a denied permission is not called Bluetooth off", () => {
+  const paired = paxScanPresentation(
+    {
+      ok: true,
+      devices: [
+        { name: "PAX D135_ABC123", address: "00:11" },
+        { name: "D135", address: "00:33" },
+        { name: "Headphones", address: "00:22" },
+      ],
+    },
+    [reader],
+  );
+  assert.equal(paired.rows.length, 1);
+  assert.equal(paired.rows[0]?.serial, "ABC123");
+  assert.equal(paired.phase, "idle");
+  assert.notEqual(paired.message, PAX_MSG.bluetooth);
+
+  const denied = paxScanPresentation(
+    { ok: false, message: PAX_MSG.permissions, devices: [] },
+    [reader],
+  );
+  assert.equal(denied.phase, "idle");
+  assert.equal(denied.message, PAX_MSG.permissions);
+  assert.equal(denied.rows.length, 0);
+
+  const off = paxScanPresentation({ ok: false, message: PAX_MSG.bluetooth, devices: [] }, [reader]);
+  assert.equal(off.phase, "bluetooth");
+  assert.equal(off.message, PAX_MSG.bluetooth);
+
+  const none = paxScanPresentation(
+    { ok: false, devices: [{ name: "Headphones", address: "aa" }] },
+    [reader],
+  );
+  assert.equal(none.rows.length, 0);
+  assert.equal(none.phase, "bluetooth");
+  assert.equal(none.message, PAX_MSG.bluetooth);
 });
 
 test("unregistered serial is refused", () => {
@@ -251,7 +290,19 @@ test("the PAX path does not use Web Bluetooth or Stripe", () => {
   assert.match(plugin, /PAX D135_/);
   assert.match(plugin, /EnvEnum\.SB/);
   assert.doesNotMatch(plugin, /EnvEnum\.PROD/);
+  assert.match(plugin, /requestPermissionForAliases/);
+  assert.match(plugin, /ACCESS_FINE_LOCATION/);
+  assert.match(plugin, /BLUETOOTH_CONNECT/);
+  assert.match(plugin, /getBondedDevices/);
+  assert.match(plugin, /Allow Nearby devices and Location/);
+  assert.match(plugin, /CONNECT_TIMEOUT_MS = 4L \* 60L \* 1000L/);
+  const manifest = readFileSync("android/app/src/main/AndroidManifest.xml", "utf8");
+  assert.match(manifest, /BLUETOOTH_SCAN"/);
+  assert.match(manifest, /ACCESS_FINE_LOCATION/);
+  assert.doesNotMatch(manifest, /neverForLocation/);
   const dialog = readFileSync("src/components/pos/PaymentDialog.tsx", "utf8");
+  assert.match(dialog, /Scan for reader/);
+  assert.match(dialog, /paxScanPresentation/);
   assert.match(dialog, /runAndroidPaxSale/);
   assert.match(dialog, /data-pax-serial/);
   assert.match(dialog, /startSquareCheckoutFn/);
@@ -271,9 +322,13 @@ test("the PAX path does not use Web Bluetooth or Stripe", () => {
   assert.doesNotMatch(renameBody, /createPaxD135Device|finixFetch/);
   const guideDevices = readFileSync("src/lib/guide/content/devices.ts", "utf8");
   const guidePay = readFileSync("src/lib/guide/content/payments.ts", "utf8");
+  assert.match(guideDevices, /Scan for reader/);
+  assert.match(guideDevices, /Nearby devices and Location/);
   assert.match(guideDevices, /for example Bar 1/);
   assert.match(guideDevices, /dropdown of those names/);
   assert.match(guideDevices, /One reader is assigned to one tablet/);
+  assert.match(guidePay, /Scan for reader/);
+  assert.match(guidePay, /Nearby devices and Location/);
   assert.match(guidePay, /for example Bar 1/);
   assert.match(guidePay, /dropdown of those names/);
   const store = readFileSync("src/lib/pos/store.ts", "utf8");

@@ -6,6 +6,18 @@ import type { GuideUpdate } from "@/lib/guide/types";
  */
 export const WHATS_NEW_ENTRIES: GuideUpdate[] = [
   {
+    id: "upd_2026_10_237_d135_scan",
+    date: "2026-10-10",
+    title: "D135 scan asks before it looks",
+    summary: "Scan for reader asks for Nearby devices and Location, then lists a paired PAX D135.",
+    body: "Scan for reader checks that Bluetooth is on, then asks for Nearby devices and Location if they are missing. A PAX D135 that is paired in Android settings, or powered on nearby, appears in the list. Pick it and it connects. Bluetooth is off, or no reader is in range, only when Bluetooth is off or no reader is on nearby. The first connection still waits for the reader's key download, then says Connected.",
+    roles: ["owner_manager", "server", "host_operator", "vendor_operator"],
+    surfaces: ["settings"],
+    audience: "all",
+    topicId: "pax-card-reader",
+    tags: ["payments", "devices"],
+  },
+  {
     id: "upd_2026_10_236_well_menu",
     date: "2026-10-10",
     title: "Well menu is a spirit plus a mixer",

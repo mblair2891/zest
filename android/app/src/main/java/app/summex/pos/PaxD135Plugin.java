@@ -8,6 +8,7 @@ import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
+import android.content.pm.PackageManager;
 import android.os.Build;
 import android.os.Handler;
 import android.os.HandlerThread;
@@ -23,13 +24,13 @@ import com.finix.mpos.sdk.MPOSFinix;
 import com.finix.mpos.sdk.MPOSTransactionCallback;
 import com.getcapacitor.JSArray;
 import com.getcapacitor.JSObject;
-import com.getcapacitor.PermissionState;
 import com.getcapacitor.Plugin;
 import com.getcapacitor.PluginCall;
 import com.getcapacitor.PluginMethod;
 import com.getcapacitor.annotation.CapacitorPlugin;
 import com.getcapacitor.annotation.Permission;
 import com.getcapacitor.annotation.PermissionCallback;
+import androidx.core.content.ContextCompat;
 import java.lang.reflect.Method;
 import java.util.HashSet;
 import java.util.Set;
@@ -60,7 +61,9 @@ import org.json.JSONObject;
 )
 public class PaxD135Plugin extends Plugin {
     static final String NAME_PREFIX = "PAX D135_";
+    static final String NAME_MARK = "PAX D135";
     static final String MSG_BLUETOOTH = "Bluetooth is off, or no reader is in range.";
+    static final String MSG_PERMISSION = "Allow Nearby devices and Location, then scan again.";
     static final String MSG_LIVE = "Live cards are not available in this build. Take cash or keep the check open.";
     static final String MSG_SETUP = "Setting up reader";
     static final String MSG_STILL_SETUP = "The reader is still setting up. No charge was sent.";
@@ -68,6 +71,7 @@ public class PaxD135Plugin extends Plugin {
     static final String MSG_TIMEOUT = "The card read timed out. The check is not paid. Try again.";
     static final String MSG_UNREAD = "The card could not be read. The check stays open.";
     static final long SALE_TIMEOUT_MS = 90_000L;
+    /** First connection downloads keys on the D135. Do not shorten this wait. */
     static final long CONNECT_TIMEOUT_MS = 4L * 60L * 1000L;
     static final int SCAN_MS = 6_000;
 
@@ -82,8 +86,12 @@ public class PaxD135Plugin extends Plugin {
 
     @PluginMethod
     public void scan(PluginCall call) {
-        if (needsRuntimePermission()) {
-            requestPermissionForAlias(permissionAlias(), call, "scanPerms");
+        if (!bluetoothOn()) {
+            resolveMessage(call, MSG_BLUETOOTH);
+            return;
+        }
+        if (!hasScanPermissions()) {
+            requestPermissionForAliases(scanAliases(), call, "scanPerms");
             return;
         }
         doScan(call);
@@ -91,11 +99,24 @@ public class PaxD135Plugin extends Plugin {
 
     @PermissionCallback
     private void scanPerms(PluginCall call) {
-        if (needsRuntimePermission() && getPermissionState(permissionAlias()) != PermissionState.GRANTED) {
-            resolveBluetooth(call);
+        if (!bluetoothOn()) {
+            resolveMessage(call, MSG_BLUETOOTH);
+            return;
+        }
+        if (!hasScanPermissions()) {
+            resolveMessage(call, MSG_PERMISSION);
             return;
         }
         doScan(call);
+    }
+
+    @PermissionCallback
+    private void connectPerms(PluginCall call) {
+        if (!hasScanPermissions()) {
+            resolveMessage(call, MSG_PERMISSION);
+            return;
+        }
+        connect(call);
     }
 
     @PluginMethod
@@ -108,14 +129,22 @@ public class PaxD135Plugin extends Plugin {
             call.resolve(ret);
             return;
         }
+        if (!bluetoothOn()) {
+            resolveMessage(call, MSG_BLUETOOTH);
+            return;
+        }
+        if (!hasScanPermissions()) {
+            requestPermissionForAliases(scanAliases(), call, "connectPerms");
+            return;
+        }
         final String name = call.getString("name", "");
         final String address = call.getString("address", "");
         final String merchantId = call.getString("merchantId", "");
         final String deviceId = call.getString("deviceId", "");
         final String userId = call.getString("userId", "");
         final String password = call.getString("password", "");
-        if (name == null || !name.startsWith(NAME_PREFIX) || address == null || address.isEmpty()) {
-            resolveBluetooth(call);
+        if (serialOf(name) == null || address == null || address.isEmpty()) {
+            resolveMessage(call, "Scan for the reader, then pick the registered PAX D135.");
             return;
         }
         settingUp = true;
@@ -238,7 +267,7 @@ public class PaxD135Plugin extends Plugin {
                     connected = false;
                     JSObject ret = new JSObject();
                     ret.put("ok", false);
-                    ret.put("message", errorMessage == null || errorMessage.isEmpty() ? MSG_BLUETOOTH : errorMessage);
+                    ret.put("message", errorMessage == null || errorMessage.isEmpty() ? connectFailureMessage() : errorMessage);
                     call.resolve(ret);
                     emit("error", ret.getString("message"), serialOf(name), null);
                 }
@@ -250,7 +279,7 @@ public class PaxD135Plugin extends Plugin {
             connected = false;
             JSObject ret = new JSObject();
             ret.put("ok", false);
-            ret.put("message", MSG_BLUETOOTH);
+            ret.put("message", connectFailureMessage());
             call.resolve(ret);
         }
     }
@@ -341,36 +370,36 @@ public class PaxD135Plugin extends Plugin {
     }
 
     private void doScan(PluginCall call) {
+        if (Looper.myLooper() != Looper.getMainLooper()) {
+            main.post(() -> doScan(call));
+            return;
+        }
         BluetoothAdapter adapter = bluetoothAdapter();
         if (adapter == null || !adapter.isEnabled()) {
-            resolveBluetooth(call);
+            resolveMessage(call, MSG_BLUETOOTH);
             return;
         }
         emit("scanning", null, null, null);
         final Set<String> seen = new HashSet<>();
         final JSArray devices = new JSArray();
-        try {
-            Set<BluetoothDevice> bonded = adapter.getBondedDevices();
-            if (bonded != null) {
-                for (BluetoothDevice device : bonded) addPax(devices, seen, device);
-            }
-        } catch (SecurityException e) {
-            resolveBluetooth(call);
-            return;
-        }
+        harvestBonded(adapter, devices, seen);
         final AtomicBoolean done = new AtomicBoolean(false);
         final BroadcastReceiver receiver = new BroadcastReceiver() {
             @Override
             public void onReceive(Context context, Intent intent) {
                 if (intent == null) return;
-                if (BluetoothDevice.ACTION_FOUND.equals(intent.getAction())) {
-                    BluetoothDevice device = intent.getParcelableExtra(BluetoothDevice.EXTRA_DEVICE);
-                    addPax(devices, seen, device);
+                String action = intent.getAction();
+                if (!BluetoothDevice.ACTION_FOUND.equals(action) && !BluetoothDevice.ACTION_NAME_CHANGED.equals(action)) {
+                    return;
                 }
+                BluetoothDevice device = intent.getParcelableExtra(BluetoothDevice.EXTRA_DEVICE);
+                String extraName = intent.getStringExtra(BluetoothDevice.EXTRA_NAME);
+                addPax(devices, seen, device, extraName);
             }
         };
         Runnable finish = () -> {
             if (!done.compareAndSet(false, true)) return;
+            harvestBonded(adapter, devices, seen);
             try {
                 getContext().unregisterReceiver(receiver);
             } catch (Exception ignored) {
@@ -382,19 +411,25 @@ public class PaxD135Plugin extends Plugin {
                 /* scan already ended */
             }
             JSObject ret = new JSObject();
-            ret.put("ok", true);
             ret.put("devices", devices);
+            if (devices.length() == 0) {
+                ret.put("ok", false);
+                ret.put("message", !hasScanPermissions() ? MSG_PERMISSION : MSG_BLUETOOTH);
+            } else {
+                ret.put("ok", true);
+            }
             call.resolve(ret);
         };
         main.post(() -> {
             IntentFilter filter = new IntentFilter(BluetoothDevice.ACTION_FOUND);
+            filter.addAction(BluetoothDevice.ACTION_NAME_CHANGED);
             try {
                 if (Build.VERSION.SDK_INT >= 33) {
                     getContext().registerReceiver(receiver, filter, Context.RECEIVER_EXPORTED);
                 } else {
                     getContext().registerReceiver(receiver, filter);
                 }
-                adapter.startDiscovery();
+                if (!adapter.isDiscovering()) adapter.startDiscovery();
             } catch (SecurityException e) {
                 finish.run();
                 return;
@@ -403,23 +438,55 @@ public class PaxD135Plugin extends Plugin {
         });
     }
 
-    private void addPax(JSArray devices, Set<String> seen, BluetoothDevice device) {
-        if (device == null) return;
-        String name;
+    private void harvestBonded(BluetoothAdapter adapter, JSArray devices, Set<String> seen) {
         try {
-            name = device.getName();
-        } catch (SecurityException e) {
-            return;
+            Set<BluetoothDevice> bonded = adapter.getBondedDevices();
+            if (bonded == null) return;
+            for (BluetoothDevice device : bonded) addPax(devices, seen, device, null);
+        } catch (SecurityException ignored) {
+            /* names stay empty until Nearby devices is allowed */
         }
-        if (name == null || !name.startsWith(NAME_PREFIX) || !seen.add(name)) return;
+    }
+
+    private void addPax(JSArray devices, Set<String> seen, BluetoothDevice device, String extraName) {
+        if (device == null) return;
+        String label = labelFor(device, extraName);
+        if (serialOf(label) == null) return;
+        String address = "";
+        try {
+            address = device.getAddress() == null ? "" : device.getAddress();
+        } catch (SecurityException e) {
+            address = "";
+        }
+        String key = address.isEmpty() ? label : address;
+        if (!seen.add(key)) return;
         try {
             JSONObject row = new JSONObject();
-            row.put("name", name);
-            row.put("address", device.getAddress() == null ? "" : device.getAddress());
+            row.put("name", label);
+            row.put("address", address);
             devices.put(row);
         } catch (Exception ignored) {
-            /* skip a row we cannot describe */
+            seen.remove(key);
         }
+    }
+
+    private String labelFor(BluetoothDevice device, String extraName) {
+        if (serialOf(extraName) != null) return extraName.trim();
+        try {
+            String name = device.getName();
+            if (serialOf(name) != null) return name.trim();
+        } catch (SecurityException e) {
+            return null;
+        }
+        if (Build.VERSION.SDK_INT >= 30) {
+            try {
+                String alias = device.getAlias();
+                if (serialOf(alias) != null) return alias.trim();
+            } catch (SecurityException e) {
+                return null;
+            }
+        }
+        return null;
     }
 
     private BluetoothAdapter bluetoothAdapter() {
@@ -432,23 +499,41 @@ public class PaxD135Plugin extends Plugin {
         return BluetoothAdapter.getDefaultAdapter();
     }
 
-    private boolean needsRuntimePermission() {
-        if (Build.VERSION.SDK_INT >= 31) {
-            return getPermissionState("bluetooth") != PermissionState.GRANTED;
-        }
-        return getPermissionState("location") != PermissionState.GRANTED;
+    private boolean bluetoothOn() {
+        BluetoothAdapter adapter = bluetoothAdapter();
+        return adapter != null && adapter.isEnabled();
     }
 
-    private String permissionAlias() {
-        return Build.VERSION.SDK_INT >= 31 ? "bluetooth" : "location";
+    /** Nearby devices (scan + connect) and Location. Both are required before a scan. */
+    private boolean hasScanPermissions() {
+        Context ctx = getContext();
+        if (ctx == null) return false;
+        boolean location = granted(ctx, Manifest.permission.ACCESS_FINE_LOCATION);
+        if (Build.VERSION.SDK_INT < 31) return location;
+        return location
+            && granted(ctx, Manifest.permission.BLUETOOTH_SCAN)
+            && granted(ctx, Manifest.permission.BLUETOOTH_CONNECT);
     }
 
-    private void resolveBluetooth(PluginCall call) {
+    private static boolean granted(Context ctx, String permission) {
+        return ContextCompat.checkSelfPermission(ctx, permission) == PackageManager.PERMISSION_GRANTED;
+    }
+
+    private String[] scanAliases() {
+        if (Build.VERSION.SDK_INT >= 31) return new String[] { "bluetooth", "location" };
+        return new String[] { "location" };
+    }
+
+    private String connectFailureMessage() {
+        return bluetoothOn() ? "The reader disconnected. The check is not paid. Try again." : MSG_BLUETOOTH;
+    }
+
+    private void resolveMessage(PluginCall call, String message) {
         JSObject ret = new JSObject();
         ret.put("ok", false);
-        ret.put("message", MSG_BLUETOOTH);
+        ret.put("message", message);
         call.resolve(ret);
-        emit("error", MSG_BLUETOOTH, null, null);
+        if (MSG_BLUETOOTH.equals(message)) emit("error", message, null, null);
     }
 
     private void emit(String state, String message, String serial, Integer battery) {
@@ -469,9 +554,19 @@ public class PaxD135Plugin extends Plugin {
         workerHandler.post(work);
     }
 
-    private static String serialOf(String name) {
-        if (name == null || !name.startsWith(NAME_PREFIX)) return null;
-        String serial = name.substring(NAME_PREFIX.length()).replace(" ", "").trim();
+    static String serialOf(String name) {
+        if (name == null) return null;
+        String trimmed = name.trim();
+        if (trimmed.startsWith(NAME_PREFIX)) {
+            String serial = trimmed.substring(NAME_PREFIX.length()).replace(" ", "").trim();
+            return serial.isEmpty() ? null : serial;
+        }
+        if (!trimmed.startsWith(NAME_MARK)) return null;
+        String rest = trimmed.substring(NAME_MARK.length());
+        if (rest.isEmpty()) return null;
+        char lead = rest.charAt(0);
+        if (!Character.isWhitespace(lead) && lead != '_' && lead != '-' && lead != ':') return null;
+        String serial = rest.replaceFirst("^[\\s_\\-:]+", "").replace(" ", "").trim();
         return serial.isEmpty() ? null : serial;
     }
 
