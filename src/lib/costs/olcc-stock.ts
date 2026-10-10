@@ -43,7 +43,11 @@ export type OlccStockOffer = {
   qty: number;
   bottlePriceCents: number;
   casePriceCents: number;
+  /** Bottles the house store has. Less than `qty` means the line is short. */
+  houseQty: number;
   nearest: OlccNamedStore | null;
+  /** Bottles at the nearest other store, when one has any. */
+  nearestQty: number | null;
 };
 
 export type OlccOrderLine = {
@@ -64,7 +68,13 @@ type StockResponse = {
 
 export type StockFetch = (
   input: RequestInfo | URL,
-  init?: { method?: string; headers?: Record<string, string>; body?: string; signal?: AbortSignal },
+  init?: {
+    method?: string;
+    headers?: Record<string, string>;
+    body?: string;
+    signal?: AbortSignal;
+    redirect?: "manual" | "follow" | "error";
+  },
 ) => Promise<StockResponse>;
 
 function plain(value: string): string {
@@ -130,8 +140,9 @@ function keptFrom(line: OlccOrderLine, store: OlccNamedStore): OlccKeptLine {
 }
 
 /**
- * A line the house store has stays.
- * A line it does not have offers the nearest store that has it.
+ * A line stays when the house store has every bottle on that line.
+ * A short line keeps the nearest other store that has any, for staff to open later.
+ * This does not send an order.
  */
 export function reviewOlccOrder(input: {
   lines: readonly OlccOrderLine[];
@@ -145,8 +156,10 @@ export function reviewOlccOrder(input: {
   const houseNumber = input.house.storeNumber.trim();
   for (const line of input.lines) {
     const rows = input.byItem[line.itemCode] ?? [];
-    const atHouse = rows.find((row) => row.storeNumber === houseNumber && row.qty > 0);
-    if (atHouse) {
+    const atHouse = rows.find((row) => row.storeNumber === houseNumber);
+    const houseQty = atHouse?.qty ?? 0;
+    const need = Math.max(0, Math.floor(line.qty));
+    if (houseQty >= need) {
       staying.push(keptFrom(line, input.house));
       continue;
     }
@@ -158,7 +171,9 @@ export function reviewOlccOrder(input: {
       qty: line.qty,
       bottlePriceCents: line.bottlePriceCents,
       casePriceCents: line.casePriceCents,
+      houseQty,
       nearest: nearest ? named(nearest, directory) : null,
+      nearestQty: nearest ? nearest.qty : null,
     });
   }
   return { staying, offers };
@@ -258,6 +273,7 @@ async function call(
     method: init?.method ?? "GET",
     headers,
     body: init?.body,
+    redirect: "manual",
     signal: AbortSignal.timeout(15000),
   });
   return { res, cookie: cookieFrom(res.headers.get("set-cookie"), cookie) };

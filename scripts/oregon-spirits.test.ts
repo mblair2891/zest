@@ -439,6 +439,53 @@ test("a finished order keeps house lines and offers the nearest store or remove"
   assert.doesNotMatch(printed, /RARE BOTTLE/);
 });
 
+test("house coverage requires the ordered quantity", () => {
+  const rows = parseOlccStockPage(STOCK_PAGE);
+  const house = {
+    storeNumber: "1278",
+    name: "Shop Smart",
+    city: "Grants Pass",
+    address: "3500 Merlin Rd",
+    phone: "541-476-4551",
+  };
+  const grape = {
+    storeNumber: "1076",
+    name: "Grape Street",
+    city: "Grants Pass",
+    address: "210 SE 8th St",
+    phone: "541-479-3729",
+  };
+  const line = {
+    itemCode: "8488B",
+    name: "TITO HANDMADE VODKA",
+    size: "750 ML",
+    qty: 14,
+    bottlePriceCents: 2495,
+    casePriceCents: 29940,
+  };
+  const covered = reviewOlccOrder({
+    lines: [line],
+    house,
+    byItem: { "8488B": rows },
+    directory: [house, grape],
+  });
+  assert.equal(covered.offers.length, 0);
+  assert.equal(covered.staying.length, 1);
+  assert.equal(covered.staying[0]?.storeNumber, "1278");
+  const short = reviewOlccOrder({
+    lines: [{ ...line, qty: 15 }],
+    house,
+    byItem: { "8488B": rows },
+    directory: [house, grape],
+  });
+  assert.equal(short.staying.length, 0);
+  assert.equal(short.offers.length, 1);
+  assert.equal(short.offers[0]?.houseQty, 14);
+  assert.equal(short.offers[0]?.nearest?.storeNumber, "1076");
+  assert.equal(short.offers[0]?.nearest?.name, "Grape Street");
+  assert.equal(short.offers[0]?.nearestQty, 144);
+});
+
 test("Tito's 750 offers other vodkas in that size, and a swap changes the line", () => {
   const prices = parseOlccRows([
     TITO_ROW,

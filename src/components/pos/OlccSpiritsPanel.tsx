@@ -59,6 +59,9 @@ export function OlccSpiritsPanel() {
   const [offers, setOffers] = useState<OlccStockOffer[]>([]);
   const [swaps, setSwaps] = useState<Record<string, OlccPrice>>({});
   const [keptChoice, setKeptChoice] = useState<Record<string, true>>({});
+  const [qtyOverrides, setQtyOverrides] = useState<Record<string, number>>({});
+  const [closestOpen, setClosestOpen] = useState<Record<string, true>>({});
+  const [substituteOpen, setSubstituteOpen] = useState<Record<string, true>>({});
   const oregon = isOregonState(state);
 
   useEffect(() => {
@@ -98,7 +101,10 @@ export function OlccSpiritsPanel() {
     skus,
     recipes,
   });
-  const order = applySpiritSwaps(spiritOrderWithAdditions(lines, added), swaps, zip);
+  const order = applySpiritSwaps(spiritOrderWithAdditions(lines, added), swaps, zip).map((line) => {
+    const qty = qtyOverrides[line.itemCode];
+    return qty ? { ...line, qty } : line;
+  });
 
   if (!oregon) return null;
 
@@ -128,6 +134,8 @@ export function OlccSpiritsPanel() {
     setChecked(false);
     setStaying([]);
     setOffers([]);
+    setClosestOpen({});
+    setSubstituteOpen({});
   };
 
   const addRow = (row: OlccPrice) => {
@@ -143,12 +151,17 @@ export function OlccSpiritsPanel() {
     phone: houseSupplier?.phone ?? "",
   };
 
-  const finishOrder = () => {
+  const checkStock = () => {
     if (!houseStore.storeNumber) {
       setNote("Pick the house store first.");
       return;
     }
     if (!order.length) return;
+    setChecked(false);
+    setStaying([]);
+    setOffers([]);
+    setClosestOpen({});
+    setSubstituteOpen({});
     setNote("Checking the house store…");
     void checkOlccHouseStockFn({
       data: {
@@ -196,6 +209,20 @@ export function OlccSpiritsPanel() {
         shownCode;
       return { ...prev, [source]: next };
     });
+    setQtyOverrides((prev) => {
+      const qty = prev[shownCode];
+      if (!qty) return prev;
+      const rest = { ...prev };
+      delete rest[shownCode];
+      rest[next.itemCode] = qty;
+      return rest;
+    });
+    clearCheck();
+  };
+
+  const setLineQty = (itemCode: string, qty: number) => {
+    const next = Math.max(1, Math.floor(qty) || 1);
+    setQtyOverrides((prev) => ({ ...prev, [itemCode]: next }));
     clearCheck();
   };
 
@@ -220,8 +247,9 @@ export function OlccSpiritsPanel() {
       <h3 className="text-sm font-semibold">Oregon spirits</h3>
       <p className="mt-1 text-xs text-muted-foreground">
         Distilled spirits only. Beer and wine stay on the distributor path. No order is sent to the OLCC. The price
-        list is the full current month. When the order is done, the house store is checked. Print the lines you
-        kept, upload the store receipt, and confirm the lines that arrived.
+        list is the full current month. Check stock looks at the house store first. If it has every item and
+        quantity, that is shown. A short line can check the closest other store or a substitute. Print the lines
+        you kept, upload the store receipt, and confirm the lines that arrived.
       </p>
       {prices.length ? (
         <>
@@ -276,8 +304,16 @@ export function OlccSpiritsPanel() {
         <Button type="button" size="sm" variant="outline" data-olcc-refresh="" onClick={refresh}>
           Refresh price list
         </Button>
-        <Button type="button" size="sm" variant="outline" data-olcc-done="" onClick={finishOrder} disabled={!order.length}>
-          Done
+        <Button
+          type="button"
+          size="sm"
+          variant="outline"
+          data-olcc-done=""
+          data-olcc-check-stock=""
+          onClick={checkStock}
+          disabled={!order.length}
+        >
+          Check stock
         </Button>
         <Button type="button" size="sm" variant="outline" data-olcc-print="" onClick={printList} disabled={!staying.length}>
           Print list
@@ -297,8 +333,17 @@ export function OlccSpiritsPanel() {
               className="flex flex-wrap items-center gap-2"
               data-olcc-line={line.itemCode || line.name}
             >
+              <Input
+                type="number"
+                min={1}
+                className="h-8 w-16"
+                value={line.qty}
+                data-olcc-qty={line.itemCode || line.name}
+                aria-label={`Quantity for ${line.name}`}
+                onChange={(e) => setLineQty(line.itemCode, Number(e.target.value))}
+              />
               <span>
-                {line.qty} × {line.name}
+                {line.name}
                 {line.size ? ` · ${line.size}` : ""}
                 {line.bottlePriceCents ? ` · ${formatCurrency(line.bottlePriceCents)} bottle` : ""}
               </span>
@@ -326,13 +371,23 @@ export function OlccSpiritsPanel() {
       )}
       {checked ? (
         <div className="mt-3" data-olcc-stock="">
+          {offers.length === 0 ? (
+            <p className="text-sm" data-olcc-coverage="full">
+              The house store has every item and quantity.
+            </p>
+          ) : (
+            <p className="text-sm" data-olcc-coverage="short">
+              Short at the house store. Check the closest other store, or recommend a substitute. Leave a line as-is
+              if you want. This check does not send an order.
+            </p>
+          )}
           {staying.length ? (
-            <ul className="space-y-2 text-sm">
+            <ul className="mt-2 space-y-2 text-sm">
               {staying.map((line) => (
                 <li key={`kept-${line.itemCode}`} data-olcc-kept={line.itemCode} data-olcc-kept-store={line.storeNumber}>
                   {line.qty} × {line.name}
                   {line.size ? ` · ${line.size}` : ""} · {line.storeName}
-                  {line.storeCity ? `, ${line.storeCity}` : ""} has it
+                  {line.storeCity ? `, ${line.storeCity}` : ""} has this quantity
                 </li>
               ))}
             </ul>
@@ -343,19 +398,42 @@ export function OlccSpiritsPanel() {
                 <li key={`offer-${offer.itemCode}`} className="rounded-xl border border-border px-2 py-2" data-olcc-offer={offer.itemCode}>
                   <span>
                     {offer.qty} × {offer.name}
-                    {offer.size ? ` · ${offer.size}` : ""}
+                    {offer.size ? ` · ${offer.size}` : ""} · house has {offer.houseQty}
                   </span>
-                  {offer.nearest ? (
-                    <span className="mt-1 block text-xs" data-olcc-nearest={offer.nearest.storeNumber}>
-                      {offer.nearest.name}
-                      {offer.nearest.city ? `, ${offer.nearest.city}` : ""}
-                      {offer.nearest.address ? ` · ${offer.nearest.address}` : ""}
-                    </span>
-                  ) : (
-                    <span className="mt-1 block text-xs text-muted-foreground">No nearby store has this.</span>
-                  )}
                   <span className="mt-1 flex flex-wrap gap-2">
-                    {offer.nearest ? (
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      data-olcc-closest={offer.itemCode}
+                      onClick={() => setClosestOpen((prev) => ({ ...prev, [offer.itemCode]: true }))}
+                    >
+                      Check closest store
+                    </Button>
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      data-olcc-substitute={offer.itemCode}
+                      onClick={() => setSubstituteOpen((prev) => ({ ...prev, [offer.itemCode]: true }))}
+                    >
+                      Recommend a substitute
+                    </Button>
+                  </span>
+                  {closestOpen[offer.itemCode] ? (
+                    offer.nearest ? (
+                      <span className="mt-1 block text-xs" data-olcc-nearest={offer.nearest.storeNumber}>
+                        {offer.nearest.name}
+                        {offer.nearest.city ? `, ${offer.nearest.city}` : ""}
+                        {offer.nearest.address ? ` · ${offer.nearest.address}` : ""}
+                        {offer.nearestQty != null ? ` · ${offer.nearestQty} on hand` : ""}
+                      </span>
+                    ) : (
+                      <span className="mt-1 block text-xs text-muted-foreground">No nearby store has this.</span>
+                    )
+                  ) : null}
+                  <span className="mt-1 flex flex-wrap gap-2">
+                    {closestOpen[offer.itemCode] && offer.nearest ? (
                       <Button type="button" size="sm" variant="outline" data-olcc-use-store={offer.itemCode} onClick={() => chooseStore(offer.itemCode)}>
                         Use this store
                       </Button>
@@ -364,13 +442,16 @@ export function OlccSpiritsPanel() {
                       Remove
                     </Button>
                   </span>
-                  <SameTypeChoices
-                    line={offer}
-                    prices={prices}
-                    hidden={Boolean(keptChoice[offer.itemCode])}
-                    onSwap={(next) => swapLine(offer.itemCode, next)}
-                    onKeep={() => keepLine(offer.itemCode)}
-                  />
+                  {substituteOpen[offer.itemCode] ? (
+                    <SameTypeChoices
+                      line={offer}
+                      prices={prices}
+                      hidden={Boolean(keptChoice[offer.itemCode])}
+                      keepLabel="Leave as-is"
+                      onSwap={(next) => swapLine(offer.itemCode, next)}
+                      onKeep={() => keepLine(offer.itemCode)}
+                    />
+                  ) : null}
                 </li>
               ))}
             </ul>
@@ -385,12 +466,14 @@ function SameTypeChoices({
   line,
   prices,
   hidden,
+  keepLabel = "Keep",
   onSwap,
   onKeep,
 }: {
   line: { itemCode: string; name: string; size: string };
   prices: readonly OlccPrice[];
   hidden: boolean;
+  keepLabel?: string;
   onSwap: (next: OlccPrice) => void;
   onKeep: () => void;
 }) {
@@ -411,7 +494,7 @@ function SameTypeChoices({
         ))}
       </ul>
       <Button type="button" size="sm" variant="outline" className="mt-1" data-olcc-keep={line.itemCode} onClick={onKeep}>
-        Keep
+        {keepLabel}
       </Button>
     </div>
   );

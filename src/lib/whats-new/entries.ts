@@ -6,6 +6,18 @@ import type { GuideUpdate } from "@/lib/guide/types";
  */
 export const WHATS_NEW_ENTRIES: GuideUpdate[] = [
   {
+    id: "upd_2026_10_233_liquor_stock_check",
+    date: "2026-10-10",
+    title: "Liquor order stock check",
+    summary: "Check stock looks at the house store first. A short line can use the closest store or a substitute.",
+    body: "On a liquor order, Check stock looks at the house store first, for every item and the quantity on the line. If the house store has every item and quantity, the screen says so. A short line is listed. Staff can check the closest other store for those items, or recommend a substitute. They can accept the substitute or leave the line as-is. The check does not send an order. It only reports and suggests.",
+    roles: ["owner_manager", "host_operator", "vendor_operator"],
+    surfaces: ["settings"],
+    audience: "all",
+    topicId: "cost-ordering",
+    tags: ["costs", "ordering"],
+  },
+  {
     id: "upd_2026_10_232_finix_merchant_id",
     date: "2026-10-10",
     title: "Finix Merchant ID",
