@@ -31,6 +31,8 @@ import {
   upsertTableStatusFn,
 } from "./floor-api";
 import { applyItem86Overlay, parseItem86 } from "./item-86";
+import { quantumPaidServerNotice } from "@/lib/payments/finix-events";
+import { useNotifyStore } from "./notify-store";
 
 const POLL_MS = 3000;
 const LOCAL_GRACE_MS = 20_000;
@@ -287,6 +289,16 @@ export function applyOpenFloor(floor: OpenFloor): void {
     };
   });
 
+  const paidNotices = serverOrders.flatMap((server) => {
+    const local = s.orders.find((o) => o.id === server.id);
+    const label =
+      s.tables.find((t) => t.id === server.tableId)?.label ||
+      server.tabName ||
+      String(server.number);
+    const note = quantumPaidServerNotice(local, server, label);
+    return note ? [note] : [];
+  });
+
   const nextOrders = [...mergedOrders, ...localOnly];
   const activeStill = nextOrders.some((o) => o.id === s.activeOrderId);
   const prevById = new Map(s.tickets.map((t) => [t.id, t.status]));
@@ -299,6 +311,21 @@ export function applyOpenFloor(floor: OpenFloor): void {
     menuItems,
     activeOrderId: activeStill ? s.activeOrderId : s.activeOrderId,
   });
+  if (paidNotices.length) {
+    const notify = useNotifyStore.getState();
+    for (const note of paidNotices) {
+      notify.pushNotice({
+        kind: "quantum_paid",
+        title: note.title,
+        body: note.body,
+        tableLabel: note.tableLabel,
+        serverId: note.serverId,
+        serverName: note.serverName,
+        audience: [...note.audience],
+        orderId: note.orderId,
+      });
+    }
+  }
   if (floor.punches) {
     const ops = useOpsStore.getState();
     const serverIds = new Set(floor.punches.map((p) => p.id));

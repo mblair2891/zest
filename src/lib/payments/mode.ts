@@ -1,4 +1,5 @@
 import { readServerEnv } from "@/lib/database-url";
+import { finixConfigured } from "./finix-keys";
 import type { LocationPaymentsMode, PaymentsMode } from "./types";
 
 export function envPaymentsDefault(): PaymentsMode {
@@ -67,8 +68,7 @@ export function stripeWebhookSecret(): string | undefined {
   return readServerEnv("STRIPE_WEBHOOK_SECRET") || undefined;
 }
 
+/** Live Quantum Payments keys. A Quantum secret is not this rail. */
 export function liveAdapterConfigured(): boolean {
-  const finix =
-    readServerEnv("FINIX_API_KEY") || readServerEnv("FINIX_APPLICATION_ID");
-  return Boolean(quantumSecretKey() || finix);
+  return finixConfigured("live");
 }

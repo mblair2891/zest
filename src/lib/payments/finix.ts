@@ -2,7 +2,16 @@
  * Processor rail behind Quantum Payments. Guest/POS UI never names this vendor.
  * Tokens only — no SSN, PAN, or full account numbers.
  */
-import { readServerEnv } from "@/lib/database-url";
+import {
+  finixConfigured as finixKeysConfigured,
+  finixModeForLocation,
+  finixOrigin,
+  finixWebhookSecret as readWebhookSecret,
+  missingFinixKeyMessage,
+  readFinixCreds,
+  type FinixMode,
+} from "./finix-keys.ts";
+import { liveCardGate } from "./finix-events.ts";
 
 export type PaymentsProvider = "finix" | "sandbox";
 export type PaymentsOnboardingStatus =
@@ -62,66 +71,55 @@ export type FinixTransferResult = {
   error?: string;
 };
 
-function env(): "sandbox" | "live" {
-  return readServerEnv("FINIX_ENVIRONMENT") === "live" ? "live" : "sandbox";
+export function finixConfigured(mode: FinixMode = "sandbox"): boolean {
+  return finixKeysConfigured(mode);
 }
 
-function origin(): string {
-  return env() === "live"
-    ? "https://finix.live-payments-api.com"
-    : "https://finix.sandbox-payments-api.com";
-}
-
-function credentials(): { user: string; pass: string } | null {
-  const key = readServerEnv("FINIX_API_KEY");
-  const app = readServerEnv("FINIX_APPLICATION_ID");
-  if (!key && !app) return null;
-  if (key && key.includes(":")) {
-    const i = key.indexOf(":");
-    return { user: key.slice(0, i), pass: key.slice(i + 1) };
-  }
-  if (app && key) return { user: app, pass: key };
-  return null;
-}
-
-export function finixConfigured(): boolean {
-  return Boolean(credentials());
-}
-
-/** Sandbox SDK login for the station app. Live keys are not returned in this build. */
+/** Sandbox SDK login. Live passwords are never returned here. */
 export function finixSandboxLogin(): { userId: string; password: string } | null {
-  if (env() === "live") return null;
-  const creds = credentials();
-  if (!creds) return null;
-  return { userId: creds.user, password: creds.pass };
+  const row = readFinixCreds("sandbox");
+  if (!row.ok) return null;
+  return { userId: row.creds.username, password: row.creds.password };
 }
 
-export function finixWebhookSecret(): string | undefined {
-  return readServerEnv("FINIX_WEBHOOK_SECRET");
+export function finixSandboxLoginError(): string {
+  const row = readFinixCreds("sandbox");
+  if (row.ok) return "";
+  return missingFinixKeyMessage(row.missing);
 }
+
+export function finixWebhookSecret(mode: FinixMode = "sandbox"): string | undefined {
+  return readWebhookSecret(mode);
+}
+
+export { finixModeForLocation, missingFinixKeyMessage, readFinixCreds };
+export type { FinixMode };
 
 function sandboxId(prefix: string): string {
   return `${prefix}_sandbox_${Math.random().toString(36).slice(2, 12)}`;
 }
 
 async function finixFetch(
+  mode: FinixMode,
   method: string,
   path: string,
   body?: Record<string, unknown>,
-): Promise<{ ok: boolean; status: number; json: Record<string, unknown> }> {
-  const creds = credentials();
-  if (!creds) {
-    return { ok: false, status: 0, json: { error: "not_configured" } };
+): Promise<{ ok: boolean; status: number; json: Record<string, unknown>; error?: string }> {
+  const creds = readFinixCreds(mode);
+  if (!creds.ok) {
+    const error = missingFinixKeyMessage(creds.missing);
+    return { ok: false, status: 0, json: { error, missing: creds.missing }, error };
   }
-  const auth = Buffer.from(`${creds.user}:${creds.pass}`).toString("base64");
-  const res = await fetch(`${origin()}${path}`, {
+  const auth = Buffer.from(`${creds.creds.username}:${creds.creds.password}`).toString("base64");
+  const payload = body ? { application: creds.creds.applicationId, ...body } : undefined;
+  const res = await fetch(`${finixOrigin(mode)}${path}`, {
     method,
     headers: {
       Authorization: `Basic ${auth}`,
       "Content-Type": "application/json",
       "Finix-Version": "2022-02-01",
     },
-    body: body ? JSON.stringify(body) : undefined,
+    body: payload ? JSON.stringify(payload) : undefined,
   });
   let json: Record<string, unknown> = {};
   try {
@@ -146,7 +144,7 @@ export async function createIdentity(input: FinixIdentityInput): Promise<FinixId
   if (!finixConfigured()) {
     return { id: sandboxId("ID"), provider: "sandbox" };
   }
-  const res = await finixFetch("POST", "/identities", {
+  const res = await finixFetch("sandbox", "POST", "/identities", {
     entity: {
       type: "BUSINESS",
       business_name: input.legalName.slice(0, 120),
@@ -167,7 +165,7 @@ export async function createMerchant(identityId: string): Promise<FinixMerchant>
       provider: "sandbox",
     };
   }
-  const res = await finixFetch("POST", "/merchants", { identity: identityId });
+  const res = await finixFetch("sandbox", "POST", "/merchants", { identity: identityId });
   const id = typeof res.json.id === "string" ? res.json.id : sandboxId("MU");
   const nested = res.json as { id?: string; onboarding_state?: string };
   return {
@@ -185,7 +183,7 @@ export async function onboardingLink(opts: {
   if (!finixConfigured() || opts.identityId.includes("sandbox")) {
     return { url: null, formId: null, provider: "sandbox" };
   }
-  const res = await finixFetch("POST", "/onboarding_forms", {
+  const res = await finixFetch("sandbox", "POST", "/onboarding_forms", {
     onboarding_data: {
       entity_id: opts.identityId,
       onboarding_link_details: opts.returnUrl
@@ -217,7 +215,7 @@ export async function attachBank(opts: {
       routingLast4: routing,
     };
   }
-  const res = await finixFetch("POST", "/payment_instruments", {
+  const res = await finixFetch("sandbox", "POST", "/payment_instruments", {
     type: "BANK_ACCOUNT",
     identity: opts.identityId,
     account_type: "CHECKING",
@@ -260,7 +258,7 @@ export async function getStatus(opts: {
     };
   }
   if (opts.merchantId) {
-    const res = await finixFetch("GET", `/merchants/${opts.merchantId}`);
+    const res = await finixFetch("sandbox", "GET", `/merchants/${opts.merchantId}`);
     const state = (res.json as { onboarding_state?: string }).onboarding_state;
     return {
       identityId: opts.identityId ?? null,
@@ -283,60 +281,88 @@ export async function getStatus(opts: {
   };
 }
 
+function transferError(res: { error?: string; json: Record<string, unknown> }, fallback: string): string {
+  if (res.error) return res.error.slice(0, 200);
+  const msg = (res.json as { message?: string }).message;
+  return (typeof msg === "string" ? msg : fallback).slice(0, 200);
+}
+
 export async function createTransfer(opts: {
   merchantId: string;
   amountCents: number;
   currency?: string;
+  mode?: FinixMode;
 }): Promise<FinixTransferResult> {
+  const mode = opts.mode ?? "sandbox";
   if (opts.amountCents <= 0) {
-    return { ok: false, sandbox: !finixConfigured(), error: "Invalid amount" };
+    return { ok: false, sandbox: mode === "sandbox", error: "Invalid amount" };
   }
-  if (!finixConfigured() || opts.merchantId.includes("sandbox")) {
-    return { ok: true, transferId: sandboxId("TR"), sandbox: true };
+  const creds = readFinixCreds(mode);
+  if (!creds.ok) {
+    return { ok: false, sandbox: mode === "sandbox", error: missingFinixKeyMessage(creds.missing) };
   }
-  const res = await finixFetch("POST", "/transfers", {
+  if (mode === "live") {
+    const gate = liveCardGate({ locationLive: true, merchantId: opts.merchantId });
+    if (!gate.ok) return { ok: false, sandbox: false, error: gate.error };
+  }
+  const res = await finixFetch(mode, "POST", "/transfers", {
     merchant: opts.merchantId,
     amount: opts.amountCents,
     currency: (opts.currency || "USD").toLowerCase(),
   });
   if (!res.ok) {
-    const msg =
-      typeof (res.json as { message?: string }).message === "string"
-        ? (res.json as { message: string }).message
-        : "Transfer failed";
-    return { ok: false, sandbox: false, error: msg.slice(0, 200) };
+    return { ok: false, sandbox: mode === "sandbox", error: transferError(res, "Transfer failed") };
   }
-  const id = typeof res.json.id === "string" ? res.json.id : sandboxId("TR");
-  return { ok: true, transferId: id, sandbox: false };
+  const id = typeof res.json.id === "string" ? res.json.id : "";
+  if (!id) return { ok: false, sandbox: mode === "sandbox", error: "Transfer failed" };
+  return { ok: true, transferId: id, sandbox: mode === "sandbox" };
 }
 
 /**
- * Live card-present authorization on the selling entity’s Finix merchant.
- * Uses FINIX_API_KEY. Does not call Stripe.
+ * Card authorization on the selling entity’s merchant.
+ * Sandbox keys stay on the sandbox host. Live keys run only for a live location.
+ * Does not call another processor.
  */
 export async function authorizeCardPresent(opts: {
   merchantId: string;
   amountCents: number;
-  readerId: string;
+  readerId?: string | null;
   idempotencyId?: string;
+  checkId?: string | null;
   splits?: Array<{ merchantId: string; amountCents: number }>;
-}): Promise<{ ok: boolean; id?: string; last4?: string | null; error?: string }> {
+  mode?: FinixMode;
+  locationLive?: boolean;
+}): Promise<{ ok: boolean; id?: string; last4?: string | null; error?: string; sandbox: boolean }> {
+  const mode: FinixMode = opts.mode ?? (opts.locationLive ? "live" : "sandbox");
+  const sandbox = mode === "sandbox";
   const merchantId = opts.merchantId.trim();
-  if (!finixConfigured() || !merchantId) {
-    return { ok: false, error: "Live Quantum Payments is not configured" };
+  if (mode === "live") {
+    const gate = liveCardGate({ locationLive: opts.locationLive !== false, merchantId });
+    if (!gate.ok) return { ok: false, sandbox: false, error: gate.error };
+  } else if (!merchantId) {
+    return {
+      ok: false,
+      sandbox: true,
+      error: "This selling entity does not have a Quantum Payments merchant. Use cash or keep the check open.",
+    };
   }
-  if (merchantId.includes("sandbox")) {
-    return { ok: false, error: "Sandbox merchant cannot take a live card" };
+  const creds = readFinixCreds(mode);
+  if (!creds.ok) {
+    return { ok: false, sandbox, error: missingFinixKeyMessage(creds.missing) };
   }
-  const others = (opts.splits ?? []).filter(
-    (s) => s.merchantId && s.merchantId !== merchantId && s.amountCents > 0 && !s.merchantId.includes("sandbox"),
-  );
+  const others = (opts.splits ?? []).filter((s) => {
+    if (!s.merchantId || s.merchantId === merchantId || s.amountCents <= 0) return false;
+    if (mode === "live" && s.merchantId.toLowerCase().includes("sandbox")) return false;
+    return true;
+  });
   const body: Record<string, unknown> = {
     amount: Math.max(0, Math.round(opts.amountCents)),
     currency: "USD",
     merchant: merchantId,
-    device: opts.readerId,
+    tags: opts.checkId ? { check_id: opts.checkId.slice(0, 80) } : undefined,
   };
+  const readerId = String(opts.readerId ?? "").trim();
+  if (readerId) body.device = readerId;
   if (opts.idempotencyId) body.idempotency_id = opts.idempotencyId.slice(0, 80);
   if (others.length) {
     body.split_transfers = others.map((s) => ({
@@ -344,40 +370,46 @@ export async function authorizeCardPresent(opts: {
       amount: s.amountCents,
     }));
   }
-  const res = await finixFetch("POST", "/authorizations", body);
+  const res = await finixFetch(mode, "POST", "/authorizations", body);
   if (!res.ok) {
-    const msg =
-      typeof (res.json as { message?: string }).message === "string"
-        ? (res.json as { message: string }).message
-        : "Card capture could not start. Use cash or keep the check open.";
-    return { ok: false, error: msg.slice(0, 240) };
+    return {
+      ok: false,
+      sandbox,
+      error: transferError(res, "Card capture could not start. Use cash or keep the check open."),
+    };
   }
   const id = typeof res.json.id === "string" ? res.json.id : "";
+  if (!id) {
+    return { ok: false, sandbox, error: "Card capture could not start. Use cash or keep the check open." };
+  }
   const last4raw =
     (res.json as { card_present_details?: { last4?: string }; last_four?: string }).card_present_details
       ?.last4 || (res.json as { last_four?: string }).last_four;
   const last4 = last4raw ? String(last4raw).replace(/\D/g, "").slice(-4) || null : null;
-  return { ok: true, id, last4 };
+  return { ok: true, id, last4, sandbox };
 }
 
-/** One guest authorization; Finix sends each vendor merchant their share. */
+/** One guest authorization; each vendor merchant is paid for the lines it owns. */
 export async function createSplitTransfer(opts: {
   parentMerchantId: string;
   amountCents: number;
   splits: Array<{ merchantId: string; amountCents: number }>;
   currency?: string;
+  mode?: FinixMode;
 }): Promise<FinixTransferResult> {
+  const mode = opts.mode ?? "sandbox";
   const total = Math.max(0, opts.amountCents);
   const parts = opts.splits.filter((s) => s.amountCents > 0 && s.merchantId);
   if (total <= 0 || !opts.parentMerchantId) {
-    return { ok: false, sandbox: !finixConfigured(), error: "Invalid split" };
+    return { ok: false, sandbox: mode === "sandbox", error: "Invalid split" };
   }
-  const sandbox =
-    !finixConfigured() ||
-    opts.parentMerchantId.includes("sandbox") ||
-    parts.some((s) => s.merchantId.includes("sandbox"));
-  if (sandbox) {
-    return { ok: true, transferId: sandboxId("TR"), sandbox: true };
+  const creds = readFinixCreds(mode);
+  if (!creds.ok) {
+    return { ok: false, sandbox: mode === "sandbox", error: missingFinixKeyMessage(creds.missing) };
+  }
+  if (mode === "live") {
+    const gate = liveCardGate({ locationLive: true, merchantId: opts.parentMerchantId });
+    if (!gate.ok) return { ok: false, sandbox: false, error: gate.error };
   }
   const others = parts.filter((s) => s.merchantId !== opts.parentMerchantId);
   const body: Record<string, unknown> = {
@@ -391,16 +423,13 @@ export async function createSplitTransfer(opts: {
       amount: s.amountCents,
     }));
   }
-  const res = await finixFetch("POST", "/transfers", body);
+  const res = await finixFetch(mode, "POST", "/transfers", body);
   if (!res.ok) {
-    const msg =
-      typeof (res.json as { message?: string }).message === "string"
-        ? (res.json as { message: string }).message
-        : "Split transfer failed";
-    return { ok: false, sandbox: false, error: msg.slice(0, 200) };
+    return { ok: false, sandbox: mode === "sandbox", error: transferError(res, "Split transfer failed") };
   }
-  const id = typeof res.json.id === "string" ? res.json.id : sandboxId("TR");
-  return { ok: true, transferId: id, sandbox: false };
+  const id = typeof res.json.id === "string" ? res.json.id : "";
+  if (!id) return { ok: false, sandbox: mode === "sandbox", error: "Split transfer failed" };
+  return { ok: true, transferId: id, sandbox: mode === "sandbox" };
 }
 
 /**
@@ -412,11 +441,12 @@ export async function createPaxD135Device(opts: {
   serial: string;
   name: string;
 }): Promise<{ ok: true; id: string } | { ok: false; error: string }> {
-  if (env() === "live") {
-    return { ok: false, error: "Live card readers are not available in this build." };
-  }
   const merchantId = opts.merchantId.trim();
-  if (!finixConfigured() || !merchantId || merchantId.includes("sandbox")) {
+  const creds = readFinixCreds("sandbox");
+  if (!creds.ok) {
+    return { ok: false, error: missingFinixKeyMessage(creds.missing) };
+  }
+  if (!merchantId) {
     return {
       ok: false,
       error: "This selling entity does not have a sandbox merchant yet.",
@@ -424,7 +454,7 @@ export async function createPaxD135Device(opts: {
   }
   const { paxDeviceRequest } = await import("./pax-d135");
   const body = paxDeviceRequest(opts.serial, opts.name);
-  const res = await finixFetch("POST", `/merchants/${encodeURIComponent(merchantId)}/devices`, body);
+  const res = await finixFetch("sandbox", "POST", `/merchants/${encodeURIComponent(merchantId)}/devices`, body);
   const id = typeof res.json.id === "string" ? res.json.id : "";
   if (!res.ok || !id.startsWith("DV")) {
     const msg =

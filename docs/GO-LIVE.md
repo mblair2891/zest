@@ -54,7 +54,7 @@ Do **not** pretend live Visa works until all of these are true.
 - [ ] Location lifecycle **live** (Go live now / schedule; type `GO LIVE NOW`)
 - [ ] Host Quantum Payments application **approved** on the live rail
 - [ ] Operators who should receive card share: application **approved**
-- [ ] Live keys: `QUANTUM_PAYMENTS_SECRET_KEY` and/or `FINIX_API_KEY` + `FINIX_APPLICATION_ID` + webhook secret (`FINIX_ENVIRONMENT=live` when underwriting is live)
+- [ ] Live keys: `FINIX_LIVE_USERNAME`, `FINIX_LIVE_PASSWORD`, `FINIX_LIVE_APPLICATION_ID`, `FINIX_LIVE_WEBHOOK_SECRET` (sandbox stays `FINIX_USERNAME`, `FINIX_PASSWORD`, `FINIX_APPLICATION_ID`, `FINIX_WEBHOOK_SECRET`)
 - [ ] Enrolled Quantum reader (Hardware registry serial = processor reader id). SYOH tablets run POS only.
 - [ ] Platform → Payments default **Live** (or location override Live) **after** go-live
 - [ ] Webhook URL `https://<origin>/api/payments/finix/webhook` (and `/api/payments/webhook` if using the Terminal adapter)

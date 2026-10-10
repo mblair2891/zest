@@ -89,7 +89,7 @@ const MONEY = [
   {
     step: "01",
     title: "Guest pays once",
-    body: `One check. Capture splits to each brand’s ${PAYMENTS_BRAND} merchant. The receipt groups lines by vendor. Cash and first-party gift sit beside the card — never a second processor.`,
+    body: `One check. Capture splits to each brand’s ${PAYMENTS_BRAND} merchant. The receipt names the selling entity on each line. Cash and first-party gift sit beside the card.`,
   },
   {
     step: "02",

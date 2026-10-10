@@ -1,6 +1,7 @@
 import { formatCurrency } from "@/lib/utils";
 import type { PrintJob } from "./types";
 import { groupLinesByEntity } from "@/lib/payments/entity-split";
+import { receiptItemLine } from "@/lib/payments/finix-events";
 import { formatTurnInSlipLines } from "@/lib/pos/till-turn-in-slip";
 import { formatVenueStamp, formatVenueTime } from "@/lib/pos/venue-time";
 import {
@@ -246,10 +247,11 @@ function buildGuestCheckEscPos(
       const card = it.cardCents ?? it.amountCents ?? cash;
       cashSub += cash;
       cardSub += card;
+      const item = receiptItemLine(it.qty, it.name, g.displayName);
       if (dual) {
-        parts.push(line(`${it.qty} ${it.name}`, `${money(cash)} / ${money(card)}`, width));
+        parts.push(line(item, `${money(cash)} / ${money(card)}`, width));
       } else {
-        parts.push(line(`${it.qty} ${it.name}`, money(cash), width));
+        parts.push(line(item, money(cash), width));
       }
       for (const m of it.mods ?? []) parts.push(line(`  ${m}`, "", width));
       if (i < g.lines.length - 1) parts.push(FEED);
@@ -366,7 +368,11 @@ export function buildEscPos(job: PrintJob, opts?: EscPosOptions): Uint8Array {
     for (const it of g.lines) {
       const amt =
         typeof it.amountCents === "number" ? formatCurrency(it.amountCents) : "";
-      parts.push(BOLD_ON, line(`${it.qty}x ${it.name}`, amt, width), BOLD_OFF);
+      const item =
+        job.kind === "receipt"
+          ? receiptItemLine(it.qty, it.name, g.displayName)
+          : `${it.qty}x ${it.name}`;
+      parts.push(BOLD_ON, line(item, amt, width), BOLD_OFF);
       for (const m of it.mods ?? []) parts.push(line(`  ${m}`, "", width));
       if (it.note) parts.push(line(`  * ${it.note}`, "", width));
       if (it.seat != null) parts.push(line(`  seat ${it.seat}`, "", width));

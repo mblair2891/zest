@@ -699,26 +699,20 @@ export async function applyFinixWebhook(event: {
   entity?: string;
   entity_id?: string;
   data?: { id?: string; onboarding_state?: string };
-}): Promise<{ ok: true; duplicate?: boolean }> {
+}): Promise<{ ok: true; duplicate?: boolean; closed?: boolean; notified?: boolean; failed?: boolean }> {
   const eventId = String(event.id || "").slice(0, 80) || newId("fwev");
   const sql = await getSql();
-  try {
-    await sql`
-      insert into finix_webhook_events (id, event_id, event_type, entity_id, payload)
-      values (
-        ${newId("fwev")},
-        ${eventId},
-        ${String(event.type ?? "unknown").slice(0, 80)},
-        ${String(event.entity_id || event.data?.id || "").slice(0, 80) || null},
-        ${JSON.stringify(event)}::jsonb
-      )
-    `;
-  } catch {
-    return { ok: true, duplicate: true };
-  }
+  const existing = await sql<{ event_id: string }>`
+    select event_id from finix_webhook_events where event_id = ${eventId} limit 1
+  `;
+  if (existing[0]) return { ok: true, duplicate: true };
+
   const entityId = String(event.entity_id || event.data?.id || "").trim();
-  const mapped =
-    mapWebhookType(String(event.type ?? "")) ||
+  const railKind = `${event.type ?? ""} ${event.entity ?? ""}`.toLowerCase();
+  const isRailEvent = /transfer|authorization|dispute/.test(railKind);
+  const mapped = isRailEvent
+    ? null
+    : mapWebhookType(String(event.type ?? "")) ||
     (event.data?.onboarding_state
       ? event.data.onboarding_state.toUpperCase() === "APPROVED"
         ? "approved"
@@ -737,10 +731,26 @@ export async function applyFinixWebhook(event: {
          or finix_identity_id = ${entityId}
     `;
   }
+  const { applyFinixRailEvent } = await import("./finix-webhook.server");
+  const rail = await applyFinixRailEvent(event);
+  try {
+    await sql`
+      insert into finix_webhook_events (id, event_id, event_type, entity_id, payload)
+      values (
+        ${newId("fwev")},
+        ${eventId},
+        ${String(event.type ?? "unknown").slice(0, 80)},
+        ${String(event.entity_id || event.data?.id || "").slice(0, 80) || null},
+        ${JSON.stringify(event)}::jsonb
+      )
+    `;
+  } catch {
+    return { ok: true, duplicate: true, ...rail };
+  }
   await sql`
     update finix_webhook_events set processed_at = now() where event_id = ${eventId}
   `;
-  return { ok: true };
+  return { ok: true, ...rail };
 }
 
 export async function queueOperatorPayouts(

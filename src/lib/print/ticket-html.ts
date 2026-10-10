@@ -1,6 +1,7 @@
 import { formatCurrency } from "@/lib/utils";
 import type { PrintJob } from "./types";
 import { groupLinesByEntity } from "@/lib/payments/entity-split";
+import { receiptItemLine } from "@/lib/payments/finix-events";
 import { formatTurnInSlipLines } from "@/lib/pos/till-turn-in-slip";
 import { formatVenueTime } from "@/lib/pos/venue-time";
 
@@ -76,7 +77,11 @@ export function ticketHtml(job: PrintJob): string {
             typeof it.amountCents === "number"
               ? `<span>${formatCurrency(it.amountCents)}</span>`
               : "";
-          return `<div class="item row"><strong>${it.qty}× ${esc(it.name)}</strong>${amt}</div>${mods}${note}${seat}`;
+          const label =
+            job.kind === "receipt" || job.kind === "guest_check"
+              ? receiptItemLine(it.qty, it.name, g.displayName)
+              : `${it.qty}× ${it.name}`;
+          return `<div class="item row"><strong>${esc(label)}</strong>${amt}</div>${mods}${note}${seat}`;
         })
         .join("");
       return `${head}${rows}`;

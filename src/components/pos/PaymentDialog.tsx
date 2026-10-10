@@ -174,6 +174,7 @@ export function PaymentDialog({ open, onOpenChange, initialMethod }: Props) {
   const [paxReader, setPaxReader] = useState<PaxReader | null>(null);
   const [paxReaders, setPaxReaders] = useState<PaxReader[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const [cardHold, setCardHold] = useState<string | null>(null);
   const [change, setChange] = useState<number | null>(null);
   const [done, setDone] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -729,6 +730,13 @@ export function PaymentDialog({ open, onOpenChange, initialMethod }: Props) {
           setBusy(false);
           return;
         }
+        if (cap.status === "authorized") {
+          setCardHold(
+            "Card authorized. The check stays open until Quantum Payments confirms the transfer.",
+          );
+          setBusy(false);
+          return;
+        }
         cardLast4 = cap.last4 || cardLast4;
       } catch {
         setError("Card requires connection. Take cash or keep the check open.");
@@ -1230,6 +1238,11 @@ export function PaymentDialog({ open, onOpenChange, initialMethod }: Props) {
               onSigned={() => setSigned(true)}
               onCleared={() => setSigned(false)}
             />
+            {cardHold && (
+              <p className="text-center text-sm text-ivory" data-quantum-hold>
+                {cardHold}
+              </p>
+            )}
             {error && (
               <p className="text-center text-sm text-danger" role="alert">
                 {error}

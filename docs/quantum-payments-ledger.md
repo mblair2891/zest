@@ -40,7 +40,7 @@ Per-entity processor funding is also recorded on `summex_payment_splits` (mercha
 ## Example — Host Venue check ($100 merchandise, 65% / 35%)
 
 Illustrative names (not a seeded tenant): host brand **Host Venue**.
-**Operator A** (kitchen) $65 food. **Operator B** (bar) $35 drinks. Guest pays **$100 card** on Quantum Payments (tax omitted). Capture splits to each brand’s merchant. The receipt groups lines by vendor.
+**Operator A** (kitchen) $65 food. **Operator B** (bar) $35 drinks. Guest pays **$100 card** on Quantum Payments (tax omitted). Capture splits to each brand’s merchant. The receipt names the selling entity on each line.
 
 ### On capture / close
 

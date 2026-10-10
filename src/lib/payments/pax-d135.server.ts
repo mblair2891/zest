@@ -9,7 +9,7 @@ import { ForbiddenError, requireMembership } from "@/lib/saas/tenancy.server";
 import { EMPTY_LOCATION_SETUP, type LocationSetup } from "@/lib/saas/types";
 import { HOST_SCOPE } from "@/lib/access/entity-grants";
 import { locationLifecycleStatus } from "./mode";
-import { finixSandboxLogin } from "./finix";
+import { finixSandboxLogin, finixSandboxLoginError } from "./finix";
 import {
   PAX_MSG,
   envBlock,
@@ -160,7 +160,7 @@ export async function paxReaderSession(
   if (blocked) return { ok: false, error: blocked };
   const login = finixSandboxLogin();
   if (!login) {
-    return { ok: false, error: "Quantum Payments sandbox is not configured." };
+    return { ok: false, error: finixSandboxLoginError() };
   }
   return {
     ok: true,

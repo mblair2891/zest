@@ -24,7 +24,8 @@ export type PosNoticeKind =
   | "till_mismatch"
   | "till_transfer"
   | "qr_pay"
-  | "qr_pay_partial";
+  | "qr_pay_partial"
+  | "quantum_paid";
 
 export interface PosNotice {
   id: string;
@@ -139,7 +140,7 @@ export function noticeVisibleTo(
   if (n.kind === "ops_job") {
     return false;
   }
-  if (n.kind === "qr_pay" || n.kind === "qr_pay_partial") {
+  if (n.kind === "qr_pay" || n.kind === "qr_pay_partial" || n.kind === "quantum_paid") {
     if (n.serverId && emp.id === n.serverId) return true;
     if (n.serverName && emp.name === n.serverName) return true;
     if (n.audience?.includes("expo")) {

@@ -2,6 +2,7 @@ export type PaymentsMode = "sandbox" | "live";
 export type LocationPaymentsMode = "inherit" | "sandbox" | "live";
 
 export type CardPresentStatus =
+  | "authorized"
   | "captured"
   | "declined"
   | "requires_terminal"

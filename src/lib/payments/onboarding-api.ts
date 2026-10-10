@@ -105,9 +105,8 @@ export const getProcessorRailStatusFn = createServerFn({ method: "POST" })
   .middleware([tenantMiddleware])
   .handler(async () => {
     const { finixConfigured } = await import("./finix");
-    const { readServerEnv } = await import("@/lib/database-url");
     return {
-      configured: finixConfigured(),
-      environment: readServerEnv("FINIX_ENVIRONMENT") === "live" ? "live" : "sandbox",
+      configured: finixConfigured("sandbox") || finixConfigured("live"),
+      environment: finixConfigured("live") ? "live" : "sandbox",
     };
   });

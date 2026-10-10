@@ -12,9 +12,10 @@ import {
   resolvePaymentsMode,
 } from "./mode";
 import { cardPresentDispatch, parseCardProcessor } from "./adapter";
-import { captureSandbox } from "./sandbox-adapter";
 import { captureStripeTerminal } from "./stripe-terminal.server";
 import { captureFinixCardPresent } from "./finix-card.server";
+import { missingFinixKeyMessage, readFinixCreds } from "./finix-keys";
+import { liveCardGate, parentMerchantForCapture } from "./finix-events";
 import type { CardPresentInput, CardPresentResult, CardPresentSplit, PaymentsStatus } from "./types";
 import { newId } from "@/lib/saas/ids";
 import { HOST_SCOPE } from "@/lib/access/entity-grants";
@@ -336,20 +337,71 @@ export async function captureCardPresent(
     return { ...result, splits: entities };
   };
 
-  if (resolved.mode === "sandbox") {
-    return finish(await captureSandbox({ input: payload, merchantId }));
+  const peerVenue = loc.operating_model === "peer_venue";
+  const planned = parentMerchantForCapture({
+    peerVenue,
+    shares: entities.map((share) => {
+      const acc = gate.accounts.find((a) =>
+        share.kind === "host" ? a.kind === "host" : a.operator_id === share.entityId,
+      );
+      return {
+        kind: share.kind,
+        entityId: share.entityId,
+        merchantId: acc?.finix_merchant_id ?? null,
+        amountCents: share.amountCents,
+      };
+    }),
+  });
+  if (!planned.ok) {
+    return {
+      ok: false,
+      status: "unavailable",
+      sandbox: training,
+      error: planned.error,
+    };
   }
 
-  if (!liveAdapterConfigured()) {
+  if (resolved.mode === "sandbox") {
+    const creds = readFinixCreds("sandbox");
+    if (!creds.ok) {
+      return {
+        ok: false,
+        status: "unavailable",
+        sandbox: true,
+        error: missingFinixKeyMessage(creds.missing),
+      };
+    }
+    return finish(
+      await captureFinixCardPresent({
+        input: payload,
+        merchantId: planned.parentMerchantId,
+        readerId: pickReaderId(setup, input.readerId),
+        splits: planned.splits,
+        mode: "sandbox",
+        locationLive: false,
+      }),
+      true,
+    );
+  }
+
+  const liveCreds = readFinixCreds("live");
+  if (!liveCreds.ok) {
     return {
       ok: false,
       status: "unavailable",
       sandbox: false,
-      error:
-        "Live Quantum Payments is not configured. Use cash or keep the check open.",
+      error: missingFinixKeyMessage(liveCreds.missing),
     };
   }
-
+  const liveGate = liveCardGate({ locationLive: true, merchantId: planned.parentMerchantId });
+  if (!liveGate.ok) {
+    return {
+      ok: false,
+      status: "unavailable",
+      sandbox: false,
+      error: liveGate.error,
+    };
+  }
   const readerId = pickReaderId(setup, input.readerId);
   if (!readerId) {
     return {
@@ -357,28 +409,17 @@ export async function captureCardPresent(
       status: "requires_terminal",
       sandbox: false,
       error:
-        "Live cards require an enrolled Finix/Quantum reader supplied through Summex. Customer-owned bank readers are not supported. Use cash or keep the check open.",
+        "Live cards require an enrolled Quantum reader supplied through Summex. Customer-owned bank readers are not supported. Use cash or keep the check open.",
     };
   }
-  const entityMerchant =
-    gate.accounts.find((a) => a.kind === "operator" && a.finix_merchant_id)?.finix_merchant_id ||
-    gate.accounts.find((a) => a.finix_merchant_id)?.finix_merchant_id ||
-    merchantId;
-  const splits = gate.accounts
-    .filter((a) => a.finix_merchant_id && a.finix_merchant_id !== entityMerchant)
-    .map((a) => {
-      const share = entities.find((e) =>
-        a.kind === "host" ? e.kind === "host" : e.entityId === a.operator_id,
-      );
-      return { merchantId: a.finix_merchant_id as string, amountCents: share?.amountCents ?? 0 };
-    })
-    .filter((s) => s.amountCents > 0);
   return finish(
     await captureFinixCardPresent({
       input: payload,
-      merchantId: entityMerchant,
+      merchantId: planned.parentMerchantId,
       readerId,
-      splits,
+      splits: planned.splits,
+      mode: "live",
+      locationLive: true,
     }),
     true,
   );

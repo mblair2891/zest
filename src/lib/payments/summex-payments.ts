@@ -146,7 +146,7 @@ export async function recordCapturedCard(opts: {
     merchantId: null,
     amountCents: opts.amountCents,
     currency: "usd",
-    status: "captured",
+    status: res.status === "authorized" ? "authorized" : "captured",
     method: "card",
     last4: res.last4 ?? null,
   };

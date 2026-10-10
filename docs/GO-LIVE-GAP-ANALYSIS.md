@@ -39,7 +39,7 @@ These are not “build a new product surface.” They are the gates in code that
 2. **`APP_URL` + `BETTER_AUTH_URL` + `BETTER_AUTH_SECRET`.** Sessions, invite links, and Better Auth (`src/lib/auth/server.ts`, `.env.example`). Wrong origin = cookies / redirects fail.
 3. **Location lifecycle = live.** Training forces sandbox (`src/lib/payments/mode.ts` `lifecycleForcesSandbox`). `GoLiveDialog` / `LifecycleSettings` persist via `saveLifecycleFn`.
 4. **Host Quantum Payments application = approved on the live rail.** `getPaymentsStatus` / `captureCardPresent` require `hostPaymentsApproved` (`src/lib/payments/facade.server.ts` + `payment_accounts`). Sandbox-approved applications do **not** enable live Visa (`src/lib/payments/finix.ts`).
-5. **Live processor keys.** `liveAdapterConfigured()` is `QUANTUM_PAYMENTS_SECRET_KEY` **or** `FINIX_API_KEY` / `FINIX_APPLICATION_ID` (`src/lib/payments/mode.ts`). Card-present capture still calls **Stripe Terminal HTTP** in `src/lib/payments/stripe-terminal.server.ts` (branded Quantum Payments; guests never see Stripe). Finix is KYC + transfer stub, not a proven card-present session.
+5. **Live processor keys.** Live cards use `FINIX_LIVE_USERNAME`, `FINIX_LIVE_PASSWORD`, `FINIX_LIVE_APPLICATION_ID`, and `FINIX_LIVE_WEBHOOK_SECRET`. Sandbox uses `FINIX_USERNAME`, `FINIX_PASSWORD`, `FINIX_APPLICATION_ID`, and `FINIX_WEBHOOK_SECRET` and only the sandbox host. A missing key names that key. `liveAdapterConfigured()` is the live set (`src/lib/payments/mode.ts`). Card-present authorize posts `/authorizations` for the selling entity’s merchant. A paid transfer webhook closes the check. The Quantum Payments path does not fall back to another processor.
 6. **Enrolled Quantum reader** (serial on a Hardware registry terminal). Live path returns `requires_terminal` without `readerId` (`stripe-terminal.server.ts`).
 7. **Change Admin bootstrap password.** Initial password is server-only `"password"` (`src/lib/auth/bootstrap-admin.server.ts`). `SessionGate` + `/change-password` force the change (`src/routes/change-password.tsx` → `/dashboard`).
 
@@ -228,7 +228,7 @@ Production must have all of these. Without them, health fails or sessions break.
 
 - [ ] Host completes Payments step; status **approved** on the live rail (`payment_accounts`)
 - [ ] Operators who should receive card share: application **approved**
-- [ ] `FINIX_API_KEY`, `FINIX_APPLICATION_ID`, `FINIX_WEBHOOK_SECRET`, `FINIX_ENVIRONMENT=live` **or** contracted equivalent
+- [ ] `FINIX_LIVE_USERNAME`, `FINIX_LIVE_PASSWORD`, `FINIX_LIVE_APPLICATION_ID`, `FINIX_LIVE_WEBHOOK_SECRET`. Sandbox stays `FINIX_USERNAME`, `FINIX_PASSWORD`, `FINIX_APPLICATION_ID`, `FINIX_WEBHOOK_SECRET`.
 - [ ] `QUANTUM_PAYMENTS_SECRET_KEY` + webhook secret if card-present still uses the Terminal adapter
 - [ ] Platform → Payments default **Live** (or location override Live) **after** go-live
 - [ ] Location lifecycle **live** (not Training)

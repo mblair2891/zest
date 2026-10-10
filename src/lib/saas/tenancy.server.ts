@@ -258,7 +258,13 @@ function parseSetup(raw: unknown): LocationSetup {
         ? o.paymentsMode
         : "inherit",
     cardProcessor: resolveCardPresentRail(o.cardProcessor, {
-      finix: Boolean(readServerEnv("FINIX_API_KEY") || readServerEnv("FINIX_APPLICATION_ID")),
+      finix: Boolean(
+        readServerEnv("FINIX_USERNAME") && readServerEnv("FINIX_PASSWORD") && readServerEnv("FINIX_APPLICATION_ID"),
+      ) || Boolean(
+        readServerEnv("FINIX_LIVE_USERNAME") &&
+          readServerEnv("FINIX_LIVE_PASSWORD") &&
+          readServerEnv("FINIX_LIVE_APPLICATION_ID"),
+      ),
       square: Boolean(readServerEnv("SQUARE_ACCESS_TOKEN")),
     }),
     squareLiveCards: o.squareLiveCards === true,

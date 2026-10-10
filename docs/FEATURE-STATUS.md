@@ -1,7 +1,7 @@
 # Feature status
 
 **Date:** 9 Oct 2026  
-**Tree:** Suppliers loads the liquor store list and the monthly price list once (Operators Guide v2026.10.228).  
+**Tree:** Quantum Payments uses separate Finix sandbox and live keys. A paid transfer closes the check (Operators Guide v2026.10.229).  
 **How this was read:** routes under `src/routes`, `createServerFn` handlers, `migrations/`, Operators Guide topics in `src/lib/guide/content`, and the server functions those screens call. A live venue was not clicked.
 
 **100% means all three:** a screen, a save that writes Postgres (a table or `locations.setup`), and a read that loads that same row again. A refresh would still show the result. A button that only updates the browser, a seed, or a handler that returns without writing is not complete.
@@ -26,7 +26,7 @@
 
 **PIN station floor.** `listOpenFloorFn`, `upsertCheckFn`, `odsBumpFn`, `setItem86Fn`, and `upsertPunchFn` use `floorSessionMiddleware` (`src/lib/pos/floor-session.ts`). With no password, `authorizeStationFloor` checks the paired device and the PIN for that location (`src/lib/pos/station-pin-auth.server.ts`). The poll sends `stationFloorFields`. `listOpenFloor` returns open checks, tickets, the 86 map, and open punches, so another paired tablet at that location sees the check, the bump, the 86, and the punch. Password login still uses membership for the back office. `recordCheckPaymentFn` and live card capture still require a password session.
 
-**Live Finix card.** The default processor is `finix`. Live capture calls `captureFinixCardPresent` (`src/lib/payments/finix-card.server.ts`), which authorizes with `FINIX_API_KEY` and the entity `finix_merchant_id` (`authorizeCardPresent` in `src/lib/payments/finix.ts`). That path does not call `api.stripe.com` or `quantumSecretKey`. Stripe Terminal still runs only when `cardProcessor` is `stripe`, through `captureStripeTerminal`. Square still returns before either rail. Finix keys alone do not take the empty-Quantum-secret branch.
+**Live Finix card.** The default processor is `finix`. Live capture calls `captureFinixCardPresent` (`src/lib/payments/finix-card.server.ts`), which authorizes with `FINIX_LIVE_USERNAME`, `FINIX_LIVE_PASSWORD`, and `FINIX_LIVE_APPLICATION_ID` on that entity’s `finix_merchant_id` (`authorizeCardPresent` in `src/lib/payments/finix.ts`). Sandbox uses `FINIX_USERNAME`, `FINIX_PASSWORD`, `FINIX_APPLICATION_ID`, and `FINIX_WEBHOOK_SECRET`, and those keys stay on the sandbox host. A missing key names that key. A paid transfer webhook closes the check and notifies the server. A failed transfer does not. A bad signature is rejected. That path does not call `api.stripe.com` or `quantumSecretKey`. Stripe Terminal still runs only when `cardProcessor` is `stripe`, through `captureStripeTerminal`. Square still returns before either rail.
 
 **Floor PIN on a paired tablet.** `pairStationFn` sets `location_devices` online. Users writes `location_staff.pin_hash` and `pin_display` (`migrations/0013_schedule_payroll.sql`, `0040_staff_pin_display.sql`). `verifyStationPin` (`src/lib/pos/station-pin-auth.server.ts`) accepts that PIN when the device status is `online`. `listTenantUsers` shows the PIN again after refresh. Enter is not clock-in.
 
@@ -46,7 +46,7 @@
 
 **Printer and station records.** `LocationDeviceRegistry` calls `saveLocationDeviceFn`, which writes `location_devices` and `locations.setup.locationDevices` (`src/lib/access/api.ts`). The list reads that setup back. A receipt printer, an order printer, and a paired tablet are the same device record.
 
-**Operators Guide.** `/guide` renders `OperatorsGuide` from `src/lib/guide`. It is the published manual (v2026.10.228), not a record the venue saves.
+**Operators Guide.** `/guide` renders `OperatorsGuide` from `src/lib/guide`. It is the published manual (v2026.10.229), not a record the venue saves.
 
 **Android card reader.** Location Devices → Add card reader stores a PAX D135 serial on one selling entity. Pay → Card on a paired Android station scans that reader in sandbox and saves the transfer and last four on the check. Cash does not need a reader. Live cards are refused in this build. A physical reader was not attached for this pass.
 
@@ -105,7 +105,7 @@ A training house can take cash and a sandbox card. A live guest card still stops
 1. **Lifecycle is `live`.** Anything else, including a missing status, forces sandbox (`lifecycleForcesSandbox` in `src/lib/payments/mode.ts`).
 2. **The platform or location payments mode is live.** Default is sandbox unless `SUMMEX_PAYMENTS_MODE=live` or the location override is `live`.
 3. **Each selling entity that is on the check has an approved merchant.** `assertEntitiesCanCapture` requires `approved` or `live` and a `finix_merchant_id`. A peer venue has no host merchant. A host share on a peer check is rejected.
-4. **Finix credentials and the selling entity’s merchant.** The default live rail uses `FINIX_API_KEY` (with `FINIX_APPLICATION_ID`, or a user:pass key) and that entity’s `finix_merchant_id`. A Quantum secret is not the default rail. The Stripe dropdown needs `STRIPE_SECRET_KEY` and a live key only after the location is Live. Square needs `SQUARE_ENVIRONMENT=production`, `squareLiveCards`, a token, and a paired terminal (`square-terminal.server.ts`).
+4. **Finix credentials and the selling entity’s merchant.** The live rail uses `FINIX_LIVE_USERNAME`, `FINIX_LIVE_PASSWORD`, `FINIX_LIVE_APPLICATION_ID`, and `FINIX_LIVE_WEBHOOK_SECRET` with that entity’s `finix_merchant_id`, and only when the location is live. Sandbox uses `FINIX_USERNAME`, `FINIX_PASSWORD`, `FINIX_APPLICATION_ID`, and `FINIX_WEBHOOK_SECRET`. A missing key names that key. A Quantum secret is not this rail. The Stripe dropdown needs `STRIPE_SECRET_KEY` and a live key only after the location is Live. Square needs `SQUARE_ENVIRONMENT=production`, `squareLiveCards`, a token, and a paired terminal (`square-terminal.server.ts`).
 5. **An enrolled reader id on the live Finix/Quantum path.** No reader returns `requires_terminal`.
 6. **Recording the payment still needs a password session.** `recordCheckPaymentFn` and `captureCardPresent` use `tenantMiddleware`. A PIN tablet can write the open check, the bump, the 86, and the punch. Paying the check through those two functions still needs the back-office session.
 

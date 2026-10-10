@@ -6,6 +6,18 @@ import type { GuideUpdate } from "@/lib/guide/types";
  */
 export const WHATS_NEW_ENTRIES: GuideUpdate[] = [
   {
+    id: "upd_2026_10_229_finix_quantum",
+    date: "2026-10-09",
+    title: "Quantum Payments on Finix",
+    summary: "Sandbox keys stay sandbox. A paid transfer closes the check and notifies the server.",
+    body: "Quantum Payments stays the guest name. Sandbox keys stay on the sandbox. Live keys run only when the location is live. The server needs FINIX_USERNAME, FINIX_PASSWORD, FINIX_APPLICATION_ID, and FINIX_WEBHOOK_SECRET. Sandbox and live are separate. A missing key names that key. The card does not move to another processor. Each selling entity has its own merchant. A peer venue has one merchant per entity. The guest still gets one check. The receipt names the entity on each line. Capture goes to the entity that owns the line. Settlement splits by those lines. A sandbox test card authorizes and leaves the check open. A paid transfer closes the check and notifies the server. A failed transfer leaves the check open. A bad signature is rejected. A location with no merchant cannot take a live card.",
+    roles: ["owner_manager", "server", "host_operator", "vendor_operator"],
+    surfaces: ["settings"],
+    audience: "all",
+    topicId: "quantum-payments",
+    tags: ["payments", "finix"],
+  },
+  {
     id: "upd_2026_10_228_suppliers_load",
     date: "2026-10-09",
     title: "Suppliers stays open",
