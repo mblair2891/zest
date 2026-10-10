@@ -233,7 +233,7 @@ Production must have all of these. Without them, health fails or sessions break.
 - [ ] Platform → Payments default **Live** (or location override Live) **after** go-live
 - [ ] Location lifecycle **live** (not Training)
 - [ ] Hardware: at least one terminal with processor serial; Test presentment
-- [ ] Webhook URL from Settings → Payments. It is `https://<origin>/api/payments/finix/webhook`. Copy it. A test event shows in the log. (and `/api/payments/webhook` if using the Terminal adapter)
+- [ ] Webhook URL from Settings → Payments. It is `https://<origin>/api/payments/finix/webhook`. Copy it. Finix’s empty check returns 200 and shows in the log as validation · accepted. A later event shows its type and a short result. (and `/api/payments/webhook` if using the Terminal adapter)
 
 **House**
 

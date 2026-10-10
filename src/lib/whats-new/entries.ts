@@ -6,6 +6,18 @@ import type { GuideUpdate } from "@/lib/guide/types";
  */
 export const WHATS_NEW_ENTRIES: GuideUpdate[] = [
   {
+    id: "upd_2026_10_231_finix_validation",
+    date: "2026-10-09",
+    title: "Finix webhook validation",
+    summary: "Finix’s empty check gets a 200. The webhook is created. The log lists that check.",
+    body: "When Finix creates a webhook it sends an empty request. This server answers 200, so that check does not block creation. The log lists it as validation · accepted. A real event is still checked and processed. A bad signature is rejected and still listed.",
+    roles: ["platform_admin"],
+    surfaces: ["platform"],
+    audience: "platform",
+    topicId: "finix-webhook",
+    tags: ["payments", "finix"],
+  },
+  {
     id: "upd_2026_10_230_finix_webhook",
     date: "2026-10-09",
     title: "Finix webhook URL",

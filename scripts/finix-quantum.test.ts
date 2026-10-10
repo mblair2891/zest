@@ -23,6 +23,7 @@ import {
   finixWebhookEventType,
   finixWebhookResultLabel,
   finixWebhookUrlFromOrigin,
+  isFinixValidationPing,
 } from "../src/lib/payments/finix-webhook-log.ts";
 
 const SANDBOX_KEYS = [
@@ -362,6 +363,8 @@ test("the station notice fires when a paid Quantum transfer closes an open check
   assert.match(webhook, /invalid signature/);
   assert.match(webhook, /FINIX_WEBHOOK_SECRET/);
   assert.match(webhook, /recordFinixWebhookAttempt/);
+  assert.match(webhook, /isFinixValidationPing/);
+  assert.match(webhook, /status: 200/);
   assert.doesNotMatch(webhook, /finixConfigured\(\)/);
   const rail = readFileSync("src/lib/payments/finix-webhook.server.ts", "utf8");
   assert.match(rail, /status = \$\{"closed"\}/);
@@ -389,6 +392,14 @@ test("the webhook URL includes the full path and a test event keeps its type", (
   assert.equal(parsed.eventType, "transfer.updated");
   assert.equal(parsed.eventId, "evt_test");
   assert.equal(finixWebhookEventType("not-json").eventType, "unparsed");
+  assert.equal(isFinixValidationPing(""), true);
+  assert.equal(isFinixValidationPing("   "), true);
+  assert.equal(isFinixValidationPing("{}"), true);
+  assert.equal(isFinixValidationPing("null"), true);
+  assert.equal(
+    isFinixValidationPing(JSON.stringify({ id: "evt_test", type: "transfer.updated" })),
+    false,
+  );
   assert.equal(finixWebhookResultLabel({ closed: true, duplicate: true }), "closed");
   assert.equal(finixWebhookResultLabel({ failed: true }), "failed");
   assert.equal(finixWebhookResultLabel({ duplicate: true }), "duplicate");

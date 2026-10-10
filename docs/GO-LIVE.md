@@ -57,7 +57,7 @@ Do **not** pretend live Visa works until all of these are true.
 - [ ] Live keys: `FINIX_LIVE_USERNAME`, `FINIX_LIVE_PASSWORD`, `FINIX_LIVE_APPLICATION_ID`, `FINIX_LIVE_WEBHOOK_SECRET` (sandbox stays `FINIX_USERNAME`, `FINIX_PASSWORD`, `FINIX_APPLICATION_ID`, `FINIX_WEBHOOK_SECRET`)
 - [ ] Enrolled Quantum reader (Hardware registry serial = processor reader id). SYOH tablets run POS only.
 - [ ] Platform → Payments default **Live** (or location override Live) **after** go-live
-- [ ] Webhook URL from Settings → Payments. It is `https://<origin>/api/payments/finix/webhook`. Copy it. A test event shows in the log. (and `/api/payments/webhook` if using the Terminal adapter)
+- [ ] Webhook URL from Settings → Payments. It is `https://<origin>/api/payments/finix/webhook`. Copy it. Finix’s empty check returns 200 and shows in the log as validation · accepted. A later event shows its type and a short result. (and `/api/payments/webhook` if using the Terminal adapter)
 - [ ] One sandbox presentment, then one live presentment in the house
 - [ ] DNS/TLS: `www` / apex = marketing only; `app.summex.app` = login, dashboard, stations. Both hosts on this deploy.
 - [ ] **Once:** Namecheap + Vercel wildcard `*.summex.app` (CNAME to Vercel). Venue hosts are `{slug}.summex.app`. No per-tenant DNS. Preview uses `/v/{slug}`.

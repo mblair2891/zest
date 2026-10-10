@@ -27,6 +27,28 @@ export function originFromHeaders(headers: { get(name: string): string | null })
   return `${proto}://${host}`;
 }
 
+/**
+ * Finix creates a webhook only after this URL answers an empty body with success.
+ * A missing signature on that ping must not reject the create call.
+ */
+export function isFinixValidationPing(payload: string): boolean {
+  const trimmed = payload.trim();
+  if (!trimmed) return true;
+  try {
+    const json = JSON.parse(trimmed) as unknown;
+    if (json == null) return true;
+    if (typeof json === "object" && !Array.isArray(json) && Object.keys(json).length === 0) {
+      return true;
+    }
+  } catch {
+    return false;
+  }
+  return false;
+}
+
+export const FINIX_VALIDATION_EVENT = "validation";
+export const FINIX_VALIDATION_RESULT = "accepted";
+
 export function finixWebhookEventType(payload: string): {
   eventType: string;
   eventId: string | null;

@@ -10,10 +10,27 @@ export const Route = createFileRoute("/api/payments/finix/webhook")({
     handlers: {
       POST: async ({ request }) => {
         const payload = await request.text();
-        const { finixWebhookEventType, finixWebhookResultLabel } = await import(
-          "@/lib/payments/finix-webhook-log"
-        );
+        const {
+          finixWebhookEventType,
+          finixWebhookResultLabel,
+          isFinixValidationPing,
+          FINIX_VALIDATION_EVENT,
+          FINIX_VALIDATION_RESULT,
+        } = await import("@/lib/payments/finix-webhook-log");
         const { recordFinixWebhookAttempt } = await import("@/lib/payments/finix-webhook.server");
+        // Empty validation ping: answer 200 before any secret or signature check.
+        // A log failure must not turn this into an error Finix would treat as a bad URL.
+        if (isFinixValidationPing(payload)) {
+          try {
+            await recordFinixWebhookAttempt({
+              eventType: FINIX_VALIDATION_EVENT,
+              result: FINIX_VALIDATION_RESULT,
+            });
+          } catch {
+            /* creation still succeeds */
+          }
+          return new Response(null, { status: 200 });
+        }
         const parsed = finixWebhookEventType(payload);
         const log = (result: string) =>
           recordFinixWebhookAttempt({
