@@ -6,6 +6,18 @@ import type { GuideUpdate } from "@/lib/guide/types";
  */
 export const WHATS_NEW_ENTRIES: GuideUpdate[] = [
   {
+    id: "upd_2026_10_232_finix_merchant_id",
+    date: "2026-10-10",
+    title: "Finix Merchant ID",
+    summary: "Entity Payments stores the MU id. Empty is allowed until certification.",
+    body: "Entity Payments shows a Finix Merchant ID field in sandbox and in live. Paste the MU id from Finix and Save. It stays on that selling entity. Empty is allowed until certification.",
+    roles: ["owner_manager", "host_operator", "vendor_operator"],
+    surfaces: ["settings"],
+    audience: "all",
+    topicId: "quantum-payments",
+    tags: ["payments", "finix"],
+  },
+  {
     id: "upd_2026_10_231_finix_validation",
     date: "2026-10-09",
     title: "Finix webhook validation",

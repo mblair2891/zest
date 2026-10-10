@@ -44,6 +44,8 @@ export type PaymentAccountView = {
   displayName: string;
   entityStatus: EntityMerchantStatus;
   canCapture: boolean;
+  /** Finix MU id on this selling entity. Null until someone pastes one. */
+  merchantId: string | null;
 };
 
 type AccountRow = {
@@ -119,6 +121,7 @@ function view(
     displayName,
     entityStatus,
     canCapture: entityCanCapture(entityStatus, { training }).ok,
+    merchantId: row.finix_merchant_id,
   };
 }
 
@@ -149,6 +152,7 @@ function emptyView(opts: {
     displayName: opts.displayName,
     entityStatus,
     canCapture: entityCanCapture(entityStatus, { training: !opts.locationLive }).ok,
+    merchantId: null,
   };
 }
 
@@ -262,6 +266,50 @@ export async function getPaymentAccount(
     });
   }
   return view(row, loc.name);
+}
+
+/** Store a pasted Finix MU id on the selling entity. Does not start an application. */
+export async function saveEntityFinixMerchantId(
+  userId: string,
+  opts: { operatorId: string; merchantId: string | null },
+): Promise<PaymentAccountView> {
+  const op = await loadOperator(opts.operatorId);
+  await requireMembership(userId, op.orgId, undefined, op.locationId ?? undefined);
+  const merchantId = opts.merchantId;
+  const sql = await getSql();
+  const existing = await getRow({ operatorId: opts.operatorId });
+  if (!existing) {
+    if (!merchantId) {
+      return emptyView({
+        orgId: op.orgId,
+        locationId: op.locationId,
+        operatorId: opts.operatorId,
+        kind: "operator",
+        displayName: op.name,
+      });
+    }
+    const id = newId("pacc");
+    const provider: PaymentsProvider = merchantId.toLowerCase().includes("sandbox")
+      ? "sandbox"
+      : "finix";
+    await sql`
+      insert into payment_accounts (
+        id, org_id, location_id, operator_id, kind, payments_provider,
+        finix_merchant_id, onboarding_status, updated_at
+      ) values (
+        ${id}, ${op.orgId}, ${op.locationId}, ${opts.operatorId}, ${"operator"},
+        ${provider}, ${merchantId}, ${"not_started"}, now()
+      )
+    `;
+  } else {
+    await sql`
+      update payment_accounts set
+        finix_merchant_id = ${merchantId},
+        updated_at = now()
+      where id = ${existing.id}
+    `;
+  }
+  return getPaymentAccount(userId, { operatorId: opts.operatorId });
 }
 
 export async function listPaymentAccountsForLocation(

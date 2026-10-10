@@ -63,6 +63,18 @@ export const submitSandboxPaymentsFn = createServerFn({ method: "POST" })
     return submitSandboxApplication(context.userId, data);
   });
 
+export const saveEntityFinixMerchantIdFn = createServerFn({ method: "POST" })
+  .middleware([tenantMiddleware])
+  .validator((d: { operatorId?: string; merchantId?: string }) => {
+    const operatorId = opId(d.operatorId);
+    const merchantId = String(d.merchantId ?? "").trim().slice(0, 80);
+    return { operatorId, merchantId: merchantId || null };
+  })
+  .handler(async ({ context, data }): Promise<PaymentAccountView> => {
+    const { saveEntityFinixMerchantId } = await import("./onboarding.server");
+    return saveEntityFinixMerchantId(context.userId, data);
+  });
+
 export const refreshPaymentsOnboardingFn = createServerFn({ method: "POST" })
   .middleware([tenantMiddleware])
   .validator((d: { locationId?: string; operatorId?: string }) => ({

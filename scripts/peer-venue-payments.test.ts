@@ -27,4 +27,8 @@ test("entity KYC panel keeps 5813 helper and real fields", () => {
   assert.match(panel, /MCC_5813_COPY/);
   assert.match(panel, /Bank \/ payout account/);
   assert.match(panel, /Finix sub-merchant application status/);
+  assert.match(panel, /Finix Merchant ID/);
+  assert.match(panel, /data-finix-merchant-id/);
+  assert.match(panel, /Empty is allowed until certification/);
+  assert.match(panel, /kind === "operator"/);
 });

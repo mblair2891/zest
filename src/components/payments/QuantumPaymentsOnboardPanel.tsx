@@ -6,6 +6,7 @@ import { GuideLearnLink } from "@/components/guide/GuideLearnLink";
 import {
   getPaymentsOnboardingFn,
   refreshPaymentsOnboardingFn,
+  saveEntityFinixMerchantIdFn,
   startPaymentsOnboardingFn,
   submitSandboxPaymentsFn,
 } from "@/lib/payments/onboarding-api";
@@ -53,6 +54,7 @@ export function QuantumPaymentsOnboardPanel({
   const [acc, setAcc] = useState<PaymentAccountView | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [merchantId, setMerchantId] = useState("");
   const [kyc, setKyc] = useState<EntityKyc>(() => {
     const stored = parseEntityKyc(usePosStore.getState().settings.entityKyc?.[kycKey]);
     return {
@@ -86,6 +88,7 @@ export function QuantumPaymentsOnboardPanel({
         data: peerVenue ? { locationId, operatorId } : key,
       });
       setAcc(row);
+      setMerchantId(row.merchantId ?? "");
       setKyc((prev) => {
         const fromServer = kycStatusFromOnboarding(row.entityStatus ?? row.onboardingStatus);
         return {
@@ -169,6 +172,23 @@ export function QuantumPaymentsOnboardPanel({
   const sandboxRail = !acc?.finixConfigured || acc.paymentsProvider === "sandbox";
   const patch = (p: Partial<EntityKyc>) => saveLocal({ ...kyc, ...p });
 
+  const saveMerchant = async () => {
+    if (kind !== "operator" || !operatorId) return;
+    setBusy(true);
+    setError(null);
+    try {
+      const row = await saveEntityFinixMerchantIdFn({
+        data: { operatorId, merchantId },
+      });
+      setAcc(row);
+      setMerchantId(row.merchantId ?? "");
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Could not save Finix Merchant ID");
+    } finally {
+      setBusy(false);
+    }
+  };
+
   if (noVenueFinix) {
     return (
       <p className="text-xs text-muted-foreground" data-demo="no-venue-finix">
@@ -204,6 +224,34 @@ export function QuantumPaymentsOnboardPanel({
         <p className="text-sm text-danger" role="alert">
           {error}
         </p>
+      )}
+      {kind === "operator" && (
+        <label className="text-sm">
+          <span className="mb-1 block text-xs text-muted-foreground">Finix Merchant ID</span>
+          <div className="flex flex-wrap items-center gap-2">
+            <Input
+              className="min-w-[16rem] flex-1"
+              value={merchantId}
+              placeholder="MU…"
+              spellCheck={false}
+              autoComplete="off"
+              data-finix-merchant-id=""
+              onChange={(e) => setMerchantId(e.target.value)}
+            />
+            <Button
+              size="sm"
+              type="button"
+              disabled={busy || !operatorId}
+              data-finix-merchant-save=""
+              onClick={() => void saveMerchant()}
+            >
+              Save
+            </Button>
+          </div>
+          <p className="mt-1 text-xs text-muted-foreground">
+            Paste the MU id from Finix. Empty is allowed until certification.
+          </p>
+        </label>
       )}
       <div className="grid gap-2 sm:grid-cols-2">
         <label className="text-sm">
