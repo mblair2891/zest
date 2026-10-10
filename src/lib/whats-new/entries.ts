@@ -6,6 +6,18 @@ import type { GuideUpdate } from "@/lib/guide/types";
  */
 export const WHATS_NEW_ENTRIES: GuideUpdate[] = [
   {
+    id: "upd_2026_10_239_spirit_price_levels",
+    date: "2026-10-10",
+    title: "Spirit price levels",
+    summary: "A spirit lists in-stock bottles by price level. Well shows the price. A higher level shows the upcharge.",
+    body: "Selecting a spirit lists every in-stock bottle of that spirit, grouped by price level. The lowest level is Well and shows the base price. Each higher level shows its name and the upcharge from Well, for example +$2. Out-of-stock bottles are hidden. Choosing a bottle returns to single or double, then a mixer. A named cocktail such as Sex on the Beach stays its own item.",
+    roles: ["owner_manager", "server", "kitchen_bar", "host_operator", "vendor_operator"],
+    surfaces: ["settings"],
+    audience: "all",
+    topicId: "menu-modifiers",
+    tags: ["menu", "ordering"],
+  },
+  {
     id: "upd_2026_10_238_tip_buttons",
     date: "2026-10-10",
     title: "Card tip buttons",

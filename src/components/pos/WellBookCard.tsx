@@ -6,7 +6,9 @@ import { persistLocationCatalog } from "@/lib/pos/persist-location-setup";
 import { usePosStore } from "@/lib/pos/store";
 import type { Vendor } from "@/lib/pos/types";
 import {
+  bottlesForSpirit,
   defaultWellBook,
+  resolvedWellBottles,
   syncWellCatalog,
   type WellBookConfig,
 } from "@/lib/pos/well-book";
@@ -97,10 +99,12 @@ export function WellBookCard({ vendor }: { vendor: Vendor }) {
         </Button>
       </div>
       <p className="mt-1 text-xs text-muted-foreground">
-        On lists these spirits on the order pad. Tap a spirit, choose single or double, then a mixer.
-        That builds the drink and adds it to the check. A named cocktail stays its own item. Spirit-only
-        and mixer-only rows are not listed. Rum and Coke is 1.5 oz rum and cola when it is built. A double
-        is 3 oz rum and cola. You can still edit the pour.
+        On lists these spirits on the order pad. Tap a spirit and the in-stock bottles of that spirit
+        are grouped by price level. Well shows the base price. A higher level shows its name and the
+        upcharge from Well, for example +$2. Out of stock stays off that screen. Choose a bottle, then
+        single or double, then a mixer. The check is the well price plus that upcharge. A named cocktail
+        stays its own item. Spirit-only and mixer-only rows are not listed. Rum and Coke is 1.5 oz rum
+        and cola when it is built. A double is 3 oz rum and cola. You can still edit the pour.
       </p>
       {draft.enabled ? (
         <div className="mt-3 grid gap-3">
@@ -227,7 +231,42 @@ export function WellBookCard({ vendor }: { vendor: Vendor }) {
               />
             </label>
           </div>
-          <Button type="button" size="sm" data-well-book-apply="" onClick={() => applyWellBook(vendor.id, draft)}>
+          <div>
+            <p className="mb-1 text-xs font-medium">Bottles</p>
+            <ul className="space-y-2">
+              {draft.spirits.map((spirit) => (
+                <li key={spirit.id}>
+                  <p className="text-xs font-medium">{spirit.name}</p>
+                  <ul className="mt-1 space-y-1">
+                    {bottlesForSpirit(draft, spirit.id).map((bottle) => (
+                      <li key={bottle.id} className="flex items-center gap-2 text-xs">
+                        <label className="flex items-center gap-1">
+                          <input
+                            type="checkbox"
+                            data-well-bottle-stock={bottle.id}
+                            checked={bottle.inStock}
+                            onChange={(event) => {
+                              const bottles = resolvedWellBottles(draft).map((row) =>
+                                row.id === bottle.id ? { ...row, inStock: event.target.checked } : row,
+                              );
+                              const next = { ...draft, bottles };
+                              setDraft(next);
+                              applyWellBook(vendor.id, next);
+                            }}
+                          />
+                          In stock
+                        </label>
+                        <span>
+                          {bottle.name} · {bottle.level}
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                </li>
+              ))}
+            </ul>
+          </div>
+          <Button type="button" size="sm" data-well-book-apply="" onClick={() => applyWellBook(vendor.id, { ...draft, bottles: resolvedWellBottles(draft) })}>
             Update well book
           </Button>
         </div>

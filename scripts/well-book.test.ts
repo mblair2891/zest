@@ -6,11 +6,14 @@ import {
   defaultWellBook,
   findWellDrink,
   formatWellPour,
+  formatWellUpcharge,
   isDrinkEntity,
   knownWellPour,
   orderPadCategories,
   orderPadTiles,
+  readWellBook,
   specialtyBesideWell,
+  spiritLevelRows,
   syncWellCatalog,
   visibleWellMixers,
 } from "../src/lib/pos/well-book.ts";
@@ -180,12 +183,81 @@ test("menu screen offers well book only as a drink-entity control", () => {
   const popup = readFileSync("src/components/pos/WellSpiritDialog.tsx", "utf8");
   const order = readFileSync("src/components/pos/OrderView.tsx", "utf8");
   assert.match(popup, /data-well-spirit-popup/);
+  assert.match(popup, /data-well-levels/);
+  assert.match(popup, /data-well-bottle=/);
+  assert.match(popup, /data-well-level=/);
   assert.match(popup, /data-well-pour="single"/);
   assert.match(popup, /data-well-pour="double"/);
   assert.match(popup, /data-well-mixer=/);
   assert.match(order, /findWellDrink/);
   assert.match(order, /orderPadTiles/);
+  assert.match(order, /spiritLevelRows/);
+  assert.match(order, /chargeCents/);
   const pos = readFileSync("src/components/pos/PosApp.tsx", "utf8");
   assert.match(pos, /readWellBook/);
   assert.match(pos, /wellBooks/);
+});
+
+test("spirit price levels list in-stock bottles and charge the upcharge from well", () => {
+  const book = { ...defaultWellBook(), enabled: true };
+  const vodka = spiritLevelRows(book, "spirit-1");
+  assert.equal(vodka.length, 2);
+  assert.equal(vodka[0]?.levelLabel, "Well");
+  assert.equal(vodka[0]?.basePriceCents, 800);
+  assert.equal(vodka[0]?.upchargeCents, 0);
+  assert.equal(vodka[1]?.levelLabel, "Call");
+  assert.equal(vodka[1]?.upchargeCents, 200);
+  assert.equal(vodka[1]?.chargeCents, 200);
+  assert.equal(formatWellUpcharge(vodka[1]?.upchargeCents ?? 0), "+$2");
+  assert.equal(book.wellCents + (vodka[1]?.chargeCents ?? 0), 1000);
+  assert.equal(vodka.some((row) => row.levelLabel === "Premium"), false);
+
+  const gin = spiritLevelRows(book, "spirit-2");
+  assert.equal(gin.length, 1);
+  assert.equal(gin[0]?.levelLabel, "Well");
+  assert.equal(gin[0]?.isWell, true);
+
+  const bare = { ...book, bottles: undefined };
+  assert.equal(spiritLevelRows(bare, "spirit-1").length, 2);
+  assert.equal(spiritLevelRows(bare, "spirit-2").length, 1);
+
+  const read = readWellBook({
+    enabled: true,
+    spirits: [{ id: "spirit-1", name: "Vodka" }],
+    mixers: [{ id: "mixer-1", name: "cola" }],
+    wellCents: 800,
+    callUpchargeCents: 200,
+    premiumUpchargeCents: 400,
+    bottles: [
+      { id: "house", spiritId: "spirit-1", name: "House", level: "Well", upchargeCents: 0, inStock: false },
+      { id: "call", spiritId: "spirit-1", name: "Call", level: "Call", upchargeCents: 200, inStock: true },
+      { id: "premium", spiritId: "spirit-1", name: "Premium", level: "Premium", upchargeCents: 400, inStock: false },
+    ],
+  });
+  assert.ok(read);
+  const promoted = spiritLevelRows(read, "spirit-1");
+  assert.equal(promoted.length, 1);
+  assert.equal(promoted[0]?.levelLabel, "Well");
+  assert.equal(promoted[0]?.basePriceCents, 1000);
+  assert.equal(promoted[0]?.chargeCents, 200);
+
+  const topped = spiritLevelRows(
+    {
+      ...read,
+      bottles: [
+        { id: "house", spiritId: "spirit-1", name: "House", level: "Well", upchargeCents: 0, inStock: true },
+        { id: "reserve", spiritId: "spirit-1", name: "Reserve", level: "Reserve", upchargeCents: 200, inStock: true },
+        { id: "gone", spiritId: "spirit-1", name: "Empty", level: "Top", upchargeCents: 700, inStock: false },
+      ],
+    },
+    "spirit-1",
+  );
+  assert.equal(topped.length, 2);
+  assert.equal(topped[0]?.levelLabel, "Well");
+  assert.equal(topped[0]?.basePriceCents, 800);
+  assert.equal(topped[1]?.levelLabel, "Reserve");
+  assert.equal(topped[1]?.upchargeCents, 200);
+  assert.equal(topped[1]?.chargeCents, 200);
+  assert.equal(formatWellUpcharge(topped[1]?.upchargeCents ?? 0), "+$2");
+  assert.equal(topped.some((row) => row.bottleName === "Empty"), false);
 });

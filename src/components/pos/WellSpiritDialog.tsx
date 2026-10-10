@@ -2,8 +2,14 @@ import { useEffect, type CSSProperties } from "react";
 import { createPortal } from "react-dom";
 import { X } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { wellMixerLabel, type WellPour } from "@/lib/pos/well-book";
-import { cn } from "@/lib/utils";
+import {
+  formatWellUpcharge,
+  wellLevelModifierName,
+  wellMixerLabel,
+  type WellLevelRow,
+  type WellPour,
+} from "@/lib/pos/well-book";
+import { cn, formatCurrency } from "@/lib/utils";
 
 /** Thumb sheet. Position and the pour row are inline so dialog animation and shrink-to-fit buttons cannot clip them. */
 const SHEET_STYLE: CSSProperties = {
@@ -59,19 +65,45 @@ const MIXER_BUTTON: CSSProperties = {
   justifyContent: "flex-start",
 };
 
+const LEVEL_LIST: CSSProperties = {
+  display: "flex",
+  flexDirection: "column",
+  gap: "0.5rem",
+  width: "100%",
+};
+
+const LEVEL_BUTTON: CSSProperties = {
+  width: "100%",
+  minHeight: "3.5rem",
+  height: "3.5rem",
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "space-between",
+  gap: "0.75rem",
+  padding: "0 1rem",
+};
+
 export function WellSpiritDialog({
   spiritName,
   spiritId,
+  levels,
+  bottle,
   pour,
   mixers,
+  onBottle,
+  onChangeBottle,
   onPour,
   onMixer,
   onClose,
 }: {
   spiritName: string | null;
   spiritId: string | null;
+  levels: WellLevelRow[];
+  bottle: WellLevelRow | null;
   pour: WellPour | null;
   mixers: { id: string; name: string }[];
+  onBottle: (row: WellLevelRow) => void;
+  onChangeBottle: () => void;
   onPour: (pour: WellPour) => void;
   onMixer: (mixerId: string) => void;
   onClose: () => void;
@@ -114,7 +146,11 @@ export function WellSpiritDialog({
             <h2 id="well-spirit-title" className="text-xl font-semibold text-foreground">
               {spiritName}
             </h2>
-            <p className="text-sm text-muted-foreground">Single or double, then a mixer.</p>
+            <p className="text-sm text-muted-foreground">
+              {bottle
+                ? `${wellLevelModifierName(bottle)}. Single or double, then a mixer.`
+                : "In-stock bottles, grouped by price level."}
+            </p>
           </div>
           <button
             type="button"
@@ -135,6 +171,61 @@ export function WellSpiritDialog({
             <X className="h-5 w-5" />
           </button>
         </div>
+        {bottle ? (
+          <button
+            type="button"
+            data-well-change-bottle=""
+            onClick={onChangeBottle}
+            style={{
+              alignSelf: "flex-start",
+              border: 0,
+              background: "transparent",
+              color: "#5c5c5c",
+              fontSize: "0.875rem",
+              padding: 0,
+              minHeight: "2rem",
+            }}
+          >
+            Change bottle
+          </button>
+        ) : (
+          <div style={LEVEL_LIST} data-well-levels="" data-well-rows={levels.length}>
+            {levels.length === 0 ? (
+              <p className="text-sm text-muted-foreground">Nothing in stock for this spirit.</p>
+            ) : (
+              levels.map((row, index) => {
+                const grouped = index > 0 && levels[index - 1]?.levelLabel !== row.levelLabel;
+                const sameName = row.bottleName.trim().toLowerCase() === row.levelLabel.trim().toLowerCase();
+                return (
+                  <Button
+                    key={row.bottleId}
+                    type="button"
+                    size="xl"
+                    variant="outline"
+                    className="text-lg font-semibold"
+                    style={{ ...LEVEL_BUTTON, marginTop: grouped ? "0.25rem" : 0 }}
+                    data-well-bottle={row.bottleId}
+                    data-well-level={row.levelLabel}
+                    data-well-upcharge={row.upchargeCents}
+                    data-well-charge={row.chargeCents}
+                    data-well-base={row.isWell ? row.basePriceCents : undefined}
+                    onClick={() => onBottle(row)}
+                  >
+                    <span>{row.levelLabel}</span>
+                    <span className="min-w-0 flex-1 truncate text-left font-medium">
+                      {sameName ? "" : row.bottleName}
+                    </span>
+                    <span className="tabular">
+                      {row.isWell ? formatCurrency(row.basePriceCents) : formatWellUpcharge(row.upchargeCents)}
+                    </span>
+                  </Button>
+                );
+              })
+            )}
+          </div>
+        )}
+        {bottle ? (
+        <>
         <div style={POUR_ROW}>
           <Button
             type="button"
@@ -176,6 +267,8 @@ export function WellSpiritDialog({
               </Button>
             ))}
           </div>
+        ) : null}
+        </>
         ) : null}
       </div>
     </div>,

@@ -12,6 +12,17 @@ export type WellStyle = (typeof WELL_STYLES)[number];
 export type WellSpirit = { id: string; name: string };
 export type WellMixer = { id: string; name: string; hidden?: boolean };
 
+/** One bottle of a well spirit. Stock hides it from the order pad. */
+export type WellBottle = {
+  id: string;
+  spiritId: string;
+  name: string;
+  /** Price level. Well, Call, and Premium follow the book prices. Any other name uses upchargeCents. */
+  level: string;
+  upchargeCents: number;
+  inStock: boolean;
+};
+
 export type WellBookConfig = {
   enabled: boolean;
   spirits: WellSpirit[];
@@ -23,6 +34,23 @@ export type WellBookConfig = {
   pourOz?: number;
   /** Double mixed pour, in ounces of spirit. */
   doublePourOz?: number;
+  /** In-stock bottles listed when a spirit is tapped. Missing means the default set. */
+  bottles?: WellBottle[];
+};
+
+/** One in-stock bottle, ready for the price-level screen. */
+export type WellLevelRow = {
+  bottleId: string;
+  bottleName: string;
+  /** Lowest in-stock price is labeled Well. Higher rows keep their level name. */
+  levelLabel: string;
+  isWell: boolean;
+  /** Upcharge from the lowest in-stock level. Well is 0. */
+  upchargeCents: number;
+  /** Added to the well item price on the check. */
+  chargeCents: number;
+  /** Price shown on a Well row. */
+  basePriceCents: number;
 };
 
 export const STANDARD_POUR_OZ = 1.5;
@@ -40,6 +68,28 @@ function pourAmount(raw: unknown, fallback: number): number {
   const n = Number(raw);
   if (!Number.isFinite(n) || n <= 0 || n > 12) return fallback;
   return Math.round(n * 100) / 100;
+}
+
+function readBottles(raw: unknown, spiritIds: ReadonlySet<string>): WellBottle[] | undefined {
+  if (!Array.isArray(raw)) return undefined;
+  const bottles: WellBottle[] = [];
+  raw.forEach((row, index) => {
+    if (!row || typeof row !== "object") return;
+    const bottle = row as Partial<WellBottle>;
+    const spiritId = String(bottle.spiritId ?? "").trim();
+    const name = String(bottle.name ?? "").trim();
+    if (!spiritId || !name || (spiritIds.size > 0 && !spiritIds.has(spiritId))) return;
+    const level = String(bottle.level ?? "Well").trim() || "Well";
+    bottles.push({
+      id: String(bottle.id ?? `bottle-${index + 1}`),
+      spiritId,
+      name,
+      level,
+      upchargeCents: Math.max(0, Math.round(Number(bottle.upchargeCents) || 0)),
+      inStock: bottle.inStock !== false,
+    });
+  });
+  return bottles;
 }
 
 export function readWellBook(raw: unknown): WellBookConfig | undefined {
@@ -68,6 +118,8 @@ export function readWellBook(raw: unknown): WellBookConfig | undefined {
     });
   }
   if (!spirits.length || !mixers.length) return undefined;
+  const spiritIds = new Set(spirits.map((spirit) => spirit.id));
+  const bottles = readBottles((row as { bottles?: unknown }).bottles, spiritIds);
   return {
     enabled: Boolean(row.enabled),
     spirits,
@@ -77,6 +129,7 @@ export function readWellBook(raw: unknown): WellBookConfig | undefined {
     premiumUpchargeCents: Math.max(0, Math.round(Number(row.premiumUpchargeCents) || 0)),
     pourOz: pourAmount(row.pourOz, STANDARD_POUR_OZ),
     doublePourOz: pourAmount(row.doublePourOz, DOUBLE_POUR_OZ),
+    ...(bottles ? { bottles } : {}),
   };
 }
 
@@ -88,8 +141,58 @@ export function isDrinkEntity(entity: {
   return entity.stationType === "bar" || entity.stationType === "both";
 }
 
+/**
+ * Default bottles. The first spirit has Well and Call in stock.
+ * The second spirit has Well only. Later spirits stock every level.
+ * Premium on the first spirit, and Call and Premium on the second, start out of stock.
+ */
+function defaultBottlesForSpirit(
+  spirit: WellSpirit,
+  index: number,
+  callUpchargeCents: number,
+  premiumUpchargeCents: number,
+): WellBottle[] {
+  const name = spirit.name.trim();
+  const callIn = index !== 1;
+  const premiumIn = index > 1;
+  return [
+    {
+      id: `${spirit.id}-well`,
+      spiritId: spirit.id,
+      name: "House",
+      level: "Well",
+      upchargeCents: 0,
+      inStock: true,
+    },
+    {
+      id: `${spirit.id}-call`,
+      spiritId: spirit.id,
+      name: "Call",
+      level: "Call",
+      upchargeCents: Math.max(0, Math.round(callUpchargeCents)),
+      inStock: callIn,
+    },
+    {
+      id: `${spirit.id}-premium`,
+      spiritId: spirit.id,
+      name: "Premium",
+      level: "Premium",
+      upchargeCents: Math.max(0, Math.round(premiumUpchargeCents)),
+      inStock: premiumIn && Boolean(name),
+    },
+  ];
+}
+
+export function defaultWellBottles(
+  config: Pick<WellBookConfig, "spirits" | "callUpchargeCents" | "premiumUpchargeCents">,
+): WellBottle[] {
+  return config.spirits.flatMap((spirit, index) =>
+    defaultBottlesForSpirit(spirit, index, config.callUpchargeCents, config.premiumUpchargeCents),
+  );
+}
+
 export function defaultWellBook(): WellBookConfig {
-  return {
+  const book: WellBookConfig = {
     enabled: false,
     spirits: DEFAULT_SPIRITS.map((name, index) => ({ id: `spirit-${index + 1}`, name })),
     mixers: DEFAULT_MIXERS.map((name, index) => ({ id: `mixer-${index + 1}`, name })),
@@ -99,6 +202,74 @@ export function defaultWellBook(): WellBookConfig {
     pourOz: STANDARD_POUR_OZ,
     doublePourOz: DOUBLE_POUR_OZ,
   };
+  book.bottles = defaultWellBottles(book);
+  return book;
+}
+
+/** Upcharge for a bottle. Well, Call, and Premium follow the book. */
+export function wellBottleChargeCents(
+  bottle: Pick<WellBottle, "level" | "upchargeCents">,
+  config: Pick<WellBookConfig, "callUpchargeCents" | "premiumUpchargeCents">,
+): number {
+  const level = bottle.level.trim().toLowerCase();
+  if (level === "well") return 0;
+  if (level === "call") return Math.max(0, Math.round(config.callUpchargeCents));
+  if (level === "premium") return Math.max(0, Math.round(config.premiumUpchargeCents));
+  return Math.max(0, Math.round(bottle.upchargeCents));
+}
+
+/** Stored bottles for this spirit, or the default set when the book has none for it. */
+export function bottlesForSpirit(config: WellBookConfig, spiritId: string): WellBottle[] {
+  const stored = (config.bottles ?? []).filter((bottle) => bottle.spiritId === spiritId && bottle.name.trim());
+  if (stored.length) return stored;
+  const index = config.spirits.findIndex((spirit) => spirit.id === spiritId);
+  const spirit = config.spirits[index];
+  if (!spirit) return [];
+  return defaultBottlesForSpirit(spirit, Math.max(0, index), config.callUpchargeCents, config.premiumUpchargeCents);
+}
+
+export function resolvedWellBottles(config: WellBookConfig): WellBottle[] {
+  return config.spirits.flatMap((spirit) => bottlesForSpirit(config, spirit.id));
+}
+
+/** In-stock bottles of one spirit, lowest price first. The cheapest level is labeled Well. */
+export function spiritLevelRows(config: WellBookConfig, spiritId: string): WellLevelRow[] {
+  const stocked = bottlesForSpirit(config, spiritId).filter((bottle) => bottle.inStock);
+  if (!stocked.length) return [];
+  const priced = stocked.map((bottle) => ({
+    bottle,
+    charge: wellBottleChargeCents(bottle, config),
+  }));
+  const lowest = Math.min(...priced.map((row) => row.charge));
+  const base = Math.max(0, Math.round(config.wellCents)) + lowest;
+  return priced
+    .slice()
+    .sort((a, b) => a.charge - b.charge || a.bottle.level.localeCompare(b.bottle.level) || a.bottle.name.localeCompare(b.bottle.name))
+    .map(({ bottle, charge }) => {
+      const isWell = charge === lowest;
+      const stored = bottle.level.trim() || "Call";
+      return {
+        bottleId: bottle.id,
+        bottleName: bottle.name.trim(),
+        levelLabel: isWell ? "Well" : stored,
+        isWell,
+        upchargeCents: charge - lowest,
+        chargeCents: charge,
+        basePriceCents: base,
+      };
+    });
+}
+
+/** +$2 when the upcharge is whole dollars, otherwise +$2.50. */
+export function formatWellUpcharge(cents: number): string {
+  const n = Math.max(0, Math.round(cents));
+  if (n % 100 === 0) return `+$${n / 100}`;
+  return `+$${(n / 100).toFixed(2)}`;
+}
+
+export function wellLevelModifierName(row: Pick<WellLevelRow, "levelLabel" | "bottleName">): string {
+  if (row.bottleName.trim().toLowerCase() === row.levelLabel.trim().toLowerCase()) return row.levelLabel;
+  return `${row.levelLabel} · ${row.bottleName.trim()}`;
 }
 
 /** Recipe name for a mixer. Coke on the menu is cola in the recipe. */

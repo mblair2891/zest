@@ -33,7 +33,16 @@ import {
   printedItemPriceCents,
 } from "@/lib/pos/calculations";
 import { cashPolicyFromSettings } from "@/lib/pos/cash-discount";
-import { findWellDrink, orderPadCategories, orderPadTiles, visibleWellMixers, type WellPour } from "@/lib/pos/well-book";
+import {
+  findWellDrink,
+  orderPadCategories,
+  orderPadTiles,
+  spiritLevelRows,
+  visibleWellMixers,
+  wellLevelModifierName,
+  type WellLevelRow,
+  type WellPour,
+} from "@/lib/pos/well-book";
 import { WellSpiritDialog } from "./WellSpiritDialog";
 import { formatGuestCardRate } from "@/lib/pos/card-service";
 import { cn, formatCurrency } from "@/lib/utils";
@@ -118,6 +127,7 @@ export function OrderView({
   const [modItem, setModItem] = useState<MenuItem | null>(null);
   const [modOpen, setModOpen] = useState(false);
   const [wellSpirit, setWellSpirit] = useState<{ spiritId: string; entityId: string; name: string } | null>(null);
+  const [wellBottle, setWellBottle] = useState<WellLevelRow | null>(null);
   const [wellPour, setWellPour] = useState<WellPour | null>(null);
   const [payOpen, setPayOpen] = useState(false);
   useEffect(() => {
@@ -206,39 +216,60 @@ export function OrderView({
       }),
     [menuItems, vendors, vendorFilter, selectedCategoryId, search],
   );
-  const wellMixers = wellSpirit
-    ? visibleWellMixers(
-        vendors.find((vendor) => vendor.id === wellSpirit.entityId)?.wellBook ?? {
-          enabled: false,
-          spirits: [],
-          mixers: [],
-          wellCents: 0,
-          callUpchargeCents: 0,
-          premiumUpchargeCents: 0,
-        },
-      )
-    : [];
+  const wellBook = wellSpirit
+    ? vendors.find((vendor) => vendor.id === wellSpirit.entityId)?.wellBook
+    : undefined;
+  const wellMixers = wellBook ? visibleWellMixers(wellBook) : [];
+  const wellLevels = wellSpirit && wellBook ? spiritLevelRows(wellBook, wellSpirit.spiritId) : [];
   const closeWell = () => {
     setWellSpirit(null);
+    setWellBottle(null);
+    setWellPour(null);
+  };
+  const openWellSpirit = (spirit: { spiritId: string; entityId: string; name: string }) => {
+    setWellSpirit(spirit);
+    setWellBottle(null);
     setWellPour(null);
   };
   const chooseWellMixer = (mixerId: string) => {
-    if (!wellSpirit || !wellPour) return;
+    if (!wellSpirit || !wellPour || !wellBottle) return;
     const drink = findWellDrink(menuItems, {
       entityId: wellSpirit.entityId,
       spiritId: wellSpirit.spiritId,
       mixerId,
       pour: wellPour,
     });
-    if (drink) addItem(drink.id);
+    if (drink) {
+      addItem(drink.id, {
+        modifiers: [
+          {
+            groupId: `well-bottle-${wellSpirit.entityId}`,
+            groupName: "Bottle",
+            optionId: wellBottle.bottleId,
+            optionName: wellLevelModifierName(wellBottle),
+            priceCents: wellBottle.chargeCents,
+          },
+        ],
+      });
+    }
     closeWell();
   };
   const wellPopup = (
     <WellSpiritDialog
       spiritName={wellSpirit?.name ?? null}
       spiritId={wellSpirit?.spiritId ?? null}
+      levels={wellLevels}
+      bottle={wellBottle}
       pour={wellPour}
       mixers={wellMixers}
+      onBottle={(row) => {
+        setWellBottle(row);
+        setWellPour(null);
+      }}
+      onChangeBottle={() => {
+        setWellBottle(null);
+        setWellPour(null);
+      }}
       onPour={setWellPour}
       onMixer={chooseWellMixer}
       onClose={closeWell}
@@ -608,10 +639,9 @@ export function OrderView({
                     type="button"
                     disabled={orderLocked}
                     data-well-spirit={tile.spiritId}
-                    onClick={() => {
-                      setWellSpirit({ spiritId: tile.spiritId, entityId: tile.entityId, name: tile.name });
-                      setWellPour(null);
-                    }}
+                    onClick={() =>
+                      openWellSpirit({ spiritId: tile.spiritId, entityId: tile.entityId, name: tile.name })
+                    }
                     className="flex min-h-16 flex-col rounded-2xl border border-border bg-surface p-3 text-left active:scale-[0.98]"
                   >
                     <span className="text-base font-semibold leading-snug">{tile.name}</span>
@@ -1201,10 +1231,9 @@ export function OrderView({
                     type="button"
                     disabled={orderLocked}
                     data-well-spirit={tile.spiritId}
-                    onClick={() => {
-                      setWellSpirit({ spiritId: tile.spiritId, entityId: tile.entityId, name: tile.name });
-                      setWellPour(null);
-                    }}
+                    onClick={() =>
+                      openWellSpirit({ spiritId: tile.spiritId, entityId: tile.entityId, name: tile.name })
+                    }
                     className="flex min-h-[5.5rem] w-full flex-col rounded-2xl border border-border bg-surface p-3 text-left transition hover:border-border-strong active:scale-[0.98]"
                   >
                     <span className="text-sm font-medium leading-snug">{tile.name}</span>
