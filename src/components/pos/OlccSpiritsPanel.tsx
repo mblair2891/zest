@@ -63,12 +63,15 @@ export function OlccSpiritsPanel() {
 
   useEffect(() => {
     if (!oregon) return;
-    const plan = olccRefreshPlan(new Date(), olcc);
+    // Read the book from the store. Depending on `olcc` here would set the
+    // same value this effect writes, and the screen would update forever.
+    const plan = olccRefreshPlan(new Date(), useCostStore.getState().olcc);
     if (!plan.due) return;
     let cancel = false;
     void refreshOlccPricesFn({ data: { asOf: plan.asOf } })
       .then((res) => {
         if (cancel || !res.prices.length) return;
+        if (!olccRefreshPlan(new Date(), useCostStore.getState().olcc).due) return;
         saveBook({
           forMonth: plan.asOf,
           kind: plan.kind,
@@ -83,7 +86,7 @@ export function OlccSpiritsPanel() {
     return () => {
       cancel = true;
     };
-  }, [oregon, olcc]);
+  }, [oregon]);
 
   const zip = zipFromAddress(address);
   const prices = olcc?.prices ?? NO_PRICES;

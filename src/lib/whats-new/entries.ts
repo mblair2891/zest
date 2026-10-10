@@ -6,6 +6,18 @@ import type { GuideUpdate } from "@/lib/guide/types";
  */
 export const WHATS_NEW_ENTRIES: GuideUpdate[] = [
   {
+    id: "upd_2026_10_228_suppliers_load",
+    date: "2026-10-09",
+    title: "Suppliers stays open",
+    summary: "The liquor store list and the monthly price list each load once. The tab stays up.",
+    body: "Opening Suppliers loads the OLCC store list once. On the house store, the monthly price list loads once. The tab stays up. Search by name, item code, or size. Add a row to the order. Same-type options and the house-store check use that load. A refresh loads the lists again.",
+    roles: ["owner_manager", "host_operator", "vendor_operator"],
+    surfaces: ["settings"],
+    audience: "all",
+    topicId: "suppliers",
+    tags: ["costs", "suppliers"],
+  },
+  {
     id: "upd_2026_10_227_same_type",
     date: "2026-10-09",
     title: "Same-type spirit options",

@@ -401,7 +401,13 @@ function SupplierOrder({
   canEdit: boolean;
 }) {
   const emp = usePosStore((s) => s.employees.find((e) => e.id === s.currentEmployeeId) ?? null);
-  const orders = useCostStore((s) => s.pos.filter((po) => po.supplierId === supplierId && po.matchRequired));
+  // Keep the store snapshot stable. Filtering inside the selector returns a
+  // new array on every check, and React updates this card without end.
+  const pos = useCostStore((s) => s.pos);
+  const orders = useMemo(
+    () => pos.filter((po) => po.supplierId === supplierId && po.matchRequired),
+    [pos, supplierId],
+  );
   const place = useCostStore((s) => s.placeSupplierOrder);
   const attach = useCostStore((s) => s.attachOrderInvoice);
   const setLine = useCostStore((s) => s.setOrderMatchLine);
