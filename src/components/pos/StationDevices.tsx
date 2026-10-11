@@ -286,7 +286,7 @@ function StationDeviceScreen({ onClose }: { onClose: () => void }) {
           }),
         );
         if (!connected.ok) {
-          failPaxConnect(connected.message || PAX_MSG.connectNoResponse);
+          failPaxConnect(connected.message || PAX_MSG.connectTimeout);
           setBusy(false);
           return;
         }
@@ -322,8 +322,9 @@ function StationDeviceScreen({ onClose }: { onClose: () => void }) {
             }).catch(() => undefined);
           }
         }
-      } catch {
-        failPaxConnect(PAX_MSG.connectNoResponse);
+      } catch (err) {
+        const detail = err instanceof Error ? err.message.trim() : "";
+        failPaxConnect(detail || "Exception during connection");
       }
       setBusy(false);
     })();

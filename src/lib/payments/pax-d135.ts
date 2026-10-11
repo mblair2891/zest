@@ -295,49 +295,49 @@ export function reuseHeldPaxLink(input: {
 }
 
 /**
- * Connect result after a selected D135 answers.
- * Empty, the scan prompt, or a drop before Reader ready is no response.
- * Permission, timeout, and rejected stay named. Other operator sentences stay as written.
+ * Connect result from the Finix Bluetooth path.
+ * A Finix or Bluetooth sentence stays as written. A blank result is the 15 second wait.
+ * The generic no-response line is not used when the reader was selected.
  */
 export function paxConnectFailureReason(message?: string | null): string {
   const text = String(message ?? "").trim();
   const lower = text.toLowerCase();
-  if (text === PAX_MSG.permissions || lower.includes("nearby devices") || lower.includes("permission")) {
-    return PAX_MSG.permissions;
-  }
-  if (text === PAX_MSG.bluetooth || lower === PAX_MSG.bluetooth.toLowerCase()) return PAX_MSG.bluetooth;
-  if (text === PAX_MSG.connectTimeout || lower.includes("timeout") || lower.includes("timed out")) {
-    return PAX_MSG.connectTimeout;
-  }
   if (
-    text === PAX_MSG.connectRejected ||
-    lower.includes("reject") ||
-    lower.includes("refused") ||
-    lower.includes("unauthorized")
+    text.startsWith("Failed to connect:") ||
+    text.startsWith("Connection failed:") ||
+    text.startsWith("Disconnecting") ||
+    text.startsWith("Exception during connection") ||
+    text.startsWith("Connection already") ||
+    text.startsWith("Device already connected")
   ) {
-    return PAX_MSG.connectRejected;
+    return text;
   }
+  if (text === PAX_MSG.permissions || lower.includes("nearby devices")) return PAX_MSG.permissions;
+  if (text === PAX_MSG.bluetooth || lower === PAX_MSG.bluetooth.toLowerCase()) return PAX_MSG.bluetooth;
   if (
     !text ||
     text === PAX_MSG.notConnected ||
-    text === PAX_MSG.disconnect ||
     text === PAX_MSG.connectNoResponse ||
-    lower.includes("no response") ||
+    text === PAX_MSG.connectTimeout ||
     lower.includes("did not respond") ||
-    lower.includes("disconnect")
+    lower.includes("timed out") ||
+    lower === "timeout"
   ) {
-    return PAX_MSG.connectNoResponse;
+    return PAX_MSG.connectTimeout;
   }
   return text;
 }
 
-/** First connection retries once. Permission and a named operator refusal do not. */
+/** Retry once when the first open did not get a Finix answer. A named Finix error is the result. */
 export function paxConnectShouldRetry(message?: string | null): boolean {
-  const reason = paxConnectFailureReason(message);
+  const text = String(message ?? "").trim();
+  const reason = paxConnectFailureReason(text);
+  if (reason === PAX_MSG.permissions || reason === PAX_MSG.bluetooth) return false;
+  if (reason === PAX_MSG.connectTimeout) return true;
   return (
-    reason === PAX_MSG.connectTimeout ||
-    reason === PAX_MSG.connectRejected ||
-    reason === PAX_MSG.connectNoResponse
+    text === "Disconnecting — try again shortly." ||
+    text === "Connection already in progress." ||
+    text === "Exception during connection"
   );
 }
 
@@ -348,13 +348,13 @@ export type PaxConnectCallResult = {
 };
 
 /**
- * One connect, then one retry when the first result is timeout, rejected, or no response.
- * The retry still allows the D135 its key download. The reported line is the last result.
+ * One connect, then one retry when the first open did not get a Finix answer.
+ * A named Finix error is the result. The retry still allows the D135 its key download.
  */
 export async function runPaxConnect(
   connect: () => Promise<PaxConnectCallResult>,
 ): Promise<PaxConnectCallResult> {
-  let last: string = PAX_MSG.connectNoResponse;
+  let last: string = PAX_MSG.connectTimeout;
   for (let attempt = 0; attempt < 2; attempt += 1) {
     try {
       const result = await connect();
@@ -363,8 +363,10 @@ export async function runPaxConnect(
       if (!paxConnectShouldRetry(result.message)) {
         return { ok: false, message: last, batteryPercent: null };
       }
-    } catch {
-      last = PAX_MSG.connectNoResponse;
+    } catch (err) {
+      const detail = err instanceof Error ? err.message.trim() : "";
+      last = paxConnectFailureReason(detail || "Exception during connection");
+      if (!paxConnectShouldRetry(last)) break;
     }
   }
   return { ok: false, message: last, batteryPercent: null };
@@ -373,7 +375,7 @@ export async function runPaxConnect(
 /**
  * Status while a selected D135 is linking.
  * Connecting, then Reader ready. Setting up reader is only the first key download.
- * A failure names timeout, rejected, no response, or permission. It does not return to the scan prompt.
+ * A failure shows the Finix or Bluetooth reason. It does not say the reader did not respond.
  * The disconnect line is only after Reader ready, when that link drops.
  */
 export function presentPaxHold(input: {

@@ -79,6 +79,8 @@ public class PaxD135Plugin extends Plugin {
     static final String MSG_TIMEOUT = "The card read timed out. The check is not paid. Try again.";
     static final String MSG_UNREAD = "The card could not be read. The check stays open.";
     static final long SALE_TIMEOUT_MS = 90_000L;
+    /** First Finix or Bluetooth callback. Key download uses CONNECT_TIMEOUT_MS after that. */
+    static final long FIRST_RESPONSE_MS = 15_000L;
     /** First connection downloads keys on the D135. Do not shorten this wait. */
     static final long CONNECT_TIMEOUT_MS = 4L * 60L * 1000L;
     static final int SCAN_MS = 6_000;
@@ -162,7 +164,7 @@ public class PaxD135Plugin extends Plugin {
         final String userId = call.getString("userId", "");
         final String password = call.getString("password", "");
         if (serialOf(name) == null || address == null || address.isEmpty()) {
-            resolveMessage(call, MSG_NO_RESPONSE);
+            resolveMessage(call, "Connection failed: missing Bluetooth address.");
             return;
         }
         restoreHeld();
@@ -181,7 +183,7 @@ public class PaxD135Plugin extends Plugin {
         settingUp = false;
         heldSettingUp = false;
         emit("connecting", MSG_CONNECTING, serialOf(name), null);
-        onWorker(() -> connectOnWorker(call, name, address, merchantId, deviceId, userId, password));
+        main.post(() -> connectOnWorker(call, name, address, merchantId, deviceId, userId, password));
     }
 
     @PluginMethod
@@ -258,6 +260,7 @@ public class PaxD135Plugin extends Plugin {
         String password
     ) {
         final AtomicBoolean settled = new AtomicBoolean(false);
+        final AtomicBoolean heard = new AtomicBoolean(false);
         final Runnable timeout = () -> {
             if (!settled.compareAndSet(false, true)) return;
             settingUp = false;
@@ -268,7 +271,7 @@ public class PaxD135Plugin extends Plugin {
             ret.put("message", MSG_CONNECT_TIMEOUT);
             call.resolve(ret);
         };
-        main.postDelayed(timeout, CONNECT_TIMEOUT_MS);
+        main.postDelayed(timeout, FIRST_RESPONSE_MS);
         try {
             MerchantData data = new MerchantData(
                 merchantId == null ? "" : merchantId,
@@ -279,11 +282,18 @@ public class PaxD135Plugin extends Plugin {
                 userId == null ? "" : userId,
                 password == null ? "" : password
             );
-            MPOSFinix next = MPOSFinix.Companion.invoke(getContext(), data);
+            final MPOSFinix next = MPOSFinix.Companion.invoke(getContext(), data);
             mpos = next;
             next.connect(name, address, new MPOSConnectionCallback() {
+                private void allowKeyDownload() {
+                    if (!heard.compareAndSet(false, true)) return;
+                    main.removeCallbacks(timeout);
+                    main.postDelayed(timeout, CONNECT_TIMEOUT_MS);
+                }
+
                 @Override
                 public void onProcessing(String message) {
+                    allowKeyDownload();
                     settingUp = true;
                     heldSettingUp = true;
                     Integer parsed = batteryFrom(message);
@@ -325,7 +335,7 @@ public class PaxD135Plugin extends Plugin {
                     connected = false;
                     JSObject ret = new JSObject();
                     ret.put("ok", false);
-                    ret.put("message", failureBeforeReady(errorMessage));
+                    ret.put("message", finixConnectReason(errorMessage));
                     call.resolve(ret);
                     emit("error", ret.getString("message"), serialOf(name), null);
                 }
@@ -336,9 +346,10 @@ public class PaxD135Plugin extends Plugin {
             settingUp = false;
             heldSettingUp = false;
             connected = false;
+            String detail = e.getMessage() == null ? "" : e.getMessage().trim();
             JSObject ret = new JSObject();
             ret.put("ok", false);
-            ret.put("message", connectFailureMessage());
+            ret.put("message", finixConnectReason(detail.isEmpty() ? "Exception during connection" : detail));
             call.resolve(ret);
         }
     }
@@ -592,26 +603,17 @@ public class PaxD135Plugin extends Plugin {
         return new String[] { "location" };
     }
 
-    private String connectFailureMessage() {
-        return bluetoothOn() ? MSG_NO_RESPONSE : MSG_BLUETOOTH;
-    }
-
-    /** A connect that never reached Reader ready names the reason. It is not the scan prompt. */
-    private String failureBeforeReady(String errorMessage) {
+    /**
+     * Finix onError text and Bluetooth failures stay as written.
+     * A blank callback is the 15 second wait, not a generic no-response line.
+     */
+    private String finixConnectReason(String errorMessage) {
         if (!bluetoothOn()) return MSG_BLUETOOTH;
         String message = errorMessage == null ? "" : errorMessage.trim();
         String lower = message.toLowerCase();
-        if (message.equals(MSG_PERMISSION) || lower.contains("permission") || lower.contains("nearby devices")) {
-            return MSG_PERMISSION;
-        }
-        if (message.equals(MSG_CONNECT_TIMEOUT) || lower.contains("timeout") || lower.contains("timed out")) {
+        if (message.equals(MSG_PERMISSION) || lower.contains("nearby devices")) return MSG_PERMISSION;
+        if (message.isEmpty() || lower.contains("did not respond") || lower.contains("scan for the reader")) {
             return MSG_CONNECT_TIMEOUT;
-        }
-        if (message.equals(MSG_CONNECT_REJECTED) || lower.contains("reject") || lower.contains("refused") || lower.contains("unauthorized")) {
-            return MSG_CONNECT_REJECTED;
-        }
-        if (message.isEmpty() || message.equals(MSG_NO_RESPONSE) || lower.contains("disconnect") || lower.contains("no response") || lower.contains("scan for the reader")) {
-            return MSG_NO_RESPONSE;
         }
         return message;
     }

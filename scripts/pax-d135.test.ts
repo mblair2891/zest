@@ -295,6 +295,7 @@ test("the PAX path does not use Web Bluetooth or Stripe", () => {
   assert.match(plugin, /BLUETOOTH_CONNECT/);
   assert.match(plugin, /getBondedDevices/);
   assert.match(plugin, /Allow Nearby devices and Location/);
+  assert.match(plugin, /FIRST_RESPONSE_MS = 15_000L/);
   assert.match(plugin, /CONNECT_TIMEOUT_MS = 4L \* 60L \* 1000L/);
   const manifest = readFileSync("android/app/src/main/AndroidManifest.xml", "utf8");
   assert.match(manifest, /BLUETOOTH_SCAN"/);

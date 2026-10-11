@@ -323,7 +323,7 @@ export function PaymentDialog({ open, onOpenChange, initialMethod }: Props) {
           }),
         );
         if (!connected.ok) {
-          failPaxConnect(connected.message || PAX_MSG.connectNoResponse);
+          failPaxConnect(connected.message || PAX_MSG.connectTimeout);
           setError(getPaxStationLink().message);
           setBusy(false);
           return;
@@ -332,8 +332,9 @@ export function PaymentDialog({ open, onOpenChange, initialMethod }: Props) {
           decision.reader,
           typeof connected.batteryPercent === "number" ? connected.batteryPercent : null,
         );
-      } catch {
-        failPaxConnect(PAX_MSG.connectNoResponse);
+      } catch (err) {
+        const detail = err instanceof Error ? err.message.trim() : "";
+        failPaxConnect(detail || "Exception during connection");
         setError(getPaxStationLink().message);
       }
       setBusy(false);

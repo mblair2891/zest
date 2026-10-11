@@ -6,6 +6,18 @@ import type { GuideUpdate } from "@/lib/guide/types";
  */
 export const WHATS_NEW_ENTRIES: GuideUpdate[] = [
   {
+    id: "upd_2026_10_245_finix_pax_connect",
+    date: "2026-10-11",
+    title: "Finix PAX D135 connect",
+    summary: "Selecting a PAX D135 uses the Finix Bluetooth connection and shows Reader ready or the Finix reason.",
+    body: "Selecting a discovered PAX D135 uses the Finix connection for a Bluetooth reader. The station opens the link and waits up to 15 seconds for the first response. The first connection still allows the D135 to finish its key download. Success shows Reader ready and clears the banner. A failure shows the Finix or Bluetooth reason. A ready reader stays connected for the next card payment.",
+    roles: ["owner_manager", "server", "host_operator", "vendor_operator"],
+    surfaces: ["settings"],
+    audience: "all",
+    topicId: "pax-card-reader",
+    tags: ["devices", "payments"],
+  },
+  {
     id: "upd_2026_10_244_d135_connect_result",
     date: "2026-10-11",
     title: "D135 connect result",
