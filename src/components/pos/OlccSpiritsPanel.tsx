@@ -21,6 +21,7 @@ import {
   dropOlccOffer,
   keepOlccOffer,
   olccPickListHtml,
+  pickListAfterStockCheck,
   reviewOlccOrder,
   type OlccKeptLine,
   type OlccStockOffer,
@@ -55,6 +56,7 @@ export function OlccSpiritsPanel() {
   const [query, setQuery] = useState("");
   const [added, setAdded] = useState<SpiritOrderLine[]>([]);
   const [checked, setChecked] = useState(false);
+  const [coverage, setCoverage] = useState<"full" | "short" | null>(null);
   const [staying, setStaying] = useState<OlccKeptLine[]>([]);
   const [offers, setOffers] = useState<OlccStockOffer[]>([]);
   const [swaps, setSwaps] = useState<Record<string, OlccPrice>>({});
@@ -132,6 +134,7 @@ export function OlccSpiritsPanel() {
 
   const clearCheck = () => {
     setChecked(false);
+    setCoverage(null);
     setStaying([]);
     setOffers([]);
     setClosestOpen({});
@@ -183,8 +186,10 @@ export function OlccSpiritsPanel() {
           byItem: res.byItem,
           directory: res.directory,
         });
+        const decision = pickListAfterStockCheck({ checked: true, offers: review.offers });
         setStaying(review.staying);
         setOffers(review.offers);
+        setCoverage(decision.unchanged ? "full" : "short");
         setChecked(true);
         setNote("");
       })
@@ -241,15 +246,17 @@ export function OlccSpiritsPanel() {
   };
 
   const month = olcc?.shownAsOf || olcc?.forMonth || "";
+  const stockExtras = pickListAfterStockCheck({ checked, offers });
 
   return (
     <section className="rounded-2xl border border-border bg-surface p-4" data-olcc-spirits="">
       <h3 className="text-sm font-semibold">Oregon spirits</h3>
       <p className="mt-1 text-xs text-muted-foreground">
         Distilled spirits only. Beer and wine stay on the distributor path. No order is sent to the OLCC. The price
-        list is the full current month. Check stock looks at the house store first. If it has every item and
-        quantity, that is shown. A short line can check the closest other store or a substitute. Print the lines
-        you kept, upload the store receipt, and confirm the lines that arrived.
+        list is the full current month. The pick list shows the selected items and quantities. Substitutes and
+        nearby stores stay off that list until Check stock finds a short line. A full check leaves the list as it
+        is. A short line can then check the closest other store or a substitute. Print the lines you kept, upload
+        the store receipt, and confirm the lines that arrived.
       </p>
       {prices.length ? (
         <>
@@ -347,40 +354,25 @@ export function OlccSpiritsPanel() {
                 {line.size ? ` · ${line.size}` : ""}
                 {line.bottlePriceCents ? ` · ${formatCurrency(line.bottlePriceCents)} bottle` : ""}
               </span>
-              <a
-                className="text-xs underline"
-                href={line.storeSearchUrl}
-                target="_blank"
-                rel="noreferrer"
-                data-olcc-store-search={line.itemCode || line.name}
-              >
-                Store search
-              </a>
-              <SameTypeChoices
-                line={line}
-                prices={prices}
-                hidden={Boolean(keptChoice[line.itemCode])}
-                onSwap={(next) => swapLine(line.itemCode, next)}
-                onKeep={() => keepLine(line.itemCode)}
-              />
             </li>
           ))}
         </ul>
       ) : (
         <p className="mt-2 text-xs text-muted-foreground">No spirits are below par.</p>
       )}
-      {checked ? (
+      {coverage === "full" ? (
         <div className="mt-3" data-olcc-stock="">
-          {offers.length === 0 ? (
-            <p className="text-sm" data-olcc-coverage="full">
-              The house store has every item and quantity.
-            </p>
-          ) : (
-            <p className="text-sm" data-olcc-coverage="short">
-              Short at the house store. Check the closest other store, or recommend a substitute. Leave a line as-is
-              if you want. This check does not send an order.
-            </p>
-          )}
+          <p className="text-sm" data-olcc-coverage="full">
+            The house store has every item and quantity.
+          </p>
+        </div>
+      ) : null}
+      {coverage === "short" ? (
+        <div className="mt-3" data-olcc-stock="">
+          <p className="text-sm" data-olcc-coverage="short">
+            Short at the house store. Check the closest other store, or recommend a substitute. Leave a line as-is
+            if you want. This check does not send an order.
+          </p>
           {staying.length ? (
             <ul className="mt-2 space-y-2 text-sm">
               {staying.map((line) => (
@@ -392,9 +384,9 @@ export function OlccSpiritsPanel() {
               ))}
             </ul>
           ) : null}
-          {offers.length ? (
+          {stockExtras.shortItems.length ? (
             <ul className="mt-2 space-y-2 text-sm">
-              {offers.map((offer) => (
+              {stockExtras.shortItems.map((offer) => (
                 <li key={`offer-${offer.itemCode}`} className="rounded-xl border border-border px-2 py-2" data-olcc-offer={offer.itemCode}>
                   <span>
                     {offer.qty} × {offer.name}

@@ -6,6 +6,18 @@ import type { GuideUpdate } from "@/lib/guide/types";
  */
 export const WHATS_NEW_ENTRIES: GuideUpdate[] = [
   {
+    id: "upd_2026_10_248_pick_list_substitutes",
+    date: "2026-10-11",
+    title: "Pick list substitutes",
+    summary: "Substitutes and nearby stores stay off the liquor pick list until Check stock finds a short line.",
+    body: "The liquor pick list shows the selected items and quantities. Substitutes and nearby-store options stay hidden until Check stock, and only when the house store cannot cover a line. Staff can then request a substitute or check a nearby store for those short items. A full stock check leaves the list unchanged.",
+    roles: ["owner_manager", "host_operator", "vendor_operator"],
+    surfaces: ["settings"],
+    audience: "all",
+    topicId: "suppliers",
+    tags: ["costs", "ordering"],
+  },
+  {
     id: "upd_2026_10_247_finix_device_id",
     date: "2026-10-11",
     title: "Finix device ID",

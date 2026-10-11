@@ -24,6 +24,7 @@ import {
   keepOlccOffer,
   olccPickListHtml,
   parseOlccStockPage,
+  pickListAfterStockCheck,
   pickListByStore,
   reviewOlccOrder,
   type StockFetch,
@@ -345,6 +346,9 @@ test("no checkout call exists, and a non-Oregon screen does not render the list"
   const sameOnOffer = panel.indexOf("data-olcc-same-type", removeAt);
   assert.ok(listAt > 0 && sameOnList > listAt);
   assert.ok(offerAt > 0 && removeAt > offerAt && sameOnOffer > removeAt);
+  const listBlock = panel.slice(listAt, panel.indexOf("data-olcc-stock"));
+  assert.doesNotMatch(listBlock, /SameTypeChoices|data-olcc-same-type|data-olcc-store-search|data-olcc-substitute/);
+  assert.match(panel, /pickListAfterStockCheck/);
   const keepStart = panel.indexOf("const keepLine");
   const keepEnd = panel.indexOf("const printList");
   assert.match(panel.slice(keepStart, keepEnd), /setKeptChoice/);
@@ -645,6 +649,18 @@ test("Tito's 750 offers other vodkas in that size, and a swap changes the line",
   assert.equal(review.offers[0]?.nearest?.name, "Grape Street");
   assert.equal(dropOlccOffer(review.offers, "8488B").length, 0);
   assert.ok(sameTypeOptions(review.offers[0]!, prices).some((row) => row.itemCode === "7777B"));
+  const before = pickListAfterStockCheck({ checked: false, offers: review.offers });
+  assert.equal(before.unchanged, true);
+  assert.equal(before.shortItems.length, 0);
+  const full = pickListAfterStockCheck({ checked: true, offers: [] });
+  assert.equal(full.unchanged, true);
+  assert.equal(full.shortItems.length, 0);
+  const short = pickListAfterStockCheck({ checked: true, offers: review.offers });
+  assert.equal(short.unchanged, false);
+  assert.deepEqual(
+    short.shortItems.map((row) => row.itemCode),
+    ["8488B"],
+  );
 });
 
 test("stock check reads the house store from liquor search", async () => {

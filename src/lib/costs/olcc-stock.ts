@@ -140,6 +140,20 @@ function keptFrom(line: OlccOrderLine, store: OlccNamedStore): OlccKeptLine {
 }
 
 /**
+ * Substitutes and nearby stores stay off the pick list until Check stock
+ * finds a line the house store cannot cover. A full check leaves that list unchanged.
+ */
+export function pickListAfterStockCheck<T extends { itemCode: string }>(input: {
+  checked: boolean;
+  offers: readonly T[];
+}): { unchanged: boolean; shortItems: readonly T[] } {
+  if (!input.checked || input.offers.length === 0) {
+    return { unchanged: true, shortItems: [] };
+  }
+  return { unchanged: false, shortItems: input.offers };
+}
+
+/**
  * A line stays when the house store has every bottle on that line.
  * A short line keeps the nearest other store that has any, for staff to open later.
  * This does not send an order.
