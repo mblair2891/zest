@@ -122,6 +122,8 @@ export interface CostSku {
   leadDays: number;
   lastReceivedAt?: number;
   lastReceivedQty?: number;
+  /** Set when a count posts this SKU. Counts themselves are not in the cost pack. */
+  lastCountedAt?: number;
   lastPoPriceCents?: number;
 }
 
@@ -409,6 +411,8 @@ export interface CostSettings {
   /** Optional email when a usage-gap flag opens. */
   emailOnVariance?: boolean;
   varianceEmail?: string;
+  /** Employee roles the location grants Inventory, besides owner, manager, and entity admin. */
+  inventoryAccessRoles?: string[];
 }
 
 export interface CostAudit {

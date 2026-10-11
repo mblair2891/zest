@@ -6,6 +6,18 @@ import type { GuideUpdate } from "@/lib/guide/types";
  */
 export const WHATS_NEW_ENTRIES: GuideUpdate[] = [
   {
+    id: "upd_2026_10_251_entity_inventory",
+    date: "2026-10-11",
+    title: "Entity inventory check",
+    summary: "Each selling entity has an Inventory page. A count updates the on-hand quantity.",
+    body: "Each selling entity has an Inventory page. It lists that entity's menu items and ingredients with the current on-hand quantity, the unit, and the last counted or received date. Search and filter narrow the list. Entering a count updates the on-hand quantity. Items with zero stock are marked. An ingredient at or under its minimum is marked low. A menu item at 1 or 2 is marked low. The page is available to the entity's manager and to any role the location grants inventory access.",
+    roles: ["owner_manager", "kitchen_bar", "host_operator", "vendor_operator"],
+    surfaces: ["settings"],
+    audience: "all",
+    topicId: "ops-finance-inventory",
+    tags: ["inventory", "menu"],
+  },
+  {
     id: "upd_2026_10_250_finix_unauthorized",
     date: "2026-10-11",
     title: "Finix unauthorized on connect",

@@ -604,6 +604,56 @@ export function resetSummitHallSeedLatch(): void {
   globalRef.__summexSummitHallBoot__ = undefined;
 }
 
+/**
+ * A catalog save that ran before entity ingredients were loaded can leave
+ * Summit Hall with only the house seed SKUs. Put the entity ingredients back
+ * without touching the menu.
+ */
+export async function ensureSummitIngredientCatalog(locationId: string): Promise<void> {
+  if (locationId !== SUMMIT_HALL_LOCATION_ID) return;
+  const sql = await getSql();
+  const rows = await sql<{ id: string; setup: unknown }>`
+    select id, setup from locations where id = ${locationId} limit 1
+  `;
+  const row = rows[0];
+  if (!row) return;
+  const setup =
+    row.setup && typeof row.setup === "object" && !Array.isArray(row.setup)
+      ? ({ ...(row.setup as LocationSetup) } as LocationSetup)
+      : ({} as LocationSetup);
+  const skus = setup.costPack?.skus ?? [];
+  const hasEntity = skus.some(
+    (sku) => sku.entityId === SUMMIT_COPPER_OP_ID || sku.entityId === SUMMIT_HEARTH_OP_ID,
+  );
+  if (hasEntity) return;
+  setup.costPack = {
+    skus: SUMMIT_HALL_SKUS.map((sku) => ({ ...sku })),
+    suppliers: setup.costPack?.suppliers ?? [],
+    invoices: setup.costPack?.invoices ?? [],
+    maps: setup.costPack?.maps ?? [],
+    exceptions: setup.costPack?.exceptions ?? [],
+    settings:
+      setup.costPack?.settings ?? {
+        ...SUMMIT_HALL_COST_SETTINGS,
+        targetCostPct: { ...SUMMIT_HALL_COST_SETTINGS.targetCostPct },
+      },
+    pos: setup.costPack?.pos ?? [],
+    olcc: setup.costPack?.olcc,
+  };
+  if (!setup.recipes?.length) {
+    setup.recipes = SUMMIT_HALL_RECIPES.map((recipe) => ({
+      ...recipe,
+      lines: recipe.lines.map((line) => ({ ...line })),
+      steps: recipe.steps.map((step) => ({ ...step })),
+    }));
+  }
+  await sql`
+    update locations
+    set setup = ${JSON.stringify(setup)}::jsonb
+    where id = ${row.id}
+  `;
+}
+
 export async function ensureSummitHallDemo(): Promise<{ ok: true } | { ok: false; reason: string }> {
   if (!globalRef.__summexSummitHallBoot__) {
     globalRef.__summexSummitHallBoot__ = seedOnce().catch((err) => {

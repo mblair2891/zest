@@ -449,6 +449,8 @@ export interface MenuItem {
   taxCategory?: import("./tax-rates").TaxApplyTo;
   trackStock?: boolean;
   stock?: number;
+  /** Set when Inventory posts a count for this item. */
+  lastCountedAt?: number;
   online?: boolean;
   tenantId?: string;
   vendorId?: string;

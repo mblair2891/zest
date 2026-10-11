@@ -46,6 +46,10 @@ import { useChecklistLink } from "@/lib/saas/checklist-link";
 import { useUpdateJump } from "@/lib/guide/update-jump";
 import { rememberChecklistScope, useOnboardingStore } from "@/lib/saas/onboarding-state";
 import { CostWorkspace } from "@/components/pos/CostWorkspace";
+import { EntityInventoryPage } from "@/components/pos/EntityInventoryPage";
+import { useCostStore } from "@/lib/costs/store";
+import { suppliersKeptAfterRefresh } from "@/lib/costs/suppliers";
+import { parseOlccBook } from "@/lib/costs/olcc";
 import { SuppliersView } from "@/components/pos/SuppliersView";
 import { LaborOpsView } from "@/components/pos/LaborOpsView";
 import { ReportsView } from "@/components/pos/ReportsView";
@@ -87,7 +91,7 @@ import type { MembershipRole } from "@/lib/saas/types";
 type Tab = VenueDashTabId;
 
 function tabPackageView(tab: Tab): string | null {
-  if (tab === "costs") return "inventory";
+  if (tab === "costs" || tab === "inventory") return "inventory";
   if (tab === "suppliers") return "suppliers";
   if (tab === "labor" || tab === "schedule") return "labor";
   if (tab === "reports") return "reports";
@@ -520,6 +524,26 @@ export function PlatformTenantVenue({
             : cur.vendors,
         });
       }
+      if (setup.recipes?.length || setup.costPack) {
+        const pack = setup.costPack;
+        const localSuppliers = useCostStore.getState().suppliers;
+        const suppliers = suppliersKeptAfterRefresh(pack?.suppliers, localSuppliers);
+        useCostStore.setState({
+          recipes: setup.recipes?.length ? setup.recipes : useCostStore.getState().recipes,
+          ...(pack
+            ? {
+                skus: pack.skus?.length ? pack.skus : useCostStore.getState().skus,
+                suppliers,
+                invoices: pack.invoices ?? useCostStore.getState().invoices,
+                maps: pack.maps ?? useCostStore.getState().maps,
+                exceptions: pack.exceptions ?? useCostStore.getState().exceptions,
+                settings: pack.settings ?? useCostStore.getState().settings,
+                pos: pack.pos?.length ? pack.pos : useCostStore.getState().pos,
+                ...(pack.olcc !== undefined ? { olcc: parseOlccBook(pack.olcc) } : {}),
+              }
+            : { suppliers }),
+        });
+      }
       try {
         useLifecycleStore.getState().hydrateFromSetup({
           lifecycleStatus:
@@ -760,6 +784,13 @@ export function PlatformTenantVenue({
               />
             )}
             {ready && !error && tab === "menu" && tabIds.has("menu") && <MenuAdminView />}
+            {ready && !error && tab === "inventory" && tabIds.has("inventory") && (
+              tabOnPackage("inventory", packages) ? (
+                <EntityInventoryPage />
+              ) : (
+                <PackageEmptyState module="Inventory" />
+              )
+            )}
             {ready && !error && tab === "payments" && tabIds.has("payments") && (
               <QuantumPaymentsSettings
                 write={kind === "entity_owner" || kind === "host_owner" || kind === "venue_admin" || audience === "platform"}

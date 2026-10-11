@@ -13,6 +13,7 @@ export type VenueDashTabId =
   | "devices"
   | "floor"
   | "menu"
+  | "inventory"
   | "costs"
   | "suppliers"
   | "labor"
@@ -44,6 +45,7 @@ export function tenantConsoleTabs(): VenueDashTab[] {
     ["devices", "Devices"],
     ["floor", "Floor"],
     ["menu", "Menus"],
+    ["inventory", "Inventory"],
     ["costs", "Costs"],
     ["suppliers", "Suppliers"],
     ["labor", "Labor"],
@@ -66,6 +68,7 @@ export function venueDashboardTabs(opts: {
       ["settings", "Settings"],
       ["floor", "Floor"],
       ["menu", "Menu"],
+      ["inventory", "Inventory"],
       ["costs", "Costs"],
       ["suppliers", "Suppliers"],
       ["schedule", "Schedule"],
@@ -82,6 +85,7 @@ export function venueDashboardTabs(opts: {
         ["devices", "Devices"],
         ["floor", "Floor"],
         ["menu", "Menus"],
+        ["inventory", "Inventory"],
         ["costs", "Costs"],
         ["suppliers", "Suppliers"],
         ["labor", "Labor"],
@@ -96,6 +100,7 @@ export function venueDashboardTabs(opts: {
         ["devices", "Devices"],
         ["floor", "Floor"],
         ["menu", "Menus"],
+        ["inventory", "Inventory"],
         ["costs", "Costs"],
         ["suppliers", "Suppliers"],
         ["labor", "Labor"],

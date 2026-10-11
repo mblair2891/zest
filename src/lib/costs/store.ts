@@ -692,7 +692,7 @@ export const useCostStore = create<CostState>()(
           skus: get().skus.map((s) => {
             const hit = lines.find((l) => l.skuId === s.id);
             if (!hit || (s.entityId !== target && target !== HOST_SCOPE)) return s;
-            return { ...s, onHand: hit.qty };
+            return { ...s, onHand: hit.qty, lastCountedAt: now };
           }),
         });
         get().audit("count", `${kind} · ${lines.length} SKUs`, count.entityId);

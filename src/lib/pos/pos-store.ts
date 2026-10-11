@@ -552,7 +552,7 @@ export interface PosStore {
   setActiveDeviceId: (id: string | null) => void;
   updateMenuItem: (
     id: string,
-    patch: Partial<Pick<MenuItem, "name" | "priceCents" | "description" | "available" | "vendorId" | "categoryId" | "station" | "course" | "modifierGroupIds" | "archived">>,
+    patch: Partial<Pick<MenuItem, "name" | "priceCents" | "description" | "available" | "vendorId" | "categoryId" | "station" | "course" | "modifierGroupIds" | "archived" | "stock" | "trackStock" | "lastCountedAt">>,
   ) => void;
   deleteMenuItem: (id: string) => { ok: boolean; error?: string } | void;
   archiveMenuItem: (id: string) => { ok: boolean };

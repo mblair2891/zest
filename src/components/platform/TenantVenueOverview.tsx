@@ -64,6 +64,7 @@ export function TenantVenueOverview({
             ["settings", "Settings", "House, QR, cash, labor"],
             ["floor", "Floor", "Map, QR, sections"],
             ["menu", "Menus", "Items by selling entity"],
+            ["inventory", "Inventory", "On-hand counts for one selling entity"],
             ["people", "Users", "Password logins and floor PINs"],
             ["reports", "Reports", "Combined and per-entity owned lines"],
             ["labor", "Labor", "Schedules, clock, hours export"],

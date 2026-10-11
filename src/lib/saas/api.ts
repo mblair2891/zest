@@ -680,6 +680,8 @@ export const getPosBootstrapFn = createServerFn({ method: "POST" })
   .handler(async ({ context, data }) => {
     const { operatorsAsVendors } = await import("./onboarding.server");
     const { ensureTrainingFloor } = await import("@/lib/pos/training-roster.server");
+    const { ensureSummitIngredientCatalog } = await import("./summit-hall-seed.server");
+    await ensureSummitIngredientCatalog(data.locationId);
     if (!context.userId) {
       const { tryIsolatedDemoAccess } = await import("./tenancy.server");
       const demo = await tryIsolatedDemoAccess(data.locationId);

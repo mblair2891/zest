@@ -23,6 +23,7 @@ export function demoEntityMatches(
 
 export const DEMO_SCOPED_TABS = [
   "menu",
+  "inventory",
   "people",
   "staff",
   "reports",
