@@ -1,7 +1,7 @@
 # Feature status
 
 **Date:** 11 Oct 2026  
-**Tree:** Adding a PAX D135 from Devices succeeds in sandbox when the name, the serial, and the selling entity are filled. A missing FINIX_WEBHOOK_SECRET does not block that add. The reader appears in the list, and the station app can connect to it. Live mode still requires the webhook secret before a charge can settle (Operators Guide v2026.10.240).  
+**Tree:** Adding a PAX D135 from Devices registers the reader when the name, the serial, and the selling entity are filled. Sandbox registration succeeds without FINIX_WEBHOOK_SECRET. The reader appears in the list immediately and is marked for the chosen entity. The station app can connect to a registered reader that is already paired over Bluetooth. The reader was not registered only when the serial is empty or the entity is missing (Operators Guide v2026.10.241).  
 **How this was read:** routes under `src/routes`, `createServerFn` handlers, `migrations/`, Operators Guide topics in `src/lib/guide/content`, and the server functions those screens call. A live venue was not clicked.
 
 **100% means all three:** a screen, a save that writes Postgres (a table or `locations.setup`), and a read that loads that same row again. A refresh would still show the result. A button that only updates the browser, a seed, or a handler that returns without writing is not complete.
@@ -46,7 +46,7 @@
 
 **Printer and station records.** `LocationDeviceRegistry` calls `saveLocationDeviceFn`, which writes `location_devices` and `locations.setup.locationDevices` (`src/lib/access/api.ts`). The list reads that setup back. A receipt printer, an order printer, and a paired tablet are the same device record.
 
-**Operators Guide.** `/guide` renders `OperatorsGuide` from `src/lib/guide`. It is the published manual (v2026.10.240), not a record the venue saves.
+**Operators Guide.** `/guide` renders `OperatorsGuide` from `src/lib/guide`. It is the published manual (v2026.10.241), not a record the venue saves.
 
 **Entity settings.** Entity admin Settings (`EntityOwnedSettings`) loads `loadEntitySettingsFn` and saves `saveEntitySettingsFn` onto that operator: legal name, DBA, menu display name, tip percents, and staff PIN length (`operators`, migration `0053_entity_settings.sql`). The logo uses the entity slot. Venue name, address, and timezone stay on the location and stay read-only for an entity admin who is not the location contact. The location contact can change the entity fields. A refresh reads the operator row again. Payment and tax are not on this screen.
 

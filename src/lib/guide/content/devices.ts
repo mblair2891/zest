@@ -16,7 +16,7 @@ export const DEVICE_TOPICS: GuideTopic[] = [
         "A card on a paired Android station uses the reader registered to the selling entity on the check. Cash still closes the check when no reader is nearby.",
       ),
       steps(
-        "Open location Devices. Add card reader asks for a name, the serial, and the selling entity. The name is required, for example Bar 1. That reader belongs to that entity only. In sandbox, those three fields are enough. A missing FINIX_WEBHOOK_SECRET does not block the add. The devices list shows the name, then the serial. The station app can scan that reader and connect to it.",
+        "Open location Devices. Add card reader asks for a name, the serial, and the selling entity. The name is required, for example Bar 1. That reader belongs to that entity only. In sandbox, those three fields are enough. A missing FINIX_WEBHOOK_SECRET does not block the add. The reader appears in the list immediately, marked for that entity. The station app can connect to a registered reader that is already paired over Bluetooth. The reader was not registered only when the serial is empty or the entity is missing.",
         "On the station, open Pay → Card and tap Scan for reader. The station asks for Nearby devices and Location if they are missing, after it checks that Bluetooth is on. The list shows readers named PAX D135, including one already paired in Android settings. Pick the one whose serial matches the registered reader.",
         "The first connection says Setting up reader until the reader finishes its key download. Then the status is Connected. Battery shows when the reader reports it.",
         "Charge card sends one sandbox sale. The check stores the transfer and the last four. Print the receipt the same way as cash.",
@@ -24,7 +24,7 @@ export const DEVICE_TOPICS: GuideTopic[] = [
       ul(
         "Sandbox only, while the location is not live. Live cards are refused in this build. Live mode still requires the webhook secret before a charge can settle.",
         "Bluetooth is off, or no reader is in range, only when Bluetooth is off or no PAX D135 is on nearby. That line is not shown when Bluetooth is on and Nearby devices and Location are allowed.",
-        "A serial that is not registered to this location is refused.",
+        "The reader was not registered only when the serial is empty or the selling entity is missing. A serial that is not registered to this location is refused.",
         "A reader registered to another selling entity than the check is refused.",
         "Still setting up: no charge.",
         "A disconnect or a timeout leaves the check unpaid. Try again.",

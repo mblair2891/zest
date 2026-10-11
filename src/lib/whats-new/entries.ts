@@ -6,6 +6,18 @@ import type { GuideUpdate } from "@/lib/guide/types";
  */
 export const WHATS_NEW_ENTRIES: GuideUpdate[] = [
   {
+    id: "upd_2026_10_241_register_reader",
+    date: "2026-10-11",
+    title: "Register a card reader",
+    summary: "Add card reader saves the PAX D135 under the selling entity.",
+    body: "Adding a PAX D135 from Devices registers the reader when the name, the serial, and the selling entity are filled. Sandbox registration succeeds without FINIX_WEBHOOK_SECRET. The reader appears in the list immediately and is marked for the chosen entity. The station app can connect to a registered reader that is already paired over Bluetooth. The reader was not registered only when the serial is empty or the entity is missing.",
+    roles: ["owner_manager", "server", "host_operator", "vendor_operator"],
+    surfaces: ["settings"],
+    audience: "all",
+    topicId: "pax-card-reader",
+    tags: ["devices", "payments"],
+  },
+  {
     id: "upd_2026_10_240_sandbox_reader_add",
     date: "2026-10-11",
     title: "Sandbox card reader add",

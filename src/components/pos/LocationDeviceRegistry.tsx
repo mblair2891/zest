@@ -1126,7 +1126,9 @@ export function LocationDeviceRegistry({
                       <span className="text-muted-foreground" data-pax-reader-serial="">
                         {reader.serial}
                       </span>
-                      <span className="text-muted-foreground">· {reader.entityName || reader.entityId}</span>
+                      <span className="text-muted-foreground" data-pax-reader-entity={reader.entityId}>
+                        · {reader.entityName || reader.entityId}
+                      </span>
                       <Button
                         size="sm"
                         variant="ghost"
@@ -1214,10 +1216,14 @@ export function LocationDeviceRegistry({
                     }
                     setPaxName("");
                     setPaxSerial("");
+                    setCardReaders((rows) => {
+                      const rest = rows.filter((row) => row.serial !== res.reader.serial);
+                      return [...rest, res.reader];
+                    });
                     setPaxMsg(`${res.reader.name} · ${res.reader.serial} is registered to ${res.reader.entityName || res.reader.entityId}.`);
                     await load({ silent: true });
                   } catch (e) {
-                    setPaxMsg(e instanceof Error ? e.message : "The reader was not registered.");
+                    setPaxMsg(e instanceof Error ? e.message : "The reader could not be saved.");
                   } finally {
                     setBusy(false);
                   }

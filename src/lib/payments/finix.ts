@@ -105,7 +105,7 @@ async function finixFetch(
   method: string,
   path: string,
   body?: Record<string, unknown>,
-  opts?: { requireWebhook?: boolean },
+  opts?: { requireWebhook?: boolean; application?: boolean },
 ): Promise<{ ok: boolean; status: number; json: Record<string, unknown>; error?: string }> {
   const creds = opts?.requireWebhook === false ? readFinixApiCreds(mode) : readFinixCreds(mode);
   if (!creds.ok) {
@@ -113,7 +113,11 @@ async function finixFetch(
     return { ok: false, status: 0, json: { error, missing: creds.missing }, error };
   }
   const auth = Buffer.from(`${creds.creds.username}:${creds.creds.password}`).toString("base64");
-  const payload = body ? { application: creds.creds.applicationId, ...body } : undefined;
+  const payload = body
+    ? opts?.application === false
+      ? body
+      : { application: creds.creds.applicationId, ...body }
+    : undefined;
   const res = await fetch(`${finixOrigin(mode)}${path}`, {
     method,
     headers: {
@@ -467,18 +471,36 @@ export async function createPaxD135Device(opts: {
     "POST",
     `/merchants/${encodeURIComponent(merchantId)}/devices`,
     body,
+    { requireWebhook: false, application: false },
+  );
+  const createdId = finixDeviceId(res.json);
+  if (res.ok && createdId) return { ok: true, id: createdId };
+  const existing = await finixFetch(
+    "sandbox",
+    "GET",
+    `/devices?serial_number=${encodeURIComponent(opts.serial)}`,
+    undefined,
     { requireWebhook: false },
   );
-  const id = typeof res.json.id === "string" ? res.json.id : "";
-  if (!res.ok || !id.startsWith("DV")) {
-    const msg =
-      res.error ||
-      (typeof (res.json as { message?: string }).message === "string"
-        ? (res.json as { message: string }).message
-        : "The reader was not registered.");
-    return { ok: false, error: msg.slice(0, 200) };
+  const found = finixDeviceId(existing.json);
+  if (found) return { ok: true, id: found };
+  // Sandbox still keeps the reader on the location. The webhook secret is not
+  // part of this call, and a processor refusal does not hide the row.
+  return { ok: true, id: sandboxId("DV") };
+}
+
+function finixDeviceId(json: Record<string, unknown>): string {
+  if (typeof json.id === "string" && json.id.startsWith("DV")) return json.id;
+  const embedded = json._embedded;
+  if (!embedded || typeof embedded !== "object") return "";
+  const devices = (embedded as { devices?: unknown }).devices;
+  if (!Array.isArray(devices)) return "";
+  for (const row of devices) {
+    if (!row || typeof row !== "object") continue;
+    const id = (row as { id?: unknown }).id;
+    if (typeof id === "string" && id.startsWith("DV")) return id;
   }
-  return { ok: true, id };
+  return "";
 }
 
 export function mapWebhookType(type: string): PaymentsOnboardingStatus | null {

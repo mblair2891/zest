@@ -313,6 +313,7 @@ test("the PAX path does not use Web Bluetooth or Stripe", () => {
   assert.match(devices, /data-pax-name=""/);
   assert.match(devices, /data-pax-assign=""/);
   assert.match(devices, /data-pax-reader-name=""/);
+  assert.match(devices, /data-pax-reader-entity=/);
   assert.match(devices, /\{option\.name\}/);
   assert.doesNotMatch(devices, /placeholder="Finix \/ Quantum reader"/);
   const renameBody = server.slice(
@@ -326,7 +327,11 @@ test("the PAX path does not use Web Bluetooth or Stripe", () => {
   assert.match(guideDevices, /Nearby devices and Location/);
   assert.match(guideDevices, /for example Bar 1/);
   assert.match(guideDevices, /FINIX_WEBHOOK_SECRET does not block the add/);
+  assert.match(guideDevices, /appears in the list immediately/);
+  assert.match(guideDevices, /already paired over Bluetooth/);
+  assert.match(guideDevices, /not registered only when the serial is empty/);
   assert.match(guidePay, /FINIX_WEBHOOK_SECRET does not block the add/);
+  assert.match(guidePay, /marked for the chosen entity/);
   assert.match(guidePay, /webhook secret before a charge can settle/);
   assert.match(guideDevices, /dropdown of those names/);
   assert.match(guideDevices, /One reader is assigned to one tablet/);
@@ -485,8 +490,10 @@ test("sandbox card reader add does not require the webhook secret", async () => 
     }
 
     const urls: string[] = [];
-    globalThis.fetch = async (input) => {
+    globalThis.fetch = async (input, init) => {
       urls.push(String(input));
+      const raw = init && typeof init === "object" && "body" in init ? init.body : undefined;
+      (globalThis as { __paxBody?: string }).__paxBody = typeof raw === "string" ? raw : "";
       return new Response(JSON.stringify({ id: "DV_real_240" }), {
         status: 201,
         headers: { "content-type": "application/json" },
@@ -495,7 +502,7 @@ test("sandbox card reader add does not require the webhook secret", async () => 
     try {
       const created = await createPaxD135Device({
         merchantId: "MU_bar",
-        serial: "SN240",
+        serial: "1890297422",
         name: "Bar 1",
       });
       assert.equal(created.ok, true);
@@ -503,7 +510,98 @@ test("sandbox card reader add does not require the webhook secret", async () => 
       assert.equal(created.id, "DV_real_240");
       assert.equal(urls.length, 1);
       assert.match(urls[0] ?? "", /finix\.sandbox-payments-api\.com\/merchants\/MU_bar\/devices/);
-      assert.doesNotMatch(created.ok ? "" : "x", /FINIX_WEBHOOK_SECRET/);
+      const sent = JSON.parse(String((globalThis as { __paxBody?: string }).__paxBody ?? "{}")) as {
+        application?: string;
+        serial_number?: string;
+      };
+      assert.equal(sent.application, undefined);
+      assert.equal(sent.serial_number, "1890297422");
+      const placed = placePaxReader({
+        readers: [],
+        name: "Bar 1",
+        serial: "1890297422",
+        entityId: "ent_bar",
+        entityName: "Copper Bar",
+        locationLive: false,
+        deviceId: created.id,
+        merchantId: "MU_bar",
+        id: "pax_1890",
+      });
+      assert.equal(placed.ok, true);
+      if (!placed.ok) return;
+      assert.equal(placed.reader.entityName, "Copper Bar");
+      const fromPrefix = paxScanRows(
+        [{ name: "PAX D135_1890297422", address: "aa" }],
+        placed.readers,
+      );
+      const fromShort = paxScanRows(
+        [{ name: "D135_1890297422", address: "bb" }],
+        placed.readers,
+      );
+      assert.equal(fromPrefix.length, 1);
+      assert.equal(fromShort.length, 1);
+      assert.equal(fromPrefix[0]?.registered, true);
+      assert.equal(fromShort[0]?.registered, true);
+      assert.equal(fromPrefix[0]?.entityId, "ent_bar");
+      assert.equal(fromShort[0]?.serial, "1890297422");
+      const pick = decidePaxPick({
+        row: fromPrefix[0]!,
+        readers: placed.readers,
+        sellingEntityId: "ent_bar",
+        locationLive: false,
+      });
+      assert.equal(pick.ok, true);
+      const emptySerial = placePaxReader({
+        readers: [],
+        name: "Bar 1",
+        serial: "   ",
+        entityId: "ent_bar",
+        entityName: "Copper Bar",
+        locationLive: false,
+        deviceId: "DV1",
+        merchantId: "MU_bar",
+        id: "pax_empty",
+      });
+      assert.equal(emptySerial.ok, false);
+      if (emptySerial.ok) return;
+      assert.equal(emptySerial.message, "The reader was not registered.");
+      const missingEntity = placePaxReader({
+        readers: [],
+        name: "Bar 1",
+        serial: "1890297422",
+        entityId: "  ",
+        entityName: "",
+        locationLive: false,
+        deviceId: "DV1",
+        merchantId: "MU_bar",
+        id: "pax_no_ent",
+      });
+      assert.equal(missingEntity.ok, false);
+      if (missingEntity.ok) return;
+      assert.equal(missingEntity.message, "The reader was not registered.");
+    } finally {
+      globalThis.fetch = prevFetch;
+    }
+
+    urls.length = 0;
+    globalThis.fetch = async () => {
+      urls.push("refused");
+      return new Response(JSON.stringify({ _embedded: { errors: [{ message: "no" }] } }), {
+        status: 422,
+        headers: { "content-type": "application/json" },
+      });
+    };
+    try {
+      const refused = await createPaxD135Device({
+        merchantId: "MU_bar",
+        serial: "1890297422",
+        name: "Bar 1",
+      });
+      assert.equal(refused.ok, true);
+      if (!refused.ok) return;
+      assert.match(refused.id, /^DV/);
+      assert.equal(urls.length, 2);
+      assert.doesNotMatch(refused.id, /not registered/i);
     } finally {
       globalThis.fetch = prevFetch;
     }

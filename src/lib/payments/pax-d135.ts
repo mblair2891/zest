@@ -54,6 +54,8 @@ export const PAX_MSG = {
   serialTaken: "This reader already belongs to another selling entity.",
   nameRequired: "Enter a name for the reader.",
   nameTaken: "That name is already on a reader.",
+  /** Only when the serial is empty or the selling entity is missing. */
+  notSaved: "The reader was not registered.",
 } as const;
 
 const capturedChecks = new Set<string>();
@@ -80,15 +82,24 @@ export function normalizeReaderName(raw: string): string {
   return String(raw ?? "").replace(/\s+/g, " ").trim().slice(0, 40);
 }
 
-/** A reader name starts with PAX D135 and then a serial, for example PAX D135_ABC123. */
+/**
+ * Serial from a Bluetooth name.
+ * PAX D135_1890297422, PAX D135-1890297422, and D135_1890297422 all match.
+ * A reader already paired in Android settings uses one of those names.
+ */
 export function serialFromPaxName(name: string): string | null {
   const trimmed = String(name ?? "").trim();
   const mark = PAX_NAME_PREFIX.replace(/_+$/, "");
-  if (!trimmed.startsWith(mark)) return null;
-  const rest = trimmed.slice(mark.length);
-  if (!rest || !/^[\s_\-:]/.test(rest)) return null;
-  const serial = normalizePaxSerial(rest.replace(/^[\s_\-:]+/, ""));
-  return serial || null;
+  if (trimmed.startsWith(mark)) {
+    const rest = trimmed.slice(mark.length);
+    if (rest && /^[\s_\-:]/.test(rest)) {
+      const serial = normalizePaxSerial(rest.replace(/^[\s_\-:]+/, ""));
+      if (serial) return serial;
+    }
+  }
+  const loose = trimmed.match(/(?:^|[\s_\-:])D135[\s_\-:]+([A-Za-z0-9]+)\s*$/i);
+  if (loose?.[1]) return normalizePaxSerial(loose[1]);
+  return null;
 }
 
 /**
@@ -253,11 +264,10 @@ export function placePaxReader(input: {
   const serial = normalizePaxSerial(input.serial);
   const entityId = input.entityId.trim();
   const name = normalizeReaderName(input.name);
+  if (!serial || !entityId) return { ok: false, message: PAX_MSG.notSaved };
   if (!name) return { ok: false, message: PAX_MSG.nameRequired };
-  if (!serial) return { ok: false, message: "Enter the reader serial." };
-  if (!entityId) return { ok: false, message: "Pick the selling entity." };
   if (!input.deviceId.startsWith("DV")) {
-    return { ok: false, message: "The reader was not registered." };
+    return { ok: false, message: "The reader could not be saved." };
   }
   const nameTaken = input.readers.some(
     (r) => r.serial !== serial && r.name.toLowerCase() === name.toLowerCase(),

@@ -66,6 +66,7 @@ export async function registerPaxReader(
     return { ok: false, error: "The venue is not a selling entity. Pick the operator on the check." };
   }
   const serial = normalizePaxSerial(input.serial);
+  if (!serial || !entityId) return { ok: false, error: PAX_MSG.notSaved };
   const existing = readerForSerial(parsePaxReaders(setup.paxReaders), serial);
   if (existing && existing.entityId !== entityId) {
     return { ok: false, error: PAX_MSG.serialTaken };

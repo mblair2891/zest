@@ -561,13 +561,27 @@ public class PaxD135Plugin extends Plugin {
             String serial = trimmed.substring(NAME_PREFIX.length()).replace(" ", "").trim();
             return serial.isEmpty() ? null : serial;
         }
-        if (!trimmed.startsWith(NAME_MARK)) return null;
-        String rest = trimmed.substring(NAME_MARK.length());
-        if (rest.isEmpty()) return null;
-        char lead = rest.charAt(0);
-        if (!Character.isWhitespace(lead) && lead != '_' && lead != '-' && lead != ':') return null;
-        String serial = rest.replaceFirst("^[\\s_\\-:]+", "").replace(" ", "").trim();
-        return serial.isEmpty() ? null : serial;
+        if (trimmed.startsWith(NAME_MARK)) {
+            String rest = trimmed.substring(NAME_MARK.length());
+            if (!rest.isEmpty()) {
+                char lead = rest.charAt(0);
+                if (Character.isWhitespace(lead) || lead == '_' || lead == '-' || lead == ':') {
+                    String serial = rest.replaceFirst("^[\\s_\\-:]+", "").replace(" ", "").trim();
+                    if (!serial.isEmpty()) return serial;
+                }
+            }
+        }
+        if (trimmed.regionMatches(true, 0, "D135", 0, 4)) {
+            String rest = trimmed.substring(4);
+            if (!rest.isEmpty()) {
+                char lead = rest.charAt(0);
+                if (Character.isWhitespace(lead) || lead == '_' || lead == '-' || lead == ':') {
+                    String serial = rest.replaceFirst("^[\\s_\\-:]+", "").replace(" ", "").trim();
+                    if (!serial.isEmpty()) return serial;
+                }
+            }
+        }
+        return null;
     }
 
     private static String last4(String masked) {
