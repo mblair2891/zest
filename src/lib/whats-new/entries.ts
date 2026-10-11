@@ -6,6 +6,18 @@ import type { GuideUpdate } from "@/lib/guide/types";
  */
 export const WHATS_NEW_ENTRIES: GuideUpdate[] = [
   {
+    id: "upd_2026_10_243_d135_connect_hold",
+    date: "2026-10-11",
+    title: "D135 connection hold",
+    summary: "Selecting a PAX D135 keeps the link open and shows Reader ready.",
+    body: "Selecting a discovered PAX D135 keeps the Bluetooth connection open. The station shows Connecting, then Reader ready when the D135 accepts the link. The reader disconnected. The check is not paid. Try again. That line shows only when the link drops after Reader ready. A ready reader stays available for the next card payment on that station. The first connection still allows the D135 its initial key download.",
+    roles: ["owner_manager", "server", "host_operator", "vendor_operator"],
+    surfaces: ["settings"],
+    audience: "all",
+    topicId: "pax-card-reader",
+    tags: ["devices", "payments"],
+  },
+  {
     id: "upd_2026_10_242_reader_scan_health",
     date: "2026-10-11",
     title: "Reader scan and device health",

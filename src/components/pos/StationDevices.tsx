@@ -5,6 +5,7 @@ import { getPaymentsStatusFn, listPaxReadersFn, paxReaderSessionFn } from "@/lib
 import {
   PAX_MSG,
   decideStationReaderConnect,
+  paxLinkStatusText,
   paxScanPresentation,
   type PaxReader,
   type PaxScanRow,
@@ -282,7 +283,7 @@ function StationDeviceScreen({ onClose }: { onClose: () => void }) {
           env: "SB",
         });
         if (!connected.ok) {
-          failPaxConnect(connected.message || PAX_MSG.disconnect);
+          failPaxConnect(connected.message || PAX_MSG.notConnected);
           setBusy(false);
           return;
         }
@@ -319,16 +320,13 @@ function StationDeviceScreen({ onClose }: { onClose: () => void }) {
           }
         }
       } catch {
-        failPaxConnect(PAX_MSG.disconnect);
+        failPaxConnect(PAX_MSG.notConnected);
       }
       setBusy(false);
     })();
   };
 
-  const status =
-    link.phase === "connected" && link.reader
-      ? `${PAX_MSG.connected} · ${link.reader.name}`
-      : link.message;
+  const status = paxLinkStatusText(link);
 
   return (
     <div
@@ -356,7 +354,7 @@ function StationDeviceScreen({ onClose }: { onClose: () => void }) {
           size="lg"
           variant="outline"
           className="h-12"
-          disabled={busy || link.phase === "scanning" || link.phase === "setting_up"}
+          disabled={busy || link.phase === "scanning" || link.phase === "connecting" || link.phase === "setting_up"}
           onClick={scan}
         >
           Scan for reader

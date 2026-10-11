@@ -8,7 +8,7 @@ import type { PaxBridge } from "./pax-d135";
 import { PAX_MSG, PAX_SDK_ENV } from "./pax-d135";
 
 export type PaxPluginStatus = {
-  state: "idle" | "scanning" | "setting_up" | "connected" | "error";
+  state: "idle" | "scanning" | "connecting" | "setting_up" | "connected" | "disconnected" | "error";
   message?: string;
   serial?: string;
   batteryPercent?: number | null;

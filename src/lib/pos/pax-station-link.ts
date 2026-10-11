@@ -3,9 +3,9 @@
  * Not written to the POS persist store. Opening Pay does not clear it.
  */
 import { useSyncExternalStore } from "react";
-import { PAX_MSG, type PaxReader, type PaxScanRow } from "@/lib/payments/pax-d135";
+import { PAX_MSG, presentPaxHold, type PaxReader, type PaxScanRow } from "@/lib/payments/pax-d135";
 
-export type PaxLinkPhase = "idle" | "scanning" | "setting_up" | "connected" | "bluetooth";
+export type PaxLinkPhase = "idle" | "scanning" | "connecting" | "setting_up" | "connected" | "bluetooth";
 
 export type PaxStationLink = {
   phase: PaxLinkPhase;
@@ -70,7 +70,7 @@ export function finishPaxScan(presented: {
     patch({
       rows: presented.rows,
       phase: still ? "connected" : "idle",
-      message: still ? PAX_MSG.connected : presented.message,
+      message: still ? PAX_MSG.ready : presented.message,
     });
     return;
   }
@@ -85,19 +85,27 @@ export function finishPaxScan(presented: {
 }
 
 export function beginPaxConnect(reader: PaxReader): void {
-  patch({ phase: "setting_up", reader, message: PAX_MSG.settingUp });
+  const presented = presentPaxHold({ event: "select", wasReady: state.phase === "connected" });
+  patch({ phase: "connecting", reader, message: presented.message });
 }
 
 export function markPaxConnected(reader: PaxReader, battery: number | null): void {
-  patch({ phase: "connected", reader, battery, message: PAX_MSG.connected });
+  const presented = presentPaxHold({ event: "accepted", wasReady: true });
+  patch({ phase: "connected", reader, battery, message: presented.message });
 }
 
 export function failPaxConnect(message: string): void {
+  const wasReady = state.phase === "connected";
+  const presented = presentPaxHold({
+    event: wasReady && message === PAX_MSG.disconnect ? "dropped" : "failed",
+    wasReady,
+    message,
+  });
   patch({
-    phase: message === PAX_MSG.bluetooth ? "bluetooth" : "idle",
+    phase: presented.message === PAX_MSG.bluetooth ? "bluetooth" : "idle",
     reader: null,
     battery: null,
-    message,
+    message: presented.message,
   });
 }
 
@@ -106,10 +114,18 @@ export function notePaxStatus(status: {
   message?: string;
   batteryPercent?: number | null;
 }): void {
-  if (status.state === "setting_up") {
-    patch({ phase: "setting_up", message: status.message || PAX_MSG.settingUp });
+  if (status.state === "connecting") {
+    const presented = presentPaxHold({ event: "select", wasReady: false });
+    patch({ phase: "connecting", message: presented.message });
+  } else if (status.state === "setting_up") {
+    const presented = presentPaxHold({ event: "processing", wasReady: false });
+    patch({ phase: "setting_up", message: presented.message });
   } else if (status.state === "connected") {
-    patch({ phase: "connected", message: PAX_MSG.connected });
+    const presented = presentPaxHold({ event: "accepted", wasReady: true });
+    patch({ phase: "connected", message: presented.message });
+  } else if (status.state === "disconnected" && state.phase === "connected") {
+    const presented = presentPaxHold({ event: "dropped", wasReady: true });
+    patch({ phase: "idle", reader: null, battery: null, message: presented.message });
   }
   if (typeof status.batteryPercent === "number") patch({ battery: status.batteryPercent });
 }

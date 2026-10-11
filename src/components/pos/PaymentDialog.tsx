@@ -37,6 +37,7 @@ import {
   checkSellingEntityId,
   decidePaxPick,
   paymentUsesConnectedReader,
+  paxLinkStatusText,
   paxScanPresentation,
   runAndroidPaxSale,
   type PaxReader,
@@ -319,9 +320,8 @@ export function PaymentDialog({ open, onOpenChange, initialMethod }: Props) {
           env: "SB",
         });
         if (!connected.ok) {
-          const message = connected.message || PAX_MSG.disconnect;
-          failPaxConnect(message);
-          setError(message);
+          failPaxConnect(connected.message || PAX_MSG.notConnected);
+          setError(getPaxStationLink().message);
           setBusy(false);
           return;
         }
@@ -330,8 +330,8 @@ export function PaymentDialog({ open, onOpenChange, initialMethod }: Props) {
           typeof connected.batteryPercent === "number" ? connected.batteryPercent : null,
         );
       } catch {
-        failPaxConnect(PAX_MSG.disconnect);
-        setError(PAX_MSG.disconnect);
+        failPaxConnect(PAX_MSG.notConnected);
+        setError(PAX_MSG.notConnected);
       }
       setBusy(false);
     })();
@@ -1444,9 +1444,7 @@ export function PaymentDialog({ open, onOpenChange, initialMethod }: Props) {
                         data-pax-status=""
                         data-pax-connected={pax.phase === "connected" ? pax.reader?.serial ?? "" : ""}
                       >
-                        {pax.phase === "connected" && pax.reader
-                          ? `${PAX_MSG.connected} · ${pax.reader.name}`
-                          : pax.message}
+                        {paxLinkStatusText(pax)}
                         {pax.phase === "connected" && pax.battery != null ? ` · Battery ${pax.battery}%` : ""}
                       </p>
                       <Button type="button" size="sm" variant="outline" disabled={busy} onClick={scanPax}>

@@ -36,8 +36,10 @@ export const PAX_MSG = {
   permissions: "Allow Nearby devices and Location, then scan again.",
   notRegistered: "This reader is not registered to this location.",
   wrongEntity: "This reader is registered to another selling entity.",
+  connecting: "Connecting",
   settingUp: "Setting up reader",
   stillSettingUp: "The reader is still setting up. No charge was sent.",
+  ready: "Reader ready",
   disconnect: "The reader disconnected. The check is not paid. Try again.",
   timeout: "The card read timed out. The check is not paid. Try again.",
   alreadyPaid: "This check is already paid. No second charge was sent.",
@@ -272,6 +274,48 @@ export function decideStationReaderConnect(input: {
     return { ok: false, message: `This station is assigned to ${name}.` };
   }
   return { ok: true, reader, claimSlot: !slot };
+}
+
+/**
+ * Same reader, already accepted, Bluetooth still up.
+ * Selecting it again keeps that link. It does not open a second connection.
+ */
+export function reuseHeldPaxLink(input: {
+  heldReady: boolean;
+  heldConnected: boolean;
+  heldSerial: string | null;
+  serial: string;
+}): boolean {
+  const serial = normalizePaxSerial(input.serial);
+  const held = normalizePaxSerial(String(input.heldSerial ?? ""));
+  return Boolean(input.heldReady && input.heldConnected && serial && held === serial);
+}
+
+/**
+ * Status while a selected D135 is linking.
+ * Connecting, then Reader ready. Setting up reader is only the first key download.
+ * The disconnect line is only after Reader ready, when that link drops.
+ */
+export function presentPaxHold(input: {
+  event: "select" | "processing" | "accepted" | "failed" | "dropped";
+  wasReady: boolean;
+  message?: string;
+}): { message: string; hold: boolean } {
+  if (input.event === "select") return { message: PAX_MSG.connecting, hold: true };
+  if (input.event === "processing") return { message: PAX_MSG.settingUp, hold: true };
+  if (input.event === "accepted") return { message: PAX_MSG.ready, hold: true };
+  if (input.event === "dropped" && input.wasReady) return { message: PAX_MSG.disconnect, hold: false };
+  const text = String(input.message ?? "").trim();
+  if (!text || text === PAX_MSG.disconnect) return { message: PAX_MSG.notConnected, hold: false };
+  return { message: text, hold: false };
+}
+
+/** Shown on the device screen and on Pay. Reader ready stays until the link drops. */
+export function paxLinkStatusText(link: { phase: string; message: string }): string {
+  if (link.phase === "connected") return PAX_MSG.ready;
+  if (link.phase === "connecting") return PAX_MSG.connecting;
+  if (link.phase === "setting_up") return link.message || PAX_MSG.settingUp;
+  return link.message;
 }
 
 /** Pay uses the reader that is already connected. Opening Pay does not clear it. */

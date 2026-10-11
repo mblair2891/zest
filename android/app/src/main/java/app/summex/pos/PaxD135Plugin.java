@@ -35,6 +35,7 @@ import java.lang.reflect.Method;
 import java.util.HashSet;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import org.json.JSONObject;
@@ -65,7 +66,11 @@ public class PaxD135Plugin extends Plugin {
     static final String MSG_BLUETOOTH = "Bluetooth is off, or no reader is in range.";
     static final String MSG_PERMISSION = "Allow Nearby devices and Location, then scan again.";
     static final String MSG_LIVE = "Live cards are not available in this build. Take cash or keep the check open.";
+    static final String MSG_CONNECTING = "Connecting";
     static final String MSG_SETUP = "Setting up reader";
+    static final String MSG_READY = "Reader ready";
+    static final String MSG_DISCONNECT = "The reader disconnected. The check is not paid. Try again.";
+    static final String MSG_NOT_CONNECTED = "Scan for the reader, then pick the registered PAX D135.";
     static final String MSG_STILL_SETUP = "The reader is still setting up. No charge was sent.";
     static final String MSG_ALREADY = "This check is already paid. No second charge was sent.";
     static final String MSG_TIMEOUT = "The card read timed out. The check is not paid. Try again.";
@@ -77,12 +82,22 @@ public class PaxD135Plugin extends Plugin {
 
     private final Set<String> capturedChecks = new HashSet<>();
     private final Handler main = new Handler(Looper.getMainLooper());
+    private final AtomicInteger scanGeneration = new AtomicInteger();
+    /** Held for the process. A new plugin instance must not drop a ready reader. */
+    private static volatile MPOSFinix heldMpos;
+    private static volatile boolean heldReady;
+    private static volatile boolean heldSettingUp;
+    private static volatile String heldName = "";
+    private static volatile String heldAddress = "";
+    private static volatile Integer heldBattery;
     private volatile MPOSFinix mpos;
     private volatile boolean settingUp;
     private volatile boolean connected;
     private volatile Integer batteryPercent;
     private HandlerThread worker;
     private Handler workerHandler;
+    private BroadcastReceiver aclReceiver;
+    private boolean aclRegistered;
 
     @PluginMethod
     public void scan(PluginCall call) {
@@ -144,12 +159,25 @@ public class PaxD135Plugin extends Plugin {
         final String userId = call.getString("userId", "");
         final String password = call.getString("password", "");
         if (serialOf(name) == null || address == null || address.isEmpty()) {
-            resolveMessage(call, "Scan for the reader, then pick the registered PAX D135.");
+            resolveMessage(call, MSG_NOT_CONNECTED);
             return;
         }
-        settingUp = true;
-        connected = false;
-        emit("setting_up", MSG_SETUP, serialOf(name), null);
+        restoreHeld();
+        if (reuseHeld(name, address)) {
+            settingUp = false;
+            connected = true;
+            JSObject ret = new JSObject();
+            ret.put("ok", true);
+            if (batteryPercent != null) ret.put("batteryPercent", batteryPercent);
+            call.resolve(ret);
+            emit("connected", MSG_READY, serialOf(name), batteryPercent);
+            watchAcl();
+            return;
+        }
+        stopScanBeforeConnect();
+        settingUp = false;
+        heldSettingUp = false;
+        emit("connecting", MSG_CONNECTING, serialOf(name), null);
         onWorker(() -> connectOnWorker(call, name, address, merchantId, deviceId, userId, password));
     }
 
@@ -183,12 +211,26 @@ public class PaxD135Plugin extends Plugin {
             call.resolve(ret);
             return;
         }
+        restoreHeld();
         final MPOSFinix current = mpos;
-        if (!connected || current == null || !current.isConnected()) {
+        final boolean wasReady = heldReady || connected;
+        boolean live = false;
+        try {
+            live = current != null && current.isConnected();
+        } catch (Exception ignored) {
+            live = false;
+        }
+        if (!wasReady || !live) {
             JSObject ret = new JSObject();
             ret.put("ok", false);
-            ret.put("code", "disconnect");
-            ret.put("message", "The reader disconnected. The check is not paid. Try again.");
+            if (wasReady) {
+                markDropped();
+                ret.put("code", "disconnect");
+                ret.put("message", MSG_DISCONNECT);
+            } else {
+                ret.put("code", "error");
+                ret.put("message", MSG_NOT_CONNECTED);
+            }
             call.resolve(ret);
             return;
         }
@@ -216,6 +258,7 @@ public class PaxD135Plugin extends Plugin {
         final Runnable timeout = () -> {
             if (!settled.compareAndSet(false, true)) return;
             settingUp = false;
+            heldSettingUp = false;
             connected = false;
             JSObject ret = new JSObject();
             ret.put("ok", false);
@@ -239,6 +282,7 @@ public class PaxD135Plugin extends Plugin {
                 @Override
                 public void onProcessing(String message) {
                     settingUp = true;
+                    heldSettingUp = true;
                     Integer parsed = batteryFrom(message);
                     if (parsed != null) batteryPercent = parsed;
                     emit("setting_up", MSG_SETUP, serialOf(name), batteryPercent);
@@ -249,14 +293,24 @@ public class PaxD135Plugin extends Plugin {
                     if (!settled.compareAndSet(false, true)) return;
                     main.removeCallbacks(timeout);
                     settingUp = false;
+                    heldSettingUp = false;
                     connected = true;
+                    heldReady = true;
+                    heldMpos = next;
+                    heldName = name;
+                    heldAddress = address == null ? "" : address;
+                    mpos = next;
                     Integer level = readBattery(next);
-                    if (level != null) batteryPercent = level;
+                    if (level != null) {
+                        batteryPercent = level;
+                        heldBattery = level;
+                    }
                     JSObject ret = new JSObject();
                     ret.put("ok", true);
                     if (batteryPercent != null) ret.put("batteryPercent", batteryPercent);
                     call.resolve(ret);
-                    emit("connected", "Connected", serialOf(name), batteryPercent);
+                    emit("connected", MSG_READY, serialOf(name), batteryPercent);
+                    watchAcl();
                 }
 
                 @Override
@@ -264,10 +318,11 @@ public class PaxD135Plugin extends Plugin {
                     if (!settled.compareAndSet(false, true)) return;
                     main.removeCallbacks(timeout);
                     settingUp = false;
+                    heldSettingUp = false;
                     connected = false;
                     JSObject ret = new JSObject();
                     ret.put("ok", false);
-                    ret.put("message", errorMessage == null || errorMessage.isEmpty() ? connectFailureMessage() : errorMessage);
+                    ret.put("message", failureBeforeReady(errorMessage));
                     call.resolve(ret);
                     emit("error", ret.getString("message"), serialOf(name), null);
                 }
@@ -276,6 +331,7 @@ public class PaxD135Plugin extends Plugin {
             if (!settled.compareAndSet(false, true)) return;
             main.removeCallbacks(timeout);
             settingUp = false;
+            heldSettingUp = false;
             connected = false;
             JSObject ret = new JSObject();
             ret.put("ok", false);
@@ -380,6 +436,7 @@ public class PaxD135Plugin extends Plugin {
             return;
         }
         emit("scanning", null, null, null);
+        final int generation = scanGeneration.get();
         final Set<String> seen = new HashSet<>();
         final JSArray devices = new JSArray();
         harvestBonded(adapter, devices, seen);
@@ -399,11 +456,19 @@ public class PaxD135Plugin extends Plugin {
         };
         Runnable finish = () -> {
             if (!done.compareAndSet(false, true)) return;
+            boolean ownsRadio = scanGeneration.get() == generation;
             harvestBonded(adapter, devices, seen);
             try {
                 getContext().unregisterReceiver(receiver);
             } catch (Exception ignored) {
                 /* already unregistered */
+            }
+            if (!ownsRadio) {
+                JSObject ret = new JSObject();
+                ret.put("ok", true);
+                ret.put("devices", devices);
+                call.resolve(ret);
+                return;
             }
             try {
                 if (adapter.isDiscovering()) adapter.cancelDiscovery();
@@ -525,7 +590,86 @@ public class PaxD135Plugin extends Plugin {
     }
 
     private String connectFailureMessage() {
-        return bluetoothOn() ? "The reader disconnected. The check is not paid. Try again." : MSG_BLUETOOTH;
+        return bluetoothOn() ? MSG_NOT_CONNECTED : MSG_BLUETOOTH;
+    }
+
+    /** A connect that never reached Reader ready is not a dropped payment. */
+    private String failureBeforeReady(String errorMessage) {
+        String message = errorMessage == null || errorMessage.isEmpty() ? connectFailureMessage() : errorMessage;
+        String lower = message.toLowerCase();
+        if (lower.contains("disconnect")) return MSG_NOT_CONNECTED;
+        return message;
+    }
+
+    private void restoreHeld() {
+        if (mpos == null && heldMpos != null) mpos = heldMpos;
+        if (heldBattery != null) batteryPercent = heldBattery;
+        if (heldReady) connected = true;
+        if (heldSettingUp) settingUp = true;
+    }
+
+    private boolean reuseHeld(String name, String address) {
+        MPOSFinix current = heldMpos;
+        if (!heldReady || current == null || name == null || !name.equals(heldName)) return false;
+        if (address != null && !address.isEmpty() && heldAddress != null && !heldAddress.isEmpty() && !address.equals(heldAddress)) {
+            return false;
+        }
+        try {
+            return current.isConnected();
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
+    /** End discovery before connect. A late scan finish must not cancel the new link. */
+    private void stopScanBeforeConnect() {
+        scanGeneration.incrementAndGet();
+        BluetoothAdapter adapter = bluetoothAdapter();
+        if (adapter == null) return;
+        try {
+            if (adapter.isDiscovering()) adapter.cancelDiscovery();
+        } catch (SecurityException ignored) {
+            /* discovery already stopped */
+        }
+    }
+
+    private void markDropped() {
+        heldReady = false;
+        connected = false;
+        settingUp = false;
+        heldSettingUp = false;
+        emit("disconnected", MSG_DISCONNECT, serialOf(heldName), null);
+    }
+
+    private void watchAcl() {
+        if (aclRegistered || getContext() == null) return;
+        aclReceiver = new BroadcastReceiver() {
+            @Override
+            public void onReceive(Context context, Intent intent) {
+                if (intent == null || !BluetoothDevice.ACTION_ACL_DISCONNECTED.equals(intent.getAction())) return;
+                if (!heldReady) return;
+                BluetoothDevice device = intent.getParcelableExtra(BluetoothDevice.EXTRA_DEVICE);
+                String address = "";
+                try {
+                    address = device == null || device.getAddress() == null ? "" : device.getAddress();
+                } catch (SecurityException ignored) {
+                    address = "";
+                }
+                if (heldAddress == null || heldAddress.isEmpty() || address.isEmpty() || !heldAddress.equals(address)) return;
+                markDropped();
+            }
+        };
+        IntentFilter filter = new IntentFilter(BluetoothDevice.ACTION_ACL_DISCONNECTED);
+        try {
+            if (Build.VERSION.SDK_INT >= 33) {
+                getContext().registerReceiver(aclReceiver, filter, Context.RECEIVER_NOT_EXPORTED);
+            } else {
+                getContext().registerReceiver(aclReceiver, filter);
+            }
+            aclRegistered = true;
+        } catch (Exception ignored) {
+            /* the next sale still checks isConnected */
+        }
     }
 
     private void resolveMessage(PluginCall call, String message) {

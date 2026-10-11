@@ -5,6 +5,9 @@ import {
   PAX_MODEL,
   PAX_MSG,
   connectedReaderForPayment,
+  paxLinkStatusText,
+  presentPaxHold,
+  reuseHeldPaxLink,
   decideStationReaderConnect,
   paxScanPresentation,
   paymentUsesConnectedReader,
@@ -242,4 +245,49 @@ test("the printer probe connects without a payload and the reader timeout stays"
   assert.match(pax, /CONNECT_TIMEOUT_MS = 4L \* 60L \* 1000L/);
   assert.match(pax, /Allow Nearby devices and Location, then scan again\./);
   assert.match(pax, /Bluetooth is off, or no reader is in range\./);
+  assert.match(pax, /static final String MSG_CONNECTING = "Connecting"/);
+  assert.match(pax, /static final String MSG_READY = "Reader ready"/);
+  assert.equal(pax.includes(".disconnect("), false);
+  assert.match(pax, /stopScanBeforeConnect/);
+});
+
+test("selecting a D135 holds the link and Reader ready stays", () => {
+  assert.equal(presentPaxHold({ event: "select", wasReady: false }).message, "Connecting");
+  assert.equal(presentPaxHold({ event: "processing", wasReady: false }).message, "Setting up reader");
+  const ready = presentPaxHold({ event: "accepted", wasReady: false });
+  assert.equal(ready.message, "Reader ready");
+  assert.equal(ready.hold, true);
+  assert.equal(paxLinkStatusText({ phase: "connected", message: "Reader ready" }), "Reader ready");
+  assert.equal(paxLinkStatusText({ phase: "connecting", message: "Connecting" }), "Connecting");
+
+  const early = presentPaxHold({
+    event: "failed",
+    wasReady: false,
+    message: "The reader disconnected. The check is not paid. Try again.",
+  });
+  assert.equal(early.message, PAX_MSG.notConnected);
+  assert.equal(early.hold, false);
+
+  const dropped = presentPaxHold({ event: "dropped", wasReady: true });
+  assert.equal(dropped.message, "The reader disconnected. The check is not paid. Try again.");
+  assert.equal(dropped.hold, false);
+
+  assert.equal(
+    reuseHeldPaxLink({
+      heldReady: true,
+      heldConnected: true,
+      heldSerial: "1890297422",
+      serial: "1890297422",
+    }),
+    true,
+  );
+  assert.equal(
+    reuseHeldPaxLink({
+      heldReady: false,
+      heldConnected: true,
+      heldSerial: "1890297422",
+      serial: "1890297422",
+    }),
+    false,
+  );
 });
