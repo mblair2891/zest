@@ -40,6 +40,7 @@ import {
   paxLinkStatusText,
   paxScanPresentation,
   runAndroidPaxSale,
+  runPaxConnect,
   type PaxReader,
   type PaxScanRow,
 } from "@/lib/payments/pax-d135";
@@ -310,17 +311,19 @@ export function PaymentDialog({ open, onOpenChange, initialMethod }: Props) {
           return;
         }
         const { connectForPaxReader } = await import("@/lib/payments/pax-d135-native");
-        const connected = await connectForPaxReader({
-          name: row.name,
-          address: row.address,
-          merchantId: session.merchantId,
-          deviceId: session.deviceId,
-          userId: session.userId,
-          password: session.password,
-          env: "SB",
-        });
+        const connected = await runPaxConnect(() =>
+          connectForPaxReader({
+            name: row.name,
+            address: row.address,
+            merchantId: session.merchantId,
+            deviceId: session.deviceId,
+            userId: session.userId,
+            password: session.password,
+            env: "SB",
+          }),
+        );
         if (!connected.ok) {
-          failPaxConnect(connected.message || PAX_MSG.notConnected);
+          failPaxConnect(connected.message || PAX_MSG.connectNoResponse);
           setError(getPaxStationLink().message);
           setBusy(false);
           return;
@@ -330,8 +333,8 @@ export function PaymentDialog({ open, onOpenChange, initialMethod }: Props) {
           typeof connected.batteryPercent === "number" ? connected.batteryPercent : null,
         );
       } catch {
-        failPaxConnect(PAX_MSG.notConnected);
-        setError(PAX_MSG.notConnected);
+        failPaxConnect(PAX_MSG.connectNoResponse);
+        setError(getPaxStationLink().message);
       }
       setBusy(false);
     })();

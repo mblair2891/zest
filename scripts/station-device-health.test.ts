@@ -6,8 +6,11 @@ import {
   PAX_MSG,
   connectedReaderForPayment,
   paxLinkStatusText,
+  paxConnectFailureReason,
+  paxConnectShouldRetry,
   presentPaxHold,
   reuseHeldPaxLink,
+  runPaxConnect,
   decideStationReaderConnect,
   paxScanPresentation,
   paymentUsesConnectedReader,
@@ -247,11 +250,16 @@ test("the printer probe connects without a payload and the reader timeout stays"
   assert.match(pax, /Bluetooth is off, or no reader is in range\./);
   assert.match(pax, /static final String MSG_CONNECTING = "Connecting"/);
   assert.match(pax, /static final String MSG_READY = "Reader ready"/);
+  assert.match(pax, /static final String MSG_CONNECT_TIMEOUT = "The connection timed out."/);
+  assert.match(pax, /static final String MSG_CONNECT_REJECTED = "The reader rejected the connection."/);
+  assert.match(pax, /static final String MSG_NO_RESPONSE = "The reader did not respond."/);
+  const beforeReady = pax.slice(pax.indexOf("String failureBeforeReady"), pax.indexOf("private void restoreHeld"));
+  assert.equal(beforeReady.includes("MSG_NOT_CONNECTED"), false);
   assert.equal(pax.includes(".disconnect("), false);
   assert.match(pax, /stopScanBeforeConnect/);
 });
 
-test("selecting a D135 holds the link and Reader ready stays", () => {
+test("selecting a D135 holds the link and Reader ready stays", async () => {
   assert.equal(presentPaxHold({ event: "select", wasReady: false }).message, "Connecting");
   assert.equal(presentPaxHold({ event: "processing", wasReady: false }).message, "Setting up reader");
   const ready = presentPaxHold({ event: "accepted", wasReady: false });
@@ -265,8 +273,42 @@ test("selecting a D135 holds the link and Reader ready stays", () => {
     wasReady: false,
     message: "The reader disconnected. The check is not paid. Try again.",
   });
-  assert.equal(early.message, PAX_MSG.notConnected);
+  assert.equal(early.message, PAX_MSG.connectNoResponse);
+  assert.notEqual(early.message, PAX_MSG.notConnected);
   assert.equal(early.hold, false);
+  assert.equal(paxConnectFailureReason("timed out waiting"), PAX_MSG.connectTimeout);
+  assert.equal(paxConnectFailureReason("reader rejected the link"), PAX_MSG.connectRejected);
+  assert.equal(paxConnectFailureReason(PAX_MSG.permissions), PAX_MSG.permissions);
+  assert.equal(paxConnectFailureReason(PAX_MSG.notConnected), PAX_MSG.connectNoResponse);
+  assert.equal(paxConnectShouldRetry(PAX_MSG.connectTimeout), true);
+  assert.equal(paxConnectShouldRetry(PAX_MSG.permissions), false);
+
+  let calls = 0;
+  const retried = await runPaxConnect(async () => {
+    calls += 1;
+    if (calls === 1) return { ok: false, message: "timeout" };
+    return { ok: true, batteryPercent: 80 };
+  });
+  assert.equal(calls, 2);
+  assert.equal(retried.ok, true);
+
+  let denied = 0;
+  const permission = await runPaxConnect(async () => {
+    denied += 1;
+    return { ok: false, message: PAX_MSG.permissions };
+  });
+  assert.equal(denied, 1);
+  assert.equal(permission.message, PAX_MSG.permissions);
+
+  let failed = 0;
+  const reported = await runPaxConnect(async () => {
+    failed += 1;
+    return { ok: false, message: failed === 1 ? "" : "rejected by reader" };
+  });
+  assert.equal(failed, 2);
+  assert.equal(reported.ok, false);
+  assert.equal(reported.message, PAX_MSG.connectRejected);
+  assert.notEqual(reported.message, PAX_MSG.notConnected);
 
   const dropped = presentPaxHold({ event: "dropped", wasReady: true });
   assert.equal(dropped.message, "The reader disconnected. The check is not paid. Try again.");

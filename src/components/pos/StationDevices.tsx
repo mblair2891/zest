@@ -7,6 +7,7 @@ import {
   decideStationReaderConnect,
   paxLinkStatusText,
   paxScanPresentation,
+  runPaxConnect,
   type PaxReader,
   type PaxScanRow,
 } from "@/lib/payments/pax-d135";
@@ -273,17 +274,19 @@ function StationDeviceScreen({ onClose }: { onClose: () => void }) {
           setBusy(false);
           return;
         }
-        const connected = await connectForPaxReader({
-          name: row.name,
-          address: row.address,
-          merchantId: session.merchantId,
-          deviceId: session.deviceId,
-          userId: session.userId,
-          password: session.password,
-          env: "SB",
-        });
+        const connected = await runPaxConnect(() =>
+          connectForPaxReader({
+            name: row.name,
+            address: row.address,
+            merchantId: session.merchantId,
+            deviceId: session.deviceId,
+            userId: session.userId,
+            password: session.password,
+            env: "SB",
+          }),
+        );
         if (!connected.ok) {
-          failPaxConnect(connected.message || PAX_MSG.notConnected);
+          failPaxConnect(connected.message || PAX_MSG.connectNoResponse);
           setBusy(false);
           return;
         }
@@ -320,7 +323,7 @@ function StationDeviceScreen({ onClose }: { onClose: () => void }) {
           }
         }
       } catch {
-        failPaxConnect(PAX_MSG.notConnected);
+        failPaxConnect(PAX_MSG.connectNoResponse);
       }
       setBusy(false);
     })();

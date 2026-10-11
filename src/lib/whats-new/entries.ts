@@ -6,6 +6,18 @@ import type { GuideUpdate } from "@/lib/guide/types";
  */
 export const WHATS_NEW_ENTRIES: GuideUpdate[] = [
   {
+    id: "upd_2026_10_244_d135_connect_result",
+    date: "2026-10-11",
+    title: "D135 connect result",
+    summary: "Selecting a PAX D135 shows Reader ready or the reason the link failed.",
+    body: "Selecting a discovered PAX D135 keeps the Bluetooth link open and shows the real result. Success shows Reader ready and clears the banner. Failure shows the exact reason: the connection timed out, the reader rejected the connection, the reader did not respond, or Allow Nearby devices and Location, then scan again. The station does not return to the scan prompt. The first connection allows the D135 its initial key download and retries once before reporting failure. A ready reader stays available for payment.",
+    roles: ["owner_manager", "server", "host_operator", "vendor_operator"],
+    surfaces: ["settings"],
+    audience: "all",
+    topicId: "pax-card-reader",
+    tags: ["devices", "payments"],
+  },
+  {
     id: "upd_2026_10_243_d135_connect_hold",
     date: "2026-10-11",
     title: "D135 connection hold",

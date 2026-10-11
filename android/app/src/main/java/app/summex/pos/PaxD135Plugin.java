@@ -69,6 +69,9 @@ public class PaxD135Plugin extends Plugin {
     static final String MSG_CONNECTING = "Connecting";
     static final String MSG_SETUP = "Setting up reader";
     static final String MSG_READY = "Reader ready";
+    static final String MSG_CONNECT_TIMEOUT = "The connection timed out.";
+    static final String MSG_CONNECT_REJECTED = "The reader rejected the connection.";
+    static final String MSG_NO_RESPONSE = "The reader did not respond.";
     static final String MSG_DISCONNECT = "The reader disconnected. The check is not paid. Try again.";
     static final String MSG_NOT_CONNECTED = "Scan for the reader, then pick the registered PAX D135.";
     static final String MSG_STILL_SETUP = "The reader is still setting up. No charge was sent.";
@@ -159,7 +162,7 @@ public class PaxD135Plugin extends Plugin {
         final String userId = call.getString("userId", "");
         final String password = call.getString("password", "");
         if (serialOf(name) == null || address == null || address.isEmpty()) {
-            resolveMessage(call, MSG_NOT_CONNECTED);
+            resolveMessage(call, MSG_NO_RESPONSE);
             return;
         }
         restoreHeld();
@@ -262,7 +265,7 @@ public class PaxD135Plugin extends Plugin {
             connected = false;
             JSObject ret = new JSObject();
             ret.put("ok", false);
-            ret.put("message", MSG_TIMEOUT);
+            ret.put("message", MSG_CONNECT_TIMEOUT);
             call.resolve(ret);
         };
         main.postDelayed(timeout, CONNECT_TIMEOUT_MS);
@@ -590,14 +593,26 @@ public class PaxD135Plugin extends Plugin {
     }
 
     private String connectFailureMessage() {
-        return bluetoothOn() ? MSG_NOT_CONNECTED : MSG_BLUETOOTH;
+        return bluetoothOn() ? MSG_NO_RESPONSE : MSG_BLUETOOTH;
     }
 
-    /** A connect that never reached Reader ready is not a dropped payment. */
+    /** A connect that never reached Reader ready names the reason. It is not the scan prompt. */
     private String failureBeforeReady(String errorMessage) {
-        String message = errorMessage == null || errorMessage.isEmpty() ? connectFailureMessage() : errorMessage;
+        if (!bluetoothOn()) return MSG_BLUETOOTH;
+        String message = errorMessage == null ? "" : errorMessage.trim();
         String lower = message.toLowerCase();
-        if (lower.contains("disconnect")) return MSG_NOT_CONNECTED;
+        if (message.equals(MSG_PERMISSION) || lower.contains("permission") || lower.contains("nearby devices")) {
+            return MSG_PERMISSION;
+        }
+        if (message.equals(MSG_CONNECT_TIMEOUT) || lower.contains("timeout") || lower.contains("timed out")) {
+            return MSG_CONNECT_TIMEOUT;
+        }
+        if (message.equals(MSG_CONNECT_REJECTED) || lower.contains("reject") || lower.contains("refused") || lower.contains("unauthorized")) {
+            return MSG_CONNECT_REJECTED;
+        }
+        if (message.isEmpty() || message.equals(MSG_NO_RESPONSE) || lower.contains("disconnect") || lower.contains("no response") || lower.contains("scan for the reader")) {
+            return MSG_NO_RESPONSE;
+        }
         return message;
     }
 

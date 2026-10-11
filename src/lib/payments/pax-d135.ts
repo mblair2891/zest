@@ -40,6 +40,9 @@ export const PAX_MSG = {
   settingUp: "Setting up reader",
   stillSettingUp: "The reader is still setting up. No charge was sent.",
   ready: "Reader ready",
+  connectTimeout: "The connection timed out.",
+  connectRejected: "The reader rejected the connection.",
+  connectNoResponse: "The reader did not respond.",
   disconnect: "The reader disconnected. The check is not paid. Try again.",
   timeout: "The card read timed out. The check is not paid. Try again.",
   alreadyPaid: "This check is already paid. No second charge was sent.",
@@ -292,8 +295,85 @@ export function reuseHeldPaxLink(input: {
 }
 
 /**
+ * Connect result after a selected D135 answers.
+ * Empty, the scan prompt, or a drop before Reader ready is no response.
+ * Permission, timeout, and rejected stay named. Other operator sentences stay as written.
+ */
+export function paxConnectFailureReason(message?: string | null): string {
+  const text = String(message ?? "").trim();
+  const lower = text.toLowerCase();
+  if (text === PAX_MSG.permissions || lower.includes("nearby devices") || lower.includes("permission")) {
+    return PAX_MSG.permissions;
+  }
+  if (text === PAX_MSG.bluetooth || lower === PAX_MSG.bluetooth.toLowerCase()) return PAX_MSG.bluetooth;
+  if (text === PAX_MSG.connectTimeout || lower.includes("timeout") || lower.includes("timed out")) {
+    return PAX_MSG.connectTimeout;
+  }
+  if (
+    text === PAX_MSG.connectRejected ||
+    lower.includes("reject") ||
+    lower.includes("refused") ||
+    lower.includes("unauthorized")
+  ) {
+    return PAX_MSG.connectRejected;
+  }
+  if (
+    !text ||
+    text === PAX_MSG.notConnected ||
+    text === PAX_MSG.disconnect ||
+    text === PAX_MSG.connectNoResponse ||
+    lower.includes("no response") ||
+    lower.includes("did not respond") ||
+    lower.includes("disconnect")
+  ) {
+    return PAX_MSG.connectNoResponse;
+  }
+  return text;
+}
+
+/** First connection retries once. Permission and a named operator refusal do not. */
+export function paxConnectShouldRetry(message?: string | null): boolean {
+  const reason = paxConnectFailureReason(message);
+  return (
+    reason === PAX_MSG.connectTimeout ||
+    reason === PAX_MSG.connectRejected ||
+    reason === PAX_MSG.connectNoResponse
+  );
+}
+
+export type PaxConnectCallResult = {
+  ok: boolean;
+  message?: string;
+  batteryPercent?: number | null;
+};
+
+/**
+ * One connect, then one retry when the first result is timeout, rejected, or no response.
+ * The retry still allows the D135 its key download. The reported line is the last result.
+ */
+export async function runPaxConnect(
+  connect: () => Promise<PaxConnectCallResult>,
+): Promise<PaxConnectCallResult> {
+  let last: string = PAX_MSG.connectNoResponse;
+  for (let attempt = 0; attempt < 2; attempt += 1) {
+    try {
+      const result = await connect();
+      if (result.ok) return result;
+      last = paxConnectFailureReason(result.message);
+      if (!paxConnectShouldRetry(result.message)) {
+        return { ok: false, message: last, batteryPercent: null };
+      }
+    } catch {
+      last = PAX_MSG.connectNoResponse;
+    }
+  }
+  return { ok: false, message: last, batteryPercent: null };
+}
+
+/**
  * Status while a selected D135 is linking.
  * Connecting, then Reader ready. Setting up reader is only the first key download.
+ * A failure names timeout, rejected, no response, or permission. It does not return to the scan prompt.
  * The disconnect line is only after Reader ready, when that link drops.
  */
 export function presentPaxHold(input: {
@@ -305,9 +385,7 @@ export function presentPaxHold(input: {
   if (input.event === "processing") return { message: PAX_MSG.settingUp, hold: true };
   if (input.event === "accepted") return { message: PAX_MSG.ready, hold: true };
   if (input.event === "dropped" && input.wasReady) return { message: PAX_MSG.disconnect, hold: false };
-  const text = String(input.message ?? "").trim();
-  if (!text || text === PAX_MSG.disconnect) return { message: PAX_MSG.notConnected, hold: false };
-  return { message: text, hold: false };
+  return { message: paxConnectFailureReason(input.message), hold: false };
 }
 
 /** Shown on the device screen and on Pay. Reader ready stays until the link drops. */
