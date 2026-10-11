@@ -118,7 +118,11 @@ export function notePaxStatus(status: {
     const presented = presentPaxHold({ event: "select", wasReady: false });
     patch({ phase: "connecting", message: presented.message });
   } else if (status.state === "setting_up") {
-    const presented = presentPaxHold({ event: "processing", wasReady: false });
+    const presented = presentPaxHold({
+      event: "processing",
+      wasReady: false,
+      message: status.message,
+    });
     patch({ phase: "setting_up", message: presented.message });
   } else if (status.state === "connected") {
     const presented = presentPaxHold({ event: "accepted", wasReady: true });

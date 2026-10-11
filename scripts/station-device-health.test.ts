@@ -4,6 +4,8 @@ import { readFileSync } from "node:fs";
 import {
   PAX_MODEL,
   PAX_MSG,
+  PAX_SANDBOX_DEVICE_ID,
+  paxSdkDeviceId,
   connectedReaderForPayment,
   paxLinkStatusText,
   paxConnectFailureReason,
@@ -245,6 +247,15 @@ test("the printer probe connects without a payload and the reader timeout stays"
     new URL("../android/app/src/main/java/app/summex/pos/PaxD135Plugin.java", import.meta.url),
     "utf8",
   );
+  assert.match(pax, /DVt7ZpgavajgoPUHCX967Ser/);
+  assert.match(pax, /next\.connect\(name, address,/);
+  assert.match(pax, /EnvEnum\.SB/);
+  assert.match(pax, /keyDownloadProgress/);
+  const gradle = readFileSync(
+    new URL("../android/app/build.gradle", import.meta.url),
+    "utf8",
+  );
+  assert.match(gradle, /com\.finix:pax-mpos-sdk-android/);
   assert.match(pax, /FIRST_RESPONSE_MS = 15_000L/);
   assert.match(pax, /CONNECT_TIMEOUT_MS = 4L \* 60L \* 1000L/);
   assert.match(pax, /Allow Nearby devices and Location, then scan again\./);
@@ -263,8 +274,25 @@ test("the printer probe connects without a payload and the reader timeout stays"
 });
 
 test("selecting a D135 holds the link and Reader ready stays", async () => {
+  assert.equal(paxSdkDeviceId("DV_sandbox_local"), PAX_SANDBOX_DEVICE_ID);
+  assert.equal(paxSdkDeviceId("DVsandbox1890"), PAX_SANDBOX_DEVICE_ID);
+  assert.equal(paxSdkDeviceId(""), PAX_SANDBOX_DEVICE_ID);
+  assert.equal(paxSdkDeviceId(PAX_SANDBOX_DEVICE_ID), PAX_SANDBOX_DEVICE_ID);
+  assert.equal(paxSdkDeviceId("DV9"), "DV9");
   assert.equal(presentPaxHold({ event: "select", wasReady: false }).message, "Connecting");
   assert.equal(presentPaxHold({ event: "processing", wasReady: false }).message, "Setting up reader");
+  assert.equal(
+    presentPaxHold({
+      event: "processing",
+      wasReady: false,
+      message: "Downloading EMV files to device",
+    }).message,
+    "Downloading EMV files to device",
+  );
+  assert.equal(
+    paxLinkStatusText({ phase: "setting_up", message: "Downloading EMV files to device" }),
+    "Downloading EMV files to device",
+  );
   const ready = presentPaxHold({ event: "accepted", wasReady: false });
   assert.equal(ready.message, "Reader ready");
   assert.equal(ready.hold, true);

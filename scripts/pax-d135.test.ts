@@ -288,6 +288,8 @@ test("the PAX path does not use Web Bluetooth or Stripe", () => {
   assert.doesNotMatch(server, /\/transfers|authorizeCardPresent|captureCardPresent/);
   const plugin = readFileSync("android/app/src/main/java/app/summex/pos/PaxD135Plugin.java", "utf8");
   assert.match(plugin, /PAX D135_/);
+  assert.match(plugin, /DVt7ZpgavajgoPUHCX967Ser/);
+  assert.match(plugin, /next\.connect\(name, address,/);
   assert.match(plugin, /EnvEnum\.SB/);
   assert.doesNotMatch(plugin, /EnvEnum\.PROD/);
   assert.match(plugin, /requestPermissionForAliases/);

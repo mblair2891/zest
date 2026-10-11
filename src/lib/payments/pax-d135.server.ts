@@ -15,6 +15,7 @@ import {
   envBlock,
   normalizePaxSerial,
   parsePaxReaders,
+  paxSdkDeviceId,
   placePaxReader,
   readerForSerial,
   renamePaxReader,
@@ -166,7 +167,7 @@ export async function paxReaderSession(
   return {
     ok: true,
     merchantId: reader.finixMerchantId,
-    deviceId: reader.finixDeviceId,
+    deviceId: paxSdkDeviceId(reader.finixDeviceId),
     userId: login.userId,
     password: login.password,
     env: "SB",

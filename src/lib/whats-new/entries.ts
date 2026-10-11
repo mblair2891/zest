@@ -6,6 +6,18 @@ import type { GuideUpdate } from "@/lib/guide/types";
  */
 export const WHATS_NEW_ENTRIES: GuideUpdate[] = [
   {
+    id: "upd_2026_10_246_finix_sdk_connect",
+    date: "2026-10-11",
+    title: "Finix SDK connect",
+    summary: "Selecting a PAX D135 opens the Finix connection and shows key-download progress or the callback error.",
+    body: "Selecting a discovered PAX D135 opens the Finix connection in the station app. The station uses the sandbox login, the selling entity’s merchant, and that reader’s device, then connects with the Bluetooth name and address. The first connection shows the key-download progress. Success shows Reader ready and clears the banner. A failure shows the Finix callback. A ready reader stays available for the next card payment.",
+    roles: ["owner_manager", "server", "host_operator", "vendor_operator"],
+    surfaces: ["settings"],
+    audience: "all",
+    topicId: "pax-card-reader",
+    tags: ["devices", "payments"],
+  },
+  {
     id: "upd_2026_10_245_finix_pax_connect",
     date: "2026-10-11",
     title: "Finix PAX D135 connect",

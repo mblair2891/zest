@@ -6,6 +6,11 @@
 
 export const PAX_NAME_PREFIX = "PAX D135_";
 export const PAX_MODEL = "PAX_D135" as const;
+/**
+ * Sandbox device the station app passes to MPOSFinix.
+ * A local DV_sandbox placeholder is not a processor device.
+ */
+export const PAX_SANDBOX_DEVICE_ID = "DVt7ZpgavajgoPUHCX967Ser";
 export const PAX_SDK_ENV = "SB" as const;
 
 export type PaxReaderEnv = "sandbox" | "live";
@@ -170,6 +175,16 @@ export function paxDeviceRequest(serial: string, name: string): {
     description: `PAX D135 ${clean}`,
     integration_mode: "PAYMENT_APP",
   };
+}
+
+/**
+ * Device id for the Finix Android SDK. A stored processor id is kept.
+ * A blank or local sandbox placeholder uses the sandbox D135 device.
+ */
+export function paxSdkDeviceId(stored?: string | null): string {
+  const id = String(stored ?? "").trim();
+  if (!id || /sandbox/i.test(id)) return PAX_SANDBOX_DEVICE_ID;
+  return id;
 }
 
 export function readerForSerial(readers: PaxReader[], serial: string): PaxReader | null {
@@ -374,8 +389,8 @@ export async function runPaxConnect(
 
 /**
  * Status while a selected D135 is linking.
- * Connecting, then Reader ready. Setting up reader is only the first key download.
- * A failure shows the Finix or Bluetooth reason. It does not say the reader did not respond.
+ * Connecting, then Reader ready. Key download shows each Finix progress line.
+ * A failure shows the Finix callback. It does not say the reader did not respond.
  * The disconnect line is only after Reader ready, when that link drops.
  */
 export function presentPaxHold(input: {
@@ -384,7 +399,10 @@ export function presentPaxHold(input: {
   message?: string;
 }): { message: string; hold: boolean } {
   if (input.event === "select") return { message: PAX_MSG.connecting, hold: true };
-  if (input.event === "processing") return { message: PAX_MSG.settingUp, hold: true };
+  if (input.event === "processing") {
+    const progress = String(input.message ?? "").trim();
+    return { message: progress || PAX_MSG.settingUp, hold: true };
+  }
   if (input.event === "accepted") return { message: PAX_MSG.ready, hold: true };
   if (input.event === "dropped" && input.wasReady) return { message: PAX_MSG.disconnect, hold: false };
   return { message: paxConnectFailureReason(input.message), hold: false };

@@ -68,6 +68,8 @@ public class PaxD135Plugin extends Plugin {
     static final String MSG_LIVE = "Live cards are not available in this build. Take cash or keep the check open.";
     static final String MSG_CONNECTING = "Connecting";
     static final String MSG_SETUP = "Setting up reader";
+    /** Sandbox device for MPOSFinix when the stored id is still a local placeholder. */
+    static final String SANDBOX_DEVICE_ID = "DVt7ZpgavajgoPUHCX967Ser";
     static final String MSG_READY = "Reader ready";
     static final String MSG_CONNECT_TIMEOUT = "The connection timed out.";
     static final String MSG_CONNECT_REJECTED = "The reader rejected the connection.";
@@ -276,7 +278,7 @@ public class PaxD135Plugin extends Plugin {
             MerchantData data = new MerchantData(
                 merchantId == null ? "" : merchantId,
                 "",
-                deviceId == null ? "" : deviceId,
+                sdkDeviceId(deviceId),
                 Currency.USD,
                 EnvEnum.SB,
                 userId == null ? "" : userId,
@@ -298,7 +300,7 @@ public class PaxD135Plugin extends Plugin {
                     heldSettingUp = true;
                     Integer parsed = batteryFrom(message);
                     if (parsed != null) batteryPercent = parsed;
-                    emit("setting_up", MSG_SETUP, serialOf(name), batteryPercent);
+                    emit("setting_up", keyDownloadProgress(message), serialOf(name), batteryPercent);
                 }
 
                 @Override
@@ -601,6 +603,20 @@ public class PaxD135Plugin extends Plugin {
     private String[] scanAliases() {
         if (Build.VERSION.SDK_INT >= 31) return new String[] { "bluetooth", "location" };
         return new String[] { "location" };
+    }
+
+    /** A local placeholder is not the processor device. The SDK still uses Environment.SB. */
+    private static String sdkDeviceId(String deviceId) {
+        String id = deviceId == null ? "" : deviceId.trim();
+        if (id.isEmpty() || id.toLowerCase().contains("sandbox")) return SANDBOX_DEVICE_ID;
+        return id;
+    }
+
+    /** Key-download callbacks stay as Finix wrote them. A blank line is Setting up reader. */
+    private static String keyDownloadProgress(String message) {
+        String text = message == null ? "" : message.trim();
+        if (text.isEmpty()) return MSG_SETUP;
+        return text;
     }
 
     /**
