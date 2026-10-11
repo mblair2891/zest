@@ -353,6 +353,61 @@ export function paxConnectFailureReason(message?: string | null): string {
   return text;
 }
 
+/**
+ * The credential or environment MPOSFinix was given.
+ * The password value is never included. Environment SB is the station default.
+ */
+export function finixFailedCredential(input: {
+  userId: string;
+  password: string;
+  merchantId: string;
+  deviceId: string;
+  env: string;
+}): string {
+  const env = String(input.env ?? "").trim() || "SB";
+  const userId = String(input.userId ?? "").trim();
+  const merchantId = String(input.merchantId ?? "").trim();
+  const deviceId = String(input.deviceId ?? "").trim();
+  if (env !== "SB") return `Environment ${env}.`;
+  if (!userId.startsWith("US")) return "Finix sandbox username.";
+  if (!String(input.password ?? "").trim()) return "Finix sandbox password.";
+  if (!merchantId.startsWith("MU")) return "merchant ID.";
+  if (!deviceId.startsWith("DV")) return deviceId ? `device ID ${deviceId}.` : "device ID.";
+  return "Finix sandbox password.";
+}
+
+/** Keep the exact Finix Unauthorized text and name the credential or environment. */
+export function finixUnauthorizedBanner(input: {
+  message?: string | null;
+  userId: string;
+  password: string;
+  merchantId: string;
+  deviceId: string;
+  env: string;
+}): string | null {
+  const text = String(input.message ?? "").replace(/\s+/g, " ").trim();
+  if (!/unauthorized/i.test(text)) return null;
+  if (
+    /Finix sandbox username|Finix sandbox password|merchant ID|device ID|Environment /.test(text)
+  ) {
+    return text;
+  }
+  const head = /[.!?]$/.test(text) ? text : `${text}.`;
+  return `${head} ${finixFailedCredential(input)}`;
+}
+
+/** Connect failure for the station banner. Unauthorized names the credential. Other results stay. */
+export function presentFinixConnectFailure(input: {
+  message?: string | null;
+  userId: string;
+  password: string;
+  merchantId: string;
+  deviceId: string;
+  env: string;
+}): string {
+  return finixUnauthorizedBanner(input) ?? paxConnectFailureReason(input.message);
+}
+
 /** Retry once when the first open did not get a Finix answer. A named Finix error is the result. */
 export function paxConnectShouldRetry(message?: string | null): boolean {
   const text = String(message ?? "").trim();

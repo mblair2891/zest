@@ -337,7 +337,7 @@ public class PaxD135Plugin extends Plugin {
                     connected = false;
                     JSObject ret = new JSObject();
                     ret.put("ok", false);
-                    ret.put("message", finixConnectReason(errorMessage));
+                    ret.put("message", finixUnauthorized(finixConnectReason(errorMessage), userId, password, merchantId, deviceId));
                     call.resolve(ret);
                     emit("error", ret.getString("message"), serialOf(name), null);
                 }
@@ -351,7 +351,7 @@ public class PaxD135Plugin extends Plugin {
             String detail = e.getMessage() == null ? "" : e.getMessage().trim();
             JSObject ret = new JSObject();
             ret.put("ok", false);
-            ret.put("message", finixConnectReason(detail.isEmpty() ? "Exception during connection" : detail));
+            ret.put("message", finixUnauthorized(finixConnectReason(detail.isEmpty() ? "Exception during connection" : detail), userId, password, merchantId, deviceId));
             call.resolve(ret);
         }
     }
@@ -632,6 +632,36 @@ public class PaxD135Plugin extends Plugin {
             return MSG_CONNECT_TIMEOUT;
         }
         return message;
+    }
+
+    /**
+     * Unauthorized stays in Finix’s words. The banner names the credential or Environment SB.
+     * The password value is not written into the message.
+     */
+    private String finixUnauthorized(String reason, String userId, String password, String merchantId, String deviceId) {
+        if (reason == null || !reason.toLowerCase().contains("unauthorized")) return reason;
+        String lower = reason.toLowerCase();
+        if (lower.contains("finix sandbox username")
+            || lower.contains("finix sandbox password")
+            || lower.contains("merchant id")
+            || lower.contains("device id")
+            || lower.contains("environment ")) {
+            return reason;
+        }
+        String head = reason;
+        if (!head.endsWith(".") && !head.endsWith("!") && !head.endsWith("?")) head = head + ".";
+        return head + " " + failedFinixCredential(userId, password, merchantId, deviceId);
+    }
+
+    private static String failedFinixCredential(String userId, String password, String merchantId, String deviceId) {
+        String user = userId == null ? "" : userId.trim();
+        String merchant = merchantId == null ? "" : merchantId.trim();
+        String device = deviceId == null ? "" : deviceId.trim();
+        if (!user.startsWith("US")) return "Finix sandbox username.";
+        if (password == null || password.trim().isEmpty()) return "Finix sandbox password.";
+        if (!merchant.startsWith("MU")) return "merchant ID.";
+        if (!device.startsWith("DV")) return device.isEmpty() ? "device ID." : "device ID " + device + ".";
+        return "Finix sandbox password.";
     }
 
     private void restoreHeld() {

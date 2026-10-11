@@ -108,6 +108,18 @@ export const paxReaderSessionFn = createServerFn({ method: "POST" })
     return paxReaderSession(context.userId, data);
   });
 
+export const finixConnectAuthFn = createServerFn({ method: "POST" })
+  .middleware([tenantMiddleware])
+  .validator((d: { locationId: string; serial: string; entityId: string }) => ({
+    locationId: loc(d.locationId),
+    serial: String(d.serial ?? "").replace(/\s+/g, "").slice(0, 40),
+    entityId: String(d.entityId ?? "").trim().slice(0, 80),
+  }))
+  .handler(async ({ context, data }) => {
+    const { finixConnectAuth } = await import("./pax-d135.server");
+    return finixConnectAuth(context.userId, data);
+  });
+
 export const recordPaxSaleFn = createServerFn({ method: "POST" })
   .middleware([tenantMiddleware])
   .validator((d: {

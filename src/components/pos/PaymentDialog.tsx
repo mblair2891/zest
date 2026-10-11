@@ -25,6 +25,7 @@ import {
   squareCheckoutStatusFn,
   startSquareCheckoutFn,
   getPaymentsStatusFn,
+  finixConnectAuthFn,
   listPaxReadersFn,
   paxReaderSessionFn,
   recordPaxSaleFn,
@@ -39,6 +40,7 @@ import {
   paymentUsesConnectedReader,
   paxLinkStatusText,
   paxScanPresentation,
+  presentFinixConnectFailure,
   runAndroidPaxSale,
   runPaxConnect,
   type PaxReader,
@@ -310,7 +312,26 @@ export function PaymentDialog({ open, onOpenChange, initialMethod }: Props) {
           setBusy(false);
           return;
         }
-        const { connectForPaxReader } = await import("@/lib/payments/pax-d135-native");
+        const creds = {
+          userId: session.userId,
+          password: session.password,
+          merchantId: session.merchantId,
+          deviceId: session.deviceId,
+          env: session.env,
+        };
+        const { connectForPaxReader, paxReaderOnThisStation } = await import("@/lib/payments/pax-d135-native");
+        if (!paxReaderOnThisStation()) {
+          const auth = await finixConnectAuthFn({
+            data: { locationId: loc, serial: decision.reader.serial, entityId: decision.reader.entityId },
+          });
+          if (!auth.ok) {
+            const reason = presentFinixConnectFailure({ message: auth.error, ...creds });
+            failPaxConnect(reason);
+            setError(reason);
+            setBusy(false);
+            return;
+          }
+        }
         const connected = await runPaxConnect(() =>
           connectForPaxReader({
             name: row.name,
@@ -323,8 +344,9 @@ export function PaymentDialog({ open, onOpenChange, initialMethod }: Props) {
           }),
         );
         if (!connected.ok) {
-          failPaxConnect(connected.message || PAX_MSG.connectTimeout);
-          setError(getPaxStationLink().message);
+          const reason = presentFinixConnectFailure({ message: connected.message, ...creds });
+          failPaxConnect(reason);
+          setError(reason);
           setBusy(false);
           return;
         }

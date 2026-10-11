@@ -89,6 +89,40 @@ export function finixSandboxLoginError(): string {
   return missingFinixKeyMessage(row.missing);
 }
 
+function finixUnauthorizedText(json: Record<string, unknown>): string {
+  const embedded = json._embedded;
+  if (embedded && typeof embedded === "object") {
+    const errors = (embedded as { errors?: unknown }).errors;
+    if (Array.isArray(errors)) {
+      for (const row of errors) {
+        if (!row || typeof row !== "object") continue;
+        const message = (row as { message?: unknown }).message;
+        if (typeof message === "string" && message.trim()) return message.trim();
+      }
+    }
+  }
+  if (typeof json.message === "string" && json.message.trim()) return json.message.trim();
+  return "Unauthorized";
+}
+
+/**
+ * The same sandbox username and password the station passes to MPOSFinix.
+ * A 401 returns Finix’s reason. The password is not part of the result.
+ */
+export async function finixSandboxAuthFailure(): Promise<string | null> {
+  try {
+    const res = await finixFetch("sandbox", "GET", "/applications", undefined, {
+      requireWebhook: false,
+      application: false,
+    });
+    if (res.status !== 401) return null;
+    const reason = finixUnauthorizedText(res.json);
+    return /unauthorized/i.test(reason) ? reason : `Unauthorized. ${reason}`;
+  } catch {
+    return null;
+  }
+}
+
 export function finixWebhookSecret(mode: FinixMode = "sandbox"): string | undefined {
   return readWebhookSecret(mode);
 }

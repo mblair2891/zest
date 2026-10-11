@@ -1,17 +1,18 @@
 import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
 import { Button } from "@/components/ui/button";
 import { saveLocationDeviceFn } from "@/lib/access/api";
-import { getPaymentsStatusFn, listPaxReadersFn, paxReaderSessionFn } from "@/lib/payments/api";
+import { finixConnectAuthFn, getPaymentsStatusFn, listPaxReadersFn, paxReaderSessionFn } from "@/lib/payments/api";
 import {
   PAX_MSG,
   decideStationReaderConnect,
   paxLinkStatusText,
   paxScanPresentation,
+  presentFinixConnectFailure,
   runPaxConnect,
   type PaxReader,
   type PaxScanRow,
 } from "@/lib/payments/pax-d135";
-import { connectForPaxReader, scanForPaxReaders } from "@/lib/payments/pax-d135-native";
+import { connectForPaxReader, paxReaderOnThisStation, scanForPaxReaders } from "@/lib/payments/pax-d135-native";
 import {
   beginPaxConnect,
   beginPaxScan,
@@ -274,6 +275,27 @@ function StationDeviceScreen({ onClose }: { onClose: () => void }) {
           setBusy(false);
           return;
         }
+        const creds = {
+          userId: session.userId,
+          password: session.password,
+          merchantId: session.merchantId,
+          deviceId: session.deviceId,
+          env: session.env,
+        };
+        if (!paxReaderOnThisStation()) {
+          const auth = await finixConnectAuthFn({
+            data: {
+              locationId,
+              serial: decision.reader.serial,
+              entityId: decision.reader.entityId,
+            },
+          });
+          if (!auth.ok) {
+            failPaxConnect(presentFinixConnectFailure({ message: auth.error, ...creds }));
+            setBusy(false);
+            return;
+          }
+        }
         const connected = await runPaxConnect(() =>
           connectForPaxReader({
             name: row.name,
@@ -286,7 +308,7 @@ function StationDeviceScreen({ onClose }: { onClose: () => void }) {
           }),
         );
         if (!connected.ok) {
-          failPaxConnect(connected.message || PAX_MSG.connectTimeout);
+          failPaxConnect(presentFinixConnectFailure({ message: connected.message, ...creds }));
           setBusy(false);
           return;
         }

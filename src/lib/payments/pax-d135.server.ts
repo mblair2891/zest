@@ -263,6 +263,22 @@ export async function paxReaderSession(
   };
 }
 
+/**
+ * Ask Finix whether the sandbox login MPOSFinix will use is accepted.
+ * Does not return the password. A network miss is not an Unauthorized result.
+ */
+export async function finixConnectAuth(
+  userId: string,
+  input: { locationId: string; serial: string; entityId: string },
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  const session = await paxReaderSession(userId, input);
+  if (!session.ok) return session;
+  const { finixSandboxAuthFailure } = await import("./finix");
+  const failure = await finixSandboxAuthFailure();
+  if (!failure) return { ok: true };
+  return { ok: false, error: failure };
+}
+
 export async function recordPaxSale(
   userId: string,
   input: {

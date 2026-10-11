@@ -6,6 +6,18 @@ import type { GuideUpdate } from "@/lib/guide/types";
  */
 export const WHATS_NEW_ENTRIES: GuideUpdate[] = [
   {
+    id: "upd_2026_10_250_finix_unauthorized",
+    date: "2026-10-11",
+    title: "Finix unauthorized on connect",
+    summary: "An Unauthorized response names the Finix credential or environment. A successful connect shows Reader ready.",
+    body: "When the station initializes the card reader it uses the location's Finix sandbox username, password, merchant ID, and device ID DVt7ZpgavajgoPUHCX967Ser with Environment SB. An Unauthorized response shows the exact Finix reason and which credential or environment was used. A successful connect shows Reader ready.",
+    roles: ["owner_manager", "server", "host_operator", "vendor_operator"],
+    surfaces: ["settings"],
+    audience: "all",
+    topicId: "pax-card-reader",
+    tags: ["devices", "payments"],
+  },
+  {
     id: "upd_2026_10_249_reader_remove_replace",
     date: "2026-10-11",
     title: "Card reader remove and replace",
