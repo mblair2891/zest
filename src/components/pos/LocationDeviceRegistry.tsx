@@ -88,7 +88,14 @@ import {
 } from "@/components/ui/dialog";
 import { GuideLearnLink } from "@/components/guide/GuideLearnLink";
 import { SquareTerminalPanel } from "@/components/pos/SquareTerminalPanel";
-import { listPaxReadersFn, registerPaxReaderFn, renamePaxReaderFn, setPaxDeviceIdFn } from "@/lib/payments/api";
+import {
+  listPaxReadersFn,
+  registerPaxReaderFn,
+  removePaxReaderFn,
+  renamePaxReaderFn,
+  replacePaxReaderFn,
+  setPaxDeviceIdFn,
+} from "@/lib/payments/api";
 import { readerAssignOptions, readerAssignmentBlock, type PaxReader } from "@/lib/payments/pax-d135";
 import {
   formatClaimExpiry,
@@ -200,6 +207,9 @@ export function LocationDeviceRegistry({
   const [renameDraft, setRenameDraft] = useState("");
   const [openReaderId, setOpenReaderId] = useState<string | null>(null);
   const [deviceDraft, setDeviceDraft] = useState("");
+  const [replacingReaderId, setReplacingReaderId] = useState<string | null>(null);
+  const [replaceSerial, setReplaceSerial] = useState("");
+  const [replaceDeviceId, setReplaceDeviceId] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -1149,6 +1159,7 @@ export function LocationDeviceRegistry({
                           setRenamingReaderId(reader.id);
                           setRenameDraft(reader.name);
                           setOpenReaderId(null);
+                          setReplacingReaderId(null);
                         }}
                       >
                         Rename
@@ -1162,9 +1173,63 @@ export function LocationDeviceRegistry({
                           setOpenReaderId(reader.id);
                           setDeviceDraft(reader.finixDeviceId);
                           setRenamingReaderId(null);
+                          setReplacingReaderId(null);
                         }}
                       >
                         Open
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        data-pax-replace=""
+                        disabled={busy}
+                        onClick={() => {
+                          setReplacingReaderId(reader.id);
+                          setReplaceSerial(reader.serial);
+                          setReplaceDeviceId(reader.finixDeviceId);
+                          setOpenReaderId(null);
+                          setRenamingReaderId(null);
+                        }}
+                      >
+                        Replace
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        data-pax-remove=""
+                        disabled={busy}
+                        onClick={() => {
+                          void (async () => {
+                            if (!resolvedLocId) return;
+                            setBusy(true);
+                            setPaxMsg(null);
+                            try {
+                              const res = await removePaxReaderFn({
+                                data: { locationId: resolvedLocId, id: reader.id },
+                              });
+                              if (!res.ok) {
+                                setPaxMsg(res.error);
+                                return;
+                              }
+                              setCardReaders((rows) => rows.filter((row) => row.id !== reader.id));
+                              setDevices(res.devices);
+                              if (cardReaderId.replace(/\s+/g, "") === reader.serial.replace(/\s+/g, "")) {
+                                setCardReaderId("");
+                              }
+                              if (replacingReaderId === reader.id) setReplacingReaderId(null);
+                              if (openReaderId === reader.id) setOpenReaderId(null);
+                              if (renamingReaderId === reader.id) setRenamingReaderId(null);
+                              setPaxMsg(`${res.removed.name} was removed.`);
+                              await load({ silent: true });
+                            } catch (e) {
+                              setPaxMsg(e instanceof Error ? e.message : "The reader could not be removed.");
+                            } finally {
+                              setBusy(false);
+                            }
+                          })();
+                        }}
+                      >
+                        Remove
                       </Button>
                     </>
                   )}
@@ -1207,6 +1272,78 @@ export function LocationDeviceRegistry({
                                 rows.map((row) => (row.id === res.reader.id ? res.reader : row)),
                               );
                               setPaxMsg(`${res.reader.name} stores ${res.reader.finixDeviceId}.`);
+                              await load({ silent: true });
+                            } catch (e) {
+                              setPaxMsg(e instanceof Error ? e.message : "The reader could not be saved.");
+                            } finally {
+                              setBusy(false);
+                            }
+                          })();
+                        }}
+                      >
+                        Save
+                      </Button>
+                    </div>
+                  ) : null}
+                  {replacingReaderId === reader.id ? (
+                    <div className="flex flex-wrap items-end gap-2" data-pax-replace-form="">
+                      <label className="min-w-[10rem] flex-1 text-xs text-muted-foreground">
+                        Serial
+                        <Input
+                          className="mt-1"
+                          data-pax-replace-serial=""
+                          value={replaceSerial}
+                          onChange={(e) => setReplaceSerial(e.target.value)}
+                        />
+                      </label>
+                      <label className="min-w-[12rem] flex-1 text-xs text-muted-foreground">
+                        Finix device ID
+                        <Input
+                          className="mt-1"
+                          data-pax-replace-device-id=""
+                          placeholder="DVxxxxx"
+                          value={replaceDeviceId}
+                          onChange={(e) => setReplaceDeviceId(e.target.value)}
+                        />
+                      </label>
+                      <Button
+                        size="sm"
+                        data-pax-replace-save=""
+                        disabled={
+                          busy ||
+                          !replaceSerial.trim() ||
+                          !replaceDeviceId.replace(/\s+/g, "").startsWith("DV")
+                        }
+                        onClick={() => {
+                          void (async () => {
+                            if (!resolvedLocId) return;
+                            setBusy(true);
+                            setPaxMsg(null);
+                            const previousSerial = reader.serial;
+                            try {
+                              const res = await replacePaxReaderFn({
+                                data: {
+                                  locationId: resolvedLocId,
+                                  id: reader.id,
+                                  serial: replaceSerial,
+                                  deviceId: replaceDeviceId,
+                                },
+                              });
+                              if (!res.ok) {
+                                setPaxMsg(res.error);
+                                return;
+                              }
+                              setCardReaders((rows) =>
+                                rows.map((row) => (row.id === res.reader.id ? res.reader : row)),
+                              );
+                              setDevices(res.devices);
+                              if (cardReaderId.replace(/\s+/g, "") === previousSerial.replace(/\s+/g, "")) {
+                                setCardReaderId(res.reader.serial);
+                              }
+                              setReplacingReaderId(null);
+                              setPaxMsg(
+                                `${res.reader.name} now uses serial ${res.reader.serial}. The station assignment stays.`,
+                              );
                               await load({ silent: true });
                             } catch (e) {
                               setPaxMsg(e instanceof Error ? e.message : "The reader could not be saved.");
@@ -1975,6 +2112,9 @@ export function LocationDeviceRegistry({
             <li
               key={d.id}
               className="flex flex-wrap items-center justify-between gap-2 rounded-2xl border border-border bg-surface px-4 py-3"
+              {...(mode === "stations" && !isPrinterDevice(d)
+                ? { "data-station-reader": d.cardReaderId || "" }
+                : {})}
             >
               <div className="flex min-w-0 items-start gap-3">
                 <div className="min-w-0">

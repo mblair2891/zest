@@ -18,7 +18,9 @@ import {
   readerAssignOptions,
   readerAssignmentBlock,
   rememberCapturedCheck,
+  removePaxReader,
   renamePaxReader,
+  replacePaxReader,
   resetPaxSaleGuards,
   setPaxDeviceId,
   runAndroidPaxSale,
@@ -320,6 +322,13 @@ test("the PAX path does not use Web Bluetooth or Stripe", () => {
   assert.match(devices, /data-pax-name=""/);
   assert.match(devices, /Finix device ID/);
   assert.match(devices, /data-pax-open=""/);
+  assert.match(devices, /data-pax-remove=""/);
+  assert.match(devices, /data-pax-replace=""/);
+  assert.match(devices, /data-pax-replace-form=""/);
+  assert.match(devices, /data-pax-replace-serial=""/);
+  assert.match(devices, /data-pax-replace-device-id=""/);
+  assert.match(devices, /data-pax-replace-save=""/);
+  assert.match(devices, /data-station-reader/);
   assert.match(devices, /data-pax-device-id=""/);
   assert.match(devices, /data-pax-save-device=""/);
   assert.match(devices, /data-pax-new-device-id=""/);
@@ -338,6 +347,16 @@ test("the PAX path does not use Web Bluetooth or Stripe", () => {
     server.indexOf("export async function paxReaderSession"),
   );
   assert.doesNotMatch(deviceBody, /createPaxD135Device|finixFetch/);
+  const removeBody = server.slice(
+    server.indexOf("export async function removePaxReaderRecord"),
+    server.indexOf("export async function replacePaxReaderRecord"),
+  );
+  assert.doesNotMatch(removeBody, /createPaxD135Device|finixFetch/);
+  const replaceBody = server.slice(
+    server.indexOf("export async function replacePaxReaderRecord"),
+    server.indexOf("export async function paxReaderSession"),
+  );
+  assert.doesNotMatch(replaceBody, /createPaxD135Device|finixFetch/);
   const registerBody = server.slice(
     server.indexOf("export async function registerPaxReader"),
     server.indexOf("export async function renamePaxReaderRecord"),
@@ -347,6 +366,11 @@ test("the PAX path does not use Web Bluetooth or Stripe", () => {
   assert.doesNotMatch(registerBody, /deviceId: created\.id/);
   const guideDevices = readFileSync("src/lib/guide/content/devices.ts", "utf8");
   const guidePay = readFileSync("src/lib/guide/content/payments.ts", "utf8");
+  assert.match(guideDevices, /can be renamed, removed, or replaced/);
+  assert.match(guideDevices, /clears any station assignment/);
+  assert.match(guideDevices, /keeps the station assignment/);
+  assert.match(guideDevices, /usable for payment until it is removed/);
+  assert.match(guidePay, /can be renamed, removed, or replaced/);
   assert.match(guideDevices, /Finix device ID/);
   assert.match(guideDevices, /stays listed until the id is added/);
   assert.match(guidePay, /Finix device ID/);
@@ -479,6 +503,93 @@ test("a serial-only reader stays listed until the Finix device ID is saved", () 
   if (!renamed.ok) return;
   assert.equal(renamed.reader.finixDeviceId, "DV9summit1890");
   assert.equal(renamed.reader.serial, "SN1");
+});
+
+test("remove deletes the reader and clears only that station assignment", () => {
+  const second: PaxReader = { ...reader, id: "pax_2", name: "Patio", serial: "ZZ9" };
+  const devices = [
+    { id: "tab_order", cardReaderId: "ABC123" },
+    { id: "tab_host", cardReaderId: "ZZ9" },
+  ];
+  const missing = removePaxReader({ readers: [reader, second], devices, id: "missing" });
+  assert.equal(missing.ok, false);
+  if (missing.ok) return;
+  assert.equal(missing.message, PAX_MSG.notRegistered);
+  const removed = removePaxReader({ readers: [reader, second], devices, id: "pax_1" });
+  assert.equal(removed.ok, true);
+  if (!removed.ok) return;
+  assert.equal(removed.readers.some((row) => row.id === "pax_1"), false);
+  assert.equal(removed.readers[0]?.serial, "ZZ9");
+  assert.equal(removed.devices[0]?.cardReaderId, null);
+  assert.equal(removed.devices[1]?.cardReaderId, "ZZ9");
+  assert.equal(devices[0]?.cardReaderId, "ABC123");
+});
+
+test("replace keeps the station assignment on the new serial", () => {
+  const second: PaxReader = { ...reader, id: "pax_2", name: "Patio", serial: "ZZ9" };
+  const devices = [
+    { id: "tab_order", cardReaderId: "ABC123" },
+    { id: "tab_host", cardReaderId: "ZZ9" },
+  ];
+  const blankSerial = replacePaxReader({
+    readers: [reader, second],
+    devices,
+    id: "pax_1",
+    serial: "   ",
+    deviceId: "DV9new",
+  });
+  assert.equal(blankSerial.ok, false);
+  if (blankSerial.ok) return;
+  assert.equal(blankSerial.message, PAX_MSG.serialRequired);
+  const blankId = replacePaxReader({
+    readers: [reader, second],
+    devices,
+    id: "pax_1",
+    serial: "NEW1",
+    deviceId: " ",
+  });
+  assert.equal(blankId.ok, false);
+  if (blankId.ok) return;
+  assert.equal(blankId.message, PAX_MSG.deviceIdRequired);
+  const taken = replacePaxReader({
+    readers: [reader, second],
+    devices,
+    id: "pax_1",
+    serial: "ZZ9",
+    deviceId: "DV9new",
+  });
+  assert.equal(taken.ok, false);
+  if (taken.ok) return;
+  assert.equal(taken.message, PAX_MSG.serialOnReader);
+  assert.equal(devices[0]?.cardReaderId, "ABC123");
+  const replaced = replacePaxReader({
+    readers: [reader, second],
+    devices,
+    id: "pax_1",
+    serial: " NEW1 ",
+    deviceId: " DV9new ",
+  });
+  assert.equal(replaced.ok, true);
+  if (!replaced.ok) return;
+  assert.equal(replaced.reader.id, "pax_1");
+  assert.equal(replaced.reader.name, "Bar 1");
+  assert.equal(replaced.reader.entityId, "ent_bbq");
+  assert.equal(replaced.reader.serial, "NEW1");
+  assert.equal(replaced.reader.finixDeviceId, "DV9new");
+  assert.equal(replaced.readers.some((row) => row.id === "pax_1"), true);
+  assert.equal(replaced.devices[0]?.cardReaderId, "NEW1");
+  assert.equal(replaced.devices[1]?.cardReaderId, "ZZ9");
+  const same = replacePaxReader({
+    readers: replaced.readers,
+    devices: replaced.devices,
+    id: "pax_1",
+    serial: "NEW1",
+    deviceId: "DV9new",
+  });
+  assert.equal(same.ok, true);
+  if (!same.ok) return;
+  assert.equal(same.reader.id, "pax_1");
+  assert.equal(same.devices[0]?.cardReaderId, "NEW1");
 });
 
 test("sandbox card reader add does not require the webhook secret", async () => {

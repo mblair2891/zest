@@ -6,6 +6,18 @@ import type { GuideUpdate } from "@/lib/guide/types";
  */
 export const WHATS_NEW_ENTRIES: GuideUpdate[] = [
   {
+    id: "upd_2026_10_249_reader_remove_replace",
+    date: "2026-10-11",
+    title: "Card reader remove and replace",
+    summary: "A card reader in Devices can be renamed, removed, or replaced. The station assignment stays on replace.",
+    body: "A card reader in Devices can be renamed, removed, or replaced. Remove deletes the record and clears any station assignment. Replace keeps the station assignment and opens the form so the serial and Finix device ID can be changed. The reader remains usable for payment until it is removed.",
+    roles: ["owner_manager", "server", "host_operator", "vendor_operator"],
+    surfaces: ["settings"],
+    audience: "all",
+    topicId: "pax-card-reader",
+    tags: ["devices", "payments"],
+  },
+  {
     id: "upd_2026_10_248_pick_list_substitutes",
     date: "2026-10-11",
     title: "Pick list substitutes",

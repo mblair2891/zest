@@ -62,6 +62,8 @@ export const PAX_MSG = {
   unread: "The card could not be read. The check stays open.",
   liveRegister: "Live card readers are not available in this build.",
   serialTaken: "This reader already belongs to another selling entity.",
+  serialOnReader: "That serial is already on another reader.",
+  serialRequired: "Enter the reader serial.",
   nameRequired: "Enter a name for the reader.",
   nameTaken: "That name is already on a reader.",
   /** Only when the serial is empty or the selling entity is missing. */
@@ -529,6 +531,78 @@ export function renamePaxReader(input: {
   return {
     ok: true,
     readers: input.readers.map((r) => (r.id === current.id ? reader : r)),
+    reader,
+  };
+}
+
+type AssignedStation = { id: string; cardReaderId?: string | null };
+
+function stationsForSerial<T extends AssignedStation>(
+  devices: readonly T[],
+  serial: string,
+  next: string | null,
+): T[] {
+  const target = normalizePaxSerial(serial);
+  const assigned = next ? normalizePaxSerial(next) : "";
+  return devices.map((device) => {
+    if (normalizePaxSerial(String(device.cardReaderId ?? "")) !== target) return device;
+    return { ...device, cardReaderId: assigned || null };
+  });
+}
+
+/** Drop the reader. Stations that pointed at its serial lose that assignment. */
+export function removePaxReader<T extends AssignedStation>(input: {
+  readers: PaxReader[];
+  devices: readonly T[];
+  id: string;
+}):
+  | { ok: true; readers: PaxReader[]; devices: T[]; removed: PaxReader }
+  | { ok: false; message: string } {
+  const current = input.readers.find((r) => r.id === input.id);
+  if (!current) return { ok: false, message: PAX_MSG.notRegistered };
+  return {
+    ok: true,
+    readers: input.readers.filter((r) => r.id !== current.id),
+    devices: stationsForSerial(input.devices, current.serial, null),
+    removed: current,
+  };
+}
+
+/**
+ * Keep the same reader and any station that uses it.
+ * The serial and the Finix device ID can change. The name and the selling entity stay.
+ * The reader stays listed, so payment can still use it.
+ */
+export function replacePaxReader<T extends AssignedStation>(input: {
+  readers: PaxReader[];
+  devices: readonly T[];
+  id: string;
+  serial: string;
+  deviceId: string;
+}):
+  | { ok: true; readers: PaxReader[]; devices: T[]; reader: PaxReader }
+  | { ok: false; message: string } {
+  const current = input.readers.find((r) => r.id === input.id);
+  if (!current) return { ok: false, message: PAX_MSG.notRegistered };
+  const serial = normalizePaxSerial(input.serial);
+  if (!serial) return { ok: false, message: PAX_MSG.serialRequired };
+  const deviceId = normalizeFinixDeviceId(input.deviceId);
+  if (!deviceId.startsWith("DV")) return { ok: false, message: PAX_MSG.deviceIdRequired };
+  const taken = input.readers.some((r) => r.id !== current.id && r.serial === serial);
+  if (taken) return { ok: false, message: PAX_MSG.serialOnReader };
+  const reader: PaxReader = {
+    ...current,
+    serial,
+    finixDeviceId: deviceId,
+    name: current.name,
+    entityId: current.entityId,
+    entityName: current.entityName,
+  };
+  return {
+    ok: true,
+    readers: input.readers.map((r) => (r.id === current.id ? reader : r)),
+    devices:
+      serial === current.serial ? input.devices.map((device) => device) : stationsForSerial(input.devices, current.serial, serial),
     reader,
   };
 }

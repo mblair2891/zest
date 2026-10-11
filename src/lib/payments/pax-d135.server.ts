@@ -8,6 +8,7 @@ import { newId } from "@/lib/saas/ids";
 import { ForbiddenError, requireMembership } from "@/lib/saas/tenancy.server";
 import { EMPTY_LOCATION_SETUP, type LocationSetup } from "@/lib/saas/types";
 import { HOST_SCOPE } from "@/lib/access/entity-grants";
+import { parseLocationDevices, type LocationDevice } from "@/lib/pos/location-devices";
 import { locationLifecycleStatus } from "./mode";
 import { finixSandboxLogin, finixSandboxLoginError } from "./finix";
 import {
@@ -19,7 +20,9 @@ import {
   paxSdkDeviceId,
   placePaxReader,
   readerForSerial,
+  removePaxReader,
   renamePaxReader,
+  replacePaxReader,
   setPaxDeviceId,
   type PaxReader,
 } from "./pax-d135";
@@ -168,6 +171,57 @@ export async function setPaxDeviceIdRecord(
     setup: { ...setup, paxReaders: saved.readers },
   });
   return { ok: true, reader: saved.reader };
+}
+
+/** Delete the reader and clear any station that was assigned to its serial. Does not call Finix. */
+export async function removePaxReaderRecord(
+  userId: string,
+  input: { locationId: string; id: string },
+): Promise<{ ok: true; removed: PaxReader; devices: LocationDevice[] } | { ok: false; error: string }> {
+  const loc = await loadLoc(input.locationId);
+  await requireMembership(userId, loc.org_id, undefined, input.locationId);
+  const setup = setupOf(loc.setup);
+  const removed = removePaxReader({
+    readers: parsePaxReaders(setup.paxReaders),
+    devices: parseLocationDevices(setup.locationDevices),
+    id: input.id,
+  });
+  if (!removed.ok) return { ok: false, error: removed.message };
+  const { updateLocationSetupForUser } = await import("@/lib/saas/tenancy.server");
+  await updateLocationSetupForUser(userId, {
+    orgId: loc.org_id,
+    locationId: loc.id,
+    setup: { ...setup, paxReaders: removed.readers, locationDevices: removed.devices },
+  });
+  return { ok: true, removed: removed.removed, devices: removed.devices };
+}
+
+/**
+ * Keep this reader and its station assignment.
+ * The serial and the Finix device ID change together. Does not call Finix.
+ */
+export async function replacePaxReaderRecord(
+  userId: string,
+  input: { locationId: string; id: string; serial: string; deviceId: string },
+): Promise<{ ok: true; reader: PaxReader; devices: LocationDevice[] } | { ok: false; error: string }> {
+  const loc = await loadLoc(input.locationId);
+  await requireMembership(userId, loc.org_id, undefined, input.locationId);
+  const setup = setupOf(loc.setup);
+  const replaced = replacePaxReader({
+    readers: parsePaxReaders(setup.paxReaders),
+    devices: parseLocationDevices(setup.locationDevices),
+    id: input.id,
+    serial: input.serial,
+    deviceId: input.deviceId,
+  });
+  if (!replaced.ok) return { ok: false, error: replaced.message };
+  const { updateLocationSetupForUser } = await import("@/lib/saas/tenancy.server");
+  await updateLocationSetupForUser(userId, {
+    orgId: loc.org_id,
+    locationId: loc.id,
+    setup: { ...setup, paxReaders: replaced.readers, locationDevices: replaced.devices },
+  });
+  return { ok: true, reader: replaced.reader, devices: replaced.devices };
 }
 
 export async function paxReaderSession(

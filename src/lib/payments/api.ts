@@ -72,6 +72,30 @@ export const setPaxDeviceIdFn = createServerFn({ method: "POST" })
     return setPaxDeviceIdRecord(context.userId, data);
   });
 
+export const removePaxReaderFn = createServerFn({ method: "POST" })
+  .middleware([tenantMiddleware])
+  .validator((d: { locationId: string; id: string }) => ({
+    locationId: loc(d.locationId),
+    id: String(d.id ?? "").trim().slice(0, 80),
+  }))
+  .handler(async ({ context, data }) => {
+    const { removePaxReaderRecord } = await import("./pax-d135.server");
+    return removePaxReaderRecord(context.userId, data);
+  });
+
+export const replacePaxReaderFn = createServerFn({ method: "POST" })
+  .middleware([tenantMiddleware])
+  .validator((d: { locationId: string; id: string; serial: string; deviceId: string }) => ({
+    locationId: loc(d.locationId),
+    id: String(d.id ?? "").trim().slice(0, 80),
+    serial: String(d.serial ?? "").replace(/\s+/g, "").slice(0, 40),
+    deviceId: String(d.deviceId ?? "").replace(/\s+/g, "").slice(0, 80),
+  }))
+  .handler(async ({ context, data }) => {
+    const { replacePaxReaderRecord } = await import("./pax-d135.server");
+    return replacePaxReaderRecord(context.userId, data);
+  });
+
 export const paxReaderSessionFn = createServerFn({ method: "POST" })
   .middleware([tenantMiddleware])
   .validator((d: { locationId: string; serial: string; entityId: string }) => ({
