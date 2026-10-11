@@ -121,6 +121,7 @@ import { DrinkAiView } from "./DrinkAiView";
 import { MarketingHubView } from "./MarketingHubView";
 import { GuideTriggerButton } from "@/components/guide/OperatorsGuide";
 import { HelpButton } from "@/components/help/HelpPanel";
+import { StationDeviceHealthBanner, StationDevicesButton, StationDevicesHost } from "./StationDevices";
 import { ReplayWorkflowButton } from "@/components/onboarding/ReplayWorkflowButton";
 import { LoginOnboardingHost } from "@/components/onboarding/LoginOnboardingHost";
 import { venueById } from "@/lib/pos/entities";
@@ -564,6 +565,7 @@ export function AppShell() {
         <VenueRegBanner />
         <StationUpdateBar />
         <PrintWaitingBanner />
+        <StationDeviceHealthBanner />
         <header className="flex h-14 shrink-0 items-center gap-2 border-b border-border bg-surface px-3">
           {tabletShowsHouseLogo(stationAssignment.kind) && settings.brandLogos?.location?.screenUrl ? (
             <img
@@ -583,6 +585,7 @@ export function AppShell() {
             <ClockedInChip />
           </div>
           <div className="ml-auto flex items-center gap-2">
+            <StationDevicesButton />
             <HelpButton surface="pos" compact />
             <NetworkChip />
             <Button
@@ -599,6 +602,7 @@ export function AppShell() {
         </header>
         <ClockInAfterPinDialog />
         <NetworkBanner />
+        <StationDevicesHost />
         <div className="min-h-0 flex-1 overflow-hidden">
           <DeviceModeView
             mode={stationAssignment.kind}

@@ -18,6 +18,7 @@ import { usePosStore } from "@/lib/pos/store";
 import { PinKeypad } from "./PinKeypad";
 import { ThisStationButton, SplitScreenToggle } from "./ChangeDeviceDialog";
 import { HelpButton } from "@/components/help/HelpPanel";
+import { StationDeviceHealthBanner, StationDevicesButton, StationDevicesHost } from "./StationDevices";
 import { NetworkBanner, NetworkWatcher } from "./NetworkStatus";
 import { useNetworkStore } from "@/lib/pos/network-store";
 import { TrainingBanner } from "./TrainingBanner";
@@ -338,7 +339,9 @@ export function EntityLogin({ entityId }: { entityId: VenueEntityId }) {
       <NetworkBanner />
       <TrainingBanner />
       <PrintWaitingBanner />
+      {stationPad && <StationDeviceHealthBanner />}
       <div className="flex items-center justify-end gap-2 px-4 pt-3">
+        {stationPad && <StationDevicesButton />}
         <HelpButton surface="pin" />
         {!stationPad && (
           <>
@@ -411,6 +414,7 @@ export function EntityLogin({ entityId }: { entityId: VenueEntityId }) {
           </p>
         )}
 
+        {stationPad && <StationDevicesHost />}
         <PinKeypad
           title={pendingForce ? "Manager PIN to override" : undefined}
           hint={

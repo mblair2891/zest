@@ -1,5 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 import { tenantMiddleware } from "@/lib/saas/tenant-middleware";
+import { isPrintLanHost } from "./lan-hosts";
 import { DEFAULT_PRINTER_PORT, parseLanTarget } from "./printer-models";
 import {
   parseKitchenPrintSource,
@@ -40,6 +41,54 @@ function writeTcp(host: string, port: number, buf: Buffer): Promise<void> {
       }),
   );
 }
+
+/** Connect and close. No bytes are written. */
+function probeTcp(host: string, port: number, timeoutMs: number): Promise<void> {
+  return import("node:net").then(
+    (net) =>
+      new Promise<void>((resolve, reject) => {
+        let settled = false;
+        const done = (err?: Error) => {
+          if (settled) return;
+          settled = true;
+          if (err) reject(err);
+          else resolve();
+        };
+        const sock = net.connect({ host, port }, () => {
+          sock.end();
+        });
+        sock.setTimeout(timeoutMs);
+        sock.on("timeout", () => {
+          sock.destroy();
+          done(new Error("Printer timed out"));
+        });
+        sock.on("error", (err) => {
+          sock.destroy();
+          done(err instanceof Error ? err : new Error("Printer not responding"));
+        });
+        sock.on("close", () => done());
+      }),
+  );
+}
+
+/** Reachability only. Does not print. */
+export const probeLanPrinterFn = createServerFn({ method: "POST" })
+  .middleware([tenantMiddleware])
+  .validator((d: { host?: string; port?: number }) => {
+    const host = String(d.host ?? "").trim();
+    const port = Number(d.port) > 0 ? Math.round(Number(d.port)) : DEFAULT_PRINTER_PORT;
+    if (!isPrintLanHost(host)) throw new Error("Printer host is not on the house LAN");
+    if (port <= 0 || port >= 65536) throw new Error("Printer port is not valid");
+    return { host, port };
+  })
+  .handler(async ({ data }): Promise<{ ok: true } | { ok: false; error: string }> => {
+    try {
+      await probeTcp(data.host, data.port, 1500);
+      return { ok: true };
+    } catch (e) {
+      return { ok: false, error: e instanceof Error ? e.message : "Printer not responding" };
+    }
+  });
 
 function newPrintJobId(): string {
   return `pq_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;

@@ -36,11 +36,23 @@ import {
   checkAlreadyCaptured,
   checkSellingEntityId,
   decidePaxPick,
+  paymentUsesConnectedReader,
   paxScanPresentation,
   runAndroidPaxSale,
   type PaxReader,
   type PaxScanRow,
 } from "@/lib/payments/pax-d135";
+import {
+  beginPaxConnect,
+  beginPaxScan,
+  failPaxConnect,
+  finishPaxScan,
+  getPaxStationLink,
+  markPaxConnected,
+  notePaxStatus,
+  setPaxReaders,
+  usePaxStationLink,
+} from "@/lib/pos/pax-station-link";
 import {
   buildGuestCheckView,
   guestCheckHtml,
@@ -170,12 +182,7 @@ export function PaymentDialog({ open, onOpenChange, initialMethod }: Props) {
   const hasManagerAuth = usePosStore((s) => s.hasManagerAuth);
   const [last4, setLast4] = useState("");
   const [usePax, setUsePax] = useState(false);
-  const [paxPhase, setPaxPhase] = useState<"idle" | "scanning" | "setting_up" | "connected" | "bluetooth">("idle");
-  const [paxStatus, setPaxStatus] = useState<string>(PAX_MSG.notConnected);
-  const [paxBattery, setPaxBattery] = useState<number | null>(null);
-  const [paxRows, setPaxRows] = useState<PaxScanRow[]>([]);
-  const [paxReader, setPaxReader] = useState<PaxReader | null>(null);
-  const [paxReaders, setPaxReaders] = useState<PaxReader[]>([]);
+  const pax = usePaxStationLink();
   const [error, setError] = useState<string | null>(null);
   const [cardHold, setCardHold] = useState<string | null>(null);
   const [change, setChange] = useState<number | null>(null);
@@ -230,7 +237,7 @@ export function PaymentDialog({ open, onOpenChange, initialMethod }: Props) {
   }, [settings.cardProcessor]);
 
   useEffect(() => {
-    if (!open || !usePax) return;
+    if (!open) return;
     const loc = usePosStore.getState().tenantLocationId || readTenantPosContext()?.locationId || "";
     if (!loc) return;
     let cancelled = false;
@@ -245,18 +252,12 @@ export function PaymentDialog({ open, onOpenChange, initialMethod }: Props) {
       .catch(() => {
         if (!cancelled) setPaxReaders(usePosStore.getState().settings.paxReaders ?? []);
       });
+    if (!usePax) return () => {
+      cancelled = true;
+    };
     const listener = import("@/lib/payments/pax-d135-native").then((mod) => {
-      if (cancelled) return null;
-      return mod.paxPlugin.addListener("status", (status) => {
-        if (status.state === "setting_up") {
-          setPaxPhase("setting_up");
-          setPaxStatus(PAX_MSG.settingUp);
-        } else if (status.state === "connected") {
-          setPaxPhase("connected");
-          setPaxStatus(PAX_MSG.connected);
-        }
-        if (typeof status.batteryPercent === "number") setPaxBattery(status.batteryPercent);
-      });
+      if (cancelled || !mod.paxReaderOnThisStation()) return null;
+      return mod.paxPlugin.addListener("status", (status) => notePaxStatus(status));
     });
     return () => {
       cancelled = true;
@@ -267,20 +268,13 @@ export function PaymentDialog({ open, onOpenChange, initialMethod }: Props) {
   const scanPax = () => {
     void (async () => {
       setError(null);
-      setPaxPhase("scanning");
-      setPaxRows([]);
-      setPaxReader(null);
-      setPaxBattery(null);
+      beginPaxScan();
       try {
-        const { paxPlugin } = await import("@/lib/payments/pax-d135-native");
-        const scanned = await paxPlugin.scan();
-        const presented = paxScanPresentation(scanned, paxReaders);
-        setPaxRows(presented.rows);
-        setPaxPhase(presented.phase);
-        setPaxStatus(presented.message);
+        const { scanForPaxReaders } = await import("@/lib/payments/pax-d135-native");
+        const scanned = await scanForPaxReaders();
+        finishPaxScan(paxScanPresentation(scanned, getPaxStationLink().readers));
       } catch {
-        setPaxPhase("idle");
-        setPaxStatus(PAX_MSG.permissions);
+        finishPaxScan({ phase: "idle", message: PAX_MSG.permissions, rows: [] });
       }
     })();
   };
@@ -291,37 +285,31 @@ export function PaymentDialog({ open, onOpenChange, initialMethod }: Props) {
       const locationLive = Boolean(payStatus && payStatus.mode === "live" && !payStatus.lifecycleForcesSandbox);
       const decision = decidePaxPick({
         row,
-        readers: paxReaders,
+        readers: getPaxStationLink().readers,
         sellingEntityId: checkSellingEntityId(order.lines),
         locationLive,
       });
       if (!decision.ok) {
-        setPaxReader(null);
-        setPaxPhase("idle");
+        failPaxConnect(decision.message);
         setError(decision.message);
-        setPaxStatus(decision.message);
         return;
       }
       const loc = usePosStore.getState().tenantLocationId || readTenantPosContext()?.locationId || "";
       setError(null);
-      setPaxReader(decision.reader);
-      setPaxPhase("setting_up");
-      setPaxStatus(PAX_MSG.settingUp);
+      beginPaxConnect(decision.reader);
       setBusy(true);
       try {
         const session = await paxReaderSessionFn({
           data: { locationId: loc, serial: decision.reader.serial, entityId: decision.reader.entityId },
         });
         if (!session.ok) {
-          setPaxReader(null);
-          setPaxPhase("idle");
+          failPaxConnect(session.error);
           setError(session.error);
-          setPaxStatus(session.error);
           setBusy(false);
           return;
         }
-        const { paxPlugin } = await import("@/lib/payments/pax-d135-native");
-        const connected = await paxPlugin.connect({
+        const { connectForPaxReader } = await import("@/lib/payments/pax-d135-native");
+        const connected = await connectForPaxReader({
           name: row.name,
           address: row.address,
           merchantId: session.merchantId,
@@ -332,20 +320,17 @@ export function PaymentDialog({ open, onOpenChange, initialMethod }: Props) {
         });
         if (!connected.ok) {
           const message = connected.message || PAX_MSG.disconnect;
-          setPaxReader(null);
-          setPaxPhase(message === PAX_MSG.bluetooth ? "bluetooth" : "idle");
-          setPaxStatus(message);
+          failPaxConnect(message);
           setError(message);
           setBusy(false);
           return;
         }
-        setPaxPhase("connected");
-        setPaxStatus(PAX_MSG.connected);
-        setPaxBattery(typeof connected.batteryPercent === "number" ? connected.batteryPercent : null);
+        markPaxConnected(
+          decision.reader,
+          typeof connected.batteryPercent === "number" ? connected.batteryPercent : null,
+        );
       } catch {
-        setPaxReader(null);
-        setPaxPhase("idle");
-        setPaxStatus(PAX_MSG.disconnect);
+        failPaxConnect(PAX_MSG.disconnect);
         setError(PAX_MSG.disconnect);
       }
       setBusy(false);
@@ -649,9 +634,14 @@ export function PaymentDialog({ open, onOpenChange, initialMethod }: Props) {
         }
         setBusy(false);
         setError(null);
-      } else if (usePax) {
+      } else if (usePax || paymentUsesConnectedReader(getPaxStationLink())) {
         if (!order) {
           setError("No order");
+          return;
+        }
+        const linkNow = getPaxStationLink();
+        if (!usePax) {
+          setError(PAX_MSG.notConnected);
           return;
         }
         setBusy(true);
@@ -663,16 +653,16 @@ export function PaymentDialog({ open, onOpenChange, initialMethod }: Props) {
             amountCents: tend + payTip,
             tipCents: 0,
             locationLive,
-            reader: paxReader,
+            reader: linkNow.reader,
             sellingEntityId: checkSellingEntityId(order.lines),
             alreadyCaptured: checkAlreadyCaptured({
               checkId: order.id,
               status: order.status,
               payments: order.payments,
             }),
-            settingUp: paxPhase === "setting_up",
-            connected: paxPhase === "connected",
-            bluetoothOff: paxPhase === "bluetooth",
+            settingUp: linkNow.phase === "setting_up",
+            connected: linkNow.phase === "connected",
+            bluetoothOff: linkNow.phase === "bluetooth",
             bridge: androidPaxBridge(),
           });
           if (!sale.ok) {
@@ -683,8 +673,8 @@ export function PaymentDialog({ open, onOpenChange, initialMethod }: Props) {
           cardLast4 = sale.last4 || undefined;
           finixTransferId = sale.transferId;
           paxJournal = {
-            readerId: paxReader?.finixDeviceId || "",
-            merchantId: paxReader?.finixMerchantId || "",
+            readerId: linkNow.reader?.finixDeviceId || "",
+            merchantId: linkNow.reader?.finixMerchantId || "",
             locationId,
             orgId,
           };
@@ -1447,16 +1437,22 @@ export function PaymentDialog({ open, onOpenChange, initialMethod }: Props) {
                       not queued.
                     </p>
                   )}
-                  {usePax && (
+                  {(usePax || pax.phase !== "idle" || pax.rows.length > 0) && (
                     <div className="space-y-2 rounded-lg border border-border p-3" data-pax-reader="">
-                      <p className="text-sm font-medium" data-pax-status="">
-                        {paxStatus}
-                        {paxPhase === "connected" && paxBattery != null ? ` · Battery ${paxBattery}%` : ""}
+                      <p
+                        className="text-sm font-medium"
+                        data-pax-status=""
+                        data-pax-connected={pax.phase === "connected" ? pax.reader?.serial ?? "" : ""}
+                      >
+                        {pax.phase === "connected" && pax.reader
+                          ? `${PAX_MSG.connected} · ${pax.reader.name}`
+                          : pax.message}
+                        {pax.phase === "connected" && pax.battery != null ? ` · Battery ${pax.battery}%` : ""}
                       </p>
                       <Button type="button" size="sm" variant="outline" disabled={busy} onClick={scanPax}>
                         Scan for reader
                       </Button>
-                      {paxRows.map((row) => (
+                      {pax.rows.map((row) => (
                         <button
                           key={row.serial}
                           type="button"
@@ -1469,7 +1465,7 @@ export function PaymentDialog({ open, onOpenChange, initialMethod }: Props) {
                       ))}
                     </div>
                   )}
-                  {(payStatus?.mode === "sandbox" || sandbox) && !usePax && (
+                  {(payStatus?.mode === "sandbox" || sandbox) && !usePax && pax.phase !== "connected" && (
                     <Input
                       placeholder="Last 4 (sandbox receipt only)"
                       value={last4}

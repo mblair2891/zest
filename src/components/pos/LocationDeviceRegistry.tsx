@@ -329,6 +329,11 @@ export function LocationDeviceRegistry({
         try {
           const listed = await listPaxReadersFn({ data: { locationId: resolvedLocId } });
           setCardReaders(listed.readers ?? []);
+          try {
+            usePosStore.getState().updateSettings({ paxReaders: listed.readers ?? [] });
+          } catch {
+            /* station publish still carries the list */
+          }
         } catch {
           /* device list still stands if readers cannot load */
         }
@@ -350,7 +355,9 @@ export function LocationDeviceRegistry({
               d.status === next[i]?.status &&
               d.lastSeenAt === next[i]?.lastSeenAt &&
               d.squareDeviceId === next[i]?.squareDeviceId &&
-              d.squarePairStatus === next[i]?.squarePairStatus,
+              d.squarePairStatus === next[i]?.squarePairStatus &&
+              (d.cardReaderId ?? null) === (next[i]?.cardReaderId ?? null) &&
+              (d.receiptPrinterId ?? null) === (next[i]?.receiptPrinterId ?? null),
           );
         if (!same) usePosStore.setState({ locationDevices: next });
       } catch {
@@ -1628,6 +1635,38 @@ export function LocationDeviceRegistry({
                     food.
                   </p>
                 )}
+              {isOrderPrinterType(type) && (
+              <fieldset className="space-y-1">
+                <legend className="text-xs text-muted-foreground">
+                  Stations that send tickets here
+                </legend>
+                <div className="flex flex-col gap-1">
+                  {devices
+                    .filter((d) => !isPrinterDevice(d) && d.status !== "inactive")
+                    .map((d) => {
+                      const role = deviceRoleFromFunction(d.assignment.function);
+                      if (role === "ods" || role === "kiosk") return null;
+                      return (
+                        <label key={d.id} className="flex items-center gap-2 text-sm">
+                          <input
+                            type="checkbox"
+                            className="h-4 w-4 rounded border-border"
+                            checked={boundStationIds.includes(d.id)}
+                            onChange={(e) =>
+                              setBoundStationIds((prev) =>
+                                e.target.checked
+                                  ? [...prev, d.id]
+                                  : prev.filter((x) => x !== d.id),
+                              )
+                            }
+                          />
+                          {d.label} · {DEVICE_ROLE_LABEL[role]}
+                        </label>
+                      );
+                    })}
+                </div>
+              </fieldset>
+              )}
               {isReceiptPrinterType(type) && (
               <fieldset className="space-y-1">
                 <legend className="text-xs text-muted-foreground">

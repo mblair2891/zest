@@ -249,6 +249,47 @@ export function decidePaxPick(input: {
   return { ok: true, reader };
 }
 
+/**
+ * Connect a registered reader from the station device screen, before a check is open.
+ * The slot serial wins. An empty slot may claim the reader for this station.
+ */
+export function decideStationReaderConnect(input: {
+  row: PaxScanRow;
+  readers: PaxReader[];
+  locationLive: boolean;
+  assignedSerial: string | null;
+}): { ok: true; reader: PaxReader; claimSlot: boolean } | { ok: false; message: string } {
+  const reader = readerForSerial(input.readers, input.row.serial);
+  if (!input.row.registered || !reader) {
+    return { ok: false, message: PAX_MSG.notRegistered };
+  }
+  const blocked = envBlock(input.locationLive, reader.env);
+  if (blocked) return { ok: false, message: blocked };
+  const slot = normalizePaxSerial(String(input.assignedSerial ?? ""));
+  if (slot && slot !== reader.serial) {
+    const assigned = readerForSerial(input.readers, slot);
+    const name = assigned?.name || slot;
+    return { ok: false, message: `This station is assigned to ${name}.` };
+  }
+  return { ok: true, reader, claimSlot: !slot };
+}
+
+/** Pay uses the reader that is already connected. Opening Pay does not clear it. */
+export function connectedReaderForPayment(link: {
+  phase: string;
+  reader: PaxReader | null;
+}): PaxReader | null {
+  if (link.phase === "connected" && link.reader) return link.reader;
+  return null;
+}
+
+export function paymentUsesConnectedReader(link: {
+  phase: string;
+  reader: PaxReader | null;
+}): boolean {
+  return connectedReaderForPayment(link) != null;
+}
+
 export function placePaxReader(input: {
   readers: PaxReader[];
   name: string;

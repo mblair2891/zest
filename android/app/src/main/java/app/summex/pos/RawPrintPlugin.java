@@ -66,6 +66,37 @@ public class RawPrintPlugin extends Plugin {
             .start();
     }
 
+    /** TCP connect and close. Writes nothing. Same LAN host check as sendBytes. */
+    @PluginMethod
+    public void probe(PluginCall call) {
+        String host = call.getString("host", "");
+        int port = call.getInt("port", DEFAULT_PORT);
+        if (host == null || host.trim().isEmpty()) {
+            call.reject("Printer host is required");
+            return;
+        }
+        if (port <= 0 || port >= 65536) port = DEFAULT_PORT;
+        final String h = host.trim();
+        final int p = port;
+        new Thread(() -> {
+            try {
+                if (!isPrintLanHost(h)) {
+                    call.reject("Print plugin only reaches house LAN (10/8 or 192.168/16)");
+                    return;
+                }
+                try (Socket sock = new Socket()) {
+                    sock.connect(new InetSocketAddress(h, p), 2000);
+                }
+                JSObject ret = new JSObject();
+                ret.put("ok", true);
+                call.resolve(ret);
+            } catch (Exception e) {
+                call.reject(e.getMessage() != null ? e.getMessage() : "Printer not responding");
+            }
+        }, "summex-raw-probe")
+            .start();
+    }
+
     static boolean isPrintLanHost(String host) {
         try {
             InetAddress addr = InetAddress.getByName(host);

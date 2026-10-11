@@ -5,7 +5,7 @@
 import { registerPlugin } from "@capacitor/core";
 import { Capacitor } from "@capacitor/core";
 import type { PaxBridge } from "./pax-d135";
-import { PAX_SDK_ENV } from "./pax-d135";
+import { PAX_MSG, PAX_SDK_ENV } from "./pax-d135";
 
 export type PaxPluginStatus = {
   state: "idle" | "scanning" | "setting_up" | "connected" | "error";
@@ -55,3 +55,52 @@ export function androidPaxBridge(): PaxBridge {
 }
 
 export const paxPlugin = PaxD135;
+
+type PaxScanResult = {
+  ok: boolean;
+  message?: string;
+  devices?: { name: string; address: string }[];
+};
+
+type PaxConnectInput = {
+  name: string;
+  address: string;
+  merchantId: string;
+  deviceId: string;
+  userId: string;
+  password: string;
+  env: typeof PAX_SDK_ENV;
+};
+
+type PaxConnectResult = { ok: boolean; message?: string; batteryPercent?: number | null };
+
+function scanHook(): (() => Promise<PaxScanResult>) | null {
+  const hook = (globalThis as { __summexPaxScan?: unknown }).__summexPaxScan;
+  return typeof hook === "function" ? (hook as () => Promise<PaxScanResult>) : null;
+}
+
+function connectHook(): ((input: PaxConnectInput) => Promise<PaxConnectResult>) | null {
+  const hook = (globalThis as { __summexPaxConnect?: unknown }).__summexPaxConnect;
+  return typeof hook === "function"
+    ? (hook as (input: PaxConnectInput) => Promise<PaxConnectResult>)
+    : null;
+}
+
+/**
+ * Android asks the plugin. A browser with no station plugin does not report Bluetooth off.
+ * `__summexPaxScan` is only a preview stand-in for a paired name. It does not take a card.
+ */
+export async function scanForPaxReaders(): Promise<PaxScanResult> {
+  if (paxReaderOnThisStation()) return paxPlugin.scan();
+  const hook = scanHook();
+  if (hook) return hook();
+  return { ok: false, message: PAX_MSG.notConnected, devices: [] };
+}
+
+export async function connectForPaxReader(input: PaxConnectInput): Promise<PaxConnectResult> {
+  if (paxReaderOnThisStation()) return paxPlugin.connect(input);
+  const hook = connectHook();
+  if (hook) return hook(input);
+  if (scanHook()) return { ok: true, batteryPercent: null };
+  return { ok: false, message: PAX_MSG.notConnected };
+}

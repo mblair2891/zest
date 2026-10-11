@@ -4,6 +4,7 @@ import { isPrintLanHost } from "./lan-hosts";
 
 type RawPrintPlugin = {
   sendBytes: (opts: { host: string; port: number; payload: string }) => Promise<{ ok: boolean }>;
+  probe: (opts: { host: string; port: number }) => Promise<{ ok: boolean }>;
 };
 
 const RawPrint = registerPlugin<RawPrintPlugin>("RawPrint");
@@ -20,6 +21,19 @@ export async function sendNativeBytes(
   if (!payloadBase64) return false;
   try {
     const res = await RawPrint.sendBytes({ host, port: p, payload: payloadBase64 });
+    return res?.ok === true;
+  } catch {
+    return false;
+  }
+}
+
+/** Android shell only. Opens the printer port and closes it. Writes nothing. Null when this is not the station app. */
+export async function probeNativePrinter(host: string, port: number): Promise<boolean | null> {
+  if (!isNativeApp()) return null;
+  if (!isPrintLanHost(host)) return false;
+  const p = port > 0 && port < 65536 ? Math.round(port) : 9100;
+  try {
+    const res = await RawPrint.probe({ host, port: p });
     return res?.ok === true;
   } catch {
     return false;

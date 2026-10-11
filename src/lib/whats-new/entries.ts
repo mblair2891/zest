@@ -6,6 +6,18 @@ import type { GuideUpdate } from "@/lib/guide/types";
  */
 export const WHATS_NEW_ENTRIES: GuideUpdate[] = [
   {
+    id: "upd_2026_10_242_reader_scan_health",
+    date: "2026-10-11",
+    title: "Reader scan and device health",
+    summary: "The station connects a PAX D135 from Devices before a check, and shows a notice when an assigned system is down.",
+    body: "The station app can scan and connect a registered PAX D135 from the device screen before any check is open. On launch the app checks the card reader, the receipt printer, and the order printer assigned to that station. A registered system that is not responding shows a notice at the top. Scan for reader asks for Nearby devices and Location, confirms Bluetooth is on, then lists a paired D135. Picking it connects that reader to the assigned slot. Pay on a later check uses that connection. Bluetooth is off, or no reader is in range, only when Bluetooth is off or no D135 is powered on nearby.",
+    roles: ["owner_manager", "server", "host_operator", "vendor_operator"],
+    surfaces: ["settings"],
+    audience: "all",
+    topicId: "pax-card-reader",
+    tags: ["devices", "payments"],
+  },
+  {
     id: "upd_2026_10_241_register_reader",
     date: "2026-10-11",
     title: "Register a card reader",
