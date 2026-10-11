@@ -66,6 +66,8 @@ export const PAX_MSG = {
   nameTaken: "That name is already on a reader.",
   /** Only when the serial is empty or the selling entity is missing. */
   notSaved: "The reader was not registered.",
+  /** New PAX D135, and when saving the id on an open reader. */
+  deviceIdRequired: "Enter the Finix device ID.",
 } as const;
 
 const capturedChecks = new Set<string>();
@@ -90,6 +92,11 @@ export function normalizePaxSerial(raw: string): string {
 /** Display name on Devices. Not the Finix device name. */
 export function normalizeReaderName(raw: string): string {
   return String(raw ?? "").replace(/\s+/g, " ").trim().slice(0, 40);
+}
+
+/** Finix device id on the reader record. DVxxxxx. Blank stays blank. */
+export function normalizeFinixDeviceId(raw: string): string {
+  return String(raw ?? "").replace(/\s+/g, "").trim().slice(0, 80);
 }
 
 /**
@@ -142,16 +149,17 @@ export function parsePaxReaders(raw: unknown): PaxReader[] {
     const o = row as Record<string, unknown>;
     const serial = normalizePaxSerial(String(o.serial ?? ""));
     const entityId = String(o.entityId ?? "").trim().slice(0, 80);
-    const finixDeviceId = String(o.finixDeviceId ?? "").trim().slice(0, 80);
+    const finixDeviceId = normalizeFinixDeviceId(String(o.finixDeviceId ?? ""));
     const finixMerchantId = String(o.finixMerchantId ?? "").trim().slice(0, 80);
-    if (!serial || !entityId || !finixDeviceId.startsWith("DV")) continue;
+    // A serial without a Finix device id stays listed until that id is saved.
+    if (!serial || !entityId) continue;
     out.push({
       id: String(o.id ?? `pax_${serial}`).slice(0, 80),
       name: normalizeReaderName(String(o.name ?? "")) || serial,
       serial,
       entityId,
       entityName: String(o.entityName ?? "").trim().slice(0, 80),
-      finixDeviceId,
+      finixDeviceId: finixDeviceId.startsWith("DV") ? finixDeviceId : "",
       finixMerchantId,
       model: PAX_MODEL,
       env: o.env === "live" ? "live" : "sandbox",
@@ -473,6 +481,33 @@ export function placePaxReader(input: {
     env: "sandbox",
   };
   return { ok: true, readers: [...input.readers, reader], reader };
+}
+
+/**
+ * Save the Finix device ID on an existing reader.
+ * The name and the serial stay. A blank id is refused. A serial-only reader stays listed until this succeeds.
+ */
+export function setPaxDeviceId(input: {
+  readers: PaxReader[];
+  id: string;
+  deviceId: string;
+}): { ok: true; readers: PaxReader[]; reader: PaxReader } | { ok: false; message: string } {
+  const deviceId = normalizeFinixDeviceId(input.deviceId);
+  if (!deviceId.startsWith("DV")) return { ok: false, message: PAX_MSG.deviceIdRequired };
+  const current = input.readers.find((r) => r.id === input.id);
+  if (!current) return { ok: false, message: PAX_MSG.notRegistered };
+  if (current.finixDeviceId === deviceId) return { ok: true, readers: input.readers, reader: current };
+  const reader: PaxReader = {
+    ...current,
+    finixDeviceId: deviceId,
+    serial: current.serial,
+    name: current.name,
+  };
+  return {
+    ok: true,
+    readers: input.readers.map((r) => (r.id === current.id ? reader : r)),
+    reader,
+  };
 }
 
 /** Change the Devices name. The Finix device id and the serial stay. */

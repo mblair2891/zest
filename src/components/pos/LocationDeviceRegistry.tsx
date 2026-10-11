@@ -88,7 +88,7 @@ import {
 } from "@/components/ui/dialog";
 import { GuideLearnLink } from "@/components/guide/GuideLearnLink";
 import { SquareTerminalPanel } from "@/components/pos/SquareTerminalPanel";
-import { listPaxReadersFn, registerPaxReaderFn, renamePaxReaderFn } from "@/lib/payments/api";
+import { listPaxReadersFn, registerPaxReaderFn, renamePaxReaderFn, setPaxDeviceIdFn } from "@/lib/payments/api";
 import { readerAssignOptions, readerAssignmentBlock, type PaxReader } from "@/lib/payments/pax-d135";
 import {
   formatClaimExpiry,
@@ -193,10 +193,13 @@ export function LocationDeviceRegistry({
   const [cardReaders, setCardReaders] = useState<PaxReader[]>([]);
   const [paxName, setPaxName] = useState("");
   const [paxSerial, setPaxSerial] = useState("");
+  const [paxDeviceId, setPaxDeviceId] = useState("");
   const [paxEntityId, setPaxEntityId] = useState("");
   const [paxMsg, setPaxMsg] = useState<string | null>(null);
   const [renamingReaderId, setRenamingReaderId] = useState<string | null>(null);
   const [renameDraft, setRenameDraft] = useState("");
+  const [openReaderId, setOpenReaderId] = useState<string | null>(null);
+  const [deviceDraft, setDeviceDraft] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -1087,7 +1090,8 @@ export function LocationDeviceRegistry({
           ) : (
             <ul className="space-y-2 text-sm">
               {cardReaders.map((reader) => (
-                <li key={reader.id} data-pax-registered={reader.serial} className="flex flex-wrap items-center gap-2">
+                <li key={reader.id} data-pax-registered={reader.serial} className="space-y-2">
+                  <div className="flex flex-wrap items-center gap-2">
                   {renamingReaderId === reader.id ? (
                     <>
                       <Input
@@ -1144,12 +1148,78 @@ export function LocationDeviceRegistry({
                         onClick={() => {
                           setRenamingReaderId(reader.id);
                           setRenameDraft(reader.name);
+                          setOpenReaderId(null);
                         }}
                       >
                         Rename
                       </Button>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        data-pax-open=""
+                        disabled={busy}
+                        onClick={() => {
+                          setOpenReaderId(reader.id);
+                          setDeviceDraft(reader.finixDeviceId);
+                          setRenamingReaderId(null);
+                        }}
+                      >
+                        Open
+                      </Button>
                     </>
                   )}
+                  </div>
+                  {openReaderId === reader.id ? (
+                    <div className="flex flex-wrap items-end gap-2" data-pax-device-editor="">
+                      <label className="min-w-[12rem] flex-1 text-xs text-muted-foreground">
+                        Finix device ID
+                        <Input
+                          className="mt-1"
+                          data-pax-device-id=""
+                          placeholder="DVxxxxx"
+                          value={deviceDraft}
+                          onChange={(e) => setDeviceDraft(e.target.value)}
+                        />
+                      </label>
+                      <Button
+                        size="sm"
+                        data-pax-save-device=""
+                        disabled={busy || !deviceDraft.replace(/\s+/g, "").startsWith("DV")}
+                        onClick={() => {
+                          void (async () => {
+                            if (!resolvedLocId) return;
+                            setBusy(true);
+                            setPaxMsg(null);
+                            try {
+                              const res = await setPaxDeviceIdFn({
+                                data: {
+                                  locationId: resolvedLocId,
+                                  id: reader.id,
+                                  deviceId: deviceDraft,
+                                },
+                              });
+                              if (!res.ok) {
+                                setPaxMsg(res.error);
+                                return;
+                              }
+                              setDeviceDraft(res.reader.finixDeviceId);
+                              setCardReaders((rows) =>
+                                rows.map((row) => (row.id === res.reader.id ? res.reader : row)),
+                              );
+                              setPaxMsg(`${res.reader.name} stores ${res.reader.finixDeviceId}.`);
+                              await load({ silent: true });
+                            } catch (e) {
+                              setPaxMsg(e instanceof Error ? e.message : "The reader could not be saved.");
+                            } finally {
+                              setBusy(false);
+                            }
+                          })();
+                        }}
+                      >
+                        Save
+                      </Button>
+                    </div>
+                  ) : null}
                 </li>
               ))}
             </ul>
@@ -1176,6 +1246,16 @@ export function LocationDeviceRegistry({
               />
             </label>
             <label className="min-w-[12rem] flex-1 text-xs text-muted-foreground">
+              Finix device ID
+              <Input
+                className="mt-1"
+                data-pax-new-device-id=""
+                placeholder="DVxxxxx"
+                value={paxDeviceId}
+                onChange={(e) => setPaxDeviceId(e.target.value)}
+              />
+            </label>
+            <label className="min-w-[12rem] flex-1 text-xs text-muted-foreground">
               Selling entity
               <select
                 className="mt-1 h-10 w-full rounded-md border border-border bg-bg px-3 text-sm"
@@ -1197,7 +1277,13 @@ export function LocationDeviceRegistry({
             <Button
               size="sm"
               data-pax-add=""
-              disabled={busy || !paxName.trim() || !paxSerial.trim() || !paxEntityId}
+              disabled={
+                busy ||
+                !paxName.trim() ||
+                !paxSerial.trim() ||
+                !paxEntityId ||
+                !paxDeviceId.replace(/\s+/g, "").startsWith("DV")
+              }
               onClick={() => {
                 void (async () => {
                   if (!resolvedLocId) return;
@@ -1215,6 +1301,7 @@ export function LocationDeviceRegistry({
                         serial: paxSerial,
                         entityId: paxEntityId,
                         entityName,
+                        deviceId: paxDeviceId,
                       },
                     });
                     if (!res.ok) {
@@ -1223,6 +1310,7 @@ export function LocationDeviceRegistry({
                     }
                     setPaxName("");
                     setPaxSerial("");
+                    setPaxDeviceId("");
                     setCardReaders((rows) => {
                       const rest = rows.filter((row) => row.serial !== res.reader.serial);
                       return [...rest, res.reader];

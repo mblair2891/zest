@@ -14,11 +14,13 @@ import {
   PAX_MSG,
   envBlock,
   normalizePaxSerial,
+  normalizeFinixDeviceId,
   parsePaxReaders,
   paxSdkDeviceId,
   placePaxReader,
   readerForSerial,
   renamePaxReader,
+  setPaxDeviceId,
   type PaxReader,
 } from "./pax-d135";
 
@@ -55,7 +57,14 @@ export async function listPaxReaders(userId: string, locationId: string): Promis
 
 export async function registerPaxReader(
   userId: string,
-  input: { locationId: string; name: string; serial: string; entityId: string; entityName: string },
+  input: {
+    locationId: string;
+    name: string;
+    serial: string;
+    entityId: string;
+    entityName: string;
+    deviceId: string;
+  },
 ): Promise<{ ok: true; reader: PaxReader } | { ok: false; error: string }> {
   const loc = await loadLoc(input.locationId);
   await requireMembership(userId, loc.org_id, undefined, input.locationId);
@@ -68,6 +77,8 @@ export async function registerPaxReader(
   }
   const serial = normalizePaxSerial(input.serial);
   if (!serial || !entityId) return { ok: false, error: PAX_MSG.notSaved };
+  const deviceId = normalizeFinixDeviceId(input.deviceId);
+  if (!deviceId.startsWith("DV")) return { ok: false, error: PAX_MSG.deviceIdRequired };
   const existing = readerForSerial(parsePaxReaders(setup.paxReaders), serial);
   if (existing && existing.entityId !== entityId) {
     return { ok: false, error: PAX_MSG.serialTaken };
@@ -97,7 +108,8 @@ export async function registerPaxReader(
     entityId,
     entityName: input.entityName,
     locationLive: false,
-    deviceId: created.id,
+    // The id the operator typed is what the station reads. The create call does not replace it.
+    deviceId,
     merchantId,
     id: newId("pax"),
   });
@@ -133,6 +145,29 @@ export async function renamePaxReaderRecord(
     setup: { ...setup, paxReaders: renamed.readers },
   });
   return { ok: true, reader: renamed.reader };
+}
+
+/** Store the Finix device ID on an existing reader. Does not call Finix and does not change the serial. */
+export async function setPaxDeviceIdRecord(
+  userId: string,
+  input: { locationId: string; id: string; deviceId: string },
+): Promise<{ ok: true; reader: PaxReader } | { ok: false; error: string }> {
+  const loc = await loadLoc(input.locationId);
+  await requireMembership(userId, loc.org_id, undefined, input.locationId);
+  const setup = setupOf(loc.setup);
+  const saved = setPaxDeviceId({
+    readers: parsePaxReaders(setup.paxReaders),
+    id: input.id,
+    deviceId: input.deviceId,
+  });
+  if (!saved.ok) return { ok: false, error: saved.message };
+  const { updateLocationSetupForUser } = await import("@/lib/saas/tenancy.server");
+  await updateLocationSetupForUser(userId, {
+    orgId: loc.org_id,
+    locationId: loc.id,
+    setup: { ...setup, paxReaders: saved.readers },
+  });
+  return { ok: true, reader: saved.reader };
 }
 
 export async function paxReaderSession(

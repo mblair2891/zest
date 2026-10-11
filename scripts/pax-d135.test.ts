@@ -4,6 +4,7 @@ import { readFileSync } from "node:fs";
 import {
   PAX_MODEL,
   PAX_MSG,
+  PAX_SANDBOX_DEVICE_ID,
   checkAlreadyCaptured,
   classifyPaxError,
   decidePaxPick,
@@ -11,12 +12,15 @@ import {
   paxDeviceRequest,
   paxScanPresentation,
   paxScanRows,
+  paxSdkDeviceId,
+  parsePaxReaders,
   placePaxReader,
   readerAssignOptions,
   readerAssignmentBlock,
   rememberCapturedCheck,
   renamePaxReader,
   resetPaxSaleGuards,
+  setPaxDeviceId,
   runAndroidPaxSale,
   type PaxReader,
 } from "../src/lib/payments/pax-d135.ts";
@@ -314,6 +318,11 @@ test("the PAX path does not use Web Bluetooth or Stripe", () => {
   assert.match(devices, /Add card reader/);
   assert.match(devices, /data-pax-add/);
   assert.match(devices, /data-pax-name=""/);
+  assert.match(devices, /Finix device ID/);
+  assert.match(devices, /data-pax-open=""/);
+  assert.match(devices, /data-pax-device-id=""/);
+  assert.match(devices, /data-pax-save-device=""/);
+  assert.match(devices, /data-pax-new-device-id=""/);
   assert.match(devices, /data-pax-assign=""/);
   assert.match(devices, /data-pax-reader-name=""/);
   assert.match(devices, /data-pax-reader-entity=/);
@@ -321,11 +330,27 @@ test("the PAX path does not use Web Bluetooth or Stripe", () => {
   assert.doesNotMatch(devices, /placeholder="Finix \/ Quantum reader"/);
   const renameBody = server.slice(
     server.indexOf("export async function renamePaxReaderRecord"),
-    server.indexOf("export async function paxReaderSession"),
+    server.indexOf("export async function setPaxDeviceIdRecord"),
   );
   assert.doesNotMatch(renameBody, /createPaxD135Device|finixFetch/);
+  const deviceBody = server.slice(
+    server.indexOf("export async function setPaxDeviceIdRecord"),
+    server.indexOf("export async function paxReaderSession"),
+  );
+  assert.doesNotMatch(deviceBody, /createPaxD135Device|finixFetch/);
+  const registerBody = server.slice(
+    server.indexOf("export async function registerPaxReader"),
+    server.indexOf("export async function renamePaxReaderRecord"),
+  );
+  assert.match(registerBody, /normalizeFinixDeviceId\(input\.deviceId\)/);
+  assert.match(registerBody, /deviceId,/);
+  assert.doesNotMatch(registerBody, /deviceId: created\.id/);
   const guideDevices = readFileSync("src/lib/guide/content/devices.ts", "utf8");
   const guidePay = readFileSync("src/lib/guide/content/payments.ts", "utf8");
+  assert.match(guideDevices, /Finix device ID/);
+  assert.match(guideDevices, /stays listed until the id is added/);
+  assert.match(guidePay, /Finix device ID/);
+  assert.match(guidePay, /stays listed until the id is added/);
   assert.match(guideDevices, /Scan for reader/);
   assert.match(guideDevices, /Nearby devices and Location/);
   assert.match(guideDevices, /for example Bar 1/);
@@ -410,6 +435,50 @@ test("a reader named Bar 1 shows in the assign list and keeps its serial", () =>
   assert.equal(renamed.reader.name, "Patio");
   assert.equal(renamed.reader.serial, "SN9");
   assert.equal(renamed.reader.finixDeviceId, "DV9");
+});
+
+test("a serial-only reader stays listed until the Finix device ID is saved", () => {
+  const parsed = parsePaxReaders([
+    {
+      id: "pax_old",
+      name: "Bar 1",
+      serial: "SN1",
+      entityId: "ent_bbq",
+      entityName: "BBQ",
+      finixDeviceId: "",
+      finixMerchantId: "MU1",
+    },
+    {
+      id: "pax_bad",
+      name: "Patio",
+      serial: "SN2",
+      entityId: "ent_bbq",
+      finixDeviceId: "not-a-device",
+      finixMerchantId: "MU1",
+    },
+  ]);
+  assert.equal(parsed.length, 2);
+  assert.equal(parsed[0]?.finixDeviceId, "");
+  assert.equal(parsed[1]?.finixDeviceId, "");
+  const rows = paxScanRows([{ name: "PAX D135_SN1", address: "aa" }], parsed);
+  assert.equal(rows[0]?.registered, true);
+  assert.equal(paxSdkDeviceId(parsed[0]?.finixDeviceId), PAX_SANDBOX_DEVICE_ID);
+  const missing = setPaxDeviceId({ readers: parsed, id: "pax_old", deviceId: "  " });
+  assert.equal(missing.ok, false);
+  if (missing.ok) return;
+  assert.equal(missing.message, PAX_MSG.deviceIdRequired);
+  const saved = setPaxDeviceId({ readers: parsed, id: "pax_old", deviceId: " DV9summit1890 " });
+  assert.equal(saved.ok, true);
+  if (!saved.ok) return;
+  assert.equal(saved.reader.finixDeviceId, "DV9summit1890");
+  assert.equal(saved.reader.serial, "SN1");
+  assert.equal(saved.reader.name, "Bar 1");
+  assert.equal(paxSdkDeviceId(saved.reader.finixDeviceId), "DV9summit1890");
+  const renamed = renamePaxReader({ readers: saved.readers, id: "pax_old", name: "Well" });
+  assert.equal(renamed.ok, true);
+  if (!renamed.ok) return;
+  assert.equal(renamed.reader.finixDeviceId, "DV9summit1890");
+  assert.equal(renamed.reader.serial, "SN1");
 });
 
 test("sandbox card reader add does not require the webhook secret", async () => {

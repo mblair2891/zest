@@ -6,6 +6,18 @@ import type { GuideUpdate } from "@/lib/guide/types";
  */
 export const WHATS_NEW_ENTRIES: GuideUpdate[] = [
   {
+    id: "upd_2026_10_247_finix_device_id",
+    date: "2026-10-11",
+    title: "Finix device ID",
+    summary: "A card reader stores its Finix device ID next to the serial, and the station uses that ID when it connects.",
+    body: "Open a card reader in Devices. The field is labeled Finix device ID. It stores the DVxxxxx id with the serial and is required for a new PAX D135. Save keeps that id on the reader. The station reads that id when it connects. A reader that only has a serial stays listed until the id is added.",
+    roles: ["owner_manager", "server", "host_operator", "vendor_operator"],
+    surfaces: ["settings"],
+    audience: "all",
+    topicId: "pax-card-reader",
+    tags: ["devices", "payments"],
+  },
+  {
     id: "upd_2026_10_246_finix_sdk_connect",
     date: "2026-10-11",
     title: "Finix SDK connect",
