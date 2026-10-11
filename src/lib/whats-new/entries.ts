@@ -6,6 +6,18 @@ import type { GuideUpdate } from "@/lib/guide/types";
  */
 export const WHATS_NEW_ENTRIES: GuideUpdate[] = [
   {
+    id: "upd_2026_10_240_sandbox_reader_add",
+    date: "2026-10-11",
+    title: "Sandbox card reader add",
+    summary: "Add card reader in sandbox does not wait on the webhook secret.",
+    body: "Adding a PAX D135 from Devices succeeds in sandbox when the name, the serial, and the selling entity are filled. A missing FINIX_WEBHOOK_SECRET does not block that add. The reader appears in the list, and the station app can connect to it. Live mode still requires the webhook secret before a charge can settle.",
+    roles: ["owner_manager", "server", "host_operator", "vendor_operator"],
+    surfaces: ["settings"],
+    audience: "all",
+    topicId: "pax-card-reader",
+    tags: ["devices", "payments"],
+  },
+  {
     id: "upd_2026_10_239_spirit_price_levels",
     date: "2026-10-10",
     title: "Spirit price levels",

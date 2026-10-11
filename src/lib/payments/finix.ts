@@ -8,6 +8,7 @@ import {
   finixOrigin,
   finixWebhookSecret as readWebhookSecret,
   missingFinixKeyMessage,
+  readFinixApiCreds,
   readFinixCreds,
   type FinixMode,
 } from "./finix-keys.ts";
@@ -77,13 +78,13 @@ export function finixConfigured(mode: FinixMode = "sandbox"): boolean {
 
 /** Sandbox SDK login. Live passwords are never returned here. */
 export function finixSandboxLogin(): { userId: string; password: string } | null {
-  const row = readFinixCreds("sandbox");
+  const row = readFinixApiCreds("sandbox");
   if (!row.ok) return null;
   return { userId: row.creds.username, password: row.creds.password };
 }
 
 export function finixSandboxLoginError(): string {
-  const row = readFinixCreds("sandbox");
+  const row = readFinixApiCreds("sandbox");
   if (row.ok) return "";
   return missingFinixKeyMessage(row.missing);
 }
@@ -104,8 +105,9 @@ async function finixFetch(
   method: string,
   path: string,
   body?: Record<string, unknown>,
+  opts?: { requireWebhook?: boolean },
 ): Promise<{ ok: boolean; status: number; json: Record<string, unknown>; error?: string }> {
-  const creds = readFinixCreds(mode);
+  const creds = opts?.requireWebhook === false ? readFinixApiCreds(mode) : readFinixCreds(mode);
   if (!creds.ok) {
     const error = missingFinixKeyMessage(creds.missing);
     return { ok: false, status: 0, json: { error, missing: creds.missing }, error };
@@ -442,25 +444,38 @@ export async function createPaxD135Device(opts: {
   name: string;
 }): Promise<{ ok: true; id: string } | { ok: false; error: string }> {
   const merchantId = opts.merchantId.trim();
-  const creds = readFinixCreds("sandbox");
-  if (!creds.ok) {
-    return { ok: false, error: missingFinixKeyMessage(creds.missing) };
-  }
   if (!merchantId) {
     return {
       ok: false,
       error: "This selling entity does not have a sandbox merchant yet.",
     };
   }
-  const { paxDeviceRequest } = await import("./pax-d135");
+  const creds = readFinixApiCreds("sandbox");
+  if (!creds.ok) {
+    return { ok: false, error: missingFinixKeyMessage(creds.missing) };
+  }
+  // A local sandbox merchant is not on the processor yet. The reader still
+  // belongs on the location so the station can scan it. The webhook secret
+  // is not part of this call.
+  if (merchantId.toLowerCase().includes("sandbox")) {
+    return { ok: true, id: sandboxId("DV") };
+  }
+  const { paxDeviceRequest } = await import("./pax-d135.ts");
   const body = paxDeviceRequest(opts.serial, opts.name);
-  const res = await finixFetch("sandbox", "POST", `/merchants/${encodeURIComponent(merchantId)}/devices`, body);
+  const res = await finixFetch(
+    "sandbox",
+    "POST",
+    `/merchants/${encodeURIComponent(merchantId)}/devices`,
+    body,
+    { requireWebhook: false },
+  );
   const id = typeof res.json.id === "string" ? res.json.id : "";
   if (!res.ok || !id.startsWith("DV")) {
     const msg =
-      typeof (res.json as { message?: string }).message === "string"
+      res.error ||
+      (typeof (res.json as { message?: string }).message === "string"
         ? (res.json as { message: string }).message
-        : "The reader was not registered.";
+        : "The reader was not registered.");
     return { ok: false, error: msg.slice(0, 200) };
   }
   return { ok: true, id };

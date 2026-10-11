@@ -325,6 +325,9 @@ test("the PAX path does not use Web Bluetooth or Stripe", () => {
   assert.match(guideDevices, /Scan for reader/);
   assert.match(guideDevices, /Nearby devices and Location/);
   assert.match(guideDevices, /for example Bar 1/);
+  assert.match(guideDevices, /FINIX_WEBHOOK_SECRET does not block the add/);
+  assert.match(guidePay, /FINIX_WEBHOOK_SECRET does not block the add/);
+  assert.match(guidePay, /webhook secret before a charge can settle/);
   assert.match(guideDevices, /dropdown of those names/);
   assert.match(guideDevices, /One reader is assigned to one tablet/);
   assert.match(guidePay, /Scan for reader/);
@@ -399,4 +402,154 @@ test("a reader named Bar 1 shows in the assign list and keeps its serial", () =>
   assert.equal(renamed.reader.name, "Patio");
   assert.equal(renamed.reader.serial, "SN9");
   assert.equal(renamed.reader.finixDeviceId, "DV9");
+});
+
+test("sandbox card reader add does not require the webhook secret", async () => {
+  const { createPaxD135Device, finixSandboxLogin, finixSandboxLoginError, authorizeCardPresent } =
+    await import("../src/lib/payments/finix.ts");
+  const { missingFinixKeyMessage, readFinixCreds } = await import("../src/lib/payments/finix-keys.ts");
+  const keys = [
+    "FINIX_USERNAME",
+    "FINIX_PASSWORD",
+    "FINIX_APPLICATION_ID",
+    "FINIX_WEBHOOK_SECRET",
+    "FINIX_LIVE_USERNAME",
+    "FINIX_LIVE_PASSWORD",
+    "FINIX_LIVE_APPLICATION_ID",
+    "FINIX_LIVE_WEBHOOK_SECRET",
+  ];
+  const prev = new Map(keys.map((key) => [key, process.env[key]]));
+  const restore = () => {
+    for (const [key, value] of prev) {
+      if (value === undefined) delete process.env[key];
+      else process.env[key] = value;
+    }
+  };
+  const setApi = () => {
+    for (const key of keys) delete process.env[key];
+    process.env.FINIX_USERNAME = "sandbox-user";
+    process.env.FINIX_PASSWORD = "sandbox-pass";
+    process.env.FINIX_APPLICATION_ID = "AP_sandbox";
+  };
+  try {
+    setApi();
+    const missing = readFinixCreds("sandbox");
+    assert.equal(missing.ok, false);
+    if (!missing.ok) {
+      assert.equal(missingFinixKeyMessage(missing.missing), "FINIX_WEBHOOK_SECRET is not set");
+    }
+    const login = finixSandboxLogin();
+    assert.equal(login?.userId, "sandbox-user");
+    assert.equal(finixSandboxLoginError(), "");
+
+    let calls = 0;
+    const prevFetch = globalThis.fetch;
+    globalThis.fetch = async () => {
+      calls += 1;
+      return new Response("no", { status: 500 });
+    };
+    try {
+      const local = await createPaxD135Device({
+        merchantId: "MU_sandbox_bar",
+        serial: "SN240",
+        name: "Bar 1",
+      });
+      assert.equal(local.ok, true);
+      if (!local.ok) return;
+      assert.match(local.id, /^DV/);
+      assert.equal(calls, 0);
+      const placed = placePaxReader({
+        readers: [],
+        name: "Bar 1",
+        serial: "SN240",
+        entityId: "ent_bar",
+        entityName: "Bar",
+        locationLive: false,
+        deviceId: local.id,
+        merchantId: "MU_sandbox_bar",
+        id: "pax_qa",
+      });
+      assert.equal(placed.ok, true);
+      if (!placed.ok) return;
+      const rows = paxScanRows([{ name: "PAX D135_SN240", address: "aa" }], placed.readers);
+      assert.equal(rows[0]?.registered, true);
+      const pick = decidePaxPick({
+        row: rows[0]!,
+        readers: placed.readers,
+        sellingEntityId: "ent_bar",
+        locationLive: false,
+      });
+      assert.equal(pick.ok, true);
+    } finally {
+      globalThis.fetch = prevFetch;
+    }
+
+    const urls: string[] = [];
+    globalThis.fetch = async (input) => {
+      urls.push(String(input));
+      return new Response(JSON.stringify({ id: "DV_real_240" }), {
+        status: 201,
+        headers: { "content-type": "application/json" },
+      });
+    };
+    try {
+      const created = await createPaxD135Device({
+        merchantId: "MU_bar",
+        serial: "SN240",
+        name: "Bar 1",
+      });
+      assert.equal(created.ok, true);
+      if (!created.ok) return;
+      assert.equal(created.id, "DV_real_240");
+      assert.equal(urls.length, 1);
+      assert.match(urls[0] ?? "", /finix\.sandbox-payments-api\.com\/merchants\/MU_bar\/devices/);
+      assert.doesNotMatch(created.ok ? "" : "x", /FINIX_WEBHOOK_SECRET/);
+    } finally {
+      globalThis.fetch = prevFetch;
+    }
+
+    delete process.env.FINIX_USERNAME;
+    globalThis.fetch = async () => {
+      throw new Error("fetch");
+    };
+    try {
+      const blocked = await createPaxD135Device({
+        merchantId: "MU_bar",
+        serial: "SN240",
+        name: "Bar 1",
+      });
+      assert.equal(blocked.ok, false);
+      if (blocked.ok) return;
+      assert.equal(blocked.error, "FINIX_USERNAME is not set");
+      assert.doesNotMatch(blocked.error, /FINIX_WEBHOOK_SECRET/);
+    } finally {
+      globalThis.fetch = prevFetch;
+    }
+
+    setApi();
+    process.env.FINIX_LIVE_USERNAME = "live-user";
+    process.env.FINIX_LIVE_PASSWORD = "live-pass";
+    process.env.FINIX_LIVE_APPLICATION_ID = "AP_live";
+    let liveCalls = 0;
+    globalThis.fetch = async () => {
+      liveCalls += 1;
+      return new Response("no", { status: 500 });
+    };
+    try {
+      const live = await authorizeCardPresent({
+        mode: "live",
+        locationLive: true,
+        merchantId: "MU_live",
+        amountCents: 1000,
+        checkId: "chk_live",
+      });
+      assert.equal(live.ok, false);
+      assert.equal(live.error, "FINIX_LIVE_WEBHOOK_SECRET is not set");
+      assert.equal(liveCalls, 0);
+    } finally {
+      globalThis.fetch = prevFetch;
+    }
+  } finally {
+    restore();
+  }
 });

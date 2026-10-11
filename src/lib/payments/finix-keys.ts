@@ -54,7 +54,11 @@ export type FinixCreds = {
 
 export type EnvRead = (key: string) => string | undefined;
 
-export function readFinixCreds(
+/**
+ * Username, password, and application id. A missing webhook secret does not
+ * block a sandbox device registration or a station login.
+ */
+export function readFinixApiCreds(
   mode: FinixMode,
   read: EnvRead = readServerEnv,
 ): { ok: true; creds: FinixCreds } | { ok: false; missing: string } {
@@ -65,12 +69,29 @@ export function readFinixCreds(
   if (!password) return { ok: false, missing: names.password };
   const applicationId = read(names.applicationId);
   if (!applicationId) return { ok: false, missing: names.applicationId };
-  const webhookSecret = read(names.webhookSecret);
-  if (!webhookSecret) return { ok: false, missing: names.webhookSecret };
   return {
     ok: true,
-    creds: { mode, username, password, applicationId, webhookSecret },
+    creds: {
+      mode,
+      username,
+      password,
+      applicationId,
+      webhookSecret: read(names.webhookSecret) ?? "",
+    },
   };
+}
+
+/** API keys plus the webhook secret. A charge cannot settle without the secret. */
+export function readFinixCreds(
+  mode: FinixMode,
+  read: EnvRead = readServerEnv,
+): { ok: true; creds: FinixCreds } | { ok: false; missing: string } {
+  const api = readFinixApiCreds(mode, read);
+  if (!api.ok) return api;
+  if (!api.creds.webhookSecret) {
+    return { ok: false, missing: finixKeyNames(mode).webhookSecret };
+  }
+  return api;
 }
 
 export function missingFinixKeyMessage(missing: string): string {
