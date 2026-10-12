@@ -41,10 +41,10 @@ import {
   decidePaxPick,
   finixConnectBanner,
   finixConnectDiagnostic,
-  finixSdkConnectActivity,
   finixSdkTraceFromConnect,
-  finixUsernamePrefix,
   logFinixConnectDiagnostic,
+  paxConnectActivityTrace,
+  paxSdkConnectActivityResult,
   payEntityStatusText,
   paymentUsesConnectedReader,
   paxScanPresentation,
@@ -384,9 +384,7 @@ export function PaymentDialog({ open, onOpenChange, initialMethod }: Props) {
       showPaxConnectBanner(banner);
       setBusy(true);
       let diagnostic = "";
-      let passedMerchant = "";
-      let passedDevice = "";
-      let passedUser = "";
+      let sent: ReturnType<typeof paxConnectActivityTrace> | undefined;
       const logConnect = async (
         result: string,
         trace?: {
@@ -440,10 +438,8 @@ export function PaymentDialog({ open, onOpenChange, initialMethod }: Props) {
           deviceId: session.deviceId,
           env: session.env,
         };
-        passedMerchant = session.merchantId;
-        passedDevice = session.deviceId;
-        passedUser = session.userId;
         diagnostic = finixConnectDiagnostic(creds);
+        sent = paxConnectActivityTrace(creds);
         logFinixConnectDiagnostic(diagnostic);
         await noteStationActivity({
           locationId: loc,
@@ -497,29 +493,30 @@ export function PaymentDialog({ open, onOpenChange, initialMethod }: Props) {
             deviceId: session.deviceId,
             userId: session.userId,
             password: session.password,
-            env: "SB",
+            env: session.env,
           }),
         );
-        const sdk = finixSdkTraceFromConnect(connected);
-        const sdkLine = sdk ? finixSdkConnectActivity(sdk) : "";
-        const sdkTrace = sdk
-          ? {
-              ...trace,
-              environment: sdk.environment || trace?.environment,
-              merchantId: sdk.merchantId || trace?.merchantId,
-              deviceId: sdk.deviceId || trace?.deviceId,
-            }
-          : trace;
+        const sdkTrace = finixSdkTraceFromConnect(connected);
+        const activity = {
+          ...paxConnectActivityTrace({
+            ...creds,
+            applicationId: trace?.applicationId,
+          }),
+          ...(sdkTrace?.environment ? { environment: sdkTrace.environment } : {}),
+          ...(sdkTrace?.merchantId ? { merchantId: sdkTrace.merchantId } : {}),
+          ...(sdkTrace?.deviceId ? { deviceId: sdkTrace.deviceId } : {}),
+        };
         if (!connected.ok) {
+          const sdk = paxSdkConnectActivityResult(connected);
           const outcome = presentFinixConnectFailure({ message: connected.message, ...creds });
           const reason = finixConnectBanner(diagnostic, outcome);
-          await logConnect(sdkLine || raw || outcome, sdkTrace);
+          await logConnect(sdk || outcome, activity);
           failPaxConnect(reason);
           setError(reason);
           setBusy(false);
           return;
         }
-        await logConnect(sdkLine || raw || PAX_MSG.ready, sdkTrace);
+        await logConnect(paxSdkConnectActivityResult(connected), activity);
         markPaxConnected(
           decision.reader,
           typeof connected.batteryPercent === "number" ? connected.batteryPercent : null,
@@ -529,21 +526,7 @@ export function PaymentDialog({ open, onOpenChange, initialMethod }: Props) {
         const detail = err instanceof Error ? err.message.trim() : "";
         const outcome = detail || "Exception during connection";
         const reason = diagnostic ? finixConnectBanner(diagnostic, outcome) : outcome;
-        const thrown = passedMerchant || passedDevice || passedUser
-          ? finixSdkConnectActivity({
-              merchantId: passedMerchant,
-              deviceId: passedDevice,
-              usernamePrefix: finixUsernamePrefix(passedUser),
-              environment: "SB",
-              sdkMessage: outcome,
-              sdkCode: "Exception",
-            })
-          : outcome;
-        await logConnect(thrown, {
-          merchantId: passedMerchant,
-          deviceId: passedDevice,
-          environment: passedMerchant ? "SB" : undefined,
-        });
+        await logConnect(outcome, sent);
         failPaxConnect(reason);
         setError(getPaxStationLink().message);
       }

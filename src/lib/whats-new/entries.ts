@@ -6,6 +6,19 @@ import type { GuideUpdate } from "@/lib/guide/types";
  */
 export const WHATS_NEW_ENTRIES: GuideUpdate[] = [
   {
+    id: "upd_2026_10_259_d135_merchantdata",
+    date: "2026-10-12",
+    title: "D135 merchant connect",
+    summary:
+      "Pay connects the PAX D135 with the selling entity's merchant and the reader's device. Station activity shows Connected or the reader error.",
+    body: "Pay connects the PAX D135 with the selling entity's Finix merchant and that reader's device id. When FINIX_ENVIRONMENT is sandbox the station uses Environment SB. The Finix username and password come from the server and are not stored in the app. Station activity shows Connected or the reader error.",
+    roles: ["owner_manager", "server", "host_operator", "vendor_operator"],
+    surfaces: ["settings"],
+    audience: "all",
+    topicId: "pax-card-reader",
+    tags: ["devices", "payments"],
+  },
+  {
     id: "upd_2026_10_258_finix_merchant_data",
     date: "2026-10-12",
     title: "Finix MerchantData trace",
@@ -106,7 +119,7 @@ export const WHATS_NEW_ENTRIES: GuideUpdate[] = [
     date: "2026-10-11",
     title: "Finix unauthorized on connect",
     summary: "An Unauthorized response names the Finix credential or environment. A successful connect shows Reader ready.",
-    body: "When the station initializes the card reader it uses the location's Finix sandbox username, password, merchant ID, and device ID DVt7ZpgavajgoPUHCX967Ser with Environment SB. An Unauthorized response shows the exact Finix reason and which credential or environment was used. A successful connect shows Reader ready.",
+    body: "When the station initializes the card reader it uses the selling entity's Finix merchant, the reader's device id, and the server's Finix username and password. Sandbox uses Environment SB when FINIX_ENVIRONMENT is sandbox. The username and password are not stored in the app. An Unauthorized response shows the exact Finix reason and which credential or environment was used. Station activity shows Connected or the reader error.",
     roles: ["owner_manager", "server", "host_operator", "vendor_operator"],
     surfaces: ["settings"],
     audience: "all",

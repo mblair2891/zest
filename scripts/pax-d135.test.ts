@@ -4,7 +4,6 @@ import { readFileSync } from "node:fs";
 import {
   PAX_MODEL,
   PAX_MSG,
-  PAX_SANDBOX_DEVICE_ID,
   checkAlreadyCaptured,
   classifyPaxError,
   checkEntityBannerLabel,
@@ -396,9 +395,13 @@ test("the PAX path does not use Web Bluetooth or Stripe", () => {
   assert.doesNotMatch(server, /\/transfers|authorizeCardPresent|captureCardPresent/);
   const plugin = readFileSync("android/app/src/main/java/app/summex/pos/PaxD135Plugin.java", "utf8");
   assert.match(plugin, /PAX D135_/);
-  assert.match(plugin, /DVt7ZpgavajgoPUHCX967Ser/);
-  assert.match(plugin, /next\.connect\(name, address,/);
+  assert.match(plugin, /MPOSFinix\.Companion\.invoke\(getContext\(\), data\)/);
+  assert.match(plugin, /connect\(deviceName, deviceAddress,/);
   assert.match(plugin, /EnvEnum\.SB/);
+  assert.match(plugin, /"Connected"/);
+  assert.doesNotMatch(plugin, /DVt7ZpgavajgoPUHCX967Ser/);
+  assert.doesNotMatch(plugin, /DVbAt1JESzPRXVN7MAoN4hHF/);
+  assert.doesNotMatch(plugin, /MUdpkz77QV2XnH45t7fpURa1/);
   assert.doesNotMatch(plugin, /EnvEnum\.PROD/);
   assert.match(plugin, /requestPermissionForAliases/);
   assert.match(plugin, /ACCESS_FINE_LOCATION/);
@@ -588,7 +591,7 @@ test("a serial-only reader stays listed until the Finix device ID is saved", () 
   assert.equal(parsed[1]?.finixDeviceId, "");
   const rows = paxScanRows([{ name: "PAX D135_SN1", address: "aa" }], parsed);
   assert.equal(rows[0]?.registered, true);
-  assert.equal(paxSdkDeviceId(parsed[0]?.finixDeviceId), PAX_SANDBOX_DEVICE_ID);
+  assert.equal(paxSdkDeviceId(parsed[0]?.finixDeviceId), "");
   const missing = setPaxDeviceId({ readers: parsed, id: "pax_old", deviceId: "  " });
   assert.equal(missing.ok, false);
   if (missing.ok) return;

@@ -6,11 +6,8 @@
 
 export const PAX_NAME_PREFIX = "PAX D135_";
 export const PAX_MODEL = "PAX_D135" as const;
-/**
- * Sandbox device the station app passes to MPOSFinix.
- * A local DV_sandbox placeholder is not a processor device.
- */
-export const PAX_SANDBOX_DEVICE_ID = "DVt7ZpgavajgoPUHCX967Ser";
+/** Station activity text when the Finix connect callback succeeds. */
+export const PAX_ACTIVITY_CONNECTED = "Connected";
 export const PAX_SDK_ENV = "SB" as const;
 
 export type PaxReaderEnv = "sandbox" | "live";
@@ -188,13 +185,54 @@ export function paxDeviceRequest(serial: string, name: string): {
 }
 
 /**
- * Device id for the Finix Android SDK. A stored processor id is kept.
- * A blank or local sandbox placeholder uses the sandbox D135 device.
+ * Device id from the reader row, passed through to MPOSFinix.
+ * A blank id stays blank. The station does not substitute another device.
  */
 export function paxSdkDeviceId(stored?: string | null): string {
-  const id = String(stored ?? "").trim();
-  if (!id || /sandbox/i.test(id)) return PAX_SANDBOX_DEVICE_ID;
-  return id;
+  return normalizeFinixDeviceId(String(stored ?? ""));
+}
+
+/**
+ * EnvEnum.SB when FINIX_ENVIRONMENT is sandbox or unset.
+ * live / production maps to LIVE, which this build still refuses before connect.
+ */
+export function finixStationEnv(environment: string | null | undefined): "SB" | "LIVE" {
+  const raw = String(environment ?? "").trim().toLowerCase();
+  if (raw === "live" || raw === "production" || raw === "prod") return "LIVE";
+  return "SB";
+}
+
+/** Station activity result for one SDK connect callback. Success is Connected. A failure is the SDK text. */
+export function paxSdkConnectActivityResult(input: { ok: boolean; message?: string | null }): string {
+  if (input.ok) return PAX_ACTIVITY_CONNECTED;
+  return String(input.message ?? "").replace(/\s+/g, " ").trim();
+}
+
+/** Values written beside the callback result. The password and username are presence only. */
+export function paxConnectActivityTrace(input: {
+  env: string;
+  userId: string;
+  password: string;
+  merchantId: string;
+  deviceId: string;
+  applicationId?: string;
+}): {
+  environment: string;
+  usernamePresent: "yes" | "no";
+  passwordPresent: "yes" | "no";
+  merchantId: string;
+  deviceId: string;
+  applicationId?: string;
+} {
+  const applicationId = String(input.applicationId ?? "").trim();
+  return {
+    environment: finixInitEnvironment(input.env),
+    usernamePresent: String(input.userId ?? "").trim() ? "yes" : "no",
+    passwordPresent: String(input.password ?? "").trim() ? "yes" : "no",
+    merchantId: String(input.merchantId ?? "").trim(),
+    deviceId: paxSdkDeviceId(input.deviceId),
+    ...(applicationId ? { applicationId } : {}),
+  };
 }
 
 export function readerForSerial(readers: PaxReader[], serial: string): PaxReader | null {
@@ -550,7 +588,7 @@ export function finixConnectDiagnostic(input: {
 }): string {
   const env = finixInitEnvironment(input.env);
   const merchant = String(input.merchantId ?? "").trim() || "missing";
-  const device = paxSdkDeviceId(input.deviceId);
+  const device = paxSdkDeviceId(input.deviceId) || "missing";
   const username = String(input.userId ?? "").trim() ? "yes" : "no";
   const password = String(input.password ?? "").trim() ? "yes" : "no";
   return `Environment ${env}. Username present ${username}. Password present ${password}. Merchant ${merchant}. Device ${device}.`;
@@ -664,17 +702,18 @@ export async function runPaxConnect(
     try {
       const result = await connect();
       if (result.ok) return result;
-      const message = paxConnectFailureReason(result.message);
+      const text = String(result.message ?? "").replace(/\s+/g, " ").trim();
+      const message = text || PAX_MSG.connectTimeout;
       last = { ...result, ok: false, message, batteryPercent: result.batteryPercent ?? null };
       if (!paxConnectShouldRetry(result.message)) return last;
     } catch (err) {
       const detail = err instanceof Error ? err.message.trim() : "";
-      const message = paxConnectFailureReason(detail || "Exception during connection");
+      const message = detail || "Exception during connection";
       last = {
         ok: false,
         message,
         batteryPercent: null,
-        sdkMessage: detail || "Exception during connection",
+        sdkMessage: message,
         sdkCode: "Exception",
       };
       if (!paxConnectShouldRetry(message)) break;

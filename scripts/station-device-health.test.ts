@@ -4,7 +4,8 @@ import { readFileSync } from "node:fs";
 import {
   PAX_MODEL,
   PAX_MSG,
-  PAX_SANDBOX_DEVICE_ID,
+  finixStationEnv,
+  paxSdkConnectActivityResult,
   paxSdkDeviceId,
   connectedReaderForPayment,
   paxLinkStatusText,
@@ -251,25 +252,27 @@ test("the printer probe connects without a payload and the reader timeout stays"
     new URL("../android/app/src/main/java/app/summex/pos/PaxD135Plugin.java", import.meta.url),
     "utf8",
   );
-  assert.match(pax, /DVt7ZpgavajgoPUHCX967Ser/);
-  assert.match(pax, /next\.connect\(name, address,/);
+  assert.match(pax, /MPOSFinix\.Companion\.invoke\(getContext\(\), data\)/);
+  assert.match(pax, /new MerchantData\(/);
+  assert.match(pax, /connect\(deviceName, deviceAddress,/);
   assert.match(pax, /EnvEnum\.SB/);
+  assert.doesNotMatch(pax, /EnvEnum\.PROD/);
+  assert.match(pax, /MSG_CONNECTED = "Connected"/);
+  assert.match(pax, /callbackError\(errorMessage\)/);
+  assert.doesNotMatch(pax, /DVt7ZpgavajgoPUHCX967Ser/);
+  assert.doesNotMatch(pax, /SANDBOX_DEVICE_ID/);
   assert.match(pax, /keyDownloadProgress/);
   const gradle = readFileSync(
     new URL("../android/app/build.gradle", import.meta.url),
     "utf8",
   );
-  assert.match(gradle, /com\.finix:pax-mpos-sdk-android/);
+  assert.match(gradle, /implementation\("com\.finix:pax-mpos-sdk-android:3\.7\.0"\)/);
   assert.match(pax, /FIRST_RESPONSE_MS = 15_000L/);
   assert.match(pax, /CONNECT_TIMEOUT_MS = 4L \* 60L \* 1000L/);
   assert.match(pax, /Allow Nearby devices and Location, then scan again\./);
   assert.match(pax, /Bluetooth is off, or no reader is in range\./);
   assert.match(pax, /static final String MSG_CONNECTING = "Connecting"/);
   assert.match(pax, /static final String MSG_READY = "Reader ready"/);
-  assert.match(pax, /finixUnauthorized/);
-  assert.match(pax, /Finix sandbox username/);
-  assert.match(pax, /Finix sandbox password/);
-  assert.match(pax, /merchant ID/);
   assert.match(pax, /Environment SB/);
   assert.match(pax, /Log\.i\("PaxD135", diagnostic\)/);
   assert.match(pax, /Log\.i\("PaxD135", merchantTrace\)/);
@@ -291,26 +294,31 @@ test("the printer probe connects without a payload and the reader timeout stays"
   assert.equal(diag.includes("return userId"), false);
   assert.match(diag, /Username /);
   assert.match(diag, /Password /);
-  const cred = pax.slice(pax.indexOf("failedFinixCredential"), pax.indexOf("private void restoreHeld"));
-  assert.equal(cred.includes("password +"), false);
-  assert.equal(cred.includes("return password"), false);
   assert.match(pax, /static final String MSG_CONNECT_TIMEOUT = "The connection timed out."/);
   assert.match(pax, /static final String MSG_CONNECT_REJECTED = "The reader rejected the connection."/);
   assert.match(pax, /static final String MSG_NO_RESPONSE = "The reader did not respond."/);
-  const reason = pax.slice(pax.indexOf("String finixConnectReason"), pax.indexOf("private void restoreHeld"));
+  const reason = pax.slice(pax.indexOf("String callbackError"), pax.indexOf("private void restoreHeld"));
+  assert.match(reason, /errorMessage/);
   assert.equal(reason.includes("MSG_NOT_CONNECTED"), false);
-  assert.equal(reason.includes("MSG_NO_RESPONSE"), false);
+  assert.equal(reason.includes("password"), false);
   assert.equal(pax.includes(".disconnect("), false);
   assert.match(pax, /stopScanBeforeConnect/);
   assert.match(pax, /main\.post\(\(\) -> connectOnWorker/);
 });
 
 test("selecting a D135 holds the link and Reader ready stays", async () => {
-  assert.equal(paxSdkDeviceId("DV_sandbox_local"), PAX_SANDBOX_DEVICE_ID);
-  assert.equal(paxSdkDeviceId("DVsandbox1890"), PAX_SANDBOX_DEVICE_ID);
-  assert.equal(paxSdkDeviceId(""), PAX_SANDBOX_DEVICE_ID);
-  assert.equal(paxSdkDeviceId(PAX_SANDBOX_DEVICE_ID), PAX_SANDBOX_DEVICE_ID);
+  assert.equal(paxSdkDeviceId("DV_sandbox_local"), "DV_sandbox_local");
+  assert.equal(paxSdkDeviceId("DVsandbox1890"), "DVsandbox1890");
+  assert.equal(paxSdkDeviceId(""), "");
   assert.equal(paxSdkDeviceId("DV9"), "DV9");
+  assert.equal(finixStationEnv("sandbox"), "SB");
+  assert.equal(finixStationEnv(""), "SB");
+  assert.equal(finixStationEnv("live"), "LIVE");
+  assert.equal(paxSdkConnectActivityResult({ ok: true, message: "Reader ready" }), "Connected");
+  assert.equal(
+    paxSdkConnectActivityResult({ ok: false, message: "Failed to connect: device not found" }),
+    "Failed to connect: device not found",
+  );
   assert.equal(presentPaxHold({ event: "select", wasReady: false }).message, "Connecting");
   assert.equal(presentPaxHold({ event: "processing", wasReady: false }).message, "Setting up reader");
   assert.equal(
@@ -373,7 +381,7 @@ test("selecting a D135 holds the link and Reader ready stays", async () => {
     userId: "sandbox-user",
     password: secret,
     merchantId: "MUabc",
-    deviceId: PAX_SANDBOX_DEVICE_ID,
+    deviceId: "DVreader",
     env: "SB",
   });
   assert.equal(username, "Unauthorized. Finix sandbox username.");
@@ -384,7 +392,7 @@ test("selecting a D135 holds the link and Reader ready stays", async () => {
       userId: "USreader",
       password: "",
       merchantId: "MUabc",
-      deviceId: PAX_SANDBOX_DEVICE_ID,
+      deviceId: "DVreader",
       env: "SB",
     }),
     "Unauthorized. Finix sandbox password.",
@@ -395,7 +403,7 @@ test("selecting a D135 holds the link and Reader ready stays", async () => {
       userId: "USreader",
       password: secret,
       merchantId: "local",
-      deviceId: PAX_SANDBOX_DEVICE_ID,
+      deviceId: "DVreader",
       env: "SB",
     }),
     "401 Unauthorized. merchant ID.",
@@ -406,7 +414,7 @@ test("selecting a D135 holds the link and Reader ready stays", async () => {
       userId: "USreader",
       password: secret,
       merchantId: "MUabc",
-      deviceId: PAX_SANDBOX_DEVICE_ID,
+      deviceId: "DVreader",
       env: "PROD",
     }),
     "Unauthorized. Environment PROD.",
@@ -417,7 +425,7 @@ test("selecting a D135 holds the link and Reader ready stays", async () => {
       userId: "sandbox-user",
       password: secret,
       merchantId: "MUabc",
-      deviceId: PAX_SANDBOX_DEVICE_ID,
+      deviceId: "DVreader",
       env: "SB",
     }),
     "Unauthorized. Finix sandbox username.",
@@ -428,7 +436,7 @@ test("selecting a D135 holds the link and Reader ready stays", async () => {
       userId: "USreader",
       password: secret,
       merchantId: "MUabc",
-      deviceId: PAX_SANDBOX_DEVICE_ID,
+      deviceId: "DVreader",
       env: "SB",
     }),
     "Reader ready",
@@ -438,12 +446,12 @@ test("selecting a D135 holds the link and Reader ready stays", async () => {
     userId: loginName,
     password: secret,
     merchantId: "MUabc",
-    deviceId: PAX_SANDBOX_DEVICE_ID,
+    deviceId: "DVreader",
     env: "SB",
   });
   assert.equal(
     diagnostic,
-    `Environment SB. Username present yes. Password present yes. Merchant MUabc. Device ${PAX_SANDBOX_DEVICE_ID}.`,
+    "Environment SB. Username present yes. Password present yes. Merchant MUabc. Device DVreader.",
   );
   assert.equal(diagnostic.includes(secret), false);
   assert.equal(diagnostic.includes(loginName), false);
@@ -455,7 +463,7 @@ test("selecting a D135 holds the link and Reader ready stays", async () => {
       deviceId: "",
       env: "",
     }),
-    `Environment SB. Username present no. Password present no. Merchant missing. Device ${PAX_SANDBOX_DEVICE_ID}.`,
+    "Environment SB. Username present no. Password present no. Merchant missing. Device missing.",
   );
   assert.equal(
     finixConnectDiagnostic({
@@ -485,7 +493,8 @@ test("selecting a D135 holds the link and Reader ready stays", async () => {
   const guidePay = readFileSync(new URL("../src/lib/guide/content/payments.ts", import.meta.url), "utf8");
   assert.match(guideDevices, /which credential or environment was used/);
   assert.match(guidePay, /which credential or environment was used/);
-  assert.match(guideDevices, /DVt7ZpgavajgoPUHCX967Ser/);
+  assert.match(guideDevices, /Station activity shows Connected or the reader error/);
+  assert.doesNotMatch(guideDevices, /DVt7ZpgavajgoPUHCX967Ser/);
   assert.match(guideDevices, /A successful connect shows Reader ready/);
   assert.match(guideDevices, /whether the username is present/);
   assert.match(guideDevices, /includes the Finix error body/);

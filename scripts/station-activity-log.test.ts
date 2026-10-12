@@ -119,12 +119,16 @@ test("pay and devices record and list the log", () => {
   const devices = readFileSync(new URL("../src/components/pos/LocationDeviceRegistry.tsx", import.meta.url), "utf8");
   const guide = readFileSync(new URL("../src/lib/guide/content/devices.ts", import.meta.url), "utf8");
   const payments = readFileSync(new URL("../src/lib/guide/content/payments.ts", import.meta.url), "utf8");
+  assert.match(pay, /paxSdkConnectActivityResult/);
+  assert.match(station, /paxSdkConnectActivityResult/);
+  assert.match(pay, /env: session\.env/);
+  assert.match(station, /env: session\.env/);
   assert.match(pay, /noteStationActivity/);
   assert.match(pay, /action: "entity match"/);
   assert.match(pay, /action: "Finix keys"/);
   assert.match(pay, /action: "connect"/);
-  assert.match(pay, /finixSdkConnectActivity/);
-  assert.match(station, /finixSdkConnectActivity/);
+  assert.match(pay, /finixSdkTraceFromConnect/);
+  assert.match(station, /finixSdkTraceFromConnect/);
   assert.match(station, /action: "Finix keys"/);
   assert.match(devices, /data-station-activity-log/);
   assert.match(devices, /data-station-activity-download/);
@@ -132,7 +136,7 @@ test("pay and devices record and list the log", () => {
   const sentence =
     "On reader select the station records the environment, whether username and password are present, the application ID, the merchant ID, and the device ID it sends to the Finix SDK.";
   const sdkSentence =
-    "When the station calls the Finix Android SDK connect, Devices records the merchant ID, device ID, the first six characters of the username, and the environment passed in MerchantData, then the SDK exception message and code. The password is not recorded.";
+    "When the station initializes the card reader it uses the selling entity's Finix merchant, the reader's device id, and the server's Finix username and password.";
   assert.match(guide, new RegExp(sentence.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")));
   assert.match(payments, new RegExp(sentence.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")));
   assert.match(guide, new RegExp(sdkSentence.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")));

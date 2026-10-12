@@ -3,6 +3,7 @@
  * The sale itself is created by the Android SDK. This file does not call Stripe
  * and does not post a second transfer.
  */
+import { readServerEnv } from "@/lib/database-url";
 import { getSql } from "@/lib/db";
 import { newId } from "@/lib/saas/ids";
 import { ForbiddenError, requireMembership } from "@/lib/saas/tenancy.server";
@@ -17,6 +18,7 @@ import {
   normalizePaxSerial,
   normalizeFinixDeviceId,
   parsePaxReaders,
+  finixStationEnv,
   paxSdkDeviceId,
   placePaxReader,
   readerForSerial,
@@ -224,6 +226,27 @@ export async function replacePaxReaderRecord(
   return { ok: true, reader: replaced.reader, devices: replaced.devices };
 }
 
+/** Selling entity’s Finix merchant. The reader row is the fallback when the account has no MU id. */
+async function venueFinixMerchantId(locationId: string, entityId: string): Promise<string> {
+  const sql = await getSql();
+  const entity = entityId.trim();
+  const rows =
+    entity === HOST_SCOPE
+      ? await sql<{ finix_merchant_id: string | null }>`
+          select finix_merchant_id
+          from payment_accounts
+          where location_id = ${locationId} and kind = ${"host"}
+          limit 1
+        `
+      : await sql<{ finix_merchant_id: string | null }>`
+          select finix_merchant_id
+          from payment_accounts
+          where operator_id = ${entity} and kind = ${"operator"}
+          limit 1
+        `;
+  return String(rows[0]?.finix_merchant_id ?? "").trim();
+}
+
 export async function paxReaderSession(
   userId: string,
   input: { locationId: string; serial: string; entityId: string },
@@ -234,7 +257,7 @@ export async function paxReaderSession(
       deviceId: string;
       userId: string;
       password: string;
-      env: "SB";
+      env: "SB" | "LIVE";
     }
   | { ok: false; error: string }
 > {
@@ -253,13 +276,16 @@ export async function paxReaderSession(
   if (!login) {
     return { ok: false, error: finixSandboxLoginError() };
   }
+  const accountMerchant = await venueFinixMerchantId(loc.id, reader.entityId);
+  const storedMerchant = reader.finixMerchantId.trim();
+  const merchantId = accountMerchant.startsWith("MU") ? accountMerchant : storedMerchant;
   return {
     ok: true,
-    merchantId: reader.finixMerchantId,
+    merchantId,
     deviceId: paxSdkDeviceId(reader.finixDeviceId),
     userId: login.userId,
     password: login.password,
-    env: "SB",
+    env: finixStationEnv(readServerEnv("FINIX_ENVIRONMENT")),
   };
 }
 

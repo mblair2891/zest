@@ -69,8 +69,8 @@ public class PaxD135Plugin extends Plugin {
     static final String MSG_LIVE = "Live cards are not available in this build. Take cash or keep the check open.";
     static final String MSG_CONNECTING = "Connecting";
     static final String MSG_SETUP = "Setting up reader";
-    /** Sandbox device for MPOSFinix when the stored id is still a local placeholder. */
-    static final String SANDBOX_DEVICE_ID = "DVt7ZpgavajgoPUHCX967Ser";
+    /** Station activity result when MPOSConnectionCallback.onSuccess runs. */
+    static final String MSG_CONNECTED = "Connected";
     static final String MSG_READY = "Reader ready";
     static final String MSG_CONNECT_TIMEOUT = "The connection timed out.";
     static final String MSG_CONNECT_REJECTED = "The reader rejected the connection.";
@@ -178,6 +178,7 @@ public class PaxD135Plugin extends Plugin {
             connected = true;
             JSObject ret = new JSObject();
             ret.put("ok", true);
+            ret.put("message", MSG_CONNECTED);
             if (batteryPercent != null) ret.put("batteryPercent", batteryPercent);
             call.resolve(ret);
             emit("connected", finixConnectBanner(diagnostic, MSG_READY), serialOf(name), batteryPercent);
@@ -267,8 +268,8 @@ public class PaxD135Plugin extends Plugin {
     ) {
         final AtomicBoolean settled = new AtomicBoolean(false);
         final AtomicBoolean heard = new AtomicBoolean(false);
-        final String passedMerchant = merchantId == null ? "" : merchantId;
-        final String passedDevice = sdkDeviceId(deviceId);
+        final String passedMerchant = merchantId == null ? "" : merchantId.trim();
+        final String passedDevice = deviceId == null ? "" : deviceId.trim();
         final String passedUser = userId == null ? "" : userId;
         final String passedPassword = password == null ? "" : password;
         final String prefix = usernamePrefix(passedUser);
@@ -288,6 +289,9 @@ public class PaxD135Plugin extends Plugin {
         };
         main.postDelayed(timeout, FIRST_RESPONSE_MS);
         try {
+            // Kotlin MPOSFinix(context, MerchantData) is Companion.invoke from Java.
+            // mid is empty. merchant, device, and ROLE_MERCHANT login come from the station call.
+            // EnvEnum.SB when that call sends SB (FINIX_ENVIRONMENT=sandbox).
             MerchantData data = new MerchantData(
                 passedMerchant,
                 "",
@@ -299,7 +303,9 @@ public class PaxD135Plugin extends Plugin {
             );
             final MPOSFinix next = MPOSFinix.Companion.invoke(getContext(), data);
             mpos = next;
-            next.connect(name, address, new MPOSConnectionCallback() {
+            final String deviceName = name;
+            final String deviceAddress = address;
+            next.connect(deviceName, deviceAddress, new MPOSConnectionCallback() {
                 private void allowKeyDownload() {
                     if (!heard.compareAndSet(false, true)) return;
                     main.removeCallbacks(timeout);
@@ -335,9 +341,10 @@ public class PaxD135Plugin extends Plugin {
                     }
                     JSObject ret = new JSObject();
                     ret.put("ok", true);
+                    ret.put("message", MSG_CONNECTED);
                     if (batteryPercent != null) ret.put("batteryPercent", batteryPercent);
-                    putSdkTrace(ret, passedMerchant, passedDevice, prefix, MSG_READY, "none");
-                    logSdkResult(merchantTrace, MSG_READY, "none");
+                    putSdkTrace(ret, passedMerchant, passedDevice, prefix, MSG_CONNECTED, "none");
+                    logSdkResult(merchantTrace, MSG_CONNECTED, "none");
                     call.resolve(ret);
                     emit("connected", finixConnectBanner(diagnostic, MSG_READY), serialOf(name), batteryPercent);
                     watchAcl();
@@ -350,21 +357,17 @@ public class PaxD135Plugin extends Plugin {
                     settingUp = false;
                     heldSettingUp = false;
                     connected = false;
-                    JSObject ret = new JSObject();
-                    ret.put("ok", false);
-                    String rawError = errorMessage == null ? "" : errorMessage;
-                    String safeError = redactConnectSecrets(rawError, passedPassword, passedUser);
+                    String shown = callbackError(errorMessage);
+                    String safeError = redactConnectSecrets(shown, passedPassword, passedUser);
                     String code = messageCode(safeError);
                     if (code.isEmpty()) code = "missing";
+                    JSObject ret = new JSObject();
+                    ret.put("ok", false);
                     putSdkTrace(ret, passedMerchant, passedDevice, prefix, safeError, code);
                     logSdkResult(merchantTrace, safeError, code);
-                    String shown = finixConnectBanner(
-                        diagnostic,
-                        finixUnauthorized(finixConnectReason(errorMessage), userId, password, merchantId, deviceId)
-                    );
-                    ret.put("message", shown);
+                    ret.put("message", safeError);
                     call.resolve(ret);
-                    emit("error", shown, serialOf(name), null);
+                    emit("error", safeError, serialOf(name), null);
                 }
             });
         } catch (Exception e) {
@@ -374,31 +377,17 @@ public class PaxD135Plugin extends Plugin {
             heldSettingUp = false;
             connected = false;
             String detail = e.getMessage() == null ? "" : e.getMessage().trim();
-            String safeDetail = redactConnectSecrets(
-                detail.isEmpty() ? "Exception during connection" : detail,
-                passedPassword,
-                passedUser
-            );
+            String shown = callbackError(detail.isEmpty() ? "Exception during connection" : detail);
+            String safeDetail = redactConnectSecrets(shown, passedPassword, passedUser);
             String code = redactConnectSecrets(exceptionCode(e), passedPassword, passedUser);
             if (code.isEmpty()) code = "missing";
             JSObject ret = new JSObject();
             ret.put("ok", false);
             putSdkTrace(ret, passedMerchant, passedDevice, prefix, safeDetail, code);
             logSdkResult(merchantTrace, safeDetail, code);
-            ret.put(
-                "message",
-                finixConnectBanner(
-                    diagnostic,
-                    finixUnauthorized(
-                        finixConnectReason(detail.isEmpty() ? "Exception during connection" : detail),
-                        userId,
-                        password,
-                        merchantId,
-                        deviceId
-                    )
-                )
-            );
+            ret.put("message", safeDetail);
             call.resolve(ret);
+            emit("error", safeDetail, serialOf(name), null);
         }
     }
 
@@ -651,21 +640,16 @@ public class PaxD135Plugin extends Plugin {
         return new String[] { "location" };
     }
 
-    /** A local placeholder is not the processor device. The SDK still uses Environment.SB. */
-    private static String sdkDeviceId(String deviceId) {
-        String id = deviceId == null ? "" : deviceId.trim();
-        if (id.isEmpty() || id.toLowerCase().contains("sandbox")) return SANDBOX_DEVICE_ID;
-        return id;
-    }
-
     /**
      * Init line for MPOSFinix. Environment SB, merchant, device, and whether
      * the username and password are present. The values themselves are not written.
+     * The device id is the reader row. A blank id stays missing.
      */
     private static String finixConnectDiagnostic(String merchantId, String deviceId, String userId, String password) {
         String merchant = merchantId == null ? "" : merchantId.trim();
         if (merchant.isEmpty()) merchant = "missing";
-        String device = sdkDeviceId(deviceId);
+        String device = deviceId == null ? "" : deviceId.trim();
+        if (device.isEmpty()) device = "missing";
         boolean userPresent = userId != null && !userId.trim().isEmpty();
         boolean passPresent = password != null && !password.trim().isEmpty();
         return "Environment SB. Username present " + (userPresent ? "yes" : "no")
@@ -770,48 +754,13 @@ public class PaxD135Plugin extends Plugin {
     }
 
     /**
-     * Finix onError text and Bluetooth failures stay as written.
-     * A blank callback is the 15 second wait, not a generic no-response line.
+     * MPOSConnectionCallback.onError text, unchanged.
+     * A blank callback is the 15 second wait.
      */
-    private String finixConnectReason(String errorMessage) {
-        if (!bluetoothOn()) return MSG_BLUETOOTH;
+    private static String callbackError(String errorMessage) {
         String message = errorMessage == null ? "" : errorMessage.trim();
-        String lower = message.toLowerCase();
-        if (message.equals(MSG_PERMISSION) || lower.contains("nearby devices")) return MSG_PERMISSION;
-        if (message.isEmpty() || lower.contains("did not respond") || lower.contains("scan for the reader")) {
-            return MSG_CONNECT_TIMEOUT;
-        }
+        if (message.isEmpty()) return MSG_CONNECT_TIMEOUT;
         return message;
-    }
-
-    /**
-     * Unauthorized stays in Finix’s words. The banner names the credential or Environment SB.
-     * The password value is not written into the message.
-     */
-    private String finixUnauthorized(String reason, String userId, String password, String merchantId, String deviceId) {
-        if (reason == null || !reason.toLowerCase().contains("unauthorized")) return reason;
-        String lower = reason.toLowerCase();
-        if (lower.contains("finix sandbox username")
-            || lower.contains("finix sandbox password")
-            || lower.contains("merchant id")
-            || lower.contains("device id")
-            || lower.contains("environment ")) {
-            return reason;
-        }
-        String head = reason;
-        if (!head.endsWith(".") && !head.endsWith("!") && !head.endsWith("?")) head = head + ".";
-        return head + " " + failedFinixCredential(userId, password, merchantId, deviceId);
-    }
-
-    private static String failedFinixCredential(String userId, String password, String merchantId, String deviceId) {
-        String user = userId == null ? "" : userId.trim();
-        String merchant = merchantId == null ? "" : merchantId.trim();
-        String device = deviceId == null ? "" : deviceId.trim();
-        if (!user.startsWith("US")) return "Finix sandbox username.";
-        if (password == null || password.trim().isEmpty()) return "Finix sandbox password.";
-        if (!merchant.startsWith("MU")) return "merchant ID.";
-        if (!device.startsWith("DV")) return device.isEmpty() ? "device ID." : "device ID " + device + ".";
-        return "Finix sandbox password.";
     }
 
     private void restoreHeld() {

@@ -5,7 +5,7 @@
 import { registerPlugin } from "@capacitor/core";
 import { Capacitor } from "@capacitor/core";
 import type { PaxBridge } from "./pax-d135";
-import { PAX_MSG, PAX_SDK_ENV } from "./pax-d135";
+import { PAX_MSG } from "./pax-d135";
 
 export type PaxPluginStatus = {
   state: "idle" | "scanning" | "connecting" | "setting_up" | "connected" | "disconnected" | "error";
@@ -27,7 +27,7 @@ type PaxPlugin = {
     deviceId: string;
     userId: string;
     password: string;
-    env: typeof PAX_SDK_ENV;
+    env: "SB" | "LIVE";
   }) => Promise<PaxConnectResult>;
   sale: (input: { amountCents: number; checkId: string; tipCents: number }) => Promise<{
     ok: boolean;
@@ -69,7 +69,7 @@ type PaxConnectInput = {
   deviceId: string;
   userId: string;
   password: string;
-  env: typeof PAX_SDK_ENV;
+  env: "SB" | "LIVE";
 };
 
 type PaxConnectResult = {
