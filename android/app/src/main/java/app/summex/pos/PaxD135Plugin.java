@@ -32,6 +32,7 @@ import com.getcapacitor.annotation.CapacitorPlugin;
 import com.getcapacitor.annotation.Permission;
 import com.getcapacitor.annotation.PermissionCallback;
 import androidx.core.content.ContextCompat;
+import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -828,16 +829,64 @@ public class PaxD135Plugin extends Plugin {
     }
 
     /**
-     * Finix 3.7 connect takes the scanned device name and address.
-     * The callback is the SDK connection callback.
+     * Connects the BluetoothDevice scanForDevices returned.
+     * A connect method that takes that device is used when the SDK has one.
+     * Finix 3.7 publishes connect(String, String, callback). Those strings are
+     * read from this device. The station name is not passed.
      */
     private void connect(MPOSFinix finix, BluetoothDevice device, MPOSConnectionCallback connectionCallback) {
         try {
-            String deviceName = device.getName() == null ? "" : device.getName();
-            String deviceAddress = device.getAddress() == null ? "" : device.getAddress();
-            finix.connect(deviceName, deviceAddress, connectionCallback);
+            Method takingDevice = null;
+            for (Method method : finix.getClass().getMethods()) {
+                if (!"connect".equals(method.getName())) continue;
+                Class<?>[] params = method.getParameterTypes();
+                if (params.length == 2
+                    && BluetoothDevice.class.isAssignableFrom(params[0])
+                    && MPOSConnectionCallback.class.isAssignableFrom(params[1])) {
+                    takingDevice = method;
+                    break;
+                }
+            }
+            if (takingDevice != null) {
+                takingDevice.invoke(finix, device, connectionCallback);
+                return;
+            }
+            Method published = finix.getClass().getMethod(
+                "connect",
+                String.class,
+                String.class,
+                MPOSConnectionCallback.class
+            );
+            published.invoke(finix, bluetoothLabel(device), bluetoothAddress(device), connectionCallback);
         } catch (SecurityException e) {
             connectionCallback.onError(MSG_PERMISSION);
+        } catch (InvocationTargetException e) {
+            Throwable cause = e.getCause() == null ? e : e.getCause();
+            if (cause instanceof SecurityException) {
+                connectionCallback.onError(MSG_PERMISSION);
+                return;
+            }
+            String detail = cause.getMessage() == null ? "" : cause.getMessage().trim();
+            connectionCallback.onError(detail.isEmpty() ? cause.toString() : detail);
+        } catch (Exception e) {
+            String detail = e.getMessage() == null ? "" : e.getMessage().trim();
+            connectionCallback.onError(detail.isEmpty() ? e.toString() : detail);
+        }
+    }
+
+    /** Name on the scanned device. The station label is not used. */
+    private String bluetoothLabel(BluetoothDevice device) {
+        String labeled = deviceName(device);
+        return labeled == null ? "" : labeled;
+    }
+
+    /** Address on the scanned device. */
+    private static String bluetoothAddress(BluetoothDevice device) {
+        try {
+            String address = device.getAddress();
+            return address == null ? "" : address;
+        } catch (SecurityException e) {
+            return "";
         }
     }
 

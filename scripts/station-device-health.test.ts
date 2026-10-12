@@ -14,6 +14,8 @@ import {
   finixUnauthorizedBanner,
   paxConnectFailureReason,
   paxConnectShouldRetry,
+  paxScanRowLabel,
+  paxTabletCallback,
   presentFinixConnectFailure,
   presentPaxHold,
   reuseHeldPaxLink,
@@ -257,7 +259,9 @@ test("the printer probe connects without a payload and the reader timeout stays"
   assert.match(pax, /scanForDevices\(serialOf\(name\)\)/);
   assert.match(pax, /connect\(next, device, connectionCallback\)/);
   assert.match(pax, /name\.contains\("D135"\)/);
-  assert.match(pax, /finix\.connect\(deviceName, deviceAddress, connectionCallback\)/);
+  assert.match(pax, /takingDevice\.invoke\(finix, device, connectionCallback\)/);
+  assert.match(pax, /published\.invoke\(finix, bluetoothLabel\(device\), bluetoothAddress\(device\), connectionCallback\)/);
+  assert.doesNotMatch(pax, /finix\.connect\(deviceName, deviceAddress/);
   assert.match(pax, /EnvEnum\.SB/);
   assert.doesNotMatch(pax, /EnvEnum\.PROD/);
   assert.match(pax, /MSG_CONNECTED = "Connected"/);
@@ -385,13 +389,23 @@ test("selecting a D135 holds the link and Reader ready stays", async () => {
   });
   assert.equal(finix.message, "Failed to connect: auth");
   assert.notEqual(finix.message, PAX_MSG.connectNoResponse);
-  assert.equal(paxConnectFailureReason("timed out waiting"), PAX_MSG.connectTimeout);
+  assert.equal(paxConnectFailureReason("timed out waiting"), "timed out waiting");
   assert.equal(paxConnectFailureReason("Failed to connect: auth"), "Failed to connect: auth");
   assert.equal(paxConnectFailureReason("Disconnecting — try again shortly."), "Disconnecting — try again shortly.");
   assert.equal(paxConnectFailureReason(""), PAX_MSG.connectTimeout);
-  assert.equal(paxConnectFailureReason(PAX_MSG.connectNoResponse), PAX_MSG.connectTimeout);
+  assert.equal(paxConnectFailureReason(PAX_MSG.connectNoResponse), PAX_MSG.connectNoResponse);
   assert.equal(paxConnectFailureReason(PAX_MSG.permissions), PAX_MSG.permissions);
-  assert.equal(paxConnectFailureReason(PAX_MSG.notConnected), PAX_MSG.connectTimeout);
+  assert.equal(paxConnectFailureReason(PAX_MSG.notConnected), PAX_MSG.notConnected);
+  assert.equal(
+    paxTabletCallback({
+      message: "Connection timed out: socket closed",
+      sdkMessage: "Connection timed out: socket closed",
+      sdkCode: "104",
+    }),
+    "Connection timed out: socket closed code 104",
+  );
+  assert.equal(paxTabletCallback({ message: "", sdkMessage: "", sdkCode: "missing" }), PAX_MSG.connectTimeout);
+  assert.equal(paxScanRowLabel(row(other.serial), [other]), other.name);
   assert.equal(paxConnectShouldRetry("Failed to connect: auth"), false);
   assert.equal(paxConnectShouldRetry("Disconnecting — try again shortly."), true);
   assert.equal(paxConnectShouldRetry(PAX_MSG.connectTimeout), true);

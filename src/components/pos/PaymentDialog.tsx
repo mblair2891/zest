@@ -50,7 +50,8 @@ import {
   payEntityStatusText,
   paymentUsesConnectedReader,
   paxScanPresentation,
-  presentFinixConnectFailure,
+  paxScanRowLabel,
+  paxTabletCallback,
   readerCheckEntityBanner,
   readerEntityLabel,
   readerForSerial,
@@ -546,11 +547,10 @@ export function PaymentDialog({ open, onOpenChange, initialMethod }: Props) {
         const sdk = paxSdkConnectActivityResult(connected);
         logFinixConnectDiagnostic(sdk);
         if (!connected.ok) {
-          const outcome = presentFinixConnectFailure({ message: connected.message, ...creds });
-          const reason = finixConnectBanner(diagnostic, outcome);
-          await logConnect(sdk || outcome, activity);
-          failPaxConnect(reason);
-          setError(reason);
+          const shown = paxTabletCallback(connected);
+          await logConnect(sdk || shown, activity);
+          failPaxConnect(shown);
+          setError(shown);
           setBusy(false);
           return;
         }
@@ -563,10 +563,9 @@ export function PaymentDialog({ open, onOpenChange, initialMethod }: Props) {
       } catch (err) {
         const detail = err instanceof Error ? err.message.trim() : "";
         const outcome = detail || "Exception during connection";
-        const reason = diagnostic ? finixConnectBanner(diagnostic, outcome) : outcome;
         await logConnect(outcome, sent);
-        failPaxConnect(reason);
-        setError(getPaxStationLink().message);
+        failPaxConnect(outcome);
+        setError(outcome);
       }
       setBusy(false);
     })();
@@ -1699,7 +1698,7 @@ export function PaymentDialog({ open, onOpenChange, initialMethod }: Props) {
                           className="block w-full rounded-lg border border-border px-3 py-2 text-left text-sm"
                           onClick={() => pickPax(row)}
                         >
-                          {row.name}
+                          {paxScanRowLabel(row, pax.readers)}
                         </button>
                       ))}
                     </div>

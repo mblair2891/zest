@@ -172,6 +172,11 @@ export function notePaxStatus(status: {
       const presented = presentPaxHold({ event: "accepted", wasReady: true });
       patch({ phase: "connected", message: presented.message });
     }
+  } else if (status.state === "error") {
+    const incoming = String(status.message ?? "").trim();
+    if (incoming) {
+      patch({ phase: "idle", reader: null, battery: null, message: incoming });
+    }
   } else if (status.state === "disconnected" && state.phase === "connected") {
     if (paxBannerStays(state.message)) {
       patch({ phase: "idle", reader: null, battery: null });

@@ -6,6 +6,19 @@ import type { GuideUpdate } from "@/lib/guide/types";
  */
 export const WHATS_NEW_ENTRIES: GuideUpdate[] = [
   {
+    id: "upd_2026_10_263_d135_bluetooth_device",
+    date: "2026-10-12",
+    title: "Card reader shows the callback",
+    summary:
+      "The card reader connects with the scanned Bluetooth device. A failure shows the full callback on the tablet.",
+    body: "The station uses the saved merchant id and the saved MID. It connects the Bluetooth device the scan returned. A failure shows that callback on the tablet. The password is left off.",
+    roles: ["owner_manager", "server", "host_operator", "vendor_operator"],
+    surfaces: ["settings"],
+    audience: "all",
+    topicId: "pax-card-reader",
+    tags: ["devices", "payments"],
+  },
+  {
     id: "upd_2026_10_262_finix_mid",
     date: "2026-10-12",
     title: "Payments stores the merchant number",

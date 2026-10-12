@@ -15,7 +15,8 @@ import {
   paxSdkConnectActivityResult,
   paxLinkStatusText,
   paxScanPresentation,
-  presentFinixConnectFailure,
+  paxScanRowLabel,
+  paxTabletCallback,
   runPaxConnect,
   type PaxReader,
   type PaxScanRow,
@@ -439,9 +440,9 @@ function StationDeviceScreen({ onClose }: { onClose: () => void }) {
         const sdk = paxSdkConnectActivityResult(connected);
         logFinixConnectDiagnostic(sdk);
         if (!connected.ok) {
-          const outcome = presentFinixConnectFailure({ message: connected.message, ...creds });
-          await logConnect(sdk || outcome, activity);
-          failPaxConnect(finixConnectBanner(diagnostic, outcome));
+          const shown = paxTabletCallback(connected);
+          await logConnect(sdk || shown, activity);
+          failPaxConnect(shown);
           setBusy(false);
           return;
         }
@@ -483,7 +484,7 @@ function StationDeviceScreen({ onClose }: { onClose: () => void }) {
         const detail = err instanceof Error ? err.message.trim() : "";
         const outcome = detail || "Exception during connection";
         await logConnect(outcome, sent);
-        failPaxConnect(diagnostic ? finixConnectBanner(diagnostic, outcome) : outcome);
+        failPaxConnect(outcome);
       }
       setBusy(false);
     })();
@@ -530,7 +531,7 @@ function StationDeviceScreen({ onClose }: { onClose: () => void }) {
             className="rounded-lg border border-border px-3 py-3 text-left text-sm"
             onClick={() => pick(row)}
           >
-            {row.name}
+            {paxScanRowLabel(row, link.readers)}
           </button>
         ))}
       </div>

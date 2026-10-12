@@ -396,7 +396,10 @@ test("the PAX path does not use Web Bluetooth or Stripe", () => {
   const plugin = readFileSync("android/app/src/main/java/app/summex/pos/PaxD135Plugin.java", "utf8");
   assert.match(plugin, /PAX D135_/);
   assert.match(plugin, /MPOSFinix\.Companion\.invoke\(getContext\(\), data\)/);
-  assert.match(plugin, /connect\(deviceName, deviceAddress,/);
+  assert.match(plugin, /scanForDevices\(serialOf\(name\)\)/);
+  assert.match(plugin, /takingDevice\.invoke\(finix, device, connectionCallback\)/);
+  assert.match(plugin, /published\.invoke\(finix, bluetoothLabel\(device\), bluetoothAddress\(device\), connectionCallback\)/);
+  assert.doesNotMatch(plugin, /finix\.connect\(deviceName, deviceAddress/);
   assert.match(plugin, /EnvEnum\.SB/);
   assert.match(plugin, /"Connected"/);
   assert.doesNotMatch(plugin, /DVt7ZpgavajgoPUHCX967Ser/);

@@ -541,38 +541,40 @@ export function reuseHeldPaxLink(input: {
 
 /**
  * Connect result from the Finix Bluetooth path.
- * A Finix or Bluetooth sentence stays as written. A blank result is the 15 second wait.
- * The generic no-response line is not used when the reader was selected.
+ * The callback text stays as written. A blank result is the 15 second wait.
  */
 export function paxConnectFailureReason(message?: string | null): string {
   const text = String(message ?? "").trim();
-  const lower = text.toLowerCase();
-  if (text.startsWith("Environment ")) return text;
-  if (isReaderCheckEntityBanner(text)) return text;
-  if (
-    text.startsWith("Failed to connect:") ||
-    text.startsWith("Connection failed:") ||
-    text.startsWith("Disconnecting") ||
-    text.startsWith("Exception during connection") ||
-    text.startsWith("Connection already") ||
-    text.startsWith("Device already connected")
-  ) {
-    return text;
-  }
-  if (text === PAX_MSG.permissions || lower.includes("nearby devices")) return PAX_MSG.permissions;
-  if (text === PAX_MSG.bluetooth || lower === PAX_MSG.bluetooth.toLowerCase()) return PAX_MSG.bluetooth;
-  if (
-    !text ||
-    text === PAX_MSG.notConnected ||
-    text === PAX_MSG.connectNoResponse ||
-    text === PAX_MSG.connectTimeout ||
-    lower.includes("did not respond") ||
-    lower.includes("timed out") ||
-    lower === "timeout"
-  ) {
-    return PAX_MSG.connectTimeout;
-  }
+  if (!text) return PAX_MSG.connectTimeout;
   return text;
+}
+
+/**
+ * Tablet line for an SDK connect failure.
+ * The callback text is kept, including a code when the SDK returned one separately.
+ * A blank callback is the 15 second wait. The password is not added here.
+ */
+export function paxTabletCallback(input: {
+  message?: string | null;
+  sdkMessage?: string | null;
+  sdkCode?: string | null;
+}): string {
+  const message = String(input.sdkMessage || input.message || "")
+    .replace(/\s+/g, " ")
+    .trim();
+  const code = String(input.sdkCode ?? "")
+    .replace(/\s+/g, " ")
+    .trim();
+  if (!message && (!code || code === "none" || code === "missing")) return PAX_MSG.connectTimeout;
+  if (!code || code === "none" || code === "missing") return message;
+  if (message.toLowerCase().includes(code.toLowerCase())) return message;
+  return `${message} code ${code}`.trim();
+}
+
+/** Saved reader name on a scan row. The Bluetooth name stays the connect key. */
+export function paxScanRowLabel(row: PaxScanRow, readers: PaxReader[]): string {
+  const stored = readerForSerial(readers, row.serial)?.name.trim();
+  return stored || row.name;
 }
 
 /**
@@ -675,9 +677,18 @@ export function logFinixConnectDiagnostic(diagnostic: string): void {
 /** Retry once when the first open did not get a Finix answer. A named Finix error is the result. */
 export function paxConnectShouldRetry(message?: string | null): boolean {
   const text = String(message ?? "").trim();
-  const reason = paxConnectFailureReason(text);
-  if (reason === PAX_MSG.permissions || reason === PAX_MSG.bluetooth) return false;
-  if (reason === PAX_MSG.connectTimeout) return true;
+  const lower = text.toLowerCase();
+  if (text === PAX_MSG.permissions || text === PAX_MSG.bluetooth) return false;
+  if (/unauthorized/i.test(text)) return false;
+  if (
+    !text ||
+    lower === "timeout" ||
+    text === PAX_MSG.connectTimeout ||
+    text === PAX_MSG.connectNoResponse ||
+    text === PAX_MSG.notConnected
+  ) {
+    return true;
+  }
   return (
     text === "Disconnecting — try again shortly." ||
     text === "Connection already in progress." ||
