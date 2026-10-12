@@ -1,6 +1,22 @@
 import { createServerFn } from "@tanstack/react-start";
 import { tenantMiddleware } from "@/lib/saas/tenant-middleware";
+import {
+  activityFieldsFromDiagnostic,
+  isStationActivityAction,
+  sanitizeActivityResult,
+  type StationActivityPresence,
+} from "./station-activity-log";
 import type { CardPresentResult, PaymentsStatus } from "./types";
+
+function activityPresence(raw: unknown): StationActivityPresence {
+  const value = String(raw ?? "").trim().toLowerCase();
+  if (value === "yes" || value === "no") return value;
+  return "";
+}
+
+function activityText(raw: unknown, max: number): string {
+  return String(raw ?? "").replace(/\s+/g, " ").trim().slice(0, max);
+}
 
 function loc(raw: unknown): string {
   const s = String(raw ?? "").trim();
@@ -118,6 +134,56 @@ export const finixConnectAuthFn = createServerFn({ method: "POST" })
   .handler(async ({ context, data }) => {
     const { finixConnectAuth } = await import("./pax-d135.server");
     return finixConnectAuth(context.userId, data);
+  });
+
+export const recordStationActivityFn = createServerFn({ method: "POST" })
+  .middleware([tenantMiddleware])
+  .validator((d: {
+    locationId: string;
+    stationName: string;
+    action: string;
+    environment?: string;
+    usernamePresent?: string;
+    passwordPresent?: string;
+    merchantId?: string;
+    deviceId?: string;
+    checkEntity?: string;
+    readerEntity?: string;
+    result?: string;
+    diagnostic?: string;
+  }) => {
+    if (!isStationActivityAction(d.action)) throw new Error("Action is required");
+    const fromDiag = activityFieldsFromDiagnostic(String(d.diagnostic ?? ""));
+    const usernamePresent = activityPresence(d.usernamePresent) || fromDiag.usernamePresent;
+    const passwordPresent = activityPresence(d.passwordPresent) || fromDiag.passwordPresent;
+    return {
+      locationId: loc(d.locationId),
+      stationName: activityText(d.stationName, 80) || "Station",
+      action: d.action,
+      environment: activityText(d.environment, 8) || fromDiag.environment,
+      usernamePresent,
+      passwordPresent,
+      merchantId: activityText(d.merchantId, 80) || fromDiag.merchantId,
+      deviceId: activityText(d.deviceId, 80) || fromDiag.deviceId,
+      checkEntity: activityText(d.checkEntity, 120),
+      readerEntity: activityText(d.readerEntity, 120),
+      result: sanitizeActivityResult(String(d.result ?? "")),
+    };
+  })
+  .handler(async ({ context, data }) => {
+    const { recordStationActivity } = await import("./station-activity-log.server");
+    return recordStationActivity(context.userId, data);
+  });
+
+export const listStationActivityFn = createServerFn({ method: "POST" })
+  .middleware([tenantMiddleware])
+  .validator((d: { locationId: string; full?: boolean }) => ({
+    locationId: loc(d.locationId),
+    full: Boolean(d.full),
+  }))
+  .handler(async ({ context, data }) => {
+    const { listStationActivity } = await import("./station-activity-log.server");
+    return listStationActivity(context.userId, data.locationId, data.full);
   });
 
 export const recordPaxSaleFn = createServerFn({ method: "POST" })

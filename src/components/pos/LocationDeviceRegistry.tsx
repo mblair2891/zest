@@ -95,8 +95,13 @@ import {
   renamePaxReaderFn,
   replacePaxReaderFn,
   setPaxDeviceIdFn,
+  listStationActivityFn,
 } from "@/lib/payments/api";
 import { readerAssignOptions, readerAssignmentBlock, type PaxReader } from "@/lib/payments/pax-d135";
+import {
+  formatStationActivityLine,
+  type StationActivityEntry,
+} from "@/lib/payments/station-activity-log";
 import {
   formatClaimExpiry,
   normalizeClaimCode,
@@ -198,6 +203,7 @@ export function LocationDeviceRegistry({
   const [roleHistory, setRoleHistory] = useState<DeviceRoleChange[]>([]);
   const [hostName, setHostName] = useState(locationName);
   const [cardReaders, setCardReaders] = useState<PaxReader[]>([]);
+  const [activity, setActivity] = useState<StationActivityEntry[]>([]);
   const [paxName, setPaxName] = useState("");
   const [paxSerial, setPaxSerial] = useState("");
   const [paxDeviceId, setPaxDeviceId] = useState("");
@@ -342,6 +348,12 @@ export function LocationDeviceRegistry({
         try {
           const listed = await listPaxReadersFn({ data: { locationId: resolvedLocId } });
           setCardReaders(listed.readers ?? []);
+          try {
+            const logged = await listStationActivityFn({ data: { locationId: resolvedLocId } });
+            setActivity(logged.entries ?? []);
+          } catch {
+            /* readers still list when the activity log cannot load */
+          }
           try {
             usePosStore.getState().updateSettings({ paxReaders: listed.readers ?? [] });
           } catch {
@@ -1083,6 +1095,58 @@ export function LocationDeviceRegistry({
         )}
       </div>
 
+      {mode === "stations" && (
+        <section className="space-y-3 rounded-2xl border border-border bg-surface p-4" data-station-activity-log="">
+          <div className="flex flex-wrap items-start justify-between gap-2">
+            <div>
+              <p className="text-sm font-medium">Station activity</p>
+              <p className="mt-1 text-xs text-muted-foreground">
+                Card-reader connects, entity matches, and Finix key status for this location.
+              </p>
+            </div>
+            <Button
+              size="sm"
+              variant="outline"
+              data-station-activity-download=""
+              disabled={!resolvedLocId}
+              onClick={() => {
+                void (async () => {
+                  if (!resolvedLocId) return;
+                  try {
+                    const logged = await listStationActivityFn({
+                      data: { locationId: resolvedLocId, full: true },
+                    });
+                    const blob = new Blob([logged.text], { type: "text/plain;charset=utf-8" });
+                    const url = URL.createObjectURL(blob);
+                    const link = document.createElement("a");
+                    link.href = url;
+                    link.download = "station-activity.txt";
+                    document.body.appendChild(link);
+                    link.click();
+                    link.remove();
+                    URL.revokeObjectURL(url);
+                  } catch (e) {
+                    setError(e instanceof Error ? e.message : "The log was not downloaded.");
+                  }
+                })();
+              }}
+            >
+              Download log
+            </Button>
+          </div>
+          {activity.length === 0 ? (
+            <p className="text-xs text-muted-foreground">No station activity yet.</p>
+          ) : (
+            <ul className="max-h-56 space-y-2 overflow-y-auto text-xs">
+              {activity.map((entry) => (
+                <li key={entry.id} data-station-activity-entry="" className="break-words font-mono">
+                  {formatStationActivityLine(entry)}
+                </li>
+              ))}
+            </ul>
+          )}
+        </section>
+      )}
       {mode === "stations" && (
         <section className="space-y-3 rounded-2xl border border-border bg-surface p-4" data-pax-readers="">
           <div className="flex flex-wrap items-start justify-between gap-2">

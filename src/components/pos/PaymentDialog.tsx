@@ -54,6 +54,7 @@ import {
   type PaxReader,
   type PaxScanRow,
 } from "@/lib/payments/pax-d135";
+import { noteStationActivity } from "@/lib/payments/station-activity";
 import {
   beginPaxConnect,
   beginPaxScan,
@@ -315,6 +316,7 @@ export function PaymentDialog({ open, onOpenChange, initialMethod }: Props) {
   const pickPax = (row: PaxScanRow) => {
     void (async () => {
       if (!order) return;
+      const loc = usePosStore.getState().tenantLocationId || readTenantPosContext()?.locationId || "";
       const locationLive = Boolean(payStatus && payStatus.mode === "live" && !payStatus.lifecycleForcesSandbox);
       const readers = getPaxStationLink().readers;
       const sellingEntityIds = checkSellingEntityIds(order.lines);
@@ -326,6 +328,11 @@ export function PaymentDialog({ open, onOpenChange, initialMethod }: Props) {
         locationLive,
       });
       if (!decision.ok && decision.message !== PAX_MSG.wrongEntity) {
+        await noteStationActivity({
+          locationId: loc,
+          action: "connect",
+          result: decision.message,
+        });
         setPayEntityBanner(null);
         failPaxConnect(decision.message);
         setError(decision.message);
@@ -333,6 +340,11 @@ export function PaymentDialog({ open, onOpenChange, initialMethod }: Props) {
       }
       const reader = decision.ok ? decision.reader : readerForSerial(readers, row.serial);
       if (!reader) {
+        await noteStationActivity({
+          locationId: loc,
+          action: "connect",
+          result: PAX_MSG.notRegistered,
+        });
         setPayEntityBanner(null);
         failPaxConnect(PAX_MSG.notRegistered);
         setError(PAX_MSG.notRegistered);
@@ -343,32 +355,57 @@ export function PaymentDialog({ open, onOpenChange, initialMethod }: Props) {
         name: vendor.name,
       }));
       const hostName = usePosStore.getState().settings.name;
-      const banner = readerCheckEntityBanner(
-        readerEntityLabel(reader, names, hostName),
-        checkEntityLabelForReader({
-          lines: order.lines,
-          readerEntityId: reader.entityId,
-          names,
-          hostName,
-        }),
-      );
+      const readerEntity = readerEntityLabel(reader, names, hostName);
+      const checkEntity = checkEntityLabelForReader({
+        lines: order.lines,
+        readerEntityId: reader.entityId,
+        names,
+        hostName,
+      });
+      const banner = readerCheckEntityBanner(readerEntity, checkEntity);
       setPayEntityBanner(banner);
+      await noteStationActivity({
+        locationId: loc,
+        action: "entity match",
+        checkEntity,
+        readerEntity,
+        result: decision.ok ? "match" : banner,
+      });
       if (!decision.ok) {
         failPaxConnect(banner);
         setError(banner);
         return;
       }
-      const loc = usePosStore.getState().tenantLocationId || readTenantPosContext()?.locationId || "";
       setError(null);
       beginPaxConnect(decision.reader);
       showPaxConnectBanner(banner);
       setBusy(true);
       let diagnostic = "";
+      const logConnect = async (result: string) => {
+        await noteStationActivity({
+          locationId: loc,
+          action: "connect",
+          diagnostic,
+          checkEntity,
+          readerEntity,
+          result,
+        });
+      };
       try {
         const session = await paxReaderSessionFn({
           data: { locationId: loc, serial: decision.reader.serial, entityId: decision.reader.entityId },
         });
         if (!session.ok) {
+          await noteStationActivity({
+            locationId: loc,
+            action: "Finix keys",
+            usernamePresent: "no",
+            passwordPresent: "no",
+            checkEntity,
+            readerEntity,
+            result: session.error,
+          });
+          await logConnect(session.error);
           failPaxConnect(session.error);
           setError(session.error);
           setBusy(false);
@@ -383,6 +420,14 @@ export function PaymentDialog({ open, onOpenChange, initialMethod }: Props) {
         };
         diagnostic = finixConnectDiagnostic(creds);
         logFinixConnectDiagnostic(diagnostic);
+        await noteStationActivity({
+          locationId: loc,
+          action: "Finix keys",
+          diagnostic,
+          checkEntity,
+          readerEntity,
+          result: diagnostic,
+        });
         showPaxConnectBanner(diagnostic);
         const { connectForPaxReader, paxReaderOnThisStation } = await import("@/lib/payments/pax-d135-native");
         if (!paxReaderOnThisStation()) {
@@ -392,6 +437,7 @@ export function PaymentDialog({ open, onOpenChange, initialMethod }: Props) {
           if (!auth.ok) {
             const body = String(auth.error ?? "").trim();
             const reason = finixConnectBanner(diagnostic, body);
+            await logConnect(body || reason);
             failPaxConnect(reason);
             setError(reason);
             setBusy(false);
@@ -410,15 +456,15 @@ export function PaymentDialog({ open, onOpenChange, initialMethod }: Props) {
           }),
         );
         if (!connected.ok) {
-          const reason = finixConnectBanner(
-            diagnostic,
-            presentFinixConnectFailure({ message: connected.message, ...creds }),
-          );
+          const outcome = presentFinixConnectFailure({ message: connected.message, ...creds });
+          const reason = finixConnectBanner(diagnostic, outcome);
+          await logConnect(outcome);
           failPaxConnect(reason);
           setError(reason);
           setBusy(false);
           return;
         }
+        await logConnect(PAX_MSG.ready);
         markPaxConnected(
           decision.reader,
           typeof connected.batteryPercent === "number" ? connected.batteryPercent : null,
@@ -428,6 +474,7 @@ export function PaymentDialog({ open, onOpenChange, initialMethod }: Props) {
         const detail = err instanceof Error ? err.message.trim() : "";
         const outcome = detail || "Exception during connection";
         const reason = diagnostic ? finixConnectBanner(diagnostic, outcome) : outcome;
+        await logConnect(outcome);
         failPaxConnect(reason);
         setError(getPaxStationLink().message);
       }

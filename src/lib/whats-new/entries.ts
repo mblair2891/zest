@@ -6,6 +6,18 @@ import type { GuideUpdate } from "@/lib/guide/types";
  */
 export const WHATS_NEW_ENTRIES: GuideUpdate[] = [
   {
+    id: "upd_2026_10_256_station_activity",
+    date: "2026-10-11",
+    title: "Station activity log",
+    summary: "Devices lists each card-reader connect, entity match, and Finix key status, and the full log downloads as a text file.",
+    body: "The station records every card-reader connect attempt, entity-match result, and Finix key status. Each entry includes the time, station name, action, and the values used (environment, credential presence, merchant ID, device ID, check entity, reader entity, and the Finix or Summex result). Devices shows the latest entries for the location and offers a download of the full log as a text file.",
+    roles: ["owner_manager", "server", "host_operator", "vendor_operator"],
+    surfaces: ["settings"],
+    audience: "all",
+    topicId: "pax-card-reader",
+    tags: ["devices", "payments"],
+  },
+  {
     id: "upd_2026_10_255_peer_check_entity",
     date: "2026-10-11",
     title: "Peer check entity",

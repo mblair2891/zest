@@ -16,6 +16,7 @@ import {
   type PaxScanRow,
 } from "@/lib/payments/pax-d135";
 import { connectForPaxReader, paxReaderOnThisStation, scanForPaxReaders } from "@/lib/payments/pax-d135-native";
+import { noteStationActivity } from "@/lib/payments/station-activity";
 import {
   beginPaxConnect,
   beginPaxScan,
@@ -260,13 +261,29 @@ function StationDeviceScreen({ onClose }: { onClose: () => void }) {
         locationLive,
         assignedSerial: station?.cardReaderId ?? null,
       });
+      const readerEntity = decision.ok ? decision.reader.entityName || decision.reader.entityId : "";
       if (!decision.ok) {
+        await noteStationActivity({
+          locationId,
+          action: "connect",
+          readerEntity,
+          result: decision.message,
+        });
         failPaxConnect(decision.message);
         return;
       }
       beginPaxConnect(decision.reader);
       setBusy(true);
       let diagnostic = "";
+      const logConnect = async (result: string) => {
+        await noteStationActivity({
+          locationId,
+          action: "connect",
+          diagnostic,
+          readerEntity,
+          result,
+        });
+      };
       try {
         const session = await paxReaderSessionFn({
           data: {
@@ -276,6 +293,15 @@ function StationDeviceScreen({ onClose }: { onClose: () => void }) {
           },
         });
         if (!session.ok) {
+          await noteStationActivity({
+            locationId,
+            action: "Finix keys",
+            usernamePresent: "no",
+            passwordPresent: "no",
+            readerEntity,
+            result: session.error,
+          });
+          await logConnect(session.error);
           failPaxConnect(session.error);
           setBusy(false);
           return;
@@ -289,6 +315,13 @@ function StationDeviceScreen({ onClose }: { onClose: () => void }) {
         };
         diagnostic = finixConnectDiagnostic(creds);
         logFinixConnectDiagnostic(diagnostic);
+        await noteStationActivity({
+          locationId,
+          action: "Finix keys",
+          diagnostic,
+          readerEntity,
+          result: diagnostic,
+        });
         showPaxConnectBanner(diagnostic);
         if (!paxReaderOnThisStation()) {
           const auth = await finixConnectAuthFn({
@@ -300,6 +333,7 @@ function StationDeviceScreen({ onClose }: { onClose: () => void }) {
           });
           if (!auth.ok) {
             const body = String(auth.error ?? "").trim();
+            await logConnect(body || "Finix connect failed");
             failPaxConnect(finixConnectBanner(diagnostic, body));
             setBusy(false);
             return;
@@ -317,12 +351,13 @@ function StationDeviceScreen({ onClose }: { onClose: () => void }) {
           }),
         );
         if (!connected.ok) {
-          failPaxConnect(
-            finixConnectBanner(diagnostic, presentFinixConnectFailure({ message: connected.message, ...creds })),
-          );
+          const outcome = presentFinixConnectFailure({ message: connected.message, ...creds });
+          await logConnect(outcome);
+          failPaxConnect(finixConnectBanner(diagnostic, outcome));
           setBusy(false);
           return;
         }
+        await logConnect(PAX_MSG.ready);
         markPaxConnected(
           decision.reader,
           typeof connected.batteryPercent === "number" ? connected.batteryPercent : null,
@@ -359,6 +394,7 @@ function StationDeviceScreen({ onClose }: { onClose: () => void }) {
       } catch (err) {
         const detail = err instanceof Error ? err.message.trim() : "";
         const outcome = detail || "Exception during connection";
+        await logConnect(outcome);
         failPaxConnect(diagnostic ? finixConnectBanner(diagnostic, outcome) : outcome);
       }
       setBusy(false);
