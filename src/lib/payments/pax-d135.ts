@@ -430,9 +430,9 @@ export function finixConnectDiagnostic(input: {
   const env = finixInitEnvironment(input.env);
   const merchant = String(input.merchantId ?? "").trim() || "missing";
   const device = paxSdkDeviceId(input.deviceId);
-  const username = String(input.userId ?? "").trim() ? "present" : "missing";
-  const password = String(input.password ?? "").trim() ? "present" : "missing";
-  return `Environment ${env}. Merchant ${merchant}. Device ${device}. Username ${username}. Password ${password}.`;
+  const username = String(input.userId ?? "").trim() ? "yes" : "no";
+  const password = String(input.password ?? "").trim() ? "yes" : "no";
+  return `Environment ${env}. Username present ${username}. Password present ${password}. Merchant ${merchant}. Device ${device}.`;
 }
 
 /** Diagnostic, then Reader ready or the Finix result. A result that already starts with it stays. */
@@ -516,16 +516,17 @@ export function presentPaxHold(input: {
   return { message: paxConnectFailureReason(input.message), hold: false };
 }
 
-/** Shown on the device screen and on Pay. Reader ready stays until the link drops. */
+/**
+ * Shown on the device screen and on Pay.
+ * A Finix init banner stays up through the call and until the next connect attempt.
+ */
 export function paxLinkStatusText(link: { phase: string; message: string }): string {
-  if (link.phase === "connected") {
-    const message = String(link.message ?? "");
-    if (message.startsWith("Environment ") && message.includes(PAX_MSG.ready)) return message;
-    return PAX_MSG.ready;
-  }
+  const message = String(link.message ?? "");
+  if (message.startsWith("Environment ")) return message;
+  if (link.phase === "connected") return PAX_MSG.ready;
   if (link.phase === "connecting") return PAX_MSG.connecting;
-  if (link.phase === "setting_up") return link.message || PAX_MSG.settingUp;
-  return link.message;
+  if (link.phase === "setting_up") return message || PAX_MSG.settingUp;
+  return message;
 }
 
 /** Pay uses the reader that is already connected. Opening Pay does not clear it. */

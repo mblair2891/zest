@@ -272,7 +272,9 @@ test("the printer probe connects without a payload and the reader timeout stays"
   assert.match(pax, /merchant ID/);
   assert.match(pax, /Environment SB/);
   assert.match(pax, /Log\.i\("PaxD135", diagnostic\)/);
-  assert.match(pax, /Environment SB\. Merchant /);
+  assert.match(pax, /Environment SB\. Username present /);
+  assert.match(pax, /Password present /);
+  assert.match(pax, /\. Merchant /);
   const diag = pax.slice(pax.indexOf("String finixConnectDiagnostic"), pax.indexOf("String keyDownloadProgress"));
   assert.equal(diag.includes("password +"), false);
   assert.equal(diag.includes("userId +"), false);
@@ -319,6 +321,13 @@ test("selecting a D135 holds the link and Reader ready stays", async () => {
   assert.equal(ready.hold, true);
   assert.equal(paxLinkStatusText({ phase: "connected", message: "Reader ready" }), "Reader ready");
   assert.equal(paxLinkStatusText({ phase: "connecting", message: "Connecting" }), "Connecting");
+  assert.equal(
+    paxLinkStatusText({
+      phase: "connecting",
+      message: "Environment SB. Username present yes. Password present yes. Merchant MUabc. Device DV9.",
+    }),
+    "Environment SB. Username present yes. Password present yes. Merchant MUabc. Device DV9.",
+  );
 
   const early = presentPaxHold({
     event: "failed",
@@ -425,7 +434,7 @@ test("selecting a D135 holds the link and Reader ready stays", async () => {
   });
   assert.equal(
     diagnostic,
-    `Environment SB. Merchant MUabc. Device ${PAX_SANDBOX_DEVICE_ID}. Username present. Password present.`,
+    `Environment SB. Username present yes. Password present yes. Merchant MUabc. Device ${PAX_SANDBOX_DEVICE_ID}.`,
   );
   assert.equal(diagnostic.includes(secret), false);
   assert.equal(diagnostic.includes(loginName), false);
@@ -437,7 +446,7 @@ test("selecting a D135 holds the link and Reader ready stays", async () => {
       deviceId: "",
       env: "",
     }),
-    `Environment SB. Merchant missing. Device ${PAX_SANDBOX_DEVICE_ID}. Username missing. Password missing.`,
+    `Environment SB. Username present no. Password present no. Merchant missing. Device ${PAX_SANDBOX_DEVICE_ID}.`,
   );
   assert.equal(
     finixConnectDiagnostic({
@@ -446,17 +455,19 @@ test("selecting a D135 holds the link and Reader ready stays", async () => {
       merchantId: "MUabc",
       deviceId: "DV9",
       env: "LIVE",
-    }).startsWith("Environment LIVE. Merchant MUabc. Device DV9."),
-    true,
+    }),
+    "Environment LIVE. Username present yes. Password present yes. Merchant MUabc. Device DV9.",
   );
   const unauthorized = finixConnectBanner(diagnostic, username ?? "");
   assert.equal(unauthorized.startsWith(diagnostic), true);
   assert.equal(unauthorized.includes("Unauthorized"), true);
   assert.equal(unauthorized.includes(secret), false);
   assert.equal(unauthorized.includes(loginName), false);
-  assert.ok(unauthorized.indexOf("Environment SB") < unauthorized.indexOf("Merchant MUabc"));
+  assert.ok(unauthorized.indexOf("Environment SB") < unauthorized.indexOf("Username present"));
+  assert.ok(unauthorized.indexOf("Username present") < unauthorized.indexOf("Password present"));
+  assert.ok(unauthorized.indexOf("Password present") < unauthorized.indexOf("Merchant MUabc"));
   assert.ok(unauthorized.indexOf("Merchant MUabc") < unauthorized.indexOf("Device "));
-  assert.ok(unauthorized.indexOf("Username present") < unauthorized.indexOf("Unauthorized"));
+  assert.ok(unauthorized.indexOf("Device ") < unauthorized.indexOf("Unauthorized"));
   const readyBanner = finixConnectBanner(diagnostic, "Reader ready");
   assert.equal(readyBanner.endsWith("Reader ready"), true);
   assert.equal(paxLinkStatusText({ phase: "connected", message: readyBanner }), readyBanner);
@@ -471,6 +482,9 @@ test("selecting a D135 holds the link and Reader ready stays", async () => {
   assert.match(guideDevices, /includes the Finix error body/);
   assert.match(guidePay, /whether the password is present/);
   assert.match(guidePay, /The username and the password are not shown/);
+  assert.match(guideDevices, /before the Finix call completes/);
+  assert.match(guideDevices, /stays visible until the next connect attempt/);
+  assert.match(guidePay, /full Finix error body/);
 
   let calls = 0;
   const retried = await runPaxConnect(async () => {

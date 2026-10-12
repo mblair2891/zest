@@ -56,6 +56,7 @@ import {
   finishPaxScan,
   getPaxStationLink,
   markPaxConnected,
+  showPaxConnectBanner,
   notePaxStatus,
   setPaxReaders,
   usePaxStationLink,
@@ -325,13 +326,15 @@ export function PaymentDialog({ open, onOpenChange, initialMethod }: Props) {
         };
         diagnostic = finixConnectDiagnostic(creds);
         logFinixConnectDiagnostic(diagnostic);
+        showPaxConnectBanner(diagnostic);
         const { connectForPaxReader, paxReaderOnThisStation } = await import("@/lib/payments/pax-d135-native");
         if (!paxReaderOnThisStation()) {
           const auth = await finixConnectAuthFn({
             data: { locationId: loc, serial: decision.reader.serial, entityId: decision.reader.entityId },
           });
           if (!auth.ok) {
-            const reason = finixConnectBanner(diagnostic, presentFinixConnectFailure({ message: auth.error, ...creds }));
+            const body = String(auth.error ?? "").trim();
+            const reason = finixConnectBanner(diagnostic, body);
             failPaxConnect(reason);
             setError(reason);
             setBusy(false);

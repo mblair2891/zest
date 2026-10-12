@@ -187,7 +187,7 @@ public class PaxD135Plugin extends Plugin {
         stopScanBeforeConnect();
         settingUp = false;
         heldSettingUp = false;
-        emit("connecting", MSG_CONNECTING, serialOf(name), null);
+        emit("connecting", diagnostic, serialOf(name), null);
         main.post(() -> connectOnWorker(call, name, address, merchantId, deviceId, userId, password, diagnostic));
     }
 
@@ -642,10 +642,10 @@ public class PaxD135Plugin extends Plugin {
         String device = sdkDeviceId(deviceId);
         boolean userPresent = userId != null && !userId.trim().isEmpty();
         boolean passPresent = password != null && !password.trim().isEmpty();
-        return "Environment SB. Merchant " + merchant
+        return "Environment SB. Username present " + (userPresent ? "yes" : "no")
+            + ". Password present " + (passPresent ? "yes" : "no")
+            + ". Merchant " + merchant
             + ". Device " + device
-            + ". Username " + (userPresent ? "present" : "missing")
-            + ". Password " + (passPresent ? "present" : "missing")
             + ".";
     }
 

@@ -6,6 +6,18 @@ import type { GuideUpdate } from "@/lib/guide/types";
  */
 export const WHATS_NEW_ENTRIES: GuideUpdate[] = [
   {
+    id: "upd_2026_10_253_finix_connect_banner",
+    date: "2026-10-11",
+    title: "Finix connect banner",
+    summary: "Every D135 connect shows the init banner before Finix answers, and that banner stays until the next attempt.",
+    body: "On every D135 connect attempt the station shows a fixed banner before the Finix call completes. The banner always includes environment SB or LIVE, whether the username is present, whether the password is present, the merchant ID, and the device ID. After the call it appends Reader ready or the full Finix error body. The banner stays visible until the next connect attempt.",
+    roles: ["owner_manager", "server", "host_operator", "vendor_operator"],
+    surfaces: ["settings"],
+    audience: "all",
+    topicId: "pax-card-reader",
+    tags: ["devices", "payments"],
+  },
+  {
     id: "upd_2026_10_252_finix_connect_diagnostic",
     date: "2026-10-11",
     title: "Finix connect diagnostic",

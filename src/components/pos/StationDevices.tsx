@@ -23,6 +23,7 @@ import {
   finishPaxScan,
   getPaxStationLink,
   markPaxConnected,
+  showPaxConnectBanner,
   notePaxStatus,
   setPaxReaders,
   usePaxStationLink,
@@ -288,6 +289,7 @@ function StationDeviceScreen({ onClose }: { onClose: () => void }) {
         };
         diagnostic = finixConnectDiagnostic(creds);
         logFinixConnectDiagnostic(diagnostic);
+        showPaxConnectBanner(diagnostic);
         if (!paxReaderOnThisStation()) {
           const auth = await finixConnectAuthFn({
             data: {
@@ -297,7 +299,8 @@ function StationDeviceScreen({ onClose }: { onClose: () => void }) {
             },
           });
           if (!auth.ok) {
-            failPaxConnect(finixConnectBanner(diagnostic, presentFinixConnectFailure({ message: auth.error, ...creds })));
+            const body = String(auth.error ?? "").trim();
+            failPaxConnect(finixConnectBanner(diagnostic, body));
             setBusy(false);
             return;
           }

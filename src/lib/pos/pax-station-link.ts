@@ -89,6 +89,13 @@ export function beginPaxConnect(reader: PaxReader): void {
   patch({ phase: "connecting", reader, message: presented.message });
 }
 
+/** Fixed init banner. It stays until this attempt appends a result or the next attempt starts. */
+export function showPaxConnectBanner(message: string): void {
+  const text = String(message ?? "").trim();
+  if (!text) return;
+  patch({ phase: "connecting", message: text });
+}
+
 export function markPaxConnected(reader: PaxReader, battery: number | null, statusMessage?: string): void {
   const presented = presentPaxHold({ event: "accepted", wasReady: true });
   const extra = String(statusMessage ?? "").trim();
@@ -118,24 +125,48 @@ export function notePaxStatus(status: {
   batteryPercent?: number | null;
 }): void {
   if (status.state === "connecting") {
-    const presented = presentPaxHold({ event: "select", wasReady: false });
-    patch({ phase: "connecting", message: presented.message });
+    if (state.message.startsWith("Environment ")) {
+      patch({ phase: "connecting" });
+    } else {
+      const incoming = String(status.message ?? "").trim();
+      patch({
+        phase: "connecting",
+        message: incoming.startsWith("Environment ")
+          ? incoming
+          : presentPaxHold({ event: "select", wasReady: false }).message,
+      });
+    }
   } else if (status.state === "setting_up") {
-    const presented = presentPaxHold({
-      event: "processing",
-      wasReady: false,
-      message: status.message,
-    });
-    patch({ phase: "setting_up", message: presented.message });
+    if (state.message.startsWith("Environment ")) {
+      patch({ phase: "setting_up" });
+    } else {
+      const presented = presentPaxHold({
+        event: "processing",
+        wasReady: false,
+        message: status.message,
+      });
+      patch({ phase: "setting_up", message: presented.message });
+    }
   } else if (status.state === "connected") {
     const incoming = String(status.message ?? "").trim();
-    const presented = presentPaxHold({ event: "accepted", wasReady: true });
-    const message =
-      incoming.startsWith("Environment ") && incoming.includes(PAX_MSG.ready) ? incoming : presented.message;
-    patch({ phase: "connected", message });
+    if (incoming.startsWith("Environment ")) {
+      patch({ phase: "connected", message: incoming });
+    } else if (state.message.startsWith("Environment ")) {
+      const message = state.message.includes(PAX_MSG.ready)
+        ? state.message
+        : `${state.message} ${PAX_MSG.ready}`;
+      patch({ phase: "connected", message });
+    } else {
+      const presented = presentPaxHold({ event: "accepted", wasReady: true });
+      patch({ phase: "connected", message: presented.message });
+    }
   } else if (status.state === "disconnected" && state.phase === "connected") {
-    const presented = presentPaxHold({ event: "dropped", wasReady: true });
-    patch({ phase: "idle", reader: null, battery: null, message: presented.message });
+    if (state.message.startsWith("Environment ")) {
+      patch({ phase: "idle", reader: null, battery: null });
+    } else {
+      const presented = presentPaxHold({ event: "dropped", wasReady: true });
+      patch({ phase: "idle", reader: null, battery: null, message: presented.message });
+    }
   }
   if (typeof status.batteryPercent === "number") patch({ battery: status.batteryPercent });
 }
