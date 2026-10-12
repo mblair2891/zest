@@ -14,10 +14,14 @@ export type EntityCaptureShare = {
   totalCents: number;
 };
 
-export function entityIdForLine(line: { vendorId?: string | null }): string {
-  const v = String(line.vendorId ?? "").trim();
-  if (!v || v === HOST_SCOPE || v === "host" || v === "unknown") return HOST_SCOPE;
-  return v;
+function sellingId(raw: string | null | undefined): string {
+  const id = String(raw ?? "").trim();
+  if (!id || id === HOST_SCOPE || id === "host" || id === "unknown") return "";
+  return id;
+}
+
+export function entityIdForLine(line: { vendorId?: string | null; entityId?: string | null }): string {
+  return sellingId(line.vendorId) || sellingId(line.entityId) || HOST_SCOPE;
 }
 
 function allocateByShare(total: number, weights: number[]): number[] {
@@ -119,7 +123,9 @@ export function entityIdsOnOrder(order: Pick<Order, "lines">): string[] {
   return [...ids];
 }
 
-export function groupLinesByEntity<T extends { vendorId?: string | null; vendorName?: string | null }>(
+export function groupLinesByEntity<
+  T extends { vendorId?: string | null; vendorName?: string | null; entityId?: string | null },
+>(
   lines: T[],
   hostName: string,
 ): { entityId: string; displayName: string; lines: T[] }[] {

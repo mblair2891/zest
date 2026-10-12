@@ -35,8 +35,9 @@ import {
 import {
   PAX_MSG,
   checkAlreadyCaptured,
-  checkEntityBannerLabel,
+  checkEntityLabelForReader,
   checkSellingEntityId,
+  checkSellingEntityIds,
   decidePaxPick,
   finixConnectBanner,
   finixConnectDiagnostic,
@@ -229,6 +230,16 @@ export function PaymentDialog({ open, onOpenChange, initialMethod }: Props) {
     : Math.max(0, balance);
   const payTip = method === "card" ? tipCentsForChoice(cardTip, tenderBase) : tip;
   const cardTotal = tenderBase + (method === "comp" ? 0 : payTip);
+  const vendors = usePosStore((s) => s.vendors);
+  const guestSlip = useMemo(() => {
+    if (!order) return null;
+    return buildGuestCheckView({
+      order,
+      settings,
+      hostName: settings.name,
+      operatorName: (id) => vendors.find((v) => v.id === id)?.name ?? id,
+    });
+  }, [order, settings, vendors]);
 
   useEffect(() => {
     let cancelled = false;
@@ -306,10 +317,12 @@ export function PaymentDialog({ open, onOpenChange, initialMethod }: Props) {
       if (!order) return;
       const locationLive = Boolean(payStatus && payStatus.mode === "live" && !payStatus.lifecycleForcesSandbox);
       const readers = getPaxStationLink().readers;
+      const sellingEntityIds = checkSellingEntityIds(order.lines);
       const decision = decidePaxPick({
         row,
         readers,
         sellingEntityId: checkSellingEntityId(order.lines),
+        sellingEntityIds,
         locationLive,
       });
       if (!decision.ok && decision.message !== PAX_MSG.wrongEntity) {
@@ -332,7 +345,12 @@ export function PaymentDialog({ open, onOpenChange, initialMethod }: Props) {
       const hostName = usePosStore.getState().settings.name;
       const banner = readerCheckEntityBanner(
         readerEntityLabel(reader, names, hostName),
-        checkEntityBannerLabel({ lines: order.lines, names, hostName }).label,
+        checkEntityLabelForReader({
+          lines: order.lines,
+          readerEntityId: reader.entityId,
+          names,
+          hostName,
+        }),
       );
       setPayEntityBanner(banner);
       if (!decision.ok) {
@@ -735,6 +753,7 @@ export function PaymentDialog({ open, onOpenChange, initialMethod }: Props) {
             locationLive,
             reader: linkNow.reader,
             sellingEntityId: checkSellingEntityId(order.lines),
+            sellingEntityIds: checkSellingEntityIds(order.lines),
             alreadyCaptured: checkAlreadyCaptured({
               checkId: order.id,
               status: order.status,
@@ -1337,6 +1356,11 @@ export function PaymentDialog({ open, onOpenChange, initialMethod }: Props) {
                 Card requires connection. Take cash or keep the check open. Gift
                 and comps still work on this device. Card is not queued.
               </p>
+            )}
+            {guestSlip && guestSlip.vendors.length > 0 && (
+              <div className="rounded-xl border border-border bg-bg p-3 text-left">
+                <GuestCheckByVendor view={guestSlip} />
+              </div>
             )}
             {mayPrintCheck ? (
             <Button

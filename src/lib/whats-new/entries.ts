@@ -6,6 +6,18 @@ import type { GuideUpdate } from "@/lib/guide/types";
  */
 export const WHATS_NEW_ENTRIES: GuideUpdate[] = [
   {
+    id: "upd_2026_10_255_peer_check_entity",
+    date: "2026-10-11",
+    title: "Peer check entity",
+    summary: "A peer check matches the reader to the selling entity on the items. The guest check lists each entity under the location name.",
+    body: "On a peer location the open check carries the selling entity that owns the items. The reader match uses that selling entity, not the building name. The pay banner shows the check selling entity and the reader selling entity. A match proceeds to Finix connect. A mismatch names both entities. The printed guest check shows the location name at the top, then each selling entity’s items under that entity’s name.",
+    roles: ["owner_manager", "server", "host_operator", "vendor_operator"],
+    surfaces: ["settings"],
+    audience: "all",
+    topicId: "pax-card-reader",
+    tags: ["devices", "payments"],
+  },
+  {
     id: "upd_2026_10_254_reader_entity",
     date: "2026-10-11",
     title: "Reader and check entity",

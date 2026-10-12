@@ -2,6 +2,8 @@ import { cashPolicyFromSettings } from "@/lib/pos/cash-discount";
 import { computeTotals, linePrintedCents } from "@/lib/pos/calculations";
 import type { Order, RestaurantSettings } from "@/lib/pos/types";
 import { formatCurrency } from "@/lib/utils";
+import { HOST_SCOPE } from "@/lib/access/entity-grants";
+import { guestCheckSlipLines } from "@/lib/print/guest-check-slip";
 import {
   groupLinesByEntity,
   splitTenderByEntity,
@@ -63,9 +65,15 @@ export function buildGuestCheckView(opts: {
         amountCents: linePrintedCents(l, policy),
         mods: l.modifiers?.map((m) => m.optionName) ?? [],
       }));
+    const named =
+      g.entityId === HOST_SCOPE
+        ? g.displayName
+        : opts.operatorName?.(g.entityId);
+    const displayName =
+      named && named !== g.entityId ? named : g.displayName || named || g.entityId;
     return {
       entityId: g.entityId,
-      displayName: g.displayName,
+      displayName,
       lines,
       merchandiseCents: lines.reduce((s, l) => s + l.amountCents, 0),
     };
@@ -129,16 +137,15 @@ export function merchantShareView(
 }
 
 export function guestCheckText(view: GuestCheckView): string {
-  const lines: string[] = [view.locationName, ""];
-  for (const v of view.vendors) {
-    if (view.vendors.length > 1) lines.push(v.displayName);
-    for (const l of v.lines) {
-      const pad = view.vendors.length > 1 ? "  " : "";
-      lines.push(
-        `${pad}${l.name.padEnd(18).slice(0, 22)} ${formatCurrency(l.amountCents)}`,
-      );
-    }
-  }
+  const lines: string[] = guestCheckSlipLines(
+    view.locationName,
+    view.vendors.map((v) => ({
+      entityName: v.displayName,
+      items: v.lines.map(
+        (l) => `${l.name.padEnd(18).slice(0, 22)} ${formatCurrency(l.amountCents)}`,
+      ),
+    })),
+  );
   lines.push("");
   lines.push(`Subtotal ${formatCurrency(view.subtotalCents)}`);
   if (view.taxLines?.length) {
@@ -166,15 +173,12 @@ function escHtml(s: string): string {
 export function guestCheckHtml(view: GuestCheckView): string {
   const vendors = view.vendors
     .map((v) => {
-      const head =
-        view.vendors.length > 1
-          ? `<p style="margin:12px 0 4px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;font-size:12px">${escHtml(v.displayName)}</p>`
-          : "";
+      const head = `<p data-guest-check-entity style="margin:12px 0 4px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;font-size:12px">${escHtml(v.displayName)}</p>`;
       const items = v.lines
-        .map((l) => {
-          const pad = view.vendors.length > 1 ? "&nbsp;&nbsp;" : "";
-          return `<div style="display:flex;justify-content:space-between;gap:12px"><span>${pad}${escHtml(l.name)}</span><span>${formatCurrency(l.amountCents)}</span></div>`;
-        })
+        .map(
+          (l) =>
+            `<div style="display:flex;justify-content:space-between;gap:12px"><span>&nbsp;&nbsp;${escHtml(l.name)}</span><span>${formatCurrency(l.amountCents)}</span></div>`,
+        )
         .join("");
       return `${head}${items}`;
     })

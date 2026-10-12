@@ -152,18 +152,22 @@ function guestCheckJob(
   const policy = cashPolicyFromSettings(s.settings);
   const items: PrintLine[] = order.lines
     .filter((l) => !l.voided)
-    .map((l) => ({
+    .map((l) => {
+      const vendorId = l.vendorId || l.entityId;
+      const vendor = vendorId ? s.vendors.find((v) => v.id === vendorId) : undefined;
+      return {
       qty: l.quantity,
       name: l.name,
       mods: l.modifiers.map((m) => m.optionName),
       note: l.note,
       seat: l.seat,
-      vendorId: l.vendorId,
-      vendorName: l.vendorName,
+      vendorId,
+      vendorName: l.vendorName || vendor?.name,
       cashCents: lineCashCents(l),
       cardCents: lineCardCents(l, policy),
       amountCents: linePrintedCents(l, policy),
-    }));
+      };
+    });
   const loc = locationIdForQr(s, locationId);
   const qr = payQrForCheck(order, table, loc, s.settings, printPayQr);
   let cashSum = 0;

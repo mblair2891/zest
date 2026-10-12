@@ -48,7 +48,9 @@ function tillTurnInHtml(job: PrintJob): string {
 export function ticketHtml(job: PrintJob): string {
   if (job.kind === "till_turn_in") return tillTurnInHtml(job);
   const title =
-    job.kind === "receipt"
+    job.kind === "guest_check"
+      ? "Guest check"
+      : job.kind === "receipt"
       ? "Receipt"
       : job.kind === "drawer_kick"
         ? "Drawer"
@@ -65,8 +67,8 @@ export function ticketHtml(job: PrintJob): string {
   const items = groups
     .map((g) => {
       const head =
-        groups.length > 1
-          ? `<div class="vendor">${esc(g.displayName)}</div>`
+        job.kind === "guest_check" || job.kind === "receipt" || groups.length > 1
+          ? `<div class="vendor" data-guest-check-entity>${esc(g.displayName)}</div>`
           : "";
       const rows = g.lines
         .map((it) => {

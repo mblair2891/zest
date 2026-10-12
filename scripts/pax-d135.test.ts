@@ -8,6 +8,8 @@ import {
   checkAlreadyCaptured,
   classifyPaxError,
   checkEntityBannerLabel,
+  checkEntityLabelForReader,
+  checkSellingEntityIds,
   decidePaxPick,
   envBlock,
   payEntityStatusText,
@@ -145,6 +147,60 @@ test("pay names the reader entity and the check entity", () => {
   const host = checkEntityBannerLabel({ lines: [], names, hostName: "Summit Hall" });
   assert.equal(host.id, "host");
   assert.equal(host.label, "Summit Hall");
+});
+
+test("peer mixed check matches the selling entity on the items", () => {
+  const names = [
+    { id: "opr_summit_hearth", name: "Hearth Kitchen" },
+    { id: "opr_summit_copper", name: "Copper Bar" },
+  ];
+  const lines = [
+    { entityId: "opr_summit_hearth", vendorId: "opr_summit_hearth" },
+    { entityId: "opr_summit_copper", vendorId: "opr_summit_copper" },
+  ];
+  const ids = checkSellingEntityIds(lines);
+  assert.deepEqual(ids, ["opr_summit_hearth", "opr_summit_copper"]);
+  const copper: PaxReader = {
+    ...reader,
+    entityId: "opr_summit_copper",
+    entityName: "Copper Bar",
+    serial: "1890297422",
+  };
+  const rows = paxScanRows([{ name: "PAX D135_1890297422", address: "aa" }], [copper]);
+  const pick = decidePaxPick({
+    row: rows[0]!,
+    readers: [copper],
+    sellingEntityId: null,
+    sellingEntityIds: ids,
+    locationLive: false,
+  });
+  assert.equal(pick.ok, true);
+  const label = checkEntityLabelForReader({
+    lines,
+    readerEntityId: "opr_summit_copper",
+    names,
+    hostName: "Summit Hall",
+  });
+  assert.equal(label, "Copper Bar");
+  assert.equal(label.includes("Summit Hall"), false);
+  const banner = readerCheckEntityBanner("Copper Bar", label);
+  assert.equal(banner, "Reader entity Copper Bar. Check entity Copper Bar.");
+  const other = checkEntityLabelForReader({
+    lines: [{ entityId: "opr_summit_hearth", vendorId: "opr_summit_hearth" }],
+    readerEntityId: "opr_summit_copper",
+    names,
+    hostName: "Summit Hall",
+  });
+  assert.equal(readerCheckEntityBanner("Copper Bar", other), "Reader entity Copper Bar. Check entity Hearth Kitchen.");
+  const refused = decidePaxPick({
+    row: rows[0]!,
+    readers: [copper],
+    sellingEntityId: "opr_summit_hearth",
+    sellingEntityIds: ["opr_summit_hearth"],
+    locationLive: false,
+  });
+  assert.equal(refused.ok, false);
+  if (!refused.ok) assert.equal(refused.message, PAX_MSG.wrongEntity);
 });
 
 test("unregistered serial is refused", () => {

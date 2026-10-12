@@ -233,18 +233,45 @@ export function envBlock(locationLive: boolean, readerEnv: PaxReaderEnv): string
   return null;
 }
 
-export function checkSellingEntityId(
+/** Selling entities that own items on the check. The building is not one of them. */
+export function checkSellingEntityIds(
   lines: { entityId?: string; vendorId?: string; voided?: boolean }[],
-): string | null {
-  const ids = new Set<string>();
+): string[] {
+  const ids: string[] = [];
+  const seen = new Set<string>();
   for (const line of lines) {
     if (line.voided) continue;
     const id = String(line.entityId || line.vendorId || "").trim();
-    if (id) ids.add(id);
+    if (!id || id === "host" || seen.has(id)) continue;
+    seen.add(id);
+    ids.push(id);
   }
-  if (ids.size === 1) return [...ids][0] ?? null;
-  if (ids.size === 0) return "host";
+  return ids;
+}
+
+export function checkSellingEntityId(
+  lines: { entityId?: string; vendorId?: string; voided?: boolean }[],
+): string | null {
+  const ids = checkSellingEntityIds(lines);
+  if (ids.length === 1) return ids[0] ?? null;
+  if (ids.length === 0) return "host";
   return null;
+}
+
+/** A reader matches when its selling entity owns items on the check. */
+export function readerMatchesSellingEntities(input: {
+  readerEntityId: string;
+  sellingEntityId: string | null;
+  sellingEntityIds?: string[];
+}): boolean {
+  const readerId = String(input.readerEntityId ?? "").trim();
+  if (!readerId) return false;
+  const listed = (input.sellingEntityIds ?? [])
+    .map((id) => id.trim())
+    .filter((id) => id && id !== "host");
+  if (listed.length) return listed.includes(readerId);
+  if (!input.sellingEntityId) return false;
+  return readerId === input.sellingEntityId;
 }
 
 function cleanEntityLabel(raw: string): string {
@@ -295,6 +322,31 @@ export function readerEntityLabel(
   return sellingEntityLabel(reader.entityId, names, hostName);
 }
 
+/**
+ * Check side of the pay banner.
+ * A reader that owns items uses that selling entity. A mismatch names the entities on the check.
+ */
+export function checkEntityLabelForReader(input: {
+  lines: { entityId?: string; vendorId?: string; voided?: boolean }[];
+  readerEntityId: string;
+  names: { id: string; name: string }[];
+  hostName?: string;
+}): string {
+  const ids = checkSellingEntityIds(input.lines);
+  const readerId = String(input.readerEntityId ?? "").trim();
+  if (readerId && ids.includes(readerId)) {
+    return sellingEntityLabel(readerId, input.names, input.hostName);
+  }
+  if (ids.length) {
+    return ids.map((id) => sellingEntityLabel(id, input.names, input.hostName)).join(" and ");
+  }
+  return checkEntityBannerLabel({
+    lines: input.lines,
+    names: input.names,
+    hostName: input.hostName,
+  }).label;
+}
+
 /** Pay banner. It names the reader entity and the check entity. */
 export function readerCheckEntityBanner(readerEntity: string, checkEntity: string): string {
   const reader = cleanEntityLabel(readerEntity) || "Unknown";
@@ -325,6 +377,8 @@ export function decidePaxPick(input: {
   row: PaxScanRow;
   readers: PaxReader[];
   sellingEntityId: string | null;
+  /** Item selling entities. When present, the building name is not the match. */
+  sellingEntityIds?: string[];
   locationLive: boolean;
 }): { ok: true; reader: PaxReader } | { ok: false; message: string } {
   const reader = readerForSerial(input.readers, input.row.serial);
@@ -333,7 +387,13 @@ export function decidePaxPick(input: {
   }
   const blocked = envBlock(input.locationLive, reader.env);
   if (blocked) return { ok: false, message: blocked };
-  if (!input.sellingEntityId || reader.entityId !== input.sellingEntityId) {
+  if (
+    !readerMatchesSellingEntities({
+      readerEntityId: reader.entityId,
+      sellingEntityId: input.sellingEntityId,
+      sellingEntityIds: input.sellingEntityIds,
+    })
+  ) {
     return { ok: false, message: PAX_MSG.wrongEntity };
   }
   return { ok: true, reader };
@@ -876,6 +936,7 @@ export async function runAndroidPaxSale(input: {
   locationLive: boolean;
   reader: PaxReader | null;
   sellingEntityId: string | null;
+  sellingEntityIds?: string[];
   alreadyCaptured: boolean;
   settingUp: boolean;
   connected: boolean;
@@ -906,7 +967,13 @@ export async function runAndroidPaxSale(input: {
   if (!input.reader) {
     return { ok: false, message: PAX_MSG.notConnected, charged: false };
   }
-  if (input.sellingEntityId == null || input.reader.entityId !== input.sellingEntityId) {
+  if (
+    !readerMatchesSellingEntities({
+      readerEntityId: input.reader.entityId,
+      sellingEntityId: input.sellingEntityId,
+      sellingEntityIds: input.sellingEntityIds,
+    })
+  ) {
     return { ok: false, message: PAX_MSG.wrongEntity, charged: false };
   }
   if (!input.connected) {

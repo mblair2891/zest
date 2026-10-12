@@ -9,10 +9,16 @@ export function GuestCheckByVendor({
   compact?: boolean;
 }) {
   return (
-    <div className={cn("space-y-2 text-sm", compact && "space-y-1.5")}>
+    <div className={cn("space-y-2 text-sm", compact && "space-y-1.5")} data-guest-check-slip>
+      <p className="text-center text-base font-semibold" data-guest-check-location>
+        {view.locationName}
+      </p>
       {view.vendors.map((v) => (
         <div key={v.entityId}>
-          <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+          <p
+            className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground"
+            data-guest-check-entity={v.displayName}
+          >
             {v.displayName}
           </p>
           <ul className="space-y-0.5">
