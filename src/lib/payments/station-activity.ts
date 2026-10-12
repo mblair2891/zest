@@ -34,6 +34,7 @@ export async function noteStationActivity(input: {
   environment?: string;
   usernamePresent?: StationActivityPresence;
   passwordPresent?: StationActivityPresence;
+  applicationId?: string;
   merchantId?: string;
   deviceId?: string;
 }): Promise<void> {
@@ -48,6 +49,7 @@ export async function noteStationActivity(input: {
         environment: input.environment ?? "",
         usernamePresent: input.usernamePresent ?? "",
         passwordPresent: input.passwordPresent ?? "",
+        applicationId: input.applicationId ?? "",
         merchantId: input.merchantId ?? "",
         deviceId: input.deviceId ?? "",
         checkEntity: input.checkEntity ?? "",

@@ -212,7 +212,7 @@ async function createPgliteSql(): Promise<Sql> {
   // Apply migrations/ (the single schema source) so preview matches production.
   // SQL is inlined by the bundler via import.meta.glob (no runtime fs); applied
   // files are tracked in _migrations. A newly added migrations file is applied
-  // when this module loads again. Runs once per module instance — so an HMR
+  // again when this module loads. Runs once per module instance — so an HMR
   // reload after adding a migration file applies it live — with passes
   // serialized on a global chain so concurrent callers never double-apply.
   const migrate = async (): Promise<void> => {

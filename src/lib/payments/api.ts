@@ -145,6 +145,7 @@ export const recordStationActivityFn = createServerFn({ method: "POST" })
     environment?: string;
     usernamePresent?: string;
     passwordPresent?: string;
+    applicationId?: string;
     merchantId?: string;
     deviceId?: string;
     checkEntity?: string;
@@ -163,6 +164,7 @@ export const recordStationActivityFn = createServerFn({ method: "POST" })
       environment: activityText(d.environment, 8) || fromDiag.environment,
       usernamePresent,
       passwordPresent,
+      applicationId: activityText(d.applicationId, 80) || fromDiag.applicationId,
       merchantId: activityText(d.merchantId, 80) || fromDiag.merchantId,
       deviceId: activityText(d.deviceId, 80) || fromDiag.deviceId,
       checkEntity: activityText(d.checkEntity, 120),

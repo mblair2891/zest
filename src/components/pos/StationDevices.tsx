@@ -275,12 +275,28 @@ function StationDeviceScreen({ onClose }: { onClose: () => void }) {
       beginPaxConnect(decision.reader);
       setBusy(true);
       let diagnostic = "";
-      const logConnect = async (result: string) => {
+      const logConnect = async (
+        result: string,
+        trace?: {
+          applicationId?: string;
+          environment?: string;
+          usernamePresent?: "yes" | "no";
+          passwordPresent?: "yes" | "no";
+          merchantId?: string;
+          deviceId?: string;
+        },
+      ) => {
         await noteStationActivity({
           locationId,
           action: "connect",
           diagnostic,
           readerEntity,
+          applicationId: trace?.applicationId,
+          environment: trace?.environment,
+          usernamePresent: trace?.usernamePresent,
+          passwordPresent: trace?.passwordPresent,
+          merchantId: trace?.merchantId,
+          deviceId: trace?.deviceId,
           result,
         });
       };
@@ -323,6 +339,17 @@ function StationDeviceScreen({ onClose }: { onClose: () => void }) {
           result: diagnostic,
         });
         showPaxConnectBanner(diagnostic);
+        let raw = "";
+        let trace:
+          | {
+              applicationId?: string;
+              environment?: string;
+              usernamePresent?: "yes" | "no";
+              passwordPresent?: "yes" | "no";
+              merchantId?: string;
+              deviceId?: string;
+            }
+          | undefined;
         if (!paxReaderOnThisStation()) {
           const auth = await finixConnectAuthFn({
             data: {
@@ -331,9 +358,18 @@ function StationDeviceScreen({ onClose }: { onClose: () => void }) {
               entityId: decision.reader.entityId,
             },
           });
+          trace = {
+            applicationId: auth.applicationId,
+            environment: auth.environment,
+            usernamePresent: auth.usernamePresent,
+            passwordPresent: auth.passwordPresent,
+            merchantId: auth.merchantId,
+            deviceId: auth.deviceId,
+          };
+          raw = String(auth.response ?? "").trim();
           if (!auth.ok) {
             const body = String(auth.error ?? "").trim();
-            await logConnect(body || "Finix connect failed");
+            await logConnect(raw || body || "Finix connect failed", trace);
             failPaxConnect(finixConnectBanner(diagnostic, body));
             setBusy(false);
             return;
@@ -352,12 +388,12 @@ function StationDeviceScreen({ onClose }: { onClose: () => void }) {
         );
         if (!connected.ok) {
           const outcome = presentFinixConnectFailure({ message: connected.message, ...creds });
-          await logConnect(outcome);
+          await logConnect(raw || outcome, trace);
           failPaxConnect(finixConnectBanner(diagnostic, outcome));
           setBusy(false);
           return;
         }
-        await logConnect(PAX_MSG.ready);
+        await logConnect(raw || PAX_MSG.ready, trace);
         markPaxConnected(
           decision.reader,
           typeof connected.batteryPercent === "number" ? connected.batteryPercent : null,

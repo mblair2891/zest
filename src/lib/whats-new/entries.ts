@@ -6,6 +6,18 @@ import type { GuideUpdate } from "@/lib/guide/types";
  */
 export const WHATS_NEW_ENTRIES: GuideUpdate[] = [
   {
+    id: "upd_2026_10_257_finix_connect_trace",
+    date: "2026-10-12",
+    title: "Finix connect trace",
+    summary: "Devices lists the values sent to Finix on reader select and the raw response, and the full log downloads as a text file.",
+    body: "On reader select the station records the environment, whether username and password are present, the application ID, the merchant ID, and the device ID it sends to the Finix SDK. It then records the raw Finix response. Devices shows these entries and offers a download of the log.",
+    roles: ["owner_manager", "server", "host_operator", "vendor_operator"],
+    surfaces: ["settings"],
+    audience: "all",
+    topicId: "pax-card-reader",
+    tags: ["devices", "payments"],
+  },
+  {
     id: "upd_2026_10_256_station_activity",
     date: "2026-10-11",
     title: "Station activity log",

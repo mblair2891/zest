@@ -24,6 +24,7 @@ export type StationActivityInput = {
   environment: string;
   usernamePresent: StationActivityPresence;
   passwordPresent: StationActivityPresence;
+  applicationId: string;
   merchantId: string;
   deviceId: string;
   checkEntity: string;
@@ -39,6 +40,7 @@ type ActivityRow = {
   environment: string;
   username_present: string;
   password_present: string;
+  application_id: string;
   merchant_id: string;
   device_id: string;
   check_entity: string;
@@ -69,6 +71,7 @@ function mapRow(row: ActivityRow): StationActivityEntry | null {
     environment: row.environment,
     usernamePresent: presence(row.username_present),
     passwordPresent: presence(row.password_present),
+    applicationId: row.application_id || "",
     merchantId: row.merchant_id,
     deviceId: row.device_id,
     checkEntity: row.check_entity,
@@ -97,7 +100,7 @@ export async function recordStationActivity(
   await sql`
     insert into station_activity_log (
       id, location_id, station_name, action, environment,
-      username_present, password_present, merchant_id, device_id,
+      username_present, password_present, application_id, merchant_id, device_id,
       check_entity, reader_entity, result
     ) values (
       ${newId("sal")},
@@ -107,6 +110,7 @@ export async function recordStationActivity(
       ${input.environment.slice(0, 8)},
       ${input.usernamePresent},
       ${input.passwordPresent},
+      ${input.applicationId.slice(0, 80)},
       ${input.merchantId.slice(0, 80)},
       ${input.deviceId.slice(0, 80)},
       ${input.checkEntity.slice(0, 120)},
@@ -129,7 +133,7 @@ export async function listStationActivity(
   const rows = await sql<ActivityRow>`
     select
       id, at, station_name, action, environment,
-      username_present, password_present, merchant_id, device_id,
+      username_present, password_present, application_id, merchant_id, device_id,
       check_entity, reader_entity, result
     from station_activity_log
     where location_id = ${locationId}

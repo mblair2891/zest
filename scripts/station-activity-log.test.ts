@@ -17,6 +17,7 @@ const entry: StationActivityEntry = {
   environment: "SB",
   usernamePresent: "yes",
   passwordPresent: "yes",
+  applicationId: "APexample",
   merchantId: "MUexample",
   deviceId: "DVexample",
   checkEntity: "Copper Bar",
@@ -31,6 +32,7 @@ test("activity line names the station, both entities, and the result", () => {
   assert.match(line, /Environment SB/);
   assert.match(line, /Username present yes/);
   assert.match(line, /Password present yes/);
+  assert.match(line, /Application APexample/);
   assert.match(line, /Merchant MUexample/);
   assert.match(line, /Device DVexample/);
   assert.match(line, /Check entity Copper Bar/);
@@ -46,9 +48,29 @@ test("diagnostic fields keep presence and drop a stuffed password", () => {
   assert.equal(fields.environment, "SB");
   assert.equal(fields.usernamePresent, "yes");
   assert.equal(fields.passwordPresent, "no");
+  assert.equal(fields.applicationId, "");
   assert.equal(fields.merchantId, "");
   assert.equal(fields.deviceId, "DVexample");
   assert.equal(sanitizeActivityResult("Unauthorized. password: secret-value"), "Unauthorized. password present");
+});
+
+test("connect trace keeps the application id and the raw Finix body", () => {
+  const raw = '{"message":"Unauthorized"}';
+  const traced: StationActivityEntry = {
+    ...entry,
+    result: raw,
+  };
+  const line = formatStationActivityLine(traced);
+  assert.match(line, /Application APexample/);
+  assert.match(line, /Merchant MUexample/);
+  assert.match(line, /Device DVexample/);
+  assert.ok(line.endsWith(raw));
+  assert.equal(stationActivityLogText([traced]).includes(line), true);
+  const parsed = activityFieldsFromDiagnostic(
+    "Environment SB. Username present yes. Password present yes. Application APexample. Merchant MUexample. Device DVexample.",
+  );
+  assert.equal(parsed.applicationId, "APexample");
+  assert.equal(sanitizeActivityResult(`${raw} password: secret-value`).includes("secret-value"), false);
 });
 
 test("download text is the same lines Devices shows", () => {
@@ -71,7 +93,7 @@ test("pay and devices record and list the log", () => {
   assert.match(devices, /data-station-activity-download/);
   assert.match(devices, /station-activity\.txt/);
   const sentence =
-    "The station records every card-reader connect attempt, entity-match result, and Finix key status.";
+    "On reader select the station records the environment, whether username and password are present, the application ID, the merchant ID, and the device ID it sends to the Finix SDK.";
   assert.match(guide, new RegExp(sentence.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")));
   assert.match(payments, new RegExp(sentence.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")));
   assert.equal(pay.includes(".disconnect("), false);

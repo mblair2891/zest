@@ -14,6 +14,7 @@ export type StationActivityEntry = {
   environment: string;
   usernamePresent: StationActivityPresence;
   passwordPresent: StationActivityPresence;
+  applicationId: string;
   merchantId: string;
   deviceId: string;
   checkEntity: string;
@@ -30,6 +31,7 @@ export function activityFieldsFromDiagnostic(diagnostic: string): {
   environment: string;
   usernamePresent: StationActivityPresence;
   passwordPresent: StationActivityPresence;
+  applicationId: string;
   merchantId: string;
   deviceId: string;
 } {
@@ -37,16 +39,19 @@ export function activityFieldsFromDiagnostic(diagnostic: string): {
   const envRaw = /Environment\s+(SB|LIVE)\b/.exec(text)?.[1] ?? "";
   const user = /Username present\s+(yes|no)\b/.exec(text)?.[1];
   const pass = /Password present\s+(yes|no)\b/.exec(text)?.[1];
+  const applicationRaw = /Application\s+([A-Za-z0-9_]+)/.exec(text)?.[1] ?? "";
   const merchantRaw = /Merchant\s+([A-Za-z0-9_]+)/.exec(text)?.[1] ?? "";
   const deviceRaw = /Device\s+([A-Za-z0-9_]+)/.exec(text)?.[1] ?? "";
   const presence = (value: string | undefined): StationActivityPresence =>
     value === "yes" || value === "no" ? value : "";
+  const id = (raw: string) => (raw === "missing" ? "" : raw);
   return {
     environment: envRaw,
     usernamePresent: presence(user),
     passwordPresent: presence(pass),
-    merchantId: merchantRaw === "missing" ? "" : merchantRaw,
-    deviceId: deviceRaw === "missing" ? "" : deviceRaw,
+    applicationId: id(applicationRaw),
+    merchantId: id(merchantRaw),
+    deviceId: id(deviceRaw),
   };
 }
 
@@ -63,6 +68,7 @@ export function formatStationActivityLine(entry: StationActivityEntry): string {
   const env = entry.environment.trim() || "—";
   const user = entry.usernamePresent || "—";
   const pass = entry.passwordPresent || "—";
+  const application = entry.applicationId.trim() || "missing";
   const merchant = entry.merchantId.trim() || "missing";
   const device = entry.deviceId.trim() || "missing";
   const check = entry.checkEntity.trim() || "—";
@@ -75,6 +81,7 @@ export function formatStationActivityLine(entry: StationActivityEntry): string {
     `Environment ${env}`,
     `Username present ${user}`,
     `Password present ${pass}`,
+    `Application ${application}`,
     `Merchant ${merchant}`,
     `Device ${device}`,
     `Check entity ${check}`,

@@ -120,28 +120,59 @@ function finixErrorBody(json: Record<string, unknown>, raw: string): string {
   return raw.trim();
 }
 
+export type FinixAuthProbe = {
+  failure: string | null;
+  response: string;
+  applicationId: string;
+  usernamePresent: "yes" | "no";
+  passwordPresent: "yes" | "no";
+};
+
+/**
+ * Values the station holds for MPOSFinix, plus the raw Finix body.
+ * Username and password values are removed from the body. Presence stays yes or no.
+ */
+export async function finixSandboxAuthProbe(): Promise<FinixAuthProbe> {
+  const creds = readFinixApiCreds("sandbox");
+  const applicationId = creds.ok ? creds.creds.applicationId.trim() : "";
+  const usernamePresent = creds.ok && creds.creds.username.trim() ? "yes" : "no";
+  const passwordPresent = creds.ok && creds.creds.password.trim() ? "yes" : "no";
+  const empty: FinixAuthProbe = {
+    failure: null,
+    response: "",
+    applicationId,
+    usernamePresent,
+    passwordPresent,
+  };
+  try {
+    const res = await finixFetch("sandbox", "GET", "/applications", undefined, {
+      requireWebhook: false,
+      application: false,
+    });
+    const secrets = creds.ok ? [creds.creds.password, creds.creds.username] : [];
+    const raw = redactFinixSecrets((res.body ?? "").trim(), secrets);
+    const body = redactFinixSecrets(finixErrorBody(res.json, res.body ?? ""), secrets);
+    const response = raw || (body === "{}" ? "" : body);
+    if (res.status !== 401) return { ...empty, response };
+    const reason = redactFinixSecrets(finixUnauthorizedText(res.json), secrets);
+    const head = /unauthorized/i.test(reason) ? reason : `Unauthorized. ${reason}`;
+    if (!body || body === "{}" || head.includes(body)) {
+      return { ...empty, failure: head, response };
+    }
+    const sentence = /[.!?]$/.test(head) ? head : `${head}.`;
+    return { ...empty, failure: `${sentence} ${body}`, response };
+  } catch {
+    return empty;
+  }
+}
+
 /**
  * The same sandbox username and password the station passes to MPOSFinix.
  * A 401 returns Finix’s reason and the error body. The password is not part of the result.
  */
 export async function finixSandboxAuthFailure(): Promise<string | null> {
-  try {
-    const login = finixSandboxLogin();
-    const res = await finixFetch("sandbox", "GET", "/applications", undefined, {
-      requireWebhook: false,
-      application: false,
-    });
-    if (res.status !== 401) return null;
-    const secrets = [login?.password ?? "", login?.userId ?? ""];
-    const reason = redactFinixSecrets(finixUnauthorizedText(res.json), secrets);
-    const head = /unauthorized/i.test(reason) ? reason : `Unauthorized. ${reason}`;
-    const body = redactFinixSecrets(finixErrorBody(res.json, res.body ?? ""), secrets);
-    if (!body || body === "{}" || head.includes(body)) return head;
-    const sentence = /[.!?]$/.test(head) ? head : `${head}.`;
-    return `${sentence} ${body}`;
-  } catch {
-    return null;
-  }
+  const probe = await finixSandboxAuthProbe();
+  return probe.failure;
 }
 
 export function finixWebhookSecret(mode: FinixMode = "sandbox"): string | undefined {

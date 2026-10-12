@@ -263,20 +263,53 @@ export async function paxReaderSession(
   };
 }
 
+export type FinixConnectAuthResult =
+  | {
+      ok: true;
+      environment: string;
+      usernamePresent: "yes" | "no";
+      passwordPresent: "yes" | "no";
+      applicationId: string;
+      merchantId: string;
+      deviceId: string;
+      response: string;
+    }
+  | {
+      ok: false;
+      error: string;
+      environment?: string;
+      usernamePresent?: "yes" | "no";
+      passwordPresent?: "yes" | "no";
+      applicationId?: string;
+      merchantId?: string;
+      deviceId?: string;
+      response?: string;
+    };
+
 /**
  * Ask Finix whether the sandbox login MPOSFinix will use is accepted.
+ * Returns the application id, merchant, and device sent with that login, and the raw body.
  * Does not return the password. A network miss is not an Unauthorized result.
  */
 export async function finixConnectAuth(
   userId: string,
   input: { locationId: string; serial: string; entityId: string },
-): Promise<{ ok: true } | { ok: false; error: string }> {
+): Promise<FinixConnectAuthResult> {
   const session = await paxReaderSession(userId, input);
   if (!session.ok) return session;
-  const { finixSandboxAuthFailure } = await import("./finix");
-  const failure = await finixSandboxAuthFailure();
-  if (!failure) return { ok: true };
-  return { ok: false, error: failure };
+  const { finixSandboxAuthProbe } = await import("./finix");
+  const probe = await finixSandboxAuthProbe();
+  const trace = {
+    environment: session.env,
+    usernamePresent: probe.usernamePresent,
+    passwordPresent: probe.passwordPresent,
+    applicationId: probe.applicationId,
+    merchantId: session.merchantId,
+    deviceId: session.deviceId,
+    response: probe.response,
+  };
+  if (!probe.failure) return { ok: true, ...trace };
+  return { ok: false, error: probe.failure, ...trace };
 }
 
 export async function recordPaxSale(
