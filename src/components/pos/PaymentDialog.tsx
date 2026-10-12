@@ -287,7 +287,17 @@ export function PaymentDialog({ open, onOpenChange, initialMethod }: Props) {
     };
     const listener = import("@/lib/payments/pax-d135-native").then((mod) => {
       if (cancelled || !mod.paxReaderOnThisStation()) return null;
-      return mod.paxPlugin.addListener("status", (status) => notePaxStatus(status));
+      return mod.paxPlugin.addListener("status", (status) => {
+        notePaxStatus(status);
+        if (status.state !== "processing") return;
+        const step = String(status.message ?? "").trim();
+        if (!step) return;
+        void noteStationActivity({
+          locationId: loc,
+          action: "connect",
+          result: step,
+        });
+      });
     });
     return () => {
       cancelled = true;
@@ -439,6 +449,7 @@ export function PaymentDialog({ open, onOpenChange, initialMethod }: Props) {
           merchantId: session.merchantId.trim(),
           deviceId: session.deviceId.trim(),
           env: session.env,
+          mid: session.mid.trim(),
         };
         diagnostic = finixConnectDiagnostic(creds);
         sent = paxConnectActivityTrace(creds);
@@ -518,6 +529,7 @@ export function PaymentDialog({ open, onOpenChange, initialMethod }: Props) {
             deviceId: creds.deviceId,
             userId: creds.userId,
             password: creds.password,
+            mid: creds.mid,
             env: creds.env,
           }),
         );

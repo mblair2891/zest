@@ -209,7 +209,8 @@ export function finixUserIdPreview(userId: string): string {
 
 /**
  * MerchantData values written before connect.
- * The username is the first eight characters. The password is not included.
+ * The username is the first eight characters. mid is present or not.
+ * The password and the merchant number are not included.
  * The userId label has no colon, so the activity log keeps the eight characters.
  */
 export function finixMerchantDataPreview(input: {
@@ -223,14 +224,12 @@ export function finixMerchantDataPreview(input: {
   const device = String(input.deviceId ?? "").trim() || "missing";
   const user = finixUserIdPreview(input.userId) || "missing";
   const env = String(input.env ?? "").trim() || "missing";
-  const mid = String(input.mid ?? "");
-  const midShown = mid.trim() ? mid.trim() : '""';
-  return `MerchantData merchantId ${merchant}. deviceId ${device}. userId ${user}. env ${env}. mid ${midShown}.`;
+  const midPresent = String(input.mid ?? "").trim() ? "yes" : "no";
+  return `merchantId ${merchant}. deviceId ${device}. userId prefix ${user}. mid present ${midPresent}. env ${env}.`;
 }
 
 /**
- * Required MerchantData fields. mid is intentionally empty.
- * An empty field is named and connect is not called.
+ * Required MerchantData fields. An empty mid is named and connect is not called.
  */
 export function finixMerchantDataGap(input: {
   merchantId: string;
@@ -238,11 +237,13 @@ export function finixMerchantDataGap(input: {
   userId: string;
   password: string;
   env: string;
+  mid?: string;
 }): string | null {
   if (!String(input.merchantId ?? "").trim()) return "missing merchantId";
   if (!String(input.userId ?? "").trim()) return "missing userId";
   if (!String(input.password ?? "").trim()) return "missing password";
   if (!String(input.deviceId ?? "").trim()) return "missing deviceId";
+  if (!String(input.mid ?? "").trim()) return "missing mid";
   if (!String(input.env ?? "").trim()) return "missing env";
   return null;
 }

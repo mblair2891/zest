@@ -254,7 +254,10 @@ test("the printer probe connects without a payload and the reader timeout stays"
   );
   assert.match(pax, /MPOSFinix\.Companion\.invoke\(getContext\(\), data\)/);
   assert.match(pax, /new MerchantData\(/);
-  assert.match(pax, /connect\(deviceName, deviceAddress,/);
+  assert.match(pax, /scanForDevices\(serialOf\(name\)\)/);
+  assert.match(pax, /connect\(next, device, connectionCallback\)/);
+  assert.match(pax, /name\.contains\("D135"\)/);
+  assert.match(pax, /finix\.connect\(deviceName, deviceAddress, connectionCallback\)/);
   assert.match(pax, /EnvEnum\.SB/);
   assert.doesNotMatch(pax, /EnvEnum\.PROD/);
   assert.match(pax, /MSG_CONNECTED = "Connected"/);
@@ -276,7 +279,7 @@ test("the printer probe connects without a payload and the reader timeout stays"
   assert.match(pax, /Environment SB/);
   assert.match(pax, /Log\.i\("PaxD135", diagnostic\)/);
   assert.match(pax, /Log\.i\("PaxD135", merchantTrace\)/);
-  assert.match(pax, /new MerchantData\(\s*passedMerchant,\s*"",\s*passedDevice,\s*Currency\.USD,\s*EnvEnum\.SB,\s*passedUser,\s*passedPassword\s*\)/);
+  assert.match(pax, /new MerchantData\(\s*passedMerchant,\s*passedMid,\s*passedDevice,\s*Currency\.USD,\s*EnvEnum\.SB,\s*passedUser,\s*passedPassword\s*\)/);
   const merchantTrace = pax.slice(pax.indexOf("String merchantDataTrace"), pax.indexOf("void putSdkTrace"));
   assert.match(merchantTrace, /username prefix/);
   assert.equal(merchantTrace.includes("password"), false);
@@ -284,7 +287,11 @@ test("the printer probe connects without a payload and the reader timeout stays"
   assert.match(pax, /substring\(0, 8\)/);
   assert.match(pax, /missing merchantId/);
   assert.match(pax, /missing userId/);
-  assert.match(pax, /mid \\"\\"/);
+  assert.match(pax, /missing mid/);
+  assert.match(pax, /mid present /);
+  const previewFn = pax.slice(pax.indexOf("String merchantDataPreview"), pax.indexOf("private BluetoothDevice scanForDevices"));
+  assert.match(previewFn, /mid present /);
+  assert.doesNotMatch(previewFn, /\+ mid\b/);
   assert.match(pax, /put\("sdkMessage"/);
   assert.match(pax, /put\("sdkCode"/);
   assert.match(pax, /put\("usernamePrefix"/);
@@ -307,7 +314,11 @@ test("the printer probe connects without a payload and the reader timeout stays"
   assert.equal(reason.includes("password"), false);
   assert.equal(pax.includes(".disconnect("), false);
   assert.match(pax, /stopScanBeforeConnect/);
-  assert.match(pax, /main\.post\(\(\) -> connectOnWorker/);
+  assert.match(pax, /onWorker\(\(\) -> connectOnWorker/);
+  const connectMethod = pax.slice(pax.indexOf("public void connect(PluginCall call)"), pax.indexOf("public void sale"));
+  assert.ok(connectMethod.indexOf("missingMerchantField") < connectMethod.indexOf("reuseHeld"));
+  const worker = pax.slice(pax.indexOf("void connectOnWorker"), pax.indexOf("void saleOnWorker"));
+  assert.ok(worker.indexOf('resolveMessage(call, "missing mid")') < worker.indexOf("scanForDevices"));
 });
 
 test("selecting a D135 holds the link and Reader ready stays", async () => {

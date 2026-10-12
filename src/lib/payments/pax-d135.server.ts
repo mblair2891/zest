@@ -256,6 +256,7 @@ export async function paxReaderSession(
       deviceId: string;
       userId: string;
       password: string;
+      mid: string;
       env: "SB" | "LIVE";
     }
   | { ok: false; error: string }
@@ -271,8 +272,8 @@ export async function paxReaderSession(
   }
   const blocked = envBlock(live, reader.env);
   if (blocked) return { ok: false, error: blocked };
-  // This call reads the server. FINIX_USERNAME, FINIX_PASSWORD, and the venue
-  // merchant on payment_accounts are not taken from a stored reader merchant.
+  // This call reads the server. FINIX_USERNAME, FINIX_PASSWORD, FINIX_MID, and the
+  // venue merchant on payment_accounts are not taken from a stored reader merchant.
   const accountMerchant = await venueFinixMerchantId(loc.id, reader.entityId);
   const merchantId = accountMerchant.startsWith("MU") ? accountMerchant : "";
   return {
@@ -281,6 +282,7 @@ export async function paxReaderSession(
     deviceId: paxSdkDeviceId(reader.finixDeviceId),
     userId: String(readServerEnv("FINIX_USERNAME") ?? ""),
     password: String(readServerEnv("FINIX_PASSWORD") ?? ""),
+    mid: String(readServerEnv("FINIX_MID") ?? ""),
     env: finixStationEnv(readServerEnv("FINIX_ENVIRONMENT")),
   };
 }

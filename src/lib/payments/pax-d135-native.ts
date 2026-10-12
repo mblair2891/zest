@@ -8,7 +8,15 @@ import type { PaxBridge } from "./pax-d135";
 import { PAX_MSG } from "./pax-d135";
 
 export type PaxPluginStatus = {
-  state: "idle" | "scanning" | "connecting" | "setting_up" | "connected" | "disconnected" | "error";
+  state:
+    | "idle"
+    | "scanning"
+    | "connecting"
+    | "processing"
+    | "setting_up"
+    | "connected"
+    | "disconnected"
+    | "error";
   message?: string;
   serial?: string;
   batteryPercent?: number | null;
@@ -27,6 +35,7 @@ type PaxPlugin = {
     deviceId: string;
     userId: string;
     password: string;
+    mid: string;
     env: "SB" | "LIVE";
   }) => Promise<PaxConnectResult>;
   sale: (input: { amountCents: number; checkId: string; tipCents: number }) => Promise<{
@@ -69,6 +78,7 @@ type PaxConnectInput = {
   deviceId: string;
   userId: string;
   password: string;
+  mid: string;
   env: "SB" | "LIVE";
 };
 

@@ -117,7 +117,17 @@ function useNativePaxStatus(): void {
     let cancel = false;
     void import("@/lib/payments/pax-d135-native").then(async (mod) => {
       if (cancel || !mod.paxReaderOnThisStation()) return;
-      const handle = await mod.paxPlugin.addListener("status", (status) => notePaxStatus(status));
+      const handle = await mod.paxPlugin.addListener("status", (status) => {
+        notePaxStatus(status);
+        if (status.state !== "processing") return;
+        const step = String(status.message ?? "").trim();
+        if (!step) return;
+        void noteStationActivity({
+          locationId: locationIdNow(),
+          action: "connect",
+          result: step,
+        });
+      });
       if (cancel) {
         void handle.remove();
         return;
@@ -334,6 +344,7 @@ function StationDeviceScreen({ onClose }: { onClose: () => void }) {
           merchantId: session.merchantId.trim(),
           deviceId: session.deviceId.trim(),
           env: session.env,
+          mid: session.mid.trim(),
         };
         diagnostic = finixConnectDiagnostic(creds);
         sent = paxConnectActivityTrace(creds);
@@ -411,6 +422,7 @@ function StationDeviceScreen({ onClose }: { onClose: () => void }) {
             deviceId: creds.deviceId,
             userId: creds.userId,
             password: creds.password,
+            mid: creds.mid,
             env: creds.env,
           }),
         );

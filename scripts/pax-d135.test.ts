@@ -468,6 +468,7 @@ test("the PAX path does not use Web Bluetooth or Stripe", () => {
   );
   assert.match(sessionBody, /readServerEnv\("FINIX_USERNAME"\)/);
   assert.match(sessionBody, /readServerEnv\("FINIX_PASSWORD"\)/);
+  assert.match(sessionBody, /readServerEnv\("FINIX_MID"\)/);
   assert.match(sessionBody, /venueFinixMerchantId/);
   assert.doesNotMatch(sessionBody, /reader\.finixMerchantId/);
   assert.doesNotMatch(sessionBody, /finixSandboxLogin\(/);

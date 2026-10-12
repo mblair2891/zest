@@ -6,6 +6,19 @@ import type { GuideUpdate } from "@/lib/guide/types";
  */
 export const WHATS_NEW_ENTRIES: GuideUpdate[] = [
   {
+    id: "upd_2026_10_261_d135_scan_mid",
+    date: "2026-10-12",
+    title: "D135 scan and merchant number",
+    summary:
+      "Pay scans for a D135 that matches the serial, then connects that reader. An empty merchant number shows missing mid and does not connect.",
+    body: "The station reads the merchant number from the server. An empty merchant number shows missing mid and does not connect. Pay scans for a reader whose name contains D135 and whose serial matches the one that was tapped, then connects that reader. Station activity lists the merchant, the device, the username prefix, whether the merchant number is present, and the environment, then each connection step, Connected, or the full reader error. The password is left off.",
+    roles: ["owner_manager", "server", "host_operator", "vendor_operator"],
+    surfaces: ["settings"],
+    audience: "all",
+    topicId: "pax-card-reader",
+    tags: ["devices", "payments"],
+  },
+  {
     id: "upd_2026_10_260_d135_connect_diagnostics",
     date: "2026-10-12",
     title: "D135 connect diagnostics",

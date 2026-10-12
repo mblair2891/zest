@@ -89,16 +89,25 @@ test("pre-connect activity lists MerchantData and hides the password", () => {
     deviceId: "DVexample",
     userId: "US1234567890",
     env: "SB",
-    mid: "",
+    mid: "MID-secret-value",
   });
   assert.match(line, /merchantId MUexample/);
   assert.match(line, /deviceId DVexample/);
-  assert.match(line, /userId US123456/);
+  assert.match(line, /userId prefix US123456/);
+  assert.match(line, /mid present yes/);
   assert.equal(line.includes("US1234567890"), false);
+  assert.equal(line.includes("MID-secret-value"), false);
   assert.equal(line.includes("secret-value"), false);
   assert.equal(line.toLowerCase().includes("password"), false);
   assert.match(line, /env SB/);
-  assert.match(line, /mid ""/);
+  const emptyMid = finixMerchantDataPreview({
+    merchantId: "MUexample",
+    deviceId: "DVexample",
+    userId: "US1234567890",
+    env: "SB",
+    mid: "",
+  });
+  assert.match(emptyMid, /mid present no/);
   assert.equal(sanitizeActivityResult(line), line);
   assert.equal(
     finixMerchantDataGap({
@@ -107,6 +116,7 @@ test("pre-connect activity lists MerchantData and hides the password", () => {
       userId: "US1234567890",
       password: "secret-value",
       env: "SB",
+      mid: "M123",
     }),
     "missing merchantId",
   );
@@ -117,6 +127,7 @@ test("pre-connect activity lists MerchantData and hides the password", () => {
       userId: " ",
       password: "secret-value",
       env: "SB",
+      mid: "M123",
     }),
     "missing userId",
   );
@@ -127,6 +138,7 @@ test("pre-connect activity lists MerchantData and hides the password", () => {
       userId: "US1234567890",
       password: "",
       env: "SB",
+      mid: "M123",
     }),
     "missing password",
   );
@@ -137,6 +149,7 @@ test("pre-connect activity lists MerchantData and hides the password", () => {
       userId: "US1234567890",
       password: "secret-value",
       env: "SB",
+      mid: "M123",
     }),
     "missing deviceId",
   );
@@ -147,6 +160,18 @@ test("pre-connect activity lists MerchantData and hides the password", () => {
       userId: "US1234567890",
       password: "secret-value",
       env: "SB",
+      mid: "",
+    }),
+    "missing mid",
+  );
+  assert.equal(
+    finixMerchantDataGap({
+      merchantId: "MUexample",
+      deviceId: "DVexample",
+      userId: "US1234567890",
+      password: "secret-value",
+      env: "SB",
+      mid: "M123",
     }),
     null,
   );
@@ -160,7 +185,7 @@ test("pre-connect activity lists MerchantData and hides the password", () => {
   );
   assert.equal(paxSdkConnectActivityResult({ ok: true, message: "Reader ready", sdkCode: "none" }), "Connected");
   const shown = formatStationActivityLine({ ...entry, result: line });
-  assert.match(shown, /userId US123456/);
+  assert.match(shown, /userId prefix US123456/);
   assert.equal(shown.includes("secret-value"), false);
 });
 
@@ -225,6 +250,10 @@ test("pay and devices record and list the log", () => {
   assert.match(station, /finixMerchantDataGap/);
   assert.ok(pay.indexOf("finixMerchantDataGap") < pay.indexOf("connectForPaxReader"));
   assert.ok(station.indexOf("finixMerchantDataGap") < station.indexOf("connectForPaxReader"));
+  assert.match(pay, /mid: session\.mid/);
+  assert.match(station, /mid: session\.mid/);
+  assert.match(pay, /status\.state !== "processing"/);
+  assert.match(station, /status\.state !== "processing"/);
   assert.match(pay, /readServerEnv\("FINIX_USERNAME"\)|creds\.userId/);
   assert.match(pay, /creds\.merchantId/);
   assert.match(station, /creds\.merchantId/);
@@ -238,12 +267,16 @@ test("pay and devices record and list the log", () => {
     "When the station initializes the card reader it uses the selling entity's Finix merchant, the reader's device id, and the server's Finix username and password.";
   const diagnosticSentence =
     "Before the station connects the card reader, Station activity lists the merchant, the device, the first eight characters of the username, the environment, and mid.";
+  const scanSentence =
+    "An empty merchant number shows missing mid and does not connect. Pay scans for a reader whose name contains D135 and whose serial matches the one that was tapped, then connects that reader.";
   assert.match(guide, new RegExp(sentence.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")));
   assert.match(payments, new RegExp(sentence.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")));
   assert.match(guide, new RegExp(sdkSentence.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")));
   assert.match(payments, new RegExp(sdkSentence.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")));
   assert.match(guide, new RegExp(diagnosticSentence.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")));
   assert.match(payments, new RegExp(diagnosticSentence.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")));
+  assert.match(guide, new RegExp(scanSentence.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")));
+  assert.match(payments, new RegExp(scanSentence.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")));
   assert.equal(pay.includes(".disconnect("), false);
   assert.equal(station.includes(".disconnect("), false);
 });

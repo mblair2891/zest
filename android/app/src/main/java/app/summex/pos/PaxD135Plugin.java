@@ -33,8 +33,12 @@ import com.getcapacitor.annotation.Permission;
 import com.getcapacitor.annotation.PermissionCallback;
 import androidx.core.content.ContextCompat;
 import java.lang.reflect.Method;
+import java.util.ArrayList;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.regex.Matcher;
@@ -75,6 +79,7 @@ public class PaxD135Plugin extends Plugin {
     static final String MSG_CONNECT_TIMEOUT = "The connection timed out.";
     static final String MSG_CONNECT_REJECTED = "The reader rejected the connection.";
     static final String MSG_NO_RESPONSE = "The reader did not respond.";
+    static final String MSG_NO_D135 = "No D135 with this serial is in range.";
     static final String MSG_DISCONNECT = "The reader disconnected. The check is not paid. Try again.";
     static final String MSG_NOT_CONNECTED = "Scan for the reader, then pick the registered PAX D135.";
     static final String MSG_STILL_SETUP = "The reader is still setting up. No charge was sent.";
@@ -166,19 +171,20 @@ public class PaxD135Plugin extends Plugin {
         final String deviceId = call.getString("deviceId", "");
         final String userId = call.getString("userId", "");
         final String password = call.getString("password", "");
-        final String missing = missingMerchantField(merchantId, deviceId, userId, password);
+        final String mid = call.getString("mid", "");
+        final String missing = missingMerchantField(merchantId, deviceId, userId, password, mid);
         if (!missing.isEmpty()) {
-            Log.i("PaxD135", merchantDataPreview(merchantId, deviceId, userId));
+            Log.i("PaxD135", merchantDataPreview(merchantId, deviceId, userId, mid));
             Log.i("PaxD135", missing);
             resolveMessage(call, missing);
             return;
         }
-        if (serialOf(name) == null || address == null || address.isEmpty()) {
+        if (serialOf(name) == null) {
             resolveMessage(call, "Connection failed: missing Bluetooth address.");
             return;
         }
         final String diagnostic = finixConnectDiagnostic(merchantId, deviceId, userId, password);
-        Log.i("PaxD135", merchantDataPreview(merchantId, deviceId, userId));
+        Log.i("PaxD135", merchantDataPreview(merchantId, deviceId, userId, mid));
         Log.i("PaxD135", diagnostic);
         restoreHeld();
         if (reuseHeld(name, address)) {
@@ -197,7 +203,7 @@ public class PaxD135Plugin extends Plugin {
         settingUp = false;
         heldSettingUp = false;
         emit("connecting", diagnostic, serialOf(name), null);
-        main.post(() -> connectOnWorker(call, name, address, merchantId, deviceId, userId, password, diagnostic));
+        onWorker(() -> connectOnWorker(call, name, address, merchantId, deviceId, userId, password, mid, diagnostic));
     }
 
     @PluginMethod
@@ -272,6 +278,7 @@ public class PaxD135Plugin extends Plugin {
         String deviceId,
         String userId,
         String password,
+        String mid,
         String diagnostic
     ) {
         final AtomicBoolean settled = new AtomicBoolean(false);
@@ -280,8 +287,9 @@ public class PaxD135Plugin extends Plugin {
         final String passedDevice = deviceId == null ? "" : deviceId.trim();
         final String passedUser = userId == null ? "" : userId;
         final String passedPassword = password == null ? "" : password;
+        final String passedMid = mid == null ? "" : mid.trim();
         final String prefix = usernamePrefix(passedUser);
-        final String merchantTrace = merchantDataTrace(passedMerchant, passedDevice, prefix);
+        final String merchantTrace = merchantDataTrace(passedMerchant, passedDevice, prefix, passedMid);
         Log.i("PaxD135", merchantTrace);
         final Runnable timeout = () -> {
             if (!settled.compareAndSet(false, true)) return;
@@ -295,14 +303,16 @@ public class PaxD135Plugin extends Plugin {
             logSdkResult(merchantTrace, MSG_CONNECT_TIMEOUT, "timeout");
             call.resolve(ret);
         };
-        main.postDelayed(timeout, FIRST_RESPONSE_MS);
         try {
-            // Kotlin MPOSFinix(context, MerchantData) is Companion.invoke from Java.
-            // mid is empty. merchant, device, and ROLE_MERCHANT login come from the station call.
+            if (passedMid.isEmpty()) {
+                resolveMessage(call, "missing mid");
+                return;
+            }
+            // ROLE_MERCHANT login, merchant, device, and mid come from the station call.
             // EnvEnum.SB when that call sends SB (FINIX_ENVIRONMENT=sandbox).
             MerchantData data = new MerchantData(
                 passedMerchant,
-                "",
+                passedMid,
                 passedDevice,
                 Currency.USD,
                 EnvEnum.SB,
@@ -311,9 +321,19 @@ public class PaxD135Plugin extends Plugin {
             );
             final MPOSFinix next = MPOSFinix.Companion.invoke(getContext(), data);
             mpos = next;
-            final String deviceName = name;
-            final String deviceAddress = address;
-            next.connect(deviceName, deviceAddress, new MPOSConnectionCallback() {
+            final BluetoothDevice device = scanForDevices(serialOf(name));
+            if (device == null) {
+                if (!settled.compareAndSet(false, true)) return;
+                JSObject ret = new JSObject();
+                ret.put("ok", false);
+                ret.put("message", MSG_NO_D135);
+                putSdkTrace(ret, passedMerchant, passedDevice, prefix, MSG_NO_D135, "missing");
+                call.resolve(ret);
+                emit("error", MSG_NO_D135, serialOf(name), null);
+                return;
+            }
+            main.postDelayed(timeout, FIRST_RESPONSE_MS);
+            final MPOSConnectionCallback connectionCallback = new MPOSConnectionCallback() {
                 private void allowKeyDownload() {
                     if (!heard.compareAndSet(false, true)) return;
                     main.removeCallbacks(timeout);
@@ -327,7 +347,9 @@ public class PaxD135Plugin extends Plugin {
                     heldSettingUp = true;
                     Integer parsed = batteryFrom(message);
                     if (parsed != null) batteryPercent = parsed;
-                    emit("setting_up", keyDownloadProgress(message), serialOf(name), batteryPercent);
+                    String shown = redactConnectSecrets(keyDownloadProgress(message), passedPassword, passedUser);
+                    emit("processing", shown, serialOf(name), batteryPercent);
+                    emit("setting_up", shown, serialOf(name), batteryPercent);
                 }
 
                 @Override
@@ -377,7 +399,8 @@ public class PaxD135Plugin extends Plugin {
                     call.resolve(ret);
                     emit("error", safeError, serialOf(name), null);
                 }
-            });
+            };
+            connect(next, device, connectionCallback);
         } catch (Exception e) {
             if (!settled.compareAndSet(false, true)) return;
             main.removeCallbacks(timeout);
@@ -649,14 +672,21 @@ public class PaxD135Plugin extends Plugin {
     }
 
     /**
-     * Required MerchantData fields. mid stays empty and is not required.
+     * Required MerchantData fields. An empty mid does not call connect.
      * The password value is not written.
      */
-    private static String missingMerchantField(String merchantId, String deviceId, String userId, String password) {
+    private static String missingMerchantField(
+        String merchantId,
+        String deviceId,
+        String userId,
+        String password,
+        String mid
+    ) {
         if (merchantId == null || merchantId.trim().isEmpty()) return "missing merchantId";
         if (userId == null || userId.trim().isEmpty()) return "missing userId";
         if (password == null || password.trim().isEmpty()) return "missing password";
         if (deviceId == null || deviceId.trim().isEmpty()) return "missing deviceId";
+        if (mid == null || mid.trim().isEmpty()) return "missing mid";
         return "";
     }
 
@@ -668,16 +698,147 @@ public class PaxD135Plugin extends Plugin {
         return trimmed.length() <= 8 ? trimmed : trimmed.substring(0, 8);
     }
 
-    /** MerchantData values before connect. The password is not part of this line. */
-    private static String merchantDataPreview(String merchantId, String deviceId, String userId) {
+    /**
+     * MerchantData values before connect.
+     * The username is the prefix. mid is present or not. The password is not written.
+     */
+    private static String merchantDataPreview(String merchantId, String deviceId, String userId, String mid) {
         String merchant = merchantId == null || merchantId.trim().isEmpty() ? "missing" : merchantId.trim();
         String device = deviceId == null || deviceId.trim().isEmpty() ? "missing" : deviceId.trim();
         String preview = userIdPreview(userId);
         String user = preview.isEmpty() ? "missing" : preview;
-        return "MerchantData merchantId " + merchant
+        String midPresent = mid != null && !mid.trim().isEmpty() ? "yes" : "no";
+        return "merchantId " + merchant
             + ". deviceId " + device
-            + ". userId " + user
-            + ". env SB. mid \"\".";
+            + ". userId prefix " + user
+            + ". mid present " + midPresent
+            + ". env SB.";
+    }
+
+    /**
+     * Paired readers first, then a short discovery.
+     * Keeps a BluetoothDevice whose name contains D135 and whose serial matches.
+     */
+    private BluetoothDevice scanForDevices(String serial) {
+        BluetoothAdapter adapter = bluetoothAdapter();
+        if (adapter == null || !adapter.isEnabled() || serial == null || serial.isEmpty()) return null;
+        BluetoothDevice paired = findD135(bondedOf(adapter), serial);
+        if (paired != null) return paired;
+        final List<BluetoothDevice> found = new ArrayList<>();
+        final CountDownLatch latch = new CountDownLatch(1);
+        final AtomicBoolean registered = new AtomicBoolean(false);
+        final BroadcastReceiver receiver = new BroadcastReceiver() {
+            @Override
+            public void onReceive(Context context, Intent intent) {
+                if (intent == null) return;
+                String action = intent.getAction();
+                if (!BluetoothDevice.ACTION_FOUND.equals(action) && !BluetoothDevice.ACTION_NAME_CHANGED.equals(action)) {
+                    return;
+                }
+                BluetoothDevice device = intent.getParcelableExtra(BluetoothDevice.EXTRA_DEVICE);
+                String extraName = intent.getStringExtra(BluetoothDevice.EXTRA_NAME);
+                BluetoothDevice match = matchD135(device, extraName, serial);
+                if (match == null) return;
+                found.add(match);
+                latch.countDown();
+            }
+        };
+        main.post(() -> {
+            IntentFilter filter = new IntentFilter(BluetoothDevice.ACTION_FOUND);
+            filter.addAction(BluetoothDevice.ACTION_NAME_CHANGED);
+            try {
+                if (Build.VERSION.SDK_INT >= 33) {
+                    getContext().registerReceiver(receiver, filter, Context.RECEIVER_EXPORTED);
+                } else {
+                    getContext().registerReceiver(receiver, filter);
+                }
+                registered.set(true);
+                if (!adapter.isDiscovering()) adapter.startDiscovery();
+            } catch (Exception e) {
+                latch.countDown();
+            }
+        });
+        try {
+            latch.await(SCAN_MS, TimeUnit.MILLISECONDS);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+        }
+        main.post(() -> {
+            if (registered.get()) {
+                try {
+                    getContext().unregisterReceiver(receiver);
+                } catch (Exception ignored) {
+                    /* already unregistered */
+                }
+            }
+            try {
+                if (adapter.isDiscovering()) adapter.cancelDiscovery();
+            } catch (Exception ignored) {
+                /* discovery already stopped */
+            }
+        });
+        if (!found.isEmpty()) return found.get(0);
+        return findD135(bondedOf(adapter), serial);
+    }
+
+    private Set<BluetoothDevice> bondedOf(BluetoothAdapter adapter) {
+        try {
+            Set<BluetoothDevice> bonded = adapter.getBondedDevices();
+            return bonded == null ? new HashSet<>() : bonded;
+        } catch (SecurityException e) {
+            return new HashSet<>();
+        }
+    }
+
+    private BluetoothDevice findD135(Iterable<BluetoothDevice> devices, String serial) {
+        if (devices == null) return null;
+        for (BluetoothDevice device : devices) {
+            BluetoothDevice match = matchD135(device, null, serial);
+            if (match != null) return match;
+        }
+        return null;
+    }
+
+    /** Name contains D135 and the serial is the one the station tapped. */
+    private BluetoothDevice matchD135(BluetoothDevice device, String extraName, String serial) {
+        if (device == null || serial == null || serial.isEmpty()) return null;
+        String name = serialOf(extraName) != null ? extraName.trim() : deviceName(device);
+        if (name == null || !name.contains("D135")) return null;
+        String found = serialOf(name);
+        if (found == null || !found.equals(serial)) return null;
+        return device;
+    }
+
+    private String deviceName(BluetoothDevice device) {
+        try {
+            String name = device.getName();
+            if (name != null && !name.trim().isEmpty()) return name.trim();
+        } catch (SecurityException e) {
+            return null;
+        }
+        if (Build.VERSION.SDK_INT >= 30) {
+            try {
+                String alias = device.getAlias();
+                if (alias != null && !alias.trim().isEmpty()) return alias.trim();
+            } catch (SecurityException e) {
+                return null;
+            }
+        }
+        return null;
+    }
+
+    /**
+     * Finix 3.7 connect takes the scanned device name and address.
+     * The callback is the SDK connection callback.
+     */
+    private void connect(MPOSFinix finix, BluetoothDevice device, MPOSConnectionCallback connectionCallback) {
+        try {
+            String deviceName = device.getName() == null ? "" : device.getName();
+            String deviceAddress = device.getAddress() == null ? "" : device.getAddress();
+            finix.connect(deviceName, deviceAddress, connectionCallback);
+        } catch (SecurityException e) {
+            connectionCallback.onError(MSG_PERMISSION);
+        }
     }
 
     /**
@@ -725,13 +886,15 @@ public class PaxD135Plugin extends Plugin {
      * MerchantData arguments passed to MPOSFinix. Environment stays SB.
      * The password is not part of this line. The username is the prefix only.
      */
-    private static String merchantDataTrace(String merchantId, String deviceId, String prefix) {
+    private static String merchantDataTrace(String merchantId, String deviceId, String prefix, String mid) {
         String merchant = merchantId == null || merchantId.isEmpty() ? "missing" : merchantId;
         String device = deviceId == null || deviceId.isEmpty() ? "missing" : deviceId;
         String user = prefix == null || prefix.isEmpty() ? "missing" : prefix;
+        String midPresent = mid != null && !mid.isEmpty() ? "yes" : "no";
         return "MerchantData merchantId " + merchant
             + ". deviceId " + device
             + ". username prefix " + user
+            + ". mid present " + midPresent
             + ". environment SB.";
     }
 
