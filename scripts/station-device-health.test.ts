@@ -272,6 +272,15 @@ test("the printer probe connects without a payload and the reader timeout stays"
   assert.match(pax, /merchant ID/);
   assert.match(pax, /Environment SB/);
   assert.match(pax, /Log\.i\("PaxD135", diagnostic\)/);
+  assert.match(pax, /Log\.i\("PaxD135", merchantTrace\)/);
+  assert.match(pax, /new MerchantData\(\s*passedMerchant,\s*"",\s*passedDevice,\s*Currency\.USD,\s*EnvEnum\.SB,\s*passedUser,\s*passedPassword\s*\)/);
+  const merchantTrace = pax.slice(pax.indexOf("String merchantDataTrace"), pax.indexOf("void putSdkTrace"));
+  assert.match(merchantTrace, /username prefix/);
+  assert.equal(merchantTrace.includes("password"), false);
+  assert.match(pax, /substring\(0, 6\)/);
+  assert.match(pax, /put\("sdkMessage"/);
+  assert.match(pax, /put\("sdkCode"/);
+  assert.match(pax, /put\("usernamePrefix"/);
   assert.match(pax, /Environment SB\. Username present /);
   assert.match(pax, /Password present /);
   assert.match(pax, /\. Merchant /);

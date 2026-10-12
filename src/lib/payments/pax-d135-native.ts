@@ -28,7 +28,7 @@ type PaxPlugin = {
     userId: string;
     password: string;
     env: typeof PAX_SDK_ENV;
-  }) => Promise<{ ok: boolean; message?: string; batteryPercent?: number | null }>;
+  }) => Promise<PaxConnectResult>;
   sale: (input: { amountCents: number; checkId: string; tipCents: number }) => Promise<{
     ok: boolean;
     code?: string;
@@ -72,7 +72,17 @@ type PaxConnectInput = {
   env: typeof PAX_SDK_ENV;
 };
 
-type PaxConnectResult = { ok: boolean; message?: string; batteryPercent?: number | null };
+type PaxConnectResult = {
+  ok: boolean;
+  message?: string;
+  batteryPercent?: number | null;
+  merchantId?: string;
+  deviceId?: string;
+  usernamePrefix?: string;
+  environment?: string;
+  sdkMessage?: string;
+  sdkCode?: string;
+};
 
 function scanHook(): (() => Promise<PaxScanResult>) | null {
   const hook = (globalThis as { __summexPaxScan?: unknown }).__summexPaxScan;

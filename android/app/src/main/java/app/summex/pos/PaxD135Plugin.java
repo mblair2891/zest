@@ -267,6 +267,13 @@ public class PaxD135Plugin extends Plugin {
     ) {
         final AtomicBoolean settled = new AtomicBoolean(false);
         final AtomicBoolean heard = new AtomicBoolean(false);
+        final String passedMerchant = merchantId == null ? "" : merchantId;
+        final String passedDevice = sdkDeviceId(deviceId);
+        final String passedUser = userId == null ? "" : userId;
+        final String passedPassword = password == null ? "" : password;
+        final String prefix = usernamePrefix(passedUser);
+        final String merchantTrace = merchantDataTrace(passedMerchant, passedDevice, prefix);
+        Log.i("PaxD135", merchantTrace);
         final Runnable timeout = () -> {
             if (!settled.compareAndSet(false, true)) return;
             settingUp = false;
@@ -275,18 +282,20 @@ public class PaxD135Plugin extends Plugin {
             JSObject ret = new JSObject();
             ret.put("ok", false);
             ret.put("message", MSG_CONNECT_TIMEOUT);
+            putSdkTrace(ret, passedMerchant, passedDevice, prefix, MSG_CONNECT_TIMEOUT, "timeout");
+            logSdkResult(merchantTrace, MSG_CONNECT_TIMEOUT, "timeout");
             call.resolve(ret);
         };
         main.postDelayed(timeout, FIRST_RESPONSE_MS);
         try {
             MerchantData data = new MerchantData(
-                merchantId == null ? "" : merchantId,
+                passedMerchant,
                 "",
-                sdkDeviceId(deviceId),
+                passedDevice,
                 Currency.USD,
                 EnvEnum.SB,
-                userId == null ? "" : userId,
-                password == null ? "" : password
+                passedUser,
+                passedPassword
             );
             final MPOSFinix next = MPOSFinix.Companion.invoke(getContext(), data);
             mpos = next;
@@ -327,6 +336,8 @@ public class PaxD135Plugin extends Plugin {
                     JSObject ret = new JSObject();
                     ret.put("ok", true);
                     if (batteryPercent != null) ret.put("batteryPercent", batteryPercent);
+                    putSdkTrace(ret, passedMerchant, passedDevice, prefix, MSG_READY, "none");
+                    logSdkResult(merchantTrace, MSG_READY, "none");
                     call.resolve(ret);
                     emit("connected", finixConnectBanner(diagnostic, MSG_READY), serialOf(name), batteryPercent);
                     watchAcl();
@@ -341,6 +352,12 @@ public class PaxD135Plugin extends Plugin {
                     connected = false;
                     JSObject ret = new JSObject();
                     ret.put("ok", false);
+                    String rawError = errorMessage == null ? "" : errorMessage;
+                    String safeError = redactConnectSecrets(rawError, passedPassword, passedUser);
+                    String code = messageCode(safeError);
+                    if (code.isEmpty()) code = "missing";
+                    putSdkTrace(ret, passedMerchant, passedDevice, prefix, safeError, code);
+                    logSdkResult(merchantTrace, safeError, code);
                     String shown = finixConnectBanner(
                         diagnostic,
                         finixUnauthorized(finixConnectReason(errorMessage), userId, password, merchantId, deviceId)
@@ -357,8 +374,17 @@ public class PaxD135Plugin extends Plugin {
             heldSettingUp = false;
             connected = false;
             String detail = e.getMessage() == null ? "" : e.getMessage().trim();
+            String safeDetail = redactConnectSecrets(
+                detail.isEmpty() ? "Exception during connection" : detail,
+                passedPassword,
+                passedUser
+            );
+            String code = redactConnectSecrets(exceptionCode(e), passedPassword, passedUser);
+            if (code.isEmpty()) code = "missing";
             JSObject ret = new JSObject();
             ret.put("ok", false);
+            putSdkTrace(ret, passedMerchant, passedDevice, prefix, safeDetail, code);
+            logSdkResult(merchantTrace, safeDetail, code);
             ret.put(
                 "message",
                 finixConnectBanner(
@@ -663,6 +689,84 @@ public class PaxD135Plugin extends Plugin {
         String text = message == null ? "" : message.trim();
         if (text.isEmpty()) return MSG_SETUP;
         return text;
+    }
+
+    /** First six characters of the merchant username. The rest of the username is not written. */
+    private static String usernamePrefix(String userId) {
+        if (userId == null || userId.isEmpty()) return "";
+        return userId.length() <= 6 ? userId : userId.substring(0, 6);
+    }
+
+    /**
+     * MerchantData arguments passed to MPOSFinix. Environment stays SB.
+     * The password is not part of this line. The username is the prefix only.
+     */
+    private static String merchantDataTrace(String merchantId, String deviceId, String prefix) {
+        String merchant = merchantId == null || merchantId.isEmpty() ? "missing" : merchantId;
+        String device = deviceId == null || deviceId.isEmpty() ? "missing" : deviceId;
+        String user = prefix == null || prefix.isEmpty() ? "missing" : prefix;
+        return "MerchantData merchantId " + merchant
+            + ". deviceId " + device
+            + ". username prefix " + user
+            + ". environment SB.";
+    }
+
+    private static void putSdkTrace(
+        JSObject ret,
+        String merchant,
+        String device,
+        String prefix,
+        String sdkMessage,
+        String sdkCode
+    ) {
+        ret.put("merchantId", merchant == null ? "" : merchant);
+        ret.put("deviceId", device == null ? "" : device);
+        ret.put("usernamePrefix", prefix == null ? "" : prefix);
+        ret.put("environment", "SB");
+        ret.put("sdkMessage", sdkMessage == null ? "" : sdkMessage);
+        ret.put("sdkCode", sdkCode == null || sdkCode.isEmpty() ? "missing" : sdkCode);
+    }
+
+    private static void logSdkResult(String merchantTrace, String sdkMessage, String sdkCode) {
+        String code = sdkCode == null || sdkCode.isEmpty() ? "missing" : sdkCode;
+        String message = sdkMessage == null ? "" : sdkMessage;
+        Log.i("PaxD135", merchantTrace + " SDK message " + message + ". code " + code + ".");
+    }
+
+    private static String redactConnectSecrets(String text, String password, String userId) {
+        String out = text == null ? "" : text;
+        if (password != null && !password.isEmpty()) out = out.replace(password, "present");
+        if (userId != null && userId.length() > 6) out = out.replace(userId, userId.substring(0, 6));
+        return out;
+    }
+
+    private static String messageCode(String message) {
+        if (message == null || message.isEmpty()) return "";
+        Matcher json = Pattern.compile("\"code\"\\s*:\\s*\"([^\"]+)\"").matcher(message);
+        if (json.find()) return json.group(1).trim();
+        Matcher labeled = Pattern.compile("(?i)\\bcode\\s*[:=]\\s*([A-Za-z0-9_.-]+)").matcher(message);
+        if (labeled.find()) return labeled.group(1).trim();
+        return "";
+    }
+
+    private static String exceptionCode(Throwable error) {
+        if (error == null) return "";
+        String[] names = { "getCode", "getErrorCode", "getStatusCode", "getFailureCode" };
+        for (String name : names) {
+            try {
+                Method method = error.getClass().getMethod(name);
+                Object value = method.invoke(error);
+                if (value == null) continue;
+                String text = String.valueOf(value).trim();
+                if (!text.isEmpty() && !"null".equals(text)) return text;
+            } catch (Exception ignored) {
+                /* this exception type has no code method */
+            }
+        }
+        String fromMessage = messageCode(error.getMessage());
+        if (!fromMessage.isEmpty()) return fromMessage;
+        String simple = error.getClass().getSimpleName();
+        return simple == null ? "" : simple;
     }
 
     /**

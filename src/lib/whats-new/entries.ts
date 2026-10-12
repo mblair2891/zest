@@ -6,6 +6,18 @@ import type { GuideUpdate } from "@/lib/guide/types";
  */
 export const WHATS_NEW_ENTRIES: GuideUpdate[] = [
   {
+    id: "upd_2026_10_258_finix_merchant_data",
+    date: "2026-10-12",
+    title: "Finix MerchantData trace",
+    summary: "Devices lists the MerchantData sent to the Finix SDK on D135 connect and the SDK exception message and code.",
+    body: "When the station calls the Finix Android SDK connect, Devices records the merchant ID, device ID, the first six characters of the username, and the environment passed in MerchantData, then the SDK exception message and code. The password is not recorded.",
+    roles: ["owner_manager", "server", "host_operator", "vendor_operator"],
+    surfaces: ["settings"],
+    audience: "all",
+    topicId: "pax-card-reader",
+    tags: ["devices", "payments"],
+  },
+  {
     id: "upd_2026_10_257_finix_connect_trace",
     date: "2026-10-12",
     title: "Finix connect trace",

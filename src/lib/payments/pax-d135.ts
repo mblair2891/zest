@@ -589,7 +589,68 @@ export type PaxConnectCallResult = {
   ok: boolean;
   message?: string;
   batteryPercent?: number | null;
+  merchantId?: string;
+  deviceId?: string;
+  usernamePrefix?: string;
+  environment?: string;
+  sdkMessage?: string;
+  sdkCode?: string;
 };
+
+/** First six characters of the merchant username passed to MerchantData. The rest is not recorded. */
+export function finixUsernamePrefix(userId: string): string {
+  return String(userId ?? "").slice(0, 6);
+}
+
+/** Drop a stuffed username or password from an SDK message. Presence words stay. */
+function redactSdkMessage(message: string): string {
+  return String(message ?? "")
+    .replace(/\s+/g, " ")
+    .trim()
+    .replace(/\b(password|username|userId|user_id)\b\s*[:=]\s*\S+/gi, "$1 present")
+    .slice(0, 800);
+}
+
+/**
+ * MerchantData values passed into the Finix Android SDK, plus the SDK exception.
+ * The password is not included. The username is only the first six characters.
+ */
+export function finixSdkConnectActivity(input: {
+  merchantId?: string;
+  deviceId?: string;
+  usernamePrefix?: string;
+  environment?: string;
+  sdkMessage?: string;
+  sdkCode?: string;
+}): string {
+  const merchant = String(input.merchantId ?? "").trim() || "missing";
+  const device = String(input.deviceId ?? "").trim() || "missing";
+  const prefix = String(input.usernamePrefix ?? "").slice(0, 6) || "missing";
+  const env = String(input.environment ?? "").trim() || "missing";
+  const message = redactSdkMessage(String(input.sdkMessage ?? "")) || "missing";
+  const code = String(input.sdkCode ?? "").trim().slice(0, 80) || "missing";
+  return `MerchantData merchantId ${merchant}. deviceId ${device}. username prefix ${prefix}. environment ${env}. SDK message ${message}. code ${code}.`;
+}
+
+/** Fields the Android plugin returns after it calls MPOSFinix.connect. Absent on a web pre-check. */
+export function finixSdkTraceFromConnect(result: PaxConnectCallResult | null | undefined): {
+  merchantId: string;
+  deviceId: string;
+  usernamePrefix: string;
+  environment: string;
+  sdkMessage: string;
+  sdkCode: string;
+} | null {
+  if (!result) return null;
+  const merchantId = String(result.merchantId ?? "").trim();
+  const deviceId = String(result.deviceId ?? "").trim();
+  const usernamePrefix = String(result.usernamePrefix ?? "").slice(0, 6);
+  const environment = String(result.environment ?? "").trim();
+  const sdkMessage = String(result.sdkMessage ?? "").trim();
+  const sdkCode = String(result.sdkCode ?? "").trim();
+  if (!merchantId && !deviceId && !usernamePrefix && !sdkMessage && !sdkCode) return null;
+  return { merchantId, deviceId, usernamePrefix, environment, sdkMessage, sdkCode };
+}
 
 /**
  * One connect, then one retry when the first open did not get a Finix answer.
@@ -598,22 +659,28 @@ export type PaxConnectCallResult = {
 export async function runPaxConnect(
   connect: () => Promise<PaxConnectCallResult>,
 ): Promise<PaxConnectCallResult> {
-  let last: string = PAX_MSG.connectTimeout;
+  let last: PaxConnectCallResult = { ok: false, message: PAX_MSG.connectTimeout, batteryPercent: null };
   for (let attempt = 0; attempt < 2; attempt += 1) {
     try {
       const result = await connect();
       if (result.ok) return result;
-      last = paxConnectFailureReason(result.message);
-      if (!paxConnectShouldRetry(result.message)) {
-        return { ok: false, message: last, batteryPercent: null };
-      }
+      const message = paxConnectFailureReason(result.message);
+      last = { ...result, ok: false, message, batteryPercent: result.batteryPercent ?? null };
+      if (!paxConnectShouldRetry(result.message)) return last;
     } catch (err) {
       const detail = err instanceof Error ? err.message.trim() : "";
-      last = paxConnectFailureReason(detail || "Exception during connection");
-      if (!paxConnectShouldRetry(last)) break;
+      const message = paxConnectFailureReason(detail || "Exception during connection");
+      last = {
+        ok: false,
+        message,
+        batteryPercent: null,
+        sdkMessage: detail || "Exception during connection",
+        sdkCode: "Exception",
+      };
+      if (!paxConnectShouldRetry(message)) break;
     }
   }
-  return { ok: false, message: last, batteryPercent: null };
+  return last;
 }
 
 /**

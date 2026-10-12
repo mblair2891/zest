@@ -41,6 +41,9 @@ import {
   decidePaxPick,
   finixConnectBanner,
   finixConnectDiagnostic,
+  finixSdkConnectActivity,
+  finixSdkTraceFromConnect,
+  finixUsernamePrefix,
   logFinixConnectDiagnostic,
   payEntityStatusText,
   paymentUsesConnectedReader,
@@ -381,6 +384,9 @@ export function PaymentDialog({ open, onOpenChange, initialMethod }: Props) {
       showPaxConnectBanner(banner);
       setBusy(true);
       let diagnostic = "";
+      let passedMerchant = "";
+      let passedDevice = "";
+      let passedUser = "";
       const logConnect = async (
         result: string,
         trace?: {
@@ -434,6 +440,9 @@ export function PaymentDialog({ open, onOpenChange, initialMethod }: Props) {
           deviceId: session.deviceId,
           env: session.env,
         };
+        passedMerchant = session.merchantId;
+        passedDevice = session.deviceId;
+        passedUser = session.userId;
         diagnostic = finixConnectDiagnostic(creds);
         logFinixConnectDiagnostic(diagnostic);
         await noteStationActivity({
@@ -491,16 +500,26 @@ export function PaymentDialog({ open, onOpenChange, initialMethod }: Props) {
             env: "SB",
           }),
         );
+        const sdk = finixSdkTraceFromConnect(connected);
+        const sdkLine = sdk ? finixSdkConnectActivity(sdk) : "";
+        const sdkTrace = sdk
+          ? {
+              ...trace,
+              environment: sdk.environment || trace?.environment,
+              merchantId: sdk.merchantId || trace?.merchantId,
+              deviceId: sdk.deviceId || trace?.deviceId,
+            }
+          : trace;
         if (!connected.ok) {
           const outcome = presentFinixConnectFailure({ message: connected.message, ...creds });
           const reason = finixConnectBanner(diagnostic, outcome);
-          await logConnect(raw || outcome, trace);
+          await logConnect(sdkLine || raw || outcome, sdkTrace);
           failPaxConnect(reason);
           setError(reason);
           setBusy(false);
           return;
         }
-        await logConnect(raw || PAX_MSG.ready, trace);
+        await logConnect(sdkLine || raw || PAX_MSG.ready, sdkTrace);
         markPaxConnected(
           decision.reader,
           typeof connected.batteryPercent === "number" ? connected.batteryPercent : null,
@@ -510,7 +529,21 @@ export function PaymentDialog({ open, onOpenChange, initialMethod }: Props) {
         const detail = err instanceof Error ? err.message.trim() : "";
         const outcome = detail || "Exception during connection";
         const reason = diagnostic ? finixConnectBanner(diagnostic, outcome) : outcome;
-        await logConnect(outcome);
+        const thrown = passedMerchant || passedDevice || passedUser
+          ? finixSdkConnectActivity({
+              merchantId: passedMerchant,
+              deviceId: passedDevice,
+              usernamePrefix: finixUsernamePrefix(passedUser),
+              environment: "SB",
+              sdkMessage: outcome,
+              sdkCode: "Exception",
+            })
+          : outcome;
+        await logConnect(thrown, {
+          merchantId: passedMerchant,
+          deviceId: passedDevice,
+          environment: passedMerchant ? "SB" : undefined,
+        });
         failPaxConnect(reason);
         setError(getPaxStationLink().message);
       }
