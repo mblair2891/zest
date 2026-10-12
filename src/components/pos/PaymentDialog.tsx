@@ -37,6 +37,9 @@ import {
   checkAlreadyCaptured,
   checkSellingEntityId,
   decidePaxPick,
+  finixConnectBanner,
+  finixConnectDiagnostic,
+  logFinixConnectDiagnostic,
   paymentUsesConnectedReader,
   paxLinkStatusText,
   paxScanPresentation,
@@ -302,6 +305,7 @@ export function PaymentDialog({ open, onOpenChange, initialMethod }: Props) {
       setError(null);
       beginPaxConnect(decision.reader);
       setBusy(true);
+      let diagnostic = "";
       try {
         const session = await paxReaderSessionFn({
           data: { locationId: loc, serial: decision.reader.serial, entityId: decision.reader.entityId },
@@ -319,13 +323,15 @@ export function PaymentDialog({ open, onOpenChange, initialMethod }: Props) {
           deviceId: session.deviceId,
           env: session.env,
         };
+        diagnostic = finixConnectDiagnostic(creds);
+        logFinixConnectDiagnostic(diagnostic);
         const { connectForPaxReader, paxReaderOnThisStation } = await import("@/lib/payments/pax-d135-native");
         if (!paxReaderOnThisStation()) {
           const auth = await finixConnectAuthFn({
             data: { locationId: loc, serial: decision.reader.serial, entityId: decision.reader.entityId },
           });
           if (!auth.ok) {
-            const reason = presentFinixConnectFailure({ message: auth.error, ...creds });
+            const reason = finixConnectBanner(diagnostic, presentFinixConnectFailure({ message: auth.error, ...creds }));
             failPaxConnect(reason);
             setError(reason);
             setBusy(false);
@@ -344,7 +350,10 @@ export function PaymentDialog({ open, onOpenChange, initialMethod }: Props) {
           }),
         );
         if (!connected.ok) {
-          const reason = presentFinixConnectFailure({ message: connected.message, ...creds });
+          const reason = finixConnectBanner(
+            diagnostic,
+            presentFinixConnectFailure({ message: connected.message, ...creds }),
+          );
           failPaxConnect(reason);
           setError(reason);
           setBusy(false);
@@ -353,10 +362,13 @@ export function PaymentDialog({ open, onOpenChange, initialMethod }: Props) {
         markPaxConnected(
           decision.reader,
           typeof connected.batteryPercent === "number" ? connected.batteryPercent : null,
+          finixConnectBanner(diagnostic, PAX_MSG.ready),
         );
       } catch (err) {
         const detail = err instanceof Error ? err.message.trim() : "";
-        failPaxConnect(detail || "Exception during connection");
+        const outcome = detail || "Exception during connection";
+        const reason = diagnostic ? finixConnectBanner(diagnostic, outcome) : outcome;
+        failPaxConnect(reason);
         setError(getPaxStationLink().message);
       }
       setBusy(false);

@@ -8,6 +8,8 @@ import {
   paxSdkDeviceId,
   connectedReaderForPayment,
   paxLinkStatusText,
+  finixConnectBanner,
+  finixConnectDiagnostic,
   finixUnauthorizedBanner,
   paxConnectFailureReason,
   paxConnectShouldRetry,
@@ -269,6 +271,15 @@ test("the printer probe connects without a payload and the reader timeout stays"
   assert.match(pax, /Finix sandbox password/);
   assert.match(pax, /merchant ID/);
   assert.match(pax, /Environment SB/);
+  assert.match(pax, /Log\.i\("PaxD135", diagnostic\)/);
+  assert.match(pax, /Environment SB\. Merchant /);
+  const diag = pax.slice(pax.indexOf("String finixConnectDiagnostic"), pax.indexOf("String keyDownloadProgress"));
+  assert.equal(diag.includes("password +"), false);
+  assert.equal(diag.includes("userId +"), false);
+  assert.equal(diag.includes("return password"), false);
+  assert.equal(diag.includes("return userId"), false);
+  assert.match(diag, /Username /);
+  assert.match(diag, /Password /);
   const cred = pax.slice(pax.indexOf("failedFinixCredential"), pax.indexOf("private void restoreHeld"));
   assert.equal(cred.includes("password +"), false);
   assert.equal(cred.includes("return password"), false);
@@ -404,12 +415,62 @@ test("selecting a D135 holds the link and Reader ready stays", async () => {
     }),
     "Reader ready",
   );
+  const loginName = "sandbox-user";
+  const diagnostic = finixConnectDiagnostic({
+    userId: loginName,
+    password: secret,
+    merchantId: "MUabc",
+    deviceId: PAX_SANDBOX_DEVICE_ID,
+    env: "SB",
+  });
+  assert.equal(
+    diagnostic,
+    `Environment SB. Merchant MUabc. Device ${PAX_SANDBOX_DEVICE_ID}. Username present. Password present.`,
+  );
+  assert.equal(diagnostic.includes(secret), false);
+  assert.equal(diagnostic.includes(loginName), false);
+  assert.equal(
+    finixConnectDiagnostic({
+      userId: "",
+      password: "",
+      merchantId: "",
+      deviceId: "",
+      env: "",
+    }),
+    `Environment SB. Merchant missing. Device ${PAX_SANDBOX_DEVICE_ID}. Username missing. Password missing.`,
+  );
+  assert.equal(
+    finixConnectDiagnostic({
+      userId: "USreader",
+      password: secret,
+      merchantId: "MUabc",
+      deviceId: "DV9",
+      env: "LIVE",
+    }).startsWith("Environment LIVE. Merchant MUabc. Device DV9."),
+    true,
+  );
+  const unauthorized = finixConnectBanner(diagnostic, username ?? "");
+  assert.equal(unauthorized.startsWith(diagnostic), true);
+  assert.equal(unauthorized.includes("Unauthorized"), true);
+  assert.equal(unauthorized.includes(secret), false);
+  assert.equal(unauthorized.includes(loginName), false);
+  assert.ok(unauthorized.indexOf("Environment SB") < unauthorized.indexOf("Merchant MUabc"));
+  assert.ok(unauthorized.indexOf("Merchant MUabc") < unauthorized.indexOf("Device "));
+  assert.ok(unauthorized.indexOf("Username present") < unauthorized.indexOf("Unauthorized"));
+  const readyBanner = finixConnectBanner(diagnostic, "Reader ready");
+  assert.equal(readyBanner.endsWith("Reader ready"), true);
+  assert.equal(paxLinkStatusText({ phase: "connected", message: readyBanner }), readyBanner);
+  assert.equal(paxConnectFailureReason(unauthorized), unauthorized);
   const guideDevices = readFileSync(new URL("../src/lib/guide/content/devices.ts", import.meta.url), "utf8");
   const guidePay = readFileSync(new URL("../src/lib/guide/content/payments.ts", import.meta.url), "utf8");
   assert.match(guideDevices, /which credential or environment was used/);
   assert.match(guidePay, /which credential or environment was used/);
   assert.match(guideDevices, /DVt7ZpgavajgoPUHCX967Ser/);
   assert.match(guideDevices, /A successful connect shows Reader ready/);
+  assert.match(guideDevices, /whether the username is present/);
+  assert.match(guideDevices, /includes the Finix error body/);
+  assert.match(guidePay, /whether the password is present/);
+  assert.match(guidePay, /The username and the password are not shown/);
 
   let calls = 0;
   const retried = await runPaxConnect(async () => {

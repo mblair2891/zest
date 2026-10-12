@@ -105,19 +105,40 @@ function finixUnauthorizedText(json: Record<string, unknown>): string {
   return "Unauthorized";
 }
 
+function redactFinixSecrets(text: string, secrets: string[]): string {
+  let out = text;
+  for (const secret of secrets) {
+    const value = secret.trim();
+    if (value.length < 4 || !out.includes(value)) continue;
+    out = out.split(value).join("[redacted]");
+  }
+  return out;
+}
+
+function finixErrorBody(json: Record<string, unknown>, raw: string): string {
+  if (json && Object.keys(json).length > 0) return JSON.stringify(json);
+  return raw.trim();
+}
+
 /**
  * The same sandbox username and password the station passes to MPOSFinix.
- * A 401 returns Finix’s reason. The password is not part of the result.
+ * A 401 returns Finix’s reason and the error body. The password is not part of the result.
  */
 export async function finixSandboxAuthFailure(): Promise<string | null> {
   try {
+    const login = finixSandboxLogin();
     const res = await finixFetch("sandbox", "GET", "/applications", undefined, {
       requireWebhook: false,
       application: false,
     });
     if (res.status !== 401) return null;
-    const reason = finixUnauthorizedText(res.json);
-    return /unauthorized/i.test(reason) ? reason : `Unauthorized. ${reason}`;
+    const secrets = [login?.password ?? "", login?.userId ?? ""];
+    const reason = redactFinixSecrets(finixUnauthorizedText(res.json), secrets);
+    const head = /unauthorized/i.test(reason) ? reason : `Unauthorized. ${reason}`;
+    const body = redactFinixSecrets(finixErrorBody(res.json, res.body ?? ""), secrets);
+    if (!body || body === "{}" || head.includes(body)) return head;
+    const sentence = /[.!?]$/.test(head) ? head : `${head}.`;
+    return `${sentence} ${body}`;
   } catch {
     return null;
   }
@@ -140,11 +161,11 @@ async function finixFetch(
   path: string,
   body?: Record<string, unknown>,
   opts?: { requireWebhook?: boolean; application?: boolean },
-): Promise<{ ok: boolean; status: number; json: Record<string, unknown>; error?: string }> {
+): Promise<{ ok: boolean; status: number; json: Record<string, unknown>; body: string; error?: string }> {
   const creds = opts?.requireWebhook === false ? readFinixApiCreds(mode) : readFinixCreds(mode);
   if (!creds.ok) {
     const error = missingFinixKeyMessage(creds.missing);
-    return { ok: false, status: 0, json: { error, missing: creds.missing }, error };
+    return { ok: false, status: 0, json: { error, missing: creds.missing }, body: "", error };
   }
   const auth = Buffer.from(`${creds.creds.username}:${creds.creds.password}`).toString("base64");
   const payload = body
@@ -161,13 +182,19 @@ async function finixFetch(
     },
     body: payload ? JSON.stringify(payload) : undefined,
   });
+  const raw = await res.text();
   let json: Record<string, unknown> = {};
-  try {
-    json = (await res.json()) as Record<string, unknown>;
-  } catch {
-    json = {};
+  if (raw.trim()) {
+    try {
+      const parsed = JSON.parse(raw) as unknown;
+      if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
+        json = parsed as Record<string, unknown>;
+      }
+    } catch {
+      json = {};
+    }
   }
-  return { ok: res.ok, status: res.status, json };
+  return { ok: res.ok, status: res.status, json, body: raw };
 }
 
 function mapMerchantState(raw: unknown): PaymentsOnboardingStatus {

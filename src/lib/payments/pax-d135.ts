@@ -327,6 +327,7 @@ export function reuseHeldPaxLink(input: {
 export function paxConnectFailureReason(message?: string | null): string {
   const text = String(message ?? "").trim();
   const lower = text.toLowerCase();
+  if (text.startsWith("Environment ")) return text;
   if (
     text.startsWith("Failed to connect:") ||
     text.startsWith("Connection failed:") ||
@@ -408,6 +409,48 @@ export function presentFinixConnectFailure(input: {
   return finixUnauthorizedBanner(input) ?? paxConnectFailureReason(input.message);
 }
 
+/** SB or LIVE. A blank or sandbox value is the Environment.SB passed to MPOSFinix. */
+export function finixInitEnvironment(env: string): "SB" | "LIVE" {
+  const raw = String(env ?? "").trim().toUpperCase();
+  if (raw === "LIVE" || raw === "PROD") return "LIVE";
+  return "SB";
+}
+
+/**
+ * Values passed to MPOSFinix. Username and password are present or missing.
+ * The secret values are not included.
+ */
+export function finixConnectDiagnostic(input: {
+  userId: string;
+  password: string;
+  merchantId: string;
+  deviceId: string;
+  env: string;
+}): string {
+  const env = finixInitEnvironment(input.env);
+  const merchant = String(input.merchantId ?? "").trim() || "missing";
+  const device = paxSdkDeviceId(input.deviceId);
+  const username = String(input.userId ?? "").trim() ? "present" : "missing";
+  const password = String(input.password ?? "").trim() ? "present" : "missing";
+  return `Environment ${env}. Merchant ${merchant}. Device ${device}. Username ${username}. Password ${password}.`;
+}
+
+/** Diagnostic, then Reader ready or the Finix result. A result that already starts with it stays. */
+export function finixConnectBanner(diagnostic: string, result: string): string {
+  const head = String(diagnostic ?? "").trim();
+  const tail = String(result ?? "").replace(/\s+/g, " ").trim();
+  if (!head) return tail;
+  if (!tail) return head;
+  if (tail.startsWith(head)) return tail;
+  return `${head} ${tail}`;
+}
+
+/** Station log of the init line. The line has no username or password value. */
+export function logFinixConnectDiagnostic(diagnostic: string): void {
+  const line = String(diagnostic ?? "").trim();
+  if (line) console.info(line);
+}
+
 /** Retry once when the first open did not get a Finix answer. A named Finix error is the result. */
 export function paxConnectShouldRetry(message?: string | null): boolean {
   const text = String(message ?? "").trim();
@@ -475,7 +518,11 @@ export function presentPaxHold(input: {
 
 /** Shown on the device screen and on Pay. Reader ready stays until the link drops. */
 export function paxLinkStatusText(link: { phase: string; message: string }): string {
-  if (link.phase === "connected") return PAX_MSG.ready;
+  if (link.phase === "connected") {
+    const message = String(link.message ?? "");
+    if (message.startsWith("Environment ") && message.includes(PAX_MSG.ready)) return message;
+    return PAX_MSG.ready;
+  }
   if (link.phase === "connecting") return PAX_MSG.connecting;
   if (link.phase === "setting_up") return link.message || PAX_MSG.settingUp;
   return link.message;

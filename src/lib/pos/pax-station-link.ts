@@ -89,9 +89,12 @@ export function beginPaxConnect(reader: PaxReader): void {
   patch({ phase: "connecting", reader, message: presented.message });
 }
 
-export function markPaxConnected(reader: PaxReader, battery: number | null): void {
+export function markPaxConnected(reader: PaxReader, battery: number | null, statusMessage?: string): void {
   const presented = presentPaxHold({ event: "accepted", wasReady: true });
-  patch({ phase: "connected", reader, battery, message: presented.message });
+  const extra = String(statusMessage ?? "").trim();
+  const message =
+    extra.startsWith("Environment ") && extra.includes(PAX_MSG.ready) ? extra : presented.message;
+  patch({ phase: "connected", reader, battery, message });
 }
 
 export function failPaxConnect(message: string): void {
@@ -125,8 +128,11 @@ export function notePaxStatus(status: {
     });
     patch({ phase: "setting_up", message: presented.message });
   } else if (status.state === "connected") {
+    const incoming = String(status.message ?? "").trim();
     const presented = presentPaxHold({ event: "accepted", wasReady: true });
-    patch({ phase: "connected", message: presented.message });
+    const message =
+      incoming.startsWith("Environment ") && incoming.includes(PAX_MSG.ready) ? incoming : presented.message;
+    patch({ phase: "connected", message });
   } else if (status.state === "disconnected" && state.phase === "connected") {
     const presented = presentPaxHold({ event: "dropped", wasReady: true });
     patch({ phase: "idle", reader: null, battery: null, message: presented.message });

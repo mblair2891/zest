@@ -13,6 +13,7 @@ import android.os.Build;
 import android.os.Handler;
 import android.os.HandlerThread;
 import android.os.Looper;
+import android.util.Log;
 import com.finix.mpos.models.Currency;
 import com.finix.mpos.models.EnvEnum;
 import com.finix.mpos.models.MerchantData;
@@ -169,6 +170,8 @@ public class PaxD135Plugin extends Plugin {
             resolveMessage(call, "Connection failed: missing Bluetooth address.");
             return;
         }
+        final String diagnostic = finixConnectDiagnostic(merchantId, deviceId, userId, password);
+        Log.i("PaxD135", diagnostic);
         restoreHeld();
         if (reuseHeld(name, address)) {
             settingUp = false;
@@ -177,7 +180,7 @@ public class PaxD135Plugin extends Plugin {
             ret.put("ok", true);
             if (batteryPercent != null) ret.put("batteryPercent", batteryPercent);
             call.resolve(ret);
-            emit("connected", MSG_READY, serialOf(name), batteryPercent);
+            emit("connected", finixConnectBanner(diagnostic, MSG_READY), serialOf(name), batteryPercent);
             watchAcl();
             return;
         }
@@ -185,7 +188,7 @@ public class PaxD135Plugin extends Plugin {
         settingUp = false;
         heldSettingUp = false;
         emit("connecting", MSG_CONNECTING, serialOf(name), null);
-        main.post(() -> connectOnWorker(call, name, address, merchantId, deviceId, userId, password));
+        main.post(() -> connectOnWorker(call, name, address, merchantId, deviceId, userId, password, diagnostic));
     }
 
     @PluginMethod
@@ -259,7 +262,8 @@ public class PaxD135Plugin extends Plugin {
         String merchantId,
         String deviceId,
         String userId,
-        String password
+        String password,
+        String diagnostic
     ) {
         final AtomicBoolean settled = new AtomicBoolean(false);
         final AtomicBoolean heard = new AtomicBoolean(false);
@@ -324,7 +328,7 @@ public class PaxD135Plugin extends Plugin {
                     ret.put("ok", true);
                     if (batteryPercent != null) ret.put("batteryPercent", batteryPercent);
                     call.resolve(ret);
-                    emit("connected", MSG_READY, serialOf(name), batteryPercent);
+                    emit("connected", finixConnectBanner(diagnostic, MSG_READY), serialOf(name), batteryPercent);
                     watchAcl();
                 }
 
@@ -337,9 +341,13 @@ public class PaxD135Plugin extends Plugin {
                     connected = false;
                     JSObject ret = new JSObject();
                     ret.put("ok", false);
-                    ret.put("message", finixUnauthorized(finixConnectReason(errorMessage), userId, password, merchantId, deviceId));
+                    String shown = finixConnectBanner(
+                        diagnostic,
+                        finixUnauthorized(finixConnectReason(errorMessage), userId, password, merchantId, deviceId)
+                    );
+                    ret.put("message", shown);
                     call.resolve(ret);
-                    emit("error", ret.getString("message"), serialOf(name), null);
+                    emit("error", shown, serialOf(name), null);
                 }
             });
         } catch (Exception e) {
@@ -351,7 +359,19 @@ public class PaxD135Plugin extends Plugin {
             String detail = e.getMessage() == null ? "" : e.getMessage().trim();
             JSObject ret = new JSObject();
             ret.put("ok", false);
-            ret.put("message", finixUnauthorized(finixConnectReason(detail.isEmpty() ? "Exception during connection" : detail), userId, password, merchantId, deviceId));
+            ret.put(
+                "message",
+                finixConnectBanner(
+                    diagnostic,
+                    finixUnauthorized(
+                        finixConnectReason(detail.isEmpty() ? "Exception during connection" : detail),
+                        userId,
+                        password,
+                        merchantId,
+                        deviceId
+                    )
+                )
+            );
             call.resolve(ret);
         }
     }
@@ -610,6 +630,32 @@ public class PaxD135Plugin extends Plugin {
         String id = deviceId == null ? "" : deviceId.trim();
         if (id.isEmpty() || id.toLowerCase().contains("sandbox")) return SANDBOX_DEVICE_ID;
         return id;
+    }
+
+    /**
+     * Init line for MPOSFinix. Environment SB, merchant, device, and whether
+     * the username and password are present. The values themselves are not written.
+     */
+    private static String finixConnectDiagnostic(String merchantId, String deviceId, String userId, String password) {
+        String merchant = merchantId == null ? "" : merchantId.trim();
+        if (merchant.isEmpty()) merchant = "missing";
+        String device = sdkDeviceId(deviceId);
+        boolean userPresent = userId != null && !userId.trim().isEmpty();
+        boolean passPresent = password != null && !password.trim().isEmpty();
+        return "Environment SB. Merchant " + merchant
+            + ". Device " + device
+            + ". Username " + (userPresent ? "present" : "missing")
+            + ". Password " + (passPresent ? "present" : "missing")
+            + ".";
+    }
+
+    private static String finixConnectBanner(String diagnostic, String result) {
+        String head = diagnostic == null ? "" : diagnostic.trim();
+        String tail = result == null ? "" : result.trim();
+        if (head.isEmpty()) return tail;
+        if (tail.isEmpty()) return head;
+        if (tail.startsWith(head)) return tail;
+        return head + " " + tail;
     }
 
     /** Key-download callbacks stay as Finix wrote them. A blank line is Setting up reader. */

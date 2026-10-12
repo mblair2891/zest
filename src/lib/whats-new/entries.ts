@@ -6,6 +6,18 @@ import type { GuideUpdate } from "@/lib/guide/types";
  */
 export const WHATS_NEW_ENTRIES: GuideUpdate[] = [
   {
+    id: "upd_2026_10_252_finix_connect_diagnostic",
+    date: "2026-10-11",
+    title: "Finix connect diagnostic",
+    summary: "D135 connect shows the environment, merchant, device, and whether the username and password are present.",
+    body: "On D135 connect the station logs and displays the values used to initialize the reader: environment SB or LIVE, whether the username is present, whether the password is present, the merchant ID, and the device ID. The username and the password are not shown. An Unauthorized response includes the Finix error body. A successful connect shows Reader ready.",
+    roles: ["owner_manager", "server", "host_operator", "vendor_operator"],
+    surfaces: ["settings"],
+    audience: "all",
+    topicId: "pax-card-reader",
+    tags: ["devices", "payments"],
+  },
+  {
     id: "upd_2026_10_251_entity_inventory",
     date: "2026-10-11",
     title: "Entity inventory check",
