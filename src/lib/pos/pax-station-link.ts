@@ -3,7 +3,13 @@
  * Not written to the POS persist store. Opening Pay does not clear it.
  */
 import { useSyncExternalStore } from "react";
-import { PAX_MSG, presentPaxHold, type PaxReader, type PaxScanRow } from "@/lib/payments/pax-d135";
+import {
+  PAX_MSG,
+  isReaderCheckEntityBanner,
+  presentPaxHold,
+  type PaxReader,
+  type PaxScanRow,
+} from "@/lib/payments/pax-d135";
 
 export type PaxLinkPhase = "idle" | "scanning" | "connecting" | "setting_up" | "connected" | "bluetooth";
 
@@ -119,13 +125,17 @@ export function failPaxConnect(message: string): void {
   });
 }
 
+function paxBannerStays(message: string): boolean {
+  return message.startsWith("Environment ") || isReaderCheckEntityBanner(message);
+}
+
 export function notePaxStatus(status: {
   state?: string;
   message?: string;
   batteryPercent?: number | null;
 }): void {
   if (status.state === "connecting") {
-    if (state.message.startsWith("Environment ")) {
+    if (paxBannerStays(state.message)) {
       patch({ phase: "connecting" });
     } else {
       const incoming = String(status.message ?? "").trim();
@@ -137,7 +147,7 @@ export function notePaxStatus(status: {
       });
     }
   } else if (status.state === "setting_up") {
-    if (state.message.startsWith("Environment ")) {
+    if (paxBannerStays(state.message)) {
       patch({ phase: "setting_up" });
     } else {
       const presented = presentPaxHold({
@@ -156,12 +166,14 @@ export function notePaxStatus(status: {
         ? state.message
         : `${state.message} ${PAX_MSG.ready}`;
       patch({ phase: "connected", message });
+    } else if (isReaderCheckEntityBanner(state.message)) {
+      patch({ phase: "connected" });
     } else {
       const presented = presentPaxHold({ event: "accepted", wasReady: true });
       patch({ phase: "connected", message: presented.message });
     }
   } else if (status.state === "disconnected" && state.phase === "connected") {
-    if (state.message.startsWith("Environment ")) {
+    if (paxBannerStays(state.message)) {
       patch({ phase: "idle", reader: null, battery: null });
     } else {
       const presented = presentPaxHold({ event: "dropped", wasReady: true });

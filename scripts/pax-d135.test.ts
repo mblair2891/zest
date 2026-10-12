@@ -7,8 +7,12 @@ import {
   PAX_SANDBOX_DEVICE_ID,
   checkAlreadyCaptured,
   classifyPaxError,
+  checkEntityBannerLabel,
   decidePaxPick,
   envBlock,
+  payEntityStatusText,
+  readerCheckEntityBanner,
+  readerEntityLabel,
   paxDeviceRequest,
   paxScanPresentation,
   paxScanRows,
@@ -99,6 +103,48 @@ test("a paired D135 is listed and a denied permission is not called Bluetooth of
   assert.equal(none.rows.length, 0);
   assert.equal(none.phase, "bluetooth");
   assert.equal(none.message, PAX_MSG.bluetooth);
+});
+
+test("pay names the reader entity and the check entity", () => {
+  const names = [
+    { id: "ent_bar", name: "Copper Bar" },
+    { id: "ent_kitchen", name: "Hearth Kitchen" },
+  ];
+  const readerName = readerEntityLabel(
+    { entityId: "ent_bar", entityName: "Copper Bar" },
+    names,
+    "Summit Hall",
+  );
+  const match = checkEntityBannerLabel({
+    lines: [{ entityId: "ent_bar", vendorId: "ent_bar" }],
+    names,
+    hostName: "Summit Hall",
+  });
+  const differ = checkEntityBannerLabel({
+    lines: [{ vendorId: "ent_kitchen" }],
+    names,
+    hostName: "Summit Hall",
+  });
+  assert.equal(readerName, "Copper Bar");
+  assert.equal(match.id, "ent_bar");
+  assert.equal(match.label, "Copper Bar");
+  assert.equal(differ.label, "Hearth Kitchen");
+  const same = readerCheckEntityBanner(readerName, match.label);
+  const other = readerCheckEntityBanner(readerName, differ.label);
+  assert.equal(same, "Reader entity Copper Bar. Check entity Copper Bar.");
+  assert.equal(other, "Reader entity Copper Bar. Check entity Hearth Kitchen.");
+  assert.equal(other.includes("Copper Bar"), true);
+  assert.equal(other.includes("Hearth Kitchen"), true);
+  assert.equal(payEntityStatusText({ phase: "idle", message: other }, other), other);
+  assert.equal(other.includes("Environment"), false);
+  const finix = "Environment SB. Username present yes. Password present yes. Merchant MUabc. Device DV9.";
+  const proceeded = payEntityStatusText({ phase: "connecting", message: finix }, same);
+  assert.equal(proceeded.startsWith(same), true);
+  assert.equal(proceeded.includes("Environment SB"), true);
+  assert.equal(proceeded.includes("Copper Bar"), true);
+  const host = checkEntityBannerLabel({ lines: [], names, hostName: "Summit Hall" });
+  assert.equal(host.id, "host");
+  assert.equal(host.label, "Summit Hall");
 });
 
 test("unregistered serial is refused", () => {

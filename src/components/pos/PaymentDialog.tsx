@@ -35,15 +35,19 @@ import {
 import {
   PAX_MSG,
   checkAlreadyCaptured,
+  checkEntityBannerLabel,
   checkSellingEntityId,
   decidePaxPick,
   finixConnectBanner,
   finixConnectDiagnostic,
   logFinixConnectDiagnostic,
+  payEntityStatusText,
   paymentUsesConnectedReader,
-  paxLinkStatusText,
   paxScanPresentation,
   presentFinixConnectFailure,
+  readerCheckEntityBanner,
+  readerEntityLabel,
+  readerForSerial,
   runAndroidPaxSale,
   runPaxConnect,
   type PaxReader,
@@ -191,6 +195,7 @@ export function PaymentDialog({ open, onOpenChange, initialMethod }: Props) {
   const [last4, setLast4] = useState("");
   const [usePax, setUsePax] = useState(false);
   const pax = usePaxStationLink();
+  const [payEntityBanner, setPayEntityBanner] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [cardHold, setCardHold] = useState<string | null>(null);
   const [change, setChange] = useState<number | null>(null);
@@ -273,9 +278,18 @@ export function PaymentDialog({ open, onOpenChange, initialMethod }: Props) {
     };
   }, [open, usePax]);
 
+  useEffect(() => {
+    if (!open) setPayEntityBanner(null);
+  }, [open]);
+
+  const scanStandIn =
+    typeof window !== "undefined" &&
+    typeof (window as unknown as { __summexPaxScan?: unknown }).__summexPaxScan === "function";
+
   const scanPax = () => {
     void (async () => {
       setError(null);
+      setPayEntityBanner(null);
       beginPaxScan();
       try {
         const { scanForPaxReaders } = await import("@/lib/payments/pax-d135-native");
@@ -291,20 +305,45 @@ export function PaymentDialog({ open, onOpenChange, initialMethod }: Props) {
     void (async () => {
       if (!order) return;
       const locationLive = Boolean(payStatus && payStatus.mode === "live" && !payStatus.lifecycleForcesSandbox);
+      const readers = getPaxStationLink().readers;
       const decision = decidePaxPick({
         row,
-        readers: getPaxStationLink().readers,
+        readers,
         sellingEntityId: checkSellingEntityId(order.lines),
         locationLive,
       });
-      if (!decision.ok) {
+      if (!decision.ok && decision.message !== PAX_MSG.wrongEntity) {
+        setPayEntityBanner(null);
         failPaxConnect(decision.message);
         setError(decision.message);
+        return;
+      }
+      const reader = decision.ok ? decision.reader : readerForSerial(readers, row.serial);
+      if (!reader) {
+        setPayEntityBanner(null);
+        failPaxConnect(PAX_MSG.notRegistered);
+        setError(PAX_MSG.notRegistered);
+        return;
+      }
+      const names = usePosStore.getState().vendors.map((vendor) => ({
+        id: vendor.id,
+        name: vendor.name,
+      }));
+      const hostName = usePosStore.getState().settings.name;
+      const banner = readerCheckEntityBanner(
+        readerEntityLabel(reader, names, hostName),
+        checkEntityBannerLabel({ lines: order.lines, names, hostName }).label,
+      );
+      setPayEntityBanner(banner);
+      if (!decision.ok) {
+        failPaxConnect(banner);
+        setError(banner);
         return;
       }
       const loc = usePosStore.getState().tenantLocationId || readTenantPosContext()?.locationId || "";
       setError(null);
       beginPaxConnect(decision.reader);
+      showPaxConnectBanner(banner);
       setBusy(true);
       let diagnostic = "";
       try {
@@ -1478,14 +1517,14 @@ export function PaymentDialog({ open, onOpenChange, initialMethod }: Props) {
                       not queued.
                     </p>
                   )}
-                  {(usePax || pax.phase !== "idle" || pax.rows.length > 0) && (
+                  {(usePax || scanStandIn || payEntityBanner || pax.phase !== "idle" || pax.rows.length > 0) && (
                     <div className="space-y-2 rounded-lg border border-border p-3" data-pax-reader="">
                       <p
                         className="text-sm font-medium"
                         data-pax-status=""
                         data-pax-connected={pax.phase === "connected" ? pax.reader?.serial ?? "" : ""}
                       >
-                        {paxLinkStatusText(pax)}
+                        {payEntityStatusText(pax, payEntityBanner)}
                         {pax.phase === "connected" && pax.battery != null ? ` · Battery ${pax.battery}%` : ""}
                       </p>
                       <Button type="button" size="sm" variant="outline" disabled={busy} onClick={scanPax}>

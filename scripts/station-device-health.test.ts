@@ -485,6 +485,9 @@ test("selecting a D135 holds the link and Reader ready stays", async () => {
   assert.match(guideDevices, /before the Finix call completes/);
   assert.match(guideDevices, /stays visible until the next connect attempt/);
   assert.match(guidePay, /full Finix error body/);
+  assert.match(guideDevices, /selling entity assigned to the selected reader/);
+  assert.match(guideDevices, /If they differ the banner names both entities/);
+  assert.match(guidePay, /proceeds to the Finix connect step/);
 
   let calls = 0;
   const retried = await runPaxConnect(async () => {

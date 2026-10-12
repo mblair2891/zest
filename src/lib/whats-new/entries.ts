@@ -6,6 +6,18 @@ import type { GuideUpdate } from "@/lib/guide/types";
  */
 export const WHATS_NEW_ENTRIES: GuideUpdate[] = [
   {
+    id: "upd_2026_10_254_reader_entity",
+    date: "2026-10-11",
+    title: "Reader and check entity",
+    summary: "Pay names the reader entity and the check entity. A match continues to Finix connect.",
+    body: "On pay the station shows the selling entity assigned to the selected reader and the selling entity on the open check. If they differ the banner names both entities. If they match the station proceeds to the Finix connect step.",
+    roles: ["owner_manager", "server", "host_operator", "vendor_operator"],
+    surfaces: ["settings"],
+    audience: "all",
+    topicId: "pax-card-reader",
+    tags: ["devices", "payments"],
+  },
+  {
     id: "upd_2026_10_253_finix_connect_banner",
     date: "2026-10-11",
     title: "Finix connect banner",

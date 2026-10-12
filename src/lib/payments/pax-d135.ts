@@ -247,6 +247,66 @@ export function checkSellingEntityId(
   return null;
 }
 
+function cleanEntityLabel(raw: string): string {
+  return String(raw ?? "").replace(/\s+/g, " ").trim();
+}
+
+/** Display name for a selling entity id. Host uses the venue name. */
+export function sellingEntityLabel(
+  entityId: string | null | undefined,
+  names: { id: string; name: string }[],
+  hostName?: string,
+): string {
+  const id = cleanEntityLabel(String(entityId ?? ""));
+  if (!id) return "Unknown";
+  if (id === "host") return cleanEntityLabel(hostName ?? "") || "Host";
+  const found = names.find((row) => row.id === id);
+  return cleanEntityLabel(found?.name ?? "") || id;
+}
+
+/** Selling entity on the open check, named for the Pay banner. */
+export function checkEntityBannerLabel(input: {
+  lines: { entityId?: string; vendorId?: string; voided?: boolean }[];
+  names: { id: string; name: string }[];
+  hostName?: string;
+}): { id: string | null; label: string } {
+  const id = checkSellingEntityId(input.lines);
+  if (id) return { id, label: sellingEntityLabel(id, input.names, input.hostName) };
+  const ids: string[] = [];
+  const seen = new Set<string>();
+  for (const line of input.lines) {
+    if (line.voided) continue;
+    const lineId = cleanEntityLabel(String(line.entityId || line.vendorId || ""));
+    if (!lineId || seen.has(lineId)) continue;
+    seen.add(lineId);
+    ids.push(lineId);
+  }
+  const label = ids.map((lineId) => sellingEntityLabel(lineId, input.names, input.hostName)).join(" and ");
+  return { id: null, label: label || "Unknown" };
+}
+
+export function readerEntityLabel(
+  reader: { entityId: string; entityName?: string },
+  names: { id: string; name: string }[],
+  hostName?: string,
+): string {
+  const named = cleanEntityLabel(reader.entityName ?? "");
+  if (named) return named;
+  return sellingEntityLabel(reader.entityId, names, hostName);
+}
+
+/** Pay banner. It names the reader entity and the check entity. */
+export function readerCheckEntityBanner(readerEntity: string, checkEntity: string): string {
+  const reader = cleanEntityLabel(readerEntity) || "Unknown";
+  const check = cleanEntityLabel(checkEntity) || "Unknown";
+  return `Reader entity ${reader}. Check entity ${check}.`;
+}
+
+export function isReaderCheckEntityBanner(message: string): boolean {
+  const text = String(message ?? "").trim();
+  return text.startsWith("Reader entity ") && text.includes(". Check entity ") && text.endsWith(".");
+}
+
 export function checkAlreadyCaptured(input: {
   checkId?: string;
   status?: string;
@@ -328,6 +388,7 @@ export function paxConnectFailureReason(message?: string | null): string {
   const text = String(message ?? "").trim();
   const lower = text.toLowerCase();
   if (text.startsWith("Environment ")) return text;
+  if (isReaderCheckEntityBanner(text)) return text;
   if (
     text.startsWith("Failed to connect:") ||
     text.startsWith("Connection failed:") ||
@@ -523,10 +584,26 @@ export function presentPaxHold(input: {
 export function paxLinkStatusText(link: { phase: string; message: string }): string {
   const message = String(link.message ?? "");
   if (message.startsWith("Environment ")) return message;
+  if (isReaderCheckEntityBanner(message)) return message;
   if (link.phase === "connected") return PAX_MSG.ready;
   if (link.phase === "connecting") return PAX_MSG.connecting;
   if (link.phase === "setting_up") return message || PAX_MSG.settingUp;
   return message;
+}
+
+/**
+ * Pay status. The reader entity and the check entity stay on the banner.
+ * A match then continues into the Finix connect line.
+ */
+export function payEntityStatusText(
+  link: { phase: string; message: string },
+  entityBanner: string | null,
+): string {
+  const status = paxLinkStatusText(link);
+  const banner = String(entityBanner ?? "").trim();
+  if (!banner) return status;
+  if (status === banner || status.startsWith(`${banner} `)) return status;
+  return `${banner} ${status}`;
 }
 
 /** Pay uses the reader that is already connected. Opening Pay does not clear it. */
