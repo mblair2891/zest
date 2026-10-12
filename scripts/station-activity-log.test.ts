@@ -8,7 +8,14 @@ import {
   stationActivityLogText,
   type StationActivityEntry,
 } from "../src/lib/payments/station-activity-log.ts";
-import { finixSdkConnectActivity, finixUsernamePrefix } from "../src/lib/payments/pax-d135.ts";
+import {
+  finixMerchantDataGap,
+  finixMerchantDataPreview,
+  finixSdkConnectActivity,
+  finixUserIdPreview,
+  finixUsernamePrefix,
+  paxSdkConnectActivityResult,
+} from "../src/lib/payments/pax-d135.ts";
 
 const entry: StationActivityEntry = {
   id: "sal_1",
@@ -74,6 +81,89 @@ test("connect trace keeps the application id and the raw Finix body", () => {
   assert.equal(sanitizeActivityResult(`${raw} password: secret-value`).includes("secret-value"), false);
 });
 
+test("pre-connect activity lists MerchantData and hides the password", () => {
+  const preview = finixUserIdPreview("US1234567890");
+  assert.equal(preview, "US123456");
+  const line = finixMerchantDataPreview({
+    merchantId: "MUexample",
+    deviceId: "DVexample",
+    userId: "US1234567890",
+    env: "SB",
+    mid: "",
+  });
+  assert.match(line, /merchantId MUexample/);
+  assert.match(line, /deviceId DVexample/);
+  assert.match(line, /userId US123456/);
+  assert.equal(line.includes("US1234567890"), false);
+  assert.equal(line.includes("secret-value"), false);
+  assert.equal(line.toLowerCase().includes("password"), false);
+  assert.match(line, /env SB/);
+  assert.match(line, /mid ""/);
+  assert.equal(sanitizeActivityResult(line), line);
+  assert.equal(
+    finixMerchantDataGap({
+      merchantId: "",
+      deviceId: "DVexample",
+      userId: "US1234567890",
+      password: "secret-value",
+      env: "SB",
+    }),
+    "missing merchantId",
+  );
+  assert.equal(
+    finixMerchantDataGap({
+      merchantId: "MUexample",
+      deviceId: "DVexample",
+      userId: " ",
+      password: "secret-value",
+      env: "SB",
+    }),
+    "missing userId",
+  );
+  assert.equal(
+    finixMerchantDataGap({
+      merchantId: "MUexample",
+      deviceId: "DVexample",
+      userId: "US1234567890",
+      password: "",
+      env: "SB",
+    }),
+    "missing password",
+  );
+  assert.equal(
+    finixMerchantDataGap({
+      merchantId: "MUexample",
+      deviceId: "",
+      userId: "US1234567890",
+      password: "secret-value",
+      env: "SB",
+    }),
+    "missing deviceId",
+  );
+  assert.equal(
+    finixMerchantDataGap({
+      merchantId: "MUexample",
+      deviceId: "DVexample",
+      userId: "US1234567890",
+      password: "secret-value",
+      env: "SB",
+    }),
+    null,
+  );
+  assert.equal(
+    paxSdkConnectActivityResult({
+      ok: false,
+      message: "Failed to connect: device not found",
+      sdkCode: "UNKNOWN",
+    }),
+    "Failed to connect: device not found code UNKNOWN",
+  );
+  assert.equal(paxSdkConnectActivityResult({ ok: true, message: "Reader ready", sdkCode: "none" }), "Connected");
+  const shown = formatStationActivityLine({ ...entry, result: line });
+  assert.match(shown, /userId US123456/);
+  assert.equal(shown.includes("secret-value"), false);
+});
+
 test("sdk connect activity records MerchantData and the SDK code", () => {
   const prefix = finixUsernamePrefix("US123456789");
   assert.equal(prefix, "US1234");
@@ -129,6 +219,15 @@ test("pay and devices record and list the log", () => {
   assert.match(pay, /action: "connect"/);
   assert.match(pay, /finixSdkTraceFromConnect/);
   assert.match(station, /finixSdkTraceFromConnect/);
+  assert.match(pay, /finixMerchantDataPreview/);
+  assert.match(station, /finixMerchantDataPreview/);
+  assert.match(pay, /finixMerchantDataGap/);
+  assert.match(station, /finixMerchantDataGap/);
+  assert.ok(pay.indexOf("finixMerchantDataGap") < pay.indexOf("connectForPaxReader"));
+  assert.ok(station.indexOf("finixMerchantDataGap") < station.indexOf("connectForPaxReader"));
+  assert.match(pay, /readServerEnv\("FINIX_USERNAME"\)|creds\.userId/);
+  assert.match(pay, /creds\.merchantId/);
+  assert.match(station, /creds\.merchantId/);
   assert.match(station, /action: "Finix keys"/);
   assert.match(devices, /data-station-activity-log/);
   assert.match(devices, /data-station-activity-download/);
@@ -137,10 +236,14 @@ test("pay and devices record and list the log", () => {
     "On reader select the station records the environment, whether username and password are present, the application ID, the merchant ID, and the device ID it sends to the Finix SDK.";
   const sdkSentence =
     "When the station initializes the card reader it uses the selling entity's Finix merchant, the reader's device id, and the server's Finix username and password.";
+  const diagnosticSentence =
+    "Before the station connects the card reader, Station activity lists the merchant, the device, the first eight characters of the username, the environment, and mid.";
   assert.match(guide, new RegExp(sentence.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")));
   assert.match(payments, new RegExp(sentence.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")));
   assert.match(guide, new RegExp(sdkSentence.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")));
   assert.match(payments, new RegExp(sdkSentence.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")));
+  assert.match(guide, new RegExp(diagnosticSentence.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")));
+  assert.match(payments, new RegExp(diagnosticSentence.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")));
   assert.equal(pay.includes(".disconnect("), false);
   assert.equal(station.includes(".disconnect("), false);
 });

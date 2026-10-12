@@ -166,11 +166,19 @@ public class PaxD135Plugin extends Plugin {
         final String deviceId = call.getString("deviceId", "");
         final String userId = call.getString("userId", "");
         final String password = call.getString("password", "");
+        final String missing = missingMerchantField(merchantId, deviceId, userId, password);
+        if (!missing.isEmpty()) {
+            Log.i("PaxD135", merchantDataPreview(merchantId, deviceId, userId));
+            Log.i("PaxD135", missing);
+            resolveMessage(call, missing);
+            return;
+        }
         if (serialOf(name) == null || address == null || address.isEmpty()) {
             resolveMessage(call, "Connection failed: missing Bluetooth address.");
             return;
         }
         final String diagnostic = finixConnectDiagnostic(merchantId, deviceId, userId, password);
+        Log.i("PaxD135", merchantDataPreview(merchantId, deviceId, userId));
         Log.i("PaxD135", diagnostic);
         restoreHeld();
         if (reuseHeld(name, address)) {
@@ -638,6 +646,38 @@ public class PaxD135Plugin extends Plugin {
     private String[] scanAliases() {
         if (Build.VERSION.SDK_INT >= 31) return new String[] { "bluetooth", "location" };
         return new String[] { "location" };
+    }
+
+    /**
+     * Required MerchantData fields. mid stays empty and is not required.
+     * The password value is not written.
+     */
+    private static String missingMerchantField(String merchantId, String deviceId, String userId, String password) {
+        if (merchantId == null || merchantId.trim().isEmpty()) return "missing merchantId";
+        if (userId == null || userId.trim().isEmpty()) return "missing userId";
+        if (password == null || password.trim().isEmpty()) return "missing password";
+        if (deviceId == null || deviceId.trim().isEmpty()) return "missing deviceId";
+        return "";
+    }
+
+    /** First eight characters of the username. The rest is not written. */
+    private static String userIdPreview(String userId) {
+        if (userId == null) return "";
+        String trimmed = userId.trim();
+        if (trimmed.isEmpty()) return "";
+        return trimmed.length() <= 8 ? trimmed : trimmed.substring(0, 8);
+    }
+
+    /** MerchantData values before connect. The password is not part of this line. */
+    private static String merchantDataPreview(String merchantId, String deviceId, String userId) {
+        String merchant = merchantId == null || merchantId.trim().isEmpty() ? "missing" : merchantId.trim();
+        String device = deviceId == null || deviceId.trim().isEmpty() ? "missing" : deviceId.trim();
+        String preview = userIdPreview(userId);
+        String user = preview.isEmpty() ? "missing" : preview;
+        return "MerchantData merchantId " + merchant
+            + ". deviceId " + device
+            + ". userId " + user
+            + ". env SB. mid \"\".";
     }
 
     /**

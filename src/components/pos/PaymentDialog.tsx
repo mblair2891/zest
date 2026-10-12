@@ -41,6 +41,8 @@ import {
   decidePaxPick,
   finixConnectBanner,
   finixConnectDiagnostic,
+  finixMerchantDataGap,
+  finixMerchantDataPreview,
   finixSdkTraceFromConnect,
   logFinixConnectDiagnostic,
   paxConnectActivityTrace,
@@ -432,10 +434,10 @@ export function PaymentDialog({ open, onOpenChange, initialMethod }: Props) {
           return;
         }
         const creds = {
-          userId: session.userId,
-          password: session.password,
-          merchantId: session.merchantId,
-          deviceId: session.deviceId,
+          userId: session.userId.trim(),
+          password: session.password.trim(),
+          merchantId: session.merchantId.trim(),
+          deviceId: session.deviceId.trim(),
           env: session.env,
         };
         diagnostic = finixConnectDiagnostic(creds);
@@ -449,7 +451,30 @@ export function PaymentDialog({ open, onOpenChange, initialMethod }: Props) {
           readerEntity,
           result: diagnostic,
         });
-        showPaxConnectBanner(diagnostic);
+        const preview = finixMerchantDataPreview(creds);
+        logFinixConnectDiagnostic(preview);
+        await noteStationActivity({
+          locationId: loc,
+          action: "connect",
+          diagnostic,
+          checkEntity,
+          readerEntity,
+          environment: sent?.environment,
+          usernamePresent: sent?.usernamePresent,
+          passwordPresent: sent?.passwordPresent,
+          merchantId: sent?.merchantId,
+          deviceId: sent?.deviceId,
+          result: preview,
+        });
+        showPaxConnectBanner(preview);
+        const gap = finixMerchantDataGap(creds);
+        if (gap) {
+          await logConnect(gap, sent);
+          failPaxConnect(gap);
+          setError(gap);
+          setBusy(false);
+          return;
+        }
         const { connectForPaxReader, paxReaderOnThisStation } = await import("@/lib/payments/pax-d135-native");
         let raw = "";
         let trace:
@@ -489,11 +514,11 @@ export function PaymentDialog({ open, onOpenChange, initialMethod }: Props) {
           connectForPaxReader({
             name: row.name,
             address: row.address,
-            merchantId: session.merchantId,
-            deviceId: session.deviceId,
-            userId: session.userId,
-            password: session.password,
-            env: session.env,
+            merchantId: creds.merchantId,
+            deviceId: creds.deviceId,
+            userId: creds.userId,
+            password: creds.password,
+            env: creds.env,
           }),
         );
         const sdkTrace = finixSdkTraceFromConnect(connected);
@@ -506,8 +531,9 @@ export function PaymentDialog({ open, onOpenChange, initialMethod }: Props) {
           ...(sdkTrace?.merchantId ? { merchantId: sdkTrace.merchantId } : {}),
           ...(sdkTrace?.deviceId ? { deviceId: sdkTrace.deviceId } : {}),
         };
+        const sdk = paxSdkConnectActivityResult(connected);
+        logFinixConnectDiagnostic(sdk);
         if (!connected.ok) {
-          const sdk = paxSdkConnectActivityResult(connected);
           const outcome = presentFinixConnectFailure({ message: connected.message, ...creds });
           const reason = finixConnectBanner(diagnostic, outcome);
           await logConnect(sdk || outcome, activity);
@@ -516,7 +542,7 @@ export function PaymentDialog({ open, onOpenChange, initialMethod }: Props) {
           setBusy(false);
           return;
         }
-        await logConnect(paxSdkConnectActivityResult(connected), activity);
+        await logConnect(sdk, activity);
         markPaxConnected(
           decision.reader,
           typeof connected.batteryPercent === "number" ? connected.batteryPercent : null,

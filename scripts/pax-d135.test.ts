@@ -462,6 +462,15 @@ test("the PAX path does not use Web Bluetooth or Stripe", () => {
     server.indexOf("export async function paxReaderSession"),
   );
   assert.doesNotMatch(replaceBody, /createPaxD135Device|finixFetch/);
+  const sessionBody = server.slice(
+    server.indexOf("export async function paxReaderSession"),
+    server.indexOf("export type FinixConnectAuthResult"),
+  );
+  assert.match(sessionBody, /readServerEnv\("FINIX_USERNAME"\)/);
+  assert.match(sessionBody, /readServerEnv\("FINIX_PASSWORD"\)/);
+  assert.match(sessionBody, /venueFinixMerchantId/);
+  assert.doesNotMatch(sessionBody, /reader\.finixMerchantId/);
+  assert.doesNotMatch(sessionBody, /finixSandboxLogin\(/);
   const registerBody = server.slice(
     server.indexOf("export async function registerPaxReader"),
     server.indexOf("export async function renamePaxReaderRecord"),

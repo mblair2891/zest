@@ -11,7 +11,6 @@ import { EMPTY_LOCATION_SETUP, type LocationSetup } from "@/lib/saas/types";
 import { HOST_SCOPE } from "@/lib/access/entity-grants";
 import { parseLocationDevices, type LocationDevice } from "@/lib/pos/location-devices";
 import { locationLifecycleStatus } from "./mode";
-import { finixSandboxLogin, finixSandboxLoginError } from "./finix";
 import {
   PAX_MSG,
   envBlock,
@@ -272,19 +271,16 @@ export async function paxReaderSession(
   }
   const blocked = envBlock(live, reader.env);
   if (blocked) return { ok: false, error: blocked };
-  const login = finixSandboxLogin();
-  if (!login) {
-    return { ok: false, error: finixSandboxLoginError() };
-  }
+  // This call reads the server. FINIX_USERNAME, FINIX_PASSWORD, and the venue
+  // merchant on payment_accounts are not taken from a stored reader merchant.
   const accountMerchant = await venueFinixMerchantId(loc.id, reader.entityId);
-  const storedMerchant = reader.finixMerchantId.trim();
-  const merchantId = accountMerchant.startsWith("MU") ? accountMerchant : storedMerchant;
+  const merchantId = accountMerchant.startsWith("MU") ? accountMerchant : "";
   return {
     ok: true,
     merchantId,
     deviceId: paxSdkDeviceId(reader.finixDeviceId),
-    userId: login.userId,
-    password: login.password,
+    userId: String(readServerEnv("FINIX_USERNAME") ?? ""),
+    password: String(readServerEnv("FINIX_PASSWORD") ?? ""),
     env: finixStationEnv(readServerEnv("FINIX_ENVIRONMENT")),
   };
 }

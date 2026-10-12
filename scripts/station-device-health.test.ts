@@ -281,6 +281,10 @@ test("the printer probe connects without a payload and the reader timeout stays"
   assert.match(merchantTrace, /username prefix/);
   assert.equal(merchantTrace.includes("password"), false);
   assert.match(pax, /substring\(0, 6\)/);
+  assert.match(pax, /substring\(0, 8\)/);
+  assert.match(pax, /missing merchantId/);
+  assert.match(pax, /missing userId/);
+  assert.match(pax, /mid \\"\\"/);
   assert.match(pax, /put\("sdkMessage"/);
   assert.match(pax, /put\("sdkCode"/);
   assert.match(pax, /put\("usernamePrefix"/);
@@ -318,6 +322,14 @@ test("selecting a D135 holds the link and Reader ready stays", async () => {
   assert.equal(
     paxSdkConnectActivityResult({ ok: false, message: "Failed to connect: device not found" }),
     "Failed to connect: device not found",
+  );
+  assert.equal(
+    paxSdkConnectActivityResult({
+      ok: false,
+      sdkMessage: "Failed to connect: device not found",
+      sdkCode: "104",
+    }),
+    "Failed to connect: device not found code 104",
   );
   assert.equal(presentPaxHold({ event: "select", wasReady: false }).message, "Connecting");
   assert.equal(presentPaxHold({ event: "processing", wasReady: false }).message, "Setting up reader");

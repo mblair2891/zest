@@ -6,6 +6,19 @@ import type { GuideUpdate } from "@/lib/guide/types";
  */
 export const WHATS_NEW_ENTRIES: GuideUpdate[] = [
   {
+    id: "upd_2026_10_260_d135_connect_diagnostics",
+    date: "2026-10-12",
+    title: "D135 connect diagnostics",
+    summary:
+      "Before Pay connects the reader, Station activity lists the merchant, device, username prefix, environment, and mid. Afterward it shows the reader error and code.",
+    body: "Before Pay connects the PAX D135, Station activity lists the merchant id, the device id, the first eight characters of the username, the environment, and mid. The password is not listed. The station reads the username, the password, and the venue merchant from the server for that attempt. An empty merchant or username shows missing merchantId or missing userId and does not connect. After the reader answers, Station activity shows Connected or the full reader error and its code.",
+    roles: ["owner_manager", "server", "host_operator", "vendor_operator"],
+    surfaces: ["settings"],
+    audience: "all",
+    topicId: "pax-card-reader",
+    tags: ["devices", "payments"],
+  },
+  {
     id: "upd_2026_10_259_d135_merchantdata",
     date: "2026-10-12",
     title: "D135 merchant connect",

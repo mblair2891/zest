@@ -7,6 +7,8 @@ import {
   decideStationReaderConnect,
   finixConnectBanner,
   finixConnectDiagnostic,
+  finixMerchantDataGap,
+  finixMerchantDataPreview,
   finixSdkTraceFromConnect,
   logFinixConnectDiagnostic,
   paxConnectActivityTrace,
@@ -327,10 +329,10 @@ function StationDeviceScreen({ onClose }: { onClose: () => void }) {
           return;
         }
         const creds = {
-          userId: session.userId,
-          password: session.password,
-          merchantId: session.merchantId,
-          deviceId: session.deviceId,
+          userId: session.userId.trim(),
+          password: session.password.trim(),
+          merchantId: session.merchantId.trim(),
+          deviceId: session.deviceId.trim(),
           env: session.env,
         };
         diagnostic = finixConnectDiagnostic(creds);
@@ -343,7 +345,28 @@ function StationDeviceScreen({ onClose }: { onClose: () => void }) {
           readerEntity,
           result: diagnostic,
         });
-        showPaxConnectBanner(diagnostic);
+        const preview = finixMerchantDataPreview(creds);
+        logFinixConnectDiagnostic(preview);
+        await noteStationActivity({
+          locationId,
+          action: "connect",
+          diagnostic,
+          readerEntity,
+          environment: sent?.environment,
+          usernamePresent: sent?.usernamePresent,
+          passwordPresent: sent?.passwordPresent,
+          merchantId: sent?.merchantId,
+          deviceId: sent?.deviceId,
+          result: preview,
+        });
+        showPaxConnectBanner(preview);
+        const gap = finixMerchantDataGap(creds);
+        if (gap) {
+          await logConnect(gap, sent);
+          failPaxConnect(gap);
+          setBusy(false);
+          return;
+        }
         let raw = "";
         let trace:
           | {
@@ -384,11 +407,11 @@ function StationDeviceScreen({ onClose }: { onClose: () => void }) {
           connectForPaxReader({
             name: row.name,
             address: row.address,
-            merchantId: session.merchantId,
-            deviceId: session.deviceId,
-            userId: session.userId,
-            password: session.password,
-            env: session.env,
+            merchantId: creds.merchantId,
+            deviceId: creds.deviceId,
+            userId: creds.userId,
+            password: creds.password,
+            env: creds.env,
           }),
         );
         const sdkTrace = finixSdkTraceFromConnect(connected);
@@ -401,15 +424,16 @@ function StationDeviceScreen({ onClose }: { onClose: () => void }) {
           ...(sdkTrace?.merchantId ? { merchantId: sdkTrace.merchantId } : {}),
           ...(sdkTrace?.deviceId ? { deviceId: sdkTrace.deviceId } : {}),
         };
+        const sdk = paxSdkConnectActivityResult(connected);
+        logFinixConnectDiagnostic(sdk);
         if (!connected.ok) {
-          const sdk = paxSdkConnectActivityResult(connected);
           const outcome = presentFinixConnectFailure({ message: connected.message, ...creds });
           await logConnect(sdk || outcome, activity);
           failPaxConnect(finixConnectBanner(diagnostic, outcome));
           setBusy(false);
           return;
         }
-        await logConnect(paxSdkConnectActivityResult(connected), activity);
+        await logConnect(sdk, activity);
         markPaxConnected(
           decision.reader,
           typeof connected.batteryPercent === "number" ? connected.batteryPercent : null,

@@ -202,10 +202,71 @@ export function finixStationEnv(environment: string | null | undefined): "SB" | 
   return "SB";
 }
 
-/** Station activity result for one SDK connect callback. Success is Connected. A failure is the SDK text. */
-export function paxSdkConnectActivityResult(input: { ok: boolean; message?: string | null }): string {
+/** First eight characters of the merchant username for the pre-connect station line. */
+export function finixUserIdPreview(userId: string): string {
+  return String(userId ?? "").trim().slice(0, 8);
+}
+
+/**
+ * MerchantData values written before connect.
+ * The username is the first eight characters. The password is not included.
+ * The userId label has no colon, so the activity log keeps the eight characters.
+ */
+export function finixMerchantDataPreview(input: {
+  merchantId: string;
+  deviceId: string;
+  userId: string;
+  env: string;
+  mid?: string;
+}): string {
+  const merchant = String(input.merchantId ?? "").trim() || "missing";
+  const device = String(input.deviceId ?? "").trim() || "missing";
+  const user = finixUserIdPreview(input.userId) || "missing";
+  const env = String(input.env ?? "").trim() || "missing";
+  const mid = String(input.mid ?? "");
+  const midShown = mid.trim() ? mid.trim() : '""';
+  return `MerchantData merchantId ${merchant}. deviceId ${device}. userId ${user}. env ${env}. mid ${midShown}.`;
+}
+
+/**
+ * Required MerchantData fields. mid is intentionally empty.
+ * An empty field is named and connect is not called.
+ */
+export function finixMerchantDataGap(input: {
+  merchantId: string;
+  deviceId: string;
+  userId: string;
+  password: string;
+  env: string;
+}): string | null {
+  if (!String(input.merchantId ?? "").trim()) return "missing merchantId";
+  if (!String(input.userId ?? "").trim()) return "missing userId";
+  if (!String(input.password ?? "").trim()) return "missing password";
+  if (!String(input.deviceId ?? "").trim()) return "missing deviceId";
+  if (!String(input.env ?? "").trim()) return "missing env";
+  return null;
+}
+
+/**
+ * Station activity result for one SDK connect callback.
+ * Success is Connected. A failure is the SDK text plus any code the SDK returned.
+ */
+export function paxSdkConnectActivityResult(input: {
+  ok: boolean;
+  message?: string | null;
+  sdkMessage?: string | null;
+  sdkCode?: string | null;
+}): string {
   if (input.ok) return PAX_ACTIVITY_CONNECTED;
-  return String(input.message ?? "").replace(/\s+/g, " ").trim();
+  const message = String(input.sdkMessage || input.message || "")
+    .replace(/\s+/g, " ")
+    .trim();
+  const code = String(input.sdkCode ?? "")
+    .replace(/\s+/g, " ")
+    .trim();
+  if (!code || code === "none") return message;
+  if (message.includes(`code ${code}`)) return message;
+  return `${message} code ${code}`.trim();
 }
 
 /** Values written beside the callback result. The password and username are presence only. */
