@@ -44,8 +44,10 @@ export type PaymentAccountView = {
   displayName: string;
   entityStatus: EntityMerchantStatus;
   canCapture: boolean;
-  /** Finix MU id on this selling entity. Null until someone pastes one. */
+  /** Finix MU id on this payment account. Null until someone pastes one. */
   merchantId: string | null;
+  /** Finix merchant number on this payment account. Null until someone pastes one. */
+  mid: string | null;
 };
 
 type AccountRow = {
@@ -57,6 +59,7 @@ type AccountRow = {
   payments_provider: string;
   finix_identity_id: string | null;
   finix_merchant_id: string | null;
+  finix_mid: string | null;
   finix_payment_instrument_id: string | null;
   onboarding_status: string;
   payout_bank_last4: string | null;
@@ -122,6 +125,7 @@ function view(
     entityStatus,
     canCapture: entityCanCapture(entityStatus, { training }).ok,
     merchantId: row.finix_merchant_id,
+    mid: row.finix_mid,
   };
 }
 
@@ -153,6 +157,7 @@ function emptyView(opts: {
     entityStatus,
     canCapture: entityCanCapture(entityStatus, { training: !opts.locationLive }).ok,
     merchantId: null,
+    mid: null,
   };
 }
 
@@ -268,48 +273,95 @@ export async function getPaymentAccount(
   return view(row, loc.name);
 }
 
-/** Store a pasted Finix MU id on the selling entity. Does not start an application. */
+/** Store the pasted Finix merchant id and MID. Does not start an application. */
 export async function saveEntityFinixMerchantId(
   userId: string,
-  opts: { operatorId: string; merchantId: string | null },
+  opts: {
+    operatorId?: string;
+    locationId?: string;
+    merchantId: string | null;
+    mid: string | null;
+  },
 ): Promise<PaymentAccountView> {
-  const op = await loadOperator(opts.operatorId);
-  await requireMembership(userId, op.orgId, undefined, op.locationId ?? undefined);
   const merchantId = opts.merchantId;
+  const mid = opts.mid;
   const sql = await getSql();
-  const existing = await getRow({ operatorId: opts.operatorId });
+  if (opts.operatorId) {
+    const op = await loadOperator(opts.operatorId);
+    await requireMembership(userId, op.orgId, undefined, op.locationId ?? undefined);
+    const existing = await getRow({ operatorId: opts.operatorId });
+    if (!existing) {
+      if (!merchantId && !mid) {
+        return emptyView({
+          orgId: op.orgId,
+          locationId: op.locationId,
+          operatorId: opts.operatorId,
+          kind: "operator",
+          displayName: op.name,
+        });
+      }
+      const id = newId("pacc");
+      const provider: PaymentsProvider = String(merchantId ?? "").toLowerCase().includes("sandbox")
+        ? "sandbox"
+        : "finix";
+      await sql`
+        insert into payment_accounts (
+          id, org_id, location_id, operator_id, kind, payments_provider,
+          finix_merchant_id, finix_mid, onboarding_status, updated_at
+        ) values (
+          ${id}, ${op.orgId}, ${op.locationId}, ${opts.operatorId}, ${"operator"},
+          ${provider}, ${merchantId}, ${mid}, ${"not_started"}, now()
+        )
+      `;
+    } else {
+      await sql`
+        update payment_accounts set
+          finix_merchant_id = ${merchantId},
+          finix_mid = ${mid},
+          updated_at = now()
+        where id = ${existing.id}
+      `;
+    }
+    return getPaymentAccount(userId, { operatorId: opts.operatorId });
+  }
+  const locationId = opts.locationId;
+  if (!locationId) throw new Error("Location or operator is required");
+  const loc = await loadLocationOrg(locationId);
+  await requireMembership(userId, loc.orgId, undefined, locationId);
+  const existing = await getRow({ locationId });
   if (!existing) {
-    if (!merchantId) {
+    if (!merchantId && !mid) {
       return emptyView({
-        orgId: op.orgId,
-        locationId: op.locationId,
-        operatorId: opts.operatorId,
-        kind: "operator",
-        displayName: op.name,
+        orgId: loc.orgId,
+        locationId,
+        operatorId: null,
+        kind: "host",
+        displayName: loc.name,
       });
     }
     const id = newId("pacc");
-    const provider: PaymentsProvider = merchantId.toLowerCase().includes("sandbox")
+    const provider: PaymentsProvider = String(merchantId ?? "").toLowerCase().includes("sandbox")
       ? "sandbox"
       : "finix";
     await sql`
       insert into payment_accounts (
         id, org_id, location_id, operator_id, kind, payments_provider,
-        finix_merchant_id, onboarding_status, updated_at
+        finix_merchant_id, finix_mid, onboarding_status, updated_at
       ) values (
-        ${id}, ${op.orgId}, ${op.locationId}, ${opts.operatorId}, ${"operator"},
-        ${provider}, ${merchantId}, ${"not_started"}, now()
+        ${id}, ${loc.orgId}, ${locationId}, ${null}, ${"host"},
+        ${provider}, ${merchantId}, ${mid}, ${"not_started"}, now()
       )
     `;
   } else {
     await sql`
       update payment_accounts set
         finix_merchant_id = ${merchantId},
+        finix_mid = ${mid},
         updated_at = now()
       where id = ${existing.id}
     `;
   }
-  return getPaymentAccount(userId, { operatorId: opts.operatorId });
+  return getPaymentAccount(userId, { locationId });
 }
 
 export async function listPaymentAccountsForLocation(

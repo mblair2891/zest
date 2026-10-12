@@ -65,10 +65,18 @@ export const submitSandboxPaymentsFn = createServerFn({ method: "POST" })
 
 export const saveEntityFinixMerchantIdFn = createServerFn({ method: "POST" })
   .middleware([tenantMiddleware])
-  .validator((d: { operatorId?: string; merchantId?: string }) => {
-    const operatorId = opId(d.operatorId);
+  .validator((d: { operatorId?: string; locationId?: string; merchantId?: string; mid?: string }) => {
+    const operatorId = d.operatorId ? opId(d.operatorId) : undefined;
+    const locationId = d.locationId ? loc(d.locationId) : undefined;
+    if (!operatorId && !locationId) throw new Error("Location or operator is required");
     const merchantId = String(d.merchantId ?? "").trim().slice(0, 80);
-    return { operatorId, merchantId: merchantId || null };
+    const mid = String(d.mid ?? "").trim().slice(0, 40);
+    return {
+      operatorId,
+      locationId,
+      merchantId: merchantId || null,
+      mid: mid || null,
+    };
   })
   .handler(async ({ context, data }): Promise<PaymentAccountView> => {
     const { saveEntityFinixMerchantId } = await import("./onboarding.server");

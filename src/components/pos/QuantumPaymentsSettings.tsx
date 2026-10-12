@@ -4,7 +4,10 @@ import { Button } from "@/components/ui/button";
 import { GuideLearnLink } from "@/components/guide/GuideLearnLink";
 import { saveLocationSettingsFn } from "@/lib/access/api";
 import { getPaymentsStatusFn } from "@/lib/payments/api";
-import { QuantumPaymentsOnboardPanel } from "@/components/payments/QuantumPaymentsOnboardPanel";
+import {
+  FinixMerchantIdFields,
+  QuantumPaymentsOnboardPanel,
+} from "@/components/payments/QuantumPaymentsOnboardPanel";
 import type { LocationPaymentsMode, PaymentsStatus } from "@/lib/payments/types";
 import { isProspectDemo } from "@/lib/demo/session";
 import { usePosStore } from "@/lib/pos/store";
@@ -283,6 +286,8 @@ export function QuantumPaymentsSettings({
               status: kyc.status,
             };
           })}
+          locationId={locId}
+          write={write}
           onOpen={(id) => setPickedId(id)}
           onGift={() => (onOpenGift ? onOpenGift() : setView("customers"))}
         />
@@ -299,6 +304,7 @@ export function QuantumPaymentsSettings({
             locationId={locId}
             legalName={entity.name}
             peerVenue
+            write={write}
             onAccount={refreshStatus}
           />
           <p className="text-xs text-muted-foreground">
@@ -312,7 +318,12 @@ export function QuantumPaymentsSettings({
           account. Open a selling entity to complete its Payments / KYC application.
         </p>
       ) : (
-        <QuantumPaymentsOnboardPanel kind="host" locationId={locId} onAccount={refreshStatus} />
+        <QuantumPaymentsOnboardPanel
+          kind="host"
+          locationId={locId}
+          write={write}
+          onAccount={refreshStatus}
+        />
       )}
 
       {status && status.readers.length > 0 && (
@@ -342,6 +353,8 @@ function PeerVenuePaymentsHome({
   giftOutstanding,
   giftLimits,
   selling,
+  locationId,
+  write,
   onOpen,
   onGift,
 }: {
@@ -349,6 +362,8 @@ function PeerVenuePaymentsHome({
   giftOutstanding: number;
   giftLimits: ReturnType<typeof parseGiftLimits>;
   selling: Array<{ id: string; name: string; mcc: KycMcc | ""; status: FinixKycStatus }>;
+  locationId: string;
+  write: boolean;
   onOpen: (id: string) => void;
   onGift: () => void;
 }) {
@@ -392,6 +407,13 @@ function PeerVenuePaymentsHome({
             <p className="text-xs text-muted-foreground">
               Finix {FINIX_KYC_LABEL[v.status]}
             </p>
+            <div className="mt-2">
+              <FinixMerchantIdFields
+                operatorId={v.id}
+                locationId={locationId}
+                disabled={!write}
+              />
+            </div>
             <Button
               size="sm"
               className="mt-2"

@@ -225,25 +225,31 @@ export async function replacePaxReaderRecord(
   return { ok: true, reader: replaced.reader, devices: replaced.devices };
 }
 
-/** Selling entity’s Finix merchant. The reader row is the fallback when the account has no MU id. */
-async function venueFinixMerchantId(locationId: string, entityId: string): Promise<string> {
+/** Merchant id and MID stored on the payment account for this reader’s entity. */
+async function venueFinixMerchantId(
+  locationId: string,
+  entityId: string,
+): Promise<{ merchantId: string; mid: string }> {
   const sql = await getSql();
   const entity = entityId.trim();
   const rows =
     entity === HOST_SCOPE
-      ? await sql<{ finix_merchant_id: string | null }>`
-          select finix_merchant_id
+      ? await sql<{ finix_merchant_id: string | null; finix_mid: string | null }>`
+          select finix_merchant_id, finix_mid
           from payment_accounts
           where location_id = ${locationId} and kind = ${"host"}
           limit 1
         `
-      : await sql<{ finix_merchant_id: string | null }>`
-          select finix_merchant_id
+      : await sql<{ finix_merchant_id: string | null; finix_mid: string | null }>`
+          select finix_merchant_id, finix_mid
           from payment_accounts
           where operator_id = ${entity} and kind = ${"operator"}
           limit 1
         `;
-  return String(rows[0]?.finix_merchant_id ?? "").trim();
+  return {
+    merchantId: String(rows[0]?.finix_merchant_id ?? "").trim(),
+    mid: String(rows[0]?.finix_mid ?? "").trim(),
+  };
 }
 
 export async function paxReaderSession(
@@ -272,17 +278,17 @@ export async function paxReaderSession(
   }
   const blocked = envBlock(live, reader.env);
   if (blocked) return { ok: false, error: blocked };
-  // This call reads the server. FINIX_USERNAME, FINIX_PASSWORD, FINIX_MID, and the
-  // venue merchant on payment_accounts are not taken from a stored reader merchant.
-  const accountMerchant = await venueFinixMerchantId(loc.id, reader.entityId);
-  const merchantId = accountMerchant.startsWith("MU") ? accountMerchant : "";
+  // Username and password stay on the server. Merchant id and MID are the saved
+  // payment-account values, not a stored reader merchant and not a hardcoded id.
+  const account = await venueFinixMerchantId(loc.id, reader.entityId);
+  const merchantId = account.merchantId.startsWith("MU") ? account.merchantId : "";
   return {
     ok: true,
     merchantId,
     deviceId: paxSdkDeviceId(reader.finixDeviceId),
     userId: String(readServerEnv("FINIX_USERNAME") ?? ""),
     password: String(readServerEnv("FINIX_PASSWORD") ?? ""),
-    mid: String(readServerEnv("FINIX_MID") ?? ""),
+    mid: account.mid,
     env: finixStationEnv(readServerEnv("FINIX_ENVIRONMENT")),
   };
 }

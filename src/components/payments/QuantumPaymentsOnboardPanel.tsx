@@ -36,11 +36,114 @@ const STATUS_BADGE: Record<FinixKycStatus, "secondary" | "info" | "warn" | "succ
   action_required: "danger",
 };
 
+/** Merchant id and MID saved on the payment account. Neither value is hardcoded. */
+export function FinixMerchantIdFields({
+  operatorId,
+  locationId,
+  disabled = false,
+}: {
+  operatorId?: string;
+  locationId?: string;
+  disabled?: boolean;
+}) {
+  const [merchantId, setMerchantId] = useState("");
+  const [mid, setMid] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!operatorId && !locationId) return;
+    let cancel = false;
+    void getPaymentsOnboardingFn({
+      data: operatorId ? { operatorId, locationId } : { locationId },
+    })
+      .then((row) => {
+        if (cancel) return;
+        setMerchantId(row.merchantId ?? "");
+        setMid(row.mid ?? "");
+      })
+      .catch(() => undefined);
+    return () => {
+      cancel = true;
+    };
+  }, [operatorId, locationId]);
+
+  const save = async () => {
+    if (disabled || (!operatorId && !locationId)) return;
+    setBusy(true);
+    setError(null);
+    try {
+      const row = await saveEntityFinixMerchantIdFn({
+        data: operatorId
+          ? { operatorId, merchantId, mid }
+          : { locationId, merchantId, mid },
+      });
+      setMerchantId(row.merchantId ?? "");
+      setMid(row.mid ?? "");
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Could not save Finix Merchant ID");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <div className="space-y-2" data-finix-merchant-fields="">
+      <div className="grid gap-2 sm:grid-cols-2">
+        <label className="text-sm">
+          <span className="mb-1 block text-xs text-muted-foreground">Finix Merchant ID</span>
+          <Input
+            value={merchantId}
+            placeholder="MU…"
+            spellCheck={false}
+            autoComplete="off"
+            disabled={disabled || busy}
+            data-finix-merchant-id=""
+            onChange={(e) => setMerchantId(e.target.value)}
+          />
+        </label>
+        <label className="text-sm">
+          <span className="mb-1 block text-xs text-muted-foreground">Finix MID</span>
+          <Input
+            value={mid}
+            placeholder="Merchant number"
+            spellCheck={false}
+            autoComplete="off"
+            disabled={disabled || busy}
+            data-finix-mid=""
+            onChange={(e) => setMid(e.target.value)}
+          />
+        </label>
+      </div>
+      <div className="flex flex-wrap items-center gap-2">
+        <Button
+          size="sm"
+          type="button"
+          disabled={disabled || busy || (!operatorId && !locationId)}
+          data-finix-merchant-save=""
+          onClick={() => void save()}
+        >
+          Save
+        </Button>
+        <p className="text-xs text-muted-foreground">
+          Paste the MU id and the merchant number from Finix. Empty is allowed until certification.
+        </p>
+      </div>
+      {error && (
+        <p className="text-sm text-danger" role="alert">
+          {error}
+        </p>
+      )}
+    </div>
+  );
+}
+
 export function QuantumPaymentsOnboardPanel({
   locationId,
   operatorId,
   legalName,
   kind,
+  write = true,
   peerVenue = false,
   onAccount,
 }: {
@@ -48,6 +151,7 @@ export function QuantumPaymentsOnboardPanel({
   operatorId?: string;
   legalName?: string;
   kind: "host" | "operator";
+  write?: boolean;
   /** Peer / no-host-merchant: never fetch or setState for a venue Finix application. */
   peerVenue?: boolean;
   onAccount?: () => void;
@@ -56,7 +160,6 @@ export function QuantumPaymentsOnboardPanel({
   const [acc, setAcc] = useState<PaymentAccountView | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
-  const [merchantId, setMerchantId] = useState("");
   const [kyc, setKyc] = useState<EntityKyc>(() => {
     const stored = parseEntityKyc(usePosStore.getState().settings.entityKyc?.[kycKey]);
     return {
@@ -90,7 +193,6 @@ export function QuantumPaymentsOnboardPanel({
         data: peerVenue ? { locationId, operatorId } : key,
       });
       setAcc(row);
-      setMerchantId(row.merchantId ?? "");
       setKyc((prev) => {
         const fromServer = kycStatusFromOnboarding(row.entityStatus ?? row.onboardingStatus);
         return {
@@ -175,24 +277,6 @@ export function QuantumPaymentsOnboardPanel({
   const sandboxRail = !acc?.finixConfigured || acc.paymentsProvider === "sandbox";
   const patch = (p: Partial<EntityKyc>) => saveLocal({ ...kyc, ...p });
 
-  const saveMerchant = async () => {
-    if (kind !== "operator" || !operatorId) return;
-    setBusy(true);
-    setError(null);
-    try {
-      const row = await saveEntityFinixMerchantIdFn({
-        data: { operatorId, merchantId },
-      });
-      setAcc(row);
-      setMerchantId(row.merchantId ?? "");
-      onAccount?.();
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "Could not save Finix Merchant ID");
-    } finally {
-      setBusy(false);
-    }
-  };
-
   if (noVenueFinix) {
     return (
       <p className="text-xs text-muted-foreground" data-demo="no-venue-finix">
@@ -229,33 +313,12 @@ export function QuantumPaymentsOnboardPanel({
           {error}
         </p>
       )}
-      {kind === "operator" && (
-        <label className="text-sm">
-          <span className="mb-1 block text-xs text-muted-foreground">Finix Merchant ID</span>
-          <div className="flex flex-wrap items-center gap-2">
-            <Input
-              className="min-w-[16rem] flex-1"
-              value={merchantId}
-              placeholder="MU…"
-              spellCheck={false}
-              autoComplete="off"
-              data-finix-merchant-id=""
-              onChange={(e) => setMerchantId(e.target.value)}
-            />
-            <Button
-              size="sm"
-              type="button"
-              disabled={busy || !operatorId}
-              data-finix-merchant-save=""
-              onClick={() => void saveMerchant()}
-            >
-              Save
-            </Button>
-          </div>
-          <p className="mt-1 text-xs text-muted-foreground">
-            Paste the MU id from Finix. Empty is allowed until certification.
-          </p>
-        </label>
+      {(kind === "operator" || kind === "host") && (
+        <FinixMerchantIdFields
+          operatorId={kind === "operator" ? operatorId : undefined}
+          locationId={locationId}
+          disabled={!write}
+        />
       )}
       <div className="grid gap-2 sm:grid-cols-2">
         <label className="text-sm">

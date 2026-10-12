@@ -14,6 +14,7 @@ test("peer venue payments tab has no venue Finix application or host payout", ()
   assert.match(ui, /kind="host"/);
   assert.doesNotMatch(ui, /setHostMerchant/);
   assert.doesNotMatch(ui, /host-payouts/);
+  assert.match(ui, /FinixMerchantIdFields/);
   const panel = readFileSync("src/components/payments/QuantumPaymentsOnboardPanel.tsx", "utf8");
   assert.match(panel, /noVenueFinix/);
   assert.match(panel, /if \(!operatorId && peerVenue\) return/);
@@ -28,7 +29,11 @@ test("entity KYC panel keeps 5813 helper and real fields", () => {
   assert.match(panel, /Bank \/ payout account/);
   assert.match(panel, /Finix sub-merchant application status/);
   assert.match(panel, /Finix Merchant ID/);
+  assert.match(panel, /Finix MID/);
   assert.match(panel, /data-finix-merchant-id/);
+  assert.match(panel, /data-finix-mid/);
   assert.match(panel, /Empty is allowed until certification/);
+  const save = readFileSync("src/lib/payments/onboarding.server.ts", "utf8");
+  assert.match(save, /finix_mid/);
   assert.match(panel, /kind === "operator"/);
 });

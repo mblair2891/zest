@@ -6,6 +6,19 @@ import type { GuideUpdate } from "@/lib/guide/types";
  */
 export const WHATS_NEW_ENTRIES: GuideUpdate[] = [
   {
+    id: "upd_2026_10_262_finix_mid",
+    date: "2026-10-12",
+    title: "Payments stores the merchant number",
+    summary:
+      "Payments saves the Finix merchant id and the Finix MID. The card reader uses those saved values.",
+    body: "Payments shows a Finix Merchant ID and a Finix MID on the payment record. Save stores both. The card reader passes those saved values when it connects. An empty MID shows missing mid and does not connect. Neither value is stored in the app.",
+    roles: ["owner_manager", "host_operator", "vendor_operator"],
+    surfaces: ["settings"],
+    audience: "all",
+    topicId: "quantum-payments",
+    tags: ["payments", "devices"],
+  },
+  {
     id: "upd_2026_10_261_d135_scan_mid",
     date: "2026-10-12",
     title: "D135 scan and merchant number",
