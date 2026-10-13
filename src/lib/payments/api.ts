@@ -274,6 +274,48 @@ export const captureCardPresentFn = createServerFn({ method: "POST" })
     return captureCardPresent(context.userId, data);
   });
 
+export const chargeManualCardFn = createServerFn({ method: "POST" })
+  .middleware([tenantMiddleware])
+  .validator((d: {
+    orgId: string;
+    locationId: string;
+    amountCents: number;
+    checkId?: string;
+    number: string;
+    expirationMonth: number;
+    expirationYear: number;
+    securityCode: string;
+    postalCode: string;
+    entities?: {
+      entityId: string;
+      kind: "host" | "operator";
+      displayName: string;
+      amountCents: number;
+    }[];
+  }) => ({
+    orgId: String(d.orgId ?? "").trim().slice(0, 80),
+    locationId: loc(d.locationId),
+    amountCents: Math.max(0, Math.round(Number(d.amountCents) || 0)),
+    checkId: d.checkId ? String(d.checkId).slice(0, 80) : undefined,
+    number: String(d.number ?? "").replace(/\D/g, "").slice(0, 19),
+    expirationMonth: Math.max(0, Math.round(Number(d.expirationMonth) || 0)),
+    expirationYear: Math.max(0, Math.round(Number(d.expirationYear) || 0)),
+    securityCode: String(d.securityCode ?? "").replace(/\D/g, "").slice(0, 4),
+    postalCode: String(d.postalCode ?? "").replace(/[^\d-]/g, "").slice(0, 10),
+    entities: Array.isArray(d.entities)
+      ? d.entities.slice(0, 40).map((entity) => ({
+          entityId: String(entity?.entityId ?? "").slice(0, 80),
+          kind: entity?.kind === "host" ? ("host" as const) : ("operator" as const),
+          displayName: String(entity?.displayName ?? "").slice(0, 80),
+          amountCents: Math.max(0, Math.round(Number(entity?.amountCents) || 0)),
+        }))
+      : [],
+  }))
+  .handler(async ({ context, data }) => {
+    const { chargeManualCard } = await import("./manual-card.server");
+    return chargeManualCard(context.userId, data);
+  });
+
 export const createSquareDeviceCodeFn = createServerFn({ method: "POST" })
   .middleware([tenantMiddleware])
   .validator((d: { locationId: string; deviceRowId: string }) => ({

@@ -6,6 +6,19 @@ import type { GuideUpdate } from "@/lib/guide/types";
  */
 export const WHATS_NEW_ENTRIES: GuideUpdate[] = [
   {
+    id: "upd_2026_10_268_manual_card",
+    date: "2026-10-13",
+    title: "Manual card entry",
+    summary:
+      "In training or sandbox, Pay shows Manual entry next to the reader. A successful charge closes the check.",
+    body: "Manual entry asks for the card number, expiration, CVV, and ZIP. The charge uses the saved merchant and the sandbox keys. A successful charge closes the check the same way an approved card read does. Manual entry is hidden when the location is live.",
+    roles: ["owner_manager", "server", "host_operator", "vendor_operator"],
+    surfaces: ["settings", "floor"],
+    audience: "all",
+    topicId: "quantum-payments",
+    tags: ["payments"],
+  },
+  {
     id: "upd_2026_10_267_open_food_liquor",
     date: "2026-10-13",
     title: "Open Food and Open Liquor",

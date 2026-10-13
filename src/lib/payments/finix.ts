@@ -13,6 +13,15 @@ import {
   type FinixMode,
 } from "./finix-keys.ts";
 import { liveCardGate } from "./finix-events.ts";
+import {
+  finixFailureText,
+  manualBuyerBody,
+  manualInstrumentBody,
+  manualTransferApproved,
+  manualTransferBody,
+  redactCardText,
+  type ManualCard,
+} from "./manual-card.ts";
 
 export type PaymentsProvider = "finix" | "sandbox";
 export type PaymentsOnboardingStatus =
@@ -528,6 +537,71 @@ export async function createSplitTransfer(opts: {
   const id = typeof res.json.id === "string" ? res.json.id : "";
   if (!id) return { ok: false, sandbox: mode === "sandbox", error: "Split transfer failed" };
   return { ok: true, transferId: id, sandbox: mode === "sandbox" };
+}
+
+/**
+ * Sandbox sale from a typed card. Uses the sandbox username and password.
+ * The card number is not logged and is not stored. Live keys are not used.
+ */
+export async function chargeManualCardOnFinix(opts: {
+  card: ManualCard;
+  amountCents: number;
+  merchantId: string;
+  checkId?: string;
+  splits?: Array<{ merchantId: string; amountCents: number }>;
+}): Promise<{ ok: true; transferId: string; last4: string } | { ok: false; error: string }> {
+  const secrets = [opts.card.number, opts.card.securityCode];
+  const fail = (json: Record<string, unknown>, fallback: string) =>
+    redactCardText(finixFailureText(json) || fallback, secrets).slice(0, 200);
+  const creds = readFinixApiCreds("sandbox");
+  if (!creds.ok) return { ok: false, error: missingFinixKeyMessage(creds.missing) };
+  const merchantId = opts.merchantId.trim();
+  if (!merchantId.startsWith("MU") || merchantId.toLowerCase().includes("sandbox")) {
+    return {
+      ok: false,
+      error: "This selling entity does not have a Quantum Payments merchant. Use cash or keep the check open.",
+    };
+  }
+  if (opts.amountCents <= 0) return { ok: false, error: "Invalid amount" };
+  const buyer = await finixFetch("sandbox", "POST", "/identities", manualBuyerBody(opts.card.postalCode, opts.checkId), {
+    requireWebhook: false,
+  });
+  const identityId = typeof buyer.json.id === "string" ? buyer.json.id.trim() : "";
+  if (!buyer.ok || !identityId) {
+    return { ok: false, error: fail(buyer.json, "Card was not approved. The check stays open.") };
+  }
+  const instrument = await finixFetch(
+    "sandbox",
+    "POST",
+    "/payment_instruments",
+    manualInstrumentBody(opts.card, identityId),
+    { requireWebhook: false },
+  );
+  const sourceId = typeof instrument.json.id === "string" ? instrument.json.id.trim() : "";
+  if (!instrument.ok || !sourceId) {
+    return { ok: false, error: fail(instrument.json, "Card was not approved. The check stays open.") };
+  }
+  const last4raw = (instrument.json as { last_four?: string }).last_four;
+  const last4 = last4raw ? String(last4raw).replace(/\D/g, "").slice(-4) : opts.card.number.slice(-4);
+  const transfer = await finixFetch(
+    "sandbox",
+    "POST",
+    "/transfers",
+    manualTransferBody({
+      amountCents: opts.amountCents,
+      merchantId,
+      sourceId,
+      checkId: opts.checkId,
+      splits: opts.splits,
+    }),
+    { requireWebhook: false },
+  );
+  if (!transfer.ok || !manualTransferApproved(transfer.json)) {
+    return { ok: false, error: fail(transfer.json, "Card was not approved. The check stays open.") };
+  }
+  const transferId = typeof transfer.json.id === "string" ? transfer.json.id.trim() : "";
+  if (!transferId) return { ok: false, error: "Card was not approved. The check stays open." };
+  return { ok: true, transferId, last4 };
 }
 
 /**

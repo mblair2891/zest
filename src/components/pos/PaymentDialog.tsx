@@ -22,6 +22,7 @@ import { captureIsSandbox } from "@/lib/lifecycle/store";
 import {
   cancelSquareCheckoutFn,
   captureCardPresentFn,
+  chargeManualCardFn,
   squareCheckoutStatusFn,
   startSquareCheckoutFn,
   getPaymentsStatusFn,
@@ -96,6 +97,12 @@ import { uid } from "@/lib/utils";
 import { readTenantPosContext } from "@/lib/saas/pos-context";
 import { canEmployee } from "@/lib/access/permissions";
 import { splitTenderByEntity } from "@/lib/payments/entity-split";
+import {
+  manualCardEntryVisible,
+  parseManualCard,
+  redactCardText,
+  type ManualCard,
+} from "@/lib/payments/manual-card";
 import { cashRoleFromSession, parseCashHandling } from "@/lib/pos/cash-handling";
 import { currentCashSink, useCashSessionStore } from "@/lib/pos/cash-session";
 import { useStationSessionStore } from "@/lib/pos/station-session";
@@ -201,6 +208,12 @@ export function PaymentDialog({ open, onOpenChange, initialMethod }: Props) {
   const giftCards = usePosStore((s) => s.giftCards);
   const hasManagerAuth = usePosStore((s) => s.hasManagerAuth);
   const [last4, setLast4] = useState("");
+  const [manualOpen, setManualOpen] = useState(false);
+  const [manualNumber, setManualNumber] = useState("");
+  const [manualExp, setManualExp] = useState("");
+  const [manualCvv, setManualCvv] = useState("");
+  const [manualZip, setManualZip] = useState("");
+  const [manualError, setManualError] = useState<string | null>(null);
   const [usePax, setUsePax] = useState(false);
   const pax = usePaxStationLink();
   const [payEntityBanner, setPayEntityBanner] = useState<string | null>(null);
@@ -608,6 +621,15 @@ export function PaymentDialog({ open, onOpenChange, initialMethod }: Props) {
       .catch(() => setPayStatus(null));
   }, [open, wanOnline]);
 
+  const readerOptionsOpen =
+    usePax || scanStandIn || Boolean(payEntityBanner) || pax.phase !== "idle" || pax.rows.length > 0;
+  const showManual =
+    (settings.cardProcessor ?? "finix") === "finix" &&
+    manualCardEntryVisible({
+      lifecycleStatus: settings.lifecycleStatus,
+      paymentsMode: payStatus?.mode,
+      lifecycleForcesSandbox: payStatus?.lifecycleForcesSandbox,
+    });
   const sandbox = captureIsSandbox({
     operatorId: order?.lines.find((l) => l.vendorId)?.vendorId,
     vendorIds: order?.lines.map((l) => l.vendorId).filter(Boolean) as string[],
@@ -718,7 +740,7 @@ export function PaymentDialog({ open, onOpenChange, initialMethod }: Props) {
     })();
   };
 
-  const pay = () => {
+  const pay = (manualCard?: ManualCard) => {
     void (async () => {
     setError(null);
     if (!methodEnabled(payCfg, method)) {
@@ -788,7 +810,83 @@ export function PaymentDialog({ open, onOpenChange, initialMethod }: Props) {
     let squarePaymentId: string | undefined;
     let finixTransferId: string | undefined;
     let paxJournal: { readerId: string; merchantId: string; locationId: string; orgId: string } | null = null;
-    if (method === "card") {
+    if (method === "card" && manualCard) {
+      const ctx = readTenantPosContext();
+      const locationId = usePosStore.getState().tenantLocationId || ctx?.locationId || "";
+      const orgId = ctx?.orgId || "";
+      if (!locationId || !orgId) {
+        setError("Card requires connection. Take cash or keep the check open.");
+        return;
+      }
+      if (
+        !manualCardEntryVisible({
+          lifecycleStatus: settings.lifecycleStatus,
+          paymentsMode: payStatus?.mode,
+          lifecycleForcesSandbox: payStatus?.lifecycleForcesSandbox,
+        })
+      ) {
+        setError("Manual entry is off when the location is live.");
+        return;
+      }
+      const tend = Math.min(amountCents, balance);
+      const entities = order
+        ? splitTenderByEntity({
+            order,
+            settings,
+            amountCents: tend,
+            tipCents: payTip,
+            hostName: settings.name,
+            operatorName: (id) =>
+              usePosStore.getState().vendors.find((v) => v.id === id)?.name ?? id,
+          }).map((share) => ({ ...share, amountCents: share.totalCents }))
+        : [];
+      setBusy(true);
+      try {
+        const charged = await chargeManualCardFn({
+          data: {
+            orgId,
+            locationId,
+            amountCents: tend + payTip,
+            checkId: order?.id,
+            number: manualCard.number,
+            expirationMonth: manualCard.expirationMonth,
+            expirationYear: manualCard.expirationYear,
+            securityCode: manualCard.securityCode,
+            postalCode: manualCard.postalCode,
+            entities,
+          },
+        });
+        if (!charged.ok) {
+          setError(
+            redactCardText(charged.error || "Card was not approved. The check stays open.", [
+              manualCard.number,
+              manualCard.securityCode,
+            ]),
+          );
+          setBusy(false);
+          return;
+        }
+        cardLast4 = charged.last4 || manualCard.number.slice(-4);
+        finixTransferId = charged.transferId;
+      } catch (err) {
+        const detail = err instanceof Error ? err.message.trim() : "";
+        setError(
+          redactCardText(detail || "Card was not approved. The check stays open.", [
+            manualCard.number,
+            manualCard.securityCode,
+          ]),
+        );
+        setBusy(false);
+        return;
+      }
+      setBusy(false);
+      setManualOpen(false);
+      setManualNumber("");
+      setManualExp("");
+      setManualCvv("");
+      setManualZip("");
+      setManualError(null);
+    } else if (method === "card") {
       const ctx = readTenantPosContext();
       const locationId =
         usePosStore.getState().tenantLocationId || ctx?.locationId || "";
@@ -1078,6 +1176,21 @@ export function PaymentDialog({ open, onOpenChange, initialMethod }: Props) {
       setTendered("");
     }
     })();
+  };
+
+  const submitManual = () => {
+    const parsed = parseManualCard({
+      number: manualNumber,
+      expiration: manualExp,
+      securityCode: manualCvv,
+      postalCode: manualZip,
+    });
+    if (!parsed.ok) {
+      setManualError(parsed.error);
+      return;
+    }
+    setManualError(null);
+    pay(parsed.card);
   };
 
   const finish = () => {
@@ -1696,9 +1809,26 @@ export function PaymentDialog({ open, onOpenChange, initialMethod }: Props) {
                         {payEntityStatusText(pax, payEntityBanner)}
                         {pax.phase === "connected" && pax.battery != null ? ` · Battery ${pax.battery}%` : ""}
                       </p>
-                      <Button type="button" size="sm" variant="outline" disabled={busy} onClick={scanPax}>
-                        Scan for reader
-                      </Button>
+                      <div className="flex flex-wrap gap-2">
+                        <Button type="button" size="sm" variant="outline" disabled={busy} onClick={scanPax}>
+                          Scan for reader
+                        </Button>
+                        {showManual ? (
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="outline"
+                            disabled={busy}
+                            data-manual-entry=""
+                            onClick={() => {
+                              setManualOpen(true);
+                              setManualError(null);
+                            }}
+                          >
+                            Manual entry
+                          </Button>
+                        ) : null}
+                      </div>
                       {pax.rows.map((row) => (
                         <button
                           key={row.serial}
@@ -1712,6 +1842,74 @@ export function PaymentDialog({ open, onOpenChange, initialMethod }: Props) {
                       ))}
                     </div>
                   )}
+                  {showManual && !readerOptionsOpen ? (
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      disabled={busy}
+                      data-manual-entry=""
+                      onClick={() => {
+                        setManualOpen(true);
+                        setManualError(null);
+                      }}
+                    >
+                      Manual entry
+                    </Button>
+                  ) : null}
+                  {showManual && manualOpen ? (
+                    <div className="space-y-2 rounded-lg border border-border p-3" data-manual-form="">
+                      <p className="text-xs text-muted-foreground">
+                        Training and sandbox only. Enter the card. A successful charge closes the check.
+                      </p>
+                      <Input
+                        data-manual-number=""
+                        placeholder="Card number"
+                        inputMode="numeric"
+                        autoComplete="off"
+                        value={manualNumber}
+                        onChange={(e) => setManualNumber(e.target.value)}
+                      />
+                      <div className="grid grid-cols-3 gap-2">
+                        <Input
+                          data-manual-exp=""
+                          placeholder="MM/YY"
+                          autoComplete="off"
+                          value={manualExp}
+                          onChange={(e) => setManualExp(e.target.value)}
+                        />
+                        <Input
+                          data-manual-cvv=""
+                          placeholder="CVV"
+                          inputMode="numeric"
+                          autoComplete="off"
+                          value={manualCvv}
+                          onChange={(e) => setManualCvv(e.target.value)}
+                        />
+                        <Input
+                          data-manual-zip=""
+                          placeholder="ZIP"
+                          inputMode="numeric"
+                          autoComplete="off"
+                          value={manualZip}
+                          onChange={(e) => setManualZip(e.target.value)}
+                        />
+                      </div>
+                      {manualError ? (
+                        <p className="text-xs font-medium" data-manual-error="">
+                          {manualError}
+                        </p>
+                      ) : null}
+                      <div className="flex flex-wrap gap-2">
+                        <Button type="button" size="sm" data-manual-submit="" disabled={busy} onClick={submitManual}>
+                          {busy ? "Charging…" : "Charge card"}
+                        </Button>
+                        <Button type="button" size="sm" variant="outline" disabled={busy} onClick={() => setManualOpen(false)}>
+                          Cancel
+                        </Button>
+                      </div>
+                    </div>
+                  ) : null}
                   {(payStatus?.mode === "sandbox" || sandbox) && !usePax && pax.phase !== "connected" && (
                     <Input
                       placeholder="Last 4 (sandbox receipt only)"
