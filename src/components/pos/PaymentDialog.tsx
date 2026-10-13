@@ -60,7 +60,7 @@ import {
   type PaxReader,
   type PaxScanRow,
 } from "@/lib/payments/pax-d135";
-import { noteStationActivity } from "@/lib/payments/station-activity";
+import { noteStationActivity, paxReaderSessionData } from "@/lib/payments/station-activity";
 import {
   beginPaxConnect,
   beginPaxScan,
@@ -426,7 +426,11 @@ export function PaymentDialog({ open, onOpenChange, initialMethod }: Props) {
       };
       try {
         const session = await paxReaderSessionFn({
-          data: { locationId: loc, serial: decision.reader.serial, entityId: decision.reader.entityId },
+          data: paxReaderSessionData({
+            locationId: loc,
+            serial: decision.reader.serial,
+            entityId: decision.reader.entityId,
+          }),
         });
         if (!session.ok) {
           await noteStationActivity({
@@ -500,26 +504,30 @@ export function PaymentDialog({ open, onOpenChange, initialMethod }: Props) {
             }
           | undefined;
         if (!paxReaderOnThisStation()) {
-          const auth = await finixConnectAuthFn({
-            data: { locationId: loc, serial: decision.reader.serial, entityId: decision.reader.entityId },
-          });
-          trace = {
-            applicationId: auth.applicationId,
-            environment: auth.environment,
-            usernamePresent: auth.usernamePresent,
-            passwordPresent: auth.passwordPresent,
-            merchantId: auth.merchantId,
-            deviceId: auth.deviceId,
-          };
-          raw = String(auth.response ?? "").trim();
-          if (!auth.ok) {
-            const body = String(auth.error ?? "").trim();
-            const reason = finixConnectBanner(diagnostic, body);
-            await logConnect(raw || body || reason, trace);
-            failPaxConnect(reason);
-            setError(reason);
-            setBusy(false);
-            return;
+          try {
+            const auth = await finixConnectAuthFn({
+              data: paxReaderSessionData({
+                locationId: loc,
+                serial: decision.reader.serial,
+                entityId: decision.reader.entityId,
+              }),
+            });
+            trace = {
+              applicationId: auth.applicationId,
+              environment: auth.environment,
+              usernamePresent: auth.usernamePresent,
+              passwordPresent: auth.passwordPresent,
+              merchantId: auth.merchantId,
+              deviceId: auth.deviceId,
+            };
+            raw = String(auth.response ?? "").trim();
+            if (!auth.ok) {
+              const body = String(auth.error ?? "").trim();
+              await logConnect(raw || body || "Finix login check failed", trace);
+            }
+          } catch (err) {
+            const detail = err instanceof Error ? err.message.trim() : "";
+            await logConnect(detail || "Finix login check failed", trace);
           }
         }
         const connected = await runPaxConnect(() =>

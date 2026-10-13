@@ -3,7 +3,7 @@
  * The password and the username are not sent.
  */
 import { recordStationActivityFn } from "@/lib/payments/api";
-import { readStationPair } from "@/lib/pos/station-pair";
+import { readStationPair, stationFloorFields } from "@/lib/pos/station-pair";
 import { usePosStore } from "@/lib/pos/store";
 import {
   type StationActivityAction,
@@ -22,6 +22,28 @@ export function stationActivityName(): string {
   if (pair?.station === "kiosk") return "Kiosk";
   if (pair?.station === "order" || state.sessionKind === "pin") return "Order";
   return "Station";
+}
+
+/** Reader session for this paired tablet. The PIN stays on the station. */
+export function paxReaderSessionData(input: {
+  locationId: string;
+  serial: string;
+  entityId: string;
+}): {
+  locationId: string;
+  serial: string;
+  entityId: string;
+  stationDeviceId: string;
+  stationPin: string;
+} {
+  const station = stationFloorFields();
+  return {
+    locationId: input.locationId,
+    serial: input.serial,
+    entityId: input.entityId,
+    stationDeviceId: station?.stationDeviceId ?? "",
+    stationPin: station?.stationPin ?? "",
+  };
 }
 
 export async function noteStationActivity(input: {

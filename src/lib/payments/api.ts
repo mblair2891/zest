@@ -1,4 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
+import { floorSessionMiddleware } from "@/lib/pos/floor-session";
 import { tenantMiddleware } from "@/lib/saas/tenant-middleware";
 import {
   activityFieldsFromDiagnostic,
@@ -112,25 +113,34 @@ export const replacePaxReaderFn = createServerFn({ method: "POST" })
     return replacePaxReaderRecord(context.userId, data);
   });
 
-export const paxReaderSessionFn = createServerFn({ method: "POST" })
-  .middleware([tenantMiddleware])
-  .validator((d: { locationId: string; serial: string; entityId: string }) => ({
+function stationReaderInput(d: {
+  locationId: string;
+  serial: string;
+  entityId: string;
+  stationDeviceId?: string;
+  stationPin?: string;
+}) {
+  return {
     locationId: loc(d.locationId),
     serial: String(d.serial ?? "").replace(/\s+/g, "").slice(0, 40),
     entityId: String(d.entityId ?? "").trim().slice(0, 80),
-  }))
+    stationDeviceId: String(d.stationDeviceId ?? "").trim().slice(0, 80),
+    stationPin: String(d.stationPin ?? "").replace(/\D/g, "").slice(0, 8),
+  };
+}
+
+export const paxReaderSessionFn = createServerFn({ method: "POST" })
+  .middleware([floorSessionMiddleware])
+  .validator(stationReaderInput)
   .handler(async ({ context, data }) => {
-    const { paxReaderSession } = await import("./pax-d135.server");
-    return paxReaderSession(context.userId, data);
+    const { paxReaderSession, paxReaderSessionForStation } = await import("./pax-d135.server");
+    if (context.userId) return paxReaderSession(context.userId, data);
+    return paxReaderSessionForStation(data);
   });
 
 export const finixConnectAuthFn = createServerFn({ method: "POST" })
-  .middleware([tenantMiddleware])
-  .validator((d: { locationId: string; serial: string; entityId: string }) => ({
-    locationId: loc(d.locationId),
-    serial: String(d.serial ?? "").replace(/\s+/g, "").slice(0, 40),
-    entityId: String(d.entityId ?? "").trim().slice(0, 80),
-  }))
+  .middleware([floorSessionMiddleware])
+  .validator(stationReaderInput)
   .handler(async ({ context, data }) => {
     const { finixConnectAuth } = await import("./pax-d135.server");
     return finixConnectAuth(context.userId, data);

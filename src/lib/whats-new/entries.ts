@@ -6,6 +6,19 @@ import type { GuideUpdate } from "@/lib/guide/types";
  */
 export const WHATS_NEW_ENTRIES: GuideUpdate[] = [
   {
+    id: "upd_2026_10_264_d135_station_pin",
+    date: "2026-10-13",
+    title: "Paired station connects the reader",
+    summary:
+      "A paired station uses its PIN to load the saved merchant id and the saved MID. The tablet shows the reader callback.",
+    body: "The station uses the PIN already entered on that tablet. It loads the saved merchant id and the saved MID. It connects the Bluetooth device the scan returned. A failure shows that callback on the tablet. The password is left off.",
+    roles: ["owner_manager", "server", "host_operator", "vendor_operator"],
+    surfaces: ["settings"],
+    audience: "all",
+    topicId: "pax-card-reader",
+    tags: ["devices", "payments"],
+  },
+  {
     id: "upd_2026_10_263_d135_bluetooth_device",
     date: "2026-10-12",
     title: "Card reader shows the callback",

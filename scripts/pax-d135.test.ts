@@ -473,7 +473,15 @@ test("the PAX path does not use Web Bluetooth or Stripe", () => {
   assert.match(sessionBody, /readServerEnv\("FINIX_PASSWORD"\)/);
   assert.match(sessionBody, /venueFinixMerchantId/);
   assert.match(sessionBody, /account\.mid/);
+  assert.match(sessionBody, /authorizeStationFloor/);
+  assert.match(sessionBody, /paxReaderSessionForStation/);
   assert.doesNotMatch(sessionBody, /readServerEnv\("FINIX_MID"\)/);
+  const authBlock = dialog.slice(
+    dialog.indexOf("if (!paxReaderOnThisStation())"),
+    dialog.indexOf("const connected = await runPaxConnect"),
+  );
+  assert.match(authBlock, /paxReaderSessionData/);
+  assert.doesNotMatch(authBlock, /return;/);
   const merchantFn = server.slice(
     server.indexOf("async function venueFinixMerchantId"),
     server.indexOf("export async function paxReaderSession"),

@@ -252,10 +252,9 @@ async function venueFinixMerchantId(
   };
 }
 
-export async function paxReaderSession(
-  userId: string,
-  input: { locationId: string; serial: string; entityId: string },
-): Promise<
+type PaxSessionInput = { locationId: string; serial: string; entityId: string };
+
+type PaxSessionResult =
   | {
       ok: true;
       merchantId: string;
@@ -265,10 +264,43 @@ export async function paxReaderSession(
       mid: string;
       env: "SB" | "LIVE";
     }
-  | { ok: false; error: string }
-> {
+  | { ok: false; error: string };
+
+export async function paxReaderSession(
+  userId: string,
+  input: PaxSessionInput,
+): Promise<PaxSessionResult> {
   const loc = await loadLoc(input.locationId);
   await requireMembership(userId, loc.org_id, undefined, input.locationId);
+  return paxReaderCredentials(loc, input);
+}
+
+/**
+ * Paired tablet. The PIN already entered on that station loads the same
+ * saved merchant id and MID. The PIN is not returned.
+ */
+export async function paxReaderSessionForStation(
+  input: PaxSessionInput & { stationDeviceId: string; stationPin: string },
+): Promise<PaxSessionResult> {
+  const { authorizeStationFloor } = await import("@/lib/pos/station-pin-auth.server");
+  const granted = await authorizeStationFloor({
+    pin: input.stationPin,
+    deviceId: input.stationDeviceId,
+    locationId: input.locationId,
+  });
+  if (!granted.ok) return { ok: false, error: granted.error };
+  const loc = await loadLoc(granted.grant.locationId);
+  return paxReaderCredentials(loc, {
+    locationId: granted.grant.locationId,
+    serial: input.serial,
+    entityId: input.entityId,
+  });
+}
+
+async function paxReaderCredentials(
+  loc: Awaited<ReturnType<typeof loadLoc>>,
+  input: PaxSessionInput,
+): Promise<PaxSessionResult> {
   const setup = setupOf(loc.setup);
   const live = locationLifecycleStatus(setup, loc.lifecycle_status) === "live";
   const reader = readerForSerial(parsePaxReaders(setup.paxReaders), input.serial);
@@ -322,10 +354,18 @@ export type FinixConnectAuthResult =
  * Does not return the password. A network miss is not an Unauthorized result.
  */
 export async function finixConnectAuth(
-  userId: string,
-  input: { locationId: string; serial: string; entityId: string },
+  userId: string | null,
+  input: PaxSessionInput & { stationDeviceId?: string; stationPin?: string },
 ): Promise<FinixConnectAuthResult> {
-  const session = await paxReaderSession(userId, input);
+  const session = userId
+    ? await paxReaderSession(userId, input)
+    : await paxReaderSessionForStation({
+        locationId: input.locationId,
+        serial: input.serial,
+        entityId: input.entityId,
+        stationDeviceId: input.stationDeviceId ?? "",
+        stationPin: input.stationPin ?? "",
+      });
   if (!session.ok) return session;
   const { finixSandboxAuthProbe } = await import("./finix");
   const probe = await finixSandboxAuthProbe();
