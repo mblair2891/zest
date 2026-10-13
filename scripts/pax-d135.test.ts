@@ -420,6 +420,12 @@ test("the PAX path does not use Web Bluetooth or Stripe", () => {
   assert.match(plugin, /CONNECT_TIMEOUT_MS = 4L \* 60L \* 1000L/);
   const sale = plugin.slice(plugin.indexOf("void saleOnWorker"), plugin.indexOf("void doScan"));
   assert.match(sale, /Log\.i\("PaxD135", "SDK sale " \+ shown\)/);
+  assert.match(sale, /Log\.i\("PaxD135", "SDK sale processing " \+ shown\)/);
+  assert.match(sale, /tags\.put\("check", checkId\)/);
+  assert.match(sale, /The check id is metadata\. It is not a Finix buyer identity\./);
+  const args = sale.slice(sale.indexOf("},\n                null,"), sale.indexOf("PromptForSignature.Never.INSTANCE"));
+  assert.match(args, /tags/);
+  assert.doesNotMatch(args, /checkId/);
   assert.match(sale, /resolveSaleFailure\(call, errorMessage\)/);
   assert.match(sale, /saleFailureText\(result\)/);
   const failureText = plugin.slice(plugin.indexOf("String saleFailureText"), plugin.indexOf("void appendSalePart"));

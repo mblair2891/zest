@@ -6,6 +6,18 @@ import type { GuideUpdate } from "@/lib/guide/types";
  */
 export const WHATS_NEW_ENTRIES: GuideUpdate[] = [
   {
+    id: "upd_2026_10_266_card_read_closes",
+    date: "2026-10-13",
+    title: "Card read closes the check",
+    summary: "An approved card read closes the check. A failed read still shows the reader callback and leaves the check open.",
+    body: "The station sends the card read with the check id as a note, not as a buyer identity. An approval closes the check. A failure shows the reader callback on the tablet and in the station log. The check stays open.",
+    roles: ["owner_manager", "server", "host_operator", "vendor_operator"],
+    surfaces: ["settings"],
+    audience: "all",
+    topicId: "pax-card-reader",
+    tags: ["devices", "payments"],
+  },
+  {
     id: "upd_2026_10_265_card_read_callback",
     date: "2026-10-13",
     title: "Card read shows the callback",

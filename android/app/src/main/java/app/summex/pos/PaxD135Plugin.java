@@ -35,6 +35,7 @@ import androidx.core.content.ContextCompat;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -436,13 +437,18 @@ public class PaxD135Plugin extends Plugin {
         };
         main.postDelayed(timeout, SALE_TIMEOUT_MS);
         try {
+            // The check id is metadata. It is not a Finix buyer identity.
+            HashMap<String, String> tags = new HashMap<>();
+            if (checkId != null && !checkId.isEmpty()) tags.put("check", checkId);
+            Log.i("PaxD135", "SDK sale start cents " + amount);
             current.startTransaction(
                 amount,
                 TransactionType.SALE,
                 new MPOSTransactionCallback() {
                     @Override
                     public void onProcessing(String message) {
-                        /* card is on the reader; the check is not paid yet */
+                        String shown = message == null ? "" : message.replaceAll("\\s+", " ").trim();
+                        if (!shown.isEmpty()) Log.i("PaxD135", "SDK sale processing " + shown);
                     }
 
                     @Override
@@ -460,8 +466,8 @@ public class PaxD135Plugin extends Plugin {
                     }
                 },
                 null,
+                tags,
                 null,
-                checkId,
                 null,
                 null,
                 PromptForSignature.Never.INSTANCE
@@ -867,6 +873,7 @@ public class PaxD135Plugin extends Plugin {
                 }
             }
             if (takingDevice != null) {
+                Log.i("PaxD135", "connect BluetoothDevice " + bluetoothLabel(device));
                 takingDevice.invoke(finix, device, connectionCallback);
                 return;
             }
@@ -876,6 +883,7 @@ public class PaxD135Plugin extends Plugin {
                 String.class,
                 MPOSConnectionCallback.class
             );
+            Log.i("PaxD135", "connect BluetoothDevice " + bluetoothLabel(device) + " " + bluetoothAddress(device));
             published.invoke(finix, bluetoothLabel(device), bluetoothAddress(device), connectionCallback);
         } catch (SecurityException e) {
             connectionCallback.onError(MSG_PERMISSION);
