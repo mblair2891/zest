@@ -6,6 +6,19 @@ import type { GuideUpdate } from "@/lib/guide/types";
  */
 export const WHATS_NEW_ENTRIES: GuideUpdate[] = [
   {
+    id: "upd_2026_10_265_card_read_callback",
+    date: "2026-10-13",
+    title: "Card read shows the callback",
+    summary:
+      "A failed card read shows the full reader callback on the tablet. The check stays open.",
+    body: "The station shows the reader callback when a card read fails. The same text is in the station log. The check stays open.",
+    roles: ["owner_manager", "server", "host_operator", "vendor_operator"],
+    surfaces: ["settings"],
+    audience: "all",
+    topicId: "pax-card-reader",
+    tags: ["devices", "payments"],
+  },
+  {
     id: "upd_2026_10_264_d135_station_pin",
     date: "2026-10-13",
     title: "Paired station connects the reader",

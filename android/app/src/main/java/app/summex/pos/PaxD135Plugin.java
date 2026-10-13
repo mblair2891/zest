@@ -432,11 +432,7 @@ public class PaxD135Plugin extends Plugin {
             } catch (Exception ignored) {
                 /* the read already failed */
             }
-            JSObject ret = new JSObject();
-            ret.put("ok", false);
-            ret.put("code", "timeout");
-            ret.put("message", MSG_TIMEOUT);
-            call.resolve(ret);
+            resolveSaleFailure(call, MSG_TIMEOUT);
         };
         main.postDelayed(timeout, SALE_TIMEOUT_MS);
         try {
@@ -460,12 +456,7 @@ public class PaxD135Plugin extends Plugin {
                     public void onError(String errorMessage) {
                         if (!settled.compareAndSet(false, true)) return;
                         main.removeCallbacks(timeout);
-                        String code = codeFor(errorMessage);
-                        JSObject ret = new JSObject();
-                        ret.put("ok", false);
-                        ret.put("code", code);
-                        ret.put("message", errorMessage == null ? MSG_UNREAD : errorMessage);
-                        call.resolve(ret);
+                        resolveSaleFailure(call, errorMessage);
                     }
                 },
                 null,
@@ -478,12 +469,43 @@ public class PaxD135Plugin extends Plugin {
         } catch (Exception e) {
             if (!settled.compareAndSet(false, true)) return;
             main.removeCallbacks(timeout);
-            JSObject ret = new JSObject();
-            ret.put("ok", false);
-            ret.put("code", "error");
-            ret.put("message", MSG_UNREAD);
-            call.resolve(ret);
+            String detail = e.getMessage() == null ? "" : e.getMessage().trim();
+            resolveSaleFailure(call, detail.isEmpty() ? e.toString() : detail);
         }
+    }
+
+    /** The SDK sale callback, unchanged. A blank callback stays the unread line. */
+    private void resolveSaleFailure(PluginCall call, String message) {
+        String shown = message == null ? "" : message.replaceAll("\\s+", " ").trim();
+        if (shown.isEmpty()) shown = MSG_UNREAD;
+        Log.i("PaxD135", "SDK sale " + shown);
+        JSObject ret = new JSObject();
+        ret.put("ok", false);
+        ret.put("code", codeFor(shown));
+        ret.put("message", shown);
+        call.resolve(ret);
+    }
+
+    /** Failure fields from the sale result. The account number is not included. */
+    private static String saleFailureText(TransactionResult result) {
+        if (result == null) return "";
+        String message = result.getFailureMessage() == null ? "" : result.getFailureMessage().trim();
+        String code = result.getFailureCode() == null ? "" : result.getFailureCode().trim();
+        String state = result.getState() == null ? "" : result.getState().trim();
+        String trace = result.getTraceId() == null ? "" : result.getTraceId().trim();
+        StringBuilder out = new StringBuilder();
+        if (!message.isEmpty()) out.append(message);
+        appendSalePart(out, message, "code", code);
+        appendSalePart(out, out.toString(), "state", state);
+        appendSalePart(out, out.toString(), "trace", trace);
+        return out.toString();
+    }
+
+    private static void appendSalePart(StringBuilder out, String existing, String label, String value) {
+        if (value.isEmpty()) return;
+        if (!existing.isEmpty() && existing.toLowerCase().contains(value.toLowerCase())) return;
+        if (out.length() > 0) out.append(' ');
+        out.append(label).append(' ').append(value);
     }
 
     private void finishSale(PluginCall call, String checkId, TransactionResult result) {
@@ -492,10 +514,7 @@ public class PaxD135Plugin extends Plugin {
         String state = result == null || result.getState() == null ? "" : result.getState();
         JSObject ret = new JSObject();
         if (id.isEmpty() || !failure.isEmpty() || state.toUpperCase().contains("FAIL")) {
-            ret.put("ok", false);
-            ret.put("code", codeFor(failure + " " + state + " " + (result == null ? "" : result.getFailureMessage())));
-            ret.put("message", result != null && result.getFailureMessage() != null ? result.getFailureMessage() : MSG_UNREAD);
-            call.resolve(ret);
+            resolveSaleFailure(call, saleFailureText(result));
             return;
         }
         synchronized (capturedChecks) {

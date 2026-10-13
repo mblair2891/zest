@@ -921,8 +921,9 @@ export function PaymentDialog({ open, onOpenChange, initialMethod }: Props) {
             locationId,
             orgId,
           };
-        } catch {
-          setError(PAX_MSG.unread);
+        } catch (err) {
+          const detail = err instanceof Error ? err.message.trim() : "";
+          setError(detail || PAX_MSG.unread);
           setBusy(false);
           return;
         }

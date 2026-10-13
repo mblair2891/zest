@@ -1073,6 +1073,8 @@ export type PaxSdkCode =
   | "error";
 
 export function classifyPaxError(code: string, raw?: string): { message: string; leaveOpen: true } {
+  const sdk = String(raw ?? "").replace(/\s+/g, " ").trim();
+  if (sdk) return { message: sdk, leaveOpen: true };
   const text = `${code} ${raw ?? ""}`.toLowerCase();
   if (code === "already_captured" || text.includes("already paid") || text.includes("second")) {
     return { message: PAX_MSG.alreadyPaid, leaveOpen: true };

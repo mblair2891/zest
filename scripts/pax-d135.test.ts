@@ -233,7 +233,7 @@ test("decline leaves the check open", async () => {
   assert.equal(result.ok, false);
   if (!result.ok) {
     assert.equal(result.charged, false);
-    assert.equal(result.message, PAX_MSG.declined);
+    assert.equal(result.message, "DECLINED");
   }
   assert.equal(checkAlreadyCaptured({ checkId: "chk_1", status: "open", payments: [] }), false);
 });
@@ -329,6 +329,11 @@ test("failsafes do not charge", async () => {
   assert.equal(classifyPaxError("timeout").message, PAX_MSG.timeout);
   assert.equal(classifyPaxError("chip").message, PAX_MSG.chip);
   assert.equal(classifyPaxError("cancelled").message, PAX_MSG.cancelled);
+  assert.equal(
+    classifyPaxError("error", "Host response 51 Insufficient funds").message,
+    "Host response 51 Insufficient funds",
+  );
+  assert.equal(classifyPaxError("declined", "DECLINED").leaveOpen, true);
   assert.equal(envBlock(true, "sandbox"), PAX_MSG.sandboxOnLive);
   assert.equal(envBlock(false, "live"), PAX_MSG.liveOnSandbox);
 });
@@ -413,6 +418,12 @@ test("the PAX path does not use Web Bluetooth or Stripe", () => {
   assert.match(plugin, /Allow Nearby devices and Location/);
   assert.match(plugin, /FIRST_RESPONSE_MS = 15_000L/);
   assert.match(plugin, /CONNECT_TIMEOUT_MS = 4L \* 60L \* 1000L/);
+  const sale = plugin.slice(plugin.indexOf("void saleOnWorker"), plugin.indexOf("void doScan"));
+  assert.match(sale, /Log\.i\("PaxD135", "SDK sale " \+ shown\)/);
+  assert.match(sale, /resolveSaleFailure\(call, errorMessage\)/);
+  assert.match(sale, /saleFailureText\(result\)/);
+  const failureText = plugin.slice(plugin.indexOf("String saleFailureText"), plugin.indexOf("void appendSalePart"));
+  assert.doesNotMatch(failureText, /getMaskedAccountNumber|getCryptogram/);
   const manifest = readFileSync("android/app/src/main/AndroidManifest.xml", "utf8");
   assert.match(manifest, /BLUETOOTH_SCAN"/);
   assert.match(manifest, /ACCESS_FINE_LOCATION/);
